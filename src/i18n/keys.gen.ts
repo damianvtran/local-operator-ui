@@ -133,6 +133,7 @@ import enUiLibrary from "./catalogues/en/ui.library.json";
 import enUiMeshErrors from "./catalogues/en/ui.mesh.errors.json";
 import enUiMesh from "./catalogues/en/ui.mesh.json";
 import enUiMiniView from "./catalogues/en/ui.miniView.json";
+import enUiMusicJobStatus from "./catalogues/en/ui.music.job_status.json";
 import enUiMusic from "./catalogues/en/ui.music.json";
 import enUiNativeBadge from "./catalogues/en/ui.nativeBadge.json";
 import enUiNotices from "./catalogues/en/ui.notices.json";
@@ -288,6 +289,7 @@ import esUiLibrary from "./catalogues/es/ui.library.json";
 import esUiMeshErrors from "./catalogues/es/ui.mesh.errors.json";
 import esUiMesh from "./catalogues/es/ui.mesh.json";
 import esUiMiniView from "./catalogues/es/ui.miniView.json";
+import esUiMusicJobStatus from "./catalogues/es/ui.music.job_status.json";
 import esUiMusic from "./catalogues/es/ui.music.json";
 import esUiNativeBadge from "./catalogues/es/ui.nativeBadge.json";
 import esUiNotices from "./catalogues/es/ui.notices.json";
@@ -443,6 +445,7 @@ import frUiLibrary from "./catalogues/fr/ui.library.json";
 import frUiMeshErrors from "./catalogues/fr/ui.mesh.errors.json";
 import frUiMesh from "./catalogues/fr/ui.mesh.json";
 import frUiMiniView from "./catalogues/fr/ui.miniView.json";
+import frUiMusicJobStatus from "./catalogues/fr/ui.music.job_status.json";
 import frUiMusic from "./catalogues/fr/ui.music.json";
 import frUiNativeBadge from "./catalogues/fr/ui.nativeBadge.json";
 import frUiNotices from "./catalogues/fr/ui.notices.json";
@@ -598,6 +601,7 @@ import hiUiLibrary from "./catalogues/hi/ui.library.json";
 import hiUiMeshErrors from "./catalogues/hi/ui.mesh.errors.json";
 import hiUiMesh from "./catalogues/hi/ui.mesh.json";
 import hiUiMiniView from "./catalogues/hi/ui.miniView.json";
+import hiUiMusicJobStatus from "./catalogues/hi/ui.music.job_status.json";
 import hiUiMusic from "./catalogues/hi/ui.music.json";
 import hiUiNativeBadge from "./catalogues/hi/ui.nativeBadge.json";
 import hiUiNotices from "./catalogues/hi/ui.notices.json";
@@ -753,6 +757,7 @@ import ruUiLibrary from "./catalogues/ru/ui.library.json";
 import ruUiMeshErrors from "./catalogues/ru/ui.mesh.errors.json";
 import ruUiMesh from "./catalogues/ru/ui.mesh.json";
 import ruUiMiniView from "./catalogues/ru/ui.miniView.json";
+import ruUiMusicJobStatus from "./catalogues/ru/ui.music.job_status.json";
 import ruUiMusic from "./catalogues/ru/ui.music.json";
 import ruUiNativeBadge from "./catalogues/ru/ui.nativeBadge.json";
 import ruUiNotices from "./catalogues/ru/ui.notices.json";
@@ -908,6 +913,7 @@ import urUiLibrary from "./catalogues/ur/ui.library.json";
 import urUiMeshErrors from "./catalogues/ur/ui.mesh.errors.json";
 import urUiMesh from "./catalogues/ur/ui.mesh.json";
 import urUiMiniView from "./catalogues/ur/ui.miniView.json";
+import urUiMusicJobStatus from "./catalogues/ur/ui.music.job_status.json";
 import urUiMusic from "./catalogues/ur/ui.music.json";
 import urUiNativeBadge from "./catalogues/ur/ui.nativeBadge.json";
 import urUiNotices from "./catalogues/ur/ui.notices.json";
@@ -1063,6 +1069,7 @@ import viUiLibrary from "./catalogues/vi/ui.library.json";
 import viUiMeshErrors from "./catalogues/vi/ui.mesh.errors.json";
 import viUiMesh from "./catalogues/vi/ui.mesh.json";
 import viUiMiniView from "./catalogues/vi/ui.miniView.json";
+import viUiMusicJobStatus from "./catalogues/vi/ui.music.job_status.json";
 import viUiMusic from "./catalogues/vi/ui.music.json";
 import viUiNativeBadge from "./catalogues/vi/ui.nativeBadge.json";
 import viUiNotices from "./catalogues/vi/ui.notices.json";
@@ -1218,6 +1225,7 @@ import zhCNUiLibrary from "./catalogues/zh-CN/ui.library.json";
 import zhCNUiMeshErrors from "./catalogues/zh-CN/ui.mesh.errors.json";
 import zhCNUiMesh from "./catalogues/zh-CN/ui.mesh.json";
 import zhCNUiMiniView from "./catalogues/zh-CN/ui.miniView.json";
+import zhCNUiMusicJobStatus from "./catalogues/zh-CN/ui.music.job_status.json";
 import zhCNUiMusic from "./catalogues/zh-CN/ui.music.json";
 import zhCNUiNativeBadge from "./catalogues/zh-CN/ui.nativeBadge.json";
 import zhCNUiNotices from "./catalogues/zh-CN/ui.notices.json";
@@ -1376,6 +1384,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiMeshErrors,
 	...enUiMesh,
 	...enUiMiniView,
+	...enUiMusicJobStatus,
 	...enUiMusic,
 	...enUiNativeBadge,
 	...enUiNotices,
@@ -1539,6 +1548,7 @@ export const bundledCatalogues: Readonly<
 		...esUiMeshErrors,
 		...esUiMesh,
 		...esUiMiniView,
+		...esUiMusicJobStatus,
 		...esUiMusic,
 		...esUiNativeBadge,
 		...esUiNotices,
@@ -1696,6 +1706,7 @@ export const bundledCatalogues: Readonly<
 		...frUiMeshErrors,
 		...frUiMesh,
 		...frUiMiniView,
+		...frUiMusicJobStatus,
 		...frUiMusic,
 		...frUiNativeBadge,
 		...frUiNotices,
@@ -1853,6 +1864,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiMeshErrors,
 		...hiUiMesh,
 		...hiUiMiniView,
+		...hiUiMusicJobStatus,
 		...hiUiMusic,
 		...hiUiNativeBadge,
 		...hiUiNotices,
@@ -2010,6 +2022,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiMeshErrors,
 		...ruUiMesh,
 		...ruUiMiniView,
+		...ruUiMusicJobStatus,
 		...ruUiMusic,
 		...ruUiNativeBadge,
 		...ruUiNotices,
@@ -2167,6 +2180,7 @@ export const bundledCatalogues: Readonly<
 		...urUiMeshErrors,
 		...urUiMesh,
 		...urUiMiniView,
+		...urUiMusicJobStatus,
 		...urUiMusic,
 		...urUiNativeBadge,
 		...urUiNotices,
@@ -2324,6 +2338,7 @@ export const bundledCatalogues: Readonly<
 		...viUiMeshErrors,
 		...viUiMesh,
 		...viUiMiniView,
+		...viUiMusicJobStatus,
 		...viUiMusic,
 		...viUiNativeBadge,
 		...viUiNotices,
@@ -2481,6 +2496,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiMeshErrors,
 		...zhCNUiMesh,
 		...zhCNUiMiniView,
+		...zhCNUiMusicJobStatus,
 		...zhCNUiMusic,
 		...zhCNUiNativeBadge,
 		...zhCNUiNotices,
@@ -8867,6 +8883,7 @@ export type MessageParams = {
 	"ui.miniView.sheet_model": undefined;
 	"ui.miniView.sheet_unavailable": undefined;
 	"ui.miniView.switch_failed": undefined;
+	"ui.music.job_status.unavailable": undefined;
 	"ui.music.cancel_requested": undefined;
 	"ui.music.cancel_warning": { label: string };
 	"ui.music.empty": undefined;

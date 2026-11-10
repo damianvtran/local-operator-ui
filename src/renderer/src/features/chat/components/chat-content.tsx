@@ -971,6 +971,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const musicJobCancel = useJobCancel({
 			sessionId: sessionId ?? null,
 			controls: jobControls,
+			// Escape after a card's Cancel returns to that card's control (R15-3).
+			controlAttribute: "data-music-cancel",
 		});
 		const musicJobCancelRequest = musicJobCancel.section.request;
 		const runDetailJobs = runDetails?.jobs;
@@ -982,6 +984,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						.map((row) => [row.id, row]),
 				),
 				request: musicJobCancelRequest,
+				loaded: runDetailJobs !== undefined,
 			}),
 			[runDetailJobs, musicJobCancelRequest],
 		);

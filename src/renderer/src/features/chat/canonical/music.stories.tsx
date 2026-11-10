@@ -298,24 +298,29 @@ const InlineCard = ({
 	row,
 	settlement,
 	rtl = false,
+	liveLoaded = false,
 }: {
 	job: string;
 	toolName?: string;
 	row?: SubagentRow;
 	settlement?: MusicJobSettlement;
 	rtl?: boolean;
+	/** Run details loaded and the hook's missing-job grace elapsed. */
+	liveLoaded?: boolean;
 }) => {
 	const view = musicGeneratingView({
 		toolName,
 		details: inlineDetails(job),
 		row,
 		settlement,
+		liveLoaded,
 	});
 	return (
 		<MusicJobsLiveContext.Provider
 			value={{
 				rows: new Map<string, SubagentRow>(row ? [[row.id, row]] : []),
 				request: () => undefined,
+				loaded: liveLoaded,
 			}}
 		>
 			<div dir={rtl ? "rtl" : "ltr"}>
@@ -384,6 +389,24 @@ export const InlineTwoConcurrent: Story = {
 			/>
 		</div>
 	),
+};
+/** The user pressed Cancel and the request is in flight: no second Cancel. */
+export const InlineCancelRequested: Story = {
+	render: () => (
+		<InlineCard
+			job="job-x"
+			row={inlineRow("job-x", {
+				stage: "cancel_requested",
+				total: 2,
+				completed: 1,
+			})}
+		/>
+	),
+};
+/** Loaded run details no longer list the job and no result was recorded
+ * (e.g. lost across a restart), after the hook's missing-job grace. */
+export const InlineStatusUnavailable: Story = {
+	render: () => <InlineCard job="job-u" liveLoaded />,
 };
 export const InlineFailed: Story = {
 	render: () => <InlineCard job="job-f" settlement={zeroBilled("failed")} />,

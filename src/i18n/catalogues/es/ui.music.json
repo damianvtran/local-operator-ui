@@ -7,7 +7,7 @@
 	"ui.music.empty": "No se devolvió ninguna pista.",
 	"ui.music.queued": "Música en cola",
 	"ui.music.generating": "Generando música…",
-	"ui.music.generating_tracks": "{count, plural, one {Generando # pista…} other {Generando # pistas…}}",
+	"ui.music.generating_tracks": "{count, plural, one {Generando # pista…} many {Generando # de pistas…} other {Generando # pistas…}}",
 	"ui.music.modifying": "Modificando música…",
 	"ui.music.cancel_requested": "Cancelación solicitada",
 	"ui.music.ready": "Música lista",

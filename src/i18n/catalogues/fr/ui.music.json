@@ -7,7 +7,7 @@
 	"ui.music.empty": "Aucune piste n’a été renvoyée.",
 	"ui.music.queued": "Musique en file d’attente",
 	"ui.music.generating": "Génération de la musique…",
-	"ui.music.generating_tracks": "{count, plural, one {Génération de # piste…} other {Génération de # pistes…}}",
+	"ui.music.generating_tracks": "{count, plural, one {Génération de # piste…} many {Génération de # de pistes…} other {Génération de # pistes…}}",
 	"ui.music.modifying": "Modification de la musique…",
 	"ui.music.cancel_requested": "Annulation demandée",
 	"ui.music.ready": "Musique prête",

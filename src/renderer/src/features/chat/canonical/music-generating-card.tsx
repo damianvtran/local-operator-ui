@@ -1,7 +1,7 @@
 import { Button } from "@shared/components/ui";
 import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
-import { useContext } from "react";
+import { useContext, useEffect, useState } from "react";
 import {
 	type MusicGeneratingView,
 	MusicJobSettlementsContext,
@@ -28,6 +28,8 @@ const stateLine = (view: MusicGeneratingView): string => {
 			return t("ui.music.job_failed");
 		case "cancelled":
 			return t("ui.music.job_cancelled");
+		case "unavailable":
+			return t("ui.music.job_status.unavailable");
 	}
 };
 
@@ -100,6 +102,16 @@ export const MusicGeneratingCard = ({
 };
 
 /**
+ * How long a job id may be missing from loaded run details before the card
+ * calls its status unavailable. The call's result (carrying the job id) and the
+ * run-details frame that first lists the job arrive separately, so a freshly
+ * launched job is briefly absent from a loaded list; without this window every
+ * launch would flash "status unavailable" before "queued". A job lost across a
+ * restart stays absent, so it still reaches the unavailable state (R15-4).
+ */
+export const MUSIC_JOB_MISSING_GRACE_MS = 5000;
+
+/**
  * The transcript's mount: derives the view from the call's record plus the two
  * contexts, or renders nothing (null) so the caller keeps the ordinary row.
  */
@@ -110,11 +122,26 @@ export const useMusicGeneratingView = (
 	const live = useContext(MusicJobsLiveContext);
 	const settlements = useContext(MusicJobSettlementsContext);
 	const jobId = musicJobIdOf(details);
+	const row = jobId ? live?.rows.get(jobId) : undefined;
+	const settlement = jobId ? settlements.get(jobId) : undefined;
+	const missing =
+		jobId !== null && live?.loaded === true && !row && !settlement;
+	// Keyed by job id so a recycled row never inherits another job's elapsed grace.
+	const [graceOver, setGraceOver] = useState<string | null>(null);
+	useEffect(() => {
+		if (!missing || jobId === null) return;
+		const timer = setTimeout(
+			() => setGraceOver(jobId),
+			MUSIC_JOB_MISSING_GRACE_MS,
+		);
+		return () => clearTimeout(timer);
+	}, [missing, jobId]);
 	return musicGeneratingView({
 		toolName,
 		details,
-		row: jobId ? live?.rows.get(jobId) : undefined,
-		settlement: jobId ? settlements.get(jobId) : undefined,
+		row,
+		settlement,
+		liveLoaded: missing && graceOver === jobId,
 	});
 };
 

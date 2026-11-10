@@ -92730,31 +92730,31 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.music",
-			"source_sha256": "3bb58635be3fd3b69d25fba7a87eba51add3c5042c89d887c8d1aa9d0c9cbc19",
-			"target_sha256": "a9922a77729e4fbe69d1a6a98cb1816f738b1189c70bbd71472c09989e0f5913",
+			"source_sha256": "bd05c0f816b8421ce42aeac422b168ee94f98fe1e7200ea8d3d82982cc0b61c3",
+			"target_sha256": "92929ffbd0a911a90987c55e89cd8a5ef6d43bcadd39d618dbe6f6e5c038f9f9",
 			"translator": {
 				"agent": "coder",
-				"session": "c44d6b2962c9",
-				"model": "openai/gpt-6.1-sol",
+				"session": "07cc6c9ad446",
+				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-09",
 				"fallback": "none"
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "openai/gpt-6.1-sol",
+					"instance": "fbc3c870c82c",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-09",
-					"result": "clean",
-					"instance": "68a17109903b",
+					"result": "clean-with-findings",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/68a17109903b.json",
-					"receipt_sha256": "5b19e3910c3f27104ec704275c51f1671757c005a53c153dfbb5d0094bbc7b50",
-					"scope": "Fresh independent mechanical-format retention; decoded JSON unchanged; original linguistic audits retained in superseded history; not a new linguistic, audio, pixel or flow audit"
+					"receipt": "i18n/receipts/music-inline-fbc3c870c82c-fr.json",
+					"receipt_sha256": "d8d9c43c78edde9a639f18cf12abec9bc0801cd92fb8985914b3888b618cb11c",
+					"scope": "8 inline-generating keys; 6 prior keys unchanged, retained (prior linguistic audits music-c6abfadb3c9f-* in superseded history)"
 				}
 			],
 			"status": "audited",
@@ -92781,37 +92781,60 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "3bb58635be3fd3b69d25fba7a87eba51add3c5042c89d887c8d1aa9d0c9cbc19",
+					"target_sha256": "a9922a77729e4fbe69d1a6a98cb1816f738b1189c70bbd71472c09989e0f5913",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "68a17109903b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a17109903b.json",
+							"receipt_sha256": "5b19e3910c3f27104ec704275c51f1671757c005a53c153dfbb5d0094bbc7b50",
+							"scope": "Fresh independent mechanical-format retention; decoded JSON unchanged; original linguistic audits retained in superseded history; not a new linguistic, audio, pixel or flow audit"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "es",
 			"namespace": "ui.music",
-			"source_sha256": "3bb58635be3fd3b69d25fba7a87eba51add3c5042c89d887c8d1aa9d0c9cbc19",
-			"target_sha256": "704f98572dcfa93b9efa7566df3ba124f1e3c9c8c99b3343d3baeca6f6eced0d",
+			"source_sha256": "bd05c0f816b8421ce42aeac422b168ee94f98fe1e7200ea8d3d82982cc0b61c3",
+			"target_sha256": "8e1d9f98cbbea51b1618d3a3bf31f8178403a5235fbd05564b2e4c59be875636",
 			"translator": {
 				"agent": "coder",
-				"session": "c44d6b2962c9",
-				"model": "openai/gpt-6.1-sol",
+				"session": "07cc6c9ad446",
+				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-09",
 				"fallback": "none"
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "openai/gpt-6.1-sol",
+					"instance": "fbc3c870c82c",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-09",
-					"result": "clean",
-					"instance": "68a17109903b",
+					"result": "clean-with-findings",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/68a17109903b.json",
-					"receipt_sha256": "5b19e3910c3f27104ec704275c51f1671757c005a53c153dfbb5d0094bbc7b50",
-					"scope": "Fresh independent mechanical-format retention; decoded JSON unchanged; original linguistic audits retained in superseded history; not a new linguistic, audio, pixel or flow audit"
+					"receipt": "i18n/receipts/music-inline-fbc3c870c82c-es.json",
+					"receipt_sha256": "82a69c623d368bf8af1a2dcba7168260cf3cc2be0dbfe6aa71cd7a8e82c3ab76",
+					"scope": "8 inline-generating keys; 6 prior keys unchanged, retained (prior linguistic audits music-c6abfadb3c9f-* in superseded history)"
 				}
 			],
 			"status": "audited",
@@ -92838,37 +92861,60 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "3bb58635be3fd3b69d25fba7a87eba51add3c5042c89d887c8d1aa9d0c9cbc19",
+					"target_sha256": "704f98572dcfa93b9efa7566df3ba124f1e3c9c8c99b3343d3baeca6f6eced0d",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "68a17109903b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a17109903b.json",
+							"receipt_sha256": "5b19e3910c3f27104ec704275c51f1671757c005a53c153dfbb5d0094bbc7b50",
+							"scope": "Fresh independent mechanical-format retention; decoded JSON unchanged; original linguistic audits retained in superseded history; not a new linguistic, audio, pixel or flow audit"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.music",
-			"source_sha256": "3bb58635be3fd3b69d25fba7a87eba51add3c5042c89d887c8d1aa9d0c9cbc19",
-			"target_sha256": "93b8b71789d4953407815bdb11f7e2632e01422505fb81437be5e28550c5d9bc",
+			"source_sha256": "bd05c0f816b8421ce42aeac422b168ee94f98fe1e7200ea8d3d82982cc0b61c3",
+			"target_sha256": "ec4888d26153ef64c76da94c69f2d5d0d6792f32036488f64021435b623d8df5",
 			"translator": {
 				"agent": "coder",
-				"session": "c44d6b2962c9",
-				"model": "openai/gpt-6.1-sol",
+				"session": "07cc6c9ad446",
+				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-09",
 				"fallback": "none"
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "openai/gpt-6.1-sol",
+					"instance": "fbc3c870c82c",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-09",
-					"result": "clean",
-					"instance": "68a17109903b",
+					"result": "clean-with-findings",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/68a17109903b.json",
-					"receipt_sha256": "5b19e3910c3f27104ec704275c51f1671757c005a53c153dfbb5d0094bbc7b50",
-					"scope": "Fresh independent mechanical-format retention; decoded JSON unchanged; original linguistic audits retained in superseded history; not a new linguistic, audio, pixel or flow audit"
+					"receipt": "i18n/receipts/music-inline-fbc3c870c82c-zh-cn.json",
+					"receipt_sha256": "cdcba7f4dc9fe65f22be3e63b6311ef871c543c42c42490a10b7f769b0f8cee1",
+					"scope": "8 inline-generating keys; 6 prior keys unchanged, retained (prior linguistic audits music-c6abfadb3c9f-* in superseded history)"
 				}
 			],
 			"status": "audited",
@@ -92895,37 +92941,60 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "3bb58635be3fd3b69d25fba7a87eba51add3c5042c89d887c8d1aa9d0c9cbc19",
+					"target_sha256": "93b8b71789d4953407815bdb11f7e2632e01422505fb81437be5e28550c5d9bc",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "68a17109903b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a17109903b.json",
+							"receipt_sha256": "5b19e3910c3f27104ec704275c51f1671757c005a53c153dfbb5d0094bbc7b50",
+							"scope": "Fresh independent mechanical-format retention; decoded JSON unchanged; original linguistic audits retained in superseded history; not a new linguistic, audio, pixel or flow audit"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ru",
 			"namespace": "ui.music",
-			"source_sha256": "3bb58635be3fd3b69d25fba7a87eba51add3c5042c89d887c8d1aa9d0c9cbc19",
-			"target_sha256": "999793f8d1b8b4dfcc126bccefa158c3466737e54dbe297603e87e066c2493c9",
+			"source_sha256": "bd05c0f816b8421ce42aeac422b168ee94f98fe1e7200ea8d3d82982cc0b61c3",
+			"target_sha256": "21e55537ec8d438d238a18c27afa2c5779de31a7e65b9a5ec48019ef2c3b5da6",
 			"translator": {
 				"agent": "coder",
-				"session": "c44d6b2962c9",
-				"model": "openai/gpt-6.1-sol",
+				"session": "07cc6c9ad446",
+				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-09",
 				"fallback": "none"
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "openai/gpt-6.1-sol",
+					"instance": "fbc3c870c82c",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-09",
 					"result": "clean",
-					"instance": "68a17109903b",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/68a17109903b.json",
-					"receipt_sha256": "5b19e3910c3f27104ec704275c51f1671757c005a53c153dfbb5d0094bbc7b50",
-					"scope": "Fresh independent mechanical-format retention; decoded JSON unchanged; original linguistic audits retained in superseded history; not a new linguistic, audio, pixel or flow audit"
+					"receipt": "i18n/receipts/music-inline-fbc3c870c82c-ru.json",
+					"receipt_sha256": "8313eef558da96484bcc9d03cb7b22c5dfab310108bd5ac25048154c9ce28bf9",
+					"scope": "8 inline-generating keys; 6 prior keys unchanged, retained (prior linguistic audits music-c6abfadb3c9f-* in superseded history)"
 				}
 			],
 			"status": "audited",
@@ -92952,37 +93021,60 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "3bb58635be3fd3b69d25fba7a87eba51add3c5042c89d887c8d1aa9d0c9cbc19",
+					"target_sha256": "999793f8d1b8b4dfcc126bccefa158c3466737e54dbe297603e87e066c2493c9",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "68a17109903b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a17109903b.json",
+							"receipt_sha256": "5b19e3910c3f27104ec704275c51f1671757c005a53c153dfbb5d0094bbc7b50",
+							"scope": "Fresh independent mechanical-format retention; decoded JSON unchanged; original linguistic audits retained in superseded history; not a new linguistic, audio, pixel or flow audit"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.music",
-			"source_sha256": "3bb58635be3fd3b69d25fba7a87eba51add3c5042c89d887c8d1aa9d0c9cbc19",
-			"target_sha256": "57a280f70c700ca6eb8a592d9b91ae530bfcf8f13c8078915bf823e6d1c8748c",
+			"source_sha256": "bd05c0f816b8421ce42aeac422b168ee94f98fe1e7200ea8d3d82982cc0b61c3",
+			"target_sha256": "599396b17f5cbc071a98ff73bd563a2c05ba45caa6393ba0db50073da5bc7b58",
 			"translator": {
 				"agent": "coder",
-				"session": "c44d6b2962c9",
-				"model": "openai/gpt-6.1-sol",
+				"session": "07cc6c9ad446",
+				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-09",
 				"fallback": "none"
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "openai/gpt-6.1-sol",
+					"instance": "fbc3c870c82c",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-09",
 					"result": "clean",
-					"instance": "68a17109903b",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/68a17109903b.json",
-					"receipt_sha256": "5b19e3910c3f27104ec704275c51f1671757c005a53c153dfbb5d0094bbc7b50",
-					"scope": "Fresh independent mechanical-format retention; decoded JSON unchanged; original linguistic audits retained in superseded history; not a new linguistic, audio, pixel or flow audit"
+					"receipt": "i18n/receipts/music-inline-fbc3c870c82c-vi.json",
+					"receipt_sha256": "7f180355ac4602d81c43d0f4dcb1ca0dbdd87e8d4a27327aa96d34c7e558a964",
+					"scope": "8 inline-generating keys; 6 prior keys unchanged, retained (prior linguistic audits music-c6abfadb3c9f-* in superseded history)"
 				}
 			],
 			"status": "audited",
@@ -93009,37 +93101,60 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "3bb58635be3fd3b69d25fba7a87eba51add3c5042c89d887c8d1aa9d0c9cbc19",
+					"target_sha256": "57a280f70c700ca6eb8a592d9b91ae530bfcf8f13c8078915bf823e6d1c8748c",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "68a17109903b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a17109903b.json",
+							"receipt_sha256": "5b19e3910c3f27104ec704275c51f1671757c005a53c153dfbb5d0094bbc7b50",
+							"scope": "Fresh independent mechanical-format retention; decoded JSON unchanged; original linguistic audits retained in superseded history; not a new linguistic, audio, pixel or flow audit"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.music",
-			"source_sha256": "3bb58635be3fd3b69d25fba7a87eba51add3c5042c89d887c8d1aa9d0c9cbc19",
-			"target_sha256": "5242a42f207c9a85d0843d0b8b3cbb07e3c302701a5fa054b441cd0f9a39887c",
+			"source_sha256": "bd05c0f816b8421ce42aeac422b168ee94f98fe1e7200ea8d3d82982cc0b61c3",
+			"target_sha256": "c796c294d742221fca4d75429899cb5f8cc83a346eccc3d11deba66643358a5d",
 			"translator": {
 				"agent": "coder",
-				"session": "c44d6b2962c9",
-				"model": "openai/gpt-6.1-sol",
+				"session": "07cc6c9ad446",
+				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-09",
 				"fallback": "none"
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "openai/gpt-6.1-sol",
+					"instance": "fbc3c870c82c",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-09",
 					"result": "clean",
-					"instance": "68a17109903b",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/68a17109903b.json",
-					"receipt_sha256": "5b19e3910c3f27104ec704275c51f1671757c005a53c153dfbb5d0094bbc7b50",
-					"scope": "Fresh independent mechanical-format retention; decoded JSON unchanged; original linguistic audits retained in superseded history; not a new linguistic, audio, pixel or flow audit"
+					"receipt": "i18n/receipts/music-inline-fbc3c870c82c-ur.json",
+					"receipt_sha256": "8b761b4fde49ba2a7d9dd0a1854b33e0786b760d348cec36c8511e0466dffa24",
+					"scope": "8 inline-generating keys; 6 prior keys unchanged, retained (prior linguistic audits music-c6abfadb3c9f-* in superseded history)"
 				}
 			],
 			"status": "audited",
@@ -93066,37 +93181,60 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "3bb58635be3fd3b69d25fba7a87eba51add3c5042c89d887c8d1aa9d0c9cbc19",
+					"target_sha256": "5242a42f207c9a85d0843d0b8b3cbb07e3c302701a5fa054b441cd0f9a39887c",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "68a17109903b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a17109903b.json",
+							"receipt_sha256": "5b19e3910c3f27104ec704275c51f1671757c005a53c153dfbb5d0094bbc7b50",
+							"scope": "Fresh independent mechanical-format retention; decoded JSON unchanged; original linguistic audits retained in superseded history; not a new linguistic, audio, pixel or flow audit"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.music",
-			"source_sha256": "3bb58635be3fd3b69d25fba7a87eba51add3c5042c89d887c8d1aa9d0c9cbc19",
-			"target_sha256": "26ec304c0d2c25dd1402a83d4ee3e9826056b50650c3afa1197b7c9a9ef8c0b9",
+			"source_sha256": "bd05c0f816b8421ce42aeac422b168ee94f98fe1e7200ea8d3d82982cc0b61c3",
+			"target_sha256": "6c6da02caa4969536e73f7cd0a35d55ca71a43fb0fc20922cba877fc2fd3e96e",
 			"translator": {
 				"agent": "coder",
-				"session": "c44d6b2962c9",
-				"model": "openai/gpt-6.1-sol",
+				"session": "07cc6c9ad446",
+				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-09",
 				"fallback": "none"
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "openai/gpt-6.1-sol",
+					"instance": "fbc3c870c82c",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-09",
 					"result": "clean",
-					"instance": "68a17109903b",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/68a17109903b.json",
-					"receipt_sha256": "5b19e3910c3f27104ec704275c51f1671757c005a53c153dfbb5d0094bbc7b50",
-					"scope": "Fresh independent mechanical-format retention; decoded JSON unchanged; original linguistic audits retained in superseded history; not a new linguistic, audio, pixel or flow audit"
+					"receipt": "i18n/receipts/music-inline-fbc3c870c82c-hi.json",
+					"receipt_sha256": "e32d607de83e09bcba472ad404b985580381ba47cc2da4b3ba3689be0d82748f",
+					"scope": "8 inline-generating keys; 6 prior keys unchanged, retained (prior linguistic audits music-c6abfadb3c9f-* in superseded history)"
 				}
 			],
 			"status": "audited",
@@ -93123,8 +93261,136 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "3bb58635be3fd3b69d25fba7a87eba51add3c5042c89d887c8d1aa9d0c9cbc19",
+					"target_sha256": "26ec304c0d2c25dd1402a83d4ee3e9826056b50650c3afa1197b7c9a9ef8c0b9",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "68a17109903b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a17109903b.json",
+							"receipt_sha256": "5b19e3910c3f27104ec704275c51f1671757c005a53c153dfbb5d0094bbc7b50",
+							"scope": "Fresh independent mechanical-format retention; decoded JSON unchanged; original linguistic audits retained in superseded history; not a new linguistic, audio, pixel or flow audit"
+						}
+					],
+					"status": "audited"
 				}
 			]
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.music.job_status",
+			"source_sha256": "b71126a2206711a86590573565bd5ec6e0177055db2ce9bf5a23895133653141",
+			"target_sha256": "4a107f682e333c1c786c8ccf6b8cde4b05cec1f75e043922158a2f5247b7c37d",
+			"translator": {
+				"agent": "coder",
+				"session": "7ca90b654475",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-09",
+				"fallback": "none"
+			},
+			"auditors": [],
+			"status": "pending"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.music.job_status",
+			"source_sha256": "b71126a2206711a86590573565bd5ec6e0177055db2ce9bf5a23895133653141",
+			"target_sha256": "2c6368e68d59a548da082318f367a052e585c81a066c58363c7ed0d680939f46",
+			"translator": {
+				"agent": "coder",
+				"session": "7ca90b654475",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-09",
+				"fallback": "none"
+			},
+			"auditors": [],
+			"status": "pending"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.music.job_status",
+			"source_sha256": "b71126a2206711a86590573565bd5ec6e0177055db2ce9bf5a23895133653141",
+			"target_sha256": "522d6b27bedaa1b229a332983fa937e3feb88537b4cfa67aeedf56db68b47580",
+			"translator": {
+				"agent": "coder",
+				"session": "7ca90b654475",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-09",
+				"fallback": "none"
+			},
+			"auditors": [],
+			"status": "pending"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.music.job_status",
+			"source_sha256": "b71126a2206711a86590573565bd5ec6e0177055db2ce9bf5a23895133653141",
+			"target_sha256": "4a540394f14ccc015673adc48b3a0efec9c36ea949e732b82e9757733f6fc270",
+			"translator": {
+				"agent": "coder",
+				"session": "7ca90b654475",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-09",
+				"fallback": "none"
+			},
+			"auditors": [],
+			"status": "pending"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.music.job_status",
+			"source_sha256": "b71126a2206711a86590573565bd5ec6e0177055db2ce9bf5a23895133653141",
+			"target_sha256": "a2d1de68a8c851bc251c16bfe12f3a8e54ec151958b4b4f56b4bc1b2d583f7f7",
+			"translator": {
+				"agent": "coder",
+				"session": "7ca90b654475",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-09",
+				"fallback": "none"
+			},
+			"auditors": [],
+			"status": "pending"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.music.job_status",
+			"source_sha256": "b71126a2206711a86590573565bd5ec6e0177055db2ce9bf5a23895133653141",
+			"target_sha256": "d085364f262b795fa97c382ee6a9088f92226b816f56a67ee495a39fa049ed30",
+			"translator": {
+				"agent": "coder",
+				"session": "7ca90b654475",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-09",
+				"fallback": "none"
+			},
+			"auditors": [],
+			"status": "pending"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.music.job_status",
+			"source_sha256": "b71126a2206711a86590573565bd5ec6e0177055db2ce9bf5a23895133653141",
+			"target_sha256": "eeec4abf0f9953005f89fe543e2118a44de845b5c69202f929b3dcb49e65d0a5",
+			"translator": {
+				"agent": "coder",
+				"session": "7ca90b654475",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-09",
+				"fallback": "none"
+			},
+			"auditors": [],
+			"status": "pending"
 		}
 	]
 }

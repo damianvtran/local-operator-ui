@@ -30,7 +30,8 @@ const alias = {
 const bundle = await build({
 	stdin: {
 		contents: `export * from "./src/renderer/src/features/chat/canonical/music-generating-model";
-export { MusicGeneratingCard, ConnectedMusicGeneratingCard } from "./src/renderer/src/features/chat/canonical/music-generating-card";
+export { MusicGeneratingCard, ConnectedMusicGeneratingCard, useMusicGeneratingView, MUSIC_JOB_MISSING_GRACE_MS } from "./src/renderer/src/features/chat/canonical/music-generating-card";
+export { useJobCancel } from "./src/renderer/src/features/chat/components/run-details/use-job-cancel";
 export { ownsMaterialArtifact } from "./src/renderer/src/features/chat/canonical/turn-collapse-model";
 export { EMPTY_TRANSCRIPT, applyHistoryPage } from "./src/renderer/src/features/chat/canonical/transcript-reducer";`,
 		resolveDir: process.cwd(),
@@ -76,6 +77,9 @@ const {
 	musicJobIdOf,
 	MusicGeneratingCard,
 	ConnectedMusicGeneratingCard,
+	useMusicGeneratingView,
+	MUSIC_JOB_MISSING_GRACE_MS,
+	useJobCancel,
 	MusicJobsLiveContext,
 	ownsMaterialArtifact,
 	EMPTY_TRANSCRIPT,
@@ -262,6 +266,64 @@ test("job_result status parses Core's frozen sentence, quotes in labels included
 		"failed",
 	);
 	assert.equal(jobResultStatus("Music ready"), null);
+	// R15-1 reproduction: the summary's own quoted word must not win.
+	assert.equal(
+		jobResultStatus(
+			"background job 'music: dawn' failed:\nProvider error after track 'Dawn' completed early",
+		),
+		"failed",
+	);
+	assert.equal(
+		jobResultStatus("background job 'x'\n' completed"),
+		null,
+		"a status only after a newline is no header status",
+	);
+});
+
+test("done needs Core's completed or tracks with bytes; unknown/paused is unavailable (R15-2)", () => {
+	const viewFor = (settlement) =>
+		musicGeneratingView({
+			toolName: "generate_music",
+			details: receiptDetails("job1"),
+			row: undefined,
+			settlement,
+		}).state;
+	assert.equal(viewFor({ status: null, receipt: null }), "unavailable");
+	assert.equal(viewFor({ status: "paused", receipt: null }), "unavailable");
+	assert.equal(viewFor({ status: "completed", receipt: null }), "done");
+	assert.equal(
+		viewFor({
+			status: null,
+			receipt: {
+				attribution: "",
+				tracks: [{ id: "t", images: [{}], cost: null }],
+			},
+		}),
+		"done",
+		"audio that exists is ready whatever the sentence said",
+	);
+});
+
+test("loaded run details without the job and no result: status unavailable (R15-4)", () => {
+	const base = {
+		toolName: "generate_music",
+		details: receiptDetails("job9"),
+		row: undefined,
+		settlement: undefined,
+	};
+	assert.equal(musicGeneratingView(base).state, "queued");
+	const lost = musicGeneratingView({ ...base, liveLoaded: true });
+	assert.equal(lost.state, "unavailable");
+	assert.equal(lost.cancelRow, null);
+	const markup = renderToStaticMarkup(h(MusicGeneratingCard, { view: lost }));
+	assert.match(markup, /data-music-state="unavailable"/);
+	assert.match(markup, /Music status unavailable/);
+	assert.doesNotMatch(markup, /animate-pulse"|data-music-cancel/);
+	// A live row or a settlement always outranks "unavailable".
+	assert.equal(
+		musicGeneratingView({ ...base, liveLoaded: true, row: row("job9") }).state,
+		"generating",
+	);
 });
 
 test("job_result rows carry their job id through the real reducer", () => {
@@ -396,6 +458,9 @@ for (const [key, value] of Object.entries({
 	SVGElement: dom.window.SVGElement,
 	Event: dom.window.Event,
 	MouseEvent: dom.window.MouseEvent,
+	// jsdom ships no `CSS`; the cancel flow's focus landing uses `CSS.escape`
+	// (the ids here are plain, so identity is enough - job-cancel-panel's idiom).
+	CSS: { escape: (value) => String(value) },
 	IS_REACT_ACT_ENVIRONMENT: true,
 })) {
 	restore.push([key, Object.getOwnPropertyDescriptor(globalThis, key)]);
@@ -459,4 +524,64 @@ test("each card's Cancel asks the confirm flow about its own job row only", asyn
 		"top",
 	]);
 	await act(async () => root.unmount());
+});
+
+test("a job missing from loaded run details reads queued until the grace ends (R15-4)", async (t) => {
+	t.mock.timers.enable({ apis: ["setTimeout"] });
+	const { createRoot } = await import("react-dom/client");
+	const Probe = () => {
+		const view = useMusicGeneratingView(
+			"generate_music",
+			receiptDetails("gone"),
+		);
+		return h("span", { "data-state": view?.state ?? "none" });
+	};
+	const container = document.createElement("div");
+	document.body.append(container);
+	const root = createRoot(container);
+	const live = { rows: new Map(), request: null, loaded: true };
+	await act(async () => {
+		root.render(h(MusicJobsLiveContext.Provider, { value: live }, h(Probe)));
+	});
+	const state = () => container.querySelector("[data-state]").dataset.state;
+	assert.equal(state(), "queued", "a just-launched job is not called lost");
+	await act(async () => t.mock.timers.tick(MUSIC_JOB_MISSING_GRACE_MS));
+	assert.equal(state(), "unavailable");
+	await act(async () => root.unmount());
+	container.remove();
+});
+
+test("Escape after a card's Cancel returns focus to that card's control (R15-3)", async () => {
+	const { createRoot } = await import("react-dom/client");
+	let interaction;
+	const Harness = ({ ids }) => {
+		interaction = useJobCancel({
+			sessionId: "s1",
+			controls: { cancel: async () => ({ kind: "ok" }) },
+			controlAttribute: "data-music-cancel",
+		});
+		return h(
+			"div",
+			null,
+			...ids.map((id) =>
+				h("button", { key: id, type: "button", "data-music-cancel": id }, id),
+			),
+		);
+	};
+	const container = document.createElement("div");
+	document.body.append(container);
+	const root = createRoot(container);
+	await act(async () => root.render(h(Harness, { ids: ["a", "b"] })));
+	const anchor = { left: 0, top: 0, right: 0, bottom: 0 };
+	await act(async () => interaction.section.request(row("b"), anchor));
+	assert.equal(interaction.popover.open, true);
+	// The popover's Escape: a dismissal with no focusable press target.
+	document.activeElement?.blur?.();
+	await act(async () => interaction.popover.onCancel());
+	assert.equal(
+		document.activeElement,
+		container.querySelector('[data-music-cancel="b"]'),
+	);
+	await act(async () => root.unmount());
+	container.remove();
 });

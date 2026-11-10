@@ -32,41 +32,41 @@
 	"ui.music.queued": {
 		"role": "status",
 		"tone": "neutral",
-		"note": "In-chat state line above the music generating motif for one detached music job. Short status, no trailing period except the failed/cancelled sentences. Cancellation requested does not mean the provider stopped or that nothing is charged. count is the number of tracks in the job."
+		"note": "In-chat state line above the music generating motif for one detached music job. The job is registered but the provider has not started. Short status, no trailing period."
 	},
 	"ui.music.generating": {
 		"role": "status",
 		"tone": "neutral",
-		"note": "In-chat state line above the music generating motif for one detached music job. Short status, no trailing period except the failed/cancelled sentences. Cancellation requested does not mean the provider stopped or that nothing is charged. count is the number of tracks in the job."
+		"note": "In-chat state line above the music generating motif for one detached music job. The provider is working on a single track. Short status ending in an ellipsis, no period."
 	},
 	"ui.music.generating_tracks": {
 		"role": "status",
 		"tone": "neutral",
-		"note": "In-chat state line above the music generating motif for one detached music job. Short status, no trailing period except the failed/cancelled sentences. Cancellation requested does not mean the provider stopped or that nothing is charged. count is the number of tracks in the job."
+		"note": "In-chat state line above the music generating motif for one detached music job. The provider is working on several tracks; count is the number of tracks in the job (always 2 or more here). Short status ending in an ellipsis, no period."
 	},
 	"ui.music.modifying": {
 		"role": "status",
 		"tone": "neutral",
-		"note": "In-chat state line above the music generating motif for one detached music job. Short status, no trailing period except the failed/cancelled sentences. Cancellation requested does not mean the provider stopped or that nothing is charged. count is the number of tracks in the job."
+		"note": "In-chat state line above the music generating motif for one detached music job. A modify_music job is working on an existing track. Short status ending in an ellipsis, no period."
 	},
 	"ui.music.cancel_requested": {
 		"role": "status",
 		"tone": "neutral",
-		"note": "In-chat state line above the music generating motif for one detached music job. Short status, no trailing period except the failed/cancelled sentences. Cancellation requested does not mean the provider stopped or that nothing is charged. count is the number of tracks in the job."
+		"note": "In-chat state line above the music generating motif for one detached music job. The user asked to cancel and the request was sent. It does not mean the provider stopped or that nothing is charged. Short status, no period."
 	},
 	"ui.music.ready": {
 		"role": "status",
 		"tone": "neutral",
-		"note": "In-chat state line above the music generating motif for one detached music job. Short status, no trailing period except the failed/cancelled sentences. Cancellation requested does not mean the provider stopped or that nothing is charged. count is the number of tracks in the job."
+		"note": "In-chat state line above the music generating motif for one detached music job. The job completed; the finished tracks render on the result row below, not here. Short status, no period."
 	},
 	"ui.music.job_failed": {
 		"role": "status",
 		"tone": "neutral",
-		"note": "In-chat state line above the music generating motif for one detached music job. Short status, no trailing period except the failed/cancelled sentences. Cancellation requested does not mean the provider stopped or that nothing is charged. count is the number of tracks in the job."
+		"note": "In-chat state line above the music generating motif for one detached music job. The job ended in failure. A full sentence with a period; a billed-cost caption may follow it."
 	},
 	"ui.music.job_cancelled": {
 		"role": "status",
 		"tone": "neutral",
-		"note": "In-chat state line above the music generating motif for one detached music job. Short status, no trailing period except the failed/cancelled sentences. Cancellation requested does not mean the provider stopped or that nothing is charged. count is the number of tracks in the job."
+		"note": "In-chat state line above the music generating motif for one detached music job. The job was cancelled. A full sentence with a period; a billed-cost caption may follow it."
 	}
 }
