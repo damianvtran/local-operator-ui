@@ -1,0 +1,44 @@
+[
+  {
+    "count": 0,
+    "arm": "=0",
+    "list": "Atlas et Nova",
+    "text": "Aucun agent intégré n’est prêt à être installé — Atlas et Nova. Vous pourrez les modifier une fois installés."
+  },
+  {
+    "count": 1,
+    "arm": "one",
+    "list": "Atlas et Nova",
+    "text": "Un agent intégré est prêt à être installé — Atlas et Nova. Vous pourrez le modifier une fois installé."
+  },
+  {
+    "count": 2,
+    "arm": "=2",
+    "list": "Atlas et Nova",
+    "text": "Deux agents intégrés sont prêts à être installés — Atlas et Nova. Vous pourrez les modifier une fois installés."
+  },
+  {
+    "count": 7,
+    "arm": "other",
+    "list": "Atlas et Nova",
+    "text": "7 agents intégrés sont prêts à être installés — Atlas et Nova. Vous pourrez les modifier une fois installés."
+  },
+  {
+    "count": 1000000,
+    "arm": "many",
+    "list": "Atlas et Nova",
+    "text": "1000000 d’agents intégrés sont prêts à être installés — Atlas et Nova. Vous pourrez les modifier une fois installés."
+  },
+  {
+    "count": 1500000,
+    "arm": "other",
+    "list": "Atlas et Nova",
+    "text": "1500000 agents intégrés sont prêts à être installés — Atlas et Nova. Vous pourrez les modifier une fois installés."
+  },
+  {
+    "count": 2000000,
+    "arm": "many",
+    "list": "Atlas et Nova",
+    "text": "2000000 d’agents intégrés sont prêts à être installés — Atlas et Nova. Vous pourrez les modifier une fois installés."
+  }
+]
