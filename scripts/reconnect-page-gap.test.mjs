@@ -5247,8 +5247,10 @@ async function driveLateMusic({ status, cursor }) {
 }
 
 test("a successor music job's late job_result paints live, from the cursor move alone", async () => {
+	// `completed` is Core's own word for a clean finish (`JobStatus`,
+	// harness/jobs.py); round 23 fed `done`, which Core never emits (round 24).
 	const { handle, reads } = await driveLateMusic({
-		status: "done",
+		status: "completed",
 		cursor: LATE_MUSIC_RESULT.id,
 	});
 	assert.equal(reads, 1, "the settled job with no painted row owes one read");
@@ -5275,10 +5277,78 @@ test("a cursor move with no settled job, or a still-running one, reads nothing",
 		});
 		assert.equal(reads, 0, `a ${status} job owes no read`);
 	}
-	const { reads } = await driveLateMusic({ status: "done", cursor: undefined });
+	const { reads } = await driveLateMusic({
+		status: "completed",
+		cursor: undefined,
+	});
 	assert.equal(
 		reads,
 		0,
 		"a settle with no cursor move waits for the row's own move",
+	);
+});
+
+/*
+ * Every word Core's `JobStatus` literal can put on a roster row
+ * (`running | completed | failed | cancelled | interrupted`, harness/jobs.py,
+ * Core 859729bd), plus the folded `done` kept for compatibility. Pinned per
+ * value so a settled word dropped from SETTLED_STATUSES fails by name.
+ */
+for (const [status, expected] of [
+	["completed", 1],
+	["failed", 1],
+	["cancelled", 1],
+	["interrupted", 1],
+	["done", 1],
+	["running", 0],
+]) {
+	test(`Core roster status ${status}: a cursor move to its unpainted result owes ${expected} read(s)`, async () => {
+		const { reads } = await driveLateMusic({
+			status,
+			cursor: LATE_MUSIC_RESULT.id,
+		});
+		assert.equal(reads, expected);
+	});
+}
+
+test("a settled job whose result never paints is read at most 3 times (R23-2)", async () => {
+	const { base } = lateMusicPlan();
+	const view = makeTranscript(base);
+	reset({ transcript: view });
+	// The durable page never gains the result row (filtered, or swept), so the
+	// job stays owed on every cursor move; only the per-job cap stops the reads.
+	globalThis.__gapTail = (request) => {
+		const t = makeTranscript(base);
+		return request.beforeId === undefined
+			? t.tail(request.limit)
+			: t.pageBefore(request.beforeId, request.limit);
+	};
+	const runtime = makeRuntime();
+	runtime.render = () => useCanonicalSessionStream(SESSION_A, true);
+	runtime.rerender();
+	deliver(openFrame(1, true));
+	deliver(
+		snapshotFrame(2, {
+			cursor: "a-music",
+			entries: base,
+			streaming: false,
+			hasMore: false,
+		}),
+	);
+	await pump();
+	const before = historyReads();
+	for (let i = 0; i < 6; i++) {
+		deliver(
+			rosterUpdate(3 + i, 3 + i, {
+				cursor: LATE_MUSIC_RESULT.id,
+				status: "completed",
+			}),
+		);
+		await pump();
+	}
+	assert.equal(
+		historyReads() - before,
+		3,
+		"JOB_RESULT_READ_ATTEMPTS bounds the reads one job can cost",
 	);
 });

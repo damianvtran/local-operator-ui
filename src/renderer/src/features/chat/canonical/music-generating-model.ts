@@ -272,6 +272,9 @@ function successorOutcome(
 	// Settled live, durable row not landed yet: Core's `completed` means audio
 	// was registered (`jobs.py` raises when nothing is playable), so it states
 	// the paid outcome; anything else is the cancel having taken effect.
+	// `live` is a `SubagentRow`, whose status `foldStatus` (run-detail-model)
+	// has already folded from the wire's `completed` to `done` - so `done` IS
+	// Core's `completed` here, unlike the raw roster `settled-job-rows.ts` reads.
 	return {
 		...base,
 		state: live.status === "done" ? "finished_after_cancel" : "cancelled",

@@ -888,14 +888,20 @@ test("live: the observer row carries the job after a cancel, never a premature c
 	// The cancelled task's own job_result can land before the observer ends.
 	const pendingWithRow = cardFor(settledFrom([cancelledOriginal]), working);
 	assert.equal(pendingWithRow.state, "cancel_requested");
-	const finished = cardFor(
-		new Map(),
-		liveOf([original, wire("5d2b5eecaee0", "done", "completed", true)]),
-	);
-	assert.deepEqual(
-		[finished.state, finished.completed, finished.total],
-		["finished_after_cancel", 1, 1],
-	);
+	// Core's `JobStatus` word for a clean finish is `completed` (harness/jobs.py);
+	// `done` is the folded word a pre-folded roster carries. Both must state the
+	// paid outcome - the wire word is the one Core actually sends (round 24).
+	for (const status of ["completed", "done"]) {
+		const finished = cardFor(
+			new Map(),
+			liveOf([original, wire("5d2b5eecaee0", status, "completed", true)]),
+		);
+		assert.deepEqual(
+			[finished.state, finished.completed, finished.total],
+			["finished_after_cancel", 1, 1],
+			`a successor settled ${status}`,
+		);
+	}
 	// No observer at all: the task's cancelled row states the outcome as before.
 	assert.equal(cardFor(new Map(), liveOf([original])).state, "cancelled");
 });

@@ -34,8 +34,20 @@ import type { TranscriptRecord } from "./transcript-reducer";
  * (filtered, or swept from the roster) cannot drip reads.
  */
 
-/** Roster statuses after which Core has written (or is writing) the result row. */
+/**
+ * Roster statuses after which Core has written (or is writing) the result row.
+ *
+ * These are compared against the RAW roster word (`frontend.jobs[].status`,
+ * `str(job.status)` in `frontend_state.py`), not the run-detail model's folded
+ * `ChildStatus`. Core's `JobStatus` literal (`harness/jobs.py`, Core 859729bd)
+ * is `running | completed | failed | cancelled | interrupted`: a clean finish
+ * is `completed`, never `done`. Leaving `completed` out meant no successfully
+ * finished detached job (music, video, sound, image, task) ever owed the read,
+ * so only cancelled/failed results painted live (PR #1800 round 24).
+ * `done` stays for a roster that already arrives folded (the dock band's word).
+ */
 const SETTLED_STATUSES = new Set([
+	"completed",
 	"done",
 	"failed",
 	"cancelled",
