@@ -215,7 +215,7 @@ export function proposalReviewPath(
 	if (kind !== "agent") params.set("kind", kind);
 	params.set("name", name);
 	if (proposalId) params.set("proposal", proposalId);
-	return `/agents?${params.toString()}`;
+	return `/agents?${params.toString()}`; // i18n: ignore route path, not user copy
 }
 
 /**
