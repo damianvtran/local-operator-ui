@@ -43,7 +43,7 @@ import type { ErrorInfo } from "react";
 export const BOUNDARY_ERROR_CAP = 8 * 1024;
 export const BOUNDARY_COMPONENT_STACK_CAP = 24 * 1024;
 const LABEL = "Error caught by ErrorBoundary:";
-const UNFORMATTABLE = `${LABEL} (unformattable error)`;
+const UNFORMATTABLE = `${LABEL} (unformattable error)`; // i18n: ignore diagnostic log line for backend-service.log, never rendered copy
 /** Key names past this many are summarised by count: the names identify the
  * shape, and a giant object's key list is as unbounded as its contents. */
 const KEY_NAMES_SHOWN = 20;
@@ -89,15 +89,15 @@ function describeObject(value: object): string {
 	try {
 		keys = Object.keys(value);
 	} catch {
-		return `${tag} (keys unreadable)`;
+		return `${tag} (keys unreadable)`; // i18n: ignore diagnostic log line for backend-service.log, never rendered copy
 	}
-	if (keys.length === 0) return `${tag} (no keys)`;
+	if (keys.length === 0) return `${tag} (no keys)`; // i18n: ignore diagnostic log line for backend-service.log, never rendered copy
 	const shown = keys.slice(0, KEY_NAMES_SHOWN).join(", ");
 	const more =
 		keys.length > KEY_NAMES_SHOWN
 			? `, +${keys.length - KEY_NAMES_SHOWN} more`
 			: "";
-	return `${tag} keys: ${shown}${more}`;
+	return `${tag} keys: ${shown}${more}`; // i18n: ignore diagnostic log line for backend-service.log, never rendered copy
 }
 
 function readComponentStack(
@@ -125,5 +125,5 @@ function safeString(value: unknown): string {
 
 function cap(text: string, limit: number): string {
 	if (text.length <= limit) return text;
-	return `${text.slice(0, limit)}...[truncated ${text.length - limit} chars]`;
+	return `${text.slice(0, limit)}...[truncated ${text.length - limit} chars]`; // i18n: ignore diagnostic log line for backend-service.log, never rendered copy
 }
