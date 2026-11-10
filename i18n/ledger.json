@@ -94684,8 +94684,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.browser.media_access",
-			"source_sha256": "540ff9509ab7da2b4c1a3214363930f8e8ec2cbcc76369b24069ded2966136b0",
-			"target_sha256": "ce8b3d876cb637c0866b6068061f3161ae8616c6304ed235fcec0ccd28b73572",
+			"source_sha256": "582e847fb0098916363408713df5acfa69720de5df1af2f23913e038e4ce2a42",
+			"target_sha256": "5329d67ac11104dfdf6f6f0761c000d2be683cc068bd7a42d0bbb296611b3741",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -94697,8 +94697,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.browser.media_access",
-			"source_sha256": "540ff9509ab7da2b4c1a3214363930f8e8ec2cbcc76369b24069ded2966136b0",
-			"target_sha256": "9cceb25e117b24cda3cc8fd345998c31ac1f96816d5f423b8148e84258bad387",
+			"source_sha256": "582e847fb0098916363408713df5acfa69720de5df1af2f23913e038e4ce2a42",
+			"target_sha256": "4840c44769c872e4592924acafe16f3b56519bcb3dbc4da3e11b621f28507f56",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -94710,8 +94710,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.browser.media_access",
-			"source_sha256": "540ff9509ab7da2b4c1a3214363930f8e8ec2cbcc76369b24069ded2966136b0",
-			"target_sha256": "eac85232b592b849827fef27a5a2d3df8f34beb1d32de4d897445a6f2170135a",
+			"source_sha256": "582e847fb0098916363408713df5acfa69720de5df1af2f23913e038e4ce2a42",
+			"target_sha256": "72bece022969bd0c8600406a692cf72b23ac4aee69d9affe362fbac97a591bbd",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -94723,8 +94723,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.browser.media_access",
-			"source_sha256": "540ff9509ab7da2b4c1a3214363930f8e8ec2cbcc76369b24069ded2966136b0",
-			"target_sha256": "8d12fc11dc48fb97f787aba4b2ee530567bd645ced7907ad72bcb824ac69bd55",
+			"source_sha256": "582e847fb0098916363408713df5acfa69720de5df1af2f23913e038e4ce2a42",
+			"target_sha256": "e8758de8cec74c18d3236a9cd158f9f5bd3c3bd44cb75e32b317f38ddc4d51e1",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -94736,8 +94736,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.browser.media_access",
-			"source_sha256": "540ff9509ab7da2b4c1a3214363930f8e8ec2cbcc76369b24069ded2966136b0",
-			"target_sha256": "cfd35cb71ab6c9069bfcf9faac96dcefed7ed3dbcb6bc4deb38dd4951166e0b9",
+			"source_sha256": "582e847fb0098916363408713df5acfa69720de5df1af2f23913e038e4ce2a42",
+			"target_sha256": "c19a07156b80fc8f015282a330b27d28476e3ddb6238dafc67cf91413a9a28a3",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -94749,8 +94749,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.browser.media_access",
-			"source_sha256": "540ff9509ab7da2b4c1a3214363930f8e8ec2cbcc76369b24069ded2966136b0",
-			"target_sha256": "1510d4231d9861143c2dd349577c95a212c7358d15309b696784d1f58958e305",
+			"source_sha256": "582e847fb0098916363408713df5acfa69720de5df1af2f23913e038e4ce2a42",
+			"target_sha256": "7b5b35ef7f69883f5287b14ce37049a3c9b50aa1b24df37e1d2dabbd988bf83f",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -94762,8 +94762,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.browser.media_access",
-			"source_sha256": "540ff9509ab7da2b4c1a3214363930f8e8ec2cbcc76369b24069ded2966136b0",
-			"target_sha256": "7e867fa2e5e7309947c8ae3ae815eb7d86597b816810829aa1a69ea05db2b1e8",
+			"source_sha256": "582e847fb0098916363408713df5acfa69720de5df1af2f23913e038e4ce2a42",
+			"target_sha256": "9daefb31ce1a892bea9cd16c6157c11c967b0085710d3ad494e5510d9a8e9c6f",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",

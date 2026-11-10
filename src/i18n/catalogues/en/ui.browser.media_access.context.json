@@ -22,7 +22,7 @@
 	"ui.browser.media_access.blocked_hint": {
 		"role": "secondary hint after the blocked text",
 		"tone": "Helpful instruction",
-		"note": "'Allow' refers to the adjacent button: use the same word as ui.browser.media_permission.allow. After allowing, the user retries the page's own camera/microphone button."
+		"note": "'Allow' refers to the adjacent button: use the same word as ui.browser.media_permission.allow. After allowing, the user retries the page's own camera/microphone button. devices select as in prompt_label: audio/video name ONE device ('it'; pick the pronoun or noun that agrees with microphone or camera in your language), other = both ('them'). Keep every arm."
 	},
 	"ui.browser.media_access.system_blocked_label": {
 		"role": "accessible region name — macOS privacy notice band",

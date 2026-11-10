@@ -67,6 +67,9 @@ import { readJson, writeJsonAtomic } from "./atomic-json";
  * request is treated as exactly that (`kindsOf`). Both requests then name the
  * same set, so they coalesce into ONE prompt and one decision answers both.
  * A request that names only devices other than audio/video is still denied.
+ * The page is not told when that Allow changes its permission state, so a
+ * page that waits for the change (Google Meet) is reloaded once if it does not
+ * capture by itself: see `ELEMENT_FOLLOW_UP_MS` (review Q3/U10).
  *
  * MERGE RULE (review R1). Decisions are stored PER DEVICE: a decision writes
  * exactly the devices its prompt named and leaves every other device's answer
@@ -80,8 +83,68 @@ import { readJson, writeJsonAtomic } from "./atomic-json";
  * BLOCKED BAND (review U2). On a user-owned tab, a request denied because of a
  * remembered Block raises a `blocked` view so the user can see why the page did
  * nothing and Allow from there (a trusted click, like every grant). Dismissing
- * it hides it for that tab until the tab navigates.
+ * it is "not now" (review U11): the band stays hidden for
+ * `BLOCKED_BAND_QUIET_MS`, so a page retrying in a loop cannot pin it on screen,
+ * and the next request from the same origin after that re-raises it, so a
+ * user's later retry never fails silently. Navigation clears the quiet period.
  */
+
+/**
+ * How long a dismissed blocked band stays hidden on its tab (review U11). Not a
+ * bound on a measured distribution: it is a rate limit on how often a page's own
+ * retries can re-surface the band. Electron's permission request carries no
+ * user-gesture flag, so main cannot tell a click-driven retry from a loop; a
+ * person who dismisses the band and then tries again on the page (find the
+ * button, click it) takes longer than this, while a page retrying every second
+ * can show it at most once per window.
+ */
+export const BLOCKED_BAND_QUIET_MS = 3_000;
+
+/**
+ * THE ELEMENT FOLLOW-UP (review Q3/U10, the operator's Google Meet flow).
+ *
+ * After the user allows a `<usermedia>` element's request on our prompt, the
+ * page's permission state flips to `granted`, but the page is never TOLD:
+ * Electron's permission manager publishes no permission-change notification
+ * (its 45.1.0 `ElectronPermissionManager` has no subscription path), so
+ * `PermissionStatus` `change` never fires. A page that follows the element's
+ * `promptaction` with its own `getUserMedia` works; Google Meet waits for that
+ * change event instead and keeps its "Use microphone and camera" dialog up
+ * until a reload (QA round 2, runs M2/M4/M5: no capture request for 16 s).
+ * After a reload the page reads `granted` at load and captures straight away
+ * (Meet: `getUserMedia` for audio and video ~1 s after load, both live).
+ *
+ * So: when an Allow on our prompt grants an element request on a USER tab, wait
+ * `ELEMENT_FOLLOW_UP_MS` for the page's own capture (any `media` request that
+ * names a device, from the same origin, on that tab). If it comes, the page
+ * picked up the grant and nothing happens. If it does not, the tab is reloaded
+ * once, which is what the user would otherwise have to discover by themselves.
+ *
+ * Alternatives measured and rejected, in the real app on meet.google.com:
+ *   - Disabling Blink's `UserMediaElement` (webPreferences
+ *     `disableBlinkFeatures`) does remove the element, but Meet then shows no
+ *     camera/microphone dialog at all: Electron's check handler can only answer
+ *     granted/denied (no `prompt`), so an undecided site reads `denied` and Meet
+ *     offers nothing to click. It also needs a process-wide switch to hold,
+ *     since a reused renderer process keeps the element.
+ *   - Answering the element's unnamed `media` check from the stored answers:
+ *     still no `change` event, and Meet's second click stopped working.
+ *
+ * Scope, deliberately narrow: only after a decision on OUR prompt (the moment
+ * the state changed), only for the element's unnamed requests (a page's own
+ * `getUserMedia` resolves directly), only on user tabs (an agent tab's Allow is
+ * one-shot and a reload would ask again), and cancelled by navigation, tab
+ * close, dispose, or a newer element grant.
+ *
+ * The wait, measured in the real app (PR #1843 round-2 evidence): on local
+ * `<usermedia>` pages that call `getUserMedia` from `promptaction`, the page's
+ * own capture request reached main 3, 5, 14 and 486 ms after the Allow (n=4,
+ * the 486 ms one a cold first page); Meet sent none in 16 s (QA round 2) and
+ * none in 10 s (round-2 remediation run). 2.5 s is five times the slowest page
+ * that did follow up, and short enough that the meeting visibly moves on right
+ * after Allow.
+ */
+export const ELEMENT_FOLLOW_UP_MS = 2_500;
 
 export type StoredMediaDecision = "allow" | "block";
 
@@ -126,6 +189,11 @@ export interface MediaPermissionsOptions {
 	onChanged?: () => void;
 	log?: (message: string) => void;
 	now?: () => number;
+	/** Reload a tab whose page did not pick up an element grant; see
+	 * `ELEMENT_FOLLOW_UP_MS`. */
+	reloadTab?: (tabId: number) => void;
+	/** Timer seam (tests); returns a cancel. Defaults to `setTimeout`. */
+	setTimer?: (fn: () => void, ms: number) => () => void;
 }
 
 /** What the request handler passes in, already read off Electron's arguments. */
@@ -155,6 +223,9 @@ interface Pending {
 	kinds: MediaKind[];
 	owner: "user" | "agent";
 	at: number;
+	/** Asked by a `<usermedia>` element (no device named); see
+	 * `ELEMENT_FOLLOW_UP_MS`. */
+	element: boolean;
 	/** Every Electron callback waiting on this one prompt (a page that calls
 	 * `getUserMedia` twice before answering gets one prompt, both answered). */
 	callbacks: Array<(granted: boolean) => void>;
@@ -222,6 +293,7 @@ function kindsOf(mediaTypes: readonly string[] | undefined): MediaKind[] {
 export class MediaPermissions {
 	private readonly options: MediaPermissionsOptions;
 	private readonly now: () => number;
+	private readonly setTimer: (fn: () => void, ms: number) => () => void;
 	private document: MediaPermissionsDocument;
 	/** Per tab, in arrival order; the head is the one the chrome shows. */
 	private readonly pending = new Map<number, Pending[]>();
@@ -235,8 +307,9 @@ export class MediaPermissions {
 		number,
 		{ id: string; origin: string; kinds: MediaKind[]; at: number }
 	>();
-	/** Tabs whose user dismissed the blocked band; cleared on navigation. */
-	private readonly blockedDismissed = new Set<number>();
+	/** When the user dismissed each tab's blocked band; cleared on navigation.
+	 * The band stays hidden for `BLOCKED_BAND_QUIET_MS` after it (review U11). */
+	private readonly blockedDismissed = new Map<number, number>();
 	/**
 	 * Bumped by `clearTab` (navigation, close, dispose). An OS ask is awaited
 	 * AFTER the entry has left `pending`, so `clearTab` cannot reach its
@@ -244,11 +317,22 @@ export class MediaPermissions {
 	 * (and raises no notice) when the document that asked is gone (review R2).
 	 */
 	private readonly generation = new Map<number, number>();
+	/** Per tab: an element grant waiting for the page's own capture request. */
+	private readonly followUp = new Map<
+		number,
+		{ origin: string; cancel: () => void }
+	>();
 	private disposed = false;
 
 	constructor(options: MediaPermissionsOptions) {
 		this.options = options;
 		this.now = options.now ?? Date.now;
+		this.setTimer =
+			options.setTimer ??
+			((fn, ms) => {
+				const timer = setTimeout(fn, ms);
+				return () => clearTimeout(timer);
+			});
 		this.document = this.load();
 	}
 
@@ -358,6 +442,9 @@ export class MediaPermissions {
 			return;
 		}
 		const { origin, kinds, tab } = screened;
+		const element = !input.mediaTypes || input.mediaTypes.length === 0;
+		// The page's own capture after an element grant: it picked the grant up.
+		if (!element) this.cancelFollowUp(tab.tabId, origin);
 		const stored = this.document.origins[origin] ?? {};
 		const blocked = kinds.filter((kind) => stored[kind] === "block");
 		if (blocked.length > 0) {
@@ -382,6 +469,7 @@ export class MediaPermissions {
 		);
 		if (same) {
 			same.callbacks.push(callback);
+			same.element ||= element;
 			return;
 		}
 		queue.push({
@@ -391,6 +479,7 @@ export class MediaPermissions {
 			kinds,
 			owner: tab.owner,
 			at: this.now(),
+			element,
 			callbacks: [callback],
 		});
 		this.pending.set(tab.tabId, queue);
@@ -407,7 +496,12 @@ export class MediaPermissions {
 		origin: string,
 		blocked: readonly MediaKind[],
 	): void {
-		if (tab.owner !== "user" || this.blockedDismissed.has(tab.tabId)) return;
+		if (tab.owner !== "user") return;
+		const dismissedAt = this.blockedDismissed.get(tab.tabId);
+		if (dismissedAt !== undefined) {
+			if (this.now() - dismissedAt < BLOCKED_BAND_QUIET_MS) return;
+			this.blockedDismissed.delete(tab.tabId);
+		}
 		const current = this.blockedNotice.get(tab.tabId);
 		if (current && current.origin === origin) {
 			const kinds = [...new Set([...current.kinds, ...blocked])].sort();
@@ -503,7 +597,7 @@ export class MediaPermissions {
 					`[browser] the user allowed ${notice.kinds.map((k) => OS_NAME[k]).join(" and ")} for ${notice.origin} (was blocked)`,
 				);
 			} else {
-				this.blockedDismissed.add(tabId);
+				this.blockedDismissed.set(tabId, this.now());
 			}
 			this.blockedNotice.delete(tabId);
 			this.options.onChanged?.();
@@ -518,6 +612,12 @@ export class MediaPermissions {
 			);
 			return false;
 		}
+		// R5: read the document's generation ONCE, before any OS ask. The siblings
+		// leave `queue` here, so `clearTab` cannot reach them; if they each read the
+		// generation when their own grant starts, a navigation during the head's
+		// macOS dialog would hand them the NEW document's generation and grant (or
+		// raise a system-blocked band) for a page that has gone.
+		const generation = this.generation.get(tabId) ?? 0;
 		queue.shift();
 		// An agent-owned tab's answer is one-shot either way (invariant 3, and
 		// review Q2 for Block): it covers this document's waiting requests below,
@@ -536,12 +636,19 @@ export class MediaPermissions {
 			// Serially, so a device macOS has not decided is asked once: the head's
 			// ask settles its status before a sibling reads it.
 			for (const entry of [head, ...siblings]) {
-				await this.grantThroughSystem(
+				const granted = await this.grantThroughSystem(
 					tabId,
 					entry.origin,
 					entry.kinds,
 					entry.callbacks,
+					generation,
 				);
+				// Armed in the microtask after the callbacks ran: the page's own
+				// capture request, if any, is a later IPC task, so it always finds
+				// the follow-up armed and cancels it.
+				if (granted && entry.element && entry.owner === "user") {
+					this.armFollowUp(tabId, entry.origin, generation);
+				}
 			}
 			return true;
 		}
@@ -604,8 +711,10 @@ export class MediaPermissions {
 		origin: string,
 		kinds: readonly MediaKind[],
 		callbacks: ReadonlyArray<(granted: boolean) => void>,
-	): Promise<void> {
-		const generation = this.generation.get(tabId) ?? 0;
+		/** The document generation the request belongs to; `decide` passes the one
+		 * it read before any OS ask (R5), `request` the current one. */
+		generation: number = this.generation.get(tabId) ?? 0,
+	): Promise<boolean> {
 		const refused: MediaKind[] = [];
 		for (const kind of kinds) {
 			const status = this.options.system.status(kind);
@@ -626,7 +735,7 @@ export class MediaPermissions {
 		// tab that has moved on.
 		if (this.disposed || (this.generation.get(tabId) ?? 0) !== generation) {
 			for (const callback of callbacks) callback(false);
-			return;
+			return false;
 		}
 		if (refused.length > 0) {
 			this.systemBlocked.set(tabId, {
@@ -640,9 +749,34 @@ export class MediaPermissions {
 			);
 			for (const callback of callbacks) callback(false);
 			this.options.onChanged?.();
-			return;
+			return false;
 		}
 		for (const callback of callbacks) callback(true);
+		return true;
+	}
+
+	/** See `ELEMENT_FOLLOW_UP_MS`. One per tab: a newer grant replaces it. */
+	private armFollowUp(tabId: number, origin: string, generation: number): void {
+		this.cancelFollowUp(tabId);
+		const cancel = this.setTimer(() => {
+			this.followUp.delete(tabId);
+			if (this.disposed || (this.generation.get(tabId) ?? 0) !== generation) {
+				return;
+			}
+			this.options.log?.(
+				`[browser] ${origin} did not start the camera or microphone after the user allowed it; reloading the tab so the page picks up the permission`,
+			);
+			this.options.reloadTab?.(tabId);
+		}, ELEMENT_FOLLOW_UP_MS);
+		this.followUp.set(tabId, { origin, cancel });
+	}
+
+	/** Drop the tab's follow-up; with `origin`, only if it is for that origin. */
+	private cancelFollowUp(tabId: number, origin?: string): void {
+		const pending = this.followUp.get(tabId);
+		if (!pending || (origin !== undefined && pending.origin !== origin)) return;
+		pending.cancel();
+		this.followUp.delete(tabId);
 	}
 
 	/** A main-frame navigation: the document that asked is gone, so its
@@ -654,6 +788,7 @@ export class MediaPermissions {
 			this.systemBlocked.has(tabId) ||
 			this.blockedNotice.has(tabId);
 		this.generation.set(tabId, (this.generation.get(tabId) ?? 0) + 1);
+		this.cancelFollowUp(tabId);
 		this.pending.delete(tabId);
 		this.systemBlocked.delete(tabId);
 		this.blockedNotice.delete(tabId);
@@ -692,6 +827,7 @@ export class MediaPermissions {
 			...this.pending.keys(),
 			...this.systemBlocked.keys(),
 			...this.blockedNotice.keys(),
+			...this.followUp.keys(),
 		]);
 		for (const tabId of tabs) this.clearTab(tabId);
 		this.disposed = true;

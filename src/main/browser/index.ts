@@ -788,6 +788,12 @@ async function initializeBrowserHost(
 			},
 			onChanged: () => notifyChanged(),
 			log,
+			// Review Q3/U10: a page that never learns of an element grant (Google
+			// Meet) is reloaded once; see `ELEMENT_FOLLOW_UP_MS`.
+			reloadTab: (tabId) => {
+				const contents = registryForDownloads?.get(tabId)?.view.webContents;
+				if (contents && !contents.isDestroyed()) contents.reload();
+			},
 		});
 		rollback.add(() => mediaPermissions.dispose());
 		const detachSessionHandlers = installBrowserSessionHandlers(

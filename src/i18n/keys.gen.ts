@@ -3832,7 +3832,7 @@ export type MessageParams = {
 	"ui.browser.webauthn_chooser.this_passkey_request_expired": undefined;
 	"ui.browser.webauthn_chooser.this_passkey_request_was_cancelled": undefined;
 	"ui.browser.media_access.blocked": { devices: string; site: string };
-	"ui.browser.media_access.blocked_hint": undefined;
+	"ui.browser.media_access.blocked_hint": { devices: string };
 	"ui.browser.media_access.blocked_label": { devices: string };
 	"ui.browser.media_access.notice_dismiss": undefined;
 	"ui.browser.media_access.open_system_settings": undefined;

@@ -3,7 +3,7 @@
 	"ui.browser.media_access.prompt_dismiss": "{devices, select, audio {Dismiss microphone request} video {Dismiss camera request} other {Dismiss camera and microphone request}}",
 	"ui.browser.media_access.blocked_label": "{devices, select, audio {Microphone blocked for this site} video {Camera blocked for this site} other {Camera and microphone blocked for this site}}",
 	"ui.browser.media_access.blocked": "{devices, select, audio {Microphone is blocked for {site}.} video {Camera is blocked for {site}.} other {Camera and microphone are blocked for {site}.}}",
-	"ui.browser.media_access.blocked_hint": "To use them here, select Allow, then try again on the page.",
+	"ui.browser.media_access.blocked_hint": "{devices, select, audio {To use it here, select Allow, then try again on the page.} video {To use it here, select Allow, then try again on the page.} other {To use them here, select Allow, then try again on the page.}}",
 	"ui.browser.media_access.system_blocked_label": "{devices, select, audio {Microphone turned off in macOS} video {Camera turned off in macOS} other {Camera and microphone turned off in macOS}}",
 	"ui.browser.media_access.system_blocked_hint": "Turn access on in System Settings › Privacy & Security. You may need to quit and reopen Local Operator before the change takes effect.",
 	"ui.browser.media_access.open_system_settings": "Open System Settings",

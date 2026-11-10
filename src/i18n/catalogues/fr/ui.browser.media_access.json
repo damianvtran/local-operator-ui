@@ -3,7 +3,7 @@
 	"ui.browser.media_access.prompt_dismiss": "{devices, select, audio {Ignorer la demande d’accès au micro} video {Ignorer la demande d’accès à la caméra} other {Ignorer la demande d’accès à la caméra et au micro}}",
 	"ui.browser.media_access.blocked_label": "{devices, select, audio {Micro bloqué pour ce site} video {Caméra bloquée pour ce site} other {Caméra et micro bloqués pour ce site}}",
 	"ui.browser.media_access.blocked": "{devices, select, audio {Le micro est bloqué pour {site}.} video {La caméra est bloquée pour {site}.} other {La caméra et le micro sont bloqués pour {site}.}}",
-	"ui.browser.media_access.blocked_hint": "Pour les utiliser ici, sélectionnez Autoriser, puis réessayez sur la page.",
+	"ui.browser.media_access.blocked_hint": "{devices, select, audio {Pour l’utiliser ici, sélectionnez Autoriser, puis réessayez sur la page.} video {Pour l’utiliser ici, sélectionnez Autoriser, puis réessayez sur la page.} other {Pour les utiliser ici, sélectionnez Autoriser, puis réessayez sur la page.}}",
 	"ui.browser.media_access.system_blocked_label": "{devices, select, audio {Micro désactivé dans macOS} video {Caméra désactivée dans macOS} other {Caméra et micro désactivés dans macOS}}",
 	"ui.browser.media_access.system_blocked_hint": "Activez l’accès dans Réglages Système › Confidentialité et sécurité. Vous devrez peut-être quitter puis rouvrir Local Operator pour que la modification s’applique.",
 	"ui.browser.media_access.open_system_settings": "Ouvrir Réglages Système",

@@ -3,7 +3,7 @@
 	"ui.browser.media_access.prompt_dismiss": "{devices, select, audio {Bỏ qua yêu cầu dùng micrô} video {Bỏ qua yêu cầu dùng camera} other {Bỏ qua yêu cầu dùng camera và micrô}}",
 	"ui.browser.media_access.blocked_label": "{devices, select, audio {Micrô bị chặn cho trang này} video {Camera bị chặn cho trang này} other {Camera và micrô bị chặn cho trang này}}",
 	"ui.browser.media_access.blocked": "{devices, select, audio {Micrô đang bị chặn cho {site}.} video {Camera đang bị chặn cho {site}.} other {Camera và micrô đang bị chặn cho {site}.}}",
-	"ui.browser.media_access.blocked_hint": "Để dùng ở đây, hãy chọn Cho phép rồi thử lại trên trang.",
+	"ui.browser.media_access.blocked_hint": "{devices, select, audio {Để dùng micrô ở đây, hãy chọn Cho phép rồi thử lại trên trang.} video {Để dùng camera ở đây, hãy chọn Cho phép rồi thử lại trên trang.} other {Để dùng camera và micrô ở đây, hãy chọn Cho phép rồi thử lại trên trang.}}",
 	"ui.browser.media_access.system_blocked_label": "{devices, select, audio {Micrô đã bị tắt trong macOS} video {Camera đã bị tắt trong macOS} other {Camera và micrô đã bị tắt trong macOS}}",
 	"ui.browser.media_access.system_blocked_hint": "Hãy bật quyền truy cập trong Cài đặt hệ thống › Quyền riêng tư & Bảo mật. Có thể bạn cần thoát rồi mở lại Local Operator để thay đổi có hiệu lực.",
 	"ui.browser.media_access.open_system_settings": "Mở Cài đặt hệ thống",

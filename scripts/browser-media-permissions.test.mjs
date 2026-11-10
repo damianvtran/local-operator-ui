@@ -39,10 +39,15 @@ const bundle = await build({
 		electron: join(process.cwd(), "scripts/browser-electron-stub.ts"),
 	},
 });
-const { installBrowserSessionHandlers, MediaPermissions, mediaOriginOf } =
-	await import(
-		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-	);
+const {
+	BLOCKED_BAND_QUIET_MS,
+	ELEMENT_FOLLOW_UP_MS,
+	installBrowserSessionHandlers,
+	MediaPermissions,
+	mediaOriginOf,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+);
 
 const GRANT_LIKE = /grant|allow|approve/i;
 const AGENT_DECIDE = /mediaPermissions?\.decide|media-permission-decide/;
@@ -78,7 +83,9 @@ function view(id, url = MEET_URL) {
 
 /** One host: a temp store, a TCC stand-in, a registry of two tabs (1 = user's,
  * 2 = agent's) and the session handlers wired the way `index.ts` wires them. */
-function rig({ tcc = { audio: "granted", video: "granted" }, ask } = {}) {
+function rig({ tcc = { audio: "granted", video: "granted" }, ask, now } = {}) {
+	const timers = [];
+	const reloads = [];
 	const dir = mkdtempSync(join(tmpdir(), "lop-media-perm-"));
 	const filePath = join(dir, "browser", "media-permissions.json");
 	const asked = [];
@@ -102,6 +109,15 @@ function rig({ tcc = { audio: "granted", video: "granted" }, ask } = {}) {
 			system,
 			tabFor: (id) => tabs.get(id) ?? null,
 			onChanged: () => changes.count++,
+			now,
+			reloadTab: (tabId) => reloads.push(tabId),
+			setTimer: (fn, ms) => {
+				const timer = { fn, ms, live: true };
+				timers.push(timer);
+				return () => {
+					timer.live = false;
+				};
+			},
 		});
 	const media = make();
 	const session = fakeSession();
@@ -142,6 +158,12 @@ function rig({ tcc = { audio: "granted", video: "granted" }, ask } = {}) {
 		changes,
 		request,
 		check,
+		timers,
+		reloads,
+		/** Fire every live timer (the follow-up's wait running out). */
+		elapse: () => {
+			for (const timer of timers.splice(0)) if (timer.live) timer.fn();
+		},
 		cleanup: () => rmSync(dir, { recursive: true, force: true }),
 	};
 }
@@ -602,8 +624,9 @@ test("U2: a remembered Block raises the blocked band; a trusted Allow there reco
 	assert.deepEqual(r.request(user, ["audio", "video"]), [true]);
 });
 
-test("U2: dismissing the blocked band hides it for the tab until it navigates; agent tabs get none", async (t) => {
-	const r = rig();
+test("U2/U11: dismissing the blocked band is 'not now': quiet briefly, back on a later retry and after navigation; agent tabs get none", async (t) => {
+	const clock = { now: 1_000_000 };
+	const r = rig({ now: () => clock.now });
 	t.after(r.cleanup);
 	const user = view(11);
 	r.request(user, ["audio"]);
@@ -615,13 +638,32 @@ test("U2: dismissing the blocked band hides it for the tab until it navigates; a
 		true,
 	);
 	assert.equal(r.media.viewFor(1), null);
+	// A page retrying straight away (a loop) cannot pin the band back up.
+	clock.now += BLOCKED_BAND_QUIET_MS - 1;
 	assert.deepEqual(r.request(user, ["audio"]), [false]);
-	assert.equal(r.media.viewFor(1), null, "dismissed per tab");
+	assert.equal(r.media.viewFor(1), null, "quiet right after the dismiss");
+	// U11: the user's own later try is never a silent failure.
+	clock.now += 1;
+	assert.deepEqual(r.request(user, ["audio"]), [false]);
+	const again = r.media.viewFor(1);
+	assert.equal(again?.kind, "blocked", "back on a later retry");
+	assert.notEqual(again.id, band.id, "a fresh band, answerable on its own");
+	// ...and Allow on it still recovers.
+	assert.equal(
+		await r.media.decide(1, again.id, "allow", { trusted: true }),
+		true,
+	);
+	assert.deepEqual(r.request(user, ["audio"]), [true]);
+	// Navigation clears the quiet period.
+	r.request(user, ["video"]);
+	await r.media.decide(1, r.media.viewFor(1).id, "block", { trusted: true });
+	r.request(user, ["video"]);
+	await r.media.decide(1, r.media.viewFor(1).id, "dismiss", { trusted: true });
 	r.media.clearTab(1); // navigation
-	r.request(user, ["audio"]);
+	r.request(user, ["video"]);
 	assert.equal(r.media.viewFor(1)?.kind, "blocked", "back after navigation");
 	// An agent-owned tab is denied by the user's Block with no band.
-	assert.deepEqual(r.request(view(22), ["audio"]), [false]);
+	assert.deepEqual(r.request(view(22), ["video"]), [false]);
 	assert.equal(r.media.viewFor(2), null);
 });
 
@@ -659,6 +701,123 @@ test("R2: an OS ask that outlives navigation or tab close answers false and rais
 			assert.deepEqual(answers, [false], `${label}, OS said ${granted}`);
 			assert.equal(r.media.viewFor(1), null, `${label}: no stale notice`);
 		}
+	}
+});
+
+test("R5: siblings granted after the head's OS ask keep the head's document: a navigation during it denies them, with no stale notice", async (t) => {
+	for (const granted of [true, false]) {
+		const r = rig({ tcc: { audio: "not-determined", video: "granted" } });
+		t.after(r.cleanup);
+		let release;
+		r.media.options.system.ask = (kind) =>
+			new Promise((resolve) => {
+				release = (answer) => {
+					r.tcc[kind] = answer ? "granted" : "denied";
+					resolve(answer);
+				};
+			});
+		const user = view(11);
+		const head = r.request(user, ["audio", "video"]);
+		const sibling = r.request(user, ["audio"]);
+		const deciding = r.media.decide(1, r.media.viewFor(1).id, "allow", {
+			trusted: true,
+		});
+		await new Promise((resolve) => setImmediate(resolve));
+		r.media.clearTab(1); // navigation while the macOS dialog is open
+		release(granted);
+		await deciding;
+		assert.deepEqual(head, [false], `head, OS said ${granted}`);
+		assert.deepEqual(sibling, [false], `sibling, OS said ${granted}`);
+		assert.equal(r.media.viewFor(1), null, `OS said ${granted}: no notice`);
+	}
+});
+
+test("Q3/U10: an element Allow the page never follows up reloads the tab once; a page that captures is left alone", async (t) => {
+	// Stuck page (Google Meet): grant, then silence until the wait runs out.
+	{
+		const r = rig();
+		t.after(r.cleanup);
+		const user = view(11);
+		const answers = r.request(user, undefined);
+		r.request(user, []); // the element's second request, same prompt
+		await r.media.decide(1, r.media.viewFor(1).id, "allow", { trusted: true });
+		assert.deepEqual(answers, [true]);
+		assert.equal(r.timers.filter((x) => x.live).length, 1, "one wait armed");
+		assert.equal(r.timers[0].ms, ELEMENT_FOLLOW_UP_MS);
+		assert.deepEqual(r.reloads, [], "nothing before the wait runs out");
+		r.elapse();
+		assert.deepEqual(r.reloads, [1], "reloaded once");
+		// After the reload the page asks by device and is granted silently,
+		// with no second reload armed.
+		assert.deepEqual(r.request(user, ["audio", "video"]), [true]);
+		assert.equal(r.timers.filter((x) => x.live).length, 0);
+	}
+	// A page that calls getUserMedia from promptaction: no reload.
+	{
+		const r = rig();
+		t.after(r.cleanup);
+		const user = view(11);
+		r.request(user, undefined);
+		await r.media.decide(1, r.media.viewFor(1).id, "allow", { trusted: true });
+		assert.deepEqual(r.request(user, ["video"]), [true]);
+		r.elapse();
+		assert.deepEqual(r.reloads, [], "the page's own capture cancels it");
+	}
+	// Only the element case, only an Allow, only a user tab, only this document.
+	for (const [label, run] of [
+		[
+			"a getUserMedia prompt",
+			async (r) => {
+				r.request(view(11), ["audio", "video"]);
+				await r.media.decide(1, r.media.viewFor(1).id, "allow", {
+					trusted: true,
+				});
+			},
+		],
+		[
+			"Block",
+			async (r) => {
+				r.request(view(11), undefined);
+				await r.media.decide(1, r.media.viewFor(1).id, "block", {
+					trusted: true,
+				});
+			},
+		],
+		[
+			"an agent-owned tab (one-shot: a reload would ask again)",
+			async (r) => {
+				r.request(view(22), undefined);
+				await r.media.decide(2, r.media.viewFor(2).id, "allow", {
+					trusted: true,
+				});
+			},
+		],
+		[
+			"navigation before the wait runs out",
+			async (r) => {
+				r.request(view(11), undefined);
+				await r.media.decide(1, r.media.viewFor(1).id, "allow", {
+					trusted: true,
+				});
+				r.media.clearTab(1);
+			},
+		],
+		[
+			"dispose before the wait runs out",
+			async (r) => {
+				r.request(view(11), undefined);
+				await r.media.decide(1, r.media.viewFor(1).id, "allow", {
+					trusted: true,
+				});
+				r.media.dispose();
+			},
+		],
+	]) {
+		const r = rig();
+		t.after(r.cleanup);
+		await run(r);
+		r.elapse();
+		assert.deepEqual(r.reloads, [], label);
 	}
 });
 

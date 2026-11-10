@@ -3,7 +3,7 @@
 	"ui.browser.media_access.prompt_dismiss": "{devices, select, audio {Descartar la solicitud de micrófono} video {Descartar la solicitud de cámara} other {Descartar la solicitud de cámara y micrófono}}",
 	"ui.browser.media_access.blocked_label": "{devices, select, audio {Micrófono bloqueado para este sitio} video {Cámara bloqueada para este sitio} other {Cámara y micrófono bloqueados para este sitio}}",
 	"ui.browser.media_access.blocked": "{devices, select, audio {El micrófono está bloqueado para {site}.} video {La cámara está bloqueada para {site}.} other {La cámara y el micrófono están bloqueados para {site}.}}",
-	"ui.browser.media_access.blocked_hint": "Para usarlos aquí, selecciona Permitir y vuelve a intentarlo en la página.",
+	"ui.browser.media_access.blocked_hint": "{devices, select, audio {Para usarlo aquí, selecciona Permitir y vuelve a intentarlo en la página.} video {Para usarla aquí, selecciona Permitir y vuelve a intentarlo en la página.} other {Para usarlos aquí, selecciona Permitir y vuelve a intentarlo en la página.}}",
 	"ui.browser.media_access.system_blocked_label": "{devices, select, audio {Micrófono desactivado en macOS} video {Cámara desactivada en macOS} other {Cámara y micrófono desactivados en macOS}}",
 	"ui.browser.media_access.system_blocked_hint": "Activa el acceso en Ajustes del Sistema › Privacidad y seguridad. Puede que tengas que salir de Local Operator y volver a abrirlo para que el cambio se aplique.",
 	"ui.browser.media_access.open_system_settings": "Abrir Ajustes del Sistema",

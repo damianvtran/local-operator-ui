@@ -149,7 +149,7 @@ export const BrowserMediaPermissionPrompt: FC<
 							site,
 						)}{" "}
 						<span className="text-ink-muted">
-							{t("ui.browser.media_access.blocked_hint")}
+							{t("ui.browser.media_access.blocked_hint", { devices })}
 						</span>
 					</>
 				) : (
