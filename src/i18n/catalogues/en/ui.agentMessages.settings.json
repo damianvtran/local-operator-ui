@@ -90,5 +90,7 @@
 	"ui.agentMessages.settings.default_on.b_body": "Team Bridge turns on for you automatically once your organization is ready. Nothing is sent when it does.",
 	"ui.agentMessages.settings.default_on.e_body": "Team Bridge is off for this account. Read the consent text below, then turn it on again if you want it back.",
 	"ui.agentMessages.settings.action.turn_on_again": "Turn on again",
-	"ui.agentMessages.settings.consent.via_default_on": "Turned on by default"
+	"ui.agentMessages.settings.consent.via_default_on": "Turned on by default",
+	"ui.agentMessages.settings.share_typing.label": "Show when I’m typing",
+	"ui.agentMessages.settings.share_typing.description": "People in your Team Bridge conversations see a short “is typing” line while you write. What you type is never shared."
 }

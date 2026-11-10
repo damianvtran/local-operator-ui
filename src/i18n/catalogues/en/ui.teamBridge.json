@@ -405,5 +405,9 @@
 	"ui.teamBridge.files.no_schedule": "Files can be sent now, but cannot be scheduled.",
 	"ui.teamBridge.files.uploading": "Uploading file…",
 	"ui.teamBridge.files.attached": "Attached",
-	"ui.teamBridge.files.not_uploaded": "Not uploaded"
+	"ui.teamBridge.files.not_uploaded": "Not uploaded",
+	"ui.teamBridge.typing.one": "{first} is typing",
+	"ui.teamBridge.typing.two": "{first} and {second} are typing",
+	"ui.teamBridge.typing.three": "{first}, {second} and {third} are typing",
+	"ui.teamBridge.typing.several": "Several people are typing"
 }

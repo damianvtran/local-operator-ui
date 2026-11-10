@@ -1129,8 +1129,23 @@ export function ChatSidebar({
 	 * and the sidebar keeps speaking. The three sites below read THIS const, so
 	 * the paragraphs and the foot line cannot drift about when to stand down.
 	 */
+	/*
+	 * THE SERVER IS UPDATING ITSELF (`lop update` reloading the daemon in place).
+	 * Main publishes a bounded window for it (`DaemonStatusSnapshot.updating`), and
+	 * while it is open every list read the fence refused is the update, not a
+	 * fault: the poll keeps running and recovers by itself, so the sidebar's
+	 * "Retry refresh" would offer a press that has nothing to repair. Where the
+	 * pane's status strip is on screen it owns the one voice for this (its
+	 * `updating` row), so the sidebar stands down exactly as it does for an
+	 * unreachable server. Where it is not (Settings and its siblings) the two
+	 * list-pane paragraphs say "updating" in place of their error text, with no
+	 * Retry; the catalogue-gate notice is hidden for the window rather than
+	 * restated, because its sentence is about a withdrawn gate read off the same
+	 * fenced answer, not a fact of its own (review round 1, n2).
+	 */
+	const serverUpdating = serverHealth?.snapshot?.updating === true;
 	const stripSpeaksConnection = useStripSpeaksConnection(
-		serverHealth?.online === false,
+		serverHealth?.online === false || serverUpdating,
 	);
 	const pairingCause =
 		serverHealth?.snapshot && !serverHealth.snapshot.pairing.available
@@ -8949,19 +8964,23 @@ export function ChatSidebar({
 				!coveredByCompatibilityBanner && (
 					<div className="space-y-1 text-meta text-ink-muted">
 						<p>
-							{stale
-								? t("ui.chat.sidebar_notes.stale_list", {
-										message: capabilities.error.message,
-									})
-								: capabilities.error.message}
+							{serverUpdating
+								? t("ui.common.errors.desktop_refusal.server_updating")
+								: stale
+									? t("ui.chat.sidebar_notes.stale_list", {
+											message: capabilities.error.message,
+										})
+									: capabilities.error.message}
 						</p>
-						<button
-							type="button"
-							className="underline"
-							onClick={() => void capabilities.refetch()}
-						>
-							{t("ui.chat.sidebar.list.retry_refresh")}
-						</button>
+						{serverUpdating ? null : (
+							<button
+								type="button"
+								className="underline"
+								onClick={() => void capabilities.refetch()}
+							>
+								{t("ui.chat.sidebar.list.retry_refresh")}
+							</button>
+						)}
 					</div>
 				)}
 			{/*
@@ -8980,7 +8999,7 @@ export function ChatSidebar({
 			    carries R11's presence term too, so the stand-down holds only where that
 			    strip is genuinely on screen.
 			 */}
-			{notice && !stripSpeaksConnection && (
+			{notice && !stripSpeaksConnection && !serverUpdating && (
 				<div className="space-y-1 text-meta text-ink-muted">
 					<p>{notice}</p>
 					<button
@@ -10900,18 +10919,24 @@ export function ChatSidebar({
 					!stripSpeaksConnection &&
 					!coveredByCompatibilityBanner && (
 						<div className="pt-2 text-meta text-ink-muted">
-							<p>{error || profiles.error?.message || teams.error?.message}</p>
-							<button
-								type="button"
-								className="mt-1 underline"
-								onClick={() => {
-									void refreshCatalogue();
-									void profiles.refetch();
-									void teams.refetch();
-								}}
-							>
-								{t("ui.chat.sidebar.list.retry_refresh")}
-							</button>
+							<p>
+								{serverUpdating
+									? t("ui.common.errors.desktop_refusal.server_updating")
+									: error || profiles.error?.message || teams.error?.message}
+							</p>
+							{serverUpdating ? null : (
+								<button
+									type="button"
+									className="mt-1 underline"
+									onClick={() => {
+										void refreshCatalogue();
+										void profiles.refetch();
+										void teams.refetch();
+									}}
+								>
+									{t("ui.chat.sidebar.list.retry_refresh")}
+								</button>
+							)}
 						</div>
 					)}
 			</TooltipProvider>

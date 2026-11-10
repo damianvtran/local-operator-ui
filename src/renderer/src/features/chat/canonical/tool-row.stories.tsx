@@ -24,6 +24,7 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
+import { userEvent, within } from "@storybook/test";
 import { useEffect, useRef } from "react";
 import bridgeIncomingFixture from "../../../../../../scripts/fixtures/bridge-incoming.json";
 import type { CanonicalFrontendState } from "../../../../../shared/desktop-session-contract";
@@ -152,6 +153,7 @@ const Frame = ({
 	 */
 	awaitingHydration = false,
 	openRows = false,
+	bounded = false,
 	keepClosed,
 	frontend = null,
 }: {
@@ -203,6 +205,8 @@ const Frame = ({
 	 * if the trigger stopped reaching the body, they would come out collapsed.
 	 */
 	openRows?: boolean;
+	/** Bound the real bottom-pinned transcript, not an outer story scroller. */
+	bounded?: boolean;
 	/**
 	 * The row positions `openRows` leaves CLOSED, in paint order.
 	 *
@@ -241,7 +245,9 @@ const Frame = ({
 	}, [openRows, keepClosed]);
 	return (
 		<div
-			className="overflow-y-auto p-6"
+			className={
+				bounded ? "flex flex-col overflow-hidden p-6" : "overflow-y-auto p-6"
+			}
 			ref={containerRef}
 			style={{ width, height }}
 		>
@@ -2778,6 +2784,126 @@ export const DiffBodyNarrowWrappedCap: Story = {
 	render: () => (
 		<Frame height={830} openRows records={[WRAPPED_CAPPED_WRITE_ROW]} />
 	),
+};
+
+/**
+ * A large write, shaped like the one in the operator's report (`+531 -163`,
+ * "… 161 more diff lines"): 200 recorded rows across three hunks, mixed
+ * additions, removals and context so every ink appears past line 40.
+ */
+const LARGE_DIFF = [
+	"--- ",
+	"+++ ",
+	...[0, 1, 2].flatMap((hunk) => [
+		`@@ -${hunk * 120 + 1},40 +${hunk * 160 + 1},60 @@ export function section${hunk}() {`,
+		...Array.from({ length: 66 }, (_, i) => {
+			const n = hunk * 66 + i + 1;
+			if (i % 5 === 0) return ` \t// context line ${n}`;
+			if (i % 5 === 1) return `-\tconst legacy${n} = readOld(${n});`;
+			return `+\tconst value${n} = await readNew(${n}, { strict: true });`;
+		}),
+	]),
+];
+
+const LARGE_WRITE = {
+	toolName: "write",
+	args: {
+		path: "src/renderer/src/features/chat/large-module.ts",
+		content: "…",
+	},
+	durationS: 0.6,
+	added: 531,
+	removed: 163,
+	output:
+		"Overwrote src/renderer/src/features/chat/large-module.ts (18204 chars).",
+} as const;
+
+/** Collapsed at the default 40 lines; the toggle under them is a button. */
+const LARGE_WRITE_ROW = tool({
+	id: "tool:large",
+	...LARGE_WRITE,
+	diff: LARGE_DIFF,
+});
+
+/**
+ * The same write from a core that cut the diff short: a valid unified diff plus
+ * `details.diff_truncated_rows`, so the expanded body ends in a footer saying
+ * how much was never recorded.
+ */
+const TRUNCATED_WRITE_ROW = tool({
+	id: "tool:truncated",
+	...LARGE_WRITE,
+	diff: LARGE_DIFF,
+	diffTruncatedRows: 494,
+});
+
+/**
+ * The legacy shape the operator screenshotted: the old core stored its
+ * redaction stand-in and one blank per original row instead of the diff.
+ */
+const WITHHELD_WRITE_ROW = tool({
+	id: "tool:withheld",
+	...LARGE_WRITE,
+	diff: [
+		"[output withheld: credential redaction requires a complete bounded diff]",
+		...Array.from({ length: 203 }, () => ""),
+	],
+});
+
+/** The actual role=log / flex-col-reverse scroller, bounded like the app.
+ * Keep the large write last: expanding at scrollTop=0 is the negative control
+ * for bottom anchoring jumping straight to the tail instead of line 41.
+ */
+export const DiffBodyBottomPinned: Story = {
+	render: () => (
+		<Frame height={640} bounded openRows records={[TRUNCATED_WRITE_ROW]} />
+	),
+};
+
+/** Collapsed: 40 lines, then `… 161 more diff lines` as a focusable button. */
+export const DiffBodyLargeCollapsed: Story = {
+	render: () => <Frame height={900} openRows records={[LARGE_WRITE_ROW]} />,
+};
+
+/**
+ * Expanded through the real button: every recorded row in its ink and no inner
+ * scroll region. In the app `Show less` pins to the transcript viewport's foot;
+ * in this Frame the transcript scroller is unbounded (it grows to its content
+ * inside the Frame's own scroll box — measured, 3672px of content in a 3672px
+ * box), so the pin has nothing to pin against and rests at the well's end.
+ */
+export const DiffBodyLargeExpanded: Story = {
+	render: () => <Frame height={900} openRows records={[LARGE_WRITE_ROW]} />,
+	play: async ({ canvasElement }) => {
+		await userEvent.click(
+			await within(canvasElement).findByRole("button", {
+				name: /more diff lines/,
+			}),
+		);
+	},
+};
+
+/**
+ * Expanded, scrolled to the END of the record: the last rows still in their
+ * inks, the producer's truncation footer under them, and `Show less` as the
+ * well's foot.
+ */
+export const DiffBodyTruncatedFooter: Story = {
+	render: () => <Frame height={900} openRows records={[TRUNCATED_WRITE_ROW]} />,
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await userEvent.click(
+			await canvas.findByRole("button", { name: /more diff lines/ }),
+		);
+		(await canvas.findByRole("button", { name: "Show less" })).scrollIntoView({
+			block: "end",
+		});
+	},
+};
+
+/** A legacy withheld diff: one notice, no blank rows, no toggle. */
+export const DiffBodyLegacyWithheld: Story = {
+	render: () => <Frame height={300} openRows records={[WITHHELD_WRITE_ROW]} />,
 };
 
 /* ------------------------------------------- expanded detail and receipts */

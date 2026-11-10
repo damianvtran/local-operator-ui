@@ -247,5 +247,9 @@
 	"ui.chat.canonical.transcript.answer_may_be_missing": "اس جواب کا کچھ حصہ غائب ہو سکتا ہے",
 	"ui.chat.canonical.transcript.worked": "کام کیا",
 	"ui.chat.canonical.transcript.worked_for": "{duration} تک کام کیا",
-	"ui.chat.canonical.transcript.job_suffix": "· جاب {id}"
+	"ui.chat.canonical.transcript.job_suffix": "· جاب {id}",
+	"ui.chat.canonical.tool_row.diff.more": "{count, plural, one {… diff کی # مزید لائن} other {… diff کی # مزید لائنیں}}",
+	"ui.chat.canonical.tool_row.diff.show_less": "کم دکھائیں",
+	"ui.chat.canonical.tool_row.diff.truncated": "{count, plural, one {Diff مختصر کیا گیا — # مزید لائن ریکارڈ نہیں ہوئی} other {Diff مختصر کیا گیا — # مزید لائنیں ریکارڈ نہیں ہوئیں}}",
+	"ui.chat.canonical.tool_row.diff.withheld": "اس تبدیلی کا diff دستیاب نہیں"
 }

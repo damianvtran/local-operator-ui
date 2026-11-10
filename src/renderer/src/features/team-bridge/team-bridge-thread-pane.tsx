@@ -40,10 +40,15 @@ import {
 	loadThreadPage,
 	observeDisplayedThreadReplies,
 } from "./team-bridge-thread-read";
+import { TeamBridgeTypingLine } from "./team-bridge-typing-line";
 import { useStickToBottom } from "./use-stick-to-bottom";
 import { teamBridgeKeys, useMarkTeamBridgeThreadRead } from "./use-team-bridge";
 import { useTeamBridgeAttachments } from "./use-team-bridge-attachments";
 import { useTeamBridgeFiles } from "./use-team-bridge-files";
+import {
+	type TypingTarget,
+	useTeamBridgeTypingEmitter,
+} from "./use-team-bridge-typing-emitter";
 import {
 	type ReplyWindowMode,
 	replyPageOutsideViewport,
@@ -102,6 +107,18 @@ export type ThreadPaneProps = {
 	onLatest?: () => void;
 	scrollHostRef?: RefObject<HTMLDivElement>;
 	pinnedGetterRef?: MutableRefObject<(() => boolean) | null>;
+	/**
+	 * Where this pane's typing is reported (`team_bridge_typing`); `null` or
+	 * absent sends nothing. Built by the mount from its own target, so the hint
+	 * is scoped to this thread exactly like the reply it precedes.
+	 */
+	typingTarget?: TypingTarget | null;
+	/**
+	 * This thread's root id when the typing capability is on: mounts the
+	 * indicator line under the composer, scoped to this thread. Absent, no line
+	 * and no reserved space, as before the feature.
+	 */
+	typingLineRootId?: string | null;
 };
 
 /**
@@ -170,6 +187,8 @@ function TeamBridgeThreadPaneBody({
 	onLatest,
 	scrollHostRef,
 	pinnedGetterRef,
+	typingTarget = null,
+	typingLineRootId = null,
 }: ThreadPaneProps) {
 	useI18nLocale();
 	/*
@@ -217,6 +236,9 @@ function TeamBridgeThreadPaneBody({
 		return observeDisplayedThreadReplies(pane.current, replies, onRead);
 	}, [replies, state, onRead]);
 	const [draft, setDraft] = useState("");
+	/* Typing indicators: fed only by the field's own change events; `draft` is
+	   read to stop when a send or a clear empties the box. */
+	const typing = useTeamBridgeTypingEmitter(typingTarget, draft);
 	// @-mentions (mentions/): inert unless the page provides a mention source.
 	const replyField = useRef<HTMLTextAreaElement>(null);
 	const mentions = useComposerMentions({
@@ -321,6 +343,9 @@ function TeamBridgeThreadPaneBody({
 		setImagesBlocked(false);
 		scroll.pin();
 		mentions.stage(body);
+		// Typing stops BEFORE the reply leaves and stays held until it settles:
+		// a heartbeat after the message would re-show the typer (review R4).
+		typing.onSendStart();
 		try {
 			const fileIds = files.chips.length
 				? await files.stageInto(conversationId ?? "", tenantId)
@@ -336,6 +361,7 @@ function TeamBridgeThreadPaneBody({
 			setFailed(true);
 			if (ids.length > 0 && isAttachmentNotFound(error)) images.markExpired();
 		} finally {
+			typing.onSendEnd();
 			lock.current = false;
 			setSending(false);
 		}
@@ -556,7 +582,12 @@ function TeamBridgeThreadPaneBody({
 								placeholder={t("ui.teamBridge.replies.placeholder")}
 								value={draft}
 								disabled={state !== "ready"}
-								onChange={(e) => setDraft(e.target.value)}
+								onChange={(e) => {
+									setDraft(e.target.value);
+									typing.onInput(e.target.value);
+								}}
+								/* Capture-phase: never collides with the mention binding's onBlur. */
+								onBlurCapture={typing.onBlur}
 								{...mentions.bindField({
 									onKeyDown: (e) => {
 										if (
@@ -601,6 +632,16 @@ function TeamBridgeThreadPaneBody({
 							</Button>
 						</div>
 					</div>
+					{/* Who else is typing in THIS thread. Inside the pane's own bottom
+					    padding block, after the bar; it reserves one fixed line so a
+					    typer arriving or leaving never moves the composer. */}
+					{typingLineRootId !== null && (
+						<TeamBridgeTypingLine
+							rootId={typingLineRootId}
+							/* `ps-3.5`: this field's text inset, so the line starts under the caret. */
+							className="mt-1 ps-3.5"
+						/>
+					)}
 				</div>
 			)}
 		</aside>
@@ -632,6 +673,8 @@ export type ThreadPaneMountProps = {
 	accountId: string;
 	attachmentCapability?: TeamBridgeAttachmentCapability | null;
 	filesCapability?: TeamBridgeFilesCapability | null;
+	/** `team_bridge_typing` is enabled: report this pane's typing and show others'. */
+	typingEnabled?: boolean;
 };
 
 export function TeamBridgeThreadPane(props: ThreadPaneMountProps) {
@@ -652,9 +695,17 @@ function TeamBridgeThreadPaneMount({
 	accountId,
 	attachmentCapability,
 	filesCapability,
+	typingEnabled = false,
 }: ThreadPaneMountProps) {
 	const client = useQueryClient();
 	const { tenantId, conversationId, rootId } = target;
+	const typingTarget = useMemo(
+		() =>
+			typingEnabled && !readOnly
+				? { conversationId, tenantId, accountId, threadRootId: rootId }
+				: null,
+		[typingEnabled, readOnly, conversationId, tenantId, accountId, rootId],
+	);
 	/* The newest reply this pane can know of: the root's rollup `last` seq is not
 	   on the wire, so it is the newest admitted reply row - but only when the
 	   window holds the live edge: a backward window paged into the middle, or
@@ -797,6 +848,8 @@ function TeamBridgeThreadPaneMount({
 			attachmentCapability={attachmentCapability}
 			filesCapability={filesCapability}
 			readOnly={readOnly}
+			typingTarget={typingTarget}
+			typingLineRootId={typingEnabled ? rootId : null}
 			hasMore={query.hasNextPage}
 			loadingMore={query.isFetchingNextPage}
 			onMore={() => void query.fetchNextPage()}

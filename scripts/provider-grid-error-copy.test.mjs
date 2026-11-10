@@ -243,7 +243,21 @@ test("no surface asks the user to wait for an event they cannot cause", () => {
 	 * Settings printed it in every state this change introduces, including two
 	 * where restarting the app cannot reach the daemon (UX round 2, U2).
 	 */
-	const NO_REMEDY = ["unknown", "unreachable", "deadline", "unauthorized"];
+	/*
+	 * `updating` (PR #1817) asserts no remedy for the opposite reason to the rule
+	 * above: there is no event to wait for that the user must cause. The server
+	 * is reloading onto a new build and comes back by itself, and the wait is
+	 * bounded - past `SERVER_UPDATING_CAP_MS` (120 s, daemon-status.ts) every
+	 * surface reverts to the real error copy of the ordinary kinds. Any
+	 * action named here (Restart, Retry) would be a press with nothing to fix.
+	 */
+	const NO_REMEDY = [
+		"unknown",
+		"unreachable",
+		"deadline",
+		"unauthorized",
+		"updating",
+	];
 	for (const [kind, remedy] of Object.entries(BACKEND_ERROR_REMEDY)) {
 		if (NO_REMEDY.includes(kind)) {
 			assert.equal(remedy, "", `${kind} must assert no remedy`);

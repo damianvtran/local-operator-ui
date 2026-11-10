@@ -8,6 +8,7 @@ import {
 	desktopRequestDeadlineMs,
 	desktopRequestSchema,
 	desktopRequestTooLargeDetail,
+	isServeReloadFence,
 } from "../shared/desktop-contract";
 
 /**
@@ -44,7 +45,64 @@ export type DesktopTransportOutcome = {
 	response: DesktopResponse;
 	/** Whether the daemon itself answered this request. */
 	answered: boolean;
+	/**
+	 * True when the daemon answered with its reload admission fence
+	 * ({@link isServeReloadFence}): it is reloading onto a new build and refused
+	 * this request before any handler ran. The response body has already been
+	 * rewritten to the `serverUpdating` refusal; this flag is what lets the
+	 * service open its server-update window (`daemon-status.ts`).
+	 */
+	serverUpdating?: boolean;
 };
+
+/**
+ * The body main hands the renderer for a reload-fence answer.
+ *
+ * The daemon's own body is a bare sentence with no code, which the renderer
+ * would map - by status alone - to `pairing.plane-closed` ("does not accept this
+ * app's desktop controls"): the false alarm this exists to remove. Rewriting it
+ * into a DECLARED code here means every reader (`desktopResult`, the send-failure
+ * table, the ask panel) sees one unambiguous fact. `retry_after_ms` restates the
+ * fence's `Retry-After: 1` in the body field the renderer reads, since main's
+ * relay forwards bodies and not headers.
+ */
+export function serverUpdatingBody(): {
+	detail: { code: string; message: string; retry_after_ms: number };
+} {
+	return {
+		detail: {
+			code: DESKTOP_REFUSAL_CODE.serverUpdating,
+			message: DESKTOP_MACHINE_DETAIL.serverUpdating,
+			retry_after_ms: 1000,
+		},
+	};
+}
+
+/**
+ * The body main hands the renderer for a reload-fence answer that arrives once
+ * the server-update window can no longer be open (its 120 s cap ran out).
+ *
+ * WHY NOT `serverUpdatingBody()` (review round 1, M2): that code renders "It will
+ * be back in a moment" on every per-request surface, and two minutes of fence is
+ * past every measured reload - promising a return the app has no evidence for is
+ * the masking the cap exists to stop. `transport.failed` is the existing, honest
+ * code for "the server did not complete this request": its sentence needs no new
+ * copy, and its outcome-unknown verdict means an ask or send is never repeated on
+ * a guess (the fence did refuse before admission, so that is merely cautious).
+ * `update_stalled` lets the compatibility banner keep speaking where the strip
+ * has nothing to say (`desktopDetailUpdateStalled`).
+ */
+export function serverUpdateStalledBody(): {
+	detail: { code: string; message: string; update_stalled: true };
+} {
+	return {
+		detail: {
+			code: DESKTOP_REFUSAL_CODE.transportFailed,
+			message: DESKTOP_MACHINE_DETAIL.transportFailed,
+			update_stalled: true,
+		},
+	};
+}
 
 /**
  * The desktop request, with its liveness verdict kept beside the response.
@@ -156,6 +214,13 @@ export async function requestDesktopOutcome(
 		});
 		answered = true;
 		const result = response.status === 204 ? null : await response.json();
+		if (isServeReloadFence(response.status, result)) {
+			return {
+				response: { status: 503, body: serverUpdatingBody() },
+				answered: true,
+				serverUpdating: true,
+			};
+		}
 		if (request.op === "capabilities" && !token && result?.result) {
 			// A backend may support the protocol while this app does not own its
 			// lifetime capability. Never turn that into an unauthenticated fallback.
@@ -336,4 +401,54 @@ export function trustedDesktopFrame(actual: string, expected: string): boolean {
 	} catch {
 		return false;
 	}
+}
+
+/**
+ * Add main's display-only `updating` hint to a failure that landed while the
+ * server-update window is open, or return the response unchanged.
+ *
+ * WHICH FAILURES, AND WHY THE CODE IS KEPT. Inside the window two failures are
+ * the update's own tail rather than a fault: the plane-closed 503 a CLAIMED
+ * daemon answers after its reload until this app re-claims it, and
+ * `transport.failed` (a reset as the old image exec'd). Each keeps its code -
+ * the ask panel treats `transport.failed` as an outcome it cannot know, and a
+ * rewrite into the retryable `serverUpdating` code could make the app send an
+ * answer twice. Only the sentence a user reads changes (`userFacingMessage`).
+ *
+ * THE DEADLINE (504) IS DELIBERATELY NOT MARKED. Its sentence tells the user the
+ * request may already have run and to check before repeating it; the update
+ * sentence would drop that advice. A reload's own gap is far shorter than any
+ * deadline (measured max 5.06 s, `SERVER_UPDATING_EXTEND_MS`), so the update
+ * does not produce one.
+ *
+ * Only `/v1/desktop/` 503s are marked: elsewhere a 503 is that route's own
+ * failure, not the plane's (`desktopRefusalCodeForStatus`).
+ */
+export function markUpdating(
+	input: unknown,
+	response: DesktopResponse,
+): DesktopResponse {
+	if (response.status !== 503) return response;
+	const parsed = desktopRequestSchema.safeParse(input);
+	if (!parsed.success) return response;
+	if (!desktopEndpoint(parsed.data).path.startsWith(ADMITTED_PATH_PREFIX))
+		return response;
+	const body = response.body as { detail?: unknown } | null;
+	const detail = body?.detail;
+	if (typeof detail === "string")
+		return {
+			status: response.status,
+			body: { ...body, detail: { message: detail, updating: true } },
+		};
+	if (detail !== null && typeof detail === "object") {
+		const code = (detail as { code?: unknown }).code;
+		// The app's own no-credential refusal is not the update: the request never
+		// left this machine, and its sentence is the honest one.
+		if (code === DESKTOP_REFUSAL_CODE.noCredential) return response;
+		return {
+			status: response.status,
+			body: { ...body, detail: { ...detail, updating: true } },
+		};
+	}
+	return response;
 }

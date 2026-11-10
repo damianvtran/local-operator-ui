@@ -46,7 +46,7 @@
  * so instead of hiding it: paths no test reaches are listed as UNREACHED, and a
  * change to something every test depends on (the install, a tsconfig, the
  * runner) is flagged BROAD with the explicit full-suite spelling. The safety net
- * for what it misses is full-suite.yml, which files a `ci-main-red` issue.
+ * for what it misses is full-suite.yml, whose red run on `main` is the signal (no issue is filed).
  *
  * GUARD_TESTS is the ONE list of tree-wide guards: assertions about the whole
  * repository (every test runs somewhere, every lane is registered, the runner

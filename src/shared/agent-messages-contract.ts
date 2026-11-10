@@ -256,6 +256,11 @@ export const agentMessagesSettingsResultSchema = z
 		// `default_on`. Absent on an older runtime; a malformed value reads as
 		// absent so it can only hide the banner, never break the settings read.
 		default_on: z.boolean().optional().catch(undefined),
+		// "Show when I'm typing" (typing indicators): a lop-local preference the
+		// runtime adds beside the hub's settings. Absent on an older runtime (and
+		// then the switch is not offered); a malformed value reads as absent so it
+		// can never break the settings read.
+		share_typing: z.boolean().optional().catch(undefined),
 	})
 	.passthrough();
 export type AgentMessagesSettingsResult = z.infer<

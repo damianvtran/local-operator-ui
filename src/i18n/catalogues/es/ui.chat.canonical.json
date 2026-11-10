@@ -247,5 +247,9 @@
 	"ui.chat.canonical.transcript.worked": "Trabajó",
 	"ui.chat.canonical.transcript.worked_for": "Trabajó durante {duration}",
 	"ui.chat.canonical.transcript.job_suffix": "· Trabajo {id}",
-	"ui.chat.canonical.fold.count.actions_partial": "{count, plural, one {{count, number, ::group-off}+ acciones} many {{count, number, ::group-off}+ de acciones} other {{count, number, ::group-off}+ acciones}}"
+	"ui.chat.canonical.fold.count.actions_partial": "{count, plural, one {{count, number, ::group-off}+ acciones} many {{count, number, ::group-off}+ de acciones} other {{count, number, ::group-off}+ acciones}}",
+	"ui.chat.canonical.tool_row.diff.more": "{count, plural, one {… # línea más del diff} other {… # líneas más del diff}}",
+	"ui.chat.canonical.tool_row.diff.show_less": "Mostrar menos",
+	"ui.chat.canonical.tool_row.diff.truncated": "{count, plural, one {Diff truncado: # línea más sin registrar} other {Diff truncado: # líneas más sin registrar}}",
+	"ui.chat.canonical.tool_row.diff.withheld": "Diff no disponible para este cambio"
 }

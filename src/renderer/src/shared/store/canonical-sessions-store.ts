@@ -108,6 +108,10 @@ import {
 	paintIntent,
 	removeIntent,
 } from "./settings-intents";
+// Relative, like the line above: the store's node suites bundle it without an
+// `@shared` alias and resolve only the `@shared` paths they stub, so a new
+// `@shared/...` import is unresolvable there (merge-gate run 42679243544).
+import { isServerUpdatingError } from "../api/local-operator/server-updating-error";
 
 export type CanonicalSessionRow = {
 	session_id: string;
@@ -1613,6 +1617,10 @@ export function sendFailureCopy(
 			return { message: SEND_FAILURE_COPY.busy, retry: true, code };
 		if (code === RUNTIME_RETIRING_CODE)
 			return { message: SEND_FAILURE_COPY.retiring, retry: true, code };
+		// Not admitted, and the server is coming back by itself: say so, and offer
+		// the press - the same request id replays once the fence lifts.
+		if (code === DESKTOP_REFUSAL_CODE.serverUpdating)
+			return { message: desktopRefusalSentence(code), retry: true, code };
 		if (code === SESSION_UNVALIDATED_CODE)
 			/*
 			 * `retry` is asked of the predicate rather than written as a literal: the read
@@ -1648,6 +1656,18 @@ export function sendFailureCopy(
 		 */
 		return { message: fallback, retry: false, code };
 	}
+	/*
+	 * A follow-on failure inside main's server-update window: the sentence is the
+	 * update's, the retry verdict stays the one this code always had (a transport
+	 * failure is still an unknown outcome; a pairing refusal still offers no
+	 * press) - the hint is display-only by contract (`markUpdating`).
+	 */
+	if (isServerUpdatingError(error))
+		return {
+			message: desktopRefusalSentence(DESKTOP_REFUSAL_CODE.serverUpdating),
+			retry: code === DESKTOP_REFUSAL_CODE.transportFailed,
+			code,
+		};
 	if (code === DESKTOP_REFUSAL_CODE.transportFailed)
 		return { message: SEND_FAILURE_COPY.unreachable, retry: true, code };
 	if (isDesktopRefusalCode(code))
@@ -2068,6 +2088,14 @@ export function isRefusedBeforeAdmission(error: unknown): boolean {
 			 * whether a message was admitted.
 			 */
 			error.code === DESKTOP_REFUSAL_CODE.noCredential ||
+			/*
+			 * The daemon's reload admission fence: it refused the request before ANY
+			 * handler ran (local-operator `server/reload.py`), so the message was not
+			 * admitted, and main rewrote the fence answer into this code. Only the
+			 * code - never the display-only `updating` hint a follow-on failure may
+			 * carry, whose admission is as unknown as it ever was.
+			 */
+			error.code === DESKTOP_REFUSAL_CODE.serverUpdating ||
 			/*
 			 * The store-write refusals, whose own codes already state that the
 			 * write did not happen - which is why the sentence beside them used to

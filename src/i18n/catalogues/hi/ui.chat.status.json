@@ -3,5 +3,6 @@
 	"ui.chat.status.degraded": "सर्वर धीरे जवाब दे रहा है। आपके संदेश कतार में हैं।",
 	"ui.chat.status.internet_offline": "यह मशीन ऑफ़लाइन है। भेजना रुक जाएगा।",
 	"ui.chat.status.unreachable": "Local Operator सर्वर तक नहीं पहुँच सके। भेजना रुक जाएगा।",
+	"ui.chat.status.updating": "Local Operator सर्वर अपडेट हो रहा है। यह कुछ ही पलों में फिर से उपलब्ध होगा।",
 	"ui.chat.status.pill_aria": "कनेक्शन की स्थिति: {title}{hasOutcome, select, yes { {outcome}} other {}} विवरण दिखाएँ"
 }

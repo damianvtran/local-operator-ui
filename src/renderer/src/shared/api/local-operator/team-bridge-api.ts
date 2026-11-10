@@ -47,6 +47,8 @@ import {
 	teamBridgeScheduledMessageSchema,
 	teamBridgeThreadPageSchema,
 	teamBridgeThreadReadStateSchema,
+	teamBridgeTypingHeartbeatSchema,
+	teamBridgeTypingStateSchema,
 	teamBridgeUnreadSchema,
 } from "../../../../../shared/team-bridge-contract";
 import {
@@ -171,6 +173,51 @@ export const TeamBridgeApi = {
 			op: "team_bridge.scheduled.cancel",
 			tenant_id: tenantId,
 			scheduled_id: scheduledId,
+		});
+	},
+	/**
+	 * Who is typing in one conversation (`team_bridge_typing`). One read serves
+	 * both panes: each typer carries its `thread_root_id` and the panes filter.
+	 */
+	async typing(conversationId: string, tenantId: string) {
+		return teamBridgeTypingStateSchema.parse(
+			await desktopResult<unknown>({
+				op: "team_bridge.typing.get",
+				conversation_id: conversationId,
+				tenant_id: tenantId,
+			}),
+		);
+	},
+	/** The typing heartbeat. Owner-guarded: the captured account rides along. */
+	async typingSet(target: {
+		conversationId: string;
+		tenantId: string;
+		accountId: string;
+		threadRootId?: string | null;
+	}) {
+		return teamBridgeTypingHeartbeatSchema.parse(
+			await desktopResult<unknown>({
+				op: "team_bridge.typing.set",
+				conversation_id: target.conversationId,
+				tenant_id: target.tenantId,
+				expected_account_id: target.accountId,
+				...(target.threadRootId ? { thread_root_id: target.threadRootId } : {}),
+			}),
+		);
+	},
+	/** The explicit stop. Idempotent upstream; the answer is a bodiless 204. */
+	async typingClear(target: {
+		conversationId: string;
+		tenantId: string;
+		accountId: string;
+		threadRootId?: string | null;
+	}) {
+		await desktopResult<unknown>({
+			op: "team_bridge.typing.clear",
+			conversation_id: target.conversationId,
+			tenant_id: target.tenantId,
+			expected_account_id: target.accountId,
+			...(target.threadRootId ? { thread_root_id: target.threadRootId } : {}),
 		});
 	},
 	async react(
