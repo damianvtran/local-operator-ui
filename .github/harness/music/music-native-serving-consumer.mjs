@@ -140,7 +140,14 @@ try{
  const rows=links.files.rows.filter(r=>r.ref?.digest===D);const R=rows[0];
  note('logical_vs_content_identity',{serviceRows:rows.map(r=>({id:r.id,name:r.name,digest:r.ref.digest})),documentId:docId,initialBatch:links.initial_batch});
  demand('Same-byte batch retains independent logical tracks and artifacts',new Set(links.initial_batch.tracks.map(x=>x.id)).size===2&&new Set(links.initial_batch.artifacts.map(x=>x.artifact_id)).size===2&&new Set(links.initial_batch.artifacts.map(x=>x.digest)).size===1);
- demand('Core inventory retains logical service row identities',new Set(rows.map(r=>r.id)).size>=2);
+ // Core's files inventory is CONTENT-ADDRESSED for every digest-only artifact (image,
+ // video, voiceover, music alike): the scan keys a record "a:<digest>"
+ // (local_operator/session_files/scan.py:225, :707-709), a repeat sighting only bumps
+ // touches (scan.py:852), the row id is sha1(session, key) (session_files/service.py:335)
+ // and merge folds to ONE entry per file (service.py:435). So this fixture's same-byte
+ // 2-variant batch is one service row with touches >= 2; logical track/artifact identity
+ // lives in the chat record, asserted above. Real ElevenLabs variants never share bytes.
+ demand('Core inventory is content-addressed: exactly one row for the shared digest, touched by both variants of the producing music call',rows.length===1&&R.tool==='generate_music'&&R.touches>=2);
  await d.verb(cdp,'press',{selector:'[data-panel-rail-item="canvas"]'});
  await d.verb(cdp,'press',{selector:'[data-tour-tag="canvas-files-view-button"]'});
  const fileRow='[data-tour-tag="file-row"][data-file-id='+JSON.stringify(docId)+']';
@@ -161,7 +168,7 @@ try{
  await d.verb(cdp,'press',{selector:highlightSelector});
  await observed('same_turn_highlight_digest_playback',()=>d.verb(cdp,'soundsFacts'),x=>x.ownerId==='sound:'+D&&!x.paused&&x.time>.2&&x.src?.startsWith('blob:'));
  await frame('music-highlights');
- note('coverage',{serving_graph:'asserted',seek:'asserted',reduced_motion:'asserted',error_state:'asserted',files:'Core logical IDs + visible indexed digest row',canvas:'actual row onOpen + selected tab/panel + digest playback',highlights:'actual producing run/cell + same digest playback',sfx_neighbor:'RETAINED component presentation only: parent verified R2 sound-player blob2f0fbd5bf83149744d486bbd1c020d65b1626239; no new SFX generation claim',rtl:'RETAINED JobsCancelRtl/Urdu confirmation presentation with source/catalogue compatibility; no full-App RTL claim',acceptance:'Native predicates executed; retained dimensions still require independent QA/design judgment'});
+ note('coverage',{serving_graph:'asserted',seek:'asserted',reduced_motion:'asserted',error_state:'asserted',files:'Core content-addressed row (one per digest, touches>=2) + visible indexed digest row',canvas:'actual row onOpen + selected tab/panel + digest playback',highlights:'actual producing run/cell + same digest playback',sfx_neighbor:'RETAINED component presentation only: parent verified R2 sound-player blob2f0fbd5bf83149744d486bbd1c020d65b1626239; no new SFX generation claim',rtl:'RETAINED JobsCancelRtl/Urdu confirmation presentation with source/catalogue compatibility; no full-App RTL claim',acceptance:'Native predicates executed; retained dimensions still require independent QA/design judgment'});
 
 }catch(e){note('blocked',String(e));process.exitCode=1;
  // Best effort: the frame at the moment of failure, before teardown destroys it.
