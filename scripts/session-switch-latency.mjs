@@ -329,6 +329,22 @@ const LEAVE_AFTER = Number(flag("leave-after", "0"));
  * answers - so a fix that stops the leak by dropping every held press fails here.
  */
 const HELD_STAY = ARGS.includes("--held-stay");
+/**
+ * `--cached-paint`: a REVISIT of a conversation this window has already shown,
+ * sampled per animation frame from the click until the snapshot has landed and
+ * the pane has settled.
+ *
+ * The report it exists for: "when you switch sessions you see a full blank
+ * session history ... it feels slow because it's just blank, and then it loads
+ * up after a second or two". The renderer holds the conversation's last rows in
+ * its paint cache (`shared/store/paint-cache.ts`), so the question is how long
+ * the pane is blank AFTER a switch to a conversation it has rows for, and
+ * whether painting those rows moves anything when the authoritative page
+ * replaces them. Needs `--stream=<ms>` long enough to have a window to look
+ * into; the verdict is structural (rows before the snapshot, no movement), so it
+ * carries no millisecond threshold.
+ */
+const CACHED_PAINT = ARGS.includes("--cached-paint");
 const WIDTH = Number(flag("width", "1280"));
 const HEIGHT = Number(flag("height", "900"));
 
@@ -396,6 +412,75 @@ const RUN = (count) => `(async () => {
 		await probe.settle(target);
 	}
 	return { meta, runs, latency: probe.bridge.log.latency };
+})()`;
+
+/**
+ * A revisit, frame by frame. Visit the target, leave for the other conversation
+ * (which writes the target's paint cache on unmount), then switch back with a
+ * recorder running. A row is "visible" when a `[data-record-id^="<target>-"]`
+ * element has a box; the geometry is the last visible row's bottom edge and the
+ * content column's top edge, which are what a bottom-anchored transcript moves
+ * when something above or below it changes height.
+ */
+const CACHED_RUN = `(async () => {
+	const probe = window.__lopSwitch;
+	const meta = probe.snapshot();
+	const target = meta.incoming;
+	await probe.switchTo(target, "first-visit");
+	await probe.settle(target);
+	await probe.switchTo(meta.outgoing, "leave");
+	await probe.settle(meta.outgoing);
+	const frames = [];
+	let running = true;
+	const origin = performance.now();
+	const sample = () => {
+		const t = performance.now() - origin;
+		const rows = [...document.querySelectorAll('[data-record-id^="' + target + '-"]')].filter((el) => el.getBoundingClientRect().height > 0);
+		const last = rows.at(-1)?.getBoundingClientRect() ?? null;
+		const first = rows.at(0)?.getBoundingClientRect() ?? null;
+		const column = document.querySelector("[data-lo-transcript-content]")?.getBoundingClientRect() ?? null;
+		frames.push({
+			t: Math.round(t * 10) / 10,
+			rows: rows.length,
+			placeholder: document.querySelector('[aria-label="Loading conversation"]') !== null,
+			lastBottom: last ? Math.round(last.bottom * 10) / 10 : null,
+			firstTop: first ? Math.round(first.top * 10) / 10 : null,
+			scroller: (() => {
+				let el = document.querySelector("[data-lo-transcript-content]");
+				while (el && !/(auto|scroll)/.test(getComputedStyle(el).overflowY)) el = el.parentElement;
+				const r = el?.getBoundingClientRect();
+				return r ? [Math.round(r.top * 10) / 10, Math.round(r.bottom * 10) / 10] : null;
+			})(),
+			composerTop: (() => {
+				const r = document.querySelector("textarea")?.closest("form")?.getBoundingClientRect();
+				return r ? Math.round(r.top * 10) / 10 : null;
+			})(),
+			tail: (() => {
+				const col = document.querySelector("[data-lo-transcript-content]");
+				const out = [];
+				let el = col?.lastElementChild;
+				for (let i = 0; el && i < 4; i++, el = el.previousElementSibling) {
+					const r = el.getBoundingClientRect();
+					out.push(el.tagName + "." + String(el.className).slice(0, 50) + "|" + el.getAttribute("data-record-id") + "|h=" + Math.round(r.height * 10) / 10);
+				}
+				return out;
+			})(),
+			captionShown: document.querySelector("[data-lo-stale-caption]") !== null,
+			columnTop: column ? Math.round(column.top * 10) / 10 : null,
+		});
+		if (running) requestAnimationFrame(sample);
+	};
+	requestAnimationFrame(sample);
+	const run = await probe.switchTo(target, "cached-revisit");
+	await new Promise((resolve) => setTimeout(resolve, 600));
+	running = false;
+	return {
+		meta,
+		clickAt: run.clickAt - origin,
+		snapshotAt: run.streamSnapshotAt === null ? null : run.streamSnapshotAt - origin,
+		paintedAt: run.transcriptPaintedAt === null ? null : run.transcriptPaintedAt - origin,
+		frames,
+	};
 })()`;
 
 /**
@@ -1411,24 +1496,30 @@ const main = async () => {
 			),
 		]);
 
+	if (CACHED_PAINT && !(Number(SCENARIO.stream) >= 500))
+		throw new Error(
+			"--cached-paint needs --stream=<ms, at least 500>: without a snapshot delay there is no window between the click and the authoritative page to look into",
+		);
 	if ((HELD_LEAVE || HELD_STAY) && !(Number(SCENARIO.stream) >= 1000))
 		throw new Error(
 			"--held-leave needs --stream=<ms, at least 1000>: without it the window closes before the press, and the arm would pass without testing anything",
 		);
 	const { result } = await runWithDeadline(
-		HELD_LEAVE || HELD_STAY
-			? HELD_LEAVE_RUN
-			: RACE_STAGE
-				? STAGE_RUN
-				: RACE_PALETTE
-					? PALETTE_RUN
-					: RACE_FUZZ
-						? FUZZ_RUN
-						: RACE
-							? RACE_RUN(RACE_WRITE)
-							: FAIL_GET
-								? FAIL_RUN
-								: RUN(SWITCHES),
+		CACHED_PAINT
+			? CACHED_RUN
+			: HELD_LEAVE || HELD_STAY
+				? HELD_LEAVE_RUN
+				: RACE_STAGE
+					? STAGE_RUN
+					: RACE_PALETTE
+						? PALETTE_RUN
+						: RACE_FUZZ
+							? FUZZ_RUN
+							: RACE
+								? RACE_RUN(RACE_WRITE)
+								: FAIL_GET
+									? FAIL_RUN
+									: RUN(SWITCHES),
 		FAIL_GET ? 90_000 : 60_000 + SWITCHES * 25_000,
 	);
 	if (!result.value)
@@ -1436,6 +1527,89 @@ const main = async () => {
 			`the page threw instead of returning a run table: ${result.description ?? JSON.stringify(result)}`,
 		);
 
+	if (CACHED_PAINT) {
+		const { meta, clickAt, snapshotAt, paintedAt, frames } = result.value;
+		const firstRow = frames.find(
+			(frame) => frame.rows > 0 && frame.t >= clickAt,
+		);
+		const rowsAt = firstRow ? firstRow.t - clickAt : null;
+		const afterRows = firstRow
+			? frames.filter((frame) => frame.t >= firstRow.t && frame.rows > 0)
+			: [];
+		/*
+		 * Movement is measured against the FIRST painted frame of rows, over every
+		 * frame in which rows are present. A frame with no rows (the placeholder)
+		 * carries no edge to compare. The page the snapshot delivers is the same
+		 * fixture the cache holds, so the transcript's own content does not change
+		 * height: anything that moves is the pane's chrome, which is what this
+		 * measures.
+		 */
+		const drift = (key) =>
+			afterRows.length === 0
+				? null
+				: Math.max(
+						...afterRows.map((frame) =>
+							Math.abs((frame[key] ?? 0) - (firstRow[key] ?? 0)),
+						),
+					);
+		const lastBottomDrift = drift("lastBottom");
+		const columnTopDrift = drift("columnTop");
+		const firstTopDrift = drift("firstTop");
+		const snapshotRel = snapshotAt === null ? null : snapshotAt - clickAt;
+		const verdict = {
+			"the revisit saw the target's own rows at all": rowsAt !== null,
+			"rows were on screen BEFORE the authoritative snapshot landed":
+				rowsAt !== null && snapshotRel !== null && rowsAt < snapshotRel,
+			"the last row's bottom edge did not move once painted":
+				lastBottomDrift !== null && lastBottomDrift <= 1,
+			"the stale caption stood while the rows were the cache's":
+				firstRow !== null &&
+				frames.some(
+					(frame) => frame.t >= clickAt && frame.rows > 0 && frame.captionShown,
+				),
+			"the stale caption is gone once the page has landed":
+				frames.length > 0 && !frames.at(-1).captionShown,
+			"the first row's top edge did not move once painted":
+				firstTopDrift !== null && firstTopDrift <= 1,
+			"the transcript column's top edge did not move once painted":
+				columnTopDrift !== null && columnTopDrift <= 1,
+		};
+		const passed = Object.values(verdict).every(Boolean);
+		const loads = loadavg().map((value) => Math.round(value * 100) / 100);
+		if (AS_JSON)
+			console.log(
+				JSON.stringify(
+					{
+						meta,
+						clickAt,
+						snapshotAt,
+						paintedAt,
+						rowsAt,
+						lastBottomDrift,
+						columnTopDrift,
+						verdict,
+						frames,
+					},
+					null,
+					2,
+				),
+			);
+		else {
+			console.log(
+				`cached-paint arm (stream ${SCENARIO.stream} ms)  ·  load average ${loads.join(" ")} on ${cpus().length} cores`,
+			);
+			console.log(
+				`  click -> first row on screen: ${rowsAt === null ? "never" : `${rowsAt.toFixed(1)} ms`}   click -> snapshot: ${snapshotRel === null ? "-" : `${snapshotRel.toFixed(1)} ms`}   click -> painted: ${paintedAt === null ? "-" : `${(paintedAt - clickAt).toFixed(1)} ms`}`,
+			);
+			console.log(
+				`  placeholder frames after the click: ${frames.filter((frame) => frame.t >= clickAt && frame.placeholder).length}   rows-visible frames: ${afterRows.length}   last-row bottom drift: ${lastBottomDrift} px   first-row top drift: ${firstTopDrift} px   column top drift: ${columnTopDrift} px`,
+			);
+			for (const [claim, ok] of Object.entries(verdict))
+				console.log(`  ${ok ? "PASS" : "FAIL"}  ${claim}`);
+		}
+		if (!passed) process.exitCode = 1;
+		return;
+	}
 	if (HELD_LEAVE || HELD_STAY) {
 		const { meta, validatingAtPress, viewAfter, messages, boxAtLeave, ops } =
 			result.value;

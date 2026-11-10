@@ -59,30 +59,25 @@ import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-
  * stand above them, which is not a contradiction: rows are the conversation's own
  * content and the notice is a claim about the transport that failed to extend it.
  *
- * THE SIXTH INPUT IS THE CACHE'S ROWS, AND THEY ARE NOT ROWS OF THE PANE'S OWN
- * (operator report, 2026-09-26: "there's no jitter where things seem to load at
- * different times ... everything should load in one solid paint instead of
- * incrementally"). A `stale` paint is this window's MEMORY of the conversation,
- * not the conversation: painted early it is a partial state that the snapshot then
- * corrects on screen - measured on the switch harness, a cached switch painted its
- * rows in the click's own frame, the readings strip at +67 ms and the stale
- * caption's removal at the same moment, which moved the whole transcript up by
- * 33.4 px (pane top 174.4 -> 141) under the reader. The rule above read "has rows"
- * and let all of that paint piecemeal. It now reads the cache flag the pane
- * already carried: while a page is OWED, rows that are the CACHE's hold the
- * placeholder exactly as no rows did, so the page - rows, readings, everything -
- * lands in ONE commit, and what the reader sees first is the finished frame. The
- * cache's own rows still paint on every path where the page is not coming
- * (a refusal, a failed stream, a tombstoned id), which is where the caption that
- * describes them belongs. And a row that is NOT this window's memory (a live
- * event, an optimistic echo) still paints while a page is owed, unchanged,
- * because it is the conversation's own content - but only on a pane that is not
- * STALE: `stale` is a pane-level flag, so on a cached pane the hold withholds
- * every row, the live ones included, and they arrive in the page's commit. The
- * CACHED table in `scripts/session-switch.test.mjs` pins that mixed cell
- * (`live|cached|owed` holds) beside the rule itself, which is why the scoped
- * wording at `transcriptPaneHoldsPlaceholder` says `stale` ends the hold only
- * when false.
+ * THE SIXTH INPUT IS THE CACHE'S ROWS, AND THEY PAINT. A `stale` paint is this
+ * window's MEMORY of the conversation, not the conversation, and it used to be
+ * HELD behind the placeholder until the owner's page landed so that the page -
+ * rows, readings, caption removal - arrived in one commit (operator report,
+ * 2026-09-26: "everything should load in one solid paint instead of
+ * incrementally"; measured then, a cached switch painted rows in the click's
+ * frame and the caption's removal moved the transcript 33.4 px). That hold is
+ * RETIRED (operator report, 2026-11-10: "when you switch sessions ... you
+ * actually see the full blank session history ... it feels slow because it's
+ * just blank, and then it loads up after a second or two"). The page the hold
+ * waits for takes a median of 0.96 s on the operator's machine (283 settled
+ * opens, p90 1.9 s, the daemon's snapshot frame being 0.96 s of the 1.06 s
+ * click-to-paint), so the hold turned every revisit of a conversation the window
+ * already had rows for into a second of nothing. The placeholder now belongs to
+ * the pane that has NOTHING to paint: no records and a page owed. Cached rows
+ * paint at once and the stale caption says what they are; the page's own commit
+ * reconciles them underneath, as it always did on every path where the page was
+ * not coming (a refusal, a failed stream), and the caption is laid out so its
+ * removal moves nothing (`canonical-transcript.tsx`).
  *
  * WHY THE READER'S QUESTION AND NOT THE TRANSPORT'S. `awaitingHydration` asks
  * whether this session is still owed a page; `status` says where the stream is.
@@ -291,11 +286,10 @@ export type TranscriptPaneView = {
  * nothing they are waiting for. Keeping both would also put two loading claims
  * in one column, which is the shape `#150` exists to remove.
  *
- * AND ITS ROWS TERM IS WHY IT REACHES BEYOND A ROW-LESS PANE: rows this window
- * CACHED (`stale`) do not end the hold, because they are not yet the
- * conversation - see the cache paragraph at the head of this file. Rows that are
- * not the cache's (any record while `stale` is false) still end it, so a live
- * event and an optimistic echo paint exactly as they did.
+ * ANY RECORD ENDS THE HOLD, the cache's included - see the cache paragraph at the
+ * head of this file. The `stale` flag no longer participates: it still decides
+ * the caption and the pane's `speaks` answer, which are about what the rows ARE,
+ * not about whether they paint.
  */
 export function transcriptPaneHoldsPlaceholder(
 	view: TranscriptPaneView,
@@ -310,9 +304,7 @@ export function transcriptPaneHoldsPlaceholder(
 	 * D1's measured case has rows in hand, which is what the term is for.
 	 */
 	if (view.filterHeld === true && view.recordCount > 0) return true;
-	return (
-		view.awaitingHydration && (view.recordCount === 0 || view.stale === true)
-	);
+	return view.awaitingHydration && view.recordCount === 0;
 }
 
 /**

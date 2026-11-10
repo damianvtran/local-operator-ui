@@ -204,7 +204,11 @@ import type { LoadOlderOutcome } from "./load-older";
 import { forkEntryId } from "./message-actions";
 import { AnswerActionRow } from "./message-actions-row";
 import { noticeText } from "./notice-copy";
-import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
+import {
+	OLDER_HISTORY_HINT_ID,
+	OlderHistorySlot,
+	OlderHistorySlotReserve,
+} from "./older-history-slot";
 import type { OpenFrameFacts } from "./open-frame";
 import {
 	profileRevertOutcome,
@@ -7374,31 +7378,6 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					: "relative flex min-h-0 grow flex-col",
 			)}
 		>
-			{stale && !holdPlaceholder && (
-				/*
-				 * Pinned to the pane's top edge, in the flow rather than over it: it
-				 * takes its own row and no row of the conversation is ever painted
-				 * under it. `shrink-0` so a tall neighbour cannot squeeze it away, and
-				 * the same horizontal inset as the scroller's own padding so the two
-				 * share a centre.
-				 *
-				 * AND IT STANDS DOWN WHILE THE PANE HOLDS. `stale` is still true for
-				 * a cached paint whose page is owed - that is the flag the hold reads
-				 * - and while the hold is up NOTHING of the cached paint is on screen
-				 * (the rows are gated out below), so a caption describing it would be
-				 * the pane talking about a view nobody can see. The two go away
-				 * together, which is the rule this element was introduced under; the
-				 * hold is just the case where "together" means "neither yet".
-				 */
-				<p
-					className={cn(
-						"shrink-0 px-4 pt-4 text-ink-dim text-meta",
-						CHAT_MEASURE,
-					)}
-				>
-					{t("ui.chat.canonical.transcript.stale_caption")}
-				</p>
-			)}
 			{/*
 			 * THE SOURCE-UNAVAILABLE NOTICE (design round 1, §1/§2). A polite,
 			 * NON-TERMINAL statement: the conversation is readable, its durable rows
@@ -7722,6 +7701,10 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				    top of a conversation, and a conversation whose rows are withheld for
 				    a settings answer is not a conversation this pane has painted. The
 				    two land in the same commit, which is the whole point of the hold. */}
+						{transcript.records.length > 0 &&
+							stale &&
+							!missing &&
+							!holdFiltering && <OlderHistorySlotReserve />}
 						{transcript.records.length > 0 &&
 							!stale &&
 							!missing &&
@@ -8065,32 +8048,39 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 						 * older-history slot's reason exactly: a working line speaks for the run
 						 * above it, and this pane has not painted that run yet.
 						 */}
-						{transcript.records.length > 0 &&
-							!stale &&
-							!missing &&
-							!holdFiltering && (
-								<div
-									data-lo-transcript-foot={true}
-									className={cn(
-										// On the `item` tier, not a tier of its own: the working line is
-										// the foot of the run above it and shares that run's rhythm. It
-										// takes slightly more than `trace` because it is the one row that
-										// is not a completed action, and slightly less than a turn
-										// boundary because the turn has not ended.
-										GAP.item[isSmallView ? 1 : 0],
-										"min-h-[1lh] font-mono text-mono-sm",
-									)}
-								>
-									{working && !internalLiveLeaf && (
+						{transcript.records.length > 0 && !missing && !holdFiltering && (
+							<div
+								data-lo-transcript-foot={true}
+								className={cn(
+									// On the `item` tier, not a tier of its own: the working line is
+									// the foot of the run above it and shares that run's rhythm. It
+									// takes slightly more than `trace` because it is the one row that
+									// is not a completed action, and slightly less than a turn
+									// boundary because the turn has not ended.
+									GAP.item[isSmallView ? 1 : 0],
+									"min-h-[1lh] font-mono text-mono-sm",
+								)}
+							>
+								{stale ? (
+									<span
+										data-lo-stale-caption={true}
+										className="block truncate text-ink-dim"
+									>
+										{t("ui.chat.canonical.transcript.stale_caption")}
+									</span>
+								) : (
+									working &&
+									!internalLiveLeaf && (
 										<WorkingLine
 											activity={working.activity}
 											phase={working.phase}
 											startedAt={working.startedAt}
 											clock={working.clock}
 										/>
-									)}
-								</div>
-							)}
+									)
+								)}
+							</div>
+						)}
 
 						{/*
 						 * NO GATE HERE. The pending question used to render as this list's
