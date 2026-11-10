@@ -2276,3 +2276,185 @@ test("U1: the completion row stays highlighted while the user keeps typing into 
 	);
 	await bundle.cleanup();
 });
+
+// ---- the browser's own pages ----------------------------------------------
+
+const EXTENSIONS_TITLE = /Extensions/;
+const EXTENSIONS_URL = /lop:\/\/extensions/;
+const DETAILS_NAME = /Password Keeper/;
+//
+// The operator's report: typing `lop://` offered nothing. These drive the real
+// component: the page row is listed, `lop://` inline-completes, and Enter or a
+// click reaches `onNavigate` with the canonical `lop://` URL - the same path a
+// typed `lop://extensions` already took into main's `parseInternalUrl`.
+
+test("lop:// inline-completes to the extensions page and Enter opens it", async () => {
+	const bundle = await renderBar();
+	await type(bundle, "lop://");
+	assert.equal(bundle.input.value, "lop://extensions");
+	const rows = options(bundle);
+	assert.equal(rows.length, 1);
+	assert.equal(rows[0].getAttribute("data-address-suggestion-page"), "true");
+	assert.equal(
+		rows[0].getAttribute("data-address-suggestion-url"),
+		"lop://extensions",
+	);
+	assert.equal(rows[0].getAttribute("aria-selected"), "true");
+	assert.match(rows[0].textContent, EXTENSIONS_TITLE);
+	assert.match(rows[0].textContent, EXTENSIONS_URL);
+	await key(bundle, "Enter");
+	assert.deepEqual(bundle.navigations, [
+		{ url: "lop://extensions", expectedTabId: 1 },
+	]);
+	await bundle.cleanup();
+});
+
+test("chrome://ext opens the canonical lop:// page, never the alias", async () => {
+	const bundle = await renderBar();
+	await type(bundle, "chrome://ext");
+	await key(bundle, "Enter");
+	assert.deepEqual(bundle.navigations, [
+		{ url: "lop://extensions", expectedTabId: 1 },
+	]);
+	await bundle.cleanup();
+});
+
+test("a bare word lists the page under the default search row", async () => {
+	const bundle = await renderBar();
+	await type(bundle, "extensions");
+	const rows = options(bundle);
+	assert.equal(rows[0].getAttribute("data-address-suggestion-search"), "true");
+	assert.equal(rows[0].getAttribute("aria-selected"), "true");
+	assert.equal(
+		rows.at(-1).getAttribute("data-address-suggestion-page"),
+		"true",
+	);
+	assert.equal(bundle.input.value, "extensions", "no inline completion");
+	await key(bundle, "ArrowUp");
+	await key(bundle, "Enter");
+	assert.deepEqual(bundle.navigations, [
+		{ url: "lop://extensions", expectedTabId: 1 },
+	]);
+	await bundle.cleanup();
+});
+
+test("lop://extensions lists each installed extension's details by name", async () => {
+	const id = "c".repeat(32);
+	const calls = [];
+	dom.window.api = {
+		browser: {
+			extensions: async (request) => {
+				calls.push(request.op);
+				return {
+					ok: true,
+					extensions: [{ id, name: "Password Keeper" }],
+				};
+			},
+			onStateChanged: () => () => {},
+		},
+	};
+	try {
+		const bundle = await renderBar();
+		await type(bundle, "lop://ext");
+		assert.deepEqual(calls, [], "no extension read before lop://extensions");
+		assert.equal(bundle.input.value, "lop://extensions");
+		// Right accepts the completion: the draft is now `lop://extensions` itself.
+		await key(bundle, "ArrowRight");
+		await flush();
+		const rows = options(bundle);
+		assert.deepEqual(
+			rows.map((row) => row.getAttribute("data-address-suggestion-url")),
+			["lop://extensions", `lop://extensions?id=${id}`],
+		);
+		assert.match(rows[1].textContent, DETAILS_NAME);
+		assert.deepEqual(calls, ["list"]);
+		await key(bundle, "ArrowDown");
+		await key(bundle, "Enter");
+		assert.deepEqual(bundle.navigations, [
+			{ url: `lop://extensions?id=${id}`, expectedTabId: 1 },
+		]);
+		await bundle.cleanup();
+	} finally {
+		dom.window.api = undefined;
+	}
+});
+
+// U1 (round 1): rejecting the page completion leaves `lop:` with NO row
+// active. Main reads `lop:` as `https://lop/` (a DNS failure), so Enter must
+// decide from the raw text: open the one matching page, or refuse locally.
+const deleteBack = async (bundle, value) => {
+	await act(async () => {
+		setValue(bundle.input, value, "deleteContentBackward");
+	});
+	await flush();
+};
+
+test("U1: lop: + Backspace + Enter opens the one matching page, never the raw scheme", async () => {
+	for (const [typed, left] of [
+		["lop:", "lop:"],
+		["lop:/", "lop:/"],
+		["chrome:", "chrome:"],
+		["lop://ext", "lop://ext"],
+	]) {
+		const bundle = await renderBar();
+		await type(bundle, typed);
+		await deleteBack(bundle, left);
+		assert.equal(bundle.input.value, left, `${typed}: completion rejected`);
+		assert.equal(
+			options(bundle).filter(
+				(row) => row.getAttribute("aria-selected") === "true",
+			).length,
+			0,
+			`${typed}: no row is active`,
+		);
+		await key(bundle, "Enter");
+		assert.deepEqual(
+			bundle.navigations,
+			[{ url: "lop://extensions", expectedTabId: 1 }],
+			`${typed}: Enter opens the canonical page`,
+		);
+		await bundle.cleanup();
+	}
+});
+
+test("U1: lop:// text matching several pages with no row active is refused locally", async () => {
+	dom.window.api = {
+		browser: {
+			extensions: async () => ({
+				ok: true,
+				extensions: [
+					{ id: "a".repeat(32), name: "Dark Reader" },
+					{ id: "b".repeat(32), name: "Dark Mode" },
+				],
+			}),
+			onStateChanged: () => () => {},
+		},
+	};
+	try {
+		const bundle = await renderBar();
+		await type(bundle, "lop://extensions?dark");
+		assert.equal(options(bundle).length, 2, "both names contain dark");
+		// Same two rows after the deletion, so nothing re-highlights them.
+		await deleteBack(bundle, "lop://extensions?dar");
+		assert.equal(options(bundle).length, 2);
+		assert.equal(
+			options(bundle).filter(
+				(row) => row.getAttribute("aria-selected") === "true",
+			).length,
+			0,
+			"no row is active",
+		);
+		await key(bundle, "Enter");
+		assert.deepEqual(bundle.navigations, [], "nothing reaches main");
+		assert.equal(bundle.input.value, "lop://extensions?dar", "the draft stays");
+		assert.ok(
+			[...bundle.container.querySelectorAll("[aria-live]")].some((node) =>
+				BLOCKED_HINT.test(node.textContent ?? ""),
+			),
+			"the existing refusal sentence is announced",
+		);
+		await bundle.cleanup();
+	} finally {
+		dom.window.api = undefined;
+	}
+});
