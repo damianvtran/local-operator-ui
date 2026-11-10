@@ -31,6 +31,9 @@ export interface PasskeyNoticeView {
 	 * so the site the user sees in the address bar is not the one that asked. */
 	embedded: boolean;
 	kind: PasskeyCall;
+	/** Absent means the original pending notice. NotAllowedError is ambiguous:
+	 * cancellation, unavailable credential and provider refusal share this name. */
+	outcome?: "not-allowed";
 	at: number;
 	/** Who owns the tab, as the registry records it. */
 	ownerKind: "user" | "agent";

@@ -4,6 +4,7 @@ import { expect, screen, userEvent, waitFor, within } from "@storybook/test";
 import type { FC } from "react";
 import type {
 	TeamBridgeDeliveryState,
+	TeamBridgeDeliverySummary,
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
 import { TeamBridgeMessageList } from "./team-bridge-message-list";
@@ -36,6 +37,7 @@ const state = (
 const message = (
 	delivery_states: TeamBridgeDeliveryState[] | undefined,
 	senderKind: "human" | "agent",
+	delivery_summary?: TeamBridgeDeliverySummary,
 ): TeamBridgeMessage => ({
 	id: "bcmsg_delivery01",
 	conversation_id: "bcv_delivery01",
@@ -45,18 +47,21 @@ const message = (
 	origin: senderKind,
 	created_at: new Date().toISOString(),
 	delivery_states,
+	delivery_summary,
 });
 
 const Thread: FC<{
 	states: TeamBridgeDeliveryState[] | undefined;
+	/* The hub's neutral per-message counts (every member receives them). */
+	summary?: TeamBridgeDeliverySummary;
 	senderKind?: "human" | "agent";
 	/* Pane width in px; the default is the desktop thread column. */
 	width?: number;
-}> = ({ states, senderKind = "human", width = 760 }) => (
+}> = ({ states, summary, senderKind = "human", width = 760 }) => (
 	// Top padding leaves room for the tooltip panel, which opens above.
 	<div className="flex flex-col bg-surface pt-24 text-ink" style={{ width }}>
 		<TeamBridgeMessageList
-			messages={[message(states, senderKind)]}
+			messages={[message(states, senderKind, summary)]}
 			labelFor={(sender) => sender.display_label}
 			tenantId="tnt_story"
 		/>
@@ -125,14 +130,35 @@ export const Delivered: Story = {
 };
 
 /*
+ * The summary's details popover OPEN, through a press on the summary line (the
+ * per-recipient lines live inside it since 2026-11-09).
+ */
+const openDetails = async ({
+	canvasElement,
+}: {
+	canvasElement: HTMLElement;
+}) => {
+	const [summary] = within(canvasElement).getAllByRole("button");
+	await userEvent.click(summary);
+	await waitFor(() =>
+		expect(
+			screen.getByRole("dialog", {
+				name: t("ui.teamBridge.delivery.summary.details_label"),
+			}),
+		).toBeVisible(),
+	);
+};
+
+/*
  * The tooltip OPEN, through the path a click-first user takes (D3): the play
  * function presses the info button and waits for the panel, which is what the
  * shared trigger used to close. No forced `defaultOpen` (see `TooltipProps`).
  */
 const openInfo =
 	(panelText: () => string) =>
-	async ({ canvasElement }: { canvasElement: HTMLElement }) => {
-		const [button] = within(canvasElement).getAllByRole("button", {
+	async (context: { canvasElement: HTMLElement }) => {
+		await openDetails(context);
+		const [button] = screen.getAllByRole("button", {
 			name: t("ui.teamBridge.delivery.info_label"),
 		});
 		await userEvent.click(button);
@@ -250,5 +276,153 @@ export const LegacyComposedRecipientLabels: Story = {
 				recipient_owner_label: "Dana Ortiz",
 			}),
 		],
+	},
+};
+
+/*
+ * THE COLLAPSED SUMMARY (operator report 2026-11-09). One line per message in
+ * DMs, groups and channels; the sender sees it as a button whose popover holds
+ * the per-recipient lines, every other member sees the hub's neutral counts as
+ * plain text. Switch the toolbar theme for light/dark.
+ */
+const CHANNEL_STATES: TeamBridgeDeliveryState[] = [
+	state({
+		endpoint_id: "bep_sana",
+		recipient_label: "Sana",
+		recipient_owner_label: "Sana Iqbal",
+		refusal_class: "out_of_scope",
+	}),
+	state({
+		endpoint_id: "bep_orion",
+		recipient_label: "Orion",
+		recipient_owner_label: "Sherman Lee",
+	}),
+	/* `phase` as the hub sends it to the sender (cross-PR contract), so every
+	 * summary segment has a row behind it (design D1). */
+	state({
+		endpoint_id: "bep_aida",
+		recipient_label: "Aida",
+		recipient_owner_label: "Ben Tran",
+		state: "held",
+		phase: "held",
+	}),
+	state({
+		endpoint_id: "bep_dot",
+		recipient_label: "Dot",
+		recipient_owner_label: "Ana Ruiz",
+		state: "held",
+		phase: "screening",
+	}),
+	state({
+		endpoint_id: "bep_eli",
+		recipient_label: "Eli",
+		recipient_owner_label: "Eli Novak",
+		state: "delivered",
+	}),
+	state({
+		endpoint_id: "bep_bo",
+		recipient_label: "Bo",
+		recipient_owner_label: "Bo Chen",
+		state: "delivered",
+	}),
+	state({
+		endpoint_id: "bep_cy",
+		recipient_label: "Cy",
+		recipient_owner_label: "Cyrus Patel",
+		state: "delivered",
+	}),
+];
+
+/* The hub summary and the sender's entries describe the SAME seven
+ * recipients, as the contract guarantees (design D1). */
+const CHANNEL_SUMMARY = {
+	total: 7,
+	delivered: 3,
+	screening: 1,
+	held: 1,
+	not_reviewed: 0,
+	not_delivered: 2,
+};
+
+export const SummarySenderView: Story = {
+	args: { states: CHANNEL_STATES, summary: CHANNEL_SUMMARY },
+};
+
+export const SummarySenderDetailsOpen: Story = {
+	args: SummarySenderView.args,
+	play: openDetails,
+};
+
+/* A member who is neither the sender nor an affected agent's owner: counts only. */
+export const SummaryNonSenderView: Story = {
+	args: { states: undefined, summary: CHANNEL_SUMMARY },
+};
+
+/* Everything delivered: every member still sees the confirmation that
+ * screening ran (review R3, design D4). */
+export const SummaryAllDelivered: Story = {
+	args: {
+		states: undefined,
+		summary: { total: 3, delivered: 3 },
+	},
+};
+
+/* A day later with no decision: the row says what happened and what to do
+ * (UX U2); the footer covers a stale count the rows cannot name. */
+export const SummaryNotReviewedOpen: Story = {
+	args: {
+		states: [
+			state({
+				endpoint_id: "bep_aida",
+				recipient_label: "Aida",
+				recipient_owner_label: "Ben Tran",
+				state: "held",
+				phase: "not_reviewed",
+			}),
+		],
+		summary: { total: 3, delivered: 1, not_reviewed: 2 },
+	},
+	play: openDetails,
+};
+
+/* An older hub: no summary, so the sender's counts derive from their entries. */
+export const SummaryDerivedWithoutHubSummary: Story = {
+	args: { states: CHANNEL_STATES },
+};
+
+export const SummarySingleRecipientDm: Story = {
+	args: {
+		states: [
+			state({
+				endpoint_id: "bep_aida",
+				recipient_label: "Aida",
+				recipient_owner_label: "Ben Tran",
+				state: "held",
+				phase: "held",
+			}),
+		],
+		summary: { total: 1, held: 1 },
+	},
+};
+
+export const SummarySingleRecipientDmOpen: Story = {
+	args: SummarySingleRecipientDm.args,
+	play: openDetails,
+};
+
+/* A narrow pane: the line truncates on one line rather than wrapping, and
+ * "Delivered to 12" gives way first (design D5). */
+export const SummaryNarrowTruncates: Story = {
+	args: {
+		width: 240,
+		states: undefined,
+		summary: {
+			total: 22,
+			delivered: 12,
+			screening: 3,
+			held: 2,
+			not_reviewed: 1,
+			not_delivered: 4,
+		},
 	},
 };

@@ -34,6 +34,7 @@ import {
 	CONTROL_BUILD_NODE_ARGS,
 	CONTROL_REUSE_PARTS,
 	assertControlPresent,
+	controlElectronPlan,
 	controlReusePlan,
 	describeMainPreloadReuse,
 	describePressRead,
@@ -1481,4 +1482,43 @@ try {
 	} finally {
 		rmSync(root, { recursive: true, force: true });
 	}
+});
+
+test("controlElectronPlan: a lockfile-differing control reuses the same-version candidate binary, else runs only Electron's installer", () => {
+	/*
+	 * PR #1821 (CI run 42710783768): the control's `--ignore-scripts` install left
+	 * Electron without dist/path.txt. Same version -> the candidate's binary via
+	 * the control leg's own env; different -> Electron's installer, nothing else.
+	 */
+	const same = controlElectronPlan({
+		controlVersion: "45.1.0",
+		candidateVersion: "45.1.0",
+		candidateDist: "/cand/node_modules/electron/dist",
+	});
+	assert.equal(same.action, "reuse-candidate-binary");
+	assert.deepEqual(same.env, {
+		ELECTRON_OVERRIDE_DIST_PATH: "/cand/node_modules/electron/dist",
+	});
+	assert.equal(
+		same.installer,
+		undefined,
+		"same version never runs an installer",
+	);
+
+	const differ = controlElectronPlan({
+		controlVersion: "44.3.0",
+		candidateVersion: "45.1.0",
+		candidateDist: "/cand/node_modules/electron/dist",
+	});
+	assert.equal(differ.action, "run-electron-installer");
+	assert.deepEqual(differ.installer, ["node_modules/electron/install.js"]);
+	assert.deepEqual(
+		differ.env,
+		{},
+		"a differing control never borrows the candidate binary",
+	);
+	assert.ok(
+		differ.describe.includes("44.3.0") && differ.describe.includes("45.1.0"),
+		differ.describe,
+	);
 });

@@ -1212,6 +1212,13 @@ const api = {
 		 * one IT used, so no path from this side ever reaches `shell.openPath`. */
 		revealDownloads: (): Promise<unknown> =>
 			ipcRenderer.invoke("browser-reveal-downloads"),
+		/** Extension manager ops (list, enable/disable, remove, open popup/options,
+		 * open the store, check for updates). Main re-validates every field; there
+		 * is no install op here by design. */
+		extensions: (
+			request: import("../shared/browser-extensions").ExtensionsRequest,
+		): Promise<import("../shared/browser-extensions").ExtensionsResponse> =>
+			ipcRenderer.invoke("browser-extensions", request),
 		/**
 		 * The passkey notice's two actions (docs/design/browser-challenges-and-passkeys.md
 		 * 3.6). Each names a tab and the notice's `at` and nothing else: the URL the open

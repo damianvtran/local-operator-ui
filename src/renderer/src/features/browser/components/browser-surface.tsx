@@ -14,7 +14,7 @@ import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useResolvedAppearance } from "@shared/themes/use-resolved-appearance";
 import { AlertTriangle, Globe, ShieldCheck, X } from "lucide-react";
-import type { FC } from "react";
+import type { ComponentProps, FC } from "react";
 import {
 	useCallback,
 	useEffect,
@@ -24,6 +24,11 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { passwordManagerOf } from "../../../../../shared/browser-extensions";
+import {
+	EXTENSIONS_PAGE_URL,
+	parseInternalUrl,
+} from "../../../../../shared/internal-pages";
 import {
 	type AddressController,
 	useBrowserChords,
@@ -32,6 +37,7 @@ import {
 	type BrowserTabView,
 	useBrowserChrome,
 } from "../hooks/use-browser-chrome";
+import { useBrowserExtensions } from "../hooks/use-browser-extensions";
 import {
 	originOfUrl,
 	requestsInScope,
@@ -53,6 +59,10 @@ import { BrowserApprovalsDock } from "./browser-approvals-dock";
 import { defaultApprovalHeaderLabel } from "./browser-approvals-tray";
 import { BrowserConsentBar } from "./browser-consent-bar";
 import { requesterLabel } from "./browser-consent-request";
+import {
+	BrowserExtensionInstallStrip,
+	BrowserExtensionsPage,
+} from "./browser-extensions-page";
 import { BrowserFileTransferRow } from "./browser-file-transfer-row";
 import { BrowserFindRow } from "./browser-find-row";
 import { BrowserHandOverDialog } from "./browser-hand-over-dialog";
@@ -66,6 +76,27 @@ import {
 	type AddressFocusRequest,
 	BrowserUrlBar,
 } from "./browser-url-bar";
+
+type PasskeyNoticeHostProps = Omit<
+	ComponentProps<typeof BrowserPasskeyNotice>,
+	"passwordManagerName"
+>;
+
+/** The passkey notice plus the one extension fact its wording needs (U10).
+ * The extension list is subscribed ONLY while a notice is showing, so the
+ * common no-notice browser pays nothing for it. */
+const PasskeyNoticeHost: FC<PasskeyNoticeHostProps> = (props) =>
+	props.notice ? <PasskeyNoticeWithExtensions {...props} /> : null;
+
+const PasskeyNoticeWithExtensions: FC<PasskeyNoticeHostProps> = (props) => {
+	const { extensions } = useBrowserExtensions();
+	return (
+		<BrowserPasskeyNotice
+			{...props}
+			passwordManagerName={passwordManagerOf(extensions)?.name ?? null}
+		/>
+	);
+};
 
 /**
  * The browser surface: everything that exists once per host.
@@ -520,7 +551,16 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	 */
 	const navFailure = state?.navFailure ?? null;
 	const onStartPage = browserOwnStateFor(activeTab, chrome.pendingUrl);
-	const browserOwnState = onStartPage || navFailure !== null;
+	/* THE BROWSER'S OWN PAGES (lop://extensions). Main projects the tab's
+	   virtual URL (src/main/browser/internal-pages.ts); the page is DOM painted
+	   here in the tab's content rect with the view hidden by the same lever as the
+	   start page, so it uses this renderer's trusted IPC and no web document or
+	   agent CDP session can reach it. It counts as an own-state page, so main
+	   refuses page controls (find, zoom, print) while it shows. */
+	const internalPage =
+		activeTab?.owner === "user" ? parseInternalUrl(activeTab.url) : null;
+	const browserOwnState =
+		onStartPage || navFailure !== null || internalPage !== null;
 
 	const chordRootRef = useRef<HTMLDivElement | null>(null);
 	/**
@@ -994,6 +1034,30 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	const glassLivePage =
 		navFailure === null && !onStartPage && state?.activeTabId != null;
 	useSuppressBrowserView(onStartPage, "browser-state", "browser-start-page");
+	useSuppressBrowserView(
+		internalPage !== null,
+		"browser-state",
+		"browser-internal-page",
+	);
+	const openExtensionsPage = useCallback(() => {
+		if (activeTab?.owner === "user") {
+			void chrome.navigate(EXTENSIONS_PAGE_URL, activeTab.tabId);
+			return;
+		}
+		// U8: the start page (no tab) or an agent's tab cannot show the page —
+		// the browser's own pages open only in the user's tabs — so it opens in a
+		// NEW user tab, which newTab makes the active one.
+		void (async () => {
+			await chrome.newTab(hostSessionId);
+			await chrome.navigate(EXTENSIONS_PAGE_URL);
+		})();
+	}, [
+		activeTab?.owner,
+		activeTab?.tabId,
+		chrome.navigate,
+		chrome.newTab,
+		hostSessionId,
+	]);
 
 	// A reachable IPC bridge is not a ready browser. In particular, startup's
 	// empty projection must not offer New tab or claim the saved tabs are gone.
@@ -1271,6 +1335,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 								triggerRef={pageMenuTriggerRef}
 								showApprovalsFolded={rowWidth > 0 && rowWidth < 300}
 								canControlPage={!browserOwnState && activeTab !== null}
+								onManageExtensions={openExtensionsPage}
 							/>
 						</>
 					}
@@ -1321,13 +1386,19 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			    transfer row and above the consent band: it is the active tab's own fact
 			    (main scopes it to that tab), and it must not displace a consent request,
 			    which is the more urgent thing a user can be asked. */}
-			<BrowserPasskeyNotice
+			{/* U5: download/verify progress + Cancel for a store install, shown
+			    on whatever tab the user is on (normally the store's). */}
+			<BrowserExtensionInstallStrip />
+			<PasskeyNoticeHost
 				notice={chrome.state?.passkeyNotice}
 				onOpen={(notice) =>
 					void chrome.openPasskeyNotice(notice.tabId, notice.at)
 				}
 				onDismiss={(notice) =>
 					void chrome.dismissPasskeyNotice(notice.tabId, notice.at)
+				}
+				onOpenExtensions={
+					activeTab?.owner === "user" ? openExtensionsPage : undefined
 				}
 			/>
 			{nativeApprovalsCard?.available && (
@@ -1531,24 +1602,28 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 							</Button>
 						</div>
 					)}
-					{suppressed && overlaySuppressing && state && tabs.length > 0 && (
-						<output
-							className="flex h-full flex-col items-center justify-center gap-1 px-6 text-center"
-							data-tour-tag="browser-paused"
-							data-suppressed-by={suppressedBy}
-						>
-							<p className="max-w-lg truncate text-title text-ink">
-								{state.title ||
-									activeTab?.title ||
-									t("ui.browser.browser_surface.this_page")}
-							</p>
-							<p className="text-body-sm text-ink-muted">
-								{t(
-									"ui.browser.browser_surface.paused_while_a_dialog_menu_or_panel",
-								)}
-							</p>
-						</output>
-					)}
+					{suppressed &&
+						overlaySuppressing &&
+						!internalPage &&
+						state &&
+						tabs.length > 0 && (
+							<output
+								className="flex h-full flex-col items-center justify-center gap-1 px-6 text-center"
+								data-tour-tag="browser-paused"
+								data-suppressed-by={suppressedBy}
+							>
+								<p className="max-w-lg truncate text-title text-ink">
+									{state.title ||
+										activeTab?.title ||
+										t("ui.browser.browser_surface.this_page")}
+								</p>
+								<p className="text-body-sm text-ink-muted">
+									{t(
+										"ui.browser.browser_surface.paused_while_a_dialog_menu_or_panel",
+									)}
+								</p>
+							</output>
+						)}
 					{showingNewTab && (
 						/*
 						 * KEYED BY TAB (F3, round 3). The field's draft is mount-local state, so a
@@ -1560,6 +1635,17 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 						 * `refusedUrl` (which is itself already filtered to the active tab).
 						 */
 						<BrowserNewTab key={activeTab?.tabId ?? "none"} />
+					)}
+					{internalPage && activeTab && navFailure === null && (
+						/* Keyed by tab, so per-page state (search text, focus) never
+						   leaks between two tabs both showing the page. Painted even
+						   under an overlay: it is DOM, so a menu or dialog simply
+						   layers above it — no paused note is needed. */
+						<BrowserExtensionsPage
+							key={activeTab.tabId}
+							page={internalPage}
+							onNavigate={(url) => void chrome.navigate(url, activeTab.tabId)}
+						/>
 					)}
 					{showingFailure && navFailure && (
 						<BrowserLoadFailure

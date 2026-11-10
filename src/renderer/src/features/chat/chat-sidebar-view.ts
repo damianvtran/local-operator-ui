@@ -1295,7 +1295,10 @@ export function groupRows(
 		const key = name || "ungrouped";
 		const group = groups.get(key) ?? {
 			key,
-			label: name || "Ungrouped",
+			// Resolved here, on each call: `groupRows` runs inside the sidebar's render
+			// (which subscribes to the locale), so the heading follows the language
+			// picker. `key` stays the machine token `ungrouped` that the sort below keys on.
+			label: name || t("ui.chat.sidebar_view.ungrouped"),
 			rows: [],
 		};
 		group.rows.push(row);

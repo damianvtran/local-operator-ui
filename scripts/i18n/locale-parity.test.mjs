@@ -65,6 +65,76 @@ const IDENTICAL_OK = new Map([
 		"zh-CN:ui.settings.notifications.volume.readout",
 		"The percent readout is the locale-formatted ICU token {value, number}%, with no lexical English to translate; independently audited in D2 r2 (b5bf3a7c1761). Scoped to this locale/key only.",
 	],
+	// Mark-all-read tooltip (PR #1836): the joiner between the two translated sentences.
+	[
+		"es:ui.chat.sidebar.mark_all_read.scope_joined",
+		"Pure joiner: two already-translated sentences separated by one space, no lexical English (zh-CN differs because it uses no separator). Each locale's independent auditor is to confirm the space is the right separator; scoped to this locale/key only.",
+	],
+	[
+		"fr:ui.chat.sidebar.mark_all_read.scope_joined",
+		"Pure joiner: two already-translated sentences separated by one space, no lexical English (zh-CN differs because it uses no separator). Each locale's independent auditor is to confirm the space is the right separator; scoped to this locale/key only.",
+	],
+	[
+		"hi:ui.chat.sidebar.mark_all_read.scope_joined",
+		"Pure joiner: two already-translated sentences separated by one space, no lexical English (zh-CN differs because it uses no separator). Each locale's independent auditor is to confirm the space is the right separator; scoped to this locale/key only.",
+	],
+	[
+		"ru:ui.chat.sidebar.mark_all_read.scope_joined",
+		"Pure joiner: two already-translated sentences separated by one space, no lexical English (zh-CN differs because it uses no separator). Each locale's independent auditor is to confirm the space is the right separator; scoped to this locale/key only.",
+	],
+	[
+		"ur:ui.chat.sidebar.mark_all_read.scope_joined",
+		"Pure joiner: two already-translated sentences separated by one space, no lexical English (zh-CN differs because it uses no separator). Each locale's independent auditor is to confirm the space is the right separator; scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.chat.sidebar.mark_all_read.scope_joined",
+		"Pure joiner: two already-translated sentences separated by one space, no lexical English (zh-CN differs because it uses no separator). Each locale's independent auditor is to confirm the space is the right separator; scoped to this locale/key only.",
+	],
+	// Browser extensions manager (PR #1821): proper nouns and French cognates.
+	[
+		"ui.browser.extensions.menu_store",
+		"« Chrome Web Store » is Google's product name, which Chrome shows untranslated in every locale; identical in every locale by design, audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790).",
+	],
+	[
+		"ui.browser.extensions.source_store",
+		"« Chrome Web Store » is Google's product name, which Chrome shows untranslated in every locale; identical in every locale by design, audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790).",
+	],
+	[
+		"ui.browser.extensions.details_id",
+		"« ID » is the extension identifier label, the universal abbreviation Chrome's own extension details use in every shipped locale; identical by design, audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790).",
+	],
+	[
+		"fr:ui.browser.extensions.menu_extensions",
+		"French cognate « Extensions » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
+	],
+	[
+		"fr:ui.browser.extensions.manage_title",
+		"French cognate « Extensions » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
+	],
+	[
+		"fr:ui.browser.extensions.page_title",
+		"French cognate « Extensions » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
+	],
+	[
+		"fr:ui.browser.extensions.action_options",
+		"French cognate « Options » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
+	],
+	[
+		"fr:ui.browser.extensions.details_description",
+		"French cognate « Description » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
+	],
+	[
+		"fr:ui.browser.extensions.details_version",
+		"French cognate « Version » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
+	],
+	[
+		"fr:ui.browser.extensions.blocked_notifications",
+		"French cognate « Notifications » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
+	],
+	[
+		"fr:ui.browser.extensions.details_source",
+		"French cognate « Source » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
+	],
 
 	[
 		"ui.settings.appearance.editor.copy_name",
@@ -215,6 +285,15 @@ const IDENTICAL_OK = new Map([
 		// own their punctuation, which is why this is not a locale-scoped row.
 		"ui.teamBridge.members.ineligible_label",
 		"language-neutral format string: only placeholders and ',', no words",
+	],
+	[
+		"ui.teamBridge.delivery.summary.separator",
+		// " · " joins the one-line delivery summary's segments ("Delivered to 3 ·
+		// 2 screening"). Each segment is its own translated message; the separator
+		// carries no words, and every shipped locale keeps the middle dot, as
+		// ui.chat.attachments.file_meta does. The key exists so a locale CAN own
+		// the separator; identical is the audited translation (PR #1832 i18n audit).
+		"language-neutral separator: a middle dot with spaces, no words",
 	],
 	[
 		"ui.canvas.files.attachmentMeta",

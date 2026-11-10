@@ -1,0 +1,105 @@
+{
+  "locale": "fr",
+  "mode": "second independent high-visibility final-head pass; one added sidebar key fully audited, all 80 existing keys read for consistency",
+  "scope": "23ec4af967b..0cc79cf965d12527d9917dbac63b1ad634a74a02; fr/ui.chat.sidebar; FR2-F1 code/render remediation",
+  "head_sha": "0cc79cf965d12527d9917dbac63b1ad634a74a02",
+  "audit_date": "2026-11-10",
+  "key_count": 81,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "delegation brief; translator session id not supplied"
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "2bbf16af14ee",
+    "session": "6e5b17ad8743",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Served runtime model header: openai/gpt-6.1-sol; no fallback used. Fresh independent session 6e5b17ad8743.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "status": "passed",
+  "result": "clean",
+  "verdict": "clean",
+  "findings": [],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "namespaces": {
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "5fa8ca072b46407199075c77639deb93957ce3ca93ee03cc70d4134fc027e1ff",
+      "target_sha256": "8a837089e21f8dd4c4c86f276f7db989ee6562c8ad640c464d5444a880938d0b",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+          "sha256": "5fa8ca072b46407199075c77639deb93957ce3ca93ee03cc70d4134fc027e1ff"
+        },
+        "fr": {
+          "path": "src/i18n/catalogues/fr/ui.chat.sidebar.json",
+          "sha256": "8a837089e21f8dd4c4c86f276f7db989ee6562c8ad640c464d5444a880938d0b"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+          "sha256": "0449e60c6bd1eb2d298ed576e0428c67f50a9175eb260460ec3ba8e5e3f1eaff"
+        }
+      },
+      "findings": []
+    }
+  },
+  "per_key_checks": [
+    {
+      "key": "ui.chat.sidebar.mark_all_read.label",
+      "source": "Mark all {count, number, ::group-off} read",
+      "current_text": "Tout marquer comme lu ({count, number, ::group-off})",
+      "findings": [],
+      "assessment": "Faithful and idiomatic infinitive action; Tout is singular generic object, so lu is correct. Exact count argument and ::group-off skeleton retained. Same wording as fr/ui.notifications.json ui.notifications.action.mark_all_read. No colon/semicolon/quotes needing typography changes. No inflected counted noun, hence no plural required. All 81 keys have parity and parse as ICU; prior 80 read for consistency. Only this ONE key was added to this namespace against 23ec4af967b; seven keys cited by brief span three namespaces, not seven sidebar keys.",
+      "placeholder_integrity": "exact count:number with ::group-off",
+      "plural_select": "none required for this label; formatted 0/1/2/12/1000000 successfully",
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": 24
+    }
+  ],
+  "remediation_verification": {
+    "FR2-F1": {
+      "status": "resolved",
+      "evidence": "Both supplied PNGs personally read. Before: section heading absent and horizontal scrollbar visible. After fr-220.png: EN COURS intact beside glyph-only control, no visible horizontal scrollbar. markAllReadShedWidth uses 108+5.7*N rounded up to [200,223,245,268,291]. French one-digit N=25 => 250.5 =>268; two-digit N=26=>256.2=>268. Row=panel-56; panel maximum320=>row264<268. French remains sr-only at all supported widths; longer counts select at least268. chat-sidebar.tsx span remains in accessible tree; Button title=unreadCopy.scope retains full action/count in English, not the literal French label. French accessible name retained; tooltip localization NOT claimed."
+    },
+    "coverage_correction": "Derived 81 English and 81 French keys, not 43. Git diff 23ec4af967b..HEAD shows one added sidebar key and no changed existing sidebar values. 165aebb1b73~1..165aebb1b73 does not touch this file. English/context/French bytes verified identical at 165aebb1b73 and 1e58cf570d5.",
+    "out_of_scope_pre_existing": [
+      {
+        "id": "FR-FINAL-LEGACY-1",
+        "severity": "MAJOR",
+        "key": "ui.chat.sidebar.agents.builtin_offer",
+        "current": "ICU arms =0, one, =2, =3, =4, =5, =6, other; many absent",
+        "problem": "French guide requires many. At 1000000 current other yields 1000000 agents intégrés instead of 1000000 d’agents intégrés. Exact same string exists at base 23ec4af967b; not introduced or worsened, excluded from current PR findings and passing scoped verdict.",
+        "suggested": "Add many {{count, number, ::group-off} d’agents intégrés sont prêts à être installés — {list}. Vous pourrez les modifier une fois installés.}"
+      }
+    ],
+    "policy_sources": [
+      "~/local-operator/i18n/style-guides/fr.md",
+      "~/local-operator/i18n/glossary.md",
+      "docs/I18N.md Retain checkable audit records"
+    ],
+    "executed_checks": [
+      "node scripts/i18n/generate.mjs --check: keys.gen.ts byte-identical",
+      "node scripts/i18n/check-duplicates.mjs: 1391 files, 0 duplicate keys",
+      "Read-only @formatjs/icu-messageformat-parser probe: 81 en/fr keys parse; zero argument-name mismatches; legacy builtin_offer alone missing many",
+      "shasum -a 256 on English/context/French files: hashes bound in namespaces input_hashes"
+    ]
+  },
+  "unverified": [
+    "No new browser, Storybook, build, live accessibility-tree or screen-reader run (explicit read-only audit constraint). Accessible-name retention derived from sr-only span code, not a live AX snapshot.",
+    "Only supplied 220px before/after frames were viewed; other widths/counts supported by code arithmetic, not independently rendered here. Screenshot capture provenance/head not independently re-created.",
+    "Tooltip remains English full-scope action, not a localized/literal French label; pre-existing English template verified at base.",
+    "This verdict is the scoped PR independent pass, not a claim that all legacy namespace copy meets every current glossary/CLDR requirement. Existing missing-many diagnostic retained above, excluded from in-scope counts.",
+    "Receipt is temporary handoff only; no tracked receipt/evidence bundle or ledger row written in read-only shared worktree."
+  ],
+  "receipt_contract_review": "Matched exact top-level and namespace field sets of committed 70ebc89d3bc3.json. Read ledger-rules.mjs and ledger-assemble.mjs. Read-only deriveReceiptAudit validation executed after write; no assembler write invoked.",
+  "audit_notes_not_execution_log": true
+}

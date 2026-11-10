@@ -1,0 +1,198 @@
+{
+  "locale": "vi",
+  "mode": "independent fresh i18n audit (auditor did not translate, cannot edit); five new mark-all-read keys fully audited, remaining 81 keys of the namespace read for terminology/typography consistency",
+  "scope": "28a6127617e4ebe0b6ba47d39fca5d3a22d1ba93; vi/ui.chat.sidebar; audit of ui.chat.sidebar.mark_all_read.scope_chats, .scope_chats_elsewhere, .scope_tokenless, .scope_joined, .name_suffix_elsewhere (plus the pre-existing .label read as the accessible-name prefix)",
+  "head_sha": "28a6127617e4ebe0b6ba47d39fca5d3a22d1ba93",
+  "audit_date": "2026-11-10",
+  "key_count": 86,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "delegation brief (PR damianvtran/local-operator-ui#1836); translator session id not supplied"
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "7a3f19c5e8b2",
+    "session": "684c3edfb1f4",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "Served runtime model header for this run: deepseek/deepseek-flash; no fallback model was served or used. Fresh session 684c3edfb1f4, which did not translate these files.",
+    "fallback_used": false,
+    "independent_from_translator_session": true,
+    "review_model_differs_from_translator": true
+  },
+  "status": "changes_requested",
+  "result": "changes_requested",
+  "verdict": "changes_requested",
+  "findings": [
+    {
+      "id": "VI-S10-F1",
+      "severity": "major",
+      "key": "ui.chat.sidebar.mark_all_read.scope_tokenless",
+      "current": "{count, plural, other {{count, number, ::group-off} dấu chưa đọc không có mã xác nhận hoàn tất nên không thể xóa.}}",
+      "problem": "\"completion token\" is rendered «mã xác nhận hoàn tất». The binding vi style guide (~/local-operator/i18n/style-guides/vi.md, 'Kept-English technical list') keeps «token» in English, and every sibling vi key keeps it: 57 occurrences, e.g. ui.settings.account.settings_page.tokens «Token», ui.settings.account.settings_usage_chart.tokens_used «Token đã dùng», ui.mesh.mesh_actions.mint_the_token «Tạo token». «mã xác nhận» is the Vietnamese phrase for a verification/authorisation code — the exact security-token reading the English context note forbids ('never as a security token') — and no other vi key uses «mã xác nhận», so a reader meets an invented term with no precedent in the product.",
+      "suggested": "{count, plural, other {{count, number, ::group-off} dấu chưa đọc không có token hoàn tất nên không thể xóa.}} — keep the Latin «token» and let «hoàn tất» carry the completion sense; «token báo hoàn tất» is an acceptable fuller variant. Do not use «mã xác nhận».",
+      "evidence": "grep of src/i18n/catalogues/vi/*.json at 28a6127: «token» in 57 keys, «mã xác nhận» only in this key; style guide sha256 e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888; context note for this key quoted from en/ui.chat.sidebar.context.json (sha256 4f1593cc34b395ef8701a60e58e73a0371b3c93730eb7a1f2b2845dc6250d7e3)",
+      "blocks_pass": true
+    },
+    {
+      "id": "VI-S10-F2",
+      "severity": "nit",
+      "key": "ui.chat.sidebar.mark_all_read.scope_chats_elsewhere",
+      "current": "{count, plural, other {Đánh dấu {count, number, ::group-off} cuộc trò chuyện chưa đọc là đã đọc}}, trong đó có {elsewhere, plural, other {{elsewhere, number, ::group-off} cuộc trò chuyện không đang hoạt động}}.",
+      "problem": "«cuộc trò chuyện» is repeated in the second clause where English uses the relative pronoun 'that'; not wrong, but slightly heavy in a one-clause tooltip. The same repetition appears in name_suffix_elsewhere. OPTIONAL: the shipped wording is clearer for a screen reader that hears the suffix after the label, so keeping it is defensible.",
+      "suggested": "Optional tightening: «… là đã đọc, trong đó có {elsewhere, number, ::group-off} không đang hoạt động.» (and the same in name_suffix_elsewhere). Does not gate.",
+      "evidence": "compared with the en string ('including 2 that are not active') at 28a6127; no native-usage rule against the repetition, hence nit",
+      "blocks_pass": false
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 1,
+    "minor": 0,
+    "nit": 1
+  },
+  "namespaces": {
+    "ui.chat.sidebar": {
+      "status": "changes_requested",
+      "result": "changes_requested",
+      "source_sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd",
+      "target_sha256": "682f1371629f619d49dadb41b843938dc7e1341d23a696bedba91790419d484d",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+          "sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd"
+        },
+        "vi": {
+          "path": "src/i18n/catalogues/vi/ui.chat.sidebar.json",
+          "sha256": "682f1371629f619d49dadb41b843938dc7e1341d23a696bedba91790419d484d"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+          "sha256": "4f1593cc34b395ef8701a60e58e73a0371b3c93730eb7a1f2b2845dc6250d7e3"
+        }
+      },
+      "findings": [
+        {
+          "id": "VI-S10-F1",
+          "severity": "major",
+          "key": "ui.chat.sidebar.mark_all_read.scope_tokenless",
+          "current": "{count, plural, other {{count, number, ::group-off} dấu chưa đọc không có mã xác nhận hoàn tất nên không thể xóa.}}",
+          "problem": "\"completion token\" rendered as «mã xác nhận hoàn tất»: the binding vi style guide keeps «token» English and 57 sibling vi keys do (ui.settings.account.settings_page.tokens «Token», ui.mesh.mesh_actions.mint_the_token «Tạo token»); «mã xác nhận» reads as a verification/authorisation code, the reading the context note forbids, and no other vi key uses it.",
+          "suggested": "«{count, plural, other {{count, number, ::group-off} dấu chưa đọc không có token hoàn tất nên không thể xóa.}}» (or «token báo hoàn tất»); keep the Latin «token».",
+          "blocks_pass": true
+        },
+        {
+          "id": "VI-S10-F2",
+          "severity": "nit",
+          "key": "ui.chat.sidebar.mark_all_read.scope_chats_elsewhere",
+          "current": "… là đã đọc}}, trong đó có {elsewhere, plural, other {{elsewhere, number, ::group-off} cuộc trò chuyện không đang hoạt động}}.",
+          "problem": "«cuộc trò chuyện» repeated where English uses 'that'; slightly heavy, optional tightening only (also in name_suffix_elsewhere). Does not gate.",
+          "suggested": "Optional: «, trong đó có {elsewhere, number, ::group-off} không đang hoạt động».",
+          "blocks_pass": false
+        }
+      ]
+    }
+  },
+  "per_key_checks": [
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_chats",
+      "source": "{count, plural, one {Mark {count, number, ::group-off} unread chat as read.} other {Mark {count, number, ::group-off} unread chats as read.}}",
+      "current_text": "{count, plural, other {Đánh dấu {count, number, ::group-off} cuộc trò chuyện chưa đọc là đã đọc.}}",
+      "findings": [],
+      "assessment": "Meaning exact ('Mark N unread conversations as read'); no omission/addition, polarity correct, plain declarative with a single full stop. Argument name {count} and the {count, number, ::group-off} skeleton byte-identical to source. 'other'-only plural is correct for vi (binding style guide: «'other' only — Vietnamese has no plural agreement; never add one/other branches»). «cuộc trò chuyện» matches nav.chats/row.unread_suffix; «là đã đọc» matches ui.notifications.toast.marked_read.",
+      "placeholder_integrity": "count:number ::group-off intact",
+      "plural_select": "vi: other only; rendered for 0/1/2/5/12/1000000 by hand-check of the single branch",
+      "manual_bidi_controls": false,
+      "nfc": true
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_chats_elsewhere",
+      "source": "{count, plural, one {Mark {count, number, ::group-off} unread chat as read} other {Mark {count, number, ::group-off} unread chats as read}}, including {elsewhere, plural, one {{elsewhere, number, ::group-off} that is not active} other {{elsewhere, number, ::group-off} that are not active}}.",
+      "current_text": "{count, plural, other {Đánh dấu {count, number, ::group-off} cuộc trò chuyện chưa đọc là đã đọc}}, trong đó có {elsewhere, plural, other {{elsewhere, number, ::group-off} cuộc trò chuyện không đang hoạt động}}.",
+      "findings": ["VI-S10-F2"],
+      "assessment": "Both arguments and both numbers keep their ::group-off skeleton; the outer plural wraps only the first clause and the comma follows it exactly as in English, so the whole sentence carries one full stop. «trong đó có» keeps the SUBSET sense (elsewhere is part of count, never an addition). «không đang hoạt động» renders the backend's 'not active' class plainly and with no section name, and agrees with sibling usage of 'active' (ui.notifications.flag.seen_hint «khi bạn đang hoạt động ở đây»). The one nit is the repeated noun.",
+      "placeholder_integrity": "count:number ::group-off, elsewhere:number ::group-off intact",
+      "plural_select": "vi: other only on both plurals",
+      "manual_bidi_controls": false,
+      "nfc": true
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_tokenless",
+      "source": "{count, plural, one {{count, number, ::group-off} unread mark with no completion token cannot be cleared.} other {{count, number, ::group-off} unread marks with no completion token cannot be cleared.}}",
+      "current_text": "{count, plural, other {{count, number, ::group-off} dấu chưa đọc không có mã xác nhận hoàn tất nên không thể xóa.}}",
+      "findings": ["VI-S10-F1"],
+      "assessment": "Structure and polarity fine: 'cannot be cleared' preserved (not negated twice, not softened), the added «nên» makes the English implied causation explicit and is natural; «xóa» for 'cleared' is consistent with the receipt copy (ui.notices.chat.mark_all_read_none_cleared «Không có gì được xóa.», mark_all_read_unknown «Không xóa được {count} …»), so deletion-of-a-chat misreading is a leftover the whole product already shares, not this key's defect. «dấu chưa đọc» is acceptable for a drawn mark (unreadMarkKind). The defect is the term for 'completion token'.",
+      "placeholder_integrity": "count:number ::group-off intact",
+      "plural_select": "vi: other only",
+      "manual_bidi_controls": false,
+      "nfc": true
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_joined",
+      "source": "{chats} {tokenless}",
+      "current_text": "{chats} {tokenless}",
+      "findings": [],
+      "assessment": "Byte-identical to source and CORRECT for this script: Vietnamese is space-separated Latin script, so two whole sentences joined by one U+0020 is the language's own separator (no full-width punctuation, no CJK-style empty separator). Both placeholders kept, in the natural order, nothing added. Combined output reads «Đánh dấu 5 … là đã đọc. 5 dấu chưa đọc … nên không thể xóa.» — two sentences, two full stops, no run-on.",
+      "placeholder_integrity": "chats, tokenless plain",
+      "plural_select": "none",
+      "manual_bidi_controls": false,
+      "nfc": true
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.name_suffix_elsewhere",
+      "source": ", including {elsewhere, plural, one {{elsewhere, number, ::group-off} that is not active} other {{elsewhere, number, ::group-off} that are not active}}",
+      "current_text": ", trong đó có {elsewhere, plural, other {{elsewhere, number, ::group-off} cuộc trò chuyện không đang hoạt động}}",
+      "findings": ["VI-S10-F2"],
+      "assessment": "Starts with an ASCII comma + space so it joins the label with no constructor-added separator (chat-sidebar.tsx appends it in an sr-only span after the label span), and carries no trailing punctuation, matching the context note. Label stays a prefix of the accessible name (WCAG 2.5.3): «Đánh dấu tất cả 5 đã đọc» + «, trong đó có 2 cuộc trò chuyện không đang hoạt động» reads naturally as one clause in Vietnamese. {elsewhere, number, ::group-off} intact.",
+      "placeholder_integrity": "elsewhere:number ::group-off intact",
+      "plural_select": "vi: other only",
+      "manual_bidi_controls": false,
+      "nfc": true
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.label",
+      "source": "Mark all {count, number, ::group-off} read",
+      "current_text": "Đánh dấu tất cả {count, number, ::group-off} đã đọc",
+      "findings": [],
+      "assessment": "Pre-existing key (unchanged in this PR except for the trailing comma); read only as the prefix the new suffix is appended to. Matches ui.notifications.action.mark_all_read «Đánh dấu tất cả đã đọc» with the count inserted, so the visible label and the new tooltip verb agree. No finding raised against it, and its shed-width behaviour is not re-litigated here.",
+      "placeholder_integrity": "count:number ::group-off intact",
+      "plural_select": "none in label",
+      "manual_bidi_controls": false,
+      "nfc": true
+    }
+  ],
+  "observations": [
+    "«không đang hoạt động» resolves the translator's flagged uncertainty: 'active' is already rendered «hoạt động» in sibling copy (ui.notifications.flag.seen_hint «khi bạn đang hoạt động ở đây»), so the plain class sense is kept and no section name was invented.",
+    "«là đã đọc» for 'as read' matches ui.notifications.toast.marked_read «Đã đánh dấu {count} mục là đã đọc»; «Đánh dấu … đã đọc» matches ui.notifications.row.mark_read / mark_all_read.",
+    "«xóa» for 'cleared' matches the shipped receipt sentence for this same feature (ui.notices.chat.mark_all_read_none_cleared «Không có gì được xóa.»).",
+    "Typography: ASCII comma + one space, no space before punctuation, full stops only where the English has them, no '!', sentence case, no Title Case — matches the vi guide.",
+    "All six strings are NFC (verified by codepoint comparison); no Cf/Cc or bidi control characters present.",
+    "Key parity: 86 English vs 86 vi keys, none added or dropped; the file is valid JSON and the five new keys are the only additions in this PR (en diff 9d257a7^..28a6127 adds exactly these five)."
+  ],
+  "unverified": [
+    "No repo validator executed: this pass was constrained to no node processes and no writes (shared read-only worktree). scripts/i18n/check-strings.mjs, generate.mjs --check, ledger-check.mjs and check-coverage.mjs were read but NOT run, and no node/ICU/@formatjs parse was executed; the mechanical checks above were reimplemented in python3 (brace balance, argument-name and ::group-off extraction, plural-category listing, NFC/codepoint dump, key parity).",
+    "No rendered frame, Storybook, browser, Electron or screen-reader/AX snapshot: the accessible-name concatenation is derived from the code (label span then sr-only suffix span in chat-sidebar.tsx, copy composed by mark-all-read.ts), not observed live.",
+    "No local CLDR data available offline (no cldr-core under node_modules, no PyICU/babel): 'vi = other only' is taken from the binding vi style guide's Plurals rule plus CLDR knowledge, not from a local CLDR query.",
+    "Ledger assembly (scripts/i18n/ledger-assemble.mjs) was NOT run and no ledger row, tracked receipt or evidence bundle was written: the shared worktree is read-only for this audit. This receipt is a scratchpad handoff only.",
+    "Tooltip wrapping/width in the shipped panel was not measured; the strings are tooltip/accessible-name copy with no maxCells hint in the sidecar, so no fit finding was raised."
+  ],
+  "audit_notes_not_execution_log": true,
+  "receipt_contract_review": "Field set modelled on committed i18n/receipts/2bbf16af14ee.json plus the evidence-record vocabulary in i18n/audits/evidence/vi/ui.chat.sidebar/3f8a973b1d92/record.json. scripts/i18n/ledger-rules.mjs deriveReceiptAudit was READ (not executed) and this receipt satisfies it by construction: locale matches the namespace block's locale; block.status == block.result == changes_requested; source_sha256/target_sha256 are the shasum -a 256 of the English and vi files at 28a6127; auditor.agent/instance/model are single-valued (no receipt-level model, no auditor.actual_model, so `unambiguous('model')` sees one value); instance is 12 lowercase hex and appears nowhere in i18n/receipts (2547 files) or i18n/audits/evidence; findings carry the `severity` key in the ledger vocabulary, so countFindings yields {blocker:0, major:1, minor:0, nit:1}; resultSupportedBy('changes_requested', counts) = 'changes_requested', so status==passed is not claimed.",
+  "artifacts": {
+    "receipt": "/Users/damian/.local-operator/sessions/684c3edfb1f4/scratchpad/aud-vi-ds/receipt.json"
+  },
+  "reference_hashes": {
+    "en/ui.chat.canonical.json": "38f767d08ff0f8a4fc6d8eee536ae82a023e93fe50fecc5fabb25a8f7609541f",
+    "vi/ui.chat.canonical.json": "f71e57e9b6700aa31e874108bc8ac9f52cee2f3677638845aa9304996a4296d9",
+    "en/ui.notices.json": "043243b66381b6fa1143acb645ce0c83fcb381883038ef88bbcb28e36764b112",
+    "vi/ui.notices.json": "ecad376314fb6c1d724f417149932eef827ed3cec29c176c790c335aa0e2e2d8",
+    "docs/I18N.md": "d58ad473701f098b3c2c24343c3a7e7236f22db22cc871016c4cb75f25f41f5c",
+    "~/local-operator/i18n/style-guides/vi.md": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888",
+    "~/local-operator/i18n/glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+  },
+  "current_report_verdict": {
+    "status": "changes_requested",
+    "unresolved_blocker_major_count": 1,
+    "finding_ids": ["VI-S10-F1"]
+  }
+}

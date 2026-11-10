@@ -1,0 +1,196 @@
+{
+	"instance": "a10dc55d2802",
+	"locale": "ur",
+	"audit_date": "2026-11-09",
+	"mode": "second_independent_high_visibility_pass",
+	"head": "165aebb1b73e65a63ca2ba1e4d8c9e638e8dc696",
+	"head_scope": "23ec4af967b..165aebb1b73",
+	"pr": 1827,
+	"status": "passed",
+	"result": "clean-with-findings",
+	"verdict": "clean-with-findings",
+	"auditor": "i18n-auditor",
+	"model": "deepseek/deepseek-flash",
+	"auditor_detail": {
+		"agent": "i18n-auditor",
+		"session": "a10dc55d2802",
+		"model": "deepseek/deepseek-flash",
+		"actual_model_source": "Session primary deepseek/deepseek-flash as configured; no provider fallback occurred during this audit, so the model named here is the model that ran. No translation or MT service was used at any point, and no back-translation was performed.",
+		"independent_from_translator_session": true,
+		"translator_agent": "i18n-translator",
+		"translator_model": "anthropic/claude-sonnet-5-5",
+		"independence_note": "This session translated and edited none of these seven values, holds no write access to the worktree (read-only: no checkout, stash, commit or git write), and read the English source and its context sidecars, the repo I18N HOWTO, the ur style guide, the glossary and the shipped ur catalogue for precedents before judging each key itself. Second independent pass: no earlier audit comment or receipt was read, and the first pass's verdict is unknown to this run.",
+		"second_pass_note": "Requested as a second independent pass on a high-visibility group; the harness instruction 'do not assume the first pass was right' was followed by re-deriving every judgement from the source and sidecars."
+	},
+	"translator": {
+		"agent": "i18n-translator",
+		"model": "anthropic/claude-sonnet-5-5"
+	},
+	"keys_audited": 7,
+	"scope": [
+		"ui.chat.canonical.notice.interrupted",
+		"ui.chat.canonical.notice.stopped_with_error",
+		"ui.chat.canonical.notice.compaction_not_run",
+		"ui.chat.canonical.notice.compaction_not_run_after_colon",
+		"ui.chat.canonical.link_toolkit.actions_for",
+		"ui.chat.sidebar_view.ungrouped",
+		"ui.chat.sidebar.mark_all_read.label"
+	],
+	"input_hashes": {
+		"ui.chat.canonical": {
+			"en": {
+				"path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+				"sha256": "38f767d08ff0f8a4fc6d8eee536ae82a023e93fe50fecc5fabb25a8f7609541f"
+			},
+			"context": {
+				"path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+				"sha256": "58cefb7d2140be875f5bcc0688631a85c368b130b551f82185d78cec47eb8107"
+			},
+			"ur": {
+				"path": "src/i18n/catalogues/ur/ui.chat.canonical.json",
+				"sha256": "e9c5c4e97476439567dd3efa26f14e9257fcfc581b8526d89bb5d05a4e3c9e11"
+			}
+		},
+		"ui.chat.sidebar_view": {
+			"en": {
+				"path": "src/i18n/catalogues/en/ui.chat.sidebar_view.json",
+				"sha256": "1c4e36003278bf5ed2afd29acb7f1546eec9a76d330777c7747eaab3a5646adf"
+			},
+			"context": {
+				"path": "src/i18n/catalogues/en/ui.chat.sidebar_view.context.json",
+				"sha256": "a6009c3a81f85dd2ab1c8dc730d410085850a69e6fdde28e9f37ee1c1bb93367"
+			},
+			"ur": {
+				"path": "src/i18n/catalogues/ur/ui.chat.sidebar_view.json",
+				"sha256": "d635e783098cc455b43b63de3c9aa3e21cbd931a88f2aaafb1f35c907ccbb913"
+			}
+		},
+		"ui.chat.sidebar": {
+			"en": {
+				"path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+				"sha256": "5fa8ca072b46407199075c77639deb93957ce3ca93ee03cc70d4134fc027e1ff"
+			},
+			"context": {
+				"path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+				"sha256": "0449e60c6bd1eb2d298ed576e0428c67f50a9175eb260460ec3ba8e5e3f1eaff"
+			},
+			"ur": {
+				"path": "src/i18n/catalogues/ur/ui.chat.sidebar.json",
+				"sha256": "f4e940bf42f6fa2cad10a97c743a3b30f2069aac75cded2627a2d2a6813acb61"
+			}
+		}
+	},
+	"hash_method": "python3 hashlib.sha256 over `git show HEAD:<path>` bytes at head 165aebb1b73, run read-only in the i18n-s8 worktree",
+	"namespaces": {
+		"ui.chat.canonical": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_audited": 5,
+			"sha256": {
+				"en": "38f767d08ff0f8a4fc6d8eee536ae82a023e93fe50fecc5fabb25a8f7609541f",
+				"context": "58cefb7d2140be875f5bcc0688631a85c368b130b551f82185d78cec47eb8107",
+				"ur": "e9c5c4e97476439567dd3efa26f14e9257fcfc581b8526d89bb5d05a4e3c9e11"
+			},
+			"findings": [
+				{
+					"id": "F1",
+					"severity": "MINOR",
+					"keys": [
+						"ui.chat.canonical.notice.interrupted",
+						"ui.chat.canonical.notice.stopped_with_error"
+					],
+					"current": "روکی گئی / خرابی کے ساتھ رک گئی",
+					"problem": "Both are unanchored turn markers, so the reader supplies the head noun, and this pair supplies a FEMININE one while the same file's sibling turn marker supplies an impersonal masculine: ui.chat.canonical.transcript.stopped_before_finishing = 'مکمل ہونے سے پہلے روک دیا گیا'. The split is visible inside one transcript family. The feminine itself is defensible and consistent with the two shipped 'Interrupted' markers (ui.chat.canonical.transcript.interrupted and ui.chat.canonical.tool_row.outcome.interrupted, both 'روکی گئی'), which is why no value change is demanded here: this is recorded so the family converges on ONE agreement rather than drifting further.",
+					"suggested": "Keep both values as they are; converge the sibling instead (transcript.stopped_before_finishing -> 'مکمل ہونے سے پہلے روکی گئی'), so every closed-turn marker agrees feminine as the two 'Interrupted' markers already do. If the file owner prefers impersonal masculine, then all four strings must move together, e.g. 'روکا گیا' / 'خرابی کے ساتھ رکا گیا'."
+				}
+			]
+		},
+		"ui.chat.sidebar_view": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_audited": 1,
+			"sha256": {
+				"en": "1c4e36003278bf5ed2afd29acb7f1546eec9a76d330777c7747eaab3a5646adf",
+				"context": "a6009c3a81f85dd2ab1c8dc730d410085850a69e6fdde28e9f37ee1c1bb93367",
+				"ur": "d635e783098cc455b43b63de3c9aa3e21cbd931a88f2aaafb1f35c907ccbb913"
+			},
+			"findings": [
+				{
+					"id": "F2",
+					"severity": "NIT",
+					"keys": [
+						"ui.chat.sidebar_view.ungrouped"
+					],
+					"current": "بغیر گروہ",
+					"problem": "The heading reads as a bare prepositional phrase where the catalogue's own house pattern for 'without X' carries the postposition: ui.chat.tags.shown_untagged = 'بغیر ٹیگ کے گروہ میں'. 'بغیر گروہ' is understandable and does read as a category rather than an agent name (the sidecar's requirement), and the noun choice is right: 'گروہ' is the settled term for a chat grouping in this catalogue (ui.chat.sidebar_view.group_by = 'گروہ بندی', ui.chat.sidebar.badge 'اس گروہ میں', ui.chat.tags.show_under 'اس گروہ میں رکھیں', ui.notifications.group 'گروہ بندی'), while 'گروپ' is the teamBridge/canvas sense of a literal group conversation. Graded NIT, not MINOR: nothing is misread.",
+					"suggested": "گروہ کے بغیر"
+				}
+			]
+		},
+		"ui.chat.sidebar": {
+			"status": "passed",
+			"result": "clean-with-findings",
+			"keys_audited": 1,
+			"sha256": {
+				"en": "5fa8ca072b46407199075c77639deb93957ce3ca93ee03cc70d4134fc027e1ff",
+				"context": "0449e60c6bd1eb2d298ed576e0428c67f50a9175eb260460ec3ba8e5e3f1eaff",
+				"ur": "f4e940bf42f6fa2cad10a97c743a3b30f2069aac75cded2627a2d2a6813acb61"
+			},
+			"findings": [
+				{
+					"id": "F3",
+					"severity": "NIT",
+					"keys": [
+						"ui.chat.sidebar.mark_all_read.label"
+					],
+					"current": "سب {count, number, ::group-off} پڑھا ہوا نشان زد کریں",
+					"problem": "Fit only. Rendered with a two-digit count this is 26 cells against 16 for 'Mark all 12 read' (1.6x); the sidecar calls the slot a narrow section header beside Active chats, and the span carries `truncate` with a shed to sr-only below a 253px container (src/renderer/src/features/chat/components/chat-sidebar.tsx:438,2332). An ellipsis would cut the final imperative 'کریں' - the verb - though the accessible name survives. Wording, order, ICU skeleton and idiom are correct, and the shape matches the shipped precedent ui.notifications.action.mark_all_read = 'سب پڑھا ہوا نشان زد کریں' with the count inserted (the count must stay: UX U1). Not measured in a renderer.",
+					"suggested": "No text change proposed. Flag for the rendered narrow-width check; if it does ellipsise, the shortest correct alternative is 'سب {count} پڑھا نشان زد کریں' (drops the 'ہوا' of 'پڑھا ہوا', still the shipped read-state word) at 22 cells."
+				}
+			]
+		}
+	},
+	"severity_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 1,
+		"nit": 2
+	},
+	"findings": [],
+	"observations_not_counted": [
+		{
+			"id": "O1",
+			"kind": "INFO",
+			"surface": "src/renderer/src/features/chat/mark-all-read.ts:104-119",
+			"detail": "OUTSIDE my seven keys, pre-existing, not counted: markAllReadCopy builds `scope` (bound to the control's `title`, chat-sidebar.tsx:2287) and `nameSuffix` (its accessible name tail) from hardcoded English template strings - 'Mark ${count} unread ${chat} as read, including ${elsewhere} in Previous chats.' and '${tokenless} unread marks with no completion token cannot be cleared.' - so in ur the keyed visible label is Urdu while the tooltip and part of the accessible name stay English. Reported for the manager; it does not bear on this pass's verdict."
+		},
+		{
+			"id": "O2",
+			"kind": "INFO",
+			"surface": "src/i18n/bidi.ts",
+			"detail": "RTL/bidi sanity, verified by reading the runtime seam and not by rendering: `{name}` in ui.chat.canonical.link_toolkit.actions_for is a plain argument, so isolateArguments wraps the Latin-led value in FSI...PDI for an RTL-answered message, and the leading position is correct because the container is dir=rtl (the Latin isolate paints at the right edge, then 'کے لیے', then 'اقدامات'). The `{count}` digits in mark_all_read.label need no isolate by that module's own rule (bare digits are neutral-safe after RTL text; Urdu letters are AL, so W2/N1 keep the digits in place). No manual bidi control (U+200E/F, U+061C, U+202A-E, U+2066-9) appears in any of the seven values, as the style guide requires."
+		},
+		{
+			"id": "O3",
+			"kind": "INFO",
+			"surface": "ui.chat.canonical.notice.compaction_not_run / _after_colon",
+			"detail": "The colon/dash pair distinction is preserved exactly as the sidecars ask (':' when the runtime reason carries no colon, ' — ' when it does), the {detail} placeholder sits in the same position and is inserted verbatim, and both separators are neutral between an RTL phrase and an LTR {detail}, so N1/N2 resolve them to the paragraph direction (RTL) and they paint after the Urdu phrase in reading order. Reasoning from the bidi algorithm, not measured with fribidi or a renderer."
+		}
+	],
+	"mechanical": {
+		"json_valid": true,
+		"keyset_equal_to_en": "yes for all three namespaces (258/258, 27/27, 81/81) - no key added or dropped",
+		"placeholders": "byte-identical to en for all seven: {detail} x2, {name} x1, {count, number, ::group-off} x1, none in the other three",
+		"icu": "no plural/select in any of the seven, in en or ur, so no CLDR category is owed for ur (one/other where a plural exists, e.g. the sibling sidebar_view.hidden, already carries both); the one number skeleton is copied verbatim",
+		"markup": "no Rich/markup tags, no backticks, no commands or flags inside the seven values; the only Latin runs are the placeholders",
+		"hygiene": "all seven NFC, no manual bidi controls, no Arabic-Indic digits, no Devanagari danda, no ASCII period/question mark in prose",
+		"delta_note": "git diff 118da8491a9..165aebb1b73 touches 0 files under src/i18n/catalogues/ur/ (3 files changed overall: fr, vi, zh-CN), so these seven values are byte-identical to the previous audited head; this pass audits the bytes at 165aebb1b73 regardless"
+	},
+	"not_run_unverified": [
+		"Repo validator / CI-side gates: no `node scripts/i18n/*` run was performed (host is overloaded: no builds, tests, installs or browsers). ledger-rules.mjs and ledger-assemble.mjs were READ for the receipt contract only; no ledger command was run and no ledger row was written by me.",
+		"Rendering, pseudo-localisation, screenshot or narrow-width measurement: not performed. Fit judgements are codepoint/cell arithmetic plus the component's own truncate/shed code, nothing else.",
+		"fribidi or browser bidi measurement: not performed; the RTL statements above are reasoning from UAX#9 rules and from reading src/i18n/bidi.ts.",
+		"No translation/MT service or back-translation was used or consulted."
+	],
+	"audit_notes_not_execution_log": "This file is an auditor's written record of an audit that DID run read-only checks in the i18n-s8 worktree: python3 json.load over the three ur and three en files, key-set comparison, placeholder regex comparison, NFC/codepoint scans and cell counts over `git show HEAD:` bytes, plus hashlib.sha256 of those bytes. It is not an execution transcript and carries no attached log; the PR comment named in the receipt is the report."
+}

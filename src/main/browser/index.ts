@@ -9,6 +9,7 @@ import {
 	type WebFrameMain,
 	app,
 	clipboard,
+	ipcMain,
 	shell,
 	webContents,
 	webFrameMain,
@@ -17,6 +18,7 @@ import {
 	type BrowserChord,
 	browserChordIntent,
 } from "../../shared/browser-chord";
+import type { ExtensionUpdateReport } from "../../shared/browser-extensions";
 import { startConsoleHost } from "../console";
 import type { ConsoleCompletionNotifier } from "../console/completion";
 import { isConsoleDispatchMethod } from "../console/dispatch";
@@ -67,11 +69,25 @@ import { ConsentNotifier } from "./consent-notifier";
 import { DownloadArmer } from "./downloads";
 import type { DriveableView } from "./electron-types";
 import { BrowserHostError } from "./errors";
+import { extensionIdOfUrl, extensionsAdapter } from "./extensions/adapter";
+import webStorePreload from "./extensions/chrome-web-store/chrome-web-store.preload.js?asset";
+import { installExtensionDialogs } from "./extensions/dialogs";
+import { ExtensionManager } from "./extensions/manager";
+import {
+	mustReloadOnOwnerChange,
+	refusesExtensionSubframe,
+} from "./extensions/subframe-policy";
+import {
+	WEBSTORE_ORIGIN,
+	WEB_STORE_PRELOAD_ID,
+	registerWebStoreBridge,
+} from "./extensions/webstore";
 import {
 	BrowserHost,
 	isReportableLoadFailure,
 	sessionRequesterOf,
 } from "./host";
+import { armInternalNavigation, displayUrlFor } from "./internal-pages";
 import {
 	PRODUCT_ADDRESS_OVERLAY_EVENT,
 	type RegisterBrowserIpcOptions,
@@ -509,6 +525,9 @@ export function startBrowserHost(
 		 * consumes.
 		 */
 		headless: options.windowShow === "never",
+		extensions: (request) =>
+			bindings.extensions?.(request) ??
+			Promise.resolve({ extensions: [], ok: false }),
 		expectedUrl: options.expectedUrl,
 		host: () => bindings.host?.() ?? null,
 		webauthn: () => bindings.webauthn?.() ?? null,
@@ -649,6 +668,23 @@ async function initializeBrowserHost(
 		// "one jar shared by every tab" is Chromium's mechanism rather than this
 		// host's bookkeeping (design 5.1).
 		const browserSession = resolveBrowserSession();
+		// Register compatibility/policy preloads BEFORE the first browser view or
+		// restored extension worker. The desktop renderer stays in its own session.
+		const extensionsBinding = extensionsAdapter(browserSession);
+		// The store-page shim: a session-wide FRAME preload, gated inside the file
+		// to the exact store origin + top frame (extensions/chrome-web-store). Every
+		// IPC it calls is re-gated in main (extensions/webstore.ts). Registered
+		// once per persistent session, like the adapter.
+		if (
+			!browserSession
+				.getPreloadScripts()
+				.some((script) => script.id === WEB_STORE_PRELOAD_ID)
+		)
+			browserSession.registerPreloadScript({
+				id: WEB_STORE_PRELOAD_ID,
+				type: "frame",
+				filePath: webStorePreload,
+			});
 		/**
 		 * The per-tab download arm (§8), created BEFORE the session handlers because the
 		 * `will-download` hook installed with them must have somewhere to ask from the
@@ -917,16 +953,15 @@ async function initializeBrowserHost(
 		 * for a tab nobody has attached to. The cost is a window between commit and the
 		 * first inline script in which a call is not observed.
 		 *
-		 * ARMED ONLY WHEN THE PLATFORM AUTHENTICATOR IS OFF. With it on (a signed build
-		 * whose entitlement the gate accepted) the OS sheet is the UX and a "may be
-		 * stuck" notice would contradict it, so no shim is registered at all. The
-		 * decision is per host start because the gate is per process.
+		 * A configured Touch ID authenticator is device-bound, not access to the
+		 * user's synced/manager passkeys. Keep rejection recovery armed in signed
+		 * builds too. Pending notices remain gate-off only: a native sheet awaiting
+		 * a touch is not evidence of an unavailable provider.
 		 *
 		 * `registry` is declared further down; `ownerOf` runs only after it is built (a
 		 * tab cannot exist before that), so the forward reference is safe and avoids
 		 * moving the registry's construction.
 		 */
-		const passkeyNoticesArmed = !webauthnInstall.configured;
 		const passkeyNotices = new PasskeyNotices({
 			now: () => Date.now(),
 			log,
@@ -1144,6 +1179,24 @@ async function initializeBrowserHost(
 				const view = buildView(options.window);
 				views.set(tabId, view);
 				wireView(view, tabId);
+				extensionsBinding.adapter.addTab(view.webContents, options.window);
+				// Extensions are session-wide: their content scripts run in agent
+				// tabs too, and Electron cannot scope them per webContents. What CAN
+				// be refused is an extension's own UI frame (a password manager's
+				// inline menu is a chrome-extension:// subframe) inside a tab an
+				// agent owns, so CDP can neither drive nor read it (design §4.4).
+				// Re-evaluated per navigation; a hand-over reloads a tab holding
+				// one (registry.ownerChanged below). Rule: subframe-policy.ts.
+				view.webContents.on("will-frame-navigate", (event) => {
+					if (
+						refusesExtensionSubframe({
+							isMainFrame: event.isMainFrame,
+							url: event.url,
+							owner: registry.get(tabId)?.owner,
+						})
+					)
+						event.preventDefault();
+				});
 				return view as unknown as DriveableView;
 			},
 			releaseTab,
@@ -1151,6 +1204,17 @@ async function initializeBrowserHost(
 			(snapshot) => {
 				addressOverlay?.onLayout(snapshot);
 				approvalsOverlay?.onLayout(snapshot);
+				// addTab marks even a background tab active inside the adapter. Reassert
+				// the registry's user-selected tab after EVERY layout, including when an
+				// agent created a hidden view without changing activeTabId.
+				const record =
+					snapshot.activeTabId === null
+						? null
+						: registry.get(snapshot.activeTabId);
+				if (record)
+					extensionsBinding.adapter.selectTab(
+						record.view.webContents as unknown as Electron.WebContents,
+					);
 			},
 			(view, presented) => {
 				// Closing a window can start host teardown after its native object is
@@ -1164,6 +1228,155 @@ async function initializeBrowserHost(
 			},
 		);
 		registryForDownloads = registry;
+		const userTabFocused = (contents?: Electron.WebContents) => {
+			const active = registry.activeTab;
+			return (
+				options.windowShow === "focus" &&
+				!options.window.isDestroyed() &&
+				options.window.isFocused() &&
+				options.window.isVisible() &&
+				active?.owner === "user" &&
+				active.presented &&
+				(contents === undefined ||
+					(active.view.webContents as unknown as Electron.WebContents) ===
+						contents)
+			);
+		};
+		const extensionDialogs = installExtensionDialogs(
+			options.window,
+			() =>
+				options.windowShow === "focus" &&
+				!options.window.isDestroyed() &&
+				options.window.isFocused(),
+		);
+		const extensions = new ExtensionManager(
+			browserSession,
+			{
+				window: options.window,
+				show: options.windowShow,
+				backgroundThrottling: options.backgroundThrottling,
+				mayPresentExtensionPopup: () => userTabFocused(),
+				root: join(app.getPath("userData"), "browser-extensions"),
+				changed: notifyChanged,
+				confirmInstall: extensionDialogs.confirmInstall,
+				confirmRemove: extensionDialogs.confirmRemove,
+				createTab: async (rawUrl, activate) => {
+					const url = new URL(rawUrl);
+					// A page of an ACTIVE extension may open as a user tab (review
+					// U1); requireSurface keeps it out of agent reach.
+					const extensionId = extensionIdOfUrl(url.href);
+					if (
+						url.protocol !== "http:" &&
+						url.protocol !== "https:" &&
+						url.href !== "about:blank" &&
+						!(extensionId && extensions.isActive(extensionId))
+					)
+						throw new Error("Unsupported extension navigation");
+					const record = registry.create({ owner: "user", activate });
+					try {
+						await record.view.webContents.loadURL(url.href);
+						await cdp.attach(record.view.webContents);
+					} catch (error) {
+						registry.destroy(record.tabId);
+						throw error;
+					}
+					return record.view.webContents as unknown as Electron.WebContents;
+				},
+				activeTab: () =>
+					(registry.activeTab?.view.webContents as unknown as
+						| Electron.WebContents
+						| undefined) ?? null,
+				selectTab: (contents) => {
+					const record = registry.byWebContentsId(contents.id);
+					if (record?.owner === "user") registry.activate(record.tabId);
+				},
+				removeTab: (contents) => {
+					const record = registry.byWebContentsId(contents.id);
+					if (record?.owner === "user") registry.destroy(record.tabId);
+				},
+			},
+			extensionsBinding,
+		);
+		bindings.extensions = async (request) => {
+			let ok = true;
+			let updates: ExtensionUpdateReport | undefined;
+			switch (request.op) {
+				case "list":
+					break;
+				case "set-enabled":
+					ok = await extensions.setEnabled(request.id, request.enabled);
+					break;
+				case "uninstall":
+					ok = await extensions.uninstall(request.id);
+					break;
+				case "open-popup":
+					ok = await extensions.openPopup(request.id);
+					break;
+				case "open-options":
+					ok = await extensions.openOptions(request.id);
+					break;
+				case "cancel":
+					extensions.cancel(request.id);
+					break;
+				case "check-updates":
+					updates = await extensions.checkUpdates();
+					break;
+				case "retry":
+					ok = await extensions.retry(request.id);
+					break;
+				case "open-listing":
+					ok = await extensions.openListing(request.id);
+					break;
+				case "open-homepage":
+					ok = await extensions.openHomepage(request.id);
+					break;
+				case "open-store": {
+					// A USER tab, activated: this is the desktop menu press.
+					const record = registry.create({ owner: "user", activate: true });
+					try {
+						await record.view.webContents.loadURL(`${WEBSTORE_ORIGIN}/`);
+						await cdp.attach(record.view.webContents);
+					} catch {
+						// R1-5: no empty tab left behind (mirrors createTab above).
+						registry.destroy(record.tabId);
+						ok = false;
+					}
+					break;
+				}
+			}
+			return {
+				extensions: extensions.list(),
+				installing: extensions.installs(),
+				ok,
+				...(updates === undefined ? {} : { updates }),
+			};
+		};
+		// R1-4: a hand-over away from the user re-applies the subframe rule to
+		// frames that loaded while the tab was the user's, by reloading it.
+		registry.ownerChanged = (record) => {
+			const contents = record.view
+				.webContents as unknown as Electron.WebContents;
+			if (contents.isDestroyed()) return;
+			const subframes = contents.mainFrame.framesInSubtree
+				.filter((frame) => frame !== contents.mainFrame)
+				.map((frame) => frame.url);
+			if (mustReloadOnOwnerChange(record.owner, subframes)) contents.reload();
+		};
+		rollback.add(() => {
+			registry.ownerChanged = null;
+		});
+		const removeWebStoreBridge = registerWebStoreBridge({
+			ipc: ipcMain,
+			session: browserSession,
+			manager: extensions,
+			isBrowserTab: (contents) => !!registry.byWebContentsId(contents.id),
+			mayInstallFrom: (contents) => {
+				const record = registry.byWebContentsId(contents.id);
+				return record?.owner === "user" && userTabFocused(contents);
+			},
+		});
+		rollback.add(removeWebStoreBridge);
+		rollback.add(() => extensions.dispose());
 		rollback.add(async () => {
 			published = false;
 			sessionStore.discard();
@@ -1199,6 +1412,8 @@ async function initializeBrowserHost(
 			// geometry, and a later explicit show must lazily create a fresh one.
 			addressOverlay?.onTabReleased(tabId);
 			const view = views.get(tabId);
+			if (view && !view.webContents.isDestroyed())
+				extensionsBinding.adapter.removeTab(view.webContents);
 			views.delete(tabId);
 			// A CLOSED TAB MUST NOT STAY ARMED: the capture writes into a directory the
 			// harness composed for a call that is now over, and the arm exists only as long
@@ -1322,6 +1537,7 @@ async function initializeBrowserHost(
 		const host = new BrowserHost({
 			registry,
 			cdp,
+			isActiveExtension: (id) => extensions.isActive(id),
 			approvals,
 			ownership,
 			downloads,
@@ -1503,6 +1719,14 @@ async function initializeBrowserHost(
 		// An initialization failure after wiring must not leave an old input
 		// router beside the next attempt's router or keep menu suppression alive.
 		rollback.add(detachChords);
+		// Vendor startup can open a welcome/sign-in tab through the real registry;
+		// restore only after every per-view callback has a fully constructed host.
+		// NOT awaited (review R1-3): worker readiness can take seconds (measured
+		// 2.0–8.4 s for 1Password) and must never delay the browser becoming
+		// usable; each extension reports its own status as it loads.
+		void extensions.restore().catch((error: unknown) => {
+			log(`[browser] extension restore failed: ${String(error)}`);
+		});
 
 		// Restore BEFORE any interaction is possible, and after the session handlers
 		// exist (the user agent must already be set: Electron documents that
@@ -1735,8 +1959,13 @@ async function initializeBrowserHost(
 			agentTabs: () => registry.agentTabCount(),
 			sessionCookies: () => restoreReport,
 			...(addressOverlay ? { addressOverlay: probeAddressOverlay } : {}),
+			// stopLocaleUpdates() stays stop()'s first statement, as in rollback: a
+			// locale push must not reach a host mid-teardown while extensions.dispose()
+			// is awaited (pinned by scripts/i18n/census-locale-switch.test.mjs).
 			stop: async () => {
 				stopLocaleUpdates();
+				removeWebStoreBridge();
+				await extensions.dispose();
 				detachChords();
 				host.flushHistory();
 				/*
@@ -1896,7 +2125,7 @@ async function initializeBrowserHost(
 			 * frame. Main only READS the line; nothing is sent back into the page.
 			 */
 			const injectPasskeyShim = (frame: WebFrameMain | undefined | null) => {
-				if (!passkeyNoticesArmed || !frame || frame.isDestroyed()) return;
+				if (!frame || frame.isDestroyed()) return;
 				// http(s) documents only: `about:blank`, `file:` and extension pages have
 				// no origin the notice could name, and nothing there needs a notice.
 				if (!HTTP_URL.test(frame.url)) return;
@@ -1907,6 +2136,7 @@ async function initializeBrowserHost(
 								tabId,
 								`${frame.processId}:${frame.routingId}`,
 							),
+							!webauthnInstall.configured,
 						),
 					)
 					.catch(() => {
@@ -1937,7 +2167,6 @@ async function initializeBrowserHost(
 					),
 			);
 			contents.on("console-message", (event) => {
-				if (!passkeyNoticesArmed) return;
 				// ONLY the message is used: the event's `frame` is the top frame even for a
 				// child's line (measured), so the frame is resolved from the nonce instead.
 				const { message } = event as unknown as { message: string };
@@ -2033,7 +2262,7 @@ async function initializeBrowserHost(
 				);
 				if (!decision.allow) {
 					log(
-						`[browser] refused a popup from a driven page: ${details.url} (${decision.reason})`,
+						`[browser] refused a popup from a driven page: [URL omitted] (${decision.reason})`,
 					);
 					// A DENIED POPUP IS AN ANSWER TO AN ARMED CALL, not silence: a page that
 					// downloads through `window.open` never reaches `will-download`, so
@@ -2131,7 +2360,7 @@ async function initializeBrowserHost(
 						openerIsLinkTab: isLinkTabRecord(record),
 					},
 				);
-				const seen = `${details.url} (disposition=${details.disposition}, opener=${hasOpener ? "yes" : "no"}`;
+				const seen = `[URL omitted] (disposition=${details.disposition}, opener=${hasOpener ? "yes" : "no"}`;
 				if (routed.route === "tab" && record) {
 					log(
 						`[browser] tab ${tabId} opened a popup: ${seen}, route=tab, owner=${routed.owner})`,
@@ -2161,7 +2390,7 @@ async function initializeBrowserHost(
 				// A refused route (the per-opener bound, an opener that died between the
 				// handler and now): the child exists and nothing owns it.
 				log(
-					`[browser] refused a popup from a driven page: ${details.url} (${routed.route === "deny" ? routed.reason : "opener_gone"})`,
+					`[browser] refused a popup from a driven page: [URL omitted] (${routed.route === "deny" ? routed.reason : "opener_gone"})`,
 				);
 				// The same answer as the open handler's denial: the child existed and the
 				// ROUTE refused it, so an armed call on this tab is told rather than left to
@@ -2211,13 +2440,17 @@ async function initializeBrowserHost(
 							label: item.label,
 							enabled: item.enabled,
 							click: () => {
+								// The user's own Back/Forward may return to an internal page
+								// (internal-pages.ts); a page's history.back() may not.
+								if (item.id === "back" || item.id === "forward")
+									armInternalNavigation(contents);
 								if (item.id === "back") navigation?.goBack();
 								else if (item.id === "forward") navigation?.goForward();
 								else if (item.id === "reload") contents.reload();
 								else if (item.id === "copy-link")
 									clipboard.writeText(params.linkURL ?? "");
 								else if (item.id === "copy-page")
-									clipboard.writeText(contents.getURL());
+									clipboard.writeText(displayUrlFor(contents));
 								else if (item.id === "undo") contents.undo();
 								else if (item.id === "redo") contents.redo();
 								else if (item.id === "cut") contents.cut();
@@ -2341,7 +2574,7 @@ async function initializeBrowserHost(
 				// an autonomous unapproved document occupied this same WebContents.
 				stopLogCapture(contents.id);
 				startLogCapture(contents.id);
-				log(`[browser] tab ${tabId} navigated to ${url}`);
+				log(`[browser] tab ${tabId} navigation committed`);
 				// The suggestion history records every committed top-level navigation;
 				// the store drops anything that is not HTTP(S), so `about:blank` and a
 				// refused scheme never enter it. This is a user-visible memory, not
@@ -2354,7 +2587,7 @@ async function initializeBrowserHost(
 			contents.on("did-navigate-in-page", (_event, url, isMainFrame) => {
 				if (!isMainFrame) return;
 				registry.bumpEpoch(tabId, false);
-				log(`[browser] tab ${tabId} navigated in page to ${url}`);
+				log(`[browser] tab ${tabId} same-document navigation committed`);
 				// A same-document route change is still a destination the user reached
 				// (a dashboard's `/settings` tab), and it is what they will retype.
 				host.recordHistoryVisit(url);
@@ -2428,8 +2661,8 @@ async function initializeBrowserHost(
 			popupChildren.add(child);
 			child.on("closed", () => popupChildren.delete(child));
 			const childContents = child.webContents;
-			childContents.setWindowOpenHandler((childDetails) => {
-				log(`[browser] refused a popup from a popup: ${childDetails.url}`);
+			childContents.setWindowOpenHandler(() => {
+				log("[browser] refused a popup from a popup: [URL omitted]");
 				// A GRANDCHILD POPUP IS A DENIAL LIKE THE OTHER TWO (agent review round 1,
 				// R1-1): a page that downloads through a popup opened from inside its popup
 				// never reaches `will-download`, so without this it got the exact silence
@@ -2523,7 +2756,7 @@ async function initializeBrowserHost(
 				// `tab_limit`: the agent-tab cap is shared with every other way a tab is
 				// made, and a page cannot be allowed to exhaust it silently.
 				log(
-					`[browser] refused a popup tab from tab ${opener.tabId}: ${details.url} (${error instanceof BrowserHostError ? error.code : "create_failed"})`,
+					`[browser] refused a popup tab from tab ${opener.tabId}: [URL omitted] (${error instanceof BrowserHostError ? error.code : "create_failed"})`,
 				);
 				return;
 			}
@@ -2534,10 +2767,9 @@ async function initializeBrowserHost(
 				.loadURL(details.url, referrer ? { httpReferrer: referrer } : undefined)
 				.then(
 					() => true,
-					(error: unknown) => {
-						const message =
-							error instanceof Error ? error.message : String(error);
-						// A link that is a DOWNLOAD (or a navigation the page cancelled) fails
+					() => {
+						// Error text is not logged: it can carry the page URL (payload/URL
+						// log removal). A link that is a DOWNLOAD (or a navigation the page cancelled) fails
 						// the load with ERR_ABORTED or, when the host's download policy
 						// refuses the file, ERR_FAILED (-2, measured) — and commits nothing:
 						// the view stays blank. There is no page to show or read, and an agent
@@ -2555,12 +2787,12 @@ async function initializeBrowserHost(
 							})
 						) {
 							log(
-								`[browser] popup tab ${created.tabId} closed: ${details.url} produced no page (${message})`,
+								`[browser] popup tab ${created.tabId} closed: [URL omitted] produced no page (load_failed)`,
 							);
 							return false;
 						}
 						log(
-							`[browser] popup tab ${created.tabId} did not finish loading ${details.url}: ${message}`,
+							`[browser] popup tab ${created.tabId} did not finish loading (load_failed)`,
 						);
 						return true;
 					},

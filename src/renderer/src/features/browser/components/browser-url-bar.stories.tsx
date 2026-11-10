@@ -34,6 +34,7 @@ const menu = (
 		onOpenApprovals={() => false}
 		showApprovalsFolded={false}
 		canControlPage
+		onManageExtensions={() => {}}
 	/>
 );
 
@@ -124,6 +125,7 @@ export const Narrow: Story = {
 				onOpenApprovals={() => false}
 				showApprovalsFolded={false}
 				canControlPage
+				onManageExtensions={() => {}}
 			/>
 		),
 	},

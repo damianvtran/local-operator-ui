@@ -1,6 +1,6 @@
 {
   "name": "local-operator-ui",
-  "version": "0.52.13",
+  "version": "0.53.1",
   "productName": "Local Operator",
   "description": "User interface for AI agent assistants that run Python code safely on your device through an intuitive chat interface. Supports local and cloud LLM models with built-in security features.",
   "main": "./out/main/index.js",
@@ -135,10 +135,12 @@
     "@electron-toolkit/utils": "^4.0.0",
     "@xterm/headless": "6.0.0",
     "dotenv": "^16.5.0",
+    "electron-chrome-extensions": "4.10.0",
     "electron-log": "^4.4.8",
     "electron-updater": "^6.8.9",
     "node-pty": "1.1.0",
     "posthog-node": "^4.11.3",
+    "yauzl": "3.4.0",
     "zod": "^3.24.2"
   },
   "//types-node-pin": "Declared in devDependencies and pinned exactly, rather than left to the peer that used to supply it. @electron-toolkit/tsconfig peers on `@types/node: *`, so a full re-resolution floats it to whatever major is current; a range here would re-float the same way. It matters because the renderer typecheck compiles against the lib level this package implies: 22.x carries the es2020 compatibility shims that declare `Array.prototype.at`, 24.x dropped them, and floating it surfaced two TS2550 errors in files nothing here touches. Declaring it makes that a reviewed line instead of a resolution accident.",
@@ -180,6 +182,7 @@
     "@types/react-dom": "18.3.5",
     "@types/react-syntax-highlighter": "^15.5.13",
     "@types/xlsx": "^0.0.36",
+    "@types/yauzl": "2.10.3",
     "@uiw/codemirror-extensions-langs": "^4.23.10",
     "@uiw/react-codemirror": "^4.23.10",
     "@vitejs/plugin-react": "^4.3.4",
@@ -255,6 +258,9 @@
   "pnpm": {
     "overrides": {
       "jsdom>nwsapi": "2.2.28"
+    },
+    "patchedDependencies": {
+      "electron-chrome-extensions@4.10.0": "patches/electron-chrome-extensions@4.10.0.patch"
     }
   },
   "build": {

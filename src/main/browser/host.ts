@@ -3,11 +3,13 @@ import type {
 	AddressHistoryRequest,
 	AddressHistoryResponse,
 } from "../../shared/browser-address-history";
+import { isExtensionId } from "../../shared/browser-extensions";
 import type { PasskeyNoticeView } from "../../shared/browser-passkey-notice";
 import type {
 	HumanTabAction,
 	HumanTabActionOutcome,
 } from "../../shared/browser-tab-action";
+import { parseInternalUrl } from "../../shared/internal-pages";
 import type { BrowserActionContext, HostFacts } from "./actions/context";
 import { requesterOf } from "./actions/context";
 import * as downloadActions from "./actions/download";
@@ -30,6 +32,13 @@ import {
 	type BrowserHistoryStore,
 	createBrowserHistoryStore,
 } from "./history-store";
+import {
+	armInternalNavigation,
+	displayTitleFor,
+	displayUrlFor,
+	internalDocumentUrl,
+	internalPageOf,
+} from "./internal-pages";
 import { PageControls, type PageZoomCommand } from "./page-controls";
 import { COMMAND_TIMEOUTS_S, type Method, PROTO_VERSION } from "./protocol";
 import type { ContentRect, TabRecord } from "./registry";
@@ -463,6 +472,10 @@ export interface BrowserHostOptions {
 	/** The active tab's passkey notice, from the wiring that owns the shim's state
 	 * (`passkey-notice.ts`). Absent means none: the projection then carries null. */
 	passkeyNotice?: (tabId: number) => PasskeyNoticeView | null;
+	/** Whether an extension is installed AND enabled right now (the extension
+	 * manager's `isActive`). Lets the USER type one of its pages into a user tab
+	 * (review U1c); absent = no extension pages. */
+	isActiveExtension?: (id: string) => boolean;
 	/** S4b: the popout's health, supplied by the wiring that owns the overlay
 	 * controller. Absent means no controller was built, which is `suspend`. */
 	addressOverlayMode?: () => {
@@ -536,6 +549,7 @@ export class BrowserHost implements BrowserActionContext {
 	private readonly approvalsCard: BrowserHostOptions["approvalsCard"];
 	/** Constructor-assigned, not a field initialiser: see `tabAudio` above. */
 	private readonly passkeyNotice: BrowserHostOptions["passkeyNotice"];
+	private readonly isActiveExtension: BrowserHostOptions["isActiveExtension"];
 	/** S4b's popout health, read from the controller (or the launch's platform
 	 * answer when no controller exists). The strip reads this from the same
 	 * projection as the tabs, so the renderer has one source for "child or
@@ -584,6 +598,7 @@ export class BrowserHost implements BrowserActionContext {
 		this.forgetSiteData = options.forgetSiteData;
 		this.approvalsCard = options.approvalsCard;
 		this.passkeyNotice = options.passkeyNotice;
+		this.isActiveExtension = options.isActiveExtension;
 		this.addressOverlayMode =
 			options.addressOverlayMode ??
 			(() => ({ mode: "suspend", reason: "unavailable" }));
@@ -1055,9 +1070,10 @@ export class BrowserHost implements BrowserActionContext {
 					// English under every locale. Reuses the strip's key, which every
 					// shipped locale already translates, rather than minting a twin that
 					// would have to be translated and audited again.
-					title:
-						this.titleForChrome(entry.title) ||
-						t("ui.browser.browser_tab_strip.new_tab"),
+					title: parseInternalUrl(entry.url)
+						? t("ui.browser.extensions.page_title")
+						: this.titleForChrome(entry.title) ||
+							t("ui.browser.browser_tab_strip.new_tab"),
 					url: entry.url,
 					owner: entry.owner,
 					// WHICH CONVERSATION THIS TAB BELONGS TO, and the ONLY new field this
@@ -1122,9 +1138,12 @@ export class BrowserHost implements BrowserActionContext {
 			passkeyNotice: active
 				? (this.passkeyNotice?.(active.tabId) ?? null)
 				: null,
-			url: active ? active.view.webContents.getURL() : "",
+			// Internal pages project their lop:// URL, never the nonce document.
+			url: active ? displayUrlFor(active.view.webContents) : "",
 			title: active
-				? this.titleForChrome(active.view.webContents.getTitle())
+				? internalPageOf(active.view.webContents)
+					? t("ui.browser.extensions.page_title")
+					: this.titleForChrome(displayTitleFor(active.view.webContents))
 				: "",
 			loading: active ? active.view.webContents.isLoading() : false,
 			canGoBack: navigation ? navigation.canGoBack() : false,
@@ -1920,6 +1939,71 @@ export class BrowserHost implements BrowserActionContext {
 				"the active tab changed before the address was submitted",
 			);
 		}
+		// The browser's own pages (lop://extensions). Reached ONLY from here — the
+		// desktop renderer's sender-checked navigate — never from the agent RPC
+		// (`goto`/`open` keep the http(s)-only rule) or from web content
+		// (renderer-initiated about: navigations are refused in index.ts). See
+		// internal-pages.ts for why this is a history entry and not a protocol.
+		const internal = parseInternalUrl(rawUrl);
+		if (internal) {
+			if (record.owner !== "user")
+				throw new BrowserHostError(
+					"owner_refused",
+					"the browser's own pages open only in your own tabs",
+				);
+			const contents = record.view.webContents;
+			const current = internalPageOf(contents);
+			const navigation = contents.navigationHistory;
+			const index = navigation?.getActiveIndex?.() ?? -1;
+			const previous =
+				index > 0 ? navigation?.getEntryAtIndex?.(index - 1)?.url : undefined;
+			// U11: details → list when the entry behind this one IS the list is
+			// a history Back, as Chrome's own "back" affordance would be — no
+			// stack growth, Forward returns to the details, and the toolbar's
+			// focus restore lands on the card the user came from.
+			if (
+				navigation &&
+				current?.id &&
+				!internal.id &&
+				previous === internalDocumentUrl(internal)
+			) {
+				armInternalNavigation(contents);
+				navigation.goBack();
+				return this.chromeState();
+			}
+			// Armed immediately before main's own load: only this commit may show
+			// the page (internal-pages.ts, QA Q5).
+			armInternalNavigation(contents);
+			await contents.loadURL(internalDocumentUrl(internal));
+			this.onChanged();
+			return this.chromeState();
+		}
+		// U1c: a USER may type a page of an installed+enabled extension (its
+		// welcome/sign-in page), as in Chrome. Agents cannot: they never reach
+		// this method, and registry.requireSurface refuses extension documents.
+		// Parsed here rather than via extensions/adapter.ts, which would pull the
+		// electron-chrome-extensions runtime into every host import.
+		let extensionId: string | null = null;
+		try {
+			const parsed = new URL(rawUrl.trim());
+			if (
+				parsed.protocol === "chrome-extension:" &&
+				isExtensionId(parsed.hostname)
+			)
+				extensionId = parsed.hostname;
+		} catch {
+			/* Not a URL: the web-address path below reports it. */
+		}
+		if (extensionId) {
+			if (record.owner !== "user" || !this.isActiveExtension?.(extensionId))
+				throw new BrowserHostError(
+					"nav_failed",
+					"only pages of an installed, turned-on extension can open here",
+				);
+			await record.view.webContents.loadURL(new URL(rawUrl).href);
+			this.onChanged();
+			return this.chromeState();
+		}
 		let url: URL;
 		try {
 			url = new URL(rawUrl.includes("://") ? rawUrl : `https://${rawUrl}`);
@@ -1988,6 +2072,8 @@ export class BrowserHost implements BrowserActionContext {
 		const contents = this.registry.activeTab?.view.webContents;
 		// Falls back to a plain reload rather than doing nothing: a hard reload that
 		// silently vanishes is worse than one that keeps the cache (review R10).
+		// The user's own reload keeps an internal page shown (its commit is armed).
+		if (contents && internalPageOf(contents)) armInternalNavigation(contents);
 		if (hard && contents?.reloadIgnoringCache) contents.reloadIgnoringCache();
 		else contents?.reload();
 		return this.chromeState();
@@ -1999,9 +2085,16 @@ export class BrowserHost implements BrowserActionContext {
 	}
 
 	historyActive(direction: "back" | "forward"): Record<string, unknown> {
-		const navigation =
-			this.registry.activeTab?.view.webContents.navigationHistory;
-		if (navigation) {
+		const contents = this.registry.activeTab?.view.webContents;
+		const navigation = contents?.navigationHistory;
+		if (contents && navigation) {
+			// The user's own Back/Forward: the one traversal allowed to show an
+			// internal page again (a page's history.back() is not — QA Q6).
+			const able =
+				direction === "back"
+					? navigation.canGoBack()
+					: navigation.canGoForward();
+			if (able) armInternalNavigation(contents);
 			if (direction === "back") navigation.goBack();
 			else navigation.goForward();
 		}

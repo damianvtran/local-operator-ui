@@ -2464,7 +2464,7 @@
 		"placeholders": {
 			"recipient": "the recipient's full display label, already composed exactly as the conversation shows it: an agent with its owner (\"Aida (Ben Tran)\") or an unnamed agent (\"Ben Tran's chief of staff\"). Never add the owner again around it."
 		},
-		"note": "Muted status line under a message: this recipient agent has not finished screening it. A state, not an error; never imply the sender did something wrong. Shown to the sender and, with no reason known, to the owner."
+		"note": "Muted status line, shown in the delivery details popover: this recipient agent has not passed the message on yet, and this viewer cannot tell whether it is still being screened or held for its owner's review. Must not claim it is being screened. A state, not an error; never imply the sender did something wrong."
 	},
 	"ui.teamBridge.delivery.held_screening_unavailable": {
 		"role": "message delivery status line",
@@ -2473,16 +2473,26 @@
 		"placeholders": {
 			"recipient": "the recipient's full display label, already composed exactly as the conversation shows it: an agent with its owner (\"Aida (Ben Tran)\") or an unnamed agent (\"Ben Tran's chief of staff\"). Never add the owner again around it."
 		},
-		"note": "Muted status line under a message: this recipient agent has not finished screening it. A state, not an error; never imply the sender did something wrong. Owner view only: use a complete second sentence to explain the reason. Do not use an em dash or an ellipsis to join the sentences."
+		"note": "Owner view only: this recipient agent's screening could not run yet and retries automatically. Two complete sentences; do not use an em dash or an ellipsis to join them. Never alarmist."
 	},
 	"ui.teamBridge.delivery.held_awaiting_review": {
 		"role": "message delivery status line",
 		"tone": "neutral, calm",
 		"length": "One line; may wrap",
 		"placeholders": {
+			"recipient": "the recipient's full display label, already composed exactly as the conversation shows it: an agent with its owner (\"Aida (Ben Tran)\") or an unnamed agent (\"Ben Tran's chief of staff\"). Never add the owner again around it.",
+			"person": "the recipient agent's owner display name, verbatim."
+		},
+		"note": "Owner view: this recipient agent's screening held the message for its owner's review; it is NOT still being screened. Two complete sentences; do not use an em dash or an ellipsis to join them."
+	},
+	"ui.teamBridge.delivery.held_awaiting_review_unnamed": {
+		"role": "message delivery status line",
+		"tone": "neutral, calm",
+		"length": "One line; may wrap",
+		"placeholders": {
 			"recipient": "the recipient's full display label, already composed exactly as the conversation shows it: an agent with its owner (\"Aida (Ben Tran)\") or an unnamed agent (\"Ben Tran's chief of staff\"). Never add the owner again around it."
 		},
-		"note": "Muted status line under a message: this recipient agent has not finished screening it. A state, not an error; never imply the sender did something wrong. Owner view only: use a complete second sentence to explain the reason. Do not use an em dash or an ellipsis to join the sentences."
+		"note": "Same as ui.teamBridge.delivery.held_awaiting_review when the owner's name is unknown: 'its owner' is the recipient agent's owner."
 	},
 	"ui.teamBridge.delivery.pending": {
 		"role": "message delivery status line",
@@ -2514,7 +2524,7 @@
 		"tone": "explanatory, reassuring",
 		"length": "2 short sentences",
 		"placeholders": {},
-		"note": "Identical for every hold. Explains the message is queued for screening and will be delivered or refused without the sender doing anything; must not suggest rephrasing or resending."
+		"note": "Identical for every hold. Explains each agent screens messages before passing them on, and this one is either still being screened or held for the agent owner's review. Must not promise automatic delivery, and must not suggest rephrasing or resending."
 	},
 	"ui.teamBridge.delivery.info_label": {
 		"role": "icon-button accessible name",
@@ -2522,6 +2532,65 @@
 		"length": "3-5 words",
 		"placeholders": {},
 		"note": "Screen-reader name of the info icon that opens the moderation tooltip."
+	},
+	"ui.teamBridge.delivery.summary.delivered": {
+		"role": "segment of a one-line message delivery summary",
+		"tone": "neutral, factual",
+		"length": "2-4 words; segments are joined on one line",
+		"placeholders": {
+			"count": "number of recipient agents in this state. Use the locale's ICU plural rules."
+		},
+		"note": "\"Delivered to 3\": how many recipient agents received the message. Keep it short; the noun (agents) is implied. Shown under a message to every conversation member; never names recipients or reasons."
+	},
+	"ui.teamBridge.delivery.summary.screening": {
+		"role": "segment of a one-line message delivery summary",
+		"tone": "neutral, factual",
+		"length": "2-4 words; segments are joined on one line",
+		"placeholders": {
+			"count": "number of recipient agents in this state. Use the locale's ICU plural rules."
+		},
+		"note": "\"2 being screened\": recipient agents that have not reported an outcome yet: screening in progress, retrying screening that could not run, or screened with delivery still in flight. Read as a state of the messages, not a noun (\"one screening\"). Shown under a message to every conversation member; never names recipients or reasons."
+	},
+	"ui.teamBridge.delivery.summary.held": {
+		"role": "segment of a one-line message delivery summary",
+		"tone": "neutral, factual",
+		"length": "2-4 words; segments are joined on one line",
+		"placeholders": {
+			"count": "number of recipient agents in this state. Use the locale's ICU plural rules."
+		},
+		"note": "\"2 held for review\": recipient agents whose screening held the message for their owner's review. Shown under a message to every conversation member; never names recipients or reasons."
+	},
+	"ui.teamBridge.delivery.summary.not_reviewed": {
+		"role": "segment of a one-line message delivery summary",
+		"tone": "neutral, factual",
+		"length": "2-4 words; segments are joined on one line",
+		"placeholders": {
+			"count": "number of recipient agents in this state. Use the locale's ICU plural rules."
+		},
+		"note": "\"1 not reviewed\": holds the owner never reviewed within the hub's review window; the message was not delivered to them. Shown under a message to every conversation member; never names recipients or reasons."
+	},
+	"ui.teamBridge.delivery.summary.not_delivered": {
+		"role": "segment of a one-line message delivery summary",
+		"tone": "neutral, factual",
+		"length": "2-4 words; segments are joined on one line",
+		"placeholders": {
+			"count": "number of recipient agents in this state. Use the locale's ICU plural rules."
+		},
+		"note": "\"2 not delivered\": recipient agents whose moderation refused the message. Not the sender's error; must not sound accusatory. Shown under a message to every conversation member; never names recipients or reasons."
+	},
+	"ui.teamBridge.delivery.summary.separator": {
+		"role": "separator between summary segments",
+		"tone": "neutral",
+		"length": "one character with surrounding spaces",
+		"placeholders": {},
+		"note": "Joins the segments of the delivery summary ('Delivered to 3 · 2 screening'). Keep a middle dot unless the locale has a better list separator for terse status text."
+	},
+	"ui.teamBridge.delivery.summary.details_label": {
+		"role": "dialog accessible name",
+		"tone": "neutral",
+		"length": "2-3 words",
+		"placeholders": {},
+		"note": "Screen-reader name of the popover that lists, per recipient agent, whether the message was delivered, held or refused."
 	},
 	"ui.teamBridge.attachmentCard.list": {
 		"role": "accessible label for the structured attachment list; visible label for a count-only audit receipt",
@@ -3129,5 +3198,30 @@
 		"length": "Three to five words",
 		"placeholders": {},
 		"note": "Shown when four or more people are writing at once; names are deliberately omitted. No trailing ellipsis."
+	},
+	"ui.teamBridge.delivery.held_screening": {
+		"role": "message delivery status line",
+		"tone": "neutral, calm",
+		"length": "One line; may wrap",
+		"placeholders": {
+			"recipient": "the recipient's full display label, already composed exactly as the conversation shows it: an agent with its owner (\"Aida (Ben Tran)\") or an unnamed agent (\"Ben Tran's chief of staff\"). Never add the owner again around it."
+		},
+		"note": "Shown only to the message's sender, in the delivery details popover: this recipient agent is still screening the message (or will retry screening). Matches the summary's \"being screened\" count. Never states a reason or class."
+	},
+	"ui.teamBridge.delivery.held_not_reviewed": {
+		"role": "message delivery status line",
+		"tone": "neutral, calm, actionable",
+		"length": "One or two sentences; may wrap",
+		"placeholders": {
+			"recipient": "the recipient's full display label, already composed exactly as the conversation shows it: an agent with its owner (\"Aida (Ben Tran)\") or an unnamed agent (\"Ben Tran's chief of staff\"). Never add the owner again around it."
+		},
+		"note": "Shown only to the sender, in the delivery details popover, for a recipient whose screening or owner review has not settled a day after sending. Say plainly that it was not delivered, that it will arrive only if the recipient agent's owner releases it, and what the sender can do (send again or contact them). Do not promise it will never arrive: a late decision can still deliver it."
+	},
+	"ui.teamBridge.delivery.summary.not_reviewed_note": {
+		"role": "footnote under the delivery details list",
+		"tone": "neutral, calm, actionable",
+		"length": "Two short sentences",
+		"placeholders": {},
+		"note": "Shown to the sender when the summary counts messages not reviewed within a day that the list above cannot name. Explains the outcome (arrives only if the recipient's owner releases it) and the next step. No count, no names."
 	}
 }

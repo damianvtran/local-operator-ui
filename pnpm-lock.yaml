@@ -7,6 +7,11 @@ settings:
 overrides:
   jsdom>nwsapi: 2.2.28
 
+patchedDependencies:
+  electron-chrome-extensions@4.10.0:
+    hash: 7a085ae6b22bf46e50d77f293919f89e978b35aaa59b2d876424decfc8cc63e3
+    path: patches/electron-chrome-extensions@4.10.0.patch
+
 importers:
 
   .:
@@ -20,6 +25,9 @@ importers:
       dotenv:
         specifier: ^16.5.0
         version: 16.5.0
+      electron-chrome-extensions:
+        specifier: 4.10.0
+        version: 4.10.0(patch_hash=87fc2b69af76387ca1c9f22e79787c8910f4f7685e9a63b5f2031457b8a29827)
       electron-log:
         specifier: ^4.4.8
         version: 4.4.8
@@ -32,6 +40,9 @@ importers:
       posthog-node:
         specifier: ^4.11.3
         version: 4.11.3
+      yauzl:
+        specifier: 3.4.0
+        version: 3.4.0
       zod:
         specifier: ^3.24.2
         version: 3.24.2
@@ -132,6 +143,9 @@ importers:
       '@types/xlsx':
         specifier: ^0.0.36
         version: 0.0.36
+      '@types/yauzl':
+        specifier: 2.10.3
+        version: 2.10.3
       '@uiw/codemirror-extensions-langs':
         specifier: ^4.23.10
         version: 4.23.10(@codemirror/autocomplete@6.18.6)(@codemirror/language-data@6.5.1)(@codemirror/language@6.11.1)(@codemirror/legacy-modes@6.5.0)(@codemirror/state@6.5.2)(@codemirror/view@6.37.1)(@lezer/common@1.2.3)(@lezer/highlight@1.2.1)(@lezer/javascript@1.4.21)(@lezer/lr@1.4.2)
@@ -2910,6 +2924,9 @@ packages:
   '@types/yargs@17.0.33':
     resolution: {integrity: sha512-WpxBCKWPLr4xSsHgz511rFJAM+wS28w2zEO1QDNY5zM/S8ok70NNfztH0xwhqKyaK0OHCbN98LDAZuy1ctxDkA==}
 
+  '@types/yauzl@2.10.3':
+    resolution: {integrity: sha512-oJoftv0LSuaDZE3Le4DbKX+KS9G36NzOeSap90UIK0yMA/NhKJhqlSGtNDORNRaIbQfzjXDrQa0ytJ6mNRGz/Q==}
+
   '@typescript/typescript-aix-ppc64@7.0.2':
     resolution: {integrity: sha512-MTKKkWB7p/0E9xi1d1tHtZ5PiLkGEMIq88pK2CubZjOsLtYTLqhgIgi6zepFa+9GHZ6h05NMCkQxGKiPXMxXtQ==}
     engines: {node: '>=16.20.0'}
@@ -3906,6 +3923,9 @@ packages:
     resolution: {integrity: sha512-LrLK65QX5PUYYODXqp23FKrV7CILTtVY7mrJckNknO9jLNSMiqFkKbSMiDRw4CjOADMPVDdWLxY4mezOZWswxg==}
     engines: {node: '>=14.0.0'}
     hasBin: true
+
+  electron-chrome-extensions@4.10.0:
+    resolution: {integrity: sha512-yGOGqDN38Xn8hP1jGSWUNoQJSmgZvDltZn8ZVFo8GcQQD1DI4NtA/Fv/BzYzUhpevX8C+4aZI3LC/lqzN+/RFQ==}
 
   electron-log@4.4.8:
     resolution: {integrity: sha512-QQ4GvrXO+HkgqqEOYbi+DHL7hj5JM+nHi/j+qrN9zeeXVKy8ZABgbu4CnG+BBqDZ2+tbeq9tUC4DZfIWFU5AZA==}
@@ -5345,6 +5365,9 @@ packages:
     resolution: {integrity: sha512-eRWB5LBz7PpDu4PUlwT0PhnQfTQJlDDdPa35urV4Osrm0t0AqQFGn+UIkU3klZvwJ8KPO3VbBFsXquA6p6kqZw==}
     engines: {node: '>=12', npm: '>=6'}
 
+  pend@1.2.0:
+    resolution: {integrity: sha512-F3asv42UuXchdzt+xXqfW1OGlVBe+mxa2mqI0pg5yAHZPvFmY3Y6drSf/GQ1A86WgWEN9Kzh/WrgKa6iGcHXLg==}
+
   picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
 
@@ -6474,6 +6497,10 @@ packages:
 
   yargs@17.7.2:
     resolution: {integrity: sha512-7dSzzRQ++CKnNI/krKnYRV7JKKPUXMEh61soaHKg9mrWEhzFWhFnxPxGl+69cD1Ou63C13NUPCnmIcrvqCuM6w==}
+    engines: {node: '>=12'}
+
+  yauzl@3.4.0:
+    resolution: {integrity: sha512-jIH9yLR9wqr0wOS0TpBvo/g/2UgZH5qePVbjgRliiF0BYvOZyaBknKsF+x9Iht0O6sqgnB93rCICdOZFecJuDw==}
     engines: {node: '>=12'}
 
   yocto-queue@0.1.0:
@@ -9428,6 +9455,10 @@ snapshots:
     dependencies:
       '@types/yargs-parser': 21.0.3
 
+  '@types/yauzl@2.10.3':
+    dependencies:
+      '@types/node': 22.14.1
+
   '@typescript/typescript-aix-ppc64@7.0.2':
     optional: true
 
@@ -10505,6 +10536,12 @@ snapshots:
       yargs: 17.7.2
     transitivePeerDependencies:
       - electron-builder-squirrel-windows
+      - supports-color
+
+  electron-chrome-extensions@4.10.0(patch_hash=87fc2b69af76387ca1c9f22e79787c8910f4f7685e9a63b5f2031457b8a29827):
+    dependencies:
+      debug: 4.4.0
+    transitivePeerDependencies:
       - supports-color
 
   electron-log@4.4.8: {}
@@ -12470,6 +12507,8 @@ snapshots:
 
   pe-library@0.4.1: {}
 
+  pend@1.2.0: {}
+
   picocolors@1.1.1: {}
 
   picomatch@2.3.1: {}
@@ -13752,6 +13791,10 @@ snapshots:
       string-width: 4.2.3
       y18n: 5.0.8
       yargs-parser: 21.1.1
+
+  yauzl@3.4.0:
+    dependencies:
+      pend: 1.2.0
 
   yocto-queue@0.1.0: {}
 
