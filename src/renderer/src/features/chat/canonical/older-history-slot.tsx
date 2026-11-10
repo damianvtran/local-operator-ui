@@ -421,3 +421,20 @@ export const OlderHistorySlot: FC<OlderHistorySlotProps> = ({
 		</div>
 	);
 };
+
+/**
+ * The slot's BOX with nothing in it, for a pane painting its window's cached
+ * rows (`stale`).
+ *
+ * A cached paint carries no paging cursor (its rows are trimmed), so the real
+ * slot would read `exhausted` and say "Start of conversation" over a transcript
+ * that may be a thousand messages in - which is why it is withheld there. But
+ * withholding the BOX moved the whole conversation by its height when the page
+ * landed and the slot mounted (44px: `h-7` plus `mb-4`), which a pane that now
+ * paints before the page can no longer hide. The same box, empty, is mounted in
+ * its place, so the slot's arrival changes what is IN it and never where
+ * anything else is. Hidden from assistive technology: it states nothing.
+ */
+export const OlderHistorySlotReserve: FC = () => (
+	<div aria-hidden="true" className={BOX} />
+);

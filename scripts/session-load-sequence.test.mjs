@@ -925,13 +925,14 @@ test("the load sequence, mid-cycle: what each commit paints", async (t) => {
 /*
  * THE WARM (CACHED) LOAD: the same drive with this window's paint cache seeded
  * for the conversation, which is the switch a reader makes after having looked
- * at the conversation once in this window. The cache is what the 2026-09-26
- * held-first-paint work withheld from the screen: the hold must keep the
- * window's own memory off the screen until the page lands, so the FIRST
- * contentful commit is the page's - bar, in-flight cycle and working line
- * together - rather than a cached paint the snapshot then corrects.
+ * at the conversation once in this window. The 2026-09-26 held-first-paint work
+ * withheld the cache from the screen until the page landed; that hold is retired
+ * (operator report, 2026-11-10: the page takes about a second, and the pane was
+ * blank for all of it). The cached rows now paint in the first commit that has
+ * them, the pane says they are the cache's (`stale`), and the page's own commit
+ * replaces them and retires the claim.
  */
-test("the warm load: the window's memory stays off the screen until the page", async (t) => {
+test("the warm load: the window's memory paints at once and the page replaces it", async (t) => {
 	__resetPaintCache();
 	const seeded = applyHistoryPage(EMPTY_TRANSCRIPT, {
 		entries: PAGE_ENTRIES,
@@ -950,34 +951,31 @@ test("the warm load: the window's memory stays off the screen until the page", a
 	console.log("\nthe warm load sequence:");
 	for (const row of records) {
 		console.log(
-			`  ${row.step.padEnd(20)} commits=${String(row.commit).padStart(3)} rows=${String(row.rows).padStart(3)} bars=${JSON.stringify(row.bars)} workingLine=${JSON.stringify(row.workingLine)} placeholder=${row.placeholder} diag=${JSON.stringify(row.diag)}`,
+			`  ${row.step.padEnd(20)} commits=${String(row.commit).padStart(3)} rows=${String(row.rows).padStart(3)} bars=${JSON.stringify(row.bars)} workingLine=${JSON.stringify(row.workingLine)} placeholder=${row.placeholder}`,
 		);
 		console.log(`      ids: ${JSON.stringify(row.ids)}`);
 	}
 
 	/*
-	 * The hold: the cache's rows may not paint before the page - and `stale` is
-	 * asserted rather than logged (agent review round 1, minor 1), because
-	 * `rows === 0` alone cannot tell a HELD cached pane from a pane that never
-	 * had a cache: a seed discarded at mount would read identically. `stale`
-	 * true is the shipped statement that this pane knows of cached rows it is
-	 * withholding, and it clears in the page's own commit.
+	 * The paint: the cache's rows are on screen before the page, no loading claim
+	 * stands beside them, and `stale` is asserted because it is what tells the
+	 * caption (and the working line's stand-down) that these rows are the
+	 * window's memory rather than the conversation.
 	 */
 	const before = records.find((row) => row.step === "open");
-	assert.equal(
-		before.rows,
-		0,
-		`cached rows painted before the page: ${before.rows}`,
+	assert.ok(
+		before.rows > 0,
+		`the cached rows are on screen before the page: ${before.rows}`,
 	);
 	assert.equal(
 		before.placeholder,
-		true,
-		"the hold's loading claim stands while the page is owed",
+		false,
+		"no loading claim stands over rows that are already painted",
 	);
 	assert.equal(
 		before.diag?.stale,
 		true,
-		"the pane is withholding a cached paint, not missing one",
+		"the painted rows are the cache's, and the pane says so",
 	);
 	/* The page's commit is contentful, and the pane says which paint it is. */
 	const final = records.at(-1);

@@ -1779,14 +1779,21 @@ invisible on others. What says "this may be behind" is one sentence,
 no shadow. It is present from the first painted frame and removed in the same
 commit as the reconciled rows, so the two never disagree.
 
-That sentence lives OUTSIDE the scrolling content, as the pane column's first
-child above the transcript's scroll box. Placed inside it — as it first was —
-it is the oldest thing in a bottom-anchored `flex-col-reverse` scroller, so on
-the transcripts a cache exists for (only a conversation taller than the pane is
-ever cached) it renders thousands of pixels above the fold: measured at
-1280x600 on a 36-row stale transcript, its rect sat at top -2028 in a 560px
-pane. The state was then indistinguishable from a live one, which is the one
-thing this caption exists to prevent.
+That sentence lives in the transcript's FOOT slot, the row reserved at the
+newest edge of the scroller (`data-lo-stale-caption`, `font-sans text-meta
+text-ink-dim`, one line, truncated). Not at the oldest edge: inside a
+bottom-anchored `flex-col-reverse` scroller the first child renders thousands of
+pixels above the fold on the transcripts a cache exists for (measured at
+1280x600 on a 36-row stale transcript, top -2028 in a 560px pane), so the state
+was indistinguishable from a live one. Not above the scroller either, which is
+where it was hoisted to: a row that exists only while the paint is cached
+changes the scroller's height when it goes (33.4px, measured), and a stale
+paint now PAINTS at once, so that move happens in front of the reader. The foot
+slot exists for every conversation with rows, so the caption's arrival and
+removal move nothing. The trade: a reader who scrolls up through the cached
+rows during the snapshot wait (median 0.96 s) scrolls the caption off screen.
+The older-history slot is reserved empty while the paint is cached for the same
+reason (`OlderHistorySlotReserve`).
 
 **A loading state is not an empty state.** "There are no messages" is a claim
 about the conversation, and making it before the transcript resolves is how the
