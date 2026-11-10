@@ -18,37 +18,112 @@ import type { ErrorInfo } from "react";
  * WHAT IT CARRIES. The error's own stack (its first line is the message) and
  * React's component stack. In a production build the component names are
  * minified, but each frame still carries its bundle location, which maps back
- * to source; in development they are the real names.
+ * to source; in development they are the real names. A thrown value that is
+ * not an `Error` is described by its type tag and top-level key NAMES only,
+ * never its contents: this line lands in a file users send us, and an
+ * arbitrary object (a response, a payload) may carry data the console line
+ * never put on disk before - Chromium flattened it to `[object Object]`.
  *
- * CONSTRAINTS. It must never throw (it runs inside the boundary's error path,
- * where a second throw would mask the first), so anything that is not an Error
- * is stringified defensively. It adds nothing a renderer console did not
- * already receive: no props, no state, no message bodies.
+ * NEVER THROWS (agent review round 1, F1). This runs inside the boundary's
+ * own error path: a throw here replaces the original error and, at the app
+ * root where nothing sits above the boundary, unmounts the whole tree. Every
+ * read of the thrown value can run user code (getters, `toString`, a revoked
+ * Proxy), so the whole body is guarded and falls back to a fixed line.
+ *
+ * BOUNDED (F2). Each part is capped separately, so an enormous message cannot
+ * push the component stack - the part this exists for - out of the line. The
+ * caps are sized from frame arithmetic, not a measured production stack (none
+ * was available): React's component stack is one ~60-150 character frame per
+ * ancestor, and this app's deepest trees (shell, providers, route, page, list,
+ * row, popover) are on the order of 100 ancestors, about 15 KB, so 24 KB holds
+ * a real one with room to spare. 8 KB holds a JavaScript stack (V8 keeps 10
+ * frames by default) plus a long message. 32 KB per line in total keeps one
+ * catch far from the logger's 10 MB rotation.
  */
+export const BOUNDARY_ERROR_CAP = 8 * 1024;
+export const BOUNDARY_COMPONENT_STACK_CAP = 24 * 1024;
+const LABEL = "Error caught by ErrorBoundary:";
+const UNFORMATTABLE = `${LABEL} (unformattable error)`;
+/** Key names past this many are summarised by count: the names identify the
+ * shape, and a giant object's key list is as unbounded as its contents. */
+const KEY_NAMES_SHOWN = 20;
+
 export function formatBoundaryError(
 	error: unknown,
 	info: Pick<ErrorInfo, "componentStack"> | null | undefined,
 ): string {
-	let head: string;
-	if (error instanceof Error) {
-		const stack = typeof error.stack === "string" ? error.stack : "";
-		// Some engines omit the message from `stack`; keep it either way.
-		head = stack.includes(error.message)
-			? stack
-			: `${String(error)}\n${stack}`.trimEnd();
-	} else {
-		head = safeString(error);
+	try {
+		const head = cap(describeThrown(error), BOUNDARY_ERROR_CAP);
+		const componentStack = readComponentStack(info);
+		return componentStack
+			? `${LABEL} ${head}\nComponent stack:\n    ${cap(componentStack, BOUNDARY_COMPONENT_STACK_CAP)}`
+			: `${LABEL} ${head}\nComponent stack: (none reported)`;
+	} catch {
+		return UNFORMATTABLE;
 	}
-	const componentStack = info?.componentStack?.trim();
-	return componentStack
-		? `Error caught by ErrorBoundary: ${head}\nComponent stack:\n    ${componentStack}`
-		: `Error caught by ErrorBoundary: ${head}\nComponent stack: (none reported)`;
+}
+
+function describeThrown(error: unknown): string {
+	if (error instanceof Error) {
+		let stack = "";
+		try {
+			stack = typeof error.stack === "string" ? error.stack : "";
+		} catch {
+			// A throwing `stack` getter: the message alone still says something.
+		}
+		const message = safeString(error.message);
+		// Some engines omit the message from `stack`; keep it either way.
+		if (stack?.includes(message)) return stack;
+		return `${safeString(error)}\n${stack}`.trimEnd();
+	}
+	if (error !== null && typeof error === "object") return describeObject(error);
+	// Primitives, symbols and functions: `String` names them (`Symbol(x)`), where
+	// `JSON.stringify` returned `undefined` (F4).
+	return safeString(error);
+}
+
+/** Type tag and top-level key names, never values (F3). */
+function describeObject(value: object): string {
+	const tag = Object.prototype.toString.call(value);
+	let keys: string[];
+	try {
+		keys = Object.keys(value);
+	} catch {
+		return `${tag} (keys unreadable)`;
+	}
+	if (keys.length === 0) return `${tag} (no keys)`;
+	const shown = keys.slice(0, KEY_NAMES_SHOWN).join(", ");
+	const more =
+		keys.length > KEY_NAMES_SHOWN
+			? `, +${keys.length - KEY_NAMES_SHOWN} more`
+			: "";
+	return `${tag} keys: ${shown}${more}`;
+}
+
+function readComponentStack(
+	info: Pick<ErrorInfo, "componentStack"> | null | undefined,
+): string {
+	try {
+		const stack = info?.componentStack;
+		return typeof stack === "string" ? stack.trim() : "";
+	} catch {
+		return "";
+	}
 }
 
 function safeString(value: unknown): string {
 	try {
-		return typeof value === "string" ? value : JSON.stringify(value);
-	} catch {
 		return String(value);
+	} catch {
+		try {
+			return Object.prototype.toString.call(value);
+		} catch {
+			return "(unprintable)";
+		}
 	}
+}
+
+function cap(text: string, limit: number): string {
+	if (text.length <= limit) return text;
+	return `${text.slice(0, limit)}...[truncated ${text.length - limit} chars]`;
 }

@@ -41,7 +41,7 @@ const { createRoot } = await import("react-dom/client");
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { formatBoundaryError } from "./src/renderer/src/shared/components/common/error-boundary-log";
+			export { formatBoundaryError, BOUNDARY_ERROR_CAP, BOUNDARY_COMPONENT_STACK_CAP } from "./src/renderer/src/shared/components/common/error-boundary-log";
 			export { ErrorBoundary } from "./src/renderer/src/shared/components/common/error-boundary";
 			export { setLocale } from "./src/renderer/src/shared/i18n";
 		`,
@@ -62,8 +62,16 @@ const compiled = new Module(compiledPath);
 compiled.filename = compiledPath;
 compiled.paths = Module._nodeModulePaths(process.cwd());
 compiled._compile(bundle.outputFiles[0].text, compiled.filename);
-const { formatBoundaryError, ErrorBoundary, setLocale } = compiled.exports;
+const {
+	formatBoundaryError,
+	BOUNDARY_ERROR_CAP,
+	BOUNDARY_COMPONENT_STACK_CAP,
+	ErrorBoundary,
+	setLocale,
+} = compiled.exports;
 setLocale("en");
+const HEAD_TRUNCATED = /\.\.\.\[truncated \d+ chars\]\nComponent stack:/;
+const TAIL_TRUNCATED = /\.\.\.\[truncated \d+ chars\]$/;
 
 test("the line carries the stack and the component stack, never [object Object]", () => {
 	const error = new Error("boom");
@@ -77,14 +85,89 @@ test("the line carries the stack and the component stack, never [object Object]"
 	assert.ok(!line.includes("[object Object]"));
 });
 
-test("a non-Error throw and a missing component stack still format", () => {
+test("a non-Error throw logs its type and key names, never its values (F3, F4)", () => {
 	assert.equal(
-		formatBoundaryError({ code: 7 }, undefined),
-		'Error caught by ErrorBoundary: {"code":7}\nComponent stack: (none reported)',
+		formatBoundaryError({ code: 7, secret: "do-not-log" }, undefined),
+		"Error caught by ErrorBoundary: [object Object] keys: code, secret\nComponent stack: (none reported)",
 	);
-	const cyclic = {};
+	const many = Object.fromEntries(
+		Array.from({ length: 25 }, (_, index) => [`k${index}`, index]),
+	);
+	assert.ok(formatBoundaryError(many, null).includes("k19, +5 more"));
+	assert.ok(
+		formatBoundaryError(Symbol("x"), null).startsWith(
+			"Error caught by ErrorBoundary: Symbol(x)\n",
+		),
+	);
+	assert.ok(
+		formatBoundaryError(function thrown() {}, null).includes("function thrown"),
+	);
+	assert.ok(formatBoundaryError("plain", null).includes(": plain\n"));
+});
+
+/*
+ * NEVER THROWS (agent review round 1, F1): every one of these threw before,
+ * and a throw from the boundary's own error path replaces the original error.
+ */
+test("hostile thrown values and info never make the formatter throw (F1)", () => {
+	const cyclic = Object.create(null);
 	cyclic.self = cyclic;
-	assert.ok(formatBoundaryError(cyclic, null).includes("[object Object]"));
+	const hostile = {
+		toJSON() {
+			throw new Error("toJSON");
+		},
+		toString() {
+			throw new Error("toString");
+		},
+	};
+	const { proxy, revoke } = Proxy.revocable({}, {});
+	revoke();
+	const badStack = new Error("kept message");
+	Object.defineProperty(badStack, "stack", {
+		get() {
+			throw new Error("stack getter");
+		},
+	});
+	const badInfo = {
+		get componentStack() {
+			throw new Error("componentStack getter");
+		},
+	};
+	const cases = [
+		[cyclic, null],
+		[hostile, null],
+		[proxy, null],
+		[badStack, null],
+		[new Error("ok"), badInfo],
+	];
+	for (const [error, info] of cases) {
+		const line = formatBoundaryError(error, info);
+		assert.equal(typeof line, "string");
+		assert.ok(line.startsWith("Error caught by ErrorBoundary:"), line);
+	}
+	assert.ok(formatBoundaryError(cyclic, null).includes("keys: self"));
+	assert.ok(formatBoundaryError(badStack, null).includes("kept message"));
+	assert.ok(
+		formatBoundaryError(new Error("ok"), badInfo).includes(
+			"Component stack: (none reported)",
+		),
+	);
+});
+
+test("each part is capped with a truncation marker (F2)", () => {
+	const huge = new Error("m".repeat(BOUNDARY_ERROR_CAP * 4));
+	const deep = Array.from(
+		{ length: 10_000 },
+		(_, index) => `\n    at Frame${index} (bundle.js:1:${index})`,
+	).join("");
+	const line = formatBoundaryError(huge, { componentStack: deep });
+	assert.ok(
+		line.length < BOUNDARY_ERROR_CAP + BOUNDARY_COMPONENT_STACK_CAP + 200,
+		`bounded: ${line.length}`,
+	);
+	assert.match(line, HEAD_TRUNCATED);
+	assert.ok(line.includes("at Frame0 "), "the stack's top survives");
+	assert.match(line, TAIL_TRUNCATED);
 });
 
 test("the real boundary logs one string naming the looping component", async () => {
@@ -101,34 +184,38 @@ test("the real boundary logs one string naming the looping component", async () 
 	const element = document.createElement("div");
 	document.body.append(element);
 	const root = createRoot(element);
+	// Unmounted whatever the assertions do, so a failure leaves no live root (F5).
 	try {
-		await act(async () =>
-			root.render(
-				React.createElement(
-					ErrorBoundary,
-					null,
-					React.createElement(LoopingRow),
+		try {
+			await act(async () =>
+				root.render(
+					React.createElement(
+						ErrorBoundary,
+						null,
+						React.createElement(LoopingRow),
+					),
 				),
-			),
+			);
+		} finally {
+			console.error = original;
+		}
+		const ours = calls.filter(
+			(args) =>
+				typeof args[0] === "string" &&
+				args[0].startsWith("Error caught by ErrorBoundary:"),
+		);
+		assert.equal(ours.length, 1, "one boundary line");
+		assert.equal(ours[0].length, 1, "a single preformatted argument");
+		const [line] = ours[0];
+		assert.ok(line.includes("Maximum update depth exceeded"), line);
+		assert.ok(line.includes("at LoopingRow"), "names the component");
+		assert.ok(!line.includes("[object Object]"));
+		assert.ok(
+			element.textContent.includes("Something went wrong"),
+			"the fallback rendered",
 		);
 	} finally {
-		console.error = original;
+		await act(async () => root.unmount());
+		element.remove();
 	}
-	const ours = calls.filter(
-		(args) =>
-			typeof args[0] === "string" &&
-			args[0].startsWith("Error caught by ErrorBoundary:"),
-	);
-	assert.equal(ours.length, 1, "one boundary line");
-	assert.equal(ours[0].length, 1, "a single preformatted argument");
-	const [line] = ours[0];
-	assert.ok(line.includes("Maximum update depth exceeded"), line);
-	assert.ok(line.includes("at LoopingRow"), "names the component");
-	assert.ok(!line.includes("[object Object]"));
-	assert.ok(
-		element.textContent.includes("Something went wrong"),
-		"the fallback rendered",
-	);
-	await act(async () => root.unmount());
-	element.remove();
 });
