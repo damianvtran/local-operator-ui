@@ -16,6 +16,10 @@
 import { randomBytes } from "node:crypto";
 import { DESKTOP_STREAM_DETAIL } from "../shared/desktop-stream-notice";
 import { appendJournalOrderIds } from "../shared/journal-order-query";
+import {
+	type SnapshotReceipt,
+	receiptEpochMs,
+} from "../shared/snapshot-receipt";
 
 const SESSION_ID = /^[a-f0-9]{12}$/;
 const SAFE_ID = /^[a-zA-Z0-9_-]{1,128}$/;
@@ -154,7 +158,7 @@ export type RelaySubscribeArgs = {
 };
 
 export type RelayEvent =
-	| { streamId: string; kind: "data"; data: string }
+	| { streamId: string; kind: "data"; data: string; receipt?: SnapshotReceipt }
 	| {
 			streamId: string;
 			kind: "error";
@@ -181,7 +185,9 @@ export class DesktopStreamRelay {
 	private readonly streams = new Map<string, AbortController>();
 	/** Frame observer for main-owned side effects (notifications). It sees
 	 * every parsed frame before the renderer does, on the same subscription. */
-	private observer: ((sessionId: string, data: string) => void) | null = null;
+	private observer:
+		| ((sessionId: string, data: string) => true | undefined)
+		| null = null;
 
 	constructor(
 		private readonly backendUrl: string,
@@ -197,7 +203,9 @@ export class DesktopStreamRelay {
 		} = {},
 	) {}
 
-	observe(observer: ((sessionId: string, data: string) => void) | null): void {
+	observe(
+		observer: ((sessionId: string, data: string) => true | undefined) | null,
+	): void {
 		this.observer = observer;
 	}
 
@@ -354,6 +362,7 @@ export class DesktopStreamRelay {
 			const reader = response.body.getReader();
 			const decoder = new TextDecoder();
 			let buffer = "";
+			let snapshotTraced = false;
 			let lastActivity = Date.now();
 			/*
 			 * The silence watchdog, which is the difference between "quiet" and
@@ -412,6 +421,8 @@ export class DesktopStreamRelay {
 							}
 							break;
 						}
+						const recordAt = snapshotTraced ? 0 : performance.now();
+						const recordEpochMs = snapshotTraced ? 0 : receiptEpochMs();
 						buffer = record.rest;
 						// One record is one event, and its `data:` fields are FOLDED into
 						// one payload: SSE joins a multi-line `data` field with "\n", and a
@@ -421,8 +432,30 @@ export class DesktopStreamRelay {
 						// arrive as data frames and pass through like any other.
 						if (record.data.length === 0) continue;
 						const data = record.data.join("\n");
-						this.observer?.(sessionId, data);
-						emit({ streamId, kind: "data", data });
+						// Reuse the notifier's existing parse/type knowledge. Never parse
+						// content a second time merely to identify a diagnostic frame.
+						const observerAt = snapshotTraced ? 0 : performance.now();
+						const snapshot = this.observer?.(sessionId, data);
+						const observedAt = snapshotTraced ? 0 : performance.now();
+						let receipt: SnapshotReceipt | undefined;
+						if (snapshot === true && !snapshotTraced) {
+							snapshotTraced = true;
+							receipt = {
+								streamId,
+								sessionId,
+								chars: data.length,
+								mainRecordEpochMs: recordEpochMs,
+								mainFoldMs: observerAt - recordAt,
+								mainObserverMs: observedAt - observerAt,
+								mainEmitMs: performance.now() - observedAt,
+							};
+						}
+						emit({
+							streamId,
+							kind: "data",
+							data,
+							...(receipt ? { receipt } : {}),
+						});
 					}
 				}
 			} finally {

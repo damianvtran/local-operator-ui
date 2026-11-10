@@ -1,0 +1,10 @@
+{
+	"ui.browser.media_permission.label": "Yêu cầu dùng camera và micrô",
+	"ui.browser.media_permission.message": "{devices, select, audio {{site} muốn sử dụng micrô của bạn.} video {{site} muốn sử dụng camera của bạn.} other {{site} muốn sử dụng camera và micrô của bạn.}}",
+	"ui.browser.media_permission.agent_tab_hint": "Đây là thẻ do tác nhân điều khiển, nên Cho phép chỉ áp dụng cho yêu cầu này.",
+	"ui.browser.media_permission.allow": "Cho phép",
+	"ui.browser.media_permission.block": "Chặn",
+	"ui.browser.media_permission.dismiss": "Bỏ qua yêu cầu dùng camera và micrô",
+	"ui.browser.media_permission.system_blocked": "{devices, select, audio {macOS đang tắt quyền truy cập micrô của Local Operator.} video {macOS đang tắt quyền truy cập camera của Local Operator.} other {macOS đang tắt quyền truy cập camera và micrô của Local Operator.}}",
+	"ui.browser.media_permission.system_blocked_hint": "Hãy bật trong Cài đặt hệ thống › Quyền riêng tư & Bảo mật, rồi tải lại trang."
+}

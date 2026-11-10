@@ -67,6 +67,7 @@ import { BrowserFileTransferRow } from "./browser-file-transfer-row";
 import { BrowserFindRow } from "./browser-find-row";
 import { BrowserHandOverDialog } from "./browser-hand-over-dialog";
 import { BrowserLoadFailure } from "./browser-load-failure";
+import { BrowserMediaPermissionPrompt } from "./browser-media-permission-prompt";
 import { BrowserNewTab } from "./browser-new-tab";
 import { BrowserPageMenu } from "./browser-page-menu";
 import { BrowserPasskeyNotice } from "./browser-passkey-notice";
@@ -1389,6 +1390,30 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			{/* U5: download/verify progress + Cancel for a store install, shown
 			    on whatever tab the user is on (normally the store's). */}
 			<BrowserExtensionInstallStrip />
+			{/* A page is asking for the camera/microphone. Main holds the page's
+			    request until this is answered, and grants only on a trusted click
+			    here (see `media-permission-prompt.tsx`). */}
+			<BrowserMediaPermissionPrompt
+				view={chrome.state?.mediaPermission}
+				onDecide={(view, decision, trusted) =>
+					void chrome.decideMediaPermission(
+						view.tabId,
+						view.id,
+						decision,
+						trusted,
+					)
+				}
+				onOpenSystemSettings={(view) =>
+					void chrome.openMediaSystemSettings(view.tabId, view.id)
+				}
+				// U5: a keyboard answer unmounts the focused button; hand the
+				// keyboard back to the page rather than strand it on <body>.
+				onReturnFocus={() =>
+					void browserBridge()
+						?.focusPage()
+						.catch(() => {})
+				}
+			/>
 			<PasskeyNoticeHost
 				notice={chrome.state?.passkeyNotice}
 				onOpen={(notice) =>
@@ -1397,6 +1422,12 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				onDismiss={(notice) =>
 					void chrome.dismissPasskeyNotice(notice.tabId, notice.at)
 				}
+				onContinueInUserTab={(notice) =>
+					chrome.continuePasskeyNoticeInUserTab(notice.tabId, notice.at)
+				}
+				// The pane's rest-stop (UX U9) once the agent tab's notice, and the
+				// button that had focus, unmount with the switch to the user's tab.
+				restFocus={() => chordRootRef.current?.focus({ preventScroll: true })}
 				onOpenExtensions={
 					activeTab?.owner === "user" ? openExtensionsPage : undefined
 				}

@@ -29,7 +29,7 @@
 	"ui.agents.upload.sign_in.needed": "需要登录Radient才能将智能体发布到智能体中心。",
 	"ui.agents.upload.sign_in.nothing_left": "没有其他内容离开本机：不含对话、执行记录、记忆、计划，也不含本机专属配置。",
 	"ui.agents.upload.sign_in.reauthenticate": "请重新登录Radient，以替换中心拒绝的凭据。",
-	"ui.agents.upload.target.blocked_hint": "在组织内共享智能体属于Team套餐的功能。{count, plural, other {{org}或上方标记的任何其他组织}}的所有者可以在Radient控制台中启用。",
+	"ui.agents.upload.target.blocked_hint": "在组织内共享智能体属于Radient Team套餐的功能。{count, plural, other {{org}或上方标记的任何其他组织}}的所有者可以在Radient控制台中启用。",
 	"ui.agents.upload.target.label": "发布到",
 	"ui.agents.upload.target.org_unnamed": "此组织",
 	"ui.agents.upload.target.orgs_unread": "无法读取你的组织，因此将发布到公开中心。稍后重试即可发布到组织。",

@@ -1661,7 +1661,7 @@ export const PlanRequired: Story = {
 	},
 };
 
-/** Signed out: the panel says so; there is no fake sign-in control to press. */
+/** Signed out: the panel links to Settings, where the Radient sign-in is owned. */
 export const SignedOut: Story = {
 	args: {
 		eligibility: "signed_out",

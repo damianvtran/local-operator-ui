@@ -1088,8 +1088,9 @@ export class BackendServiceManager {
 	private streamRelayToken: string | null = null;
 	/** Survives relay recreation so notifications never silently detach
 	 * when the backend URL rotates. */
-	private streamObserver: ((sessionId: string, data: string) => void) | null =
-		null;
+	private streamObserver:
+		| ((sessionId: string, data: string) => true | undefined)
+		| null = null;
 
 	/**
 	 * The machine-wide desktop feed relay, rebuilt when the backend URL rotates
@@ -1376,7 +1377,7 @@ export class BackendServiceManager {
 	}
 
 	observeStream(
-		observer: ((sessionId: string, data: string) => void) | null,
+		observer: ((sessionId: string, data: string) => true | undefined) | null,
 	): void {
 		this.streamObserver = observer;
 		this.streamRelay?.observe(observer);

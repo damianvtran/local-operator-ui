@@ -368,6 +368,22 @@ export function accountNameOf(provider: DesktopProvider): string {
 }
 
 /**
+ * The title of a SUGGESTED onboarding row.
+ *
+ * The product a person pays for rather than the company that makes it: the
+ * step's intro asks "Already pay for Claude or ChatGPT?", and a first-time user
+ * who does was then handed rows titled "Anthropic" and "OpenAI", two names many
+ * subscribers have never needed to know (onboarding audit U7). Only the
+ * suggested block uses this. Everywhere else a row keeps `brandOf`, because the
+ * settings list, the grouped "More providers" rows and the connected block name
+ * the PROVIDER, whose key route ("Anthropic API key") is not a Claude plan.
+ * A provider with no account name (Google) falls back to its brand unchanged.
+ */
+export function featuredRowTitle(provider: DesktopProvider): string {
+	return accountNameOf(provider);
+}
+
+/**
  * Whether a row belongs in the Connected block.
  *
  * A cloud row is connected when it has a credential (the census's own facts,

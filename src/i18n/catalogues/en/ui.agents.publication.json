@@ -92,7 +92,7 @@
 	"ui.agents.publication.subject.unknown": "That agent",
 	"ui.agents.publication.team_not_found.body": "It may have been delisted since this page was loaded.",
 	"ui.agents.publication.team_not_found.headline": "That team is no longer published",
-	"ui.agents.publication.team_plan_required.body": "Sharing agents inside an organization is part of the Team plan. Ask an owner of the organization to activate it in the Radient console, then publish again.",
-	"ui.agents.publication.team_plan_required.body_pull": "Reading an organization's teams is part of the Team plan. Ask an owner of the organization to activate it in the Radient console, then pull again.",
-	"ui.agents.publication.team_plan_required.headline": "That organization needs an active Team plan"
+	"ui.agents.publication.team_plan_required.body": "Sharing agents inside an organization is part of the Radient Team plan. Ask an owner of the organization to activate it in the Radient console, then publish again.",
+	"ui.agents.publication.team_plan_required.body_pull": "Reading an organization's teams is part of the Radient Team plan. Ask an owner of the organization to activate it in the Radient console, then pull again.",
+	"ui.agents.publication.team_plan_required.headline": "That organization needs an active Radient Team plan"
 }

@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import { expect, userEvent, waitFor, within } from "@storybook/test";
 import { BrowserPageMenu } from "./browser-page-menu";
-import { BrowserUrlBar } from "./browser-url-bar";
+import { BrowserUrlBar, type BrowserUrlBarProps } from "./browser-url-bar";
 
 /**
  * The permanent address row (S5).
@@ -128,5 +129,138 @@ export const Narrow: Story = {
 				onManageExtensions={() => {}}
 			/>
 		),
+	},
+};
+
+/*
+ * THE BROWSER'S OWN PAGES IN THE LIST. Own-state (`ownState`) is the placement
+ * whose list is page DOM, so it is the one Storybook can paint; the native child
+ * paints the same rows (text, title, the page glyph) from the mirror. The play
+ * step types into the real field, so the frame is what the user's keystrokes
+ * produce - including `lop://`'s inline completion to `lop://extensions`.
+ */
+const pageHistory: NonNullable<BrowserUrlBarProps["addressHistory"]> = async (
+	request,
+) => ({
+	requestId: request.requestId,
+	activeTabId: 1,
+	entries: [
+		{
+			url: "https://login.example.com/session",
+			title: "Sign in",
+			visitCount: 4,
+			lastVisitedAt: 0,
+			source: "history",
+		},
+		{
+			url: "https://docs.example.com/extensions/guide",
+			title: "Writing extensions",
+			visitCount: 2,
+			lastVisitedAt: 0,
+			source: "history",
+		},
+		// Two `lop…` sites, so the `lop` story shows history kept intact with the
+		// page only taking the free slot after it (review R2/U2/Q1, D3).
+		{
+			url: "https://lopez-bakery.example.com/",
+			title: "Lopez Bakery",
+			visitCount: 3,
+			lastVisitedAt: 0,
+			source: "history",
+		},
+		{
+			url: "https://loppers.example.com/garden",
+			title: "Loppers",
+			visitCount: 1,
+			lastVisitedAt: 0,
+			source: "history",
+		},
+	],
+});
+
+const typing =
+	(text: string): Story["play"] =>
+	async ({ canvasElement }) => {
+		const field = within(canvasElement).getByRole("combobox");
+		await userEvent.click(field);
+		// The focused field holds the live URL; replace it, as Cmd+L then typing
+		// would, so the frame shows exactly what `text` produces.
+		await userEvent.clear(field);
+		await userEvent.type(field, text);
+		await waitFor(() =>
+			expect(
+				canvasElement.querySelector("[data-address-suggestion]"),
+			).not.toBeNull(),
+		);
+	};
+
+const pagesArgs = {
+	...common,
+	url: "https://login.example.com/session",
+	overlayMode: "popout",
+	ownState: true,
+	anchor: { x: 0, width: 720 },
+	addressHistory: pageHistory,
+	onStateChanged: () => () => {},
+	menu,
+} as const;
+
+/** `lop://`: every page is listed, and the single match inline-completes. */
+export const PageSuggestionsScheme: Story = {
+	args: pagesArgs,
+	play: typing("lop://"),
+};
+
+/** `lop://ext`: filtered by prefix; the alias `chrome://` lists the same row. */
+export const PageSuggestionsFiltered: Story = {
+	args: pagesArgs,
+	play: typing("lop://ext"),
+};
+
+/** A bare word: the page rides under the default search row (and after any
+ * history match - this fixture has none for `extensions`; see
+ * `PageSuggestionsSchemeWord` for the ordering behind history). */
+export const PageSuggestionsWord: Story = {
+	args: pagesArgs,
+	play: typing("extensions"),
+};
+
+/** `lop`: search first, both `lop…` history rows intact, then the page in the
+ * slot history left free. `l`/`lo` offer no page at all. */
+export const PageSuggestionsSchemeWord: Story = {
+	args: pagesArgs,
+	play: typing("lop"),
+};
+
+/**
+ * U1: `lop://extensions?dark` matches two installed extensions; Backspace
+ * rejects the highlight, and Enter is refused locally (the blocked sentence is
+ * announced) instead of handing main a URL it cannot open. Storybook has no
+ * preload, so the extension list is stubbed for this story only.
+ */
+export const PageSuggestionsRefused: Story = {
+	beforeEach: () => {
+		const previous = window.api;
+		const browser = {
+			extensions: async () => ({
+				ok: true,
+				extensions: [
+					{ id: "a".repeat(32), name: "Dark Reader" },
+					{ id: "b".repeat(32), name: "Dark Mode" },
+				],
+			}),
+			onStateChanged: () => () => {},
+		};
+		Object.assign(window, { api: { ...previous, browser } });
+		return () => {
+			Object.assign(window, { api: previous });
+		};
+	},
+	args: pagesArgs,
+	play: async (context) => {
+		await typing("lop://extensions?dark")?.(context);
+		const field = within(context.canvasElement).getByRole("combobox");
+		await userEvent.keyboard("{Backspace}{Enter}");
+		await waitFor(() => expect(field).toHaveValue("lop://extensions?dar"));
 	},
 };

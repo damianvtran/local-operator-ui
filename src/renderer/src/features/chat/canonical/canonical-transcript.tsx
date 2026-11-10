@@ -213,7 +213,11 @@ import {
 } from "./music-generating-model";
 import { MusicResult } from "./music-result";
 import { noticeText } from "./notice-copy";
-import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
+import {
+	OLDER_HISTORY_HINT_ID,
+	OlderHistorySlot,
+	OlderHistorySlotReserve,
+} from "./older-history-slot";
 import type { OpenFrameFacts } from "./open-frame";
 import {
 	profileRevertOutcome,
@@ -804,9 +808,11 @@ export type CanonicalTranscriptProps = {
 	 *
 	 * It is a rendered state, not a hint: rows stay at full `ink` (a cached row is
 	 * a real row, and opacity is banned as a state signal in this system), and
-	 * what says "this may be behind" is ONE caption in the pane's own status
-	 * slot — the same slot `Reconnecting` and the failure notice use. It is
-	 * present from the cached paint's first frame and goes in the same commit as
+	 * what says "this may be behind" is ONE caption in the transcript's foot
+	 * slot (`data-lo-stale-caption`), the row reserved for the working line, so
+	 * its removal moves nothing. The rows PAINT while the page is owed - the
+	 * pane no longer holds a placeholder over them. It is present from the
+	 * cached paint's first frame and goes in the same commit as
 	 * the reconciled rows, so the reader never sees reconciled rows labelled
 	 * "last saved" or the reverse.
 	 */
@@ -7385,20 +7391,24 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		/*
 		 * The pane COLUMN, and the scroll box is one child of it.
 		 *
-		 * Why the extra level: the stale caption has to sit OUTSIDE the scrolling
-		 * content (design review round 1, D1). It used to be the first child of the
-		 * measured content box inside a bottom-anchored `flex-col-reverse` scroller,
-		 * which put it at the visual TOP of the content - measured on a 36-row stale
-		 * transcript at 1280x600, its rect was top -2028 in a 560px viewport, i.e.
-		 * 2028px above the fold and unreachable without scrolling the whole
-		 * conversation. The cache is written on unmount, so it only ever holds
-		 * conversations taller than the pane, which makes that the COMMON case
-		 * rather than an edge, and the affordance M2 exists for (the pane is
-		 * distinguishable by being wrong) was invisible exactly when it was needed.
+		 * Why the extra level: the pane's own statements (the failure notice, the
+		 * source-unavailable notice) have to sit OUTSIDE the scrolling content so
+		 * they stay visible while a long transcript scrolls.
 		 *
-		 * `@container/chatcol` moves here with it: the caption uses the shared
-		 * measure, whose variants are written against this container, and a caption
-		 * that sat outside its own container would simply not see them.
+		 * THE STALE CAPTION IS NOT ONE OF THEM ANY MORE. It used to be the column's
+		 * first child, because inside the scroller it was the OLDEST thing in a
+		 * bottom-anchored `flex-col-reverse` box (measured on a 36-row stale
+		 * transcript at 1280x600: top -2028 in a 560px viewport). Hoisting it fixed
+		 * that and cost a layout move: its removal when the page landed grew the
+		 * scroller by its own height (33.4px), moving a short, top-aligned transcript
+		 * and the pane's top edge. It now lives in the FOOT slot, the NEWEST edge of
+		 * the same scroller, which is mounted for every conversation with rows and
+		 * so costs nothing when the caption goes (see the foot slot below). The
+		 * -2028px case does not recur there - the foot is where a tail-pinned reader
+		 * is looking - and the trade is that a reader who scrolls up through the
+		 * cached rows during the snapshot wait scrolls the caption off screen.
+		 *
+		 * `@container/chatcol` lives here for the shared measure the notices use.
 		 *
 		 * `collapsed` still owns the pane's height, one level down, and the wrapper
 		 * collapses with it so a collapsed pane cannot leave the caption behind as
@@ -7420,31 +7430,6 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					: "relative flex min-h-0 grow flex-col",
 			)}
 		>
-			{stale && !holdPlaceholder && (
-				/*
-				 * Pinned to the pane's top edge, in the flow rather than over it: it
-				 * takes its own row and no row of the conversation is ever painted
-				 * under it. `shrink-0` so a tall neighbour cannot squeeze it away, and
-				 * the same horizontal inset as the scroller's own padding so the two
-				 * share a centre.
-				 *
-				 * AND IT STANDS DOWN WHILE THE PANE HOLDS. `stale` is still true for
-				 * a cached paint whose page is owed - that is the flag the hold reads
-				 * - and while the hold is up NOTHING of the cached paint is on screen
-				 * (the rows are gated out below), so a caption describing it would be
-				 * the pane talking about a view nobody can see. The two go away
-				 * together, which is the rule this element was introduced under; the
-				 * hold is just the case where "together" means "neither yet".
-				 */
-				<p
-					className={cn(
-						"shrink-0 px-4 pt-4 text-ink-dim text-meta",
-						CHAT_MEASURE,
-					)}
-				>
-					{t("ui.chat.canonical.transcript.stale_caption")}
-				</p>
-			)}
 			{/*
 			 * THE SOURCE-UNAVAILABLE NOTICE (design round 1, §1/§2). A polite,
 			 * NON-TERMINAL statement: the conversation is readable, its durable rows
@@ -7493,9 +7478,9 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 			 * of it — an absolutely-positioned child of an `overflow: auto` box
 			 * scrolls away with the content it is supposed to index. This wrapper
 			 * exists to give the two a box whose height IS the scroller's: the
-			 * column also holds the stale-conversation caption above (when it
-			 * paints), and `inset-y-0` against the column would draw the rail over
-			 * that caption. Layout is the wrapper's only job: it takes the
+			 * column also holds the pane's notices above it (when they
+			 * paint), and `inset-y-0` against the column would draw the rail over
+			 * them. Layout is the wrapper's only job: it takes the
 			 * scroller's place in the column's flex (`min-h-0 grow`) and hands it
 			 * straight back, so the scroll box's own box, its reserved gutter and
 			 * the bottom anchor all behave exactly as before.
@@ -7763,11 +7748,15 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				    cursor (its rows are trimmed), which the slot reads as `exhausted`
 				    and says "Start of conversation" over a transcript that may be a
 				    thousand messages in. Measured on a captured frame, not inferred.
-				    The caption above already says the view is not authoritative.
+				    The caption in the foot slot below already says the view is not authoritative.
 				    AND NOT WHILE THE FILTER IS HELD (`holdFiltering`): the slot is the
 				    top of a conversation, and a conversation whose rows are withheld for
 				    a settings answer is not a conversation this pane has painted. The
 				    two land in the same commit, which is the whole point of the hold. */}
+						{transcript.records.length > 0 &&
+							stale &&
+							!missing &&
+							!holdFiltering && <OlderHistorySlotReserve />}
 						{transcript.records.length > 0 &&
 							!stale &&
 							!missing &&
@@ -7791,19 +7780,15 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 							)}
 
 						{/*
-						 * THE STALE CAPTION IS NOT PAINTED IN HERE ANY MORE (design round 2,
-						 * D10). It is hoisted above the scroller — see the `stale` paragraph near
-						 * the top of this component — and the second, legacy copy that used to sit
-						 * at this spot rendered the SAME sentence twice on every short pane: once
-						 * pinned to the pane's top edge, once immediately above the first bubble.
-						 * A long transcript hid it above the fold, which is why only the ordinary
-						 * and narrow fixtures showed the duplication while the overflowing one
-						 * passed.
+						 * THE STALE CAPTION IS NOT PAINTED IN HERE EITHER (design round 2, D10):
+						 * it is stated ONCE, in the foot slot below, and `stale-caption.test.mjs`
+						 * counts it. An earlier shape painted the same sentence twice on every
+						 * short pane - once pinned above the scroller, once immediately above the
+						 * first bubble - and a long transcript hid the second copy above the
+						 * fold, which is why only the ordinary and narrow fixtures showed it.
 						 *
 						 * This surface's contract is ONE caption for one status, and a status the
-						 * reader has already read is not improved by being repeated, so the
-						 * in-scroll copy is the one that goes. The hoisted one is kept because it
-						 * survives not scrolled to the top, which was the original D1 defect.
+						 * reader has already read is not improved by being repeated.
 						 *
 						 * The loading skeleton is not rendered here either: it is
 						 * `TranscriptPlaceholder`, inside the content column above, because the
@@ -7926,10 +7911,10 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 						{/* Rows are suppressed for a conversation that is not there: the pane
 				    must not paint its last memory of a session the backend says is
 				    gone, because nothing on screen could then be trusted and there is
-				    no state to reconcile to - and for one that is still ARRIVING: a
-				    `holdPlaceholder` pane has the cached paint in state and nothing of
-				    it on screen, so the page that ends the hold brings the rows and the
-				    readings in ONE commit instead of correcting a painted guess. */}
+				    no state to reconcile to - and for one that is still ARRIVING with
+				    nothing to show (`holdPlaceholder`: no records, a page owed) or with
+				    the settings answer owed (`holdFiltering`). A CACHED paint is neither:
+				    its rows paint at once, labelled by the caption in the foot slot. */}
 						{!missing && !holdPlaceholder && !holdFiltering && (
 							/*
 							 * THE PANE THIS CONVERSATION'S LINKS OPEN INTO, provided once for the
@@ -8111,32 +8096,39 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 						 * older-history slot's reason exactly: a working line speaks for the run
 						 * above it, and this pane has not painted that run yet.
 						 */}
-						{transcript.records.length > 0 &&
-							!stale &&
-							!missing &&
-							!holdFiltering && (
-								<div
-									data-lo-transcript-foot={true}
-									className={cn(
-										// On the `item` tier, not a tier of its own: the working line is
-										// the foot of the run above it and shares that run's rhythm. It
-										// takes slightly more than `trace` because it is the one row that
-										// is not a completed action, and slightly less than a turn
-										// boundary because the turn has not ended.
-										GAP.item[isSmallView ? 1 : 0],
-										"min-h-[1lh] font-mono text-mono-sm",
-									)}
-								>
-									{working && !internalLiveLeaf && (
+						{transcript.records.length > 0 && !missing && !holdFiltering && (
+							<div
+								data-lo-transcript-foot={true}
+								className={cn(
+									// On the `item` tier, not a tier of its own: the working line is
+									// the foot of the run above it and shares that run's rhythm. It
+									// takes slightly more than `trace` because it is the one row that
+									// is not a completed action, and slightly less than a turn
+									// boundary because the turn has not ended.
+									GAP.item[isSmallView ? 1 : 0],
+									"min-h-[1lh] font-mono text-mono-sm",
+								)}
+							>
+								{stale ? (
+									<span
+										data-lo-stale-caption={true}
+										className="block truncate font-sans text-ink-dim text-meta"
+									>
+										{t("ui.chat.canonical.transcript.stale_caption")}
+									</span>
+								) : (
+									working &&
+									!internalLiveLeaf && (
 										<WorkingLine
 											activity={working.activity}
 											phase={working.phase}
 											startedAt={working.startedAt}
 											clock={working.clock}
 										/>
-									)}
-								</div>
-							)}
+									)
+								)}
+							</div>
+						)}
 
 						{/*
 						 * NO GATE HERE. The pending question used to render as this list's

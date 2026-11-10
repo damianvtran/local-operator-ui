@@ -16,6 +16,10 @@ import {
 	decodeExtensionsRequest,
 } from "../../shared/browser-extensions";
 import {
+	type MediaPermissionDecision,
+	isMediaPermissionDecision,
+} from "../../shared/browser-media-permission";
+import {
 	type TabActionsMenuSelection,
 	tabActionsMenuRequestOrThrow,
 	tabActionsMenuSelectionOrNull,
@@ -96,6 +100,30 @@ export interface RegisterBrowserIpcOptions {
 			tabId: number,
 			at: number,
 		) => Promise<{ ok: true } | { ok: false; reason: string }>;
+		/** An agent tab's notice only: open the same page in a new user tab
+		 * (`continuePasskeyNoticeInUserTab`). Optional for a host predating it. */
+		continueInUserTab?: (
+			tabId: number,
+			at: number,
+		) => Promise<{ ok: true } | { ok: false; reason: string }>;
+	};
+	/**
+	 * The camera/microphone prompt's one action (`media-permissions.ts`). This
+	 * channel is the ONLY route to a media grant, and `authorize()` admits only
+	 * the app window's own top frame: a driven page or the agent cannot reach it.
+	 * `trusted` is the renderer's `event.isTrusted` for the click; main refuses
+	 * anything else.
+	 */
+	mediaPermission?: {
+		decide: (
+			tabId: number,
+			id: string,
+			decision: MediaPermissionDecision,
+			trusted: boolean,
+		) => Promise<boolean>;
+		/** The system-blocked notice's "Open System Settings" (review U6/D3).
+		 * Takes the notice's tab and id only; main maps it to a fixed pane URL. */
+		openSystemSettings: (tabId: number, id: string) => Promise<boolean>;
 	};
 	/** The clear-data affordances (design 5.4). Injected so this module does not
 	 * depend on the session object. */
@@ -205,6 +233,9 @@ export const BROWSER_IPC_CHANNELS = [
 	"browser-reveal-downloads",
 	"browser-passkey-notice-dismiss",
 	"browser-passkey-notice-open",
+	"browser-passkey-notice-continue",
+	"browser-media-permission-decide",
+	"browser-media-permission-open-settings",
 	"browser-extensions",
 	/** The user's own recovery click on the `unavailable` state (round 1, D1a).
 	 * Named here so the namespace stays the one place that lists its channels. */
@@ -640,6 +671,83 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 			return options.passkeyNotice.openInSystemBrowser(
 				numberOrThrow(tabId, "tabId"),
 				numberOrThrow(at, "at"),
+			);
+		},
+	);
+	/*
+	 * "Continue in your own tab" on an agent tab's passkey notice. The sender check
+	 * in `authorize` is the whole of "only the user can do this": the app's own
+	 * renderer main frame is the one caller it admits, and no RPC method reaches
+	 * this path, so an agent (CDP, the driver RPC) or a page cannot open a user tab
+	 * through it. Takes a tab id and the notice's `at`, never a URL.
+	 */
+	ipcMain.handle(
+		"browser-passkey-notice-continue",
+		async (event, tabId: unknown, at: unknown) => {
+			authorize(event);
+			if (!options.passkeyNotice?.continueInUserTab) {
+				return {
+					ok: false,
+					reason: t("ui.browser.browser_passkey_notice.continue_unavailable"),
+				};
+			}
+			return options.passkeyNotice.continueInUserTab(
+				numberOrThrow(tabId, "tabId"),
+				numberOrThrow(at, "at"),
+			);
+		},
+	);
+
+	/*
+	 * The camera/microphone prompt's answer. Sender-checked like every channel
+	 * here; the renderer names a tab, the prompt's host-minted id, the decision
+	 * and whether the click was a trusted (human) event — never an origin, so it
+	 * cannot retarget a grant at a site other than the one main is asking about.
+	 */
+	ipcMain.handle(
+		"browser-media-permission-decide",
+		async (
+			event,
+			tabId: unknown,
+			id: unknown,
+			decision: unknown,
+			trusted: unknown,
+		) => {
+			authorize(event);
+			if (typeof id !== "string" || !id) {
+				throw new Error("A pending camera/microphone request id is required.");
+			}
+			if (!isMediaPermissionDecision(decision)) {
+				throw new Error("Unsupported camera/microphone decision.");
+			}
+			return (
+				(await options.mediaPermission?.decide(
+					numberOrThrow(tabId, "tabId"),
+					id,
+					decision,
+					trusted === true,
+				)) ?? false
+			);
+		},
+	);
+
+	/*
+	 * The system-blocked notice's "Open System Settings". Sender-checked; the
+	 * renderer names a live notice (tab + host-minted id), never a URL, so this
+	 * channel cannot be used to open an arbitrary external target.
+	 */
+	ipcMain.handle(
+		"browser-media-permission-open-settings",
+		async (event, tabId: unknown, id: unknown) => {
+			authorize(event);
+			if (typeof id !== "string" || !id) {
+				throw new Error("A camera/microphone notice id is required.");
+			}
+			return (
+				(await options.mediaPermission?.openSystemSettings(
+					numberOrThrow(tabId, "tabId"),
+					id,
+				)) ?? false
 			);
 		},
 	);

@@ -1,0 +1,131 @@
+{
+ "audit_id": "mp1843-a3-fr",
+ "round": 3,
+ "audit_kind": "independent re-audit of a new namespace after PR #1843 round-2 remediation",
+ "date": "2026-11-10",
+ "audit_date": "2026-11-10",
+ "locale": "fr",
+ "namespace": "ui.browser.media_access",
+ "source_commit": "748f4c83caf83fb3e497b4a39defeacb85a2932e",
+ "pr": "https://github.com/damianvtran/local-operator-ui/pull/1843",
+ "scope": "All 9 keys of ui.browser.media_access; blocked_hint re-read, 8 keys carried byte-identical from scratch audit mp1843-a2.",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "key_count": 9,
+ "keys_read": 9,
+ "carried_from": {
+  "audit_id": "mp1843-a2-fr",
+  "head": "99d69f364e3ae8ef555d0025d42c1935393f15cc",
+  "committed": false,
+  "proof": "key-by-key JSON compare of en, context and target at both revisions: only ui.browser.media_access.blocked_hint differs"
+ },
+ "auditors": [
+  {
+   "agent": "task",
+   "model": "anthropic/claude-opus-5-5",
+   "session": "73e65f3746d2",
+   "team": "lopdev",
+   "label": "i18n-delta-audit-1843",
+   "instance": "73e65f3746d2-mp1843-a3-fr",
+   "date": "2026-11-10",
+   "result": "clean-with-findings",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 2
+   },
+   "independent_from_translator_session": true,
+   "actual_model_source": "harness session header 'Model: anthropic/claude-opus-5-5' for session 73e65f3746d2; no fallback observed, no role or model pin applied",
+   "fallback": null,
+   "receipt": "i18n/receipts/73e65f3746d2-mp1843-a3-fr.json",
+   "receipt_sha256": "51b85c181bb7ce4dc6d4ed3cba7aba2c471d16bc31203e5fc74d0158aff5572a"
+  }
+ ],
+ "translator": {
+  "agent": "coder",
+  "model": "anthropic/claude-opus-5-5",
+  "date": "2026-11-10"
+ },
+ "independence": "Independent auditor; translated nothing and authored no corrections in this namespace. Distinct from the round-1 auditor instance (d1da94af17b7).",
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.browser.media_access.json",
+   "sha256": "582e847fb0098916363408713df5acfa69720de5df1af2f23913e038e4ce2a42"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.browser.media_access.context.json",
+   "sha256": "edb38694470ca038987734fd1a2b5661bf77db0067ec8537837eb417cea4c58d"
+  },
+  "fr": {
+   "path": "src/i18n/catalogues/fr/ui.browser.media_access.json",
+   "sha256": "4840c44769c872e4592924acafe16f3b56519bcb3dbc4da3e11b621f28507f56"
+  },
+  "sibling": {
+   "path": "src/i18n/catalogues/fr/ui.browser.media_permission.json",
+   "sha256": "311336a7158ab1f208bfae5985d20903131b361628ad361735023440ac16f15b"
+  },
+  "glossary": {
+   "path": "i18n/glossary.md (local-operator origin/main dc167abd0ec4, byte-identical to round-1's 9372a3a42d0e)",
+   "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+  },
+  "style_guide": {
+   "path": "i18n/style-guides/fr.md (local-operator origin/main dc167abd0ec4, byte-identical to round-1's 9372a3a42d0e)",
+   "sha256": "5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7"
+  }
+ },
+ "artifacts": [
+  {
+   "path": "i18n/audits/evidence/fr/ui.browser.media_access/mp1843-a3-fr/audit.log",
+   "sha256": "e3b974c24b30eea06c254dbcc82e9fc3a25e68490de39a16a6a3a57e1efbbfb3"
+  },
+  {
+   "path": "i18n/audits/evidence/fr/ui.browser.media_access/mp1843-a3-fr/negative-control.log",
+   "sha256": "cf1872344da1e7c8ce90fe4bc314ed2c9fe971b8a2c92e846da73584eea4cac0"
+  },
+  {
+   "path": "i18n/audits/evidence/fr/ui.browser.media_access/mp1843-a3-fr/report.md",
+   "sha256": "7b1aefc6dff82933f5116cab882d6ed79fbd71881dfaf6cea7ea68870446895a"
+  },
+  {
+   "path": "i18n/audits/evidence/fr/ui.browser.media_access/mp1843-a3-fr/verify.mjs",
+   "sha256": "19c3ca954bf613f170a5f1c7c062c987acd8dd482102fedc2af8c980efbfa4ee"
+  }
+ ],
+ "audit_notes_not_execution_log": "report.md is the auditor's notes; audit.log is the actual stdout of verify.mjs and negative-control.log its FAIL/summary lines and exit status on the mutated scratch copy. The ledger-check result quoted in report.md was run interactively on the export and is not captured as a file.",
+ "findings": [
+  {
+   "id": "FR-A3-N1",
+   "severity": "nit",
+   "key": "ui.browser.media_access.notice_dismiss",
+   "finding": "Ignorer l’avis: sibling “Dismiss … notice” labels (ui.browser.browser_passkey_notice.dismiss, ui.browser.browser_file_transfer_row.dismiss_download_notice/_upload_notice, ui.common.updates.update_quiet_indicator.dismiss_update_notice, ui.settings.configuration…dismiss_this_notice) all use Masquer (Masquer l’avis de clé d’accès, …); Ignorer matches this band's prompt_dismiss and is a common fr Dismiss (ui.agentMessages.banner.dismiss). Accessible name only. Optional: Masquer l’avis. No change."
+  },
+  {
+   "id": "FR-A3-N2",
+   "severity": "nit",
+   "key": "ui.browser.media_access.blocked_hint",
+   "finding": "Button name Autoriser is unquoted (every arm); « Autoriser » (U+202F inside) would mirror ru/zh-CN. Same call as round-1 FR-N1. No change."
+  }
+ ],
+ "resolutions": [],
+ "observations": [
+  {
+   "id": "FR-A3-I1",
+   "severity": "INFO",
+   "key": "ui.browser.media_access.system_blocked_hint",
+   "finding": "Réglages Système › Confidentialité et sécurité equals the audited media_permission hint; Ouvrir Réglages Système follows Apple's article-less app-name usage; no : ; ! ? in any value, so no U+202F needed; apostrophes are U+2019; vous register."
+  },
+  {
+   "id": "FR-A3-I2",
+   "severity": "INFO",
+   "key": "ui.browser.media_access.blocked_hint",
+   "finding": "Round-2 remediation (748f4c83caf) made blocked_hint a devices select, resolving the a2 source observation (“them” for one device); the component now passes devices (browser-media-permission-prompt.tsx:152). l’utiliser (U+2019) covers micro (m.) and caméra (f.) alike; les for both."
+  },
+  {
+   "id": "FR-A3-I3",
+   "severity": "INFO",
+   "key": "ui.browser.media_access",
+   "finding": "The other 8 keys are byte-identical to the values audited as mp1843-a2-fr at 99d69f364e3 (JSON key-by-key compare of git show 99d69f364e3: vs 748f4c83caf:; only blocked_hint differs in en, context and this locale); a2 verdicts on them are carried, re-run mechanically here."
+  }
+ ]
+}

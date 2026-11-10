@@ -62,7 +62,7 @@
 	"ui.providers.provider_catalog.use_your_claude_pro_or_max_plan": "अपना Claude Pro या Max प्लान इस्तेमाल करें। कोई अतिरिक्त शुल्क नहीं।",
 	"ui.providers.provider_catalog.use_your_chatgpt_plus_or_pro_plan": "अपना ChatGPT Plus या Pro प्लान इस्तेमाल करें। कोई अतिरिक्त शुल्क नहीं।",
 	"ui.providers.provider_catalog.use_your_chatgpt_plan_signing_in_with": "एक बार इस्तेमाल होने वाले कोड से साइन इन करके अपना ChatGPT प्लान इस्तेमाल करें। कोई अतिरिक्त शुल्क नहीं।",
-	"ui.providers.provider_catalog.one_browser_sign_in_nothing_to_paste": "ब्राउज़र में एक बार साइन इन करें। कुछ पेस्ट नहीं करना पड़ता।",
+	"ui.providers.provider_catalog.one_browser_sign_in_nothing_to_paste": "ब्राउज़र से एक बार साइन इन करें और कई मॉडल इस्तेमाल करें। न सदस्यता चाहिए, न API कुंजी।",
 	"ui.providers.provider_catalog.sign_in_to_your_account_with_a": "एक बार इस्तेमाल होने वाले कोड से अपने {brand} खाते में साइन इन करें।",
 	"ui.providers.provider_catalog.sign_in_with_your_account": "अपने {brand} खाते से साइन इन करें।",
 	"ui.providers.provider_catalog.use_a_subscription": "सब्सक्रिप्शन इस्तेमाल करें",

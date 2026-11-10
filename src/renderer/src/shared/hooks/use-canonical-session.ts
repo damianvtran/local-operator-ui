@@ -1,5 +1,6 @@
 import { subscribeLocale } from "../../../../i18n/locale";
 import { t } from "../../../../i18n/messages";
+import { formatSnapshotReceipt } from "../../../../shared/snapshot-receipt";
 import {
 	modelAuthorityObserverArmed,
 	observeModelAuthority,
@@ -5952,9 +5953,11 @@ export function useCanonicalSessionStream(
 						 * the timeline otherwise.
 						 */
 						const raw = event.data;
+						const parseStart = event.receipt ? performance.now() : 0;
 						const markParse = raw.length >= OPEN_PARSE_MARK_MIN_BYTES;
 						if (markParse) performance.mark("lop:open:parse:start");
 						const frame = JSON.parse(raw) as DesktopSessionFrame;
+						const parseEnd = event.receipt ? performance.now() : 0;
 						if (frame.type === "snapshot")
 							orderFrameRevisions.set(frame, sourceRead);
 						if (markParse) {
@@ -5971,6 +5974,15 @@ export function useCanonicalSessionStream(
 						if (frame.type === "snapshot") {
 							// The open trace's `snapshot` stage (received + parsed, not
 							// yet folded); first write wins, so later snapshots are free.
+							if (event.receipt)
+								console.warn(
+									formatSnapshotReceipt(
+										event.receipt,
+										openTraceToken,
+										parseStart,
+										parseEnd,
+									),
+								);
 							openTrace.note(sessionId, "snapshot", openTraceToken);
 							attempt = 0;
 							clearSnapshotTimer();

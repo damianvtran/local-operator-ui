@@ -110,6 +110,8 @@
 	"ui.teamBridge.plan.title": "Team Bridge nécessite une offre Radient Team",
 	"ui.teamBridge.plan.body": "Communiquez avec les membres de votre équipe et leurs agents, et laissez les agents collaborer avec d’autres agents de votre organisation.",
 	"ui.teamBridge.plan.reason": "L’offre de cette organisation n’inclut pas Team Bridge.",
+	"ui.teamBridge.plan.reason_account": "Votre compte ne fait partie d’aucune organisation disposant de l’offre Radient Team.",
+	"ui.teamBridge.plan.see_plan": "Voir l’offre Radient Team",
 	"ui.teamBridge.plan.sign_in_title": "Connectez-vous à Radient",
 	"ui.teamBridge.plan.sign_in_reason": "Vous êtes déconnecté. Connectez-vous pour utiliser Team Bridge.",
 	"ui.teamBridge.plan.update_title": "Mettez à jour pour utiliser Team Bridge",

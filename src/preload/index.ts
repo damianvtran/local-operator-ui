@@ -26,6 +26,7 @@ import type {
 	AddressHistoryRequest,
 	AddressHistoryResponse,
 } from "../shared/browser-address-history";
+import type { MediaPermissionDecision } from "../shared/browser-media-permission";
 import type {
 	HumanTabAction,
 	HumanTabActionOutcome,
@@ -74,6 +75,7 @@ import {
 	NOTIFICATION_TEST_CHANNEL,
 } from "../shared/notification-sound";
 import { readLaunchTarget, readOpenSessionArgv } from "../shared/open-session";
+import { receiptEpochMs } from "../shared/snapshot-receipt";
 import type {
 	TeamBridgeNotificationSender,
 	TeamBridgeNotifyAuthority,
@@ -323,11 +325,21 @@ const api = {
 						return null;
 					});
 				const handler = (_event: unknown, frame: DesktopStreamEvent) => {
+					// Stamp at listener entry, NOT after the subscription-id promise.
+					const receivedAt = frame.receipt ? performance.now() : 0;
+					// Each subscription listener sees this IPC object. Clone metadata so
+					// unrelated listeners cannot overwrite the matched stream's clocks.
+					const receipt = frame.receipt
+						? { ...frame.receipt, preloadReceiptEpochMs: receiptEpochMs() }
+						: undefined;
 					// Frames are scoped to their own subscription: a late frame from
 					// a dead stream must not land on a new one's consumer.
 					void settled.then((streamId) => {
-						if (streamId !== null && frame.streamId === streamId)
-							onEvent(frame);
+						if (streamId !== null && frame.streamId === streamId) {
+							if (receipt)
+								receipt.preloadReadyMs = performance.now() - receivedAt;
+							onEvent(receipt ? { ...frame, receipt } : frame);
+						}
 					});
 				};
 				ipcRenderer.on("desktop-stream-event", handler);
@@ -1229,6 +1241,35 @@ const api = {
 			ipcRenderer.invoke("browser-passkey-notice-dismiss", tabId, at),
 		openPasskeyNotice: (tabId: number, at: number): Promise<unknown> =>
 			ipcRenderer.invoke("browser-passkey-notice-open", tabId, at),
+		/** An agent tab's notice: open the same page in a new tab the user owns.
+		 * Ids only, like the two above; main reads the agent tab's URL. */
+		continuePasskeyNoticeInUserTab: (
+			tabId: number,
+			at: number,
+		): Promise<unknown> =>
+			ipcRenderer.invoke("browser-passkey-notice-continue", tabId, at),
+		/**
+		 * Answer the camera/microphone prompt. `trusted` is the click's
+		 * `event.isTrusted`; main refuses a decision without it, and the id is the
+		 * prompt's host-minted identity (see `media-permissions.ts`).
+		 */
+		decideMediaPermission: (
+			tabId: number,
+			id: string,
+			decision: MediaPermissionDecision,
+			trusted: boolean,
+		): Promise<unknown> =>
+			ipcRenderer.invoke(
+				"browser-media-permission-decide",
+				tabId,
+				id,
+				decision,
+				trusted,
+			),
+		/** The system-blocked notice's "Open System Settings": main opens the
+		 * fixed macOS pane for that notice (see `media-permissions.ts`). */
+		openMediaSystemSettings: (tabId: number, id: string): Promise<unknown> =>
+			ipcRenderer.invoke("browser-media-permission-open-settings", tabId, id),
 		/** The recovery click on the `unavailable` state (design round 1, D1a).
 		 * No argument: the host restarts the same window's browser, so there is
 		 * nothing for a caller to retarget. */

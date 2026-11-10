@@ -62,7 +62,7 @@
 	"ui.providers.provider_catalog.use_your_claude_pro_or_max_plan": "Use your Claude Pro or Max plan. No extra charge.",
 	"ui.providers.provider_catalog.use_your_chatgpt_plus_or_pro_plan": "Use your ChatGPT Plus or Pro plan. No extra charge.",
 	"ui.providers.provider_catalog.use_your_chatgpt_plan_signing_in_with": "Use your ChatGPT plan, signing in with a one-time code. No extra charge.",
-	"ui.providers.provider_catalog.one_browser_sign_in_nothing_to_paste": "One browser sign-in. Nothing to paste.",
+	"ui.providers.provider_catalog.one_browser_sign_in_nothing_to_paste": "One browser sign-in for many models. No subscription or API key needed.",
 	"ui.providers.provider_catalog.sign_in_to_your_account_with_a": "Sign in to your {brand} account with a one-time code.",
 	"ui.providers.provider_catalog.sign_in_with_your_account": "Sign in with your {brand} account.",
 	"ui.providers.provider_catalog.use_a_subscription": "Use a subscription",

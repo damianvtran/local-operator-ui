@@ -29,7 +29,7 @@
 	"ui.agents.upload.sign_in.needed": "ایجنٹس کو Agent Hub پر شائع کرنے کے لیے آپ کو Radient میں سائن ان ہونا ضروری ہے۔",
 	"ui.agents.upload.sign_in.nothing_left": "اس کے علاوہ کچھ بھی اس مشین سے باہر نہیں گیا: نہ گفتگو، نہ عمل کی تاریخ، نہ یادداشت، نہ منصوبہ اور نہ مشین سے مخصوص ترتیب۔",
 	"ui.agents.upload.sign_in.reauthenticate": "ہب نے جو اسناد مسترد کیں، انہیں بدلنے کے لیے Radient میں دوبارہ سائن ان کریں۔",
-	"ui.agents.upload.target.blocked_hint": "تنظیم کے اندر ایجنٹس کا اشتراک Team پلان کا حصہ ہے۔ {count, plural, one {{org}} other {اوپر نشان زدہ تنظیموں میں سے کسی ایک}} کا مالک اسے Radient کنسول میں فعال کر سکتا ہے۔",
+	"ui.agents.upload.target.blocked_hint": "تنظیم کے اندر ایجنٹس کا اشتراک Radient Team پلان کا حصہ ہے۔ {count, plural, one {{org}} other {اوپر نشان زدہ تنظیموں میں سے کسی ایک}} کا مالک اسے Radient کنسول میں فعال کر سکتا ہے۔",
 	"ui.agents.upload.target.label": "کس جگہ شائع کریں",
 	"ui.agents.upload.target.org_unnamed": "اس تنظیم",
 	"ui.agents.upload.target.orgs_unread": "آپ کی تنظیمیں پڑھی نہیں جا سکیں، اس لیے یہ عوامی ہب پر شائع ہو گا۔ کسی تنظیم میں شائع کرنے کے لیے تھوڑی دیر بعد دوبارہ کوشش کریں۔",

@@ -81,7 +81,6 @@
 			"owner": "the console + onboarding lane (#1041)",
 			"reason": "onboarding copy is owned by the console/onboarding lane, which holds the call-site context",
 			"keys": [
-				"ui.onboarding.connect.intro",
 				"ui.onboarding.default_model.block.loading_models",
 				"ui.onboarding.default_model.block.pick_a_model",
 				"ui.onboarding.default_model.change",
@@ -117,7 +116,6 @@
 				"ui.onboarding.search.each_key_saved",
 				"ui.onboarding.search.intro",
 				"ui.onboarding.search.mode.free",
-				"ui.onboarding.search.mode.free_detail",
 				"ui.onboarding.search.mode.keys",
 				"ui.onboarding.search.mode.keys_detail",
 				"ui.onboarding.search.mode.label",

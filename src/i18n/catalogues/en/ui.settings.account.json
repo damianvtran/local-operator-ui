@@ -16,6 +16,7 @@
 	"ui.settings.account.radient_account_section.radient_refused_the_sign_in_this_app_is_holding_so_your_account_d": "Radient refused the sign-in this app is holding, so your account details could not be read. Signing in again below replaces it.",
 	"ui.settings.account.radient_account_section.your_radient_account_could_not_be_read_so_this_app_cannot_show_yo": "Your Radient account could not be read, so this app cannot show your account details.",
 	"ui.settings.account.radient_account_section.you_are_not_currently_signed_in_to_radient": "You are not currently signed in to Radient.",
+	"ui.settings.account.radient_account_section.team_plan_line": "The Radient Team plan adds Team Bridge and sharing agents and teams inside your organization.",
 	"ui.settings.account.settings_page.radient_pass": "Radient Pass",
 	"ui.settings.account.settings_page.available_credits": "Available credits",
 	"ui.settings.account.settings_page.add_credits": "Add credits",

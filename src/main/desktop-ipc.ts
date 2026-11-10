@@ -14,6 +14,7 @@ import {
 	LINK_PREVIEW_ARTIFACT_CHANNEL,
 	LINK_PREVIEW_RESOLVE_CHANNEL,
 } from "../shared/link-preview";
+import { stampSnapshotSend } from "../shared/snapshot-receipt";
 import type { DesktopMediaResponse } from "./desktop-media";
 import type { DesktopNotifier } from "./desktop-notifier";
 import type { DesktopStreamRelay } from "./desktop-stream";
@@ -664,6 +665,7 @@ export function registerDesktopIPC(
 						relay.unsubscribe(handle.streamId);
 						return;
 					}
+					stampSnapshotSend(frame.kind === "data" ? frame.receipt : undefined);
 					sender.send("desktop-stream-event", frame);
 				},
 			);

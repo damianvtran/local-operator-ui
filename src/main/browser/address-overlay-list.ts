@@ -109,6 +109,10 @@ export interface AddressListRow {
 	title: string;
 	/** At most one range, only on rows whose text embeds the typed value. */
 	isolate?: AddressListIsolate;
+	/** The leading glyph for the browser's own pages (`lop://extensions`), so the
+	 * native list shows the same page mark as the in-flow list. A closed enum: the
+	 * child draws a fixed glyph for it, never anything the renderer supplies. */
+	icon?: "page";
 }
 
 export type AddressListView =
@@ -277,7 +281,7 @@ export function sanitizeOverlayText(
 	return points.length > cap ? points.slice(0, cap).join("") : stripped;
 }
 
-const ROW_KEYS = ["text", "title", "isolate"] as const;
+const ROW_KEYS = ["text", "title", "isolate", "icon"] as const;
 const ISOLATE_KEYS = ["start", "end"] as const;
 
 /** A valid range is two integers with 0 <= start < end <= text.length. Anything
@@ -309,8 +313,12 @@ function sanitizeRows(value: unknown): AddressListRow[] | null {
 		// always ends in the destination. Refusing beats rendering a blank row the
 		// user cannot map to the row they clicked.
 		if (text.length === 0) return null;
+		// Any value but the one glyph is a malformed row, refused like a bad range:
+		// the boundary does not half-trust a renderer that sends an unknown icon.
+		if (entry.icon !== undefined && entry.icon !== "page") return null;
+		const icon = entry.icon === "page" ? { icon: "page" as const } : {};
 		if (entry.isolate === undefined) {
-			rows.push({ text, title });
+			rows.push({ text, title, ...icon });
 			continue;
 		}
 		// The range is validated against the text the renderer SENT, then dropped
@@ -320,7 +328,11 @@ function sanitizeRows(value: unknown): AddressListRow[] | null {
 		const sent = typeof entry.text === "string" ? entry.text : "";
 		const isolate = sanitizeIsolate(entry.isolate, sent.length);
 		if (isolate === null) return null;
-		rows.push(text === sent ? { text, title, isolate } : { text, title });
+		rows.push(
+			text === sent
+				? { text, title, isolate, ...icon }
+				: { text, title, ...icon },
+		);
 	}
 	return rows;
 }
