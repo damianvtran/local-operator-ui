@@ -100,10 +100,12 @@ export const markAllReadCopy = (
 	).length;
 	/*
 	 * Each clause is a SENTENCE that carries its own full stop, and the two are joined
-	 * by a space. The previous shape put the terminator in the `elsewhere` arm and
-	 * began the tokenless arm with a space, so with BOTH clauses present two sentences
-	 * ran together — "…that is not active 1 unread mark with no completion token cannot
-	 * be cleared." — and neither clause's own test could see it, because each was
+	 * by the localized `scope_joined` message (see the next comment). An earlier shape
+	 * put the terminator in the `elsewhere` arm and began the tokenless arm with a
+	 * space, so with BOTH clauses present two sentences ran together — the original
+	 * wording was "…in Previous chats 1 unread mark with no completion token cannot
+	 * be cleared." (the `elsewhere` clause then read "in Previous chats"; it now reads
+	 * "that is not active") — and neither clause's own test could see it, because each was
 	 * asserted on a roster where only it fired (design D5 / QA Q-1; measured, and the
 	 * base renders the same run-on). The comma keeps the first clause inside the
 	 * sentence it extends, so the four cases are: neither clause, `elsewhere` alone,
