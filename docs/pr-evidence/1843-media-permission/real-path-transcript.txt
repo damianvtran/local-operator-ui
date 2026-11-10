@@ -1,0 +1,39 @@
+[rig] app pid 81509 devtools 10014 page http://localhost:57454/media.html
+[rig] navigate -> {"addressOverlay":{"mode":"popout","reason":null},"approvalsCard":{"available":true,"open":false,"visible":false},"pageControls":{"find":null,"zoom":1,"zoomAllo
+[PASS] prompt projected for the active user tab :: {"kind":"prompt","origin":"http://localhost:57454","kinds":["audio"],"ownerKind":"user"}
+[PASS] page is waiting (no silent deny) :: pending
+[PASS] band rendered in the chrome :: localhost:57454 wants to use your microphone.
+
+Block
+Allow
+[rig] frame /Users/damian/.local-operator/sessions/26e0861417d5/scratchpad/media-run1/media-prompt.png
+[PASS] scripted .click() on Allow does not grant :: {"prompt":true,"title":"pending"}
+[PASS] decide(trusted=false) refused :: {"direct":false,"title":"pending"}
+[PASS] decide(forged id) refused :: false
+[PASS] trusted click on Allow grants getUserMedia :: {"title":"granted:1","prompt":null}
+[rig] frame /Users/damian/.local-operator/sessions/26e0861417d5/scratchpad/media-run1/media-after-allow.png
+[PASS] decision remembered in the profile :: {"version":1,"origins":{"http://localhost:57454":{"audio":"allow"}}}
+[PASS] revisit is granted without a prompt :: {"title":"granted:1","prompt":null}
+[PASS] forget site clears the decision :: {"version":1,"origins":{}}
+[PASS] after forget the site prompts again :: prompt
+[rig] teardown clean=true survivors=0
+[app-log] 10:58:24.057 › Log path: /Users/damian/.local-operator/sessions/26e0861417d5/scratchpad/media-run1/logs
+[app-log] 10:58:24.059 › Log path: /Users/damian/.local-operator/sessions/26e0861417d5/scratchpad/media-run1/logs
+[app-log] 10:58:24.059 › Failed to load .env file, using process.env only Error: ENOENT: no such file or directory, open '/Users/damian/local-operator-ui/.worktrees/browser-media-permissions/.env'
+[app-log]     at Object.configDotenv (/Users/damian/local-operator-ui/.worktrees/browser-media-permissions/node_modules/.pnpm/dotenv@16.5.0/node_modules/dotenv/lib/main.js:236:44)
+[app-log]     at Object.config (/Users/damian/local-operator-ui/.worktrees/browser-media-permissions/node_modules/.pnpm/dotenv@16.5.0/node_modules/dotenv/lib/main.js:265:25)
+[app-log]     at Object.<anonymous> (/Users/damian/local-operator-ui/.worktrees/browser-media-permissions/out/main/index.jsc:1:7107655)
+[app-log]     at Module._extensions..jsc.Module._extensions..cjsc (/Users/damian/local-operator-ui/.worktrees/browser-media-permissions/out/main/bytecode-loader.cjs:71:26)
+[app-log] 10:58:24.200 › Resources path: /Users/damian/local-operator-ui/.worktrees/browser-media-permissions/resources
+[app-log] 10:58:25.443 › recording-shortcut: the config directory could not be watched yet (Error: ENOENT: no such file or directory, watch '/Users/damian/.local-operator/sessions/26e0861417d5/scratchpad/media-run1/config')
+[app-log] 10:58:25.461 › [discovery] record directory /Users/damian/.local-operator/sessions/26e0861417d5/scratchpad/media-run1/config/run/serve (0 record(s))
+[app-log] 10:58:26.708 › [console] restored the exec bit on /Users/damian/local-operator-ui/.worktrees/browser-media-permissions/node_modules/.pnpm/node-pty@1.1.0/node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper
+[app-log] 10:58:26.709 › [console] config watch: the config directory could not be watched yet (Error: ENOENT: no such file or directory, watch '/Users/damian/.local-operator/sessions/26e0861417d5/scratchpad/media-run1/config')
+[app-log] 10:58:26.719 › [browser] host on 127.0.0.1:57495 (proto 1), profile /Users/damian/.local-operator/sessions/26e0861417d5/scratchpad/media-run1/userdata/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surf
+[app-log] 10:58:30.237 › [browser] http://localhost:57454 asked for microphone; waiting for the user
+[app-log] 10:58:31.159 › [browser] ignored a camera/microphone answer that was not a user click
+[app-log] 10:58:31.965 › [browser] ignored a camera/microphone answer that was not a user click
+[app-log] 10:58:32.162 › [browser] the user allowed microphone for http://localhost:57454
+[app-log] 10:58:32.172 › [browser] granted media (request) from http://localhost:57454/
+[app-log] 10:58:32.181 › [browser] denied media (check) from http://localhost:57454/
+[app-log] 10:58:35.617 › [discovery] record directory /Users/damian/.local-operator/sessions/26e0861417d5/scratchpad/media-run1/config/run/serve (0 record(s))
