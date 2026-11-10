@@ -277,5 +277,7 @@
 	"ui.chat.canonical.tool_row.diff.full.inline": "Toàn bộ diff đã hiển thị ở trên",
 	"ui.chat.canonical.tool_row.diff.full.not_found": "Không tìm thấy toàn bộ diff của thay đổi này",
 	"ui.chat.canonical.tool_row.diff.full.clipped": "{count, plural, other {# dòng dài trên trang này đã được rút gọn}}",
-	"ui.chat.canonical.tool_row.diff.full.clipped_row": "(dòng đã rút gọn)"
+	"ui.chat.canonical.tool_row.diff.full.clipped_row": "(dòng đã rút gọn)",
+	"ui.chat.canonical.tool_row.diff.full.continued": "(tiếp nối từ trang trước)",
+	"ui.chat.canonical.tool_row.diff.full.continues": "(còn tiếp ở trang sau)"
 }

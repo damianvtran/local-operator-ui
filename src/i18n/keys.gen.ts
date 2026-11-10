@@ -4729,6 +4729,8 @@ export type MessageParams = {
 	"ui.chat.canonical.tool_row.diff.full.back": undefined;
 	"ui.chat.canonical.tool_row.diff.full.clipped": { count: number };
 	"ui.chat.canonical.tool_row.diff.full.clipped_row": undefined;
+	"ui.chat.canonical.tool_row.diff.full.continued": undefined;
+	"ui.chat.canonical.tool_row.diff.full.continues": undefined;
 	"ui.chat.canonical.tool_row.diff.full.empty": undefined;
 	"ui.chat.canonical.tool_row.diff.full.error": undefined;
 	"ui.chat.canonical.tool_row.diff.full.evicted": undefined;

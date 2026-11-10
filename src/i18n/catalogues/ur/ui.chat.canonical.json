@@ -277,5 +277,7 @@
 	"ui.chat.canonical.tool_row.diff.full.inline": "پورا diff اوپر پہلے سے دکھایا گیا ہے",
 	"ui.chat.canonical.tool_row.diff.full.not_found": "اس تبدیلی کا مکمل diff نہیں ملا",
 	"ui.chat.canonical.tool_row.diff.full.clipped": "{count, plural, one {اس صفحے کی # لمبی لائن مختصر کی گئی ہے} other {اس صفحے کی # لمبی لائنیں مختصر کی گئی ہیں}}",
-	"ui.chat.canonical.tool_row.diff.full.clipped_row": "(لائن مختصر کی گئی)"
+	"ui.chat.canonical.tool_row.diff.full.clipped_row": "(لائن مختصر کی گئی)",
+	"ui.chat.canonical.tool_row.diff.full.continued": "(پچھلے صفحے سے جاری)",
+	"ui.chat.canonical.tool_row.diff.full.continues": "(اگلے صفحے پر جاری)"
 }

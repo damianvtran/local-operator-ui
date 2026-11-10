@@ -277,5 +277,7 @@
 	"ui.chat.canonical.tool_row.diff.full.inline": "Весь diff уже показан выше",
 	"ui.chat.canonical.tool_row.diff.full.not_found": "Полный diff для этого изменения не найден",
 	"ui.chat.canonical.tool_row.diff.full.clipped": "{count, plural, one {# длинная строка на этой странице сокращена} few {# длинные строки на этой странице сокращены} many {# длинных строк на этой странице сокращено} other {# длинной строки на этой странице сокращено}}",
-	"ui.chat.canonical.tool_row.diff.full.clipped_row": "(строка сокращена)"
+	"ui.chat.canonical.tool_row.diff.full.clipped_row": "(строка сокращена)",
+	"ui.chat.canonical.tool_row.diff.full.continued": "(продолжение с предыдущей страницы)",
+	"ui.chat.canonical.tool_row.diff.full.continues": "(продолжение на следующей странице)"
 }

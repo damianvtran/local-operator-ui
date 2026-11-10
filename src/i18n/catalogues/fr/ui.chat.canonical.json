@@ -277,5 +277,7 @@
 	"ui.chat.canonical.tool_row.diff.full.inline": "Le diff complet est déjà affiché ci-dessus",
 	"ui.chat.canonical.tool_row.diff.full.not_found": "Diff complet introuvable pour cette modification",
 	"ui.chat.canonical.tool_row.diff.full.clipped": "{count, plural, one {# ligne longue de cette page est raccourcie} other {# lignes longues de cette page sont raccourcies}}",
-	"ui.chat.canonical.tool_row.diff.full.clipped_row": "(ligne raccourcie)"
+	"ui.chat.canonical.tool_row.diff.full.clipped_row": "(ligne raccourcie)",
+	"ui.chat.canonical.tool_row.diff.full.continued": "(suite de la page précédente)",
+	"ui.chat.canonical.tool_row.diff.full.continues": "(suite à la page suivante)"
 }

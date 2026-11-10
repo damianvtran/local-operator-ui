@@ -277,5 +277,7 @@
 	"ui.chat.canonical.tool_row.diff.full.inline": "The whole diff is already shown above",
 	"ui.chat.canonical.tool_row.diff.full.not_found": "Full diff not found for this change",
 	"ui.chat.canonical.tool_row.diff.full.clipped": "{count, plural, one {# long line on this page is shortened} other {# long lines on this page are shortened}}",
-	"ui.chat.canonical.tool_row.diff.full.clipped_row": "(line shortened)"
+	"ui.chat.canonical.tool_row.diff.full.clipped_row": "(line shortened)",
+	"ui.chat.canonical.tool_row.diff.full.continued": "(continued from previous page)",
+	"ui.chat.canonical.tool_row.diff.full.continues": "(continues on next page)"
 }

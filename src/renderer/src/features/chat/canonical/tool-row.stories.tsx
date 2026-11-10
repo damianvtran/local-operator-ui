@@ -2862,9 +2862,10 @@ const WITHHELD_WRITE_ROW = tool({
  *
  * A child-scoped edit whose preview omitted rows and whose core archived the
  * whole redacted diff: 1,000 rows with unique first / middle / final markers,
- * a 20,000-char row the route clips, and a fake `window.api.desktop.request`
- * that answers the frozen page contract INCLUDING the byte budget, so pages
- * end early and only `next_start` is a cursor. `mode` picks the answer shape
+ * a 14,000-char row the route CONTINUES across pages (never clips), and a fake
+ * `window.api.desktop.request` that answers the v1 pair-cursor page contract
+ * INCLUDING the byte budget, so pages end early and only (`next_start`,
+ * `next_offset`) is a cursor. Offsets count code points, like the core. `mode` picks the answer shape
  * for the loading / error / empty / evicted frames.
  */
 const FULL_TOTAL = 1000;
@@ -2874,7 +2875,7 @@ const FULL_ARTIFACT = Array.from({ length: FULL_TOTAL }, (_, i) => {
 	if (i === 3) return "-UNIQUE-FIRST-ROW const legacy = readOld();";
 	if (i === 501) return "+UNIQUE-MIDDLE-ROW const value = await readNew();";
 	if (i === FULL_TOTAL - 1) return "+UNIQUE-FINAL-ROW export default value;";
-	if (i === 700) return `+const blob = "${"y".repeat(4000)}`;
+	if (i === 700) return `+const blob = "${"y".repeat(14_000)}END-OF-BLOB";`;
 	if (i % 50 === 2)
 		return `@@ -${i},50 +${i},50 @@ export function section${i}()`;
 	if (i % 3 === 0) return `-\tconst legacy${i} = readOld(${i});`;
@@ -2883,22 +2884,35 @@ const FULL_ARTIFACT = Array.from({ length: FULL_TOTAL }, (_, i) => {
 	return ` \t// context line ${i}`;
 });
 
-const fullPage = (start: number, limit: number) => {
+const fullPage = (start: number, limit: number, offset = 0) => {
 	const rows: string[] = [];
-	const clipped: number[] = [];
 	let bytes = 0;
 	let i = start;
+	let off = offset;
+	let next: { start: number; offset: number } | null = null;
 	while (i < FULL_TOTAL && rows.length < limit) {
-		let row = FULL_ARTIFACT[i];
-		if (row.length > 2000) {
-			row = row.slice(0, 2000);
-			clipped.push(i);
+		const points = Array.from(FULL_ARTIFACT[i]);
+		const marker = points[0] ?? "";
+		const rest = points.slice(1 + off);
+		const room = 6000 - bytes;
+		if (1 + rest.length <= room) {
+			rows.push(marker + rest.join(""));
+			bytes += 1 + rest.length;
+			i += 1;
+			off = 0;
+			continue;
 		}
-		if (rows.length > 0 && bytes + row.length > 6000) break;
-		rows.push(row);
-		bytes += row.length;
-		i += 1;
+		// Split a row that does not fit, keeping its marker on each fragment;
+		// with too little room left, end the page and start the row fresh.
+		if (rows.length === 0 || room >= 200) {
+			rows.push(marker + rest.slice(0, room - 1).join(""));
+			next = { start: i, offset: off + room - 1 };
+		} else {
+			next = { start: i, offset: 0 };
+		}
+		break;
 	}
+	if (!next && i < FULL_TOTAL) next = { start: i, offset: 0 };
 	let hunk: string | null = null;
 	for (let j = start; j >= 0; j -= 1) {
 		if (FULL_ARTIFACT[j].startsWith("@@")) {
@@ -2909,11 +2923,13 @@ const fullPage = (start: number, limit: number) => {
 	return {
 		state: "archived",
 		start,
+		offset,
 		total_rows: FULL_TOTAL,
 		rows,
 		hunk_header: hunk,
-		next_start: i < FULL_TOTAL ? i : null,
-		clipped_rows: clipped,
+		next_start: next ? next.start : null,
+		next_offset: next ? next.offset : null,
+		clipped_rows: [],
 	};
 };
 
@@ -2928,6 +2944,7 @@ const installDiffRelay = (mode: FullMode) => {
 		request: async (request: {
 			op?: string;
 			start?: number;
+			offset?: number;
 			limit?: number;
 		}) => {
 			if (request.op !== "subagents.diff" && request.op !== "sessions.diff")
@@ -2937,6 +2954,7 @@ const installDiffRelay = (mode: FullMode) => {
 				return { status: 503, body: { detail: "Backend unavailable." } };
 			const empty = {
 				start: 0,
+				offset: 0,
 				total_rows: 0,
 				rows: [],
 				hunk_header: null,
@@ -2955,7 +2973,13 @@ const installDiffRelay = (mode: FullMode) => {
 				};
 			return {
 				status: 200,
-				body: { result: fullPage(request.start ?? 0, request.limit ?? 200) },
+				body: {
+					result: fullPage(
+						request.start ?? 0,
+						request.limit ?? 200,
+						request.offset ?? 0,
+					),
+				},
 			};
 		},
 	};
@@ -3050,8 +3074,11 @@ export const DiffFullFinalPage: Story = {
 			?.scrollIntoView({ block: "end" });
 	},
 };
-/** A page with the clipped 4,000-char row and its disclosure. */
-export const DiffFullClippedRow: Story = {
+/**
+ * The 14,000-char row is longer than one page's byte budget: it ends this page
+ * marked "(continues on next page)" — nothing is cut.
+ */
+export const DiffFullSplitRow: Story = {
 	render: () => <FullFrame />,
 	play: async ({ canvasElement }) => {
 		await openFull(canvasElement);
@@ -3061,7 +3088,24 @@ export const DiffFullClippedRow: Story = {
 			await new Promise((r) => setTimeout(r, 30));
 		}
 		canvasElement
-			.querySelector('[data-diff-line="700"]')
+			.querySelector('[data-diff-line="700"] [data-diff-continues]')
+			?.scrollIntoView({ block: "center" });
+	},
+};
+/** Next from there: the same row resumes, marked "(continued from previous page)". */
+export const DiffFullSplitRowResumed: Story = {
+	render: () => <FullFrame />,
+	play: async ({ canvasElement }) => {
+		await openFull(canvasElement);
+		for (let i = 0; i < 80; i += 1) {
+			if (canvasElement.querySelector('[data-diff-line="700"]')) break;
+			await press(canvasElement, "Next");
+			await new Promise((r) => setTimeout(r, 30));
+		}
+		await press(canvasElement, "Next");
+		await new Promise((r) => setTimeout(r, 30));
+		canvasElement
+			.querySelector('[data-diff-line="700"] [data-diff-continued]')
 			?.scrollIntoView({ block: "center" });
 	},
 };

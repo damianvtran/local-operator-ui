@@ -277,5 +277,7 @@
 	"ui.chat.canonical.tool_row.diff.full.inline": "完整diff已在上方显示",
 	"ui.chat.canonical.tool_row.diff.full.not_found": "找不到此更改的完整diff",
 	"ui.chat.canonical.tool_row.diff.full.clipped": "{count, plural, other {本页有#行过长，已截短}}",
-	"ui.chat.canonical.tool_row.diff.full.clipped_row": "（此行已截短）"
+	"ui.chat.canonical.tool_row.diff.full.clipped_row": "（此行已截短）",
+	"ui.chat.canonical.tool_row.diff.full.continued": "（接上页）",
+	"ui.chat.canonical.tool_row.diff.full.continues": "（转下页）"
 }

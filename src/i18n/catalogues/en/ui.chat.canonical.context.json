@@ -1976,5 +1976,19 @@
 		"tone": "parenthetical",
 		"length": "Short.",
 		"note": "Very short; keep the parentheses."
+	},
+	"ui.chat.canonical.tool_row.diff.full.continued": {
+		"role": "dim suffix after the first row of a full-diff page when that row began on the previous page (a long line split across pages)",
+		"tone": "parenthetical, neutral",
+		"length": "Short.",
+		"note": "Says the text is the rest of a line already started, not a new line. Nothing was removed. Keep the parentheses.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.diff.full.continues": {
+		"role": "dim suffix after the last row of a full-diff page when that row goes on at the top of the next page (a long line split across pages)",
+		"tone": "parenthetical, neutral",
+		"length": "Short.",
+		"note": "Says the line is not finished and nothing was cut; the rest is on the next page. Keep the parentheses.",
+		"placeholders": {}
 	}
 }

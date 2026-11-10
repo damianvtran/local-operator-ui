@@ -20,12 +20,15 @@
  *   truncated preview means the call predates the archive: `not_recorded`.
  *   The digest is the core's own reference; the client never sends it — the
  *   routes resolve the artifact from session + call id.
- * - page `{state, start, total_rows, rows[], hunk_header, next_start,
- *   clipped_rows[]}`. A non-archived state answers 200 with no rows; an unknown
+ * - page `{state, start, offset, total_rows, rows[], hunk_header, next_start,
+ *   next_offset, clipped_rows[]}`. A non-archived state answers 200 with no rows; an unknown
  *   session/child/call answers 404 `diff_not_found`; bad paging answers 422.
- *   Pages are bounded by BOTH 200 rows and a byte budget, so `next_start` is the
- *   only honest cursor — never `start + limit`. One row too large for the budget
- *   is clipped and its ABSOLUTE index listed in `clipped_rows`.
+ *   Pages are bounded by BOTH 200 rows and a byte budget, so the route's own
+ *   cursor is the only honest one — never `start + limit`. v1 extension: the
+ *   cursor is the PAIR (`next_start`, `next_offset`), echoed as (`start`,
+ *   `offset`). A row too large for the budget is CONTINUED on the next page,
+ *   never clipped, so every accepted character is reachable; `clipped_rows`
+ *   stays on the wire for compatibility and is `[]` from the current core.
  *
  * Colours are not decided here: rows reuse `diffLineKind`, the same classifier
  * (and so the same green/red/muted inks) the inline preview uses.
@@ -117,12 +120,40 @@ const PAGE_STATES: ReadonlySet<string> = new Set<DiffPageState>([
 export type DiffPage = {
 	state: DiffPageState;
 	start: number;
+	/**
+	 * Server-issued position inside row `start`'s body where this page begins
+	 * (0 = the row's start). Opaque: the core counts Unicode code points, so the
+	 * renderer only echoes it and never slices text by it.
+	 */
+	offset: number;
 	totalRows: number;
+	/**
+	 * Row FRAGMENTS, each carrying its row's own leading diff marker so the
+	 * classifier still paints it green/red. The first is a continuation when
+	 * `offset > 0`; the last is partial when `nextOffset > 0`.
+	 */
 	rows: string[];
 	hunkHeader: string | null;
+	/** Resume PAIR; both `null` only at the true end of the artifact. */
 	nextStart: number | null;
+	nextOffset: number | null;
 	clippedRows: number[];
 };
+
+/** A page position: row index plus the server's offset inside that row. */
+export type DiffCursor = { start: number; offset: number };
+
+/** Lexicographic order of two cursors (row first, then offset). */
+export function compareCursor(a: DiffCursor, b: DiffCursor): number {
+	return a.start !== b.start ? a.start - b.start : a.offset - b.offset;
+}
+
+/** Where the page after `page` begins, or `null` at the end. */
+export function nextCursor(page: DiffPage): DiffCursor | null {
+	return page.nextStart === null || page.nextOffset === null
+		? null
+		: { start: page.nextStart, offset: page.nextOffset };
+}
 
 function nonNegativeInt(value: unknown): number | null {
 	return typeof value === "number" && Number.isSafeInteger(value) && value >= 0
@@ -133,19 +164,27 @@ function nonNegativeInt(value: unknown): number | null {
 /**
  * Parse one page `result`. Returns `null` for a frame that does not honour the
  * contract — the caller shows the error state with Retry rather than painting
- * rows whose position it cannot trust.
+ * text whose position it cannot trust.
  *
- * Cursor rules (review round 1, R1/Q2): pages are CONTIGUOUS slices, so an
- * archived page must start exactly where it was asked to (`requestedStart`),
- * its `next_start` must be exactly `start + rows.length` (a jump would skip
- * rows silently; a cursor at or behind `start` would loop Next forever), and a
- * page that says it is final (`next_start: null`) must end at `total_rows` —
- * otherwise rows past it would be unreachable. No arbitrary cap is added: the
- * only bounds are the wire's own row budget and safe integers.
+ * Cursor rules: pages are CONTIGUOUS slices of the accepted text, addressed
+ * by the pair (`start`, `offset`) — a row longer than the byte budget is
+ * continued on the next page instead of clipped (round 2: clipping dropped
+ * the accepted tail, which the operator's "see all of them" rules out).
+ *
+ * - an archived page echoes the requested pair exactly;
+ * - a completed last row resumes at (`start + rows.length`, 0);
+ * - a partial last row resumes at (`start + rows.length - 1`, `next_offset > 0`),
+ *   and a page that is a single fragment of one row must move its offset
+ *   FORWARD — otherwise Next would loop on the same text;
+ * - `next_start`/`next_offset` are both `null` only when the page ends at
+ *   `total_rows` — otherwise rows past it would be unreachable.
+ *
+ * No arbitrary cap is added: the only bounds are the wire's row budget and
+ * safe integers.
  */
 export function parseDiffPage(
 	value: unknown,
-	requestedStart?: number,
+	requested?: DiffCursor,
 ): DiffPage | null {
 	if (!value || typeof value !== "object" || Array.isArray(value)) return null;
 	const raw = value as Record<string, unknown>;
@@ -162,26 +201,46 @@ export function parseDiffPage(
 	const rows = raw.rows as string[];
 	if (rows.length > DESKTOP_DIFF_PAGE_MAX_ROWS) return null;
 	if (start + rows.length > totalRows && rows.length > 0) return null;
+	// `offset`/`next_offset` are absent on a non-archived answer; there they
+	// mean "nothing to resume" and default to 0 / null.
+	const offset = raw.offset === undefined ? 0 : nonNegativeInt(raw.offset);
+	if (offset === null) return null;
+	const nextStartRaw = raw.next_start ?? null;
+	const nextOffsetRaw =
+		raw.next_offset === undefined && nextStartRaw !== null
+			? 0
+			: (raw.next_offset ?? null);
 	let nextStart: number | null = null;
-	if (raw.next_start !== null && raw.next_start !== undefined) {
-		nextStart = nonNegativeInt(raw.next_start);
-		if (nextStart === null || nextStart <= start || nextStart > totalRows) {
-			return null;
-		}
+	let nextOffset: number | null = null;
+	if (nextStartRaw !== null || nextOffsetRaw !== null) {
+		nextStart = nonNegativeInt(nextStartRaw);
+		nextOffset = nonNegativeInt(nextOffsetRaw);
+		// Half a cursor is no cursor.
+		if (nextStart === null || nextOffset === null) return null;
+		if (nextStart > totalRows) return null;
 	}
 	if (raw.state === "archived") {
-		if (requestedStart !== undefined && start !== requestedStart) return null;
-		if (nextStart !== null && nextStart !== start + rows.length) return null;
-		if (
-			nextStart === null &&
-			rows.length > 0 &&
-			start + rows.length !== totalRows
-		) {
-			return null;
+		if (requested) {
+			if (start !== requested.start || offset !== requested.offset) return null;
 		}
+		if (offset > 0 && rows.length === 0) return null;
+		if (nextStart === null) {
+			if (start + rows.length !== totalRows) return null;
+		} else if (nextOffset === 0) {
+			if (rows.length === 0 || nextStart !== start + rows.length) return null;
+		} else {
+			if (rows.length === 0 || nextStart !== start + rows.length - 1) {
+				return null;
+			}
+			if (rows.length === 1 && (nextOffset as number) <= offset) return null;
+		}
+	} else if (nextStart !== null) {
+		return null;
 	}
 	const hunkHeader =
 		typeof raw.hunk_header === "string" ? raw.hunk_header : null;
+	// Kept for wire compatibility; an accepted archive continues long rows
+	// instead of clipping them, so this is `[]` from the current core.
 	const clipped = Array.isArray(raw.clipped_rows)
 		? raw.clipped_rows.filter(
 				(row): row is number =>
@@ -193,10 +252,12 @@ export function parseDiffPage(
 	return {
 		state: raw.state as DiffPageState,
 		start,
+		offset,
 		totalRows,
 		rows,
 		hunkHeader,
 		nextStart,
+		nextOffset,
 		clippedRows: clipped,
 	};
 }
@@ -207,6 +268,10 @@ export type DiffPageLine = {
 	text: string;
 	kind: DiffLineKind;
 	clipped: boolean;
+	/** This fragment resumes a row the previous page began. */
+	continued: boolean;
+	/** This row goes on past the end of the page. */
+	continues: boolean;
 };
 
 /**
@@ -214,8 +279,12 @@ export type DiffPageLine = {
  *
  * The artifact keeps the nameless `---`/`+++` file-header pair as rows 0-1
  * (it is the redacted diff verbatim); the preview drops that pair POSITIONALLY
- * (`stripDiffHeader`), so the pager drops it at `start === 0` only — a `---`
- * row deeper in the diff is a removed line that starts with `--` and must stay.
+ * (`stripDiffHeader`), so the pager drops it at the very start (row 0, offset
+ * 0) only — a `---` row deeper in the diff is a removed line and must stay.
+ *
+ * A fragment keeps its row's marker, so `diffLineKind` colours a continued
+ * `+` row green on every page it spans. Trailing whitespace is dropped only at
+ * a row's REAL end: inside a split row it is accepted text that continues.
  *
  * `hunkHeader` is the enclosing `@@` row the route copied from the redacted
  * artifact for a page that starts mid-hunk; it is shown pinned above the rows
@@ -225,17 +294,22 @@ export function diffPageLines(page: DiffPage): {
 	lines: DiffPageLine[];
 	hunkHeader: string | null;
 } {
-	// Same exact rule as `stripDiffHeader`: only the NAMELESS pair, both rows.
-	const skip = page.start === 0 ? namelessHeaderRows(page.rows) : 0;
+	const skip =
+		page.start === 0 && page.offset === 0 ? namelessHeaderRows(page.rows) : 0;
 	const clipped = new Set(page.clippedRows);
-	const lines = page.rows.slice(skip).map((raw, offset) => {
-		const index = page.start + skip + offset;
-		const text = raw.replace(TRAILING_WHITESPACE, "");
+	const lastOffset = page.rows.length - 1;
+	const lines = page.rows.slice(skip).map((raw, at) => {
+		const offset = at + skip;
+		const index = page.start + offset;
+		const continues = offset === lastOffset && (page.nextOffset ?? 0) > 0;
+		const text = continues ? raw : raw.replace(TRAILING_WHITESPACE, "");
 		return {
 			index,
 			text,
 			kind: diffLineKind(text),
 			clipped: clipped.has(index),
+			continued: offset === 0 && page.offset > 0,
+			continues,
 		};
 	});
 	const first = lines[0];
@@ -246,19 +320,20 @@ export function diffPageLines(page: DiffPage): {
 
 /**
  * Where Last starts. Pages are byte-bounded, so `total - limit` may stop short
- * of the end; the hook follows `next_start` from here until the page reaches
- * the final row, and as a last resort asks for `total - 1` itself, which the
- * route always answers with the final row.
+ * of the end; the hook follows the route's cursor from here until the page
+ * reaches the true end, and as a last resort asks for (`total - 1`, 0) and
+ * follows THAT row's continuations, so a huge final row shows its real end.
  */
 export function lastPageStart(totalRows: number): number {
 	return Math.max(0, totalRows - DESKTOP_DIFF_PAGE_MAX_ROWS);
 }
 
 /**
- * Where Prev's walk starts when the reader did not arrive by Next (Last, or a
- * jump): one full row budget back. A byte-clipped page from there may end
- * before the current `start`, so the pager follows `next_start` from it until
- * the page reaches `start - 1` — Prev never skips a row.
+ * Where Prev's walk starts when the reader has no Next history (after Last,
+ * or at the first page of a backwards walk): one full row budget back. A
+ * byte-bounded page from there may end before the current position, so the
+ * pager follows the cursor from it until it covers the position, then cuts
+ * the covering page (`pageEndingBefore`) — Prev never skips text.
  */
 export function previousPageStart(start: number): number {
 	return Math.max(0, start - DESKTOP_DIFF_PAGE_MAX_ROWS);
@@ -279,8 +354,8 @@ export function namelessHeaderRows(rows: readonly string[]): 0 | 2 {
 /**
  * Inclusive 1-based range and total the reader can SEE (review round 1,
  * R3/U4/Q3): the artifact counts the hidden nameless header pair, the painted
- * rows do not, so "Rows 1–N of T" subtracts it. Cursors stay in artifact
- * positions internally; only this display arithmetic shifts.
+ * rows do not, so "Rows 1–N of T" subtracts it. Counts are LOGICAL rows: a
+ * row split across pages is the same row on each, never a new one.
  */
 export function pageRange(
 	page: DiffPage,
@@ -292,20 +367,33 @@ export function pageRange(
 }
 
 /**
- * The tail of the page the reader is leaving: an `answer` that crosses
- * `before` is cut to end at row `before - 1`, with its cursor pointing at
- * `before` (review round 1, U2/Q3: Previous after Last used to repaint rows
- * the reader had just seen). Contiguity is preserved, so Next from the cut page
- * returns to exactly the page it came from.
+ * The part of `answer` that lies before `before`: Prev after a jump must end
+ * exactly where the reader's page begins (round 1, U2/Q3: it used to repaint
+ * rows the reader had just seen).
+ *
+ * The cut is ROW-aligned on purpose. A cursor inside a row is a code-point
+ * offset only the core can apply, so the renderer never slices a fragment by
+ * it: when `before` is mid-row, the cut page ends before that row and its
+ * cursor resumes at (row, 0). Nothing is skipped; at most the head of that one
+ * row is shown again on Next.
  */
-export function pageEndingBefore(answer: DiffPage, before: number): DiffPage {
-	if (answer.start + answer.rows.length <= before) return answer;
-	const keep = Math.max(0, before - answer.start);
+export function pageEndingBefore(
+	answer: DiffPage,
+	before: DiffCursor,
+): DiffPage {
+	const next = nextCursor(answer);
+	if (next && compareCursor(next, before) <= 0) return answer;
+	// A page that starts inside the very row we must end before has nothing
+	// row-aligned to keep; the caller then shows it as-is (it IS the page
+	// before, fragment-wise) rather than an empty page.
+	const keep = before.start - answer.start;
+	if (keep <= 0) return answer;
 	return {
 		...answer,
 		rows: answer.rows.slice(0, keep),
-		nextStart: before,
-		clippedRows: answer.clippedRows.filter((row) => row < before),
+		nextStart: before.start,
+		nextOffset: 0,
+		clippedRows: answer.clippedRows.filter((row) => row < before.start),
 	};
 }
 
@@ -360,6 +448,14 @@ export function diffFullClippedLabel(count: number): string {
 }
 export function diffFullClippedRowLabel(): string {
 	return t("ui.chat.canonical.tool_row.diff.full.clipped_row");
+}
+/** Marks a fragment that resumes a row begun on the previous page. */
+export function diffFullContinuedLabel(): string {
+	return t("ui.chat.canonical.tool_row.diff.full.continued");
+}
+/** Marks a row whose text goes on past the end of this page. */
+export function diffFullContinuesLabel(): string {
+	return t("ui.chat.canonical.tool_row.diff.full.continues");
 }
 
 /**

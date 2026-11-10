@@ -2276,6 +2276,15 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	 * artifact ROW index (rows never move: the artifact is immutable), and
 	 * `limit` is capped at the route's 200 — the route may still return fewer
 	 * under its byte budget and says where to resume (`next_start`).
+	 *
+	 * `offset` (v1 extension, review round 2): a row longer than one page's byte
+	 * budget is CONTINUED, never clipped, so the resume point is the PAIR
+	 * (`next_start`, `next_offset`). `offset` is the server-issued position
+	 * inside row `start`'s body, counted in Unicode code points by the core —
+	 * the renderer treats it as an opaque integer it echoes back and never
+	 * slices JS text by. Optional (default 0) so a row-aligned request stays
+	 * the frozen v1 shape; always sent on the wire for the same reason
+	 * `start`/`limit` are.
 	 */
 	z
 		.object({
@@ -2283,6 +2292,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			sessionId,
 			callId: id,
 			start: z.number().int().min(0).max(1_000_000),
+			offset: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
 			limit: z.number().int().min(1).max(DESKTOP_DIFF_PAGE_MAX_ROWS),
 		})
 		.strict(),
@@ -2293,6 +2303,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			childId: sessionId,
 			callId: id,
 			start: z.number().int().min(0).max(1_000_000),
+			offset: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
 			limit: z.number().int().min(1).max(DESKTOP_DIFF_PAGE_MAX_ROWS),
 		})
 		.strict(),
@@ -9410,6 +9421,7 @@ export function desktopEndpoint(request: DesktopRequest): {
 			// `next_start` is a fact about the range the caller actually asked for.
 			const query = new URLSearchParams({
 				start: String(request.start),
+				offset: String(request.offset ?? 0),
 				limit: String(request.limit),
 			});
 			const call = encodeURIComponent(request.callId);

@@ -277,5 +277,7 @@
 	"ui.chat.canonical.tool_row.diff.full.inline": "पूरा diff ऊपर पहले से दिखाया गया है",
 	"ui.chat.canonical.tool_row.diff.full.not_found": "इस बदलाव का पूरा diff नहीं मिला",
 	"ui.chat.canonical.tool_row.diff.full.clipped": "{count, plural, one {इस पेज की # लंबी पंक्ति छोटी की गई है} other {इस पेज की # लंबी पंक्तियाँ छोटी की गई हैं}}",
-	"ui.chat.canonical.tool_row.diff.full.clipped_row": "(पंक्ति छोटी की गई)"
+	"ui.chat.canonical.tool_row.diff.full.clipped_row": "(पंक्ति छोटी की गई)",
+	"ui.chat.canonical.tool_row.diff.full.continued": "(पिछले पेज से जारी)",
+	"ui.chat.canonical.tool_row.diff.full.continues": "(अगले पेज पर जारी)"
 }

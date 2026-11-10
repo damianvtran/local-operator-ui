@@ -31,11 +31,15 @@ import {
 } from "react";
 import {
 	DESKTOP_DIFF_PAGE_MAX_ROWS,
+	type DiffCursor,
 	type DiffFullNotice,
 	type DiffPage,
+	compareCursor,
 	diffFullBackLabel,
 	diffFullClippedLabel,
 	diffFullClippedRowLabel,
+	diffFullContinuedLabel,
+	diffFullContinuesLabel,
 	diffFullEmptyLabel,
 	diffFullErrorLabel,
 	diffFullFirstLabel,
@@ -49,6 +53,7 @@ import {
 	diffFullRetryLabel,
 	diffPageLines,
 	lastPageStart,
+	nextCursor,
 	pageEndingBefore,
 	pageRange,
 	parseDiffPage,
@@ -60,35 +65,44 @@ import { KIND_INK } from "./diff-ink";
 export type DiffHistoryScope = { sessionId: string; childId: string | null };
 
 /**
- * What the pager is doing. `error` remembers the ACTION that failed (its start
- * and mode), so Retry replays Last as Last and Previous as Previous instead of
- * re-fetching some other page (review round 1, R2/Q1).
+ * What the pager is doing. `error` remembers the ACTION that failed (its
+ * cursor and mode), so Retry replays Last as Last and Previous as Previous
+ * instead of re-fetching some other page (review round 1, R2/Q1).
  */
 export type DiffHistoryState =
 	| { kind: "loading" }
-	| { kind: "error"; start: number; mode: DiffHistoryMode }
+	| { kind: "error"; cursor: DiffCursor; mode: DiffHistoryMode }
 	| { kind: "notice"; notice: DiffFullNotice }
 	| { kind: "page"; page: DiffPage };
 
 /**
- * `exact`: the page at `start`. `last`: the page holding the final row.
- * `before`: the page that ends at row `start - 1`.
+ * `exact`: the page at `cursor`. `last`: the page holding the artifact's
+ * true end. `before`: the page that ends just before `cursor`.
  */
 export type DiffHistoryMode = "exact" | "last" | "before";
 
 /**
- * The most `next_start` hops Last or Prev follows inside one row window.
+ * The most ROW-ADVANCING hops Last or Prev follows inside one row window.
  * STRUCTURAL, not tuned: both walk forward from at most 200 rows before their
- * target, and every hop advances by at least one row (the parser refuses a
- * cursor that does not move), so 200 hops always reach the target.
+ * target, and a hop whose cursor reaches a later row advances at least one
+ * row, so 200 such hops always reach the target.
+ *
+ * Continuation hops (the same huge row, a later offset) are deliberately NOT
+ * counted: a row may span many pages, and capping them would hide the very
+ * tail the pair cursor exists to reach. They still terminate — the parser
+ * refuses any page whose cursor does not move strictly forward, the artifact
+ * is immutable and finite, and a newer navigation or unmount cancels the walk.
  */
 const MAX_WINDOW_HOPS = DESKTOP_DIFF_PAGE_MAX_ROWS;
+
+const FIRST: DiffCursor = { start: 0, offset: 0 };
 
 async function fetchDiffPage(
 	scope: DiffHistoryScope,
 	callId: string,
-	start: number,
+	cursor: DiffCursor,
 ): Promise<DiffPage | "not_found"> {
+	const { start, offset } = cursor;
 	try {
 		const result = await desktopResult<unknown>(
 			scope.childId
@@ -98,6 +112,7 @@ async function fetchDiffPage(
 						childId: scope.childId,
 						callId,
 						start,
+						offset,
 						limit: DESKTOP_DIFF_PAGE_MAX_ROWS,
 					}
 				: {
@@ -105,16 +120,17 @@ async function fetchDiffPage(
 						sessionId: scope.sessionId,
 						callId,
 						start,
+						offset,
 						limit: DESKTOP_DIFF_PAGE_MAX_ROWS,
 					},
 		);
-		const page = parseDiffPage(result, start);
+		const page = parseDiffPage(result, cursor);
 		if (!page) throw new Error("malformed diff page");
 		return page;
 	} catch (error) {
 		// 404 is the route's single `diff_not_found` answer (unknown session,
-		// uncontained child, unknown or non-write/edit call): a fact, not a
-		// transient failure, so it is a notice with no retry.
+		// uncontained child, unknown, ambiguous or non-write/edit call): a fact,
+		// not a transient failure, so it is a notice with no retry.
 		if (error instanceof DesktopControlError && error.status === 404) {
 			return "not_found";
 		}
@@ -122,11 +138,18 @@ async function fetchDiffPage(
 	}
 }
 
+/** An answer the walk may keep following. */
+function followable(answer: DiffPage | "not_found"): answer is DiffPage {
+	return answer !== "not_found" && answer.state === "archived";
+}
+
 /**
  * The pager's state machine. A request token drops any answer that arrives
  * after a newer navigation (fast Next presses), and `trail` remembers the
- * starts the reader came through by Next so Prev returns to exactly the page
- * it left rather than a recomputed one.
+ * cursors the reader came through so Prev returns to exactly the page it
+ * left rather than a recomputed one. Last and the backwards walk record the
+ * pages they passed through, too: the chain is contiguous, so Prev after
+ * Last pops straight back along it.
  */
 export function useDiffHistory(
 	scope: DiffHistoryScope,
@@ -143,65 +166,62 @@ export function useDiffHistory(
 } {
 	const [state, setState] = useState<DiffHistoryState>({ kind: "loading" });
 	const token = useRef(0);
-	const trail = useRef<number[]>([]);
+	const trail = useRef<DiffCursor[]>([]);
 	const { sessionId, childId } = scope;
 
 	const show = useCallback(
-		/*
-		 * `exact`: the page at `start`. `last`: the page holding the final row.
-		 * `before`: the page that ends at row `start - 1`, so Prev never skips
-		 * rows — byte-bounded pages from `start - 200` can stop well short of
-		 * `start`, so the walk follows `next_start` until it covers the gap, and
-		 * the covering page is then cut to end at `start - 1`.
-		 */
-		async (start: number, mode: DiffHistoryMode) => {
+		async (cursor: DiffCursor, mode: DiffHistoryMode) => {
 			const mine = ++token.current;
 			const owner = { sessionId, childId };
 			setState({ kind: "loading" });
 			try {
-				const from = mode === "before" ? previousPageStart(start) : start;
-				let answer = await fetchDiffPage(owner, callId, from);
+				// The cursors of the pages fetched BEFORE the one finally shown, in
+				// order; they become the trail for a walk.
+				const walked: DiffCursor[] = [];
+				const fetchAt = async (at: DiffCursor) => {
+					if (token.current !== mine) throw CANCELLED;
+					return fetchDiffPage(owner, callId, at);
+				};
+				const from =
+					mode === "before"
+						? { start: previousPageStart(cursor.start), offset: 0 }
+						: cursor;
+				let at = from;
+				let answer = await fetchAt(at);
 				if (mode === "before") {
 					let hops = 0;
-					while (
-						answer !== "not_found" &&
-						answer.state === "archived" &&
-						answer.nextStart !== null &&
-						answer.nextStart < start &&
-						hops < MAX_WINDOW_HOPS
-					) {
-						if (token.current !== mine) return;
-						answer = await fetchDiffPage(owner, callId, answer.nextStart);
-						hops += 1;
+					for (;;) {
+						if (!followable(answer)) break;
+						const next = nextCursor(answer);
+						if (!next || compareCursor(next, cursor) >= 0) break;
+						if (next.start > answer.start && ++hops > MAX_WINDOW_HOPS) break;
+						walked.push(at);
+						at = next;
+						answer = await fetchAt(at);
 					}
-					if (answer !== "not_found" && answer.state === "archived") {
-						answer = pageEndingBefore(answer, start);
-					}
+					if (followable(answer)) answer = pageEndingBefore(answer, cursor);
 				}
-				if (mode === "last" && answer !== "not_found") {
-					// Byte-bounded pages may stop short of the end: follow the route's
-					// cursor, then ask for the final row itself.
+				if (mode === "last") {
+					// Byte-bounded pages may stop short of the end, and a huge final
+					// row is continued across pages: follow the route's cursor to the
+					// TRUE end (both cursors null), never stopping at a row's first part.
 					let hops = 0;
-					while (
-						answer !== "not_found" &&
-						answer.state === "archived" &&
-						answer.nextStart !== null &&
-						hops < MAX_WINDOW_HOPS
-					) {
-						if (token.current !== mine) return;
-						answer = await fetchDiffPage(owner, callId, answer.nextStart);
-						hops += 1;
-					}
-					if (
-						answer !== "not_found" &&
-						answer.state === "archived" &&
-						answer.nextStart !== null
-					) {
-						answer = await fetchDiffPage(
-							owner,
-							callId,
-							Math.max(0, answer.totalRows - 1),
-						);
+					for (;;) {
+						if (!followable(answer)) break;
+						const next = nextCursor(answer);
+						if (!next) break;
+						if (next.start > answer.start && ++hops > MAX_WINDOW_HOPS) {
+							// Defensive only (see MAX_WINDOW_HOPS): jump to the final row
+							// and follow its continuations; the chain behind it is no
+							// longer contiguous, so it is not a trail.
+							walked.length = 0;
+							hops = 0;
+							at = { start: Math.max(0, answer.totalRows - 1), offset: 0 };
+						} else {
+							walked.push(at);
+							at = next;
+						}
+						answer = await fetchAt(at);
 					}
 				}
 				if (token.current !== mine) return;
@@ -210,11 +230,12 @@ export function useDiffHistory(
 				} else if (answer.state !== "archived") {
 					setState({ kind: "notice", notice: answer.state });
 				} else {
+					if (mode !== "exact") trail.current = walked;
 					setState({ kind: "page", page: answer });
 				}
-			} catch {
-				if (token.current !== mine) return;
-				setState({ kind: "error", start, mode });
+			} catch (error) {
+				if (error === CANCELLED || token.current !== mine) return;
+				setState({ kind: "error", cursor, mode });
 			}
 		},
 		[sessionId, childId, callId],
@@ -222,7 +243,7 @@ export function useDiffHistory(
 
 	useEffect(() => {
 		trail.current = [];
-		void show(0, "exact");
+		void show(FIRST, "exact");
 		return () => {
 			// Unmount (Back to preview, row scrolled away): no answer may land.
 			token.current += 1;
@@ -235,33 +256,36 @@ export function useDiffHistory(
 		state,
 		first: () => {
 			trail.current = [];
-			void show(0, "exact");
+			void show(FIRST, "exact");
 		},
 		prev: () => {
 			if (!page) return;
 			const back = trail.current.pop();
 			if (back !== undefined) void show(back, "exact");
-			else void show(page.start, "before");
+			else void show({ start: page.start, offset: page.offset }, "before");
 		},
 		next: () => {
-			if (!page || page.nextStart === null) return;
-			trail.current.push(page.start);
-			void show(page.nextStart, "exact");
+			const next = page ? nextCursor(page) : null;
+			if (!page || !next) return;
+			trail.current.push({ start: page.start, offset: page.offset });
+			void show(next, "exact");
 		},
 		last: () => {
-			// The trail is a Next history; Last jumps, so Prev from the last page
-			// walks to the page that ends just before it instead.
+			// Last jumps: its own walk becomes the trail once it lands.
 			trail.current = [];
-			void show(lastPageStart(total), "last");
+			void show({ start: lastPageStart(total), offset: 0 }, "last");
 		},
 		retry: () => {
-			if (state.kind === "error") void show(state.start, state.mode);
-			else void show(0, "exact");
+			if (state.kind === "error") void show(state.cursor, state.mode);
+			else void show(FIRST, "exact");
 		},
-		canPrev: Boolean(page && page.start > 0),
-		canNext: Boolean(page && page.nextStart !== null),
+		canPrev: Boolean(page && (page.start > 0 || page.offset > 0)),
+		canNext: Boolean(page && nextCursor(page)),
 	};
 }
+
+/** Thrown inside a walk superseded by a newer navigation; never shown. */
+const CANCELLED = Symbol("diff-history-cancelled");
 
 /**
  * Text-button treatment shared with the preview's toggle (underline, dim ink).
@@ -512,6 +536,22 @@ export const DiffHistoryPager: FC<{
 					className={cn(KIND_INK[line.kind], "block")}
 				>
 					{line.text}
+					{line.continued && (
+						// The row began on the previous page; its marker is kept so
+						// the ink stays right, and this says it is not a new row.
+						// After the text, so the row's own text stays first.
+						<span className="text-ink-dim" data-diff-continued="">
+							{" "}
+							{diffFullContinuedLabel()}
+						</span>
+					)}
+					{line.continues && (
+						// Nothing was cut: the rest of this row starts the next page.
+						<span className="text-ink-dim" data-diff-continues="">
+							{" "}
+							{diffFullContinuesLabel()}
+						</span>
+					)}
 					{line.clipped && (
 						<span className="text-ink-dim" data-diff-clipped="">
 							{" "}
