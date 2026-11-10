@@ -349,6 +349,9 @@ function quietFamilyOf(trigger: TriggerKind): QuietGroupFamily | null {
 function groupSplitterOf(record: TranscriptRecord): boolean {
 	if (record.kind === "user") return true;
 	if (staysVisibleWhileCollapsed(record)) return true;
+	// Kept in step with `collapsePlan`'s `pinned` seam: a row the plan never
+	// hides must not sit inside a quiet group either.
+	if (ownsDetachedMusicJob(record)) return true;
 	return record.kind === "assistant" && paintsSomething(record);
 }
 
@@ -404,11 +407,33 @@ export function ownsMaterialArtifact(record: TranscriptRecord): boolean {
 	// and cancellation UI; keep ALL phases, not only successful picture rows.
 	if (record.kind !== "tool") return false;
 	if (isImageGenTool(record.toolName)) return true;
-	// A music call that registered a detached job owns the in-chat generating
-	// card (and its Cancel) for minutes after the call itself settled; folding
-	// it into "1 action" is what hid the motif from the chat.
+	return ownsDetachedMusicJob(record);
+}
+
+/**
+ * A music call that registered a detached job: it owns the in-chat generating
+ * card (`data-music-generating=<job>`, and its Cancel) for minutes after the
+ * call itself settled.
+ *
+ * WHY IT IS PINNED IN EVERY RUN, NOT ONLY INSIDE A RECEIPT EPISODE (desktop-app
+ * run 42747060041, macOS step 16). `ownsMaterialArtifact` alone reaches the
+ * plan only through `internalEpisodePins`, so in an ORDINARY human turn -
+ * user prompt -> generate_music -> answer, the shape every real request has -
+ * the call folded under "1 action" with "1 job running" and the card never
+ * mounted, although the record carried Core's `job_id`/`material` intact.
+ * Pictures can fold there because the bar's strip substitutes a thumbnail;
+ * a pending job has no strip, so a fold is the only place it could be lost.
+ *
+ * CONSTRAINT: record facts only. The plan must stay a pure function of the
+ * rows (the settle latch exists because live-state inputs made folds flip), so
+ * this does not consult the Jobs panel: a settled job keeps its row inline and
+ * the card states the outcome there.
+ */
+export function ownsDetachedMusicJob(record: TranscriptRecord): boolean {
 	return (
-		isMusicGenTool(record.toolName) && musicJobIdOf(record.details) !== null
+		record.kind === "tool" &&
+		isMusicGenTool(record.toolName) &&
+		musicJobIdOf(record.details) !== null
 	);
 }
 
@@ -2976,10 +3001,13 @@ function planRun(
 		 * (`internalEpisodeBoundary`), never for every run: an ordinary human turn
 		 * still folds its pictures under its own bar with the strip, which is the
 		 * base behaviour six ruled design/UX tests pin. Pinning them globally
-		 * stopped those runs collapsing at all.
+		 * stopped those runs collapsing at all. The one exception is a detached
+		 * music job (`ownsDetachedMusicJob`): it has no strip to fall back on.
 		 */
 		pinned: (record) =>
-			staysVisibleWhileCollapsed(record) || internalContext.pins.has(record),
+			staysVisibleWhileCollapsed(record) ||
+			internalContext.pins.has(record) ||
+			ownsDetachedMusicJob(record),
 		mode,
 	});
 	// Reuse authoritative RESPONSE closes for old-core rows without a V4 stop

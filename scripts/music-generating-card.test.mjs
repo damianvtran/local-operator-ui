@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
 import { after, test } from "node:test";
 import { build } from "esbuild";
@@ -584,4 +585,37 @@ test("Escape after a card's Cancel returns focus to that card's control (R15-3)"
 	);
 	await act(async () => root.unmount());
 	container.remove();
+});
+
+/*
+ * The mount half of desktop-app run 42747060041 (macOS step 16): Core
+ * 859729bd's real `generate_music` result, through the real reducer, yields a
+ * record whose card renders `data-music-generating=<job>`. The fold half (the
+ * row is not hidden in an ordinary turn) is `turn-collapse-model.test.mjs`'s
+ * "Core-shaped pending music job" case, on the same fixture.
+ */
+test("Core's pending generate_music row mounts the generating card", () => {
+	const fixture = JSON.parse(
+		readFileSync(
+			new URL("./fixtures/music-pending-core-859729bd.json", import.meta.url),
+			"utf8",
+		),
+	);
+	const state = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: fixture.entries,
+	});
+	const call = state.records.find(
+		(r) => r.kind === "tool" && r.toolName === "generate_music",
+	);
+	assert.ok(call, "tool record expected");
+	assert.equal(ownsMaterialArtifact(call), true);
+	const view = musicGeneratingView({
+		toolName: call.toolName,
+		details: call.details,
+		row: undefined,
+		settlement: undefined,
+	});
+	assert.equal(view?.state, "queued");
+	const markup = renderToStaticMarkup(h(MusicGeneratingCard, { view }));
+	assert.ok(markup.includes(`data-music-generating="11f41d8c66d0"`), markup);
 });
