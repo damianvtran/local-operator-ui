@@ -78,5 +78,6 @@
 	"ui.chat.sidebar.catalogue.show_more_agents": "Hiện thêm {count, plural, other {{count, number, ::group-off} tác nhân}}",
 	"ui.chat.sidebar.catalogue.show_more_teams": "Hiện thêm {count, plural, other {{count, number, ::group-off} nhóm}}",
 	"ui.chat.sidebar.drafts.row_label": "Bản nháp: {title}",
-	"ui.chat.sidebar.drafts.discard_label": "Bỏ bản nháp “{title}”"
+	"ui.chat.sidebar.drafts.discard_label": "Bỏ bản nháp “{title}”",
+	"ui.chat.sidebar.mark_all_read.label": "Đánh dấu tất cả {count, number, ::group-off} đã đọc"
 }

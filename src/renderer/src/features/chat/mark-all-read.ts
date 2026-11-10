@@ -120,11 +120,67 @@ export const markAllReadCopy = (
 		);
 	return {
 		count,
-		label: `Mark all ${count} read`,
+		// Read at call time: the sidebar calls `markAllReadCopy` in its render and
+		// subscribes to the locale, so the label follows the language picker.
+		label: t("ui.chat.sidebar.mark_all_read.label", { count }),
 		scope: sentences.join(" "),
 		nameSuffix:
 			elsewhere > 0 ? `, including ${elsewhere} in Previous chats` : "",
 	};
+};
+
+/*
+ * WHERE THE LABEL STOPS FITTING, as the width of the section-heading row's
+ * CONTENT BOX (the container the shed class queries), chosen from the label
+ * actually drawn.
+ *
+ * WHY IT DEPENDS ON THE LABEL. One fixed break cannot protect two things at once:
+ * English ("Mark all 12 read") must stay spelled at the default sidebar width,
+ * while a longer translation ("Tout marquer comme lu (12)", "Đánh dấu tất cả 12
+ * đã đọc") takes 50-60px more from the section name next to it, which is the
+ * `min-w-0 flex-1 truncate` element and so absorbs whatever the unshrinkable
+ * action leaves. Rendered at the 220px floor, both of those languages lost the
+ * name entirely. Container conditions cannot read a custom property, so the
+ * width is picked here from a fixed ladder of literal classes in the component.
+ *
+ * THE ARITHMETIC, every figure measured from the 220px Storybook frame rather
+ * than guessed:
+ *   - the action is the 14px glyph + 4px gap + the text + 8px padding each side,
+ *     so 34px + text; the 12px system text measured 5.6px per character
+ *     ("Mark all 1 read": 15 chars, 84px; fr "Tout marquer comme lu (1)": 25
+ *     chars, 137px), and 5.7 is used to stay on the safe side;
+ *   - the name keeps 70px, the width of the widest English section name
+ *     ("This week", set in capitals with tracking), plus the row's 4px gap;
+ *   - so a label of N characters needs 108 + 5.7 * N, rounded UP to the next
+ *     step of the ladder below (the steps exist because the classes must be
+ *     literal strings for the stylesheet to contain them).
+ * The row's content box is the panel minus 56px (text starts at x=20, the
+ * action's right edge is x=184 at a 220px panel). The sidebar runs 220-320 with
+ * 260 as the default (`chat-sidebar-layout.ts`), so: every label sheds at the
+ * floor (content 164), English including a two-digit count stays spelled at the
+ * default (content 204). A label is spelled from a panel of its class plus 56px,
+ * derived from the ladder constants: a two-digit French label (26 characters,
+ * 256.2 needed) rounds up to the 268 class, so it needs a panel of at least 324,
+ * ABOVE the 320 maximum. The same holds for fr, es, hi and ur at any count and for
+ * vi and ru with a two-digit count; only vi and ru with one digit (24 characters,
+ * 244.8 needed, class 245) are spelled, from a 301px panel. en and zh-CN (class
+ * 200) are spelled from 256px. The control is therefore glyph-only at every
+ * supported width in fr, es, hi and ur, which is the honest price of not starving the section name: the glyph, the `sr-only`
+ * label and the tooltip carry the meaning.
+ *
+ * NOT GUARANTEED: a LONG section name in a long-label language ("Plus
+ * anciennes") can still truncate when the label is spelled, because the name's
+ * width depends on the language as well. The ladder protects the name's
+ * 70px, not every name.
+ */
+export const MARK_ALL_READ_SHED_STEPS = [200, 223, 245, 268, 291] as const;
+export type MarkAllReadShedWidth = (typeof MARK_ALL_READ_SHED_STEPS)[number];
+export const markAllReadShedWidth = (label: string): MarkAllReadShedWidth => {
+	const need = 108 + 5.7 * [...label].length;
+	return (
+		MARK_ALL_READ_SHED_STEPS.find((step) => step >= need) ??
+		MARK_ALL_READ_SHED_STEPS[MARK_ALL_READ_SHED_STEPS.length - 1]
+	);
 };
 
 /** The verdict `markAllRead` resolves with, as the surface reads it. */

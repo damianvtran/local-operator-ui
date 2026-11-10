@@ -369,6 +369,7 @@ export const PARITY_MODEL_SOURCES = new Set([
 	"src/renderer/src/features/chat/canonical/harness-chrome.ts",
 	"src/renderer/src/features/chat/canonical/image-gen-card-model.ts",
 	"src/renderer/src/features/chat/canonical/journal-order.ts",
+	"src/renderer/src/features/chat/canonical/notice-copy.ts",
 	"src/renderer/src/features/chat/canonical/profile-history-replacement.ts",
 	"src/renderer/src/features/chat/canonical/record-immutability.ts",
 	"src/renderer/src/features/chat/canonical/skill-row.ts",

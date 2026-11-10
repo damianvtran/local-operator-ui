@@ -618,5 +618,14 @@
 		"placeholders": {
 			"title": "the draft's first line, user-authored, never translated"
 		}
+	},
+	"ui.chat.sidebar.mark_all_read.label": {
+		"role": "visible label of the bulk control that marks every unread chat as read",
+		"tone": "imperative, sentence case, no trailing punctuation",
+		"length": "Short; sits in a narrow section header beside Active chats.",
+		"note": "The number is the exact count the request will clear, so it stays inside the label. The count is always at least 1 when the control is shown.",
+		"placeholders": {
+			"count": "number of unread chats the click will mark read; ungrouped digits"
+		}
 	}
 }

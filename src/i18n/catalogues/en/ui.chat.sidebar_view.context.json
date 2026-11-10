@@ -162,5 +162,12 @@
 			"unit": "Internal select token: now, minute, hour, day, week, year. Do not translate token names.",
 			"count": "Non-negative elapsed quantity; use locale digits and plural rules."
 		}
+	},
+	"ui.chat.sidebar_view.ungrouped": {
+		"role": "group heading in the chat list for conversations bound to no agent or team",
+		"tone": "single word, sentence case, no trailing punctuation",
+		"length": "One short word.",
+		"note": "Heading of the residual group when the list is grouped by agent and team; drawn last. Other headings are agent or team names, so this one must read as a category, not a name.",
+		"placeholders": {}
 	}
 }

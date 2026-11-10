@@ -78,5 +78,6 @@
 	"ui.chat.sidebar.catalogue.show_more_agents": "{count, plural, one {Mostrar {count, number, ::group-off} agente más} many {Mostrar {count, number, ::group-off} de agentes más} other {Mostrar {count, number, ::group-off} agentes más}}",
 	"ui.chat.sidebar.catalogue.show_more_teams": "{count, plural, one {Mostrar {count, number, ::group-off} equipo más} many {Mostrar {count, number, ::group-off} de equipos más} other {Mostrar {count, number, ::group-off} equipos más}}",
 	"ui.chat.sidebar.drafts.row_label": "Borrador: {title}",
-	"ui.chat.sidebar.drafts.discard_label": "Descartar borrador “{title}”"
+	"ui.chat.sidebar.drafts.discard_label": "Descartar borrador “{title}”",
+	"ui.chat.sidebar.mark_all_read.label": "Marcar todos como leídos ({count, number, ::group-off})"
 }
