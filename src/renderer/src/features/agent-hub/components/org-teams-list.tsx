@@ -346,8 +346,14 @@ export const OrgTeamsList: React.FC<{
 										error,
 									)}
 					</AlertDescription>
+					{/*
+					 * One line, never wrapping: two `sm` buttons fit the narrowest pane
+					 * (the 920px narrow story), and this file's layout contract keeps
+					 * every action row on one line (flex items keep `min-width: auto`,
+					 * so neither label is squeezed below its own width).
+					 */}
 					{refusal !== "no_access" && (
-						<div className="mt-2 flex flex-wrap items-center gap-2">
+						<div className="mt-2 flex items-center gap-2">
 							<Button
 								variant="primary"
 								size="sm"
