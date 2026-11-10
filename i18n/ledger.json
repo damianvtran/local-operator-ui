@@ -15187,6 +15187,23 @@
 					"receipt_sha256": "c0b6c96d07ef81ec35d02cd0831dacd0eb8742ee408753d7c7007e7a6021439e",
 					"scope": "the 7 keys PR #1827 added (chat data-object copy); delta audit at 165aebb1b73 of the values revised after the first pass",
 					"note": "PR #1827 delta audit at 165aebb1b73; bytes unchanged at 1e58cf570d5. Same-bytes second pass 92b74137fc35 asked changes for label width (FR2-F1), resolved in code at 80b0963279a, so it is retained as evidence, not bound. i18n/receipts/70ebc89d3bc3.json"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-10",
+					"result": "clean",
+					"instance": "2bbf16af14ee",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2bbf16af14ee.json",
+					"receipt_sha256": "a64d01b650d035f7bbb3ce735c801f59949fc0fa0705006cc9d7c3fec942bd49",
+					"scope": "fr/ui.chat.sidebar at 0cc79cf965d: the added mark_all_read label fully audited, the 80 existing keys read for consistency; FR2-F1 label-width remediation verified",
+					"note": "PR #1827 fresh final-head audit of fr/ui.chat.sidebar (0cc79cf965d; bytes unchanged since 165aebb1b73): FR2-F1 resolved. Pre-existing FR-FINAL-LEGACY-1 (builtin_offer lacks ICU many, same at base) excluded from counts. i18n/receipts/2bbf16af14ee.json"
 				}
 			],
 			"status": "audited",
