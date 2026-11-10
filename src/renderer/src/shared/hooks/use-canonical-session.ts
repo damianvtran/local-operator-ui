@@ -55,6 +55,10 @@ import {
 	entryRecordKey,
 	openFrameCoversHeld,
 } from "@features/chat/canonical/open-frame";
+import {
+	type CursorUpdate,
+	jobResultsOwedRead,
+} from "@features/chat/canonical/settled-job-rows";
 import { skillOf } from "@features/chat/canonical/skill-row";
 import {
 	EMPTY_TRANSCRIPT,
@@ -962,6 +966,13 @@ const LABEL_GAP_MAX_TRACKED = 512;
  * set's other members and mark nothing durable at all.
  */
 const DURABLE_ROUND_ENDINGS = new Set(["turn_end", "agent_end"]);
+/**
+ * Reads one settled job may owe before the pane stops asking for its result
+ * row. Three, because Core can advance the cursor for the music record or spend
+ * row written just before the `job_result` row, so the first read may land
+ * before the row is durable; the next cursor move (the row itself) asks again.
+ */
+const JOB_RESULT_READ_ATTEMPTS = 3;
 
 /**
  * How many read-backs one unlabelled call is worth.
@@ -3019,6 +3030,13 @@ export function useCanonicalSessionStream(
 		let attempt = 0;
 		let retryTimer = 0;
 		let reconcileTimer = 0;
+		/**
+		 * History reads spent per settled job whose `job_result` row has not
+		 * painted (`settled-job-rows.ts`). Bounded so a result that never becomes
+		 * visible - filtered by the backend, or swept from the roster - cannot
+		 * drip a read behind every later cursor move.
+		 */
+		const jobResultReads = new Map<string, number>();
 		/** Armed per connection until its first snapshot; see `STREAM_SNAPSHOT_DEADLINE_MS`. */
 		let snapshotTimer = 0;
 		/** The one silent re-check after a fired bound; see `STREAM_SNAPSHOT_RECHECK_MS`. */
@@ -4311,11 +4329,33 @@ export function useCanonicalSessionStream(
 			// that never reached the pane - so a dropped page owes the walk itself,
 			// which is then the only thing that can hydrate the conversation.
 			let fencedPage = false;
-			const needsReconcile = frames.some((frame) =>
-				frame.type === "attention"
-					? !paintedAnchor(frame.payload.anchor_id)
-					: frame.type === "snapshot" && !pageIsPaintedTail(frame),
+			/*
+			 * THE THIRD READ TRIGGER: a settled job's result row, which no live
+			 * event carries (see `settled-job-rows.ts` for the measured failure).
+			 * Decided from the view the last flush left behind plus this batch's
+			 * roster changes, and spent at most JOB_RESULT_READ_ATTEMPTS times per job.
+			 */
+			const owedJobs = jobResultsOwedRead(
+				frames.flatMap((frame) =>
+					frame.type === "frontend.update"
+						? [frame.payload as CursorUpdate]
+						: [],
+				),
+				viewRef.current.frontend?.jobs ?? [],
+				viewRef.current.transcript.records,
+				(id) => paintedIds.current.has(id),
+			).filter(
+				(id) => (jobResultReads.get(id) ?? 0) < JOB_RESULT_READ_ATTEMPTS,
 			);
+			for (const id of owedJobs)
+				jobResultReads.set(id, (jobResultReads.get(id) ?? 0) + 1);
+			const needsReconcile =
+				owedJobs.length > 0 ||
+				frames.some((frame) =>
+					frame.type === "attention"
+						? !paintedAnchor(frame.payload.anchor_id)
+						: frame.type === "snapshot" && !pageIsPaintedTail(frame),
+				);
 			/*
 			 * A WARM THAT LANDS AFTER THE COLD READS RE-ARMS THE HISTORY READ
 			 * (remote-load-hydration). A stored remote session opens cold: the daemon
@@ -4416,6 +4456,13 @@ export function useCanonicalSessionStream(
 				}
 				seedEvents.push(...(frame.payload.frontend.snapshot.live_events ?? []));
 			}
+			// A settled-job read is owed by an update batch that carries no page, so
+			// the rows already on screen are its connection proof - the same set the
+			// retry paths hand `reconcileTail`. Without it the walk could never
+			// connect and would spend its whole request budget on older pages.
+			if (owedJobs.length > 0)
+				for (const key of viewRef.current.transcript.index.keys())
+					paintedEntryIds.add(key);
 			/*
 			 * A round just ended, which is the moment the round BEFORE it becomes
 			 * durable — so it is the only moment a retry can learn anything. Reading

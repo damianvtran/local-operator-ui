@@ -756,6 +756,68 @@ test("music that finished after a cancel request is not called cancelled (real C
 	);
 });
 
+/*
+ * The same fact from Core verbatim: native run 42862983641's entry 96, the
+ * observer 96de655246c3's job_result for music job a911f847e12e (scrubbed
+ * session history). Painted live it is the row round 23 made reach the pane
+ * (`reconnect-page-gap.test.mjs`); here the card and the track it carries.
+ */
+test("Core's real late observer row: card finished_after_cancel, track on its own row", () => {
+	const entry = JSON.parse(
+		readFileSync(
+			new URL(
+				"./fixtures/music-late-result-entry-42862983641.json",
+				import.meta.url,
+			),
+			"utf8",
+		),
+	);
+	// Core wrote no job_result for the cancelled task in that run (entries 0,
+	// 20, 52, 71, 96 are the session's only job_result rows), so the live Jobs
+	// row is what states the cancel - as the pane had it when the row landed.
+	const original = {
+		id: "a911f847e12e",
+		type: "music",
+		status: "cancelled",
+		queued: false,
+		label: "Music",
+		start_time: 1_000,
+		settled_at: 1_010,
+		latest_details: {
+			music: {
+				job: "a911f847e12e",
+				stage: "polling",
+				tracks: [],
+				attribution: "",
+			},
+		},
+	};
+	const live = musicJobsLiveRowsOf(
+		deriveRunDetails({ jobs: [original], todos: [], nowMs: 1_060_000 }).jobs,
+	);
+	const records = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [entry],
+	}).records;
+	const view = musicGeneratingView({
+		toolName: "generate_music",
+		details: receiptDetails("a911f847e12e"),
+		row: live.rows.get("a911f847e12e"),
+		successorRow: live.successors?.get("a911f847e12e"),
+		settlement: musicJobSettlementsOf(records).get("a911f847e12e"),
+	});
+	assert.deepEqual(
+		[view.state, view.completed, view.total],
+		["finished_after_cancel", 1, 1],
+	);
+	const row = records.find((record) => record.id === entry.id);
+	assert.equal(row?.jobId, "96de655246c3");
+	assert.deepEqual(
+		row?.music?.tracks.map((track) => track.id),
+		["aud_serving_8"],
+		"the observer's own row carries the track MusicResult renders",
+	);
+});
+
 test("a genuinely cancelled music job stays cancelled at $0", () => {
 	// Only the cancelled task's row (the observer has not settled yet, or the
 	// runtime predates observers): unchanged "cancelled", no cost line.

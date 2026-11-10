@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
 import { test } from "node:test";
 import { build } from "esbuild";
@@ -5150,3 +5151,134 @@ for (const route of ["reconnect", "switch"]) {
 		);
 	});
 }
+
+/*
+ * MUSIC THAT FINISHES AFTER A CANCEL, LIVE (agent review round 23). Core
+ * settles the cancelled job, then a successor observer job delivers the billed
+ * track as a `job_result` CUSTOM row - which no live event carries; Core
+ * publishes only a `frontend.update` moving `history_cursor` onto it. Native
+ * run 42862983641 watched 30 s with the pane open and the row never painted,
+ * while the same row loaded from history rendered. `LATE_MUSIC_RESULT` is that
+ * run's entry 96, verbatim from Core's own (scrubbed) session history.
+ */
+const LATE_MUSIC_RESULT = JSON.parse(
+	readFileSync(
+		new URL(
+			"./fixtures/music-late-result-entry-42862983641.json",
+			import.meta.url,
+		),
+		"utf8",
+	),
+);
+
+const lateMusicPlan = () => {
+	const base = [
+		userRow("u-music", 1000, "make music"),
+		assistantRow("a-music", 1001, "Queued."),
+	];
+	const settled = [
+		...base,
+		LATE_MUSIC_RESULT,
+		assistantRow(
+			"a-done",
+			1794331990.338,
+			"Owned synthetic music QA turn complete.",
+		),
+	];
+	return { base, settled };
+};
+
+const rosterUpdate = (seq, ownerSequence, { cursor, status }) => ({
+	session_id: SESSION_A,
+	epoch: "bridge-epoch",
+	seq,
+	type: "frontend.update",
+	payload: {
+		epoch: "owner-epoch",
+		sequence: ownerSequence,
+		changes: cursor === undefined ? {} : { history_cursor: cursor },
+		job_deltas: {
+			upserted: [
+				{
+					id: LATE_MUSIC_RESULT.payload.details.job_id,
+					status,
+					label: "Music",
+					music: { job: LATE_MUSIC_RESULT.payload.details.job },
+				},
+			],
+		},
+	},
+});
+
+async function driveLateMusic({ status, cursor }) {
+	const { base, settled } = lateMusicPlan();
+	const durable = { rows: base };
+	const view = makeTranscript(base);
+	reset({ transcript: view });
+	globalThis.__gapTail = (request) => {
+		const t = makeTranscript(durable.rows);
+		return request.beforeId === undefined
+			? t.tail(request.limit)
+			: t.pageBefore(request.beforeId, request.limit);
+	};
+	const runtime = makeRuntime();
+	let handle;
+	runtime.render = () => {
+		handle = useCanonicalSessionStream(SESSION_A, true);
+		return handle;
+	};
+	runtime.rerender();
+	deliver(openFrame(1, true));
+	deliver(
+		snapshotFrame(2, {
+			cursor: "a-music",
+			entries: base,
+			streaming: false,
+			hasMore: false,
+		}),
+	);
+	await pump();
+	const before = historyReads();
+	// The row becomes durable; the only thing the pane is told is the cursor.
+	durable.rows = settled;
+	deliver(rosterUpdate(3, 3, { cursor, status }));
+	await pump();
+	return { handle, reads: historyReads() - before };
+}
+
+test("a successor music job's late job_result paints live, from the cursor move alone", async () => {
+	const { handle, reads } = await driveLateMusic({
+		status: "done",
+		cursor: LATE_MUSIC_RESULT.id,
+	});
+	assert.equal(reads, 1, "the settled job with no painted row owes one read");
+	const row = handle.transcript.records.find(
+		(record) => record.id === LATE_MUSIC_RESULT.id,
+	);
+	assert.ok(row, "the late job_result row is in the live transcript");
+	assert.equal(row.kind, "custom");
+	assert.equal(row.customType, "job_result");
+	assert.equal(row.jobId, "96de655246c3", "keyed by the observer job");
+	assert.equal(row.music?.job, "a911f847e12e", "naming the original music job");
+	assert.deepEqual(
+		row.music?.tracks.map((track) => track.id),
+		["aud_serving_8"],
+		"carrying the billed track the MusicResult row renders",
+	);
+});
+
+test("a cursor move with no settled job, or a still-running one, reads nothing", async () => {
+	for (const status of ["running", "queued"]) {
+		const { reads } = await driveLateMusic({
+			status,
+			cursor: LATE_MUSIC_RESULT.id,
+		});
+		assert.equal(reads, 0, `a ${status} job owes no read`);
+	}
+	const { reads } = await driveLateMusic({ status: "done", cursor: undefined });
+	assert.equal(
+		reads,
+		0,
+		"a settle with no cursor move waits for the row's own move",
+	);
+});
