@@ -420,6 +420,54 @@ type Story = StoryObj<typeof meta>;
  * absent body, and the agent's own message. */
 export const Populated: Story = {};
 
+/*
+ * One row per hold badge (design D2), in the shape the hub sends after the
+ * cross-PR contract: `agent_delivery_status: "held"` plus the agent's
+ * `hold_class`, the owner being the viewer. The last row is the pre-contract
+ * `not_screened` chip for comparison (the operator's report, Renee's DM seq 4,
+ * showed that chip over a message the screener had held). The longest chip,
+ * "Screened; delivery to your chief of staff pending", checks header crowding;
+ * use the toolbar theme for light/dark/glass and the viewport for a narrow pane.
+ */
+const heldRow = (
+	seq: number,
+	body: string,
+	hold_class: string | null,
+): OwnerAuditMessage => ({
+	...messages[2],
+	id: `bmsg_hold_${seq}`,
+	seq,
+	sender: {
+		account_id: "acct_renee",
+		kind: "human",
+		display_label: "Renee Park",
+	},
+	body,
+	agent_delivery_status: "held",
+	hold_class,
+	agent_verdict_at: null,
+	created_at: `2026-10-23T11:0${seq % 10}:00Z`,
+});
+export const OwnerBadgeStates: Story = {
+	args: {
+		messages: [
+			heldRow(
+				61,
+				"Can you approve the vendor invoice before Friday?",
+				"awaiting_review",
+			),
+			heldRow(62, "Quick one: is the staging DB back up?", null),
+			heldRow(
+				63,
+				"Forwarding the signed NDA for your files.",
+				"screening_unavailable",
+			),
+			heldRow(64, "Thanks, the deck looks great.", "delivery_pending"),
+			{ ...messages[2], id: "bmsg_hold_65", seq: 65, body: "Lunch at 1?" },
+		],
+	},
+};
+
 /** The attachments lane's reproduction shape, synthetic bytes: a one-line
  * `[image ...; jpeg ...; sha256 ...]` header followed on the SAME line by a
  * ~600 KB `data:image/jpeg;base64,` URI. One admitted row and one rejected row,

@@ -127,6 +127,10 @@ export const ownerAuditMessageSchema = z
 		files: z.array(ownerAuditFileSchema).max(10).nullish().catch(undefined),
 		file_count: nullableSeq.catch(undefined),
 		agent_delivery_status: nullableText,
+		/* The audited agent's hold class, sent only with `agent_delivery_status:
+		 * "held"` (cross-PR contract 2026-11-09, agent-server #352): the owner
+		 * is the viewer, so they may see their own agent's class. */
+		hold_class: nullableText.catch(undefined),
 		agent_verdict_at: nullableText,
 		/* The audited agent's endpoint entry of the delivery-state contract v1
 		 * (the owner owns that recipient, so it may carry `hold_class` and

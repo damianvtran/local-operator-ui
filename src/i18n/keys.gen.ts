@@ -9304,11 +9304,13 @@ export type MessageParams = {
 	"ui.ownerAudit.auth_required": undefined;
 	"ui.ownerAudit.body_unavailable": undefined;
 	"ui.ownerAudit.chunk_number": { page: string; count: string };
+	"ui.ownerAudit.delivery_pending": undefined;
 	"ui.ownerAudit.disclosure": undefined;
 	"ui.ownerAudit.empty_history": undefined;
 	"ui.ownerAudit.empty_list": undefined;
 	"ui.ownerAudit.empty_replies": undefined;
 	"ui.ownerAudit.error": undefined;
+	"ui.ownerAudit.held_review": undefined;
 	"ui.ownerAudit.inline_image_receipt": { mime: string; count: string };
 	"ui.ownerAudit.inspect_body": undefined;
 	"ui.ownerAudit.left": undefined;
@@ -9328,6 +9330,8 @@ export type MessageParams = {
 	"ui.ownerAudit.removed": undefined;
 	"ui.ownerAudit.replies": undefined;
 	"ui.ownerAudit.retry": undefined;
+	"ui.ownerAudit.screening": undefined;
+	"ui.ownerAudit.screening_retry": undefined;
 	"ui.ownerAudit.sign_in": undefined;
 	"ui.ownerAudit.title": undefined;
 	"ui.ownerAudit.unavailable": undefined;
@@ -11927,7 +11931,13 @@ export type MessageParams = {
 	"ui.teamBridge.create.title": undefined;
 	"ui.teamBridge.create.topic": undefined;
 	"ui.teamBridge.delivery.held": { recipient: string };
-	"ui.teamBridge.delivery.held_awaiting_review": { recipient: string };
+	"ui.teamBridge.delivery.held_awaiting_review": {
+		recipient: string;
+		person: string;
+	};
+	"ui.teamBridge.delivery.held_awaiting_review_unnamed": { recipient: string };
+	"ui.teamBridge.delivery.held_not_reviewed": { recipient: string };
+	"ui.teamBridge.delivery.held_screening": { recipient: string };
 	"ui.teamBridge.delivery.held_screening_unavailable": { recipient: string };
 	"ui.teamBridge.delivery.info_held": undefined;
 	"ui.teamBridge.delivery.info_label": undefined;
@@ -11940,6 +11950,14 @@ export type MessageParams = {
 	"ui.teamBridge.delivery.refused_out_of_scope": { recipient: string };
 	"ui.teamBridge.delivery.refused_personal_info": { recipient: string };
 	"ui.teamBridge.delivery.refused_unsafe_content": { recipient: string };
+	"ui.teamBridge.delivery.summary.delivered": { count: number };
+	"ui.teamBridge.delivery.summary.details_label": undefined;
+	"ui.teamBridge.delivery.summary.held": { count: number };
+	"ui.teamBridge.delivery.summary.not_delivered": { count: number };
+	"ui.teamBridge.delivery.summary.not_reviewed": { count: number };
+	"ui.teamBridge.delivery.summary.not_reviewed_note": undefined;
+	"ui.teamBridge.delivery.summary.screening": { count: number };
+	"ui.teamBridge.delivery.summary.separator": undefined;
 	"ui.teamBridge.drafts.empty": undefined;
 	"ui.teamBridge.drafts.indicator": undefined;
 	"ui.teamBridge.drafts.navigation": undefined;
