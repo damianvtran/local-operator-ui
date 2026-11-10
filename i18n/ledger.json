@@ -94442,34 +94442,104 @@
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-10"
 			},
-			"auditors": [],
-			"status": "translated"
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
+					"result": "clean-with-findings",
+					"instance": "d1da94af17b7-mp1843-a1-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/d1da94af17b7-mp1843-a1-es.json",
+					"receipt_sha256": "bba9a46664a93bfd2ad0077f24ef4002d6191652b680cb5a0037b89a7b091a16",
+					"scope": "ui.browser.media_permission independent first audit, all 8 keys",
+					"note": "Independent audit mp1843-a1-es (task child, session d1da94af17b7); record i18n/audits/evidence/es/ui.browser.media_permission/mp1843-a1-es/record.json"
+				}
+			],
+			"status": "audited"
 		},
 		{
 			"locale": "fr",
 			"namespace": "ui.browser.media_permission",
 			"source_sha256": "0a898598ac95277bfd9f8a4b502e81b1c0a3d30035bd205978112a83e13835a0",
-			"target_sha256": "fe9f21ca2049588a65646356fd16325ee042354323204cce0d7ab07f62b0192f",
+			"target_sha256": "311336a7158ab1f208bfae5985d20903131b361628ad361735023440ac16f15b",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-10"
 			},
-			"auditors": [],
-			"status": "translated"
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
+					"result": "clean-with-findings",
+					"instance": "d1da94af17b7-mp1843-a1-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/d1da94af17b7-mp1843-a1-fr.json",
+					"receipt_sha256": "cf41570d99ef4d0a3c281135999e0290d39b08df31924ce55d030af8d8737b84",
+					"scope": "ui.browser.media_permission independent first audit, all 8 keys",
+					"note": "Independent audit mp1843-a1-fr (task child, session d1da94af17b7); record i18n/audits/evidence/fr/ui.browser.media_permission/mp1843-a1-fr/record.json"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "0a898598ac95277bfd9f8a4b502e81b1c0a3d30035bd205978112a83e13835a0",
+					"target_sha256": "fe9f21ca2049588a65646356fd16325ee042354323204cce0d7ab07f62b0192f",
+					"auditors": [],
+					"status": "pending"
+				}
+			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.browser.media_permission",
 			"source_sha256": "0a898598ac95277bfd9f8a4b502e81b1c0a3d30035bd205978112a83e13835a0",
-			"target_sha256": "0995f84fbd461a04c85665cf1cc3801c04e9e6a3d0c66a1a4e9af781e0bc87fa",
+			"target_sha256": "ff7fe290a3b2b8ae051b636744a3d7b47674239ed010a5d26aad04d42ca1e428",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-10"
 			},
-			"auditors": [],
-			"status": "translated"
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
+					"result": "clean-with-findings",
+					"instance": "d1da94af17b7-mp1843-a1-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 3
+					},
+					"receipt": "i18n/receipts/d1da94af17b7-mp1843-a1-hi.json",
+					"receipt_sha256": "67cfbf168aea17dd602f2e923fcb2dfcc1fdc20a0f9fe2b46667f8dceac4c2c7",
+					"scope": "ui.browser.media_permission independent first audit, all 8 keys",
+					"note": "Independent audit mp1843-a1-hi (task child, session d1da94af17b7); record i18n/audits/evidence/hi/ui.browser.media_permission/mp1843-a1-hi/record.json"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "0a898598ac95277bfd9f8a4b502e81b1c0a3d30035bd205978112a83e13835a0",
+					"target_sha256": "0995f84fbd461a04c85665cf1cc3801c04e9e6a3d0c66a1a4e9af781e0bc87fa",
+					"auditors": [],
+					"status": "pending"
+				}
+			]
 		},
 		{
 			"locale": "ru",
@@ -94481,34 +94551,104 @@
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-10"
 			},
-			"auditors": [],
-			"status": "translated"
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
+					"result": "clean",
+					"instance": "d1da94af17b7-mp1843-a1-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/d1da94af17b7-mp1843-a1-ru.json",
+					"receipt_sha256": "a6be392fe87ba6ed45dcfbc0ced632f9fdead6a2d86a5b4e6f06ce2ec2a318ee",
+					"scope": "ui.browser.media_permission independent first audit, all 8 keys",
+					"note": "Independent audit mp1843-a1-ru (task child, session d1da94af17b7); record i18n/audits/evidence/ru/ui.browser.media_permission/mp1843-a1-ru/record.json"
+				}
+			],
+			"status": "audited"
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.browser.media_permission",
 			"source_sha256": "0a898598ac95277bfd9f8a4b502e81b1c0a3d30035bd205978112a83e13835a0",
-			"target_sha256": "176cf0d3fb4184b965493fe50c3c8031158ad183d5e4c962a91ae1776baf0af7",
+			"target_sha256": "78b56e4204caca6a190533d31294dfc6642ac85ec3c9d9e75956b28e7a20d6bb",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-10"
 			},
-			"auditors": [],
-			"status": "translated"
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
+					"result": "clean-with-findings",
+					"instance": "d1da94af17b7-mp1843-a1-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/d1da94af17b7-mp1843-a1-ur.json",
+					"receipt_sha256": "b110d06b15d5615c63fd6ba34f53395830a130e485e2dd695b30e7757a300e43",
+					"scope": "ui.browser.media_permission independent first audit, all 8 keys",
+					"note": "Independent audit mp1843-a1-ur (task child, session d1da94af17b7); record i18n/audits/evidence/ur/ui.browser.media_permission/mp1843-a1-ur/record.json"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "0a898598ac95277bfd9f8a4b502e81b1c0a3d30035bd205978112a83e13835a0",
+					"target_sha256": "176cf0d3fb4184b965493fe50c3c8031158ad183d5e4c962a91ae1776baf0af7",
+					"auditors": [],
+					"status": "pending"
+				}
+			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.browser.media_permission",
 			"source_sha256": "0a898598ac95277bfd9f8a4b502e81b1c0a3d30035bd205978112a83e13835a0",
-			"target_sha256": "a277d64030f5b44d19225951e91bceb57f2c74d1be969a6c689899c8651a0881",
+			"target_sha256": "3a03efae1d9cb8236925f7084d43598d3da13102e51871cc2817fb2f3c2b411f",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-10"
 			},
-			"auditors": [],
-			"status": "translated"
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
+					"result": "clean-with-findings",
+					"instance": "d1da94af17b7-mp1843-a1-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 3
+					},
+					"receipt": "i18n/receipts/d1da94af17b7-mp1843-a1-vi.json",
+					"receipt_sha256": "fa9c89e6b77acbb6da09ebf56ff402c501f51189d46c7a0ec64d5f03ff36866e",
+					"scope": "ui.browser.media_permission independent first audit, all 8 keys",
+					"note": "Independent audit mp1843-a1-vi (task child, session d1da94af17b7); record i18n/audits/evidence/vi/ui.browser.media_permission/mp1843-a1-vi/record.json"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "0a898598ac95277bfd9f8a4b502e81b1c0a3d30035bd205978112a83e13835a0",
+					"target_sha256": "a277d64030f5b44d19225951e91bceb57f2c74d1be969a6c689899c8651a0881",
+					"auditors": [],
+					"status": "pending"
+				}
+			]
 		},
 		{
 			"locale": "zh-CN",
@@ -94520,8 +94660,26 @@
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-10"
 			},
-			"auditors": [],
-			"status": "translated"
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
+					"result": "clean-with-findings",
+					"instance": "d1da94af17b7-mp1843-a1-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/d1da94af17b7-mp1843-a1-zh-cn.json",
+					"receipt_sha256": "2e13fb28bb3dd6e6e40c1b2fe6ccca3d811d38259c04018c731ddff0772a18ef",
+					"scope": "ui.browser.media_permission independent first audit, all 8 keys",
+					"note": "Independent audit mp1843-a1-zh-cn (task child, session d1da94af17b7); record i18n/audits/evidence/zh-CN/ui.browser.media_permission/mp1843-a1-zh-cn/record.json"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }

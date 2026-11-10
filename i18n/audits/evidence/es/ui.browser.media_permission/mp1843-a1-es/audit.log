@@ -1,0 +1,102 @@
+en 0a898598ac95277bfd9f8a4b502e81b1c0a3d30035bd205978112a83e13835a0
+context 361ee18bdb1beb154c2e9c318a88a21ee44285c4f1eeb3d90681e909de222f10
+
+== es 819f5392c52cea3207379ea4d11b9ea462510a3cb90ba3d3860f51d042b3b8b0
+  label: Solicitud de cámara y micrófono
+  message[audio]: meet.google.com quiere usar tu micrófono.
+  message[video]: meet.google.com quiere usar tu cámara.
+  message[both]: meet.google.com quiere usar tu cámara y tu micrófono.
+  agent_tab_hint: Esta pestaña la controla un agente, así que Permitir solo se aplica a esta solicitud.
+  allow: Permitir
+  block: Bloquear
+  dismiss: Descartar la solicitud de cámara y micrófono
+  system_blocked[audio]: macOS tiene desactivado el acceso al micrófono para Local Operator.
+  system_blocked[video]: macOS tiene desactivado el acceso a la cámara para Local Operator.
+  system_blocked[both]: macOS tiene desactivado el acceso a la cámara y al micrófono para Local Operator.
+  system_blocked_hint: Actívalo en Ajustes del Sistema › Privacidad y seguridad y vuelve a cargar la página.
+
+== fr 311336a7158ab1f208bfae5985d20903131b361628ad361735023440ac16f15b
+  label: Demande d’accès à la caméra et au micro
+  message[audio]: meet.google.com souhaite utiliser votre micro.
+  message[video]: meet.google.com souhaite utiliser votre caméra.
+  message[both]: meet.google.com souhaite utiliser votre caméra et votre micro.
+  agent_tab_hint: Cet onglet est piloté par un agent : Autoriser ne vaut que pour cette demande.
+  allow: Autoriser
+  block: Bloquer
+  dismiss: Ignorer la demande d’accès à la caméra et au micro
+  system_blocked[audio]: macOS a désactivé l’accès au micro pour Local Operator.
+  system_blocked[video]: macOS a désactivé l’accès à la caméra pour Local Operator.
+  system_blocked[both]: macOS a désactivé l’accès à la caméra et au micro pour Local Operator.
+  system_blocked_hint: Activez-le dans Réglages Système › Confidentialité et sécurité, puis rechargez la page.
+
+== hi ff7fe290a3b2b8ae051b636744a3d7b47674239ed010a5d26aad04d42ca1e428
+  label: कैमरा और माइक्रोफ़ोन अनुरोध
+  message[audio]: meet.google.com आपका माइक्रोफ़ोन इस्तेमाल करना चाहती है।
+  message[video]: meet.google.com आपका कैमरा इस्तेमाल करना चाहती है।
+  message[both]: meet.google.com आपका कैमरा और माइक्रोफ़ोन इस्तेमाल करना चाहती है।
+  agent_tab_hint: यह टैब एजेंट चला रहा है, इसलिए अनुमति दें सिर्फ़ इसी अनुरोध पर लागू होगा।
+  allow: अनुमति दें
+  block: ब्लॉक करें
+  dismiss: कैमरा और माइक्रोफ़ोन अनुरोध ख़ारिज करें
+  system_blocked[audio]: macOS में Local Operator के लिए माइक्रोफ़ोन ऐक्सेस बंद है।
+  system_blocked[video]: macOS में Local Operator के लिए कैमरा ऐक्सेस बंद है।
+  system_blocked[both]: macOS में Local Operator के लिए कैमरा और माइक्रोफ़ोन ऐक्सेस बंद है।
+  system_blocked_hint: इसे सिस्टम सेटिंग्ज़ › गोपनीयता और सुरक्षा में चालू करें, फिर पेज दोबारा लोड करें।
+
+== ru d810589fa10ad5e4211bd8405e127ff5c21cd8f357d3643fb20f86620c06e6bd
+  label: Запрос доступа к камере и микрофону
+  message[audio]: meet.google.com запрашивает доступ к микрофону.
+  message[video]: meet.google.com запрашивает доступ к камере.
+  message[both]: meet.google.com запрашивает доступ к камере и микрофону.
+  agent_tab_hint: Этой вкладкой управляет агент, поэтому «Разрешить» действует только для этого запроса.
+  allow: Разрешить
+  block: Блокировать
+  dismiss: Закрыть запрос доступа к камере и микрофону
+  system_blocked[audio]: В macOS доступ Local Operator к микрофону выключен.
+  system_blocked[video]: В macOS доступ Local Operator к камере выключен.
+  system_blocked[both]: В macOS доступ Local Operator к камере и микрофону выключен.
+  system_blocked_hint: Включите его в разделе «Системные настройки › Конфиденциальность и безопасность», затем перезагрузите страницу.
+
+== ur 78b56e4204caca6a190533d31294dfc6642ac85ec3c9d9e75956b28e7a20d6bb
+  label: کیمرے اور مائیکروفون کی درخواست
+  message[audio]: meet.google.com آپ کا مائیکروفون استعمال کرنا چاہتی ہے۔
+  message[video]: meet.google.com آپ کا کیمرا استعمال کرنا چاہتی ہے۔
+  message[both]: meet.google.com آپ کا کیمرا اور مائیکروفون استعمال کرنا چاہتی ہے۔
+  agent_tab_hint: یہ ٹیب ایجنٹ چلا رہا ہے، اس لیے اجازت دیں صرف اسی درخواست پر لاگو ہوگا۔
+  allow: اجازت دیں
+  block: بلاک کریں
+  dismiss: کیمرے اور مائیکروفون کی درخواست ہٹائیں
+  system_blocked[audio]: macOS میں Local Operator کے لیے مائیکروفون تک رسائی بند ہے۔
+  system_blocked[video]: macOS میں Local Operator کے لیے کیمرے تک رسائی بند ہے۔
+  system_blocked[both]: macOS میں Local Operator کے لیے کیمرے اور مائیکروفون تک رسائی بند ہے۔
+  system_blocked_hint: اسے System Settings › Privacy & Security میں آن کریں، پھر صفحہ دوبارہ لوڈ کریں۔
+
+== vi 3a03efae1d9cb8236925f7084d43598d3da13102e51871cc2817fb2f3c2b411f
+  label: Yêu cầu dùng camera và micrô
+  message[audio]: meet.google.com muốn sử dụng micrô của bạn.
+  message[video]: meet.google.com muốn sử dụng camera của bạn.
+  message[both]: meet.google.com muốn sử dụng camera và micrô của bạn.
+  agent_tab_hint: Đây là thẻ do tác nhân điều khiển, nên Cho phép chỉ áp dụng cho yêu cầu này.
+  allow: Cho phép
+  block: Chặn
+  dismiss: Bỏ qua yêu cầu dùng camera và micrô
+  system_blocked[audio]: macOS đang tắt quyền truy cập micrô của Local Operator.
+  system_blocked[video]: macOS đang tắt quyền truy cập camera của Local Operator.
+  system_blocked[both]: macOS đang tắt quyền truy cập camera và micrô của Local Operator.
+  system_blocked_hint: Hãy bật trong Cài đặt hệ thống › Quyền riêng tư & Bảo mật, rồi tải lại trang.
+
+== zh-CN bb8fe98d7e913de09219f0f103605062efae2da298594949dee9e24df5e8e113
+  label: 摄像头和麦克风请求
+  message[audio]: meet.google.com 想要使用你的麦克风。
+  message[video]: meet.google.com 想要使用你的摄像头。
+  message[both]: meet.google.com 想要使用你的摄像头和麦克风。
+  agent_tab_hint: 这是由智能体驱动的标签页，因此“允许”仅对本次请求有效。
+  allow: 允许
+  block: 阻止
+  dismiss: 关闭摄像头和麦克风请求
+  system_blocked[audio]: macOS 已关闭 Local Operator 的麦克风访问权限。
+  system_blocked[video]: macOS 已关闭 Local Operator 的摄像头访问权限。
+  system_blocked[both]: macOS 已关闭 Local Operator 的摄像头和麦克风访问权限。
+  system_blocked_hint: 请在“系统设置 › 隐私与安全性”中开启，然后重新加载页面。
+
+verify: ok

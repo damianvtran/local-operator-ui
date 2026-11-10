@@ -4,7 +4,7 @@
 	"ui.browser.media_permission.agent_tab_hint": "یہ ٹیب ایجنٹ چلا رہا ہے، اس لیے اجازت دیں صرف اسی درخواست پر لاگو ہوگا۔",
 	"ui.browser.media_permission.allow": "اجازت دیں",
 	"ui.browser.media_permission.block": "بلاک کریں",
-	"ui.browser.media_permission.dismiss": "کیمرے اور مائیکروفون کی درخواست برخاست کریں",
+	"ui.browser.media_permission.dismiss": "کیمرے اور مائیکروفون کی درخواست ہٹائیں",
 	"ui.browser.media_permission.system_blocked": "{devices, select, audio {macOS میں Local Operator کے لیے مائیکروفون تک رسائی بند ہے۔} video {macOS میں Local Operator کے لیے کیمرے تک رسائی بند ہے۔} other {macOS میں Local Operator کے لیے کیمرے اور مائیکروفون تک رسائی بند ہے۔}}",
 	"ui.browser.media_permission.system_blocked_hint": "اسے System Settings › Privacy & Security میں آن کریں، پھر صفحہ دوبارہ لوڈ کریں۔"
 }

@@ -1,7 +1,7 @@
 {
 	"ui.browser.media_permission.label": "Yêu cầu dùng camera và micrô",
 	"ui.browser.media_permission.message": "{devices, select, audio {{site} muốn sử dụng micrô của bạn.} video {{site} muốn sử dụng camera của bạn.} other {{site} muốn sử dụng camera và micrô của bạn.}}",
-	"ui.browser.media_permission.agent_tab_hint": "Đây là thẻ do tác tử điều khiển, nên Cho phép chỉ áp dụng cho yêu cầu này.",
+	"ui.browser.media_permission.agent_tab_hint": "Đây là thẻ do tác nhân điều khiển, nên Cho phép chỉ áp dụng cho yêu cầu này.",
 	"ui.browser.media_permission.allow": "Cho phép",
 	"ui.browser.media_permission.block": "Chặn",
 	"ui.browser.media_permission.dismiss": "Bỏ qua yêu cầu dùng camera và micrô",

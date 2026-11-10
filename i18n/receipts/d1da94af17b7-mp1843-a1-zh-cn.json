@@ -1,0 +1,44 @@
+{
+ "auditor": "task (lopdev i18n-audit-1843)",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "d1da94af17b7-mp1843-a1-zh-cn",
+ "status": "passed",
+ "locale": "zh-CN",
+ "namespace": "ui.browser.media_permission",
+ "date": "2026-11-10",
+ "head": "4f0df27743eecae09ccc8c3e69838faa616a3eb2",
+ "audit_kind": "independent first audit of a new namespace (all 8 keys)",
+ "sha256": {
+  "en": "0a898598ac95277bfd9f8a4b502e81b1c0a3d30035bd205978112a83e13835a0",
+  "zh-CN": "bb8fe98d7e913de09219f0f103605062efae2da298594949dee9e24df5e8e113"
+ },
+ "context_sha256": "361ee18bdb1beb154c2e9c318a88a21ee44285c4f1eeb3d90681e909de222f10",
+ "translated_sha256_before_audit_corrections": "bb8fe98d7e913de09219f0f103605062efae2da298594949dee9e24df5e8e113",
+ "references": {
+  "glossary": {
+   "path": "i18n/glossary.md (damianvtran/local-operator origin/main 9372a3a42d0e)",
+   "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+  },
+  "style_guide": {
+   "path": "i18n/style-guides/zh-CN.md (local-operator origin/main 9372a3a42d0e)",
+   "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+  }
+ },
+ "findings": [
+  {
+   "id": "ZH-N1",
+   "severity": "nit",
+   "key": "ui.browser.media_permission.system_blocked",
+   "finding": "Spaces around Latin runs (macOS 已关闭 Local Operator 的) contradict the zh-CN guide (no space) and most of the corpus (139 vs 5), but match the ui.browser* siblings (从 Chrome Web Store, 中的 {site} 未完成). No change; a corpus-wide call."
+  },
+  {
+   "id": "ZH-I1",
+   "severity": "INFO",
+   "key": "ui.browser.media_permission.system_blocked_hint",
+   "finding": "隐私与安全性 differs from core zh-CN cli.permissions (隐私与安全); 隐私与安全性 is the auditor’s recollection of Apple’s macOS 13+ pane name. The Apple zh-cn help page returned HTTP 429, so not verified here."
+  }
+ ],
+ "resolutions": [],
+ "evidence": "i18n/audits/evidence/zh-CN/ui.browser.media_permission/mp1843-a1-zh-cn/record.json",
+ "independence": "Independent auditor (team lopdev task child, session d1da94af17b7); translator was agent coder. Same served model family as the translator (anthropic/claude-opus-5-5) — independence is by agent instance. No MT service, translation API or SDK used."
+}

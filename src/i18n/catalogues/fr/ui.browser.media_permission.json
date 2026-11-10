@@ -1,7 +1,7 @@
 {
 	"ui.browser.media_permission.label": "Demande d’accès à la caméra et au micro",
 	"ui.browser.media_permission.message": "{devices, select, audio {{site} souhaite utiliser votre micro.} video {{site} souhaite utiliser votre caméra.} other {{site} souhaite utiliser votre caméra et votre micro.}}",
-	"ui.browser.media_permission.agent_tab_hint": "Cet onglet est piloté par un agent : Autoriser ne vaut que pour cette demande.",
+	"ui.browser.media_permission.agent_tab_hint": "Cet onglet est piloté par un agent : Autoriser ne vaut que pour cette demande.",
 	"ui.browser.media_permission.allow": "Autoriser",
 	"ui.browser.media_permission.block": "Bloquer",
 	"ui.browser.media_permission.dismiss": "Ignorer la demande d’accès à la caméra et au micro",
