@@ -3675,6 +3675,11 @@ export type MessageParams = {
 	"ui.browser.browser_pane.which_tabs_to_show": undefined;
 	"ui.browser.browser_passkey_notice.agent_explanation": undefined;
 	"ui.browser.browser_passkey_notice.continue_in_own_tab": undefined;
+	"ui.browser.browser_passkey_notice.continue_refused_in_flight": undefined;
+	"ui.browser.browser_passkey_notice.continue_refused_not_agent": undefined;
+	"ui.browser.browser_passkey_notice.continue_refused_not_web": undefined;
+	"ui.browser.browser_passkey_notice.continue_refused_stale": undefined;
+	"ui.browser.browser_passkey_notice.continue_unavailable": undefined;
 	"ui.browser.browser_passkey_notice.dismiss": undefined;
 	"ui.browser.browser_passkey_notice.explanation": undefined;
 	"ui.browser.browser_passkey_notice.message": { who: string; site: string };

@@ -26,7 +26,8 @@ const bundle = await build({
 			'export { BrowserPasskeyNotice } from "./src/renderer/src/features/browser/components/browser-passkey-notice";',
 			'export { t } from "./src/renderer/src/shared/i18n";',
 			'export { renderToStaticMarkup } from "react-dom/server";',
-			'export { createElement } from "react";',
+			'export { createElement, act } from "react";',
+			'export { createRoot } from "react-dom/client";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -51,7 +52,13 @@ const bundle = await build({
 	},
 	loader: { ".css": "empty", ".svg": "text", ".png": "dataurl" },
 	// One React shared by the component and the renderer.
-	external: ["react", "react-dom", "react-dom/server", "react/jsx-runtime"],
+	external: [
+		"react",
+		"react-dom",
+		"react-dom/server",
+		"react-dom/client",
+		"react/jsx-runtime",
+	],
 	tsconfig: "tsconfig.app.json",
 });
 
@@ -68,7 +75,14 @@ try {
 } finally {
 	await unlink(bundlePath);
 }
-const { BrowserPasskeyNotice, t, renderToStaticMarkup, createElement } = mod;
+const {
+	BrowserPasskeyNotice,
+	t,
+	renderToStaticMarkup,
+	createElement,
+	act,
+	createRoot,
+} = mod;
 
 const CONTINUE = t("ui.browser.browser_passkey_notice.continue_in_own_tab");
 const AGENT_WHY = t("ui.browser.browser_passkey_notice.agent_explanation");
@@ -93,7 +107,7 @@ function render(props) {
 		createElement(BrowserPasskeyNotice, {
 			onOpen: () => {},
 			onDismiss: () => {},
-			onContinueInUserTab: () => {},
+			onContinueInUserTab: async () => true,
 			...props,
 		}),
 	);
@@ -104,6 +118,12 @@ test("an agent tab's notice offers Continue in your own tab, says why, and keeps
 	assert.ok(html.includes(CONTINUE), "the primary action is offered");
 	assert.ok(html.includes('data-tour-tag="browser-passkey-notice-continue"'));
 	assert.ok(html.includes(AGENT_WHY), "the agent-tab explanation is shown");
+	// Review D1/D2/U1/U5: conditional, no repeated label or "agent-driven tab"
+	// (the message line already says it), and it names the step that remains.
+	assert.ok(AGENT_WHY.startsWith("If your passkey is in a password manager"));
+	assert.ok(!AGENT_WHY.includes(CONTINUE), "the button label is not repeated");
+	assert.ok(!AGENT_WHY.includes("agent-driven"));
+	assert.ok(AGENT_WHY.includes("ask the agent to reload this page"));
 	assert.ok(
 		!html.includes(t("ui.browser.browser_passkey_notice.explanation")),
 		"one hint, not two",
@@ -131,4 +151,148 @@ test("an agent tab's notice without the callback (an older host) falls back to t
 	});
 	assert.ok(!html.includes(CONTINUE));
 	assert.ok(html.includes(t("ui.browser.browser_passkey_notice.explanation")));
+});
+
+/*
+ * THE CLICK, MOUNTED (review round 1: R1/U4 double click, U2 focus). Static
+ * markup cannot press a button or hold focus, so these mount the same component
+ * in jsdom after the bundle above (the DOM must not exist while the stores
+ * evaluate; see agent-picture-dom.test.mjs).
+ */
+const { JSDOM } = await import("jsdom");
+const dom = new JSDOM("<!doctype html>", { url: "http://localhost/" });
+const { window } = dom;
+for (const [key, value] of Object.entries({
+	window,
+	document: window.document,
+	navigator: window.navigator,
+	getComputedStyle: window.getComputedStyle.bind(window),
+	IS_REACT_ACT_ENVIRONMENT: true,
+	HTMLElement: window.HTMLElement,
+	Element: window.Element,
+	Node: window.Node,
+	MouseEvent: window.MouseEvent,
+	FocusEvent: window.FocusEvent,
+	Event: window.Event,
+})) {
+	Object.defineProperty(globalThis, key, {
+		configurable: true,
+		writable: true,
+		value,
+	});
+}
+
+function deferred() {
+	let resolve;
+	const promise = new Promise((r) => {
+		resolve = r;
+	});
+	return { promise, resolve };
+}
+
+async function mount(props) {
+	const host = document.createElement("div");
+	// The pane's rest-stop stand-in: a programmatic focus target like the
+	// surface's chord root.
+	const rest = document.createElement("div");
+	rest.tabIndex = -1;
+	const slot = document.createElement("div");
+	host.append(rest, slot);
+	document.body.append(host);
+	const root = createRoot(slot);
+	const element = (overrides) =>
+		createElement(BrowserPasskeyNotice, {
+			onOpen: () => {},
+			onDismiss: () => {},
+			restFocus: () => rest.focus(),
+			...props,
+			...overrides,
+		});
+	await act(async () => root.render(element({})));
+	const button = () =>
+		slot.querySelector('[data-tour-tag="browser-passkey-notice-continue"]');
+	return {
+		rest,
+		button,
+		rerender: (overrides) => act(async () => root.render(element(overrides))),
+		unmount: async () => {
+			await act(async () => root.unmount());
+			host.remove();
+		},
+	};
+}
+
+const click = (node) =>
+	act(async () => {
+		node.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+	});
+
+test("a pending continue disables the button, so a double click asks main once", async () => {
+	const calls = [];
+	let pending = deferred();
+	const view = await mount({
+		notice: notice("agent"),
+		onContinueInUserTab: (n) => {
+			calls.push(n.tabId);
+			return pending.promise;
+		},
+	});
+	try {
+		await click(view.button());
+		assert.equal(view.button().disabled, true, "disabled while in flight");
+		assert.equal(view.button().getAttribute("aria-busy"), "true");
+		await click(view.button());
+		assert.deepEqual(calls, [39], "the second click never reached main");
+		// A refusal re-enables it, so the user can try again.
+		await act(async () => pending.resolve(false));
+		assert.equal(view.button().disabled, false);
+		pending = deferred();
+		await click(view.button());
+		assert.deepEqual(calls, [39, 39]);
+		await act(async () => pending.resolve(false));
+	} finally {
+		await view.unmount();
+	}
+});
+
+test("a successful continue hands focus to the pane's rest-stop, not <body>", async () => {
+	const pending = deferred();
+	const view = await mount({
+		notice: notice("agent"),
+		onContinueInUserTab: () => pending.promise,
+	});
+	try {
+		view.button().focus();
+		assert.equal(document.activeElement, view.button());
+		await click(view.button());
+		// Main activates the new user tab: the agent tab's notice (and the
+		// focused button) unmount before the invoke answers.
+		await view.rerender({ notice: null });
+		assert.equal(document.activeElement, document.body, "the U2 symptom");
+		await act(async () => pending.resolve(true));
+		assert.notEqual(document.activeElement, document.body);
+		assert.equal(document.activeElement, view.rest);
+	} finally {
+		await view.unmount();
+	}
+});
+
+test("a successful continue does not take focus from wherever the user moved on to", async () => {
+	const pending = deferred();
+	const elsewhere = document.createElement("input");
+	document.body.append(elsewhere);
+	const view = await mount({
+		notice: notice("agent"),
+		onContinueInUserTab: () => pending.promise,
+	});
+	try {
+		await click(view.button());
+		elsewhere.focus();
+		await act(async () => pending.resolve(true));
+		assert.equal(document.activeElement, elsewhere);
+	} finally {
+		await view.unmount();
+		elsewhere.remove();
+		window.close();
+	}
 });

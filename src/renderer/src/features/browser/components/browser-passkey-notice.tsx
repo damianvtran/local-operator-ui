@@ -3,7 +3,7 @@ import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { KeyRound, X } from "lucide-react";
 import type { FC } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
 	PASSKEY_NOTICE_TTL_MS,
 	type PasskeyNoticeView,
@@ -45,8 +45,15 @@ export interface BrowserPasskeyNoticeProps {
 	onOpen: (notice: PasskeyNoticeView) => void;
 	onDismiss: (notice: PasskeyNoticeView) => void;
 	/** Opens the agent tab's page in a new user tab. Rendered only when the
-	 * notice is an agent tab's: a user tab already runs extension frames. */
-	onContinueInUserTab?: (notice: PasskeyNoticeView) => void;
+	 * notice is an agent tab's: a user tab already runs extension frames.
+	 * Resolves true once the user's tab exists. */
+	onContinueInUserTab?: (notice: PasskeyNoticeView) => Promise<boolean>;
+	/** Where focus rests after a successful continue (review U2). The new tab is
+	 * activated, this notice unmounts, and the button that held focus goes with
+	 * it, which dropped a keyboard user to <body>. Called only when focus was on
+	 * this notice or has already fallen to <body>, so a user who moved on to the
+	 * composer meanwhile keeps their place. */
+	restFocus?: () => void;
 	/** Opens lop://extensions in the current tab (review U4: the extension
 	 * route gets a control, not just words). Omitted when the active tab is not
 	 * the user's, since the browser's own pages open only in user tabs. */
@@ -72,10 +79,16 @@ export const BrowserPasskeyNotice: FC<BrowserPasskeyNoticeProps> = ({
 	onOpen,
 	onDismiss,
 	onContinueInUserTab,
+	restFocus,
 	onOpenExtensions,
 	passwordManagerName,
 }) => {
 	useI18nLocale();
+	// The click's in-flight state (review R1/U4). Main refuses a second continue
+	// for the same tab too; disabling here keeps the double click from reaching
+	// it and from toasting that refusal.
+	const [continuing, setContinuing] = useState(false);
+	const rootRef = useRef<HTMLOutputElement | null>(null);
 	// Aged on THIS clock too: main stops projecting a notice at the same TTL, but
 	// nothing pushes a projection at the moment of expiry, so without a timer an
 	// idle strip would keep describing a request from minutes ago.
@@ -100,9 +113,30 @@ export const BrowserPasskeyNotice: FC<BrowserPasskeyNoticeProps> = ({
 				: "user";
 	const continueInUserTab =
 		notice.ownerKind === "agent" ? onContinueInUserTab : undefined;
+	const startContinue = (callback: NonNullable<typeof continueInUserTab>) => {
+		if (continuing) return;
+		setContinuing(true);
+		void callback(notice)
+			.then((continued) => {
+				if (!continued) return;
+				// Read after the await: by now the switch has usually unmounted this
+				// notice, and focus has fallen to <body>.
+				const active = document.activeElement;
+				if (
+					!active ||
+					active === document.body ||
+					rootRef.current?.contains(active)
+				)
+					restFocus?.();
+			})
+			.catch(() => {})
+			// A no-op once unmounted; on a refusal it re-enables the button.
+			.finally(() => setContinuing(false));
+	};
 
 	return (
 		<output
+			ref={rootRef}
 			aria-live="polite"
 			aria-label={t("ui.browser.browser_passkey_notice.passkey_request")}
 			data-tour-tag="browser-passkey-notice"
@@ -146,7 +180,9 @@ export const BrowserPasskeyNotice: FC<BrowserPasskeyNoticeProps> = ({
 					<Button
 						variant="outline"
 						size="sm"
-						onClick={() => continueInUserTab(notice)}
+						onClick={() => startContinue(continueInUserTab)}
+						disabled={continuing}
+						aria-busy={continuing || undefined}
 						data-tour-tag="browser-passkey-notice-continue"
 					>
 						{t("ui.browser.browser_passkey_notice.continue_in_own_tab")}

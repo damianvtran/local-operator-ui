@@ -505,8 +505,13 @@ export interface BrowserChrome {
 	 * the reason `revealDownloads` does: the door answers instead of throwing. */
 	openPasskeyNotice: (tabId: number, at: number) => Promise<void>;
 	/** An agent tab's notice: continue the sign-in in a new tab the user owns.
-	 * Reports its own refusal like `openPasskeyNotice`. */
-	continuePasskeyNoticeInUserTab: (tabId: number, at: number) => Promise<void>;
+	 * Reports its own refusal like `openPasskeyNotice`. Resolves true once the
+	 * user's tab exists, so the notice can hand focus on (review U2) instead of
+	 * leaving it on a button that unmounts with the agent tab's notice. */
+	continuePasskeyNoticeInUserTab: (
+		tabId: number,
+		at: number,
+	) => Promise<boolean>;
 }
 
 export interface BrowserProjection {
@@ -940,17 +945,22 @@ export function useBrowserChrome(): BrowserChrome {
 						);
 					}
 				}),
-			continuePasskeyNoticeInUserTab: (tabId, at) =>
-				runVoid(async () => {
+			continuePasskeyNoticeInUserTab: async (tabId, at) => {
+				let continued = false;
+				await runVoid(async () => {
 					const answer = await api?.continuePasskeyNoticeInUserTab?.(tabId, at);
-					if (answer && answer.ok === false) {
+					if (answer?.ok === true) continued = true;
+					else if (answer && answer.ok === false) {
+						// `reason` is main's own localized sentence (review R2/U3).
 						showErrorToast(
 							t("ui.browser.use_browser_chrome.passkey_continue_failed", {
 								reason: answer.reason,
 							}),
 						);
 					}
-				}),
+				});
+				return continued;
+			},
 			revealDownloads: () =>
 				runVoid(async () => {
 					const answer = await api?.revealDownloads();

@@ -13226,6 +13226,48 @@ test("continue-in-user-tab refuses a user tab, a non-web page and a closed tab w
 	assert.equal(registry.count(), before);
 });
 
+test("continue-in-user-tab counts a created tab whose load fails as continued, and keeps it showing the failure (review U3)", async () => {
+	const { host, registry } = makeHost();
+	const agent = registry.create({ owner: "agent", sessionId: "synthetic-s1" });
+	await agent.view.webContents.loadURL("https://appstoreconnect.apple.com/");
+	const create = registry.create.bind(registry);
+	let created;
+	registry.create = (options) => {
+		const record = create(options);
+		created = record;
+		record.view.webContents.loadURL = async () => {
+			throw Object.assign(new Error("fixture navigation aborted"), {
+				code: "ERR_ABORTED",
+			});
+		};
+		return record;
+	};
+	const outcome = await host.continueAgentTabInUserTab(agent.tabId);
+	assert.deepEqual(outcome, { ok: true, tabId: created.tabId });
+	assert.equal(registry.get(created.tabId), created, "the user's tab is kept");
+	assert.equal(registry.activeTab, created);
+	assert.ok(
+		host.chromeState().tabs.find((t) => t.tabId === created.tabId).failed,
+		"the tab shows its own load failure",
+	);
+});
+
+test("continue-in-user-tab refusals are their own localized sentences (review R2/Q2)", async () => {
+	const { host, registry } = makeHost();
+	const user = registry.create({ owner: "user" });
+	await user.view.webContents.loadURL("https://github.com/login");
+	const internal = registry.create({ owner: "agent", sessionId: "s" });
+	await internal.view.webContents.loadURL("about:blank");
+	assert.deepEqual(await host.continueAgentTabInUserTab(user.tabId), {
+		ok: false,
+		reason: "An agent is no longer driving that tab.",
+	});
+	assert.deepEqual(await host.continueAgentTabInUserTab(internal.tabId), {
+		ok: false,
+		reason: "Only web pages can open in your own tab.",
+	});
+});
+
 test("the continue-in-user-tab IPC channel admits only the app renderer and passes ids, not URLs", async () => {
 	const frame = { url: "http://localhost:5173/index.html" };
 	const webContents = { id: 1, mainFrame: frame };

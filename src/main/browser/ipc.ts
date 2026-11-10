@@ -662,7 +662,10 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 		async (event, tabId: unknown, at: unknown) => {
 			authorize(event);
 			if (!options.passkeyNotice?.continueInUserTab) {
-				return { ok: false, reason: "the passkey notice is not available" };
+				return {
+					ok: false,
+					reason: t("ui.browser.browser_passkey_notice.continue_unavailable"),
+				};
 			}
 			return options.passkeyNotice.continueInUserTab(
 				numberOrThrow(tabId, "tabId"),

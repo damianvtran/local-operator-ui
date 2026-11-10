@@ -1252,15 +1252,25 @@ export class BrowserHost implements BrowserActionContext {
 			return { ok: false, reason: t("ui.browser.chrome.tab_gone") };
 		// Only an agent's tab needs this: a user tab already runs extension frames.
 		if (record.owner !== "agent")
-			return { ok: false, reason: "the tab is not an agent's" };
+			return {
+				ok: false,
+				reason: t(
+					"ui.browser.browser_passkey_notice.continue_refused_not_agent",
+				),
+			};
 		let url: string;
 		try {
 			url = record.view.webContents.getURL();
 		} catch {
 			return { ok: false, reason: t("ui.browser.chrome.tab_gone") };
 		}
+		// Its own sentence, not `duplicate_refused` (review Q2): the user asked to
+		// continue, not to duplicate.
 		if (!DUPLICATABLE_WEB_URL.test(url))
-			return { ok: false, reason: t("ui.browser.chrome.duplicate_refused") };
+			return {
+				ok: false,
+				reason: t("ui.browser.browser_passkey_notice.continue_refused_not_web"),
+			};
 		// A box, not a `let`: the id is written inside a callback, which TypeScript's
 		// narrowing cannot see, and the catch below needs it.
 		const created: { tabId: number | null } = { tabId: null };
@@ -1274,16 +1284,22 @@ export class BrowserHost implements BrowserActionContext {
 			);
 			return { ok: true, tabId: copy.tabId };
 		} catch {
-			// Same as `duplicate`: a load that fails leaves the user's tab in place
-			// showing the failure, rather than silently removing what they asked for.
-			if (created.tabId !== null)
-				this.recordLoadFailure(created.tabId, {
-					code: -2,
-					description: "PASSKEY_CONTINUE_NAVIGATION_FAILED",
-					url,
-				});
+			if (created.tabId === null)
+				return {
+					ok: false,
+					reason: t("ui.browser.browser_passkey_notice.continue_unavailable"),
+				};
+			// The tab exists, is active and is the user's: that is the success the
+			// user asked for (review U3). Same as `duplicate`, the load failure stays
+			// in the tab for them to see, rather than a toast saying the tab they
+			// are looking at could not be opened.
+			this.recordLoadFailure(created.tabId, {
+				code: -2,
+				description: "PASSKEY_CONTINUE_NAVIGATION_FAILED", // i18n: ignore machine error code for the failure page's technical line, like ERR_*
+				url,
+			});
 			this.onChanged();
-			return { ok: false, reason: "the page did not load in the new tab" };
+			return { ok: true, tabId: created.tabId };
 		}
 	}
 

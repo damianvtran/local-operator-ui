@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { t } from "../../i18n";
 import {
 	PASSKEY_NOTICE_TTL_MS,
 	type PasskeyCall,
@@ -356,6 +357,27 @@ export class PasskeyNotices {
 		return notice;
 	}
 
+	/**
+	 * Tabs whose "Continue in your own tab" is between the click and the new
+	 * tab existing (review R1/Q1). The check-then-dismiss in
+	 * `continuePasskeyNoticeInUserTab` spans an await (the host waits for the
+	 * copy's load), so without a claim a double click passed the `at` check
+	 * twice and opened two user tabs. Keyed by tab, not by `at`: a new notice on
+	 * the same tab while one continue is in flight must not start a second.
+	 */
+	private readonly continuing = new Set<number>();
+
+	/** Claim the continue for `tabId`; false when one is already in flight. */
+	claimContinue(tabId: number): boolean {
+		if (this.continuing.has(tabId)) return false;
+		this.continuing.add(tabId);
+		return true;
+	}
+
+	releaseContinue(tabId: number): void {
+		this.continuing.delete(tabId);
+	}
+
 	/** The user dismissed notice `at`. A stale `at` (the notice was replaced) is
 	 * ignored, so a late click cannot clear a newer notice. */
 	dismiss(tabId: number, at: number): boolean {
@@ -450,10 +472,12 @@ export async function openPasskeyNoticeInSystemBrowser(deps: {
  * URL is the agent tab's own top-level URL, read by `openUserTab` in main (the
  * host's user-tab path), never the requesting iframe's and never a sent string.
  *
- * Refused for a stale notice, a notice raised in a user tab, or a tab no longer
- * the agent's (handed back or closed): each would open a tab the user did not
- * ask for. On success the agent tab's notice is dismissed, since its recovery
- * is now in the user's hands.
+ * Refused for a stale notice, a notice raised in a user tab, a tab no longer
+ * the agent's (handed back or closed), or while a continue for the same tab is
+ * already in flight: each would open a tab the user did not ask for. Success
+ * means the user's tab EXISTS (its load may still fail, visibly, in that tab);
+ * the agent tab's notice is then dismissed, since its recovery is now in the
+ * user's hands.
  */
 export async function continuePasskeyNoticeInUserTab(deps: {
 	notices: PasskeyNotices;
@@ -465,15 +489,41 @@ export async function continuePasskeyNoticeInUserTab(deps: {
 	) => Promise<{ ok: true; tabId: number } | { ok: false; reason: string }>;
 	log: (message: string) => void;
 }): Promise<PasskeyOpenOutcome> {
+	// Reasons are full localized sentences (review R2/U3): the renderer shows
+	// them after its own localized "could not open" sentence, so an English
+	// fragment here surfaced verbatim inside every locale's toast.
 	const notice = deps.notices.viewFor(deps.tabId);
 	if (!notice || notice.at !== deps.at) {
-		return { ok: false, reason: "that notice is no longer current" };
+		return {
+			ok: false,
+			reason: t("ui.browser.browser_passkey_notice.continue_refused_stale"),
+		};
 	}
 	if (notice.ownerKind !== "agent" || deps.ownerOf(deps.tabId) !== "agent") {
-		return { ok: false, reason: "the tab is not an agent's" };
+		return {
+			ok: false,
+			reason: t("ui.browser.browser_passkey_notice.continue_refused_not_agent"),
+		};
 	}
-	const outcome = await deps.openUserTab(deps.tabId);
+	// Claimed BEFORE the await, released in `finally`: the second click of a
+	// double click lands while the first is still loading and is refused here.
+	if (!deps.notices.claimContinue(deps.tabId)) {
+		return {
+			ok: false,
+			reason: t("ui.browser.browser_passkey_notice.continue_refused_in_flight"),
+		};
+	}
+	let outcome: Awaited<ReturnType<typeof deps.openUserTab>>;
+	try {
+		outcome = await deps.openUserTab(deps.tabId);
+	} finally {
+		deps.notices.releaseContinue(deps.tabId);
+	}
 	if (!outcome.ok) return outcome;
+	// The user's tab exists and is the one shown, so the recovery is in their
+	// hands even if its page then failed to load (the host reports that as
+	// success and the tab shows the failure itself, as `duplicate` does):
+	// dismiss, so the agent tab's notice cannot offer a second copy.
 	deps.notices.dismiss(deps.tabId, deps.at);
 	deps.log(
 		`[browser] passkey notice on agent-driven tab ${deps.tabId}: continued in user tab ${outcome.tabId} at the user's request`,

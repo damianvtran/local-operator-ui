@@ -14,6 +14,7 @@ import {
 	webContents,
 	webFrameMain,
 } from "electron";
+import { t } from "../../i18n";
 import {
 	type BrowserChord,
 	browserChordIntent,
@@ -545,7 +546,7 @@ export function startBrowserHost(
 			continueInUserTab: async (tabId, at) =>
 				bindings.passkeyNotice?.continueInUserTab?.(tabId, at) ?? {
 					ok: false,
-					reason: "the passkey notice is not available",
+					reason: t("ui.browser.browser_passkey_notice.continue_unavailable"),
 				},
 		},
 		focusPage: () => {

@@ -18,7 +18,7 @@ const meta = {
 		onDismiss: () => {},
 		onOpenExtensions: () => {},
 		// Shown only on an agent tab's notice; the component ignores it otherwise.
-		onContinueInUserTab: () => {},
+		onContinueInUserTab: async () => true,
 	},
 	render: function InteractiveNotice(args) {
 		const [dismissed, setDismissed] = useState(false);

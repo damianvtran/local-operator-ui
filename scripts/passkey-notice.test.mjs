@@ -625,3 +625,80 @@ test("continue-in-your-own-tab is refused for a USER tab's notice", async () => 
 	assert.equal(outcome.ok, false);
 	assert.equal(asked, false);
 });
+
+test("continue-in-your-own-tab: a second invoke while the first is loading is refused, so one tab opens (review R1/Q1)", async () => {
+	const { n, frames } = notices("agent");
+	frames.set("1:8", { origin: "https://idmsa.apple.com", embedded: true });
+	n.observe(39, line(n.nonceFor(39, "1:8"), "get"));
+	const at = n.viewFor(39).at;
+	const opened = [];
+	const finishers = [];
+	const deps = {
+		notices: n,
+		tabId: 39,
+		at,
+		ownerOf: () => "agent",
+		// The host awaits the copy's load: hold every load open so both invokes
+		// overlap, the double click's timing.
+		openUserTab: (tabId) => {
+			opened.push(tabId);
+			return new Promise((resolve) => {
+				finishers.push(() => resolve({ ok: true, tabId: 40 + opened.length }));
+			});
+		},
+		log: () => {},
+	};
+	const first = continuePasskeyNoticeInUserTab(deps);
+	const second = continuePasskeyNoticeInUserTab(deps);
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.deepEqual(opened, [39], "exactly one user tab was asked for");
+	for (const finish of finishers) finish();
+	assert.deepEqual(await second, {
+		ok: false,
+		reason: "Your own tab is already opening.",
+	});
+	assert.deepEqual(await first, { ok: true });
+	assert.equal(n.viewFor(39), null);
+});
+
+test("continue-in-your-own-tab: a refused open releases the claim and keeps the notice for a retry", async () => {
+	const { n, frames } = notices("agent");
+	frames.set("1:8", { origin: "https://idmsa.apple.com", embedded: true });
+	n.observe(39, line(n.nonceFor(39, "1:8"), "get"));
+	const at = n.viewFor(39).at;
+	let answer = { ok: false, reason: "The browser couldn’t open a new tab." };
+	const deps = {
+		notices: n,
+		tabId: 39,
+		at,
+		ownerOf: () => "agent",
+		openUserTab: async () => answer,
+		log: () => {},
+	};
+	assert.deepEqual(await continuePasskeyNoticeInUserTab(deps), answer);
+	assert.ok(n.viewFor(39));
+	answer = { ok: true, tabId: 41 };
+	assert.deepEqual(await continuePasskeyNoticeInUserTab(deps), { ok: true });
+});
+
+test("continue-in-your-own-tab refusals are localized full sentences, not English fragments (review R2/U3)", async () => {
+	const { n, frames } = notices("agent");
+	frames.set("1:8", { origin: "https://idmsa.apple.com", embedded: true });
+	n.observe(39, line(n.nonceFor(39, "1:8"), "get"));
+	const at = n.viewFor(39).at;
+	const base = {
+		notices: n,
+		tabId: 39,
+		at,
+		ownerOf: () => "agent",
+		openUserTab: async () => ({ ok: true, tabId: 40 }),
+		log: () => {},
+	};
+	const stale = await continuePasskeyNoticeInUserTab({ ...base, at: at + 1 });
+	assert.equal(stale.reason, "That passkey notice is no longer current.");
+	const handedBack = await continuePasskeyNoticeInUserTab({
+		...base,
+		ownerOf: () => "user",
+	});
+	assert.equal(handedBack.reason, "An agent is no longer driving that tab.");
+});
