@@ -25,6 +25,41 @@ export interface InternalPage {
 /** What the address bar shows for the extensions list. */
 export const EXTENSIONS_PAGE_URL = "lop://extensions";
 
+/** The scheme every page is shown under, and the alias a Chrome user types. */
+export const INTERNAL_PAGE_SCHEME = "lop://";
+export const INTERNAL_PAGE_ALIAS_SCHEME = "chrome://";
+
+/**
+ * One page the address bar may SUGGEST.
+ *
+ * `titleKey` is a catalogue key, not copy: this module is shared with main and
+ * owns no user-facing strings, so the renderer resolves it with `t()`.
+ * `keywords` are lowercase English match terms for typing a bare word
+ * ("extensions", "add-ons"); they are never displayed, and the localized title
+ * is matched as well, so a non-English user finds the page in their language.
+ */
+export interface InternalPageEntry {
+	/** Canonical display URL; must satisfy `parseInternalUrl`. */
+	url: string;
+	titleKey: "ui.browser.extensions.page_title";
+	keywords: readonly string[];
+}
+
+/**
+ * EVERY internal page, in suggestion order: THE ONE PLACE a new page registers
+ * for the address bar's suggestions. Listing a page here grants nothing -
+ * `parseInternalUrl` stays the strict gate main navigates through, and a
+ * contract test asserts every entry parses, so a typo here cannot suggest an
+ * address main would refuse. Widen `titleKey`'s union when a page is added.
+ */
+export const INTERNAL_PAGES: readonly InternalPageEntry[] = [
+	{
+		url: EXTENSIONS_PAGE_URL,
+		titleKey: "ui.browser.extensions.page_title",
+		keywords: ["extensions", "extension", "add-ons", "addons", "plugins"],
+	},
+];
+
 /* `chrome://extensions` is accepted as a typed alias because that is the address
  * a Chrome user's fingers know; it canonicalises to `lop://` and is never shown. */
 const INTERNAL_URL = /^(?:lop|chrome):\/\/extensions\/?(?:\?id=([a-p]{32}))?$/i;

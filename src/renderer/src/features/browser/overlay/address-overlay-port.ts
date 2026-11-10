@@ -26,6 +26,9 @@ export interface AddressOverlayRow {
 	/** The span of `text` holding the user's own value, which the child isolates
 	 * as an LTR run (see `AddressListIsolate` in main). Display only. */
 	isolate?: { start: number; end: number };
+	/** A leading glyph naming the row's kind; only `page` (the browser's own
+	 * pages) exists. A closed enum, never markup: main refuses any other value. */
+	icon?: "page";
 }
 
 export type AddressOverlayView =

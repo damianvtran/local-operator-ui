@@ -7,6 +7,7 @@ import { chordCaption } from "@shared/keymap/keymap-chord";
 import { cn } from "@shared/lib/utils";
 import { navigationShortcutLabel } from "@shared/navigation-gesture";
 import {
+	AppWindow,
 	ArrowLeft,
 	ArrowRight,
 	File,
@@ -40,9 +41,18 @@ import type {
 	AddressHistoryRequest,
 	AddressHistoryResponse,
 } from "../../../../../shared/browser-address-history";
+import {
+	EXTENSIONS_PAGE_URL,
+	INTERNAL_PAGES,
+	INTERNAL_PAGE_ALIAS_SCHEME,
+	INTERNAL_PAGE_SCHEME,
+} from "../../../../../shared/internal-pages";
 import { useAddressAutocomplete } from "../hooks/use-address-autocomplete";
 import type { LoadFailureView } from "../hooks/use-browser-chrome";
+import { useBrowserExtensions } from "../hooks/use-browser-extensions";
 import {
+	type AddressExtensionInput,
+	type AddressPageInput,
 	type AddressRow,
 	type AddressSearchRow,
 	type AddressTypedRow,
@@ -208,6 +218,36 @@ export function displayUrl(url: string): string {
 	}
 	return url.replace(HTTP_SCHEME, "").replace(TRAILING_SLASH, "");
 }
+
+/** Whether the typed text has reached `lop://extensions` (or its alias), the
+ * point where each installed extension's details page becomes a suggestion. */
+function wantsExtensionDetails(query: string): boolean {
+	const folded = query.trim().toLowerCase();
+	const path = EXTENSIONS_PAGE_URL.slice(INTERNAL_PAGE_SCHEME.length);
+	return (
+		folded.startsWith(`${INTERNAL_PAGE_SCHEME}${path}`) ||
+		folded.startsWith(`${INTERNAL_PAGE_ALIAS_SCHEME}${path}`)
+	);
+}
+
+/**
+ * Renderless: reports the installed extensions to the address bar while it is
+ * MOUNTED. The URL bar mounts it only while the text has reached
+ * `lop://extensions`, so ordinary typing pays no extension-list IPC or
+ * state subscription - the same "subscribe only while shown" trade the surface
+ * makes for its passkey notice. Reuses `useBrowserExtensions` rather than a
+ * second reader of main's list.
+ */
+const ExtensionDetailsSource: FC<{
+	onChange: (extensions: AddressExtensionInput[]) => void;
+}> = ({ onChange }) => {
+	const { extensions } = useBrowserExtensions();
+	useEffect(() => {
+		onChange(extensions.map(({ id, name }) => ({ id, name })));
+	}, [extensions, onChange]);
+	useEffect(() => () => onChange([]), [onChange]);
+	return null;
+};
 
 export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	rootRef,
@@ -538,13 +578,47 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		setAnnouncement(standingText);
 	}, [hintShown, standingText]);
 	const hintPainted = hintShown && !narrow;
+	/* The browser's own pages, titles localized here because the model owns no
+	 * copy. Recomputed every render (one entry today): `useI18nLocale()` above
+	 * re-renders on a locale change, and a memo keyed on nothing would keep the
+	 * old language's title. */
+	const internalPages: AddressPageInput[] = INTERNAL_PAGES.map((page) => ({
+		url: page.url,
+		title: t(page.titleKey),
+		keywords: page.keywords,
+	}));
+	const internalPagesKey = internalPages.map((page) => page.title).join("\n");
+	const [extensionDetails, setExtensionDetails] = useState<
+		AddressExtensionInput[]
+	>([]);
+	const detailsWanted = editing && wantsExtensionDetails(query);
+	/** The page inputs for one text. ONE helper for every `suggestAddresses`
+	 * call (the render list, the keystroke's inline/default pick, the arrow
+	 * re-rank), so the completion a keystroke shows and the list beneath it are
+	 * ranked from the same pages. */
+	const pageOptionsFor = (text: string) => ({
+		pages: internalPages,
+		extensions: wantsExtensionDetails(text) ? extensionDetails : [],
+	});
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `internalPagesKey` stands for `internalPages`, a fresh array each render whose only varying content is its localized titles.
 	const suggestions = useMemo(
 		() =>
 			suggestAddresses(autocomplete.entries, query, {
 				inlineShown: currentCompletion !== null,
 				offerTyped: editing,
+				// Only while typing: an unedited field shows the tab's own URL, and a
+				// `lop://extensions` tab must not list itself back on focus.
+				...(editing ? pageOptionsFor(query) : {}),
 			}),
-		[autocomplete.entries, query, currentCompletion, editing],
+		[
+			autocomplete.entries,
+			query,
+			currentCompletion,
+			editing,
+			internalPagesKey,
+			detailsWanted,
+			extensionDetails,
+		],
 	);
 	/** The header must be true for the rows it sits over: a search row or an
 	 * open-tab row under "From your history" is a false claim (design D1), so the
@@ -600,7 +674,9 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	const rowText = (row: AddressRow): string =>
 		row.kind === "candidate"
 			? row.candidate.displayText
-			: embeddedRow(row, true).text;
+			: row.kind === "page"
+				? row.displayText
+				: embeddedRow(row, true).text;
 	/**
 	 * The native child's copy of a row's text: PLAIN (no FSI/PDI, which main
 	 * strips) plus the span of the user's own value, for the two rows that embed
@@ -611,6 +687,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		row: AddressRow,
 	): { text: string; isolate?: { start: number; end: number } } => {
 		if (row.kind === "candidate") return { text: row.candidate.displayText };
+		if (row.kind === "page") return { text: row.displayText };
 		const embedded = embeddedRow(row, false);
 		return embedded.isolate
 			? { text: embedded.text, isolate: embedded.isolate }
@@ -636,6 +713,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	};
 	const rowSubtitle = (row: AddressRow): string => {
 		if (row.kind === "search" || row.kind === "typed") return "";
+		if (row.kind === "page") return row.title;
 		if (row.candidate.source !== "tab") return row.candidate.title;
 		return row.candidate.title.length > 0
 			? t("ui.browser.browser_url_bar.address_suggestion_open_tab", {
@@ -648,12 +726,18 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			? `search:${row.targetUrl}`
 			: row.kind === "typed"
 				? `typed:${row.targetUrl}`
-				: row.candidate.url;
+				: row.kind === "page"
+					? `page:${row.targetUrl}`
+					: row.candidate.url;
 	/** The option spoken by assistive tech. A tab row appends its source mark:
 	 * the native child is `aria-hidden`, so without this the open-tab/history
 	 * distinction would be sighted-only (design D6). */
 	const rowAccessibleText = (row: AddressRow): string => {
 		const text = rowText(row);
+		// A page row's title is its name ("Extensions", an extension's own name):
+		// spoken first, because the `lop://` URL alone does not say what it opens.
+		if (row.kind === "page")
+			return row.title.length > 0 ? `${row.title} — ${text}` : text;
 		if (row.kind !== "candidate" || row.candidate.source !== "tab") return text;
 		const source = rowSubtitle(row);
 		return source.length > 0 ? `${text} — ${source}` : text;
@@ -900,6 +984,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			...mirrorRowText(row),
 			title: rowSubtitle(row),
 			key: rowKey(row),
+			...(row.kind === "page" ? { icon: "page" as const } : {}),
 		})),
 		noticeKind: autocomplete.error
 			? "error"
@@ -985,7 +1070,11 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			dismissedForText: stillDismissed ? next : null,
 			completionText: null,
 		});
-		const ranked = suggestAddresses(autocomplete.entries, next);
+		const ranked = suggestAddresses(
+			autocomplete.entries,
+			next,
+			pageOptionsFor(next),
+		);
 		setCompletion(eligible ? ranked.inline : null);
 		// The default highlight for what THIS keystroke produced, not -1: the
 		// key-based effect below only re-runs when the row set changes, and a
@@ -997,6 +1086,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 				suggestAddresses(autocomplete.entries, next, {
 					inlineShown: eligible && ranked.inline !== null,
 					offerTyped: true,
+					...pageOptionsFor(next),
 				}),
 			),
 		);
@@ -1225,6 +1315,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 				setCompletion(null);
 				const expanded = suggestAddresses(autocomplete.entries, query, {
 					inlineShown: false,
+					...pageOptionsFor(query),
 				}).rows;
 				const expandedIndex = selected
 					? expanded.findIndex((row) => rowKey(row) === rowKey(selected))
@@ -1437,8 +1528,15 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					data-address-suggestion-source={
 						row.kind === "candidate" ? row.candidate.source : undefined
 					}
+					data-address-suggestion-page={
+						row.kind === "page" ? "true" : undefined
+					}
 					data-address-suggestion-url={
-						row.kind === "candidate" ? row.candidate.url : undefined
+						row.kind === "candidate"
+							? row.candidate.url
+							: row.kind === "page"
+								? row.targetUrl
+								: undefined
 					}
 					className={
 						domList
@@ -1472,7 +1570,19 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 									className="absolute inset-y-0 start-0 w-0.5 bg-accent"
 								/>
 							)}
-							{row.kind === "candidate" ? (
+							{row.kind === "page" && (
+								// The one mark that says "the browser's own page, not a site
+								// you visited": history rows carry no icon, so a glyph is the
+								// distinction. 16 = the list-row slot (docs/branding.md
+								// "Icons"); the native child paints the same glyph.
+								<AppWindow
+									aria-hidden
+									size={16}
+									className="shrink-0 text-ink-muted"
+									data-address-suggestion-page-icon
+								/>
+							)}
+							{row.kind === "candidate" || row.kind === "page" ? (
 								<span className="min-w-0 shrink truncate font-mono text-mono-sm text-ink">
 									{rowText(row)}
 								</span>
@@ -1524,6 +1634,9 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			className="flex h-[37px] w-full items-center gap-1 border-control border-b bg-elevated px-2 py-1"
 			data-tour-tag="browser-url-bar"
 		>
+			{detailsWanted && (
+				<ExtensionDetailsSource onChange={setExtensionDetails} />
+			)}
 			<Tooltip
 				content={
 					<ShortcutText

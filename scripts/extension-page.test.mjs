@@ -99,6 +99,21 @@ test("internal URLs: exact grammar, chrome:// alias canonicalises, nothing else 
 		assert.equal(parseInternalUrl(bad), null, String(bad));
 });
 
+test("every suggested internal page is one parseInternalUrl accepts, shown canonically", () => {
+	// The address bar suggests exactly this catalogue; a typo here would offer a
+	// row main refuses, so the catalogue is held to the same strict gate.
+	const { INTERNAL_PAGES, parseInternalUrl, internalUrlOf } = pages;
+	assert.ok(INTERNAL_PAGES.length > 0);
+	for (const page of INTERNAL_PAGES) {
+		const parsed = parseInternalUrl(page.url);
+		assert.ok(parsed, page.url);
+		assert.equal(internalUrlOf(parsed), page.url, "listed in canonical form");
+		assert.ok(page.titleKey.startsWith("ui."), page.titleKey);
+		for (const keyword of page.keywords)
+			assert.equal(keyword, keyword.toLowerCase(), "keywords are lowercase");
+	}
+});
+
 test("main maps only its own nonce document to a page; agents/projections see lop://", () => {
 	const { main } = pages;
 	const page = { page: "extensions", id: ID };

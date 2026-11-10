@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import { expect, userEvent, waitFor, within } from "@storybook/test";
 import { BrowserPageMenu } from "./browser-page-menu";
-import { BrowserUrlBar } from "./browser-url-bar";
+import { BrowserUrlBar, type BrowserUrlBarProps } from "./browser-url-bar";
 
 /**
  * The permanent address row (S5).
@@ -129,4 +130,79 @@ export const Narrow: Story = {
 			/>
 		),
 	},
+};
+
+/*
+ * THE BROWSER'S OWN PAGES IN THE LIST. Own-state (`ownState`) is the placement
+ * whose list is page DOM, so it is the one Storybook can paint; the native child
+ * paints the same rows (text, title, the page glyph) from the mirror. The play
+ * step types into the real field, so the frame is what the user's keystrokes
+ * produce - including `lop://`'s inline completion to `lop://extensions`.
+ */
+const pageHistory: NonNullable<BrowserUrlBarProps["addressHistory"]> = async (
+	request,
+) => ({
+	requestId: request.requestId,
+	activeTabId: 1,
+	entries: [
+		{
+			url: "https://login.example.com/session",
+			title: "Sign in",
+			visitCount: 4,
+			lastVisitedAt: 0,
+			source: "history",
+		},
+		{
+			url: "https://docs.example.com/extensions/guide",
+			title: "Writing extensions",
+			visitCount: 2,
+			lastVisitedAt: 0,
+			source: "history",
+		},
+	],
+});
+
+const typing =
+	(text: string): Story["play"] =>
+	async ({ canvasElement }) => {
+		const field = within(canvasElement).getByRole("combobox");
+		await userEvent.click(field);
+		// The focused field holds the live URL; replace it, as Cmd+L then typing
+		// would, so the frame shows exactly what `text` produces.
+		await userEvent.clear(field);
+		await userEvent.type(field, text);
+		await waitFor(() =>
+			expect(
+				canvasElement.querySelector("[data-address-suggestion]"),
+			).not.toBeNull(),
+		);
+	};
+
+const pagesArgs = {
+	...common,
+	url: "https://login.example.com/session",
+	overlayMode: "popout",
+	ownState: true,
+	anchor: { x: 0, width: 720 },
+	addressHistory: pageHistory,
+	onStateChanged: () => () => {},
+	menu,
+} as const;
+
+/** `lop://`: every page is listed, and the single match inline-completes. */
+export const PageSuggestionsScheme: Story = {
+	args: pagesArgs,
+	play: typing("lop://"),
+};
+
+/** `lop://ext`: filtered by prefix; the alias `chrome://` lists the same row. */
+export const PageSuggestionsFiltered: Story = {
+	args: pagesArgs,
+	play: typing("lop://ext"),
+};
+
+/** A bare word: the page rides under the default search row and history. */
+export const PageSuggestionsWord: Story = {
+	args: pagesArgs,
+	play: typing("extensions"),
 };
