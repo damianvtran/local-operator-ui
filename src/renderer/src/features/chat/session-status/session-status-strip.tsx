@@ -3,7 +3,7 @@ import { Tooltip } from "@shared/components/ui";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { Info, Zap } from "lucide-react";
+import { Clock, Info, Zap } from "lucide-react";
 import {
 	type FC,
 	type ReactNode,
@@ -169,6 +169,14 @@ export type SessionStatusStripProps = {
 	 * without the capability.
 	 */
 	pendingEffort?: string | null;
+	/*
+	 * The pending model is a durable intent the server has QUEUED for the
+	 * session's next step (`queued_next_step`), not one it is applying now
+	 * (design D2 / UX U5). The reading then takes the waiting register - a
+	 * static clock and the chip's own "applies at the next step" sentence -
+	 * so the band and the chip line never state two different things.
+	 */
+	pendingModelQueued?: boolean;
 	/**
 	 * Whether this is a NEW conversation's draft — a pane with no session yet.
 	 *
@@ -1107,6 +1115,7 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 	effortEntities,
 	pendingModel = null,
 	pendingEffort = null,
+	pendingModelQueued = false,
 	draft = false,
 	held = false,
 	contextHeld = false,
@@ -1147,6 +1156,10 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 	// reading is drawn as pending and reverts the moment the owner's frame names
 	// a model of its own (latency U1).
 	const pending = pendingModel !== null;
+	const queued = pending && pendingModelQueued;
+	// The chip line's own name for the model (the catalogue label the intent
+	// paint carries), so the band and the chip read the same sentence.
+	const queuedName = pendingModel?.display_name || pendingModel?.model_id || "";
 	/*
 	 * The identity reading and the effort reading come from different specs on
 	 * purpose — see `bandReadings` for why the paint must not outrank the effort
@@ -1555,30 +1568,41 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 					// off). Both sentences are needed and they never apply at once: a
 					// draft has no session to confirm a switch against.
 					label={
-						pending
-							? t("ui.chat.session_status.model_aria_pending", {
-									selector: identity.selector,
-									fast: fastOn ? "yes" : "no",
+						queued
+							? t("ui.chat.settings_intents.model_queued", {
+									model: queuedName,
 								})
-							: t("ui.chat.session_status.model_aria", {
-									selector: identity.selector,
-									fast: fastOn ? "yes" : "no",
-									reason: modelReason(draft, Boolean(openModel)),
-								})
+							: pending
+								? t("ui.chat.session_status.model_aria_pending", {
+										selector: identity.selector,
+										fast: fastOn ? "yes" : "no",
+									})
+								: t("ui.chat.session_status.model_aria", {
+										selector: identity.selector,
+										fast: fastOn ? "yes" : "no",
+										reason: modelReason(draft, Boolean(openModel)),
+									})
 					}
 					tooltip={
 						<TooltipLines
 							lines={
-								pending
+								queued
 									? [
 											identity.selector,
-											t("ui.chat.session_readout.strip.model_switching"),
+											t("ui.chat.settings_intents.model_queued", {
+												model: queuedName,
+											}),
 										]
-									: [
-											identity.selector,
-											...(fastOn ? [fastModeOnNote()] : []),
-											modelReason(draft, Boolean(openModel)),
-										]
+									: pending
+										? [
+												identity.selector,
+												t("ui.chat.session_readout.strip.model_switching"),
+											]
+										: [
+												identity.selector,
+												...(fastOn ? [fastModeOnNote()] : []),
+												modelReason(draft, Boolean(openModel)),
+											]
 							}
 						/>
 					}
@@ -1636,11 +1660,16 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 					 * spinner while the same operation is in flight, so the band does too;
 					 * the label is what carries it into the accessibility tree.
 					 */}
-					{pending && (
-						<Spinner
-							size="xs"
-							label={t("ui.chat.session_status.switching_model")}
-						/>
+					{queued ? (
+						// Waiting, not working: the chip line's clock, in the same ink.
+						<Clock aria-hidden="true" className="size-3.5 shrink-0" />
+					) : (
+						pending && (
+							<Spinner
+								size="xs"
+								label={t("ui.chat.session_status.switching_model")}
+							/>
+						)
 					)}
 				</Reading>
 			)}

@@ -1682,6 +1682,16 @@ export const ModelPicker: FC<PickerContext> = ({
 			 */
 			if (intents) {
 				void submitSettingsIntent(sessionId, { kind: "model", value });
+				/*
+				 * DELIBERATELY at pick time, beside the intent (code review round 1,
+				 * N2). The old path saved the default only after the switch
+				 * succeeded, because it awaited the switch anyway. An intent may not
+				 * land for a whole turn - or after a restart - and the dialog closes
+				 * now, so waiting would tie the default to a background outcome the
+				 * user is no longer looking at. "Save as default" states a preference
+				 * about NEW conversations, which a failed switch on this one does not
+				 * change; a failed save still posts its own transcript note.
+				 */
 				if (persistDefaultRef.current)
 					void saveModelDefault({ provider, model_id: modelId });
 				onClose();

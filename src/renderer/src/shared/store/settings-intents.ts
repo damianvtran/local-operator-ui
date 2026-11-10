@@ -101,6 +101,33 @@ function updatedBefore(a: SettingsIntent, b: SettingsIntent): boolean {
 	return Date.parse(a.updated_at) < Date.parse(b.updated_at);
 }
 
+/*
+ * WHEN EACH MIRRORED SLOT WAS WRITTEN, as a local write sequence (code review
+ * round 1, M1). A `GET` baseline is a snapshot taken when the request LEFT; a
+ * frame or POST reply processed while it was in flight is newer than the
+ * snapshot, so the baseline must not prune it just because the snapshot did
+ * not list it yet. A counter rather than `updated_at`: the server's clock and
+ * the renderer's need not agree, and only the ORDER of local writes matters.
+ * A `WeakMap` keyed by the (immutable) slot object, so the mark rides the
+ * exact object the mirror holds, vanishes with it, and never appears in the
+ * slot's own fields (tests and `sameSlot` compare those).
+ */
+let writeSeq = 0;
+const writtenAt = new WeakMap<MirroredIntent, number>();
+
+function markWritten<T extends MirroredIntent>(intent: T): T {
+	writtenAt.set(intent, ++writeSeq);
+	return intent;
+}
+
+/**
+ * The current write mark. Take it before a `GET` leaves and hand it to
+ * `hydrateIntents`: any slot written after it survives that baseline's prune.
+ */
+export function intentWriteMark(): number {
+	return writeSeq;
+}
+
 function sameSlot(a: SettingsIntent, b: SettingsIntent): boolean {
 	return JSON.stringify(a) === JSON.stringify(b);
 }
@@ -138,22 +165,40 @@ export function applyIntentFrame(
 	// frame, and a POST reply repeats what a frame already said - is a no-op, so
 	// the store can skip the commit and the sidebar does not re-render.
 	if (held && !held.local && sameSlot(intent, held)) return mirror;
-	return withSlots(mirror, sessionId, { ...slots, [kind]: intent });
+	return withSlots(mirror, sessionId, {
+		...slots,
+		[kind]: markWritten(intent),
+	});
 }
 
 /**
- * A session's full slot set from the server (a POST reply's `intents`, or one
- * session of a `GET`). Kinds the server no longer lists are pruned unless they
- * are an unanswered local pick.
+ * A session's full slot set from the server. With `pruneUpTo` (a `GET`
+ * baseline's write mark), kinds the server no longer lists are pruned unless
+ * they are an unanswered local pick or were written after the mark. Without
+ * it (a POST reply) nothing is pruned: a reply taken before another kind's
+ * newer pick reached the server, but processed after it, would otherwise
+ * delete that newer slot (code review round 1, M1). Listed slots still go
+ * through `applyIntentFrame`'s last-wins guard, so an older listed slot
+ * never replaces a newer held one either way; removals are left to frames
+ * and the next baseline.
  */
 export function applySessionSlots(
 	mirror: SettingsIntentsMirror,
 	sessionId: string,
 	server: SettingsIntentSlots,
+	pruneUpTo?: number,
 ): SettingsIntentsMirror {
 	let next = mirror;
 	for (const kind of SETTINGS_INTENT_KINDS) {
-		next = applyIntentFrame(next, sessionId, kind, server[kind] ?? null);
+		const listed = server[kind];
+		if (listed) {
+			next = applyIntentFrame(next, sessionId, kind, listed);
+			continue;
+		}
+		if (pruneUpTo === undefined) continue;
+		const held = next[sessionId]?.[kind];
+		if (held && (writtenAt.get(held) ?? 0) > pruneUpTo) continue;
+		next = applyIntentFrame(next, sessionId, kind, null);
 	}
 	return next;
 }
@@ -162,18 +207,21 @@ export function applySessionSlots(
  * The `GET /v1/desktop/settings-intents` baseline. `scope` names the one
  * session a `?session_id=` read covered; without it every session the mirror
  * holds is reconciled, so a slot pruned during a feed outage goes too.
+ * `mark` is `intentWriteMark()` taken when the request left; omitted, the
+ * snapshot is treated as current (every unlisted server slot is pruned).
  */
 export function hydrateIntents(
 	mirror: SettingsIntentsMirror,
 	listed: Record<string, SettingsIntentSlots>,
 	scope?: string,
+	mark: number = Number.POSITIVE_INFINITY,
 ): SettingsIntentsMirror {
 	const sessions = scope
 		? [scope]
 		: [...new Set([...Object.keys(mirror), ...Object.keys(listed)])];
 	let next = mirror;
 	for (const sessionId of sessions) {
-		next = applySessionSlots(next, sessionId, listed[sessionId] ?? {});
+		next = applySessionSlots(next, sessionId, listed[sessionId] ?? {}, mark);
 	}
 	return next;
 }
@@ -310,6 +358,27 @@ export function intentIndicator(
 	return applying ? "applying" : null;
 }
 
+/**
+ * The ONE slot the sidebar dot speaks for: the first failed one, else the
+ * first in flight, in kind order (the same precedence as `intentIndicator`).
+ * Returned by reference from the mirror, so a store selector over it
+ * re-renders a row only when that slot moves. Its chip sentence becomes the
+ * dot's tooltip (UX U4): "Couldn't switch to X: <reason>" tells a user who
+ * moved on which change failed, where "A settings change failed" did not.
+ */
+export function indicatorIntent(
+	slots: MirroredSlots | undefined,
+): MirroredIntent | null {
+	if (!slots) return null;
+	let live: MirroredIntent | null = null;
+	for (const kind of SETTINGS_INTENT_KINDS) {
+		const slot = slots[kind];
+		if (slot?.state === "failed") return slot;
+		if (!live && slot && intentInFlight(slot)) live = slot;
+	}
+	return live;
+}
+
 /** The slots a chip renders for, in the fixed kind order. */
 export function chipIntents(
 	slots: MirroredSlots | undefined,
@@ -339,4 +408,59 @@ export function submitFailure(error: {
 		message: error.message ?? "",
 		retryable: status === null || status >= 500,
 	};
+}
+
+/**
+ * The directories a cwd slot newly reached `applied` with, between two mirror
+ * states (code review round 1, M2). The old move path added a directory to the
+ * recents menu when its receipt settled; under the capability the move lands
+ * in the background, so the app-root sync watches the mirror for the moment a
+ * cwd slot turns `applied` and records the SERVER's absolute path then. Pure,
+ * so the same slot seen twice (a frame, then a baseline) yields it once.
+ */
+export function newlyAppliedCwds(
+	prev: SettingsIntentsMirror,
+	next: SettingsIntentsMirror,
+): string[] {
+	if (prev === next) return [];
+	const out: string[] = [];
+	for (const [sessionId, slots] of Object.entries(next)) {
+		const slot = slots.cwd;
+		if (slot?.state !== "applied" || typeof slot.value !== "string") continue;
+		const before = prev[sessionId]?.cwd;
+		if (before?.state === "applied" && before.request_id === slot.request_id)
+			continue;
+		out.push(slot.value);
+	}
+	return out;
+}
+
+/**
+ * Whether dismissing this slot must also reach the server (code review round
+ * 1, M3). A server-held slot is DELETEd by generation. A LOCAL slot whose POST
+ * failed retryably (5xx, or no answer) is ambiguous: the server may have
+ * stored the pick before the failure, and then it would keep applying a change
+ * the user dismissed and its frames would bring the chip back. Only a local
+ * slot the server definitely refused (4xx) is safe to drop locally.
+ */
+export function dismissReachesServer(intent: MirroredIntent): boolean {
+	if (!intent.local) return true;
+	return intent.state === "failed" && intent.error?.retryable === true;
+}
+
+/*
+ * Request ids whose SUPERSEDED transcript note was already written (code
+ * review round 1, N1). Module-level, not a pane ref: a superseded slot can
+ * still be in the mirror when the pane remounts (the user switched
+ * conversations before the prune frame), and a per-instance set wrote the
+ * note again. It grows by one id per superseded pick - a pick another surface
+ * overtook - so it stays small for a renderer's lifetime without a cap.
+ */
+const notedSuperseded = new Set<string>();
+
+/** True the first time a superseded request id is seen; false on repeats. */
+export function noteSupersededOnce(requestId: string): boolean {
+	if (notedSuperseded.has(requestId)) return false;
+	notedSuperseded.add(requestId);
+	return true;
 }

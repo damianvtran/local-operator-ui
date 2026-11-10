@@ -2465,8 +2465,9 @@ const IntentFrame: FC<{
 	slots: MirroredSlots;
 	pendingModel?: typeof GPT_4O_MINI | null;
 	pendingEffort?: string | null;
-}> = ({ label, slots, pendingModel = null, pendingEffort = null }) => (
-	<Frame label={label}>
+	width?: number;
+}> = ({ label, slots, pendingModel = null, pendingEffort = null, width }) => (
+	<Frame label={label} width={width}>
 		<div className="flex flex-col">
 			<SettingsIntentChips
 				slots={slots}
@@ -2487,6 +2488,7 @@ const IntentFrame: FC<{
 				})}
 				pendingModel={pendingModel}
 				pendingEffort={pendingEffort}
+				pendingModelQueued={slots.model?.state === "queued_next_step"}
 				onCommand={() => {}}
 			/>
 		</div>
@@ -2510,6 +2512,9 @@ export const SettingsIntents: Story = {
 				label="Applying: an effort change, painted on the effort reading"
 				slots={{ effort: intent({ kind: "effort", value: "low" }) }}
 				pendingEffort="low"
+				// Above the band's 750 px shed point, so the effort reading - and its
+				// pending "Low" in the dim register - is on screen (design D3).
+				width={840}
 			/>
 			<IntentFrame
 				label="Queued: the runtime accepted it and applies it at its next step"
@@ -2548,6 +2553,22 @@ export const SettingsIntents: Story = {
 							code: "model_unknown",
 							message: "The model acme/no-such-model is not in the catalogue.",
 							retryable: false,
+						},
+					}),
+				}}
+			/>
+			<IntentFrame
+				label="Failed, narrow pane: the reason wraps under the sentence instead of clipping behind the buttons"
+				width={360}
+				slots={{
+					model: intent({
+						kind: "model",
+						value: "acme/no-such-model",
+						state: "failed",
+						error: {
+							code: "model_unknown",
+							message: "The model acme/no-such-model is not in the catalogue.",
+							retryable: true,
 						},
 					}),
 				}}

@@ -1,5 +1,5 @@
 {
-	"ui.chat.settings_intents.chips_label": "سیٹنگز کی تبدیلیاں",
+	"ui.chat.settings_intents.chips_label": "ترتیبات کی تبدیلیاں",
 	"ui.chat.settings_intents.cwd_waiting": "یہ باری ختم ہونے پر {dir} میں منتقل ہوگا",
 	"ui.chat.settings_intents.effort_queued": "کوشش کی سطح {level} اگلے مرحلے پر لاگو ہوگی",
 	"ui.chat.settings_intents.failed_cwd": "{dir} میں منتقل نہیں ہو سکا: {reason}",
@@ -11,13 +11,13 @@
 	"ui.chat.settings_intents.moving_cwd": "{dir} میں منتقل کیا جا رہا ہے…",
 	"ui.chat.settings_intents.reason_budget": "سیشن نے وقت پر جواب نہیں دیا",
 	"ui.chat.settings_intents.reason_unknown": "کوئی وجہ نہیں بتائی گئی",
-	"ui.chat.settings_intents.row_applying": "سیٹنگ کی تبدیلی لاگو کی جا رہی ہے",
-	"ui.chat.settings_intents.row_failed": "سیٹنگ کی ایک تبدیلی ناکام ہوئی",
+	"ui.chat.settings_intents.row_applying": "ترتیبات کی تبدیلی لاگو کی جا رہی ہے",
+	"ui.chat.settings_intents.row_failed": "ترتیبات کی ایک تبدیلی ناکام ہوئی",
 	"ui.chat.settings_intents.setting_effort": "کوشش کی سطح {level} پر سیٹ کی جا رہی ہے…",
 	"ui.chat.settings_intents.setting_fast_off": "فاسٹ موڈ آف کیا جا رہا ہے…",
 	"ui.chat.settings_intents.setting_fast_on": "فاسٹ موڈ آن کیا جا رہا ہے…",
 	"ui.chat.settings_intents.superseded_effort": "کوشش کی سطح کہیں اور سے {level} میں بدل دی گئی",
 	"ui.chat.settings_intents.superseded_model": "ماڈل کہیں اور سے {model} میں بدل دیا گیا",
-	"ui.chat.settings_intents.superseded_other": "یہ سیٹنگ کہیں اور سے بدل دی گئی",
+	"ui.chat.settings_intents.superseded_other": "یہ ترتیب کہیں اور سے بدل دی گئی",
 	"ui.chat.settings_intents.switching_model": "{model} پر منتقل کیا جا رہا ہے…"
 }

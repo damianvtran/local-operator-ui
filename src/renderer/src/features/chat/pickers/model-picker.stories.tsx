@@ -2416,6 +2416,12 @@ const LiveChips: FC<{ sessionId: string }> = ({ sessionId }) => {
 	return (
 		<SettingsIntentChips
 			slots={slots}
+			// The catalogue's label, as production's `useModelDescriber` gives it
+			// (design D7), so the frames show the name users actually read.
+			describeModel={(selector) =>
+				CATALOGUE.find((candidate) => candidate.selector === selector)?.label ??
+				selector
+			}
 			onRetry={(intent) => void retrySettingsIntent(sessionId, intent)}
 			onDismiss={(intent) => void dismissSettingsIntent(sessionId, intent)}
 		/>

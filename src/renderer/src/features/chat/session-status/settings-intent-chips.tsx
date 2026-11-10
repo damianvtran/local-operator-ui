@@ -27,7 +27,7 @@ import {
 	chipIntents,
 } from "@shared/store/settings-intents";
 import { CircleAlert, Clock } from "lucide-react";
-import type { FC } from "react";
+import type { FC, MouseEvent } from "react";
 import { effortDisplay } from "./session-model";
 
 export type SettingsIntentChipsProps = {
@@ -39,6 +39,14 @@ export type SettingsIntentChipsProps = {
 	onRetry: (intent: MirroredIntent) => void;
 	/** Dismiss a failure, or cancel a change that is still waiting. */
 	onDismiss: (intent: MirroredIntent) => void;
+	/*
+	 * Where keyboard focus goes after Retry, Dismiss or Cancel (UX U2). Each
+	 * of those buttons unmounts the moment it is used - the slot moves to
+	 * `applying` or is removed - so without this a keyboard user is left on
+	 * `<body>` and must Tab back in from the top. The composer passes its own
+	 * input, the control the user was in before they reached the chip.
+	 */
+	restoreFocus?: () => void;
 	className?: string;
 };
 
@@ -113,9 +121,35 @@ export const SettingsIntentChips: FC<SettingsIntentChipsProps> = ({
 	describeDir,
 	onRetry,
 	onDismiss,
+	restoreFocus,
 	className,
 }) => {
 	useI18nLocale();
+	/*
+	 * Run the action, then hand focus back once React has committed: only if
+	 * the button that held it is gone (or focus already fell to `<body>`), so
+	 * a Retry that leaves its row in place, or a user who clicked elsewhere,
+	 * is never yanked.
+	 */
+	const act = (
+		event: MouseEvent<HTMLButtonElement>,
+		run: (intent: MirroredIntent) => void,
+		intent: MirroredIntent,
+	) => {
+		const button = event.currentTarget;
+		run(intent);
+		if (!restoreFocus) return;
+		requestAnimationFrame(() => {
+			const active = document.activeElement;
+			if (
+				!button.isConnected ||
+				active === null ||
+				active === document.body ||
+				active === button
+			)
+				restoreFocus();
+		});
+	};
 	const chips = chipIntents(slots);
 	if (chips.length === 0) return null;
 	return (
@@ -128,6 +162,7 @@ export const SettingsIntentChips: FC<SettingsIntentChipsProps> = ({
 				const failed = intent.state === "failed";
 				const waiting = intent.state === "waiting_idle";
 				const queued = intent.state === "queued_next_step";
+				const text = settingsIntentChipText(intent, describeModel, describeDir);
 				return (
 					<output
 						key={intent.kind}
@@ -138,12 +173,27 @@ export const SettingsIntentChips: FC<SettingsIntentChipsProps> = ({
 						 * the line change without focus moving. A failure is deliberately
 						 * not `alert`: it carries its own buttons and must not interrupt.
 						 */
-						className="flex min-w-0 items-center gap-2 [min-height:1.5rem]"
+						/*
+						 * A FAILED row wraps instead of truncating (design D1 / UX U1):
+						 * its sentence carries the reason, the one part the user needs,
+						 * and a single ellipsised line clipped it behind Retry/Dismiss -
+						 * entirely so in a narrow pane or a long locale. The buttons ride
+						 * in their own group that drops under the sentence when the line
+						 * cannot hold both, and the icon aligns to the first line. The
+						 * in-progress states stay one quiet line (their sentence is short
+						 * and repeated on the band); the `title` still gives a clipped
+						 * path or model name in full on hover.
+						 */
+						className={cn(
+							"flex min-w-0 gap-x-2 [min-height:1.5rem]",
+							failed ? "flex-wrap items-start" : "items-center",
+						)}
 					>
 						{failed ? (
 							<CircleAlert
 								aria-hidden="true"
-								className="size-3.5 shrink-0 text-danger"
+								// 1.5rem line box: centre the glyph on the first text line.
+								className="mt-[0.3125rem] size-3.5 shrink-0 text-danger"
 							/>
 						) : waiting || queued ? (
 							<Clock
@@ -154,34 +204,41 @@ export const SettingsIntentChips: FC<SettingsIntentChipsProps> = ({
 							<Spinner size="xs" />
 						)}
 						<span
+							title={text}
 							className={cn(
-								"min-w-0 truncate font-medium text-body-sm",
-								failed ? "text-ink" : "text-ink-muted",
+								"min-w-0 font-medium text-body-sm",
+								failed
+									? // `basis` is the width below which the buttons wrap
+										// under the sentence rather than squeezing it.
+										"flex-1 basis-48 whitespace-normal py-0.5 text-ink [overflow-wrap:anywhere]"
+									: "truncate text-ink-muted",
 							)}
 						>
-							{settingsIntentChipText(intent, describeModel, describeDir)}
+							{text}
 						</span>
-						{failed && intent.error?.retryable !== false && (
-							<Button
-								type="button"
-								variant="link"
-								size="sm"
-								className="h-7 shrink-0 px-2 underline"
-								onClick={() => onRetry(intent)}
-							>
-								{t("ui.common.actions.retry")}
-							</Button>
-						)}
 						{failed && (
-							<Button
-								type="button"
-								variant="link"
-								size="sm"
-								className="h-7 shrink-0 px-2 underline"
-								onClick={() => onDismiss(intent)}
-							>
-								{t("ui.common.actions.dismiss")}
-							</Button>
+							<span className="ms-auto flex shrink-0 items-center">
+								{intent.error?.retryable !== false && (
+									<Button
+										type="button"
+										variant="link"
+										size="sm"
+										className="h-7 shrink-0 px-2 underline"
+										onClick={(event) => act(event, onRetry, intent)}
+									>
+										{t("ui.common.actions.retry")}
+									</Button>
+								)}
+								<Button
+									type="button"
+									variant="link"
+									size="sm"
+									className="h-7 shrink-0 px-2 underline"
+									onClick={(event) => act(event, onDismiss, intent)}
+								>
+									{t("ui.common.actions.dismiss")}
+								</Button>
+							</span>
 						)}
 						{waiting && (
 							<Button
@@ -189,7 +246,7 @@ export const SettingsIntentChips: FC<SettingsIntentChipsProps> = ({
 								variant="link"
 								size="sm"
 								className="h-7 shrink-0 px-2 underline"
-								onClick={() => onDismiss(intent)}
+								onClick={(event) => act(event, onDismiss, intent)}
 							>
 								{t("ui.common.actions.cancel")}
 							</Button>

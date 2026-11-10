@@ -98,6 +98,10 @@ import {
 	reconcilePeerDeviceSnapshot,
 } from "../../features/mesh/peer-presence";
 import { desktopRefusalSentence } from "../api/local-operator/desktop-refusal-copy";
+// Relative, like the line above: the store's node suites bundle it without an
+// `@shared` alias and resolve only the `@shared` paths they stub, so a new
+// `@shared/...` import is unresolvable there (merge-gate run 42679243544).
+import { isServerUpdatingError } from "../api/local-operator/server-updating-error";
 import {
 	EMPTY_SETTINGS_INTENTS,
 	type SettingsIntentsMirror,
@@ -108,10 +112,6 @@ import {
 	paintIntent,
 	removeIntent,
 } from "./settings-intents";
-// Relative, like the line above: the store's node suites bundle it without an
-// `@shared` alias and resolve only the `@shared` paths they stub, so a new
-// `@shared/...` import is unresolvable there (merge-gate run 42679243544).
-import { isServerUpdatingError } from "../api/local-operator/server-updating-error";
 
 export type CanonicalSessionRow = {
 	session_id: string;
@@ -3935,10 +3935,15 @@ type CanonicalSessionsState = {
 	 * last-wins, per-session and local-pick rules.
 	 */
 	settingsIntents: SettingsIntentsMirror;
-	/** `GET` baseline (boot, feed reconnect); `scope` = a `?session_id=` read. */
+	/**
+	 * `GET` baseline (boot, feed reconnect); `scope` = a `?session_id=` read;
+	 * `mark` = `intentWriteMark()` when the read left (slots written later are
+	 * not pruned by it).
+	 */
 	hydrateSettingsIntents: (
 		listed: Record<string, SettingsIntentSlots>,
 		scope?: string,
+		mark?: number,
 	) => void;
 	/** One slot from a `settings_intent` frame; `null` is a prune. */
 	applySettingsIntentFrame: (
@@ -3946,7 +3951,7 @@ type CanonicalSessionsState = {
 		kind: SettingsIntentKind,
 		intent: SettingsIntent | null,
 	) => void;
-	/** A POST reply's full slot set for one session. */
+	/** A POST reply's slot set for one session: upserts only, never prunes. */
 	applySettingsIntentSlots: (
 		sessionId: string,
 		slots: SettingsIntentSlots,
@@ -5964,9 +5969,14 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			 * second mounted feed hook, an older generation), and an unchanged slice
 			 * must not re-render the sidebar.
 			 */
-			hydrateSettingsIntents: (listed, scope) => {
+			hydrateSettingsIntents: (listed, scope, mark) => {
 				set((state) => {
-					const next = hydrateIntents(state.settingsIntents, listed, scope);
+					const next = hydrateIntents(
+						state.settingsIntents,
+						listed,
+						scope,
+						mark,
+					);
 					return next === state.settingsIntents
 						? state
 						: { settingsIntents: next };

@@ -31,10 +31,14 @@ import {
 import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
 import { t } from "@shared/i18n";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import { useRecentDirectoriesStore } from "@shared/store/recent-directories-store";
 import {
 	type MirroredIntent,
 	type MirroredSlots,
+	dismissReachesServer,
 	intentOverride,
+	intentWriteMark,
+	newlyAppliedCwds,
 	submitFailure,
 } from "@shared/store/settings-intents";
 import {
@@ -132,6 +136,13 @@ export function retrySettingsIntent(
  * Dismiss a failed slot or cancel a pending/waiting one. The mirror drops it at
  * once; a slot the server holds is DELETEd by generation, and a 409 (a newer
  * pick replaced it) re-reads that session so the newer slot shows again.
+ *
+ * A LOCAL slot whose POST failed ambiguously (5xx or no answer) may still
+ * exist on the server under the generation the server chose, not the one the
+ * mirror guessed (code review round 1, M3). So its request id is looked up in
+ * a fresh read and, if the server stored it, that exact generation is
+ * DELETEd - the server stops applying it and no later frame revives the chip.
+ * A 4xx-refused local slot never reached storage and is only dropped here.
  */
 export async function dismissSettingsIntent(
 	sessionId: string,
@@ -140,13 +151,29 @@ export async function dismissSettingsIntent(
 	useCanonicalSessionsStore
 		.getState()
 		.removeSettingsIntent(sessionId, intent.kind, intent.generation);
-	if (intent.local) return;
+	if (!dismissReachesServer(intent)) return;
+	let generation = intent.generation;
+	if (intent.local) {
+		try {
+			const listed = await desktopResult<SettingsIntentsListResult>({
+				op: "settingsIntents.list",
+				sessionId,
+			});
+			const stored = listed.intents?.[sessionId]?.[intent.kind];
+			if (!stored || stored.request_id !== intent.request_id) return;
+			generation = stored.generation;
+		} catch {
+			// Unknown either way: the next baseline shows the slot if it exists,
+			// and the user can dismiss it again then.
+			return;
+		}
+	}
 	try {
 		await desktopResult<unknown>({
 			op: "settingsIntents.dismiss",
 			sessionId,
 			kind: intent.kind,
-			generation: intent.generation,
+			generation,
 		});
 	} catch {
 		await hydrateSettingsIntents(sessionId);
@@ -155,6 +182,9 @@ export async function dismissSettingsIntent(
 
 /** Re-read the server's slots (all sessions, or one). Fails quietly. */
 export async function hydrateSettingsIntents(sessionId?: string) {
+	// Taken BEFORE the read leaves: a frame or reply folded in while it is in
+	// flight is newer than its snapshot and must survive its prune (M1).
+	const mark = intentWriteMark();
 	try {
 		const listed = await desktopResult<SettingsIntentsListResult>({
 			op: "settingsIntents.list",
@@ -162,7 +192,7 @@ export async function hydrateSettingsIntents(sessionId?: string) {
 		});
 		useCanonicalSessionsStore
 			.getState()
-			.hydrateSettingsIntents(listed.intents ?? {}, sessionId);
+			.hydrateSettingsIntents(listed.intents ?? {}, sessionId, mark);
 	} catch {
 		// A missed baseline is repaired by the next reconnect's read; the mirror
 		// keeps what it had rather than claiming the server holds nothing.
@@ -218,6 +248,22 @@ export function useSettingsIntentsSync(): void {
 		if (!enabled) return;
 		void prefetchPickerCatalogue(queryClient);
 	}, [enabled, queryClient]);
+	/*
+	 * A cwd move that lands in the background still belongs in the recents menu
+	 * (code review round 1, M2): the old path added it when its receipt settled,
+	 * and nothing on the intent path does unless this watcher does. Mounted once
+	 * here so every way a slot turns `applied` - frame, baseline - is seen.
+	 */
+	useEffect(() => {
+		if (!enabled) return;
+		return useCanonicalSessionsStore.subscribe((state, prev) => {
+			for (const dir of newlyAppliedCwds(
+				prev.settingsIntents,
+				state.settingsIntents,
+			))
+				useRecentDirectoriesStore.getState().addRecentDirectory(dir);
+		});
+	}, [enabled]);
 }
 
 /** Session mount: re-warm the picker catalogue (no-op while still fresh). */

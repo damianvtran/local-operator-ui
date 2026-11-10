@@ -37,6 +37,7 @@ import {
 } from "@shared/hooks/use-canonical-session";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDesktopWatchLease } from "@shared/hooks/use-desktop-watch-lease";
+import { useHomeDirectory } from "@shared/hooks/use-home-directory";
 import type { SendOutcome } from "@shared/hooks/use-message-input";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
 import {
@@ -79,11 +80,15 @@ import {
 } from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
-import type { MirroredIntent } from "@shared/store/settings-intents";
+import {
+	type MirroredIntent,
+	noteSupersededOnce,
+} from "@shared/store/settings-intents";
 import {
 	type AskDrawerCloseOptions,
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
+import { formatDirectory } from "@shared/utils/path-utils";
 import { showSuccessToast } from "@shared/utils/toast-manager";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -4564,6 +4569,17 @@ function SessionPanel({
 		settingsIntentsOn ? sessionId : null,
 	);
 	const describeIntentModel = useModelDescriber(settingsIntentsOn);
+	/*
+	 * The cwd chip names the directory the way the directory indicator beside
+	 * it does (`~/...`), through the same shared rule (UX U3): the server's
+	 * absolute path made the chip disagree with the chip next to it and pushed
+	 * the sentence into truncation.
+	 */
+	const homeDirectory = useHomeDirectory();
+	const describeIntentDir = useCallback(
+		(dir: string) => formatDirectory(dir, homeDirectory),
+		[homeDirectory],
+	);
 	usePickerCataloguePrefetch(sessionId);
 	const intentModel = useMemo(
 		() =>
@@ -4578,25 +4594,31 @@ function SessionPanel({
 				? {
 						slots: intentSlots,
 						describeModel: describeIntentModel,
+						describeDir: describeIntentDir,
 						onRetry: (intent: MirroredIntent) =>
 							void retrySettingsIntent(sessionId, intent),
 						onDismiss: (intent: MirroredIntent) =>
 							void dismissSettingsIntent(sessionId, intent),
 					}
 				: undefined,
-		[settingsIntentsOn, sessionId, intentSlots, describeIntentModel],
+		[
+			settingsIntentsOn,
+			sessionId,
+			intentSlots,
+			describeIntentModel,
+			describeIntentDir,
+		],
 	);
 	/*
 	 * A SUPERSEDED pick - the TUI or the phone changed the setting first - is
 	 * published once and then pruned, so it is told here as a transcript note
-	 * rather than a chip that would vanish on its own. Noted once per request.
+	 * rather than a chip that would vanish on its own. Noted once per request,
+	 * across pane remounts (`noteSupersededOnce` keeps a module-level set).
 	 */
-	const notedSuperseded = useRef(new Set<string>());
 	useEffect(() => {
 		for (const intent of Object.values(intentSlots)) {
 			if (intent?.state !== "superseded") continue;
-			if (notedSuperseded.current.has(intent.request_id)) continue;
-			notedSuperseded.current.add(intent.request_id);
+			if (!noteSupersededOnce(intent.request_id)) continue;
 			const inForce =
 				canonical.frontend?.effective_model ??
 				canonical.frontend?.selected_model;

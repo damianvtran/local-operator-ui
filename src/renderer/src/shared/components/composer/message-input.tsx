@@ -9874,7 +9874,10 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						 * sentence with buttons (see `settings-intent-chips.tsx`).
 						 */}
 						{sessionStatus?.settingsIntents && (
-							<SettingsIntentChips {...sessionStatus.settingsIntents} />
+							<SettingsIntentChips
+								{...sessionStatus.settingsIntents}
+								restoreFocus={() => textareaRef.current?.focus()}
+							/>
 						)}
 						{dictationFailure !== null &&
 							!isTranscribing &&
@@ -10021,6 +10024,10 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 												? intentOverride(sessionStatus.settingsIntents.slots)
 														.effort
 												: null
+										}
+										pendingModelQueued={
+											sessionStatus.settingsIntents?.slots?.model?.state ===
+											"queued_next_step"
 										}
 										costChannels={sessionStatus.costChannels}
 										/*

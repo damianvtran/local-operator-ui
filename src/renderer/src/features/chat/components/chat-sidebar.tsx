@@ -5139,15 +5139,22 @@ export function ChatSidebar({
 				 * so a dropped link cannot reflow the row: the mark swaps WITHIN the
 				 * cell, the cell never moves.
 				 */}
-				<span
-					aria-hidden="true"
-					className="flex size-3.5 shrink-0 items-center justify-center"
-				>
+				{/*
+				 * The cell also hosts the settings-intent dot, absolutely placed so it
+				 * takes no width (design D4: as a flex item it shifted the title 18 px
+				 * each time it came and went). Not `aria-hidden` any more, because the
+				 * dot is a labelled image; the locality svg hides itself.
+				 */}
+				<span className="relative flex size-3.5 shrink-0 items-center justify-center">
 					{row.locality === "remote" && (
 						<ChatRemoteMark
 							unreachable={row.link_down === true || row.reachable === false}
 						/>
 					)}
+					<ChatSettingsIntentMark
+						sessionId={row.session_id}
+						corner={row.locality === "remote"}
+					/>
 				</span>
 				{/*
 				 * THE ROW'S LEADING MARK: its agent's picture with the status on the
@@ -5168,12 +5175,6 @@ export function ChatSidebar({
 					row={row}
 					open={asksBySession?.get(row.session_id)}
 				/>
-				{/*
-				 * A settings change still applying (or failed) on this conversation,
-				 * beside the asks mark for the same reason: a leading fact, and nothing
-				 * at all when there is none (`chat-settings-intent-mark.tsx`).
-				 */}
-				<ChatSettingsIntentMark sessionId={row.session_id} />
 				{/*
 				 * THE ARCHIVED MARKER, and where it sits is the decision this file owes an
 				 * answer for: IN FRONT of the title rather than in the trailing slot.

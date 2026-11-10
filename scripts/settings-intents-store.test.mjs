@@ -35,9 +35,14 @@ const {
 	applySessionSlots,
 	chipIntents,
 	failLocalIntent,
+	dismissReachesServer,
 	hydrateIntents,
+	indicatorIntent,
 	intentIndicator,
 	intentOverride,
+	intentWriteMark,
+	newlyAppliedCwds,
+	noteSupersededOnce,
 	paintIntent,
 	removeIntent,
 	submitFailure,
@@ -268,4 +273,135 @@ test("a burst across sessions keeps each session's slot independent", () => {
 		ids.map((id) => intentIndicator(m[id])),
 		["applying", "applying", "failed", "applying", "applying"],
 	);
+});
+
+/* ---- PR #1823 round 1 remediation ---------------------------------------- */
+
+test("M1: a late POST reply never removes another kind's newer slot", () => {
+	// The reviewer's repro: pick a model, then an effort; the effort reply
+	// lands first, then the model reply taken BEFORE the effort POST reached
+	// the server (so it lists only the model).
+	let m = paintIntent(EMPTY_SETTINGS_INTENTS, A, {
+		kind: "model",
+		value: "openai/gpt-6",
+		requestId: uuid(1),
+	});
+	m = paintIntent(m, A, { kind: "effort", value: "high", requestId: uuid(2) });
+	m = applySessionSlots(m, A, {
+		model: slot({
+			request_id: uuid(1),
+			state: "applying",
+			updated_at: "2026-11-09T12:00:01.000Z",
+		}),
+		effort: slot({
+			kind: "effort",
+			value: "high",
+			request_id: uuid(2),
+			state: "queued_next_step",
+		}),
+	});
+	const late = applySessionSlots(m, A, {
+		model: slot({ request_id: uuid(1), state: "pending" }),
+	});
+	assert.deepEqual(Object.keys(late[A]).sort(), ["effort", "model"]);
+	assert.equal(intentOverride(late[A]).effort, "high");
+	// The older model state did not walk the slot backwards either.
+	assert.equal(late[A].model.state, "applying");
+});
+
+test("M1: a GET baseline does not prune a slot written after it left", () => {
+	const before = applyIntentFrame(EMPTY_SETTINGS_INTENTS, A, "model", slot({}));
+	const mark = intentWriteMark(); // the GET leaves here
+	// A frame lands while the GET is in flight: a new waiting cwd slot.
+	const m = applyIntentFrame(
+		before,
+		A,
+		"cwd",
+		slot({ kind: "cwd", value: "/Users/x/src", state: "waiting_idle" }),
+	);
+	// The snapshot predates that frame and lists only the model.
+	const h = hydrateIntents(m, { [A]: { model: m[A].model } }, undefined, mark);
+	assert.equal(h[A].cwd?.state, "waiting_idle", "the newer cwd slot stays");
+	// A slot that WAS in the mirror when the GET left, and that the snapshot
+	// no longer lists, is still pruned: the baseline keeps its purpose.
+	const pruned = hydrateIntents(m, { [A]: {} }, undefined, mark);
+	assert.equal(pruned[A].model, undefined);
+	assert.equal(pruned[A].cwd?.state, "waiting_idle");
+});
+
+test("M2: a cwd slot reaching applied yields its directory exactly once", () => {
+	const waiting = applyIntentFrame(
+		EMPTY_SETTINGS_INTENTS,
+		A,
+		"cwd",
+		slot({ kind: "cwd", value: "/Users/x/src", state: "waiting_idle" }),
+	);
+	assert.deepEqual(newlyAppliedCwds(EMPTY_SETTINGS_INTENTS, waiting), []);
+	const applied = applyIntentFrame(
+		waiting,
+		A,
+		"cwd",
+		slot({
+			kind: "cwd",
+			value: "/Users/x/src",
+			state: "applied",
+			updated_at: "2026-11-09T12:00:01.000Z",
+		}),
+	);
+	assert.deepEqual(newlyAppliedCwds(waiting, applied), ["/Users/x/src"]);
+	// The same applied slot seen again (a baseline repeating it) adds nothing.
+	const again = { ...applied, [A]: { ...applied[A] } };
+	assert.deepEqual(newlyAppliedCwds(applied, again), []);
+	// An applied MODEL slot is not a directory.
+	const model = applyIntentFrame(
+		EMPTY_SETTINGS_INTENTS,
+		B,
+		"model",
+		slot({ state: "applied" }),
+	);
+	assert.deepEqual(newlyAppliedCwds(EMPTY_SETTINGS_INTENTS, model), []);
+});
+
+test("M3: dismissing an ambiguous (5xx / no answer) local failure reaches the server", () => {
+	const local = paintIntent(EMPTY_SETTINGS_INTENTS, A, {
+		kind: "model",
+		value: "openai/gpt-6",
+		requestId: uuid(1),
+	});
+	const fail = (status) =>
+		failLocalIntent(local, A, "model", uuid(1), submitFailure({ status }))[A]
+			.model;
+	assert.equal(dismissReachesServer(fail(503)), true, "5xx: may be stored");
+	assert.equal(
+		dismissReachesServer(fail(null)),
+		true,
+		"no answer: may be stored",
+	);
+	assert.equal(dismissReachesServer(fail(422)), false, "4xx: never stored");
+	assert.equal(
+		dismissReachesServer(slot({ state: "failed" })),
+		true,
+		"a server slot is always DELETEd",
+	);
+});
+
+test("N1: a superseded request is noted once per renderer, not once per pane", () => {
+	assert.equal(noteSupersededOnce(uuid(77)), true);
+	assert.equal(
+		noteSupersededOnce(uuid(77)),
+		false,
+		"a remount repeats nothing",
+	);
+	assert.equal(noteSupersededOnce(uuid(78)), true);
+});
+
+test("U4: the sidebar dot speaks for the failed slot first, else the live one", () => {
+	const slots = {
+		model: slot({ state: "applying" }),
+		cwd: slot({ kind: "cwd", value: "/x", state: "failed" }),
+	};
+	assert.equal(indicatorIntent(slots), slots.cwd);
+	assert.equal(indicatorIntent({ model: slots.model }), slots.model);
+	assert.equal(indicatorIntent({ model: slot({ state: "applied" }) }), null);
+	assert.equal(indicatorIntent(undefined), null);
 });
