@@ -1241,6 +1241,13 @@ const api = {
 			ipcRenderer.invoke("browser-passkey-notice-dismiss", tabId, at),
 		openPasskeyNotice: (tabId: number, at: number): Promise<unknown> =>
 			ipcRenderer.invoke("browser-passkey-notice-open", tabId, at),
+		/** An agent tab's notice: open the same page in a new tab the user owns.
+		 * Ids only, like the two above; main reads the agent tab's URL. */
+		continuePasskeyNoticeInUserTab: (
+			tabId: number,
+			at: number,
+		): Promise<unknown> =>
+			ipcRenderer.invoke("browser-passkey-notice-continue", tabId, at),
 		/**
 		 * Answer the camera/microphone prompt. `trusted` is the click's
 		 * `event.isTrusted`; main refuses a decision without it, and the id is the

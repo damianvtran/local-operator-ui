@@ -1340,8 +1340,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.browser",
-			"source_sha256": "c6d5d31a2fb992718f8ff4931abd8996ec3af04f0d834c59606b014b0b8d4d43",
-			"target_sha256": "e97e04970de44733753d800e638235fde61876d116a0662e354d906f324daf38",
+			"source_sha256": "6d23b23923950590497a81defd8c40ea5f11779426a656efb88a08f066c82f6c",
+			"target_sha256": "ae0585169e755fdff5772dfc1823badd1aa1a83976fd7838200137fdc3427138",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 9d6c2bba4d3b job e76e3cc7e513)",
@@ -1350,20 +1350,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "designer",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-11-09",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
 					"result": "clean",
-					"instance": "cf0bdbdda484",
+					"instance": "62d3b7ccfced-agentpk-r2-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/cf0bdbdda484.json",
-					"receipt_sha256": "6167a9778e3c424c3f84e0088be75762f4a3b87b7d82ffebfa01f15204bf8b36",
-					"scope": "Independent two-key delta copy audit (ui.browser.browser_passkey_notice.not_allowed, .explanation) at a345f7d2b52 for PR #1813; namespace hashes bind bytes, not a whole-namespace audit"
+					"receipt": "i18n/receipts/62d3b7ccfced-agentpk-r2-es.json",
+					"receipt_sha256": "833da7caa6fc2962df7c30ec4957b546ab0fa7eed82f86490df3b4f78a723a4e",
+					"scope": "Independent round-2 delta copy audit at e6c56de for PR #1846: rewritten browser_passkey_notice.agent_explanation, 5 added continue_refused_*/continue_unavailable keys, re-read of the 2 round-1 keys; namespace hashes bind bytes, not a whole-namespace audit"
 				}
 			],
 			"status": "audited",
@@ -1595,6 +1595,52 @@
 							"receipt_sha256": "f5ed0a163dd8c2bf0ec6f55e3ced6bba1795de660c6e9da9a6b1860657d289a3",
 							"scope": "Round-1 full review (62bb649752be) at ab45351362a of the 1 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta c86525720075. Counts are open findings.",
 							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/62bb649752be-1603r1-es.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "c6d5d31a2fb992718f8ff4931abd8996ec3af04f0d834c59606b014b0b8d4d43",
+					"target_sha256": "e97e04970de44733753d800e638235fde61876d116a0662e354d906f324daf38",
+					"auditors": [
+						{
+							"agent": "designer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "cf0bdbdda484",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/cf0bdbdda484.json",
+							"receipt_sha256": "6167a9778e3c424c3f84e0088be75762f4a3b87b7d82ffebfa01f15204bf8b36",
+							"scope": "Independent two-key delta copy audit (ui.browser.browser_passkey_notice.not_allowed, .explanation) at a345f7d2b52 for PR #1813; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "42f3ccb0c0b4ec8d28f9e6b2a369a5fbfffa17852bafdf65011f384b754b14f9",
+					"target_sha256": "f2e67c1d2abc4b52ff7e7fd2ed4f7e9cbee0dba664837055189e2bcbfe47ff4c",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-10",
+							"result": "clean",
+							"instance": "64e4e919c5b0-agentpk-r1-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/64e4e919c5b0-agentpk-r1-es.json",
+							"receipt_sha256": "72e3d92a8f1346e60beae03a9206519c3962b80051ba0ef7a600cf8bcb947f91",
+							"scope": "Independent three-key delta copy audit (ui.browser.browser_passkey_notice.continue_in_own_tab, .agent_explanation, ui.browser.use_browser_chrome.passkey_continue_failed) at 8c1dcceb6a2 for PR #1846; namespace hashes bind bytes, not a whole-namespace audit"
 						}
 					],
 					"status": "audited"
@@ -12703,8 +12749,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.browser",
-			"source_sha256": "c6d5d31a2fb992718f8ff4931abd8996ec3af04f0d834c59606b014b0b8d4d43",
-			"target_sha256": "5556061c36c6804c7778297476ffd43c8275d3aa627df22f217be04acc1e7636",
+			"source_sha256": "6d23b23923950590497a81defd8c40ea5f11779426a656efb88a08f066c82f6c",
+			"target_sha256": "6e0f5934f013c07cf26c96c5c86b4a9c315a652b4c2a0624dec245eea61fde96",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 7bf560d5dcc5 job f3024578bae5)",
@@ -12713,20 +12759,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "designer",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-11-09",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
 					"result": "clean",
-					"instance": "cf0bdbdda484",
+					"instance": "62d3b7ccfced-agentpk-r2-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/cf0bdbdda484.json",
-					"receipt_sha256": "6167a9778e3c424c3f84e0088be75762f4a3b87b7d82ffebfa01f15204bf8b36",
-					"scope": "Independent two-key delta copy audit (ui.browser.browser_passkey_notice.not_allowed, .explanation) at a345f7d2b52 for PR #1813; namespace hashes bind bytes, not a whole-namespace audit"
+					"receipt": "i18n/receipts/62d3b7ccfced-agentpk-r2-fr.json",
+					"receipt_sha256": "4372e3c53c1eaaa3d56fae2355366a477553ea26c0713c05d2bdb0651488c972",
+					"scope": "Independent round-2 delta copy audit at e6c56de for PR #1846: rewritten browser_passkey_notice.agent_explanation, 5 added continue_refused_*/continue_unavailable keys, re-read of the 2 round-1 keys; namespace hashes bind bytes, not a whole-namespace audit"
 				}
 			],
 			"status": "audited",
@@ -12958,6 +13004,52 @@
 							"receipt_sha256": "9f3c0a52d34a38716106cd30627a4b2c35227dce02be2725da37ef3d56033e88",
 							"scope": "Round-1 full review (c09dbedc5d8a) at ab45351362a of the 1 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta 35a459c32034. Counts are open findings.",
 							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/c09dbedc5d8a-1603r1-fr.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "c6d5d31a2fb992718f8ff4931abd8996ec3af04f0d834c59606b014b0b8d4d43",
+					"target_sha256": "5556061c36c6804c7778297476ffd43c8275d3aa627df22f217be04acc1e7636",
+					"auditors": [
+						{
+							"agent": "designer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "cf0bdbdda484",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/cf0bdbdda484.json",
+							"receipt_sha256": "6167a9778e3c424c3f84e0088be75762f4a3b87b7d82ffebfa01f15204bf8b36",
+							"scope": "Independent two-key delta copy audit (ui.browser.browser_passkey_notice.not_allowed, .explanation) at a345f7d2b52 for PR #1813; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "42f3ccb0c0b4ec8d28f9e6b2a369a5fbfffa17852bafdf65011f384b754b14f9",
+					"target_sha256": "d6ff63efb2da16588ffcdc086074540a557b6063b402a9d2b79fc9fba8e7b875",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-10",
+							"result": "clean-with-findings",
+							"instance": "64e4e919c5b0-agentpk-r1-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/64e4e919c5b0-agentpk-r1-fr.json",
+							"receipt_sha256": "7af0fb21e29833ff091f551c75b2846449ea5bf6c78722204dbbfc01f5482d72",
+							"scope": "Independent three-key delta copy audit (ui.browser.browser_passkey_notice.continue_in_own_tab, .agent_explanation, ui.browser.use_browser_chrome.passkey_continue_failed) at 8c1dcceb6a2 for PR #1846; namespace hashes bind bytes, not a whole-namespace audit"
 						}
 					],
 					"status": "audited"
@@ -24630,8 +24722,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.browser",
-			"source_sha256": "c6d5d31a2fb992718f8ff4931abd8996ec3af04f0d834c59606b014b0b8d4d43",
-			"target_sha256": "04fbeb6d31dde6f4cfbaedaee965ca7d11aad2c17d3cb5a8378f35e53e4268bd",
+			"source_sha256": "6d23b23923950590497a81defd8c40ea5f11779426a656efb88a08f066c82f6c",
+			"target_sha256": "210f27a00e77e318e4d1b167fb311cd6ecdf70e05147828f989c1474c884ea69",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session fe3e687905c1 job 2296f594b388)",
@@ -24640,20 +24732,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "designer",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-11-09",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
 					"result": "clean",
-					"instance": "cf0bdbdda484",
+					"instance": "62d3b7ccfced-agentpk-r2-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/cf0bdbdda484.json",
-					"receipt_sha256": "6167a9778e3c424c3f84e0088be75762f4a3b87b7d82ffebfa01f15204bf8b36",
-					"scope": "Independent two-key delta copy audit (ui.browser.browser_passkey_notice.not_allowed, .explanation) at a345f7d2b52 for PR #1813; namespace hashes bind bytes, not a whole-namespace audit"
+					"receipt": "i18n/receipts/62d3b7ccfced-agentpk-r2-hi.json",
+					"receipt_sha256": "35e73b26307ba450af8ed6db8b5031358b2c3b33e136e3246da763456081e5bd",
+					"scope": "Independent round-2 delta copy audit at e6c56de for PR #1846: rewritten browser_passkey_notice.agent_explanation, 5 added continue_refused_*/continue_unavailable keys, re-read of the 2 round-1 keys; namespace hashes bind bytes, not a whole-namespace audit"
 				}
 			],
 			"status": "audited",
@@ -24885,6 +24977,52 @@
 							"receipt_sha256": "6e6c16a177d9b7428b0404309161ad873e0065f54d676237fed2b404400f4437",
 							"scope": "Round-1 full review (a8b33d269fce) at ab45351362a of the 1 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.common.layout), A-1p (ui.chat.pickers), A-1c (ui.chat), A-2 (ui.agents.teams)), fixed at 011c0f4f4ca and passed by round-2 delta 553e1ccbd7b1. Counts are open findings.",
 							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/a8b33d269fce-1603r1-hi.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "c6d5d31a2fb992718f8ff4931abd8996ec3af04f0d834c59606b014b0b8d4d43",
+					"target_sha256": "04fbeb6d31dde6f4cfbaedaee965ca7d11aad2c17d3cb5a8378f35e53e4268bd",
+					"auditors": [
+						{
+							"agent": "designer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "cf0bdbdda484",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/cf0bdbdda484.json",
+							"receipt_sha256": "6167a9778e3c424c3f84e0088be75762f4a3b87b7d82ffebfa01f15204bf8b36",
+							"scope": "Independent two-key delta copy audit (ui.browser.browser_passkey_notice.not_allowed, .explanation) at a345f7d2b52 for PR #1813; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "42f3ccb0c0b4ec8d28f9e6b2a369a5fbfffa17852bafdf65011f384b754b14f9",
+					"target_sha256": "086b0619a7a9c85adc8ad0ef1acd924b78fd4170f9d77a48772581468f98935c",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-10",
+							"result": "clean",
+							"instance": "64e4e919c5b0-agentpk-r1-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/64e4e919c5b0-agentpk-r1-hi.json",
+							"receipt_sha256": "3c5c1dd3980dd91a2be3d6541b2234e446f8f370242d40809fc9f14547579ab8",
+							"scope": "Independent three-key delta copy audit (ui.browser.browser_passkey_notice.continue_in_own_tab, .agent_explanation, ui.browser.use_browser_chrome.passkey_continue_failed) at 8c1dcceb6a2 for PR #1846; namespace hashes bind bytes, not a whole-namespace audit"
 						}
 					],
 					"status": "audited"
@@ -36122,8 +36260,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.browser",
-			"source_sha256": "c6d5d31a2fb992718f8ff4931abd8996ec3af04f0d834c59606b014b0b8d4d43",
-			"target_sha256": "90bcba80e12845bfea4d90dacd0052a20328cea81d1b05027f66e35837c5232f",
+			"source_sha256": "6d23b23923950590497a81defd8c40ea5f11779426a656efb88a08f066c82f6c",
+			"target_sha256": "8d146c96f88a300874498b4e9c399fbf4854a6d5ce7a77121e8ef0bcf5d39da2",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 74a8df6e024e job edb91c63ad6a)",
@@ -36132,20 +36270,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "designer",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-11-09",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
 					"result": "clean",
-					"instance": "cf0bdbdda484",
+					"instance": "62d3b7ccfced-agentpk-r2-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/cf0bdbdda484.json",
-					"receipt_sha256": "6167a9778e3c424c3f84e0088be75762f4a3b87b7d82ffebfa01f15204bf8b36",
-					"scope": "Independent two-key delta copy audit (ui.browser.browser_passkey_notice.not_allowed, .explanation) at a345f7d2b52 for PR #1813; namespace hashes bind bytes, not a whole-namespace audit"
+					"receipt": "i18n/receipts/62d3b7ccfced-agentpk-r2-ru.json",
+					"receipt_sha256": "485014ff77a2ec0502bddfb4697028f68907cddc06d69e83f254b182cae26ee7",
+					"scope": "Independent round-2 delta copy audit at e6c56de for PR #1846: rewritten browser_passkey_notice.agent_explanation, 5 added continue_refused_*/continue_unavailable keys, re-read of the 2 round-1 keys; namespace hashes bind bytes, not a whole-namespace audit"
 				}
 			],
 			"status": "audited",
@@ -36376,6 +36514,52 @@
 							"receipt_sha256": "aa70bf0097fab7022a5e3e47fcd8c5d53127bdc0da10d0fb9cf627e555cd055d",
 							"scope": "Round-1 full review (e74efd41e786) at ab45351362a of the 1 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.common.layout)), fixed at 011c0f4f4ca and passed by round-2 delta ed052586f8fb. Counts are open findings.",
 							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/e74efd41e786-1603r1-ru.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "c6d5d31a2fb992718f8ff4931abd8996ec3af04f0d834c59606b014b0b8d4d43",
+					"target_sha256": "90bcba80e12845bfea4d90dacd0052a20328cea81d1b05027f66e35837c5232f",
+					"auditors": [
+						{
+							"agent": "designer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "cf0bdbdda484",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/cf0bdbdda484.json",
+							"receipt_sha256": "6167a9778e3c424c3f84e0088be75762f4a3b87b7d82ffebfa01f15204bf8b36",
+							"scope": "Independent two-key delta copy audit (ui.browser.browser_passkey_notice.not_allowed, .explanation) at a345f7d2b52 for PR #1813; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "42f3ccb0c0b4ec8d28f9e6b2a369a5fbfffa17852bafdf65011f384b754b14f9",
+					"target_sha256": "62a09d7a3a6ffad7149f7f321afbd589e95ac73899586c2fd71e16da20627a54",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-10",
+							"result": "clean",
+							"instance": "64e4e919c5b0-agentpk-r1-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/64e4e919c5b0-agentpk-r1-ru.json",
+							"receipt_sha256": "9ab12a4e28a69451c4f7b2f0993bfa58c147dac14779a20931f0f74ab23949c1",
+							"scope": "Independent three-key delta copy audit (ui.browser.browser_passkey_notice.continue_in_own_tab, .agent_explanation, ui.browser.use_browser_chrome.passkey_continue_failed) at 8c1dcceb6a2 for PR #1846; namespace hashes bind bytes, not a whole-namespace audit"
 						}
 					],
 					"status": "audited"
@@ -47533,8 +47717,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.browser",
-			"source_sha256": "c6d5d31a2fb992718f8ff4931abd8996ec3af04f0d834c59606b014b0b8d4d43",
-			"target_sha256": "965ee2c7542ba08696ec8a1244f85eaf0a4b3b5d8a9592b2568938aea6f64eed",
+			"source_sha256": "6d23b23923950590497a81defd8c40ea5f11779426a656efb88a08f066c82f6c",
+			"target_sha256": "1940f8af08bccaec141f1d3173c4c367d7ed089add40485ce26ec6f7edf0f98e",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 3c0d98370d76 job f701c763e4bb)",
@@ -47543,20 +47727,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "designer",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-11-09",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
 					"result": "clean",
-					"instance": "cf0bdbdda484",
+					"instance": "62d3b7ccfced-agentpk-r2-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/cf0bdbdda484.json",
-					"receipt_sha256": "6167a9778e3c424c3f84e0088be75762f4a3b87b7d82ffebfa01f15204bf8b36",
-					"scope": "Independent two-key delta copy audit (ui.browser.browser_passkey_notice.not_allowed, .explanation) at a345f7d2b52 for PR #1813; namespace hashes bind bytes, not a whole-namespace audit"
+					"receipt": "i18n/receipts/62d3b7ccfced-agentpk-r2-ur.json",
+					"receipt_sha256": "c6ce0ea19da2f5199cb12e50b0c5c03b419fed76af4f228d1c576ee52a31449f",
+					"scope": "Independent round-2 delta copy audit at e6c56de for PR #1846: rewritten browser_passkey_notice.agent_explanation, 5 added continue_refused_*/continue_unavailable keys, re-read of the 2 round-1 keys; namespace hashes bind bytes, not a whole-namespace audit"
 				}
 			],
 			"status": "audited",
@@ -47811,6 +47995,52 @@
 							"receipt_sha256": "5ebbed48b2be756b106b78c3fc2b9fd94524653d46c913169224b61950baf0ea",
 							"scope": "Round-1 full review (7dde05a06499) at ab45351362a of the 1 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat), A-2 (ui.chat.attachments)), fixed at 011c0f4f4ca and passed by round-2 delta d83d475c68e1. Counts are open findings.",
 							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/7dde05a06499-1603r1-ur.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "c6d5d31a2fb992718f8ff4931abd8996ec3af04f0d834c59606b014b0b8d4d43",
+					"target_sha256": "965ee2c7542ba08696ec8a1244f85eaf0a4b3b5d8a9592b2568938aea6f64eed",
+					"auditors": [
+						{
+							"agent": "designer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "cf0bdbdda484",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/cf0bdbdda484.json",
+							"receipt_sha256": "6167a9778e3c424c3f84e0088be75762f4a3b87b7d82ffebfa01f15204bf8b36",
+							"scope": "Independent two-key delta copy audit (ui.browser.browser_passkey_notice.not_allowed, .explanation) at a345f7d2b52 for PR #1813; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "42f3ccb0c0b4ec8d28f9e6b2a369a5fbfffa17852bafdf65011f384b754b14f9",
+					"target_sha256": "89fbc6be1cf5f71e46e0565bf56d76c97d6b99c2fb01deb2e07a0e4359e75ba6",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-10",
+							"result": "clean-with-findings",
+							"instance": "64e4e919c5b0-agentpk-r1-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/64e4e919c5b0-agentpk-r1-ur.json",
+							"receipt_sha256": "53090c6dfa299ec67b2efd8aee22167329dbf25dd492f05ea8252d4dde95c0a8",
+							"scope": "Independent three-key delta copy audit (ui.browser.browser_passkey_notice.continue_in_own_tab, .agent_explanation, ui.browser.use_browser_chrome.passkey_continue_failed) at 8c1dcceb6a2 for PR #1846; namespace hashes bind bytes, not a whole-namespace audit"
 						}
 					],
 					"status": "audited"
@@ -58923,8 +59153,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.browser",
-			"source_sha256": "c6d5d31a2fb992718f8ff4931abd8996ec3af04f0d834c59606b014b0b8d4d43",
-			"target_sha256": "44e669bf3552bc966c4e95df01e8cfada6ea2bdef8c5c1fbfcfe17be4259e7b3",
+			"source_sha256": "6d23b23923950590497a81defd8c40ea5f11779426a656efb88a08f066c82f6c",
+			"target_sha256": "98ac97ff690b378d9bd2128abf9b4f57d209111fdeecfc67d99fc759f29e4041",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 5baf5b219d15 job c798e751c62b)",
@@ -58933,20 +59163,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "designer",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-11-09",
-					"result": "clean",
-					"instance": "cf0bdbdda484",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
+					"result": "clean-with-findings",
+					"instance": "62d3b7ccfced-agentpk-r2-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 1,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/cf0bdbdda484.json",
-					"receipt_sha256": "6167a9778e3c424c3f84e0088be75762f4a3b87b7d82ffebfa01f15204bf8b36",
-					"scope": "Independent two-key delta copy audit (ui.browser.browser_passkey_notice.not_allowed, .explanation) at a345f7d2b52 for PR #1813; namespace hashes bind bytes, not a whole-namespace audit"
+					"receipt": "i18n/receipts/62d3b7ccfced-agentpk-r2-vi.json",
+					"receipt_sha256": "6879942c6677521c2aeb33d79376d4fa8acd96a3ca892bb52824bc020a312334",
+					"scope": "Independent round-2 delta copy audit at e6c56de for PR #1846: rewritten browser_passkey_notice.agent_explanation, 5 added continue_refused_*/continue_unavailable keys, re-read of the 2 round-1 keys; namespace hashes bind bytes, not a whole-namespace audit"
 				}
 			],
 			"status": "audited",
@@ -59181,6 +59411,52 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "c6d5d31a2fb992718f8ff4931abd8996ec3af04f0d834c59606b014b0b8d4d43",
+					"target_sha256": "44e669bf3552bc966c4e95df01e8cfada6ea2bdef8c5c1fbfcfe17be4259e7b3",
+					"auditors": [
+						{
+							"agent": "designer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "cf0bdbdda484",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/cf0bdbdda484.json",
+							"receipt_sha256": "6167a9778e3c424c3f84e0088be75762f4a3b87b7d82ffebfa01f15204bf8b36",
+							"scope": "Independent two-key delta copy audit (ui.browser.browser_passkey_notice.not_allowed, .explanation) at a345f7d2b52 for PR #1813; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "42f3ccb0c0b4ec8d28f9e6b2a369a5fbfffa17852bafdf65011f384b754b14f9",
+					"target_sha256": "dcd8f2e03ce1583260221e8bdbc189b79923d4558c10be364d542cd260b8b341",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-10",
+							"result": "changes_requested",
+							"instance": "64e4e919c5b0-agentpk-r1-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 1,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/64e4e919c5b0-agentpk-r1-vi.json",
+							"receipt_sha256": "cef2aebb22ff6f4c4ef1643e0531412dca9adbc5f5bbe35f82fb906283355506",
+							"scope": "Independent three-key delta copy audit (ui.browser.browser_passkey_notice.continue_in_own_tab, .agent_explanation, ui.browser.use_browser_chrome.passkey_continue_failed) at 8c1dcceb6a2 for PR #1846; MAJOR M1 glossary 'agent' term, changes requested"
+						}
+					],
+					"status": "changes_requested"
 				}
 			]
 		},
@@ -71056,8 +71332,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.browser",
-			"source_sha256": "c6d5d31a2fb992718f8ff4931abd8996ec3af04f0d834c59606b014b0b8d4d43",
-			"target_sha256": "5278c6828d60a9e887c0c107c3dc902a6b3f96df91e2a6bbd6c670b35eaefc68",
+			"source_sha256": "6d23b23923950590497a81defd8c40ea5f11779426a656efb88a08f066c82f6c",
+			"target_sha256": "6079e3cc3726be9ca6b68c9651aae2de5a19e9c75d18b0379610c06d251ec6f1",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 2071a6d2f218 job a1a155d78afc)",
@@ -71066,20 +71342,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "designer",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-11-09",
-					"result": "clean",
-					"instance": "cf0bdbdda484",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
+					"result": "clean-with-findings",
+					"instance": "62d3b7ccfced-agentpk-r2-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/cf0bdbdda484.json",
-					"receipt_sha256": "6167a9778e3c424c3f84e0088be75762f4a3b87b7d82ffebfa01f15204bf8b36",
-					"scope": "Independent two-key delta copy audit (ui.browser.browser_passkey_notice.not_allowed, .explanation) at a345f7d2b52 for PR #1813; namespace hashes bind bytes, not a whole-namespace audit"
+					"receipt": "i18n/receipts/62d3b7ccfced-agentpk-r2-zh-cn.json",
+					"receipt_sha256": "0b5c31284c12aeb3823d35922ad5146d3520138e667990f4ff8b9d15579684a2",
+					"scope": "Independent round-2 delta copy audit at e6c56de for PR #1846: rewritten browser_passkey_notice.agent_explanation, 5 added continue_refused_*/continue_unavailable keys, re-read of the 2 round-1 keys; namespace hashes bind bytes, not a whole-namespace audit"
 				}
 			],
 			"status": "audited",
@@ -71338,6 +71614,52 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "c6d5d31a2fb992718f8ff4931abd8996ec3af04f0d834c59606b014b0b8d4d43",
+					"target_sha256": "5278c6828d60a9e887c0c107c3dc902a6b3f96df91e2a6bbd6c670b35eaefc68",
+					"auditors": [
+						{
+							"agent": "designer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "cf0bdbdda484",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/cf0bdbdda484.json",
+							"receipt_sha256": "6167a9778e3c424c3f84e0088be75762f4a3b87b7d82ffebfa01f15204bf8b36",
+							"scope": "Independent two-key delta copy audit (ui.browser.browser_passkey_notice.not_allowed, .explanation) at a345f7d2b52 for PR #1813; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "42f3ccb0c0b4ec8d28f9e6b2a369a5fbfffa17852bafdf65011f384b754b14f9",
+					"target_sha256": "2a786c949ad98132419ce8cb9792e83b7282f0a68835f1ef13b5fa9ba0bf487e",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-10",
+							"result": "changes_requested",
+							"instance": "64e4e919c5b0-agentpk-r1-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 1,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/64e4e919c5b0-agentpk-r1-zh-cn.json",
+							"receipt_sha256": "25a2997874b5309f442cc09d9ed458a82f493096dd7d0c6a5d96db81c96f1981",
+							"scope": "Independent three-key delta copy audit (ui.browser.browser_passkey_notice.continue_in_own_tab, .agent_explanation, ui.browser.use_browser_chrome.passkey_continue_failed) at 8c1dcceb6a2 for PR #1846; MAJOR M1 glossary 'agent' term, changes requested"
+						}
+					],
+					"status": "changes_requested"
 				}
 			]
 		},

@@ -13,7 +13,13 @@ const meta = {
 	title: "Browser/Passkey notice",
 	component: BrowserPasskeyNotice,
 	parameters: { layout: "fullscreen" },
-	args: { onOpen: () => {}, onDismiss: () => {}, onOpenExtensions: () => {} },
+	args: {
+		onOpen: () => {},
+		onDismiss: () => {},
+		onOpenExtensions: () => {},
+		// Shown only on an agent tab's notice; the component ignores it otherwise.
+		onContinueInUserTab: async () => true,
+	},
 	render: function InteractiveNotice(args) {
 		const [dismissed, setDismissed] = useState(false);
 		const [at] = useState(Date.now);

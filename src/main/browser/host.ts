@@ -1234,6 +1234,87 @@ export class BrowserHost implements BrowserActionContext {
 		return this.chromeState();
 	}
 
+	/**
+	 * The passkey notice's "Continue in your own tab": a NEW user tab, active, at
+	 * the agent tab's current top-level URL. The agent's tab is left exactly as it
+	 * is (no navigation, no ownership change), so the agent's work survives.
+	 *
+	 * WHY A COPY AND NOT A TAKEOVER. Extension UI frames (a password manager's
+	 * passkey prompt is a `chrome-extension://` subframe) are refused in agent
+	 * tabs by `extensions/subframe-policy.ts`, deliberately: CDP must never drive
+	 * or read them. So an agent tab can never finish a 1Password passkey sign-in.
+	 * A user tab can, and every tab shares the one persistent profile, so the
+	 * cookies the sign-in sets are the agent tab's cookies too once it reloads.
+	 *
+	 * THE URL IS READ HERE from the tab's own top-level webContents: never a
+	 * renderer-supplied value, never the requesting iframe's URL (an embedded
+	 * sign-in frame such as idmsa.apple.com only works inside its host page).
+	 * Only http(s) pages are copied, the rule `duplicate` already uses.
+	 *
+	 * NO AUTHORITY MOVES: like `newTab`, the copy is attributed to the
+	 * conversation the agent tab belongs to (so a pane scoped to "This
+	 * conversation" still shows it) but has no nonce, so `mayDrive` stays false
+	 * for every agent; the user would have to hand it over explicitly.
+	 */
+	async continueAgentTabInUserTab(
+		tabId: number,
+	): Promise<{ ok: true; tabId: number } | { ok: false; reason: string }> {
+		const record = this.registry.get(tabId);
+		if (!record || record.view.webContents.isDestroyed())
+			return { ok: false, reason: t("ui.browser.chrome.tab_gone") };
+		// Only an agent's tab needs this: a user tab already runs extension frames.
+		if (record.owner !== "agent")
+			return {
+				ok: false,
+				reason: t(
+					"ui.browser.browser_passkey_notice.continue_refused_not_agent",
+				),
+			};
+		let url: string;
+		try {
+			url = record.view.webContents.getURL();
+		} catch {
+			return { ok: false, reason: t("ui.browser.chrome.tab_gone") };
+		}
+		// Its own sentence, not `duplicate_refused` (review Q2): the user asked to
+		// continue, not to duplicate.
+		if (!DUPLICATABLE_WEB_URL.test(url))
+			return {
+				ok: false,
+				reason: t("ui.browser.browser_passkey_notice.continue_refused_not_web"),
+			};
+		// A box, not a `let`: the id is written inside a callback, which TypeScript's
+		// narrowing cannot see, and the catch below needs it.
+		const created: { tabId: number | null } = { tabId: null };
+		try {
+			const copy = await this.createUserTab(
+				record.homeSessionId ?? record.sessionId,
+				url,
+				(record) => {
+					created.tabId = record.tabId;
+				},
+			);
+			return { ok: true, tabId: copy.tabId };
+		} catch {
+			if (created.tabId === null)
+				return {
+					ok: false,
+					reason: t("ui.browser.browser_passkey_notice.continue_unavailable"),
+				};
+			// The tab exists, is active and is the user's: that is the success the
+			// user asked for (review U3). Same as `duplicate`, the load failure stays
+			// in the tab for them to see, rather than a toast saying the tab they
+			// are looking at could not be opened.
+			this.recordLoadFailure(created.tabId, {
+				code: -2,
+				description: "PASSKEY_CONTINUE_NAVIGATION_FAILED", // i18n: ignore machine error code for the failure page's technical line, like ERR_*
+				url,
+			});
+			this.onChanged();
+			return { ok: true, tabId: created.tabId };
+		}
+	}
+
 	/** Human duplicates copy URL ONLY. Session attribution is not a capability,
 	 * but copying it would still put an agent's duplicate inside its conversation.
 	 * User records have no nonce/handover; an explicit later handover is the only

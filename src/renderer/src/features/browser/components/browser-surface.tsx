@@ -1422,6 +1422,12 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				onDismiss={(notice) =>
 					void chrome.dismissPasskeyNotice(notice.tabId, notice.at)
 				}
+				onContinueInUserTab={(notice) =>
+					chrome.continuePasskeyNoticeInUserTab(notice.tabId, notice.at)
+				}
+				// The pane's rest-stop (UX U9) once the agent tab's notice, and the
+				// button that had focus, unmount with the switch to the user's tab.
+				restFocus={() => chordRootRef.current?.focus({ preventScroll: true })}
 				onOpenExtensions={
 					activeTab?.owner === "user" ? openExtensionsPage : undefined
 				}
