@@ -190,6 +190,37 @@ const ROWS: DesktopLibraryAsset[] = [
 ];
 
 /**
+ * Kind and tag-category fixtures (census B5/B6): one row per kind the catalogue
+ * names that the default set lacks (docx, other, html, text, pdf), one with a
+ * kind no catalogue knows (the raw-string fallback), and tags under `status`
+ * (a named category) and `zeta` (an unnamed one). `docx`, `other` and the
+ * unknown kind all land on the unsupported-preview sentence when opened.
+ */
+const TAXONOMY_SPECS: Array<[string, string, string, string]> = [
+	["docx", "Board minutes", "board-minutes.docx", "document"],
+	["other", "Archive bundle", "archive.bin", "other"],
+	["html", "Landing page", "landing.html", "document"],
+	["text", "Meeting notes", "notes.txt", "document"],
+	["pdf", "Signed contract", "contract.pdf", "document"],
+	["hologram", "Future kind", "future.holo", "other"],
+];
+const TAXONOMY_ROWS: DesktopLibraryAsset[] = TAXONOMY_SPECS.map(
+	([kind, name, derived, category], index) =>
+		asset(`la_00000000000000${60 + index}`, {
+			name,
+			derived_name: derived,
+			kind: kind as DesktopLibraryAsset["kind"],
+			category: category as DesktopLibraryAsset["category"],
+			tags:
+				index === 0
+					? [tag("t5", "ready", "status")]
+					: index === 5
+						? [tag("t6", "misc", "zeta")]
+						: [],
+		}),
+);
+
+/**
  * The media set the full-screen viewer's carousel walks: three pictures and a
  * clip, in display order. Why this shape: the operator's item 7 asks for a
  * viewer over the asset, with the left/right arrows and the strip live when the
@@ -618,12 +649,19 @@ const listing = (request: { scope?: string } = {}) => {
 			tag("t2", "q4", "project"),
 			tag("t3", "launch", "project"),
 			tag("t4", "notes"),
-		].map((item) => ({
-			...item,
-			count: rows.filter((row) =>
-				row.tags.some((assigned) => assigned.id === item.id),
-			).length,
-		})),
+			// Taxonomy fixtures (census B5/B6): a known-but-less-common category and
+			// one no catalogue names. They are listed only when a row carries them,
+			// so every other story's rail is unchanged.
+			tag("t5", "ready", "status"),
+			tag("t6", "misc", "zeta"),
+		]
+			.map((item) => ({
+				...item,
+				count: rows.filter((row) =>
+					row.tags.some((assigned) => assigned.id === item.id),
+				).length,
+			}))
+			.filter((item) => item.count > 0 || !["t5", "t6"].includes(item.id)),
 		rows,
 		next_cursor: null,
 		cursor_reset: false,
@@ -1610,6 +1648,37 @@ const CardEnginePlaying: FC<{ assetId: string }> = ({ assetId }) => {
 		};
 	}, [ownerId]);
 	return null;
+};
+
+/** Every kind badge and the status/unknown tag-group headers, grid view. */
+export const KindAndTagLabels: Story = {
+	render: () => page({ rows: [...ROWS.slice(0, 4), ...TAXONOMY_ROWS] }),
+};
+
+/** The same set as list rows: the list-row kind label. */
+export const KindAndTagLabelsList: Story = {
+	render: () =>
+		page({ rows: [...ROWS.slice(0, 4), ...TAXONOMY_ROWS], view: "list" }),
+};
+
+/** The `other` catch-all opened: its own sentence, not "A Other file". */
+export const UnsupportedOtherPreview: Story = {
+	render: () =>
+		page({
+			rows: TAXONOMY_ROWS,
+			shell: true,
+			route: `/library/assets/${TAXONOMY_ROWS[1].id}`,
+		}),
+};
+
+/** A docx opened: the unsupported sentence with the kind's label. */
+export const UnsupportedDocxPreview: Story = {
+	render: () =>
+		page({
+			rows: TAXONOMY_ROWS,
+			shell: true,
+			route: `/library/assets/${TAXONOMY_ROWS[0].id}`,
+		}),
 };
 
 /** Audio cards, idle: every well carries the shared player and its envelope. */
