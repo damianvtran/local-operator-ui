@@ -7,6 +7,7 @@ import {
 	type SubagentRow,
 	isOpenRow,
 } from "../components/run-details/run-detail-model";
+import { isMusicGenTool, musicJobIdOf } from "./music-gen-tool";
 import type { MusicReceipt } from "./music-receipt-model";
 import { soundCostCaption } from "./sound-cost-caption";
 
@@ -43,24 +44,15 @@ import { soundCostCaption } from "./sound-cost-caption";
  * is not a detached job and the ordinary tool row renders unchanged.
  */
 
-export const MUSIC_GEN_TOOL_NAMES: ReadonlySet<string> = new Set([
-	"generate_music",
-	"modify_music",
-]);
-
-export const isMusicGenTool = (toolName: string): boolean =>
-	MUSIC_GEN_TOOL_NAMES.has(toolName);
-
-const object = (value: unknown): value is Record<string, unknown> =>
-	value !== null && typeof value === "object" && !Array.isArray(value);
-
-/** The detached job a music call registered, or null when it registered none. */
-export function musicJobIdOf(details: unknown): string | null {
-	if (!object(details) || details.material !== "music") return null;
-	return typeof details.job_id === "string" && details.job_id.length > 0
-		? details.job_id
-		: null;
-}
+// The tool-name and job-id predicates live in a dependency-free module so the
+// transcript fold model can use them without bundling this file's React /
+// run-details graph into the condense parity pin (R16-1). Re-exported here so
+// existing importers of the card model keep one entry point.
+export {
+	MUSIC_GEN_TOOL_NAMES,
+	isMusicGenTool,
+	musicJobIdOf,
+} from "./music-gen-tool";
 
 /**
  * The status word Core's frozen job_result sentence carries

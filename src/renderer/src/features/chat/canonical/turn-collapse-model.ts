@@ -56,7 +56,7 @@ import type { HubReceipt } from "../components/trace/receipt-row-model";
 import { isPartialDelivery, toolOp } from "../components/trace/tool-row-model";
 import type { TranscriptDisplayMode } from "../transcript-display-mode";
 import { isImageGenTool } from "./image-gen-card-model";
-import { isMusicGenTool, musicJobIdOf } from "./music-generating-model";
+import { isMusicGenTool, musicJobIdOf } from "./music-gen-tool";
 import { freezeRecordDeep } from "./record-immutability";
 import {
 	type FoldCountSegment,

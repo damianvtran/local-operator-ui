@@ -93299,8 +93299,25 @@
 				"date": "2026-11-09",
 				"fallback": "none"
 			},
-			"auditors": [],
-			"status": "pending"
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"instance": "fbc3c870c82c",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/music-job-status-fbc3c870c82c-fr.json",
+					"receipt_sha256": "4ca9dcac7942965de42f3bd29512210168ba3b43bfc386f7f42f29127945b43f",
+					"scope": "1 key ui.music.job_status.unavailable; full namespace"
+				}
+			],
+			"status": "audited"
 		},
 		{
 			"locale": "es",
@@ -93314,8 +93331,25 @@
 				"date": "2026-11-09",
 				"fallback": "none"
 			},
-			"auditors": [],
-			"status": "pending"
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"instance": "fbc3c870c82c",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/music-job-status-fbc3c870c82c-es.json",
+					"receipt_sha256": "59df0cbfe605b92e2d2adcebb34397767092ec219369b73066a79c6c68c93f70",
+					"scope": "1 key ui.music.job_status.unavailable; full namespace"
+				}
+			],
+			"status": "audited"
 		},
 		{
 			"locale": "zh-CN",
@@ -93329,8 +93363,25 @@
 				"date": "2026-11-09",
 				"fallback": "none"
 			},
-			"auditors": [],
-			"status": "pending"
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"instance": "fbc3c870c82c",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/music-job-status-fbc3c870c82c-zh-cn.json",
+					"receipt_sha256": "29a0e56f3227b130db5c5e628f3b96234adf5f42fcafc084cd9d308c3b82b5df",
+					"scope": "1 key ui.music.job_status.unavailable; full namespace"
+				}
+			],
+			"status": "audited"
 		},
 		{
 			"locale": "ru",
@@ -93344,8 +93395,25 @@
 				"date": "2026-11-09",
 				"fallback": "none"
 			},
-			"auditors": [],
-			"status": "pending"
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"instance": "fbc3c870c82c",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/music-job-status-fbc3c870c82c-ru.json",
+					"receipt_sha256": "ef893b585bc54484e188e68fcfa644c1a0108358e1fe543d7f0bedff26d073fc",
+					"scope": "1 key ui.music.job_status.unavailable; full namespace"
+				}
+			],
+			"status": "audited"
 		},
 		{
 			"locale": "vi",
@@ -93359,8 +93427,25 @@
 				"date": "2026-11-09",
 				"fallback": "none"
 			},
-			"auditors": [],
-			"status": "pending"
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"instance": "fbc3c870c82c",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/music-job-status-fbc3c870c82c-vi.json",
+					"receipt_sha256": "ad5b251f6c748bf52072183fe92a936ba6be5e576032c925fcd6956d4e167998",
+					"scope": "1 key ui.music.job_status.unavailable; full namespace"
+				}
+			],
+			"status": "audited"
 		},
 		{
 			"locale": "ur",
@@ -93374,8 +93459,25 @@
 				"date": "2026-11-09",
 				"fallback": "none"
 			},
-			"auditors": [],
-			"status": "pending"
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"instance": "fbc3c870c82c",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/music-job-status-fbc3c870c82c-ur.json",
+					"receipt_sha256": "eda429eec6a827c892ca68d2d154efca5b5e14d75ab1cb648a54291e0808202d",
+					"scope": "1 key ui.music.job_status.unavailable; full namespace"
+				}
+			],
+			"status": "audited"
 		},
 		{
 			"locale": "hi",
@@ -93389,8 +93491,25 @@
 				"date": "2026-11-09",
 				"fallback": "none"
 			},
-			"auditors": [],
-			"status": "pending"
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"instance": "fbc3c870c82c",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/music-job-status-fbc3c870c82c-hi.json",
+					"receipt_sha256": "71faebfe7ca7df0420494e4b1825cf2000470bb5df1f972dee07107a48b0e082",
+					"scope": "1 key ui.music.job_status.unavailable; full namespace"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }
