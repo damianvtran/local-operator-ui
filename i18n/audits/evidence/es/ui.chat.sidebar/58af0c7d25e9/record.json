@@ -1,0 +1,283 @@
+{
+  "locale": "es",
+  "mode": "Fresh independent remediation delta audit; five keys fully audited; remaining 81 sidebar keys read for consistency. Allocation: fix (<2h), read-only copy audit.",
+  "scope": "PR #1836 @ 89d74581e8e9414e15ddddb5e1db9a38785baee2; es/ui.chat.sidebar: scope_chats, scope_chats_elsewhere, scope_tokenless, scope_joined, name_suffix_elsewhere. Delta 28a6127617e..89d74581e8e. Remaining keys read for consistency, not full legacy certification. Prior findings listed with fixed/not-fixed in remediation_verification.",
+  "head_sha": "89d74581e8e9414e15ddddb5e1db9a38785baee2",
+  "audit_date": "2026-11-10",
+  "key_count": 86,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Task brief identifies translator model; translator session id not supplied to this auditor."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "58af0c7d25e9",
+    "session": "58af0c7d25e9",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Served session model header: openai/gpt-6.1-sol; fresh session 58af0c7d25e9. No fallback used.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "verdict": "clean-with-findings",
+  "findings": [
+    {
+      "id": "ES-S10-D2-SOL-F1",
+      "severity": "minor",
+      "key": "ui.chat.sidebar.mark_all_read.name_suffix_elsewhere",
+      "related_keys": [],
+      "current": ", {elsewhere, plural, one {incluido {elsewhere, number, ::group-off} que no está activo} many {incluidos {elsewhere, number, ::group-off} de chats que no están activos} other {incluidos {elsewhere, number, ::group-off} chats que no están activos}}",
+      "problem": "The singular continuation is less self-contained than the plural: the visible label says todos, not chats, so a listener must recover the omitted noun from the sidebar/control context. Spanish permits a substantivized numeral and todos supplies a recoverable set; this is NOT an ungrammatical clause or a meaning failure. The tooltip has its own explicit chat/chats antecedent and is not affected. Minor accessibility-copy clarity/asymmetry only.",
+      "suggested": "In name_suffix_elsewhere only, use one {incluido {elsewhere, number, ::group-off} chat que no está activo}. Retain the initial comma-space and the many/other arms.",
+      "evidence": {
+        "accessible_name_quote": "Marcar todos como leídos (3), incluido 1 que no está activo",
+        "plural_comparison": "Marcar todos como leídos (3), incluidos 2 chats que no están activos",
+        "derivation": "Custom read-only Python ICU-subset expansion from the bound Spanish bytes and direct label+suffix concatenation; not runtime or screen-reader output.",
+        "code_path": "markAllReadCopy: count=ackable.length; elsewhere=ackable.filter(row => !row.active).length; nameSuffix supplied only when elsewhere > 0. chat-sidebar.tsx:2362-2363 appends sr-only suffix after the visible label.",
+        "scope_note": "New singular noun omission in this remediation; no other key gated."
+      }
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+  },
+  "namespaces": {
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "result": "clean-with-findings",
+      "source_sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd",
+      "target_sha256": "ce70155f365ca1eaa6e457e870d42e36bb6aea09cd4331f630938ba63a18e86a",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+          "sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd"
+        },
+        "es": {
+          "path": "src/i18n/catalogues/es/ui.chat.sidebar.json",
+          "sha256": "ce70155f365ca1eaa6e457e870d42e36bb6aea09cd4331f630938ba63a18e86a"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+          "sha256": "4f1593cc34b395ef8701a60e58e73a0371b3c93730eb7a1f2b2845dc6250d7e3"
+        }
+      },
+      "findings": [
+        {
+          "id": "ES-S10-D2-SOL-F1",
+          "severity": "minor",
+          "key": "ui.chat.sidebar.mark_all_read.name_suffix_elsewhere",
+          "related_keys": [],
+          "current": ", {elsewhere, plural, one {incluido {elsewhere, number, ::group-off} que no está activo} many {incluidos {elsewhere, number, ::group-off} de chats que no están activos} other {incluidos {elsewhere, number, ::group-off} chats que no están activos}}",
+          "problem": "The singular continuation is less self-contained than the plural: the visible label says todos, not chats, so a listener must recover the omitted noun from the sidebar/control context. Spanish permits a substantivized numeral and todos supplies a recoverable set; this is NOT an ungrammatical clause or a meaning failure. The tooltip has its own explicit chat/chats antecedent and is not affected. Minor accessibility-copy clarity/asymmetry only.",
+          "suggested": "In name_suffix_elsewhere only, use one {incluido {elsewhere, number, ::group-off} chat que no está activo}. Retain the initial comma-space and the many/other arms.",
+          "evidence": {
+            "accessible_name_quote": "Marcar todos como leídos (3), incluido 1 que no está activo",
+            "plural_comparison": "Marcar todos como leídos (3), incluidos 2 chats que no están activos",
+            "derivation": "Custom read-only Python ICU-subset expansion from the bound Spanish bytes and direct label+suffix concatenation; not runtime or screen-reader output.",
+            "code_path": "markAllReadCopy: count=ackable.length; elsewhere=ackable.filter(row => !row.active).length; nameSuffix supplied only when elsewhere > 0. chat-sidebar.tsx:2362-2363 appends sr-only suffix after the visible label.",
+            "scope_note": "New singular noun omission in this remediation; no other key gated."
+          }
+        }
+      ]
+    }
+  },
+  "per_key_checks": [
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_chats",
+      "typed_arguments": [
+        [
+          "count",
+          "number"
+        ],
+        [
+          "count",
+          "plural"
+        ]
+      ],
+      "number_skeleton": "::group-off",
+      "plural_select": [
+        [
+          "count",
+          [
+            "one",
+            "many",
+            "other"
+          ]
+        ]
+      ],
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": 0
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_chats_elsewhere",
+      "typed_arguments": [
+        [
+          "count",
+          "number"
+        ],
+        [
+          "count",
+          "plural"
+        ],
+        [
+          "elsewhere",
+          "number"
+        ],
+        [
+          "elsewhere",
+          "plural"
+        ]
+      ],
+      "number_skeleton": "::group-off",
+      "plural_select": [
+        [
+          "count",
+          [
+            "one",
+            "many",
+            "other"
+          ]
+        ],
+        [
+          "elsewhere",
+          [
+            "one",
+            "many",
+            "other"
+          ]
+        ]
+      ],
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": 3
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_tokenless",
+      "typed_arguments": [
+        [
+          "count",
+          "number"
+        ],
+        [
+          "count",
+          "plural"
+        ]
+      ],
+      "number_skeleton": "::group-off",
+      "plural_select": [
+        [
+          "count",
+          [
+            "one",
+            "many",
+            "other"
+          ]
+        ]
+      ],
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": 0
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.scope_joined",
+      "typed_arguments": [
+        [
+          "chats",
+          "arg"
+        ],
+        [
+          "tokenless",
+          "arg"
+        ]
+      ],
+      "number_skeleton": null,
+      "plural_select": [],
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": 1
+    },
+    {
+      "key": "ui.chat.sidebar.mark_all_read.name_suffix_elsewhere",
+      "typed_arguments": [
+        [
+          "elsewhere",
+          "number"
+        ],
+        [
+          "elsewhere",
+          "plural"
+        ]
+      ],
+      "number_skeleton": "::group-off",
+      "plural_select": [
+        [
+          "elsewhere",
+          [
+            "one",
+            "many",
+            "other"
+          ]
+        ]
+      ],
+      "manual_bidi_controls": false,
+      "static_codepoint_length_without_arguments": 2
+    }
+  ],
+  "remediation_verification": {
+    "status": "Both supplied prior Spanish findings fixed. One new MINOR clarity finding; zero unresolved BLOCKER/MAJOR. Terminal copy audit, no additional round required for the minor alone.",
+    "prior_findings": [
+      {
+        "id": "PRIOR-ES-MAJOR-TERM",
+        "keys": [
+          "ui.chat.sidebar.mark_all_read.scope_tokenless"
+        ],
+        "status": "fixed",
+        "previous_quote": "marca sin leer / marcas sin leer",
+        "current_quote": "marca de mensajes sin leer / marcas de mensajes sin leer",
+        "reason": "All one/many/other arms now match read_ack.refusal.unreported and ui.notices.chat.unread_not_cleared; inability to clear and no-completion-token condition are preserved."
+      },
+      {
+        "id": "PRIOR-ES-MINOR-IDIOM",
+        "keys": [
+          "ui.chat.sidebar.mark_all_read.scope_chats_elsewhere",
+          "ui.chat.sidebar.mark_all_read.name_suffix_elsewhere"
+        ],
+        "status": "fixed",
+        "previous_quote": "incluidos 2 chats no activos",
+        "current_quote": "incluidos 2 chats que no están activos",
+        "reason": "Relative que no están activos is idiomatic neutral Spanish and describes backend active=false, not a section. incluido/incluidos correctly agrees with the elsewhere subset rather than the total; the singular noun omission introduced here is separately recorded as ES-S10-D2-SOL-F1."
+      }
+    ],
+    "policy_sources": [
+      "~/local-operator/i18n/style-guides/es.md",
+      "~/local-operator/i18n/glossary.md",
+      "docs/I18N.md"
+    ],
+    "executed_checks": [
+      "Read git rev-parse HEAD: matches requested full head. Read git diff 28a6127617e 89d74581e8e for es sidebar: scope_chats_elsewhere, scope_tokenless, name_suffix_elsewhere changed.",
+      "shasum -a 256 for English/context/Spanish sidebar; hashlib agrees; Spanish target ce70155f365ca1ea prefix matches. git show HEAD:path byte comparison confirms all three files match HEAD.",
+      "json.loads and duplicate-member pair check: source/Spanish each 86 keys, same key sets, valid JSON without duplicate catalogue members.",
+      "Custom Python ICU-subset parser on each of the five English and Spanish messages: typed argument names/types match; all numeric occurrences retain exact ::group-off; every Spanish plural has one/many/other. Expanded 1,2,1000000 and composed names. This is NOT the repository validator.",
+      "Specific grep tool searches for instance 58af0c7d25e9 in i18n/receipts, i18n/audits/evidence and .worktrees/_s10-audits each returned no matches. Initial shell recursive grep was rejected by query-budget guard; followed its instruction to use grep tool.",
+      "Read deriveReceiptAudit and helpers in ledger-rules.mjs plus assembler caller; compared root and namespace field sets to existing receipts. JSON parsed and semantic assertions run in Python, not Node."
+    ],
+    "meaning_terminology": "Marcar ... como leído(s) retains read acknowledgement, not deletion of conversations; No se puede(n) borrar ... que no tiene(n) token de finalización preserves inability and condition. token is kept English and de finalización is a descriptive completion qualifier, not a security-token term. The exact read-ack term marca de mensajes sin leer now matches siblings. no está(n) activo(s) denotes active=false; no invented sidebar heading. Count and elsewhere are independent plural drivers; included subset is not additive. Singular tooltip has explicit antecedent chat/chats; singular suffix has recoverable contextual antecedent todos/chats, but is less explicit than plural.",
+    "composition_typography_fit": "scope_joined preserves {chats} {tokenless} and one space between full sentences. name_suffix_elsewhere begins comma-space; direct concatenation retains visible label as an exact prefix. No introduced markup/backticks/commands/flags/identifiers to preserve. Plain Spanish punctuation, Latin digits and no bidi controls. Context supplies no maxCells/maxChars; native tooltip may wrap. No evidence of overflow inferred from character count alone.",
+    "out_of_scope_pre_existing": [
+      {
+        "key": "ui.chat.sidebar.agents.builtin_offer",
+        "quote": "one {...} =2 {...} =3 {...} =4 {...} =5 {...} =6 {...} other {...}; no many arm",
+        "note": "Unchanged legacy key outside five-key delta; missing Spanish many category is observed separately and does not affect this verdict or severity counts."
+      }
+    ]
+  },
+  "unverified": [
+    "Repository Node validator (pnpm check-i18n) and deriveReceiptAudit were not executed: Node processes, builds and installs expressly forbidden. Custom Python checks are not production parser/runtime proof.",
+    "No browser, render, Electron/native tooltip, real accessibility tree, screen-reader pronunciation or pixel/terminal fit verified. No renders demanded.",
+    "No repository edits, git writes, ledger assembler, tracked evidence bundle, commit or PR comment made. This scratch receipt is temporary handoff; manager must retain it using repository receipt/evidence contract."
+  ],
+  "receipt_contract_review": "Exact root field set and namespace field set match _s10-audits/28a6127/fr-sol-2c914de09ac5.json and committed i18n/receipts/2bbf16af14ee.json. deriveReceiptAudit manually traced: single nested auditor identity, valid unused 12-hex instance, namespace-owned status/result, matching source/target hashes, explicit namespace findings, normalized minor count, passed => clean-with-findings. Python assertions verify these inputs. No Node execution claimed.",
+  "audit_notes_not_execution_log": true
+}
