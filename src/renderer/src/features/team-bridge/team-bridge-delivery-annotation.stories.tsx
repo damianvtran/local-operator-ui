@@ -446,6 +446,16 @@ export const SummarySingleRecipientScreening: Story = {
 	args: { states: undefined, summary: { total: 1, screening: 1 } },
 };
 
+/* The two terminal outcomes alone (design review D2), so all five uncounted
+ * forms stay in visual review. */
+export const SummarySingleRecipientNotReviewed: Story = {
+	args: { states: undefined, summary: { total: 1, not_reviewed: 1 } },
+};
+
+export const SummarySingleRecipientNotDelivered: Story = {
+	args: { states: undefined, summary: { total: 1, not_delivered: 1 } },
+};
+
 /* Several recipients with one bucket at 1 KEEP their counts: "Delivered ·
  * 1 being screened" would hide how many received it. */
 export const SummaryMultiRecipientOneScreening: Story = {

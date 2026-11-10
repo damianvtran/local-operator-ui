@@ -1163,54 +1163,111 @@ test("the summary text keeps the order, omits zeros and pluralizes per locale", 
 
 /*
  * ONE RECIPIENT IN TOTAL (operator request 2026-11-10): "Delivered", not
- * "Delivered to 1". The trigger is the total, never one bucket at 1, and the
- * runs still concatenate to the accessible name.
+ * "Delivered to 1". The trigger is the hub's whole-message total, never one
+ * bucket at 1, and the runs still concatenate to the accessible name.
  */
+const hubLine = (summary) => {
+	const s = teamBridgeDeliverySummary({ delivery_summary: summary });
+	return {
+		text: teamBridgeDeliverySummaryText(s.counts, s.single),
+		runs: teamBridgeDeliverySummaryRuns(s.counts, s.single),
+	};
+};
+
 test("a single-recipient message drops the count; several recipients keep every count", () => {
 	const cases = [
-		[{ delivered: 1 }, "Delivered"],
-		[{ screening: 1 }, "Being screened"],
-		[{ held: 1 }, "Held for review"],
-		[{ notReviewed: 1 }, "Not reviewed"],
-		[{ notDelivered: 1 }, "Not delivered"],
+		[{ total: 1, delivered: 1 }, "Delivered"],
+		[{ total: 1, screening: 1 }, "Being screened"],
+		[{ total: 1, held: 1 }, "Held for review"],
+		[{ total: 1, not_reviewed: 1 }, "Not reviewed"],
+		[{ total: 1, not_delivered: 1 }, "Not delivered"],
 		// Negative controls: one bucket at 1 among several recipients.
-		[{ delivered: 2, screening: 1 }, "Delivered to 2 · 1 being screened"],
-		[{ delivered: 1, screening: 1 }, "Delivered to 1 · 1 being screened"],
-		[{ held: 1, notReviewed: 1 }, "1 held for review · 1 not reviewed"],
-		[{ delivered: 2 }, "Delivered to 2"],
+		[
+			{ total: 3, delivered: 2, screening: 1 },
+			"Delivered to 2 · 1 being screened",
+		],
+		[
+			{ total: 2, delivered: 1, screening: 1 },
+			"Delivered to 1 · 1 being screened",
+		],
+		[
+			{ total: 2, held: 1, not_reviewed: 1 },
+			"1 held for review · 1 not reviewed",
+		],
+		[{ total: 2, delivered: 2 }, "Delivered to 2"],
 	];
-	for (const [over, expected] of cases) {
-		const c = counts(over);
+	for (const [summary, expected] of cases) {
+		const { text, runs } = hubLine(summary);
+		assert.equal(text, expected, JSON.stringify(summary));
 		assert.equal(
-			teamBridgeDeliverySummaryText(c),
+			runs.delivered + runs.rest,
 			expected,
-			JSON.stringify(over),
+			`runs ${JSON.stringify(summary)}`,
 		);
-		const { delivered, rest } = teamBridgeDeliverySummaryRuns(c);
-		assert.equal(delivered + rest, expected, `runs ${JSON.stringify(over)}`);
 	}
-	assert.deepEqual(teamBridgeDeliverySummaryRuns(counts({ delivered: 1 })), {
+	assert.deepEqual(hubLine({ total: 1, delivered: 1 }).runs, {
 		delivered: "Delivered",
 		rest: "",
 	});
-	assert.deepEqual(teamBridgeDeliverySummaryRuns(counts({ screening: 1 })), {
+	assert.deepEqual(hubLine({ total: 1, screening: 1 }).runs, {
 		delivered: "",
 		rest: "Being screened",
 	});
 	try {
 		setLocale("fr");
-		assert.equal(
-			teamBridgeDeliverySummaryText(counts({ delivered: 1 })),
-			"Remis",
-		);
+		assert.equal(hubLine({ total: 1, delivered: 1 }).text, "Remis");
 		setLocale("ru");
-		assert.equal(
-			teamBridgeDeliverySummaryText(counts({ screening: 1 })),
-			"На проверке",
-		);
+		assert.equal(hubLine({ total: 1, screening: 1 }).text, "На проверке");
 	} finally {
 		setLocale("en");
 	}
+});
+
+/*
+ * Review F1/F2: only a hub summary whose `total` is 1 proves one recipient.
+ * An older hub's derived counts cover only the viewer's own agents, and a
+ * malformed bucket drops out of the parse, so both keep the count.
+ */
+test("derived or inconsistent counts keep their count even when they sum to 1", () => {
+	// An owner of one of three recipient agents, older hub (no summary).
+	const derived = teamBridgeDeliverySummary({
+		delivery_states: [
+			{
+				endpoint_id: "bep_aida",
+				recipient_label: "Aida",
+				recipient_owner_label: "Ben Tran",
+				state: "held",
+				hold_class: "awaiting_review",
+			},
+		],
+	});
+	assert.equal(derived.single, false);
+	assert.equal(
+		teamBridgeDeliverySummaryText(derived.counts, derived.single),
+		"1 held for review",
+	);
+	// A two-recipient message whose screening bucket was malformed and dropped.
+	const parsed = teamBridgeMessageSchema.parse({
+		id: "bcmsg_f2",
+		conversation_id: "bconv_1",
+		seq: 1,
+		sender: { account_id: "acct_1", kind: "human", display_label: "Ben" },
+		body: "hi",
+		origin: "human",
+		created_at: "2026-11-10T00:00:00Z",
+		delivery_summary: { total: 2, delivered: 1, screening: -1 },
+	});
+	const partial = teamBridgeDeliverySummary(parsed);
+	assert.equal(partial.single, false);
+	assert.equal(
+		teamBridgeDeliverySummaryText(partial.counts, partial.single),
+		"Delivered to 1",
+	);
+	// No `total` at all proves nothing either.
+	assert.equal(
+		teamBridgeDeliverySummary({ delivery_summary: { delivered: 1 } }).single,
+		false,
+	);
 });
 
 const SINGLE_VISIBLE = />Delivered</;
