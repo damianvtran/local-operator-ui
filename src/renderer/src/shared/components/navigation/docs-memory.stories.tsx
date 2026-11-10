@@ -1,8 +1,7 @@
 /**
  * Memory, as the marketing site's "Teach it once" figure shows it: one
  * conversation where a preference is taught, and a later one where it is
- * recalled. Rendered from the REAL desktop components - `ChatHeader`,
- * `CanonicalTranscript` (its ordinary tool rows), the docked `QuestionDock`
+ * recalled. Rendered from the REAL desktop components - `CanonicalTranscript` (its ordinary tool rows), the docked `QuestionDock`
  * approval card and `MessageInput` - over sample records, never a redrawn copy.
  *
  * WHY THIS FILE EXISTS. The site's section showed an old agent form; memory is
@@ -49,10 +48,15 @@ import type {
 	TranscriptRecord,
 	TranscriptState,
 } from "@features/chat/canonical/transcript-reducer";
-import { ChatHeader } from "@features/chat/components/chat-header";
+import {
+	CHAT_COLUMN_CONTAINER,
+	CHAT_COLUMN_INSET,
+	CHAT_MEASURE,
+} from "@features/chat/chat-measure";
 import { QuestionDock } from "@features/chat/components/trace/question-dock";
 import type { Message } from "@features/chat/types/message";
 import { MessageInput } from "@shared/components/composer/message-input";
+import { cn } from "@shared/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react";
 import { type FC, useEffect, useRef } from "react";
 
@@ -171,11 +175,12 @@ const MemoryPane: FC<{
 	const containerRef = useRef<HTMLDivElement>(null);
 	return (
 		<div className="flex h-screen min-h-0 w-full flex-col overflow-hidden bg-background">
-			<ChatHeader
-				agentName="Core"
-				description="Invoices workspace · on this machine"
-				onOpenOptions={() => undefined}
-			/>
+			{/*
+			 * No `ChatHeader`: at the marketing set's 720px height the docked
+			 * approval card plus the composer leave the transcript ~75px, and the
+			 * header's row was what scrolled the taught ask out of frame A. The
+			 * frames drop it together so the pair reads as one surface.
+			 */}
 			<div className="flex min-h-0 grow flex-col px-6 pt-4">
 				<CanonicalTranscript
 					transcript={transcriptOf(records)}
@@ -195,9 +200,18 @@ const MemoryPane: FC<{
 				/>
 			</div>
 			{gate && (
-				<div className="shrink-0 px-6">
+				// The wrapper and measure `chat-content.tsx` mounts the dock in, so the
+				// card takes the chat column's width rather than the pane's.
+				<div
+					className={cn(
+						CHAT_COLUMN_CONTAINER,
+						CHAT_COLUMN_INSET,
+						"w-full shrink-0 pt-2",
+					)}
+				>
 					{/* No session behind a story: answering is a no-op. */}
 					<QuestionDock
+						className={CHAT_MEASURE}
 						gate={gate}
 						answering={false}
 						answer={null}
@@ -219,13 +233,21 @@ const MemoryPane: FC<{
 };
 
 /**
- * Open one tool row's disclosure by a marker in its text, the way a reader
- * does (the row's own button is the only control), and hold the shutter until
- * it is open. Same latch as the docs library's `ExpandReceipt` / `HubHold`: an
+ * Bring one tool row on screen by a marker in its text, the way a reader
+ * does (the turn's summary bar and the row's own button are the only
+ * controls), and hold the shutter until it is there. `open: "row"` also opens
+ * the row's receipt; `open: "turn"` stops at the visible collapsed row, for a
+ * frame whose point is the whole turn rather than one receipt. Same latch as the docs library's `ExpandReceipt` / `HubHold`: an
  * expired hold sets `data-capture-failed` so a rig refuses the frame instead of
  * exporting a collapsed row as if it were the claimed state.
  */
-const ExpandRow = ({ marker }: { marker: string }) => {
+const ExpandRow = ({
+	marker,
+	open,
+}: {
+	marker: string;
+	open: "row" | "turn";
+}) => {
 	useEffect(() => {
 		const root = document.documentElement;
 		root.dataset.capturePending = "1";
@@ -242,7 +264,7 @@ const ExpandRow = ({ marker }: { marker: string }) => {
 				).includes(marker),
 			);
 		const timer = window.setInterval(() => {
-			if (rowWith("true")) {
+			if (rowWith("true") || (open === "turn" && rowWith("false"))) {
 				root.removeAttribute("data-capture-pending");
 				window.clearInterval(timer);
 				return;
@@ -253,13 +275,23 @@ const ExpandRow = ({ marker }: { marker: string }) => {
 				window.clearInterval(timer);
 				return;
 			}
-			rowWith("false")?.click();
+			const row = rowWith("false");
+			if (row) row.click();
+			// A settled turn condenses its calls under one summary bar
+			// (`turn-collapse-model.ts`), so the row only exists once a reader
+			// has opened that bar - open it the same way, then the row.
+			else
+				document
+					.querySelector<HTMLButtonElement>(
+						'[data-turn-summary] button[aria-expanded="false"]',
+					)
+					?.click();
 		}, 100);
 		return () => {
 			window.clearInterval(timer);
 			root.removeAttribute("data-capture-pending");
 		};
-	}, [marker]);
+	}, [marker, open]);
 	return null;
 };
 
@@ -276,7 +308,9 @@ type Story = StoryObj;
 
 const TAUGHT_ASK = user(
 	"taught-user",
-	"One standing rule from now on: when you open a PR, keep the description to what changed and how it was verified. Remember that.",
+	// One line on purpose: the docked approval card takes most of a 720px
+	// frame, and a wrapped ask scrolls its own first line out of view.
+	"From now on, keep PR descriptions to what changed and how it was verified.",
 	6,
 );
 
@@ -321,7 +355,7 @@ export const Taught: Story = {
 export const TaughtSaved: Story = {
 	render: () => (
 		<>
-			<ExpandRow marker="Saving the PR-description preference" />
+			<ExpandRow marker="Saving the PR-description preference" open="turn" />
 			<MemoryPane
 				sessionId={TAUGHT_SESSION}
 				records={[
@@ -375,7 +409,12 @@ export const TaughtSaved: Story = {
 export const Recalled: Story = {
 	render: () => (
 		<>
-			<ExpandRow marker={FACT_URI} />
+			{/*
+			 * The turn, not the receipt: the request, the `memory://global/<id>`
+			 * read row and the reply must share one 720px frame, and the open
+			 * receipt alone is taller than the transcript's share of it.
+			 */}
+			<ExpandRow marker={FACT_URI} open="turn" />
 			<MemoryPane
 				sessionId={RECALLED_SESSION}
 				records={[
