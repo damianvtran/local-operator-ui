@@ -206,7 +206,7 @@ const TAXONOMY_SPECS: Array<[string, string, string, string]> = [
 ];
 const TAXONOMY_ROWS: DesktopLibraryAsset[] = TAXONOMY_SPECS.map(
 	([kind, name, derived, category], index) =>
-		asset(`la_00000000000000${60 + index}`, {
+		asset(`la_00000000000000${70 + index}`, {
 			name,
 			derived_name: derived,
 			kind: kind as DesktopLibraryAsset["kind"],

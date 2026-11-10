@@ -209,7 +209,6 @@ const CardAudioWell: FC<{ asset: DesktopLibraryAsset }> = ({ asset }) => {
 	);
 };
 
-/** One grid tile. */
 /**
  * The asset's kind as the user reads it, subscribed at the leaf.
  *
@@ -223,6 +222,7 @@ const KindLabel: FC<{ kind: string }> = ({ kind }) => {
 	return <>{libraryKindLabel(kind)}</>;
 };
 
+/** One grid tile. */
 export const LibraryCard: FC<
 	LibraryCardActions & { asset: DesktopLibraryAsset; selected: boolean }
 > = ({ asset, selected, ...actions }) => {

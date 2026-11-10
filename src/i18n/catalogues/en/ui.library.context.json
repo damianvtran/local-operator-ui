@@ -1074,7 +1074,7 @@
 	"ui.library.kind.other": {
 		"role": "Library card/list/preview badge: the asset's file kind (one of twelve fixed kinds)",
 		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
-		"note": "English source: Other. Catch-all for a file the Library could not classify. Singular adjective/noun, not an action. Rendered inside the sentence ui.library.preview.unsupported ONLY via the generic fallback; see manifest. Short badge beside the file size on a card, list row and the preview header; a single noun, no placeholders. Translate as the locale's ordinary noun for this file kind. The raw machine value (for example 'pptx') is shown only as a data fallback when a newer backend adds a kind this catalogue does not know.",
+		"note": "English source: Other. Catch-all for a file the Library could not classify. Singular adjective/noun, not an action. Badge only. For the catch-all `other` kind the unsupported-preview state uses ui.library.preview.unsupported_generic, which has no kind slot; this label is never interpolated into a sentence. Short badge beside the file size on a card, list row and the preview header; a single noun, no placeholders. Translate as the locale's ordinary noun for this file kind. The raw machine value (for example 'pptx') is shown only as a data fallback when a newer backend adds a kind this catalogue does not know.",
 		"length": "English is 5 source characters. A truncating badge slot (about 12 characters); keep the same shape and a comparable width."
 	},
 	"ui.library.kind.pdf": {
@@ -1110,7 +1110,7 @@
 	"ui.library.tag_category.custom": {
 		"role": "Library filter rail: header above one group of tags (tag category)",
 		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
-		"note": "English source: Custom. Tag group for tags the user or an agent created freely, with no fixed taxonomy. It is also the fallback group for a tag with an empty category. Small muted header above that category's tag rows in the Tags section; a single noun, no placeholders. Singular, naming the category not a count. The raw category string is printed as a data fallback for a category a newer backend adds that this catalogue does not know.",
+		"note": "English source: Custom. Tag group for tags the user or an agent created freely, with no fixed taxonomy. It is also the fallback group for a tag with an empty category. Small muted header above that category's tag rows in the Tags section; an adjective heading over a group of tags (inflect as the target language requires), no placeholders. Names the category, not a count. The raw category string is printed as a data fallback for a category a newer backend adds that this catalogue does not know.",
 		"length": "English is 6 source characters. Narrow rail header (about 12 characters); keep the same shape and a comparable width."
 	},
 	"ui.library.tag_category.format": {
