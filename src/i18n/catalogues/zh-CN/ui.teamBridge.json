@@ -110,6 +110,8 @@
 	"ui.teamBridge.plan.title": "Team Bridge需要Radient Team套餐",
 	"ui.teamBridge.plan.body": "与团队成员及其智能体沟通，并让智能体与组织中的其他智能体协作。",
 	"ui.teamBridge.plan.reason": "此组织的套餐不包含Team Bridge。",
+	"ui.teamBridge.plan.reason_account": "你的账户不属于任何使用Radient Team套餐的组织。",
+	"ui.teamBridge.plan.see_plan": "查看Radient Team套餐",
 	"ui.teamBridge.plan.sign_in_title": "登录Radient",
 	"ui.teamBridge.plan.sign_in_reason": "你已退出登录。登录后即可使用Team Bridge。",
 	"ui.teamBridge.plan.update_title": "更新后使用Team Bridge",

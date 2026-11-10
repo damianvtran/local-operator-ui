@@ -62,7 +62,7 @@
 	"ui.providers.provider_catalog.use_your_claude_pro_or_max_plan": "使用Claude Pro或Max订阅，无需额外付费。",
 	"ui.providers.provider_catalog.use_your_chatgpt_plus_or_pro_plan": "使用ChatGPT Plus或Pro订阅，无需额外付费。",
 	"ui.providers.provider_catalog.use_your_chatgpt_plan_signing_in_with": "使用ChatGPT订阅，通过一次性验证码登录，无需额外付费。",
-	"ui.providers.provider_catalog.one_browser_sign_in_nothing_to_paste": "在浏览器中登录一次即可，无需粘贴任何内容。",
+	"ui.providers.provider_catalog.one_browser_sign_in_nothing_to_paste": "在浏览器中登录一次，即可使用多种模型。无需订阅，也无需API密钥。",
 	"ui.providers.provider_catalog.sign_in_to_your_account_with_a": "使用一次性验证码登录{brand}账户。",
 	"ui.providers.provider_catalog.sign_in_with_your_account": "使用{brand}账户登录。",
 	"ui.providers.provider_catalog.use_a_subscription": "使用订阅",

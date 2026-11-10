@@ -9,6 +9,7 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
  */
 
 import { PhoneAccessBlock } from "@features/providers/phone-access-block";
+import { subscribeUrlFor } from "@features/team-bridge-trial/team-bridge-trial-model";
 import type { AccountVerification } from "@shared/api/radient";
 import { RadientAuthButtons } from "@shared/components/auth";
 import { Spinner } from "@shared/components/common/spinner";
@@ -176,6 +177,32 @@ export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
 				<div className="mt-8">
 					<PhoneAccessBlock offerSignIn />
 				</div>
+
+				{/*
+				 * THE ONE PLACE THE TEAM PLAN IS DESCRIBED OUTSIDE A GATE (onboarding
+				 * audit U8). Every gated surface names the plan where the reader hits
+				 * it; this is the single line that lists what the plan covers, for a
+				 * reader who went looking in their own account. One sentence and one
+				 * link at the section's body ink: no card, no badge, no accent fill,
+				 * so it reads as account information rather than a promotion.
+				 *
+				 * The sentence lists only what this app itself gates on the plan
+				 * (Team Bridge, and agents and teams shared inside an organization).
+				 * Anything else the plan includes is the console page's to say.
+				 */}
+				<p
+					className="mt-8 text-body-sm text-ink-muted"
+					data-testid="radient-team-plan-line"
+				>
+					{t("ui.settings.account.radient_account_section.team_plan_line")}{" "}
+					<Button
+						variant="link"
+						size="sm"
+						onClick={() => openConsolePage(subscribeUrlFor(account.tenant_id))}
+					>
+						{t("ui.teamBridge.plan.see_plan")}
+					</Button>
+				</p>
 
 				{/*
 				 * A section-tier gap replaces the rule that used to sit here: the

@@ -345,7 +345,12 @@ test("first-run advice stops at the credential, on both surfaces", () => {
 test("the rendered grid carries the cue, the reason, and the rig's hooks", () => {
 	const html = render(census());
 	assert.match(html, /Recommended/);
-	assert.match(html, /One browser sign-in\. Nothing to paste\./);
+	// The reason states what the sign-in gives (onboarding audit U1), and stays
+	// true of a row that also offers a key: it claims the sign-in path only.
+	assert.match(
+		html,
+		/One browser sign-in for many models\. No subscription or API key needed\./,
+	);
 	// The two hooks `provider-setup.stories.tsx` measures through. A frame rig
 	// that loses them prints `absent` rather than failing, so they are pinned.
 	assert.match(html, /data-provider-grid=""/);
@@ -409,6 +414,33 @@ test("the shortcut rows are not repeated behind 'More providers'", () => {
 	assert.equal(rowCount(html, "ollama"), 1);
 	assert.match(html, /Run models on this computer/);
 	assert.match(html, /aria-label="Search providers"/);
+});
+
+test("U7: suggested rows are titled Claude and ChatGPT; the same rows elsewhere keep the brand", () => {
+	/*
+	 * The row's own title, read from the rendered markup: the `text-body` span
+	 * inside the row, which is what a reader sees beside the tile. The intro
+	 * above the list says "Already pay for Claude or ChatGPT?", so a suggested
+	 * row titled "Anthropic" is a name the question never used.
+	 */
+	const titleOf = (html, id) => {
+		const start = html.indexOf(`data-provider-id="${id}"`);
+		assert.notEqual(start, -1, `${id} row is painted`);
+		const match = html.slice(start).match(/text-body text-ink">([^<]+)</);
+		return match?.[1];
+	};
+	const onboarding = renderFeatured(census());
+	assert.equal(titleOf(onboarding, "anthropic"), "Claude");
+	assert.equal(titleOf(onboarding, "openai"), "ChatGPT");
+	assert.equal(titleOf(onboarding, "radient"), "Radient");
+	// The row action's accessible name follows the visible title.
+	assert.match(onboarding, /aria-label="[^"]*Claude[^"]*"/);
+	assert.doesNotMatch(onboarding, /aria-label="[^"]*Anthropic[^"]*"/);
+
+	// The settings shape has no suggested block: its rows name the provider.
+	const settings = render(census());
+	assert.equal(titleOf(settings, "anthropic"), "Anthropic");
+	assert.equal(titleOf(settings, "openai"), "OpenAI");
 });
 
 test("a 'More providers' trigger with nothing behind it is not rendered", () => {

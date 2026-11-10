@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "auditor": {
+    "agent": "reviewer",
+    "session": "afad62e72ab0",
+    "instance": "afad62e72ab0-ovc-final-tb-hi",
+    "model": "anthropic/claude-opus-5-5",
+    "requested_model": "anthropic/claude-opus-5-5",
+    "fallback": false,
+    "model_source": "Session system prompt header 'Model: anthropic/claude-opus-5-5'; no model-switch or fallback notice in this session.",
+    "independence": "Independent auditor; authored no translation and no prior receipt. PR translator: coder session 4d5802c5f0fc; prior PR auditors 4342cfd05d3c (ux-reviewer) and 909a2c50a0bd-series (reviewer, claude-fable-5-2); upstream #1832 auditor ff66daec882c. None is this session.",
+    "independent_from_translator_session": true
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "afad62e72ab0-ovc-final-tb-hi",
+  "locale": "hi",
+  "date": "2026-11-10",
+  "head": "b75b7186836b2c147f29a3a80ff4276b102f2d9f",
+  "base": "c2d84fcb64e0ce1fa77787d06609ef009e5be78a",
+  "merge_parents": {
+    "pr": "c2d84fcb64e0ce1fa77787d06609ef009e5be78a",
+    "main": "7385893f87a8e30d1b0872d2e8cc7ba887b01a70",
+    "merge_base": "96bb3a3a5a89373e708838862a5c1e317d175ed1"
+  },
+  "branch": "onboarding-value-clarity (final convergence with main 7385893f87a)",
+  "audit_kind": "delta audit of merge-integrated namespace (final base convergence)",
+  "scope": "ui.teamBridge only. 17 keys read against English source, merged English context, glossary and locale style guide: PR keys plan.reason_account, plan.see_plan; upstream #1832 added delivery.held_awaiting_review_unnamed, held_not_reviewed, held_screening and delivery.summary.{delivered,details_label,held,not_delivered,not_reviewed,not_reviewed_note,screening,separator}; upstream #1832 edited delivery.held, held_awaiting_review, held_screening_unavailable, info_held. Other keys byte-identical to merge base and not re-audited.",
+  "union_proof": "Computed from git objects: for en, en context and all 7 locales, HEAD dict == merge base 96bb3a3a5a8 + PR-changed keys (only the 2 plan.*) + main-changed keys (only the 15 delivery.*); overlap empty; True for every file; worktree bytes == HEAD blob.",
+  "three_way_proof": "For the 4 upstream-edited keys (delivery.held, held_awaiting_review, held_screening_unavailable, info_held) in en, en context and every locale: PR c2d84fcb64e value == merge base 96bb3a3a5a8 value (PR never touched them) and HEAD value == main 7385893f87a value. The English parity checker failure on these 4 keys is the upstream English edit, not a PR change; checker not modified or suppressed.",
+  "prior_receipts": {
+    "pr_ux_reviewer": {"path": "i18n/receipts/4342cfd05d3c-ovc-r2-tb-hi.json", "sha256": "77596af8fa71548ccf0e2f1fdba0c4d32f20274405966a3a96360eb0a2811687", "note": "plan.* values byte-identical at HEAD"},
+    "pr_reviewer": {"path": "i18n/receipts/onboarding-value-merge-hi-909a2c50a0bd.json", "sha256": "e5b0dcfc5bec7acf9ba8a3c9058408a02a7adb91494f23fe91509d5515211e5d", "note": "plan.* values byte-identical at HEAD"},
+    "upstream_pr1832": {"path": "i18n/receipts/ff66daec882c-pr1832-r2-hi.json", "sha256": "237173e68ef4e9963741d013b95411771d1f56beb25e210a9ce80d903446fb89", "note": "binds main 7385893f87a target bytes (00a695b88244...); delivery.* values byte-identical at HEAD"}
+  },
+  "references": {
+    "glossary": {"path": "~/local-operator/i18n/glossary.md", "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"},
+    "style_guide": {"path": "~/local-operator/i18n/style-guides/hi.md", "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"},
+    "glossary_style_revision": "e21f92fa4ee1a7a4095586e33453c19f54aca4f9"
+  },
+  "status": "passed",
+  "result": "clean",
+  "counts": {"blocker": 0, "major": 0, "minor": 0, "nit": 0},
+  "findings": [],
+  "namespaces": {
+    "ui.teamBridge": {
+      "namespace": "ui.teamBridge",
+      "status": "passed",
+      "result": "clean",
+      "sha256": {
+        "hi": "ba3eec5421653018f2a11b4d36908f2ede5d445b81b91a6d3826a2102028836e",
+        "en": "947554527605583cd0fa87359eb6c899294b7f0399a1acd4dc84417e8133576e"
+      },
+      "context_sha256": "65b70187789ecd8d6313cf01980435a4c69dc1517b3d53bc0ed722cadf0eab54",
+      "keys_reviewed": [
+        "ui.teamBridge.plan.reason_account", "ui.teamBridge.plan.see_plan",
+        "ui.teamBridge.delivery.held", "ui.teamBridge.delivery.held_awaiting_review", "ui.teamBridge.delivery.held_awaiting_review_unnamed", "ui.teamBridge.delivery.held_not_reviewed", "ui.teamBridge.delivery.held_screening", "ui.teamBridge.delivery.held_screening_unavailable", "ui.teamBridge.delivery.info_held",
+        "ui.teamBridge.delivery.summary.delivered", "ui.teamBridge.delivery.summary.details_label", "ui.teamBridge.delivery.summary.held", "ui.teamBridge.delivery.summary.not_delivered", "ui.teamBridge.delivery.summary.not_reviewed", "ui.teamBridge.delivery.summary.not_reviewed_note", "ui.teamBridge.delivery.summary.screening", "ui.teamBridge.delivery.summary.separator"
+      ],
+      "keys_read": 17,
+      "counts": {"blocker": 0, "major": 0, "minor": 0, "nit": 0},
+      "findings": []
+    }
+  },
+  "checks": [
+    "ICU parse with the repo's @formatjs/icu-messageformat-parser: argument names/types match English for all 17 keys (problems 0); plural arms one/other valid for hi (रुका/रुके).",
+    "Locale key set equals English (424 keys).",
+    "Semantics: delivery.* keep held vs screening vs not-reviewed distinctions with danda-terminated two-sentence lines; honorific plural for owners (मालिक ... करें); trailing ellipsis on delivery.held; plan.* keep 'Radient Team' with प्लान; no buy/upgrade wording."
+  ],
+  "limitations": "Source/text audit only; no rendered-fit or execution claim. Retained values rely on byte identity to the cited receipts."
+}

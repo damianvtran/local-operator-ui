@@ -119,13 +119,33 @@ test("the suggestion pool is the product's own requests, and nothing else", () =
 	assert.deepEqual(
 		DEFAULT_MESSAGE_SUGGESTIONS.slice(0, MAX_SUGGESTIONS).map(english),
 		[
-			"Set up Linear MCP for me",
 			"Create a team of agents",
-			"Turn on phone access",
-			"Show me what the agent did last turn",
+			"Review this repo and open a pull request",
+			"Schedule a task that runs every morning",
+			"Wake me tomorrow morning with a summary",
 		],
 		"the pinned opening sample is the pool's first four, in this order",
 	);
+	/*
+	 * Rule 3 (onboarding audit U5): the head is a new user's first screen, so
+	 * it never holds the three entries that need something a fresh install
+	 * lacks - MCP vocabulary, the paid phone add-on, a previous turn. Asserted
+	 * by key so a later reorder cannot quietly pin one of them again.
+	 */
+	for (const key of [
+		"ui.chat.composer.suggestion.linear_mcp",
+		"ui.chat.composer.suggestion.phone_access",
+		"ui.chat.composer.suggestion.last_turn",
+	]) {
+		assert.ok(
+			DEFAULT_MESSAGE_SUGGESTIONS.includes(key),
+			`${key} stays in the pool for later draws`,
+		);
+		assert.ok(
+			!DEFAULT_MESSAGE_SUGGESTIONS.slice(0, MAX_SUGGESTIONS).includes(key),
+			`${key} is not in the pinned opening four`,
+		);
+	}
 	/*
 	 * The head's two rules (`composer-suggestions.ts` states them with the why):
 	 * no two entries share a leading verb, so the four do not read as one request

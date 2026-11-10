@@ -1,3 +1,4 @@
+import { subscribeUrlFor } from "@features/team-bridge-trial/team-bridge-trial-model";
 import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
 import {
 	desktopFeatureEnabled,
@@ -28,6 +29,7 @@ import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
+import { openConsolePage } from "@shared/utils/radient-account-copy";
 import { Building2, Globe, Store } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -1363,7 +1365,7 @@ export const AgentHubPage: React.FC = () => {
 														})}
 											</AlertDescription>
 											{orgRefusal === "plan" && (
-												<div className="mt-2">
+												<div className="mt-2 flex flex-wrap items-center gap-2">
 													{/*
 													 * `primary`, not `outline` (design round 1, D1): an outlined
 													 * control's only boundary is its own edge against the alert's wash,
@@ -1383,6 +1385,27 @@ export const AgentHubPage: React.FC = () => {
 														{isFetching
 															? t("ui.hub.detail.trying")
 															: t("ui.common.actions.retry_again")}
+													</Button>
+													{/*
+													 * The body says an owner can activate the plan "in the
+													 * Radient console"; this is the way there, for the
+													 * organization being read (onboarding audit U4).
+													 * `secondary`, not `outline`: the D1 note above is about a
+													 * control whose only boundary is its edge against the wash,
+													 * and `secondary` brings its own `surface` fill, so the
+													 * control is separated from the alert by a ground step
+													 * rather than by `borderControl` alone. Retry keeps the
+													 * accent: it is still the step that resolves the alert.
+													 */}
+													<Button
+														variant="secondary"
+														size="sm"
+														data-testid="agent-hub-org-plan-console"
+														onClick={() =>
+															openConsolePage(subscribeUrlFor(orgScopeId))
+														}
+													>
+														{t("ui.chat.radient_session.action.open_console")}
 													</Button>
 												</div>
 											)}

@@ -1,0 +1,242 @@
+{
+	"schema": 1,
+	"audit_kind": "independent-translation-audit",
+	"agent": "reviewer",
+	"session": "909a2c50a0bd",
+	"instance": "onboarding-value-hi-909a2c50a0bd",
+	"model": "anthropic/claude-fable-5-2",
+	"auditor": {
+		"agent": "reviewer",
+		"session": "909a2c50a0bd",
+		"instance": "onboarding-value-hi-909a2c50a0bd",
+		"model": "anthropic/claude-fable-5-2",
+		"requested_model": "anthropic/claude-fable-5-2",
+		"fallback": false,
+		"model_source": "Harness session model header for session 909a2c50a0bd (anthropic/claude-fable-5-2); no model-switch or fallback notice was observed during the audit, including after the manager pause/resume.",
+		"team": "lopdev",
+		"role": "reviewer",
+		"independent_from_translator_session": true
+	},
+	"independence": "Independent auditor: this session did not draft, translate or edit any catalogue, context file or ledger row, and is a different agent and session from the translator.",
+	"translator": {
+		"agent": "coder",
+		"session": "4d5802c5f0fc",
+		"models": "anthropic/claude-fable-5-2 drafts, then openai/gpt-6.1-sol for the final onboarding intro (fallback)",
+		"source": "As stated in the lopdev manager's audit brief; NOT verified by this auditor."
+	},
+	"locale": "hi",
+	"date": "2026-11-09",
+	"round": "translation audit 1",
+	"scope": {
+		"repo": "damianvtran/local-operator-ui",
+		"worktree": "~/local-operator-ui/.worktrees/onboarding-value-clarity",
+		"base": "8d2a113b250",
+		"head": "c6869d8d800518f547da5efa7c6b99620b80dd21",
+		"pushed": false,
+		"note": "Audited the frozen local commit (not yet pushed). Scope is every key whose English value changed in base..head in the nine namespaces, read with its context entry and the locale's old and new values; unchanged keys in these files were not re-audited for meaning. Whole-file mechanical checks (key-set parity with English, bidi control characters) cover all keys."
+	},
+	"references": {
+		"core_revision": "ac135d06a7fec0bfddd80c3ec058b6b9667d66df",
+		"core_revision_note": "origin/main of the local ~/local-operator clone as it stood at audit time (read with git show; not fetched during this audit).",
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/hi.md",
+			"sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+		}
+	},
+	"method": {
+		"read": "Each changed key was read for meaning, idiom, register and term consistency against the English source, its context entry, the core glossary, the locale style guide and existing catalogue precedent at this head.",
+		"mechanical_checks_executed": [
+			"key set of each target file equals the English key set",
+			"top-level ICU argument names and brace balance of every changed key equal the English ones",
+			"no manual bidi control characters (U+200E/F, U+202A-E, U+2066-9, U+061C) in any value of the nine target files",
+			"for keys whose only English change was 'Team plan' -> 'Radient Team plan', the target differs from its base value only by the inserted 'Radient ' (or is byte-identical where the locale already carried it)",
+			"no value in the locale's ui.* catalogues still names the plan without 'Radient'"
+		],
+		"not_done": "No rendered frames, pseudo-localization, width/fit measurement or native-speaker review. No tests, builds or gates were run. This is a text audit only."
+	},
+	"acceptance": {
+		"plan_name": "Consistent: 'Radient Team प्लान' in every audited key.",
+		"credit_claim": "ui.onboarding.connect.intro keeps all three conditions (eligible new accounts, email verification, security check), states no amount and uses 'can', so it makes no unconditional free-credit claim.",
+		"no_free_usage_claim": "ui.providers...one_browser_sign_in_nothing_to_paste says no subscription or API key is needed and does not say usage is free or unlimited.",
+		"see_plan": "ui.teamBridge.plan.see_plan is a neutral 'see/view', not buy/upgrade/subscribe."
+	},
+	"namespaces": {
+		"ui.onboarding": {
+			"status": "passed",
+			"result": "clean",
+			"sha256": {
+				"en": "a05d9e709b4322431c5dfb470ee5e964c8b03a225f497edc0bba5e5fcff2eaf8",
+				"hi": "b85e2be4670cbb2e9c347c9cd1f49f8d79ddaba9bd1e23024d8ea04c18ae7db3"
+			},
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.onboarding.json",
+				"hi": "src/i18n/catalogues/hi/ui.onboarding.json",
+				"context": "src/i18n/catalogues/en/ui.onboarding.context.json"
+			},
+			"context_sha256": "8a5f95e7d1576a86e71feaf2271c72a1f7dfe922954f3dfb27a5f5b3249dc170",
+			"audited_keys": [
+				"ui.onboarding.connect.intro",
+				"ui.onboarding.search.mode.free_detail"
+			],
+			"findings": []
+		},
+		"ui.providers": {
+			"status": "passed",
+			"result": "clean",
+			"sha256": {
+				"en": "54cc1b705f315ce0e0d4a28182a9923cff8dcf0209d4d0736694102baf027098",
+				"hi": "c70cb8af8a9ec1e35049d964dc3923d0ecc13c3a022cb367033a22c2a53fe1ae"
+			},
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.providers.json",
+				"hi": "src/i18n/catalogues/hi/ui.providers.json",
+				"context": "src/i18n/catalogues/en/ui.providers.context.json"
+			},
+			"context_sha256": "9e42019e3eedd2c53b48b766a153576b1e7efa50471322cc720179db749f1373",
+			"audited_keys": [
+				"ui.providers.provider_catalog.one_browser_sign_in_nothing_to_paste"
+			],
+			"findings": []
+		},
+		"ui.teamBridge": {
+			"status": "passed",
+			"result": "clean",
+			"sha256": {
+				"en": "6af68e35d6998197be44094cf65aed178ca012ad9090aad36c7dde733ce989ce",
+				"hi": "f2567bea23a728a3b72766e41ab8d30841bc62aae33e2c16d2c5f5d8a5a3ae75"
+			},
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.teamBridge.json",
+				"hi": "src/i18n/catalogues/hi/ui.teamBridge.json",
+				"context": "src/i18n/catalogues/en/ui.teamBridge.context.json"
+			},
+			"context_sha256": "23f853879433e14b121e499ff98d3c8d53d5cd96ea7e7c7b0767ab85fadb960a",
+			"audited_keys": [
+				"ui.teamBridge.plan.reason_account",
+				"ui.teamBridge.plan.see_plan"
+			],
+			"findings": []
+		},
+		"ui.settings.account": {
+			"status": "passed",
+			"result": "clean",
+			"sha256": {
+				"en": "73501a3901006b5b32dd58661c89c7331a6edb9ea11d96ff00f1d48a979ccb6e",
+				"hi": "cd9122e7f9c7549d76ec766799d7533ab09e6b6ad8c61ea75f797f317f923c46"
+			},
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.settings.account.json",
+				"hi": "src/i18n/catalogues/hi/ui.settings.account.json",
+				"context": "src/i18n/catalogues/en/ui.settings.account.context.json"
+			},
+			"context_sha256": "866b976edf768b0d006be08dd56def1fd7b8c7d77074c6b2c423ac63635176b9",
+			"audited_keys": [
+				"ui.settings.account.radient_account_section.team_plan_line"
+			],
+			"findings": []
+		},
+		"ui.agents.publication": {
+			"status": "passed",
+			"result": "clean",
+			"sha256": {
+				"en": "b386f0fe158efe961ed10c55ce02c17a241a4f16a8b66e8fad3466fec393033b",
+				"hi": "5849c83671f0413cc737b6440c255c36ea09c0165ca97e6b58c1192639ffe8cd"
+			},
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.agents.publication.json",
+				"hi": "src/i18n/catalogues/hi/ui.agents.publication.json",
+				"context": "src/i18n/catalogues/en/ui.agents.publication.context.json"
+			},
+			"context_sha256": "69ceeff1e7162764e13c6d5fdee8e7a9f1184f1ab8209839a34e64ce6c486f90",
+			"audited_keys": [
+				"ui.agents.publication.team_plan_required.body",
+				"ui.agents.publication.team_plan_required.body_pull",
+				"ui.agents.publication.team_plan_required.headline"
+			],
+			"findings": []
+		},
+		"ui.agents.upload": {
+			"status": "passed",
+			"result": "clean",
+			"sha256": {
+				"en": "e2fe5db65bd3266e3d438d05bd704d077c149c32bfa3a8846a962adad66573e4",
+				"hi": "08c681e6252a5bc7b1f22356f685d54d4cfa72b6ab9853ac270fac2cbcda4c5f"
+			},
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.agents.upload.json",
+				"hi": "src/i18n/catalogues/hi/ui.agents.upload.json",
+				"context": "src/i18n/catalogues/en/ui.agents.upload.context.json"
+			},
+			"context_sha256": "b2cff9fc8975e5bc6c394a39a9cbd464a53304f6be9657f80446801c0072734f",
+			"audited_keys": [
+				"ui.agents.upload.target.blocked_hint"
+			],
+			"findings": []
+		},
+		"ui.hub.pages": {
+			"status": "passed",
+			"result": "clean",
+			"sha256": {
+				"en": "535ba4d3d7fe9e26a3459fcfb4eed5e268e2f5aa882e25d3dbefb66a2fc2867b",
+				"hi": "446825d6e3914a9510f2329f2c30bc0c4a4717905e79579fa65bb0e46438e613"
+			},
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.hub.pages.json",
+				"hi": "src/i18n/catalogues/hi/ui.hub.pages.json",
+				"context": "src/i18n/catalogues/en/ui.hub.pages.context.json"
+			},
+			"context_sha256": "e78c02114d87f722bd47bb14ea61f5ac3281407581132bd9a715c81d1a112872",
+			"audited_keys": [
+				"ui.hub.pages.org.plan_headline",
+				"ui.hub.pages.org.plan_body"
+			],
+			"findings": []
+		},
+		"ui.hub.teams": {
+			"status": "passed",
+			"result": "clean",
+			"sha256": {
+				"en": "827495d3c9a421808b13fd0918dae4db741086b5d9378a6f58e031c2c7d27d25",
+				"hi": "9603b4f22f923405a47c12f92e31acd7b0789f14e6fa3df63d2ff6036b5a476d"
+			},
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.hub.teams.json",
+				"hi": "src/i18n/catalogues/hi/ui.hub.teams.json",
+				"context": "src/i18n/catalogues/en/ui.hub.teams.context.json"
+			},
+			"context_sha256": "5ff2873c5549724860df39f48eae57585a38dacc5bfdb5ae24758ab58e981fbe",
+			"audited_keys": [
+				"ui.hub.teams.org.plan_body",
+				"ui.hub.teams.org.plan_headline"
+			],
+			"findings": []
+		},
+		"ui.teamBridgeTrial": {
+			"status": "passed",
+			"result": "clean",
+			"sha256": {
+				"en": "63a88b5951975cbca5b42fe06f3052a6d47ed2b72518c6327914b161d218a767",
+				"hi": "8cf8030df6a1d39aa47417090f651851ba069cff6aab486ab1c0151397897f77"
+			},
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.teamBridgeTrial.json",
+				"hi": "src/i18n/catalogues/hi/ui.teamBridgeTrial.json",
+				"context": "src/i18n/catalogues/en/ui.teamBridgeTrial.context.json"
+			},
+			"context_sha256": "964f7f893d1f066aa8fbcedfb4533f19a50aae7984c250a81c60675c72b3b411",
+			"audited_keys": [
+				"ui.teamBridgeTrial.empty.title",
+				"ui.teamBridgeTrial.empty.checking",
+				"ui.teamBridgeTrial.ineligible.trial_used",
+				"ui.teamBridgeTrial.ineligible.former_subscriber",
+				"ui.teamBridgeTrial.ineligible.email_unverified",
+				"ui.teamBridgeTrial.ineligible.other"
+			],
+			"findings": []
+		}
+	}
+}

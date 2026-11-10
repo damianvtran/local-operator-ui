@@ -1,5 +1,5 @@
 {
-	"ui.onboarding.connect.intro": "Local Operator को काम करने के लिए AI खाते की ज़रूरत है। Radient सबसे आसान है: ब्राउज़र में एक बार साइन इन करें, कुछ पेस्ट नहीं करना पड़ता। पहले से ChatGPT या Claude के लिए भुगतान करते हैं? उसी खाते से साइन इन करें। दूसरे विकल्प देखने के लिए नीचे प्रोवाइडरों की सूची खोलें।",
+	"ui.onboarding.connect.intro": "Radient चुनें और ब्राउज़र से एक बार साइन इन करके कई मॉडल, डिक्टेशन और एजेंट साझा करने की सुविधा पाएँ। या अपनी Claude या ChatGPT सदस्यता, API कुंजी या अपने कंप्यूटर पर चलने वाला मॉडल इस्तेमाल करें। पात्र नए Radient खाते ईमेल सत्यापन और सुरक्षा जाँच के बाद मुफ़्त क्रेडिट पा सकते हैं।",
 	"ui.onboarding.default_model.block.loading_models": "मॉडल की सूची लोड हो रही है…",
 	"ui.onboarding.default_model.block.pick_a_model": "आगे बढ़ने के लिए मॉडल चुनें।",
 	"ui.onboarding.default_model.change": "बदलें",
@@ -33,7 +33,7 @@
 	"ui.onboarding.search.each_key_saved": "किसी फ़ील्ड से बाहर निकलते ही उसकी कुंजी आपके डिवाइस पर सहेज दी जाती है।",
 	"ui.onboarding.search.intro": "काम करते समय एजेंट जानकारी खोज सकते हैं — आज की कीमतें, इस हफ़्ते की ख़बरें — सिर्फ़ मॉडल की पहले से सीखी जानकारी पर निर्भर रहने के बजाय।",
 	"ui.onboarding.search.mode.free": "मुफ़्त",
-	"ui.onboarding.search.mode.free_detail": "मुफ़्त प्रोवाइडर बारी-बारी से इस्तेमाल होते हैं — DuckDuckGo, Tavily का मुफ़्त प्लान, Exa और Parallel। कुंजी की ज़रूरत नहीं; इन्हें सभी साझा करते हैं, इसलिए व्यस्त समय में खोज धीमी हो सकती है।",
+	"ui.onboarding.search.mode.free_detail": "मुफ़्त खोज सेवाएँ इस्तेमाल होती हैं, जिन्हें दूसरे उपयोगकर्ता भी साझा करते हैं। कुंजी की ज़रूरत नहीं। व्यस्त समय में खोज धीमी हो सकती है।",
 	"ui.onboarding.search.mode.keys": "API कुंजियाँ जोड़ें",
 	"ui.onboarding.search.mode.keys_detail": "जिन खोज प्रोवाइडरों का इस्तेमाल करते हैं, उनके लिए अपनी कुंजियाँ जोड़ें।",
 	"ui.onboarding.search.mode.label": "खोज का सेटअप",

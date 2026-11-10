@@ -1,5 +1,5 @@
 {
-	"ui.onboarding.connect.intro": "Local Operator needs an AI account to work. Radient is the easiest: one browser sign-in and nothing to paste. Already pay for ChatGPT or Claude? Sign in with that instead. Anything else is under More providers.",
+	"ui.onboarding.connect.intro": "Choose Radient for many models, dictation and agent sharing through one browser sign-in. Or use your Claude or ChatGPT subscription, an API key or a model on your computer. Eligible new Radient accounts can claim free credit after email verification and a security check.",
 	"ui.onboarding.default_model.block.loading_models": "Loading the model list…",
 	"ui.onboarding.default_model.block.pick_a_model": "Pick a model to continue.",
 	"ui.onboarding.default_model.change": "Change",
@@ -33,7 +33,7 @@
 	"ui.onboarding.search.each_key_saved": "Each key is saved on your device as soon as you leave its field.",
 	"ui.onboarding.search.intro": "Agents can look things up while they work — today's prices, this week's news — instead of relying on what the model already knows.",
 	"ui.onboarding.search.mode.free": "Free",
-	"ui.onboarding.search.mode.free_detail": "Uses a rotating pool of free providers — DuckDuckGo, Tavily's free tier, Exa and Parallel. No key needed; the pool is shared, so searches can be slower at busy times.",
+	"ui.onboarding.search.mode.free_detail": "Uses free search services shared with other users. No key needed. Searches can be slower at busy times.",
 	"ui.onboarding.search.mode.keys": "Add API keys",
 	"ui.onboarding.search.mode.keys_detail": "Bring your own keys for the search providers you use.",
 	"ui.onboarding.search.mode.label": "Search setup",

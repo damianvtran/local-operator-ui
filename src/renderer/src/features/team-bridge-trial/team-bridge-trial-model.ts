@@ -68,6 +68,37 @@ export function subscribeUrlFor(tenantId?: string | null): string {
 	return url.toString();
 }
 
+/**
+ * The one action the Team Bridge gate panel offers for a reason, or null.
+ *
+ * WHY EVERY GATE HAS ONE. A gate that names a remedy and gives no control for
+ * it is a dead end: the signed-out panel said "Sign in" with nothing to press,
+ * and the plan panel named a plan with no way to look at it (onboarding audit
+ * U2, U3). Each is a single SECONDARY control inside the panel the reader
+ * already opened. Nothing here adds a banner, a badge or a prompt anywhere
+ * else, so a user who never opens Team Bridge is never told about the plan.
+ *
+ * WHY `see_plan` YIELDS TO THE TRIAL. Once `TEAM_TRIAL_START_ENABLED` is on,
+ * the no-organization branch mounts the trial on-ramp, whose "start trial" and
+ * "Subscribe" controls are the upgrade route. A second route to the same
+ * console page beside them would be two answers to one question, so the plan
+ * link is withheld for the whole of that release state rather than per view.
+ * The flag is a parameter so both states are testable while the constant is
+ * still false in every shipped build.
+ */
+export type TeamBridgeGateAction = "see_plan" | "sign_in" | "settings";
+
+export function teamBridgeGateAction(
+	reason: string,
+	trialStartEnabled: boolean,
+): TeamBridgeGateAction | null {
+	if (reason === "off" || reason === "off_local") return "settings";
+	if (reason === "signed_out") return "sign_in";
+	if (reason === "plan_required") return trialStartEnabled ? null : "see_plan";
+	// `update_required` and `unavailable`: nothing this panel can open helps.
+	return null;
+}
+
 export type TrialEligibilityRead = {
 	eligible: boolean;
 	reason: string | null;

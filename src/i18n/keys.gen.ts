@@ -10477,6 +10477,7 @@ export type MessageParams = {
 	"ui.settings.account.radient_account_section.sign_in_to_access_your_account_details_or_sign_up_to_get_free_cre": undefined;
 	"ui.settings.account.radient_account_section.sign_out_from_radient": undefined;
 	"ui.settings.account.radient_account_section.status": undefined;
+	"ui.settings.account.radient_account_section.team_plan_line": undefined;
 	"ui.settings.account.radient_account_section.tenant_id": undefined;
 	"ui.settings.account.radient_account_section.you_are_not_currently_signed_in_to_radient": undefined;
 	"ui.settings.account.radient_account_section.your_radient_account_could_not_be_read_so_this_app_cannot_show_yo": undefined;
@@ -12288,6 +12289,8 @@ export type MessageParams = {
 	"ui.teamBridge.plan.body": undefined;
 	"ui.teamBridge.plan.checking": undefined;
 	"ui.teamBridge.plan.reason": undefined;
+	"ui.teamBridge.plan.reason_account": undefined;
+	"ui.teamBridge.plan.see_plan": undefined;
 	"ui.teamBridge.plan.sign_in_reason": undefined;
 	"ui.teamBridge.plan.sign_in_title": undefined;
 	"ui.teamBridge.plan.title": undefined;

@@ -29,7 +29,7 @@
 	"ui.agents.upload.sign_in.needed": "Bạn cần đăng nhập Radient để xuất bản tác nhân lên Trung tâm tác nhân.",
 	"ui.agents.upload.sign_in.nothing_left": "Không có gì khác rời khỏi máy này: không có cuộc trò chuyện, lịch sử thực thi, bộ nhớ, kế hoạch hay cấu hình riêng của máy.",
 	"ui.agents.upload.sign_in.reauthenticate": "Đăng nhập lại Radient để thay thông tin xác thực mà trung tâm đã từ chối.",
-	"ui.agents.upload.target.blocked_hint": "Chia sẻ tác nhân trong một tổ chức thuộc gói Team. {count, plural, =1 {Chủ sở hữu của {org}} other {Chủ sở hữu của một trong các tổ chức được đánh dấu ở trên}} có thể kích hoạt gói này trong Radient Console.",
+	"ui.agents.upload.target.blocked_hint": "Chia sẻ tác nhân trong một tổ chức thuộc gói Radient Team. {count, plural, =1 {Chủ sở hữu của {org}} other {Chủ sở hữu của một trong các tổ chức được đánh dấu ở trên}} có thể kích hoạt gói này trong Radient Console.",
 	"ui.agents.upload.target.label": "Xuất bản đến",
 	"ui.agents.upload.target.org_unnamed": "tổ chức này",
 	"ui.agents.upload.target.orgs_unread": "Không đọc được các tổ chức của bạn nên lần này sẽ xuất bản lên trung tâm công khai. Hãy thử lại sau giây lát để xuất bản vào một tổ chức.",
