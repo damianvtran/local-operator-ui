@@ -123,24 +123,44 @@ export const DropdownMenuSubContent = forwardRef<
 		() => composeRefs(ref, panelRef),
 		[ref, panelRef],
 	);
+	/*
+	 * THE SUB PANEL IS PORTALLED, LIKE ITS PARENT (0.53.0: "Extensions" could not
+	 * be opened). Rendered in place it is a DOM descendant of the parent panel,
+	 * and Radix positions it `position: fixed`. A fixed box resolves against the
+	 * nearest ancestor with a `transform`/`filter`/`backdrop-filter`; on glass the
+	 * parent panel wears `backdrop-filter: blur(12px)` (`[data-glass-overlay]` in
+	 * `styles/index.css`), so it became the sub panel's containing block and its
+	 * `overflow-hidden` clipped the sub panel away entirely. The row highlighted,
+	 * the submenu opened invisibly, and the pointer heading for it left the
+	 * trigger for nothing, which closed it. Portalled to <body>, the sub panel is
+	 * positioned against the viewport, so Radix's collision handling can also flip
+	 * it to the left of a menu sitting at the window's right edge.
+	 *
+	 * The measured pause still holds: `panelRef` measures THIS element wherever
+	 * it is mounted, and Radix keeps the sub's pointer grace, focus and dismissal
+	 * through React context, not DOM nesting. Guarded by
+	 * `scripts/dropdown-submenu-portal-dom.test.mjs`.
+	 */
 	return (
-		<DropdownMenuPrimitive.SubContent
-			ref={composedRef}
-			/*
-			 * Not a drag surface; see the marker's note in `dialog.tsx` and the rule it is
-			 * read by in `styles/index.css`. A menu that opens near the top of the window
-			 * can overlap the chrome strip, and a row inside the window's draggable
-			 * region is a row that cannot be clicked.
-			 */
-			data-titlebar-no-drag=""
-			data-glass-overlay=""
-			/* A submenu is a floating panel like its parent: without the marker the
-			 * focus rule's box-shadow reset (`styles/index.css`) still reaches it and
-			 * a focused submenu loses its elevation (QA round 1, Q1). */
-			data-lo-floating=""
-			className={cn(panelClasses, className)}
-			{...props}
-		/>
+		<DropdownMenuPrimitive.Portal>
+			<DropdownMenuPrimitive.SubContent
+				ref={composedRef}
+				/*
+				 * Not a drag surface; see the marker's note in `dialog.tsx` and the rule it is
+				 * read by in `styles/index.css`. A menu that opens near the top of the window
+				 * can overlap the chrome strip, and a row inside the window's draggable
+				 * region is a row that cannot be clicked.
+				 */
+				data-titlebar-no-drag=""
+				data-glass-overlay=""
+				/* A submenu is a floating panel like its parent: without the marker the
+				 * focus rule's box-shadow reset (`styles/index.css`) still reaches it and
+				 * a focused submenu loses its elevation (QA round 1, Q1). */
+				data-lo-floating=""
+				className={cn(panelClasses, className)}
+				{...props}
+			/>
+		</DropdownMenuPrimitive.Portal>
 	);
 });
 DropdownMenuSubContent.displayName = "DropdownMenuSubContent";
