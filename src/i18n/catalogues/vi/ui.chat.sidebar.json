@@ -79,5 +79,10 @@
 	"ui.chat.sidebar.catalogue.show_more_teams": "Hiện thêm {count, plural, other {{count, number, ::group-off} nhóm}}",
 	"ui.chat.sidebar.drafts.row_label": "Bản nháp: {title}",
 	"ui.chat.sidebar.drafts.discard_label": "Bỏ bản nháp “{title}”",
-	"ui.chat.sidebar.mark_all_read.label": "Đánh dấu tất cả {count, number, ::group-off} đã đọc"
+	"ui.chat.sidebar.mark_all_read.label": "Đánh dấu tất cả {count, number, ::group-off} đã đọc",
+	"ui.chat.sidebar.mark_all_read.scope_chats": "{count, plural, other {Đánh dấu {count, number, ::group-off} cuộc trò chuyện chưa đọc là đã đọc.}}",
+	"ui.chat.sidebar.mark_all_read.scope_chats_elsewhere": "{count, plural, other {Đánh dấu {count, number, ::group-off} cuộc trò chuyện chưa đọc là đã đọc}}, trong đó có {elsewhere, plural, other {{elsewhere, number, ::group-off} cuộc trò chuyện không đang hoạt động}}.",
+	"ui.chat.sidebar.mark_all_read.scope_tokenless": "{count, plural, other {{count, number, ::group-off} dấu chưa đọc không có mã xác nhận hoàn tất nên không thể xóa.}}",
+	"ui.chat.sidebar.mark_all_read.scope_joined": "{chats} {tokenless}",
+	"ui.chat.sidebar.mark_all_read.name_suffix_elsewhere": ", trong đó có {elsewhere, plural, other {{elsewhere, number, ::group-off} cuộc trò chuyện không đang hoạt động}}"
 }

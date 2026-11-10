@@ -114,7 +114,7 @@ const bundle = await build({
 				TRANSCRIPT_DISPLAY_MODE_OPTIONS,
 				transcriptDisplayModeLabel,
 			} from "./src/renderer/src/features/chat/transcript-display-mode";
-			export { registerCatalogue, clearRegisteredCatalogues, setLocale } from "./src/renderer/src/shared/i18n";`,
+			export { registerCatalogue, clearRegisteredCatalogues, setLocale, t } from "./src/renderer/src/shared/i18n";`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -409,6 +409,68 @@ test("the bulk control's tooltip and accessible-name suffix are catalogue copy i
 			`${copy.scope}|${copy.nameSuffix}`,
 			ENGLISH_TOOLTIP_FRAGMENT,
 			"no English fragment survives in a non-English locale",
+		);
+	}
+	useEnglish();
+});
+
+test("the shipped tooltip and name-suffix messages format cleanly in every locale", (ctx) => {
+	/*
+	 * The marker test above proves the WIRING; this one proves the SHIPPED values.
+	 * Each locale's five messages go through the production formatter (`t`, over the
+	 * bundled catalogue, no marker registered) for the counts that exercise every
+	 * CLDR plural category the seven languages use (0, 1, 2, 5, 21, and a number
+	 * large enough that grouping would show), and none may leave an ICU brace
+	 * behind. A non-English locale may not leak the English fragments either: that
+	 * is the operator's acceptance ("no English in fr") applied to this copy.
+	 */
+	mod.clearRegisteredCatalogues();
+	const English = /\b(unread|not active|Mark|including|completion token)\b/;
+	const KEYS = "ui.chat.sidebar.mark_all_read.";
+	const render = (count, elsewhere) => {
+		const chats = mod.t(`${KEYS}scope_chats_elsewhere`, { count, elsewhere });
+		const plain = mod.t(`${KEYS}scope_chats`, { count });
+		const tokenless = mod.t(`${KEYS}scope_tokenless`, { count });
+		return {
+			outputs: [
+				plain,
+				chats,
+				tokenless,
+				mod.t(`${KEYS}scope_joined`, { chats, tokenless }),
+				mod.t(`${KEYS}name_suffix_elsewhere`, { elsewhere }),
+			],
+			tooltip: mod.t(`${KEYS}scope_joined`, { chats, tokenless }),
+			suffix: mod.t(`${KEYS}name_suffix_elsewhere`, { elsewhere }),
+		};
+	};
+	for (const locale of ["en", "fr", "es", "zh-CN", "ru", "vi", "ur", "hi"]) {
+		act(() => mod.setLocale(locale));
+		for (const count of [0, 1, 2, 5, 21, 1_000_000]) {
+			for (const elsewhere of [1, 2, 5]) {
+				for (const out of render(count, elsewhere).outputs) {
+					assert.ok(out.length > 0, `${locale} ${count}/${elsewhere}: empty`);
+					assert.doesNotMatch(
+						out,
+						/[{}]/,
+						`${locale} ${count}/${elsewhere}: ICU brace left in ${out}`,
+					);
+					assert.doesNotMatch(
+						out,
+						/1,000,000|1 000 000|1\.000\.000/,
+						`${locale}: grouped digits in ${out}`,
+					);
+					if (locale !== "en")
+						assert.doesNotMatch(
+							out,
+							English,
+							`${locale} ${count}/${elsewhere}: English in ${out}`,
+						);
+				}
+			}
+		}
+		const shown = render(5, 2);
+		ctx.diagnostic(
+			`${locale} tooltip: ${shown.tooltip} | suffix: ${shown.suffix}`,
 		);
 	}
 	useEnglish();
