@@ -175,6 +175,41 @@ class PortableContracts(unittest.TestCase):
         self.assertIn("'finished_after_cancel':'cancelled'", source)
         self.assertIn("x=>x.track&&x.card===lateOutcome,10000)", source)
 
+    def test_late_result_failure_records_evidence_without_loosening(self):
+        # Run 42849428922 failed late_result_visible with nothing recorded. The
+        # poll must leave its last value, a ~500 ms timeline, a diagnostic 30 s
+        # first-seen watch and a failure frame -- while the 10 s assertion stays.
+        source = (HERE / 'music-native-serving-consumer.mjs').read_text()
+        self.assertIn("note(label+'_timeout',{last,elapsed_ms:", source)
+        self.assertIn("observed('late_result_visible',lateRead,x=>x.track&&x.card===lateOutcome,10000)", source)
+        self.assertIn("note('late_result_timeline'", source)
+        self.assertIn("t-lastSample>=500", source)
+        self.assertIn("Date.now()-lateStarted<30000", source)
+        self.assertIn("note('late_result_extended'", source)
+        self.assertIn("throw e;", source)
+        self.assertIn("frame('music-failure-final')", source)
+        preflight = (HERE / 'music-serving-core-preflight.py').read_text()
+        self.assertIn("client.get(target+'/history')", preflight)
+        self.assertIn("(ROOT/'session-history.json').write_text(json.dumps(scrub(", preflight)
+
+    def test_collector_keeps_history_and_text_logs_only(self):
+        spec = importlib.util.spec_from_file_location('music_collector', HERE / 'collect_artifacts.py')
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        with tempfile.TemporaryDirectory(dir=os.environ['LOCAL_OPERATOR_SCRATCHPAD']) as directory:
+            root = Path(directory)
+            run = root / 'source' / 'serving-core-test'
+            (run / 'logs').mkdir(parents=True)
+            (run / 'qa-secrets.json').write_text(json.dumps({'desktop': 'own-test-bearer', 'upstream': 'up-key'}))
+            (run / 'session-history.json').write_text('{"h": "Bearer own-test-bearer"}')
+            (run / 'logs' / 'worker.log').write_text('key=up-key')
+            (run / 'logs' / 'auth.db').write_bytes(b'not-an-artifact')
+            output = root / 'output'
+            module.collect(root / 'source', output)
+            self.assertEqual((output / 'serving-core-test/session-history.json').read_text(), '{"h": "Bearer [synthetic-redacted]"}')
+            self.assertEqual((output / 'serving-core-test/logs/worker.log').read_text(), 'key=[synthetic-redacted]')
+            self.assertFalse((output / 'serving-core-test/logs/auth.db').exists())
+
     def test_collector_excludes_auth_profiles_and_redacts_owned_tokens(self):
         spec = importlib.util.spec_from_file_location('music_collector', HERE / 'collect_artifacts.py')
         module = importlib.util.module_from_spec(spec)

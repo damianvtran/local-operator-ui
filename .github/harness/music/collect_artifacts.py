@@ -15,14 +15,17 @@ def collect(source: Path, output: Path) -> None:
     copied = []
     allowed = {
         'receipt.json', 'native-result.json', 'core.log', 'native.log', 'events.log',
-        'ui-checkout.txt', 'ui-trees.txt', 'app-source-sha256.txt',
+        'ui-checkout.txt', 'ui-trees.txt', 'app-source-sha256.txt', 'session-history.json',
     }
     if source.exists():
         for path in source.rglob('*'):
             if not path.is_file() or path.is_symlink():
                 continue
             frame = 'frames' in path.relative_to(source).parts
-            text = path.name in allowed or path.name.startswith('bootstrap-') and path.suffix == '.jsonl' or path.name.startswith('resource-admission-') and path.suffix == '.json'
+            # Core/worker logs (LOCAL_OPERATOR_LOG_DIR=<run>/logs) are text only and
+            # pass the same seed redaction; databases and anything else stay out.
+            log = 'logs' in path.relative_to(source).parts[:-1] and path.suffix in {'.log', '.jsonl', '.txt'}
+            text = log or path.name in allowed or path.name.startswith('bootstrap-') and path.suffix == '.jsonl' or path.name.startswith('resource-admission-') and path.suffix == '.json'
             if not text and not (frame and path.suffix in {'.png', '.json'}):
                 continue
             relative = path.relative_to(source)

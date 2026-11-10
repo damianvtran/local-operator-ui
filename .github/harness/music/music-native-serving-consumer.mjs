@@ -27,7 +27,11 @@ async function cleanup(){
 const reaper=signalCleanup(cleanup,()=>{interrupted=true;process.exitCode=143;});
 function demand(message, condition){if(!condition)throw Error(message);}
 // `ms` bounds the poll (default 30 s); a timeout is a failed required condition.
-async function observed(label, read, accept, ms=30000){for(let i=0;i<Math.ceil(ms/100);i++){const value=await read();if(accept(value)){note(label,value);return value;}await pause(100);}throw Error('Required actual native condition absent: '+label);}
+// On timeout the LAST observed value and elapsed time are noted before the throw:
+// run 42849428922 failed late_result_visible with nothing recorded, so the root cause
+// (card left the DOM vs late delivery vs selector) was undeterminable. Diagnostic only;
+// the accept predicate and bound are unchanged.
+async function observed(label, read, accept, ms=30000){const started=Date.now();let last;for(let i=0;i<Math.ceil(ms/100);i++){const value=await read();last=value;if(accept(value)){note(label,value);return value;}await pause(100);}note(label+'_timeout',{last,elapsed_ms:Date.now()-started,bound_ms:ms});throw Error('Required actual native condition absent: '+label);}
 // Operator decision a-69e7: the pending motif is measured on the INLINE chat card for
 // the named pending job, before the Jobs panel opens, so a motif only the panel paints fails.
 async function motionFacts(job){const card='[data-music-generating='+JSON.stringify(job)+']';return cdp.evaluate(`(()=>{const svg=document.querySelector(${JSON.stringify(card+' [data-music-motif]')});const r=svg?.getBoundingClientRect();return {reduce:matchMedia('(prefers-reduced-motion: reduce)').matches,animation:svg?getComputedStyle(svg).animationName:null,width:r?.width||0,height:r?.height||0}})()`);}
@@ -81,7 +85,26 @@ try{
  // finished_after_cancel, never cancelled; no audio stays cancelled.
  const pendingCard='[data-music-generating='+JSON.stringify(pending.job)+']';
  const lateOutcome=late.artifacts?.length?'finished_after_cancel':'cancelled';
- await observed('late_result_visible',()=>cdp.evaluate(`(()=>{const e=document.querySelector(${JSON.stringify('[data-music-track='+JSON.stringify(track)+']:not([data-turn-summary] *)')});const r=e?.getBoundingClientRect();return {track:!!e&&r.width>0&&r.height>0,card:document.querySelector(${JSON.stringify(pendingCard)})?.getAttribute('data-music-state')||null}})()`),x=>x.track&&x.card===lateOutcome,10000);
+ // `track`/`card` keep their exact asserted meaning; the other fields are evidence
+// only (where the track is, the card's text, every generating card, result counts),
+// sampled every ~500 ms into late_result_timeline so a failure names its cause.
+ const lateProbe=()=>cdp.evaluate(`(()=>{const e=document.querySelector(${JSON.stringify('[data-music-track='+JSON.stringify(track)+']:not([data-turn-summary] *)')});const r=e?.getBoundingClientRect();const all=[...document.querySelectorAll(${JSON.stringify('[data-music-track='+JSON.stringify(track)+']')})];const c=document.querySelector(${JSON.stringify(pendingCard)});return {track:!!e&&r.width>0&&r.height>0,card:c?.getAttribute('data-music-state')||null,track_nodes:all.length,track_in_summary:all.filter(x=>x.closest('[data-turn-summary]')).length,card_present:!!c,card_text:c?.textContent?.trim().slice(0,160)||null,generating:[...document.querySelectorAll('[data-music-generating]')].map(x=>({job:x.getAttribute('data-music-generating'),state:x.getAttribute('data-music-state')})),results:document.querySelectorAll('[data-music-result]').length,tracks:[...document.querySelectorAll('[data-music-track]')].map(x=>x.getAttribute('data-music-track'))}})()`);
+ const lateStarted=Date.now(),lateTimeline=[],lateFirst={};let lastSample=-Infinity;
+ const lateRead=async()=>{const x=await lateProbe();const t=Date.now()-lateStarted;
+  if(x.track&&lateFirst.track_ms===undefined)lateFirst.track_ms=t;
+  if(x.card&&lateFirst['card_'+x.card+'_ms']===undefined)lateFirst['card_'+x.card+'_ms']=t;
+  if(!x.card_present&&lateFirst.card_absent_ms===undefined)lateFirst.card_absent_ms=t;
+  if(t-lastSample>=500){lastSample=t;lateTimeline.push({t,track:x.track,in_summary:x.track_in_summary,nodes:x.track_nodes,card:x.card_present?x.card:'absent',text:x.card_text,generating:x.generating,results:x.results,tracks:x.tracks.length});}
+  return x;};
+ try{
+ await observed('late_result_visible',lateRead,x=>x.track&&x.card===lateOutcome,10000);
+ }catch(e){
+  // Diagnostic only, never asserted: keep watching to 30 s total so a late-delivery
+  // hypothesis is measurable (when did the track / card state first appear?).
+  try{while(Date.now()-lateStarted<30000){const x=await lateRead();if(x.track&&x.card===lateOutcome)break;await pause(100);}}catch(diag){note('late_result_extended_error',String(diag));}
+  note('late_result_extended',{expected_card:lateOutcome,track,first_seen:lateFirst,watched_ms:Date.now()-lateStarted,asserted_bound_ms:10000});
+  throw e;
+ }finally{note('late_result_timeline',{expected_card:lateOutcome,track,first_seen:lateFirst,samples:lateTimeline});}
  await frame('music-late-result');
  // 230bede pins a detached music call OUT of its turn's "N actions" bar
  // (ownsDetachedMusicJob/groupSplitterOf), so no summary lists it: the producing call
@@ -140,7 +163,9 @@ try{
  await frame('music-highlights');
  note('coverage',{serving_graph:'asserted',seek:'asserted',reduced_motion:'asserted',error_state:'asserted',files:'Core logical IDs + visible indexed digest row',canvas:'actual row onOpen + selected tab/panel + digest playback',highlights:'actual producing run/cell + same digest playback',sfx_neighbor:'RETAINED component presentation only: parent verified R2 sound-player blob2f0fbd5bf83149744d486bbd1c020d65b1626239; no new SFX generation claim',rtl:'RETAINED JobsCancelRtl/Urdu confirmation presentation with source/catalogue compatibility; no full-App RTL claim',acceptance:'Native predicates executed; retained dimensions still require independent QA/design judgment'});
 
-}catch(e){note('blocked',String(e));process.exitCode=1}
+}catch(e){note('blocked',String(e));process.exitCode=1;
+ // Best effort: the frame at the moment of failure, before teardown destroys it.
+ if(cdp)try{await frame('music-failure-final')}catch(f){note('failure_frame_error',String(f))}}
 finally{
  try{await reaper.stop()}catch(e){note('cleanup_blocked',String(e));process.exitCode=1}
  reaper.dispose();

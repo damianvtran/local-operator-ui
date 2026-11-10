@@ -320,6 +320,14 @@ async def main():
                             (ROOT/'native-control-result.json').write_text(json.dumps(reply,default=str))
                     await asyncio.sleep(.1)
                 rc=await native.wait();record('native_exit',rc)
+                # The serving session's full history, so a native failure (e.g. run
+                # 42849428922 late_result_visible) can be checked against WHEN Core
+                # wrote the observer's job_result row. Scrubbed like the receipt;
+                # best effort so a history read never masks the native verdict.
+                try:
+                    hist=await client.get(target+'/history')
+                    (ROOT/'session-history.json').write_text(json.dumps(scrub({'status':hist.status_code,'session_id':sid,'body':hist.json() if hist.status_code==200 else hist.text[:2000]}),indent=2))
+                except Exception as error:record('session_history_error',str(error))
                 if rc:raise RuntimeError('Native consumer did not pass; see native-result.json')
     finally:
         async def stop_owned():
