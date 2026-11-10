@@ -51,5 +51,6 @@
 	"ui.common.actions.configuration_updated": "配置已更新",
 	"ui.common.actions.system_prompt_updated": "系统提示词已更新",
 	"ui.common.actions.credential_updated": "凭据“{key}”已更新",
-	"ui.common.actions.clear": "清空"
+	"ui.common.actions.clear": "清空",
+	"ui.common.actions.actions_for_name": "{name}的操作"
 }

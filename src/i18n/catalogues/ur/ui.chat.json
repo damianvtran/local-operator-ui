@@ -204,5 +204,7 @@
 	"ui.chat.session_status.duration_explanation": "کام میں صرف ہوا وقت؛ انتظار شمار نہیں ہوتا۔",
 	"ui.chat.session_status.effort_level.low": "کم",
 	"ui.chat.session_status.effort_level.medium": "متوسط",
-	"ui.chat.session_status.effort_level.high": "زیادہ"
+	"ui.chat.session_status.effort_level.high": "زیادہ",
+	"ui.chat.image_actions.actions": "تصویر کے اعمال",
+	"ui.chat.audio.position_label": "{label} کی پوزیشن"
 }

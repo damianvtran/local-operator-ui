@@ -204,5 +204,7 @@
 	"ui.chat.session_status.duration_explanation": "工作所用的时间；等待不计入。",
 	"ui.chat.session_status.effort_level.low": "低",
 	"ui.chat.session_status.effort_level.medium": "中",
-	"ui.chat.session_status.effort_level.high": "高"
+	"ui.chat.session_status.effort_level.high": "高",
+	"ui.chat.image_actions.actions": "图片操作",
+	"ui.chat.audio.position_label": "{label}的播放位置"
 }

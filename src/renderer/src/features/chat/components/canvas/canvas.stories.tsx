@@ -22,6 +22,8 @@
  */
 
 import { PaneSlot } from "@shared/components/common/pane-slot";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { Meta, StoryObj } from "@storybook/react";
 import { fireEvent, screen, userEvent, waitFor, within } from "@storybook/test";
 import { Mic, Paperclip, Send } from "lucide-react";
@@ -736,29 +738,31 @@ installFetchStub();
 installElectronStub();
 
 /** The chat column the canvas opens beside, so widths read correctly. */
-const ChatColumnMock = () => (
-	<div className="flex min-w-0 flex-1 flex-col gap-4 overflow-hidden p-6">
-		<p className="text-body text-ink-muted">
-			Reconcile the March invoices and write up who still owes money.
-		</p>
-		<p className="text-body text-ink">
-			Three customers are outstanding: Northwind, Contoso and Fabrikam, for
-			$6,290 in total. The write-up is open in the canvas.
-		</p>
-		{/*
-		 * A faithful composer stand-in rather than an empty box. The previous
-		 * `h-24` div made every canvas frame claim a chat column while showing
-		 * a blank rounded rectangle where the composer lives; a reviewer
-		 * judging the canvas was judging a hole. This carries the composer's
-		 * real geometry - the box, the placeholder line, the attach and send
-		 * affordances - without importing the live component, which drags in
-		 * the backend client the stories deliberately stub.
-		 */}
-		<div className="mt-auto flex flex-col gap-3 rounded-frame border border-control bg-surface p-4">
-			<p className="text-body-sm text-ink-dim">
-				Ask a follow-up about the write-up
+const ChatColumnMock = () => {
+	useI18nLocale();
+	return (
+		<div className="flex min-w-0 flex-1 flex-col gap-4 overflow-hidden p-6">
+			<p className="text-body text-ink-muted">
+				Reconcile the March invoices and write up who still owes money.
 			</p>
-			{/* Mirrors both clusters of the real composer: a paperclip and the
+			<p className="text-body text-ink">
+				Three customers are outstanding: Northwind, Contoso and Fabrikam, for
+				$6,290 in total. The write-up is open in the canvas.
+			</p>
+			{/*
+			 * A faithful composer stand-in rather than an empty box. The previous
+			 * `h-24` div made every canvas frame claim a chat column while showing
+			 * a blank rounded rectangle where the composer lives; a reviewer
+			 * judging the canvas was judging a hole. This carries the composer's
+			 * real geometry - the box, the placeholder line, the attach and send
+			 * affordances - without importing the live component, which drags in
+			 * the backend client the stories deliberately stub.
+			 */}
+			<div className="mt-auto flex flex-col gap-3 rounded-frame border border-control bg-surface p-4">
+				<p className="text-body-sm text-ink-dim">
+					{t("ui.chat.composer.placeholder.idle")}
+				</p>
+				{/* Mirrors both clusters of the real composer: a paperclip and the
 			    directory indicator on the left, a microphone and an icon-only
 			    send button on the right. It printed the word "Model" under the
 			    paperclip once - source vocabulary that appears nowhere in the
@@ -767,13 +771,13 @@ const ChatColumnMock = () => (
 			    icon button, in 72 frames. A stand-in that gets the geometry
 			    right and the controls wrong is worse than no stand-in, because
 			    it is the geometry people check it against. */}
-			<div className="flex items-center justify-between">
-				<span className="flex items-center gap-2 text-meta text-ink-dim">
-					<Paperclip size={16} aria-hidden="true" />
-					<span className="truncate">~/work/reports</span>
-				</span>
-				<span className="flex items-center gap-1">
-					{/* `size-8 rounded-sm`, the product's `size="icon"` button, and
+				<div className="flex items-center justify-between">
+					<span className="flex items-center gap-2 text-meta text-ink-dim">
+						<Paperclip size={16} aria-hidden="true" />
+						<span className="truncate">~/work/reports</span>
+					</span>
+					<span className="flex items-center gap-1">
+						{/* `size-8 rounded-sm`, the product's `size="icon"` button, and
 					    the send control drawn disabled: the depicted column is
 					    560px, above the 550px dense-branch switch, and the input
 					    is a placeholder - which is exactly when the real send
@@ -791,17 +795,18 @@ const ChatColumnMock = () => (
 					    earlier version of this comment did, from the source -
 					    drew a composer the app does not draw. Bare spans have no
 					    such rule, so the attribute is the rendered size. */}
-					<span className="flex size-8 items-center justify-center rounded-sm text-ink-dim">
-						<Mic size={16} aria-hidden="true" />
+						<span className="flex size-8 items-center justify-center rounded-sm text-ink-dim">
+							<Mic size={16} aria-hidden="true" />
+						</span>
+						<span className="flex size-8 items-center justify-center rounded-sm bg-sunken text-ink-disabled">
+							<Send size={16} aria-hidden="true" />
+						</span>
 					</span>
-					<span className="flex size-8 items-center justify-center rounded-sm bg-sunken text-ink-disabled">
-						<Send size={16} aria-hidden="true" />
-					</span>
-				</span>
+				</div>
 			</div>
 		</div>
-	</div>
-);
+	);
+};
 
 const CanvasFrame = ({
 	view,

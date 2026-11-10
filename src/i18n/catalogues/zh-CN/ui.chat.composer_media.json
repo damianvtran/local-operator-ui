@@ -6,5 +6,6 @@
 	"ui.chat.composer_media.pasted_type": "粘贴的{mimeType}",
 	"ui.chat.composer_media.pasted_file": "粘贴的文件",
 	"ui.chat.composer_media.preview_failed": "无法预览",
-	"ui.chat.composer_media.remove_attachment": "移除附件"
+	"ui.chat.composer_media.remove_attachment": "移除附件",
+	"ui.chat.composer_media.pasted_image": "粘贴的图片"
 }

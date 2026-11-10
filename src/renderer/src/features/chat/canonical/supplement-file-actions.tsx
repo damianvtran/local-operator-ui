@@ -177,7 +177,9 @@ export const FileActionsMenu = memo(function FileActionsMenu({
 		resolveActionPath,
 	);
 	const [copied, setCopied] = useState(false);
-	const ariaLabel = `Actions for ${label || "this file"}`;
+	const ariaLabel = label
+		? t("ui.common.actions.actions_for_name", { name: label })
+		: t("ui.common.actions.file_actions_menu.file_actions");
 	return (
 		<DropdownMenu>
 			<Tooltip content={t("ui.common.actions.file_actions_menu.file_actions")}>

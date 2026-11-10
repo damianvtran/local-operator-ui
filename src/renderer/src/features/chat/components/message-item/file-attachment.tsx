@@ -9,6 +9,7 @@ import { File } from "lucide-react";
 import type { FC } from "react";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { getFileTypeFromPath } from "../../utils/file-types";
+import { getFileName } from "../../utils/get-file-name";
 import { isCanvasSupported } from "../../utils/is-canvas-supported";
 import { isSpreadsheetFile } from "../../utils/is-spreadsheet-file";
 import {
@@ -26,45 +27,6 @@ type BaseFileAttachmentProps = {
 
 type FileAttachmentProps = BaseFileAttachmentProps & {
 	conversationId: string;
-};
-
-const RESOURCE_NAME_REGEX = /name=([^;,]+)/;
-
-/**
- * Extracts the filename from a path
- * @param path - The file path or URL
- * @returns The extracted filename
- */
-const PATH_SEPARATOR_REGEX = /[/\\]/;
-const getFileName = (path: string): string => {
-	if (path.startsWith("data:image/")) {
-		// Attempt to get a name from the data URI if it's there (e.g., from a download attribute)
-		// This is a basic heuristic and might not always work.
-		const nameMatch = path.match(RESOURCE_NAME_REGEX);
-		if (nameMatch?.[1]) {
-			try {
-				return decodeURIComponent(nameMatch[1]);
-			} catch (_) {
-				// Fallback if decoding fails
-				return "Pasted image";
-			}
-		}
-		return "Pasted image";
-	}
-	if (path.startsWith("data:")) {
-		const nameMatch = path.match(RESOURCE_NAME_REGEX);
-		if (nameMatch?.[1]) {
-			try {
-				return decodeURIComponent(nameMatch[1]);
-			} catch (_) {
-				return "Pasted file";
-			}
-		}
-		return "Pasted file";
-	}
-	// Handle both local paths and URLs
-	const parts = path.split(PATH_SEPARATOR_REGEX);
-	return parts[parts.length - 1];
 };
 
 /**
@@ -221,7 +183,7 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 				await handleSpreadsheetClick(file);
 				return;
 			}
-			const title = getFileName(file); // This will be "Pasted image" for image data URIs
+			const title = getFileName(file);
 			const fallbackAction = (err?: string) => {
 				if (err) console.error("Error processing file:", err);
 				onClick(file); // Pass the original file string (path or data URI)

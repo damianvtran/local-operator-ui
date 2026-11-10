@@ -4785,6 +4785,7 @@ export type MessageParams = {
 	"ui.chat.composer_media.cancels": undefined;
 	"ui.chat.composer_media.confirms": undefined;
 	"ui.chat.composer_media.pasted_file": undefined;
+	"ui.chat.composer_media.pasted_image": undefined;
 	"ui.chat.composer_media.pasted_type": { mimeType: string };
 	"ui.chat.composer_media.preview_failed": undefined;
 	"ui.chat.composer_media.recording": undefined;
@@ -4995,6 +4996,7 @@ export type MessageParams = {
 	"ui.chat.audio.pause_label": { label: string };
 	"ui.chat.audio.play": undefined;
 	"ui.chat.audio.play_label": { label: string };
+	"ui.chat.audio.position_label": { label: string };
 	"ui.chat.audio.unmute": undefined;
 	"ui.chat.checkpoint.generating_name": undefined;
 	"ui.chat.checkpoint.jump_agent": {
@@ -5073,6 +5075,7 @@ export type MessageParams = {
 	"ui.chat.hub_update.update_all": { count: number };
 	"ui.chat.hub_update.update_all_label": { kind: string; count: number };
 	"ui.chat.hub_update.updating": undefined;
+	"ui.chat.image_actions.actions": undefined;
 	"ui.chat.image_actions.copy_image": undefined;
 	"ui.chat.image_actions.copy_image_url": undefined;
 	"ui.chat.image_actions.expand_image": undefined;
@@ -7170,6 +7173,7 @@ export type MessageParams = {
 	"ui.common.account.verify_expired": { amount: string };
 	"ui.common.account.verify_none": undefined;
 	"ui.common.account.verify_pending": { amount: string };
+	"ui.common.actions.actions_for_name": { name: string };
 	"ui.common.actions.agent_created": undefined;
 	"ui.common.actions.agent_deleted": undefined;
 	"ui.common.actions.agent_exported": undefined;

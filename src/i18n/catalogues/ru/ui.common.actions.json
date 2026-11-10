@@ -51,5 +51,6 @@
 	"ui.common.actions.configuration_updated": "Конфигурация обновлена",
 	"ui.common.actions.system_prompt_updated": "Системный промпт обновлён",
 	"ui.common.actions.credential_updated": "Учётные данные «{key}» успешно обновлены",
-	"ui.common.actions.clear": "Очистить"
+	"ui.common.actions.clear": "Очистить",
+	"ui.common.actions.actions_for_name": "Действия для «{name}»"
 }
