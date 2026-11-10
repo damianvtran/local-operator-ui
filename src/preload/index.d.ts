@@ -342,6 +342,12 @@ declare global {
 					tabId: number,
 					at: number,
 				) => Promise<{ ok: true } | { ok: false; reason: string }>;
+				/** An agent tab's passkey notice: open the same page in a new user tab,
+				 * where password-manager extensions work. Takes no URL. */
+				continuePasskeyNoticeInUserTab: (
+					tabId: number,
+					at: number,
+				) => Promise<{ ok: true } | { ok: false; reason: string }>;
 				onStateChanged: (callback: () => void) => () => void;
 				onConsentChanged: (callback: () => void) => () => void;
 				onConsentAttention: (

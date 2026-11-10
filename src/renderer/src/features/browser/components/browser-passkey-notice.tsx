@@ -30,15 +30,23 @@ import {
  * origin as main read it, never a string from the page; a request from an embedded
  * frame, or from an agent-driven tab, says so.
  *
- * THE ONE ACTION opens the tab's page in the system browser through main's vetted
- * door. The URL is not sent from here (the bridge carries a tab id and the
- * notice's identity only), so this component cannot be the place a URL is chosen.
+ * THE ACTIONS. "Open in system browser" opens the tab's page through main's
+ * vetted door. On an AGENT tab's notice the primary action is "Continue in your
+ * own tab": password-manager extensions cannot open their passkey prompt inside
+ * an agent-driven tab (main refuses extension subframes there so an agent can
+ * never drive one), so the recovery is the same page in a tab the user owns, on
+ * the same profile, after which the agent can carry on signed in. Neither action
+ * sends a URL (the bridge carries a tab id and the notice's identity only), so
+ * this component cannot be the place a URL is chosen.
  */
 
 export interface BrowserPasskeyNoticeProps {
 	notice: PasskeyNoticeView | null | undefined;
 	onOpen: (notice: PasskeyNoticeView) => void;
 	onDismiss: (notice: PasskeyNoticeView) => void;
+	/** Opens the agent tab's page in a new user tab. Rendered only when the
+	 * notice is an agent tab's: a user tab already runs extension frames. */
+	onContinueInUserTab?: (notice: PasskeyNoticeView) => void;
 	/** Opens lop://extensions in the current tab (review U4: the extension
 	 * route gets a control, not just words). Omitted when the active tab is not
 	 * the user's, since the browser's own pages open only in user tabs. */
@@ -63,6 +71,7 @@ export const BrowserPasskeyNotice: FC<BrowserPasskeyNoticeProps> = ({
 	notice,
 	onOpen,
 	onDismiss,
+	onContinueInUserTab,
 	onOpenExtensions,
 	passwordManagerName,
 }) => {
@@ -89,6 +98,8 @@ export const BrowserPasskeyNotice: FC<BrowserPasskeyNoticeProps> = ({
 			: notice.embedded
 				? "userFrame"
 				: "user";
+	const continueInUserTab =
+		notice.ownerKind === "agent" ? onContinueInUserTab : undefined;
 
 	return (
 		<output
@@ -109,13 +120,15 @@ export const BrowserPasskeyNotice: FC<BrowserPasskeyNoticeProps> = ({
 				    route replaces the generic "usual browser or password manager"
 				    sentence; the system-browser button still offers that route. */}
 				<span className="text-ink-muted">
-					{!onOpenExtensions
-						? t("ui.browser.browser_passkey_notice.explanation")
-						: passwordManagerName
-							? t("ui.browser.extensions.passkey_recovery_installed", {
-									name: passwordManagerName,
-								})
-							: t("ui.browser.extensions.passkey_recovery")}
+					{continueInUserTab
+						? t("ui.browser.browser_passkey_notice.agent_explanation")
+						: !onOpenExtensions
+							? t("ui.browser.browser_passkey_notice.explanation")
+							: passwordManagerName
+								? t("ui.browser.extensions.passkey_recovery_installed", {
+										name: passwordManagerName,
+									})
+								: t("ui.browser.extensions.passkey_recovery")}
 				</span>
 			</p>
 			<div className="ml-auto flex shrink-0 items-center gap-1">
@@ -127,6 +140,16 @@ export const BrowserPasskeyNotice: FC<BrowserPasskeyNoticeProps> = ({
 						data-tour-tag="browser-passkey-notice-extensions"
 					>
 						{t("ui.browser.extensions.passkey_open_extensions")}
+					</Button>
+				)}
+				{continueInUserTab && (
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => continueInUserTab(notice)}
+						data-tour-tag="browser-passkey-notice-continue"
+					>
+						{t("ui.browser.browser_passkey_notice.continue_in_own_tab")}
 					</Button>
 				)}
 				<Button variant="ghost" size="sm" onClick={() => onOpen(notice)}>

@@ -96,6 +96,12 @@ export interface RegisterBrowserIpcOptions {
 			tabId: number,
 			at: number,
 		) => Promise<{ ok: true } | { ok: false; reason: string }>;
+		/** An agent tab's notice only: open the same page in a new user tab
+		 * (`continuePasskeyNoticeInUserTab`). Optional for a host predating it. */
+		continueInUserTab?: (
+			tabId: number,
+			at: number,
+		) => Promise<{ ok: true } | { ok: false; reason: string }>;
 	};
 	/** The clear-data affordances (design 5.4). Injected so this module does not
 	 * depend on the session object. */
@@ -205,6 +211,7 @@ export const BROWSER_IPC_CHANNELS = [
 	"browser-reveal-downloads",
 	"browser-passkey-notice-dismiss",
 	"browser-passkey-notice-open",
+	"browser-passkey-notice-continue",
 	"browser-extensions",
 	/** The user's own recovery click on the `unavailable` state (round 1, D1a).
 	 * Named here so the namespace stays the one place that lists its channels. */
@@ -638,6 +645,26 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 				return { ok: false, reason: "the passkey notice is not available" };
 			}
 			return options.passkeyNotice.openInSystemBrowser(
+				numberOrThrow(tabId, "tabId"),
+				numberOrThrow(at, "at"),
+			);
+		},
+	);
+	/*
+	 * "Continue in your own tab" on an agent tab's passkey notice. The sender check
+	 * in `authorize` is the whole of "only the user can do this": the app's own
+	 * renderer main frame is the one caller it admits, and no RPC method reaches
+	 * this path, so an agent (CDP, the driver RPC) or a page cannot open a user tab
+	 * through it. Takes a tab id and the notice's `at`, never a URL.
+	 */
+	ipcMain.handle(
+		"browser-passkey-notice-continue",
+		async (event, tabId: unknown, at: unknown) => {
+			authorize(event);
+			if (!options.passkeyNotice?.continueInUserTab) {
+				return { ok: false, reason: "the passkey notice is not available" };
+			}
+			return options.passkeyNotice.continueInUserTab(
 				numberOrThrow(tabId, "tabId"),
 				numberOrThrow(at, "at"),
 			);

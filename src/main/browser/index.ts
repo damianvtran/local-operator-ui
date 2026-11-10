@@ -107,6 +107,7 @@ import { buildPageContextMenuItems } from "./page-context-menu";
 import {
 	PasskeyNotices,
 	type PasskeyOpenOutcome,
+	continuePasskeyNoticeInUserTab,
 	openPasskeyNoticeInSystemBrowser,
 	passkeyShimSource,
 } from "./passkey-notice";
@@ -538,6 +539,11 @@ export function startBrowserHost(
 				bindings.passkeyNotice?.dismiss(tabId, at) ?? false,
 			openInSystemBrowser: async (tabId, at) =>
 				bindings.passkeyNotice?.openInSystemBrowser(tabId, at) ?? {
+					ok: false,
+					reason: "the passkey notice is not available",
+				},
+			continueInUserTab: async (tabId, at) =>
+				bindings.passkeyNotice?.continueInUserTab?.(tabId, at) ?? {
 					ok: false,
 					reason: "the passkey notice is not available",
 				},
@@ -1924,6 +1930,18 @@ async function initializeBrowserHost(
 								: null;
 						},
 						openExternal: (url) => options.openExternal(url),
+						log,
+					}),
+				// The user's own tab for an agent tab's passkey sign-in: the host's
+				// user-tab path (`continueAgentTabInUserTab`) reads the agent tab's URL
+				// itself, so this slot passes only ids.
+				continueInUserTab: (tabId, at) =>
+					continuePasskeyNoticeInUserTab({
+						notices: passkeyNotices,
+						tabId,
+						at,
+						ownerOf: (id) => registry.get(id)?.owner ?? null,
+						openUserTab: (id) => host.continueAgentTabInUserTab(id),
 						log,
 					}),
 			},

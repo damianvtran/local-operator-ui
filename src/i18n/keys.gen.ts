@@ -3673,6 +3673,8 @@ export type MessageParams = {
 	"ui.browser.browser_pane.close_browser": undefined;
 	"ui.browser.browser_pane.this_conversation": undefined;
 	"ui.browser.browser_pane.which_tabs_to_show": undefined;
+	"ui.browser.browser_passkey_notice.agent_explanation": undefined;
+	"ui.browser.browser_passkey_notice.continue_in_own_tab": undefined;
 	"ui.browser.browser_passkey_notice.dismiss": undefined;
 	"ui.browser.browser_passkey_notice.explanation": undefined;
 	"ui.browser.browser_passkey_notice.message": { who: string; site: string };
@@ -3780,6 +3782,7 @@ export type MessageParams = {
 	"ui.browser.page_context_menu.select_all": undefined;
 	"ui.browser.page_context_menu.undo": undefined;
 	"ui.browser.use_browser_chrome.downloads_folder_failed": { message: string };
+	"ui.browser.use_browser_chrome.passkey_continue_failed": { reason: string };
 	"ui.browser.use_browser_chrome.passkey_open_failed": { reason: string };
 	"ui.browser.use_consent_attention_lifetime.that_request_is_no_longer_waiting": undefined;
 	"ui.browser.webauthn_chooser.a_site": undefined;

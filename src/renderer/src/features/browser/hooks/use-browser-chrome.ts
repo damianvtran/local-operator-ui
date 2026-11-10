@@ -504,6 +504,9 @@ export interface BrowserChrome {
 	/** Open the notice's page in the system browser. Reports its own refusal, for
 	 * the reason `revealDownloads` does: the door answers instead of throwing. */
 	openPasskeyNotice: (tabId: number, at: number) => Promise<void>;
+	/** An agent tab's notice: continue the sign-in in a new tab the user owns.
+	 * Reports its own refusal like `openPasskeyNotice`. */
+	continuePasskeyNoticeInUserTab: (tabId: number, at: number) => Promise<void>;
 }
 
 export interface BrowserProjection {
@@ -932,6 +935,17 @@ export function useBrowserChrome(): BrowserChrome {
 					if (answer && answer.ok === false) {
 						showErrorToast(
 							t("ui.browser.use_browser_chrome.passkey_open_failed", {
+								reason: answer.reason,
+							}),
+						);
+					}
+				}),
+			continuePasskeyNoticeInUserTab: (tabId, at) =>
+				runVoid(async () => {
+					const answer = await api?.continuePasskeyNoticeInUserTab?.(tabId, at);
+					if (answer && answer.ok === false) {
+						showErrorToast(
+							t("ui.browser.use_browser_chrome.passkey_continue_failed", {
 								reason: answer.reason,
 							}),
 						);

@@ -430,3 +430,53 @@ export async function openPasskeyNoticeInSystemBrowser(deps: {
 	);
 	return deps.openExternal(url);
 }
+
+/**
+ * The user's one-click "Continue in your own tab", offered only on an AGENT
+ * tab's notice.
+ *
+ * WHY IT EXISTS. A password manager's passkey prompt (1Password's
+ * `inline/modal/modal.html`, a `chrome-extension://` page) appears as a subframe,
+ * and `extensions/subframe-policy.ts` refuses every extension subframe in an
+ * agent-owned tab so CDP can never drive or read it. That rule stays. The
+ * request therefore ends NotAllowed in the agent's tab, and the recovery is a
+ * tab the USER owns at the same page, on the same persistent profile, so the
+ * session the sign-in creates is the agent's session too.
+ *
+ * WHO MAY INVOKE IT. Only the trusted app renderer, through the sender-checked
+ * `browser-passkey-notice-continue` IPC channel (ipc.ts `authorize`): there is no
+ * RPC method for it, so an agent, CDP or a page has no way to call it. Like the
+ * open door above, the renderer supplies only a tab id and the notice's `at`: the
+ * URL is the agent tab's own top-level URL, read by `openUserTab` in main (the
+ * host's user-tab path), never the requesting iframe's and never a sent string.
+ *
+ * Refused for a stale notice, a notice raised in a user tab, or a tab no longer
+ * the agent's (handed back or closed): each would open a tab the user did not
+ * ask for. On success the agent tab's notice is dismissed, since its recovery
+ * is now in the user's hands.
+ */
+export async function continuePasskeyNoticeInUserTab(deps: {
+	notices: PasskeyNotices;
+	tabId: number;
+	at: number;
+	ownerOf: (tabId: number) => "user" | "agent" | null;
+	openUserTab: (
+		tabId: number,
+	) => Promise<{ ok: true; tabId: number } | { ok: false; reason: string }>;
+	log: (message: string) => void;
+}): Promise<PasskeyOpenOutcome> {
+	const notice = deps.notices.viewFor(deps.tabId);
+	if (!notice || notice.at !== deps.at) {
+		return { ok: false, reason: "that notice is no longer current" };
+	}
+	if (notice.ownerKind !== "agent" || deps.ownerOf(deps.tabId) !== "agent") {
+		return { ok: false, reason: "the tab is not an agent's" };
+	}
+	const outcome = await deps.openUserTab(deps.tabId);
+	if (!outcome.ok) return outcome;
+	deps.notices.dismiss(deps.tabId, deps.at);
+	deps.log(
+		`[browser] passkey notice on agent-driven tab ${deps.tabId}: continued in user tab ${outcome.tabId} at the user's request`,
+	);
+	return { ok: true };
+}

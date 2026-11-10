@@ -1397,6 +1397,9 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				onDismiss={(notice) =>
 					void chrome.dismissPasskeyNotice(notice.tabId, notice.at)
 				}
+				onContinueInUserTab={(notice) =>
+					void chrome.continuePasskeyNoticeInUserTab(notice.tabId, notice.at)
+				}
 				onOpenExtensions={
 					activeTab?.owner === "user" ? openExtensionsPage : undefined
 				}

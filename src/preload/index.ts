@@ -1229,6 +1229,13 @@ const api = {
 			ipcRenderer.invoke("browser-passkey-notice-dismiss", tabId, at),
 		openPasskeyNotice: (tabId: number, at: number): Promise<unknown> =>
 			ipcRenderer.invoke("browser-passkey-notice-open", tabId, at),
+		/** An agent tab's notice: open the same page in a new tab the user owns.
+		 * Ids only, like the two above; main reads the agent tab's URL. */
+		continuePasskeyNoticeInUserTab: (
+			tabId: number,
+			at: number,
+		): Promise<unknown> =>
+			ipcRenderer.invoke("browser-passkey-notice-continue", tabId, at),
 		/** The recovery click on the `unavailable` state (design round 1, D1a).
 		 * No argument: the host restarts the same window's browser, so there is
 		 * nothing for a caller to retarget. */

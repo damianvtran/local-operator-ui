@@ -13171,3 +13171,114 @@ test("U1c: typed chrome-extension pages require an installed+enabled extension a
 		(error) => error.code === "owner_refused",
 	);
 });
+
+/*
+ * The passkey notice's "Continue in your own tab" (agent tabs only). Password
+ * managers' passkey prompts are extension subframes, refused in agent tabs by
+ * design (subframe-policy.ts), so the recovery is the agent tab's page in a NEW
+ * user tab on the same profile. These pin: the top-level URL is read in main,
+ * the copy is the user's (active, no nonce, attributed to the conversation so a
+ * conversation-scoped pane shows it), the agent tab is untouched, a user tab or
+ * non-web page is refused, and only the app renderer can reach the IPC channel.
+ */
+test("continue-in-user-tab copies an agent tab's top-level URL into an active user tab and leaves the agent tab alone", async () => {
+	const { host, registry } = makeHost();
+	const agent = registry.create({ owner: "agent", sessionId: "synthetic-s1" });
+	await agent.view.webContents.loadURL(
+		"https://appstoreconnect.apple.com/login?targetUrl=%2Fapps",
+	);
+	const agentNonce = agent.nonce;
+	const outcome = await host.continueAgentTabInUserTab(agent.tabId);
+	assert.equal(outcome.ok, true);
+	const copy = registry.get(outcome.tabId);
+	assert.notEqual(copy.tabId, agent.tabId);
+	assert.equal(copy.owner, "user");
+	assert.equal(copy.nonce, null, "no capability: an agent cannot drive it");
+	assert.equal(copy.handedTo, null);
+	assert.equal(copy.sessionId, "synthetic-s1");
+	assert.equal(registry.mayDrive(copy, "synthetic-s1"), false);
+	assert.equal(
+		copy.view.webContents.getURL(),
+		"https://appstoreconnect.apple.com/login?targetUrl=%2Fapps",
+	);
+	assert.equal(registry.activeTab, copy, "the user's tab is the one shown");
+	// The agent's tab: same record, owner, nonce and page.
+	assert.equal(registry.get(agent.tabId), agent);
+	assert.equal(agent.owner, "agent");
+	assert.equal(agent.nonce, agentNonce);
+	assert.equal(
+		agent.view.webContents.getURL(),
+		"https://appstoreconnect.apple.com/login?targetUrl=%2Fapps",
+	);
+});
+
+test("continue-in-user-tab refuses a user tab, a non-web page and a closed tab without creating one", async () => {
+	const { host, registry } = makeHost();
+	const user = registry.create({ owner: "user" });
+	await user.view.webContents.loadURL("https://github.com/login");
+	const internal = registry.create({ owner: "agent", sessionId: "s" });
+	await internal.view.webContents.loadURL("about:blank");
+	const before = registry.count();
+	for (const tabId of [user.tabId, internal.tabId, 9999]) {
+		const outcome = await host.continueAgentTabInUserTab(tabId);
+		assert.equal(outcome.ok, false, String(tabId));
+	}
+	assert.equal(registry.count(), before);
+});
+
+test("the continue-in-user-tab IPC channel admits only the app renderer and passes ids, not URLs", async () => {
+	const frame = { url: "http://localhost:5173/index.html" };
+	const webContents = { id: 1, mainFrame: frame };
+	const window = { isDestroyed: () => false, webContents };
+	const { host } = makeHost();
+	const calls = [];
+	ipcMain.reset();
+	registerBrowserIpc({
+		window: () => window,
+		expectedUrl: "http://localhost:5173",
+		headless: false,
+		host: () => host,
+		clearData: async () => {},
+		log: () => {},
+		passkeyNotice: {
+			dismiss: () => false,
+			openInSystemBrowser: async () => ({ ok: true }),
+			continueInUserTab: async (...args) => {
+				calls.push(args);
+				return { ok: true };
+			},
+		},
+	});
+	const handler = ipcMain.handlers.get("browser-passkey-notice-continue");
+	try {
+		assert.ok(handler, "the channel is registered");
+		// A page's webContents (an agent-driven tab, or any other sender) and a
+		// subframe of the app window are both refused.
+		await assert.rejects(
+			async () => handler({ sender: {}, senderFrame: frame }, 3, 1),
+			/cannot use/,
+		);
+		await assert.rejects(
+			async () =>
+				handler({ sender: webContents, senderFrame: { ...frame } }, 3, 1),
+			/cannot use/,
+		);
+		await assert.rejects(
+			async () =>
+				handler(
+					{ sender: webContents, senderFrame: frame },
+					"https://evil.example/",
+					1,
+				),
+			/tabId/,
+		);
+		assert.deepEqual(calls, []);
+		assert.deepEqual(
+			await handler({ sender: webContents, senderFrame: frame }, 3, 1),
+			{ ok: true },
+		);
+		assert.deepEqual(calls, [[3, 1]]);
+	} finally {
+		unregisterBrowserIpc();
+	}
+});

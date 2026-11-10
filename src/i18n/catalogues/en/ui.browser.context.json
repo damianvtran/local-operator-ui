@@ -1229,6 +1229,16 @@
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
 		"note": "Opens the current page in the user's default web browser. Keep compact, around the English footprint."
 	},
+	"ui.browser.browser_passkey_notice.continue_in_own_tab": {
+		"role": "button label \u2014 passkey notice strip, agent-driven tab only",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Primary action. Opens the same page in a NEW browser tab inside this app that the user (not the agent) owns; the agent's tab is left as it is. 'Your own' contrasts with the agent's tab. Keep compact, around the English footprint."
+	},
+	"ui.browser.browser_passkey_notice.agent_explanation": {
+		"role": "explanatory text \u2014 passkey notice strip, agent-driven tab only",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Says why: password-manager browser extensions (e.g. 1Password) cannot show their passkey prompt inside a tab an agent is driving. The user's own tab is in the same app browser and shares its login session (cookies), so after the user signs in there the agent can continue signed in. Do not imply the system browser's session is shared; do not promise the sign-in will succeed."
+	},
 	"ui.browser.browser_passkey_notice.dismiss": {
 		"role": "accessible control name \u2014 passkey notice strip",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
@@ -1238,6 +1248,11 @@
 		"role": "error text \u2014 browser toolbar toast",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
 		"note": "Shown when handing the page to the system browser was refused or failed. {reason} is the app's own reason sentence, already in English or the user's language; keep it as the last sentence."
+	},
+	"ui.browser.use_browser_chrome.passkey_continue_failed": {
+		"role": "error text \u2014 browser toolbar toast",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Shown when opening the agent tab's page in a new user tab was refused or failed. {reason} is the app's own reason sentence, already in English or the user's language; keep it as the last sentence."
 	},
 	"ui.browser.browser_url_bar.reload_shortcut": {
 		"role": "Tooltip of the browser pane's reload button, with its keyboard shortcut",
