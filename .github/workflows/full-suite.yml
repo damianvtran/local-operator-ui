@@ -58,10 +58,12 @@ name: Full Test Suite
 #     Re-arm on the FINAL head with the same ritual; never retry one job, because
 #     the gate is the whole suite or it is nothing.
 #
-# A red `main` is reported SEPARATELY from that gate: the `report` job below
-# opens (or comments on) one `ci-main-red` issue when the suite goes red on
-# `main` and closes it when it is green again, so a red default branch is a
-# tracked item rather than a check nobody reads.
+# A red `main` files NOTHING. The red run of this workflow on `main` is itself
+# the signal; it is followed up by the author of the merge commit and by the
+# periodic repo sweep. A job here once opened a `ci-main-red` issue per red
+# `main`; it was retired because the issues piled up as junk, and the
+# `issues: write` permission went with it (least privilege). Do not add a
+# notifier back: the contract test in scripts/ci-scope.test.mjs pins its absence.
 #
 # The `test` and `desktop-tests-result` jobs are moved from `ci.yml` VERBATIM,
 # steps, ceilings and comments included; their measured history is in their
@@ -95,7 +97,7 @@ on:
   workflow_dispatch:
 
 # ONE group PER REF, and never cancel one in progress: each completed `main` run
-# is the record that decides whether the `ci-main-red` issue opens or closes, so
+# is the record of that commit's suite result, so
 # a run killed half way would leave that record wrong. A newer run that arrives
 # while one is queued still replaces the QUEUED one - that is GitHub's grouping,
 # and it is the right trade here: the newest `main` is the one worth testing.
@@ -740,10 +742,7 @@ jobs:
   # shard receipt is checked against), `test` (all four shards - a matrix job
   # reports one result, and `cancelled` is how a shard past its ceiling reports),
   # and `desktop-tests-result` (the fail-closed reconstruction of the inventory).
-  # `report` is deliberately ABSENT: it is the `main`-only `ci-main-red` writer,
-  # not a suite producer, and it is skipped on every pull request, so depending
-  # on it would make this verdict rest on a job that never runs here. The guard
-  # in scripts/ci-scope.test.mjs pins `needs` to exactly those three, so a job
+  # The guard in scripts/ci-scope.test.mjs pins `needs` to exactly those three, so a job
   # added to this file without being added here fails a test instead of silently
   # escaping the gate.
   merge-gate:
@@ -765,8 +764,8 @@ jobs:
     # this workflow publish a verdict computed from its OWN `needs`: on `main`
     # that is main's record, on a branch dispatch it is that branch tip's real
     # result. Publishing everywhere costs nothing here because this job has no
-    # side effect; `issues: write` stays on `report`, which keeps its main-only
-    # guard so a branch dispatch can never write the `ci-main-red` record.
+    # side effect, and no job in this file holds any permission above
+    # `contents: read`.
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -791,57 +790,3 @@ jobs:
           }
           console.log('Full suite green on this head.');
           NODE
-
-  # Opens, updates or closes the ONE tracking issue for a red `main`. The only
-  # job with `issues: write`. Anything but `success` from the aggregate counts as
-  # red: `cancelled` is how GitHub reports a job past its `timeout-minutes`, and a
-  # skipped aggregate means the classifier or a worker never got that far.
-  # One issue, not one per run: a red `main` that stays red for a day is one
-  # thing to fix, and the comments carry each run.
-  report:
-    name: Report
-    needs: [changes, test, desktop-tests-result]
-    # `main` only. The issue is the record of the DEFAULT branch: a green
-    # feature-branch dispatch would otherwise close a real main-red issue (a
-    # false all-clear) and a red one would open "red on main" over a branch SHA
-    # (PR #1750 review R1-2 / QA Q1, reproduced with a stub `gh`). `always()`
-    # stays so a failed or cancelled suite on `main` still reports.
-    if: always() && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      issues: write
-    env:
-      GH_TOKEN: ${{ github.token }}
-      GH_REPO: ${{ github.repository }}
-      RESULT: ${{ needs.desktop-tests-result.result }}
-      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-      EVENT: ${{ github.event_name }}
-    steps:
-      - name: Open, update or close the ci-main-red issue
-        run: |
-          set -euo pipefail
-          label=ci-main-red
-          short="${GITHUB_SHA:0:12}"
-          # Idempotent; `--force` only refreshes the colour/description.
-          gh label create "$label" --color B60205 \
-            --description "The full test suite is red on main (full-suite.yml)" --force
-          open="$(gh issue list --label "$label" --state open --json number --jq '.[0].number // empty')"
-          if [ "$RESULT" = success ]; then
-            if [ -n "$open" ]; then
-              gh issue comment "$open" --body "Green again at \`$short\` ($EVENT): $RUN_URL"
-              gh issue close "$open" --reason completed
-            fi
-            echo "Full suite green at $short."
-            exit 0
-          fi
-          body="The full desktop suite concluded \`$RESULT\` at \`$short\` ($EVENT): $RUN_URL"
-          if [ -n "$open" ]; then
-            gh issue comment "$open" --body "$body"
-          else
-            gh issue create --label "$label" \
-              --title "Full test suite red on main" \
-              --body "$body
-
-          Pull requests no longer run the unit suite, so this issue is how a red \`main\` is noticed. It closes itself on the next green run."
-          fi

@@ -3,6 +3,7 @@ import { WysiwygMarkdownEditor } from "@features/chat/components/canvas/wysiwyg-
 import type { CanvasDocument } from "@features/chat/types/canvas";
 import { Button, Textarea } from "@shared/components/ui";
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useCallback, useId, useMemo, useState } from "react";
 
 /** Settings owns canonical Markdown and its explicit Save boundary. Mode switches
@@ -20,13 +21,19 @@ export const SystemPromptEditor = ({
 	sourceVersion?: number;
 	disabled?: boolean;
 }) => {
+	const locale = useI18nLocale();
 	const id = useId();
+	// i18n: ignore useId-derived element id; must stay stable for aria-labelledby and is never rendered as text.
+	const sourceLabelId = `${id}-source-label`;
+	// i18n: ignore useId-derived element id; must stay stable for aria-labelledby and is never rendered as text.
+	const emptyTaskLabelId = `${id}-empty-task-label`;
 	const [source, setSource] = useState(false);
 	const [codec] = useState(
 		() =>
 			new SourcePreservingMarkdown(
 				t("ui.settings.model.system_prompt.source_edit"),
 				t("ui.canvas.wysiwyg_markdown_editor.checklist"),
+				{ source: sourceLabelId, emptyTask: emptyTaskLabelId },
 			),
 	);
 	const [generation, setGeneration] = useState(0);
@@ -47,6 +54,7 @@ export const SystemPromptEditor = ({
 		(markdown: string) => onChange(markdown),
 		[onChange],
 	);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: locale invalidates translated draft labels while callbacks remain stable.
 	const draft = useMemo(
 		() => ({
 			onChange: richChange,
@@ -58,7 +66,14 @@ export const SystemPromptEditor = ({
 			sourceLabel: t("ui.settings.model.system_prompt.source_edit"),
 			sourceStaleLabel: t("ui.settings.model.system_prompt.source_stale"),
 		}),
-		[richChange, disabled, codec, onLocalDraftActiveChange, sourceVersion],
+		[
+			richChange,
+			disabled,
+			codec,
+			onLocalDraftActiveChange,
+			sourceVersion,
+			locale,
+		],
 	);
 	const enterRich = () => {
 		setRichInitial(value);
@@ -68,6 +83,15 @@ export const SystemPromptEditor = ({
 
 	return (
 		<div className="flex min-w-0 flex-col gap-2">
+			{/* Localized presentation lives outside the observed rich document.
+			    Stable references survive undo/redo snapshots without recording a
+			    locale switch as an edit or restoring an old-language label. */}
+			<span id={sourceLabelId} className="sr-only">
+				{t("ui.settings.model.system_prompt.source_edit")}
+			</span>
+			<span id={emptyTaskLabelId} className="sr-only">
+				{t("ui.canvas.wysiwyg_markdown_editor.checklist")}
+			</span>
 			<fieldset
 				className="flex flex-wrap gap-2"
 				aria-label={t("ui.settings.model.system_prompt.instructions")}

@@ -2783,7 +2783,7 @@ const ToolRow = memo(function ToolRow({
 			</div>
 		</div>
 	) : isDiffBodyRow(record) ? (
-		<DiffBlock diff={record.diff} />
+		<DiffBlock diff={record.diff} truncatedRows={record.diffTruncatedRows} />
 	) : bridge && !running ? (
 		<BridgeDetail
 			record={record}

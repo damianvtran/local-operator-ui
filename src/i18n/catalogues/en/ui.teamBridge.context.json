@@ -3078,5 +3078,42 @@
 		"length": "1–3 words",
 		"placeholders": {},
 		"note": "Files are turned off for this account, so nothing was attempted; the note under the list explains it. Not a failure: do not use the wording of 'Upload failed'."
+	},
+	"ui.teamBridge.typing.one": {
+		"role": "one-line typing indicator under a message composer",
+		"tone": "neutral, quiet status",
+		"length": "Name plus two or three words; must fit one line",
+		"placeholders": {
+			"first": "Display name of the person typing; rendered bold"
+		},
+		"note": "Live status: this person is writing a message in this conversation or thread right now. Present progressive, no trailing ellipsis or punctuation. Gender of the person is unknown; use a neutral or respectful plural form where the language needs one."
+	},
+	"ui.teamBridge.typing.two": {
+		"role": "one-line typing indicator under a message composer",
+		"tone": "neutral, quiet status",
+		"length": "Two names plus two or three words; must fit one line",
+		"placeholders": {
+			"first": "Display name of the first person typing; rendered bold",
+			"second": "Display name of the second person typing; rendered bold"
+		},
+		"note": "Two people are writing right now. No trailing punctuation. Keep both placeholders as separate words: each is rendered bold."
+	},
+	"ui.teamBridge.typing.three": {
+		"role": "one-line typing indicator under a message composer",
+		"tone": "neutral, quiet status",
+		"length": "Three names plus a few words; must fit one line",
+		"placeholders": {
+			"first": "Display name of the first person typing; rendered bold",
+			"second": "Display name of the second person typing; rendered bold",
+			"third": "Display name of the third person typing; rendered bold"
+		},
+		"note": "Three people are writing right now. Use the locale's normal list punctuation. No trailing punctuation."
+	},
+	"ui.teamBridge.typing.several": {
+		"role": "one-line typing indicator under a message composer",
+		"tone": "neutral, quiet status",
+		"length": "Three to five words",
+		"placeholders": {},
+		"note": "Shown when four or more people are writing at once; names are deliberately omitted. No trailing ellipsis."
 	}
 }

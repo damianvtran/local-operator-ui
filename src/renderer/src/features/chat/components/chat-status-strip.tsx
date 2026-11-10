@@ -123,7 +123,11 @@ export const ChatStatusStripView = ({
 						aria-hidden="true"
 						className={cn(
 							"size-1.5 rounded-full",
-							display.dot === "danger" ? "bg-danger" : "bg-warning",
+							display.dot === "danger"
+								? "bg-danger"
+								: display.dot === "info"
+									? "bg-info"
+									: "bg-warning",
 						)}
 					/>
 					{display.kind === "internet-offline"
@@ -155,7 +159,13 @@ export const ChatStatusStripView = ({
 			onKeyDown={onKeyDown}
 		>
 			<Alert
-				variant={display.wash === "danger-wash" ? "danger" : "warning"}
+				variant={
+					display.wash === "danger-wash"
+						? "danger"
+						: display.wash === "info-wash"
+							? "info"
+							: "warning"
+				}
 				className={NOTICE_BAND}
 				role={display.role}
 			>
@@ -171,6 +181,25 @@ export const ChatStatusStripView = ({
 							<span className="block text-meta text-ink-muted">{outcome}</span>
 						) : null}
 					</span>
+					{display.busy ? (
+						/*
+						 * Progress, not an action: the condition clears by itself. The
+						 * spinner sits in an `h-7` slot - the 28px of the `size="sm"`
+						 * Button every other row carries - so the band keeps the same
+						 * 46px height when the strip moves between this row and a failure
+						 * row (design round 1, D1: it measured 37.5px, an 8.5px jump).
+						 */
+						<span
+							data-lo-status-busy-slot=""
+							className="flex h-7 shrink-0 items-center"
+						>
+							<Loader2
+								aria-hidden="true"
+								data-lo-status-busy=""
+								className="size-4 animate-spin text-info"
+							/>
+						</span>
+					) : null}
 					{display.action === "retry" && (
 						<span className="flex shrink-0 items-center gap-2">
 							<Button

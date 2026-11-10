@@ -1,0 +1,110 @@
+{
+  "schema": 1,
+  "kind": "locale-audit evidence (PR #1819 round 1, added keys)",
+  "audit_id": "pr1819-typing-r1-vi-81c927283b69",
+  "instance": "81c927283b69-pr1819-r1-vi",
+  "date": "2026-11-09",
+  "locale": "vi",
+  "namespace": "ui.teamBridge",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "team_role": "task (lopdev team)",
+    "session": "81c927283b69",
+    "model": "anthropic/claude-opus-5-5",
+    "model_fallback": "none observed",
+    "independent_of_translator": true
+  },
+  "translator": {
+    "agent": "coder",
+    "lane": "pr3-ui-typing",
+    "model": "not supplied in the audit brief",
+    "commit": "f0182d4e032"
+  },
+  "integration": {
+    "repo": "damianvtran/local-operator-ui",
+    "pr": 1819,
+    "branch": "feat/team-bridge-typing-indicators",
+    "base": "884953f7c48",
+    "translated_head": "f0182d4e032"
+  },
+  "inputs": {
+    "english": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+      "sha256": "925e90f6426577a64651cd20d846cb3e9b705263df0f1fa75d9611b687a73078"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+      "sha256": "070e48dc704913bc3286df742b05bba9885fae08527be3749bc2a083cb673cbc"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/vi/ui.teamBridge.json",
+      "sha256": "9df17b0aed181b047d72fbef908e514a2e7cd3945cda7b3db20a58727fb4774b"
+    },
+    "glossary": {
+      "path": "local-operator i18n/glossary.md",
+      "commit": "ae1dd3e0a76",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "local-operator i18n/style-guides/vi.md",
+      "commit": "ae1dd3e0a76",
+      "sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888"
+    }
+  },
+  "checks": {
+    "key_set_equals_english": true,
+    "added_keys_vs_base": true,
+    "pre_existing_pairs_byte_identical_to_base": true,
+    "placeholders_match_english": {
+      "ui.teamBridge.typing.one": true,
+      "ui.teamBridge.typing.two": true,
+      "ui.teamBridge.typing.three": true,
+      "ui.teamBridge.typing.several": true
+    },
+    "no_bidi_controls": {
+      "ui.teamBridge.typing.one": true,
+      "ui.teamBridge.typing.two": true,
+      "ui.teamBridge.typing.three": true,
+      "ui.teamBridge.typing.several": true
+    },
+    "no_trailing_ellipsis_or_period_on_indicator": {
+      "ui.teamBridge.typing.one": true,
+      "ui.teamBridge.typing.two": true,
+      "ui.teamBridge.typing.three": true,
+      "ui.teamBridge.typing.several": true
+    }
+  },
+  "audited_keys": {
+    "ui.teamBridge.typing.one": {
+      "en": "{first} is typing",
+      "translator_value": "{first} đang nhập",
+      "final": "{first} đang nhập",
+      "context_role": "one-line typing indicator under a message composer",
+      "context_note": "Live status: this person is writing a message in this conversation or thread right now. Present progressive, no trailing ellipsis or punctuation. Gender of the person is unknown; use a neutral or respectful plural form where the language needs one."
+    },
+    "ui.teamBridge.typing.two": {
+      "en": "{first} and {second} are typing",
+      "translator_value": "{first} và {second} đang nhập",
+      "final": "{first} và {second} đang nhập",
+      "context_role": "one-line typing indicator under a message composer",
+      "context_note": "Two people are writing right now. No trailing punctuation. Keep both placeholders as separate words: each is rendered bold."
+    },
+    "ui.teamBridge.typing.three": {
+      "en": "{first}, {second} and {third} are typing",
+      "translator_value": "{first}, {second} và {third} đang nhập",
+      "final": "{first}, {second} và {third} đang nhập",
+      "context_role": "one-line typing indicator under a message composer",
+      "context_note": "Three people are writing right now. Use the locale's normal list punctuation. No trailing punctuation."
+    },
+    "ui.teamBridge.typing.several": {
+      "en": "Several people are typing",
+      "translator_value": "Nhiều người đang nhập",
+      "final": "Nhiều người đang nhập",
+      "context_role": "one-line typing indicator under a message composer",
+      "context_note": "Shown when four or more people are writing at once; names are deliberately omitted. No trailing ellipsis."
+    }
+  },
+  "findings": [],
+  "verdict": "clean",
+  "notes": "Catalogue audit only: no rendered-fit or native-render claim. Mechanical checks above were executed by scratch build.py in the auditor session; findings are the auditor's linguistic judgement against glossary + style guide."
+}

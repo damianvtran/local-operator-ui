@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { mock, test } from "node:test";
 import { build } from "esbuild";
 
 /*
@@ -20,7 +20,8 @@ const bundle = await build({
 		contents: `
  export * from "./src/renderer/src/features/team-bridge/team-bridge-channel-cache";
  export {teamBridgeKeys} from "./src/renderer/src/features/team-bridge/team-bridge-keys";
- export {QueryClient} from "@tanstack/react-query";
+ export {QueryClient, QueryObserver} from "@tanstack/react-query";
+ export {DesktopControlError, desktopResult} from "./src/renderer/src/shared/api/local-operator/desktop-api";
  `,
 		resolveDir: process.cwd(),
 	},
@@ -585,5 +586,266 @@ test("m9: the deep-link page bound stays inside the retention cap", () => {
 		(pages + 1) * cache.TEAM_BRIDGE_PAGE_SIZE <=
 			cache.TEAM_BRIDGE_MAX_RETAINED_MESSAGES,
 		"12 older reads plus the newest page stay inside the cap",
+	);
+});
+
+/*
+ * THE 2026-11-09 STUCK LOAD. The app's backend log for qa-coordination shows the
+ * history GET refused `429 rate_limited` at 12:56:06.6, 07.7, 09.8 and 13.97:
+ * React Query's default 1/2/4 s backoff running out three retries, then an error.
+ * The hub's shared per-account read bucket (120/min) had told it when to come
+ * back; these pin that the read now waits that long and keeps going.
+ */
+/*
+ * The refusal is built by the REAL transport: the lop route's 429 body
+ * (`_refusal_detail`: `{detail: {code, message, retry_after_seconds}}`) is
+ * answered through a stubbed `window.api.desktop.request` and parsed by
+ * `desktopResult`, so these tests fail if the transport ever stops carrying the
+ * stated wait (review round 1, R2) instead of passing on a hand-built error.
+ */
+const realWindow = globalThis.window;
+async function transportRefusal(status, detail) {
+	globalThis.window = {
+		api: { desktop: { request: async () => ({ status, body: { detail } }) } },
+	};
+	try {
+		await cache.desktopResult({ op: "team_bridge.conversation.messages" });
+	} catch (error) {
+		return error;
+	} finally {
+		globalThis.window = realWindow;
+	}
+	throw new Error("the stubbed refusal did not reject");
+}
+const refusalDetail = (seconds) =>
+	seconds === undefined
+		? { code: "rate_limited", message: "Too many requests" }
+		: {
+				code: "rate_limited",
+				message: "Too many requests",
+				retry_after_seconds: seconds,
+			};
+const transportRateLimited = new Map();
+for (const seconds of [undefined, 0, 2, 4, 5, 3600]) {
+	transportRateLimited.set(
+		seconds,
+		await transportRefusal(429, refusalDetail(seconds)),
+	);
+}
+const rateLimited = (seconds) => transportRateLimited.get(seconds);
+
+test("r0: the 429 fixtures are the transport's DesktopControlError, carrying the stated wait", () => {
+	const error = rateLimited(2);
+	assert.ok(error instanceof cache.DesktopControlError);
+	assert.equal(error.status, 429);
+	assert.equal(error.detail.retry_after_seconds, 2);
+});
+
+test("r1: a 429 waits the hub's stated retry_after_seconds, clamped to the bucket window", () => {
+	assert.equal(cache.historyRateLimitWaitMs(rateLimited(4)), 4000);
+	assert.equal(
+		cache.historyRateLimitWaitMs(rateLimited(0)),
+		cache.TEAM_BRIDGE_RATE_LIMIT_MIN_WAIT_MS,
+		"a zero wait is not a tight loop",
+	);
+	assert.equal(
+		cache.historyRateLimitWaitMs(rateLimited(3600)),
+		cache.TEAM_BRIDGE_RATE_LIMIT_MAX_WAIT_MS,
+		"no honest wait on a per-minute bucket exceeds a minute",
+	);
+	// The nested `details` shape the hub itself uses is read too.
+	assert.equal(
+		cache.historyRateLimitWaitMs({
+			status: 429,
+			detail: { details: { retry_after_seconds: 7 } },
+		}),
+		7000,
+	);
+	// No stated wait: doubling backoff from the floor.
+	assert.equal(cache.historyRateLimitWaitMs(rateLimited(), 2), 4000);
+	// Every other failure is not a rate limit.
+	assert.equal(cache.historyRateLimitWaitMs(new Error("boom")), null);
+	assert.equal(cache.historyRateLimitWaitMs({ status: 502 }), null);
+	assert.equal(cache.historyRateLimitWaitMs(null), null);
+});
+
+test("r2: a rate limit keeps retrying; other failures keep the three-retry bound; a definite refusal never retries", () => {
+	assert.equal(cache.historyReadShouldRetry(3, rateLimited(2), false), true);
+	assert.equal(cache.historyReadShouldRetry(12, rateLimited(2), false), true);
+	assert.equal(cache.historyReadShouldRetry(2, new Error("x"), false), true);
+	assert.equal(cache.historyReadShouldRetry(3, new Error("x"), false), false);
+	assert.equal(cache.historyReadShouldRetry(0, rateLimited(2), true), false);
+	assert.equal(cache.historyReadRetryDelay(0, new Error("x")), 1000);
+	assert.equal(cache.historyReadRetryDelay(2, new Error("x")), 4000);
+	assert.equal(cache.historyReadRetryDelay(0, rateLimited(5)), 5000);
+});
+
+/*
+ * The incident replayed through React Query itself, with the clock mocked: four
+ * 429s (the log's run) and then an answer. The shipped policy ends in `error`
+ * after its third retry; this policy lands the page. And when the reader leaves,
+ * the chain stops - the invariant that makes an uncounted retry safe.
+ */
+async function replay({
+	retry,
+	retryDelay,
+	refusals,
+	unsubscribeAfter,
+	rejoin = false,
+	steps = 40,
+}) {
+	const client = new cache.QueryClient();
+	const queryKey = ["team-bridge-replay"];
+	let calls = 0;
+	const observer = new cache.QueryObserver(client, {
+		queryKey,
+		queryFn: async () => {
+			calls += 1;
+			if (calls <= refusals) throw rateLimited(2);
+			return { ok: true };
+		},
+		retry:
+			retry === "policy"
+				? cache.historyReadRetry(client, queryKey, () => false)
+				: retry,
+		retryDelay,
+	});
+	const states = [];
+	const unsubscribe = observer.subscribe((result) =>
+		states.push(result.status),
+	);
+	let rejoined = null;
+	for (let step = 0; step < steps; step += 1) {
+		await Promise.resolve();
+		await new Promise((done) => setImmediate(done));
+		if (unsubscribeAfter !== undefined && calls >= unsubscribeAfter) {
+			unsubscribe();
+			unsubscribeAfter = undefined;
+			/* The notification watcher's read on the same key, while the chain
+			   sleeps: `Query.fetch` joins the retryer and clears its cancel. */
+			if (rejoin)
+				rejoined = client.fetchQuery({ queryKey }).then(
+					() => "resolved",
+					() => "rejected",
+				);
+		}
+		mock.timers.tick(2000);
+	}
+	const final = observer.getCurrentResult().status;
+	const observers =
+		client
+			.getQueryCache()
+			.find({ queryKey, exact: true })
+			?.getObserversCount() ?? 0;
+	unsubscribe();
+	client.clear();
+	return { calls, final, states, observers, rejoined: await rejoined };
+}
+
+test("r3: replay of the incident - the shipped policy errors, the new one loads", async (t) => {
+	mock.timers.enable({ apis: ["setTimeout"] });
+	t.after(() => mock.timers.reset());
+	const shipped = await replay({
+		retry: (failures) => failures < 3,
+		retryDelay: undefined,
+		refusals: 4,
+	});
+	assert.equal(
+		shipped.final,
+		"error",
+		"control: four 429s exhaust the shipped chain",
+	);
+	assert.equal(shipped.calls, 4);
+	const fixed = await replay({
+		retry: "policy",
+		retryDelay: cache.historyReadRetryDelay,
+		refusals: 4,
+	});
+	assert.equal(fixed.final, "success", "the fifth attempt lands the page");
+	assert.equal(fixed.calls, 5);
+});
+
+test("r4: the rate-limit chain stops when the reader leaves", async (t) => {
+	mock.timers.enable({ apis: ["setTimeout"] });
+	t.after(() => mock.timers.reset());
+	const left = await replay({
+		retry: "policy",
+		retryDelay: cache.historyReadRetryDelay,
+		refusals: 1000,
+		unsubscribeAfter: 2,
+	});
+	assert.equal(left.calls, 2, "no read after the last observer left");
+});
+
+/*
+ * Review round 1, R1: the reader leaves mid-wait, then the notification watcher
+ * `fetchQuery`s the same key. `continueRetry()` clears the cancel, so a policy
+ * that only counted on `removeObserver` kept reading every stated wait with zero
+ * observers (31 reads/min in the reviewer's repro). The control proves the rig
+ * reproduces that; the policy must stop at the first refusal after the join.
+ */
+test("r5: a fetchQuery rejoining a left chain does not revive the 429 loop", async (t) => {
+	mock.timers.enable({ apis: ["setTimeout"] });
+	t.after(() => mock.timers.reset());
+	const control = await replay({
+		retry: (failures, error) =>
+			cache.historyReadShouldRetry(failures, error, false),
+		retryDelay: cache.historyReadRetryDelay,
+		refusals: 1000,
+		unsubscribeAfter: 2,
+		rejoin: true,
+	});
+	assert.equal(control.observers, 0);
+	assert.ok(
+		control.calls > 30,
+		`control: an observer-blind policy keeps reading after the rejoin (saw ${control.calls})`,
+	);
+	const fixed = await replay({
+		retry: "policy",
+		retryDelay: cache.historyReadRetryDelay,
+		refusals: 1000,
+		unsubscribeAfter: 2,
+		rejoin: true,
+	});
+	assert.equal(fixed.observers, 0);
+	assert.equal(
+		fixed.calls,
+		3,
+		"the joined attempt runs once, then the unobserved chain stops",
+	);
+	assert.equal(fixed.rejoined, "rejected", "the joining fetchQuery settles");
+});
+
+test("r6: a watched chain still gives up after the consecutive-429 backstop", async (t) => {
+	mock.timers.enable({ apis: ["setTimeout"] });
+	t.after(() => mock.timers.reset());
+	const watched = await replay({
+		retry: "policy",
+		retryDelay: cache.historyReadRetryDelay,
+		refusals: 1000,
+		steps: cache.TEAM_BRIDGE_RATE_LIMIT_MAX_RETRIES + 10,
+	});
+	assert.equal(watched.calls, cache.TEAM_BRIDGE_RATE_LIMIT_MAX_RETRIES + 1);
+	assert.equal(watched.final, "error", "the pane lands on Try again");
+	assert.equal(
+		cache.historyReadShouldRetry(
+			cache.TEAM_BRIDGE_RATE_LIMIT_MAX_RETRIES - 1,
+			rateLimited(2),
+			false,
+		),
+		true,
+	);
+	assert.equal(
+		cache.historyReadShouldRetry(
+			cache.TEAM_BRIDGE_RATE_LIMIT_MAX_RETRIES,
+			rateLimited(2),
+			false,
+		),
+		false,
+	);
+	assert.equal(
+		cache.historyReadShouldRetry(0, rateLimited(2), false, false),
+		false,
+		"never retried while nobody is reading",
 	);
 });

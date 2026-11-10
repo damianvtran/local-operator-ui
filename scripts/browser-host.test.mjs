@@ -7712,6 +7712,17 @@ test("a call where the page starts nothing answers with the no-download copy, no
 	assert.deepEqual(result.files, []);
 	assert.equal(result.armed, true);
 	assert.match(result.reason, /no download started within/);
+	// A missed file says nothing about whether a one-time provider mutation ran.
+	assert.match(result.reason, /download\(selector=<final confirm button>\)/);
+	assert.match(result.reason, /before clicking/);
+	assert.match(result.reason, /future download event/);
+	assert.match(result.reason, /already dispatched or cancelled/);
+	assert.match(result.reason, /does not prove.*handler.*server mutation/);
+	assert.match(
+		result.reason,
+		/check the provider-side effect before repeating/,
+	);
+	assert.doesNotMatch(result.reason, /`click` it and retry/);
 	rmSync(dir, { recursive: true, force: true });
 });
 

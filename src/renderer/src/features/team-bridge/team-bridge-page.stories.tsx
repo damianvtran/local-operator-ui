@@ -8,7 +8,14 @@ import { t } from "@shared/i18n";
 import { useDocumentDirection } from "@shared/i18n/use-document-direction";
 import { cn } from "@shared/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, fireEvent, userEvent, waitFor, within } from "@storybook/test";
+import {
+	expect,
+	fireEvent,
+	fn,
+	userEvent,
+	waitFor,
+	within,
+} from "@storybook/test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
 	type CSSProperties,
@@ -896,6 +903,32 @@ export const MultiDayGroupedRuns: Story = {
 };
 
 /**
+ * A LONG HISTORY TO SCROLL UP THROUGH (the "it fights me" fix in
+ * `use-stick-to-bottom.ts`). Four days of alternating runs, every fifth body a
+ * paragraph, so measured rows differ from the window's estimates and the strip
+ * re-measures while a reader scrolls up from the newest message - the condition
+ * that used to throw them back to the bottom. Open it, scroll up a few pixels
+ * at a time from the end: the timeline must stay where you put it.
+ */
+const longBody = (day: number, index: number) =>
+	index % 5 === 0
+		? `Day ${day}, note ${index}: the migration dry run passed on staging, the release notes are drafted and waiting on copy review, and the rollback plan is in the doc for anyone on call tonight.`
+		: `Day ${day}, note ${index}.`;
+export const LongHistoryScrollUp: Story = {
+	args: {
+		target: { type: "conversation", id: channel.id },
+		messages: [3, 2, 1, 0].flatMap((day, run) =>
+			dayRun(
+				day,
+				1 + run * 30,
+				run % 2 === 0 ? multiDayAda : multiDaySelf,
+				Array.from({ length: 30 }, (_, index) => longBody(day, index)),
+			),
+		),
+	},
+};
+
+/**
  * The preview state: header metadata and the join banner, never a body.
  *
  * The messages are deliberately attached to the preview conversation in this
@@ -994,8 +1027,18 @@ export const RefreshingUnread: Story = {
 	args: { refreshingUnread: true },
 };
 
+/* A failed history read offers its own retry (operator report 2026-11-09: the
+   only way out used to be clicking another channel and back). */
 export const ThreadError: Story = {
-	args: { messageState: "error" },
+	args: { messageState: "error", onRetryMessages: fn() },
+	play: async ({ args, canvasElement }) => {
+		const canvas = within(canvasElement);
+		const retry = await canvas.findByRole("button", { name: "Try again" });
+		await expect(retry).toBeVisible();
+		// Visible is not wired: the click must reach the read's refetch.
+		await userEvent.click(retry);
+		await expect(args.onRetryMessages).toHaveBeenCalledOnce();
+	},
 };
 
 export const SendingDisabledComposer: Story = {

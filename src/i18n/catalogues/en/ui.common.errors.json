@@ -3,6 +3,7 @@
 	"ui.common.errors.desktop_refusal.refused": "This app's credential for the running Local Operator server was refused, so this control is unavailable.",
 	"ui.common.errors.desktop_refusal.plane_closed": "The running Local Operator server does not accept this app's desktop controls.",
 	"ui.common.errors.desktop_refusal.transport_failed": "The Local Operator server did not answer this request.",
+	"ui.common.errors.desktop_refusal.server_updating": "The Local Operator server is updating. It will be back in a moment.",
 	"ui.common.errors.error_boundary.error_details": "Error details",
 	"ui.common.errors.error_boundary.something_went_wrong": "Something went wrong",
 	"ui.common.errors.error_boundary.stack_trace": "Stack trace",

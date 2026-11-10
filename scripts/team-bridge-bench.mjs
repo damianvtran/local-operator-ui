@@ -175,6 +175,27 @@ const MESSAGES = countFlag("messages", 5000, 20_000);
 const FRAME_MESSAGES = countFlag("frames-messages", 120, 2_000);
 /** The negative control's small channel, and the size the pair is compared at. */
 const CONTROL_SMALL = Number(flag("control-small", "50"));
+/**
+ * `--history-429=<n>:<seconds>`: answer the first `n` NEWEST-PAGE history reads
+ * with the hub's `429 rate_limited` refusal carrying `retry_after_seconds`, in the
+ * shape the lop route relays it (`{detail: {code, message, retry_after_seconds}}`).
+ *
+ * WHY. The 2026-11-09 qa-coordination report (7+ s of skeleton rows, then a failed
+ * load) was not latency: the app's backend log shows four 429s from the hub's
+ * shared 120/min per-account `conversation-reads` bucket, one per React Query
+ * retry. A stub that always answers 200 cannot show that, so this replays it. Older
+ * pages (`before_seq`) are left alone so the replay isolates the cold open.
+ */
+const HISTORY_429 = (() => {
+	const raw = flag("history-429", null);
+	if (raw === null) return null;
+	const match = /^(\d+):(\d+)$/.exec(raw);
+	if (!match)
+		throw new Error(
+			`--history-429=${raw} is not <refusals>:<retry_after_seconds>`,
+		);
+	return { remaining: Number(match[1]), seconds: Number(match[2]) };
+})();
 const SIZE = flag("size", "1380x900");
 const JSON_OUT = flag("json", null);
 /**
@@ -818,6 +839,24 @@ function startStub(fixture, recordsDir) {
 			const limit = url.searchParams.get("limit");
 			const before = url.searchParams.get("before_seq");
 			const after = url.searchParams.get("after_seq");
+			/* The replay's own timeline on stderr: when each newest-page read arrived
+			   and what it was answered, which is the retry cadence the app chose. */
+			const replayLog = (status) =>
+				process.stderr.write(
+					`[history-429] t=${Math.round(performance.now())}ms ${conversationId} ${status}\n`,
+				);
+			if (HISTORY_429 && HISTORY_429.remaining > 0 && before === null) {
+				HISTORY_429.remaining -= 1;
+				replayLog(429);
+				return json(429, {
+					detail: {
+						code: "rate_limited",
+						message: "rate limited (bench replay)",
+						retry_after_seconds: HISTORY_429.seconds,
+					},
+				});
+			}
+			if (HISTORY_429 && before === null) replayLog(200);
 			return send({
 				result: fixture.page(conversationId, {
 					limit: limit === null ? null : Number(limit),
