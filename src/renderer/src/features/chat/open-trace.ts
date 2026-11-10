@@ -226,7 +226,7 @@ export function formatOpenTraceLine(
 	const parts = [
 		OPEN_TRACE_PREFIX,
 		`t=${trace.token}`,
-		`clickEpochMs=${trace.clickEpochMs ?? "-"}`,
+		`clickEpochMs=${trace.clickEpochMs ?? "-"}`, // i18n: ignore developer trace field; epoch timestamp correlates renderer and relay diagnostics
 		`session=${id}`,
 		`via=${entrance}`,
 		`outcome=${outcome}`,
