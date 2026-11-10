@@ -20,6 +20,7 @@ import { rowCurrent } from "@features/chat/components/chat-sidebar";
 import { Badge, Button } from "@shared/components/ui";
 import { useEverInView } from "@shared/hooks/use-ever-in-view";
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Heart, LoaderCircle, MessagesSquare, Star } from "lucide-react";
 import type { FC } from "react";
@@ -35,6 +36,7 @@ import {
 	assetSubtitle,
 	formatBytes,
 	formatDuration,
+	libraryKindLabel,
 	originGroupLabelKey,
 } from "../library-model";
 import { LibraryAssetMenu } from "./library-asset-menu";
@@ -208,6 +210,19 @@ const CardAudioWell: FC<{ asset: DesktopLibraryAsset }> = ({ asset }) => {
 };
 
 /** One grid tile. */
+/**
+ * The asset's kind as the user reads it, subscribed at the leaf.
+ *
+ * `LibraryRow` is an expression-bodied component that `chat-sidebar-selection`
+ * slices by source, so the locale subscription lives here rather than in a
+ * block body there; a card or row mounted without the page above it still
+ * repaints on a language change.
+ */
+const KindLabel: FC<{ kind: string }> = ({ kind }) => {
+	useI18nLocale();
+	return <>{libraryKindLabel(kind)}</>;
+};
+
 export const LibraryCard: FC<
 	LibraryCardActions & { asset: DesktopLibraryAsset; selected: boolean }
 > = ({ asset, selected, ...actions }) => {
@@ -231,7 +246,9 @@ export const LibraryCard: FC<
 				{assetSubtitle(asset)}
 			</span>
 			<div className="flex items-center gap-2 text-meta text-ink-muted">
-				<span className="truncate">{asset.kind}</span>
+				<span className="truncate">
+					<KindLabel kind={asset.kind} />
+				</span>
 				<span aria-hidden="true">·</span>
 				<span>{formatBytes(asset.size_bytes)}</span>
 				{asset.duration_s ? (
@@ -347,7 +364,9 @@ export const LibraryRow: FC<
 			</div>
 			<div className="flex shrink-0 items-center gap-3 text-meta text-ink-muted">
 				<TagStrip asset={asset} />
-				<span>{asset.kind}</span>
+				<span>
+					<KindLabel kind={asset.kind} />
+				</span>
 				<span>{formatBytes(asset.size_bytes)}</span>
 				<OriginBadge group={asset.origin_group} />
 				{asset.favorite && <FavoriteMark />}

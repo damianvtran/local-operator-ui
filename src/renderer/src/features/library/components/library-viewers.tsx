@@ -24,6 +24,7 @@ import { WysiwygMarkdownEditor } from "@features/chat/components/canvas/wysiwyg-
 import type { CanvasDocument } from "@features/chat/types/canvas";
 import { Button } from "@shared/components/ui";
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { Download, LoaderCircle, Maximize2 } from "lucide-react";
@@ -41,7 +42,7 @@ import {
 } from "../hooks/use-library-queries";
 import { saveAssetCopy } from "../library-download";
 import { libraryMarkdownDocument } from "../library-markdown";
-import { assetDisplayName } from "../library-model";
+import { assetDisplayName, libraryKindLabel } from "../library-model";
 import { KindGlyph } from "./library-glyph";
 import { LibraryMediaLightbox } from "./library-media-lightbox";
 import { PptxViewer } from "./pptx-viewer";
@@ -93,37 +94,46 @@ const Failure: FC<{ detail: string; asset: DesktopLibraryAsset }> = ({
 	);
 };
 
-const Unsupported: FC<{ asset: DesktopLibraryAsset }> = ({ asset }) => (
-	<div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
-		<KindGlyph kind={asset.kind} size={28} className="text-ink-dim" />
-		<p className="max-w-90 text-body text-ink">
-			{t("ui.library.preview.unsupported", {
-				kind: asset.kind,
-			})}
-		</p>
-		<div className="flex items-center gap-2">
-			{asset.ref.type === "path" && asset.ref.path ? (
+const Unsupported: FC<{ asset: DesktopLibraryAsset }> = ({ asset }) => {
+	// A viewer mounted under a long-lived preview must repaint on a language
+	// change without new props.
+	useI18nLocale();
+	return (
+		<div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
+			<KindGlyph kind={asset.kind} size={28} className="text-ink-dim" />
+			<p className="max-w-90 text-body text-ink">
+				{/* `other` is the catch-all: "A Other file" is ungrammatical in English and
+			    worse in translation, so it gets its own sentence with no kind slot. */}
+				{asset.kind === "other"
+					? t("ui.library.preview.unsupported_generic")
+					: t("ui.library.preview.unsupported", {
+							kind: libraryKindLabel(asset.kind),
+						})}
+			</p>
+			<div className="flex items-center gap-2">
+				{asset.ref.type === "path" && asset.ref.path ? (
+					<Button
+						variant="secondary"
+						size="sm"
+						onClick={() => {
+							if (asset.ref.path) window.api.openFile(asset.ref.path);
+						}}
+					>
+						{t("ui.library.preview.open_externally")}
+					</Button>
+				) : null}
 				<Button
 					variant="secondary"
 					size="sm"
-					onClick={() => {
-						if (asset.ref.path) window.api.openFile(asset.ref.path);
-					}}
+					onClick={() => void saveAssetCopy(asset)}
 				>
-					{t("ui.library.preview.open_externally")}
+					<Download aria-hidden="true" />
+					{t("ui.library.menu.download")}
 				</Button>
-			) : null}
-			<Button
-				variant="secondary"
-				size="sm"
-				onClick={() => void saveAssetCopy(asset)}
-			>
-				<Download aria-hidden="true" />
-				{t("ui.library.menu.download")}
-			</Button>
+			</div>
 		</div>
-	</div>
-);
+	);
+};
 
 /**
  * How much of the clip's bottom edge the click target must leave to the player.
