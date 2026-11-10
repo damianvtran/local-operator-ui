@@ -158,8 +158,15 @@ export const markAllReadCopy = (
  * action's right edge is x=184 at a 220px panel). The sidebar runs 220-320 with
  * 260 as the default (`chat-sidebar-layout.ts`), so: every label sheds at the
  * floor (content 164), English including a two-digit count stays spelled at the
- * default (content 204), and a French label of the same count is spelled only
- * from a 312px panel, which is the honest price of not starving the name.
+ * default (content 204). A label is spelled from a panel of its class plus 56px,
+ * derived from the ladder constants: a two-digit French label (26 characters,
+ * 256.2 needed) rounds up to the 268 class, so it needs a panel of at least 324,
+ * ABOVE the 320 maximum. The same holds for fr, es, hi and ur at any count and for
+ * vi and ru with a two-digit count; only vi and ru with one digit (24 characters,
+ * 244.8 needed, class 245) are spelled, from a 301px panel. en and zh-CN (class
+ * 200) are spelled from 256px. The control is therefore glyph-only at every
+ * supported width in fr, es, hi and ur, which is the honest price of not starving the section name: the glyph, the `sr-only`
+ * label and the tooltip carry the meaning.
  *
  * NOT GUARANTEED: a LONG section name in a long-label language ("Plus
  * anciennes") can still truncate when the label is spelled, because the name's
