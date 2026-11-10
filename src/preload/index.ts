@@ -75,6 +75,7 @@ import {
 	NOTIFICATION_TEST_CHANNEL,
 } from "../shared/notification-sound";
 import { readLaunchTarget, readOpenSessionArgv } from "../shared/open-session";
+import { receiptEpochMs } from "../shared/snapshot-receipt";
 import type {
 	TeamBridgeNotificationSender,
 	TeamBridgeNotifyAuthority,
@@ -324,11 +325,21 @@ const api = {
 						return null;
 					});
 				const handler = (_event: unknown, frame: DesktopStreamEvent) => {
+					// Stamp at listener entry, NOT after the subscription-id promise.
+					const receivedAt = frame.receipt ? performance.now() : 0;
+					// Each subscription listener sees this IPC object. Clone metadata so
+					// unrelated listeners cannot overwrite the matched stream's clocks.
+					const receipt = frame.receipt
+						? { ...frame.receipt, preloadReceiptEpochMs: receiptEpochMs() }
+						: undefined;
 					// Frames are scoped to their own subscription: a late frame from
 					// a dead stream must not land on a new one's consumer.
 					void settled.then((streamId) => {
-						if (streamId !== null && frame.streamId === streamId)
-							onEvent(frame);
+						if (streamId !== null && frame.streamId === streamId) {
+							if (receipt)
+								receipt.preloadReadyMs = performance.now() - receivedAt;
+							onEvent(receipt ? { ...frame, receipt } : frame);
+						}
 					});
 				};
 				ipcRenderer.on("desktop-stream-event", handler);
