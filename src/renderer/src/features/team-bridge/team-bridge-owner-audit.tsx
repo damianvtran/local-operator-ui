@@ -287,6 +287,16 @@ const VERDICT = {
 	admitted: { variant: "success", copy: "ui.ownerAudit.admitted" },
 	rejected: { variant: "danger", copy: "ui.ownerAudit.rejected" },
 	not_screened: { variant: "info", copy: "ui.ownerAudit.not_screened" },
+	/* Holds the server reports as `not_screened` (see `ownerAuditDelivery`).
+	 * Review and retry are `warning`: the owner is the one who can act or should
+	 * know; screening in progress and screened-not-yet-delivered are `info`. */
+	held_review: { variant: "warning", copy: "ui.ownerAudit.held_review" },
+	screening: { variant: "info", copy: "ui.ownerAudit.screening" },
+	screening_retry: {
+		variant: "warning",
+		copy: "ui.ownerAudit.screening_retry",
+	},
+	delivery_pending: { variant: "info", copy: "ui.ownerAudit.delivery_pending" },
 	unknown: { variant: "neutral", copy: "ui.ownerAudit.unknown_status" },
 } as const;
 

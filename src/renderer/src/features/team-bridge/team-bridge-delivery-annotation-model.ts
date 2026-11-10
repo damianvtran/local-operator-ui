@@ -1,4 +1,7 @@
-import type { TeamBridgeDeliveryState } from "../../../../shared/team-bridge-contract";
+import type {
+	TeamBridgeDeliveryState,
+	TeamBridgeDeliverySummary,
+} from "../../../../shared/team-bridge-contract";
 
 /**
  * The view model behind the muted "not delivered" lines under a sent message
@@ -139,4 +142,127 @@ export function teamBridgeDeliveryLines(
 		// `delivered` and any state this build does not know: nothing.
 	}
 	return lines;
+}
+
+/**
+ * The counts behind the ONE summary line under a message ("Delivered to 3 ·
+ * 2 screening · 2 not delivered"), in render order. Zero segments are omitted
+ * by the component, never here, so a test can pin every count.
+ *
+ * `screening` is screening in progress (including "could not be screened yet,
+ * retrying"); `held` waits for the recipient owner's review; `notReviewed` is
+ * such a hold the hub has given up waiting on; `pending` is a recipient whose
+ * outcome this viewer cannot classify (an unclassified hold, a screened
+ * delivery still in flight, or a recipient that never reported).
+ */
+export type TeamBridgeDeliveryCounts = {
+	delivered: number;
+	screening: number;
+	held: number;
+	notReviewed: number;
+	pending: number;
+	notDelivered: number;
+};
+
+export const TEAM_BRIDGE_DELIVERY_SEGMENTS = [
+	"delivered",
+	"screening",
+	"held",
+	"notReviewed",
+	"pending",
+	"notDelivered",
+] as const satisfies readonly (keyof TeamBridgeDeliveryCounts)[];
+
+/**
+ * What the summary line under one message shows to THIS viewer, or `null` when
+ * it shows nothing.
+ *
+ * WHY ONE LINE. One line per recipient grew without bound in a busy channel
+ * (operator report 2026-11-09): six agents meant six muted sentences under
+ * every message. The line now carries counts, and the per-recipient sentences
+ * move into a popover behind it.
+ *
+ * WHO SEES WHAT. `lines` is non-empty only for a viewer the hub already sent
+ * per-recipient entries to (the sender, an agent member's owner), so the
+ * popover never discloses anything that viewer could not already read. Every
+ * other member sees the counts alone, from the hub's neutral
+ * `delivery_summary`; with no summary (an older hub) they see nothing, never a
+ * guess.
+ *
+ * WHERE THE COUNTS COME FROM. The hub's `delivery_summary` wins when present:
+ * it counts EVERY recipient, while a viewer's `delivery_states` may cover only
+ * their own agents, and only the hub can tell a review hold from screening for
+ * a sender. Without it the counts are derived from `delivery_states` with the
+ * same narrowing as the lines: unknown states count nowhere, an unclassified
+ * hold is `pending` (the sender cannot tell screening from review, and calling
+ * a review hold "screening" is the mislabel this replaced).
+ *
+ * WHEN IT IS SILENT. Only when nothing is outstanding: an all-delivered message
+ * stays as quiet as before, so the line itself means "look here".
+ */
+export function teamBridgeDeliverySummary(message: {
+	delivery_states?: readonly TeamBridgeDeliveryState[];
+	delivery_summary?: TeamBridgeDeliverySummary;
+	origin?: unknown;
+	sender?: { kind?: unknown; audit_unknown_kind?: unknown };
+}): {
+	counts: TeamBridgeDeliveryCounts;
+	lines: TeamBridgeDeliveryLine[];
+} | null {
+	const lines = teamBridgeDeliveryLines(message.delivery_states, message);
+	const counts =
+		countsFromSummary(message.delivery_summary) ??
+		countsFromStates(message.delivery_states);
+	const outstanding =
+		counts.screening +
+		counts.held +
+		counts.notReviewed +
+		counts.pending +
+		counts.notDelivered;
+	if (outstanding === 0) return null;
+	return { counts, lines };
+}
+
+const zeroCounts = (): TeamBridgeDeliveryCounts => ({
+	delivered: 0,
+	screening: 0,
+	held: 0,
+	notReviewed: 0,
+	pending: 0,
+	notDelivered: 0,
+});
+
+function countsFromSummary(
+	summary: TeamBridgeDeliverySummary | undefined,
+): TeamBridgeDeliveryCounts | null {
+	if (!summary) return null;
+	return {
+		delivered: summary.delivered ?? 0,
+		screening: summary.screening ?? 0,
+		held: summary.held ?? 0,
+		notReviewed: summary.not_reviewed ?? 0,
+		pending: summary.pending ?? 0,
+		notDelivered: summary.not_delivered ?? 0,
+	};
+}
+
+function countsFromStates(
+	states: readonly TeamBridgeDeliveryState[] | undefined,
+): TeamBridgeDeliveryCounts {
+	const counts = zeroCounts();
+	const seen = new Set<string>();
+	for (const entry of states ?? []) {
+		// Same first-entry-wins dedup as the lines, so the count matches them.
+		if (seen.has(entry.endpoint_id)) continue;
+		if (entry.state === "delivered") counts.delivered += 1;
+		else if (entry.state === "refused") counts.notDelivered += 1;
+		else if (entry.state === "held") {
+			const holdClass = isHoldClass(entry.hold_class) ? entry.hold_class : null;
+			if (holdClass === "awaiting_review") counts.held += 1;
+			else if (holdClass === "screening_unavailable") counts.screening += 1;
+			else counts.pending += 1;
+		} else continue; // unknown state: counted nowhere, like the lines
+		seen.add(entry.endpoint_id);
+	}
+	return counts;
 }

@@ -111,6 +111,34 @@
 		"placeholders": {},
 		"note": "\"Not screened by your chief of staff\": no verdict exists for this message — it was never put to the agent's screening. Do not write \"pending\", \"in progress\", \"awaiting review\" or \"unchecked\": nothing is in flight, and there is no queue that will later produce a verdict. Also avoid a word that reads as \"unscanned\" in a security sense (see ui.ownerAudit.admitted)."
 	},
+	"ui.ownerAudit.held_review": {
+		"role": "per-message screening verdict chip",
+		"tone": "neutral metadata, factual",
+		"length": "Very short chip.",
+		"placeholders": {},
+		"note": "\"Held for your review\": the chief of staff's screening HELD this message for the owner (the reader) to decide; the agent has not read it yet. Address the reader directly ('your'). Do not imply it was refused, deleted or malicious."
+	},
+	"ui.ownerAudit.screening": {
+		"role": "per-message screening verdict chip",
+		"tone": "neutral metadata, factual",
+		"length": "Very short chip.",
+		"placeholders": {},
+		"note": "\"Being screened by your chief of staff\": screening of this message is in progress; a verdict will follow. Same screening term as ui.ownerAudit.not_screened."
+	},
+	"ui.ownerAudit.screening_retry": {
+		"role": "per-message screening verdict chip",
+		"tone": "neutral metadata, factual",
+		"length": "Very short chip.",
+		"placeholders": {},
+		"note": "\"Couldn't be screened yet; retrying\": screening could not run for now (the screening service was unavailable) and is retried automatically. Not an error the reader caused; never alarmist. Do not use an em dash."
+	},
+	"ui.ownerAudit.delivery_pending": {
+		"role": "per-message screening verdict chip",
+		"tone": "neutral metadata, factual",
+		"length": "Very short chip.",
+		"placeholders": {},
+		"note": "\"Screened; delivery to your chief of staff pending\": screening finished and passed; only delivery to the agent is outstanding. Must not say it is waiting to be screened."
+	},
 	"ui.ownerAudit.unknown_status": {
 		"role": "fallback chip for an unrecognised verdict or membership state",
 		"tone": "neutral, unresolved",

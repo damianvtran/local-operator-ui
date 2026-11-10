@@ -62,8 +62,8 @@ const { createRoot } = await import("react-dom/client");
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { teamBridgeDeliveryLines } from "./src/renderer/src/features/team-bridge/team-bridge-delivery-annotation-model";
-			export { TeamBridgeDeliveryAnnotation } from "./src/renderer/src/features/team-bridge/team-bridge-delivery-annotation";
+			export { teamBridgeDeliveryLines, teamBridgeDeliverySummary } from "./src/renderer/src/features/team-bridge/team-bridge-delivery-annotation-model";
+			export { TeamBridgeDeliveryAnnotation, TeamBridgeDeliveryLines, teamBridgeDeliverySummaryText } from "./src/renderer/src/features/team-bridge/team-bridge-delivery-annotation";
 			export { teamBridgeMessageSchema } from "./src/shared/team-bridge-contract";
 			export { ownerAuditToBridgeMessage } from "./src/renderer/src/features/team-bridge/team-bridge-owner-audit-model";
 			export { ownerAuditMessageSchema } from "./src/shared/team-bridge-owner-audit-contract";
@@ -87,7 +87,10 @@ compiled.paths = Module._nodeModulePaths(process.cwd());
 compiled._compile(bundle.outputFiles[0].text, compiled.filename);
 const {
 	teamBridgeDeliveryLines,
+	teamBridgeDeliverySummary,
+	teamBridgeDeliverySummaryText,
 	TeamBridgeDeliveryAnnotation,
+	TeamBridgeDeliveryLines,
 	teamBridgeMessageSchema,
 	ownerAuditToBridgeMessage,
 	ownerAuditMessageSchema,
@@ -126,10 +129,12 @@ const entry = (over = {}) => ({
 });
 // A human classification is positive fixture input, never inferred by the model.
 const HUMAN_SOURCE = { origin: "human", sender: { kind: "human" } };
+// The per-recipient lines, as the summary's details popover renders them
+// (since 2026-11-09 they no longer sit directly under the message).
 const render = (states, source = HUMAN_SOURCE) =>
 	renderToStaticMarkup(
-		createElement(TeamBridgeDeliveryAnnotation, {
-			message: { ...source, delivery_states: states },
+		createElement(TeamBridgeDeliveryLines, {
+			lines: teamBridgeDeliveryLines(states, source),
 		}),
 	);
 // The rendered sentence, entities decoded and tags stripped, one per <li>.
@@ -188,22 +193,22 @@ test("refused without, or with an unknown, class drops the parenthetical", () =>
 
 test("held names its recipient; the owner reason is a complete second sentence", () => {
 	assert.deepEqual(lineTexts(render([entry({ state: "held" })])), [
-		"Waiting to be screened by Aida (Sam)…",
+		"Not delivered to Aida (Sam) yet…",
 	]);
 	const reasons = {
-		screening_unavailable: "Screening is temporarily unavailable.",
-		awaiting_review: "Awaiting review.",
+		screening_unavailable: "It could not be screened; retrying automatically.",
+		awaiting_review: "Held for Sam’s review.",
 	};
 	for (const [cls, reason] of Object.entries(reasons)) {
 		assert.deepEqual(
 			lineTexts(render([entry({ state: "held", hold_class: cls })])),
-			[`Waiting to be screened by Aida (Sam). ${reason}`],
+			[`Not delivered to Aida (Sam) yet. ${reason}`],
 			cls,
 		);
 	}
 	assert.deepEqual(
 		lineTexts(render([entry({ state: "held", hold_class: "provider_error" })])),
-		["Waiting to be screened by Aida (Sam)…"],
+		["Not delivered to Aida (Sam) yet…"],
 		"a raw hold code is not a hold class",
 	);
 });
@@ -237,7 +242,7 @@ test("a blank label falls back to the shared placeholders", () => {
  */
 const LINE_STATES = [
 	["refused", {}, (r) => `Not delivered to ${r}. Refused by moderation.`],
-	["held", { state: "held" }, (r) => `Waiting to be screened by ${r}…`],
+	["held", { state: "held" }, (r) => `Not delivered to ${r} yet…`],
 	[
 		"pending",
 		{ state: "held", hold_class: "delivery_pending" },
@@ -749,8 +754,8 @@ test("a press opens the panel instead of closing it (D3)", async () => {
 	try {
 		await act(async () =>
 			root.render(
-				createElement(TeamBridgeDeliveryAnnotation, {
-					message: { ...HUMAN_SOURCE, delivery_states: [entry()] },
+				createElement(TeamBridgeDeliveryLines, {
+					lines: teamBridgeDeliveryLines([entry()], HUMAN_SOURCE),
 				}),
 			),
 		);
@@ -840,7 +845,7 @@ test("the owner-audit view carries the audited agent's delivery state to the row
 	);
 	assert.deepEqual(row.delivery_states, [held]);
 	assert.deepEqual(lineTexts(render(row.delivery_states, row)), [
-		"Waiting to be screened by Aida (Sam). Awaiting review.",
+		"Not delivered to Aida (Sam) yet. Held for Sam’s review.",
 	]);
 	assert.equal(
 		ownerAuditToBridgeMessage(ownerAuditMessageSchema.parse(wire))
@@ -955,13 +960,13 @@ test("mixed partial delivery names only each affected recipient", () => {
 	];
 	assert.deepEqual(lineTexts(render(states)), [
 		"Not delivered to Aida (Sam): refused by their moderation (looked like abusive content)",
-		"Waiting to be screened by Cy (Sam)…",
+		"Not delivered to Cy (Sam) yet…",
 	]);
 	assert.deepEqual(
 		lineTexts(render(states, { origin: "agent", sender: { kind: "agent" } })),
 		[
 			"Not delivered to Aida (Sam). Refused by moderation.",
-			"Waiting to be screened by Cy (Sam)…",
+			"Not delivered to Cy (Sam) yet…",
 		],
 	);
 });
@@ -974,10 +979,273 @@ test("all moderation copy in every shipped locale has no em dash", () => {
 		const entries = Object.entries(catalogue).filter(([key]) =>
 			key.startsWith("ui.teamBridge.delivery."),
 		);
-		// 13 lines plus `recipient_unnamed`, the in-sentence unnamed form (#1643).
-		assert.equal(entries.length, 14, locale);
+		// 14 lines plus `recipient_unnamed`, the in-sentence unnamed form
+		// (#1643), plus the eight summary keys (2026-11-09).
+		assert.equal(entries.length, 23, locale);
 		for (const [key, value] of entries) {
 			assert.doesNotMatch(value, MODERATION_EM_DASH, `${locale}:${key}`);
 		}
+	}
+});
+
+/*
+ * THE COLLAPSED SUMMARY (operator report 2026-11-09): one line per message,
+ * counts for every member, per-recipient detail only for a viewer the hub
+ * already sent entries to.
+ */
+const counts = (over = {}) => ({
+	delivered: 0,
+	screening: 0,
+	held: 0,
+	notReviewed: 0,
+	pending: 0,
+	notDelivered: 0,
+	...over,
+});
+
+test("summary counts derive from the viewer's entries when the hub sends no summary", () => {
+	const states = [
+		entry({ endpoint_id: "a", state: "delivered" }),
+		entry({ endpoint_id: "b", state: "delivered" }),
+		entry({ endpoint_id: "c" }),
+		entry({ endpoint_id: "d", state: "held", hold_class: "awaiting_review" }),
+		entry({
+			endpoint_id: "e",
+			state: "held",
+			hold_class: "screening_unavailable",
+		}),
+		entry({ endpoint_id: "f", state: "held" }),
+		entry({ endpoint_id: "g", state: "held", hold_class: "delivery_pending" }),
+		entry({ endpoint_id: "h", state: "bounced" }),
+		entry({ endpoint_id: "c" }),
+	];
+	const summary = teamBridgeDeliverySummary({
+		...HUMAN_SOURCE,
+		delivery_states: states,
+	});
+	assert.deepEqual(
+		summary.counts,
+		counts({
+			delivered: 2,
+			screening: 1,
+			held: 1,
+			pending: 2,
+			notDelivered: 1,
+		}),
+		"an awaiting_review hold is held, never screening; unknown states and duplicates count nowhere",
+	);
+	assert.equal(summary.lines.length, 5);
+});
+
+test("the hub's neutral summary wins over the viewer's partial entries", () => {
+	const summary = teamBridgeDeliverySummary({
+		...HUMAN_SOURCE,
+		delivery_states: [entry({ state: "held" })],
+		delivery_summary: {
+			delivered: 3,
+			held: 1,
+			not_reviewed: 1,
+			not_delivered: 2,
+		},
+	});
+	assert.deepEqual(
+		summary.counts,
+		counts({ delivered: 3, held: 1, notReviewed: 1, notDelivered: 2 }),
+	);
+	assert.equal(
+		summary.lines.length,
+		1,
+		"the detail still comes from the entries",
+	);
+});
+
+test("a non-sender gets counts and no lines; no data or nothing outstanding is silent", () => {
+	const neutral = teamBridgeDeliverySummary({
+		delivery_summary: { delivered: 1, screening: 2 },
+	});
+	assert.deepEqual(neutral.counts, counts({ delivered: 1, screening: 2 }));
+	assert.deepEqual(neutral.lines, []);
+	assert.equal(teamBridgeDeliverySummary({}), null);
+	assert.equal(
+		teamBridgeDeliverySummary({ delivery_summary: { delivered: 4 } }),
+		null,
+	);
+	assert.equal(
+		teamBridgeDeliverySummary({
+			delivery_states: [entry({ state: "delivered" })],
+		}),
+		null,
+	);
+});
+
+test("the summary text keeps the order, omits zeros and pluralizes per locale", () => {
+	assert.equal(
+		teamBridgeDeliverySummaryText(
+			counts({ delivered: 3, screening: 2, notDelivered: 2 }),
+		),
+		"Delivered to 3 · 2 screening · 2 not delivered",
+	);
+	assert.equal(
+		teamBridgeDeliverySummaryText(
+			counts({ held: 1, notReviewed: 1, pending: 1 }),
+		),
+		"1 held for review · 1 not reviewed · 1 pending",
+	);
+	try {
+		setLocale("ru");
+		assert.equal(
+			teamBridgeDeliverySummaryText(counts({ delivered: 5, notDelivered: 1 })),
+			"Доставлено: 5 · Не доставлено: 1",
+		);
+		setLocale("fr");
+		assert.equal(
+			teamBridgeDeliverySummaryText(counts({ notReviewed: 2 })),
+			"2 non examinés",
+		);
+	} finally {
+		setLocale("en");
+	}
+});
+
+test("the server summary schema keeps counts only and drops bad values per field", () => {
+	const parsed = teamBridgeMessageSchema.parse({
+		id: "bcmsg_s",
+		conversation_id: "bconv_1",
+		seq: 1,
+		sender: { account_id: "acct_1", kind: "human", display_label: "Ben" },
+		body: "hi",
+		origin: "human",
+		created_at: "2026-11-09T00:00:00Z",
+		delivery_summary: {
+			delivered: 2,
+			held: -1,
+			not_delivered: "x",
+			recipients: ["Aida"],
+		},
+	});
+	assert.deepEqual(parsed.delivery_summary, {
+		delivered: 2,
+		held: undefined,
+		not_delivered: undefined,
+	});
+	assert.equal(
+		teamBridgeMessageSchema.parse({
+			id: "bcmsg_s",
+			conversation_id: "bconv_1",
+			seq: 1,
+			sender: { account_id: "acct_1", kind: "human", display_label: "Ben" },
+			body: "hi",
+			origin: "human",
+			created_at: "2026-11-09T00:00:00Z",
+			delivery_summary: "bad",
+		}).delivery_summary,
+		undefined,
+		"a malformed summary costs the summary, never the message",
+	);
+});
+
+test("a non-sender sees the neutral line: counts, no names, nothing to open", () => {
+	const html = renderToStaticMarkup(
+		createElement(TeamBridgeDeliveryAnnotation, {
+			message: { delivery_summary: { delivered: 3, held: 1 } },
+		}),
+	);
+	assert.match(html, /Delivered to 3 · 1 held for review/);
+	assert.doesNotMatch(html, /<button/);
+	assert.doesNotMatch(html, /Aida|Sam/);
+	assert.equal(
+		renderToStaticMarkup(
+			createElement(TeamBridgeDeliveryAnnotation, { message: {} }),
+		),
+		"",
+	);
+});
+
+const mountSender = async (root) =>
+	act(async () =>
+		root.render(
+			createElement(TeamBridgeDeliveryAnnotation, {
+				message: {
+					...HUMAN_SOURCE,
+					delivery_states: [
+						entry({ endpoint_id: "a", state: "delivered" }),
+						entry({ endpoint_id: "b" }),
+					],
+				},
+			}),
+		),
+	);
+const SENDER_SUMMARY_TEXT = /Delivered to 1 · 1 not delivered/;
+const DETAIL_TEXT = /Not delivered to Aida \(Sam\)\. Refused by moderation\./;
+
+test("the sender's line opens its details on a press, pins, and closes on Escape", async () => {
+	const root = createRoot(document.getElementById("root"));
+	try {
+		await mountSender(root);
+		const button = document.querySelector("button");
+		assert.equal(
+			button.getAttribute("type"),
+			"button",
+			"Enter/Space activate it natively",
+		);
+		assert.match(button.textContent, SENDER_SUMMARY_TEXT);
+		assert.doesNotMatch(document.body.textContent, DETAIL_TEXT);
+		await act(async () => {
+			button.focus();
+			button.dispatchEvent(
+				new dom.window.MouseEvent("click", { bubbles: true, cancelable: true }),
+			);
+		});
+		assert.match(document.body.textContent, DETAIL_TEXT);
+		assert.equal(button.getAttribute("aria-expanded"), "true");
+		const panel = document.querySelector('[aria-label="Delivery details"]');
+		assert.ok(panel, "the panel carries its accessible name");
+		assert.equal(
+			document.activeElement,
+			panel,
+			"a press focuses the panel, not a glyph",
+		);
+		await act(async () => {
+			panel.dispatchEvent(
+				new dom.window.KeyboardEvent("keydown", {
+					key: "Escape",
+					bubbles: true,
+				}),
+			);
+		});
+		assert.doesNotMatch(document.body.textContent, DETAIL_TEXT);
+	} finally {
+		await act(async () => root.unmount());
+	}
+});
+
+test("hover opens the details without taking focus, and leaving closes them", async () => {
+	const root = createRoot(document.getElementById("root"));
+	const Pointer = dom.window.PointerEvent ?? dom.window.MouseEvent;
+	const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+	try {
+		await mountSender(root);
+		const button = document.querySelector("button");
+		await act(async () => {
+			button.dispatchEvent(new Pointer("pointerover", { bubbles: true }));
+			await wait(400);
+		});
+		assert.match(document.body.textContent, DETAIL_TEXT);
+		assert.notEqual(
+			document.activeElement,
+			document.querySelector('[aria-label="Delivery details"]'),
+		);
+		await act(async () => {
+			button.dispatchEvent(
+				new Pointer("pointerout", {
+					bubbles: true,
+					relatedTarget: document.body,
+				}),
+			);
+			await wait(300);
+		});
+		assert.doesNotMatch(document.body.textContent, DETAIL_TEXT);
+	} finally {
+		await act(async () => root.unmount());
 	}
 });

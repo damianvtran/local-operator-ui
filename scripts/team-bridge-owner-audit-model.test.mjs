@@ -405,3 +405,44 @@ test("sender labels: directory first, then stored, then the member label", () =>
 		"Xu Li",
 	);
 });
+
+test("a held message is never labelled 'not screened' for its owner (2026-11-09)", () => {
+	// The hub reports a screener HOLD as `not_screened` (or no status); the
+	// audited agent's own delivery entry carries the real class.
+	const human = {
+		sender: { account_id: "acct-renee", kind: "human", display_label: "Renee" },
+		origin: "human",
+	};
+	const held = (hold_class, status = "not_screened") =>
+		model.ownerAuditDelivery(
+			message({
+				...human,
+				agent_delivery_status: status,
+				delivery_states: [
+					{
+						endpoint_id: "bep_1",
+						recipient_label: "Aida",
+						recipient_owner_label: "Damian",
+						state: "held",
+						...(hold_class ? { hold_class } : {}),
+					},
+				],
+			}),
+			AUDITED_AGENT,
+		);
+	assert.equal(held("awaiting_review"), "held_review");
+	assert.equal(held("screening_unavailable"), "screening_retry");
+	assert.equal(held("delivery_pending"), "delivery_pending");
+	assert.equal(held(undefined), "screening");
+	assert.equal(held("awaiting_review", null), "held_review");
+	// A verdict the server recorded still wins over a stale entry.
+	assert.equal(held("awaiting_review", "rejected"), "rejected");
+	// No hold entry: the server's status stands.
+	assert.equal(
+		model.ownerAuditDelivery(
+			message({ ...human, agent_delivery_status: "not_screened" }),
+			AUDITED_AGENT,
+		),
+		"not_screened",
+	);
+});

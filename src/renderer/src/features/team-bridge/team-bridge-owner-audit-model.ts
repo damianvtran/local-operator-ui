@@ -14,13 +14,25 @@ import {
 } from "./team-bridge-model";
 
 /** Missing verdict is normal only on the audited agent's own messages. Treat
- * future/missing verdicts conservatively without inventing an admission. */
+ * future/missing verdicts conservatively without inventing an admission.
+ *
+ * A HOLD IS NOT "NOT SCREENED". The hub's `agent_delivery_status` has no hold
+ * value: a message the agent's screener HELD (a model hold waiting for the
+ * owner, or screening that could not run) reaches the audit as `not_screened`
+ * or with no status, while the audited agent's own `delivery_states` entry says
+ * `held` with the real class. The owner then read "Not screened by your chief
+ * of staff" over a message their screener had in fact held for them (operator
+ * report 2026-11-09, Renee's DM seq 4). So the hold entry refines those two
+ * statuses; the terminal verdicts the server does name (admitted, rejected)
+ * still win, because the server is the authority on a decision it recorded. */
 export function ownerAuditDelivery(
 	message: OwnerAuditMessage,
 	agentAccountId: string,
 ) {
 	if (message.agent_delivery_status === "admitted") return "admitted";
 	if (message.agent_delivery_status === "rejected") return "rejected";
+	const hold = ownerAuditHold(message);
+	if (hold) return hold;
 	if (message.agent_delivery_status === "not_screened") return "not_screened";
 	if (
 		!message.agent_delivery_status &&
@@ -29,6 +41,35 @@ export function ownerAuditDelivery(
 	)
 		return "own";
 	return "unknown";
+}
+
+/*
+ * The audited agent's hold, from its delivery-state entry. The owner owns that
+ * recipient, so the entry may carry `hold_class` (contract v1); an unknown or
+ * absent class reads as screening still in progress, the hub's meaning of a
+ * bare `held`. Only `held` entries count: a `refused` entry without a recorded
+ * `rejected` status is left to the server's status rather than promoted here.
+ * Called only after the terminal statuses returned, so any status left is
+ * `not_screened`, missing, or a future value we do not refine.
+ */
+function ownerAuditHold(message: OwnerAuditMessage) {
+	if (
+		message.agent_delivery_status &&
+		message.agent_delivery_status !== "not_screened"
+	)
+		return null;
+	const entry = message.delivery_states?.find((item) => item.state === "held");
+	if (!entry) return null;
+	switch (entry.hold_class) {
+		case "awaiting_review":
+			return "held_review" as const;
+		case "screening_unavailable":
+			return "screening_retry" as const;
+		case "delivery_pending":
+			return "delivery_pending" as const;
+		default:
+			return "screening" as const;
+	}
 }
 
 export function ownerAuditTitle(

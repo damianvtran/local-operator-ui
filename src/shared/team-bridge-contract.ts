@@ -342,7 +342,7 @@ export type TeamBridgeFilesCapability = z.infer<
  * WHAT IS DELIBERATELY NOT HERE: no score, reason, body, model or timestamp —
  * the hub never sends them, and a schema that named them would invite a renderer
  * to show them. `hold_class` reaches only the recipient's owner; the sender sees
- * every hold as "waiting to be screened". `refusal_class` is withheld from the
+ * every hold as an unclassified "not delivered yet". `refusal_class` is withheld from the
  * sender once the hub suspects probing. Both are optional for that reason.
  */
 export const teamBridgeDeliveryStateSchema = z
@@ -361,6 +361,46 @@ export const teamBridgeDeliveryStateSchema = z
 	.strip();
 export type TeamBridgeDeliveryState = z.infer<
 	typeof teamBridgeDeliveryStateSchema
+>;
+
+/*
+ * PER-MESSAGE DELIVERY SUMMARY (additive; agent-server sibling PR to the
+ * collapsed-summary UI). Unlike `delivery_states`, which reaches only the sender
+ * and the owners of agent members, the hub sends these COUNTS to every member
+ * of the conversation, so a third member can see that a message was held or
+ * refused without learning by whom or why (operator report 2026-11-09: a stuck
+ * message looked delivered to everyone but its sender).
+ *
+ * Every count is optional and caught individually: an older hub sends no
+ * summary at all (the renderer then derives counts from the `delivery_states`
+ * it already has, and renders nothing for a viewer who has neither), and a
+ * malformed or future count costs that one segment, never the message.
+ * `screening` is screening genuinely in progress; `held` is a hold awaiting the
+ * recipient owner's review; `not_reviewed` is such a hold older than the hub's
+ * review horizon; `pending` is a recipient that has not reported yet.
+ *
+ * NO NAMES, NO CLASSES. The shape is counts only, and `.strip()` drops anything
+ * else a future hub adds, for the same reason as `teamBridgeDeliveryStateSchema`.
+ */
+const deliveryCount = z
+	.number()
+	.int()
+	.nonnegative()
+	.max(10_000)
+	.optional()
+	.catch(undefined);
+export const teamBridgeDeliverySummarySchema = z
+	.object({
+		delivered: deliveryCount,
+		screening: deliveryCount,
+		held: deliveryCount,
+		not_reviewed: deliveryCount,
+		pending: deliveryCount,
+		not_delivered: deliveryCount,
+	})
+	.strip();
+export type TeamBridgeDeliverySummary = z.infer<
+	typeof teamBridgeDeliverySummarySchema
 >;
 
 export const teamBridgeMessageSchema = z
@@ -445,6 +485,11 @@ export const teamBridgeMessageSchema = z
 		delivery_states: z
 			.array(teamBridgeDeliveryStateSchema)
 			.max(64)
+			.optional()
+			.catch(undefined),
+		/* Neutral per-message counts for EVERY member; see
+		 * `teamBridgeDeliverySummarySchema`. Absent on older hubs. */
+		delivery_summary: teamBridgeDeliverySummarySchema
 			.optional()
 			.catch(undefined),
 	})
