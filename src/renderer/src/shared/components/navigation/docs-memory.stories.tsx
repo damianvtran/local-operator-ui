@@ -1,0 +1,429 @@
+/**
+ * Memory, as the marketing site's "Teach it once" figure shows it: one
+ * conversation where a preference is taught, and a later one where it is
+ * recalled. Rendered from the REAL desktop components - `ChatHeader`,
+ * `CanonicalTranscript` (its ordinary tool rows), the docked `QuestionDock`
+ * approval card and `MessageInput` - over sample records, never a redrawn copy.
+ *
+ * WHY THIS FILE EXISTS. The site's section showed an old agent form; memory is
+ * the product's actual "teach it once" surface, and no story rendered a memory
+ * save or recall. Memory has no bespoke UI: a `memory` call is an ordinary tool
+ * row and a recall is an ordinary `read` of a `memory://` entry, so the scenes
+ * below stage exactly those rows rather than inventing a memory card.
+ *
+ * WHAT IS PRODUCT TRUTH AND WHAT IS SAMPLE (core `local_operator` @ ba3fccc1d604):
+ * - The approval card's title is the tool's name and its detail is the tool's
+ *   own approval describer (`session/runtime/serving.py` `PendingRequest(
+ *   kind="approval", title=tool_name, detail=description)`). For a global store
+ *   `tools/memory_tools.py::_approval_text` returns the literal
+ *   `GLOBAL_STORE_APPROVAL` below; keep it byte-identical to core.
+ * - A store needs write-level approval; a recall is read-level
+ *   (`call_approval_tier`). The default scope is the conversation; `global` is
+ *   for durable personal facts and preferences (`guides/memory/GUIDE.md`).
+ * - The store receipt is the store's own result plus `uri` and `lifetime`
+ *   (`execute_fact_memory`; `memory.py` write result and `_quota_view`); the
+ *   global cap is `GLOBAL_TOKENS` = 16000. Ids are UUIDv7 (`memory.py`).
+ * - On a later turn up to 3 matching titles are suggested to the agent
+ *   (`memory_capture.py` suggestion block, which is prompt-side and never
+ *   rendered); the agent reads the full entry with `read memory://global/<id>`,
+ *   whose result is `MemoryStore.show`'s shape. Recall is per relevant request,
+ *   not applied to every turn - so scene B is a matching request.
+ * - Everything else - the user's words, the agent's prose and intents, the
+ *   repository, branch and PR - is sample text in the docs library's world.
+ *
+ * CAPTURE. The marketing set's size: a 1280x720 viewport at
+ * `deviceScaleFactor: 2`, once per theme via
+ * `&args=theme:localOperatorLight|localOperatorDark`. The approval card is
+ * docked synchronously, but the receipt scenes open a row's disclosure after
+ * mount, so they hold the shutter (`data-capture-pending`) until the expanded
+ * detail is painted and refuse the frame (`data-capture-failed`) if it never is
+ * - the latch the capture rigs already honour.
+ */
+
+import "../../../styles/index.css";
+import type { PendingDesktopGate } from "../../../../../shared/desktop-session-contract";
+// The shim installs window.api for every story here.
+import "@features/chat/components/story-electron-shim";
+import { CanonicalTranscript } from "@features/chat/canonical/canonical-transcript";
+import type {
+	TranscriptRecord,
+	TranscriptState,
+} from "@features/chat/canonical/transcript-reducer";
+import { ChatHeader } from "@features/chat/components/chat-header";
+import { QuestionDock } from "@features/chat/components/trace/question-dock";
+import type { Message } from "@features/chat/types/message";
+import { MessageInput } from "@shared/components/composer/message-input";
+import type { Meta, StoryObj } from "@storybook/react";
+import { type FC, useEffect, useRef } from "react";
+
+/* ---------------------------------------------------------------- the world */
+
+/** Two sessions: the memory has to cross from one to the other to be a recall. */
+const TAUGHT_SESSION = "session/7b21c0e94f3a";
+const RECALLED_SESSION = "session/c48e5d1a2b90";
+
+/** One anchor instant, so relative labels read as today whatever day it runs. */
+const NOW = Date.now();
+const at = (minutesAgo: number) => NOW - minutesAgo * 60_000;
+
+/** Core's literal approval line for `memory op=store scope=global`. */
+const GLOBAL_STORE_APPROVAL =
+	"Store durable personal fact in global memory (across sessions)";
+
+/**
+ * Under core's 100-char title budget (`_TITLE_CHARS`), so `_derived_title`
+ * keeps the whole line and the stored title equals the text.
+ */
+const PREFERENCE =
+	"PR descriptions: only what changed and how it was verified. No background essay, no file list.";
+
+/** A UUIDv7-shaped sample id; one fact, referenced by both scenes. */
+const FACT_ID = "019a6f3e-7c41-7d2a-9b1e-5f0c2a8d4e61";
+const FACT_VERSION = "019a6f3e-7c42-7f10-8c3d-1e9b7a4f2c05";
+const FACT_URI = `memory://global/${FACT_ID}`;
+
+const user = (
+	id: string,
+	text: string,
+	minutesAgo: number,
+): TranscriptRecord => ({
+	kind: "user",
+	id,
+	ts: at(minutesAgo),
+	text,
+	images: [],
+});
+
+const assistant = (
+	id: string,
+	text: string,
+	minutesAgo: number,
+): TranscriptRecord => ({
+	kind: "assistant",
+	id,
+	ts: at(minutesAgo),
+	text,
+	streaming: false,
+	stopReason: null,
+	error: false,
+	complete: true,
+});
+
+type ToolRecord = Extract<TranscriptRecord, { kind: "tool" }>;
+
+/** The docs library's tool-row defaults (`docs-library.stories.tsx`). */
+const tool = (over: Partial<ToolRecord> & { id: string }): ToolRecord => ({
+	kind: "tool",
+	ts: NOW,
+	toolCallId: over.id,
+	toolName: "bash",
+	intent: null,
+	args: null,
+	phase: "done",
+	argumentBytes: 0,
+	output: "ok",
+	isError: false,
+	notRunReason: null,
+	notRunKind: null,
+	neverSent: false,
+	durationS: 0.4,
+	startedAt: null,
+	endedAt: null,
+	images: [],
+	added: 0,
+	removed: 0,
+	diff: null,
+	stopped: false,
+	...over,
+});
+
+function transcriptOf(records: TranscriptRecord[]): TranscriptState {
+	return {
+		records,
+		index: new Map(records.map((record, position) => [record.id, position])),
+		generation: 1,
+		compacting: false,
+		compactingSince: 0,
+		viewEpoch: 0,
+		oldestId: null,
+		oldestTs: 0,
+		hasMore: false,
+		argsByCall: new Map(),
+	};
+}
+
+const NONEMPTY: Message[] = [
+	{ id: "canonical", role: "system", timestamp: new Date(0) },
+];
+
+/* ---------------------------------------------------------------- the frame */
+
+/**
+ * The chat pane as `chat-content.tsx` composes it: header, transcript, the
+ * docked gate (when one is pending) and the composer. No sidebar: the figure is
+ * two conversations side by side, and the shell would halve each frame.
+ */
+const MemoryPane: FC<{
+	sessionId: string;
+	records: TranscriptRecord[];
+	gate?: PendingDesktopGate | null;
+}> = ({ sessionId, records, gate = null }) => {
+	const containerRef = useRef<HTMLDivElement>(null);
+	return (
+		<div className="flex h-screen min-h-0 w-full flex-col overflow-hidden bg-background">
+			<ChatHeader
+				agentName="Core"
+				description="Invoices workspace · on this machine"
+				onOpenOptions={() => undefined}
+			/>
+			<div className="flex min-h-0 grow flex-col px-6 pt-4">
+				<CanonicalTranscript
+					transcript={transcriptOf(records)}
+					frontend={null}
+					gate={gate}
+					waiting={false}
+					starting={false}
+					loadingOlder={false}
+					onLoadOlder={async () => true}
+					containerRef={containerRef}
+					isSmallView={false}
+					status="live"
+					failure={null}
+					awaitingHydration={false}
+					conversationId={sessionId}
+					onReconnect={() => {}}
+				/>
+			</div>
+			{gate && (
+				<div className="shrink-0 px-6">
+					{/* No session behind a story: answering is a no-op. */}
+					<QuestionDock
+						gate={gate}
+						answering={false}
+						answer={null}
+						onAnswer={() => {}}
+						sessionId={sessionId}
+					/>
+				</div>
+			)}
+			<div className="shrink-0 px-6 pb-6 pt-0">
+				<MessageInput
+					isLoading={false}
+					messages={NONEMPTY}
+					conversationId={sessionId}
+					onSendMessage={async () => true}
+				/>
+			</div>
+		</div>
+	);
+};
+
+/**
+ * Open one tool row's disclosure by a marker in its text, the way a reader
+ * does (the row's own button is the only control), and hold the shutter until
+ * it is open. Same latch as the docs library's `ExpandReceipt` / `HubHold`: an
+ * expired hold sets `data-capture-failed` so a rig refuses the frame instead of
+ * exporting a collapsed row as if it were the claimed state.
+ */
+const ExpandRow = ({ marker }: { marker: string }) => {
+	useEffect(() => {
+		const root = document.documentElement;
+		root.dataset.capturePending = "1";
+		delete root.dataset.captureFailed;
+		const started = Date.now();
+		const rowWith = (expanded: "true" | "false") =>
+			Array.from(
+				document.querySelectorAll<HTMLButtonElement>(
+					`[data-record-kind="tool"] button[aria-expanded="${expanded}"]`,
+				),
+			).find((trigger) =>
+				(
+					trigger.closest('[data-record-kind="tool"]')?.textContent ?? ""
+				).includes(marker),
+			);
+		const timer = window.setInterval(() => {
+			if (rowWith("true")) {
+				root.removeAttribute("data-capture-pending");
+				window.clearInterval(timer);
+				return;
+			}
+			if (Date.now() - started > 20_000) {
+				root.dataset.captureFailed = "memory-row-not-expanded";
+				root.removeAttribute("data-capture-pending");
+				window.clearInterval(timer);
+				return;
+			}
+			rowWith("false")?.click();
+		}, 100);
+		return () => {
+			window.clearInterval(timer);
+			root.removeAttribute("data-capture-pending");
+		};
+	}, [marker]);
+	return null;
+};
+
+/* ------------------------------------------------------------------- scenes */
+
+const meta: Meta = {
+	title: "Docs/Memory",
+	parameters: { layout: "fullscreen" },
+};
+
+export default meta;
+
+type Story = StoryObj;
+
+const TAUGHT_ASK = user(
+	"taught-user",
+	"One standing rule from now on: when you open a PR, keep the description to what changed and how it was verified. Remember that.",
+	6,
+);
+
+const STORE_ARGS = { op: "store", text: PREFERENCE, scope: "global" };
+
+/* -- A. Taught: the save, parked on its approval --------------------------- */
+
+/**
+ * The moment of teaching: the agent has called `memory` with `scope: global`
+ * and the approval card names where the fact lands, in core's own words. A
+ * store is a write-tier call, so with approvals on it parks here until the
+ * operator answers; this frame does not claim every memory write is gated
+ * (auto-approve modes and background capture exist).
+ */
+export const Taught: Story = {
+	render: () => (
+		<MemoryPane
+			sessionId={TAUGHT_SESSION}
+			records={[TAUGHT_ASK]}
+			gate={{
+				request_id: "4f1c9a07e2b85d36",
+				kind: "approval",
+				title: "memory",
+				detail: GLOBAL_STORE_APPROVAL,
+				options: [],
+				secret: false,
+				question_index: 0,
+				question_total: 1,
+			}}
+		/>
+	),
+};
+
+/* -- A'. Taught, approved: the receipt row --------------------------------- */
+
+/**
+ * The same conversation after Approve: the `memory` call settles as an
+ * ordinary tool row whose receipt carries the stored id, the `memory://` uri
+ * and the bank's lifetime label. An alternate for frame A when the figure
+ * wants the outcome rather than the gate.
+ */
+export const TaughtSaved: Story = {
+	render: () => (
+		<>
+			<ExpandRow marker="Saving the PR-description preference" />
+			<MemoryPane
+				sessionId={TAUGHT_SESSION}
+				records={[
+					TAUGHT_ASK,
+					tool({
+						id: "taught-store",
+						ts: at(5),
+						toolName: "memory",
+						intent: "Saving the PR-description preference",
+						args: STORE_ARGS,
+						output: JSON.stringify(
+							{
+								id: FACT_ID,
+								version: FACT_VERSION,
+								scope: "global",
+								status: "active",
+								quota: {
+									scope: "global",
+									owner: "operator",
+									used_tokens: 412,
+									cap_tokens: 16000,
+									percent: 2.6,
+									headroom_tokens: 15588,
+								},
+								uri: FACT_URI,
+								lifetime: "global/across sessions",
+							},
+							null,
+							2,
+						),
+						durationS: 0.05,
+					}),
+					assistant(
+						"taught-reply",
+						"Saved to global memory, so it carries into new conversations. When a PR request comes up I'll check it and write the description as **What changed** and **How it was verified**, nothing else.",
+						5,
+					),
+				]}
+			/>
+		</>
+	),
+};
+
+/* -- B. Recalled: a later session reads the fact and follows it ------------ */
+
+/**
+ * A different conversation, days later, with a request the fact matches. The
+ * agent was offered the title, reads the full entry (a real `read` row of a
+ * `memory://global/<id>` path) and the PR it opens follows the rule.
+ */
+export const Recalled: Story = {
+	render: () => (
+		<>
+			<ExpandRow marker={FACT_URI} />
+			<MemoryPane
+				sessionId={RECALLED_SESSION}
+				records={[
+					user(
+						"recalled-user",
+						"The date-format fix for the invoice export is on `fix/export-dates` and the tests pass. Open the PR.",
+						4,
+					),
+					tool({
+						id: "recalled-read",
+						ts: at(4),
+						toolName: "read",
+						intent: "Reading the saved PR-description preference",
+						args: { path: FACT_URI },
+						output: JSON.stringify(
+							{
+								id: FACT_ID,
+								version: FACT_VERSION,
+								scope: "global",
+								owner: "operator",
+								status: "active",
+								fact: { title: PREFERENCE, body: PREFERENCE },
+								conflicts: [],
+							},
+							null,
+							2,
+						),
+						durationS: 0.02,
+					}),
+					tool({
+						id: "recalled-pr",
+						ts: at(3),
+						toolName: "bash",
+						intent: "Opening the pull request",
+						args: {
+							command:
+								'gh pr create --base main --title "fix(export): write invoice dates as ISO 8601" --body-file pr-body.md',
+						},
+						output: "https://github.com/northwind/invoices/pull/214",
+						durationS: 1.8,
+					}),
+					assistant(
+						"recalled-reply",
+						"Opened [#214](https://github.com/northwind/invoices/pull/214). Description, per your saved rule:\n\n**What changed** — the March export writes invoice dates as ISO 8601 (`2026-03-05`) instead of the locale format, so the ledger import stops reading 05/03 as May.\n\n**How it was verified** — `pytest tests/test_export.py` (12 passed) and a re-run of the March export, which the ledger imported with no date warnings.",
+						3,
+					),
+				]}
+			/>
+		</>
+	),
+};
