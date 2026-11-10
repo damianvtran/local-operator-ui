@@ -79,5 +79,10 @@
 	"ui.chat.sidebar.catalogue.show_more_teams": "Afficher {count, plural, one {{count, number, ::group-off} équipe de plus} many {{count, number, ::group-off} d’équipes de plus} other {{count, number, ::group-off} équipes de plus}}",
 	"ui.chat.sidebar.drafts.row_label": "Brouillon : {title}",
 	"ui.chat.sidebar.drafts.discard_label": "Abandonner le brouillon « {title} »",
-	"ui.chat.sidebar.mark_all_read.label": "Tout marquer comme lu ({count, number, ::group-off})"
+	"ui.chat.sidebar.mark_all_read.label": "Tout marquer comme lu ({count, number, ::group-off})",
+	"ui.chat.sidebar.mark_all_read.scope_chats": "{count, plural, one {Marquer {count, number, ::group-off} conversation non lue comme lue.} many {Marquer {count, number, ::group-off} de conversations non lues comme lues.} other {Marquer {count, number, ::group-off} conversations non lues comme lues.}}",
+	"ui.chat.sidebar.mark_all_read.scope_chats_elsewhere": "{count, plural, one {Marquer {count, number, ::group-off} conversation non lue comme lue} many {Marquer {count, number, ::group-off} de conversations non lues comme lues} other {Marquer {count, number, ::group-off} conversations non lues comme lues}}, dont {elsewhere, plural, one {{elsewhere, number, ::group-off} conversation inactive} many {{elsewhere, number, ::group-off} de conversations inactives} other {{elsewhere, number, ::group-off} conversations inactives}}.",
+	"ui.chat.sidebar.mark_all_read.scope_tokenless": "{count, plural, one {{count, number, ::group-off} marque non lue sans token d’achèvement ne peut pas être effacée.} many {{count, number, ::group-off} de marques non lues sans token d’achèvement ne peuvent pas être effacées.} other {{count, number, ::group-off} marques non lues sans token d’achèvement ne peuvent pas être effacées.}}",
+	"ui.chat.sidebar.mark_all_read.scope_joined": "{chats} {tokenless}",
+	"ui.chat.sidebar.mark_all_read.name_suffix_elsewhere": ", dont {elsewhere, plural, one {{elsewhere, number, ::group-off} conversation inactive} many {{elsewhere, number, ::group-off} de conversations inactives} other {{elsewhere, number, ::group-off} conversations inactives}}"
 }

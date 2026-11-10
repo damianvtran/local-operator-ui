@@ -114,7 +114,7 @@ const bundle = await build({
 				TRANSCRIPT_DISPLAY_MODE_OPTIONS,
 				transcriptDisplayModeLabel,
 			} from "./src/renderer/src/features/chat/transcript-display-mode";
-			export { registerCatalogue, clearRegisteredCatalogues, setLocale } from "./src/renderer/src/shared/i18n";`,
+			export { registerCatalogue, clearRegisteredCatalogues, setLocale, t } from "./src/renderer/src/shared/i18n";`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -163,6 +163,15 @@ const MARKERS = {
 	"ui.chat.canonical.link_toolkit.actions_for": "M actions_for name={name}",
 	"ui.chat.sidebar_view.ungrouped": "M ungrouped",
 	"ui.chat.sidebar.mark_all_read.label": "M mark_all count={count}",
+	"ui.chat.sidebar.mark_all_read.scope_chats": "M scope_chats count={count}",
+	"ui.chat.sidebar.mark_all_read.scope_chats_elsewhere":
+		"M scope_chats_elsewhere count={count} elsewhere={elsewhere}",
+	"ui.chat.sidebar.mark_all_read.scope_tokenless":
+		"M scope_tokenless count={count}",
+	"ui.chat.sidebar.mark_all_read.scope_joined":
+		"M scope_joined [{chats}] [{tokenless}]",
+	"ui.chat.sidebar.mark_all_read.name_suffix_elsewhere":
+		"M name_suffix elsewhere={elsewhere}",
 	"ui.settings.appearance.transcript_display_mode_setting.by_turn": "M by_turn",
 	"ui.settings.appearance.transcript_display_mode_setting.by_response":
 		"M by_response",
@@ -316,6 +325,159 @@ test("the bulk mark-read label carries its count and follows the locale", () => 
 	assert.ok(english.count > 0, "the fixture must have ackable rows");
 	useMarkers();
 	assert.equal(label().label, `M mark_all count=${english.count}`);
+	useEnglish();
+});
+
+/** Words the English tooltip is made of; none may survive in another locale. */
+const ENGLISH_TOOLTIP_FRAGMENT =
+	/\b(Mark|unread|chats?|including|not active|completion token|cleared)\b/;
+
+test("the bulk control's tooltip and accessible-name suffix are catalogue copy in every locale", () => {
+	/*
+	 * `scope` is the tooltip and `nameSuffix` the tail of the accessible name; both
+	 * were English sentences built by template literal, so a French reader got an
+	 * English tooltip and an English screen-reader tail beside a French label. The
+	 * marker catalogue makes the claim checkable: a hardcoded sentence cannot
+	 * return a marker, and no English fragment may survive around one.
+	 */
+	useEnglish();
+	const row = (id, { active = true, token = `t-${id}` } = {}) => ({
+		id,
+		session_id: id,
+		active,
+		attention: { unseen: true, completion_token: token },
+		status: { code: "complete" },
+	});
+	const local = [row("a"), row("b")];
+	const elsewhere = [row("a"), row("b", { active: false })];
+	const tokenless = [row("a"), row("c", { token: null })];
+	const both = [...elsewhere, row("c", { token: null })];
+
+	// The English text the keys must reproduce byte for byte.
+	assert.equal(
+		mod.markAllReadCopy(local).scope,
+		"Mark 2 unread chats as read.",
+	);
+	assert.equal(mod.markAllReadCopy(local).nameSuffix, "");
+	assert.equal(
+		mod.markAllReadCopy(elsewhere).scope,
+		"Mark 2 unread chats as read, including 1 that is not active.",
+	);
+	assert.equal(
+		mod.markAllReadCopy(elsewhere).nameSuffix,
+		", including 1 that is not active",
+	);
+	assert.equal(
+		mod.markAllReadCopy(tokenless).scope,
+		"Mark 1 unread chat as read. 1 unread mark with no completion token cannot be cleared.",
+	);
+	assert.equal(
+		mod.markAllReadCopy(both).scope,
+		"Mark 2 unread chats as read, including 1 that is not active. 1 unread mark with no completion token cannot be cleared.",
+	);
+
+	useMarkers();
+	assert.equal(
+		mod.markAllReadCopy(local).scope,
+		"M scope_chats count=2",
+		"the tooltip is the catalogue's sentence",
+	);
+	assert.equal(
+		mod.markAllReadCopy(local).nameSuffix,
+		"",
+		"no words are spent on nothing, in any language",
+	);
+	assert.equal(
+		mod.markAllReadCopy(elsewhere).scope,
+		"M scope_chats_elsewhere count=2 elsewhere=1",
+	);
+	assert.equal(
+		mod.markAllReadCopy(elsewhere).nameSuffix,
+		"M name_suffix elsewhere=1",
+	);
+	assert.equal(
+		mod.markAllReadCopy(tokenless).scope,
+		"M scope_joined [M scope_chats count=1] [M scope_tokenless count=1]",
+		"the two sentences are joined by the catalogue, not by a hardcoded space",
+	);
+	assert.equal(
+		mod.markAllReadCopy(both).scope,
+		"M scope_joined [M scope_chats_elsewhere count=2 elsewhere=1] [M scope_tokenless count=1]",
+	);
+	for (const copy of [elsewhere, tokenless, both].map(mod.markAllReadCopy)) {
+		assert.doesNotMatch(
+			`${copy.scope}|${copy.nameSuffix}`,
+			ENGLISH_TOOLTIP_FRAGMENT,
+			"no English fragment survives in a non-English locale",
+		);
+	}
+	useEnglish();
+});
+
+test("the shipped tooltip and name-suffix messages format cleanly in every locale", (ctx) => {
+	/*
+	 * The marker test above proves the WIRING; this one proves the SHIPPED values.
+	 * Each locale's five messages go through the production formatter (`t`, over the
+	 * bundled catalogue, no marker registered) for the counts that exercise every
+	 * CLDR plural category the seven languages use (0, 1, 2, 5, 21, and a number
+	 * large enough that grouping would show), and none may leave an ICU brace
+	 * behind. A non-English locale may not leak the English fragments either: that
+	 * is the operator's acceptance ("no English in fr") applied to this copy.
+	 */
+	mod.clearRegisteredCatalogues();
+	const English = /\b(unread|not active|Mark|including|completion token)\b/;
+	const KEYS = "ui.chat.sidebar.mark_all_read.";
+	const render = (count, elsewhere) => {
+		const chats = mod.t(`${KEYS}scope_chats_elsewhere`, { count, elsewhere });
+		const plain = mod.t(`${KEYS}scope_chats`, { count });
+		const tokenless = mod.t(`${KEYS}scope_tokenless`, { count });
+		return {
+			outputs: [
+				plain,
+				chats,
+				tokenless,
+				mod.t(`${KEYS}scope_joined`, { chats, tokenless }),
+				mod.t(`${KEYS}name_suffix_elsewhere`, { elsewhere }),
+			],
+			tooltip: mod.t(`${KEYS}scope_joined`, { chats, tokenless }),
+			suffix: mod.t(`${KEYS}name_suffix_elsewhere`, { elsewhere }),
+		};
+	};
+	for (const locale of ["en", "fr", "es", "zh-CN", "ru", "vi", "ur", "hi"]) {
+		act(() => mod.setLocale(locale));
+		for (const count of [0, 1, 2, 5, 21, 1_000_000]) {
+			for (const elsewhere of [1, 2, 5]) {
+				for (const out of render(count, elsewhere).outputs) {
+					assert.ok(out.length > 0, `${locale} ${count}/${elsewhere}: empty`);
+					assert.doesNotMatch(
+						out,
+						/[{}]/,
+						`${locale} ${count}/${elsewhere}: ICU brace left in ${out}`,
+					);
+					assert.doesNotMatch(
+						out,
+						/1,000,000|1 000 000|1\.000\.000/,
+						`${locale}: grouped digits in ${out}`,
+					);
+					if (locale !== "en")
+						assert.doesNotMatch(
+							out,
+							English,
+							`${locale} ${count}/${elsewhere}: English in ${out}`,
+						);
+				}
+			}
+		}
+		for (const [count, elsewhere] of [
+			[5, 2],
+			[1, 1],
+		]) {
+			const shown = render(count, elsewhere);
+			ctx.diagnostic(
+				`${locale} count=${count} elsewhere=${elsewhere} tooltip: ${shown.tooltip} | suffix: ${shown.suffix}`,
+			);
+		}
+	}
 	useEnglish();
 });
 

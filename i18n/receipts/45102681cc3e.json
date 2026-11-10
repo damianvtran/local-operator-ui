@@ -1,0 +1,183 @@
+{
+	"locale": "zh-CN",
+	"instance": "45102681cc3e",
+	"pr": 1836,
+	"pr_title": "feat(i18n): key the mark-all-read tooltip and accessible-name copy",
+	"base_sha": "debb34cd35688ecbb1c17bf78a16eb4d93636f62",
+	"head_sha": "28a6127617e4ebe0b6ba47d39fca5d3a22d1ba93",
+	"audit_date": "2026-11-10",
+	"mode": "independent five-key delta audit of newly added keys in ui.chat.sidebar (PR 1836, round 1 for zh-CN); audited every one of the five new keys and read all 86 keys of the file for terminology, register and typography consistency",
+	"scope": "Fully audited the five new keys (mark_all_read.scope_chats, .scope_chats_elsewhere, .scope_tokenless, .scope_joined, .name_suffix_elsewhere) field by field: meaning fidelity, ICU arguments/CLDR categories, accessible-name tail composition against the shipped label, the scope_joined separator, terminology against the whole zh-CN catalogue, punctuation/typography. Read the remaining 81 keys of ui.chat.sidebar in this locale for consistency (and the sibling ui.chat.read_ack, ui.chat.canonical and ui.* receipt usages) without re-auditing them.",
+	"key_count": 86,
+	"translator": {
+		"agent": "i18n-translator",
+		"model": "anthropic/claude-sonnet-5-5",
+		"source": "~/.local-operator-ui/.worktrees/_s10-translations/zh-CN.json (read for context only; the shipped catalogue is what was judged)"
+	},
+	"auditor": {
+		"agent": "i18n-auditor",
+		"instance": "45102681cc3e",
+		"session": "8173fb696568",
+		"model": "deepseek/deepseek-flash",
+		"actual_model_source": "harness session model header for this run (deepseek/deepseek-flash); no fallback model was served or used",
+		"independent_from_translator_session": true,
+		"review_model_differs_from_translator": true,
+		"independence_basis": "Fresh auditor instance for this PR; no translation edits, and no other auditor's findings or receipt for these five keys was read before forming this view"
+	},
+	"input_hashes": {
+		"en": [
+			{
+				"path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+				"sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd"
+			}
+		],
+		"context": [
+			{
+				"path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+				"sha256": "4f1593cc34b395ef8701a60e58e73a0371b3c93730eb7a1f2b2845dc6250d7e3"
+			}
+		],
+		"target": [
+			{
+				"path": "src/i18n/catalogues/zh-CN/ui.chat.sidebar.json",
+				"sha256": "90b639908cb49e0b1627c4624fd99bfcdd263a867d0a355bdd6a955cf4686ba6"
+			}
+		],
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/zh-CN.md",
+			"sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+		},
+		"harness_guide": {
+			"path": "docs/I18N.md",
+			"sha256": "d58ad473701f098b3c2c24343c3a7e7236f22db22cc871016c4cb75f25f41f5c"
+		}
+	},
+	"namespaces": {
+		"ui.chat.sidebar": {
+			"namespace": "ui.chat.sidebar",
+			"status": "passed",
+			"result": "clean-with-findings",
+			"key_count": 86,
+			"source_sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd",
+			"context_sha256": "4f1593cc34b395ef8701a60e58e73a0371b3c93730eb7a1f2b2845dc6250d7e3",
+			"target_sha256": "90b639908cb49e0b1627c4624fd99bfcdd263a867d0a355bdd6a955cf4686ba6",
+			"severity_counts": {
+				"blocker": 0,
+				"major": 0,
+				"minor": 0,
+				"nit": 1
+			},
+			"findings": [
+				{
+					"id": "ZH-S10-1",
+					"severity": "nit",
+					"key": "ui.chat.sidebar.mark_all_read.name_suffix_elsewhere",
+					"current": "，其中包含{elsewhere, plural, other {{elsewhere, number, ::group-off}个非活跃对话}}",
+					"problem": "Appended with no separator to the shipped label 全部{count}个标为已读, the accessible name reads 全部3个标为已读，其中包含1个非活跃对话. The wording is faithful and 其中 correctly marks the subset, but 其中包含 hangs off a verb phrase that has already closed; a predicate clause after 其中 (其中N个为非活跃对话) reads more smoothly as a screen-reader tail and states the subset relation the same way. The identical clause also appears inside scope_chats_elsewhere, so a change there must be made in both keys.",
+					"suggested": "，其中{elsewhere, plural, other {{elsewhere, number, ::group-off}个为非活跃对话}} (same edit inside scope_chats_elsewhere)",
+					"evidence": "label ui.chat.sidebar.mark_all_read.label = 全部{count, number, ::group-off}个标为已读; code appends nameSuffix to it with no added separator (src/renderer/src/features/chat/components/chat-sidebar.tsx:2362-2364)",
+					"fit_verified": "unverified by rendering — this pass ran no build, renderer, Storybook or browser (task constraint); judgement is from the composed string"
+				}
+			]
+		}
+	},
+	"findings_severity_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 1
+	},
+	"current_report_verdict": {
+		"status": "clean-with-findings",
+		"unresolved_blocker_major_count": 0,
+		"finding_ids": [
+			"ZH-S10-1"
+		],
+		"note": "No BLOCKER or MAJOR: meaning, ICU structure, CLDR categories, placeholder skeletons, terminology, punctuation and the accessible-name prefix property all hold. The single NIT is optional polish and does not gate."
+	},
+	"observations": [
+		{
+			"id": "ZH-S10-O1",
+			"severity": "info",
+			"key": "ui.chat.sidebar.mark_all_read.scope_tokenless",
+			"remark": "完成回执 for 'completion token' is accepted. No glossary row or style-guide term exists for this third sense of token (the zh-CN guide keeps Latin 'token' for LLM tokens and 令牌 for auth tokens), and 回执 matches this catalogue's receipt family: ui.hub.status.receipt 操作回执：{operation}, ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.note 确认回执丢失了, ui.chat.canonical.fold.receipt.* 唤醒回执/其他回执. It follows the context note's 'translate descriptively, never as a security token' and reads plainly inside 有N个未读标记没有完成回执，无法清除。 If a term closer to 'token' is ever preferred, 完成凭据 is the only candidate; 完成令牌 would collide with the auth-token sense and is wrong here."
+		},
+		{
+			"id": "ZH-S10-O2",
+			"severity": "info",
+			"key": "ui.chat.sidebar.mark_all_read.scope_chats_elsewhere",
+			"remark": "非活跃对话 for 'not active' is the plain backend class and names no section (the sidebar's sections are time-based: Running/Today/This week/Older), as the context note requires. 其中包含 preserves that the elsewhere count is a subset of count, never an addition."
+		},
+		{
+			"id": "ZH-S10-O3",
+			"severity": "info",
+			"key": "ui.chat.sidebar.mark_all_read.scope_joined",
+			"remark": "{chats}{tokenless} with no separator is correct for zh-CN: scope_chats and scope_chats_elsewhere each end in the full-width 。 and scope_tokenless begins a new sentence, so the two run together properly (将5个未读对话标为已读。有1个未读标记没有完成回执，无法清除。). A space would violate the guide's no-space rule between Han runs and would be visible as a gap; the English single space is correctly dropped."
+		},
+		{
+			"id": "ZH-S10-O4",
+			"severity": "info",
+			"key": "ui.chat.sidebar.groups.badge",
+			"remark": "Pre-existing, unchanged by this PR (the diff adds only the five mark_all_read keys): structurally, zh prints its count through an explicit {badge, number, ::group-off} inside the plural where en prints the implicit #, so the two locales format the same badge number by different rules (en leaves grouping to the plural's default formatting; zh pins it off). Why that happened is not knowable from this diff; recorded for the manager, not a finding against this delta, and no rendered output was observed."
+		},
+		{
+			"id": "ZH-S10-O5",
+			"severity": "info",
+			"key": "ui.chat.sidebar.mark_all_read.label",
+			"remark": "Pre-existing and unchanged: at count=1 the visible label renders 全部1个标为已读, mirroring English 'Mark all 1 read'. The awkwardness is in the source count invariant (the control only shows at >=1 unread), not introduced here; the accessible-name tail composes cleanly onto it."
+		}
+	],
+	"verification": {
+		"executed": [
+			"read docs/I18N.md, i18n/style-guides/zh-CN.md and i18n/glossary.md at the hashes above",
+			"read the five en values and their ui.chat.sidebar.context.json entries (role/tone/length/note/placeholders) at head 28a61276",
+			"read the whole zh-CN file (86 keys) plus sibling zh-CN namespaces ui.chat.read_ack.json and ui.chat.canonical.json for the 'unread mark', 'receipt' and 'not active' vocabulary",
+			"read src/renderer/src/features/chat/mark-all-read.ts and the accessor at chat-sidebar.tsx:2362 to see how the tooltip sentences are joined and how the suffix attaches to the label",
+			"read the translator's own notes file at ~/local-operator-ui/.worktrees/_s10-translations/zh-CN.json (notes only; the shipped catalogue was judged)",
+			"git diff <merge-base>..HEAD -- src/i18n/catalogues/zh-CN/ui.chat.sidebar.json: 6 insertions, 1 deletion = the five new keys plus the trailing comma on the label; no other zh-CN key changed",
+			"shasum -a 256 on the en catalogue, en context sidecar, zh-CN catalogue, docs/I18N.md, glossary.md and the zh-CN style guide",
+			"python3 json.loads on en and zh-CN ui.chat.sidebar.json: 86/86 keys, none added or dropped, 86 context entries present",
+			"python3 ICU parse of all 86 keys: argument names and format skeletons identical to en everywhere except the pre-existing groups.badge (# vs {badge, number, ::group-off}); every plural in zh-CN carries exactly the CLDR category set {other}; braces balanced; ::group-off intact in label, scope_chats, scope_chats_elsewhere, scope_tokenless and name_suffix_elsewhere",
+			"python3 mechanical-check.py (scratchpad/aud-zh-CN-ds/mechanical-check.py) against head 28a61276: key parity 86/86; ICU argument/skeleton drift on 1 of 86 keys (pre-existing groups.badge only); every zh plural's CLDR category set is ('other',) with explicit =0 arms preserved; braces balanced; ::group-off intact on all numeric messages; no Cf/control, U+3000/NBSP or zero-width characters; full-width punctuation only in prose; label is a literal prefix of the composed accessible name — 'all mechanical checks passed' (transcript in audit.log)",
+			"python3 codepoint scan of the five new values: full-width ，。 only, no ASCII punctuation in prose, no NBSP/U+3000/ZWNJ/bidi controls, no space between digits and 个; cell widths 75 / 158 / 89 / 18 / 83; the en sidecar carries no maxCells or maxChars for these keys (nothing is fixed-budget)",
+			"python3 simulation of ledger-rules.mjs deriveReceiptAudit over this receipt (duplicate-member scan, identity/hash/status/finding rules): would return agent i18n-auditor, instance 45102681cc3e, model deepseek/deepseek-flash, result clean-with-findings, findings {blocker 0, major 0, minor 0, nit 1} with both catalogue hashes matching the bytes on disk"
+		],
+		"not_executed": [
+			"scripts/i18n/ledger-check.mjs, context-parity.mjs, check-strings.mjs and the pnpm check-i18n chain — this task forbids node processes in the shared worktree, so the repo validator was NOT run; the mechanical checks above are my own static ones",
+			"pseudo-localisation",
+			"any rendered frame, Storybook, browser or Electron session; no visual fit proof",
+			"lint, typecheck, builds or installs"
+		],
+		"audit_notes_not_execution_log": "This block separates what was actually run from notes read. No validator, renderer or builder output is claimed. Every hash above came from shasum -a 256 on the files at head 28a61276; every structural claim came from the python3 reads listed in 'executed'. Fit and rendering are explicitly unverified."
+	},
+	"limits": [
+		"No native application execution, screenshot or rendered fit proof",
+		"No node validator run (task constraint: no node processes in the shared read-only worktree)",
+		"No translation or MT service used; no back-translation",
+		"The 81 non-new keys were read for terminology/typography consistency only, not re-audited",
+		"Repo is read-only for this pass: no edits, no ledger write, no commit; the manager retains this receipt durably"
+	],
+	"artifacts": {
+		"receipt": "$LOCAL_OPERATOR_SCRATCHPAD/aud-zh-CN-ds/receipt.json",
+		"receipt_abs": "/Users/damian/.local-operator/sessions/8173fb696568/scratchpad/aud-zh-CN-ds/receipt.json",
+		"mechanical_check": {
+			"path": "/Users/damian/.local-operator/sessions/8173fb696568/scratchpad/aud-zh-CN-ds/mechanical-check.py",
+			"sha256": "d306c84cc9440ef38e9ba8ff305e16b114514afd3347022f48fe687ee72d165e"
+		},
+		"receipt_validator": {
+			"path": "/Users/damian/.local-operator/sessions/8173fb696568/scratchpad/aud-zh-CN-ds/validate-receipt.py",
+			"sha256": "d8616bb3756785cd973224599128770cab103383f111db7bc1fc24dcd0b9a9b6",
+			"kind": "python re-implementation of ledger-rules.mjs deriveReceiptAudit read by inspection (no node executed)"
+		},
+		"audit_log": {
+			"path": "/Users/damian/.local-operator/sessions/8173fb696568/scratchpad/aud-zh-CN-ds/audit.log",
+			"sha256": "e39f46b53589437e52163f7ed24c0cf3c33481a2de206ab0b7e313d90d647c1f",
+			"kind": "actual command transcript, not the audit notes",
+			"note": "the receipt_sha256 printed in section 4 of the log is the digest of this receipt at the moment of that run (c402b46fca5a480d0cc73395d62b7fa490ae66d6014b454f6547f6003ef62dfd), i.e. before this artifacts block was finalised; the log bytes were not changed by that edit"
+		}
+	}
+}

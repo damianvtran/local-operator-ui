@@ -65,6 +65,31 @@ const IDENTICAL_OK = new Map([
 		"zh-CN:ui.settings.notifications.volume.readout",
 		"The percent readout is the locale-formatted ICU token {value, number}%, with no lexical English to translate; independently audited in D2 r2 (b5bf3a7c1761). Scoped to this locale/key only.",
 	],
+	// Mark-all-read tooltip (PR #1836): the joiner between the two translated sentences.
+	[
+		"es:ui.chat.sidebar.mark_all_read.scope_joined",
+		"Pure joiner: two already-translated sentences separated by one space, no lexical English (zh-CN differs because it uses no separator). Each locale's independent auditor is to confirm the space is the right separator; scoped to this locale/key only.",
+	],
+	[
+		"fr:ui.chat.sidebar.mark_all_read.scope_joined",
+		"Pure joiner: two already-translated sentences separated by one space, no lexical English (zh-CN differs because it uses no separator). Each locale's independent auditor is to confirm the space is the right separator; scoped to this locale/key only.",
+	],
+	[
+		"hi:ui.chat.sidebar.mark_all_read.scope_joined",
+		"Pure joiner: two already-translated sentences separated by one space, no lexical English (zh-CN differs because it uses no separator). Each locale's independent auditor is to confirm the space is the right separator; scoped to this locale/key only.",
+	],
+	[
+		"ru:ui.chat.sidebar.mark_all_read.scope_joined",
+		"Pure joiner: two already-translated sentences separated by one space, no lexical English (zh-CN differs because it uses no separator). Each locale's independent auditor is to confirm the space is the right separator; scoped to this locale/key only.",
+	],
+	[
+		"ur:ui.chat.sidebar.mark_all_read.scope_joined",
+		"Pure joiner: two already-translated sentences separated by one space, no lexical English (zh-CN differs because it uses no separator). Each locale's independent auditor is to confirm the space is the right separator; scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.chat.sidebar.mark_all_read.scope_joined",
+		"Pure joiner: two already-translated sentences separated by one space, no lexical English (zh-CN differs because it uses no separator). Each locale's independent auditor is to confirm the space is the right separator; scoped to this locale/key only.",
+	],
 	// Browser extensions manager (PR #1821): proper nouns and French cognates.
 	[
 		"ui.browser.extensions.menu_store",

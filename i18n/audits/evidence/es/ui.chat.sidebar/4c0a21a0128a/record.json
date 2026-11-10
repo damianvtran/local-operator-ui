@@ -1,0 +1,150 @@
+{
+	"locale": "es",
+	"pr": 1836,
+	"base_sha": "debb34cd35688ecbb1c17bf78a16eb4d93636f62",
+	"head_sha": "28a6127617e4ebe0b6ba47d39fca5d3a22d1ba93",
+	"audit_date": "2026-11-10",
+	"mode": "first independent audit of the five new mark-all-read keys in es; PR #1836; worktree i18n-s8 read-only (no edits, no git writes, no node/build/render)",
+	"round": 1,
+	"scope": "the 5 keys PR #1836 adds to ui.chat.sidebar (scope_chats, scope_chats_elsewhere, scope_tokenless, scope_joined, name_suffix_elsewhere); the other 81 keys of the file were read for terminology consistency only",
+	"key_count": 86,
+	"keys_audited": [
+		"ui.chat.sidebar.mark_all_read.scope_chats",
+		"ui.chat.sidebar.mark_all_read.scope_chats_elsewhere",
+		"ui.chat.sidebar.mark_all_read.scope_tokenless",
+		"ui.chat.sidebar.mark_all_read.scope_joined",
+		"ui.chat.sidebar.mark_all_read.name_suffix_elsewhere"
+	],
+	"translator": {
+		"agent": "i18n-translator",
+		"model": "anthropic/claude-sonnet-5-5",
+		"date": "2026-11-10",
+		"source_head": "f5053145f949057bd5b99c48d21158869b62ee6a"
+	},
+	"auditor": {
+		"agent": "i18n-auditor",
+		"instance": "4c0a21a0128a",
+		"model": "deepseek/deepseek-flash",
+		"independent_from_translator_session": true,
+		"actual_model_source": "harness session model header for this run (deepseek/deepseek-flash); no fallback model was served or used",
+		"review_model_differs_from_translator": true
+	},
+	"input_hashes": {
+		"en": [
+			{
+				"path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+				"sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd"
+			}
+		],
+		"context": [
+			{
+				"path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+				"sha256": "4f1593cc34b395ef8701a60e58e73a0371b3c93730eb7a1f2b2845dc6250d7e3"
+			}
+		],
+		"target": [
+			{
+				"path": "src/i18n/catalogues/es/ui.chat.sidebar.json",
+				"sha256": "819ca98aca0847a3e5452a0fd89fa2e622d8f9442fffb587ca6341ebe3a14694"
+			}
+		],
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/es.md",
+			"sha256": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e"
+		},
+		"harness_guide": {
+			"path": "docs/I18N.md",
+			"sha256": "d58ad473701f098b3c2c24343c3a7e7236f22db22cc871016c4cb75f25f41f5c"
+		}
+	},
+	"namespaces": {
+		"ui.chat.sidebar": {
+			"status": "changes_requested",
+			"key_count": 86,
+			"en_sha256": "7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd",
+			"es_sha256": "819ca98aca0847a3e5452a0fd89fa2e622d8f9442fffb587ca6341ebe3a14694",
+			"findings": [
+				{
+					"id": "ES1-F1",
+					"severity": "major",
+					"key": "ui.chat.sidebar.mark_all_read.scope_tokenless",
+					"current": "{count, plural, one {No se puede borrar {count, number, ::group-off} marca sin leer que no tiene token de finalización.} many {No se pueden borrar {count, number, ::group-off} de marcas sin leer que no tienen token de finalización.} other {No se pueden borrar {count, number, ::group-off} marcas sin leer que no tienen token de finalización.}}",
+					"problem": "Terminology drift on one English term. The English noun is 'unread mark', the same term the audited es ui.chat.read_ack namespace already renders as 'marca de mensajes sin leer' (\"La marca de mensajes sin leer está en {device}. Se borra cuando ese dispositivo se actualiza.\"; \"…así que no se borró la marca de mensajes sin leer.\"; ledger row es/ui.chat.read_ack is status audited on a clean 0/0/0/0 receipt, instance f212882f-s3d-es). This key names the same marks 'marcas sin leer', so one concept now has two Spanish names in the same read-acknowledgement feature — and bare 'marca' is ambiguous in Spanish (brand/mark/score) precisely in the sentence that must be unambiguous about what will not be cleared.",
+					"suggested": "one {No se puede borrar {count, number, ::group-off} marca de mensajes sin leer que no tiene token de finalización.} many {No se pueden borrar {count, number, ::group-off} de marcas de mensajes sin leer que no tienen token de finalización.} other {No se pueden borrar {count, number, ::group-off} marcas de mensajes sin leer que no tienen token de finalización.}",
+					"evidence": "es/ui.chat.read_ack.json description.remote_named, refusal.busy/refused/unreachable/unreported (6 occurrences of 'marca de mensajes sin leer'); en/ui.chat.read_ack.json renders the same English words as 'The unread mark' / 'The unread mark was not cleared'; i18n/ledger.json row locale=es namespace=ui.chat.read_ack status=audited"
+				},
+				{
+					"id": "ES1-F2",
+					"severity": "minor",
+					"key": "ui.chat.sidebar.mark_all_read.name_suffix_elsewhere, ui.chat.sidebar.mark_all_read.scope_chats_elsewhere",
+					"current": ", {elsewhere, plural, one {incluido {elsewhere, number, ::group-off} chat no activo} many {incluidos … de chats no activos} other {incluidos {elsewhere, number, ::group-off} chats no activos}}",
+					"problem": "English 'including N that are not active' is a relative clause; the es appositive 'incluidos N chats no activos' is grammatical but stilted, repeating 'chats' three words after 'chats sin leer' (\"Marcar 5 chats sin leer como leídos, incluidos 2 chats no activos.\"), and the singular form reads clipped as an accessible-name tail: \"Marcar todos como leídos (1), incluido 1 chat no activo\".",
+					"suggested": "one {incluido {elsewhere, number, ::group-off} que no está activo} many {incluidos {elsewhere, number, ::group-off} de chats que no están activos} other {incluidos {elsewhere, number, ::group-off} chats que no están activos} — same substitution in both keys, keeping the leading comma so the label stays a prefix",
+					"evidence": "rendered at head with CLDR es rules: count=5, elsewhere=2 → \"Marcar 5 chats sin leer como leídos, incluidos 2 chats no activos.\"; count=1, elsewhere=1 → \"Marcar 1 chat sin leer como leído, incluido 1 chat no activo.\""
+				}
+			]
+		}
+	},
+	"findings_severity_counts": {
+		"blocker": 0,
+		"major": 1,
+		"minor": 1,
+		"nit": 0
+	},
+	"current_report_verdict": {
+		"status": "changes_requested",
+		"unresolved_blocker_major_count": 1,
+		"finding_ids": [
+			"ES1-F1"
+		]
+	},
+	"cleared_checks": [
+		"JSON validity and key parity: 86/86 keys, none added or dropped (python3 json.loads on en and es).",
+		"ICU arguments: {count}, {elsewhere}, {chats}, {tokenless} identical to en by name and kind in all five keys; brace-balanced.",
+		"Number skeleton: the exact string '{count, number, ::group-off}' / '{elsewhere, number, ::group-off}' present in EVERY plural category of every new key, byte-identical to en (set equality plus one occurrence per branch).",
+		"CLDR es categories: one/many/other complete and correctly inflected in all four plural messages; es has no few/zero and none were invented. Rendered: 1 → 'Marcar 1 chat sin leer como leído.'; 2/12 → 'Marcar 12 chats sin leer como leídos.'; 1000000 (many) → 'Marcar 1000000 de chats sin leer como leídos.' with the partitive 'de' the es style guide's own example requires.",
+		"scope_joined '{chats} {tokenless}': the single space IS the right separator for Spanish (a no-break space is a French rule, not an es one); both extent arms already end in their own full stop, so rendering both clauses gives two whole sentences and no run-on.",
+		"Accessible name: the tail begins with ', ' and the label ends with ')', so 'Marcar todos como leídos (5), incluidos 2 chats no activos' keeps the label as a prefix (WCAG 2.5.3); the ES1-F2 wording change keeps that comma.",
+		"Register: infinitive 'Marcar' matches the es guide's action-label rule; declarative sentences, sentence case, no exclamation mark.",
+		"'chats' is the audited es house voice (scripts/i18n/locale-parity.test.mjs records «chats» as 'the plural used by the audited es house voice'), matching catalogue.total, groups.badge and search.no_match.",
+		"'borrar' for clear matches the sidebar's own Borrar filtro/búsqueda/todo; 'sin leer' matches row.unread_suffix ', sin leer'; 'token' stays English per the es kept-English list.",
+		"'token de finalización' for 'completion token' is precedent-backed, not a finding: the core repo's tracked es audit evidence for tui.notifications (i18n/audits/evidence/es/tui.notifications/nd2/target.json and .../ntt2/target.json) records \"Los recibos de finalización ahora están en /unread.\" for the English \"Completion receipts moved to /unread.\", and its es wire.exec audit report lists \"recibo (receipt, as in tui.notifications.pointer_unread)\" as the locale term; the catalogue's own pattern for tokens is 'token de acceso / de un solo uso / de actualización', and the es guide keeps 'token' English.",
+		"Typography: no double spaces, no space before punctuation, only accented vowels as non-ASCII in the five values; es needs no no-break spaces (unlike fr).",
+		"Fit: longest rendered tooltip is ~150 characters at count=12 with both clauses — a native tooltip, which wraps. Per src/renderer/src/features/chat/mark-all-read.ts the es label is glyph-only at every supported sidebar width (28 characters needs the 268 class, i.e. a 324px panel above the 320px maximum), so the visible label never renders and the tooltip plus the sr-only name carry the meaning."
+	],
+	"pre_existing_not_gating": [
+		"ui.chat.sidebar.nav.chats = 'Conversaciones' while every list-item key in this namespace says 'chats' (catalogue.total, groups.badge, search.no_match) — other key, not in this PR's diff.",
+		"ui.chat.sidebar.mark_all_read.label 'Marcar todos como leídos (1)' says 'todos' at count=1 — pre-existing key, unchanged by this PR."
+	],
+	"verification": {
+		"executed": [
+			"read docs/I18N.md, ~/local-operator/i18n/glossary.md and ~/local-operator/i18n/style-guides/es.md at the hashes above",
+			"read the 5 en values and their .context.json entries at 28a6127, plus the whole es file (86 keys) and the diff debb34cd..28a6127 that adds the keys",
+			"shasum -a 256 on en catalogue, en context sidecar and es catalogue; all three match the values recorded here (es 819ca98aca0847a3…)",
+			"python3 json.loads + key-set diff on the two catalogues (86/86, no keys added or dropped)",
+			"python3 ICU structure check with a hand-written parser: argument names and kinds, plural option keys per argument, brace balance, and set equality of the exact '::group-off' number skeletons against en",
+			"python3 render of the real composition (label, scope, nameSuffix) for 8 rosters with CLDR es plural rules: (5,2,0) (5,0,3) (5,2,3) (1,1,0) (12,12,0) (1000000,1000000,0) (2,2,1) (1,0,1)",
+			"python3 codepoint and spacing scan of the five new values",
+			"grep of the es catalogues for the sibling renderings of unread mark / token / receipt / completion and of i18n/ledger.json for the es/ui.chat.read_ack and es/ui.chat.sidebar rows",
+			"read scripts/i18n/ledger-rules.mjs (deriveReceiptAudit, countFindings, scopedHash, parseReceipt, isPlaceholderInstance) and re-checked this receipt's shape against those rules in python3; instance 4c0a21a0128a verified unused in i18n/receipts/, i18n/audits/evidence/ and i18n/ledger.json"
+		],
+		"not_executed": [
+			"pnpm check-i18n / node validators (locale-parity.test.mjs, ledger-check.mjs, check-coverage.mjs, check-strings.mjs, context-parity.mjs) — no node process was run: the brief makes the worktree read-only and forbids builds and node",
+			"@formatjs/icu-messageformat-parser — the mechanical checks above use my own parser, so they are independent of, not equal to, the repo's validator",
+			"any rendered frame, Storybook, browser, Electron or TUI session; the tooltip wrap, the sr-only accessible name and the glyph-only label state are reasoned from src/renderer/src/features/chat/mark-all-read.ts, not observed",
+			"pseudo-localisation, lint, typecheck, package install"
+		],
+		"audit_notes_not_execution_log": "The executed list names read-only git/python reads and hashes only. No validator, renderer, builder or CI output is claimed anywhere in this receipt."
+	},
+	"artifacts": {
+		"receipt": "/Users/damian/.local-operator/sessions/db98828da7eb/scratchpad/aud-es-ds/receipt.json",
+		"report": "final message of session db98828da7eb (i18n-auditor report to manager)",
+		"tracked_evidence": "NOT created: the worktree is read-only for this audit, so i18n/audits/evidence/es/ui.chat.sidebar/<audit-id>/ must be written by a session with repo write access from this receipt"
+	},
+	"session": "db98828da7eb",
+	"scope_note": "Fully audited all five new keys against the English source, its context sidecar, the es style guide and glossary, and read the other 81 values of the namespace for terminology consistency. Findings outside those five keys are recorded as pre-existing and do not gate."
+}
