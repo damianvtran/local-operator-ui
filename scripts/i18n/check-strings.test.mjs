@@ -1878,6 +1878,84 @@ test("scoped-copy: attachment counterfactuals, keyed controls and missing slots"
 			kind: body.includes('"Pasted file"') ? "literal" : "keyed",
 		});
 	}
+
+	const returnSlot = "src/renderer/src/features/chat/utils/get-file-name.ts";
+	const initializerSlot =
+		"src/renderer/src/features/chat/canonical/supplement-file-actions.tsx";
+	const boundaries = [
+		[
+			returnSlot,
+			"getFileName",
+			"keyed",
+			`const getFileName = () => { return (t(
+"ui.chat.composer_media.pasted_file"
+)); };`,
+		],
+		[
+			initializerSlot,
+			"ariaLabel",
+			"missing",
+			"let ariaLabel; ariaLabel = `Actions for ${name}`;",
+		],
+		[
+			returnSlot,
+			"getFileName",
+			"keyed",
+			'const getFileName = () => "ui.chat.composer_media.pasted_file";',
+		],
+		[
+			initializerSlot,
+			"ariaLabel",
+			"literal",
+			'function ariaLabel() { return "Actions for x"; }',
+		],
+		// DOCUMENTED CURRENT LIMITS: these zeros pin the existing extraction
+		// boundary, not endorse wrapping or suppressing authored product copy.
+		[
+			initializerSlot,
+			"ariaLabel",
+			"keyed",
+			"const ariaLabel = useMemo(() => `Actions for ${name}`, [name]);",
+		],
+		[
+			returnSlot,
+			"getFileName",
+			"keyed",
+			'function getFileName() { return String("Pasted file"); }',
+		],
+		[
+			initializerSlot,
+			"ariaLabel",
+			"keyed",
+			"const ariaLabel = { a: `Actions for ${name}` };",
+		],
+		[
+			returnSlot,
+			"getFileName",
+			"keyed",
+			'function getFileName() { const title = "Pasted file"; return title; }',
+		],
+		[
+			returnSlot,
+			"getFileName",
+			"keyed",
+			'function getFileName() { return () => "Pasted file"; }',
+		],
+		[
+			returnSlot,
+			"getFileName",
+			"keyed",
+			`function getFileName() {
+// i18n: ignore documented boundary probe
+return "Pasted file";
+}`,
+		],
+	];
+	for (const [rel, slot, kind, body] of boundaries) {
+		const path = `${cases.length}.tsx`;
+		writeFileSync(join(dir, path), body);
+		cases.push({ path, rel, slot, kind });
+	}
 	const { api, snapshot } = openSnapshot(
 		dir,
 		cases.map((c) => join(dir, c.path)),

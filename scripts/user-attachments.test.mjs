@@ -333,9 +333,9 @@ test("the two ops encode to the backend routes and refuse a malformed digest", (
 test("a picture whose bytes are still inline keeps the localized attachment name", () => {
 	/*
 	 * Design D3: before the stored digest lands, a just-sent picture took its name
-	 * from `getFileName(data:…)`, which is a hard-coded English "Pasted image" - so
-	 * one tile was English in every locale and renamed itself to the localized
-	 * attachment label once stored. Both arms must answer the same label.
+	 * from `getFileName(data:…)`. That helper now uses the localized fallback
+	 * (`ui.chat.composer_media.pasted_image`); retained attachment labels must stay
+	 * consistent with it rather than rename the tile when the stored digest lands.
 	 */
 	const inline = attachmentFinderItems(
 		[

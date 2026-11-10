@@ -328,7 +328,8 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 							{/*
 							 * Expanding, not `handleClick`. That handler's `data:` branch
 							 * resolves a canvas document from a title, and a pasted image's own
-							 * title is "Pasted image" — never a canvas-supported extension — so
+							 * title uses the localized fallback (ui.chat.composer_media.pasted_image),
+							 * with no canvas-supported extension, so
 							 * the click fell through to `onClick(file)`, which asked the OS to
 							 * open a `data:` URI as a path. That was a SILENT no-op rather
 							 * than an error, and the distinction is worth the sentence:

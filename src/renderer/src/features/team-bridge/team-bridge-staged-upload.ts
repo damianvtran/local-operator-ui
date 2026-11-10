@@ -161,11 +161,9 @@ const NAME_MAX = 120;
  * The name a failure row shows, and WHICH image it is - when that cannot be guessed.
  *
  * NEVER DERIVED FROM THE PAYLOAD. `getFileName` is the app's one naming helper and
- * already answers `"Pasted image"` for a `data:image/...` value, so the bridge names
- * a pasted picture the way the chat does. Its literals are pre-existing unkeyed
- * English, which the repo's string checker records as a known boundary rather than
- * a policy anyone may widen (`scripts/i18n/check-strings.mjs`, "KNOWN
- * BOUNDARIES"); this change adds no copy of its own.
+ * answers the localized fallback (`ui.chat.composer_media.pasted_image`) for an
+ * unnamed `data:image/...` value, so the bridge names a pasted picture the way the
+ * chat does. Valid decoded names remain user data, not translated copy.
  *
  * THE POSITION IS KEYED COPY, and only appears when there is more than one image:
  * `ui.teamBridge.attachments.position` ("Image {index} of {count}") exists in every

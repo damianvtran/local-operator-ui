@@ -653,6 +653,15 @@ export const SCOPED_COPY_SLOTS = {
 	},
 };
 
+/**
+ * Exact-slot static extraction, not transitive data-flow analysis. Calls (including
+ * useMemo/String), object wrappers, and literals reached through identifiers or
+ * nested callbacks are opaque. Bare catalogue-key literals are filtered out.
+ * The existing i18n: ignore pragma still suppresses covered literals; activation
+ * is not proof that those escape hatches are audited. A declaration without an
+ * initializer (including split let/assignment) fails closed as a missing slot.
+ * Tests pin these current limits, not endorse using them to hide product copy.
+ */
 export function scopedCopyFindings(sourceFile, rel) {
 	const slots = SCOPED_COPY_SLOTS[rel] ?? {};
 	const seen = new Set();
@@ -698,10 +707,17 @@ export function scopedCopyFindings(sourceFile, rel) {
 		) {
 			const value =
 				node.kind === SyntaxKind.FunctionDeclaration ? node : node.initializer;
-			if (mode === "initializer" && value) {
+			if (
+				mode === "initializer" &&
+				value &&
+				node.kind !== SyntaxKind.FunctionDeclaration
+			) {
 				seen.add(slot);
 				inspect(slot, value);
-			} else if (mode === "returns" && value?.body) {
+			} else if (
+				(mode === "returns" || node.kind === SyntaxKind.FunctionDeclaration) &&
+				value?.body
+			) {
 				seen.add(slot);
 				if (value.body.kind === SyntaxKind.Block) returns(slot, value.body);
 				else inspect(slot, value.body);
