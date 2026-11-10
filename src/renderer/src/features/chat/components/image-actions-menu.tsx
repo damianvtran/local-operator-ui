@@ -201,7 +201,7 @@ export const ImageActionsMenu = ({
 	onExpand,
 	saveName,
 	resolveBytes,
-	tooltip = "Image actions",
+	tooltip = t("ui.chat.image_actions.actions"),
 	"aria-label": ariaLabel,
 }: ImageActionsMenuProps) => {
 	// Memoized markdown keeps its JSX when props are unchanged. Translated
@@ -359,7 +359,11 @@ export const ImageActionsMenu = ({
 		}
 	};
 
-	const resolvedAriaLabel = ariaLabel ?? `Actions for ${label ?? "this image"}`;
+	const resolvedAriaLabel =
+		ariaLabel ??
+		(label != null
+			? t("ui.common.actions.actions_for_name", { name: label })
+			: t("ui.chat.image_actions.actions"));
 
 	return (
 		<DropdownMenu open={open} onOpenChange={onOpenChange}>

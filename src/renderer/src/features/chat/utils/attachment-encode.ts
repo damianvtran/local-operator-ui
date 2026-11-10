@@ -152,6 +152,9 @@ export async function encodeAttachments(
 			continue;
 		}
 
+		// Synthetic names for unnamed data URLs follow the active locale and become
+		// upload metadata. Valid decoded names stay verbatim; the original dataUrl
+		// (and therefore its bytes/MIME) is passed untouched, and stored metadata wins.
 		const name = getFileName(attachment);
 		if (options?.remoteOwned) {
 			failures.push({ name, kind: "remote" });

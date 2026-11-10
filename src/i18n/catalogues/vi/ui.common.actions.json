@@ -51,5 +51,6 @@
 	"ui.common.actions.configuration_updated": "Đã cập nhật cấu hình",
 	"ui.common.actions.system_prompt_updated": "Đã cập nhật prompt hệ thống",
 	"ui.common.actions.credential_updated": "Đã cập nhật thông tin xác thực “{key}”",
-	"ui.common.actions.clear": "Xóa"
+	"ui.common.actions.clear": "Xóa",
+	"ui.common.actions.actions_for_name": "Thao tác với {name}"
 }

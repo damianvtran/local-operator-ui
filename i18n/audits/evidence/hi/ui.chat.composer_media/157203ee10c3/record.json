@@ -1,0 +1,163 @@
+{
+  "locale": "hi",
+  "namespaces": [
+    "ui.chat",
+    "ui.chat.composer_media",
+    "ui.common.actions"
+  ],
+  "namespace": "ui.chat + ui.chat.composer_media + ui.common.actions",
+  "audit_id": "s12-ds-157203ee10c3",
+  "audit_date": "2026-11-10",
+  "head_sha": "e5fb4310dab638f9cf428779d62539ec039a8990",
+  "key_count": 271,
+  "fully_audited_key_count": 4,
+  "consistency_only_key_count": 267,
+  "scope": "PR #1842 @ e5fb4310dab638f9cf428779d62539ec039a8990; origin/main..HEAD Hindi: four added keys audited in full, all other namespace keys consistency-only (parse, key parity vs English, no legacy value changed or removed vs origin/main). No full legacy namespace certification.",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "157203ee10c3",
+    "session": "157203ee10c3",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "Served session header for this run: deepseek/deepseek-flash. No fallback disclosed or requested. No independent telemetry available to corroborate provider routing.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Supplied by the audit brief, including the hi translator session f573f85d7297. Not verified independently; this auditor never translated or reviewed these strings."
+  },
+  "input_hashes": {
+    "en": [
+      {
+        "namespace": "ui.chat",
+        "path": "src/i18n/catalogues/en/ui.chat.json",
+        "sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15"
+      },
+      {
+        "namespace": "ui.chat.composer_media",
+        "path": "src/i18n/catalogues/en/ui.chat.composer_media.json",
+        "sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae"
+      },
+      {
+        "namespace": "ui.common.actions",
+        "path": "src/i18n/catalogues/en/ui.common.actions.json",
+        "sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b"
+      }
+    ],
+    "hi": [
+      {
+        "namespace": "ui.chat",
+        "path": "src/i18n/catalogues/hi/ui.chat.json",
+        "sha256": "2a6c484cf4b677a4fb9ba74fdbfbf74849c612b60c0a858804daf2ef4d21e03a"
+      },
+      {
+        "namespace": "ui.chat.composer_media",
+        "path": "src/i18n/catalogues/hi/ui.chat.composer_media.json",
+        "sha256": "34812ced782b34fd569daaf7ef04d83efa9782ac09283c741601946bed6bfe15"
+      },
+      {
+        "namespace": "ui.common.actions",
+        "path": "src/i18n/catalogues/hi/ui.common.actions.json",
+        "sha256": "48b22fb6b8c8bf490fb205558873471e87a77a72d59fe42d7c69f6bb433c4056"
+      }
+    ],
+    "context": [
+      {
+        "namespace": "ui.chat",
+        "path": "src/i18n/catalogues/en/ui.chat.context.json",
+        "sha256": "84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf"
+      },
+      {
+        "namespace": "ui.chat.composer_media",
+        "path": "src/i18n/catalogues/en/ui.chat.composer_media.context.json",
+        "sha256": "a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b"
+      },
+      {
+        "namespace": "ui.common.actions",
+        "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+        "sha256": "24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d"
+      }
+    ]
+  },
+  "expected_hashes_file": {
+    "path": "~/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/expected-hashes.json",
+    "comparison_result": "9 of 9 hashes match; 0 mismatches"
+  },
+  "policy_inputs": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/hi.md",
+      "note": "Read in full (75 lines). Declares itself binding for translators and the auditor."
+    },
+    "glossary": {
+      "path": "~/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "note": "Manager-owned byte copy, verified identical to ~/local-operator/i18n/glossary.md (173 lines). Glossary conformance was checked against THIS copy."
+    }
+  },
+  "artifacts": [
+    {
+      "path": "hi-ds-157203ee10c3.json",
+      "sha256": "b06d88caadc592a3767d06a9495a6ba62a473de165834ba9c4be7784fee69966",
+      "kind": "audit_notes_not_execution_log",
+      "record_reference": "hi-ds-157203ee10c3.record.json"
+    },
+    {
+      "path": "hi-ds-157203ee10c3.audit.log",
+      "sha256": "beadaf842ac094c325da388136e8ce896071220be0c5369f589a2e5fddfa6a13",
+      "kind": "actual_execution_log",
+      "record_reference": "hi-ds-157203ee10c3.record.json"
+    },
+    {
+      "path": "check.py",
+      "sha256": "b0ae78401566110d24d5f611dd7f8bceba13f23d3e117b2bb168b665fa96be9d",
+      "kind": "executed_check_source",
+      "record_reference": "hi-ds-157203ee10c3.record.json"
+    },
+    {
+      "path": "check.out",
+      "sha256": "c04a6b9d51d2608896fad9a783e17899a3922d9a5bb0c61ac3f7e86906b331b5",
+      "kind": "actual_execution_log",
+      "record_reference": "hi-ds-157203ee10c3.record.json"
+    },
+    {
+      "path": "stress.py",
+      "sha256": "7b760b8184623d1235da7cce2784c3c2e09a9c43ce61e863576e06971afd4d2a",
+      "kind": "executed_check_source",
+      "record_reference": "hi-ds-157203ee10c3.record.json"
+    },
+    {
+      "path": "stress.out",
+      "sha256": "8a9d87e1b68131f8f2d2e1e7e42a397cf6742ae8e5114c45a1875480eb8d2109",
+      "kind": "derived_expansions_not_production_render",
+      "record_reference": "hi-ds-157203ee10c3.record.json"
+    },
+    {
+      "path": "ledger-check.out",
+      "sha256": "953ee05fbe5aefffaae00bc34bf640440151181a96b459a784d22ac895730b60",
+      "kind": "actual_execution_log",
+      "record_reference": "hi-ds-157203ee10c3.record.json"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": []
+  },
+  "finding_report": "hi-ds-157203ee10c3.json",
+  "audit_notes_not_execution_log": true,
+  "execution_log": "hi-ds-157203ee10c3.audit.log",
+  "retention": {
+    "state": "scratch_handoff_only_per_explicit_read_only_task",
+    "intended_tracked_directory": "i18n/audits/evidence/hi/<namespace>/s12-ds-157203ee10c3/ (one per namespace, per the canonical root layout)",
+    "intended_receipt_path": "i18n/receipts/157203ee10c3.json",
+    "manager_action_required": "Retain record and companions under the canonical evidence root and run scripts/i18n/ledger-assemble.mjs once per namespace; the exact argument set is in the audit log §6. No ledger command was run by me and no repository file was written.",
+    "proposed_note": "clean; 4 keys, 0 findings; evidence i18n/audits/evidence/hi/*/s12-ds-157203ee10c3/"
+  },
+  "unverified": [
+    "No rendered UI, browser, screenshot or screen-reader output: builds and servers are forbidden for this audit; no pixel-fit claim made (no maxCells/maxChars on any of the four keys).",
+    "No production ICU parser/formatter or CLDR runtime exercised; ICU statements are structural only.",
+    "No ledger row, no tracked evidence commit, no PR comment authored by this auditor.",
+    "Translator session identity supplied by the brief, not independently verified."
+  ]
+}

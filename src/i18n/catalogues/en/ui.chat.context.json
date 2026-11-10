@@ -1052,5 +1052,19 @@
 		"length": "One word; the status strip reading is a few cells wide.",
 		"note": "The name of a rung on a model's effort ladder, ordered None < Minimal < Low < Medium < High < xHigh < Max. Use the word a reader would expect on a speed/quality scale, and keep the levels distinct from one another. The wire value behind it stays the lowercase English token and is never shown through this key.",
 		"placeholders": {}
+	},
+	"ui.chat.image_actions.actions": {
+		"role": "image actions menu tooltip and unnamed-image trigger accessible name",
+		"tone": "short noun phrase, sentence case",
+		"note": "Generic label for the image overflow menu. Used as its default tooltip and as the accessible-name fallback when no image label is supplied; a named image instead uses ui.common.actions.actions_for_name. Preserve explicit caller overrides, including an intentionally empty override.",
+		"placeholders": {}
+	},
+	"ui.chat.audio.position_label": {
+		"role": "accessible name of an audio clip seek slider",
+		"tone": "concise neutral phrase, sentence case",
+		"note": "Names playback position for this specific clip, not a play/pause action. Two clips may be present together, so retain the clip label. Translate only the surrounding word for position. Does not replace time/value text or change seeking.",
+		"placeholders": {
+			"label": "string: existing audio clip display label/title; insert verbatim without translating or normalizing user data. Word order may change around {label}."
+		}
 	}
 }

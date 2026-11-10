@@ -1,0 +1,436 @@
+{
+  "locale": "ur",
+  "namespace": [
+    "ui.chat",
+    "ui.chat.composer_media",
+    "ui.common.actions"
+  ],
+  "audit_date": "2026-11-10",
+  "key_count": 271,
+  "fully_audited_key_count": 4,
+  "consistency_only_key_count": 267,
+  "scope": "PR #1842 @ e5fb4310dab638f9cf428779d62539ec039a8990; Urdu four-new-key audit across three namespaces. Legacy keys consistency_only: parse, key parity, unchanged values/no removal versus local origin/main; no legacy semantic certification.",
+  "head_sha": "e5fb4310dab638f9cf428779d62539ec039a8990",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "a1d964dc45d5",
+    "session": "a1d964dc45d5",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Served session header: openai/gpt-6.1-sol; session a1d964dc45d5. No fallback used.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Delegation supplies translator session f573f85d7297 and model; this independent auditor session did not translate or participate in translation."
+  },
+  "input_hashes": {
+    "ui.chat": {
+      "en": {
+        "path": "src/i18n/catalogues/en/ui.chat.json",
+        "sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15"
+      },
+      "ur": {
+        "path": "src/i18n/catalogues/ur/ui.chat.json",
+        "sha256": "46ddbd89585ba5d057b61bf90a83dfdca7b42fb2135ce18db940deed41794fdd"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.chat.context.json",
+        "sha256": "84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf"
+      }
+    },
+    "ui.chat.composer_media": {
+      "en": {
+        "path": "src/i18n/catalogues/en/ui.chat.composer_media.json",
+        "sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae"
+      },
+      "ur": {
+        "path": "src/i18n/catalogues/ur/ui.chat.composer_media.json",
+        "sha256": "0b92eb10a96ac3e94f3acabe554e3e429cee150094ad333bb3c0f1bd0243e3fb"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.chat.composer_media.context.json",
+        "sha256": "a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b"
+      }
+    },
+    "ui.common.actions": {
+      "en": {
+        "path": "src/i18n/catalogues/en/ui.common.actions.json",
+        "sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b"
+      },
+      "ur": {
+        "path": "src/i18n/catalogues/ur/ui.common.actions.json",
+        "sha256": "06ed5d8326b11d74df3891e15a1e9290c3893f03be43b79fa91f9d168058e7f7"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+        "sha256": "24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d"
+      }
+    }
+  },
+  "policy_inputs": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ur.md",
+      "sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+    },
+    "glossary": {
+      "path": "~/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "ur-sol-a1d964dc45d5.json",
+      "sha256": "939f7782a3190751b770c7e0431c81498923b9da36b4706ed495920a4ea665a4",
+      "kind": "audit_notes_not_execution_log",
+      "record_reference": "ur-sol-a1d964dc45d5.record.json"
+    },
+    {
+      "path": "ur-sol-a1d964dc45d5.audit.log",
+      "sha256": "67666eebc694687a6f0ac032199fb984570fc75c24666c23afd6c0590673a44d",
+      "kind": "actual_commands_and_auditor_account",
+      "record_reference": "ur-sol-a1d964dc45d5.record.json"
+    },
+    {
+      "path": "ur-validator.log",
+      "sha256": "34b5f1f7d8dde8ef9c8b475585e523825da2fac76343757babc5e282905804be",
+      "kind": "actual_execution_log",
+      "record_reference": "ur-sol-a1d964dc45d5.record.json"
+    },
+    {
+      "path": "ur-hashes.log",
+      "sha256": "f7a08c6e53d06a7b4db2f6bfb7cd7251539149978364e8ca817f2bdb61087b45",
+      "kind": "actual_execution_log",
+      "record_reference": "ur-sol-a1d964dc45d5.record.json"
+    },
+    {
+      "path": "build_ur_receipt.py",
+      "sha256": "ac37f175fb2d4d4b43e269a83d4648a3a4087a4b326fbcba14aaedaee775ec78",
+      "kind": "executed_check_source",
+      "record_reference": "ur-sol-a1d964dc45d5.record.json"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "UR-S12-1"
+    ]
+  },
+  "finding_report": "ur-sol-a1d964dc45d5.json",
+  "audit_notes_not_execution_log": true,
+  "execution_log": "ur-sol-a1d964dc45d5.audit.log",
+  "retention": {
+    "state": "scratch_handoff_only_per_explicit_read_only_task",
+    "intended_tracked_directory": "i18n/audits/evidence/ur/<namespace>/s12-sol-a1d964dc45d5",
+    "manager_action_required": "Retain per-namespace record and companions under canonical evidence root and record applicable UI ledger; no repository write performed.",
+    "proposed_note": "passed with MINOR UR-S12-1; retain linked per-namespace record before ledger write"
+  },
+  "unverified": [
+    "No browser, screen-reader, rendered bidi or pixel-fit execution. RTL is a logical-order/string-level assessment, not a rendered result.",
+    "No ledger command, repository writes, commits or PR comments: explicit scratch-only/read-only assignment. Manager must retain evidence and record ledger via applicable UI contract.",
+    "Repository Urdu parity validator was run (6 PASS), but only four assigned new messages receive semantic certification. Other namespace messages are consistency_only; no legacy semantic certification."
+  ],
+  "namespaces": {
+    "ui.chat": {
+      "locale": "ur",
+      "namespace": "ui.chat",
+      "audit_date": "2026-11-10",
+      "key_count": 208,
+      "fully_audited_key_count": 2,
+      "consistency_only_key_count": 206,
+      "scope": "PR #1842 @ e5fb4310dab638f9cf428779d62539ec039a8990; Urdu four-new-key audit across three namespaces. Legacy keys consistency_only: parse, key parity, unchanged values/no removal versus local origin/main; no legacy semantic certification.",
+      "head_sha": "e5fb4310dab638f9cf428779d62539ec039a8990",
+      "auditor": {
+        "agent": "i18n-auditor",
+        "instance": "a1d964dc45d5",
+        "session": "a1d964dc45d5",
+        "model": "openai/gpt-6.1-sol",
+        "actual_model_source": "Served session header: openai/gpt-6.1-sol; session a1d964dc45d5. No fallback used.",
+        "fallback_used": false,
+        "independent_from_translator_session": true
+      },
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "anthropic/claude-sonnet-5-5",
+        "source": "Delegation supplies translator session f573f85d7297 and model; this independent auditor session did not translate or participate in translation."
+      },
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.json",
+          "sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15"
+        },
+        "ur": {
+          "path": "src/i18n/catalogues/ur/ui.chat.json",
+          "sha256": "46ddbd89585ba5d057b61bf90a83dfdca7b42fb2135ce18db940deed41794fdd"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.context.json",
+          "sha256": "84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf"
+        }
+      },
+      "policy_inputs": {
+        "style_guide": {
+          "path": "~/local-operator/i18n/style-guides/ur.md",
+          "sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+        },
+        "glossary": {
+          "path": "~/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md",
+          "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+        }
+      },
+      "artifacts": [
+        {
+          "path": "ur-sol-a1d964dc45d5.json",
+          "sha256": "939f7782a3190751b770c7e0431c81498923b9da36b4706ed495920a4ea665a4",
+          "kind": "audit_notes_not_execution_log",
+          "record_reference": "ur-sol-a1d964dc45d5.record.json"
+        },
+        {
+          "path": "ur-sol-a1d964dc45d5.audit.log",
+          "sha256": "67666eebc694687a6f0ac032199fb984570fc75c24666c23afd6c0590673a44d",
+          "kind": "actual_commands_and_auditor_account",
+          "record_reference": "ur-sol-a1d964dc45d5.record.json"
+        },
+        {
+          "path": "ur-validator.log",
+          "sha256": "34b5f1f7d8dde8ef9c8b475585e523825da2fac76343757babc5e282905804be",
+          "kind": "actual_execution_log",
+          "record_reference": "ur-sol-a1d964dc45d5.record.json"
+        },
+        {
+          "path": "ur-hashes.log",
+          "sha256": "f7a08c6e53d06a7b4db2f6bfb7cd7251539149978364e8ca817f2bdb61087b45",
+          "kind": "actual_execution_log",
+          "record_reference": "ur-sol-a1d964dc45d5.record.json"
+        },
+        {
+          "path": "build_ur_receipt.py",
+          "sha256": "ac37f175fb2d4d4b43e269a83d4648a3a4087a4b326fbcba14aaedaee775ec78",
+          "kind": "executed_check_source",
+          "record_reference": "ur-sol-a1d964dc45d5.record.json"
+        }
+      ],
+      "current_report_verdict": {
+        "status": "passed",
+        "unresolved_blocker_major_count": 0,
+        "finding_ids": [
+          "UR-S12-1"
+        ]
+      },
+      "finding_report": "ur-sol-a1d964dc45d5.json",
+      "audit_notes_not_execution_log": true,
+      "execution_log": "ur-sol-a1d964dc45d5.audit.log",
+      "retention": {
+        "state": "scratch_handoff_only_per_explicit_read_only_task",
+        "intended_tracked_directory": "i18n/audits/evidence/ur/<namespace>/s12-sol-a1d964dc45d5",
+        "manager_action_required": "Retain per-namespace record and companions under canonical evidence root and record applicable UI ledger; no repository write performed.",
+        "proposed_note": "passed with MINOR UR-S12-1; retain linked per-namespace record before ledger write"
+      },
+      "unverified": [
+        "No browser, screen-reader, rendered bidi or pixel-fit execution. RTL is a logical-order/string-level assessment, not a rendered result.",
+        "No ledger command, repository writes, commits or PR comments: explicit scratch-only/read-only assignment. Manager must retain evidence and record ledger via applicable UI contract.",
+        "Repository Urdu parity validator was run (6 PASS), but only four assigned new messages receive semantic certification. Other namespace messages are consistency_only; no legacy semantic certification."
+      ]
+    },
+    "ui.chat.composer_media": {
+      "locale": "ur",
+      "namespace": "ui.chat.composer_media",
+      "audit_date": "2026-11-10",
+      "key_count": 9,
+      "fully_audited_key_count": 1,
+      "consistency_only_key_count": 8,
+      "scope": "PR #1842 @ e5fb4310dab638f9cf428779d62539ec039a8990; Urdu four-new-key audit across three namespaces. Legacy keys consistency_only: parse, key parity, unchanged values/no removal versus local origin/main; no legacy semantic certification.",
+      "head_sha": "e5fb4310dab638f9cf428779d62539ec039a8990",
+      "auditor": {
+        "agent": "i18n-auditor",
+        "instance": "a1d964dc45d5",
+        "session": "a1d964dc45d5",
+        "model": "openai/gpt-6.1-sol",
+        "actual_model_source": "Served session header: openai/gpt-6.1-sol; session a1d964dc45d5. No fallback used.",
+        "fallback_used": false,
+        "independent_from_translator_session": true
+      },
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "anthropic/claude-sonnet-5-5",
+        "source": "Delegation supplies translator session f573f85d7297 and model; this independent auditor session did not translate or participate in translation."
+      },
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.json",
+          "sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae"
+        },
+        "ur": {
+          "path": "src/i18n/catalogues/ur/ui.chat.composer_media.json",
+          "sha256": "0b92eb10a96ac3e94f3acabe554e3e429cee150094ad333bb3c0f1bd0243e3fb"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.context.json",
+          "sha256": "a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b"
+        }
+      },
+      "policy_inputs": {
+        "style_guide": {
+          "path": "~/local-operator/i18n/style-guides/ur.md",
+          "sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+        },
+        "glossary": {
+          "path": "~/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md",
+          "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+        }
+      },
+      "artifacts": [
+        {
+          "path": "ur-sol-a1d964dc45d5.json",
+          "sha256": "939f7782a3190751b770c7e0431c81498923b9da36b4706ed495920a4ea665a4",
+          "kind": "audit_notes_not_execution_log",
+          "record_reference": "ur-sol-a1d964dc45d5.record.json"
+        },
+        {
+          "path": "ur-sol-a1d964dc45d5.audit.log",
+          "sha256": "67666eebc694687a6f0ac032199fb984570fc75c24666c23afd6c0590673a44d",
+          "kind": "actual_commands_and_auditor_account",
+          "record_reference": "ur-sol-a1d964dc45d5.record.json"
+        },
+        {
+          "path": "ur-validator.log",
+          "sha256": "34b5f1f7d8dde8ef9c8b475585e523825da2fac76343757babc5e282905804be",
+          "kind": "actual_execution_log",
+          "record_reference": "ur-sol-a1d964dc45d5.record.json"
+        },
+        {
+          "path": "ur-hashes.log",
+          "sha256": "f7a08c6e53d06a7b4db2f6bfb7cd7251539149978364e8ca817f2bdb61087b45",
+          "kind": "actual_execution_log",
+          "record_reference": "ur-sol-a1d964dc45d5.record.json"
+        },
+        {
+          "path": "build_ur_receipt.py",
+          "sha256": "ac37f175fb2d4d4b43e269a83d4648a3a4087a4b326fbcba14aaedaee775ec78",
+          "kind": "executed_check_source",
+          "record_reference": "ur-sol-a1d964dc45d5.record.json"
+        }
+      ],
+      "current_report_verdict": {
+        "status": "passed",
+        "unresolved_blocker_major_count": 0,
+        "finding_ids": []
+      },
+      "finding_report": "ur-sol-a1d964dc45d5.json",
+      "audit_notes_not_execution_log": true,
+      "execution_log": "ur-sol-a1d964dc45d5.audit.log",
+      "retention": {
+        "state": "scratch_handoff_only_per_explicit_read_only_task",
+        "intended_tracked_directory": "i18n/audits/evidence/ur/<namespace>/s12-sol-a1d964dc45d5",
+        "manager_action_required": "Retain per-namespace record and companions under canonical evidence root and record applicable UI ledger; no repository write performed.",
+        "proposed_note": "passed with MINOR UR-S12-1; retain linked per-namespace record before ledger write"
+      },
+      "unverified": [
+        "No browser, screen-reader, rendered bidi or pixel-fit execution. RTL is a logical-order/string-level assessment, not a rendered result.",
+        "No ledger command, repository writes, commits or PR comments: explicit scratch-only/read-only assignment. Manager must retain evidence and record ledger via applicable UI contract.",
+        "Repository Urdu parity validator was run (6 PASS), but only four assigned new messages receive semantic certification. Other namespace messages are consistency_only; no legacy semantic certification."
+      ]
+    },
+    "ui.common.actions": {
+      "locale": "ur",
+      "namespace": "ui.common.actions",
+      "audit_date": "2026-11-10",
+      "key_count": 54,
+      "fully_audited_key_count": 1,
+      "consistency_only_key_count": 53,
+      "scope": "PR #1842 @ e5fb4310dab638f9cf428779d62539ec039a8990; Urdu four-new-key audit across three namespaces. Legacy keys consistency_only: parse, key parity, unchanged values/no removal versus local origin/main; no legacy semantic certification.",
+      "head_sha": "e5fb4310dab638f9cf428779d62539ec039a8990",
+      "auditor": {
+        "agent": "i18n-auditor",
+        "instance": "a1d964dc45d5",
+        "session": "a1d964dc45d5",
+        "model": "openai/gpt-6.1-sol",
+        "actual_model_source": "Served session header: openai/gpt-6.1-sol; session a1d964dc45d5. No fallback used.",
+        "fallback_used": false,
+        "independent_from_translator_session": true
+      },
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "anthropic/claude-sonnet-5-5",
+        "source": "Delegation supplies translator session f573f85d7297 and model; this independent auditor session did not translate or participate in translation."
+      },
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.json",
+          "sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b"
+        },
+        "ur": {
+          "path": "src/i18n/catalogues/ur/ui.common.actions.json",
+          "sha256": "06ed5d8326b11d74df3891e15a1e9290c3893f03be43b79fa91f9d168058e7f7"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+          "sha256": "24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d"
+        }
+      },
+      "policy_inputs": {
+        "style_guide": {
+          "path": "~/local-operator/i18n/style-guides/ur.md",
+          "sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+        },
+        "glossary": {
+          "path": "~/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md",
+          "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+        }
+      },
+      "artifacts": [
+        {
+          "path": "ur-sol-a1d964dc45d5.json",
+          "sha256": "939f7782a3190751b770c7e0431c81498923b9da36b4706ed495920a4ea665a4",
+          "kind": "audit_notes_not_execution_log",
+          "record_reference": "ur-sol-a1d964dc45d5.record.json"
+        },
+        {
+          "path": "ur-sol-a1d964dc45d5.audit.log",
+          "sha256": "67666eebc694687a6f0ac032199fb984570fc75c24666c23afd6c0590673a44d",
+          "kind": "actual_commands_and_auditor_account",
+          "record_reference": "ur-sol-a1d964dc45d5.record.json"
+        },
+        {
+          "path": "ur-validator.log",
+          "sha256": "34b5f1f7d8dde8ef9c8b475585e523825da2fac76343757babc5e282905804be",
+          "kind": "actual_execution_log",
+          "record_reference": "ur-sol-a1d964dc45d5.record.json"
+        },
+        {
+          "path": "ur-hashes.log",
+          "sha256": "f7a08c6e53d06a7b4db2f6bfb7cd7251539149978364e8ca817f2bdb61087b45",
+          "kind": "actual_execution_log",
+          "record_reference": "ur-sol-a1d964dc45d5.record.json"
+        },
+        {
+          "path": "build_ur_receipt.py",
+          "sha256": "ac37f175fb2d4d4b43e269a83d4648a3a4087a4b326fbcba14aaedaee775ec78",
+          "kind": "executed_check_source",
+          "record_reference": "ur-sol-a1d964dc45d5.record.json"
+        }
+      ],
+      "current_report_verdict": {
+        "status": "passed",
+        "unresolved_blocker_major_count": 0,
+        "finding_ids": []
+      },
+      "finding_report": "ur-sol-a1d964dc45d5.json",
+      "audit_notes_not_execution_log": true,
+      "execution_log": "ur-sol-a1d964dc45d5.audit.log",
+      "retention": {
+        "state": "scratch_handoff_only_per_explicit_read_only_task",
+        "intended_tracked_directory": "i18n/audits/evidence/ur/<namespace>/s12-sol-a1d964dc45d5",
+        "manager_action_required": "Retain per-namespace record and companions under canonical evidence root and record applicable UI ledger; no repository write performed.",
+        "proposed_note": "passed with MINOR UR-S12-1; retain linked per-namespace record before ledger write"
+      },
+      "unverified": [
+        "No browser, screen-reader, rendered bidi or pixel-fit execution. RTL is a logical-order/string-level assessment, not a rendered result.",
+        "No ledger command, repository writes, commits or PR comments: explicit scratch-only/read-only assignment. Manager must retain evidence and record ledger via applicable UI contract.",
+        "Repository Urdu parity validator was run (6 PASS), but only four assigned new messages receive semantic certification. Other namespace messages are consistency_only; no legacy semantic certification."
+      ]
+    }
+  }
+}

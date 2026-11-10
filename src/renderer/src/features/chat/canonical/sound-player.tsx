@@ -452,7 +452,7 @@ export const SoundPlayer = ({
 	};
 
 	const compact = variant === "compact";
-	const sliderLabel = `${label} position`;
+	const sliderLabel = t("ui.chat.audio.position_label", { label });
 
 	return (
 		<div

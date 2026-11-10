@@ -1,0 +1,183 @@
+{
+  "audit_id": "ru-ui.chat-ui.chat.composer_media-ui.common.actions-bcfbdd468d00",
+  "locale": "ru",
+  "namespace": "ui.chat+ui.chat.composer_media+ui.common.actions",
+  "namespaces": [
+    "ui.chat",
+    "ui.chat.composer_media",
+    "ui.common.actions"
+  ],
+  "audit_date": "2026-11-10",
+  "key_count": 271,
+  "fully_audited_key_count": 4,
+  "consistency_only_key_count": 267,
+  "scope": "PR damianvtran/local-operator-ui #1842 @ e5fb4310dab638f9cf428779d62539ec039a8990; origin/main..HEAD adds exactly four ru values — ui.chat.composer_media.pasted_image, ui.common.actions.actions_for_name, ui.chat.image_actions.actions, ui.chat.audio.position_label — and changes no legacy value. Also in scope: the broadened English scope sentence of the ui.chat.composer_media.pasted_file context, checked against get-file-name.ts and attachment-encode.ts.",
+  "head_sha": "e5fb4310dab638f9cf428779d62539ec039a8990",
+  "mode": "Fresh independent delta audit of the four keys this PR adds for ru (its whole translated delta for this locale); the other 267 keys of the three namespaces were read only for terminology/consistency and are NOT certified. Read-only worktree: no repository file written, no build, install or server, no translation/MT service. Allocation: fix (<2h), bounded audit.",
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "session": "3b22accb1363",
+    "source": "Delegation brief: translator i18n-translator / anthropic/claude-sonnet-5-5, ru session 3b22accb1363, values supplied verbatim. This auditor did not translate, review the translation as it was made, or take any part in the change."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "bcfbdd468d00",
+    "session": "bcfbdd468d00",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "Served session header: Model: deepseek/deepseek-flash (session bcfbdd468d00). No fallback used.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "input_hashes": {
+    "ui.chat": {
+      "en": {
+        "path": "src/i18n/catalogues/en/ui.chat.json",
+        "sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.chat.context.json",
+        "sha256": "84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf"
+      },
+      "ru": {
+        "path": "src/i18n/catalogues/ru/ui.chat.json",
+        "sha256": "52fb9cf75ad675dd672935a02c9c5e820938271af6a1dbae44ee7244055d2a2e"
+      },
+      "source_sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15",
+      "target_sha256": "52fb9cf75ad675dd672935a02c9c5e820938271af6a1dbae44ee7244055d2a2e",
+      "key_count": 208,
+      "fully_audited_key_count": 2,
+      "consistency_only_key_count": 206
+    },
+    "ui.chat.composer_media": {
+      "en": {
+        "path": "src/i18n/catalogues/en/ui.chat.composer_media.json",
+        "sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.chat.composer_media.context.json",
+        "sha256": "a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b"
+      },
+      "ru": {
+        "path": "src/i18n/catalogues/ru/ui.chat.composer_media.json",
+        "sha256": "ea15ba6e13dd7b263ce92af68a80dfe8169857677df770d3d1abc3e9ef125d55"
+      },
+      "source_sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae",
+      "target_sha256": "ea15ba6e13dd7b263ce92af68a80dfe8169857677df770d3d1abc3e9ef125d55",
+      "key_count": 9,
+      "fully_audited_key_count": 1,
+      "consistency_only_key_count": 8
+    },
+    "ui.common.actions": {
+      "en": {
+        "path": "src/i18n/catalogues/en/ui.common.actions.json",
+        "sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+        "sha256": "24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d"
+      },
+      "ru": {
+        "path": "src/i18n/catalogues/ru/ui.common.actions.json",
+        "sha256": "d76c6dc4da5d49007f52d9f69c6e424b81c4d2a180cdd250973f01c2354d4d98"
+      },
+      "source_sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b",
+      "target_sha256": "d76c6dc4da5d49007f52d9f69c6e424b81c4d2a180cdd250973f01c2354d4d98",
+      "key_count": 54,
+      "fully_audited_key_count": 1,
+      "consistency_only_key_count": 53
+    }
+  },
+  "policy_inputs": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ru.md",
+      "sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+    },
+    "glossary": {
+      "path": "~/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "note": "Manager-owned byte-copy, verified identical to ~/local-operator/i18n/glossary.md"
+    },
+    "context_sidecars": [
+      "src/i18n/catalogues/en/ui.chat.context.json",
+      "src/i18n/catalogues/en/ui.chat.composer_media.context.json",
+      "src/i18n/catalogues/en/ui.common.actions.context.json"
+    ]
+  },
+  "artifacts": [
+    {
+      "path": "receipt.json",
+      "sha256": "9bce5907b6f9ec38ea24b487de79d0546c860c531292580906ae527d0446b190",
+      "kind": "audit_notes_not_execution_log",
+      "record_reference": "record.json"
+    },
+    {
+      "path": "audit.log",
+      "sha256": "eb2ba52b7926ac9910f945ff65a1683bec48aa3c054542297c05e4e2235a7f1e",
+      "kind": "actual_execution_log",
+      "record_reference": "record.json"
+    },
+    {
+      "path": "record.json",
+      "sha256": null,
+      "kind": "record",
+      "record_reference": "self; its own hash is not self-referential"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "result": "clean-with-findings",
+    "verdict": "clean-with-findings",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "ru-1"
+    ]
+  },
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+  },
+  "findings": [
+    {
+      "id": "ru-1",
+      "severity": "minor",
+      "namespace": "ui.common.actions",
+      "key": "ui.common.actions.actions_for_name",
+      "current_text": "Действия для «{name}»",
+      "source_text": "Actions for {name}",
+      "problem": "The guillemets are grammatically safe and the meaning is exact, but this is the only place in the ru catalogue where the 'Actions for {name}' frame quotes the inserted name in an accessible name that receives a FILE name: six sibling values render the same frame unquoted, and the one quoted value inserts a browser page title, not a filename. It is also the one form where an empty insertion is visible: image-actions-menu.tsx:364-366 tests `label != null`, so a markdown image with empty alt text (label={alt}, markdown-image.tsx:90) reaches this key with {name} = '' and renders «» where English renders only a trailing space.",
+      "evidence": [
+        "ru ui.chat.canonical.link_toolkit.actions_for = \"Действия для {name}\" (unquoted)",
+        "ru ui.shell.sidebar_navigation.row_actions = \"Действия для {name}\" (unquoted)",
+        "ru ui.settings.integrations.integration_row.more_actions_for_name = \"Другие действия для {name}\" (unquoted)",
+        "ru ui.library.menu.asset_actions_label = \"Действия с файлом {name}\" (unquoted, file name)",
+        "ru ui.projects.project_updates.file_actions_for_name = \"Действия с файлом {name}\" (unquoted, file name, three aria-label call sites)",
+        "counter-evidence: ru ui.browser.browser_tab_strip.actions_for = \"Действия для «{title}»\" quotes a page TITLE; ru ui.common.actions.credential_updated = \"Учётные данные «{key}» успешно обновлены\" quotes a key",
+        "ru guide, Punctuation & typography: \"Quotes: «ёлочки» in prose, „лапки“ nested inside them.\" — an accessible name is product chrome, so the guide does not require the marks here",
+        "src/renderer/src/features/chat/components/image-actions-menu.tsx:364 t(\"ui.common.actions.actions_for_name\", { name: label }) under `label != null`"
+      ],
+      "recommendation": "Действия для {name}",
+      "recommendation_reason": "Matches the frame of the six existing ru values, keeps the inserted filename verbatim with no case agreement, and degrades exactly like English (a trailing space) if an empty name ever reaches it.",
+      "gating": false,
+      "note": "Declared MINOR, not MAJOR: the wording is defensible and a screen reader does not voice the marks. If the translator prefers delimiting filenames, keeping «» is acceptable; record the choice on the row rather than churning the value."
+    }
+  ],
+  "finding_report": "receipt.json (namespace block ui.common.actions)",
+  "verification_limits": [
+    "Node check-strings.mjs was NOT run: it has a baseline-save write path and the worktree is read-only for this audit. Its absence is not a pass.",
+    "No ICU/CLDR runtime formatter, no test suite, no build: none of the four values has a plural, select, number or date, so no runtime formatter output is claimed.",
+    "No browser, accessibility-tree, screen-reader or pixel measurement: these are accessible names/tooltips and a synthetic filename; no rendered claim is made.",
+    "The served model is reported from the session header; it cannot be independently corroborated from inside the session.",
+    "No ledger row, tracked evidence bundle, PR comment or commit: ledger-assemble writes i18n/ledger.json and i18n/receipts/, which this read-only audit must not do. The manager lands them from this receipt."
+  ],
+  "retention": {
+    "served_path": "/Users/damian/.local-operator/sessions/bcfbdd468d00/scratchpad",
+    "tracked": false,
+    "canonical_tracked_path_if_landed": "i18n/audits/evidence/ru/<namespace>/bcfbdd468d00/",
+    "note": "Scratch only: the worktree is read-only for this audit, so nothing was committed and no ledger row was written. The manager must copy receipt.json, record.json and audit.log byte-for-byte into the canonical path per namespace and run ledger-assemble.mjs with this receipt."
+  },
+  "audit_notes_not_execution_log": false,
+  "companion_execution_log": "ru-ds-bcfbdd468d00.audit.log"
+}
