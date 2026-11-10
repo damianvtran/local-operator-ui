@@ -1672,7 +1672,7 @@ test("M1: unmounting the timeline releases every listener it bound", async () =>
 		const watching = observers.filter((o) => o.targets.has(viewport));
 		assert.ok(watching.length > 0, "the viewport was observed");
 		await act(async () => root.render(React.createElement("p", null, "gone")));
-		assert.deepEqual(calls.sort(), ["load", "scroll"]);
+		assert.deepEqual(calls.sort(), ["load", "scroll", "wheel"]);
 		for (const observer of watching)
 			assert.equal(observer.targets.size, 0, "the observer disconnected");
 	});

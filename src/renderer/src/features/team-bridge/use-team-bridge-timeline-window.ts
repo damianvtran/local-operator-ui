@@ -71,6 +71,7 @@ export function useTimelineWindow({
 	loadingOlder,
 	onLoadOlder,
 	enabled = true,
+	isPinned,
 }: {
 	entries: readonly WindowEntry[];
 	/** The `<ol>` the strip renders into; the measure pass walks its rows. */
@@ -83,6 +84,16 @@ export function useTimelineWindow({
 	loadingOlder: boolean;
 	onLoadOlder?: () => void;
 	enabled?: boolean;
+	/**
+	 * The stick-to-bottom hook's decision, when the caller has one (the page's
+	 * timeline does). ONE AUTHORITY: this hook used to keep its own `atBottom`,
+	 * refreshed a frame AFTER each scroll, so a layout change landing between a
+	 * reader's upward scroll and that frame snapped them back to the end - a
+	 * second writer fighting the reader on top of the first. With `isPinned`
+	 * given, the strip holds the bottom only while stick-to-bottom agrees the
+	 * reader is still there, read at the moment of the correction.
+	 */
+	isPinned?: () => boolean;
 }): {
 	layout: WindowLayout;
 	range: { start: number; end: number };
@@ -188,6 +199,8 @@ export function useTimelineWindow({
 	hasOlderRef.current = hasOlder;
 	const loadingRef = useRef(loadingOlder);
 	loadingRef.current = loadingOlder;
+	const isPinnedRef = useRef(isPinned);
+	isPinnedRef.current = isPinned;
 
 	/*
 	 * THE VIEWPORT: found the same way the stick-to-bottom hook finds it, from the
@@ -374,7 +387,17 @@ export function useTimelineWindow({
 			return;
 		}
 		if (previous === null || anchor.current === null) return;
-		const target = anchor.current.atBottom
+		/* A VETO, not a second trigger: the strip still only holds the bottom it
+		   recorded itself, but never once stick-to-bottom has seen the reader
+		   leave (its decision is synchronous with the scroll; `atBottom` lags a
+		   frame). Letting `isPinned` ADD snaps instead would write `max` where
+		   the strip did not record an end, and a write that re-cuts the slice
+		   can change `max` again - the oscillation the first-pin branch above
+		   already guards against (measured: "Maximum update depth exceeded" in
+		   the F9 timeline test). */
+		const atBottom =
+			anchor.current.atBottom && (isPinnedRef.current?.() ?? true);
+		const target = atBottom
 			? max
 			: anchorDeltaTarget(element, layout, anchor.current, max);
 		if (target === null) {

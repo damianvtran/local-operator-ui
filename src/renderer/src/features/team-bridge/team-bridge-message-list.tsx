@@ -320,6 +320,10 @@ export const TeamBridgeMessageList: FC<{
 	 * scroll event itself.
 	 */
 	scrollRootRef?: RefObject<HTMLElement | null>;
+	/** The timeline's stick-to-bottom decision (`useStickToBottom().isPinned`),
+	 * so the strip holds the bottom only when that hook says the reader is
+	 * there - one authority, never a second writer (see the window hook). */
+	isPinned?: () => boolean;
 	hasOlder?: boolean;
 	loadingOlder?: boolean;
 	onLoadOlder?: () => void;
@@ -346,6 +350,7 @@ export const TeamBridgeMessageList: FC<{
 	presentationOf,
 	unreadAfterSeq,
 	scrollRootRef,
+	isPinned,
 	hasOlder = false,
 	loadingOlder = false,
 	onLoadOlder,
@@ -402,6 +407,7 @@ export const TeamBridgeMessageList: FC<{
 		loadingOlder,
 		onLoadOlder,
 		enabled: windowed,
+		isPinned,
 	});
 	/*
 	 * THE UNREAD DIVIDER (visual refresh D10) - Slack's and Discord's strongest
