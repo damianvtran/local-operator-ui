@@ -468,10 +468,15 @@ test("the shipped tooltip and name-suffix messages format cleanly in every local
 				}
 			}
 		}
-		const shown = render(5, 2);
-		ctx.diagnostic(
-			`${locale} tooltip: ${shown.tooltip} | suffix: ${shown.suffix}`,
-		);
+		for (const [count, elsewhere] of [
+			[5, 2],
+			[1, 1],
+		]) {
+			const shown = render(count, elsewhere);
+			ctx.diagnostic(
+				`${locale} count=${count} elsewhere=${elsewhere} tooltip: ${shown.tooltip} | suffix: ${shown.suffix}`,
+			);
+		}
 	}
 	useEnglish();
 });
