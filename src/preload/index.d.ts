@@ -341,6 +341,12 @@ declare global {
 					decision: MediaPermissionDecision,
 					trusted: boolean,
 				) => Promise<boolean>;
+				/** Open the macOS Privacy pane for the system-blocked notice `id`;
+				 * false when it was replaced or the platform has no such pane. */
+				openMediaSystemSettings: (
+					tabId: number,
+					id: string,
+				) => Promise<boolean>;
 				/** Extension manager ops; see src/shared/browser-extensions.ts. */
 				extensions: (
 					request: import("../shared/browser-extensions").ExtensionsRequest,

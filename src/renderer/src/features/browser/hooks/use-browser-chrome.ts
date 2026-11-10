@@ -520,6 +520,8 @@ export interface BrowserChrome {
 		decision: MediaPermissionDecision,
 		trusted: boolean,
 	) => Promise<void>;
+	/** The system-blocked notice's "Open System Settings" (main picks the pane). */
+	openMediaSystemSettings: (tabId: number, id: string) => Promise<void>;
 }
 
 export interface BrowserProjection {
@@ -944,6 +946,8 @@ export function useBrowserChrome(): BrowserChrome {
 				runVoid(() => api?.dismissPasskeyNotice(tabId, at)),
 			decideMediaPermission: (tabId, id, decision, trusted) =>
 				runVoid(() => api?.decideMediaPermission(tabId, id, decision, trusted)),
+			openMediaSystemSettings: (tabId, id) =>
+				runVoid(() => api?.openMediaSystemSettings(tabId, id)),
 			openPasskeyNotice: (tabId, at) =>
 				runVoid(async () => {
 					const answer = await api?.openPasskeyNotice(tabId, at);

@@ -44,9 +44,29 @@ export interface MediaPermissionSystemBlockedView {
 	at: number;
 }
 
+/**
+ * The site asked again for a device the user had BLOCKED for it, on a user-owned
+ * tab, so the request was denied without a prompt. Shown so a Block is never a
+ * silent dead end (review U2): the user sees why the page's button did nothing
+ * and can Allow right where it failed, without the destructive "Forget this
+ * site" (which also clears cookies). The request itself is already answered
+ * `false`; an Allow here changes the remembered answer, and the page's next
+ * attempt is granted. Dismissing it hides it for this tab until it navigates.
+ */
+export interface MediaPermissionBlockedView {
+	kind: "blocked";
+	tabId: number;
+	id: string;
+	origin: string;
+	/** The blocked devices the denied request(s) named. */
+	kinds: MediaKind[];
+	at: number;
+}
+
 export type MediaPermissionView =
 	| MediaPermissionPromptView
-	| MediaPermissionSystemBlockedView;
+	| MediaPermissionSystemBlockedView
+	| MediaPermissionBlockedView;
 
 export function isMediaPermissionDecision(
 	value: unknown,

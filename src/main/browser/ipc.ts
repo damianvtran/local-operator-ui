@@ -115,6 +115,9 @@ export interface RegisterBrowserIpcOptions {
 			decision: MediaPermissionDecision,
 			trusted: boolean,
 		) => Promise<boolean>;
+		/** The system-blocked notice's "Open System Settings" (review U6/D3).
+		 * Takes the notice's tab and id only; main maps it to a fixed pane URL. */
+		openSystemSettings: (tabId: number, id: string) => Promise<boolean>;
 	};
 	/** The clear-data affordances (design 5.4). Injected so this module does not
 	 * depend on the session object. */
@@ -225,6 +228,7 @@ export const BROWSER_IPC_CHANNELS = [
 	"browser-passkey-notice-dismiss",
 	"browser-passkey-notice-open",
 	"browser-media-permission-decide",
+	"browser-media-permission-open-settings",
 	"browser-extensions",
 	/** The user's own recovery click on the `unavailable` state (round 1, D1a).
 	 * Named here so the namespace stays the one place that lists its channels. */
@@ -692,6 +696,27 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 					id,
 					decision,
 					trusted === true,
+				)) ?? false
+			);
+		},
+	);
+
+	/*
+	 * The system-blocked notice's "Open System Settings". Sender-checked; the
+	 * renderer names a live notice (tab + host-minted id), never a URL, so this
+	 * channel cannot be used to open an arbitrary external target.
+	 */
+	ipcMain.handle(
+		"browser-media-permission-open-settings",
+		async (event, tabId: unknown, id: unknown) => {
+			authorize(event);
+			if (typeof id !== "string" || !id) {
+				throw new Error("A camera/microphone notice id is required.");
+			}
+			return (
+				(await options.mediaPermission?.openSystemSettings(
+					numberOrThrow(tabId, "tabId"),
+					id,
 				)) ?? false
 			);
 		},

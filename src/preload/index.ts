@@ -1248,6 +1248,10 @@ const api = {
 				decision,
 				trusted,
 			),
+		/** The system-blocked notice's "Open System Settings": main opens the
+		 * fixed macOS pane for that notice (see `media-permissions.ts`). */
+		openMediaSystemSettings: (tabId: number, id: string): Promise<unknown> =>
+			ipcRenderer.invoke("browser-media-permission-open-settings", tabId, id),
 		/** The recovery click on the `unavailable` state (design round 1, D1a).
 		 * No argument: the host restarts the same window's browser, so there is
 		 * nothing for a caller to retarget. */

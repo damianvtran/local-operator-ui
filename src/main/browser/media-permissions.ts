@@ -54,7 +54,33 @@ import { readJson, writeJsonAtomic } from "./atomic-json";
  *
  * RESET: decisions are per origin and are erased by the existing "forget this
  * site" action and by "clear browsing data — everything" (wired in `index.ts`).
- * There is no site-settings page in v1.
+ * There is no site-settings page in v1; the in-place recovery for a Block is the
+ * `blocked` band (below), which never touches the site's cookies.
+ *
+ * THE `<usermedia>` ELEMENT (review Q1/U1). Google Meet's "Use microphone and
+ * camera" is Chromium's page-embedded permission element, not a
+ * `getUserMedia` call. Measured on Electron 45.1.0 (a hidden-window probe that
+ * clicked `<usermedia>` with `type="camera microphone"`, `"microphone"` and
+ * `"camera"`): every click sends TWO `media` requests whose details are only
+ * `{ isMainFrame, requestingUrl }` — no `mediaTypes`, whatever the `type`. So
+ * the narrowest set main can know is camera + microphone, and an unnamed
+ * request is treated as exactly that (`kindsOf`). Both requests then name the
+ * same set, so they coalesce into ONE prompt and one decision answers both.
+ * A request that names only devices other than audio/video is still denied.
+ *
+ * MERGE RULE (review R1). Decisions are stored PER DEVICE: a decision writes
+ * exactly the devices its prompt named and leaves every other device's answer
+ * as it was (Block on a microphone-only prompt never touches a stored camera
+ * Allow). A request is granted without a prompt only when EVERY device it names
+ * is allowed, and denied when ANY is blocked. After each decision the tab's
+ * other waiting requests from the same origin are re-read against that rule, so
+ * an Allow for camera + microphone also answers a microphone-only request that
+ * was queued behind it, instead of asking the user again.
+ *
+ * BLOCKED BAND (review U2). On a user-owned tab, a request denied because of a
+ * remembered Block raises a `blocked` view so the user can see why the page did
+ * nothing and Allow from there (a trusted click, like every grant). Dismissing
+ * it hides it for that tab until the tab navigates.
  */
 
 export type StoredMediaDecision = "allow" | "block";
@@ -140,6 +166,19 @@ const OS_NAME: Record<MediaKind, "microphone" | "camera"> = {
 };
 
 /**
+ * The ONLY URLs the system-blocked notice's "Open System Settings" may open
+ * (review U6/D3): macOS's Privacy & Security panes for this app's camera and
+ * microphone access. A fixed allowlist in main, keyed by device, so the
+ * renderer can name a notice but never a URL handed to `shell.openExternal`.
+ */
+export const SYSTEM_SETTINGS_URL = {
+	camera:
+		"x-apple.systempreferences:com.apple.preference.security?Privacy_Camera",
+	microphone:
+		"x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone",
+} as const;
+
+/**
  * `scheme://host[:port]` for a URL or origin string, or null. Only a
  * potentially-trustworthy origin may use capture devices — the web platform
  * already requires a secure context for `getUserMedia`, and this keeps the
@@ -167,6 +206,9 @@ export function mediaOriginOf(raw: string): string | null {
 }
 
 function kindsOf(mediaTypes: readonly string[] | undefined): MediaKind[] {
+	// No device named at all: the `<usermedia>` permission element, which asks
+	// for camera + microphone (see the module comment for the measurement).
+	if (!mediaTypes || mediaTypes.length === 0) return ["audio", "video"];
 	const kinds: MediaKind[] = [];
 	for (const type of mediaTypes ?? []) {
 		if ((type === "audio" || type === "video") && !kinds.includes(type)) {
@@ -188,6 +230,20 @@ export class MediaPermissions {
 		number,
 		{ id: string; origin: string; kinds: MediaKind[]; at: number }
 	>();
+	/** A remembered Block turned a user tab's request away; see `blocked`. */
+	private readonly blockedNotice = new Map<
+		number,
+		{ id: string; origin: string; kinds: MediaKind[]; at: number }
+	>();
+	/** Tabs whose user dismissed the blocked band; cleared on navigation. */
+	private readonly blockedDismissed = new Set<number>();
+	/**
+	 * Bumped by `clearTab` (navigation, close, dispose). An OS ask is awaited
+	 * AFTER the entry has left `pending`, so `clearTab` cannot reach its
+	 * callbacks; the grant re-reads this after the await and answers `false`
+	 * (and raises no notice) when the document that asked is gone (review R2).
+	 */
+	private readonly generation = new Map<number, number>();
 	private disposed = false;
 
 	constructor(options: MediaPermissionsOptions) {
@@ -283,11 +339,6 @@ export class MediaPermissions {
 		}
 		const tab = this.options.tabFor(input.webContentsId);
 		if (!tab) return `${origin} is not in a browser tab`;
-		if (
-			kinds.some((kind) => this.document.origins[origin]?.[kind] === "block")
-		) {
-			return `${origin} is blocked for this device`;
-		}
 		return { origin, kinds, tab };
 	}
 
@@ -308,6 +359,15 @@ export class MediaPermissions {
 		}
 		const { origin, kinds, tab } = screened;
 		const stored = this.document.origins[origin] ?? {};
+		const blocked = kinds.filter((kind) => stored[kind] === "block");
+		if (blocked.length > 0) {
+			this.options.log?.(
+				`[browser] denied camera/microphone: ${origin} is blocked for ${blocked.map((k) => OS_NAME[k]).join(" and ")}`,
+			);
+			callback(false);
+			this.raiseBlocked(tab, origin, blocked);
+			return;
+		}
 		if (
 			tab.owner === "user" &&
 			kinds.every((kind) => stored[kind] === "allow")
@@ -340,7 +400,45 @@ export class MediaPermissions {
 		this.options.onChanged?.();
 	}
 
-	/** The active tab's projection: the head prompt, else a macOS refusal. */
+	/** Show (or widen) the blocked band, for a USER tab only: an agent's tab has
+	 * nobody watching it to recover, and its denial is the safe answer. */
+	private raiseBlocked(
+		tab: MediaTabFacts,
+		origin: string,
+		blocked: readonly MediaKind[],
+	): void {
+		if (tab.owner !== "user" || this.blockedDismissed.has(tab.tabId)) return;
+		const current = this.blockedNotice.get(tab.tabId);
+		if (current && current.origin === origin) {
+			const kinds = [...new Set([...current.kinds, ...blocked])].sort();
+			if (kinds.join() === current.kinds.join()) return;
+			current.kinds = kinds;
+		} else {
+			this.blockedNotice.set(tab.tabId, {
+				id: randomUUID(),
+				origin,
+				kinds: [...blocked].sort(),
+				at: this.now(),
+			});
+		}
+		this.options.onChanged?.();
+	}
+
+	/** The macOS Settings pane for a LIVE system-blocked notice, or null. Main
+	 * opens a fixed URL from it (`SYSTEM_SETTINGS_URL`); the renderer names only
+	 * the notice, never a URL. Camera wins when both were refused: it is the one
+	 * a video call cannot start without. */
+	systemSettingsPaneFor(
+		tabId: number,
+		id: string,
+	): keyof typeof SYSTEM_SETTINGS_URL | null {
+		const notice = this.systemBlocked.get(tabId);
+		if (!notice || notice.id !== id) return null;
+		return notice.kinds.includes("video") ? "camera" : "microphone";
+	}
+
+	/** The active tab's projection: the head prompt, else a macOS refusal, else
+	 * a remembered Block that just turned the page away. */
 	viewFor(tabId: number): MediaPermissionView | null {
 		const head = this.pending.get(tabId)?.[0];
 		if (head) {
@@ -354,9 +452,18 @@ export class MediaPermissions {
 				at: head.at,
 			};
 		}
-		const blocked = this.systemBlocked.get(tabId);
+		const system = this.systemBlocked.get(tabId);
+		if (system) {
+			return {
+				kind: "system-blocked",
+				tabId,
+				...system,
+				kinds: [...system.kinds],
+			};
+		}
+		const blocked = this.blockedNotice.get(tabId);
 		return blocked
-			? { kind: "system-blocked", tabId, ...blocked, kinds: [...blocked.kinds] }
+			? { kind: "blocked", tabId, ...blocked, kinds: [...blocked.kinds] }
 			: null;
 	}
 
@@ -380,6 +487,28 @@ export class MediaPermissions {
 			this.options.onChanged?.();
 			return true;
 		}
+		const notice = this.blockedNotice.get(tabId);
+		if (notice && notice.id === id) {
+			if (decision === "allow") {
+				// Allow from the blocked band is a grant like any other: trusted only.
+				if (gesture.trusted !== true) {
+					this.options.log?.(
+						"[browser] ignored a camera/microphone answer that was not a user click",
+					);
+					return false;
+				}
+				// Shown on user tabs only (`raiseBlocked`), so remembering is right.
+				this.remember(notice.origin, notice.kinds, "allow");
+				this.options.log?.(
+					`[browser] the user allowed ${notice.kinds.map((k) => OS_NAME[k]).join(" and ")} for ${notice.origin} (was blocked)`,
+				);
+			} else {
+				this.blockedDismissed.add(tabId);
+			}
+			this.blockedNotice.delete(tabId);
+			this.options.onChanged?.();
+			return true;
+		}
 		const queue = this.pending.get(tabId);
 		const head = queue?.[0];
 		if (!queue || !head || head.id !== id) return false;
@@ -390,31 +519,78 @@ export class MediaPermissions {
 			return false;
 		}
 		queue.shift();
+		// An agent-owned tab's answer is one-shot either way (invariant 3, and
+		// review Q2 for Block): it covers this document's waiting requests below,
+		// and nothing is persisted for the origin.
+		if (head.owner === "user" && decision !== "dismiss") {
+			this.remember(head.origin, head.kinds, decision);
+		}
+		const siblings = this.settleSiblings(queue, head, decision);
 		if (queue.length === 0) this.pending.delete(tabId);
 
 		if (decision === "allow") {
-			// An agent-owned tab's allow is one-shot: see invariant (3).
-			if (head.owner === "user")
-				this.remember(head.origin, head.kinds, "allow");
 			this.options.log?.(
 				`[browser] the user allowed ${head.kinds.map((k) => OS_NAME[k]).join(" and ")} for ${head.origin}`,
 			);
 			this.options.onChanged?.();
-			await this.grantThroughSystem(
-				tabId,
-				head.origin,
-				head.kinds,
-				head.callbacks,
-			);
+			// Serially, so a device macOS has not decided is asked once: the head's
+			// ask settles its status before a sibling reads it.
+			for (const entry of [head, ...siblings]) {
+				await this.grantThroughSystem(
+					tabId,
+					entry.origin,
+					entry.kinds,
+					entry.callbacks,
+				);
+			}
 			return true;
 		}
-		if (decision === "block") this.remember(head.origin, head.kinds, "block");
 		this.options.log?.(
 			`[browser] the user ${decision === "block" ? "blocked" : "dismissed"} ${head.kinds.map((k) => OS_NAME[k]).join(" and ")} for ${head.origin}`,
 		);
 		for (const callback of head.callbacks) callback(false);
 		this.options.onChanged?.();
 		return true;
+	}
+
+	/**
+	 * Review R1: after a decision on `head`, answer every other waiting request in
+	 * the same tab from the same origin that the MERGE RULE (module comment) now
+	 * settles. Removes them from `queue` in place. Denied ones are answered here;
+	 * the fully-allowed ones are returned for the caller to grant through the OS
+	 * half. Requests the decision does not fully settle keep waiting.
+	 *
+	 * On a user tab the rule reads the stored answers (which `decide` just
+	 * updated). On an agent tab nothing is stored, so the one-shot answer covers
+	 * only the devices this prompt named: a waiting request is settled when the
+	 * human's answer covers it on that same document, and asked otherwise.
+	 */
+	private settleSiblings(
+		queue: Pending[],
+		head: Pending,
+		decision: MediaPermissionDecision,
+	): Pending[] {
+		if (decision === "dismiss") return [];
+		const answerFor = (kind: MediaKind): StoredMediaDecision | undefined =>
+			head.owner === "user"
+				? this.document.origins[head.origin]?.[kind]
+				: head.kinds.includes(kind)
+					? decision
+					: undefined;
+		const granted: Pending[] = [];
+		for (let i = queue.length - 1; i >= 0; i--) {
+			const entry = queue[i];
+			if (entry.origin !== head.origin) continue;
+			const answers = entry.kinds.map(answerFor);
+			if (answers.includes("block")) {
+				queue.splice(i, 1);
+				for (const callback of entry.callbacks) callback(false);
+			} else if (answers.every((answer) => answer === "allow")) {
+				queue.splice(i, 1);
+				granted.unshift(entry);
+			}
+		}
+		return granted;
 	}
 
 	/**
@@ -429,6 +605,7 @@ export class MediaPermissions {
 		kinds: readonly MediaKind[],
 		callbacks: ReadonlyArray<(granted: boolean) => void>,
 	): Promise<void> {
+		const generation = this.generation.get(tabId) ?? 0;
 		const refused: MediaKind[] = [];
 		for (const kind of kinds) {
 			const status = this.options.system.status(kind);
@@ -444,7 +621,10 @@ export class MediaPermissions {
 			}
 			refused.push(kind);
 		}
-		if (this.disposed) {
+		// R2: the OS ask may have outlived the document (navigation, tab close,
+		// stop). Its answer then belongs to nobody: deny, and raise no notice on a
+		// tab that has moved on.
+		if (this.disposed || (this.generation.get(tabId) ?? 0) !== generation) {
 			for (const callback of callbacks) callback(false);
 			return;
 		}
@@ -469,16 +649,24 @@ export class MediaPermissions {
 	 * prompts are answered `false` and its notice no longer applies. */
 	clearTab(tabId: number): void {
 		const queue = this.pending.get(tabId);
-		const had = Boolean(queue?.length) || this.systemBlocked.has(tabId);
+		const had =
+			Boolean(queue?.length) ||
+			this.systemBlocked.has(tabId) ||
+			this.blockedNotice.has(tabId);
+		this.generation.set(tabId, (this.generation.get(tabId) ?? 0) + 1);
 		this.pending.delete(tabId);
 		this.systemBlocked.delete(tabId);
+		this.blockedNotice.delete(tabId);
+		this.blockedDismissed.delete(tabId);
 		for (const entry of queue ?? []) {
 			for (const callback of entry.callbacks) callback(false);
 		}
 		if (had) this.options.onChanged?.();
 	}
 
-	/** The tab closed: same as a navigation, nothing may outlive it. */
+	/** The tab closed: same as a navigation, nothing may outlive it. The
+	 * generation entry is kept (not deleted) so an OS ask still in flight for the
+	 * closed tab reads a moved generation; tab ids are not reused. */
 	forget(tabId: number): void {
 		this.clearTab(tabId);
 	}
@@ -500,7 +688,11 @@ export class MediaPermissions {
 	/** The host is stopping: answer everything still waiting. */
 	dispose(): void {
 		if (this.disposed) return;
-		const tabs = [...this.pending.keys()];
+		const tabs = new Set([
+			...this.pending.keys(),
+			...this.systemBlocked.keys(),
+			...this.blockedNotice.keys(),
+		]);
 		for (const tabId of tabs) this.clearTab(tabId);
 		this.disposed = true;
 	}

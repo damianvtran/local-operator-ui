@@ -168,6 +168,13 @@ export interface BrowserSessionHooks {
 		 * handler runs for the ask the page actually made.
 		 */
 		source: "request" | "check";
+		/**
+		 * For `media` only: the devices the ask named (a request's `mediaTypes`,
+		 * a check's single `mediaType`); `[]` for a request that named none (the
+		 * `<usermedia>` element's). Without it a correct camera-check denial after a
+		 * microphone grant reads like a bug in the log (review R3).
+		 */
+		mediaTypes?: readonly string[];
 	}) => void;
 	/**
 	 * Camera/microphone: the ONE permission that is not a constant refusal.
@@ -295,6 +302,7 @@ export function installBrowserSessionHandlers(
 		permission: string,
 		origin: string,
 		granted: T = false as T,
+		mediaTypes?: readonly string[],
 	): T => {
 		hooks.onPermissionRequested?.({
 			webContentsId: webContentsId ?? -1,
@@ -302,6 +310,7 @@ export function installBrowserSessionHandlers(
 			permission,
 			granted,
 			source,
+			...(mediaTypes ? { mediaTypes } : {}),
 		});
 		return granted;
 	};
@@ -342,6 +351,7 @@ export function installBrowserSessionHandlers(
 								permission,
 								requestingOrigin,
 								granted === true,
+								mediaDetails?.mediaTypes ?? [],
 							),
 						),
 				);
@@ -364,6 +374,8 @@ export function installBrowserSessionHandlers(
 			const media = hooks.media;
 			if (permission === "media" && media) {
 				const origin = requestingOrigin || details?.requestingUrl || "";
+				const mediaType = (details as { mediaType?: string } | undefined)
+					?.mediaType;
 				return report(
 					"check",
 					webContents?.id ?? null,
@@ -373,9 +385,9 @@ export function installBrowserSessionHandlers(
 						webContentsId: webContents?.id ?? null,
 						topUrl: topUrlOf(webContents),
 						requestingOrigin: origin,
-						mediaType: (details as { mediaType?: string } | undefined)
-							?.mediaType,
+						mediaType,
 					}) === true,
+					mediaType ? [mediaType] : [],
 				);
 			}
 			return report(

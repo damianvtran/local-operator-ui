@@ -1403,6 +1403,16 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 						trusted,
 					)
 				}
+				onOpenSystemSettings={(view) =>
+					void chrome.openMediaSystemSettings(view.tabId, view.id)
+				}
+				// U5: a keyboard answer unmounts the focused button; hand the
+				// keyboard back to the page rather than strand it on <body>.
+				onReturnFocus={() =>
+					void browserBridge()
+						?.focusPage()
+						.catch(() => {})
+				}
 			/>
 			<PasskeyNoticeHost
 				notice={chrome.state?.passkeyNotice}

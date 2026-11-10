@@ -94680,6 +94680,97 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.browser.media_access",
+			"source_sha256": "540ff9509ab7da2b4c1a3214363930f8e8ec2cbcc76369b24069ded2966136b0",
+			"target_sha256": "ce8b3d876cb637c0866b6068061f3161ae8616c6304ed235fcec0ccd28b73572",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-10"
+			},
+			"auditors": [],
+			"status": "pending"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.browser.media_access",
+			"source_sha256": "540ff9509ab7da2b4c1a3214363930f8e8ec2cbcc76369b24069ded2966136b0",
+			"target_sha256": "9cceb25e117b24cda3cc8fd345998c31ac1f96816d5f423b8148e84258bad387",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-10"
+			},
+			"auditors": [],
+			"status": "pending"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.browser.media_access",
+			"source_sha256": "540ff9509ab7da2b4c1a3214363930f8e8ec2cbcc76369b24069ded2966136b0",
+			"target_sha256": "eac85232b592b849827fef27a5a2d3df8f34beb1d32de4d897445a6f2170135a",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-10"
+			},
+			"auditors": [],
+			"status": "pending"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.browser.media_access",
+			"source_sha256": "540ff9509ab7da2b4c1a3214363930f8e8ec2cbcc76369b24069ded2966136b0",
+			"target_sha256": "8d12fc11dc48fb97f787aba4b2ee530567bd645ced7907ad72bcb824ac69bd55",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-10"
+			},
+			"auditors": [],
+			"status": "pending"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.browser.media_access",
+			"source_sha256": "540ff9509ab7da2b4c1a3214363930f8e8ec2cbcc76369b24069ded2966136b0",
+			"target_sha256": "cfd35cb71ab6c9069bfcf9faac96dcefed7ed3dbcb6bc4deb38dd4951166e0b9",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-10"
+			},
+			"auditors": [],
+			"status": "pending"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.browser.media_access",
+			"source_sha256": "540ff9509ab7da2b4c1a3214363930f8e8ec2cbcc76369b24069ded2966136b0",
+			"target_sha256": "1510d4231d9861143c2dd349577c95a212c7358d15309b696784d1f58958e305",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-10"
+			},
+			"auditors": [],
+			"status": "pending"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.browser.media_access",
+			"source_sha256": "540ff9509ab7da2b4c1a3214363930f8e8ec2cbcc76369b24069ded2966136b0",
+			"target_sha256": "7e867fa2e5e7309947c8ae3ae815eb7d86597b816810829aa1a69ea05db2b1e8",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-10"
+			},
+			"auditors": [],
+			"status": "pending"
 		}
 	]
 }

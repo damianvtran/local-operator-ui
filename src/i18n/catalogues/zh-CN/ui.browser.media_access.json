@@ -1,0 +1,11 @@
+{
+	"ui.browser.media_access.prompt_label": "{devices, select, audio {麦克风请求} video {摄像头请求} other {摄像头和麦克风请求}}",
+	"ui.browser.media_access.prompt_dismiss": "{devices, select, audio {关闭麦克风请求} video {关闭摄像头请求} other {关闭摄像头和麦克风请求}}",
+	"ui.browser.media_access.blocked_label": "{devices, select, audio {已为此网站阻止麦克风} video {已为此网站阻止摄像头} other {已为此网站阻止摄像头和麦克风}}",
+	"ui.browser.media_access.blocked": "{devices, select, audio {已为 {site} 阻止麦克风。} video {已为 {site} 阻止摄像头。} other {已为 {site} 阻止摄像头和麦克风。}}",
+	"ui.browser.media_access.blocked_hint": "如需在此使用，请选择“允许”，然后在页面上重试。",
+	"ui.browser.media_access.system_blocked_label": "{devices, select, audio {macOS 已关闭麦克风} video {macOS 已关闭摄像头} other {macOS 已关闭摄像头和麦克风}}",
+	"ui.browser.media_access.system_blocked_hint": "请在“系统设置 › 隐私与安全性”中开启访问权限。你可能需要退出并重新打开 Local Operator，更改才会生效。",
+	"ui.browser.media_access.open_system_settings": "打开系统设置",
+	"ui.browser.media_access.notice_dismiss": "关闭通知"
+}

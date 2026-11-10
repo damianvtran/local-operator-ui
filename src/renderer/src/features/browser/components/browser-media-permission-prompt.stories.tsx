@@ -74,3 +74,31 @@ export const SystemBlocked: Story = {
 		},
 	},
 };
+/** A site the user blocked asked again: the band says so and offers Allow
+ * (review U2), rather than the page's button silently doing nothing. */
+export const BlockedSite: Story = {
+	args: {
+		view: {
+			kind: "blocked",
+			tabId: 7,
+			id: "story-site-blocked",
+			origin: "https://meet.google.com",
+			kinds: ["audio", "video"],
+			at: 0,
+		},
+	},
+};
+/** The macOS notice with its one-click way to the Privacy pane (U6/D3). */
+export const SystemBlockedWithSettings: Story = {
+	args: {
+		onOpenSystemSettings: () => {},
+		view: {
+			kind: "system-blocked",
+			tabId: 7,
+			id: "story-blocked-settings",
+			origin: "https://meet.google.com",
+			kinds: ["audio", "video"],
+			at: 0,
+		},
+	},
+};

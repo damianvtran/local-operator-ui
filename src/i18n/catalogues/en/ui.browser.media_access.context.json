@@ -1,0 +1,47 @@
+{
+	"ui.browser.media_access.prompt_label": {
+		"role": "accessible region name — browser camera/microphone permission band (prompt state)",
+		"tone": "Factual",
+		"note": "Names the band while a site is asking. devices select: audio = microphone only, video = camera only, other = both. Keep every arm."
+	},
+	"ui.browser.media_access.prompt_dismiss": {
+		"role": "accessible label for an icon-only close button (prompt state)",
+		"tone": "Factual",
+		"note": "Closes the band, denying this one request without remembering. devices select as in prompt_label."
+	},
+	"ui.browser.media_access.blocked_label": {
+		"role": "accessible region name — band shown when a site the user blocked asks again",
+		"tone": "Factual",
+		"note": "devices select as in prompt_label."
+	},
+	"ui.browser.media_access.blocked": {
+		"role": "status text — browser permission band, blocked state",
+		"tone": "Neutral, plain",
+		"note": "site = the website's host (e.g. meet.google.com), never translated. The user earlier chose Block for this site; the page's request was just refused. devices select as in prompt_label."
+	},
+	"ui.browser.media_access.blocked_hint": {
+		"role": "secondary hint after the blocked text",
+		"tone": "Helpful instruction",
+		"note": "'Allow' refers to the adjacent button: use the same word as ui.browser.media_permission.allow. After allowing, the user retries the page's own camera/microphone button."
+	},
+	"ui.browser.media_access.system_blocked_label": {
+		"role": "accessible region name — macOS privacy notice band",
+		"tone": "Factual",
+		"note": "macOS privacy settings turn this app's device access off. devices select as in prompt_label."
+	},
+	"ui.browser.media_access.system_blocked_hint": {
+		"role": "secondary hint",
+		"tone": "Helpful instruction",
+		"note": "Points to macOS System Settings › Privacy & Security; use the locale's official macOS names where Apple localizes them. 'Local Operator' is the product name: do not translate. macOS often applies the change only after the app restarts."
+	},
+	"ui.browser.media_access.open_system_settings": {
+		"role": "button label",
+		"tone": "Short imperative",
+		"note": "Opens macOS System Settings at the camera or microphone privacy pane. Use Apple's localized name for System Settings."
+	},
+	"ui.browser.media_access.notice_dismiss": {
+		"role": "accessible label for an icon-only close button (notice states)",
+		"tone": "Factual",
+		"note": "Closes the blocked or macOS notice band; changes nothing."
+	}
+}

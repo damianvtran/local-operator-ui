@@ -102,7 +102,11 @@ import {
 	startWithRetries,
 } from "./lifecycle";
 import { startLogCapture, stopLogCapture } from "./log-capture";
-import { MediaPermissions, type SystemMediaAccess } from "./media-permissions";
+import {
+	MediaPermissions,
+	SYSTEM_SETTINGS_URL,
+	type SystemMediaAccess,
+} from "./media-permissions";
 import { paneNavigationDirection } from "./navigation-chord";
 import { OwnershipLedger } from "./ownership";
 import { buildPageContextMenuItems } from "./page-context-menu";
@@ -552,6 +556,9 @@ export function startBrowserHost(
 					decision,
 					trusted,
 				)) ?? false,
+			openSystemSettings: async (tabId, id) =>
+				(await bindings.mediaPermission?.openSystemSettings(tabId, id)) ??
+				false,
 		},
 		focusPage: () => {
 			const record = bindings.host?.()?.registry.activeTab;
@@ -800,8 +807,13 @@ async function initializeBrowserHost(
 					// unhelpful version, and `clipboard-read` arriving for a page's Copy
 					// button is exactly the reading that explained why a permission grant
 					// could not fix it (the write is served by `actions/clipboard-shim.ts`).
+					// `media` names its devices (review R3): a camera check denied after
+					// a microphone grant is correct, and the line now reads so.
+					const devices = details.mediaTypes
+						? ` [${details.mediaTypes.join(",") || "unnamed"}]`
+						: "";
 					log(
-						`[browser] ${details.granted ? "granted" : "denied"} ${details.permission} (${details.source}) from ${details.origin || "(unknown origin)"}`,
+						`[browser] ${details.granted ? "granted" : "denied"} ${details.permission}${devices} (${details.source}) from ${details.origin || "(unknown origin)"}`,
 					);
 				},
 				onDownload: (item, webContentsId) =>
@@ -1979,6 +1991,20 @@ async function initializeBrowserHost(
 					if (accepted) notifyChanged();
 					return accepted;
 				},
+				// U6/D3: the system-blocked notice's one-click way to the fix. The
+				// renderer names the notice; main picks the pane, and the URL comes
+				// only from the fixed `SYSTEM_SETTINGS_URL` allowlist.
+				openSystemSettings: async (tabId, id) => {
+					const pane = mediaPermissions.systemSettingsPaneFor(tabId, id);
+					if (!pane || process.platform !== "darwin") return false;
+					try {
+						await shell.openExternal(SYSTEM_SETTINGS_URL[pane]);
+						return true;
+					} catch (error) {
+						log(`[browser] could not open System Settings: ${String(error)}`);
+						return false;
+					}
+				},
 			},
 			// THE REVEAL TAKES NO PATH FROM THE RENDERER (§16.4): it opens the directory the
 			// host is actually writing into, so the one place a page-derived string could
@@ -2078,6 +2104,9 @@ async function initializeBrowserHost(
 				await consoleStartup.stop();
 				unregisterBrowserIpc();
 				detachSessionHandlers();
+				// Answers every held camera/microphone callback and drops the notices on
+				// the normal stop too, not only on a failed start (review R2).
+				mediaPermissions.dispose();
 				// Before the views go: a pending chooser's callback is the page's promise,
 				// and the page is about to stop existing. The listener goes with it, so a
 				// second host start in this process cannot find two of them.

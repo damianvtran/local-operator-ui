@@ -1,0 +1,11 @@
+{
+	"ui.browser.media_access.prompt_label": "{devices, select, audio {Запрос доступа к микрофону} video {Запрос доступа к камере} other {Запрос доступа к камере и микрофону}}",
+	"ui.browser.media_access.prompt_dismiss": "{devices, select, audio {Закрыть запрос доступа к микрофону} video {Закрыть запрос доступа к камере} other {Закрыть запрос доступа к камере и микрофону}}",
+	"ui.browser.media_access.blocked_label": "{devices, select, audio {Микрофон заблокирован для этого сайта} video {Камера заблокирована для этого сайта} other {Камера и микрофон заблокированы для этого сайта}}",
+	"ui.browser.media_access.blocked": "{devices, select, audio {Микрофон заблокирован для {site}.} video {Камера заблокирована для {site}.} other {Камера и микрофон заблокированы для {site}.}}",
+	"ui.browser.media_access.blocked_hint": "Чтобы использовать их здесь, нажмите «Разрешить» и повторите попытку на странице.",
+	"ui.browser.media_access.system_blocked_label": "{devices, select, audio {Микрофон выключен в macOS} video {Камера выключена в macOS} other {Камера и микрофон выключены в macOS}}",
+	"ui.browser.media_access.system_blocked_hint": "Включите доступ в разделе «Системные настройки › Конфиденциальность и безопасность». Возможно, чтобы изменение вступило в силу, придётся закрыть и снова открыть Local Operator.",
+	"ui.browser.media_access.open_system_settings": "Открыть Системные настройки",
+	"ui.browser.media_access.notice_dismiss": "Закрыть уведомление"
+}

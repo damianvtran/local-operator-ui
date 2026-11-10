@@ -1,0 +1,11 @@
+{
+	"ui.browser.media_access.prompt_label": "{devices, select, audio {माइक्रोफ़ोन अनुरोध} video {कैमरा अनुरोध} other {कैमरा और माइक्रोफ़ोन अनुरोध}}",
+	"ui.browser.media_access.prompt_dismiss": "{devices, select, audio {माइक्रोफ़ोन अनुरोध ख़ारिज करें} video {कैमरा अनुरोध ख़ारिज करें} other {कैमरा और माइक्रोफ़ोन अनुरोध ख़ारिज करें}}",
+	"ui.browser.media_access.blocked_label": "{devices, select, audio {इस साइट के लिए माइक्रोफ़ोन ब्लॉक है} video {इस साइट के लिए कैमरा ब्लॉक है} other {इस साइट के लिए कैमरा और माइक्रोफ़ोन ब्लॉक हैं}}",
+	"ui.browser.media_access.blocked": "{devices, select, audio {{site} के लिए माइक्रोफ़ोन ब्लॉक है।} video {{site} के लिए कैमरा ब्लॉक है।} other {{site} के लिए कैमरा और माइक्रोफ़ोन ब्लॉक हैं।}}",
+	"ui.browser.media_access.blocked_hint": "इन्हें यहाँ इस्तेमाल करने के लिए अनुमति दें चुनें, फिर पेज पर दोबारा कोशिश करें।",
+	"ui.browser.media_access.system_blocked_label": "{devices, select, audio {macOS में माइक्रोफ़ोन बंद है} video {macOS में कैमरा बंद है} other {macOS में कैमरा और माइक्रोफ़ोन बंद हैं}}",
+	"ui.browser.media_access.system_blocked_hint": "सिस्टम सेटिंग्ज़ › गोपनीयता और सुरक्षा में ऐक्सेस चालू करें। बदलाव लागू होने के लिए शायद आपको Local Operator बंद करके फिर से खोलना पड़े।",
+	"ui.browser.media_access.open_system_settings": "सिस्टम सेटिंग्ज़ खोलें",
+	"ui.browser.media_access.notice_dismiss": "सूचना ख़ारिज करें"
+}

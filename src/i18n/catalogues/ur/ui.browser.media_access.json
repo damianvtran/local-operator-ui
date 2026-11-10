@@ -1,0 +1,11 @@
+{
+	"ui.browser.media_access.prompt_label": "{devices, select, audio {مائیکروفون کی درخواست} video {کیمرے کی درخواست} other {کیمرے اور مائیکروفون کی درخواست}}",
+	"ui.browser.media_access.prompt_dismiss": "{devices, select, audio {مائیکروفون کی درخواست ہٹائیں} video {کیمرے کی درخواست ہٹائیں} other {کیمرے اور مائیکروفون کی درخواست ہٹائیں}}",
+	"ui.browser.media_access.blocked_label": "{devices, select, audio {اس سائٹ کے لیے مائیکروفون بلاک ہے} video {اس سائٹ کے لیے کیمرا بلاک ہے} other {اس سائٹ کے لیے کیمرا اور مائیکروفون بلاک ہیں}}",
+	"ui.browser.media_access.blocked": "{devices, select, audio {{site} کے لیے مائیکروفون بلاک ہے۔} video {{site} کے لیے کیمرا بلاک ہے۔} other {{site} کے لیے کیمرا اور مائیکروفون بلاک ہیں۔}}",
+	"ui.browser.media_access.blocked_hint": "انہیں یہاں استعمال کرنے کے لیے اجازت دیں منتخب کریں، پھر صفحے پر دوبارہ کوشش کریں۔",
+	"ui.browser.media_access.system_blocked_label": "{devices, select, audio {macOS میں مائیکروفون بند ہے} video {macOS میں کیمرا بند ہے} other {macOS میں کیمرا اور مائیکروفون بند ہیں}}",
+	"ui.browser.media_access.system_blocked_hint": "System Settings › Privacy & Security میں رسائی آن کریں۔ تبدیلی لاگو ہونے کے لیے شاید آپ کو Local Operator بند کر کے دوبارہ کھولنا پڑے۔",
+	"ui.browser.media_access.open_system_settings": "System Settings کھولیں",
+	"ui.browser.media_access.notice_dismiss": "اطلاع ہٹائیں"
+}
