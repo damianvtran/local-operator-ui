@@ -16,6 +16,10 @@ import {
 	decodeExtensionsRequest,
 } from "../../shared/browser-extensions";
 import {
+	type MediaPermissionDecision,
+	isMediaPermissionDecision,
+} from "../../shared/browser-media-permission";
+import {
 	type TabActionsMenuSelection,
 	tabActionsMenuRequestOrThrow,
 	tabActionsMenuSelectionOrNull,
@@ -96,6 +100,21 @@ export interface RegisterBrowserIpcOptions {
 			tabId: number,
 			at: number,
 		) => Promise<{ ok: true } | { ok: false; reason: string }>;
+	};
+	/**
+	 * The camera/microphone prompt's one action (`media-permissions.ts`). This
+	 * channel is the ONLY route to a media grant, and `authorize()` admits only
+	 * the app window's own top frame: a driven page or the agent cannot reach it.
+	 * `trusted` is the renderer's `event.isTrusted` for the click; main refuses
+	 * anything else.
+	 */
+	mediaPermission?: {
+		decide: (
+			tabId: number,
+			id: string,
+			decision: MediaPermissionDecision,
+			trusted: boolean,
+		) => Promise<boolean>;
 	};
 	/** The clear-data affordances (design 5.4). Injected so this module does not
 	 * depend on the session object. */
@@ -205,6 +224,7 @@ export const BROWSER_IPC_CHANNELS = [
 	"browser-reveal-downloads",
 	"browser-passkey-notice-dismiss",
 	"browser-passkey-notice-open",
+	"browser-media-permission-decide",
 	"browser-extensions",
 	/** The user's own recovery click on the `unavailable` state (round 1, D1a).
 	 * Named here so the namespace stays the one place that lists its channels. */
@@ -640,6 +660,39 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 			return options.passkeyNotice.openInSystemBrowser(
 				numberOrThrow(tabId, "tabId"),
 				numberOrThrow(at, "at"),
+			);
+		},
+	);
+
+	/*
+	 * The camera/microphone prompt's answer. Sender-checked like every channel
+	 * here; the renderer names a tab, the prompt's host-minted id, the decision
+	 * and whether the click was a trusted (human) event — never an origin, so it
+	 * cannot retarget a grant at a site other than the one main is asking about.
+	 */
+	ipcMain.handle(
+		"browser-media-permission-decide",
+		async (
+			event,
+			tabId: unknown,
+			id: unknown,
+			decision: unknown,
+			trusted: unknown,
+		) => {
+			authorize(event);
+			if (typeof id !== "string" || !id) {
+				throw new Error("A pending camera/microphone request id is required.");
+			}
+			if (!isMediaPermissionDecision(decision)) {
+				throw new Error("Unsupported camera/microphone decision.");
+			}
+			return (
+				(await options.mediaPermission?.decide(
+					numberOrThrow(tabId, "tabId"),
+					id,
+					decision,
+					trusted === true,
+				)) ?? false
 			);
 		},
 	);

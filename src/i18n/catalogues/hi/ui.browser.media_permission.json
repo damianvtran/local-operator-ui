@@ -1,0 +1,10 @@
+{
+	"ui.browser.media_permission.label": "कैमरा और माइक्रोफ़ोन अनुरोध",
+	"ui.browser.media_permission.message": "{devices, select, audio {{site} आपका माइक्रोफ़ोन इस्तेमाल करना चाहती है।} video {{site} आपका कैमरा इस्तेमाल करना चाहती है।} other {{site} आपका कैमरा और माइक्रोफ़ोन इस्तेमाल करना चाहती है।}}",
+	"ui.browser.media_permission.agent_tab_hint": "यह टैब एजेंट चला रहा है, इसलिए अनुमति दें सिर्फ़ इसी अनुरोध पर लागू होगा।",
+	"ui.browser.media_permission.allow": "अनुमति दें",
+	"ui.browser.media_permission.block": "ब्लॉक करें",
+	"ui.browser.media_permission.dismiss": "कैमरा और माइक्रोफ़ोन अनुरोध खारिज करें",
+	"ui.browser.media_permission.system_blocked": "{devices, select, audio {macOS में Local Operator के लिए माइक्रोफ़ोन ऐक्सेस बंद है।} video {macOS में Local Operator के लिए कैमरा ऐक्सेस बंद है।} other {macOS में Local Operator के लिए कैमरा और माइक्रोफ़ोन ऐक्सेस बंद है।}}",
+	"ui.browser.media_permission.system_blocked_hint": "इसे System Settings › Privacy & Security में चालू करें, फिर पेज दोबारा लोड करें।"
+}

@@ -67,6 +67,7 @@ import { BrowserFileTransferRow } from "./browser-file-transfer-row";
 import { BrowserFindRow } from "./browser-find-row";
 import { BrowserHandOverDialog } from "./browser-hand-over-dialog";
 import { BrowserLoadFailure } from "./browser-load-failure";
+import { BrowserMediaPermissionPrompt } from "./browser-media-permission-prompt";
 import { BrowserNewTab } from "./browser-new-tab";
 import { BrowserPageMenu } from "./browser-page-menu";
 import { BrowserPasskeyNotice } from "./browser-passkey-notice";
@@ -1389,6 +1390,20 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			{/* U5: download/verify progress + Cancel for a store install, shown
 			    on whatever tab the user is on (normally the store's). */}
 			<BrowserExtensionInstallStrip />
+			{/* A page is asking for the camera/microphone. Main holds the page's
+			    request until this is answered, and grants only on a trusted click
+			    here (see `media-permission-prompt.tsx`). */}
+			<BrowserMediaPermissionPrompt
+				view={chrome.state?.mediaPermission}
+				onDecide={(view, decision, trusted) =>
+					void chrome.decideMediaPermission(
+						view.tabId,
+						view.id,
+						decision,
+						trusted,
+					)
+				}
+			/>
 			<PasskeyNoticeHost
 				notice={chrome.state?.passkeyNotice}
 				onOpen={(notice) =>

@@ -11,6 +11,7 @@ import {
 	clipboard,
 	ipcMain,
 	shell,
+	systemPreferences,
 	webContents,
 	webFrameMain,
 } from "electron";
@@ -101,6 +102,7 @@ import {
 	startWithRetries,
 } from "./lifecycle";
 import { startLogCapture, stopLogCapture } from "./log-capture";
+import { MediaPermissions, type SystemMediaAccess } from "./media-permissions";
 import { paneNavigationDirection } from "./navigation-chord";
 import { OwnershipLedger } from "./ownership";
 import { buildPageContextMenuItems } from "./page-context-menu";
@@ -542,6 +544,15 @@ export function startBrowserHost(
 					reason: "the passkey notice is not available",
 				},
 		},
+		mediaPermission: {
+			decide: async (tabId, id, decision, trusted) =>
+				(await bindings.mediaPermission?.decide(
+					tabId,
+					id,
+					decision,
+					trusted,
+				)) ?? false,
+		},
 		focusPage: () => {
 			const record = bindings.host?.()?.registry.activeTab;
 			const target = record?.presented
@@ -754,11 +765,35 @@ async function initializeBrowserHost(
 		// Set before the first view: Electron documents that `setUserAgent` "doesn't
 		// affect existing WebContents", so a later call would leave the first tab
 		// presenting the default Electron UA.
+		/*
+		 * CAMERA AND MICROPHONE (`media-permissions.ts`): the one permission the
+		 * session does not refuse outright. Built before the session handlers, which
+		 * route `media` to it, and given the registry through the same deferred
+		 * lookup the download hook uses — a media request needs a tab, so it can
+		 * never run before the registry below exists.
+		 */
+		const mediaPermissions = new MediaPermissions({
+			filePath: join(options.userDataDir, "browser", "media-permissions.json"),
+			system: systemMediaAccess(),
+			tabFor: (webContentsId) => {
+				const record = registryForDownloads?.byWebContents(webContentsId);
+				return record ? { tabId: record.tabId, owner: record.owner } : null;
+			},
+			onChanged: () => notifyChanged(),
+			log,
+		});
+		rollback.add(() => mediaPermissions.dispose());
 		const detachSessionHandlers = installBrowserSessionHandlers(
 			browserSession,
 			{
+				media: {
+					request: (input, callback) =>
+						mediaPermissions.request(input, callback),
+					check: (input) => mediaPermissions.check(input),
+				},
 				onPermissionRequested: (details) => {
-					// The session DENIES every permission (see `installBrowserSessionHandlers`);
+					// The session DENIES every permission except a user-allowed camera/
+					// microphone (see `installBrowserSessionHandlers`);
 					// this log is what makes a page that needs one produce a visible trace
 					// anyway. The line names the permission, WHICH of Electron's two handlers
 					// asked, and the answer: "denied" without those three facts is the
@@ -1551,8 +1586,11 @@ async function initializeBrowserHost(
 			log,
 			onChanged: notifyChanged,
 			facts: () => facts,
-			forgetSiteData: (origin) =>
-				clearOriginData(browserSession, origin, historyClearer.current),
+			forgetSiteData: (origin) => {
+				// "Forget this site" is also the reset for its camera/microphone answer.
+				mediaPermissions.forgetOrigin(origin);
+				return clearOriginData(browserSession, origin, historyClearer.current);
+			},
 			historyFilePath: join(options.userDataDir, "browser-history.json"),
 			addressOverlayMode: () =>
 				addressOverlay
@@ -1565,6 +1603,7 @@ async function initializeBrowserHost(
 									: "platform",
 						},
 			passkeyNotice: (tabId) => passkeyNotices.viewFor(tabId),
+			mediaPermission: (tabId) => mediaPermissions.viewFor(tabId),
 			approvalsCard: approvalsOverlay
 				? {
 						open: (input) => approvalsOverlay.open({ focus: true, ...input }),
@@ -1927,7 +1966,20 @@ async function initializeBrowserHost(
 						log,
 					}),
 			},
-			clearData: (what: ClearWhat) => sessionCookies.clearBrowsingData(what),
+			clearData: async (what: ClearWhat) => {
+				await sessionCookies.clearBrowsingData(what);
+				// "Everything" includes the remembered camera/microphone answers.
+				if (what === "everything") mediaPermissions.clearAll();
+			},
+			mediaPermission: {
+				decide: async (tabId, id, decision, trusted) => {
+					const accepted = await mediaPermissions.decide(tabId, id, decision, {
+						trusted,
+					});
+					if (accepted) notifyChanged();
+					return accepted;
+				},
+			},
 			// THE REVEAL TAKES NO PATH FROM THE RENDERER (§16.4): it opens the directory the
 			// host is actually writing into, so the one place a page-derived string could
 			// have become a path stays out of the IPC surface as well. `shell.openPath`
@@ -2567,6 +2619,9 @@ async function initializeBrowserHost(
 				registry.bumpEpoch(tabId);
 				// A notice describes the document that asked; a new document is not it.
 				passkeyNotices.clearNotice(tabId);
+				// Same for a camera/microphone prompt: the asking document is gone, so
+				// its held request is answered `false` rather than granted to the next.
+				mediaPermissions.clearTab(tabId);
 				// The tab is on a document now, so whatever the last navigation was refused
 				// for no longer describes what is on screen.
 				host.clearLoadFailure(tabId);
@@ -2609,6 +2664,7 @@ async function initializeBrowserHost(
 					registry.forget(tabId);
 				}
 				passkeyNotices.forget(tabId);
+				mediaPermissions.forget(tabId);
 				// A focus fact must not outlive the view whose focus it recorded.
 				host.setPageFocused(tabId, false);
 				// A failure recorded against a tab whose view died describes nothing.
@@ -2846,4 +2902,22 @@ function releaseView(
  * stays the only module that decides when the host starts. */
 export function browserHostAppVersion(): string {
 	return app.getVersion();
+}
+
+/**
+ * The OS (TCC) half of a camera/microphone grant. macOS gates this app's
+ * devices separately from any in-app answer; `askForMediaAccess` exists only
+ * there. Elsewhere there is no app-level prompt to show, so the adapter answers
+ * "granted" and Chromium's own device access is the only gate.
+ */
+function systemMediaAccess(): SystemMediaAccess {
+	if (process.platform !== "darwin") {
+		return { status: () => "granted", ask: async () => true };
+	}
+	const device = (kind: "audio" | "video") =>
+		kind === "audio" ? "microphone" : "camera";
+	return {
+		status: (kind) => systemPreferences.getMediaAccessStatus(device(kind)),
+		ask: (kind) => systemPreferences.askForMediaAccess(device(kind)),
+	};
 }

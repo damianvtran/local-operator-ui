@@ -15,6 +15,7 @@ import type {
 	AddressHistoryRequest,
 	AddressHistoryResponse,
 } from "../shared/browser-address-history";
+import type { MediaPermissionDecision } from "../shared/browser-media-permission";
 import type { HumanTabActionOutcome } from "../shared/browser-tab-action";
 import type {
 	TabActionsMenuRequest,
@@ -332,6 +333,14 @@ declare global {
 				revealDownloads: () => Promise<{ opened: boolean; message: string }>;
 				/** Dismiss the passkey notice `at` on `tabId`; false when it was replaced. */
 				dismissPasskeyNotice: (tabId: number, at: number) => Promise<boolean>;
+				/** Answer the camera/microphone prompt `id` on `tabId`; false when it was
+				 * replaced or the click was not trusted. */
+				decideMediaPermission: (
+					tabId: number,
+					id: string,
+					decision: MediaPermissionDecision,
+					trusted: boolean,
+				) => Promise<boolean>;
 				/** Extension manager ops; see src/shared/browser-extensions.ts. */
 				extensions: (
 					request: import("../shared/browser-extensions").ExtensionsRequest,
