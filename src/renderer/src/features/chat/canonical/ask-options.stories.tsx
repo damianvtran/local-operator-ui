@@ -240,6 +240,37 @@ export const Options: Story = {
 };
 
 /**
+ * Two recommended options, as a multi-select ask sends them: `recommended` is
+ * the first row (0) and `recommended_all` is `[0, 1]`. Both rows carry the bold
+ * label and the badge. The docked card is a set of actions, so nothing is
+ * ticked; it reads `recommended_all` only once the runtime carries it on this
+ * card's wire path.
+ */
+export const TwoRecommended: Story = {
+	render: () => (
+		<Frame
+			asked="Which parts of the cleanup should I run?"
+			height={470}
+			pending={gate({
+				options: [
+					{
+						label: "Rotate the logs",
+						description: "Logs older than 7 days.",
+					},
+					{
+						label: "Clear the build caches",
+						description: "They rebuild on the next run.",
+					},
+					{ label: "Delete everything under tmp" },
+				],
+				recommended: 0,
+				recommended_all: [0, 1],
+			})}
+		/>
+	),
+};
+
+/**
  * One option, which is the shape that most tempts a card into looking broken:
  * a single button under a question reads as a confirmation dialog unless the
  * free-text hint below it stays honest.
