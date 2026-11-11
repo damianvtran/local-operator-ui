@@ -1071,6 +1071,14 @@ export function modelAccessPresentation(access: ModelAccessReading): {
 	title: string;
 	description: string;
 	history: string;
+	/*
+	 * The same timestamps one per entry, WITHOUT the "History only; not
+	 * permission to reuse access." caveat: the strip's `i` tooltip (PR #1871,
+	 * design D1) is 256px wide, where the joined sentence broke mid-timestamp,
+	 * and it only ever shows informational states, where a caution about reuse
+	 * reads as a warning the state does not carry. The card keeps `history`.
+	 */
+	historyLines: string[];
 	tone: "warning" | "neutral";
 	canConnect: boolean;
 	canSwitchModel: boolean;
@@ -1164,6 +1172,7 @@ export function modelAccessPresentation(access: ModelAccessReading): {
 			}),
 		);
 	}
+	const historyLines = [...context];
 	if (
 		effectiveState &&
 		(access.lastGrantAt !== undefined ||
@@ -1175,6 +1184,7 @@ export function modelAccessPresentation(access: ModelAccessReading): {
 		title,
 		description,
 		history: context.join(" "),
+		historyLines,
 		tone: effectiveState === "effective_borrow" ? "neutral" : "warning",
 		canConnect: effectiveState
 			? effectiveState === "absent" && access.connectHere === true
@@ -1210,8 +1220,18 @@ export function modelAccessPresentation(access: ModelAccessReading): {
  *   warning the user must act on would hide the reason a turn fails.
  * - `local` never reaches here (`modelAccessReading` returns null for it).
  *
- * Exhaustive on the effective state so a new runtime state is a warning card by
- * default rather than silently demoted to a hover.
+ * The card's `tone` was `warning` for `pending` / `eligible_borrow_unverified`;
+ * the icon is deliberately neutral for all three informational states. Do not
+ * restore a warning tone on the icon: a warning that asks for nothing is the
+ * standing alarm the operator asked to remove (`modelAccessPresentation` still
+ * returns `warning` for the card, which those states no longer reach here).
+ *
+ * UNKNOWN STATES. `modelAccessReading` coerces an `effective_state` this build
+ * does not know to `pending` before this predicate sees it, so a new runtime
+ * state is informational — the icon, not the card. That is the intended
+ * default: `pending` is the reader's "the runtime is still deciding" and its
+ * copy promises nothing the user must do. A state that needs action has to be
+ * taught to the reader (and kept out of the `true` cases below) to get the card.
  */
 export function modelAccessIsInformational(
 	access: ModelAccessReading | null | undefined,

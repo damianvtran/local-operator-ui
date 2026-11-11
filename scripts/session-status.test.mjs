@@ -3139,6 +3139,29 @@ test("legacy and absent access readings are never demoted to the info icon", () 
 	);
 });
 
+/*
+ * Design D1 (PR #1871): the strip's 256px tooltip broke the joined history
+ * sentence mid-timestamp, and its reuse caveat read as a warning on a healthy
+ * state. The tooltip takes one timestamp per line and no caveat; the card keeps
+ * the joined sentence with the caveat.
+ */
+test("the access history reaches the tooltip one timestamp per line, without the card's caveat", () => {
+	const p = modelAccessPresentation(
+		modelAccessReading(frame("effective_borrow")),
+	);
+	assert.equal(p.historyLines.length, 3);
+	assert.match(p.historyLines[0], /^Last checked/);
+	assert.match(p.historyLines[1], /^Last resolved/);
+	assert.match(p.historyLines[2], /^Recorded grant expiry/);
+	for (const line of p.historyLines) assert.doesNotMatch(line, /History only/);
+	assert.equal(
+		p.history,
+		[...p.historyLines, "History only; not permission to reuse access."].join(
+			" ",
+		),
+	);
+});
+
 test("the real page/content/composer wires the tested serving context and decision", () => {
 	const page = readFileSync(
 		"src/renderer/src/features/chat/components/chat-page.tsx",

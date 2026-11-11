@@ -391,6 +391,47 @@ export const READING_LABEL = cn(READING_BOX, "cursor-default text-ink-dim");
  * the preview's zeros, so a pending or failed pane's spend segment is absent
  * for the same reason rather than by a second rule.
  */
+/*
+ * THE SHED LADDER'S RUNGS, one per (third control box, borrowed-access note)
+ * state. Each value is a fit point measured on the fullest fixture plus the
+ * smallest 5px step that clears it
+ * (`docs/evidence/composer-readings-shed/README.md` §4; the access columns are
+ * §8). Two in-flow items change what the row must hold, and no container query
+ * can see either appear, so the state has to name them:
+ *  - the third (recording) control box costs 36px (issue #788);
+ *  - the borrowed-access `i` readout (PR #1871) costs 26px: its 22px box plus
+ *    the cluster's 4px gap. It never sheds itself — it is the one reading that
+ *    says whose credentials this session spends — so the value readings give way
+ *    26px sooner instead, exactly as they do for the Stop box.
+ * The class strings are literal so Tailwind's scanner emits every one.
+ */
+type RungState = "two" | "three" | "twoAccess" | "threeAccess";
+const rungState = (thirdBox: boolean, access: boolean): RungState =>
+	thirdBox ? (access ? "threeAccess" : "three") : access ? "twoAccess" : "two";
+const SHED_RUNGS: Record<
+	"effort" | "cost" | "context",
+	Record<RungState, string>
+> = {
+	effort: {
+		two: "@max-[750px]/chatcol:hidden",
+		three: "@max-[780px]/chatcol:hidden",
+		twoAccess: "@max-[775px]/chatcol:hidden",
+		threeAccess: "@max-[810px]/chatcol:hidden",
+	},
+	cost: {
+		two: "@max-[705px]/chatcol:hidden",
+		three: "@max-[740px]/chatcol:hidden",
+		twoAccess: "@max-[730px]/chatcol:hidden",
+		threeAccess: "@max-[765px]/chatcol:hidden",
+	},
+	context: {
+		two: "@max-[640px]/chatcol:hidden",
+		three: "@max-[675px]/chatcol:hidden",
+		twoAccess: "@max-[660px]/chatcol:hidden",
+		threeAccess: "@max-[695px]/chatcol:hidden",
+	},
+};
+
 const NO_SPEND: SessionCostInput = {
 	cumulative_parent_cost: null,
 	child_costs: null,
@@ -1857,9 +1898,7 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 					 * the first reading given up.
 					 */
 					className={
-						controlsThirdBox
-							? "@max-[780px]/chatcol:hidden"
-							: "@max-[750px]/chatcol:hidden"
+						SHED_RUNGS.effort[rungState(controlsThirdBox, accessNote !== null)]
 					}
 				>
 					{/*
@@ -1896,7 +1935,7 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 				 * hears the fact without a hover, and no false button affordance —
 				 * there is nothing to open (`Reading`'s `readout` note). The title
 				 * leads the tooltip at reading weight, description and history under
-				 * it, the same lines the card used to show.
+				 * it, the card's timestamps one per line (design D1).
 				 *
 				 * `data-lo-model-access` carries the state the way the card did, so a
 				 * driver scene reads which state is on screen without matching prose.
@@ -1912,10 +1951,15 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 							lines={[
 								accessNote.title,
 								accessNote.description,
-								...(accessNote.history ? [accessNote.history] : []),
+								// One timestamp per line, no reuse caveat (design D1).
+								...accessNote.historyLines,
 							]}
 						/>
 					}
+					// `max-w-80`, not the primitive's 256px: "Recorded grant expiry:
+					// <date>, <time>." is one line at 320px and broke mid-time at 256
+					// (design D1).
+					tooltipClassName="max-w-80"
 					className="shrink-0 px-1"
 				>
 					<Info
@@ -1989,9 +2033,7 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 				 * goes, the row is down to the model alone.
 				 */
 				className={
-					controlsThirdBox
-						? "@max-[675px]/chatcol:hidden"
-						: "@max-[640px]/chatcol:hidden"
+					SHED_RUNGS.context[rungState(controlsThirdBox, accessNote !== null)]
 				}
 			>
 				<ContextWheel reading={reading} />
@@ -2045,9 +2087,7 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 					 * the terminal band keeps longest.
 					 */
 					className={
-						controlsThirdBox
-							? "@max-[740px]/chatcol:hidden"
-							: "@max-[705px]/chatcol:hidden"
+						SHED_RUNGS.cost[rungState(controlsThirdBox, accessNote !== null)]
 					}
 				>
 					{/* A cost has no picker of its own: `/usage` is a different

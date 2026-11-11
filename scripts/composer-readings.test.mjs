@@ -1221,21 +1221,46 @@ test("the narrow ladder sheds effort, then cost, then context - the duration is 
 	 * and its absence is asserted below: a rung reappearing here would silently
 	 * restore the breakpoint this change removed.
 	 */
-	assert.match(
-		strip,
-		/controlsThirdBox\s*\n?\s*\?\s*"@max-\[780px\]\/chatcol:hidden"\s*\n?\s*:\s*"@max-\[750px\]\/chatcol:hidden"/,
-		"effort is the first rung, its third-box value 30px above its two-box one (each fit moves 36; the values round onto the 5px grid)",
+	/*
+	 * The rungs live in ONE table, `SHED_RUNGS`, keyed by reading and by the
+	 * row's state: the third (recording) box, and the borrowed-access `i`
+	 * readout (PR #1871), which is in flow and costs 26px (22px box + 4px gap,
+	 * measured in `composer-readings-shed/README.md` §8). Every reading takes
+	 * its class from that table with the same two predicates.
+	 */
+	const table = Object.fromEntries(
+		[
+			...strip.matchAll(
+				/(effort|cost|context): \{\s*two: "@max-\[(\d+)px\]\/chatcol:hidden",\s*three: "@max-\[(\d+)px\]\/chatcol:hidden",\s*twoAccess: "@max-\[(\d+)px\]\/chatcol:hidden",\s*threeAccess: "@max-\[(\d+)px\]\/chatcol:hidden",\s*\}/g,
+			),
+		].map((m) => [
+			m[1],
+			{
+				two: Number(m[2]),
+				three: Number(m[3]),
+				twoAccess: Number(m[4]),
+				threeAccess: Number(m[5]),
+			},
+		]),
 	);
-	assert.match(
-		strip,
-		/controlsThirdBox\s*\n?\s*\?\s*"@max-\[740px\]\/chatcol:hidden"\s*\n?\s*:\s*"@max-\[705px\]\/chatcol:hidden"/,
-		"cost is the second rung, same state step",
+	assert.deepEqual(
+		table,
+		{
+			effort: { two: 750, three: 780, twoAccess: 775, threeAccess: 810 },
+			cost: { two: 705, three: 740, twoAccess: 730, threeAccess: 765 },
+			context: { two: 640, three: 675, twoAccess: 660, threeAccess: 695 },
+		},
+		"the measured rungs: effort first, cost, context last; the third box and the access note each move every fit",
 	);
-	assert.match(
-		strip,
-		/controlsThirdBox\s*\n?\s*\?\s*"@max-\[675px\]\/chatcol:hidden"\s*\n?\s*:\s*"@max-\[640px\]\/chatcol:hidden"/,
-		"context is the last rung: when it goes, the row is down to the model alone",
-	);
+	for (const name of ["effort", "cost", "context"]) {
+		assert.match(
+			strip,
+			new RegExp(
+				`SHED_RUNGS\\.${name}\\[rungState\\(controlsThirdBox, accessNote !== null\\)\\]`,
+			),
+			`${name} sheds on both the third box and the access note`,
+		);
+	}
 
 	/*
 	 * THE DURATION HAS NO CLASS-BASED SHED AT ALL: no state term, no band, no
@@ -1271,12 +1296,18 @@ test("the narrow ladder sheds effort, then cost, then context - the duration is 
 		(strip.match(/[^\s"]*chatcol:hidden/g) ?? []).sort(),
 		[
 			"@max-[640px]/chatcol:hidden",
+			"@max-[660px]/chatcol:hidden",
 			"@max-[675px]/chatcol:hidden",
+			"@max-[695px]/chatcol:hidden",
 			"@max-[705px]/chatcol:hidden",
+			"@max-[730px]/chatcol:hidden",
 			"@max-[740px]/chatcol:hidden",
 			"@max-[750px]/chatcol:hidden",
 			"@max-[750px]/chatcol:hidden",
+			"@max-[765px]/chatcol:hidden",
+			"@max-[775px]/chatcol:hidden",
 			"@max-[780px]/chatcol:hidden",
+			"@max-[810px]/chatcol:hidden",
 		].sort(),
 		"only the three rungs and the held mark may be range-hidden; the duration's visibility is measured",
 	);
@@ -1290,29 +1321,20 @@ test("the narrow ladder sheds effort, then cost, then context - the duration is 
 	 * order: effort, context, cost) - so a re-tuned threshold cannot silently
 	 * invert the ladder.
 	 */
-	const parsed = [
-		...strip.matchAll(
-			/controlsThirdBox\s*\n?\s*\?\s*"@max-\[(\d+)px\]\/chatcol:hidden"\s*\n?\s*:\s*"@max-\[(\d+)px\]\/chatcol:hidden"/g,
-		),
-	];
-	assert.equal(parsed.length, 3, "one rung per value reading");
-	const [effort, context, cost] = parsed;
-	/*
-	 * Group 1 is the third-box column's threshold and group 2 the two-box one.
-	 */
-	const thresholds = [
-		Number.POSITIVE_INFINITY,
-		effort[1],
-		effort[2],
-		cost[1],
-		cost[2],
-		context[1],
-		context[2],
-	].map(Number);
-	assert.ok(
-		thresholds.every((x, i) => i === 0 || x < thresholds[i - 1]),
-		`the ladder's thresholds must only tighten as it descends, and a third control box must never shed a rung later than the two-box row: ${thresholds.join(" > ")}`,
-	);
+	for (const state of ["two", "three", "twoAccess", "threeAccess"]) {
+		const order = ["effort", "cost", "context"].map((n) => table[n][state]);
+		assert.ok(
+			order[0] > order[1] && order[1] > order[2],
+			`in the ${state} row the ladder must only tighten as it descends: ${order.join(" > ")}`,
+		);
+	}
+	for (const name of ["effort", "cost", "context"]) {
+		const r = table[name];
+		assert.ok(
+			r.three > r.two && r.twoAccess > r.two && r.threeAccess > r.three,
+			`${name}: an extra in-flow box never sheds a rung later than the row without it`,
+		);
+	}
 });
 
 test("the shed's state comes from the row's own third-box predicate, computed once", () => {
@@ -1373,9 +1395,10 @@ test("the shed's state comes from the row's own third-box predicate, computed on
 	assert.match(strip, /controlsThirdBox\?: boolean;/);
 	assert.match(strip, /controlsThirdBox = false,/);
 	assert.equal(
-		(strip.match(/controlsThirdBox\s*\?\s+"/g) ?? []).length,
+		(strip.match(/rungState\(controlsThirdBox, accessNote !== null\)/g) ?? [])
+			.length,
 		3,
-		"exactly the three value rungs switch on the row's predicate (a space or newline between the name and `?`, so the `?:` of the prop's type does not count)",
+		"exactly the three value rungs switch on the row's predicate",
 	);
 });
 
