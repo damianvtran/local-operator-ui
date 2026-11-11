@@ -21,6 +21,12 @@ export type HubLinkDirectionView = {
 	reason: string | null;
 	/** Only a service-approved retry is a primary action, not every failure. */
 	retryable: boolean;
+	/**
+	 * The failure is the ACCOUNT's (`no-credential`, including core #3807's
+	 * `no-credential/rejected` startup 401), not this link's. Optional so a view
+	 * built without it reads as "no", the behaviour before the field.
+	 */
+	signInNeeded?: boolean;
 	/** A known-safe inbound action; an available conflict opens detail instead. */
 	canApply: boolean;
 	lastSuccess: string | null;
@@ -74,7 +80,21 @@ const KNOWN_STATES = new Set([
  * never decides whether a merge/publish is safe. In particular a paused outbound
  * link must remain discoverable even if inbound is currently busy or successful.
  */
-export function hubLinkMark(link: HubLinkView): HubLinkMarkView {
+export function hubLinkMark(view: HubLinkView): HubLinkMarkView {
+	/*
+	 * A SIGN-IN failure is never a row mark (design B6.2.4): it is a fact about
+	 * the account, stated once by the section's sign-in line (`hubSignInLine`).
+	 * Core #3807 keeps `pull.state="failed"` with `no-credential/rejected` after
+	 * a startup 401 until the next check, so ranking it as a failure drew a mark
+	 * on EVERY linked row after each restart (core review round 1, m1). The
+	 * direction is ranked as idle instead; its reason still reaches the tooltip.
+	 */
+	const quiet = (status: HubLinkDirectionView): HubLinkDirectionView =>
+		status.signInNeeded &&
+		(status.state === "failed" || status.state === "retry-wait")
+			? { ...status, state: "idle", retryable: false }
+			: status;
+	const link = { ...view, pull: quiet(view.pull), push: quiet(view.push) };
 	const directions = ["pull", "push"] as const;
 	for (const direction of directions) {
 		const status = link[direction];
