@@ -1,0 +1,37 @@
+{
+  "locale": "es",
+  "namespace": "ui.library",
+  "date": "2026-11-11",
+  "slice": "P7",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "038190a408cf",
+    "session": "038190a408cf",
+    "model": "openai/gpt-6.1-sol",
+    "independent_from_translator_session": true,
+    "actual_model_source": "as stated in the auditor's own report (companion report); no fallback reported"
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "per delegation and the candidate file model field; translator session id not supplied"
+  },
+  "keys": [
+    "ui.library.preview.organized_by_agent",
+    "ui.library.preview.organized_by_librarian",
+    "ui.library.preview.organized_by_system",
+    "ui.library.preview.organized_by_user",
+    "ui.library.preview.organized_unattributed"
+  ],
+  "english_sha256": "39d053e0e00464bc6166a022d6718ac6dbe19bfb5ff2db9497d1ae06a78f4444",
+  "target_sha256": "7d6e780253f40f5b7028f10969d28e97d3ab3095f74d0ebee56e02c3268b6c83",
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "artifacts": {
+    "p7-au-es-round1.md": "10a92d7a23f219643ed947a8945c8342d7b88f7ea111a5d6fa9e01f1e2d791af",
+    "receipt.json": "0eaf7148149f5d0afa31538b8225d9c864f6e5b0fa89e2478da7491e7e66452c",
+    "verify.log": "1d6c799b7e3c3c3d3dacaff856c37c03b2d872bbf499d5992907789de205e83f"
+  },
+  "note": "record.json written by the integrating coder; verify.log is the coder re-check, not an auditor log."
+}

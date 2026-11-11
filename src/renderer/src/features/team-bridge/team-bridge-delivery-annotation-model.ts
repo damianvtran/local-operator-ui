@@ -225,12 +225,40 @@ export const TEAM_BRIDGE_DELIVERY_SEGMENTS = [
  * it, and an unclassified hold counts as `screening` (the hub's own bucket for
  * "no outcome yet").
  *
- * WHEN IT IS SILENT. A hub summary is ALWAYS shown when it counts anyone, even
- * all-delivered ("Delivered to 3"): that is the only confirmation the other
- * members get that screening ran (operator: "I saw no confirmation that it was
- * moderated or not"; review R3, design D4). It also keeps the row from
- * collapsing a few seconds after every send. Without a hub summary (an older
- * hub) the derived line stays silent when nothing is outstanding, as before.
+ * WHEN IT IS SILENT: ONCE DELIVERY IS COMPLETE. The line used to show for every
+ * message a hub summary counted anyone on, all-delivered included ("Delivered to
+ * 7", review R3 / design D4 on #1832). The operator reversed that on 2026-11-10:
+ * a "Delivered to N" under every message in a busy channel made it harder to
+ * read, so silence now MEANS complete, and a line appears only when there is
+ * something to say (screening, held, not reviewed, not delivered).
+ *
+ * "Complete" is defined so a pending recipient is never hidden: every bucket
+ * but `delivered` is zero, at least one recipient is delivered, and - when the
+ * hub sends `total` - `delivered === total`. The hub's buckets partition
+ * `total` (contract in `teamBridgeDeliverySummarySchema`; agent-server counts a
+ * fed recipient that never reported as `screening`), so a `total` above the
+ * bucket sum is partial or malformed data: the shortfall is counted as
+ * `screening` ("no outcome yet") and the line stays up. A summary with no
+ * `total` (an older hub) is judged on its buckets alone.
+ *
+ * Moderation refusals and review holds are outstanding by this rule, so their
+ * counts stay visible to every member, exactly as before.
+ *
+ * KNOWN LIMITS of "complete", stated rather than discovered:
+ * - The hub's `delivered` is the recipient connector's ADMIT verdict, which
+ *   local-operator core posts just before handing the card to the agent
+ *   session (`conversation.py` `_admit` -> `_hand_off_card`, coalesced <= 3 s).
+ *   A later hand-off failure is a local durable hold the hub ignores once
+ *   admitted, so "complete" means admitted to every recipient's inbox, not
+ *   read by the agent.
+ * - agent-server drops a recipient that never reports from `total` after its
+ *   7-day feed TTL, so a week-old message can read complete without it.
+ *
+ * No summary at all (a fresh send echo, or an older hub) uses the derived
+ * counts, which are silent when nothing is outstanding. A fresh echo is NOT
+ * shown as "Delivering...": the 8 s history poll and `refreshAfterSend` bring
+ * the hub's summary, and an older hub never sends one, so inventing a state for
+ * a missing summary would put a permanent false line under its messages.
  */
 export function teamBridgeDeliverySummary(message: {
 	delivery_states?: readonly TeamBridgeDeliveryState[];
@@ -246,8 +274,9 @@ export function teamBridgeDeliverySummary(message: {
 	const counts = fromHub ?? countsFromStates(message.delivery_states);
 	const outstanding =
 		counts.screening + counts.held + counts.notReviewed + counts.notDelivered;
-	if (outstanding === 0 && (fromHub === null || counts.delivered === 0))
-		return null;
+	// Silence means complete (see WHEN IT IS SILENT): `countsFromSummary` has
+	// already folded any `total` shortfall into `screening`.
+	if (outstanding === 0) return null;
 	return { counts, lines };
 }
 
@@ -263,13 +292,25 @@ function countsFromSummary(
 	summary: TeamBridgeDeliverySummary | undefined,
 ): TeamBridgeDeliveryCounts | null {
 	if (!summary) return null;
-	return {
+	const counts = {
 		delivered: summary.delivered ?? 0,
 		screening: summary.screening ?? 0,
 		held: summary.held ?? 0,
 		notReviewed: summary.not_reviewed ?? 0,
 		notDelivered: summary.not_delivered ?? 0,
 	};
+	// The buckets partition `total`; recipients the buckets do not account for
+	// have no outcome yet, which is the hub's own `screening` bucket. Counting
+	// them there keeps a partial summary from reading as complete.
+	const counted =
+		counts.delivered +
+		counts.screening +
+		counts.held +
+		counts.notReviewed +
+		counts.notDelivered;
+	if (summary.total !== undefined && summary.total > counted)
+		counts.screening += summary.total - counted;
+	return counts;
 }
 
 function countsFromStates(

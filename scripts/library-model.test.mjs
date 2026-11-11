@@ -42,6 +42,7 @@ const {
 	formatDuration,
 	groupTagsByCategory,
 	libraryKindLabel,
+	organizedByLabel,
 	tagCategoryLabel,
 	sortAssets,
 	relativeTime,
@@ -351,6 +352,8 @@ const TAG_CATEGORIES = [
 	"custom",
 	"type",
 ];
+// Bidi isolates the formatter wraps around arguments in RTL locales.
+const BIDI = /[\u2066-\u2069]/g;
 const libraryCatalogue = (tag) =>
 	JSON.parse(
 		readFileSync(`src/i18n/catalogues/${tag}/ui.library.json`, "utf8"),
@@ -415,4 +418,47 @@ test("English labels are the readable words, and grouping/sorting still see the 
 	} finally {
 		locale.setLocale("en");
 	}
+});
+
+/*
+ * "ORGANIZED BY" (census B7). `organized.by` is a closed actor id or null, and
+ * each id is its own catalogue sentence over the already-localized `{at}`. An id
+ * this build does not know (a newer backend) and null both take the neutral
+ * unattributed sentence and never print the raw id.
+ */
+test("organizedByLabel names every known actor in en, fr and ur and never leaks an unknown id", () => {
+	const AT = "2h";
+	const cases = [
+		["user", "organized_by_user"],
+		["librarian", "organized_by_librarian"],
+		["agent", "organized_by_agent"],
+		["system", "organized_by_system"],
+		[null, "organized_unattributed"],
+		["a-future-actor", "organized_unattributed"],
+		["", "organized_unattributed"],
+	];
+	try {
+		for (const tag of ["en", "fr", "ur"]) {
+			locale.setLocale(tag);
+			const catalogue = libraryCatalogue(tag);
+			for (const [by, key] of cases) {
+				const label = organizedByLabel(by, AT);
+				assert.equal(
+					label.replace(BIDI, ""),
+					catalogue[`ui.library.preview.${key}`].replace("{at}", AT),
+					`${tag} ${by}`,
+				);
+				if (by)
+					assert.ok(!label.includes(by) || key !== "organized_unattributed");
+			}
+		}
+	} finally {
+		locale.setLocale("en");
+	}
+	// The retired Latin-only sentence is gone from every shipped catalogue.
+	for (const tag of ["en", "fr", "es", "zh-CN", "ru", "vi", "ur", "hi"])
+		assert.equal(
+			libraryCatalogue(tag)["ui.library.preview.organized_by"],
+			undefined,
+		);
 });

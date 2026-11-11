@@ -792,6 +792,90 @@ export const Narrow: Story = {
 	),
 };
 
+/*
+ * The LONGEST translated verbs, in a narrow column (design round 1, D1).
+ *
+ * The verb column is sized to its text, and a translation is routinely three
+ * times the English word: `Включает аварийную блокировку` (ru), `Mise à jour
+ * de saisie sécurisée` and `Prévisualisation du renommage` (fr) are the worst
+ * cases the catalogue holds. The first three are RUNNING rows (the longer verb
+ * form), the last three the same calls settled with a duration. The object collapses first, then the verb ends in an
+ * ellipsis (`min-w-0 truncate`) with its full text on hover; neither may push
+ * the row past its edge or the duration out of it. Render with
+ * `?args=locale:ru` / `locale:fr` (the preview's locale arg) - under `en` the
+ * same rows are the short English verbs and nothing truncates. The two widths
+ * are the transcript rows design measured (284px and 184px of row box). OPEN,
+ * like `SessionsOps`: three consecutive calls fold, and a folded header would
+ * photograph the container rather than the verbs under test.
+ */
+const longVerbRows = () => [
+	tool({
+		id: "lv:1",
+		toolName: "network",
+		args: { action: "panic" },
+		phase: "running",
+		durationS: null,
+		startedAt: Date.now() - 4_000,
+		output: null,
+	}),
+	tool({
+		id: "lv:2",
+		toolName: "console",
+		args: { action: "secure", session: "build" },
+		phase: "running",
+		durationS: null,
+		startedAt: Date.now() - 4_000,
+		output: null,
+	}),
+	tool({
+		id: "lv:3",
+		toolName: "lsp",
+		args: { action: "rename_preview", file: "src/app.ts" },
+		phase: "running",
+		durationS: null,
+		startedAt: Date.now() - 4_000,
+		output: null,
+	}),
+	// The same three SETTLED, each with its duration: the duration slot is the
+	// other claimant on the row's width, and the case where a verb that will not
+	// shrink pushes it out (D1).
+	tool({
+		id: "lv:4",
+		toolName: "network",
+		args: { action: "panic" },
+		durationS: 12.4,
+		output: "rotated",
+	}),
+	tool({
+		id: "lv:5",
+		toolName: "console",
+		args: { action: "secure", session: "build" },
+		durationS: 0.8,
+		output: "secure input on",
+	}),
+	tool({
+		id: "lv:6",
+		toolName: "lsp",
+		args: { action: "rename_preview", file: "src/app.ts" },
+		durationS: 1.2,
+		output: "3 edits",
+	}),
+];
+
+/** Long verbs at 284px of row box (a 384px frame: 24px padding a side and the fold's rail take 100px, measured). */
+export const LongVerbsNarrow284: Story = {
+	render: () => (
+		<Frame width="384px" height={340} openRows records={longVerbRows()} />
+	),
+};
+
+/** Long verbs at 184px of row box (a 284px frame): the floor the verb must still hold. */
+export const LongVerbsNarrow184: Story = {
+	render: () => (
+		<Frame width="284px" height={340} openRows records={longVerbRows()} />
+	),
+};
+
 /**
  * The working line, at the foot of a turn.
  *

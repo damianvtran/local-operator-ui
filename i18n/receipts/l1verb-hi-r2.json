@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "instance": "l1verb-hi-r2",
+  "round": 2,
+  "locale": "hi",
+  "namespace": "ui.chat.canonical",
+  "audit_date": "2026-11-11",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "l1verb-hi-r2",
+    "model": "deepseek/deepseek-flash",
+    "session": "c311bc9814dd",
+    "independent_from_translator_session": true,
+    "actual_model_source": "as stated in the auditor's own report (companion report below); no fallback was reported"
+  },
+  "status": "passed",
+  "result": "clean",
+  "scope": "tool_row.verb.* batch, 182 keys (91 settled/running pairs); auditor read staged values hi.v2.json (v2); whole-file hashes below bind the catalogue as it stood at that version",
+  "sha256": {
+    "hi": "5ee58b6fadda9ab42a42a58b3f1de681c6fd8d5ba1241696065012bdc33810d2",
+    "en": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765"
+  },
+  "findings": [],
+  "findings_note": "Severity counts are transcribed from the companion report; individual finding ids, keys and text are in that report, not repeated here.",
+  "provenance": {
+    "kind": "BINDING RECEIPT: the verdict, counts, model and session are transcribed from the auditor's own report; this file was written by the integrating coder session 5a80bd7da0fd (agent coder, anthropic/claude-sonnet-5-5), NOT by the auditor. The auditor audited a staging file of the 182 values, never the whole catalogue; the whole-file hashes above were computed from the catalogue bytes after those exact values were inserted.",
+    "source_report": {
+      "path": "i18n/audits/evidence/hi/ui.chat.canonical/l1verb-hi-wave/report-r2.md",
+      "sha256": "deb102bbbb2ef04cbad05f5e839080a34394020d7b31fdb0f77c005bfe2f7526"
+    },
+    "audited_values": {
+      "file": "i18n/audits/evidence/hi/ui.chat.canonical/l1verb-hi-wave/values.v2.json",
+      "sha256": "56791690a9c9ee6b42838775a52c39b4807e8e2fc5d85ac6bf6fdc56bbbe95a6",
+      "key_count": 182,
+      "identical_in_bound_catalogue": 182
+    }
+  }
+}

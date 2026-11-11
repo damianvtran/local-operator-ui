@@ -155,7 +155,10 @@ const catalogues = Object.fromEntries(
 	]),
 );
 const message = (locale, key, arg = {}) =>
-	catalogues[locale][key].replace(/\{(name|label)\}/g, (_, k) => arg[k]);
+	catalogues[locale][key].replace(
+		/\{(name|label|current|total)\}/g,
+		(_, k) => arg[k],
+	);
 const name = "Résumé — رپورٹ '猫'.png";
 async function mount(element) {
 	const container = document.createElement("div");
@@ -338,12 +341,22 @@ test("audio-slider-named-all-locales and mounted en-fr-ur without new props", as
 				),
 			);
 			assert.equal(view.container.querySelector('[role="slider"]'), sliders[0]);
+			// aria-valuenow is locale-free and must not move; aria-valuetext is the
+			// catalogue sentence over the two m:ss clocks (ASCII digits, as the
+			// visible readout) and must follow the locale on a PAUSED, mounted clip,
+			// where only the painter's locale dependency rewrites it (census B7).
 			assert.deepEqual(
 				sliders.map((x) => [
 					x.getAttribute("aria-valuenow"),
 					x.getAttribute("aria-valuetext"),
 				]),
-				before,
+				before.map(([now]) => [
+					now,
+					message(locale, "ui.chat.audio.position_value", {
+						current: "0:00",
+						total: "0:10",
+					}),
+				]),
 			);
 		}
 	} finally {

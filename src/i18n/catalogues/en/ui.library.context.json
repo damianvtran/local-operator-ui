@@ -695,14 +695,49 @@
 		"note": "English source: Open externally. Dynamic values are bindings; do not translate their names.",
 		"length": "English is 15 source characters. Keep the same shape and a comparable width."
 	},
-	"ui.library.preview.organized_by": {
+	"ui.library.preview.organized_by_agent": {
 		"role": "Library preview: control, state or viewer copy",
 		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
-		"note": "English source: Organized by {by} {at}. Dynamic values are bindings; do not translate their names.",
-		"length": "English is 22 source characters. Keep the same shape and a comparable width.",
+		"note": "English source: Organized by an agent {at}. An agent (an assistant session, not the Librarian) applied the metadata. The Library preview metadata line, shown beside size and kind; the actor is part of the sentence, never a bound value, so adapt articles, case and word order freely. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 26 source characters. Keep the same shape and a comparable width.",
 		"placeholders": {
-			"by": "Runtime value passed by the Library page or preview.",
-			"at": "Runtime value passed by the Library page or preview."
+			"at": "Compact relative age already localized by the Library (for example 2h ago); insert verbatim, do not reformat or translate."
+		}
+	},
+	"ui.library.preview.organized_by_librarian": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Organized by the Librarian {at}. The Librarian is the Library's organizing agent; use the same term as ui.library.librarian.title. The Library preview metadata line, shown beside size and kind; the actor is part of the sentence, never a bound value, so adapt articles, case and word order freely. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 31 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"at": "Compact relative age already localized by the Library (for example 2h ago); insert verbatim, do not reformat or translate."
+		}
+	},
+	"ui.library.preview.organized_by_system": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Organized automatically {at}. The catalog itself did it, with no person or agent named. The Library preview metadata line, shown beside size and kind; the actor is part of the sentence, never a bound value, so adapt articles, case and word order freely. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 28 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"at": "Compact relative age already localized by the Library (for example 2h ago); insert verbatim, do not reformat or translate."
+		}
+	},
+	"ui.library.preview.organized_by_user": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Organized by you {at}. The reader personally edited the asset; address them directly. The Library preview metadata line, shown beside size and kind; the actor is part of the sentence, never a bound value, so adapt articles, case and word order freely. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 21 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"at": "Compact relative age already localized by the Library (for example 2h ago); insert verbatim, do not reformat or translate."
+		}
+	},
+	"ui.library.preview.organized_unattributed": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Organized {at}. Used when the catalog does not say who organized the asset; make no claim about the actor. The Library preview metadata line, shown beside size and kind; the actor is part of the sentence, never a bound value, so adapt articles, case and word order freely. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 14 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"at": "Compact relative age already localized by the Library (for example 2h ago); insert verbatim, do not reformat or translate."
 		}
 	},
 	"ui.library.preview.pptx_failed": {

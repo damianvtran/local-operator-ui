@@ -3070,10 +3070,27 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						 */}
 						{gate !== null && (
 							<div
+								/*
+								 * SHRINKABLE, NOT `shrink-0` (design D1): the ask card used to be
+								 * a fixed-height sibling capped at 70vh, so at 1024x600 it took
+								 * 420 px and pushed the composer (`shrink-0`) past the column's
+								 * `overflow-hidden` bottom, send row and all. As a `min-h-0`
+								 * flex item it takes only what the column has left after the
+								 * composer, and `max-h-[70%]` (of the column) is its upper
+								 * bound. Round 2 used 50%, which at 1024x600 gave a 208 px card
+								 * beside 120 px of transcript - too short for a proposal's pair,
+								 * so Deny fell out of the card (QA round 2, Q1). The answer
+								 * outranks the transcript while the agent is blocked on it, so
+								 * the cap is 70% and the transcript keeps only its own floor
+								 * (`min-h-16` on the transcript root, `canonical-transcript.tsx`),
+								 * which is what stops the dock taking the column whole. If the
+								 * percentage cannot resolve the shrink alone still keeps the
+								 * composer on screen. The card inside shrinks with it.
+								 */
 								className={cn(
 									CHAT_COLUMN_CONTAINER,
 									CHAT_COLUMN_INSET,
-									"w-full shrink-0 pt-2",
+									"flex max-h-[70%] min-h-0 w-full flex-col pt-2",
 								)}
 							>
 								<QuestionDock

@@ -135,8 +135,8 @@ const DELIVERED_RUN_SHRINKS =
 	/<span class="[^"]*shrink-\[999\][^"]*">Delivered to 12<\/span><span class="[^"]*">/;
 const FULL_TITLE =
 	/title="Delivered to 12 · 1 held for review · 2 not delivered"/;
-const DELIVERED_ONLY = />Delivered to 3</;
 const ANY_BUTTON = /<button/;
+const ONE_REFUSED_TEXT = /Delivered to 5 · 1 not delivered/;
 const MIN_H_6 = /\bmin-h-6\b/;
 const NOT_REVIEWED_FOOTER =
 	/A message not reviewed within a day arrives only if the recipient’s owner releases it\./;
@@ -1105,18 +1105,17 @@ test("the hub's neutral summary wins over the viewer's partial entries", () => {
 	);
 });
 
-test("a non-sender gets counts and no lines; no data is silent; a hub summary always shows (R3/D4)", () => {
+test("a non-sender gets counts and no lines; no data and complete delivery are silent", () => {
 	const neutral = teamBridgeDeliverySummary({
 		delivery_summary: { delivered: 1, screening: 2 },
 	});
 	assert.deepEqual(neutral.counts, counts({ delivered: 1, screening: 2 }));
 	assert.deepEqual(neutral.lines, []);
 	assert.equal(teamBridgeDeliverySummary({}), null);
-	assert.deepEqual(
-		teamBridgeDeliverySummary({ delivery_summary: { total: 4, delivered: 4 } })
-			.counts,
-		counts({ delivered: 4 }),
-		"all delivered still confirms that screening ran",
+	assert.equal(
+		teamBridgeDeliverySummary({ delivery_summary: { total: 4, delivered: 4 } }),
+		null,
+		"every recipient delivered is complete: no line (operator 2026-11-10)",
 	);
 	assert.equal(
 		teamBridgeDeliverySummary({
@@ -1479,14 +1478,126 @@ test("the line truncates 'Delivered to N' first, and its runs are the full text 
 	assert.match(html, FULL_TITLE);
 });
 
-test("all delivered renders 'Delivered to N' for every member (R3/D4)", () => {
-	const html = renderToStaticMarkup(
+test("all delivered renders nothing, for members and the sender alike (operator 2026-11-10)", () => {
+	for (const message of [
+		{ delivery_summary: { total: 3, delivered: 3 } },
+		{
+			...HUMAN_SOURCE,
+			delivery_summary: { total: 1, delivered: 1 },
+			delivery_states: [entry({ state: "delivered" })],
+		},
+	]) {
+		const html = renderToStaticMarkup(
+			createElement(TeamBridgeDeliveryAnnotation, { message }),
+		);
+		assert.equal(html, "");
+	}
+});
+
+/*
+ * WHAT "COMPLETE" MEANS (operator 2026-11-10: "Don't hide a still-pending
+ * state"). The line disappears only when every recipient the hub counts is
+ * delivered; anything else keeps it up, and a `total` the buckets do not
+ * account for is a pending recipient, never a hidden one.
+ */
+test("complete: every bucket but delivered is zero and delivered matches total", () => {
+	assert.equal(
+		teamBridgeDeliverySummary({ delivery_summary: { total: 7, delivered: 7 } }),
+		null,
+	);
+	assert.equal(
+		teamBridgeDeliverySummary({ delivery_summary: { delivered: 6 } }),
+		null,
+		"an older hub with no total is judged on its buckets",
+	);
+	assert.equal(
+		teamBridgeDeliverySummary({
+			delivery_summary: {
+				total: 6,
+				delivered: 6,
+				screening: 0,
+				held: 0,
+				not_reviewed: 0,
+				not_delivered: 0,
+			},
+		}),
+		null,
+		"explicit zero buckets are still complete",
+	);
+});
+
+test("a total above the bucket sum counts the shortfall as being screened", () => {
+	const summary = teamBridgeDeliverySummary({
+		delivery_summary: { total: 6, delivered: 5 },
+	});
+	assert.deepEqual(summary.counts, counts({ delivered: 5, screening: 1 }));
+	assert.equal(
+		teamBridgeDeliverySummaryText(summary.counts),
+		"Delivered to 5 · 1 being screened",
+	);
+	assert.deepEqual(
+		teamBridgeDeliverySummary({
+			delivery_summary: { total: 7, delivered: 4, screening: 1, held: 1 },
+		}).counts,
+		counts({ delivered: 4, screening: 2, held: 1 }),
+		"the shortfall adds to the hub's own screening count",
+	);
+	assert.deepEqual(
+		teamBridgeDeliverySummary({ delivery_summary: { total: 2 } }).counts,
+		counts({ screening: 2 }),
+		"a total with no verdicts yet is all in progress",
+	);
+});
+
+test("any outstanding bucket keeps the line, for every member", () => {
+	for (const [bucket, key] of [
+		["screening", "screening"],
+		["held", "held"],
+		["not_reviewed", "notReviewed"],
+		["not_delivered", "notDelivered"],
+	]) {
+		const summary = teamBridgeDeliverySummary({
+			delivery_summary: { total: 6, delivered: 5, [bucket]: 1 },
+		});
+		assert.deepEqual(
+			summary?.counts,
+			counts({ delivered: 5, [key]: 1 }),
+			`${bucket} is outstanding`,
+		);
+		assert.deepEqual(summary.lines, [], "a non-sender still gets counts only");
+	}
+	const refusedHtml = renderToStaticMarkup(
 		createElement(TeamBridgeDeliveryAnnotation, {
-			message: { delivery_summary: { total: 3, delivered: 3 } },
+			message: {
+				delivery_summary: { total: 6, delivered: 5, not_delivered: 1 },
+			},
 		}),
 	);
-	assert.match(html, DELIVERED_ONLY);
-	assert.doesNotMatch(html, ANY_BUTTON);
+	assert.match(refusedHtml, ONE_REFUSED_TEXT);
+	assert.doesNotMatch(refusedHtml, ANY_BUTTON);
+});
+
+test("without a hub summary the derived counts are unchanged", () => {
+	assert.equal(
+		teamBridgeDeliverySummary({
+			...HUMAN_SOURCE,
+			delivery_states: [
+				entry({ state: "delivered" }),
+				entry({ endpoint_id: "bep_two", state: "delivered" }),
+			],
+		}),
+		null,
+	);
+	assert.deepEqual(
+		teamBridgeDeliverySummary({
+			...HUMAN_SOURCE,
+			delivery_states: [
+				entry({ state: "delivered" }),
+				entry({ endpoint_id: "bep_two", state: "refused" }),
+			],
+		}).counts,
+		counts({ delivered: 1, notDelivered: 1 }),
+	);
 });
 
 test("the sender's trigger has a 24px tap target (U5)", async () => {

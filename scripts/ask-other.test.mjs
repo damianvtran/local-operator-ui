@@ -565,7 +565,13 @@ test("single-select: Other is the LAST row of the radiogroup, labelled and hinte
 	);
 	const group = row.closest('[role="radiogroup"]');
 	assert.ok(group, "it is a member of the same radiogroup as the options");
-	const rows = [...group.children];
+	/*
+	 * The group's RADIOS, not its direct children: the model-authored rows now sit
+	 * in their own capped scroll wrapper (`data-lo-ask-options-scroll`, the bounded
+	 * ask card) with `Other` after it, outside the cap. Membership and order are
+	 * what this asserts, and both are read from the radios themselves.
+	 */
+	const rows = [...group.querySelectorAll('[role="radio"]')];
 	is(rows.at(-1), row, "trailing, after every option row");
 	assert.equal(rows.length, 3, "two options and Other");
 	is(field(view), null, "no field until Other is chosen");
