@@ -70,5 +70,11 @@
 	"ui.chat.composer.secret_fill_refused": "The secret field did not take that value. Your text is kept — the asks panel shows why.",
 	"ui.chat.composer.secret_fill_unavailable": "Could not reach the secret field. Your text is kept.",
 	"ui.chat.composer.secret_fill_multi": "This request asks for more than one secret. Your text is kept — choose the field in the asks panel.",
-	"ui.chat.composer.secret_closure_notice": "Answer the secret request in the asks panel — this box is paused until it is answered, and your draft is kept."
+	"ui.chat.composer.secret_closure_notice": "Answer the secret request in the asks panel — this box is paused until it is answered, and your draft is kept.",
+	"ui.chat.composer.placeholder.waiting_steer": "Enter sends now · Esc stops",
+	"ui.chat.composer.placeholder.waiting_queue": "Enter queues it · Esc stops",
+	"ui.chat.composer.placeholder.waiting_both": "Enter waits, then interrupts · Esc stops",
+	"ui.chat.composer.steer_hint_steer": "Send while the agent works (Enter) · Esc stops the turn",
+	"ui.chat.composer.steer_hint_queue": "Enter queues it · Esc stops the turn",
+	"ui.chat.composer.steer_hint_both": "Enter waits, then interrupts · Esc stops the turn"
 }

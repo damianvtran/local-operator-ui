@@ -409,10 +409,29 @@ test("the recorder accepts primary+enter for a send row", () => {
 		captureRefusal("primary+enter", "composer.send_queue", {}),
 		null,
 	);
+	assert.equal(
+		captureRefusal("primary+alt+enter", "composer.send_both", {}),
+		null,
+	);
 	assert.equal(captureRefusal("alt+enter", "composer.send_both", {}), null);
+	// A shifted Enter is the newline, never a send chord: the grammar refuses
+	// it with its own sentence, not with a silent accept.
 	assert.equal(
 		captureRefusal("primary+shift+enter", "composer.send_steer", {}),
-		null,
+		"Use Ctrl/⌘ or Alt with Enter. Shift+Enter adds a newline.",
+	);
+	assert.equal(
+		captureRefusal("shift+enter", "composer.send_steer", {}),
+		"Use Ctrl/⌘ or Alt with Enter. Shift+Enter adds a newline.",
+	);
+});
+
+test("a send row pressing a modified Enter gets the sending-group sentence", () => {
+	// A plain letter (no primary) on a send row falls through to the general
+	// needs-a-modifier sentence, exactly as a panel row would.
+	assert.equal(
+		captureRefusal("j", "composer.send_queue", {}),
+		"A shortcut needs Ctrl.",
 	);
 });
 
@@ -429,47 +448,69 @@ test("bare Enter ends the edit rather than spelling a chord", () => {
 		}),
 		null,
 	);
-	// A bare Enter is not bindable for any row, send or panel.
+	// A bare Enter on a send row names what it needs: Ctrl/⌘ or Alt with Enter.
 	assert.equal(
 		captureRefusal("enter", "composer.send_queue", {}),
-		"A shortcut needs Ctrl.",
+		"Use Ctrl/⌘ or Alt with Enter.",
+	);
+	// A bare Enter on a panel row is the plain send: there is no chord to bind.
+	assert.equal(
+		captureRefusal("enter", "panel.console", {}),
+		"Use a Sending row for a key that sends a message.",
 	);
 });
 
-test("a panel row pressing primary+enter hears the reserved sentence", () => {
+test("a panel row pressing a modified Enter hears the Sending sentence", () => {
 	assert.equal(
 		captureRefusal("primary+enter", "panel.console", {}),
-		"Reserved: sends the message from the composer. Enter alone always sends, and Shift+Enter adds a newline.",
+		"Use a Sending row for a key that sends a message.",
 	);
 	assert.equal(
 		captureRefusal("primary+shift+enter", "panel.console", {}),
-		"Reserved: sends the message from the composer. Enter alone always sends, and Shift+Enter adds a newline.",
+		"Use a Sending row for a key that sends a message.",
+	);
+	assert.equal(
+		captureRefusal("alt+enter", "panel.console", {}),
+		"Use a Sending row for a key that sends a message.",
 	);
 });
 
 test("a conflict with another action is refused with the existing sentence", () => {
 	const bindings = { "composer.send_queue": "primary+enter" };
 	/*
-	 * The send arm of `captureRefusal` answers FIRST for a send row, so a
-	 * second send row pressing the first's chord hears the send sentence —
-	 * the existing refusal vocabulary, not a new one. A panel row pressing a
-	 * BOUND send chord also meets the conflict sentence: the reserved check
-	 * runs before the conflict loop, but a bound send chord is a claim the
-	 * panel row must yield to, so both sentences protect the same press.
+	 * A second send row pressing the first's chord hears the conflict
+	 * sentence: the send arm must not skip the conflict checks. A panel row
+	 * pressing a send chord hears the Sending sentence, not the conflict one,
+	 * because a panel row cannot bind a send key at all.
 	 */
 	assert.equal(
 		captureRefusal("primary+enter", "composer.send_steer", bindings),
+		"Already assigned to Send as queue.",
+	);
+	assert.equal(
+		captureRefusal("primary+enter", "composer.send_queue", bindings),
 		null,
 		"the send row's own chord is never a conflict with itself (U3)",
 	);
 	assert.equal(
 		captureRefusal("primary+enter", "panel.console", bindings),
-		"Reserved: sends the message from the composer. Enter alone always sends, and Shift+Enter adds a newline.",
+		"Use a Sending row for a key that sends a message.",
 	);
 	// And the reverse: a send row pressing a panel chord.
 	assert.equal(
 		captureRefusal("primary+j", "composer.send_queue", {}),
 		"Already assigned to Open console.",
+	);
+	// An external claim (the recording row) is also a conflict for a send row.
+	assert.equal(
+		captureRefusal(
+			"primary+enter",
+			"composer.send_steer",
+			{},
+			"linux",
+			new Map([["primary+enter", "Start recording"]]),
+		),
+		"Already assigned to Start recording.",
 	);
 });
 

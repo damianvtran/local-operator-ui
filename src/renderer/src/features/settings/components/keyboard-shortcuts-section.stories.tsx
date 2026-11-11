@@ -147,8 +147,8 @@ export const SendingRecording: Story = {
 
 /**
  * The Sending group refused: a panel-shaped press (`primary+enter` at a PANEL
- * row) meets the reserved sentence naming the composer's send key, while the
- * same press at a send row is accepted (see SendingAssigned).
+ * row) meets the Sending sentence, while the same press at a send row is
+ * accepted (see SendingAssigned).
  */
 export const SendingRefused: Story = {
 	render: () => <Section focusAction="panel.console" />,
@@ -159,15 +159,29 @@ export const SendingRefused: Story = {
 		await userEvent.click(field);
 		fireEvent.keyDown(field, { key: "Enter", ctrlKey: true });
 		await screen.findByText(
-			"Reserved: sends the message from the composer. Enter alone always sends, and Shift+Enter adds a newline.",
+			"Use a Sending row for a key that sends a message.",
 		);
 	},
 };
 
 /**
- * Refused: the console field holds focus and the canvas's chord is pressed at
- * it, so the frame is the REAL refusal — previous value kept, sentence shown.
+ * The Sending group refused: a shift-shaped press (`primary+shift+enter` at a
+ * SEND row) meets the newline sentence — Shift+Enter adds a newline, never
+ * sends, even when the user means it as a chord.
  */
+export const SendingShiftRefused: Story = {
+	render: () => <Section focusAction="composer.send_steer" />,
+	play: async () => {
+		const field = await screen.findByLabelText(
+			"Send as steer: press the keys you want",
+		);
+		await userEvent.click(field);
+		fireEvent.keyDown(field, { key: "Enter", metaKey: true, shiftKey: true });
+		await screen.findByText(
+			"Use Ctrl/⌘ or Alt with Enter. Shift+Enter adds a newline.",
+		);
+	},
+};
 export const Refused: Story = {
 	render: () => <Section focusAction="panel.console" />,
 	play: async () => {

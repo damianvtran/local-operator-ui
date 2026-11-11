@@ -37,7 +37,7 @@
  */
 
 import { chordFromEvent } from "@shared/keymap/chord-capture";
-import { effectiveChord } from "@shared/keymap/keymap-chord";
+import { effectiveChord, isSendChordOf } from "@shared/keymap/keymap-chord";
 import {
 	SEND_ACTION_IDS as REGISTRY_SEND_IDS,
 	SEND_MODES,
@@ -127,6 +127,8 @@ export type ComposerKeyEvent = {
 	metaKey: boolean;
 	altKey: boolean;
 	isComposing: boolean;
+	/** The native `keyCode`: 229 is an IME composition commit, like `isComposing`. */
+	keyCode?: number;
 };
 
 /**
@@ -152,13 +154,16 @@ export function sendKeyOf(
 	event: ComposerKeyEvent,
 	bindings: SendChordBindings,
 ): SendKey | null {
-	if (event.isComposing) return null;
+	// IME: `isComposing` plus the native 229 commit. Neighbouring fields refuse
+	// the 229 press outright; the composer must do the same or an IME Enter
+	// submits mid-composition.
+	if (event.isComposing || event.keyCode === 229) return null;
 	/*
-	 * Shift+Enter is the newline, never a send, even when a send chord names
-	 * `primary+shift+enter`: the recorder refuses that spelling for every row
-	 * (D7), so a binding that named it could only be a hand edit, and a hand
-	 * edit must not turn the composer's newline into a send. The chord below
-	 * is still spelled for the no-shift arm.
+	 * Shift+Enter is the newline, never a send, even when a send chord names a
+	 * shifted spelling: the grammar refuses every shifted Enter, so a binding
+	 * that named one could only be a hand edit, and a hand edit must not turn
+	 * the composer's newline into a send. The chord below is still spelled for
+	 * the no-shift arm.
 	 */
 	if (event.key === "Enter" && event.shiftKey) return null;
 	/*
@@ -175,7 +180,8 @@ export function sendKeyOf(
 		altKey: event.altKey,
 		shiftKey: event.shiftKey,
 	});
-	const chordMode = chord === null ? undefined : bindings.get(chord);
+	const chordMode =
+		chord === null || !isSendChordOf(chord) ? undefined : bindings.get(chord);
 	if (event.key === "Enter" && !event.shiftKey)
 		return { delivery: chordMode ?? null };
 	/* A chord need not BE Enter: the match is on the chord the press spells. */

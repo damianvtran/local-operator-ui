@@ -1255,12 +1255,23 @@ function SessionPanel({
 	 * ambiguous. Read in `send`, not here, so the value asked about is the one
 	 * in force at the press; unloaded or absent reads `steer` (see
 	 * `busyDefaultFromSettings`).
+	 *
+	 * `staleTime: 10_000` is the neighbours' freshness window (`settings-page`
+	 * and `speech-shortcuts-group` read the same projection): the shared query
+	 * without it would inherit the five-minute default and a `delivery.busy_default`
+	 * change made in the TUI or Backend settings could sit unseen for minutes
+	 * while sends resolve to `steer`.
 	 */
 	const busyDefaultQuery = useQuery({
 		queryKey: desktopKeys.settings,
 		queryFn: () => desktopResult<BackendSettings>({ op: "settings.list" }),
 		enabled: desktopFeatureEnabled(capabilities.data, "settings"),
+		staleTime: 10_000,
 	});
+	/** The busy-send default at render, for the composer's busy sentences. */
+	const busyDefaultMode = busyDefaultFromSettings(
+		busyDefaultQuery.data?.settings,
+	);
 	/*
 	 * AND WHETHER THE HARNESS ITSELF IS THE REASON, which is a different fact from
 	 * `mentionsEnabled`'s false (UX round 2, U12). That flag is false for a turn in
@@ -2518,11 +2529,16 @@ function SessionPanel({
 			 * The default is the settings value in force NOW, not at render time, and
 			 * a resolved queue/both this backend cannot honour REFUSES here — before
 			 * any admission, with the draft kept and nothing sent as steer.
+			 *
+			 * `busy` reads `turnAliveRef`, not the render closure: `send` awaits the
+			 * stream and the admission seams before this point, so by the time the
+			 * gate answers the render that closed over `turnAlive` is stale — a turn
+			 * that ended inside the flight would still resolve a busy delivery.
 			 */
 			const deliveryGate = {
 				chordDelivery: delivery ?? null,
 				defaultMode: busyDefaultFromSettings(busyDefaultQuery.data?.settings),
-				busy: turnAlive,
+				busy: turnAliveRef.current,
 				busyDeliverySupported,
 			};
 			if (mustRefuseBusyDelivery(deliveryGate)) {
@@ -2540,7 +2556,7 @@ function SessionPanel({
 					attachments,
 					images,
 					...(files.length ? { files } : {}),
-					mode: turnAlive ? "steer" : "prompt",
+					mode: turnAliveRef.current ? "steer" : "prompt",
 					cwd,
 					/*
 					 * THE CAPABILITY GATE, applied HERE rather than at the composer: this
@@ -5244,6 +5260,7 @@ function SessionPanel({
 						 * the band's gate.
 						 */
 						turnAlive,
+						busyDefaultMode,
 						stopOutcome,
 						/*
 						 * The clock-withhold half of the disputed idle (U9): true while

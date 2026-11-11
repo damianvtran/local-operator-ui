@@ -4805,6 +4805,9 @@ export type MessageParams = {
 	"ui.chat.composer.placeholder.stopping": undefined;
 	"ui.chat.composer.placeholder.unavailable": undefined;
 	"ui.chat.composer.placeholder.waiting": undefined;
+	"ui.chat.composer.placeholder.waiting_both": undefined;
+	"ui.chat.composer.placeholder.waiting_queue": undefined;
+	"ui.chat.composer.placeholder.waiting_steer": undefined;
 	"ui.chat.composer.processing_audio": undefined;
 	"ui.chat.composer.secret_ask_notice": undefined;
 	"ui.chat.composer.secret_ask_open": undefined;
@@ -4833,6 +4836,9 @@ export type MessageParams = {
 	"ui.chat.composer.starting": undefined;
 	"ui.chat.composer.starting_recording": undefined;
 	"ui.chat.composer.steer_hint": undefined;
+	"ui.chat.composer.steer_hint_both": undefined;
+	"ui.chat.composer.steer_hint_queue": undefined;
+	"ui.chat.composer.steer_hint_steer": undefined;
 	"ui.chat.composer.stop": undefined;
 	"ui.chat.composer.stop_agent": undefined;
 	"ui.chat.composer.stop_work_hint": undefined;
@@ -11766,6 +11772,10 @@ export type MessageParams = {
 	"ui.settings.shortcuts.capture.already_assigned": { label: string };
 	"ui.settings.shortcuts.capture.needs_modifier": undefined;
 	"ui.settings.shortcuts.capture.needs_modifier_mac": undefined;
+	"ui.settings.shortcuts.capture.panel_enter": undefined;
+	"ui.settings.shortcuts.capture.send_needs_modifier": undefined;
+	"ui.settings.shortcuts.capture.send_newline": undefined;
+	"ui.settings.shortcuts.capture.send_prompt": undefined;
 	"ui.settings.shortcuts.capture.unbindable": undefined;
 	"ui.settings.shortcuts.category.panels": undefined;
 	"ui.settings.shortcuts.category.sending": undefined;
@@ -11834,6 +11844,9 @@ export type MessageParams = {
 	"ui.settings.shortcuts.row.code_review": undefined;
 	"ui.settings.shortcuts.row.console": undefined;
 	"ui.settings.shortcuts.row.execution": undefined;
+	"ui.settings.shortcuts.row_help.send_both": undefined;
+	"ui.settings.shortcuts.row_help.send_queue": undefined;
+	"ui.settings.shortcuts.row_help.send_steer": undefined;
 	"ui.settings.shortcuts.speech.primary": undefined;
 	"ui.settings.shortcuts.speech.push_to_talk_hint": undefined;
 	"ui.settings.shortcuts.speech.push_to_talk_hold": undefined;

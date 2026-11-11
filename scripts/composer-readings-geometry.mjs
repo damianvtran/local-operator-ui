@@ -93,6 +93,7 @@ const CROP = flag("crop") === "form" ? "form" : "row";
 const DIR = flag("dir") === "rtl" ? "rtl" : null;
 /** `--locale=fr`: the composer copy in that language (see the harness). */
 const LOCALE = flag("locale") ?? null;
+const BUSY_MODE = flag("mode") ?? null;
 /** `--anchor=top`: mount the composer from the top of the pane (see the harness). */
 const ANCHOR = flag("anchor") === "top" ? "top" : null;
 const ORIGIN = `http://127.0.0.1:${PORT}`;
@@ -414,6 +415,16 @@ const PROBE = `(() => {
 			duration !== null &&
 			isBox(duration) &&
 			getComputedStyle(duration).visibility !== "hidden",
+		// The box's placeholder, read as the reader meets it: the attribute
+		// text and the field's box. A placeholder longer than the box clips to
+		// an ellipsis in Chrome, so the pair (text, width) is the measurement.
+		placeholder: (() => {
+			const field = form ? form.querySelector("textarea") : null;
+			const box = rect(field);
+			return field && box
+				? { text: field.placeholder ?? "", box }
+				: null;
+		})(),
 		glyphOverlap:
 			readings.filter((r) => r.shown).length && controlsBox
 				? round(
@@ -691,7 +702,7 @@ const main = async () => {
 			await cdp.send("Page.navigate", { url: "about:blank" });
 			await sleep(120);
 			await cdp.send("Page.navigate", {
-				url: `${ORIGIN}/composer-readings-geometry.html?w=${entry.width}&state=${entry.state}&readings=${entry.readings}&theme=${theme}${MEASURE ? `&measure=${MEASURE}` : ""}${DIR ? `&dir=${DIR}` : ""}${LOCALE ? `&locale=${LOCALE}` : ""}${ANCHOR ? `&anchor=${ANCHOR}` : ""}`,
+				url: `${ORIGIN}/composer-readings-geometry.html?w=${entry.width}&state=${entry.state}&readings=${entry.readings}&theme=${theme}${MEASURE ? `&measure=${MEASURE}` : ""}${DIR ? `&dir=${DIR}` : ""}${LOCALE ? `&locale=${LOCALE}` : ""}${ANCHOR ? `&anchor=${ANCHOR}` : ""}${BUSY_MODE ? `&mode=${BUSY_MODE}` : ""}`,
 			});
 			await waitForRow(cdp);
 			await sleep(180);

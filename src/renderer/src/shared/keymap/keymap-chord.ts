@@ -50,6 +50,30 @@ const MODIFIER_TOKENS = ["primary", "alt", "shift"] as const;
 type ModifierToken = (typeof MODIFIER_TOKENS)[number];
 
 /**
+ * The desktop send-chord grammar, decided once here and nowhere else.
+ *
+ * The last token must be `enter`, with `primary` and/or `alt` held and no
+ * `shift` — so `primary+enter`, `alt+enter` and `primary+alt+enter` only.
+ * Shift+Enter is the composer's newline, never a send chord, so any spelling
+ * carrying it is refused; a chord ending in any other key (a letter, where
+ * Option+letter types text on macOS, or a native editing key) is not a send
+ * chord either. `captureRefusal`, `sanitizeShortcutBindings`, `effectiveChord`
+ * and the composer's `sendKeyOf` all read this predicate, so a chord capture
+ * accepts is exactly the chord reload and send keep answering.
+ */
+export const isSendChordOf = (chord: string): boolean => {
+	const tokens = chord.split("+");
+	if (tokens[tokens.length - 1] !== "enter") return false;
+	const modifiers = tokens.slice(0, -1);
+	if (modifiers.includes("shift")) return false;
+	return modifiers.includes("primary") || modifiers.includes("alt");
+};
+
+/** Whether this registry action is one of the three send rows. */
+export const isSendAction = (actionId: ActionId): boolean =>
+	actionId.startsWith("composer.send_");
+
+/**
  * Every modifier spelling that PARSES, mapped to its canonical token.
  *
  * `meta`/`ctrl`/`cmd`/`super` all collapse to `primary` (see the file header).
@@ -176,14 +200,10 @@ export function effectiveChord(
 	 * The sanitizer already dropped anything the send rows may not end in, so
 	 * the check here is the send row's own.
 	 */
-	const isSendRow = actionId.startsWith("composer.send_");
-	const isSendChord =
-		override === "primary+enter" ||
-		override === "alt+enter" ||
-		override === "primary+shift+enter";
+	const isSendRow = isSendAction(actionId);
 	if (
 		typeof override === "string" &&
-		(!RESERVED_CHORDS.has(override) || (isSendRow && isSendChord))
+		(!RESERVED_CHORDS.has(override) || (isSendRow && isSendChordOf(override)))
 	)
 		return override;
 	return actionById(actionId)?.defaultChord ?? null;
@@ -246,13 +266,20 @@ const needsModifierSentence = (platform: MiniViewPlatform): string =>
  *    values are bare action labels; this renderer composes the localized
  *    sentence so labels never become nested "Already assigned" messages.
  *
- * THE SEND ROWS' OWN RULES (D7/D12). Only the three send ids may end in
- * `enter`, and only with `primary` or `alt` — never bare `enter`, never
- * `shift+enter` (the newline), never a bare shift, never a plain character.
- * The earlier `primary+enter` reserved entries would refuse the very chord the
- * send rows exist to record, so the send arm runs BEFORE the reserved check;
- * a panel row pressing `primary+enter` still meets the reserved sentence,
- * because the send arm only accepts the action whose row it is.
+ * THE SEND ROWS' OWN RULES. Only the three send ids may end in `enter`, and
+ * only as `isSendChordOf` spells it — `primary+enter`, `alt+enter`,
+ * `primary+alt+enter`, never `shift+enter` (the newline). The earlier
+ * `primary+enter` reserved entries would refuse the very chord the send rows
+ * exist to record, so the send arm runs BEFORE the reserved check; a panel
+ * row pressing `primary+enter` still meets the reserved sentence, because
+ * the send arm only accepts the action whose row it is. A send row pressing
+ * an Enter the grammar refuses hears what is needed instead (`shift+enter`
+ * is named as the newline); a send row pressing any other key falls through
+ * to the general refusal path below.
+ *
+ * A send chord another row already answers is a conflict like any other: the
+ * early send arm must not skip the conflict checks, or two send rows could
+ * keep one chord and only the first would ever fire.
  *
  * The action's OWN chord is not a conflict: re-pressing the chord a row already
  * shows is never refused, and the ROW answers it without a store write (UX
@@ -269,13 +296,49 @@ export function captureRefusal(
 ): string | null {
 	const normalized = chord === null ? null : normalizeChord(chord);
 	if (normalized === null) return t("ui.settings.shortcuts.capture.unbindable");
-	if (actionId.startsWith("composer.send_")) {
-		/* Send rows accept a modified Enter the way D7 spells it. */
-		const isSendChord =
-			normalized === "primary+enter" ||
-			normalized === "alt+enter" ||
-			normalized === "primary+shift+enter";
-		if (isSendChord) return null;
+	if (isSendAction(actionId)) {
+		// A send chord's refusal must name the key the user actually pressed:
+		// `shift+enter` says it is the newline, a bare Enter says what it needs,
+		// and only a chord `isSendChordOf` accepts may proceed to the conflict
+		// checks — the early return must not skip them.
+		if (
+			normalized === "shift+enter" ||
+			normalized === "primary+shift+enter" ||
+			normalized === "alt+shift+enter" ||
+			normalized === "primary+alt+shift+enter"
+		)
+			return t("ui.settings.shortcuts.capture.send_newline");
+		if (normalized === "enter")
+			return t("ui.settings.shortcuts.capture.send_needs_modifier");
+		if (!isSendChordOf(normalized)) {
+			// A send row pressed with any other key: fall through to the general
+			// refusal path (reserved/conflict), which names that key's own job.
+		} else {
+			// It spells a send chord: refuse external or sibling conflicts before
+			// accepting, with the same sentences every other row hears.
+			const externalClaim = external.get(normalized);
+			if (externalClaim !== undefined)
+				return t("ui.settings.shortcuts.capture.already_assigned", {
+					label: externalClaim,
+				});
+			for (const action of KEYMAP_ACTIONS) {
+				if (action.id === actionId) continue;
+				if (effectiveChord(action.id, bindings) === normalized) {
+					return t("ui.settings.shortcuts.capture.already_assigned", {
+						label: action.label,
+					});
+				}
+			}
+			return null;
+		}
+	}
+	if (
+		normalized === "enter" ||
+		(normalized.endsWith("+enter") && !isSendAction(actionId))
+	) {
+		// A panel row receiving a modified Enter is pointed at the Sending rows,
+		// where a send chord actually belongs.
+		return t("ui.settings.shortcuts.capture.panel_enter");
 	}
 	if (!chordHasPrimary(normalized)) return needsModifierSentence(platform);
 	const reserved = RESERVED_CHORDS.get(normalized);
@@ -333,22 +396,26 @@ export function sanitizeShortcutBindings(raw: unknown): ShortcutBindings {
 		 * cannot take a default this action still answers. Pre-existing reserved,
 		 * invalid and duplicate active overrides keep the old rejection rules.
 		 * The send rows are exempt from the reserved half of that rule for exactly
-		 * the three chords they record: `primary+enter` and friends are reserved
-		 * for PANEL rows, and what a send row may end in is still checked — a
-		 * hand-written blob cannot arm a bare `enter` or a `shift+enter`.
+		 * the chords `isSendChordOf` accepts: `primary+enter` and friends are
+		 * reserved for PANEL rows, and what a send row may end in is still
+		 * checked — a hand-written blob cannot arm a bare `enter` or a
+		 * `shift+enter`.
 		 */
-		const isSendRow = action.id.startsWith("composer.send_");
-		const isSendChord =
-			normalized === "primary+enter" ||
-			normalized === "alt+enter" ||
-			normalized === "primary+shift+enter";
+		const isSendRow = isSendAction(action.id);
 		const dormant =
 			normalized !== null && LEGACY_BROWSER_CHORDS.has(normalized);
+		// A send chord may carry `alt` without `primary` (`alt+enter`): the
+		// general primary gate would drop it, so the send arm answers on its
+		// own predicate.
+		const hasRequiredModifier =
+			normalized !== null &&
+			(chordHasPrimary(normalized) || (isSendRow && isSendChordOf(normalized)));
 		const override =
 			normalized !== null &&
-			chordHasPrimary(normalized) &&
+			hasRequiredModifier &&
 			(dormant ||
-				((!RESERVED_CHORDS.has(normalized) || (isSendRow && isSendChord)) &&
+				((!RESERVED_CHORDS.has(normalized) ||
+					(isSendRow && isSendChordOf(normalized))) &&
 					!claimed.has(normalized)))
 				? normalized
 				: null;

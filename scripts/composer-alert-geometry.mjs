@@ -225,7 +225,7 @@ const ARM_PHRASE = {
 	"too-large": "too large",
 	"too-long": "characters",
 	gone: "no longer exists",
-	"delivery-unsupported": "cannot change how messages are sent",
+	"delivery-unsupported": "cannot change delivery while busy",
 	muted: "still sending",
 	delivered: "delivered",
 };

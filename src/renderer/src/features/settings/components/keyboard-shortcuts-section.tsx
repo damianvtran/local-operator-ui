@@ -51,6 +51,7 @@ import {
 	captureRefusal,
 	chordGlyph,
 	effectiveChord,
+	isSendAction,
 } from "@shared/keymap/keymap-chord";
 import {
 	KEYMAP_ACTIONS,
@@ -93,6 +94,25 @@ const rowLabel = (action: KeymapAction): string => {
 			return t("ui.settings.shortcuts.action.send_queue");
 		case "composer.send_both":
 			return t("ui.settings.shortcuts.action.send_both");
+	}
+};
+
+/**
+ * The send row's one-line help: which mode the key selects. The backend rows
+ * carry the same three sentences as their audited helps; the desktop rows
+ * print the short half, because the backend help's terminal caveat does not
+ * apply to a desktop key.
+ */
+const rowHelp = (action: KeymapAction): string | null => {
+	switch (action.id) {
+		case "composer.send_steer":
+			return t("ui.settings.shortcuts.row_help.send_steer");
+		case "composer.send_queue":
+			return t("ui.settings.shortcuts.row_help.send_queue");
+		case "composer.send_both":
+			return t("ui.settings.shortcuts.row_help.send_both");
+		default:
+			return null;
 	}
 };
 
@@ -166,6 +186,13 @@ const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {
 	const platform = useMemo(rendererPlatform, []);
 	const effective = effectiveChord(action.id, bindings);
 	const label = rowLabel(action);
+	const help = rowHelp(action);
+	// Reset after Clear on a row whose default is unbound does nothing visible:
+	// the override is already the no-chord state it restores to. The button
+	// would reappear and vanish with no change in between.
+	const showReset =
+		override !== undefined &&
+		!(action.defaultChord === null && override === null);
 	return (
 		<div
 			data-search-row={`keyboard.${action.id}`}
@@ -325,7 +352,7 @@ const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {
 						{t("ui.settings.shortcuts.keyboard_shortcuts_section.clear")}
 					</Button>
 				)}
-				{override !== undefined && (
+				{showReset && (
 					<Button
 						variant="secondary"
 						size="sm"
@@ -342,11 +369,14 @@ const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {
 					</Button>
 				)}
 			</div>
+			{help !== null && <span className="text-meta text-ink-dim">{help}</span>}
 			{recording && (
 				<span className="text-meta text-ink-dim">
-					{t(
-						"ui.settings.shortcuts.keyboard_shortcuts_section.press_the_keys_you_want_esc_cancels",
-					)}
+					{isSendAction(action.id)
+						? t("ui.settings.shortcuts.capture.send_prompt")
+						: t(
+								"ui.settings.shortcuts.keyboard_shortcuts_section.press_the_keys_you_want_esc_cancels",
+							)}
 				</span>
 			)}
 			{refusal !== null && (

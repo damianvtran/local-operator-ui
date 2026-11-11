@@ -647,6 +647,14 @@ export type MessageInputProps = {
 	 */
 	awaitingReply?: boolean;
 	/**
+	 * The resolved default busy-send mode (`delivery.busy_default`), handed
+	 * down by the page that reads the settings query. The busy placeholder and
+	 * the send hint name what Enter does while the agent works, and under a
+	 * queue/both default the old steer sentences were false; absent means
+	 * `steer`, today's behaviour.
+	 */
+	busyDefaultMode?: ComposerDeliveryMode;
+	/**
 	 * A question is pending and the composer is where it is answered.
 	 *
 	 * The card above says what is being asked and the reply it expects, and the
@@ -1643,6 +1651,22 @@ const EMPTY_REPLIES: Reply[] = [];
 const EMPTY_ATTACHMENTS: Attachment[] = [];
 
 /**
+ * The send control's tooltip while the agent works: the mode's own sentence,
+ * so a queue/both default never shows the old steer wording. `steer` or absent
+ * keeps the existing key.
+ */
+const steerHintKey = (
+	mode: ComposerDeliveryMode | undefined,
+):
+	| "ui.chat.composer.steer_hint"
+	| "ui.chat.composer.steer_hint_queue"
+	| "ui.chat.composer.steer_hint_both" => {
+	if (mode === "queue") return "ui.chat.composer.steer_hint_queue";
+	if (mode === "both") return "ui.chat.composer.steer_hint_both";
+	return "ui.chat.composer.steer_hint";
+};
+
+/**
  * A `File`'s bytes as a data URL, or `null` when the read cannot produce one.
  *
  * The paste path spells this read out on `FileReader` inline because it fires and
@@ -1869,6 +1893,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			onSendMessage,
 			isLoading,
 			awaitingReply = false,
+			busyDefaultMode,
 			awaitingAnswer = false,
 			deliveryRemediesReachable = false,
 			deviceHold,
@@ -4028,6 +4053,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 							metaKey: event.metaKey,
 							altKey: event.altKey,
 							isComposing: event.nativeEvent.isComposing,
+							keyCode: event.keyCode,
 						},
 						sendChordBindings(
 							useUiPreferencesStore.getState().shortcutBindings,
@@ -5970,6 +5996,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						metaKey: event.metaKey,
 						altKey: event.altKey,
 						isComposing: event.nativeEvent.isComposing,
+						keyCode: event.keyCode,
 					},
 					sendChordBindings(useUiPreferencesStore.getState().shortcutBindings),
 				);
@@ -9501,6 +9528,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 													asideAttached: aside !== null,
 													sendingUnsettled: sendUnsettled || sendInFlight,
 													awaitingReply,
+													busyDefaultMode,
 													/*
 													 * The press's own window (round 1, D6): the box says the
 													 * press landed instead of re-teaching `Esc stops` under a
@@ -10649,7 +10677,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 														: slotB.role === "steer"
 															? /* Stop is the same slot as Send, so while text is typed the
 															     pointer has no Stop: the tooltip is where Esc is said. */
-																t("ui.chat.composer.steer_hint")
+																t(steerHintKey(busyDefaultMode))
 															: t("ui.chat.composer.send_message")
 												}
 											>

@@ -873,6 +873,38 @@ export const AwaitingReply: Story = {
 	),
 };
 
+/** A queue default: the busy placeholder and hint name the queue. */
+export const AwaitingReplyQueue: Story = {
+	render: () => (
+		<Frame label="awaiting reply under a queue default">
+			<MessageInput
+				isLoading={true}
+				messages={NONEMPTY}
+				conversationId="story"
+				awaitingReply={true}
+				busyDefaultMode="queue"
+				onSendMessage={async () => true}
+			/>
+		</Frame>
+	),
+};
+
+/** A both default: the busy placeholder and hint name wait-then-interrupt. */
+export const AwaitingReplyBoth: Story = {
+	render: () => (
+		<Frame label="awaiting reply under a both default">
+			<MessageInput
+				isLoading={true}
+				messages={NONEMPTY}
+				conversationId="story"
+				awaitingReply={true}
+				busyDefaultMode="both"
+				onSendMessage={async () => true}
+			/>
+		</Frame>
+	),
+};
+
 /** The transport is down: the shared derivation yields the hint, as it does here. */
 export const AwaitingReplyTransportDown: Story = {
 	render: () => (
@@ -3889,7 +3921,7 @@ export const BusyDeliveryUnsupported: Story = {
 				"the refusal is not announced: the notice row is missing",
 			);
 		const text = alert.textContent ?? "";
-		if (!/cannot change how messages are sent/i.test(text))
+		if (!/cannot change delivery while busy/i.test(text))
 			throw new Error(`the refusal no longer states the version gap: ${text}`);
 		const box = composerField(canvasElement);
 		if (

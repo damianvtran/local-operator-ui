@@ -201,13 +201,22 @@ test("a modified Enter with no bindings still sends as today (default mode)", ()
 });
 
 test("a bound chord selects its own mode", () => {
-	// `chordFromEvent` cannot spell a modified Enter yet (S4 extends the
-	// grammar), so a bound chord is exercised with a spellable key: the press
-	// spells `primary+j` and the map says queue.
-	const bound = new Map([["primary+j", "queue"]]);
-	assert.deepEqual(sendKeyOf(KEY({ key: "j", metaKey: true }), bound), {
+	// The send-chord grammar is Enter with primary/alt: a bound `primary+enter`
+	// selects queue on the Enter press, and a bound `alt+enter` selects both.
+	const bound = new Map([
+		["primary+enter", "queue"],
+		["alt+enter", "both"],
+	]);
+	assert.deepEqual(sendKeyOf(KEY({ metaKey: true }), bound), {
 		delivery: "queue",
 	});
+	assert.deepEqual(sendKeyOf(KEY({ altKey: true }), bound), {
+		delivery: "both",
+	});
+	// A chord the grammar cannot send (a plain letter chord) never fires, even
+	// when the map binds it: only `isSendChordOf` chords may select a mode.
+	const letter = new Map([["primary+j", "queue"]]);
+	assert.equal(sendKeyOf(KEY({ key: "j", metaKey: true }), letter), null);
 });
 
 test("an unbound key never sends", () => {
@@ -462,7 +471,7 @@ test("the refusal notice is keyed, coded, and offers no retry", () => {
 	// generated key set, so a renamed key fails here as a type error too).
 	assert.equal(
 		SEND_FAILURE_COPY.deliveryUnsupported,
-		"This version of Local Operator cannot change how messages are sent while the agent is busy, so your message wasn't sent. Update the backend and try again.",
+		"Cannot change delivery while busy, so it wasn't sent. Send it as a steer, or update the backend.",
 	);
 });
 
@@ -544,5 +553,17 @@ test("the gate lives at the one seam (chat-page send), and refuses before admiss
 		source,
 		/desktopKeys\.settings/,
 		"the default comes from the shared settings query",
+	);
+	// The send decision reads the live turn state, not the render closure
+	// captured before the awaits.
+	assert.match(
+		source,
+		/busy: turnAliveRef\.current/,
+		"the gate reads turnAliveRef, the value after the awaits",
+	);
+	assert.match(
+		source,
+		/staleTime: 10_000/,
+		"the settings query uses the neighbours' 10s freshness window",
 	);
 });

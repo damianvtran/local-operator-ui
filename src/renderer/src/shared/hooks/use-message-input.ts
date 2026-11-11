@@ -359,6 +359,9 @@ export const COMPOSER_PLACEHOLDER = {
 	 */
 	recording: "ui.chat.composer.placeholder.recording",
 	waiting: "ui.chat.composer.placeholder.waiting",
+	waitingSteer: "ui.chat.composer.placeholder.waiting_steer",
+	waitingQueue: "ui.chat.composer.placeholder.waiting_queue",
+	waitingBoth: "ui.chat.composer.placeholder.waiting_both",
 	/**
 	 * Nothing connected: the invitation would be a lie, and this is the one
 	 * sentence that names the action instead (design audit section 6).
@@ -429,6 +432,11 @@ export const composerPlaceholder = (state: {
 	/** A send has been issued and the agent has not painted anything yet. */
 	awaitingReply: boolean;
 	/**
+	 * The resolved default busy-send mode, so the waiting sentence names what
+	 * Enter does. `steer` or absent keeps the existing key's steer wording.
+	 */
+	busyDefaultMode?: "steer" | "queue" | "both";
+	/**
 	 * No model provider is connected. LAST of the readings, because it is the
 	 * only one that is not about this turn: a send in flight, a pending question
 	 * or a refused box are all things the user is doing right now, and telling
@@ -469,7 +477,15 @@ export const composerPlaceholder = (state: {
 	if (state.asideAttached) return t(COMPOSER_PLACEHOLDER.aside);
 	if (state.stopping) return t(COMPOSER_PLACEHOLDER.stopping);
 	if (state.sendingUnsettled) return t(COMPOSER_PLACEHOLDER.sending);
-	if (state.awaitingReply) return t(COMPOSER_PLACEHOLDER.waiting);
+	if (state.awaitingReply) {
+		if (state.busyDefaultMode === "queue")
+			return t(COMPOSER_PLACEHOLDER.waitingQueue);
+		if (state.busyDefaultMode === "both")
+			return t(COMPOSER_PLACEHOLDER.waitingBoth);
+		if (state.busyDefaultMode === "steer")
+			return t(COMPOSER_PLACEHOLDER.waitingSteer);
+		return t(COMPOSER_PLACEHOLDER.waiting);
+	}
 	if (state.noProvider) return t(COMPOSER_PLACEHOLDER.noProvider);
 	return state.idle ?? t(COMPOSER_PLACEHOLDER.idle);
 };
@@ -1467,6 +1483,7 @@ export const useMessageInput = ({
 					metaKey: e.metaKey,
 					altKey: e.altKey,
 					isComposing: e.nativeEvent.isComposing,
+					keyCode: e.keyCode,
 				},
 				sendChordBindings(useUiPreferencesStore.getState().shortcutBindings),
 			);
