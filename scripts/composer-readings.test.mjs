@@ -1916,3 +1916,76 @@ test("a queued model intent names the next step on the band, with no spinner", (
 	assert.doesNotMatch(applying, /applies at the next step/);
 	assert.match(applying, /waiting for the session to confirm/);
 });
+
+/*
+ * THE BORROWED-ACCESS NOTE (operator report, 2026-11-11). A remote session on
+ * healthy borrowed access used to carry a standing card above the composer;
+ * informational access states now ride the strip as an `i` readout beside the
+ * model and effort, and the states that need action keep the card (asserted in
+ * `session-status.test.mjs`). This renders the shipped strip for each state.
+ */
+function accessFrame(effective_state) {
+	return {
+		...DRAFT,
+		selected_model: GPT_5,
+		model_access: {
+			state: effective_state === "effective_borrow" ? "ok" : "signed_out",
+			effective_state,
+			provider: "openrouter",
+			label: "OpenRouter",
+			owner_device: "synthetic-owner",
+			owner_label: "Work laptop",
+			observed_at: 1700000000,
+			last_grant_at: 1699999900,
+			last_grant_expires_at: 1699999950,
+		},
+	};
+}
+
+for (const [state, shown] of [
+	["effective_borrow", true],
+	["pending", true],
+	["eligible_borrow_unverified", true],
+	["expired", false],
+	["withdrawn", false],
+	["owner_unavailable", false],
+	["device_bound", false],
+	["absent", false],
+]) {
+	test(`the strip's access note for ${state}: ${shown ? "an i readout" : "none (the card owns it)"}`, () => {
+		const html = renderStrip({
+			frontend: accessFrame(state),
+			onCommand: () => undefined,
+		});
+		const marker = new RegExp(`data-lo-model-access="${state}"`);
+		if (!shown) {
+			assert.doesNotMatch(html, /data-lo-model-access=/);
+			return;
+		}
+		assert.match(html, marker);
+		// Focusable, named by the fact, never a button with nothing to open.
+		const readout = html.match(
+			/<span tabindex="0" aria-label="([^"]*)"[^>]*>(?:(?!<\/span>).)*data-lo-model-access=/,
+		);
+		assert.ok(readout, "the icon sits inside a focusable, labelled readout");
+		// The state's own title: the provider (pending) or the owner (borrow).
+		assert.match(readout[1], /OpenRouter|Work laptop/);
+	});
+}
+
+test("the strip names borrowed access in the readout's accessible name", () => {
+	const html = renderStrip({
+		frontend: accessFrame("effective_borrow"),
+		onCommand: () => undefined,
+	});
+	assert.match(html, /aria-label="OpenRouter access from Work laptop"/);
+});
+
+test("a draft never carries the access note: its frame is a preview, not a session", () => {
+	const html = renderStrip({
+		frontend: accessFrame("effective_borrow"),
+		draft: true,
+		onOpenDraftPicker: () => undefined,
+	});
+	assert.doesNotMatch(html, /data-lo-model-access=/);
+});

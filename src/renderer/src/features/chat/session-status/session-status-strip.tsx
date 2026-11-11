@@ -47,6 +47,9 @@ import {
 	effortDisplay,
 	effortState,
 	fastModeState,
+	modelAccessIsInformational,
+	modelAccessPresentation,
+	modelAccessReading,
 	modelIdentity,
 	reconcileEffort,
 } from "./session-model";
@@ -1193,6 +1196,25 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 	 */
 	const effortNote = draft ? null : effortDisplacementNote(frontend);
 	/*
+	 * THE MODEL-ACCESS NOTE: an informational access reading (healthy borrowed
+	 * access, or access the runtime is resolving on its own) used to be a
+	 * standing card above the composer; it asks nothing of the user, so it rides
+	 * here as an `i` beside the model and effort it qualifies, with the same
+	 * title/description/history in the tooltip (`modelAccessIsInformational`
+	 * records which states, and why the action-needing ones keep the card).
+	 *
+	 * Read off `frontend` with no serving locality: locality only decides the
+	 * `absent` state's Connect action, and `absent` is never informational. Never
+	 * on a draft, for the composer band's reason: a draft's frame is a preview of
+	 * a session that does not exist yet (`composerModelAccessReading`).
+	 */
+	const accessReading = draft ? null : modelAccessReading(frontend);
+	const accessNote = modelAccessIsInformational(accessReading)
+		? modelAccessPresentation(
+				accessReading as NonNullable<typeof accessReading>,
+			)
+		: null;
+	/*
 	 * The four readings that come off the snapshot, asked for a pane that has no
 	 * snapshot yet. A blank `SessionCostInput` answers the same "no spend" the
 	 * preview's own zeros answer, and `contextReading` of absent tokens is its
@@ -1865,6 +1887,42 @@ const SessionStatusReadings: FC<SessionStatusStripProps> = ({
 							<Info aria-hidden="true" className="size-3 shrink-0" />
 						)}
 					</span>
+				</Reading>
+			)}
+			{accessNote && (
+				/*
+				 * The access note as a READOUT: focusable so the tooltip is reachable
+				 * from the keyboard, named by the title sentence so a screen reader
+				 * hears the fact without a hover, and no false button affordance —
+				 * there is nothing to open (`Reading`'s `readout` note). The title
+				 * leads the tooltip at reading weight, description and history under
+				 * it, the same lines the card used to show.
+				 *
+				 * `data-lo-model-access` carries the state the way the card did, so a
+				 * driver scene reads which state is on screen without matching prose.
+				 */
+				<Reading
+					readout
+					held={held}
+					label={accessNote.title}
+					tooltip={
+						<TooltipLines
+							// Prose throughout: no machine value leads this tooltip.
+							mono={false}
+							lines={[
+								accessNote.title,
+								accessNote.description,
+								...(accessNote.history ? [accessNote.history] : []),
+							]}
+						/>
+					}
+					className="shrink-0 px-1"
+				>
+					<Info
+						aria-hidden="true"
+						data-lo-model-access={accessReading?.effectiveState}
+						className="size-3.5 shrink-0"
+					/>
 				</Reading>
 			)}
 			<Reading

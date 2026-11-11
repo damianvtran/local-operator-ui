@@ -1184,6 +1184,49 @@ export function modelAccessPresentation(access: ModelAccessReading): {
 }
 
 /**
+ * Whether this access reading is INFORMATIONAL — true and worth knowing, but
+ * asking nothing of the user — so it rides the session strip as an `i` icon
+ * whose tooltip carries the facts, instead of a standing card above the
+ * composer.
+ *
+ * WHY (operator report, 2026-11-11). A session running on a mesh peer with
+ * healthy borrowed access showed a persistent multi-line card ("… access from
+ * damians-MacBook-Pro / The runtime resolved borrowed access … / Last checked …
+ * History only …") for as long as the session was open. Nothing in it was
+ * actionable: the borrow is working. A card in the composer's band is the
+ * register for "this needs you"; a fact that needs nothing belongs beside the
+ * readings it qualifies (the model and effort chips).
+ *
+ * THE PER-STATE DECISION, judged on whether the state asks for ACTION:
+ * - `effective_borrow`: access resolved and serving. Icon only.
+ * - `pending`, `eligible_borrow_unverified`: the runtime is resolving access on
+ *   its own and the next request settles it; there is nothing to press. Their
+ *   card offered only `Switch model`, which the model chip right beside the icon
+ *   already opens (the same `/model` command), so no exit is lost. Icon only.
+ * - `expired`, `withdrawn`, `owner_unavailable`, `device_bound`, `absent`, and
+ *   the legacy `signed_out` / `temporarily_unavailable` readings: the session's
+ *   next turn may fail, or the user has a remedy to take (sign in on the serving
+ *   device, restore access, connect, switch). They keep the card — minimising a
+ *   warning the user must act on would hide the reason a turn fails.
+ * - `local` never reaches here (`modelAccessReading` returns null for it).
+ *
+ * Exhaustive on the effective state so a new runtime state is a warning card by
+ * default rather than silently demoted to a hover.
+ */
+export function modelAccessIsInformational(
+	access: ModelAccessReading | null | undefined,
+): boolean {
+	switch (access?.effectiveState) {
+		case "effective_borrow":
+		case "pending":
+		case "eligible_borrow_unverified":
+			return true;
+		default:
+			return false;
+	}
+}
+
+/**
  * The states where the Radient callout IS the sign-in: it offers it
  * (`needs-sign-in`), is running it (`signing-in`), or offers its retry
  * (`settled` with `canRetry`, and `not-cleared`, which keeps `Sign in to

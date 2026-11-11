@@ -115,6 +115,7 @@ const {
 	modelAccessReading,
 	modelAccessPresentation,
 	modelAccessOwnsRadientStatus,
+	modelAccessIsInformational,
 	composerModelAccessReading,
 	modelAccessLocality,
 	priceUnknownText,
@@ -3097,6 +3098,47 @@ for (const control of producerControls.cases) {
 	});
 }
 
+/*
+ * Operator report, 2026-11-11: healthy borrowed access rendered a standing
+ * card above the composer. Informational states now ride the strip's `i`
+ * readout; states that ask for action (or may fail the next turn) keep the card.
+ */
+for (const [state, informational] of [
+	["effective_borrow", true],
+	["pending", true],
+	["eligible_borrow_unverified", true],
+	["expired", false],
+	["withdrawn", false],
+	["owner_unavailable", false],
+	["device_bound", false],
+	["absent", false],
+]) {
+	test(`model access ${state} is ${informational ? "informational (strip icon)" : "actionable (composer card)"}`, () => {
+		assert.equal(
+			modelAccessIsInformational(modelAccessReading(frame(state))),
+			informational,
+		);
+	});
+}
+
+test("legacy and absent access readings are never demoted to the info icon", () => {
+	assert.equal(modelAccessIsInformational(null), false);
+	assert.equal(modelAccessIsInformational(undefined), false);
+	const legacy = frame(undefined, "signed_out");
+	assert.equal(modelAccessIsInformational(modelAccessReading(legacy)), false);
+	const unavailable = frame(undefined, "temporarily_unavailable");
+	assert.equal(
+		modelAccessIsInformational(modelAccessReading(unavailable)),
+		false,
+	);
+	// An unknown future state reads as `pending` (the reader's conservative
+	// default) and so is informational — never invented as healthy access.
+	assert.equal(
+		modelAccessReading(frame("some_future_state")).effectiveState,
+		"pending",
+	);
+});
+
 test("the real page/content/composer wires the tested serving context and decision", () => {
 	const page = readFileSync(
 		"src/renderer/src/features/chat/components/chat-page.tsx",
@@ -3119,6 +3161,10 @@ test("the real page/content/composer wires the tested serving context and decisi
 	assert.ok(content.includes('servingLocality?: "local" | "remote"'));
 	assert.ok(content.includes("sessionStatus={sessionStatus}"));
 	assert.ok(composer.includes("composerModelAccessReading(sessionStatus)"));
+	assert.ok(
+		composer.includes("!modelAccessIsInformational(modelAccess) &&"),
+		"the composer card yields informational access to the strip's icon",
+	);
 	assert.ok(
 		composer.includes(
 			"!modelAccessOwnsRadientStatus(modelAccess) && radientIssueBlock",
