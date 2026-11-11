@@ -1248,6 +1248,41 @@ const api = {
 			at: number,
 		): Promise<unknown> =>
 			ipcRenderer.invoke("browser-passkey-notice-continue", tabId, at),
+		/** "Return to agent" on a passkey custody notice (see
+		 * `extensions/passkey-custody.ts`). Ids and the click's `isTrusted` only. */
+		releasePasskeyCustody: (
+			tabId: number,
+			at: number,
+			trusted: boolean,
+		): Promise<unknown> =>
+			ipcRenderer.invoke("browser-passkey-custody-release", tabId, at, trusted),
+		onPasskeyCustodyAttention: (
+			callback: (payload: {
+				tabId: number;
+				requesterSessionId: string | null;
+			}) => void,
+		): (() => void) => {
+			const handler = (
+				_event: unknown,
+				payload: { tabId?: unknown; requesterSessionId?: unknown },
+			) => {
+				if (typeof payload?.tabId !== "number") return;
+				callback({
+					tabId: payload.tabId,
+					requesterSessionId:
+						typeof payload.requesterSessionId === "string"
+							? payload.requesterSessionId
+							: null,
+				});
+			};
+			ipcRenderer.on("browser-passkey-custody-attention", handler);
+			return () => {
+				ipcRenderer.removeListener(
+					"browser-passkey-custody-attention",
+					handler,
+				);
+			};
+		},
 		/**
 		 * Answer the camera/microphone prompt. `trusted` is the click's
 		 * `event.isTrusted`; main refuses a decision without it, and the id is the

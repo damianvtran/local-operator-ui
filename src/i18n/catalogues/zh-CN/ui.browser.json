@@ -137,7 +137,7 @@
 	"ui.browser.browser_passkey_notice.message": "{who, select, agent {智能体驱动的标签页中的 {site} 请求了通行密钥，可能正在等待。} agentFrame {智能体驱动的标签页中，来自 {site} 的框架请求了通行密钥，可能正在等待。} userFrame {此页面上来自 {site} 的框架请求了通行密钥，可能正在等待。} other {{site} 请求了通行密钥，可能正在等待。}}",
 	"ui.browser.browser_passkey_notice.open_in_system_browser": "在系统浏览器中打开",
 	"ui.browser.browser_passkey_notice.continue_in_own_tab": "在你自己的标签页中继续",
-	"ui.browser.browser_passkey_notice.agent_explanation": "如果你的通行密钥存放在密码管理器中，它的弹窗无法在由智能体控制的标签页中显示。你自己的标签页与此浏览器共享登录会话，因此在那里登录后，请让智能体重新加载此页面。",
+	"ui.browser.browser_passkey_notice.agent_explanation": "如果你的密码管理器无法在由智能体控制的标签页中显示通行密钥窗口，请在你自己的标签页中继续。它与此浏览器共享登录会话，因此在那里登录后，请让智能体重新加载此页面。",
 	"ui.browser.browser_passkey_notice.continue_refused_stale": "该通行密钥通知已失效。",
 	"ui.browser.browser_passkey_notice.continue_refused_not_agent": "该标签页已不再由智能体控制。",
 	"ui.browser.browser_passkey_notice.continue_refused_in_flight": "你自己的标签页已在打开中。",
@@ -255,5 +255,9 @@
 	"ui.browser.webauthn_chooser.the_site_stored_no_name_for_this": "网站未为此通行密钥保存名称。",
 	"ui.browser.webauthn_chooser.this_passkey_request_expired": "此通行密钥请求已过期",
 	"ui.browser.webauthn_chooser.this_passkey_request_was_cancelled": "此通行密钥请求已取消",
-	"ui.browser.browser_url_bar.reload_shortcut": "重新加载（{shortcut}）"
+	"ui.browser.browser_url_bar.reload_shortcut": "重新加载（{shortcut}）",
+	"ui.browser.browser_passkey_custody.label": "有一个通行密钥请求在等你",
+	"ui.browser.browser_passkey_custody.message": "密码管理器正在此智能体的标签页中请你确认通行密钥。",
+	"ui.browser.browser_passkey_custody.explanation": "只有你能看到并回应它。在你交还此标签页之前，智能体会在这里暂停。",
+	"ui.browser.browser_passkey_custody.return_to_agent": "交还给智能体"
 }

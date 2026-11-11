@@ -1237,7 +1237,7 @@
 	"ui.browser.browser_passkey_notice.agent_explanation": {
 		"role": "explanatory text \u2014 passkey notice strip, agent-driven tab only",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
-		"note": "Conditional, not a diagnosis: the request may have failed for another reason (NotAllowed cannot tell a cancellation from a missing credential), so keep the 'If\u2026'. 'Its prompt' is the password manager's own passkey dialog window (e.g. 1Password's), NOT an AI prompt \u2014 translate as a window/dialog, not the glossary's 'prompt' (\u63d0\u793a\u8bcd/\u043f\u0440\u043e\u043c\u043f\u0442). 'Your own tab' is the tab the 'Continue in your own tab' button opens; do not repeat the button label. It is in the same app browser and shares its sign-in (cookies), so the remaining step is the user asking the agent to reload 'this page' (the agent's tab, whose site may differ from the frame named in the sentence before). Do not imply the system browser's session is shared; do not promise the sign-in will succeed."
+		"note": "Conditional, not a diagnosis, and now narrower: some password managers CAN show their passkey window in an agent tab (the user answers it there), so the sentence covers only one that can't. Also conditional because the request may have failed for another reason (NotAllowed cannot tell a cancellation from a missing credential), so keep the 'If\u2026'. 'Its prompt' is the password manager's own passkey dialog window (e.g. 1Password's), NOT an AI prompt \u2014 translate as a window/dialog, not the glossary's 'prompt' (\u63d0\u793a\u8bcd/\u043f\u0440\u043e\u043c\u043f\u0442). 'Your own tab' is the tab the 'Continue in your own tab' button opens; do not repeat the button label. It is in the same app browser and shares its sign-in (cookies), so the remaining step is the user asking the agent to reload 'this page' (the agent's tab, whose site may differ from the frame named in the sentence before). Do not imply the system browser's session is shared; do not promise the sign-in will succeed."
 	},
 	"ui.browser.browser_passkey_notice.continue_refused_stale": {
 		"role": "error reason \u2014 passkey notice continue toast",
@@ -1287,5 +1287,25 @@
 		"placeholders": {
 			"shortcut": "The platform's shortcut glyphs (for example \u2318R); do not translate."
 		}
+	},
+	"ui.browser.browser_passkey_custody.label": {
+		"role": "accessible region name \u2014 passkey custody band, agent-driven tab only",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Names the band for screen readers. \"Passkey\" is the WebAuthn credential (use the locale\u2019s established passkey term, as in browser_passkey_notice). \"Prompt\" is the password manager\u2019s own dialog window, NOT an AI prompt. Length: compact, around the English footprint."
+	},
+	"ui.browser.browser_passkey_custody.message": {
+		"role": "status text \u2014 passkey custody band, agent-driven tab only",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "A password manager\u2019s passkey dialog (e.g. 1Password\u2019s) has opened inside a browser tab an AI agent is driving, and the USER must confirm it. Do not name a product. \"This agent\u2019s tab\" is the tab the agent was using. Do not imply the agent can see or answer the dialog."
+	},
+	"ui.browser.browser_passkey_custody.explanation": {
+		"role": "explanatory text \u2014 passkey custody band, agent-driven tab only",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "States the safety guarantee: the agent can neither see nor answer the dialog, and its work on this tab is paused until the user presses the \"Return to agent\" button. \"Return it\" means giving the tab back to the agent. Keep both sentences; do not promise that sign-in will succeed."
+	},
+	"ui.browser.browser_passkey_custody.return_to_agent": {
+		"role": "button label \u2014 passkey custody band",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Hands the tab back to the AI agent so it can continue. Short imperative, around the English footprint. \"Agent\" uses the glossary term for an AI agent (vi t\u00e1c nh\u00e2n, zh-CN \u667a\u80fd\u4f53)."
 	}
 }

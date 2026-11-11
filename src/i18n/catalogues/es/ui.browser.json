@@ -119,7 +119,7 @@
 	"ui.browser.browser_passkey_notice.message": "{who, select, agent {{site}, en una pestaña controlada por un agente, pidió una clave de acceso y puede que esté esperando.} agentFrame {Un marco de {site}, en una pestaña controlada por un agente, pidió una clave de acceso y puede que esté esperando.} userFrame {Un marco de {site} en esta página pidió una clave de acceso y puede que esté esperando.} other {{site} pidió una clave de acceso y puede que esté esperando.}}",
 	"ui.browser.browser_passkey_notice.open_in_system_browser": "Abrir en el navegador del sistema",
 	"ui.browser.browser_passkey_notice.continue_in_own_tab": "Continuar en tu pestaña",
-	"ui.browser.browser_passkey_notice.agent_explanation": "Si tu clave de acceso está en un gestor de contraseñas, su ventana no puede aparecer en una pestaña que controla un agente. Tu propia pestaña comparte el inicio de sesión de este navegador, así que, cuando hayas iniciado sesión allí, pide al agente que recargue esta página.",
+	"ui.browser.browser_passkey_notice.agent_explanation": "Si tu gestor de contraseñas no puede mostrar su ventana de clave de acceso en una pestaña que controla un agente, continúa en tu propia pestaña. Comparte el inicio de sesión de este navegador, así que, cuando hayas iniciado sesión allí, pide al agente que recargue esta página.",
 	"ui.browser.browser_passkey_notice.continue_refused_stale": "Ese aviso de clave de acceso ya no está vigente.",
 	"ui.browser.browser_passkey_notice.continue_refused_not_agent": "Un agente ya no controla esa pestaña.",
 	"ui.browser.browser_passkey_notice.continue_refused_in_flight": "Tu propia pestaña ya se está abriendo.",
@@ -255,5 +255,9 @@
 	"ui.browser.browser_tab_strip.close_failed_tabs": "Cerrar {count, plural, one {{count, number, ::group-off} pestaña con error} many {{count, number, ::group-off} de pestañas con error} other {{count, number, ::group-off} pestañas con error}}",
 	"ui.browser.browser_tab_strip.close_conversation_tabs": "Cerrar {count, plural, one {{count, number, ::group-off} pestaña} many {{count, number, ::group-off} de pestañas} other {{count, number, ::group-off} pestañas}} de esta conversación",
 	"ui.browser.browser_file_transfer_row.attached_verb": "{count, plural, one {se adjuntó a} other {se adjuntaron a}}",
-	"ui.browser.browser_file_transfer_row.upload_more": "+ {count, plural, other {{count, number, ::group-off} más}}"
+	"ui.browser.browser_file_transfer_row.upload_more": "+ {count, plural, other {{count, number, ::group-off} más}}",
+	"ui.browser.browser_passkey_custody.label": "Solicitud de clave de acceso pendiente",
+	"ui.browser.browser_passkey_custody.message": "Un gestor de contraseñas te pide confirmar una clave de acceso en la pestaña de este agente.",
+	"ui.browser.browser_passkey_custody.explanation": "Solo tú puedes verla y responderla. El agente está en pausa en esta pestaña hasta que se la devuelvas.",
+	"ui.browser.browser_passkey_custody.return_to_agent": "Devolver al agente"
 }

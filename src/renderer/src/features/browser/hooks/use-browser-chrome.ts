@@ -11,7 +11,10 @@ import type {
 	MediaPermissionDecision,
 	MediaPermissionView,
 } from "../../../../../shared/browser-media-permission";
-import type { PasskeyNoticeView } from "../../../../../shared/browser-passkey-notice";
+import type {
+	PasskeyCustodyView,
+	PasskeyNoticeView,
+} from "../../../../../shared/browser-passkey-notice";
 import type { HumanTabActionOutcome } from "../../../../../shared/browser-tab-action";
 import {
 	type TabActionsMenuRequest,
@@ -189,6 +192,10 @@ export interface BrowserChromeState {
 	 * provide" notice, or null. Main's facts only (origin, owner); see
 	 * `src/shared/browser-passkey-notice.ts`. Optional for a host that predates it. */
 	passkeyNotice?: PasskeyNoticeView | null;
+	/** The active tab's passkey custody (a password manager's prompt is up in an
+	 * agent tab and the agent is paused there), or null. Optional for a host that
+	 * predates it. */
+	passkeyCustody?: PasskeyCustodyView | null;
 	/** The active tab's camera/microphone prompt (or macOS notice), or null. Main's
 	 * facts only; see `src/shared/browser-media-permission.ts`. Optional for a host
 	 * that predates it. */
@@ -520,6 +527,13 @@ export interface BrowserChrome {
 		tabId: number,
 		at: number,
 	) => Promise<boolean>;
+	/** "Return to agent" on a passkey custody notice. `trusted` must be the
+	 * click's own `event.isTrusted`: main releases nothing without it. */
+	releasePasskeyCustody: (
+		tabId: number,
+		at: number,
+		trusted: boolean,
+	) => Promise<void>;
 	/** Answer the camera/microphone prompt. `trusted` must be the click's own
 	 * `event.isTrusted`: main grants nothing without it. */
 	decideMediaPermission: (
@@ -952,6 +966,8 @@ export function useBrowserChrome(): BrowserChrome {
 			clearData: (what) => runVoid(() => api?.clearData(what)),
 			dismissPasskeyNotice: (tabId, at) =>
 				runVoid(() => api?.dismissPasskeyNotice(tabId, at)),
+			releasePasskeyCustody: (tabId, at, trusted) =>
+				runVoid(() => api?.releasePasskeyCustody?.(tabId, at, trusted)),
 			decideMediaPermission: (tabId, id, decision, trusted) =>
 				runVoid(() => api?.decideMediaPermission(tabId, id, decision, trusted)),
 			openMediaSystemSettings: (tabId, id) =>

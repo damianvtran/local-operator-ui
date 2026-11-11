@@ -664,6 +664,34 @@ const App: FC = () => {
 	}, [navigate, setActiveSession, setBrowserPaneOpen]);
 
 	/*
+	 * A password manager's passkey prompt came up in an agent-driven tab and the
+	 * agent is paused there until the user answers it and returns the tab
+	 * (`main/browser/extensions/passkey-custody.ts`). Main has already made that
+	 * tab the browser's active one and asked `window-raise.ts` for the window;
+	 * this half lands the user where the prompt is — the agent's conversation
+	 * with its browser pane open, or the browser route for a tab no conversation
+	 * owns — exactly as a consent banner click does.
+	 */
+	useEffect(() => {
+		const unsubscribe = window.api?.browser?.onPasskeyCustodyAttention?.(
+			(payload) => {
+				const target = consentClickTarget(
+					payload.requesterSessionId,
+					useCanonicalSessionsStore.getState().sessions,
+				);
+				if (target.kind === "browser") {
+					navigate("/browser");
+					return;
+				}
+				setActiveSession(target.sessionId);
+				setBrowserPaneOpen(true);
+				navigate("/chat");
+			},
+		);
+		return () => unsubscribe?.();
+	}, [navigate, setActiveSession, setBrowserPaneOpen]);
+
+	/*
 	 * `⌘N` / `Ctrl+N` starts a new chat, from wherever the user is — the other
 	 * half of the promise the sidebar's New chat row prints as a key cap.
 	 *

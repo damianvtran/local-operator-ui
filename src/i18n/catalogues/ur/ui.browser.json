@@ -137,7 +137,7 @@
 	"ui.browser.browser_passkey_notice.message": "{who, select, agent {ایجنٹ کے چلائے ہوئے ٹیب میں {site} کی طرف سے پاس کی کی درخواست آئی ہے، اور شاید جواب کا انتظار ہے۔} agentFrame {ایجنٹ کے چلائے ہوئے ٹیب میں {site} کے فریم کی طرف سے پاس کی کی درخواست آئی ہے، اور شاید جواب کا انتظار ہے۔} userFrame {اس صفحے پر {site} کے فریم کی طرف سے پاس کی کی درخواست آئی ہے، اور شاید جواب کا انتظار ہے۔} other {{site} کی طرف سے پاس کی کی درخواست آئی ہے، اور شاید جواب کا انتظار ہے۔}}",
 	"ui.browser.browser_passkey_notice.open_in_system_browser": "سسٹم براؤزر میں کھولیں",
 	"ui.browser.browser_passkey_notice.continue_in_own_tab": "اپنے ٹیب میں جاری رکھیں",
-	"ui.browser.browser_passkey_notice.agent_explanation": "اگر آپ کی پاس کی کسی پاس ورڈ مینیجر میں ہے تو اس کی ونڈو ایجنٹ کے چلائے جانے والے ٹیب میں ظاہر نہیں ہو سکتی۔ آپ کا اپنا ٹیب اس براؤزر کا سیشن شیئر کرتا ہے، اس لیے وہاں سائن ان کرنے کے بعد ایجنٹ سے یہ صفحہ دوبارہ لوڈ کرنے کو کہیں۔",
+	"ui.browser.browser_passkey_notice.agent_explanation": "اگر آپ کا پاس ورڈ مینیجر ایجنٹ کے چلائے جانے والے ٹیب میں اپنی پاس کی ونڈو نہیں دکھا سکتا تو اپنے ٹیب میں جاری رکھیں۔ وہ اس براؤزر کا سیشن شیئر کرتا ہے، اس لیے وہاں سائن ان کرنے کے بعد ایجنٹ سے یہ صفحہ دوبارہ لوڈ کرنے کو کہیں۔",
 	"ui.browser.browser_passkey_notice.continue_refused_stale": "پاس کی کا یہ نوٹس اب کارآمد نہیں رہا۔",
 	"ui.browser.browser_passkey_notice.continue_refused_not_agent": "اب اس ٹیب کو کوئی ایجنٹ نہیں چلا رہا۔",
 	"ui.browser.browser_passkey_notice.continue_refused_in_flight": "آپ کا اپنا ٹیب پہلے ہی کھل رہا ہے۔",
@@ -255,5 +255,9 @@
 	"ui.browser.webauthn_chooser.the_site_stored_no_name_for_this": "سائٹ نے اس پاس کی کا کوئی نام محفوظ نہیں کیا۔",
 	"ui.browser.webauthn_chooser.this_passkey_request_expired": "پاس کی کی اس درخواست کی میعاد ختم ہو گئی",
 	"ui.browser.webauthn_chooser.this_passkey_request_was_cancelled": "پاس کی کی یہ درخواست منسوخ ہو گئی",
-	"ui.browser.browser_url_bar.reload_shortcut": "دوبارہ لوڈ کریں ({shortcut})"
+	"ui.browser.browser_url_bar.reload_shortcut": "دوبارہ لوڈ کریں ({shortcut})",
+	"ui.browser.browser_passkey_custody.label": "پاس کی کی درخواست آپ کی منتظر ہے",
+	"ui.browser.browser_passkey_custody.message": "ایک پاس ورڈ مینیجر اس ایجنٹ کے ٹیب میں آپ سے پاس کی کی تصدیق کرنے کو کہہ رہا ہے۔",
+	"ui.browser.browser_passkey_custody.explanation": "اسے صرف آپ دیکھ اور اس کا جواب دے سکتے ہیں۔ جب تک آپ یہ ٹیب واپس نہیں کرتے، ایجنٹ اس ٹیب پر رکا رہے گا۔",
+	"ui.browser.browser_passkey_custody.return_to_agent": "ایجنٹ کو واپس دیں"
 }

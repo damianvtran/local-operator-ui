@@ -137,7 +137,7 @@
 	"ui.browser.browser_passkey_notice.message": "{who, select, agent {एजेंट द्वारा चलाए जा रहे टैब में {site} ने पासकी माँगी है और शायद जवाब का इंतज़ार कर रहा है।} agentFrame {एजेंट द्वारा चलाए जा रहे टैब में {site} के फ़्रेम ने पासकी माँगी है और शायद जवाब का इंतज़ार कर रहा है।} userFrame {इस पेज पर {site} के फ़्रेम ने पासकी माँगी है और शायद जवाब का इंतज़ार कर रहा है।} other {{site} ने पासकी माँगी है और शायद जवाब का इंतज़ार कर रहा है।}}",
 	"ui.browser.browser_passkey_notice.open_in_system_browser": "सिस्टम ब्राउज़र में खोलें",
 	"ui.browser.browser_passkey_notice.continue_in_own_tab": "अपने टैब में जारी रखें",
-	"ui.browser.browser_passkey_notice.agent_explanation": "अगर आपकी पासकी किसी पासवर्ड मैनेजर में है, तो उसकी विंडो एजेंट द्वारा चलाए जा रहे टैब में नहीं दिख सकती। आपका अपना टैब इस ब्राउज़र का सत्र साझा करता है, इसलिए वहाँ साइन इन करने के बाद एजेंट से यह पेज फिर लोड करने को कहें।",
+	"ui.browser.browser_passkey_notice.agent_explanation": "अगर आपका पासवर्ड मैनेजर एजेंट द्वारा चलाए जा रहे टैब में अपनी पासकी विंडो नहीं दिखा सकता, तो अपने टैब में जारी रखें। वह इस ब्राउज़र का सत्र साझा करता है, इसलिए वहाँ साइन इन करने के बाद एजेंट से यह पेज फिर लोड करने को कहें।",
 	"ui.browser.browser_passkey_notice.continue_refused_stale": "पासकी की यह सूचना अब मान्य नहीं है।",
 	"ui.browser.browser_passkey_notice.continue_refused_not_agent": "उस टैब को अब कोई एजेंट नहीं चला रहा है।",
 	"ui.browser.browser_passkey_notice.continue_refused_in_flight": "आपका अपना टैब पहले से खुल रहा है।",
@@ -255,5 +255,9 @@
 	"ui.browser.webauthn_chooser.the_site_stored_no_name_for_this": "साइट ने इस पासकी का कोई नाम नहीं रखा।",
 	"ui.browser.webauthn_chooser.this_passkey_request_expired": "इस पासकी अनुरोध का समय समाप्त हुआ",
 	"ui.browser.webauthn_chooser.this_passkey_request_was_cancelled": "यह पासकी अनुरोध रद्द हुआ",
-	"ui.browser.browser_url_bar.reload_shortcut": "फिर से लोड करें ({shortcut})"
+	"ui.browser.browser_url_bar.reload_shortcut": "फिर से लोड करें ({shortcut})",
+	"ui.browser.browser_passkey_custody.label": "पासकी अनुरोध आपका इंतज़ार कर रहा है",
+	"ui.browser.browser_passkey_custody.message": "एक पासवर्ड मैनेजर इस एजेंट के टैब में आपसे पासकी की पुष्टि करने को कह रहा है।",
+	"ui.browser.browser_passkey_custody.explanation": "इसे सिर्फ़ आप देख और जवाब दे सकते हैं। जब तक आप यह टैब वापस नहीं करते, एजेंट इस टैब पर रुका रहेगा।",
+	"ui.browser.browser_passkey_custody.return_to_agent": "एजेंट को वापस दें"
 }

@@ -95,9 +95,11 @@ export async function read(
 	let text: unknown;
 	try {
 		text = await deadline(
-			record.view.webContents.executeJavaScriptInIsolatedWorld(
-				ISOLATED_WORLD_ID,
-				[{ code }],
+			ctx.registry.guardRead(record, () =>
+				record.view.webContents.executeJavaScriptInIsolatedWorld(
+					ISOLATED_WORLD_ID,
+					[{ code }],
+				),
 			),
 			SCRIPTING_DEADLINE_MS,
 			`read(${selector})`,
@@ -249,9 +251,11 @@ export async function copy(
 	let answer: unknown;
 	try {
 		answer = await deadline(
-			record.view.webContents.executeJavaScriptInIsolatedWorld(
-				ISOLATED_WORLD_ID,
-				[{ code }],
+			ctx.registry.guardRead(record, () =>
+				record.view.webContents.executeJavaScriptInIsolatedWorld(
+					ISOLATED_WORLD_ID,
+					[{ code }],
+				),
 			),
 			SCRIPTING_DEADLINE_MS,
 			`copy(${selector})`,

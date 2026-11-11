@@ -137,7 +137,7 @@
 	"ui.browser.browser_passkey_notice.message": "{who, select, agent {{site}, in an agent-driven tab, asked for a passkey and may be waiting.} agentFrame {A frame from {site}, in an agent-driven tab, asked for a passkey and may be waiting.} userFrame {A frame from {site} on this page asked for a passkey and may be waiting.} other {{site} asked for a passkey and may be waiting.}}",
 	"ui.browser.browser_passkey_notice.open_in_system_browser": "Open in system browser",
 	"ui.browser.browser_passkey_notice.continue_in_own_tab": "Continue in your own tab",
-	"ui.browser.browser_passkey_notice.agent_explanation": "If your passkey is in a password manager, its prompt can’t appear in a tab an agent is driving. Your own tab shares this browser’s sign-in, so once you’ve signed in there, ask the agent to reload this page.",
+	"ui.browser.browser_passkey_notice.agent_explanation": "If your password manager can’t show its passkey window in a tab an agent is driving, continue in your own tab. It shares this browser’s sign-in, so once you’ve signed in there, ask the agent to reload this page.",
 	"ui.browser.browser_passkey_notice.continue_refused_stale": "That passkey notice is no longer current.",
 	"ui.browser.browser_passkey_notice.continue_refused_not_agent": "An agent is no longer driving that tab.",
 	"ui.browser.browser_passkey_notice.continue_refused_in_flight": "Your own tab is already opening.",
@@ -255,5 +255,9 @@
 	"ui.browser.webauthn_chooser.the_site_stored_no_name_for_this": "The site stored no name for this passkey.",
 	"ui.browser.webauthn_chooser.this_passkey_request_expired": "This passkey request expired",
 	"ui.browser.webauthn_chooser.this_passkey_request_was_cancelled": "This passkey request was cancelled",
-	"ui.browser.browser_url_bar.reload_shortcut": "Reload ({shortcut})"
+	"ui.browser.browser_url_bar.reload_shortcut": "Reload ({shortcut})",
+	"ui.browser.browser_passkey_custody.label": "Passkey prompt waiting for you",
+	"ui.browser.browser_passkey_custody.message": "A password manager is asking you to confirm a passkey in this agent’s tab.",
+	"ui.browser.browser_passkey_custody.explanation": "Only you can see and answer it. The agent is paused on this tab until you return it.",
+	"ui.browser.browser_passkey_custody.return_to_agent": "Return to agent"
 }
