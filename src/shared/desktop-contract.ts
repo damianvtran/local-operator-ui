@@ -6184,9 +6184,45 @@ export const phoneSetupResultSchema = z
 		billing_outcome: z.string().optional(),
 		reservation_outcome: z.string().optional(),
 		failure_stage: z.string().optional(),
+		/*
+		 * Which tunnel transport the Radient server offers this computer:
+		 * `"relay"` (the AWS-native tunnel relay; the connector runs inside `lop`
+		 * itself, so nothing has to be installed) or `"cloudflare"` (the legacy
+		 * Cloudflare Tunnel, which needs the `cloudflared` binary). OPTIONAL and a
+		 * plain string, for the same additive reasons as `step`: a backend that
+		 * predates the relay omits it, and an absent or unknown value keeps the
+		 * cloudflared behaviour exactly as it was. The name and values mirror the
+		 * server's `Tunnel.transport` (agent-server docs/TUNNEL_RELAY.md); the
+		 * local-operator setup route is expected to forward it beside `blocked_on`.
+		 * Only `phoneSetupSkipsCloudflared` reads it.
+		 */
+		transport: z.string().optional(),
 	})
 	.passthrough();
 export type PhoneSetupResult = z.infer<typeof phoneSetupResultSchema>;
+
+/**
+ * Whether the "install cloudflared" setup step does not apply to this answer.
+ *
+ * True only when the backend says the server offers the relay transport AND the
+ * answer is the cloudflared prerequisite. Under the relay, `lop` carries the
+ * connector in-process, so telling a person to install `cloudflared` would send
+ * them to install software the tunnel no longer uses. A relay-aware backend is
+ * expected not to report that blocker at all; this is the renderer's half of the
+ * same rule, so a backend that still reports it (a plan computed before the
+ * server started advertising the relay, or a backend whose preflight lags its
+ * transport field) does not put the instruction on screen.
+ *
+ * Keyed on `blocked_on` OR `remedy.kind` because those are the two machine fields
+ * the block already switches on; never on the remedy sentence.
+ */
+export function phoneSetupSkipsCloudflared(result: PhoneSetupResult): boolean {
+	if (result.transport !== "relay") return false;
+	return (
+		result.blocked_on === "cloudflared" ||
+		result.remedy?.kind === "install_cloudflared"
+	);
+}
 
 /**
  * The refusal codes the setup route declares in `detail.code`, each carrying a
