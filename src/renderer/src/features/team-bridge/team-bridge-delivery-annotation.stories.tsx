@@ -358,12 +358,20 @@ export const SummaryNonSenderView: Story = {
 	args: { states: undefined, summary: CHANNEL_SUMMARY },
 };
 
-/* Everything delivered: every member still sees the confirmation that
- * screening ran (review R3, design D4). */
+/* Everything delivered: renders NOTHING (operator 2026-11-10: a "Delivered to
+ * N" under every message cluttered the channel; silence now means complete). */
 export const SummaryAllDelivered: Story = {
 	args: {
 		states: undefined,
 		summary: { total: 3, delivered: 3 },
+	},
+};
+
+/* Still in progress: the line stays until every recipient is delivered. */
+export const SummaryOneBeingScreened: Story = {
+	args: {
+		states: undefined,
+		summary: { total: 6, delivered: 5, screening: 1 },
 	},
 };
 

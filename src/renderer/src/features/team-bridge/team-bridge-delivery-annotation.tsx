@@ -373,10 +373,9 @@ const HOVER_CLOSE_MS = 150;
  *
  * Single line, truncating with an ellipsis ("Delivered to N" first, D5); the
  * full text stays available as the button's accessible name and, for the plain
- * view, its `title`. With a hub summary it renders even when everything was
- * delivered ("Delivered to 3", review R3 / design D4); without one it renders
- * nothing when nothing is outstanding. The shared row mounts it
- * unconditionally.
+ * view, its `title`. It renders nothing once delivery is complete (every
+ * recipient delivered, operator 2026-11-10; see `teamBridgeDeliverySummary`),
+ * so the shared row mounts it unconditionally and reserves no space for it.
  */
 export const TeamBridgeDeliveryAnnotation: FC<{
 	message: Pick<TeamBridgeMessage, "delivery_states"> &
