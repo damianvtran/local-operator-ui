@@ -195,6 +195,15 @@ export type MusicGeneratingView = {
 	state: MusicGeneratingState;
 	/** `modify_music` names its act differently; nothing else changes. */
 	modify: boolean;
+	/**
+	 * Tracks SETTLED, the number the motif's "{completed}/{total} tracks
+	 * settled" label states (D1, design r17). In flight it is Core's own
+	 * `music.completed`; once the job has settled every track has too - ready,
+	 * failed, or ended by the cancel - so it equals `total`. Counting only
+	 * tracks with audio here made a finished failed/partial card read "0/1" or
+	 * "1/2 tracks settled", as if work were still pending. Which outcome each
+	 * track had is the result row's job (`MusicResult`), not this counter's.
+	 */
 	completed: number;
 	total: number;
 	/** The settled receipt's billed/estimated caption; null = none stated. */
@@ -259,7 +268,7 @@ function successorOutcome(
 		return {
 			...base,
 			state: completed > 0 ? "finished_after_cancel" : "cancelled",
-			completed,
+			completed: tracks.length,
 			total: tracks.length,
 			cost: receiptCost(settled.receipt),
 		};
@@ -278,7 +287,7 @@ function successorOutcome(
 	return {
 		...base,
 		state: live.status === "done" ? "finished_after_cancel" : "cancelled",
-		completed,
+		completed: total,
 		total,
 		cost: null,
 	};
@@ -352,7 +361,7 @@ export function musicGeneratingView({
 		return {
 			...base,
 			state,
-			completed,
+			completed: tracks.length,
 			total: tracks.length,
 			cost: state === "done" ? null : receiptCost(settlement.receipt),
 		};
@@ -369,7 +378,7 @@ export function musicGeneratingView({
 					: row.status === "failed"
 						? "failed"
 						: "done";
-			return { ...base, state, completed, total };
+			return { ...base, state, completed: total, total };
 		}
 		const stage = row.music?.stage;
 		const state: MusicGeneratingState =

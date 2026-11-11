@@ -1277,6 +1277,10 @@ jobs:
         with:
           name: music-native-acceptance-${{ github.sha }}-${{ github.run_id }}
           path: ${{ runner.temp }}/music-acceptance-artifacts/
+          # Core's logs (runtime.log, runtime-stall-*.log) sit under the serving
+          # home's `.local-operator/` directory; upload-artifact@v4 drops hidden
+          # paths by default, so files artifact-index.json lists went missing (Q4).
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
 

@@ -9,11 +9,19 @@ import { Music2 } from "lucide-react";
  */
 export const MusicJobMotif = ({
 	active,
+	settled = false,
 	completed,
 	total,
 	attribution,
 }: {
 	active: boolean;
+	/**
+	 * The job has finished (D1, design r17): the motif stays painted, static
+	 * and dimmed, in the same 240x44 box. Removing it would shrink the in-chat
+	 * card as the job settles; leaving it at full ink read as still working.
+	 * Absent on the Jobs row, whose settled rows keep their own treatment.
+	 */
+	settled?: boolean;
 	completed?: number;
 	total?: number;
 	attribution?: string;
@@ -44,7 +52,8 @@ export const MusicJobMotif = ({
 			aria-hidden="true"
 			className={cn(
 				"max-w-full text-ink-dim",
-				active && "motion-safe:animate-pulse",
+				active && !settled && "motion-safe:animate-pulse",
+				settled && "opacity-40",
 			)}
 		>
 			{[0, 1, 2, 3].map((group) => (

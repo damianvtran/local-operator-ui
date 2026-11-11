@@ -501,6 +501,72 @@ test("render: stable selector, state copy, motion-safe-only animation, constant 
 	assert.match(failed, /Cost \$0 \(billed\)\./);
 });
 
+/*
+ * D1/U7/Q2 (design r17): the label reads "{completed}/{total} tracks settled",
+ * so `completed` must count SETTLED tracks - ready, failed, or ended by a
+ * cancel - not only tracks with audio. A finished card that said "0/1 tracks
+ * settled" told the operator one track was still pending. And a finished card's
+ * motif rests: no animation, dimmed, the same 240x44 box so nothing reflows.
+ */
+test("a finished card counts every track settled and rests its motif (D1)", () => {
+	const details = receiptDetails("job1");
+	const settle = (status, tracks) =>
+		musicGeneratingView({
+			toolName: "generate_music",
+			details,
+			row: undefined,
+			settlement: { status, receipt: { attribution: "", tracks } },
+		});
+	const ready = { id: "a", images: [{}], cost: null };
+	const lost = { id: "b", images: [], error: true, cost: null };
+	const resting = (view, label) => {
+		const markup = renderToStaticMarkup(h(MusicGeneratingCard, { view }));
+		const svg = svgOf(markup);
+		assert.doesNotMatch(svg, /animate-pulse/, `${label}: never animated`);
+		assert.match(svg, /opacity-40/, `${label}: dimmed at rest`);
+		assert.match(svg, /width="240"/);
+		assert.match(svg, /height="44"/);
+		return markup;
+	};
+	const partial = settle("completed", [ready, lost]);
+	assert.deepEqual(
+		[partial.state, partial.completed, partial.total],
+		["done", 2, 2],
+	);
+	assert.match(resting(partial, "partial"), /2\/2 tracks settled/);
+	const failed = settle("failed", [lost]);
+	assert.deepEqual(
+		[failed.state, failed.completed, failed.total],
+		["failed", 1, 1],
+	);
+	assert.match(resting(failed, "failed"), /1\/1 tracks settled/);
+	for (const state of ["cancelled", "finished_after_cancel"]) {
+		resting({ ...partial, state }, state);
+	}
+	// The live Jobs row settled before the durable row landed: same count.
+	const liveFailed = musicGeneratingView({
+		toolName: "generate_music",
+		details,
+		row: row("job1", {
+			status: "failed",
+			music: { stage: "polling", total: 2, completed: 0 },
+		}),
+		settlement: undefined,
+	});
+	assert.deepEqual([liveFailed.completed, liveFailed.total], [2, 2]);
+	// In flight: Core's own partial count, animated, never dimmed.
+	const working = musicGeneratingView({
+		toolName: "generate_music",
+		details,
+		row: row("job1"),
+		settlement: undefined,
+	});
+	const live = renderToStaticMarkup(h(MusicGeneratingCard, { view: working }));
+	assert.match(live, /1\/2 tracks settled/);
+	assert.match(svgOf(live), /motion-safe:animate-pulse/);
+	assert.doesNotMatch(svgOf(live), /opacity-40/);
+});
+
 /* jsdom only for the press: no layout here, so nothing below is geometry. */
 const { JSDOM } = await import("jsdom");
 const dom = new JSDOM("<!doctype html>", { url: "http://localhost/" });
@@ -893,9 +959,10 @@ test("a genuinely cancelled music job stays cancelled at $0", () => {
 	const view = cardFor(
 		settledFrom([cancelledOriginal, observerResult(stopped)]),
 	);
+	// The cancelled track has settled (D1): the count is settled tracks, 1/1.
 	assert.deepEqual(
-		[view.state, view.completed, view.cost],
-		["cancelled", 0, "Cost $0 (billed)."],
+		[view.state, view.completed, view.total, view.cost],
+		["cancelled", 1, 1, "Cost $0 (billed)."],
 	);
 });
 

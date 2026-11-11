@@ -35,6 +35,14 @@ const stateLine = (view: MusicGeneratingView): string => {
 	}
 };
 
+/** States in which the job is over and its motif rests (D1, design r17). */
+const SETTLED_STATES: ReadonlySet<MusicGeneratingView["state"]> = new Set([
+	"done",
+	"failed",
+	"cancelled",
+	"finished_after_cancel",
+]);
+
 /**
  * The in-chat generating card for one detached music job (see
  * `music-generating-model.ts` for where each state comes from).
@@ -46,7 +54,7 @@ const stateLine = (view: MusicGeneratingView): string => {
  * on the existing `job_result` row (`MusicResult`), unchanged, so the transcript
  * never paints one purchased track twice. The motif animates only while the
  * provider is working, and only under `motion-safe`, so reduced motion paints
- * the identical box at rest.
+ * the identical box at rest; a finished job's motif rests dimmed in that box.
  */
 export const MusicGeneratingCard = ({
 	view,
@@ -76,6 +84,7 @@ export const MusicGeneratingCard = ({
 				</p>
 				<MusicJobMotif
 					active={view.state === "generating"}
+					settled={SETTLED_STATES.has(view.state)}
 					completed={view.completed}
 					total={view.total}
 				/>
