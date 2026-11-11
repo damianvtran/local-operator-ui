@@ -1,0 +1,88 @@
+{
+ "schema": 1,
+ "auditor": "translation-auditor (lopdev reviewer role, session 1b1866b4f2ed; independent of PR author and translator)",
+ "model": "anthropic/claude-opus-5-5",
+ "fallback": "none observed in this session",
+ "instance": "1b1866b4f2ed-settings-intents-r2-ru",
+ "session": "1b1866b4f2ed",
+ "locale": "ru",
+ "namespace": "ui.chat.settings_intents",
+ "branch": "settings-intents worktree",
+ "head": "9772d4db3646e0955a36c6bcbe7f6ad5add730a0",
+ "pr": "damianvtran/local-operator-ui#1823",
+ "date": "2026-11-09",
+ "audit_kind": "round-2 remediation audit: verified each round-1 finding's proposed value is applied verbatim; all 21 keys re-read at these bytes",
+ "status": "passed",
+ "result": "clean",
+ "keys_read": 21,
+ "sha256": {
+  "en": "1536ffc5114aac868f85021483eca0986fd13d95dfe7c5343bdfc888a3f51730",
+  "ru": "eab3f354890cab1da08ab37b7e9bb9187bca214371d3c191e753d4f4181841bf",
+  "context": "666d32cad3596286b869a55ee3edc8400dcf282fbd10a4b0514228b18ba8cfab"
+ },
+ "reference_sha256": {
+  "glossary": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "style_guide": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+ },
+ "inputs": {
+  "source": "src/i18n/catalogues/en/ui.chat.settings_intents.json",
+  "context": "src/i18n/catalogues/en/ui.chat.settings_intents.context.json",
+  "target": "src/i18n/catalogues/ru/ui.chat.settings_intents.json",
+  "glossary": "~/local-operator/i18n/glossary.md",
+  "style_guide": "~/local-operator/i18n/style-guides/ru.md"
+ },
+ "translator": {
+  "agent": "remediate-settings-ui (coder, lopdev)",
+  "model": "anthropic/claude-opus-5-5",
+  "fallback": "none",
+  "source": "manager brief 2026-11-09 + PR comment 6756120565",
+  "note": "original round-1 translator not recorded in repo artifacts"
+ },
+ "independence": "Auditor session 1b1866b4f2ed authored the proposed replacement values (as finding text) but did not edit the tree; the implementer applied them. Shared Claude model family with the remediation translator (disclosed, not cross-family).",
+ "prior_receipt": {
+  "instance": "1b1866b4f2ed-settings-intents-ru",
+  "path": "ui-receipts/1b1866b4f2ed-settings-intents-ru.json",
+  "target_sha256": "f953551c65a1e29247ee736a2f0c8a4a24fe12025a32db62d75ebc8112bc1b94",
+  "result": "clean-with-findings"
+ },
+ "round1_dispositions": [
+  {
+   "id": "I3.1",
+   "severity": "MINOR",
+   "key": "ui.chat.settings_intents.effort_queued",
+   "disposition": "fixed in 9772d4db364 (value equals proposed, byte-compared)"
+  },
+  {
+   "id": "I3.2",
+   "severity": "MINOR",
+   "key": "ui.chat.settings_intents.failed_effort",
+   "disposition": "fixed in 9772d4db364 (value equals proposed, byte-compared)"
+  },
+  {
+   "id": "I3.3",
+   "severity": "MINOR",
+   "key": "ui.chat.settings_intents.setting_effort",
+   "disposition": "fixed in 9772d4db364 (value equals proposed, byte-compared)"
+  },
+  {
+   "id": "I3.4",
+   "severity": "MINOR",
+   "key": "ui.chat.settings_intents.superseded_effort",
+   "disposition": "fixed in 9772d4db364 (value equals proposed, byte-compared)"
+  },
+  {
+   "id": "I4.1",
+   "severity": "NIT",
+   "key": "ui.chat.settings_intents.model_queued",
+   "disposition": "fixed in 9772d4db364 (value equals proposed, byte-compared)"
+  }
+ ],
+ "scope_proof": "git diff aa01bc5f696..9772d4db364 -- src/i18n/catalogues touches only the 5 remediated ui.chat.settings_intents locale files; en, en context, fr, zh-CN byte-identical to round-1 audited bytes.",
+ "verified": [
+  "key set equals en (21)",
+  "placeholder names equal en",
+  "no bidi control characters",
+  "each round-1 proposed value equals current value"
+ ],
+ "findings": []
+}

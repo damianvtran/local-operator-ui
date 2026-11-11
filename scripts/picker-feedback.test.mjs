@@ -1969,7 +1969,9 @@ test("one binding answers which model the session is on", () => {
 	const picker = source("features/chat/pickers/destination-pickers.tsx");
 	assert.match(
 		picker,
-		/const shownSelector = draft[\s\S]{0,200}?: \(pickedCurrent \?\? currentSelector\)/,
+		// The window admits the settings-intents arm (PR #1823), which reads the
+		// intent's target in place of the paint; the non-intent arm is unchanged.
+		/const shownSelector = draft[\s\S]{0,400}?: \(pickedCurrent \?\? currentSelector\)/,
 		"the picker's one answer to which model this session is on",
 	);
 	assert.match(
@@ -2163,7 +2165,10 @@ test("the handle reconciles the paint against the owner's own frames", () => {
 
 	// And the strip is what draws it, from the prop the page passes.
 	const page = source("features/chat/components/chat-page.tsx");
-	assert.match(page, /pendingModel: canonical\.pendingModel/);
+	// Under `features.settings_intents` a durable intent's target outranks the
+	// handle's paint (PR #1823: the pickers no longer arm the paint there); the
+	// handle's paint is still what the strip draws everywhere else.
+	assert.match(page, /pendingModel: intentModel \?\? canonical\.pendingModel/);
 	const strip = source("features/chat/session-status/session-status-strip.tsx");
 	/*
 	 * Reviewer round 1, major 1: the paint outranks the IDENTITY reading only.
@@ -2173,7 +2178,12 @@ test("the handle reconciles the paint against the owner's own frames", () => {
 	 * existed. The reading is now drawn from the in-force spec, which is also the
 	 * honest reading for that window: that is the model the session is running.
 	 */
-	assert.match(strip, /bandReadings\(frontend, pendingModel\)/);
+	// The third argument is a durable effort intent's level (PR #1823), which
+	// overrides only the level on the in-force spec, never the paint.
+	assert.match(
+		strip,
+		/bandReadings\(frontend, pendingModel(?:, pendingEffort)?\)/,
+	);
 	assert.match(strip, /effortState\(readings\.effort\)/);
 	assert.doesNotMatch(
 		strip,

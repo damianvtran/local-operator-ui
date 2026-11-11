@@ -99223,6 +99223,214 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.chat.settings_intents",
+			"source_sha256": "1536ffc5114aac868f85021483eca0986fd13d95dfe7c5343bdfc888a3f51730",
+			"target_sha256": "cfc94000ec9f3846bdf4cc0e37721c546ad8d9b55507deb9a90b470565b60e69",
+			"translator": {
+				"agent": "remediate-settings-ui (coder)",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-09"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"instance": "1b1866b4f2ed-settings-intents-r2-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/1b1866b4f2ed-settings-intents-r2-es.json",
+					"receipt_sha256": "14cfaecb32a9f22db7e4244a1fa30a24764a73d73a422e14d77712d6055211f0",
+					"note": "R1 1b1866b4f2ed findings fixed 9772d4db364; R2 clean (anthropic/claude-opus-5-5, no fallback)"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat.settings_intents",
+			"source_sha256": "1536ffc5114aac868f85021483eca0986fd13d95dfe7c5343bdfc888a3f51730",
+			"target_sha256": "f504a53ae58203e4cd63548c8df3ade5f3f996e258433987d1415c9bb0e90cd7",
+			"translator": {
+				"agent": "remediate-settings-ui (coder)",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-09"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"instance": "1b1866b4f2ed-settings-intents-r2-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/1b1866b4f2ed-settings-intents-r2-hi.json",
+					"receipt_sha256": "a01c4a116cafee93eb8e96091b3f208705244432e3c6f4ff1cd09c31690bb145",
+					"note": "R1 1b1866b4f2ed findings fixed 9772d4db364; R2 clean (anthropic/claude-opus-5-5, no fallback)"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.chat.settings_intents",
+			"source_sha256": "1536ffc5114aac868f85021483eca0986fd13d95dfe7c5343bdfc888a3f51730",
+			"target_sha256": "eab3f354890cab1da08ab37b7e9bb9187bca214371d3c191e753d4f4181841bf",
+			"translator": {
+				"agent": "remediate-settings-ui (coder)",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-09"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"instance": "1b1866b4f2ed-settings-intents-r2-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/1b1866b4f2ed-settings-intents-r2-ru.json",
+					"receipt_sha256": "d699c6cacc67834f818fb18a0fd6005a174f485b63bee6c6702e3a8ae28a42b4",
+					"note": "R1 1b1866b4f2ed findings fixed 9772d4db364; R2 clean (anthropic/claude-opus-5-5, no fallback)"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.chat.settings_intents",
+			"source_sha256": "1536ffc5114aac868f85021483eca0986fd13d95dfe7c5343bdfc888a3f51730",
+			"target_sha256": "53a37e172ea7db457041f901d79bca1b8c4b5d74200529cd34f27e24b0b92485",
+			"translator": {
+				"agent": "remediate-settings-ui (coder)",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-09"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"instance": "1b1866b4f2ed-settings-intents-r2-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/1b1866b4f2ed-settings-intents-r2-ur.json",
+					"receipt_sha256": "5e276cd6faa4b840501a8277eecbbb26a4c0df49d56d02a53fa668a93a59b7bb",
+					"note": "R1 1b1866b4f2ed findings fixed 9772d4db364; R2 clean (anthropic/claude-opus-5-5, no fallback)"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.chat.settings_intents",
+			"source_sha256": "1536ffc5114aac868f85021483eca0986fd13d95dfe7c5343bdfc888a3f51730",
+			"target_sha256": "76966566feda7e0d75d11221b53ea77870c7d7e73ca03cc512d0b8eba20b691b",
+			"translator": {
+				"agent": "remediate-settings-ui (coder)",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-09"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"instance": "1b1866b4f2ed-settings-intents-r2-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/1b1866b4f2ed-settings-intents-r2-vi.json",
+					"receipt_sha256": "a85a37540689732fc123d5fc6f2be3416f3e5386f5e89af871b0ea2612917c2d",
+					"note": "R1 1b1866b4f2ed findings fixed 9772d4db364; R2 clean (anthropic/claude-opus-5-5, no fallback)"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.chat.settings_intents",
+			"source_sha256": "1536ffc5114aac868f85021483eca0986fd13d95dfe7c5343bdfc888a3f51730",
+			"target_sha256": "cc8a8a38f613a1cc6e46b8676aa4e5ae4ecf0efec7e066ea53e9e64b618635a6",
+			"translator": {
+				"agent": "remediate-settings-ui (coder)",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-09"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"instance": "1b1866b4f2ed-settings-intents-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/1b1866b4f2ed-settings-intents-fr.json",
+					"receipt_sha256": "1ad1c64fa0a728a01af7d6fc64a66dbc00338c4ba072dadf7c4ed7af770fc47d"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.chat.settings_intents",
+			"source_sha256": "1536ffc5114aac868f85021483eca0986fd13d95dfe7c5343bdfc888a3f51730",
+			"target_sha256": "7623f76e4e2a5fed9f89f25092baccb5cf68983cc0caa6e2e46c3b9ebbb12364",
+			"translator": {
+				"agent": "remediate-settings-ui (coder)",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-09"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"instance": "1b1866b4f2ed-settings-intents-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/1b1866b4f2ed-settings-intents-zh-cn.json",
+					"receipt_sha256": "76c1f64c3320c493c83d58e67ac4d1be5a92cf2dd7caa6d80dd5026fee7a84ff"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }

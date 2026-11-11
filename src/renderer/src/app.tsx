@@ -54,6 +54,7 @@ import {
 	noteConsentAttention,
 } from "@shared/browser-consent-attention";
 import { useSuppressBrowserView } from "@shared/browser-view-policy";
+import { useSettingsIntentsSync } from "@shared/hooks/use-settings-intents";
 import { useI18nLocaleSync } from "@shared/i18n/locale-sync";
 import { useDocumentDirection } from "@shared/i18n/use-document-direction";
 import { useKeymapShortcuts } from "@shared/keymap/use-keymap-shortcuts";
@@ -191,6 +192,13 @@ const App: FC = () => {
 	 * one-value reason; it renders nothing.
 	 */
 	useI18nLocaleSync();
+	/*
+	 * The settings-intent mirror's baselines (boot + every feed reconnect) and
+	 * the model picker's warm catalogue. Mounted once: it holds no state of its
+	 * own, and a second mount would only repeat the same reads. Inert unless the
+	 * backend advertises `settings_intents`.
+	 */
+	useSettingsIntentsSync();
 	/*
 	 * The document root's `dir`/`lang`, derived from the locale manifest and
 	 * re-written whenever the store moves. Mounted here, once, for the same

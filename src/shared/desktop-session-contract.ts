@@ -1,4 +1,8 @@
-import type { TagRef } from "./desktop-contract";
+import type {
+	SettingsIntent,
+	SettingsIntentKind,
+	TagRef,
+} from "./desktop-contract";
 // These are the canonical backend wire shapes, not legacy agent/job identities.
 // Owner state revisions and HTTP semantic receipt cursors are independent. See
 // docs/desktop-controls.md before implementing replay or notifications.
@@ -2416,6 +2420,23 @@ export type DesktopFeedFrame =
 			payload: { agent_id: string; sha256: string | null };
 	  }
 	| { epoch: string; seq: number; type: "heartbeat"; payload: { ts: number } }
+	/**
+	 * ONE SESSION's settings-intent slot moved (`features.settings_intents`).
+	 *
+	 * Live-only, like `notification`: `GET /v1/desktop/settings-intents` is the
+	 * baseline, re-read on every feed reconnect, so a frame missed during an
+	 * outage costs nothing. `intent: null` means the slot was pruned. Applied by
+	 * `settings-intents.ts`'s generation guard, so a frame that arrives once per
+	 * mounted feed hook (several per window) is idempotent. An older renderer
+	 * ignores the type outright.
+	 */
+	| {
+			epoch: string;
+			seq: number;
+			type: "settings_intent";
+			session_id: CanonicalSessionId;
+			payload: { kind: SettingsIntentKind; intent: SettingsIntent | null };
+	  }
 	| {
 			epoch: string;
 			seq: number;
