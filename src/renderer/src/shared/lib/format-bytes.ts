@@ -23,11 +23,16 @@
  * the download row's tooltip (grouped, so the digits are readable; review
  * round 1, D6/U6) and the installer's logs.
  *
- * A leaf module with no imports on purpose: the message-budget suite bundles
- * it (`scripts/desktop-renderer-transport.test.mjs`) and the storybook builds
- * import it from the components that render sizes, so nothing it needs may
- * drag a component graph in with it.
+ * A leaf module with no COMPONENT imports on purpose: the message-budget suite
+ * bundles it (`scripts/desktop-renderer-transport.test.mjs`) and the storybook
+ * builds import it from the components that render sizes, so nothing it needs
+ * may drag a component graph in with it. Its one import is the dependency-free
+ * Intl layer (`i18n/format` imports only `i18n/locale`, which imports nothing),
+ * which supplies the locale's digits, decimal mark and unit symbol; the DECIMAL
+ * ladder and the 999_500 rungs below are this module's and unchanged.
  */
+
+import { formatByteQuantity } from "../../../../i18n/format";
 
 /**
  * Format `bytes` for display.
@@ -53,7 +58,26 @@
  * budgets smaller still.)
  */
 export function formatByteSize(bytes: number): string {
-	if (bytes >= 999_500_000) return `${(bytes / 1_000_000_000).toFixed(1)} GB`;
-	if (bytes >= 999_500) return `${(bytes / 1_000_000).toFixed(1)} MB`;
-	return `${Math.round(bytes / 1000)} KB`;
+	const oneDecimal = { minimumFractionDigits: 1, maximumFractionDigits: 1 };
+	// `Number(x.toFixed(1))` first: the helper's `Intl` rounds the shortest
+	// decimal half-expand while the `toFixed(1)` this replaced rounded the binary
+	// double, so an exact tie such as 1_450_000 bytes printed `1.4 MB` before and
+	// `1.5 MB` after. Pre-rounding keeps English byte-identical (review m2).
+	if (bytes >= 999_500_000)
+		return formatByteQuantity(
+			Number((bytes / 1_000_000_000).toFixed(1)),
+			"GB",
+			oneDecimal,
+		);
+	if (bytes >= 999_500)
+		return formatByteQuantity(
+			Number((bytes / 1_000_000).toFixed(1)),
+			"MB",
+			oneDecimal,
+		);
+	// `+ 0` turns the -0 that `Math.round(-0.4)` yields into 0: `Intl` prints the
+	// sign of negative zero (`-0 KB`) where the old template literal did not.
+	return formatByteQuantity(Math.round(bytes / 1000) + 0, "KB", {
+		maximumFractionDigits: 0,
+	});
 }

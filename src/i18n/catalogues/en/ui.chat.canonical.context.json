@@ -3124,5 +3124,20 @@
 		"placeholders": {
 			"name": "file basename or URL; insert verbatim"
 		}
+	},
+	"ui.chat.canonical.tool.never_sent_composed": {
+		"role": "one-line status of a tool call that never reached a tool, after the model had already written part of its request",
+		"tone": "terse lower-case status line, no trailing punctuation; the middle dot is a separator between status and detail",
+		"length": "Short; shares one row with the tool name and truncates with an ellipsis when narrow.",
+		"note": "Whole line is one message so word order can follow the target language. 'never sent' = the call was not delivered to any tool (the harness refused it or the turn ended first). 'composed' = how much of the request the model had written before it stopped.",
+		"placeholders": {
+			"size": "an already-localized file size such as 12.4 KB (digits, decimal mark and unit symbol come from the app's number formatter); insert verbatim, do not translate or reformat"
+		}
+	},
+	"ui.chat.canonical.tool.never_sent_empty": {
+		"role": "one-line status of a tool call that never reached a tool and had no request content written yet",
+		"tone": "terse lower-case status line, no trailing punctuation; the middle dot is a separator between status and detail",
+		"length": "Short; shares one row with the tool name and truncates with an ellipsis when narrow.",
+		"note": "Sibling of never_sent_composed with nothing to measure: 'nothing composed' = the model had not written any of the request. Keep the two lines parallel in wording."
 	}
 }

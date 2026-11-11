@@ -250,7 +250,11 @@ export const LibraryCard: FC<
 					<KindLabel kind={asset.kind} />
 				</span>
 				<span aria-hidden="true">·</span>
-				<span>{formatBytes(asset.size_bytes)}</span>
+				{/* <bdi>: in an RTL locale a bare "2.4 kB" paints as "kB 2.4" (digit,
+				 * neutral space, Latin letter); the size is its own isolate. */}
+				<span>
+					<bdi>{formatBytes(asset.size_bytes)}</bdi>
+				</span>
 				{asset.duration_s ? (
 					<>
 						<span aria-hidden="true">·</span>
@@ -367,7 +371,9 @@ export const LibraryRow: FC<
 				<span>
 					<KindLabel kind={asset.kind} />
 				</span>
-				<span>{formatBytes(asset.size_bytes)}</span>
+				<span>
+					<bdi>{formatBytes(asset.size_bytes)}</bdi>
+				</span>
 				<OriginBadge group={asset.origin_group} />
 				{asset.favorite && <FavoriteMark />}
 			</div>

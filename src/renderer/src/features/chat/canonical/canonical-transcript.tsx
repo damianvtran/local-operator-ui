@@ -2317,7 +2317,11 @@ function toolRecordSummary(
 		// size is the record of how far the model got before nothing would receive
 		// it (`ToolCard.mark_not_run`). An empty payload is named rather than
 		// rendered as `0 B`, which would claim a measurement.
-		return `never sent · ${record.argumentBytes ? `${formatBytes(record.argumentBytes)} composed` : "nothing composed"}`;
+		return record.argumentBytes
+			? t("ui.chat.canonical.tool.never_sent_composed", {
+					size: formatBytes(record.argumentBytes),
+				})
+			: t("ui.chat.canonical.tool.never_sent_empty");
 	if (composing)
 		return `composing${record.argumentBytes ? ` · ${formatBytes(record.argumentBytes)}` : ""}`;
 	if (queued)

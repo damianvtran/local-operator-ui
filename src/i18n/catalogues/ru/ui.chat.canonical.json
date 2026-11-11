@@ -438,5 +438,7 @@
 	"ui.chat.canonical.notice.stopped_with_error": "Остановлено из-за ошибки",
 	"ui.chat.canonical.notice.compaction_not_run": "Сжатие не выполнено: {detail}",
 	"ui.chat.canonical.notice.compaction_not_run_after_colon": "Сжатие не выполнено — {detail}",
-	"ui.chat.canonical.link_toolkit.actions_for": "Действия для {name}"
+	"ui.chat.canonical.link_toolkit.actions_for": "Действия для {name}",
+	"ui.chat.canonical.tool.never_sent_composed": "не отправлено · написано {size}",
+	"ui.chat.canonical.tool.never_sent_empty": "не отправлено · ничего не написано"
 }

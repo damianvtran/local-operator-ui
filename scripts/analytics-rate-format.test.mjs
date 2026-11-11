@@ -198,12 +198,18 @@ test("the unit symbols stay ASCII in every locale (documented exception)", () =>
 	withLocale("fr", () => {
 		assert.equal(mod.formatMs(840), "840 ms");
 		assert.equal(mod.formatTokensPerSecond(5), "5,0 tok/s");
-		assert.equal(mod.formatBytes(3 * 2 ** 30), "3,0 GB");
 		assert.equal(mod.formatContextTokens(1_200_000), "1,2m");
 		assert.equal(mod.formatWindow(1_500_000), "1,5M");
 		assert.equal(mod.formatTokens(2_000), "2k");
 		assert.equal(mod.formatDuration(3725), "1h 2m");
 	});
+});
+
+test("file sizes follow #1861's localised helper (number AND unit label)", () => {
+	// Not an exception: formatBytes delegates to formatByteQuantity, whose unit
+	// labels are localised (fr: Go) and whose decimal follows the locale.
+	withLocale("en", () => assert.equal(mod.formatBytes(3 * 2 ** 30), "3.0 GB"));
+	withLocale("fr", () => assert.equal(mod.formatBytes(3 * 2 ** 30), "3,0\u202fGo"));
 });
 
 test("an unparseable day bucket is still returned verbatim in any locale", () => {

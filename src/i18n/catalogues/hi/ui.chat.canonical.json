@@ -438,5 +438,7 @@
 	"ui.chat.canonical.notice.stopped_with_error": "त्रुटि के साथ रुका",
 	"ui.chat.canonical.notice.compaction_not_run": "संपीडन नहीं चला: {detail}",
 	"ui.chat.canonical.notice.compaction_not_run_after_colon": "संपीडन नहीं चला — {detail}",
-	"ui.chat.canonical.link_toolkit.actions_for": "{name} की कार्रवाइयाँ"
+	"ui.chat.canonical.link_toolkit.actions_for": "{name} की कार्रवाइयाँ",
+	"ui.chat.canonical.tool.never_sent_composed": "नहीं भेजा गया · {size} लिखा गया",
+	"ui.chat.canonical.tool.never_sent_empty": "नहीं भेजा गया · कुछ नहीं लिखा गया"
 }

@@ -19,16 +19,18 @@
  * `13 sept.` in French. The i18n programme's bar is no English anywhere in a
  * chosen language, so this file no longer pins `en-US`.
  *
- * DOCUMENTED EXCEPTIONS — the unit SYMBOLS stay ASCII English in every
+ * DOCUMENTED EXCEPTIONS — these unit SYMBOLS stay ASCII English in every
  * language, because they are technical symbols rather than prose, are the same
  * letters the terminal (`info/model.py`, `analytics_panel.py`) and the core's
- * `format_duration`/`format_bytes` print, and the style guide's kept-English
- * list covers them (`src/i18n/format.ts` documents the same rule for its own
- * `s/m/h/d` and `B/KB/MB/GB`): `ms`, `s`/`m`/`h`/`d`, `tok/s`, the magnitude
- * letters `k`/`M`/`B` (and context's `m`), and `B`/`MB`/`GB`. They are not
- * catalogue keys on purpose: a translator cannot improve on them and a key
- * would invite drift from the terminal. The digits and the decimal separator
- * around them are NOT exceptions and always follow the locale. Money
+ * `format_duration` print, and the style guide's kept-English list covers them
+ * (`src/i18n/format.ts` documents the same rule for its own `s/m/h/d`): `ms`,
+ * `s`/`m`/`h`/`d`, `tok/s`, and the magnitude letters `k`/`M`/`B` (and
+ * context's `m`). They are not catalogue keys on purpose: a translator cannot
+ * improve on them and a key would invite drift from the terminal. File sizes
+ * are NOT an exception: {@link formatBytes} delegates to `formatByteQuantity`
+ * (#1861), whose unit labels ARE localised (`Mo`, `GB` per locale) and whose
+ * number part follows the locale. The digits and the decimal separator around
+ * every symbol above are NOT exceptions and always follow the locale. Money
  * (`formatMicroUsd`) is out of this slice: a currency amount is its own
  * formatting decision (symbol placement, ISO code) and keeps its `$` ladder.
  *
@@ -38,7 +40,8 @@
  * double half-away (`1.15` → `1.2`) where `toFixed` rounds the exact binary
  * value (`1.15` → `1.1`): rounding in `Intl` would have changed English output
  * the terminal ports pin. Grouping is switched off for those spellings for the
- * same reason (`1500.0 GB`, never `1,500.0 GB`).
+ * same reason (`1500.0k`-style spellings stay ungrouped; `formatBytes` applies
+ * the same `toFixed`-first, ungrouped rule inside `formatByteQuantity`).
  *
  * Two shapes are deliberately NOT here:
  *
@@ -50,7 +53,7 @@
  *   panels are given numbers and format them once.
  */
 
-import { formatDate, formatNumber, t } from "@shared/i18n";
+import { formatByteQuantity, formatDate, formatNumber, t } from "@shared/i18n";
 import { pyFixed } from "../../session-status/fixed-point";
 
 /**
@@ -357,8 +360,14 @@ export function formatBytes(value: number | null | undefined): string {
 	// `NaN MB` / `∞ MB`, and the unknown mark is the same answer this function
 	// already gives for "could not be read".
 	if (!Number.isFinite(value)) return UNKNOWN;
-	if (value >= 1 << 30) return `${fixed(value / (1 << 30), 1)} GB`;
-	return `${roundHalfEven(value / (1 << 20))} MB`;
+	if (value >= 1 << 30)
+		return formatByteQuantity(Number((value / (1 << 30)).toFixed(1)), "GB", {
+			minimumFractionDigits: 1,
+			maximumFractionDigits: 1,
+		});
+	return formatByteQuantity(roundHalfEven(value / (1 << 20)), "MB", {
+		maximumFractionDigits: 0,
+	});
 }
 
 /**
