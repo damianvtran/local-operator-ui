@@ -4202,8 +4202,11 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	onStartNewChat,
 }) => {
 	// The pane's own subscription: the notices and status lines below are
-	// translated and the pane must repaint when the locale changes.
-	useI18nLocale();
+	// translated and the pane must repaint when the locale changes. The value is
+	// also a `rowGroups` dependency: that memo caches `foldLive()` output, which
+	// carries `toolVerb()` text, so a pure locale switch would otherwise leave a
+	// collapsed fold's live clause in the old language until its rows changed.
+	const locale = useI18nLocale();
 	const capabilities = useDesktopCapabilities();
 	const attachmentsCapable = desktopFeatureEnabled(
 		capabilities.data,
@@ -4954,6 +4957,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	 */
 	/* The store's id index, for the latch prune (see `latchFoldedRuns`). */
 	const recordIndex = transcript.index;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `locale` is read by `foldLive` through `t()`, not as a closure value, so the rule sees it as unnecessary; it is the cache key for the translated words (a collapsed fold's live clause).
 	const rowGroups = useMemo(() => {
 		/*
 		 * `isNewestTurn` used to be computed here for the fold's condense; the
@@ -5073,7 +5077,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					}
 				: group,
 		);
-	}, [visible, paneIsLive, paneGap, recordIndex]);
+	}, [visible, paneIsLive, paneGap, recordIndex, locale]);
 	/*
 	 * KEYED ON THE WINDOW'S SIGNATURE, NOT ON `visible` (UI perf audit P4; PR-6).
 	 * The foot is arithmetic over the same partition the plan builds - counts,

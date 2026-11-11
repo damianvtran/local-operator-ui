@@ -1,0 +1,191 @@
+{
+  "auditor": "i18n-auditor",
+  "team": "lopdev",
+  "session": "2cb2b603e46b",
+  "model": "deepseek/deepseek-flash",
+  "instance": "2cb2b603e46b-l1-fr-a",
+  "date": "2026-11-11",
+  "status": "changes_requested",
+  "namespace": "ui.chat.canonical",
+  "locale": "fr",
+  "key_count": 182,
+  "independent_from_translator_session": true,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "openai/gpt-6.1-sol",
+    "session": "unknown to this auditor"
+  },
+  "sha256": {
+    "fr": "6d62a57b3a14a5bf248826d7b6da8d27ae04a9700cd1e64f3462d20a4765b078",
+    "en": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765",
+    "en_context": "2e755f12e46bb6dded6dbf950eda6402b0a7bcb05e9489fa17f7369543f3ac7f",
+    "en_keys_prep": "b3f3bfe3688d1461a061009e98a58802171eb181343fdb8fcfd0af07652ca419"
+  },
+  "audited_bytes": {
+    "target": ".worktrees/_l1-prep/fr.json (prep file, not yet in src/i18n/catalogues/fr/)",
+    "source": "src/i18n/catalogues/en/ui.chat.canonical.json + .worktrees/_l1-prep/keys.json (en value, context.role, notes, width per key)",
+    "consistency_reference": "src/i18n/catalogues/fr/ui.chat.canonical.json (shipped fr, read-only)"
+  },
+  "findings": [
+    {
+      "id": "F-01",
+      "severity": "MAJOR",
+      "key": "ui.chat.canonical.tool_row.verb.updated_agent.settled",
+      "keys": [
+        "ui.chat.canonical.tool_row.verb.updated_agent.settled",
+        "ui.chat.canonical.tool_row.verb.updated_agent.running",
+        "ui.chat.canonical.tool_row.verb.updated_team.settled",
+        "ui.chat.canonical.tool_row.verb.updated_team.running",
+        "ui.chat.canonical.tool_row.verb.updated_secret.settled",
+        "ui.chat.canonical.tool_row.verb.updated_secret.running",
+        "ui.chat.canonical.tool_row.verb.updated_project.settled",
+        "ui.chat.canonical.tool_row.verb.updated_project.running",
+        "ui.chat.canonical.tool_row.verb.updated_milestone.settled",
+        "ui.chat.canonical.tool_row.verb.updated_milestone.running",
+        "ui.chat.canonical.tool_row.verb.updated_todos.settled",
+        "ui.chat.canonical.tool_row.verb.updated_todos.running",
+        "ui.chat.canonical.tool_row.verb.updated_secure_input.settled",
+        "ui.chat.canonical.tool_row.verb.updated_secure_input.running"
+      ],
+      "summary": "update rendered as actualiser (= refresh in the shipped fr corpus); product says mise à jour (206/49/36 vs 27 actualis* occurrences, both actualisé hits are EN refresh)"
+    },
+    {
+      "id": "F-02",
+      "severity": "MAJOR",
+      "key": "ui.chat.canonical.tool_row.verb.peeked_at_session.settled",
+      "keys": [
+        "ui.chat.canonical.tool_row.verb.peeked_at.settled",
+        "ui.chat.canonical.tool_row.verb.peeked_at.running",
+        "ui.chat.canonical.tool_row.verb.peeked_at_session.settled",
+        "ui.chat.canonical.tool_row.verb.peeked_at_session.running"
+      ],
+      "summary": "peek renders as consulter, so peeked_at_session is byte-identical to viewed_session and peeked_at to viewed_*; two distinct operations print the same verb"
+    },
+    {
+      "id": "F-03",
+      "severity": "MAJOR",
+      "key": "ui.chat.canonical.tool_row.verb.ran.settled",
+      "keys": [
+        "ui.chat.canonical.tool_row.verb.ran.settled",
+        "ui.chat.canonical.tool_row.verb.read.settled",
+        "ui.chat.canonical.tool_row.verb.listed_variables.settled",
+        "ui.chat.canonical.tool_row.verb.found_definition.settled",
+        "ui.chat.canonical.tool_row.verb.cancelled.settled"
+      ],
+      "summary": "87/91 settled values use passe compose (A + participe) against fr.md's binding past-participle status rule and the shipped tool_row.verb column (17/17 bare participle); 4 values object-first. Remediation: rework, or record the exception in fr.md and align the 4"
+    },
+    {
+      "id": "F-04",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.verb.raised_panic.settled",
+      "keys": [
+        "ui.chat.canonical.tool_row.verb.raised_panic.settled",
+        "ui.chat.canonical.tool_row.verb.raised_panic.running"
+      ],
+      "summary": "panic is a broadcast revoke + epoch rotation, not an alert; also the longest value in the slice (30 cells)"
+    },
+    {
+      "id": "F-05",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.verb.searched_the_web.settled",
+      "keys": [
+        "ui.chat.canonical.tool_row.verb.searched_the_web.settled",
+        "ui.chat.canonical.tool_row.verb.searched_the_web.running"
+      ],
+      "summary": "shipped fr calls the surface 'le web' (lowercase, 5+ occurrences); Internet is reserved for the connection"
+    },
+    {
+      "id": "F-06",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.verb.checked_network_status.settled",
+      "keys": [
+        "ui.chat.canonical.tool_row.verb.checked_network_status.settled",
+        "ui.chat.canonical.tool_row.verb.checked_network_status.running"
+      ],
+      "summary": "drops 'status': reads as checking the network rather than its status (network doctor)"
+    },
+    {
+      "id": "F-07",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.verb.typed_in_console.settled",
+      "keys": [
+        "ui.chat.canonical.tool_row.verb.typed_in_console.settled",
+        "ui.chat.canonical.tool_row.verb.typed_in_console.running"
+      ],
+      "summary": "'saisi en console' is telegraphic; shipped column keeps a determiner (Lu dans, Reaction dans)"
+    },
+    {
+      "id": "F-08",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.verb.read_network_log.settled",
+      "keys": [
+        "ui.chat.canonical.tool_row.verb.read_network_log.settled",
+        "ui.chat.canonical.tool_row.verb.updated_secure_input.settled",
+        "ui.chat.canonical.tool_row.verb.linked_session_to.settled",
+        "ui.chat.canonical.tool_row.verb.unlinked_session_from.settled"
+      ],
+      "summary": "settled half flips object-first while its own running twin stays verb-first; the pair does not read as one phrase"
+    },
+    {
+      "id": "F-09",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.verb.paused.settled",
+      "keys": [
+        "ui.chat.canonical.tool_row.verb.paused.settled",
+        "ui.chat.canonical.tool_row.verb.paused.running",
+        "ui.chat.canonical.tool_row.verb.steered.settled",
+        "ui.chat.canonical.tool_row.verb.steered.running"
+      ],
+      "summary": "shipped fr uses En pause / Mettre en pause and Oriente / inflichir; 'suspendu' and 'reoriente' diverge in the same feature"
+    },
+    {
+      "id": "F-10",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.tool_row.verb.listed_network_peers.settled",
+      "keys": [
+        "ui.chat.canonical.tool_row.verb.listed_network_peers.settled",
+        "ui.chat.canonical.tool_row.verb.listed_network_peers.running"
+      ],
+      "summary": "drops 'network' (inferable from the row object); acceptable if width matters"
+    },
+    {
+      "id": "F-11",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.tool_row.verb.captured_console.settled",
+      "keys": [
+        "ui.chat.canonical.tool_row.verb.captured_console.settled",
+        "ui.chat.canonical.tool_row.verb.captured_console.running"
+      ],
+      "summary": "'capturer la console' can read as capturing the process rather than screenshotting it"
+    },
+    {
+      "id": "F-12",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.tool_row.verb.sent_keys.settled",
+      "keys": [
+        "ui.chat.canonical.tool_row.verb.sent_keys.settled",
+        "ui.chat.canonical.tool_row.verb.sent_keys.running"
+      ],
+      "summary": "definite article reads better before the key sequence that follows"
+    }
+  ],
+  "severity_counts": { "blocker": 0, "major": 3, "minor": 6, "nit": 3 },
+  "verdict": "changes_requested",
+  "unresolved_blocker_major_count": 3,
+  "findings_addressed_to": "the L1 tool-row verbs landing PR (fr), via manager",
+  "ledger": {
+    "command_attempted": "node scripts/i18n/ledger-assemble.mjs --locale fr --file src/i18n/catalogues/fr/ui.chat.canonical.json --auditor-instance 2cb2b603e46b-l1-fr-a --auditor-model deepseek/deepseek-flash --result changes_requested --receipt <bundle>/receipt.json --translator-agent i18n-translator --translator-model openai/gpt-6.1-sol",
+    "result": "refused, exit 2",
+    "output": "fr/ui.chat.canonical is not key-complete against English (182 missing, 0 extra) - an incomplete locale cannot be recorded",
+    "why": "the 182 keys are audited in the prep file; the shipped fr catalogue does not carry them yet, so no ledger row can be assembled for these bytes",
+    "next_step": "the landing PR assembles the row against the landed catalogue, with this receipt as the audit it records"
+  },
+  "method_limits": {
+    "no_mt_service": true,
+    "no_translation_api_or_sdk": true,
+    "no_backtranslation": true,
+    "edited_any_translation": false,
+    "read_other_auditor_reports": false,
+    "second_independent_pass": "not performed by this auditor; pass A only — a second independent pass is the manager's call for this high-visibility group"
+  }
+}

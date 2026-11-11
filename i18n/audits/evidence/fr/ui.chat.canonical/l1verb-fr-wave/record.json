@@ -1,0 +1,55 @@
+{
+  "locale": "fr",
+  "namespace": "ui.chat.canonical",
+  "final_version": "v2",
+  "final_catalogue_sha256": "96c08fb340c4d3b1a814fa515afbafe3a6f44275d9ca412c756de9775b2a521c",
+  "en_sha256": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765",
+  "chain": [
+    {
+      "instance": "l1verb-fr-r1a",
+      "round": 1,
+      "version": "v1",
+      "model": "deepseek/deepseek-flash",
+      "result": "changes_requested",
+      "counts": {
+        "BLOCKER": 0,
+        "MAJOR": 3,
+        "MINOR": 6,
+        "NIT": 3
+      },
+      "catalogue_sha256": "5b48dbab4b664ffd9f5d155b60bf43e8b61e56f06d1f6727b28d3e1585c205a9",
+      "receipt": "/Users/damian/local-operator-ui/.worktrees/i18n-l1-tool-verbs/i18n/audits/evidence/fr/ui.chat.canonical/l1verb-fr-wave/l1verb-fr-r1a.receipt.json"
+    },
+    {
+      "instance": "l1verb-fr-r1b",
+      "round": 1,
+      "version": "v1",
+      "model": "anthropic/claude-sonnet-5-5",
+      "result": "changes_requested",
+      "counts": {
+        "BLOCKER": 0,
+        "MAJOR": 2,
+        "MINOR": 6,
+        "NIT": 3
+      },
+      "catalogue_sha256": "5b48dbab4b664ffd9f5d155b60bf43e8b61e56f06d1f6727b28d3e1585c205a9",
+      "receipt": "/Users/damian/local-operator-ui/.worktrees/i18n-l1-tool-verbs/i18n/audits/evidence/fr/ui.chat.canonical/l1verb-fr-wave/l1verb-fr-r1b.receipt.json"
+    },
+    {
+      "instance": "l1verb-fr-r2",
+      "round": 2,
+      "version": "v2",
+      "model": "anthropic/claude-sonnet-5-5",
+      "result": "clean-with-findings",
+      "counts": {
+        "BLOCKER": 0,
+        "MAJOR": 0,
+        "MINOR": 6,
+        "NIT": 1
+      },
+      "catalogue_sha256": "96c08fb340c4d3b1a814fa515afbafe3a6f44275d9ca412c756de9775b2a521c",
+      "receipt": "/Users/damian/local-operator-ui/.worktrees/i18n-l1-tool-verbs/i18n/audits/evidence/fr/ui.chat.canonical/l1verb-fr-wave/l1verb-fr-r2.receipt.json"
+    }
+  ],
+  "note": "Chronological audit chain of the L1 tool-row verb batch. Rounds before the final version audited older staged values and are kept as superseded history in i18n/ledger.json."
+}

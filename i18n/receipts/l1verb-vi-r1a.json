@@ -1,0 +1,89 @@
+{
+  "schema": 1,
+  "instance": "l1verb-vi-r1a",
+  "round": 1,
+  "locale": "vi",
+  "namespace": "ui.chat.canonical",
+  "audit_date": "2026-11-11",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "l1verb-vi-r1a",
+    "model": "deepseek/deepseek-flash",
+    "session": "ba0acb28ca3c",
+    "independent_from_translator_session": true,
+    "actual_model_source": "as stated in the auditor's own report (companion report below); no fallback was reported"
+  },
+  "status": "changes_requested",
+  "result": "changes_requested",
+  "scope": "tool_row.verb.* batch, 182 keys (91 settled/running pairs); auditor read staged values vi.json (v1); whole-file hashes below bind the catalogue as it stood at that version",
+  "sha256": {
+    "vi": "d32374f9e54f92b1d8bd1d483abb93f7bafd5001392c5812b05afbb6098be199",
+    "en": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765"
+  },
+  "findings": [
+    {
+      "severity": "MAJOR",
+      "ordinal": 1,
+      "detail": "see companion report i18n/audits/evidence/vi/ui.chat.canonical/l1verb-vi-wave/report-r1a.md (finding ids and text live there)"
+    },
+    {
+      "severity": "MAJOR",
+      "ordinal": 2,
+      "detail": "see companion report i18n/audits/evidence/vi/ui.chat.canonical/l1verb-vi-wave/report-r1a.md (finding ids and text live there)"
+    },
+    {
+      "severity": "MAJOR",
+      "ordinal": 3,
+      "detail": "see companion report i18n/audits/evidence/vi/ui.chat.canonical/l1verb-vi-wave/report-r1a.md (finding ids and text live there)"
+    },
+    {
+      "severity": "MINOR",
+      "ordinal": 1,
+      "detail": "see companion report i18n/audits/evidence/vi/ui.chat.canonical/l1verb-vi-wave/report-r1a.md (finding ids and text live there)"
+    },
+    {
+      "severity": "MINOR",
+      "ordinal": 2,
+      "detail": "see companion report i18n/audits/evidence/vi/ui.chat.canonical/l1verb-vi-wave/report-r1a.md (finding ids and text live there)"
+    },
+    {
+      "severity": "MINOR",
+      "ordinal": 3,
+      "detail": "see companion report i18n/audits/evidence/vi/ui.chat.canonical/l1verb-vi-wave/report-r1a.md (finding ids and text live there)"
+    },
+    {
+      "severity": "MINOR",
+      "ordinal": 4,
+      "detail": "see companion report i18n/audits/evidence/vi/ui.chat.canonical/l1verb-vi-wave/report-r1a.md (finding ids and text live there)"
+    },
+    {
+      "severity": "MINOR",
+      "ordinal": 5,
+      "detail": "see companion report i18n/audits/evidence/vi/ui.chat.canonical/l1verb-vi-wave/report-r1a.md (finding ids and text live there)"
+    },
+    {
+      "severity": "NIT",
+      "ordinal": 1,
+      "detail": "see companion report i18n/audits/evidence/vi/ui.chat.canonical/l1verb-vi-wave/report-r1a.md (finding ids and text live there)"
+    },
+    {
+      "severity": "NIT",
+      "ordinal": 2,
+      "detail": "see companion report i18n/audits/evidence/vi/ui.chat.canonical/l1verb-vi-wave/report-r1a.md (finding ids and text live there)"
+    }
+  ],
+  "findings_note": "Severity counts are transcribed from the companion report; individual finding ids, keys and text are in that report, not repeated here.",
+  "provenance": {
+    "kind": "BINDING RECEIPT: the verdict, counts, model and session are transcribed from the auditor's own report; this file was written by the integrating coder session 5a80bd7da0fd (agent coder, anthropic/claude-sonnet-5-5), NOT by the auditor. The auditor audited a staging file of the 182 values, never the whole catalogue; the whole-file hashes above were computed from the catalogue bytes after those exact values were inserted.",
+    "source_report": {
+      "path": "i18n/audits/evidence/vi/ui.chat.canonical/l1verb-vi-wave/report-r1a.md",
+      "sha256": "707437610f87db36b38beaa2181306d7f7d5b71d1218e6544162eb1012dd5d0a"
+    },
+    "audited_values": {
+      "file": "i18n/audits/evidence/vi/ui.chat.canonical/l1verb-vi-wave/values.v1.json",
+      "sha256": "c24ca242ad0483d5467ccca2033f4077634a9f52a80c1b78c379e0e3a7272cc9",
+      "key_count": 182,
+      "identical_in_bound_catalogue": 182
+    }
+  }
+}
