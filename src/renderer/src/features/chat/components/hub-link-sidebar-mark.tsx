@@ -6,6 +6,7 @@ import { hubLinkView } from "@features/agents/hub-link-adapter";
 import {
 	hubFailureReasonText,
 	hubLinkFailureText,
+	hubMarkFailureDetail,
 	hubReasonText,
 } from "@features/agents/hub-link-copy";
 import { useHubLinkSource } from "@features/agents/hub-link-source";
@@ -207,7 +208,20 @@ export function HubLinkSidebarMark({
 		if (mayReadMemberships) void memberships.refetch();
 		void client.invalidateQueries({ queryKey: hubLinksKey });
 	};
-	const description = `${actionLabel} ${policies}${link.policy.auto_push && link.eligibility.reason ? ` ${t("ui.hub.subscriptions.effective_paused", { reason: hubReasonText(link.eligibility.reason) })}` : ""}`;
+	/*
+	 * A failed or review mark names WHY and WHEN in its tooltip (the direction
+	 * the mark points at, so a pull failure is not explained by push state).
+	 * Without it every failure read as the same generic retry sentence.
+	 */
+	const failureDetail =
+		mark.kind === "failed" || mark.kind === "review"
+			? hubMarkFailureDetail(link[mark.direction])
+			: "";
+	// A review mark's label IS the policies sentence; saying it twice buried the
+	// reason that now follows it.
+	const lead =
+		actionLabel === policies ? policies : `${actionLabel} ${policies}`;
+	const description = `${lead}${failureDetail ? ` ${failureDetail}` : ""}${link.policy.auto_push && link.eligibility.reason ? ` ${t("ui.hub.subscriptions.effective_paused", { reason: hubReasonText(link.eligibility.reason) })}` : ""}`;
 	return (
 		<Popover
 			open={open}

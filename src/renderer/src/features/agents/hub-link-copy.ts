@@ -1,6 +1,6 @@
 import type { HubLinkAction } from "@shared/api/local-operator/hub-link-actions";
 import type { HubDirectionStatus } from "@shared/api/local-operator/hub-links";
-import { t } from "@shared/i18n";
+import { formatDateTime, t } from "@shared/i18n";
 
 /**
  * Translate service codes at the point of use. No raw exception or private body
@@ -86,6 +86,32 @@ export function hubFailureReasonText(status: HubDirectionStatus): string {
 		status.error_class,
 		t("ui.hub.links.incoming_failed_no_reason"),
 	);
+}
+
+/**
+ * The reason-and-freshness tail a COLLAPSED mark's tooltip carries for a
+ * direction that holds an error, or "" when it holds none.
+ *
+ * WHY (operator report, 2026-11-11): the sidebar's failed mark read only
+ * "Retry Incoming update for <team> at <source>" - no cause, and no way to tell
+ * a live failure from a snapshot the window had kept since startup. The cause is
+ * the same sentence the popover already shows (`hubFailureReasonText`: core's
+ * scrubbed `safe_message`, else the translated class), and the check time is the
+ * service's own `last_checked_at`, so a stale mark says how old it is. Both are
+ * existing catalogue keys; nothing here is new copy.
+ */
+export function hubMarkFailureDetail(status: HubDirectionStatus): string {
+	if (!status.error_class) return "";
+	const reason = hubFailureReasonText(status);
+	const checked = status.last_checked_at;
+	if (!checked || !Number.isFinite(Date.parse(checked))) return reason;
+	// Date AND time: a same-day stale snapshot is the case this exists for, and
+	// a bare `formatDateTime` renders the date alone.
+	const time = formatDateTime(new Date(checked), {
+		dateStyle: "medium",
+		timeStyle: "short",
+	});
+	return `${reason} ${t("ui.hub.status.last_checked", { time })}`;
 }
 
 /**
