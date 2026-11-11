@@ -12,13 +12,16 @@
  * can drive, so the decision moved here, where it is a function of a string and
  * `scripts/credential-capture.test.mjs` can exhaust it.
  *
- * THE PARSER SIDE OF THE SAME RULE IS `markdown-math-guarded.ts` (2026-09-27).
- * This module's digit exclusion above ("a lone `$` only counts when it is not
- * followed by a digit") is a statement about the SAME case the guarded
- * tokenizer now refuses at parse time - its guard (a) - so the gate and the
- * parser agree instead of the gate waving through text the parser then mangles
- * into a price-as-formula. The gate's own behaviour is unchanged: it still
- * decides only whether to pay for the math pipeline.
+ * THE PARSER SIDE OF THE SAME RULE IS `markdown-math-guarded.ts` (2026-09-27,
+ * revised 2026-11-10). A digit-led `$` is a price UNLESS the span it opens
+ * carries a TeX signal (backslash command, `^`, `_`, `{`, `}`) - the parser's
+ * guard (d). `hasDigitLedMath` below asks the same question of the string, so
+ * a document whose only math is `$10\text{ }\mu\text{m}^3$` turns the pipeline
+ * on, and a document of only prices still does not (prices never carry a
+ * signal). The gate also recognises the delimiters `markdown-math-backslash.ts`
+ * adds: `\(...\)`, `\[...\]` and a ```math fence. The gate stays a COST
+ * decision - over-approximating only loads KaTeX; the parser still decides
+ * per span what renders.
  *
  * THE DEFECT IT FIXES, which shipped and was caught in review rather than by any
  * frame: `INLINE_MATH_REGEX` is `\$…\$`, and every citation the app writes carries
@@ -89,18 +92,59 @@ export const INLINE_MATH_REGEX = /\$(?!\d)(.+?)\$/;
 export const DISPLAY_MATH_REGEX = /\$\$([\s\S]+?)\$\$/;
 export const MATH_ENVIRONMENT_REGEX = /\\begin\{([^}]+)\}([\s\S]+?)\\end\{\1\}/;
 export const MATH_COMMAND_REGEX = /\\[a-zA-Z]+(\{[^}]*\})?/;
+/** `\(...\)` and `\[...\]` - see `markdown-math-backslash.ts`. */
+export const PAREN_MATH_REGEX = /\\\([\s\S]+?\\\)/;
+export const BRACKET_MATH_REGEX = /\\\[[\s\S]+?\\\]/;
+/** A ```math (or ~~~math) fence, which `rehype-katex` renders as display. */
+export const MATH_FENCE_REGEX = /^ {0,3}(?:`{3,}|~{3,})[ \t]*math[ \t]*$/m;
+
+/**
+ * A single `$` + digit opener, candidate closer and content, for
+ * `hasDigitLedMath`. The opener may not be escaped (`\$5`) or part of a `$$`
+ * run; the closer may not be followed by a digit (the parser's guard (c)).
+ */
+const DIGIT_LED_SPAN = /(?<![\\$])\$(?=\d)([^$]*)\$(?!\d)/g;
+/** The parser's guard (d) signals, as one test over a span's content. */
+const TEX_SIGNAL = /\\[^\s$]|[\^_{}]/;
+/** The parser's guard (b): a closer's left neighbour is not whitespace. */
+const ENDS_VISIBLE = /\S$/;
+
+/**
+ * Whether some digit-led `$...$` would pass the parser's guards (b), (c) and
+ * (d): content ends on a non-space and carries a TeX signal.
+ *
+ * A scan rather than one regex because a REJECTED candidate must resume one
+ * character after its opener, the way the tokenizer does - `costs $5 and
+ * $2^n$` fails at `$5 and $` and must still find `$2^n$`, whose opener a global
+ * regex would already have consumed as the failed closer.
+ */
+export const hasDigitLedMath = (content: string): boolean => {
+	const pattern = new RegExp(DIGIT_LED_SPAN.source, "g");
+	let match = pattern.exec(content);
+	while (match !== null) {
+		const inner = match[1];
+		if (ENDS_VISIBLE.test(inner) && TEX_SIGNAL.test(inner)) return true;
+		pattern.lastIndex = match.index + 1;
+		match = pattern.exec(content);
+	}
+	return false;
+};
 
 /**
  * Whether the content is worth paying for the math pipeline at all.
  *
  * Cheap rejections first: bare `$` is far more often a price than an inline
- * formula, so a lone dollar sign only counts when it is not followed by a
- * digit, and a backslash command only counts alongside one of the four
- * constructs that are unambiguously mathematical.
+ * formula, so a lone dollar sign followed by a digit only counts when its span
+ * carries a TeX signal (`hasDigitLedMath`), and a backslash command only counts
+ * alongside one of the four constructs that are unambiguously mathematical.
  */
 export const containsLatex = (content: string): boolean => {
 	if (INLINE_MATH_REGEX.test(content)) return true;
 	if (DISPLAY_MATH_REGEX.test(content)) return true;
+	if (PAREN_MATH_REGEX.test(content)) return true;
+	if (BRACKET_MATH_REGEX.test(content)) return true;
+	if (MATH_FENCE_REGEX.test(content)) return true;
+	if (hasDigitLedMath(content)) return true;
 	if (MATH_ENVIRONMENT_REGEX.test(content)) return true;
 	return (
 		MATH_COMMAND_REGEX.test(content) &&

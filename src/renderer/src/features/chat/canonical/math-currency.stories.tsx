@@ -179,3 +179,98 @@ export const PriceThenFormula: Story = {
 export const GenuineMath: Story = {
 	render: () => <Frame records={[GENUINE_MATH]} height={300} />,
 };
+
+/*
+ * MONEY VERSUS MATH AND LATEX'S OWN DELIMITERS (operator report, 2026-11-10:
+ * "latex sequences are not properly parsed and rendered inline" and
+ * "differentiate between dollar values ... and latex components"). The rules
+ * live in `markdown-math-guarded.ts` (guard (d)) and
+ * `markdown-math-backslash.ts`; these frames are the pixels for them.
+ */
+
+/**
+ * The reported paragraph: digit-led spans carrying `\text`, `\mu`, `^` and
+ * `\times` used to stay raw source beside `$Re \ll 1$` and `$k_BT$`, which
+ * rendered. All seven must typeset.
+ */
+const SCREENSHOT_PARAGRAPH = answer(
+	"a1",
+	"At the scale of tens of centimeters—$10^3\\text{–}10^5\\times$ larger than the robot—flow is inertial, but shrink a battery into $10\\text{ }\\mu\\text{m}^3$ to fight arterial blood flows exceeding $20\\text{ cm/s}$ and $Re \\ll 1$ takes over. The remarkable $200 \\times 300 \\times 50\\text{ }\\mu\\text{m}$ autonomous silicon robots are still wider than a capillary ($8\\text{ }\\mu\\text{m}$), and thermal noise $k_BT$ dominates.",
+);
+
+/** Prices and formulas in one paragraph: every amount literal, every formula typeset. */
+const MONEY_AND_MATH = answer(
+	"a1",
+	"The prototype cost $20,000 and $30,000 across two runs ($5M/$1.2B is the market's range, and parts run between $3–$4 per unit). Its drag scales as $10^{-3}\\,\\text{N}$ at $2^n - 1$ cycles, and the budget of $5.00 per test is unchanged.",
+);
+
+/** One display equation per delimiter: `$$`, `\[...\]`, ```math, and `\[` mid-paragraph. */
+const DISPLAY_BLOCKS = answer(
+	"a1",
+	[
+		"Dollar display:",
+		"",
+		"$$",
+		"E = mc^2",
+		"$$",
+		"",
+		"Bracket display:",
+		"",
+		"\\[",
+		"\\int_0^\\infty e^{-x^2}\\,dx = \\frac{\\sqrt{\\pi}}{2}",
+		"\\]",
+		"",
+		"Fenced display:",
+		"",
+		"```math",
+		"\\sum_{k=1}^{n} k = \\frac{n(n+1)}{2}",
+		"```",
+		"",
+		"Inline \\(a^2 + b^2 = c^2\\) and a mid-sentence display \\[ \\nabla \\cdot \\mathbf{E} = \\frac{\\rho}{\\varepsilon_0} \\] in prose. A wide one scrolls inside its panel:",
+		"",
+		"\\[",
+		"f(x) = a_0 + a_1 x + a_2 x^2 + a_3 x^3 + a_4 x^4 + a_5 x^5 + a_6 x^6 + a_7 x^7 + a_8 x^8 + a_9 x^9 + a_{10} x^{10} + a_{11} x^{11} + a_{12} x^{12} + a_{13} x^{13} + a_{14} x^{14}",
+		"\\]",
+	].join("\n"),
+);
+
+/** Invalid TeX: KaTeX's error span in the theme's danger role, the message intact. */
+const INVALID_TEX = answer(
+	"a1",
+	"A broken fraction \\(\\frac{1}{\\) and an unknown command $\\notacommand{x}$ render as error text, and the sentence after them still reads normally.",
+);
+
+/** A message still streaming: the unclosed `$` and `\[` stay literal until closed. */
+const STREAMING_TRUNCATED: TranscriptRecord = {
+	...answer(
+		"a1",
+		"So far $x^2$ is settled, and the next term is $y^2 + \n\nThe energy is\n\n\\[\nE = mc",
+	),
+	streaming: true,
+	complete: false,
+};
+
+/** The operator's paragraph: seven formulas, no raw `$` left. */
+export const ScreenshotParagraph: Story = {
+	render: () => <Frame records={[SCREENSHOT_PARAGRAPH]} height={300} />,
+};
+
+/** Prices literal, digit-led TeX typeset, in one paragraph. */
+export const MoneyAndMath: Story = {
+	render: () => <Frame records={[MONEY_AND_MATH]} height={300} />,
+};
+
+/** Centred, tinted display panels for every delimiter, plus horizontal overflow. */
+export const DisplayBlocks: Story = {
+	render: () => <Frame records={[DISPLAY_BLOCKS]} height={760} />,
+};
+
+/** Invalid TeX never breaks the message. */
+export const InvalidTex: Story = {
+	render: () => <Frame records={[INVALID_TEX]} height={300} />,
+};
+
+/** Mid-stream: unclosed delimiters stay as text. */
+export const StreamingTruncated: Story = {
+	render: () => <Frame records={[STREAMING_TRUNCATED]} height={360} />,
+};
