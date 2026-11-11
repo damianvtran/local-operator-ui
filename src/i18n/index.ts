@@ -51,6 +51,7 @@ export {
 	subscribeLocale,
 } from "./locale";
 export {
+	formatByteQuantity,
 	formatBytes,
 	formatDate,
 	formatDateTime,

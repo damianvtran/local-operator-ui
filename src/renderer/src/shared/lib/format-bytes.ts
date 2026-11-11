@@ -23,11 +23,16 @@
  * the download row's tooltip (grouped, so the digits are readable; review
  * round 1, D6/U6) and the installer's logs.
  *
- * A leaf module with no imports on purpose: the message-budget suite bundles
- * it (`scripts/desktop-renderer-transport.test.mjs`) and the storybook builds
- * import it from the components that render sizes, so nothing it needs may
- * drag a component graph in with it.
+ * A leaf module with no COMPONENT imports on purpose: the message-budget suite
+ * bundles it (`scripts/desktop-renderer-transport.test.mjs`) and the storybook
+ * builds import it from the components that render sizes, so nothing it needs
+ * may drag a component graph in with it. Its one import is the dependency-free
+ * Intl layer (`i18n/format` imports only `i18n/locale`, which imports nothing),
+ * which supplies the locale's digits, decimal mark and unit symbol; the DECIMAL
+ * ladder and the 999_500 rungs below are this module's and unchanged.
  */
+
+import { formatByteQuantity } from "../../../../i18n/format";
 
 /**
  * Format `bytes` for display.
@@ -53,7 +58,12 @@
  * budgets smaller still.)
  */
 export function formatByteSize(bytes: number): string {
-	if (bytes >= 999_500_000) return `${(bytes / 1_000_000_000).toFixed(1)} GB`;
-	if (bytes >= 999_500) return `${(bytes / 1_000_000).toFixed(1)} MB`;
-	return `${Math.round(bytes / 1000)} KB`;
+	const oneDecimal = { minimumFractionDigits: 1, maximumFractionDigits: 1 };
+	if (bytes >= 999_500_000)
+		return formatByteQuantity(bytes / 1_000_000_000, "GB", oneDecimal);
+	if (bytes >= 999_500)
+		return formatByteQuantity(bytes / 1_000_000, "MB", oneDecimal);
+	return formatByteQuantity(Math.round(bytes / 1000), "KB", {
+		maximumFractionDigits: 0,
+	});
 }

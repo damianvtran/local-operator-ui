@@ -27,6 +27,10 @@
  * content, reads file bytes, or talks to the backend.
  */
 
+import {
+	type FileSizeUnit,
+	formatByteQuantity,
+} from "../../../../../i18n/format";
 import type { DesktopHistoryPage } from "../../../../../shared/desktop-session-contract";
 import { CONTROL_SEQUENCES } from "../components/trace/receipt-row-model";
 import type { TranscriptRecord } from "./transcript-reducer";
@@ -328,9 +332,6 @@ export const DIGEST_RE = /^[a-f0-9]{32}$/;
 /** Every run of whitespace, the display boundary's collapse. */
 const WHITESPACE_RUN = /\s+/;
 
-/** The trailing `.0` a one-decimal size drops (`4.0 KB` reads `4 KB`). */
-const TRAILING_ZERO_DECIMAL = /\.0$/;
-
 export function isDigest(value: unknown): value is string {
 	return typeof value === "string" && DIGEST_RE.test(value);
 }
@@ -534,8 +535,14 @@ export function moreText(count: number): string {
 export function fileSizeText(sizeBytes: unknown): string {
 	if (typeof sizeBytes !== "number" || !Number.isFinite(sizeBytes)) return "";
 	if (sizeBytes < 0) return "";
-	if (sizeBytes < 1024) return `${Math.trunc(sizeBytes)} B`;
-	const units: ReadonlyArray<readonly [string, number]> = [
+	// Locale-aware spelling (digits, decimal mark, unit symbol) comes from the
+	// shared helper; the 1024 ladder and the one-decimal/`.0`-dropped rule stay
+	// here because other surfaces print the same file and must agree on the number.
+	if (sizeBytes < 1024)
+		return formatByteQuantity(Math.trunc(sizeBytes), "B", {
+			maximumFractionDigits: 0,
+		});
+	const units: ReadonlyArray<readonly [FileSizeUnit, number]> = [
 		["KB", 1024],
 		["MB", 1024 ** 2],
 		["GB", 1024 ** 3],
@@ -543,8 +550,7 @@ export function fileSizeText(sizeBytes: unknown): string {
 	for (const [unit, scale] of units) {
 		if (sizeBytes < scale * 1024 || unit === "GB") {
 			const value = sizeBytes / scale;
-			const text = value.toFixed(1).replace(TRAILING_ZERO_DECIMAL, "");
-			return `${text} ${unit}`;
+			return formatByteQuantity(value, unit, { maximumFractionDigits: 1 });
 		}
 	}
 	return "";

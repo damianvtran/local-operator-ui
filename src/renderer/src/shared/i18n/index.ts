@@ -23,6 +23,7 @@ export {
 	currentLocale,
 	currentLocaleState,
 	DEFAULT_LOCALE,
+	formatByteQuantity,
 	formatBytes,
 	formatDate,
 	formatDateTime,

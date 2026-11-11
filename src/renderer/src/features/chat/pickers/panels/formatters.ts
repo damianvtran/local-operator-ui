@@ -22,7 +22,7 @@
  *   panels are given numbers and format them once.
  */
 
-import { formatNumber, t } from "@shared/i18n";
+import { formatByteQuantity, formatNumber, t } from "@shared/i18n";
 import { pyFixed } from "../../session-status/fixed-point";
 
 /*
@@ -306,8 +306,14 @@ export function formatBytes(value: number | null | undefined): string {
 	// `NaN MB` / `∞ MB`, and the unknown mark is the same answer this function
 	// already gives for "could not be read".
 	if (!Number.isFinite(value)) return UNKNOWN;
-	if (value >= 1 << 30) return `${(value / (1 << 30)).toFixed(1)} GB`;
-	return `${roundHalfEven(value / (1 << 20))} MB`;
+	if (value >= 1 << 30)
+		return formatByteQuantity(Number((value / (1 << 30)).toFixed(1)), "GB", {
+			minimumFractionDigits: 1,
+			maximumFractionDigits: 1,
+		});
+	return formatByteQuantity(roundHalfEven(value / (1 << 20)), "MB", {
+		maximumFractionDigits: 0,
+	});
 }
 
 /**

@@ -14,7 +14,8 @@
  * caches formatter instances per (locale, options).
  *
  * SCOPE, SAID OUT LOUD. `formatRelativeTime`, `formatDuration` and
- * `formatBytes` have no call sites yet, and that is the plan rather than an
+ * `formatBytes` have no call sites yet (file sizes go through
+ * `formatByteQuantity`, see below), and that is the plan rather than an
  * oversight: the remaining hand-rolled format sites in the product have
  * DELIBERATE per-site spellings ("2m ago", "1.5s", "1.2 MB" and friends, each
  * pinned by its own tests), and this PR may not change what any of them
@@ -25,8 +26,9 @@
  *
  * `formatDuration` and `formatBytes` mirror the core's implementations
  * (`local_operator/i18n/format.py::format_duration` / `format_bytes`)
- * deliberately: same unit letters (ASCII — the style guide's kept-English
- * list), same zero-omission and decimal rules, localised digits via
+ * deliberately: same zero-omission and decimal rules (duration unit letters
+ * stay ASCII; byte symbols follow the locale, see the FILE-SIZE UNITS note),
+ * localised digits via
  * `formatNumber`. When a locale wave reviews widths, one algorithm review
  * covers both runtimes.
  *
@@ -139,9 +141,6 @@ export function formatRelativeTime(
 	return format.format(value, unit);
 }
 
-/** Byte-size units, base 1000 (SI) — ASCII identifiers, as in the core layer. */
-const BYTE_UNITS = ["B", "KB", "MB", "GB", "TB", "PB"] as const;
-
 /**
  * A compact duration: `3725` -> `"1h 2m 5s"` (digits localised).
  *
@@ -176,25 +175,173 @@ export function formatDuration(seconds: number, locale?: string): string {
 }
 
 /**
+ * FILE-SIZE UNITS: THE DECISION, WITH ITS SOURCES (i18n slice B4).
+ *
+ * Question: are `B / KB / MB / GB` language-neutral technical symbols that may
+ * stay ASCII in every locale, or UI text that has to follow the language?
+ *
+ * What was already here. The first version of this layer (and the core's
+ * `format_bytes` it mirrors) kept ASCII letters and treated them as "kept
+ * English". That was a per-token call made before the French census, and it is
+ * not a policy: nothing in `docs/I18N.md` lists unit symbols as exempt, and the
+ * operator's acceptance for the programme is that NO English remains after
+ * switching to `fr`. Seven further hand-rolled formatters (supplement, library,
+ * project, tool-row, info panel, message-budget, browser transfer row) each
+ * repeated the ASCII spelling and the ASCII decimal point.
+ *
+ * What the standards say. CLDR (ICU 78.3 / CLDR 48.0 in the Node 24 test
+ * runtime, measured by running `Intl.NumberFormat` with `style: "unit"`) spells
+ * the byte units per language: fr `o / ko / Mo / Go / To` (the established
+ * French octet), ru `Б / кБ / МБ / ГБ / ТБ`, hi `बाइट` for the byte; es, zh-CN,
+ * vi, ur and hi keep the Latin `kB / MB / GB` because their CLDR data carries
+ * the international symbol. So the symbols are language-neutral in SOME
+ * locales and genuinely localized in others: neither "always ASCII" nor
+ * "always translate" is right, and CLDR is the authority that already decides
+ * it per locale. This module therefore asks Intl and does not hold a table.
+ *
+ * Two deliberate exceptions, both documented because a reader will ask:
+ * - English keeps ASCII `B / KB / MB / GB / TB`, not CLDR's `byte / kB`: that is
+ *   the spelling the English product, its tests and the terminal UI print, and
+ *   `kB` (SI, 1000) would mislabel the 1024-based callers.
+ * - IEC `KiB / MiB / GiB` are ISO/IEC 80000-13 symbols, defined by an
+ *   international standard rather than a language, and Intl has no unit for
+ *   them. They stay as written in every locale (French `Kio/Mio` is a
+ *   regional alternative of the same standard). Number formatting around
+ *   them is still the locale's.
+ *
+ * Byte, specifically, is read from the NARROW style: the short style gives the
+ * English word `byte` for en, ur and vi, which would put a lowercase English
+ * noun in an Urdu interface, while narrow gives the symbol `B` everywhere the
+ * locale has no native one.
+ */
+export type ByteUnit = "B" | "KB" | "MB" | "GB" | "TB" | "PB";
+export type BinaryByteUnit = "KiB" | "MiB" | "GiB";
+export type FileSizeUnit = ByteUnit | BinaryByteUnit;
+
+const INTL_BYTE_UNIT: Readonly<Record<ByteUnit, string>> = {
+	B: "byte",
+	KB: "kilobyte",
+	MB: "megabyte",
+	GB: "gigabyte",
+	TB: "terabyte",
+	PB: "petabyte",
+};
+
+const sizeLabels = new Map<string, string>();
+const sizeSeparators = new Map<string, string>();
+
+/** `en`, `en-US`, `en-GB`: every English tag takes the product's ASCII spelling. */
+function isEnglish(locale: string): boolean {
+	return locale.split("-")[0]?.toLowerCase() === "en";
+}
+
+/**
+ * The symbol for `unit` in `locale`. Resolved at call time (never cached on the
+ * unit alone) because the active locale can change while the app is mounted.
+ */
+function fileSizeUnitLabel(unit: FileSizeUnit, locale: string): string {
+	if (unit === "KiB" || unit === "MiB" || unit === "GiB") return unit;
+	if (isEnglish(locale)) return unit;
+	const cacheKey = `${locale}\u0000${unit}`;
+	let label = sizeLabels.get(cacheKey);
+	if (label === undefined) {
+		label = unit;
+		try {
+			const parts = new Intl.NumberFormat(locale, {
+				style: "unit",
+				unit: INTL_BYTE_UNIT[unit],
+				unitDisplay: "narrow",
+			}).formatToParts(1);
+			label = parts.find((part) => part.type === "unit")?.value ?? unit;
+		} catch {
+			// A runtime without this unit: the ASCII symbol is a readable answer.
+		}
+		sizeLabels.set(cacheKey, label);
+	}
+	return label;
+}
+
+/**
+ * The glue between number and unit: the locale's own (French puts a narrow
+ * no-break space there; most others a plain space). Read from the short-style
+ * kilobyte pattern, which carries a literal in every locale tested.
+ */
+function fileSizeSeparator(locale: string): string {
+	let separator = sizeSeparators.get(locale);
+	if (separator === undefined) {
+		separator = " ";
+		try {
+			const parts = new Intl.NumberFormat(locale, {
+				style: "unit",
+				unit: "kilobyte",
+				unitDisplay: "short",
+			}).formatToParts(1);
+			separator = parts.find((part) => part.type === "literal")?.value ?? " ";
+		} catch {
+			// Keep the plain space.
+		}
+		sizeSeparators.set(locale, separator);
+	}
+	return separator;
+}
+
+/**
+ * ONE byte-size spelling for the renderer: `(2.4, "MB", { maximumFractionDigits:
+ * 1 })` -> `"2.4 MB"` (en), `"2,4 Mo"` (fr), `"2,4 МБ"` (ru).
+ *
+ * WHY THE CALLER PICKS THE UNIT. The product has several deliberately different
+ * scales (SI 1000 for the message budgets, 1024 for file rows, MiB for the
+ * transfer caps), each with its own rounding and each pinned by tests. Changing
+ * a scale is a visible-number change outside this slice, so the SCALE and the
+ * rounding stay with the call site and only the localized spelling (digits,
+ * separators, unit symbol) is centralised here. A new `/ 1024` formatter has
+ * nowhere to land: `scripts/i18n/file-size-guard.test.mjs` fails on one.
+ *
+ * Callers that inject the result into running text through `t()` get RTL
+ * isolation from `translate()`; a caller that paints it as JSX beside other
+ * runs wraps it in `<bdi>` (see `finder-files-view.tsx`).
+ */
+export function formatByteQuantity(
+	value: number,
+	unit: FileSizeUnit,
+	options?: {
+		minimumFractionDigits?: number;
+		maximumFractionDigits?: number;
+	},
+	locale?: string,
+): string {
+	const tag = locale ?? currentLocale();
+	const number = formatNumber(value, options, tag);
+	return `${number}${fileSizeSeparator(tag)}${fileSizeUnitLabel(unit, tag)}`;
+}
+
+const SI_BYTE_LADDER: readonly ByteUnit[] = ["B", "KB", "MB", "GB", "TB", "PB"];
+
+/**
  * A byte size in SI units, base 1000: `1536` -> `"1.5 KB"`.
  *
- * Mirrors `local_operator/i18n/format.py::format_bytes`: one decimal below 10
- * units (trailing zeros stripped by `Intl` itself), whole numbers above, `"0 B"`
- * for zero, and negatives clamp to zero — a size is never negative.
+ * Mirrors `local_operator/i18n/format.py::format_bytes` for the SCALE and
+ * rounding: one decimal below 10 units (trailing zeros stripped by `Intl`
+ * itself), whole numbers above, `"0 B"` for zero, and negatives clamp to zero
+ * -- a size is never negative. The unit symbol is the locale's
+ * (`formatByteQuantity`); the core's stays ASCII until its own locale pass.
  */
 export function formatBytes(size: number, locale?: string): string {
 	const tag = locale ?? currentLocale();
 	let value = size;
 	if (!Number.isFinite(value) || value < 0) value = 0;
 	let unitIndex = 0;
-	while (value >= 1000 && unitIndex < BYTE_UNITS.length - 1) {
+	while (value >= 1000 && unitIndex < SI_BYTE_LADDER.length - 1) {
 		value /= 1000;
 		unitIndex += 1;
 	}
 	const digits = value < 10 ? 1 : 0;
-	return `${formatNumber(value, { maximumFractionDigits: digits }, tag)} ${
-		BYTE_UNITS[unitIndex]
-	}`;
+	return formatByteQuantity(
+		value,
+		SI_BYTE_LADDER[unitIndex] ?? "B",
+		{ maximumFractionDigits: digits },
+		tag,
+	);
 }
 
 /**

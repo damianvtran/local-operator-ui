@@ -438,5 +438,7 @@
 	"ui.chat.canonical.notice.stopped_with_error": "Stopped with an error",
 	"ui.chat.canonical.notice.compaction_not_run": "Compaction did not run: {detail}",
 	"ui.chat.canonical.notice.compaction_not_run_after_colon": "Compaction did not run — {detail}",
-	"ui.chat.canonical.link_toolkit.actions_for": "Actions for {name}"
+	"ui.chat.canonical.link_toolkit.actions_for": "Actions for {name}",
+	"ui.chat.canonical.tool.never_sent_composed": "never sent \u00b7 {size} composed",
+	"ui.chat.canonical.tool.never_sent_empty": "never sent \u00b7 nothing composed"
 }

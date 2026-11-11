@@ -433,7 +433,10 @@ function StateLine({
 				{text}
 			</span>
 			{detail === null ? null : (
-				<span className={cn("shrink-0 text-meta text-ink-dim")}>
+				/* dir="auto": the datum can be a size ("1.9 kB"), and an unisolated
+				 * digit-space-Latin run mirrors to "kB 1.9" in an RTL locale; the first
+				 * strong letter decides the span's own direction instead. */
+				<span dir="auto" className={cn("shrink-0 text-meta text-ink-dim")}>
 					· {detail}
 				</span>
 			)}
