@@ -1,0 +1,37 @@
+{
+ "auditor": "i18n-auditor",
+ "model": "deepseek/deepseek-flash",
+ "instance": "s16a-au-zh-CN",
+ "session": "07b0fc8f8d80",
+ "status": "passed",
+ "namespace": "ui.chat.canonical",
+ "file_group": "s16a — 14 new tool-state / image-generation status keys",
+ "audit_date": "2026-11-11",
+ "key_count": 14,
+ "sha256": {
+  "zh-CN": "cbc586651c9e1f37b57a85a84701a213dad5b1761f9bab4e41b70012cfdc83cf",
+  "en": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd",
+  "context": "ef8a12dea1835c241af3a166754322ce093af88592ec625036211458a50accac",
+  "zh-CN_catalogue_on_disk": "4176670606e68058e498a36006ba8c770af64489ec77d77e78d3a2754ab2ddf0"
+ },
+ "findings": [
+  {
+   "severity": "NIT",
+   "key": "ui.chat.canonical.image_gen.state.done_batch",
+   "note": "批次 has 0 shipped occurrences (batch); 批量 is the commoner software word but reads adverbially in this noun slot, so 视频批次/旁白批次/音效批次/图像批次 is the better of the two. No change requested."
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.chat.canonical.image_gen.state.already_finished",
+   "note": "已经完成。 mixes 已经 with the card's 已生成; optional 已完成。. No change requested: 已经 carries the English 'already' emphasis, and 。 is right (sidecar: full stop)."
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.chat.canonical.image_gen.state.queue_ahead",
+   "note": "At count 0, 前面还有0个 is marginally self-contradictory; zh-CN has only the `other` CLDR category so a zero arm is not expressible and prose would break the fixed datum. No change requested."
+  }
+ ],
+ "checks": "run-audit.sh -> checks.mjs (intl-messageformat 12.1.3, Intl.PluralRules zh-CN): 14/14 keys, placeholders identical, plurals other-only, 4 select branches each, ::group-off kept, all counts/materials formatted and read; widths narrower than en; ellipsis …… matches style guide + 235 shipped values.",
+ "report": "report.md",
+ "scope": "Catalogue audit of the translator's draft for 14 new English keys; not rendered fit, activation or release approval. zh-CN values not yet applied to src/i18n/catalogues/zh-CN/ui.chat.canonical.json."
+}

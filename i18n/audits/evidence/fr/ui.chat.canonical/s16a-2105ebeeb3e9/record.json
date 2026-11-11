@@ -1,0 +1,124 @@
+{
+  "locale": "fr",
+  "pr": 1870,
+  "base_sha": "5acfe0a2d92",
+  "head_sha": "93a61605b059ada503d75da6e9e38e8ef14e1b67",
+  "audit_date": "2026-11-11",
+  "mode": "independent audit of the LLM translator's 14-key DRAFT (s16a tool-state words); read-only — the draft is not landed and nothing was edited, committed or installed; en, context, shipped fr, glossary and fr style guide read first, then the draft",
+  "round": 1,
+  "scope": "5acfe0a2d92..93a61605b05 — the 14 new keys at the tail of ui.chat.canonical: tool.composing_{sized,empty}, tool.queued_{sized,empty}, image_gen.state.{queued,writing_request,queue_ahead,running,running_batch,done,done_batch,already_finished,failed,failed_batch}",
+  "key_count": 14,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "session": "manager session 3ef6295a5545 (draft written to its scratchpad); translator session id not supplied",
+    "source": "per delegation and the candidate file's own notes (s16a-drafts/fr-s16a-notes.md)"
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "2105ebeeb3e9",
+    "session": "2105ebeeb3e9",
+    "model": "deepseek/deepseek-flash",
+    "independent_from_translator_session": true,
+    "actual_model_source": "harness session model header for this run (deepseek/deepseek-flash); no fallback model was served or used",
+    "review_model_differs_from_translator": true
+  },
+  "input_hashes": {
+    "en": [
+      { "path": "src/i18n/catalogues/en/ui.chat.canonical.json", "sha256": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd" }
+    ],
+    "context": [
+      { "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json", "sha256": "ef8a12dea1835c241af3a166754322ce093af88592ec625036211458a50accac" }
+    ],
+    "target": [
+      { "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16a-drafts/fr-s16a.json", "sha256": "e41dfcb15c773b829ab2c9fcf920a4642eb2e310c3ee79da8481f122d1830769", "note": "the AUDITED DRAFT (14 keys), hash computed here and equal to the hash handed over by the delegating session" },
+      { "path": "src/i18n/catalogues/fr/ui.chat.canonical.json", "sha256": "cea935cd4e6ba5627ffe19b4b129d4dd7f0ef60b3e8de96fa0bc1a48ca6249f1", "note": "the SHIPPED fr catalogue at head, 442 keys, lacks exactly these 14 — read for terminology precedent, not audited as the subject" }
+    ],
+    "glossary": { "path": "~/local-operator/i18n/glossary.md", "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8" },
+    "style_guide": { "path": "~/local-operator/i18n/style-guides/fr.md", "sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226" },
+    "harness_guide": { "path": "docs/I18N.md", "sha256": "unhashed — read for the audit-record contract; not an input whose bytes the verdict depends on" }
+  },
+  "namespaces": {
+    "ui.chat.canonical": {
+      "status": "passed",
+      "key_count": 14,
+      "en_sha256": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd",
+      "target_sha256": "e41dfcb15c773b829ab2c9fcf920a4642eb2e310c3ee79da8481f122d1830769",
+      "findings": [
+        {
+          "id": "N1",
+          "severity": "nit",
+          "key": "ui.chat.canonical.tool.composing_sized / ui.chat.canonical.tool.composing_empty",
+          "current": "rédaction · {size} / rédaction",
+          "problem": "Bare noun where fr UI copy more often names the ongoing action. The style guide's 'statuses are past participles' rule does not apply here (a participle would claim the writing finished, which is the never_sent sibling's job). Defensible compression for a truncating row; the shipped sibling shares the root ('jamais envoyé · texte rédigé : {size}').",
+          "suggested": "Keep. Fuller register if ever wanted: 'rédaction en cours · {size}' / 'rédaction en cours'",
+          "disposition": "accepted as-is, no change requested"
+        },
+        {
+          "id": "N2",
+          "severity": "nit",
+          "key": "ui.chat.canonical.image_gen.state.queue_ahead",
+          "current": "{count, plural, one {{count, number, ::group-off} devant} many {{count, number, ::group-off} devant} other {{count, number, ::group-off} devant}}",
+          "problem": "The zero reading renders '0 devant': correct and non-ranking, but telegraphic where French would rather say 'aucun devant' / 'rien devant'.",
+          "suggested": "Keep (the datum must be a number, ::group-off, never wrapping). Optional: add '=0 {rien devant}'",
+          "disposition": "accepted as-is, no change requested"
+        }
+      ]
+    }
+  },
+  "findings_severity_counts": { "blocker": 0, "major": 0, "minor": 0, "nit": 2 },
+  "current_report_verdict": {
+    "status": "clean-with-findings",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": ["N1", "N2"]
+  },
+  "cleared_keys": [
+    "ui.chat.canonical.tool.composing_sized",
+    "ui.chat.canonical.tool.composing_empty",
+    "ui.chat.canonical.tool.queued_sized",
+    "ui.chat.canonical.tool.queued_empty",
+    "ui.chat.canonical.image_gen.state.queued",
+    "ui.chat.canonical.image_gen.state.writing_request",
+    "ui.chat.canonical.image_gen.state.queue_ahead",
+    "ui.chat.canonical.image_gen.state.running",
+    "ui.chat.canonical.image_gen.state.running_batch",
+    "ui.chat.canonical.image_gen.state.done",
+    "ui.chat.canonical.image_gen.state.done_batch",
+    "ui.chat.canonical.image_gen.state.already_finished",
+    "ui.chat.canonical.image_gen.state.failed",
+    "ui.chat.canonical.image_gen.state.failed_batch"
+  ],
+  "precedents_cited": [
+    "ui.chat.canonical.tool.never_sent_composed (fr 'jamais envoyé · texte rédigé : {size}')",
+    "ui.chat.aside.adopt.queued, ui.chat.ask_queue.status.open, ui.chat.pickers.info_model.queued, ui.settings.imports.state_queued, ui.chat.sidebar.row.bg.queued (fr 'en file d’attente' for queued)",
+    "ui.browser.browser_approvals_dock.waiting, ui.chat.ask_panel.filter.pending, ui.chat.asks.outstanding_aria (fr 'en attente' reserved for the pending state)",
+    "ui.chat.canonical.image_gen.progress (fr 'Progression de la génération de l’image')",
+    "ui.chat.canonical.fold.images_aria, ui.chat.canonical.lightbox.filmstrip_aria (fr many + 'd’')",
+    "ui.settings.imports.selection_limit ('par lots') for batch → lot",
+    "ui.chat.canonical.image_gen.batch_summary (fr '{count} élément(s)' = members, distinct from the batch word)",
+    "ui.chat.canonical.image_label 'Image', ui.library.kind.video 'Vidéo', ui.library.kind.audio 'Audio'"
+  ],
+  "verification": {
+    "executed": [
+      "shasum -a 256 on the en catalogue, the en context, the shipped fr catalogue and the draft (draft hash equals the delegated e41dfcb1…)",
+      "read the draft through the harness read tool: all 16 lines, with queue_ahead, running, running_batch, failed and failed_batch re-read line-by-line for transcription check",
+      "node -e: JSON.parse of the draft; key-set diff vs en (14 expected, 0 missing, 0 extra); {name} placeholder-set equality per key against en",
+      "node -e + Intl.PluralRules('fr'): categories exercised for 0,1,2,3,5,11,21,22,100,1000000 -> one, other, many; declared branches inspected in queue_ahead (one/many/other) and in each of the four running_batch plurals (4 one / 4 many / 4 other + the select's own other)",
+      "node -e + intl-messageformat from the worktree node_modules: parsed all 14 messages at locale fr; formatted queue_ahead at all ten counts, running x 4 materials, running_batch x 4 materials x ten counts, done/done_batch/failed/failed_batch x 4 materials, and the five scalar keys; read every rendered string for agreement and leftover braces — outputs quoted in report.md §2",
+      "node -e: byte/character-level typography scan of the draft (U+00B7, U+2019, U+2026, NFC, no leading/trailing/double spaces)",
+      "node -e: terminology sweep of src/i18n/catalogues/fr/{ui.chat*,ui.library,ui.settings*,ui.common*} for 'file d’attente', 'en attente', 'rédaction', 'rédigé', 'voix off', 'effet sonore', 'lot', 'élément', 'devant' — every term decision in report.md §3 comes from these hits, not from the translator's notes",
+      "node -e: identical en/fr value scan in ui.chat.canonical (7, all placeholder-only or genuinely identical) — an English-leak sanity check for this namespace only",
+      "code read at head: image-gen-card.tsx:339-379 (queue_ahead consumes queuePosition directly, 0 included), :455-477 (StateLine layout, bdi isolate, shrink-0 datum), :660-700 (card body, no fixed height/clamp), canonical-transcript.tsx:2309-2353 (toolRecordSummary whole-line messages), scripts/i18n/tool-state-copy.test.mjs:505-560 (per-locale plural-category contract, fr one/many/other)"
+    ],
+    "not_executed": [
+      "no rendered frame and no runtime locale switch (read-only audit, no Electron/browser launch) — fit judged from the code paths and character counts",
+      "no native-speaker sign-off beyond the auditor's own fr fluency",
+      "no byte-level read of the draft file: a path guard refused node/awk access to the delegating session's scratchpad, so the local re-materialisation used for the ICU runs was checked line-by-line against the read view; it is 15 bytes larger than the original and the difference was not attributed to any translated value",
+      "second pass for this high-visibility group was performed by THIS auditor and model, not by a second independent instance"
+    ]
+  },
+  "provenance": {
+    "kind": "AUDITOR-WRITTEN record: this file and report.md were written by the auditing session 2105ebeeb3e9 itself, not transcribed by an integrating coder. Values under test are the translator's DRAFT bytes, not a landed catalogue; no repo file was created or modified.",
+    "source_report": { "path": "/Users/damian/.local-operator/sessions/2105ebeeb3e9/scratchpad/report.md", "sha256": "2958ac1871002fb78743427632c1224744e5318331a0bc3e302606d310292afa" }
+  }
+}

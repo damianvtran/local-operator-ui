@@ -2709,13 +2709,13 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3",
-			"target_sha256": "085b359e749d56c159ab7475f4d7461f31bfc1b988df823ade5a7bcf000143ce",
+			"source_sha256": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd",
+			"target_sha256": "04f155b9b3de84c32e7701890a1e0926001da393385691f4be77fb2bf6b485cc",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
+				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
 				"date": "2026-11-11",
-				"note": "es tool_row.verb.* (182 keys) translated by i18n-translator; 258 earlier keys retained from prior rows (see superseded). Evidence: i18n/audits/evidence/es/ui.chat.canonical/l1verb-es-wave"
+				"note": "es S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/es/ui.chat.canonical/s16a-3311618b2a8b"
 			},
 			"auditors": [
 				{
@@ -2723,17 +2723,17 @@
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-11",
 					"result": "clean-with-findings",
-					"instance": "au1861es-combined-659ef7e4",
+					"instance": "3311618b2a8b",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
+						"minor": 0,
 						"nit": 4
 					},
-					"receipt": "i18n/receipts/au1861es-combined-659ef7e4.json",
-					"receipt_sha256": "ddba0171eb961b17884981683de5b9d5608df145d2a065c0403131bebf9099b1",
-					"scope": "whole combined namespace (442 keys) at 659ef7e44b7c: #1861 file-size keys on top of #1862 tool_row.verb.*; fresh independent audit",
-					"note": "Combined-bytes re-audit after rebasing #1861 onto #1862; 0 blocker/major. Detail: i18n/audits/evidence/es/ui.chat.canonical/au1861es-combined-659ef7e4/report.md"
+					"receipt": "i18n/receipts/3311618b2a8b.json",
+					"receipt_sha256": "0c312561277294bfe5997fa20435d76d92ff9a04656c39c719e8cb97f74b470d",
+					"scope": "the 14 new S16a tool-state/image-generation keys (draft audited by hash; landed values proven equal); other 442 keys byte-identical to the superseded combined-bytes audit",
+					"note": "S16a status words, PR #1870; binding receipt integrator-transcribed (see evidence). Detail: i18n/audits/evidence/es/ui.chat.canonical/s16a-3311618b2a8b/report.md"
 				}
 			],
 			"status": "audited",
@@ -3172,6 +3172,30 @@
 							"receipt_sha256": "9696db69fbfb3733be12bb1a4fa602e6db3c7a2af6a29efba71492905ca8323d",
 							"scope": "tool_row.verb.* 182 keys, round 2 (v2); whole-file hashes bound to the catalogue at that version",
 							"note": "Round 2 audit of the L1 tool-row verb batch; transcribed binding receipt, see its provenance block."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3",
+					"target_sha256": "085b359e749d56c159ab7475f4d7461f31bfc1b988df823ade5a7bcf000143ce",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-11",
+							"result": "clean-with-findings",
+							"instance": "au1861es-combined-659ef7e4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 4
+							},
+							"receipt": "i18n/receipts/au1861es-combined-659ef7e4.json",
+							"receipt_sha256": "ddba0171eb961b17884981683de5b9d5608df145d2a065c0403131bebf9099b1",
+							"scope": "whole combined namespace (442 keys) at 659ef7e44b7c: #1861 file-size keys on top of #1862 tool_row.verb.*; fresh independent audit",
+							"note": "Combined-bytes re-audit after rebasing #1861 onto #1862; 0 blocker/major. Detail: i18n/audits/evidence/es/ui.chat.canonical/au1861es-combined-659ef7e4/report.md"
 						}
 					],
 					"status": "audited"
@@ -14484,13 +14508,13 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3",
-			"target_sha256": "cea935cd4e6ba5627ffe19b4b129d4dd7f0ef60b3e8de96fa0bc1a48ca6249f1",
+			"source_sha256": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd",
+			"target_sha256": "00a6251e4aed7baa2f2ed28040eab21afe2352f3e0adb29a0176d939269e35e3",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
+				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
 				"date": "2026-11-11",
-				"note": "fr tool_row.verb.* (182 keys) translated by i18n-translator; 258 earlier keys retained from prior rows (see superseded). Evidence: i18n/audits/evidence/fr/ui.chat.canonical/l1verb-fr-wave"
+				"note": "fr S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/fr/ui.chat.canonical/s16a-2105ebeeb3e9"
 			},
 			"auditors": [
 				{
@@ -14498,17 +14522,17 @@
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-11",
 					"result": "clean-with-findings",
-					"instance": "60da9ca1b9fc",
+					"instance": "2105ebeeb3e9",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 6,
-						"nit": 3
+						"minor": 0,
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/60da9ca1b9fc.json",
-					"receipt_sha256": "753c9a750b0ae452a9cbe6428e4343be5682aa0bc395d055b6b6fa8c114521da",
-					"scope": "whole combined namespace (442 keys) at 659ef7e44b7c: #1861 file-size keys on top of #1862 tool_row.verb.*; fresh independent audit",
-					"note": "Combined-bytes re-audit after rebasing #1861 onto #1862; 0 blocker/major. Detail: i18n/audits/evidence/fr/ui.chat.canonical/au-1861-fr/report.md"
+					"receipt": "i18n/receipts/2105ebeeb3e9.json",
+					"receipt_sha256": "d1aad291452304f1bb1480dbee2088aaeb0d2a2d6860da6654b4f8d0dae6c8d1",
+					"scope": "the 14 new S16a tool-state/image-generation keys (draft audited by hash; landed values proven equal); other 442 keys byte-identical to the superseded combined-bytes audit",
+					"note": "S16a status words, PR #1870; binding receipt integrator-transcribed (see evidence). Detail: i18n/audits/evidence/fr/ui.chat.canonical/s16a-2105ebeeb3e9/report.md"
 				}
 			],
 			"status": "audited",
@@ -14962,6 +14986,30 @@
 							"receipt_sha256": "85841c850810622a559706dd3806c019df054808efa51037b738bfb0d8fb2cbf",
 							"scope": "tool_row.verb.* 182 keys, round 2 (v2); whole-file hashes bound to the catalogue at that version",
 							"note": "Round 2 audit of the L1 tool-row verb batch; transcribed binding receipt, see its provenance block."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3",
+					"target_sha256": "cea935cd4e6ba5627ffe19b4b129d4dd7f0ef60b3e8de96fa0bc1a48ca6249f1",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-11",
+							"result": "clean-with-findings",
+							"instance": "60da9ca1b9fc",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 6,
+								"nit": 3
+							},
+							"receipt": "i18n/receipts/60da9ca1b9fc.json",
+							"receipt_sha256": "753c9a750b0ae452a9cbe6428e4343be5682aa0bc395d055b6b6fa8c114521da",
+							"scope": "whole combined namespace (442 keys) at 659ef7e44b7c: #1861 file-size keys on top of #1862 tool_row.verb.*; fresh independent audit",
+							"note": "Combined-bytes re-audit after rebasing #1861 onto #1862; 0 blocker/major. Detail: i18n/audits/evidence/fr/ui.chat.canonical/au-1861-fr/report.md"
 						}
 					],
 					"status": "audited"
@@ -26756,31 +26804,31 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3",
-			"target_sha256": "da636c7580e96efed0b3db710f577d8ced1c2321fc747b95675028ae529bbb4f",
+			"source_sha256": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd",
+			"target_sha256": "4678c723a8aba6c2d1ef63cb3bb9255967f0a02107baa99da2129480dff750c4",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
+				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
 				"date": "2026-11-11",
-				"note": "hi tool_row.verb.* (182 keys) translated by i18n-translator; 258 earlier keys retained from prior rows (see superseded). Evidence: i18n/audits/evidence/hi/ui.chat.canonical/l1verb-hi-wave"
+				"note": "hi S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/hi/ui.chat.canonical/s16a-2bc153cbf350"
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-11",
-					"result": "clean-with-findings",
-					"instance": "7bfe4bf0bb78",
+					"result": "clean",
+					"instance": "2bc153cbf350",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
-						"nit": 3
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/7bfe4bf0bb78.json",
-					"receipt_sha256": "2a9e7a08b340c7ce4384a098ad595a56fc69a89d907fd6a3fe0c0ebe4cab1fe2",
-					"scope": "whole combined namespace (442 keys) at 659ef7e44b7c: #1861 file-size keys on top of #1862 tool_row.verb.*; fresh independent audit",
-					"note": "Combined-bytes re-audit after rebasing #1861 onto #1862; 0 blocker/major. Detail: i18n/audits/evidence/hi/ui.chat.canonical/l2-combined-hi-20261111/report.md"
+					"receipt": "i18n/receipts/2bc153cbf350.json",
+					"receipt_sha256": "0bb1887c8f4b2c2ba8f3b4af8130166a93b86beadc8abc00eb2d197a360bd671",
+					"scope": "the 14 new S16a tool-state/image-generation keys (draft audited by hash; landed values proven equal); other 442 keys byte-identical to the superseded combined-bytes audit",
+					"note": "S16a status words, PR #1870; binding receipt integrator-transcribed (see evidence). Detail: i18n/audits/evidence/hi/ui.chat.canonical/s16a-2bc153cbf350/report.md"
 				}
 			],
 			"status": "audited",
@@ -27217,6 +27265,30 @@
 							"receipt_sha256": "c7adf3e99c39bcaba6ca40f5b30ac4d1301339dd7e633a1070ee710ef192dffc",
 							"scope": "tool_row.verb.* 182 keys, round 2 (v2); whole-file hashes bound to the catalogue at that version",
 							"note": "Round 2 audit of the L1 tool-row verb batch; transcribed binding receipt, see its provenance block."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3",
+					"target_sha256": "da636c7580e96efed0b3db710f577d8ced1c2321fc747b95675028ae529bbb4f",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-11",
+							"result": "clean-with-findings",
+							"instance": "7bfe4bf0bb78",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 3
+							},
+							"receipt": "i18n/receipts/7bfe4bf0bb78.json",
+							"receipt_sha256": "2a9e7a08b340c7ce4384a098ad595a56fc69a89d907fd6a3fe0c0ebe4cab1fe2",
+							"scope": "whole combined namespace (442 keys) at 659ef7e44b7c: #1861 file-size keys on top of #1862 tool_row.verb.*; fresh independent audit",
+							"note": "Combined-bytes re-audit after rebasing #1861 onto #1862; 0 blocker/major. Detail: i18n/audits/evidence/hi/ui.chat.canonical/l2-combined-hi-20261111/report.md"
 						}
 					],
 					"status": "audited"
@@ -38610,13 +38682,13 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3",
-			"target_sha256": "a84811e9c087aa79873ef756a2a268e298ebe4b6789d7dd834f4f51a127b4acb",
+			"source_sha256": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd",
+			"target_sha256": "4fd63ae8ce587ca23cd188cb99e514bd44eac954a04ce40d2ae4dfd840eb5231",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
+				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
 				"date": "2026-11-11",
-				"note": "ru tool_row.verb.* (182 keys) translated by i18n-translator; 258 earlier keys retained from prior rows (see superseded). Evidence: i18n/audits/evidence/ru/ui.chat.canonical/l1verb-ru-wave"
+				"note": "ru S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/ru/ui.chat.canonical/s16a-db260f728ba9"
 			},
 			"auditors": [
 				{
@@ -38624,17 +38696,17 @@
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-11",
 					"result": "clean-with-findings",
-					"instance": "e8fd410766e5",
+					"instance": "db260f728ba9",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
+						"minor": 0,
 						"nit": 4
 					},
-					"receipt": "i18n/receipts/e8fd410766e5.json",
-					"receipt_sha256": "4df70a4dc704641a03838ef552e365fc3948208d25efaf9b0c3e7274cad39000",
-					"scope": "whole combined namespace (442 keys) at 659ef7e44b7c: #1861 file-size keys on top of #1862 tool_row.verb.*; fresh independent audit",
-					"note": "Combined-bytes re-audit after rebasing #1861 onto #1862; 0 blocker/major. Detail: i18n/audits/evidence/ru/ui.chat.canonical/l2c-ru-e8fd410766e5/report.md"
+					"receipt": "i18n/receipts/db260f728ba9.json",
+					"receipt_sha256": "dd6ab68f2f29d6d671656fe0a6e08296682e6681d3af10f33e9233bd4911ef48",
+					"scope": "the 14 new S16a tool-state/image-generation keys (draft audited by hash; landed values proven equal); other 442 keys byte-identical to the superseded combined-bytes audit",
+					"note": "S16a status words, PR #1870; binding receipt integrator-transcribed (see evidence). Detail: i18n/audits/evidence/ru/ui.chat.canonical/s16a-db260f728ba9/report.md"
 				}
 			],
 			"status": "audited",
@@ -39071,6 +39143,30 @@
 							"receipt_sha256": "8ab2aaa7290883557a87a538239f4287a985367fe764dcac2d2db60f3c1daa23",
 							"scope": "tool_row.verb.* 182 keys, round 2 (v2); whole-file hashes bound to the catalogue at that version",
 							"note": "Round 2 audit of the L1 tool-row verb batch; transcribed binding receipt, see its provenance block."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3",
+					"target_sha256": "a84811e9c087aa79873ef756a2a268e298ebe4b6789d7dd834f4f51a127b4acb",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-11",
+							"result": "clean-with-findings",
+							"instance": "e8fd410766e5",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 4
+							},
+							"receipt": "i18n/receipts/e8fd410766e5.json",
+							"receipt_sha256": "4df70a4dc704641a03838ef552e365fc3948208d25efaf9b0c3e7274cad39000",
+							"scope": "whole combined namespace (442 keys) at 659ef7e44b7c: #1861 file-size keys on top of #1862 tool_row.verb.*; fresh independent audit",
+							"note": "Combined-bytes re-audit after rebasing #1861 onto #1862; 0 blocker/major. Detail: i18n/audits/evidence/ru/ui.chat.canonical/l2c-ru-e8fd410766e5/report.md"
 						}
 					],
 					"status": "audited"
@@ -50484,13 +50580,13 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3",
-			"target_sha256": "479f3224402071b5d31024e6b0a44400a7824b784114678f1fc4349536ee80f2",
+			"source_sha256": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd",
+			"target_sha256": "633991b9affe83c9f3df7a4a9cf9053244c9891844d6ba591f9179acc73c7900",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
+				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
 				"date": "2026-11-11",
-				"note": "ur tool_row.verb.* (182 keys) translated by i18n-translator; 258 earlier keys retained from prior rows (see superseded). Evidence: i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave"
+				"note": "ur S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/ur/ui.chat.canonical/s16a-b97613446a7a"
 			},
 			"auditors": [
 				{
@@ -50498,17 +50594,17 @@
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-11",
 					"result": "clean-with-findings",
-					"instance": "4b55e20f2c31",
+					"instance": "b97613446a7a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 3,
-						"nit": 4
+						"minor": 1,
+						"nit": 3
 					},
-					"receipt": "i18n/receipts/4b55e20f2c31.json",
-					"receipt_sha256": "cb1b66356ef73d9591c10c32c6ad2ace1ba9c753e5ebb1d3b26d9710e635660c",
-					"scope": "whole combined namespace (442 keys) at 659ef7e44b7c: #1861 file-size keys on top of #1862 tool_row.verb.*; fresh independent audit",
-					"note": "Combined-bytes re-audit after rebasing #1861 onto #1862; 0 blocker/major. Detail: i18n/audits/evidence/ur/ui.chat.canonical/l2comb-ur-20261111/report.md"
+					"receipt": "i18n/receipts/b97613446a7a.json",
+					"receipt_sha256": "97bc679c4250778ee58b5142c76dbffb987945cb65a72da9a1eeb0bfe617285f",
+					"scope": "the 14 new S16a tool-state/image-generation keys (draft audited by hash; landed values proven equal); other 442 keys byte-identical to the superseded combined-bytes audit",
+					"note": "S16a status words, PR #1870; binding receipt integrator-transcribed (see evidence). Detail: i18n/audits/evidence/ur/ui.chat.canonical/s16a-b97613446a7a/report.md"
 				}
 			],
 			"status": "audited",
@@ -50994,6 +51090,30 @@
 							"receipt_sha256": "8bbbaeb64cf77de4a45f86e4d7fe9499059fe5e9a3d8cc2c77e01599172526d1",
 							"scope": "tool_row.verb.* 182 keys, round 4 (v4); whole-file hashes bound to the catalogue at that version",
 							"note": "Round 4 audit of the L1 tool-row verb batch; transcribed binding receipt, see its provenance block."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3",
+					"target_sha256": "479f3224402071b5d31024e6b0a44400a7824b784114678f1fc4349536ee80f2",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-11",
+							"result": "clean-with-findings",
+							"instance": "4b55e20f2c31",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 3,
+								"nit": 4
+							},
+							"receipt": "i18n/receipts/4b55e20f2c31.json",
+							"receipt_sha256": "cb1b66356ef73d9591c10c32c6ad2ace1ba9c753e5ebb1d3b26d9710e635660c",
+							"scope": "whole combined namespace (442 keys) at 659ef7e44b7c: #1861 file-size keys on top of #1862 tool_row.verb.*; fresh independent audit",
+							"note": "Combined-bytes re-audit after rebasing #1861 onto #1862; 0 blocker/major. Detail: i18n/audits/evidence/ur/ui.chat.canonical/l2comb-ur-20261111/report.md"
 						}
 					],
 					"status": "audited"
@@ -62272,13 +62392,13 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3",
-			"target_sha256": "325e37d1a3b5e8a0bbdfbf57bbb5ea3208fb377e35407ca989cba6d5e08b6cb8",
+			"source_sha256": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd",
+			"target_sha256": "c3d90f71c4e53d8b96bfb24f9c7e5f7c3d0c2ccda55d3aa3fb0bfee87dbb88c0",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
+				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
 				"date": "2026-11-11",
-				"note": "vi tool_row.verb.* (182 keys) translated by i18n-translator; 258 earlier keys retained from prior rows (see superseded). Evidence: i18n/audits/evidence/vi/ui.chat.canonical/l1verb-vi-wave"
+				"note": "vi S16a words (14 keys): draft v3 = translator v1 with 4 values changed by the manager on an auditor's findings; v1/v2 audits superseded. 442 earlier keys retained. Evidence: i18n/audits/evidence/vi/ui.chat.canonical/s16a-64a0e2d3b795"
 			},
 			"auditors": [
 				{
@@ -62286,17 +62406,17 @@
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-11",
 					"result": "clean-with-findings",
-					"instance": "a484d4606e72",
+					"instance": "64a0e2d3b795",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
-						"nit": 3
+						"minor": 0,
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/a484d4606e72.json",
-					"receipt_sha256": "700ab32b793e516d5410ef8b00da24c550a7f2727b25518298263a2427444292",
-					"scope": "whole combined namespace (442 keys) at 659ef7e44b7c: #1861 file-size keys on top of #1862 tool_row.verb.*; fresh independent audit",
-					"note": "Combined-bytes re-audit after rebasing #1861 onto #1862; 0 blocker/major. Detail: i18n/audits/evidence/vi/ui.chat.canonical/l2c-vi-a484d4606e72/report.md"
+					"receipt": "i18n/receipts/64a0e2d3b795.json",
+					"receipt_sha256": "072aad3fcd743e1b4674711c226c99fcd560c90c4b88e2e1aa5063a244c34590",
+					"scope": "the 14 new S16a tool-state/image-generation keys (draft audited by hash; landed values proven equal); other 442 keys byte-identical to the superseded combined-bytes audit",
+					"note": "S16a status words, PR #1870; binding receipt integrator-transcribed (see evidence). Detail: i18n/audits/evidence/vi/ui.chat.canonical/s16a-64a0e2d3b795/report.md"
 				}
 			],
 			"status": "audited",
@@ -62774,6 +62894,30 @@
 							"receipt_sha256": "9c6742a9c490c70ceac4004d22bd15b82d28d3abb123af6b533bc28c678c9e0f",
 							"scope": "tool_row.verb.* 182 keys, round 3 (v3); whole-file hashes bound to the catalogue at that version",
 							"note": "Round 3 audit of the L1 tool-row verb batch; transcribed binding receipt, see its provenance block."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3",
+					"target_sha256": "325e37d1a3b5e8a0bbdfbf57bbb5ea3208fb377e35407ca989cba6d5e08b6cb8",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-11",
+							"result": "clean-with-findings",
+							"instance": "a484d4606e72",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 3
+							},
+							"receipt": "i18n/receipts/a484d4606e72.json",
+							"receipt_sha256": "700ab32b793e516d5410ef8b00da24c550a7f2727b25518298263a2427444292",
+							"scope": "whole combined namespace (442 keys) at 659ef7e44b7c: #1861 file-size keys on top of #1862 tool_row.verb.*; fresh independent audit",
+							"note": "Combined-bytes re-audit after rebasing #1861 onto #1862; 0 blocker/major. Detail: i18n/audits/evidence/vi/ui.chat.canonical/l2c-vi-a484d4606e72/report.md"
 						}
 					],
 					"status": "audited"
@@ -74868,13 +75012,13 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3",
-			"target_sha256": "4176670606e68058e498a36006ba8c770af64489ec77d77e78d3a2754ab2ddf0",
+			"source_sha256": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd",
+			"target_sha256": "d8c6e5cec877feabe15133d4e1391f295d45920d050528005b242b8029958a29",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "openai/gpt-6.1-sol",
+				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
 				"date": "2026-11-11",
-				"note": "zh-CN tool_row.verb.* (182 keys) translated by i18n-translator; 258 earlier keys retained from prior rows (see superseded). Evidence: i18n/audits/evidence/zh-CN/ui.chat.canonical/l1verb-zh-CN-wave"
+				"note": "zh-CN S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/zh-CN/ui.chat.canonical/s16a-07b0fc8f8d80"
 			},
 			"auditors": [
 				{
@@ -74882,17 +75026,17 @@
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-11",
 					"result": "clean-with-findings",
-					"instance": "803ea1cbdb73",
+					"instance": "07b0fc8f8d80",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 3,
-						"nit": 2
+						"minor": 0,
+						"nit": 3
 					},
-					"receipt": "i18n/receipts/803ea1cbdb73.json",
-					"receipt_sha256": "4401b4db88cbb67b10c5dfca4358611d79ebb55008ed37c99acaab4771d40ca3",
-					"scope": "whole combined namespace (442 keys) at 659ef7e44b7c: #1861 file-size keys on top of #1862 tool_row.verb.*; fresh independent audit",
-					"note": "Combined-bytes re-audit after rebasing #1861 onto #1862; 0 blocker/major. Detail: i18n/audits/evidence/zh-CN/ui.chat.canonical/l2c-zhcn-803ea1cbdb73/report.md"
+					"receipt": "i18n/receipts/07b0fc8f8d80.json",
+					"receipt_sha256": "9253c5dd7d9761b7cfb6e87ec842586378be519166b7a91efc9fd0b3e631f74f",
+					"scope": "the 14 new S16a tool-state/image-generation keys (draft audited by hash; landed values proven equal); other 442 keys byte-identical to the superseded combined-bytes audit",
+					"note": "S16a status words, PR #1870; binding receipt integrator-transcribed (see evidence). Detail: i18n/audits/evidence/zh-CN/ui.chat.canonical/s16a-07b0fc8f8d80/report.md"
 				}
 			],
 			"status": "audited",
@@ -75346,6 +75490,30 @@
 							"receipt_sha256": "dd666f401bc099f68e9a473664486285ff045ebf519b51b84c5114bf6b792802",
 							"scope": "tool_row.verb.* 182 keys, round 2 (v2); whole-file hashes bound to the catalogue at that version",
 							"note": "Round 2 audit of the L1 tool-row verb batch; transcribed binding receipt, see its provenance block."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3",
+					"target_sha256": "4176670606e68058e498a36006ba8c770af64489ec77d77e78d3a2754ab2ddf0",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-11",
+							"result": "clean-with-findings",
+							"instance": "803ea1cbdb73",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 3,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/803ea1cbdb73.json",
+							"receipt_sha256": "4401b4db88cbb67b10c5dfca4358611d79ebb55008ed37c99acaab4771d40ca3",
+							"scope": "whole combined namespace (442 keys) at 659ef7e44b7c: #1861 file-size keys on top of #1862 tool_row.verb.*; fresh independent audit",
+							"note": "Combined-bytes re-audit after rebasing #1861 onto #1862; 0 blocker/major. Detail: i18n/audits/evidence/zh-CN/ui.chat.canonical/l2c-zhcn-803ea1cbdb73/report.md"
 						}
 					],
 					"status": "audited"
