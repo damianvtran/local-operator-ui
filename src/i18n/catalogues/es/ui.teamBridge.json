@@ -344,7 +344,6 @@
 	"ui.teamBridge.delivery.summary.held": "{count, plural, one {{count} pendiente de revisión} many {{count} pendientes de revisión} other {{count} pendientes de revisión}}",
 	"ui.teamBridge.delivery.summary.not_reviewed": "{count, plural, one {{count} sin revisar} many {{count} sin revisar} other {{count} sin revisar}}",
 	"ui.teamBridge.delivery.summary.not_delivered": "{count, plural, one {{count} no entregado} many {{count} no entregados} other {{count} no entregados}}",
-	"ui.teamBridge.delivery.summary.single.delivered": "Entregado",
 	"ui.teamBridge.delivery.summary.single.screening": "En análisis",
 	"ui.teamBridge.delivery.summary.single.held": "Pendiente de revisión",
 	"ui.teamBridge.delivery.summary.single.not_reviewed": "Sin revisar",

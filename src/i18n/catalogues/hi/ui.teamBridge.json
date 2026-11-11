@@ -344,7 +344,6 @@
 	"ui.teamBridge.delivery.summary.held": "{count, plural, one {{count} समीक्षा के लिए रुका} other {{count} समीक्षा के लिए रुके}}",
 	"ui.teamBridge.delivery.summary.not_reviewed": "{count, plural, one {{count} की समीक्षा नहीं हुई} other {{count} की समीक्षा नहीं हुई}}",
 	"ui.teamBridge.delivery.summary.not_delivered": "{count, plural, one {{count} तक नहीं पहुँचा} other {{count} तक नहीं पहुँचा}}",
-	"ui.teamBridge.delivery.summary.single.delivered": "पहुँच गया",
 	"ui.teamBridge.delivery.summary.single.screening": "जाँच जारी",
 	"ui.teamBridge.delivery.summary.single.held": "समीक्षा के लिए रुका",
 	"ui.teamBridge.delivery.summary.single.not_reviewed": "समीक्षा नहीं हुई",

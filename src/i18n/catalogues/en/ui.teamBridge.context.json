@@ -2578,13 +2578,6 @@
 		},
 		"note": "\"2 not delivered\": recipient agents whose moderation refused the message. Not the sender's error; must not sound accusatory. Shown under a message to every conversation member; never names recipients or reasons."
 	},
-	"ui.teamBridge.delivery.summary.single.delivered": {
-		"role": "the whole one-line delivery summary under a message sent to exactly one recipient agent",
-		"tone": "neutral, factual",
-		"length": "1-3 words; stands alone on the line",
-		"placeholders": {},
-		"note": "\"Delivered\": shown instead of the counted form (ui.teamBridge.delivery.summary.delivered) when the message has exactly one recipient agent in total, e.g. a 1:1 conversation, where \"1\" adds nothing. Meaning: the one recipient agent received the message. Standalone status, sentence case; no count, no recipient name. Shown under a message to every conversation member."
-	},
 	"ui.teamBridge.delivery.summary.single.screening": {
 		"role": "the whole one-line delivery summary under a message sent to exactly one recipient agent",
 		"tone": "neutral, factual",

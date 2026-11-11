@@ -436,18 +436,15 @@ export const SummaryNarrowTruncates: Story = {
 };
 
 /* ONE RECIPIENT IN TOTAL (operator request 2026-11-10): a 1:1 conversation
- * reads "Delivered" / "Being screened", not "Delivered to 1" / "1 being
- * screened"; the count adds nothing when there is only one recipient. */
-export const SummarySingleRecipientDelivered: Story = {
-	args: { states: undefined, summary: { total: 1, delivered: 1 } },
-};
-
+ * reads "Being screened" / "Held for review", not "1 being screened"; the
+ * count adds nothing when there is only one recipient. There is no delivered
+ * story: a fully delivered message renders no line since #1858. */
 export const SummarySingleRecipientScreening: Story = {
 	args: { states: undefined, summary: { total: 1, screening: 1 } },
 };
 
-/* The two terminal outcomes alone (design review D2), so all five uncounted
- * forms stay in visual review. */
+/* The two terminal outcomes alone (design review D2), so all four uncounted
+ * forms stay in visual review (held is `SummarySingleRecipientDm`). */
 export const SummarySingleRecipientNotReviewed: Story = {
 	args: { states: undefined, summary: { total: 1, not_reviewed: 1 } },
 };

@@ -12413,7 +12413,6 @@ export type MessageParams = {
 	"ui.teamBridge.delivery.summary.not_reviewed_note": undefined;
 	"ui.teamBridge.delivery.summary.screening": { count: number };
 	"ui.teamBridge.delivery.summary.separator": undefined;
-	"ui.teamBridge.delivery.summary.single.delivered": undefined;
 	"ui.teamBridge.delivery.summary.single.held": undefined;
 	"ui.teamBridge.delivery.summary.single.not_delivered": undefined;
 	"ui.teamBridge.delivery.summary.single.not_reviewed": undefined;

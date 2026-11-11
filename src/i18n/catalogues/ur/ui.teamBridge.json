@@ -344,7 +344,6 @@
 	"ui.teamBridge.delivery.summary.held": "{count, plural, one {{count} جائزے کے لیے رکا} other {{count} جائزے کے لیے رکے}}",
 	"ui.teamBridge.delivery.summary.not_reviewed": "{count, plural, one {{count} کا جائزہ نہیں ہوا} other {{count} کا جائزہ نہیں ہوا}}",
 	"ui.teamBridge.delivery.summary.not_delivered": "{count, plural, one {{count} تک نہیں پہنچا} other {{count} تک نہیں پہنچا}}",
-	"ui.teamBridge.delivery.summary.single.delivered": "پہنچ گیا",
 	"ui.teamBridge.delivery.summary.single.screening": "جانچ جاری",
 	"ui.teamBridge.delivery.summary.single.held": "جائزے کے لیے رکا",
 	"ui.teamBridge.delivery.summary.single.not_reviewed": "جائزہ نہیں ہوا",

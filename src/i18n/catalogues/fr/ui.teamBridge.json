@@ -344,7 +344,6 @@
 	"ui.teamBridge.delivery.summary.held": "{count, plural, one {{count} en attente d’examen} many {{count} en attente d’examen} other {{count} en attente d’examen}}",
 	"ui.teamBridge.delivery.summary.not_reviewed": "{count, plural, one {{count} non examiné} many {{count} non examinés} other {{count} non examinés}}",
 	"ui.teamBridge.delivery.summary.not_delivered": "{count, plural, one {{count} non remis} many {{count} non remis} other {{count} non remis}}",
-	"ui.teamBridge.delivery.summary.single.delivered": "Remis",
 	"ui.teamBridge.delivery.summary.single.screening": "En vérification",
 	"ui.teamBridge.delivery.summary.single.held": "En attente d’examen",
 	"ui.teamBridge.delivery.summary.single.not_reviewed": "Non examiné",

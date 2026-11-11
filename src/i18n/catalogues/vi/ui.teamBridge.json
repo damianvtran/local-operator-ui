@@ -344,7 +344,6 @@
 	"ui.teamBridge.delivery.summary.held": "{count, plural, other {{count} chờ xem xét}}",
 	"ui.teamBridge.delivery.summary.not_reviewed": "{count, plural, other {{count} chưa được xem xét}}",
 	"ui.teamBridge.delivery.summary.not_delivered": "{count, plural, other {{count} không được chuyển}}",
-	"ui.teamBridge.delivery.summary.single.delivered": "Đã chuyển",
 	"ui.teamBridge.delivery.summary.single.screening": "Đang sàng lọc",
 	"ui.teamBridge.delivery.summary.single.held": "Chờ xem xét",
 	"ui.teamBridge.delivery.summary.single.not_reviewed": "Chưa được xem xét",

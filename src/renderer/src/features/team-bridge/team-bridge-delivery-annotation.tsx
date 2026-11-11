@@ -290,13 +290,15 @@ export function segmentText(
  * a `=1` arm in the counted plurals: the counted keys must keep saying
  * "1 being screened" when that one sits beside other segments, and only the
  * caller knows whether the line has one recipient or one-in-a-bucket.
+ *
+ * Outstanding segments only: there is no uncounted "Delivered" because since
+ * #1858 a fully delivered message renders no line, and a single recipient is
+ * either delivered or outstanding, never both.
  */
 function singleSegmentText(
-	segment: (typeof TEAM_BRIDGE_DELIVERY_SEGMENTS)[number],
+	segment: Exclude<(typeof TEAM_BRIDGE_DELIVERY_SEGMENTS)[number], "delivered">,
 ): string {
 	switch (segment) {
-		case "delivered":
-			return t("ui.teamBridge.delivery.summary.single.delivered");
 		case "screening":
 			return t("ui.teamBridge.delivery.summary.single.screening");
 		case "held":
@@ -319,14 +321,17 @@ function summarySegmentText(
 	counts: TeamBridgeDeliveryCounts,
 	single: boolean,
 ): string {
-	return single
+	// `delivered` keeps its counted form even when `single`: the summary model
+	// never yields that pair (complete is silent, #1858), so this is only a
+	// defensive path for direct callers of the exported text helpers.
+	return single && segment !== "delivered"
 		? singleSegmentText(segment)
 		: segmentText(segment, counts[segment]);
 }
 
 /**
  * "Delivered to 3 · 2 being screened · 2 not delivered", zero segments omitted;
- * just "Delivered" (or "Being screened", ...) for a single recipient.
+ * just "Being screened" (or "Held for review", ...) for a single recipient.
  */
 export function teamBridgeDeliverySummaryText(
 	counts: TeamBridgeDeliveryCounts,
