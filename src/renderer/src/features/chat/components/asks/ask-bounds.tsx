@@ -129,6 +129,18 @@ export const ASK_FADE_ATTR = "data-lo-ask-fade";
 export const ASK_BOUND_ATTR = "data-lo-ask-bound";
 export const ASK_ROW_SELECTOR = "[data-lo-ask-row]";
 
+/*
+ * Computed style read through the element's OWN window, not the bare global.
+ * In the browser the two are the same object, so this changes nothing there;
+ * the jsdom test setups (`scripts/ask-*.test.mjs`) install `window`/`document`
+ * but not every window member as a global, so a bare `getComputedStyle` threw a
+ * ReferenceError mid-measure. No window (a detached node, a stripped test
+ * global) returns null and callers fall back to "no style info" - the same
+ * defaults an unparseable value already takes.
+ */
+const computedStyleOf = (el: Element): CSSStyleDeclaration | null =>
+	el.ownerDocument?.defaultView?.getComputedStyle?.(el) ?? null;
+
 const fitInBound = (node: HTMLElement, bound: HTMLElement): number | null => {
 	if (bound.querySelector(`[${ASK_SCROLL_ATTR}]`) !== node) return null;
 	const pane = bound.getBoundingClientRect();
@@ -138,7 +150,8 @@ const fitInBound = (node: HTMLElement, bound: HTMLElement): number | null => {
 	).getBoundingClientRect();
 	const top = body.top - pane.top + bound.scrollTop;
 	const below = Math.max(0, row.bottom - body.bottom);
-	const pad = Number.parseFloat(getComputedStyle(bound).paddingBottom) || 0;
+	const pad =
+		Number.parseFloat(computedStyleOf(bound)?.paddingBottom ?? "") || 0;
 	// jsdom (and a pane not laid out yet) reports a zero box: no fit, keep the cap.
 	if (bound.clientHeight <= 0) return null;
 	return Math.max(0, Math.floor(bound.clientHeight - top - below - pad));
@@ -202,7 +215,7 @@ export const AskScrollBody = ({
 			// scrollHeight and clientHeight, and a phantom Tab stop is the cost.
 			setOverflows(node.scrollHeight > node.clientHeight + 1);
 			setAtEnd(node.scrollTop + node.clientHeight >= node.scrollHeight - 1);
-			const lh = Number.parseFloat(getComputedStyle(node).lineHeight);
+			const lh = Number.parseFloat(computedStyleOf(node)?.lineHeight ?? "");
 			setFadeRoom(!(lh > 0) || node.clientHeight + 1 >= 2 * lh);
 			const inner = node.firstElementChild as HTMLElement | null;
 			setContentH(inner ? inner.offsetHeight : null);
