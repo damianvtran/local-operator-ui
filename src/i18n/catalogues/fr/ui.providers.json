@@ -11,6 +11,7 @@
 	"ui.providers.phone.action.sign_in": "Continuer dans le navigateur",
 	"ui.providers.phone.address_label": "URL d’accès depuis votre téléphone",
 	"ui.providers.phone.choose_heading": "Choisir un compte",
+	"ui.providers.phone.connector_not_needed": "L’accès depuis un téléphone ne nécessite plus d’outil de connexion distinct sur cet ordinateur. Vérifiez à nouveau pour poursuivre la configuration.",
 	"ui.providers.phone.consent": "L’activation configure l’abonnement tunnel Radient de ce compte pour l’accès depuis un téléphone à {amount} USD par mois, réserve votre URL d’accès depuis un téléphone et lance le connecteur en arrière-plan. Cela n’achète pas de crédit.",
 	"ui.providers.phone.failure.check": "L’accès depuis un téléphone n’a pas pu être vérifié, et rien n’a été modifié.",
 	"ui.providers.phone.failure.run": "La configuration de l’accès depuis un téléphone n’a pas pu aboutir. Les étapes déjà terminées ne sont pas annulées. Vérifiez à nouveau avant de réessayer.",
