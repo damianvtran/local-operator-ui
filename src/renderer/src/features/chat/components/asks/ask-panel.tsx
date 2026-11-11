@@ -101,7 +101,7 @@ import {
 	askTicks,
 	draftFor,
 } from "../../ask-queue";
-import { AskRecommendedBadge, recommendedIndex } from "../ask-recommended";
+import { AskRecommendedBadge, recommendedIndexes } from "../ask-recommended";
 import { AskAnswerField, commitOnEnter } from "./ask-answer-field";
 
 /**
@@ -439,11 +439,18 @@ const AskQuestionField = ({
 	 * drawer drew no badge and no bold on any real install (agent review round 1,
 	 * R1-1).
 	 *
-	 * `recommendedIndex` is the dock's own validation, SHARED rather than copied:
+	 * `recommendedIndexes` is the dock's own validation, SHARED rather than copied:
 	 * an index that is absent, null, out of range or not an integer badges
-	 * NOTHING, and only a real index marks its row (`ask-recommended.tsx`).
+	 * NOTHING, and only a real index marks its row (`ask-recommended.tsx`). A
+	 * multi-select ask that recommends several options also sends
+	 * `recommended_all`, so SEVERAL rows can be marked; the marks never touch the
+	 * draft, so nothing is pre-ticked.
 	 */
-	const marked = recommendedIndex(question.recommended, options.length);
+	const marked = recommendedIndexes(
+		question.recommended,
+		question.recommended_all,
+		options.length,
+	);
 	/*
 	 * THE `Other` ENTRY: card state, seeded from the draft (see `AskOther`).
 	 *
@@ -550,7 +557,7 @@ const AskQuestionField = ({
 						 * which is the whole requirement: the advice the user is choosing
 						 * AGAINST must not be erased by the act of weighing it.
 						 */
-						const recommended = marked === index;
+						const recommended = marked.has(index);
 						return (
 							<button
 								key={option.label}

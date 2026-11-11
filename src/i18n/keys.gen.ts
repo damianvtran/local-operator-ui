@@ -10167,6 +10167,7 @@ export type MessageParams = {
 	"ui.providers.phone.action.sign_in": undefined;
 	"ui.providers.phone.address_label": undefined;
 	"ui.providers.phone.choose_heading": undefined;
+	"ui.providers.phone.connector_not_needed": undefined;
 	"ui.providers.phone.consent": { amount: string };
 	"ui.providers.phone.failure.check": undefined;
 	"ui.providers.phone.failure.run": undefined;

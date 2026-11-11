@@ -11,6 +11,7 @@
 	"ui.providers.phone.action.sign_in": "在浏览器中继续",
 	"ui.providers.phone.address_label": "手机访问地址",
 	"ui.providers.phone.choose_heading": "选择账户",
+	"ui.providers.phone.connector_not_needed": "手机访问不再需要在这台电脑上另外安装连接工具。请重新检查以继续设置。",
 	"ui.providers.phone.consent": "开通后，将为此Radient账户启用每月{amount}美元的隧道订阅，预留你的手机访问地址，并启动后台连接程序。此操作不会购买额度。",
 	"ui.providers.phone.failure.check": "无法检查手机访问状态，未做任何更改。",
 	"ui.providers.phone.failure.run": "手机访问设置未能完成。已完成的步骤不会撤销，请重新检查后再重试。",

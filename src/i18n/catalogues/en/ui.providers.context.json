@@ -59,6 +59,11 @@
 		"tone": "imperative",
 		"note": "Several accounts exist; the app never picks one."
 	},
+	"ui.providers.phone.connector_not_needed": {
+		"role": "prerequisite explanation",
+		"tone": "calm, reassuring, plain",
+		"note": "Shown instead of the backend's install-the-connector-tool sentence when this computer no longer needs that tool. Do not name the tool or the transport. 'Check again' must match ui.providers.phone.action.check_again, the button below it."
+	},
 	"ui.providers.phone.consent": {
 		"role": "consent sentence beside the activate button",
 		"tone": "plain, specific, no urgency",

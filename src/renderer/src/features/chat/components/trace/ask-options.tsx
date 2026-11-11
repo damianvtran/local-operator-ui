@@ -81,7 +81,7 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import type { KeyboardEvent } from "react";
 import type { PendingDesktopGate } from "../../../../../../shared/desktop-session-contract";
-import { AskRecommendedBadge, recommendedIndex } from "../ask-recommended";
+import { AskRecommendedBadge, recommendedIndexes } from "../ask-recommended";
 
 export type AskOptionsProps = {
 	/** The gate's options, in the order the wire carried them. */
@@ -101,6 +101,11 @@ export type AskOptionsProps = {
 	 * the user pressed Down to weigh the alternative he is choosing against.
 	 */
 	recommended?: number | null;
+	/**
+	 * Every recommended row when two or more are (`PendingDesktopGate.recommended_all`);
+	 * absent for one, where `recommended` alone marks the row.
+	 */
+	recommendedAll?: number[] | null;
 	/**
 	 * An answer is in flight, or this gate's answer has already been sent.
 	 * Disables every option so a second click — or a click racing a typed send —
@@ -169,6 +174,7 @@ export const askOptionKeyIntent = (
 export const AskOptions = ({
 	options,
 	recommended,
+	recommendedAll,
 	busy = false,
 	onAnswer,
 	requestId,
@@ -183,10 +189,14 @@ export const AskOptions = ({
 	// entirely — there is no option list to render and nothing here reads the
 	// typed value.
 	// THE ONE VALIDATED READ of the recommendation, shared with the drawer card
-	// (`ask-recommended.tsx`'s `recommendedIndex`) so the two cannot disagree about
-	// which row is marked: an index that is absent, null, out of range or not an
+	// (`ask-recommended.tsx`'s `recommendedIndexes`) so the two cannot disagree about
+	// which rows are marked: an index that is absent, null, out of range or not an
 	// integer badges NOTHING rather than the wrong row.
-	const marked = recommendedIndex(recommended, options.length);
+	const marked = recommendedIndexes(
+		recommended,
+		recommendedAll,
+		options.length,
+	);
 	/*
 	 * Resolved ONCE per option, not once per field. `display` is a catalogue
 	 * lookup and the row reads both the label and the description, so calling it
@@ -360,12 +370,12 @@ export const AskOptions = ({
 									 * on the light theme (see `ask-recommended.tsx`), and the accent
 									 * is already spent on the callout above.
 									 */
-									marked === index && "font-semibold",
+									marked.has(index) && "font-semibold",
 								)}
 							>
 								{shown[index].label}
 							</span>
-							{marked === index && (
+							{marked.has(index) && (
 								/*
 								 * The glyph + word mark, and the reason it is a shared module
 								 * rather than a span here: the drawer card carries the same fact

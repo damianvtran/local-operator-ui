@@ -600,6 +600,7 @@ export const QuestionDock = ({
 						<AskOptions
 							options={gate.options}
 							recommended={gate.recommended}
+							recommendedAll={gate.recommended_all}
 							requestId={gate.request_id}
 							busy={busy}
 							onAnswer={(label) => onAnswer?.(label)}

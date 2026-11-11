@@ -6242,9 +6242,49 @@ export const phoneSetupResultSchema = z
 		billing_outcome: z.string().optional(),
 		reservation_outcome: z.string().optional(),
 		failure_stage: z.string().optional(),
+		/*
+		 * Which connector carries this computer's tunnel, as the local backend
+		 * decides it (local-operator `desktop_tunnel_setup.py::_contract`): the
+		 * live gateway's answer when there is one, otherwise whether the relay is
+		 * offered AND not overridden by the `tunnel.transport: cloudflare` kill
+		 * switch. So the server can offer the relay while this still says
+		 * `cloudflare`. `"relay"` is the AWS-native tunnel relay, whose connector
+		 * runs inside `lop` (nothing to install); `"cloudflare"` is the legacy
+		 * Cloudflare Tunnel, which needs the `cloudflared` binary. OPTIONAL and a
+		 * plain string, for the same additive reasons as `step`: a backend that
+		 * predates the relay omits it, and an absent or unknown value keeps the
+		 * cloudflared behaviour exactly as it was. Values mirror the server's
+		 * `Tunnel.transport` (agent-server docs/TUNNEL_RELAY.md). Only
+		 * `phoneSetupSkipsCloudflared` reads it.
+		 */
+		transport: z.string().optional(),
 	})
 	.passthrough();
 export type PhoneSetupResult = z.infer<typeof phoneSetupResultSchema>;
+
+/**
+ * Whether the "install cloudflared" setup step does not apply to this answer.
+ *
+ * True only when the backend says the server offers the relay transport AND the
+ * answer is the cloudflared prerequisite. Under the relay, `lop` carries the
+ * connector in-process, so telling a person to install `cloudflared` would send
+ * them to install software the tunnel no longer uses. A relay-aware backend
+ * derives `transport` and its cloudflared preflight from the same predicate, so
+ * it does not report that blocker beside `relay`; this is the renderer's half of
+ * the same rule, for the cases that can still pair them: a backend that sends
+ * `transport` without that coupling, or the race where the relay becomes
+ * available between the backend's preflight and the answer it builds.
+ *
+ * Keyed on `blocked_on` OR `remedy.kind` because those are the two machine fields
+ * the block already switches on; never on the remedy sentence.
+ */
+export function phoneSetupSkipsCloudflared(result: PhoneSetupResult): boolean {
+	if (result.transport !== "relay") return false;
+	return (
+		result.blocked_on === "cloudflared" ||
+		result.remedy?.kind === "install_cloudflared"
+	);
+}
 
 /**
  * The refusal codes the setup route declares in `detail.code`, each carrying a
