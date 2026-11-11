@@ -288,9 +288,9 @@ const Blocked: FC<{
 }> = ({ result, setup, offerSignIn }) => {
 	const kind = result.remedy?.kind ?? null;
 	// The relay transport needs no `cloudflared`, so the install step is skipped:
-	// its sentence (which names the binary to install) is not shown, and only the
-	// neutral "Check again" remains, which asks the backend for a fresh plan that a
-	// relay-aware backend answers past this prerequisite. Without `transport` (an
+	// the backend's sentence (which names the binary to install) is replaced by a
+	// neutral UI sentence, and "Check again" asks the backend for a fresh plan that
+	// a relay-aware backend answers past this prerequisite. Without `transport` (an
 	// older backend) or with `cloudflare`, the step renders exactly as before.
 	const skipCloudflared = phoneSetupSkipsCloudflared(result);
 	const owner = result.credential_id;
@@ -370,7 +370,14 @@ const Blocked: FC<{
 					))}
 				</div>
 			) : null}
-			{result.remedy && !skipCloudflared ? (
+			{skipCloudflared ? (
+				// UI-owned, not the backend's: the backend sentence is the one being
+				// suppressed, and a blocked state with no sentence reads as a bug
+				// (design review D1). It never names the transport or the tool.
+				<p className="break-words text-body-sm text-ink">
+					{t("ui.providers.phone.connector_not_needed")}
+				</p>
+			) : result.remedy ? (
 				<p className="break-words text-body-sm text-ink">
 					{result.remedy.text}
 				</p>

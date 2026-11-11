@@ -11,6 +11,7 @@
 	"ui.providers.phone.action.sign_in": "براؤزر میں جاری رکھیں",
 	"ui.providers.phone.address_label": "فون کا پتا",
 	"ui.providers.phone.choose_heading": "اکاؤنٹ منتخب کریں",
+	"ui.providers.phone.connector_not_needed": "فون کی رسائی کے لیے اب اس کمپیوٹر پر کنیکٹر کے الگ ٹول کی ضرورت نہیں۔ سیٹ اپ جاری رکھنے کے لیے دوبارہ جانچیں۔",
 	"ui.providers.phone.consent": "فعال کرنے سے اس Radient اکاؤنٹ کی ٹنل سبسکرپشن ماہانہ USD {amount} پر ترتیب پاتی ہے، آپ کے فون کا پتا مختص ہوتا ہے اور پس منظر کا کنیکٹر شروع ہوتا ہے۔ اس سے کریڈٹ نہیں خریدا جاتا۔",
 	"ui.providers.phone.failure.check": "فون کی رسائی جانچی نہیں جا سکی اور کچھ تبدیل نہیں ہوا۔",
 	"ui.providers.phone.failure.run": "فون کی رسائی کا سیٹ اپ مکمل نہیں ہو سکا۔ مکمل شدہ مراحل واپس نہیں لیے جاتے۔ دوبارہ کوشش سے پہلے دوبارہ جانچیں۔",

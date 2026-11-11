@@ -11,6 +11,7 @@
 	"ui.providers.phone.action.sign_in": "Continuar en el navegador",
 	"ui.providers.phone.address_label": "Dirección para el teléfono",
 	"ui.providers.phone.choose_heading": "Elige una cuenta",
+	"ui.providers.phone.connector_not_needed": "El acceso desde el teléfono ya no necesita una herramienta de conexión aparte en este ordenador. Comprueba de nuevo para continuar con la configuración.",
 	"ui.providers.phone.consent": "Al activar, se configura la suscripción de túnel de esta cuenta de Radient por USD {amount} al mes, se reserva tu dirección para el teléfono y se inicia el conector en segundo plano. No se compra crédito.",
 	"ui.providers.phone.failure.check": "No se pudo comprobar el acceso desde el teléfono y no se cambió nada.",
 	"ui.providers.phone.failure.run": "No se pudo completar la configuración del acceso desde el teléfono. Los pasos ya completados no se deshacen. Comprueba de nuevo antes de reintentar.",

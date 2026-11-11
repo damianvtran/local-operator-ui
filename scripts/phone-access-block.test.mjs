@@ -1051,6 +1051,9 @@ test("declared partial outcomes retain canonical backend copy independently of r
  * harness DOES show the install sentence, so the relay case's absence of it is
  * the transport's doing and not a rendering accident.
  */
+/** Words the skipped step's sentence must never show the person. */
+const TRANSPORT_NAMES = /relay|cloudflared/i;
+
 const cloudflaredBlocked = (over = {}) =>
 	answer({
 		step: "cloudflared",
@@ -1089,6 +1092,12 @@ for (const [label, transport, skipped] of [
 			!skipped,
 		);
 		assert.equal(view.has('[data-phone-step-skipped="cloudflared"]'), skipped);
+		// D1: the skipped step still explains itself, with the UI's own sentence
+		// and never the transport's name; the shown step never carries it.
+		const neutral =
+			"Phone access no longer needs a separate connector tool on this computer.";
+		assert.equal(view.text().includes(neutral), skipped);
+		if (skipped) assert.ok(!TRANSPORT_NAMES.test(view.text()));
 		// Either way the person keeps a fresh check and is never offered a run.
 		assert.ok(view.button("Check again"));
 		assert.ok(!view.button("Set up phone access"));
