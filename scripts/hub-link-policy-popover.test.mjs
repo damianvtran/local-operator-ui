@@ -91,7 +91,7 @@ await writeFile(
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { HubLinkSidebarMark } from "./src/renderer/src/features/chat/components/hub-link-sidebar-mark.tsx";
+			export { HubLinkSidebarMark, HubUnresolvedMark } from "./src/renderer/src/features/chat/components/hub-link-sidebar-mark.tsx";
 			export {beginRadientAuthorityTransition,beginRadientAuthoritySignOut,settleRadientAuthority,radientAuthorityEpoch} from "./src/renderer/src/shared/hooks/radient-account-authority.ts";
 			export {hubRegistryNameCounts} from "./src/renderer/src/shared/api/local-operator/hub-link-actions.ts";
 			export { hubLinksKey } from "./src/renderer/src/shared/api/local-operator/hub-link-hooks.ts";
@@ -1151,6 +1151,83 @@ test("R1 pending authority/sign-out hides private label even with old user and m
 			true,
 		);
 		assert(ui.client.getQueryData(["memberships", "account", "account-A"]));
+	} finally {
+		await ui.close();
+	}
+});
+
+/*
+ * Core #3807 adds `detail` to `links_snapshot` unresolved rows. Before it the
+ * "?" roster mark said only "<item>: source not confirmed", so two teams sat
+ * behind a bare question mark with nothing saying the dead end is deliberate.
+ * The mark is mounted on its own (no popover) and its described-by sentence
+ * is read the way a screen reader and the tooltip get it.
+ */
+async function mountUnresolved(details) {
+	const dom = installDom();
+	const root = createRoot(document.getElementById("root"));
+	await act(async () => {
+		root.render(
+			React.createElement(
+				app.TooltipProvider,
+				null,
+				React.createElement(app.HubUnresolvedMark, {
+					item: "legacy",
+					staged: false,
+					onResolve: () => {},
+					details,
+				}),
+			),
+		);
+		await pause();
+	});
+	const mark = document.querySelector("[data-hub-mark]");
+	return {
+		mark,
+		described: () => {
+			const id = mark.getAttribute("aria-describedby");
+			return id ? (document.getElementById(id)?.textContent ?? "") : null;
+		},
+		close: async () => {
+			await act(async () => root.unmount());
+			dom.window.close();
+		},
+	};
+}
+
+const UNRESOLVED_LABEL = "legacy: source not confirmed. Confirm the source.";
+for (const [detail, sentence] of [
+	[
+		"legacy-scope-ambiguous",
+		"It was saved before sources were recorded and could belong to the public hub or an organization, so the app does not guess which.",
+	],
+	[
+		"scope-unknown",
+		"It was saved without a publish scope, so its source cannot be identified.",
+	],
+	[
+		"no-origin",
+		"No check has reached its source yet. The next successful check identifies it.",
+	],
+]) {
+	test(`the "?" mark explains ${detail}, once for two origins with that cause`, async () => {
+		const ui = await mountUnresolved([detail, detail]);
+		try {
+			assert.equal(ui.mark.getAttribute("aria-label"), UNRESOLVED_LABEL);
+			// Exactly one copy of the cause: an item unresolved at two origins
+			// for the same reason must not repeat the sentence per origin.
+			assert.equal(ui.described(), sentence);
+		} finally {
+			await ui.close();
+		}
+	});
+}
+
+test('the "?" mark on an older core (no detail) or an unknown code keeps its label alone', async () => {
+	const ui = await mountUnresolved([undefined, "some-future-code"]);
+	try {
+		assert.equal(ui.mark.getAttribute("aria-label"), UNRESOLVED_LABEL);
+		assert.equal(ui.described(), null, "no description is invented");
 	} finally {
 		await ui.close();
 	}
