@@ -28,6 +28,32 @@ import {
 const image =
 	"data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='360'%3E%3Crect width='640' height='360' fill='%23232a36'/%3E%3Ccircle cx='120' cy='180' r='56' fill='%234f7cff'/%3E%3Crect x='220' y='120' width='320' height='18' rx='9' fill='%23c9d3e3'/%3E%3Crect x='220' y='160' width='240' height='12' rx='6' fill='%237887a0'/%3E%3C/svg%3E";
 
+/*
+ * A stand-in for GitHub's 1200x600 og:image, drawn to the same layout because
+ * the layout is what the crop bug destroyed: a white ground, a large title, a
+ * subtitle, a stats row near the bottom and GitHub's coloured language bar
+ * flush with the bottom edge. The old `object-cover` cut that bottom band off
+ * at any card wider than 352px, so this fixture makes a crop visible in a
+ * single frame (the bar is either there or it is not). Synthetic rather than
+ * the real PNG: the real one carries a contributor's avatar, which is not ours
+ * to commit as a fixture.
+ */
+const githubOgImage = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
+	`<svg xmlns='http://www.w3.org/2000/svg' width='1200' height='600'>` +
+		`<rect width='1200' height='600' fill='#ffffff'/>` +
+		`<text x='80' y='110' font-family='sans-serif' font-size='28' fill='#57606a'>New Release v0.101.41</text>` +
+		`<text x='80' y='190' font-family='sans-serif' font-size='56' font-weight='700' fill='#1f2328'>0.101.41: Clearer handling of</text>` +
+		`<text x='80' y='255' font-family='sans-serif' font-size='56' font-weight='700' fill='#1f2328'>empty and conflicting provider...</text>` +
+		`<text x='80' y='330' font-family='sans-serif' font-size='34' fill='#57606a'>This patch makes two kinds of provider failure</text>` +
+		`<rect x='940' y='70' width='180' height='180' rx='18' fill='#8c959f'/>` +
+		`<circle cx='100' cy='470' r='22' fill='#8c959f'/>` +
+		`<text x='140' y='466' font-family='sans-serif' font-size='26' fill='#1f2328'>1</text>` +
+		`<text x='140' y='496' font-family='sans-serif' font-size='22' fill='#57606a'>Contributor</text>` +
+		`<rect y='580' width='980' height='20' fill='#3572a5'/>` +
+		`<rect x='980' y='580' width='220' height='20' fill='#3178c6'/>` +
+		"</svg>",
+)}`;
+
 const favicon =
 	"data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Crect width='32' height='32' rx='7' fill='%234f7cff'/%3E%3C/svg%3E";
 
@@ -68,6 +94,73 @@ const unknownSize = view({
 			width: null,
 			height: null,
 		},
+	},
+});
+
+/** GitHub's release page as core resolves it: a 2:1 picture, a title long
+ * enough to wrap, a description long enough to clamp. */
+const github = view({
+	kind: "ready",
+	preview: {
+		url: "https://github.com/damianvtran/local-operator/releases/tag/v0.101.41",
+		title:
+			"Release 0.101.41: Clearer handling of empty and conflicting provider replies · damianvtran/local-operator",
+		description:
+			"Clearer handling of empty and conflicting provider replies This patch makes two kinds of provider failure easier to understand and recover from. A provider reply with no content is now retried once, then reported with the provider and model.",
+		siteName: "GitHub",
+		favicon: { id: "0123456789abcdef0123456789abcdef", mime: "image/png" },
+		image: {
+			id: "fedcba9876543210fedcba9876543210",
+			mime: "image/png",
+			width: 1200,
+			height: 600,
+		},
+	},
+});
+
+/** No picture, but every text field: the plate alone carries the card. */
+const noImage = view({
+	kind: "ready",
+	preview: {
+		url: "https://docs.python.org/3/library/asyncio-task.html",
+		title: "Coroutines and Tasks — Python 3.14 documentation",
+		description:
+			"This section outlines high-level asyncio APIs to work with coroutines and Tasks.",
+		siteName: "Python documentation",
+		favicon: null,
+		image: null,
+	},
+});
+
+/** A title far past two lines, so the clamp and its ellipsis are looked at. */
+const longTitle = view({
+	kind: "ready",
+	preview: {
+		url: "https://example.com/posts/long",
+		title:
+			"An unreasonably long page title that keeps going well past the second line of the card, because some sites put the whole first paragraph into their og:title and the card must still hold its shape",
+		description:
+			"And a description that is also long enough to need its own clamp: it runs on past the third line so the ellipsis at the end of the third line is something a reviewer can see rather than infer from the class list.",
+		siteName:
+			"A site name long enough to truncate on its own single source line",
+		favicon: null,
+		image: null,
+	},
+});
+
+/** Unbroken tokens: a URL as the title (sites with no og:title do this) and a
+ * hash as the description. Neither has a space to wrap at. */
+const longUrl = view({
+	kind: "ready",
+	preview: {
+		url: "https://example.com/a/very/long/path/that/never/breaks/0123456789abcdef0123456789abcdef0123456789abcdef?query=0123456789abcdef0123456789abcdef",
+		title:
+			"https://example.com/a/very/long/path/that/never/breaks/0123456789abcdef0123456789abcdef0123456789abcdef?query=0123456789abcdef0123456789abcdef",
+		description:
+			"sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+		siteName: null,
+		favicon: null,
+		image: null,
 	},
 });
 
@@ -127,6 +220,28 @@ export const ReadyAtChatColumnFloor: Story = {
 			</div>
 		),
 	],
+};
+
+/** GitHub's 2:1 card at the 380px measuring width: the box is capped at 176px,
+ * so the picture letterboxes rather than losing its bottom bar to a crop. */
+export const ReadyGitHub: Story = {
+	name: "Ready, GitHub 2:1 picture",
+	args: { view: github, imageUrl: githubOgImage, faviconUrl: favicon },
+};
+
+export const ReadyNoImage: Story = {
+	name: "Ready, no picture",
+	args: { view: noImage },
+};
+
+export const ReadyLongTitle: Story = {
+	name: "Ready, long title and description",
+	args: { view: longTitle },
+};
+
+export const ReadyLongUrl: Story = {
+	name: "Ready, long unbroken URL",
+	args: { view: longUrl },
 };
 
 export const ReadyTextOnly: Story = {
