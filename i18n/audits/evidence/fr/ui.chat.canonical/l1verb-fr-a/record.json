@@ -1,0 +1,127 @@
+{
+ "audit_id": "l1verb-fr-a",
+ "round": 1,
+ "audit_kind": "independent-translation-audit",
+ "pass": "A (of the requested A/B split)",
+ "date": "2026-11-11",
+ "audit_date": "2026-11-11",
+ "locale": "fr",
+ "namespace": "ui.chat.canonical",
+ "slice": "L1 tool-row verbs",
+ "scope": "All 182 new keys (91 settled/running pairs) of ui.chat.canonical.tool_row.verb.*, read key by key against each key's context.role/notes/width in the en source, then again against the shipped fr tool_row.* column. No other namespace audited.",
+ "status": "changes_requested",
+ "result": "changes_requested",
+ "key_count": 182,
+ "keys_read": 182,
+ "pairs": 91,
+ "current_report_verdict": {
+  "status": "changes_requested",
+  "unresolved_blocker_major_count": 3,
+  "finding_ids": [
+   "F-01",
+   "F-02",
+   "F-03",
+   "F-04",
+   "F-05",
+   "F-06",
+   "F-07",
+   "F-08",
+   "F-09",
+   "F-10",
+   "F-11",
+   "F-12"
+  ],
+  "severity_counts": {
+   "blocker": 0,
+   "major": 3,
+   "minor": 6,
+   "nit": 3
+  },
+  "report": "report.md"
+ },
+ "auditors": [
+  {
+   "agent": "i18n-auditor",
+   "model": "deepseek/deepseek-flash",
+   "session": "2cb2b603e46b",
+   "team": "lopdev",
+   "instance": "2cb2b603e46b-l1-fr-a",
+   "date": "2026-11-11",
+   "result": "changes_requested",
+   "findings": {
+    "blocker": 0,
+    "major": 3,
+    "minor": 6,
+    "nit": 3
+   },
+   "independent_from_translator_session": true,
+   "actual_model_source": "harness session header line 'Model: deepseek/deepseek-flash' for session 2cb2b603e46b; no fallback observed, no role or model pin applied",
+   "fallback": null,
+   "receipt": "receipt.json"
+  }
+ ],
+ "translator": {
+  "agent": "i18n-translator",
+  "model": "openai/gpt-6.1-sol",
+  "session": "unknown to this auditor"
+ },
+ "independence": "Independent i18n-auditor (team lopdev) session 2cb2b603e46b; translated nothing and edited no catalogue, context, ledger, receipt or prep byte. No MT service, translation API or SDK used, and no back-translation; judgement is reading-based. No other auditor's report for this slice was read.",
+ "audited_bytes_note": "The verdict covers .worktrees/_l1-prep/fr.json, the prep translation. It is not yet in src/i18n/catalogues/fr/, so the shipped-fr sha256 below is a consistency reference, not the audited target.",
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+   "sha256": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+   "sha256": "2e755f12e46bb6dded6dbf950eda6402b0a7bcb05e9489fa17f7369543f3ac7f"
+  },
+  "en_keys_prep": {
+   "path": ".worktrees/_l1-prep/keys.json",
+   "sha256": "b3f3bfe3688d1461a061009e98a58802171eb181343fdb8fcfd0af07652ca419"
+  },
+  "fr": {
+   "path": ".worktrees/_l1-prep/fr.json",
+   "sha256": "6d62a57b3a14a5bf248826d7b6da8d27ae04a9700cd1e64f3462d20a4765b078"
+  },
+  "fr_shipped_reference": {
+   "path": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+   "sha256": "72353c812ac37c1728af21c33d429fa04e9c3ebf8e55c701b22617d443fb6d2e"
+  }
+ },
+ "artifacts": [
+  {
+   "path": "i18n/audits/evidence/fr/ui.chat.canonical/l1verb-fr-a/audit.log",
+   "sha256": "da280f31a5b3b4089fb7b667610b14061852b4f2a32fc04ab6c4d8ad42586bbc"
+  },
+  {
+   "path": "i18n/audits/evidence/fr/ui.chat.canonical/l1verb-fr-a/checks-icu.mjs",
+   "sha256": "8c7ea08664887aa8e41f64e594672eda644cbf007eb29fc9f7455b47237c0aae"
+  },
+  {
+   "path": "i18n/audits/evidence/fr/ui.chat.canonical/l1verb-fr-a/checks.py",
+   "sha256": "b5a27f80e5cd9af89bbdaf01951cdd39c1363aefaf1045aa25d9cf51f20ac5bc"
+  },
+  {
+   "path": "i18n/audits/evidence/fr/ui.chat.canonical/l1verb-fr-a/receipt.json",
+   "sha256": "2c799adaec132b6128c1eaa3b444734c25b30da2e1549fe5e535c0c3259ddd8d"
+  },
+  {
+   "path": "i18n/audits/evidence/fr/ui.chat.canonical/l1verb-fr-a/report.md",
+   "sha256": "0eec447f2574f408f21cc0036f76edc367f689e978ba8cf7f906c477a3bb3ec1"
+  }
+ ],
+ "execution_evidence": "audit.log is a real execution log: it holds the commands and their actual output from this session (shasum, checks.py, the @formatjs parse, the repo gates, the refused ledger write). This record's prose fields are audit notes, not execution logs.",
+ "audit_notes_not_execution_log": "Scope, independence and method statements in this record and in report.md are notes written by the auditor; only audit.log carries executed output.",
+ "ledger": {
+  "attempted": true,
+  "command": "node scripts/i18n/ledger-assemble.mjs --locale fr --file src/i18n/catalogues/fr/ui.chat.canonical.json --auditor-instance 2cb2b603e46b-l1-fr-a --auditor-model deepseek/deepseek-flash --result changes_requested --receipt i18n/audits/evidence/fr/ui.chat.canonical/l1verb-fr-a/receipt.json",
+  "exit": 2,
+  "output": "fr/ui.chat.canonical is not key-complete against English (182 missing, 0 extra) - an incomplete locale cannot be recorded",
+  "next_step": "The landing PR assembles the ledger row against the landed fr catalogue, using this receipt as the audit it records."
+ },
+ "original_lost_evidence": null,
+ "new_report_is_original": true,
+ "new_report_is_historical_R2_recreation": false,
+ "backdated": false
+}

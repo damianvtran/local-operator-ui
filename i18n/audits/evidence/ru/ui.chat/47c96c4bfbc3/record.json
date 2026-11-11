@@ -1,0 +1,33 @@
+{
+  "locale": "ru",
+  "namespace": "ui.chat",
+  "date": "2026-11-11",
+  "slice": "P7",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "47c96c4bfbc3",
+    "session": "47c96c4bfbc3",
+    "model": "openai/gpt-6.1-sol",
+    "independent_from_translator_session": true,
+    "actual_model_source": "as stated in the auditor's own report (companion report); no fallback reported"
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "per delegation and the candidate file model field; translator session id not supplied"
+  },
+  "keys": [
+    "ui.chat.audio.position_value"
+  ],
+  "english_sha256": "8cf1373e329eca7cede84886de8bf7f6323c81f1415abc5bd6f003a8f110ef70",
+  "target_sha256": "3a93c148eef0bebef42fb4af439f91a1f20ea8a84abd6ed3ae07d9f3c93fe7e1",
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "artifacts": {
+    "p7-au-ru-round1.md": "fa7d21fea33fcfd09d49df288e770b62e327e063ffaf6d534f19291b057fa7f1",
+    "receipt.json": "6c54dda6f1f60634d666a3caf080b21841c303cc2f9793b227287904849ec0e4",
+    "verify.log": "12d618957de218a6a85db467f2544fad6883932381134e4a3282fbb28052b561"
+  },
+  "note": "record.json written by the integrating coder; verify.log is the coder re-check, not an auditor log."
+}

@@ -56,6 +56,11 @@ const bundle = await build({
 				upstreamMathFlow,
 				defaultGuardedMathText,
 			} from "./src/renderer/src/features/chat/components/markdown-math-guarded";
+			export { backslashMathSyntax } from "./src/renderer/src/features/chat/components/markdown-math-backslash";
+			export {
+				containsRenderableMath,
+				hasDigitLedMath,
+			} from "./src/renderer/src/features/chat/components/markdown-math";
 			export { math } from "micromark-extension-math";
 		`,
 		resolveDir: process.cwd(),
@@ -65,10 +70,17 @@ const bundle = await build({
 	platform: "node",
 	write: false,
 });
-const { remarkGuardedMath, upstreamMathFlow, defaultGuardedMathText, math } =
-	await import(
-		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-	);
+const {
+	remarkGuardedMath,
+	upstreamMathFlow,
+	defaultGuardedMathText,
+	backslashMathSyntax,
+	containsRenderableMath,
+	hasDigitLedMath,
+	math,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+);
 
 const { default: remarkMath } = await import("remark-math");
 const { unified } = await import("unified");
@@ -90,6 +102,10 @@ const guarded = (source) => parseWith(remarkGuardedMath, source);
  */
 const SCRIPT_EXTENSION = /\.(ts|tsx|js|jsx|mts|cts)$/;
 const REMARK_MATH_SPECIFIER = /["']remark-math["']/;
+
+/** The renderer's KaTeX options object and its wiring, as the scan reads them. */
+const KATEX_OPTIONS_SOURCE = /const KATEX_OPTIONS = \{([\s\S]*?)\} as const;/;
+const KATEX_WIRED = /\[rehypeKatex, KATEX_OPTIONS\]/;
 
 /** The guarded plugin's own name, as the wiring scan looks for it. */
 const GUARDED_PLUGIN = /remarkGuardedMath/;
@@ -309,14 +325,104 @@ test("spaced single-dollar math no longer renders - the opener guard's cost", ()
 	assert.equal(textOf({ children: tree.children }), source);
 });
 
-test("digit-led single-dollar math no longer renders - consistent with the gate", () => {
-	// The renderer's `containsRenderableMath` already refused a `$` followed by
-	// a digit ("a lone dollar sign only counts when it is not followed by a
-	// digit" - markdown-math.ts); the parser now agrees with that gate.
-	const source = "the identity $2^n - 1$ is odd";
-	const tree = guarded(source);
-	assert.equal(nodesOf(tree, "inlineMath").length, 0);
-	assert.equal(textOf({ children: tree.children }), source);
+/*
+ * MONEY VERSUS MATH (operator report, 2026-11-10: "We should be able to
+ * differentiate between dollar values like the mention of finances, dollar
+ * amounts, etc and latex components"). Guard (d) replaced the blunt
+ * digit-led refusal: a digit-led span opens, and is accepted at its closer
+ * only when its content carries a TeX signal. Two tables, each asserted
+ * through the parser AND the pipeline gate, because they must agree - a
+ * document whose only math is digit-led has to switch the pipeline on, and a
+ * document of only prices must not.
+ */
+const MONEY_CORPUS = [
+	"It cost $20,000 and $30,000 in total.",
+	"from $5 to $10",
+	"the fee is $5.00",
+	"a $1,000 deposit",
+	"$5M seed, $1.2B valuation, $5k bonus",
+	"$5M/$1.2B",
+	"costs $5 and $10 a month",
+	"priced at us$5",
+	"it is \\$5 today",
+	"between $3–$4 per unit",
+	"split $5/$6 evenly",
+	"a $5-$10 range",
+];
+
+test("the money corpus stays literal and does not switch the pipeline on", () => {
+	for (const source of MONEY_CORPUS) {
+		const tree = guarded(source);
+		assert.equal(nodesOf(tree, "inlineMath").length, 0, source);
+		assert.equal(nodesOf(tree, "math").length, 0, source);
+		assert.ok(textOf({ children: tree.children }).includes("$"), source);
+		assert.equal(containsRenderableMath(source), false, source);
+	}
+});
+
+const SCREENSHOT_PARAGRAPH =
+	"At the scale of tens of centimeters—$10^3\\text{–}10^5\\times$ larger than the robot—flow is inertial, but shrink a battery into $10\\text{ }\\mu\\text{m}^3$ to fight arterial blood flows exceeding $20\\text{ cm/s}$ and $Re \\ll 1$ takes over. The remarkable $200 \\times 300 \\times 50\\text{ }\\mu\\text{m}$ autonomous silicon robots are still wider than a capillary ($8\\text{ }\\mu\\text{m}$), and thermal noise $k_BT$ dominates.";
+
+/** [source, inlineMath values in order] - digit-led spans with a TeX signal. */
+const MATH_CORPUS = [
+	["$10^3\\text{–}10^5\\times$ larger", ["10^3\\text{–}10^5\\times"]],
+	["into $10\\text{ }\\mu\\text{m}^3$ to", ["10\\text{ }\\mu\\text{m}^3"]],
+	["exceeding $20\\text{ cm/s}$.", ["20\\text{ cm/s}"]],
+	[
+		"remarkable $200 \\times 300 \\times 50\\text{ }\\mu\\text{m}$ robots",
+		["200 \\times 300 \\times 50\\text{ }\\mu\\text{m}"],
+	],
+	["a capillary ($8\\text{ }\\mu\\text{m}$)", ["8\\text{ }\\mu\\text{m}"]],
+	["the identity $2^n - 1$ is odd", ["2^n - 1"]],
+	// Not `$1\\,$gap`: a closer glued to a letter is GUARD (e)'s refusal.
+	["thin $1\\,$ gap", ["1\\,"]],
+	["index $3_{i}$ here", ["3_{i}"]],
+	[
+		SCREENSHOT_PARAGRAPH,
+		[
+			"10^3\\text{–}10^5\\times",
+			"10\\text{ }\\mu\\text{m}^3",
+			"20\\text{ cm/s}",
+			"Re \\ll 1",
+			"200 \\times 300 \\times 50\\text{ }\\mu\\text{m}",
+			"8\\text{ }\\mu\\text{m}",
+			"k_BT",
+		],
+	],
+];
+
+test("digit-led spans with a TeX signal render, and switch the pipeline on alone", () => {
+	for (const [source, values] of MATH_CORPUS) {
+		const maths = nodesOf(guarded(source), "inlineMath").map((n) => n.value);
+		assert.deepEqual(maths, values, source);
+		assert.equal(containsRenderableMath(source), true, source);
+	}
+	// The gate's own digit-led arm, isolated from every other arm: no
+	// letter-led span, no `$$`, no backslash delimiter in these.
+	assert.equal(hasDigitLedMath("into $10\\text{ }\\mu\\text{m}^3$ to"), true);
+	assert.equal(hasDigitLedMath("costs $5 and $2^n$"), true);
+	for (const source of MONEY_CORPUS) {
+		assert.equal(hasDigitLedMath(source), false, source);
+	}
+});
+
+test("a digit-led span WITHOUT a signal fails its attempt, like (b)/(c)", () => {
+	// `$3 + 4$` is indistinguishable from a price pair by content: literal, and
+	// a later genuine span in the same text still parses on its own.
+	const source = "so $3 + 4$ and then $x^2$ holds";
+	const maths = nodesOf(guarded(source), "inlineMath");
+	assert.deepEqual(
+		maths.map((n) => n.value),
+		["x^2"],
+	);
+	assert.ok(textOf({ children: guarded(source).children }).includes("$3 + 4$"));
+});
+
+test("the screenshot paragraph renders seven formulas and no KaTeX error", async () => {
+	const html = await renderWith(remarkGuardedMath, SCREENSHOT_PARAGRAPH);
+	assert.equal(html.split('class="katex"').length - 1, 7, html);
+	assert.ok(!html.includes("katex-error"), html);
+	assert.ok(!html.includes("$"), "no dollar sign may survive as text");
 });
 
 test("tab-spaced math no longer renders - the whitespace guard covers tabs too", () => {
@@ -504,6 +610,346 @@ test("a genuine formula still renders through KaTeX", async () => {
 });
 
 /* ---------------------------------------------------------------------------
+ * 5b. LaTeX's own delimiters and ```math (2026-11-10).
+ * ---------------------------------------------------------------------------
+ */
+
+/** The renderer's KaTeX options, mirrored; the wiring test pins the source. */
+const KATEX_OPTIONS = {
+	throwOnError: false,
+	strict: "ignore",
+	trust: false,
+	errorColor: "var(--lo-danger)",
+};
+const renderLikeApp = async (source) =>
+	String(
+		await unified()
+			.use(remarkParse)
+			.use(remarkGfm)
+			.use(remarkGuardedMath)
+			.use(remarkRehype)
+			.use(rehypeKatex, KATEX_OPTIONS)
+			.use(rehypeStringify)
+			.process(source),
+	);
+
+test("\\(...\\) renders inline math; a lone escaped paren stays a literal paren", () => {
+	for (const [source, value] of [
+		["see \\(E = mc^2\\) here", "E = mc^2"],
+		["padded \\( x \\) value", "x"],
+		["tex break \\(a \\\\) b\\) kept", "a \\\\) b"],
+		["no signal needed \\(x\\)", "x"],
+	]) {
+		const maths = nodesOf(guarded(source), "inlineMath");
+		assert.deepEqual(
+			maths.map((n) => n.value),
+			[value],
+			source,
+		);
+	}
+	for (const [source, text] of [
+		["an escaped \\( paren alone", "an escaped ( paren alone"],
+		["empty \\(\\) pair", "empty () pair"],
+		["closer first \\) then \\(", "closer first ) then ("],
+	]) {
+		const tree = guarded(source);
+		assert.equal(nodesOf(tree, "inlineMath").length, 0, source);
+		assert.equal(textOf({ children: tree.children }), text, source);
+	}
+});
+
+test("\\[...\\] on its own lines is a display `math` node, inside containers too", () => {
+	for (const [source, value] of [
+		["Intro\n\\[\nE = mc^2\n\\]\nafter", "E = mc^2"],
+		["\\[ x^2 + y^2 \\]", "x^2 + y^2 "],
+		[
+			"\\[\n\\begin{aligned} a &= b \\\\\n- b & c\n\\end{aligned}\n\\]",
+			"\\begin{aligned} a &= b \\\\\n- b & c\n\\end{aligned}",
+		],
+		["> \\[\n> x^2\n> \\]", "x^2"],
+		["- item\n\n  \\[\n  x^2\n  \\]", "x^2"],
+	]) {
+		const tree = guarded(source);
+		assert.deepEqual(
+			nodesOf(tree, "math").map((n) => n.value),
+			[value],
+			source,
+		);
+		// The `- b & c` line would start a list inside a paragraph.
+		assert.equal(nodesOf(tree, "list").length, source.startsWith("- ") ? 1 : 0);
+	}
+});
+
+test("\\[...\\] mid-paragraph is a display-mode inlineMath; prose brackets stay literal", async () => {
+	const tree = guarded("so \\[ a^2 + b^2 = c^2 \\] holds");
+	const maths = nodesOf(tree, "inlineMath");
+	assert.equal(maths.length, 1);
+	assert.equal(maths[0].value, "a^2 + b^2 = c^2");
+	assert.deepEqual(maths[0].data.hProperties.className, [
+		"language-math",
+		"math-display",
+	]);
+	const html = await renderLikeApp("so \\[ a^2 + b^2 = c^2 \\] holds");
+	assert.ok(html.includes('class="katex-display"'), html);
+	// Reference markers, editorial brackets and a blank line never typeset.
+	for (const [source, text] of [
+		["see \\[1\\] and \\[sic\\]", "see [1] and [sic]"],
+		["\\[1\\]", "[1]"],
+		["\\[citation needed\\] here", "[citation needed] here"],
+	]) {
+		const t = guarded(source);
+		assert.equal(
+			nodesOf(t, "inlineMath").length + nodesOf(t, "math").length,
+			0,
+			source,
+		);
+		assert.equal(textOf({ children: t.children }), text, source);
+	}
+	const blank = guarded("\\[\nx^2\n\n\\]");
+	assert.equal(
+		nodesOf(blank, "math").length + nodesOf(blank, "inlineMath").length,
+		0,
+	);
+});
+
+/** No math node of either kind in the tree, and this exact visible text. */
+const assertLiteral = (source, text) => {
+	const tree = guarded(source);
+	assert.equal(
+		nodesOf(tree, "inlineMath").length + nodesOf(tree, "math").length,
+		0,
+		source,
+	);
+	if (text !== undefined) {
+		assert.equal(textOf({ children: tree.children }), text, source);
+	}
+};
+
+test("escaped brackets in citation lines, notes and usage lines stay literal (R1-1, R1-2, Q-3)", () => {
+	// Agent review round 1, R1-1: the FLOW form read a line that starts with
+	// `\[` and ends with `\]` as one equation, because a mid-line `\]` was
+	// content and the `]` of an escape counted as a TeX signal.
+	for (const [source, text] of [
+		["\\[1\\] Smith et al. 2020, \\[2\\]", "[1] Smith et al. 2020, [2]"],
+		["\\[sic\\] and \\[1\\]", "[sic] and [1]"],
+		[
+			"\\[sic\\] is a marker\nmore text \\[1\\]",
+			"[sic] is a marker\nmore text [1]",
+		],
+		// R1-2: escaped punctuation inside `\[...\]` is Markdown, not TeX.
+		["before \\[see \\*note\\*\\] after", "before [see *note*] after"],
+		["\\[citation\\_needed\\]", "[citation_needed]"],
+		// Q-3: `=` and `|` alone no longer qualify a display span.
+		[
+			"usage: tool \\[--name=VALUE\\] \\[-v|-q\\]",
+			"usage: tool [--name=VALUE] [-v|-q]",
+		],
+		["\\[a + b = c\\]", "[a + b = c]"],
+	]) {
+		assertLiteral(source, text);
+	}
+	// R1-1's fourth repro: the reference paragraph is not split by a
+	// display block either.
+	const refs = guarded(
+		"Ref \\[1\\]: see \\[2\\]\n\\[3\\] Jones 2021 \\[web\\]",
+	);
+	assert.equal(nodesOf(refs, "math").length, 0);
+	assert.equal(nodesOf(refs, "paragraph").length, 1);
+	// The signals that remain still qualify: a command, a script, a group.
+	for (const [source, value] of [
+		["\\[\\alpha\\]", "\\alpha"],
+		["\\[x^2\\]", "x^2"],
+		["\\[\\{1, 2\\}\\]", "\\{1, 2\\}"],
+	]) {
+		assert.deepEqual(
+			nodesOf(guarded(source), "math").map((n) => n.value),
+			[value],
+			source,
+		);
+	}
+	assert.deepEqual(
+		nodesOf(guarded("so \\[a_i\\] holds"), "inlineMath").map((n) => n.value),
+		["a_i"],
+	);
+});
+
+test("a digit-led price never pairs with a later $NAME or crosses prose (Q-1)", () => {
+	// QA round 1, Q-1: each typeset the prose between a price and a later
+	// shell variable, because an identifier's `_` is a TeX signal.
+	for (const source of [
+		"Charge $5 per run, then set RUN_COST=$COST in the env.",
+		"Costs $5 per `run_id`, cmd=$FOO",
+		"$10 per month (see SKU_1)$ wait",
+		"Earned $5 on 2024_q1; total=$X",
+	]) {
+		const tree = guarded(source);
+		assert.equal(nodesOf(tree, "inlineMath").length, 0, source);
+		assert.equal(containsRenderableMath(source), false, source);
+		assert.equal(hasDigitLedMath(source), false, source);
+	}
+	// The code span survives as code.
+	assert.deepEqual(
+		nodesOf(guarded("Costs $5 per `run_id`, cmd=$FOO"), "inlineCode").map(
+			(n) => n.value,
+		),
+		["run_id"],
+	);
+	// Words inside `\text{}` are not prose; a letter-led span is not asked.
+	for (const [source, value] of [
+		["rate $5\\text{ per month}^2$ here", "5\\text{ per month}^2"],
+		["the $2^n - 1$ case", "2^n - 1"],
+		["so $x_i$Y", "x_i"],
+	]) {
+		assert.deepEqual(
+			nodesOf(guarded(source), "inlineMath").map((n) => n.value),
+			[value],
+			source,
+		);
+		assert.equal(containsRenderableMath(source), true, source);
+	}
+	// The cost, pinned: a unit glued to a digit-led closer stays literal.
+	assertLiteral("thin $1\\,$gap", "thin $1,$gap");
+	// The gate and the parser agree on the prose rule's edges.
+	for (const [source, parses] of [
+		["$5 ab cd x^2$", false],
+		["$5 ab, cd x^2$", false],
+		["$5 ab x^2$", true],
+		["$5 a b^2$", true],
+		["$5 \\mu m^2$", true],
+		["$5 {ab cd}^2$", true],
+	]) {
+		assert.equal(
+			nodesOf(guarded(source), "inlineMath").length === 1,
+			parses,
+			source,
+		);
+		assert.equal(hasDigitLedMath(source), parses, source);
+	}
+});
+
+test("unclosed \\( and \\[ openers parse in linear time (Q-2)", () => {
+	// QA round 1, Q-2 measured 17-49 s for 40 kB of these; each opener used to
+	// rescan to the end of its paragraph.
+	//
+	// Why a ratio to plain remark instead of a wall-clock limit: the old
+	// `< 1000 ms` bound failed 2 of 10 runs at load average 30+ (PR #1859 CI
+	// flake triage), and single 40 kB parses reached 1786 ms there. A 10 kB vs
+	// 40 kB size ratio does not work either: remark-parse + gfm WITHOUT any
+	// math plugin already grows ~9x as these inputs double from 24 to 48 kB
+	// (23.7 -> 211.9 ms, best of 5, load 30), so the baseline itself looks
+	// super-linear. What the Q-2 fix owns is the plugin's cost ON TOP of that
+	// baseline, and load slows both parses alike. Measured with this exact
+	// check (best of three per side), 10 serial runs x 3 inputs, load 31-36,
+	// PR #1859 triage: ratio n=30 median 1.09, max 4.48 (a 91 ms plain
+	// outlier); guarded median 415.5 ms, max 1059.4 ms. Negative control,
+	// text memo disabled: 101287 ms vs 614 ms plain, ratio 164.9 (QA round 1
+	// saw 17-49 s). So `< 8` sits ~1.8x over the worst observed ratio and
+	// ~20x under the regression; the 5000 ms ceiling is a backstop ~4.7x over
+	// the worst observed parse and ~3x under the quadratic 17 s.
+	const plain = (source) =>
+		unified().use(remarkParse).use(remarkGfm).parse(source);
+	const bestOf = (parse, source) => {
+		let best = Number.POSITIVE_INFINITY;
+		let tree;
+		for (let i = 0; i < 3; i++) {
+			const started = performance.now();
+			tree = parse(source);
+			best = Math.min(best, performance.now() - started);
+		}
+		return { best, tree };
+	};
+	for (const unit of ["\\( x ", "\\[ x ", "\\[\nx\n"]) {
+		const source = unit.repeat(8000);
+		const baseline = bestOf(plain, source).best;
+		const { best: elapsed, tree } = bestOf(guarded, source);
+		const ratio = elapsed / Math.max(baseline, 1);
+		const label = `${JSON.stringify(unit)} x8000: guarded ${elapsed.toFixed(1)} ms, plain ${baseline.toFixed(1)} ms, ratio ${ratio.toFixed(2)}`;
+		if (process.env.Q2_TIMING_LOG) console.log(label);
+		assert.ok(ratio < 8, `math plugin cost is super-linear: ${label}`);
+		assert.ok(elapsed < 5000, `too slow: ${label}`);
+		assert.equal(
+			nodesOf(tree, "inlineMath").length + nodesOf(tree, "math").length,
+			0,
+		);
+	}
+	// The no-closer memo stays inside the paragraph / kind it measured.
+	for (const [source, inline, display] of [
+		["a \\( b\n\nthen \\(x^2\\)", ["x^2"], []],
+		["a \\( b then \\[x^2\\] ok", ["x^2"], []],
+		["\\[\na^2\n\n\\[\nx^2\n\\]", [], ["x^2"]],
+		["> \\[\n> a^2\n\n\\[\nx^2\n\\]", [], ["x^2"]],
+	]) {
+		const tree = guarded(source);
+		assert.deepEqual(
+			nodesOf(tree, "inlineMath").map((n) => n.value),
+			inline,
+			source,
+		);
+		assert.deepEqual(
+			nodesOf(tree, "math").map((n) => n.value),
+			display,
+			source,
+		);
+	}
+});
+
+test("backslash delimiters never reach into inline, fenced or indented code", () => {
+	for (const [source, type, value] of [
+		["code `\\(x\\)` here", "inlineCode", "\\(x\\)"],
+		["```tex\n\\[\nx^2\n\\]\n```", "code", "\\[\nx^2\n\\]"],
+		["    \\(x\\) indented", "code", "\\(x\\) indented"],
+	]) {
+		const tree = guarded(source);
+		assert.equal(
+			nodesOf(tree, "inlineMath").length + nodesOf(tree, "math").length,
+			0,
+			source,
+		);
+		assert.equal(nodesOf(tree, type)[0].value, value, source);
+	}
+});
+
+test("a streaming-truncated message keeps unclosed delimiters literal", () => {
+	for (const source of [
+		"Partial answer: $x^2 + ",
+		"Partial answer:\n\n\\[\nE = mc",
+		"Partial \\(E = mc",
+	]) {
+		const tree = guarded(source);
+		assert.equal(
+			nodesOf(tree, "inlineMath").length + nodesOf(tree, "math").length,
+			0,
+			source,
+		);
+	}
+});
+
+test("every display spelling renders one .katex-display, and the gate sees each", async () => {
+	for (const source of [
+		"$$\nE = mc^2\n$$",
+		"\\[\nE = mc^2\n\\]",
+		"```math\nE = mc^2\n```",
+		"so \\[ E = mc^2 \\] holds",
+	]) {
+		assert.equal(containsRenderableMath(source), true, source);
+		const html = await renderLikeApp(source);
+		assert.equal(html.split('class="katex-display"').length - 1, 1, html);
+		assert.ok(!html.includes("<pre"), html);
+	}
+	assert.equal(containsRenderableMath("see \\(x^2\\)"), true);
+});
+
+test("invalid TeX renders KaTeX's error span in the theme's danger role", async () => {
+	const html = await renderLikeApp("bad \\(\\frac{1}{\\)");
+	assert.ok(html.includes("katex-error"), html);
+	assert.ok(html.includes("var(--lo-danger)"), html);
+	assert.ok(!html.includes("#cc0000"), html);
+	// `trust: false`: `\href` does not mint a link.
+	const href = await renderLikeApp("link \\(\\href{https://example.com}{x}\\)");
+	assert.ok(!href.includes('href="https://example.com"'), href);
+});
+
+/* ---------------------------------------------------------------------------
  * 6. The wiring, in the renderer source.
  * ---------------------------------------------------------------------------
  */
@@ -546,6 +992,19 @@ test("the four math pipelines carry the guarded plugin, and the GFM-only ones do
 	}
 });
 
+test("the renderer passes the KaTeX options this file mirrors", () => {
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/markdown-renderer.tsx",
+		"utf8",
+	);
+	const match = KATEX_OPTIONS_SOURCE.exec(source);
+	assert.ok(match, "markdown-renderer.tsx no longer defines KATEX_OPTIONS");
+	for (const [key, value] of Object.entries(KATEX_OPTIONS)) {
+		assert.ok(match[1].includes(`${key}: ${JSON.stringify(value)},`), key);
+	}
+	assert.match(source, KATEX_WIRED);
+});
+
 test("nothing under src/ imports remark-math any more", () => {
 	// `remark-math` stays in devDependencies for ONE reason: the negative
 	// control in scripts/credential-capture.test.mjs drives it to reproduce the
@@ -581,12 +1040,15 @@ test("the plugin registers exactly the guarded text tokenizer over upstream's fl
 		.use(remarkGuardedMath)
 		.freeze();
 	const extensions = frozen.data().micromarkExtensions;
+	// Two since 2026-11-10: the `$` extension, then LaTeX's backslash
+	// delimiters as their own object so the `$` one keeps its identity.
 	assert.equal(
 		extensions.length,
-		base.data().micromarkExtensions.length + 1,
-		"the plugin pushes exactly one micromark extension",
+		base.data().micromarkExtensions.length + 2,
+		"the plugin pushes exactly two micromark extensions",
 	);
-	const extension = extensions.at(-1);
+	assert.equal(extensions.at(-1), backslashMathSyntax);
+	const extension = extensions.at(-2);
 	/*
 	 * Identity, not shape (agent review round 1, R1-3): the registered flow IS
 	 * the module's exported upstream map, whose `$` entry IS the package's own

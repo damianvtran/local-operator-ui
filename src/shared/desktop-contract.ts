@@ -8522,6 +8522,16 @@ export type BackendSetting = {
 	 * choice labels — the behaviour it had before the field existed.
 	 */
 	synonyms?: string[];
+	/**
+	 * An EIGHTH additive field: whether a `hotkey` row may be cleared to no
+	 * shortcut. `true` ONLY on the desktop-scope dictation rows
+	 * (`keymap.start_recording`, `keymap.push_to_talk`). A cleared value is
+	 * stored as the string sentinel `"none"` (not null: the backend registry
+	 * cannot store an empty value for these rows), and Reset deletes the key
+	 * to restore the default. Absent/false everywhere else; an older server
+	 * sends nothing, which reads as "not clearable".
+	 */
+	clearable?: boolean | null;
 };
 /**
  * The one-time "delegated sessions were cleaned up" notice, as

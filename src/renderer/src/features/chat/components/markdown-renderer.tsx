@@ -527,7 +527,29 @@ const REMARK_PIPELINES: Record<string, typeof GFM_MATH_LINKIFY_AND_CITATIONS> =
  * `position`. Behind any of them a node has nothing to map by (`remark-skill-ink.ts`).
  */
 const NO_REHYPE: [] = [];
-const KATEX_ONLY = [rehypeKatex];
+/*
+ * KaTeX options (2026-11-10). Agent output is untrusted TeX, so:
+ *   - `throwOnError: false` - invalid TeX renders as KaTeX's own error span (the
+ *     source, in the error colour, with the parse error as its tooltip) and
+ *     never breaks the message. `rehype-katex` already retries this way after a
+ *     throw; stating it keeps that behaviour if the plugin's fallback changes.
+ *   - `strict: "ignore"` - LaTeX-compatibility warnings (unicode text in math,
+ *     `\\` in inline mode) are not errors for a reader.
+ *   - `trust: false` - `\href`, `\url`, `\htmlClass` and friends stay disabled:
+ *     model-written TeX must not mint links or attributes.
+ *   - `errorColor` - a theme ROLE, not KaTeX's hard-coded `#cc0000`, so the
+ *     error span reads correctly on all fifty-nine palettes. KaTeX writes it
+ *     into an inline `style="color: ..."`, where `var()` resolves normally.
+ */
+const KATEX_OPTIONS = {
+	throwOnError: false,
+	strict: "ignore",
+	trust: false,
+	errorColor: "var(--lo-danger)",
+} as const;
+const KATEX_ONLY: [[typeof rehypeKatex, typeof KATEX_OPTIONS]] = [
+	[rehypeKatex, KATEX_OPTIONS],
+];
 
 /**
  * Whether the content is worth paying for the math pipeline.

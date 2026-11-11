@@ -1,0 +1,103 @@
+{
+  "auditor": "i18n-auditor",
+  "team": "lopdev",
+  "session": "61867371ec45",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "harness session header line 'Model: deepseek/deepseek-flash' for session 61867371ec45; no fallback observed, no role or model pin applied",
+  "instance": "61867371ec45-l1-ur-a3",
+  "date": "2026-11-11",
+  "round": 3,
+  "audit_kind": "independent-translation-audit (delta)",
+  "status": "changes_requested",
+  "namespace": "ui.chat.canonical",
+  "locale": "ur",
+  "key_count": 182,
+  "keys_changed_in_delta": 3,
+  "independent_from_translator_session": true,
+  "translator": {
+    "status": "identity not recorded in the prep bundle supplied to this auditor",
+    "note": "the round-3 remediation (ur.v3.json + ur.v3-changes.md) arrived without a translator receipt; round 2's translator was agent i18n-translator, model openai/gpt-6.1-sol, session 63cfb8a4238a, and I did not run the change myself"
+  },
+  "sha256": {
+    "ur": "5fb74186a6e2575c08011442d0eba595ef78f7fca358df9153070a50dca227d4",
+    "ur_prev_pass": "c71f5e40612dca85cee0d05ddfe4d833d3a68d05fb7c96a3e1519dbed1f904e0",
+    "en": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765",
+    "en_context": "2e755f12e46bb6dded6dbf950eda6402b0a7bcb05e9489fa17f7369543f3ac7f",
+    "en_keys_prep": "b3f3bfe3688d1461a061009e98a58802171eb181343fdb8fcfd0af07652ca419"
+  },
+  "audited_bytes": {
+    "target": ".worktrees/_l1-prep/ur.v3.json (round-3 remediation, not yet in src/i18n/catalogues/ur/)",
+    "delta_vs": ".worktrees/_l1-prep/ur.v2.json (round-2 file this auditor audited as session 3eb6db5381df)",
+    "source": "src/i18n/catalogues/en/ui.chat.canonical.json + .worktrees/_l1-prep/keys.json (en value, context.role, notes, width per key)",
+    "consistency_reference": "src/i18n/catalogues/ur/*.json (shipped ur, 8872 strings, read-only corpus)"
+  },
+  "findings": [
+    {
+      "id": "R3-01",
+      "severity": "MAJOR",
+      "key": "ui.chat.canonical.tool_row.verb.listed_network_peers.settled",
+      "current": "نیٹ ورک ڈیوائسز دکھائے",
+      "suggested": "ڈیوائسز کی فہرست بنائی",
+      "suggested_pair": {
+        "settled": "ڈیوائسز کی فہرست بنائی",
+        "running": "ڈیوائسز کی فہرست بنا رہا"
+      },
+      "alternative_keeping_qualifier": {
+        "settled": "نیٹ ورک ڈیوائسز کی فہرست بنائی",
+        "cells": 30,
+        "running": "نیٹ ورک ڈیوائسز کی فہرست بنا رہا",
+        "running_cells": 32
+      },
+      "summary": "دکھائے is the masculine-plural past; the object ڈیوائسز is feminine plural in the shipped corpus («ڈیوائسز ہوتی ہیں», «… صاف ہو جائیں گی»), so this is the one value in the 182 that disagrees with its object. The correct short form دکھائیں is byte-identical to the آپ imperative (56/56 shipped occurrences are imperatives), so the fix moves to the فہرست بنائی family: 22/24 cells, unambiguous, correct agreement, 2 keys because the en sidecar requires the pair to share a verb. F-01's register defect is fixed; its prescription was not.",
+      "cells": 22
+    },
+    {
+      "id": "R3-n1",
+      "severity": "NIT",
+      "keys": ["ui.chat.canonical.tool_row.verb.sent_keys.settled", "ui.chat.canonical.tool_row.verb.sent_keys.running"],
+      "current": "کلیدیں ارسال کیں / کلیدیں ارسال کر رہا",
+      "suggested": "no wording change; record the ارسال call in the ur style guide",
+      "summary": "The delta adds a term call: keys→ارسال (over بھیجی, because بھیجیں is the imperative and بھیجی گئیں passive). Round-2 F-04 already asks the wave to record its term calls; this one joins job/peer/reset/update. The divergence from sent=بھیجا is deliberate and pair consistency outranks it."
+    },
+    {
+      "id": "R3-n2",
+      "severity": "NIT",
+      "keys": ["i18n/style-guides/ur.md"],
+      "suggested": "record the دکھائیں homograph as a locale call",
+      "summary": "The feminine-plural past of دکھانا is byte-identical to the polite imperative and 56/56 shipped occurrences are imperatives; one guide line prevents a third round on this defect class."
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 1,
+    "minor": 0,
+    "nit": 2
+  },
+  "verdict": "blocked",
+  "unresolved_blocker_major_count": 1,
+  "round2_disposition": {
+    "F-01": "partially addressed: the imperative reading is gone, but masculine-plural دکھائے disagrees with feminine-plural ڈیوائسز → open as R3-01. The prescription came from the round-2 report's own receipt (F-01.suggested) and was implemented verbatim.",
+    "F-02": "closed: both keys are now active, share the verb ارسال, and carry no imperative homograph; agreement verified (کلید is feminine → کلیدیں … کیں f.pl, evidenced by «کلید محفوظ نہیں ہو سکی»)."
+  },
+  "carried_findings": {
+    "F-03": "unchanged, non-gating (searched_the_web.running = ویب پر تلاش جاری, the only running value not ending رہا)",
+    "F-04": "still open; R3-n1 folds into it",
+    "F-05": "width acceptance unchanged (file max 29 cells)",
+    "F-06..F-09": "untouched, no new evidence"
+  },
+  "findings_addressed_to": "the L1 tool-row verbs landing PR (ur), via manager",
+  "ledger": {
+    "command_attempted": "node scripts/i18n/ledger-assemble.mjs --locale ur --file src/i18n/catalogues/ur/ui.chat.canonical.json --auditor-instance 61867371ec45-l1-ur-a3 --auditor-model deepseek/deepseek-flash --result changes_requested --receipt i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-a3-61867371ec45/receipt.json",
+    "result": "refused, exit 2",
+    "output": "ledger-assemble: refused - ur/ui.chat.canonical is not key-complete against English (182 missing, 0 extra) - an incomplete locale cannot be recorded",
+    "why": "the 182 keys live in the prep file; the shipped ur catalogue carries none of them, so no ledger row can describe these bytes",
+    "next_step": "the landing PR assembles the row against the landed catalogue, with this receipt as the audit it records"
+  },
+  "method_limits": {
+    "no_mt_service": true,
+    "no_translation_api_or_sdk": true,
+    "no_backtranslation": true,
+    "edited_any_translation": false,
+    "rendered_evidence": "none taken; widths measured with rich.cells.cell_len, not rendered"
+  }
+}

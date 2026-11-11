@@ -1810,6 +1810,1280 @@
 		"length": "One short sentence fragment, no full stop.",
 		"note": "Shown for file edits recorded before the fix; the change itself happened, only its diff is unavailable."
 	},
+	"ui.chat.canonical.tool_row.verb.asked.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `ask` tool and the `hub` tool's `ask` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.asked.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `ask` tool and the `hub` tool's `ask` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.browsed.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `browser` tool",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.browsed.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `browser` tool",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.cancelled.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `hub` tool's `cancel` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.cancelled.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `hub` tool's `cancel` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.cancelled_job.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `jobs` tool's `cancel` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.cancelled_job.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `jobs` tool's `cancel` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.cancelled_wake.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `wake` tool's `cancel` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.cancelled_wake.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `wake` tool's `cancel` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.captured_console.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `console` tool's `screenshot` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.captured_console.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `console` tool's `screenshot` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.checked_console.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `console` tool's `status` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.checked_console.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `console` tool's `status` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.checked_network_status.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `network` tool's `status` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.checked_network_status.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `network` tool's `status` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.closed_console.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `console` tool's `close` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.closed_console.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `console` tool's `close` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.created_agent.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `agent` tool's `create` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.created_agent.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `agent` tool's `create` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.created_network.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `network` tool's `init` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.created_network.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `network` tool's `init` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.created_project.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `project` tool's `create` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.created_project.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `project` tool's `create` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.created_team.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `team` tool's `create` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.created_team.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `team` tool's `create` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.delegated.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `task` tool",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.delegated.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `task` tool",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.deleted_project.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `project_delete` tool",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.deleted_project.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `project_delete` tool",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.deleted_secret.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `secret` tool's `delete` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.deleted_secret.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `secret` tool's `delete` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.deleted_team.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `team_delete` tool",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.deleted_team.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `team_delete` tool",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.described_secret.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `secret` tool's `describe` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.described_secret.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `secret` tool's `describe` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.diagnosed_network.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `network` tool's `doctor` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.diagnosed_network.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `network` tool's `doctor` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.edited.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `edit` tool",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.edited.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `edit` tool",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.fetched.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `web_fetch` tool",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.fetched.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `web_fetch` tool",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.found_definition.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `lsp` tool's `definitions` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.found_definition.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `lsp` tool's `definitions` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.found_references.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `lsp` tool's `references` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.found_references.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `lsp` tool's `references` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.installed_agent.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `agent` tool's `install` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.installed_agent.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `agent` tool's `install` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.invited_device.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `network` tool's `invite` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.invited_device.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `network` tool's `invite` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.joined_network.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `network` tool's `join` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.joined_network.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `network` tool's `join` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.left_network.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `network` tool's `disconnect` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.left_network.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `network` tool's `disconnect` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.linked_session_to.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `project` tool's `link` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence and must keep the trailing preposition. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.linked_session_to.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `project` tool's `link` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence and must keep the trailing preposition. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.listed.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `glob` tool",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.listed.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `glob` tool",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.listed_agents.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `agent` tool's `list` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.listed_agents.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `agent` tool's `list` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.listed_consoles.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `console` tool's `list` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.listed_consoles.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `console` tool's `list` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.listed_jobs.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `jobs` tool's `list` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.listed_jobs.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `jobs` tool's `list` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.listed_network_peers.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `network` tool's `peers` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.listed_network_peers.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `network` tool's `peers` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.listed_networks.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `network` tool's `ls` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.listed_networks.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `network` tool's `ls` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.listed_projects.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `project` tool's `list` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.listed_projects.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `project` tool's `list` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.listed_secrets.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `secret` tool's `list` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.listed_secrets.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `secret` tool's `list` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.listed_sessions.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `sessions` tool's `list` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.listed_sessions.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `sessions` tool's `list` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.listed_subagents.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `hub` tool's `list` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.listed_subagents.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `hub` tool's `list` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.listed_symbols.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `lsp` tool's `symbols` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.listed_symbols.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `lsp` tool's `symbols` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.listed_teams.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `team` tool's `list` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.listed_teams.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `team` tool's `list` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.listed_variables.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `list_variables` tool",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.listed_variables.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `list_variables` tool",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.listed_wakes.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `wake` tool's `list` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.listed_wakes.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `wake` tool's `list` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.messaged.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `hub` tool's `send` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.messaged.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `hub` tool's `send` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.opened_console.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `console` tool's `create` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.opened_console.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `console` tool's `create` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.paused.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `hub` tool's `pause` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.paused.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `hub` tool's `pause` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.peeked_at.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `hub` tool's `peek` operation and the `jobs` tool's `peek` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence and must keep the trailing preposition. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.peeked_at.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `hub` tool's `peek` operation and the `jobs` tool's `peek` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence and must keep the trailing preposition. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.peeked_at_session.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `sessions` tool's `peek` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.peeked_at_session.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `sessions` tool's `peek` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.previewed_rename.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `lsp` tool's `rename_preview` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.previewed_rename.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `lsp` tool's `rename_preview` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.raised_panic.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `network` tool's `panic` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.raised_panic.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `network` tool's `panic` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.ran.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `bash` tool",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.ran.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `bash` tool",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.ran_python.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `eval` tool",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.ran_python.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `eval` tool",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.read.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `read` tool and the `web_read` tool",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.read.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `read` tool and the `web_read` tool",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.read_console.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `console` tool's `read` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.read_console.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `console` tool's `read` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.read_network_log.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `network` tool's `log` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.read_network_log.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `network` tool's `log` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.read_todos.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `todo` tool's `view` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.read_todos.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `todo` tool's `view` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.read_variable.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `read_variable` tool",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.read_variable.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `read_variable` tool",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.received.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `peer` tool",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.received.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `peer` tool",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.removed_device.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `network` tool's `member_rm` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.removed_device.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `network` tool's `member_rm` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.removed_milestone.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `project` tool's `milestone-remove` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.removed_milestone.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `project` tool's `milestone-remove` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.reset_agent.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `agent` tool's `reset` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.reset_agent.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `agent` tool's `reset` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.resized_console.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `console` tool's `resize` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.resized_console.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `console` tool's `resize` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.resumed.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `hub` tool's `resume` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.resumed.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `hub` tool's `resume` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.resumed_session.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `sessions` tool's `resume` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.resumed_session.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `sessions` tool's `resume` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.retrieved_secret.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `secret` tool's `retrieve` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.retrieved_secret.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `secret` tool's `retrieve` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.scheduled.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `wake` tool's `create` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.scheduled.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `wake` tool's `create` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.searched.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `grep` tool",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.searched.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `grep` tool",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.searched_agents.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `agent` tool's `search` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.searched_agents.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `agent` tool's `search` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.searched_the_web.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `web_search` tool",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.searched_the_web.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `web_search` tool",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.sent.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `send` tool",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.sent.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `send` tool",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.sent_keys.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `console` tool's `keys` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.sent_keys.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `console` tool's `keys` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.spawned_session.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `sessions` tool's `spawn` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.spawned_session.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `sessions` tool's `spawn` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.steered.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `hub` tool's `steer` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.steered.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `hub` tool's `steer` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.stopped_session.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `sessions` tool's `stop` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.stopped_session.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `sessions` tool's `stop` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.stored_secret.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `secret` tool's `store` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.stored_secret.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `secret` tool's `store` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.synced_agents.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `agent` tool's `sync` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.synced_agents.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `agent` tool's `sync` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.typed_in_console.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `console` tool's `input` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.typed_in_console.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `console` tool's `input` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.unlinked_session_from.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `project` tool's `unlink` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence and must keep the trailing preposition. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.unlinked_session_from.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `project` tool's `unlink` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence and must keep the trailing preposition. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.updated_agent.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `agent` tool's `update` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.updated_agent.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `agent` tool's `update` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.updated_milestone.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `project` tool's `milestone` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.updated_milestone.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `project` tool's `milestone` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.updated_project.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `project` tool's `update` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.updated_project.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `project` tool's `update` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.updated_secret.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `secret` tool's `update` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.updated_secret.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `secret` tool's `update` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.updated_secure_input.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `console` tool's `secure` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.updated_secure_input.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `console` tool's `secure` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.updated_team.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `team` tool's `update` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.updated_team.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `team` tool's `update` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.updated_todos.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `todo` tool's `init` operation, the `todo` tool's `add` operation, the `todo` tool's `done` operation, the `todo` tool's `block` operation and the `todo` tool's `drop` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.updated_todos.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `todo` tool's `init` operation, the `todo` tool's `add` operation, the `todo` tool's `done` operation, the `todo` tool's `block` operation and the `todo` tool's `drop` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.viewed_agent.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `agent` tool's `show` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.viewed_agent.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `agent` tool's `show` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.viewed_network.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `network` tool's `show` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.viewed_network.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `network` tool's `show` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.viewed_project.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `project` tool's `show` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.viewed_project.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `project` tool's `show` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.viewed_session.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `sessions` tool's `info` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.viewed_session.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `sessions` tool's `info` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.viewed_team.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `team` tool's `show` operation",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.viewed_team.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `team` tool's `show` operation",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.waited_for_jobs.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `wait` tool",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.waited_for_jobs.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `wait` tool",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.wrote.running": {
+		"role": "verb column of a running tool row in the chat transcript: the `write` tool",
+		"tone": "present participle, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Live sibling of the settled form; the pair must use the same verb.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.verb.wrote.settled": {
+		"role": "verb column of a finished tool row in the chat transcript: the `write` tool",
+		"tone": "past tense, sentence case, no punctuation",
+		"length": "One to four words; the verb column is a narrow fixed-width gutter.",
+		"note": "Grammar is verb + object: the row's object (a file path, command, name or id, shown in monospace and never translated) follows on the same line, so the phrase must read as the start of that sentence. Keep the tool's own meaning: do not generalise it to a generic 'called'/'used'. Settled sibling of the running form; the pair must use the same verb.",
+		"placeholders": {}
+	},
 	"ui.chat.canonical.notice.interrupted": {
 		"role": "transcript notice line marking a turn that was interrupted before it finished",
 		"tone": "neutral past participle, sentence case, no trailing punctuation",

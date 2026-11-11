@@ -1066,5 +1066,15 @@
 		"placeholders": {
 			"label": "string: existing audio clip display label/title; insert verbatim without translating or normalizing user data. Word order may change around {label}."
 		}
+	},
+	"ui.chat.audio.position_value": {
+		"role": "accessible value text of an audio clip seek slider (aria-valuetext)",
+		"tone": "concise neutral phrase, sentence case",
+		"note": "Read aloud by screen readers as the slider's value: elapsed time out of the clip's total length. The slider's accessible name already says 'position' (ui.chat.audio.position_label), so do not repeat that word. Both placeholders are already-formatted minutes:seconds clocks with ASCII digits (for example 0:05 and 0:12); insert them verbatim and do not convert digits or separators. Word order may change around the placeholders.",
+		"length": "English is 20 source characters. Keep a short factual phrase; it is announced, not displayed.",
+		"placeholders": {
+			"current": "string: elapsed playback time as m:ss, for example 0:05; insert verbatim.",
+			"total": "string: total clip length as m:ss, for example 0:12 (0:00 while the length is unknown); insert verbatim."
+		}
 	}
 }

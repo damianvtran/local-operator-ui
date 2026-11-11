@@ -27,6 +27,9 @@ export function SpeechShortcutRowFrame({
 	saving,
 	showReset,
 	onReset,
+	showClear,
+	onClear,
+	cleared,
 	onKeyDown,
 	onKeyUp,
 	onBlur,
@@ -42,11 +45,17 @@ export function SpeechShortcutRowFrame({
 	help: string;
 	hint: string;
 	ariaLabel: string;
+	/** The cleared display, or the field's glyph/label. */
 	value: string;
+	/** The row is cleared: the field shows "No shortcut" in the panel rows' sans face. */
+	cleared?: boolean;
 	fieldRef: RefObject<HTMLInputElement>;
 	saving: boolean;
 	showReset: boolean;
 	onReset: () => void;
+	/** Whether this row may be cleared (the backend's `clearable` flag). */
+	showClear?: boolean;
+	onClear?: () => void;
 	onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
 	onKeyUp?: (event: KeyboardEvent<HTMLInputElement>) => void;
 	onBlur?: () => void;
@@ -103,13 +112,31 @@ export function SpeechShortcutRowFrame({
 					aria-invalid={error ? true : undefined}
 					aria-busy={saving}
 					data-shortcut-action={settingKey}
-					className="w-52 text-left font-mono text-body-sm"
+					className={
+						cleared
+							? "w-52 text-left text-body-sm"
+							: "w-52 text-left font-mono text-body-sm"
+					}
 					value={value}
 					readOnly
 					onKeyDown={onKeyDown}
 					onKeyUp={onKeyUp}
 					onBlur={onBlur}
 				/>
+				{showClear && (
+					<Button
+						variant="secondary"
+						size="sm"
+						disabled={saving}
+						aria-label={t(
+							"ui.settings.shortcuts.keyboard_shortcuts_section.clear_label_s_shortcut",
+							{ label: action },
+						)}
+						onClick={onClear}
+					>
+						{t("ui.settings.shortcuts.keyboard_shortcuts_section.clear")}
+					</Button>
+				)}
 				{showReset && (
 					<Button
 						variant="secondary"

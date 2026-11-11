@@ -1840,12 +1840,12 @@ export function ChatSidebar({
 	/*
 	 * SPACE ON THE SCROLLER'S OWN EMPTY AREA IS DEAD. The scroller takes an
 	 * invisible focus from a click on its empty area, and Chromium's default
-	 * Space action on a focused scroller is page-scroll: holding Space to
-	 * dictate ran the whole conversation list to the bottom. The predicate
-	 * (`sidebar-space-dead.ts`) is what the rows are not - a row is a button
-	 * and its Space keeps meaning press. It runs beside the anchor release
-	 * below: a Space press on the empty area both ends the anchor hold and is
-	 * claimed, so nothing scrolls.
+	 * Space action on a focused scroller is page-scroll: without the claim,
+	 * holding Space ran the whole conversation list to the bottom. The
+	 * predicate (`sidebar-space-dead.ts`) is what the rows are not - a row is
+	 * a button and its Space keeps meaning press. It runs beside the anchor
+	 * release below: a Space press on the empty area both ends the anchor
+	 * hold and is claimed, so nothing scrolls.
 	 */
 	const claimDeadSpace = (event: KeyboardEvent<HTMLDivElement>) => {
 		releasePageAnchor();
