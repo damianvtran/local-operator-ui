@@ -83,7 +83,7 @@ import {
 	registerComposerFocus,
 } from "@features/chat/composer-field";
 import type { DeliveryMode as ComposerDeliveryMode } from "@features/chat/composer-send-key";
-import { NO_SEND_CHORDS, sendKeyOf } from "@features/chat/composer-send-key";
+import { sendChordBindings, sendKeyOf } from "@features/chat/composer-send-key";
 import {
 	type SendRecordingPhase,
 	dictatedSendCheck,
@@ -177,6 +177,7 @@ import {
 } from "@shared/store/conversation-input-store";
 import { intentOverride } from "@shared/store/settings-intents";
 import type { AskDrawerCloseOptions } from "@shared/store/ui-preferences-store";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { pasteInsertsOnlyFileNames } from "@shared/utils/paste-utils";
 import { normalizePath } from "@shared/utils/path-utils";
 import {
@@ -4028,7 +4029,9 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 							altKey: event.altKey,
 							isComposing: event.nativeEvent.isComposing,
 						},
-						NO_SEND_CHORDS,
+						sendChordBindings(
+							useUiPreferencesStore.getState().shortcutBindings,
+						),
 					)
 				) {
 					return submitCapture();
@@ -5968,7 +5971,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						altKey: event.altKey,
 						isComposing: event.nativeEvent.isComposing,
 					},
-					NO_SEND_CHORDS,
+					sendChordBindings(useUiPreferencesStore.getState().shortcutBindings),
 				);
 				if (sendRefused && sendKey) {
 					/*

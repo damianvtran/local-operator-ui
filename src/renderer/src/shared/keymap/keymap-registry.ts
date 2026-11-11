@@ -39,7 +39,45 @@ export type ActionId =
 	| "panel.run"
 	| "panel.ask"
 	| "panel.browser"
-	| "panel.code";
+	| "panel.code"
+	| "composer.send_steer"
+	| "composer.send_queue"
+	| "composer.send_both";
+
+/*
+ * THE SEND IDS NAME THE BACKEND'S ROWS, NOT THE RENDERER'S. Architect D5
+ * stores the chords per surface and never crosses them — the TUI owns
+ * `keymap.send_*` rows in `config.yml`, this registry owns
+ * `keymap.send_*`-shaped chords in the renderer's own store — so the ONLY
+ * thing the surfaces share is the id string. `composer.send_steer` therefore
+ * carries the backend's `keymap.send_steer` across the `panel.`/`composer.`
+ * seam by naming, and the mirror check
+ * (`scripts/send-shortcuts.test.mjs`, T7) pins the containment in the other
+ * direction: no renderer send id may exist that the backend registry does not
+ * also serve. Both directions were once a renderer that only knew its own
+ * spelling; the shared string is the seam, so it is pinned from both sides.
+ */
+
+export type SendActionId =
+	| "composer.send_steer"
+	| "composer.send_queue"
+	| "composer.send_both";
+
+/** The three send ids, in registry order — steer, queue, both. */
+export const SEND_ACTION_IDS: readonly SendActionId[] = [
+	"composer.send_steer",
+	"composer.send_queue",
+	"composer.send_both",
+] as const;
+
+/** Each send id's delivery mode: the tail of the shared id names the mode. */
+export const SEND_MODES: Readonly<
+	Record<SendActionId, "steer" | "queue" | "both">
+> = {
+	"composer.send_steer": "steer",
+	"composer.send_queue": "queue",
+	"composer.send_both": "both",
+};
 
 /**
  * One registry entry.
@@ -54,12 +92,12 @@ export type KeymapAction = {
 	id: ActionId;
 	/** The sentence a reader sees; sentence case. */
 	label: string;
-	/** The settings group this row files under ("Panels" is the only value today). */
+	/** The settings group this row files under ("Panels" and "Sending" today). */
 	category: string;
 	/** The chord it ships with, canonical; null = ships unbound. */
 	defaultChord: string | null;
-	/** Where the action acts; every shipped action is app-wide. */
-	scope: "app";
+	/** Where the action acts; panels are app-wide, send chords are composer-only. */
+	scope: "app" | "composer";
 };
 
 /**
@@ -138,6 +176,46 @@ export const KEYMAP_ACTIONS: readonly KeymapAction[] = [
 		},
 		defaultChord: null,
 		scope: "app",
+	},
+	/*
+	 * THE SEND ROWS SHIP UNBOUND (D8). They act only inside the composer —
+	 * the predicate, not the router, answers them — and an invented default
+	 * would change today's Ctrl+Enter, which already sends. The `defaultChord`
+	 * is `null` for all three, so the chord map never claims them and the
+	 * router never answers them either (see `buildChordMap`).
+	 */
+	{
+		id: "composer.send_steer",
+		get label() {
+			return t("ui.settings.shortcuts.action.send_steer");
+		},
+		get category() {
+			return t("ui.settings.shortcuts.category.sending");
+		},
+		defaultChord: null,
+		scope: "composer",
+	},
+	{
+		id: "composer.send_queue",
+		get label() {
+			return t("ui.settings.shortcuts.action.send_queue");
+		},
+		get category() {
+			return t("ui.settings.shortcuts.category.sending");
+		},
+		defaultChord: null,
+		scope: "composer",
+	},
+	{
+		id: "composer.send_both",
+		get label() {
+			return t("ui.settings.shortcuts.action.send_both");
+		},
+		get category() {
+			return t("ui.settings.shortcuts.category.sending");
+		},
+		defaultChord: null,
+		scope: "composer",
 	},
 ];
 
@@ -342,6 +420,12 @@ export const RESERVED_CHORDS: ReadonlyMap<string, string> =
 						t("ui.settings.shortcuts.reserved.browser_numbered_tab", { digit }),
 		]),
 		["primary+0", () => t("ui.settings.shortcuts.reserved.zoom_reset")],
+		// The composer's plain send key: Shift+Enter is the newline, bare Enter
+		// is the plain send. A rail row may never claim either spelling; the
+		// send rows are the only ones that may end in Enter, and they carry
+		// `primary` (or `alt`), never bare Enter, never shift+Enter.
+		["primary+enter", () => t("ui.settings.shortcuts.reserved.enter")],
+		["primary+shift+enter", () => t("ui.settings.shortcuts.reserved.enter")],
 		// Punctuation cannot be assigned by the current grammar; rows document the
 		// fixed native keys without widening what Settings can capture/store.
 		["primary+plus", () => t("ui.settings.shortcuts.reserved.zoom_in")],

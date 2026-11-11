@@ -52,7 +52,7 @@ const {
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 
-test("the six ids are stable and unique, in registry order", () => {
+test("the ids are stable and unique, in registry order", () => {
 	assert.deepEqual(
 		KEYMAP_ACTIONS.map((action) => action.id),
 		[
@@ -62,6 +62,9 @@ test("the six ids are stable and unique, in registry order", () => {
 			"panel.ask",
 			"panel.browser",
 			"panel.code",
+			"composer.send_steer",
+			"composer.send_queue",
+			"composer.send_both",
 		],
 	);
 	assert.equal(
@@ -69,9 +72,20 @@ test("the six ids are stable and unique, in registry order", () => {
 		KEYMAP_ACTIONS.length,
 	);
 	for (const action of KEYMAP_ACTIONS) {
-		assert.equal(action.scope, "app");
-		assert.equal(action.category, "Panels");
-		assert.match(action.label, /^Open [a-z]/, "labels are sentence-case verbs");
+		if (action.id.startsWith("panel.")) {
+			assert.equal(action.scope, "app");
+			assert.equal(action.category, "Panels");
+			assert.match(
+				action.label,
+				/^Open [a-z]/,
+				"labels are sentence-case verbs",
+			);
+		} else {
+			assert.equal(action.scope, "composer");
+			assert.equal(action.category, "Sending");
+			assert.match(action.label, /^Send as [a-z]/, "send labels name the mode");
+			assert.equal(action.defaultChord, null, "send rows ship unbound (D8)");
+		}
 	}
 });
 
@@ -164,6 +178,10 @@ test("the reserved inventory is exactly the decoded list", () => {
 	 * double-fire in the field.
 	 */
 	const expected = [
+		// The composer's send key, reserved for the send rows: a panel row
+		// pressing `primary+enter` meets this sentence, never a binding.
+		"primary+enter",
+		"primary+shift+enter",
 		"primary+0",
 		"primary+plus",
 		"primary+=",

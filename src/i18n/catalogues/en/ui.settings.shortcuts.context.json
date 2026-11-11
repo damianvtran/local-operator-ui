@@ -486,5 +486,41 @@
 		"tone": "Plain, short.",
 		"length": "One short sentence.",
 		"note": "Shown when the user pressed only a modifier key (Command, Control, Option, Shift) in the field that records a shortcut."
+	},
+	"ui.settings.shortcuts.action.send_both": {
+		"role": "Shortcut settings row label",
+		"tone": "Concise mode noun.",
+		"length": "One shortcut row label; keep compact.",
+		"note": "The Sending group row that sends as both: waits like queue, then interrupts like steer if the message has waited too long. Matches the mode word the busy-delivery setting uses."
+	},
+	"ui.settings.shortcuts.action.send_queue": {
+		"role": "Shortcut settings row label",
+		"tone": "Concise mode noun.",
+		"length": "One shortcut row label; keep compact.",
+		"note": "The Sending group row that sends as queue: waits for the current step to finish and never interrupts running tools. Matches the mode word the busy-delivery setting uses."
+	},
+	"ui.settings.shortcuts.action.send_steer": {
+		"role": "Shortcut settings row label",
+		"tone": "Concise mode noun.",
+		"length": "One shortcut row label; keep compact.",
+		"note": "The Sending group row that sends as steer: interrupts the running step and sends now. Matches the mode word the busy-delivery setting uses."
+	},
+	"ui.settings.shortcuts.category.sending": {
+		"role": "Shortcut category",
+		"tone": "Concise grouping noun.",
+		"length": "One shortcut group heading; keep short.",
+		"note": "Groups the three delivery-mode send chords in shortcut settings."
+	},
+	"ui.settings.shortcuts.category.sending_description": {
+		"role": "Shortcut group one-line help",
+		"tone": "Plain explanatory sentence, sentence case.",
+		"length": "Two sentences; keep under about 45 words.",
+		"note": "Sits above the three Sending rows. Says that Enter follows the delivery mode in Backend settings, while a bound key sends with its own mode even when that differs from the delivery mode."
+	},
+	"ui.settings.shortcuts.reserved.enter": {
+		"role": "Reserved-chord refusal sentence",
+		"tone": "Names the job rather than the owner.",
+		"length": "One sentence with a full stop; keep concise.",
+		"note": "Why a panel shortcut cannot claim a modified Enter: Enter alone always sends from the composer, and Shift+Enter adds a newline. The send rows are the only rows that may end in Enter."
 	}
 }

@@ -11759,11 +11759,16 @@ export type MessageParams = {
 	"ui.settings.shortcuts.action.open_code_review": undefined;
 	"ui.settings.shortcuts.action.open_console": undefined;
 	"ui.settings.shortcuts.action.open_run_details": undefined;
+	"ui.settings.shortcuts.action.send_both": undefined;
+	"ui.settings.shortcuts.action.send_queue": undefined;
+	"ui.settings.shortcuts.action.send_steer": undefined;
 	"ui.settings.shortcuts.capture.already_assigned": { label: string };
 	"ui.settings.shortcuts.capture.needs_modifier": undefined;
 	"ui.settings.shortcuts.capture.needs_modifier_mac": undefined;
 	"ui.settings.shortcuts.capture.unbindable": undefined;
 	"ui.settings.shortcuts.category.panels": undefined;
+	"ui.settings.shortcuts.category.sending": undefined;
+	"ui.settings.shortcuts.category.sending_description": undefined;
 	"ui.settings.shortcuts.category.speech_to_text": undefined;
 	"ui.settings.shortcuts.keyboard_shortcuts_section.browser_shortcuts_answer_only_while_the_browser_has_focus": undefined;
 	"ui.settings.shortcuts.keyboard_shortcuts_section.clear": undefined;
@@ -11804,6 +11809,7 @@ export type MessageParams = {
 	"ui.settings.shortcuts.reserved.close": undefined;
 	"ui.settings.shortcuts.reserved.copy": undefined;
 	"ui.settings.shortcuts.reserved.cut": undefined;
+	"ui.settings.shortcuts.reserved.enter": undefined;
 	"ui.settings.shortcuts.reserved.find": undefined;
 	"ui.settings.shortcuts.reserved.minimise": undefined;
 	"ui.settings.shortcuts.reserved.new_chat": undefined;

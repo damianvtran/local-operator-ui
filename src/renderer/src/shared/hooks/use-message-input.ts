@@ -35,7 +35,7 @@ export const shouldReinitialiseComposer = (
  */
 
 import type { DeliveryMode } from "@features/chat/composer-send-key";
-import { NO_SEND_CHORDS, sendKeyOf } from "@features/chat/composer-send-key";
+import { sendChordBindings, sendKeyOf } from "@features/chat/composer-send-key";
 /*
  * THE CORE, BY A RELATIVE SPECIFIER (this file's existing reason, one door
  * along): `@shared/i18n` re-exports the renderer's query-client writer, so a
@@ -45,6 +45,7 @@ import { NO_SEND_CHORDS, sendKeyOf } from "@features/chat/composer-send-key";
  * the core module itself, which imports nothing from the renderer.
  */
 import type { MessageKey } from "@shared/i18n";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { t } from "../../../../i18n/messages";
@@ -1467,7 +1468,7 @@ export const useMessageInput = ({
 					altKey: e.altKey,
 					isComposing: e.nativeEvent.isComposing,
 				},
-				NO_SEND_CHORDS,
+				sendChordBindings(useUiPreferencesStore.getState().shortcutBindings),
 			);
 			if (sendKey) {
 				e.preventDefault();

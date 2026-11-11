@@ -19,12 +19,14 @@
  * MODIFIED Enter is both an Enter and (once S4 binds one) a chord, and the
  * chord's mode is the one the user asked for.
  *
- * THE EMPTY MAP. S2 ships this predicate with an empty chord-bindings map:
- * every send key is plain Enter and resolves to the default. S4 adds the three
- * recorder rows (`keymap.send_*`) and fills the map from the renderer's
- * stored bindings; this file does not change for that. Bindings are keyed by
- * CANONICAL chord (`primary+enter`), the grammar `chordFromEvent` returns, so
- * the map is a direct lookup rather than a translation.
+ * THE MAP IS THE STORED BINDINGS. S2 shipped this predicate with an empty
+ * chord-bindings map, so every send key was plain Enter resolving to the
+ * default. S4 adds the three recorder rows (`keymap.send_*`) and fills the
+ * map from the renderer's stored bindings; `sendChordBindings` is the one
+ * builder, so all four Enter sites answer from the same stored chords.
+ * Bindings are keyed by CANONICAL chord (`primary+enter`), the grammar
+ * `chordFromEvent` returns, so the map is a direct lookup rather than a
+ * translation.
  *
  * THE TYPE SEMANTICS. `steer` is the default mode's value and today's
  * behaviour, not a separate "mode field" the page invents: the page still
@@ -35,9 +37,59 @@
  */
 
 import { chordFromEvent } from "@shared/keymap/chord-capture";
+import { effectiveChord } from "@shared/keymap/keymap-chord";
+import {
+	SEND_ACTION_IDS as REGISTRY_SEND_IDS,
+	SEND_MODES,
+	type SendActionId,
+	type ShortcutBindings,
+} from "@shared/keymap/keymap-registry";
 
 /** How a message sent while the session is busy reaches the running turn. */
 export type DeliveryMode = "steer" | "queue" | "both";
+
+/*
+ * THE SEND IDS NAME THE BACKEND'S ROWS (D5). The registry's `SEND_ACTION_IDS`
+ * are `composer.send_*`; the backend serves `keymap.send_*`; the chord is
+ * stored per surface and never crosses — only the id string is shared, and
+ * the tail of the shared id is the mode. The mode table below re-spells that
+ * tail once, beside the predicate that answers it, rather than reaching
+ * across the seam a second way.
+ */
+export const SEND_ACTION_IDS = REGISTRY_SEND_IDS;
+
+/** Each send id's delivery mode: the id tail IS the mode (see above). */
+export const SEND_MODE_BY_ID: Readonly<Record<SendActionId, DeliveryMode>> =
+	SEND_MODES as Record<SendActionId, DeliveryMode>;
+
+/**
+ * The predicate's binding argument, built from the renderer's stored
+ * `shortcutBindings` through the registry's effective-chord reader. The
+ * effective chord keeps the sanitizer's decision (a hand-edited blob cannot arm
+ * a chord capture would refuse), and the id's tail is the mode — so a stored
+ * `primary+enter` on `composer.send_queue` answers `queue`, and an unbound
+ * send row answers nothing.
+ */
+export function sendChordBindings(
+	bindings: ShortcutBindings | undefined,
+): SendChordBindings {
+	const map = new Map<string, DeliveryMode>();
+	for (const id of SEND_ACTION_IDS) {
+		const chord = effectiveChord(id, bindings);
+		const mode = SEND_MODE_BY_ID[id];
+		if (mode === undefined) continue;
+		/*
+		 * `effectiveChord` reads the binding the sanitizer kept: a `null`
+		 * (deliberate no-chord) and an absent row both answer nothing, so the
+		 * bare lookup is the honest one — an unbound send row is simply absent
+		 * from the map, and the press falls through to the default mode.
+		 */
+		if (chord !== null && !map.has(chord)) {
+			map.set(chord, mode);
+		}
+	}
+	return map;
+}
 
 /**
  * The one settings row this slice reads. The key is neutral between surfaces
@@ -51,12 +103,16 @@ export const BUSY_DELIVERY_FEATURE = "busy_delivery";
 
 /**
  * The composer's chord bindings: canonical chord to the mode that chord
- * selects. Empty in S2 (see the module note); S4 fills it from the renderer's
- * stored `keymap.send_*` bindings.
+ * selects. Built from the renderer's stored `keymap.send_*` bindings by
+ * `sendChordBindings` above.
  */
 export type SendChordBindings = ReadonlyMap<string, DeliveryMode>;
 
-/** The empty bindings S2 passes at every site. */
+/**
+ * An empty chord map: every press resolves through the default mode.
+ * The test suite's "nothing bound" fixture; the live Enter sites pass the
+ * bindings the settings rows stored instead.
+ */
 export const NO_SEND_CHORDS: SendChordBindings = new Map();
 
 /**
@@ -97,6 +153,14 @@ export function sendKeyOf(
 	bindings: SendChordBindings,
 ): SendKey | null {
 	if (event.isComposing) return null;
+	/*
+	 * Shift+Enter is the newline, never a send, even when a send chord names
+	 * `primary+shift+enter`: the recorder refuses that spelling for every row
+	 * (D7), so a binding that named it could only be a hand edit, and a hand
+	 * edit must not turn the composer's newline into a send. The chord below
+	 * is still spelled for the no-shift arm.
+	 */
+	if (event.key === "Enter" && event.shiftKey) return null;
 	/*
 	 * The chord the press spells, looked up once for both arms: a MODIFIED
 	 * Enter is both an Enter and (once S4 binds one) a chord, and the chord's

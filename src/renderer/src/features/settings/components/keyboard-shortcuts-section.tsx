@@ -43,7 +43,6 @@ import {
 } from "@shared/hooks/use-recording-shortcut";
 import { subscribeLocale } from "@shared/i18n";
 import {
-	END_EDIT_KEYS,
 	MODIFIER_ONLY_KEYS,
 	NAVIGATION_KEYS,
 	chordFromEvent,
@@ -88,6 +87,12 @@ const rowLabel = (action: KeymapAction): string => {
 			return t("ui.settings.shortcuts.row.browser");
 		case "panel.code":
 			return t("ui.settings.shortcuts.row.code_review");
+		case "composer.send_steer":
+			return t("ui.settings.shortcuts.action.send_steer");
+		case "composer.send_queue":
+			return t("ui.settings.shortcuts.action.send_queue");
+		case "composer.send_both":
+			return t("ui.settings.shortcuts.action.send_both");
 	}
 };
 
@@ -219,8 +224,21 @@ const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {
 						 * the caret to `<body>` and the next Tab restarted at the top of the
 						 * page, while blur-and-refocus would re-arm the recording and make
 						 * Escape a visible no-op. The next captured key re-arms the cue.
+						 * A bare Enter ends the edit on every row — including the send
+						 * rows, where Enter is the plain send and a bare press can never be
+						 * "the chord this row answers". Only a MODIFIED Enter reaches the
+						 * recorder below, where the send rows accept it and the panel rows
+						 * meet the reserved sentence.
 						 */
-						if (END_EDIT_KEYS.has(event.key)) {
+						if (
+							event.key === "Escape" ||
+							event.key === "Esc" ||
+							(event.key === "Enter" &&
+								!event.ctrlKey &&
+								!event.metaKey &&
+								!event.altKey &&
+								!event.shiftKey)
+						) {
 							setRecording(false);
 							setRefusal(null);
 							return;
@@ -383,9 +401,26 @@ export const KeyboardShortcutsSection: FC<{
 					{t("ui.settings.shortcuts.category.panels")}
 				</h3>
 				<div className="flex flex-col gap-4">
-					{KEYMAP_ACTIONS.map((action) => (
+					{KEYMAP_ACTIONS.filter((a) => a.scope === "app").map((action) => (
 						<ShortcutRow key={action.id} action={action} />
 					))}
+				</div>
+				<div className="flex flex-col gap-4 pt-2">
+					<div className="flex flex-col gap-1">
+						<h3 className="text-body-sm font-medium text-ink">
+							{t("ui.settings.shortcuts.category.sending")}
+						</h3>
+						<p className="max-w-2xl text-body-sm text-ink-muted">
+							{t("ui.settings.shortcuts.category.sending_description")}
+						</p>
+					</div>
+					<div className="flex flex-col gap-4">
+						{KEYMAP_ACTIONS.filter((a) => a.scope === "composer").map(
+							(action) => (
+								<ShortcutRow key={action.id} action={action} />
+							),
+						)}
+					</div>
 				</div>
 			</div>
 		</SettingsSection>

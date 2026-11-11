@@ -2390,41 +2390,6 @@
 					"value": "en",
 					"label": "en",
 					"description": ""
-				},
-				{
-					"value": "fr",
-					"label": "fr",
-					"description": ""
-				},
-				{
-					"value": "es",
-					"label": "es",
-					"description": ""
-				},
-				{
-					"value": "zh-CN",
-					"label": "zh-CN",
-					"description": ""
-				},
-				{
-					"value": "ru",
-					"label": "ru",
-					"description": ""
-				},
-				{
-					"value": "vi",
-					"label": "vi",
-					"description": ""
-				},
-				{
-					"value": "ur",
-					"label": "ur",
-					"description": "Terminal: best effort; requires bidi and Arabic shaping."
-				},
-				{
-					"value": "hi",
-					"label": "hi",
-					"description": ""
 				}
 			],
 			"empty_unsets": false,
@@ -3166,6 +3131,99 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "desktop",
+			"unit": "",
+			"synonyms": [
+				"keyboard",
+				"shortcut",
+				"keybinding",
+				"bind",
+				"chord",
+				"hotkey"
+			]
+		},
+		{
+			"key": "keymap.send_steer",
+			"section": "keymap",
+			"label": "Send as steer",
+			"kind": "hotkey",
+			"help": "Sends the message now and interrupts the running step. Ctrl/Alt/Cmd+Enter only work in terminals that support enhanced keys; Alt+letter works everywhere (macOS terminals need Option-as-Meta).",
+			"value": "",
+			"default": "",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "composer",
+			"unit": "",
+			"synonyms": [
+				"keyboard",
+				"shortcut",
+				"keybinding",
+				"bind",
+				"chord",
+				"hotkey"
+			]
+		},
+		{
+			"key": "keymap.send_queue",
+			"section": "keymap",
+			"label": "Send as queue",
+			"kind": "hotkey",
+			"help": "Waits for the current step to finish and never interrupts running tools. Ctrl/Alt/Cmd+Enter only work in terminals that support enhanced keys; Alt+letter works everywhere (macOS terminals need Option-as-Meta).",
+			"value": "",
+			"default": "",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "composer",
+			"unit": "",
+			"synonyms": [
+				"keyboard",
+				"shortcut",
+				"keybinding",
+				"bind",
+				"chord",
+				"hotkey"
+			]
+		},
+		{
+			"key": "keymap.send_both",
+			"section": "keymap",
+			"label": "Send as both",
+			"kind": "hotkey",
+			"help": "Waits like queue, then interrupts like steer if the message has waited too long. Ctrl/Alt/Cmd+Enter only work in terminals that support enhanced keys; Alt+letter works everywhere (macOS terminals need Option-as-Meta).",
+			"value": "",
+			"default": "",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false,
+			"warning": "",
+			"placeholder": "",
+			"gated_by": null,
+			"state_note": "",
+			"read_only": false,
+			"hotkey_scope": "composer",
 			"unit": "",
 			"synonyms": [
 				"keyboard",

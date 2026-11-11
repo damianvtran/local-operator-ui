@@ -95,6 +95,75 @@ export const Recording: Story = {
 	render: () => <Section focusAction="panel.canvas" />,
 };
 
+/*
+ * The Sending group (#928 follow-up, busy-delivery S4): the three
+ * `composer.send_*` rows that answer a modified Enter with a delivery mode.
+ * The four frames name the four states the recorder reads under: empty (all
+ * three unbound, help shown), assigned (a REAL `primary+enter` press captured
+ * at the field), recording (focus on a send field), refused (a panel press
+ * meets the reserved sentence). Each play reaches its state by pressing the
+ * real keys at the real field, never by staging a string.
+ */
+
+/** The Sending group empty: three `No shortcut` rows and the group help. */
+export const SendingEmpty: Story = {
+	render: () => <Section />,
+	play: async () => {
+		await screen.findByText("Sending");
+		await screen.findByLabelText("Send as queue: press the keys you want");
+	},
+};
+
+/**
+ * The Sending group assigned: a real ⌘Enter/Ctrl+Enter press at the queue
+ * field is captured as `primary+enter` and renders as the cap.
+ */
+export const SendingAssigned: Story = {
+	render: () => <Section focusAction="composer.send_queue" />,
+	play: async () => {
+		const field = await screen.findByLabelText(
+			"Send as queue: press the keys you want",
+		);
+		await userEvent.click(field);
+		/*
+		 * `fireEvent.keyDown` rather than `userEvent.keyboard`: the handler is
+		 * the component's own `onKeyDown`, and a modified Enter is the exact
+		 * shape this row records.
+		 */
+		fireEvent.keyDown(field, { key: "Enter", metaKey: true });
+		await waitFor(() =>
+			expect((field as HTMLInputElement).value).not.toBe("No shortcut"),
+		);
+	},
+};
+
+/**
+ * The Sending group recording: the focused send field shows the recording
+ * hint and the focus ring — the state a user is in while pressing.
+ */
+export const SendingRecording: Story = {
+	render: () => <Section focusAction="composer.send_steer" />,
+};
+
+/**
+ * The Sending group refused: a panel-shaped press (`primary+enter` at a PANEL
+ * row) meets the reserved sentence naming the composer's send key, while the
+ * same press at a send row is accepted (see SendingAssigned).
+ */
+export const SendingRefused: Story = {
+	render: () => <Section focusAction="panel.console" />,
+	play: async () => {
+		const field = await screen.findByLabelText(
+			"Console: press the keys you want",
+		);
+		await userEvent.click(field);
+		fireEvent.keyDown(field, { key: "Enter", ctrlKey: true });
+		await screen.findByText(
+			"Reserved: sends the message from the composer. Enter alone always sends, and Shift+Enter adds a newline.",
+		);
+	},
+};
+
 /**
  * Refused: the console field holds focus and the canvas's chord is pressed at
  * it, so the frame is the REAL refusal — previous value kept, sentence shown.

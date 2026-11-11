@@ -73,10 +73,16 @@ const MODIFIER_ALIASES: Record<string, ModifierToken> = {
  * The named keys a chord may end in, beside single letters and digits.
  *
  * Deliberately the backend grammar's printable-and-navigational subset:
- * punctuation is unrepresentable (so `⌘+` cannot be captured), and `escape`,
- * `enter` and `tab` are absent because they end an edit rather than spell a
- * binding (`END_EDIT_KEYS`) — a rail chord that swallowed Enter or Tab would
- * take a key every focused control needs.
+ * punctuation is unrepresentable (so `⌘+` cannot be captured), and `escape` and
+ * `tab` are absent because they end an edit rather than spell a binding
+ * (`END_EDIT_KEYS`) — a rail chord that swallowed Escape or Tab would take a key
+ * every focused control needs. `enter` IS spellable here: a MODIFIED Enter is
+ * what the send rows record (`primary+enter`), while a BARE Enter stays the
+ * composer's plain send and the recorders' edit-ender, so no chord in this set
+ * can claim it. Which of the two families an action may finish on is
+ * `captureRefusal`'s question per action — a panel chord that ends in Enter must
+ * also carry `primary` (see `chordHasPrimary`), which is what keeps the plain
+ * send key out of reach of an accidental binding.
  */
 const NAMED_KEY_TOKENS: ReadonlySet<string> = new Set([
 	"space",
@@ -91,6 +97,7 @@ const NAMED_KEY_TOKENS: ReadonlySet<string> = new Set([
 	"down",
 	"left",
 	"right",
+	"enter",
 ]);
 
 /** Whether a token is a key (letter, digit, `space`, or a named key) rather than a modifier. */
@@ -162,7 +169,22 @@ export function effectiveChord(
 	// capture's collision check) shares this gate; storage retention is not consent
 	// to arm a now-reserved chord. Explicit null remains deliberately unbound.
 	if (override === null) return null;
-	if (typeof override === "string" && !RESERVED_CHORDS.has(override))
+	/*
+	 * The three send chords are the reserved set's own carve-out: they are what
+	 * the composer rows record, so an override that names one must answer on
+	 * those rows even though `primary+enter` is reserved against PANEL rows.
+	 * The sanitizer already dropped anything the send rows may not end in, so
+	 * the check here is the send row's own.
+	 */
+	const isSendRow = actionId.startsWith("composer.send_");
+	const isSendChord =
+		override === "primary+enter" ||
+		override === "alt+enter" ||
+		override === "primary+shift+enter";
+	if (
+		typeof override === "string" &&
+		(!RESERVED_CHORDS.has(override) || (isSendRow && isSendChord))
+	)
 		return override;
 	return actionById(actionId)?.defaultChord ?? null;
 }
@@ -175,12 +197,19 @@ export function effectiveChord(
  * settings), first action in registry order keeping a duplicated chord. Stored
  * duplicates cannot reach here — capture refuses them and the sanitizer drops
  * them — so the first-wins rule is a guarantee, not a hope.
+ *
+ * `composer` actions are NOT in this map: the composer predicate
+ * (`sendKeyOf`) answers them, and the router must never answer a chord whose
+ * whole meaning is "send this message". Registering them here would also arm
+ * the rail toggle on a press the composer is already handling — the very
+ * double-fire the reserved set exists to prevent — so the scope is the filter.
  */
 export function buildChordMap(
 	bindings: ShortcutBindings | undefined,
 ): Map<string, ActionId> {
 	const map = new Map<string, ActionId>();
 	for (const action of KEYMAP_ACTIONS) {
+		if (action.scope !== "app") continue;
 		const chord = effectiveChord(action.id, bindings);
 		if (chord !== null && !map.has(chord)) map.set(chord, action.id);
 	}
@@ -209,12 +238,21 @@ const needsModifierSentence = (platform: MiniViewPlatform): string =>
  * field — or `null` when it can. Ordered so the most specific job is named:
  *
  * 1. a chord the event could not even spell (`null` — an F-key, punctuation);
- * 2. a chord with no `primary` (it would fire while the user types);
- * 3. a reserved chord (the set's own sentence names the job);
- * 4. a chord another action already answers — under its effective binding, so
+ * 2. the send rows' own rules (see below);
+ * 3. a chord with no `primary` (it would fire while the user types);
+ * 4. a reserved chord (the set's own sentence names the job);
+ * 5. a chord another action already answers — under its effective binding, so
  *    a default counts as taken, not only a stored override. External claim
  *    values are bare action labels; this renderer composes the localized
  *    sentence so labels never become nested "Already assigned" messages.
+ *
+ * THE SEND ROWS' OWN RULES (D7/D12). Only the three send ids may end in
+ * `enter`, and only with `primary` or `alt` — never bare `enter`, never
+ * `shift+enter` (the newline), never a bare shift, never a plain character.
+ * The earlier `primary+enter` reserved entries would refuse the very chord the
+ * send rows exist to record, so the send arm runs BEFORE the reserved check;
+ * a panel row pressing `primary+enter` still meets the reserved sentence,
+ * because the send arm only accepts the action whose row it is.
  *
  * The action's OWN chord is not a conflict: re-pressing the chord a row already
  * shows is never refused, and the ROW answers it without a store write (UX
@@ -231,6 +269,14 @@ export function captureRefusal(
 ): string | null {
 	const normalized = chord === null ? null : normalizeChord(chord);
 	if (normalized === null) return t("ui.settings.shortcuts.capture.unbindable");
+	if (actionId.startsWith("composer.send_")) {
+		/* Send rows accept a modified Enter the way D7 spells it. */
+		const isSendChord =
+			normalized === "primary+enter" ||
+			normalized === "alt+enter" ||
+			normalized === "primary+shift+enter";
+		if (isSendChord) return null;
+	}
 	if (!chordHasPrimary(normalized)) return needsModifierSentence(platform);
 	const reserved = RESERVED_CHORDS.get(normalized);
 	if (reserved !== undefined) return reserved;
@@ -281,17 +327,29 @@ export function sanitizeShortcutBindings(raw: unknown): ShortcutBindings {
 		}
 		const normalized =
 			typeof stored === "string" ? normalizeChord(stored) : null;
-		// ONLY these formerly assignable chords are retained dormant (R15).
-		// Claim the effective DEFAULT, not the dormant string, so a later action
-		// cannot take a default this action still answers. Pre-existing reserved,
-		// invalid and duplicate active overrides keep the old rejection rules.
+		/*
+		 * ONLY these formerly assignable chords are retained dormant (R15).
+		 * Claim the effective DEFAULT, not the dormant string, so a later action
+		 * cannot take a default this action still answers. Pre-existing reserved,
+		 * invalid and duplicate active overrides keep the old rejection rules.
+		 * The send rows are exempt from the reserved half of that rule for exactly
+		 * the three chords they record: `primary+enter` and friends are reserved
+		 * for PANEL rows, and what a send row may end in is still checked — a
+		 * hand-written blob cannot arm a bare `enter` or a `shift+enter`.
+		 */
+		const isSendRow = action.id.startsWith("composer.send_");
+		const isSendChord =
+			normalized === "primary+enter" ||
+			normalized === "alt+enter" ||
+			normalized === "primary+shift+enter";
 		const dormant =
 			normalized !== null && LEGACY_BROWSER_CHORDS.has(normalized);
 		const override =
 			normalized !== null &&
 			chordHasPrimary(normalized) &&
 			(dormant ||
-				(!RESERVED_CHORDS.has(normalized) && !claimed.has(normalized)))
+				((!RESERVED_CHORDS.has(normalized) || (isSendRow && isSendChord)) &&
+					!claimed.has(normalized)))
 				? normalized
 				: null;
 		if (override !== null) bindings[action.id] = override;

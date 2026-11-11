@@ -75,5 +75,11 @@
 	"ui.settings.shortcuts.speech.push_to_talk_refused": "{platform, select, darwin {Only a left or right Control, Option or Command key can be held.} win32 {Only a left or right Control or Windows key can be held.} other {Only a left or right Control or Super key can be held.}}",
 	"ui.settings.shortcuts.speech.push_to_talk_overlap": "Every shortcut that uses {modifier}, such as {example}, will start recording for a moment.{alternative, select, none {} other { Choose {alternative} to avoid this.}}",
 	"ui.settings.shortcuts.speech.push_to_talk_letter_pointer": "For a shortcut with a letter, use Start recording above.",
-	"ui.settings.shortcuts.speech.start_recording_needs_key": "A shortcut needs a letter or number as well as a modifier key."
+	"ui.settings.shortcuts.speech.start_recording_needs_key": "A shortcut needs a letter or number as well as a modifier key.",
+	"ui.settings.shortcuts.action.send_both": "Send as both",
+	"ui.settings.shortcuts.action.send_queue": "Send as queue",
+	"ui.settings.shortcuts.action.send_steer": "Send as steer",
+	"ui.settings.shortcuts.category.sending": "Sending",
+	"ui.settings.shortcuts.category.sending_description": "Additional keys for sending a message while the agent is busy. Enter always sends with the delivery mode in Backend settings. A bound key sends with its mode instead, even when that is not the delivery mode.",
+	"ui.settings.shortcuts.reserved.enter": "Reserved: sends the message from the composer. Enter alone always sends, and Shift+Enter adds a newline."
 }
