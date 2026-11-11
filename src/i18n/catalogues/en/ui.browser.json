@@ -256,8 +256,12 @@
 	"ui.browser.webauthn_chooser.this_passkey_request_expired": "This passkey request expired",
 	"ui.browser.webauthn_chooser.this_passkey_request_was_cancelled": "This passkey request was cancelled",
 	"ui.browser.browser_url_bar.reload_shortcut": "Reload ({shortcut})",
-	"ui.browser.browser_passkey_custody.label": "Passkey prompt waiting for you",
-	"ui.browser.browser_passkey_custody.message": "A password manager is asking you to confirm a passkey in this agent’s tab.",
-	"ui.browser.browser_passkey_custody.explanation": "Only you can see and answer it. The agent is paused on this tab until you return it.",
-	"ui.browser.browser_passkey_custody.return_to_agent": "Return to agent"
+	"ui.browser.browser_passkey_custody.label": "Password manager prompt waiting for you",
+	"ui.browser.browser_passkey_custody.message": "Your password manager needs you in this agent’s tab.",
+	"ui.browser.browser_passkey_custody.explanation": "Only you can see and answer its prompt, and the agent is paused on this tab. When you’re done, return the tab to the agent; you may need to ask it to continue. Returning while the prompt is still open reloads the page and cancels any unfinished sign-in or save.",
+	"ui.browser.browser_passkey_custody.return_to_agent": "Return to agent",
+	"ui.browser.browser_passkey_custody.returning": "Returning…",
+	"ui.browser.browser_passkey_custody.return_refused_stale": "That notice is out of date; the tab is still yours.",
+	"ui.browser.browser_passkey_custody.return_refused_not_held": "That tab is no longer waiting for you.",
+	"ui.browser.browser_passkey_custody.return_failed": "The tab couldn’t be returned to the agent. Try again."
 }

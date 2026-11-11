@@ -43,6 +43,7 @@ import {
 	presentPopupWindow,
 	raiseWindow,
 } from "../window-raise";
+import { discardRecordingForCustody } from "./actions/recording";
 import {
 	createRecordingEncoderService,
 	disposeAllRecordingEncoders,
@@ -78,6 +79,7 @@ import { installExtensionDialogs } from "./extensions/dialogs";
 import { ExtensionManager } from "./extensions/manager";
 import {
 	PASSKEY_CUSTODY_ATTENTION_CHANNEL,
+	PASSKEY_CUSTODY_ENDED_CHANNEL,
 	PasskeyCustody,
 	passkeyPromptProvider,
 } from "./extensions/passkey-custody";
@@ -1070,6 +1072,10 @@ async function initializeBrowserHost(
 		const custodyReturnTab = new Map<number, number | null>();
 		const passkeyCustody = new PasskeyCustody({
 			log,
+			// A recording would keep encoding the prompt underneath the hold and hand
+			// it to the agent at `record_stop`: discard it the moment the hold begins
+			// (review R1/R2; `discardRecordingForCustody` has the why).
+			onHold: (webContentsId) => discardRecordingForCustody(webContentsId),
 			onBegin: (view) => {
 				const record = registry.get(view.tabId);
 				if (!record) return;
@@ -1082,8 +1088,11 @@ async function initializeBrowserHost(
 				);
 				registry.activate(view.tabId);
 				if (options.window.isDestroyed()) return;
+				// `at` is the hold's identity: the renderer snapshots the user's view
+				// once per hold and gives it back on the matching ended event.
 				options.window.webContents.send(PASSKEY_CUSTODY_ATTENTION_CHANNEL, {
 					tabId: view.tabId,
+					at: view.at,
 					requesterSessionId: record.sessionId ?? null,
 				});
 				raiseWindow(options.window, options.windowShow, {
@@ -1106,6 +1115,14 @@ async function initializeBrowserHost(
 				)
 					registry.activate(previous);
 				else notifyChanged();
+				// The renderer half of the give-back: route, conversation and pane
+				// return only if the user is still where the handoff put them
+				// (`passkey-custody-handoff.ts`).
+				if (!options.window.isDestroyed())
+					options.window.webContents.send(PASSKEY_CUSTODY_ENDED_CHANNEL, {
+						tabId: view.tabId,
+						at: view.at,
+					});
 			},
 		});
 		cdp.setCustodyGate(passkeyCustody);
@@ -1338,6 +1355,9 @@ async function initializeBrowserHost(
 							tabId,
 							url: event.url,
 							isInstalled: (id) => extensions.isActive(id),
+							// Tracked so a Return that races this navigation's commit
+							// reloads instead of unlocking (review R3).
+							frame: (event as { frame?: Electron.WebFrameMain | null }).frame,
 						})
 					)
 						return;
@@ -2131,8 +2151,10 @@ async function initializeBrowserHost(
 						},
 					});
 					notifyChanged();
+					// `reloaded` tells the band to stay busy until the hold actually
+					// lifts on the reload's commit (review U2).
 					return outcome.ok
-						? { ok: true }
+						? { ok: true, reloaded: outcome.reloaded }
 						: { ok: false, reason: outcome.reason };
 				},
 			},

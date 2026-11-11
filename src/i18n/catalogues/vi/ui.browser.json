@@ -256,8 +256,12 @@
 	"ui.browser.webauthn_chooser.this_passkey_request_expired": "Yêu cầu khóa truy cập này đã hết hạn",
 	"ui.browser.webauthn_chooser.this_passkey_request_was_cancelled": "Yêu cầu khóa truy cập này đã bị hủy",
 	"ui.browser.browser_url_bar.reload_shortcut": "Tải lại ({shortcut})",
-	"ui.browser.browser_passkey_custody.label": "Yêu cầu khóa truy cập đang chờ bạn",
-	"ui.browser.browser_passkey_custody.message": "Một trình quản lý mật khẩu đang yêu cầu bạn xác nhận khóa truy cập trong thẻ của tác nhân này.",
-	"ui.browser.browser_passkey_custody.explanation": "Chỉ bạn mới thấy và trả lời được yêu cầu này. Tác nhân tạm dừng trên thẻ này cho đến khi bạn trả lại.",
-	"ui.browser.browser_passkey_custody.return_to_agent": "Trả lại cho tác nhân"
+	"ui.browser.browser_passkey_custody.label": "Yêu cầu của trình quản lý mật khẩu đang chờ bạn",
+	"ui.browser.browser_passkey_custody.message": "Trình quản lý mật khẩu của bạn cần bạn trong thẻ của tác nhân này.",
+	"ui.browser.browser_passkey_custody.explanation": "Chỉ bạn mới thấy và trả lời được yêu cầu của nó, và tác nhân đang tạm dừng trên thẻ này. Khi xong, hãy trả lại thẻ cho tác nhân; có thể bạn cần nhờ tác nhân tiếp tục. Nếu trả lại khi yêu cầu vẫn đang mở, trang sẽ tải lại và mọi thao tác đăng nhập hoặc lưu chưa xong sẽ bị hủy.",
+	"ui.browser.browser_passkey_custody.return_to_agent": "Trả lại cho tác nhân",
+	"ui.browser.browser_passkey_custody.returning": "Đang trả lại…",
+	"ui.browser.browser_passkey_custody.return_refused_stale": "Thông báo đó đã cũ; thẻ vẫn thuộc về bạn.",
+	"ui.browser.browser_passkey_custody.return_refused_not_held": "Thẻ đó không còn chờ bạn nữa.",
+	"ui.browser.browser_passkey_custody.return_failed": "Không thể trả lại thẻ cho tác nhân. Hãy thử lại."
 }

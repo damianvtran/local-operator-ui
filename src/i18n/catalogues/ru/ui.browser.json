@@ -256,8 +256,12 @@
 	"ui.browser.webauthn_chooser.this_passkey_request_expired": "Срок этого запроса ключа доступа истёк",
 	"ui.browser.webauthn_chooser.this_passkey_request_was_cancelled": "Этот запрос ключа доступа отменён",
 	"ui.browser.browser_url_bar.reload_shortcut": "Перезагрузить ({shortcut})",
-	"ui.browser.browser_passkey_custody.label": "Запрос ключа доступа ждёт вас",
-	"ui.browser.browser_passkey_custody.message": "Менеджер паролей просит вас подтвердить ключ доступа во вкладке этого агента.",
-	"ui.browser.browser_passkey_custody.explanation": "Видеть и отвечать на него можете только вы. Агент приостановлен в этой вкладке, пока вы её не вернёте.",
-	"ui.browser.browser_passkey_custody.return_to_agent": "Вернуть агенту"
+	"ui.browser.browser_passkey_custody.label": "Запрос менеджера паролей ждёт вас",
+	"ui.browser.browser_passkey_custody.message": "Ваш менеджер паролей ждёт вас во вкладке этого агента.",
+	"ui.browser.browser_passkey_custody.explanation": "Видеть его запрос и отвечать на него можете только вы, а агент в этой вкладке приостановлен. Когда закончите, верните вкладку агенту; возможно, придётся попросить его продолжить. Если вернуть её, пока запрос ещё открыт, страница перезагрузится, а незавершённый вход или сохранение будут отменены.",
+	"ui.browser.browser_passkey_custody.return_to_agent": "Вернуть агенту",
+	"ui.browser.browser_passkey_custody.returning": "Возвращаем…",
+	"ui.browser.browser_passkey_custody.return_refused_stale": "Это уведомление устарело; вкладка по-прежнему у вас.",
+	"ui.browser.browser_passkey_custody.return_refused_not_held": "Эта вкладка вас больше не ждёт.",
+	"ui.browser.browser_passkey_custody.return_failed": "Не удалось вернуть вкладку агенту. Попробуйте ещё раз."
 }

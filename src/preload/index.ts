@@ -1259,16 +1259,23 @@ const api = {
 		onPasskeyCustodyAttention: (
 			callback: (payload: {
 				tabId: number;
+				at: number;
 				requesterSessionId: string | null;
 			}) => void,
 		): (() => void) => {
 			const handler = (
 				_event: unknown,
-				payload: { tabId?: unknown; requesterSessionId?: unknown },
+				payload: {
+					tabId?: unknown;
+					at?: unknown;
+					requesterSessionId?: unknown;
+				},
 			) => {
 				if (typeof payload?.tabId !== "number") return;
+				if (typeof payload.at !== "number") return;
 				callback({
 					tabId: payload.tabId,
+					at: payload.at,
 					requesterSessionId:
 						typeof payload.requesterSessionId === "string"
 							? payload.requesterSessionId
@@ -1281,6 +1288,24 @@ const api = {
 					"browser-passkey-custody-attention",
 					handler,
 				);
+			};
+		},
+		/** The hold `{tabId, at}` ended: the renderer may give the user back the
+		 * view it saved when that hold began (`passkey-custody-handoff.ts`). */
+		onPasskeyCustodyEnded: (
+			callback: (payload: { tabId: number; at: number }) => void,
+		): (() => void) => {
+			const handler = (
+				_event: unknown,
+				payload: { tabId?: unknown; at?: unknown },
+			) => {
+				if (typeof payload?.tabId !== "number") return;
+				if (typeof payload.at !== "number") return;
+				callback({ tabId: payload.tabId, at: payload.at });
+			};
+			ipcRenderer.on("browser-passkey-custody-ended", handler);
+			return () => {
+				ipcRenderer.removeListener("browser-passkey-custody-ended", handler);
 			};
 		},
 		/**

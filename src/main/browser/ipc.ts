@@ -113,11 +113,13 @@ export interface RegisterBrowserIpcOptions {
 	 * main refuses anything else, as for the media prompt.
 	 */
 	passkeyCustody?: {
+		/** `reloaded`: the hold lifts only once the reload commits, so the band
+		 * stays busy until it disappears. */
 		release: (
 			tabId: number,
 			at: number,
 			trusted: boolean,
-		) => { ok: true } | { ok: false; reason: string };
+		) => { ok: true; reloaded?: boolean } | { ok: false; reason: string };
 	};
 	/**
 	 * The camera/microphone prompt's one action (`media-permissions.ts`). This

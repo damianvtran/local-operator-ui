@@ -885,17 +885,36 @@ route and `menu.html` is the autofill menu.
 **Decision.** `extensions/passkey-custody.ts`: a known, installed provider's
 measured prompt document is admitted in an agent tab only after a hold is in
 place, synchronously in `will-frame-navigate`. While held: `registry.requireSurface`
-refuses the tab; `CdpPool.sendTo` refuses every command but the origin gate's
-`Fetch` answers and drops a result that was in flight when the hold began;
+refuses the tab (handle-less `close` included); `CdpPool.sendTo` refuses every
+command but the origin gate's `Fetch` answers and capture teardown
+(`Page.stopScreencast`, `Page.stopScreenRecording`, `IO.close` — never `IO.read` —
+`Emulation.clearDeviceMetricsOverride`, `Page.disable`) and drops a result that
+was in flight when the hold began;
 isolated-world reads that cross the hold are dropped (`registry.guardRead`);
-CDP events other than `Fetch.*` reach no subscriber (screencast, console and
-network captures pause); frame walks refuse any `chrome-extension:` document
-independent of custody. The tab is activated, the renderer opens its
+CDP events other than `Fetch.*` reach no subscriber (console and network
+captures see nothing of the hold); frame walks refuse any `chrome-extension:`
+document independent of custody. A running recording is DISCARDED when the hold
+begins (`discardRecordingForCustody`, tombstone `record_aborted` /
+`passkey_custody`), not paused: Chromium's default recorder encodes the
+composited surface with no event to filter, so a paused clip would still carry
+the prompt to the agent at `record_stop`. The tab is activated, the renderer opens its
 conversation's browser pane, and `window-raise.ts` raises under the launch plan
 (`passkey-custody` trigger). Only the user's trusted **Return to agent** ends a
-hold — no timer — and a provider frame still present at release reloads the page
-first; the hold lifts on the new document's commit. The previous tab is restored
-only if the user is still on the custody tab.
+hold — no timer. A provider frame still present at release, or any frame
+admitted during the hold that is not yet destroyed (it may not have committed),
+reloads the page first; the hold lifts on the new document's commit, and a
+second press meanwhile does not reload again. The previous tab, and in the
+renderer the previous route, conversation or draft and pane state
+(`shared/browser-passkey-custody-handoff.ts`), come back only if the user is
+still where the handoff put them; one hold (`{tabId, at}`) moves the user at
+most once. OS focus is not handed back to another app (Electron cannot).
+
+**Band copy** (`ui.browser.browser_passkey_custody.*`, eight locales): neutral
+"password manager" wording because the same frame hosts the save-login prompt;
+it says returning with the prompt open reloads and cancels an unfinished
+sign-in or save, and that the agent may need asking to continue. The button
+shows `returning` until the hold lifts; refusals toast `return_refused_stale`,
+`return_refused_not_held` or `return_failed`.
 
 **Accepted side effect.** `notification.html` is 1Password's generic notification
 host (its hash is `type=notificationManager` for every kind), so a "save this

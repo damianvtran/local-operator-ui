@@ -19,9 +19,14 @@
  * WHAT CUSTODY IS. While a tab is held, the tab is the human's in everything but
  * name: every agent action on it is refused before dispatch (`registry.ts`
  * `requireSurface`), every CDP command except the origin gate's own `Fetch`
- * plumbing is refused (`cdp.ts`), CDP events stop flowing to subscribers (so
- * screencast frames, console and network captures pause), and a command that
- * was already in flight when custody began has its RESULT dropped. The
+ * plumbing and capture TEARDOWN is refused (`cdp.ts`), CDP events stop flowing
+ * to subscribers (console and network captures see nothing of the hold), and a
+ * command that was already in flight when custody began has its RESULT dropped.
+ * A recording is not paused but DISCARDED at the moment the hold begins
+ * (`onHold` → `discardRecordingForCustody`): Chromium's default recorder
+ * (`Page.startScreenRecording`) encodes the composited surface with no CDP
+ * event to filter, so a "paused" clip would still contain the prompt and hand
+ * it to the agent at `record_stop` (review R1/Q1). The
  * provider's frame is admitted only AFTER the hold is in place, synchronously in
  * `will-frame-navigate`, so there is no moment at which the frame exists and an
  * agent read is allowed.
@@ -63,6 +68,11 @@ import { BrowserHostError } from "../errors";
 export const PASSKEY_CUSTODY_ATTENTION_CHANNEL =
 	"browser-passkey-custody-attention";
 
+/** Main → renderer: the hold `{tabId, at}` ended (returned, or the tab closed).
+ * The renderer gives the user back the view it saved for that hold, if they are
+ * still where the handoff put them (`passkey-custody-handoff.ts`). */
+export const PASSKEY_CUSTODY_ENDED_CHANNEL = "browser-passkey-custody-ended";
+
 /** Chrome Web Store id → the prompt documents (path, query and hash ignored)
  * that may be admitted under custody. Measured per provider; add one only with
  * the same evidence. */
@@ -93,6 +103,16 @@ export function passkeyPromptProvider(url: string): string | null {
 	return documents.includes(parsed.pathname) ? parsed.hostname : null;
 }
 
+/**
+ * A frame admitted under a hold, as `will-frame-navigate` hands it over
+ * (Electron's `WebFrameMain`). Structural so this module stays free of
+ * `electron`. Only liveness is read: the frame's URL is not committed yet at
+ * admission time, which is exactly why it is tracked (review R3).
+ */
+export interface AdmittedFrame {
+	isDestroyed(): boolean;
+}
+
 export interface CustodyView {
 	tabId: number;
 	/** When the hold began: the renderer echoes it back on release, so a click on
@@ -105,13 +125,35 @@ interface Hold extends CustodyView {
 	webContentsId: number;
 	/** Set while a release is waiting for the reload's commit. */
 	releasing: boolean;
+	/**
+	 * Every provider frame admitted during this hold. A frame admitted moments
+	 * before the user presses Return has not COMMITTED yet, so a walk of the
+	 * committed frame tree (`hasProviderFrame`) cannot see it; were the hold
+	 * lifted then, the prompt would commit into an agent-readable tab. A frame
+	 * that is still alive therefore counts as present, whatever its URL says, and
+	 * the release takes the reload path (fail closed). One that 1Password removed
+	 * after the user answered is destroyed and stops counting.
+	 */
+	frames: AdmittedFrame[];
 }
 
+/**
+ * `reload_failed`: the page could not be reloaded, so the hold STAYS (the user
+ * may try again). Distinct from `not_held` so the band can say which happened.
+ */
 export type CustodyRelease =
 	| { ok: true; reloaded: boolean }
-	| { ok: false; reason: "not_held" | "stale" };
+	| { ok: false; reason: "not_held" | "stale" | "reload_failed" };
 
 export interface PasskeyCustodyOptions {
+	/**
+	 * A hold began on this view: end every capture that would keep running
+	 * underneath it (a recording). Called synchronously, after the hold is in
+	 * place and BEFORE `onBegin`, inside the same `will-frame-navigate` turn, so
+	 * the prompt frame's document does not exist yet when the capture ends. Kept
+	 * apart from `onBegin` so a failure to bring the tab forward cannot skip it.
+	 */
+	onHold?: (webContentsId: number) => void;
 	/** A hold began: bring the tab to the user. Called after the hold is in
 	 * place, never before. */
 	onBegin?: (view: CustodyView) => void;
@@ -147,6 +189,9 @@ export class PasskeyCustody {
 		tabId: number;
 		url: string;
 		isInstalled: (extensionId: string) => boolean;
+		/** The navigating frame; absent means "unknown", which is tracked as a frame
+		 * that never goes away, so the release reloads (fail closed). */
+		frame?: AdmittedFrame | null;
 	}): boolean {
 		const providerId = passkeyPromptProvider(request.url);
 		if (!providerId) return false;
@@ -157,11 +202,14 @@ export class PasskeyCustody {
 			installed = false; // fail closed: an unanswerable check refuses
 		}
 		if (!installed) return false;
+		const frame: AdmittedFrame = request.frame ?? NEVER_DESTROYED;
 		const existing = this.holds.get(request.webContentsId);
-		if (existing && !existing.releasing) return true;
-		if (existing?.releasing) {
+		if (existing) {
+			existing.frames.push(frame);
 			// A prompt reappeared while a release waits for its reload: keep the hold
 			// and cancel the pending release, the user has something to answer again.
+			// Same hold identity (`at`), so no second attention or raise: a page that
+			// keeps re-embedding the document cannot pull the user around in a loop.
 			existing.releasing = false;
 			return true;
 		}
@@ -171,6 +219,7 @@ export class PasskeyCustody {
 			at: (this.options.now ?? Date.now)(),
 			providerId,
 			releasing: false,
+			frames: [frame],
 		};
 		this.epochs.set(
 			request.webContentsId,
@@ -180,6 +229,13 @@ export class PasskeyCustody {
 		this.options.log?.(
 			`[browser] tab ${request.tabId}: a passkey prompt from extension ${providerId} needs the user; agent access to the tab is paused`,
 		);
+		try {
+			this.options.onHold?.(request.webContentsId);
+		} catch (error) {
+			this.options.log?.(
+				`[browser] tab ${request.tabId}: could not end a capture at the start of passkey custody: ${String(error)}`,
+			);
+		}
 		try {
 			this.options.onBegin?.(viewOf(hold));
 		} catch (error) {
@@ -225,9 +281,16 @@ export class PasskeyCustody {
 		);
 		if (!hold) return { ok: false, reason: "not_held" };
 		if (hold.at !== request.at) return { ok: false, reason: "stale" };
+		if (hold.releasing) {
+			// A second press while the reload is on its way: one reload is enough, and
+			// a second would cancel the first's navigation (review U2).
+			return { ok: true, reloaded: true };
+		}
 		let framePresent = true;
 		try {
-			framePresent = request.hasProviderFrame(hold.webContentsId);
+			framePresent =
+				hold.frames.some(isAlive) ||
+				request.hasProviderFrame(hold.webContentsId);
 		} catch {
 			framePresent = true; // fail closed: unknown means reload first
 		}
@@ -246,7 +309,7 @@ export class PasskeyCustody {
 			this.options.log?.(
 				`[browser] tab ${hold.tabId}: reload before release failed, the hold stays: ${String(error)}`,
 			);
-			return { ok: false, reason: "not_held" };
+			return { ok: false, reason: "reload_failed" };
 		}
 		return { ok: true, reloaded: true };
 	}
@@ -279,6 +342,18 @@ export class PasskeyCustody {
 	}
 }
 
+/** Stands in for a frame `will-frame-navigate` did not name: it never reports
+ * destroyed, so the hold's release always reloads. */
+const NEVER_DESTROYED: AdmittedFrame = { isDestroyed: () => false };
+
+function isAlive(frame: AdmittedFrame): boolean {
+	try {
+		return !frame.isDestroyed();
+	} catch {
+		return true; // fail closed: an unreadable frame may still be there
+	}
+}
+
 function viewOf(hold: Hold): CustodyView {
 	return { tabId: hold.tabId, at: hold.at, providerId: hold.providerId };
 }
@@ -291,7 +366,7 @@ export const CUSTODY_REFUSAL_REASON = "passkey_custody";
 export function custodyRefusal(): BrowserHostError {
 	return new BrowserHostError(
 		"owner_refused",
-		"a passkey prompt in that tab is waiting for the user, so agent access to it is paused until they return it; wait, or work in another tab",
+		"a password manager prompt in that tab is waiting for the user, so agent access to it is paused until they return it; wait, or work in another tab",
 		{ reason: CUSTODY_REFUSAL_REASON },
 	);
 }

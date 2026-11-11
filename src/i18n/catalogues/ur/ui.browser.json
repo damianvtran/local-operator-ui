@@ -256,8 +256,12 @@
 	"ui.browser.webauthn_chooser.this_passkey_request_expired": "پاس کی کی اس درخواست کی میعاد ختم ہو گئی",
 	"ui.browser.webauthn_chooser.this_passkey_request_was_cancelled": "پاس کی کی یہ درخواست منسوخ ہو گئی",
 	"ui.browser.browser_url_bar.reload_shortcut": "دوبارہ لوڈ کریں ({shortcut})",
-	"ui.browser.browser_passkey_custody.label": "پاس کی کی درخواست آپ کی منتظر ہے",
-	"ui.browser.browser_passkey_custody.message": "ایک پاس ورڈ مینیجر اس ایجنٹ کے ٹیب میں آپ سے پاس کی کی تصدیق کرنے کو کہہ رہا ہے۔",
-	"ui.browser.browser_passkey_custody.explanation": "اسے صرف آپ دیکھ اور اس کا جواب دے سکتے ہیں۔ جب تک آپ یہ ٹیب واپس نہیں کرتے، ایجنٹ اس ٹیب پر رکا رہے گا۔",
-	"ui.browser.browser_passkey_custody.return_to_agent": "ایجنٹ کو واپس دیں"
+	"ui.browser.browser_passkey_custody.label": "پاس ورڈ مینیجر کی درخواست آپ کی منتظر ہے",
+	"ui.browser.browser_passkey_custody.message": "آپ کے پاس ورڈ مینیجر کو اس ایجنٹ کے ٹیب میں آپ کی ضرورت ہے۔",
+	"ui.browser.browser_passkey_custody.explanation": "اس کی درخواست صرف آپ دیکھ سکتے ہیں اور اس کا جواب دے سکتے ہیں، اور ایجنٹ اس ٹیب پر رکا ہوا ہے۔ کام مکمل ہونے پر ٹیب ایجنٹ کو واپس دیں؛ ہو سکتا ہے آپ کو اس سے آگے بڑھنے کو کہنا پڑے۔ اگر درخواست کھلی ہوتے ہوئے آپ ٹیب واپس دیتے ہیں تو صفحہ دوبارہ لوڈ ہوگا اور ادھورا سائن ان یا محفوظ کرنا منسوخ ہو جائے گا۔",
+	"ui.browser.browser_passkey_custody.return_to_agent": "ایجنٹ کو واپس دیں",
+	"ui.browser.browser_passkey_custody.returning": "واپس دیا جا رہا ہے…",
+	"ui.browser.browser_passkey_custody.return_refused_stale": "یہ اطلاع اب تازہ نہیں ہے؛ ٹیب اب بھی آپ کے پاس ہے۔",
+	"ui.browser.browser_passkey_custody.return_refused_not_held": "وہ ٹیب اب آپ کا منتظر نہیں ہے۔",
+	"ui.browser.browser_passkey_custody.return_failed": "ٹیب ایجنٹ کو واپس نہیں دیا جا سکا۔ دوبارہ کوشش کریں۔"
 }

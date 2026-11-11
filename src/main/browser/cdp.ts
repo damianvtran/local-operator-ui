@@ -163,8 +163,19 @@ export interface CdpCustodyGate {
 /**
  * The ONLY commands a held view still accepts: the origin gate's own `Fetch`
  * answers (a paused request nobody continues would hang the very sign-in the
- * user is completing) and the teardown of what an agent had running. None of
- * them reads the page.
+ * user is completing) and the TEARDOWN of what an agent had running when the
+ * hold began. None of them returns page content, and none starts a capture:
+ *   - `Page.stopScreencast` / `Page.stopScreenRecording`: end a recording that
+ *     custody discarded (`discardRecordingForCustody`). The recorder stop
+ *     answers only a stream HANDLE; reading it needs `IO.read`, which stays
+ *     refused, so the bytes never leave Chromium (review R1).
+ *   - `IO.close`: drop that unread stream.
+ *   - `Emulation.clearDeviceMetricsOverride`: give the tab the user is looking
+ *     at its own size back after a sized recording (review R2).
+ *   - `Page.disable`: the origin gate's own teardown (`gate.ts`); refusing it
+ *     left the Page domain enabled after a hold (review N3).
+ * `IO.read`, `Page.startScreencast`, `Page.screencastFrameAck`, every
+ * `Emulation.set*` and every capture stay refused.
  */
 const CUSTODY_INFRA_METHODS: ReadonlySet<string> = new Set([
 	"Fetch.continueRequest",
@@ -173,6 +184,10 @@ const CUSTODY_INFRA_METHODS: ReadonlySet<string> = new Set([
 	"Fetch.continueWithAuth",
 	"Fetch.disable",
 	"Page.stopScreencast",
+	"Page.stopScreenRecording",
+	"IO.close",
+	"Emulation.clearDeviceMetricsOverride",
+	"Page.disable",
 ]);
 
 /** Events a held view still routes: the origin gate must keep seeing the

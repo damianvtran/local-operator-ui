@@ -3724,7 +3724,11 @@ export type MessageParams = {
 	"ui.browser.browser_passkey_custody.explanation": undefined;
 	"ui.browser.browser_passkey_custody.label": undefined;
 	"ui.browser.browser_passkey_custody.message": undefined;
+	"ui.browser.browser_passkey_custody.return_failed": undefined;
+	"ui.browser.browser_passkey_custody.return_refused_not_held": undefined;
+	"ui.browser.browser_passkey_custody.return_refused_stale": undefined;
 	"ui.browser.browser_passkey_custody.return_to_agent": undefined;
+	"ui.browser.browser_passkey_custody.returning": undefined;
 	"ui.browser.browser_passkey_notice.agent_explanation": undefined;
 	"ui.browser.browser_passkey_notice.continue_in_own_tab": undefined;
 	"ui.browser.browser_passkey_notice.continue_refused_in_flight": undefined;

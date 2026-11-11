@@ -633,10 +633,20 @@ export class TabRegistry {
 		// A password manager's passkey prompt is up in this tab and only the user
 		// may see or answer it. Refused here, before any action does anything, and
 		// again per command in `cdp.ts` for any path that does not come through here.
+		this.assertNotInCustody(record);
+		return record;
+	}
+
+	/**
+	 * Refuse an agent path on a tab the user holds for a password manager prompt
+	 * (`extensions/passkey-custody.ts`), with the one custody refusal every agent
+	 * path answers. `requireSurface` calls it; a path that reaches a record
+	 * WITHOUT a handle (handle-less `close`, review Q3) must call it itself.
+	 */
+	assertNotInCustody(record: TabRecord): void {
 		if (this.custody?.isHeld(record.view.webContents.id)) {
 			throw custodyRefusal();
 		}
-		return record;
 	}
 
 	/** Touch a tab driven by an agent, so `tabs` can order by recency. */

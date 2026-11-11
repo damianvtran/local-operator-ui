@@ -256,8 +256,12 @@
 	"ui.browser.browser_tab_strip.close_conversation_tabs": "Cerrar {count, plural, one {{count, number, ::group-off} pestaña} many {{count, number, ::group-off} de pestañas} other {{count, number, ::group-off} pestañas}} de esta conversación",
 	"ui.browser.browser_file_transfer_row.attached_verb": "{count, plural, one {se adjuntó a} other {se adjuntaron a}}",
 	"ui.browser.browser_file_transfer_row.upload_more": "+ {count, plural, other {{count, number, ::group-off} más}}",
-	"ui.browser.browser_passkey_custody.label": "Solicitud de clave de acceso pendiente",
-	"ui.browser.browser_passkey_custody.message": "Un gestor de contraseñas te pide confirmar una clave de acceso en la pestaña de este agente.",
-	"ui.browser.browser_passkey_custody.explanation": "Solo tú puedes verla y responderla. El agente está en pausa en esta pestaña hasta que se la devuelvas.",
-	"ui.browser.browser_passkey_custody.return_to_agent": "Devolver al agente"
+	"ui.browser.browser_passkey_custody.label": "Solicitud del gestor de contraseñas pendiente",
+	"ui.browser.browser_passkey_custody.message": "Tu gestor de contraseñas te necesita en la pestaña de este agente.",
+	"ui.browser.browser_passkey_custody.explanation": "Solo tú puedes ver y responder a su solicitud, y el agente está en pausa en esta pestaña. Cuando termines, devuelve la pestaña al agente; puede que tengas que pedirle que continúe. Si la devuelves con la solicitud aún abierta, la página se recarga y se cancela cualquier inicio de sesión o guardado sin terminar.",
+	"ui.browser.browser_passkey_custody.return_to_agent": "Devolver al agente",
+	"ui.browser.browser_passkey_custody.returning": "Devolviendo…",
+	"ui.browser.browser_passkey_custody.return_refused_stale": "Ese aviso ya no está actualizado; la pestaña sigue siendo tuya.",
+	"ui.browser.browser_passkey_custody.return_refused_not_held": "Esa pestaña ya no te está esperando.",
+	"ui.browser.browser_passkey_custody.return_failed": "No se pudo devolver la pestaña al agente. Inténtalo de nuevo."
 }

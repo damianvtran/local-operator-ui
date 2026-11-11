@@ -256,8 +256,12 @@
 	"ui.browser.webauthn_chooser.this_passkey_request_expired": "此通行密钥请求已过期",
 	"ui.browser.webauthn_chooser.this_passkey_request_was_cancelled": "此通行密钥请求已取消",
 	"ui.browser.browser_url_bar.reload_shortcut": "重新加载（{shortcut}）",
-	"ui.browser.browser_passkey_custody.label": "有一个通行密钥请求在等你",
-	"ui.browser.browser_passkey_custody.message": "密码管理器正在此智能体的标签页中请你确认通行密钥。",
-	"ui.browser.browser_passkey_custody.explanation": "只有你能看到并回应它。在你交还此标签页之前，智能体会在这里暂停。",
-	"ui.browser.browser_passkey_custody.return_to_agent": "交还给智能体"
+	"ui.browser.browser_passkey_custody.label": "有一个密码管理器请求在等你",
+	"ui.browser.browser_passkey_custody.message": "你的密码管理器需要你在此智能体的标签页中操作。",
+	"ui.browser.browser_passkey_custody.explanation": "只有你能看到并回应它的请求，智能体在此标签页上处于暂停状态。完成后，请把标签页交还给智能体；你可能需要让它继续。如果在请求仍打开时交还，页面会重新加载，未完成的登录或保存将被取消。",
+	"ui.browser.browser_passkey_custody.return_to_agent": "交还给智能体",
+	"ui.browser.browser_passkey_custody.returning": "正在交还…",
+	"ui.browser.browser_passkey_custody.return_refused_stale": "该通知已过时；此标签页仍由你使用。",
+	"ui.browser.browser_passkey_custody.return_refused_not_held": "该标签页已不再等你操作。",
+	"ui.browser.browser_passkey_custody.return_failed": "无法将标签页交还给智能体。请重试。"
 }

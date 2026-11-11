@@ -31,6 +31,8 @@ const bundle = await build({
 			'export { CdpPool } from "./src/main/browser/cdp";',
 			'export { TabRegistry, surfaceToken } from "./src/main/browser/registry";',
 			'export { assertNotExtensionFrame, listFrames } from "./src/main/browser/actions/frames";',
+			'export { close as closeTab } from "./src/main/browser/actions/tabs";',
+			'export { CustodyHandoffs } from "./src/renderer/src/shared/browser-passkey-custody-handoff";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -45,6 +47,8 @@ const bundle = await build({
 });
 const {
 	CdpPool,
+	CustodyHandoffs,
+	closeTab,
 	PASSKEY_PROMPT_DOCUMENTS,
 	PasskeyCustody,
 	TabRegistry,
@@ -62,6 +66,10 @@ const MENU = `chrome-extension://${ONEPASSWORD}/inline/menu/menu.html`;
 const MODAL = `chrome-extension://${ONEPASSWORD}/inline/modal/modal.html#x`;
 
 const installed = () => true;
+/** A prompt frame the provider has already removed (the user answered it): the
+ * shape a release that needs no reload sees. Cases about a frame still loading
+ * or unknown pass their own (review R3). */
+const GONE = { isDestroyed: () => true };
 
 function custody(overrides = {}) {
 	const events = [];
@@ -117,6 +125,7 @@ test("admit puts the hold in place before it answers yes, and brings the tab for
 			tabId: 1,
 			url: PROMPT,
 			isInstalled: installed,
+			frame: GONE,
 		}),
 		true,
 	);
@@ -134,6 +143,7 @@ test("admit puts the hold in place before it answers yes, and brings the tab for
 			tabId: 1,
 			url: USO,
 			isInstalled: installed,
+			frame: GONE,
 		}),
 		true,
 	);
@@ -170,6 +180,7 @@ test("not installed, an unanswerable install check, or a non-prompt document is 
 			tabId: 1,
 			url: MENU,
 			isInstalled: installed,
+			frame: GONE,
 		}),
 		false,
 	);
@@ -189,6 +200,7 @@ test("a hold that fails to bring the tab forward still holds", () => {
 			tabId: 1,
 			url: PROMPT,
 			isInstalled: installed,
+			frame: GONE,
 		}),
 		true,
 	);
@@ -202,6 +214,7 @@ test("only the user's release ends a hold; a stale or unknown one is refused", (
 		tabId: 1,
 		url: PROMPT,
 		isInstalled: installed,
+		frame: GONE,
 	});
 	const { at } = instance.viewForTab(1);
 	const noFrame = {
@@ -239,6 +252,7 @@ test("a release with the provider frame still present reloads first and lifts on
 		tabId: 1,
 		url: PROMPT,
 		isInstalled: installed,
+		frame: GONE,
 	});
 	const { at } = instance.viewForTab(1);
 	const reloads = [];
@@ -268,6 +282,7 @@ test("a frame check that throws reloads (fail closed); a reload that throws keep
 		tabId: 1,
 		url: PROMPT,
 		isInstalled: installed,
+		frame: GONE,
 	});
 	const { at } = instance.viewForTab(1);
 	assert.deepEqual(
@@ -281,7 +296,7 @@ test("a frame check that throws reloads (fail closed); a reload that throws keep
 				throw new Error("cannot reload");
 			},
 		}),
-		{ ok: false, reason: "not_held" },
+		{ ok: false, reason: "reload_failed" },
 	);
 	assert.equal(instance.isHeld(10), true);
 	instance.committed(10);
@@ -299,6 +314,7 @@ test("a prompt that reappears while a release waits for its reload cancels the r
 		tabId: 1,
 		url: PROMPT,
 		isInstalled: installed,
+		frame: GONE,
 	});
 	const { at } = instance.viewForTab(1);
 	instance.release({
@@ -313,6 +329,7 @@ test("a prompt that reappears while a release waits for its reload cancels the r
 			tabId: 1,
 			url: PROMPT,
 			isInstalled: installed,
+			frame: GONE,
 		}),
 		true,
 	);
@@ -327,6 +344,7 @@ test("closing the tab drops the hold", () => {
 		tabId: 1,
 		url: PROMPT,
 		isInstalled: installed,
+		frame: GONE,
 	});
 	instance.forget(10);
 	assert.equal(instance.isHeld(10), false);
@@ -395,6 +413,7 @@ test("a held view refuses every agent command before dispatch, but keeps the ori
 		tabId: 1,
 		url: PROMPT,
 		isInstalled: installed,
+		frame: GONE,
 	});
 	const before = contents.debugger.commands.length;
 	for (const method of [
@@ -434,6 +453,7 @@ test("a screenshot already in flight when the hold begins is dropped, not delive
 		tabId: 1,
 		url: PROMPT,
 		isInstalled: installed,
+		frame: GONE,
 	});
 	contents.debugger.pending.get("Page.captureScreenshot")({
 		data: "secret-pixels",
@@ -463,6 +483,7 @@ test("a screenshot already in flight when the hold begins is dropped, not delive
 		tabId: 1,
 		url: PROMPT,
 		isInstalled: installed,
+		frame: GONE,
 	});
 	const { at: at2 } = instance.viewForTab(1);
 	instance.release({
@@ -495,6 +516,7 @@ test("while held, CDP events reach no subscriber except the origin gate's Fetch 
 		tabId: 1,
 		url: PROMPT,
 		isInstalled: installed,
+		frame: GONE,
 	});
 	emit("Page.screencastFrame");
 	emit("Runtime.consoleAPICalled");
@@ -533,6 +555,7 @@ test("requireSurface refuses a held tab, and an isolated-world read that crossed
 		tabId: agent.tabId,
 		url: PROMPT,
 		isInstalled: installed,
+		frame: GONE,
 	});
 	assert.throws(
 		() => registry.requireSurface(token),
@@ -562,6 +585,7 @@ test("requireSurface refuses a held tab, and an isolated-world read that crossed
 		tabId: agent.tabId,
 		url: PROMPT,
 		isInstalled: installed,
+		frame: GONE,
 	});
 	resolveRead("page text");
 	await assert.rejects(
@@ -582,4 +606,334 @@ test("an extension's own document is never a frame an agent may enter", () => {
 		assertNotExtensionFrame("https://login.example/frame"),
 	);
 	assert.doesNotThrow(() => assertNotExtensionFrame(undefined));
+});
+
+// ---- remediation round 1 (PR #1868) ---------------------------------------
+
+test("the capture discard runs synchronously at hold begin, before onBegin, even when onBegin throws", () => {
+	const order = [];
+	const instance = new PasskeyCustody({
+		now: () => 5,
+		log: () => {},
+		onHold: (id) => order.push(["hold", id, instance.isHeld(id)]),
+		onBegin: () => {
+			order.push(["begin"]);
+			throw new Error("window gone");
+		},
+	});
+	assert.equal(
+		instance.admit({
+			webContentsId: 10,
+			tabId: 1,
+			url: PROMPT,
+			isInstalled: installed,
+		}),
+		true,
+	);
+	assert.deepEqual(order, [["hold", 10, true], ["begin"]]);
+	// A second admission inside the same hold is the same identity: no second
+	// discard, no second attention.
+	instance.admit({
+		webContentsId: 10,
+		tabId: 1,
+		url: USO,
+		isInstalled: installed,
+	});
+	assert.equal(order.length, 2);
+});
+
+test("R3: Return while an admitted prompt frame has not committed yet reloads and keeps the hold", () => {
+	const { custody: instance } = custody();
+	const first = {
+		destroyed: false,
+		isDestroyed() {
+			return this.destroyed;
+		},
+	};
+	instance.admit({
+		webContentsId: 10,
+		tabId: 1,
+		url: PROMPT,
+		isInstalled: installed,
+		frame: first,
+	});
+	const { at } = instance.viewForTab(1);
+	// The user answered; 1Password removed that frame...
+	first.destroyed = true;
+	// ...and is swapping in its completion frame, still navigating: the committed
+	// frame tree does not show it yet.
+	const pending = { isDestroyed: () => false };
+	instance.admit({
+		webContentsId: 10,
+		tabId: 1,
+		url: USO,
+		isInstalled: installed,
+		frame: pending,
+	});
+	const reloads = [];
+	assert.deepEqual(
+		instance.release({
+			tabId: 1,
+			at,
+			hasProviderFrame: () => false,
+			reload: (id) => reloads.push(id),
+		}),
+		{ ok: true, reloaded: true },
+	);
+	assert.deepEqual(reloads, [10]);
+	assert.equal(
+		instance.isHeld(10),
+		true,
+		"never unlocked before the pending frame is gone",
+	);
+	instance.committed(10);
+	assert.equal(instance.isHeld(10), false);
+});
+
+test("R3: every admitted frame destroyed and none committed: Return hands back without a reload", () => {
+	const { custody: instance } = custody();
+	instance.admit({
+		webContentsId: 10,
+		tabId: 1,
+		url: PROMPT,
+		isInstalled: installed,
+		frame: { isDestroyed: () => true },
+	});
+	const { at } = instance.viewForTab(1);
+	assert.deepEqual(
+		instance.release({
+			tabId: 1,
+			at,
+			hasProviderFrame: () => false,
+			reload: () => assert.fail("no reload"),
+		}),
+		{ ok: true, reloaded: false },
+	);
+	assert.equal(instance.isHeld(10), false);
+});
+
+test("R3: an admission with no frame handle, or one whose liveness throws, fails closed to the reload", () => {
+	for (const frame of [
+		undefined,
+		{
+			isDestroyed: () => {
+				throw new Error("gone?");
+			},
+		},
+	]) {
+		const { custody: instance } = custody();
+		instance.admit({
+			webContentsId: 10,
+			tabId: 1,
+			url: PROMPT,
+			isInstalled: installed,
+			frame,
+		});
+		const { at } = instance.viewForTab(1);
+		const reloads = [];
+		assert.deepEqual(
+			instance.release({
+				tabId: 1,
+				at,
+				hasProviderFrame: () => false,
+				reload: (id) => reloads.push(id),
+			}),
+			{ ok: true, reloaded: true },
+		);
+		assert.deepEqual(reloads, [10]);
+	}
+});
+
+test("U2: a second Return while the reload is on its way does not reload again", () => {
+	const { custody: instance } = custody();
+	instance.admit({
+		webContentsId: 10,
+		tabId: 1,
+		url: PROMPT,
+		isInstalled: installed,
+	});
+	const { at } = instance.viewForTab(1);
+	const reloads = [];
+	const press = () =>
+		instance.release({
+			tabId: 1,
+			at,
+			hasProviderFrame: () => true,
+			reload: (id) => reloads.push(id),
+		});
+	assert.deepEqual(press(), { ok: true, reloaded: true });
+	assert.deepEqual(press(), { ok: true, reloaded: true });
+	assert.deepEqual(reloads, [10], "one reload");
+});
+
+test("R1/R2: under custody the pool lets capture TEARDOWN through and nothing that reads or captures", async () => {
+	const { pool, contents, custody: instance } = await attachedPool();
+	instance.admit({
+		webContentsId: 10,
+		tabId: 1,
+		url: PROMPT,
+		isInstalled: installed,
+	});
+	const before = contents.debugger.commands.length;
+	for (const method of [
+		"Page.stopScreenRecording",
+		"IO.close",
+		"Emulation.clearDeviceMetricsOverride",
+		"Page.disable",
+		"Page.stopScreencast",
+	]) {
+		await pool.send(contents, method, {});
+	}
+	assert.deepEqual(contents.debugger.commands.slice(before), [
+		"Page.stopScreenRecording",
+		"IO.close",
+		"Emulation.clearDeviceMetricsOverride",
+		"Page.disable",
+		"Page.stopScreencast",
+	]);
+	for (const method of [
+		"IO.read",
+		"Page.startScreenRecording",
+		"Page.startScreencast",
+		"Page.screencastFrameAck",
+		"Emulation.setDeviceMetricsOverride",
+	]) {
+		await assert.rejects(
+			pool.send(contents, method, {}),
+			(error) => error.data?.reason === "passkey_custody",
+		);
+	}
+	assert.equal(
+		contents.debugger.commands.length,
+		before + 5,
+		"no capture reached the debugger",
+	);
+});
+
+test("Q3: a handle-less close of the sole tab is refused while the user holds it", async () => {
+	let id = 70;
+	const registry = new TabRegistry(
+		() => new FakeView(id++),
+		() => {},
+		() => {},
+	);
+	const { custody: instance } = custody();
+	registry.setCustodyGate(instance);
+	const agent = registry.create({ owner: "agent", sessionId: "session:a" });
+	instance.admit({
+		webContentsId: agent.view.webContents.id,
+		tabId: agent.tabId,
+		url: PROMPT,
+		isInstalled: installed,
+	});
+	const ctx = {
+		registry,
+		approvals: { forgetDocument: () => {} },
+		onChanged: () => {},
+	};
+	await assert.rejects(
+		closeTab(ctx, {}),
+		(error) =>
+			error.code === "owner_refused" &&
+			error.data?.reason === "passkey_custody",
+	);
+	await assert.rejects(
+		closeTab(ctx, { tab: surfaceToken(agent) }),
+		(error) => error.data?.reason === "passkey_custody",
+	);
+	assert.equal(registry.get(agent.tabId), agent, "the tab is still open");
+});
+
+// ---- the renderer's handoff and give-back (U1/D3) ---------------------------
+
+const viewB = {
+	pathname: "/chat",
+	activeSessionId: "session:b",
+	activeDraftKey: null,
+	browserPaneOpen: false,
+};
+const toA = { kind: "conversation", sessionId: "session:a" };
+
+test("U1: the user is given back their conversation and route when still on the handoff view", () => {
+	const handoffs = new CustodyHandoffs();
+	const handoff = handoffs.begin({ tabId: 1, at: 5 }, toA, viewB);
+	assert.deepEqual(handoff, {
+		pathname: "/chat",
+		activeSessionId: "session:a",
+		activeDraftKey: null,
+		browserPaneOpen: true,
+	});
+	assert.deepEqual(handoffs.end({ tabId: 1, at: 5 }, handoff), {
+		session: "session:b",
+	});
+	const fromSettings = { ...viewB, pathname: "/settings" };
+	const again = handoffs.begin({ tabId: 1, at: 6 }, toA, fromSettings);
+	assert.deepEqual(handoffs.end({ tabId: 1, at: 6 }, again), {
+		session: "session:b",
+		navigate: "/settings",
+	});
+});
+
+test("U1: a deliberate move during the hold is kept (conversation, route, pane closed)", () => {
+	for (const moved of [
+		{ activeSessionId: "session:c" },
+		{ pathname: "/browser" },
+		{ browserPaneOpen: false },
+		{ activeDraftKey: "draft-1" },
+	]) {
+		const handoffs = new CustodyHandoffs();
+		const handoff = handoffs.begin({ tabId: 1, at: 5 }, toA, viewB);
+		assert.equal(
+			handoffs.end({ tabId: 1, at: 5 }, { ...handoff, ...moved }),
+			null,
+			JSON.stringify(moved),
+		);
+	}
+});
+
+test("U1: same conversation with its pane closed: only the pane the handoff opened is closed", () => {
+	const handoffs = new CustodyHandoffs();
+	const before = { ...viewB, activeSessionId: "session:a" };
+	const handoff = handoffs.begin({ tabId: 1, at: 5 }, toA, before);
+	assert.deepEqual(handoffs.end({ tabId: 1, at: 5 }, handoff), {
+		closeBrowserPane: true,
+	});
+	const open = { ...before, browserPaneOpen: true };
+	const none = handoffs.begin({ tabId: 1, at: 7 }, toA, open);
+	assert.equal(
+		handoffs.end({ tabId: 1, at: 7 }, none),
+		null,
+		"nothing moved, nothing to give back",
+	);
+});
+
+test("U1: a draft and the browser route come back; a repeat attention for the same hold moves nothing", () => {
+	const handoffs = new CustodyHandoffs();
+	const drafting = {
+		...viewB,
+		activeSessionId: null,
+		activeDraftKey: "draft-9",
+	};
+	const handoff = handoffs.begin({ tabId: 1, at: 5 }, toA, drafting);
+	assert.equal(
+		handoffs.begin({ tabId: 1, at: 5 }, toA, handoff),
+		null,
+		"same identity: no second move",
+	);
+	assert.deepEqual(handoffs.end({ tabId: 1, at: 5 }, handoff), {
+		openDraft: "draft-9",
+	});
+	const browser = handoffs.begin(
+		{ tabId: 2, at: 8 },
+		{ kind: "browser" },
+		viewB,
+	);
+	assert.deepEqual(handoffs.end({ tabId: 2, at: 8 }, browser), {
+		navigate: "/chat",
+	});
+	assert.equal(
+		handoffs.end({ tabId: 2, at: 8 }, browser),
+		null,
+		"an ended hold gives back once",
+	);
 });
