@@ -33,7 +33,7 @@ const bundle = await build({
 			'export { ASK_BODY_CAP, ASK_BODY_FLOOR, ASK_BODY_MAX_H, ASK_CARD_MAX_H, ASK_FADE_MASK, ASK_OPTIONS_MAX_H } from "./src/renderer/src/features/chat/components/asks/ask-bounds";',
 			'export { ApprovalEscapeControls } from "./src/renderer/src/features/chat/components/trace/approval-escape";',
 			'export { titleTooltip, TITLE_TOOLTIP_MAX } from "./src/renderer/src/features/notifications/components/notification-detail";',
-			'export { QuestionDock } from "./src/renderer/src/features/chat/components/trace/question-dock";',
+			'export { QuestionDock, questionDockHint } from "./src/renderer/src/features/chat/components/trace/question-dock";',
 			'export { AskPanel } from "./src/renderer/src/features/chat/components/asks/ask-panel";',
 			'export { askQueueView } from "./src/renderer/src/features/chat/ask-queue";',
 		].join("\n"),
@@ -426,8 +426,8 @@ test("inline dock: a proposal approval links to its review and still answers", a
 	const body = view.host.querySelector("[data-lo-ask-scroll]");
 	assert.equal(
 		body.contains(notice),
-		false,
-		"the link is pinned, not scrolled",
+		true,
+		"the summary and its link give way with the body, never the pair (Q1)",
 	);
 	const review = view.host.querySelector("[data-lo-ask-proposal-review]");
 	await act(async () => review.click());
@@ -508,7 +508,7 @@ test("Asks panel: long question and long options are bounded; Other stays outsid
 	assert.equal(body.contains(list), false);
 	const notice = question.querySelector("[data-lo-ask-proposal]");
 	assert.ok(notice, "a proposal question in the panel links too");
-	assert.equal(body.contains(notice), false);
+	assert.equal(body.contains(notice), true, "the notice scrolls with the body");
 	await act(async () =>
 		notice.querySelector("[data-lo-ask-proposal-review]").click(),
 	);
@@ -532,9 +532,14 @@ test("D2: a proposal approval draws line 1 at body size, then Changes and Origin
 	const body = view.host.querySelector("[data-lo-ask-scroll]");
 	assert.ok(classesOf(body).includes("text-body"));
 	assert.equal(classesOf(body).includes("text-heading"), false);
-	assert.match(body.textContent, /Apply proposal pp_7abf6b3116c87a99 to team/);
-	assert.equal(body.textContent.includes("Changes:"), false);
-	assert.equal(body.textContent.includes("Origin:"), false);
+	// The notice sits inside the body region (Q1); the QUESTION text is the rest.
+	const asked = body.textContent.replace(
+		body.querySelector("[data-lo-ask-proposal]").textContent,
+		"",
+	);
+	assert.match(asked, /Apply proposal pp_7abf6b3116c87a99 to team/);
+	assert.equal(asked.includes("Changes:"), false);
+	assert.equal(asked.includes("Origin:"), false);
 	const changes = view.host.querySelector("[data-lo-ask-proposal-changes]");
 	assert.equal(
 		changes?.textContent,
@@ -587,7 +592,7 @@ test("D1: the dock shrinks with the chat column; the body keeps a three-line flo
 	);
 	const at = source.indexOf("<QuestionDock");
 	const wrapper = source.slice(source.lastIndexOf("className={cn(", at), at);
-	assert.match(wrapper, /"flex max-h-\[50%\] min-h-0 w-full flex-col pt-2"/);
+	assert.match(wrapper, /"flex max-h-\[70%\] min-h-0 w-full flex-col pt-2"/);
 	assert.equal(
 		/shrink-0/.test(wrapper.replace(/\/\*[\s\S]*?\*\//g, "")),
 		false,
@@ -735,6 +740,203 @@ test("D3: a bounding pane sizes its FIRST ask body to the room left under the he
 		"",
 	);
 	await free.unmount();
+});
+
+/*
+ * QA ROUND 2, Q1: at 1024x600 the dock's options shared the card's scroller with
+ * the body, the notice, the policy links and the hint, so it was Approve/Deny
+ * that scrolled out of the card. The contract: the answer controls sit outside
+ * EVERY scroll region but the card's last-resort one, in a `shrink-0` block; the
+ * secondary rows are in a region that gives way first; the body's floor yields
+ * to the controls. jsdom does no layout, so this is structure plus the classes
+ * and inline values that drive the flex algorithm.
+ */
+const scrollersAbove = (node, stop) => {
+	const found = [];
+	for (let at = node.parentElement; at && at !== stop; at = at.parentElement)
+		// Class strings, not nodes: a failing deepEqual on jsdom nodes inspects the
+		// whole document and runs the worker out of memory.
+		if (/\boverflow-y-auto\b/.test(classesOf(at))) found.push(classesOf(at));
+	return found;
+};
+
+test("Q1: dock - the pair is pinned outside every scroll region; secondary rows give way first", async () => {
+	const view = await mount(
+		h(M.QuestionDock, {
+			gate: gate({
+				kind: "approval",
+				title: "account profile save",
+				detail: `${PROPOSAL_TEXT}\n${LONG}`,
+			}),
+			sessionId: "s-1",
+			onAnswer: () => undefined,
+		}),
+	);
+	const card = view.host.querySelector("section");
+	const body = card.querySelector("[data-lo-ask-scroll]");
+	const pinned = card.querySelector("[data-lo-ask-pinned]");
+	const secondary = card.querySelector("[data-lo-ask-secondary]");
+	assert.ok(pinned && secondary, "pinned and secondary regions are drawn");
+	const pair = [...card.querySelectorAll("[data-ask-option]")];
+	assert.equal(pair.length, 2, "Approve and Deny");
+	for (const option of pair) {
+		assert.ok(pinned.contains(option));
+		assert.equal(body.contains(option), false);
+		assert.equal(secondary.contains(option), false);
+	}
+	// The option list keeps its own long-list cap (`AskOptions`, inside the pinned
+	// block); between that block and the card there is no scroller at all.
+	assert.deepEqual(
+		scrollersAbove(pinned, card),
+		[],
+		"no scroller between the pinned block and the card",
+	);
+	const pinnedClasses = classesOf(pinned).split(/\s+/);
+	assert.ok(pinnedClasses.includes("shrink-0"), "the pair never shrinks");
+	// Order: question, pair, then the rows that are not the answer.
+	assert.ok(body.compareDocumentPosition(pinned) & 4, "body before the pair");
+	assert.ok(
+		pinned.compareDocumentPosition(secondary) & 4,
+		"pair before secondary",
+	);
+	// Secondary holds the policy links and the key hint, and yields first.
+	const setAuto = [...card.querySelectorAll("button")].filter((b) =>
+		/Set auto/i.test(b.textContent),
+	);
+	assert.ok(setAuto.length >= 1, "the policy links are drawn with a session");
+	for (const link of setAuto) assert.ok(secondary.contains(link));
+	assert.ok(
+		secondary.textContent.includes(
+			M.questionDockHint(
+				{ kind: "approval", request_id: "r-1", options: [] },
+				false,
+			),
+		),
+		"the key hint is secondary",
+	);
+	const secondaryClasses = classesOf(secondary).split(/\s+/);
+	for (const cls of ["min-h-0", "shrink-[999]", "overflow-y-auto"])
+		assert.ok(secondaryClasses.includes(cls), `secondary ${cls}`);
+	// The body's floor yields to the controls: room 0 means "one line".
+	assert.equal(body.style.getPropertyValue("--lo-ask-room"), "0px");
+	assert.match(M.ASK_BODY_FLOOR, /max\(1lh,var\(--lo-ask-room,3lh\)\)/);
+	// The capped basis that stops flexbox freezing a long body at its max.
+	assert.match(body.style.flexBasis, /^min\(min\(40vh,28rem\), \d+px\)$/);
+	await view.unmount();
+});
+
+test("Q1: dock - a squeezed secondary region is marked clipped and fades", async () => {
+	await withLayout(
+		(el) =>
+			el.hasAttribute?.("data-lo-ask-secondary")
+				? { scrollHeight: 120, clientHeight: 20 }
+				: null,
+		async () => {
+			const view = await mount(
+				h(M.QuestionDock, {
+					gate: gate({ kind: "approval", title: "Run it?", detail: "" }),
+					sessionId: "s-1",
+				}),
+			);
+			const secondary = view.host.querySelector("[data-lo-ask-secondary]");
+			assert.equal(secondary.getAttribute("data-lo-ask-secondary"), "clipped");
+			assert.ok(classesOf(secondary).includes(M.ASK_FADE_MASK));
+			await view.unmount();
+		},
+	);
+	const roomy = await mount(
+		h(M.QuestionDock, {
+			gate: gate({ kind: "approval", title: "Run it?", detail: "" }),
+			sessionId: "s-1",
+		}),
+	);
+	const secondary = roomy.host.querySelector("[data-lo-ask-secondary]");
+	assert.equal(secondary.getAttribute("data-lo-ask-secondary"), "fits");
+	assert.equal(classesOf(secondary).includes(M.ASK_FADE_MASK), false);
+	await roomy.unmount();
+});
+
+test("Q1: Asks panel and drawer pane - options, Other and Send sit outside the body; the floor yields to the pane fit", async () => {
+	const ask = (id) => ({
+		ask_id: id,
+		session_id: "s-1",
+		created_at: Date.now() - 60_000,
+		expires_at: Date.now() + 3_600_000,
+		timeout_s: 3600,
+		urgent: false,
+		status: "open",
+		delivered: false,
+		questions: [
+			{
+				id: `q-${id}`,
+				question: `${PROPOSAL_TEXT}\n${LONG}`,
+				options: [{ label: "Yes" }, { label: "No" }],
+			},
+		],
+	});
+	const panel = (asks) =>
+		h(M.AskPanel, {
+			view: M.askQueueView({
+				asks,
+				asks_open: asks.length,
+				asks_truncated: false,
+			}),
+			nowMs: Date.now(),
+			outcomes: {},
+			drafts: {},
+			onDraftChange: () => undefined,
+			onAnswer: () => undefined,
+			onDecline: () => undefined,
+		});
+	const check = (host, where) => {
+		const row = host.querySelector("[data-lo-ask-row]");
+		const body = row.querySelector("[data-lo-ask-scroll]");
+		const controls = [
+			...row.querySelectorAll("[data-ask-option], [data-ask-option-other]"),
+			...[...row.querySelectorAll("button")].filter((b) =>
+				/^Send/i.test(b.textContent.trim()),
+			),
+		];
+		assert.ok(controls.length >= 3, `${where}: options, Other, Send drawn`);
+		for (const control of controls)
+			assert.equal(body.contains(control), false, `${where}: outside body`);
+		assert.ok(
+			body.contains(row.querySelector("[data-lo-ask-proposal]")),
+			`${where}: the notice gives way with the body`,
+		);
+		return body;
+	};
+	// The side panel: a flowing list, no room term, so three lines stay.
+	const side = await mount(panel([ask("a1")]));
+	const sideBody = check(side.host, "side panel");
+	assert.equal(sideBody.style.getPropertyValue("--lo-ask-room"), "");
+	await side.unmount();
+	// The drawer's bounded pane: 576 - 290 - (670 - 520) = 136 px of room,
+	// handed to the floor so it drops below three lines before Send does.
+	await withLayout(
+		(el) => {
+			if (el.hasAttribute?.("data-lo-ask-bound"))
+				return { clientHeight: 576, rect: { top: 0, bottom: 576 } };
+			if (el.hasAttribute?.("data-lo-ask-scroll"))
+				return {
+					scrollHeight: 4000,
+					clientHeight: 230,
+					rect: { top: 290, bottom: 520 },
+				};
+			if (el.hasAttribute?.("data-lo-ask-row"))
+				return { rect: { top: 250, bottom: 670 } };
+			return null;
+		},
+		async () => {
+			const drawer = await mount(
+				h("section", { "data-lo-ask-bound": "" }, panel([ask("a2")])),
+			);
+			const body = check(drawer.host, "drawer");
+			assert.equal(body.style.getPropertyValue("--lo-ask-room"), "136px");
+			assert.equal(body.style.flexBasis, "", "basis is the dock's alone");
+			await drawer.unmount();
+		},
+	);
 });
 
 test("R3: the notification title tooltip is truncated to 300 characters", () => {

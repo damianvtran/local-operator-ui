@@ -79,6 +79,7 @@ import { parseProfileProposalCard } from "../../profile-proposal-ask";
 import {
 	ASK_CARD_MAX_H,
 	AskScrollBody,
+	AskSecondary,
 	ProposalReviewNotice,
 } from "../asks/ask-bounds";
 import { MarkdownRenderer } from "../markdown-renderer";
@@ -578,8 +579,9 @@ export const QuestionDock = ({
 				 * beside a `shrink-0` composer, and this card (`min-h-0`) shrinks with it,
 				 * so the composer and its send row stay fully on screen at 1024x600. The
 				 * vh/rem cap is only the upper bound on a tall window. Inside, the
-				 * question body is what gives way, down to its three-line floor; past
-				 * that the card's own scroll takes over.
+				 * secondary rows give way first, then the question body (down to one
+				 * line); the answer controls never do. Only when the controls alone
+				 * outgrow the card does its own scroll take over (QA round 2, Q1).
 				 */
 				className={cn(
 					"flex min-h-0 flex-col gap-2 rounded-lg border border-accent bg-elevated p-4 outline-none",
@@ -617,16 +619,28 @@ export const QuestionDock = ({
 						</p>
 					)}
 				</div>
+				{/*
+				 * THE ONLY REGION THAT GIVES WAY FOR THE ANSWER: the question and, on a
+				 * proposal, its Changes/Origin lines and the review link. The notice
+				 * moved in here from a pinned sibling (QA round 2, Q1): at 1024x600 its
+				 * ~80 px plus the pair did not fit the card, and the pair is the one
+				 * thing that must. The review link scrolls with the summary it belongs
+				 * to; the fade says there is more.
+				 */}
 				<AskScrollBody
+					shrinkable={true}
 					className={cn(proposal ? "text-body" : "text-heading", "text-ink")}
 				>
 					<MarkdownRenderer content={content} />
+					{proposal ? (
+						<ProposalReviewNotice proposal={proposal} className="mt-2" />
+					) : null}
 				</AskScrollBody>
-				{proposal ? (
-					<ProposalReviewNotice proposal={proposal} className="shrink-0" />
-				) : null}
-				{/* Everything from here down is pinned: `shrink-0`, so only the body gives way. */}
-				<div className="flex shrink-0 flex-col gap-2">
+				{/*
+				 * PINNED: the answer controls are `shrink-0` and outside every scroll
+				 * region, so whatever else gives way, they stay on the card.
+				 */}
+				<div data-lo-ask-pinned="" className="flex shrink-0 flex-col gap-2">
 					{gate.kind === "ask" &&
 						(gateIsSecret(gate) ? (
 							/*
@@ -668,57 +682,61 @@ export const QuestionDock = ({
 					 * across the whole window between a press and the gate moving.
 					 */}
 					{gate.kind === "approval" && (
-						<>
-							<AskOptions
-								options={APPROVAL_OPTIONS}
-								display={approvalOptionDisplay}
-								requestId={gate.request_id}
-								busy={busy}
-								onAnswer={(label) => onAnswer?.(label)}
-							/>
-							{/*
-							 * THE POLICY HANDLES, kept BELOW the pair the card exists for. They
-							 * own their own busy state, so a policy call in flight disables only
-							 * these two links; a policy failure never disables Approve or Deny.
-							 * They are absent where there is no session to address.
-							 */}
-							{sessionId ? (
-								<ApprovalEscape
-									// The idle status slot's 2lh reserve was blank card height
-									// the bounded dock could not spare (design D1(c)).
-									compactIdle={true}
-									sessionId={sessionId}
-									approvalMode={gate.approval_mode}
-									approvalProvenance={gate.approval_provenance}
-									approvalGlobalMode={gate.approval_global_mode}
-								/>
-							) : null}
-						</>
+						<AskOptions
+							options={APPROVAL_OPTIONS}
+							display={approvalOptionDisplay}
+							requestId={gate.request_id}
+							busy={busy}
+							onAnswer={(label) => onAnswer?.(label)}
+						/>
 					)}
+				</div>
+				{/*
+				 * SECONDARY, and the first thing to give way (see `AskSecondary`): the
+				 * policy handles and the key hint never push the pair out of the card.
+				 */}
+				<AskSecondary>
+					{/*
+					 * THE POLICY HANDLES, kept BELOW the pair the card exists for. They
+					 * own their own busy state, so a policy call in flight disables only
+					 * these two links; a policy failure never disables Approve or Deny.
+					 * They are absent where there is no session to address.
+					 */}
+					{gate.kind === "approval" && sessionId ? (
+						<ApprovalEscape
+							// The idle status slot's 2lh reserve was blank card height
+							// the bounded dock could not spare (design D1(c)).
+							compactIdle={true}
+							sessionId={sessionId}
+							approvalMode={gate.approval_mode}
+							approvalProvenance={gate.approval_provenance}
+							approvalGlobalMode={gate.approval_global_mode}
+						/>
+					) : null}
 					<p className="text-ink-dim text-meta">
 						{questionDockHint(gate, held)}
 					</p>
-					{/*
-					 * A refused answer lands on the card it was pressed on, outcome first,
-					 * and the card stays held so it cannot be pressed twice (QA round 1, Q3;
-					 * UX round 1, U4). `output` carries the status role implicitly.
-					 *
-					 * THE INK IS THE ARM'S, not this surface's: a retryable-busy refusal is a
-					 * moment the app is waiting out, so it takes the register the composer
-					 * band already uses for the send lock and a late delivery, and every other
-					 * arm keeps the danger band (design round 1, D4).
-					 */}
-					{answer?.refused && (
-						<output
-							className={cn(
-								"block text-body-sm",
-								answer.muted ? "text-ink-muted" : "text-danger",
-							)}
-						>
-							{answer.refused}
-						</output>
-					)}
-				</div>
+				</AskSecondary>
+				{/*
+				 * A refused answer lands on the card it was pressed on, outcome first,
+				 * and the card stays held so it cannot be pressed twice (QA round 1, Q3;
+				 * UX round 1, U4). `output` carries the status role implicitly.
+				 *
+				 * THE INK IS THE ARM'S, not this surface's: a retryable-busy refusal is a
+				 * moment the app is waiting out, so it takes the register the composer
+				 * band already uses for the send lock and a late delivery, and every other
+				 * arm keeps the danger band (design round 1, D4).
+				 */}
+				{answer?.refused && (
+					<output
+						className={cn(
+							"block shrink-0 text-body-sm",
+							answer.muted ? "text-ink-muted" : "text-danger",
+						)}
+					>
+						{answer.refused}
+					</output>
+				)}
 			</section>
 		</div>
 	);

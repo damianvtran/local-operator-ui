@@ -40,7 +40,13 @@ import {
  *   composer's send row off-screen): the dock is a shrinkable flex item of the
  *   chat column, beside a `shrink-0` composer (`chat-content.tsx`), and the
  *   notifications pane bounds its first ask by measurement (`ASK_BOUND_ATTR`);
- * - the body never collapses below three lines (`ASK_BODY_FLOOR`).
+ * - the body keeps three lines when there is room for them, but the CONTROLS
+ *   WIN over that floor (QA round 2, Q1): where three lines plus the options
+ *   do not fit, the body gives way down to ONE line (fading, scrolling) rather
+ *   than pushing Approve/Deny out of the card (`ASK_BODY_FLOOR`);
+ * - rows that are not the answer (the dock's approval-policy links and its key
+ *   hint) sit in a SECONDARY region that gives way before the body does
+ *   (`AskSecondary`), so they can never be what pushes the options out.
  *
  * WHY `vh` AND NOT A CONTAINER UNIT for the caps. A container-relative cap would need
  * `container-type: size` on the chat column, the drawer and the notifications
@@ -52,15 +58,27 @@ import {
 export const ASK_BODY_CAP = "min(40vh,28rem)";
 export const ASK_BODY_MAX_H = "max-h-[min(40vh,28rem)]";
 /*
- * THE BODY'S FLOOR: three lines, or the content's own height when that is less
- * (`--lo-ask-content-h`, measured off the body's inner wrapper, whose height
- * does not depend on the capped box). A bare `min-h-[3lh]` would pad every
- * one-line question with two blank lines. `min-height` beats `max-height` in
- * CSS, which is the intended priority: a cramped pane gets a readable question
- * and the card (dock) or the pane (notifications) scrolls, rather than a
- * question squeezed to nothing beside options that still show.
+ * THE BODY'S FLOOR: min(three lines, the content's own height, the ROOM the
+ * surface has left for the body - but never under one line).
+ *
+ * - `--lo-ask-content-h` is measured off the body's inner wrapper (whose height
+ *   does not depend on the capped box), so a one-line question is not padded
+ *   with two blank lines.
+ * - `--lo-ask-room` is how much height the controls leave the body. Round 2
+ *   held a flat three-line floor, and `min-height` beats `max-height`, so at
+ *   1024x600 the floor plus the options outgrew the card and it was APPROVE AND
+ *   DENY that scrolled out of view (QA round 2, Q1). The answer is what the card
+ *   exists for, so the room term lets the controls win: the floor drops to what
+ *   is left, down to one line, which still reads as "there is a question here"
+ *   and carries the fade that says there is more.
+ *   - the bounded notifications pane sets it to the measured fit (`fitInBound`);
+ *   - the dock sets it to 0 (`shrinkable`), because there a flex column does the
+ *     sizing: the body is the only shrinking control-adjacent item, so it gets
+ *     whatever the pinned rows leave, and the one-line term is its true minimum;
+ *   - unset (the side panel's flowing list), it falls back to three lines.
  */
-export const ASK_BODY_FLOOR = "min-h-[min(3lh,var(--lo-ask-content-h,0px))]";
+export const ASK_BODY_FLOOR =
+	"min-h-[min(3lh,var(--lo-ask-content-h,0px),max(1lh,var(--lo-ask-room,3lh)))]";
 export const ASK_FADE_MASK =
 	"[mask-image:linear-gradient(to_bottom,black_calc(100%-20px),transparent)]";
 export const ASK_OPTIONS_MAX_H = "max-h-[min(30vh,20rem)]";
@@ -130,9 +148,15 @@ const fitInBound = (node: HTMLElement, bound: HTMLElement): number | null => {
 export const AskScrollBody = ({
 	children,
 	className,
+	shrinkable = false,
 }: {
 	children: ReactNode;
 	className?: string;
+	/**
+	 * A flex column sizes this body (the inline dock's card): its floor drops to
+	 * one line so the pinned controls beside it always fit. See `ASK_BODY_FLOOR`.
+	 */
+	shrinkable?: boolean;
 }) => {
 	const ref = useRef<HTMLDivElement>(null);
 	const [overflows, setOverflows] = useState(false);
@@ -142,7 +166,16 @@ export const AskScrollBody = ({
 	useLayoutEffect(() => {
 		const node = ref.current;
 		if (!node) return;
-		const bound = node.closest<HTMLElement>(`[${ASK_BOUND_ATTR}]`);
+		const pane = node.closest<HTMLElement>(`[${ASK_BOUND_ATTR}]`);
+		/*
+		 * Only the pane's FIRST body is fitted (`fitInBound`), so only it watches
+		 * the pane: N bodies observing the pane and all its children meant N forced
+		 * layouts per resize for N-1 nulls (code review round 2, M1). Decided at
+		 * mount; a body that becomes first later (the one above it unmounted) keeps
+		 * the viewport cap, which is the pre-fit behaviour, until it remounts.
+		 */
+		const bound =
+			pane && pane.querySelector(`[${ASK_SCROLL_ATTR}]`) === node ? pane : null;
 		const measure = () => {
 			// One pixel of slack: sub-pixel line heights round differently in
 			// scrollHeight and clientHeight, and a phantom Tab stop is the cost.
@@ -184,8 +217,28 @@ export const AskScrollBody = ({
 				{
 					// The floor's second operand: never taller than the content itself.
 					"--lo-ask-content-h": contentH === null ? undefined : `${contentH}px`,
+					// The floor's room operand (see `ASK_BODY_FLOOR`).
+					"--lo-ask-room": shrinkable
+						? "0px"
+						: fitH === null
+							? undefined
+							: `${fitH}px`,
 					maxHeight:
 						fitH === null ? undefined : `min(${ASK_BODY_CAP}, ${fitH}px)`,
+					/*
+					 * THE FLEX BASIS, ALREADY CAPPED (dock only). With `flex-basis: auto`
+					 * a 10k-character body's base size is its whole content, and CSS
+					 * flexbox shares a deficit by base size: the body's share is a sliver,
+					 * its target stays above its max-height, and the algorithm FREEZES it
+					 * at that max - leaving the secondary rows and the card's own scroll to
+					 * absorb everything, which is the Q1 shape again. A basis no larger
+					 * than the cap means the body never starts above its max, so it
+					 * really does shrink once the secondary region is gone.
+					 */
+					flexBasis:
+						shrinkable && contentH !== null
+							? `min(${ASK_BODY_CAP}, ${contentH}px)`
+							: undefined,
 				} as CSSProperties
 			}
 			className={cn(
@@ -193,10 +246,9 @@ export const AskScrollBody = ({
 				ASK_BODY_FLOOR,
 				/*
 				 * `min-h-0` is gone in favour of the floor above: a flex parent may
-				 * shrink the body (the dock's card cap), but only down to three lines,
-				 * after which the CARD's own scroll takes over (code review R1, design
-				 * D1: at 1024x600 the body had collapsed to 18 px while the options
-				 * stayed). `overscroll-contain` so reaching the end does not start
+				 * shrink the body (the dock's card cap), but never to nothing (code
+				 * review R1, design D1: at 1024x600 the body had collapsed to 18 px
+				 * while the options stayed) - one line is the least it keeps. `overscroll-contain` so reaching the end does not start
 				 * scrolling the transcript behind the card, and `overflow-wrap:anywhere`
 				 * because the payload that caused this was paths and ids with no spaces.
 				 */
@@ -214,6 +266,64 @@ export const AskScrollBody = ({
 			)}
 		>
 			<div>{children}</div>
+		</div>
+	);
+};
+
+export const ASK_SECONDARY_ATTR = "data-lo-ask-secondary";
+
+/**
+ * The card's SECONDARY rows: everything that is not the question or the answer.
+ *
+ * On the dock that is the approval-policy links (`Approvals: Ask - ...`, `Set
+ * auto for this session / all sessions`) and the key hint (`Choose Approve or
+ * Deny above...`). Round 2 pinned them beside the options, so at 1024x600 their
+ * ~120 px were part of what pushed Deny below the card's bottom, and at 1440x900
+ * the hint was the line that got cut (QA round 2, Q1).
+ *
+ * They stay BELOW the options (the pair is what the card is for, and the policy
+ * links are deliberately second), but this region is a flex item that GIVES WAY
+ * FIRST: `shrink-[999]` against the body's `shrink` of 1 means a short card takes
+ * its whole deficit from here until this region is gone, and only then from the
+ * body - so the order of sacrifice is secondary rows, then body (to one line),
+ * and the options never. `min-h-0` lets it reach zero; while its content does not
+ * fit it scrolls under the same fade the body uses, and its links stay reachable
+ * by Tab (focusing a link scrolls it into view). Measured, not toggled: the
+ * region's size is set by the flex column alone, so marking it clipped cannot
+ * feed back into its own height.
+ */
+export const AskSecondary = ({ children }: { children: ReactNode }) => {
+	const ref = useRef<HTMLDivElement>(null);
+	const [clipped, setClipped] = useState(false);
+	const [atEnd, setAtEnd] = useState(true);
+	useLayoutEffect(() => {
+		const node = ref.current;
+		if (!node) return;
+		const measure = () => {
+			setClipped(node.scrollHeight > node.clientHeight + 1);
+			setAtEnd(node.scrollTop + node.clientHeight >= node.scrollHeight - 1);
+		};
+		measure();
+		if (typeof ResizeObserver === "undefined") return;
+		const observer = new ResizeObserver(measure);
+		observer.observe(node);
+		if (node.firstElementChild) observer.observe(node.firstElementChild);
+		return () => observer.disconnect();
+	}, []);
+	return (
+		<div
+			ref={ref}
+			{...{ [ASK_SECONDARY_ATTR]: clipped ? "clipped" : "fits" }}
+			onScroll={(event) => {
+				const node = event.currentTarget;
+				setAtEnd(node.scrollTop + node.clientHeight >= node.scrollHeight - 1);
+			}}
+			className={cn(
+				"min-h-0 shrink-[999] overflow-y-auto overscroll-contain",
+				clipped && !atEnd ? ASK_FADE_MASK : null,
+			)}
+		>
+			<div className="flex flex-col gap-2">{children}</div>
 		</div>
 	);
 };

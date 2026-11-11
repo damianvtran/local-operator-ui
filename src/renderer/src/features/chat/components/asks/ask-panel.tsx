@@ -526,12 +526,19 @@ const AskQuestionField = ({
 			 * long questions that need this are the ones with structure (a proposal
 			 * summary, a pasted list) and a cap over one run-on paragraph helps less.
 			 */}
+			{/*
+			 * The proposal notice is INSIDE the body region, as on the dock (QA round
+			 * 2, Q1): only the question and its summary give way, so in the bounded
+			 * notifications pane the fit is taken from them and never from the options.
+			 */}
 			<AskScrollBody>
 				<p className="whitespace-pre-wrap text-ink text-sm">
 					{isolateValue(proposal ? proposal.body : question.question, dir)}
 				</p>
+				{proposal ? (
+					<ProposalReviewNotice proposal={proposal} className="mt-1.5" />
+				) : null}
 			</AskScrollBody>
-			{proposal ? <ProposalReviewNotice proposal={proposal} /> : null}
 			{question.secret ? (
 				<input
 					data-ask-secret={question.id}

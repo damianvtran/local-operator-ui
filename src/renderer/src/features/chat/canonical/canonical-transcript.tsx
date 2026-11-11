@@ -7381,7 +7381,11 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				CHAT_COLUMN_CONTAINER,
 				collapsed
 					? "relative h-0 grow-0 overflow-hidden"
-					: "relative flex min-h-0 grow flex-col",
+					: // `min-h-16`, not `min-h-0`: the docked ask (70% of the column, see
+						// `chat-content.tsx`) may squeeze the transcript, but never to
+						// nothing - a few rows of the conversation stay as context for
+						// the question (ask-card QA round 2, Q1).
+						"relative flex min-h-16 grow flex-col",
 			)}
 		>
 			{/*
