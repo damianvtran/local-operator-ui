@@ -4402,6 +4402,7 @@ export type MessageParams = {
 	"ui.chat.asks.all_asks": undefined;
 	"ui.chat.asks.answer_aria": { question: string };
 	"ui.chat.asks.answer_options": undefined;
+	"ui.chat.asks.bounds.body_label": undefined;
 	"ui.chat.asks.cancel": undefined;
 	"ui.chat.asks.change_answer": undefined;
 	"ui.chat.asks.changed_handoff": undefined;
@@ -4430,6 +4431,14 @@ export type MessageParams = {
 	"ui.chat.asks.other_label": undefined;
 	"ui.chat.asks.outstanding_aria": { label: string };
 	"ui.chat.asks.outstanding_count": { count: number; count_display: string };
+	"ui.chat.asks.proposal.field_changed": { label: string };
+	"ui.chat.asks.proposal.field_lines": {
+		label: string;
+		added: number;
+		removed: number;
+	};
+	"ui.chat.asks.proposal.review": undefined;
+	"ui.chat.asks.proposal.summary": { kind: string; name: string };
 	"ui.chat.asks.recommended": undefined;
 	"ui.chat.asks.scope.fleet": undefined;
 	"ui.chat.asks.scope.session": undefined;
@@ -5254,6 +5263,7 @@ export type MessageParams = {
 	"ui.chat.audio.play": undefined;
 	"ui.chat.audio.play_label": { label: string };
 	"ui.chat.audio.position_label": { label: string };
+	"ui.chat.audio.position_value": { current: string; total: string };
 	"ui.chat.audio.unmute": undefined;
 	"ui.chat.checkpoint.generating_name": undefined;
 	"ui.chat.checkpoint.jump_agent": {
@@ -8879,7 +8889,11 @@ export type MessageParams = {
 	"ui.library.preview.not_saved": undefined;
 	"ui.library.preview.open": undefined;
 	"ui.library.preview.open_externally": undefined;
-	"ui.library.preview.organized_by": { by: string; at: string };
+	"ui.library.preview.organized_by_agent": { at: string };
+	"ui.library.preview.organized_by_librarian": { at: string };
+	"ui.library.preview.organized_by_system": { at: string };
+	"ui.library.preview.organized_by_user": { at: string };
+	"ui.library.preview.organized_unattributed": { at: string };
 	"ui.library.preview.pptx_failed": undefined;
 	"ui.library.preview.pptx_failed_detail": undefined;
 	"ui.library.preview.pptx_loading": { percent: string };

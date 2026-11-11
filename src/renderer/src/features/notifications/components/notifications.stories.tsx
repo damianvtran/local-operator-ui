@@ -33,6 +33,11 @@ import { OperationProgressLine } from "./operation-progress-line";
 import "../../../styles/index.css";
 import "../../chat/components/story-electron-shim";
 import { AskDrawer } from "@features/chat/components/asks/ask-drawer";
+import {
+	LONG_OPTIONS,
+	LONG_QUESTION,
+	PROPOSAL_LEGACY_TEXT,
+} from "@features/chat/components/asks/long-ask.fixtures";
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { PanelRailFrame } from "@shared/components/navigation/panel-rail-frame";
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
@@ -645,6 +650,63 @@ export const AskDetail: Story = {
 				path: `/notifications/${encodeURIComponent(ASK_ID)}`,
 				prefs: { "notifications-read-state": "all" },
 			},
+		),
+};
+
+/*
+ * THE BOUNDED ASK CARD IN THE DETAIL PANE (`ask-bounds.tsx`). The same
+ * 10k-character question and proposal dump the inline-dock and Asks-panel
+ * stories use (`long-ask.fixtures.ts`), reached through the real route so the
+ * pane's own scroller and the clamped title are what the still shows.
+ */
+const longAskState = (
+	question: string,
+	options: PendingAsk["questions"][0]["options"],
+): Stub => ({
+	items: POPULATED,
+	waiting: [{ ...WAITING[0], title: question }],
+	asks: [
+		{
+			...ASK,
+			urgent: false,
+			questions: [{ id: "target", question, options, multi: false }],
+		} as PendingAsk,
+	],
+});
+const LONG_DETAIL_PANE = {
+	path: `/notifications/${encodeURIComponent(ASK_ID)}`,
+	prefs: { "notifications-read-state": "all" },
+};
+export const AskDetailLongQuestionLight: Story = {
+	args: { theme: "localOperatorLight" },
+	render: () =>
+		page(longAskState(LONG_QUESTION, LONG_OPTIONS), LONG_DETAIL_PANE),
+};
+export const AskDetailLongQuestionDark: Story = {
+	args: { theme: "localOperatorDark" },
+	render: () =>
+		page(longAskState(LONG_QUESTION, LONG_OPTIONS), LONG_DETAIL_PANE),
+};
+export const AskDetailProposalLight: Story = {
+	args: { theme: "localOperatorLight" },
+	render: () =>
+		page(
+			longAskState(PROPOSAL_LEGACY_TEXT, [
+				{ label: "Apply" },
+				{ label: "Reject" },
+			]),
+			LONG_DETAIL_PANE,
+		),
+};
+export const AskDetailProposalDark: Story = {
+	args: { theme: "localOperatorDark" },
+	render: () =>
+		page(
+			longAskState(PROPOSAL_LEGACY_TEXT, [
+				{ label: "Apply" },
+				{ label: "Reject" },
+			]),
+			LONG_DETAIL_PANE,
 		),
 };
 

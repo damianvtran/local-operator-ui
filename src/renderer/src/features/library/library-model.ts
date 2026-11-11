@@ -390,6 +390,33 @@ export function tagCategoryLabel(category: string): string {
 		: key;
 }
 
+/**
+ * The preview's "organized by" sentence for the actor the catalog recorded.
+ *
+ * `organized.by` is a closed id, never a display name: the backend only accepts
+ * user, librarian, agent or system (`TAG_CREATORS`), and legacy rows carry null.
+ * Each actor is its own WHOLE sentence rather than an actor noun spliced into
+ * "Organized by {by}", because articles, case and word order around the actor
+ * ("by you", "by an agent", Urdu's `نے`) cannot be translated as a bare noun.
+ * Null or an id a newer backend adds falls to the unattributed sentence, which
+ * makes no claim about who did it (it used to print the raw id, or "librarian"
+ * for null). `at` is the already-localized relative age.
+ */
+export function organizedByLabel(by: string | null, at: string): string {
+	switch (by) {
+		case "user":
+			return t("ui.library.preview.organized_by_user", { at });
+		case "librarian":
+			return t("ui.library.preview.organized_by_librarian", { at });
+		case "agent":
+			return t("ui.library.preview.organized_by_agent", { at });
+		case "system":
+			return t("ui.library.preview.organized_by_system", { at });
+		default:
+			return t("ui.library.preview.organized_unattributed", { at });
+	}
+}
+
 /** A byte count in the app's compact register. */
 export function formatBytes(bytes: number): string {
 	if (!Number.isFinite(bytes) || bytes <= 0)

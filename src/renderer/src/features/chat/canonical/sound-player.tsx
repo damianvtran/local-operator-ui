@@ -72,12 +72,24 @@ import {
 } from "react";
 import {
 	BAR_RADIUS,
-	ariaValueText,
 	formatClock,
 	progressFraction,
 	seekSecondsAt,
 	waveformBars,
 } from "./waveform-model";
+
+/*
+ * The slider's `aria-valuetext`: elapsed time out of the clip's length, as two
+ * clocks. It lives HERE and not in waveform-model.ts on purpose: that module is
+ * pure number logic that its test bundles with no i18n alias, while this file
+ * already owns `t`. The clocks stay `formatClock` (ASCII m:ss) so the spoken
+ * value matches the visible readout; the catalogue sentence only orders them.
+ */
+const valueText = (current: number, duration: number): string =>
+	t("ui.chat.audio.position_value", {
+		current: formatClock(current),
+		total: formatClock(duration),
+	});
 
 export type SoundPlayerVariant = "full" | "compact";
 
@@ -124,7 +136,7 @@ export const SoundPlayer = ({
 	variant = "full",
 	className,
 }: SoundPlayerProps) => {
-	useI18nLocale();
+	const locale = useI18nLocale();
 	/*
 	 * The engine's status, read through this widget's identity: another row's
 	 * press (or the speech store's) must not paint this row's spinner.
@@ -243,6 +255,10 @@ export const SoundPlayer = ({
 	 * Kept as a ref-stable function so the rAF effect below lists no deps it
 	 * does not use.
 	 */
+	// `locale` is a dependency so the painter (and the at-rest effect below)
+	// re-run on a language change: aria-valuetext is written imperatively, so
+	// React never rewrites it from the JSX prop once the clip is paused or idle.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: locale is read through t() at call time
 	const paintProgress = useCallback(
 		(seconds: number) => {
 			const fraction = progressFraction(seconds, duration);
@@ -258,10 +274,10 @@ export const SoundPlayer = ({
 			const slider = sliderRef.current;
 			if (slider) {
 				slider.setAttribute("aria-valuenow", String(Math.floor(seconds)));
-				slider.setAttribute("aria-valuetext", ariaValueText(seconds, duration));
+				slider.setAttribute("aria-valuetext", valueText(seconds, duration));
 			}
 		},
-		[duration],
+		[duration, locale],
 	);
 
 	/*
@@ -507,7 +523,7 @@ export const SoundPlayer = ({
 				aria-valuemin={0}
 				aria-valuemax={Math.max(0, Math.round(duration))}
 				aria-valuenow={0}
-				aria-valuetext={ariaValueText(0, duration)}
+				aria-valuetext={valueText(0, duration)}
 				data-sound-slider=""
 				className={cn(
 					"group relative min-h-11 min-w-0 flex-1 cursor-pointer touch-none select-none",
