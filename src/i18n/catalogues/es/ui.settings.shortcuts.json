@@ -75,5 +75,11 @@
 	"ui.settings.shortcuts.speech.push_to_talk_refused": "{platform, select, darwin {Solo se puede mantener pulsada una tecla Control, Option o Command, izquierda o derecha.} win32 {Solo se puede mantener pulsada una tecla Control o Windows, izquierda o derecha.} other {Solo se puede mantener pulsada una tecla Control o Super, izquierda o derecha.}}",
 	"ui.settings.shortcuts.speech.push_to_talk_overlap": "Todos los atajos que usan {modifier}, como {example}, iniciarán la grabación un instante.{alternative, select, none {} other { Elige {alternative} para evitarlo.}}",
 	"ui.settings.shortcuts.speech.push_to_talk_letter_pointer": "Para un atajo con una letra, usa “Iniciar grabación” arriba.",
-	"ui.settings.shortcuts.speech.start_recording_needs_key": "Un atajo necesita una letra o un número además de una tecla modificadora."
+	"ui.settings.shortcuts.speech.start_recording_needs_key": "Un atajo necesita una letra o un número además de una tecla modificadora.",
+	"ui.settings.shortcuts.action.send_both": "Enviar en modo ambos",
+	"ui.settings.shortcuts.action.send_queue": "Enviar en cola",
+	"ui.settings.shortcuts.action.send_steer": "Enviar guiando",
+	"ui.settings.shortcuts.category.sending": "Envío",
+	"ui.settings.shortcuts.category.sending_description": "Teclas adicionales para enviar un mensaje mientras el agente está ocupado. Enter siempre envía con el modo de entrega configurado en Ajustes del backend. Una tecla asignada envía con su propio modo, aunque no sea el modo de entrega configurado.",
+	"ui.settings.shortcuts.reserved.enter": "Reservado: envía el mensaje desde el compositor. Enter por sí solo siempre envía, y Shift+Enter añade una línea nueva."
 }

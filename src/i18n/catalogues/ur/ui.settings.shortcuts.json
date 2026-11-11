@@ -75,5 +75,11 @@
 	"ui.settings.shortcuts.speech.push_to_talk_refused": "{platform, select, darwin {صرف بائیں یا دائیں Control، Option یا Command کلید دبائے رکھی جا سکتی ہے۔} win32 {صرف بائیں یا دائیں Control یا Windows کلید دبائے رکھی جا سکتی ہے۔} other {صرف بائیں یا دائیں Control یا Super کلید دبائے رکھی جا سکتی ہے۔}}",
 	"ui.settings.shortcuts.speech.push_to_talk_overlap": "ہر شارٹ کٹ جو {modifier} استعمال کرتا ہے، جیسے {example}، لمحہ بھر کے لیے ریکارڈنگ شروع کر دے گا۔{alternative, select, none {} other { اس سے بچنے کے لیے {alternative} منتخب کریں۔}}",
 	"ui.settings.shortcuts.speech.push_to_talk_letter_pointer": "حرف والے شارٹ کٹ کے لیے اوپر “ریکارڈنگ شروع کریں” استعمال کریں۔",
-	"ui.settings.shortcuts.speech.start_recording_needs_key": "شارٹ کٹ کے لیے ماڈیفائر کلید کے ساتھ ایک حرف یا ہندسہ بھی ضروری ہے۔"
+	"ui.settings.shortcuts.speech.start_recording_needs_key": "شارٹ کٹ کے لیے ماڈیفائر کلید کے ساتھ ایک حرف یا ہندسہ بھی ضروری ہے۔",
+	"ui.settings.shortcuts.action.send_both": "دونوں کے طور پر بھیجیں",
+	"ui.settings.shortcuts.action.send_queue": "قطار کے طور پر بھیجیں",
+	"ui.settings.shortcuts.action.send_steer": "ہدایت کے طور پر بھیجیں",
+	"ui.settings.shortcuts.category.sending": "بھیجنا",
+	"ui.settings.shortcuts.category.sending_description": "ایجنٹ کے مصروف ہونے پر پیغام بھیجنے کی اضافی کلیدیں۔ Enter ہمیشہ بیک اینڈ کی ترتیبات میں مقرر کردہ ترسیل کے طریقے سے بھیجتا ہے۔ مختص کی گئی کلید اس کے بجائے اپنے طریقے سے بھیجتی ہے، چاہے وہ ترسیل کا طے شدہ طریقہ نہ ہو۔",
+	"ui.settings.shortcuts.reserved.enter": "مخصوص: پیغام کے خانے سے پیغام بھیجتا ہے۔ صرف Enter ہمیشہ پیغام بھیجتا ہے، اور Shift+Enter نئی لائن شامل کرتا ہے۔"
 }

@@ -75,5 +75,11 @@
 	"ui.settings.shortcuts.speech.push_to_talk_refused": "{platform, select, darwin {केवल बाईं या दाईं Control, Option या Command कुंजी को दबाए रखा जा सकता है।} win32 {केवल बाईं या दाईं Control या Windows कुंजी को दबाए रखा जा सकता है।} other {केवल बाईं या दाईं Control या Super कुंजी को दबाए रखा जा सकता है।}}",
 	"ui.settings.shortcuts.speech.push_to_talk_overlap": "{modifier} का उपयोग करने वाला हर शॉर्टकट, जैसे {example}, कुछ क्षण के लिए रिकॉर्डिंग शुरू कर देगा।{alternative, select, none {} other { इससे बचने के लिए {alternative} चुनें।}}",
 	"ui.settings.shortcuts.speech.push_to_talk_letter_pointer": "अक्षर वाले शॉर्टकट के लिए ऊपर “रिकॉर्डिंग शुरू करें” का उपयोग करें।",
-	"ui.settings.shortcuts.speech.start_recording_needs_key": "शॉर्टकट के लिए मॉडिफ़ायर कुंजी के साथ एक अक्षर या अंक भी चाहिए।"
+	"ui.settings.shortcuts.speech.start_recording_needs_key": "शॉर्टकट के लिए मॉडिफ़ायर कुंजी के साथ एक अक्षर या अंक भी चाहिए।",
+	"ui.settings.shortcuts.action.send_both": "दोनों के रूप में भेजें",
+	"ui.settings.shortcuts.action.send_queue": "कतार में भेजें",
+	"ui.settings.shortcuts.action.send_steer": "दिशा देकर भेजें",
+	"ui.settings.shortcuts.category.sending": "भेजना",
+	"ui.settings.shortcuts.category.sending_description": "एजेंट के व्यस्त होने पर संदेश भेजने के लिए अतिरिक्त कुंजियाँ। Enter हमेशा बैकएंड सेटिंग्स में चुने गए भेजने के तरीके से भेजता है। इस क्रिया को सौंपी गई कुंजी इसके बजाय अपने मोड से भेजती है, भले ही वह बैकएंड सेटिंग्स में चुना गया मोड न हो।",
+	"ui.settings.shortcuts.reserved.enter": "आरक्षित: संदेश बॉक्स से संदेश भेजता है। अकेला Enter हमेशा भेजता है, और Shift+Enter नई पंक्ति जोड़ता है।"
 }

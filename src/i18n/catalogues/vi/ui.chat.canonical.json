@@ -54,6 +54,7 @@
 	"ui.chat.canonical.send_failure.late_delivery": "Tin nhắn trước đó của bạn đã tới đích.",
 	"ui.chat.canonical.send_failure.late_delivery_draft": "Tin nhắn trước đó của bạn đã tới đích. Nội dung hiện tại vẫn chưa được gửi.",
 	"ui.chat.canonical.send_failure.late_delivery_overlap": "Tin nhắn trước đó của bạn đã tới đích. Nội dung vẫn còn trong ô nên gửi lại sẽ tạo bản trùng.",
+	"ui.chat.canonical.send_failure.delivery_unsupported": "Phiên bản Local Operator này không thể đổi cách gửi tin nhắn khi tác nhân đang bận nên tin nhắn của bạn chưa được gửi. Hãy cập nhật máy chủ rồi thử lại.",
 	"ui.chat.canonical.turn_summary.completed": "hoàn tất",
 	"ui.chat.canonical.turn_summary.took": "Mất {duration}",
 	"ui.chat.canonical.untitled": "Cuộc trò chuyện chưa đặt tên",

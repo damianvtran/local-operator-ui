@@ -75,5 +75,11 @@
 	"ui.settings.shortcuts.speech.push_to_talk_refused": "{platform, select, darwin {只能按住左侧或右侧的Control、Option或Command键。} win32 {只能按住左侧或右侧的Control或Windows键。} other {只能按住左侧或右侧的Control或Super键。}}",
 	"ui.settings.shortcuts.speech.push_to_talk_overlap": "所有使用{modifier}的快捷键（例如{example}）都会短暂开始录音。{alternative, select, none {} other {选择{alternative}可避免此情况。}}",
 	"ui.settings.shortcuts.speech.push_to_talk_letter_pointer": "对于带字母的快捷键，请使用上方的“开始录音”。",
-	"ui.settings.shortcuts.speech.start_recording_needs_key": "快捷键除修饰键外，还需要一个字母或数字。"
+	"ui.settings.shortcuts.speech.start_recording_needs_key": "快捷键除修饰键外，还需要一个字母或数字。",
+	"ui.settings.shortcuts.action.send_both": "排队后引导发送",
+	"ui.settings.shortcuts.action.send_queue": "排队发送",
+	"ui.settings.shortcuts.action.send_steer": "引导发送",
+	"ui.settings.shortcuts.category.sending": "发送",
+	"ui.settings.shortcuts.category.sending_description": "智能体忙碌时发送消息的额外按键。Enter始终按“后端设置”中的发送方式发送；已绑定的按键则按自身的方式发送，即使该方式与设置中的发送方式不同。",
+	"ui.settings.shortcuts.reserved.enter": "保留：从输入框发送消息。单独按Enter始终发送，Shift+Enter换行。"
 }

@@ -1,0 +1,44 @@
+{
+	"schema": 1,
+	"auditor": "codex",
+	"model": "gpt-5.6-sol",
+	"model_provenance": "codex MCP server, requested gpt-5.6-sol (served model not independently verifiable; see i18n-provenance-ui.md 2026-11-11 manager session 2405ebc40b47)",
+	"instance": "ui-desktop-fr-settings-shortcuts",
+	"locale": "fr",
+	"namespace": "ui.settings.shortcuts",
+	"branch": "feat/busy-delivery-desktop",
+	"head": "e7db3ec74c + uncommitted catalogues",
+	"date": "2026-11-11",
+	"status": "passed",
+	"audit_kind": "delta audit of the send-mode keys; all other keys byte-identical to the prior audited row (superseded by the branch's en change)",
+	"keys_audited": [
+		"ui.settings.shortcuts.action.send_steer",
+		"ui.settings.shortcuts.action.send_queue",
+		"ui.settings.shortcuts.action.send_both",
+		"ui.settings.shortcuts.category.sending",
+		"ui.settings.shortcuts.category.sending_description",
+		"ui.settings.shortcuts.reserved.enter"
+	],
+	"key_count": 83,
+	"scope": "i18n-provenance-ui.md: desktop send-mode copy for namespaces ui.settings.shortcuts (see note)",
+	"sha256": {
+		"en": "670d0797ccff0765b8e39567c50364119e325c599b334f408e153a3b37a2c8b1",
+		"fr": "cd0c5e090de3521836c1ca48c49f01a9f5eae534afb9436bce89e83c5cc39b73"
+	},
+	"inputs_sha256": {
+		"en_context": "318a11730b543a65dd3df9db7c4f7ea4dcb041e7e86ab2e18839f0539ec49e44"
+	},
+	"paths": {
+		"en": "src/i18n/catalogues/en/ui.settings.shortcuts.json",
+		"target": "src/i18n/catalogues/fr/ui.settings.shortcuts.json",
+		"context": "src/i18n/catalogues/en/ui.settings.shortcuts.context.json"
+	},
+	"verified": [
+		"key set equals English; key count 83 for both",
+		"ICU/placeholders/tags preserved",
+		"meaning checked against en context; mode terms match the audited backend relay.composer.delivery.* / wire.settings.delivery_busy_default.* set",
+		"findings below are the final-round verdict on the shipped bytes; round-1 findings and their dispositions are in the note and in i18n-provenance-ui.md"
+	],
+	"findings": [],
+	"note": "6 new keys (send modes, sending, reserved.enter); other keys byte-identical to prior row. R1 1 major applied verbatim; R2 PASS 0/0. No minors/nits open. Translator req. claude-sonnet-5-5, auditor req. gpt-5.6-sol (not independently verifiable)."
+}

@@ -75,5 +75,11 @@
 	"ui.settings.shortcuts.speech.push_to_talk_refused": "{platform, select, darwin {Удерживать можно только левую или правую клавишу Control, Option или Command.} win32 {Удерживать можно только левую или правую клавишу Control или Windows.} other {Удерживать можно только левую или правую клавишу Control или Super.}}",
 	"ui.settings.shortcuts.speech.push_to_talk_overlap": "Каждое сочетание с {modifier}, например {example}, ненадолго запустит запись.{alternative, select, none {} other { Чтобы этого избежать, выберите {alternative}.}}",
 	"ui.settings.shortcuts.speech.push_to_talk_letter_pointer": "Для сочетания с буквой используйте «Начать запись» выше.",
-	"ui.settings.shortcuts.speech.start_recording_needs_key": "Для сочетания нужна буква или цифра в дополнение к клавише-модификатору."
+	"ui.settings.shortcuts.speech.start_recording_needs_key": "Для сочетания нужна буква или цифра в дополнение к клавише-модификатору.",
+	"ui.settings.shortcuts.action.send_both": "Отправить в режиме «оба»",
+	"ui.settings.shortcuts.action.send_queue": "Отправить в режиме «очередь»",
+	"ui.settings.shortcuts.action.send_steer": "Отправить в режиме «направить»",
+	"ui.settings.shortcuts.category.sending": "Отправка",
+	"ui.settings.shortcuts.category.sending_description": "Дополнительные клавиши для отправки сообщения, пока агент занят. Enter всегда отправляет в режиме доставки из раздела «Настройки бэкенда». Назначенная клавиша отправляет в своём режиме, даже если он не совпадает с режимом доставки.",
+	"ui.settings.shortcuts.reserved.enter": "Зарезервировано: отправляет сообщение из поля ввода. Enter сам по себе всегда отправляет, а Shift+Enter добавляет новую строку."
 }

@@ -75,5 +75,11 @@
 	"ui.settings.shortcuts.speech.push_to_talk_refused": "{platform, select, darwin {Chỉ có thể giữ phím Control, Option hoặc Command bên trái hoặc bên phải.} win32 {Chỉ có thể giữ phím Control hoặc Windows bên trái hoặc bên phải.} other {Chỉ có thể giữ phím Control hoặc Super bên trái hoặc bên phải.}}",
 	"ui.settings.shortcuts.speech.push_to_talk_overlap": "Mọi phím tắt dùng {modifier}, chẳng hạn {example}, sẽ bắt đầu ghi âm trong chốc lát.{alternative, select, none {} other { Hãy chọn {alternative} để tránh điều này.}}",
 	"ui.settings.shortcuts.speech.push_to_talk_letter_pointer": "Với phím tắt có chữ cái, hãy dùng “Bắt đầu ghi âm” ở trên.",
-	"ui.settings.shortcuts.speech.start_recording_needs_key": "Phím tắt cần có một chữ cái hoặc chữ số cùng với phím bổ trợ."
+	"ui.settings.shortcuts.speech.start_recording_needs_key": "Phím tắt cần có một chữ cái hoặc chữ số cùng với phím bổ trợ.",
+	"ui.settings.shortcuts.action.send_both": "Gửi kiểu cả hai",
+	"ui.settings.shortcuts.action.send_queue": "Gửi kiểu hàng đợi",
+	"ui.settings.shortcuts.action.send_steer": "Gửi kiểu định hướng",
+	"ui.settings.shortcuts.category.sending": "Gửi tin nhắn",
+	"ui.settings.shortcuts.category.sending_description": "Các phím bổ sung để gửi tin nhắn khi tác nhân đang bận. Enter luôn gửi theo cách gửi đặt trong Cài đặt máy chủ. Phím được gán sẽ gửi theo kiểu của riêng nó, kể cả khi kiểu đó khác với cách gửi đã đặt.",
+	"ui.settings.shortcuts.reserved.enter": "Dành riêng: gửi tin nhắn từ ô soạn. Chỉ nhấn Enter luôn là gửi, còn Shift+Enter xuống dòng."
 }

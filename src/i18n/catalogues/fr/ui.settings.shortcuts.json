@@ -75,5 +75,11 @@
 	"ui.settings.shortcuts.speech.push_to_talk_refused": "{platform, select, darwin {Seule une touche Control, Option ou Command, gauche ou droite, peut être maintenue.} win32 {Seule une touche Control ou Windows, gauche ou droite, peut être maintenue.} other {Seule une touche Control ou Super, gauche ou droite, peut être maintenue.}}",
 	"ui.settings.shortcuts.speech.push_to_talk_overlap": "Tous les raccourcis qui utilisent {modifier}, comme {example}, démarreront brièvement un enregistrement.{alternative, select, none {} other { Choisissez {alternative} pour l’éviter.}}",
 	"ui.settings.shortcuts.speech.push_to_talk_letter_pointer": "Pour un raccourci avec une lettre, utilisez « Démarrer l’enregistrement » ci-dessus.",
-	"ui.settings.shortcuts.speech.start_recording_needs_key": "Un raccourci nécessite une lettre ou un chiffre en plus d’une touche de modification."
+	"ui.settings.shortcuts.speech.start_recording_needs_key": "Un raccourci nécessite une lettre ou un chiffre en plus d’une touche de modification.",
+	"ui.settings.shortcuts.action.send_both": "Envoyer : les deux",
+	"ui.settings.shortcuts.action.send_queue": "Envoyer : file d’attente",
+	"ui.settings.shortcuts.action.send_steer": "Envoyer : orienter",
+	"ui.settings.shortcuts.category.sending": "Envoi",
+	"ui.settings.shortcuts.category.sending_description": "Touches supplémentaires pour envoyer un message pendant que l’agent est occupé. Entrée envoie toujours avec le mode d’envoi défini dans Paramètres du serveur. Une touche associée envoie plutôt avec son propre mode, même s’il ne s’agit pas du mode d’envoi défini.",
+	"ui.settings.shortcuts.reserved.enter": "Réservé : envoie le message depuis le champ de saisie. Entrée seule envoie toujours, et Maj+Entrée ajoute un saut de ligne."
 }
