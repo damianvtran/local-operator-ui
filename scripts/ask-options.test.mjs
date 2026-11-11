@@ -1978,6 +1978,20 @@ test("several recommended rows are each marked, and an old payload marks one", (
 	assert.deepEqual(marked({ recommendedAll: [9] }), [false, false, false]);
 });
 
+test("the docked card threads recommended_all from the gate to its rows", () => {
+	// The dock is the only caller that hands `gate.recommended_all` to
+	// `AskOptions`: dropping that one prop passes every `AskOptions` test above
+	// and leaves a second badge missing on the real card.
+	const badges = (over) =>
+		renderToStaticMarkup(
+			createElement(QuestionDock, { gate: gate(over), onAnswer: () => {} }),
+		).split("Recommended").length - 1;
+	assert.equal(badges({ recommended: 0, recommended_all: [0, 1] }), 2);
+	// A payload from a runtime that predates the set marks exactly one row.
+	assert.equal(badges({ recommended: 0 }), 1);
+	assert.equal(badges({ recommended: 0, recommended_all: null }), 1);
+});
+
 test("recommendedIndexes validates each entry and never clamps", () => {
 	const set = (...args) => [...recommendedIndexes(...args)].sort();
 	assert.deepEqual(set(0, [0, 1], 3), [0, 1]);
