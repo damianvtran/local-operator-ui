@@ -216,6 +216,7 @@ import type {
 	CanonicalFrontendState,
 	CanonicalModel,
 } from "../../../../../shared/desktop-session-contract";
+import { recordingHintParts } from "../../../../../shared/recording-shortcut";
 
 /**
  * The capture's words, in the shape the planner takes them.
@@ -10252,16 +10253,24 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 																? t("ui.chat.composer.starting_recording")
 																: !canEnableRecordingFeature
 																	? recordingUnavailableReason
-																	: shortcutText === null
-																		? t("ui.chat.composer.start_recording")
-																		: t(
-																				"ui.chat.composer.start_recording_hint",
-																				{
-																					shortcut: isolateLtr(shortcutText),
-																					pushToTalk:
-																						resolvePushToTalkBinding().label,
-																				},
-																			)
+																	: (() => {
+																			const hint = recordingHintParts(
+																				shortcutText,
+																				resolvePushToTalkBinding()?.label ??
+																					null,
+																			);
+																			return hint === null
+																				? t("ui.chat.composer.start_recording")
+																				: t(
+																						"ui.chat.composer.start_recording_hint",
+																						{
+																							shortcut: isolateLtr(
+																								hint.shortcut,
+																							),
+																							pushToTalk: hint.pushToTalk,
+																						},
+																					);
+																		})()
 														}
 													/>
 												}
