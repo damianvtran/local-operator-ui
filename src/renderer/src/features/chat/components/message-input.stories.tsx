@@ -3853,6 +3853,61 @@ export const SendLock: Story = {
 	},
 };
 
+/**
+ * THE BUSY-SEND REFUSAL (S2, architect D11). The page refuses a busy send
+ * whose resolved mode the backend cannot honour — the draft is kept and
+ * nothing is sent as steer — and raises this sentence. A failure, not a
+ * statement of fact, so the row is not muted; and no Retry, because a retry
+ * would meet the same refusal. Clear is the only control, and the box keeps
+ * the user's words.
+ */
+export const BusyDeliveryUnsupported: Story = {
+	render: () => (
+		<PendingSendHarness
+			row="in-flight"
+			stageChip={false}
+			returned={{ text: "and here is the second one" }}
+			sendError={{
+				message: SEND_FAILURE_COPY.deliveryUnsupported,
+				muted: false,
+				retry: false,
+			}}
+			label="this version of Local Operator cannot change how busy messages are sent: the sentence, the user's message still in the box, and only Clear to press"
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		/*
+		 * THE REFUSAL'S OWN CLAIMS, not the send lock's: a failure (not a fact),
+		 * one sentence naming the version gap, the user's text still in the box
+		 * (the draft is kept), and Clear as the only control — Retry would meet
+		 * the same refusal.
+		 */
+		const alert = canvasElement.querySelector('[role="alert"]');
+		if (!alert)
+			throw new Error(
+				"the refusal is not announced: the notice row is missing",
+			);
+		const text = alert.textContent ?? "";
+		if (!/cannot change how messages are sent/i.test(text))
+			throw new Error(`the refusal no longer states the version gap: ${text}`);
+		const box = composerField(canvasElement);
+		if (
+			!box ||
+			(box as HTMLTextAreaElement).value !== "and here is the second one"
+		)
+			throw new Error(
+				"the refusal dropped the user's words: the draft must be kept",
+			);
+		const buttons = [...alert.querySelectorAll("button")];
+		if (buttons.length !== 1)
+			throw new Error(
+				`the refusal offers ${buttons.length} controls; Retry would meet the same refusal, so only Clear may stand beside it`,
+			);
+		releaseShutter();
+	},
+};
+
 /*
  * WHAT EVERY NOTICE FRAME MUST SHOW, asserted rather than assumed, because these
  * stills are the evidence for the operator's own screen: the sentence is one line

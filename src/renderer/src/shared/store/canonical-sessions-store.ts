@@ -753,6 +753,15 @@ export type ChatDraft = {
 	submittedFiles?: ChatFile[];
 	submittedMode?: "prompt" | "steer";
 	/**
+	 * The busy-send delivery the FIRST attempt carried (`queue` / `both`), pinned
+	 * beside `submittedMode` for the same reason: the receipt hashes the whole
+	 * body, so a retry must resend the same body, not re-derive delivery from a
+	 * composer whose settings read has moved since. Like `submittedInputMode`,
+	 * a previous attempt's ABSENCE is replayed verbatim. Absent means the legacy
+	 * body (steer, or idle), exactly as the first attempt sent it.
+	 */
+	submittedDelivery?: "steer" | "queue" | "both";
+	/**
 	 * The provenance the FIRST attempt of the current message carried (arch
 	 * §4.2). Pinned beside `submittedMode` and for the same reason: the server
 	 * keys its receipt on a hash of the whole body, so a retry must replay the
@@ -1531,6 +1540,17 @@ export const SEND_FAILURE_COPY = {
 	 */
 	get lateDeliveryOverlap() {
 		return t("ui.chat.canonical.send_failure.late_delivery_overlap");
+	},
+	/*
+	 * THE BUSY-SEND REFUSAL (architect D11). Raised by the page, not the store:
+	 * a busy send whose resolved mode is `queue`/`both` while the backend does
+	 * not advertise `features.busy_delivery`. The draft is kept and nothing is
+	 * sent as steer (which would claim the user meant that mode), so the
+	 * sentence states the version fact and the remedy. `false` keeps the text
+	 * with the user.
+	 */
+	get deliveryUnsupported() {
+		return t("ui.chat.canonical.send_failure.delivery_unsupported");
 	},
 } as const;
 
@@ -2704,6 +2724,12 @@ export async function admitChatDraft(
 		mode: "prompt" | "steer";
 		cwd: string;
 		/**
+		 * How a busy send reaches the running turn (see `submittedDelivery`). The
+		 * gate (`features.busy_delivery`, busy, non-steer) is applied by the
+		 * caller; the store only pins it so a replay resends the same body.
+		 */
+		delivery?: "steer" | "queue" | "both";
+		/**
 		 * How the message was produced (arch §4.2): `typed`, `dictated`, or
 		 * `mixed` since the box last emptied. Carriage only.
 		 */
@@ -2866,6 +2892,16 @@ export async function admitChatDraft(
 	const inputPath =
 		replay && previous ? previous.submittedInputPath : input.inputPath;
 	/*
+	 * THE SAME PINNING RULE GOVERNS `delivery`, FOR THE SAME REASON: it is part
+	 * of the hashed body, so the lost-response case must replay the value the
+	 * FIRST attempt sent. Replay verbatim INCLUDING ABSENCE, exactly like
+	 * `inputMode` above: on replay a turn that has since gone idle recomputes
+	 * to no delivery, and re-deriving would hash a different body for the same
+	 * request id — the one thing the pin exists to prevent.
+	 */
+	const delivery =
+		replay && previous ? previous.submittedDelivery : input.delivery;
+	/*
 	 * And the id follows the same rule: the last attempt's id when this is the same
 	 * message, a fresh one when it is not. A first send has no previous payload, so it
 	 * keeps the id the draft was staged with (`stageDraft`'s own mint) - that is the id
@@ -2901,6 +2937,7 @@ export async function admitChatDraft(
 		submittedImages: images,
 		submittedFiles: files,
 		submittedMode: mode,
+		submittedDelivery: delivery,
 		submittedInputMode: inputMode,
 		submittedInputPath: inputPath,
 		/*
@@ -3140,6 +3177,7 @@ export async function admitChatDraft(
 			images: images.length ? images : undefined,
 			...(files?.length ? { files } : {}),
 			mode,
+			delivery,
 			inputMode,
 			inputPath,
 		});
@@ -5460,6 +5498,7 @@ function unboundDraftRow(draft: ChatDraft): ChatDraft {
 		submittedAttachments: undefined,
 		submittedImages: undefined,
 		submittedMode: undefined,
+		submittedDelivery: undefined,
 		submittedInputMode: undefined,
 		submittedInputPath: undefined,
 		submittedAt: undefined,
@@ -8490,6 +8529,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						submittedAttachments: _attachments,
 						submittedImages: _images,
 						submittedMode: _mode,
+						submittedDelivery: _delivery,
 						submittedInputMode: _inputMode,
 						submittedInputPath: _inputPath,
 						heldClaimCode: _claimCode,

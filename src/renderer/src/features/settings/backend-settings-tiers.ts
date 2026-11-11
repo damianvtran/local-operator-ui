@@ -142,6 +142,16 @@ export const KEY_TIER: Record<string, SettingTier> = {
 	 * line is the decision it is detecting.
 	 */
 	"keymap.quick_send": "core",
+	/*
+	 * `core`: the label alone states the choice (steer/queue/both, with
+	 * descriptions), the section is `composer` LIVE so a write applies at the
+	 * next send, and it is a control over the surface the user is looking at —
+	 * the same three clauses the authoring rule names. Classified by decision
+	 * rather than left to the fall-through: a key that lands `advanced` by
+	 * accident is indistinguishable from one that lands there deliberately,
+	 * and this is the row the TUI and the desktop share.
+	 */
+	"delivery.busy_default": "core",
 	// approvals (1)
 	tool_approval_mode: "core",
 	// session (1), session_cleanup (5), session_delegated (2)
@@ -256,6 +266,64 @@ export const KEY_TIER: Record<string, SettingTier> = {
 	"speech.voice.language": "advanced",
 	"speech.voice.accent": "advanced",
 	"speech.voice.instructions": "advanced",
+	"speech.transcription.cleanup": "advanced",
+
+	/*
+	 * The registry growth that arrived with the busy-delivery backend slice
+	 * (S1 @ `4b70d0d83`): these keys were classified `advanced` here so the
+	 * drift test could hold the fixture beside them — NOT a presentation
+	 * decision. Their sections are owned by other surfaces (the Speech page,
+	 * Notifications, the guardrails/librarian surfaces), and whether any of
+	 * their master switches belongs on the everyday list is that surface's
+	 * design pass, not this slice's. `delivery.busy_default` above is the one
+	 * decision of this slice; `keymap.start_recording` is `advanced` like
+	 * `keymap.push_to_talk` because the Speech group promotes it out of this
+	 * section. A future slice may promote any of these; the drift test forces
+	 * that judgement to be explicit rather than silent.
+	 */
+	// compaction (1)
+	"compaction.resume_replay": "advanced",
+	// appearance (2)
+	"display.composer.command": "advanced",
+	"display.composer.command_interval": "advanced",
+	// guardrails (4)
+	"guardrails.enabled": "advanced",
+	"guardrails.critical_override": "advanced",
+	"guardrails.judge_timeout_s": "advanced",
+	"guardrails.rules_dir": "advanced",
+	// hub_org (1)
+	"hub.org.auto_enrol": "advanced",
+	// keymap (1)
+	"keymap.start_recording": "advanced",
+	// librarian (6)
+	"librarian.enabled": "advanced",
+	"librarian.cadence.at": "advanced",
+	"librarian.cadence.max_extra_per_day": "advanced",
+	"librarian.cadence.min_gap_minutes": "advanced",
+	"librarian.cadence.paused": "advanced",
+	"librarian.name": "advanced",
+	// memory (1)
+	"memory.capture.locators": "advanced",
+	// notification_sound (3)
+	"notifications.sound.enabled": "advanced",
+	"notifications.sound.id": "advanced",
+	"notifications.sound.volume": "advanced",
+	// providers (1)
+	"providers.anthropic.subagent_cache_ttl_1h_min_context_tokens": "advanced",
+	// radient_saver (1)
+	"radient.saver.mode": "advanced",
+	// remote_compute (1)
+	"remote_compute.enabled": "advanced",
+	// session_compression (2), session_scratchpad (1)
+	"session.compression.enabled": "advanced",
+	"session.compression.after_days": "advanced",
+	"session.scratchpad.max_bytes": "advanced",
+	// team_bridge (5)
+	"team_bridge.screening.budget_per_hour": "advanced",
+	"team_bridge.screening.ambient_budget_per_hour": "advanced",
+	"team_bridge.screening.sender_budget_per_hour": "advanced",
+	"team_bridge.screening.unaddressed_budget_per_hour": "advanced",
+	"team_bridge.screening.model": "advanced",
 
 	/* Authoritative snapshot convergence, not a product-tier promotion. Every
 	 * key below already rendered advanced through the prior key/section fallback

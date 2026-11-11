@@ -2278,6 +2278,16 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			 */
 			inputMode: z.enum(["typed", "dictated", "mixed"]).optional(),
 			inputPath: z.string().max(1024).optional(),
+			/*
+			 * HOW A BUSY-SEND MESSAGE REACHES THE RUNNING TURN (`steer`, `queue`,
+			 * `both`), and the harness gate is what keeps this `optional`:
+			 * `features.busy_delivery`. Absent means steer — the same answer a
+			 * body from an older build gets — so an older harness's own `.strict()`
+			 * schema never sees the key at all. Only ever set on a busy send whose
+			 * resolved mode is not `steer` (the renderer gates it, like
+			 * `inputMode`); `prompt` sends ignore it.
+			 */
+			delivery: z.enum(["steer", "queue", "both"]).optional(),
 		})
 		.strict(),
 	z
@@ -9424,6 +9434,15 @@ export function desktopEndpoint(request: DesktopRequest): {
 					 */
 					...(request.inputMode ? { input_mode: request.inputMode } : {}),
 					...(request.inputPath ? { input_path: request.inputPath } : {}),
+					/*
+					 * ABSENT, not empty, when the send has no delivery to name: an
+					 * older harness validates this body with `extra="forbid"`, so a
+					 * key present-but-null would be refused where a missing one is
+					 * simply a legacy body. The gate (`features.busy_delivery` and a
+					 * busy, non-steer send) is applied by the caller before this key
+					 * is ever set.
+					 */
+					...(request.delivery ? { delivery: request.delivery } : {}),
 				},
 			};
 		case "sessions.command":

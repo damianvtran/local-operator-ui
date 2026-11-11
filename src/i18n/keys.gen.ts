@@ -4601,6 +4601,7 @@ export type MessageParams = {
 	"ui.chat.canonical.send_failure.aside_not_answered": undefined;
 	"ui.chat.canonical.send_failure.aside_still_answering": undefined;
 	"ui.chat.canonical.send_failure.busy": undefined;
+	"ui.chat.canonical.send_failure.delivery_unsupported": undefined;
 	"ui.chat.canonical.send_failure.gate_lock": undefined;
 	"ui.chat.canonical.send_failure.generic": undefined;
 	"ui.chat.canonical.send_failure.gone": undefined;

@@ -13,9 +13,11 @@ import {
 	desktopResult,
 	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
+import type { BackendSettings } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
 	desktopFeatureState,
+	desktopKeys,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import {
@@ -156,6 +158,13 @@ import {
 	lockAnswerOutlived,
 	retryOfferedForFailureCode,
 } from "../composer-notice";
+import type { DeliveryMode } from "../composer-send-key";
+import {
+	BUSY_DELIVERY_UNSUPPORTED_CODE,
+	busyDefaultFromSettings,
+	mustRefuseBusyDelivery,
+	resolveBusyDelivery,
+} from "../composer-send-key";
 import { ChatDeviceHold } from "../device/chat-device-hold";
 import { ChatDeviceNotice } from "../device/chat-device-notice";
 import { ChatDeviceSlot } from "../device/chat-device-slot";
@@ -1224,6 +1233,35 @@ function SessionPanel({
 		"input_mode",
 	);
 	/*
+	 * AND WHETHER THE HARNESS WILL CARRY A BUSY-SEND DELIVERY.
+	 *
+	 * The same negotiation shape as `inputModeEnabled` — and the wire field is
+	 * the same kind of optional metadata an older harness's `.strict()` schema
+	 * would refuse — so `delivery` rides the body only on a backend that
+	 * advertises `features.busy_delivery`. A busy send whose resolved mode the
+	 * backend cannot honour is refused below, never sent as steer.
+	 */
+	const busyDeliverySupported = desktopFeatureEnabled(
+		capabilities.data,
+		"busy_delivery",
+	);
+	/*
+	 * THE BUSY-SEND DEFAULT, READ AT SEND TIME from the shared settings query.
+	 *
+	 * The same `/v1/settings` projection Backend settings renders
+	 * (`desktopKeys.settings`), so a write made in the TUI reaches the desktop
+	 * at its next focus (the query refetches on window focus and is replaced
+	 * on a Backend-settings write): a stale read is one send behind, never
+	 * ambiguous. Read in `send`, not here, so the value asked about is the one
+	 * in force at the press; unloaded or absent reads `steer` (see
+	 * `busyDefaultFromSettings`).
+	 */
+	const busyDefaultQuery = useQuery({
+		queryKey: desktopKeys.settings,
+		queryFn: () => desktopResult<BackendSettings>({ op: "settings.list" }),
+		enabled: desktopFeatureEnabled(capabilities.data, "settings"),
+	});
+	/*
 	 * AND WHETHER THE HARNESS ITSELF IS THE REASON, which is a different fact from
 	 * `mentionsEnabled`'s false (UX round 2, U12). That flag is false for a turn in
 	 * flight over a backend that CAN expand a mention, and the composer's sentence
@@ -1938,6 +1976,14 @@ function SessionPanel({
 		 * whichever value the first attempt carried.
 		 */
 		inputMode?: "typed" | "dictated" | "mixed",
+		/*
+		 * Which delivery mode the press selected, from the composer's send-key
+		 * predicate (`composer-send-key.ts`): the chord mode when the press was a
+		 * bound chord, `null` for plain Enter. Resolved against the settings
+		 * default below; `undefined` (the suggestion grid, a retry) is plain
+		 * Enter by construction.
+		 */
+		delivery?: DeliveryMode | null,
 	): Promise<SendOutcome> => {
 		const store = useCanonicalSessionsStore.getState();
 		// Same ROW the view reads, so a send can never address a different draft
@@ -2467,6 +2513,26 @@ function SessionPanel({
 					return false;
 				}
 			}
+			/*
+			 * THE BUSY-SEND GATE, resolved AT THE PRESS beside `mode` (architect D11).
+			 * The default is the settings value in force NOW, not at render time, and
+			 * a resolved queue/both this backend cannot honour REFUSES here — before
+			 * any admission, with the draft kept and nothing sent as steer.
+			 */
+			const deliveryGate = {
+				chordDelivery: delivery ?? null,
+				defaultMode: busyDefaultFromSettings(busyDefaultQuery.data?.settings),
+				busy: turnAlive,
+				busyDeliverySupported,
+			};
+			if (mustRefuseBusyDelivery(deliveryGate)) {
+				setSendError(SEND_FAILURE_COPY.deliveryUnsupported);
+				setSendErrorCode(BUSY_DELIVERY_UNSUPPORTED_CODE);
+				setSendErrorRetry(false);
+				setSendErrorMuted(false);
+				return false;
+			}
+			const deliveryValue = resolveBusyDelivery(deliveryGate);
 			const id = await admitChatDraft(
 				key,
 				{
@@ -2477,13 +2543,19 @@ function SessionPanel({
 					mode: turnAlive ? "steer" : "prompt",
 					cwd,
 					/*
-					 * The capability gate, applied HERE rather than at the composer: this
+					 * THE CAPABILITY GATE, applied HERE rather than at the composer: this
 					 * function already reads the capability map for the `@` affordance,
 					 * and one gate at the one seam every door passes is what keeps the
 					 * suggestion grid's own sends (which pass no `inputMode`) on the
 					 * legacy body by construction.
 					 */
 					inputMode: inputModeEnabled ? inputMode : undefined,
+					/*
+					 * Resolved above: present only for a busy send whose mode is not
+					 * steer on a backend that advertises `features.busy_delivery`
+					 * (see `resolveBusyDelivery`). `undefined` sends the legacy body.
+					 */
+					delivery: deliveryValue,
 				},
 				sessionId,
 				onEchoPainted,

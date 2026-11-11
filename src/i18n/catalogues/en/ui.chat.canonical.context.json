@@ -305,6 +305,13 @@
 		"length": "One compact status line, placeholder, button, or spoken suffix.",
 		"note": "English source: Your earlier message was delivered. Its words are still in the box, so sending again would repeat them."
 	},
+	"ui.chat.canonical.send_failure.delivery_unsupported": {
+		"length": "One compact status line.",
+		"note": "English source: This version of Local Operator cannot change how messages are sent while the agent is busy, so your message wasn't sent. Update the backend and try again. Controls (Retry/Clear) follow the existing refusal rules; this sidecar describes the sentence only.",
+		"placeholders": {},
+		"role": "Send failure notice",
+		"tone": "Concise, factual and actionable where the state has a next step."
+	},
 	"ui.chat.canonical.untitled": {
 		"role": "Send or conversation status",
 		"tone": "Concise, factual and actionable where the state has a next step.",

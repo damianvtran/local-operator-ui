@@ -88,11 +88,11 @@
 		"placeholders": {}
 	},
 	"ui.chat.composer.placeholder.waiting": {
-		"role": "composer placeholder for one input state",
-		"tone": "short state sentence, sentence case",
 		"length": "",
-		"note": "The composer's placeholder for this state. Shown only while the box is empty; sentence case unless the copy names a keyboard key. maxCells is an advisory translation target, not measured fit.",
-		"placeholders": {}
+		"note": "The composer's placeholder shown while the box is empty and a turn is running. Sending while the agent works uses the configured default mode. Sentence case unless the copy names a keyboard key. maxCells is an advisory translation target, not measured fit.",
+		"placeholders": {},
+		"role": "composer placeholder for one input state",
+		"tone": "short state sentence, sentence case"
 	},
 	"ui.chat.composer.start_recording": {
 		"role": "control tooltip and/or accessible name",
@@ -149,10 +149,11 @@
 		"maxCells": 48
 	},
 	"ui.chat.composer.steer_hint": {
+		"maxCells": 64,
+		"note": "Shown on the send control while the agent works and the box holds text: sending reaches the running turn using the configured default mode, and the Esc key (the only route to Stop while text is typed) stops it. Keep the key names Enter and Esc exactly as written. maxCells is an advisory translation target, not measured fit.",
+		"placeholders": {},
 		"role": "tooltip of the send control while an agent turn is running",
-		"tone": "short imperative sentence with one keyboard binding",
-		"note": "Shown on the send control while the agent works and the box holds text: sending steers the running turn, and the Esc key (the only route to Stop while text is typed) stops it. Keep the key names Enter and Esc exactly as written. maxCells is an advisory translation target, not measured fit.",
-		"maxCells": 64
+		"tone": "short imperative sentence with one keyboard binding"
 	},
 	"ui.chat.composer.stop": {
 		"role": "control tooltip and/or accessible name",

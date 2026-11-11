@@ -2595,10 +2595,16 @@ test("one rule decides what the same message means, and the composer keeps no se
 		"src/renderer/src/shared/hooks/use-message-input.ts",
 		"utf8",
 	);
+	/*
+	 * WHITESPACE-TOLERANT since the busy-delivery slice (S2): the hook's
+	 * `handleSubmit` gained an options parameter, and the formatter reflowed
+	 * this statement across lines. The pin is about the READS, not the layout,
+	 * so it matches the two fragments rather than one formatting.
+	 */
 	assert.match(
 		hook,
-		/const staged = conversationId \? stagedPayloadOf\(conversationId\) : undefined;/,
-		"the submit no longer reads its payload from the row that holds it, so what it sends and what it shows can disagree",
+		/const staged = conversationId\s*\? stagedPayloadOf\(conversationId\)\s*: undefined;/,
+		"the submit no longer reads its payload from the following the row that holds it, so what it sends and what it shows can disagree",
 	);
 	assert.match(
 		hook,

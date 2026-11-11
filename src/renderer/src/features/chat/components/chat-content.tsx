@@ -136,6 +136,7 @@ import {
 	canvasPaneMode,
 	rightSlotDividerContract,
 } from "../chat-sidebar-layout";
+import type { DeliveryMode as ComposerDeliveryMode } from "../composer-send-key";
 import type {
 	DraftPickerDestination,
 	DraftResolution,
@@ -271,6 +272,18 @@ type ChatContentProps = {
 		 * credential handed over in a conversation's first message is stored.
 		 */
 		beforeAdmission?: (sessionId: string) => Promise<string | undefined>,
+		/**
+		 * See `MessageInputProps.onSendMessage`: how the box produced the message
+		 * (`typed` / `dictated` / `mixed`). Forwarded verbatim to the page's
+		 * `send`, which gates it behind `features.input_mode`.
+		 */
+		inputMode?: "typed" | "dictated" | "mixed",
+		/**
+		 * See `MessageInputProps.onSendMessage`: which delivery mode the press
+		 * selected (`null` for plain Enter). Forwarded verbatim to the page's
+		 * `send`, which resolves it against the settings default.
+		 */
+		delivery?: ComposerDeliveryMode | null,
 	) => SendOutcome | Promise<SendOutcome>;
 	currentJobId: string | null;
 	onCancelJob: (jobId: string) => void;

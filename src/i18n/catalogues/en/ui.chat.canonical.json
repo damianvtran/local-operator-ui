@@ -54,6 +54,7 @@
 	"ui.chat.canonical.send_failure.late_delivery": "Your earlier message was delivered.",
 	"ui.chat.canonical.send_failure.late_delivery_draft": "Your earlier message was delivered. What's here now hasn't been sent.",
 	"ui.chat.canonical.send_failure.late_delivery_overlap": "Your earlier message was delivered. Its words are still in the box, so sending again would repeat them.",
+	"ui.chat.canonical.send_failure.delivery_unsupported": "This version of Local Operator cannot change how messages are sent while the agent is busy, so your message wasn't sent. Update the backend and try again.",
 	"ui.chat.canonical.turn_summary.completed": "completed",
 	"ui.chat.canonical.turn_summary.took": "Took {duration}",
 	"ui.chat.canonical.untitled": "Untitled chat",
