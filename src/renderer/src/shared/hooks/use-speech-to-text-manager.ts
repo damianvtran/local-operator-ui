@@ -391,8 +391,15 @@ export class SpeechToTextManager {
 	};
 
 	/**
-	 * Whether a bare-Space hold may engage: it may not while focus is in an
-	 * input-like element, where a space is a space.
+	 * Whether a bare-Space hold may engage: only on dead space. Space anywhere a
+	 * focus target lives must keep its own meaning there - a space in an input,
+	 * a press on a focused button.
+	 *
+	 * DEAD SPACE IS `null`, `<body>` or the document element. The older shape
+	 * refused only INPUT/TEXTAREA/contentEditable, so a bare `tabIndex={-1}`
+	 * scroller sitting under an invisible focus (the sidebar's conversation
+	 * list, focused by a click on its empty area) or a focused button, link or
+	 * select engaged dictation on Space - the press meant for that element.
 	 *
 	 * THE GUARD IS KEPT FOR THE LEGACY BINDING ONLY. The modifier combo does not
 	 * consult it: `AltRight` types nothing in a textarea, so suppressing it
@@ -401,11 +408,10 @@ export class SpeechToTextManager {
 	 */
 	private spaceFocusGuardRefuses(): boolean {
 		const activeElement = document.activeElement as HTMLElement | null;
-		return Boolean(
-			activeElement &&
-				(activeElement.tagName === "INPUT" ||
-					activeElement.tagName === "TEXTAREA" ||
-					activeElement.isContentEditable),
+		if (!activeElement) return false;
+		return (
+			activeElement !== document.body &&
+			activeElement !== document.documentElement
 		);
 	}
 
@@ -457,9 +463,19 @@ export class SpeechToTextManager {
 		if (event.repeat) {
 			/*
 			 * Auto-repeat is the key still being held, not a second press, and
-			 * not a second key: ignore it entirely.
+			 * not a second key. While a hold is engaged the hold OWNS the key
+			 * until keyup, so the repeat must be claimed too: only the first
+			 * keydown gets `preventDefault` through `engage()`, and every
+			 * repeat that falls through keeps Chromium's default - for Space
+			 * that is the page-scroll of whatever the focus orphan (the
+			 * sidebar's scroller) holds, which is the list running to the
+			 * bottom while the user just holds Space. When nothing is engaged
+			 * a repeat is still ignored entirely, as before.
 			 */
-			if (isPttKey || isSpace) return;
+			if (isPttKey || isSpace) {
+				if (this.engaged) event.preventDefault();
+				return;
+			}
 		}
 		if (isPttKey) {
 			/*
