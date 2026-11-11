@@ -69,6 +69,7 @@ import {
 	historyReadRetryDelay,
 	mergeChannelPage,
 	mergeOlderPageAtCursor,
+	rememberChannelEviction,
 	rememberChannelView,
 	selectChannelEvictions,
 	withChannelMessages,
@@ -510,6 +511,9 @@ export function sweepTeamBridgeChannelCache(
 		activeKey,
 	);
 	for (const key of victims) {
+		// Lets the prefetch plan skip a warmed-then-dropped entry (see
+		// `rememberChannelEviction`) instead of re-reading it every list change.
+		rememberChannelEviction(key);
 		const query = client
 			.getQueryCache()
 			.findAll({ queryKey: teamBridgeKeys.messagesPrefix })

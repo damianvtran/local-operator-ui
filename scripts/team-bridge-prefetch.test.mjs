@@ -17,6 +17,10 @@
  *    previews/archived and put unread first.
  * 6. The read still passes the owner fence: a different signed-in account
  *    warms nothing.
+ * 7. (PR #1869 round 1) A plan fits the cache's free room and never re-reads
+ *    what the retention sweep dropped unseen (R1); intent goes to the front,
+ *    hover is budgeted, press always wins (R2); the page can drop its queue
+ *    (R3); a 429 holds only the account it hit (R4).
  *
  * WHAT IS MOCKED: only the preload transport (`window.api.desktop.request`).
  * The query client, keys, owner fence, API parser and window merge are the
@@ -31,7 +35,8 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export * from "./src/renderer/src/features/team-bridge/team-bridge-prefetch";
-			export { teamBridgeMessagesQueryOptions } from "./src/renderer/src/features/team-bridge/use-team-bridge";
+			export { teamBridgeMessagesQueryOptions, sweepTeamBridgeChannelCache } from "./src/renderer/src/features/team-bridge/use-team-bridge";
+			export { rememberChannelView, wasEvictedUnviewed, TEAM_BRIDGE_MAX_CONVERSATIONS } from "./src/renderer/src/features/team-bridge/team-bridge-channel-cache";
 			export { teamBridgeKeys } from "./src/renderer/src/features/team-bridge/team-bridge-keys";
 			export { radientUserKeys } from "./src/renderer/src/shared/hooks/radient-account-authority";
 			export { QueryClient, QueryObserver } from "@tanstack/react-query";
@@ -57,10 +62,10 @@ const m = compiled.exports;
 const ACCOUNT = "acct_9f4c1e2d3a4b";
 const TENANT = "org_a1b2c3";
 
-const status = () => ({
+const status = (accountId = ACCOUNT) => ({
 	capability: 3,
 	state: "ready",
-	account_id: ACCOUNT,
+	account_id: accountId,
 	tenant_id: TENANT,
 	surface_state: "C",
 	visibility: {
@@ -346,4 +351,220 @@ test("candidates: unread first, then recent; previews and archived skipped; boun
 		m.TEAM_BRIDGE_PREFETCH_MAX,
 	);
 	assert.ok(m.TEAM_BRIDGE_PREFETCH_MAX < 20, "under the retention bound");
+});
+
+/* ---- PR #1869 round-1 remediation (R1-R4) ---- */
+
+const messageKey = (client, id) =>
+	JSON.stringify(
+		m.teamBridgeMessagesQueryOptions(client, id, TENANT, ACCOUNT).queryKey,
+	);
+const cachedCount = (client) =>
+	client
+		.getQueryCache()
+		.findAll({ queryKey: m.teamBridgeKeys.messagesPrefix })
+		.filter((query) => query.state.data !== undefined).length;
+
+test("R1: with many opened conversations, repeated list changes re-read nothing", async () => {
+	const client = mount();
+	const wire = transport();
+	/* The reader has opened 12 conversations (warm + in the view order). */
+	const viewed = Array.from({ length: 12 }, (_, i) => row(`bcv_r1_seen_${i}`));
+	m.prefetchTeamBridgeConversations(client, ACCOUNT, viewed);
+	await wire.releaseAll();
+	for (const r of viewed) m.rememberChannelView(messageKey(client, r.id));
+	const active = messageKey(client, viewed[0].id);
+	const base = wire.calls.length;
+	/* The same 12 candidates re-planned on every list answer, one sweep each
+	   (the open timeline's data change), as in the reviewer's repro. */
+	const candidates = Array.from({ length: 12 }, (_, i) =>
+		row(`bcv_r1_guess_${i}`),
+	);
+	const perCycle = [];
+	for (let cycle = 0; cycle < 4; cycle += 1) {
+		const before = wire.calls.length;
+		m.prefetchTeamBridgeConversations(client, ACCOUNT, candidates);
+		await wire.releaseAll();
+		m.sweepTeamBridgeChannelCache(client, active);
+		perCycle.push(wire.calls.length - before);
+		assert.ok(cachedCount(client) <= m.TEAM_BRIDGE_MAX_CONVERSATIONS);
+	}
+	/* Only the free room (20 - 12 = 8) is ever read, once; nothing is evicted
+	   and so nothing is re-read. Before the fix: [12, 4, 4, 4]. */
+	assert.deepEqual(perCycle, [8, 0, 0, 0]);
+	assert.equal(wire.calls.length - base, 8);
+	client.clear();
+});
+
+test("R1: an entry the sweep dropped unseen is not planned again until opened", async () => {
+	const client = mount();
+	const wire = transport();
+	m.prefetchTeamBridgeConversations(client, ACCOUNT, [row("bcv_r1_drop")]);
+	await wire.releaseAll();
+	const key = messageKey(client, "bcv_r1_drop");
+	/* 20 conversations opened after it push it out (unviewed ranks oldest). */
+	const opened = Array.from({ length: 20 }, (_, i) => row(`bcv_r1_open_${i}`));
+	for (const r of opened) {
+		/* The timeline's own read (held by the transport until released). */
+		const read = client.fetchQuery(
+			m.teamBridgeMessagesQueryOptions(client, r.id, TENANT, ACCOUNT),
+		);
+		await wire.releaseAll();
+		await read;
+		m.rememberChannelView(messageKey(client, r.id));
+	}
+	m.sweepTeamBridgeChannelCache(client, messageKey(client, opened[0].id));
+	assert.equal(client.getQueryData(JSON.parse(key)), undefined, "evicted");
+	assert.equal(m.wasEvictedUnviewed(key), true);
+	/* Free room again (the reader's entries go), yet the plan skips it. */
+	client.removeQueries({ queryKey: m.teamBridgeKeys.messagesPrefix });
+	const before = wire.calls.length;
+	m.prefetchTeamBridgeConversations(client, ACCOUNT, [row("bcv_r1_drop")]);
+	await wire.releaseAll();
+	assert.equal(wire.calls.length, before, "no re-read of a dropped guess");
+	/* Opened once, it is an ordinary candidate again. */
+	m.rememberChannelView(key);
+	m.prefetchTeamBridgeConversations(client, ACCOUNT, [row("bcv_r1_drop")]);
+	await wire.releaseAll();
+	assert.equal(wire.calls.length, before + 1);
+	client.clear();
+});
+
+test("R2: a hovered row outside the plan is read next, ahead of the plan", async () => {
+	const client = mount();
+	const wire = transport();
+	const rows = Array.from({ length: 9 }, (_, i) => row(`bcv_r2_${i}`));
+	m.prefetchTeamBridgeConversations(client, ACCOUNT, rows);
+	m.prefetchTeamBridgeConversationNow(client, ACCOUNT, row("bcv_r2_hover"));
+	await wire.releaseAll();
+	const order = wire.calls.map((call) => call.conversation_id);
+	/* The first CONCURRENCY plan reads were already out; the hover is next.
+	   Before the fix it was index 9 of 10 (pushed behind the plan). */
+	assert.equal(
+		order.indexOf("bcv_r2_hover"),
+		m.TEAM_BRIDGE_PREFETCH_CONCURRENCY,
+	);
+	assert.equal(order.length, 10);
+	client.clear();
+});
+
+test("R2: a pointer sweep across 30 rows spends at most the hover budget", async () => {
+	const client = mount();
+	const wire = transport();
+	const rail = Array.from({ length: 30 }, (_, i) => row(`bcv_sweep_${i}`));
+	for (const r of rail) m.prefetchTeamBridgeConversationNow(client, ACCOUNT, r);
+	await wire.releaseAll();
+	assert.ok(
+		wire.calls.length <= m.TEAM_BRIDGE_PREFETCH_INTENT_BUDGET,
+		`sweep issued ${wire.calls.length} reads`,
+	);
+	/* The newest hover (where the pointer stopped) is among them. */
+	assert.ok(wire.calls.some((call) => call.conversation_id === "bcv_sweep_29"));
+	/* Budget spent, a press still reads, and before any queued guess. */
+	m.prefetchTeamBridgeConversations(
+		client,
+		ACCOUNT,
+		Array.from({ length: 5 }, (_, i) => row(`bcv_sweep_plan_${i}`)),
+	);
+	const before = wire.calls.length;
+	m.prefetchTeamBridgeConversationNow(
+		client,
+		ACCOUNT,
+		row("bcv_sweep_pressed"),
+		"press",
+	);
+	await wire.releaseAll();
+	const after = wire.calls.slice(before).map((call) => call.conversation_id);
+	assert.equal(after[0], "bcv_sweep_pressed", "press read first");
+	/* Hover budget still spent: a further hover in the window reads nothing. */
+	const spent = wire.calls.length;
+	m.prefetchTeamBridgeConversationNow(client, ACCOUNT, row("bcv_sweep_late"));
+	await wire.releaseAll();
+	assert.equal(wire.calls.length, spent);
+	client.clear();
+});
+
+test("R2: the hover budget refills after its window", async () => {
+	const client = mount();
+	const wire = transport();
+	const realNow = Date.now;
+	const t0 = realNow();
+	Date.now = () => t0;
+	try {
+		for (let i = 0; i < 10; i += 1) {
+			m.prefetchTeamBridgeConversationNow(
+				client,
+				ACCOUNT,
+				row(`bcv_refill_${i}`),
+			);
+			await wire.releaseAll();
+		}
+		assert.equal(wire.calls.length, m.TEAM_BRIDGE_PREFETCH_INTENT_BUDGET);
+		Date.now = () => t0 + m.TEAM_BRIDGE_PREFETCH_INTENT_WINDOW_MS + 1;
+		m.prefetchTeamBridgeConversationNow(
+			client,
+			ACCOUNT,
+			row("bcv_refill_next"),
+		);
+		await wire.releaseAll();
+		assert.equal(wire.calls.length, m.TEAM_BRIDGE_PREFETCH_INTENT_BUDGET + 1);
+	} finally {
+		Date.now = realNow;
+	}
+	client.clear();
+});
+
+test("R3: cancelling drops queued guesses; in-flight reads finish", async () => {
+	const client = mount();
+	const wire = transport();
+	const rows = Array.from({ length: 9 }, (_, i) => row(`bcv_r3_${i}`));
+	m.prefetchTeamBridgeConversations(client, ACCOUNT, rows);
+	m.cancelTeamBridgePrefetch(client);
+	await wire.releaseAll();
+	assert.equal(wire.calls.length, m.TEAM_BRIDGE_PREFETCH_CONCURRENCY);
+	/* The dropped rows are not stuck as "queued": a later plan reads them. */
+	m.prefetchTeamBridgeConversations(client, ACCOUNT, rows);
+	await wire.releaseAll();
+	assert.equal(wire.calls.length, 9);
+	client.clear();
+});
+
+test("R4: a 429 on one account does not hold another account's prefetch", async () => {
+	const OTHER = "acct_7b7b7b7b7b7b";
+	const client = mount();
+	let limited = true;
+	const wire = transport((id) =>
+		limited
+			? {
+					status: 429,
+					body: {
+						detail: {
+							code: "rate_limited",
+							message: "slow",
+							retry_after_seconds: 2,
+						},
+					},
+				}
+			: { status: 200, body: { result: page(id) } },
+	);
+	m.prefetchTeamBridgeConversations(client, ACCOUNT, [row("bcv_r4_a")]);
+	await wire.releaseAll();
+	assert.equal(wire.calls.length, 1);
+	limited = false;
+	/* Account switch: B signed in, with its own bridge status. */
+	client.setQueryData(m.radientUserKeys.user(), {
+		account: { id: OTHER, email: "b@example.test" },
+	});
+	client.setQueryData(m.teamBridgeKeys.statusFor(OTHER), status(OTHER));
+	m.prefetchTeamBridgeConversations(client, OTHER, [row("bcv_r4_b")]);
+	await wire.releaseAll();
+	assert.equal(wire.calls.length, 2, "B is not held by A's 429");
+	assert.ok(
+		client.getQueryData(m.teamBridgeKeys.messages("bcv_r4_b", TENANT, OTHER)),
+	);
+	/* A stays held. */
+	m.prefetchTeamBridgeConversations(client, ACCOUNT, [row("bcv_r4_a2")]);
+	await wire.releaseAll();
+	assert.equal(wire.calls.length, 2);
+	client.clear();
 });

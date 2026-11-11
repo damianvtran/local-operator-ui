@@ -626,6 +626,9 @@ const VIEW_ORDER_CAP = 200;
 
 /** Record that a conversation is on screen now. */
 export function rememberChannelView(key: string): void {
+	/* Opened now, so it is no longer "warmed and dropped unseen": a later
+	   eviction ranks it as viewed, and a prefetch plan may warm it again. */
+	EVICTED_UNVIEWED.delete(key);
 	const at = VIEW_ORDER.indexOf(key);
 	if (at !== -1) VIEW_ORDER.splice(at, 1);
 	VIEW_ORDER.unshift(key);
@@ -635,4 +638,35 @@ export function rememberChannelView(key: string): void {
 /** A snapshot, for the eviction pass and for tests. */
 export function channelViewOrder(): readonly string[] {
 	return VIEW_ORDER;
+}
+
+/*
+ * ENTRIES THE SWEEP DROPPED BEFORE ANYONE OPENED THEM (PR #1869 review R1).
+ *
+ * A background prefetch writes entries the reader has not opened, and the
+ * eviction policy above ranks exactly those as the oldest. Without this memory
+ * the two form a loop: the sweep drops a warmed entry, the next list answer
+ * finds it cold and the prefetch plan reads it again, the sweep drops it again
+ * - a steady stream of reads that warm nothing, against the per-account bucket
+ * agent sessions share. Recording the drop lets the plan skip the key until the
+ * reader actually opens it (`rememberChannelView` clears it), whichever bound
+ * (count or bytes) did the dropping. Same shape and lifetime as `VIEW_ORDER`:
+ * cache-key strings, renderer memory only, bounded.
+ */
+const EVICTED_UNVIEWED = new Set<string>();
+
+/** The sweep dropped `key`; remember it if the reader never opened it. */
+export function rememberChannelEviction(key: string): void {
+	if (VIEW_ORDER.includes(key)) return;
+	EVICTED_UNVIEWED.add(key);
+	if (EVICTED_UNVIEWED.size > VIEW_ORDER_CAP) {
+		// Oldest first: a Set iterates in insertion order.
+		const oldest = EVICTED_UNVIEWED.values().next().value;
+		if (oldest !== undefined) EVICTED_UNVIEWED.delete(oldest);
+	}
+}
+
+/** Was `key` warmed and then evicted without ever being opened? */
+export function wasEvictedUnviewed(key: string): boolean {
+	return EVICTED_UNVIEWED.has(key);
 }

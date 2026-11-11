@@ -81,6 +81,10 @@ import {
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import {
+	preloadWhenIdle,
+	preloadableImport,
+} from "@shared/utils/preloadable-import";
 
 // The other five routes are split out so a cold start neither downloads nor
 // parses them. They export named components rather than defaults, so each
@@ -131,8 +135,15 @@ const NotificationsPage = lazy(() =>
 		default: m.NotificationsPage,
 	})),
 );
+/* Preloadable (PR #1869 Q1): the shell downloads this chunk at idle once the
+   backend advertises Team Bridge, so the first open after launch does not pay
+   for it. `load` resolves synchronously once downloaded (see
+   `preloadable-import.ts`), so `lazy` never shows its fallback for it then. */
+const teamBridgePageChunk = preloadableImport(
+	() => import("@features/team-bridge/team-bridge-page"),
+);
 const TeamBridgePage = lazy(() =>
-	import("@features/team-bridge/team-bridge-page").then((m) => ({
+	teamBridgePageChunk.load().then((m) => ({
 		default: m.TeamBridgePage,
 	})),
 );
@@ -328,6 +339,15 @@ const App: FC = () => {
 	const bridgeState = desktopFeatureState(
 		capabilities.data,
 		"team_bridge_conversations",
+	);
+	/* Warm the Team Bridge chunk at idle, only for a backend that serves the
+	   route (the same predicate that mounts it): nobody else downloads it. */
+	useEffect(
+		() =>
+			bridgeState === "enabled"
+				? preloadWhenIdle(teamBridgePageChunk.preload)
+				: undefined,
+		[bridgeState],
 	);
 	/*
 	 * TEAM BRIDGE TAKES THE LEFT COLUMN (operator, 2026-11-03: "the left sidebar

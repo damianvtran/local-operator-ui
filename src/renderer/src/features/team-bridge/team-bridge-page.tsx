@@ -224,6 +224,8 @@ import {
 	usePendingSends,
 } from "./team-bridge-pending-sends";
 import {
+	type TeamBridgePrefetchIntent,
+	cancelTeamBridgePrefetch,
 	prefetchTeamBridgeConversationNow,
 	prefetchTeamBridgeConversations,
 	teamBridgePrefetchCandidates,
@@ -736,7 +738,10 @@ export type TeamBridgePageViewProps = {
 	refreshingRows?: boolean;
 	/** A conversation row the reader is about to open (hover, press, focus): the
 	 * container warms its first history page. Absent in stories. */
-	onConversationIntent?: (conversation: TeamBridgeConversation) => void;
+	onConversationIntent?: (
+		conversation: TeamBridgeConversation,
+		intent: TeamBridgePrefetchIntent,
+	) => void;
 	/**
 	 * The unread read is in flight behind painted rows. The count is the one number
 	 * a reader acts on, so it is reported separately from `refreshingRows` rather
@@ -2907,7 +2912,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					}
 					onIntent={
 						onConversationIntent
-							? () => onConversationIntent(conversation)
+							? (intent) => onConversationIntent(conversation, intent)
 							: undefined
 					}
 					menu={menuFor(conversation)}
@@ -5523,10 +5528,24 @@ const TeamBridgeOwnedPage: FC<{
 			teamBridgePrefetchCandidates(authoritativeRows),
 		);
 	}, [readsEnabled, authoritativeRows, client, accountId]);
+	/* Queued guesses belong to this page and this account (review R3): drop
+	   them when either goes away, so nobody's bucket pays for a rail no one is
+	   looking at. A separate effect, not the plan's cleanup: the plan re-runs on
+	   every list answer, and clearing there would also drop a pending hover. */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `accountId` is the trigger, not an input: an account change must drop the old account's queue.
+	useEffect(() => () => cancelTeamBridgePrefetch(client), [client, accountId]);
 	const warmConversation = useCallback(
-		(conversation: TeamBridgeConversation) => {
+		(
+			conversation: TeamBridgeConversation,
+			intent: TeamBridgePrefetchIntent,
+		) => {
 			if (readsEnabled)
-				prefetchTeamBridgeConversationNow(client, accountId, conversation);
+				prefetchTeamBridgeConversationNow(
+					client,
+					accountId,
+					conversation,
+					intent,
+				);
 		},
 		[readsEnabled, client, accountId],
 	);

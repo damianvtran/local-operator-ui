@@ -421,9 +421,11 @@ export const ConversationRailRow: FC<{
 	 * The reader is about to open this row: pointer over it, pressing it, or
 	 * keyboard focus. The page warms the row's first history page so the click
 	 * paints from cache (bridge-instant-load S3). A hint only — it must never
-	 * select, mark read or change anything the reader can see.
+	 * select, mark read or change anything the reader can see. `press` (pointer
+	 * down) is the click arriving and always reads; `hover` (pointer enter or
+	 * keyboard focus) is rate-budgeted, because a pointer sweep crosses every row.
 	 */
-	onIntent?: () => void;
+	onIntent?: (intent: "hover" | "press") => void;
 	/**
 	 * The conversation menu, the SAME item list the header "…" draws
 	 * (`conversationMenuSections`); absent or empty, the row has no "…" and no
@@ -460,9 +462,9 @@ export const ConversationRailRow: FC<{
 			<button
 				type="button"
 				onClick={onSelect}
-				onPointerEnter={onIntent}
-				onPointerDown={onIntent}
-				onFocus={onIntent}
+				onPointerEnter={onIntent ? () => onIntent("hover") : undefined}
+				onPointerDown={onIntent ? () => onIntent("press") : undefined}
+				onFocus={onIntent ? () => onIntent("hover") : undefined}
 				/* RIGHT-CLICK OPENS THE ROW'S OWN MENU (operator 2026-11-04). This
 				   used to be left to the desktop shell; a Team Bridge row now has a
 				   menu of its own acts, so the gesture every sidebar teaches opens it.
