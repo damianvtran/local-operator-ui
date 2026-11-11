@@ -46,7 +46,14 @@ import type { TranscriptRecord, TranscriptState } from "./transcript-reducer";
 const TS = 1_760_000_000_000;
 
 /** A settled, complete agent answer with no stop reason - the ordinary case. */
-const answer = (id: string, text: string): TranscriptRecord => ({
+// `extra` overrides the assistant fields (the streaming story), as in
+// message-actions.stories.tsx: spreading the returned TranscriptRecord union
+// would not typecheck, since the user kind has no `streaming` field.
+const answer = (
+	id: string,
+	text: string,
+	extra: Partial<Extract<TranscriptRecord, { kind: "assistant" }>> = {},
+): TranscriptRecord => ({
 	kind: "assistant",
 	id,
 	ts: TS + 1_000,
@@ -55,6 +62,7 @@ const answer = (id: string, text: string): TranscriptRecord => ({
 	complete: true,
 	stopReason: null,
 	error: false,
+	...extra,
 });
 
 /** A transcript state holding one row, as `chat-content.tsx` hands one over. */
@@ -255,14 +263,11 @@ const INVALID_TEX = answer(
 );
 
 /** A message still streaming: the unclosed `$` and `\[` stay literal until closed. */
-const STREAMING_TRUNCATED: TranscriptRecord = {
-	...answer(
-		"a1",
-		"So far $x^2$ is settled, and the next term is $y^2 + \n\nThe energy is\n\n\\[\nE = mc",
-	),
-	streaming: true,
-	complete: false,
-};
+const STREAMING_TRUNCATED = answer(
+	"a1",
+	"So far $x^2$ is settled, and the next term is $y^2 + \n\nThe energy is\n\n\\[\nE = mc",
+	{ streaming: true, complete: false },
+);
 
 /** The operator's paragraph: seven formulas, no raw `$` left. */
 export const ScreenshotParagraph: Story = {

@@ -183,7 +183,8 @@ const flowNoCloser = new WeakMap<object, [number, number]>();
  * Q-2 measured.
  */
 const memoKey = (context: object): object =>
-	Object.hasOwn(context, "interrupt")
+	// Not `Object.hasOwn`: the renderer's TS lib predates ES2022.
+	Object.prototype.hasOwnProperty.call(context, "interrupt")
 		? (Object.getPrototypeOf(context) as object)
 		: context;
 
