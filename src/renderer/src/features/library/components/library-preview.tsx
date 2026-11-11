@@ -57,6 +57,7 @@ import {
 	assetDisplayName,
 	formatBytes,
 	libraryKindLabel,
+	organizedByLabel,
 	originGroupLabelKey,
 	relativeTime,
 } from "../library-model";
@@ -520,10 +521,10 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 					) : null}
 					{asset.organized ? (
 						<span>
-							{t("ui.library.preview.organized_by", {
-								by: asset.organized.by ?? "librarian",
-								at: relativeTime(asset.organized.at, nowMs),
-							})}
+							{organizedByLabel(
+								asset.organized.by,
+								relativeTime(asset.organized.at, nowMs),
+							)}
 						</span>
 					) : (
 						<span>{t("ui.library.preview.unorganized")}</span>

@@ -5070,6 +5070,7 @@ export type MessageParams = {
 	"ui.chat.audio.play": undefined;
 	"ui.chat.audio.play_label": { label: string };
 	"ui.chat.audio.position_label": { label: string };
+	"ui.chat.audio.position_value": { current: string; total: string };
 	"ui.chat.audio.unmute": undefined;
 	"ui.chat.checkpoint.generating_name": undefined;
 	"ui.chat.checkpoint.jump_agent": {
@@ -8695,7 +8696,11 @@ export type MessageParams = {
 	"ui.library.preview.not_saved": undefined;
 	"ui.library.preview.open": undefined;
 	"ui.library.preview.open_externally": undefined;
-	"ui.library.preview.organized_by": { by: string; at: string };
+	"ui.library.preview.organized_by_agent": { at: string };
+	"ui.library.preview.organized_by_librarian": { at: string };
+	"ui.library.preview.organized_by_system": { at: string };
+	"ui.library.preview.organized_by_user": { at: string };
+	"ui.library.preview.organized_unattributed": { at: string };
 	"ui.library.preview.pptx_failed": undefined;
 	"ui.library.preview.pptx_failed_detail": undefined;
 	"ui.library.preview.pptx_loading": { percent: string };

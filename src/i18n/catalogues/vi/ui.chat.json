@@ -206,5 +206,6 @@
 	"ui.chat.session_status.effort_level.medium": "Trung bình",
 	"ui.chat.session_status.effort_level.high": "Cao",
 	"ui.chat.image_actions.actions": "Thao tác với ảnh",
-	"ui.chat.audio.position_label": "Vị trí phát của {label}"
+	"ui.chat.audio.position_label": "Vị trí phát của {label}",
+	"ui.chat.audio.position_value": "{current} trên {total}"
 }
