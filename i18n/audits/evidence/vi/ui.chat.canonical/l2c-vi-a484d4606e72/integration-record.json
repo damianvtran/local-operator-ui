@@ -18,7 +18,7 @@
    "origin": "auditor report, copied byte-for-byte from the auditor session scratchpad"
   },
   "verify.log": {
-   "sha256": "75cf8e8e6f8d34edec54734e615f9592507c5bb806a8e824e44b562406d8164c",
+   "sha256": "f90bfc68144a73f8d4df1ea52f3df283e2f6373d0ab2977ee5c497793b083611",
    "origin": "INTEGRATOR re-check, not the auditor"
   }
  }
