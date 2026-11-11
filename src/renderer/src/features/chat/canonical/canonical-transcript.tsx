@@ -63,10 +63,11 @@ import { TextSelectionControls } from "@shared/components/common/text-selection-
 import { Button } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { useCompletionView } from "@shared/hooks/use-completion-view";
-import { formatDateTime, t } from "@shared/i18n";
+import { type WithoutParams, formatDateTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
+	busySendModes,
 	remoteOwnedId,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
@@ -98,8 +99,10 @@ import {
 	type PointerEvent,
 	type ReactNode,
 	type RefObject,
+	createContext,
 	memo,
 	useCallback,
+	useContext,
 	useEffect,
 	useLayoutEffect,
 	useMemo,
@@ -185,6 +188,7 @@ import { CanvasPaneProvider } from "../utils/canvas-pane";
 import { copyTarget } from "../utils/link-open";
 import { openPathInCanvas } from "../utils/open-in-canvas";
 import { parseReplies } from "../utils/reply-utils";
+import { type BusyWaitState, busyWaitLabels } from "./busy-wait";
 import { CanonicalAudio } from "./canonical-audio";
 import { CanonicalImage } from "./canonical-image";
 import { CheckpointRail } from "./checkpoint-rail";
@@ -1042,6 +1046,38 @@ const toolAudioLabel = (
 	count: number,
 ): string => audio.name ?? (count === 1 ? "Sound" : `Sound ${index + 1}`);
 
+/**
+ * THE BUSY-SEND WAITING LABELS, provided by the pane and read by a row.
+ *
+ * WHY A CONTEXT RATHER THAN PROPS. `UserRow` is memoised on its record and the
+ * pane is what holds the `frontend` frame, so threading the queue into every
+ * row's props would hand every row a new prop on every token and re-render the
+ * whole window; a context value that only changes when the queue or the
+ * streaming flag changes keeps the rows' own memo intact. `busy-wait.ts` owns
+ * the rule - which ids get a label and which sentence each state earns - and
+ * this is only the seam between the frame and the rows.
+ *
+ * `null` outside the pane (a row rendered on its own, a story that mounts only
+ * the row): a row with no provider draws nothing, which is the same answer as
+ * "not queued".
+ */
+const BusyWaitLabels = createContext<ReadonlyMap<string, BusyWaitState> | null>(
+	null,
+);
+
+/**
+ * The one sentence each waiting state says, as explicit ids rather than a
+ * composed string: `t` is typed against `keys.gen.ts`, and a template literal
+ * would widen the key to `string` and lose that contract.
+ */
+const BUSY_WAIT_KEYS: Record<BusyWaitState, WithoutParams> = {
+	steer: "ui.chat.canonical.transcript.busy_wait.steer",
+	queue: "ui.chat.canonical.transcript.busy_wait.queue",
+	both: "ui.chat.canonical.transcript.busy_wait.both",
+	joined: "ui.chat.canonical.transcript.busy_wait.joined",
+	deferred: "ui.chat.canonical.transcript.busy_wait.deferred",
+};
+
 const UserRow = memo(function UserRow({
 	record,
 	isSmallView,
@@ -1080,6 +1116,13 @@ const UserRow = memo(function UserRow({
 	 * per-surface one the mesh components carry for the same reason.
 	 */
 	useI18nLocale();
+	/*
+	 * The waiting label, when the backend holds this exact message in the running
+	 * turn's queue (`busy-wait.ts` owns the rule). Read off the pane's context
+	 * rather than passed down, and `null` when this row is not queued - which is
+	 * the ordinary case: nothing is drawn.
+	 */
+	const busyWait = useContext(BusyWaitLabels)?.get(record.id) ?? null;
 	/*
 	 * Which link on this turn the toolbar is about, if any. ONE subject per row,
 	 * decided by one hook (`use-link-subject.ts`), because the alternative is one
@@ -1745,6 +1788,33 @@ const UserRow = memo(function UserRow({
 					)}
 					<TurnTimestamp timestamp={record.ts} scope="turn" />
 				</span>
+				{/*
+				 * THE WAITING LINE, ONE ROW BELOW THE MESSAGE IT IS ABOUT (spec §C).
+				 *
+				 * It says what Enter did while the turn runs - steers, queues, queues then
+				 * steers - and it is drawn ONLY while the backend holds this id in
+				 * `frontend.queued_steering` (`busy-wait.ts`), so it cannot claim a wait that
+				 * is not happening. The mode itself is the client's own record of the press;
+				 * the queue is the owner's fact (`backend session/frontend_state.py`).
+				 *
+				 * NO ICON AND NO LIVE REGION: the connection strip owns the one live region
+				 * (the undelivered line below records the same rule), and the row is a status
+				 * line the reader reaches by reading, not an interruption. It is NOT shown
+				 * beside the undelivered line: a message that failed to be delivered is not
+				 * waiting - the failure sentence is the truth about it and this would
+				 * contradict it.
+				 *
+				 * `data-busy-wait` is the rig's address for the line, the same structural-
+				 * marker rule the undelivered row follows.
+				 */}
+				{busyWait !== null && undelivered === null && (
+					<div
+						data-busy-wait
+						className={cn("flex w-full justify-end text-meta text-ink-muted")}
+					>
+						{t(BUSY_WAIT_KEYS[busyWait])}
+					</div>
+				)}
 				{/*
 				 * §F3's LINE, ONE ROW UNDER THE BLOCK IT IS ABOUT.
 				 *
@@ -4222,6 +4292,38 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		anchors: new Set(),
 	});
 	const sessionId = frontend?.session_id ?? null;
+	/*
+	 * THE WAITING LABELS FOR BUSY SENDS THE OWNER HAS QUEUED.
+	 *
+	 * Two sources meet here and nowhere else: `frontend.queued_steering` (the
+	 * daemon's own list; its ids are the ids the send's echo row carries) says
+	 * WHICH messages are waiting, and `noteBusySend`'s map says how each was
+	 * sent. The fold itself is `busyWaitLabels` in `busy-wait.ts`; this is only
+	 * the wiring.
+	 *
+	 * THE HOOK IS KEYED ON A CHEAP SIGNATURE, not on the frame: `queued_steering`
+	 * is a new array on every frame, so a memo keyed on it would hand React a
+	 * new map every time and re-render every user row in the list on every
+	 * streamed token. The map is empty until the backend reports an id that
+	 * `noteBusySend` knows, so the one string below changes exactly when a
+	 * label can appear or disappear.
+	 */
+	const busyWaitQueueSignature = useMemo(() => {
+		const ids = (frontend?.queued_steering ?? [])
+			.map((item) => (typeof item.id === "string" ? item.id : ""))
+			.join("\u0000");
+		return `${frontend?.streaming ? "1" : "0"}\u0001${ids}`;
+	}, [frontend?.queued_steering, frontend?.streaming]);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the signature stands in for both frame inputs (rebuilt whenever the queue or the streaming flag changes); listing them directly would re-derive the map on every streamed token and re-render every user row. The modes map is not a dependency: it only matters for an id that has since entered the queue, and that entry moves the signature.
+	const busyWaitByRecord = useMemo(
+		() =>
+			busyWaitLabels(
+				frontend?.queued_steering ?? [],
+				Boolean(frontend?.streaming),
+				busySendModes(),
+			),
+		[busyWaitQueueSignature],
+	);
 	/*
 	 * THE CONVERSATION KEY THE READER'S STORES ARE KEYED BY (operator report,
 	 * 2026-10-21). `frontend` is null until the owner publishes a snapshot AND
@@ -8149,8 +8251,10 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	 * renders exactly as before.
 	 */
 	return (
-		<FlagLinesProvider sessionId={sessionId}>
-			{transcriptColumn}
-		</FlagLinesProvider>
+		<BusyWaitLabels.Provider value={busyWaitByRecord}>
+			<FlagLinesProvider sessionId={sessionId}>
+				{transcriptColumn}
+			</FlagLinesProvider>
+		</BusyWaitLabels.Provider>
 	);
 };

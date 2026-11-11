@@ -345,7 +345,7 @@ test("the busy placeholder names the resolved mode", async () => {
 	await mount({ busyDefaultMode: "both" });
 	assert.equal(
 		field()?.placeholder,
-		"Enter waits, then interrupts · Esc stops",
+		"Enter queues, then steers · Esc stops",
 		"both default names the both sentence",
 	);
 	await mount({ busyDefaultMode: "steer" });
@@ -434,7 +434,11 @@ test("evaluateBusySend: busy + supported + queue chord puts queue on the body", 
 		busy: true,
 		busyDeliverySupported: true,
 	});
-	assert.deepEqual(result, { refused: false, delivery: "queue" });
+	assert.deepEqual(result, {
+		refused: false,
+		delivery: "queue",
+		waitMode: "queue",
+	});
 });
 
 test("evaluateBusySend: busy + unsupported + queue chord refuses, with no body", () => {
@@ -444,7 +448,11 @@ test("evaluateBusySend: busy + unsupported + queue chord refuses, with no body",
 		busy: true,
 		busyDeliverySupported: false,
 	});
-	assert.deepEqual(result, { refused: true, delivery: undefined });
+	assert.deepEqual(result, {
+		refused: true,
+		delivery: undefined,
+		waitMode: null,
+	});
 });
 
 test("evaluateBusySend: idle + queue chord puts nothing on the body", () => {
@@ -454,7 +462,11 @@ test("evaluateBusySend: idle + queue chord puts nothing on the body", () => {
 		busy: false,
 		busyDeliverySupported: true,
 	});
-	assert.deepEqual(result, { refused: false, delivery: undefined });
+	assert.deepEqual(result, {
+		refused: false,
+		delivery: undefined,
+		waitMode: null,
+	});
 });
 
 test("evaluateBusySend: a steer chord on an unsupported backend is not refused", () => {
@@ -466,7 +478,11 @@ test("evaluateBusySend: a steer chord on an unsupported backend is not refused",
 		busy: true,
 		busyDeliverySupported: false,
 	});
-	assert.deepEqual(result, { refused: false, delivery: undefined });
+	assert.deepEqual(result, {
+		refused: false,
+		delivery: undefined,
+		waitMode: "steer",
+	});
 });
 
 test("evaluateBusySend: the settings default, read at the press, drives plain Enter", () => {
@@ -480,7 +496,7 @@ test("evaluateBusySend: the settings default, read at the press, drives plain En
 			busy: true,
 			busyDeliverySupported: true,
 		}),
-		{ refused: false, delivery: "queue" },
+		{ refused: false, delivery: "queue", waitMode: "queue" },
 	);
 	assert.deepEqual(
 		evaluateBusySend({
@@ -489,7 +505,7 @@ test("evaluateBusySend: the settings default, read at the press, drives plain En
 			busy: true,
 			busyDeliverySupported: false,
 		}),
-		{ refused: true, delivery: undefined },
+		{ refused: true, delivery: undefined, waitMode: null },
 		"a queue default on an unsupported backend refuses, never sends steer",
 	);
 	assert.deepEqual(
@@ -499,7 +515,7 @@ test("evaluateBusySend: the settings default, read at the press, drives plain En
 			busy: true,
 			busyDeliverySupported: true,
 		}),
-		{ refused: false, delivery: "both" },
+		{ refused: false, delivery: "both", waitMode: "both" },
 		"a chord mode wins over the default",
 	);
 });
@@ -598,7 +614,7 @@ test("busyDefaultMode reaches the placeholder through the real props", () => {
 	);
 	assert.equal(
 		composerPlaceholder({ ...base, busyDefaultMode: "both" }),
-		"Enter waits, then interrupts · Esc stops",
+		"Enter queues, then steers · Esc stops",
 	);
 	assert.equal(
 		composerPlaceholder({ ...base, busyDefaultMode: "steer" }),

@@ -2706,6 +2706,45 @@ async function messageWithBusyResend(
 	});
 }
 
+/**
+ * The delivery mode each busy send was pressed with, by request id.
+ *
+ * THE ONE CLIENT-SIDE SOURCE THE WAITING LABEL NEEDS. The backend publishes
+ * WHICH messages wait (`frontend.queued_steering[]`, whose `id` is this same
+ * request id) but not HOW each one will reach the turn, so the mode is
+ * remembered here at the press and joined to the queue by id in
+ * `busy-wait.ts`. It is client-local by design (spec §C): a reload loses the
+ * entries and the row loses its label rather than mislabelling it.
+ *
+ * BOUNDED AT 100, oldest out first: an entry is dead the moment its id leaves
+ * the queue, but nothing tells this module when that happens (the queue is read
+ * by the transcript, not written by this store), so the bound is what keeps a
+ * long session's map from growing without one. 100 is larger than the queue any
+ * turn holds in practice and small enough to stay a rounding error.
+ */
+const BUSY_SEND_MODES_LIMIT = 100;
+const busySendModeById = new Map<string, "steer" | "queue" | "both">();
+
+/** Record the mode a busy send was pressed with, for the transcript's label. */
+export function noteBusySend(
+	requestId: string,
+	mode: "steer" | "queue" | "both" | undefined,
+): void {
+	if (mode === undefined) return;
+	busySendModeById.set(requestId, mode);
+	// A `Map` iterates in insertion order, so the first key is the oldest.
+	while (busySendModeById.size > BUSY_SEND_MODES_LIMIT) {
+		const oldest = busySendModeById.keys().next().value;
+		if (oldest === undefined) break;
+		busySendModeById.delete(oldest);
+	}
+}
+
+/** The modes recorded so far, for `busyWaitLabels`. Read-only to callers. */
+export function busySendModes(): ReadonlyMap<string, string> {
+	return busySendModeById;
+}
+
 /** Create and admission are intentionally separate receipts. A response lost
  * between them retains its exact IDs and payload; retry never reallocates or
  * deletes work that may already have been admitted by the owner. */
@@ -2729,6 +2768,13 @@ export async function admitChatDraft(
 		 * caller; the store only pins it so a replay resends the same body.
 		 */
 		delivery?: "steer" | "queue" | "both";
+		/**
+		 * The same press's mode even when `delivery` does not ride the body (a
+		 * plain-Enter steer send is the legacy body). Recorded with
+		 * `noteBusySend` for the transcript's waiting label only: it never
+		 * reaches the wire.
+		 */
+		busyMode?: "steer" | "queue" | "both";
 		/**
 		 * How the message was produced (arch §4.2): `typed`, `dictated`, or
 		 * `mixed` since the box last emptied. Carriage only.
@@ -3168,6 +3214,10 @@ export async function admitChatDraft(
 		 * for the create hop, and this only settles its final text.
 		 */
 		if (id) replacePendingSendText(id, admissionRequestId, rendered);
+		// The label's mode is recorded with the id the queue will carry, and
+		// just before the request: a refused or failed attempt leaves an entry
+		// no queue will ever name, and an entry no queue names draws nothing.
+		noteBusySend(admissionRequestId, input.busyMode);
 		inFlight = "sessions.message";
 		await messageWithBusyResend({
 			op: "sessions.message",

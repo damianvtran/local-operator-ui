@@ -2576,6 +2576,14 @@ function SessionPanel({
 					 * (see `resolveBusyDelivery`). `undefined` sends the legacy body.
 					 */
 					delivery: deliveryValue,
+					/*
+					 * The same press's mode for the transcript's waiting label, which is
+					 * true for a steer send too - it queues while the turn runs, it just
+					 * rides no field. Never on the wire: the store records it so
+					 * `busy-wait.ts` can name a queued row (`waitMode`'s note in
+					 * composer-send-key.ts).
+					 */
+					busyMode: evaluation.waitMode ?? undefined,
 				},
 				sessionId,
 				onEchoPainted,

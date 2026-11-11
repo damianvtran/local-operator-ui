@@ -291,10 +291,19 @@ export const BUSY_DEFAULT_STALE_TIME = 10_000;
  *
  * ```
  *   evaluateBusySend({ chordDelivery, settings, busy, busyDeliverySupported })
- *     -> { refused: true }                                   — the page sets the
- *     -> { refused: false, delivery: DeliveryMode|undefined }  keyed notice
- *                                                             and returns false
+ *     -> { refused: true,  delivery: undefined, waitMode: null }
+ *     -> { refused: false, delivery: DeliveryMode|undefined,
+ *                          waitMode: DeliveryMode|null }
  * ```
+ *
+ * `waitMode` IS NOT `delivery`, and the difference is the transcript's waiting
+ * label: it says what Enter does while the turn runs (`steer`, `queue`, or
+ * queue-then-steer), so it is set for a plain-Enter steer send too — the one
+ * mode that rides no `delivery` field because steer is the legacy body. It is
+ * `null` on an idle send and on a refused one: nothing is waiting, or nothing
+ * was sent. The label itself is drawn only while the backend holds the id in
+ * `frontend.queued_steering` (`busy-wait.ts`), so this mode is a name for the
+ * wait, never a claim that one is happening.
  *
  * `busy` is the value the page read off `turnAliveRef` after the awaits,
  * never the render closure. `settings` is the shared settings query's
@@ -306,8 +315,12 @@ export const BUSY_DEFAULT_STALE_TIME = 10_000;
  * puts nothing on the body whatever the chord said.
  */
 export type BusySendEvaluation =
-	| { refused: true; delivery: undefined }
-	| { refused: false; delivery: DeliveryMode | undefined };
+	| { refused: true; delivery: undefined; waitMode: null }
+	| {
+			refused: false;
+			delivery: DeliveryMode | undefined;
+			waitMode: DeliveryMode | null;
+	  };
 
 export function evaluateBusySend(input: {
 	/** The press's chord mode, or `null` for plain Enter. */
@@ -326,7 +339,14 @@ export function evaluateBusySend(input: {
 		busyDeliverySupported: input.busyDeliverySupported,
 	};
 	if (mustRefuseBusyDelivery(gate)) {
-		return { refused: true, delivery: undefined };
+		return { refused: true, delivery: undefined, waitMode: null };
 	}
-	return { refused: false, delivery: resolveBusyDelivery(gate) };
+	return {
+		refused: false,
+		delivery: resolveBusyDelivery(gate),
+		// The mode the press selected, resolved here rather than at the label's
+		// seat: a refused or idle send must never leave a name behind for a wait
+		// that cannot happen (see the `waitMode` note above).
+		waitMode: input.busy ? (gate.chordDelivery ?? gate.defaultMode) : null,
+	};
 }

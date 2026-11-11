@@ -145,6 +145,7 @@ const module = await import(
 const {
 	useCanonicalSessionsStore: store,
 	admitChatDraft,
+	busySendModes,
 	desktopRequestSchema,
 	desktopEndpoint,
 	BUSY_DEFAULT_STALE_TIME,
@@ -418,6 +419,47 @@ test("a busy send carries delivery on the body; a legacy send carries no key", a
 	assert.ok(!("delivery" in desktopEndpoint(legacyLast).body));
 });
 
+test("the mode the transcript's waiting label reads is recorded under the wire request id", async () => {
+	// The label joins two sources (spec §C): the backend's `queued_steering` id
+	// and a client-local mode. This drives the REAL admission so the mode is
+	// stored under the id the request actually leaves with — a locally minted
+	// id would never meet the queue.
+	resetStore();
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	await admitChatDraft(
+		key,
+		{ ...SEND_INPUT, delivery: "queue", busyMode: "queue" },
+		"111111111111",
+	);
+	const last = calls.filter((call) => call.op === "sessions.message").at(-1);
+	assert.equal(
+		busySendModes().get(last.requestId),
+		"queue",
+		"the mode is keyed by the request id the queue will carry",
+	);
+	assert.ok(
+		!("busyMode" in desktopEndpoint(last).body),
+		"the label's mode never reaches the wire",
+	);
+
+	// A plain-Enter steer send is the case the body cannot describe: no
+	// `delivery` field, and the row still says it is steering.
+	resetStore();
+	const steerKey = store
+		.getState()
+		.stageDraft({ kind: "agent", name: "reviewer" });
+	await admitChatDraft(
+		steerKey,
+		{ ...SEND_INPUT, busyMode: "steer" },
+		"111111111111",
+	);
+	const steerLast = calls
+		.filter((call) => call.op === "sessions.message")
+		.at(-1);
+	assert.equal(busySendModes().get(steerLast.requestId), "steer");
+	assert.ok(!("delivery" in desktopEndpoint(steerLast).body));
+});
+
 test("a lost admission response replays the SAME delivery (no 409)", async () => {
 	resetStore();
 	// The REAL receipt rule: sha256 of the whole body (`delivery` included);
@@ -554,6 +596,16 @@ test("the gate lives at the one seam (chat-page send), and refuses before admiss
 	);
 	assert.match(
 		source,
+		/\bbusyMode: evaluation\.waitMode \?\? undefined,/,
+		"regex pin: the press's mode rides the admission body for the waiting label (it is not the wire's `delivery`)",
+	);
+	assert.match(
+		codeOf("src/renderer/src/shared/store/canonical-sessions-store.ts"),
+		/noteBusySend\(admissionRequestId, input\.busyMode\)/,
+		"regex pin: the store records the mode under the admission id, the id the backend's queue carries",
+	);
+	assert.match(
+		source,
 		/evaluateBusySend\(/,
 		"the page resolves the send through the extracted assembly, not an inline gate",
 	);
@@ -639,12 +691,20 @@ test("the seam refuses before it resolves, in the page's own order", () => {
 		busy: true,
 		busyDeliverySupported: false,
 	});
-	assert.deepEqual(refused, { refused: true, delivery: undefined });
+	assert.deepEqual(refused, {
+		refused: true,
+		delivery: undefined,
+		waitMode: null,
+	});
 	const admitted = evaluateBusySend({
 		chordDelivery: "queue",
 		settings: undefined,
 		busy: true,
 		busyDeliverySupported: true,
 	});
-	assert.deepEqual(admitted, { refused: false, delivery: "queue" });
+	assert.deepEqual(admitted, {
+		refused: false,
+		delivery: "queue",
+		waitMode: "queue",
+	});
 });
