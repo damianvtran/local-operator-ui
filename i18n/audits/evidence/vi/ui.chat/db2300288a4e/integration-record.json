@@ -1,0 +1,34 @@
+{
+  "locale": "vi",
+  "namespace": "ui.chat",
+  "date": "2026-11-11",
+  "slice": "P7",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "db2300288a4e",
+    "session": "db2300288a4e",
+    "model": "deepseek/deepseek-flash",
+    "independent_from_translator_session": true,
+    "actual_model_source": "as stated in the auditor's own report (companion report); no fallback reported"
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "per delegation and the candidate file model field; translator session id not supplied"
+  },
+  "keys": [
+    "ui.chat.audio.position_value"
+  ],
+  "english_sha256": "8cf1373e329eca7cede84886de8bf7f6323c81f1415abc5bd6f003a8f110ef70",
+  "target_sha256": "6056cd373f4dc87b561bb152712891042ace2e7b6dcaaf909656432f1745531a",
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "artifacts": {
+    "receipt.json": "146adc4589697e990a621c395fdc437ca45c78eb3c043393c6421df619a20f38",
+    "record.json": "2f1131a12467efd50e49b162a78e0c9f3a24783215d562656836bf6e7e8da654",
+    "report.md": "93beb9721238ceb8c3df799c0db6df867c8a75d51bd703d434b4fa40461970a5",
+    "verify.log": "875417adde283dbb278888c739bd411500be8804a2f487f6b2038c3c44648efe"
+  },
+  "note": "integration-record.json was written by the integrating coder; record.json is the auditor's own record, byte-identical to the file the receipt's provenance.source_report cites; verify.log is the coder re-check, not an auditor log."
+}

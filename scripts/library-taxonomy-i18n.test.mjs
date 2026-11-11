@@ -437,6 +437,82 @@ test("library-preview-badge-and-unsupported: the preview badge and the unsupport
 	}
 });
 
+/*
+ * "ORGANIZED BY" (census B7, same header row as the kind badge). `organized.by`
+ * is a closed actor id (user, librarian, agent, system) or null; the preview used
+ * to print the raw id ("Classé par librarian ..."). Each actor is now a whole
+ * catalogue sentence, so an unknown or null actor must NEVER surface as a raw id.
+ */
+test("library-preview-organized-by: each actor is a localized sentence and no raw id leaks", async () => {
+	const api = await load();
+	const cases = [
+		["user", "organized_by_user"],
+		["librarian", "organized_by_librarian"],
+		["agent", "organized_by_agent"],
+		["system", "organized_by_system"],
+		[null, "organized_unattributed"],
+		["future-actor", "organized_unattributed"],
+	];
+	const releaseTimers = trackTimers();
+	try {
+		for (const [by, key] of cases) {
+			const row = {
+				...asset("pptx", `la_org_${by ?? "null"}`),
+				organized: { at: 1_700_000_000, by, confidence: 0.9 },
+			};
+			const view = await mount(
+				api,
+				h(api.LibraryPreview, {
+					asset: row,
+					nowMs: 1_700_000_300_000,
+					onClose() {},
+					onOpenConversation() {},
+					onFilterSession() {},
+					onAsk() {},
+					onToggleFavorite() {},
+					composerFocusSignal: 0,
+					focusRequest: null,
+				}),
+			);
+			try {
+				for (const tag of LOCALES) {
+					await switchTo(api, tag);
+					// The sentence around the already-localized {at}: both halves must
+					// be present, in the catalogue's own order.
+					const sentence = catalogue(tag)[`ui.library.preview.${key}`];
+					const text = view.container.textContent.replace(BIDI_ISOLATES, "");
+					for (const part of sentence.split("{at}").map((x) => x.trim()))
+						if (part) assert.ok(text.includes(part), `${tag} ${by}: ${part}`);
+					if (by) {
+						// Look only at the metadata span that holds the sentence: a raw
+						// actor id must not be painted in it unless the translation
+						// itself legitimately uses that word.
+						const [head, tail] = sentence.split("{at}").map((x) => x.trim());
+						const span = [...view.container.querySelectorAll("span")].find(
+							(el) =>
+								el.children.length === 0 &&
+								el.textContent
+									.replace(BIDI_ISOLATES, "")
+									.includes(head || tail),
+						);
+						assert.ok(span, `${tag} ${by}: the sentence span exists`);
+						assert.ok(
+							!span.textContent.toLowerCase().includes(by) ||
+								sentence.toLowerCase().includes(by),
+							`${tag} ${by} raw id in ${span.textContent}`,
+						);
+					}
+				}
+			} finally {
+				await view.close();
+				api.setLocale("en");
+			}
+		}
+	} finally {
+		releaseTimers();
+	}
+});
+
 test("library-taxonomy-mutation-control: a call site reverted to the raw kind fails the same assertion", async () => {
 	// Scratch rewrite of the card SOURCE (never the worktree): the list row's
 	// KindLabel goes back to painting the raw wire value.
