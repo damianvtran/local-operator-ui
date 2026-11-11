@@ -1,50 +1,111 @@
 {
   "locale": "vi",
-  "namespace": "ui.library",
-  "date": "2026-11-11",
-  "slice": "P7",
-  "auditor": {
-    "agent": "i18n-auditor",
-    "instance": "db2300288a4e",
-    "session": "db2300288a4e",
-    "model": "deepseek/deepseek-flash",
-    "independent_from_translator_session": true,
-    "actual_model_source": "as stated in the auditor's own report (companion report); no fallback reported"
-  },
-  "translator": {
-    "agent": "i18n-translator",
-    "model": "anthropic/claude-sonnet-5-5",
-    "source": "per delegation and the candidate file model field; translator session id not supplied"
-  },
+  "namespace": "ui.library + ui.chat (P7 slice: organized-by actor sentences + audio position value)",
+  "audit_round": 1,
+  "audit_date": "2026-11-11",
+  "key_count": 6,
   "keys": [
     "ui.library.preview.organized_by_agent",
     "ui.library.preview.organized_by_librarian",
     "ui.library.preview.organized_by_system",
     "ui.library.preview.organized_by_user",
-    "ui.library.preview.organized_unattributed"
+    "ui.library.preview.organized_unattributed",
+    "ui.chat.audio.position_value"
   ],
-  "english_sha256": "39d053e0e00464bc6166a022d6718ac6dbe19bfb5ff2db9497d1ae06a78f4444",
-  "target_sha256": "b6ee97c14d9dabac3ce455c679e44395cf8d235f520c9159661b81999b8e2517",
-  "status": "passed",
-  "result": "clean-with-findings",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "db2300288a4e",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "session header (Model: deepseek/deepseek-flash); no fallback in effect, no overrides",
+    "independent_from_translator_session": true,
+    "translator": {
+      "agent": "i18n-translator",
+      "model": "anthropic/claude-sonnet-5-5",
+      "candidate_path": "/Users/damian/local-operator-ui/.worktrees/_p7-prep/vi.json"
+    }
+  },
+  "judged_by": "reasoning only; no translation/MT/back-translation service used",
+  "input_hashes": {
+    "en": [
+      {"path": "git:origin/main:src/i18n/catalogues/en/ui.library.json", "sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71"},
+      {"path": "git:origin/main:src/i18n/catalogues/en/ui.chat.json", "sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15"}
+    ],
+    "context": [
+      {"path": "git:origin/main:src/i18n/catalogues/en/ui.library.context.json", "sha256": "f799fe911107aa1f7b83b0c026ee277d5c21ee5eba297e3ae13c2da51135cc8e"},
+      {"path": "git:origin/main:src/i18n/catalogues/en/ui.chat.context.json", "sha256": "84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf"},
+      {"path": ".worktrees/_p7-prep/keys.json", "sha256": "c2b57addb849fb35720fac74c79b59c1c47078534c0c50cf9e8b58c368c0a35a"},
+      {"path": ".worktrees/_p7-prep/callsites.md", "note": "read; not hashed (prose, no string content)"},
+      {"path": ".worktrees/_p7-prep/risks.md", "note": "read; not hashed (prose, no string content)"}
+    ],
+    "target": [
+      {"path": ".worktrees/_p7-prep/vi.json", "sha256": "fa5665b4f11a7242e63e6799826339f0714ce4f2021f920696d946108bbc2f0a"},
+      {"path": "git:origin/main:src/i18n/catalogues/vi/ui.library.json", "note": "shipped-catalogue baseline for terminology/wording (read-only)"},
+      {"path": "git:origin/main:src/i18n/catalogues/vi/ui.chat.json", "note": "shipped-catalogue baseline (read-only)"}
+    ],
+    "baseline_notes": {
+      "origin_main_sha_read": "3e48d8acb981b098bf512157ee0d1faf3f5fc3c9",
+      "prep_manifest_sha": "a0464af9e0a8d13e87409a4e2fd410e87b6bcdcc",
+      "delta_checked": "en+vi ui.library.json between the two shas gained only ui.library.kind.* (12) and ui.library.tag_category.* (8); the 6 audited source strings and the terminology baseline (preview.organized_by, librarian.title, sort.organized, status.unorganized) are unchanged, so the audited source equals the translator's source"
+    }
+  },
+  "mechanical_checks": {
+    "valid_json": true,
+    "key_set_matches_source": true,
+    "key_order_matches_source": true,
+    "placeholder_name_and_type_parity": true,
+    "icu_structure": "n/a on both sides (no plural/select/number/date in the 6 keys); no CLDR category requirement engaged",
+    "markup_code_flags_identifiers": "none on either side",
+    "empty_or_whitespace_only": 0,
+    "identical_to_english": 0,
+    "nfc": true,
+    "combining_marks": 0,
+    "bidi_or_zero_width_controls": 0,
+    "ascii_clock_placeholders_untouched": true,
+    "width": "no gate engaged: preview metadata row is flex-wrap, one flex item per sentence; longest composed 40 chars (agent + '5 phút trước') vs en 29 and it wraps; position_value is aria-valuetext only",
+    "rtl": "n/a (vi)"
+  },
+  "current_report_verdict": {
+    "status": "clean-with-findings",
+    "ledger_status_that_would_apply": "passed",
+    "unresolved_blocker_major_count": 0,
+    "counts": {"blocker": 0, "major": 0, "minor": 0, "nit": 2},
+    "finding_ids": ["vi-p7-r1-N1", "vi-p7-r1-N2"]
+  },
   "findings": [
     {
+      "id": "vi-p7-r1-N1",
       "severity": "NIT",
-      "id": "N1",
       "key": "ui.library.preview.organized_by_system",
-      "detail": "see the auditor report in this bundle (finding id and text live there)"
+      "current": "Tự động phân loại {at}",
+      "problem": "Meaning/state reading correct (agentless, time phrase disambiguates), but the bare verb phrase is the same shape an auto-organize ACTION label takes in vi UI copy, and it is the only one of the five outside the 'được … phân loại' frame.",
+      "suggested_optional": "Được tự động phân loại {at}",
+      "blocking": false
     },
     {
+      "id": "vi-p7-r1-N2",
       "severity": "NIT",
-      "id": "N2",
       "key": "ui.library.preview.organized_by_agent",
-      "detail": "see the auditor report in this bundle (finding id and text live there)"
+      "current": "Được một tác nhân phân loại {at}",
+      "problem": "'một' is redundant (bare noun is already indefinite in vi) and this is the group's longest string (40 chars composed vs en 29); guide says 'vi runs long; tighten'.",
+      "suggested_optional": "Được tác nhân phân loại {at}",
+      "blocking": false
     }
   ],
-  "artifacts": {
-    "receipt.json": "146adc4589697e990a621c395fdc437ca45c78eb3c043393c6421df619a20f38",
-    "report.md": "93beb9721238ceb8c3df799c0db6df867c8a75d51bd703d434b4fa40461970a5",
-    "verify.log": "875417adde283dbb278888c739bd411500be8804a2f487f6b2038c3c44648efe"
-  },
-  "note": "record.json written by the integrating coder; verify.log is the coder re-check, not an auditor log."
+  "examined_and_accepted": [
+    "librarian: exactly ui.library.librarian.title 'Thủ thư'; mid-sentence capitalisation correct for a product persona name; no article needed in vi",
+    "user: 'bạn' retained — English names the reader as the actor; dropping it would collapse this key onto organized_unattributed; 'bạn' is the shipped address form",
+    "unattributed: 'Đã phân loại {at}' makes no actor claim and pairs with shipped 'Chưa phân loại' (status.unorganized, preview.unorganized); 'đã' is the established state idiom",
+    "terminology: 'phân loại' matches sort.organized / last_organized; 'tác nhân' matches glossary + shipped ui.chat agent usage",
+    "{at} final position composes with all shipped vi relative-time keys including 'vừa xong'",
+    "audio: '{current} trên {total}' is the natural spoken ratio; plural-free; 'position' correctly not repeated (position_label already says it); ASCII clocks pass through; no bidi controls",
+    "register: terse, sentence case, no '!', no 'Vui lòng'; no calque in any of the six",
+    "translator notes verified true against the catalogues (no overclaim)"
+  ],
+  "artifacts": [
+    {"path": "scratchpad://p7-au-vi/report.md", "role": "human-readable audit report (this round)"},
+    {"path": "scratchpad://p7-au-vi/record.json", "role": "machine-readable record"}
+  ],
+  "audit_notes_not_execution_log": "The mechanical section was produced by two python3 passes in this session (placeholder/NFC/empty/identical/control-char/ICU regex parity; plus a git-diff of the two baseline shas). No repo validator (scripts/i18n/check-strings.mjs, check-coverage.mjs) was run: the candidate is a prep file outside any branch and the task forbids writing to the repo. Those gates must run in the coding PR.",
+  "tracking_status": "NOT TRACKED YET — candidate is not on a branch and the task forbids repo/ledger writes. The landing PR must add the tracked record under i18n/audits/evidence/vi/... with these hashes and this verdict, or the ledger 'passed' row would cite absent evidence.",
+  "original_lost_evidence": null
 }
