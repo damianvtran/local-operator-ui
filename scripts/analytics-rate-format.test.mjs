@@ -209,7 +209,9 @@ test("file sizes follow #1861's localised helper (number AND unit label)", () =>
 	// Not an exception: formatBytes delegates to formatByteQuantity, whose unit
 	// labels are localised (fr: Go) and whose decimal follows the locale.
 	withLocale("en", () => assert.equal(mod.formatBytes(3 * 2 ** 30), "3.0 GB"));
-	withLocale("fr", () => assert.equal(mod.formatBytes(3 * 2 ** 30), "3,0\u202fGo"));
+	withLocale("fr", () =>
+		assert.equal(mod.formatBytes(3 * 2 ** 30), "3,0\u202fGo"),
+	);
 });
 
 test("an unparseable day bucket is still returned verbatim in any locale", () => {
