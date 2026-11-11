@@ -2986,7 +2986,7 @@
 			"section": "composer",
 			"label": "Delivery when busy",
 			"kind": "enum",
-			"help": "How a message sent while the agent is working is delivered.",
+			"help": "What Enter does while the agent works. A Send as … key overrides it.",
 			"value": "steer",
 			"default": "steer",
 			"is_default": true,
@@ -2997,7 +2997,7 @@
 				{
 					"value": "steer",
 					"label": "steer",
-					"description": "Interrupt now (today's behaviour)"
+					"description": "Interrupt a running tool now"
 				},
 				{
 					"value": "queue",
@@ -3181,7 +3181,7 @@
 			"section": "keymap",
 			"label": "Send as steer",
 			"kind": "hotkey",
-			"help": "Sends the message now and interrupts the running step. Ctrl/Alt/Cmd+Enter only work in terminals that support enhanced keys; Alt+letter works everywhere (macOS terminals need Option-as-Meta).",
+			"help": "Send now, interrupting the step. Overrides Delivery when busy.",
 			"value": "",
 			"default": "",
 			"is_default": true,
@@ -3212,7 +3212,7 @@
 			"section": "keymap",
 			"label": "Send as queue",
 			"kind": "hotkey",
-			"help": "Waits for the current step to finish and never interrupts running tools. Ctrl/Alt/Cmd+Enter only work in terminals that support enhanced keys; Alt+letter works everywhere (macOS terminals need Option-as-Meta).",
+			"help": "Wait for the step; never interrupt tools. Overrides Delivery when busy.",
 			"value": "",
 			"default": "",
 			"is_default": true,
@@ -3243,7 +3243,7 @@
 			"section": "keymap",
 			"label": "Send as both",
 			"kind": "hotkey",
-			"help": "Waits like queue, then interrupts like steer if the message has waited too long. Ctrl/Alt/Cmd+Enter only work in terminals that support enhanced keys; Alt+letter works everywhere (macOS terminals need Option-as-Meta).",
+			"help": "Wait, then interrupt if slow. Overrides Delivery when busy.",
 			"value": "",
 			"default": "",
 			"is_default": true,
