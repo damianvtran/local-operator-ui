@@ -8396,6 +8396,9 @@ export type MessageParams = {
 	"ui.hub.links.sources_count": { count: number };
 	"ui.hub.links.title": undefined;
 	"ui.hub.links.unknown_baseline": undefined;
+	"ui.hub.links.unresolved_detail_no_origin": undefined;
+	"ui.hub.links.unresolved_detail_scope_ambiguous": undefined;
+	"ui.hub.links.unresolved_detail_scope_unknown": undefined;
 	"ui.hub.links.unresolved_mark": { item: string };
 	"ui.hub.links.unresolved_next": undefined;
 	"ui.hub.links.unresolved_what": { item: string };

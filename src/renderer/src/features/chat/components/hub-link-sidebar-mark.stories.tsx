@@ -22,7 +22,7 @@ import type {
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, userEvent, waitFor, within } from "@storybook/test";
 import { useLayoutEffect, useState } from "react";
-import { HubLinkSidebarMark } from "./hub-link-sidebar-mark";
+import { HubLinkSidebarMark, HubUnresolvedMark } from "./hub-link-sidebar-mark";
 
 const CHECKED = "2026-11-11T15:55:16Z";
 
@@ -141,4 +141,25 @@ export const RejectedSignIn: Story = {
 /** Healthy: no failure tail at all. */
 export const Healthy: Story = {
 	args: { row: link({}) },
+};
+
+/**
+ * The "?" mark on an unresolved row, carrying core #3807's `detail`
+ * (`legacy-scope-ambiguous`: the two teams in the operator's report). The mark
+ * makes no request, so it is rendered bare; `args.row` is unused and present
+ * only because the meta's component takes one.
+ */
+export const UnresolvedScopeAmbiguous: Story = {
+	args: { row: link({}) },
+	render: () => (
+		<div className="flex h-40 w-80 items-end justify-center bg-surface p-4">
+			<HubUnresolvedMark
+				item="Content"
+				staged={false}
+				onResolve={() => {}}
+				details={["legacy-scope-ambiguous"]}
+			/>
+		</div>
+	),
+	play: hoverShows(/could belong to the public hub or an organization/),
 };

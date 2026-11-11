@@ -1,5 +1,8 @@
 import type { HubLinkAction } from "@shared/api/local-operator/hub-link-actions";
-import type { HubDirectionStatus } from "@shared/api/local-operator/hub-links";
+import type {
+	HubDirectionStatus,
+	HubUnresolvedDetail,
+} from "@shared/api/local-operator/hub-links";
 import { formatDateTime, t } from "@shared/i18n";
 
 /**
@@ -112,6 +115,38 @@ export function hubMarkFailureDetail(status: HubDirectionStatus): string {
 		timeStyle: "short",
 	});
 	return `${reason} ${t("ui.hub.status.last_checked", { time })}`;
+}
+
+/**
+ * Why an unresolved ("?") roster row has no confirmed source, from core's
+ * additive `detail` code on `links_snapshot` unresolved rows (local-operator
+ * PR #3807).
+ *
+ * WHY: the bare "?" read as a fault waiting for a fix, while one of its causes
+ * is a dead end core holds ON PURPOSE (`legacy-scope-ambiguous`: a pre-origin
+ * public pull stored the publisher's tenant, so certifying it as an org link
+ * would bypass public-egress consent). Saying which case it is lets the reader
+ * tell "wait for the next check" from "this needs your confirmation".
+ *
+ * Returns null for an absent code (a core from before the field) and for a code
+ * this build does not know: the mark then keeps its existing label alone rather
+ * than guessing a meaning (the rule `hubOutcomeText` and `hubReasonText` follow).
+ * This only EXPLAINS the state; the scope-confirmation write is a deferred
+ * product decision and is deliberately not offered here.
+ */
+export function hubUnresolvedDetailText(
+	detail: HubUnresolvedDetail | null | undefined,
+): string | null {
+	switch (detail) {
+		case "legacy-scope-ambiguous":
+			return t("ui.hub.links.unresolved_detail_scope_ambiguous");
+		case "scope-unknown":
+			return t("ui.hub.links.unresolved_detail_scope_unknown");
+		case "no-origin":
+			return t("ui.hub.links.unresolved_detail_no_origin");
+		default:
+			return null;
+	}
 }
 
 /**

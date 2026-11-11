@@ -1093,5 +1093,20 @@
 		"role": "status",
 		"tone": "plain and actionable",
 		"note": "Description/tooltip of a disabled Auto-push control while current-account membership cannot authorize a destination label. Source Retry refetches memberships. Never treat persisted organization names as membership."
+	},
+	"ui.hub.links.unresolved_detail_scope_ambiguous": {
+		"role": "tooltip",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Second sentence of the roster '?' mark's tooltip, after '{item}: source not confirmed. Confirm the source.' 'It' is the linked item. Core code legacy-scope-ambiguous: a link saved before origins were recorded carries a tenant id that may be the PUBLISHER's (a public pull) or the user's organization, so the app refuses to guess. Must not imply the app will resolve it on its own."
+	},
+	"ui.hub.links.unresolved_detail_scope_unknown": {
+		"role": "tooltip",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Second sentence of the roster '?' mark's tooltip, after '{item}: source not confirmed. Confirm the source.' 'It' is the linked item. Core code scope-unknown: the saved link never recorded whether it belongs to the public hub or an organization."
+	},
+	"ui.hub.links.unresolved_detail_no_origin": {
+		"role": "tooltip",
+		"tone": "plain, precise; safety statements must not weaken or promise success",
+		"note": "Second sentence of the roster '?' mark's tooltip, after '{item}: source not confirmed. Confirm the source.' 'It' is the linked item. Core code no-origin: no hub check has answered for this link yet; the next successful automatic check records its source, so this is a temporary state."
 	}
 }
