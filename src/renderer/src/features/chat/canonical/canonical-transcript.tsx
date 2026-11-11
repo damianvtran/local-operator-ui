@@ -2322,13 +2322,28 @@ function toolRecordSummary(
 					size: formatBytes(record.argumentBytes),
 				})
 			: t("ui.chat.canonical.tool.never_sent_empty");
+	/*
+	 * Whole-line messages, sized and empty, for the same reason `never sent`
+	 * above has two: the separator and the size sit INSIDE the message so a
+	 * language can order them its own way, and no English fragment is glued
+	 * on here. Resolved per call (the row and the fold both re-render on a
+	 * locale change), never at module load.
+	 */
 	if (composing)
-		return `composing${record.argumentBytes ? ` · ${formatBytes(record.argumentBytes)}` : ""}`;
+		return record.argumentBytes
+			? t("ui.chat.canonical.tool.composing_sized", {
+					size: formatBytes(record.argumentBytes),
+				})
+			: t("ui.chat.canonical.tool.composing_empty");
 	if (queued)
 		// Dictation is over and the call has not started: the byte count stays
 		// (it is how far the model got), and the status word stops claiming work
 		// the model finished writing.
-		return `queued${record.argumentBytes ? ` · ${formatBytes(record.argumentBytes)}` : ""}`;
+		return record.argumentBytes
+			? t("ui.chat.canonical.tool.queued_sized", {
+					size: formatBytes(record.argumentBytes),
+				})
+			: t("ui.chat.canonical.tool.queued_empty");
 	return summaryFromArgs(record.toolName, record.args);
 }
 
