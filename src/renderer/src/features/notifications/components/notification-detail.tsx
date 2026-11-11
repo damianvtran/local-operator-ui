@@ -25,6 +25,7 @@ import { askQueueView, askRevisionEvidence } from "@features/chat/ask-queue";
  * read answers `dismissed`, the content stays on screen with a notice and the
  * actions disabled, rather than the pane closing under the reader.
  */
+import { ASK_BOUND_ATTR } from "@features/chat/components/asks/ask-bounds";
 import { AskPanel } from "@features/chat/components/asks/ask-panel";
 import { FLEET_ASKS_QUERY_KEY, useFleetAsks } from "@features/chat/fleet-asks";
 import { useAskOutcomes } from "@features/chat/use-ask-outcomes";
@@ -137,6 +138,13 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 			 * wraps (`[overflow-wrap:anywhere]` below), so there is nothing to hide.
 			 */
 			className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto px-6 py-4 [overflow-wrap:anywhere] [scrollbar-gutter:stable]"
+			/*
+			 * The pane bounds the ask card it embeds (design D3): its first ask body
+			 * sizes itself to what is left of THIS pane's height under the header,
+			 * title and actions, so options, Other and Send answer are in view
+			 * without scrolling. See `ASK_BOUND_ATTR` in `ask-bounds.tsx`.
+			 */
+			{...{ [ASK_BOUND_ATTR]: "" }}
 		>
 			<div className="flex items-center justify-between gap-2">
 				{narrow ? (
@@ -189,11 +197,12 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 			 * CLAMPED: an ask's notification takes its question as the title, and a
 			 * 10k-character question printed here in full pushed the ask card (whose
 			 * own body is bounded and scrollable) far below the fold. The full text
-			 * is one press away in that card and in the `title` tooltip.
+			 * is in that card; the tooltip carries the first 300 characters only
+			 * (code review R3: a 10k-character native tooltip is a wall over the pane).
 			 */}
 			<h2
 				className="mt-3 line-clamp-3 text-heading text-ink"
-				title={item.title}
+				title={titleTooltip(item.title)}
 				data-notification-detail-title=""
 				tabIndex={-1}
 			>
@@ -506,6 +515,13 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 		</section>
 	);
 };
+
+/** A native tooltip's worth of the title: 300 characters, then an ellipsis. */
+export const TITLE_TOOLTIP_MAX = 300;
+export const titleTooltip = (title: string): string =>
+	title.length > TITLE_TOOLTIP_MAX
+		? `${title.slice(0, TITLE_TOOLTIP_MAX).trimEnd()}…`
+		: title;
 
 const DetailSection: FC<{ title: string; children: React.ReactNode }> = ({
 	title,

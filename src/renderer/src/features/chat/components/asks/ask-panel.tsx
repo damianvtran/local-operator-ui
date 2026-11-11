@@ -101,7 +101,7 @@ import {
 	askTicks,
 	draftFor,
 } from "../../ask-queue";
-import { profileProposalOf } from "../../profile-proposal-ask";
+import { parseProfileProposalCard } from "../../profile-proposal-ask";
 import { AskRecommendedBadge, recommendedIndexes } from "../ask-recommended";
 import { AskAnswerField, commitOnEnter } from "./ask-answer-field";
 import {
@@ -509,10 +509,9 @@ const AskQuestionField = ({
 	 * card's own state: the ticks are read OUT of the current cell (`askTicks`) and the
 	 * cell is rebuilt from them and the next `Other` entry (`askCellWith`).
 	 */
-	const proposal = profileProposalOf(
-		question.profile_proposal,
-		question.question,
-	);
+	// A proposal's question prints its line 1 (plus anything unrecognised); the
+	// notice draws the Changes/Origin lines (see `profile-proposal-ask.ts`).
+	const proposal = parseProfileProposalCard(question.question);
 	const writeOther = (next: AskOther) => {
 		setOther(next);
 		onCell(askCellWith(ticks, multi, next));
@@ -529,7 +528,7 @@ const AskQuestionField = ({
 			 */}
 			<AskScrollBody>
 				<p className="whitespace-pre-wrap text-ink text-sm">
-					{isolateValue(question.question, dir)}
+					{isolateValue(proposal ? proposal.body : question.question, dir)}
 				</p>
 			</AskScrollBody>
 			{proposal ? <ProposalReviewNotice proposal={proposal} /> : null}

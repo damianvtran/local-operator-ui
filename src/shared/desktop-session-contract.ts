@@ -627,16 +627,6 @@ export type PendingDesktopGate = {
 	question_index: number;
 	question_total: number;
 	/**
-	 * A profile/team/skill proposal's identity, when the runtime attaches it.
-	 *
-	 * ADDITIVE and OPTIONAL, and typed `unknown` on purpose: older runtimes never
-	 * send it, and the card's first line (`Apply proposal <pp_id> to <kind>
-	 * '<name>'?`) carries the same identity, so the UI validates this field with
-	 * `readStructuredProposal` and falls back to the text when it is absent or
-	 * malformed (`features/chat/profile-proposal-ask.ts`).
-	 */
-	profile_proposal?: unknown;
-	/**
 	 * Index of the option the model recommends, into `options` AS CARRIED.
 	 *
 	 * ADDITIVE and OPTIONAL: `PendingRequest` has sent it since the ask-picker
@@ -757,12 +747,6 @@ export type PendingAskOption = {
 export type PendingAskQuestion = {
 	id: string;
 	question: string;
-	/**
-	 * Optional structured proposal identity, same contract and same fallback as
-	 * `PendingDesktopGate.profile_proposal`: validated, never trusted, and the
-	 * question's first line is the floor.
-	 */
-	profile_proposal?: unknown;
 	options?: PendingAskOption[];
 	multi?: boolean;
 	/**

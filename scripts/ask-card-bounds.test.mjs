@@ -17,7 +17,7 @@ import { build, stop } from "esbuild";
  * notifications detail pane both embed), plus the proposal contract:
  *
  * 1. the contract's first line parses, and near-misses do not;
- * 2. the structured `profile_proposal` wins when valid and is ignored when not;
+ * 2. both repr quote forms decode, and lines 2/3 lift out only in position;
  * 3. the review link is `/agents?kind=&name=&proposal=` and the press navigates
  *    in-app to it (a real MemoryRouter, read back from the location);
  * 4. the answer controls still answer from a proposal card.
@@ -30,7 +30,9 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export * from "./src/renderer/src/features/chat/profile-proposal-ask";',
-			'export { ASK_BODY_MAX_H, ASK_CARD_MAX_H, ASK_OPTIONS_MAX_H } from "./src/renderer/src/features/chat/components/asks/ask-bounds";',
+			'export { ASK_BODY_CAP, ASK_BODY_FLOOR, ASK_BODY_MAX_H, ASK_CARD_MAX_H, ASK_FADE_MASK, ASK_OPTIONS_MAX_H } from "./src/renderer/src/features/chat/components/asks/ask-bounds";',
+			'export { ApprovalEscapeControls } from "./src/renderer/src/features/chat/components/trace/approval-escape";',
+			'export { titleTooltip, TITLE_TOOLTIP_MAX } from "./src/renderer/src/features/notifications/components/notification-detail";',
 			'export { QuestionDock } from "./src/renderer/src/features/chat/components/trace/question-dock";',
 			'export { AskPanel } from "./src/renderer/src/features/chat/components/asks/ask-panel";',
 			'export { askQueueView } from "./src/renderer/src/features/chat/ask-queue";',
@@ -163,13 +165,56 @@ const { act, createElement: h } = await import("react");
 const { MemoryRouter, Route, Routes, useLocation } = await import(
 	"react-router-dom"
 );
+const { readFile } = await import("node:fs/promises");
+
+/*
+ * jsdom does no layout: every box is 0x0. The fade and the pane fit are
+ * functions of scroll metrics and rects, so a test that needs them installs
+ * per-element getters for the duration of one mount and restores them after.
+ */
+const withLayout = async (metrics, run) => {
+	const proto = window.HTMLElement.prototype;
+	const saved = {};
+	for (const key of ["scrollHeight", "clientHeight"]) {
+		saved[key] = Object.getOwnPropertyDescriptor(window.Element.prototype, key);
+		Object.defineProperty(proto, key, {
+			configurable: true,
+			get() {
+				return metrics(this)?.[key] ?? 0;
+			},
+		});
+	}
+	const rect = window.Element.prototype.getBoundingClientRect;
+	proto.getBoundingClientRect = function () {
+		const box = metrics(this)?.rect;
+		return box
+			? {
+					x: 0,
+					y: box.top,
+					top: box.top,
+					bottom: box.bottom,
+					left: 0,
+					right: 0,
+					width: 0,
+					height: box.bottom - box.top,
+				}
+			: rect.call(this);
+	};
+	try {
+		await run();
+	} finally {
+		// Own properties on the subclass prototype: removing them re-exposes jsdom's.
+		for (const key of Object.keys(saved)) Reflect.deleteProperty(proto, key);
+		Reflect.deleteProperty(proto, "getBoundingClientRect");
+	}
+};
 
 const LONG = `${"Proposed brief line that goes on and on. ".repeat(250)}END`;
 assert.ok(LONG.length >= 10_000, "the fixture is the incident's size");
 
 const PROPOSAL_TEXT = [
 	"Apply proposal pp_7abf6b3116c87a99 to team 'minervadev'?",
-	"instructions: +42 −7 lines",
+	"Changes: instructions +42 −7 lines; description changed",
 	"Origin: local. Review changes in Agents → minervadev.",
 ].join("\n");
 
@@ -206,21 +251,25 @@ const mount = async (element) => {
 
 const classesOf = (node) => String(node.getAttribute("class") ?? "");
 
-test("the contract's first line parses; near-misses do not", () => {
-	assert.deepEqual(M.parseProfileProposalText(PROPOSAL_TEXT), {
+test("the contract's three lines parse; near-misses do not", () => {
+	assert.deepEqual(M.parseProfileProposalCard(PROPOSAL_TEXT), {
 		id: "pp_7abf6b3116c87a99",
 		kind: "team",
 		name: "minervadev",
+		changes: "Changes: instructions +42 −7 lines; description changed",
+		origin: "Origin: local.",
+		// Line 3's "Review changes in Agents → X." is the button; it is dropped.
+		body: "Apply proposal pp_7abf6b3116c87a99 to team 'minervadev'?",
 	});
 	for (const kind of ["agent", "team", "skill"])
 		assert.equal(
-			M.parseProfileProposalText(`Apply proposal pp_0a to ${kind} 'x y'?`)
+			M.parseProfileProposalCard(`Apply proposal pp_0a to ${kind} 'x y'?`)
 				?.kind,
 			kind,
 		);
 	// Leading whitespace is tolerated (an ask question may start with a blank line).
 	assert.equal(
-		M.parseProfileProposalText(`\n  Apply proposal pp_ab to agent 'r'?`)?.id,
+		M.parseProfileProposalCard(`\n  Apply proposal pp_ab to agent 'r'?`)?.id,
 		"pp_ab",
 	);
 	for (const miss of [
@@ -231,36 +280,71 @@ test("the contract's first line parses; near-misses do not", () => {
 		"Apply proposal pp_ab to org 'x'?",
 		"Apply proposal pp_ab to team x?",
 		"Apply proposal pp_ab to team 'x'",
+		"Apply proposal pp_ab to team 'x\"?",
+		"Apply proposal pp_ab to team ''?",
 	])
-		assert.equal(M.parseProfileProposalText(miss), null, String(miss));
+		assert.equal(M.parseProfileProposalCard(miss), null, String(miss));
 });
 
-test("the structured field wins when valid and falls back to text when not", () => {
-	const structured = {
-		id: "pp_1234",
-		kind: "agent",
-		name: "reviewer",
-		fields: [{ label: "instructions", added: 3, removed: 1 }, { nope: 1 }],
-	};
-	assert.deepEqual(M.profileProposalOf(structured, PROPOSAL_TEXT), {
-		id: "pp_1234",
-		kind: "agent",
-		name: "reviewer",
-		fields: [{ label: "instructions", added: 3, removed: 1 }],
-	});
-	for (const bad of [
-		{ id: "x", kind: "team", name: "a" },
-		{ id: "pp_ab", kind: "org", name: "a" },
-		{ id: "pp_ab", kind: "team", name: "" },
-		"pp_ab",
-		null,
-	])
-		assert.equal(
-			M.profileProposalOf(bad, PROPOSAL_TEXT)?.id,
-			"pp_7abf6b3116c87a99",
-			JSON.stringify(bad),
-		);
-	assert.equal(M.profileProposalOf(undefined, "plain question"), null);
+test("names: both Python-repr quote forms, escapes decoded (M1, R5)", () => {
+	// repr picks double quotes for a name holding an apostrophe...
+	assert.equal(
+		M.parseProfileProposalCard(`Apply proposal pp_ab to agent "o'brien"?`)
+			?.name,
+		"o'brien",
+	);
+	// ...and single quotes with \' escaped when it holds both kinds.
+	assert.equal(
+		M.parseProfileProposalCard(
+			`Apply proposal pp_ab to agent 'say "hi" o\\'k'?`,
+		)?.name,
+		`say "hi" o'k`,
+	);
+	// A backslash arrives doubled; the link must carry the one the user typed.
+	assert.equal(
+		M.parseProfileProposalCard(`Apply proposal pp_ab to skill 'a\\\\b'?`)?.name,
+		"a\\b",
+	);
+	assert.equal(
+		M.parseProfileProposalCard(`Apply proposal pp_ab to team "x\\"y"?`)?.name,
+		'x"y',
+	);
+});
+
+test("lines 2/3 are lifted only in position; an older runtime's dump stays in the body", () => {
+	// Older runtime: line 1 then the whole brief. Nothing is stripped.
+	const dump = [
+		"Apply proposal pp_ab to team 'minervadev'?",
+		"Changes: this line is brief prose, not line 2",
+	].join("\n");
+	const legacy = M.parseProfileProposalCard(
+		`Apply proposal pp_ab to team 'minervadev'?\nBefore:\n${LONG}\n${dump}`,
+	);
+	assert.equal(legacy?.changes, null);
+	assert.equal(legacy?.origin, null);
+	assert.ok(
+		legacy?.body.includes(LONG),
+		"the dump is kept for the bounded body",
+	);
+	// A clipped line 3 (core `_clip`, 200 chars) is kept verbatim, not half-stripped.
+	const clipped = M.parseProfileProposalCard(
+		"Apply proposal pp_ab to team 'x'?\nChanges: instructions changed\nOrigin: agent. Review changes in Agents → xxxxxxxx…",
+	);
+	assert.equal(clipped?.changes, "Changes: instructions changed");
+	assert.equal(clipped?.origin, null);
+	assert.match(clipped?.body ?? "", /Review changes in Agents → x+…$/);
+	// Line 2 absent, line 3 present.
+	const noChanges = M.parseProfileProposalCard(
+		"Apply proposal pp_ab to agent 'r'?\nOrigin: user. Review changes in Agents → r.",
+	);
+	assert.equal(noChanges?.changes, null);
+	assert.equal(noChanges?.origin, "Origin: user.");
+	assert.equal(noChanges?.body, "Apply proposal pp_ab to agent 'r'?");
+	assert.equal(M.profileProposalOf(null, "plain question"), null);
+	assert.equal(
+		M.profileProposalOf("plain", PROPOSAL_TEXT)?.id,
+		"pp_7abf6b3116c87a99",
+	);
 });
 
 test("the review path is the Agents proposal URL, encoded", () => {
@@ -433,4 +517,231 @@ test("Asks panel: long question and long options are bounded; Other stays outsid
 		"/agents?kind=team&name=minervadev&proposal=pp_7abf6b3116c87a99",
 	);
 	await view.unmount();
+});
+
+test("D2: a proposal approval draws line 1 at body size, then Changes and Origin as their own lines; the target is named once", async () => {
+	const view = await mount(
+		h(M.QuestionDock, {
+			gate: gate({
+				kind: "approval",
+				title: "account profile save",
+				detail: PROPOSAL_TEXT,
+			}),
+		}),
+	);
+	const body = view.host.querySelector("[data-lo-ask-scroll]");
+	assert.ok(classesOf(body).includes("text-body"));
+	assert.equal(classesOf(body).includes("text-heading"), false);
+	assert.match(body.textContent, /Apply proposal pp_7abf6b3116c87a99 to team/);
+	assert.equal(body.textContent.includes("Changes:"), false);
+	assert.equal(body.textContent.includes("Origin:"), false);
+	const changes = view.host.querySelector("[data-lo-ask-proposal-changes]");
+	assert.equal(
+		changes?.textContent,
+		"Changes: instructions +42 −7 lines; description changed",
+	);
+	assert.ok(classesOf(changes).includes("line-clamp-2"), "≤2 lines (R2)");
+	const origin = view.host.querySelector("[data-lo-ask-proposal-origin]");
+	assert.equal(origin?.textContent, "Origin: local.");
+	assert.notEqual(changes, origin, "separate lines, not one run");
+	const text = view.host.textContent;
+	assert.equal(text.includes("Review changes in Agents →"), false);
+	assert.equal(
+		text.split("minervadev").length - 1,
+		1,
+		"the team is named once",
+	);
+	await view.unmount();
+});
+
+test("D1: the dock shrinks with the chat column; the body keeps a three-line floor", async () => {
+	const view = await mount(
+		h(M.QuestionDock, {
+			gate: gate({ title: LONG, options: [{ label: "Ship it" }] }),
+		}),
+	);
+	const root = view.host.querySelector('[data-lo-question-dock="expanded"]');
+	for (const cls of ["flex", "flex-col", "min-h-0"])
+		assert.ok(classesOf(root).split(/\s+/).includes(cls), `dock root ${cls}`);
+	const card = view.host.querySelector("section");
+	assert.ok(
+		classesOf(card).split(/\s+/).includes("min-h-0"),
+		"card may shrink",
+	);
+	assert.ok(classesOf(card).includes("overflow-y-auto"), "card scrolls last");
+	const body = view.host.querySelector("[data-lo-ask-scroll]");
+	assert.ok(classesOf(body).includes(M.ASK_BODY_FLOOR), "three-line floor");
+	assert.equal(
+		classesOf(body).split(/\s+/).includes("min-h-0"),
+		false,
+		"min-h-0 would let flex collapse the body to nothing (R1)",
+	);
+	assert.match(M.ASK_BODY_FLOOR, /min\(3lh,var\(--lo-ask-content-h/);
+	await view.unmount();
+
+	// The column side lives in chat-content.tsx, which is too large to mount
+	// here; its contract is the wrapper's class list, read from the source.
+	const source = await readFile(
+		"src/renderer/src/features/chat/components/chat-content.tsx",
+		"utf8",
+	);
+	const at = source.indexOf("<QuestionDock");
+	const wrapper = source.slice(source.lastIndexOf("className={cn(", at), at);
+	assert.match(wrapper, /"flex max-h-\[50%\] min-h-0 w-full flex-col pt-2"/);
+	assert.equal(
+		/shrink-0/.test(wrapper.replace(/\/\*[\s\S]*?\*\//g, "")),
+		false,
+	);
+	// The composer it yields to stays `shrink-0`.
+	const composer = await readFile(
+		"src/renderer/src/shared/components/composer/message-input.tsx",
+		"utf8",
+	);
+	assert.ok(composer.includes("`shrink-0` alone"));
+});
+
+test("D1(c): the idle status slot drops its reserve only with compactIdle", async () => {
+	const render = async (props) => {
+		const v = await mount(
+			h(M.ApprovalEscapeControls, {
+				onSetSession: () => undefined,
+				onSetAll: () => undefined,
+				...props,
+			}),
+		);
+		const cls = classesOf(
+			v.host.querySelector("[data-approval-escape-status]"),
+		);
+		await v.unmount();
+		return cls;
+	};
+	assert.ok((await render({})).includes("min-h-[2lh]"), "default keeps it");
+	assert.equal(
+		(await render({ compactIdle: true })).includes("min-h-[2lh]"),
+		false,
+	);
+	assert.ok(
+		(await render({ compactIdle: true, busy: true })).includes("min-h-[2lh]"),
+		"in flight: reserved",
+	);
+	assert.ok(
+		(
+			await render({
+				compactIdle: true,
+				status: { kind: "refused", detail: "no" },
+			})
+		).includes("min-h-[2lh]"),
+		"a result: reserved",
+	);
+});
+
+test("D5: an overflowing body fades at the bottom until it is scrolled to the end", async () => {
+	let scrolled = 0;
+	await withLayout(
+		(el) =>
+			el.hasAttribute?.("data-lo-ask-scroll")
+				? { scrollHeight: 900, clientHeight: 200 }
+				: null,
+		async () => {
+			const view = await mount(
+				h(M.QuestionDock, { gate: gate({ title: LONG, options: [] }) }),
+			);
+			const body = view.host.querySelector("[data-lo-ask-scroll]");
+			assert.equal(body.getAttribute("data-lo-ask-scroll"), "overflow");
+			assert.ok(body.hasAttribute("data-lo-ask-fade"));
+			assert.ok(classesOf(body).includes(M.ASK_FADE_MASK));
+			Object.defineProperty(body, "scrollTop", {
+				configurable: true,
+				get: () => scrolled,
+			});
+			scrolled = 700;
+			await act(async () => body.dispatchEvent(new window.Event("scroll")));
+			assert.equal(body.hasAttribute("data-lo-ask-fade"), false, "at the end");
+			assert.equal(classesOf(body).includes(M.ASK_FADE_MASK), false);
+			await view.unmount();
+		},
+	);
+	// A body that fits draws no fade.
+	const fits = await mount(
+		h(M.QuestionDock, { gate: gate({ title: "Short?" }) }),
+	);
+	assert.equal(
+		fits.host
+			.querySelector("[data-lo-ask-scroll]")
+			.hasAttribute("data-lo-ask-fade"),
+		false,
+	);
+	await fits.unmount();
+});
+
+test("D3: a bounding pane sizes its FIRST ask body to the room left under the header", async () => {
+	const ask = (id) => ({
+		ask_id: id,
+		session_id: "s-1",
+		created_at: Date.now() - 60_000,
+		expires_at: Date.now() + 3_600_000,
+		timeout_s: 3600,
+		urgent: false,
+		status: "open",
+		delivered: false,
+		questions: [{ id: `q-${id}`, question: LONG, options: [{ label: "Yes" }] }],
+	});
+	await withLayout(
+		(el) => {
+			if (el.hasAttribute?.("data-lo-ask-bound"))
+				return { clientHeight: 576, rect: { top: 0, bottom: 576 } };
+			if (el.hasAttribute?.("data-lo-ask-scroll"))
+				return {
+					scrollHeight: 4000,
+					clientHeight: 230,
+					rect: { top: 290, bottom: 520 },
+				};
+			if (el.hasAttribute?.("data-lo-ask-row"))
+				return { rect: { top: 250, bottom: 670 } };
+			return null;
+		},
+		async () => {
+			const view = await mount(
+				h(
+					"section",
+					{ "data-lo-ask-bound": "" },
+					h(M.AskPanel, {
+						view: M.askQueueView({
+							asks: [ask("a1"), ask("a2")],
+							asks_open: 2,
+							asks_truncated: false,
+						}),
+						nowMs: Date.now(),
+						outcomes: {},
+						drafts: {},
+						onDraftChange: () => undefined,
+						onAnswer: () => undefined,
+						onDecline: () => undefined,
+					}),
+				),
+			);
+			const bodies = view.host.querySelectorAll("[data-lo-ask-scroll]");
+			assert.ok(bodies.length >= 2);
+			// 576 pane - 290 body top - (670 - 520) controls below = 136 px.
+			assert.equal(bodies[0].style.maxHeight, `min(${M.ASK_BODY_CAP}, 136px)`);
+			assert.equal(bodies[1].style.maxHeight, "", "later bodies keep the cap");
+			await view.unmount();
+		},
+	);
+	// No bounding pane (the inline dock, the side panel): no inline fit at all.
+	const free = await mount(h(M.QuestionDock, { gate: gate({ title: LONG }) }));
+	assert.equal(
+		free.host.querySelector("[data-lo-ask-scroll]").style.maxHeight,
+		"",
+	);
+	await free.unmount();
+});
+
+test("R3: the notification title tooltip is truncated to 300 characters", () => {
+	assert.equal(M.TITLE_TOOLTIP_MAX, 300);
+	assert.equal(M.titleTooltip("short"), "short");
+	const long = M.titleTooltip(LONG);
+	assert.ok(long.length <= 301 && long.length > 290);
+	assert.ok(long.endsWith("…"));
+	assert.ok(LONG.startsWith(long.slice(0, 300).trimEnd()));
 });

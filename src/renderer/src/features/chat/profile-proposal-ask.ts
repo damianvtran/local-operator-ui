@@ -10,119 +10,117 @@
  * real review (the Agents page's git-style diff) instead of trying to show it.
  *
  * THE SHARED CONTRACT with the core PR (neither side may require the other to be
- * merged first):
- * - the card's FIRST line keeps the exact form
- *   `Apply proposal <pp_id> to <kind> '<name>'?`, kind in agent|team|skill, name
- *   Python-repr-quoted. The id must stay in the text: spoken approval in chat
- *   matches `proposal_id in text`, so this module only READS that line;
- * - the core MAY attach a structured `profile_proposal: {id, kind, name, fields}`
- *   to the event. When present it wins; the text line is the floor that works
- *   against every runtime, including ones older than the structured field.
+ * merged first). The TEXT is the contract - the approval gate carries only
+ * `(tool_name, description, job_id)` through TUI, mobile, SDK and the control
+ * handlers, so a structured side channel was judged disproportionate - and the
+ * text is line-structured (core `profile_proposals.approval_card_text`):
  *
- * WHAT IT DELIBERATELY DOES NOT DO: parse the summary lines that follow. They are
- * prose for a person (and an older runtime's are the full dump); the card shows
- * them inside a bounded scroll region, and the diff viewer is the real review.
+ *   1. `Apply proposal <pp_id> to <kind> <name-repr>?` - kind agent|team|skill,
+ *      name Python-repr quoted (`'name'`, or `"name"` when it holds `'`). The id
+ *      must stay in the text: spoken approval in chat matches `proposal_id in
+ *      text`, so this line is rendered as-is, never rewritten;
+ *   2. `Changes: <label> +A −R lines; <label> changed; … N more` (≤ 160 chars);
+ *   3. `Origin: <trust>. Review changes in Agents → <name>.`
+ *
+ * The TUI and mobile show the three lines raw. This module splits them so the
+ * desktop card can draw line 2 and the origin as its own compact summary and
+ * drop line 3's "Review changes in Agents → X" sentence, which duplicates the
+ * card's Review button and names the target a second time.
+ *
+ * DEGRADING. Only line 1 is required. An older runtime's card is line 1 followed
+ * by the WHOLE brief; there lines 2/3 do not match, nothing is stripped, and the
+ * full text stays in the bounded body - the card still gets its review link.
+ * Lines 2/3 are recognised only in their positions (right after line 1), so a
+ * brief that happens to contain "Changes: " further down is never lifted out.
  */
 
 export type ProfileProposalKind = "agent" | "team" | "skill";
-
-/** One changed field, as the core summarises it (counts, never content). */
-export type ProfileProposalField = {
-	label: string;
-	added?: number;
-	removed?: number;
-};
 
 export type ProfileProposalRef = {
 	id: string;
 	kind: ProfileProposalKind;
 	name: string;
-	fields?: ProfileProposalField[];
+};
+
+/** A recognised proposal card: its identity plus the text split by role. */
+export type ProfileProposalCard = ProfileProposalRef & {
+	/** Line 2 verbatim (`Changes: …`), or `null` on a runtime without it. */
+	changes: string | null;
+	/** Line 3's origin sentence alone (`Origin: agent.`), or `null`. */
+	origin: string | null;
+	/**
+	 * What the card's question body should still print: line 1 plus every line
+	 * that was NOT recognised as line 2/3 (an older runtime's full dump).
+	 */
+	body: string;
 };
 
 /*
- * Anchored at the start and the `?`: a proposal id quoted in the MIDDLE of some
- * other question ("did you mean to Apply proposal pp_... ?") is not a proposal
- * card, and linking it would offer a review the ask is not about. Multiline so
- * the anchor is "start of a line": the dock renders `title` and `detail` and the
- * contract line is the detail's first line, which a caller passes on its own,
- * but an ask question may carry it after a leading blank line.
+ * Line 1. Anchored at both ends of the sentence: a proposal id quoted in the
+ * MIDDLE of some other question ("did you mean to Apply proposal pp_... ?") is
+ * not a proposal card, and linking it would offer a review the ask is not about.
  *
- * The name class is `[^']+`: Python's repr picks double quotes for a name that
- * contains a single quote, and such a name would not round-trip through the
- * Agents URL as typed anyway - the structured field is the path for it.
+ * The name accepts both Python-repr quote forms (manager decision on core review
+ * M1): `'name'`, and `"name"`, which repr picks for a name holding an
+ * apostrophe. Inside either, a backslash escape is one unit (`\\.`) so an
+ * escaped quote (`\'` in the single-quoted form, which repr writes when the name
+ * holds BOTH quote kinds) does not end the name early; `unescapeRepr` then turns
+ * `\\` / `\'` / `\"` back into the characters the user typed. Other repr escapes
+ * (`\n`, `\x07`) are not decoded - profile names are slugs, and a name holding
+ * a control character would not round-trip through the Agents URL anyway.
  */
 const PROPOSAL_LINE =
-	/^Apply proposal (pp_[0-9a-f]+) to (agent|team|skill) '([^']+)'\?/m;
+	/^Apply proposal (pp_[0-9a-f]+) to (agent|team|skill) (?:'((?:[^'\\\n]|\\.)+)'|"((?:[^"\\\n]|\\.)+)")\?/;
 
-/** The id shape the core mints (`pp_` + hex); anything else is not one. */
-const PROPOSAL_ID = /^pp_[0-9a-f]+$/;
+const CHANGES_LINE = /^Changes: \S/;
 
-const KINDS: readonly ProfileProposalKind[] = ["agent", "team", "skill"];
+/*
+ * Line 3. The core clips it at 200 chars (`_clip` appends `…`); a clipped line
+ * no longer ends in the review sentence, fails this match, and is kept in the
+ * body verbatim rather than half-stripped.
+ */
+const ORIGIN_LINE = /^(Origin: [^\n]+?\.) Review changes in Agents → [^\n]+\.$/;
 
-const isKind = (value: unknown): value is ProfileProposalKind =>
-	typeof value === "string" && (KINDS as readonly string[]).includes(value);
+/** `\\` -> `\`, `\'` -> `'`, `\"` -> `"`: the escapes repr can put in a name. */
+const unescapeRepr = (quoted: string): string =>
+	quoted.replace(/\\(["'\\])/g, "$1");
 
-/** Read the contract's first line out of a card's text, or `null`. */
-export const parseProfileProposalText = (
+/** Read a proposal card out of an ask/approval text, or `null`. */
+export const parseProfileProposalCard = (
 	text: string | null | undefined,
-): ProfileProposalRef | null => {
+): ProfileProposalCard | null => {
 	if (!text) return null;
-	/*
-	 * Only the head of the text is searched. The match is anchored, so this is
-	 * about cost rather than correctness: an older runtime's card is the full
-	 * brief (the very payload this change exists for, ~10k characters), and the
-	 * contract line is always the first non-empty line.
-	 */
-	const head = text.trimStart().slice(0, 400);
-	const match = PROPOSAL_LINE.exec(head);
-	if (!match || match.index !== 0) return null;
+	// Leading blank lines are tolerated: an ask question may open with one.
+	const lines = text.trimStart().split("\n");
+	const match = PROPOSAL_LINE.exec(lines[0] ?? "");
+	if (!match) return null;
+	const rest = lines.slice(1);
+	let changes: string | null = null;
+	let origin: string | null = null;
+	if (rest[0] !== undefined && CHANGES_LINE.test(rest[0])) {
+		changes = rest.shift() ?? null;
+	}
+	const originMatch = rest[0] === undefined ? null : ORIGIN_LINE.exec(rest[0]);
+	if (originMatch) {
+		origin = originMatch[1];
+		rest.shift();
+	}
 	return {
 		id: match[1],
 		kind: match[2] as ProfileProposalKind,
-		name: match[3],
+		name: unescapeRepr(match[3] ?? match[4]),
+		changes,
+		origin,
+		body: [lines[0], ...rest].join("\n").trimEnd(),
 	};
 };
 
-/*
- * The structured field, validated rather than trusted: it arrives over the wire
- * from whichever runtime is attached, and a malformed object must fall back to
- * the text, never render a link built from `undefined`.
- */
-export const readStructuredProposal = (
-	value: unknown,
-): ProfileProposalRef | null => {
-	if (!value || typeof value !== "object") return null;
-	const raw = value as Record<string, unknown>;
-	if (typeof raw.id !== "string" || !PROPOSAL_ID.test(raw.id)) return null;
-	if (!isKind(raw.kind)) return null;
-	if (typeof raw.name !== "string" || raw.name.length === 0) return null;
-	const fields = Array.isArray(raw.fields)
-		? raw.fields.flatMap((field): ProfileProposalField[] => {
-				if (!field || typeof field !== "object") return [];
-				const row = field as Record<string, unknown>;
-				if (typeof row.label !== "string") return [];
-				return [
-					{
-						label: row.label,
-						added: typeof row.added === "number" ? row.added : undefined,
-						removed: typeof row.removed === "number" ? row.removed : undefined,
-					},
-				];
-			})
-		: undefined;
-	return { id: raw.id, kind: raw.kind, name: raw.name, fields };
-};
-
-/** Structured first, then the text's contract line. */
+/** The first text that carries a proposal card, or `null`. */
 export const profileProposalOf = (
-	structured: unknown,
 	...texts: Array<string | null | undefined>
-): ProfileProposalRef | null => {
-	const fromWire = readStructuredProposal(structured);
-	if (fromWire) return fromWire;
+): ProfileProposalCard | null => {
 	for (const text of texts) {
-		const parsed = parseProfileProposalText(text);
+		const parsed = parseProfileProposalCard(text);
 		if (parsed) return parsed;
 	}
 	return null;

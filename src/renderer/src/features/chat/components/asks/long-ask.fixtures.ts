@@ -45,7 +45,7 @@ export const PROPOSAL_ID = "pp_7abf6b3116c87a99";
 
 export const PROPOSAL_SUMMARY_TEXT = [
 	`Apply proposal ${PROPOSAL_ID} to team 'minervadev'?`,
-	"Instructions: +38 −12 lines · Description: changed",
+	"Changes: instructions +38 −12 lines; description changed",
 	"Origin: trusted. Review changes in Agents → minervadev.",
 ].join("\n");
 

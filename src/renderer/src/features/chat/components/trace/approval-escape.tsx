@@ -321,10 +321,20 @@ export const ApprovalEscapeControls = ({
 	policyLine = null,
 	onSetSession,
 	onSetAll,
+	compactIdle = false,
 	className,
 }: {
 	busy?: boolean;
 	status?: ApprovalEscapeStatus;
+	/**
+	 * Drop the status slot's `2lh` reserve while nothing is in flight and no
+	 * result is showing. For a host with no height to spare - the bounded inline
+	 * dock, where the idle reserve was most of the 56 blank pixel rows design D1
+	 * measured under the policy links at 1024x600. The cost is the one the reserve exists to avoid (the
+	 * hint below moves when a result lands), accepted there because a press is
+	 * rare and a hidden question is not.
+	 */
+	compactIdle?: boolean;
 	/** The effective-mode line; absent on a backend that does not carry it. */
 	policyLine?: string | null;
 	onSetSession: () => void;
@@ -376,7 +386,8 @@ export const ApprovalEscapeControls = ({
 				id={statusId}
 				data-approval-escape-status=""
 				className={cn(
-					"block min-h-[2lh] text-meta",
+					"block text-meta",
+					compactIdle && !busy && status.kind === "idle" ? null : "min-h-[2lh]",
 					status.kind === "refused" ||
 						status.kind === "default-saved-session-failed"
 						? "text-danger"
@@ -398,8 +409,11 @@ export const ApprovalEscape = ({
 	approvalMode,
 	approvalProvenance,
 	approvalGlobalMode,
+	compactIdle = false,
 	className,
 }: {
+	/** See `ApprovalEscapeControls.compactIdle`. */
+	compactIdle?: boolean;
 	/**
 	 * The session whose live gate a press loosens. Required: a card with no
 	 * session id has no gate to address, and the dock omits the row there.
@@ -478,6 +492,7 @@ export const ApprovalEscape = ({
 			})}
 			busy={target !== null}
 			status={status}
+			compactIdle={compactIdle}
 			onSetSession={() => void choose("session")}
 			onSetAll={() => void choose("all")}
 			className={className}

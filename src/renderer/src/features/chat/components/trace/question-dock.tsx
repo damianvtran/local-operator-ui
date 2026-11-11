@@ -75,7 +75,7 @@ import type { PendingDesktopGate } from "../../../../../../shared/desktop-sessio
 import { approvalOptionDisplay } from "../../approval-words";
 import { APPROVAL_OPTIONS, gateIsSecret } from "../../ask-answer";
 import { composerField, focusComposer } from "../../composer-field";
-import { profileProposalOf } from "../../profile-proposal-ask";
+import { parseProfileProposalCard } from "../../profile-proposal-ask";
 import {
 	ASK_CARD_MAX_H,
 	AskScrollBody,
@@ -488,19 +488,25 @@ export const QuestionDock = ({
 	 * hint's digit clause all have to count the same set.
 	 */
 	const options = gate.kind === "approval" ? APPROVAL_OPTIONS : gate.options;
-	const content = gate.detail
-		? `**${gate.title}**\n\n${gate.detail}`
-		: gate.title;
 	/*
 	 * A profile/team/skill proposal (the core's `account profile save` approval)
-	 * gets its review link. Structured field first, then the contract's first line
-	 * of the detail (an approval's text) or the title (an ask's question).
+	 * gets its review link and its compact summary: the contract's lines are
+	 * read from the detail (an approval's text) or the title (an ask's question).
+	 * Its question then prints only what the summary does not draw (line 1, plus
+	 * anything an older runtime appended), at body size - the 3-line text set as
+	 * one heading-weight paragraph was design D2.
 	 */
-	const proposal = profileProposalOf(
-		gate.profile_proposal,
-		gate.detail,
-		gate.title,
-	);
+	const fromDetail = parseProfileProposalCard(gate.detail);
+	const proposal = fromDetail ?? parseProfileProposalCard(gate.title);
+	const content = fromDetail
+		? `**${gate.title}**\n\n${fromDetail.body}`
+		: proposal
+			? gate.detail
+				? `${proposal.body}\n\n${gate.detail}`
+				: proposal.body
+			: gate.detail
+				? `**${gate.title}**\n\n${gate.detail}`
+				: gate.title;
 
 	if (collapsed) {
 		return (
@@ -542,7 +548,14 @@ export const QuestionDock = ({
 	}
 
 	return (
-		<div className={cn("pb-2", className)} data-lo-question-dock="expanded">
+		/*
+		 * A flex column with `min-h-0` so the card can shrink to what its wrapper in
+		 * `chat-content.tsx` is given (see the BOUNDED note on the card below).
+		 */
+		<div
+			className={cn("flex min-h-0 flex-col pb-2", className)}
+			data-lo-question-dock="expanded"
+		>
 			<section
 				ref={cardRef}
 				aria-label={t("ui.chat.question_dock.from_agent_label")}
@@ -560,14 +573,16 @@ export const QuestionDock = ({
 					focusComposer();
 				}}
 				/*
-				 * BOUNDED (see `ask-bounds.tsx`): the card is capped against the viewport
-				 * and the question body below is the part that gives way, so the options
-				 * and the composer under this dock stay on screen however long the
-				 * question is. The card's own scroll is the last resort for a window too
-				 * short for even the pinned controls.
+				 * BOUNDED (see `ask-bounds.tsx`) BY THE CHAT COLUMN, not the window
+				 * (design D1): the dock's wrapper is a shrinkable flex item of the column
+				 * beside a `shrink-0` composer, and this card (`min-h-0`) shrinks with it,
+				 * so the composer and its send row stay fully on screen at 1024x600. The
+				 * vh/rem cap is only the upper bound on a tall window. Inside, the
+				 * question body is what gives way, down to its three-line floor; past
+				 * that the card's own scroll takes over.
 				 */
 				className={cn(
-					"flex flex-col gap-2 rounded-lg border border-accent bg-elevated p-4 outline-none",
+					"flex min-h-0 flex-col gap-2 rounded-lg border border-accent bg-elevated p-4 outline-none",
 					ASK_CARD_MAX_H,
 					"overflow-y-auto overscroll-contain",
 				)}
@@ -602,7 +617,9 @@ export const QuestionDock = ({
 						</p>
 					)}
 				</div>
-				<AskScrollBody className="text-heading text-ink">
+				<AskScrollBody
+					className={cn(proposal ? "text-body" : "text-heading", "text-ink")}
+				>
 					<MarkdownRenderer content={content} />
 				</AskScrollBody>
 				{proposal ? (
@@ -667,6 +684,9 @@ export const QuestionDock = ({
 							 */}
 							{sessionId ? (
 								<ApprovalEscape
+									// The idle status slot's 2lh reserve was blank card height
+									// the bounded dock could not spare (design D1(c)).
+									compactIdle={true}
 									sessionId={sessionId}
 									approvalMode={gate.approval_mode}
 									approvalProvenance={gate.approval_provenance}
