@@ -39,5 +39,10 @@
 	"ui.chat.asks.clause.outstanding": "{count, plural, other {{count, number, ::group-off}项待处理}}",
 	"ui.chat.asks.clause.waiting": "{count, plural, other {{count, number, ::group-off}个问题等待回答}}",
 	"ui.chat.asks.clause.delivering": "{count, plural, other {{count, number, ::group-off}个回答尚未送达——仍可修改}}",
-	"ui.chat.asks.clause.timed_out": "{count, plural, other {{count, number, ::group-off}个问题已超时}}"
+	"ui.chat.asks.clause.timed_out": "{count, plural, other {{count, number, ::group-off}个问题已超时}}",
+	"ui.chat.asks.bounds.body_label": "完整问题",
+	"ui.chat.asks.proposal.summary": "对{kind, select, agent {智能体} team {团队} skill {技能} other {配置}} {name} 的拟议更改",
+	"ui.chat.asks.proposal.field_lines": "{label}：+{added, number} −{removed, number} 行",
+	"ui.chat.asks.proposal.field_changed": "{label}：已更改",
+	"ui.chat.asks.proposal.review": "查看更改"
 }

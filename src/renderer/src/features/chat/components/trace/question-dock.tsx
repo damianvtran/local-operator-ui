@@ -75,6 +75,12 @@ import type { PendingDesktopGate } from "../../../../../../shared/desktop-sessio
 import { approvalOptionDisplay } from "../../approval-words";
 import { APPROVAL_OPTIONS, gateIsSecret } from "../../ask-answer";
 import { composerField, focusComposer } from "../../composer-field";
+import { profileProposalOf } from "../../profile-proposal-ask";
+import {
+	ASK_CARD_MAX_H,
+	AskScrollBody,
+	ProposalReviewNotice,
+} from "../asks/ask-bounds";
 import { MarkdownRenderer } from "../markdown-renderer";
 import { ApprovalEscape } from "./approval-escape";
 import { AskOptions } from "./ask-options";
@@ -485,6 +491,16 @@ export const QuestionDock = ({
 	const content = gate.detail
 		? `**${gate.title}**\n\n${gate.detail}`
 		: gate.title;
+	/*
+	 * A profile/team/skill proposal (the core's `account profile save` approval)
+	 * gets its review link. Structured field first, then the contract's first line
+	 * of the detail (an approval's text) or the title (an ask's question).
+	 */
+	const proposal = profileProposalOf(
+		gate.profile_proposal,
+		gate.detail,
+		gate.title,
+	);
 
 	if (collapsed) {
 		return (
@@ -543,9 +559,20 @@ export const QuestionDock = ({
 					setCollapsedKey(key);
 					focusComposer();
 				}}
-				className="flex flex-col gap-2 rounded-lg border border-accent bg-elevated p-4 outline-none"
+				/*
+				 * BOUNDED (see `ask-bounds.tsx`): the card is capped against the viewport
+				 * and the question body below is the part that gives way, so the options
+				 * and the composer under this dock stay on screen however long the
+				 * question is. The card's own scroll is the last resort for a window too
+				 * short for even the pinned controls.
+				 */
+				className={cn(
+					"flex flex-col gap-2 rounded-lg border border-accent bg-elevated p-4 outline-none",
+					ASK_CARD_MAX_H,
+					"overflow-y-auto overscroll-contain",
+				)}
 			>
-				<div className="flex items-center gap-2">
+				<div className="flex shrink-0 items-center gap-2">
 					<MessageCircleQuestion
 						aria-hidden={true}
 						className="size-4 shrink-0 text-accent"
@@ -575,95 +602,103 @@ export const QuestionDock = ({
 						</p>
 					)}
 				</div>
-				<div className="text-heading text-ink">
+				<AskScrollBody className="text-heading text-ink">
 					<MarkdownRenderer content={content} />
-				</div>
-				{gate.kind === "ask" &&
-					(gateIsSecret(gate) ? (
-						/*
-						 * THE SECRET FIELD IS THIS CARD'S, not the composer's: the answer is
-						 * a credential, and this field is the only surface allowed to hold it
-						 * (see `SecretAnswer`). Keyed on the question as well as keyed at the
-						 * draft, so not even DOM state (focus, selection) survives into the
-						 * next question. `busy` is `secretBusy` rather than the options'
-						 * `busy`: a definite refusal RELEASES this field while it holds the
-						 * options band (see the split above).
-						 */
-						<SecretAnswer
-							key={key}
-							busy={secretBusy}
-							value={secretValue}
-							onChange={(value) => setSecretDraft({ key, value })}
-							onAnswer={onAnswerSecret}
-						/>
-					) : (
-						<AskOptions
-							options={gate.options}
-							recommended={gate.recommended}
-							recommendedAll={gate.recommended_all}
-							requestId={gate.request_id}
-							busy={busy}
-							onAnswer={(label) => onAnswer?.(label)}
-						/>
-					))}
-				{/*
-				 * An approval gets the same affordance as an ask, and the SAME component
-				 * (main's approval-options arm, carried into this carrier by the fold):
-				 * `AskOptions` holds the contrast triple, the focus handling, the aria and
-				 * the busy semantics as one unit, so a forked copy would be a second
-				 * implementation of a control the design contract tests by the triple it
-				 * is built from. The options are the client's own pair - the wire carries
-				 * none for an approval - and the label a press submits is what
-				 * `approvalVerdict` turns into the boolean the request carries. `busy` is
-				 * the ask arm's own expression, so the two option bands hold identically
-				 * across the whole window between a press and the gate moving.
-				 */}
-				{gate.kind === "approval" && (
-					<>
-						<AskOptions
-							options={APPROVAL_OPTIONS}
-							display={approvalOptionDisplay}
-							requestId={gate.request_id}
-							busy={busy}
-							onAnswer={(label) => onAnswer?.(label)}
-						/>
-						{/*
-						 * THE POLICY HANDLES, kept BELOW the pair the card exists for. They
-						 * own their own busy state, so a policy call in flight disables only
-						 * these two links; a policy failure never disables Approve or Deny.
-						 * They are absent where there is no session to address.
-						 */}
-						{sessionId ? (
-							<ApprovalEscape
-								sessionId={sessionId}
-								approvalMode={gate.approval_mode}
-								approvalProvenance={gate.approval_provenance}
-								approvalGlobalMode={gate.approval_global_mode}
+				</AskScrollBody>
+				{proposal ? (
+					<ProposalReviewNotice proposal={proposal} className="shrink-0" />
+				) : null}
+				{/* Everything from here down is pinned: `shrink-0`, so only the body gives way. */}
+				<div className="flex shrink-0 flex-col gap-2">
+					{gate.kind === "ask" &&
+						(gateIsSecret(gate) ? (
+							/*
+							 * THE SECRET FIELD IS THIS CARD'S, not the composer's: the answer is
+							 * a credential, and this field is the only surface allowed to hold it
+							 * (see `SecretAnswer`). Keyed on the question as well as keyed at the
+							 * draft, so not even DOM state (focus, selection) survives into the
+							 * next question. `busy` is `secretBusy` rather than the options'
+							 * `busy`: a definite refusal RELEASES this field while it holds the
+							 * options band (see the split above).
+							 */
+							<SecretAnswer
+								key={key}
+								busy={secretBusy}
+								value={secretValue}
+								onChange={(value) => setSecretDraft({ key, value })}
+								onAnswer={onAnswerSecret}
 							/>
-						) : null}
-					</>
-				)}
-				<p className="text-ink-dim text-meta">{questionDockHint(gate, held)}</p>
-				{/*
-				 * A refused answer lands on the card it was pressed on, outcome first,
-				 * and the card stays held so it cannot be pressed twice (QA round 1, Q3;
-				 * UX round 1, U4). `output` carries the status role implicitly.
-				 *
-				 * THE INK IS THE ARM'S, not this surface's: a retryable-busy refusal is a
-				 * moment the app is waiting out, so it takes the register the composer
-				 * band already uses for the send lock and a late delivery, and every other
-				 * arm keeps the danger band (design round 1, D4).
-				 */}
-				{answer?.refused && (
-					<output
-						className={cn(
-							"block text-body-sm",
-							answer.muted ? "text-ink-muted" : "text-danger",
-						)}
-					>
-						{answer.refused}
-					</output>
-				)}
+						) : (
+							<AskOptions
+								options={gate.options}
+								recommended={gate.recommended}
+								recommendedAll={gate.recommended_all}
+								requestId={gate.request_id}
+								busy={busy}
+								onAnswer={(label) => onAnswer?.(label)}
+							/>
+						))}
+					{/*
+					 * An approval gets the same affordance as an ask, and the SAME component
+					 * (main's approval-options arm, carried into this carrier by the fold):
+					 * `AskOptions` holds the contrast triple, the focus handling, the aria and
+					 * the busy semantics as one unit, so a forked copy would be a second
+					 * implementation of a control the design contract tests by the triple it
+					 * is built from. The options are the client's own pair - the wire carries
+					 * none for an approval - and the label a press submits is what
+					 * `approvalVerdict` turns into the boolean the request carries. `busy` is
+					 * the ask arm's own expression, so the two option bands hold identically
+					 * across the whole window between a press and the gate moving.
+					 */}
+					{gate.kind === "approval" && (
+						<>
+							<AskOptions
+								options={APPROVAL_OPTIONS}
+								display={approvalOptionDisplay}
+								requestId={gate.request_id}
+								busy={busy}
+								onAnswer={(label) => onAnswer?.(label)}
+							/>
+							{/*
+							 * THE POLICY HANDLES, kept BELOW the pair the card exists for. They
+							 * own their own busy state, so a policy call in flight disables only
+							 * these two links; a policy failure never disables Approve or Deny.
+							 * They are absent where there is no session to address.
+							 */}
+							{sessionId ? (
+								<ApprovalEscape
+									sessionId={sessionId}
+									approvalMode={gate.approval_mode}
+									approvalProvenance={gate.approval_provenance}
+									approvalGlobalMode={gate.approval_global_mode}
+								/>
+							) : null}
+						</>
+					)}
+					<p className="text-ink-dim text-meta">
+						{questionDockHint(gate, held)}
+					</p>
+					{/*
+					 * A refused answer lands on the card it was pressed on, outcome first,
+					 * and the card stays held so it cannot be pressed twice (QA round 1, Q3;
+					 * UX round 1, U4). `output` carries the status role implicitly.
+					 *
+					 * THE INK IS THE ARM'S, not this surface's: a retryable-busy refusal is a
+					 * moment the app is waiting out, so it takes the register the composer
+					 * band already uses for the send lock and a late delivery, and every other
+					 * arm keeps the danger band (design round 1, D4).
+					 */}
+					{answer?.refused && (
+						<output
+							className={cn(
+								"block text-body-sm",
+								answer.muted ? "text-ink-muted" : "text-danger",
+							)}
+						>
+							{answer.refused}
+						</output>
+					)}
+				</div>
 			</section>
 		</div>
 	);

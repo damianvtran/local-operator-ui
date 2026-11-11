@@ -4402,6 +4402,7 @@ export type MessageParams = {
 	"ui.chat.asks.all_asks": undefined;
 	"ui.chat.asks.answer_aria": { question: string };
 	"ui.chat.asks.answer_options": undefined;
+	"ui.chat.asks.bounds.body_label": undefined;
 	"ui.chat.asks.cancel": undefined;
 	"ui.chat.asks.change_answer": undefined;
 	"ui.chat.asks.changed_handoff": undefined;
@@ -4430,6 +4431,14 @@ export type MessageParams = {
 	"ui.chat.asks.other_label": undefined;
 	"ui.chat.asks.outstanding_aria": { label: string };
 	"ui.chat.asks.outstanding_count": { count: number; count_display: string };
+	"ui.chat.asks.proposal.field_changed": { label: string };
+	"ui.chat.asks.proposal.field_lines": {
+		label: string;
+		added: number;
+		removed: number;
+	};
+	"ui.chat.asks.proposal.review": undefined;
+	"ui.chat.asks.proposal.summary": { kind: string; name: string };
 	"ui.chat.asks.recommended": undefined;
 	"ui.chat.asks.scope.fleet": undefined;
 	"ui.chat.asks.scope.session": undefined;

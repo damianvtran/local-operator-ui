@@ -39,5 +39,10 @@
 	"ui.chat.asks.clause.outstanding": "{count, plural, one {{count, number, ::group-off} बाकी} other {{count, number, ::group-off} बाकी}}",
 	"ui.chat.asks.clause.waiting": "{count, plural, one {{count, number, ::group-off} सवाल इंतज़ार में} other {{count, number, ::group-off} सवाल इंतज़ार में}}",
 	"ui.chat.asks.clause.delivering": "{count, plural, one {{count, number, ::group-off} जवाब अभी पहुँचा नहीं — आप इसे अब भी बदल सकते हैं} other {{count, number, ::group-off} जवाब अभी पहुँचे नहीं — आप इन्हें अब भी बदल सकते हैं}}",
-	"ui.chat.asks.clause.timed_out": "{count, plural, one {{count, number, ::group-off} सवाल की समय-सीमा खत्म हो गई} other {{count, number, ::group-off} सवालों की समय-सीमा खत्म हो गई}}"
+	"ui.chat.asks.clause.timed_out": "{count, plural, one {{count, number, ::group-off} सवाल की समय-सीमा खत्म हो गई} other {{count, number, ::group-off} सवालों की समय-सीमा खत्म हो गई}}",
+	"ui.chat.asks.bounds.body_label": "पूरा प्रश्न",
+	"ui.chat.asks.proposal.summary": "{kind, select, agent {एजेंट} team {टीम} skill {कौशल} other {प्रोफ़ाइल}} {name} में प्रस्तावित बदलाव",
+	"ui.chat.asks.proposal.field_lines": "{label}: +{added, number} −{removed, number} पंक्तियाँ",
+	"ui.chat.asks.proposal.field_changed": "{label}: बदला गया",
+	"ui.chat.asks.proposal.review": "बदलाव देखें"
 }

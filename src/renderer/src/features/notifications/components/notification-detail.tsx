@@ -185,8 +185,15 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 				)}
 			</div>
 
+			{/*
+			 * CLAMPED: an ask's notification takes its question as the title, and a
+			 * 10k-character question printed here in full pushed the ask card (whose
+			 * own body is bounded and scrollable) far below the fold. The full text
+			 * is one press away in that card and in the `title` tooltip.
+			 */}
 			<h2
-				className="mt-3 text-heading text-ink"
+				className="mt-3 line-clamp-3 text-heading text-ink"
+				title={item.title}
 				data-notification-detail-title=""
 				tabIndex={-1}
 			>

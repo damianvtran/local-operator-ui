@@ -101,8 +101,14 @@ import {
 	askTicks,
 	draftFor,
 } from "../../ask-queue";
+import { profileProposalOf } from "../../profile-proposal-ask";
 import { AskRecommendedBadge, recommendedIndexes } from "../ask-recommended";
 import { AskAnswerField, commitOnEnter } from "./ask-answer-field";
+import {
+	ASK_OPTIONS_MAX_H,
+	AskScrollBody,
+	ProposalReviewNotice,
+} from "./ask-bounds";
 
 /**
  * WHICH HALF OF THE LIST THE READER IS LOOKING AT (operator ask, 2026-10-05).
@@ -503,13 +509,30 @@ const AskQuestionField = ({
 	 * card's own state: the ticks are read OUT of the current cell (`askTicks`) and the
 	 * cell is rebuilt from them and the next `Other` entry (`askCellWith`).
 	 */
+	const proposal = profileProposalOf(
+		question.profile_proposal,
+		question.question,
+	);
 	const writeOther = (next: AskOther) => {
 		setOther(next);
 		onCell(askCellWith(ticks, multi, next));
 	};
 	return (
 		<div className="flex flex-col gap-1.5" data-lo-ask-question={question.id}>
-			<p className="text-ink text-sm">{isolateValue(question.question, dir)}</p>
+			{/*
+			 * BOUNDED (see `ask-bounds.tsx`): the question text scrolls inside a
+			 * viewport-relative cap and the controls below are its siblings, so a
+			 * 10k-character question no longer pushes its own options - and every
+			 * card under it - out of the drawer. `whitespace-pre-wrap` because the
+			 * long questions that need this are the ones with structure (a proposal
+			 * summary, a pasted list) and a cap over one run-on paragraph helps less.
+			 */}
+			<AskScrollBody>
+				<p className="whitespace-pre-wrap text-ink text-sm">
+					{isolateValue(question.question, dir)}
+				</p>
+			</AskScrollBody>
+			{proposal ? <ProposalReviewNotice proposal={proposal} /> : null}
 			{question.secret ? (
 				<input
 					data-ask-secret={question.id}
@@ -545,137 +568,154 @@ const AskQuestionField = ({
 				/>
 			) : options.length > 0 ? (
 				<div className="flex flex-col" role={multi ? "group" : "radiogroup"}>
-					{options.map((option, index) => {
-						const chosen = ticks.includes(option.label);
-						/*
-						 * THE RECOMMENDATION AND THE SELECTION ARE TWO STATES, and this row
-						 * is where that has to be visible rather than merely true: the row's
-						 * selection is the DRAFT (a ground step plus the drawn radio/checkbox
-						 * mark), while the recommendation is a mark of its own keyed on the
-						 * QUESTION's index (`marked`, computed above). Ticking a different
-						 * option moves the former and leaves the latter exactly where it was -
-						 * which is the whole requirement: the advice the user is choosing
-						 * AGAINST must not be erased by the act of weighing it.
-						 */
-						const recommended = marked.has(index);
-						return (
-							<button
-								key={option.label}
-								type="button"
-								data-ask-option={option.label}
-								disabled={disabled}
-								aria-pressed={multi ? chosen : undefined}
-								aria-checked={multi ? undefined : chosen}
-								role={multi ? "checkbox" : "radio"}
-								onClick={() => {
-									if (!multi) {
+					{/*
+					 * The model-authored rows scroll inside their own cap; the `Other` row
+					 * below is OUTSIDE it on purpose, so free text stays reachable however
+					 * many options there are. Still one group for assistive tech: the
+					 * wrapper is a plain div, and the radios inside remain the group's.
+					 */}
+					<div
+						data-lo-ask-options-scroll=""
+						className={cn(
+							"flex min-h-0 flex-col overflow-y-auto overscroll-contain",
+							ASK_OPTIONS_MAX_H,
+						)}
+					>
+						{options.map((option, index) => {
+							const chosen = ticks.includes(option.label);
+							/*
+							 * THE RECOMMENDATION AND THE SELECTION ARE TWO STATES, and this row
+							 * is where that has to be visible rather than merely true: the row's
+							 * selection is the DRAFT (a ground step plus the drawn radio/checkbox
+							 * mark), while the recommendation is a mark of its own keyed on the
+							 * QUESTION's index (`marked`, computed above). Ticking a different
+							 * option moves the former and leaves the latter exactly where it was -
+							 * which is the whole requirement: the advice the user is choosing
+							 * AGAINST must not be erased by the act of weighing it.
+							 */
+							const recommended = marked.has(index);
+							return (
+								<button
+									key={option.label}
+									type="button"
+									data-ask-option={option.label}
+									disabled={disabled}
+									aria-pressed={multi ? chosen : undefined}
+									aria-checked={multi ? undefined : chosen}
+									role={multi ? "checkbox" : "radio"}
+									onClick={() => {
+										if (!multi) {
+											/*
+											 * SINGLE-SELECT: the option and `Other` are exclusive, so choosing
+											 * an option CLOSES `Other` - its text stays in `other.text` for a
+											 * mis-click, but it is no longer the answer.
+											 */
+											if (other.open) setOther({ ...other, open: false });
+											onCell([option.label]);
+											return;
+										}
 										/*
-										 * SINGLE-SELECT: the option and `Other` are exclusive, so choosing
-										 * an option CLOSES `Other` - its text stays in `other.text` for a
-										 * mis-click, but it is no longer the answer.
+										 * MULTI-SELECT is additive: toggle the label among the ticks and
+										 * leave `Other` exactly as it was, so a typed answer is neither
+										 * dropped nor moved in front of the options the user ticks later.
 										 */
-										if (other.open) setOther({ ...other, open: false });
-										onCell([option.label]);
-										return;
-									}
-									/*
-									 * MULTI-SELECT is additive: toggle the label among the ticks and
-									 * leave `Other` exactly as it was, so a typed answer is neither
-									 * dropped nor moved in front of the options the user ticks later.
-									 */
-									onCell(
-										askCellWith(
-											chosen
-												? ticks.filter((label) => label !== option.label)
-												: [...ticks, option.label],
-											true,
-											other,
-										),
-									);
-								}}
-								className={cn(
-									"flex w-full items-baseline gap-2 rounded-sm px-2 py-1 text-start",
-									// Rows, not controls with edges of their own: this list sits
-									// inside the panel's card, so its boundary is its selection
-									// ground and its focus outline (the same idiom as `AskOptions`).
-									/*
-									 * A CHOSEN ROW KEEPS ITS ROLE FILL ON GLASS (review round 2, minor 3).
-									 * It is a selected SURFACE, and the model's answer for a selected
-									 * surface is already an exemption: the veil rule skips a block that
-									 * wears `bg-row-selected` rather than stacking. Adding the selected ink
-									 * (8%) on top of this card's veil (9-12%) is the forbidden stack - the
-									 * same arithmetic as the 5% hover that measured 4.30:1 on synthwave -
-									 * so the row paints ONE layer, the flat system's chosen ground. The
-									 * mark (`AskMark`) is the selection channel that survives any ground.
-									 * On glass this is opaque over a translucent card: a stated trade, not
-									 * an oversight - a mark-only row is a design decision, and the ask
-									 * card cannot be captured by the rig (no queued asks).
-									 *
-									 * NO HOVER INK IS ADDED HERE either: the label already sits at `ink`,
-									 * so a hover step has nowhere brighter to go; the unhovered rows'
-									 * fill is suppressed on glass (styles/index.css), so their hover is
-									 * cursor-only.
-									 */
-									chosen ? "bg-sunken" : "hover:bg-sunken",
-									disabled ? "text-ink-dim" : "text-ink",
-								)}
-							>
-								<AskMark chosen={chosen} multi={multi} />
-								<span className="min-w-0 flex-1">
-									{/*
-									 * THE MARK STAYS ON THE LABEL'S OWN FIRST LINE, which is the fix
-									 * for design round 1's U1 rather than a style preference.
-									 *
-									 * THE FAILURE, measured on the 65-character label this PR
-									 * fixtures: with `flex-wrap`, the badge is a flex ITEM, so the
-									 * moment the label fills its first line the badge wraps to a flex
-									 * line of its own - 17px directly above the description, in a
-									 * dimmer ink at the description's own 12px - and it reads as a
-									 * LEAD-IN LINE of the description rather than as a mark on the
-									 * label. That is the operator's original "reads as prose" symptom
-									 * surviving in the long-label state, and it is exactly the state
-									 * the fixture exists for.
-									 *
-									 * Nowrap plus a shrinkable label fixes it at every width: the
-									 * label is a flex item with `min-w-0`, so it shrinks to the space
-									 * the badge leaves and wraps INSIDE its own box, while the badge
-									 * (a `shrink-0` item) keeps its place on the row's first line. A
-									 * short label is not stretched (`flex: 0 1 auto` sizes it to its
-									 * content), so the badge still sits immediately beside it; a long
-									 * one wraps under it rather than pushing the badge away. A badge
-									 * can therefore never become a line of its own above the
-									 * description.
-									 *
-									 * The label is BOLDED where it is recommended - the half of
-									 * the signal that survives a reader who skims past the badge.
-									 */}
-									<span className="flex items-baseline gap-x-2">
-										<span
-											className={cn("min-w-0", recommended && "font-semibold")}
-										>
-											{option.label}
+										onCell(
+											askCellWith(
+												chosen
+													? ticks.filter((label) => label !== option.label)
+													: [...ticks, option.label],
+												true,
+												other,
+											),
+										);
+									}}
+									className={cn(
+										"flex w-full items-baseline gap-2 rounded-sm px-2 py-1 text-start",
+										// Rows, not controls with edges of their own: this list sits
+										// inside the panel's card, so its boundary is its selection
+										// ground and its focus outline (the same idiom as `AskOptions`).
+										/*
+										 * A CHOSEN ROW KEEPS ITS ROLE FILL ON GLASS (review round 2, minor 3).
+										 * It is a selected SURFACE, and the model's answer for a selected
+										 * surface is already an exemption: the veil rule skips a block that
+										 * wears `bg-row-selected` rather than stacking. Adding the selected ink
+										 * (8%) on top of this card's veil (9-12%) is the forbidden stack - the
+										 * same arithmetic as the 5% hover that measured 4.30:1 on synthwave -
+										 * so the row paints ONE layer, the flat system's chosen ground. The
+										 * mark (`AskMark`) is the selection channel that survives any ground.
+										 * On glass this is opaque over a translucent card: a stated trade, not
+										 * an oversight - a mark-only row is a design decision, and the ask
+										 * card cannot be captured by the rig (no queued asks).
+										 *
+										 * NO HOVER INK IS ADDED HERE either: the label already sits at `ink`,
+										 * so a hover step has nowhere brighter to go; the unhovered rows'
+										 * fill is suppressed on glass (styles/index.css), so their hover is
+										 * cursor-only.
+										 */
+										chosen ? "bg-sunken" : "hover:bg-sunken",
+										disabled ? "text-ink-dim" : "text-ink",
+									)}
+								>
+									<AskMark chosen={chosen} multi={multi} />
+									<span className="min-w-0 flex-1">
+										{/*
+										 * THE MARK STAYS ON THE LABEL'S OWN FIRST LINE, which is the fix
+										 * for design round 1's U1 rather than a style preference.
+										 *
+										 * THE FAILURE, measured on the 65-character label this PR
+										 * fixtures: with `flex-wrap`, the badge is a flex ITEM, so the
+										 * moment the label fills its first line the badge wraps to a flex
+										 * line of its own - 17px directly above the description, in a
+										 * dimmer ink at the description's own 12px - and it reads as a
+										 * LEAD-IN LINE of the description rather than as a mark on the
+										 * label. That is the operator's original "reads as prose" symptom
+										 * surviving in the long-label state, and it is exactly the state
+										 * the fixture exists for.
+										 *
+										 * Nowrap plus a shrinkable label fixes it at every width: the
+										 * label is a flex item with `min-w-0`, so it shrinks to the space
+										 * the badge leaves and wraps INSIDE its own box, while the badge
+										 * (a `shrink-0` item) keeps its place on the row's first line. A
+										 * short label is not stretched (`flex: 0 1 auto` sizes it to its
+										 * content), so the badge still sits immediately beside it; a long
+										 * one wraps under it rather than pushing the badge away. A badge
+										 * can therefore never become a line of its own above the
+										 * description.
+										 *
+										 * The label is BOLDED where it is recommended - the half of
+										 * the signal that survives a reader who skims past the badge.
+										 */}
+										<span className="flex items-baseline gap-x-2">
+											<span
+												className={cn(
+													"min-w-0",
+													recommended && "font-semibold",
+												)}
+											>
+												{option.label}
+											</span>
+											{recommended ? <AskRecommendedBadge /> : null}
 										</span>
-										{recommended ? <AskRecommendedBadge /> : null}
+										{/*
+										 * `ink-muted` RESTORED (design round 2, D12). Round 1's
+										 * D3 premise was a MISMEASUREMENT - the colours it sampled
+										 * were the option MARK's `border-control`, not the text -
+										 * and the muted pair actually measures 7.85:1 dark /
+										 * 8.19:1 light, contract-floored at 5.5:1 across all 59
+										 * palettes. Flattening the description to `ink` did not fix
+										 * a contrast fault; it spent the two-step ranking inside a
+										 * two-line option row, which is the thing the row reads by.
+										 */}
+										{option.description ? (
+											<span className="block text-ink-muted text-xs">
+												{option.description}
+											</span>
+										) : null}
 									</span>
-									{/*
-									 * `ink-muted` RESTORED (design round 2, D12). Round 1's
-									 * D3 premise was a MISMEASUREMENT - the colours it sampled
-									 * were the option MARK's `border-control`, not the text -
-									 * and the muted pair actually measures 7.85:1 dark /
-									 * 8.19:1 light, contract-floored at 5.5:1 across all 59
-									 * palettes. Flattening the description to `ink` did not fix
-									 * a contrast fault; it spent the two-step ranking inside a
-									 * two-line option row, which is the thing the row reads by.
-									 */}
-									{option.description ? (
-										<span className="block text-ink-muted text-xs">
-											{option.description}
-										</span>
-									) : null}
-								</span>
-							</button>
-						);
-					})}
+								</button>
+							);
+						})}
+					</div>
 					{/*
 					 * THE `Other` ROW: ALWAYS PRESENT, AND ALWAYS LAST (operator ask, 2026-10-07).
 					 *
@@ -1388,9 +1428,15 @@ const AskRow = ({
 						return (
 							<div key={entry.id} className="flex flex-col gap-0.5">
 								{echoedByTrigger ? null : (
-									<span className="text-ink-muted text-xs">
-										{isolateValue(entry.question, dir)}
-									</span>
+									/*
+									 * The answer frame prints the question too, so a settled
+									 * long question takes the same bound as an open one.
+									 */
+									<AskScrollBody>
+										<span className="whitespace-pre-wrap text-ink-muted text-xs">
+											{isolateValue(entry.question, dir)}
+										</span>
+									</AskScrollBody>
 								)}
 								{entry.answers.length > 0 ? (
 									entry.answers.map((value, index) => (
