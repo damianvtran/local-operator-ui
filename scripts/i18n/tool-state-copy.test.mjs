@@ -173,7 +173,7 @@ const toolRecord = (phase, argumentBytes) => ({
  * clause (`summaryOf` -> `toolRecordSummary`), the row's own words. A lone
  * unsettled call renders collapsed, so this is the surface a reader sees.
  */
-function summaryOf(phase, argumentBytes) {
+function summaryOf(phase, argumentBytes, { keepIsolates = false } = {}) {
 	const html = renderToStaticMarkup(
 		h(
 			QueryClientProvider,
@@ -203,7 +203,7 @@ function summaryOf(phase, argumentBytes) {
 	const texts = decode(html)
 		.replace(/<[^>]*>/g, "|")
 		.split("|")
-		.map((s) => plain(s).trim())
+		.map((s) => (keepIsolates ? s : plain(s)).trim())
 		.filter(Boolean);
 	// The fold's label is itself localized (`Running` is `Exécution de` in fr), so
 	// the summary is found by position: the last text that is not the trailing
@@ -863,3 +863,447 @@ test("source guard: only the sanctioned English remains in the model-layer const
 	// that the card routes the OTHER state words (not these) through t().
 	assert.match(cardSource, /CANCEL_RUNNING_COPY/);
 });
+
+/* -------------------------------------------------------------------------- */
+/* 4. REAL catalogues (no stubs): the words a user of each locale reads       */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * WHY. Part 2 above proves the LOOKUP with marker stubs; it cannot see a
+ * missing, untranslated or wrongly-pluralised REAL value, which is the
+ * operator's acceptance ("switching to `fr` must leave NO English anywhere").
+ * These tests register the SHIPPED `ui.chat.canonical` catalogue for the locale
+ * (the same file the app serves) and render the real tool row and the real
+ * generation card, so a value that lands in English, in the wrong plural
+ * category or in the wrong material branch fails here.
+ *
+ * ORACLE. `REAL` below is the rendered text of each locale's audited S16a
+ * values (PR #1870, evidence under i18n/audits/evidence/<locale>/
+ * ui.chat.canonical/s16a-*), written out literally so a later edit of a
+ * catalogue value is a deliberate, reviewed change of this table too. The
+ * size datum (`2,3 ko`, `2.3 kB`) is produced by the Intl-backed file-size
+ * helper (#1861), not by these 14 keys: it is pinned only as "what the helper
+ * prints today" so a toolchain ICU change shows up as a one-line diff here.
+ * ru pins the plural categories on `running_batch` (1 -> one, 2 -> few,
+ * 5 -> many, 21 -> one; the genitive frame `Генерация N ...` makes the visible
+ * forms `изображения / изображений / изображений / изображения`).
+ */
+/** English words that must not survive into a translated tool row / card line. */
+const ENGLISH_TOOL_WORDS = /composing|queued/;
+const ENGLISH_CARD_WORDS =
+	/Queued|Generat|Writing|Already|could not|ahead| batch|failed/;
+/** ur: `<word> · <FSI size PDI>` and no stray bidi controls in the card text. */
+const RTL_ISOLATED_SIZE = /^قطار میں · \u2068[^\u2068\u2069]+\u2069$/u;
+const BIDI_MARKS = /[\u2066-\u2069\u200e\u200f]/u;
+
+const REAL = {
+	fr: {
+		tool: {
+			"composing|0": "rédaction",
+			"composing|2400": "rédaction · 2,3 ko",
+			"queued|0": "en file d’attente",
+			"queued|1234": "en file d’attente · 1,2 ko",
+		},
+		card: {
+			queued: ["En file d’attente", null],
+			"queued+bytes": ["En file d’attente", "1,9 ko"],
+			"queued ahead 0": ["En file d’attente", "0 devant"],
+			"queued ahead 1": ["En file d’attente", "1 devant"],
+			"queued ahead 2": ["En file d’attente", "2 devant"],
+			"queued ahead 5": ["En file d’attente", "5 devant"],
+			"queued ahead 21": ["En file d’attente", "21 devant"],
+			composing: ["Rédaction de la demande…", null],
+			"composing+bytes": ["Rédaction de la demande…", "2,4 ko"],
+			"composing ahead 2": ["Rédaction de la demande…", "2 devant"],
+			"done already finished": ["Déjà terminé.", null],
+			"running image": ["Génération de l’image…", null],
+			"running image batch of 1": ["Génération de 1 image…", null],
+			"running image batch of 2": ["Génération de 2 images…", null],
+			"running image batch of 5": ["Génération de 5 images…", null],
+			"running image batch of 21": ["Génération de 21 images…", null],
+			"done image": ["Image générée", null],
+			"done image batch": ["Lot d’images", null],
+			"failed image": ["L’image n’a pas pu être générée.", null],
+			"failed image batch": ["Échec du lot d’images.", null],
+			"running voiceover": ["Génération de la voix off…", null],
+			"running voiceover batch of 1": ["Génération de 1 voix off…", null],
+			"running voiceover batch of 2": ["Génération de 2 voix off…", null],
+			"running voiceover batch of 5": ["Génération de 5 voix off…", null],
+			"running voiceover batch of 21": ["Génération de 21 voix off…", null],
+			"done voiceover": ["Voix off générée", null],
+			"done voiceover batch": ["Lot de voix off", null],
+			"failed voiceover": ["La voix off n’a pas pu être générée.", null],
+			"failed voiceover batch": ["Échec du lot de voix off.", null],
+			"running sound-effect": ["Génération de l’effet sonore…", null],
+			"running sound-effect batch of 1": [
+				"Génération de 1 effet sonore…",
+				null,
+			],
+			"running sound-effect batch of 2": [
+				"Génération de 2 effets sonores…",
+				null,
+			],
+			"running sound-effect batch of 5": [
+				"Génération de 5 effets sonores…",
+				null,
+			],
+			"running sound-effect batch of 21": [
+				"Génération de 21 effets sonores…",
+				null,
+			],
+			"done sound-effect": ["Effet sonore généré", null],
+			"done sound-effect batch": ["Lot d’effets sonores", null],
+			"failed sound-effect": ["L’effet sonore n’a pas pu être généré.", null],
+			"failed sound-effect batch": ["Échec du lot d’effets sonores.", null],
+		},
+	},
+	ru: {
+		tool: {
+			"composing|0": "формируется",
+			"composing|2400": "формируется · 2,3 кБ",
+			"queued|0": "в очереди",
+			"queued|1234": "в очереди · 1,2 кБ",
+		},
+		card: {
+			queued: ["В очереди", null],
+			"queued+bytes": ["В очереди", "1,9 кБ"],
+			"queued ahead 0": ["В очереди", "впереди: 0"],
+			"queued ahead 1": ["В очереди", "впереди: 1"],
+			"queued ahead 2": ["В очереди", "впереди: 2"],
+			"queued ahead 5": ["В очереди", "впереди: 5"],
+			"queued ahead 21": ["В очереди", "впереди: 21"],
+			composing: ["Формирование запроса…", null],
+			"composing+bytes": ["Формирование запроса…", "2,4 кБ"],
+			"composing ahead 2": ["Формирование запроса…", "впереди: 2"],
+			"done already finished": ["Уже завершено.", null],
+			"running image": ["Генерация изображения…", null],
+			"running image batch of 1": ["Генерация 1 изображения…", null],
+			"running image batch of 2": ["Генерация 2 изображений…", null],
+			"running image batch of 5": ["Генерация 5 изображений…", null],
+			"running image batch of 21": ["Генерация 21 изображения…", null],
+			"done image": ["Изображение создано", null],
+			"done image batch": ["Набор изображений", null],
+			"failed image": ["Не удалось создать изображение.", null],
+			"failed image batch": ["Не удалось создать набор изображений.", null],
+			"running voiceover": ["Генерация озвучки…", null],
+			"running voiceover batch of 1": ["Генерация 1 озвучки…", null],
+			"running voiceover batch of 2": ["Генерация 2 озвучек…", null],
+			"running voiceover batch of 5": ["Генерация 5 озвучек…", null],
+			"running voiceover batch of 21": ["Генерация 21 озвучки…", null],
+			"done voiceover": ["Озвучка создана", null],
+			"done voiceover batch": ["Набор озвучек", null],
+			"failed voiceover": ["Не удалось создать озвучку.", null],
+			"failed voiceover batch": ["Не удалось создать набор озвучек.", null],
+			"running sound-effect": ["Генерация звукового эффекта…", null],
+			"running sound-effect batch of 1": [
+				"Генерация 1 звукового эффекта…",
+				null,
+			],
+			"running sound-effect batch of 2": [
+				"Генерация 2 звуковых эффектов…",
+				null,
+			],
+			"running sound-effect batch of 5": [
+				"Генерация 5 звуковых эффектов…",
+				null,
+			],
+			"running sound-effect batch of 21": [
+				"Генерация 21 звукового эффекта…",
+				null,
+			],
+			"done sound-effect": ["Звуковой эффект создан", null],
+			"done sound-effect batch": ["Набор звуковых эффектов", null],
+			"failed sound-effect": ["Не удалось создать звуковой эффект.", null],
+			"failed sound-effect batch": [
+				"Не удалось создать набор звуковых эффектов.",
+				null,
+			],
+		},
+	},
+	ur: {
+		tool: {
+			"composing|0": "لکھا جا رہا",
+			"composing|2400": "لکھا جا رہا · 2.3 kB",
+			"queued|0": "قطار میں",
+			"queued|1234": "قطار میں · 1.2 kB",
+		},
+		card: {
+			queued: ["قطار میں", null],
+			"queued+bytes": ["قطار میں", "1.9 kB"],
+			"queued ahead 0": ["قطار میں", "0 آگے"],
+			"queued ahead 1": ["قطار میں", "1 آگے"],
+			"queued ahead 2": ["قطار میں", "2 آگے"],
+			"queued ahead 5": ["قطار میں", "5 آگے"],
+			"queued ahead 21": ["قطار میں", "21 آگے"],
+			composing: ["درخواست لکھی جا رہی ہے…", null],
+			"composing+bytes": ["درخواست لکھی جا رہی ہے…", "2.4 kB"],
+			"composing ahead 2": ["درخواست لکھی جا رہی ہے…", "2 آگے"],
+			"done already finished": ["یہ پہلے ہی مکمل ہو چکا ہے۔", null],
+			"running image": ["تصویر تیار کی جا رہی ہے…", null],
+			"running image batch of 1": ["1 تصویر تیار کی جا رہی ہے…", null],
+			"running image batch of 2": ["2 تصاویر تیار کی جا رہی ہیں…", null],
+			"running image batch of 5": ["5 تصاویر تیار کی جا رہی ہیں…", null],
+			"running image batch of 21": ["21 تصاویر تیار کی جا رہی ہیں…", null],
+			"done image": ["تیار کردہ تصویر", null],
+			"done image batch": ["تصاویر کا مجموعہ", null],
+			"failed image": ["تصویر تیار نہیں کی جا سکی۔", null],
+			"failed image batch": ["تصاویر کا مجموعہ تیار نہیں ہو سکا۔", null],
+			"running voiceover": ["وائس اوور تیار کیا جا رہا ہے…", null],
+			"running voiceover batch of 1": ["1 وائس اوور تیار کیا جا رہا ہے…", null],
+			"running voiceover batch of 2": [
+				"2 وائس اوورز تیار کیے جا رہے ہیں…",
+				null,
+			],
+			"running voiceover batch of 5": [
+				"5 وائس اوورز تیار کیے جا رہے ہیں…",
+				null,
+			],
+			"running voiceover batch of 21": [
+				"21 وائس اوورز تیار کیے جا رہے ہیں…",
+				null,
+			],
+			"done voiceover": ["تیار کردہ وائس اوور", null],
+			"done voiceover batch": ["وائس اوورز کا مجموعہ", null],
+			"failed voiceover": ["وائس اوور تیار نہیں کیا جا سکا۔", null],
+			"failed voiceover batch": [
+				"وائس اوورز کا مجموعہ تیار نہیں ہو سکا۔",
+				null,
+			],
+			"running sound-effect": ["صوتی اثر تیار کیا جا رہا ہے…", null],
+			"running sound-effect batch of 1": [
+				"1 صوتی اثر تیار کیا جا رہا ہے…",
+				null,
+			],
+			"running sound-effect batch of 2": [
+				"2 صوتی اثرات تیار کیے جا رہے ہیں…",
+				null,
+			],
+			"running sound-effect batch of 5": [
+				"5 صوتی اثرات تیار کیے جا رہے ہیں…",
+				null,
+			],
+			"running sound-effect batch of 21": [
+				"21 صوتی اثرات تیار کیے جا رہے ہیں…",
+				null,
+			],
+			"done sound-effect": ["تیار کردہ صوتی اثر", null],
+			"done sound-effect batch": ["صوتی اثرات کا مجموعہ", null],
+			"failed sound-effect": ["صوتی اثر تیار نہیں کیا جا سکا۔", null],
+			"failed sound-effect batch": [
+				"صوتی اثرات کا مجموعہ تیار نہیں ہو سکا۔",
+				null,
+			],
+		},
+	},
+	vi: {
+		tool: {
+			"composing|0": "đang soạn",
+			"composing|2400": "đang soạn · 2,3 kB",
+			"queued|0": "đang xếp hàng",
+			"queued|1234": "đang xếp hàng · 1,2 kB",
+		},
+		card: {
+			queued: ["Đang xếp hàng", null],
+			"queued+bytes": ["Đang xếp hàng", "1,9 kB"],
+			"queued ahead 0": ["Đang xếp hàng", "0 yêu cầu trước"],
+			"queued ahead 1": ["Đang xếp hàng", "1 yêu cầu trước"],
+			"queued ahead 2": ["Đang xếp hàng", "2 yêu cầu trước"],
+			"queued ahead 5": ["Đang xếp hàng", "5 yêu cầu trước"],
+			"queued ahead 21": ["Đang xếp hàng", "21 yêu cầu trước"],
+			composing: ["Đang viết yêu cầu…", null],
+			"composing+bytes": ["Đang viết yêu cầu…", "2,4 kB"],
+			"composing ahead 2": ["Đang viết yêu cầu…", "2 yêu cầu trước"],
+			"done already finished": ["Đã hoàn tất rồi.", null],
+			"running image": ["Đang tạo hình ảnh…", null],
+			"running image batch of 1": ["Đang tạo 1 hình ảnh…", null],
+			"running image batch of 2": ["Đang tạo 2 hình ảnh…", null],
+			"running image batch of 5": ["Đang tạo 5 hình ảnh…", null],
+			"running image batch of 21": ["Đang tạo 21 hình ảnh…", null],
+			"done image": ["Đã tạo hình ảnh", null],
+			"done image batch": ["Loạt hình ảnh", null],
+			"failed image": ["Không thể tạo hình ảnh.", null],
+			"failed image batch": ["Loạt hình ảnh không thành công.", null],
+			"running voiceover": ["Đang tạo lời thuyết minh…", null],
+			"running voiceover batch of 1": ["Đang tạo 1 lời thuyết minh…", null],
+			"running voiceover batch of 2": ["Đang tạo 2 lời thuyết minh…", null],
+			"running voiceover batch of 5": ["Đang tạo 5 lời thuyết minh…", null],
+			"running voiceover batch of 21": ["Đang tạo 21 lời thuyết minh…", null],
+			"done voiceover": ["Đã tạo lời thuyết minh", null],
+			"done voiceover batch": ["Loạt lời thuyết minh", null],
+			"failed voiceover": ["Không thể tạo lời thuyết minh.", null],
+			"failed voiceover batch": [
+				"Loạt lời thuyết minh không thành công.",
+				null,
+			],
+			"running sound-effect": ["Đang tạo hiệu ứng âm thanh…", null],
+			"running sound-effect batch of 1": [
+				"Đang tạo 1 hiệu ứng âm thanh…",
+				null,
+			],
+			"running sound-effect batch of 2": [
+				"Đang tạo 2 hiệu ứng âm thanh…",
+				null,
+			],
+			"running sound-effect batch of 5": [
+				"Đang tạo 5 hiệu ứng âm thanh…",
+				null,
+			],
+			"running sound-effect batch of 21": [
+				"Đang tạo 21 hiệu ứng âm thanh…",
+				null,
+			],
+			"done sound-effect": ["Đã tạo hiệu ứng âm thanh", null],
+			"done sound-effect batch": ["Loạt hiệu ứng âm thanh", null],
+			"failed sound-effect": ["Không thể tạo hiệu ứng âm thanh.", null],
+			"failed sound-effect batch": [
+				"Loạt hiệu ứng âm thanh không thành công.",
+				null,
+			],
+		},
+	},
+	"zh-CN": {
+		tool: {
+			"composing|0": "正在编写",
+			"composing|2400": "正在编写 · 2.3 kB",
+			"queued|0": "排队中",
+			"queued|1234": "排队中 · 1.2 kB",
+		},
+		card: {
+			queued: ["排队中", null],
+			"queued+bytes": ["排队中", "1.9 kB"],
+			"queued ahead 0": ["排队中", "前面还有0个"],
+			"queued ahead 1": ["排队中", "前面还有1个"],
+			"queued ahead 2": ["排队中", "前面还有2个"],
+			"queued ahead 5": ["排队中", "前面还有5个"],
+			"queued ahead 21": ["排队中", "前面还有21个"],
+			composing: ["正在编写请求……", null],
+			"composing+bytes": ["正在编写请求……", "2.4 kB"],
+			"composing ahead 2": ["正在编写请求……", "前面还有2个"],
+			"done already finished": ["已经完成。", null],
+			"running image": ["正在生成图像……", null],
+			"running image batch of 1": ["正在生成1张图像……", null],
+			"running image batch of 2": ["正在生成2张图像……", null],
+			"running image batch of 5": ["正在生成5张图像……", null],
+			"running image batch of 21": ["正在生成21张图像……", null],
+			"done image": ["已生成图像", null],
+			"done image batch": ["图像批次", null],
+			"failed image": ["无法生成图像。", null],
+			"failed image batch": ["图像批次生成失败。", null],
+			"running voiceover": ["正在生成旁白……", null],
+			"running voiceover batch of 1": ["正在生成1段旁白……", null],
+			"running voiceover batch of 2": ["正在生成2段旁白……", null],
+			"running voiceover batch of 5": ["正在生成5段旁白……", null],
+			"running voiceover batch of 21": ["正在生成21段旁白……", null],
+			"done voiceover": ["已生成旁白", null],
+			"done voiceover batch": ["旁白批次", null],
+			"failed voiceover": ["无法生成旁白。", null],
+			"failed voiceover batch": ["旁白批次生成失败。", null],
+			"running sound-effect": ["正在生成音效……", null],
+			"running sound-effect batch of 1": ["正在生成1个音效……", null],
+			"running sound-effect batch of 2": ["正在生成2个音效……", null],
+			"running sound-effect batch of 5": ["正在生成5个音效……", null],
+			"running sound-effect batch of 21": ["正在生成21个音效……", null],
+			"done sound-effect": ["已生成音效", null],
+			"done sound-effect batch": ["音效批次", null],
+			"failed sound-effect": ["无法生成音效。", null],
+			"failed sound-effect batch": ["音效批次生成失败。", null],
+		},
+	},
+};
+
+/** Registers the shipped catalogue for `loc` exactly as the app serves it. */
+function withReal(loc, fn) {
+	mod.clearRegisteredCatalogues();
+	mod.registerCatalogue(
+		loc,
+		JSON.parse(
+			readFileSync(
+				join(ROOT, `src/i18n/catalogues/${loc}/ui.chat.canonical.json`),
+				"utf8",
+			),
+		),
+	);
+	mod.setLocale(loc);
+	try {
+		return fn();
+	} finally {
+		mod.setLocale("en");
+		mod.clearRegisteredCatalogues();
+	}
+}
+
+const CARD_VIEW = new Map(CARD_CASES);
+
+for (const loc of Object.keys(REAL)) {
+	test(`${loc}: the tool row prints the translated composing/queued words from the real catalogue`, () => {
+		withReal(loc, () => {
+			for (const [id, expected] of Object.entries(REAL[loc].tool)) {
+				const [phase, bytes] = id.split("|");
+				assert.equal(summaryOf(phase, Number(bytes)), expected, `${loc} ${id}`);
+				assert.ok(
+					!ENGLISH_TOOL_WORDS.test(expected),
+					`${loc} ${id} still English`,
+				);
+			}
+		});
+	});
+
+	test(`${loc}: the generation card's state line prints the real translations (no English, right plural/material branch)`, () => {
+		withReal(loc, () => {
+			for (const [label, [text, datum]] of Object.entries(REAL[loc].card)) {
+				const view = CARD_VIEW.get(label);
+				assert.ok(view, `case ${label} exists`);
+				const got = stateLineOf(view);
+				assert.equal(got.text, text, `${loc} ${label} text`);
+				assert.equal(got.datum, datum, `${loc} ${label} datum`);
+				assert.ok(
+					!ENGLISH_CARD_WORDS.test(got.text + (got.datum ?? "")),
+					`${loc} ${label} leaks English: ${got.text}`,
+				);
+			}
+		});
+	});
+}
+
+test("ru: running_batch picks the plural category by the CLDR rule on the real catalogue (1/2/5/21)", () => {
+	withReal("ru", () => {
+		const forms = [1, 2, 5, 21].map(
+			(n) => stateLineOf(CARD_VIEW.get(`running voiceover batch of ${n}`)).text,
+		);
+		assert.deepEqual(forms, [
+			"Генерация 1 озвучки…",
+			"Генерация 2 озвучек…",
+			"Генерация 5 озвучек…",
+			"Генерация 21 озвучки…",
+		]);
+	});
+});
+
+test("ur (RTL): the size datum stays isolated and the Urdu words are not reordered by it", () => {
+	withReal("ur", () => {
+		// The tool row wraps the size in a first-strong isolate (U+2068 ... U+2069)
+		// so the Latin `kB` cannot reorder the surrounding right-to-left run.
+		const raw = summaryOf("queued", 1234, { keepIsolates: true });
+		assert.match(raw, RTL_ISOLATED_SIZE, raw);
+		// The card puts the datum in `<bdi dir="auto">` (stateLineOf asserts it),
+		// so `21 آگے` keeps its digits ahead of the word on a right-to-left line.
+		const card = stateLineOf(CARD_VIEW.get("queued ahead 21"));
+		assert.equal(card.datum, "21 آگے");
+		assert.doesNotMatch(card.text, BIDI_MARKS);
+	});
+});
+
+for (const loc of ["fr", "es", "ru", "hi", "zh-CN", "ur", "vi"]) {
+	test(`${loc}: every one of the 14 keys is a real translation (not the English source) in the shipped catalogue`, () => {
+		const real = JSON.parse(
+			readFileSync(
+				join(ROOT, `src/i18n/catalogues/${loc}/ui.chat.canonical.json`),
+				"utf8",
+			),
+		);
+		for (const key of [...TOOL_KEYS, ...STATE_KEYS]) {
+			assert.equal(typeof real[key], "string", `${loc} has ${key}`);
+			assert.notEqual(real[key], enCatalogue[key], `${loc} ${key} is English`);
+		}
+	});
+}

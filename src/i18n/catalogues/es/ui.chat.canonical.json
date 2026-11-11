@@ -440,5 +440,19 @@
 	"ui.chat.canonical.notice.compaction_not_run_after_colon": "La compactación no se ejecutó — {detail}",
 	"ui.chat.canonical.link_toolkit.actions_for": "Acciones para {name}",
 	"ui.chat.canonical.tool.never_sent_composed": "nunca enviado · redactado: {size}",
-	"ui.chat.canonical.tool.never_sent_empty": "nunca enviado · nada redactado"
+	"ui.chat.canonical.tool.never_sent_empty": "nunca enviado · nada redactado",
+	"ui.chat.canonical.tool.composing_sized": "redactando · {size}",
+	"ui.chat.canonical.tool.composing_empty": "redactando",
+	"ui.chat.canonical.tool.queued_sized": "en cola · {size}",
+	"ui.chat.canonical.tool.queued_empty": "en cola",
+	"ui.chat.canonical.image_gen.state.queued": "En cola",
+	"ui.chat.canonical.image_gen.state.writing_request": "Redactando la solicitud…",
+	"ui.chat.canonical.image_gen.state.queue_ahead": "{count, plural, one {{count, number, ::group-off} por delante} many {{count, number, ::group-off} por delante} other {{count, number, ::group-off} por delante}}",
+	"ui.chat.canonical.image_gen.state.running": "{material, select, video {Generando vídeo…} voiceover {Generando locución…} sound_effect {Generando efecto de sonido…} other {Generando imagen…}}",
+	"ui.chat.canonical.image_gen.state.running_batch": "{material, select, video {{total, plural, one {Generando # vídeo…} many {Generando # de vídeos…} other {Generando # vídeos…}}} voiceover {{total, plural, one {Generando # locución…} many {Generando # de locuciones…} other {Generando # locuciones…}}} sound_effect {{total, plural, one {Generando # efecto de sonido…} many {Generando # de efectos de sonido…} other {Generando # efectos de sonido…}}} other {{total, plural, one {Generando # imagen…} many {Generando # de imágenes…} other {Generando # imágenes…}}}}",
+	"ui.chat.canonical.image_gen.state.done": "{material, select, video {Vídeo generado} voiceover {Locución generada} sound_effect {Efecto de sonido generado} other {Imagen generada}}",
+	"ui.chat.canonical.image_gen.state.done_batch": "{material, select, video {Lote de vídeos} voiceover {Lote de locuciones} sound_effect {Lote de efectos de sonido} other {Lote de imágenes}}",
+	"ui.chat.canonical.image_gen.state.already_finished": "Ya había terminado.",
+	"ui.chat.canonical.image_gen.state.failed": "{material, select, video {No se pudo generar el vídeo.} voiceover {No se pudo generar la locución.} sound_effect {No se pudo generar el efecto de sonido.} other {No se pudo generar la imagen.}}",
+	"ui.chat.canonical.image_gen.state.failed_batch": "{material, select, video {Falló el lote de vídeos.} voiceover {Falló el lote de locuciones.} sound_effect {Falló el lote de efectos de sonido.} other {Falló el lote de imágenes.}}"
 }

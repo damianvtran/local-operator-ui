@@ -440,5 +440,19 @@
 	"ui.chat.canonical.notice.compaction_not_run_after_colon": "کمپریشن نہیں چلا — {detail}",
 	"ui.chat.canonical.link_toolkit.actions_for": "{name} کے لیے اقدامات",
 	"ui.chat.canonical.tool.never_sent_composed": "نہیں بھیجا گیا · {size} لکھا گیا",
-	"ui.chat.canonical.tool.never_sent_empty": "نہیں بھیجا گیا · کچھ نہیں لکھا گیا"
+	"ui.chat.canonical.tool.never_sent_empty": "نہیں بھیجا گیا · کچھ نہیں لکھا گیا",
+	"ui.chat.canonical.tool.composing_sized": "لکھا جا رہا · {size}",
+	"ui.chat.canonical.tool.composing_empty": "لکھا جا رہا",
+	"ui.chat.canonical.tool.queued_sized": "قطار میں · {size}",
+	"ui.chat.canonical.tool.queued_empty": "قطار میں",
+	"ui.chat.canonical.image_gen.state.queued": "قطار میں",
+	"ui.chat.canonical.image_gen.state.writing_request": "درخواست لکھی جا رہی ہے…",
+	"ui.chat.canonical.image_gen.state.queue_ahead": "{count, plural, one {{count, number, ::group-off} آگے} other {{count, number, ::group-off} آگے}}",
+	"ui.chat.canonical.image_gen.state.running": "{material, select, video {ویڈیو تیار کی جا رہی ہے…} voiceover {وائس اوور تیار کیا جا رہا ہے…} sound_effect {صوتی اثر تیار کیا جا رہا ہے…} other {تصویر تیار کی جا رہی ہے…}}",
+	"ui.chat.canonical.image_gen.state.running_batch": "{material, select, video {{total, plural, one {# ویڈیو تیار کی جا رہی ہے…} other {# ویڈیوز تیار کی جا رہی ہیں…}}} voiceover {{total, plural, one {# وائس اوور تیار کیا جا رہا ہے…} other {# وائس اوورز تیار کیے جا رہے ہیں…}}} sound_effect {{total, plural, one {# صوتی اثر تیار کیا جا رہا ہے…} other {# صوتی اثرات تیار کیے جا رہے ہیں…}}} other {{total, plural, one {# تصویر تیار کی جا رہی ہے…} other {# تصاویر تیار کی جا رہی ہیں…}}}}",
+	"ui.chat.canonical.image_gen.state.done": "{material, select, video {تیار کردہ ویڈیو} voiceover {تیار کردہ وائس اوور} sound_effect {تیار کردہ صوتی اثر} other {تیار کردہ تصویر}}",
+	"ui.chat.canonical.image_gen.state.done_batch": "{material, select, video {ویڈیوز کا مجموعہ} voiceover {وائس اوورز کا مجموعہ} sound_effect {صوتی اثرات کا مجموعہ} other {تصاویر کا مجموعہ}}",
+	"ui.chat.canonical.image_gen.state.already_finished": "یہ پہلے ہی مکمل ہو چکا ہے۔",
+	"ui.chat.canonical.image_gen.state.failed": "{material, select, video {ویڈیو تیار نہیں کی جا سکی۔} voiceover {وائس اوور تیار نہیں کیا جا سکا۔} sound_effect {صوتی اثر تیار نہیں کیا جا سکا۔} other {تصویر تیار نہیں کی جا سکی۔}}",
+	"ui.chat.canonical.image_gen.state.failed_batch": "{material, select, video {ویڈیوز کا مجموعہ تیار نہیں ہو سکا۔} voiceover {وائس اوورز کا مجموعہ تیار نہیں ہو سکا۔} sound_effect {صوتی اثرات کا مجموعہ تیار نہیں ہو سکا۔} other {تصاویر کا مجموعہ تیار نہیں ہو سکا۔}}"
 }
