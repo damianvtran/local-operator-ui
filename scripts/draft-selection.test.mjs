@@ -1004,11 +1004,35 @@ test("each picker routes a draft's pick through one resolver, and never through 
 		/const selection = dialSelection\(draftPick\.selection, draftIdentity\)/,
 		"a dial pick names the model the pane shows, even when the pane picked none",
 	);
+	/*
+	 * The handler's FIRST statement is the draft short-circuit. Durable settings
+	 * intents added a second session path (`submitSettingsIntent`) beside
+	 * `command.run`; both address `sessionId`, which a draft does not have, so
+	 * the invariant is that the draft branch returns before EITHER is reachable -
+	 * not the exact ternary the handler used to be.
+	 */
+	const fastPick = picker.slice(
+		picker.indexOf("export const FastPicker:"),
+		picker.indexOf(
+			"picksWhileBusy",
+			picker.indexOf("export const FastPicker:"),
+		),
+	);
 	assert.match(
-		picker,
-		/onPick=\{\(value\) =>\s*draft \? draftFast\(value\) : void command\.run\("fast", value\)\s*\}/,
+		fastPick,
+		/onPick=\{\(value\) => \{\s*if \(draft\) return draftFast\(value\);/,
 		"draft mode must not post /fast to a session that does not exist",
 	);
+	const draftReturn = fastPick.indexOf("if (draft) return draftFast(value);");
+	for (const sessionPath of [
+		'command.run("fast", value)',
+		"submitSettingsIntent(sessionId",
+	]) {
+		assert.ok(
+			fastPick.indexOf(sessionPath) > draftReturn,
+			`the fast dial's ${sessionPath} must sit after the draft short-circuit`,
+		);
+	}
 	assert.ok(
 		resolve.indexOf("reading.applied") > 0 &&
 			resolve.indexOf("reading.applied") <
@@ -1741,6 +1765,25 @@ const pickerDependencies = {
 	}),
 	useQueryClient: () => activePicker.client,
 	/*
+	 * Durable settings intents (`features.settings_intents`). The picker gates
+	 * them on `useSettingsIntentsEnabled() && !draft`, so the flag's value must
+	 * not matter to a draft: each harness states it (`intentsEnabled`, default
+	 * off) and one case below runs the draft pick with it ON. Every session-side
+	 * seam fails loudly - a draft has no session to subscribe to or POST for.
+	 */
+	useSettingsIntentsEnabled: () => activePicker.intentsEnabled,
+	useSessionSettingsIntents: (sessionId) => {
+		assert.equal(sessionId, null, "a draft subscribes to no session's intents");
+		return {};
+	},
+	submitSettingsIntent: () =>
+		assert.fail("a draft must not submit a session settings intent"),
+	intentOverride: () =>
+		assert.fail("a draft has no pending session intent to read"),
+	catalogueRungs: () =>
+		assert.fail("a draft reads its ladder from the preview, not the catalogue"),
+	PICKER_CATALOGUE_KEY: ["picker-catalogue"],
+	/*
 	 * The pane's capability document, and the app's own predicate over it. The
 	 * pickers read `draft_fast` before they filter a draft's selection for the
 	 * wire (round 2's F1 follow-up), so this harness states a backend that carries
@@ -1811,8 +1854,13 @@ const {
 	useDraftPick: executedDraftPick,
 } = pickerModule.exports;
 
-function pickerHarness({ initial = null, resolved = frame(SPEC) } = {}) {
+function pickerHarness({
+	initial = null,
+	resolved = frame(SPEC),
+	intentsEnabled = false,
+} = {}) {
 	const instance = {
+		intentsEnabled,
 		states: [],
 		index: 0,
 		requests: [],
@@ -1946,6 +1994,18 @@ test("effort first on an unpicked resolved draft previews and records its defaul
 		null,
 		"the opened-on prop stays frozen",
 	);
+});
+
+test("a draft's effort pick keeps the one resolver when durable settings intents are on", async () => {
+	// The flag is a SESSION capability; with it on, a draft must still resolve
+	// through the preview and record on the draft row, never POST an intent (the
+	// seams above fail the test if it tried).
+	const picker = pickerHarness({ intentsEnabled: true });
+	const settled = await picker.pick("high");
+	assert.equal(picker.requests.length, 1);
+	assert.deepEqual(picker.selections, [PICKED_RUNG]);
+	assert.equal(settled.result.tone, "success");
+	assert.equal(settled.options.find((row) => row.current)?.value, "high");
 });
 
 test("model first then effort retains the explicit model while changing only its rung", async () => {
