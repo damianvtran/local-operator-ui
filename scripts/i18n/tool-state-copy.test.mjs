@@ -1307,3 +1307,141 @@ for (const loc of ["fr", "es", "ru", "hi", "zh-CN", "ur", "vi"]) {
 		}
 	});
 }
+
+/* -------------------------------------------------------------------------- */
+/* D1 (design review round 1): the summary column's direction                 */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * WHY THIS BLOCK EXISTS. The tool row's summary cell wraps its text in a
+ * `<bdi dir="ltr">` because it normally holds MACHINE voice (a path, a
+ * command): in an RTL paragraph a leading `/` is a neutral character and
+ * `tmp/ledger.md/` reordered the slash onto the far side. That wrapper also
+ * held the keyed status copy (`composing`, `queued`, `never sent`), so in ur
+ * the line read `2.4 kB · قطار میں` left to right - the status word at the
+ * wrong edge, and clipped FIRST on a narrow row (the opposite of every LTR
+ * locale). The fix scopes the forced direction to machine text: a summary the
+ * catalogue wrote follows the locale's own direction, a summary built from the
+ * call's arguments stays `ltr` in every locale.
+ *
+ * Real components, real shipped catalogues, rendered through the same
+ * `CanonicalTranscript` seam as the tests above; the DOM is read rather than
+ * the flattened text, because the defect is the `dir` of the element and the
+ * order of its children, which the text-only helper cannot see.
+ */
+
+/** The summary cell's `<bdi>`: `{ dir, text }`, text with tags and isolates kept. */
+function summaryCellOf(record) {
+	const html = renderToStaticMarkup(
+		h(
+			QueryClientProvider,
+			{ client: queryClient },
+			h(
+				MemoryRouter,
+				null,
+				h(CanonicalTranscript, {
+					transcript: { ...EMPTY_TRANSCRIPT, records: [record] },
+					gate: null,
+					waiting: false,
+					loadingOlder: false,
+					onLoadOlder: async () => true,
+					containerRef: { current: null },
+					isSmallView: false,
+					status: "live",
+					failure: null,
+					hydrated: true,
+					onReconnect: () => {},
+				}),
+			),
+		),
+	);
+	// The cell is the only `font-mono ... text-mono-sm` flex-1 span of the row.
+	const cell = html.match(
+		/<span class="min-w-0 flex-1 (?:truncate|break-words whitespace-normal) font-mono[^"]*"[^>]*>(.*?)<\/span>/s,
+	);
+	assert.ok(cell, `summary cell found in ${html.slice(0, 400)}`);
+	const bdi = cell[1].match(/<bdi(?: dir="(\w+)")?>(.*?)<\/bdi>/s);
+	assert.ok(bdi, `summary <bdi> found in ${cell[1]}`);
+	return { dir: bdi[1] ?? null, text: decode(bdi[2]) };
+}
+
+const settledRecord = (toolName, args) => ({
+	...toolRecord("done", null),
+	toolName,
+	args,
+	output: "ok",
+	endedAt: TS + 1000,
+	durationS: 1,
+	outputBytes: 2,
+});
+
+const D1_NEVER_SENT = { ...toolRecord("done", 2458), neverSent: true };
+
+/** `[label, record]`: every row whose summary the catalogue wrote. */
+const D1_COPY_ROWS = [
+	["composing, sized", toolRecord("composing", 2458)],
+	["composing, empty", toolRecord("composing", 0)],
+	["queued, sized", toolRecord("queued", 2458)],
+	["queued, empty", toolRecord("queued", 0)],
+	["never sent, sized", D1_NEVER_SENT],
+	["never sent, empty", { ...D1_NEVER_SENT, argumentBytes: 0 }],
+];
+const D1_MACHINE_ROWS = [
+	["a path with a space", settledRecord("read", { path: "/tmp/a b/c.ts" })],
+	["a shell command", settledRecord("bash", { command: "ls -la" })],
+];
+
+test("ur: keyed status text takes the locale's direction, so the status word comes first", () => {
+	withReal("ur", () => {
+		for (const [label, record] of D1_COPY_ROWS) {
+			const cell = summaryCellOf(record);
+			assert.equal(cell.dir, "rtl", `${label}: dir ${cell.dir}`);
+			// The word leads in logical order; with `dir="rtl"` that puts it at the
+			// RIGHT edge, the start of the line, and the datum after it to its left.
+			assert.ok(
+				!/^[\d\u2068]/u.test(cell.text),
+				`${label}: status word first in ${JSON.stringify(cell.text)}`,
+			);
+		}
+		// The sized rows keep the datum isolated (FSI..PDI) beside the word.
+		const sized = summaryCellOf(toolRecord("queued", 2458)).text;
+		assert.match(sized, RTL_ISOLATED_SIZE, sized);
+		const never = summaryCellOf(D1_NEVER_SENT).text;
+		assert.match(never, /\u2068[^\u2068\u2069]+\u2069/u, never);
+	});
+});
+
+for (const loc of ["ur", "fr", "en"]) {
+	test(`${loc}: a path or a command in the summary column stays left-to-right`, () => {
+		const run = () => {
+			for (const [label, record] of D1_MACHINE_ROWS) {
+				const cell = summaryCellOf(record);
+				assert.equal(cell.dir, "ltr", `${loc} ${label}: dir ${cell.dir}`);
+			}
+		};
+		if (loc === "en") run();
+		else withReal(loc, run);
+	});
+}
+
+for (const loc of ["en", "fr", "es", "ru", "hi", "zh-CN", "vi"]) {
+	test(`${loc} (left-to-right): keyed status text keeps dir="ltr" exactly as before`, () => {
+		const run = () => {
+			for (const [label, record] of D1_COPY_ROWS) {
+				const cell = summaryCellOf(record);
+				assert.equal(cell.dir, "ltr", `${loc} ${label}: dir ${cell.dir}`);
+			}
+		};
+		if (loc === "en") run();
+		else withReal(loc, run);
+	});
+}
+
+test("source guard: only the keyed status branches opt out of the machine-voice direction", () => {
+	const src = readFileSync(
+		join(ROOT, "src/renderer/src/features/chat/components/trace/tool-row.tsx"),
+		"utf8",
+	);
+	assert.match(src, /summaryIsCopy/, "ToolRow takes the keyed-copy flag");
+	assert.match(src, /dir=\{summaryIsCopy \? direction : "ltr"\}/);
+});
