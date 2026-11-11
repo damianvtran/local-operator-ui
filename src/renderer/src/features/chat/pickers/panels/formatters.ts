@@ -12,6 +12,37 @@
  * other. The rules that surprise a reader are written down as comments on the
  * functions rather than summarised here.
  *
+ * LIVE LOCALE, KEPT-ENGLISH UNIT SYMBOLS. Every number and date these
+ * formatters print follows the live UI locale AT CALL TIME (through
+ * `@shared/i18n`'s `formatNumber`/`formatDate`, which read the locale store on
+ * each call), so a language switch repaints: `1 234` / `3,4k` / `1,2 s` /
+ * `13 sept.` in French. The i18n programme's bar is no English anywhere in a
+ * chosen language, so this file no longer pins `en-US`.
+ *
+ * DOCUMENTED EXCEPTIONS — these unit SYMBOLS stay ASCII English in every
+ * language, because they are technical symbols rather than prose, are the same
+ * letters the terminal (`info/model.py`, `analytics_panel.py`) and the core's
+ * `format_duration` print, and the style guide's kept-English list covers them
+ * (`src/i18n/format.ts` documents the same rule for its own `s/m/h/d`): `ms`,
+ * `s`/`m`/`h`/`d`, `tok/s`, and the magnitude letters `k`/`M`/`B` (and
+ * context's `m`). They are not catalogue keys on purpose: a translator cannot
+ * improve on them and a key would invite drift from the terminal. File sizes
+ * are NOT an exception: {@link formatBytes} delegates to `formatByteQuantity`
+ * (#1861), whose unit labels ARE localised (`Mo`, `GB` per locale) and whose
+ * number part follows the locale. The digits and the decimal separator around
+ * every symbol above are NOT exceptions and always follow the locale. Money
+ * (`formatMicroUsd`) is out of this slice: a currency amount is its own
+ * formatting decision (symbol placement, ISO code) and keeps its `$` ladder.
+ *
+ * ENGLISH BYTE-IDENTITY. The fixed-decimal spellings round through
+ * `toFixed` first and only then localise the already-rounded text (see
+ * {@link fixed}), because `Intl.NumberFormat` rounds the shortest decimal of the
+ * double half-away (`1.15` → `1.2`) where `toFixed` rounds the exact binary
+ * value (`1.15` → `1.1`): rounding in `Intl` would have changed English output
+ * the terminal ports pin. Grouping is switched off for those spellings for the
+ * same reason (`1500.0k`-style spellings stay ungrouped; `formatBytes` applies
+ * the same `toFixed`-first, ungrouped rule inside `formatByteQuantity`).
+ *
  * Two shapes are deliberately NOT here:
  *
  * - The provider-usage amount ladder (`usage-view-model.ts`) owns its own
@@ -22,20 +53,43 @@
  *   panels are given numbers and format them once.
  */
 
-import { formatByteQuantity, formatNumber, t } from "@shared/i18n";
+import { formatByteQuantity, formatDate, formatNumber, t } from "@shared/i18n";
 import { pyFixed } from "../../session-status/fixed-point";
 
-/*
- * The analytics panels pin `en-US` THROUGH the layer (round-1 review, R1-1).
+/**
+ * A number already rounded by `toFixed(digits)`, spelled in the live locale.
  *
- * Base rendered these numbers with `new Intl.NumberFormat("en-US")`; a bare
- * layer call would follow the reader's locale instead, so the same quantity
- * would spell differently here and in the terminal these numbers are read
- * against — this file's premise is one spelling per quantity. The pin is part
- * of the port, not an accident of the base, and a future deliberate analytics
- * localisation changes it HERE, in one place.
+ * `toFixed` stays the ROUNDING authority (it is what the terminal ports and
+ * the existing pins use, ties included); this only re-spells its answer — the
+ * decimal separator and digits — so English output is byte-identical. The
+ * round-trip is exact: `Number("1.1")` re-formats at one fraction digit to
+ * `1.1`, so `Intl` has nothing left to round. `useGrouping: false` keeps
+ * `1500.0` ungrouped as `toFixed` printed it. With `trimZero` a whole result
+ * drops its `.0` (`1.0k` → `1k`) the way the callers' `.replace(".0k", "k")`
+ * did.
  */
-const PANEL_PINNED_LOCALE = "en-US";
+function fixed(value: number, digits: number, trimZero = false): string {
+	const text = value.toFixed(digits);
+	const places = trimZero && text.endsWith(".0") ? 0 : digits;
+	return formatNumber(Number(text), {
+		minimumFractionDigits: places,
+		maximumFractionDigits: places,
+		useGrouping: false,
+	});
+}
+
+/**
+ * A whole number as the callers' `String(n)` spelled it, with the locale's
+ * digits. A non-integer (never produced by the ledger, but `String` is the old
+ * contract) keeps `String`'s own text rather than being rounded by `Intl`.
+ */
+function plainInt(n: number): string {
+	// `n + 0` turns `-0` into `0`: `String(-0)` is "0" (what the callers
+	// printed, e.g. after `Math.trunc(-0.4)`) while `Intl` spells it "-0".
+	return Number.isInteger(n)
+		? formatNumber(n + 0, { useGrouping: false, maximumFractionDigits: 0 })
+		: String(n);
+}
 
 /** The unknown sentinel. One character, the same one `info/model.py` uses. */
 export const UNKNOWN = "—";
@@ -105,20 +159,17 @@ const round1 = (value: number) => Math.round(value * 10) / 10;
  */
 export function formatTokens(n: number): string {
 	const value = Math.trunc(n);
-	if (value < 1000) return String(value);
+	if (value < 1000) return plainInt(value);
 	const steps: [number, string, number][] = [
 		[1000, "k", 1_000_000],
 		[1_000_000, "M", 1_000_000_000],
 	];
 	for (const [divisor, suffix, ceiling] of steps) {
 		if (value < ceiling && round1(value / divisor) < ceiling / divisor) {
-			return `${(value / divisor).toFixed(1)}${suffix}`.replace(
-				`.0${suffix}`,
-				suffix,
-			);
+			return `${fixed(value / divisor, 1, true)}${suffix}`;
 		}
 	}
-	return `${(value / 1_000_000_000).toFixed(1)}B`.replace(".0B", "B");
+	return `${fixed(value / 1_000_000_000, 1, true)}B`; // i18n: ignore unit symbol, a documented kept-English exception (see this file's header)
 }
 
 /**
@@ -131,9 +182,9 @@ export function formatTokens(n: number): string {
  * the other is the drift this file prevents, not a fix to it.
  */
 export function formatContextTokens(n: number): string {
-	if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}m`;
-	if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
-	return String(n);
+	if (n >= 1_000_000) return `${fixed(n / 1_000_000, 1)}m`; // i18n: ignore unit symbol, a documented kept-English exception (see this file's header)
+	if (n >= 1_000) return `${fixed(n / 1_000, 1)}k`; // i18n: ignore unit symbol, a documented kept-English exception (see this file's header)
+	return plainInt(n);
 }
 
 /**
@@ -147,20 +198,21 @@ export function formatWindow(n: number): string {
 	if (n >= 1_000_000) {
 		const scaled = n / 1_000_000;
 		return Number.isInteger(scaled)
-			? `${scaled.toFixed(0)}M`
-			: `${scaled.toFixed(1)}M`;
+			? `${fixed(scaled, 0)}M`
+			: `${fixed(scaled, 1)}M`;
 	}
 	if (n >= 1_000) {
 		const scaled = n / 1_000;
 		return Number.isInteger(scaled)
-			? `${scaled.toFixed(0)}k`
-			: `${scaled.toFixed(1)}k`;
+			? `${fixed(scaled, 0)}k`
+			: `${fixed(scaled, 1)}k`;
 	}
-	return String(n);
+	return plainInt(n);
 }
 
 /**
- * An exact count: `1,234`.
+ * An exact count: `1,234` (en), `1 234` (fr), `1.234` (de) — the live locale's
+ * grouping, read at call time.
  *
  * Deliberately NOT abbreviated. `formatTokens` abbreviates an estimate where
  * the glance matters more than the digit; a count of calls is the answer to a
@@ -168,7 +220,7 @@ export function formatWindow(n: number): string {
  * whole of its formatting.
  */
 export function formatCount(n: number): string {
-	return formatNumber(Math.trunc(n), undefined, PANEL_PINNED_LOCALE);
+	return formatNumber(Math.trunc(n));
 }
 
 /**
@@ -209,9 +261,9 @@ const roundHalfEven = (value: number): number => {
 export function formatMs(value: number | null | undefined): string {
 	if (value === null || value === undefined) return UNKNOWN_WORD();
 	if (Math.abs(value) < 1000) {
-		return `${formatNumber(roundHalfEven(value), undefined, PANEL_PINNED_LOCALE)} ms`;
+		return `${formatNumber(roundHalfEven(value))} ms`; // i18n: ignore unit symbol, a documented kept-English exception (see this file's header)
 	}
-	return `${(value / 1000).toFixed(1)} s`;
+	return `${fixed(value / 1000, 1)} s`; // i18n: ignore unit symbol, a documented kept-English exception (see this file's header)
 }
 
 /**
@@ -243,8 +295,10 @@ const DAY_BUCKET = /^(\d{4})-(\d{2})-(\d{2})$/;
  * Parsed as a LOCAL date by splitting the string, not by `new Date(period)`:
  * that constructor reads a bare date as UTC midnight, which renders the
  * previous day for every user west of Greenwich — a chart labelled one day off
- * from the bucket it plots. The month names are spelled here rather than taken
- * from a locale so a frame is reproducible on any machine.
+ * from the bucket it plots. The month name comes from the LIVE locale at call
+ * time (`Sep 13`, `13 sept.`, `9月13日`) — it was once spelled en-US so a frame
+ * was reproducible on any machine; reproducibility is now per locale, which
+ * is what a reader of that language expects on an axis label.
  *
  * An unparseable period is returned verbatim: the axis then shows what the
  * ledger actually said instead of `Invalid Date`.
@@ -255,11 +309,11 @@ export function formatDayBucket(period: string): string {
 	const month = Number(match[2]);
 	if (month < 1 || month > 12) return period;
 	// Intl owns month names and their order; local-date construction avoids a
-	// UTC parsing shift while retaining this panel's documented en-US pin.
-	return new Intl.DateTimeFormat(PANEL_PINNED_LOCALE, {
+	// UTC parsing shift. The layer's `formatDate` follows the live locale.
+	return formatDate(new Date(Number(match[1]), month - 1, Number(match[3])), {
 		month: "short",
 		day: "numeric",
-	}).format(new Date(Number(match[1]), month - 1, Number(match[3])));
+	});
 }
 
 /**
@@ -401,8 +455,8 @@ export function formatTokensPerSecond(
 		// does exactly that (round-half-even sends it to `0.0`). Testing the
 		// rounded result is what makes the guard cover every such value instead
 		// of the ones a threshold happens to catch.
-		if (value > 0 && tenths === 0) return "<0.1 tok/s";
-		return `${tenths.toFixed(1)} tok/s`;
+		if (value > 0 && tenths === 0) return `<${fixed(0.1, 1)} tok/s`; // i18n: ignore unit symbol, a documented kept-English exception (see this file's header)
+		return `${fixed(tenths, 1)} tok/s`; // i18n: ignore unit symbol, a documented kept-English exception (see this file's header)
 	}
 	return `${formatCount(roundHalfEven(value))} tok/s`;
 }
@@ -417,10 +471,10 @@ export function formatTokensPerSecond(
 export function formatDuration(seconds: number | null | undefined): string {
 	if (seconds === null || seconds === undefined) return UNKNOWN_WORD();
 	const total = Math.trunc(Math.max(0, seconds));
-	if (total < 60) return `${total}s`;
-	if (total < 3600) return `${Math.floor(total / 60)}m`;
+	if (total < 60) return `${plainInt(total)}s`; // i18n: ignore unit symbol, a documented kept-English exception (see this file's header)
+	if (total < 3600) return `${plainInt(Math.floor(total / 60))}m`; // i18n: ignore unit symbol, a documented kept-English exception (see this file's header)
 	if (total < 86400) {
-		return `${Math.floor(total / 3600)}h ${Math.floor((total % 3600) / 60)}m`;
+		return `${plainInt(Math.floor(total / 3600))}h ${plainInt(Math.floor((total % 3600) / 60))}m`; // i18n: ignore unit symbol, a documented kept-English exception (see this file's header)
 	}
-	return `${Math.floor(total / 86400)}d ${Math.floor((total % 86400) / 3600)}h`;
+	return `${plainInt(Math.floor(total / 86400))}d ${plainInt(Math.floor((total % 86400) / 3600))}h`; // i18n: ignore unit symbol, a documented kept-English exception (see this file's header)
 }

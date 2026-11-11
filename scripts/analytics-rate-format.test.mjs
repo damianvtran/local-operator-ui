@@ -116,18 +116,107 @@ test("every value in the domain prints a string, and none of them is numeric", (
 	}
 });
 
-test("the panel numbers keep their pinned en-US whatever the store locale (round-1 R1-1)", () => {
-	// Base rendered these with `new Intl.NumberFormat("en-US")`; the pin must
-	// survive THROUGH the formatter layer, or a reader on any other locale
-	// would see `1.240`/`1.000 ms` where the pre-i18n app printed the en-US
-	// bytes. The store is moved (and witnessed) so the pin, not the default,
-	// is what the assertions measure.
+/*
+ * S16c: the panels no longer pin en-US. The first test is the ENGLISH
+ * IDENTITY witness (the same bytes the pin printed, plus the toFixed rounding
+ * that `Intl` alone would change: 1150/1000 is `1.1` under toFixed and `1.2`
+ * under Intl half-away); the rest are one witness per locale, each moved
+ * through the real store and restored in `finally`.
+ */
+const withLocale = (tag, fn) => {
 	try {
-		i18n.setLocale("de-DE");
-		assert.equal(i18n.currentLocale(), "de-DE");
-		assert.equal(mod.formatCount(1240.4), "1,240");
-		assert.equal(mod.formatMs(999.6), "1,000 ms");
+		i18n.setLocale(tag);
+		assert.equal(i18n.currentLocale(), tag);
+		fn();
 	} finally {
 		i18n.applyCapabilities(null);
 	}
+};
+
+test("English is byte-identical to the pre-S16c spellings", () => {
+	withLocale("en", () => {
+		assert.equal(mod.formatCount(1234), "1,234");
+		assert.equal(mod.formatCount(1240.4), "1,240");
+		assert.equal(mod.formatMs(999.6), "1,000 ms");
+		assert.equal(mod.formatMs(1234), "1.2 s");
+		assert.equal(mod.formatTokens(912), "912");
+		assert.equal(mod.formatTokens(3400), "3.4k");
+		assert.equal(
+			mod.formatTokens(1150),
+			"1.1k",
+			"toFixed rounds the exact binary value",
+		);
+		assert.equal(mod.formatTokens(2_000), "2k");
+		assert.equal(mod.formatTokens(999_950), "1M");
+		assert.equal(mod.formatTokens(4_100_000_000), "4.1B");
+		assert.equal(mod.formatContextTokens(12_400), "12.4k");
+		assert.equal(mod.formatContextTokens(1_200_000), "1.2m");
+		assert.equal(mod.formatWindow(1_000_000), "1M");
+		assert.equal(mod.formatWindow(1_500_000), "1.5M");
+		assert.equal(mod.formatWindow(200_000), "200k");
+		assert.equal(mod.formatBytes(1500 * 2 ** 30), "1500.0 GB");
+		assert.equal(mod.formatTokensPerSecond(1240), "1,240 tok/s");
+		assert.equal(mod.formatTokensPerSecond(0.4), "0.4 tok/s");
+		assert.equal(mod.formatTokensPerSecond(0.049), "<0.1 tok/s");
+		assert.equal(mod.formatDuration(3725), "1h 2m");
+		assert.equal(mod.formatDayBucket("2026-09-13"), "Sep 13");
+	});
+});
+
+/* [locale, grouped count, 3400 tokens, 1234 ms, <0.1 rate, 13 Sep bucket] */
+const WITNESSES = [
+	["fr", "1\u202f234", "3,4k", "1,2 s", "<0,1 tok/s", "13 sept."],
+	["de", "1.234", "3,4k", "1,2 s", "<0,1 tok/s", "13. Sept."],
+	["ru", "1\u00a0234", "3,4k", "1,2 s", "<0,1 tok/s", "13 сент."],
+	["ur", "1,234", "3.4k", "1.2 s", "<0.1 tok/s", "13 ستمبر"],
+	["hi", "1,234", "3.4k", "1.2 s", "<0.1 tok/s", "13 सित॰"],
+	["vi", "1.234", "3,4k", "1,2 s", "<0,1 tok/s", "13 thg 9"],
+	["zh-CN", "1,234", "3.4k", "1.2 s", "<0.1 tok/s", "9月13日"],
+];
+for (const [tag, count, tokens, ms, tiny, day] of WITNESSES) {
+	test(`the panel numbers and day buckets follow the live locale: ${tag}`, () => {
+		withLocale(tag, () => {
+			assert.equal(mod.formatCount(1234), count);
+			assert.equal(mod.formatTokens(3400), tokens);
+			assert.equal(mod.formatMs(1234), ms);
+			assert.equal(mod.formatTokensPerSecond(0.049), tiny);
+			assert.equal(mod.formatDayBucket("2026-09-13"), day);
+			// A rate at ten and above goes through formatCount, so it groups too.
+			assert.equal(mod.formatTokensPerSecond(1234), `${count} tok/s`);
+		});
+	});
+}
+
+test("a locale switch repaints: the same call answers the NEW locale", () => {
+	// The formatters resolve the locale per call, never at import: a pin
+	// captured at module load would keep the first answer after the switch.
+	withLocale("fr", () => assert.equal(mod.formatCount(1234), "1\u202f234"));
+	withLocale("en", () => assert.equal(mod.formatCount(1234), "1,234"));
+});
+
+test("the unit symbols stay ASCII in every locale (documented exception)", () => {
+	withLocale("fr", () => {
+		assert.equal(mod.formatMs(840), "840 ms");
+		assert.equal(mod.formatTokensPerSecond(5), "5,0 tok/s");
+		assert.equal(mod.formatContextTokens(1_200_000), "1,2m");
+		assert.equal(mod.formatWindow(1_500_000), "1,5M");
+		assert.equal(mod.formatTokens(2_000), "2k");
+		assert.equal(mod.formatDuration(3725), "1h 2m");
+	});
+});
+
+test("file sizes follow #1861's localised helper (number AND unit label)", () => {
+	// Not an exception: formatBytes delegates to formatByteQuantity, whose unit
+	// labels are localised (fr: Go) and whose decimal follows the locale.
+	withLocale("en", () => assert.equal(mod.formatBytes(3 * 2 ** 30), "3.0 GB"));
+	withLocale("fr", () =>
+		assert.equal(mod.formatBytes(3 * 2 ** 30), "3,0\u202fGo"),
+	);
+});
+
+test("an unparseable day bucket is still returned verbatim in any locale", () => {
+	withLocale("fr", () => {
+		assert.equal(mod.formatDayBucket("not-a-date"), "not-a-date");
+		assert.equal(mod.formatDayBucket("2026-13-01"), "2026-13-01");
+	});
 });
