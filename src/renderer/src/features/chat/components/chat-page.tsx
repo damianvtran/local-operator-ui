@@ -62,6 +62,7 @@ import {
 	ANSWER_NOT_SENT_CODE,
 	ASIDE_NOT_ANSWERED_CODE,
 	ASIDE_STILL_ANSWERING_CODE,
+	type PanelMount,
 	SEND_FAILURE_COPY,
 	SESSION_UNVALIDATED_CODE,
 	UNREADABLE_ATTACHMENT_CODE,
@@ -70,6 +71,7 @@ import {
 	migrateHeldClaim,
 	paneDraftKey,
 	panelIdentityFor,
+	panelMountKeyFor,
 	panelSessionIdOfView,
 	pressLockCopy,
 	remoteOwnedId,
@@ -99,6 +101,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { flushSync } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import { pairingHasRemedy } from "../../../../../shared/backend-status";
 import { DESKTOP_REFUSAL_CODE } from "../../../../../shared/desktop-contract";
@@ -2467,27 +2470,42 @@ function SessionPanel({
 					return false;
 				}
 			}
-			const id = await admitChatDraft(
-				key,
-				{
-					text: content,
-					attachments,
-					images,
-					...(files.length ? { files } : {}),
-					mode: turnAlive ? "steer" : "prompt",
-					cwd,
-					/*
-					 * The capability gate, applied HERE rather than at the composer: this
-					 * function already reads the capability map for the `@` affordance,
-					 * and one gate at the one seam every door passes is what keeps the
-					 * suggestion grid's own sends (which pass no `inputMode`) on the
-					 * legacy body by construction.
-					 */
-					inputMode: inputModeEnabled ? inputMode : undefined,
-				},
-				sessionId,
-				onEchoPainted,
-				beforeAdmission,
+			/*
+			 * ONE COMMIT FOR THE PRESS (operator report, 2026-11-11: the transcript went
+			 * blank for a few frames after Send). The call's synchronous prefix marks
+			 * the draft `pending` - a store update, which React always commits
+			 * synchronously - and paints the echo through the pane's `setView`, a
+			 * plain state update. By this line the press has already crossed an
+			 * `await` (`encodeAttachments`), so that state update no longer carries the
+			 * click's priority: it rendered as default-priority, time-sliced work, and
+			 * the frame in between showed the greeting gone and the pane empty (traced:
+			 * ~35 ms, one painted frame, before the row). `flushSync` commits the
+			 * claim, the echo, the wait line and the composer's clear together; the
+			 * create and the message POST after the prefix are unaffected.
+			 */
+			const id = await flushSync(() =>
+				admitChatDraft(
+					key,
+					{
+						text: content,
+						attachments,
+						images,
+						...(files.length ? { files } : {}),
+						mode: turnAlive ? "steer" : "prompt",
+						cwd,
+						/*
+						 * The capability gate, applied HERE rather than at the composer: this
+						 * function already reads the capability map for the `@` affordance,
+						 * and one gate at the one seam every door passes is what keeps the
+						 * suggestion grid's own sends (which pass no `inputMode`) on the
+						 * legacy body by construction.
+						 */
+						inputMode: inputModeEnabled ? inputMode : undefined,
+					},
+					sessionId,
+					onEchoPainted,
+					beforeAdmission,
+				),
 			);
 			if (!id) return false;
 			/*
@@ -5468,6 +5486,14 @@ export function ChatPage() {
 	// a second copy of the expression that computes it.
 	const id = panelSessionIdOfView(draftKey, draft?.sessionId, active);
 	const identity = panelIdentityFor(draftKey, id);
+	// The panel's MOUNT key, which unlike `identity` survives the draft's own
+	// admission: remounting there repainted the echo the press had just painted
+	// (`panelMountKeyFor`). Assigned during render, like the transcript's sticky
+	// `foldSession`, because the key must be right in the commit that flips.
+	const panelMount = useRef<PanelMount | null>(null);
+	const mountKey = panelMountKeyFor(panelMount.current, draftKey, id);
+	panelMount.current =
+		mountKey === undefined ? null : { key: mountKey, draftKey, sessionId: id };
 	// The route-level sentence, when one shows; see the `role="alert"` note below.
 	const routeSentence =
 		routeError ||
@@ -5591,7 +5617,7 @@ export function ChatPage() {
 					)}
 				>
 					<SessionPanel
-						key={identity}
+						key={mountKey}
 						identity={identity}
 						draftKey={draftKey}
 						sessionId={id}

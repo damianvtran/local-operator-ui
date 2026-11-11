@@ -2011,6 +2011,52 @@ export function panelIdentityOfView(
 	);
 }
 
+/** What the pane remembers about the panel it mounted, for `panelMountKeyFor`. */
+export type PanelMount = {
+	key: string;
+	draftKey: string | null;
+	sessionId: string | undefined;
+};
+
+/**
+ * The React key the pane mounts its panel under - `panelIdentityFor`, EXCEPT
+ * across a draft's admission, where the previous key is kept.
+ *
+ * WHY (operator report, 2026-11-11: "appears, flickers blank for a few frames,
+ * appears again"). `panelIdentityFor` flips `draft:<uuid>` -> `<sessionId>` at
+ * the first send's create hop, and keying the panel on it unmounted the whole
+ * conversation - transcript, echo row, wait line and composer - at exactly the
+ * moment the reader is watching the message they just sent. Traced in the built
+ * app: the echo's node was replaced ~100 ms after the press, its arrival fade cut
+ * from 0 to 1 in one frame. The conversation did not change, so the mount must
+ * not either; `identity` (the echo registry's address) still moves to the
+ * session, as a prop.
+ *
+ * SAME CONVERSATION means: the same draft learning its session id, or the same
+ * session id as before (the draft row retiring into it). Anything else - New chat, a sidebar
+ * pick, a different draft - is a different conversation and remounts, which is
+ * the reverse direction `panelIdentityFor` documents and still needs.
+ */
+export function panelMountKeyFor(
+	previous: PanelMount | null,
+	draftKey: string | null,
+	sessionId: string | undefined,
+): string | undefined {
+	const identity = panelIdentityFor(draftKey, sessionId);
+	if (!previous || identity === undefined) return identity;
+	const admitted =
+		previous.draftKey !== null &&
+		previous.sessionId === undefined &&
+		draftKey === previous.draftKey &&
+		sessionId !== undefined;
+	// The same session under any draft row (or none) is the same conversation;
+	// this is also what holds the key after the draft row retires, when the
+	// pane's own identity has become the bare session id.
+	const sameSession =
+		previous.sessionId !== undefined && sessionId === previous.sessionId;
+	return admitted || sameSession ? previous.key : identity;
+}
+
 /**
  * Whether a send failed BEFORE the owner could have admitted anything.
  *

@@ -242,6 +242,7 @@ const {
 	sendUnsettledForSession,
 	panelIdentityFor,
 	panelIdentityOfView,
+	panelMountKeyFor,
 	composerIdentityFor,
 	buildSendPayload,
 	desktopRequestSchema,
@@ -1180,6 +1181,59 @@ test("an admitted send is observable while it is in flight, and gone once it set
 	release();
 	await send;
 	assert.equal(store.getState().drafts[key], undefined);
+});
+
+test("the panel's mount key survives its draft's admission, and nothing else (send flicker, 2026-11-11)", () => {
+	/*
+	 * Keying the panel on `panelIdentityFor` remounted the whole conversation at
+	 * the first send's create hop - the echo the press had just painted, its
+	 * arrival fade and the wait line were torn down and rebuilt while the reader
+	 * watched (built-app trace: the row's DOM node replaced ~100 ms after the
+	 * press). The mount key walks the draft's own life and keeps one value.
+	 */
+	const key = "draft:7d1c2a4e-0000-4000-8000-000000000001";
+	const sid = "333333333333";
+	const walk = (steps) => {
+		let mount = null;
+		return steps.map(([draftKey, sessionId]) => {
+			const k = panelMountKeyFor(mount, draftKey, sessionId);
+			mount = k === undefined ? null : { key: k, draftKey, sessionId };
+			return k;
+		});
+	};
+	assert.deepEqual(
+		walk([
+			[key, undefined], // staged, typing
+			[key, sid], // the create answered: identity flips, the mount must not
+			[null, sid], // the draft row retired into its session
+			[null, sid], // and later renders of that session
+		]),
+		[key, key, key, key],
+		"one mount for the whole of the draft's life",
+	);
+	assert.equal(
+		panelIdentityFor(key, sid),
+		sid,
+		"while the IDENTITY (the echo registry's address) still moves to the session",
+	);
+	const other = "draft:7d1c2a4e-0000-4000-8000-000000000002";
+	assert.deepEqual(
+		walk([
+			[key, undefined],
+			[key, sid],
+			[null, "444444444444"], // a sidebar pick: a different conversation
+			[other, undefined], // New chat: a different conversation
+		]),
+		[key, key, "444444444444", other],
+		"a real switch still remounts, in both directions",
+	);
+	assert.deepEqual(
+		walk([
+			[null, "444444444444"],
+			[key, undefined], // a fresh draft after a session is NOT that session's admission
+		]),
+		["444444444444", key],
+	);
 });
 
 /**
