@@ -433,11 +433,13 @@ function StateLine({
 				{text}
 			</span>
 			{detail === null ? null : (
-				/* dir="auto": the datum can be a size ("1.9 kB"), and an unisolated
-				 * digit-space-Latin run mirrors to "kB 1.9" in an RTL locale; the first
-				 * strong letter decides the span's own direction instead. */
-				<span dir="auto" className={cn("shrink-0 text-meta text-ink-dim")}>
-					· {detail}
+				/* <bdi dir="auto"> around the datum only: it can be a size ("1.9 kB"), and
+				 * an unisolated digit-space-Latin run mirrors to "kB 1.9" in an RTL
+				 * locale. The "· " separator stays OUTSIDE the isolate so it keeps its
+				 * place between the state text and the datum (design D3); isolating it
+				 * with the value let the datum's own direction carry it to the edge. */
+				<span className={cn("shrink-0 text-meta text-ink-dim")}>
+					· <bdi dir="auto">{detail}</bdi>
 				</span>
 			)}
 		</p>

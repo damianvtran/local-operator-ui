@@ -59,11 +59,25 @@ import { formatByteQuantity } from "../../../../i18n/format";
  */
 export function formatByteSize(bytes: number): string {
 	const oneDecimal = { minimumFractionDigits: 1, maximumFractionDigits: 1 };
+	// `Number(x.toFixed(1))` first: the helper's `Intl` rounds the shortest
+	// decimal half-expand while the `toFixed(1)` this replaced rounded the binary
+	// double, so an exact tie such as 1_450_000 bytes printed `1.4 MB` before and
+	// `1.5 MB` after. Pre-rounding keeps English byte-identical (review m2).
 	if (bytes >= 999_500_000)
-		return formatByteQuantity(bytes / 1_000_000_000, "GB", oneDecimal);
+		return formatByteQuantity(
+			Number((bytes / 1_000_000_000).toFixed(1)),
+			"GB",
+			oneDecimal,
+		);
 	if (bytes >= 999_500)
-		return formatByteQuantity(bytes / 1_000_000, "MB", oneDecimal);
-	return formatByteQuantity(Math.round(bytes / 1000), "KB", {
+		return formatByteQuantity(
+			Number((bytes / 1_000_000).toFixed(1)),
+			"MB",
+			oneDecimal,
+		);
+	// `+ 0` turns the -0 that `Math.round(-0.4)` yields into 0: `Intl` prints the
+	// sign of negative zero (`-0 KB`) where the old template literal did not.
+	return formatByteQuantity(Math.round(bytes / 1000) + 0, "KB", {
 		maximumFractionDigits: 0,
 	});
 }

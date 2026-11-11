@@ -295,7 +295,15 @@ function fileSizeSeparator(locale: string): string {
  * a scale is a visible-number change outside this slice, so the SCALE and the
  * rounding stay with the call site and only the localized spelling (digits,
  * separators, unit symbol) is centralised here. A new `/ 1024` formatter has
- * nowhere to land: `scripts/i18n/file-size-guard.test.mjs` fails on one.
+ * nowhere to land: `scripts/i18n/file-size.test.mjs` fails on one.
+ *
+ * NO THOUSANDS GROUPING by default. The 1024 ladders legitimately print a
+ * 1000-1023 operand before the next rung (`1008 B`, `1000 KB`, `1010 MB`), and
+ * every hand-built formatter this helper replaced printed those bare, so
+ * `Intl`'s default grouping would have turned English `1008 B` into `1,008 B`
+ * (review round 1, M1). A size is also a value read at a glance beside others
+ * in a column, where a group separator is noise. A caller that wants grouping
+ * passes `useGrouping: true`.
  *
  * Callers that inject the result into running text through `t()` get RTL
  * isolation from `translate()`; a caller that paints it as JSX beside other
@@ -307,11 +315,12 @@ export function formatByteQuantity(
 	options?: {
 		minimumFractionDigits?: number;
 		maximumFractionDigits?: number;
+		useGrouping?: boolean;
 	},
 	locale?: string,
 ): string {
 	const tag = locale ?? currentLocale();
-	const number = formatNumber(value, options, tag);
+	const number = formatNumber(value, { useGrouping: false, ...options }, tag);
 	return `${number}${fileSizeSeparator(tag)}${fileSizeUnitLabel(unit, tag)}`;
 }
 
@@ -339,7 +348,11 @@ export function formatBytes(size: number, locale?: string): string {
 	return formatByteQuantity(
 		value,
 		SI_BYTE_LADDER[unitIndex] ?? "B",
-		{ maximumFractionDigits: digits },
+		// Grouped on purpose: this ladder's pre-helper output (`1,000 KB` for
+		// 999_999 bytes, pinned in `format.test.mjs`) always grouped, and it is
+		// the one size formatter that mirrors the core's table rather than a
+		// hand-built renderer template.
+		{ maximumFractionDigits: digits, useGrouping: true },
 		tag,
 	);
 }

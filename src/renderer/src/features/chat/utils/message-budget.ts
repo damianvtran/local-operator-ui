@@ -14,7 +14,7 @@
  */
 
 // Relative, not `@shared/i18n`: bundled by node tests without an alias map.
-import { formatNumber } from "../../../../../i18n/format";
+import { formatByteQuantity, formatNumber } from "../../../../../i18n/format";
 import { t } from "../../../../../i18n/messages";
 import {
 	DESKTOP_MESSAGE_BUDGET_BYTES,
@@ -94,7 +94,11 @@ function formatByteSizePair(total: number, budget: number): [string, string] {
 	if (base !== formatByteSize(budget)) return [base, formatByteSize(budget)];
 	// Same unit on both sides throughout, so the sentence never asks the reader
 	// to compare a KB against an MB.
-	const inMb = base.endsWith("MB");
+	// The rung comes from the NUMBER, not from the formatted text: the text now
+	// ends in the locale's symbol (`Mo` in fr, `МБ` in ru), so `endsWith("MB")`
+	// silently took the KB branch for a megabyte-scale size (review M2 / QA Q1).
+	// 999_500 is the MB rung `formatByteSize` itself uses.
+	const inMb = total >= 999_500;
 	const divisor = inMb ? 1_000_000 : 1000;
 	const unit = inMb ? "MB" : "KB";
 	// The separator and the digits are the LOCALE's, not JavaScript's: `toFixed`
@@ -106,11 +110,11 @@ function formatByteSizePair(total: number, budget: number): [string, string] {
 			minimumFractionDigits: decimals,
 			maximumFractionDigits: decimals,
 		};
-		const totalText = formatNumber(total / divisor, digits);
-		const budgetText = formatNumber(budget / divisor, digits);
-		if (totalText !== budgetText) {
-			return [`${totalText} ${unit}`, `${budgetText} ${unit}`];
-		}
+		// Operands are spelled by the shared helper so the unit symbol and the
+		// digits are the locale's (`1 200,09 ko`), never a literal `KB`.
+		const totalText = formatByteQuantity(total / divisor, unit, digits);
+		const budgetText = formatByteQuantity(budget / divisor, unit, digits);
+		if (totalText !== budgetText) return [totalText, budgetText];
 	}
 	return [
 		t("ui.chat.message_budget.bytes", { count: total }),
