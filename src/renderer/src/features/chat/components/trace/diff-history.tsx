@@ -98,7 +98,13 @@ const MAX_WINDOW_HOPS = DESKTOP_DIFF_PAGE_MAX_ROWS;
 
 const FIRST: DiffCursor = { start: 0, offset: 0 };
 
-async function fetchDiffPage(
+/**
+ * Exported for the child reader's binding verification
+ * (`use-child-transcript.ts`): the SAME scoped GET and page protocol the pager
+ * uses is the authority that a raw child binding row names a real archive in
+ * that child, so verification never grows a second route or parser.
+ */
+export async function fetchDiffPage(
 	scope: DiffHistoryScope,
 	callId: string,
 	cursor: DiffCursor,

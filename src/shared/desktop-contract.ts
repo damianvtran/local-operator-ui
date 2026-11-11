@@ -18,6 +18,7 @@ import { DESKTOP_MESSAGE_MAX_FILES } from "./attachment-upload";
 // against, so the request schema below and the renderer's pure model cannot
 // disagree about what an id is.
 import { SIDEBAR_DESTINATION_IDS } from "./desktop-control-contract";
+import { DESKTOP_DIFF_PAGE_MAX_ROWS } from "./desktop-diff-page";
 // The feed's frame family lives beside the session stream's, so the two cannot
 // drift into disagreeing about the envelope they deliberately share.
 import type { DesktopFeedFrame } from "./desktop-session-contract";
@@ -38,17 +39,32 @@ const PUBLICATION_FORMAT_POINT = /\p{Cf}/u;
 const PUBLICATION_PATH_SEPARATOR = /[/\\:]/;
 
 /**
- * The most rows one full-diff page may ask for: the core's page cap, which is
- * also the inline preview's row budget, so a page never paints a longer body
- * than the preview the reader already knows.
+ * The full-diff page cap lives in a leaf module so the condense parity bundle
+ * (which reaches it through the transcript reducer) does not pull this whole
+ * contract in; see `desktop-diff-page.ts`. Re-exported so importers of the
+ * contract keep one name.
  */
-export const DESKTOP_DIFF_PAGE_MAX_ROWS = 200;
+export { DESKTOP_DIFF_PAGE_MAX_ROWS } from "./desktop-diff-page";
 
 const id = z
 	.string()
 	.min(1)
 	.max(128)
 	.regex(/^[a-zA-Z0-9_-]+$/);
+/**
+ * A full-diff route's call id: a provider tool-call id (`id`'s alphabet), or a
+ * NESTED `write`/`edit` id the eval bridge mints as `<outer id>:<suffix>`
+ * (`harness/loop.py`, `f"{call.id}:{uuid4().hex}"`). Without the one colon a
+ * nested call's archive - the only way a subagent's eval-made edits are ever
+ * seen again on replay - was refused here before the request left the app.
+ * Exactly one separator, both halves in `id`'s alphabet: still never a path.
+ * 256 = two `id` halves plus the separator's headroom.
+ */
+const diffCallId = z
+	.string()
+	.min(1)
+	.max(256)
+	.regex(/^[a-zA-Z0-9_-]+(?::[a-zA-Z0-9_-]+)?$/);
 /**
  * A stored login's reference, as a provider block publishes it.
  *
@@ -2290,7 +2306,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.object({
 			op: z.literal("sessions.diff"),
 			sessionId,
-			callId: id,
+			callId: diffCallId,
 			start: z.number().int().min(0).max(1_000_000),
 			offset: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
 			limit: z.number().int().min(1).max(DESKTOP_DIFF_PAGE_MAX_ROWS),
@@ -2301,7 +2317,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			op: z.literal("subagents.diff"),
 			sessionId,
 			childId: sessionId,
-			callId: id,
+			callId: diffCallId,
 			start: z.number().int().min(0).max(1_000_000),
 			offset: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
 			limit: z.number().int().min(1).max(DESKTOP_DIFF_PAGE_MAX_ROWS),
@@ -9370,6 +9386,16 @@ export function desktopEndpoint(request: DesktopRequest): {
 				// This build renders supplements; declare it for each cold page,
 				// never infer HTTP intent from a different SSE subscriber.
 				query.set("supplements", "1");
+				/*
+				 * `diff_bindings=1` rides WITH the open frame and only with it: this build's
+				 * reducer paints nested write/edit diff bindings (`tool_call_diff_binding_v1`,
+				 * `diff-history-model.ts`), and the core serves them only inside the projected
+				 * frame, rebuilt from validated fields - so the flag is meaningless without
+				 * `open_frame=1`, and coupling them keeps every request identity and cache key
+				 * that already distinguishes the open frame distinguishing this too. An older
+				 * backend ignores the unknown parameter and keeps dropping the rows.
+				 */
+				query.set("diff_bindings", "1");
 			}
 			if (request.journalOrder) {
 				query.set("journal_order", "1");

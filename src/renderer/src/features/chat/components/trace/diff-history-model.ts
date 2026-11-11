@@ -35,7 +35,7 @@
  */
 
 import { t } from "@shared/i18n";
-import { DESKTOP_DIFF_PAGE_MAX_ROWS } from "../../../../../../shared/desktop-contract";
+import { DESKTOP_DIFF_PAGE_MAX_ROWS } from "../../../../../../shared/desktop-diff-page";
 import { type DiffLineKind, diffLineKind } from "./tool-row-model";
 
 export { DESKTOP_DIFF_PAGE_MAX_ROWS };
@@ -96,6 +96,214 @@ export function preferDiffFull(
 ): DiffFullDescriptor | null {
 	if (!details || typeof details !== "object") return previous;
 	return parseDiffFull((details as Record<string, unknown>).diff_full);
+}
+
+/**
+ * NESTED WRITE/EDIT DIFF BINDINGS (`tool_call_diff_binding_v1`).
+ *
+ * WHY THIS EXISTS. A `write`/`edit` run inside an `eval` cell has no tool row
+ * of its own in the journal, so its archived full diff was unreachable on
+ * replay - the operator's "subagent view ... wasn't able to see the diffs".
+ * The core host now journals one `custom` row per such call
+ * (`Session._bind_nested_diff`) and, when the viewer declares
+ * `diff_bindings=1`, serves it rebuilt from validated fields only
+ * (`open_frame.py::_diff_binding_payload`, `docs/DESKTOP_API.md`).
+ *
+ * WHAT IT PROVES, AND WHAT IT DOES NOT. The row is HOST METADATA: it proves the
+ * host captured a full diff for that nested call and bound it to that session.
+ * It is NOT the executor's completion - no output, no status, no counts, no
+ * arguments. A record built from it therefore never claims a result: it paints
+ * as a quiet receipt (`captureOnly`) whose only body is the existing full-diff
+ * pager, and a live record for the same call keeps its own executor status.
+ *
+ * WHY A ROW IS NOT PAINT AUTHORITY BY SHAPE. Raw transcript routes (a child
+ * transcript, `/history` without the open frame) serve journal rows verbatim,
+ * so an agent can print a row that looks exactly like a binding (QA round 3 on
+ * local-operator#3762). Only two doors admit one, both keyed to the CURRENT
+ * view's scope (never the row's own `session_id` claim):
+ *   1. a page the core PROJECTED (`open_frame=1&diff_bindings=1`), whose
+ *      validator already dropped forgeries - `admitProjectedDiffBindings`;
+ *   2. a raw candidate the core's scoped full-diff GET then answered for that
+ *      exact (view, child, call) - `admitVerifiedDiffBinding`. The pager then
+ *      reads the archive's own state through the same GET when opened, so the
+ *      row's descriptor claim never decides what the reader sees.
+ * Admission is recorded in a WeakSet over the payload OBJECT, which no wire
+ * bytes can forge; the reducer paints nothing else. The `<outer>:` call-id
+ * prefix is a consistency check (the shape the bridge mints), never authority.
+ */
+export const DIFF_BINDING_CUSTOM_TYPE = "tool_call_diff_binding_v1";
+
+const BINDING_PAYLOAD_KEYS: ReadonlySet<string> = new Set([
+	"custom_type",
+	"details",
+]);
+const BINDING_DETAIL_KEYS: ReadonlySet<string> = new Set([
+	"v",
+	"session_id",
+	"outer_call_id",
+	"call_id",
+	"tool",
+	"diff_full",
+]);
+const BINDING_DESCRIPTOR_KEYS: ReadonlySet<string> = new Set([
+	"v",
+	"state",
+	"rows",
+	"digest",
+]);
+/** The diff routes' call-id ceiling (`desktop-contract.ts`'s `diffCallId`). */
+const BINDING_ID_MAX = 256;
+
+export type DiffBinding = {
+	callId: string;
+	outerCallId: string;
+	tool: "write" | "edit";
+	descriptor: DiffFullDescriptor;
+};
+
+function bindingId(value: unknown): value is string {
+	return (
+		typeof value === "string" &&
+		value.length > 0 &&
+		value.length <= BINDING_ID_MAX &&
+		value.trim() === value
+	);
+}
+
+function onlyKeys(
+	value: Record<string, unknown>,
+	allowed: ReadonlySet<string>,
+): boolean {
+	return Object.keys(value).every((key) => allowed.has(key));
+}
+
+/**
+ * The binding a payload states, validated against the VIEWED session id, or
+ * `null`. Fail closed on everything the core's own validator refuses: an extra
+ * field anywhere, a wrong `v`, a non-safe-integer `rows`, a tool other than
+ * write/edit, an id that is not this view's, or a nested id that does not carry
+ * its outer id's prefix. A `null` row is simply not painted (never a stand-in
+ * row). The digest is checked for type and then DROPPED: it is never a lookup
+ * input, the call id and the view's scope are.
+ */
+export function parseDiffBinding(
+	payload: unknown,
+	expectedSessionId: string | null,
+): DiffBinding | null {
+	if (!expectedSessionId) return null;
+	if (!payload || typeof payload !== "object" || Array.isArray(payload))
+		return null;
+	const row = payload as Record<string, unknown>;
+	if (row.custom_type !== DIFF_BINDING_CUSTOM_TYPE) return null;
+	if (!onlyKeys(row, BINDING_PAYLOAD_KEYS)) return null;
+	const details = row.details;
+	if (!details || typeof details !== "object" || Array.isArray(details))
+		return null;
+	const d = details as Record<string, unknown>;
+	if (!onlyKeys(d, BINDING_DETAIL_KEYS)) return null;
+	if (d.v !== 1) return null;
+	if (d.session_id !== expectedSessionId) return null;
+	const outer = d.outer_call_id;
+	const callId = d.call_id;
+	if (!bindingId(outer) || !bindingId(callId)) return null;
+	if (!callId.startsWith(`${outer}:`) || callId.length === outer.length + 1)
+		return null;
+	const tool = d.tool;
+	if (tool !== "write" && tool !== "edit") return null;
+	const raw = d.diff_full;
+	if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+	const desc = raw as Record<string, unknown>;
+	if (!onlyKeys(desc, BINDING_DESCRIPTOR_KEYS)) return null;
+	if (desc.v !== 1 || typeof desc.state !== "string" || !desc.state)
+		return null;
+	if (
+		"rows" in desc &&
+		!(
+			typeof desc.rows === "number" &&
+			Number.isSafeInteger(desc.rows) &&
+			desc.rows >= 0
+		)
+	)
+		return null;
+	if ("digest" in desc && typeof desc.digest !== "string") return null;
+	const descriptor = parseDiffFull(desc);
+	if (!descriptor) return null;
+	return { callId, outerCallId: outer, tool, descriptor };
+}
+
+/** Payload objects admitted to paint; see the section note above. */
+const ADMITTED_BINDINGS = new WeakSet<object>();
+
+/** Whether the reducer may paint this payload as a binding. */
+export function isAdmittedDiffBinding(payload: unknown): boolean {
+	return (
+		!!payload && typeof payload === "object" && ADMITTED_BINDINGS.has(payload)
+	);
+}
+
+type BindingEntry = { type?: unknown; payload?: unknown };
+
+function bindingCandidate(entry: BindingEntry): boolean {
+	return (
+		entry.type === "custom" &&
+		!!entry.payload &&
+		typeof entry.payload === "object" &&
+		(entry.payload as Record<string, unknown>).custom_type ===
+			DIFF_BINDING_CUSTOM_TYPE
+	);
+}
+
+/**
+ * Door 1: a page the core projected with `open_frame=1&diff_bindings=1` for
+ * the PARENT view. Each binding row is still re-validated against the view's
+ * own session id (defence in depth, and a page from an older core that echoed
+ * a raw row is refused the same way). Returns how many were admitted.
+ */
+export function admitProjectedDiffBindings(
+	entries: readonly BindingEntry[],
+	viewSessionId: string | null,
+): number {
+	let admitted = 0;
+	for (const entry of entries) {
+		if (!bindingCandidate(entry)) continue;
+		if (parseDiffBinding(entry.payload, viewSessionId) === null) continue;
+		ADMITTED_BINDINGS.add(entry.payload as object);
+		admitted += 1;
+	}
+	return admitted;
+}
+
+/**
+ * Raw candidates (a CHILD transcript, served verbatim) that pass the strict
+ * shape for the viewed child: they are NOT painted until the scoped full-diff
+ * GET confirms them (`admitVerifiedDiffBinding`). Anything else - wrong scope,
+ * extra fields, a forged parent id - is dropped here and never fetched.
+ */
+export function rawDiffBindingCandidates(
+	entries: readonly BindingEntry[],
+	viewChildId: string | null,
+): { payload: object; binding: DiffBinding }[] {
+	const out: { payload: object; binding: DiffBinding }[] = [];
+	for (const entry of entries) {
+		if (!bindingCandidate(entry)) continue;
+		const binding = parseDiffBinding(entry.payload, viewChildId);
+		if (binding) out.push({ payload: entry.payload as object, binding });
+	}
+	return out;
+}
+
+/**
+ * Door 2: the core's scoped full-diff GET answered for this exact call in this
+ * exact view. A 404 (`not_found`) or a failed lookup admits nothing - the
+ * candidate stays unpainted rather than becoming a fake completed row.
+ */
+export function admitVerifiedDiffBinding(
+	payload: object,
+	answeredState: DiffPageState | "not_found" | null,
+): boolean {
+	if (answeredState === null || answeredState === "not_found") return false;
+	ADMITTED_BINDINGS.add(payload);
+	return true;
 }
 
 export type DiffPageState =

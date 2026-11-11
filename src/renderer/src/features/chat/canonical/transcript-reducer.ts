@@ -45,7 +45,10 @@ import {
 	preferBridgeLabel,
 } from "../components/trace/bridge-row-model";
 import {
+	DIFF_BINDING_CUSTOM_TYPE,
 	type DiffFullDescriptor,
+	isAdmittedDiffBinding,
+	parseDiffBinding,
 	preferDiffFull,
 } from "../components/trace/diff-history-model";
 import {
@@ -578,6 +581,15 @@ type TranscriptPayloadRecord =
 			 * hand-built-fixture reason as `diffTruncatedRows`.
 			 */
 			diffFull?: DiffFullDescriptor | null;
+			/**
+			 * Built ONLY from a host diff binding (`tool_call_diff_binding_v1`,
+			 * see `diff-history-model.ts`): proof the host CAPTURED this nested
+			 * write/edit's full diff, never the executor's completion. The row
+			 * paints as a quiet receipt (no success/failure outcome, no counts) whose
+			 * body is the full-diff pager. A live record for the same call is never
+			 * replaced by one; it only gains the descriptor. Absent = false.
+			 */
+			captureOnly?: boolean;
 			/**
 			 * The call was still running when the turn was aborted, so it never
 			 * reported an outcome of its own.
@@ -3223,6 +3235,98 @@ function pageRowIsOlderThanLiveRow(
 	return stamp.seq > witness.seq;
 }
 
+/**
+ * The one logical record a nested call's diff binding contributes, keyed by
+ * the NESTED call id (`tool:<call_id>`) so the live end event, a replayed page
+ * and a later upsert all land on the same record - one row, one focus key.
+ *
+ * Executor status stays the executor's: when a record already exists for the
+ * call (the live nested end event, or a durable row), it is kept as it is and
+ * only GAINS the descriptor if it had none. A record that exists only because
+ * of the binding claims nothing beyond the capture (`captureOnly`): no output,
+ * no error, no duration, zero counts - a metadata row cannot state `+N/-N`,
+ * and the descriptor's row total is not an added/removed count.
+ */
+function bindingRecord(
+	entry: DesktopHistoryPage["entries"][number],
+	ts: number,
+	previous: TranscriptRecord | undefined,
+): TranscriptRecord | null {
+	const payload = entry.payload;
+	if (!isAdmittedDiffBinding(payload)) return null;
+	const details = (payload as { details?: { session_id?: unknown } }).details;
+	// Admission already checked the view's id; re-parse under the id admission
+	// accepted so the reducer reads the same validated fields, not raw ones.
+	const binding = parseDiffBinding(
+		payload,
+		typeof details?.session_id === "string" ? details.session_id : null,
+	);
+	if (!binding) return null;
+	if (previous?.kind === "tool" && previous.toolCallId === binding.callId) {
+		if (!previous.captureOnly) {
+			return previous.diffFull
+				? previous
+				: { ...previous, diffFull: binding.descriptor };
+		}
+		if (
+			previous.diffFull &&
+			sameDescriptor(previous.diffFull, binding.descriptor)
+		)
+			return previous;
+	}
+	return {
+		kind: "tool",
+		id: `tool:${binding.callId}`,
+		ts,
+		toolCallId: binding.callId,
+		toolName: binding.tool,
+		intent: null,
+		args: null,
+		phase: "done",
+		argumentBytes: 0,
+		notRunReason: null,
+		notRunKind: null,
+		neverSent: false,
+		output: null,
+		isError: false,
+		durationS: null,
+		startedAt: null,
+		endedAt: null,
+		images: EMPTY_IMAGES,
+		added: 0,
+		removed: 0,
+		diff: null,
+		diffTruncatedRows: 0,
+		diffFull: binding.descriptor,
+		captureOnly: true,
+		stopped: false,
+	};
+}
+
+function sameDescriptor(a: DiffFullDescriptor, b: DiffFullDescriptor): boolean {
+	return (
+		a.state === b.state &&
+		(a.state !== "archived" || (b.state === "archived" && a.rows === b.rows))
+	);
+}
+
+/**
+ * The record key an entry upserts under when it is not its own entry id: a
+ * tool row's (or a diff binding's NESTED) call id. One lookup for both history
+ * merges, so a binding replayed on a later page finds the record it made.
+ */
+function entryCallKey(entry: DesktopHistoryPage["entries"][number]): string {
+	const payload = entry.payload as Record<string, unknown> | undefined;
+	if (
+		entry.type === "custom" &&
+		payload?.custom_type === DIFF_BINDING_CUSTOM_TYPE
+	) {
+		const details = payload.details as Record<string, unknown> | undefined;
+		return `tool:${typeof details?.call_id === "string" ? details.call_id : ""}`;
+	}
+	return `tool:${String(payload?.tool_call_id ?? "")}`;
+}
+
 function durableRecord(
 	entry: DesktopHistoryPage["entries"][number],
 	/**
@@ -3352,11 +3456,26 @@ function durableRecord(
 		const details = (payload.details ?? {}) as Record<string, unknown>;
 		return supplementRecordFromDetails(ts, details, previous);
 	}
+	/*
+	 * A NESTED WRITE/EDIT DIFF BINDING. Painted only when one of the two
+	 * admission doors in `diff-history-model.ts` marked THIS payload object
+	 * (a projected parent page, or a raw child candidate the scoped GET
+	 * confirmed); an unadmitted lookalike - an agent printing the same JSON into
+	 * a raw transcript - is dropped, never painted as a stand-in.
+	 */
+	if (
+		entry.type === "custom" &&
+		payload.custom_type === DIFF_BINDING_CUSTOM_TYPE
+	)
+		return bindingRecord(entry, ts, previous);
 	if (entry.type !== "message") return null;
 	const kind = String(payload.kind ?? "message");
 	if (kind === "custom") {
 		const customType = String(payload.custom_type ?? "");
 		if (SILENT_CUSTOM_TYPES.has(customType)) return null;
+		// A binding in the MESSAGE envelope is no door the core serves one
+		// through; never let the generic custom arm paint its JSON as text.
+		if (customType === DIFF_BINDING_CUSTOM_TYPE) return null;
 		const details = (payload.details ?? {}) as Record<string, unknown>;
 		// The receipts come before the generic branch, which would paint
 		// `details.text` — the model-facing envelope for both of them.
@@ -4445,7 +4564,7 @@ export function applyPeerSourcePayload(
 		for (const entry of entries) {
 			if (typeof entry.id !== "string" || entry.id === "") continue;
 			if (acceptanceSuperseded(entry.id)) continue;
-			const toolKey = `tool:${String(entry.payload?.tool_call_id ?? "")}`;
+			const toolKey = entryCallKey(entry);
 			const position = index.get(entry.id) ?? index.get(toolKey);
 			const current = position === undefined ? undefined : records[position];
 			if (!current) continue;
@@ -4702,10 +4821,7 @@ export function applyHistoryPage(
 		// a supplement row's version/rank merge see the version it supersedes.
 		const previous =
 			state.records[state.index.get(entry.id) ?? -1] ??
-			state.records[
-				state.index.get(`tool:${String(entry.payload?.tool_call_id ?? "")}`) ??
-					-1
-			] ??
+			state.records[state.index.get(entryCallKey(entry)) ?? -1] ??
 			previousRecordForSupplement(state, entry);
 		let record = durableRecord(entry, previous);
 		// A continuation page may contain only the immutable queued original, not

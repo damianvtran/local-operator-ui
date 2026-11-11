@@ -2941,15 +2941,22 @@ const ToolRow = memo(function ToolRow({
 							isInterruptedFault(record.notRunKind)
 							? "interrupted"
 							: "not-run"
-						: running
-							? "running"
-							: partial
-								? "partial"
-								: record.isError
-									? "error"
-									: record.stopped
-										? "interrupted"
-										: "success"
+						: record.captureOnly
+							? /* A row built only from the host's diff binding proves the
+							     CAPTURE, not the executor's completion: it is a quiet
+							     receipt (no success or failure claim, no announcement),
+							     and its body is the full-diff pager. A live record for the
+							     same call never carries the flag (`bindingRecord`). */
+								"receipt"
+							: running
+								? "running"
+								: partial
+									? "partial"
+									: record.isError
+										? "error"
+										: record.stopped
+											? "interrupted"
+											: "success"
 				}
 				deliveryState={record.delivery}
 				settledVerb={bridge?.failedVerb ?? null}
