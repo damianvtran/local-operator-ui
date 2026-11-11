@@ -2261,8 +2261,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "36346bf6a1422f090b306be21eebe034b0a9ee071725c94f7296d1d1322e9e0e",
-			"target_sha256": "634fb98f9ff99e6fc46d03f5e73c981d9bc661a4c164142e2ec9ce3edfadc291",
+			"source_sha256": "ef8da717937c4c1fb4973310d178bbb076538fcc0ed24a8be6702c2794112e06",
+			"target_sha256": "431c79b12b01ea2cf8bb731d3568da39169fe1b7997a194a7c66c226f218c8d8",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 9d6c2bba4d3b job e76e3cc7e513)",
@@ -2271,21 +2271,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-08",
-					"result": "clean",
-					"instance": "78c4c8dbce2e-ui1753-es",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
+					"result": "clean-with-findings",
+					"instance": "3cc1fe293b5d-1857r1-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/78c4c8dbce2e-ui1753-es.json",
-					"receipt_sha256": "18cb3169c02a8a6d7d70ae4c3f80078cebb031f1100ffc5986fa844a523dbb91",
-					"scope": "the 8 keys this PR added to ui.chat.asks (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
-					"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+					"receipt": "i18n/receipts/3cc1fe293b5d-1857r1-es.json",
+					"receipt_sha256": "7e0e946d51e2284c4c2ad0e2be43b6a573356edc9dea59faeac8c9c2763ba1f2",
+					"scope": "PR #1857 round-1 independent audit of the 5 keys it added to ui.chat.asks (bounds.body_label, proposal.*), at e03462240a7 plus this commit's catalogue fixes",
+					"note": "PR #1857 r1 audit; 5 added keys; MINOR fixes applied in the audit commit are auditor-authored. Detail: i18n/receipts/3cc1fe293b5d-1857r1-es.json"
 				}
 			],
 			"status": "audited",
@@ -2498,6 +2498,30 @@
 							"receipt_sha256": "f5ed0a163dd8c2bf0ec6f55e3ced6bba1795de660c6e9da9a6b1860657d289a3",
 							"scope": "Round-1 full review (62bb649752be) at ab45351362a of the 3 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta c86525720075. Counts are open findings.",
 							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/62bb649752be-1603r1-es.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "36346bf6a1422f090b306be21eebe034b0a9ee071725c94f7296d1d1322e9e0e",
+					"target_sha256": "634fb98f9ff99e6fc46d03f5e73c981d9bc661a4c164142e2ec9ce3edfadc291",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "78c4c8dbce2e-ui1753-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/78c4c8dbce2e-ui1753-es.json",
+							"receipt_sha256": "18cb3169c02a8a6d7d70ae4c3f80078cebb031f1100ffc5986fa844a523dbb91",
+							"scope": "the 8 keys this PR added to ui.chat.asks (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
+							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
 						}
 					],
 					"status": "audited"
@@ -13851,8 +13875,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "36346bf6a1422f090b306be21eebe034b0a9ee071725c94f7296d1d1322e9e0e",
-			"target_sha256": "4d6c7766f4d185ef64202a145688e5cb6e08f0bfd6c07b20d67ba97c39d694ee",
+			"source_sha256": "ef8da717937c4c1fb4973310d178bbb076538fcc0ed24a8be6702c2794112e06",
+			"target_sha256": "1e3c49748c682952eec327941d4d4e4e0fe142ecc41caa57c5df64ff2b0b0d20",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 7bf560d5dcc5 job f3024578bae5)",
@@ -13861,21 +13885,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-08",
-					"result": "clean",
-					"instance": "6ff7a7a1f3b4-ui1753-fr",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
+					"result": "clean-with-findings",
+					"instance": "3cc1fe293b5d-1857r1-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6ff7a7a1f3b4-ui1753-fr.json",
-					"receipt_sha256": "f6197d6aa3d6a949739405047da9354dd8830da6ecfc072a715d2925fa77aeb3",
-					"scope": "the 8 keys this PR added to ui.chat.asks (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
-					"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+					"receipt": "i18n/receipts/3cc1fe293b5d-1857r1-fr.json",
+					"receipt_sha256": "5f5cf73c3023c5f42b6655b65be42f94915b1da9c5fa7406d24ff238fc7180ca",
+					"scope": "PR #1857 round-1 independent audit of the 5 keys it added to ui.chat.asks (bounds.body_label, proposal.*), at e03462240a7 plus this commit's catalogue fixes",
+					"note": "PR #1857 r1 audit; 5 added keys; MINOR fixes applied in the audit commit are auditor-authored. Detail: i18n/receipts/3cc1fe293b5d-1857r1-fr.json"
 				}
 			],
 			"status": "audited",
@@ -14088,6 +14112,30 @@
 							"receipt_sha256": "9f3c0a52d34a38716106cd30627a4b2c35227dce02be2725da37ef3d56033e88",
 							"scope": "Round-1 full review (c09dbedc5d8a) at ab45351362a of the 3 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta 35a459c32034. Counts are open findings.",
 							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/c09dbedc5d8a-1603r1-fr.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "36346bf6a1422f090b306be21eebe034b0a9ee071725c94f7296d1d1322e9e0e",
+					"target_sha256": "4d6c7766f4d185ef64202a145688e5cb6e08f0bfd6c07b20d67ba97c39d694ee",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "6ff7a7a1f3b4-ui1753-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6ff7a7a1f3b4-ui1753-fr.json",
+							"receipt_sha256": "f6197d6aa3d6a949739405047da9354dd8830da6ecfc072a715d2925fa77aeb3",
+							"scope": "the 8 keys this PR added to ui.chat.asks (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
+							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
 						}
 					],
 					"status": "audited"
@@ -25962,8 +26010,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "36346bf6a1422f090b306be21eebe034b0a9ee071725c94f7296d1d1322e9e0e",
-			"target_sha256": "1f1ce6ec602ce98b4567bb65bc8505e1933e79b1e53099a63527335c3429576e",
+			"source_sha256": "ef8da717937c4c1fb4973310d178bbb076538fcc0ed24a8be6702c2794112e06",
+			"target_sha256": "38da6cec0b4c3117c26dffcc4e5ba8f0d2031b34ec08036f92a97f8ceb02d5a5",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session fe3e687905c1 job 2296f594b388)",
@@ -25972,21 +26020,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-08",
-					"result": "clean",
-					"instance": "050f568ab597",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
+					"result": "clean-with-findings",
+					"instance": "3cc1fe293b5d-1857r1-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/050f568ab597.json",
-					"receipt_sha256": "2e140f685e9a147aceb472be77294577a1336adf8b65d80e867cb4710e9b4775",
-					"scope": "the 8 keys this PR added to ui.chat.asks (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
-					"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+					"receipt": "i18n/receipts/3cc1fe293b5d-1857r1-hi.json",
+					"receipt_sha256": "66d2a7a3855ba227975206c1168005249426d277ae5c9359abd4eff50b1e1415",
+					"scope": "PR #1857 round-1 independent audit of the 5 keys it added to ui.chat.asks (bounds.body_label, proposal.*), at e03462240a7 plus this commit's catalogue fixes",
+					"note": "PR #1857 r1 audit; 5 added keys; MINOR fixes applied in the audit commit are auditor-authored. Detail: i18n/receipts/3cc1fe293b5d-1857r1-hi.json"
 				}
 			],
 			"status": "audited",
@@ -26199,6 +26247,30 @@
 							"receipt_sha256": "6e6c16a177d9b7428b0404309161ad873e0065f54d676237fed2b404400f4437",
 							"scope": "Round-1 full review (a8b33d269fce) at ab45351362a of the 3 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.common.layout), A-1p (ui.chat.pickers), A-1c (ui.chat), A-2 (ui.agents.teams)), fixed at 011c0f4f4ca and passed by round-2 delta 553e1ccbd7b1. Counts are open findings.",
 							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/a8b33d269fce-1603r1-hi.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "36346bf6a1422f090b306be21eebe034b0a9ee071725c94f7296d1d1322e9e0e",
+					"target_sha256": "1f1ce6ec602ce98b4567bb65bc8505e1933e79b1e53099a63527335c3429576e",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "050f568ab597",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/050f568ab597.json",
+							"receipt_sha256": "2e140f685e9a147aceb472be77294577a1336adf8b65d80e867cb4710e9b4775",
+							"scope": "the 8 keys this PR added to ui.chat.asks (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
+							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
 						}
 					],
 					"status": "audited"
@@ -37702,8 +37774,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "36346bf6a1422f090b306be21eebe034b0a9ee071725c94f7296d1d1322e9e0e",
-			"target_sha256": "c560f37540e801719a7490c8adf01773cfee1db6cf291e9a702c5df6c8415b9a",
+			"source_sha256": "ef8da717937c4c1fb4973310d178bbb076538fcc0ed24a8be6702c2794112e06",
+			"target_sha256": "769c7a1dc312f989bbd57e6e0e3761ddaf456fdf0265a98ecbcb4490e87e355f",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 74a8df6e024e job edb91c63ad6a; remediation of the audited keys at 011c0f4f4ca, session 2a835d4a8c42 job bf4831b9c2ca)",
@@ -37712,21 +37784,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-08",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
 					"result": "clean",
-					"instance": "05dd4fa2b221-ui1753-ru",
+					"instance": "3cc1fe293b5d-1857r1-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/05dd4fa2b221-ui1753-ru.json",
-					"receipt_sha256": "ec04548218150371863adc9922ded3953b91d16ccf9a8a8a460cfc00538a732a",
-					"scope": "the 8 keys this PR added to ui.chat.asks (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
-					"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+					"receipt": "i18n/receipts/3cc1fe293b5d-1857r1-ru.json",
+					"receipt_sha256": "35363475e9e5f28a11d5ec013be354da7ca4060fa624a5029c93a34cb8a6526f",
+					"scope": "PR #1857 round-1 independent audit of the 5 keys it added to ui.chat.asks (bounds.body_label, proposal.*), at e03462240a7 plus this commit's catalogue fixes",
+					"note": "PR #1857 r1 audit; 5 added keys; MINOR fixes applied in the audit commit are auditor-authored. Detail: i18n/receipts/3cc1fe293b5d-1857r1-ru.json"
 				}
 			],
 			"status": "audited",
@@ -37916,6 +37988,30 @@
 							"receipt_sha256": "5c2e55043b83ecb3d7e745071e7020148523c645fc92a0a0b678559ef0492645",
 							"scope": "Round-1 full review (e74efd41e786) at ab45351362a of the 3 keys PR #1603 added + round-2 delta re-audit (ed052586f8fb) at 011c0f4f4ca of the 1 changed key(s). No round-1 MAJOR here (changed for MINOR/NIT wording). Counts are open findings only.",
 							"note": "PR #1603 round-1 full review at ab45351362a + round-2 delta re-audit at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/ed052586f8fb-1603r2-ru.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "36346bf6a1422f090b306be21eebe034b0a9ee071725c94f7296d1d1322e9e0e",
+					"target_sha256": "c560f37540e801719a7490c8adf01773cfee1db6cf291e9a702c5df6c8415b9a",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "05dd4fa2b221-ui1753-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/05dd4fa2b221-ui1753-ru.json",
+							"receipt_sha256": "ec04548218150371863adc9922ded3953b91d16ccf9a8a8a460cfc00538a732a",
+							"scope": "the 8 keys this PR added to ui.chat.asks (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
+							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
 						}
 					],
 					"status": "audited"
@@ -49391,8 +49487,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "36346bf6a1422f090b306be21eebe034b0a9ee071725c94f7296d1d1322e9e0e",
-			"target_sha256": "0755c0d0ec2d81922e31a150eb8dd70e1489e281ab343412764dba4a3ca1f15f",
+			"source_sha256": "ef8da717937c4c1fb4973310d178bbb076538fcc0ed24a8be6702c2794112e06",
+			"target_sha256": "1375fe46b440506c55750b40a409a1dd375329f890562b88d60d36cbb9154ec6",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 3c0d98370d76 job f701c763e4bb)",
@@ -49401,21 +49497,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-08",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
 					"result": "clean",
-					"instance": "ab407cfa3e46-ui1753-ur",
+					"instance": "3cc1fe293b5d-1857r1-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/ab407cfa3e46-ui1753-ur.json",
-					"receipt_sha256": "6a201068e55667716093e6d48ad24439a3ddff6945641f0dbb06ece7c0203240",
-					"scope": "the 8 keys this PR added to ui.chat.asks (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
-					"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+					"receipt": "i18n/receipts/3cc1fe293b5d-1857r1-ur.json",
+					"receipt_sha256": "b99d9109695806631406f5951d629c5c3a428fd50eae4fc34e19ef48e1f45e82",
+					"scope": "PR #1857 round-1 independent audit of the 5 keys it added to ui.chat.asks (bounds.body_label, proposal.*), at e03462240a7 plus this commit's catalogue fixes",
+					"note": "PR #1857 r1 audit; 5 added keys; MINOR fixes applied in the audit commit are auditor-authored. Detail: i18n/receipts/3cc1fe293b5d-1857r1-ur.json"
 				}
 			],
 			"status": "audited",
@@ -49605,6 +49701,30 @@
 							"receipt_sha256": "5ebbed48b2be756b106b78c3fc2b9fd94524653d46c913169224b61950baf0ea",
 							"scope": "Round-1 full review (7dde05a06499) at ab45351362a of the 3 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat), A-2 (ui.chat.attachments)), fixed at 011c0f4f4ca and passed by round-2 delta d83d475c68e1. Counts are open findings.",
 							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/7dde05a06499-1603r1-ur.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "36346bf6a1422f090b306be21eebe034b0a9ee071725c94f7296d1d1322e9e0e",
+					"target_sha256": "0755c0d0ec2d81922e31a150eb8dd70e1489e281ab343412764dba4a3ca1f15f",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "ab407cfa3e46-ui1753-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ab407cfa3e46-ui1753-ur.json",
+							"receipt_sha256": "6a201068e55667716093e6d48ad24439a3ddff6945641f0dbb06ece7c0203240",
+							"scope": "the 8 keys this PR added to ui.chat.asks (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
+							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
 						}
 					],
 					"status": "audited"
@@ -60960,8 +61080,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "36346bf6a1422f090b306be21eebe034b0a9ee071725c94f7296d1d1322e9e0e",
-			"target_sha256": "498938f6a7ba474c05608ad07015e79ada211be54881b83152a3f2d032221ef5",
+			"source_sha256": "ef8da717937c4c1fb4973310d178bbb076538fcc0ed24a8be6702c2794112e06",
+			"target_sha256": "cc8c5d662889ba9a26aacc9d2cfc8831f6fedf799418e0aa68aea88688a838ad",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 5baf5b219d15 job c798e751c62b; remediation of the audited keys at 011c0f4f4ca, session 85494821af86 job a57492d745b0)",
@@ -60970,21 +61090,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-08",
-					"result": "clean",
-					"instance": "200a953fa085-ui1753-vi",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
+					"result": "clean-with-findings",
+					"instance": "3cc1fe293b5d-1857r1-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/200a953fa085-ui1753-vi.json",
-					"receipt_sha256": "2610b82de42cf1e20231b2fffb3035497cbe6f19b70864b19e41b5f328c61243",
-					"scope": "the 8 keys this PR added to ui.chat.asks (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
-					"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+					"receipt": "i18n/receipts/3cc1fe293b5d-1857r1-vi.json",
+					"receipt_sha256": "c1861fbcfd60b2bb871d16e047016e1e4f5991f20803ba5c895b80b808ac8c7d",
+					"scope": "PR #1857 round-1 independent audit of the 5 keys it added to ui.chat.asks (bounds.body_label, proposal.*), at e03462240a7 plus this commit's catalogue fixes",
+					"note": "PR #1857 r1 audit; 5 added keys; MINOR fixes applied in the audit commit are auditor-authored. Detail: i18n/receipts/3cc1fe293b5d-1857r1-vi.json"
 				}
 			],
 			"status": "audited",
@@ -61191,6 +61311,30 @@
 							"receipt_sha256": "4f9a29b67da78dd0e9201ec2669c842b964424f1e9365bfecd5741792779f2d2",
 							"scope": "Round-1 full review (ff1dde7af5b2) at ab45351362a of the 3 keys PR #1603 added + round-2 delta re-audit (b8016304b62d) at 011c0f4f4ca of the 1 changed key(s). No round-1 MAJOR here (changed for MINOR/NIT wording). Counts are open findings only.",
 							"note": "PR #1603 round-1 full review at ab45351362a + round-2 delta re-audit at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/b8016304b62d-1603r2-vi.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "36346bf6a1422f090b306be21eebe034b0a9ee071725c94f7296d1d1322e9e0e",
+					"target_sha256": "498938f6a7ba474c05608ad07015e79ada211be54881b83152a3f2d032221ef5",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "200a953fa085-ui1753-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/200a953fa085-ui1753-vi.json",
+							"receipt_sha256": "2610b82de42cf1e20231b2fffb3035497cbe6f19b70864b19e41b5f328c61243",
+							"scope": "the 8 keys this PR added to ui.chat.asks (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
+							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
 						}
 					],
 					"status": "audited"
@@ -73371,8 +73515,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "36346bf6a1422f090b306be21eebe034b0a9ee071725c94f7296d1d1322e9e0e",
-			"target_sha256": "60565a931c635b54367b8a005cda92e0baf9aae75f938d9a3482be24abee65fc",
+			"source_sha256": "ef8da717937c4c1fb4973310d178bbb076538fcc0ed24a8be6702c2794112e06",
+			"target_sha256": "605ad0c5d01f08652a9555263eb500fe6fa61f49e3b9826612932fe7e85c4d3a",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 2071a6d2f218 job a1a155d78afc)",
@@ -73381,21 +73525,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-08",
-					"result": "clean",
-					"instance": "7d3d4a9a80a4-ui1753-zh-cn",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
+					"result": "clean-with-findings",
+					"instance": "3cc1fe293b5d-1857r1-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/7d3d4a9a80a4-ui1753-zh-cn.json",
-					"receipt_sha256": "df3f3c8c1341cf428d1882f755e48af66db7ed7852b1c47574ea6674ea69c371",
-					"scope": "the 8 keys this PR added to ui.chat.asks (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
-					"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+					"receipt": "i18n/receipts/3cc1fe293b5d-1857r1-zh-cn.json",
+					"receipt_sha256": "2192d78e886a4e9f9db81593fc76c70291609c527e0362fd9095c8d92da48e73",
+					"scope": "PR #1857 round-1 independent audit of the 5 keys it added to ui.chat.asks (bounds.body_label, proposal.*), at e03462240a7 plus this commit's catalogue fixes",
+					"note": "PR #1857 r1 audit; 5 added keys; MINOR fixes applied in the audit commit are auditor-authored. Detail: i18n/receipts/3cc1fe293b5d-1857r1-zh-cn.json"
 				}
 			],
 			"status": "audited",
@@ -73602,6 +73746,30 @@
 							"receipt_sha256": "5ce56c39bc182a3ee0551c3363050165b4512407a7193cfbb77cf3aa66c0cf53",
 							"scope": "Round-1 full review (0bb8123f20fc) at ab45351362a of the 3 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.agents.detail)), fixed at 011c0f4f4ca and passed by round-2 delta e98e27ec97a4. Counts are open findings.",
 							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/0bb8123f20fc-1603r1-zh-cn.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "36346bf6a1422f090b306be21eebe034b0a9ee071725c94f7296d1d1322e9e0e",
+					"target_sha256": "60565a931c635b54367b8a005cda92e0baf9aae75f938d9a3482be24abee65fc",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "7d3d4a9a80a4-ui1753-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/7d3d4a9a80a4-ui1753-zh-cn.json",
+							"receipt_sha256": "df3f3c8c1341cf428d1882f755e48af66db7ed7852b1c47574ea6674ea69c371",
+							"scope": "the 8 keys this PR added to ui.chat.asks (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
+							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
 						}
 					],
 					"status": "audited"

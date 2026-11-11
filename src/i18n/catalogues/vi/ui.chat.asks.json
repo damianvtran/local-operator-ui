@@ -41,7 +41,7 @@
 	"ui.chat.asks.clause.delivering": "{count, plural, other {{count, number, ::group-off} câu trả lời chưa được chuyển đi — bạn vẫn có thể sửa}}",
 	"ui.chat.asks.clause.timed_out": "{count, plural, other {{count, number, ::group-off} câu hỏi hết thời gian chờ}}",
 	"ui.chat.asks.bounds.body_label": "Toàn bộ câu hỏi",
-	"ui.chat.asks.proposal.summary": "Thay đổi được đề xuất cho {kind, select, agent {agent} team {nhóm} skill {kỹ năng} other {hồ sơ}} {name}",
+	"ui.chat.asks.proposal.summary": "Thay đổi được đề xuất cho {kind, select, agent {tác nhân} team {nhóm} skill {kỹ năng} other {hồ sơ}} {name}",
 	"ui.chat.asks.proposal.field_lines": "{label}: +{added, number} −{removed, number} dòng",
 	"ui.chat.asks.proposal.field_changed": "{label}: đã thay đổi",
 	"ui.chat.asks.proposal.review": "Xem lại thay đổi"

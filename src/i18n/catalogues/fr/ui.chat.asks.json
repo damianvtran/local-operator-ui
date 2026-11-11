@@ -42,7 +42,7 @@
 	"ui.chat.asks.clause.timed_out": "{count, plural, one {{count, number, ::group-off} question expirée} many {{count, number, ::group-off} de questions expirées} other {{count, number, ::group-off} questions expirées}}",
 	"ui.chat.asks.bounds.body_label": "Question complète",
 	"ui.chat.asks.proposal.summary": "Modification proposée pour {kind, select, agent {l’agent} team {l’équipe} skill {la compétence} other {le profil}} {name}",
-	"ui.chat.asks.proposal.field_lines": "{label} : +{added, number} −{removed, number} lignes",
-	"ui.chat.asks.proposal.field_changed": "{label} : modifié",
+	"ui.chat.asks.proposal.field_lines": "{label} : +{added, number} −{removed, number} lignes",
+	"ui.chat.asks.proposal.field_changed": "{label} : modifié",
 	"ui.chat.asks.proposal.review": "Examiner les modifications"
 }
