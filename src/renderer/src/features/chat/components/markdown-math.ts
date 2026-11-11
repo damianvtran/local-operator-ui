@@ -105,10 +105,25 @@ export const MATH_FENCE_REGEX = /^ {0,3}(?:`{3,}|~{3,})[ \t]*math[ \t]*$/m;
  * by a letter or `_` (guard (e): `RUN_COST=$COST` - that `$` opens a name).
  */
 const DIGIT_LED_SPAN = /(?<![\\$])\$(?=\d)([^$]*)\$(?![\dA-Za-z_])/g;
-/** The parser's guard (d) signals, as one test over a span's content. */
-const TEX_SIGNAL = /\\[^\s$]|[\^_{}]/;
-/** The parser's guard (b): a closer's left neighbour is not whitespace. */
-const ENDS_VISIBLE = /\S$/;
+/**
+ * The parser's guard (d) signals, as one test over a span's content.
+ *
+ * The characters after `\` are spelled out rather than written `\s`, for two
+ * reasons. The composer-path F4-1 guard (`scripts/slash-token.test.mjs`) bans
+ * a module-local whitespace class in this directory. And this pre-check must
+ * agree with the tokenizer: in `markdown-math-guarded.ts`'s `data` state a
+ * backslash stops being a command only before EOF, a space, a line ending or
+ * `$` - a TAB after `\` still counts as a signal there, and so does any
+ * non-ASCII space, both of which `\s` would have refused.
+ */
+const TEX_SIGNAL = /\\[^ \r\n$]|[\^_{}]/;
+/**
+ * The parser's guard (b): a closer's left neighbour is not whitespace. Spelled
+ * out (not `\S`) for the same F4-1 reason, as `isGuardWhitespace`'s set: a
+ * space, a tab or a line ending; EOF is the empty-content case, which this
+ * pattern already refuses.
+ */
+const ENDS_VISIBLE = /[^ \t\r\n]$/;
 /** Guard (e)'s plain word: two or more letters, one optional final mark. */
 const PROSE_WORD = /^[A-Za-z]{2,}[,.;:!?]?$/;
 
