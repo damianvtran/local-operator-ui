@@ -1,0 +1,35 @@
+{
+  "auditor": "reviewer",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "c7b72ef216da-ur-chat-canonical-r2",
+  "auditor_session": "c7b72ef216da",
+  "status": "passed",
+  "namespace": "ui.chat.canonical",
+  "locale": "ur",
+  "sha256": {
+    "en": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+    "ur": "447dbfa53dd70eb8148495b2badc03e12ee3fcef935fd98280cd3665f31e655e"
+  },
+  "findings": [
+    {
+      "id": "UR-1",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+      "disposition": "deferred — non-gating minor, no remediation cycle",
+      "evidence": "'اسے محفوظ طریقے سے چھپایا نہیں جا سکا' makes the diff itself ('اسے') the object that could not be hidden; same ambiguity as HI-1",
+      "proposed": {
+        "ui.chat.canonical.tool_row.diff.full.withheld": "مکمل diff روک لیا گیا — اس کی حساس معلومات محفوظ طریقے سے ہٹائی نہیں جا سکیں"
+      }
+    }
+  ],
+  "audit_date": "2026-11-10",
+  "serialized_at": "2026-11-11T04:31:56Z",
+  "serialization": "portable copy of the actual audit findings; not a new review, not backdated",
+  "independence": "not translator sessions f1932d263d6c, ebb1d6beb853, f940 (translation lane); did not read first auditor 567a24a88e45",
+  "source_audit": {
+    "record": "/Users/damian/.local-operator/sessions/c7b72ef216da/scratchpad/i18n-audit2/receipt-ur.json",
+    "record_sha256": "5fd7340ee6a193a2d41576b9a0afad0b0c5c44863b2cb1d985aeea4392ed7615",
+    "history": "semantic verdict retained by whole-file byte identity with audited bytes"
+  },
+  "method": "source-only; rendering/RTL/fit not proven"
+}

@@ -1,0 +1,30 @@
+{
+ "auditor": "reviewer",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "567a24a88e45-chat-canonical-ur-r2",
+ "auditor_session": "567a24a88e45",
+ "status": "passed",
+ "namespace": "ui.chat.canonical",
+ "locale": "ur",
+ "sha256": {
+  "en": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+  "ur": "447dbfa53dd70eb8148495b2badc03e12ee3fcef935fd98280cd3665f31e655e"
+ },
+ "context_sha256": "04bfe86405155bf8437c4f867eea4dc9bfd4c277d2ae6b0aa7d6a1bf20390087",
+ "findings": [
+  {
+   "id": "I-UR-1",
+   "severity": "minor",
+   "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+   "codepath": "diff-history-model.ts:473",
+   "message": "\"اسے محفوظ طریقے سے چھپایا نہیں جا سکا\" says the diff could not be hidden, the same object error as I-HI-1.",
+   "fix": "مکمل diff روک لیا گیا — اس کی حساس معلومات محفوظ طریقے سے ہٹائی نہیں جا سکیں",
+   "disposition": "deferred — non-gating",
+   "origin": "r2"
+  }
+ ],
+ "verdict_date": "2026-11-10T23:50:48Z",
+ "serialized_at": "2026-11-11T04:32:28Z",
+ "basis": "r2 verdict; target bytes identical to the audited head 21bb3f5d",
+ "note": "Portable serialization of existing audit record(s); not a new audit and not backdated. Source-only; rendered/RTL fit unproven."
+}

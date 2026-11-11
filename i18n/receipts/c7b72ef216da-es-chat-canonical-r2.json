@@ -1,0 +1,24 @@
+{
+  "auditor": "reviewer",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "c7b72ef216da-es-chat-canonical-r2",
+  "auditor_session": "c7b72ef216da",
+  "status": "passed",
+  "namespace": "ui.chat.canonical",
+  "locale": "es",
+  "sha256": {
+    "en": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+    "es": "db9923d6038ef32906ab0bcfeff99d358d01ec610d50256749f31b360962b22a"
+  },
+  "findings": [],
+  "audit_date": "2026-11-10",
+  "serialized_at": "2026-11-11T04:31:56Z",
+  "serialization": "portable copy of the actual audit findings; not a new review, not backdated",
+  "independence": "not translator sessions f1932d263d6c, ebb1d6beb853, f940 (translation lane); did not read first auditor 567a24a88e45",
+  "source_audit": {
+    "record": "/Users/damian/.local-operator/sessions/c7b72ef216da/scratchpad/i18n-audit2/receipt-es.json",
+    "record_sha256": "0bf14ab0e977bd2ae65aed24f5db45c14d0e5e9375b5ba13fdb093e24623ee59",
+    "history": "semantic verdict retained by whole-file byte identity with audited bytes"
+  },
+  "method": "source-only; rendering/RTL/fit not proven"
+}

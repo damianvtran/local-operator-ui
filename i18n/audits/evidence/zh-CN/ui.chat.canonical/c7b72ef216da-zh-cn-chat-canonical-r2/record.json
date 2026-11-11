@@ -1,0 +1,35 @@
+{
+  "auditor": "reviewer",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "c7b72ef216da-zh-cn-chat-canonical-r2",
+  "auditor_session": "c7b72ef216da",
+  "status": "passed",
+  "namespace": "ui.chat.canonical",
+  "locale": "zh-CN",
+  "sha256": {
+    "en": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+    "zh-CN": "8db6da0aab5182efae83c3287758ba820dbdea60458d9c34dc384698d912d67b"
+  },
+  "findings": [
+    {
+      "id": "ZH-1",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.diff.full.loading",
+      "disposition": "deferred — non-gating minor, no remediation cycle",
+      "evidence": "'正在加载完整diff…' uses a single '…'; zh-CN style guide (Punctuation) requires '……' and the catalogue's 正在… strings use '……' (e.g. 正在加载……, 正在加载对话……)",
+      "proposed": {
+        "ui.chat.canonical.tool_row.diff.full.loading": "正在加载完整diff……"
+      }
+    }
+  ],
+  "audit_date": "2026-11-10",
+  "serialized_at": "2026-11-11T04:31:56Z",
+  "serialization": "portable copy of the actual audit findings; not a new review, not backdated",
+  "independence": "not translator sessions f1932d263d6c, ebb1d6beb853, f940 (translation lane); did not read first auditor 567a24a88e45",
+  "source_audit": {
+    "record": "/Users/damian/.local-operator/sessions/c7b72ef216da/scratchpad/i18n-audit2/receipt-zh-CN.json",
+    "record_sha256": "29c736a189ec262af4ef2d80a407ec6419ab4672590daa4cacba946eaddd54f6",
+    "history": "semantic verdict retained by whole-file byte identity with audited bytes"
+  },
+  "method": "source-only; rendering/RTL/fit not proven"
+}
