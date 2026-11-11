@@ -57,6 +57,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { recordingHintParts } from "../../../../../../shared/recording-shortcut";
 import { AttachmentsPreview } from "../attachments-preview";
 import { AudioRecordingIndicator } from "../audio-recording-indicator";
 import { WaveformAnimation } from "../waveform-animation";
@@ -1087,17 +1088,21 @@ export const InlineEdit: FC<InlineEditProps> = ({
 											text={
 												!canEnableRecordingFeature
 													? speechUnavailableReason("recording", speechBlock)
-													: shortcutText === null ||
-															resolvePushToTalkBinding() === null
-														? t("ui.canvas.inline_edit.start_recording")
-														: t(
-																"ui.canvas.inline_edit.start_recording_or_hold",
-																{
-																	shortcuttext: isolateLtr(shortcutText),
-																	label:
-																		resolvePushToTalkBinding()?.label ?? "",
-																},
-															)
+													: (() => {
+															const hint = recordingHintParts(
+																shortcutText,
+																resolvePushToTalkBinding()?.label ?? null,
+															);
+															return hint === null
+																? t("ui.canvas.inline_edit.start_recording")
+																: t(
+																		"ui.canvas.inline_edit.start_recording_or_hold",
+																		{
+																			shortcuttext: isolateLtr(hint.shortcut),
+																			label: hint.pushToTalk,
+																		},
+																	);
+														})()
 											}
 										/>
 									}

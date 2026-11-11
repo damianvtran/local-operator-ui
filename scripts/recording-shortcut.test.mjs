@@ -45,6 +45,7 @@ const {
 	RecordingShortcutCoordinator,
 	isClearedShortcut,
 	watchLocalConfig,
+	recordingHintParts,
 	recordingShortcutLabel,
 	recordingShortcutMatches,
 } = await import(pathToFileURL(bundlePath).href);
@@ -722,4 +723,71 @@ test("a cleared shortcut is no door and no problem; '' stays a problem with last
 		),
 		false,
 	);
+});
+
+test("the cleared sentinel is case-insensitive; '' stays invalid and 'nonesuch' is invalid", () => {
+	// QA Q-1: the backend reads NONE / None / ' none ' as cleared.
+	for (const cleared of ["none", "NONE", "None", " None ", "  nOnE\t"]) {
+		assert.equal(isClearedShortcut(cleared), true, JSON.stringify(cleared));
+	}
+	// '' is not cleared, and neither is a value that merely starts with none.
+	for (const invalid of [
+		"",
+		"   ",
+		"nonesuch",
+		"none + s",
+		null,
+		undefined,
+		7,
+	]) {
+		assert.equal(isClearedShortcut(invalid), false, JSON.stringify(invalid));
+	}
+
+	// The main-process read agrees through the same helper: a hand-edited
+	// 'NONE' is cleared (no door, no problem), not invalid.
+	const problems = [];
+	writeFileSync(configPath, "values:\n  keymap.start_recording: NONE\n");
+	const binding = new RecordingShortcutCoordinator(env, "darwin", (message) =>
+		problems.push(message),
+	);
+	const cleared = binding.getState();
+	assert.equal(cleared.value, "none");
+	assert.equal(cleared.canonical, null);
+	assert.equal(cleared.cleared, true);
+	assert.equal(cleared.problem, undefined);
+	assert.equal(binding.matches(press({ meta: true, shift: true })), false);
+	assert.equal(
+		problems.filter((message) => message.includes("invalid")).length,
+		0,
+	);
+});
+
+test("the tooltip hint is composed only when both doors exist", () => {
+	const primary = "Ctrl+Shift+S";
+	const secondary = "Right-Option";
+	// Both set: the composed parts.
+	assert.deepEqual(recordingHintParts(primary, secondary), {
+		shortcut: primary,
+		pushToTalk: secondary,
+	});
+	// Either cleared: the plain arm (null), never a half-composed string.
+	assert.equal(recordingHintParts(null, secondary), null);
+	assert.equal(recordingHintParts(primary, null), null);
+	assert.equal(recordingHintParts(null, null), null);
+	// Empty labels also select the plain arm: "or hold " with nothing after
+	// it can never be produced from a non-null result.
+	assert.equal(recordingHintParts("", secondary), null);
+	assert.equal(recordingHintParts(primary, ""), null);
+	for (const parts of [
+		recordingHintParts(primary, secondary),
+		recordingHintParts(null, secondary),
+		recordingHintParts(primary, null),
+		recordingHintParts(null, null),
+	]) {
+		if (parts === null) continue;
+		assert.notEqual(parts.shortcut, "");
+		assert.notEqual(parts.pushToTalk, "");
+		assert.equal(parts.shortcut.includes("or hold "), false);
+		assert.equal(parts.pushToTalk.includes("or hold "), false);
+	}
 });

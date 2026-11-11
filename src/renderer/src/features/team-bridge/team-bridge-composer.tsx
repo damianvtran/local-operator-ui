@@ -29,6 +29,7 @@ import type {
 } from "react";
 import { useCallback, useEffect, useId, useLayoutEffect, useRef } from "react";
 import { v4 as uuidv4 } from "uuid";
+import { recordingHintParts } from "../../../../shared/recording-shortcut";
 import type { TeamBridgeFilesCapability } from "../../../../shared/team-bridge-contract";
 import { rendererPlatform } from "../../mini-view/renderer-platform";
 import { registerComposerFocus } from "../chat/composer-field";
@@ -526,15 +527,19 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 	 * is the arm that says only what the control does.
 	 */
 	const shortcutLabel = useRecordingShortcutLabel(rendererPlatform());
-	// Either door cleared means the plain arm: never "or hold " with an empty part.
 	const pttBinding = resolvePushToTalkBinding();
+	// Either door cleared means the plain arm: never "or hold " with an empty part.
+	const recordingHint = recordingHintParts(
+		shortcutLabel,
+		pttBinding?.label ?? null,
+	);
 	const recordingTitle = !canEnableRecordingFeature
 		? recordingUnavailableReason
-		: shortcutLabel === null || pttBinding === null
+		: recordingHint === null
 			? t("ui.chat.composer.start_recording")
 			: t("ui.chat.composer.start_recording_hint", {
-					shortcut: isolateLtr(shortcutLabel),
-					pushToTalk: resolvePushToTalkBinding()?.label ?? "",
+					shortcut: isolateLtr(recordingHint.shortcut),
+					pushToTalk: recordingHint.pushToTalk,
 				});
 
 	/*

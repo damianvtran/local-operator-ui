@@ -77,9 +77,9 @@ export function useRecordingShortcutLabel(
 ): string | null {
 	const state = useRecordingShortcutState();
 	// A cleared binding is no door: the label is null, exactly like a
-	// shadowed or disabled one. `recordingExternalClaims` already skips a
-	// falsy canonical, so the default stops claiming its chord when cleared.
-	if (!enabled || state.shadowedBy || state.cleared || state.canonical === null)
-		return null;
+	// shadowed or disabled one. `cleared` implies `canonical === null` by
+	// construction in main (the sentinel sets canonical to null), so the
+	// canonical check alone covers both.
+	if (!enabled || state.shadowedBy || state.canonical === null) return null;
 	return recordingShortcutLabel(state.value, platform);
 }

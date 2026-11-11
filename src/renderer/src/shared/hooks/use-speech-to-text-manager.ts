@@ -154,20 +154,15 @@ export const pushToTalkTokenForCode = (
 const platformDefaultBinding = (): PushToTalkBinding =>
 	pushToTalkBindingForToken("alt-right-hold") as PushToTalkBinding;
 
-export type PushToTalkResolution =
-	| { kind: "binding"; binding: PushToTalkBinding }
-	| { kind: "cleared" };
-
 /**
  * `null` means nothing has been resolved yet (cold start): the platform
- * default applies. A stored cleared sentinel resolves to the explicit
- * `cleared` state — no door. An invalid/unknown value is NOT a resolution
- * at all: it falls back to the platform default exactly as a missing row
- * does. The three states are kept apart so cleared can never be mistaken
- * for invalid (which would silently re-bind the default).
+ * default applies. A stored cleared sentinel resolves to `null` here — no
+ * door. An invalid/unknown value is NOT a resolution at all: it falls back
+ * to the platform default exactly as a missing row does. The cleared state
+ * is kept apart so it can never be mistaken for invalid (which would
+ * silently re-bind the default).
  */
-let resolvedPushToTalk: PushToTalkResolution | null = null;
-let resolvedPushToTalkBinding: PushToTalkBinding | null = null;
+let resolvedPushToTalk: PushToTalkBinding | null | undefined = undefined;
 
 /**
  * Bumped by every direct write of the binding (`setPushToTalkBinding`). A read
@@ -185,27 +180,13 @@ let bindingGeneration = 0;
  * reading `.label` off a cleared binding.
  */
 export const resolvePushToTalkBinding = (): PushToTalkBinding | null => {
-	if (resolvedPushToTalk?.kind === "cleared") return null;
-	if (resolvedPushToTalk?.kind === "binding") return resolvedPushToTalk.binding;
-	// Cold start or invalid fallback: the mirror Binding is only the
-	// cache for the old `resolvePushToTalkBinding` shape; the resolution
-	// above owns the answer. Keep the mirror in step.
-	return resolvedPushToTalkBinding ?? platformDefaultBinding();
+	if (resolvedPushToTalk === null) return null;
+	return resolvedPushToTalk ?? platformDefaultBinding();
 };
-
-/** The binding the keydown path matches against, or null when cleared. */
-function bindingOrNull(): PushToTalkBinding | null {
-	if (resolvedPushToTalk?.kind === "cleared") return null;
-	return resolvePushToTalkBinding();
-}
-
-export const isPushToTalkCleared = (): boolean =>
-	resolvedPushToTalk?.kind === "cleared";
 
 function applyPushToTalkValue(raw: unknown): void {
 	if (isClearedShortcut(raw)) {
-		resolvedPushToTalk = { kind: "cleared" };
-		resolvedPushToTalkBinding = null;
+		resolvedPushToTalk = null;
 		return;
 	}
 	const binding = pushToTalkBindingForToken(raw);
@@ -215,11 +196,7 @@ function applyPushToTalkValue(raw: unknown): void {
 	// previous binding): an invalid read must not keep serving a binding
 	// that is no longer what the row says. Cleared stays distinct: it is
 	// resolved above, never a fallback.
-	resolvedPushToTalk = {
-		kind: "binding",
-		binding: binding ?? platformDefaultBinding(),
-	};
-	resolvedPushToTalkBinding = resolvedPushToTalk.binding;
+	resolvedPushToTalk = binding ?? platformDefaultBinding();
 }
 
 /**
@@ -488,9 +465,9 @@ export class SpeechToTextManager {
 		 * An IME composition owns its keys; a hold is never part of one.
 		 */
 		if (event.isComposing) return;
-		// A cleared push-to-talk binding is no door: re-read the resolution
-		// once (not twice): `ptt` is null exactly when cleared.
-		const ptt = bindingOrNull();
+		// A cleared push-to-talk binding is no door: read the resolution once
+		// (not twice): `ptt` is null exactly when cleared.
+		const ptt = resolvePushToTalkBinding();
 		const isPttKey = ptt !== null && event.code === ptt.code;
 		if (event.repeat) {
 			/*
@@ -552,7 +529,7 @@ export class SpeechToTextManager {
 	 */
 	private handleKeyUp = (event: KeyboardEvent): void => {
 		if (!this.engaged) return;
-		const ptt = bindingOrNull();
+		const ptt = resolvePushToTalkBinding();
 		if (ptt !== null && event.code === ptt.code) {
 			event.preventDefault();
 			this.releaseHold("release");

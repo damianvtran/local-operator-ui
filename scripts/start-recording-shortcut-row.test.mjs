@@ -89,7 +89,13 @@ const setting = {
 };
 
 async function mount(
-	{ backend = true, saveStatus = 200, structuredConflict = false },
+	{
+		backend = true,
+		saveStatus = 200,
+		structuredConflict = false,
+		startValue,
+		clearable,
+	},
 	run,
 ) {
 	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
@@ -118,15 +124,23 @@ async function mount(
 		});
 	}
 	const requests = [];
-	let live = backend ? { ...setting } : null;
+	const servedClearable = clearable === undefined ? {} : { clearable };
+	let live = backend
+		? {
+				...setting,
+				...servedClearable,
+				...(startValue === undefined ? {} : { value: startValue }),
+			}
+		: null;
 	const response = (result) => ({
 		status: 200,
 		body: { status: 200, message: "ok", result },
 	});
-	let recordingState = {
-		value: setting.value,
-		canonical: "primary+shift+s",
-	};
+	const servedValue = startValue ?? setting.value;
+	let recordingState =
+		servedValue === "none"
+			? { value: "none", canonical: null, cleared: true }
+			: { value: servedValue, canonical: "primary+shift+s" };
 	const pending = [];
 	dom.window.requestAnimationFrame = (callback) =>
 		dom.window.setTimeout(() => callback(dom.window.performance.now()), 0);
@@ -160,6 +174,7 @@ async function mount(
 						};
 					live = {
 						...setting,
+						...servedClearable,
 						value: request.value,
 						is_default: request.value === setting.default,
 					};
@@ -167,7 +182,7 @@ async function mount(
 					return response({ ...live });
 				}
 				if (request.op === "settings.reset" && request.key === setting.key) {
-					live = { ...setting };
+					live = { ...setting, ...servedClearable };
 					recordingState = { ...recordingState, value: setting.value };
 					return response({ ...live });
 				}
@@ -404,18 +419,63 @@ test("a refusal preserves the saved chord and Escape keeps focus", async () => {
 });
 
 test("a cleared primary row shows No shortcut with Reset visible and Clear hidden", async () => {
-	await mount({}, async (api) => {
+	await mount({ clearable: true, startValue: "none" }, async (api) => {
 		const input = api.$('input[data-shortcut-action="keymap.start_recording"]');
 		assert.ok(input);
-		// Default state first.
-		assert.equal(input.value, "Ctrl+Shift+S");
+		assert.equal(input.value, "No shortcut");
 		const clearButton = api.window.document.querySelector(
 			'button[aria-label="Clear Start recording (press)\'s shortcut"]',
 		);
-		assert.equal(clearButton, null, "no clearable flag, no Clear button");
+		assert.equal(clearButton, null, "a cleared row has no Clear button");
 		const resetButton = api.$(
 			'button[aria-label="Reset Start recording (press) to its default"]',
 		);
-		assert.equal(resetButton, null, "at the default, no Reset");
+		assert.ok(resetButton, "Reset is visible when cleared");
+		// D1: the cleared text is in the panel rows' sans face, not mono.
+		assert.equal(input.className.includes("font-mono"), false);
 	});
+});
+
+test("a bound clearable primary row shows Clear; clicking writes exactly the sentinel and focus returns", async () => {
+	await mount({ clearable: true }, async (api) => {
+		const input = api.$('input[data-shortcut-action="keymap.start_recording"]');
+		assert.ok(input);
+		assert.equal(input.value, "Ctrl+Shift+S");
+		assert.equal(
+			input.className.includes("font-mono"),
+			true,
+			"bound keeps mono",
+		);
+		const clearButton = api.$(
+			'button[aria-label="Clear Start recording (press)\'s shortcut"]',
+		);
+		assert.ok(clearButton, "clearable + bound shows Clear");
+		await act(async () => clearButton.click());
+		for (
+			let attempt = 0;
+			attempt < 200 && input.value !== "No shortcut";
+			attempt += 1
+		) {
+			await act(async () => {
+				await new Promise((resolve) => setTimeout(resolve, 5));
+			});
+		}
+		assert.deepEqual(
+			api.requests.filter((request) => request.op === "settings.edit"),
+			[{ op: "settings.edit", key: setting.key, value: "none" }],
+		);
+		assert.equal(input.value, "No shortcut");
+		assert.equal(api.window.document.activeElement, input);
+	});
+});
+
+test("the primary row shows no Clear button without the clearable flag", async () => {
+	for (const clearable of [undefined, false, null]) {
+		await mount(clearable === undefined ? {} : { clearable }, async (api) => {
+			const clearButton = api.window.document.querySelector(
+				'button[aria-label="Clear Start recording (press)\'s shortcut"]',
+			);
+			assert.equal(clearButton, null, `clearable=${String(clearable)}`);
+		});
+	}
 });

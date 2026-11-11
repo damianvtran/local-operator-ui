@@ -8,6 +8,7 @@ import { useId, useMemo, useRef } from "react";
 import {
 	CLEARED_SHORTCUT_VALUE,
 	DEFAULT_PUSH_TO_TALK_VALUE,
+	isClearedShortcut,
 } from "../../../../../shared/recording-shortcut";
 import { useRecordingShortcutState } from "../../../shared/hooks/use-recording-shortcut";
 import {
@@ -203,7 +204,7 @@ export function PushToTalkShortcutRow({
 	});
 	const action = t("ui.settings.shortcuts.speech.push_to_talk_hold");
 	const stored = typeof setting.value === "string" ? setting.value : "";
-	const cleared = stored.trim() === CLEARED_SHORTCUT_VALUE;
+	const cleared = isClearedShortcut(stored);
 	// A cleared row has no live binding (no door); the field shows
 	// `No shortcut` and Reset is visible (cleared is not the default).
 	// An unrecognised stored value is displayed as the binding the manager will
@@ -265,6 +266,7 @@ export function PushToTalkShortcutRow({
 					? t("ui.settings.shortcuts.keyboard_shortcuts_section.no_shortcut")
 					: (live?.label ?? "")
 			}
+			cleared={cleared}
 			fieldRef={fieldRef}
 			saving={saving}
 			showReset={!isDefault}

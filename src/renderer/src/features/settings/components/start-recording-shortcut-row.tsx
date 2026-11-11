@@ -93,6 +93,7 @@ export function StartRecordingShortcutRow({
 					? t("ui.settings.shortcuts.keyboard_shortcuts_section.no_shortcut")
 					: chordGlyph(saved, platform)
 			}
+			cleared={cleared}
 			fieldRef={fieldRef}
 			saving={saving}
 			showReset={!isDefault}

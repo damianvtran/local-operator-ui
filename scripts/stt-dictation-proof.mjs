@@ -1155,8 +1155,9 @@ try {
 
 	// 2. HOLD-SPACE IS REMOVED: the bare-Space hold gesture no longer exists.
 	// Space is now an ordinary key everywhere (see the `resolvePushToTalkBinding`
-	// consumer in the manager). The rig verifies it does NOT engage instead of
-	// re-measuring a removed door; the ALT-RIGHT combo above is the measured arm.
+	// consumer in the manager). This rig does not probe Space: the door is gone
+	// rather than inert, so there is nothing to verify here; the ALT-RIGHT
+	// combo above is the measured arm.
 
 	// 3. SEND the mixed draft (typed + dictated) and read the wire body back from
 	// the proxy: `input_mode: "mixed"` and `mode: "prompt"`.

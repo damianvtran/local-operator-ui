@@ -29,6 +29,7 @@ export function SpeechShortcutRowFrame({
 	onReset,
 	showClear,
 	onClear,
+	cleared,
 	onKeyDown,
 	onKeyUp,
 	onBlur,
@@ -46,6 +47,8 @@ export function SpeechShortcutRowFrame({
 	ariaLabel: string;
 	/** The cleared display, or the field's glyph/label. */
 	value: string;
+	/** The row is cleared: the field shows "No shortcut" in the panel rows' sans face. */
+	cleared?: boolean;
 	fieldRef: RefObject<HTMLInputElement>;
 	saving: boolean;
 	showReset: boolean;
@@ -109,7 +112,11 @@ export function SpeechShortcutRowFrame({
 					aria-invalid={error ? true : undefined}
 					aria-busy={saving}
 					data-shortcut-action={settingKey}
-					className="w-52 text-left font-mono text-body-sm"
+					className={
+						cleared
+							? "w-52 text-left text-body-sm"
+							: "w-52 text-left font-mono text-body-sm"
+					}
 					value={value}
 					readOnly
 					onKeyDown={onKeyDown}
