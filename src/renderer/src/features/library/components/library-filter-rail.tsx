@@ -19,6 +19,7 @@ import { rowCurrent } from "@features/chat/components/chat-sidebar";
 import { Badge, Button } from "@shared/components/ui";
 import { t } from "@shared/i18n";
 import type { WithoutParams } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Heart, Star, Tag, X } from "lucide-react";
 import type { FC } from "react";
@@ -31,6 +32,7 @@ import {
 	groupTagsByCategory,
 	isStatusActive,
 	originGroupLabelKey,
+	tagCategoryLabel,
 } from "../library-model";
 import { KindGlyph } from "./library-glyph";
 
@@ -95,6 +97,12 @@ const Section: FC<{ label: string; children: React.ReactNode }> = ({
 		<div className="flex flex-col gap-0.5">{children}</div>
 	</section>
 );
+
+/** A tag group's header, subscribed at the leaf so it repaints on a language change. */
+const TagCategoryLabel: FC<{ category: string }> = ({ category }) => {
+	useI18nLocale();
+	return <>{tagCategoryLabel(category)}</>;
+};
 
 export const LibraryFilterRail: FC<LibraryFilterRailProps> = ({
 	filters,
@@ -295,7 +303,7 @@ export const LibraryFilterRail: FC<LibraryFilterRailProps> = ({
 					{tagGroups.map((group) => (
 						<div key={group.category} className="flex flex-col gap-0.5">
 							<span className="px-2 pt-1 text-meta text-ink-dim">
-								{group.category}
+								<TagCategoryLabel category={group.category} />
 							</span>
 							{group.tags.map((tag) => (
 								<RailRow

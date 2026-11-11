@@ -326,6 +326,70 @@ export function groupTagsByCategory(
 		.map(([category, rows]) => ({ category, tags: rows }));
 }
 
+/*
+ * LABELS FOR THE TWO WIRE DISCRIMINANTS THE LIBRARY PAINTS AS TEXT (census B5/B6).
+ *
+ * `asset.kind` and a tag's `category` are machine values the backend sends. They
+ * stay raw everywhere they do work (the sort key, the group key, the glyph, React
+ * keys, request params); only the PRESENTATION goes through these two helpers, at
+ * render time, so a locale switch is honoured and nothing locale-dependent can
+ * leak into sorting or grouping.
+ *
+ * An unknown value (a kind or category a newer backend added) falls back to the
+ * raw string: the module docstring's extensibility rule - the UI keeps rendering
+ * without a renderer release - and the same forward-compatible data fallback the
+ * asset-category rail row already uses.
+ */
+const KIND_LABEL_KEYS: Record<DesktopLibraryKind, WithoutParams> = {
+	audio: "ui.library.kind.audio",
+	code: "ui.library.kind.code",
+	docx: "ui.library.kind.docx",
+	html: "ui.library.kind.html",
+	image: "ui.library.kind.image",
+	markdown: "ui.library.kind.markdown",
+	other: "ui.library.kind.other",
+	pdf: "ui.library.kind.pdf",
+	pptx: "ui.library.kind.pptx",
+	spreadsheet: "ui.library.kind.spreadsheet",
+	text: "ui.library.kind.text",
+	video: "ui.library.kind.video",
+};
+
+const TAG_CATEGORY_LABEL_KEYS: Record<string, WithoutParams> = {
+	custom: "ui.library.tag_category.custom",
+	format: "ui.library.tag_category.format",
+	project: "ui.library.tag_category.project",
+	source: "ui.library.tag_category.source",
+	status: "ui.library.tag_category.status",
+	topic: "ui.library.tag_category.topic",
+	// Legacy spelling the listing still carries; `format` is the core name.
+	type: "ui.library.tag_category.type",
+};
+
+/*
+ * Own-property lookups, not `in` / bare indexing: an unknown value such as
+ * "constructor" or "toString" must fall back to the raw string, not resolve to an
+ * Object.prototype member. `Object.hasOwn` would read better, but the project's
+ * TypeScript lib target predates es2022 and rejects it (TS2550).
+ */
+/** The user-facing name of an asset kind, or the raw value for an unknown one. */
+export function libraryKindLabel(kind: string): string {
+	return Object.prototype.hasOwnProperty.call(KIND_LABEL_KEYS, kind)
+		? t(KIND_LABEL_KEYS[kind as DesktopLibraryKind])
+		: kind;
+}
+
+/**
+ * The user-facing name of a tag category, or the raw value for an unknown one.
+ * An empty category is the model's `custom` bucket (see `groupTagsByCategory`).
+ */
+export function tagCategoryLabel(category: string): string {
+	const key = category || "custom";
+	return Object.prototype.hasOwnProperty.call(TAG_CATEGORY_LABEL_KEYS, key)
+		? t(TAG_CATEGORY_LABEL_KEYS[key])
+		: key;
+}
+
 /** A byte count in the app's compact register. */
 export function formatBytes(bytes: number): string {
 	if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";

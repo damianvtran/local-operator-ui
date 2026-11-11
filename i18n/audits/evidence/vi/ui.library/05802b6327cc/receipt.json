@@ -1,0 +1,416 @@
+{
+  "locale": "vi",
+  "mode": "Fresh independent delta audit. Allocation: fix (<2h), bounded read-only language audit of 20 new messages; no translation/MT service. All 20 source/context/target entries read and assessed.",
+  "scope": "PR damianvtran/local-operator-ui #1851 @ 8a9ce1f808c266ebe9a0e924094344cea60c2c23; base 0e12072d2b3. Only ui.library 20 added messages fully audited; legacy not recertified.",
+  "head_sha": "8a9ce1f808c266ebe9a0e924094344cea60c2c23",
+  "audit_date": "2026-11-10",
+  "key_count": 179,
+  "fully_audited_key_count": 20,
+  "consistency_only_key_count": 159,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Translator identity and vi session 8f78815e51e3 supplied by delegation; this auditor did not translate the values."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "05802b6327cc",
+    "session": "05802b6327cc",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Served session header states openai/gpt-6.1-sol for session 05802b6327cc; no model switch or fallback occurred.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "policy_sources": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/vi.md",
+      "sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888"
+    },
+    "glossary": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "note": "Binding manager-owned copy; matches expected full hash. Original glossary not read (not allowlisted)."
+    },
+    "expected_hashes": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/expected-hashes.json"
+    }
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "verdict": "passed — no BLOCKER/MAJOR; all 20 Vietnamese translations clean. One non-gating MINOR on English kind.other metadata. Terminal language audit.",
+  "findings": [
+    {
+      "id": "M1",
+      "severity": "minor",
+      "key": "ui.library.kind.other (English context note)",
+      "current_text": "English source: Other. Catch-all for a file the Library could not classify. Singular adjective/noun, not an action. Rendered inside the sentence ui.library.preview.unsupported ONLY via the generic fallback; see manifest. Short badge beside the file size on a card, list row and the preview header; a single noun, no placeholders. Translate as the locale's ordinary noun for this file kind. The raw machine value (for example 'pptx') is shown only as a data fallback when a newer backend adds a kind this catalogue does not know.",
+      "english_source": "Other",
+      "problem": "The note says the label is rendered inside ui.library.preview.unsupported via the generic fallback. In fact, the other branch bypasses that message and its kind interpolation completely. This is misleading translator context, not a Vietnamese defect.",
+      "recommendation": "Replace the sentence with: For kind other, the unsupported viewer uses ui.library.preview.unsupported_generic without interpolating this label. This label remains used on the card/list/preview-header badges.",
+      "evidence": [
+        "Existing English catalogue ui.library.preview.unsupported = \"A {kind} file has no in-app preview here.\"; ui.library.preview.unsupported_generic = \"This file has no in-app preview here.\" (no kind slot).",
+        "src/renderer/src/features/library/components/library-viewers.tsx:105-111 explicitly selects unsupported_generic for other and interpolates libraryKindLabel only in the other branch."
+      ],
+      "gates": false
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+  },
+  "namespaces": {
+    "ui.library": {
+      "status": "passed",
+      "result": "clean-with-findings",
+      "source_sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71",
+      "target_sha256": "12262f8cd5b313b9eeddf157a9dfe28051399cbc8df1ddada416ef9506b44daa",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.library.json",
+          "sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71"
+        },
+        "vi": {
+          "path": "src/i18n/catalogues/vi/ui.library.json",
+          "sha256": "12262f8cd5b313b9eeddf157a9dfe28051399cbc8df1ddada416ef9506b44daa"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.library.context.json",
+          "sha256": "2fe63e830b49079dac67c5c4513358d0a8559a94fbf27ac8d437212b13aa2e72"
+        }
+      },
+      "fully_audited_keys": [
+        "ui.library.preview.unsupported_generic",
+        "ui.library.kind.audio",
+        "ui.library.kind.code",
+        "ui.library.kind.docx",
+        "ui.library.kind.html",
+        "ui.library.kind.image",
+        "ui.library.kind.markdown",
+        "ui.library.kind.other",
+        "ui.library.kind.pdf",
+        "ui.library.kind.pptx",
+        "ui.library.kind.spreadsheet",
+        "ui.library.kind.text",
+        "ui.library.kind.video",
+        "ui.library.tag_category.custom",
+        "ui.library.tag_category.format",
+        "ui.library.tag_category.project",
+        "ui.library.tag_category.source",
+        "ui.library.tag_category.status",
+        "ui.library.tag_category.topic",
+        "ui.library.tag_category.type"
+      ],
+      "findings": [
+        {
+          "id": "M1",
+          "severity": "minor",
+          "key": "ui.library.kind.other (English context note)",
+          "current_text": "English source: Other. Catch-all for a file the Library could not classify. Singular adjective/noun, not an action. Rendered inside the sentence ui.library.preview.unsupported ONLY via the generic fallback; see manifest. Short badge beside the file size on a card, list row and the preview header; a single noun, no placeholders. Translate as the locale's ordinary noun for this file kind. The raw machine value (for example 'pptx') is shown only as a data fallback when a newer backend adds a kind this catalogue does not know.",
+          "english_source": "Other",
+          "problem": "The note says the label is rendered inside ui.library.preview.unsupported via the generic fallback. In fact, the other branch bypasses that message and its kind interpolation completely. This is misleading translator context, not a Vietnamese defect.",
+          "recommendation": "Replace the sentence with: For kind other, the unsupported viewer uses ui.library.preview.unsupported_generic without interpolating this label. This label remains used on the card/list/preview-header badges.",
+          "evidence": [
+            "Existing English catalogue ui.library.preview.unsupported = \"A {kind} file has no in-app preview here.\"; ui.library.preview.unsupported_generic = \"This file has no in-app preview here.\" (no kind slot).",
+            "src/renderer/src/features/library/components/library-viewers.tsx:105-111 explicitly selects unsupported_generic for other and interpolates libraryKindLabel only in the other branch."
+          ],
+          "gates": false
+        }
+      ]
+    }
+  },
+  "per_key_checks": [
+    {
+      "key": "ui.library.preview.unsupported_generic",
+      "source": "This file has no in-app preview here.",
+      "current_text": "Tệp này không có bản xem trước trong ứng dụng.",
+      "findings": [],
+      "assessment": "Tệp này không có bản xem trước trong ứng dụng. is grammatical, names no kind, contains no placeholder, and parallels legacy ui.library.preview.unsupported = \"Tệp {kind} không có bản xem trước trong ứng dụng.\". In-app location preserves here without redundant tại đây. Period and impersonal register match. Length 46 code points / ordinary display cells; NFC, no invisible controls.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.audio",
+      "source": "Audio",
+      "current_text": "Âm thanh",
+      "findings": [],
+      "assessment": "Âm thanh is native media-kind terminology, not an English Audio retention; exact same unmarked singular/plural noun as ui.library.category.sounds and ui.canvas.files.audio = \"Âm thanh\". Length 8 code points / ordinary display cells; NFC, no invisible controls.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.code",
+      "source": "Code",
+      "current_text": "Mã nguồn",
+      "findings": [],
+      "assessment": "Mã nguồn is source code, exact ui.library.category.code and ui.canvas.files.code = \"Mã nguồn\"; correctly localizes Code rather than retaining it. Length 8 code points / ordinary display cells; NFC, no invisible controls.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.docx",
+      "source": "DOCX",
+      "current_text": "DOCX",
+      "findings": [],
+      "assessment": "DOCX is the exact format acronym, allowed by the English context technical-token policy and glossary §1 official-technology-spelling rule. Targeted locale search found no legacy DOCX rendering to contradict; ui.library.category.documents = \"Tài liệu\" names the broader document family, not this format. Length 4 code points / ordinary display cells; NFC, no invisible controls.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.html",
+      "source": "HTML",
+      "current_text": "HTML",
+      "findings": [],
+      "assessment": "HTML is correctly retained in Latin. Existing ui.canvas.html_preview.html_preview = \"Xem trước HTML: {title}\" and ui.chat.canonical.supplement.preview_unavailable = \"Không xem trước được tại đây. HTML này cần tài nguyên hoặc nội dung tài liệu mà ứng dụng không hỗ trợ. Mở tệp để xem.\" establish this spelling. Length 4 code points / ordinary display cells; NFC, no invisible controls.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.image",
+      "source": "Image",
+      "current_text": "Hình ảnh",
+      "findings": [],
+      "assessment": "Hình ảnh matches ui.library.category.images and ui.canvas.files.images = \"Hình ảnh\". Vietnamese uses the same bare noun for one file and the plural grouping; no các/những needed (vi guide lines 42-44). Length 8 code points / ordinary display cells; NFC, no invisible controls.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.markdown",
+      "source": "Markdown",
+      "current_text": "Markdown",
+      "findings": [],
+      "assessment": "Markdown is the format proper name and correctly retained; ui.chat.transcript_copy.menu.copy_markdown = \"Sao chép Markdown\" and ui.settings.model.system_prompt.source = \"Mã nguồn Markdown\" provide exact capitalization precedent. Legacy lowercase markdown in onboarding prose is not a localized replacement. Length 8 code points / ordinary display cells; NFC, no invisible controls.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.other",
+      "source": "Other",
+      "current_text": "Khác",
+      "findings": [
+        "M1"
+      ],
+      "assessment": "Khác accurately names the catch-all kind; exact ui.library.category.other and ui.canvas.files.other = \"Khác\". The translation is sound; M1 concerns English metadata only. Length 4 code points / ordinary display cells; NFC, no invisible controls.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.pdf",
+      "source": "PDF",
+      "current_text": "PDF",
+      "findings": [],
+      "assessment": "PDF correctly retains acronym, same ui.canvas.pdf_preview.pdf = \"PDF: {title}\" and ui.teamBridge.fileCard.kind pdf branch = \"PDF\". Length 3 code points / ordinary display cells; NFC, no invisible controls.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.pptx",
+      "source": "PPTX",
+      "current_text": "PPTX",
+      "findings": [],
+      "assessment": "PPTX correctly retains the exact format acronym per English context and glossary §1. Targeted search found no legacy PPTX rendering; ui.library.category.presentations = \"Bản trình bày\" is the broader family rather than an alternative localized acronym. Length 4 code points / ordinary display cells; NFC, no invisible controls.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.spreadsheet",
+      "source": "Spreadsheet",
+      "current_text": "Bảng tính",
+      "findings": [],
+      "assessment": "Bảng tính is exact ui.library.category.spreadsheets and ui.canvas.files.spreadsheets = \"Bảng tính\". The bare noun works singularly without a classifier. Length 9 code points / ordinary display cells; NFC, no invisible controls.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.text",
+      "source": "Text",
+      "current_text": "Văn bản",
+      "findings": [],
+      "assessment": "Văn bản correctly names the plain-text kind and matches ui.library.preview.pptx_text = \"Văn bản\"; ui.teamBridge.fileCard.kind text branch = \"Tệp văn bản\" confirms word family. No need to repeat tệp in the badge. Length 7 code points / ordinary display cells; NFC, no invisible controls.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.kind.video",
+      "source": "Video",
+      "current_text": "Video",
+      "findings": [],
+      "assessment": "Video is an established Vietnamese loanword and exactly matches ui.library.category.video, ui.canvas.files.videos and ui.canvas.file_rows.video = \"Video\". Retention agrees with the existing catalogue. Length 5 code points / ordinary display cells; NFC, no invisible controls.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.tag_category.custom",
+      "source": "Custom",
+      "current_text": "Tùy chỉnh",
+      "findings": [],
+      "assessment": "Tùy chỉnh is a natural custom taxonomy heading, matching ui.agents.pages.scope.custom = \"Tùy chỉnh\". Its bare modifier is conventional UI register; NFC and tone spelling comply with the vi guide. Length 9 code points / ordinary display cells; NFC, no invisible controls.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.tag_category.format",
+      "source": "Format",
+      "current_text": "Định dạng",
+      "findings": [],
+      "assessment": "Định dạng is the settled Vietnamese noun for file format, not the broader file kind Loại. Correct concise heading for pdf/csv tags; guide lines 16-17 require terse sentence case, which it meets. Length 9 code points / ordinary display cells; NFC, no invisible controls.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.tag_category.project",
+      "source": "Project",
+      "current_text": "Dự án",
+      "findings": [],
+      "assessment": "Dự án matches glossary §2 project and ui.projects.project_list.project = \"Dự án\". Correct taxonomy noun, not a command to navigate to Projects. Length 5 code points / ordinary display cells; NFC, no invisible controls.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.tag_category.source",
+      "source": "Source",
+      "current_text": "Nguồn",
+      "findings": [],
+      "assessment": "Nguồn exactly matches ui.library.filter.source = \"Nguồn\". Shared word is appropriate; taxonomy tags and origin-group filter remain distinguishable by their separate rail contexts. Length 5 code points / ordinary display cells; NFC, no invisible controls.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.tag_category.status",
+      "source": "Status",
+      "current_text": "Trạng thái",
+      "findings": [],
+      "assessment": "Trạng thái exactly matches ui.library.filter.status and ui.projects.project_filters.status = \"Trạng thái\". Correct lifecycle heading; no register clash. Length 10 code points / ordinary display cells; NFC, no invisible controls.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.tag_category.topic",
+      "source": "Topic",
+      "current_text": "Chủ đề",
+      "findings": [],
+      "assessment": "Chủ đề is the native subject-matter/topic noun, terse sentence case under vi guide lines 16-17. No competing existing exact topic heading surfaced in the targeted scan; no forced English retention. Length 6 code points / ordinary display cells; NFC, no invisible controls.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.library.tag_category.type",
+      "source": "Type",
+      "current_text": "Loại",
+      "findings": [],
+      "assessment": "Loại is the ordinary noun for Type, matching ui.agents.teams.col.type and ui.canvas.variable_form_dialog.type = \"Loại\". ui.library.sort.kind is also \"Loại\"; these are distinct UI roles but synonymous taxonomy words in Vietnamese, not a mistranslation. Format stays distinctly Định dạng. Length 4 code points / ordinary display cells; NFC, no invisible controls.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": []
+    }
+  ],
+  "english_metadata_check": {
+    "verdict": "accurate roles/tone/notes for all 20 except M1 misleading other interpolation sentence",
+    "detail": "Card caption and list KindLabel source, preview badge, rail TagCategoryLabel and Unsupported viewer branch inspected; semantic roles accurate. Metadata does not assert strict maxChars/maxCells: advisory badge/rail width ~12. No new Vietnamese badge or rail heading exceeds it. Kind/type lexical distinction is not forced where Vietnamese uses the same noun; format and lifecycle taxonomy roles remain clear.",
+    "findings": [
+      "M1"
+    ]
+  },
+  "mechanical": {
+    "validator_commands_run": [
+      "node --input-type=module: import namespaceGap from scripts/i18n/context-parity.mjs; namespaceGap(\"ui.library\") -> uncovered [], orphaned [], hasSidecar true, contextKeys 179, catalogueKeys 179; exit 0.",
+      "Python json parse/set comparison against git show 0e12072d2b3:...; exactly 20 additions, 159 legacy values identical; NFC/invisible/placeholder/length checks passed.",
+      "shasum -a 256 for en/vi namespace, context and binding glossary -> expected hashes match."
+    ],
+    "json_valid": true,
+    "key_sets_identical_to_english": true,
+    "keys_added_or_removed_vs_origin_main": "Base is task-frozen 0e12072d2b3; 20 additions only, no dropped/changed values; trailing comma rewrite only.",
+    "placeholder_parity": true,
+    "icu_plural_select_needed": false,
+    "hash_binding": "3/3 assigned en+vi+context hashes match expected-hashes.json; binding glossary matches supplied full SHA. Other locales not checked."
+  },
+  "unverified": [
+    "No builds, installs, servers, test trees, rendered frames or runtime ICU formatter executed; read-only audit constraints. All 20 messages are plain text with no ICU arguments.",
+    "No repo edits, ledger writes, commits, PR comments or tracked evidence retention performed; manager must retain the scratch handoff in canonical i18n/audits/evidence/vi/ui.library/<audit-id>/ and record the ledger.",
+    "The 159 legacy namespace values were NOT recertified; checked only JSON validity, key parity, unchanged values and targeted terminology consistency.",
+    "No independent second audit claimed by this receipt; this is one independent pass."
+  ],
+  "receipt_contract_review": "Same top-level and namespace field sets as the specified fr-ds-e3c562b03258.json model; exactly one namespace. Both JSON deliverables re-parsed after writing. No external schema validator run.",
+  "audit_notes_not_execution_log": false,
+  "execution_log": "vi-sol-05802b6327cc.audit.log"
+}

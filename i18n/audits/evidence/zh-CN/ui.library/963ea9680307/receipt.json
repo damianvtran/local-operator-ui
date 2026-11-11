@@ -1,0 +1,250 @@
+{
+ "locale": "zh-CN",
+ "mode": "Independent DELTA audit of the ONE value revised after round 1 in the 20-key ui.library delta, plus byte-identity check of the other 19. Read-only worktree ~/local-operator-ui/.worktrees/i18n-s8 @ f04035bc3cb6a03644f8776a799e3daad93c7e58 (previous reviewed head 8a9ce1f808c266ebe9a0e924094344cea60c2c23). Fully re-audited: ui.library.tag_category.type (类型 -> 种类). The other 19 delta values were NOT re-audited on wording; they were proved byte-identical to the bytes the round-1 receipts audited, so their round-1 verdicts carry. No translation service, API or MT engine was used to compare or back-translate; no repository file was written.",
+ "scope": "PR damianvtran/local-operator-ui #1851 @ f04035bc3cb6a03644f8776a799e3daad93c7e58 (base 0e12072d2b3). Git-verified delta 8a9ce1f808c2..HEAD for src/i18n/catalogues/zh-CN/ui.library.json: exactly one changed line, '- \"ui.library.tag_category.type\": \"类型\"' -> '+ \"ui.library.tag_category.type\": \"种类\"'. Nothing else in the locale file moved: git show 8a9ce1f808c2:src/i18n/catalogues/zh-CN/ui.library.json hashes to 686dfeeaa8ee…, the target_sha256 both round-1 zh-CN receipts recorded. English catalogue and its context sidecar were read at the same head; the sidecar's corrections this round are on ui.library.kind.other and ui.library.tag_category.custom, neither of which is the revised key.",
+ "head_sha": "f04035bc3cb6a03644f8776a799e3daad93c7e58",
+ "previous_reviewed_head_sha": "8a9ce1f808c266ebe9a0e924094344cea60c2c23",
+ "base_sha": "0e12072d2b3",
+ "audit_date": "2026-11-10",
+ "namespace_key_count": 179,
+ "key_count": 20,
+ "fully_audited_key_count": 1,
+ "carried_forward_key_count": 19,
+ "consistency_only_key_count": 159,
+ "fully_audited_keys": [
+  "ui.library.tag_category.type"
+ ],
+ "carried_forward_keys": [
+  "ui.library.kind.audio",
+  "ui.library.kind.code",
+  "ui.library.kind.docx",
+  "ui.library.kind.html",
+  "ui.library.kind.image",
+  "ui.library.kind.markdown",
+  "ui.library.kind.other",
+  "ui.library.kind.pdf",
+  "ui.library.kind.pptx",
+  "ui.library.kind.spreadsheet",
+  "ui.library.kind.text",
+  "ui.library.kind.video",
+  "ui.library.tag_category.custom",
+  "ui.library.tag_category.format",
+  "ui.library.tag_category.project",
+  "ui.library.tag_category.source",
+  "ui.library.tag_category.status",
+  "ui.library.tag_category.topic",
+  "ui.library.preview.unsupported_generic"
+ ],
+ "translator": {
+  "agent": "i18n-translator",
+  "model": "anthropic/claude-sonnet-5-5",
+  "round1_session": "86ce45a242a4",
+  "revision_session": "2c2a584bc8f2",
+  "source": "Round-1 translator identity and session (zh-CN 86ce45a242a4) supplied by delegation and confirmed in both round-1 zh-CN receipts. The revision is the responsibility of a fresh translator session, 2c2a584bc8f2 / anthropic/claude-sonnet-5-5, whose stated decision record is _s14-audits/f04035bc3cb6a03644f8776a799e3daad93c7e58/zh-CN-rev.json; the value 种类 is byte-identical to the value that file names. This auditor did not translate, never opened either translator session's directory, and never saw the revision reasoning before forming the finding set below."
+ },
+ "auditor": {
+  "agent": "i18n-auditor",
+  "instance": "963ea9680307",
+  "session": "963ea9680307",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "Served session header for session 963ea9680307 (this run) states deepseek/deepseek-flash; no model switch, role pin override or provider fallback occurred in this session.",
+  "fallback_used": false,
+  "independent_from_translator_session": true,
+  "independent_from_round1_auditors": true
+ },
+ "policy_sources": {
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+   "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c",
+   "note": "Same hash both round-1 zh-CN receipts recorded, so the policy the round-1 verdicts were formed against is the policy used here."
+  },
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+   "note": "Repository glossary and the manager byte-copy at _s14-audits/f04035bc…/glossary.md were both hashed in this run and are identical (173 lines)."
+  },
+  "expected_hashes": {
+   "path": "~/local-operator-ui/.worktrees/_s14-audits/f04035bc3cb6a03644f8776a799e3daad93c7e58/expected-hashes.json",
+   "result": "3/3 match, 0 mismatch (en, en context, zh-CN)."
+  }
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "verdict": "PASSED with 1 NIT, non-gating. The revision 类型 -> 种类 resolves the round-1 MAJOR (same-rail collision with the Kind sort option) and reads as genuinely native copy: a two-character nominal heading in the same paradigm as its six siblings, 4 cells against a ~12-cell hint, no other control in the rail or the sort menu showing the string, no placeholder/markup/invisible characters, and every hash binding recomputed intact. It also stays out of the three neighbouring words already spent in the same rail (类别 = ui.library.filter.categories, 分类 = ui.hub.taxonomy.heading, 类型 = ui.library.sort.kind). No BLOCKER, no MAJOR, no MINOR.",
+ "findings": [
+  {
+   "id": "N1",
+   "severity": "nit",
+   "key": "ui.library.tag_category.type",
+   "current_text": "种类",
+   "english_source": "Type",
+   "problem": "A record-keeping gap, not a wording defect. 种类 is the ONLY occurrence of this word in the whole zh-CN corpus, and it is the only zh-CN rendering of English 'Type' other than 类型: seven keys in other catalogues render Kind or Type as 类型 (ui.agents.teams.col.type, ui.canvas.variable_form_dialog.type, ui.canvas.files.kind, ui.library.sort.kind, ui.notifications.filter.kind, ui.chat.pickers.info_model.kind, ui.agentMessages.settings.allowlist.kind). The zh-CN style guide has no Locale-calls entry for it, and the glossary has no kind/type row, so a later wave asked to keep 'Type' consistent has nothing on file that marks this one rail header as a deliberate exception rather than drift to be 'fixed' back to 类型.",
+   "recommendation": "Keep 种类 as written. Add one line under '## Locale calls (zh-CN)' in ~/local-operator/i18n/style-guides/zh-CN.md, e.g. 'tag group Type -> 种类 (Library tag rail; 类型 stays the Kind sort option)', which is the mechanism the glossary itself nominates for per-locale calls ('The per-locale style guides … record only the calls it delegates to them', and footnote 1 records the same mechanism for wake).",
+   "evidence": [
+    "src/i18n/catalogues/zh-CN/ui.agents.teams.json:9 ui.agents.teams.col.type = \"类型\" (EN \"Type\")",
+    "src/i18n/catalogues/zh-CN/ui.canvas.json:261 ui.canvas.variable_form_dialog.type = \"类型\" (EN \"Type\")",
+    "src/i18n/catalogues/zh-CN/ui.canvas.json:21 ui.canvas.files.kind = \"类型\" (EN \"Kind\")",
+    "src/i18n/catalogues/zh-CN/ui.library.json:12 ui.library.sort.kind = \"类型\" (EN \"Kind\")",
+    "grep -ro 种类 src/i18n/catalogues/zh-CN/ -> 1 hit, this key",
+    "~/local-operator/i18n/style-guides/zh-CN.md '## Locale calls (zh-CN)' lists session/wake/agent/tool trace/schedule/… and no kind/type entry; '## Formality & tone' has no rule bearing on it",
+    "~/local-operator/i18n/glossary.md -> no 类型 or 种类 string anywhere; the only 'type' hit is line 28's 'event types' under machine tokens"
+   ],
+   "gates": false
+  }
+ ],
+ "severity_counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 1
+ },
+ "prior_findings_disposition": [
+  {
+   "finding_id": "F1",
+   "source": "round-1 receipt zh-CN-ds-effb6a3eb86a.json (i18n-auditor, deepseek/deepseek-flash, head 8a9ce1f8)",
+   "severity_then": "major",
+   "disposition": "RESOLVED by this revision",
+   "why": "F1 asked that the tag-group heading stop sharing one string with the Kind sort option. 类型 -> 种类 removes the shared string: ui.library.sort.kind stays 类型 while the rail header is 种类, and 种类 appears nowhere else in the corpus. The recommendation F1 gave ('种类 — distinct from the corpus's 类型 for Kind') is the value now on disk, so the requested fix is met on the head under audit.",
+   "reasoning_note": "F1's supporting claim that 类型 is 'the corpus's settled rendering of the term Kind', and that using it for Type 'breaks the glossary binding', is not supported by the policy files: i18n/glossary.md contains no 类型 or 种类 string at all and no kind/type row (its only 'type' hit is 'event types' in the machine-token line), and the corpus itself renders English 'Type' as 类型 in ui.agents.teams.col.type and ui.canvas.variable_form_dialog.type. The same-rail collision that F1 points at is real and independent of any glossary binding, and it is what this audit verifies: ui.library.sort.kind renders from library-model.ts:84 in the sort menu of the Library view, and the tag headings render from library-filter-rail.tsx:104 as the rail's h3 headings in that same view, so 类型 as a sort option and 类型 as a tag-group header could appear together. Agreeing with the outcome, not with that premise."
+  },
+  {
+   "finding_id": "F2",
+   "source": "round-1 receipt zh-CN-ds-effb6a3eb86a.json; the second round-1 receipt (zh-CN-sol-b184ac5e93b8, openai/gpt-6.1-sol) found no equivalent and passed that key",
+   "severity_then": "minor",
+   "disposition": "CARRIED, still open, non-gating",
+   "why": "ui.library.kind.spreadsheet = 表格 is byte-identical to the audited bytes and is not touched by this remediation, so F2's MINOR stands exactly as raised and is not adjudicated again here. It does not gate: this brief sets BLOCKER/MAJOR as gating and both round-1 auditors recorded it at MINOR or below."
+  },
+  {
+   "finding_id": "M1 (zh-CN-sol-b184ac5e93b8) and N1 (zh-CN-ds-effb6a3eb86a)",
+   "source": "both round-1 receipts, on the English context sidecar rather than on a translated value",
+   "severity_then": "minor / nit",
+   "disposition": "RESOLVED by the context-sidecar correction at this head",
+   "why": "Both named the ui.library.kind.other note, which claimed the badge 'is rendered inside the sentence … via the generic fallback'. The current note at this head reads 'Badge only. For the catch-all `other` kind the unsupported-preview state uses ui.library.preview.unsupported_generic, which has no kind slot; this label is never interpolated into a sentence.' (git diff 8a9ce1f808c2..HEAD names exactly that line plus the ui.library.tag_category.custom note). No zh-CN value changed on account of it: 其他 and 自定义 are unaffected."
+  }
+ ],
+ "concern_verdicts": {
+  "a_accuracy": "pass — Type -> 种类 keeps the meaning: the group holds tags whose values name the asset's type/kind. The current sidecar note calls it a 'LEGACY tag group id kept by the UI's ordering list; current core ids are format/status, so this is rare' and tells the translator to 'Keep it distinct from the sort option Kind' — both instructions are satisfied. No omission, addition, negation, polarity or unsafe-wording risk: the string is a bare heading, carries no permission, destructive or error sense, and no placeholder.",
+  "b_terminology_consistency": "pass with N1 — 种类 is distinct from every word this view already spends on the same ideas: 类型 (ui.library.sort.kind, the Kind sort option, and ui.canvas.files.kind), 类别 (ui.library.filter.categories, in this same rail), 分类 (ui.hub.taxonomy.heading, ui.agents.settings.general.categories) and the sibling heading 自定义 (ui.library.tag_category.custom). The rail's seven headings now read as one paradigm: 格式 / 状态 / 来源 / 项目 / 主题 / 自定义 / 种类. The only cost is that English 'Type' now has two zh-CN renderings corpus-wide (类型 in two unrelated catalogues, 种类 here) — recorded as N1, and a defensible cost because the two are never co-visible.",
+  "c_collision_matrix": "pass — measured against every value in ui.library: 种类 has no twin (the only same-string pairs in the namespace are tag_category.source = filter.source = 来源 and tag_category.status = filter.status = 状态, both pre-existing and both passing round 1). Those two are not evidence that the 类型 clash was harmless: there the English itself repeats one word in two sections (Source filter section vs Source tag group), so the duplicate faithfully mirrors the source, whereas EN 'Type' and 'Kind' are two different words that zh-CN had collapsed into one string — a merge created by the translation, which is what the revision undoes.",
+  "d_idiom_register": "pass — 种类 is ordinary modern Chinese for a class of things (文件种类, 商品种类), a two-character nominal head, where the guide asks for terse labels ('Terse: four-to-eight character lines where possible'), no sentence-final 。 on short labels, no particles — none present. Nothing in it reads as a calque of 'Type'; the natural pair alternatives 类型 and 类别 are unavailable for the reasons above, and the more specific 文件类型/文档类型 would misdescribe the non-document assets the same rail serves.",
+  "e_rail_parallelism": "pass — the value renders inside `<h3 className='px-2 text-meta font-medium tracking-wide text-ink-dim'>` above that category's tag rows (library-filter-rail.tsx Section/TagCategoryLabel); a two-character heading sits level with 格式/状态/来源/项目/主题 and two cells narrower than 自定义 (6 cells). No truncation class applies to the heading, and 4 cells is far inside the 'about 12 characters' narrow-rail hint.",
+  "f_fit_width": "pass — 4 cells (U+79CD U+7C7B, both East Asian Wide) against the ~12-cell hint; the widest sibling is 自定义 at 6 cells.",
+  "g_invisible_bidi": "pass — a full-file scan of zh-CN/ui.library.json found no Cf/Cc/Co/Cn character, no U+200B, U+2060, U+FEFF or U+00A0. 种类 is plain BMP CJK with no variation selector or ZWJ, so no combining-width or segmentation hazard; RTL rules do not apply to this locale."
+ },
+ "namespaces": {
+  "ui.library": {
+   "status": "passed",
+   "result": "clean-with-findings",
+   "source_sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71",
+   "target_sha256": "180a39dfac22bc99603310ce1636212dd1b915551cfbfb782c138911b7c35b89",
+   "input_hashes": {
+    "en": {
+     "path": "src/i18n/catalogues/en/ui.library.json",
+     "sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71"
+    },
+    "context": {
+     "path": "src/i18n/catalogues/en/ui.library.context.json",
+     "sha256": "f799fe911107aa1f7b83b0c026ee277d5c21ee5eba297e3ae13c2da51135cc8e"
+    },
+    "zh-CN": {
+     "path": "src/i18n/catalogues/zh-CN/ui.library.json",
+     "sha256": "180a39dfac22bc99603310ce1636212dd1b915551cfbfb782c138911b7c35b89"
+    }
+   },
+   "fully_audited_keys": [
+    "ui.library.tag_category.type"
+   ],
+   "carried_forward_keys": [
+    "ui.library.kind.audio",
+    "ui.library.kind.code",
+    "ui.library.kind.docx",
+    "ui.library.kind.html",
+    "ui.library.kind.image",
+    "ui.library.kind.markdown",
+    "ui.library.kind.other",
+    "ui.library.kind.pdf",
+    "ui.library.kind.pptx",
+    "ui.library.kind.spreadsheet",
+    "ui.library.kind.text",
+    "ui.library.kind.video",
+    "ui.library.tag_category.custom",
+    "ui.library.tag_category.format",
+    "ui.library.tag_category.project",
+    "ui.library.tag_category.source",
+    "ui.library.tag_category.status",
+    "ui.library.tag_category.topic",
+    "ui.library.preview.unsupported_generic"
+   ],
+   "carry_basis": "git show 8a9ce1f808c2:src/i18n/catalogues/zh-CN/ui.library.json sha256 = 686dfeeaa8ee25abd2815181ea7fe11ff7cd708cd0ea718632f870e5b1d5b857, the target_sha256 both round-1 zh-CN receipts recorded, and the diff to this head is exactly one line. The 19 carried values are therefore the audited bytes; their round-1 wording verdicts (zh-CN-ds 'changes_requested' on F1 only, zh-CN-sol 'passed') carry unchanged, and this audit does not re-adjudicate their wording.",
+   "finding_ids": [
+    "N1"
+   ],
+   "findings": [
+    {
+     "id": "N1",
+     "severity": "nit",
+     "key": "ui.library.tag_category.type",
+     "current_text": "种类",
+     "english_source": "Type",
+     "problem": "Record-keeping gap, not a wording defect: 种类 is the corpus's only occurrence and the only zh-CN rendering of 'Type' other than 类型, and no style-guide Locale-calls line records the exception, so a later consistency pass could revert it.",
+     "recommendation": "Keep 种类; record the call under '## Locale calls (zh-CN)' in ~/local-operator/i18n/style-guides/zh-CN.md.",
+     "gates": false
+    }
+   ]
+  }
+ },
+ "mechanical": {
+  "validator_commands_run": [
+   "node scripts/i18n/generate.mjs --check -> 'src/i18n/keys.gen.ts is byte-identical to a fresh generation.' exit 0",
+   "node scripts/i18n/check-duplicates.mjs -> 'check-duplicates: ok — 1419 file(s) scanned, 0 duplicate key(s)' exit 0",
+   "node scripts/i18n/context-parity.mjs -> 'context-parity: ok — every English key is covered, apart from 129 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).' exit 0",
+   "node scripts/i18n/ledger-check.mjs -> 'FAILED — 21 finding(s) across 1099 ledger entr(ies)' exit 1. This is the pre-ledger-write state of the whole PR delta, not a defect of the revised string: all seven shipped locales carry the same three findings for ui.library (stale source_sha256 ledger f573e43a8f34… vs file 065ac47c67e2…; stale target_sha256 for es/fr/hi/ru/ur/vi/zh-CN; 'auditor 1: the receipt does not name the English source bytes on disk'). For zh-CN the target row is ledger ea3fb47f1406… vs file 180a39dfac22…. Recording the audited rows with the repo's audit-ledger command is the manager's step; this auditor writes no ledger.",
+   "python3 zh-CN-delta-ds-963ea9680307-check.py -> 'RESULT: all checks passed', exit 0, output captured in zh-CN-delta-ds-963ea9680307-check.out (18 PASS lines across sections A-K, 0 FAIL)."
+  ],
+  "json_valid": true,
+  "key_sets_identical_to_english": true,
+  "keys_added_or_removed_in_this_delta": "0 added, 0 removed at this head; the delta is one changed value. Against base 0e12072d2b3 the locale file adds exactly the 20 audited keys and changes no pre-existing value (script section E: 'no base key's value changed — {}').",
+  "placeholder_parity": true,
+  "placeholder_note": "None of the 20 delta keys carries a placeholder, ICU plural/select or rich markup in either language, so ICU structure and CLDR categories are N/A for them; the revised value has none of the three.",
+  "invisible_or_bidi_characters_found": false,
+  "hash_binding": "en 065ac47c67e2…, context f799fe911107…, zh-CN 180a39dfac22… — all three recomputed with shasum -a 256 and equal to expected-hashes.json at f04035bc3cb6a03644f8776a799e3daad93c7e58. 0 mismatches.",
+  "byte_identity_of_carried_values": "git show 8a9ce1f808c2:…zh-CN/ui.library.json = 686dfeeaa8ee… (round-1 target hash); git diff 8a9ce1f808c2..HEAD = 1 removed + 1 added line, both the revised key."
+ },
+ "unverified": [
+  "No rendered frame, Electron/React run, screenshot or measured pixel fit: the brief forbids builds, servers and test trees. Fit is judged on cell arithmetic (4 cells) against the sidecar's ~12-cell hint and on the heading's class names, not on rendered geometry.",
+  "No runtime locale switch: the revised string is a bare heading with no ICU syntax, so a formatter run would exercise nothing this audit could not read statically.",
+  "The 19 carried values were not re-audited on wording — byte-identity plus the round-1 receipts is the whole claim, and that claim is scoped to the 20 delta keys; the namespace's 159 legacy values are not certified here.",
+  "No ledger write, tracked evidence retention, PR comment or commit: writes were limited to this session's scratchpad, per the brief.",
+  "Sibling comparisons use the values on disk at this head; I did not open the other five locales' revisions or their auditors' receipts beyond the zh-CN and model files this brief allowed."
+ ],
+ "artifacts": [
+  {
+   "path": "zh-CN-delta-ds-963ea9680307.json",
+   "kind": "audit_notes_not_execution_log",
+   "record_reference": "zh-CN-delta-ds-963ea9680307.record.json"
+  },
+  {
+   "path": "zh-CN-delta-ds-963ea9680307.audit.log",
+   "kind": "actual_execution_log",
+   "record_reference": "zh-CN-delta-ds-963ea9680307.record.json"
+  },
+  {
+   "path": "zh-CN-delta-ds-963ea9680307-check.py",
+   "kind": "executed_check_source",
+   "record_reference": "zh-CN-delta-ds-963ea9680307.record.json"
+  },
+  {
+   "path": "zh-CN-delta-ds-963ea9680307-check.out",
+   "kind": "actual_execution_output",
+   "record_reference": "zh-CN-delta-ds-963ea9680307.record.json"
+  }
+ ],
+ "audit_notes_not_execution_log": false,
+ "execution_log": "zh-CN-delta-ds-963ea9680307.audit.log",
+ "retention": {
+  "state": "scratch_handoff_only_per_explicit_read_only_task",
+  "intended_tracked_directory": "i18n/audits/evidence/zh-CN/ui.library/s14-r2-zh-CN-ds-963ea9680307",
+  "manager_action_required": "Retain this receipt plus its record.json and audit.log (and the check script/output) under the canonical evidence root, then record the ledger row with the repo's audit-ledger command. scripts/i18n/ledger-check.mjs reports stale source/target hashes for zh-CN/ui.library until that write lands (and the same for the other six locales).",
+  "proposed_note": "passed r2 delta; ui.library.tag_category.type 类型->种类 re-audited, resolves round-1 MAJOR, 1 nit (record call in zh-CN guide); 19 keys byte-identical; zh-CN/ui.library 180a39dfac22; record i18n/audits/evidence/zh-CN/ui.library/s14-r2-zh-CN-ds-963ea9680307/record.json"
+ }
+}

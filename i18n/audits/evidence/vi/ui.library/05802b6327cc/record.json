@@ -1,0 +1,94 @@
+{
+  "locale": "vi",
+  "namespaces": {
+    "ui.library": {
+      "status": "passed",
+      "fully_audited_key_count": 20,
+      "consistency_only_key_count": 159,
+      "finding_ids": [
+        "M1"
+      ],
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.library.json",
+          "sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71"
+        },
+        "vi": {
+          "path": "src/i18n/catalogues/vi/ui.library.json",
+          "sha256": "12262f8cd5b313b9eeddf157a9dfe28051399cbc8df1ddada416ef9506b44daa"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.library.context.json",
+          "sha256": "2fe63e830b49079dac67c5c4513358d0a8559a94fbf27ac8d437212b13aa2e72"
+        }
+      }
+    }
+  },
+  "audit_date": "2026-11-10",
+  "key_count": 179,
+  "fully_audited_key_count": 20,
+  "consistency_only_key_count": 159,
+  "scope": "PR damianvtran/local-operator-ui #1851 @ 8a9ce1f808c266ebe9a0e924094344cea60c2c23; base 0e12072d2b3. Only ui.library 20 added messages fully audited; legacy not recertified.",
+  "head_sha": "8a9ce1f808c266ebe9a0e924094344cea60c2c23",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "05802b6327cc",
+    "session": "05802b6327cc",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Served session header states openai/gpt-6.1-sol for session 05802b6327cc; no model switch or fallback occurred.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Translator identity and vi session 8f78815e51e3 supplied by delegation; this auditor did not translate the values."
+  },
+  "policy_inputs": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/vi.md",
+      "sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888"
+    },
+    "glossary": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "note": "Binding manager-owned copy; matches expected full hash. Original glossary not read (not allowlisted)."
+    }
+  },
+  "artifacts": [
+    {
+      "path": "vi-sol-05802b6327cc.json",
+      "sha256": "cc2c348fcb650e82906ae7c822473346ecaa554a9c3986dc43e6d7a0a518c7fe",
+      "kind": "audit_notes_not_execution_log",
+      "record_reference": "vi-sol-05802b6327cc.record.json"
+    },
+    {
+      "path": "vi-sol-05802b6327cc.audit.log",
+      "sha256": "0113e901e73fde4f0b0a41c0aca2b03c89d91d78de3c90673b3f75d37846baec",
+      "kind": "actual_execution_log",
+      "record_reference": "vi-sol-05802b6327cc.record.json"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "M1"
+    ]
+  },
+  "finding_report": "vi-sol-05802b6327cc.json",
+  "audit_notes_not_execution_log": false,
+  "execution_log": "vi-sol-05802b6327cc.audit.log",
+  "retention": {
+    "state": "scratch_handoff_only_per_explicit_read_only_task",
+    "intended_tracked_directory": "i18n/audits/evidence/vi/ui.library/s14-sol-05802b6327cc/",
+    "manager_action_required": "Retain the three files under canonical evidence root; ledger must reference record with matching hashes. No ledger command run by auditor under scratch-only constraint.",
+    "proposed_note": "passed; 0 blocker/major; M1 metadata minor. record i18n/audits/evidence/vi/ui.library/s14-sol-05802b6327cc/record.json"
+  },
+  "unverified": [
+    "No builds, installs, servers, test trees, rendered frames or runtime ICU formatter executed; read-only audit constraints. All 20 messages are plain text with no ICU arguments.",
+    "No repo edits, ledger writes, commits, PR comments or tracked evidence retention performed; manager must retain the scratch handoff in canonical i18n/audits/evidence/vi/ui.library/<audit-id>/ and record the ledger.",
+    "The 159 legacy namespace values were NOT recertified; checked only JSON validity, key parity, unchanged values and targeted terminology consistency.",
+    "No independent second audit claimed by this receipt; this is one independent pass."
+  ]
+}

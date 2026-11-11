@@ -1,0 +1,16 @@
+PASS  HEAD matches frozen head :: 8a9ce1f808c266ebe9a0e924094344cea60c2c23
+PASS  worktree clean :: (clean)
+PASS  sha256 en/ui.library :: 065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71
+PASS  sha256 fr/ui.library :: 5b2b439c0837be164d52fc50a53a40a8e0ea0b5940f1dff96359f5b18f61bc0f
+PASS  sha256 en/ui.library.context :: 2fe63e830b49079dac67c5c4513358d0a8559a94fbf27ac8d437212b13aa2e72
+PASS  both catalogues parse as JSON objects
+PASS  fr key set equals en key set :: 179 en / 179 fr; only-en=[] only-fr=[]
+PASS  fr file keys are sorted (file is deterministic)
+PASS  all 20 new keys present in en and fr :: 20/20 en, 20/20 fr
+FAIL  20 added lines vs base :: 21
+PASS  1 removed line vs base (comma-only) :: 1
+Traceback (most recent call last):
+  File "/Users/damian/.local-operator/sessions/7c6a1a31a0fb/scratchpad/fr-ds-7c6a1a31a0fb-check.py", line 92, in <module>
+    check(removed[0].rstrip(",") == [a for a in added if a.rstrip(",") == removed[0].rstrip(",")][0].rstrip(","),
+                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^
+IndexError: list index out of range

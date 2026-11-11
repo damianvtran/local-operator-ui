@@ -1,0 +1,521 @@
+{
+  "locale": "fr",
+  "mode": "Independent delta audit of the 20 NEW values of ONE namespace (ui.library) against frozen head 8a9ce1f808c266ebe9a0e924094344cea60c2c23; read-only worktree ~/local-operator-ui/.worktrees/i18n-s8. All 20 new keys were audited in full (mechanical, accuracy, idiom/register, terminology, fit, bidi/invisible characters, hash binding). A deliberate second independent re-read of all 20 values was made as the high-visibility second pass; it is recorded in the audit log and did not change the verdict. The 159 legacy keys of the namespace were checked only for JSON validity, key-set parity with English, no value removal or change, and cross-file term consistency; they are NOT recertified here.",
+  "scope": "PR damianvtran/local-operator-ui #1851 'fix(i18n): localize Library kind and tag-category labels' @ 8a9ce1f8. Exactly the 20 keys added to src/i18n/catalogues/fr/ui.library.json: 12 ui.library.kind.* (the file-kind badge on a card caption, list row and preview header), 7 ui.library.tag_category.* (the tag-group heading in the filter rail) and ui.library.preview.unsupported_generic (the catch-all preview sentence). Verified by git diff 0e12072d2b3..HEAD as the only fr change (21 insertions / 1 deletion, the deletion being the previous last line re-emitted with a trailing comma, value byte-identical); English catalogue and its context sidecar carry exactly the same 20 keys. No other locale is audited here.",
+  "head_sha": "8a9ce1f808c266ebe9a0e924094344cea60c2c23",
+  "base_sha": "0e12072d2b3",
+  "audit_date": "2026-11-10",
+  "key_count": 179,
+  "fully_audited_key_count": 20,
+  "consistency_only_key_count": 159,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "session": "39f51922849d",
+    "source": "Identity supplied by delegation: i18n-translator / anthropic/claude-sonnet-5-5, one session per locale (fr session 39f51922849d), values landed verbatim. This auditor did not translate, had no access to that session, never read another session's directory, and used no translation engine, API or MT service to compare or back-translate."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "7c6a1a31a0fb",
+    "session": "7c6a1a31a0fb",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "Session header for session 7c6a1a31a0fb (this run) states deepseek/deepseek-flash; no model switch, role pin override or provider fallback occurred in this session.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "policy_sources": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+    },
+    "glossary": {
+      "path": "~/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "note": "Manager-owned byte-copy; recomputed identical by sha256 to ~/local-operator/i18n/glossary.md (both 0eb34437…, 173 lines). Glossary conformance for this group is the §2 'project | translate | projet' row (matched) plus §1 'technology names … keep their official spelling' for DOCX/HTML/PDF/PPTX/Markdown. The glossary has no kind/tag/format/topic row; the § intro one-term-one-decision invariant and the guide's kept-English list are the other binding parts."
+    },
+    "expected_hashes": {
+      "path": "~/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/expected-hashes.json"
+    }
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "verdict": "passed — 20/20 new fr values are faithful, idiomatic, glossary- and style-guide-conformant, fit their slots and carry no invisible/bidi characters; 3/3 expected hashes match; one MINOR (F1) records that the tag group 'Type' shares its word with the legacy sort option 'Type' (English keeps Kind/Type distinct), an inherited collision whose remedy sits outside this delta. No BLOCKER or MAJOR.",
+  "findings": [
+    {
+      "id": "F1",
+      "key": "ui.library.tag_category.type",
+      "severity": "minor",
+      "category": "terminology / same-surface disambiguation",
+      "current_text": "Type",
+      "source_text": "Type",
+      "problem": "The English tag-group heading 'Type' is deliberately kept distinct from the Library's sort option, which English calls 'Kind' (en ui.library.sort.kind = 'Kind'; the key's own context note says 'Keep it distinct from the sort option Kind'). In fr both read 'Type': the legacy value ui.library.sort.kind already renders English 'Kind' as 'Type' (fr ui.library.sort.kind = 'Type'), so the toolbar sort option and the rail tag-group header are now the same word for two different concepts on the same Library page.",
+      "evidence": [
+        "fr ui.library.sort.kind = 'Type' (legacy, byte-unchanged by this PR; en counterpart 'Kind')",
+        "en/fr ui.library.page.sort = 'Sort' / 'Trier' — the sort option renders under the page toolbar, not in the rail",
+        "fr ui.library.filter.tags = 'Étiquettes' — the tag groups sit under that section heading, which is the disambiguating context"
+      ],
+      "why_not_blocker_or_major": "The audited value is the faithful and only faithful rendering of English 'Type' for a tag category literally named type ('Catégorie' would misdescribe the group, 'Nature' would invent a taxonomy the wire id does not carry); nothing is misdescribed and no user-facing instruction becomes unsafe. The collision is inherited from the legacy sort label, not introduced by this value, and the 'Étiquettes' section heading keeps the two readable in context.",
+      "suggested_wording": "Accept 'Type' as-is for this delta. If the wave wants the two distinct, the minimal fix is on the out-of-scope legacy neighbour: ui.library.sort.kind 'Type' -> 'Type de fichier' (under 'Trier'), which then reads 'Trier : Type de fichier' and leaves 'Type' the tag group."
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+  },
+  "concern_verdicts": {
+    "a_fidelity": "pass — all 12 kind badges name the file kind their English key names; all 7 tag headings name the tag taxonomy group; the generic sentence says 'This file' and names no kind. No omission, addition, negation or polarity error.",
+    "b_terminology_consistency": "pass with F1 minor — kind labels are the singular of the same family as the same namespace's group labels (Images/Image, Tableurs/Tableur, Autres/Autre, Vidéo/Vidéo, Code/Code); tag headings reuse the namespace's existing words (Statut = ui.library.filter.status, Source = ui.library.filter.source) and the glossary's 'projet'. The only clash is F1 (Type vs the legacy sort.kind 'Type').",
+    "c_retained_tokens": "pass, judged per token: DOCX, HTML, PDF, PPTX and Markdown retained — each is an acronym/proper format name the fr corpus already writes in Latin (quoted values in per_key_checks). Video is NOT retained ('Vidéo', matching category.video); Code and Audio are identical forms, not retentions of untranslated English. No retention contradicts an existing localized rendering.",
+    "d_standalone_sentence": "pass — 'Ce fichier n’a pas d’aperçu intégré ici.' is grammatical (negation with 'de'), names no kind, carries no placeholder, and parallels ui.library.preview.unsupported ('Un fichier {kind} n’a pas d’aperçu intégré ici.') with the demonstrative the English 'This' calls for.",
+    "e_fit": "pass — badges measure 3-8 chars against the sidecar's ~12-char hint (longest: 'Markdown' 8); tag headings 4-12 chars against 'narrow rail header (about 12 characters)' (longest: 'Personnalisé' 12, exactly at the hint, no truncation risk beyond it); the generic sentence 40 chars vs 37 English (+8%), well inside the guide's 15-25% growth and not a tight slot. No overflow finding.",
+    "f_invisible_bidi": "pass — none present. The 20 values contain only precomposed Latin letters (é U+00E9, ç U+00E7) and U+2019 apostrophes: no U+00A0/U+202F, no U+200B-200F, no U+202A-202E, no U+2060-2069, no Cf/Cc characters, no BOM, no double or trailing spaces, all NFC. No bidi marks are expected or present: fr is LTR.",
+    "g_key_set": "pass — fr and en both hold 179 keys, sets identical, no key added or dropped outside the 20; git diff 0e12072d2b3..HEAD is additions only (21 insertions / 1 deletion, and that deletion is the previous last line re-emitted with a trailing comma, value byte-identical); no pre-existing value changed (verified by comparing every shared key against git show of the base file).",
+    "h_context_sidecar": "pass — all 20 English entries carry role/tone/note/length, and each note's render location is accurate against the code: badge on card caption (library-card.tsx:248-251, a truncating span beside the size), list row (library-card.tsx:365-370), preview header (library-preview.tsx:494); rail heading above that category's tag rows under the 'Étiquettes' section (library-filter-rail.tsx:301-307, a small muted text-meta/text-ink-dim span); 'first group in the rail' for topic matches the ordering list ['topic','project','type','source','custom']; the 'LEGACY … current core ids are format/status' note matches the code comment 'Legacy spelling the listing still carries; format is the core name'. No wrong or misleading note found.",
+    "i_hash_binding": "pass — 3/3 expected sha256 entries match: en/ui.library 065ac47c67e2, fr/ui.library 5b2b439c0837, en/ui.library.context 2fe63e830b49. The manager glossary copy is byte-identical to the original (0eb34437…)."
+  },
+  "namespaces": {
+    "ui.library": {
+      "status": "passed",
+      "result": "clean-with-findings",
+      "source_sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71",
+      "target_sha256": "5b2b439c0837be164d52fc50a53a40a8e0ea0b5940f1dff96359f5b18f61bc0f",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.library.json",
+          "sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71"
+        },
+        "fr": {
+          "path": "src/i18n/catalogues/fr/ui.library.json",
+          "sha256": "5b2b439c0837be164d52fc50a53a40a8e0ea0b5940f1dff96359f5b18f61bc0f"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.library.context.json",
+          "sha256": "2fe63e830b49079dac67c5c4513358d0a8559a94fbf27ac8d437212b13aa2e72"
+        }
+      },
+      "fully_audited_keys": [
+        "ui.library.kind.audio",
+        "ui.library.kind.code",
+        "ui.library.kind.docx",
+        "ui.library.kind.html",
+        "ui.library.kind.image",
+        "ui.library.kind.markdown",
+        "ui.library.kind.other",
+        "ui.library.kind.pdf",
+        "ui.library.kind.pptx",
+        "ui.library.kind.spreadsheet",
+        "ui.library.kind.text",
+        "ui.library.kind.video",
+        "ui.library.tag_category.custom",
+        "ui.library.tag_category.format",
+        "ui.library.tag_category.project",
+        "ui.library.tag_category.source",
+        "ui.library.tag_category.status",
+        "ui.library.tag_category.topic",
+        "ui.library.tag_category.type",
+        "ui.library.preview.unsupported_generic"
+      ],
+      "findings": [
+        {
+          "id": "F1",
+          "key": "ui.library.tag_category.type",
+          "severity": "minor",
+          "category": "terminology / same-surface disambiguation",
+          "current_text": "Type",
+          "source_text": "Type",
+          "problem": "The English tag-group heading 'Type' is deliberately kept distinct from the Library's sort option, which English calls 'Kind' (en ui.library.sort.kind = 'Kind'; the key's own context note says 'Keep it distinct from the sort option Kind'). In fr both read 'Type': the legacy value ui.library.sort.kind already renders English 'Kind' as 'Type' (fr ui.library.sort.kind = 'Type'), so the toolbar sort option and the rail tag-group header are now the same word for two different concepts on the same Library page.",
+          "evidence": [
+            "fr ui.library.sort.kind = 'Type' (legacy, byte-unchanged by this PR; en counterpart 'Kind')",
+            "en/fr ui.library.page.sort = 'Sort' / 'Trier' — the sort option renders under the page toolbar, not in the rail",
+            "fr ui.library.filter.tags = 'Étiquettes' — the tag groups sit under that section heading, which is the disambiguating context"
+          ],
+          "why_not_blocker_or_major": "The audited value is the faithful and only faithful rendering of English 'Type' for a tag category literally named type ('Catégorie' would misdescribe the group, 'Nature' would invent a taxonomy the wire id does not carry); nothing is misdescribed and no user-facing instruction becomes unsafe. The collision is inherited from the legacy sort label, not introduced by this value, and the 'Étiquettes' section heading keeps the two readable in context.",
+          "suggested_wording": "Accept 'Type' as-is for this delta. If the wave wants the two distinct, the minimal fix is on the out-of-scope legacy neighbour: ui.library.sort.kind 'Type' -> 'Type de fichier' (under 'Trier'), which then reads 'Trier : Type de fichier' and leaves 'Type' the tag group."
+        }
+      ]
+    }
+  },
+  "per_key_checks": [
+    {
+      "key": "ui.library.kind.audio",
+      "source": "Audio",
+      "current_text": "Audio",
+      "findings": [],
+      "assessment": "Correct and idiomatic: French uses 'audio' as an invariable noun/adjective for a media type ('fichier audio', 'l’audio'), and the English source itself names the media type while the category group says 'Sounds'. Mirrors the source distinction rather than flattening it.",
+      "retention_judgment": "Loanword kept identically to English; French dictionary form, not a retention of an untranslated English word.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length_chars": 5,
+      "length_source_chars": 5
+    },
+    {
+      "key": "ui.library.kind.code",
+      "source": "Code",
+      "current_text": "Code",
+      "findings": [],
+      "assessment": "Same word in French and English; matches the same surface's group label ui.library.category.code = 'Code' with the same spelling. The context note's 'not the filter-rail group' distinction is preserved in meaning (a file kind, not the rail group).",
+      "retention_judgment": "Translated (identical form) — no retention issue.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length_chars": 4,
+      "length_source_chars": 4
+    },
+    {
+      "key": "ui.library.kind.docx",
+      "source": "DOCX",
+      "current_text": "DOCX",
+      "findings": [],
+      "assessment": "Format acronym retained, as the sidecar allows ('Format names are retained technical tokens'). Consistent with the fr corpus keeping format/product names Latin in prose: 'les fichiers Excel, Word et CSV' (ui.onboarding.tour.attachments.body.3) and 'les PNG, JPG et PDF'.",
+      "retention_judgment": "Retained: justified by glossary §1 'technology names … keep their official spelling' + corpus precedent for Word/Excel/PNG/JPG.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length_chars": 4,
+      "length_source_chars": 4
+    },
+    {
+      "key": "ui.library.kind.html",
+      "source": "HTML",
+      "current_text": "HTML",
+      "findings": [],
+      "assessment": "Retained acronym, and the fr corpus already writes HTML in Latin: 'Aperçu HTML : {title}' (ui.canvas.html_preview.html_preview), 'HTML (.html)' (ui.canvas.create_file_dialog.html_html). No localized rendering exists to contradict.",
+      "retention_judgment": "Retained: matches existing fr values, several precedents.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length_chars": 4,
+      "length_source_chars": 4
+    },
+    {
+      "key": "ui.library.kind.image",
+      "source": "Image",
+      "current_text": "Image",
+      "findings": [],
+      "assessment": "Singular of the same surface's group label ui.library.category.images = 'Images'; identical spelling in French. Reads natively as a picture file kind.",
+      "retention_judgment": "Translated (identical form).",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length_chars": 5,
+      "length_source_chars": 5
+    },
+    {
+      "key": "ui.library.kind.markdown",
+      "source": "Markdown",
+      "current_text": "Markdown",
+      "findings": [],
+      "assessment": "Format proper name retained. The fr corpus already does this: 'Copier en Markdown' (ui.chat.transcript_copy.menu.copy_markdown), 'Copié en Markdown', 'Markdown (.md)' (ui.canvas.create_file_dialog.markdown_md), 'visionneuse Markdown' (ui.onboarding.tour.canvas_feature.body.2).",
+      "retention_judgment": "Retained: four existing fr values prove it is the settled rendering.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length_chars": 8,
+      "length_source_chars": 8
+    },
+    {
+      "key": "ui.library.kind.other",
+      "source": "Autre",
+      "current_text": "Autre",
+      "findings": [],
+      "assessment": "Correct singular of the group label ui.library.category.other = 'Autres' and of ui.canvas.files.other = 'Autres'. Kept as a noun/adjective label, not an action. It is not interpolated into the unsupported sentence (that path uses unsupported_generic for the `other` kind), so no agreement trap.",
+      "retention_judgment": "Translated.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length_chars": 5,
+      "length_source_chars": 5
+    },
+    {
+      "key": "ui.library.kind.pdf",
+      "source": "PDF",
+      "current_text": "PDF",
+      "findings": [],
+      "assessment": "Retained acronym with fr precedent: 'Impossible d’ouvrir ce PDF' (ui.canvas.pdf_preview.this_pdf_could_not_be_opened), 'PDF : {title}', 'les PNG, JPG et PDF'.",
+      "retention_judgment": "Retained: matches existing fr values.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length_chars": 3,
+      "length_source_chars": 3
+    },
+    {
+      "key": "ui.library.kind.pptx",
+      "source": "PPTX",
+      "current_text": "PPTX",
+      "findings": [],
+      "assessment": "Retained format acronym, consistent with DOCX above and with the fr corpus naming PowerPoint formats in Latin ('les fichiers Excel, Word et CSV'). The presentation prose around it stays French ('Ouverture de la présentation', ui.library.preview.pptx_opening).",
+      "retention_judgment": "Retained: justified by glossary §1 + corpus precedent.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length_chars": 4,
+      "length_source_chars": 4
+    },
+    {
+      "key": "ui.library.kind.spreadsheet",
+      "source": "Spreadsheet",
+      "current_text": "Tableur",
+      "findings": [],
+      "assessment": "Singular of the same surface's group label ui.library.category.spreadsheets = 'Tableurs' — exactly the same word family, as the brief requires. Note (observation, not a finding): ui.canvas.files.spreadsheets uses 'Feuilles de calcul' on the canvas surface; that cross-surface divergence is pre-existing, outside this PR, and this value correctly follows the Library's own vocabulary.",
+      "retention_judgment": "Translated.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length_chars": 7,
+      "length_source_chars": 11
+    },
+    {
+      "key": "ui.library.kind.text",
+      "source": "Text",
+      "current_text": "Texte",
+      "findings": [],
+      "assessment": "Correct; and it is the word this namespace already uses for the text tab: ui.library.preview.pptx_text = 'Texte'.",
+      "retention_judgment": "Translated.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length_chars": 5,
+      "length_source_chars": 4
+    },
+    {
+      "key": "ui.library.kind.video",
+      "source": "Video",
+      "current_text": "Vidéo",
+      "findings": [],
+      "assessment": "Translated with the accent, matching this surface's group label ui.library.category.video = 'Vidéo' and ui.canvas.files.videos = 'Vidéos'. A retention ('Video') would have contradicted them.",
+      "retention_judgment": "Translated (not retained) — correct call.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length_chars": 5,
+      "length_source_chars": 5
+    },
+    {
+      "key": "ui.library.tag_category.custom",
+      "source": "Custom",
+      "current_text": "Personnalisé",
+      "findings": [],
+      "assessment": "A class label for tags created freely / the empty-category bucket. Masculine singular class label is standard fr UI heading style ('Général', 'Avancé'); no article, no plural, matching the heading's 'a single noun naming the category, not a count'. No existing fr value renders English 'Custom' as a tag category, so there is nothing to contradict.",
+      "retention_judgment": "Translated.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length_chars": 12,
+      "length_source_chars": 6
+    },
+    {
+      "key": "ui.library.tag_category.format",
+      "source": "Format",
+      "current_text": "Format",
+      "findings": [],
+      "assessment": "Same word in French, and identical to the sibling ui.library.sort.kind family vocabulary; correct for a group of format tags ('pdf', 'csv'). Distinguished from tag_category.type as English is.",
+      "retention_judgment": "Translated (identical form).",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length_chars": 6,
+      "length_source_chars": 6
+    },
+    {
+      "key": "ui.library.tag_category.project",
+      "source": "Project",
+      "current_text": "Projet",
+      "findings": [],
+      "assessment": "Glossary §2 binds project -> 'projet' for fr ('project | translate | projet'); honoured. Same spelling as the glossary's citation form, correctly capitalised as a heading.",
+      "retention_judgment": "Glossary-conformant.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length_chars": 6,
+      "length_source_chars": 7
+    },
+    {
+      "key": "ui.library.tag_category.source",
+      "source": "Source",
+      "current_text": "Source",
+      "findings": [],
+      "assessment": "Identical to the fr rendering of the neighbouring filter section (ui.library.filter.source = 'Source'), which is the same English word; the context note's distinction (tag group vs filter section) is a role distinction, not a wording one, and English makes the same choice.",
+      "retention_judgment": "Translated (identical form).",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length_chars": 6,
+      "length_source_chars": 6
+    },
+    {
+      "key": "ui.library.tag_category.status",
+      "source": "Status",
+      "current_text": "Statut",
+      "findings": [],
+      "assessment": "Exactly the value the same namespace already uses for the Status filter section: ui.library.filter.status = 'Statut'. Consistent register and term.",
+      "retention_judgment": "Translated; matches existing fr value.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length_chars": 6,
+      "length_source_chars": 6
+    },
+    {
+      "key": "ui.library.tag_category.topic",
+      "source": "Topic",
+      "current_text": "Sujet",
+      "findings": [],
+      "assessment": "The settled fr word for a topic/subject ('Sujet' — e.g. ui.teamBridge.create.topic = 'Sujet (facultatif)'). Not 'Thème', which this corpus reserves for appearance themes (ui.chat.pickers.theme.title = 'Thème'). Correct choice; the rail places it first, as the note says.",
+      "retention_judgment": "Translated; 'Thème' would have collided with the appearance-theme vocabulary.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length_chars": 5,
+      "length_source_chars": 5
+    },
+    {
+      "key": "ui.library.tag_category.type",
+      "source": "Type",
+      "current_text": "Type",
+      "findings": [
+        "F1"
+      ],
+      "assessment": "The faithful rendering of English 'Type' for a tag category literally named type, and it keeps the fr corpus's one word for this concept (every 'Kind'/'type' surface in fr reads 'Type'). The one caveat is F1: the same word already labels the sort-by-kind option, because the legacy ui.library.sort.kind renders English 'Kind' as 'Type'.",
+      "retention_judgment": "Translated (identical form).",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length_chars": 4,
+      "length_source_chars": 4
+    },
+    {
+      "key": "ui.library.preview.unsupported_generic",
+      "source": "This file has no in-app preview here.",
+      "current_text": "Ce fichier n’a pas d’aperçu intégré ici.",
+      "findings": [],
+      "assessment": "Grammatical and native; names no kind. It parallels the templated sibling exactly — fr ui.library.preview.unsupported = 'Un fichier {kind} n’a pas d’aperçu intégré ici.' — swapping the indefinite 'Un fichier {kind}' for the demonstrative 'Ce fichier', which is the right move for 'This file'. Negation takes 'de' correctly ('n’a pas d’aperçu'), no placeholder, no trailing punctuation, U+2019 apostrophes as the style guide requires, 40 chars vs 37 English (+8%, well inside the guide's 15-25% growth). Rendered only for the `other` kind (library-viewers.tsx:107-110), so it must not name one — it does not.",
+      "retention_judgment": "Non-retention string; standalone sentence verified.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "plural_select": [],
+      "length_chars": 40,
+      "length_source_chars": 37
+    }
+  ],
+  "consistency_only_notes": {
+    "keys_checked": 159,
+    "checks": "file parses as JSON (179 keys); fr key set equals en key set; no key removed; no pre-existing value changed against git show 0e12072d2b3:src/i18n/catalogues/fr/ui.library.json; placeholder parity holds for every key in the file; every plural key carries exactly fr's CLDR categories one/many/other and covers English's, with no 'few' anywhere.",
+    "not_certified": "The 159 legacy values of ui.library are not recertified by this audit; only their structural parity was verified."
+  },
+  "mechanical": {
+    "validator_commands_run": [
+      "node scripts/i18n/generate.mjs --check -> src/i18n/keys.gen.ts is byte-identical to a fresh generation. exit 0",
+      "node scripts/i18n/check-duplicates.mjs -> check-duplicates: ok — 1419 file(s) scanned, 0 duplicate key(s). exit 0",
+      "node scripts/i18n/context-parity.mjs -> context-parity: ok — every English key is covered, apart from 129 allowed gap(s) in 4 namespace(s) (shrink-only; i18n/context-allowance.json). exit 0",
+      "node scripts/i18n/ledger-check.mjs -> FAILED — 21 finding(s) across 1099 ledger entr(ies). exit 1. Three concern fr/ui.library and are the expected pre-audit state of this PR's delta: stale source_sha256 (ledger f573e43a8f34…, file 065ac47c67e2…), stale target_sha256 (ledger 3ee78cfc3e1f…, file 5b2b439c0837…) and 'auditor 1: the receipt does not name the English source bytes on disk'. The same three findings repeat for es/hi/ru/ur/vi/zh-CN (7 locales x 3 = 21); this auditor writes no ledger and that row belongs to the manager's ledger write.",
+      "python3 fr-ds-7c6a1a31a0fb-check.py -> 28/28 checks passed, exit 0 (output captured in fr-ds-7c6a1a31a0fb-check.out). One assertion was written too strictly on the first run (it demanded ICU categories identical to English for the legacy plural keys) and was corrected to the locale-aware rule — fr must add 'many', so identical-to-English is the wrong test; the corrected assertion passes and the correction is recorded in the log rather than hidden."
+    ],
+    "json_valid": true,
+    "key_sets_identical_to_english": true,
+    "keys_added_or_removed_in_this_delta": "20 added (the audited set), none removed; one line re-emitted with a trailing comma, value byte-identical",
+    "placeholder_parity": true,
+    "icu_plural_select_needed_for_new_keys": false,
+    "invisible_or_bidi_characters_in_new_values": "none",
+    "hash_binding": "3/3 expected sha256 entries match; 0 mismatches"
+  },
+  "unverified": [
+    "No rendered-frame, Electron/React run, screenshot or measured pixel fit: this brief forbids builds, servers and test trees. Fit judgments are the sidecar's char hints against measured value lengths, not rendered geometry.",
+    "No production ICU formatter run and no runtime locale switch: the 20 new values carry no ICU syntax at all, so the plural/select question is N/A for them; the legacy plural keys were checked structurally, not rendered.",
+    "The 159 legacy keys of ui.library were not certified — only JSON validity, key-set parity, no-removal/no-change and cross-file term consistency.",
+    "No ledger write, tracked evidence retention, PR comment or commit: writes were limited to this session's scratchpad. Retaining the artifacts under i18n/audits/evidence/fr/ui.library/<audit-id>/ and recording the row with the repo's audit-ledger command is the manager's step.",
+    "The named schema model ~/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/fr-ds-e3c562b03258.json does not exist on disk (that directory holds only es-ds/es-sol receipts). The field set was mirrored from the same wave's fr-ds receipts at _s12-audits/b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a/fr-ds-491f3795f0ee.{json,record.json}. Nothing was invented from memory."
+  ],
+  "receipt_contract_review": "Field sets mirror the fr-ds receipts in ~/local-operator-ui/.worktrees/_s12-audits/b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a (fr-ds-491f3795f0ee.json/.record.json) because the path named in the brief, _s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/fr-ds-e3c562b03258.json, is absent from disk. Root fields plus a `namespaces` object with exactly ONE ui.library block (status, result, source_sha256, target_sha256, input_hashes, fully_audited_keys, findings). Extra fields (base_sha, concern_verdicts, consistency_only_notes, per_key_checks.retention_judgment) are additive and carry no verdict weight. Every JSON file was re-parsed with python json.load after writing. No repository file was written, no schema validator was run.",
+  "audit_notes_not_execution_log": false,
+  "execution_log": "fr-ds-7c6a1a31a0fb.audit.log",
+  "artifacts": [
+    {
+      "path": "fr-ds-7c6a1a31a0fb.audit.log",
+      "sha256": "5b006f241141c88f495e31913a6153d210341bca0aab505747262ed402a4b429",
+      "kind": "actual_execution_log",
+      "record_reference": "record.json"
+    },
+    {
+      "path": "fr-ds-7c6a1a31a0fb-check.py",
+      "sha256": "6b939b404331d6075ccc80a3acd0df0f3f35edf0ca57a48488c85e3299e23dae",
+      "kind": "executed_check_source",
+      "record_reference": "record.json"
+    },
+    {
+      "path": "fr-ds-7c6a1a31a0fb-check.out",
+      "sha256": "f94463e765c51b36fec5f5d96d03a781d7e32521773ce14882d8ce5ae05c8d05",
+      "kind": "actual_execution_output",
+      "record_reference": "record.json"
+    }
+  ],
+  "retention": {
+    "state": "scratch_handoff_only_per_explicit_read_only_task",
+    "intended_tracked_directory": "i18n/audits/evidence/fr/ui.library/s14-fr-ds-7c6a1a31a0fb",
+    "manager_action_required": "Retain this receipt plus its record.json and audit.log (and, optionally, the check script/output) under the canonical evidence root, then record the ledger row with the repo's audit-ledger command. scripts/i18n/ledger-check.mjs currently reports stale source/target hashes for fr/ui.library, which that write clears.",
+    "proposed_note": "passed; 20 new ui.library kind/tag_category values audited, 1 minor (tag_category.type 'Type' shares the legacy sort.kind 'Type'); fr/ui.library 5b2b439c0837; record i18n/audits/evidence/fr/ui.library/s14-fr-ds-7c6a1a31a0fb/record.json"
+  }
+}
