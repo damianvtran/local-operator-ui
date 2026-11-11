@@ -491,7 +491,7 @@
 		"role": "Shortcut settings row label",
 		"tone": "Concise mode noun.",
 		"length": "One shortcut row label; keep compact.",
-		"note": "The Sending group row that sends as both: waits like queue, then interrupts like steer if the message has waited too long. Matches the mode word the busy-delivery setting uses."
+		"note": "The Sending group row that sends as queue, then steer: waits like queue, then steers like steer if the message has waited too long. Matches the mode words the busy-delivery setting uses."
 	},
 	"ui.settings.shortcuts.action.send_queue": {
 		"role": "Shortcut settings row label",
@@ -569,7 +569,7 @@
 		"role": "Shortcut row help",
 		"tone": "Short explanatory sentence, sentence case.",
 		"length": "One short sentence.",
-		"note": "Sits under the Send as both row: what the key does and that it overrides Delivery when busy.",
+		"note": "Sits under the Send as queue, then steer row: what the key does and that it overrides Delivery when busy.",
 		"placeholders": {}
 	}
 }

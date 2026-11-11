@@ -4755,6 +4755,11 @@ export type MessageParams = {
 	"ui.chat.canonical.tool_row.outcome.succeeded": undefined;
 	"ui.chat.canonical.tool_row.pending": undefined;
 	"ui.chat.canonical.transcript.answer_may_be_missing": undefined;
+	"ui.chat.canonical.transcript.busy_wait.both": undefined;
+	"ui.chat.canonical.transcript.busy_wait.deferred": undefined;
+	"ui.chat.canonical.transcript.busy_wait.joined": undefined;
+	"ui.chat.canonical.transcript.busy_wait.queue": undefined;
+	"ui.chat.canonical.transcript.busy_wait.steer": undefined;
 	"ui.chat.canonical.transcript.connect_provider": undefined;
 	"ui.chat.canonical.transcript.credential_lost": undefined;
 	"ui.chat.canonical.transcript.earlier_text_offscreen": undefined;

@@ -1857,5 +1857,35 @@
 		"placeholders": {
 			"name": "file basename or URL; insert verbatim"
 		}
+	},
+	"ui.chat.canonical.transcript.busy_wait.steer": {
+		"role": "muted status line under the reader's own message while it waits for the running turn",
+		"tone": "plain state sentence, sentence case, em dash before the consequence, no trailing punctuation",
+		"length": "One short line.",
+		"note": "A line under the reader's message while it waits in the running turn's steering queue: sending it stops the running step, and may stop a tool that is mid-call."
+	},
+	"ui.chat.canonical.transcript.busy_wait.queue": {
+		"role": "muted status line under the reader's own message while it waits for the running turn",
+		"tone": "plain state sentence, sentence case, em dash before the consequence, no trailing punctuation",
+		"length": "One short line.",
+		"note": "A line under the reader's message while it waits for the running step to finish; no running tool is interrupted."
+	},
+	"ui.chat.canonical.transcript.busy_wait.both": {
+		"role": "muted status line under the reader's own message while it waits for the running turn",
+		"tone": "plain state sentence, sentence case, em dash before the consequence, no trailing punctuation",
+		"length": "One short line.",
+		"note": "A line under the reader's message while it waits: queued like queue, and it steers like steer if the step runs too long."
+	},
+	"ui.chat.canonical.transcript.busy_wait.joined": {
+		"role": "muted status line under the reader's own message while it waits for the running turn",
+		"tone": "plain state sentence, sentence case, em dash before the consequence, no trailing punctuation",
+		"length": "One short line.",
+		"note": "The queue or queue-then-steer row's line once a steer is waiting too: this message goes out together with that steer."
+	},
+	"ui.chat.canonical.transcript.busy_wait.deferred": {
+		"role": "muted status line under the reader's own message while it waits for the running turn",
+		"tone": "plain state sentence, sentence case, em dash before the consequence, no trailing punctuation",
+		"length": "One short line.",
+		"note": "The line for a message still waiting after the turn ended: it goes out with the reader's next message."
 	}
 }

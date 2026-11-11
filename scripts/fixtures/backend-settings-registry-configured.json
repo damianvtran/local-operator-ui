@@ -3008,8 +3008,8 @@
 				},
 				{
 					"value": "both",
-					"label": "both",
-					"description": "Wait, then interrupt if slow"
+					"label": "queue, then steer",
+					"description": "Wait, then steer if slow"
 				}
 			],
 			"empty_unsets": false,
@@ -3243,9 +3243,9 @@
 		{
 			"key": "keymap.send_both",
 			"section": "keymap",
-			"label": "Send as both",
+			"label": "Send as queue, then steer",
 			"kind": "hotkey",
-			"help": "Wait, then interrupt if slow. Overrides Delivery when busy.",
+			"help": "Wait, then steer if slow. Overrides Delivery when busy.",
 			"value": "",
 			"default": "",
 			"is_default": true,

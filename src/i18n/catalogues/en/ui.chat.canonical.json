@@ -257,5 +257,10 @@
 	"ui.chat.canonical.notice.stopped_with_error": "Stopped with an error",
 	"ui.chat.canonical.notice.compaction_not_run": "Compaction did not run: {detail}",
 	"ui.chat.canonical.notice.compaction_not_run_after_colon": "Compaction did not run — {detail}",
-	"ui.chat.canonical.link_toolkit.actions_for": "Actions for {name}"
+	"ui.chat.canonical.link_toolkit.actions_for": "Actions for {name}",
+	"ui.chat.canonical.transcript.busy_wait.steer": "Steering — may stop a running tool",
+	"ui.chat.canonical.transcript.busy_wait.queue": "Queued — waits, tools keep running",
+	"ui.chat.canonical.transcript.busy_wait.both": "Queued — waits, then steers if slow",
+	"ui.chat.canonical.transcript.busy_wait.joined": "Steering — goes out with your steer",
+	"ui.chat.canonical.transcript.busy_wait.deferred": "Still queued — sends with that next message"
 }
