@@ -1,0 +1,50 @@
+{
+  "locale": "vi",
+  "namespace": "ui.library",
+  "date": "2026-11-11",
+  "slice": "P7",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "db2300288a4e",
+    "session": "db2300288a4e",
+    "model": "deepseek/deepseek-flash",
+    "independent_from_translator_session": true,
+    "actual_model_source": "as stated in the auditor's own report (companion report); no fallback reported"
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "per delegation and the candidate file model field; translator session id not supplied"
+  },
+  "keys": [
+    "ui.library.preview.organized_by_agent",
+    "ui.library.preview.organized_by_librarian",
+    "ui.library.preview.organized_by_system",
+    "ui.library.preview.organized_by_user",
+    "ui.library.preview.organized_unattributed"
+  ],
+  "english_sha256": "39d053e0e00464bc6166a022d6718ac6dbe19bfb5ff2db9497d1ae06a78f4444",
+  "target_sha256": "b6ee97c14d9dabac3ce455c679e44395cf8d235f520c9159661b81999b8e2517",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "severity": "NIT",
+      "id": "N1",
+      "key": "ui.library.preview.organized_by_system",
+      "detail": "see the auditor report in this bundle (finding id and text live there)"
+    },
+    {
+      "severity": "NIT",
+      "id": "N2",
+      "key": "ui.library.preview.organized_by_agent",
+      "detail": "see the auditor report in this bundle (finding id and text live there)"
+    }
+  ],
+  "artifacts": {
+    "receipt.json": "146adc4589697e990a621c395fdc437ca45c78eb3c043393c6421df619a20f38",
+    "report.md": "93beb9721238ceb8c3df799c0db6df867c8a75d51bd703d434b4fa40461970a5",
+    "verify.log": "875417adde283dbb278888c739bd411500be8804a2f487f6b2038c3c44648efe"
+  },
+  "note": "record.json written by the integrating coder; verify.log is the coder re-check, not an auditor log."
+}

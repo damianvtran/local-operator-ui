@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "instance": "47c96c4bfbc3",
+  "round": 1,
+  "locale": "ru",
+  "audit_date": "2026-11-11",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "47c96c4bfbc3",
+    "session": "47c96c4bfbc3",
+    "model": "openai/gpt-6.1-sol",
+    "independent_from_translator_session": true,
+    "actual_model_source": "as stated in the auditor's own report (companion report); no fallback reported"
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "per delegation and the candidate file model field; translator session id not supplied"
+  },
+  "scope": "P7: 5 ui.library keys (ui.library.preview.organized_by_{user,librarian,agent,system}, organized_unattributed) + 1 ui.chat key (ui.chat.audio.position_value); 6 keys",
+  "namespaces": {
+    "ui.library": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "39d053e0e00464bc6166a022d6718ac6dbe19bfb5ff2db9497d1ae06a78f4444",
+      "target_sha256": "fdfda5bc8bd1b801880b9d023d331a638f09919c7a6325dc5ae4226c59b5acdc",
+      "keys_audited": [
+        "ui.library.preview.organized_by_agent",
+        "ui.library.preview.organized_by_librarian",
+        "ui.library.preview.organized_by_system",
+        "ui.library.preview.organized_by_user",
+        "ui.library.preview.organized_unattributed"
+      ],
+      "findings": []
+    },
+    "ui.chat": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "8cf1373e329eca7cede84886de8bf7f6323c81f1415abc5bd6f003a8f110ef70",
+      "target_sha256": "3a93c148eef0bebef42fb4af439f91a1f20ea8a84abd6ed3ae07d9f3c93fe7e1",
+      "keys_audited": [
+        "ui.chat.audio.position_value"
+      ],
+      "findings": []
+    }
+  },
+  "provenance": {
+    "kind": "BINDING RECEIPT: verdict, counts, model and session are transcribed from the auditor's own report; this file was written by the integrating coder session 5d012271c412 (agent coder, anthropic/claude-sonnet-5-5), NOT by the auditor. The auditor judged the six candidate values in _p7-prep/<locale>.json against English/context from origin/main 3e48d8a, never the landed whole files; the whole-file hashes above were computed from the landed catalogue bytes after verify.log proved the six landed values, English values and context sidecars equal what was audited. Single independent auditor for this locale.",
+    "source_report": [
+      {
+        "file": "p7-au-ru-round1.md",
+        "sha256": "fa7d21fea33fcfd09d49df288e770b62e327e063ffaf6d534f19291b057fa7f1"
+      }
+    ]
+  }
+}
