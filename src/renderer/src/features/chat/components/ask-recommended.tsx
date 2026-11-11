@@ -85,6 +85,48 @@ export function recommendedIndex(
 }
 
 /**
+ * Every recommended row, as a set of row indexes - `recommendedIndex`'s
+ * validation applied to a LIST, for a multi-select ask that recommends several
+ * options (`PendingAskQuestion.recommended_all`).
+ *
+ * The wire carries BOTH keys: `recommended` is the first recommended row
+ * (always 0 when present) and `recommended_all` is `[0..k-1]`, present only when
+ * k >= 2. A backend that predates the set sends `recommended` alone, and that
+ * must still badge exactly one row, so the set falls back to
+ * `[recommended]` whenever `recommended_all` is not a usable list.
+ *
+ * VALIDATED, NEVER CLAMPED, per entry: an entry that is not a non-negative
+ * integer below `count` is dropped, and the rest still mark their rows. A clamp
+ * would badge a row the model never recommended. If NO entry survives (a
+ * malformed list), the answer is the single-index reading rather than nothing:
+ * `recommended` is by contract the first member of the set, so it is the one row
+ * that is still known to be recommended.
+ *
+ * This marks rows only. It never seeds the draft: nothing is pre-ticked, and
+ * the user ticks the recommended rows themselves.
+ */
+export function recommendedIndexes(
+	recommended: unknown,
+	recommendedAll: unknown,
+	count: number,
+): Set<number> {
+	if (Array.isArray(recommendedAll)) {
+		const rows = new Set<number>();
+		for (const entry of recommendedAll) {
+			const row = recommendedIndex(entry, count);
+			if (row !== null) {
+				rows.add(row);
+			}
+		}
+		if (rows.size > 0) {
+			return rows;
+		}
+	}
+	const single = recommendedIndex(recommended, count);
+	return single === null ? new Set() : new Set([single]);
+}
+
+/**
  * The glyph, in its own element so it is never read aloud: a screen reader
  * hears "Recommended" once, from the word beside it, rather than a punctuation
  * name plus the word.

@@ -78,5 +78,11 @@
 	"ui.chat.sidebar.catalogue.show_more_agents": "{count, plural, one {مزید {count, number, ::group-off} ایجنٹ دکھائیں} other {مزید {count, number, ::group-off} ایجنٹس دکھائیں}}",
 	"ui.chat.sidebar.catalogue.show_more_teams": "{count, plural, one {مزید {count, number, ::group-off} ٹیم دکھائیں} other {مزید {count, number, ::group-off} ٹیمیں دکھائیں}}",
 	"ui.chat.sidebar.drafts.row_label": "مسودہ: {title}",
-	"ui.chat.sidebar.drafts.discard_label": "مسودہ “{title}” رد کریں"
+	"ui.chat.sidebar.drafts.discard_label": "مسودہ “{title}” رد کریں",
+	"ui.chat.sidebar.mark_all_read.label": "سب {count, number, ::group-off} پڑھا ہوا نشان زد کریں",
+	"ui.chat.sidebar.mark_all_read.scope_chats": "{count, plural, one {{count, number, ::group-off} نہ پڑھی گئی چیٹ کو پڑھا ہوا نشان زد کریں۔} other {{count, number, ::group-off} نہ پڑھی گئی چیٹس کو پڑھا ہوا نشان زد کریں۔}}",
+	"ui.chat.sidebar.mark_all_read.scope_chats_elsewhere": "{count, plural, one {{count, number, ::group-off} نہ پڑھی گئی چیٹ کو پڑھا ہوا نشان زد کریں} other {{count, number, ::group-off} نہ پڑھی گئی چیٹس کو پڑھا ہوا نشان زد کریں}}، {elsewhere, plural, one {بشمول {elsewhere, number, ::group-off} غیر فعال چیٹ} other {بشمول {elsewhere, number, ::group-off} غیر فعال چیٹس}}۔",
+	"ui.chat.sidebar.mark_all_read.scope_tokenless": "{count, plural, one {تکمیل کی رسید کے بغیر {count, number, ::group-off} نہ پڑھا گیا نشان صاف نہیں کیا جا سکتا۔} other {تکمیل کی رسید کے بغیر {count, number, ::group-off} نہ پڑھے گئے نشان صاف نہیں کیے جا سکتے۔}}",
+	"ui.chat.sidebar.mark_all_read.scope_joined": "{chats} {tokenless}",
+	"ui.chat.sidebar.mark_all_read.name_suffix_elsewhere": "، {elsewhere, plural, one {بشمول {elsewhere, number, ::group-off} غیر فعال چیٹ} other {بشمول {elsewhere, number, ::group-off} غیر فعال چیٹس}}"
 }

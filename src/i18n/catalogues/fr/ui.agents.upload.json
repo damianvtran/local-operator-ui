@@ -29,7 +29,7 @@
 	"ui.agents.upload.sign_in.needed": "Connectez-vous à Radient pour publier des agents sur le hub des agents.",
 	"ui.agents.upload.sign_in.nothing_left": "Rien d’autre n’a quitté cette machine : aucune conversation, aucun historique d’exécution, aucune mémoire, aucun plan et aucune configuration propre à cette machine.",
 	"ui.agents.upload.sign_in.reauthenticate": "Reconnectez-vous à Radient pour remplacer l’identifiant refusé par le hub.",
-	"ui.agents.upload.target.blocked_hint": "Le partage d’agents au sein d’une organisation fait partie de l’offre Team. Un propriétaire de {count, plural, one {{org}} many {l’une des organisations indiquées ci-dessus} other {l’une des organisations indiquées ci-dessus}} peut l’activer dans la console Radient.",
+	"ui.agents.upload.target.blocked_hint": "Le partage d’agents au sein d’une organisation fait partie de l’offre Radient Team. Un propriétaire de {count, plural, one {{org}} many {l’une des organisations indiquées ci-dessus} other {l’une des organisations indiquées ci-dessus}} peut l’activer dans la console Radient.",
 	"ui.agents.upload.target.label": "Publier vers",
 	"ui.agents.upload.target.org_unnamed": "cette organisation",
 	"ui.agents.upload.target.orgs_unread": "Vos organisations n’ont pas pu être lues ; la publication se fera donc vers le hub public. Réessayez dans un instant pour publier vers une organisation.",

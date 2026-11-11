@@ -1,0 +1,226 @@
+{
+  "locale": "vi",
+  "mode": "Fresh independent four-key delta audit across three namespaces; 4 keys fully audited, 267 namespace keys checked for consistency only. Read-only worktree at the frozen head; no repository file written, no build/install/server, no translation or MT service used. Glossary conformance checked against the manager-owned byte-copy (_s12-audits/<head>/glossary.md, sha256 0eb34437…, byte-identical to ~/local-operator/i18n/glossary.md). Allocation: fix (<2h), bounded audit only.",
+  "scope": "PR #1842 @ e5fb4310dab638f9cf428779d62539ec039a8990; origin/main..HEAD, vi only: ui.chat.composer_media.pasted_image, ui.chat.image_actions.actions, ui.chat.audio.position_label, ui.common.actions.actions_for_name — four added keys, no key removed, renamed or edited (git diff: additions only, in en and vi alike). Also checked the broadened pasted_file context sentence and the three new English context notes against get-file-name.ts, attachment-encode.ts, image-actions-menu.tsx, sound-player.tsx, supplement-file-actions.tsx, canonical-audio.tsx. Legacy values in these three namespaces are consistency_only: file parses, key set equals English, nothing changed versus origin/main — NOT certified by this audit.",
+  "head_sha": "e5fb4310dab638f9cf428779d62539ec039a8990",
+  "audit_date": "2026-11-10",
+  "key_count": 271,
+  "key_count_breakdown": {
+    "fully_audited": 4,
+    "consistency_only": 267,
+    "per_namespace": {
+      "ui.chat": 208,
+      "ui.chat.composer_media": 9,
+      "ui.common.actions": 54
+    },
+    "note": "271 = every catalogue key present in the three vi namespaces, mirroring the reference receipt's semantics (its key_count 86 = 1 new + 85 legacy). Full per-key judgement covers only the 4 delta keys."
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "session": "f573f85d7297",
+    "source": "Translator identity supplied by the delegation; values supplied verbatim. This auditor did not translate, did not read the translator's session directory, and has no shared state with it."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "1737237b812f",
+    "session": "1737237b812f",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "Served session header names deepseek/deepseek-flash for session 1737237b812f; no other model identity and no fallback notice was supplied to this session, so no fallback is recorded.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "status": "passed",
+  "result": "clean",
+  "verdict": "clean",
+  "findings": [],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15",
+      "target_sha256": "28aefec39d49f6c7cbaa05f15e40383a8e6f38761369f0068d90434dc9511445",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.json",
+          "sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15"
+        },
+        "vi": {
+          "path": "src/i18n/catalogues/vi/ui.chat.json",
+          "sha256": "28aefec39d49f6c7cbaa05f15e40383a8e6f38761369f0068d90434dc9511445"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.context.json",
+          "sha256": "84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf"
+        }
+      },
+      "findings": []
+    },
+    "ui.chat.composer_media": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae",
+      "target_sha256": "8b458ffc96e9b6605c0924b2fdee952998ceed1d27fbd9ab23a6f5a5389445a6",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.json",
+          "sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae"
+        },
+        "vi": {
+          "path": "src/i18n/catalogues/vi/ui.chat.composer_media.json",
+          "sha256": "8b458ffc96e9b6605c0924b2fdee952998ceed1d27fbd9ab23a6f5a5389445a6"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.context.json",
+          "sha256": "a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b"
+        }
+      },
+      "findings": []
+    },
+    "ui.common.actions": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b",
+      "target_sha256": "d89b7dacc9c49f715685e2e6fa0cf04ebd75dee37eb5496c21f73bb00124d4ad",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.json",
+          "sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b"
+        },
+        "vi": {
+          "path": "src/i18n/catalogues/vi/ui.common.actions.json",
+          "sha256": "d89b7dacc9c49f715685e2e6fa0cf04ebd75dee37eb5496c21f73bb00124d4ad"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+          "sha256": "24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d"
+        }
+      },
+      "findings": []
+    }
+  },
+  "policy_inputs": {
+    "style_guide_vi": {
+      "path": "~/local-operator/i18n/style-guides/vi.md",
+      "sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888"
+    },
+    "glossary_byte_copy_checked": {
+      "path": "~/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "lines": 173,
+      "identical_to": "~/local-operator/i18n/glossary.md",
+      "verified_with": "shasum -a 256 + diff -q (byte-identical)"
+    },
+    "glossary_upstream": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "glossary_conformance": "Checked against the manager byte-copy: placeholders preserved byte-exactly and not renamed (§3 placeholders); formality 'bạn' with no pronoun needed (guide §Formality, glossary §3 formality row); sentence case, no '!', no trailing punctuation, no 'Vui lòng'; no kept-English or product-name token occurs in the four values; NFC orthography. No glossary §2 term occurs in these values, so no preferred rendering could conflict."
+  },
+  "per_key_checks": [
+    {
+      "key": "ui.chat.composer_media.pasted_image",
+      "source": "Pasted image",
+      "current_text": "Ảnh đã dán",
+      "findings": [],
+      "assessment": "Fallback filename and short caption for an image data URI with no usable encoded name. Exactly parallel to the existing pasted_file 'Tệp đã dán' and pasted_type 'Đã dán {mimeType}'; no extension, no MIME prose, no placeholder, as the sidecar requires. 'Ảnh' is the catalogue's compact-attachment word (ui.canvas.files.attachmentImage 'Ảnh đính kèm', ui.agents.avatar 'Ảnh đại diện'), while 'Hình ảnh' is used for the category label (ui.canvas.files.images), so the short form is the right register and the longer one would break the pasted_file parallel. Meaning and polarity preserved.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "typography": "NFC precomposed (Ả U+1EA2); no invisible/bidi characters; no maxCells hint.",
+      "call_site": "getFileName() data:image/ branch; FileAttachment caption title (file-attachment.tsx)."
+    },
+    {
+      "key": "ui.chat.image_actions.actions",
+      "source": "Image actions",
+      "current_text": "Thao tác với ảnh",
+      "findings": [],
+      "assessment": "Byte-identical to the existing ui.canvas.files.imageActions 'Thao tác với ảnh' and structurally parallel to ui.common.actions.file_actions_menu.file_actions 'Thao tác với tệp' for the unnamed file case — the exact pairing the code now uses (ImageActionsMenu unnamed fallback vs FileActionsMenu unnamed fallback). Used as the menu's default tooltip and as the accessible name when no label is supplied, as the sidecar describes; caller overrides are untouched in code.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "typography": "NFC; no invisible/bidi characters; no trailing punctuation; no maxCells hint.",
+      "call_site": "image-actions-menu.tsx tooltip default + aria-label fallback for label == null."
+    },
+    {
+      "key": "ui.chat.audio.position_label",
+      "source": "{label} position",
+      "current_text": "Vị trí phát của {label}",
+      "findings": [],
+      "assessment": "Names the seek slider's playback position for that clip, not a play/pause action, as the sidecar requires. 'Vị trí phát' is the catalogue's established term (ui.chat.attachments.playback_position 'Vị trí phát'), so no new vocabulary is coined. Word order {label}-last is explicitly permitted by the sidecar ('Word order may change around {label}'); 'của' is required here because 'vị trí phát' is a noun phrase, and it does not inflect or agree with the inserted label, so arbitrary filenames, Latin or CJK names and names with quotes/punctuation all stay grammatical. Two simultaneous clips stay distinguished because the label is retained.",
+      "placeholder_integrity": {
+        "arguments": [
+          [
+            "label",
+            "string"
+          ]
+        ],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "typography": "NFC; no invisible/bidi characters; single plain {label}; no maxCells hint.",
+      "call_site": "sound-player.tsx sliderLabel -> aria-label of the seek slider; label is a required string prop."
+    },
+    {
+      "key": "ui.common.actions.actions_for_name",
+      "source": "Actions for {name}",
+      "current_text": "Thao tác với {name}",
+      "findings": [],
+      "assessment": "Byte-identical to the existing ui.chat.canonical.link_toolkit.actions_for 'Thao tác với {name}', i.e. the same English shape already rendered this way in this locale; also parallel to file_actions 'Thao tác với tệp' and image_actions.actions 'Thao tác với ảnh', which are the two unnamed fallbacks beside it. 'với' takes the bare name with no classifier, case, gender or number agreement, so any user filename — Latin, CJK, quoted, punctuated — reads correctly; {name} is inserted verbatim with no added extension, matching the sidecar. Not a command ('Thao tác' is the long-standing action noun used by both menus).",
+      "placeholder_integrity": {
+        "arguments": [
+          [
+            "name",
+            "string"
+          ]
+        ],
+        "matches_english": true,
+        "number_skeleton": null
+      },
+      "typography": "NFC; no invisible/bidi characters; single plain {name}; no maxCells hint.",
+      "call_site": "supplement-file-actions.tsx aria-label when label is truthy; image-actions-menu.tsx aria-label when label != null."
+    }
+  ],
+  "remediation_verification": {
+    "status": "Fresh delta audit of four added keys; no prior findings to remediate.",
+    "prior_findings": [],
+    "policy_sources": [
+      "~/local-operator/i18n/style-guides/vi.md",
+      "~/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md (manager byte-copy)",
+      "~/local-operator/i18n/glossary.md"
+    ],
+    "executed_checks": [
+      "shasum -a 256 of the 9 en/vi/context inputs vs expected-hashes.json — all 9 match.",
+      "node scripts/i18n/check-duplicates.mjs — ok, 1400 files, 0 duplicate keys.",
+      "node scripts/i18n/context-parity.mjs — ok (131 allowed shrink-only gaps).",
+      "node scripts/i18n/generate.mjs --check — keys.gen.ts byte-identical.",
+      "node scripts/i18n/ledger-check.mjs — exit 1, 64 stale-class findings across all seven locales (expected before the evidence commit; no vi key defect).",
+      "python3 vi-ds-1737237b812f-checks.py — JSON parse, key-set parity (208/9/54), additions-only diff, placeholder/brace/ICU checks, invisible-character scan, NFC, width: 0 mechanical failures."
+    ],
+    "typography_fit": "No NBSP, narrow NBSP, ZWSP/ZWNJ/ZWJ, bidi control or soft hyphen in any of the four values; ASCII spaces only; NFC precomposed Vietnamese diacritics; no trailing punctuation; sentence case. No maxCells/maxChars hint on any of the four keys, so only sanity width (10/16/23/19 characters before the inserted user string) applies.",
+    "context_metadata_check": "The broadened pasted_file sidecar sentence is accurate against get-file-name.ts (non-image data URIs, no usable name, invalid percent encoding, MIME presence irrelevant) and attachment-encode.ts (the value becomes upload/file metadata via {kind:'dataUrl', dataUrl, name} and stored.name ?? name, while valid decoded names and the original dataUrl bytes pass untouched). The three new accessor notes match their call sites. A pre-existing, unchanged edge (an upper-case DATA:IMAGE/ scheme falls to pasted_file) does not falsify the sentence.",
+    "out_of_scope_pre_existing": [
+      "Legacy vi values in the three namespaces were not re-certified (consistency_only).",
+      "Pre-existing mixed 'Thao tác cho {name}' vs 'Thao tác với {name}' legacy phrasing across other namespaces is untouched by this PR and not gated here."
+    ]
+  },
+  "unverified": [
+    "MessageFormat/Intl runtime rendering of {label}/{name} was not exercised (no build, no production formatter run); placeholder integrity is a static comparison.",
+    "No browser, rendered frame, screen-reader or pixel/width measurement: no AT or visual proof is claimed. Character counts only.",
+    "No ledger write, no tracked evidence file, no PR comment, no commit: this is a read-only audit; the record and companions in this directory are scratch handoff for the manager.",
+    "The translator's session (f573f85d7297) was not readable from here by design; independence rests on this being a fresh session that took no part in translation."
+  ],
+  "receipt_contract_review": "Root, namespace, auditor, translator and per-key field sets mirror the reference receipt _s10-audits/fd09d8f/fr-sol-e23a48ff2216.json, with one namespace block per namespace as the four-key/three-namespace task requires. Additions: policy_inputs (to record the manager-owned glossary byte-copy) and key_count_breakdown (to make the 4 vs 271 split explicit). JSON re-parsed with python3 for validity.",
+  "audit_notes_not_execution_log": true,
+  "execution_log": "vi-ds-1737237b812f.audit.log"
+}

@@ -92,7 +92,7 @@
 	"ui.agents.publication.subject.unknown": "وہ ایجنٹ",
 	"ui.agents.publication.team_not_found.body": "ممکن ہے یہ صفحہ کھلنے کے بعد اسے ہب سے ہٹا دیا گیا ہو۔",
 	"ui.agents.publication.team_not_found.headline": "وہ ٹیم اب شائع نہیں",
-	"ui.agents.publication.team_plan_required.body": "تنظیم کے اندر ایجنٹس کا اشتراک Team پلان کا حصہ ہے۔ تنظیم کے مالک سے کہیں کہ وہ اسے Radient کنسول میں فعال کریں، پھر دوبارہ شائع کریں۔",
-	"ui.agents.publication.team_plan_required.body_pull": "تنظیم کی ٹیمیں پڑھنا Team پلان کا حصہ ہے۔ تنظیم کے مالک سے کہیں کہ وہ اسے Radient کنسول میں فعال کریں، پھر دوبارہ pull کریں۔",
-	"ui.agents.publication.team_plan_required.headline": "اس تنظیم کے لیے فعال Team پلان درکار ہے"
+	"ui.agents.publication.team_plan_required.body": "تنظیم کے اندر ایجنٹس کا اشتراک Radient Team پلان کا حصہ ہے۔ تنظیم کے مالک سے کہیں کہ وہ اسے Radient کنسول میں فعال کریں، پھر دوبارہ شائع کریں۔",
+	"ui.agents.publication.team_plan_required.body_pull": "تنظیم کی ٹیمیں پڑھنا Radient Team پلان کا حصہ ہے۔ تنظیم کے مالک سے کہیں کہ وہ اسے Radient کنسول میں فعال کریں، پھر دوبارہ pull کریں۔",
+	"ui.agents.publication.team_plan_required.headline": "اس تنظیم کے لیے فعال Radient Team پلان درکار ہے"
 }

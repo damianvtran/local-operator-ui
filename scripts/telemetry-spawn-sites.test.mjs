@@ -292,6 +292,14 @@ function exempt(file, name, index, why, site, noEnv) {
 
 const APP_SPAWN_SITES = [
 	guarded(
+		"scripts/extension-native-proof.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"The isolated extension-manager proof must not report a product user.",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
 		"scripts/browser-focus-stability-proof.mjs",
 		"spawn",
 		2,
@@ -554,6 +562,13 @@ const APP_SPAWN_SITES = [
 		/(?:\{|,)\s*env\s*,/,
 		"boots the BUILT app headless on a scratch profile to photograph the notifications group headers and read-state switch at the user's glass setting, so the renderer's provider is live in it and would report an evidence run as a product session",
 		/withTelemetryOff\(env\);/,
+	),
+	exempt(
+		"scripts/extension-native-proof.mjs",
+		"execFileSync",
+		1,
+		"asks the Electron binary for its Chromium version so the store serves a compatible CRX: `ELECTRON_RUN_AS_NODE=1` with `-p` makes Electron a plain Node interpreter that evaluates one expression and exits - the app main is never loaded, so neither `posthog-node` nor the renderer's provider exists in it. The app boot in this rig is `spawn #1`, guarded above",
+		/ELECTRON_RUN_AS_NODE:\s*"1"/,
 	),
 	exempt(
 		"scripts/session-cookie-electron.test.mjs",

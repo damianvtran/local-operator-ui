@@ -1,0 +1,411 @@
+{
+  "locale": "ru",
+  "mode": "Fresh independent delta audit of the four keys this PR adds for ru (its whole translated delta for this locale); the other 267 keys of the three namespaces were read only for terminology/consistency and are NOT certified. Read-only worktree: no repository file written, no build, install or server, no translation/MT service. Allocation: fix (<2h), bounded audit.",
+  "scope": "PR damianvtran/local-operator-ui #1842 @ e5fb4310dab638f9cf428779d62539ec039a8990; origin/main..HEAD adds exactly four ru values — ui.chat.composer_media.pasted_image, ui.common.actions.actions_for_name, ui.chat.image_actions.actions, ui.chat.audio.position_label — and changes no legacy value. Also in scope: the broadened English scope sentence of the ui.chat.composer_media.pasted_file context, checked against get-file-name.ts and attachment-encode.ts.",
+  "head_sha": "e5fb4310dab638f9cf428779d62539ec039a8990",
+  "audit_date": "2026-11-10",
+  "key_count": 271,
+  "fully_audited_key_count": 4,
+  "consistency_only_key_count": 267,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "session": "3b22accb1363",
+    "source": "Delegation brief: translator i18n-translator / anthropic/claude-sonnet-5-5, ru session 3b22accb1363, values supplied verbatim. This auditor did not translate, review the translation as it was made, or take any part in the change."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "bcfbdd468d00",
+    "session": "bcfbdd468d00",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "Served session header: Model: deepseek/deepseek-flash (session bcfbdd468d00). No fallback used.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "verdict": "clean-with-findings",
+  "findings": [
+    {
+      "id": "ru-1",
+      "severity": "minor",
+      "namespace": "ui.common.actions",
+      "key": "ui.common.actions.actions_for_name",
+      "current_text": "Действия для «{name}»",
+      "source_text": "Actions for {name}",
+      "problem": "The guillemets are grammatically safe and the meaning is exact, but this is the only place in the ru catalogue where the 'Actions for {name}' frame quotes the inserted name in an accessible name that receives a FILE name: six sibling values render the same frame unquoted, and the one quoted value inserts a browser page title, not a filename. It is also the one form where an empty insertion is visible: image-actions-menu.tsx:364-366 tests `label != null`, so a markdown image with empty alt text (label={alt}, markdown-image.tsx:90) reaches this key with {name} = '' and renders «» where English renders only a trailing space.",
+      "evidence": [
+        "ru ui.chat.canonical.link_toolkit.actions_for = \"Действия для {name}\" (unquoted)",
+        "ru ui.shell.sidebar_navigation.row_actions = \"Действия для {name}\" (unquoted)",
+        "ru ui.settings.integrations.integration_row.more_actions_for_name = \"Другие действия для {name}\" (unquoted)",
+        "ru ui.library.menu.asset_actions_label = \"Действия с файлом {name}\" (unquoted, file name)",
+        "ru ui.projects.project_updates.file_actions_for_name = \"Действия с файлом {name}\" (unquoted, file name, three aria-label call sites)",
+        "counter-evidence: ru ui.browser.browser_tab_strip.actions_for = \"Действия для «{title}»\" quotes a page TITLE; ru ui.common.actions.credential_updated = \"Учётные данные «{key}» успешно обновлены\" quotes a key",
+        "ru guide, Punctuation & typography: \"Quotes: «ёлочки» in prose, „лапки“ nested inside them.\" — an accessible name is product chrome, so the guide does not require the marks here",
+        "src/renderer/src/features/chat/components/image-actions-menu.tsx:364 t(\"ui.common.actions.actions_for_name\", { name: label }) under `label != null`"
+      ],
+      "recommendation": "Действия для {name}",
+      "recommendation_reason": "Matches the frame of the six existing ru values, keeps the inserted filename verbatim with no case agreement, and degrades exactly like English (a trailing space) if an empty name ever reaches it.",
+      "gating": false,
+      "note": "Declared MINOR, not MAJOR: the wording is defensible and a screen reader does not voice the marks. If the translator prefers delimiting filenames, keeping «» is acceptable; record the choice on the row rather than churning the value."
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+  },
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15",
+      "target_sha256": "52fb9cf75ad675dd672935a02c9c5e820938271af6a1dbae44ee7244055d2a2e",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.json",
+          "sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.context.json",
+          "sha256": "84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf"
+        },
+        "ru": {
+          "path": "src/i18n/catalogues/ru/ui.chat.json",
+          "sha256": "52fb9cf75ad675dd672935a02c9c5e820938271af6a1dbae44ee7244055d2a2e"
+        }
+      },
+      "audited_keys": [
+        "ui.chat.image_actions.actions",
+        "ui.chat.audio.position_label"
+      ],
+      "fully_audited_key_count": 2,
+      "consistency_only_key_count": 206,
+      "key_count": 208,
+      "findings": []
+    },
+    "ui.chat.composer_media": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae",
+      "target_sha256": "ea15ba6e13dd7b263ce92af68a80dfe8169857677df770d3d1abc3e9ef125d55",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.json",
+          "sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.context.json",
+          "sha256": "a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b"
+        },
+        "ru": {
+          "path": "src/i18n/catalogues/ru/ui.chat.composer_media.json",
+          "sha256": "ea15ba6e13dd7b263ce92af68a80dfe8169857677df770d3d1abc3e9ef125d55"
+        }
+      },
+      "audited_keys": [
+        "ui.chat.composer_media.pasted_image"
+      ],
+      "fully_audited_key_count": 1,
+      "consistency_only_key_count": 8,
+      "key_count": 9,
+      "findings": []
+    },
+    "ui.common.actions": {
+      "status": "passed",
+      "result": "clean-with-findings",
+      "source_sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b",
+      "target_sha256": "d76c6dc4da5d49007f52d9f69c6e424b81c4d2a180cdd250973f01c2354d4d98",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.json",
+          "sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+          "sha256": "24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d"
+        },
+        "ru": {
+          "path": "src/i18n/catalogues/ru/ui.common.actions.json",
+          "sha256": "d76c6dc4da5d49007f52d9f69c6e424b81c4d2a180cdd250973f01c2354d4d98"
+        }
+      },
+      "audited_keys": [
+        "ui.common.actions.actions_for_name"
+      ],
+      "fully_audited_key_count": 1,
+      "consistency_only_key_count": 53,
+      "key_count": 54,
+      "findings": [
+        {
+          "id": "ru-1",
+          "severity": "minor",
+          "namespace": "ui.common.actions",
+          "key": "ui.common.actions.actions_for_name",
+          "current_text": "Действия для «{name}»",
+          "source_text": "Actions for {name}",
+          "problem": "The guillemets are grammatically safe and the meaning is exact, but this is the only place in the ru catalogue where the 'Actions for {name}' frame quotes the inserted name in an accessible name that receives a FILE name: six sibling values render the same frame unquoted, and the one quoted value inserts a browser page title, not a filename. It is also the one form where an empty insertion is visible: image-actions-menu.tsx:364-366 tests `label != null`, so a markdown image with empty alt text (label={alt}, markdown-image.tsx:90) reaches this key with {name} = '' and renders «» where English renders only a trailing space.",
+          "evidence": [
+            "ru ui.chat.canonical.link_toolkit.actions_for = \"Действия для {name}\" (unquoted)",
+            "ru ui.shell.sidebar_navigation.row_actions = \"Действия для {name}\" (unquoted)",
+            "ru ui.settings.integrations.integration_row.more_actions_for_name = \"Другие действия для {name}\" (unquoted)",
+            "ru ui.library.menu.asset_actions_label = \"Действия с файлом {name}\" (unquoted, file name)",
+            "ru ui.projects.project_updates.file_actions_for_name = \"Действия с файлом {name}\" (unquoted, file name, three aria-label call sites)",
+            "counter-evidence: ru ui.browser.browser_tab_strip.actions_for = \"Действия для «{title}»\" quotes a page TITLE; ru ui.common.actions.credential_updated = \"Учётные данные «{key}» успешно обновлены\" quotes a key",
+            "ru guide, Punctuation & typography: \"Quotes: «ёлочки» in prose, „лапки“ nested inside them.\" — an accessible name is product chrome, so the guide does not require the marks here",
+            "src/renderer/src/features/chat/components/image-actions-menu.tsx:364 t(\"ui.common.actions.actions_for_name\", { name: label }) under `label != null`"
+          ],
+          "recommendation": "Действия для {name}",
+          "recommendation_reason": "Matches the frame of the six existing ru values, keeps the inserted filename verbatim with no case agreement, and degrades exactly like English (a trailing space) if an empty name ever reaches it.",
+          "gating": false,
+          "note": "Declared MINOR, not MAJOR: the wording is defensible and a screen reader does not voice the marks. If the translator prefers delimiting filenames, keeping «» is acceptable; record the choice on the row rather than churning the value."
+        }
+      ]
+    }
+  },
+  "per_key_checks": [
+    {
+      "key": "ui.chat.composer_media.pasted_image",
+      "source": "Pasted image",
+      "current_text": "Вставленное изображение",
+      "findings": [],
+      "assessment": "Synthetic fallback filename (get-file-name.ts returns it for a data:image/ URI with no usable name, and for one whose name fails decodeURIComponent). Nominative singular is the right case for a name; neuter agreement is correct (изображение -> вставленное), and it is the exact parallel of the accepted legacy pasted_file value \"Вставленный файл\" (masculine) in the same namespace. No extension, MIME identifier or placeholder, as the context note requires; no user data is touched by this value. 23 characters, no maxCells hint on this key (pasted_file's 20 is advisory and its own ru value is 16).",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "icu_structures": "none"
+      }
+    },
+    {
+      "key": "ui.common.actions.actions_for_name",
+      "source": "Actions for {name}",
+      "current_text": "Действия для «{name}»",
+      "findings": [
+        {
+          "id": "ru-1",
+          "severity": "minor",
+          "namespace": "ui.common.actions",
+          "key": "ui.common.actions.actions_for_name",
+          "current_text": "Действия для «{name}»",
+          "source_text": "Actions for {name}",
+          "problem": "The guillemets are grammatically safe and the meaning is exact, but this is the only place in the ru catalogue where the 'Actions for {name}' frame quotes the inserted name in an accessible name that receives a FILE name: six sibling values render the same frame unquoted, and the one quoted value inserts a browser page title, not a filename. It is also the one form where an empty insertion is visible: image-actions-menu.tsx:364-366 tests `label != null`, so a markdown image with empty alt text (label={alt}, markdown-image.tsx:90) reaches this key with {name} = '' and renders «» where English renders only a trailing space.",
+          "evidence": [
+            "ru ui.chat.canonical.link_toolkit.actions_for = \"Действия для {name}\" (unquoted)",
+            "ru ui.shell.sidebar_navigation.row_actions = \"Действия для {name}\" (unquoted)",
+            "ru ui.settings.integrations.integration_row.more_actions_for_name = \"Другие действия для {name}\" (unquoted)",
+            "ru ui.library.menu.asset_actions_label = \"Действия с файлом {name}\" (unquoted, file name)",
+            "ru ui.projects.project_updates.file_actions_for_name = \"Действия с файлом {name}\" (unquoted, file name, three aria-label call sites)",
+            "counter-evidence: ru ui.browser.browser_tab_strip.actions_for = \"Действия для «{title}»\" quotes a page TITLE; ru ui.common.actions.credential_updated = \"Учётные данные «{key}» успешно обновлены\" quotes a key",
+            "ru guide, Punctuation & typography: \"Quotes: «ёлочки» in prose, „лапки“ nested inside them.\" — an accessible name is product chrome, so the guide does not require the marks here",
+            "src/renderer/src/features/chat/components/image-actions-menu.tsx:364 t(\"ui.common.actions.actions_for_name\", { name: label }) under `label != null`"
+          ],
+          "recommendation": "Действия для {name}",
+          "recommendation_reason": "Matches the frame of the six existing ru values, keeps the inserted filename verbatim with no case agreement, and degrades exactly like English (a trailing space) if an empty name ever reaches it.",
+          "gating": false,
+          "note": "Declared MINOR, not MAJOR: the wording is defensible and a screen reader does not voice the marks. If the translator prefers delimiting filenames, keeping «» is acceptable; record the choice on the row rather than churning the value."
+        }
+      ],
+      "assessment": "Accessible name/tooltip of a named file or image actions-menu trigger (supplement-file-actions.tsx:181, image-actions-menu.tsx:365). The noun phrase is right: no imperative, so it does not read as a command to act on the name, which is what the context note forbids. {name} is byte-identical and undeclined; guillemets keep an arbitrary user string from needing a genitive and survive names containing punctuation. Meaning is exact. The one issue is the quoting divergence recorded as ru-1 (MINOR): the ru frame is unquoted in six existing values.",
+      "placeholder_integrity": {
+        "arguments": [
+          [
+            "name",
+            "string"
+          ]
+        ],
+        "matches_english": true,
+        "icu_structures": "none"
+      }
+    },
+    {
+      "key": "ui.chat.image_actions.actions",
+      "source": "Image actions",
+      "current_text": "Действия с изображением",
+      "findings": [],
+      "assessment": "Default tooltip and unnamed-image trigger accessible name of the image overflow menu. Byte-identical to the existing ru ui.canvas.files.imageActions (\"Действия с изображением\") and to ui.canvas.finder_files_view.ui_canvas_files_imageactions, and the exact parallel of \"Действия с файлом\" for the file menu — so the generic and named variants of this menu now agree in one term. с + instrumental (с изображением) is correct Russian. Short noun phrase, sentence case, no trailing punctuation, as the context note asks.",
+      "placeholder_integrity": {
+        "arguments": [],
+        "matches_english": true,
+        "icu_structures": "none"
+      }
+    },
+    {
+      "key": "ui.chat.audio.position_label",
+      "source": "{label} position",
+      "current_text": "Позиция воспроизведения: {label}",
+      "findings": [],
+      "assessment": "aria-label of the role=\"slider\" seek bar (sound-player.tsx:455, :506). Two things are correct here. (1) The term is the corpus's own: ru ui.chat.attachments.playback_position = \"Позиция воспроизведения\" for the English \"Playback position\" with role \"slider name\" — so the added воспроизведения is the settled Russian rendering of the concept, not invented wording, and it is what makes the label unambiguous between two clips on screen. (2) {label} is moved to the end behind a colon, which the context note explicitly permits (\"Word order may change around {label}\") and which is the only way to avoid demanding a genitive of an arbitrary user-supplied title; the same colon-before-label shape is used by ui.chat.tags.header_actions (\"Действия с тегом: {name}\") and ui.common.actions.date_time_picker.choose_date (\"Выбрать дату: {label}\"). No agreement with the inserted text, no numbers, no markup. The ru guide's \"no typographic spacing before : ; ! ?\" is met: U+0020 after the colon, none before it.",
+      "context_note_reading": "The note's \"Translate only the surrounding word for position\" is read as a guard against translating or normalising {label} and against adding a clause, not against using the locale's two-word term for playback position: the note's own first line says the control \"names playback position\".",
+      "placeholder_integrity": {
+        "arguments": [
+          [
+            "label",
+            "string"
+          ]
+        ],
+        "matches_english": true,
+        "icu_structures": "none"
+      }
+    }
+  ],
+  "context_metadata_check": {
+    "key": "ui.chat.composer_media.pasted_file (English context sidecar scope sentence)",
+    "current_note": "Fallback for non-image data URIs with no usable name, including invalid percent encoding, whether or not a MIME type is present. Also used as synthetic upload metadata; valid names and attachment bytes stay unchanged. A 100px tile caption may truncate; maxCells is advisory, not measured fit.",
+    "previous_note": "Fallback when the pasted data URI has no name or MIME type. A 100px tile caption may truncate; maxCells is advisory, not measured fit.",
+    "checked_against": [
+      "src/renderer/src/features/chat/utils/get-file-name.ts",
+      "src/renderer/src/features/chat/utils/attachment-encode.ts"
+    ],
+    "verdict": "accurate",
+    "basis": "Only `data:` paths that are not `data:image/` reach pasted_file, so 'non-image' is right (an image data URI without a usable name goes to pasted_image). Both the no-name= branch and the decodeURIComponent-throw branch return it, so 'including invalid percent encoding' and 'no usable name' are right; a decodable name= returns the real name verbatim. MIME presence is irrelevant for non-image data URIs, so 'whether or not a MIME type is present' is right — and the previous 'no name or MIME type' was the inaccurate half it replaces. attachment-encode.ts assigns getFileName() to the upload's `name` and stores stored.name ?? name, so 'synthetic upload metadata' is right; its comments state that valid decoded names stay verbatim and the original dataUrl/path is passed untouched, so 'valid names and attachment bytes stay unchanged' is right.",
+    "findings": []
+  },
+  "consistency_only_scope": {
+    "statement": "The 267 keys that are not part of this delta were NOT semantically audited and are not certified by this receipt; earlier audits of those bytes stand on their own.",
+    "checks_performed": [
+      "valid JSON with duplicate-key rejection (json.load object_pairs_hook): all three ru and all three en files parsed, no duplicate members",
+      "key set parity per namespace: ui.chat 208/208, ui.chat.composer_media 9/9, ui.common.actions 54/54 — identical, none added or dropped",
+      "git diff origin/main HEAD on the three ru files: 4 added lines, 0 removed, 0 modified legacy values",
+      "node scripts/i18n/generate.mjs --check (keys.gen.ts in sync)",
+      "node scripts/i18n/check-duplicates.mjs, node scripts/i18n/context-parity.mjs"
+    ]
+  },
+  "mechanical_checks": [
+    {
+      "check": "placeholder parity (source vs target)",
+      "method": "Python regex over the four keys, argument name and type compared",
+      "result": "{label} and {name} byte-identical; no arguments anywhere else; no ICU plural/select in any of the four values (none needed: no count/number input)"
+    },
+    {
+      "check": "invisible and bidi characters",
+      "method": "Python codepoint census of the four values",
+      "result": "none present — no U+00A0/NBSP, U+202F, U+2009, U+200A, U+200B–U+200D, U+2066–U+2069, U+202A–U+202E, U+FEFF. ru is LTR; the ur RTL rules do not apply"
+    },
+    {
+      "check": "unicode form and script",
+      "method": "unicodedata.is_normalized('NFC') per value",
+      "result": "all four NFC; Cyrillic throughout with the inserted-placeholder braces as the only non-Cyrillic characters; no Latin word inside any value"
+    },
+    {
+      "check": "punctuation style vs the ru guide",
+      "method": "manual, against i18n/style-guides/ru.md 'Punctuation & typography'",
+      "result": "«ёлочки» used where quoting occurs; em dash not needed in these four; colon has U+0020 after and none before (guide: no typographic spacing before : ; ! ?); sentence case; no trailing punctuation, no '!', no Title Case"
+    },
+    {
+      "check": "width / fit",
+      "method": "character counts against the sidecars' hints",
+      "result": "no maxCells on three of the four keys (accessible names/tooltips and a synthetic name); pasted_file's advisory 20 is untouched by this delta. Lengths 21–32 characters; no overflow claim and no rendered measurement made"
+    },
+    {
+      "check": "repo catalogue gates",
+      "method": "node scripts/i18n/{check-duplicates,context-parity,generate}.mjs",
+      "result": "check-duplicates ok (1400 files, 0 duplicate keys); context-parity ok (every English key covered, 131 allowed pre-existing gaps); generate --check byte-identical. git status clean after each run"
+    },
+    {
+      "check": "translation ledger state at this head",
+      "method": "node scripts/i18n/ledger-check.mjs (read-only)",
+      "result": "FAILED — 64 findings across 1085 entries, all locales, including 9 ru lines (stale source_sha256 and target_sha256, and 'the receipt does not name the English source bytes on disk'). This is the expected pre-ledger-landing state of the PR, not a copy defect: the rows must be re-bound to the new hashes with this receipt. Not a finding against the translation"
+    }
+  ],
+  "glossary_conformance": {
+    "binding_copy": {
+      "path": "~/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "lines": 173,
+      "verified_byte_identical_to": "~/local-operator/i18n/glossary.md"
+    },
+    "checked": true,
+    "result": "No glossary term occurs in the four values: none names a session, agent, tool, workspace, model, prompt, schedule, team, skill, device, credential, job, service or unit, and no product-surface name (§1) appears, so §1 keep-English and §2 renderings are neither used nor violated. §3 placeholders rule ('preserved byte-exactly') is met. 'изображение' and 'файл' follow the ru guide's preferred Russian where settled (файл); no kept-Latin term is involved."
+  },
+  "style_guide": {
+    "path": "~/local-operator/i18n/style-guides/ru.md",
+    "sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5",
+    "register_check": "вы-register and infinitive action labels do not arise in these four values (none is a sentence with a verb); no politeness padding, no '!', sentence case everywhere — conformant. Terse phrasing conformant."
+  },
+  "observations": [
+    {
+      "kind": "pre-existing shape divergence, out of scope",
+      "key": "ui.chat.composer_media.pasted_type",
+      "quote": "Вставлено: {mimeType}",
+      "note": "The legacy pasted_type renders the same 'pasted X' idea with a verb form while pasted_file/pasted_image use a participle adjective. Unchanged by this delta and not certified here; no finding."
+    },
+    {
+      "kind": "source-side edge, identical in English",
+      "key": "ui.common.actions.actions_for_name",
+      "quote": "Действия для «{name}»",
+      "note": "image-actions-menu.tsx:364 tests `label != null`, so label=\"\" (a markdown image with empty alt, markdown-image.tsx:90) renders «» in ru and 'Actions for ' with a trailing space in en. The source is what should gate an empty label; it is recorded here because it is the concrete reason ru-1 prefers the unquoted form, not as a translation defect of its own."
+    }
+  ],
+  "executed_checks": [
+    "git rev-parse HEAD -> e5fb4310dab638f9cf428779d62539ec039a8990; git status --porcelain empty before and after every command",
+    "shasum -a 256 of the nine input files, compared in Python with _s12-audits/e5fb4310.../expected-hashes.json -> 9/9 MATCH, 0 mismatch",
+    "Python strict JSON load with duplicate-key rejection and key-set parity (271 keys across three namespaces, en == ru in each)",
+    "Python placeholder/ICU/codepoint/NFC checks over the four audited values",
+    "git diff origin/main HEAD -- src/i18n/catalogues/ru/ -> 4 added lines only",
+    "node scripts/i18n/check-duplicates.mjs, context-parity.mjs, generate.mjs --check and ledger-check.mjs, all run in their read-only modes from the pinned worktree; git status --porcelain stayed empty after every one of them",
+    "ledger-assemble.mjs PROBE: the real assembler accepted this receipt for all three namespaces against a scratch copy of the two catalogues under $LOCAL_OPERATOR_SCRATCHPAD/assemble-probe/repo (never the repo): 'ru/ui.chat -> status audited | clean, 0/0/0/0', 'ru/ui.chat.composer_media -> status audited | clean, 0/0/0/0', 'ru/ui.common.actions -> status audited | clean-with-findings, 0 blocker, 0 major, 1 minor, 0 nit', and the scratch ledger rows carried exactly the source/target hashes this receipt names. The real i18n/ledger.json was NOT touched",
+    "source read of get-file-name.ts, attachment-encode.ts, sound-player.tsx, image-actions-menu.tsx, supplement-file-actions.tsx for role and edge behaviour"
+  ],
+  "unverified": [
+    "Node check-strings.mjs was NOT run: it has a baseline-save write path and the worktree is read-only for this audit. Its absence is not a pass.",
+    "No ICU/CLDR runtime formatter, no test suite, no build: none of the four values has a plural, select, number or date, so no runtime formatter output is claimed.",
+    "No browser, accessibility-tree, screen-reader or pixel measurement: these are accessible names/tooltips and a synthetic filename; no rendered claim is made.",
+    "The served model is reported from the session header; it cannot be independently corroborated from inside the session.",
+    "No ledger row, tracked evidence bundle, PR comment or commit: ledger-assemble writes i18n/ledger.json and i18n/receipts/, which this read-only audit must not do. The manager lands them from this receipt."
+  ],
+  "ledger_handoff": {
+    "assembler": "node scripts/i18n/ledger-assemble.mjs",
+    "receipt_copy_target": "i18n/receipts/bcfbdd468d00.json",
+    "rows": [
+      {
+        "locale": "ru",
+        "namespace": "ui.chat",
+        "result": "clean",
+        "auditor_instance": "bcfbdd468d00",
+        "auditor_model": "deepseek/deepseek-flash",
+        "source_sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15",
+        "target_sha256": "52fb9cf75ad675dd672935a02c9c5e820938271af6a1dbae44ee7244055d2a2e",
+        "proposed_note": "passed; clean. Evidence: i18n/audits/evidence/ru/ui.chat/bcfbdd468d00/record.json",
+        "note_length": 81
+      },
+      {
+        "locale": "ru",
+        "namespace": "ui.chat.composer_media",
+        "result": "clean",
+        "auditor_instance": "bcfbdd468d00",
+        "auditor_model": "deepseek/deepseek-flash",
+        "source_sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae",
+        "target_sha256": "ea15ba6e13dd7b263ce92af68a80dfe8169857677df770d3d1abc3e9ef125d55",
+        "proposed_note": "passed; clean. Evidence: i18n/audits/evidence/ru/ui.chat.composer_media/bcfbdd468d00/record.json",
+        "note_length": 96
+      },
+      {
+        "locale": "ru",
+        "namespace": "ui.common.actions",
+        "result": "clean-with-findings",
+        "auditor_instance": "bcfbdd468d00",
+        "auditor_model": "deepseek/deepseek-flash",
+        "source_sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b",
+        "target_sha256": "d76c6dc4da5d49007f52d9f69c6e424b81c4d2a180cdd250973f01c2354d4d98",
+        "proposed_note": "passed; clean-with-findings (1 minor, ru-1). Evidence: i18n/audits/evidence/ru/ui.common.actions/bcfbdd468d00/record.json",
+        "note_length": 121
+      }
+    ],
+    "evidence_target": "i18n/audits/evidence/ru/<namespace>/bcfbdd468d00/",
+    "retention_state": "scratch_only_read_only_audit",
+    "verified_by_assembler_probe": {
+      "what": "node scripts/i18n/ledger-assemble.mjs --repo <scratch repo> --locale ru --file src/i18n/catalogues/ru/<ns>.json --auditor-instance bcfbdd468d00 --auditor-model deepseek/deepseek-flash --result <per-namespace result> --receipt <this receipt> --translator-agent i18n-translator --translator-model anthropic/claude-sonnet-5-5 --date 2026-11-10",
+      "scratch_tree": "$LOCAL_OPERATOR_SCRATCHPAD/assemble-probe/repo — byte copies of the six catalogue files only; the real i18n/ledger.json and i18n/receipts/ were neither read for writing nor modified",
+      "outputs": [
+        "ledger-assemble: ru/ui.chat -> status audited | clean, 0 blocker, 0 major, 0 minor, 0 nit",
+        "ledger-assemble: ru/ui.chat.composer_media -> status audited | clean, 0 blocker, 0 major, 0 minor, 0 nit",
+        "ledger-assemble: ru/ui.common.actions -> status audited | clean-with-findings, 0 blocker, 0 major, 1 minor, 0 nit"
+      ],
+      "meaning": "The receipt satisfies the contract the gate enforces (identity, per-namespace hashes naming the bytes on disk, countable findings, supported result), so the manager's three real assembler calls are expected to succeed. This is a probe in scratch; it is not the landing and proves nothing about who authored the receipt."
+    }
+  },
+  "receipt_contract_review": "Field set copied from the model receipt _s10-audits/fd09d8f/fr-sol-e23a48ff2216.json, extended only where this audit needs it (per-namespace audited_keys/counts, context_metadata_check, glossary_conformance, ledger_handoff). Read against scripts/i18n/ledger-rules.mjs: each namespace block carries its own status, result and findings (so it speaks for itself), instance is non-placeholder, and source_sha256/target_sha256 equal the bytes on disk at HEAD. The assembler was NOT executed — it writes.",
+  "audit_notes_not_execution_log": true,
+  "companion_execution_log": "ru-ds-bcfbdd468d00.audit.log"
+}

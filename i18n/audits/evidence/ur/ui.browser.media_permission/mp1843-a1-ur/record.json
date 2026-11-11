@@ -1,0 +1,120 @@
+{
+ "audit_id": "mp1843-a1-ur",
+ "round": 1,
+ "audit_kind": "independent first audit of a new namespace",
+ "date": "2026-11-10",
+ "audit_date": "2026-11-10",
+ "locale": "ur",
+ "namespace": "ui.browser.media_permission",
+ "source_commit": "4f0df27743eecae09ccc8c3e69838faa616a3eb2",
+ "pr": "https://github.com/damianvtran/local-operator-ui/pull/1843",
+ "scope": "All 8 keys of ui.browser.media_permission.",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "key_count": 8,
+ "keys_read": 8,
+ "auditors": [
+  {
+   "agent": "task",
+   "model": "anthropic/claude-opus-5-5",
+   "session": "d1da94af17b7",
+   "team": "lopdev",
+   "label": "i18n-audit-1843",
+   "instance": "d1da94af17b7-mp1843-a1-ur",
+   "date": "2026-11-10",
+   "result": "clean-with-findings",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 2
+   },
+   "independent_from_translator_session": true,
+   "actual_model_source": "harness session header 'Model: anthropic/claude-opus-5-5' for session d1da94af17b7; no fallback observed, no role or model pin applied",
+   "fallback": null,
+   "receipt": "i18n/receipts/d1da94af17b7-mp1843-a1-ur.json",
+   "receipt_sha256": "b110d06b15d5615c63fd6ba34f53395830a130e485e2dd695b30e7757a300e43"
+  }
+ ],
+ "translator": {
+  "agent": "coder",
+  "model": "anthropic/claude-opus-5-5",
+  "date": "2026-11-10"
+ },
+ "independence": "Independent auditor; translated nothing originally. Authored only the corrections listed under resolutions, which are disclosed and recorded against the superseded translator bytes.",
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.browser.media_permission.json",
+   "sha256": "0a898598ac95277bfd9f8a4b502e81b1c0a3d30035bd205978112a83e13835a0"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.browser.media_permission.context.json",
+   "sha256": "361ee18bdb1beb154c2e9c318a88a21ee44285c4f1eeb3d90681e909de222f10"
+  },
+  "ur": {
+   "path": "src/i18n/catalogues/ur/ui.browser.media_permission.json",
+   "sha256": "78b56e4204caca6a190533d31294dfc6642ac85ec3c9d9e75956b28e7a20d6bb",
+   "translator_bytes_sha256": "176cf0d3fb4184b965493fe50c3c8031158ad183d5e4c962a91ae1776baf0af7"
+  },
+  "glossary": {
+   "path": "i18n/glossary.md (damianvtran/local-operator origin/main 9372a3a42d0e)",
+   "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+  },
+  "style_guide": {
+   "path": "i18n/style-guides/ur.md (local-operator origin/main 9372a3a42d0e)",
+   "sha256": "7276e96210fe5f23fd82a39ae4cc0c88b2c1009d3a551d914efc3f61516eddc4"
+  }
+ },
+ "artifacts": [
+  {
+   "path": "i18n/audits/evidence/ur/ui.browser.media_permission/mp1843-a1-ur/audit.log",
+   "sha256": "678383b75efa8000960f46ba4e287e58f6c40771b8090a43449bb59b6724c5e9"
+  },
+  {
+   "path": "i18n/audits/evidence/ur/ui.browser.media_permission/mp1843-a1-ur/negative-control.log",
+   "sha256": "fb7373868a7cf230a4d875668bc9105ed273f14dfe0f35333503c5468e90a70a"
+  },
+  {
+   "path": "i18n/audits/evidence/ur/ui.browser.media_permission/mp1843-a1-ur/report.md",
+   "sha256": "6cbc5eda97608ff5c6655b631fd4228ca1105c2f0a207be382458d45c4e83816"
+  },
+  {
+   "path": "i18n/audits/evidence/ur/ui.browser.media_permission/mp1843-a1-ur/verify.mjs",
+   "sha256": "53eac836053b720ae636cbeffe0cc77461c0b2d03cf88928c8820bafbc6d78e6"
+  }
+ ],
+ "audit_notes_not_execution_log": "report.md is the auditor's notes; audit.log and negative-control.log are actual stdout of verify.mjs. The ledger-check result quoted in report.md was run interactively on the export and is not captured as a file.",
+ "findings": [
+  {
+   "id": "UR-N1",
+   "severity": "nit",
+   "key": "ui.browser.media_permission.message",
+   "finding": "Feminine چاہتی vs masculine siblings (ui.browser.browser_consent_request.wants_to_open چاہتا). Grammatical with implied سائٹ; no change."
+  },
+  {
+   "id": "UR-N2",
+   "severity": "nit",
+   "key": "ui.browser.media_permission.agent_tab_hint",
+   "finding": "Button name اجازت دیں is unquoted; “اجازت دیں” would read clearer. Optional, no change."
+  }
+ ],
+ "resolutions": [
+  {
+   "id": "UR-M1",
+   "original_severity": "minor",
+   "key": "ui.browser.media_permission.dismiss",
+   "disposition": "corrected in audit patch",
+   "before": "کیمرے اور مائیکروفون کی درخواست برخاست کریں",
+   "after": "کیمرے اور مائیکروفون کی درخواست ہٹائیں",
+   "reason": "برخاست (dismissal of a person or court petition) is unidiomatic for closing a UI request and appears nowhere in the ur corpus; ur Dismiss controls use ہٹائیں (ui.agentMessages.banner.dismiss, update notice)."
+  }
+ ],
+ "observations": [
+  {
+   "id": "UR-I1",
+   "severity": "INFO",
+   "key": "ui.browser.media_permission.system_blocked_hint",
+   "finding": "System Settings › Privacy & Security kept in English, as the ur guide requires (macOS ships no Urdu UI). No manual bidi controls."
+  }
+ ]
+}

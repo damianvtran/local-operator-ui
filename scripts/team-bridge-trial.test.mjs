@@ -478,3 +478,27 @@ test("R2-1/R2-2/D9: the standalone ended panel waits for the role and leads with
 	assert.match(view, STANDALONE_PRIMARY);
 	assert.match(paused, INPAGE_GHOST_DEFAULT);
 });
+
+test("U2/U3: each Team Bridge gate has at most one action, and the plan link yields to the trial", () => {
+	const action = model.teamBridgeGateAction;
+	// The two off gates keep their Settings way back in both trial states.
+	for (const enabled of [false, true]) {
+		assert.equal(action("off", enabled), "settings");
+		assert.equal(action("off_local", enabled), "settings");
+		// Signed out is told where to sign in whatever the trial state: the
+		// trial on-ramp never mounts for a signed-out viewer.
+		assert.equal(action("signed_out", enabled), "sign_in");
+		// Nothing this panel can open fixes an old app or an outage.
+		assert.equal(action("update_required", enabled), null);
+		assert.equal(action("unavailable", enabled), null);
+	}
+	// The plan gate links to the plan only while trial starts are off; once
+	// they are on, the on-ramp's own start/subscribe controls are the route.
+	assert.equal(action("plan_required", false), "see_plan");
+	assert.equal(action("plan_required", true), null);
+	// The link is the pinned console page with no tenant and the analytics tag.
+	assert.equal(
+		model.subscribeUrlFor(null),
+		"https://console.radienthq.com/dashboard/team?src=lop",
+	);
+});

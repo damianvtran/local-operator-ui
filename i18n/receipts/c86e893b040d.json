@@ -1,0 +1,175 @@
+{
+  "locale": "zh-CN",
+  "mode": "Fresh independent four-key delta audit; fix (<2h), bounded read-only audit. fully_audited_key_count=4; consistency_only_key_count=267.",
+  "scope": "PR #1842 @ e5fb4310dab638f9cf428779d62539ec039a8990; zh-CN four new keys fully audited across three namespaces. Remaining 267 values consistency_only: valid JSON, key parity, no legacy changed/removed vs local origin/main. No legacy semantic certification.",
+  "head_sha": "e5fb4310dab638f9cf428779d62539ec039a8990",
+  "audit_date": "2026-11-10",
+  "key_count": 271,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Translator identity supplied in delegation; zh-CN translator session 6c6b9e0107b6. Auditor c86e893b040d did not translate these values."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "c86e893b040d",
+    "session": "c86e893b040d",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Served session header: openai/gpt-6.1-sol; session c86e893b040d. No fallback used.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "status": "passed",
+  "result": "clean",
+  "verdict": "clean",
+  "findings": [],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15",
+      "target_sha256": "6c28931de502a5fd821f9bd9ff779a55599681804575a8a2ba4cdc3346c1e1b9",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.json",
+          "sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15"
+        },
+        "zh-CN": {
+          "path": "src/i18n/catalogues/zh-CN/ui.chat.json",
+          "sha256": "6c28931de502a5fd821f9bd9ff779a55599681804575a8a2ba4cdc3346c1e1b9"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.context.json",
+          "sha256": "84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf"
+        }
+      },
+      "findings": []
+    },
+    "ui.chat.composer_media": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae",
+      "target_sha256": "d32d42c7972f9cb433844db9d41fe79da6aa05b8c6a2b80643947f4179950df8",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.json",
+          "sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae"
+        },
+        "zh-CN": {
+          "path": "src/i18n/catalogues/zh-CN/ui.chat.composer_media.json",
+          "sha256": "d32d42c7972f9cb433844db9d41fe79da6aa05b8c6a2b80643947f4179950df8"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.context.json",
+          "sha256": "a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b"
+        }
+      },
+      "findings": []
+    },
+    "ui.common.actions": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b",
+      "target_sha256": "9372ac48a563ad7ea188dcaca65ec3c2d165ed5188b8f45bb916c2bd726541bb",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.json",
+          "sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b"
+        },
+        "zh-CN": {
+          "path": "src/i18n/catalogues/zh-CN/ui.common.actions.json",
+          "sha256": "9372ac48a563ad7ea188dcaca65ec3c2d165ed5188b8f45bb916c2bd726541bb"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+          "sha256": "24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d"
+        }
+      },
+      "findings": []
+    }
+  },
+  "per_key_checks": [
+    {
+      "key": "ui.chat.composer_media.pasted_image",
+      "source": "Pasted image",
+      "current_text": "粘贴的图片",
+      "findings": [],
+      "assessment": "粘贴的图片 is a compact, natural noun phrase for a synthetic filename/caption, with no extension. Existing pasted_file is 粘贴的文件. 图片 matches existing copy_image=复制图片 and expand_image=展开图片. Five CJK characters / ten cells before any rendering; no width guarantee claimed.",
+      "placeholder_integrity": {
+        "matches_english": true,
+        "arguments": []
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.common.actions.actions_for_name",
+      "source": "Actions for {name}",
+      "current_text": "{name}的操作",
+      "findings": [],
+      "assessment": "{name}的操作 identifies the asset without translating or inflecting the inserted string. Matches existing ui.chat.canonical.link_toolkit.actions_for={name}的操作 and ui.projects.project_board.actions_for_displayname={displayName}的操作; 文件操作 supplies the same 操作 term. Invariant 的 works with arbitrary Latin/CJK/punctuated filenames without case/gender/number changes. No added quoting, whitespace or punctuation.",
+      "placeholder_integrity": {
+        "matches_english": true,
+        "arguments": [
+          "{name}"
+        ]
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.chat.image_actions.actions",
+      "source": "Image actions",
+      "current_text": "图片操作",
+      "findings": [],
+      "assessment": "图片操作 is an idiomatic compact menu label: 图片 agrees with 复制图片 / 展开图片 and 操作 with existing 文件操作. Four CJK characters / eight cells; no trailing punctuation, extension, or added action.",
+      "placeholder_integrity": {
+        "matches_english": true,
+        "arguments": []
+      },
+      "plural_select": []
+    },
+    {
+      "key": "ui.chat.audio.position_label",
+      "source": "{label} position",
+      "current_text": "{label}的播放位置",
+      "findings": [],
+      "assessment": "{label}的播放位置 is grammatical for arbitrary unchanged clip labels, with no agreement imposed on the title. 播放位置 directly matches ui.chat.attachments.playback_position=播放位置; 播放{label} and 暂停{label} preserve the same unmodified display-label convention. 播放 disambiguates seek position in accordance with English context. No trailing punctuation or whitespace.",
+      "placeholder_integrity": {
+        "matches_english": true,
+        "arguments": [
+          "{label}"
+        ]
+      },
+      "plural_select": []
+    }
+  ],
+  "remediation_verification": {
+    "status": "Fresh delta audit; no findings. Nine expected hash comparisons passed and were rechecked at finish.",
+    "prior_findings": [],
+    "policy_sources": [
+      "~/local-operator/i18n/style-guides/zh-CN.md",
+      "/Users/damian/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md",
+      "docs/I18N.md"
+    ],
+    "executed_checks": [
+      "node scripts/i18n/generate.mjs --check: exit 0, generated map byte-identical.",
+      "Production @formatjs/icu-messageformat-parser parsed all four English and four zh-CN strings: only text and plain string arguments; no plural/select/rich tags.",
+      "Python JSON parse/key parity/legacy comparison, exact placeholders and invisible-codepoint checks passed.",
+      "shasum -a 256: all nine catalogue/context hashes equal supplied manifest."
+    ],
+    "typography_fit": "No NBSP, narrow NBSP, zero-width or bidi format characters in the four values. No inserted spaces or sentence-final punctuation, matching guide lines 14 and 67-69. All plain placeholders byte-exact. No ICU plural required. No fixed width budget for these new keys; compact static text, inserted names unbounded. Glossary conformance checked against manager-owned byte-copy SHA-256 0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8.",
+    "out_of_scope_pre_existing": []
+  },
+  "unverified": [
+    "No full pnpm check-i18n, build, install, server, browser, rendered fit or screen-reader execution. Read-only generate.mjs --check and direct production ICU parser were executed.",
+    "No repository/ledger writes, tracked evidence retention, commits or PR comments. Manager must retain these scratch artifacts in canonical evidence root and record ledger status.",
+    "Whole worktree initially clean; final status showed concurrent untracked scripts/_attachment-chrome-29049.mjs, not created/read/modified by auditor. Head and all nine audited input hashes reverified unchanged."
+  ],
+  "receipt_contract_review": "Reference receipt root/auditor/translator/namespace/per-key sets retained; one namespace block for each requested namespace. Python readback/schema/hash/identity/status validation executed. Not a full legacy audit.",
+  "audit_notes_not_execution_log": true
+}

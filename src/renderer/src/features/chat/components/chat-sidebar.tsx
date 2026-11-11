@@ -302,8 +302,10 @@ import {
 } from "../draft-rows";
 import { fleetAsksBySession, useFleetAsks } from "../fleet-asks";
 import {
+	type MarkAllReadShedWidth,
 	markAllReadCopy,
 	markAllReadReceipt,
+	markAllReadShedWidth,
 	unreadMarkKind,
 } from "../mark-all-read";
 import { readAckCopy, readAckNoticeSentence } from "../read-ack-notice";
@@ -318,10 +320,12 @@ import {
 	tailArrivalAnnouncement,
 	tailExtendDue,
 } from "../sidebar-scope-paging";
+import { sidebarScrollerSpaceIsDead } from "../sidebar-space-dead";
 import { builtinOfferSentence } from "./builtin-offer-sentence";
 import { ChatRemoteMark } from "./chat-remote-mark";
 import { ChatRowHoverIntent } from "./chat-row-hover-intent";
 import { ChatRowTitle } from "./chat-row-title";
+import { ChatSettingsIntentMark } from "./chat-settings-intent-mark";
 import { ChatSidebarViewMenu } from "./chat-sidebar-view-menu";
 import {
 	ChatTagFooter,
@@ -412,20 +416,28 @@ const rowBoxStyle = "group/row relative flex h-8 items-center gap-1 rounded-md";
  * row itself — the row is the container queried rather than the panel, because
  * the row is what has to fit.
  *
- * 253px is the TWO-DIGIT break, and the two-digit case is the binding one: with a
- * one-digit section badge the group's own name needs a 235px row, with a
- * two-digit one — the operator's own "Active chats 38" — it needs 253px, and the
- * action is unshrinkable so the name absorbs whatever is left. Design round 2
- * swept 240 through 360 on the shipped component and found the band the round-1
- * break left open: at 267/268/269px panels (250/251/252px rows) the name was
- * ellipsised while the action's label was still fully spelled, which is the
- * trade design D1 rejected. Shedding at the width the name actually needs closes
- * it, so the shed and the truncation can never both be reachable.
+ * WHICH ROW, and why this was dead for a while. The control is drawn through
+ * `sectionLabel` (the `ACTIVE CHATS` / `TODAY` label row), but this class
+ * queries the `chatheading` container, which only `heading()` (the agent and
+ * team disclosure rows) declared. A container query with no matching container
+ * matches nothing, so the label NEVER shed in any language; at the 220px floor a
+ * longer translated label then took its width from the section name, which
+ * disappeared (PR #1827 rendered frames: fr and vi had no heading at all). The
+ * row `sectionLabel` returns now declares `@container/chatheading` whenever it
+ * carries an action.
  *
- * The header row is 17px narrower than the panel, so 253px of row is a 270px
- * panel: the shed fires below the DEFAULT (280) but not at it, and the 240px
- * clamp minimum gets the glyph. Above the break the full label fits and nothing
- * truncates.
+ * THE BREAK IS NOT 253 ANY MORE, and it is not one number. 253 was derived for
+ * `heading()` (chevron, glyph, name and a count badge, against a default panel of
+ * 280 and a floor of 240); this row has none of those, and the sidebar now runs
+ * 220-320 with 260 as the default. The break is picked from the label actually
+ * drawn by `markAllReadShedWidth` (its docblock carries the measured arithmetic):
+ * every label sheds at the 220px floor, English with a two-digit count is spelled
+ * at the 260px default, and a longer translation needs a wider row before it may
+ * be spelled. The query reads the row's CONTENT box, which is why the figure
+ * excludes the row's own `px-2`.
+ *
+ * Container conditions cannot take a variable, so the ladder is a map of LITERAL
+ * classes: Tailwind generates only the strings it can find in the source.
  *
  * `sr-only`, NEVER `hidden`. `hidden` is `display: none`, which takes the span out
  * of the accessibility tree, and the label's words are the only half of the
@@ -440,7 +452,13 @@ const rowBoxStyle = "group/row relative flex h-8 items-center gap-1 rounded-md";
  * own container for the same reason: the row's height is fixed, so a wrapped
  * line is not an option and the sentence is what has to change length.
  */
-const MARK_ALL_READ_LABEL_SHED = "@max-[253px]/chatheading:sr-only";
+const MARK_ALL_READ_LABEL_SHED: Record<MarkAllReadShedWidth, string> = {
+	200: "@max-[200px]/chatheading:sr-only",
+	223: "@max-[223px]/chatheading:sr-only",
+	245: "@max-[245px]/chatheading:sr-only",
+	268: "@max-[268px]/chatheading:sr-only",
+	291: "@max-[291px]/chatheading:sr-only",
+};
 
 /**
  * The receipt announcement's own toast id, and it is STABLE ON PURPOSE.
@@ -1819,6 +1837,20 @@ export function ChatSidebar({
 		footFollowRef.current = false;
 		footPressedRef.current = null;
 	};
+	/*
+	 * SPACE ON THE SCROLLER'S OWN EMPTY AREA IS DEAD. The scroller takes an
+	 * invisible focus from a click on its empty area, and Chromium's default
+	 * Space action on a focused scroller is page-scroll: holding Space to
+	 * dictate ran the whole conversation list to the bottom. The predicate
+	 * (`sidebar-space-dead.ts`) is what the rows are not - a row is a button
+	 * and its Space keeps meaning press. It runs beside the anchor release
+	 * below: a Space press on the empty area both ends the anchor hold and is
+	 * claimed, so nothing scrolls.
+	 */
+	const claimDeadSpace = (event: KeyboardEvent<HTMLDivElement>) => {
+		releasePageAnchor();
+		if (sidebarScrollerSpaceIsDead(event)) event.preventDefault();
+	};
 	const movedRef = useRef<{
 		id: string;
 		top: number;
@@ -2337,7 +2369,12 @@ export function ChatSidebar({
 			 * scope suffix are the whole name, and the tooltip is the description rather
 			 * than the name (review R2-1 / UX U2-1).
 			 */}
-			<span className={cn("truncate", MARK_ALL_READ_LABEL_SHED)}>
+			<span
+				className={cn(
+					"truncate",
+					MARK_ALL_READ_LABEL_SHED[markAllReadShedWidth(unreadCopy.label)],
+				)}
+			>
 				{unreadCopy.label}
 			</span>
 			{/*
@@ -5146,15 +5183,22 @@ export function ChatSidebar({
 				 * so a dropped link cannot reflow the row: the mark swaps WITHIN the
 				 * cell, the cell never moves.
 				 */}
-				<span
-					aria-hidden="true"
-					className="flex size-3.5 shrink-0 items-center justify-center"
-				>
+				{/*
+				 * The cell also hosts the settings-intent dot, absolutely placed so it
+				 * takes no width (design D4: as a flex item it shifted the title 18 px
+				 * each time it came and went). Not `aria-hidden` any more, because the
+				 * dot is a labelled image; the locality svg hides itself.
+				 */}
+				<span className="relative flex size-3.5 shrink-0 items-center justify-center">
 					{row.locality === "remote" && (
 						<ChatRemoteMark
 							unreachable={row.link_down === true || row.reachable === false}
 						/>
 					)}
+					<ChatSettingsIntentMark
+						sessionId={row.session_id}
+						corner={row.locality === "remote"}
+					/>
 				</span>
 				{/*
 				 * THE ROW'S LEADING MARK: its agent's picture with the status on the
@@ -8196,7 +8240,17 @@ export function ChatSidebar({
 		);
 	};
 	const sectionLabel = (label: string, action?: ReactNode) => (
-		<div className="flex h-6 items-center gap-1 px-2">
+		<div
+			className={cn(
+				"flex h-6 items-center gap-1 px-2",
+				/*
+				 * The container the bulk read label sheds against
+				 * (`MARK_ALL_READ_LABEL_SHED`). Only a row that carries an action needs
+				 * one; the others keep their markup.
+				 */
+				action && "@container/chatheading",
+			)}
+		>
 			<h3 className="min-w-0 flex-1 truncate font-medium text-ink-dim text-meta uppercase tracking-wide">
 				{label}
 			</h3>
@@ -10914,7 +10968,7 @@ export function ChatSidebar({
 					 */
 					onWheel={releasePageAnchor}
 					onPointerDown={releasePageAnchor}
-					onKeyDown={releasePageAnchor}
+					onKeyDown={claimDeadSpace}
 				>
 					{entityRegion}
 					{pinFailureLine}

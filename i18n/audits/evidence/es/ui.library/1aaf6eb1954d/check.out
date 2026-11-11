@@ -1,0 +1,37 @@
+[PASS] json valid :: en=179 context=179 es=179 entries
+[INFO] expected-hashes head=8a9ce1f808c266ebe9a0e924094344cea60c2c23 namespace=ui.library
+[PASS] head matches task's frozen head :: 8a9ce1f808c266ebe9a0e924094344cea60c2c23
+[PASS] sha256 binding :: 9/9 entries match expected-hashes.json
+[PASS] es key set == en key set :: missing=[] extra=[]
+[PASS] no keys removed vs origin/main :: []
+[PASS] exactly the 20 task keys added vs origin/main :: 20 added
+[PASS] no existing value changed vs origin/main :: []
+[PASS] all 20 audited keys present in es
+[PASS] all 20 audited keys present in en
+[PASS] all 20 audited keys have a context entry
+[PASS] placeholder parity :: no ICU placeholders, %s tokens or markup in the 20 new keys (ICU plural/select strings among them: 0)
+[PASS] no NBSP/ZW*/bidi/invisible characters in the 20 new values :: {}
+[INFO] cells vs the ~12 hint (en sidecar prose, no machine maxCells):
+       ui.library.kind.audio                          es= 5 cells  en= 5  'Audio'
+       ui.library.kind.code                           es= 6 cells  en= 4  'Código'
+       ui.library.kind.docx                           es= 4 cells  en= 4  'DOCX'
+       ui.library.kind.html                           es= 4 cells  en= 4  'HTML'
+       ui.library.kind.image                          es= 6 cells  en= 5  'Imagen'
+       ui.library.kind.markdown                       es= 8 cells  en= 8  'Markdown'
+       ui.library.kind.other                          es= 4 cells  en= 5  'Otro'
+       ui.library.kind.pdf                            es= 3 cells  en= 3  'PDF'
+       ui.library.kind.pptx                           es= 4 cells  en= 4  'PPTX'
+       ui.library.kind.spreadsheet                    es=15 cells  en=11  'Hoja de cálculo'  <-- 4 cells wider than English
+       ui.library.kind.text                           es= 5 cells  en= 4  'Texto'
+       ui.library.kind.video                          es= 5 cells  en= 5  'Video'
+       ui.library.tag_category.custom                 es=13 cells  en= 6  'Personalizado'  <-- over the ~12 rail hint
+       ui.library.tag_category.format                 es= 7 cells  en= 6  'Formato'
+       ui.library.tag_category.project                es= 8 cells  en= 7  'Proyecto'
+       ui.library.tag_category.source                 es= 6 cells  en= 6  'Origen'
+       ui.library.tag_category.status                 es= 6 cells  en= 6  'Estado'
+       ui.library.tag_category.topic                  es= 4 cells  en= 5  'Tema'
+       ui.library.tag_category.type                   es= 4 cells  en= 4  'Tipo'
+       ui.library.preview.unsupported_generic         es=45 cells  en=37  'Este archivo no tiene vista previa en la app.'
+[PASS] typography :: no space-before-punctuation, no double/edge spaces, no '!' in the 20 new values
+
+RESULT: PASS

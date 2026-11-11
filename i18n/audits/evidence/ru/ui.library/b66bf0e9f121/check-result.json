@@ -1,0 +1,32 @@
+{
+  "hashes": {
+    "en": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71",
+    "ru": "49af1bd7b725040e8fc821fbe38fca35d8e82410020a0bc40f216ed7650fa8ae",
+    "context": "f799fe911107aa1f7b83b0c026ee277d5c21ee5eba297e3ae13c2da51135cc8e"
+  },
+  "new_keys": [
+    "ui.library.kind.audio",
+    "ui.library.kind.code",
+    "ui.library.kind.docx",
+    "ui.library.kind.html",
+    "ui.library.kind.image",
+    "ui.library.kind.markdown",
+    "ui.library.kind.other",
+    "ui.library.kind.pdf",
+    "ui.library.kind.pptx",
+    "ui.library.kind.spreadsheet",
+    "ui.library.kind.text",
+    "ui.library.kind.video",
+    "ui.library.preview.unsupported_generic",
+    "ui.library.tag_category.custom",
+    "ui.library.tag_category.format",
+    "ui.library.tag_category.project",
+    "ui.library.tag_category.source",
+    "ui.library.tag_category.status",
+    "ui.library.tag_category.topic",
+    "ui.library.tag_category.type"
+  ],
+  "legacy_count": 159,
+  "namespace_count": 179,
+  "cells": 12
+}

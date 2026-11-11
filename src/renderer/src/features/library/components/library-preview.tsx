@@ -56,6 +56,7 @@ import { saveAssetCopy } from "../library-download";
 import {
 	assetDisplayName,
 	formatBytes,
+	libraryKindLabel,
 	originGroupLabelKey,
 	relativeTime,
 } from "../library-model";
@@ -490,7 +491,7 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 					</div>
 				</div>
 				<div className="flex flex-wrap items-center gap-2 text-meta text-ink-muted">
-					<Badge variant="neutral">{asset.kind}</Badge>
+					<Badge variant="neutral">{libraryKindLabel(asset.kind)}</Badge>
 					<Badge variant="neutral">
 						{t(originGroupLabelKey(asset.origin_group))}
 					</Badge>

@@ -78,5 +78,11 @@
 	"ui.chat.sidebar.catalogue.show_more_agents": "{count, plural, one {Mostrar {count, number, ::group-off} agente más} many {Mostrar {count, number, ::group-off} de agentes más} other {Mostrar {count, number, ::group-off} agentes más}}",
 	"ui.chat.sidebar.catalogue.show_more_teams": "{count, plural, one {Mostrar {count, number, ::group-off} equipo más} many {Mostrar {count, number, ::group-off} de equipos más} other {Mostrar {count, number, ::group-off} equipos más}}",
 	"ui.chat.sidebar.drafts.row_label": "Borrador: {title}",
-	"ui.chat.sidebar.drafts.discard_label": "Descartar borrador “{title}”"
+	"ui.chat.sidebar.drafts.discard_label": "Descartar borrador “{title}”",
+	"ui.chat.sidebar.mark_all_read.label": "Marcar todos como leídos ({count, number, ::group-off})",
+	"ui.chat.sidebar.mark_all_read.scope_chats": "{count, plural, one {Marcar {count, number, ::group-off} chat sin leer como leído.} many {Marcar {count, number, ::group-off} de chats sin leer como leídos.} other {Marcar {count, number, ::group-off} chats sin leer como leídos.}}",
+	"ui.chat.sidebar.mark_all_read.scope_chats_elsewhere": "{count, plural, one {Marcar {count, number, ::group-off} chat sin leer como leído} many {Marcar {count, number, ::group-off} de chats sin leer como leídos} other {Marcar {count, number, ::group-off} chats sin leer como leídos}}, {elsewhere, plural, one {incluido {elsewhere, number, ::group-off} que no está activo} many {incluidos {elsewhere, number, ::group-off} de chats que no están activos} other {incluidos {elsewhere, number, ::group-off} chats que no están activos}}.",
+	"ui.chat.sidebar.mark_all_read.scope_tokenless": "{count, plural, one {No se puede borrar {count, number, ::group-off} marca de mensajes sin leer que no tiene token de finalización.} many {No se pueden borrar {count, number, ::group-off} de marcas de mensajes sin leer que no tienen token de finalización.} other {No se pueden borrar {count, number, ::group-off} marcas de mensajes sin leer que no tienen token de finalización.}}",
+	"ui.chat.sidebar.mark_all_read.scope_joined": "{chats} {tokenless}",
+	"ui.chat.sidebar.mark_all_read.name_suffix_elsewhere": ", {elsewhere, plural, one {incluido {elsewhere, number, ::group-off} que no está activo} many {incluidos {elsewhere, number, ::group-off} de chats que no están activos} other {incluidos {elsewhere, number, ::group-off} chats que no están activos}}"
 }

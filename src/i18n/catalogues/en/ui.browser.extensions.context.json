@@ -1,0 +1,510 @@
+{
+	"ui.browser.extensions.menu_extensions": {
+		"role": "Browser page menu item",
+		"tone": "Concise menu label",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.menu_manage": {
+		"role": "Browser page menu item",
+		"tone": "Concise menu label",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.menu_store": {
+		"role": "Browser page menu item",
+		"tone": "Concise menu label",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.menu_none": {
+		"role": "Browser page menu item",
+		"tone": "Concise menu label",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.manage_title": {
+		"role": "Extension manager dialog text",
+		"tone": "Plain, calm",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.manage_description": {
+		"role": "Extension manager dialog text",
+		"tone": "Plain, calm",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.manage_empty": {
+		"role": "Extension manager dialog text",
+		"tone": "Plain, calm",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.manage_open_store": {
+		"role": "Extension manager dialog text",
+		"tone": "Plain, calm",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.manage_check_updates": {
+		"role": "Extension manager dialog text",
+		"tone": "Plain, calm",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.manage_checking": {
+		"role": "Extension manager dialog text",
+		"tone": "Plain, calm",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.updates_none": {
+		"role": "Toast after a manual update check",
+		"tone": "Factual",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.updates_applied": {
+		"role": "Toast after a manual update check",
+		"tone": "Factual",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility. Preserve ICU placeholders exactly."
+	},
+	"ui.browser.extensions.status_enabled": {
+		"role": "Short status badge beside an extension's name",
+		"tone": "One or two words, factual",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.status_disabled": {
+		"role": "Short status badge beside an extension's name",
+		"tone": "One or two words, factual",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.status_loading": {
+		"role": "Short status badge beside an extension's name",
+		"tone": "One or two words, factual",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.status_error": {
+		"role": "Short status badge beside an extension's name",
+		"tone": "One or two words, factual",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.status_needs_reconsent": {
+		"role": "Short status badge beside an extension's name",
+		"tone": "One or two words, factual",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.error_startup": {
+		"role": "Per-extension or toast error explanation",
+		"tone": "Honest, actionable, no blame",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.error_verify": {
+		"role": "Per-extension or toast error explanation",
+		"tone": "Honest, actionable, no blame",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.error_download": {
+		"role": "Per-extension or toast error explanation",
+		"tone": "Honest, actionable, no blame",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.error_worker": {
+		"role": "Extension card/details problem line when the extension's background service worker has not started",
+		"tone": "Plain; pairs with a 'Try again' button",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.reconsent_note": {
+		"role": "Extension manager text",
+		"tone": "Plain",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility. Preserve ICU placeholders exactly."
+	},
+	"ui.browser.extensions.action_open": {
+		"role": "Button label in the extension manager",
+		"tone": "Short verb",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.action_options": {
+		"role": "Button label in the extension manager",
+		"tone": "Short verb",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.action_remove": {
+		"role": "Button label in the extension manager",
+		"tone": "Short verb",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.action_review_update": {
+		"role": "Button label in the extension manager",
+		"tone": "Short verb",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.toggle_label": {
+		"role": "Accessible name of an on/off switch",
+		"tone": "Concise",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility. Preserve ICU placeholders exactly."
+	},
+	"ui.browser.extensions.perm_all_sites": {
+		"role": "Line in an access list shown in the install dialog and the manager",
+		"tone": "Precise security wording; mirrors Chrome's install prompt",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.perm_sites": {
+		"role": "Line in an access list shown in the install dialog and the manager",
+		"tone": "Precise security wording; mirrors Chrome's install prompt",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility. Preserve ICU placeholders exactly."
+	},
+	"ui.browser.extensions.perm_other": {
+		"role": "Line in an access list shown in the install dialog and the manager",
+		"tone": "Precise security wording; mirrors Chrome's install prompt",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility. Preserve ICU placeholders exactly."
+	},
+	"ui.browser.extensions.perm_none": {
+		"role": "Line in an access list shown in the install dialog and the manager",
+		"tone": "Precise security wording; mirrors Chrome's install prompt",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.install_confirm_title": {
+		"role": "Native install/enable/update confirmation dialog",
+		"tone": "Clear, security-specific",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility. Preserve ICU placeholders exactly."
+	},
+	"ui.browser.extensions.install_confirm_enable_title": {
+		"role": "Native install/enable/update confirmation dialog",
+		"tone": "Clear, security-specific",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility. Preserve ICU placeholders exactly."
+	},
+	"ui.browser.extensions.install_confirm_update_title": {
+		"role": "Native install/enable/update confirmation dialog",
+		"tone": "Clear, security-specific",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility. Preserve ICU placeholders exactly."
+	},
+	"ui.browser.extensions.install_confirm_body": {
+		"role": "Native install/enable/update confirmation dialog",
+		"tone": "Clear, security-specific",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility. Preserve ICU placeholders exactly."
+	},
+	"ui.browser.extensions.install_confirm_add": {
+		"role": "Native install/enable/update confirmation dialog",
+		"tone": "Clear, security-specific",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.install_confirm_enable": {
+		"role": "Native install/enable/update confirmation dialog",
+		"tone": "Clear, security-specific",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.install_confirm_update": {
+		"role": "Native install/enable/update confirmation dialog",
+		"tone": "Clear, security-specific",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.install_confirm_cancel": {
+		"role": "Native install/enable/update confirmation dialog",
+		"tone": "Clear, security-specific",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.install_compat_note": {
+		"role": "Native install/enable/update confirmation dialog",
+		"tone": "Clear, security-specific",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.remove_confirm_title": {
+		"role": "Native remove confirmation dialog",
+		"tone": "Clear about data loss",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility. Preserve ICU placeholders exactly."
+	},
+	"ui.browser.extensions.remove_confirm_body": {
+		"role": "Native remove confirmation dialog",
+		"tone": "Clear about data loss",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.remove_confirm_remove": {
+		"role": "Native remove confirmation dialog",
+		"tone": "Clear about data loss",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.disabled_info": {
+		"role": "Extension manager text",
+		"tone": "Plain",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility. Preserve ICU placeholders exactly."
+	},
+	"ui.browser.extensions.error_generic": {
+		"role": "Per-extension or toast error explanation",
+		"tone": "Honest, actionable, no blame",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.passkey_recovery": {
+		"role": "Passkey notice strip: the one hint shown when NO password-manager extension is installed and on; followed by an 'Open Extensions' button",
+		"tone": "Plain, does not promise the passkey will work",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.passkey_recovery_installed": {
+		"role": "Passkey notice strip: the one hint shown when a password-manager extension IS installed and on; followed by an 'Open Extensions' button. The user opens that extension from the Extensions page (its Open button) and signs in to it there.",
+		"tone": "Plain, does not promise the passkey will work",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility.",
+		"placeholders": {
+			"name": "The extension's own name from its manifest, e.g. '1Password – Password Manager'. Not translated."
+		}
+	},
+	"ui.browser.extensions.page_title": {
+		"role": "Extensions page (lop://extensions) text",
+		"tone": "Plain, calm",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.search_placeholder": {
+		"role": "Extensions page (lop://extensions) text",
+		"tone": "Plain, calm",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.search_none": {
+		"role": "Extensions page (lop://extensions) text",
+		"tone": "Plain, calm",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.loading_label": {
+		"role": "Extensions page (lop://extensions) text",
+		"tone": "Plain, calm",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.load_error": {
+		"role": "Extensions page (lop://extensions) text",
+		"tone": "Plain, calm",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.action_retry": {
+		"role": "Button label on the lop://extensions page",
+		"tone": "Short verb phrase",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.action_details": {
+		"role": "Button label on the lop://extensions page",
+		"tone": "Short verb phrase",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.action_back": {
+		"role": "Button label on the lop://extensions page",
+		"tone": "Short verb phrase",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.action_view_in_store": {
+		"role": "Button label on the lop://extensions page",
+		"tone": "Short verb phrase",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.action_open_website": {
+		"role": "Button label on the lop://extensions page",
+		"tone": "Short verb phrase",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.action_remove_extension": {
+		"role": "Button label on the lop://extensions page",
+		"tone": "Short verb phrase",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.status_not_ready": {
+		"role": "Extensions page (lop://extensions) text",
+		"tone": "Plain, calm",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.details_on_off": {
+		"role": "Section heading or body text on the lop://extensions details view",
+		"tone": "Plain, calm",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.details_description": {
+		"role": "Section heading or body text on the lop://extensions details view",
+		"tone": "Plain, calm",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.details_version": {
+		"role": "Section heading or body text on the lop://extensions details view",
+		"tone": "Plain, calm",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.details_id": {
+		"role": "Section heading or body text on the lop://extensions details view",
+		"tone": "Plain, calm",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.details_site_access": {
+		"role": "Section heading or body text on the lop://extensions details view",
+		"tone": "Plain, calm",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.site_access_none": {
+		"role": "Extensions page (lop://extensions) text",
+		"tone": "Plain, calm",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.details_permissions": {
+		"role": "Section heading or body text on the lop://extensions details view",
+		"tone": "Plain, calm",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.permissions_none": {
+		"role": "Extensions page (lop://extensions) text",
+		"tone": "Plain, calm",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.blocked_heading": {
+		"role": "Extension details/consent: capability this browser turns off for every extension",
+		"tone": "Factual noun phrase",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.blocked_desktop_apps": {
+		"role": "Extension details/consent: capability this browser turns off for every extension",
+		"tone": "Factual noun phrase",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.blocked_notifications": {
+		"role": "Extension details/consent: capability this browser turns off for every extension",
+		"tone": "Factual noun phrase",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.details_options": {
+		"role": "Section heading or body text on the lop://extensions details view",
+		"tone": "Plain, calm",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.details_no_options": {
+		"role": "Section heading or body text on the lop://extensions details view",
+		"tone": "Plain, calm",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.details_no_ui": {
+		"role": "Section heading or body text on the lop://extensions details view",
+		"tone": "Plain, calm",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.details_updates": {
+		"role": "Section heading or body text on the lop://extensions details view",
+		"tone": "Plain, calm",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.details_source": {
+		"role": "Section heading or body text on the lop://extensions details view",
+		"tone": "Plain, calm",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.source_store": {
+		"role": "Extensions page (lop://extensions) text",
+		"tone": "Plain, calm",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.details_not_found": {
+		"role": "Section heading or body text on the lop://extensions details view",
+		"tone": "Plain, calm",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.install_downloading": {
+		"role": "Live status line while an extension downloads/verifies before the consent dialog",
+		"tone": "Plain progress text",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.install_verifying": {
+		"role": "Live status line while an extension downloads/verifies before the consent dialog",
+		"tone": "Plain progress text",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.updates_pending": {
+		"role": "Extensions page (lop://extensions) text",
+		"tone": "Plain, calm",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.updates_failed": {
+		"role": "Extensions page (lop://extensions) text",
+		"tone": "Plain, calm",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.waiting_pages": {
+		"role": "Extensions page (lop://extensions) text",
+		"tone": "Plain, calm",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.store_install_blocked": {
+		"role": "Error shown by the Chrome Web Store page (via chrome.extension.lastError) when this browser refuses the request",
+		"tone": "Plain, tells the user what to do instead; keep lop://extensions verbatim",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.store_remove_refused": {
+		"role": "Error shown by the Chrome Web Store page (via chrome.extension.lastError) when this browser refuses the request",
+		"tone": "Plain, tells the user what to do instead; keep lop://extensions verbatim",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility. 'lop://extensions' is a literal address; do not translate it."
+	},
+	"ui.browser.extensions.passkey_open_extensions": {
+		"role": "Passkey notice strip shown when a website's passkey request fails",
+		"tone": "Plain; 'Extensions' names the browser's extensions page",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.permission_history": {
+		"role": "Plain-language permission row on the extension details page and in the native install consent dialog (Chrome's own warning wording)",
+		"tone": "Factual, starts with a verb, no trailing period",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.permission_bookmarks": {
+		"role": "Plain-language permission row on the extension details page and in the native install consent dialog (Chrome's own warning wording)",
+		"tone": "Factual, starts with a verb, no trailing period",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.permission_clipboard_read": {
+		"role": "Plain-language permission row on the extension details page and in the native install consent dialog (Chrome's own warning wording)",
+		"tone": "Factual, starts with a verb, no trailing period",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.permission_clipboard_write": {
+		"role": "Plain-language permission row on the extension details page and in the native install consent dialog (Chrome's own warning wording)",
+		"tone": "Factual, starts with a verb, no trailing period",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.permission_content_settings": {
+		"role": "Plain-language permission row on the extension details page and in the native install consent dialog (Chrome's own warning wording)",
+		"tone": "Factual, starts with a verb, no trailing period",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.permission_cookies": {
+		"role": "Plain-language permission row on the extension details page and in the native install consent dialog (Chrome's own warning wording)",
+		"tone": "Factual, starts with a verb, no trailing period",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.permission_debugger": {
+		"role": "Plain-language permission row on the extension details page and in the native install consent dialog (Chrome's own warning wording)",
+		"tone": "Factual, starts with a verb, no trailing period",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.permission_block_content": {
+		"role": "Plain-language permission row on the extension details page and in the native install consent dialog (Chrome's own warning wording)",
+		"tone": "Factual, starts with a verb, no trailing period",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.permission_screen_capture": {
+		"role": "Plain-language permission row on the extension details page and in the native install consent dialog (Chrome's own warning wording)",
+		"tone": "Factual, starts with a verb, no trailing period",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.permission_downloads": {
+		"role": "Plain-language permission row on the extension details page and in the native install consent dialog (Chrome's own warning wording)",
+		"tone": "Factual, starts with a verb, no trailing period",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.permission_location": {
+		"role": "Plain-language permission row on the extension details page and in the native install consent dialog (Chrome's own warning wording)",
+		"tone": "Factual, starts with a verb, no trailing period",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.permission_management": {
+		"role": "Plain-language permission row on the extension details page and in the native install consent dialog (Chrome's own warning wording)",
+		"tone": "Factual, starts with a verb, no trailing period",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.permission_privacy": {
+		"role": "Plain-language permission row on the extension details page and in the native install consent dialog (Chrome's own warning wording)",
+		"tone": "Factual, starts with a verb, no trailing period",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.permission_proxy": {
+		"role": "Plain-language permission row on the extension details page and in the native install consent dialog (Chrome's own warning wording)",
+		"tone": "Factual, starts with a verb, no trailing period",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.permission_passkeys": {
+		"role": "Plain-language permission row on the extension details page and in the native install consent dialog (Chrome's own warning wording)",
+		"tone": "Factual, starts with a verb, no trailing period",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.permission_email": {
+		"role": "Plain-language permission row on the extension details page and in the native install consent dialog (Chrome's own warning wording)",
+		"tone": "Factual, starts with a verb, no trailing period",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	}
+}

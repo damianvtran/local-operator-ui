@@ -1427,7 +1427,13 @@ test("a plan gate names the plan and the value, and draws no conversation chrome
 		html,
 		/Communicate with your team members and their agents, and let agents collaborate with other agents in your organization\./,
 	);
-	assert.match(html, /This organization’s plan does not include Team Bridge\./);
+	// The ACCOUNT's sentence (onboarding audit U2): this gate is also what an
+	// account with no organization reads, so it never says "this organization".
+	assert.match(
+		html,
+		/Your account isn’t in an organization on the Radient Team plan\./,
+	);
+	assert.doesNotMatch(html, /This organization’s plan/);
 	// No rail, no thread, no people: every one of those affordances would be
 	// refused on this account.
 	assert.doesNotMatch(html, /data-conversation-id/);
@@ -1436,12 +1442,31 @@ test("a plan gate names the plan and the value, and draws no conversation chrome
 	assert.doesNotMatch(html, /People<\/h2>/);
 });
 
-test("signed out says sign in; update and unavailable name their own reasons", () => {
+test("signed out says sign in; update and unavailable name their own reasons", async () => {
+	// The signed-out gate now carries a router <Link> to the sign-in control.
+	const { MemoryRouter } = await import("react-router-dom");
 	const signedOut = renderToStaticMarkup(
-		createElement(TeamBridgePageView, viewProps({ eligibility: "signed_out" })),
+		createElement(
+			MemoryRouter,
+			null,
+			createElement(
+				TeamBridgePageView,
+				viewProps({ eligibility: "signed_out" }),
+			),
+		),
 	);
 	assert.match(signedOut, /Sign in to Radient/);
 	assert.match(signedOut, /You’re signed out\. Sign in to use Team Bridge\./);
+	// No dead end (onboarding audit U3): one link to the settings section that
+	// owns the sign-in control. Navigation, never a second sign-in on this page.
+	assert.equal(
+		signedOut.includes('href="/settings?section=radient"'),
+		true,
+		"the signed-out gate links to the Radient account section",
+	);
+	assert.match(signedOut, />Sign in to Radient</);
+	assert.doesNotMatch(signedOut, /<button/);
+	assert.doesNotMatch(signedOut, /See the Radient Team plan/);
 
 	const update = renderToStaticMarkup(
 		createElement(
@@ -1470,8 +1495,65 @@ test("the panel is importable on its own for the story and page mounts", () => {
 		createElement(ui.TeamBridgeEligibilityPanel, { reason: "plan_required" }),
 	);
 	assert.match(html, /Team Bridge requires a Radient Team plan/);
-	// No fake controls: there is not a single button in the panel.
-	assert.doesNotMatch(html, /<button/);
+	/*
+	 * Exactly one control, and it is the route to the plan (onboarding audit
+	 * U2): a gate that names a plan and offers no way to look at it is a dead
+	 * end. One secondary button, no dialog, nothing styled as a purchase.
+	 */
+	assert.equal(html.match(/<button/g)?.length, 1, "one control, not several");
+	assert.match(
+		html,
+		/<button[^>]*data-team-bridge-gate-action="see-plan"[^>]*>See the Radient Team plan<\/button>/,
+	);
+	assert.doesNotMatch(html, /bg-accent /, "the plan link is not a primary");
+	assert.doesNotMatch(html, /role="(?:dialog|alertdialog)"/);
+});
+
+test("the plan link yields to the trial on-ramp once trial starts are enabled", () => {
+	/*
+	 * With `TEAM_TRIAL_START_ENABLED` on, the no-organization branch mounts the
+	 * trial on-ramp, whose start/subscribe controls are the upgrade route. The
+	 * panel is still what that on-ramp falls back to, and it must not put a
+	 * second route beside them. The constant is false in this build, so the
+	 * enabled state is rendered through the panel's own parameter.
+	 */
+	const enabled = renderToStaticMarkup(
+		createElement(ui.TeamBridgeEligibilityPanel, {
+			reason: "plan_required",
+			trialStartEnabled: true,
+		}),
+	);
+	assert.match(enabled, /Team Bridge requires a Radient Team plan/);
+	assert.doesNotMatch(enabled, /<button/);
+	assert.doesNotMatch(enabled, /See the Radient Team plan/);
+
+	const disabled = renderToStaticMarkup(
+		createElement(ui.TeamBridgeEligibilityPanel, {
+			reason: "plan_required",
+			trialStartEnabled: false,
+		}),
+	);
+	assert.match(disabled, /See the Radient Team plan/);
+
+	// The default follows the release constant, which is off in this build.
+	const byDefault = renderToStaticMarkup(
+		createElement(ui.TeamBridgeEligibilityPanel, { reason: "plan_required" }),
+	);
+	assert.equal(byDefault, disabled);
+});
+
+test("update_required and unavailable offer no control, in either trial state", () => {
+	for (const reason of ["update_required", "unavailable"]) {
+		for (const trialStartEnabled of [false, true]) {
+			const html = renderToStaticMarkup(
+				createElement(ui.TeamBridgeEligibilityPanel, {
+					reason,
+					trialStartEnabled,
+				}),
+			);
+			assert.doesNotMatch(html, /<button|<a /, `${reason} has no remedy here`);
+		}
+	}
 });
 
 // ---------------------------------------------------------------------------

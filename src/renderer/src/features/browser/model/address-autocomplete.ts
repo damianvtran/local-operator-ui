@@ -1,4 +1,11 @@
 import type { AddressHistoryEntry } from "../../../../../shared/browser-address-history";
+import {
+	EXTENSIONS_PAGE_URL,
+	INTERNAL_PAGE_ALIAS_SCHEME,
+	INTERNAL_PAGE_SCHEME,
+	internalUrlOf,
+	parseInternalUrl,
+} from "../../../../../shared/internal-pages";
 
 /**
  * The address field's local completion model.
@@ -82,6 +89,10 @@ export function defaultActiveIndex(suggestions: AddressSuggestions): number {
 	const first = suggestions.rows[0];
 	if (!first) return -1;
 	if (first.kind === "search" || first.kind === "typed") return 0;
+	// A page row is first only when the user is typing the browser's own scheme
+	// (`lop:`/`chrome:`), where the raw text is not a destination at all: Enter on
+	// `lop://` must open the page the list names, never hand main a refused URL.
+	if (first.kind === "page") return 0;
 	return suggestions.inlineRow ? 0 : -1;
 }
 
@@ -179,12 +190,46 @@ export interface AddressCandidateRow {
 }
 
 /**
+ * One of the browser's own pages (`lop://extensions`, an extension's details).
+ *
+ * WHY A ROW KIND OF ITS OWN, not a `candidate` with a third source: a candidate
+ * is a history/tab entry main ranked and the shared history contract types; a
+ * page is built here from a static catalogue with no IPC, has no visit count,
+ * and paints with its own icon. `targetUrl` is the canonical `lop://` URL, which
+ * the existing internal-page path in main (`parseInternalUrl`) resolves; this
+ * row grants nothing that typing the URL would not.
+ */
+export interface AddressPageRow {
+	kind: "page";
+	/** The canonical display URL, always `lop://`: the alias is never shown. */
+	displayText: string;
+	/** The page's localized title, or an extension's own name for a details row. */
+	title: string;
+	targetUrl: string;
+}
+
+/** A page the caller offers for matching; `title` is already localized. */
+export interface AddressPageInput {
+	url: string;
+	title: string;
+	keywords: readonly string[];
+}
+
+/** An installed extension, for its `lop://extensions?id=` details row. */
+export interface AddressExtensionInput {
+	id: string;
+	name: string;
+}
+
+/**
  * One row of the unified list.
  *
  * ORDER, and it is the product decision: the typed-address row (URL intent
  * with no match at all) or the search row (search intent), history matches by
  * score, then open-tab matches. A URL-intent input with no match is
- * [typed address, search row]. There are deliberately no
+ * [typed address, search row]. Browser pages matched by a typed word come
+ * last; typing the browser's own scheme (`lop://`) lists only pages (see
+ * `matchInternalPages`). There are deliberately no
  * section-heading rows: the native overlay protocol S4b owns has uniform row
  * heights and a row count, so a heading row would be a row the user can select
  * and a height the child cannot paint in its own model.
@@ -192,7 +237,8 @@ export interface AddressCandidateRow {
 export type AddressRow =
 	| AddressSearchRow
 	| AddressTypedRow
-	| AddressCandidateRow;
+	| AddressCandidateRow
+	| AddressPageRow;
 
 export interface AddressSuggestions {
 	inline: InlineCompletion | null;
@@ -224,6 +270,7 @@ export const MAX_ADDRESS_ALTERNATIVES = MAX_ADDRESS_ROWS;
 const SCHEME_WITH_SLASHES = /^([a-z][a-z0-9+.-]*):\/\//i;
 const BARE_SCHEME = /^([a-z][a-z0-9+.-]*):/i;
 const HAS_WHITESPACE = /\s/;
+const WHITESPACE_RUN = /\s+/;
 const LEADING_DOUBLE_SLASH = /^\/\//;
 const URL_BOUNDARY = /[/?#]/;
 const FILE_SCHEME_TYPED = /^file:/i;
@@ -351,10 +398,20 @@ export function addressIntent(raw: string): AddressIntent {
 	if (raw !== raw.trim()) return "search";
 	if (HAS_WHITESPACE.test(raw)) return "search";
 	if (raw.startsWith("?") || raw.startsWith("#")) return "search";
+	// The browser's own pages (`lop://extensions`) are addresses main resolves
+	// itself; without this they would read as an unknown, blocked scheme.
+	if (parseInternalUrl(raw)) return "url";
 	const withSlashes = SCHEME_WITH_SLASHES.exec(raw);
 	if (withSlashes) {
 		const scheme = foldAscii(withSlashes[1]);
-		if (scheme === "http" || scheme === "https" || scheme === "file")
+		// U1c: a typed extension page reaches main, which checks installed +
+		// enabled and user ownership. This classifier grants no navigation.
+		if (
+			scheme === "http" ||
+			scheme === "https" ||
+			scheme === "file" ||
+			scheme === "chrome-extension"
+		)
 			return "url";
 		return "blocked";
 	}
@@ -541,6 +598,174 @@ function compareCandidates(a: AddressCandidate, b: AddressCandidate): number {
 	return a.url.localeCompare(b.url);
 }
 
+/** A bare word must be this long before it is matched against page titles and
+ * keywords: at one or two letters nearly every search would grow a page row. */
+const MIN_PAGE_WORD = 3;
+/** At most this many page rows ride under a typed WORD, so a page can never
+ * crowd history out of the five-row list for an ordinary search. */
+const MAX_WORD_PAGE_ROWS = 2;
+const INTERNAL_SCHEMES = [INTERNAL_PAGE_SCHEME, INTERNAL_PAGE_ALIAS_SCHEME];
+const EXTENSIONS_PATH = EXTENSIONS_PAGE_URL.slice(INTERNAL_PAGE_SCHEME.length);
+
+interface PageMatch {
+	/** True when the text is the browser's own scheme (`lop:`, `chrome://ext`):
+	 * the list is then ONLY pages, and the raw text is not a destination. */
+	addressed: boolean;
+	rows: AddressPageRow[];
+	inline: InlineCompletion | null;
+	/** True for the bare scheme word `lop`: its rows only fill slots history
+	 * left EMPTY and never displace a history row (review R2/U2/Q1) - `lop` is
+	 * still a plausible prefix of a site, unlike a keyword such as `exten`. */
+	fillOnly?: boolean;
+}
+
+/** `?id=` spellings that are still on their way to an id: the user has typed
+ * the query but not yet a character that names an extension (review U4). */
+const PENDING_DETAILS_QUERY = new Set(["", "i", "id", "id="]);
+const TRAILING_SLASH = /\/$/;
+const ID_KEY = /^id=/i;
+
+function pageRow(url: string, title: string): AddressPageRow {
+	return { kind: "page", displayText: url, title, targetUrl: url };
+}
+
+/**
+ * The browser's own pages that match what was typed. Built locally from the
+ * caller's catalogue: pages are not history, so nothing crosses IPC.
+ *
+ * THREE WAYS IN, from most to least explicit:
+ *   1. Past the scheme name (`lop:`, `lop://`, `LOP://E`, `chrome://ext`): every
+ *      page whose path starts with the rest, case-folded, plus each installed
+ *      extension's details page once the text reaches `lop://extensions`. Only
+ *      pages are offered, and a single match inline-completes in the spelling
+ *      the user typed (`chrome://e` -> `chrome://extensions`, still targeting
+ *      the canonical `lop://` URL main resolves).
+ *   2. A prefix of the scheme name itself (`l`, `lo`, `lop`): every page, AFTER
+ *      the search row and history. Only `lop`: the `chrome` alias is honoured
+ *      once typed with its colon, but `c`/`ch` would put a page under nearly
+ *      every search.
+ *   3. A bare word of at least `MIN_PAGE_WORD` letters that starts a keyword or
+ *      a word of the localized title (`exten`, `extensions`): offered last, and
+ *      never inline - `ex` typed for example.com keeps its own completion.
+ */
+function matchInternalPages(
+	raw: string,
+	intent: AddressIntent,
+	pages: readonly AddressPageInput[],
+	extensions: readonly AddressExtensionInput[],
+): PageMatch {
+	const none: PageMatch = { addressed: false, rows: [], inline: null };
+	if (pages.length === 0 || raw.length === 0 || raw !== raw.trim()) return none;
+	if (HAS_WHITESPACE.test(raw)) return none;
+	const folded = foldAscii(raw);
+	for (const scheme of INTERNAL_SCHEMES) {
+		let rest: string | null = null;
+		if (folded.startsWith(scheme)) rest = folded.slice(scheme.length);
+		else if (scheme.startsWith(folded) && folded.includes(":")) rest = "";
+		if (rest === null) continue;
+		// Main accepts `lop://extensions/`, so the picker must too (review R3/U5):
+		// one trailing slash is the same page, not a different path.
+		const wanted = rest.endsWith("/") ? rest.slice(0, -1) : rest;
+		const query = wanted.startsWith(`${EXTENSIONS_PATH}?`)
+			? wanted.slice(EXTENSIONS_PATH.length + 1)
+			: null;
+		// A bare `?` (or `?id=` still being typed) names no extension yet: keep the
+		// list page FIRST so Enter opens the list, not whichever details page
+		// happens to sort first (review U4).
+		const pending = query !== null && PENDING_DETAILS_QUERY.has(query);
+		const rows = pages
+			.filter((page) => {
+				const path = page.url.slice(INTERNAL_PAGE_SCHEME.length);
+				return path.startsWith(wanted) || (pending && path === EXTENSIONS_PATH);
+			})
+			.map((page) => pageRow(page.url, page.title));
+		if (wanted.startsWith(EXTENSIONS_PATH)) {
+			// What follows `?`/`?id=` matches the id by prefix OR the name by
+			// case-insensitive substring (review U3): nobody knows a 32-letter id,
+			// but the rows show names. Names come from the list already loaded for
+			// these rows, so this adds no IPC. Read from the RAW text: names are not
+			// ASCII in every language and `foldAscii` only lowercases A-Z.
+			const term =
+				query === null || pending
+					? ""
+					: raw
+							.slice(raw.length - rest.length)
+							.replace(TRAILING_SLASH, "")
+							.slice(EXTENSIONS_PATH.length + 1)
+							.replace(ID_KEY, "")
+							.toLowerCase();
+			const bare = query === null && wanted !== EXTENSIONS_PATH;
+			for (const extension of extensions) {
+				const url = internalUrlOf({ page: "extensions", id: extension.id });
+				// parseInternalUrl is the gate: an id main would refuse is never offered.
+				if (bare || !parseInternalUrl(url)) continue;
+				if (
+					term.length > 0 &&
+					!extension.id.startsWith(term) &&
+					!extension.name.toLowerCase().includes(term)
+				)
+					continue;
+				rows.push(pageRow(url, extension.name));
+			}
+		}
+		if (rows.length === 0) return none;
+		let inline: InlineCompletion | null = null;
+		if (rows.length === 1) {
+			const only = rows[0];
+			const spelled = `${scheme}${only.targetUrl.slice(INTERNAL_PAGE_SCHEME.length)}`;
+			// Only a true prefix completes inline: a NAME match (`?bit` ->
+			// Bitwarden's `?id=…`) is not an extension of what was typed.
+			if (
+				spelled.length > raw.length &&
+				foldAscii(spelled).startsWith(folded)
+			) {
+				const suffix = spelled.slice(raw.length);
+				inline = {
+					raw,
+					text: `${raw}${suffix}`,
+					suffix,
+					targetUrl: only.targetUrl,
+				};
+			}
+		}
+		return {
+			addressed: true,
+			rows: rows.slice(0, MAX_ADDRESS_ROWS),
+			inline,
+		};
+	}
+	if (intent !== "search") return none;
+	if (folded.length < MIN_PAGE_WORD) return none;
+	// `l`/`lo` are the first keystrokes of localhost, linkedin, login: they offer
+	// nothing (review R2/U2/Q1). `lop` is the whole scheme word, so it offers
+	// the pages, but only into slots history left free.
+	if (INTERNAL_PAGE_SCHEME.startsWith(folded)) {
+		return {
+			addressed: false,
+			rows: pages
+				.slice(0, MAX_WORD_PAGE_ROWS)
+				.map((page) => pageRow(page.url, page.title)),
+			inline: null,
+			fillOnly: true,
+		};
+	}
+	// The localized title is lowercased with the locale-agnostic `toLowerCase`
+	// (titles are not ASCII in every language); keywords are already lowercase.
+	const word = raw.toLowerCase();
+	const rows = pages
+		.filter(
+			(page) =>
+				page.keywords.some((keyword) => keyword.startsWith(word)) ||
+				page.title
+					.toLowerCase()
+					.split(WHITESPACE_RUN)
+					.some((part) => part.length > 0 && part.startsWith(word)),
+		)
+		.slice(0, MAX_WORD_PAGE_ROWS)
+		.map((page) => pageRow(page.url, page.title));
+	return { addressed: false, rows, inline: null };
+}
+
 /**
  * Rank the snapshot for one query.
  *
@@ -562,10 +787,35 @@ export function suggestAddresses(
 		/** False when the field is not being edited: the text is then the tab's
 		 * live URL, not something typed, so there is nothing to offer back. */
 		offerTyped?: boolean;
+		/** The browser's own pages, titles already localized. Omitted = none. */
+		pages?: readonly AddressPageInput[];
+		/** Installed extensions, for their details rows under `lop://extensions`. */
+		extensions?: readonly AddressExtensionInput[];
 	} = {},
 ): AddressSuggestions {
 	const inlineShown = options.inlineShown ?? true;
 	const intent = addressIntent(raw);
+	const pageMatch = matchInternalPages(
+		raw,
+		intent,
+		options.pages ?? [],
+		options.extensions ?? [],
+	);
+	// THE BROWSER'S OWN SCHEME IS A PAGE PICKER. `lop://ext` is not a URL main
+	// could load (classified blocked: an unknown scheme), so before this the field
+	// offered nothing. With a page match it is URL intent whose only rows are those
+	// pages; with none (`lop://nope`) it stays blocked exactly as before.
+	if (pageMatch.addressed) {
+		return {
+			inline: pageMatch.inline,
+			candidates: [],
+			rows: pageMatch.rows,
+			search: null,
+			typed: null,
+			inlineRow: false,
+			intent: "url",
+		};
+	}
 	if (intent === "blocked") {
 		return {
 			inline: null,
@@ -653,7 +903,13 @@ export function suggestAddresses(
 		.filter(
 			(candidate) => !(inlineShown && candidate.url === inline?.targetUrl),
 		)
-		.slice(0, search ? MAX_ADDRESS_ROWS - 1 : MAX_ADDRESS_ROWS);
+		// Page rows hold their slots: they come last, so trimming history (not the
+		// pages) is what keeps a matched page visible inside the five rows.
+		.slice(
+			0,
+			(search ? MAX_ADDRESS_ROWS - 1 : MAX_ADDRESS_ROWS) -
+				(pageMatch.fillOnly ? 0 : pageMatch.rows.length),
+		);
 	// THE COMPLETION IS NEVER "NO MATCH". With other rows the inline target is
 	// dropped because the field already shows it (one destination, one place). When
 	// it would leave the list EMPTY, the field is completing from history while the
@@ -682,6 +938,13 @@ export function suggestAddresses(
 			(candidate): AddressCandidateRow => ({ kind: "candidate", candidate }),
 		),
 	];
+	// Last: a page matched by a WORD is an extra, never the default Enter. A
+	// fill-only match (`lop`) gets whatever room is left, possibly none.
+	rows.push(
+		...(pageMatch.fillOnly
+			? pageMatch.rows.slice(0, Math.max(0, MAX_ADDRESS_ROWS - rows.length))
+			: pageMatch.rows),
+	);
 	return { inline, candidates, rows, search, typed, inlineRow, intent };
 }
 
@@ -738,8 +1001,8 @@ export function rowTarget(
 	if (activeIndex >= 0) {
 		const row = suggestions.rows[activeIndex];
 		if (!row) return null;
-		if (row.kind === "search" || row.kind === "typed") return row.targetUrl;
-		return row.candidate.url;
+		if (row.kind === "candidate") return row.candidate.url;
+		return row.targetUrl;
 	}
 	return suggestions.inline?.targetUrl ?? null;
 }
@@ -777,4 +1040,50 @@ export function usableRawAddress(raw: string): string | null {
 	const trimmed = raw.trim();
 	if (!trimmed || CONTROL_CHARS.test(trimmed)) return null;
 	return trimmed;
+}
+
+/** What Enter does with the browser's own scheme when NO row is highlighted. */
+export type InternalEnter =
+	| { kind: "navigate"; targetUrl: string }
+	| { kind: "refuse" };
+
+/**
+ * Enter on `lop:`/`chrome:` text with no highlighted row (review U1).
+ *
+ * WHY THIS EXISTS: a page match turns `lop:` into URL intent so the list can
+ * show pages, but the TEXT is still not something main can open - main would
+ * read `lop:` as `https://lop/` (a DNS failure) and `lop://ext` as a refused
+ * scheme. So when the user has rejected the completion (Backspace, a caret
+ * move), the decision is made from the raw text, never from the overridden
+ * intent:
+ *   1. it parses exactly (`lop://extensions/`, `chrome://extensions`): open the
+ *      canonical page;
+ *   2. it is the scheme with EXACTLY one matching page: open that page - the
+ *      list names one destination, so Enter means it;
+ *   3. otherwise refuse locally, as blocked text always was (UX U5).
+ * Returns null for anything that is not the browser's own scheme, which keeps
+ * ordinary web typing on its existing path. Never returns a non-parsing URL.
+ */
+export function internalEnterTarget(
+	raw: string,
+	suggestions: AddressSuggestions,
+): InternalEnter | null {
+	const trimmed = raw.trim();
+	const parsed = parseInternalUrl(trimmed);
+	if (parsed) return { kind: "navigate", targetUrl: internalUrlOf(parsed) };
+	if (addressIntent(trimmed) !== "blocked") return null;
+	const folded = foldAscii(trimmed);
+	const internal = INTERNAL_SCHEMES.some(
+		(scheme) =>
+			folded.startsWith(scheme) ||
+			(scheme.startsWith(folded) && folded.includes(":")),
+	);
+	if (!internal) return null;
+	const pages = suggestions.rows.filter(
+		(row): row is AddressPageRow => row.kind === "page",
+	);
+	const only = pages.length === 1 ? pages[0] : null;
+	if (only && parseInternalUrl(only.targetUrl))
+		return { kind: "navigate", targetUrl: only.targetUrl };
+	return { kind: "refuse" };
 }

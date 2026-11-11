@@ -21,6 +21,9 @@
  * existing OAuth sign-in, which needs the provider's own consent page. The
  * prerequisite blockers (connector tool, phone interface, background service)
  * show the backend's remedy and a fresh check; nothing here installs software.
+ * The one exception is the connector tool under the relay transport: when the
+ * backend reports `transport: "relay"`, `lop` runs the connector itself, so the
+ * "install cloudflared" step is skipped (see `phoneSetupSkipsCloudflared`).
  *
  * ## Success is `verified: true` and nothing else
  *
@@ -56,7 +59,10 @@ import { useRadientSessionIssue } from "@shared/hooks/use-radient-session-issue"
 import { t } from "@shared/i18n";
 import { CircleCheck, ExternalLink } from "lucide-react";
 import { type FC, useEffect, useRef } from "react";
-import type { PhoneSetupResult } from "../../../../shared/desktop-contract";
+import {
+	type PhoneSetupResult,
+	phoneSetupSkipsCloudflared,
+} from "../../../../shared/desktop-contract";
 
 type PhoneAccessBlockProps = {
 	/**
@@ -281,6 +287,12 @@ const Blocked: FC<{
 	offerSignIn: boolean;
 }> = ({ result, setup, offerSignIn }) => {
 	const kind = result.remedy?.kind ?? null;
+	// The relay transport needs no `cloudflared`, so the install step is skipped:
+	// the backend's sentence (which names the binary to install) is replaced by a
+	// neutral UI sentence, and "Check again" asks the backend for a fresh plan that
+	// a relay-aware backend answers past this prerequisite. Without `transport` (an
+	// older backend) or with `cloudflare`, the step renders exactly as before.
+	const skipCloudflared = phoneSetupSkipsCloudflared(result);
 	const owner = result.credential_id;
 	const price = result.quote?.monthly_price_usd ?? null;
 
@@ -330,6 +342,7 @@ const Blocked: FC<{
 			className="flex flex-col gap-3"
 			data-phone-state={result.blocked_on}
 			data-remedy-kind={kind ?? "none"}
+			data-phone-step-skipped={skipCloudflared ? "cloudflared" : undefined}
 		>
 			<Heading />
 			<AccountLine result={result} />
@@ -357,7 +370,14 @@ const Blocked: FC<{
 					))}
 				</div>
 			) : null}
-			{result.remedy ? (
+			{skipCloudflared ? (
+				// UI-owned, not the backend's: the backend sentence is the one being
+				// suppressed, and a blocked state with no sentence reads as a bug
+				// (design review D1). It never names the transport or the tool.
+				<p className="break-words text-body-sm text-ink">
+					{t("ui.providers.phone.connector_not_needed")}
+				</p>
+			) : result.remedy ? (
 				<p className="break-words text-body-sm text-ink">
 					{result.remedy.text}
 				</p>

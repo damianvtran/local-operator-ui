@@ -29,6 +29,11 @@ import {
 import { DESKTOP_STREAM_DETAIL } from "../../../../../shared/desktop-stream-notice";
 import { appendJournalOrderIds } from "../../../../../shared/journal-order-query";
 import {
+	type SnapshotReceipt,
+	deliverSnapshot,
+	enterSnapshotRenderer,
+} from "../../../../../shared/snapshot-receipt";
+import {
 	parseDelegatedCleanupNotice,
 	useDelegatedCleanupNoticeStore,
 } from "../../store/delegated-cleanup-notice-store";
@@ -54,6 +59,29 @@ export type {
  * because this is where its callers import it from.
  */
 export { desktopRequestTimeoutMs };
+
+/*
+ * THE TRANSPORT'S OWN SENTENCES, authored through the catalogue.
+ *
+ * `userFacingMessage` returns a `DesktopControlError.message` verbatim for any
+ * error that is not a recognised refusal code, so these two sentences reach the
+ * banner, the sidebar status feed and every toast exactly as they are built
+ * here: English literals shipped as English in every locale (census B8). They are
+ * FUNCTIONS, not constants, so the catalogue is read when the failure happens and
+ * a locale switch is honoured - a module-level `t()` would freeze whichever
+ * language was active at import.
+ *
+ * The English text is unchanged, and nothing reads these by prose: callers
+ * classify by `status` / `code` / the error class (see `isForegroundRequired`),
+ * never by comparing the message, which is what keeps a translated sentence from
+ * changing any retry or precedence rule. The sentence is fixed at the moment the
+ * failure is created; an error object that is kept and shown after a later
+ * language change still speaks the language it was raised in.
+ */
+const desktopBackendOfflineMessage = () =>
+	t("ui.common.errors.desktop_backend_offline");
+const desktopBackendCompatibilityMessage = () =>
+	t("ui.common.errors.desktop_backend_compatibility");
 
 export async function desktopRequest(
 	request: DesktopRequest,
@@ -96,7 +124,7 @@ export async function desktopRequest(
 				);
 			throw new DesktopControlError(
 				null,
-				"Desktop controls could not reach the backend process.",
+				desktopBackendOfflineMessage(),
 				cause,
 			);
 		}
@@ -111,16 +139,12 @@ export async function desktopRequest(
 			body: JSON.stringify(request),
 		});
 	} catch (cause) {
-		throw new DesktopControlError(
-			null,
-			"Desktop controls could not reach the backend process.",
-			cause,
-		);
+		throw new DesktopControlError(null, desktopBackendOfflineMessage(), cause);
 	}
 	if (!response.ok)
 		throw new DesktopControlError(
 			response.status,
-			"Desktop controls need a compatible backend connection.",
+			desktopBackendCompatibilityMessage(),
 		);
 	return response.json();
 }
@@ -787,6 +811,7 @@ export type DesktopStreamDecision = "adopted" | "requested";
 
 /** One event from a session stream, in the shape both transports deliver. */
 export type DesktopStreamEvent = {
+	receipt?: SnapshotReceipt;
 	kind: "data" | "error" | "end";
 	data?: string;
 	detail?: string;
@@ -1045,6 +1070,7 @@ export function prewarmSessionStream(
 		},
 		(event) => {
 			if (record.live) {
+				deliverSnapshot(event.receipt, "live");
 				record.live(event);
 				return;
 			}
@@ -1066,6 +1092,7 @@ export function prewarmSessionStream(
 				discardPrewarm();
 				return;
 			}
+			if (event.receipt) event.receipt.bufferedAt = performance.now();
 			record.buffered.push(event);
 		},
 	);
@@ -1264,7 +1291,10 @@ function adoptPrewarmedStream(
 	let disposed = false;
 	queueMicrotask(() => {
 		if (disposed) return;
-		for (const event of buffered) onEvent(event);
+		for (const event of buffered) {
+			deliverSnapshot(event.receipt, "replay");
+			onEvent(event);
+		}
 	});
 	return () => {
 		if (disposed) return;
@@ -1289,7 +1319,18 @@ function openStreamTransport(
 ): () => void {
 	const native = window.api?.desktop?.stream;
 	if (native) {
-		const subscription = native.subscribe(args, onEvent);
+		const subscription = native.subscribe(args, (event) => {
+			// contextBridge may freeze copied values. Own only the diagnostic
+			// envelope; never mutate the native event or its raw SSE data.
+			const received = event.receipt
+				? { ...event, receipt: { ...event.receipt } }
+				: event;
+			enterSnapshotRenderer(received.receipt);
+			// A prewarm overwrites this at its live/replay boundary; a direct
+			// subscription has no buffering or adoption stage.
+			deliverSnapshot(received.receipt, "direct");
+			onEvent(received);
+		});
 		return () => subscription.dispose();
 	}
 	const query = new URLSearchParams({ session: args.sessionId });

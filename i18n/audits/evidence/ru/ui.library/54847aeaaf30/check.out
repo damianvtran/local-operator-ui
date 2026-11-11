@@ -1,0 +1,53 @@
+# worktree HEAD (must be the frozen head): 8a9ce1f808c266ebe9a0e924094344cea60c2c23
+[PASS] head matches frozen 8a9ce1f: 8a9ce1f808c266ebe9a0e924094344cea60c2c23
+[PASS] sha256 en: 065ac47c67e2a828… vs expected 065ac47c67e2a828…
+[PASS] sha256 context: 2fe63e830b49079d… vs expected 2fe63e830b49079d…
+[PASS] sha256 ru: a6f8aaba4f1a8eea… vs expected a6f8aaba4f1a8eea…
+[PASS] JSON parses (en, ru, context): en=179 ru=179 ctx=179
+[PASS] key sets identical: missing=[] extra=[]
+[PASS] placeholder parity, whole namespace: []
+[PASS] 20 new keys present: 20 found
+[PASS] ru ICU plural categories complete (legacy namespace): []
+[PASS] ICU braces balanced (whole namespace): []
+[PASS] no invisible/bidi characters in the 20 new values: []
+  (whole-namespace invisible-char scan: 0 occurrence(s) — [])
+
+# audited values: length, display cells, hygiene
+  ui.library.kind.audio                      len= 5 cells= 5 clean  'Аудио'
+  ui.library.kind.code                       len= 3 cells= 3 clean  'Код'
+  ui.library.kind.docx                       len= 4 cells= 4 clean  'DOCX'
+  ui.library.kind.html                       len= 4 cells= 4 clean  'HTML'
+  ui.library.kind.image                      len=11 cells=11 clean  'Изображение'
+  ui.library.kind.markdown                   len= 8 cells= 8 clean  'Markdown'
+  ui.library.kind.other                      len= 6 cells= 6 clean  'Другое'
+  ui.library.kind.pdf                        len= 3 cells= 3 clean  'PDF'
+  ui.library.kind.pptx                       len= 4 cells= 4 clean  'PPTX'
+  ui.library.kind.spreadsheet                len= 7 cells= 7 clean  'Таблица'
+  ui.library.kind.text                       len= 5 cells= 5 clean  'Текст'
+  ui.library.kind.video                      len= 5 cells= 5 clean  'Видео'
+  ui.library.preview.unsupported_generic     len=51 cells=51 clean  'Для этого файла встроенный предпросмотр недоступен.'
+  ui.library.tag_category.custom             len=16 cells=16 clean  'Пользовательские'
+  ui.library.tag_category.format             len= 6 cells= 6 clean  'Формат'
+  ui.library.tag_category.project            len= 6 cells= 6 clean  'Проект'
+  ui.library.tag_category.source             len= 8 cells= 8 clean  'Источник'
+  ui.library.tag_category.status             len= 6 cells= 6 clean  'Статус'
+  ui.library.tag_category.topic              len= 4 cells= 4 clean  'Тема'
+  ui.library.tag_category.type               len= 3 cells= 3 clean  'Тип'
+
+# term-consistency evidence (read, not asserted): en -> ru
+  ui.library.sort.kind                             en='Kind'                 ru='Тип'
+  ui.library.category.sounds                       en='Sounds'               ru='Звуки'
+  ui.library.category.images                       en='Images'               ru='Изображения'
+  ui.library.category.spreadsheets                 en='Spreadsheets'         ru='Таблицы'
+  ui.library.category.video                        en='Video'                ru='Видео'
+  ui.library.category.other                        en='Other'                ru='Другое'
+  ui.library.category.code                         en='Code'                 ru='Код'
+  ui.agents.pages.scope.custom                     en='Custom'               ru='Свои'
+  ui.settings.appearance.editor.custom_group       en='Custom themes'        ru='Свои темы'
+  ui.canvas.files.kind                             en='Kind'                 ru='Тип'
+  ui.canvas.files.audio                            en='Sounds'               ru='Звуки'
+  ui.canvas.create_file_dialog.file_type           en='File type'            ru='Тип файла'
+  ui.shell.menubar.view                            en='View'                 ru='Вид'
+  ui.teamBridge.fileCard.kind                      en='{kind, select, pdf {PDF} text {Text file} container {ZIP} other {File}}' ru='{kind, select, pdf {PDF} text {Текстовый файл} container {ZIP} other {Файл}}'
+
+SUMMARY: all mechanical checks passed

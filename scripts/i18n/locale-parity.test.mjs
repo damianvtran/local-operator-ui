@@ -65,6 +65,76 @@ const IDENTICAL_OK = new Map([
 		"zh-CN:ui.settings.notifications.volume.readout",
 		"The percent readout is the locale-formatted ICU token {value, number}%, with no lexical English to translate; independently audited in D2 r2 (b5bf3a7c1761). Scoped to this locale/key only.",
 	],
+	// Mark-all-read tooltip (PR #1836): the joiner between the two translated sentences.
+	[
+		"es:ui.chat.sidebar.mark_all_read.scope_joined",
+		"Pure joiner: two already-translated sentences separated by one space, no lexical English (zh-CN differs because it uses no separator). Each locale's independent auditor is to confirm the space is the right separator; scoped to this locale/key only.",
+	],
+	[
+		"fr:ui.chat.sidebar.mark_all_read.scope_joined",
+		"Pure joiner: two already-translated sentences separated by one space, no lexical English (zh-CN differs because it uses no separator). Each locale's independent auditor is to confirm the space is the right separator; scoped to this locale/key only.",
+	],
+	[
+		"hi:ui.chat.sidebar.mark_all_read.scope_joined",
+		"Pure joiner: two already-translated sentences separated by one space, no lexical English (zh-CN differs because it uses no separator). Each locale's independent auditor is to confirm the space is the right separator; scoped to this locale/key only.",
+	],
+	[
+		"ru:ui.chat.sidebar.mark_all_read.scope_joined",
+		"Pure joiner: two already-translated sentences separated by one space, no lexical English (zh-CN differs because it uses no separator). Each locale's independent auditor is to confirm the space is the right separator; scoped to this locale/key only.",
+	],
+	[
+		"ur:ui.chat.sidebar.mark_all_read.scope_joined",
+		"Pure joiner: two already-translated sentences separated by one space, no lexical English (zh-CN differs because it uses no separator). Each locale's independent auditor is to confirm the space is the right separator; scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.chat.sidebar.mark_all_read.scope_joined",
+		"Pure joiner: two already-translated sentences separated by one space, no lexical English (zh-CN differs because it uses no separator). Each locale's independent auditor is to confirm the space is the right separator; scoped to this locale/key only.",
+	],
+	// Browser extensions manager (PR #1821): proper nouns and French cognates.
+	[
+		"ui.browser.extensions.menu_store",
+		"« Chrome Web Store » is Google's product name, which Chrome shows untranslated in every locale; identical in every locale by design, audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790).",
+	],
+	[
+		"ui.browser.extensions.source_store",
+		"« Chrome Web Store » is Google's product name, which Chrome shows untranslated in every locale; identical in every locale by design, audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790).",
+	],
+	[
+		"ui.browser.extensions.details_id",
+		"« ID » is the extension identifier label, the universal abbreviation Chrome's own extension details use in every shipped locale; identical by design, audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790).",
+	],
+	[
+		"fr:ui.browser.extensions.menu_extensions",
+		"French cognate « Extensions » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
+	],
+	[
+		"fr:ui.browser.extensions.manage_title",
+		"French cognate « Extensions » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
+	],
+	[
+		"fr:ui.browser.extensions.page_title",
+		"French cognate « Extensions » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
+	],
+	[
+		"fr:ui.browser.extensions.action_options",
+		"French cognate « Options » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
+	],
+	[
+		"fr:ui.browser.extensions.details_description",
+		"French cognate « Description » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
+	],
+	[
+		"fr:ui.browser.extensions.details_version",
+		"French cognate « Version » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
+	],
+	[
+		"fr:ui.browser.extensions.blocked_notifications",
+		"French cognate « Notifications » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
+	],
+	[
+		"fr:ui.browser.extensions.details_source",
+		"French cognate « Source » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
+	],
 
 	[
 		"ui.settings.appearance.editor.copy_name",
@@ -215,6 +285,15 @@ const IDENTICAL_OK = new Map([
 		// own their punctuation, which is why this is not a locale-scoped row.
 		"ui.teamBridge.members.ineligible_label",
 		"language-neutral format string: only placeholders and ',', no words",
+	],
+	[
+		"ui.teamBridge.delivery.summary.separator",
+		// " · " joins the one-line delivery summary's segments ("Delivered to 3 ·
+		// 2 screening"). Each segment is its own translated message; the separator
+		// carries no words, and every shipped locale keeps the middle dot, as
+		// ui.chat.attachments.file_meta does. The key exists so a locale CAN own
+		// the separator; identical is the audited translation (PR #1832 i18n audit).
+		"language-neutral separator: a middle dot with spaces, no words",
 	],
 	[
 		"ui.canvas.files.attachmentMeta",
@@ -1717,6 +1796,63 @@ const IDENTICAL_OK = new Map([
 	[
 		"fr:ui.chat.session_spend.summary.total",
 		"`Total {total}`: « total » is the French noun/word for a sum, spelled as in English; the amount is a placeholder.",
+	],
+	// Library kind and tag-category labels (PR #1851): format names and cognates.
+	[
+		"ui.library.kind.docx",
+		"File-format acronym/proper name (DOCX, HTML, Markdown, PDF, PPTX) kept Latin in every locale; the existing catalogues already render HTML/PDF/Markdown Latin; judged retained by 14 independent audits of PR #1851.",
+	],
+	[
+		"ui.library.kind.html",
+		"File-format acronym/proper name (DOCX, HTML, Markdown, PDF, PPTX) kept Latin in every locale; the existing catalogues already render HTML/PDF/Markdown Latin; judged retained by 14 independent audits of PR #1851.",
+	],
+	[
+		"ui.library.kind.markdown",
+		"File-format acronym/proper name (DOCX, HTML, Markdown, PDF, PPTX) kept Latin in every locale; the existing catalogues already render HTML/PDF/Markdown Latin; judged retained by 14 independent audits of PR #1851.",
+	],
+	[
+		"ui.library.kind.pdf",
+		"File-format acronym/proper name (DOCX, HTML, Markdown, PDF, PPTX) kept Latin in every locale; the existing catalogues already render HTML/PDF/Markdown Latin; judged retained by 14 independent audits of PR #1851.",
+	],
+	[
+		"ui.library.kind.pptx",
+		"File-format acronym/proper name (DOCX, HTML, Markdown, PDF, PPTX) kept Latin in every locale; the existing catalogues already render HTML/PDF/Markdown Latin; judged retained by 14 independent audits of PR #1851.",
+	],
+	[
+		"es:ui.library.kind.audio",
+		"Spanish: Audio is the ordinary Spanish noun, spelled as in English; judged retained by the independent audits of PR #1851. Scoped to Spanish only.",
+	],
+	[
+		"es:ui.library.kind.video",
+		"Spanish: Video is the ordinary Spanish noun, spelled as in English; judged retained by the independent audits of PR #1851. Scoped to Spanish only.",
+	],
+	[
+		"vi:ui.library.kind.video",
+		"Vietnamese loanword « Video » matches the existing ui.library.category.video; judged retained by the independent audits of PR #1851. Scoped to Vietnamese only.",
+	],
+	[
+		"fr:ui.library.kind.audio",
+		"French: same spelling as English, ordinary French noun; matches the existing category/filter vocabulary; judged retained by the independent audits of PR #1851. Scoped to French only.",
+	],
+	[
+		"fr:ui.library.kind.code",
+		"French: same spelling as English, ordinary French noun; matches the existing category/filter vocabulary; judged retained by the independent audits of PR #1851. Scoped to French only.",
+	],
+	[
+		"fr:ui.library.kind.image",
+		"French: same spelling as English, ordinary French noun; matches the existing category/filter vocabulary; judged retained by the independent audits of PR #1851. Scoped to French only.",
+	],
+	[
+		"fr:ui.library.tag_category.format",
+		"French: same spelling as English, ordinary French noun; matches the existing category/filter vocabulary; judged retained by the independent audits of PR #1851. Scoped to French only.",
+	],
+	[
+		"fr:ui.library.tag_category.source",
+		"French: same spelling as English, ordinary French noun; matches the existing category/filter vocabulary; judged retained by the independent audits of PR #1851. Scoped to French only.",
+	],
+	[
+		"fr:ui.library.tag_category.type",
+		"French: same spelling as English, ordinary French noun; matches the existing category/filter vocabulary; judged retained by the independent audits of PR #1851. Scoped to French only.",
 	],
 ]);
 

@@ -1,0 +1,188 @@
+{
+  "locale": "es",
+  "namespace": "multiple: ui.chat, ui.chat.composer_media, ui.common.actions",
+  "audit_date": "2026-11-10",
+  "key_count": 271,
+  "fully_audited_key_count": 4,
+  "consistency_only_key_count": 267,
+  "scope": "PR #1842 @ e5fb4310dab638f9cf428779d62539ec039a8990; four new Spanish messages fully audited; 267 legacy keys consistency-only, no legacy semantic certification. Broadened pasted_file English metadata checked by source inspection.",
+  "head_sha": "e5fb4310dab638f9cf428779d62539ec039a8990",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "6f5ab11d1b0a",
+    "session": "6f5ab11d1b0a",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Served session header: openai/gpt-6.1-sol; session 6f5ab11d1b0a. No fallback used.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Delegation supplied model and Spanish translator session fdf0610daa17. This auditor did not translate or participate in translation."
+  },
+  "input_hashes": {
+    "ui.chat": {
+      "en": {
+        "path": "src/i18n/catalogues/en/ui.chat.json",
+        "sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15"
+      },
+      "es": {
+        "path": "src/i18n/catalogues/es/ui.chat.json",
+        "sha256": "73e79f400865c43fd43bd3ce7dbc3e5979e53c8bc7986930d7441e01d9859c46"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.chat.context.json",
+        "sha256": "84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf"
+      }
+    },
+    "ui.chat.composer_media": {
+      "en": {
+        "path": "src/i18n/catalogues/en/ui.chat.composer_media.json",
+        "sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae"
+      },
+      "es": {
+        "path": "src/i18n/catalogues/es/ui.chat.composer_media.json",
+        "sha256": "82d113f5948cf0d3d12bfe3fff081dbf99339489324057c7017a4ca37c3e79dc"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.chat.composer_media.context.json",
+        "sha256": "a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b"
+      }
+    },
+    "ui.common.actions": {
+      "en": {
+        "path": "src/i18n/catalogues/en/ui.common.actions.json",
+        "sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b"
+      },
+      "es": {
+        "path": "src/i18n/catalogues/es/ui.common.actions.json",
+        "sha256": "297982c56ead7383ca4bd8ea94c2c961f7532785957f648287a335e7168dd2a8"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+        "sha256": "24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d"
+      }
+    }
+  },
+  "namespaces": {
+    "ui.chat": {
+      "namespace": "ui.chat",
+      "key_count": 208,
+      "fully_audited_key_count": 2,
+      "consistency_only_key_count": 206,
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.json",
+          "sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15"
+        },
+        "es": {
+          "path": "src/i18n/catalogues/es/ui.chat.json",
+          "sha256": "73e79f400865c43fd43bd3ce7dbc3e5979e53c8bc7986930d7441e01d9859c46"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.context.json",
+          "sha256": "84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf"
+        }
+      },
+      "current_report_verdict": {
+        "status": "passed",
+        "unresolved_blocker_major_count": 0,
+        "finding_ids": []
+      }
+    },
+    "ui.chat.composer_media": {
+      "namespace": "ui.chat.composer_media",
+      "key_count": 9,
+      "fully_audited_key_count": 1,
+      "consistency_only_key_count": 8,
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.json",
+          "sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae"
+        },
+        "es": {
+          "path": "src/i18n/catalogues/es/ui.chat.composer_media.json",
+          "sha256": "82d113f5948cf0d3d12bfe3fff081dbf99339489324057c7017a4ca37c3e79dc"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.context.json",
+          "sha256": "a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b"
+        }
+      },
+      "current_report_verdict": {
+        "status": "passed",
+        "unresolved_blocker_major_count": 0,
+        "finding_ids": []
+      }
+    },
+    "ui.common.actions": {
+      "namespace": "ui.common.actions",
+      "key_count": 54,
+      "fully_audited_key_count": 1,
+      "consistency_only_key_count": 53,
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.json",
+          "sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b"
+        },
+        "es": {
+          "path": "src/i18n/catalogues/es/ui.common.actions.json",
+          "sha256": "297982c56ead7383ca4bd8ea94c2c961f7532785957f648287a335e7168dd2a8"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+          "sha256": "24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d"
+        }
+      },
+      "current_report_verdict": {
+        "status": "passed",
+        "unresolved_blocker_major_count": 0,
+        "finding_ids": []
+      }
+    }
+  },
+  "policy_inputs": {
+    "style_guide": {
+      "path": "/Users/damian/local-operator/i18n/style-guides/es.md",
+      "sha256": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e"
+    },
+    "glossary": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "es-sol-6f5ab11d1b0a.json",
+      "sha256": "1ab3b9d25eecb3ea2a2a9fd6849f09c262e2ba09a5f51d71c120bec8d198e282",
+      "kind": "audit_notes_not_execution_log",
+      "record_reference": "es-sol-6f5ab11d1b0a.record.json"
+    },
+    {
+      "path": "es-sol-6f5ab11d1b0a.audit.log",
+      "sha256": "45709bc6b968dbf42ac514851c620006358cf3f3ef5d9848f3e2c7e62cd3f05e",
+      "kind": "actual_execution_log",
+      "record_reference": "es-sol-6f5ab11d1b0a.record.json"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": []
+  },
+  "finding_report": "es-sol-6f5ab11d1b0a.json",
+  "audit_notes_not_execution_log": true,
+  "execution_log": "es-sol-6f5ab11d1b0a.audit.log",
+  "retention": {
+    "state": "scratch_handoff_only_per_explicit_read_only_task",
+    "intended_tracked_directory": "i18n/audits/evidence/es/<namespace>/s12-sol-6f5ab11d1b0a",
+    "manager_action_required": "Retain artifacts in canonical root and record per-namespace ledger rows; no ledger write here.",
+    "proposed_note": "passed; retain per-namespace record under i18n/audits/evidence/es/<namespace>/s12-sol-6f5ab11d1b0a/record.json"
+  },
+  "unverified": [
+    "No builds, installs, servers, browser, rendered/pixel-fit or actual screen-reader execution. Arbitrary-title expansions are derived text, not production formatting.",
+    "No whole-suite gates or ledger command/writes, PR comments, commits or tracked retention: explicit read-only/scratch-only assignment. Manager must retain companions and record ledger rows.",
+    "Scoped repository context validator namespaceGap executed. Six ui.chat legacy context gaps are also present on origin/main; not new findings or a claim that full context-parity CLI passed."
+  ]
+}

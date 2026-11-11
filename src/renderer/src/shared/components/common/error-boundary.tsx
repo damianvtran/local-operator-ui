@@ -9,6 +9,7 @@ import {
 	ErrorBoundary as ReactErrorBoundary,
 } from "react-error-boundary";
 import { t } from "../../../../../i18n/messages";
+import { formatBoundaryError } from "./error-boundary-log";
 
 /**
  * Props for the ErrorBoundary component
@@ -118,7 +119,9 @@ export const ErrorBoundary: React.FC<ErrorBoundaryProps> = ({
 	resetKeys,
 }) => {
 	const onError = (error: Error, info: ErrorInfo) => {
-		console.error("Error caught by ErrorBoundary:", error, info);
+		// One preformatted string: the shipped log only keeps the console's
+		// flattened text, see `formatBoundaryError`.
+		console.error(formatBoundaryError(error, info));
 	};
 
 	return (

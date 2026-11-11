@@ -4159,7 +4159,9 @@ test("the start/failure page stays non-controllable while an overlay is open (Q3
 	);
 	assert.match(
 		surface,
-		/const browserOwnState = onStartPage \|\| navFailure !== null;/,
+		// lop://extensions (internalPage) is an own-state page too: main refuses
+		// page controls under it exactly as under the start/failure page.
+		/const browserOwnState =\s*onStartPage \|\| navFailure !== null \|\| internalPage !== null;/,
 		"own-state is a property of the state, not of the overlay filter",
 	);
 	assert.match(

@@ -1,0 +1,78 @@
+# PR #1843 round-1 remediation — real-app proof (one run, transcript verbatim, paths redacted)
+# Built tree (`pnpm build`, inert OAuth build values), ONE headless instance
+# (--window-mode=headless), isolated HOME / LOCAL_OPERATOR_CONFIG_DIR / --user-data-dir,
+# --use-fake-device-for-media-stream --use-mock-keychain, CMUX_*/LOP_* stripped,
+# bounded by run_bounded.py (420 s, 3.5 GB) and reaped by scripts/app-tree-teardown.mjs.
+# Human clicks = CDP Input.dispatchMouseEvent (trusted) on the app renderer / the page.
+# macOS TCC: a RIG-ONLY main-process preload (NODE_OPTIONS=--require, outside the repo;
+# a packaged build's nodeOptions fuse ignores NODE_OPTIONS) replaces
+# systemPreferences.getMediaAccessStatus/askForMediaAccess and shell.openExternal, so no
+# system prompt and no System Settings window could appear. The run refuses to click
+# Allow unless that preload reports it patched the app's own `electron` module.
+# Pages: A = <usermedia> element (Meet's control) -> on promptaction getUserMedia(a+v);
+# B = same, Block path; C = top frame gUM(a+v) + same-origin iframe gUM(a) at once;
+# D = gUM(video) with the stub reporting camera "denied".
+[rig] app pid 91712; origins A=http://localhost:55617 B=http://localhost:55618 C=http://localhost:55619 D=http://localhost:55620
+[PASS] TCC stub loaded in the app's MAIN process (hard gate) :: patched: getMediaAccessStatus is stub=true
+[PASS] <usermedia> click raises the prompt (no silent deny) :: {"kind":"prompt","kinds":["audio","video"],"ownerKind":"user"}
+[PASS] the click's two requests share ONE prompt :: {"askedLines":1}
+[PASS] band copy + emphasised site :: {"kind":"prompt","label":"Camera and microphone request","text":"localhost:55617 wants to use your camera and microphone. Block Allow","site":"localhost:55617"}
+[rig] frame usermedia-prompt.png
+[PASS] Allow → element promptaction → getUserMedia live audio+video :: {"title":"granted:a1v1","events":"[\"promptaction\"]"}
+[PASS] no second prompt after Allow :: null
+[PASS] R3: element request logged with its (absent) device list :: ["[browser] granted media [unnamed] (request) from http://localhost:55617/um","[browser] granted media [unnamed] (request) from http://localhost:55617/um","[browser] granted media [audio,video] (request) from http://localhost:55617/"]
+[PASS] Block → the element's request is refused :: dismissed:1
+[PASS] retry on a blocked site shows the BLOCKED band (not silence) :: {"kind":"blocked","label":"Camera and microphone blocked for this site","text":"Camera and microphone are blocked for localhost:55618. To use them here, select Allow, then try again on the page. Allow","site":"localhost:55618"}
+[rig] frame blocked-band.png
+[PASS] Allow on the blocked band stores allow (no Forget, cookies untouched) :: {"audio":"allow","video":"allow"}
+[PASS] after Allow on the blocked band, the page's retry is granted live with no prompt :: granted:a1v1
+[obs] element click on an already-allowed site :: title=dismissed:3 events=["promptdismiss","promptdismiss","promptdismiss"]
+[PASS] overlap: head prompt asks for camera+microphone :: ["audio","video"]
+[PASS] overlap: both requests (top mic+cam, iframe mic-only) are waiting at once :: ["[browser] http://localhost:55619 asked for microphone and camera; waiting for the user","[browser] http://localhost:55619 asked for microphone; waiting for the user"]
+[PASS] one Allow grants both; no second prompt :: {"title":"done:a1v1|a1v0","prompt":null}
+[PASS] system-blocked band with restart copy and settings button :: {"kind":"system-blocked","label":"Camera turned off in macOS","text":"macOS has camera access turned off for Local Operator. Turn access on in System Settings › Privacy & Security. You may need to quit and reopen Local Operator before the change takes effect. Open System Settings","site":null}
+[rig] frame system-blocked-band.png
+[PASS] Open System Settings → fixed Privacy_Camera URL (captured, not opened) :: ["openExternal(x-apple.systempreferences:com.apple.preference.security?Privacy_Camera) captured"]
+[PASS] the OS prompt API was never reached :: []
+[rig] teardown clean=true survivors=0
+[app-log] [browser] host on 127.0.0.1:55627 (proto 1), profile $SCRATCH/media-r1/run3/userdata/Partitions/local-operator-browser, agent tabs 0/8, console on
+[app-log] [browser] denied media [video] (check) from http://localhost:55617/
+[app-log] [browser] denied media [audio] (check) from http://localhost:55617/
+[app-log] [browser] denied media [video] (check) from http://localhost:55617/
+[app-log] [browser] denied media [audio] (check) from http://localhost:55617/
+[app-log] [browser] denied media [video] (check) from http://localhost:55617/
+[app-log] [browser] denied media [audio] (check) from http://localhost:55617/
+[app-log] [browser] http://localhost:55617 asked for microphone and camera; waiting for the user
+[app-log] [browser] the user allowed microphone and camera for http://localhost:55617
+[app-log] [browser] granted media [unnamed] (request) from http://localhost:55617/um
+[app-log] [browser] granted media [unnamed] (request) from http://localhost:55617/um
+[app-log] [browser] granted media [audio,video] (request) from http://localhost:55617/
+[app-log] [browser] denied media [unnamed] (check) from http://localhost:55617/
+[app-log] [browser] granted media [audio] (check) from http://localhost:55617/
+[app-log] [browser] denied media [unnamed] (check) from http://localhost:55617/
+[app-log] [browser] denied media [video] (check) from http://localhost:55618/
+[app-log] [browser] denied media [audio] (check) from http://localhost:55618/
+[app-log] [browser] denied media [video] (check) from http://localhost:55618/
+[app-log] [browser] denied media [audio] (check) from http://localhost:55618/
+[app-log] [browser] denied media [video] (check) from http://localhost:55618/
+[app-log] [browser] denied media [audio] (check) from http://localhost:55618/
+[app-log] [browser] http://localhost:55618 asked for microphone and camera; waiting for the user
+[app-log] [browser] the user blocked microphone and camera for http://localhost:55618
+[app-log] [browser] denied media [unnamed] (request) from http://localhost:55618/um
+[app-log] [browser] denied media [unnamed] (request) from http://localhost:55618/um
+[app-log] [browser] denied media [video] (check) from http://localhost:55618/
+[app-log] [browser] denied media [audio] (check) from http://localhost:55618/
+[app-log] [browser] denied camera/microphone: http://localhost:55618 is blocked for microphone and camera
+[app-log] [browser] denied media [unnamed] (request) from http://localhost:55618/um
+[app-log] [browser] denied camera/microphone: http://localhost:55618 is blocked for microphone and camera
+[app-log] [browser] denied media [unnamed] (request) from http://localhost:55618/um
+[app-log] [browser] the user allowed microphone and camera for http://localhost:55618 (was blocked)
+[app-log] [browser] granted media [audio,video] (request) from http://localhost:55618/
+[app-log] [browser] denied media [unnamed] (check) from http://localhost:55618/
+[app-log] [browser] granted media [audio] (check) from http://localhost:55618/
+[app-log] [browser] denied media [unnamed] (check) from http://localhost:55618/
+[app-log] [browser] granted media [video] (check) from http://localhost:55618/
+[app-log] [browser] granted media [audio] (check) from http://localhost:55618/
+[app-log] [browser] granted media [unnamed] (request) from http://localhost:55618/um
+[app-log] [browser] granted media [unnamed] (request) from http://localhost:55618/um
+[rig] failures=0

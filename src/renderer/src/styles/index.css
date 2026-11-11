@@ -24,6 +24,25 @@
 	}
 }
 
+/* The sidebar's settings-intent dot (design D5): Tailwind's `animate-pulse`
+ * dips to 0.5 opacity, which took the 6 px ink-dim dot to 2.57:1 on the dark
+ * surface - under WCAG 1.4.11's 3:1 for a meaningful non-text mark. This
+ * trough stays at 0.75 (>= 3:1 on every theme surface measured) while the
+ * motion still reads; reduced motion keeps it still at full opacity. */
+@keyframes lo-intent-pulse {
+	50% {
+		opacity: 0.75;
+	}
+}
+.lo-intent-pulse {
+	animation: lo-intent-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+	.lo-intent-pulse {
+		animation: none;
+	}
+}
+
 /* Team Bridge uses the same arrival grammar as the transcript: a message that
  * appears while its stream is open enters quietly, while history and remounts
  * stay still. The final layout box exists from the first frame; only opacity

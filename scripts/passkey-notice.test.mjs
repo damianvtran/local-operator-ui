@@ -36,6 +36,7 @@ const {
 	PASSKEY_PENDING_MS,
 	PASSKEY_SIGNAL_SENTINEL,
 	PasskeyNotices,
+	continuePasskeyNoticeInUserTab,
 	httpOrigin,
 	openPasskeyNoticeInSystemBrowser,
 	parsePasskeySignal,
@@ -44,7 +45,11 @@ const {
 
 /** A page: a CredentialsContainer with controllable promises, a console that
  * records, and timers the test advances by hand. */
-function page(nonce = "n-1") {
+function page(
+	nonce = "n-1",
+	observePending = true,
+	resultFactory = () => new Promise(() => {}),
+) {
 	const lines = [];
 	const timers = [];
 	const calls = [];
@@ -52,13 +57,13 @@ function page(nonce = "n-1") {
 	class CredentialsContainer {}
 	CredentialsContainer.prototype.create = function create(...args) {
 		calls.push(["create", this, args]);
-		const promise = new Promise(() => {});
+		const promise = resultFactory();
 		returned.push(promise);
 		return promise;
 	};
 	CredentialsContainer.prototype.get = function get(...args) {
 		calls.push(["get", this, args]);
-		const promise = new Promise(() => {});
+		const promise = resultFactory();
 		returned.push(promise);
 		return promise;
 	};
@@ -70,7 +75,7 @@ function page(nonce = "n-1") {
 			return timers.length;
 		},
 	});
-	vm.runInContext(passkeyShimSource(nonce), context);
+	vm.runInContext(passkeyShimSource(nonce, observePending), context);
 	return {
 		container: new CredentialsContainer(),
 		CredentialsContainer,
@@ -155,7 +160,7 @@ test("the shim signals only after the delay, once per call, with the fixed shape
 	assert.deepEqual(p.lines.at(-1), `${PASSKEY_SIGNAL_SENTINEL}abc:get`);
 });
 
-test("a call that already settled inside the delay is not announced as stuck", async () => {
+test("settled calls distinguish success from optional NotAllowed recovery", async () => {
 	const p = page("abc");
 	const settled = Promise.resolve({ id: "cred" });
 	const rejected = Promise.reject(new DOMException("x", "NotAllowedError"));
@@ -180,7 +185,93 @@ test("a call that already settled inside the delay is not announced as stuck", a
 	);
 	p.container.create({ publicKey: {} });
 	await p.fire();
-	assert.deepEqual(p.lines, [], "a rejected call is not a hang either");
+	assert.deepEqual(
+		p.lines,
+		[`${PASSKEY_SIGNAL_SENTINEL}abc:create:not-allowed`],
+		"a rejected call offers recovery without calling it pending",
+	);
+});
+
+test("configured Touch ID observes rejection but never announces a pending native sheet", async () => {
+	const pending = page("native", false);
+	pending.container.get({ publicKey: {} });
+	await pending.fire();
+	assert.deepEqual(pending.lines, []);
+	let reject;
+	const failed = page(
+		"native",
+		false,
+		() =>
+			new Promise((_, no) => {
+				reject = no;
+			}),
+	);
+	const promise = failed.container.get({ publicKey: {} });
+	promise.catch(() => {});
+	await failed.fire();
+	const cancellationOrMissingCredential = new DOMException(
+		"private RP detail",
+		"NotAllowedError",
+	);
+	reject(cancellationOrMissingCredential);
+	await assert.rejects(promise, cancellationOrMissingCredential);
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.deepEqual(failed.lines, [
+		`${PASSKEY_SIGNAL_SENTINEL}native:get:not-allowed`,
+	]);
+	assert.equal(
+		failed.lines.some((line) => line.includes("private")),
+		false,
+	);
+});
+
+test("abort, validation, and security errors remain silent; success remains unchanged", async () => {
+	for (const name of [
+		"AbortError",
+		"SecurityError",
+		"TypeError",
+		"InvalidStateError",
+	]) {
+		const error = new DOMException("not exported", name);
+		const p = page("abort", true, () => Promise.reject(error));
+		await assert.rejects(p.container.get({ publicKey: {} }), error);
+		await p.fire();
+		assert.deepEqual(p.lines, [], name);
+	}
+	const credential = { id: "private", response: {} };
+	const success = page("ok", false, () => Promise.resolve(credential));
+	assert.equal(await success.container.get({ publicKey: {} }), credential);
+	await success.fire();
+	assert.deepEqual(success.lines, []);
+});
+
+test("an explicit aborted signal never produces recovery even for NotAllowedError", async () => {
+	for (const pending of [true, false]) {
+		const controller = new AbortController();
+		const error = new DOMException("cancelled", "NotAllowedError");
+		const p = page("cancel", pending, () => Promise.reject(error));
+		await assert.rejects(
+			p.container.get({ publicKey: {}, signal: controller.signal }),
+			error,
+		);
+		controller.abort();
+		await p.fire();
+		assert.deepEqual(p.lines, []);
+	}
+});
+
+test("page-controlled rejection metadata cannot make the observer throw", async () => {
+	const error = Object.defineProperty({}, "name", {
+		get() {
+			throw new Error("page getter must not escape");
+		},
+	});
+	const p = page("hostile", true, () => Promise.reject(error));
+	await p.container
+		.get({ publicKey: {} })
+		.catch((actual) => assert.equal(actual, error));
+	await p.fire();
+	assert.deepEqual(p.lines, []);
 });
 
 test("the shim ignores what is not a passkey request, including conditional mediation", () => {
@@ -258,6 +349,26 @@ test("a valid signal raises one notice attributed to the FRAME's origin, never p
 	assert.equal(view.embedded, false);
 	assert.equal(view.ownerKind, "user");
 	assert.equal(view.tabId, 7);
+});
+
+test("NotAllowed recovery carries a distinct outcome through nonce and origin validation", () => {
+	const { n, frames, log } = notices();
+	frames.set("1:8", { origin: "https://rp.example", embedded: false });
+	const nonce = n.nonceFor(7, "1:8");
+	const signal = `${line(nonce, "get")}:not-allowed`;
+	assert.deepEqual(parsePasskeySignal(signal), {
+		nonce,
+		kind: "get",
+		outcome: "not-allowed",
+	});
+	assert.equal(parsePasskeySignal(`${signal}:not-allowed`), null);
+	assert.equal(parsePasskeySignal(`${signal}:private text`), null);
+	assert.equal(n.observe(8, signal), false, "a different tab cannot replay it");
+	assert.equal(n.observe(7, signal), true);
+	assert.equal(n.viewFor(7).outcome, "not-allowed");
+	assert.equal(n.viewFor(7).origin, "https://rp.example");
+	assert.match(log.at(-1), /not-allowed from/);
+	assert.doesNotMatch(log.at(-1), /pending/);
 });
 
 test("an embedded cross-origin frame is attributed to ITSELF, not to the top frame", () => {
@@ -442,4 +553,152 @@ test("open-in-system-browser reads the URL in main and refuses a stale notice", 
 		ok: false,
 		reason: "URL names a loopback or private-network host",
 	});
+});
+
+test("continue-in-your-own-tab: agent notice only, current notice only, ids only, dismissed on success", async () => {
+	// An agent tab's notice from an embedded sign-in frame (App Store Connect's
+	// idmsa.apple.com): the action carries the TAB id, never the frame's URL.
+	let owner = "agent";
+	const { n, frames, log } = notices("agent");
+	frames.set("1:8", { origin: "https://idmsa.apple.com", embedded: true });
+	n.observe(39, line(n.nonceFor(39, "1:8"), "get"));
+	const at = n.viewFor(39).at;
+	const opened = [];
+	const deps = {
+		notices: n,
+		tabId: 39,
+		at,
+		ownerOf: () => owner,
+		openUserTab: async (tabId) => {
+			opened.push(tabId);
+			return { ok: true, tabId: 40 };
+		},
+		log: (l) => log.push(l),
+	};
+	// A stale identity and a tab handed back to the user are refused before the
+	// host is asked to open anything.
+	assert.equal(
+		(await continuePasskeyNoticeInUserTab({ ...deps, at: at + 1 })).ok,
+		false,
+	);
+	owner = "user";
+	assert.equal((await continuePasskeyNoticeInUserTab(deps)).ok, false);
+	owner = null;
+	assert.equal((await continuePasskeyNoticeInUserTab(deps)).ok, false);
+	assert.deepEqual(opened, [], "refusals never reached the host");
+
+	owner = "agent";
+	// The host's own refusal travels back and leaves the notice in place.
+	const refused = await continuePasskeyNoticeInUserTab({
+		...deps,
+		openUserTab: async () => ({ ok: false, reason: "no page" }),
+	});
+	assert.deepEqual(refused, { ok: false, reason: "no page" });
+	assert.ok(n.viewFor(39), "a refused continue keeps the notice");
+
+	assert.deepEqual(await continuePasskeyNoticeInUserTab(deps), { ok: true });
+	assert.deepEqual(opened, [39], "the host was handed the agent tab's id");
+	assert.equal(n.viewFor(39), null, "the agent tab's notice is dismissed");
+	assert.ok(log.some((l) => l.includes("continued in user tab 40")));
+	assert.ok(
+		!log.some((l) => l.includes("continued") && l.includes("https://")),
+		"the log line names tabs, not URLs",
+	);
+});
+
+test("continue-in-your-own-tab is refused for a USER tab's notice", async () => {
+	const { n, frames } = notices("user");
+	frames.set("1:8", { origin: "https://github.com", embedded: false });
+	n.observe(8, line(n.nonceFor(8, "1:8"), "get"));
+	let asked = false;
+	const outcome = await continuePasskeyNoticeInUserTab({
+		notices: n,
+		tabId: 8,
+		at: n.viewFor(8).at,
+		ownerOf: () => "user",
+		openUserTab: async () => {
+			asked = true;
+			return { ok: true, tabId: 9 };
+		},
+		log: () => {},
+	});
+	assert.equal(outcome.ok, false);
+	assert.equal(asked, false);
+});
+
+test("continue-in-your-own-tab: a second invoke while the first is loading is refused, so one tab opens (review R1/Q1)", async () => {
+	const { n, frames } = notices("agent");
+	frames.set("1:8", { origin: "https://idmsa.apple.com", embedded: true });
+	n.observe(39, line(n.nonceFor(39, "1:8"), "get"));
+	const at = n.viewFor(39).at;
+	const opened = [];
+	const finishers = [];
+	const deps = {
+		notices: n,
+		tabId: 39,
+		at,
+		ownerOf: () => "agent",
+		// The host awaits the copy's load: hold every load open so both invokes
+		// overlap, the double click's timing.
+		openUserTab: (tabId) => {
+			opened.push(tabId);
+			return new Promise((resolve) => {
+				finishers.push(() => resolve({ ok: true, tabId: 40 + opened.length }));
+			});
+		},
+		log: () => {},
+	};
+	const first = continuePasskeyNoticeInUserTab(deps);
+	const second = continuePasskeyNoticeInUserTab(deps);
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.deepEqual(opened, [39], "exactly one user tab was asked for");
+	for (const finish of finishers) finish();
+	assert.deepEqual(await second, {
+		ok: false,
+		reason: "Your own tab is already opening.",
+	});
+	assert.deepEqual(await first, { ok: true });
+	assert.equal(n.viewFor(39), null);
+});
+
+test("continue-in-your-own-tab: a refused open releases the claim and keeps the notice for a retry", async () => {
+	const { n, frames } = notices("agent");
+	frames.set("1:8", { origin: "https://idmsa.apple.com", embedded: true });
+	n.observe(39, line(n.nonceFor(39, "1:8"), "get"));
+	const at = n.viewFor(39).at;
+	let answer = { ok: false, reason: "The browser couldn’t open a new tab." };
+	const deps = {
+		notices: n,
+		tabId: 39,
+		at,
+		ownerOf: () => "agent",
+		openUserTab: async () => answer,
+		log: () => {},
+	};
+	assert.deepEqual(await continuePasskeyNoticeInUserTab(deps), answer);
+	assert.ok(n.viewFor(39));
+	answer = { ok: true, tabId: 41 };
+	assert.deepEqual(await continuePasskeyNoticeInUserTab(deps), { ok: true });
+});
+
+test("continue-in-your-own-tab refusals are localized full sentences, not English fragments (review R2/U3)", async () => {
+	const { n, frames } = notices("agent");
+	frames.set("1:8", { origin: "https://idmsa.apple.com", embedded: true });
+	n.observe(39, line(n.nonceFor(39, "1:8"), "get"));
+	const at = n.viewFor(39).at;
+	const base = {
+		notices: n,
+		tabId: 39,
+		at,
+		ownerOf: () => "agent",
+		openUserTab: async () => ({ ok: true, tabId: 40 }),
+		log: () => {},
+	};
+	const stale = await continuePasskeyNoticeInUserTab({ ...base, at: at + 1 });
+	assert.equal(stale.reason, "That passkey notice is no longer current.");
+	const handedBack = await continuePasskeyNoticeInUserTab({
+		...base,
+		ownerOf: () => "user",
+	});
+	assert.equal(handedBack.reason, "An agent is no longer driving that tab.");
 });

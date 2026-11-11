@@ -1,0 +1,102 @@
+{
+  "locale": "ru",
+  "namespaces": {
+    "ui.library": {
+      "status": "passed",
+      "result": "clean",
+      "fully_audited_key_count": 1,
+      "consistency_only_key_count": 19,
+      "finding_ids": [],
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.library.json",
+          "sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71"
+        },
+        "ru": {
+          "path": "src/i18n/catalogues/ru/ui.library.json",
+          "sha256": "49af1bd7b725040e8fc821fbe38fca35d8e82410020a0bc40f216ed7650fa8ae"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.library.context.json",
+          "sha256": "f799fe911107aa1f7b83b0c026ee277d5c21ee5eba297e3ae13c2da51135cc8e"
+        }
+      }
+    }
+  },
+  "audit_date": "2026-11-10",
+  "key_count": 20,
+  "fully_audited_key_count": 1,
+  "consistency_only_key_count": 19,
+  "scope": "PR #1851 remediation 8a9ce1f808c266ebe9a0e924094344cea60c2c23..f04035bc3cb6a03644f8776a799e3daad93c7e58: 20 new ui.library keys carried; only ui.library.tag_category.custom fully re-audited; other 19 retained without wording re-audit after raw-byte identity proof. All 159 legacy values preserved vs 0e12072d2b3; legacy translation not certified.",
+  "head_sha": "f04035bc3cb6a03644f8776a799e3daad93c7e58",
+  "base_sha": "0e12072d2b3",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "b66bf0e9f121",
+    "session": "b66bf0e9f121",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Actual served session header states openai/gpt-6.1-sol. No model switch or fallback used.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "session": "not supplied",
+    "source": "Manager delegation and new-head ru-rev.json supply actual revision model; translator session not supplied. I did not translate or previously audit this value; no translation/MT service used. Independence is role/work separation, not a session-ID comparison."
+  },
+  "policy_inputs": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ru.md",
+      "sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+    },
+    "glossary": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_s14-audits/f04035bc3cb6a03644f8776a799e3daad93c7e58/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "note": "Manager-supplied glossary copy. No custom term binding; context-specific adjective permitted."
+    },
+    "expected_hashes": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_s14-audits/f04035bc3cb6a03644f8776a799e3daad93c7e58/expected-hashes.json"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "ru-delta-sol-b66bf0e9f121.json",
+      "sha256": "6a5e721b0145db4dfe645dbd94c7eeea67f2b99a08d43f19f01e650ca5db2fd2",
+      "kind": "audit_notes_not_execution_log",
+      "record_reference": "ru-delta-sol-b66bf0e9f121.record.json"
+    },
+    {
+      "path": "ru-delta-sol-b66bf0e9f121.audit.log",
+      "sha256": "33ae957a646cd867a276fbb64e652195b9866258f7f791951a388ece41275642",
+      "kind": "actual_execution_log",
+      "record_reference": "ru-delta-sol-b66bf0e9f121.record.json"
+    },
+    {
+      "path": "ru-delta-sol-b66bf0e9f121-check.py",
+      "sha256": "7baabee29c6a95c77b3a013f5a89c7a625a1d200db59b8861576f206e68978fa",
+      "kind": "executed_check_source",
+      "record_reference": "ru-delta-sol-b66bf0e9f121.record.json"
+    },
+    {
+      "path": "ru-delta-sol-b66bf0e9f121-check-result.json",
+      "sha256": "7df3998842c937cd919214ffbb8d10845c70a66a2f6eace2c67a513bd8e72d58",
+      "kind": "actual_execution_output",
+      "record_reference": "ru-delta-sol-b66bf0e9f121.record.json"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": []
+  },
+  "finding_report": "ru-delta-sol-b66bf0e9f121.json",
+  "audit_notes_not_execution_log": false,
+  "execution_log": "ru-delta-sol-b66bf0e9f121.audit.log",
+  "retention": {
+    "state": "scratch_handoff_only_per_explicit_read_only_task",
+    "intended_tracked_directory": "i18n/audits/evidence/ru/ui.library/p2d-sol-b66bf0e9f121",
+    "manager_action_required": "Retain receipt/record/log in canonical tracked evidence root and append ledger row. This auditor wrote only own scratchpad, no ledger or repository write.",
+    "proposed_note": "passed; custom re-audited, 19 unchanged keys carried; record i18n/audits/evidence/ru/ui.library/p2d-sol-b66bf0e9f121/record.json"
+  }
+}

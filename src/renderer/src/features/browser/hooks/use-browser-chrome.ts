@@ -7,6 +7,10 @@ import type {
 	AddressHistoryResponse,
 } from "../../../../../shared/browser-address-history";
 import type { BrowserAvailability } from "../../../../../shared/browser-availability";
+import type {
+	MediaPermissionDecision,
+	MediaPermissionView,
+} from "../../../../../shared/browser-media-permission";
 import type { PasskeyNoticeView } from "../../../../../shared/browser-passkey-notice";
 import type { HumanTabActionOutcome } from "../../../../../shared/browser-tab-action";
 import {
@@ -185,6 +189,10 @@ export interface BrowserChromeState {
 	 * provide" notice, or null. Main's facts only (origin, owner); see
 	 * `src/shared/browser-passkey-notice.ts`. Optional for a host that predates it. */
 	passkeyNotice?: PasskeyNoticeView | null;
+	/** The active tab's camera/microphone prompt (or macOS notice), or null. Main's
+	 * facts only; see `src/shared/browser-media-permission.ts`. Optional for a host
+	 * that predates it. */
+	mediaPermission?: MediaPermissionView | null;
 	/** Null while the active tab's last navigation succeeded, is still loading, or
 	 * has no document yet. */
 	navFailure: LoadFailureView | null;
@@ -504,6 +512,24 @@ export interface BrowserChrome {
 	/** Open the notice's page in the system browser. Reports its own refusal, for
 	 * the reason `revealDownloads` does: the door answers instead of throwing. */
 	openPasskeyNotice: (tabId: number, at: number) => Promise<void>;
+	/** An agent tab's notice: continue the sign-in in a new tab the user owns.
+	 * Reports its own refusal like `openPasskeyNotice`. Resolves true once the
+	 * user's tab exists, so the notice can hand focus on (review U2) instead of
+	 * leaving it on a button that unmounts with the agent tab's notice. */
+	continuePasskeyNoticeInUserTab: (
+		tabId: number,
+		at: number,
+	) => Promise<boolean>;
+	/** Answer the camera/microphone prompt. `trusted` must be the click's own
+	 * `event.isTrusted`: main grants nothing without it. */
+	decideMediaPermission: (
+		tabId: number,
+		id: string,
+		decision: MediaPermissionDecision,
+		trusted: boolean,
+	) => Promise<void>;
+	/** The system-blocked notice's "Open System Settings" (main picks the pane). */
+	openMediaSystemSettings: (tabId: number, id: string) => Promise<void>;
 }
 
 export interface BrowserProjection {
@@ -926,6 +952,10 @@ export function useBrowserChrome(): BrowserChrome {
 			clearData: (what) => runVoid(() => api?.clearData(what)),
 			dismissPasskeyNotice: (tabId, at) =>
 				runVoid(() => api?.dismissPasskeyNotice(tabId, at)),
+			decideMediaPermission: (tabId, id, decision, trusted) =>
+				runVoid(() => api?.decideMediaPermission(tabId, id, decision, trusted)),
+			openMediaSystemSettings: (tabId, id) =>
+				runVoid(() => api?.openMediaSystemSettings(tabId, id)),
 			openPasskeyNotice: (tabId, at) =>
 				runVoid(async () => {
 					const answer = await api?.openPasskeyNotice(tabId, at);
@@ -937,6 +967,22 @@ export function useBrowserChrome(): BrowserChrome {
 						);
 					}
 				}),
+			continuePasskeyNoticeInUserTab: async (tabId, at) => {
+				let continued = false;
+				await runVoid(async () => {
+					const answer = await api?.continuePasskeyNoticeInUserTab?.(tabId, at);
+					if (answer?.ok === true) continued = true;
+					else if (answer && answer.ok === false) {
+						// `reason` is main's own localized sentence (review R2/U3).
+						showErrorToast(
+							t("ui.browser.use_browser_chrome.passkey_continue_failed", {
+								reason: answer.reason,
+							}),
+						);
+					}
+				});
+				return continued;
+			},
 			revealDownloads: () =>
 				runVoid(async () => {
 					const answer = await api?.revealDownloads();

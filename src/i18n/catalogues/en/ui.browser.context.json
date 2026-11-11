@@ -1214,15 +1214,55 @@
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
 		"note": "Names who asked for a passkey. {who} is agent (tab driven by an agent), agentFrame (an embedded frame in an agent-driven tab), userFrame (an embedded frame on the user's page) or other (the page itself); {site} is a host name, never translate it. Say the request MAY still be waiting: the page's request was neither refused nor answered. Do not say it failed. 'Agent' follows the glossary term for AI agent."
 	},
+	"ui.browser.browser_passkey_notice.not_allowed": {
+		"role": "status sentence \u2014 optional passkey recovery strip",
+		"tone": "Neutral and non-alarming; cancellation is not a system failure",
+		"note": "A NotAllowedError means the request did not complete, but cannot distinguish native user cancellation from unavailable credentials. Never diagnose a missing provider. Preserve {who} select arms agent, agentFrame, userFrame, other and {site}, a browser-attributed host name. The strip is nonmodal and dismissible."
+	},
 	"ui.browser.browser_passkey_notice.explanation": {
 		"role": "explanatory text \u2014 passkey notice strip",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
-		"note": "States plainly that passkeys do not work in this browser yet, that Touch ID passkeys are planned (a plan, not a promise or date), and to use the system browser meanwhile. Do not name unsupported hardware and do not give dates."
+		"note": "An existing passkey may only be available in the user's usual browser or password manager. Offer another sign-in method on this page or a separate sign-in in the system browser. Its login session is NOT transferred to this tab. Do not claim that no provider exists: device-bound Touch ID may already be configured. Do not promise synced passkeys or hardware support."
 	},
 	"ui.browser.browser_passkey_notice.open_in_system_browser": {
 		"role": "button label \u2014 passkey notice strip",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
 		"note": "Opens the current page in the user's default web browser. Keep compact, around the English footprint."
+	},
+	"ui.browser.browser_passkey_notice.continue_in_own_tab": {
+		"role": "button label \u2014 passkey notice strip, agent-driven tab only",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Primary action. Opens the same page in a NEW browser tab inside this app that the user (not the agent) owns; the agent's tab is left as it is. 'Your own' contrasts with the agent's tab. Keep compact, around the English footprint."
+	},
+	"ui.browser.browser_passkey_notice.agent_explanation": {
+		"role": "explanatory text \u2014 passkey notice strip, agent-driven tab only",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Conditional, not a diagnosis: the request may have failed for another reason (NotAllowed cannot tell a cancellation from a missing credential), so keep the 'If\u2026'. 'Its prompt' is the password manager's own passkey dialog window (e.g. 1Password's), NOT an AI prompt \u2014 translate as a window/dialog, not the glossary's 'prompt' (\u63d0\u793a\u8bcd/\u043f\u0440\u043e\u043c\u043f\u0442). 'Your own tab' is the tab the 'Continue in your own tab' button opens; do not repeat the button label. It is in the same app browser and shares its sign-in (cookies), so the remaining step is the user asking the agent to reload 'this page' (the agent's tab, whose site may differ from the frame named in the sentence before). Do not imply the system browser's session is shared; do not promise the sign-in will succeed."
+	},
+	"ui.browser.browser_passkey_notice.continue_refused_stale": {
+		"role": "error reason \u2014 passkey notice continue toast",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Main's reason sentence, shown as the second sentence of the 'Could not open the page in your own tab. {reason}' toast; a full sentence that stands alone. The notice the user clicked has been replaced or has expired (the page changed or time passed)."
+	},
+	"ui.browser.browser_passkey_notice.continue_refused_not_agent": {
+		"role": "error reason \u2014 passkey notice continue toast",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Main's reason sentence, shown as the second sentence of the 'Could not open the page in your own tab. {reason}' toast; a full sentence that stands alone. The tab was handed back to the user or closed, so no agent drives it any more and there is nothing to continue."
+	},
+	"ui.browser.browser_passkey_notice.continue_refused_in_flight": {
+		"role": "error reason \u2014 passkey notice continue toast",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Main's reason sentence, shown as the second sentence of the 'Could not open the page in your own tab. {reason}' toast; a full sentence that stands alone. A second click while the first one is still opening the user's tab; nothing new is opened."
+	},
+	"ui.browser.browser_passkey_notice.continue_refused_not_web": {
+		"role": "error reason \u2014 passkey notice continue toast",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Main's reason sentence, shown as the second sentence of the 'Could not open the page in your own tab. {reason}' toast; a full sentence that stands alone. The agent's tab shows an app or internal page, not an http(s) web page, so it cannot be copied into a new tab."
+	},
+	"ui.browser.browser_passkey_notice.continue_unavailable": {
+		"role": "error reason \u2014 passkey notice continue toast",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Main's reason sentence, shown as the second sentence of the 'Could not open the page in your own tab. {reason}' toast; a full sentence that stands alone. The app's browser could not create the new tab at all (rare: an older or failed browser host)."
 	},
 	"ui.browser.browser_passkey_notice.dismiss": {
 		"role": "accessible control name \u2014 passkey notice strip",
@@ -1234,13 +1274,18 @@
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
 		"note": "Shown when handing the page to the system browser was refused or failed. {reason} is the app's own reason sentence, already in English or the user's language; keep it as the last sentence."
 	},
+	"ui.browser.use_browser_chrome.passkey_continue_failed": {
+		"role": "error text \u2014 browser toolbar toast",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Shown when opening the agent tab's page in a new user tab was refused or failed. {reason} is the app's own reason sentence, already in English or the user's language; keep it as the last sentence."
+	},
 	"ui.browser.browser_url_bar.reload_shortcut": {
 		"role": "Tooltip of the browser pane's reload button, with its keyboard shortcut",
 		"tone": "Imperative plus a shortcut in parentheses",
 		"length_hint": "One word plus a shortcut",
 		"note": "Mirrors the Back and Forward tooltips: the action, then the platform's shortcut glyphs in parentheses.",
 		"placeholders": {
-			"shortcut": "The platform's shortcut glyphs (for example ⌘R); do not translate."
+			"shortcut": "The platform's shortcut glyphs (for example \u2318R); do not translate."
 		}
 	}
 }

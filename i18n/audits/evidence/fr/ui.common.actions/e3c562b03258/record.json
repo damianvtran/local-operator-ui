@@ -1,0 +1,143 @@
+{
+  "locale": "fr",
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "fully_audited_key_count": 2,
+      "consistency_only_key_count": 206,
+      "finding_ids": [
+        "N1"
+      ],
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.json",
+          "sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15"
+        },
+        "fr": {
+          "path": "src/i18n/catalogues/fr/ui.chat.json",
+          "sha256": "b524ab1132756d282986a666f82c25465a26dae0aa85ff77fe696812d0d08c96"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.context.json",
+          "sha256": "84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf"
+        }
+      }
+    },
+    "ui.chat.composer_media": {
+      "status": "passed",
+      "fully_audited_key_count": 1,
+      "consistency_only_key_count": 8,
+      "finding_ids": [],
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.json",
+          "sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae"
+        },
+        "fr": {
+          "path": "src/i18n/catalogues/fr/ui.chat.composer_media.json",
+          "sha256": "4c2fcaf7d6bf9a3adc63c32126e1834e775e837b426b684a1edf2236621cb198"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.context.json",
+          "sha256": "a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b"
+        }
+      }
+    },
+    "ui.common.actions": {
+      "status": "changes_requested",
+      "fully_audited_key_count": 1,
+      "consistency_only_key_count": 53,
+      "finding_ids": [
+        "F1"
+      ],
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.json",
+          "sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b"
+        },
+        "fr": {
+          "path": "src/i18n/catalogues/fr/ui.common.actions.json",
+          "sha256": "1f375db06df660163bdf5fa126e9ef0f94ff25ba64ed209be872ab04353f3e42"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+          "sha256": "24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d"
+        }
+      }
+    }
+  },
+  "audit_date": "2026-11-10",
+  "key_count": 271,
+  "fully_audited_key_count": 4,
+  "consistency_only_key_count": 267,
+  "scope": "PR #1842 @ e5fb4310dab638f9cf428779d62539ec039a8990; delta audit of ui.chat.composer_media.pasted_image, ui.chat.image_actions.actions, ui.chat.audio.position_label, ui.common.actions.actions_for_name plus the English broadened pasted_file context sentence. No full legacy namespace certification.",
+  "head_sha": "e5fb4310dab638f9cf428779d62539ec039a8990",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "e3c562b03258",
+    "session": "e3c562b03258",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "Served session header for session e3c562b03258 states deepseek/deepseek-flash; no model switch or fallback occurred in this session.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Translator model and session (fr 2ddc9a08181b) supplied by delegation; this auditor did not translate or take part in translation."
+  },
+  "policy_inputs": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+    },
+    "glossary": {
+      "path": "~/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "note": "Manager-owned byte-copy, verified identical by sha256 to ~/local-operator/i18n/glossary.md; glossary conformance was checked against this copy."
+    }
+  },
+  "artifacts": [
+    {
+      "path": "fr-ds-e3c562b03258.json",
+      "sha256": "f1b18d28d269d8a897268276be93cc7902ee54482409b181942eb6899b58deaf",
+      "kind": "audit_notes_not_execution_log",
+      "record_reference": "record.json"
+    },
+    {
+      "path": "fr-ds-e3c562b03258.audit.log",
+      "sha256": "002f4d088031bed7749e30f7d3c2cc679fe10abfb1df5fd792d993c74bbe6516",
+      "kind": "actual_execution_log",
+      "record_reference": "record.json"
+    },
+    {
+      "path": "fr-ds-e3c562b03258-check.py",
+      "sha256": "de89912c23b11033cf7982c124b9d744ebe32818bb6d7c0280fa95e767885ad2",
+      "kind": "executed_check_source",
+      "record_reference": "record.json"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "changes_requested",
+    "unresolved_blocker_major_count": 1,
+    "finding_ids": [
+      "F1",
+      "N1"
+    ]
+  },
+  "finding_report": "fr-ds-e3c562b03258.json",
+  "audit_notes_not_execution_log": false,
+  "execution_log": "fr-ds-e3c562b03258.audit.log",
+  "retention": {
+    "state": "scratch_handoff_only_per_explicit_read_only_task",
+    "intended_tracked_directory": "i18n/audits/evidence/fr/ui.chat/e12-ds-<instance> (and siblings ui.chat.composer_media, ui.common.actions)",
+    "manager_action_required": "Retain these three files plus the executed check source under the canonical evidence root; record the ledger row with the audit-ledger command. No ledger command was run by this auditor (read-only task).",
+    "proposed_note": "changes_requested; 1 MAJOR (actions_for_name: sur->pour); record i18n/audits/evidence/fr/ui.common.actions/<audit-id>/record.json"
+  },
+  "unverified": [
+    "No production ICU parser/formatter, Electron/React run, screen-reader session or rendered-frame check: read-only, no-build, no-server constraint.",
+    "No ledger write, tracked evidence retention, PR comment or commit: writes were limited to this session's scratchpad.",
+    "The 267 non-delta legacy values were not certified; only JSON validity, key-set parity and cross-file term consistency were checked for them.",
+    "The attachments-preview.tsx observation was read from source only; the composer chip strip was not rendered."
+  ]
+}

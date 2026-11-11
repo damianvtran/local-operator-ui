@@ -204,5 +204,7 @@
 	"ui.chat.session_status.duration_explanation": "Время работы; ожидание не учитывается.",
 	"ui.chat.session_status.effort_level.low": "Низкий",
 	"ui.chat.session_status.effort_level.medium": "Средний",
-	"ui.chat.session_status.effort_level.high": "Высокий"
+	"ui.chat.session_status.effort_level.high": "Высокий",
+	"ui.chat.image_actions.actions": "Действия с изображением",
+	"ui.chat.audio.position_label": "Позиция воспроизведения: {label}"
 }

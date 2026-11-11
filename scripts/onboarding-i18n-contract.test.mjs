@@ -65,7 +65,7 @@ const BASE = "src/renderer/src/features/onboarding/components/";
 const CONTRACT = [
 	[
 		"ui.onboarding.connect.intro",
-		"Local Operator needs an AI account to work. Radient is the easiest: one browser sign-in and nothing to paste. Already pay for ChatGPT or Claude? Sign in with that instead. Anything else is under More providers.",
+		"Choose Radient for many models, dictation and agent sharing through one browser sign-in. Or use your Claude or ChatGPT subscription, an API key or a model on your computer. Eligible new Radient accounts can claim free credit after email verification and a security check.",
 		"steps/connect-provider-step.tsx",
 	],
 	[
@@ -217,7 +217,7 @@ const CONTRACT = [
 	["ui.onboarding.search.mode.free", "Free", "steps/search-api-step.tsx"],
 	[
 		"ui.onboarding.search.mode.free_detail",
-		"Uses a rotating pool of free providers — DuckDuckGo, Tavily's free tier, Exa and Parallel. No key needed; the pool is shared, so searches can be slower at busy times.",
+		"Uses free search services shared with other users. No key needed. Searches can be slower at busy times.",
 		"steps/search-api-step.tsx",
 	],
 	[
@@ -1104,7 +1104,7 @@ function findP(markup, prefix) {
 
 test("the connect intro renders its full committed sentence, with no extra fragments", () => {
 	const markup = render(React.createElement(mod.ConnectProviderStep));
-	const intro = findP(markup, "Local Operator needs an AI account");
+	const intro = findP(markup, "Choose Radient for many models");
 	assert.ok(intro, "the intro paragraph is missing from the render");
 	assert.equal(intro.text, value("ui.onboarding.connect.intro"));
 });
@@ -1113,7 +1113,7 @@ test("the free-pool detail renders its exact committed sentence (appended or pre
 	const markup = render(
 		React.createElement(mod.ExtrasStep, { aidaName: "Ada", oweGreeting: true }),
 	);
-	const freeDetail = findP(markup, "Uses a rotating pool of free");
+	const freeDetail = findP(markup, "Uses free search services");
 	assert.ok(
 		freeDetail,
 		"the free-pool detail paragraph is missing from the render",
@@ -1648,4 +1648,34 @@ test("a withheld stdout reader cannot postpone or falsify a completed run", asyn
 	} finally {
 		run.cleanup(run.child);
 	}
+});
+
+test("U8: the catalogue uses one plan name, without renaming agent-team nouns", () => {
+	const root = "src/i18n/catalogues/en";
+	// The name is a product term. Generic Teams tabs are teams of agents, so
+	// normalizing the PLAN must not rename those navigation labels.
+	const publication = JSON.parse(
+		readFileSync(`${root}/ui.agents.publication.json`, "utf8"),
+	);
+	const trial = JSON.parse(
+		readFileSync(`${root}/ui.teamBridgeTrial.json`, "utf8"),
+	);
+	for (const value of [
+		...Object.values(publication),
+		...Object.values(trial),
+	]) {
+		assert.doesNotMatch(value, /(?<!Radient )Team plan/);
+	}
+	const settings = JSON.parse(
+		readFileSync(`${root}/ui.settings.account.json`, "utf8"),
+	);
+	assert.equal(
+		settings["ui.settings.account.radient_account_section.team_plan_line"],
+		"The Radient Team plan adds Team Bridge and sharing agents and teams inside your organization.",
+	);
+	// Pooled credits were proposed in the audit but not verified in this app.
+	assert.doesNotMatch(
+		settings["ui.settings.account.radient_account_section.team_plan_line"],
+		/pooled credits/,
+	);
 });

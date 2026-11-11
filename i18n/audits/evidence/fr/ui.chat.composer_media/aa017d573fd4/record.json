@@ -1,0 +1,292 @@
+{
+  "locale": "fr",
+  "audit_date": "2026-11-10",
+  "key_count": 271,
+  "fully_audited_key_count": 4,
+  "consistency_only_key_count": 267,
+  "scope": "PR #1842 @ e5fb4310dab638f9cf428779d62539ec039a8990; French four-key delta only. 271 total keys, fully_audited_key_count = 4; 267 legacy keys consistency_only, not semantically certified. English pasted_file metadata scope also checked.",
+  "head_sha": "e5fb4310dab638f9cf428779d62539ec039a8990",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "aa017d573fd4",
+    "session": "aa017d573fd4",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Served session header: openai/gpt-6.1-sol; session aa017d573fd4. No fallback used.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Delegation supplied translator session fr 2ddc9a08181b and model; this fresh auditor session did not translate or participate in translation."
+  },
+  "namespaces": {
+    "ui.chat": {
+      "locale": "fr",
+      "namespace": "ui.chat",
+      "audit_date": "2026-11-10",
+      "key_count": 208,
+      "fully_audited_key_count": 2,
+      "consistency_only_key_count": 206,
+      "scope": "PR #1842 @ e5fb4310dab638f9cf428779d62539ec039a8990; French four-key delta only. 271 total keys, fully_audited_key_count = 4; 267 legacy keys consistency_only, not semantically certified. English pasted_file metadata scope also checked.",
+      "head_sha": "e5fb4310dab638f9cf428779d62539ec039a8990",
+      "auditor": {
+        "agent": "i18n-auditor",
+        "instance": "aa017d573fd4",
+        "session": "aa017d573fd4",
+        "model": "openai/gpt-6.1-sol",
+        "actual_model_source": "Served session header: openai/gpt-6.1-sol; session aa017d573fd4. No fallback used.",
+        "fallback_used": false,
+        "independent_from_translator_session": true
+      },
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "anthropic/claude-sonnet-5-5",
+        "source": "Delegation supplied translator session fr 2ddc9a08181b and model; this fresh auditor session did not translate or participate in translation."
+      },
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.json",
+          "sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15"
+        },
+        "fr": {
+          "path": "src/i18n/catalogues/fr/ui.chat.json",
+          "sha256": "b524ab1132756d282986a666f82c25465a26dae0aa85ff77fe696812d0d08c96"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.context.json",
+          "sha256": "84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf"
+        }
+      },
+      "policy_inputs": {
+        "style_guide": {
+          "path": "/Users/damian/local-operator/i18n/style-guides/fr.md",
+          "sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+        },
+        "glossary": {
+          "path": "/Users/damian/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md",
+          "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+        }
+      },
+      "artifacts": [
+        {
+          "path": "fr-sol-aa017d573fd4.json",
+          "sha256": "791f9df8ee27bb7273d853abb82e35c45a58079c89778664eb09358d8f80d61a",
+          "kind": "audit_notes_not_execution_log",
+          "record_reference": "fr-sol-aa017d573fd4.record.json"
+        },
+        {
+          "path": "fr-sol-aa017d573fd4.audit.log",
+          "sha256": "e87e8422bad9d294a22c746e792e76236dfaced620ee5211228d5806929a52f7",
+          "kind": "actual_execution_log_and_labeled_auditor_notes",
+          "record_reference": "fr-sol-aa017d573fd4.record.json"
+        }
+      ],
+      "current_report_verdict": {
+        "status": "passed",
+        "unresolved_blocker_major_count": 0,
+        "finding_ids": []
+      },
+      "finding_report": "fr-sol-aa017d573fd4.json",
+      "audit_notes_not_execution_log": true,
+      "execution_log": "fr-sol-aa017d573fd4.audit.log",
+      "retention": {
+        "state": "scratch_handoff_only_per_explicit_read_only_task",
+        "intended_tracked_directory": "i18n/audits/evidence/fr/ui.chat/s12-sol-aa017d573fd4",
+        "manager_action_required": "Retain record and companions in canonical root and integrate required ledger entry; no repo writes performed."
+      },
+      "unverified": [
+        "No builds, installs, servers, browser, screen-reader or pixel-fit validation; linguistic sanity only for accessible names/tooltips/caption.",
+        "Scoped repo validator functions (duplicate detector and context parity with existing allowance) executed; full pnpm check-i18n suite, production ICU formatter, ledger writes, PR comments and tracked retention not executed.",
+        "Read-only assignment: manager must retain the three scratch artifacts in the canonical tracked evidence root and integrate any required ledger entry."
+      ]
+    },
+    "ui.chat.composer_media": {
+      "locale": "fr",
+      "namespace": "ui.chat.composer_media",
+      "audit_date": "2026-11-10",
+      "key_count": 9,
+      "fully_audited_key_count": 1,
+      "consistency_only_key_count": 8,
+      "scope": "PR #1842 @ e5fb4310dab638f9cf428779d62539ec039a8990; French four-key delta only. 271 total keys, fully_audited_key_count = 4; 267 legacy keys consistency_only, not semantically certified. English pasted_file metadata scope also checked.",
+      "head_sha": "e5fb4310dab638f9cf428779d62539ec039a8990",
+      "auditor": {
+        "agent": "i18n-auditor",
+        "instance": "aa017d573fd4",
+        "session": "aa017d573fd4",
+        "model": "openai/gpt-6.1-sol",
+        "actual_model_source": "Served session header: openai/gpt-6.1-sol; session aa017d573fd4. No fallback used.",
+        "fallback_used": false,
+        "independent_from_translator_session": true
+      },
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "anthropic/claude-sonnet-5-5",
+        "source": "Delegation supplied translator session fr 2ddc9a08181b and model; this fresh auditor session did not translate or participate in translation."
+      },
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.json",
+          "sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae"
+        },
+        "fr": {
+          "path": "src/i18n/catalogues/fr/ui.chat.composer_media.json",
+          "sha256": "4c2fcaf7d6bf9a3adc63c32126e1834e775e837b426b684a1edf2236621cb198"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.context.json",
+          "sha256": "a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b"
+        }
+      },
+      "policy_inputs": {
+        "style_guide": {
+          "path": "/Users/damian/local-operator/i18n/style-guides/fr.md",
+          "sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+        },
+        "glossary": {
+          "path": "/Users/damian/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md",
+          "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+        }
+      },
+      "artifacts": [
+        {
+          "path": "fr-sol-aa017d573fd4.json",
+          "sha256": "791f9df8ee27bb7273d853abb82e35c45a58079c89778664eb09358d8f80d61a",
+          "kind": "audit_notes_not_execution_log",
+          "record_reference": "fr-sol-aa017d573fd4.record.json"
+        },
+        {
+          "path": "fr-sol-aa017d573fd4.audit.log",
+          "sha256": "e87e8422bad9d294a22c746e792e76236dfaced620ee5211228d5806929a52f7",
+          "kind": "actual_execution_log_and_labeled_auditor_notes",
+          "record_reference": "fr-sol-aa017d573fd4.record.json"
+        }
+      ],
+      "current_report_verdict": {
+        "status": "passed",
+        "unresolved_blocker_major_count": 0,
+        "finding_ids": []
+      },
+      "finding_report": "fr-sol-aa017d573fd4.json",
+      "audit_notes_not_execution_log": true,
+      "execution_log": "fr-sol-aa017d573fd4.audit.log",
+      "retention": {
+        "state": "scratch_handoff_only_per_explicit_read_only_task",
+        "intended_tracked_directory": "i18n/audits/evidence/fr/ui.chat.composer_media/s12-sol-aa017d573fd4",
+        "manager_action_required": "Retain record and companions in canonical root and integrate required ledger entry; no repo writes performed."
+      },
+      "unverified": [
+        "No builds, installs, servers, browser, screen-reader or pixel-fit validation; linguistic sanity only for accessible names/tooltips/caption.",
+        "Scoped repo validator functions (duplicate detector and context parity with existing allowance) executed; full pnpm check-i18n suite, production ICU formatter, ledger writes, PR comments and tracked retention not executed.",
+        "Read-only assignment: manager must retain the three scratch artifacts in the canonical tracked evidence root and integrate any required ledger entry."
+      ]
+    },
+    "ui.common.actions": {
+      "locale": "fr",
+      "namespace": "ui.common.actions",
+      "audit_date": "2026-11-10",
+      "key_count": 54,
+      "fully_audited_key_count": 1,
+      "consistency_only_key_count": 53,
+      "scope": "PR #1842 @ e5fb4310dab638f9cf428779d62539ec039a8990; French four-key delta only. 271 total keys, fully_audited_key_count = 4; 267 legacy keys consistency_only, not semantically certified. English pasted_file metadata scope also checked.",
+      "head_sha": "e5fb4310dab638f9cf428779d62539ec039a8990",
+      "auditor": {
+        "agent": "i18n-auditor",
+        "instance": "aa017d573fd4",
+        "session": "aa017d573fd4",
+        "model": "openai/gpt-6.1-sol",
+        "actual_model_source": "Served session header: openai/gpt-6.1-sol; session aa017d573fd4. No fallback used.",
+        "fallback_used": false,
+        "independent_from_translator_session": true
+      },
+      "translator": {
+        "agent": "i18n-translator",
+        "model": "anthropic/claude-sonnet-5-5",
+        "source": "Delegation supplied translator session fr 2ddc9a08181b and model; this fresh auditor session did not translate or participate in translation."
+      },
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.json",
+          "sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b"
+        },
+        "fr": {
+          "path": "src/i18n/catalogues/fr/ui.common.actions.json",
+          "sha256": "1f375db06df660163bdf5fa126e9ef0f94ff25ba64ed209be872ab04353f3e42"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+          "sha256": "24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d"
+        }
+      },
+      "policy_inputs": {
+        "style_guide": {
+          "path": "/Users/damian/local-operator/i18n/style-guides/fr.md",
+          "sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+        },
+        "glossary": {
+          "path": "/Users/damian/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md",
+          "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+        }
+      },
+      "artifacts": [
+        {
+          "path": "fr-sol-aa017d573fd4.json",
+          "sha256": "791f9df8ee27bb7273d853abb82e35c45a58079c89778664eb09358d8f80d61a",
+          "kind": "audit_notes_not_execution_log",
+          "record_reference": "fr-sol-aa017d573fd4.record.json"
+        },
+        {
+          "path": "fr-sol-aa017d573fd4.audit.log",
+          "sha256": "e87e8422bad9d294a22c746e792e76236dfaced620ee5211228d5806929a52f7",
+          "kind": "actual_execution_log_and_labeled_auditor_notes",
+          "record_reference": "fr-sol-aa017d573fd4.record.json"
+        }
+      ],
+      "current_report_verdict": {
+        "status": "passed",
+        "unresolved_blocker_major_count": 0,
+        "finding_ids": []
+      },
+      "finding_report": "fr-sol-aa017d573fd4.json",
+      "audit_notes_not_execution_log": true,
+      "execution_log": "fr-sol-aa017d573fd4.audit.log",
+      "retention": {
+        "state": "scratch_handoff_only_per_explicit_read_only_task",
+        "intended_tracked_directory": "i18n/audits/evidence/fr/ui.common.actions/s12-sol-aa017d573fd4",
+        "manager_action_required": "Retain record and companions in canonical root and integrate required ledger entry; no repo writes performed."
+      },
+      "unverified": [
+        "No builds, installs, servers, browser, screen-reader or pixel-fit validation; linguistic sanity only for accessible names/tooltips/caption.",
+        "Scoped repo validator functions (duplicate detector and context parity with existing allowance) executed; full pnpm check-i18n suite, production ICU formatter, ledger writes, PR comments and tracked retention not executed.",
+        "Read-only assignment: manager must retain the three scratch artifacts in the canonical tracked evidence root and integrate any required ledger entry."
+      ]
+    }
+  },
+  "artifacts": [
+    {
+      "path": "fr-sol-aa017d573fd4.json",
+      "sha256": "791f9df8ee27bb7273d853abb82e35c45a58079c89778664eb09358d8f80d61a",
+      "kind": "audit_notes_not_execution_log",
+      "record_reference": "fr-sol-aa017d573fd4.record.json"
+    },
+    {
+      "path": "fr-sol-aa017d573fd4.audit.log",
+      "sha256": "e87e8422bad9d294a22c746e792e76236dfaced620ee5211228d5806929a52f7",
+      "kind": "actual_execution_log_and_labeled_auditor_notes",
+      "record_reference": "fr-sol-aa017d573fd4.record.json"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": []
+  },
+  "finding_report": "fr-sol-aa017d573fd4.json",
+  "audit_notes_not_execution_log": true,
+  "execution_log": "fr-sol-aa017d573fd4.audit.log",
+  "unverified": [
+    "No builds, installs, servers, browser, screen-reader or pixel-fit validation; linguistic sanity only for accessible names/tooltips/caption.",
+    "Scoped repo validator functions (duplicate detector and context parity with existing allowance) executed; full pnpm check-i18n suite, production ICU formatter, ledger writes, PR comments and tracked retention not executed.",
+    "Read-only assignment: manager must retain the three scratch artifacts in the canonical tracked evidence root and integrate any required ledger entry."
+  ]
+}

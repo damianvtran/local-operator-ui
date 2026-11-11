@@ -1,0 +1,195 @@
+{
+  "locale": "zh-CN",
+  "audit_id": "aud2-1827-zh-CN-second",
+  "mode": "second independent high-visibility pass",
+  "scope": "23ec4af967b..165aebb1b73",
+  "head_sha": "165aebb1b73e65a63ca2ba1e4d8c9e638e8dc696",
+  "base_sha": "23ec4af967b",
+  "previous_audited_head": "118da8491a9",
+  "audit_date": "2026-11-09",
+  "source_locale": "en",
+  "instance": "70b5f856b963",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "70b5f856b963",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "harness session header ('Model: deepseek/deepseek-flash'); no provider-side fallback was reported to this run and none is claimed here",
+    "independent_from_translator_session": true,
+    "independence_note": "Different agent and different model from the translator (i18n-translator / anthropic/claude-sonnet-5-5). This pass did not read any earlier audit comment, receipt or ledger row for zh-CN; it re-derived every judgement from the English source, the English context sidecars, the zh-CN style guide, the glossary and the head bytes.",
+    "role_in_team": "lopdev / i18n-auditor"
+  },
+  "model": "deepseek/deepseek-flash",
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "independent_from_auditor_session": true
+  },
+  "key_count": 7,
+  "keys": [
+    "ui.chat.canonical.notice.interrupted",
+    "ui.chat.canonical.notice.stopped_with_error",
+    "ui.chat.canonical.notice.compaction_not_run",
+    "ui.chat.canonical.notice.compaction_not_run_after_colon",
+    "ui.chat.canonical.link_toolkit.actions_for",
+    "ui.chat.sidebar_view.ungrouped",
+    "ui.chat.sidebar.mark_all_read.label"
+  ],
+  "inputs": {
+    "ui.chat.canonical": {
+      "en": {
+        "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+        "sha256": "38f767d08ff0f8a4fc6d8eee536ae82a023e93fe50fecc5fabb25a8f7609541f"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+        "sha256": "58cefb7d2140be875f5bcc0688631a85c368b130b551f82185d78cec47eb8107"
+      },
+      "target": {
+        "path": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+        "sha256": "705f67d486f9d011925a234c0a5adb2eb258570ebbc78d3eaa2cf25d24299a13"
+      }
+    },
+    "ui.chat.sidebar": {
+      "en": {
+        "path": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+        "sha256": "5fa8ca072b46407199075c77639deb93957ce3ca93ee03cc70d4134fc027e1ff"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+        "sha256": "0449e60c6bd1eb2d298ed576e0428c67f50a9175eb260460ec3ba8e5e3f1eaff"
+      },
+      "target": {
+        "path": "src/i18n/catalogues/zh-CN/ui.chat.sidebar.json",
+        "sha256": "864b1afc241efb5c170dcf1749b18eeb392c8d08afe3b010a2d46018cf3abef5"
+      }
+    },
+    "ui.chat.sidebar_view": {
+      "en": {
+        "path": "src/i18n/catalogues/en/ui.chat.sidebar_view.json",
+        "sha256": "1c4e36003278bf5ed2afd29acb7f1546eec9a76d330777c7747eaab3a5646adf"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.chat.sidebar_view.context.json",
+        "sha256": "a6009c3a81f85dd2ab1c8dc730d410085850a69e6fdde28e9f37ee1c1bb93367"
+      },
+      "target": {
+        "path": "src/i18n/catalogues/zh-CN/ui.chat.sidebar_view.json",
+        "sha256": "2722622d763edd095dc457769b895820f86759f016a31a4d40a8534cf2dae77c"
+      }
+    }
+  },
+  "namespaces": {
+    "ui.chat.canonical": {
+      "status": "passed",
+      "sha256": {
+        "en": "38f767d08ff0f8a4fc6d8eee536ae82a023e93fe50fecc5fabb25a8f7609541f",
+        "zh-CN": "705f67d486f9d011925a234c0a5adb2eb258570ebbc78d3eaa2cf25d24299a13"
+      },
+      "findings": [
+        {
+          "severity": "NIT",
+          "id": "zh2-N1",
+          "key": "ui.chat.canonical.notice.stopped_with_error",
+          "current": "因出错而停止",
+          "problem": "A full causative clause (因…而…, written/书面 register) where the sibling turn-completion markers are terse state words: 已中断 for ui.chat.canonical.notice.interrupted in this same catalogue and 已停止 at ui.chat.action.stopped. Meaning, polarity, neutrality and width are all correct; this is phrasing polish only.",
+          "suggested": "出错，已停止",
+          "suggested_alt": "因错误停止",
+          "evidence": "en sidecar tone is 'neutral factual statement, sentence case, no trailing punctuation'; zh-CN style guide 'Terse: four-to-eight character lines where possible'. Suggested value is 12 cells, identical to the current one (en is 20 cells), so there is no width cost.",
+          "disposition": "open (polish; not a defect in meaning)"
+        }
+      ]
+    },
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "sha256": {
+        "en": "5fa8ca072b46407199075c77639deb93957ce3ca93ee03cc70d4134fc027e1ff",
+        "zh-CN": "864b1afc241efb5c170dcf1749b18eeb392c8d08afe3b010a2d46018cf3abef5"
+      },
+      "findings": []
+    },
+    "ui.chat.sidebar_view": {
+      "status": "passed",
+      "sha256": {
+        "en": "1c4e36003278bf5ed2afd29acb7f1546eec9a76d330777c7747eaab3a5646adf",
+        "zh-CN": "2722622d763edd095dc457769b895820f86759f016a31a4d40a8534cf2dae77c"
+      },
+      "findings": []
+    }
+  },
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+  },
+  "finding_ids": [
+    "zh2-N1"
+  ],
+  "verdict": "clean-with-findings",
+  "status": "passed",
+  "observations": [
+    {
+      "severity": "INFO",
+      "key": "ui.chat.canonical.notice.compaction_not_run",
+      "note": "上下文压缩 = glossary §2 (zh-CN '压缩 (上下文压缩)') and shipped precedent src/i18n/catalogues/zh-CN/ui.settings.imports.session_meta ('#次上下文压缩'). Full-width colon ： mirrors the shipped detail-inserting precedent zh-CN ui.common.updates.update_notification.error_downloading_update ('下载更新出错：{detail}'); {detail} stays final and verbatim, as the sidecar requires."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.chat.canonical.notice.compaction_not_run_after_colon",
+      "note": "—— is U+2014 U+2014, the mainland 破折号 (zh-CN style guide 'Punctuation & typography'; no U+2015/U+2013 in any of the three files). The dash form is right for a reason that already carries an ASCII colon, and no space is inserted before {detail}."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.chat.canonical.notice.interrupted",
+      "note": "已中断 matches the shipped sibling zh-CN ui.chat.canonical.transcript.interrupted byte-for-byte, which is correct because English uses the same word on both surfaces; the two keys' different roles are carried by ink and position, not by wording."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.chat.canonical.link_toolkit.actions_for",
+      "note": "'{name}的操作' follows the shipped possessive+noun pattern zh-CN ui.teamBridge.row.menu ('{name}的更多操作'), obeys the no-space-between-CJK-and-Latin rule, and keeps {name} first (allowed: only the argument's name/type is frozen, not its order). Accepted."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.chat.sidebar.mark_all_read.label",
+      "note": "Classifier 个 is correct for chats: zh-CN style guide plurals ('个 default; 条 for messages') and shipped precedent zh-CN ui.chat.sidebar.groups.badge ('此分组中有{badge}个对话'). The audited delta 条 -> 个 is a correction, not a regression. 全部…标为已读 follows zh-CN ui.notifications.action.mark_all_read ('全部标为已读')."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.chat.sidebar_view.ungrouped",
+      "note": "Out of the translator's scope, recorded for the record: the en sidecar for this key has no width hint even though sibling group headings in the same list carry maxCells 24 (ui.chat.sidebar_view.time_section / tag / agent_team) and this sidecar uses maxCells 6/20/24/64 elsewhere. The target value 未分组 is 6 cells, far under the 24-cell family budget, so there is no fit risk here; the gap is an English-sidecar completeness note, not a target-copy defect."
+    }
+  ],
+  "precedents": {
+    "标为已读": "src/i18n/catalogues/zh-CN/ui.notifications.action.mark_all_read · ui.notifications.row.mark_read",
+    "个 (chats)": "src/i18n/catalogues/zh-CN/ui.chat.sidebar.groups.badge",
+    "上下文压缩": "src/i18n/catalogues/zh-CN/ui.settings.imports.session_meta · ui.settings.imports.preview_summary",
+    "详细原因前置全角冒号": "src/i18n/catalogues/zh-CN/ui.common.updates.update_notification.error_downloading_update",
+    "{name}的…": "src/i18n/catalogues/zh-CN/ui.teamBridge.row.menu",
+    "未分组/分组": "src/i18n/catalogues/zh-CN/ui.chat.sidebar_view.group_by",
+    "已停止 (state)": "src/i18n/catalogues/zh-CN/ui.chat.action.stopped",
+    "中断": "src/i18n/catalogues/zh-CN/ui.chat.canonical.transcript.interrupted"
+  },
+  "verified": [
+    "git show <head>:<path> byte reads for all nine files (en, en .context.json, zh-CN per namespace); worktree tree is clean for src/i18n/catalogues (git status empty), so worktree bytes == head bytes",
+    "sha256 over git show bytes (python3 hashlib) for each en / context / target file, recorded above",
+    "key-set parity per namespace at head: ui.chat.canonical 258/258, ui.chat.sidebar 81/81, ui.chat.sidebar_view 27/27 - zero missing, zero extra (the same rule ledger-assemble refuses on)",
+    "strict JSON parse plus duplicate-member scan (object_pairs_hook) on all six catalogues: no duplicates, all valid JSON",
+    "ICU parse of en and zh-CN values with @formatjs/icu-messageformat-parser 3.5.21 from the existing node_modules: argument names and types identical for every key; the number element keeps the ::group-off skeleton (parsedOptions.useGrouping === false) in both locales; no plural/select branch added in zh-CN (zh-CN needs `other` only, and none of the seven keys is a plural message)",
+    "byte checks: no Cf (bidi) characters in any of the seven zh-CN values; no ASCII , . : ; ! ? ( ) \" ' in the zh-CN prose; U+FF1A for the colon form; U+2014 U+2014 for the dash form; no trailing 。 (en has none); no space inserted between CJK and digits",
+    "cell-width estimate (CJK/full-width = 2, ASCII = 1): notice.interrupted 6 vs en 11; stopped_with_error 12 vs en 20; compaction_not_run 26 vs en 23; after_colon 26 vs en 24; actions_for 12+name vs en 12+name; ungrouped 6 vs en 9; mark_all_read 14+digits vs en 14+digits. None of these 7 keys carries a maxCells/maxChars hint (their context entries hold role/tone/length/note/placeholders only; the sidebar_view sidecar does use maxCells 6/20/24/64 on other keys, and sibling group headings there budget 24 cells), so fit was judged against the English cell count and the sidebar-header constraint recorded in the context note"
+  ],
+  "unverified": [
+    "pnpm check-i18n / scripts/i18n/check-strings.mjs / check-added-strings.mjs / context-parity.mjs / ledger-check.mjs were NOT run (host is loaded; the brief limits this pass to tiny read-only checks). The mechanical evidence above is my own python3 and node read-only checks, not the repo validator's output.",
+    "No rendered frame, pseudo-localisation run, terminal width measurement or screen-reader pass was performed.",
+    "No runtime render of the notice line or the sidebar label in the app.",
+    "CLDR/ICU behaviour verified through the parser's AST only, not through a live formatter call.",
+    "Provider-side model provenance is not independently verifiable from inside this session; the model id is taken from the harness session header."
+  ],
+  "artifacts": {
+    "receipt_path": "~/local-operator-ui/.worktrees/_s9-audits/second/zh-CN.json",
+    "report": "PR damianvtran/local-operator-ui#1827 comment '### i18n audit — zh-CN — second independent pass'",
+    "audit_notes_not_execution_log": true,
+    "execution_logs": null,
+    "tracked_evidence": "NOT written: this worktree is read-only for the auditor; i18n/audits/evidence/zh-CN/<namespace>/<audit-id>/ and i18n/receipts/ are left to the assembling step. The staging receipt at the path above is the unique copy and must not be deleted before it is committed."
+  }
+}

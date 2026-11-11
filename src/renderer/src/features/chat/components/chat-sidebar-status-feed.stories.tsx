@@ -2409,6 +2409,27 @@ export const MarkAllReadNarrowMinimum: Story = {
 	},
 };
 
+/*
+ * THE SIDEBAR'S FLOOR (`SIDEBAR_MIN_WIDTH`, 220), where the label must be
+ * glyph-only in every language. 240 above is the old "minimum" and no longer the
+ * narrowest the user can drag to. Render it per language with
+ * `?args=locale:fr` / `locale:vi`: before the shed was wired onto the row the
+ * control is drawn in, those two lost the section name entirely here. The unit
+ * test can only assert the wiring (jsdom has no layout); this frame is the
+ * rendered check.
+ */
+export const MarkAllReadNarrowFloor: Story = {
+	render: () => {
+		fixtures();
+		roster = pileRoster();
+		return <Page sidebarWidth={220} />;
+	},
+	play: async () => {
+		await catalogueSettled(PILE.length);
+		await sleep(300);
+	},
+};
+
 export const MarkAllReadFiltered: Story = {
 	render: () => {
 		/*

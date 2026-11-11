@@ -1,0 +1,19 @@
+HEAD fd09d8f296318319817edb5a511a42ff6a07868f ; git status --short: empty
+shasum -a 256 src/i18n/catalogues/en/ui.chat.sidebar.json : 7db9ba5108a62330a1782f775b991ec0483537d2f7d808ae0691e1a6ef8840cd ; HEAD byte match: PASS
+shasum -a 256 src/i18n/catalogues/fr/ui.chat.sidebar.json : ec93a140d65cf298bb4252b74f999b83bc7736860d0b7c7dbfe5625e7983e3a3 ; HEAD byte match: PASS
+shasum -a 256 src/i18n/catalogues/en/ui.chat.sidebar.context.json : 4f1593cc34b395ef8701a60e58e73a0371b3c93730eb7a1f2b2845dc6250d7e3 ; HEAD byte match: PASS
+Duplicate-free valid JSON; source/target key sets identical: 86; changed French keys: ['ui.chat.sidebar.agents.builtin_offer']
+ICU subset parser: balanced braces; exact argument/type parity; exact ::group-off; one/many/other present; all existing arms unchanged: PASS
+Unexpected non-ASCII whitespace/bidi/zero-width: none; U+2019 apostrophes and spaced em dashes: PASS
+0 -> =0: Aucun agent intégré n’est prêt à être installé — Atlas et Nova. Vous pourrez les modifier une fois installés.
+1 -> one: Un agent intégré est prêt à être installé — Atlas et Nova. Vous pourrez le modifier une fois installé.
+2 -> =2: Deux agents intégrés sont prêts à être installés — Atlas et Nova. Vous pourrez les modifier une fois installés.
+7 -> other: 7 agents intégrés sont prêts à être installés — Atlas et Nova. Vous pourrez les modifier une fois installés.
+1000000 -> many: 1000000 d’agents intégrés sont prêts à être installés — Atlas et Nova. Vous pourrez les modifier une fois installés.
+1500000 -> other: 1500000 agents intégrés sont prêts à être installés — Atlas et Nova. Vous pourrez les modifier une fois installés.
+2000000 -> many: 2000000 d’agents intégrés sont prêts à être installés — Atlas et Nova. Vous pourrez les modifier une fois installés.
+Expansions above are Python derivations, not production formatter output. List fixture preserved verbatim.
+Instance collision search: /Users/damian/local-operator-ui/i18n/receipts : no matches
+Instance collision search: /Users/damian/local-operator-ui/i18n/audits/evidence : no matches
+Reference receipt field-set comparison, readback, final HEAD and clean worktree: PASS
+Verdict clean; severity counts 0/0/0/0; actual model openai/gpt-6.1-sol; no fallback

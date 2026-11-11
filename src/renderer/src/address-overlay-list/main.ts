@@ -32,6 +32,8 @@ interface Model {
 					title: string;
 					/** Main-validated display span; see `AddressListIsolate`. */
 					isolate?: { start: number; end: number };
+					/** Main-validated closed enum; see `AddressListRow.icon`. */
+					icon?: "page";
 				}>;
 		  }
 		| {
@@ -40,6 +42,38 @@ interface Model {
 				text: string;
 		  };
 	theme: Record<string, string>;
+}
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+/**
+ * lucide's `app-window` geometry, copied as fixed data (this bundle imports
+ * nothing from the app). The in-flow list renders the same icon through
+ * `lucide-react`, so both presenters show one mark for the browser's own pages.
+ * Built with `createElementNS` from these constants: the child still never
+ * parses markup, and nothing the model carries reaches an attribute.
+ */
+const PAGE_ICON_SHAPES: ReadonlyArray<
+	readonly [string, Record<string, string>]
+> = [
+	["rect", { x: "2", y: "4", width: "20", height: "16", rx: "2" }],
+	["path", { d: "M10 4v4" }],
+	["path", { d: "M2 8h20" }],
+	["path", { d: "M6 4v4" }],
+];
+
+function pageIcon(): SVGSVGElement {
+	const svg = document.createElementNS(SVG_NS, "svg");
+	svg.setAttribute("class", "lo-row-icon");
+	svg.setAttribute("viewBox", "0 0 24 24");
+	svg.setAttribute("aria-hidden", "true");
+	for (const [tag, attributes] of PAGE_ICON_SHAPES) {
+		const shape = document.createElementNS(SVG_NS, tag);
+		for (const [name, value] of Object.entries(attributes))
+			shape.setAttribute(name, value);
+		svg.append(shape);
+	}
+	return svg;
 }
 
 const THEME_VARIABLES = [
@@ -142,6 +176,7 @@ export function apply(model: Model): ReturnType<typeof measure> {
 				rowEl.classList.add("is-active");
 				rowEl.dataset.active = "true";
 			}
+			if (row.icon === "page") rowEl.append(pageIcon());
 			const text = document.createElement("span");
 			text.className = "lo-row-text";
 			// `auto`, not `ltr`: a URL's strong Latin bytes already resolve LTR,

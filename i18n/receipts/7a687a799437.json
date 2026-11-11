@@ -1,0 +1,181 @@
+{
+  "locale": "hi",
+  "namespaces": {
+    "ui.chat.canonical": {
+      "status": "passed",
+      "keys_audited": [
+        "ui.chat.canonical.notice.interrupted",
+        "ui.chat.canonical.notice.stopped_with_error",
+        "ui.chat.canonical.notice.compaction_not_run",
+        "ui.chat.canonical.notice.compaction_not_run_after_colon",
+        "ui.chat.canonical.link_toolkit.actions_for"
+      ],
+      "en_sha256": "38f767d08ff0f8a4fc6d8eee536ae82a023e93fe50fecc5fabb25a8f7609541f",
+      "target_sha256": "9396b17c8e3796c97eb1fc058f5600566ece111ac372578ff663541ccd559eca",
+      "context_path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+      "context_sha256": "58cefb7d2140be875f5bcc0688631a85c368b130b551f82185d78cec47eb8107",
+      "findings": [
+        {
+          "id": "H2-1",
+          "severity": "minor",
+          "key": "ui.chat.canonical.notice.stopped_with_error",
+          "current": "त्रुटि के साथ रुका",
+          "problem": "Meaning is preserved, but 'के साथ' is carried over from English 'with'. Hindi रुकना is intransitive and an error is not an accompanying agent, so 'त्रुटि के साथ रुका' reads as a preposition calque rather than native product copy; the idiomatic collocations are causal or temporal ('त्रुटि के कारण रुका' / 'त्रुटि आने पर रुका').",
+          "suggested": "त्रुटि के कारण रुका",
+          "note": "The sidecar's 'states that the turn stopped, not why' rule forbids explaining the cause DETAIL (a separate row), not naming that an error ended the turn - the English sentence already names it. If the wave wants to keep a strictly non-causal reading, 'त्रुटि आने पर रुका' is the natural form.",
+          "precedent_rejected": "No hi precedent for 'with an error' as a status marker: hi:ui.agents.detail.read_state.list_failed_meaning uses 'त्रुटि के साथ जवाब दिया', where के साथ is licensed by the transitive verb जवाब देना - a different construction.",
+          "disposition": "fix in the wave"
+        }
+      ]
+    },
+    "ui.chat.sidebar_view": {
+      "status": "passed",
+      "keys_audited": [
+        "ui.chat.sidebar_view.ungrouped"
+      ],
+      "en_sha256": "1c4e36003278bf5ed2afd29acb7f1546eec9a76d330777c7747eaab3a5646adf",
+      "target_sha256": "c8ae0a3f8e958560ca9fb9f568d40b1a0a440607718680867bf85475e6fdb969",
+      "context_path": "src/i18n/catalogues/en/ui.chat.sidebar_view.context.json",
+      "context_sha256": "a6009c3a81f85dd2ab1c8dc730d410085850a69e6fdde28e9f37ee1c1bb93367",
+      "findings": [
+        {
+          "id": "H2-2",
+          "severity": "nit",
+          "key": "ui.chat.sidebar_view.ungrouped",
+          "current": "बिना समूह",
+          "problem": "A bare 'बिना X' phrase is clipped at heading position; the fuller category form is 'बिना समूह वाले' (cf. hi:ui.notifications.bulk.asks_hint 'बिना जवाब वाले सवाल'). Weigh against consistency: the shipped hi catalogue already uses the bare form for the same job (hi:ui.chat.tags.untagged 'बिना टैग'), so changing only this one creates a split.",
+          "suggested": "बिना समूह वाले (only together with बिना टैग -> बिना टैग वाले); otherwise accept the current value",
+          "disposition": "accepted as-is for consistency with hi:ui.chat.tags.untagged; no change required"
+        }
+      ]
+    },
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "keys_audited": [
+        "ui.chat.sidebar.mark_all_read.label"
+      ],
+      "en_sha256": "5fa8ca072b46407199075c77639deb93957ce3ca93ee03cc70d4134fc027e1ff",
+      "target_sha256": "fc9b5e4e2487ff91b968341974c467f3f5f2ab54ba42df98c204460d0b66e30d",
+      "context_path": "src/i18n/catalogues/en/ui.chat.sidebar.context.json",
+      "context_sha256": "0449e60c6bd1eb2d298ed576e0428c67f50a9175eb260460ec3ba8e5e3f1eaff",
+      "findings": []
+    }
+  },
+  "instance": "7a687a799437",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "7a687a799437",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "session runtime header 'Model: deepseek/deepseek-flash'; no fallback used",
+    "independent_from_translator_session": true,
+    "independent_from_first_pass": true,
+    "read_first_pass_records": false
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5"
+  },
+  "head_sha": "165aebb1b73e65a63ca2ba1e4d8c9e638e8dc696",
+  "previous_audited_head": "118da8491a9",
+  "base_sha": "23ec4af967b",
+  "scope": "23ec4af967b..165aebb1b73",
+  "audit_mode": "second independent high-visibility pass (locale hi)",
+  "audit_date": "2026-11-09",
+  "pull_request": 1827,
+  "key_count": 7,
+  "status": "passed",
+  "result": "clean-with-findings",
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 1
+  },
+  "findings": [
+    {
+      "id": "H2-1",
+      "severity": "minor",
+      "key": "ui.chat.canonical.notice.stopped_with_error",
+      "current": "त्रुटि के साथ रुका",
+      "problem": "Meaning is preserved, but 'के साथ' is carried over from English 'with'. Hindi रुकना is intransitive and an error is not an accompanying agent, so 'त्रुटि के साथ रुका' reads as a preposition calque rather than native product copy; the idiomatic collocations are causal or temporal ('त्रुटि के कारण रुका' / 'त्रुटि आने पर रुका').",
+      "suggested": "त्रुटि के कारण रुका",
+      "note": "The sidecar's 'states that the turn stopped, not why' rule forbids explaining the cause DETAIL (a separate row), not naming that an error ended the turn - the English sentence already names it. If the wave wants to keep a strictly non-causal reading, 'त्रुटि आने पर रुका' is the natural form.",
+      "precedent_rejected": "No hi precedent for 'with an error' as a status marker: hi:ui.agents.detail.read_state.list_failed_meaning uses 'त्रुटि के साथ जवाब दिया', where के साथ is licensed by the transitive verb जवाब देना - a different construction.",
+      "disposition": "fix in the wave"
+    },
+    {
+      "id": "H2-2",
+      "severity": "nit",
+      "key": "ui.chat.sidebar_view.ungrouped",
+      "current": "बिना समूह",
+      "problem": "A bare 'बिना X' phrase is clipped at heading position; the fuller category form is 'बिना समूह वाले' (cf. hi:ui.notifications.bulk.asks_hint 'बिना जवाब वाले सवाल'). Weigh against consistency: the shipped hi catalogue already uses the bare form for the same job (hi:ui.chat.tags.untagged 'बिना टैग'), so changing only this one creates a split.",
+      "suggested": "बिना समूह वाले (only together with बिना टैग -> बिना टैग वाले); otherwise accept the current value",
+      "disposition": "accepted as-is for consistency with hi:ui.chat.tags.untagged; no change required"
+    }
+  ],
+  "mechanical_checks": {
+    "json_parses": true,
+    "key_parity": {
+      "ui.chat.canonical": {
+        "en_keys": 258,
+        "hi_keys": 258,
+        "missing_in_hi": 0,
+        "extra_in_hi": 0
+      },
+      "ui.chat.sidebar_view": {
+        "en_keys": 27,
+        "hi_keys": 27,
+        "missing_in_hi": 0,
+        "extra_in_hi": 0
+      },
+      "ui.chat.sidebar": {
+        "en_keys": 81,
+        "hi_keys": 81,
+        "missing_in_hi": 0,
+        "extra_in_hi": 0
+      }
+    },
+    "placeholders_identical": {
+      "ui.chat.canonical.notice.compaction_not_run": "{detail}",
+      "ui.chat.canonical.notice.compaction_not_run_after_colon": "{detail}",
+      "ui.chat.canonical.link_toolkit.actions_for": "{name}",
+      "ui.chat.sidebar.mark_all_read.label": "{count, number, ::group-off}"
+    },
+    "icu_plural_needed": false,
+    "bidi_controls": 0,
+    "latin_outside_placeholders": 0,
+    "method": "python3 read-only string checks (json.load, regex placeholder/skeleton extraction, unicodedata width); hashes via git show HEAD:path | sha256"
+  },
+  "fit": {
+    "ui.chat.canonical.notice.interrupted": "hi 16 cells vs en 11",
+    "ui.chat.canonical.notice.stopped_with_error": "hi 17 cells vs en 21",
+    "ui.chat.canonical.notice.compaction_not_run": "hi 25 cells vs en 32",
+    "ui.chat.canonical.notice.compaction_not_run_after_colon": "hi 26 cells vs en 33",
+    "ui.chat.canonical.link_toolkit.actions_for": "hi 20 cells vs en 18 (aria only)",
+    "ui.chat.sidebar_view.ungrouped": "hi 9 cells, same as en 9",
+    "ui.chat.sidebar.mark_all_read.label": "hi 29 cells with a 2-digit count vs en 16, fr 26, es 29 - parity with peers; element truncates and sheds to sr-only below 253px (chat-sidebar.tsx MARK_ALL_READ_LABEL_SHED)"
+  },
+  "observations": [
+    "ui.chat.canonical.notice.interrupted 'बीच में रोका गया' vs hi:ui.chat.canonical.transcript.interrupted 'रोका गया': deliberate differentiation matches the sidecar note that this notice closes a whole turn; 'बीच में' is entailed by 'interrupted', not an addition.",
+    "compaction_not_run / _after_colon: संपीडन is glossary §2's rendering and is used at hi:ui.settings.imports.session_meta; 'नहीं चला' has precedent at hi:ui.chat.canonical.transcript.not_run; the statement-then-reason order, the colon form and the spaced em dash (precedent hi:ui.notifications.error.refresh.body) are all preserved, and {detail} stays verbatim after the statement.",
+    "link_toolkit.actions_for '{name} की कार्रवाइयाँ': the possessive matches the SAME English shape already shipped at hi:ui.browser.browser_tab_strip.actions_for ('{title}' की कार्रवाइयाँ); कार्रवाई for 'action' has precedent at hi:ui.chat.canonical.fold.count.actions; Hindi का/की/के agrees with the possessed noun (कार्रवाइयाँ, fem.), so {name}'s own gender is irrelevant.",
+    "mark_all_read.label 'पढ़ा गया चिह्नित करें' matches hi:ui.notifications.action.mark_all_read and hi:ui.notifications.row.mark_read; with count=1 it renders 'सभी 1 को' which is mildly odd, but the English shape is equally odd and no ICU plural branch exists to branch on.",
+    "No numeric maxCells/length_hint is declared for any of the 7 keys (only prose 'length'); fit was judged against peer locales and the layout code, not against a hint."
+  ],
+  "unverified": [
+    "repo validators (scripts/i18n/check-strings.mjs, catalogue-locale, context-parity) were NOT run - the dispatch allows python3 read-only string checks only on this overloaded host",
+    "no pseudo-localisation run",
+    "no rendered frame, geometry or font-fallback measurement (no build/browser permitted)",
+    "no screen-reader announcement test; the aria-only fit claims are inferred from source, not heard"
+  ],
+  "artifacts": [
+    {
+      "path": "~/local-operator-ui/.worktrees/_s9-audits/second/hi.json",
+      "role": "this receipt"
+    },
+    {
+      "path": "PR #1827 comment '### i18n audit — hi — second independent pass'",
+      "role": "report"
+    }
+  ]
+}

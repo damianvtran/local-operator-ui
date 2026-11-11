@@ -35,6 +35,7 @@ import { userFacingMessage } from "@shared/api/local-operator/desktop-api";
 import type { DesktopCapabilities } from "@shared/api/local-operator/desktop-api";
 import { desktopFeatureEnabled } from "@shared/api/local-operator/desktop-hooks";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
+import { submitSettingsIntent } from "@shared/hooks/use-settings-intents";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 // Relative, not `@shared/i18n`: bundled by node tests without an alias map.
@@ -162,7 +163,14 @@ export type MoveCommitOutcome =
 	 */
 	| { kind: "in-flight" }
 	/** No write path here (no capability, or no session): nothing was posted. */
-	| { kind: "unavailable" };
+	| { kind: "unavailable" }
+	/**
+	 * Handed to the server as a durable settings intent
+	 * (`features.settings_intents`): the move applies in the background - when
+	 * the turn ends if the session is busy - and its progress is the intent
+	 * chip's to tell, not this commit's. No receipt exists yet to announce.
+	 */
+	| { kind: "queued" };
 
 /**
  * Move a session's working directory, and say what happened.
@@ -552,6 +560,17 @@ export function useSessionMove(input: {
 	);
 	const pending = sessionId ? (moves.get(sessionId) ?? null) : null;
 	const enabled = sessionMoveEnabled(input.capabilities);
+	/*
+	 * DURABLE INTENTS replace the local `moves` map: the server holds the move
+	 * (`waiting_idle` while a turn runs, cancellable from the chip), so it
+	 * survives a conversation switch and a restart, and a second commit simply
+	 * replaces the first (last-wins) instead of being refused as `in-flight`.
+	 * The chip keeps naming the directory IN FORCE until the move lands, because
+	 * new sends still run there (design §2e). Still gated on `sessionMoveEnabled`:
+	 * the landed move is painted by the same `frontend.replace` frame.
+	 */
+	const intents =
+		enabled && desktopFeatureEnabled(input.capabilities, "settings_intents");
 	const addNote = canonical.addNote;
 	const evalUsed = useEvalUsage(sessionId, canonical);
 	const streamCwd = canonical.frontend?.cwd;
@@ -584,6 +603,10 @@ export function useSessionMove(input: {
 			// would otherwise spend a round trip learning 404 (the reason the gate
 			// exists at all).
 			if (!enabled || !sessionId) return { kind: "unavailable" };
+			if (intents) {
+				void submitSettingsIntent(sessionId, { kind: "cwd", value: path });
+				return { kind: "queued" };
+			}
 			const inFlight = pendingRef.current.get(sessionId);
 			if (inFlight) {
 				return { kind: "in-flight" };
@@ -630,7 +653,7 @@ export function useSessionMove(input: {
 			);
 			return outcome;
 		},
-		[enabled, sessionId, note, evalUsed],
+		[enabled, intents, sessionId, note, evalUsed],
 	);
 
 	// Rule 3's first exit: the stream agreeing, keyed by session so another

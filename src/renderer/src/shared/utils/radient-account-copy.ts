@@ -124,6 +124,14 @@ export function consoleUrl(
 }
 
 /**
+ * The settings route whose section owns the Radient sign-in control.
+ *
+ * Named once here so a surface that can only say "sign in" (a gate, a refusal)
+ * links to the control instead of growing a second sign-in of its own.
+ */
+export const RADIENT_ACCOUNT_SETTINGS_ROUTE = "/settings?section=radient";
+
+/**
  * Open a console page in the reader's browser: the preload bridge in the
  * desktop app (the call `use-low-credits-dialog` also makes), the browser's own
  * `window.open` in Storybook and any non-Electron host.

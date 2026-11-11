@@ -1,0 +1,129 @@
+{
+  "locale": "vi",
+  "namespaces": {
+    "ui.library": {
+      "status": "passed",
+      "fully_audited_key_count": 20,
+      "consistency_only_key_count": 159,
+      "finding_ids": [
+        "F1",
+        "F2"
+      ],
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.library.json",
+          "sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71"
+        },
+        "vi": {
+          "path": "src/i18n/catalogues/vi/ui.library.json",
+          "sha256": "12262f8cd5b313b9eeddf157a9dfe28051399cbc8df1ddada416ef9506b44daa"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.library.context.json",
+          "sha256": "2fe63e830b49079dac67c5c4513358d0a8559a94fbf27ac8d437212b13aa2e72"
+        }
+      }
+    }
+  },
+  "audit_date": "2026-11-10",
+  "key_count": 179,
+  "fully_audited_key_count": 20,
+  "consistency_only_key_count": 159,
+  "scope": "PR damianvtran/local-operator-ui #1851 @ 8a9ce1f808c266ebe9a0e924094344cea60c2c23 (0e12072d2b3..HEAD); delta audit of the 20 new ui.library keys (12 kind labels, 7 tag-category headings, preview.unsupported_generic). The namespace's 159 legacy values were not recertified: only JSON validity, key-set parity, unchanged-value parity against the base and placeholder/plural integrity were checked for them.",
+  "head_sha": "8a9ce1f808c266ebe9a0e924094344cea60c2c23",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "4c1343f350ef",
+    "session": "4c1343f350ef",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "Served session header for session 4c1343f350ef states deepseek/deepseek-flash; no model switch, pin or fallback occurred in this session.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Translator model and session (vi 8f78815e51e3) supplied by delegation; this auditor did not translate, edit or take part in translation."
+  },
+  "policy_inputs": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/vi.md",
+      "sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888"
+    },
+    "glossary": {
+      "path": "~/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "note": "Manager-owned byte-copy; verified identical by sha256 to ~/local-operator/i18n/glossary.md; glossary conformance was checked against this copy."
+    },
+    "expected_hashes": {
+      "path": "~/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/expected-hashes.json"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "vi-ds-4c1343f350ef.json",
+      "sha256": "5d884185eed7879a4065cedbce1f1b0fc0e3d4bd2a3b6a586a6c2f976b2a13f7",
+      "kind": "audit_notes_not_execution_log",
+      "record_reference": "record.json"
+    },
+    {
+      "path": "vi-ds-4c1343f350ef.audit.log",
+      "sha256": "c839216506da7db141f67fa9a055a6743d88455239faf12f7ef1802be9ab656c",
+      "kind": "actual_execution_log",
+      "record_reference": "record.json"
+    },
+    {
+      "path": "vi-ds-4c1343f350ef-check.py",
+      "sha256": "148c47d441b39434ebe8331ddc7d11fecb5b92aaf9b955c7256084cbda786d39",
+      "kind": "executed_check_source",
+      "record_reference": "record.json"
+    },
+    {
+      "path": "vi-ds-4c1343f350ef-check.out",
+      "sha256": "6cd21768fc81ed7fdd92dc5789e5a5629d93ba25ebd6c9ef0257874904616181",
+      "kind": "executed_check_output",
+      "record_reference": "record.json"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "F1",
+      "F2"
+    ]
+  },
+  "finding_report": "vi-ds-4c1343f350ef.json",
+  "audit_notes_not_execution_log": false,
+  "execution_log": "vi-ds-4c1343f350ef.audit.log",
+  "ledger_row": {
+    "command_named_in_the_RFC": "node scripts/i18n/ledger-assemble.mjs",
+    "ran": false,
+    "why_not": "Read-only audit: ledger-assemble writes i18n/ledger.json in the repository and this task forbids repo writes. Recording is the manager's step.",
+    "derived_values": {
+      "locale": "vi",
+      "namespace": "ui.library",
+      "auditor": "i18n-auditor",
+      "model": "deepseek/deepseek-flash",
+      "instance": "4c1343f350ef",
+      "status": "audited",
+      "source_sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71",
+      "target_sha256": "12262f8cd5b313b9eeddf157a9dfe28051399cbc8df1ddada416ef9506b44daa",
+      "result": "clean-with-findings"
+    },
+    "proposed_note": "passed; 2 MINOR (F1 en note kind.other misleading, F2 type 'Loại' collides sort.kind); 20/20 keys audited, hashes 3/3 OK; record i18n/audits/evidence/vi/ui.library/ds-4c1343f350ef/record.json",
+    "proposed_note_length": 191
+  },
+  "retention": {
+    "state": "scratch_handoff_only_per_explicit_read_only_task",
+    "intended_tracked_directory": "i18n/audits/evidence/vi/ui.library/ds-4c1343f350ef",
+    "manager_action_required": "Retain these four files under the canonical evidence root (record.json plus the receipt, audit.log and executed check source/output) and record the ledger row with ledger-assemble.mjs.",
+    "proposed_note": "passed; 2 MINOR (F1 en note kind.other misleading, F2 type 'Loại' collides sort.kind); 20/20 keys audited, hashes 3/3 OK; record i18n/audits/evidence/vi/ui.library/ds-4c1343f350ef/record.json"
+  },
+  "unverified": [
+    "No production ICU parser/formatter, Electron/React run, screen-reader session or rendered-frame check: read-only, no-build, no-server, no-test-tree constraint. Width figures are cell counts from east-asian-width, not pixels; no truncation was observed or could be.",
+    "No ledger write (ledger-assemble.mjs), no tracked evidence retention, no PR comment and no commit: writes were limited to this session's scratchpad.",
+    "The 159 non-delta legacy values of ui.library were not certified; only JSON validity, key-set parity, unchanged-value parity against the base and placeholder/plural integrity were checked for them.",
+    "The 'see manifest' pointer in the kind.other note was searched only under docs/ and i18n/audit-evidence/ in this worktree; a manifest outside the repo cannot be ruled out."
+  ]
+}

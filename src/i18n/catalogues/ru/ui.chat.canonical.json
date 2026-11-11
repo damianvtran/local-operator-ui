@@ -251,5 +251,10 @@
 	"ui.chat.canonical.tool_row.diff.more": "{count, plural, one {… ещё # строка diff} few {… ещё # строки diff} many {… ещё # строк diff} other {… ещё # строки diff}}",
 	"ui.chat.canonical.tool_row.diff.show_less": "Свернуть",
 	"ui.chat.canonical.tool_row.diff.truncated": "{count, plural, one {Diff обрезан — ещё # строка не записана} few {Diff обрезан — ещё # строки не записаны} many {Diff обрезан — ещё # строк не записано} other {Diff обрезан — ещё # строки не записано}}",
-	"ui.chat.canonical.tool_row.diff.withheld": "Diff для этого изменения недоступен"
+	"ui.chat.canonical.tool_row.diff.withheld": "Diff для этого изменения недоступен",
+	"ui.chat.canonical.notice.interrupted": "Прервано",
+	"ui.chat.canonical.notice.stopped_with_error": "Остановлено из-за ошибки",
+	"ui.chat.canonical.notice.compaction_not_run": "Сжатие не выполнено: {detail}",
+	"ui.chat.canonical.notice.compaction_not_run_after_colon": "Сжатие не выполнено — {detail}",
+	"ui.chat.canonical.link_toolkit.actions_for": "Действия для {name}"
 }

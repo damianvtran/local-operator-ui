@@ -39,6 +39,7 @@ import { unified } from "unified";
 import { askResponseSummary, askTimeoutSummary } from "../ask-queue";
 import { summaryFromArgs } from "../components/trace/tool-row-model";
 import { parseReplies } from "../utils/reply-utils";
+import { noticeText } from "./notice-copy";
 import { displayTextOf } from "./skill-row";
 import type { TranscriptRecord } from "./transcript-reducer";
 
@@ -267,8 +268,11 @@ export function copyTextForRecord(record: TranscriptRecord): string {
 			return [record.headline, record.detail].filter(Boolean).join("\n\n");
 		case "peer":
 			return record.body;
-		case "wake":
 		case "notice":
+			// Resolved now, not read from state: what lands on the clipboard is
+			// what the row currently says, in the current language.
+			return noticeText(record);
+		case "wake":
 		case "compaction":
 			return record.text;
 		case "ask_response": {

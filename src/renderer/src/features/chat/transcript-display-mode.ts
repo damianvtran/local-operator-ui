@@ -31,6 +31,8 @@
  * (`isFinalResponse` keeps a handover visible in both modes).
  */
 
+import { t } from "@shared/i18n";
+
 /** How a settled turn's transcript rows are drawn. */
 export type TranscriptDisplayMode = "by-turn" | "by-response";
 
@@ -38,17 +40,20 @@ export type TranscriptDisplayMode = "by-turn" | "by-response";
 export const DEFAULT_TRANSCRIPT_DISPLAY_MODE: TranscriptDisplayMode = "by-turn";
 
 /**
- * Every mode, in the order the control draws them, with the label the reader
- * sees. Exported so the settings row and the conversation menu cannot disagree
- * about what the modes are called or which order they read in.
+ * Every mode, in the order the control draws them. Exported so the settings row
+ * and the conversation menu cannot disagree about which modes exist or which
+ * order they read in.
+ *
+ * THE OPTIONS CARRY NO LABEL, on purpose. They used to hold the English words,
+ * and a module-level constant is evaluated once: a label stored here would be
+ * the language the app booted in for the rest of the session, whatever the
+ * language picker said afterwards. The words are read through
+ * `transcriptDisplayModeLabel` at render time instead, so a locale change
+ * re-renders them (the surface subscribes via `useI18nLocale`).
  */
 export const TRANSCRIPT_DISPLAY_MODE_OPTIONS: readonly {
 	value: TranscriptDisplayMode;
-	label: string;
-}[] = [
-	{ value: "by-turn", label: "By turn" },
-	{ value: "by-response", label: "By response" },
-];
+}[] = [{ value: "by-turn" }, { value: "by-response" }];
 
 /**
  * Judge a stored or hand-built value, answering the default for anything that is
@@ -69,12 +74,19 @@ export function parseTranscriptDisplayMode(
 	return DEFAULT_TRANSCRIPT_DISPLAY_MODE;
 }
 
-/** The label for a mode, for prose that names the active one (never undefined). */
+/**
+ * The label for a mode, for prose that names the active one (never undefined).
+ *
+ * The catalogue entries belong to the Settings row (`ui.settings.appearance`)
+ * and are reused here rather than duplicated: this is "the one place a mode's
+ * words are spelled", so the Settings tab and the conversation menu cannot
+ * name the same mode differently in any language. Resolved on every call, never
+ * cached: see `TRANSCRIPT_DISPLAY_MODE_OPTIONS`.
+ */
 export function transcriptDisplayModeLabel(
 	mode: TranscriptDisplayMode,
 ): string {
-	return (
-		TRANSCRIPT_DISPLAY_MODE_OPTIONS.find((option) => option.value === mode)
-			?.label ?? TRANSCRIPT_DISPLAY_MODE_OPTIONS[0].label
-	);
+	return mode === "by-response"
+		? t("ui.settings.appearance.transcript_display_mode_setting.by_response")
+		: t("ui.settings.appearance.transcript_display_mode_setting.by_turn");
 }

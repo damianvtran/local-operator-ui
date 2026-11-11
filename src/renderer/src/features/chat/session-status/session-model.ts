@@ -279,11 +279,24 @@ export function modelIdentity(
 export function bandReadings(
 	frontend: CanonicalFrontendState | null | undefined,
 	pendingModel: CanonicalModel | null,
+	/*
+	 * A durable effort intent's TARGET level (`features.settings_intents`), or
+	 * null. Unlike a model paint it names exactly the one field it changes, so
+	 * the effort reading stays the in-force spec - with its ladder - and only
+	 * the level is overridden: the chip keeps its place and names the pick at
+	 * once instead of after the runtime's next step. Absent (the default) is
+	 * today's reading, byte for byte.
+	 */
+	pendingEffort: string | null = null,
 ): { identity: CanonicalModel | null; effort: CanonicalModel | null } {
 	// `selected_model` is the fallback for an owner that reports no effective
 	// spec (nothing has run yet), which is the state a fresh session is in.
 	const inForce = frontend?.effective_model ?? frontend?.selected_model ?? null;
-	return { identity: pendingModel ?? inForce, effort: inForce };
+	const effort =
+		pendingEffort && inForce
+			? { ...inForce, reasoning_effort: pendingEffort }
+			: inForce;
+	return { identity: pendingModel ?? inForce, effort };
 }
 
 /** The fast dial's three states; `null` is "nothing to report" (not OFF). */
@@ -723,7 +736,7 @@ export function effortState(
 			// the command share one vocabulary. It used to read `reasoning` in the
 			// TUI, which is a category noun in a value slot and looked like a
 			// sixth level.
-			label: "auto",
+			label: "auto", // i18n: ignore state token, localized at the display seam by effortDisplay (ui.chat.session_readout.effort.level.auto)
 			adjustable: true,
 			knownLadder: true,
 			levelKnown: true,
@@ -755,7 +768,7 @@ export function effortState(
 	 */
 	if (metadataAbsent)
 		return {
-			label: "unknown",
+			label: "unknown", // i18n: ignore state token, localized at the display seam by effortDisplay (ui.chat.session_readout.effort.level.unknown)
 			/*
 			 * ADJUSTABLE, despite knowing nothing.
 			 *
@@ -792,7 +805,7 @@ export function effortState(
 	// Ladder present and EMPTY: a reasoning model with no rungs to choose from.
 	if (ladder && model.reasoning)
 		return {
-			label: "reasoning",
+			label: "reasoning", // i18n: ignore state token, localized at the display seam by effortDisplay (ui.chat.session_readout.effort.level.reasoning)
 			adjustable: false,
 			// The spec DID carry the ladder; it is empty. That is knowledge, and
 			// it is the only source entitled to make this control read-only.

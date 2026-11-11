@@ -49,6 +49,8 @@ type Scenario =
 	| "login"
 	| "choose"
 	| "cloudflared"
+	| "cloudflared-cloudflare"
+	| "cloudflared-relay"
 	| "mobile_bundle"
 	| "supervisor"
 	| "balance"
@@ -203,6 +205,21 @@ const plans = (scenario: Scenario): { plan: unknown; afterRun?: unknown } => {
 					"cloudflared",
 					"install_cloudflared",
 					"The connector tool (cloudflared 2025.4.0 or newer) is not installed. Ask your agent to install it with normal approval, then check again.",
+				),
+			};
+		// The same blocker with the server's transport named. `cloudflare` must look
+		// identical to the unnamed one above; `relay` skips the install step.
+		case "cloudflared-cloudflare":
+		case "cloudflared-relay":
+			return {
+				plan: blocked(
+					"cloudflared",
+					"install_cloudflared",
+					"The connector tool (cloudflared 2025.4.0 or newer) is not installed. Ask your agent to install it with normal approval, then check again.",
+					{
+						transport:
+							scenario === "cloudflared-relay" ? "relay" : "cloudflare",
+					},
 				),
 			};
 		case "mobile_bundle":
@@ -478,6 +495,12 @@ export const NeedsSignInAccount: Story = story("login", "account");
 /** Several accounts: listed by masked label, none chosen for the user. */
 export const ChooseAccount: Story = story("choose");
 export const ConnectorToolMissing: Story = story("cloudflared");
+/** The same blocker with `transport: "cloudflare"`: unchanged, install step shown. */
+export const ConnectorToolMissingCloudflare: Story = story(
+	"cloudflared-cloudflare",
+);
+/** `transport: "relay"`: no cloudflared is needed, so the install step is skipped. */
+export const ConnectorToolSkippedRelay: Story = story("cloudflared-relay");
 export const PhoneInterfaceMissing: Story = story("mobile_bundle");
 export const BackgroundServiceMissing: Story = story("supervisor");
 export const NoCredit: Story = story("balance");

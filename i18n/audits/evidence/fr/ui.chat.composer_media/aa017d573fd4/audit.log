@@ -1,0 +1,731 @@
+Independent French audit, PR #1842 @ e5fb4310dab638f9cf428779d62539ec039a8990
+Auditor: {"agent": "i18n-auditor", "instance": "aa017d573fd4", "session": "aa017d573fd4", "model": "openai/gpt-6.1-sol", "actual_model_source": "Served session header: openai/gpt-6.1-sol; session aa017d573fd4. No fallback used.", "fallback_used": false, "independent_from_translator_session": true}
+This is an auditor account plus actual captured execution outputs. Read/linguistic notes do not prove application execution.
+ACTUALLY RUN BEFORE CAPTURE: bash git -C ~/local-operator-ui/.worktrees/i18n-s8 rev-parse HEAD; printf SCRATCH. Head matched. git status --porcelain was empty. Subsequent read-only bash commands inspected AGENTS.md selected i18n lines, docs/I18N.md selected contributor sections, package validator scripts, expected-hashes.json, scoped catalogue diffs, get-file-name.ts, attachment-encode.ts, French neighbouring keys. Python eval read/parsed source, context, target and reference model JSON. No repository files were written.
+READ POLICY: fr.md (all 84 lines), manager-owned glossary.md (all 173 lines; remainder read via Python), model receipt and model record. No MT or translation service used.
+LINGUISTIC NOTES (not execution): {"ui.chat.image_actions.actions": "Actions sur l’image is idiomatic and matches the direct existing asset-menu construction Actions sur le fichier. Image matches Copier l’image / Agrandir l’image; U+2019 apostrophe follows fr guide line 81. No inserted string, unsafe meaning or width concern.", "ui.chat.audio.position_label": "Position de {label} names a clip-specific seek position, not playback control. Position matches existing Position de lecture. The indeclinable clip-title slot needs no agreement, and de remains a title-introducing construction before verbatim filenames (not a demand to decline the title). No added quotes collide with user punctuation.", "ui.chat.composer_media.pasted_image": "Image collée preserves pasted-image fallback meaning and matches existing Fichier collé, with correct feminine agreement on the fixed noun image. Short 12-character filename/caption; no added extension or MIME token.", "ui.common.actions.actions_for_name": "Actions sur {name} uses the direct file-menu precedent Actions sur le fichier; sur introduces an indeclinable filename without gender/number/case agreement. Other general menus use Actions pour {name}, but that is not a contradictory asset-specific term or binding preposition rule. No quoted wrapper to collide with user quotes."}
+CAPTURED ACTUAL COMMANDS (cwd=/Users/damian/local-operator-ui/.worktrees/i18n-s8):
+ARGV: ["shasum", "-a", "256", "src/i18n/catalogues/en/ui.chat.json", "src/i18n/catalogues/fr/ui.chat.json", "src/i18n/catalogues/en/ui.chat.context.json", "src/i18n/catalogues/en/ui.chat.composer_media.json", "src/i18n/catalogues/fr/ui.chat.composer_media.json", "src/i18n/catalogues/en/ui.chat.composer_media.context.json", "src/i18n/catalogues/en/ui.common.actions.json", "src/i18n/catalogues/fr/ui.common.actions.json", "src/i18n/catalogues/en/ui.common.actions.context.json"]
+EXIT: 0
+STDOUT:
+ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15  src/i18n/catalogues/en/ui.chat.json
+b524ab1132756d282986a666f82c25465a26dae0aa85ff77fe696812d0d08c96  src/i18n/catalogues/fr/ui.chat.json
+84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf  src/i18n/catalogues/en/ui.chat.context.json
+79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae  src/i18n/catalogues/en/ui.chat.composer_media.json
+4c2fcaf7d6bf9a3adc63c32126e1834e775e837b426b684a1edf2236621cb198  src/i18n/catalogues/fr/ui.chat.composer_media.json
+a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b  src/i18n/catalogues/en/ui.chat.composer_media.context.json
+0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b  src/i18n/catalogues/en/ui.common.actions.json
+1f375db06df660163bdf5fa126e9ef0f94ff25ba64ed209be872ab04353f3e42  src/i18n/catalogues/fr/ui.common.actions.json
+24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d  src/i18n/catalogues/en/ui.common.actions.context.json
+
+STDERR:
+
+ARGV: ["node", "--input-type=module", "-e", "import {findDuplicates} from './scripts/i18n/check-duplicates.mjs';\nimport {namespaceGap} from './scripts/i18n/context-parity.mjs';\nconst ns=['ui.chat','ui.chat.composer_media','ui.common.actions'];\nconst files=ns.flatMap(n=>[`src/i18n/catalogues/en/${n}.json`,`src/i18n/catalogues/fr/${n}.json`,`src/i18n/catalogues/en/${n}.context.json`]);\nconst dup=findDuplicates(files); console.log(JSON.stringify(dup));\nif(dup.offenders.length) process.exit(1);\nfor (const n of ns) { const g=namespaceGap(n); console.log(n,JSON.stringify({uncovered:g.uncovered,orphaned:g.orphaned,hasSidecar:g.hasSidecar})); if(g.uncovered.length||g.orphaned.length||!g.hasSidecar) process.exitCode=1; }\n"]
+EXIT: 1
+STDOUT:
+{"scanned":9,"offenders":[]}
+ui.chat {"uncovered":["ui.chat.highlights.file_resolution_failed","ui.chat.usage.blocked","ui.chat.usage.continue","ui.chat.usage.eligibility_unknown","ui.chat.usage.family_caps","ui.chat.usage.unlimited"],"orphaned":[],"hasSidecar":true}
+ui.chat.composer_media {"uncovered":[],"orphaned":[],"hasSidecar":true}
+ui.common.actions {"uncovered":[],"orphaned":[],"hasSidecar":true}
+
+STDERR:
+
+ARGV: ["git", "show", "origin/main:src/i18n/catalogues/en/ui.chat.json"]
+EXIT: 0
+STDOUT:
+{
+	"ui.chat.action.stopped": "Stopped",
+	"ui.chat.composer.status.goal_collapse": "Collapse the session goal",
+	"ui.chat.composer.status.goal_dismiss": "Dismiss",
+	"ui.chat.composer.status.goal_dismiss_keep": "it stays in the goal history",
+	"ui.chat.composer.status.goal_dismiss_name": "Dismiss the finished goal",
+	"ui.chat.composer.status.goal_done": "Done",
+	"ui.chat.composer.status.goal_done_name": "Mark the goal done",
+	"ui.chat.composer.status.goal_expand": "Expand the session goal",
+	"ui.chat.composer.status.goal_label": "Goal:",
+	"ui.chat.composer.status.jobs_action": "Open the jobs in run details",
+	"ui.chat.composer.status.loop_clear": "Clear loop",
+	"ui.chat.composer.status.loop_label": "Loop:",
+	"ui.chat.composer.status.loop_progress_of_turns": "{completed, number, ::group-off} of {total, number, ::group-off} turns",
+	"ui.chat.composer.status.loop_progress_turns": "{count, plural, one {# turn} other {# turns}}",
+	"ui.chat.composer.status.loop_stop": "Stop loop",
+	"ui.chat.composer.status.monitors_action": "Open the monitors in run details",
+	"ui.chat.composer.status.plan_action": "Open the plan in run details",
+	"ui.chat.composer.status.session_goal": "Session goal",
+	"ui.chat.composer.status.subagents_action": "Open the subagents in run details",
+	"ui.chat.composer.status.wakes_action": "Open the wakes in run details",
+	"ui.chat.header_identity.loading": "{kind, select, agents {Loading agents…} teams {Loading teams…} other {Loading…}}",
+	"ui.chat.header_identity.no_matches": "Nothing matches “{query}”.",
+	"ui.chat.header_identity.search": "{kind, select, agents {Search agents} teams {Search teams} other {Search}}",
+	"ui.chat.highlights.file_resolution_failed": "Couldn't resolve this file in the session working directory. Use Copy file path to check its location against this session's workspace before trying again.",
+	"ui.chat.hub_update.check_now": "Check the hub for updates now",
+	"ui.chat.hub_update.dismiss": "Dismiss",
+	"ui.chat.hub_update.dismiss_summary": "Dismiss update summary",
+	"ui.chat.hub_update.update_all": "Update all ({count, number, ::group-off})",
+	"ui.chat.hub_update.update_all_label": "{kind, select, agents {Update all {count, number, ::group-off} agent updates from the hub} teams {Update all {count, number, ::group-off} team updates from the hub} skills {Update all {count, number, ::group-off} skill updates from the hub} other {Update all {count, number, ::group-off} updates from the hub}}",
+	"ui.chat.hub_update.updating": "Updating…",
+	"ui.chat.provider_error.action.open_provider_settings": "Open provider settings",
+	"ui.chat.provider_error.action.open_radient_account": "Open Radient account",
+	"ui.chat.provider_error.action.sign_in_radient": "Sign in to Radient",
+	"ui.chat.provider_error.headline.out_of_credits": "Out of credits{status}: {body}",
+	"ui.chat.provider_error.headline.out_of_credits_refused": "Out of credits{status}: Radient refused the request",
+	"ui.chat.question_dock.asking": "The agent is asking",
+	"ui.chat.question_dock.from_agent_label": "Question from the agent",
+	"ui.chat.question_dock.secret_answer_label": "Secret answer",
+	"ui.chat.question_dock.secret_note": "Hidden as you type — sent to the agent, not shown in the transcript.",
+	"ui.chat.question_dock.secret_placeholder": "Paste the secret",
+	"ui.chat.question_dock.secret_value_label": "Secret value",
+	"ui.chat.question_dock.send": "Send",
+	"ui.chat.question_dock.show": "Show",
+	"ui.chat.question_dock.show_question_label": "Show the agent's question",
+	"ui.chat.quota_notice.dismiss": "Dismiss",
+	"ui.chat.reply.remove": "Remove reply",
+	"ui.chat.reply.replying_to": "Replying to",
+	"ui.chat.session_status.choose_model": "Choose a model",
+	"ui.chat.session_status.choose_model_tooltip": "Choose the model this conversation will run on",
+	"ui.chat.session_status.estimate": "estimate",
+	"ui.chat.session_status.last_reading": "Last reading",
+	"ui.chat.session_status.no_model_resolved": "No model resolved yet",
+	"ui.chat.skill_invocation.instructions_label": "Skill instructions sent with this message",
+	"ui.chat.skill_invocation.trigger_label": "{token} skill instructions",
+	"ui.chat.status_strip.dismiss": "Dismiss",
+	"ui.chat.tabs.chat": "Chat",
+	"ui.chat.tabs.raw": "Raw",
+	"ui.chat.usage.blocked": "Spend unavailable",
+	"ui.chat.usage.continue": "Included quota used; credits will continue.",
+	"ui.chat.usage.eligibility_unknown": "Spend eligibility unknown",
+	"ui.chat.usage.family_caps": "Model-family caps still apply.",
+	"ui.chat.usage.unlimited": "Unlimited paid allowance",
+	"ui.chat.mermaid.zoom_in": "Zoom in",
+	"ui.chat.mermaid.zoom_out": "Zoom out",
+	"ui.chat.mermaid.pan": "Drag to pan",
+	"ui.chat.mermaid.pan_hint": "Drag the diagram to pan",
+	"ui.chat.mermaid.reset_view": "Reset view",
+	"ui.chat.mermaid.save_svg": "Save as SVG",
+	"ui.chat.mermaid.copied": "Copied",
+	"ui.chat.mermaid.copy_text": "Copy mermaid text",
+	"ui.chat.mermaid.error_title": "Mermaid diagram error",
+	"ui.chat.mermaid.unexpected_error": "An unexpected error occurred while rendering the diagram",
+	"ui.chat.mermaid.error_contained": "The error was contained within the diagram component.",
+	"ui.chat.mermaid.chart_label": "Chart",
+	"ui.chat.mermaid.loading": "Loading diagram...",
+	"ui.chat.mermaid.rendering_error": "Rendering error",
+	"ui.chat.mermaid.render_failed": "Failed to render diagram content.",
+	"ui.chat.mermaid.fullscreen": "Fullscreen",
+	"ui.chat.mermaid.open_fullscreen": "Open diagram fullscreen",
+	"ui.chat.mermaid.diagram_title": "Mermaid diagram",
+	"ui.chat.mermaid.close_fullscreen": "Close fullscreen",
+	"ui.chat.aside.question_label": "Question:",
+	"ui.chat.aside.you_label": "You:",
+	"ui.chat.aside.thinking": "thinking…",
+	"ui.chat.aside.title": "Aside",
+	"ui.chat.aside.off_record": "off the record — nothing here joins the conversation",
+	"ui.chat.aside.close_label": "Close the aside",
+	"ui.chat.aside.exchange_label": "The aside exchange",
+	"ui.chat.aside.empty": "Type a question in the composer below — the answer lands here.",
+	"ui.chat.aside.add_to_conversation": "Add to conversation",
+	"ui.chat.error_block.heading": "Error",
+	"ui.chat.error_block.link.settings": "settings page",
+	"ui.chat.error_block.link.providers": "Providers section",
+	"ui.chat.error_block.provider.before": "You haven't selected an AI provider yet. Go to the",
+	"ui.chat.error_block.provider.after": "to configure it for all your agents. If you don't have an AI provider, you can sign in to Radient to get access for free to start.",
+	"ui.chat.error_block.model.before": "You haven't selected an AI model yet. Go to the",
+	"ui.chat.error_block.model.after": "to select a model for all your agents. If you don't have an AI provider, you can sign in to Radient to get access for free to start.",
+	"ui.chat.error_block.rate_limit.before": "You've hit the rate limit for your AI provider. Please try again later or get Radient Pass in the",
+	"ui.chat.error_block.rate_limit.after": "to access AI models with no rate limits at low prices.",
+	"ui.chat.error_block.rate_limit.all_after": "to access all AI models with no rate limits at low prices.",
+	"ui.chat.error_block.invalid_key.before": "Your API key is invalid. Update it in the",
+	"ui.chat.error_block.invalid_key.after": ", or sign in to the provider again.",
+	"ui.chat.error_block.unavailable.before": "The model you're trying to use is not available. Go to the",
+	"ui.chat.error_block.unavailable.after": "to select a different model, or use Radient to get access to hundreds of models with no rate limits",
+	"ui.chat.error_block.schema.before": "The model tried to perform an action but was unable to express its intent in the required schema. Typically this happens because the model can't follow the complex instructions required for agentic AI.",
+	"ui.chat.error_block.schema.after_before": "Change your model in the",
+	"ui.chat.error_block.schema.after": "to fix this. We recommend using Radient Automatic to have the best combo of cheap and smart picked for you based on your requests (typically cheaper than bringing your own key), or use one of the recommended models with a star icon.",
+	"ui.chat.approval.reply_required": "Reply yes or no to answer the approval request.",
+	"ui.chat.question_dock.hint.approval": "Choose Approve or Deny above, type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn.",
+	"ui.chat.question_dock.hint.approval_held": "Answer from the composer instead: type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn.",
+	"ui.chat.question_dock.hint.prefix": "Question {index} of {total}. ",
+	"ui.chat.question_dock.hint.secret": "{prefix}Type or paste the secret above · Enter sends · Esc hides",
+	"ui.chat.question_dock.hint.secret_held": "{prefix}Held while this answer's fate is unknown — it may have landed, so nothing can send again · Esc in the card hides it",
+	"ui.chat.question_dock.hint.type": "{prefix}Type your answer below.",
+	"ui.chat.question_dock.hint.options": "{prefix}Up/Down choose · Enter or {digits} answers · Esc hides · or type your own answer below",
+	"ui.chat.session_status.context_heading": "Context",
+	"ui.chat.session_status.context_nothing_measured_tooltip": "Context: nothing measured yet. The window fills as the conversation runs.",
+	"ui.chat.session_status.conversation_starting": "Set once the conversation starts.",
+	"ui.chat.session_status.model_none_resolved_tooltip": "Model: none resolved yet. Choose the model this conversation will run on.",
+	"ui.chat.session_status.not_signed_in": "Not signed in to {label}",
+	"ui.chat.session_status.not_signed_in_description": "This session runs {label} without a working sign-in, so it cannot answer until you connect it.",
+	"ui.chat.session_status.nothing_measured_yet": "Nothing measured yet. The window fills as the conversation runs.",
+	"ui.chat.session_status.temporarily_unavailable": "{label} is temporarily unavailable",
+	"ui.chat.session_status.temporarily_unavailable_description": "Your saved sign-in is still present. Try again later or choose another model.",
+	"ui.chat.checkpoint.generating_name": "Generating name…",
+	"ui.chat.checkpoint.jump_agent": "Jump to turn {turn, number} of {total, number}, {name}",
+	"ui.chat.checkpoint.jump_agent_unnamed": "Jump to turn {turn, number} of {total, number}",
+	"ui.chat.checkpoint.jump_user": "Jump to your message in turn {turn, number} of {total, number}, {clock}",
+	"ui.chat.checkpoint.jump_user_no_clock": "Jump to your message in turn {turn, number} of {total, number}",
+	"ui.chat.checkpoint.turn": "Turn {turn, number} of {total, number}",
+	"ui.chat.header_identity.aria_agent_assign": "Agent: {label}. Assign an agent",
+	"ui.chat.header_identity.aria_agent_closed": "Agent: {label}. {reason}",
+	"ui.chat.header_identity.aria_agent_switch": "Agent: {label}. Switch agent",
+	"ui.chat.header_identity.aria_team_assign": "Team: {label}. Assign a team",
+	"ui.chat.header_identity.aria_team_closed": "Team: {label}. {reason}",
+	"ui.chat.header_identity.aria_team_switch": "Team: {label}. Switch team",
+	"ui.chat.header_identity.assign_agent": "Assign an agent",
+	"ui.chat.header_identity.assign_team": "Assign a team",
+	"ui.chat.header_identity.no_agent": "No agent",
+	"ui.chat.header_identity.no_team": "No team",
+	"ui.chat.region.composer": "Message composer",
+	"ui.chat.region.conversation": "Conversation",
+	"ui.chat.audio.play": "Play",
+	"ui.chat.audio.pause": "Pause",
+	"ui.chat.audio.play_label": "Play {label}",
+	"ui.chat.audio.pause_label": "Pause {label}",
+	"ui.chat.audio.mute": "Mute",
+	"ui.chat.audio.unmute": "Unmute",
+	"ui.chat.message_controls.copy": "Copy message",
+	"ui.chat.message_controls.copied": "Copied",
+	"ui.chat.image_actions.save_as": "Save as…",
+	"ui.chat.image_actions.copy_image": "Copy image",
+	"ui.chat.image_actions.copy_image_url": "Copy image URL",
+	"ui.chat.image_actions.open_in_browser": "Open in browser",
+	"ui.chat.image_actions.expand_image": "Expand image",
+	"ui.chat.composer.connect_provider": "Connect a provider",
+	"ui.chat.slot_notice.run_draft_title": "Run details need a conversation.",
+	"ui.chat.slot_notice.run_draft_detail": "Send a message to start this conversation; its subagents, plan and scheduled work appear here.",
+	"ui.chat.slot_notice.run_reading_title": "Reading this conversation's run…",
+	"ui.chat.slot_notice.run_unreadable_title": "Run details could not be read for this conversation.",
+	"ui.chat.slot_notice.run_unreadable_detail": "The conversation beside this pane says why and how to reconnect.",
+	"ui.chat.slot_notice.run_missing_detail": "This conversation is no longer on this machine.",
+	"ui.chat.slot_notice.code_draft_title": "Code review needs a conversation.",
+	"ui.chat.slot_notice.code_draft_detail": "Send a message to start this conversation; the pull requests and merge requests it opens or mentions appear here.",
+	"ui.chat.slot_notice.code_below_version_title": "The Local Operator server doesn't serve code review yet.",
+	"ui.chat.slot_notice.code_below_version_detail": "Update the server to see the pull requests and merge requests this conversation opens.",
+	"ui.chat.slot_notice.code_checking_title": "Checking whether the server serves code review…",
+	"ui.chat.slot_notice.code_load_lead": "Code review could not be loaded.",
+	"ui.chat.slash_arguments.model_default_description": "Save the current model ({provider}/{model}) as the default for new sessions.",
+	"ui.chat.slash_arguments.model_default_unavailable": "No active session model is available to save.",
+	"ui.chat.slash_arguments.model_default_click": "Click does the same.",
+	"ui.chat.slash_arguments.model_default_required": "A session model is required before this action can save a default.",
+	"ui.chat.slash_arguments.refresh_description": "Re-read the conversation and name it again",
+	"ui.chat.slash_arguments.refresh_detail": "resumes auto-naming",
+	"ui.chat.aside.add_to_conversation_tooltip": "Add the aside to the conversation",
+	"ui.chat.message_controls.content_header": "Content",
+	"ui.chat.message_controls.replacements_header": "Replacements",
+	"ui.chat.message_controls.thinking_label": "Thinking",
+	"ui.chat.scroll_to_bottom.label": "Scroll to bottom",
+	"ui.chat.scroll_to_bottom.label_new_activity": "New activity, scroll to bottom",
+	"ui.chat.session_status.last_reading_note": "Last reading from before the reconnect.",
+	"ui.chat.session_status.readings_aria_held": "Session readings. {note}",
+	"ui.chat.session_status.commands_off": "Slash commands are off on this server, so this reading cannot be opened from here.",
+	"ui.chat.session_status.context_click_breakdown_held": "Click for the full breakdown, which estimates your next request.",
+	"ui.chat.session_status.context_click_breakdown_held_plain": "Click for the full breakdown.",
+	"ui.chat.session_status.context_measured_now": "Measured now; click for the full breakdown, which estimates your next request",
+	"ui.chat.session_status.context_estimated_now": "Estimated now; click for the full breakdown, which estimates your next request",
+	"ui.chat.session_status.context_click_breakdown": "Click for the full breakdown",
+	"ui.chat.session_status.model_click_choose_draft": "Click to choose a different model. It applies to this conversation.",
+	"ui.chat.session_status.model_click_choose": "Click to choose a different model",
+	"ui.chat.session_status.model_draft_inert": "This conversation will use it. Change it once the conversation starts.",
+	"ui.chat.session_status.effort_change_draft": "Change it. It applies to this conversation.",
+	"ui.chat.session_status.effort_change": "Change it.",
+	"ui.chat.session_status.model_aria": "Model: {selector}{fast, select, yes {, fast mode on} other {}}. {reason}",
+	"ui.chat.session_status.model_aria_pending": "Model: {selector}{fast, select, yes {, fast mode on} other {}}. Switching; waiting for the session to confirm it.",
+	"ui.chat.session_status.switching_model": "Switching the model",
+	"ui.chat.session_status.model_aria_unresolved": "Model: this conversation's model was not resolved. Retry.",
+	"ui.chat.session_status.model_aria_resolving": "Model: resolving the model this conversation will run on.",
+	"ui.chat.session_status.resolving_model_spinner": "Resolving the model this conversation will run on",
+	"ui.chat.session_status.context_aria_no_reading": "Context: no reading yet. {hint}",
+	"ui.chat.session_status.context_aria_reading": "Context: {spelling}{estimate, select, yes {, estimated} other {}}. {hint}",
+	"ui.chat.session_status.active_time_aria": "Active time: {duration}. {explanation}",
+	"ui.chat.session_status.duration_explanation": "Time spent working; waiting is not counted.",
+	"ui.chat.session_status.effort_level.low": "Low",
+	"ui.chat.session_status.effort_level.medium": "Medium",
+	"ui.chat.session_status.effort_level.high": "High"
+}
+
+STDERR:
+
+ARGV: ["git", "show", "origin/main:src/i18n/catalogues/fr/ui.chat.json"]
+EXIT: 0
+STDOUT:
+{
+	"ui.chat.action.stopped": "Arrêté",
+	"ui.chat.composer.status.goal_collapse": "Réduire l’objectif de la session",
+	"ui.chat.composer.status.goal_dismiss": "Ignorer",
+	"ui.chat.composer.status.goal_dismiss_keep": "il reste dans l’historique des objectifs",
+	"ui.chat.composer.status.goal_dismiss_name": "Ignorer l’objectif terminé",
+	"ui.chat.composer.status.goal_done": "Terminé",
+	"ui.chat.composer.status.goal_done_name": "Marquer l’objectif comme terminé",
+	"ui.chat.composer.status.goal_expand": "Développer l’objectif de la session",
+	"ui.chat.composer.status.goal_label": "Objectif :",
+	"ui.chat.composer.status.jobs_action": "Ouvrir les tâches dans les détails de l’exécution",
+	"ui.chat.composer.status.loop_clear": "Effacer la boucle",
+	"ui.chat.composer.status.loop_label": "Boucle :",
+	"ui.chat.composer.status.loop_progress_of_turns": "{completed, number, ::group-off} tours sur {total, number, ::group-off}",
+	"ui.chat.composer.status.loop_progress_turns": "{count, plural, one {# tour} many {# de tours} other {# tours}}",
+	"ui.chat.composer.status.loop_stop": "Arrêter la boucle",
+	"ui.chat.composer.status.monitors_action": "Ouvrir la surveillance dans les détails de l’exécution",
+	"ui.chat.composer.status.plan_action": "Ouvrir le plan dans les détails de l’exécution",
+	"ui.chat.composer.status.session_goal": "Objectif de la session",
+	"ui.chat.composer.status.subagents_action": "Ouvrir les sous-agents dans les détails de l’exécution",
+	"ui.chat.composer.status.wakes_action": "Ouvrir les réveils dans les détails de l’exécution",
+	"ui.chat.header_identity.loading": "{kind, select, agents {Chargement des agents…} teams {Chargement des équipes…} other {Chargement…}}",
+	"ui.chat.header_identity.no_matches": "Aucun résultat pour « {query} ».",
+	"ui.chat.header_identity.search": "{kind, select, agents {Rechercher des agents} teams {Rechercher des équipes} other {Rechercher}}",
+	"ui.chat.highlights.file_resolution_failed": "Impossible de résoudre ce fichier dans le dossier de travail de la session. Utilisez Copier le chemin du fichier pour comparer son emplacement avec l’espace de travail de cette session, puis réessayez.",
+	"ui.chat.hub_update.check_now": "Vérifier maintenant les mises à jour du hub",
+	"ui.chat.hub_update.dismiss": "Masquer",
+	"ui.chat.hub_update.dismiss_summary": "Masquer le résumé des mises à jour",
+	"ui.chat.hub_update.update_all": "Tout mettre à jour ({count, number, ::group-off})",
+	"ui.chat.hub_update.update_all_label": "{kind, select, agents {Mettre à jour les {count, number, ::group-off} mises à jour d’agents depuis le hub} teams {Mettre à jour les {count, number, ::group-off} mises à jour d’équipes depuis le hub} skills {Mettre à jour les {count, number, ::group-off} mises à jour de compétences depuis le hub} other {Mettre à jour les {count, number, ::group-off} mises à jour depuis le hub}}",
+	"ui.chat.hub_update.updating": "Mise à jour…",
+	"ui.chat.provider_error.action.open_provider_settings": "Ouvrir les paramètres du fournisseur",
+	"ui.chat.provider_error.action.open_radient_account": "Ouvrir le compte Radient",
+	"ui.chat.provider_error.action.sign_in_radient": "Se connecter à Radient",
+	"ui.chat.provider_error.headline.out_of_credits": "Crédits épuisés{status} : {body}",
+	"ui.chat.provider_error.headline.out_of_credits_refused": "Crédits épuisés{status} : Radient a refusé la requête",
+	"ui.chat.question_dock.asking": "L’agent pose une question",
+	"ui.chat.question_dock.from_agent_label": "Question de l’agent",
+	"ui.chat.question_dock.secret_answer_label": "Réponse secrète",
+	"ui.chat.question_dock.secret_note": "Masqué pendant la saisie — envoyé à l’agent, absent de la transcription.",
+	"ui.chat.question_dock.secret_placeholder": "Collez le secret",
+	"ui.chat.question_dock.secret_value_label": "Valeur du secret",
+	"ui.chat.question_dock.send": "Envoyer",
+	"ui.chat.question_dock.show": "Afficher",
+	"ui.chat.question_dock.show_question_label": "Afficher la question de l’agent",
+	"ui.chat.quota_notice.dismiss": "Masquer",
+	"ui.chat.reply.remove": "Retirer la réponse",
+	"ui.chat.reply.replying_to": "En réponse à",
+	"ui.chat.session_status.choose_model": "Choisir un modèle",
+	"ui.chat.session_status.choose_model_tooltip": "Choisir le modèle utilisé par cette conversation",
+	"ui.chat.session_status.estimate": "estimation",
+	"ui.chat.session_status.last_reading": "Dernier relevé",
+	"ui.chat.session_status.no_model_resolved": "Aucun modèle déterminé pour l’instant",
+	"ui.chat.skill_invocation.instructions_label": "Instructions de compétence envoyées avec ce message",
+	"ui.chat.skill_invocation.trigger_label": "Instructions de la compétence {token}",
+	"ui.chat.status_strip.dismiss": "Masquer",
+	"ui.chat.tabs.chat": "Conversation",
+	"ui.chat.tabs.raw": "Brut",
+	"ui.chat.usage.blocked": "Dépenses indisponibles",
+	"ui.chat.usage.continue": "Quota inclus utilisé ; les crédits prennent le relais.",
+	"ui.chat.usage.eligibility_unknown": "Éligibilité aux dépenses inconnue",
+	"ui.chat.usage.family_caps": "Les plafonds de la famille de modèles restent applicables.",
+	"ui.chat.usage.unlimited": "Allocation payante illimitée",
+	"ui.chat.mermaid.zoom_in": "Zoom avant",
+	"ui.chat.mermaid.zoom_out": "Zoom arrière",
+	"ui.chat.mermaid.pan": "Faire glisser pour déplacer",
+	"ui.chat.mermaid.pan_hint": "Faites glisser le diagramme pour le déplacer",
+	"ui.chat.mermaid.reset_view": "Réinitialiser la vue",
+	"ui.chat.mermaid.save_svg": "Enregistrer en SVG",
+	"ui.chat.mermaid.copied": "Copié",
+	"ui.chat.mermaid.copy_text": "Copier le texte Mermaid",
+	"ui.chat.mermaid.error_title": "Erreur du diagramme Mermaid",
+	"ui.chat.mermaid.unexpected_error": "Une erreur inattendue s’est produite pendant le rendu du diagramme",
+	"ui.chat.mermaid.error_contained": "L’erreur est restée confinée au composant du diagramme.",
+	"ui.chat.mermaid.chart_label": "Graphique",
+	"ui.chat.mermaid.loading": "Chargement du diagramme…",
+	"ui.chat.mermaid.rendering_error": "Erreur de rendu",
+	"ui.chat.mermaid.render_failed": "Impossible de rendre le contenu du diagramme.",
+	"ui.chat.mermaid.fullscreen": "Plein écran",
+	"ui.chat.mermaid.open_fullscreen": "Ouvrir le diagramme en plein écran",
+	"ui.chat.mermaid.diagram_title": "Diagramme Mermaid",
+	"ui.chat.mermaid.close_fullscreen": "Fermer le plein écran",
+	"ui.chat.aside.question_label": "Question :",
+	"ui.chat.aside.you_label": "Vous :",
+	"ui.chat.aside.thinking": "réflexion…",
+	"ui.chat.aside.title": "Aparté",
+	"ui.chat.aside.off_record": "sans trace — rien ici ne rejoint la conversation",
+	"ui.chat.aside.close_label": "Fermer l’aparté",
+	"ui.chat.aside.exchange_label": "L’échange en aparté",
+	"ui.chat.aside.empty": "Posez une question dans le champ de saisie ci-dessous — la réponse apparaîtra ici.",
+	"ui.chat.aside.add_to_conversation": "Ajouter à la conversation",
+	"ui.chat.error_block.heading": "Erreur",
+	"ui.chat.error_block.link.settings": "page des paramètres",
+	"ui.chat.error_block.link.providers": "section Fournisseurs",
+	"ui.chat.error_block.provider.before": "Vous n’avez pas encore choisi de fournisseur d’IA. Ouvrez la",
+	"ui.chat.error_block.provider.after": "pour le configurer pour tous vos agents. Si vous n’avez pas de fournisseur d’IA, vous pouvez vous connecter à Radient pour y accéder gratuitement et démarrer.",
+	"ui.chat.error_block.model.before": "Vous n’avez pas encore choisi de modèle d’IA. Ouvrez la",
+	"ui.chat.error_block.model.after": "pour sélectionner un modèle pour tous vos agents. Si vous n’avez pas de fournisseur d’IA, vous pouvez vous connecter à Radient pour y accéder gratuitement et démarrer.",
+	"ui.chat.error_block.rate_limit.before": "Vous avez atteint la limite de débit de votre fournisseur d’IA. Merci de réessayer plus tard ou de souscrire à Radient Pass dans la",
+	"ui.chat.error_block.rate_limit.after": "pour accéder à des modèles d’IA sans limite de débit, à bas prix.",
+	"ui.chat.error_block.rate_limit.all_after": "pour accéder à tous les modèles d’IA sans limite de débit, à bas prix.",
+	"ui.chat.error_block.invalid_key.before": "Votre clé API n’est pas valide. Mettez-la à jour dans la",
+	"ui.chat.error_block.invalid_key.after": ", ou reconnectez-vous au fournisseur.",
+	"ui.chat.error_block.unavailable.before": "Le modèle que vous essayez d’utiliser n’est pas disponible. Ouvrez la",
+	"ui.chat.error_block.unavailable.after": "pour choisir un autre modèle, ou utilisez Radient pour accéder à des centaines de modèles sans limite de débit",
+	"ui.chat.error_block.schema.before": "Le modèle a tenté d’effectuer une action, mais n’a pas réussi à exprimer son intention dans le schéma requis. Cela vient généralement du fait que le modèle ne peut pas suivre les instructions complexes qu’exige l’IA agentique.",
+	"ui.chat.error_block.schema.after_before": "Changez de modèle dans la",
+	"ui.chat.error_block.schema.after": "pour corriger cela. Nous recommandons Radient Automatic, qui choisit pour vous le meilleur équilibre entre économie et intelligence selon vos requêtes (généralement moins cher qu’une clé personnelle), ou utilisez l’un des modèles recommandés signalés par une étoile.",
+	"ui.chat.approval.reply_required": "Tapez yes ou no pour répondre à la demande d’approbation.",
+	"ui.chat.question_dock.hint.approval": "Choisissez Approuver ou Refuser ci-dessus, tapez yes, no, 1 ou 2 puis envoyez, ou appuyez sur Échap dans le champ de saisie pour arrêter le tour.",
+	"ui.chat.question_dock.hint.approval_held": "Répondez plutôt dans le champ de saisie : tapez yes, no, 1 ou 2 puis envoyez, ou appuyez sur Échap dans ce champ pour arrêter le tour.",
+	"ui.chat.question_dock.hint.prefix": "Question {index} sur {total}. ",
+	"ui.chat.question_dock.hint.secret": "{prefix}Saisissez ou collez le secret ci-dessus · Entrée envoie · Échap masque",
+	"ui.chat.question_dock.hint.secret_held": "{prefix}Envoi suspendu tant que le sort de cette réponse est inconnu — elle a peut-être été transmise, donc plus rien ne peut être envoyé · Échap dans la carte la masque",
+	"ui.chat.question_dock.hint.type": "{prefix}Saisissez votre réponse ci-dessous.",
+	"ui.chat.question_dock.hint.options": "{prefix}Haut/Bas pour choisir · Entrée ou {digits} pour répondre · Échap masque · ou saisissez votre propre réponse ci-dessous",
+	"ui.chat.session_status.context_heading": "Contexte",
+	"ui.chat.session_status.context_nothing_measured_tooltip": "Contexte : rien n’a encore été mesuré. La fenêtre de contexte se remplit au fil de la conversation.",
+	"ui.chat.session_status.conversation_starting": "Défini une fois la conversation lancée.",
+	"ui.chat.session_status.model_none_resolved_tooltip": "Modèle : aucun n’est encore déterminé. Choisissez le modèle que cette conversation utilisera.",
+	"ui.chat.session_status.not_signed_in": "Non connecté à {label}",
+	"ui.chat.session_status.not_signed_in_description": "Cette session utilise {label} sans connexion active ; elle ne peut donc pas répondre tant que la connexion n’est pas établie.",
+	"ui.chat.session_status.nothing_measured_yet": "Rien n’a encore été mesuré. La fenêtre de contexte se remplit au fil de la conversation.",
+	"ui.chat.session_status.temporarily_unavailable": "{label} est temporairement indisponible",
+	"ui.chat.session_status.temporarily_unavailable_description": "Votre connexion reste enregistrée. Réessayez plus tard ou choisissez un autre modèle.",
+	"ui.chat.checkpoint.generating_name": "Génération du nom…",
+	"ui.chat.checkpoint.jump_agent": "Aller au tour {turn, number} sur {total, number}, {name}",
+	"ui.chat.checkpoint.jump_agent_unnamed": "Aller au tour {turn, number} sur {total, number}",
+	"ui.chat.checkpoint.jump_user": "Aller à votre message du tour {turn, number} sur {total, number}, {clock}",
+	"ui.chat.checkpoint.jump_user_no_clock": "Aller à votre message du tour {turn, number} sur {total, number}",
+	"ui.chat.checkpoint.turn": "Tour {turn, number} sur {total, number}",
+	"ui.chat.header_identity.aria_agent_assign": "Agent : {label}. Attribuer un agent",
+	"ui.chat.header_identity.aria_agent_closed": "Agent : {label}. {reason}",
+	"ui.chat.header_identity.aria_agent_switch": "Agent : {label}. Changer d’agent",
+	"ui.chat.header_identity.aria_team_assign": "Équipe : {label}. Attribuer une équipe",
+	"ui.chat.header_identity.aria_team_closed": "Équipe : {label}. {reason}",
+	"ui.chat.header_identity.aria_team_switch": "Équipe : {label}. Changer d’équipe",
+	"ui.chat.header_identity.assign_agent": "Attribuer un agent",
+	"ui.chat.header_identity.assign_team": "Attribuer une équipe",
+	"ui.chat.header_identity.no_agent": "Aucun agent",
+	"ui.chat.header_identity.no_team": "Aucune équipe",
+	"ui.chat.region.composer": "Zone de rédaction du message",
+	"ui.chat.region.conversation": "Transcription",
+	"ui.chat.audio.play": "Lire",
+	"ui.chat.audio.pause": "Mettre en pause",
+	"ui.chat.audio.play_label": "Lire {label}",
+	"ui.chat.audio.pause_label": "Mettre {label} en pause",
+	"ui.chat.audio.mute": "Couper le son",
+	"ui.chat.audio.unmute": "Rétablir le son",
+	"ui.chat.message_controls.copy": "Copier le message",
+	"ui.chat.message_controls.copied": "Copié",
+	"ui.chat.image_actions.save_as": "Enregistrer sous…",
+	"ui.chat.image_actions.copy_image": "Copier l’image",
+	"ui.chat.image_actions.copy_image_url": "Copier l’URL de l’image",
+	"ui.chat.image_actions.open_in_browser": "Ouvrir dans le navigateur",
+	"ui.chat.image_actions.expand_image": "Agrandir l’image",
+	"ui.chat.composer.connect_provider": "Connecter un fournisseur",
+	"ui.chat.slot_notice.run_draft_title": "Les détails de l’exécution nécessitent une conversation.",
+	"ui.chat.slot_notice.run_draft_detail": "Envoyez un message pour démarrer ; les sous-agents, le plan et les tâches planifiées s’afficheront ici.",
+	"ui.chat.slot_notice.run_reading_title": "Lecture de l’exécution de cette conversation…",
+	"ui.chat.slot_notice.run_unreadable_title": "Impossible de lire les détails de l’exécution de cette conversation.",
+	"ui.chat.slot_notice.run_unreadable_detail": "La conversation à côté de ce panneau indique la cause et comment se reconnecter.",
+	"ui.chat.slot_notice.run_missing_detail": "Cette conversation n’est plus sur cette machine.",
+	"ui.chat.slot_notice.code_draft_title": "La revue de code nécessite une conversation.",
+	"ui.chat.slot_notice.code_draft_detail": "Envoyez un message pour démarrer ; les pull requests et merge requests ouvertes ou mentionnées s’afficheront ici.",
+	"ui.chat.slot_notice.code_below_version_title": "Le serveur Local Operator ne propose pas encore la revue de code.",
+	"ui.chat.slot_notice.code_below_version_detail": "Mettez le serveur à jour pour voir les pull requests et merge requests ouvertes par cette conversation.",
+	"ui.chat.slot_notice.code_checking_title": "Vérification de la prise en charge de la revue de code par le serveur…",
+	"ui.chat.slot_notice.code_load_lead": "Impossible de charger la revue de code.",
+	"ui.chat.slash_arguments.model_default_description": "Définir le modèle actuel ({provider}/{model}) par défaut pour les nouvelles sessions.",
+	"ui.chat.slash_arguments.model_default_unavailable": "Aucun modèle de session active à enregistrer.",
+	"ui.chat.slash_arguments.model_default_click": "Un clic fait de même.",
+	"ui.chat.slash_arguments.model_default_required": "Un modèle de session est nécessaire pour enregistrer un modèle par défaut.",
+	"ui.chat.slash_arguments.refresh_description": "Relire la conversation et lui redonner un nom",
+	"ui.chat.slash_arguments.refresh_detail": "reprend le nommage automatique",
+	"ui.chat.aside.add_to_conversation_tooltip": "Ajouter l’aparté à la conversation",
+	"ui.chat.message_controls.content_header": "Contenu",
+	"ui.chat.message_controls.replacements_header": "Remplacements",
+	"ui.chat.message_controls.thinking_label": "Réflexion",
+	"ui.chat.scroll_to_bottom.label": "Défiler vers le bas",
+	"ui.chat.scroll_to_bottom.label_new_activity": "Nouvelle activité, défiler vers le bas",
+	"ui.chat.session_status.last_reading_note": "Dernier relevé avant la reconnexion.",
+	"ui.chat.session_status.readings_aria_held": "Relevés de la session. {note}",
+	"ui.chat.session_status.commands_off": "Les commandes slash sont désactivées sur ce serveur ; ce relevé ne peut donc pas être ouvert d’ici.",
+	"ui.chat.session_status.context_click_breakdown_held": "Cliquez pour afficher la répartition complète, qui estime votre prochaine requête.",
+	"ui.chat.session_status.context_click_breakdown_held_plain": "Cliquez pour afficher la répartition complète.",
+	"ui.chat.session_status.context_measured_now": "Mesure actuelle ; cliquez pour afficher la répartition complète, qui estime votre prochaine requête",
+	"ui.chat.session_status.context_estimated_now": "Estimation actuelle ; cliquez pour afficher la répartition complète, qui estime votre prochaine requête",
+	"ui.chat.session_status.context_click_breakdown": "Cliquez pour afficher la répartition complète",
+	"ui.chat.session_status.model_click_choose_draft": "Cliquez pour choisir un autre modèle. Le choix s’applique à cette conversation.",
+	"ui.chat.session_status.model_click_choose": "Cliquez pour choisir un autre modèle",
+	"ui.chat.session_status.model_draft_inert": "Cette conversation l’utilisera. Modifiez-le une fois la conversation lancée.",
+	"ui.chat.session_status.effort_change_draft": "Modifiez-le. Il s’applique à cette conversation.",
+	"ui.chat.session_status.effort_change": "Modifiez-le.",
+	"ui.chat.session_status.model_aria": "Modèle : {selector}{fast, select, yes {, mode rapide activé} other {}}. {reason}",
+	"ui.chat.session_status.model_aria_pending": "Modèle : {selector}{fast, select, yes {, mode rapide activé} other {}}. Changement en cours ; en attente de la confirmation de la session.",
+	"ui.chat.session_status.switching_model": "Changement de modèle",
+	"ui.chat.session_status.model_aria_unresolved": "Modèle : le modèle de cette conversation n’a pas été déterminé. Réessayez.",
+	"ui.chat.session_status.model_aria_resolving": "Modèle : détermination du modèle que cette conversation utilisera.",
+	"ui.chat.session_status.resolving_model_spinner": "Détermination du modèle que cette conversation utilisera",
+	"ui.chat.session_status.context_aria_no_reading": "Contexte : aucun relevé pour l’instant. {hint}",
+	"ui.chat.session_status.context_aria_reading": "Contexte : {spelling}{estimate, select, yes {, estimé} other {}}. {hint}",
+	"ui.chat.session_status.active_time_aria": "Temps actif : {duration}. {explanation}",
+	"ui.chat.session_status.duration_explanation": "Temps passé à travailler ; l’attente n’est pas comptée.",
+	"ui.chat.session_status.effort_level.low": "Faible",
+	"ui.chat.session_status.effort_level.medium": "Moyen",
+	"ui.chat.session_status.effort_level.high": "Élevé"
+}
+
+STDERR:
+
+ARGV: ["git", "show", "origin/main:src/i18n/catalogues/en/ui.chat.composer_media.json"]
+EXIT: 0
+STDOUT:
+{
+	"ui.chat.composer_media.recording": "Recording",
+	"ui.chat.composer_media.confirms": "inserts",
+	"ui.chat.composer_media.cancels": "cancels",
+	"ui.chat.composer_media.sends_now": "sends now",
+	"ui.chat.composer_media.pasted_type": "Pasted {mimeType}",
+	"ui.chat.composer_media.pasted_file": "Pasted file",
+	"ui.chat.composer_media.preview_failed": "Could not be previewed",
+	"ui.chat.composer_media.remove_attachment": "Remove attachment"
+}
+
+STDERR:
+
+ARGV: ["git", "show", "origin/main:src/i18n/catalogues/fr/ui.chat.composer_media.json"]
+EXIT: 0
+STDOUT:
+{
+	"ui.chat.composer_media.recording": "Enregistrement",
+	"ui.chat.composer_media.confirms": "insère",
+	"ui.chat.composer_media.cancels": "annule",
+	"ui.chat.composer_media.sends_now": "envoie maintenant",
+	"ui.chat.composer_media.pasted_type": "Collé : {mimeType}",
+	"ui.chat.composer_media.pasted_file": "Fichier collé",
+	"ui.chat.composer_media.preview_failed": "Aperçu impossible",
+	"ui.chat.composer_media.remove_attachment": "Retirer la pièce jointe"
+}
+
+STDERR:
+
+ARGV: ["git", "show", "origin/main:src/i18n/catalogues/en/ui.common.actions.json"]
+EXIT: 0
+STDOUT:
+{
+	"ui.common.actions.cancel": "Cancel",
+	"ui.common.actions.close": "Close",
+	"ui.common.actions.copied": "Copied",
+	"ui.common.actions.copy_failed": "Could not copy. Select and copy it manually.",
+	"ui.common.actions.dismiss": "Dismiss",
+	"ui.common.actions.more_info": "More info",
+	"ui.common.actions.retry": "Retry",
+	"ui.common.actions.retry_again": "Try again",
+	"ui.common.actions.retrying": "Trying…",
+	"ui.common.actions.date_time_picker.select_date": "Select date",
+	"ui.common.actions.date_time_picker.choose_date": "Choose {label} date",
+	"ui.common.actions.date_time_picker.select_time": "Select time",
+	"ui.common.actions.date_time_picker.choose_time": "Choose {label} time",
+	"ui.common.actions.date_time_picker.set_to_current_time": "Set to current time",
+	"ui.common.actions.date_time_picker.set_to_current_time369877": "Set {label} to current time",
+	"ui.common.actions.file_actions_menu.file_actions": "File actions",
+	"ui.common.actions.file_actions_menu.file_path_copied_to_clipboard": "File path copied to clipboard",
+	"ui.common.actions.file_actions_menu.failed_to_copy_file_path": "Failed to copy file path",
+	"ui.common.actions.find_replace_widget.switch_to_replace": "Switch to replace",
+	"ui.common.actions.find_replace_widget.switch_to_find": "Switch to find",
+	"ui.common.actions.find_replace_widget.find": "Find",
+	"ui.common.actions.find_replace_widget.replace": "Replace",
+	"ui.common.actions.find_replace_widget.no_results": "No results",
+	"ui.common.actions.find_replace_widget.previous_match": "Previous match",
+	"ui.common.actions.find_replace_widget.next_match": "Next match",
+	"ui.common.actions.find_replace_widget.replace_enter": "Replace (Enter)",
+	"ui.common.actions.find_replace_widget.replace_all_cmd_ctrl_enter": "Replace all (Cmd/Ctrl+Enter)",
+	"ui.common.actions.find_replace_widget.replace_all": "Replace all",
+	"ui.common.actions.find_replace_widget.all": "All",
+	"ui.common.actions.find_replace_widget.close": "Close",
+	"ui.common.actions.text_selection_controls.ask_for_an_edit": "Ask for an edit",
+	"ui.common.actions.text_selection_controls.copy": "Copy",
+	"ui.common.actions.text_selection_controls.copy_without_formatting": "Copy without formatting",
+	"ui.common.actions.text_selection_controls.reply": "Reply",
+	"ui.common.actions.text_selection_controls.refer_to_this_from_file": "Refer to this from file",
+	"ui.common.actions.text_selection_controls.open_in_browser": "Open in browser",
+	"ui.common.actions.confirmation_modal.confirm": "Confirm",
+	"ui.common.actions.confirmation_modal.cancel": "Cancel",
+	"ui.common.actions.find_replace_widget.of": "{currentmatch, number, ::group-off} of {matchcount, number, ::group-off}",
+	"ui.common.actions.agent_created": "Agent created",
+	"ui.common.actions.agent_deleted": "Agent deleted",
+	"ui.common.actions.agent_imported": "Agent imported",
+	"ui.common.actions.agent_exported": "Agent exported",
+	"ui.common.actions.agent_updated": "Agent updated",
+	"ui.common.actions.agent_system_prompt_updated": "Agent system prompt updated",
+	"ui.common.actions.conversation_cleared": "Conversation cleared",
+	"ui.common.actions.variable_created": "Variable created",
+	"ui.common.actions.variable_updated": "Variable updated",
+	"ui.common.actions.variable_deleted": "Variable deleted",
+	"ui.common.actions.configuration_updated": "Configuration updated",
+	"ui.common.actions.system_prompt_updated": "System prompt updated",
+	"ui.common.actions.credential_updated": "Credential \"{key}\" updated successfully",
+	"ui.common.actions.clear": "Clear"
+}
+
+STDERR:
+
+ARGV: ["git", "show", "origin/main:src/i18n/catalogues/fr/ui.common.actions.json"]
+EXIT: 0
+STDOUT:
+{
+	"ui.common.actions.cancel": "Annuler",
+	"ui.common.actions.close": "Fermer",
+	"ui.common.actions.copied": "Copié",
+	"ui.common.actions.copy_failed": "Copie impossible. Sélectionnez le texte et copiez-le manuellement.",
+	"ui.common.actions.dismiss": "Ignorer",
+	"ui.common.actions.more_info": "Plus d’infos",
+	"ui.common.actions.retry": "Réessayer",
+	"ui.common.actions.retry_again": "Réessayer",
+	"ui.common.actions.retrying": "Nouvelle tentative…",
+	"ui.common.actions.date_time_picker.select_date": "Sélectionner une date",
+	"ui.common.actions.date_time_picker.choose_date": "Choisir la date de {label}",
+	"ui.common.actions.date_time_picker.select_time": "Sélectionner une heure",
+	"ui.common.actions.date_time_picker.choose_time": "Choisir l’heure de {label}",
+	"ui.common.actions.date_time_picker.set_to_current_time": "Définir sur l’heure actuelle",
+	"ui.common.actions.date_time_picker.set_to_current_time369877": "Définir {label} sur l’heure actuelle",
+	"ui.common.actions.file_actions_menu.file_actions": "Actions sur le fichier",
+	"ui.common.actions.file_actions_menu.file_path_copied_to_clipboard": "Chemin du fichier copié dans le presse-papiers",
+	"ui.common.actions.file_actions_menu.failed_to_copy_file_path": "Échec de la copie du chemin du fichier",
+	"ui.common.actions.find_replace_widget.switch_to_replace": "Passer au remplacement",
+	"ui.common.actions.find_replace_widget.switch_to_find": "Passer à la recherche",
+	"ui.common.actions.find_replace_widget.find": "Rechercher",
+	"ui.common.actions.find_replace_widget.replace": "Remplacer",
+	"ui.common.actions.find_replace_widget.no_results": "Aucun résultat",
+	"ui.common.actions.find_replace_widget.previous_match": "Résultat précédent",
+	"ui.common.actions.find_replace_widget.next_match": "Résultat suivant",
+	"ui.common.actions.find_replace_widget.replace_enter": "Remplacer (Entrée)",
+	"ui.common.actions.find_replace_widget.replace_all_cmd_ctrl_enter": "Tout remplacer (Cmd/Ctrl+Entrée)",
+	"ui.common.actions.find_replace_widget.replace_all": "Tout remplacer",
+	"ui.common.actions.find_replace_widget.all": "Tout",
+	"ui.common.actions.find_replace_widget.close": "Fermer",
+	"ui.common.actions.text_selection_controls.ask_for_an_edit": "Demander une modification",
+	"ui.common.actions.text_selection_controls.copy": "Copier",
+	"ui.common.actions.text_selection_controls.copy_without_formatting": "Copier sans mise en forme",
+	"ui.common.actions.text_selection_controls.reply": "Répondre",
+	"ui.common.actions.text_selection_controls.refer_to_this_from_file": "Faire référence à ceci depuis un fichier",
+	"ui.common.actions.text_selection_controls.open_in_browser": "Ouvrir dans le navigateur",
+	"ui.common.actions.confirmation_modal.confirm": "Confirmer",
+	"ui.common.actions.confirmation_modal.cancel": "Annuler",
+	"ui.common.actions.find_replace_widget.of": "{currentmatch, number, ::group-off} sur {matchcount, number, ::group-off}",
+	"ui.common.actions.agent_created": "Agent créé",
+	"ui.common.actions.agent_deleted": "Agent supprimé",
+	"ui.common.actions.agent_imported": "Agent importé",
+	"ui.common.actions.agent_exported": "Agent exporté",
+	"ui.common.actions.agent_updated": "Agent mis à jour",
+	"ui.common.actions.agent_system_prompt_updated": "Prompt système de l’agent mis à jour",
+	"ui.common.actions.conversation_cleared": "Conversation effacée",
+	"ui.common.actions.variable_created": "Variable créée",
+	"ui.common.actions.variable_updated": "Variable mise à jour",
+	"ui.common.actions.variable_deleted": "Variable supprimée",
+	"ui.common.actions.configuration_updated": "Configuration mise à jour",
+	"ui.common.actions.system_prompt_updated": "Prompt système mis à jour",
+	"ui.common.actions.credential_updated": "Identifiant « {key} » mis à jour",
+	"ui.common.actions.clear": "Effacer"
+}
+
+STDERR:
+
+ARGV: ["node", "--input-type=module", "-e", "import {findDuplicates} from './scripts/i18n/check-duplicates.mjs';\nimport {namespaceGap} from './scripts/i18n/context-parity.mjs';\nimport {readFileSync} from 'node:fs';\nconst namespaces=['ui.chat','ui.chat.composer_media','ui.common.actions'];\nconst allowance=JSON.parse(readFileSync('i18n/context-allowance.json','utf8'));\nconst files=namespaces.flatMap(n=>[`src/i18n/catalogues/en/${n}.json`,`src/i18n/catalogues/fr/${n}.json`,`src/i18n/catalogues/en/${n}.context.json`]);\nconst duplicates=findDuplicates(files); console.log(JSON.stringify(duplicates));\nif(duplicates.offenders.length) process.exitCode=1;\nfor(const ns of namespaces){const g=namespaceGap(ns); const allowed=allowance.namespaces[ns]?.keys??[];const unallowed=g.uncovered.filter(k=>!allowed.includes(k)); console.log(JSON.stringify({ns,uncovered:g.uncovered,unallowed,orphaned:g.orphaned,hasSidecar:g.hasSidecar}));if(unallowed.length||g.orphaned.length||!g.hasSidecar)process.exitCode=1;}\n"]
+EXIT: 0
+STDOUT:
+{"scanned":9,"offenders":[]}
+{"ns":"ui.chat","uncovered":["ui.chat.highlights.file_resolution_failed","ui.chat.usage.blocked","ui.chat.usage.continue","ui.chat.usage.eligibility_unknown","ui.chat.usage.family_caps","ui.chat.usage.unlimited"],"unallowed":[],"orphaned":[],"hasSidecar":true}
+{"ns":"ui.chat.composer_media","uncovered":[],"unallowed":[],"orphaned":[],"hasSidecar":true}
+{"ns":"ui.common.actions","uncovered":[],"unallowed":[],"orphaned":[],"hasSidecar":true}
+
+STDERR:
+
+ARGV: ["git", "diff", "origin/main", "HEAD", "--", "src/i18n/catalogues/en/ui.chat.json", "src/i18n/catalogues/fr/ui.chat.json", "src/i18n/catalogues/en/ui.chat.composer_media.json", "src/i18n/catalogues/fr/ui.chat.composer_media.json", "src/i18n/catalogues/en/ui.common.actions.json", "src/i18n/catalogues/fr/ui.common.actions.json"]
+EXIT: 0
+STDOUT:
+diff --git a/src/i18n/catalogues/en/ui.chat.composer_media.json b/src/i18n/catalogues/en/ui.chat.composer_media.json
+index ff141a20048..78c1e54d3df 100644
+--- a/src/i18n/catalogues/en/ui.chat.composer_media.json
++++ b/src/i18n/catalogues/en/ui.chat.composer_media.json
+@@ -6,5 +6,6 @@
+ 	"ui.chat.composer_media.pasted_type": "Pasted {mimeType}",
+ 	"ui.chat.composer_media.pasted_file": "Pasted file",
+ 	"ui.chat.composer_media.preview_failed": "Could not be previewed",
+-	"ui.chat.composer_media.remove_attachment": "Remove attachment"
++	"ui.chat.composer_media.remove_attachment": "Remove attachment",
++	"ui.chat.composer_media.pasted_image": "Pasted image"
+ }
+diff --git a/src/i18n/catalogues/en/ui.chat.json b/src/i18n/catalogues/en/ui.chat.json
+index ea5fee914a6..c19e6dcbc1d 100644
+--- a/src/i18n/catalogues/en/ui.chat.json
++++ b/src/i18n/catalogues/en/ui.chat.json
+@@ -204,5 +204,7 @@
+ 	"ui.chat.session_status.duration_explanation": "Time spent working; waiting is not counted.",
+ 	"ui.chat.session_status.effort_level.low": "Low",
+ 	"ui.chat.session_status.effort_level.medium": "Medium",
+-	"ui.chat.session_status.effort_level.high": "High"
++	"ui.chat.session_status.effort_level.high": "High",
++	"ui.chat.image_actions.actions": "Image actions",
++	"ui.chat.audio.position_label": "{label} position"
+ }
+diff --git a/src/i18n/catalogues/en/ui.common.actions.json b/src/i18n/catalogues/en/ui.common.actions.json
+index a93ec6d0e6a..b6617047d46 100644
+--- a/src/i18n/catalogues/en/ui.common.actions.json
++++ b/src/i18n/catalogues/en/ui.common.actions.json
+@@ -51,5 +51,6 @@
+ 	"ui.common.actions.configuration_updated": "Configuration updated",
+ 	"ui.common.actions.system_prompt_updated": "System prompt updated",
+ 	"ui.common.actions.credential_updated": "Credential \"{key}\" updated successfully",
+-	"ui.common.actions.clear": "Clear"
++	"ui.common.actions.clear": "Clear",
++	"ui.common.actions.actions_for_name": "Actions for {name}"
+ }
+diff --git a/src/i18n/catalogues/fr/ui.chat.composer_media.json b/src/i18n/catalogues/fr/ui.chat.composer_media.json
+index 97dffad79aa..1187ebaa455 100644
+--- a/src/i18n/catalogues/fr/ui.chat.composer_media.json
++++ b/src/i18n/catalogues/fr/ui.chat.composer_media.json
+@@ -6,5 +6,6 @@
+ 	"ui.chat.composer_media.pasted_type": "Collé : {mimeType}",
+ 	"ui.chat.composer_media.pasted_file": "Fichier collé",
+ 	"ui.chat.composer_media.preview_failed": "Aperçu impossible",
+-	"ui.chat.composer_media.remove_attachment": "Retirer la pièce jointe"
++	"ui.chat.composer_media.remove_attachment": "Retirer la pièce jointe",
++	"ui.chat.composer_media.pasted_image": "Image collée"
+ }
+diff --git a/src/i18n/catalogues/fr/ui.chat.json b/src/i18n/catalogues/fr/ui.chat.json
+index a770db9f081..4f0ca8bdd2a 100644
+--- a/src/i18n/catalogues/fr/ui.chat.json
++++ b/src/i18n/catalogues/fr/ui.chat.json
+@@ -204,5 +204,7 @@
+ 	"ui.chat.session_status.duration_explanation": "Temps passé à travailler ; l’attente n’est pas comptée.",
+ 	"ui.chat.session_status.effort_level.low": "Faible",
+ 	"ui.chat.session_status.effort_level.medium": "Moyen",
+-	"ui.chat.session_status.effort_level.high": "Élevé"
++	"ui.chat.session_status.effort_level.high": "Élevé",
++	"ui.chat.image_actions.actions": "Actions sur l’image",
++	"ui.chat.audio.position_label": "Position de {label}"
+ }
+diff --git a/src/i18n/catalogues/fr/ui.common.actions.json b/src/i18n/catalogues/fr/ui.common.actions.json
+index e040017f2f9..8abacba58b0 100644
+--- a/src/i18n/catalogues/fr/ui.common.actions.json
++++ b/src/i18n/catalogues/fr/ui.common.actions.json
+@@ -51,5 +51,6 @@
+ 	"ui.common.actions.configuration_updated": "Configuration mise à jour",
+ 	"ui.common.actions.system_prompt_updated": "Prompt système mis à jour",
+ 	"ui.common.actions.credential_updated": "Identifiant « {key} » mis à jour",
+-	"ui.common.actions.clear": "Effacer"
++	"ui.common.actions.clear": "Effacer",
++	"ui.common.actions.actions_for_name": "Actions sur {name}"
+ }
+
+STDERR:
+
+ARGV: ["git", "rev-parse", "HEAD"]
+EXIT: 0
+STDOUT:
+e5fb4310dab638f9cf428779d62539ec039a8990
+
+STDERR:
+
+ARGV: ["git", "status", "--porcelain"]
+EXIT: 0
+STDOUT:
+
+STDERR:
+
+ARGV: ["shasum", "-a", "256", "/Users/damian/local-operator/i18n/style-guides/fr.md", "/Users/damian/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md"]
+EXIT: 0
+STDOUT:
+ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226  /Users/damian/local-operator/i18n/style-guides/fr.md
+0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8  /Users/damian/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md
+
+STDERR:
+
+ACTUAL PYTHON CHECKS: json.loads on nine input files; compare en/fr key sets; git show origin/main six catalogues, assert no removed/changed prior entries; compare shasum results to all nine expected hashes; regex compare exact {name}/{label} arguments; unicodedata scan Cf/U+00A0/U+202F in four strings. All passed. No plural/select/markup is present in the four new keys.
+DERIVED PYTHON RESULTS: {"ui.chat": {"total_key_count": 208, "fully_audited_key_count": 2, "consistency_only_key_count": 206, "key_parity": true, "versus_origin_main": {"en": {"removed": [], "changed": [], "added": ["ui.chat.audio.position_label", "ui.chat.image_actions.actions"]}, "fr": {"removed": [], "changed": [], "added": ["ui.chat.audio.position_label", "ui.chat.image_actions.actions"]}}}, "ui.chat.composer_media": {"total_key_count": 9, "fully_audited_key_count": 1, "consistency_only_key_count": 8, "key_parity": true, "versus_origin_main": {"en": {"removed": [], "changed": [], "added": ["ui.chat.composer_media.pasted_image"]}, "fr": {"removed": [], "changed": [], "added": ["ui.chat.composer_media.pasted_image"]}}}, "ui.common.actions": {"total_key_count": 54, "fully_audited_key_count": 1, "consistency_only_key_count": 53, "key_parity": true, "versus_origin_main": {"en": {"removed": [], "changed": [], "added": ["ui.common.actions.actions_for_name"]}, "fr": {"removed": [], "changed": [], "added": ["ui.common.actions.actions_for_name"]}}}}
+FOLLOW-UP TO FAILED STRICT PROBE: context-allowance.json ui.chat.keys and origin/main English sidecar showed exactly the six missing context keys reported, unchanged and allowlisted. Subsequent allowance-aware repo validator probe succeeded.
+OUTPUT VALIDATION: both receipt and record parsed back with Python; root receipt schema compared to the supplied model. Artifact hashes recorded in record.
+NOT RUN: builds/installs/servers; full check-i18n; runtime ICU/renderer/screen-reader; audit ledger writes; PR comments; git commit.
+No legacy semantic certification: 4 fully audited, 267 consistency-only.

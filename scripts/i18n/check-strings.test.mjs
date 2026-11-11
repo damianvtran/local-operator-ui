@@ -19,6 +19,7 @@ import {
 	COPY_ATTRIBUTES,
 	LITERAL_ALLOWANCE,
 	OBJECT_COPY_KEYS,
+	SCOPED_COPY_SLOTS,
 	allowanceBaseReport,
 	allowanceSummary,
 	allowlistReason,
@@ -1803,4 +1804,208 @@ test("the committed tree's data-shape debt is exactly what the allowance lists",
 			allowanceProblems: [],
 		}).includes("extract"),
 	);
+});
+
+// The counterfactuals are parsed at their real semantic activation path but
+// written only to an isolated corpus, never by reverting the checked-out repo.
+test("scoped-copy: attachment counterfactuals, keyed controls and missing slots", () => {
+	const dir = mkdtempSync(
+		join(process.env.LOCAL_OPERATOR_SCRATCHPAD ?? tmpdir(), "scoped-chrome-"),
+	);
+	writeFileSync(
+		join(dir, "tsconfig.app.json"),
+		JSON.stringify({
+			compilerOptions: { jsx: "react-jsx" },
+			include: ["*.tsx"],
+		}),
+	);
+	writeFileSync(
+		join(dir, "tsconfig.node.json"),
+		JSON.stringify({ compilerOptions: { noEmit: true } }),
+	);
+	const cases = [];
+	for (const [rel, slots] of Object.entries(SCOPED_COPY_SLOTS)) {
+		const source = readFileSync(join(REPO, rel), "utf8");
+		const slot = Object.keys(slots)[0];
+		const literal =
+			slot === "getFileName"
+				? '"Pasted image"'
+				: slot === "sliderLabel"
+					? "`${label} position`"
+					: "`Actions for ${label}`";
+		const call =
+			slot === "getFileName"
+				? 't("ui.chat.composer_media.pasted_image")'
+				: slot === "sliderLabel"
+					? 't("ui.chat.audio.position_label", { label })'
+					: 't("ui.common.actions.actions_for_name", { name: label })';
+		assert.ok(source.includes(call), `${rel} owns expected keyed control`);
+		if (slot === "getFileName") {
+			const path = `${cases.length}.tsx`;
+			writeFileSync(
+				join(dir, path),
+				source.replace(
+					't("ui.chat.composer_media.pasted_file")',
+					'"Pasted file"',
+				),
+			);
+			cases.push({ path, rel, slot, kind: "literal" });
+		}
+		for (const [kind, body] of [
+			["keyed", source],
+			["literal", source.replace(call, literal)],
+			["missing", source.replaceAll(slot, `${slot}Renamed`)],
+		]) {
+			const path = `${cases.length}.tsx`;
+			writeFileSync(join(dir, path), body);
+			cases.push({ path, rel, slot, kind });
+		}
+	}
+	// Return traversal includes named declarations and concise local arrows; user
+	// identifiers and t arguments are intentionally opaque, not translated data.
+	for (const body of [
+		'export function getFileName() { return "Pasted file"; }',
+		'const getFileName = () => "Pasted file";',
+		"const getFileName = () => userName;",
+		'const getFileName = () => t("ui.chat.composer_media.pasted_file");',
+	]) {
+		const path = `${cases.length}.tsx`;
+		writeFileSync(join(dir, path), body);
+		cases.push({
+			path,
+			rel: Object.keys(SCOPED_COPY_SLOTS)[0],
+			slot: "getFileName",
+			kind: body.includes('"Pasted file"') ? "literal" : "keyed",
+		});
+	}
+
+	const returnSlot = "src/renderer/src/features/chat/utils/get-file-name.ts";
+	const initializerSlot =
+		"src/renderer/src/features/chat/canonical/supplement-file-actions.tsx";
+	const boundaries = [
+		[
+			returnSlot,
+			"getFileName",
+			"keyed",
+			`const getFileName = () => { return (t(
+"ui.chat.composer_media.pasted_file"
+)); };`,
+		],
+		[
+			initializerSlot,
+			"ariaLabel",
+			"missing",
+			"let ariaLabel; ariaLabel = `Actions for ${name}`;",
+		],
+		[
+			returnSlot,
+			"getFileName",
+			"keyed",
+			'const getFileName = () => "ui.chat.composer_media.pasted_file";',
+		],
+		[
+			initializerSlot,
+			"ariaLabel",
+			"literal",
+			'function ariaLabel() { return "Actions for x"; }',
+		],
+		// DOCUMENTED CURRENT LIMITS: these zeros pin the existing extraction
+		// boundary, not endorse wrapping or suppressing authored product copy.
+		[
+			initializerSlot,
+			"ariaLabel",
+			"keyed",
+			"const ariaLabel = useMemo(() => `Actions for ${name}`, [name]);",
+		],
+		[
+			returnSlot,
+			"getFileName",
+			"keyed",
+			'function getFileName() { return String("Pasted file"); }',
+		],
+		[
+			initializerSlot,
+			"ariaLabel",
+			"keyed",
+			"const ariaLabel = { a: `Actions for ${name}` };",
+		],
+		[
+			returnSlot,
+			"getFileName",
+			"keyed",
+			'function getFileName() { const title = "Pasted file"; return title; }',
+		],
+		[
+			returnSlot,
+			"getFileName",
+			"keyed",
+			'function getFileName() { return () => "Pasted file"; }',
+		],
+		[
+			returnSlot,
+			"getFileName",
+			"keyed",
+			`function getFileName() {
+// i18n: ignore documented boundary probe
+return "Pasted file";
+}`,
+		],
+	];
+	for (const [rel, slot, kind, body] of boundaries) {
+		const path = `${cases.length}.tsx`;
+		writeFileSync(join(dir, path), body);
+		cases.push({ path, rel, slot, kind });
+	}
+	const { api, snapshot } = openSnapshot(
+		dir,
+		cases.map((c) => join(dir, c.path)),
+	);
+	try {
+		for (const c of cases) {
+			const abs = join(dir, c.path);
+			const sf = snapshot
+				.getDefaultProjectForFile(abs)
+				.program.getSourceFile(abs);
+			const findings = findViolations(sf, { rel: c.rel }).filter(
+				(f) => f.kind === `scoped-copy:${c.slot}`,
+			);
+			assert.equal(
+				findings.length > 0,
+				c.kind !== "keyed",
+				`${c.rel}: ${c.kind}`,
+			);
+			if (c.kind === "missing") assert.ok(findings[0].text.includes("missing"));
+		}
+	} finally {
+		api.close();
+	}
+});
+test("scoped-copy: zero debt cannot be hidden by baseline or file allowlist", () => {
+	const dir = mkdtempSync(
+		join(process.env.LOCAL_OPERATOR_SCRATCHPAD ?? tmpdir(), "scoped-zero-"),
+	);
+	const rel = Object.keys(SCOPED_COPY_SLOTS)[0];
+	mkdirSync(join(dir, "src/renderer/src/features/chat/utils"), {
+		recursive: true,
+	});
+	writeFileSync(
+		join(dir, rel),
+		'export const getFileName = () => "Pasted file";',
+	);
+	writeFileSync(
+		join(dir, "tsconfig.app.json"),
+		JSON.stringify({ include: ["src/**/*.ts"] }),
+	);
+	writeFileSync(
+		join(dir, "tsconfig.node.json"),
+		JSON.stringify({ compilerOptions: { noEmit: true } }),
+	);
+	const result = runCheck({
+		repo: dir,
+		extraScan: [rel],
+		allowlist: [{ path: rel, reason: "test negative control" }],
+		baseline: { files: { [rel]: 999 } },
+		allowance: { schema: 1, entries: [] },
+	});
+	assert.deepEqual(result.failures, [{ path: rel, count: 1, ceiling: 0 }]);
 });

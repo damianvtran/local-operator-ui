@@ -32,7 +32,7 @@
 		"role": "pasted attachment fallback filename",
 		"tone": "short noun phrase, sentence case",
 		"maxCells": 20,
-		"note": "Fallback when the pasted data URI has no name or MIME type. A 100px tile caption may truncate; maxCells is advisory, not measured fit."
+		"note": "Fallback for non-image data URIs with no usable name, including invalid percent encoding, whether or not a MIME type is present. Also used as synthetic upload metadata; valid names and attachment bytes stay unchanged. A 100px tile caption may truncate; maxCells is advisory, not measured fit."
 	},
 	"ui.chat.composer_media.preview_failed": {
 		"role": "media decode failure tooltip",
@@ -45,5 +45,10 @@
 		"tone": "short imperative action, sentence case",
 		"maxCells": 24,
 		"note": "Tooltip and accessible name of the attachment remove button. maxCells is an advisory translation target, not measured fit."
+	},
+	"ui.chat.composer_media.pasted_image": {
+		"role": "pasted image fallback filename",
+		"tone": "short noun phrase, sentence case",
+		"note": "Synthetic name only for an image data URI with no usable encoded name, including invalid percent encoding. Preserve valid decoded filenames and user names verbatim. A narrow attachment caption may truncate; keep prose compact. No file extension, MIME identifier or placeholder is part of this message."
 	}
 }

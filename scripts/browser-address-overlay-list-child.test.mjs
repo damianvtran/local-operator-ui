@@ -110,6 +110,27 @@ test("a row without a range stays one text node, and hostile text is literal", (
 	assert.equal(hostile.querySelector("bdi").textContent, "<b>x</b>");
 });
 
+test("a page row paints the fixed app-window glyph first; other rows paint none", () => {
+	apply(
+		model([
+			{ text: "lop://extensions", title: "Extensions", icon: "page" },
+			{ text: "host.example.com/path", title: "" },
+		]),
+	);
+	const [page, plain] = document.querySelectorAll("#address-list-rows .lo-row");
+	const icon = page.firstElementChild;
+	assert.equal(icon.tagName.toLowerCase(), "svg");
+	assert.equal(icon.getAttribute("class"), "lo-row-icon");
+	assert.equal(icon.getAttribute("aria-hidden"), "true");
+	assert.equal(icon.querySelectorAll("rect, path").length, 4);
+	assert.equal(
+		page.querySelector(".lo-row-text").textContent,
+		"lop://extensions",
+	);
+	assert.equal(page.querySelector(".lo-row-title").textContent, "Extensions");
+	assert.equal(plain.querySelector("svg"), null);
+});
+
 test("a range that does not fit the text paints plain text, never throws", () => {
 	apply(model([{ text: "abc", title: "", isolate: { start: 2, end: 9 } }]));
 	const [span] = rowEls();

@@ -59,6 +59,32 @@ import {
  * affordance live.
  */
 const VIEWPORT = "[data-radix-scroll-area-viewport]";
+
+/**
+ * How many state writes the strip may make inside ONE synchronous burst (one
+ * task: a commit plus the layout effects it cascades into) before it defers the
+ * rest to the next frame.
+ *
+ * WHY A BUDGET AND NOT ONLY "WRITE WHEN CHANGED" (P0, 2026-11-10: Team Bridge
+ * channels and DMs replaced the whole window with React error #185). The
+ * measure pass and the correction already refuse to write what they wrote last,
+ * which settles every layout that HAS a fixed point. A layout without one is
+ * still possible in a real browser: a row whose height depends on the strip's
+ * own size (the scrollbar appearing narrows every row, which re-wraps it, which
+ * changes the size again; fractional heights rounding to alternating pixels at
+ * a non-integer zoom). Then measure -> setState -> correct scrollTop -> new
+ * range -> measure is a SYNCHRONOUS layout-effect cycle, and React aborts the
+ * whole tree after 50 nested updates. `scripts/team-bridge-window-update-depth
+ * .test.mjs` drives exactly that geometry and threw "Maximum update depth
+ * exceeded" before this budget existed.
+ *
+ * Past the budget the write is not dropped - it is moved to the next animation
+ * frame, one per frame. A layout that does settle is unaffected (it settles in
+ * a handful of writes, far below the budget); one that never settles costs one
+ * render per frame instead of crashing the window. 12 leaves React's limit of 50
+ * plenty of room for the rest of the page's own nested updates.
+ */
+const LAYOUT_BURST_BUDGET = 12;
 const ITEM = "[data-window-item]";
 const TRAILING = "[data-window-spacer='after']";
 
@@ -116,12 +142,51 @@ export function useTimelineWindow({
 	   notification re-renders the list even when nothing moved - which is the
 	   shape of a feedback loop once anything else writes the scroll position. */
 	const committed = useRef({ top: 0, height: 0 });
-	const commitScroll = useCallback((top: number, height: number) => {
-		if (committed.current.top === top && committed.current.height === height)
-			return;
-		committed.current = { top, height };
-		setScroll({ top, height });
+	/* The burst counter behind LAYOUT_BURST_BUDGET. Reset by a macrotask, which
+	   only runs once React has finished the synchronous cascade it belongs to. */
+	const burst = useRef({ writes: 0, resetPending: false });
+	const withinBurst = useCallback(() => {
+		const current = burst.current;
+		if (!current.resetPending) {
+			current.resetPending = true;
+			setTimeout(() => {
+				current.writes = 0;
+				current.resetPending = false;
+			}, 0);
+		}
+		current.writes += 1;
+		return current.writes <= LAYOUT_BURST_BUDGET;
 	}, []);
+	/* At most one deferred write of each kind per frame; the frame reads the
+	   LATEST values when it runs, so a deferral never applies a stale one. */
+	const deferredScroll = useRef(0);
+	const deferredMeasure = useRef(0);
+	useEffect(
+		() => () => {
+			if (deferredScroll.current !== 0)
+				cancelAnimationFrame(deferredScroll.current);
+			if (deferredMeasure.current !== 0)
+				cancelAnimationFrame(deferredMeasure.current);
+		},
+		[],
+	);
+	const commitScroll = useCallback(
+		(top: number, height: number) => {
+			if (committed.current.top === top && committed.current.height === height)
+				return;
+			committed.current = { top, height };
+			if (withinBurst()) {
+				setScroll({ top, height });
+				return;
+			}
+			if (deferredScroll.current !== 0) return;
+			deferredScroll.current = requestAnimationFrame(() => {
+				deferredScroll.current = 0;
+				setScroll({ ...committed.current });
+			});
+		},
+		[withinBurst],
+	);
 	const viewport = useRef<HTMLElement | null>(null);
 	/*
 	 * HAS ANYTHING MOVED THIS STRIP YET? Set SYNCHRONOUSLY in the scroll handler,
@@ -304,8 +369,18 @@ export function useTimelineWindow({
 			heights.current.set(key, height);
 			changed = true;
 		}
-		if (changed) setMeasuredVersion((version) => version + 1);
-	}, [listRef]);
+		if (!changed) return;
+		// The heights are already recorded; only the re-render is budgeted.
+		if (withinBurst()) {
+			setMeasuredVersion((version) => version + 1);
+			return;
+		}
+		if (deferredMeasure.current !== 0) return;
+		deferredMeasure.current = requestAnimationFrame(() => {
+			deferredMeasure.current = 0;
+			setMeasuredVersion((version) => version + 1);
+		});
+	}, [listRef, withinBurst]);
 
 	/*
 	 * MEASURED ON THE THINGS THAT CAN CHANGE WHAT IS MOUNTED, NEVER ON THE

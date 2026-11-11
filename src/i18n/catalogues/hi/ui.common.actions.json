@@ -51,5 +51,6 @@
 	"ui.common.actions.configuration_updated": "कॉन्फ़िगरेशन अपडेट हुआ",
 	"ui.common.actions.system_prompt_updated": "सिस्टम प्रॉम्प्ट अपडेट हुआ",
 	"ui.common.actions.credential_updated": "क्रेडेंशियल “{key}” सफलतापूर्वक अपडेट हुआ",
-	"ui.common.actions.clear": "साफ़ करें"
+	"ui.common.actions.clear": "साफ़ करें",
+	"ui.common.actions.actions_for_name": "{name} की कार्रवाइयाँ"
 }

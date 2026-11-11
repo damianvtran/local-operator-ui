@@ -820,37 +820,35 @@ test("the pane's single claim, over every combination of the rule's inputs", asy
 	}
 });
 
-test("the pane paints nothing of a CACHED conversation until its page lands", async (t) => {
+test("the pane paints a CACHED conversation's rows at once, and holds only when it has nothing", async (t) => {
 	/*
-	 * The sixth axis, and the operator's report that made it one: opening a
-	 * conversation this window had already seen painted the cached rows in the
-	 * click's own frame, the readings strip ~67 ms later and the caption's removal
-	 * with it - "things seem to load at different times ... everything should load
-	 * in one solid paint instead of incrementally". Rows that are the cache's while
-	 * a page is owed are therefore held, not painted:
+	 * The sixth axis, REVERSED (operator report, 2026-11-10: "when you switch
+	 * sessions ... you actually see the full blank session history ... it feels
+	 * slow because it's just blank, and then it loads up after a second or
+	 * two"). The earlier ruling (2026-09-26, "everything should load in one solid
+	 * paint") held a cached conversation's rows behind the placeholder until the
+	 * snapshot landed. Measured on the shipped app the snapshot takes a median
+	 * of 0.96 s (283 switches, p90 1.9 s), so the hold turned every revisit into
+	 * a second of nothing, for a pane whose rows the window already had. The
+	 * rule now:
 	 *
-	 * - the hold is TRUE for a quiet pane at any status, owed, with cached rows;
-	 * - it is FALSE the moment the page lands (no page owed), which is when the
-	 *   rows, the readings and the caption-less transcript arrive in ONE commit;
-	 * - it is FALSE while the pane has a send of its own admitted (the wait line
-	 *   outranks it) or a statement of its own (the notice, the reconnecting
-	 *   line) - the same two exclusions every other row of the matrix has;
-	 * - and a pane with records never collapses out of the layout, so the band
-	 *   cannot take the free height for a greeting while anything is held.
-	 *
-	 * `stale` with no page owed is a store-unreachable pair (the page's own commit
-	 * clears the flag, `use-canonical-session.ts:3128`) and is asserted anyway, for
-	 * the same reason the failure rows are: the decision is total. It must paint
-	 * the rows - a pane that has an answer and still holds would be a spinner over
-	 * content nobody is waiting for.
+	 * - a cached paint is PAINTED while its page is owed, at every status the
+	 *   pane would otherwise hold at; the caption says what it is, and the
+	 *   page's own commit replaces it;
+	 * - the placeholder is for the pane with NOTHING to paint: no records at all
+	 *   and a page owed (asserted in the matrix above, unchanged);
+	 * - the two exclusions every other row has stand: a send of the pane's own
+	 *   admitted, and a statement of its own (the notice, the reconnecting
+	 *   line), neither of which ever held here;
+	 * - and a pane with records never collapses out of the layout.
 	 */
 	const CACHED = [
 		// status, owed, admitted, hold
-		["connecting", true, false, true],
+		["connecting", true, false, false],
 		["connecting", true, true, false],
 		["connecting", false, false, false],
 		["connecting", false, true, false],
-		["live", true, false, true],
+		["live", true, false, false],
 		["live", true, true, false],
 		["live", false, false, false],
 		["live", false, true, false],
@@ -858,7 +856,7 @@ test("the pane paints nothing of a CACHED conversation until its page lands", as
 		["reconnecting", true, true, false],
 		["reconnecting", false, false, false],
 		["reconnecting", false, true, false],
-		["unavailable", true, false, true],
+		["unavailable", true, false, false],
 		["unavailable", true, true, false],
 		["unavailable", false, false, false],
 		["unavailable", false, true, false],
@@ -897,47 +895,50 @@ test("the pane paints nothing of a CACHED conversation until its page lands", as
 					false,
 					"a pane with cached records never collapses out of the layout",
 				);
-				// The invariant the matrix above states, on this axis too: the
-				// placeholder never accompanies the pane's own STATEMENT. (The stale
-				// caption is not a statement for this rule - it is the flag the hold
-				// reads - which is why `speaks` is not the term here.)
-				if (hold)
-					assert.ok(
-						status !== "reconnecting" && !view.missing,
-						"a placeholder beside the pane's own statement",
-					);
 			},
 		);
 	}
 });
 
-test("the cached paint's rows and caption are withheld in the component, not only in the rule", () => {
-	// Two facts, one file: the rule above decides, and these two gates are what
-	// makes the decision paint nothing. Both are single expressions at the sites
-	// the comment above each names, so a later edit that drops the hold from one of
-	// them fails HERE - the rule tests would stay green while the pane went back to
-	// painting its guess under a caption.
+test("the cached paint's rows paint at once and the page's arrival moves nothing", () => {
+	// The rule above decides that cached rows paint; these assertions pin what
+	// keeps that from moving the conversation when the page lands. Each is a
+	// single expression at one site, so a later edit that drops one fails HERE
+	// while the rule tests stay green. The rig that measures the movement itself
+	// is `session-switch-latency.mjs --cached-paint`.
 	const transcript = readFileSync(
 		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
 		"utf8",
 	);
-	assert.match(
+	assert.doesNotMatch(
 		transcript,
 		/\{stale && !holdPlaceholder && \(/,
-		"the stale caption must stand down while the pane holds",
+		"the stale caption must not be an in-flow row above the scroller: its removal moved the pane's top edge (33.4 px) when the page landed",
 	);
-	// The rows site carries a THIRD term since the first-paint settle
-	// (`!holdFiltering`, the window in which the record filter's own answer is
-	// owed): the expression is still one line at the one site, which is what this
-	// assertion is for - a hold dropped from the gate fails here whether it is the
-	// cached paint's or the settings read's.
+	assert.match(
+		transcript,
+		/data-lo-stale-caption=\{true\}/,
+		"the stale caption lives in the reserved foot slot",
+	);
+	// The foot slot is mounted for a stale pane: dropping `!stale` from its gate
+	// is what let the working line's 29.4 px mount push the rows up at the page.
+	assert.match(
+		transcript,
+		/\{transcript\.records\.length > 0 &&\s+!missing &&\s+!holdFiltering && \(\s+<div\s+data-lo-transcript-foot=\{true\}/,
+		"the foot slot is reserved while the paint is cached",
+	);
+	assert.match(
+		transcript,
+		/stale &&\s+!missing &&\s+!holdFiltering && <OlderHistorySlotReserve \/>/,
+		"the older-history box is reserved while the paint is cached",
+	);
+	// The rows site still carries its own gate: `holdPlaceholder` is now false for
+	// a pane with rows, and the filter hold is the term that remains.
 	assert.match(
 		transcript,
 		/\{!missing && !holdPlaceholder && !holdFiltering && \(/,
-		"the rows must be suppressed while the pane holds",
+		"the rows are still withheld for the placeholder and the settings hold",
 	);
-	// And the stop stays keyed on the painted rows, which is what the cached case
-	// needs on top of the record count.
 	assert.match(
 		transcript,
 		/transcript\.records\.length === 0 \|\| holdPlaceholder \? -1 : 0/,

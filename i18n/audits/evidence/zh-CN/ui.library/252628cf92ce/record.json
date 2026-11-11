@@ -1,0 +1,94 @@
+{
+  "locale": "zh-CN",
+  "namespaces": {
+    "ui.library": {
+      "status": "passed",
+      "result": "clean-with-findings",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.library.json",
+          "sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71"
+        },
+        "zh-CN": {
+          "path": "src/i18n/catalogues/zh-CN/ui.library.json",
+          "sha256": "180a39dfac22bc99603310ce1636212dd1b915551cfbfb782c138911b7c35b89"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.library.context.json",
+          "sha256": "f799fe911107aa1f7b83b0c026ee277d5c21ee5eba297e3ae13c2da51135cc8e"
+        }
+      },
+      "fully_audited_key_count": 1,
+      "consistency_only_key_count": 159,
+      "finding_ids": [
+        "R1-DS-F2"
+      ]
+    }
+  },
+  "audit_date": "2026-11-10",
+  "key_count": 20,
+  "fully_audited_key_count": 1,
+  "consistency_only_key_count": 159,
+  "scope": "PR #1851 delta 8a9ce1f808c266ebe9a0e924094344cea60c2c23..f04035bc3cb6a03644f8776a799e3daad93c7e58; 20-key scope: only ui.library.tag_category.type fully re-audited; 19 unchanged new keys carried from both round-1 receipts. 159 legacy keys checked only for unchanged values and key parity.",
+  "head_sha": "f04035bc3cb6a03644f8776a799e3daad93c7e58",
+  "base_sha": "0e12072d2b3",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "252628cf92ce",
+    "session": "252628cf92ce",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Served session header for 252628cf92ce: openai/gpt-6.1-sol. No fallback or model switch used.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "session": "2c2a584bc8f2",
+    "source": "Delegation identifies revision translator; manager-owned zh-CN-rev.json confirms model and exact revised value. This auditor did not translate or audit the previous value and never accessed translator session storage."
+  },
+  "policy_inputs": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    },
+    "glossary": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_s14-audits/f04035bc3cb6a03644f8776a799e3daad93c7e58/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "note": "Authorized manager-owned copy read. No binding Type/Kind translation row; one-term invariant does not in itself forbid Chinese synonyms across different English terms."
+    },
+    "expected_hashes": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_s14-audits/f04035bc3cb6a03644f8776a799e3daad93c7e58/expected-hashes.json"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "zh-CN-delta-sol-252628cf92ce.json",
+      "sha256": "ccf073e3278161e2b22ef584c364295aff8ba442856ac577d95ac4f7f4a9239c",
+      "kind": "audit_notes_not_execution_log",
+      "record_reference": "zh-CN-delta-sol-252628cf92ce.record.json"
+    },
+    {
+      "path": "zh-CN-delta-sol-252628cf92ce.audit.log",
+      "sha256": "48ee070fa30f545cbf70c19c83e286b980270746de1f2eda216930b99a2b1316",
+      "kind": "actual_execution_log",
+      "record_reference": "zh-CN-delta-sol-252628cf92ce.record.json"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "R1-DS-F2"
+    ]
+  },
+  "finding_report": "zh-CN-delta-sol-252628cf92ce.json",
+  "audit_notes_not_execution_log": false,
+  "execution_log": "zh-CN-delta-sol-252628cf92ce.audit.log",
+  "retention": {
+    "state": "scratch_handoff_only_per_explicit_read_only_task",
+    "intended_tracked_directory": "i18n/audits/evidence/zh-CN/ui.library/s14-delta-sol-252628cf92ce",
+    "manager_action_required": "Retain these three files in canonical evidence root and append audit ledger. Auditor made no repository writes.",
+    "proposed_note": "passed delta; type 种类; 19 keys carried, prior F2 minor deferred; record i18n/audits/evidence/zh-CN/ui.library/s14-delta-sol-252628cf92ce/record.json"
+  }
+}

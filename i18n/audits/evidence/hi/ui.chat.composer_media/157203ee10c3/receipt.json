@@ -1,0 +1,264 @@
+{
+  "locale": "hi",
+  "mode": "Fresh independent four-key delta audit; the four new keys audited in full, 267 namespace keys read consistency-only (parse, key parity vs English, no legacy value changed vs origin/main). Read-only worktree; no repository file edited. Allocation: fix (<2h), bounded audit only.",
+  "scope": "PR #1842 @ e5fb4310dab638f9cf428779d62539ec039a8990; origin/main..HEAD Hindi keys ui.chat.image_actions.actions, ui.chat.audio.position_label, ui.chat.composer_media.pasted_image, ui.common.actions.actions_for_name only (additions; every pre-existing value unchanged). Legacy content in the three namespaces NOT certified. English in scope: broadened scope sentence of ui.chat.composer_media.pasted_file context, checked against get-file-name.ts and attachment-encode.ts.",
+  "head_sha": "e5fb4310dab638f9cf428779d62539ec039a8990",
+  "audit_date": "2026-11-10",
+  "key_count": 271,
+  "fully_audited_key_count": 4,
+  "consistency_only_key_count": 267,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Translator model and the hi translator session (f573f85d7297) supplied by delegation in the audit brief. This auditor did not translate, review or participate in the translation of these strings."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "157203ee10c3",
+    "session": "157203ee10c3",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "Served session header for this run reports deepseek/deepseek-flash (model line in the session state). No fallback to another provider or model was disclosed to me and none was requested. I have no independent telemetry to corroborate the header.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "instance_basis": "The directory that contains this session's scratchpad is /Users/damian/.local-operator/sessions/157203ee10c3/, so instance = 157203ee10c3 (12 hex chars).",
+  "status": "passed",
+  "result": "clean",
+  "verdict": "clean",
+  "findings": [],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15",
+      "target_sha256": "2a6c484cf4b677a4fb9ba74fdbfbf74849c612b60c0a858804daf2ef4d21e03a",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.json",
+          "sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15"
+        },
+        "hi": {
+          "path": "src/i18n/catalogues/hi/ui.chat.json",
+          "sha256": "2a6c484cf4b677a4fb9ba74fdbfbf74849c612b60c0a858804daf2ef4d21e03a"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.context.json",
+          "sha256": "84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf"
+        }
+      },
+      "fully_audited_keys": [
+        "ui.chat.image_actions.actions",
+        "ui.chat.audio.position_label"
+      ],
+      "consistency_only_key_count": 206,
+      "findings": []
+    },
+    "ui.chat.composer_media": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae",
+      "target_sha256": "34812ced782b34fd569daaf7ef04d83efa9782ac09283c741601946bed6bfe15",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.json",
+          "sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae"
+        },
+        "hi": {
+          "path": "src/i18n/catalogues/hi/ui.chat.composer_media.json",
+          "sha256": "34812ced782b34fd569daaf7ef04d83efa9782ac09283c741601946bed6bfe15"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.context.json",
+          "sha256": "a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b"
+        }
+      },
+      "fully_audited_keys": [
+        "ui.chat.composer_media.pasted_image"
+      ],
+      "consistency_only_key_count": 8,
+      "findings": []
+    },
+    "ui.common.actions": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b",
+      "target_sha256": "48b22fb6b8c8bf490fb205558873471e87a77a72d59fe42d7c69f6bb433c4056",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.json",
+          "sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b"
+        },
+        "hi": {
+          "path": "src/i18n/catalogues/hi/ui.common.actions.json",
+          "sha256": "48b22fb6b8c8bf490fb205558873471e87a77a72d59fe42d7c69f6bb433c4056"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+          "sha256": "24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d"
+        }
+      },
+      "fully_audited_keys": [
+        "ui.common.actions.actions_for_name"
+      ],
+      "consistency_only_key_count": 53,
+      "findings": []
+    }
+  },
+  "per_key_checks": [
+    {
+      "key": "ui.chat.composer_media.pasted_image",
+      "source": "Pasted image",
+      "current_text": "पेस्ट की गई तस्वीर",
+      "placeholders": {
+        "source": [],
+        "target": [],
+        "identical": true
+      },
+      "mechanical": "No placeholder on either side; identical brace balance; no ICU construct; no markup or backticks; NFC; no NBSP/ZW*/bidi/control characters; no leading/trailing whitespace; no trailing stop; 18 codepoints. Sibling pasted_file renders the same construction ('पेस्ट की गई फ़ाइल'), so the feminine participle गई agrees with तस्वीर exactly as it agrees with फ़ाइल.",
+      "meaning": "Fallback name/caption for an image data URI with no usable name, invalid percent encoding included. 'पेस्ट की गई तस्वीर' = 'pasted image' with no extension, no MIME identifier and no placeholder, as the context note demands.",
+      "terminology": "तस्वीर is the catalogue's established word for a user-facing image (ui.chat.canonical.image_label = 'तस्वीर'; ui.chat.image_actions.copy_image/copy_image_url/expand_image all तस्वीर). पेस्ट is the living loan the sibling key already uses. No divergence from the hi style guide's kept-loan list (टोकन, कैश, फ़ाइल ...).",
+      "fit": "No maxCells/maxChars on this key. 18 codepoints / 15 base clusters, shorter than the adjacent 'पेस्ट की गई फ़ाइल' (20-cluster budget on pasted_file); no overflow concern for a 100px tile caption.",
+      "findings": [],
+      "assessment": "Clean. Meaning, register and the sibling construction all match."
+    },
+    {
+      "key": "ui.common.actions.actions_for_name",
+      "source": "Actions for {name}",
+      "current_text": "{name} की कार्रवाइयाँ",
+      "placeholders": {
+        "source": [
+          [
+            "name",
+            "string"
+          ]
+        ],
+        "target": [
+          [
+            "name",
+            "string"
+          ]
+        ],
+        "identical": true
+      },
+      "mechanical": "Placeholder {name} byte-exact and alone in its braces; no ICU argument, plural or select; no markup; NFC; no invisible characters; single U+0020 on each side of the placeholder; no trailing stop. Identical to the source's one placeholder.",
+      "meaning": "Names the asset whose actions menu will open; it is not a command to act on the file. The postpositional genitive carries the relation, and {name} is inserted verbatim — never translated or declined.",
+      "grammar_for_any_insert": "की agrees with कार्रवाइयाँ (feminine plural), NOT with the inserted name, and the phrase is postpositional. Verified by splicing ten arbitrary names (Latin, Devanagari, CJK, spaces, quotes, apostrophe, parentheses, comma, a 120-char name, a name that is itself a Hindi genitive phrase 'बैठक की रिकॉर्डिंग.mp3'): every result was 'की कार्रवाइयाँ'-terminated with single spacing and no artifact. No case/gender/number of the inserted string can break it.",
+      "terminology": "Byte-identical to the existing hi value for the SAME English string: ui.chat.canonical.link_toolkit.actions_for = '{name} की कार्रवाइयाँ'. The same '{possessor} की कार्रवाइयाँ' menu form is the catalogue's established one (ui.shell.sidebar_navigation.row_actions '{name} की कार्रवाइयाँ'; ui.projects project_board.actions_for_displayname; ui.browser.browser_tab_strip.actions_for; ui.teamBridge.actions.label 'संदेश की कार्रवाइयाँ'). The alternative '{name} के लिए कार्रवाइयाँ' also exists in hi (ui.library.menu.asset_actions_label) — so both constructions are native here and the catalogue is not uniform; this key follows the byte-identical precedent for its own English sentence, which is the stronger consistency argument. Not a divergence.",
+      "fit": "No maxCells/maxChars. Tooltip/aria-label; 21 codepoints.",
+      "findings": [],
+      "assessment": "Clean. Byte-identical to the existing rendering of the same English phrase, and the construction survives any inserted user string."
+    },
+    {
+      "key": "ui.chat.image_actions.actions",
+      "source": "Image actions",
+      "current_text": "तस्वीर की कार्रवाइयाँ",
+      "placeholders": {
+        "source": [],
+        "target": [],
+        "identical": true
+      },
+      "mechanical": "No placeholder, no ICU, no markup, NFC, no invisible characters, no trailing stop; 21 codepoints.",
+      "meaning": "Generic label and accessible-name fallback for an unnamed image's overflow menu. Names the menu, not an action; the named-image case correctly uses the separate actions_for_name key.",
+      "terminology": "Byte-identical to the existing hi value for the SAME English string 'Image actions': ui.canvas.files.imageActions = 'तस्वीर की कार्रवाइयाँ' (and ui.canvas.finder_files_view...imageactions). Same noun तस्वीर as the rest of image_actions (copy_image, copy_image_url, expand_image).",
+      "fit": "No maxCells/maxChars. Accessible name/tooltip; sanity only.",
+      "findings": [],
+      "assessment": "Clean. Byte-identical to an existing precedent for the identical English string."
+    },
+    {
+      "key": "ui.chat.audio.position_label",
+      "source": "{label} position",
+      "current_text": "{label} की प्लेबैक स्थिति",
+      "placeholders": {
+        "source": [
+          [
+            "label",
+            "string"
+          ]
+        ],
+        "target": [
+          [
+            "label",
+            "string"
+          ]
+        ],
+        "identical": true
+      },
+      "mechanical": "Placeholder {label} byte-exact, alone in its braces, no ICU construct, single U+0020 after it, no markup, NFC, no invisible characters, no trailing stop. Source and target have the same one placeholder.",
+      "meaning": "Accessible name of a clip's seek slider: names the playback position of THIS clip, not a play/pause action. 'की प्लेबैक स्थिति' = '...'s playback position'. The clip label is retained verbatim, per the context note.",
+      "why_playback_is_stated": "The hi word स्थिति alone means status/state — 19 existing hi values use it that way ('कनेक्शन की स्थिति', 'पढ़ने की स्थिति', 'हब की स्थिति' ...). Rendering '{label} की स्थिति' alone would read as the clip's STATUS and would be wrong for a seek slider, so stating प्लेबैक is a required disambiguation, not an added idea: the English context note says this string 'names playback position'. It also uses the catalogue's own existing word for playback position, ui.chat.attachments.playback_position = 'प्लेबैक की स्थिति'.",
+      "linking_particle": "The new value composes the compound as 'प्लेबैक स्थिति' while the standalone key has 'प्लेबैक की स्थिति'. Both use the same two terms; only the linking particle differs, and the pinned UI glossary's rule is explicit: 'Preferred renderings are citation forms. Inflect them naturally in a sentence ... A row is violated by a different term, not by a grammar form.' Nested 'की ... की' would be clunky here, so carrying one genitive from {label} is the natural form. Not a term divergence and not a finding.",
+      "grammar_for_any_insert": "की agrees with स्थिति (feminine) and {label} is a bare possessor, so any inserted title works, including one that already ends in a genitive phrase. Verified by the same ten-name splice: every result was 'की प्लेबैक स्थिति'-terminated, single-spaced, no artifact.",
+      "fit": "No maxCells/maxChars on this key (audio.play_label/pause_label carry maxCells 40; this one does not). 25 codepoints / 21 base clusters; accessible name only.",
+      "findings": [],
+      "assessment": "Clean. Accurate, disambiguating, and built from the locale's own existing term."
+    }
+  ],
+  "considered_and_cleared": [
+    {
+      "item": "ui.common.actions.actions_for_name could have used the '{name} के लिए कार्रवाइयाँ' form that also exists in hi (ui.library.menu.asset_actions_label), matching the English preposition 'for'.",
+      "cleared_because": "The identical English string '{name}' + 'Actions for {name}' already renders as '{name} की कार्रवाइयाँ' at ui.chat.canonical.link_toolkit.actions_for, and the '{possessor} की कार्रवाइयाँ' menu form dominates the catalogue. Both are native; following the byte-identical precedent is the defensible choice, not a weaker one."
+    },
+    {
+      "item": "ui.chat.audio.position_label says 'प्लेबैक स्थिति' where the existing standalone key says 'प्लेबैक की स्थिति'.",
+      "cleared_because": "Same two terms, one linking particle different — the pinned glossary counts that as a grammar form, not a different term, and it is what keeps the nested genitive natural."
+    },
+    {
+      "item": "ui.chat.audio.position_label is slightly more explicit than the English ('playback position' vs 'position').",
+      "cleared_because": "Necessary in hi to avoid reading as status, which is what स्थिति means everywhere else in this catalogue; the English context note itself defines it as playback position."
+    },
+    {
+      "item": "pasted_file context note claims about getFileName/attachment-encode behaviour.",
+      "cleared_because": "Read the two source files: the non-image `data:` branch returns pasted_file whether or not a MIME type is present and also on a decodeURIComponent throw; attachment-encode documents that synthetic names become upload metadata while valid names and bytes are untouched. The broadened sentence is accurate."
+    }
+  ],
+  "hash_check": {
+    "expected_file": "~/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/expected-hashes.json",
+    "comparisons": 9,
+    "mismatches": [],
+    "result": "all 9 hashes (en, hi and en context for the three namespaces) match the expected file"
+  },
+  "glossary_conformance": {
+    "checked_against": "~/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md (manager-owned byte copy)",
+    "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "byte_identical_to": "~/local-operator/i18n/glossary.md",
+    "line_count": 173,
+    "verdict": "no glossary row is engaged by these four keys beyond the style guide's kept-loan and register rules; no violation found. Style guide read: ~/local-operator/i18n/style-guides/hi.md."
+  },
+  "invisible_characters": {
+    "found": [],
+    "note": "Screened every codepoint of all four hi values for C0/C1 controls, NBSP, narrow NBSP, figure/word spaces, ZWSP/ZWNJ/ZWJ, LRM/RLM and bidi embedding/isolate controls: none present. The hi guide requires no such characters here and prescribes 'no ZWJ/ZWNJ where the orthography does not require them'; the only separators used are U+0020."
+  },
+  "rtl": "Not applicable — hi is Devanagari, left-to-right. No bidi or mirroring check performed or claimed.",
+  "audit_notes_not_execution_log": true,
+  "execution_log": "hi-ds-157203ee10c3.audit.log",
+  "validators_run": {
+    "generate --check": "PASS — src/i18n/keys.gen.ts byte-identical to a fresh generation",
+    "check-duplicates": "PASS — 1400 files scanned, 0 duplicate keys",
+    "context-parity": "PASS — every English key covered apart from 131 allowed gaps in 4 namespaces",
+    "check-strings": "PASS — 1649 files scanned, 0 literals at or below baseline",
+    "ledger-check": "FAILED — 64 findings across 1085 ledger entries, for every locale including hi; these are stale/not-yet-recorded audit rows because the English source moved and the locale files changed at this head. Not a translation defect in these keys, and the expected pre-recording state; the manager's ledger-assemble runs clear them. I did not run ledger-assemble (it writes tracked files)."
+  },
+  "second_pass": "Performed: a second, differently-angled pass that spliced ten arbitrary user strings (Latin, Devanagari, CJK, quotes, apostrophe, parentheses, comma, 120 chars, and a Hindi genitive phrase) through both placeholder templates, and re-read the two placeholder-free keys against their existing-catalogue precedents. It changed no verdict and produced no finding; the reasoning it checked is recorded per key above.",
+  "unverified": [
+    "No rendered UI, browser, screenshot or screen-reader proof: the brief forbids builds/servers, so no pixel-fit, font-fallback or assistive-technology output is claimed. All four keys lack maxCells/maxChars.",
+    "No production ICU parser/formatter, CLDR runtime or Node formatter exercised on these strings; ICU statements are structural only (no plural/select/arguments on either side).",
+    "Repository validator output quoted above is what the commands printed in this session; no clean-view (git archive) re-run and no CI run observed by me.",
+    "ledger-assemble not run and no ledger row written — it writes tracked files, which this read-only audit forbids; the command and row payload are handed to the manager in the audit log.",
+    "Translator independence rests on this being a fresh auditor session that neither wrote nor reviewed the translations; the translator session id was supplied by the brief, not verified by me.",
+    "The served model above is what the session header reports; I cannot independently corroborate the provider's routing."
+  ],
+  "receipt_contract_review": "Root and per-namespace field sets follow the reference receipt _s10-audits/fd09d8f/fr-sol-e23a48ff2216.json (locale, mode, scope, head_sha, audit_date, key_count, translator, auditor, status, result, verdict, findings, severity_counts, namespaces{} with status/result/source_sha256/target_sha256/input_hashes/findings). Each namespace block carries an explicit findings: [] as scripts/i18n/ledger-rules.mjs requires, and its source_sha256/target_sha256 are the two keys that file reads for a namespaced receipt. All three deliverables were parsed back with python3 json to confirm validity.",
+  "retention": {
+    "state": "scratch_handoff_only_per_explicit_read_only_task",
+    "intended_tracked_directory": "i18n/audits/evidence/hi/ui.chat/ + i18n/audits/evidence/hi/ui.chat.composer_media/ + i18n/audits/evidence/hi/ui.common.actions/ (one namespace per record, per the canonical root layout)",
+    "intended_receipt_path": "i18n/receipts/157203ee10c3.json (byte copy of this receipt; ledger-check requires a repo-relative path under i18n/receipts/)",
+    "manager_action_required": "Copy this receipt into i18n/receipts/ and run scripts/i18n/ledger-assemble.mjs once per namespace with the argument set in the audit log; retain the record and companions under the canonical evidence root.",
+    "proposed_note": "clean; 4 keys, 0 findings; evidence i18n/audits/evidence/hi/*/s12-ds-157203ee10c3/"
+  }
+}

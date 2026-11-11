@@ -274,6 +274,14 @@ function exempt(file, name, index, why, site, noEnv) {
 
 const APP_SPAWN_SITES = [
 	guarded(
+		"scripts/extension-native-proof.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"The isolated extension-manager proof must not send OS banners.",
+		/const env = withNotificationsOff\(\{/,
+	),
+	guarded(
 		"scripts/browser-focus-stability-proof.mjs",
 		"spawn",
 		2,
@@ -536,6 +544,13 @@ const APP_SPAWN_SITES = [
 		/(?:\{|,)\s*env\s*,/,
 		"boots the BUILT app headless on a scratch profile to photograph the notifications group headers and read-state switch at the user's glass setting - a real app with a real backend, so the notification it raises for its own seeding is exactly the banner the kill switch exists to suppress",
 		/withNotificationsOff\(\{/,
+	),
+	exempt(
+		"scripts/extension-native-proof.mjs",
+		"execFileSync",
+		1,
+		"asks the Electron binary for its Chromium version so the store serves a compatible CRX: `ELECTRON_RUN_AS_NODE=1` with `-p` makes Electron a plain Node interpreter that evaluates one expression and exits - no app main, no window, no `Notification` - so the path that reaches the operator's Notification Center is not reachable from it. The app boot in this rig is `spawn #1`, guarded above",
+		/ELECTRON_RUN_AS_NODE:\s*"1"/,
 	),
 	exempt(
 		"scripts/session-cookie-electron.test.mjs",

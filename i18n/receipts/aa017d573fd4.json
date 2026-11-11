@@ -1,0 +1,256 @@
+{
+  "locale": "fr",
+  "mode": "Fresh independent four-key translation delta audit; allocation fix (<2h), read-only frozen worktree. Glossary/style and neighbouring terms checked.",
+  "scope": "PR #1842 @ e5fb4310dab638f9cf428779d62539ec039a8990; French four-key delta only. 271 total keys, fully_audited_key_count = 4; 267 legacy keys consistency_only, not semantically certified. English pasted_file metadata scope also checked.",
+  "head_sha": "e5fb4310dab638f9cf428779d62539ec039a8990",
+  "audit_date": "2026-11-10",
+  "key_count": 271,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Delegation supplied translator session fr 2ddc9a08181b and model; this fresh auditor session did not translate or participate in translation."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "aa017d573fd4",
+    "session": "aa017d573fd4",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Served session header: openai/gpt-6.1-sol; session aa017d573fd4. No fallback used.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "status": "passed",
+  "result": "clean",
+  "verdict": "clean",
+  "findings": [],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15",
+      "target_sha256": "b524ab1132756d282986a666f82c25465a26dae0aa85ff77fe696812d0d08c96",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.json",
+          "sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15"
+        },
+        "fr": {
+          "path": "src/i18n/catalogues/fr/ui.chat.json",
+          "sha256": "b524ab1132756d282986a666f82c25465a26dae0aa85ff77fe696812d0d08c96"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.context.json",
+          "sha256": "84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf"
+        }
+      },
+      "findings": []
+    },
+    "ui.chat.composer_media": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae",
+      "target_sha256": "4c2fcaf7d6bf9a3adc63c32126e1834e775e837b426b684a1edf2236621cb198",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.json",
+          "sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae"
+        },
+        "fr": {
+          "path": "src/i18n/catalogues/fr/ui.chat.composer_media.json",
+          "sha256": "4c2fcaf7d6bf9a3adc63c32126e1834e775e837b426b684a1edf2236621cb198"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.context.json",
+          "sha256": "a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b"
+        }
+      },
+      "findings": []
+    },
+    "ui.common.actions": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b",
+      "target_sha256": "1f375db06df660163bdf5fa126e9ef0f94ff25ba64ed209be872ab04353f3e42",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.json",
+          "sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b"
+        },
+        "fr": {
+          "path": "src/i18n/catalogues/fr/ui.common.actions.json",
+          "sha256": "1f375db06df660163bdf5fa126e9ef0f94ff25ba64ed209be872ab04353f3e42"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+          "sha256": "24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d"
+        }
+      },
+      "findings": []
+    }
+  },
+  "per_key_checks": [
+    {
+      "key": "ui.chat.image_actions.actions",
+      "source": "Image actions",
+      "current_text": "Actions sur l’image",
+      "placeholder_integrity": {
+        "matches_english": true,
+        "arguments": [],
+        "arbitrary_inserted_text_review": "No placeholder."
+      },
+      "invisible_characters": [],
+      "findings": [],
+      "assessment": "Actions sur l’image is idiomatic and matches the direct existing asset-menu construction Actions sur le fichier. Image matches Copier l’image / Agrandir l’image; U+2019 apostrophe follows fr guide line 81. No inserted string, unsafe meaning or width concern.",
+      "plural_select": []
+    },
+    {
+      "key": "ui.chat.audio.position_label",
+      "source": "{label} position",
+      "current_text": "Position de {label}",
+      "placeholder_integrity": {
+        "matches_english": true,
+        "arguments": [
+          "label"
+        ],
+        "arbitrary_inserted_text_review": "Reviewed Latin, CJK, vowel-initial titles, plural-looking titles and embedded quote/punctuation examples as verbatim indeclinable names; no agreement with the slot."
+      },
+      "invisible_characters": [],
+      "findings": [],
+      "assessment": "Position de {label} names a clip-specific seek position, not playback control. Position matches existing Position de lecture. The indeclinable clip-title slot needs no agreement, and de remains a title-introducing construction before verbatim filenames (not a demand to decline the title). No added quotes collide with user punctuation.",
+      "plural_select": []
+    },
+    {
+      "key": "ui.chat.composer_media.pasted_image",
+      "source": "Pasted image",
+      "current_text": "Image collée",
+      "placeholder_integrity": {
+        "matches_english": true,
+        "arguments": [],
+        "arbitrary_inserted_text_review": "No placeholder."
+      },
+      "invisible_characters": [],
+      "findings": [],
+      "assessment": "Image collée preserves pasted-image fallback meaning and matches existing Fichier collé, with correct feminine agreement on the fixed noun image. Short 12-character filename/caption; no added extension or MIME token.",
+      "plural_select": []
+    },
+    {
+      "key": "ui.common.actions.actions_for_name",
+      "source": "Actions for {name}",
+      "current_text": "Actions sur {name}",
+      "placeholder_integrity": {
+        "matches_english": true,
+        "arguments": [
+          "name"
+        ],
+        "arbitrary_inserted_text_review": "Reviewed Latin, CJK, vowel-initial titles, plural-looking titles and embedded quote/punctuation examples as verbatim indeclinable names; no agreement with the slot."
+      },
+      "invisible_characters": [],
+      "findings": [],
+      "assessment": "Actions sur {name} uses the direct file-menu precedent Actions sur le fichier; sur introduces an indeclinable filename without gender/number/case agreement. Other general menus use Actions pour {name}, but that is not a contradictory asset-specific term or binding preposition rule. No quoted wrapper to collide with user quotes.",
+      "plural_select": []
+    }
+  ],
+  "remediation_verification": {
+    "status": "Fresh audit, not a remediation round; no findings.",
+    "prior_findings": [],
+    "fully_audited_key_count": 4,
+    "consistency_only_key_count": 267,
+    "namespace_consistency": {
+      "ui.chat": {
+        "total_key_count": 208,
+        "fully_audited_key_count": 2,
+        "consistency_only_key_count": 206,
+        "key_parity": true,
+        "versus_origin_main": {
+          "en": {
+            "removed": [],
+            "changed": [],
+            "added": [
+              "ui.chat.audio.position_label",
+              "ui.chat.image_actions.actions"
+            ]
+          },
+          "fr": {
+            "removed": [],
+            "changed": [],
+            "added": [
+              "ui.chat.audio.position_label",
+              "ui.chat.image_actions.actions"
+            ]
+          }
+        }
+      },
+      "ui.chat.composer_media": {
+        "total_key_count": 9,
+        "fully_audited_key_count": 1,
+        "consistency_only_key_count": 8,
+        "key_parity": true,
+        "versus_origin_main": {
+          "en": {
+            "removed": [],
+            "changed": [],
+            "added": [
+              "ui.chat.composer_media.pasted_image"
+            ]
+          },
+          "fr": {
+            "removed": [],
+            "changed": [],
+            "added": [
+              "ui.chat.composer_media.pasted_image"
+            ]
+          }
+        }
+      },
+      "ui.common.actions": {
+        "total_key_count": 54,
+        "fully_audited_key_count": 1,
+        "consistency_only_key_count": 53,
+        "key_parity": true,
+        "versus_origin_main": {
+          "en": {
+            "removed": [],
+            "changed": [],
+            "added": [
+              "ui.common.actions.actions_for_name"
+            ]
+          },
+          "fr": {
+            "removed": [],
+            "changed": [],
+            "added": [
+              "ui.common.actions.actions_for_name"
+            ]
+          }
+        }
+      }
+    },
+    "hash_binding": "All 9 shasum -a 256 input hashes match expected-hashes.json at frozen head.",
+    "policy_sources": [
+      "/Users/damian/local-operator/i18n/style-guides/fr.md",
+      "/Users/damian/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md"
+    ],
+    "glossary_conformance": "Checked manager-owned glossary.md copy with SHA-256 0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8; no conflicting glossary term in the four messages. Filename slots remain verbatim.",
+    "executed_checks": [
+      "Actual command outputs in companion audit.log; scoped Node repo validator exports, Python JSON/key/placeholder/invisible-character checks, shasum, git baseline checks."
+    ],
+    "typography_fit": "Four new French values have no NBSP, narrow NBSP, ZW or bidi controls. The only non-ASCII punctuation is required U+2019 in l’image. Sentence case, no trailing punctuation. No numeric/CLDR/markup/code constructs. No enforced width hints for these four keys; no rendered fit proof.",
+    "metadata_scope": "get-file-name.ts lines 24–36 returns pasted_file for non-image data URIs missing a usable name or with invalid percent encoding, regardless of MIME. attachment-encode.ts lines 155–175 uses getFileName for upload metadata and passes attachment unchanged as dataUrl; lines 184–188 prefer stored.name. Broadened pasted_file context is accurate.",
+    "out_of_scope_pre_existing": [
+      "First strict namespaceGap probe exited 1 because ui.chat has six legacy context gaps. Follow-up read of context-allowance.json and origin/main sidecar proved the exact six gaps pre-existing and allowlisted. Scoped allowance-aware rerun exited 0; no new key lacks context."
+    ]
+  },
+  "unverified": [
+    "No builds, installs, servers, browser, screen-reader or pixel-fit validation; linguistic sanity only for accessible names/tooltips/caption.",
+    "Scoped repo validator functions (duplicate detector and context parity with existing allowance) executed; full pnpm check-i18n suite, production ICU formatter, ledger writes, PR comments and tracked retention not executed.",
+    "Read-only assignment: manager must retain the three scratch artifacts in the canonical tracked evidence root and integrate any required ledger entry."
+  ],
+  "receipt_contract_review": "Root field sets and namespace/auditor/translator block field sets copied from the required model receipt; paths and hashes independently recomputed. Both generated JSON artifacts parsed back with Python.",
+  "audit_notes_not_execution_log": true
+}
