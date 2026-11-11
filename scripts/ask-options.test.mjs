@@ -77,7 +77,7 @@ const bundle = await build({
 			'export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";',
 			'export { QuestionDock, questionDockHint, questionKeyOf } from "./src/renderer/src/features/chat/components/trace/question-dock";',
 			'export { askOptionKeyIntent } from "./src/renderer/src/features/chat/components/trace/ask-options";',
-			'export { AskRecommendedBadge } from "./src/renderer/src/features/chat/components/ask-recommended";',
+			'export { AskRecommendedBadge, recommendedIndexes } from "./src/renderer/src/features/chat/components/ask-recommended";',
 			'export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -181,6 +181,7 @@ const {
 	askOptionKeyIntent,
 	AskOptions,
 	AskRecommendedBadge,
+	recommendedIndexes,
 	resolveNumericAnswer,
 	answerValue,
 	answerReport,
@@ -1942,6 +1943,56 @@ test("recommended is optional, and marks only a real index", () => {
 	assert.deepEqual(marked({ recommended: 9 }), [false, false, false]);
 	assert.deepEqual(marked({ recommended: -1 }), [false, false, false]);
 	assert.deepEqual(marked({ recommended: 1.5 }), [false, false, false]);
+});
+
+test("several recommended rows are each marked, and an old payload marks one", () => {
+	const marked = (props) =>
+		buttonsOf(render(props)).map((button) =>
+			accessibleText(button).join(" ").includes("Recommended"),
+		);
+	// The set arrives beside `recommended` (the first row, always 0).
+	assert.deepEqual(marked({ recommended: 0, recommendedAll: [0, 1] }), [
+		true,
+		true,
+		false,
+	]);
+	assert.deepEqual(marked({ recommended: 0, recommendedAll: [0, 1, 2] }), [
+		true,
+		true,
+		true,
+	]);
+	// A payload without the set is exactly the single-badge reading it always was.
+	assert.deepEqual(marked({ recommended: 0 }), [true, false, false]);
+	assert.deepEqual(marked({ recommended: 0, recommendedAll: null }), [
+		true,
+		false,
+		false,
+	]);
+	// Out-of-range entries are dropped, not clamped to the last row.
+	assert.deepEqual(marked({ recommended: 0, recommendedAll: [0, 7, -1] }), [
+		true,
+		false,
+		false,
+	]);
+	// Nothing recommended, nothing marked, whatever a stray set says.
+	assert.deepEqual(marked({ recommendedAll: [9] }), [false, false, false]);
+});
+
+test("recommendedIndexes validates each entry and never clamps", () => {
+	const set = (...args) => [...recommendedIndexes(...args)].sort();
+	assert.deepEqual(set(0, [0, 1], 3), [0, 1]);
+	assert.deepEqual(set(0, undefined, 3), [0]);
+	assert.deepEqual(set(0, null, 3), [0]);
+	assert.deepEqual(set(null, undefined, 3), []);
+	assert.deepEqual(set(undefined, undefined, 3), []);
+	assert.deepEqual(set(0, [0, 1, 1], 3), [0, 1], "a duplicate is one row");
+	assert.deepEqual(set(0, [0, 3, -1, 1.5, "1", Number.NaN], 3), [0]);
+	// No usable entry: the first member, `recommended`, is still known.
+	assert.deepEqual(set(0, [5], 3), [0]);
+	assert.deepEqual(set(0, [], 3), [0]);
+	// ...but never a row the model did not name.
+	assert.deepEqual(set(5, [5], 3), []);
+	assert.deepEqual(set(0, "0,1", 3), [0]);
 });
 
 test("the recommended option's label is bolded, and the mark is a glyph beside it", () => {
