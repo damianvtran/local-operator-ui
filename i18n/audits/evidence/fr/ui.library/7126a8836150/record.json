@@ -1,0 +1,107 @@
+{
+  "locale": "fr",
+  "namespace": "ui.library",
+  "namespaces": {
+    "ui.library": {
+      "status": "passed",
+      "fully_audited_key_count": 20,
+      "consistency_only_key_count": 159,
+      "finding_ids": [
+        "M1"
+      ],
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.library.json",
+          "sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.library.context.json",
+          "sha256": "2fe63e830b49079dac67c5c4513358d0a8559a94fbf27ac8d437212b13aa2e72"
+        },
+        "fr": {
+          "path": "src/i18n/catalogues/fr/ui.library.json",
+          "sha256": "5b2b439c0837be164d52fc50a53a40a8e0ea0b5940f1dff96359f5b18f61bc0f"
+        }
+      }
+    }
+  },
+  "audit_date": "2026-11-10",
+  "key_count": 179,
+  "fully_audited_key_count": 20,
+  "consistency_only_key_count": 159,
+  "scope": "PR #1851; 20 new ui.library keys plus English context; 159 legacy values checked only for parse, key parity, unchanged bytes and targeted terminology, NOT recertified.",
+  "head_sha": "8a9ce1f808c266ebe9a0e924094344cea60c2c23",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "7126a8836150",
+    "session": "7126a8836150",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Served session system header: Model openai/gpt-6.1-sol; no model switch or fallback used in this audit.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Delegation names translator session 39f51922849d and model; auditor did not translate."
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.library.json",
+      "sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.library.context.json",
+      "sha256": "2fe63e830b49079dac67c5c4513358d0a8559a94fbf27ac8d437212b13aa2e72"
+    },
+    "fr": {
+      "path": "src/i18n/catalogues/fr/ui.library.json",
+      "sha256": "5b2b439c0837be164d52fc50a53a40a8e0ea0b5940f1dff96359f5b18f61bc0f"
+    }
+  },
+  "policy_inputs": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+    },
+    "glossary": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "fr-sol-7126a8836150.json",
+      "sha256": "b76ab3b0edfb95dbcd0322a6512c0206146bb523b6537f62f14d6e0700a574a0",
+      "kind": "audit_notes_not_execution_log",
+      "record_reference": "fr-sol-7126a8836150.record.json"
+    },
+    {
+      "path": "fr-sol-7126a8836150.audit.log",
+      "sha256": "99ba6a982c0fcff7dc178d911de763419dd7b2f9c16ae332e0a01204af1705be",
+      "kind": "actual_execution_log",
+      "record_reference": "fr-sol-7126a8836150.record.json"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "M1"
+    ]
+  },
+  "finding_report": "fr-sol-7126a8836150.json",
+  "audit_notes_not_execution_log": false,
+  "execution_log": "fr-sol-7126a8836150.audit.log",
+  "retention": {
+    "state": "scratch_handoff_only_per_explicit_read_only_task",
+    "intended_tracked_directory": "i18n/audits/evidence/fr/ui.library/s14-sol-7126a8836150",
+    "manager_action_required": "Copy three artifacts to canonical tracked evidence root and record ledger; no ledger command run by read-only auditor.",
+    "proposed_note": "passed; minor M1 English other context; record i18n/audits/evidence/fr/ui.library/s14-sol-7126a8836150/record.json"
+  },
+  "unverified": [
+    "No full-tree validator, ICU parser or rendering; scoped repository duplicate/context validators ran. New values have no ICU syntax.",
+    "No ledger/repository write or durable tracked retention performed here.",
+    "Legacy semantic certification excluded."
+  ]
+}

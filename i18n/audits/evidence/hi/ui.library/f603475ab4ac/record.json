@@ -1,0 +1,100 @@
+{
+  "locale": "hi",
+  "namespaces": {
+    "ui.library": {
+      "status": "passed",
+      "fully_audited_key_count": 20,
+      "consistency_only_key_count": 159,
+      "finding_ids": [
+        "M1"
+      ],
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.library.json",
+          "sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71"
+        },
+        "hi": {
+          "path": "src/i18n/catalogues/hi/ui.library.json",
+          "sha256": "276df1d52759ac97fc03b0569c7ce95db066b449a8a130435340f024fecc942d"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.library.context.json",
+          "sha256": "2fe63e830b49079dac67c5c4513358d0a8559a94fbf27ac8d437212b13aa2e72"
+        }
+      }
+    }
+  },
+  "audit_date": "2026-11-10",
+  "key_count": 179,
+  "fully_audited_key_count": 20,
+  "consistency_only_key_count": 159,
+  "scope": "PR damianvtran/local-operator-ui #1851; ui.library 20 new messages at frozen head; English metadata in scope; no full legacy certification.",
+  "head_sha": "8a9ce1f808c266ebe9a0e924094344cea60c2c23",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "f603475ab4ac",
+    "session": "f603475ab4ac",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Served session header for session f603475ab4ac: Model openai/gpt-6.1-sol. No model switch or fallback occurred.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Agent/model supplied by delegation. Translator session: not supplied. Auditor did not translate or participate in translation."
+  },
+  "policy_inputs": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    },
+    "glossary": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "note": "Binding manager-owned byte-copy; matches the full SHA-256 supplied by the task. Original glossary not read (outside allowed reads)."
+    }
+  },
+  "artifacts": [
+    {
+      "path": "hi-sol-f603475ab4ac.json",
+      "sha256": "23e2d3e19f3f52f93f4b12ed338f1a8af752a7e84bcc3124d24288852d71d770",
+      "kind": "audit_notes_not_execution_log",
+      "record_reference": "hi-sol-f603475ab4ac.record.json"
+    },
+    {
+      "path": "hi-sol-f603475ab4ac.audit.log",
+      "sha256": "795f1ebd2b9032983cff61a5744665c3e3a22cda708fc64e3e7918113ddc2065",
+      "kind": "actual_execution_log",
+      "record_reference": "hi-sol-f603475ab4ac.record.json"
+    },
+    {
+      "path": "hi-sol-check.py",
+      "sha256": "1a69e61483566e4b79d72c5a2e6a64e99becf0de11ec7d159378f12be41bf112",
+      "kind": "executed_check_source",
+      "record_reference": "hi-sol-f603475ab4ac.record.json"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "M1"
+    ]
+  },
+  "finding_report": "hi-sol-f603475ab4ac.json",
+  "audit_notes_not_execution_log": false,
+  "execution_log": "hi-sol-f603475ab4ac.audit.log",
+  "retention": {
+    "state": "scratch_handoff_only_per_explicit_read_only_task",
+    "intended_tracked_directory": "i18n/audits/evidence/hi/ui.library/s14-sol-f603475ab4ac",
+    "manager_action_required": "Retain receipt, record, audit log and check source under canonical evidence root; manager records ledger entry. No ledger write executed by auditor.",
+    "proposed_note": "passed; 0 blocker/major; M1 English metadata minor; record i18n/audits/evidence/hi/ui.library/s14-sol-f603475ab4ac/record.json"
+  },
+  "unverified": [
+    "No full validator CLI or ICU runtime parser; narrow repository duplicate/context validators and own JSON/delta checks executed. New keys contain no ICU, placeholders, markup or code.",
+    "No rendered-frame, terminal cell_len or actual layout measurement.",
+    "No repository edits, ledger command, tracked retention, PR comment or commit; read-only delegation permits own scratchpad only.",
+    "Translator session not supplied; independence states no participation in translation, not a verified cross-session identity match."
+  ]
+}
