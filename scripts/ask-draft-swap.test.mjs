@@ -2164,3 +2164,105 @@ test("the drawer badges nothing for an index that is not a real row", async () =
 	assert.deepEqual(real.badged, ["sandbox"]);
 	assert.deepEqual(real.bolded, ["sandbox"]);
 });
+
+/*
+ * SEVERAL RECOMMENDED ROWS ON A MULTI-SELECT ASK (operator report, 2026-11-10:
+ * "if it's a checkbox option then we provide multiple recommended answers").
+ *
+ * The wire sends `recommended` (the first row, always 0) AND `recommended_all`
+ * (`[0..k-1]`, only when k >= 2). Each case reads the DRAWER's rendered rows, and
+ * the draft is read back through `onDraftChange`'s absence: nothing here seeds a
+ * selection, so no checkbox may come up ticked.
+ */
+test("a multi-select ask marks every recommended row and ticks none", async () => {
+	const labels = ["staging", "production", "sandbox"];
+	const probe = async (question) => {
+		const view = await mount(
+			h(AskDrawer, {
+				frontend: frontend([
+					{
+						...radioAsk,
+						questions: [
+							{
+								id: "target",
+								question: "Which environments?",
+								options: labels.map((label) => ({ label })),
+								...question,
+							},
+						],
+					},
+				]),
+				scope: "session",
+				onDraftChange: () => undefined,
+			}),
+		);
+		const row = (label) =>
+			view.container.querySelector(`[data-ask-option="${label}"]`);
+		const result = {
+			badged: labels.filter((label) =>
+				(row(label)?.textContent ?? "").includes("Recommended"),
+			),
+			bolded: labels.filter((label) =>
+				Boolean(row(label)?.querySelector(".font-semibold")),
+			),
+			checked: labels.filter(
+				(label) => row(label)?.getAttribute("aria-pressed") === "true",
+			),
+		};
+		await view.unmount();
+		return result;
+	};
+
+	// A set of two: both rows carry the bold label and the badge.
+	const two = await probe({
+		multi: true,
+		recommended: 0,
+		recommended_all: [0, 1],
+	});
+	assert.deepEqual(two.badged, ["staging", "production"]);
+	assert.deepEqual(two.bolded, ["staging", "production"]);
+	assert.deepEqual(two.checked, [], "the recommendation never pre-ticks a row");
+
+	// An old backend: `recommended` alone still marks exactly one row.
+	const old = await probe({ multi: true, recommended: 0 });
+	assert.deepEqual(old.badged, ["staging"]);
+	assert.deepEqual(old.bolded, ["staging"]);
+	assert.deepEqual(old.checked, []);
+
+	// A null set is the same as an absent one.
+	const nulled = await probe({
+		multi: true,
+		recommended: 0,
+		recommended_all: null,
+	});
+	assert.deepEqual(nulled.badged, ["staging"]);
+
+	// Single-select is unchanged: one index, one badge.
+	const single = await probe({ recommended: 2 });
+	assert.deepEqual(single.badged, ["sandbox"]);
+
+	// Out-of-range and malformed entries are dropped, never clamped: the real
+	// entry still marks its row and nothing marks the last one.
+	const partial = await probe({
+		multi: true,
+		recommended: 0,
+		recommended_all: [0, 99, -1, 1.5, "1", Number.NaN],
+	});
+	assert.deepEqual(partial.badged, ["staging"]);
+	assert.deepEqual(partial.bolded, ["staging"]);
+
+	// A set with no usable entry falls back to `recommended`, the first member.
+	const unusable = await probe({
+		multi: true,
+		recommended: 0,
+		recommended_all: [99],
+	});
+	assert.deepEqual(unusable.badged, ["staging"]);
+	// ...and a set that is not a list is ignored.
+	const notAList = await probe({
+		multi: true,
+		recommended: 0,
+		recommended_all: "0,1",
+	});
+	assert.deepEqual(notAList.badged, ["staging"]);
+});

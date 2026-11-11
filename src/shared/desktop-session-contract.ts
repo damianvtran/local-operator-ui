@@ -1,4 +1,8 @@
-import type { TagRef } from "./desktop-contract";
+import type {
+	SettingsIntent,
+	SettingsIntentKind,
+	TagRef,
+} from "./desktop-contract";
 // These are the canonical backend wire shapes, not legacy agent/job identities.
 // Owner state revisions and HTTP semantic receipt cursors are independent. See
 // docs/desktop-controls.md before implementing replay or notifications.
@@ -639,6 +643,20 @@ export type PendingDesktopGate = {
 	 */
 	recommended?: number | null;
 	/**
+	 * Every recommended row of a multi-select ask, as `[0..k-1]`: present only
+	 * when the model recommended TWO OR MORE options (the core hoists them to the
+	 * top in the order it listed them, and `recommended` is then 0, the first of
+	 * them). Absent or null on a single recommendation, on a single-select ask
+	 * and on a backend older than the field.
+	 *
+	 * The rows to mark are this set when it has at least one usable entry
+	 * (a non-negative integer below the option count; each bad entry is dropped,
+	 * never clamped), otherwise `[recommended]`, validated the same way. Read it
+	 * through `ask-recommended.tsx`'s `recommendedIndexes`; it marks rows only
+	 * and pre-ticks nothing.
+	 */
+	recommended_all?: number[] | null;
+	/**
 	 * The `AskQuestion.persist` intent for a `secret: true` ask — whether the
 	 * answer is meant to be saved to the credential store rather than used
 	 * once.
@@ -750,6 +768,18 @@ export type PendingAskQuestion = {
 	 * for an absent, null, non-integer or out-of-range value.
 	 */
 	recommended?: number | null;
+	/**
+	 * Every recommended row when a multi-select ask recommends two or more
+	 * options: `[0..k-1]`, with `recommended` still the first of them (0). Absent
+	 * or null for one recommendation, for a single-select ask and on a backend
+	 * older than the field - there `recommended` alone marks exactly one row, so a
+	 * consumer must keep reading it. The rows to mark are this set when it has at
+	 * least one usable entry (a non-negative integer below the option count; each
+	 * bad entry is dropped, never clamped), otherwise `[recommended]`, validated
+	 * the same way by `ask-recommended.tsx`'s `recommendedIndexes`, which marks
+	 * rows and never changes the draft's selection.
+	 */
+	recommended_all?: number[] | null;
 	secret?: boolean;
 	persist?: boolean;
 	[key: string]: unknown;
@@ -2395,6 +2425,23 @@ export type DesktopFeedFrame =
 			payload: { agent_id: string; sha256: string | null };
 	  }
 	| { epoch: string; seq: number; type: "heartbeat"; payload: { ts: number } }
+	/**
+	 * ONE SESSION's settings-intent slot moved (`features.settings_intents`).
+	 *
+	 * Live-only, like `notification`: `GET /v1/desktop/settings-intents` is the
+	 * baseline, re-read on every feed reconnect, so a frame missed during an
+	 * outage costs nothing. `intent: null` means the slot was pruned. Applied by
+	 * `settings-intents.ts`'s generation guard, so a frame that arrives once per
+	 * mounted feed hook (several per window) is idempotent. An older renderer
+	 * ignores the type outright.
+	 */
+	| {
+			epoch: string;
+			seq: number;
+			type: "settings_intent";
+			session_id: CanonicalSessionId;
+			payload: { kind: SettingsIntentKind; intent: SettingsIntent | null };
+	  }
 	| {
 			epoch: string;
 			seq: number;

@@ -1,0 +1,178 @@
+# ur delta audit — ui.chat.audio.position_label — execution log (commands actually run in this session, read-only worktree)
+# auditor session 3795570cf1e1, agent i18n-auditor, model deepseek/deepseek-flash (served)
+# date 2026-11-10 11:57:20 EST
+$ git rev-parse HEAD
+b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a
+[exit 0]
+
+$ git diff --name-only e5fb4310dab638f9cf428779d62539ec039a8990..HEAD -- src/i18n/catalogues/ur/
+src/i18n/catalogues/ur/ui.chat.json
+[exit 0]
+
+$ git diff --numstat e5fb4310dab638f9cf428779d62539ec039a8990..HEAD -- src/i18n/catalogues/ur/
+1	1	src/i18n/catalogues/ur/ui.chat.json
+[exit 0]
+
+$ git diff e5fb4310dab638f9cf428779d62539ec039a8990..HEAD -- src/i18n/catalogues/ur/ui.chat.json
+diff --git a/src/i18n/catalogues/ur/ui.chat.json b/src/i18n/catalogues/ur/ui.chat.json
+index d14feaef502..058fe1c8b76 100644
+--- a/src/i18n/catalogues/ur/ui.chat.json
++++ b/src/i18n/catalogues/ur/ui.chat.json
+@@ -206,5 +206,5 @@
+ 	"ui.chat.session_status.effort_level.medium": "متوسط",
+ 	"ui.chat.session_status.effort_level.high": "زیادہ",
+ 	"ui.chat.image_actions.actions": "تصویر کے اعمال",
+-	"ui.chat.audio.position_label": "{label} کی پوزیشن"
++	"ui.chat.audio.position_label": "{label} کا مقام"
+ }
+[exit 0]
+
+$ shasum -a 256 src/i18n/catalogues/en/ui.chat.json src/i18n/catalogues/ur/ui.chat.json src/i18n/catalogues/en/ui.chat.context.json ~/local-operator-ui/.worktrees/_s12-audits/b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a/glossary.md ~/local-operator/i18n/glossary.md ~/local-operator/i18n/style-guides/ur.md
+ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15  src/i18n/catalogues/en/ui.chat.json
+4be951ec20cc69544d66a59218bb26669df5d0034ed2c35e2305b979db07b256  src/i18n/catalogues/ur/ui.chat.json
+84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf  src/i18n/catalogues/en/ui.chat.context.json
+0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8  /Users/damian/local-operator-ui/.worktrees/_s12-audits/b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a/glossary.md
+0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8  /Users/damian/local-operator/i18n/glossary.md
+c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60  /Users/damian/local-operator/i18n/style-guides/ur.md
+[exit 0]
+
+$ node scripts/i18n/generate.mjs --check
+/Users/damian/local-operator-ui/.worktrees/i18n-s8/src/i18n/keys.gen.ts is byte-identical to a fresh generation.
+[exit 0]
+
+$ node scripts/i18n/check-duplicates.mjs
+check-duplicates: ok — 1400 file(s) scanned, 0 duplicate key(s)
+[exit 0]
+
+$ node scripts/i18n/context-parity.mjs
+context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).
+[exit 0]
+
+$ node scripts/i18n/ledger-check.mjs 2>&1 | grep -E 'ur/ui\.chat:'
+ledger-check: ur/ui.chat: stale source_sha256 (ledger 270fc752791e…, file ee4e2a9eeb84…) — the English source moved since translation
+ledger-check: ur/ui.chat: stale target_sha256 (ledger ff3a28460b50…, file 4be951ec20cc…) — the translated file changed since it was audited
+ledger-check: ur/ui.chat: auditor 1: the receipt does not name the English source bytes on disk - it audited a different file
+[exit 0]
+
+$ python3 /Users/damian/.local-operator/sessions/3795570cf1e1/scratchpad/ur-ds-audit-check.py
+== key set parity ==
+en keys: 208 ur keys: 208
+sets equal: True
+en-only: []
+ur-only: []
+
+== changed key ==
+EN: '{label} position'
+UR: '{label} کا مقام'
+EN placeholders: ['label']
+UR placeholders: ['label']
+placeholder multiset identical: True
+ICU plural/select in EN: False
+ICU plural/select in UR: False
+EN invisible/control/combining chars: none
+UR invisible/control/combining chars: none
+UR codepoints: U+007B U+006C U+0061 U+0062 U+0065 U+006C U+007D U+0020 U+06A9 U+0627 U+0020 U+0645 U+0642 U+0627 U+0645
+UR cell width (1 cell/char, FSI/PDI cost 0): 15
+UR word count: 3
+
+== context sidecar entry ==
+{
+ "role": "accessible name of an audio clip seek slider",
+ "tone": "concise neutral phrase, sentence case",
+ "note": "Names playback position for this specific clip, not a play/pause action. Two clips may be present together, so retain the clip label. Translate only the surrounding word for position. Does not replace time/value text or change seeking.",
+ "placeholders": {
+  "label": "string: existing audio clip display label/title; insert verbatim without translating or normalizing user data. Word order may change around {label}."
+ }
+}
+
+== sibling audio keys (register/term consistency) ==
+ui.chat.audio.mute
+  EN: 'Mute'
+  UR: 'آواز بند کریں'
+ui.chat.audio.pause
+  EN: 'Pause'
+  UR: 'وقفہ دیں'
+ui.chat.audio.pause_label
+  EN: 'Pause {label}'
+  UR: '{label} کو وقفہ دیں'
+ui.chat.audio.play
+  EN: 'Play'
+  UR: 'چلائیں'
+ui.chat.audio.play_label
+  EN: 'Play {label}'
+  UR: '{label} چلائیں'
+ui.chat.audio.position_label
+  EN: '{label} position'
+  UR: '{label} کا مقام'
+ui.chat.audio.unmute
+  EN: 'Unmute'
+  UR: 'آواز کھولیں'
+
+== 'position'-family values elsewhere in the ur catalogue ==
+[maqam] ui.agents.skills.json ui.agents.skills.detail.location_label
+   EN: 'Location'
+   UR: 'مقام'
+[maqam] ui.agents.skills.json ui.agents.skills.where.unknown
+   EN: 'Location not reported by this backend.'
+   UR: 'اس بیک اینڈ نے مقام نہیں بتایا۔'
+[maqam] ui.browser.extensions.json ui.browser.extensions.permission_content_settings
+   EN: 'Change site settings such as cookies, JavaScript, location, microphone and camera'
+   UR: 'سائٹ کی ترتیبات بدلنا، جیسے کوکیز، JavaScript، مقام، مائیکروفون اور کیمرا'
+[maqam] ui.browser.extensions.json ui.browser.extensions.permission_location
+   EN: 'Detect your physical location'
+   UR: 'آپ کا جسمانی مقام معلوم کرنا'
+[maqam] ui.canvas.json ui.canvas.create_file_dialog.location
+   EN: 'Location'
+   UR: 'مقام'
+[maqam] ui.chat.attachments.json ui.chat.attachments.playback_position
+   EN: 'Playback position'
+   UR: 'پلے بیک کا مقام'
+[maqam] ui.chat.json ui.chat.highlights.file_resolution_failed
+   EN: "Couldn't resolve this file in the session working directory. Use Copy file path to check its location against this session's workspace before trying again."
+   UR: 'سیشن کی ورکنگ ڈائریکٹری میں یہ فائل نہیں مل سکی۔ دوبارہ کوشش کرنے سے پہلے “فائل کا راستہ نقل کریں” سے اس کا مقام اس سیشن کی ورک اسپیس سے ملا کر دیکھیں۔'
+[maqam] ui.chat.json ui.chat.audio.position_label
+   EN: '{label} position'
+   UR: '{label} کا مقام'
+[maqam] ui.projects.json ui.projects.project_board.moved_label_column_to_position_indexof_status_1_of_length
+   EN: 'Moved {label} column to position {indexOf_status____1} of {length}.'
+   UR: '{label} کالم کو {length} میں سے {indexOf_status____1} مقام پر منتقل کر دیا گیا۔'
+[maqam] ui.settings.model.json ui.settings.model.system_prompt.every_local_operator_agent_receives_this_prompt_in_addition_to_it
+   EN: 'Every Local Operator agent receives this prompt in addition to its own instructions, so it is the place for baseline expectations and for details you want every agent to know about you, such as your name, location, or preferences. It is sent to your selected hosting provider.'
+   UR: 'ہر Local Operator ایجنٹ کو اپنی ہدایات کے علاوہ یہ پرامپٹ ملتا ہے، اس لیے بنیادی توقعات اور وہ تفصیلات یہاں لکھیں جو آپ ہر ایجنٹ کو بتانا چاہتے ہیں، جیسے اپنا نام، مقام یا ترجیحات۔ یہ آپ کے منتخب ہوسٹنگ فراہم کنندہ کو بھیجا جاتا ہے۔'
+[maqam] ui.shell.json ui.shell.sidebar_navigation.move_note
+   EN: 'Moved {name} to position {position} of {total}.'
+   UR: '{name} کو {total} میں سے {position} مقام پر منتقل کر دیا گیا۔'
+bare-مقام value count: 11
+پوزیشن value count: 0
+
+== hashes ==
+ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15 src/i18n/catalogues/en/ui.chat.json
+4be951ec20cc69544d66a59218bb26669df5d0034ed2c35e2305b979db07b256 src/i18n/catalogues/ur/ui.chat.json
+84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf src/i18n/catalogues/en/ui.chat.context.json
+
+== call site of the key (source, read-only) ==
+missing: src/renderer/src/features/chat/components/supplement/sound-player.tsx
+src/renderer/src/features/chat/components/message-item/audio-attachment.tsx:189: aria-label={t("ui.chat.attachments.playback_position")}
+[exit 0]
+
+$ python3 - <<'PY'
+import json,subprocess
+old=json.loads(subprocess.check_output(['git','show','e5fb4310dab638f9cf428779d62539ec039a8990:src/i18n/catalogues/ur/ui.chat.json']))
+new=json.loads(subprocess.check_output(['git','show','HEAD:src/i18n/catalogues/ur/ui.chat.json']))
+diff={k:(old.get(k),new.get(k)) for k in set(old)|set(new) if old.get(k)!=new.get(k)}
+print('changed keys:',len(diff))
+for k,(a,b) in diff.items(): print(k,'|',repr(a),'->',repr(b))
+print('other keys byte-identical:',len(new)-len(diff))
+PY
+changed keys: 1
+ui.chat.audio.position_label | '{label} کی پوزیشن' -> '{label} کا مقام'
+other keys byte-identical: 207
+[exit 0]
+
+
+# deliverables written by this session (scratchpad handoff; manager retains them under the canonical evidence root)
+$ shasum -a 256 ur-ds-3795570cf1e1.json ur-ds-3795570cf1e1-check.py
+44164cad751b6fc53f4696bf07c95284a4a40a4ef87849de5eb52e7629349c2d  ur-ds-3795570cf1e1.json
+f3836ae10e87ae4e1d8c4ed757181aecbb65a131850e513c141a307721de511e  ur-ds-3795570cf1e1-check.py
+
+# JSON parse-back (python3 json.load) of both deliverable JSONs: exit 0, schema fields present

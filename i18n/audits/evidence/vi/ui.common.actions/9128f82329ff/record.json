@@ -1,0 +1,115 @@
+{
+  "locale": "vi",
+  "namespace": [
+    "ui.chat",
+    "ui.chat.composer_media",
+    "ui.common.actions"
+  ],
+  "audit_date": "2026-11-10",
+  "key_count": 271,
+  "fully_audited_key_count": 4,
+  "consistency_only_key_count": 267,
+  "scope": "PR #1842 @ e5fb4310dab638f9cf428779d62539ec039a8990; vi four new keys fully audited; other namespace keys consistency_only (not legacy semantic certification). English pasted_file broadened metadata checked against source.",
+  "head_sha": "e5fb4310dab638f9cf428779d62539ec039a8990",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "9128f82329ff",
+    "session": "9128f82329ff",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Served session header: openai/gpt-6.1-sol; session 9128f82329ff. No fallback used.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Delegation supplies translator session 9b4eaf460088 and values verbatim. Auditor did not translate or participate in translation."
+  },
+  "input_hashes": {
+    "ui.chat": {
+      "en": {
+        "path": "src/i18n/catalogues/en/ui.chat.json",
+        "sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15"
+      },
+      "vi": {
+        "path": "src/i18n/catalogues/vi/ui.chat.json",
+        "sha256": "28aefec39d49f6c7cbaa05f15e40383a8e6f38761369f0068d90434dc9511445"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.chat.context.json",
+        "sha256": "84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf"
+      }
+    },
+    "ui.chat.composer_media": {
+      "en": {
+        "path": "src/i18n/catalogues/en/ui.chat.composer_media.json",
+        "sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae"
+      },
+      "vi": {
+        "path": "src/i18n/catalogues/vi/ui.chat.composer_media.json",
+        "sha256": "8b458ffc96e9b6605c0924b2fdee952998ceed1d27fbd9ab23a6f5a5389445a6"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.chat.composer_media.context.json",
+        "sha256": "a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b"
+      }
+    },
+    "ui.common.actions": {
+      "en": {
+        "path": "src/i18n/catalogues/en/ui.common.actions.json",
+        "sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b"
+      },
+      "vi": {
+        "path": "src/i18n/catalogues/vi/ui.common.actions.json",
+        "sha256": "d89b7dacc9c49f715685e2e6fa0cf04ebd75dee37eb5496c21f73bb00124d4ad"
+      },
+      "context": {
+        "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+        "sha256": "24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d"
+      }
+    }
+  },
+  "policy_inputs": {
+    "style_guide": {
+      "path": "/Users/damian/local-operator/i18n/style-guides/vi.md",
+      "sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888"
+    },
+    "glossary": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "vi-sol-9128f82329ff.json",
+      "sha256": "7d41a3d731e6b02116c48c620e9eff6459f02220f986548d07d095cfac2c369b",
+      "kind": "audit_notes_not_execution_log",
+      "record_reference": "vi-sol-9128f82329ff.record.json"
+    },
+    {
+      "path": "vi-sol-9128f82329ff.audit.log",
+      "sha256": "40d6e65e1a78f74946ad0d64ba72df21ba351d4e5a4b9832764f186b651516c3",
+      "kind": "actual_execution_log",
+      "record_reference": "vi-sol-9128f82329ff.record.json"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": []
+  },
+  "finding_report": "vi-sol-9128f82329ff.json",
+  "audit_notes_not_execution_log": true,
+  "execution_log": "vi-sol-9128f82329ff.audit.log",
+  "retention": {
+    "state": "scratch_handoff_only_per_explicit_read_only_task",
+    "intended_tracked_directory": "i18n/audits/evidence/vi/<namespace>/s12-sol-9128f82329ff",
+    "manager_action_required": "Retain record and companions under canonical evidence root and assemble immutable UI ledger receipts. No ledger command run here.",
+    "proposed_note": "passed; retain namespace-scoped record under i18n/audits/evidence/vi/<namespace>/s12-sol-9128f82329ff/record.json"
+  },
+  "unverified": [
+    "No browser, rendered UI, screen-reader or pixel-fit validation.",
+    "Legacy translation values are consistency_only; not certified by this audit.",
+    "No aggregate check-i18n, ledger updates, repository writes, PR comment or tracked retention. Manager must retain scratch deliverables under canonical evidence root."
+  ]
+}

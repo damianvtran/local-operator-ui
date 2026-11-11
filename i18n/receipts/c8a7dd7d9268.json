@@ -1,0 +1,258 @@
+{
+ "locale": "ur",
+ "mode": "Fresh independent delta audit of the 20 new ui.library keys against frozen head 8a9ce1f8; read-only worktree ~/local-operator-ui/.worktrees/i18n-s8. Full CLDR/RTL locale pass (ur is the RTL carrier). Allocation: fix (<2h), bounded audit only. Glossary conformance checked against the manager-owned byte-copy at _s14-audits/8a9ce1f8.../glossary.md (sha256 0eb34437a8c3d6f5..., verified identical to ~/local-operator/i18n/glossary.md). Fully audited keys: 20. The remaining 159 namespace keys were read only for JSON validity, key-set parity and cross-file term consistency; legacy values are not certified. A deliberate second independent pass was run over the 20 keys (badge slot, sentence grammar, tag-heading collisions) and produced no additional blocker or major.",
+ "scope": "PR damianvtran/local-operator-ui #1851 @ 8a9ce1f808c266ebe9a0e924094344cea60c2c23 (0e12072d2b3..HEAD). Audited keys: ui.library.kind.{audio,code,docx,html,image,markdown,other,pdf,pptx,spreadsheet,text,video} (12 badge kinds), ui.library.tag_category.{custom,format,project,source,status,topic,type} (7 rail headings), ui.library.preview.unsupported_generic (1 standalone sentence). Also judged: the English context sidecar notes for those 20 entries (one MINOR raised on the English side, not on the translation). No full legacy namespace certification.",
+ "head_sha": "8a9ce1f808c266ebe9a0e924094344cea60c2c23",
+ "audit_date": "2026-11-10",
+ "key_count": 179,
+ "fully_audited_key_count": 20,
+ "consistency_only_key_count": 159,
+ "translator": {
+  "agent": "i18n-translator",
+  "model": "anthropic/claude-sonnet-5-5",
+  "source": "Translator session was not recorded by the manager (task brief states 'not supplied'); the translator model and its one-session-per-locale arrangement were supplied by delegation and the values landed verbatim. This auditor did not translate these files and took no part in translation."
+ },
+ "auditor": {
+  "agent": "i18n-auditor",
+  "instance": "c8a7dd7d9268",
+  "session": "c8a7dd7d9268",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "Served session header for session c8a7dd7d9268 states deepseek/deepseek-flash; no model switch, pin or fallback occurred in this session.",
+  "fallback_used": false,
+  "independent_from_translator_session": true
+ },
+ "policy_sources": {
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/ur.md",
+   "sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+  },
+  "glossary": {
+   "path": "~/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/glossary.md",
+   "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+   "note": "Manager-owned byte-copy; verified identical to ~/local-operator/i18n/glossary.md by sha256. Glossary conformance was checked against this copy."
+  },
+  "expected_hashes": {
+   "path": "~/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/expected-hashes.json",
+   "sha256_verified": {
+    "en/ui.library": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71",
+    "ur/ui.library": "4f05862a5ae2c238a4996b75375fdf08b867f37f96e9b92be8432321fa5eba50",
+    "en/ui.library.context": "2fe63e830b49079dac67c5c4513358d0a8559a94fbf27ac8d437212b13aa2e72"
+   },
+   "result": "3/3 match, recomputed with shasum -a 256 on the worktree files"
+  }
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "verdict": "clean-with-findings",
+ "findings": [
+  {
+   "id": "M1",
+   "severity": "minor",
+   "key": "ui.library.kind.other",
+   "artifact": "src/i18n/catalogues/en/ui.library.context.json",
+   "current_text": "Rendered inside the sentence ui.library.preview.unsupported ONLY via the generic fallback; see manifest.",
+   "english_source": "Other",
+   "problem": "ENGLISH METADATA, not the translation. The note says this label is rendered inside the unsupported sentence via the generic fallback, but the generic sentence has no kind slot, so the label is never interpolated there at all: src/renderer/src/features/library/components/library-viewers.tsx:107-111 branches on asset.kind === 'other' to t('ui.library.preview.unsupported_generic') with no parameters. A translator reading 'rendered inside the sentence ... via the generic fallback' can reasonably infer that the word will sit in a grammar slot and pick a form to fit (here 'دیگر' would have produced 'دیگر فائل کا پیش منظر…', 'another file's preview'), which is the wrong inference. UnUR-damaged only because the translator chose rightly; the note is still misleading. 'see manifest' is also a dangling reference for a translator - the keys20 manifest lives in an audit worktree, not the repo.",
+   "recommendation": "Rewrite to: \"Never interpolated into ui.library.preview.unsupported: kind `other` takes the slot-free generic sentence ui.library.preview.unsupported_generic, so this label appears as a badge only.\" and drop 'see manifest' or name the file.",
+   "evidence": [
+    "src/renderer/src/features/library/components/library-viewers.tsx:107: {asset.kind === \"other\" ? t(\"ui.library.preview.unsupported_generic\") : t(\"ui.library.preview.unsupported\", { kind: libraryKindLabel(asset.kind) })}",
+    "src/renderer/src/features/library/components/library-viewers.tsx:105-106 comment: \"`other` is the catch-all: 'A Other file' is ungrammatical in English and worse in translation, so it gets its own sentence with no kind slot.\"",
+    "src/i18n/catalogues/en/ui.library.context.json: ui.library.preview.unsupported_generic note = \"Shown when the file kind is the catch-all `other`; no placeholders.\""
+   ],
+   "gates": false,
+   "applies_to_translation": false
+  },
+  {
+   "id": "N1",
+   "severity": "nit",
+   "key": "ui.library.tag_category.type",
+   "current_text": "قسم",
+   "english_source": "Type",
+   "problem": "قسم is also this namespace's rendering of the sort option 'Kind' (ui.library.sort.kind = قسم), so the English distinction the sidecar asks for ('Keep it distinct from the sort option Kind') is collapsed. But this is the corpus's own settled practice, not a divergence introduced here: both 'Type' and 'Kind' already render قسم in separate surfaces. نوعیت would be the distinct Urdu word and appears nowhere in the catalogue today, so the change is free if the team wants the distinction; nothing forces it. Recorded so the decision is visible rather than accidental - does not gate.",
+   "recommendation": "No change required. If the distinction is wanted, use نوعیت for the tag heading and record the call in the ur guide; otherwise leave قسم and record that Kind/Type share one Urdu word.",
+   "evidence": [
+    "src/i18n/catalogues/ur/ui.library.json: ui.library.sort.kind = \"قسم\" (EN: Kind)",
+    "src/i18n/catalogues/ur/ui.canvas.json: ui.canvas.variable_form_dialog.type = \"قسم\" (EN: Type)",
+    "src/i18n/catalogues/ur/ui.agentMessages.settings.json: ui.agentMessages.settings.allowlist.kind = \"قسم\" (EN: Kind)",
+    "src/i18n/catalogues/ur/ui.agents.teams.json: ui.agents.teams.col.type = \"قسم\" (EN: Type)",
+    "grep for نوعیت across src/i18n/catalogues/ur/: no matches"
+   ],
+   "gates": false
+  },
+  {
+   "id": "N2",
+   "severity": "nit",
+   "key": "ui.library.tag_category.source",
+   "current_text": "ماخذ",
+   "english_source": "Source",
+   "problem": "The Tags section now shows the heading ماخذ a few rows below the filter section mاخذ (ui.library.filter.source) whose rows are origin groups - two identical headings in the same rail with different contents. This mirrors the English exactly ('Source' for both), and ماخذ is this catalogue's settled word for source, so the translation is correct; the ambiguity is the English information architecture's, which the sidecar itself flags. Recorded for the manager; no translation change recommended (disambiguating here would break the one-term-one-decision rule in the opposite direction).",
+   "recommendation": "No change. If the rail is ever reworked, disambiguate in English first (for example 'Tag source'), then translate.",
+   "evidence": [
+    "src/i18n/catalogues/ur/ui.library.json: ui.library.filter.source = \"ماخذ\" (EN: Source)",
+    "src/i18n/catalogues/ur/ui.agents.detail.json: ui.agents.detail.origin.source = \"ماخذ\"",
+    "src/renderer/src/features/library/components/library-filter-rail.tsx:302-307: the tag heading renders inside <Section label={t(\"ui.library.filter.tags\")}> as a text-meta text-ink-dim span above that group's rows"
+   ],
+   "gates": false
+  }
+ ],
+ "severity_counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 1,
+  "nit": 2
+ },
+ "namespaces": {
+  "ui.library": {
+   "status": "passed",
+   "result": "clean-with-findings",
+   "source_sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71",
+   "target_sha256": "4f05862a5ae2c238a4996b75375fdf08b867f37f96e9b92be8432321fa5eba50",
+   "input_hashes": {
+    "en": {
+     "path": "src/i18n/catalogues/en/ui.library.json",
+     "sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71"
+    },
+    "ur": {
+     "path": "src/i18n/catalogues/ur/ui.library.json",
+     "sha256": "4f05862a5ae2c238a4996b75375fdf08b867f37f96e9b92be8432321fa5eba50"
+    },
+    "context": {
+     "path": "src/i18n/catalogues/en/ui.library.context.json",
+     "sha256": "2fe63e830b49079dac67c5c4513358d0a8559a94fbf27ac8d437212b13aa2e72"
+    }
+   },
+   "fully_audited_keys": [
+    "ui.library.kind.audio",
+    "ui.library.kind.code",
+    "ui.library.kind.docx",
+    "ui.library.kind.html",
+    "ui.library.kind.image",
+    "ui.library.kind.markdown",
+    "ui.library.kind.other",
+    "ui.library.kind.pdf",
+    "ui.library.kind.pptx",
+    "ui.library.kind.spreadsheet",
+    "ui.library.kind.text",
+    "ui.library.kind.video",
+    "ui.library.tag_category.custom",
+    "ui.library.tag_category.format",
+    "ui.library.tag_category.project",
+    "ui.library.tag_category.source",
+    "ui.library.tag_category.status",
+    "ui.library.tag_category.topic",
+    "ui.library.tag_category.type",
+    "ui.library.preview.unsupported_generic"
+   ],
+   "consistency_only_key_count": 159,
+   "findings": [
+    {
+     "id": "M1",
+     "severity": "minor",
+     "key": "ui.library.kind.other",
+     "artifact": "src/i18n/catalogues/en/ui.library.context.json",
+     "current_text": "Rendered inside the sentence ui.library.preview.unsupported ONLY via the generic fallback; see manifest.",
+     "english_source": "Other",
+     "problem": "English metadata, not the translation: the kind label is never interpolated into the unsupported sentence (the generic branch takes no parameters), and 'see manifest' points at a file outside the repo.",
+     "recommendation": "Say it is a badge-only label and that kind `other` takes the slot-free generic sentence; drop 'see manifest' or name the file.",
+     "evidence": [
+      "src/renderer/src/features/library/components/library-viewers.tsx:107-111"
+     ],
+     "gates": false,
+     "applies_to_translation": false
+    },
+    {
+     "id": "N1",
+     "severity": "nit",
+     "key": "ui.library.tag_category.type",
+     "current_text": "قسم",
+     "english_source": "Type",
+     "problem": "Same word as ui.library.sort.kind = قسم ('Kind'), so the English Kind/Type distinction is collapsed - but that is already true corpus-wide (ui.canvas.variable_form_dialog.type = قسم, ui.agentMessages.settings.allowlist.kind = قسم).",
+     "recommendation": "No change; if the distinction is wanted use نوعیت and record the call.",
+     "evidence": [
+      "src/i18n/catalogues/ur/ui.library.json: ui.library.sort.kind = \"قسم\""
+     ],
+     "gates": false
+    },
+    {
+     "id": "N2",
+     "severity": "nit",
+     "key": "ui.library.tag_category.source",
+     "current_text": "ماخذ",
+     "english_source": "Source",
+     "problem": "Renders identically to the filter section ui.library.filter.source (ماخذ) in the same rail; faithful to the English collision, which the sidecar itself notes.",
+     "recommendation": "No change; disambiguate in English first if the rail is reworked.",
+     "evidence": [
+      "src/i18n/catalogues/ur/ui.library.json: ui.library.filter.source = \"ماخذ\""
+     ],
+     "gates": false
+    }
+   ]
+  }
+ },
+ "checks": {
+  "mechanical": {
+   "json_valid": true,
+   "key_set_equals_en": true,
+   "context_covers_en": true,
+   "base_to_head_delta": "en +20/-0/~0, ur +20/-0/~0, context +20/-0/~0 (0e12072d2b3..8a9ce1f8) - additions only, no existing value changed",
+   "placeholders": "none in any of the 20 English values, therefore none expected or found in ur; the only interpolated message in the namespace (ui.library.preview.unsupported, {kind}) is untouched",
+   "icu": "no plural/select in any of the 20 messages; nothing to verify against ur's one/other category set",
+   "markup_code_tokens": "no rich-text tags, backticks, flags or identifiers in these 20 values; nothing to preserve",
+   "invisible_chars": "none - no NBSP, NNBSP, ZW*, bidi control (RLM/LRM/FSI/PDI/ALM) or soft hyphen in any of the 20 ur values, which is the ur guide's requirement (render layer applies FSI/PDI)",
+   "latin_retention": "DOCX, HTML, Markdown, PDF, PPTX retained Latin - all five match existing ur practice (ui.canvas HTML (.html)/PDF: {title}, ui.chat.transcript_copy 'Markdown کے طور پر نقل کریں', ui.settings.model 'Markdown ماخذ')",
+   "lengths": "ur badge/heading values are 3-10 characters against the ~12-character slot (longest: اسپریڈ شیٹ at 10); no overflow. The sentence is 45 characters vs English 37 and wraps in a max-w-90 paragraph - not a badge, no hint applies",
+   "punctuation": "the sentence ends in the Urdu full stop ۔; no Hindi ।, no Latin period, no exclamation marks anywhere in the 20 values"
+  },
+  "rtl": {
+   "logical_order": "all 20 ur values are stored in logical order; no string is mostly-LTR so none needed the source-order rule",
+   "latin_islands": "the five retained tokens are whole-string values, so each is a single LTR island handed to the render layer's per-string FSI/PDI isolation; no Urdu punctuation is glued to a Latin token, so no reordering hazard",
+   "bidi_marks": "none inserted (correct - the ur guide forbids manual RLM/LRM/FSI/PDI because the render layer double-applies them)",
+   "mirroring": "no arrows, chevrons or directional glyph hints in any of the 20 values"
+  },
+  "terminology": [
+   "kind.code کوڈ = ui.library.category.code کوڈ",
+   "kind.image تصویر = singular of category.images تصاویر",
+   "kind.spreadsheet اسپریڈ شیٹ = singular of category.spreadsheets اسپریڈ شیٹس (also ui.canvas اسپریڈ شیٹ)",
+   "kind.video ویڈیو = category.video ویڈیو",
+   "kind.audio آڈیو = established form (ui.canvas آڈیو پر کارروائی, ui.common.errors), distinct from category.sounds آوازیں because the English differs",
+   "kind.text ٹیکسٹ = ui.teamBridge pdf {PDF} text {ٹیکسٹ فائل} - the file sense; متن in preview.pptx_text is slide-body text, a different concept and correctly a different word",
+   "kind.other دیگر = category.other دیگر and origin.other دیگر (a per-asset badge, the closest analogue)",
+   "tag_category.custom حسب ضرورت = ui.agents.pages.scope.custom",
+   "tag_category.source ماخذ = ui.agents.detail.origin.source and filter.source",
+   "tag_category.status حالت = ui.library.filter.status (not حیثیت, which ui.projects.project_editors.status uses - pre-existing inconsistency, out of scope)",
+   "tag_category.format فارمیٹ = ui.library.preview.pptx_failed_detail (ایسا فارمیٹ استعمال کرتی ہے)",
+   "tag_category.topic موضوع = ui.teamBridge موضوع (اختیاری)",
+   "tag_category.project پروجیکٹ = glossary §2 project row",
+   "preview sentence پیش منظر = the namespace's settled preview term (all ui.library.preview.* keys)"
+  ]
+ },
+ "artifacts": [
+  {
+   "path": "ur-ds-c8a7dd7d9268.json",
+   "kind": "audit_notes_not_execution_log",
+   "record_reference": "ur-ds-c8a7dd7d9268.record.json"
+  },
+  {
+   "path": "ur-ds-c8a7dd7d9268.audit.log",
+   "kind": "actual_execution_log",
+   "record_reference": "ur-ds-c8a7dd7d9268.record.json"
+  },
+  {
+   "path": "ur-ds-c8a7dd7d9268-check.py",
+   "kind": "executed_check_source",
+   "record_reference": "ur-ds-c8a7dd7d9268.record.json"
+  },
+  {
+   "path": "ur-ds-c8a7dd7d9268-check.out",
+   "kind": "executed_check_output",
+   "record_reference": "ur-ds-c8a7dd7d9268.record.json"
+  }
+ ],
+ "ledger_command": "Record with the repo's audit-ledger command (scripts/i18n/ledger-assemble.mjs) per locale + file group: status passed, auditor i18n-auditor / deepseek/deepseek-flash, source_sha256 065ac47c…, target_sha256 4f05862a…, note citing i18n/audits/evidence/ur/ui.library/<audit-id>/record.json. NOT run here: the task is read-only and the brief forbids repo writes.",
+ "unverified": [
+  "No ICU parser/formatter, Electron/React run, screen reader or rendered-frame check: read-only, no-build, no-server constraint. Width figures are character counts under the ur guide's measured one-cell-per-character rule, not measured glyph widths.",
+  "No ledger write, tracked evidence retention, PR comment or commit: writes were limited to this session's scratchpad.",
+  "The 159 non-delta legacy keys were not certified; only JSON validity, key-set parity and cross-file term consistency were checked.",
+  "scripts/i18n/check-strings.mjs and check-added-strings.mjs were NOT run: both read the TypeScript tree and the former can write its baseline; neither tests catalogue translation, and the brief forbids builds. node scripts/i18n/ledger-check.mjs WAS run (read-only check mode) and fails on stale ui.library hashes for all seven locales - including ur (ledger a0dd48660817… vs file 4f05862a…), which is the ledger not yet carrying this PR's new hashes, not a translation defect."
+ ]
+}

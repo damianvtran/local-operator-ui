@@ -1,0 +1,109 @@
+{
+  "locale": "zh-CN",
+  "audit_date": "2026-11-10",
+  "key_count": 179,
+  "fully_audited_key_count": 20,
+  "consistency_only_key_count": 159,
+  "scope": "PR #1851 @ 8a9ce1f808c266ebe9a0e924094344cea60c2c23; delta audit of the 20 new ui.library keys (12 kind badges, 7 tag-category headings, preview.unsupported_generic) plus the 20 English context notes reviewed for accuracy. No full legacy namespace certification.",
+  "head_sha": "8a9ce1f808c266ebe9a0e924094344cea60c2c23",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "effb6a3eb86a",
+    "session": "effb6a3eb86a",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "Served session header for session effb6a3eb86a states deepseek/deepseek-flash; no model switch or fallback occurred in this session.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Translator agent/model and session (zh-CN 86ce45a242a4) supplied by delegation; values landed verbatim. This auditor did not translate and took no part in translation."
+  },
+  "policy_inputs": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    },
+    "glossary": {
+      "path": "~/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "note": "Manager-owned byte-copy, verified identical by sha256 to ~/local-operator/i18n/glossary.md; glossary conformance was checked against this copy."
+    }
+  },
+  "namespaces": {
+    "ui.library": {
+      "status": "changes_requested",
+      "fully_audited_key_count": 20,
+      "consistency_only_key_count": 159,
+      "finding_ids": [
+        "F1",
+        "F2",
+        "N1"
+      ],
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.library.json",
+          "sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71"
+        },
+        "zh-CN": {
+          "path": "src/i18n/catalogues/zh-CN/ui.library.json",
+          "sha256": "686dfeeaa8ee25abd2815181ea7fe11ff7cd708cd0ea718632f870e5b1d5b857"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.library.context.json",
+          "sha256": "2fe63e830b49079dac67c5c4513358d0a8559a94fbf27ac8d437212b13aa2e72"
+        }
+      }
+    }
+  },
+  "artifacts": [
+    {
+      "path": "zh-CN-ds-effb6a3eb86a.json",
+      "sha256": "fd35fccf5e5002cf410678d6e2d15de5585e34150d20a2cea25428af34b173c1",
+      "kind": "audit_notes_not_execution_log",
+      "record_reference": "record.json"
+    },
+    {
+      "path": "zh-CN-ds-effb6a3eb86a.audit.log",
+      "sha256": "26c6ffa6fb3b1648e021cc652a017854a4c9f930cdb64c2ddb93e28008f94db2",
+      "kind": "actual_execution_log",
+      "record_reference": "record.json"
+    },
+    {
+      "path": "zh-CN-ds-effb6a3eb86a-check.py",
+      "sha256": "50cc146bc8e2bcc0caceed0005d773d48b4c44a2d7cc126972326972ec42432a",
+      "kind": "executed_check_source",
+      "record_reference": "record.json"
+    },
+    {
+      "path": "zh-CN-ds-effb6a3eb86a-check.out",
+      "sha256": "c8df78d9ccee75924e22d05fb71a06c7d93e126b1fcd3cb9816a2074600efeb7",
+      "kind": "executed_check_output",
+      "record_reference": "record.json"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "changes_requested",
+    "unresolved_blocker_major_count": 1,
+    "finding_ids": [
+      "F1",
+      "F2",
+      "N1"
+    ]
+  },
+  "finding_report": "zh-CN-ds-effb6a3eb86a.json",
+  "audit_notes_not_execution_log": false,
+  "execution_log": "zh-CN-ds-effb6a3eb86a.audit.log",
+  "original_lost_evidence": {
+    "status": "not_applicable",
+    "note": "No earlier zh-CN bundle was lost or replaced by this run; this is a fresh delta audit of the 20 keys added in this PR."
+  },
+  "retention": {
+    "state": "scratch_handoff_only_per_explicit_read_only_task",
+    "intended_tracked_directory": "i18n/audits/evidence/zh-CN/ui.library/p2-ds-effb6a3eb86a",
+    "manager_action_required": "Retain these four files under the canonical evidence root and record the ledger row with `node scripts/i18n/ledger-assemble.mjs --locale zh-CN --file src/i18n/catalogues/zh-CN/ui.library.json --auditor-instance effb6a3eb86a --auditor-model deepseek/deepseek-flash --result changes_requested --receipt <retained>/zh-CN-ds-effb6a3eb86a.json`. This auditor ran no ledger command: the ledger row is a repository write and the task was read-only. No temporary artifact was deleted.",
+    "note_in_ledger_row": "p2-ds-effb6a3eb86a: 20/20 delta keys audited; F1 major tag_category.type=类型 vs sort.kind=类型; F2 minor spreadsheet=表格 vs 电子表格; hashes 3/3 match."
+  },
+  "method": "Mechanical: repo catalogue gates run read-only (generate --check, check-duplicates, context-parity, check-strings, ledger-check) plus a re-runnable python check of hashes, key parity, placeholder parity, invisible characters and width. Accuracy/idiom/terminology: native-reader reasoning over each of the 20 values against the same locale's existing catalogue, quoting the sibling values. No MT, no back-translation."
+}

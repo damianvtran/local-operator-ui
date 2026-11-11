@@ -515,6 +515,63 @@ test("a measured picture reserves its ratio and an unmeasured one reserves a str
 	);
 });
 
+/*
+ * The operator's GitHub card (2026-11-10): a 2:1 og:image in a 380px card met
+ * the 176px height cap, and `object-cover` centre-cropped the picture's bottom
+ * band away. The picture must be drawn whole at its own ratio - `contain`, never
+ * `cover` and never `fill` - and the box keeps its cap. Read off the parsed DOM
+ * rather than a substring, so `object-contain` in a comment cannot satisfy it.
+ */
+test("a capped 2:1 picture is drawn whole, never cropped or stretched", () => {
+	const html = renderView(
+		m.linkPreviewCardView(
+			ready({ image: picture({ width: 1200, height: 600 }) }),
+		),
+		{ imageUrl: "blob:card/picture" },
+	);
+	const img = new JSDOM(html).window.document.querySelector("img");
+	assert.ok(img, "the picture draws");
+	const classes = [...img.classList];
+	assert.ok(classes.includes("object-contain"), classes.join(" "));
+	assert.ok(!classes.includes("object-cover"), "cover crops the picture");
+	assert.ok(!classes.includes("object-fill"), "fill stretches the picture");
+	assert.equal(img.style.aspectRatio, "1200 / 600");
+	assert.equal(img.style.maxHeight, "176px", "the card still has a cap");
+});
+
+test("title and description clamp, wrap unbroken tokens, and state their line-height", () => {
+	const html = renderView(m.linkPreviewCardView(ready()), {});
+	const doc = new JSDOM(html).window.document;
+	const byText = (text) =>
+		[...doc.querySelectorAll("span")].find((el) => el.textContent === text);
+	const title = byText("What changed this week");
+	const description = byText("Three fixes.");
+	assert.ok(title && description, "both lines draw");
+	assert.ok(title.classList.contains("line-clamp-2"), title.className);
+	assert.ok(
+		description.classList.contains("line-clamp-3"),
+		description.className,
+	);
+	for (const el of [title, description]) {
+		// Without it a URL-as-title has no break point and overflows the card.
+		assert.ok(el.classList.contains("[overflow-wrap:anywhere]"), el.className);
+		assert.ok(
+			[...el.classList].some((c) => c.startsWith("leading-")),
+			`explicit line-height: ${el.className}`,
+		);
+	}
+	// Title and description share a group, so the source line sits a step
+	// further from them than they sit from each other.
+	assert.equal(title.parentElement, description.parentElement);
+	const site = doc.querySelector("span.truncate");
+	assert.ok(site, "the source line truncates to one line");
+	assert.equal(
+		site.parentElement.parentElement,
+		title.parentElement.parentElement,
+		"the source row and the text group are siblings in one plate",
+	);
+});
+
 test("a picture that never arrived leaves the text alone", () => {
 	const html = renderView(m.linkPreviewCardView(ready()), { imageUrl: null });
 	assert.doesNotMatch(html, IMG_TAG, "no empty framed box where a picture was");

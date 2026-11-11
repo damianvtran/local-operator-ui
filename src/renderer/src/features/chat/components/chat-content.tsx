@@ -148,6 +148,7 @@ import type {
 import { useFleetAsks } from "../fleet-asks";
 import { codeReviewPaneNotice, runPaneNotice } from "../right-slot-notices";
 import type { SessionAskFrame } from "../session-asks";
+import type { SettingsIntentsBand } from "../session-status/settings-intent-chips";
 import type { Message } from "../types/message";
 import { useAskOpenPolicy } from "../use-ask-open-policy";
 import { AskDrawer } from "./asks/ask-drawer";
@@ -363,6 +364,8 @@ type ChatContentProps = {
 		effortEntities?: readonly unknown[];
 		/** A chosen model the owner has not confirmed; see `SessionStatusStripProps`. */
 		pendingModel?: CanonicalModel | null;
+		/** Durable settings-intent chips (`features.settings_intents`); see `MessageInputProps`. */
+		settingsIntents?: SettingsIntentsBand;
 		/** A draft pane's readings, which have no session behind them. */
 		draft?: boolean;
 		/**

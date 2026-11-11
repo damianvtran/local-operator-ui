@@ -1,0 +1,306 @@
+{
+  "locale": "ur",
+  "mode": "Fresh independent delta audit; allocation fix (<2h), read-only, no builds/installs/servers/test trees. Full semantic audit of 20 new ui.library keys; remaining 159 legacy keys checked only for parse/key parity, unchanged values and selected term consistency, not recertified.",
+  "scope": "PR damianvtran/local-operator-ui #1851 @ 8a9ce1f808c266ebe9a0e924094344cea60c2c23; base 0e12072d2b3..HEAD; ui.library only.",
+  "head_sha": "8a9ce1f808c266ebe9a0e924094344cea60c2c23",
+  "audit_date": "2026-11-10",
+  "key_count": 179,
+  "fully_audited_key_count": 20,
+  "consistency_only_key_count": 159,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Agent/model supplied by delegation. Translator session: not supplied. This auditor did not translate these values or participate in their preparation."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "54ae1c28348e",
+    "session": "54ae1c28348e",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Served session header for session 54ae1c28348e: Model openai/gpt-6.1-sol. No model switch or fallback occurred.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "policy_sources": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ur.md",
+      "sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+    },
+    "glossary": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "note": "Binding manager-owned copy. Matches the full expected 0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8 supplied by manifest/model receipt; original outside allowed scope was not read."
+    },
+    "expected_hashes": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/expected-hashes.json",
+      "sha256": "9357d096c247098dc8364c6750e7f32b39ef2a5cfa871896a30a6b1fd507c420"
+    }
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "verdict": "Terminal translation pass: zero BLOCKER/MAJOR; one non-gating MINOR English metadata finding M1.",
+  "findings": [
+    {
+      "id": "M1",
+      "severity": "minor",
+      "key": "ui.library.kind.other (English context note)",
+      "current_text": "English source: Other. Catch-all for a file the Library could not classify. Singular adjective/noun, not an action. Rendered inside the sentence ui.library.preview.unsupported ONLY via the generic fallback; see manifest. Short badge beside the file size on a card, list row and the preview header; a single noun, no placeholders. Translate as the locale's ordinary noun for this file kind. The raw machine value (for example 'pptx') is shown only as a data fallback when a newer backend adds a kind this catalogue does not know.",
+      "english_source": "Other",
+      "problem": "The note says the kind label is rendered inside ui.library.preview.unsupported via the generic fallback. The actual other branch renders ui.library.preview.unsupported_generic with no kind interpolation. This does not affect the correct Urdu label but misleadingly tells future translators that it enters a sentence.",
+      "recommendation": "Replace that sentence with: For the catch-all other kind, the preview uses ui.library.preview.unsupported_generic; this badge label is not interpolated into the unsupported sentence.",
+      "evidence": [
+        "src/renderer/src/features/library/components/library-viewers.tsx:107-111: asset.kind === \"other\" ? t(\"ui.library.preview.unsupported_generic\") : t(\"ui.library.preview.unsupported\", {kind: libraryKindLabel(asset.kind)})",
+        "src/i18n/catalogues/ur/ui.library.json: ui.library.preview.unsupported = \"{kind} فائل کا پیش منظر یہاں ایپ میں دستیاب نہیں۔\"",
+        "src/i18n/catalogues/ur/ui.library.json: ui.library.preview.unsupported_generic = \"اس فائل کا پیش منظر یہاں ایپ میں دستیاب نہیں۔\""
+      ],
+      "gates": false
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+  },
+  "namespaces": {
+    "ui.library": {
+      "status": "passed",
+      "result": "clean-with-findings",
+      "source_sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71",
+      "target_sha256": "4f05862a5ae2c238a4996b75375fdf08b867f37f96e9b92be8432321fa5eba50",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.library.json",
+          "sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71"
+        },
+        "ur": {
+          "path": "src/i18n/catalogues/ur/ui.library.json",
+          "sha256": "4f05862a5ae2c238a4996b75375fdf08b867f37f96e9b92be8432321fa5eba50"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.library.context.json",
+          "sha256": "2fe63e830b49079dac67c5c4513358d0a8559a94fbf27ac8d437212b13aa2e72"
+        }
+      },
+      "fully_audited_keys": [
+        "ui.library.preview.unsupported_generic",
+        "ui.library.kind.audio",
+        "ui.library.kind.code",
+        "ui.library.kind.docx",
+        "ui.library.kind.html",
+        "ui.library.kind.image",
+        "ui.library.kind.markdown",
+        "ui.library.kind.other",
+        "ui.library.kind.pdf",
+        "ui.library.kind.pptx",
+        "ui.library.kind.spreadsheet",
+        "ui.library.kind.text",
+        "ui.library.kind.video",
+        "ui.library.tag_category.custom",
+        "ui.library.tag_category.format",
+        "ui.library.tag_category.project",
+        "ui.library.tag_category.source",
+        "ui.library.tag_category.status",
+        "ui.library.tag_category.topic",
+        "ui.library.tag_category.type"
+      ],
+      "findings": [
+        {
+          "id": "M1",
+          "severity": "minor",
+          "key": "ui.library.kind.other (English context note)",
+          "current_text": "English source: Other. Catch-all for a file the Library could not classify. Singular adjective/noun, not an action. Rendered inside the sentence ui.library.preview.unsupported ONLY via the generic fallback; see manifest. Short badge beside the file size on a card, list row and the preview header; a single noun, no placeholders. Translate as the locale's ordinary noun for this file kind. The raw machine value (for example 'pptx') is shown only as a data fallback when a newer backend adds a kind this catalogue does not know.",
+          "english_source": "Other",
+          "problem": "The note says the kind label is rendered inside ui.library.preview.unsupported via the generic fallback. The actual other branch renders ui.library.preview.unsupported_generic with no kind interpolation. This does not affect the correct Urdu label but misleadingly tells future translators that it enters a sentence.",
+          "recommendation": "Replace that sentence with: For the catch-all other kind, the preview uses ui.library.preview.unsupported_generic; this badge label is not interpolated into the unsupported sentence.",
+          "evidence": [
+            "src/renderer/src/features/library/components/library-viewers.tsx:107-111: asset.kind === \"other\" ? t(\"ui.library.preview.unsupported_generic\") : t(\"ui.library.preview.unsupported\", {kind: libraryKindLabel(asset.kind)})",
+            "src/i18n/catalogues/ur/ui.library.json: ui.library.preview.unsupported = \"{kind} فائل کا پیش منظر یہاں ایپ میں دستیاب نہیں۔\"",
+            "src/i18n/catalogues/ur/ui.library.json: ui.library.preview.unsupported_generic = \"اس فائل کا پیش منظر یہاں ایپ میں دستیاب نہیں۔\""
+          ],
+          "gates": false
+        }
+      ]
+    }
+  },
+  "concerns": {
+    "a": "PASS: all 20 new values fully read for meaning, grammar and context; natural polite/neutral product register; no unsafe, added or omitted concept.",
+    "b": "PASS: singular image/spreadsheet forms match plural category family; code/video/other same family; Audio versus Sounds and file Text versus content Text are explicitly justified against existing catalogue values in per_key_audit. All seven tag headings consistent.",
+    "c": "PASS: individual DOCX/HTML/PDF/PPTX/Markdown and Audio/Video/Code decisions documented per key, including absence of older DOCX/PPTX values. Existing Urdu-script loanwords preserved.",
+    "d": "PASS: generic sentence grammatical, kind-free, no placeholder, parallel to existing unsupported sentence.",
+    "e": "PASS (textual sanity only): all kind/group labels <=10 Unicode code points, none exceeds approximate 12-character hint. Spreadsheet 10, Custom 9, Markdown 8. Sentence 45 vs English 37, flexible sentence hint; not a 12-character badge. No rendered width/terminal shaping proof claimed.",
+    "f": "PASS: no NBSP, narrow NBSP, Cf/ZW/bidi characters in 20 values. Urdu stored logical order, Urdu punctuation; Latin acronyms are standalone labels, no mixed Urdu/acronym sequence in these 20 strings. No manual bidi marks demanded (ur guide 55-60 forbids them). Font-specific shaping/rendering untested.",
+    "g": "PASS: valid JSON; English/Urdu/context each 179 matching keys; exactly 20 added keys equal keys20 manifest. 159 legacy values byte-text-equivalent after JSON decoding, none removed/changed. Diff shows only additions plus necessary trailing comma on prior final key; legacy not recertified.",
+    "h": "PASS WITH MINOR M1 on English metadata: other note incorrectly describes interpolation in unsupported sentence. All 20 roles/tones/notes read; other card/list/preview and rail descriptions match source calls. Generic note correctly says no placeholders.",
+    "i": "PASS: frozen HEAD and all three applicable expected file hashes match; glossary full SHA matches binding expected copy."
+  },
+  "per_key_audit": [
+    {
+      "key": "ui.library.preview.unsupported_generic",
+      "english_source": "This file has no in-app preview here.",
+      "current_text": "اس فائل کا پیش منظر یہاں ایپ میں دستیاب نہیں۔",
+      "length_codepoints": 45,
+      "verdict": "passed",
+      "reason": "اس فائل کا پیش منظر یہاں ایپ میں دستیاب نہیں۔ is grammatical, neutral, logical-order Urdu. Faithful negative availability sentence, names no kind, no placeholder. Exactly parallels legacy {kind} فائل کا پیش منظر یہاں ایپ میں دستیاب نہیں۔ with اس replacing the kind slot; Urdu full stop follows style guide lines 89-94."
+    },
+    {
+      "key": "ui.library.kind.audio",
+      "english_source": "Audio",
+      "current_text": "آڈیو",
+      "length_codepoints": 4,
+      "verdict": "passed",
+      "reason": "آڈیو is natural singular/invariant media noun. Library category.sounds = آوازیں translates English Sounds, not Audio. Justified different term: existing ui.chat.composer.processing_audio = آڈیو پر کارروائی جاری ہے and ui.common.errors.audio_playback = آڈیو چلانے میں خرابی ہوئی۔ use the same audio stem. Not a new inconsistent loanword."
+    },
+    {
+      "key": "ui.library.kind.code",
+      "english_source": "Code",
+      "current_text": "کوڈ",
+      "length_codepoints": 3,
+      "verdict": "passed",
+      "reason": "کوڈ matches ui.library.category.code = کوڈ and ui.canvas.files.code = کوڈ. Mass noun, correct singular badge."
+    },
+    {
+      "key": "ui.library.kind.docx",
+      "english_source": "DOCX",
+      "current_text": "DOCX",
+      "length_codepoints": 4,
+      "verdict": "passed",
+      "reason": "DOCX retained as official format acronym; no pre-existing occurrence found in targeted ur catalogue search outside this new key. No contrary localized rendering. Glossary §1 technology official spelling and context technical-token instruction support retention; do not claim existing precedent where absent."
+    },
+    {
+      "key": "ui.library.kind.html",
+      "english_source": "HTML",
+      "current_text": "HTML",
+      "length_codepoints": 4,
+      "verdict": "passed",
+      "reason": "HTML retained, matching existing ui.chat.canonical.supplement.preview_unavailable = ان لائن پیش منظر دستیاب نہیں۔ اس HTML کے لیے غیر تعاون یافتہ وسائل یا دستاویزی مواد درکار ہے۔ دیکھنے کے لیے فائل کھولیں۔"
+    },
+    {
+      "key": "ui.library.kind.image",
+      "english_source": "Image",
+      "current_text": "تصویر",
+      "length_codepoints": 5,
+      "verdict": "passed",
+      "reason": "تصویر is the singular of ui.library.category.images = تصاویر; matches ui.canvas.files.attachmentImage = منسلک تصویر."
+    },
+    {
+      "key": "ui.library.kind.markdown",
+      "english_source": "Markdown",
+      "current_text": "Markdown",
+      "length_codepoints": 8,
+      "verdict": "passed",
+      "reason": "Markdown retained, matching ui.settings.model.system_prompt.source = Markdown ماخذ and ui.chat.transcript_copy.menu.copy_markdown = Markdown کے طور پر نقل کریں. Proper format name remains Latin."
+    },
+    {
+      "key": "ui.library.kind.other",
+      "english_source": "Other",
+      "current_text": "دیگر",
+      "length_codepoints": 4,
+      "verdict": "passed",
+      "reason": "دیگر matches ui.library.category.other and ui.canvas.file_rows.other = دیگر. Natural short catch-all; metadata issue M1 does not affect translation."
+    },
+    {
+      "key": "ui.library.kind.pdf",
+      "english_source": "PDF",
+      "current_text": "PDF",
+      "length_codepoints": 3,
+      "verdict": "passed",
+      "reason": "PDF retained, matching existing ui.teamBridge.fileCard.kind = {kind, select, pdf {PDF} text {ٹیکسٹ فائل} container {ZIP} other {فائل}}. No placeholder in the new badge."
+    },
+    {
+      "key": "ui.library.kind.pptx",
+      "english_source": "PPTX",
+      "current_text": "PPTX",
+      "length_codepoints": 4,
+      "verdict": "passed",
+      "reason": "PPTX retained as official format acronym. Targeted search found no older literal PPTX rendering in Urdu values; no contrary localized rendering. Same official-spelling policy as DOCX, not falsely certified as prior catalogue precedent."
+    },
+    {
+      "key": "ui.library.kind.spreadsheet",
+      "english_source": "Spreadsheet",
+      "current_text": "اسپریڈ شیٹ",
+      "length_codepoints": 10,
+      "verdict": "passed",
+      "reason": "اسپریڈ شیٹ is singular of ui.library.category.spreadsheets and ui.canvas.file_rows.spreadsheets = اسپریڈ شیٹس. Correct loanword family and spacing."
+    },
+    {
+      "key": "ui.library.kind.text",
+      "english_source": "Text",
+      "current_text": "ٹیکسٹ",
+      "length_codepoints": 5,
+      "verdict": "passed",
+      "reason": "ٹیکسٹ matches existing plain-file term in ui.teamBridge.fileCard.kind: text {ٹیکسٹ فائل}. ui.library.preview.pptx_text = متن is prose-content/view-mode Text, not the plain-text file kind; different term justified by role."
+    },
+    {
+      "key": "ui.library.kind.video",
+      "english_source": "Video",
+      "current_text": "ویڈیو",
+      "length_codepoints": 5,
+      "verdict": "passed",
+      "reason": "ویڈیو matches ui.library.category.video and ui.canvas.file_rows.video = ویڈیو; singular of ui.canvas.files.videos = ویڈیوز. Settled Urdu-script loanword, not inappropriate Latin retention."
+    },
+    {
+      "key": "ui.library.tag_category.custom",
+      "english_source": "Custom",
+      "current_text": "حسب ضرورت",
+      "length_codepoints": 9,
+      "verdict": "passed",
+      "reason": "حسب ضرورت exactly matches existing ui.agents.pages.scope.custom = حسب ضرورت. Natural compact adjective phrase heading; need not force a noun calque."
+    },
+    {
+      "key": "ui.library.tag_category.format",
+      "english_source": "Format",
+      "current_text": "فارمیٹ",
+      "length_codepoints": 6,
+      "verdict": "passed",
+      "reason": "فارمیٹ matches existing ui.settings.appearance.editor.picker.format = رنگ کا فارمیٹ and Library preview.pptx_failed_detail uses فارمیٹ."
+    },
+    {
+      "key": "ui.library.tag_category.project",
+      "english_source": "Project",
+      "current_text": "پروجیکٹ",
+      "length_codepoints": 7,
+      "verdict": "passed",
+      "reason": "پروجیکٹ matches glossary §2 project → پروجیکٹ. Singular, no confusion with plural Projects navigation."
+    },
+    {
+      "key": "ui.library.tag_category.source",
+      "english_source": "Source",
+      "current_text": "ماخذ",
+      "length_codepoints": 4,
+      "verdict": "passed",
+      "reason": "ماخذ exactly matches ui.library.filter.source = ماخذ; a different group context does not require a different Urdu synonym."
+    },
+    {
+      "key": "ui.library.tag_category.status",
+      "english_source": "Status",
+      "current_text": "حالت",
+      "length_codepoints": 4,
+      "verdict": "passed",
+      "reason": "حالت exactly matches ui.library.filter.status = حالت. Correct lifecycle/status heading."
+    },
+    {
+      "key": "ui.library.tag_category.topic",
+      "english_source": "Topic",
+      "current_text": "موضوع",
+      "length_codepoints": 5,
+      "verdict": "passed",
+      "reason": "موضوع matches existing ui.teamBridge.create.topic = موضوع (اختیاری). Natural singular subject-matter heading."
+    },
+    {
+      "key": "ui.library.tag_category.type",
+      "english_source": "Type",
+      "current_text": "قسم",
+      "length_codepoints": 3,
+      "verdict": "passed",
+      "reason": "قسم matches existing ui.library.sort.kind = قسم and ui.canvas.files.kind = قسم. English Type/Kind are synonymous here in separate controls; same Urdu term does not misdescribe either concept. Do not invent an unnatural lexical distinction solely to distinguish roles."
+    }
+  ],
+  "audit_notes_not_execution_log": true,
+  "unverified": [
+    "No full legacy certification. No ICU runtime parser required for delta: all 20 source/target messages are plain strings with no placeholders/plural/select/markup.",
+    "No runtime render, browser, font shaping, assistive technology or pixel width measurement performed under read-only/no-server constraint.",
+    "No ledger write or tracked evidence retention: explicit task restricts all writes to own scratchpad; manager must retain files and record ledger.",
+    "Translator session not supplied; independence is based on this session doing no translation, not on inspecting a translator session."
+  ]
+}

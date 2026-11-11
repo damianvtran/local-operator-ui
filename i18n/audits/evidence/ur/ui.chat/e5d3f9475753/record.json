@@ -1,0 +1,89 @@
+{
+  "locale": "ur",
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "fully_audited_key_count": 1,
+      "consistency_only_key_count": 207,
+      "finding_ids": [],
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.json",
+          "sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15"
+        },
+        "ur": {
+          "path": "src/i18n/catalogues/ur/ui.chat.json",
+          "sha256": "4be951ec20cc69544d66a59218bb26669df5d0034ed2c35e2305b979db07b256"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.context.json",
+          "sha256": "84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf"
+        }
+      }
+    }
+  },
+  "audit_date": "2026-11-10",
+  "key_count": 208,
+  "fully_audited_key_count": 1,
+  "consistency_only_key_count": 207,
+  "scope": "PR #1842 @ b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a; e5fb4310dab638f9cf428779d62539ec039a8990..b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a; fully audit only ui.chat.audio.position_label; 207 unchanged namespace keys checked for key-set parity/consistency, not recertified.",
+  "head_sha": "b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "e5d3f9475753",
+    "session": "e5d3f9475753",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Served session header: Model openai/gpt-6.1-sol, session e5d3f9475753; no switch or fallback in this audit.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "Delegation identifies a new independent translator session for this revision; its ID was not supplied. This auditor did not translate."
+  },
+  "policy_inputs": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ur.md",
+      "sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+    },
+    "glossary": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_s12-audits/b8f0fc3aa922b99c6fad9c32edd36515fbd24e5a/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "note": "Read manager-owned byte copy; no access to original glossary needed or claimed."
+    }
+  },
+  "artifacts": [
+    {
+      "path": "ur-sol-e5d3f9475753.json",
+      "sha256": "dee10bc8194b1ac9acd549c07280a4c072ff7859fda269ae99ebefba53516dec",
+      "kind": "audit_notes_not_execution_log",
+      "record_reference": "ur-sol-e5d3f9475753.record.json"
+    },
+    {
+      "path": "ur-sol-e5d3f9475753.audit.log",
+      "sha256": "dea071a789e07bdd8c8793f8709f74b7ecec2eed65fe1e2fcdc11c7412972676",
+      "kind": "actual_execution_log",
+      "record_reference": "ur-sol-e5d3f9475753.record.json"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": []
+  },
+  "finding_report": "ur-sol-e5d3f9475753.json",
+  "audit_notes_not_execution_log": true,
+  "execution_log": "ur-sol-e5d3f9475753.audit.log",
+  "retention": {
+    "state": "scratch_handoff_only_per_explicit_read_only_task",
+    "intended_tracked_directory": "i18n/audits/evidence/ur/ui.chat/s12d-sol-e5d3f9475753",
+    "manager_action_required": "Retain the three deliverables under canonical evidence root and apply applicable UI ledger contract. No ledger command run by this auditor.",
+    "proposed_note": "passed; 1-key delta; record i18n/audits/evidence/ur/ui.chat/s12d-sol-e5d3f9475753/record.json"
+  },
+  "unverified": [
+    "No browser, screen-reader, runtime formatting or rendered bidi/fit execution; string-level and read-only source reasoning only. No builds, installs or servers run.",
+    "No ledger writes, repository edits, tracked retention, PR comments or commits; explicit scratch-only task supersedes general audit-ledger instruction. Manager must retain evidence.",
+    "The 207 unchanged namespace keys are not semantically recertified. Prior ur-ds-75c30f92d238.json and ur-sol-a1d964dc45d5.json in _s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/ are the cited prior delta certifications, not a blanket legacy certification."
+  ]
+}

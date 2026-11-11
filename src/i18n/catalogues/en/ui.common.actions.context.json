@@ -301,5 +301,13 @@
 		"role": "icon-button name",
 		"tone": "plain",
 		"note": "Opens a tooltip explaining the section beside it."
+	},
+	"ui.common.actions.actions_for_name": {
+		"role": "accessible name of a named file or image actions menu trigger",
+		"tone": "concise neutral phrase, sentence case",
+		"note": "Shared file/image overflow-menu button name. Identifies the asset whose actions will open; not a command to act on the name. Translate the surrounding phrase only. This is not the generic tooltip or the unnamed-asset fallback.",
+		"placeholders": {
+			"name": "string: actual file/asset display name, including Unicode and punctuation; insert verbatim without translating, normalizing, or adding a file extension. Word order may change around {name}."
+		}
 	}
 }

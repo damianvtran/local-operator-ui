@@ -1,0 +1,106 @@
+{
+  "locale": "fr",
+  "namespaces": {
+    "ui.library": {
+      "status": "passed",
+      "result": "clean-with-findings",
+      "fully_audited_key_count": 20,
+      "consistency_only_key_count": 159,
+      "finding_ids": [
+        "F1"
+      ],
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.library.json",
+          "sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.library.context.json",
+          "sha256": "2fe63e830b49079dac67c5c4513358d0a8559a94fbf27ac8d437212b13aa2e72"
+        },
+        "fr": {
+          "path": "src/i18n/catalogues/fr/ui.library.json",
+          "sha256": "5b2b439c0837be164d52fc50a53a40a8e0ea0b5940f1dff96359f5b18f61bc0f"
+        }
+      }
+    }
+  },
+  "audit_date": "2026-11-10",
+  "key_count": 179,
+  "fully_audited_key_count": 20,
+  "consistency_only_key_count": 159,
+  "scope": "PR damianvtran/local-operator-ui #1851 @ 8a9ce1f808c266ebe9a0e924094344cea60c2c23: the 20 NEW ui.library values (12 ui.library.kind.*, 7 ui.library.tag_category.*, 1 ui.library.preview.unsupported_generic), verified as the only additions against base 0e12072d2b3 (21 added / 1 comma-only removed line, no pre-existing value changed). English catalogue and context sidecar read at the same head. The other 159 namespace keys were checked for structure, key-set parity, no-change and term consistency only, and are NOT certified here.",
+  "head_sha": "8a9ce1f808c266ebe9a0e924094344cea60c2c23",
+  "base_sha": "0e12072d2b3",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "7c6a1a31a0fb",
+    "session": "7c6a1a31a0fb",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "Session header for session 7c6a1a31a0fb (this run) states deepseek/deepseek-flash; no model switch, role pin override or provider fallback occurred in this session.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "session": "39f51922849d",
+    "source": "Identity supplied by delegation: i18n-translator / anthropic/claude-sonnet-5-5, one session per locale (fr session 39f51922849d), values landed verbatim. This auditor did not translate, never opened that session's directory, and used no translation engine, API or MT service."
+  },
+  "policy_inputs": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+    },
+    "glossary": {
+      "path": "~/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "note": "Manager-owned byte-copy, recomputed identical by sha256 to ~/local-operator/i18n/glossary.md (173 lines). Glossary conformance was checked against this copy; its 'projet' row is the one this delta cites directly."
+    },
+    "expected_hashes": {
+      "path": "~/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/expected-hashes.json"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "fr-ds-7c6a1a31a0fb.json",
+      "sha256": "8a661421ba5e2b9b47a98c595a0d0a5d027348a376b0c24b14c91218a6ad1d51",
+      "kind": "audit_notes_not_execution_log",
+      "record_reference": "record.json"
+    },
+    {
+      "path": "fr-ds-7c6a1a31a0fb.audit.log",
+      "sha256": "5b006f241141c88f495e31913a6153d210341bca0aab505747262ed402a4b429",
+      "kind": "actual_execution_log",
+      "record_reference": "record.json"
+    },
+    {
+      "path": "fr-ds-7c6a1a31a0fb-check.py",
+      "sha256": "6b939b404331d6075ccc80a3acd0df0f3f35edf0ca57a48488c85e3299e23dae",
+      "kind": "executed_check_source",
+      "record_reference": "record.json"
+    },
+    {
+      "path": "fr-ds-7c6a1a31a0fb-check.out",
+      "sha256": "f94463e765c51b36fec5f5d96d03a781d7e32521773ce14882d8ce5ae05c8d05",
+      "kind": "actual_execution_output",
+      "record_reference": "record.json"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "F1"
+    ]
+  },
+  "finding_report": "fr-ds-7c6a1a31a0fb.json",
+  "audit_notes_not_execution_log": false,
+  "execution_log": "fr-ds-7c6a1a31a0fb.audit.log",
+  "retention": {
+    "state": "scratch_handoff_only_per_explicit_read_only_task",
+    "intended_tracked_directory": "i18n/audits/evidence/fr/ui.library/s14-fr-ds-7c6a1a31a0fb",
+    "manager_action_required": "Retain record.json plus audit.log / receipt companions under the canonical evidence root, then record the ledger row with the repo's audit-ledger command. scripts/i18n/ledger-check.mjs reports stale source/target hashes for fr/ui.library until that write lands.",
+    "proposed_note": "passed; 20 new ui.library kind/tag_category values audited, 1 minor (tag_category.type 'Type' shares the legacy sort.kind 'Type'); fr/ui.library 5b2b439c0837; record i18n/audits/evidence/fr/ui.library/s14-fr-ds-7c6a1a31a0fb/record.json"
+  }
+}

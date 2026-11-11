@@ -51,5 +51,6 @@
 	"ui.common.actions.configuration_updated": "Configuration mise à jour",
 	"ui.common.actions.system_prompt_updated": "Prompt système mis à jour",
 	"ui.common.actions.credential_updated": "Identifiant « {key} » mis à jour",
-	"ui.common.actions.clear": "Effacer"
+	"ui.common.actions.clear": "Effacer",
+	"ui.common.actions.actions_for_name": "Actions pour {name}"
 }

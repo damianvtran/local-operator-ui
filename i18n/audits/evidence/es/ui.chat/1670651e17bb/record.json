@@ -1,0 +1,153 @@
+{
+  "locale": "es",
+  "namespace": "ui.chat, ui.chat.composer_media, ui.common.actions (three blocks, one per namespace)",
+  "audit_date": "2026-11-10",
+  "key_count": 4,
+  "fully_audited_key_count": 4,
+  "consistency_only_key_count": 267,
+  "scope": "PR damianvtran/local-operator-ui #1842 @ e5fb4310dab638f9cf428779d62539ec039a8990; origin/main..HEAD Spanish delta: 4 added keys, 0 removed, 0 changed. Legacy values read for consistency only, not certified.",
+  "head_sha": "e5fb4310dab638f9cf428779d62539ec039a8990",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "1670651e17bb",
+    "session": "1670651e17bb",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "Served session header of this run: deepseek/deepseek-flash; session 1670651e17bb. No fallback used.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "session": "fdf0610daa17",
+    "source": "Supplied by the delegating manager; this auditor did not translate or take part in translation."
+  },
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15",
+      "target_sha256": "73e79f400865c43fd43bd3ce7dbc3e5979e53c8bc7986930d7441e01d9859c46",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.json",
+          "sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15"
+        },
+        "es": {
+          "path": "src/i18n/catalogues/es/ui.chat.json",
+          "sha256": "73e79f400865c43fd43bd3ce7dbc3e5979e53c8bc7986930d7441e01d9859c46"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.context.json",
+          "sha256": "84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf"
+        }
+      },
+      "audited_keys": {
+        "fully": [
+          "ui.chat.image_actions.actions",
+          "ui.chat.audio.position_label"
+        ],
+        "consistency_only_count": 206
+      },
+      "findings": []
+    },
+    "ui.chat.composer_media": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae",
+      "target_sha256": "82d113f5948cf0d3d12bfe3fff081dbf99339489324057c7017a4ca37c3e79dc",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.json",
+          "sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae"
+        },
+        "es": {
+          "path": "src/i18n/catalogues/es/ui.chat.composer_media.json",
+          "sha256": "82d113f5948cf0d3d12bfe3fff081dbf99339489324057c7017a4ca37c3e79dc"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.context.json",
+          "sha256": "a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b"
+        }
+      },
+      "audited_keys": {
+        "fully": [
+          "ui.chat.composer_media.pasted_image"
+        ],
+        "consistency_only_count": 8
+      },
+      "findings": []
+    },
+    "ui.common.actions": {
+      "status": "passed",
+      "result": "clean",
+      "source_sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b",
+      "target_sha256": "297982c56ead7383ca4bd8ea94c2c961f7532785957f648287a335e7168dd2a8",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.json",
+          "sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b"
+        },
+        "es": {
+          "path": "src/i18n/catalogues/es/ui.common.actions.json",
+          "sha256": "297982c56ead7383ca4bd8ea94c2c961f7532785957f648287a335e7168dd2a8"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+          "sha256": "24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d"
+        }
+      },
+      "audited_keys": {
+        "fully": [
+          "ui.common.actions.actions_for_name"
+        ],
+        "consistency_only_count": 53
+      },
+      "findings": []
+    }
+  },
+  "policy_inputs": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/es.md",
+      "sha256": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e"
+    },
+    "glossary": {
+      "path": "~/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "note": "Manager-owned binding byte copy; byte-identical to ~/local-operator/i18n/glossary.md (shasum equal, 173 lines). Glossary conformance checked against this copy."
+    }
+  },
+  "artifacts": [
+    {
+      "path": "receipt.json",
+      "sha256": "c72283438c628175cc21357af56d2bbf2dee9ed0f7610f58b27f9f2a66496d08",
+      "kind": "audit_notes_not_execution_log",
+      "record_reference": "record.json"
+    },
+    {
+      "path": "audit.log",
+      "sha256": "2de536202c0fe873c9b1b21420f6de5888c703d349a58155344d2298fee3bd03",
+      "kind": "actual_execution_log",
+      "record_reference": "record.json"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": []
+  },
+  "finding_report": "receipt.json",
+  "audit_notes_not_execution_log": true,
+  "execution_log": "audit.log",
+  "retention": {
+    "state": "scratch_handoff_only_per_explicit_read_only_task",
+    "intended_tracked_directory": "i18n/audits/evidence/es/<namespace>/s12-ds-1670651e17bb (one per namespace block)",
+    "manager_action_required": "Retain record and companions under the canonical evidence root; use the UI receipt/ledger contract. ledger-assemble.mjs not run here.",
+    "proposed_note": "passed; record i18n/audits/evidence/es/<ns>/s12-ds-1670651e17bb/record.json"
+  },
+  "unverified": [
+    "No ledger write, receipt copy, tracked commit, build, browser or screen-reader proof: explicit read-only brief.",
+    "Full check-i18n pipeline not run; only context-parity and check-duplicates (read-only) were executed.",
+    "Translator identity/session come from the delegation, not from evidence read here."
+  ]
+}

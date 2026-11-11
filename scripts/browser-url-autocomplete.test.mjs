@@ -361,6 +361,16 @@ test("focus fetches once and an empty query shows the session's entries", async 
 	const bundle = await renderBar();
 	await act(async () => bundle.input.focus());
 	await flush();
+	// "Once" must hold PAST the query debounce, not just at the next microtask.
+	// The popout focuses its input in a layout effect on mount, before the
+	// hook's passive query effect first runs; that first run used to queue a
+	// duplicate read ADDRESS_QUERY_DEBOUNCE_MS (120 ms) later. Asserting right
+	// after the microtask flush made the test pass or fail on how long the
+	// first jsdom render happened to take, so it waits out the debounce window.
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 250));
+	});
+	await flush();
 	assert.equal(bundle.requests.length, 1);
 	assert.equal(bundle.requests[0].expectedTabId, 1);
 	assert.equal(

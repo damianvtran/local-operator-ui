@@ -1,0 +1,103 @@
+{
+  "locale": "ru",
+  "namespaces": {
+    "ui.library": {
+      "status": "passed",
+      "fully_audited_key_count": 20,
+      "consistency_only_key_count": 159,
+      "finding_ids": [
+        "R1",
+        "R2"
+      ],
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.library.json",
+          "sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.library.context.json",
+          "sha256": "2fe63e830b49079dac67c5c4513358d0a8559a94fbf27ac8d437212b13aa2e72"
+        },
+        "ru": {
+          "path": "src/i18n/catalogues/ru/ui.library.json",
+          "sha256": "a6f8aaba4f1a8eea80cd6702f481d927f076de95c59033a59efe99681dfc391a"
+        }
+      }
+    }
+  },
+  "audit_date": "2026-11-10",
+  "key_count": 179,
+  "fully_audited_key_count": 20,
+  "consistency_only_key_count": 159,
+  "scope": "PR damianvtran/local-operator-ui #1851; 20 NEW ui.library messages at frozen head; base 0e12072d2b3. Legacy namespace not recertified.",
+  "head_sha": "8a9ce1f808c266ebe9a0e924094344cea60c2c23",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "5d9d00eabe50",
+    "session": "5d9d00eabe50",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Served session header: Model openai/gpt-6.1-sol; no model switch/fallback in this audit.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "session": "not supplied",
+    "source": "Translator agent/model supplied by manager; translator session not supplied. Auditor did not translate these values."
+  },
+  "policy_inputs": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ru.md",
+      "sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+    },
+    "glossary": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "note": "Binding manager-owned glossary byte-copy; recomputed hash matches supplied 0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8. Live glossary not read (outside allowlist)."
+    }
+  },
+  "artifacts": [
+    {
+      "path": "ru-sol-5d9d00eabe50.json",
+      "sha256": "dec50e09d2ffd1230d3b787497ec23c5de31a446dc581a5d1ba8e019e8a97507",
+      "kind": "audit_notes_not_execution_log",
+      "record_reference": "ru-sol-5d9d00eabe50.record.json"
+    },
+    {
+      "path": "ru-sol-5d9d00eabe50.audit.log",
+      "sha256": "0bd309e6b1bfc8f50ad7f2e83ac4bec5a81ae2beabafb67ec944e043cca0cf98",
+      "kind": "actual_execution_log",
+      "record_reference": "ru-sol-5d9d00eabe50.record.json"
+    },
+    {
+      "path": "ru-sol-check.py",
+      "sha256": "ef9f96c162343b4ca0c6b53d93f8018a8f482a7422883d22ef8103e18f7bf664",
+      "kind": "executed_check_source",
+      "record_reference": "ru-sol-5d9d00eabe50.record.json"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "R1",
+      "R2"
+    ]
+  },
+  "finding_report": "ru-sol-5d9d00eabe50.json",
+  "audit_notes_not_execution_log": false,
+  "execution_log": "ru-sol-5d9d00eabe50.audit.log",
+  "retention": {
+    "state": "scratch_handoff_only_per_explicit_read_only_task",
+    "intended_tracked_directory": "i18n/audits/evidence/ru/ui.library/s14-sol-5d9d00eabe50/",
+    "manager_action_required": "Retain receipt, log, record and executed check script under canonical root; record ledger with record.json note. No ledger command run by auditor.",
+    "proposed_note": "passed; 0 blocker/major; 2 minor; record i18n/audits/evidence/ru/ui.library/s14-sol-5d9d00eabe50/record.json"
+  },
+  "unverified": [
+    "No rendered UI/width proof; approximate rail fit risk only.",
+    "Legacy 159 values parsed, key parity and unchanged values verified, terminology sampled; NOT recertified.",
+    "No builds, installs, servers or test trees. Full check-i18n not run; scoped repo duplicateKeys/namespaceGap and production ICU parser executed.",
+    "No repository, ledger or PR writes; manager must retain scratch handoff under canonical evidence root and record ledger row."
+  ]
+}

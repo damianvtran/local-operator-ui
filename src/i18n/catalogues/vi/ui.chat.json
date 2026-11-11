@@ -204,5 +204,7 @@
 	"ui.chat.session_status.duration_explanation": "Thời gian làm việc; thời gian chờ không được tính.",
 	"ui.chat.session_status.effort_level.low": "Thấp",
 	"ui.chat.session_status.effort_level.medium": "Trung bình",
-	"ui.chat.session_status.effort_level.high": "Cao"
+	"ui.chat.session_status.effort_level.high": "Cao",
+	"ui.chat.image_actions.actions": "Thao tác với ảnh",
+	"ui.chat.audio.position_label": "Vị trí phát của {label}"
 }

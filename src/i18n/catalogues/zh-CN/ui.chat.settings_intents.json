@@ -1,0 +1,23 @@
+{
+	"ui.chat.settings_intents.chips_label": "设置更改",
+	"ui.chat.settings_intents.cwd_waiting": "本轮结束后移至 {dir}",
+	"ui.chat.settings_intents.effort_queued": "推理强度 {level} 将在下一步生效",
+	"ui.chat.settings_intents.failed_cwd": "无法移至 {dir}：{reason}",
+	"ui.chat.settings_intents.failed_effort": "无法将推理强度设为 {level}：{reason}",
+	"ui.chat.settings_intents.failed_fast": "无法更改快速模式：{reason}",
+	"ui.chat.settings_intents.failed_model": "无法切换到 {model}：{reason}",
+	"ui.chat.settings_intents.fast_queued": "快速模式的更改将在下一步生效",
+	"ui.chat.settings_intents.model_queued": "{model} 将在下一步生效",
+	"ui.chat.settings_intents.moving_cwd": "正在移至 {dir}…",
+	"ui.chat.settings_intents.reason_budget": "会话未能及时响应",
+	"ui.chat.settings_intents.reason_unknown": "未提供原因",
+	"ui.chat.settings_intents.row_applying": "正在应用设置更改",
+	"ui.chat.settings_intents.row_failed": "设置更改失败",
+	"ui.chat.settings_intents.setting_effort": "正在将推理强度设为 {level}…",
+	"ui.chat.settings_intents.setting_fast_off": "正在关闭快速模式…",
+	"ui.chat.settings_intents.setting_fast_on": "正在开启快速模式…",
+	"ui.chat.settings_intents.superseded_effort": "推理强度已在别处改为 {level}",
+	"ui.chat.settings_intents.superseded_model": "模型已在别处改为 {model}",
+	"ui.chat.settings_intents.superseded_other": "此设置已在别处更改",
+	"ui.chat.settings_intents.switching_model": "正在切换到 {model}…"
+}

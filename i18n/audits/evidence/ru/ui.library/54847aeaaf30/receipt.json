@@ -1,0 +1,360 @@
+{
+  "locale": "ru",
+  "mode": "Fresh independent delta audit of the 20 new ui.library keys against frozen head 8a9ce1f; read-only worktree ~/local-operator-ui/.worktrees/i18n-s8 (HEAD verified, clean). Allocation: fix (<2 h), bounded audit only. Glossary conformance checked against the manager-owned byte-copy at _s14-audits/8a9ce1f.../glossary.md (sha256 0eb34437... verified here, identical to ~/local-operator/i18n/glossary.md). Fully audited keys: 20. The 159 legacy ui.library keys were read only for JSON validity, key-set parity, placeholder parity, ICU completeness and term consistency; legacy values are not certified.",
+  "scope": "PR damianvtran/local-operator-ui #1851 'fix(i18n): localize Library kind and tag-category labels' @ 8a9ce1f808c266ebe9a0e924094344cea60c2c23 (0e12072d2b3..HEAD). Audited keys: ui.library.kind.{audio,code,docx,html,image,markdown,other,pdf,pptx,spreadsheet,text,video}, ui.library.tag_category.{custom,format,project,source,status,topic,type}, ui.library.preview.unsupported_generic. No full legacy namespace certification.",
+  "head_sha": "8a9ce1f808c266ebe9a0e924094344cea60c2c23",
+  "audit_date": "2026-11-10",
+  "key_count": 179,
+  "fully_audited_key_count": 20,
+  "consistency_only_key_count": 159,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "session": "not supplied",
+    "source": "Delegation brief: one translator session per locale with values landed verbatim. The translator session id was unrecorded by the manager and is stated here as 'not supplied'; this auditor translated nothing, cannot reach that session, and did not verify the model itself."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "54847aeaaf30",
+    "session": "54847aeaaf30",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "Served session header for this session (54847aeaaf30) states deepseek/deepseek-flash; no model switch occurred in-band and no in-session evidence of a different pin exists. A role-level pin cannot be read from inside the session, so this header is the only available evidence.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "policy_sources": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ru.md",
+      "sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+    },
+    "glossary": {
+      "path": "~/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "note": "Manager-owned byte-copy; sha256 matches the binding value in the brief. Glossary conformance was checked against this copy."
+    },
+    "expected_hashes": {
+      "path": "~/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/expected-hashes.json"
+    },
+    "keys20": {
+      "path": "~/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/keys20.json",
+      "sha256": "ce4bc7b57e25baa9f4d292f11f6a0ae722e076ff5b41957d125d7cdb88b58a5e"
+    }
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "verdict": "PASSED — no BLOCKER and no MAJOR. All 20 keys are faithful, idiomatic and internally consistent; the retained Latin tokens (DOCX/HTML/PDF/PPTX, Markdown, and «Аудио»/«Видео»/«Код») follow both the glossary and existing ru precedent. One MINOR consistency/width call (tag_category.custom) and two NITs.",
+  "findings": [
+    {
+      "id": "M1",
+      "severity": "minor",
+      "key": "ui.library.tag_category.custom",
+      "current_text": "Пользовательские",
+      "english_source": "Custom",
+      "problem": "Two costs, one of them measurable; the plural form itself is NOT the defect. (1) Terminology: this catalogue already renders the English word \"Custom\", as a standalone group/scope label, with «Свои» — ui.agents.pages.scope.custom (en 'Custom' -> ru «Свои») and ui.settings.appearance.editor.custom_group (en 'Custom themes' -> ru «Свои темы»). The new heading introduces a second rendering of the same English word in the same product. (2) Fit: the English sidecar budgets this banner as \"Narrow rail header (about 12 characters)\"; «Пользовательские» measures 16 display cells (+33%), while «Свои» measures 4. On the form: an adjectival heading has no other grammatical number in Russian — it agrees with an elided plural «теги», so «Пользовательские» is correct Russian and the translator was right to flag it rather than a mistake. Nor is the mismatch with the six singular-noun siblings (Формат/Проект/Источник/Статус/Тема/Тип) a defect of this value: English 'Custom' is itself an adjective among six nouns. Severity is MINOR because the meaning is right and the word is idiomatic product Russian; the cost is consistency plus width, not comprehension.",
+      "recommendation": "«Свои» — matches the two existing renderings of \"Custom\" in this catalogue and fits the rail budget (4 cells). If the manager prefers the more explicit «Пользовательские» (it names user-created rather than \"your own\", and does not collide with «Свои» = \"Local\" in ui.agents.skills.scope.local), then keep it and record the 16-cell rail exception in the style guide's recorded-exception style instead of leaving it unmeasured.",
+      "evidence": [
+        "src/i18n/catalogues/en/ui.agents.pages.json ui.agents.pages.scope.custom = 'Custom' -> src/i18n/catalogues/ru/ui.agents.pages.json = «Свои»",
+        "src/i18n/catalogues/en/ui.settings.appearance.editor.json ui.settings.appearance.editor.custom_group = 'Custom themes' -> ru = «Свои темы»",
+        "src/i18n/catalogues/en/ui.library.context.json ui.library.tag_category.custom.length = \"Narrow rail header (about 12 characters); keep the same shape and a comparable width.\"",
+        "~/local-operator/i18n/style-guides/ru.md, \"Width rules\": \"ru runs roughly 20-30% longer than en. Tighten; standard abbreviations ... beat truncation. Never truncate.\"",
+        "measured this session (python, ru-ds-54847aeaaf30-check.py): len/cells «Пользовательские» = 16, «Свои» = 4"
+      ],
+      "gates": false
+    },
+    {
+      "id": "N1",
+      "severity": "nit",
+      "key": "ui.library.tag_category.type",
+      "current_text": "Тип",
+      "english_source": "Type",
+      "problem": "The English context sidecar explicitly instructs \"Keep it distinct from the sort option 'Kind'\", but this catalogue renders \"Kind\" as «Тип» in the same Library surface (ui.library.sort.kind = «Тип») and in the sibling canvas file list (ui.canvas.files.kind en 'Kind' -> ru «Тип»; ui.canvas.create_file_dialog.file_type en 'File type' -> ru «Тип файла»), so heading and sort option read identically. I do not recommend a change: the obvious alternative «Вид» is already this catalogue's word for \"View\" (ui.shell.menubar.view = «Вид»; ui.projects.projects_view_switcher.project_view = «Вид проекта»), so a distinct rendering would create a worse collision, and «Разновидность» is stiff and 13 cells against the ~12-cell rail hint.",
+      "recommendation": "Keep «Тип» and record in the wave note that \"Kind\" and \"Type\" share one Russian word by corpus decision, so the English distinctness instruction is unsatisfiable here. Recorded so the instruction is not later read as an unmet requirement. Calibration: 6 of 7 other locales collapse the same pair (fr 'Type'/both, es 'Tipo'/both, zh-CN 类型/both, vi 'Loại'/both, ur قسم/both; only hi splits क़िस्म/प्रकार).",
+      "evidence": [
+        "src/i18n/catalogues/ru/ui.library.json ui.library.sort.kind = «Тип» (en 'Kind')",
+        "src/i18n/catalogues/en/ui.library.context.json ui.library.tag_category.type.note: \"Keep it distinct from the sort option 'Kind'.\"",
+        "src/i18n/catalogues/ru/ui.canvas.json ui.canvas.files.kind = «Тип» (en 'Kind'), ui.canvas.create_file_dialog.file_type = «Тип файла» (en 'File type')",
+        "src/i18n/catalogues/ru/ui.shell.menubar.json ui.shell.menubar.view = «Вид» (en 'View'); ru ui.projects.json ui.projects.projects_view_switcher.project_view = «Вид проекта»"
+      ],
+      "gates": false
+    },
+    {
+      "id": "N2",
+      "severity": "nit",
+      "key": "ui.library.tag_category.custom",
+      "metadata_layer": "english_context_sidecar",
+      "current_text": "\"... a single noun, no placeholders. Singular, naming the category not a count.\"",
+      "english_source": "Custom",
+      "problem": "The English note calls the source \"a single noun\" and repeats the template clause \"Singular, naming the category not a count\", but 'Custom' is an adjective, and the same clause is applied to six genuine nouns in the same rail. For a locale whose adjectives inflect for number and gender the note says nothing about the heading needing an agreeing (possibly plural) form — which is exactly the decision that produced M1. The note is not wrong about the concept; it is imprecise about English's own part of speech and does not warn the translator about inflection.",
+      "recommendation": "For adjective headings, replace \"a single noun\" with wording such as \"adjective heading over a group of tags; inflect as the target language requires (Russian adjectives agree with an elided plural «теги»)\", and keep the \"naming the category not a count\" clause.",
+      "evidence": [
+        "src/i18n/catalogues/en/ui.library.context.json ui.library.tag_category.custom.note: \"... Small muted header above that category's tag rows in the Tags section; a single noun, no placeholders. Singular, naming the category not a count. ...\"",
+        "same template clause appears verbatim on the six noun headings ui.library.tag_category.{format,project,source,status,topic,type}",
+        "consequence measured in M1: ru renders the adjectival heading as plural «Пользовательские» (16 cells) against the ~12-cell hint"
+      ],
+      "gates": false
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 2
+  },
+  "namespaces": {
+    "ui.library": {
+      "status": "passed",
+      "result": "clean-with-findings",
+      "source_sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71",
+      "target_sha256": "a6f8aaba4f1a8eea80cd6702f481d927f076de95c59033a59efe99681dfc391a",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.library.json",
+          "sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71"
+        },
+        "ru": {
+          "path": "src/i18n/catalogues/ru/ui.library.json",
+          "sha256": "a6f8aaba4f1a8eea80cd6702f481d927f076de95c59033a59efe99681dfc391a"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.library.context.json",
+          "sha256": "2fe63e830b49079dac67c5c4513358d0a8559a94fbf27ac8d437212b13aa2e72"
+        }
+      },
+      "fully_audited_keys": [
+        "ui.library.kind.audio",
+        "ui.library.kind.code",
+        "ui.library.kind.docx",
+        "ui.library.kind.html",
+        "ui.library.kind.image",
+        "ui.library.kind.markdown",
+        "ui.library.kind.other",
+        "ui.library.kind.pdf",
+        "ui.library.kind.pptx",
+        "ui.library.kind.spreadsheet",
+        "ui.library.kind.text",
+        "ui.library.kind.video",
+        "ui.library.tag_category.custom",
+        "ui.library.tag_category.format",
+        "ui.library.tag_category.project",
+        "ui.library.tag_category.source",
+        "ui.library.tag_category.status",
+        "ui.library.tag_category.topic",
+        "ui.library.tag_category.type",
+        "ui.library.preview.unsupported_generic"
+      ],
+      "fully_audited_key_count": 20,
+      "consistency_only_key_count": 159,
+      "finding_ids": [
+        "M1",
+        "N1",
+        "N2"
+      ],
+      "findings": [
+        {
+          "id": "M1",
+          "severity": "minor",
+          "key": "ui.library.tag_category.custom",
+          "current_text": "Пользовательские",
+          "english_source": "Custom",
+          "problem": "Two costs, one of them measurable; the plural form itself is NOT the defect. (1) Terminology: this catalogue already renders the English word \"Custom\", as a standalone group/scope label, with «Свои» — ui.agents.pages.scope.custom (en 'Custom' -> ru «Свои») and ui.settings.appearance.editor.custom_group (en 'Custom themes' -> ru «Свои темы»). The new heading introduces a second rendering of the same English word in the same product. (2) Fit: the English sidecar budgets this banner as \"Narrow rail header (about 12 characters)\"; «Пользовательские» measures 16 display cells (+33%), while «Свои» measures 4. On the form: an adjectival heading has no other grammatical number in Russian — it agrees with an elided plural «теги», so «Пользовательские» is correct Russian and the translator was right to flag it rather than a mistake. Nor is the mismatch with the six singular-noun siblings (Формат/Проект/Источник/Статус/Тема/Тип) a defect of this value: English 'Custom' is itself an adjective among six nouns. Severity is MINOR because the meaning is right and the word is idiomatic product Russian; the cost is consistency plus width, not comprehension.",
+          "recommendation": "«Свои» — matches the two existing renderings of \"Custom\" in this catalogue and fits the rail budget (4 cells). If the manager prefers the more explicit «Пользовательские» (it names user-created rather than \"your own\", and does not collide with «Свои» = \"Local\" in ui.agents.skills.scope.local), then keep it and record the 16-cell rail exception in the style guide's recorded-exception style instead of leaving it unmeasured.",
+          "evidence": [
+            "src/i18n/catalogues/en/ui.agents.pages.json ui.agents.pages.scope.custom = 'Custom' -> src/i18n/catalogues/ru/ui.agents.pages.json = «Свои»",
+            "src/i18n/catalogues/en/ui.settings.appearance.editor.json ui.settings.appearance.editor.custom_group = 'Custom themes' -> ru = «Свои темы»",
+            "src/i18n/catalogues/en/ui.library.context.json ui.library.tag_category.custom.length = \"Narrow rail header (about 12 characters); keep the same shape and a comparable width.\"",
+            "~/local-operator/i18n/style-guides/ru.md, \"Width rules\": \"ru runs roughly 20-30% longer than en. Tighten; standard abbreviations ... beat truncation. Never truncate.\"",
+            "measured this session (python, ru-ds-54847aeaaf30-check.py): len/cells «Пользовательские» = 16, «Свои» = 4"
+          ],
+          "gates": false
+        },
+        {
+          "id": "N1",
+          "severity": "nit",
+          "key": "ui.library.tag_category.type",
+          "current_text": "Тип",
+          "english_source": "Type",
+          "problem": "The English context sidecar explicitly instructs \"Keep it distinct from the sort option 'Kind'\", but this catalogue renders \"Kind\" as «Тип» in the same Library surface (ui.library.sort.kind = «Тип») and in the sibling canvas file list (ui.canvas.files.kind en 'Kind' -> ru «Тип»; ui.canvas.create_file_dialog.file_type en 'File type' -> ru «Тип файла»), so heading and sort option read identically. I do not recommend a change: the obvious alternative «Вид» is already this catalogue's word for \"View\" (ui.shell.menubar.view = «Вид»; ui.projects.projects_view_switcher.project_view = «Вид проекта»), so a distinct rendering would create a worse collision, and «Разновидность» is stiff and 13 cells against the ~12-cell rail hint.",
+          "recommendation": "Keep «Тип» and record in the wave note that \"Kind\" and \"Type\" share one Russian word by corpus decision, so the English distinctness instruction is unsatisfiable here. Recorded so the instruction is not later read as an unmet requirement. Calibration: 6 of 7 other locales collapse the same pair (fr 'Type'/both, es 'Tipo'/both, zh-CN 类型/both, vi 'Loại'/both, ur قسم/both; only hi splits क़िस्म/प्रकार).",
+          "evidence": [
+            "src/i18n/catalogues/ru/ui.library.json ui.library.sort.kind = «Тип» (en 'Kind')",
+            "src/i18n/catalogues/en/ui.library.context.json ui.library.tag_category.type.note: \"Keep it distinct from the sort option 'Kind'.\"",
+            "src/i18n/catalogues/ru/ui.canvas.json ui.canvas.files.kind = «Тип» (en 'Kind'), ui.canvas.create_file_dialog.file_type = «Тип файла» (en 'File type')",
+            "src/i18n/catalogues/ru/ui.shell.menubar.json ui.shell.menubar.view = «Вид» (en 'View'); ru ui.projects.json ui.projects.projects_view_switcher.project_view = «Вид проекта»"
+          ],
+          "gates": false
+        },
+        {
+          "id": "N2",
+          "severity": "nit",
+          "key": "ui.library.tag_category.custom",
+          "metadata_layer": "english_context_sidecar",
+          "current_text": "\"... a single noun, no placeholders. Singular, naming the category not a count.\"",
+          "english_source": "Custom",
+          "problem": "The English note calls the source \"a single noun\" and repeats the template clause \"Singular, naming the category not a count\", but 'Custom' is an adjective, and the same clause is applied to six genuine nouns in the same rail. For a locale whose adjectives inflect for number and gender the note says nothing about the heading needing an agreeing (possibly plural) form — which is exactly the decision that produced M1. The note is not wrong about the concept; it is imprecise about English's own part of speech and does not warn the translator about inflection.",
+          "recommendation": "For adjective headings, replace \"a single noun\" with wording such as \"adjective heading over a group of tags; inflect as the target language requires (Russian adjectives agree with an elided plural «теги»)\", and keep the \"naming the category not a count\" clause.",
+          "evidence": [
+            "src/i18n/catalogues/en/ui.library.context.json ui.library.tag_category.custom.note: \"... Small muted header above that category's tag rows in the Tags section; a single noun, no placeholders. Singular, naming the category not a count. ...\"",
+            "same template clause appears verbatim on the six noun headings ui.library.tag_category.{format,project,source,status,topic,type}",
+            "consequence measured in M1: ru renders the adjectival heading as plural «Пользовательские» (16 cells) against the ~12-cell hint"
+          ],
+          "gates": false
+        }
+      ]
+    }
+  },
+  "per_key_checks": [
+    {
+      "key": "ui.library.kind.audio",
+      "verdict": "clean",
+      "note": "«Аудио» (5 cells). en 'Audio'. The Audio/Sounds split mirrors the source: category.sounds is en 'Sounds' -> «Звуки», and the corpus's word for audio is «Аудио» (ui.chat.canonical.sound.batch_attachment_unavailable «Аудиовложение недоступно»; ui.settings.notifications.custom.empty «…Добавьте аудиофайл…»). Sidecar: \"Names the file's media type, not a player or a category group.\" No finding."
+    },
+    {
+      "key": "ui.library.kind.code",
+      "verdict": "clean",
+      "note": "«Код» (3 cells). Identical to category.code en 'Code' -> «Код»; the source uses the same word in both roles. No finding."
+    },
+    {
+      "key": "ui.library.kind.docx",
+      "verdict": "clean",
+      "note": "DOCX retained (4 cells). ru writes format acronyms in Latin: ui.canvas.pdf_preview.pdf «PDF: {title}», ui.canvas.create_file_dialog.html_html «HTML (.html)», ui.canvas.create_file_dialog.markdown_md «Markdown (.md)», and ui.teamBridge.fileCard.kind keeps PDF/ZIP Latin inside a kind select. Glossary §1: technology names keep their official spelling. No finding."
+    },
+    {
+      "key": "ui.library.kind.html",
+      "verdict": "clean",
+      "note": "HTML retained (4 cells). Direct precedent ui.canvas.create_file_dialog.html_html «HTML (.html)» and ui.canvas.html_preview.html_preview «Предпросмотр HTML: {title}». No finding."
+    },
+    {
+      "key": "ui.library.kind.image",
+      "verdict": "clean",
+      "note": "«Изображение» (11 cells) — the singular of category.images «Изображения». Within the ~12-cell badge hint. No finding."
+    },
+    {
+      "key": "ui.library.kind.markdown",
+      "verdict": "clean",
+      "note": "Markdown retained (8 cells) as the format's proper name; 10 Latin occurrences already in the ru catalogues, e.g. ui.canvas.create_file_dialog.markdown_md «Markdown (.md)», ui.projects.project_editors.markdown_headings_lists_code «Markdown — заголовки, списки, код.». No finding."
+    },
+    {
+      "key": "ui.library.kind.other",
+      "verdict": "clean",
+      "note": "«Другое» (6 cells) — identical to category.other en 'Other' -> «Другое». The neuter is the settled category label; a masculine «Другой» agreeing with «файл» would break the group label. This is the kind whose preview uses the generic sentence. No finding."
+    },
+    {
+      "key": "ui.library.kind.pdf",
+      "verdict": "clean",
+      "note": "PDF retained (3 cells). Direct precedent ui.canvas.pdf_preview.pdf «PDF: {title}» and onboarding «Прикрепите PDF, изображение или текстовый файл…». No finding."
+    },
+    {
+      "key": "ui.library.kind.pptx",
+      "verdict": "clean",
+      "note": "PPTX retained (4 cells). No earlier PPTX string existed in ru (the grep count of 1 is this key itself), but retention rests on the same-family precedent (PDF/HTML/Markdown Latin, PDF/ZIP inside ui.teamBridge.fileCard.kind), glossary §1 and the English note permitting identical retention. «ППТХ» is not Russian usage. No finding."
+    },
+    {
+      "key": "ui.library.kind.spreadsheet",
+      "verdict": "clean",
+      "note": "«Таблица» (7 cells) — the singular of category.spreadsheets «Таблицы»; the family is live in ru (ui.canvas.spreadsheet_preview.spreadsheet_saved «Таблица сохранена», ui.library.preview.sheet_unreadable «Не удалось прочитать таблицу.»). No finding."
+    },
+    {
+      "key": "ui.library.kind.text",
+      "verdict": "clean",
+      "note": "«Текст» (5 cells). The only near-neighbour, ui.teamBridge.fileCard.kind text -> «Текстовый файл», translates en 'Text file', not 'Text' — the difference is in the source — and «Текстовый файл» is 14 cells, over the ~12-cell badge hint. No finding."
+    },
+    {
+      "key": "ui.library.kind.video",
+      "verdict": "clean",
+      "note": "«Видео» (5 cells) — identical to category.video and ui.canvas.files.videos «Видео». No finding."
+    },
+    {
+      "key": "ui.library.tag_category.custom",
+      "verdict": "finding",
+      "note": "M1 (MINOR) — see findings. Plural adjectival form is correct Russian; the issues are word choice vs the corpus rendering «Свои» and a 16-cell value against the ~12-cell rail hint."
+    },
+    {
+      "key": "ui.library.tag_category.format",
+      "verdict": "clean",
+      "note": "«Формат» (6 cells). No competing corpus rendering; en 'Format'. No finding."
+    },
+    {
+      "key": "ui.library.tag_category.project",
+      "verdict": "clean",
+      "note": "«Проект» (6 cells); glossary §2 project -> проект. No finding."
+    },
+    {
+      "key": "ui.library.tag_category.source",
+      "verdict": "clean",
+      "note": "«Источник» (8 cells), the same word as ui.library.filter.source — which is also the same word in English ('Source'/'Source'), so the overlap is source-faithful and the sidecar's explicit disambiguation from the origin filter is honoured by role, not by a different noun. No finding."
+    },
+    {
+      "key": "ui.library.tag_category.status",
+      "verdict": "clean",
+      "note": "«Статус» (6 cells), the same word as ui.library.filter.status — again the same overlap as English ('Status'/'Status'), with the sidecar's disambiguation carried by role. No finding."
+    },
+    {
+      "key": "ui.library.tag_category.topic",
+      "verdict": "clean",
+      "note": "«Тема» (4 cells). Natural for subject-matter tags; no clash (the Library uses «Тема» nowhere else). No finding."
+    },
+    {
+      "key": "ui.library.tag_category.type",
+      "verdict": "finding",
+      "note": "N1 (NIT) — collides with ui.library.sort.kind «Тип» despite the sidecar asking for distinctness; no distinct Russian word is available («Вид» = View). No change recommended."
+    },
+    {
+      "key": "ui.library.preview.unsupported_generic",
+      "verdict": "clean",
+      "note": "«Для этого файла встроенный предпросмотр недоступен.» Grammar and register are correct and impersonal (style guide: prefer impersonal). It parallels the existing ui.library.preview.unsupported «Для файла типа {kind} встроенный предпросмотр недоступен.» on the same tail, names no kind, and carries no placeholder. English \"here\" is unrendered exactly as in the existing sentence, so the omission is consistent, not an omission introduced here. No finding."
+    }
+  ],
+  "english_metadata_check": {
+    "verdict": "accurate, with one imprecision (N2)",
+    "roles_accurate": "Yes. The 12 kind entries say \"Library card/list/preview badge\" and their notes describe the badge beside the file size on a card, list row and the preview header — matching the three surfaces named in the brief; the 7 tag entries say \"Library filter rail: header above one group of tags\", matching the rail heading; unsupported_generic says \"Library preview: unsupported-file state, generic\" and \"Shown when the file kind is the catch-all `other`; no placeholders\" — accurate.",
+    "useful_disambiguations": "The sidecars correctly separate the Tag taxonomy from the filter sections: tag_category.source warns it is \"not the Source filter section (ui.library.filter.source), which lists origin groups Generated/Created/Mentioned\", tag_category.status likewise against Favorites/Highlighted/Unorganized, and kind.code warns it is \"Not the filter-rail group 'Code' (ui.library.category.code); same word today, independent role\". The ru copy honours all three.",
+    "observations_not_findings": [
+      "kind.other's note, \"Rendered inside the sentence ui.library.preview.unsupported ONLY via the generic fallback; see manifest.\", is terse and can be read as if the value were interpolated into that sentence; what actually happens is that the generic sentence replaces the {kind} one. Ambiguous rather than wrong — recorded, not raised.",
+      "The length hints are consistent across the group (\"A truncating badge slot (about 12 characters)\" for kinds, \"Narrow rail header (about 12 characters)\" for tag headings), which is what made M1 measurable."
+    ],
+    "imprecision": "N2 — ui.library.tag_category.custom's note calls 'Custom' \"a single noun\" though it is an adjective, and its \"Singular\" clause gives no guidance for inflecting an adjectival heading."
+  },
+  "mechanical": {
+    "validator_commands_run": [
+      "node scripts/i18n/generate.mjs --check -> src/i18n/keys.gen.ts is byte-identical to a fresh generation. exit 0",
+      "node scripts/i18n/context-parity.mjs -> ok — every English key is covered, apart from 129 allowed gap(s) in 4 namespace(s) (shrink-only). exit 0",
+      "node scripts/i18n/ledger-check.mjs -> FAILED — 21 finding(s) across 1099 ledger entr(ies), of which 3 concern ru/ui.library (stale source hash, stale target hash, and the receipt-linkage note). Expected pre-audit state for this PR's delta; the same three rows are reported for hi/ur/vi/zh-CN. No ledger write was run by this auditor.",
+      "python3 ru-ds-54847aeaaf30-check.py -> all checks PASS, exit 0 (source and .out retained alongside this receipt)"
+    ],
+    "json_valid": true,
+    "key_sets_identical_to_english": true,
+    "keys_added_or_removed_vs_base": "none removed and nothing changed in value: git diff 0e12072d2b3..HEAD on the ru file is 21 insertions and 1 deletion, and the deletion is the preceding ui.library.time.years_y_ago line re-emitted with a trailing comma added (JSON separator) — its value string is unchanged. en and ru both 179 keys.",
+    "placeholder_parity": true,
+    "icu_plural_select_enforced": false,
+    "icu_note": "No plural/select structure was added by this delta (the 20 new values contain no placeholders at all). The namespace's 7 legacy plural messages were re-checked for ru CLDR completeness: all carry one/few/many/other. Braces balanced namespace-wide.",
+    "invisible_or_bidi_characters": "none — 0 occurrences in the 20 new values and 0 across the whole ru namespace (NBSP, narrow NBSP, ZWSP, ZWNJ, ZWJ, BOM, LRM/RLM, LRE/RLE/PDF, LRO/RLO, LRI/RLI/FSI/PDI all scanned)",
+    "width_measurements": {
+      "badge_hint_cells": 12,
+      "rail_header_hint_cells": 12,
+      "kind_cells_max": {
+        "key": "ui.library.kind.image",
+        "cells": 11
+      },
+      "over_budget": [
+        {
+          "key": "ui.library.tag_category.custom",
+          "cells": 16,
+          "hint": "about 12 (narrow rail header)"
+        }
+      ],
+      "measurement": "python unicodedata: combining marks 0, east-asian W/F counted as 2; every ru glyph in this delta is single-width Cyrillic or Latin"
+    },
+    "hash_binding": "3/3 recomputed sha256 match expected-hashes.json (en, en context, ru); 0 mismatches. Glossary byte-copy also matches its binding sha256.",
+    "delta_is_additions_only": true
+  },
+  "unverified": [
+    "No production ICU parser/formatter, Electron/React run, screen reader or rendered frame: read-only, no-build, no-server, no-test-tree constraint. Grammar, register and fit judgments are native-reader reasoning over the catalogue bytes plus the measured cell counts — not runtime output, and the rail's real pixel width was not measured.",
+    "No ledger write, tracked evidence retention, PR comment or commit: this audit wrote only to its session scratchpad. ledger-assemble.mjs was deliberately not run because it writes i18n/ledger.json and i18n/receipts/<instance>.json (source lines 423,427).",
+    "The 159 legacy ui.library values were not certified; only JSON validity, key-set parity, placeholder parity, ICU completeness and cross-file term consistency were checked for them.",
+    "The translator session is unrecorded ('not supplied'), so independence is asserted from this session's own transcript (no translation work performed here), not by comparing against a named translator session.",
+    "Cross-locale calibration (fr/es/zh-CN/vi/ur/hi) was read to judge whether the Kind/Type collapse and Latin tokens are locale-wide patterns; those locales' own verdicts are their auditors'."
+  ],
+  "receipt_contract_review": "Root, per-namespace, auditor and translator field sets mirror the model receipt _s12-audits/e5fb4310.../fr-ds-e3c562b03258.json; the single ui.library block carries status, result, source_sha256, target_sha256, input_hashes and findings. Both JSON files were re-parsed with python3 json.load after writing. No repo validator writes were permitted, so no field-level schema validator was run.",
+  "audit_notes_not_execution_log": false,
+  "execution_log": "ru-ds-54847aeaaf30.audit.log"
+}

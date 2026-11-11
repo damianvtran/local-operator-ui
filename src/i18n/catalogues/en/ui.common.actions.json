@@ -51,5 +51,6 @@
 	"ui.common.actions.configuration_updated": "Configuration updated",
 	"ui.common.actions.system_prompt_updated": "System prompt updated",
 	"ui.common.actions.credential_updated": "Credential \"{key}\" updated successfully",
-	"ui.common.actions.clear": "Clear"
+	"ui.common.actions.clear": "Clear",
+	"ui.common.actions.actions_for_name": "Actions for {name}"
 }

@@ -1,0 +1,155 @@
+{
+  "locale": "vi",
+  "audit_id": "s12-ds-1737237b812f",
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "key_count": 208,
+      "fully_audited_key_count": 2,
+      "consistency_only_key_count": 206,
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.json",
+          "sha256": "ee4e2a9eeb841750244e94a681e33eda92f87cb9727439779b77809c1628ea15"
+        },
+        "vi": {
+          "path": "src/i18n/catalogues/vi/ui.chat.json",
+          "sha256": "28aefec39d49f6c7cbaa05f15e40383a8e6f38761369f0068d90434dc9511445"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.context.json",
+          "sha256": "84fd75c47f8a888724affda05175936bd7eacf58da592eb4485e512cb42b08bf"
+        }
+      },
+      "intended_tracked_directory": "i18n/audits/evidence/vi/ui.chat/s12-ds-1737237b812f",
+      "proposed_note": "passed; record i18n/audits/evidence/vi/ui.chat/s12-ds-1737237b812f/record.json"
+    },
+    "ui.chat.composer_media": {
+      "status": "passed",
+      "key_count": 9,
+      "fully_audited_key_count": 1,
+      "consistency_only_key_count": 8,
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.json",
+          "sha256": "79e7d18ff960c44df404d42f2d35b8aaee1fc74f99f97d06e82dfdf989c8dfae"
+        },
+        "vi": {
+          "path": "src/i18n/catalogues/vi/ui.chat.composer_media.json",
+          "sha256": "8b458ffc96e9b6605c0924b2fdee952998ceed1d27fbd9ab23a6f5a5389445a6"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.composer_media.context.json",
+          "sha256": "a0fbc1552ef6f27999f3cff365750025627a284faa106d767e22a24d131ae77b"
+        }
+      },
+      "intended_tracked_directory": "i18n/audits/evidence/vi/ui.chat.composer_media/s12-ds-1737237b812f",
+      "proposed_note": "passed; record i18n/audits/evidence/vi/ui.chat.composer_media/s12-ds-1737237b812f/record.json"
+    },
+    "ui.common.actions": {
+      "status": "passed",
+      "key_count": 54,
+      "fully_audited_key_count": 1,
+      "consistency_only_key_count": 53,
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.json",
+          "sha256": "0218bb5b748ce941175be5e1d38d54efe9e838a771d9f3350bd29a53fb1da94b"
+        },
+        "vi": {
+          "path": "src/i18n/catalogues/vi/ui.common.actions.json",
+          "sha256": "d89b7dacc9c49f715685e2e6fa0cf04ebd75dee37eb5496c21f73bb00124d4ad"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+          "sha256": "24d4aa8a8dd7701f4527df4a966f60e29bc49b10c5f0ee7766993fc45c6e6b7d"
+        }
+      },
+      "intended_tracked_directory": "i18n/audits/evidence/vi/ui.common.actions/s12-ds-1737237b812f",
+      "proposed_note": "passed; record i18n/audits/evidence/vi/ui.common.actions/s12-ds-1737237b812f/record.json"
+    }
+  },
+  "audit_date": "2026-11-10",
+  "key_count": 271,
+  "fully_audited_key_count": 4,
+  "consistency_only_key_count": 267,
+  "key_count_definition": "271 = every catalogue key present in the three vi namespaces (208 + 9 + 54), mirroring the reference record's semantics; only the 4 delta keys were fully audited, the other 267 are consistency-only and not certified.",
+  "scope": "PR #1842 @ e5fb4310dab638f9cf428779d62539ec039a8990, vi: four added keys (ui.chat.composer_media.pasted_image, ui.chat.image_actions.actions, ui.chat.audio.position_label, ui.common.actions.actions_for_name). Additions only versus origin/main; key sets equal to English; the broadened pasted_file context sentence and the three new English context notes verified against source. No full legacy certification.",
+  "head_sha": "e5fb4310dab638f9cf428779d62539ec039a8990",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "1737237b812f",
+    "session": "1737237b812f",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "Served session header names deepseek/deepseek-flash for session 1737237b812f; no other model identity and no fallback notice was supplied to this session, so no fallback is recorded.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "session": "f573f85d7297",
+    "source": "Supplied by the delegation; values verbatim. Auditor did not translate and did not read the translator's session."
+  },
+  "policy_inputs": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/vi.md",
+      "sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888"
+    },
+    "glossary": {
+      "path": "~/local-operator-ui/.worktrees/_s12-audits/e5fb4310dab638f9cf428779d62539ec039a8990/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "lines": 173,
+      "note": "Manager-owned byte-copy; verified identical to ~/local-operator/i18n/glossary.md with shasum -a 256 + diff -q. vi glossary conformance was checked against this copy."
+    }
+  },
+  "artifacts": [
+    {
+      "path": "vi-ds-1737237b812f.json",
+      "sha256": "ee8018fbef169ff5559e28b4b7653d075ccbb023a67a77087192dcd539968263",
+      "kind": "audit_notes_not_execution_log",
+      "record_reference": "vi-ds-1737237b812f.record.json"
+    },
+    {
+      "path": "vi-ds-1737237b812f.audit.log",
+      "sha256": "930b67ce97cdac9a079cdf48ba303c9d3c69b227d173fa6f3319bac329913f27",
+      "kind": "actual_execution_log",
+      "record_reference": "vi-ds-1737237b812f.record.json"
+    },
+    {
+      "path": "vi-ds-1737237b812f-checks.py",
+      "sha256": "51e299e47e6a9ca5e7ea4caa23f79e5016c3a84af92133d5ec4bbee351ddde76",
+      "kind": "executed_check_source",
+      "record_reference": "vi-ds-1737237b812f.record.json"
+    },
+    {
+      "path": "vi-ds-1737237b812f-checks.out",
+      "sha256": "7337f87a927fb3cdcaa9ec3f639eed3205d5014c146c734533a5437768d3149c",
+      "kind": "actual_execution_output",
+      "record_reference": "vi-ds-1737237b812f.record.json"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": []
+  },
+  "finding_report": "vi-ds-1737237b812f.json",
+  "audit_notes_not_execution_log": true,
+  "execution_log": "vi-ds-1737237b812f.audit.log",
+  "retention": {
+    "state": "scratch_handoff_only_per_explicit_read_only_task",
+    "intended_tracked_directories": [
+      "i18n/audits/evidence/vi/ui.chat/s12-ds-1737237b812f",
+      "i18n/audits/evidence/vi/ui.chat.composer_media/s12-ds-1737237b812f",
+      "i18n/audits/evidence/vi/ui.common.actions/s12-ds-1737237b812f"
+    ],
+    "manager_action_required": "Retain this record and its companions under the three canonical namespace roots; update the three vi ledger rows (ui.chat, ui.chat.composer_media, ui.common.actions) from their current stale hashes. No ledger command was run here."
+  },
+  "unverified": [
+    "Runtime MessageFormat/Intl rendering of {label}/{name} not exercised; integrity is static.",
+    "No browser, rendered frame, screen-reader or pixel-width proof; character counts only.",
+    "No ledger write, tracked evidence file, PR comment or commit; read-only audit.",
+    "Translator session f573f85d7297 not readable from here; independence rests on a fresh, non-translating session."
+  ]
+}

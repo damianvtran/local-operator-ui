@@ -17,6 +17,7 @@ import { createRoot } from "react-dom/client";
 
 // Real renderer controls and main-process path resolution; only the OS bridge
 // is replaced. No Finder, default app, Electron window or live config is touched.
+const CHROME_MENU_MODULE = /supplement-file-actions\.tsx$/;
 const root = process.cwd();
 // Local agent runs supply their session scratchpad; CI has no agent session.
 const scratch = process.env.LOCAL_OPERATOR_SCRATCHPAD ?? tmpdir();
@@ -107,17 +108,18 @@ const bundle = await build({
 		"react/jsx-runtime",
 		"@tanstack/react-query",
 	],
-	plugins: process.env.SUPPLEMENT_ACTION_CONTROL
+	plugins: process.env.SUPPLEMENT_CHROME_CONTROL
 		? [
 				{
-					name: "before-control",
+					name: "attachment-chrome-baseline-control",
 					setup(build) {
-						build.onLoad({ filter: ROW_MODULE }, () => ({
+						// Same DOM harness with only the changed menu held at the base.
+						build.onLoad({ filter: CHROME_MENU_MODULE }, () => ({
 							contents: execFileSync(
 								"git",
 								[
 									"show",
-									"origin/main:src/renderer/src/features/chat/canonical/supplement-row.tsx",
+									"origin/main:src/renderer/src/features/chat/canonical/supplement-file-actions.tsx",
 								],
 								{ cwd: root, encoding: "utf8" },
 							),
@@ -126,7 +128,26 @@ const bundle = await build({
 					},
 				},
 			]
-		: [],
+		: process.env.SUPPLEMENT_ACTION_CONTROL
+			? [
+					{
+						name: "before-control",
+						setup(build) {
+							build.onLoad({ filter: ROW_MODULE }, () => ({
+								contents: execFileSync(
+									"git",
+									[
+										"show",
+										"origin/main:src/renderer/src/features/chat/canonical/supplement-row.tsx",
+									],
+									{ cwd: root, encoding: "utf8" },
+								),
+								loader: "tsx",
+							}));
+						},
+					},
+				]
+			: [],
 });
 // Keep the ephemeral bundle beside the existing dependencies; never install a
 // second tree. This file is removed even if an assertion rejects the control.

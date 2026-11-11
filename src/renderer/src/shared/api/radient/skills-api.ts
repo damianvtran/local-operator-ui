@@ -31,7 +31,92 @@ export type HubSkillRow = {
 	revision: string;
 	sync_contract: HubSkillContract;
 };
-export type HubSkillDetail = HubSkillRow & { files: HubSkillManifest["files"] };
+/**
+ * The `bundle` sub-object a BUNDLE skill serves instead of `files` (core's
+ * `SkillBundleRef`): archive identity plus its declared inventory. Only
+ * `file_count` is read here; the archive itself is never fetched by the
+ * renderer (a pull downloads and verifies it on the backend).
+ */
+export type HubSkillBundleRef = {
+	format: string;
+	hash: string;
+	size: number;
+	uncompressed_size: number;
+	file_count: number;
+	entrypoint: string;
+	tree_hash: string;
+};
+/**
+ * What the detail dialog consumes: TOTAL, whatever form the hub served.
+ *
+ * The hub serves two skill forms from the same `GET …/skills/{id}`: a DOCUMENT
+ * (`files[]`, path/content pairs) and a BUNDLE (`bundle{}` and NO `files` key
+ * at all, because the content is a zip the backend pulls). The old type claimed
+ * `files` always existed, so a bundle detail (a real private-org skill,
+ * `minerva-design`) threw `Cannot read properties of undefined (reading
+ * 'length')` in render and took the whole window down (v0.53.2). Every detail
+ * now passes through `normalizeHubSkillDetail`, so `files` is always an array
+ * (empty for a bundle) and `file_count` is the honest inventory size for both
+ * forms.
+ */
+export type HubSkillDetail = HubSkillRow & {
+	files: HubSkillManifest["files"];
+	bundle: HubSkillBundleRef | null;
+	file_count: number;
+};
+/** The wire answer before normalization: either form, fields not trusted. */
+type HubSkillDetailWire = HubSkillRow & {
+	files?: unknown;
+	bundle?: unknown;
+};
+
+/**
+ * Make a served detail total. Junk file rows (non-objects, a missing path) are
+ * dropped rather than rendered, and a missing `content` reads as empty: the
+ * dialog keys and labels rows by `path` and must never throw on one bad row.
+ */
+export function normalizeHubSkillDetail(
+	wire: HubSkillDetailWire,
+): HubSkillDetail {
+	const files = Array.isArray(wire.files)
+		? (wire.files as unknown[]).flatMap((value) => {
+				const row = value as { path?: unknown; content?: unknown } | null;
+				return row && typeof row === "object" && typeof row.path === "string"
+					? [
+							{
+								path: row.path,
+								content: typeof row.content === "string" ? row.content : "",
+							},
+						]
+					: [];
+			})
+		: [];
+	const bundle =
+		wire.bundle && typeof wire.bundle === "object"
+			? (wire.bundle as HubSkillBundleRef)
+			: null;
+	const declared = bundle?.file_count;
+	return {
+		...wire,
+		files,
+		bundle,
+		file_count:
+			typeof declared === "number" && Number.isFinite(declared) && declared >= 0
+				? declared
+				: files.length,
+	};
+}
+
+const normalizedDetail = (
+	response: RadientApiResponse<HubSkillDetailWire>,
+): RadientApiResponse<HubSkillDetail> => ({
+	...response,
+	// A missing body stays missing (the hook reports it as a failed read); only
+	// a present detail is normalized.
+	result: response.result
+		? normalizeHubSkillDetail(response.result)
+		: (response.result as unknown as HubSkillDetail),
+});
 export type PublicSkillList = {
 	page: number;
 	per_page: number;
@@ -66,9 +151,9 @@ export function getPublicSkill(
 	origin: string,
 	remoteId: string,
 ): Promise<RadientApiResponse<HubSkillDetail>> {
-	return readPublicHub<HubSkillDetail>(
+	return readPublicHub<HubSkillDetailWire>(
 		publicHubCatalogueUrl(origin, "skills", remoteId),
-	);
+	).then(normalizedDetail);
 }
 
 /**
@@ -88,9 +173,9 @@ export function getOrgSkill(
 	tenantId: string,
 	remoteId: string,
 ): Promise<RadientApiResponse<HubSkillDetail>> {
-	return radientProxyEnvelope<HubSkillDetail>({
+	return radientProxyEnvelope<HubSkillDetailWire>({
 		operation: "org_skill.get",
 		tenantId,
 		skillId: remoteId,
-	});
+	}).then(normalizedDetail);
 }
