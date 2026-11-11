@@ -46,8 +46,11 @@ const {
 	desktopRequestSchema,
 } = m;
 
-const PARENT = "sess-parent";
-const CHILD = "sess-child";
+// Synthetic ids that satisfy the contract's `sessionIdPattern` (12 lowercase
+// hex), so the request-schema node is judged on `callId`, not rejected on
+// `sessionId` first.
+const PARENT = "fc00000000a1";
+const CHILD = "fc00000000c2";
 const OUTER = "toolu_eval1";
 const CALL = `${OUTER}:0123456789abcdef0123456789abcdef`;
 
