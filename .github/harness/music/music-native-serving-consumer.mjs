@@ -156,7 +156,13 @@ try{
  // This is the indexed row's actual onOpen, not openCanvasDocument/mention:true.
  await d.verb(cdp,'press',{selector:fileRow+' > div > button.flex-1'});
  await observed('selected_indexed_canvas_document',()=>d.verb(cdp,'soundsFacts'),x=>x.canvas.some(p=>p.selectedTab===docId&&p.files?.some(f=>f.id===docId&&f.path===docId&&JSON.stringify(f.artifact).includes(D))));
- const panelId=await observed('associated_audio_tabpanel',()=>cdp.evaluate(`(()=>{for(const tab of document.querySelectorAll('[role="tab"][aria-selected="true"]')){const id=tab.getAttribute('aria-controls'),p=id&&document.getElementById(id),r=p?.getBoundingClientRect();if(p?.getAttribute('role')==='tabpanel'&&r.width>0&&r.height>0&&p.querySelector('[data-sound-player]'))return id;}return null})()`),Boolean);
+ // The canvas panel is TabPanel (src/renderer/src/shared/components/ui/tabs.tsx:103),
+ // rendered `display: contents` so it adds no box to the canvas layout; its own
+ // getBoundingClientRect() is therefore always 0x0 (run 42940060308 timed out here
+ // with the player on screen). Visibility is proven on the player inside the panel,
+ // and the tab<->panel relationship is checked both ways (canvas-tabs.tsx:292-309,
+ // canvas/index.tsx:970-973).
+ const panelId=await observed('associated_audio_tabpanel',()=>cdp.evaluate(`(()=>{for(const tab of document.querySelectorAll('[role="tab"][aria-selected="true"]')){const id=tab.getAttribute('aria-controls'),p=id&&document.getElementById(id),s=p?.querySelector('[data-sound-player]'),r=s?.getBoundingClientRect();if(p?.getAttribute('role')==='tabpanel'&&tab.id&&p.getAttribute('aria-labelledby')===tab.id&&r&&r.width>0&&r.height>0)return id;}return null})()`),Boolean);
  const preview='[id='+JSON.stringify(panelId)+'] [data-sound-player]';
  await d.verb(cdp,'press',{selector:preview+' > button'});
  await observed('indexed_canvas_digest_playback',()=>d.verb(cdp,'soundsFacts'),x=>x.ownerId==='sound:'+D&&!x.paused&&x.time>.2&&x.src?.startsWith('blob:')&&x.nativeElements===0);

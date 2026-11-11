@@ -175,6 +175,21 @@ class PortableContracts(unittest.TestCase):
         self.assertIn("'finished_after_cancel':'cancelled'", source)
         self.assertIn("x=>x.track&&x.card===lateOutcome,10000)", source)
 
+    def test_canvas_tabpanel_visibility_is_measured_on_its_player(self):
+        # Run 42940060308 timed out at associated_audio_tabpanel with the canvas
+        # player on screen: TabPanel renders `display: contents`
+        # (src/renderer/src/shared/components/ui/tabs.tsx), so the panel's own
+        # rect is always 0x0. The relationship stays asserted both ways and the
+        # visibility predicate moves to the player inside the panel.
+        source = (HERE / 'music-native-serving-consumer.mjs').read_text()
+        self.assertNotIn("r=p?.getBoundingClientRect()", source)
+        self.assertIn("s=p?.querySelector('[data-sound-player]'),r=s?.getBoundingClientRect()", source)
+        self.assertIn("p?.getAttribute('role')==='tabpanel'", source)
+        self.assertIn("p.getAttribute('aria-labelledby')===tab.id", source)
+        self.assertIn("r.width>0&&r.height>0)return id", source)
+        tabs = (HERE.parents[2] / 'src/renderer/src/shared/components/ui/tabs.tsx').read_text()
+        self.assertIn('className="contents"\n\t\trole="tabpanel"', tabs)
+
     def test_late_result_failure_records_evidence_without_loosening(self):
         # Run 42849428922 failed late_result_visible with nothing recorded. The
         # poll must leave its last value, a ~500 ms timeline, a diagnostic 30 s
