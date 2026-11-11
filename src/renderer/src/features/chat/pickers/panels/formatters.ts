@@ -169,7 +169,7 @@ export function formatTokens(n: number): string {
 			return `${fixed(value / divisor, 1, true)}${suffix}`;
 		}
 	}
-	return `${fixed(value / 1_000_000_000, 1, true)}B`;
+	return `${fixed(value / 1_000_000_000, 1, true)}B`; // i18n: ignore unit symbol, a documented kept-English exception (see this file's header)
 }
 
 /**
@@ -182,8 +182,8 @@ export function formatTokens(n: number): string {
  * the other is the drift this file prevents, not a fix to it.
  */
 export function formatContextTokens(n: number): string {
-	if (n >= 1_000_000) return `${fixed(n / 1_000_000, 1)}m`;
-	if (n >= 1_000) return `${fixed(n / 1_000, 1)}k`;
+	if (n >= 1_000_000) return `${fixed(n / 1_000_000, 1)}m`; // i18n: ignore unit symbol, a documented kept-English exception (see this file's header)
+	if (n >= 1_000) return `${fixed(n / 1_000, 1)}k`; // i18n: ignore unit symbol, a documented kept-English exception (see this file's header)
 	return plainInt(n);
 }
 
@@ -261,9 +261,9 @@ const roundHalfEven = (value: number): number => {
 export function formatMs(value: number | null | undefined): string {
 	if (value === null || value === undefined) return UNKNOWN_WORD();
 	if (Math.abs(value) < 1000) {
-		return `${formatNumber(roundHalfEven(value))} ms`;
+		return `${formatNumber(roundHalfEven(value))} ms`; // i18n: ignore unit symbol, a documented kept-English exception (see this file's header)
 	}
-	return `${fixed(value / 1000, 1)} s`;
+	return `${fixed(value / 1000, 1)} s`; // i18n: ignore unit symbol, a documented kept-English exception (see this file's header)
 }
 
 /**
@@ -455,8 +455,8 @@ export function formatTokensPerSecond(
 		// does exactly that (round-half-even sends it to `0.0`). Testing the
 		// rounded result is what makes the guard cover every such value instead
 		// of the ones a threshold happens to catch.
-		if (value > 0 && tenths === 0) return `<${fixed(0.1, 1)} tok/s`;
-		return `${fixed(tenths, 1)} tok/s`;
+		if (value > 0 && tenths === 0) return `<${fixed(0.1, 1)} tok/s`; // i18n: ignore unit symbol, a documented kept-English exception (see this file's header)
+		return `${fixed(tenths, 1)} tok/s`; // i18n: ignore unit symbol, a documented kept-English exception (see this file's header)
 	}
 	return `${formatCount(roundHalfEven(value))} tok/s`;
 }
@@ -471,10 +471,10 @@ export function formatTokensPerSecond(
 export function formatDuration(seconds: number | null | undefined): string {
 	if (seconds === null || seconds === undefined) return UNKNOWN_WORD();
 	const total = Math.trunc(Math.max(0, seconds));
-	if (total < 60) return `${plainInt(total)}s`;
-	if (total < 3600) return `${plainInt(Math.floor(total / 60))}m`;
+	if (total < 60) return `${plainInt(total)}s`; // i18n: ignore unit symbol, a documented kept-English exception (see this file's header)
+	if (total < 3600) return `${plainInt(Math.floor(total / 60))}m`; // i18n: ignore unit symbol, a documented kept-English exception (see this file's header)
 	if (total < 86400) {
-		return `${plainInt(Math.floor(total / 3600))}h ${plainInt(Math.floor((total % 3600) / 60))}m`;
+		return `${plainInt(Math.floor(total / 3600))}h ${plainInt(Math.floor((total % 3600) / 60))}m`; // i18n: ignore unit symbol, a documented kept-English exception (see this file's header)
 	}
-	return `${plainInt(Math.floor(total / 86400))}d ${plainInt(Math.floor((total % 86400) / 3600))}h`;
+	return `${plainInt(Math.floor(total / 86400))}d ${plainInt(Math.floor((total % 86400) / 3600))}h`; // i18n: ignore unit symbol, a documented kept-English exception (see this file's header)
 }
