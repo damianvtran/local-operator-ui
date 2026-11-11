@@ -1,0 +1,77 @@
+{
+ "schema": 1,
+ "instance": "4b55e20f2c31",
+ "locale": "ur",
+ "namespace": "ui.chat.canonical",
+ "audit_date": "2026-11-11",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "instance": "4b55e20f2c31",
+  "model": "deepseek/deepseek-flash",
+  "independent_from_translator_session": true,
+  "actual_model_source": "as stated in the auditor's own report record block (session runtime model header); no fallback was reported"
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "scope": "whole ui.chat.canonical namespace for ur (442 keys) at commit 659ef7e44b7c, the COMBINED bytes of #1861 rebased on #1862; semantic focus on the 2 tool.never_sent_* keys",
+ "sha256": {
+  "ur": "479f3224402071b5d31024e6b0a44400a7824b784114678f1fc4349536ee80f2",
+  "en": "38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3",
+  "context": "c258ab485de698eec85e81ffed506866e3b1e8caf29cb3ff434901388065b390"
+ },
+ "findings": [
+  {
+   "severity": "MINOR",
+   "id": "M1",
+   "key": "ui.chat.canonical.tool.never_sent_composed",
+   "detail": "in delta: passive gender consistency (feminine agreement `نہیں بھیجی گئی · …`); also .never_sent_empty"
+  },
+  {
+   "severity": "MINOR",
+   "id": "M2",
+   "key": "ui.chat.canonical.older_history.windowed.title",
+   "detail": "pre-existing (also .title_gesture, .unproven.long)"
+  },
+  {
+   "severity": "MINOR",
+   "id": "M3",
+   "key": "ui.chat.canonical.fold.count.list_variables",
+   "detail": "pre-existing"
+  },
+  {
+   "severity": "NIT",
+   "id": "N1",
+   "key": "ui.chat.canonical.checkpoint_rail.label",
+   "detail": "pre-existing: `باری` loose fit for an agent turn"
+  },
+  {
+   "severity": "NIT",
+   "id": "N2",
+   "key": "src/i18n/format.ts (not a catalogue key)",
+   "detail": "formatter observation (CLDR PB spelled in Urdu script); not catalogue copy; unreachable today (report N2 names src/i18n/format.ts)"
+  },
+  {
+   "severity": "NIT",
+   "id": "N3",
+   "key": "ui.chat.canonical.tool.never_sent_composed",
+   "detail": "informational: new lines are 33–34 cells vs 29 in English, no maxCells hint"
+  },
+  {
+   "severity": "NIT",
+   "id": "N4",
+   "key": "ui.chat.canonical.tool_row.outcome.never_ran",
+   "detail": "pre-existing: two spellings of \"never ran\""
+  }
+ ],
+ "provenance": {
+  "kind": "BINDING RECEIPT: the verdict, counts, model and session are transcribed from the auditor's own report; this file was written by the integrating coder session (agent coder), NOT by the auditor. Finding ids/keys/headlines are lifted from the report; the report is authoritative for detail.",
+  "source_report": {
+   "path": "i18n/audits/evidence/ur/ui.chat.canonical/l2comb-ur-20261111/report.md",
+   "sha256": "524b5ef63be8a596a3356aa4d38ae0ec911cbee8aa7d6d114bad01a63a0f9717"
+  },
+  "auditor_record": {
+   "path": "i18n/audits/evidence/ur/ui.chat.canonical/l2comb-ur-20261111/record.json",
+   "sha256": "30edd58ffc4ea92a14a071f83a27e3d4469c672601851c58159010e7f94156bf"
+  }
+ }
+}

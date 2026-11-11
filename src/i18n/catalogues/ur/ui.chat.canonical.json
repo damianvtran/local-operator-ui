@@ -438,5 +438,7 @@
 	"ui.chat.canonical.notice.stopped_with_error": "خرابی کے ساتھ رک گئی",
 	"ui.chat.canonical.notice.compaction_not_run": "کمپریشن نہیں چلا: {detail}",
 	"ui.chat.canonical.notice.compaction_not_run_after_colon": "کمپریشن نہیں چلا — {detail}",
-	"ui.chat.canonical.link_toolkit.actions_for": "{name} کے لیے اقدامات"
+	"ui.chat.canonical.link_toolkit.actions_for": "{name} کے لیے اقدامات",
+	"ui.chat.canonical.tool.never_sent_composed": "نہیں بھیجا گیا · {size} لکھا گیا",
+	"ui.chat.canonical.tool.never_sent_empty": "نہیں بھیجا گیا · کچھ نہیں لکھا گیا"
 }

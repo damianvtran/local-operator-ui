@@ -509,10 +509,12 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 					file.mtimeMs !== null &&
 					Math.floor(file.mtimeMs / 1000) !== Math.floor(asset.modified_at) ? (
 						<span data-library-file-live="">
-							{formatBytes(file.sizeBytes ?? asset.size_bytes)}
+							<bdi>{formatBytes(file.sizeBytes ?? asset.size_bytes)}</bdi>
 						</span>
 					) : (
-						<span>{formatBytes(asset.size_bytes)}</span>
+						<span>
+							<bdi>{formatBytes(asset.size_bytes)}</bdi>
+						</span>
 					)}
 					{asset.width && asset.height ? (
 						<span>

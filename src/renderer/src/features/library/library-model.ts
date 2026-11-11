@@ -20,7 +20,7 @@
  * add a category without a renderer release.
  */
 
-import { type WithoutParams, t } from "@shared/i18n";
+import { type WithoutParams, formatByteQuantity, t } from "@shared/i18n";
 import type {
 	DesktopLibraryAsset,
 	DesktopLibraryCategory,
@@ -419,16 +419,21 @@ export function organizedByLabel(by: string | null, at: string): string {
 
 /** A byte count in the app's compact register. */
 export function formatBytes(bytes: number): string {
-	if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
-	const units = ["B", "KB", "MB", "GB", "TB"];
+	if (!Number.isFinite(bytes) || bytes <= 0)
+		return formatByteQuantity(0, "B", { maximumFractionDigits: 0 });
+	const units = ["B", "KB", "MB", "GB", "TB"] as const;
 	const exponent = Math.min(
 		units.length - 1,
 		Math.floor(Math.log(bytes) / Math.log(1024)),
 	);
 	const value = bytes / 1024 ** exponent;
-	const rounded =
-		value >= 10 || exponent === 0 ? Math.round(value) : value.toFixed(1);
-	return `${rounded} ${units[exponent]}`;
+	// The ladder and the one-decimal-below-ten rule are this surface's; the
+	// spelling (digits, decimal mark, unit symbol) is the shared locale-aware helper's.
+	const digits = value >= 10 || exponent === 0 ? 0 : 1;
+	return formatByteQuantity(value, units[exponent] ?? "B", {
+		minimumFractionDigits: digits,
+		maximumFractionDigits: digits,
+	});
 }
 
 /**

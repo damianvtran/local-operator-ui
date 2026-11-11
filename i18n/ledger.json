@@ -2709,8 +2709,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765",
-			"target_sha256": "bee5c13d38967830063e0e8b563605941670562f84639bf59a773352651ae31e",
+			"source_sha256": "38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3",
+			"target_sha256": "085b359e749d56c159ab7475f4d7461f31bfc1b988df823ade5a7bcf000143ce",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -2720,20 +2720,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
+					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-11",
 					"result": "clean-with-findings",
-					"instance": "l1verb-es-r2",
+					"instance": "au1861es-combined-659ef7e4",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 3,
-						"nit": 2
+						"minor": 2,
+						"nit": 4
 					},
-					"receipt": "i18n/receipts/l1verb-es-r2.json",
-					"receipt_sha256": "9696db69fbfb3733be12bb1a4fa602e6db3c7a2af6a29efba71492905ca8323d",
-					"scope": "tool_row.verb.* 182 keys, round 2 (v2); whole-file hashes bound to the catalogue at that version",
-					"note": "Round 2 audit of the L1 tool-row verb batch; transcribed binding receipt, see its provenance block."
+					"receipt": "i18n/receipts/au1861es-combined-659ef7e4.json",
+					"receipt_sha256": "ddba0171eb961b17884981683de5b9d5608df145d2a065c0403131bebf9099b1",
+					"scope": "whole combined namespace (442 keys) at 659ef7e44b7c: #1861 file-size keys on top of #1862 tool_row.verb.*; fresh independent audit",
+					"note": "Combined-bytes re-audit after rebasing #1861 onto #1862; 0 blocker/major. Detail: i18n/audits/evidence/es/ui.chat.canonical/au1861es-combined-659ef7e4/report.md"
 				}
 			],
 			"status": "audited",
@@ -3151,6 +3151,30 @@
 						}
 					],
 					"status": "changes_requested"
+				},
+				{
+					"source_sha256": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765",
+					"target_sha256": "bee5c13d38967830063e0e8b563605941670562f84639bf59a773352651ae31e",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-11",
+							"result": "clean-with-findings",
+							"instance": "l1verb-es-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 3,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/l1verb-es-r2.json",
+							"receipt_sha256": "9696db69fbfb3733be12bb1a4fa602e6db3c7a2af6a29efba71492905ca8323d",
+							"scope": "tool_row.verb.* 182 keys, round 2 (v2); whole-file hashes bound to the catalogue at that version",
+							"note": "Round 2 audit of the L1 tool-row verb batch; transcribed binding receipt, see its provenance block."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -14460,8 +14484,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765",
-			"target_sha256": "96c08fb340c4d3b1a814fa515afbafe3a6f44275d9ca412c756de9775b2a521c",
+			"source_sha256": "38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3",
+			"target_sha256": "cea935cd4e6ba5627ffe19b4b129d4dd7f0ef60b3e8de96fa0bc1a48ca6249f1",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -14471,20 +14495,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
+					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-11",
 					"result": "clean-with-findings",
-					"instance": "l1verb-fr-r2",
+					"instance": "60da9ca1b9fc",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 6,
-						"nit": 1
+						"nit": 3
 					},
-					"receipt": "i18n/receipts/l1verb-fr-r2.json",
-					"receipt_sha256": "85841c850810622a559706dd3806c019df054808efa51037b738bfb0d8fb2cbf",
-					"scope": "tool_row.verb.* 182 keys, round 2 (v2); whole-file hashes bound to the catalogue at that version",
-					"note": "Round 2 audit of the L1 tool-row verb batch; transcribed binding receipt, see its provenance block."
+					"receipt": "i18n/receipts/60da9ca1b9fc.json",
+					"receipt_sha256": "753c9a750b0ae452a9cbe6428e4343be5682aa0bc395d055b6b6fa8c114521da",
+					"scope": "whole combined namespace (442 keys) at 659ef7e44b7c: #1861 file-size keys on top of #1862 tool_row.verb.*; fresh independent audit",
+					"note": "Combined-bytes re-audit after rebasing #1861 onto #1862; 0 blocker/major. Detail: i18n/audits/evidence/fr/ui.chat.canonical/au-1861-fr/report.md"
 				}
 			],
 			"status": "audited",
@@ -14917,6 +14941,30 @@
 						}
 					],
 					"status": "changes_requested"
+				},
+				{
+					"source_sha256": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765",
+					"target_sha256": "96c08fb340c4d3b1a814fa515afbafe3a6f44275d9ca412c756de9775b2a521c",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-11",
+							"result": "clean-with-findings",
+							"instance": "l1verb-fr-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 6,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/l1verb-fr-r2.json",
+							"receipt_sha256": "85841c850810622a559706dd3806c019df054808efa51037b738bfb0d8fb2cbf",
+							"scope": "tool_row.verb.* 182 keys, round 2 (v2); whole-file hashes bound to the catalogue at that version",
+							"note": "Round 2 audit of the L1 tool-row verb batch; transcribed binding receipt, see its provenance block."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -26708,8 +26756,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765",
-			"target_sha256": "5ee58b6fadda9ab42a42a58b3f1de681c6fd8d5ba1241696065012bdc33810d2",
+			"source_sha256": "38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3",
+			"target_sha256": "da636c7580e96efed0b3db710f577d8ced1c2321fc747b95675028ae529bbb4f",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -26721,18 +26769,18 @@
 					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-11",
-					"result": "clean",
-					"instance": "l1verb-hi-r2",
+					"result": "clean-with-findings",
+					"instance": "7bfe4bf0bb78",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 2,
+						"nit": 3
 					},
-					"receipt": "i18n/receipts/l1verb-hi-r2.json",
-					"receipt_sha256": "c7adf3e99c39bcaba6ca40f5b30ac4d1301339dd7e633a1070ee710ef192dffc",
-					"scope": "tool_row.verb.* 182 keys, round 2 (v2); whole-file hashes bound to the catalogue at that version",
-					"note": "Round 2 audit of the L1 tool-row verb batch; transcribed binding receipt, see its provenance block."
+					"receipt": "i18n/receipts/7bfe4bf0bb78.json",
+					"receipt_sha256": "2a9e7a08b340c7ce4384a098ad595a56fc69a89d907fd6a3fe0c0ebe4cab1fe2",
+					"scope": "whole combined namespace (442 keys) at 659ef7e44b7c: #1861 file-size keys on top of #1862 tool_row.verb.*; fresh independent audit",
+					"note": "Combined-bytes re-audit after rebasing #1861 onto #1862; 0 blocker/major. Detail: i18n/audits/evidence/hi/ui.chat.canonical/l2-combined-hi-20261111/report.md"
 				}
 			],
 			"status": "audited",
@@ -27148,6 +27196,30 @@
 						}
 					],
 					"status": "changes_requested"
+				},
+				{
+					"source_sha256": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765",
+					"target_sha256": "5ee58b6fadda9ab42a42a58b3f1de681c6fd8d5ba1241696065012bdc33810d2",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-11",
+							"result": "clean",
+							"instance": "l1verb-hi-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/l1verb-hi-r2.json",
+							"receipt_sha256": "c7adf3e99c39bcaba6ca40f5b30ac4d1301339dd7e633a1070ee710ef192dffc",
+							"scope": "tool_row.verb.* 182 keys, round 2 (v2); whole-file hashes bound to the catalogue at that version",
+							"note": "Round 2 audit of the L1 tool-row verb batch; transcribed binding receipt, see its provenance block."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -38538,8 +38610,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765",
-			"target_sha256": "75ec2986a0248f8b36bb4e34b091f83da911e45ba731551457d58a837da95e64",
+			"source_sha256": "38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3",
+			"target_sha256": "a84811e9c087aa79873ef756a2a268e298ebe4b6789d7dd834f4f51a127b4acb",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -38549,20 +38621,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
+					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-11",
 					"result": "clean-with-findings",
-					"instance": "l1verb-ru-r2",
+					"instance": "e8fd410766e5",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 2
+						"minor": 2,
+						"nit": 4
 					},
-					"receipt": "i18n/receipts/l1verb-ru-r2.json",
-					"receipt_sha256": "8ab2aaa7290883557a87a538239f4287a985367fe764dcac2d2db60f3c1daa23",
-					"scope": "tool_row.verb.* 182 keys, round 2 (v2); whole-file hashes bound to the catalogue at that version",
-					"note": "Round 2 audit of the L1 tool-row verb batch; transcribed binding receipt, see its provenance block."
+					"receipt": "i18n/receipts/e8fd410766e5.json",
+					"receipt_sha256": "4df70a4dc704641a03838ef552e365fc3948208d25efaf9b0c3e7274cad39000",
+					"scope": "whole combined namespace (442 keys) at 659ef7e44b7c: #1861 file-size keys on top of #1862 tool_row.verb.*; fresh independent audit",
+					"note": "Combined-bytes re-audit after rebasing #1861 onto #1862; 0 blocker/major. Detail: i18n/audits/evidence/ru/ui.chat.canonical/l2c-ru-e8fd410766e5/report.md"
 				}
 			],
 			"status": "audited",
@@ -38978,6 +39050,30 @@
 						}
 					],
 					"status": "changes_requested"
+				},
+				{
+					"source_sha256": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765",
+					"target_sha256": "75ec2986a0248f8b36bb4e34b091f83da911e45ba731551457d58a837da95e64",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-11",
+							"result": "clean-with-findings",
+							"instance": "l1verb-ru-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/l1verb-ru-r2.json",
+							"receipt_sha256": "8ab2aaa7290883557a87a538239f4287a985367fe764dcac2d2db60f3c1daa23",
+							"scope": "tool_row.verb.* 182 keys, round 2 (v2); whole-file hashes bound to the catalogue at that version",
+							"note": "Round 2 audit of the L1 tool-row verb batch; transcribed binding receipt, see its provenance block."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -50388,8 +50484,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765",
-			"target_sha256": "8e8828ecaad567be6e43efc8a2e34434c6f1df1460c6fb46ecdeba20ac52a83f",
+			"source_sha256": "38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3",
+			"target_sha256": "479f3224402071b5d31024e6b0a44400a7824b784114678f1fc4349536ee80f2",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -50399,20 +50495,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
+					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-11",
 					"result": "clean-with-findings",
-					"instance": "l1verb-ur-r4",
+					"instance": "4b55e20f2c31",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 2
+						"minor": 3,
+						"nit": 4
 					},
-					"receipt": "i18n/receipts/l1verb-ur-r4.json",
-					"receipt_sha256": "8bbbaeb64cf77de4a45f86e4d7fe9499059fe5e9a3d8cc2c77e01599172526d1",
-					"scope": "tool_row.verb.* 182 keys, round 4 (v4); whole-file hashes bound to the catalogue at that version",
-					"note": "Round 4 audit of the L1 tool-row verb batch; transcribed binding receipt, see its provenance block."
+					"receipt": "i18n/receipts/4b55e20f2c31.json",
+					"receipt_sha256": "cb1b66356ef73d9591c10c32c6ad2ace1ba9c753e5ebb1d3b26d9710e635660c",
+					"scope": "whole combined namespace (442 keys) at 659ef7e44b7c: #1861 file-size keys on top of #1862 tool_row.verb.*; fresh independent audit",
+					"note": "Combined-bytes re-audit after rebasing #1861 onto #1862; 0 blocker/major. Detail: i18n/audits/evidence/ur/ui.chat.canonical/l2comb-ur-20261111/report.md"
 				}
 			],
 			"status": "audited",
@@ -50877,6 +50973,30 @@
 						}
 					],
 					"status": "changes_requested"
+				},
+				{
+					"source_sha256": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765",
+					"target_sha256": "8e8828ecaad567be6e43efc8a2e34434c6f1df1460c6fb46ecdeba20ac52a83f",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-11",
+							"result": "clean-with-findings",
+							"instance": "l1verb-ur-r4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/l1verb-ur-r4.json",
+							"receipt_sha256": "8bbbaeb64cf77de4a45f86e4d7fe9499059fe5e9a3d8cc2c77e01599172526d1",
+							"scope": "tool_row.verb.* 182 keys, round 4 (v4); whole-file hashes bound to the catalogue at that version",
+							"note": "Round 4 audit of the L1 tool-row verb batch; transcribed binding receipt, see its provenance block."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -62152,8 +62272,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765",
-			"target_sha256": "cf703b1f99b8c87d4afe6e4bc6bfb708a8cf3ee1792296194639806ad24c4ea0",
+			"source_sha256": "38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3",
+			"target_sha256": "325e37d1a3b5e8a0bbdfbf57bbb5ea3208fb377e35407ca989cba6d5e08b6cb8",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -62163,20 +62283,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
+					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-11",
 					"result": "clean-with-findings",
-					"instance": "l1verb-vi-r3",
+					"instance": "a484d4606e72",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 2
+						"minor": 2,
+						"nit": 3
 					},
-					"receipt": "i18n/receipts/l1verb-vi-r3.json",
-					"receipt_sha256": "9c6742a9c490c70ceac4004d22bd15b82d28d3abb123af6b533bc28c678c9e0f",
-					"scope": "tool_row.verb.* 182 keys, round 3 (v3); whole-file hashes bound to the catalogue at that version",
-					"note": "Round 3 audit of the L1 tool-row verb batch; transcribed binding receipt, see its provenance block."
+					"receipt": "i18n/receipts/a484d4606e72.json",
+					"receipt_sha256": "700ab32b793e516d5410ef8b00da24c550a7f2727b25518298263a2427444292",
+					"scope": "whole combined namespace (442 keys) at 659ef7e44b7c: #1861 file-size keys on top of #1862 tool_row.verb.*; fresh independent audit",
+					"note": "Combined-bytes re-audit after rebasing #1861 onto #1862; 0 blocker/major. Detail: i18n/audits/evidence/vi/ui.chat.canonical/l2c-vi-a484d4606e72/report.md"
 				}
 			],
 			"status": "audited",
@@ -62633,6 +62753,30 @@
 						}
 					],
 					"status": "changes_requested"
+				},
+				{
+					"source_sha256": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765",
+					"target_sha256": "cf703b1f99b8c87d4afe6e4bc6bfb708a8cf3ee1792296194639806ad24c4ea0",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-11",
+							"result": "clean-with-findings",
+							"instance": "l1verb-vi-r3",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/l1verb-vi-r3.json",
+							"receipt_sha256": "9c6742a9c490c70ceac4004d22bd15b82d28d3abb123af6b533bc28c678c9e0f",
+							"scope": "tool_row.verb.* 182 keys, round 3 (v3); whole-file hashes bound to the catalogue at that version",
+							"note": "Round 3 audit of the L1 tool-row verb batch; transcribed binding receipt, see its provenance block."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -74724,8 +74868,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765",
-			"target_sha256": "5a2d874409f2839c78ee8d63bcc62305bd9cc7b11782c80551561edc189515e2",
+			"source_sha256": "38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3",
+			"target_sha256": "4176670606e68058e498a36006ba8c770af64489ec77d77e78d3a2754ab2ddf0",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -74735,20 +74879,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
+					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-11",
-					"result": "clean",
-					"instance": "l1verb-zh-cn-r2",
+					"result": "clean-with-findings",
+					"instance": "803ea1cbdb73",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 3,
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/l1verb-zh-cn-r2.json",
-					"receipt_sha256": "dd666f401bc099f68e9a473664486285ff045ebf519b51b84c5114bf6b792802",
-					"scope": "tool_row.verb.* 182 keys, round 2 (v2); whole-file hashes bound to the catalogue at that version",
-					"note": "Round 2 audit of the L1 tool-row verb batch; transcribed binding receipt, see its provenance block."
+					"receipt": "i18n/receipts/803ea1cbdb73.json",
+					"receipt_sha256": "4401b4db88cbb67b10c5dfca4358611d79ebb55008ed37c99acaab4771d40ca3",
+					"scope": "whole combined namespace (442 keys) at 659ef7e44b7c: #1861 file-size keys on top of #1862 tool_row.verb.*; fresh independent audit",
+					"note": "Combined-bytes re-audit after rebasing #1861 onto #1862; 0 blocker/major. Detail: i18n/audits/evidence/zh-CN/ui.chat.canonical/l2c-zhcn-803ea1cbdb73/report.md"
 				}
 			],
 			"status": "audited",
@@ -75181,6 +75325,30 @@
 						}
 					],
 					"status": "changes_requested"
+				},
+				{
+					"source_sha256": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765",
+					"target_sha256": "5a2d874409f2839c78ee8d63bcc62305bd9cc7b11782c80551561edc189515e2",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-11",
+							"result": "clean",
+							"instance": "l1verb-zh-cn-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/l1verb-zh-cn-r2.json",
+							"receipt_sha256": "dd666f401bc099f68e9a473664486285ff045ebf519b51b84c5114bf6b792802",
+							"scope": "tool_row.verb.* 182 keys, round 2 (v2); whole-file hashes bound to the catalogue at that version",
+							"note": "Round 2 audit of the L1 tool-row verb batch; transcribed binding receipt, see its provenance block."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},

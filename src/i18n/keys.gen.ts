@@ -4653,6 +4653,8 @@ export type MessageParams = {
 	"ui.chat.canonical.supplement.withheld.reason_separator": undefined;
 	"ui.chat.canonical.supplement.withheld.reason_too_large": undefined;
 	"ui.chat.canonical.this_chat": undefined;
+	"ui.chat.canonical.tool.never_sent_composed": { size: string };
+	"ui.chat.canonical.tool.never_sent_empty": undefined;
 	"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.label": undefined;
 	"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.note": undefined;
 	"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.short": undefined;
