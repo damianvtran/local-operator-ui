@@ -99,7 +99,26 @@ export const NO_OFFER_READ = `(() => {
  * control on a transcript showing only the collapsed "3 actions" header, so the
  * scene must make the reader's gestures first, through the existing `press`.
  *
+ * TWO TIERS, OUTER FIRST. The collapsed "3 actions" header native QA saw is the
+ * OUTER `TurnSummary` (turn-summary.tsx: root `[data-turn-summary]`, stamped
+ * `data-record-id`/`data-run-ids`, whose `Disclosure` trigger is the root's
+ * first `aria-expanded` button), not a `TraceFold`; the work folds live inside
+ * it. So the scene opens each closed TurnSummary header, then each closed
+ * TraceFold header the open bar revealed.
+ *
+ * WHY PROGRESS IS THE CLICKED HEADER'S OWN STATE, NOT A COUNT: opening an outer
+ * bar mounts its inner folds still closed, so a global "collapsed folds" count
+ * stays the same (or grows) after a press that worked. Each press is judged by
+ * re-reading the very header it pressed, addressed by its root's stable stamp,
+ * flipping to aria-expanded="true".
+ *
  * Selectors are derived from the source, never "any button":
+ * - a header is "own" only when its nearest `[data-turn-summary]`/`[data-fold-ids]`
+ *   ancestor is its root, so a nested inner header is never taken for the outer;
+ * - a TurnSummary is addressed by `[data-turn-summary][data-record-id=..]`
+ *   (`data-run-ids` when no anchor), a fold by `[data-fold-ids=..]`; a header is
+ *   pressed only when its root selector is unique and the press selector resolves
+ *   to exactly that header, else the scene FAILS closed instead of guessing;
  * - a fold's trigger is the `aria-expanded` button holding `[data-fold-summary]`
  *   inside its `[data-fold-ids]` root (trace-fold.tsx);
  * - a tool row's trigger is the `Disclosure` button holding `[data-trace-verb]`
@@ -112,6 +131,10 @@ export const NO_OFFER_READ = `(() => {
 export const COLLAPSED_FOLD =
 	'[data-lo-canonical-transcript] [data-fold-ids] button[aria-expanded="false"]:has([data-fold-summary])';
 const TOOL_TRIGGER = 'button[aria-expanded="false"]:has([data-trace-verb])';
+/** Nearest owning disclosure root of a header: decides "own" vs nested inner. */
+const HEADER_OWNER = "[data-turn-summary], [data-fold-ids]";
+const TURN_HEADER = "button[aria-expanded]";
+const FOLD_HEADER = "button[aria-expanded]:has([data-fold-summary])";
 const MAX_FOLD_PRESSES = 4;
 const MAX_TOOL_PRESSES = 4;
 
@@ -119,9 +142,27 @@ const MAX_TOOL_PRESSES = 4;
 export const WORK_READ = `(() => {
 	const root = document.querySelector("[data-lo-canonical-transcript]");
 	const viewFull = document.querySelectorAll(${JSON.stringify(VIEW_FULL)}).length;
-	if (!root) return { transcript: false, viewFull, collapsedFolds: 0, folds: 0, tools: [] };
+	if (!root) return { transcript: false, viewFull, collapsedFolds: 0, folds: 0, disclosures: [], ambiguous: 0, tools: [] };
 	const folds = root.querySelectorAll("[data-fold-ids]").length;
+	// Diagnostic only: never the progress signal (see THE NORMAL STEPS above).
 	const collapsedFolds = document.querySelectorAll(${JSON.stringify(COLLAPSED_FOLD)}).length;
+	const owner = ${JSON.stringify(HEADER_OWNER)};
+	const disclosures = [];
+	let ambiguous = 0;
+	const offer = (kind, el, attr, header) => {
+		const b = [...el.querySelectorAll(header)].find((x) => x.closest(owner) === el);
+		if (!b || b.getAttribute("aria-expanded") !== "false") return;
+		const base = kind === "turn" ? "[data-turn-summary]" : "";
+		const rootSel = '[data-lo-canonical-transcript] ' + base + '[' + attr + '="' + CSS.escape(el.getAttribute(attr) ?? "") + '"]';
+		const selector = rootSel + ' ' + header.replace("[aria-expanded]", '[aria-expanded="false"]');
+		if (document.querySelectorAll(rootSel).length === 1 && document.querySelector(selector) === b)
+			disclosures.push({ kind, root: rootSel, header, selector });
+		else ambiguous += 1;
+	};
+	for (const el of root.querySelectorAll("[data-turn-summary]"))
+		offer("turn", el, el.hasAttribute("data-record-id") ? "data-record-id" : "data-run-ids", ${JSON.stringify(TURN_HEADER)});
+	for (const el of root.querySelectorAll("[data-fold-ids]"))
+		offer("fold", el, "data-fold-ids", ${JSON.stringify(FOLD_HEADER)});
 	const tools = [];
 	for (const button of root.querySelectorAll(${JSON.stringify(`[data-record-id] ${TOOL_TRIGGER}`)})) {
 		const verb = (button.querySelector("[data-trace-verb]")?.textContent ?? "").trim().slice(0, 24);
@@ -132,8 +173,15 @@ export const WORK_READ = `(() => {
 		if (tools.length >= 8) break;
 	}
 	tools.sort((a, b) => (a.verb === "Edited" ? 0 : 1) - (b.verb === "Edited" ? 0 : 1));
-	return { transcript: true, viewFull, folds, collapsedFolds, tools };
+	return { transcript: true, viewFull, folds, collapsedFolds, disclosures, ambiguous, tools };
 })()`;
+
+/**
+ * Whether the header a disclosure entry pressed now reads open: the root's OWN
+ * header (nearest owner is the root), never a descendant inner fold's.
+ */
+export const headerOpened = ({ root, header }) =>
+	`(() => { const r = document.querySelector(${JSON.stringify(root)}); if (!r) return false; const b = [...r.querySelectorAll(${JSON.stringify(header)})].find((x) => x.closest(${JSON.stringify(HEADER_OWNER)}) === r); return b?.getAttribute("aria-expanded") === "true"; })()`;
 
 /** "Rows 1–200 of 263" -> numbers, or null. */
 export function parseRange(text) {
@@ -238,17 +286,22 @@ export async function sceneDiffHistory({
 			}
 			return settle(opened, `${label}: ${what} opens`);
 		};
-		for (
-			let i = 0;
-			i < MAX_FOLD_PRESSES && !state.viewFull && state.collapsedFolds > 0;
-			i += 1
-		) {
-			const before = state.collapsedFolds;
-			const fewer = `document.querySelectorAll(${JSON.stringify(COLLAPSED_FOLD)}).length < ${before}`;
-			if (!(await pressOpen(COLLAPSED_FOLD, `work fold ${i + 1}`, fewer)))
+		// Outer TurnSummary headers come first in the read, then TraceFolds, so an
+		// outer bar opens before the inner folds it reveals are pressed.
+		for (let i = 0; i < MAX_FOLD_PRESSES && !state.viewFull; i += 1) {
+			const next = state.disclosures?.[0];
+			if (!next) {
+				if (state.ambiguous)
+					check(
+						`${label}: every collapsed work header is uniquely addressable`,
+						false,
+						JSON.stringify(state),
+					);
 				break;
+			}
+			const what = `${next.kind === "turn" ? "turn summary" : "work fold"} ${i + 1}`;
+			if (!(await pressOpen(next.selector, what, headerOpened(next)))) break;
 			state = await facts();
-			if (state.collapsedFolds >= before) break;
 		}
 		for (
 			let i = 0;

@@ -17,6 +17,7 @@ import {
 	COLLAPSED_FOLD,
 	WORK_READ,
 	diffHistorySceneRefusal,
+	headerOpened,
 	parseRange,
 	sceneDiffHistory,
 } from "./diff-history-scene.mjs";
@@ -150,26 +151,52 @@ test("a fixture with no View full diff control FAILS, records its frame, through
 		);
 });
 
-test("a collapsed work fold and Edited row are opened by press before View full diff is awaited", async () => {
-	// A tiny model of the transcript: one collapsed fold, inside it a Wrote row
-	// and an Edited row whose detail holds the control; an already-open fold too.
+test("a collapsed outer turn summary, then its inner work fold and Edited row, are opened by press before View full diff is awaited", async () => {
+	// A tiny model of the native transcript: the collapsed "3 actions" bar is the
+	// OUTER TurnSummary; opening it reveals an inner TraceFold that is still
+	// closed, so the global collapsed-fold count does NOT drop after the outer
+	// press. Inside the fold: a Wrote row and an Edited row holding the control.
+	const turn = {
+		kind: "turn",
+		root: '[data-lo-canonical-transcript] [data-turn-summary][data-record-id="t1"]',
+		header: "button[aria-expanded]",
+		selector:
+			'[data-lo-canonical-transcript] [data-turn-summary][data-record-id="t1"] button[aria-expanded="false"]',
+	};
+	const fold = {
+		kind: "fold",
+		root: '[data-lo-canonical-transcript] [data-fold-ids="r1 r\\:2"]',
+		header: "button[aria-expanded]:has([data-fold-summary])",
+		selector:
+			'[data-lo-canonical-transcript] [data-fold-ids="r1 r\\:2"] button[aria-expanded="false"]:has([data-fold-summary])',
+	};
 	const edited =
 		'[data-lo-canonical-transcript] [data-record-id="r\\:2"] button[aria-expanded="false"]:has([data-trace-verb])';
 	const wrote =
 		'[data-lo-canonical-transcript] [data-record-id="r1"] button[aria-expanded="false"]:has([data-trace-verb])';
-	const ui = { foldOpen: false, editedOpen: false };
+	const ui = { turnOpen: false, foldOpen: false, editedOpen: false };
 	const events = [];
 	const frames = [];
 	const checks = [];
+	const collapsedSeen = [];
 	await sceneDiffHistory({
 		cdp: {
 			evaluate: async (expr) => {
-				if (expr === WORK_READ)
+				if (expr === WORK_READ) {
+					// Closed outer: one collapsed fold elsewhere stays; open outer: the
+					// revealed inner fold is closed too, so the count is unchanged.
+					const collapsedFolds = ui.foldOpen ? 0 : 1;
+					collapsedSeen.push(collapsedFolds);
+					const disclosures = [];
+					if (!ui.turnOpen) disclosures.push(turn);
+					else if (!ui.foldOpen) disclosures.push(fold);
 					return {
 						transcript: true,
 						viewFull: ui.editedOpen ? 1 : 0,
-						folds: 2,
-						collapsedFolds: ui.foldOpen ? 0 : 1,
+						folds: 1,
+						collapsedFolds,
+						disclosures,
+						ambiguous: 0,
 						tools:
 							ui.foldOpen && !ui.editedOpen
 								? [
@@ -178,13 +205,16 @@ test("a collapsed work fold and Edited row are opened by press before View full 
 									]
 								: [],
 					};
+				}
 				return { open: false, viewFull: ui.editedOpen ? 1 : 0 };
 			},
 		},
 		verb: async (_cdp, name, payload) => {
 			events.push(["verb", name, payload?.selector ?? payload]);
-			if (name === "press" && payload.selector === COLLAPSED_FOLD)
-				ui.foldOpen = true;
+			if (name === "press" && payload.selector === turn.selector)
+				ui.turnOpen = true;
+			if (name === "press" && payload.selector === fold.selector)
+				ui.foldOpen = ui.turnOpen; // a hidden inner fold takes no press
 			if (name === "press" && payload.selector === edited) ui.editedOpen = true;
 			return name === "queries" ? [] : { ok: true };
 		},
@@ -196,13 +226,12 @@ test("a collapsed work fold and Edited row are opened by press before View full 
 		waitForCondition: async (_cdp, expr) => {
 			events.push(["wait", expr]);
 			if (
-				expr.includes("[data-lo-canonical-transcript]") &&
-				expr.startsWith(
-					'Boolean(document.querySelector("[data-lo-canonical-transcript]"))',
-				)
+				expr ===
+				'Boolean(document.querySelector("[data-lo-canonical-transcript]"))'
 			)
 				return { ok: true };
-			if (expr.includes(".length < 1")) return { ok: ui.foldOpen };
+			if (expr === headerOpened(turn)) return { ok: ui.turnOpen };
+			if (expr === headerOpened(fold)) return { ok: ui.foldOpen };
 			if (expr.includes('aria-expanded=\\"true\\"'))
 				return { ok: ui.editedOpen };
 			if (expr === `Boolean(document.querySelector("[data-diff-view-full]"))`)
@@ -215,10 +244,25 @@ test("a collapsed work fold and Edited row are opened by press before View full 
 	const presses = events
 		.filter(([k, n]) => k === "verb" && n === "press")
 		.map(([, , s]) => s);
-	// Fold first, then the Edited row (red and green) rather than Wrote; and
-	// each exactly once, since the control appeared and the loop stopped.
-	assert.deepEqual(presses.slice(0, 2), [COLLAPSED_FOLD, edited]);
+	// Outer bar first, then the fold it revealed, then the Edited row (red and
+	// green) rather than Wrote; each exactly once, since the control appeared.
+	assert.deepEqual(presses.slice(0, 3), [turn.selector, fold.selector, edited]);
 	assert.ok(!presses.includes(wrote));
+	assert.ok(!presses.includes(COLLAPSED_FOLD));
+	// The outer press worked although the global count did not move...
+	assert.deepEqual(collapsedSeen.slice(0, 2), [1, 1]);
+	// ...because progress is each pressed header's OWN state, in press order.
+	const waits = events.filter(([k]) => k === "wait").map(([, e]) => e);
+	const turnWait = waits.indexOf(headerOpened(turn));
+	const foldWait = waits.indexOf(headerOpened(fold));
+	assert.ok(turnWait >= 0 && foldWait > turnWait);
+	assert.ok(!waits.some((e) => e.includes(".length <")));
+	assert.match(headerOpened(turn), /closest\(.*\) === r/);
+	assert.ok(headerOpened(turn).includes(JSON.stringify(turn.root)));
+	assert.ok(
+		checks.some(([l, p]) => l === "open: turn summary 1 opens" && p) &&
+			checks.some(([l, p]) => l === "open: work fold 2 opens" && p),
+	);
 	// Every press selector opens a CLOSED control inside the transcript.
 	for (const s of presses) {
 		if (s === "[data-diff-view-full]") continue;
@@ -246,7 +290,7 @@ test("a collapsed work fold and Edited row are opened by press before View full 
 	);
 });
 
-test("an already-open fold is never pressed, and no rows means no presses", async () => {
+test("an already-open fold is never pressed, no rows means no presses, and an ambiguous header fails closed", async () => {
 	const presses = [];
 	await sceneDiffHistory({
 		cdp: {
@@ -273,6 +317,48 @@ test("an already-open fold is never pressed, and no rows means no presses", asyn
 		session: "fc00000000a1",
 	});
 	assert.deepEqual(presses, []);
+	// A collapsed header that cannot be addressed uniquely is never guessed at:
+	// no press, and a recorded FAIL naming the read.
+	const checks = [];
+	await sceneDiffHistory({
+		cdp: {
+			evaluate: async (expr) =>
+				expr === WORK_READ
+					? {
+							transcript: true,
+							viewFull: 0,
+							folds: 2,
+							collapsedFolds: 2,
+							disclosures: [],
+							ambiguous: 1,
+							tools: [],
+						}
+					: { open: false, viewFull: 0 },
+		},
+		verb: async (_cdp, name, payload) => {
+			if (name === "press") presses.push(payload);
+			return name === "queries" ? [] : { ok: true };
+		},
+		capture: async () => {},
+		check: (label, passed) => checks.push([label, passed]),
+		note: () => {},
+		waitForCondition: async (_cdp, expr) => ({
+			ok: expr.startsWith(
+				'Boolean(document.querySelector("[data-lo-canonical-transcript]"))',
+			),
+			last: null,
+		}),
+		factsOf: async () => ({}),
+		session: "fc00000000a1",
+	});
+	assert.deepEqual(presses, []);
+	assert.ok(
+		checks.some(
+			([l, p]) =>
+				l === "open: every collapsed work header is uniquely addressable" &&
+				p === false,
+		),
+	);
 });
 
 test("the work read is scoped, read-only and only addresses closed Edited/Wrote rows", () => {
@@ -281,6 +367,18 @@ test("the work read is scoped, read-only and only addresses closed Edited/Wrote 
 		/^\[data-lo-canonical-transcript\] \[data-fold-ids\] button\[aria-expanded="false"\]:has\(\[data-fold-summary\]\)$/,
 	);
 	assert.match(WORK_READ, /verb !== "Edited" && verb !== "Wrote"/);
+	// Outer TurnSummary headers are offered before TraceFolds, each only as its
+	// root's own header, uniquely addressed by the root's stable stamp.
+	assert.ok(
+		WORK_READ.indexOf('offer("turn"') >= 0 &&
+			WORK_READ.indexOf('offer("turn"') < WORK_READ.indexOf('offer("fold"'),
+	);
+	assert.match(WORK_READ, /x\.closest\(owner\) === el/);
+	assert.match(WORK_READ, /"data-record-id" : "data-run-ids"/);
+	assert.match(
+		WORK_READ,
+		/querySelectorAll\(rootSel\)\.length === 1 && document\.querySelector\(selector\) === b/,
+	);
 	assert.match(WORK_READ, /document\.querySelector\(selector\) === button/);
 	assert.doesNotMatch(
 		WORK_READ,
