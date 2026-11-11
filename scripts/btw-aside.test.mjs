@@ -450,9 +450,15 @@ const RE_PANEL_REASON_ID = /<p id=\{blockedId\}/;
  * and the tooltip share one expression, so an unanchored pattern was satisfied by the
  * label alone and a mutation of the tooltip only (M9) passed. The tooltip's WHY
  * comment sits between the brace and the expression, hence the optional block.
+ *
+ * The steer arm now reads `t(steerHintKey(busyDefaultMode))` (round 3): the mode's
+ * own sentence, so the literal `steer_hint` is gone from this call site. The
+ * per-mode key selection itself is pinned behaviourally in
+ * busy-delivery-composer.test.mjs (`steerHintKey` for all three modes + absent);
+ * this pin keeps the call site reaching it.
  */
 const RE_SEND_VERB =
-	/content=\{\s*(?:\/\*[\s\S]*?\*\/\s*)?aside !== null && !awaitingAnswer\s*\?\s*t\("ui\.chat\.composer\.ask_aside"\)\s*:\s*slotB\.role === "steer"\s*\?\s*(?:\/\*[\s\S]*?\*\/\s*)?t\("ui\.chat\.composer\.steer_hint"\)\s*:\s*t\("ui\.chat\.composer\.send_message"\)\s*\}/;
+	/content=\{\s*(?:\/\*[\s\S]*?\*\/\s*)?aside !== null && !awaitingAnswer\s*\?\s*t\("ui\.chat\.composer\.ask_aside"\)\s*:\s*slotB\.role === "steer"\s*\?\s*(?:\/\*[\s\S]*?\*\/\s*)?t\(steerHintKey\(busyDefaultMode\)\)\s*:\s*t\("ui\.chat\.composer\.send_message"\)\s*\}/;
 const RE_SEND_LABEL =
 	/aria-label=\{\s*aside !== null && !awaitingAnswer\s*\?\s*t\("ui\.chat\.composer\.ask_aside"\)\s*:\s*t\("ui\.chat\.composer\.send_message"\)\s*\}/;
 /*

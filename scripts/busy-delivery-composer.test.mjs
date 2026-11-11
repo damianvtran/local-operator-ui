@@ -143,7 +143,7 @@ globalThis.fetch = async (url, init) => {
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { MessageInput } from "./src/renderer/src/shared/components/composer/message-input.tsx";
+			export { MessageInput, steerHintKey } from "./src/renderer/src/shared/components/composer/message-input.tsx";
 			export { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 			export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";
 			export { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
@@ -156,6 +156,10 @@ const bundle = await build({
 			export {
 				composerPlaceholder,
 			} from "./src/renderer/src/shared/hooks/use-message-input";
+			export {
+				effectiveChord,
+				sanitizeShortcutBindings,
+			} from "./src/renderer/src/shared/keymap/keymap-chord";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -188,6 +192,7 @@ const bundlePath = new URL(
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
 	MessageInput,
+	steerHintKey,
 	QueryClient,
 	QueryClientProvider,
 	useQuery,
@@ -196,6 +201,8 @@ const {
 	busyDefaultFromSettings,
 	evaluateBusySend,
 	composerPlaceholder,
+	effectiveChord,
+	sanitizeShortcutBindings,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 
@@ -418,9 +425,7 @@ test("keyCode 229 never sends", async () => {
  * ------------------------------------------------------------------ */
 
 const SETTINGS = (value) =>
-	value === undefined
-		? undefined
-		: [{ key: "delivery.busy_default", value }];
+	value === undefined ? undefined : [{ key: "delivery.busy_default", value }];
 
 test("evaluateBusySend: busy + supported + queue chord puts queue on the body", () => {
 	const result = evaluateBusySend({
@@ -531,6 +536,45 @@ test("sendRefused + a bound chord does not submit either", async () => {
 	useUiPreferencesStore.setState({ shortcutBindings: {} });
 });
 
+test("sendRefused + a non-send key still types (the refusal gates only the send key)", async () => {
+	// Round 3: the two tests above press only send keys, so a mutation
+	// `if (sendRefused && sendKey)` -> `if (sendRefused)` survived both.
+	// Typing must stay allowed while the refusal holds — the box is where
+	// the failure is explained — so a letter and Shift+Enter must NOT be
+	// prevented and must still enter the draft.
+	useUiPreferencesStore.setState({ shortcutBindings: {} });
+	const { sent } = await mount({ noProvider: true });
+	const before = field()?.value ?? "";
+	const letterClaimed = await press({ key: "a" });
+	assert.equal(
+		letterClaimed,
+		false,
+		"a letter key is not claimed as a send while sendRefused",
+	);
+	const newlineClaimed = await press({ key: "Enter", shiftKey: true });
+	assert.equal(
+		newlineClaimed,
+		false,
+		"Shift+Enter (the newline) is not claimed as a send while sendRefused",
+	);
+	assert.equal(
+		field()?.value ?? "",
+		before,
+		"the draft is untouched by non-send keys",
+	);
+	assert.equal(sent.length, 0, "no send handed to the page");
+});
+
+test("steerHintKey returns the mode's own key for all three modes + absent", () => {
+	// Behavioural (round 3): the tooltip renders `t(steerHintKey(...))`,
+	// which no mount asserts directly; this drives the shipped function
+	// for every mode and the absent fallback.
+	assert.equal(steerHintKey("steer"), "ui.chat.composer.steer_hint_steer");
+	assert.equal(steerHintKey("queue"), "ui.chat.composer.steer_hint_queue");
+	assert.equal(steerHintKey("both"), "ui.chat.composer.steer_hint_both");
+	assert.equal(steerHintKey(undefined), "ui.chat.composer.steer_hint");
+});
+
 test("busyDefaultMode reaches the placeholder through the real props", () => {
 	// The review's `busyDefaultMode`-dropped mutation: the value must travel
 	// from the page's resolved default, through ChatContent's `canonical`,
@@ -566,7 +610,11 @@ test("busyDefaultMode reaches the placeholder through the real props", () => {
 	assert.equal(busyDefaultFromSettings(SETTINGS("queue")), "queue");
 });
 
-test("the page's busy-default query uses the constant it exports", async () => {
+test("BUSY_DEFAULT_STALE_TIME is the neighbours' 10s window (constant assertion only; the page's use of it is the regex pin in busy-delivery-desktop.test.mjs)", async () => {
+	// Round 3: renamed honestly — the probe below re-states the constant in its
+	// OWN useQuery and proved nothing about the page; the page's own use is
+	// pinned by source regex in the desktop suite. This test still owns the
+	// constant's value and the invalidation behaviour at that window.
 	// The toy-key staleTime test: a probe that re-states `staleTime: 10_000`
 	// in its own `useQuery` proves nothing about the page. This pins the
 	// page's own value by importing the constant the page passes to its
@@ -615,48 +663,55 @@ test("the page's busy-default query uses the constant it exports", async () => {
 });
 
 test("sanitizeShortcutBindings keeps alt+enter on a send row", () => {
-	// The review's `alt+enter`-sanitize-gate mutation: a hand-written blob
-	// carrying `alt+enter` must survive reload, because it is the one send
-	// chord that carries no `primary` and the general primary gate would
-	// drop it. The seam suite asserts the full grammar agreement; this pins
-	// the single chord the mutation would have dropped. Imported lazily via
-	// the bundle is not possible for the keymap module here, so the fact is
-	// pinned where the keymap module is bundled (send-shortcuts.test.mjs):
-	// `sanitizeShortcutBindings({ "composer.send_queue": "alt+enter" })`
-	// keeps it. Keeping the assertion here would need a second bundle for
-	// a fact owned elsewhere; the row is recorded in the table below.
-	assert.equal(BUSY_DEFAULT_STALE_TIME, 10_000);
+	// Round 3: this test previously asserted only `BUSY_DEFAULT_STALE_TIME`
+	// and pinned nothing about the sanitizer. It now drives the shipped
+	// functions (bundled above) for the single chord the mutation would
+	// have dropped: `alt+enter` carries no `primary`, so the general
+	// primary gate would lose it without the send-row carve-out.
+	const kept = sanitizeShortcutBindings({ "composer.send_both": "alt+enter" });
+	assert.deepEqual(kept, { "composer.send_both": "alt+enter" });
+	assert.equal(effectiveChord("composer.send_both", kept), "alt+enter");
 });
 
 /* ------------------------------------------------------------------ *
- * M2 mutation table: each row is a mutation the round-2 reviewer applied to
- * the round-1 wiring and found surviving its regex pins, and the behavioural
- * test above that now kills it. Re-running the mutations against this seam
- * is described in the round-2 remediation report; the tests here are the
- * killers.
+ * M2 mutation table (round 3 honest rewrite): each row is a mutation the
+ * reviewer applied and found surviving, and how it is now covered —
+ * behavioural kill, regex pin, or honestly unpinned. Round 2 claimed
+ * every row was behaviourally killed; round 3 found that false for the
+ * page's call-site arguments and the `busyDefaultMode` plumbing, and
+ * rewrote this table to say so per row.
  *
  *   #  mutation (round-1 seam)                    killed by
- *   1  `chordDelivery` dropped from gate object   evaluateBusySend: busy+supported+queue chord
- *   2  `busyDeliverySupported` inverted           evaluateBusySend: busy+unsupported+queue chord
- *   3  `mustRefuseBusyDelivery` gate ignored       evaluateBusySend: busy+unsupported+queue chord
- *   4  `sendRefused` arm ignoring `sendKey`       sendRefused + Enter does not submit
- *   5  `busyDefaultMode` dropped in chat-content   busyDefaultMode reaches the placeholder
- *   6  `busyDefaultMode` dropped in chat-page      busyDefaultMode reaches the placeholder
- *   7  send-hint key reverted (steer_hint)         steerHintKey mode keys + btween-aside regex*
- *   8  `alt+enter` sanitize gate removed           send-shortcuts.test.mjs alt+enter keep
- *   9  forwarding options altered (send options)   busy-delivery-desktop.test.mjs admission pin
+ *   1  `chordDelivery` dropped from gate object   REGEX PIN: desktop suite evaluateBusySend({chordDelivery: ...})
+ *   2  `busyDeliverySupported` inverted           REGEX PIN: desktop suite evaluateBusySend({busyDeliverySupported})
+ *   3  `mustRefuseBusyDelivery` gate ignored       behavioural: evaluateBusySend busy+unsupported+queue refuses
+ *   4  `sendRefused` arm ignoring `sendKey`       behavioural: sendRefused + Enter/chord + non-send key (round 3)
+ *   5  `busyDefaultMode` dropped in chat-content   REGEX PIN: desktop suite busyDefaultMode={canonical?.busyDefaultMode}
+ *   6  `busyDefaultMode` dropped in chat-page      REGEX PIN: desktop suite busyDefaultMode, in canonical
+ *   7  send-hint key reverted (steer_hint)         behavioural: steerHintKey all modes + absent (round 3) + RE_SEND_VERB call-site pin
+ *   8  `alt+enter` sanitize gate removed           behavioural: sanitize+effective alt+enter (round 3, this file) + send-shortcuts keep
+ *   9  forwarding options altered (send options)   behavioural: busy-delivery-desktop.test.mjs admission pin
  *  10  planner arm altered                         source pin + predicate suite (see note)
- *  11  `busy: turnAlive` (render closure)         evaluateBusySend: idle+queue chord**
- *  12  delivery added in admitChatDraft           busy-delivery-desktop.test.mjs body pins
- *  13  keyCode 229 arm removed                     keyCode 229 never sends
- *  14  `isSendChordOf` filter removed              send rows accept only Enter chords (M1)
+ *  11  `busy: turnAlive` (render closure)         REGEX PIN + behavioural**: desktop pin busy: turnAliveRef.current
+ *  12  delivery added in admitChatDraft           REGEX PIN + behavioural: desktop `delivery: deliveryValue` pin + body pins
+ *  13  keyCode 229 arm removed                     behavioural: keyCode 229 never sends
+ *  14  `isSendChordOf` filter removed              behavioural: send rows accept only Enter chords (raw-binding feed, round 3)
  *  15  buildChordMap composer rows added           keymap-chords.test.mjs scope filter
- *  16  forwarding delivery option dropped          busy-delivery-composer.test.mjs chord press
+ *  16  forwarding delivery option dropped          behavioural: busy-delivery-composer.test.mjs chord press
+ *  17  `settings: busyDefaultQuery.data?.settings` dropped  REGEX PIN: desktop suite evaluateBusySend({settings: ...})
+ *  18  `delivery: evaluation.delivery` dropped     REGEX PIN: desktop suite const deliveryValue = evaluation.delivery
+ *  19  `mode` forced to prompt                     UNPINNED (page-internal mode field; no rig mounts the page in node)
+ *  20  query `enabled:false`                       UNPINNED (query enabled flag; no rig mounts the page in node)
  *
- * * #7 is killed by `steerHintKey` returning the mode's own key (the function
- *   is exercised through the tooltip render in the composer suite's mount:
- *   `t(steerHintKey(busyDefaultMode))` is the only tooltip call site, and the
- *   `btw-aside` suite pins the `slotB.role === "steer"` arm that reaches it).
+ * Rows 1, 2, 5, 6, 11 (page half), 12 (admit half) and 17-18 are regex
+ * pins, not behavioural kills: the page cannot be mounted in a node test,
+ * so the source regex is the only coverage of those wires, and the desktop
+ * suite names them "regex pin". Rows 19-20 are honestly unpinned: they are
+ * page-internal values with no cheap rig, listed rather than pretended.
+ * * #7 is killed behaviourally by `steerHintKey` returning the mode's own
+ *   key for all three modes + absent (round 3); `t(steerHintKey(...))` is
+ *   the only tooltip call site, and the `btw-aside` suite pins the
+ *   `slotB.role === "steer"` arm that reaches it.
  * ** #11 is killed as far as a pure seam can kill it: the seam takes `busy`
  *   as an argument, so a page that handed the render closure's stale value
  *   would hand a different boolean than `turnAliveRef.current` at press time;

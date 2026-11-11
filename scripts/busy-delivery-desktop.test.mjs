@@ -491,6 +491,8 @@ const MESSAGE_INPUT =
 	"src/renderer/src/shared/components/composer/message-input.tsx";
 const HOOK = "src/renderer/src/shared/hooks/use-message-input.ts";
 const CHAT_PAGE = "src/renderer/src/features/chat/components/chat-page.tsx";
+const CHAT_CONTENT =
+	"src/renderer/src/features/chat/components/chat-content.tsx";
 
 test("all four Enter sites go through sendKeyOf, and no site tests Enter inline", () => {
 	// The four sites F4 names, as the predicates they now share. A fifth
@@ -528,7 +530,28 @@ test("the hook's key handler carries the composing test through the predicate", 
 });
 
 test("the gate lives at the one seam (chat-page send), and refuses before admission", () => {
+	// Regex pin (round 3): these assert the page's call-site ARGUMENTS survive,
+	// not that the gate behaves — `evaluateBusySend` itself is driven
+	// behaviourally in busy-delivery-composer.test.mjs. If one of these four
+	// arguments is dropped or inverted, no behavioural test fails, because
+	// the page cannot be mounted in a node test; the regex is the only
+	// coverage of the wire, and it is named as a regex pin here.
 	const source = codeOf(CHAT_PAGE);
+	assert.match(
+		source,
+		/evaluateBusySend\(\s*\{\s*chordDelivery: delivery \?\? null,\s*settings: busyDefaultQuery\.data\?\.settings,\s*busy: turnAliveRef\.current,\s*busyDeliverySupported,\s*\}\)/,
+		"regex pin: evaluateBusySend receives the press's chordDelivery, the settings row, the live turn flag and the support flag",
+	);
+	assert.match(
+		source,
+		/const deliveryValue = evaluation\.delivery;/,
+		"regex pin: the resolved delivery is read from the evaluation",
+	);
+	assert.match(
+		source,
+		/\bdelivery: deliveryValue,/,
+		"regex pin: the resolved delivery rides the admission body",
+	);
 	assert.match(
 		source,
 		/evaluateBusySend\(/,
@@ -571,6 +594,34 @@ test("the gate lives at the one seam (chat-page send), and refuses before admiss
 		/staleTime: BUSY_DEFAULT_STALE_TIME/,
 		"the settings query runs the exported freshness constant, never a second literal",
 	);
+	// Regex pin (round 3): the page hands the render-time default down to
+	// ChatContent's `canonical`, which hands it to MessageInput. The page
+	// and the content cannot be mounted in a node test, so the plumbing is
+	// pinned by source regex and named as such.
+	assert.match(
+		source,
+		/\bbusyDefaultMode,\s*\n\s*\t*stopOutcome,/,
+		"regex pin: the page passes the resolved busyDefaultMode into canonical",
+	);
+	const content = codeOf(CHAT_CONTENT);
+	assert.match(
+		content,
+		/busyDefaultMode=\{canonical\?\.busyDefaultMode\}/,
+		"regex pin: chat-content forwards canonical.busyDefaultMode to MessageInput",
+	);
+});
+
+test("busyDefaultMode plumbing is regex-pinned, not behaviourally driven (page not mountable)", () => {
+	// Honest label test (round 3): the composer's `composerPlaceholder` with
+	// each mode is driven behaviourally in busy-delivery-composer.test.mjs,
+	// but that drives the placeholder function directly — it does NOT
+	// prove the page's value reaches the composer. The two regex pins above
+	// are the only coverage of that wire, and this test names that fact so
+	// the mutation table can say "regex pin" rather than "behavioural kill".
+	const page = codeOf(CHAT_PAGE);
+	const content = codeOf(CHAT_CONTENT);
+	assert.match(page, /busyDefaultFromSettings\(/);
+	assert.match(content, /busyDefaultMode=\{canonical\?\.busyDefaultMode\}/);
 });
 
 test("the exported staleTime constant is the neighbours' 10s window", () => {

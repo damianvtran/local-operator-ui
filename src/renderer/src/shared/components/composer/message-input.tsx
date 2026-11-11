@@ -1656,7 +1656,7 @@ const EMPTY_ATTACHMENTS: Attachment[] = [];
  * its own key (`steer_hint_steer`, text-identical to the absent-mode key);
  * only an ABSENT mode falls back to `steer_hint`, so neither key is dead.
  */
-const steerHintKey = (
+export const steerHintKey = (
 	mode: ComposerDeliveryMode | undefined,
 ):
 	| "ui.chat.composer.steer_hint"

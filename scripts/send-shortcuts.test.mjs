@@ -658,11 +658,16 @@ test("send rows accept only Enter chords: capture, sanitize, effective and send 
 				const captureSays = captureRefusal(canonical, id, {}) === null;
 				const kept = sanitizeShortcutBindings({ [id]: canonical });
 				const sanitizeSays = kept[id] === canonical;
-				const effectiveSays = effectiveChord(id, kept) === canonical;
+				// Round 3: effectiveChord is fed the RAW (unsanitized) binding.
+				// Feeding `kept` let the sanitizer do effectiveChord's job, so
+				// removing effectiveChord's own `isSendChordOf` guard
+				// survived. A hand-edited or pre-narrowing blob reaches the
+				// reader unsanitized; the guard is what answers nothing for it.
+				const effectiveSays =
+					effectiveChord(id, { [id]: canonical }) === canonical;
 				const bindings = sendChordBindings(kept);
 				const fired = sendKeyOf(toEvent(canonical), bindings);
-				const sendSays =
-					fired !== null && fired.delivery === MODES[id];
+				const sendSays = fired !== null && fired.delivery === MODES[id];
 				if (
 					captureSays !== expected ||
 					sanitizeSays !== expected ||
@@ -671,16 +676,16 @@ test("send rows accept only Enter chords: capture, sanitize, effective and send 
 				) {
 					disagreements += 1;
 					disagreed.push({
-					id,
-					canonical,
-					expected,
-					captureSays,
-					sanitizeSays,
-					effectiveSays,
-					sendSays,
-					fired,
-					kept,
-				});
+						id,
+						canonical,
+						expected,
+						captureSays,
+						sanitizeSays,
+						effectiveSays,
+						sendSays,
+						fired,
+						kept,
+					});
 				}
 			}
 		}
