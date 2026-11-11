@@ -218,5 +218,49 @@
 		"placeholders": {
 			"count": "questions that timed out"
 		}
+	},
+	"ui.chat.asks.bounds.body_label": {
+		"length": "",
+		"note": "Read by screen readers only when the question is too long to fit and scrolls.",
+		"placeholders": {},
+		"role": "accessible name of the scrollable region holding a long question's text on an ask card",
+		"tone": "short noun phrase, no trailing period"
+	},
+	"ui.chat.asks.proposal.summary": {
+		"length": "",
+		"note": "The full change is reviewed on the Agents page; this line only names the target.",
+		"placeholders": {
+			"kind": "agent, team or skill (ICU select)",
+			"name": "the agent, team or skill name, shown as written"
+		},
+		"role": "one-line summary on an approval card for a proposed change to an agent, team or skill profile",
+		"tone": "short statement, no trailing period"
+	},
+	"ui.chat.asks.proposal.field_lines": {
+		"length": "",
+		"note": "Keep the + and − signs; they mirror a diff.",
+		"placeholders": {
+			"label": "field name, e.g. Instructions",
+			"added": "number of lines added",
+			"removed": "number of lines removed"
+		},
+		"role": "one changed field of a proposed profile change, with lines added and removed",
+		"tone": "compact count, like a diff stat"
+	},
+	"ui.chat.asks.proposal.field_changed": {
+		"length": "",
+		"note": "Used when the field is a single value rather than lines of text.",
+		"placeholders": {
+			"label": "field name, e.g. Model"
+		},
+		"role": "one changed scalar field of a proposed profile change",
+		"tone": "compact, no trailing period"
+	},
+	"ui.chat.asks.proposal.review": {
+		"length": "",
+		"note": "Opens the review; it does not approve or reject.",
+		"placeholders": {},
+		"role": "button on an approval card that opens the proposal's diff review on the Agents page",
+		"tone": "verb phrase, imperative, short"
 	}
 }
