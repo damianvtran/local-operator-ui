@@ -257,5 +257,10 @@
 	"ui.chat.canonical.notice.stopped_with_error": "Đã dừng do lỗi",
 	"ui.chat.canonical.notice.compaction_not_run": "Lần nén không được thực hiện: {detail}",
 	"ui.chat.canonical.notice.compaction_not_run_after_colon": "Lần nén không được thực hiện — {detail}",
-	"ui.chat.canonical.link_toolkit.actions_for": "Thao tác với {name}"
+	"ui.chat.canonical.link_toolkit.actions_for": "Thao tác với {name}",
+	"ui.chat.canonical.transcript.busy_wait.steer": "Đang định hướng — có thể ngắt công cụ đang chạy",
+	"ui.chat.canonical.transcript.busy_wait.queue": "Đã xếp hàng — chờ, công cụ vẫn chạy",
+	"ui.chat.canonical.transcript.busy_wait.both": "Đã xếp hàng — chờ, rồi định hướng nếu chậm",
+	"ui.chat.canonical.transcript.busy_wait.joined": "Đang định hướng — gửi cùng tin định hướng",
+	"ui.chat.canonical.transcript.busy_wait.deferred": "Vẫn đang xếp hàng — gửi cùng tin nhắn tiếp theo"
 }

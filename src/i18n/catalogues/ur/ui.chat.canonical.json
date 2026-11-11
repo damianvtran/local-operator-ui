@@ -257,5 +257,10 @@
 	"ui.chat.canonical.notice.stopped_with_error": "خرابی کے ساتھ رک گئی",
 	"ui.chat.canonical.notice.compaction_not_run": "کمپریشن نہیں چلا: {detail}",
 	"ui.chat.canonical.notice.compaction_not_run_after_colon": "کمپریشن نہیں چلا — {detail}",
-	"ui.chat.canonical.link_toolkit.actions_for": "{name} کے لیے اقدامات"
+	"ui.chat.canonical.link_toolkit.actions_for": "{name} کے لیے اقدامات",
+	"ui.chat.canonical.transcript.busy_wait.steer": "ہدایت — چلتا ٹول رک سکتا ہے",
+	"ui.chat.canonical.transcript.busy_wait.queue": "قطار میں — انتظار، ٹولز چلتے رہیں گے",
+	"ui.chat.canonical.transcript.busy_wait.both": "قطار میں — انتظار، پھر دیر ہو تو ہدایت",
+	"ui.chat.canonical.transcript.busy_wait.joined": "ہدایت — آپ کی ہدایت کے ساتھ جائے گا",
+	"ui.chat.canonical.transcript.busy_wait.deferred": "ابھی بھی قطار میں — اگلے پیغام کے ساتھ جائے گا"
 }

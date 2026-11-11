@@ -76,7 +76,7 @@
 	"ui.settings.shortcuts.speech.push_to_talk_overlap": "Tous les raccourcis qui utilisent {modifier}, comme {example}, démarreront brièvement un enregistrement.{alternative, select, none {} other { Choisissez {alternative} pour l’éviter.}}",
 	"ui.settings.shortcuts.speech.push_to_talk_letter_pointer": "Pour un raccourci avec une lettre, utilisez « Démarrer l’enregistrement » ci-dessus.",
 	"ui.settings.shortcuts.speech.start_recording_needs_key": "Un raccourci nécessite une lettre ou un chiffre en plus d’une touche de modification.",
-	"ui.settings.shortcuts.action.send_both": "Envoyer : les deux",
+	"ui.settings.shortcuts.action.send_both": "Envoyer : file, puis orienter",
 	"ui.settings.shortcuts.action.send_queue": "Envoyer : file d’attente",
 	"ui.settings.shortcuts.action.send_steer": "Envoyer : orienter",
 	"ui.settings.shortcuts.category.sending": "Envoi",
@@ -88,5 +88,5 @@
 	"ui.settings.shortcuts.capture.send_prompt": "Appuyez sur Ctrl/⌘+Entrée ou Alt+Entrée. Entrée seule termine la modification.",
 	"ui.settings.shortcuts.row_help.send_steer": "Envoyer et interrompre l’étape. Remplace « Envoi quand l’agent est occupé ».",
 	"ui.settings.shortcuts.row_help.send_queue": "Attendre, sans interrompre d’outil. Remplace « Envoi quand l’agent est occupé ».",
-	"ui.settings.shortcuts.row_help.send_both": "Attendre, interrompre si ça tarde. Remplace « Envoi quand l’agent est occupé »."
+	"ui.settings.shortcuts.row_help.send_both": "Attendre, puis orienter si ça tarde. Remplace « Envoi quand l’agent est occupé »."
 }

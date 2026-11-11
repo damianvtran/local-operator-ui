@@ -257,5 +257,10 @@
 	"ui.chat.canonical.notice.compaction_not_run": "संपीडन नहीं चला: {detail}",
 	"ui.chat.canonical.notice.compaction_not_run_after_colon": "संपीडन नहीं चला — {detail}",
 	"ui.chat.canonical.link_toolkit.actions_for": "{name} की कार्रवाइयाँ",
+	"ui.chat.canonical.transcript.busy_wait.steer": "दिशा दी जा रही है — चल रहा टूल रुक सकता है",
+	"ui.chat.canonical.transcript.busy_wait.queue": "कतार में — प्रतीक्षा, टूल चलते रहेंगे",
+	"ui.chat.canonical.transcript.busy_wait.both": "कतार में — प्रतीक्षा, देर हुई तो दिशा देगा",
+	"ui.chat.canonical.transcript.busy_wait.joined": "दिशा दी जा रही है — आपकी दिशा के साथ जाएगा",
+	"ui.chat.canonical.transcript.busy_wait.deferred": "अब भी कतार में — अगले संदेश के साथ जाएगा",
 	"ui.chat.canonical.send_failure.delivery_unsupported": "एजेंट के व्यस्त होने पर भेजने का तरीका नहीं बदला जा सकता, इसलिए संदेश नहीं भेजा गया। इसे दिशा देकर भेजें, या बैकएंड अपडेट करें।"
 }

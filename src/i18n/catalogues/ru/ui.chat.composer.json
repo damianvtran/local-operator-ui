@@ -73,8 +73,8 @@
 	"ui.chat.composer.secret_closure_notice": "Ответьте на запрос секрета на панели запросов — ввод в этом поле приостановлен до ответа, черновик сохранён.",
 	"ui.chat.composer.placeholder.waiting_steer": "Enter отправит сразу · Esc остановит",
 	"ui.chat.composer.placeholder.waiting_queue": "Enter поставит в очередь · Esc остановит",
-	"ui.chat.composer.placeholder.waiting_both": "Enter подождёт и прервёт · Esc остановит",
+	"ui.chat.composer.placeholder.waiting_both": "Enter: очередь, затем направит · Esc остановит",
 	"ui.chat.composer.steer_hint_steer": "Отправить, пока агент работает (Enter) · Esc остановит ход",
 	"ui.chat.composer.steer_hint_queue": "Enter поставит в очередь · Esc остановит ход",
-	"ui.chat.composer.steer_hint_both": "Enter подождёт и прервёт · Esc остановит ход"
+	"ui.chat.composer.steer_hint_both": "Enter ставит в очередь, затем направляет · Esc остановит ход"
 }

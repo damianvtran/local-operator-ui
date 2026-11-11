@@ -88,5 +88,5 @@
 	"ui.settings.shortcuts.capture.send_prompt": "按Ctrl/⌘+Enter或Alt+Enter。单独按Enter会结束编辑。",
 	"ui.settings.shortcuts.row_help.send_steer": "立即发送并打断当前步骤。覆盖“忙碌时的发送方式”。",
 	"ui.settings.shortcuts.row_help.send_queue": "等待当前步骤，绝不打断工具。覆盖“忙碌时的发送方式”。",
-	"ui.settings.shortcuts.row_help.send_both": "先等待，过慢再打断。覆盖“忙碌时的发送方式”。"
+	"ui.settings.shortcuts.row_help.send_both": "先等待，过慢再引导。覆盖“忙碌时的发送方式”。"
 }

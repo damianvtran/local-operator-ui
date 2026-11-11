@@ -76,7 +76,7 @@
 	"ui.settings.shortcuts.speech.push_to_talk_overlap": "Каждое сочетание с {modifier}, например {example}, ненадолго запустит запись.{alternative, select, none {} other { Чтобы этого избежать, выберите {alternative}.}}",
 	"ui.settings.shortcuts.speech.push_to_talk_letter_pointer": "Для сочетания с буквой используйте «Начать запись» выше.",
 	"ui.settings.shortcuts.speech.start_recording_needs_key": "Для сочетания нужна буква или цифра в дополнение к клавише-модификатору.",
-	"ui.settings.shortcuts.action.send_both": "Отправить в режиме «оба»",
+	"ui.settings.shortcuts.action.send_both": "Отправить: очередь→направить",
 	"ui.settings.shortcuts.action.send_queue": "Отправить в режиме «очередь»",
 	"ui.settings.shortcuts.action.send_steer": "Отправить в режиме «направить»",
 	"ui.settings.shortcuts.category.sending": "Отправка",
@@ -88,5 +88,5 @@
 	"ui.settings.shortcuts.capture.send_prompt": "Нажмите Ctrl/⌘+Enter или Alt+Enter. Один Enter завершает редактирование.",
 	"ui.settings.shortcuts.row_help.send_steer": "Отправить сразу, прервав шаг. Заменяет «Доставка, когда агент занят».",
 	"ui.settings.shortcuts.row_help.send_queue": "Ждать, не прерывая инструменты. Заменяет «Доставка, когда агент занят».",
-	"ui.settings.shortcuts.row_help.send_both": "Ждать, затем прервать, если долго. Заменяет «Доставка, когда агент занят»."
+	"ui.settings.shortcuts.row_help.send_both": "Ждать, затем направить при долгом ожидании. Приоритетнее настройки «Доставка, когда агент занят»."
 }

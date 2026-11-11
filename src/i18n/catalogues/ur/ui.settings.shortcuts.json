@@ -76,7 +76,7 @@
 	"ui.settings.shortcuts.speech.push_to_talk_overlap": "ہر شارٹ کٹ جو {modifier} استعمال کرتا ہے، جیسے {example}، لمحہ بھر کے لیے ریکارڈنگ شروع کر دے گا۔{alternative, select, none {} other { اس سے بچنے کے لیے {alternative} منتخب کریں۔}}",
 	"ui.settings.shortcuts.speech.push_to_talk_letter_pointer": "حرف والے شارٹ کٹ کے لیے اوپر “ریکارڈنگ شروع کریں” استعمال کریں۔",
 	"ui.settings.shortcuts.speech.start_recording_needs_key": "شارٹ کٹ کے لیے ماڈیفائر کلید کے ساتھ ایک حرف یا ہندسہ بھی ضروری ہے۔",
-	"ui.settings.shortcuts.action.send_both": "دونوں کے طور پر بھیجیں",
+	"ui.settings.shortcuts.action.send_both": "قطار، پھر ہدایت بھیجیں",
 	"ui.settings.shortcuts.action.send_queue": "قطار کے طور پر بھیجیں",
 	"ui.settings.shortcuts.action.send_steer": "ہدایت کے طور پر بھیجیں",
 	"ui.settings.shortcuts.category.sending": "بھیجنا",
@@ -88,5 +88,5 @@
 	"ui.settings.shortcuts.capture.send_prompt": "Ctrl/⌘+Enter یا Alt+Enter دبائیں۔ صرف Enter ترمیم ختم کرتا ہے۔",
 	"ui.settings.shortcuts.row_help.send_steer": "فوراً بھیجتا ہے اور مرحلے میں مداخلت کرتا ہے۔ “مصروف ہونے پر ترسیل” کو بدل دیتا ہے۔",
 	"ui.settings.shortcuts.row_help.send_queue": "مرحلے کا انتظار کرتا ہے؛ ٹولز میں کبھی مداخلت نہیں کرتا۔ “مصروف ہونے پر ترسیل” کو بدل دیتا ہے۔",
-	"ui.settings.shortcuts.row_help.send_both": "انتظار، پھر دیر ہو تو مداخلت۔ “مصروف ہونے پر ترسیل” کو بدل دیتا ہے۔"
+	"ui.settings.shortcuts.row_help.send_both": "انتظار، پھر دیر ہو تو ہدایت۔ “مصروف ہونے پر ترسیل” کی جگہ لاگو ہوتا ہے۔"
 }

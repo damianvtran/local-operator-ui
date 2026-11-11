@@ -73,8 +73,8 @@
 	"ui.chat.composer.secret_closure_notice": "请在请求面板中回复这条敏感信息请求——在它得到答复前，此输入框暂停使用，草稿已保留。",
 	"ui.chat.composer.placeholder.waiting_steer": "Enter立即发送 · Esc停止",
 	"ui.chat.composer.placeholder.waiting_queue": "Enter排队发送 · Esc停止",
-	"ui.chat.composer.placeholder.waiting_both": "Enter先等待，过慢再打断 · Esc停止",
+	"ui.chat.composer.placeholder.waiting_both": "Enter 排队后引导 · Esc 停止",
 	"ui.chat.composer.steer_hint_steer": "智能体工作时发送（Enter）· Esc停止本轮",
 	"ui.chat.composer.steer_hint_queue": "Enter排队发送 · Esc停止本轮",
-	"ui.chat.composer.steer_hint_both": "Enter先等待，过慢再打断 · Esc停止本轮"
+	"ui.chat.composer.steer_hint_both": "Enter 排队后引导 · Esc 停止本轮"
 }

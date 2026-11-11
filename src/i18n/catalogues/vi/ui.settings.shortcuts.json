@@ -76,7 +76,7 @@
 	"ui.settings.shortcuts.speech.push_to_talk_overlap": "Mọi phím tắt dùng {modifier}, chẳng hạn {example}, sẽ bắt đầu ghi âm trong chốc lát.{alternative, select, none {} other { Hãy chọn {alternative} để tránh điều này.}}",
 	"ui.settings.shortcuts.speech.push_to_talk_letter_pointer": "Với phím tắt có chữ cái, hãy dùng “Bắt đầu ghi âm” ở trên.",
 	"ui.settings.shortcuts.speech.start_recording_needs_key": "Phím tắt cần có một chữ cái hoặc chữ số cùng với phím bổ trợ.",
-	"ui.settings.shortcuts.action.send_both": "Gửi kiểu cả hai",
+	"ui.settings.shortcuts.action.send_both": "Gửi hàng đợi, rồi định hướng",
 	"ui.settings.shortcuts.action.send_queue": "Gửi kiểu hàng đợi",
 	"ui.settings.shortcuts.action.send_steer": "Gửi kiểu định hướng",
 	"ui.settings.shortcuts.category.sending": "Gửi tin nhắn",
@@ -88,5 +88,5 @@
 	"ui.settings.shortcuts.capture.send_prompt": "Nhấn Ctrl/⌘+Enter hoặc Alt+Enter. Chỉ nhấn Enter sẽ kết thúc việc chỉnh sửa.",
 	"ui.settings.shortcuts.row_help.send_steer": "Gửi ngay, ngắt bước đang chạy. Ghi đè “Cách gửi khi bận”.",
 	"ui.settings.shortcuts.row_help.send_queue": "Chờ bước xong, không ngắt công cụ. Ghi đè “Cách gửi khi bận”.",
-	"ui.settings.shortcuts.row_help.send_both": "Chờ, rồi ngắt nếu chậm. Ghi đè “Cách gửi khi bận”."
+	"ui.settings.shortcuts.row_help.send_both": "Chờ, rồi định hướng nếu chậm. Ghi đè “Cách gửi khi bận”."
 }

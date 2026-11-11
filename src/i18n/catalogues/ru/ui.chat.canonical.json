@@ -257,5 +257,10 @@
 	"ui.chat.canonical.notice.stopped_with_error": "Остановлено из-за ошибки",
 	"ui.chat.canonical.notice.compaction_not_run": "Сжатие не выполнено: {detail}",
 	"ui.chat.canonical.notice.compaction_not_run_after_colon": "Сжатие не выполнено — {detail}",
-	"ui.chat.canonical.link_toolkit.actions_for": "Действия для {name}"
+	"ui.chat.canonical.link_toolkit.actions_for": "Действия для {name}",
+	"ui.chat.canonical.transcript.busy_wait.steer": "Направляется — может прервать работу инструмента",
+	"ui.chat.canonical.transcript.busy_wait.queue": "В очереди — ждёт, инструменты работают",
+	"ui.chat.canonical.transcript.busy_wait.both": "В очереди — ждёт, а при долгом ожидании направляется",
+	"ui.chat.canonical.transcript.busy_wait.joined": "Направляется — уйдёт вместе с вашим сообщением «направить»",
+	"ui.chat.canonical.transcript.busy_wait.deferred": "Всё ещё в очереди — уйдёт со следующим сообщением"
 }
