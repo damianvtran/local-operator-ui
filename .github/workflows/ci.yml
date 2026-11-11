@@ -1219,7 +1219,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: damianvtran/local-operator
-          ref: 859729bd322da793575527b264b69de0a2601d02
+          # Core PR damianvtran/local-operator#3780 head (0.101.44 base): the
+          # actual_same_turn_highlight stage needs music tracks in turn
+          # highlights, which Core never emitted before #3780. Repin this and
+          # the rev-parse check below to #3780's MERGE SHA before #1800 merges.
+          ref: 5558d4c032748c238ac8ee4aac838df0ddecba62
           path: .music-core-source
           persist-credentials: false
 
@@ -1234,7 +1238,7 @@ jobs:
             brew install ffmpeg
           fi
           ffmpeg -version
-          test "$(git -C .music-core-source rev-parse HEAD)" = 859729bd322da793575527b264b69de0a2601d02
+          test "$(git -C .music-core-source rev-parse HEAD)" = 5558d4c032748c238ac8ee4aac838df0ddecba62
           python -c 'import sys; assert sys.version_info[:2] == (3, 14), sys.version'
           python -m venv "$RUNNER_TEMP/music-core-venv"
           "$RUNNER_TEMP/music-core-venv/bin/pip" install --quiet './.music-core-source[server]'
