@@ -532,11 +532,9 @@ test("D2: a proposal approval draws line 1 at body size, then Changes and Origin
 	const body = view.host.querySelector("[data-lo-ask-scroll]");
 	assert.ok(classesOf(body).includes("text-body"));
 	assert.equal(classesOf(body).includes("text-heading"), false);
-	// The notice sits inside the body region (Q1); the QUESTION text is the rest.
-	const asked = body.textContent.replace(
-		body.querySelector("[data-lo-ask-proposal]").textContent,
-		"",
-	);
+	// Line 1 is the pinned headline now (design round 2, S3); the body holds
+	// only the Changes/Origin notice.
+	const asked = view.host.querySelector("[data-lo-ask-headline]").textContent;
 	assert.match(asked, /Apply proposal pp_7abf6b3116c87a99 to team/);
 	assert.equal(asked.includes("Changes:"), false);
 	assert.equal(asked.includes("Origin:"), false);
@@ -817,8 +815,8 @@ test("Q1: dock - the pair is pinned outside every scroll region; secondary rows 
 	const secondaryClasses = classesOf(secondary).split(/\s+/);
 	for (const cls of ["min-h-0", "shrink-[999]", "overflow-y-auto"])
 		assert.ok(secondaryClasses.includes(cls), `secondary ${cls}`);
-	// The body's floor yields to the controls: room 0 means "one line".
-	assert.equal(body.style.getPropertyValue("--lo-ask-room"), "0px");
+	// The body's floor yields to the controls, down to two lines (S4).
+	assert.equal(body.style.getPropertyValue("--lo-ask-room"), "2lh");
 	assert.match(M.ASK_BODY_FLOOR, /max\(1lh,var\(--lo-ask-room,3lh\)\)/);
 	// The capped basis that stops flexbox freezing a long body at its max.
 	assert.match(body.style.flexBasis, /^min\(min\(40vh,28rem\), \d+px\)$/);
@@ -946,4 +944,347 @@ test("R3: the notification title tooltip is truncated to 300 characters", () => 
 	assert.ok(long.length <= 301 && long.length > 290);
 	assert.ok(long.endsWith("…"));
 	assert.ok(LONG.startsWith(long.slice(0, 300).trimEnd()));
+});
+
+/*
+ * DESIGN ROUND 2 - THE BOUNDED DOCK SPEC (S1-S7, design comment 6792886696).
+ * jsdom does no layout, so each S-rule is pinned as the structure and the
+ * classes the rendered geometry follows from; the 1024x600 numbers (A1-A12)
+ * are QA's rendered frames.
+ */
+const PROPOSAL_LINE_1 =
+	"Apply proposal pp_7abf6b3116c87a99 to team 'minervadev'?";
+const proposalDock = (over = {}) =>
+	h(M.QuestionDock, {
+		gate: gate({
+			kind: "approval",
+			title: "account profile save",
+			detail: PROPOSAL_TEXT,
+			...over,
+		}),
+		sessionId: "s-1",
+		onAnswer: () => undefined,
+	});
+const insideScroller = (node, stop) =>
+	scrollersAbove(node, stop).length > 0 || node.closest("[data-lo-ask-scroll]");
+
+test("S1: the transcript takes only leftover space (basis 0) above its 64 px floor", async () => {
+	const source = await readFile(
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+		"utf8",
+	);
+	assert.ok(
+		source.includes('"relative flex min-h-16 flex-1 basis-0 flex-col"'),
+		"flex-1 basis-0 min-h-16 on the transcript root (D6 root cause 1)",
+	);
+	assert.equal(
+		source.includes('"relative flex min-h-16 grow flex-col"'),
+		false,
+	);
+});
+
+test("S2: the header row is pinned and carries Review changes; the key hint is last", async () => {
+	const view = await mount(proposalDock());
+	const card = view.host.querySelector("section");
+	const header = card.firstElementChild;
+	const headerClasses = classesOf(header).split(/\s+/);
+	for (const cls of ["shrink-0", "flex-wrap", "overflow-clip", "max-h-[26px]"])
+		assert.ok(headerClasses.includes(cls), `header ${cls}`);
+	assert.equal(headerClasses.includes("overflow-y-auto"), false);
+	const review = card.querySelector("[data-lo-ask-proposal-review]");
+	assert.ok(header.contains(review), "Review changes is in the header row");
+	assert.equal(Boolean(insideScroller(review, card)), false, "never scrolls");
+	assert.ok(
+		classesOf(review).split(/\s+/).includes("min-h-6"),
+		"≥24 px target",
+	);
+	// The hint is the header's LAST item, so a wrap takes it before the button.
+	const hint = header.lastElementChild;
+	assert.equal(hint.getAttribute("aria-hidden"), "true");
+	assert.match(hint.textContent, /1.2/);
+	assert.equal(hint.contains(review), false);
+	// The notice in the body keeps Changes/Origin but no second button.
+	assert.equal(
+		card.querySelectorAll("[data-lo-ask-proposal-review]").length,
+		1,
+	);
+	await act(async () => review.click());
+	assert.equal(
+		view.seen.path,
+		"/agents?kind=team&name=minervadev&proposal=pp_7abf6b3116c87a99",
+	);
+	await view.unmount();
+});
+
+test("S3: a proposal's headline is line 1 verbatim, pinned; the gate title is not drawn", async () => {
+	const view = await mount(
+		proposalDock({ detail: `${PROPOSAL_TEXT}\n${LONG}` }),
+	);
+	const card = view.host.querySelector("section");
+	const headline = card.querySelector("[data-lo-ask-headline]");
+	assert.equal(headline?.textContent, PROPOSAL_LINE_1, "verbatim (spoken pp_)");
+	assert.equal(headline.getAttribute("title"), PROPOSAL_LINE_1);
+	for (const cls of [
+		"shrink-0",
+		"line-clamp-2",
+		"text-body",
+		"font-medium",
+		"text-ink",
+	])
+		assert.ok(
+			classesOf(headline).split(/\s+/).includes(cls),
+			`headline ${cls}`,
+		);
+	assert.equal(
+		Boolean(insideScroller(headline, card)),
+		false,
+		"outside scrollers",
+	);
+	assert.equal(
+		card.textContent.includes("account profile save"),
+		false,
+		"no generic gate title on a proposal card (D6)",
+	);
+	const body = card.querySelector("[data-lo-ask-scroll]");
+	assert.equal(body.textContent.includes("Apply proposal"), false, "not twice");
+	assert.ok(
+		body.textContent.includes("END"),
+		"an older runtime's dump stays in the body",
+	);
+	assert.ok(headline.compareDocumentPosition(body) & 4, "headline before body");
+	await view.unmount();
+
+	// Any other approval: the gate title is the headline, the detail the body.
+	const other = await mount(
+		h(M.QuestionDock, {
+			gate: gate({
+				kind: "approval",
+				title: "shell run",
+				detail: "rm -rf build/",
+			}),
+		}),
+	);
+	const otherHeadline = other.host.querySelector("[data-lo-ask-headline]");
+	assert.equal(otherHeadline?.textContent, "shell run");
+	const otherBody = other.host.querySelector("[data-lo-ask-scroll]");
+	assert.equal(otherBody.textContent.trim(), "rm -rf build/");
+	assert.ok(classesOf(otherBody).includes("text-body"));
+	await other.unmount();
+	// An approval with no detail draws no empty body.
+	const bare = await mount(
+		h(M.QuestionDock, { gate: gate({ kind: "approval", title: "Run it?" }) }),
+	);
+	assert.equal(bare.host.querySelector("[data-lo-ask-scroll]"), null);
+	assert.equal(
+		bare.host.querySelector("[data-lo-ask-headline]").textContent,
+		"Run it?",
+	);
+	await bare.unmount();
+	// A plain ask: no headline; the question is the body.
+	const plain = await mount(
+		h(M.QuestionDock, {
+			gate: gate({ title: "Which branch?", options: [{ label: "main" }] }),
+		}),
+	);
+	assert.equal(plain.host.querySelector("[data-lo-ask-headline]"), null);
+	assert.ok(
+		plain.host
+			.querySelector("[data-lo-ask-scroll]")
+			.textContent.includes("Which branch?"),
+	);
+	await plain.unmount();
+});
+
+test("S4: the dock body floors at min(2lh, content) and fades only when ≥ 2 lines tall", async () => {
+	const view = await mount(proposalDock());
+	const body = view.host.querySelector("[data-lo-ask-scroll]");
+	assert.equal(body.style.getPropertyValue("--lo-ask-room"), "2lh");
+	// min(3lh, content, max(1lh, 2lh)) = min(2lh, content).
+	assert.match(M.ASK_BODY_FLOOR, /max\(1lh,var\(--lo-ask-room,3lh\)\)/);
+	assert.ok(
+		body.querySelector("[data-lo-ask-proposal-changes]"),
+		"Changes in the body",
+	);
+	assert.ok(
+		body.querySelector("[data-lo-ask-proposal-origin]"),
+		"Origin in the body",
+	);
+	await view.unmount();
+	// D7: the mask is at most 12 px...
+	assert.match(M.ASK_FADE_MASK, /black_calc\(100%-12px\)/);
+	// ...and a body under two lines draws none, however much it hides.
+	const style = document.createElement("style");
+	style.textContent = "[data-lo-ask-scroll] { line-height: 22px; }";
+	document.head.append(style);
+	try {
+		for (const [clientHeight, fades] of [
+			[22, false],
+			[44, true],
+		])
+			await withLayout(
+				(el) =>
+					el.hasAttribute?.("data-lo-ask-scroll")
+						? { scrollHeight: 134, clientHeight }
+						: null,
+				async () => {
+					const v = await mount(
+						proposalDock({ detail: `${PROPOSAL_TEXT}\n${LONG}` }),
+					);
+					const b = v.host.querySelector("[data-lo-ask-scroll]");
+					assert.equal(b.getAttribute("data-lo-ask-scroll"), "overflow");
+					assert.equal(
+						b.hasAttribute("data-lo-ask-fade"),
+						fades,
+						`${clientHeight}px`,
+					);
+					assert.equal(classesOf(b).includes(M.ASK_FADE_MASK), fades);
+					await v.unmount();
+				},
+			);
+	} finally {
+		style.remove();
+	}
+});
+
+test("S5: the dock's approval rows put descriptions inline at ≤ 760 px tall; asks do not", async () => {
+	const view = await mount(proposalDock());
+	const rows = [...view.host.querySelectorAll("[data-ask-option]")];
+	assert.equal(rows.length, 2);
+	for (const row of rows) {
+		assert.ok(
+			classesOf(row).includes("[@media(max-height:760px)]:min-h-9"),
+			"36 px row",
+		);
+		const description = row.querySelector("[data-ask-option-description]");
+		assert.ok(description, "the consequence line is kept");
+		assert.ok(
+			classesOf(description).includes("[@media(max-height:760px)]:truncate"),
+		);
+		assert.equal(
+			description.getAttribute("title"),
+			description.textContent,
+			"full text in title",
+		);
+		assert.ok(
+			classesOf(description.parentElement).includes(
+				"[@media(max-height:760px)]:flex-row",
+			),
+			"label and description share a line",
+		);
+	}
+	await view.unmount();
+	const ask = await mount(
+		h(M.QuestionDock, {
+			gate: gate({
+				title: "Pick",
+				options: [{ label: "A", description: "first" }],
+			}),
+		}),
+	);
+	const row = ask.host.querySelector("[data-ask-option]");
+	assert.equal(
+		classesOf(row).includes("max-height:760px"),
+		false,
+		"asks unchanged",
+	);
+	assert.equal(
+		row.querySelector("[data-ask-option-description]").hasAttribute("title"),
+		false,
+	);
+	await ask.unmount();
+});
+
+test("S6: a collapsed secondary region takes no gap and is inert, so nothing hidden is focusable", async () => {
+	const proto = window.HTMLElement.prototype;
+	const define = (key, read) =>
+		Object.defineProperty(proto, key, {
+			configurable: true,
+			get() {
+				return read(this);
+			},
+		});
+	// The first secondary row ends 8 (pt-2) + 30 px down the region.
+	define("offsetTop", () => 8);
+	define("offsetHeight", () => 30);
+	try {
+		for (const [clientHeight, collapsed] of [
+			[0, true],
+			[20, true],
+			[60, false],
+		])
+			await withLayout(
+				(el) =>
+					el.hasAttribute?.("data-lo-ask-secondary")
+						? { scrollHeight: 112, clientHeight }
+						: null,
+				async () => {
+					const v = await mount(proposalDock());
+					const card = v.host.querySelector("section");
+					const secondary = card.querySelector("[data-lo-ask-secondary]");
+					assert.equal(
+						secondary.getAttribute("data-lo-ask-secondary"),
+						collapsed ? "collapsed" : "clipped",
+						`${clientHeight}px`,
+					);
+					assert.equal(secondary.hasAttribute("inert"), collapsed);
+					assert.equal(
+						secondary.getAttribute("aria-hidden") === "true",
+						collapsed,
+					);
+					assert.equal(
+						classesOf(secondary).includes(M.ASK_FADE_MASK),
+						!collapsed,
+					);
+					// A8: every focusable outside an inert subtree is a visible control.
+					const focusables = [
+						...card.querySelectorAll(
+							"button, a[href], input, textarea, [tabindex='0']",
+						),
+					].filter((el) => !el.closest("[inert]") && !el.disabled);
+					const setAuto = focusables.filter((b) =>
+						/Set auto/i.test(b.textContent),
+					);
+					assert.equal(
+						setAuto.length > 0,
+						!collapsed,
+						"Set auto focusable only when shown",
+					);
+					await v.unmount();
+				},
+			);
+	} finally {
+		Reflect.deleteProperty(proto, "offsetTop");
+		Reflect.deleteProperty(proto, "offsetHeight");
+	}
+	// The gap belongs to the region's content: `-mt-2` cancels the card's gap-2.
+	const v = await mount(proposalDock());
+	const secondary = v.host.querySelector("[data-lo-ask-secondary]");
+	assert.ok(classesOf(secondary).split(/\s+/).includes("-mt-2"));
+	assert.ok(
+		classesOf(secondary.firstElementChild).split(/\s+/).includes("pt-2"),
+	);
+	await v.unmount();
+});
+
+test("S7: on a proposal card the pinned order is header, headline, body, pair, secondary", async () => {
+	const view = await mount(proposalDock());
+	const card = view.host.querySelector("section");
+	const parts = [
+		card.firstElementChild,
+		card.querySelector("[data-lo-ask-headline]"),
+		card.querySelector("[data-lo-ask-scroll]"),
+		card.querySelector("[data-lo-ask-pinned]"),
+		card.querySelector("[data-lo-ask-secondary]"),
+	];
+	for (const part of parts)
+		assert.equal(part.parentElement, card, "a direct card row");
+	for (let i = 1; i < parts.length; i += 1)
+		assert.ok(
+			parts[i - 1].compareDocumentPosition(parts[i]) & 4,
+			`row ${i} in order`,
+		);
+	// Only the body and the secondary region may shrink; the rest are shrink-0.
+	for (const part of [parts[0], parts[1], parts[3]])
+		assert.ok(classesOf(part).split(/\s+/).includes("shrink-0"));
+	await view.unmount();
 });

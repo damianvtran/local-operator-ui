@@ -11,6 +11,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import {
 	type ProfileProposalCard,
+	type ProfileProposalRef,
 	profileProposalReviewPath,
 } from "../../profile-proposal-ask";
 
@@ -42,8 +43,8 @@ import {
  *   notifications pane bounds its first ask by measurement (`ASK_BOUND_ATTR`);
  * - the body keeps three lines when there is room for them, but the CONTROLS
  *   WIN over that floor (QA round 2, Q1): where three lines plus the options
- *   do not fit, the body gives way down to ONE line (fading, scrolling) rather
- *   than pushing Approve/Deny out of the card (`ASK_BODY_FLOOR`);
+ *   do not fit, the body gives way (to two lines on the dock, scrolling)
+ *   rather than pushing Approve/Deny out of the card (`ASK_BODY_FLOOR`);
  * - rows that are not the answer (the dock's approval-policy links and its key
  *   hint) sit in a SECONDARY region that gives way before the body does
  *   (`AskSecondary`), so they can never be what pushes the options out.
@@ -72,15 +73,26 @@ export const ASK_BODY_MAX_H = "max-h-[min(40vh,28rem)]";
  *   is left, down to one line, which still reads as "there is a question here"
  *   and carries the fade that says there is more.
  *   - the bounded notifications pane sets it to the measured fit (`fitInBound`);
- *   - the dock sets it to 0 (`shrinkable`), because there a flex column does the
- *     sizing: the body is the only shrinking control-adjacent item, so it gets
- *     whatever the pinned rows leave, and the one-line term is its true minimum;
+ *   - the dock sets it to `2lh` (`shrinkable`), so its floor is
+ *     min(two lines, content) - design round 2, D6/S4. A one-line floor (round
+ *     3) left a proposal card showing a single faded line and nothing of WHAT
+ *     was being approved; two lines hold a proposal's `Changes:` + `Origin:`
+ *     (42 px at text-body) whole. The room for it comes from the transcript,
+ *     which now only takes leftover space (`canonical-transcript.tsx`), and
+ *     from inline option descriptions on short windows (`AskOptions`
+ *     `inlineDescriptions`), not from the answer pair;
  *   - unset (the side panel's flowing list), it falls back to three lines.
  */
 export const ASK_BODY_FLOOR =
 	"min-h-[min(3lh,var(--lo-ask-content-h,0px),max(1lh,var(--lo-ask-room,3lh)))]";
+/*
+ * 12 px, not 20 (design round 2, D7): over a 22 px body the 20 px mask dimmed
+ * the lower glyph rows of the ONLY visible line to 2.0-3.7:1. At most half a
+ * line, and only on a body at least two lines tall (`AskScrollBody`'s
+ * `fadeRoom`), so every fully visible line keeps its contrast.
+ */
 export const ASK_FADE_MASK =
-	"[mask-image:linear-gradient(to_bottom,black_calc(100%-20px),transparent)]";
+	"[mask-image:linear-gradient(to_bottom,black_calc(100%-12px),transparent)]";
 export const ASK_OPTIONS_MAX_H = "max-h-[min(30vh,20rem)]";
 export const ASK_CARD_MAX_H = "max-h-[min(70vh,48rem)]";
 
@@ -154,13 +166,22 @@ export const AskScrollBody = ({
 	className?: string;
 	/**
 	 * A flex column sizes this body (the inline dock's card): its floor drops to
-	 * one line so the pinned controls beside it always fit. See `ASK_BODY_FLOOR`.
+	 * min(two lines, content) so the pinned controls beside it always fit. See
+	 * `ASK_BODY_FLOOR`.
 	 */
 	shrinkable?: boolean;
 }) => {
 	const ref = useRef<HTMLDivElement>(null);
 	const [overflows, setOverflows] = useState(false);
 	const [atEnd, setAtEnd] = useState(true);
+	/*
+	 * Whether the visible box is at least two lines tall - the only bodies that
+	 * may fade (design round 2, D7). A one-line box under a fade is a line the
+	 * reader cannot read; there the scroll region's own Tab stop and name say
+	 * "there is more". An unparseable line height (jsdom, `normal`) keeps the
+	 * fade, which is the pre-D7 behaviour.
+	 */
+	const [fadeRoom, setFadeRoom] = useState(true);
 	const [contentH, setContentH] = useState<number | null>(null);
 	const [fitH, setFitH] = useState<number | null>(null);
 	useLayoutEffect(() => {
@@ -181,6 +202,8 @@ export const AskScrollBody = ({
 			// scrollHeight and clientHeight, and a phantom Tab stop is the cost.
 			setOverflows(node.scrollHeight > node.clientHeight + 1);
 			setAtEnd(node.scrollTop + node.clientHeight >= node.scrollHeight - 1);
+			const lh = Number.parseFloat(getComputedStyle(node).lineHeight);
+			setFadeRoom(!(lh > 0) || node.clientHeight + 1 >= 2 * lh);
 			const inner = node.firstElementChild as HTMLElement | null;
 			setContentH(inner ? inner.offsetHeight : null);
 			setFitH(bound ? fitInBound(node, bound) : null);
@@ -205,7 +228,9 @@ export const AskScrollBody = ({
 		<div
 			ref={ref}
 			{...{ [ASK_SCROLL_ATTR]: overflows ? "overflow" : "fits" }}
-			{...{ [ASK_FADE_ATTR]: overflows && !atEnd ? "" : undefined }}
+			{...{
+				[ASK_FADE_ATTR]: overflows && !atEnd && fadeRoom ? "" : undefined,
+			}}
 			tabIndex={overflows ? 0 : undefined}
 			role={overflows ? "region" : undefined}
 			aria-label={overflows ? t("ui.chat.asks.bounds.body_label") : undefined}
@@ -219,7 +244,7 @@ export const AskScrollBody = ({
 					"--lo-ask-content-h": contentH === null ? undefined : `${contentH}px`,
 					// The floor's room operand (see `ASK_BODY_FLOOR`).
 					"--lo-ask-room": shrinkable
-						? "0px"
+						? "2lh"
 						: fitH === null
 							? undefined
 							: `${fitH}px`,
@@ -248,19 +273,20 @@ export const AskScrollBody = ({
 				 * `min-h-0` is gone in favour of the floor above: a flex parent may
 				 * shrink the body (the dock's card cap), but never to nothing (code
 				 * review R1, design D1: at 1024x600 the body had collapsed to 18 px
-				 * while the options stayed) - one line is the least it keeps. `overscroll-contain` so reaching the end does not start
+				 * while the options stayed) - one line is the least it keeps (two
+				 * on the dock, see `ASK_BODY_FLOOR`). `overscroll-contain` so reaching the end does not start
 				 * scrolling the transcript behind the card, and `overflow-wrap:anywhere`
 				 * because the payload that caused this was paths and ids with no spaces.
 				 */
 				"overflow-y-auto overscroll-contain [overflow-wrap:anywhere]",
 				/*
 				 * THE "THERE IS MORE" CUE (design D5): while the body overflows and the
-				 * reader has not reached its end, the last 20 px fade out - the same mask
+				 * reader has not reached its end, the last 12 px fade out (D7) - the same mask
 				 * the picker list uses (`picker-host.tsx`), and the cue mobile's
 				 * PendingCard draws. A clipped glyph or an overlay scrollbar that macOS
 				 * hides after scrolling was the only hint before.
 				 */
-				overflows && !atEnd ? ASK_FADE_MASK : null,
+				overflows && !atEnd && fadeRoom ? ASK_FADE_MASK : null,
 				"rounded-sm outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-1",
 				className,
 			)}
@@ -295,6 +321,7 @@ export const ASK_SECONDARY_ATTR = "data-lo-ask-secondary";
 export const AskSecondary = ({ children }: { children: ReactNode }) => {
 	const ref = useRef<HTMLDivElement>(null);
 	const [clipped, setClipped] = useState(false);
+	const [collapsed, setCollapsed] = useState(false);
 	const [atEnd, setAtEnd] = useState(true);
 	useLayoutEffect(() => {
 		const node = ref.current;
@@ -302,6 +329,18 @@ export const AskSecondary = ({ children }: { children: ReactNode }) => {
 		const measure = () => {
 			setClipped(node.scrollHeight > node.clientHeight + 1);
 			setAtEnd(node.scrollTop + node.clientHeight >= node.scrollHeight - 1);
+			/*
+			 * COLLAPSED = the visible box is shorter than the first row's bottom
+			 * (its offset includes the inner `pt-2`; the region is `relative`, so
+			 * it is the offset parent). A jsdom/unlaid box (clientHeight 0 with no
+			 * content height either) is not collapsed: nothing was squeezed.
+			 */
+			const first = node.firstElementChild?.firstElementChild as
+				| HTMLElement
+				| null
+				| undefined;
+			const need = first ? first.offsetTop + first.offsetHeight : 0;
+			setCollapsed(need > 0 && node.clientHeight + 1 < need);
 		};
 		measure();
 		if (typeof ResizeObserver === "undefined") return;
@@ -313,17 +352,38 @@ export const AskSecondary = ({ children }: { children: ReactNode }) => {
 	return (
 		<div
 			ref={ref}
-			{...{ [ASK_SECONDARY_ATTR]: clipped ? "clipped" : "fits" }}
+			{...{
+				[ASK_SECONDARY_ATTR]: collapsed
+					? "collapsed"
+					: clipped
+						? "clipped"
+						: "fits",
+			}}
+			/*
+			 * INERT WHILE COLLAPSED (design round 2, D9; WCAG 2.4.11): a 0 px region
+			 * kept "Set auto ..." in the Tab order, focusable under the composer
+			 * where nobody could see it. React 18's DOM types have no `inert` prop,
+			 * hence the string spread (`system-prompt-editor.tsx` does the same).
+			 */
+			{...(collapsed ? { inert: "", "aria-hidden": true } : {})}
 			onScroll={(event) => {
 				const node = event.currentTarget;
 				setAtEnd(node.scrollTop + node.clientHeight >= node.scrollHeight - 1);
 			}}
+			/*
+			 * NO GAP WHEN COLLAPSED (design round 2, D8/S6): the card's `gap-2`
+			 * still spaced a 0 px region, so the card overflowed itself by those
+			 * 8 px and painted a second scrollbar. `-mt-2` cancels the card gap and
+			 * the inner `pt-2` puts it back as content - so the spacing exists
+			 * exactly as far as the region is visible, and is the first thing the
+			 * squeeze takes.
+			 */
 			className={cn(
-				"min-h-0 shrink-[999] overflow-y-auto overscroll-contain",
-				clipped && !atEnd ? ASK_FADE_MASK : null,
+				"relative -mt-2 min-h-0 shrink-[999] overflow-y-auto overscroll-contain",
+				clipped && !atEnd && !collapsed ? ASK_FADE_MASK : null,
 			)}
 		>
-			<div className="flex flex-col gap-2">{children}</div>
+			<div className="flex flex-col gap-2 pt-2">{children}</div>
 		</div>
 	);
 };
@@ -344,11 +404,17 @@ export const AskSecondary = ({ children }: { children: ReactNode }) => {
 export const ProposalReviewNotice = ({
 	proposal,
 	className,
+	review = true,
 }: {
 	proposal: ProfileProposalCard;
 	className?: string;
+	/**
+	 * Draw the Review changes button here. The inline dock passes `false` and
+	 * pins `ProposalReviewButton` in its header row instead (design round 2,
+	 * S2), so the link never scrolls with the body; the Asks panel keeps it here.
+	 */
+	review?: boolean;
 }) => {
-	const navigate = useNavigate();
 	/*
 	 * THE SUMMARY IS THE CORE'S OWN LINES (design D2), each on its own line at
 	 * body size, because markdown had joined them into one heading-weight run.
@@ -379,19 +445,36 @@ export const ProposalReviewNotice = ({
 					{proposal.origin}
 				</p>
 			) : null}
-			<button
-				type="button"
-				data-lo-ask-proposal-review=""
-				onClick={() => navigate(profileProposalReviewPath(proposal))}
-				className={cn(
-					"inline-flex min-h-6 items-center gap-1.5 self-start rounded-md border border-control px-2 py-1",
-					"text-ink text-xs transition-colors duration-fast ease-out-quart hover:bg-sunken",
-					"outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-1",
-				)}
-			>
-				<FileDiff aria-hidden={true} className="size-3.5 shrink-0" />
-				<span>{t("ui.chat.asks.proposal.review")}</span>
-			</button>
+			{review ? (
+				<ProposalReviewButton proposal={proposal} className="self-start" />
+			) : null}
 		</div>
+	);
+};
+
+/** The way from a proposal card to its real review (see `ProposalReviewNotice`). */
+export const ProposalReviewButton = ({
+	proposal,
+	className,
+}: {
+	proposal: ProfileProposalRef;
+	className?: string;
+}) => {
+	const navigate = useNavigate();
+	return (
+		<button
+			type="button"
+			data-lo-ask-proposal-review=""
+			onClick={() => navigate(profileProposalReviewPath(proposal))}
+			className={cn(
+				"inline-flex min-h-6 shrink-0 items-center gap-1.5 rounded-md border border-control px-2 py-1",
+				"text-ink text-xs transition-colors duration-fast ease-out-quart hover:bg-sunken",
+				"outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-1",
+				className,
+			)}
+		>
+			<FileDiff aria-hidden={true} className="size-3.5 shrink-0" />
+			<span>{t("ui.chat.asks.proposal.review")}</span>
+		</button>
 	);
 };

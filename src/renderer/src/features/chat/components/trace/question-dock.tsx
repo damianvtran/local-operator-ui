@@ -80,6 +80,7 @@ import {
 	ASK_CARD_MAX_H,
 	AskScrollBody,
 	AskSecondary,
+	ProposalReviewButton,
 	ProposalReviewNotice,
 } from "../asks/ask-bounds";
 import { MarkdownRenderer } from "../markdown-renderer";
@@ -499,15 +500,45 @@ export const QuestionDock = ({
 	 */
 	const fromDetail = parseProfileProposalCard(gate.detail);
 	const proposal = fromDetail ?? parseProfileProposalCard(gate.title);
-	const content = fromDetail
-		? `**${gate.title}**\n\n${fromDetail.body}`
-		: proposal
+	/*
+	 * THE PINNED HEADLINE (design round 2, D6/S3): what is being approved, kept
+	 * outside every scroller so no squeeze can take it.
+	 * - A proposal: line 1 of the contract VERBATIM ("Apply proposal pp_... to
+	 *   team 'x'?") - spoken approval matches its `pp_` id, so it is never
+	 *   reworded. The gate title (`account profile save`, the tool's generic
+	 *   name) is NOT drawn: at 1024x600 it was the one line the body kept, and
+	 *   it says nothing the header and this line do not.
+	 * - Any other approval: the gate title; its detail is the body.
+	 * - A plain ask: none - the question is the body, as before.
+	 */
+	const proposalRest = proposal
+		? proposal.body.split("\n").slice(1).join("\n").trim()
+		: "";
+	const headline = proposal
+		? (proposal.body.split("\n")[0] ?? "")
+		: gate.kind === "approval"
+			? gate.title
+			: null;
+	/*
+	 * THE BODY: everything the headline does not draw. For a proposal that is
+	 * what an older runtime appended after the contract (and, on an ask whose
+	 * question did not carry the proposal, that question), then the
+	 * Changes/Origin notice below; for an approval, its detail.
+	 */
+	const content = proposal
+		? [
+				fromDetail && gate.kind === "ask" ? gate.title : "",
+				proposalRest,
+				fromDetail ? "" : gate.detail,
+			]
+				.filter(Boolean)
+				.join("\n\n")
+		: gate.kind === "approval"
 			? gate.detail
-				? `${proposal.body}\n\n${gate.detail}`
-				: proposal.body
 			: gate.detail
 				? `**${gate.title}**\n\n${gate.detail}`
 				: gate.title;
+	const hasNotice = Boolean(proposal?.changes || proposal?.origin);
 
 	if (collapsed) {
 		return (
@@ -579,9 +610,11 @@ export const QuestionDock = ({
 				 * beside a `shrink-0` composer, and this card (`min-h-0`) shrinks with it,
 				 * so the composer and its send row stay fully on screen at 1024x600. The
 				 * vh/rem cap is only the upper bound on a tall window. Inside, the
-				 * secondary rows give way first, then the question body (down to one
-				 * line); the answer controls never do. Only when the controls alone
-				 * outgrow the card does its own scroll take over (QA round 2, Q1).
+				 * secondary rows give way first, then (after the transcript reaches
+				 * its floor) the question body, down to two lines; the header, the
+				 * headline and the answer controls never do. Only when those alone
+				 * outgrow the card does its own scroll take over (QA round 2, Q1;
+				 * design round 2, S1).
 				 */
 				className={cn(
 					"flex min-h-0 flex-col gap-2 rounded-lg border border-accent bg-elevated p-4 outline-none",
@@ -589,28 +622,46 @@ export const QuestionDock = ({
 					"overflow-y-auto overscroll-contain",
 				)}
 			>
-				<div className="flex shrink-0 items-center gap-2">
-					<MessageCircleQuestion
-						aria-hidden={true}
-						className="size-4 shrink-0 text-accent"
-					/>
-					{/*
-					 * The eyebrow says what is happening, and switches while an answer
-					 * is on its way so a press on a slow round trip visibly landed
-					 * (design round 1, D3; UX round 1, U2).
-					 */}
-					<p className="font-medium text-ink-muted text-meta">
-						{sending
-							? t("ui.chat.ask_panel.dock.sending")
-							: t("ui.chat.ask_panel.dock.asking")}
-					</p>
+				{/*
+				 * THE HEADER ROW, PINNED (design round 2, S2): the eyebrow, the
+				 * proposal's Review changes (moved here from the bottom of the notice so
+				 * it never scrolls) and the key hint. It WRAPS and clips its second
+				 * line, and the hint is the last item, so on a narrow card the hint is
+				 * what goes - never the button (the hint is `aria-hidden`, and the
+				 * secondary hint repeats it). `overflow-clip` rather than `hidden` so
+				 * the row is not a scroll container, and its 4 px clip margin keeps the
+				 * button's focus ring.
+				 */}
+				<div className="flex max-h-[26px] shrink-0 flex-wrap items-center gap-x-2 gap-y-2 overflow-clip [overflow-clip-margin:4px]">
+					<div className="flex min-w-0 flex-1 items-center gap-2">
+						<MessageCircleQuestion
+							aria-hidden={true}
+							className="size-4 shrink-0 text-accent"
+						/>
+						{/*
+						 * The eyebrow says what is happening, and switches while an answer
+						 * is on its way so a press on a slow round trip visibly landed
+						 * (design round 1, D3; UX round 1, U2).
+						 */}
+						<p className="min-w-0 truncate font-medium text-ink-muted text-meta">
+							{sending
+								? t("ui.chat.ask_panel.dock.sending")
+								: t("ui.chat.ask_panel.dock.asking")}
+						</p>
+						{proposal ? (
+							<ProposalReviewButton proposal={proposal} className="ml-auto" />
+						) : null}
+					</div>
 					{/*
 					 * The ordinal eyebrow, for every kind whose rows print digits: an ask's
 					 * model-authored set, and the approval pair this card now draws. The `1-2`
 					 * matches the rows' own ordinals (`AskOptions`) and the sentence below.
 					 */}
 					{options.length > 0 && (
-						<p aria-hidden={true} className="ml-auto text-ink-dim text-meta">
+						<p
+							aria-hidden={true}
+							className="ml-auto shrink-0 text-ink-dim text-meta"
+						>
 							{options.length === 1
 								? t("ui.chat.ask_panel.dock.keys_one")
 								: t("ui.chat.ask_panel.dock.keys_range", {
@@ -620,22 +671,40 @@ export const QuestionDock = ({
 					)}
 				</div>
 				{/*
-				 * THE ONLY REGION THAT GIVES WAY FOR THE ANSWER: the question and, on a
-				 * proposal, its Changes/Origin lines and the review link. The notice
-				 * moved in here from a pinned sibling (QA round 2, Q1): at 1024x600 its
-				 * ~80 px plus the pair did not fit the card, and the pair is the one
-				 * thing that must. The review link scrolls with the summary it belongs
-				 * to; the fade says there is more.
+				 * THE HEADLINE (pinned, see above), then THE ONLY REGION THAT GIVES WAY
+				 * FOR THE ANSWER (design round 2, S4): the question and, on a proposal,
+				 * its Changes/Origin lines. Its floor on the dock is min(two lines,
+				 * content), which holds a proposal's two summary lines whole, and it
+				 * shrinks only after the secondary rows and the transcript have given
+				 * theirs. The review link is in the header row, never down here.
 				 */}
-				<AskScrollBody
-					shrinkable={true}
-					className={cn(proposal ? "text-body" : "text-heading", "text-ink")}
-				>
-					<MarkdownRenderer content={content} />
-					{proposal ? (
-						<ProposalReviewNotice proposal={proposal} className="mt-2" />
-					) : null}
-				</AskScrollBody>
+				{headline ? (
+					<p
+						data-lo-ask-headline=""
+						title={headline}
+						className="line-clamp-2 shrink-0 font-medium text-body text-ink [overflow-wrap:anywhere]"
+					>
+						{headline}
+					</p>
+				) : null}
+				{content || hasNotice ? (
+					<AskScrollBody
+						shrinkable={true}
+						className={cn(
+							gate.kind === "ask" && !proposal ? "text-heading" : "text-body",
+							"text-ink",
+						)}
+					>
+						{content ? <MarkdownRenderer content={content} /> : null}
+						{proposal && hasNotice ? (
+							<ProposalReviewNotice
+								proposal={proposal}
+								review={false}
+								className={content ? "mt-2" : undefined}
+							/>
+						) : null}
+					</AskScrollBody>
+				) : null}
 				{/*
 				 * PINNED: the answer controls are `shrink-0` and outside every scroll
 				 * region, so whatever else gives way, they stay on the card.
@@ -685,6 +754,7 @@ export const QuestionDock = ({
 						<AskOptions
 							options={APPROVAL_OPTIONS}
 							display={approvalOptionDisplay}
+							inlineDescriptions={true}
 							requestId={gate.request_id}
 							busy={busy}
 							onAnswer={(label) => onAnswer?.(label)}

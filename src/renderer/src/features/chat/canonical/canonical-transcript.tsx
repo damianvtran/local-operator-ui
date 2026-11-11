@@ -7384,8 +7384,13 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					: // `min-h-16`, not `min-h-0`: the docked ask (70% of the column, see
 						// `chat-content.tsx`) may squeeze the transcript, but never to
 						// nothing - a few rows of the conversation stay as context for
-						// the question (ask-card QA round 2, Q1).
-						"relative flex min-h-16 grow flex-col",
+						// the question (ask-card QA round 2, Q1). `basis-0` (via
+						// `flex-1`): the transcript takes only LEFTOVER space and never
+						// competes with the dock by basis. With a content basis the two
+						// shared a deficit in proportion, so the dock's proposal summary
+						// shrank to one line while the transcript still sat 56 px above
+						// its floor (ask-card design round 2, D6/S1).
+						"relative flex min-h-16 flex-1 basis-0 flex-col",
 			)}
 		>
 			{/*
