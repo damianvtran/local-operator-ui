@@ -319,6 +319,7 @@ import { builtinOfferSentence } from "./builtin-offer-sentence";
 import { ChatRemoteMark } from "./chat-remote-mark";
 import { ChatRowHoverIntent } from "./chat-row-hover-intent";
 import { ChatRowTitle } from "./chat-row-title";
+import { ChatSettingsIntentMark } from "./chat-settings-intent-mark";
 import { ChatSidebarViewMenu } from "./chat-sidebar-view-menu";
 import {
 	ChatTagFooter,
@@ -5159,15 +5160,22 @@ export function ChatSidebar({
 				 * so a dropped link cannot reflow the row: the mark swaps WITHIN the
 				 * cell, the cell never moves.
 				 */}
-				<span
-					aria-hidden="true"
-					className="flex size-3.5 shrink-0 items-center justify-center"
-				>
+				{/*
+				 * The cell also hosts the settings-intent dot, absolutely placed so it
+				 * takes no width (design D4: as a flex item it shifted the title 18 px
+				 * each time it came and went). Not `aria-hidden` any more, because the
+				 * dot is a labelled image; the locality svg hides itself.
+				 */}
+				<span className="relative flex size-3.5 shrink-0 items-center justify-center">
 					{row.locality === "remote" && (
 						<ChatRemoteMark
 							unreachable={row.link_down === true || row.reachable === false}
 						/>
 					)}
+					<ChatSettingsIntentMark
+						sessionId={row.session_id}
+						corner={row.locality === "remote"}
+					/>
 				</span>
 				{/*
 				 * THE ROW'S LEADING MARK: its agent's picture with the status on the

@@ -45,10 +45,15 @@ import type { FC } from "react";
 import { useEffect, useRef } from "react";
 import "../../../styles/index.css";
 import type {
+	MirroredIntent,
+	MirroredSlots,
+} from "@shared/store/settings-intents";
+import type {
 	CanonicalFrontendState,
 	CanonicalSpendChannels,
 } from "../../../../../../src/shared/desktop-session-contract";
 import { SessionStatusStrip } from "./session-status-strip";
+import { SettingsIntentChips } from "./settings-intent-chips";
 
 /**
  * A frontend snapshot with only the fields the strip reads populated.
@@ -2434,6 +2439,140 @@ export const PaymentEstimated: Story = {
 			<Frame width={900}>
 				<FocusedSpend override={{ spend_channels: estimatedSpend }} />
 			</Frame>
+		</div>
+	),
+};
+
+/*
+ * DURABLE SETTINGS INTENTS (`features.settings_intents`): the band paints the
+ * TARGET at once (model through `pendingModel`, effort through
+ * `pendingEffort`), and the chip line above the composer row says what the
+ * server is doing with it. Each frame is the strip plus the chips exactly as
+ * `message-input.tsx` stacks them.
+ */
+const intent = (
+	over: Partial<MirroredIntent> & Pick<MirroredIntent, "kind" | "value">,
+): MirroredIntent => ({
+	request_id: "00000000-0000-4000-8000-000000000001",
+	generation: 1,
+	state: "applying",
+	error: null,
+	...over,
+});
+
+const IntentFrame: FC<{
+	label: string;
+	slots: MirroredSlots;
+	pendingModel?: typeof GPT_4O_MINI | null;
+	pendingEffort?: string | null;
+	width?: number;
+}> = ({ label, slots, pendingModel = null, pendingEffort = null, width }) => (
+	<Frame label={label} width={width}>
+		<div className="flex flex-col">
+			<SettingsIntentChips
+				slots={slots}
+				describeModel={(selector) =>
+					selector === "openrouter/openai/gpt-4o-mini"
+						? GPT_4O_MINI.display_name
+						: selector
+				}
+				onRetry={() => undefined}
+				onDismiss={() => undefined}
+			/>
+			<SessionStatusStrip
+				frontend={state({
+					effective_model: GPT_5,
+					context_tokens: 12_000,
+					context_window: 400_000,
+					cost_knowledge: "exact",
+				})}
+				pendingModel={pendingModel}
+				pendingEffort={pendingEffort}
+				pendingModelQueued={slots.model?.state === "queued_next_step"}
+				onCommand={() => {}}
+			/>
+		</div>
+	</Frame>
+);
+
+export const SettingsIntents: Story = {
+	render: () => (
+		<div className="flex flex-col gap-4 bg-canvas p-2">
+			<IntentFrame
+				label="Applying: the model switch is on its way; the band already names it"
+				slots={{
+					model: intent({
+						kind: "model",
+						value: "openrouter/openai/gpt-4o-mini",
+					}),
+				}}
+				pendingModel={GPT_4O_MINI}
+			/>
+			<IntentFrame
+				label="Applying: an effort change, painted on the effort reading"
+				slots={{ effort: intent({ kind: "effort", value: "low" }) }}
+				pendingEffort="low"
+				// Above the band's 750 px shed point, so the effort reading - and its
+				// pending "Low" in the dim register - is on screen (design D3).
+				width={840}
+			/>
+			<IntentFrame
+				label="Queued: the runtime accepted it and applies it at its next step"
+				slots={{
+					model: intent({
+						kind: "model",
+						value: "openrouter/openai/gpt-4o-mini",
+						state: "queued_next_step",
+					}),
+				}}
+				pendingModel={GPT_4O_MINI}
+			/>
+			<IntentFrame
+				label="Failed: the retry budget ran out - Retry and Dismiss; the band is back on the model in force"
+				slots={{
+					model: intent({
+						kind: "model",
+						value: "openrouter/openai/gpt-4o-mini",
+						state: "failed",
+						error: {
+							code: "retry_budget_exhausted",
+							message: "",
+							retryable: true,
+						},
+					}),
+				}}
+			/>
+			<IntentFrame
+				label="Failed terminally: an unknown model - Dismiss only, the server's reason verbatim"
+				slots={{
+					model: intent({
+						kind: "model",
+						value: "acme/no-such-model",
+						state: "failed",
+						error: {
+							code: "model_unknown",
+							message: "The model acme/no-such-model is not in the catalogue.",
+							retryable: false,
+						},
+					}),
+				}}
+			/>
+			<IntentFrame
+				label="Failed, narrow pane: the reason wraps under the sentence instead of clipping behind the buttons"
+				width={360}
+				slots={{
+					model: intent({
+						kind: "model",
+						value: "acme/no-such-model",
+						state: "failed",
+						error: {
+							code: "model_unknown",
+							message: "The model acme/no-such-model is not in the catalogue.",
+							retryable: true,
+						},
+					}),
+				}}
+			/>
 		</div>
 	),
 };

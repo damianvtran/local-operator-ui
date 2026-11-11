@@ -86,14 +86,25 @@ import type { FC, ReactNode } from "react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import "../../../styles/index.css";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
-import type { DesktopResponse } from "../../../../../shared/desktop-contract";
+import {
+	dismissSettingsIntent,
+	retrySettingsIntent,
+	useSessionSettingsIntents,
+} from "@shared/hooks/use-settings-intents";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import type {
+	DesktopResponse,
+	SettingsIntent,
+} from "../../../../../shared/desktop-contract";
 import type {
 	DesktopModelCatalogue,
 	NativeDesktopAction,
 } from "../../../../../shared/desktop-control-contract";
 import type { SlashCommandMeta } from "../components/slash-commands";
+import { SettingsIntentChips } from "../session-status/settings-intent-chips";
 import {
 	EffortPicker,
+	FastPicker,
 	ModelPicker,
 	type PickerContext,
 } from "./destination-pickers";
@@ -121,6 +132,13 @@ const MATCH_THE_SHIPPED_MODELS = /the shipped models/;
 const MATCH_SOME_PROVIDERS_DID_NOT_ANSWER = /Some providers did not answer/;
 const MATCH_GLM_5_2 = /GLM-5\.2/;
 const MATCH_MAGISTRAL_MEDIUM = /Magistral Medium/;
+const MATCH_APPLIES_NEXT_STEP = /applies at the next step/;
+const MATCH_HAIKU_NAME = /Claude Haiku 4\.5|claude-haiku-4-5/;
+const MATCH_COULD_NOT_SWITCH_BUDGET =
+	/Couldn't switch to .*did not respond in time/;
+const MATCH_SWITCHING_TO = /^Switching to /;
+const MATCH_TURNING_FAST_ON = /^Turning fast mode on/;
+const MATCH_FAST_ON_ROW = /^On/;
 const MATCH_ENTER_CONNECTS_ZAI = /Enter connects zai/;
 
 const noop = () => {};
@@ -200,6 +218,8 @@ type BridgeRequest = {
 	args?: string;
 	/** The receipt key of one command dispatch; a repeat must carry a new one. */
 	requestId?: string;
+	sessionId?: string;
+	kind?: string;
 };
 
 /** A promise that never settles: the frame is the state while it is pending. */
@@ -534,11 +554,13 @@ type FrameProps = {
 	commandResponse?: DesktopResponse;
 	/** The model the session is on (the session frame's stand-in). */
 	selected?: { provider: string; model_id: string } | null;
-	picker?: "model" | "effort";
+	picker?: "model" | "effort" | "fast";
 	/** A whole frame in place of `{selected_model: selected}`, for states such as an effort displacement. */
 	frontend?: Record<string, unknown>;
 	onClose?: () => void;
 	note?: PickerContext["note"];
+	/** The session the picker addresses (the intent stories use several). */
+	sessionId?: string;
 };
 
 /**
@@ -556,13 +578,14 @@ const Frame: FC<FrameProps> = ({
 	frontend,
 	onClose = noop,
 	note = noop,
+	sessionId = "sess",
 }) => {
 	installBridge(storyBridge, commandResponse);
 	const isEffort = picker === "effort";
 	const ctx: PickerContext = {
 		action: isEffort ? EFFORT_ACTION : MODEL_ACTION,
 		spec: isEffort ? EFFORT_SPEC : MODEL_SPEC,
-		sessionId: "sess",
+		sessionId,
 		canonical: {
 			frontend: frontend ?? (selected ? { selected_model: selected } : null),
 			// U1's half that lives in the picker: paint before the await, drop it
@@ -580,6 +603,8 @@ const Frame: FC<FrameProps> = ({
 		dispatch: noop,
 		rebind: noop,
 	};
+	if (picker === "fast")
+		return <FastPicker {...ctx} action={{ ...MODEL_ACTION, data: {} }} />;
 	return isEffort ? <EffortPicker {...ctx} /> : <ModelPicker {...ctx} />;
 };
 
@@ -2314,5 +2339,269 @@ export const ShowAllConnectFooter: Story = {
 			expect(screen.getByText(MATCH_ENTER_CONNECTS_ZAI)).toBeTruthy(),
 		);
 		delete document.documentElement.dataset.capturePending;
+	},
+};
+
+/* ------------------------------------------------- durable settings intents */
+
+/*
+ * THE INTENT STORIES (`features.settings_intents`). The bridge advertises the
+ * capability, so a pick is a POST to `settings-intents` that the dialog does
+ * not wait on: it closes at once, the store's mirror holds the pick, and the
+ * chips (`SettingsIntentChips`, rendered beside the picker here) say what the
+ * server is doing with it. No `sessions.command` is ever sent.
+ */
+const INTENT_CAPABILITIES = {
+	desktop_contract: 1,
+	desktop_available: true,
+	desktop_auth: "bearer",
+	features: { settings_intents: 1 },
+};
+
+const intentSlot = (
+	request: BridgeRequest,
+	generation: number,
+	state: SettingsIntent["state"],
+): SettingsIntent => ({
+	kind: (request.kind ?? "model") as SettingsIntent["kind"],
+	value: request.value as string | boolean,
+	effort: null,
+	request_id: request.requestId ?? "",
+	generation,
+	base: CURRENT_SELECTOR,
+	state,
+	attempts: 0,
+	updated_at: new Date().toISOString(),
+	error: null,
+});
+
+/** Every intent POST, in order, so a play can count them and read their ids. */
+const intentPosts: BridgeRequest[] = [];
+const commandPosts: string[] = [];
+
+const intentBridge =
+	(
+		submit: (
+			request: BridgeRequest,
+			n: number,
+		) => Promise<DesktopResponse | undefined>,
+	) =>
+	(request: BridgeRequest): Promise<DesktopResponse | undefined> => {
+		if (request.op === "capabilities")
+			return Promise.resolve(ok(INTENT_CAPABILITIES));
+		if (request.op === "models.catalogue")
+			return catalogueOnly(catalogue())(request);
+		if (request.op === "sessions.command") {
+			commandPosts.push(request.args ?? "");
+			return pending();
+		}
+		if (request.op === "settingsIntents.submit") {
+			intentPosts.push(request);
+			return submit(request, intentPosts.length);
+		}
+		if (request.op === "settingsIntents.list")
+			return Promise.resolve(ok({ intents: {} }));
+		return Promise.resolve(refuse(400, `unexpected ${request.op}`));
+	};
+
+const resetIntents = () => {
+	intentPosts.length = 0;
+	commandPosts.length = 0;
+	useCanonicalSessionsStore.setState({ settingsIntents: {} });
+};
+
+/** The chips for one session, wired to the real store and client functions. */
+const LiveChips: FC<{ sessionId: string }> = ({ sessionId }) => {
+	const slots = useSessionSettingsIntents(sessionId);
+	return (
+		<SettingsIntentChips
+			slots={slots}
+			// The catalogue's label, as production's `useModelDescriber` gives it
+			// (design D7), so the frames show the name users actually read.
+			describeModel={(selector) =>
+				CATALOGUE.find((candidate) => candidate.selector === selector)?.label ??
+				selector
+			}
+			onRetry={(intent) => void retrySettingsIntent(sessionId, intent)}
+			onDismiss={(intent) => void dismissSettingsIntent(sessionId, intent)}
+		/>
+	);
+};
+
+/** A picker that reopens on the next session each time it closes. */
+const IntentFrame: FC<{
+	bridge: FrameProps["bridge"];
+	sessions: string[];
+	picker?: FrameProps["picker"];
+	frontend?: FrameProps["frontend"];
+}> = ({ bridge, sessions, picker, frontend }) => {
+	const [index, setIndex] = useState(0);
+	const [reset] = useState(() => {
+		resetIntents();
+		return true;
+	});
+	void reset;
+	const sessionId = sessions[Math.min(index, sessions.length - 1)];
+	return (
+		<div className="grid gap-3" style={{ width: 560 }}>
+			{index < sessions.length && (
+				<Frame
+					key={sessionId}
+					bridge={bridge}
+					sessionId={sessionId}
+					picker={picker}
+					frontend={frontend}
+					onClose={() => setIndex((current) => current + 1)}
+				/>
+			)}
+			{sessions.map((id) => (
+				<div key={id} data-intent-session={id}>
+					<LiveChips sessionId={id} />
+				</div>
+			))}
+		</div>
+	);
+};
+
+const INTENT_SESSION = "aaaaaaaaaaaa";
+
+/**
+ * A pick against a busy runtime: the server accepts it at once and the runtime
+ * answers "queued, applies at the next step". The dialog closed on the pick -
+ * there is no "Switching the model..." footer to wait out - and the chip names
+ * the target.
+ */
+export const IntentQueued: Story = {
+	render: () => (
+		<IntentFrame
+			sessions={[INTENT_SESSION]}
+			bridge={intentBridge(async (request, n) => {
+				const intent = intentSlot(request, n, "queued_next_step");
+				return ok({ intent, intents: { model: intent } });
+			})}
+		/>
+	),
+	play: async () => {
+		await pickRow(MATCH_ANTHROPIC_CLAUDE_HAIKU_4_5);
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		await waitFor(() =>
+			expect(screen.getByText(MATCH_APPLIES_NEXT_STEP).textContent).toMatch(
+				MATCH_HAIKU_NAME,
+			),
+		);
+		expect(intentPosts).toHaveLength(1);
+		expect(intentPosts[0].value).toBe("openrouter/anthropic/claude-haiku-4-5");
+		expect(commandPosts).toEqual([]);
+	},
+};
+
+/**
+ * The retry budget ran out (the runtime never answered): the chip says so in
+ * plain words with Retry and Dismiss, and Retry is the SAME value under a NEW
+ * request id, which this time lands.
+ */
+export const IntentFailedRetry: Story = {
+	render: () => (
+		<IntentFrame
+			sessions={[INTENT_SESSION]}
+			bridge={intentBridge(async (request, n) => {
+				const intent: SettingsIntent =
+					n === 1
+						? {
+								...intentSlot(request, n, "failed"),
+								attempts: 25,
+								error: {
+									code: "retry_budget_exhausted",
+									last_code: "runtime_unreachable",
+									message: "",
+									retryable: true,
+								},
+							}
+						: intentSlot(request, n, "applying");
+				return ok({ intent, intents: { model: intent } });
+			})}
+		/>
+	),
+	play: async () => {
+		await pickRow(MATCH_ANTHROPIC_CLAUDE_HAIKU_4_5);
+		await waitFor(() =>
+			expect(screen.getByText(MATCH_COULD_NOT_SWITCH_BUDGET)).toBeTruthy(),
+		);
+		await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+		await waitFor(() =>
+			expect(screen.getByText(MATCH_SWITCHING_TO)).toBeTruthy(),
+		);
+		expect(intentPosts).toHaveLength(2);
+		expect(intentPosts[1].value).toBe(intentPosts[0].value);
+		expect(intentPosts[1].requestId).not.toBe(intentPosts[0].requestId);
+	},
+};
+
+/**
+ * Three conversations changed in a row while the FIRST one's POST has still
+ * not answered: each pick closes its dialog at once, the next conversation's
+ * picker opens straight away, and every session keeps its own pending chip.
+ */
+export const IntentBurstAcrossSessions: Story = {
+	render: () => (
+		<IntentFrame
+			sessions={["aaaaaaaaaaaa", "bbbbbbbbbbbb", "cccccccccccc"]}
+			bridge={intentBridge(async (request, n) => {
+				if (n === 1) return pending();
+				const intent = intentSlot(request, n, "applying");
+				return ok({ intent, intents: { model: intent } });
+			})}
+		/>
+	),
+	play: async () => {
+		for (let pick = 0; pick < 3; pick += 1) {
+			await pickRow(MATCH_ANTHROPIC_CLAUDE_HAIKU_4_5);
+			await waitFor(() => expect(intentPosts).toHaveLength(pick + 1));
+		}
+		await waitFor(() =>
+			expect(screen.getAllByText(MATCH_SWITCHING_TO)).toHaveLength(3),
+		);
+		expect(intentPosts.map((request) => request.sessionId)).toEqual([
+			"aaaaaaaaaaaa",
+			"bbbbbbbbbbbb",
+			"cccccccccccc",
+		]);
+		expect(commandPosts).toEqual([]);
+	},
+};
+
+/**
+ * The FAST dial is a per-session setting too: with the capability its pick is
+ * a `fast` intent (boolean value) that closes the dialog at once, never a
+ * `sessions.command` a busy owner would hold.
+ */
+export const IntentFastToggle: Story = {
+	render: () => (
+		<IntentFrame
+			sessions={[INTENT_SESSION]}
+			picker="fast"
+			frontend={{
+				selected_model: {
+					...CURRENT,
+					supports_fast_mode: true,
+					fast_mode: false,
+				},
+			}}
+			bridge={intentBridge(async (request, n) => {
+				const intent = intentSlot(request, n, "applying");
+				return ok({ intent, intents: { fast: intent } });
+			})}
+		/>
+	),
+	play: async () => {
+		await pickRow(MATCH_FAST_ON_ROW);
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		await waitFor(() =>
+			expect(screen.getByText(MATCH_TURNING_FAST_ON)).toBeTruthy(),
+		);
+		expect(intentPosts).toHaveLength(1);
+		expect(intentPosts[0].kind).toBe("fast");
+		expect(intentPosts[0].value).toBe(true);
+		expect(commandPosts).toEqual([]);
 	},
 };
