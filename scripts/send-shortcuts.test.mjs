@@ -72,6 +72,7 @@ const bundle = await build({
 			export {
 				captureRefusal,
 				effectiveChord,
+				isSendChordOf,
 				normalizeChord,
 				sanitizeShortcutBindings,
 			} from "./src/renderer/src/shared/keymap/keymap-chord";
@@ -179,6 +180,8 @@ const {
 	SEND_ACTION_IDS,
 	captureRefusal,
 	chordFromEvent,
+	effectiveChord,
+	isSendChordOf,
 	normalizeChord,
 	sanitizeShortcutBindings,
 } = module;
@@ -426,12 +429,45 @@ test("the recorder accepts primary+enter for a send row", () => {
 	);
 });
 
-test("a send row pressing a modified Enter gets the sending-group sentence", () => {
-	// A plain letter (no primary) on a send row falls through to the general
-	// needs-a-modifier sentence, exactly as a panel row would.
+test("a send row pressing any non-Enter key hears the send sentence", () => {
+	// A plain letter (no primary) on a send row does NOT fall through to the
+	// general needs-a-modifier sentence, and it does NOT name a reserved
+	// job or a conflict with another row. Every non-send chord is dead on a
+	// send row — `sendKeyOf` can never fire on it — so naming any other
+	// job would accept the press as a binding and claim the chord beside
+	// it. It hears the sending sentence instead.
 	assert.equal(
 		captureRefusal("j", "composer.send_queue", {}),
-		"A shortcut needs Ctrl.",
+		"Use Ctrl/⌘ or Alt with Enter.",
+	);
+	assert.equal(
+		captureRefusal("primary+backspace", "composer.send_queue", {}),
+		"Use Ctrl/⌘ or Alt with Enter.",
+	);
+	assert.equal(
+		captureRefusal("primary+up", "composer.send_queue", {}),
+		"Use Ctrl/⌘ or Alt with Enter.",
+	);
+	assert.equal(
+		captureRefusal("primary+1", "composer.send_queue", {}),
+		"Use Ctrl/⌘ or Alt with Enter.",
+	);
+	assert.equal(
+		captureRefusal("alt+j", "composer.send_queue", {}),
+		"Use Ctrl/⌘ or Alt with Enter.",
+	);
+	assert.equal(
+		captureRefusal("alt+backspace", "composer.send_queue", {}),
+		"Use Ctrl/⌘ or Alt with Enter.",
+	);
+	assert.equal(
+		captureRefusal("shift+j", "composer.send_queue", {}),
+		"Use Ctrl/⌘ or Alt with Enter.",
+	);
+	assert.equal(
+		captureRefusal("primary+alt+shift+enter", "composer.send_queue", {}),
+		"Use Ctrl/⌘ or Alt with Enter. Shift+Enter adds a newline.",
+		"a shifted Enter spelling keeps the newline sentence",
 	);
 });
 
@@ -496,10 +532,14 @@ test("a conflict with another action is refused with the existing sentence", () 
 		captureRefusal("primary+enter", "panel.console", bindings),
 		"Use a Sending row for a key that sends a message.",
 	);
-	// And the reverse: a send row pressing a panel chord.
+	// And the reverse: a send row pressing a panel chord hears the send
+	// sentence, NOT the conflict with Open console. `primary+j` has
+	// `primary`, so the general path below would name the conflict — but a
+	// chord that can never send is not a binding worth naming a conflict
+	// over, and this press is not a panel row at all.
 	assert.equal(
 		captureRefusal("primary+j", "composer.send_queue", {}),
-		"Already assigned to Open console.",
+		"Use Ctrl/⌘ or Alt with Enter.",
 	);
 	// An external claim (the recording row) is also a conflict for a send row.
 	assert.equal(
@@ -514,10 +554,176 @@ test("a conflict with another action is refused with the existing sentence", () 
 	);
 });
 
+/**
+ * M1 property test: every modifier combination × every key, on every send row.
+ *
+ * Half the defect was a fall-through in `captureRefusal`'s send arm: a
+ * non-send chord (`primary+backspace`, `primary+j`, `primary+g`,
+ * `primary+alt+j`, `primary+shift+j`, `primary+1`, `primary+alt+shift+enter`
+ * — anywhere except a shifted Enter) dropped out of the send arm into the
+ * general path, which accepted any non-reserved chord carrying `primary`.
+ * The row then SHOWED e.g. `Ctrl+Backspace`, kept it across reload, and
+ * claimed it against other rows, while `sendKeyOf` fired never: for a dead
+ * chord the two readers disagreed and a `Ctrl+Backspace` press did nothing
+ * the next day. The sanitizer and `effectiveChord` then kept the dead
+ * chord alive because they only tested `chordHasPrimary` / RESERVED.
+ *
+ * The predicate `isSendChordOf` is now the ONE gate for send rows at
+ * capture, sanitize, effective, and send. This test enumerates the whole
+ * grammar — 16 modifier combinations × 43 spellable keys (letters, digits,
+ * Enter, Backspace, Delete, Space, arrows, and the named keys
+ * `normalizeChord` accepts) — and asserts the four readers agree on every
+ * combination on every send row:
+ *
+ *   capture accepts  <=>  sanitize keeps  <=>  effectiveChord returns it
+ *                       <=>  sendKeyOf fires with that row's mode
+ *
+ * A stored binding that capture would refuse must not survive reload, and
+ * a binding reload keeps must fire. Zero disagreements across all rows.
+ */
+test("send rows accept only Enter chords: capture, sanitize, effective and send agree", () => {
+	const MODIFIERS = ["primary", "alt", "shift"];
+	// Generate the 16 combinations: for bitmask 0..15, include modifier when bit set.
+	const modifierCombos = [];
+	for (let mask = 0; mask < 16; mask++) {
+		const combo = MODIFIERS.filter((_, bit) => (mask & (1 << bit)) !== 0);
+		modifierCombos.push(combo);
+	}
+	assert.equal(modifierCombos.length, 16, "16 modifier combinations");
+	const LETTERS = "abcdefghijklmnopqrstuvwxyz".split("");
+	const DIGITS = "0123456789".split("");
+	const NAMED = [
+		"space",
+		"backspace",
+		"delete",
+		"insert",
+		"home",
+		"end",
+		"pageup",
+		"pagedown",
+		"up",
+		"down",
+		"left",
+		"right",
+		"enter",
+	];
+	const KEYS = [...LETTERS, ...DIGITS, ...NAMED];
+	assert.equal(KEYS.length, 26 + 10 + 13, "letters + digits + named keys");
+	const MODES = {
+		"composer.send_steer": "steer",
+		"composer.send_queue": "queue",
+		"composer.send_both": "both",
+	};
+	const SEND_IDS = Object.keys(MODES);
+	// How an event is built from a canonical chord, for the `sendKeyOf` arm:
+	// a key decides its `event.key`, modifiers decide the flags. `primary`
+	// alone maps to metaKey (the mac reading); ctrlKey would spell the same
+	// canonical chord, and the Enter arms already pin both platforms.
+	const toEvent = (chord) => {
+		const tokens = chord.split("+");
+		const key = tokens[tokens.length - 1];
+		const mods = new Set(tokens.slice(0, -1));
+		const keyEvents = {
+			enter: "Enter",
+			space: " ",
+			backspace: "Backspace",
+			delete: "Delete",
+			insert: "Insert",
+			home: "Home",
+			end: "End",
+			pageup: "PageUp",
+			pagedown: "PageDown",
+			up: "ArrowUp",
+			down: "ArrowDown",
+			left: "ArrowLeft",
+			right: "ArrowRight",
+		};
+		const eventKey = keyEvents[key] ?? key;
+		return {
+			key: eventKey,
+			shiftKey: mods.has("shift"),
+			ctrlKey: false,
+			metaKey: mods.has("primary"),
+			altKey: mods.has("alt"),
+			isComposing: false,
+		};
+	};
+	let disagreements = 0;
+	const disagreed = [];
+	for (const id of SEND_IDS) {
+		for (const combo of modifierCombos) {
+			for (const key of KEYS) {
+				const canonical = [...combo, key].join("+");
+				const expected = isSendChordOf(canonical);
+				const captureSays = captureRefusal(canonical, id, {}) === null;
+				const kept = sanitizeShortcutBindings({ [id]: canonical });
+				const sanitizeSays = kept[id] === canonical;
+				const effectiveSays = effectiveChord(id, kept) === canonical;
+				const bindings = sendChordBindings(kept);
+				const fired = sendKeyOf(toEvent(canonical), bindings);
+				const sendSays =
+					fired !== null && fired.delivery === MODES[id];
+				if (
+					captureSays !== expected ||
+					sanitizeSays !== expected ||
+					effectiveSays !== expected ||
+					sendSays !== expected
+				) {
+					disagreements += 1;
+					disagreed.push({
+					id,
+					canonical,
+					expected,
+					captureSays,
+					sanitizeSays,
+					effectiveSays,
+					sendSays,
+					fired,
+					kept,
+				});
+				}
+			}
+		}
+	}
+	assert.equal(
+		disagreements,
+		0,
+		`send-row readers disagree on ${disagreements} chords: ${JSON.stringify(disagreed.slice(0, 8), null, 2)}`,
+	);
+});
+
 test("the sanitizer keeps send chords and drops hand-edited bare Enter", () => {
 	assert.deepEqual(
 		sanitizeShortcutBindings({ "composer.send_queue": "primary+enter" }),
 		{ "composer.send_queue": "primary+enter" },
+	);
+	assert.deepEqual(
+		sanitizeShortcutBindings({ "composer.send_queue": "alt+enter" }),
+		{ "composer.send_queue": "alt+enter" },
+		"an Alt-only send chord survives — it carries no primary and still sends",
+	);
+	assert.deepEqual(
+		sanitizeShortcutBindings({ "composer.send_queue": "primary+alt+enter" }),
+		{ "composer.send_queue": "primary+alt+enter" },
+	);
+	assert.deepEqual(
+		sanitizeShortcutBindings({ "composer.send_queue": "primary+j" }),
+		{},
+		"a primary+letter on a send row never arms — it can never send",
+	);
+	assert.deepEqual(
+		sanitizeShortcutBindings({
+			"composer.send_queue": "primary+backspace",
+		}),
+		{},
+		"a primary+backspace on a send row never arms",
+	);
+	assert.deepEqual(
+		sanitizeShortcutBindings({
+			"composer.send_queue": "primary+alt+shift+enter",
+		}),
+		{},
+		"a shifted Enter spelling never arms",
 	);
 	assert.deepEqual(
 		sanitizeShortcutBindings({ "composer.send_queue": "enter" }),

@@ -43,8 +43,10 @@ const bundle = await build({
 			export * from "./src/renderer/src/shared/store/canonical-sessions-store";
 			export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";
 			export {
+				BUSY_DEFAULT_STALE_TIME,
 				BUSY_DELIVERY_UNSUPPORTED_CODE,
 				busyDefaultFromSettings,
+				evaluateBusySend,
 				mustRefuseBusyDelivery,
 				resolveBusyDelivery,
 				sendKeyOf,
@@ -145,8 +147,10 @@ const {
 	admitChatDraft,
 	desktopRequestSchema,
 	desktopEndpoint,
+	BUSY_DEFAULT_STALE_TIME,
 	BUSY_DELIVERY_UNSUPPORTED_CODE,
 	busyDefaultFromSettings,
+	evaluateBusySend,
 	mustRefuseBusyDelivery,
 	resolveBusyDelivery,
 	sendKeyOf,
@@ -527,25 +531,26 @@ test("the gate lives at the one seam (chat-page send), and refuses before admiss
 	const source = codeOf(CHAT_PAGE);
 	assert.match(
 		source,
+		/evaluateBusySend\(/,
+		"the page resolves the send through the extracted assembly, not an inline gate",
+	);
+	assert.match(
+		source,
 		/busyDefaultFromSettings\(/,
 		"the page resolves the default at send time",
 	);
-	assert.match(
-		source,
-		/resolveBusyDelivery\(/,
-		"the page resolves the body value at send time",
-	);
-	assert.match(
-		source,
-		/mustRefuseBusyDelivery\(/,
-		"the page refuses a mode the backend cannot honour",
-	);
 	// Refusal precedes admission: the notice is set before admitChatDraft runs,
-	// so the draft is kept and nothing is sent as steer.
-	const refuseAt = source.indexOf("mustRefuseBusyDelivery");
+	// so the draft is kept and nothing is sent as steer. The ORDER is the
+	// seam's own (refuse before resolving); the page acts on it.
+	const evaluateAt = source.indexOf("evaluateBusySend");
+	const refusedAt = source.indexOf("evaluation.refused");
 	const admitAt = source.indexOf("await admitChatDraft");
 	assert.ok(
-		refuseAt !== -1 && admitAt !== -1 && refuseAt < admitAt,
+		evaluateAt !== -1 &&
+			refusedAt !== -1 &&
+			admitAt !== -1 &&
+			evaluateAt < refusedAt &&
+			refusedAt < admitAt,
 		"the refusal must be decided before admission",
 	);
 	// The default is read from the shared settings query, not a local copy.
@@ -563,7 +568,32 @@ test("the gate lives at the one seam (chat-page send), and refuses before admiss
 	);
 	assert.match(
 		source,
-		/staleTime: 10_000/,
-		"the settings query uses the neighbours' 10s freshness window",
+		/staleTime: BUSY_DEFAULT_STALE_TIME/,
+		"the settings query runs the exported freshness constant, never a second literal",
 	);
+});
+
+test("the exported staleTime constant is the neighbours' 10s window", () => {
+	assert.equal(BUSY_DEFAULT_STALE_TIME, 10_000);
+});
+
+test("the seam refuses before it resolves, in the page's own order", () => {
+	// A queue chord on an unsupported backend must refuse with NO body —
+	// resolving first would hand the caller a `queue` to send as a
+	// downgraded steer. The evaluation object itself carries no delivery
+	// when refused, so a caller cannot act on one.
+	const refused = evaluateBusySend({
+		chordDelivery: "queue",
+		settings: undefined,
+		busy: true,
+		busyDeliverySupported: false,
+	});
+	assert.deepEqual(refused, { refused: true, delivery: undefined });
+	const admitted = evaluateBusySend({
+		chordDelivery: "queue",
+		settings: undefined,
+		busy: true,
+		busyDeliverySupported: true,
+	});
+	assert.deepEqual(admitted, { refused: false, delivery: "queue" });
 });

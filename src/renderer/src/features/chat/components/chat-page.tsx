@@ -160,10 +160,10 @@ import {
 } from "../composer-notice";
 import type { DeliveryMode } from "../composer-send-key";
 import {
+	BUSY_DEFAULT_STALE_TIME,
 	BUSY_DELIVERY_UNSUPPORTED_CODE,
 	busyDefaultFromSettings,
-	mustRefuseBusyDelivery,
-	resolveBusyDelivery,
+	evaluateBusySend,
 } from "../composer-send-key";
 import { ChatDeviceHold } from "../device/chat-device-hold";
 import { ChatDeviceNotice } from "../device/chat-device-notice";
@@ -1256,17 +1256,18 @@ function SessionPanel({
 	 * in force at the press; unloaded or absent reads `steer` (see
 	 * `busyDefaultFromSettings`).
 	 *
-	 * `staleTime: 10_000` is the neighbours' freshness window (`settings-page`
-	 * and `speech-shortcuts-group` read the same projection): the shared query
-	 * without it would inherit the five-minute default and a `delivery.busy_default`
-	 * change made in the TUI or Backend settings could sit unseen for minutes
-	 * while sends resolve to `steer`.
+	 * `BUSY_DEFAULT_STALE_TIME` (imported from `composer-send-key`, one value
+	 * the page and its test share) is the neighbours' freshness window
+	 * (`settings-page` and `speech-shortcuts-group` read the same projection):
+	 * the shared query without it would inherit the five-minute default and a
+	 * `delivery.busy_default` change made in the TUI or Backend settings
+	 * could sit unseen for minutes while sends resolve to `steer`.
 	 */
 	const busyDefaultQuery = useQuery({
 		queryKey: desktopKeys.settings,
 		queryFn: () => desktopResult<BackendSettings>({ op: "settings.list" }),
 		enabled: desktopFeatureEnabled(capabilities.data, "settings"),
-		staleTime: 10_000,
+		staleTime: BUSY_DEFAULT_STALE_TIME,
 	});
 	/** The busy-send default at render, for the composer's busy sentences. */
 	const busyDefaultMode = busyDefaultFromSettings(
@@ -2534,21 +2535,24 @@ function SessionPanel({
 			 * stream and the admission seams before this point, so by the time the
 			 * gate answers the render that closed over `turnAlive` is stale — a turn
 			 * that ended inside the flight would still resolve a busy delivery.
+			 * `evaluateBusySend` is the page's assembly, extracted so a test drives
+			 * it for real rather than pinning it by regex (M2): refusing before
+			 * resolving is the seam's own order.
 			 */
-			const deliveryGate = {
+			const evaluation = evaluateBusySend({
 				chordDelivery: delivery ?? null,
-				defaultMode: busyDefaultFromSettings(busyDefaultQuery.data?.settings),
+				settings: busyDefaultQuery.data?.settings,
 				busy: turnAliveRef.current,
 				busyDeliverySupported,
-			};
-			if (mustRefuseBusyDelivery(deliveryGate)) {
+			});
+			if (evaluation.refused) {
 				setSendError(SEND_FAILURE_COPY.deliveryUnsupported);
 				setSendErrorCode(BUSY_DELIVERY_UNSUPPORTED_CODE);
 				setSendErrorRetry(false);
 				setSendErrorMuted(false);
 				return false;
 			}
-			const deliveryValue = resolveBusyDelivery(deliveryGate);
+			const deliveryValue = evaluation.delivery;
 			const id = await admitChatDraft(
 				key,
 				{

@@ -3904,7 +3904,7 @@ export const BusyDeliveryUnsupported: Story = {
 				muted: false,
 				retry: false,
 			}}
-			label="this version of Local Operator cannot change how busy messages are sent: the sentence, the user's message still in the box, and only Clear to press"
+			label="this backend cannot carry a queued or combined busy send: the sentence, the user's message still in the box, and only Clear to press"
 		/>
 	),
 	play: async ({ canvasElement }) => {

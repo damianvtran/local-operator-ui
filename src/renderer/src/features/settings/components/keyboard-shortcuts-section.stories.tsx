@@ -101,8 +101,8 @@ export const Recording: Story = {
  * The four frames name the four states the recorder reads under: empty (all
  * three unbound, help shown), assigned (a REAL `primary+enter` press captured
  * at the field), recording (focus on a send field), refused (a panel press
- * meets the reserved sentence). Each play reaches its state by pressing the
- * real keys at the real field, never by staging a string.
+ * meets the Sending-rows sentence). Each play reaches its state by pressing
+ * the real keys at the real field, never by staging a string.
  */
 
 /** The Sending group empty: three `No shortcut` rows and the group help. */

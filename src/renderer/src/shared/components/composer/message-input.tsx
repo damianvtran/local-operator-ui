@@ -1652,17 +1652,20 @@ const EMPTY_ATTACHMENTS: Attachment[] = [];
 
 /**
  * The send control's tooltip while the agent works: the mode's own sentence,
- * so a queue/both default never shows the old steer wording. `steer` or absent
- * keeps the existing key.
+ * so a queue/both default never shows the old steer wording. `steer` names
+ * its own key (`steer_hint_steer`, text-identical to the absent-mode key);
+ * only an ABSENT mode falls back to `steer_hint`, so neither key is dead.
  */
 const steerHintKey = (
 	mode: ComposerDeliveryMode | undefined,
 ):
 	| "ui.chat.composer.steer_hint"
+	| "ui.chat.composer.steer_hint_steer"
 	| "ui.chat.composer.steer_hint_queue"
 	| "ui.chat.composer.steer_hint_both" => {
 	if (mode === "queue") return "ui.chat.composer.steer_hint_queue";
 	if (mode === "both") return "ui.chat.composer.steer_hint_both";
+	if (mode === "steer") return "ui.chat.composer.steer_hint_steer";
 	return "ui.chat.composer.steer_hint";
 };
 

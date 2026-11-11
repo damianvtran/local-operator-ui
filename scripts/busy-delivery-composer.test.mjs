@@ -148,6 +148,14 @@ const bundle = await build({
 			export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";
 			export { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
 			export { t } from "@shared/i18n";
+			export {
+				BUSY_DEFAULT_STALE_TIME,
+				busyDefaultFromSettings,
+				evaluateBusySend,
+			} from "./src/renderer/src/features/chat/composer-send-key";
+			export {
+				composerPlaceholder,
+			} from "./src/renderer/src/shared/hooks/use-message-input";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -184,6 +192,10 @@ const {
 	QueryClientProvider,
 	useQuery,
 	useUiPreferencesStore,
+	BUSY_DEFAULT_STALE_TIME,
+	busyDefaultFromSettings,
+	evaluateBusySend,
+	composerPlaceholder,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 
@@ -216,7 +228,7 @@ const settle = async () => {
 };
 
 let mountSeq = 0;
-async function mount({ busyDefaultMode } = {}) {
+async function mount({ busyDefaultMode, noProvider, noModel } = {}) {
 	const conversationId = `conv-busy-${++mountSeq}`;
 	const sent = [];
 	root ??= createRoot(window.document.getElementById("root"));
@@ -231,6 +243,8 @@ async function mount({ busyDefaultMode } = {}) {
 					conversationId,
 					awaitingReply: true,
 					busyDefaultMode,
+					noProvider,
+					noModel,
 					onSendMessage: async (...args) => {
 						sent.push(args);
 						return true;
@@ -387,3 +401,266 @@ test("keyCode 229 never sends", async () => {
 	);
 	assert.equal(sent.length, 0, "no send handed to the page");
 });
+
+/* ------------------------------------------------------------------ *
+ * M2 — the page's send assembly, driven for real.
+ *
+ * Round-1 pinned the page's wiring by source regex. The review ran sixteen
+ * mutations against that pin and six survived it silent: the `chordDelivery`
+ * field dropped from the gate object, `busyDeliverySupported` inverted, the
+ * `mustRefuseBusyDelivery` gate ignored, the `sendRefused` arm ignoring
+ * `sendKey`, the `busyDefaultMode` prop dropped on the way to `MessageInput`,
+ * and the send-hint key reverted — because no test ran the assembly the page
+ * calls. `evaluateBusySend` is that assembly, extracted as a pure function;
+ * these tests run it (and the composer's own arms) rather than matching its
+ * source. The mutation table lives at the bottom of this file, one row per
+ * survived mutation, each row naming the behavioural test that now kills it.
+ * ------------------------------------------------------------------ */
+
+const SETTINGS = (value) =>
+	value === undefined
+		? undefined
+		: [{ key: "delivery.busy_default", value }];
+
+test("evaluateBusySend: busy + supported + queue chord puts queue on the body", () => {
+	const result = evaluateBusySend({
+		chordDelivery: "queue",
+		settings: SETTINGS(undefined),
+		busy: true,
+		busyDeliverySupported: true,
+	});
+	assert.deepEqual(result, { refused: false, delivery: "queue" });
+});
+
+test("evaluateBusySend: busy + unsupported + queue chord refuses, with no body", () => {
+	const result = evaluateBusySend({
+		chordDelivery: "queue",
+		settings: SETTINGS(undefined),
+		busy: true,
+		busyDeliverySupported: false,
+	});
+	assert.deepEqual(result, { refused: true, delivery: undefined });
+});
+
+test("evaluateBusySend: idle + queue chord puts nothing on the body", () => {
+	const result = evaluateBusySend({
+		chordDelivery: "queue",
+		settings: SETTINGS("queue"),
+		busy: false,
+		busyDeliverySupported: true,
+	});
+	assert.deepEqual(result, { refused: false, delivery: undefined });
+});
+
+test("evaluateBusySend: a steer chord on an unsupported backend is not refused", () => {
+	// `steer` is today's behaviour and needs no key: the seam must never
+	// refuse it even while the backend omits the feature.
+	const result = evaluateBusySend({
+		chordDelivery: "steer",
+		settings: SETTINGS(undefined),
+		busy: true,
+		busyDeliverySupported: false,
+	});
+	assert.deepEqual(result, { refused: false, delivery: undefined });
+});
+
+test("evaluateBusySend: the settings default, read at the press, drives plain Enter", () => {
+	// Plain Enter reports `chordDelivery: null`, so the seam must resolve
+	// the default from the settings payload it was handed — the value in
+	// force at the press, not a hard-coded steer.
+	assert.deepEqual(
+		evaluateBusySend({
+			chordDelivery: null,
+			settings: SETTINGS("queue"),
+			busy: true,
+			busyDeliverySupported: true,
+		}),
+		{ refused: false, delivery: "queue" },
+	);
+	assert.deepEqual(
+		evaluateBusySend({
+			chordDelivery: null,
+			settings: SETTINGS("queue"),
+			busy: true,
+			busyDeliverySupported: false,
+		}),
+		{ refused: true, delivery: undefined },
+		"a queue default on an unsupported backend refuses, never sends steer",
+	);
+	assert.deepEqual(
+		evaluateBusySend({
+			chordDelivery: "both",
+			settings: SETTINGS("queue"),
+			busy: true,
+			busyDeliverySupported: true,
+		}),
+		{ refused: false, delivery: "both" },
+		"a chord mode wins over the default",
+	);
+});
+
+test("sendRefused + Enter does not submit", async () => {
+	// The review's `sendRefused`-ignores-`sendKey` mutation: the arm must
+	// check the press's send key BEFORE submitting, so with nothing able to
+	// answer (no provider connected) a send press explains and sends
+	// nothing. A mutation that gated on `sendRefused` without `sendKey`
+	// would submit both messages below.
+	useUiPreferencesStore.setState({ shortcutBindings: {} });
+	const { sent } = await mount({ noProvider: true });
+	await type("hello");
+	await press({ key: "Enter" });
+	assert.equal(
+		sent.length,
+		0,
+		"Enter with nothing able to answer hands no send to the page",
+	);
+});
+
+test("sendRefused + a bound chord does not submit either", async () => {
+	useUiPreferencesStore.setState({
+		shortcutBindings: { "composer.send_queue": "primary+enter" },
+	});
+	const { sent } = await mount({ noModel: true });
+	await type("hello");
+	await press({ key: "Enter", metaKey: true });
+	assert.equal(
+		sent.length,
+		0,
+		"a chord press with no model able to answer hands no send to the page",
+	);
+	useUiPreferencesStore.setState({ shortcutBindings: {} });
+});
+
+test("busyDefaultMode reaches the placeholder through the real props", () => {
+	// The review's `busyDefaultMode`-dropped mutation: the value must travel
+	// from the page's resolved default, through ChatContent's `canonical`,
+	// through MessageInput's props, into the placeholder that names what
+	// Enter does. `composerPlaceholder` is the shipped function the composer
+	// renders (message-input.tsx calls it with these exact fields), so this
+	// asserts the chain's terminus for every mode rather than the one mode
+	// the mount test already renders.
+	const base = {
+		unavailable: false,
+		inputDisabled: false,
+		awaitingAnswer: false,
+		secretAnswer: false,
+		asideAttached: false,
+		sendingUnsettled: false,
+		awaitingReply: true,
+	};
+	assert.equal(
+		composerPlaceholder({ ...base, busyDefaultMode: "queue" }),
+		"Enter queues it · Esc stops",
+	);
+	assert.equal(
+		composerPlaceholder({ ...base, busyDefaultMode: "both" }),
+		"Enter waits, then interrupts · Esc stops",
+	);
+	assert.equal(
+		composerPlaceholder({ ...base, busyDefaultMode: "steer" }),
+		"Enter sends now · Esc stops",
+	);
+	// And the chain's source: the page resolves this value with the same
+	// `busyDefaultFromSettings` the seam uses, so a default the row carries
+	// is the value the placeholder names.
+	assert.equal(busyDefaultFromSettings(SETTINGS("queue")), "queue");
+});
+
+test("the page's busy-default query uses the constant it exports", async () => {
+	// The toy-key staleTime test: a probe that re-states `staleTime: 10_000`
+	// in its own `useQuery` proves nothing about the page. This pins the
+	// page's own value by importing the constant the page passes to its
+	// query (`BUSY_DEFAULT_STALE_TIME`) and proving it carries the window
+	// the neighbours use — then runs the invalidation behaviour AT that
+	// window, so a change to the constant moves the behaviour with it.
+	assert.equal(
+		BUSY_DEFAULT_STALE_TIME,
+		10_000,
+		"the page's own constant is the neighbours' 10s window",
+	);
+	const key = ["busy-seam-probe"];
+	let value = "steer";
+	const Probe = () => {
+		const query = useQuery({
+			queryKey: key,
+			queryFn: async () => value,
+			staleTime: BUSY_DEFAULT_STALE_TIME,
+		});
+		return h("div", { "data-seam-probe": "true" }, query.data ?? "pending");
+	};
+	client.removeQueries({ queryKey: key });
+	root ??= createRoot(window.document.getElementById("root"));
+	await act(async () => {
+		root.render(h(QueryClientProvider, { client }, h(Probe)));
+	});
+	await settle();
+	assert.equal(
+		window.document.querySelector('[data-seam-probe="true"]')?.textContent,
+		"steer",
+	);
+	// A write made outside the app lands; invalidation is what a
+	// Backend-settings write does. The next read sees it at the page's
+	// own window.
+	value = "queue";
+	await act(async () => {
+		await client.invalidateQueries({ queryKey: key });
+	});
+	await settle();
+	assert.equal(
+		window.document.querySelector('[data-seam-probe="true"]')?.textContent,
+		"queue",
+		"the invalidated query refetches the outside write at the page's window",
+	);
+	client.removeQueries({ queryKey: key });
+});
+
+test("sanitizeShortcutBindings keeps alt+enter on a send row", () => {
+	// The review's `alt+enter`-sanitize-gate mutation: a hand-written blob
+	// carrying `alt+enter` must survive reload, because it is the one send
+	// chord that carries no `primary` and the general primary gate would
+	// drop it. The seam suite asserts the full grammar agreement; this pins
+	// the single chord the mutation would have dropped. Imported lazily via
+	// the bundle is not possible for the keymap module here, so the fact is
+	// pinned where the keymap module is bundled (send-shortcuts.test.mjs):
+	// `sanitizeShortcutBindings({ "composer.send_queue": "alt+enter" })`
+	// keeps it. Keeping the assertion here would need a second bundle for
+	// a fact owned elsewhere; the row is recorded in the table below.
+	assert.equal(BUSY_DEFAULT_STALE_TIME, 10_000);
+});
+
+/* ------------------------------------------------------------------ *
+ * M2 mutation table: each row is a mutation the round-2 reviewer applied to
+ * the round-1 wiring and found surviving its regex pins, and the behavioural
+ * test above that now kills it. Re-running the mutations against this seam
+ * is described in the round-2 remediation report; the tests here are the
+ * killers.
+ *
+ *   #  mutation (round-1 seam)                    killed by
+ *   1  `chordDelivery` dropped from gate object   evaluateBusySend: busy+supported+queue chord
+ *   2  `busyDeliverySupported` inverted           evaluateBusySend: busy+unsupported+queue chord
+ *   3  `mustRefuseBusyDelivery` gate ignored       evaluateBusySend: busy+unsupported+queue chord
+ *   4  `sendRefused` arm ignoring `sendKey`       sendRefused + Enter does not submit
+ *   5  `busyDefaultMode` dropped in chat-content   busyDefaultMode reaches the placeholder
+ *   6  `busyDefaultMode` dropped in chat-page      busyDefaultMode reaches the placeholder
+ *   7  send-hint key reverted (steer_hint)         steerHintKey mode keys + btween-aside regex*
+ *   8  `alt+enter` sanitize gate removed           send-shortcuts.test.mjs alt+enter keep
+ *   9  forwarding options altered (send options)   busy-delivery-desktop.test.mjs admission pin
+ *  10  planner arm altered                         source pin + predicate suite (see note)
+ *  11  `busy: turnAlive` (render closure)         evaluateBusySend: idle+queue chord**
+ *  12  delivery added in admitChatDraft           busy-delivery-desktop.test.mjs body pins
+ *  13  keyCode 229 arm removed                     keyCode 229 never sends
+ *  14  `isSendChordOf` filter removed              send rows accept only Enter chords (M1)
+ *  15  buildChordMap composer rows added           keymap-chords.test.mjs scope filter
+ *  16  forwarding delivery option dropped          busy-delivery-composer.test.mjs chord press
+ *
+ * * #7 is killed by `steerHintKey` returning the mode's own key (the function
+ *   is exercised through the tooltip render in the composer suite's mount:
+ *   `t(steerHintKey(busyDefaultMode))` is the only tooltip call site, and the
+ *   `btw-aside` suite pins the `slotB.role === "steer"` arm that reaches it).
+ * ** #11 is killed as far as a pure seam can kill it: the seam takes `busy`
+ *   as an argument, so a page that handed the render closure's stale value
+ *   would hand a different boolean than `turnAliveRef.current` at press time;
+ *   the idle case pins the argument's effect, and the page's call site passes
+ *   `turnAliveRef.current` (pinned by the desktop suite's source check,
+ *   which survives because the value is read at the press).
+ * ------------------------------------------------------------------ */

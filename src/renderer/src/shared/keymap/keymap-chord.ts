@@ -198,14 +198,25 @@ export function effectiveChord(
 	 * the composer rows record, so an override that names one must answer on
 	 * those rows even though `primary+enter` is reserved against PANEL rows.
 	 * The sanitizer already dropped anything the send rows may not end in, so
-	 * the check here is the send row's own.
+	 * the check here is the send row's own. But the converse is the same one
+	 * predicate read the other way: a send row may only answer an Enter chord.
+	 * A stale override that ends in another key (stored before the grammar
+	 * narrowed, or hand-written) answers nothing — not its default, which is
+	 * no chord, and not the dead string, which would claim a binding `sendKeyOf`
+	 * can never fire. The fallback is the default, so a dead row and a cleared
+	 * row look the same: unbound.
 	 */
 	const isSendRow = isSendAction(actionId);
-	if (
-		typeof override === "string" &&
-		(!RESERVED_CHORDS.has(override) || (isSendRow && isSendChordOf(override)))
-	)
-		return override;
+	if (typeof override === "string") {
+		if (isSendRow && !isSendChordOf(override)) {
+			return actionById(actionId)?.defaultChord ?? null;
+		}
+		if (
+			!RESERVED_CHORDS.has(override) ||
+			(isSendRow && isSendChordOf(override))
+		)
+			return override;
+	}
 	return actionById(actionId)?.defaultChord ?? null;
 }
 
@@ -274,8 +285,14 @@ const needsModifierSentence = (platform: MiniViewPlatform): string =>
  * row pressing `primary+enter` still meets the reserved sentence, because
  * the send arm only accepts the action whose row it is. A send row pressing
  * an Enter the grammar refuses hears what is needed instead (`shift+enter`
- * is named as the newline); a send row pressing any other key falls through
- * to the general refusal path below.
+ * is named as the newline); a send row pressing any other key — a letter
+ * with `primary`, an editing key, a bare shift, a plain letter — hears the
+ * same `send_needs_modifier` sentence as a bare Enter. It is the only
+ * sentence that stays true for all of them: every one of those chords can
+ * never send, and the general path below would name some other job (a
+ * reserved sentence, a conflict with Open console) while the press simply
+ * did nothing. A chord that is not a send chord is therefore refused HERE,
+ * never by falling through.
  *
  * A send chord another row already answers is a conflict like any other: the
  * early send arm must not skip the conflict checks, or two send rows could
@@ -308,29 +325,33 @@ export function captureRefusal(
 			normalized === "primary+alt+shift+enter"
 		)
 			return t("ui.settings.shortcuts.capture.send_newline");
-		if (normalized === "enter")
-			return t("ui.settings.shortcuts.capture.send_needs_modifier");
 		if (!isSendChordOf(normalized)) {
-			// A send row pressed with any other key: fall through to the general
-			// refusal path (reserved/conflict), which names that key's own job.
-		} else {
-			// It spells a send chord: refuse external or sibling conflicts before
-			// accepting, with the same sentences every other row hears.
-			const externalClaim = external.get(normalized);
-			if (externalClaim !== undefined)
-				return t("ui.settings.shortcuts.capture.already_assigned", {
-					label: externalClaim,
-				});
-			for (const action of KEYMAP_ACTIONS) {
-				if (action.id === actionId) continue;
-				if (effectiveChord(action.id, bindings) === normalized) {
-					return t("ui.settings.shortcuts.capture.already_assigned", {
-						label: action.label,
-					});
-				}
-			}
-			return null;
+			// A send row pressed with any other key: `sendKeyOf` fires only on
+			// the Enter chords, so every other chord is dead on arrival. Naming
+			// any other job here (a reserved sentence, a conflict with another
+			// row) would leave the row showing a chord that does nothing while
+			// claiming chords beside it — the M1 shape. `send_needs_modifier`
+			// is the one sentence that is true for all of them, so it covers
+			// bare Enter, primary+letter, alt+letter, plain letters, editing
+			// keys and bare shift alike.
+			return t("ui.settings.shortcuts.capture.send_needs_modifier");
 		}
+		// It spells a send chord: refuse external or sibling conflicts before
+		// accepting, with the same sentences every other row hears.
+		const externalClaim = external.get(normalized);
+		if (externalClaim !== undefined)
+			return t("ui.settings.shortcuts.capture.already_assigned", {
+				label: externalClaim,
+			});
+		for (const action of KEYMAP_ACTIONS) {
+			if (action.id === actionId) continue;
+			if (effectiveChord(action.id, bindings) === normalized) {
+				return t("ui.settings.shortcuts.capture.already_assigned", {
+					label: action.label,
+				});
+			}
+		}
+		return null;
 	}
 	if (
 		normalized === "enter" ||
@@ -406,12 +427,21 @@ export function sanitizeShortcutBindings(raw: unknown): ShortcutBindings {
 			normalized !== null && LEGACY_BROWSER_CHORDS.has(normalized);
 		// A send chord may carry `alt` without `primary` (`alt+enter`): the
 		// general primary gate would drop it, so the send arm answers on its
-		// own predicate.
+		// own predicate. Read the other way the same predicate is a TOTAL gate
+		// for send rows: ANY non-Enter chord a send row stored — `primary+j`
+		// where a panel row's chord would be, a `primary+backspace`, a bare
+		// `j` — is dropped here, because `sendKeyOf` cannot fire on it. The
+		// chord-has-primary half below would keep `primary+j` alive and let
+		// the row claim it in `claimed`, so the send arm must refuse first,
+		// before that half is even consulted.
+		const sendGrammar =
+			!isSendRow || (normalized !== null && isSendChordOf(normalized));
 		const hasRequiredModifier =
 			normalized !== null &&
 			(chordHasPrimary(normalized) || (isSendRow && isSendChordOf(normalized)));
 		const override =
 			normalized !== null &&
+			sendGrammar &&
 			hasRequiredModifier &&
 			(dormant ||
 				((!RESERVED_CHORDS.has(normalized) ||

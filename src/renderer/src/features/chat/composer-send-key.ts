@@ -258,3 +258,75 @@ export function mustRefuseBusyDelivery(input: {
 
 /** The refusal's code, so the notice survives the machinery that retires lock answers. */
 export const BUSY_DELIVERY_UNSUPPORTED_CODE = "busy_delivery_unsupported";
+
+/*
+ * The page's busy-default query freshness, named once so a test can import
+ * the page's own value instead of a second number. `10_000` is the
+ * neighbours' freshness window (`settings-page` and `speech-shortcuts-group`
+ * read the same `/v1/settings` projection): the shared query without it
+ * would inherit the five-minute default, and a `delivery.busy_default`
+ * change made in the TUI or Backend settings could sit unseen for minutes
+ * while sends resolve to `steer`. M2: the staleTime used to be a literal
+ * the test suite re-stated in a toy `useQuery` probe — a probe that would
+ * stay green while the page ran a different window, exactly the toy-key
+ * staleTime test the round-2 review named. The page imports this constant
+ * (see the `busyDefaultQuery` below in `chat-page.tsx`); the suite imports
+ * the same value, so the two cannot diverge silently.
+ */
+export const BUSY_DEFAULT_STALE_TIME = 10_000;
+
+/*
+ * The page's busy-send seam, as one pure function the page calls and a test
+ * drives for real (M2). Round-1's page wiring was pinned only by source
+ * regex: six mutations survived it silent — the `chordDelivery` field
+ * dropped from the gate object, `busyDeliverySupported` inverted, the
+ * `mustRefuseBusyDelivery` gate ignored, the `sendRefused` arm ignoring
+ * `sendKey`, the `busyDefaultMode` prop dropped on the way to `MessageInput`,
+ * and the send-hint key reverted — because nothing ran the page's own
+ * assembly. This is the assembly, extracted so it can be run: the page
+ * passes the four inputs it reads AT THE PRESS and this function answers
+ * the same two things the page acts on, in the page's own order —
+ * refuse BEFORE resolving, so a refused send never reaches the body as a
+ * downgraded `steer`.
+ *
+ * ```
+ *   evaluateBusySend({ chordDelivery, settings, busy, busyDeliverySupported })
+ *     -> { refused: true }                                   — the page sets the
+ *     -> { refused: false, delivery: DeliveryMode|undefined }  keyed notice
+ *                                                             and returns false
+ * ```
+ *
+ * `busy` is the value the page read off `turnAliveRef` after the awaits,
+ * never the render closure. `settings` is the shared settings query's
+ * payload as it stood at the press. `chordDelivery` is the press's chord
+ * mode (`null` for plain Enter). A mutated page is caught here whenever it
+ * changes one of the three decisions the contract cares about: a queue
+ * chord on a busy, supported session puts `queue` on the body; a queue
+ * chord on a busy, UNsupported session refuses with no body; an idle send
+ * puts nothing on the body whatever the chord said.
+ */
+export type BusySendEvaluation =
+	| { refused: true; delivery: undefined }
+	| { refused: false; delivery: DeliveryMode | undefined };
+
+export function evaluateBusySend(input: {
+	/** The press's chord mode, or `null` for plain Enter. */
+	chordDelivery: DeliveryMode | null;
+	/** The shared settings query's payload at the press. */
+	settings: readonly { key: string; value: unknown }[] | undefined;
+	/** Whether the session is busy (`turnAlive` after the awaits). */
+	busy: boolean;
+	/** Whether `features.busy_delivery` is advertised. */
+	busyDeliverySupported: boolean;
+}): BusySendEvaluation {
+	const gate = {
+		chordDelivery: input.chordDelivery,
+		defaultMode: busyDefaultFromSettings(input.settings),
+		busy: input.busy,
+		busyDeliverySupported: input.busyDeliverySupported,
+	};
+	if (mustRefuseBusyDelivery(gate)) {
+		return { refused: true, delivery: undefined };
+	}
+	return { refused: false, delivery: resolveBusyDelivery(gate) };
+}

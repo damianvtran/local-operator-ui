@@ -206,6 +206,13 @@ const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {
 				<Input
 					id={fieldId}
 					readOnly
+					/*
+					 * The chord cap reads left-to-right in every locale: on a
+					 * right-to-left surface the glyph `⌘Enter` would otherwise
+					 * reorder to `Enter⌘`, so the direction is pinned to `ltr`
+					 * here rather than inherited from the page.
+					 */
+					dir="ltr"
 					value={
 						effective === null
 							? t(
@@ -255,7 +262,7 @@ const ShortcutRow: FC<{ action: KeymapAction }> = ({ action }) => {
 						 * rows, where Enter is the plain send and a bare press can never be
 						 * "the chord this row answers". Only a MODIFIED Enter reaches the
 						 * recorder below, where the send rows accept it and the panel rows
-						 * meet the reserved sentence.
+						 * hear the Sending-rows sentence (`panel_enter`).
 						 */
 						if (
 							event.key === "Escape" ||
