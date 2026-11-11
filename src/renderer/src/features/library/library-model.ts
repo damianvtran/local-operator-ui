@@ -366,9 +366,15 @@ const TAG_CATEGORY_LABEL_KEYS: Record<string, WithoutParams> = {
 	type: "ui.library.tag_category.type",
 };
 
+/*
+ * Own-property lookups, not `in` / bare indexing: an unknown value such as
+ * "constructor" or "toString" must fall back to the raw string, not resolve to an
+ * Object.prototype member. `Object.hasOwn` would read better, but the project's
+ * TypeScript lib target predates es2022 and rejects it (TS2550).
+ */
 /** The user-facing name of an asset kind, or the raw value for an unknown one. */
 export function libraryKindLabel(kind: string): string {
-	return Object.hasOwn(KIND_LABEL_KEYS, kind)
+	return Object.prototype.hasOwnProperty.call(KIND_LABEL_KEYS, kind)
 		? t(KIND_LABEL_KEYS[kind as DesktopLibraryKind])
 		: kind;
 }
@@ -379,7 +385,7 @@ export function libraryKindLabel(kind: string): string {
  */
 export function tagCategoryLabel(category: string): string {
 	const key = category || "custom";
-	return Object.hasOwn(TAG_CATEGORY_LABEL_KEYS, key)
+	return Object.prototype.hasOwnProperty.call(TAG_CATEGORY_LABEL_KEYS, key)
 		? t(TAG_CATEGORY_LABEL_KEYS[key])
 		: key;
 }
