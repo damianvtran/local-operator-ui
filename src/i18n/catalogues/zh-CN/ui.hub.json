@@ -161,7 +161,7 @@
 	"ui.hub.links.unresolved_mark": "{item}：来源尚未确认。请确认来源。",
 	"ui.hub.links.unresolved_detail_scope_ambiguous": "它在记录来源之前就已保存，可能属于公开中心，也可能属于某个组织，因此应用不会猜测是哪一个。",
 	"ui.hub.links.unresolved_detail_scope_unknown": "它保存时没有发布范围，因此无法识别其来源。",
-	"ui.hub.links.unresolved_detail_no_origin": "尚无检查到达它的来源。下一次成功的检查会识别它。",
+	"ui.hub.links.unresolved_detail_no_origin": "尚无检查连接到其来源。下一次成功的检查会识别来源。",
 	"ui.hub.links.mixed": "设置不一致",
 	"ui.hub.links.aggregate_mark": "{count, plural, other {{count, number, ::group-off}个关联}}；{state}",
 	"ui.hub.links.mark_healthy": "已是最新",

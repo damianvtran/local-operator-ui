@@ -1,0 +1,66 @@
+{
+ "schema": 1,
+ "auditor": {
+  "agent": "reviewer",
+  "session": "7ad736f135f0",
+  "instance": "7ad736f135f0-1867r1-ur",
+  "model": "anthropic/claude-opus-5-5",
+  "model_note": "Model is this session's own header line (anthropic/claude-opus-5-5); no fallback reported. The served provider cannot be independently verified from inside the session.",
+  "independence": "lopdev reviewer session 7ad736f135f0, separate from the PR #1867 coder that wrote the translations. Verdict rebuilt from the committed en/target bytes at fc9e58bfebe, the en context sidecar, the core glossary and locale style guide, and shipped ui.hub catalogue precedent. Disclosure: the MINOR fixes listed below were applied by this auditor in the audit commit, as the brief allowed; those changed values are auditor-authored and a later independent reader should re-check them."
+ },
+ "agent": "reviewer",
+ "model": "anthropic/claude-opus-5-5",
+ "fallback": "none reported",
+ "instance": "7ad736f135f0-1867r1-ur",
+ "session": "7ad736f135f0",
+ "locale": "ur",
+ "namespace": "ui.hub",
+ "pr": "damianvtran/local-operator-ui#1867",
+ "branch_base": "8953f2fa6a8",
+ "audited_head": "fc9e58bfebe + this audit commit's catalogue fixes",
+ "date": "2026-11-11",
+ "translator": "PR #1867 coder (relayed by the manager and the PR body; identity not verified here)",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "scope": "Round-1 independent audit of the 3 keys PR #1867 added to ui.hub (links.unresolved_detail_scope_ambiguous, links.unresolved_detail_scope_unknown, links.unresolved_detail_no_origin), from git diff 8953f2fa6a8..fc9e58bfebe -- src/i18n/catalogues; PR #1867 changed no other ui.hub value; pre-existing keys read only as precedent and carried on the prior audits. Catalogue audit only: not rendered fit, activation or release.",
+ "keys_audited": [
+  "ui.hub.links.unresolved_detail_scope_ambiguous",
+  "ui.hub.links.unresolved_detail_scope_unknown",
+  "ui.hub.links.unresolved_detail_no_origin"
+ ],
+ "sha256": {
+  "ur": "17f9ea91e62fbdb1358625f03c2b608f0935251081014cd823af7673d4c72153",
+  "en": "83dbdf08248fe124d14053d2c9996e2b2b05c2c1c0822e17d9346257488e3351",
+  "context": "a64a8cfe1b558dd47469e4310d30ea2a0d1375b68a27cc636dadc77476bad824",
+  "glossary (damianvtran/local-operator origin/main 23cbbc0259b0:i18n/glossary.md)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "style_guide (damianvtran/local-operator origin/main 23cbbc0259b0:i18n/style-guides/ur.md)": "7276e96210fe5f23fd82a39ae4cc0c88b2c1009d3a551d914efc3f61516eddc4"
+ },
+ "checks": {
+  "icu_parse_and_argument_parity": "PASS (no arguments in en or target; IntlMessageFormat parses and renders each)",
+  "key_set": "identical to en",
+  "bidi_controls": "none (U+061C, U+200E/F, U+202A-E, U+2066-9 scanned)",
+  "negative_control": "appending U+200F to one ur value and breaking one vi value's brace made the same verifier exit 1 with 2 FAILs (bidi control; EXPECT_ARGUMENT_CLOSING_BRACE)",
+  "plurals": "no plural messages in this delta"
+ },
+ "findings": [
+  {
+   "id": "R1867-UR-01",
+   "severity": "MINOR",
+   "disposition": "fixed in this audit commit",
+   "keys": [
+    "ui.hub.links.unresolved_detail_scope_ambiguous",
+    "ui.hub.links.unresolved_detail_scope_unknown"
+   ],
+   "before": "یہ ماخذ درج ہونے سے پہلے محفوظ ہوا تھا … / یہ اشاعت کے دائرے کے بغیر محفوظ ہوا تھا …",
+   "after": "ماخذ درج ہونے سے پہلے محفوظ کیا گیا یہ ربط … / یہ ربط اشاعت کے دائرے کے بغیر محفوظ ہوا تھا …",
+   "note": "Both sentences open with یہ directly before a noun, so they first read as 'this source was saved before being recorded' and 'this publication was saved without a scope' (the masculine ہوا only repairs the second on a re-read). The fix names the subject with the namespace term ربط (ui.hub.links.source_unresolved 'اس ربط کی تنظیم'), masculine like the existing verbs. ur punctuation (، and ۔) and the namespace's 'عوامی Agent Hub' are unchanged and correct.",
+   "key": "ui.hub.links.unresolved_detail_scope_ambiguous"
+  },
+  {
+   "id": "R1867-UR-INFO-1",
+   "severity": "INFO",
+   "note": "No bidi controls; the Latin 'Agent Hub' run sits inside RTL prose exactly as ui.hub.links.source_label_public does, and the ur guide leaves isolation to the render layer. No change.",
+   "key": "ui.hub.links.unresolved_detail_no_origin"
+  }
+ ]
+}
