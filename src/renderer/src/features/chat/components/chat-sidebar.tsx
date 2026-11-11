@@ -293,6 +293,7 @@ import { copySessionId } from "../copy-session-id";
 import {
 	discardDraftLabel,
 	discardSuccessorIndex,
+	unsentSessionIds,
 	untargetedDraftRows,
 } from "../draft-rows";
 import { fleetAsksBySession, useFleetAsks } from "../fleet-asks";
@@ -4476,6 +4477,9 @@ export function ChatSidebar({
 			),
 		[drafts],
 	);
+	// What the row SAYS is narrower than what it permits: a first send still on
+	// the wire is not `Not sent yet` (`unsentSessionIds` carries the why).
+	const notSent = useMemo(() => unsentSessionIds(drafts), [drafts]);
 	/*
 	 * THERE IS NO PER-ROW BROWSER CONTROL ANY MORE (operator ask, 2026-09-18).
 	 *
@@ -4672,7 +4676,7 @@ export function ChatSidebar({
 	) => {
 		const trailing = rowTrailingStatement({
 			marked: conversationMatches.has(row.session_id),
-			unstarted: unstarted.has(row.session_id),
+			unstarted: notSent.has(row.session_id),
 			nested,
 			binding: bindingName(row),
 			team: teamName(row),
@@ -5002,7 +5006,7 @@ export function ChatSidebar({
 								: t("ui.chat.sidebar.row.recent")))}
 					{silent ? ` · ${silentRemedyClause()}` : ""}
 					{openedByNote(row)}
-					{unstarted.has(row.session_id)
+					{notSent.has(row.session_id)
 						? t("ui.chat.sidebar.row.not_sent_suffix")
 						: ""}
 					{unreadMarkKind(row) !== null

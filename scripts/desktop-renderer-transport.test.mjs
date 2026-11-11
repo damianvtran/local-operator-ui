@@ -1052,6 +1052,43 @@ test("the refusal copy names the real sizes and the remedy that matches the over
 	assert.ok(!overText.includes("Remove an image"));
 });
 
+test("the press-path fast path never answers differently from the exact weighing", async () => {
+	const {
+		messageBudgetRefusal,
+		messageBodyBytes,
+		MESSAGE_ENVELOPE_BOUND_BYTES,
+	} = await loadImageBounding();
+	// The bound the fast path trusts must sit above the real envelope: an empty
+	// text-only body IS the envelope plus the two quotes of an empty string.
+	assert.ok(
+		messageBodyBytes("", []) <= MESSAGE_ENVELOPE_BOUND_BYTES,
+		`envelope ${messageBodyBytes("", [])} must be <= ${MESSAGE_ENVELOPE_BOUND_BYTES}`,
+	);
+	// Worst-case escapes (6 bytes per unit), multi-byte text, surrogate pairs and
+	// lone surrogates, at sizes on both sides of the fast path's own cut-off
+	// (budget / 6 units) and against a tight custom budget: the shortcut and the
+	// exact count must agree on "fits" for every one.
+	const units = ["x", "\u0000", "\u00e9", "\u4e2d", "\ud83d\ude00", "\ud800"];
+	for (const unit of units)
+		for (const budget of [2_000, 50_000, 880_000])
+			for (const n of [
+				0,
+				1,
+				100,
+				Math.floor(budget / 6) - 200,
+				Math.floor(budget / 3),
+			]) {
+				const text = unit.repeat(Math.max(0, n));
+				if (text.length > 200_000) continue;
+				const exact = messageBodyBytes(text, []) <= budget;
+				assert.equal(
+					messageBudgetRefusal(text, [], budget) === null,
+					exact,
+					`unit ${JSON.stringify(unit)} x${n} @${budget}`,
+				);
+			}
+});
+
 test("an over-long paste is refused in characters, the unit the schema caps", async () => {
 	const { messageBudgetRefusal } = await loadImageBounding();
 	// The gap this closes: the schema caps `text` at 200,000 CHARACTERS while the

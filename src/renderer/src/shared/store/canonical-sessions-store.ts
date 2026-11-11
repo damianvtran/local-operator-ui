@@ -7358,10 +7358,24 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						// create is exactly what it always was.
 						...(peer ? { peer } : {}),
 					});
+					/*
+					 * THE CREATED ROW CARRIES ITS BIRTH CLOCK (send smoothness, 2026-11-11).
+					 * Without a time the sidebar files a row under OLDER (`sectionOf`'s null
+					 * arm), so every new chat's row appeared there and hopped to TODAY one
+					 * catalogue read later. The create's answer IS the moment the session was
+					 * born, so the local clock is the honest value until the owner's own
+					 * `mtime` replaces it; a row the catalogue already delivered keeps its
+					 * owner-stated times.
+					 */
+					const listed = get().sessions.some(
+						(row) => row.session_id === result.session_id,
+					);
+					const bornAt = Date.now() / 1000;
 					get().upsertSession({
 						session_id: result.session_id,
 						cwd,
 						binding: result.binding,
+						...(listed ? {} : { created_at: bornAt, updated_at: bornAt }),
 					});
 					/*
 					 * A CONVERSATION BORN ON A PEER SAYS SO ON ITS ROW, and the write that says

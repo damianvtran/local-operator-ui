@@ -222,3 +222,26 @@ export function untargetedDraftRows(
 	}
 	return rows.reverse();
 }
+
+/**
+ * The sessions whose row says `Not sent yet`: a draft that has learned its
+ * session id and whose send hop is NOT live.
+ *
+ * WHY `pending` IS EXCLUDED (send smoothness, 2026-11-11): every new chat's
+ * first send holds its draft (with the created session's id) until the send
+ * completes, so without this term the sidebar drew `Untitled chat · Not sent
+ * yet` for the ~150 ms between the create's answer and the completion - an
+ * intermediate entry between the draft row and the conversation's own row, for
+ * a message that was in fact being sent. The suffix is for a claim that settled
+ * without a completed send (a failed or refused first send). The sidebar's
+ * `forkable` deliberately keeps the wider set: a session mid-first-send has
+ * nothing to clone yet.
+ */
+export function unsentSessionIds(
+	drafts: Record<string, ChatDraft>,
+): Set<string> {
+	const out = new Set<string>();
+	for (const draft of Object.values(drafts))
+		if (draft.sessionId && draft.pending !== true) out.add(draft.sessionId);
+	return out;
+}

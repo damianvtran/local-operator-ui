@@ -3,9 +3,11 @@
 @import "tw-animate-css";
 @import "./themes.generated.css";
 
-/* Arrival is ink only: reserve final layout immediately and never replay on
- * history restore or virtual remount. Streamed answers have no arrival
- * fade at all: live text is the committed DOM, parsed per block. */
+/* Arrival reserves final layout immediately and never replays on history
+ * restore or virtual remount. Streamed answers have no arrival fade at all:
+ * live text is the committed DOM, parsed per block. Every arriving row is ink
+ * only (opacity) EXCEPT the user's own message, which also rises 6px into its
+ * slot (`lo-transcript-arrival-rise` below). */
 @keyframes lo-transcript-arrival {
 	from {
 		opacity: 0;
@@ -20,6 +22,37 @@
 }
 @media (prefers-reduced-motion: reduce) {
 	.lo-transcript-arrival {
+		animation: none;
+	}
+}
+
+/* THE USER'S OWN MESSAGE FADES INTO POSITION (operator request, 2026-11-11:
+ * "the sending should be optimistic where we fade the message into position").
+ * Only the echo of a send rises, because it is the one row the reader caused and
+ * is watching for; agent rows, tool rows and the wait line stay ink-only so a
+ * streaming turn does not jostle. Compositor-only: the layout box is final from
+ * the first frame (transform does not move the stick-to-bottom measurements),
+ * and only opacity and transform animate. `backwards`, not `both`: once the
+ * rise ends the row carries no residual `transform`, which would otherwise keep
+ * a containing block and stacking context on every user row for its lifetime.
+ * The class is fixed at the row's mount, so owner coalescing (the same node
+ * re-rendering) cannot replay it. Reduced motion: the row simply appears. */
+@keyframes lo-transcript-arrival-rise {
+	from {
+		opacity: 0;
+		transform: translateY(6px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+.lo-transcript-arrival-rise {
+	animation: lo-transcript-arrival-rise var(--duration-slow)
+		var(--ease-out-quart) backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+	.lo-transcript-arrival-rise {
 		animation: none;
 	}
 }

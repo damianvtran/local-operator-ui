@@ -5692,3 +5692,47 @@ test("R2-1: the composer derives it from the store, and no longer accepts it as 
 		"and the store's answer must still be OR'd with this composer's own press, which covers the arms where no row exists",
 	);
 });
+
+test("the user's echo fades INTO position once; every other arriving row stays ink only (operator request, 2026-11-11)", () => {
+	const css = readFileSync("src/renderer/src/styles/index.css", "utf8");
+	const rule = (selector) => {
+		const at = css.indexOf(`${selector} {`);
+		assert.notEqual(at, -1, `${selector} is defined`);
+		return css.slice(at, css.indexOf("}", at));
+	};
+	const frames = css.slice(
+		css.indexOf("@keyframes lo-transcript-arrival-rise"),
+		css.indexOf(".lo-transcript-arrival-rise {"),
+	);
+	assert.match(frames, /from \{\s*opacity: 0;\s*transform: translateY\(6px\);/);
+	assert.match(frames, /to \{\s*opacity: 1;\s*transform: translateY\(0\);/);
+	// Compositor-only, and nothing left behind: `backwards` drops the transform
+	// at the end instead of pinning a containing block on every user row.
+	assert.match(
+		rule(".lo-transcript-arrival-rise"),
+		/animation: lo-transcript-arrival-rise [^;]* backwards;/,
+	);
+	assert.doesNotMatch(rule(".lo-transcript-arrival-rise"), /\bboth\b|forwards/);
+	// Reduced motion: no animation at all.
+	assert.match(
+		css,
+		/@media \(prefers-reduced-motion: reduce\) \{\s*\.lo-transcript-arrival-rise \{\s*animation: none;/,
+	);
+	// The plain arrival is still opacity only.
+	const plain = css.slice(
+		css.indexOf("@keyframes lo-transcript-arrival {"),
+		css.indexOf(".lo-transcript-arrival {"),
+	);
+	assert.doesNotMatch(plain, /transform/);
+	// Only a USER row takes the rise, and the class is fixed at mount (`entered`
+	// is a ref read once), so owner coalescing cannot replay it.
+	const row = readFileSync(
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\//g, "");
+	assert.match(
+		row,
+		/entered\.current &&\s*\(record\.kind === "user"\s*\? "lo-transcript-arrival-rise"\s*: "lo-transcript-arrival"\)/,
+	);
+	assert.match(row, /const entered = useRef\(enter\);/);
+});

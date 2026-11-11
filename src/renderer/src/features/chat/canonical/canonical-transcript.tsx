@@ -4073,7 +4073,16 @@ const TranscriptRow = memo(function TranscriptRow({
 					 * for an `outline-none` in a component (styles/index.css).
 					 */
 					messageRow && "group focus-visible:outline-none",
-					entered.current && "lo-transcript-arrival",
+					/*
+					 * The user's own echo rises into place; every other arriving row is
+					 * ink only (see `lo-transcript-arrival-rise` in styles/index.css).
+					 * `entered` is fixed at mount, so the class never changes on this
+					 * node and the animation plays exactly once.
+					 */
+					entered.current &&
+						(record.kind === "user"
+							? "lo-transcript-arrival-rise"
+							: "lo-transcript-arrival"),
 				)}
 			>
 				{/*
