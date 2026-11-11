@@ -60,6 +60,29 @@ export type {
  */
 export { desktopRequestTimeoutMs };
 
+/*
+ * THE TRANSPORT'S OWN SENTENCES, authored through the catalogue.
+ *
+ * `userFacingMessage` returns a `DesktopControlError.message` verbatim for any
+ * error that is not a recognised refusal code, so these two sentences reach the
+ * banner, the sidebar status feed and every toast exactly as they are built
+ * here: English literals shipped as English in every locale (census B8). They are
+ * FUNCTIONS, not constants, so the catalogue is read when the failure happens and
+ * a locale switch is honoured - a module-level `t()` would freeze whichever
+ * language was active at import.
+ *
+ * The English text is unchanged, and nothing reads these by prose: callers
+ * classify by `status` / `code` / the error class (see `isForegroundRequired`),
+ * never by comparing the message, which is what keeps a translated sentence from
+ * changing any retry or precedence rule. The sentence is fixed at the moment the
+ * failure is created; an error object that is kept and shown after a later
+ * language change still speaks the language it was raised in.
+ */
+const desktopBackendOfflineMessage = () =>
+	t("ui.common.errors.desktop_backend_offline");
+const desktopBackendCompatibilityMessage = () =>
+	t("ui.common.errors.desktop_backend_compatibility");
+
 export async function desktopRequest(
 	request: DesktopRequest,
 ): Promise<DesktopResponse> {
@@ -101,7 +124,7 @@ export async function desktopRequest(
 				);
 			throw new DesktopControlError(
 				null,
-				"Desktop controls could not reach the backend process.",
+				desktopBackendOfflineMessage(),
 				cause,
 			);
 		}
@@ -116,16 +139,12 @@ export async function desktopRequest(
 			body: JSON.stringify(request),
 		});
 	} catch (cause) {
-		throw new DesktopControlError(
-			null,
-			"Desktop controls could not reach the backend process.",
-			cause,
-		);
+		throw new DesktopControlError(null, desktopBackendOfflineMessage(), cause);
 	}
 	if (!response.ok)
 		throw new DesktopControlError(
 			response.status,
-			"Desktop controls need a compatible backend connection.",
+			desktopBackendCompatibilityMessage(),
 		);
 	return response.json();
 }

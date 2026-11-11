@@ -87,6 +87,7 @@ import enUiChatResponseActions from "./catalogues/en/ui.chat.response_actions.js
 import enUiChatRunDetails from "./catalogues/en/ui.chat.run_details.json";
 import enUiChatSessionReadout from "./catalogues/en/ui.chat.session_readout.json";
 import enUiChatSessionSpend from "./catalogues/en/ui.chat.session_spend.json";
+import enUiChatSettingsIntents from "./catalogues/en/ui.chat.settings_intents.json";
 import enUiChatSidebar from "./catalogues/en/ui.chat.sidebar.json";
 import enUiChatSidebarRowBg from "./catalogues/en/ui.chat.sidebar.row.bg.json";
 import enUiChatSidebarNotes from "./catalogues/en/ui.chat.sidebar_notes.json";
@@ -244,6 +245,7 @@ import esUiChatResponseActions from "./catalogues/es/ui.chat.response_actions.js
 import esUiChatRunDetails from "./catalogues/es/ui.chat.run_details.json";
 import esUiChatSessionReadout from "./catalogues/es/ui.chat.session_readout.json";
 import esUiChatSessionSpend from "./catalogues/es/ui.chat.session_spend.json";
+import esUiChatSettingsIntents from "./catalogues/es/ui.chat.settings_intents.json";
 import esUiChatSidebar from "./catalogues/es/ui.chat.sidebar.json";
 import esUiChatSidebarRowBg from "./catalogues/es/ui.chat.sidebar.row.bg.json";
 import esUiChatSidebarNotes from "./catalogues/es/ui.chat.sidebar_notes.json";
@@ -401,6 +403,7 @@ import frUiChatResponseActions from "./catalogues/fr/ui.chat.response_actions.js
 import frUiChatRunDetails from "./catalogues/fr/ui.chat.run_details.json";
 import frUiChatSessionReadout from "./catalogues/fr/ui.chat.session_readout.json";
 import frUiChatSessionSpend from "./catalogues/fr/ui.chat.session_spend.json";
+import frUiChatSettingsIntents from "./catalogues/fr/ui.chat.settings_intents.json";
 import frUiChatSidebar from "./catalogues/fr/ui.chat.sidebar.json";
 import frUiChatSidebarRowBg from "./catalogues/fr/ui.chat.sidebar.row.bg.json";
 import frUiChatSidebarNotes from "./catalogues/fr/ui.chat.sidebar_notes.json";
@@ -558,6 +561,7 @@ import hiUiChatResponseActions from "./catalogues/hi/ui.chat.response_actions.js
 import hiUiChatRunDetails from "./catalogues/hi/ui.chat.run_details.json";
 import hiUiChatSessionReadout from "./catalogues/hi/ui.chat.session_readout.json";
 import hiUiChatSessionSpend from "./catalogues/hi/ui.chat.session_spend.json";
+import hiUiChatSettingsIntents from "./catalogues/hi/ui.chat.settings_intents.json";
 import hiUiChatSidebar from "./catalogues/hi/ui.chat.sidebar.json";
 import hiUiChatSidebarRowBg from "./catalogues/hi/ui.chat.sidebar.row.bg.json";
 import hiUiChatSidebarNotes from "./catalogues/hi/ui.chat.sidebar_notes.json";
@@ -715,6 +719,7 @@ import ruUiChatResponseActions from "./catalogues/ru/ui.chat.response_actions.js
 import ruUiChatRunDetails from "./catalogues/ru/ui.chat.run_details.json";
 import ruUiChatSessionReadout from "./catalogues/ru/ui.chat.session_readout.json";
 import ruUiChatSessionSpend from "./catalogues/ru/ui.chat.session_spend.json";
+import ruUiChatSettingsIntents from "./catalogues/ru/ui.chat.settings_intents.json";
 import ruUiChatSidebar from "./catalogues/ru/ui.chat.sidebar.json";
 import ruUiChatSidebarRowBg from "./catalogues/ru/ui.chat.sidebar.row.bg.json";
 import ruUiChatSidebarNotes from "./catalogues/ru/ui.chat.sidebar_notes.json";
@@ -872,6 +877,7 @@ import urUiChatResponseActions from "./catalogues/ur/ui.chat.response_actions.js
 import urUiChatRunDetails from "./catalogues/ur/ui.chat.run_details.json";
 import urUiChatSessionReadout from "./catalogues/ur/ui.chat.session_readout.json";
 import urUiChatSessionSpend from "./catalogues/ur/ui.chat.session_spend.json";
+import urUiChatSettingsIntents from "./catalogues/ur/ui.chat.settings_intents.json";
 import urUiChatSidebar from "./catalogues/ur/ui.chat.sidebar.json";
 import urUiChatSidebarRowBg from "./catalogues/ur/ui.chat.sidebar.row.bg.json";
 import urUiChatSidebarNotes from "./catalogues/ur/ui.chat.sidebar_notes.json";
@@ -1029,6 +1035,7 @@ import viUiChatResponseActions from "./catalogues/vi/ui.chat.response_actions.js
 import viUiChatRunDetails from "./catalogues/vi/ui.chat.run_details.json";
 import viUiChatSessionReadout from "./catalogues/vi/ui.chat.session_readout.json";
 import viUiChatSessionSpend from "./catalogues/vi/ui.chat.session_spend.json";
+import viUiChatSettingsIntents from "./catalogues/vi/ui.chat.settings_intents.json";
 import viUiChatSidebar from "./catalogues/vi/ui.chat.sidebar.json";
 import viUiChatSidebarRowBg from "./catalogues/vi/ui.chat.sidebar.row.bg.json";
 import viUiChatSidebarNotes from "./catalogues/vi/ui.chat.sidebar_notes.json";
@@ -1186,6 +1193,7 @@ import zhCNUiChatResponseActions from "./catalogues/zh-CN/ui.chat.response_actio
 import zhCNUiChatRunDetails from "./catalogues/zh-CN/ui.chat.run_details.json";
 import zhCNUiChatSessionReadout from "./catalogues/zh-CN/ui.chat.session_readout.json";
 import zhCNUiChatSessionSpend from "./catalogues/zh-CN/ui.chat.session_spend.json";
+import zhCNUiChatSettingsIntents from "./catalogues/zh-CN/ui.chat.settings_intents.json";
 import zhCNUiChatSidebar from "./catalogues/zh-CN/ui.chat.sidebar.json";
 import zhCNUiChatSidebarRowBg from "./catalogues/zh-CN/ui.chat.sidebar.row.bg.json";
 import zhCNUiChatSidebarNotes from "./catalogues/zh-CN/ui.chat.sidebar_notes.json";
@@ -1346,6 +1354,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChatRunDetails,
 	...enUiChatSessionReadout,
 	...enUiChatSessionSpend,
+	...enUiChatSettingsIntents,
 	...enUiChatSidebar,
 	...enUiChatSidebarRowBg,
 	...enUiChatSidebarNotes,
@@ -1511,6 +1520,7 @@ export const bundledCatalogues: Readonly<
 		...esUiChatRunDetails,
 		...esUiChatSessionReadout,
 		...esUiChatSessionSpend,
+		...esUiChatSettingsIntents,
 		...esUiChatSidebar,
 		...esUiChatSidebarRowBg,
 		...esUiChatSidebarNotes,
@@ -1670,6 +1680,7 @@ export const bundledCatalogues: Readonly<
 		...frUiChatRunDetails,
 		...frUiChatSessionReadout,
 		...frUiChatSessionSpend,
+		...frUiChatSettingsIntents,
 		...frUiChatSidebar,
 		...frUiChatSidebarRowBg,
 		...frUiChatSidebarNotes,
@@ -1829,6 +1840,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiChatRunDetails,
 		...hiUiChatSessionReadout,
 		...hiUiChatSessionSpend,
+		...hiUiChatSettingsIntents,
 		...hiUiChatSidebar,
 		...hiUiChatSidebarRowBg,
 		...hiUiChatSidebarNotes,
@@ -1988,6 +2000,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiChatRunDetails,
 		...ruUiChatSessionReadout,
 		...ruUiChatSessionSpend,
+		...ruUiChatSettingsIntents,
 		...ruUiChatSidebar,
 		...ruUiChatSidebarRowBg,
 		...ruUiChatSidebarNotes,
@@ -2147,6 +2160,7 @@ export const bundledCatalogues: Readonly<
 		...urUiChatRunDetails,
 		...urUiChatSessionReadout,
 		...urUiChatSessionSpend,
+		...urUiChatSettingsIntents,
 		...urUiChatSidebar,
 		...urUiChatSidebarRowBg,
 		...urUiChatSidebarNotes,
@@ -2306,6 +2320,7 @@ export const bundledCatalogues: Readonly<
 		...viUiChatRunDetails,
 		...viUiChatSessionReadout,
 		...viUiChatSessionSpend,
+		...viUiChatSettingsIntents,
 		...viUiChatSidebar,
 		...viUiChatSidebarRowBg,
 		...viUiChatSidebarNotes,
@@ -2465,6 +2480,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiChatRunDetails,
 		...zhCNUiChatSessionReadout,
 		...zhCNUiChatSessionSpend,
+		...zhCNUiChatSettingsIntents,
 		...zhCNUiChatSidebar,
 		...zhCNUiChatSidebarRowBg,
 		...zhCNUiChatSidebarNotes,
@@ -6682,6 +6698,27 @@ export type MessageParams = {
 	"ui.chat.session_spend.tooltip.spend_so_far": { amount: string };
 	"ui.chat.session_spend.tooltip.unpriced_model": undefined;
 	"ui.chat.session_spend.untracked_basis": undefined;
+	"ui.chat.settings_intents.chips_label": undefined;
+	"ui.chat.settings_intents.cwd_waiting": { dir: string };
+	"ui.chat.settings_intents.effort_queued": { level: string };
+	"ui.chat.settings_intents.failed_cwd": { dir: string; reason: string };
+	"ui.chat.settings_intents.failed_effort": { level: string; reason: string };
+	"ui.chat.settings_intents.failed_fast": { reason: string };
+	"ui.chat.settings_intents.failed_model": { model: string; reason: string };
+	"ui.chat.settings_intents.fast_queued": undefined;
+	"ui.chat.settings_intents.model_queued": { model: string };
+	"ui.chat.settings_intents.moving_cwd": { dir: string };
+	"ui.chat.settings_intents.reason_budget": undefined;
+	"ui.chat.settings_intents.reason_unknown": undefined;
+	"ui.chat.settings_intents.row_applying": undefined;
+	"ui.chat.settings_intents.row_failed": undefined;
+	"ui.chat.settings_intents.setting_effort": { level: string };
+	"ui.chat.settings_intents.setting_fast_off": undefined;
+	"ui.chat.settings_intents.setting_fast_on": undefined;
+	"ui.chat.settings_intents.superseded_effort": { level: string };
+	"ui.chat.settings_intents.superseded_model": { model: string };
+	"ui.chat.settings_intents.superseded_other": undefined;
+	"ui.chat.settings_intents.switching_model": { model: string };
 	"ui.chat.sidebar.agents.builtin_offer": { count: number; list: string };
 	"ui.chat.sidebar.agents.clear_filter": undefined;
 	"ui.chat.sidebar.agents.create": undefined;

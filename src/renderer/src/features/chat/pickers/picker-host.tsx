@@ -166,6 +166,16 @@ export type PickerHostProps = {
 	result?: PickerResult | null;
 	/** An operation is in flight; the footer shows it and disables submit. */
 	busy?: boolean;
+	/**
+	 * Picks stay live while `busy` (`features.settings_intents`).
+	 *
+	 * The busy gate exists because a pick used to BE the runtime round trip, and
+	 * a second pick during it raced the first. A durable intent is a file write
+	 * the server coalesces last-wins, so the only thing still busy is a default
+	 * save beside it - which must not swallow the user's next pick. Off (the
+	 * default) keeps today's gate byte for byte.
+	 */
+	picksWhileBusy?: boolean;
 	/** A blocked choice must not advertise an Enter action it cannot perform. */
 	blockedHint?: string;
 	/**
@@ -865,6 +875,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 	actions,
 	result = null,
 	busy = false,
+	picksWhileBusy = false,
 	blockedHint,
 	busyText,
 	busyLabel = t("ui.chat.pickers.picker_host.applying_the_changea9b670"),
@@ -1196,7 +1207,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 
 	const pick = useCallback(
 		async (option: PickerOption | undefined) => {
-			if (!option || option.disabled || busy) return;
+			if (!option || option.disabled || (busy && !picksWhileBusy)) return;
 			/*
 			 * A CONNECT PICK IS NOT MARKED (QA round 1, Q-1).
 			 *
@@ -1213,7 +1224,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 			}
 			await onPick?.(option.value, option);
 		},
-		[onPick, busy],
+		[onPick, busy, picksWhileBusy],
 	);
 	/*
 	 * Handler identities the memoized rows depend on.

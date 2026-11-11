@@ -189,9 +189,12 @@ test("the session row's pencil offset is the sum of the row's own boxes", () => 
 		sidebar.includes('"flex h-8 min-w-0 items-center gap-1 rounded-md px-1'),
 	);
 	assert.ok(sidebar.includes('nested && "ps-7"'));
+	// The locality cell is still a fixed 14 px box; `relative` only anchors the
+	// settings-intent dot drawn inside it (PR #1823 design D4), which is
+	// absolutely placed and adds no width to the sum below.
 	assert.ok(
 		sidebar.includes(
-			'className="flex size-3.5 shrink-0 items-center justify-center"',
+			'className="relative flex size-3.5 shrink-0 items-center justify-center"',
 		),
 	);
 	assert.ok(avatar.includes('"relative flex shrink-0 items-center gap-1.5"'));

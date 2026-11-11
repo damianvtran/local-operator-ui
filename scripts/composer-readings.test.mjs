@@ -1873,3 +1873,46 @@ test("the fast badge marks an on spec, and only an on spec", () => {
 	assert.doesNotMatch(NO_TIER, /lucide-zap/);
 	assert.doesNotMatch(NO_TIER, /fast mode on/);
 });
+
+/* ---- settings intents: a QUEUED model pick reads as waiting -------------- */
+
+/*
+ * Design D2 / UX U5 (PR #1823 round 1). A durable model intent the server has
+ * queued for the session's next step used to paint the band exactly like one
+ * it was applying: a spinner and "Switching; waiting for the session to
+ * confirm it", while the chip line above said "applies at the next step". The
+ * band now takes the chip's register - a static clock and the chip's own
+ * sentence as the accessible name - and an APPLYING pick keeps the spinner.
+ */
+const GPT_4O_MINI = {
+	...GPT_5,
+	model_id: "openai/gpt-4o-mini",
+	display_name: "OpenAI: GPT-4o-mini",
+};
+const INTENT_SESSION = {
+	...DRAFT,
+	context_tokens: 12_000,
+	cost_knowledge: "exact",
+	cumulative_parent_cost: 0.1,
+};
+
+test("a queued model intent names the next step on the band, with no spinner", () => {
+	const queued = renderStrip({
+		frontend: INTENT_SESSION,
+		pendingModel: GPT_4O_MINI,
+		pendingModelQueued: true,
+		onCommand: () => undefined,
+	});
+	const { label } = readingClasses(queued, "OpenAI: GPT-4o-mini applies");
+	assert.equal(label, "OpenAI: GPT-4o-mini applies at the next step");
+	assert.doesNotMatch(queued, /waiting for the session to confirm/);
+	assert.doesNotMatch(queued, /Switching the model/);
+
+	const applying = renderStrip({
+		frontend: INTENT_SESSION,
+		pendingModel: GPT_4O_MINI,
+		onCommand: () => undefined,
+	});
+	assert.doesNotMatch(applying, /applies at the next step/);
+	assert.match(applying, /waiting for the session to confirm/);
+});
