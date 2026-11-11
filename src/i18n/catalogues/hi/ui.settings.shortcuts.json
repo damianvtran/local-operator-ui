@@ -80,6 +80,13 @@
 	"ui.settings.shortcuts.action.send_queue": "कतार में भेजें",
 	"ui.settings.shortcuts.action.send_steer": "दिशा देकर भेजें",
 	"ui.settings.shortcuts.category.sending": "भेजना",
-	"ui.settings.shortcuts.category.sending_description": "एजेंट के व्यस्त होने पर संदेश भेजने के लिए अतिरिक्त कुंजियाँ। Enter हमेशा बैकएंड सेटिंग्स में चुने गए भेजने के तरीके से भेजता है। इस क्रिया को सौंपी गई कुंजी इसके बजाय अपने मोड से भेजती है, भले ही वह बैकएंड सेटिंग्स में चुना गया मोड न हो।",
-	"ui.settings.shortcuts.reserved.enter": "आरक्षित: संदेश बॉक्स से संदेश भेजता है। अकेला Enter हमेशा भेजता है, और Shift+Enter नई पंक्ति जोड़ता है।"
+	"ui.settings.shortcuts.category.sending_description": "Enter उस मोड से भेजता है जो “व्यस्त होने पर भेजने का तरीका” (बैकएंड सेटिंग्स) में चुना गया है। असाइन की गई कुंजी इसके बजाय अपने मोड से भेजती है।",
+	"ui.settings.shortcuts.reserved.enter": "आरक्षित: संदेश बॉक्स से संदेश भेजता है। अकेला Enter हमेशा भेजता है, और Shift+Enter नई पंक्ति जोड़ता है।",
+	"ui.settings.shortcuts.capture.send_newline": "Enter के साथ Ctrl/⌘ या Alt का उपयोग करें। Shift+Enter नई पंक्ति जोड़ता है।",
+	"ui.settings.shortcuts.capture.send_needs_modifier": "Enter के साथ Ctrl/⌘ या Alt का उपयोग करें।",
+	"ui.settings.shortcuts.capture.panel_enter": "संदेश भेजने वाली कुंजी के लिए “भेजना” की किसी पंक्ति का उपयोग करें।",
+	"ui.settings.shortcuts.capture.send_prompt": "Ctrl/⌘+Enter या Alt+Enter दबाएँ। अकेला Enter संपादन समाप्त करता है।",
+	"ui.settings.shortcuts.row_help.send_steer": "अभी भेजकर चल रहे चरण को रोकता है। उस संदेश के लिए “व्यस्त होने पर भेजने का तरीका” की जगह लागू होता है।",
+	"ui.settings.shortcuts.row_help.send_queue": "चरण पूरा होने तक रुकता है; टूल को कभी नहीं रोकता। उस संदेश के लिए “व्यस्त होने पर भेजने का तरीका” की जगह लागू होता है।",
+	"ui.settings.shortcuts.row_help.send_both": "पहले रुकता है, देर हो तो रोक देता है। उस संदेश के लिए “व्यस्त होने पर भेजने का तरीका” की जगह लागू होता है।"
 }

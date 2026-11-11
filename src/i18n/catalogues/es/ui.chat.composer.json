@@ -70,5 +70,11 @@
 	"ui.chat.composer.secret_fill_refused": "El campo secreto no aceptó ese valor. Tu texto se conserva; el panel de consultas explica por qué.",
 	"ui.chat.composer.secret_fill_unavailable": "No se pudo acceder al campo secreto. Tu texto se conserva.",
 	"ui.chat.composer.secret_fill_multi": "Esta solicitud pide más de un secreto. Tu texto se conserva; elige el campo en el panel de consultas.",
-	"ui.chat.composer.secret_closure_notice": "Responde a la solicitud de secreto en el panel de consultas — este cuadro está en pausa hasta que la respondas, y tu borrador se conserva."
+	"ui.chat.composer.secret_closure_notice": "Responde a la solicitud de secreto en el panel de consultas — este cuadro está en pausa hasta que la respondas, y tu borrador se conserva.",
+	"ui.chat.composer.placeholder.waiting_steer": "Enter envía ya · Esc detiene",
+	"ui.chat.composer.placeholder.waiting_queue": "Enter lo pone en cola · Esc detiene",
+	"ui.chat.composer.placeholder.waiting_both": "Enter espera, luego interrumpe · Esc detiene",
+	"ui.chat.composer.steer_hint_steer": "Enviar mientras el agente trabaja (Enter) · Esc detiene el turno",
+	"ui.chat.composer.steer_hint_queue": "Enter lo pone en cola · Esc detiene el turno",
+	"ui.chat.composer.steer_hint_both": "Enter espera y luego interrumpe · Esc detiene el turno"
 }

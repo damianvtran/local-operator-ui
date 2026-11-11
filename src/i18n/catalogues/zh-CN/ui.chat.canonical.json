@@ -54,7 +54,7 @@
 	"ui.chat.canonical.send_failure.late_delivery": "先前的消息已送达。",
 	"ui.chat.canonical.send_failure.late_delivery_draft": "先前的消息已送达。当前输入框中的内容尚未发送。",
 	"ui.chat.canonical.send_failure.late_delivery_overlap": "先前的消息已送达，但其内容仍在输入框中，再次发送会重复。",
-	"ui.chat.canonical.send_failure.delivery_unsupported": "此版本的Local Operator无法在智能体忙碌时更改消息的发送方式，消息未发送。更新后端后重试。",
+	"ui.chat.canonical.send_failure.delivery_unsupported": "忙碌时无法更改发送方式，消息未发送。改为引导发送，或更新后端。",
 	"ui.chat.canonical.turn_summary.completed": "已完成",
 	"ui.chat.canonical.turn_summary.took": "耗时{duration}",
 	"ui.chat.canonical.untitled": "未命名对话",

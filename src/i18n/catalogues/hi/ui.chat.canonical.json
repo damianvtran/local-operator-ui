@@ -257,5 +257,5 @@
 	"ui.chat.canonical.notice.compaction_not_run": "संपीडन नहीं चला: {detail}",
 	"ui.chat.canonical.notice.compaction_not_run_after_colon": "संपीडन नहीं चला — {detail}",
 	"ui.chat.canonical.link_toolkit.actions_for": "{name} की कार्रवाइयाँ",
-	"ui.chat.canonical.send_failure.delivery_unsupported": "Local Operator का यह संस्करण एजेंट के व्यस्त होने पर संदेश भेजने का तरीका नहीं बदल सकता, इसलिए आपका संदेश नहीं भेजा गया। बैकएंड अपडेट करें और फिर कोशिश करें।"
+	"ui.chat.canonical.send_failure.delivery_unsupported": "एजेंट के व्यस्त होने पर भेजने का तरीका नहीं बदला जा सकता, इसलिए संदेश नहीं भेजा गया। इसे दिशा देकर भेजें, या बैकएंड अपडेट करें।"
 }

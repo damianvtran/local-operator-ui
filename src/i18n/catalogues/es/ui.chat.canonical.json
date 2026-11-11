@@ -257,5 +257,5 @@
 	"ui.chat.canonical.notice.compaction_not_run": "La compactación no se ejecutó: {detail}",
 	"ui.chat.canonical.notice.compaction_not_run_after_colon": "La compactación no se ejecutó — {detail}",
 	"ui.chat.canonical.link_toolkit.actions_for": "Acciones para {name}",
-	"ui.chat.canonical.send_failure.delivery_unsupported": "Esta versión de Local Operator no puede cambiar cómo se envían los mensajes mientras el agente está ocupado, así que no se envió tu mensaje. Actualiza el backend e inténtalo de nuevo."
+	"ui.chat.canonical.send_failure.delivery_unsupported": "No se puede cambiar la entrega mientras el agente está ocupado, así que no se envió. Envíalo guiando o actualiza el backend."
 }

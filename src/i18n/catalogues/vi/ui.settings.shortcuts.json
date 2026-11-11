@@ -80,6 +80,13 @@
 	"ui.settings.shortcuts.action.send_queue": "Gửi kiểu hàng đợi",
 	"ui.settings.shortcuts.action.send_steer": "Gửi kiểu định hướng",
 	"ui.settings.shortcuts.category.sending": "Gửi tin nhắn",
-	"ui.settings.shortcuts.category.sending_description": "Các phím bổ sung để gửi tin nhắn khi tác nhân đang bận. Enter luôn gửi theo cách gửi đặt trong Cài đặt máy chủ. Phím được gán sẽ gửi theo kiểu của riêng nó, kể cả khi kiểu đó khác với cách gửi đã đặt.",
-	"ui.settings.shortcuts.reserved.enter": "Dành riêng: gửi tin nhắn từ ô soạn. Chỉ nhấn Enter luôn là gửi, còn Shift+Enter xuống dòng."
+	"ui.settings.shortcuts.category.sending_description": "Enter gửi theo chế độ đã đặt trong “Cách gửi khi bận” (Cài đặt máy chủ). Phím được gán sẽ gửi theo chế độ riêng.",
+	"ui.settings.shortcuts.reserved.enter": "Dành riêng: gửi tin nhắn từ ô soạn. Chỉ nhấn Enter luôn là gửi, còn Shift+Enter xuống dòng.",
+	"ui.settings.shortcuts.capture.send_newline": "Dùng Ctrl/⌘ hoặc Alt cùng Enter. Shift+Enter xuống dòng.",
+	"ui.settings.shortcuts.capture.send_needs_modifier": "Dùng Ctrl/⌘ hoặc Alt cùng Enter.",
+	"ui.settings.shortcuts.capture.panel_enter": "Phím gửi tin nhắn phải gán ở nhóm “Gửi tin nhắn”.",
+	"ui.settings.shortcuts.capture.send_prompt": "Nhấn Ctrl/⌘+Enter hoặc Alt+Enter. Chỉ nhấn Enter sẽ kết thúc việc chỉnh sửa.",
+	"ui.settings.shortcuts.row_help.send_steer": "Gửi ngay, ngắt bước đang chạy. Ghi đè “Cách gửi khi bận”.",
+	"ui.settings.shortcuts.row_help.send_queue": "Chờ bước xong, không ngắt công cụ. Ghi đè “Cách gửi khi bận”.",
+	"ui.settings.shortcuts.row_help.send_both": "Chờ, rồi ngắt nếu chậm. Ghi đè “Cách gửi khi bận”."
 }

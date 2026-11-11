@@ -80,6 +80,13 @@
 	"ui.settings.shortcuts.action.send_queue": "قطار کے طور پر بھیجیں",
 	"ui.settings.shortcuts.action.send_steer": "ہدایت کے طور پر بھیجیں",
 	"ui.settings.shortcuts.category.sending": "بھیجنا",
-	"ui.settings.shortcuts.category.sending_description": "ایجنٹ کے مصروف ہونے پر پیغام بھیجنے کی اضافی کلیدیں۔ Enter ہمیشہ بیک اینڈ کی ترتیبات میں مقرر کردہ ترسیل کے طریقے سے بھیجتا ہے۔ مختص کی گئی کلید اس کے بجائے اپنے طریقے سے بھیجتی ہے، چاہے وہ ترسیل کا طے شدہ طریقہ نہ ہو۔",
-	"ui.settings.shortcuts.reserved.enter": "مخصوص: پیغام کے خانے سے پیغام بھیجتا ہے۔ صرف Enter ہمیشہ پیغام بھیجتا ہے، اور Shift+Enter نئی لائن شامل کرتا ہے۔"
+	"ui.settings.shortcuts.category.sending_description": "Enter اس طریقے سے بھیجتا ہے جو “مصروف ہونے پر ترسیل” (بیک اینڈ کی ترتیبات) میں مقرر ہے۔ مختص کی گئی کلید اس کے بجائے اپنے طریقے سے بھیجتی ہے۔",
+	"ui.settings.shortcuts.reserved.enter": "مخصوص: پیغام کے خانے سے پیغام بھیجتا ہے۔ صرف Enter ہمیشہ پیغام بھیجتا ہے، اور Shift+Enter نئی لائن شامل کرتا ہے۔",
+	"ui.settings.shortcuts.capture.send_newline": "Enter کے ساتھ Ctrl/⌘ یا Alt استعمال کریں۔ Shift+Enter نئی لائن شامل کرتا ہے۔",
+	"ui.settings.shortcuts.capture.send_needs_modifier": "Enter کے ساتھ Ctrl/⌘ یا Alt استعمال کریں۔",
+	"ui.settings.shortcuts.capture.panel_enter": "پیغام بھیجنے والی کلید کے لیے “بھیجنا” کے تحت کوئی اندراج استعمال کریں۔",
+	"ui.settings.shortcuts.capture.send_prompt": "Ctrl/⌘+Enter یا Alt+Enter دبائیں۔ صرف Enter ترمیم ختم کرتا ہے۔",
+	"ui.settings.shortcuts.row_help.send_steer": "فوراً بھیجتا ہے اور مرحلے میں مداخلت کرتا ہے۔ “مصروف ہونے پر ترسیل” کو بدل دیتا ہے۔",
+	"ui.settings.shortcuts.row_help.send_queue": "مرحلے کا انتظار کرتا ہے؛ ٹولز میں کبھی مداخلت نہیں کرتا۔ “مصروف ہونے پر ترسیل” کو بدل دیتا ہے۔",
+	"ui.settings.shortcuts.row_help.send_both": "انتظار، پھر دیر ہو تو مداخلت۔ “مصروف ہونے پر ترسیل” کو بدل دیتا ہے۔"
 }

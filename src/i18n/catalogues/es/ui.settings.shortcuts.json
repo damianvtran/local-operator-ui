@@ -80,6 +80,13 @@
 	"ui.settings.shortcuts.action.send_queue": "Enviar en cola",
 	"ui.settings.shortcuts.action.send_steer": "Enviar guiando",
 	"ui.settings.shortcuts.category.sending": "Envío",
-	"ui.settings.shortcuts.category.sending_description": "Teclas adicionales para enviar un mensaje mientras el agente está ocupado. Enter siempre envía con el modo de entrega configurado en Ajustes del backend. Una tecla asignada envía con su propio modo, aunque no sea el modo de entrega configurado.",
-	"ui.settings.shortcuts.reserved.enter": "Reservado: envía el mensaje desde el compositor. Enter por sí solo siempre envía, y Shift+Enter añade una línea nueva."
+	"ui.settings.shortcuts.category.sending_description": "Enter envía con el modo definido en “Entrega con el agente ocupado” (Ajustes del backend). Una tecla asignada envía con su propio modo.",
+	"ui.settings.shortcuts.reserved.enter": "Reservado: envía el mensaje desde el compositor. Enter por sí solo siempre envía, y Shift+Enter añade una línea nueva.",
+	"ui.settings.shortcuts.capture.send_newline": "Usa Ctrl/⌘ o Alt con Enter. Shift+Enter añade una línea nueva.",
+	"ui.settings.shortcuts.capture.send_needs_modifier": "Usa Ctrl/⌘ o Alt con Enter.",
+	"ui.settings.shortcuts.capture.panel_enter": "Usa una fila de Envío para una tecla que envíe un mensaje.",
+	"ui.settings.shortcuts.capture.send_prompt": "Pulsa Ctrl/⌘+Enter o Alt+Enter. Enter por sí solo termina la edición.",
+	"ui.settings.shortcuts.row_help.send_steer": "Envía ya e interrumpe el paso. Anula “Entrega con el agente ocupado”.",
+	"ui.settings.shortcuts.row_help.send_queue": "Espera; no interrumpe herramientas. Anula “Entrega con el agente ocupado”.",
+	"ui.settings.shortcuts.row_help.send_both": "Espera; si tarda, interrumpe. Anula “Entrega con el agente ocupado”."
 }

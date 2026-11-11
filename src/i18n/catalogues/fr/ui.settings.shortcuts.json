@@ -80,6 +80,13 @@
 	"ui.settings.shortcuts.action.send_queue": "Envoyer : file d’attente",
 	"ui.settings.shortcuts.action.send_steer": "Envoyer : orienter",
 	"ui.settings.shortcuts.category.sending": "Envoi",
-	"ui.settings.shortcuts.category.sending_description": "Touches supplémentaires pour envoyer un message pendant que l’agent est occupé. Entrée envoie toujours avec le mode d’envoi défini dans Paramètres du serveur. Une touche associée envoie plutôt avec son propre mode, même s’il ne s’agit pas du mode d’envoi défini.",
-	"ui.settings.shortcuts.reserved.enter": "Réservé : envoie le message depuis le champ de saisie. Entrée seule envoie toujours, et Maj+Entrée ajoute un saut de ligne."
+	"ui.settings.shortcuts.category.sending_description": "Entrée envoie avec le mode défini dans « Envoi quand l’agent est occupé » (Paramètres du serveur). Une touche associée envoie plutôt avec son propre mode.",
+	"ui.settings.shortcuts.reserved.enter": "Réservé : envoie le message depuis le champ de saisie. Entrée seule envoie toujours, et Maj+Entrée ajoute un saut de ligne.",
+	"ui.settings.shortcuts.capture.send_newline": "Utilisez Ctrl/⌘ ou Alt avec Entrée. Maj+Entrée ajoute un saut de ligne.",
+	"ui.settings.shortcuts.capture.send_needs_modifier": "Utilisez Ctrl/⌘ ou Alt avec Entrée.",
+	"ui.settings.shortcuts.capture.panel_enter": "Pour une touche qui envoie un message, utilisez une ligne Envoi.",
+	"ui.settings.shortcuts.capture.send_prompt": "Appuyez sur Ctrl/⌘+Entrée ou Alt+Entrée. Entrée seule termine la modification.",
+	"ui.settings.shortcuts.row_help.send_steer": "Envoyer et interrompre l’étape. Remplace « Envoi quand l’agent est occupé ».",
+	"ui.settings.shortcuts.row_help.send_queue": "Attendre, sans interrompre d’outil. Remplace « Envoi quand l’agent est occupé ».",
+	"ui.settings.shortcuts.row_help.send_both": "Attendre, interrompre si ça tarde. Remplace « Envoi quand l’agent est occupé »."
 }

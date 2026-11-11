@@ -70,5 +70,11 @@
 	"ui.chat.composer.secret_fill_refused": "راز کے خانے نے یہ قدر قبول نہیں کی۔ آپ کا متن محفوظ ہے — سوالات کے پینل میں وجہ دیکھیں۔",
 	"ui.chat.composer.secret_fill_unavailable": "راز کے خانے تک رسائی نہیں ہو سکی۔ آپ کا متن محفوظ ہے۔",
 	"ui.chat.composer.secret_fill_multi": "اس درخواست میں ایک سے زیادہ راز درکار ہیں۔ آپ کا متن محفوظ ہے — سوالات کے پینل میں خانہ منتخب کریں۔",
-	"ui.chat.composer.secret_closure_notice": "سوالات کے پینل میں راز کی درخواست کا جواب دیں — جواب ملنے تک یہ خانہ موقوف ہے، اور آپ کا مسودہ محفوظ رہتا ہے۔"
+	"ui.chat.composer.secret_closure_notice": "سوالات کے پینل میں راز کی درخواست کا جواب دیں — جواب ملنے تک یہ خانہ موقوف ہے، اور آپ کا مسودہ محفوظ رہتا ہے۔",
+	"ui.chat.composer.placeholder.waiting_steer": "Enter ابھی بھیجتا ہے · Esc روکتا ہے",
+	"ui.chat.composer.placeholder.waiting_queue": "Enter قطار میں رکھتا ہے · Esc روکتا ہے",
+	"ui.chat.composer.placeholder.waiting_both": "Enter انتظار، پھر مداخلت · Esc روکتا ہے",
+	"ui.chat.composer.steer_hint_steer": "ایجنٹ کے کام کے دوران بھیجیں (Enter) · Esc موجودہ باری کو روکتا ہے",
+	"ui.chat.composer.steer_hint_queue": "Enter قطار میں رکھتا ہے · Esc موجودہ باری کو روکتا ہے",
+	"ui.chat.composer.steer_hint_both": "Enter انتظار کے بعد مداخلت کرتا ہے · Esc موجودہ باری کو روکتا ہے"
 }

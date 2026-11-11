@@ -80,6 +80,13 @@
 	"ui.settings.shortcuts.action.send_queue": "排队发送",
 	"ui.settings.shortcuts.action.send_steer": "引导发送",
 	"ui.settings.shortcuts.category.sending": "发送",
-	"ui.settings.shortcuts.category.sending_description": "智能体忙碌时发送消息的额外按键。Enter始终按“后端设置”中的发送方式发送；已绑定的按键则按自身的方式发送，即使该方式与设置中的发送方式不同。",
-	"ui.settings.shortcuts.reserved.enter": "保留：从输入框发送消息。单独按Enter始终发送，Shift+Enter换行。"
+	"ui.settings.shortcuts.category.sending_description": "Enter按“忙碌时的发送方式”（后端设置）中的方式发送；已绑定的按键则按自身的方式发送。",
+	"ui.settings.shortcuts.reserved.enter": "保留：从输入框发送消息。单独按Enter始终发送，Shift+Enter换行。",
+	"ui.settings.shortcuts.capture.send_newline": "Enter需配合Ctrl/⌘或Alt使用。Shift+Enter用于换行。",
+	"ui.settings.shortcuts.capture.send_needs_modifier": "Enter需配合Ctrl/⌘或Alt使用。",
+	"ui.settings.shortcuts.capture.panel_enter": "发送消息的按键应在“发送”分组的行中设置。",
+	"ui.settings.shortcuts.capture.send_prompt": "按Ctrl/⌘+Enter或Alt+Enter。单独按Enter会结束编辑。",
+	"ui.settings.shortcuts.row_help.send_steer": "立即发送并打断当前步骤。覆盖“忙碌时的发送方式”。",
+	"ui.settings.shortcuts.row_help.send_queue": "等待当前步骤，绝不打断工具。覆盖“忙碌时的发送方式”。",
+	"ui.settings.shortcuts.row_help.send_both": "先等待，过慢再打断。覆盖“忙碌时的发送方式”。"
 }

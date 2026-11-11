@@ -70,5 +70,11 @@
 	"ui.chat.composer.secret_fill_refused": "गोपनीय फ़ील्ड ने वह मान स्वीकार नहीं किया। आपका टेक्स्ट रखा गया है — वजह सवालों के पैनल में दी गई है।",
 	"ui.chat.composer.secret_fill_unavailable": "गोपनीय फ़ील्ड तक नहीं पहुँचा जा सका। आपका टेक्स्ट रखा गया है।",
 	"ui.chat.composer.secret_fill_multi": "इस अनुरोध में एक से ज़्यादा गोपनीय जानकारियाँ माँगी गई हैं। आपका टेक्स्ट रखा गया है — सवालों के पैनल में फ़ील्ड चुनें।",
-	"ui.chat.composer.secret_closure_notice": "सवालों के पैनल में गोपनीय अनुरोध का जवाब दें — जवाब मिलने तक यह बॉक्स रुका हुआ है, और आपका ड्राफ़्ट बना रहता है।"
+	"ui.chat.composer.secret_closure_notice": "सवालों के पैनल में गोपनीय अनुरोध का जवाब दें — जवाब मिलने तक यह बॉक्स रुका हुआ है, और आपका ड्राफ़्ट बना रहता है।",
+	"ui.chat.composer.placeholder.waiting_steer": "Enter अभी भेजता है · Esc रोकता है",
+	"ui.chat.composer.placeholder.waiting_queue": "Enter कतार में भेजता है · Esc रोकता है",
+	"ui.chat.composer.placeholder.waiting_both": "Enter रुकता है, फिर रोकता है · Esc रोकता है",
+	"ui.chat.composer.steer_hint_steer": "एजेंट के काम करते समय भेजें (Enter) · Esc इस टर्न को रोकता है",
+	"ui.chat.composer.steer_hint_queue": "Enter कतार में भेजता है · Esc इस टर्न को रोकता है",
+	"ui.chat.composer.steer_hint_both": "Enter रुकता है, फिर रोकता है · Esc इस टर्न को रोकता है"
 }

@@ -257,5 +257,5 @@
 	"ui.chat.canonical.notice.compaction_not_run": "Le compactage du contexte n’a pas été exécuté : {detail}",
 	"ui.chat.canonical.notice.compaction_not_run_after_colon": "Le compactage du contexte n’a pas été exécuté — {detail}",
 	"ui.chat.canonical.link_toolkit.actions_for": "Actions pour {name}",
-	"ui.chat.canonical.send_failure.delivery_unsupported": "Cette version de Local Operator ne peut pas modifier la façon dont les messages sont envoyés pendant que l’agent est occupé ; votre message n’a donc pas été envoyé. Mettez le serveur à jour et réessayez."
+	"ui.chat.canonical.send_failure.delivery_unsupported": "Impossible de changer l’envoi pendant que l’agent est occupé : le message n’a pas été envoyé. Envoyez-le avec le mode « orienter », ou mettez le serveur à jour."
 }

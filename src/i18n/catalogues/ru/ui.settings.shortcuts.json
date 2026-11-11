@@ -80,6 +80,13 @@
 	"ui.settings.shortcuts.action.send_queue": "Отправить в режиме «очередь»",
 	"ui.settings.shortcuts.action.send_steer": "Отправить в режиме «направить»",
 	"ui.settings.shortcuts.category.sending": "Отправка",
-	"ui.settings.shortcuts.category.sending_description": "Дополнительные клавиши для отправки сообщения, пока агент занят. Enter всегда отправляет в режиме доставки из раздела «Настройки бэкенда». Назначенная клавиша отправляет в своём режиме, даже если он не совпадает с режимом доставки.",
-	"ui.settings.shortcuts.reserved.enter": "Зарезервировано: отправляет сообщение из поля ввода. Enter сам по себе всегда отправляет, а Shift+Enter добавляет новую строку."
+	"ui.settings.shortcuts.category.sending_description": "Enter отправляет в режиме из параметра «Доставка, когда агент занят» (раздел «Настройки бэкенда»). Назначенная клавиша вместо этого отправляет в своём режиме.",
+	"ui.settings.shortcuts.reserved.enter": "Зарезервировано: отправляет сообщение из поля ввода. Enter сам по себе всегда отправляет, а Shift+Enter добавляет новую строку.",
+	"ui.settings.shortcuts.capture.send_newline": "Добавьте к Enter клавишу Ctrl/⌘ или Alt. Shift+Enter добавляет новую строку.",
+	"ui.settings.shortcuts.capture.send_needs_modifier": "Добавьте к Enter клавишу Ctrl/⌘ или Alt.",
+	"ui.settings.shortcuts.capture.panel_enter": "Клавишу, которая отправляет сообщение, назначайте в строке раздела «Отправка».",
+	"ui.settings.shortcuts.capture.send_prompt": "Нажмите Ctrl/⌘+Enter или Alt+Enter. Один Enter завершает редактирование.",
+	"ui.settings.shortcuts.row_help.send_steer": "Отправить сразу, прервав шаг. Заменяет «Доставка, когда агент занят».",
+	"ui.settings.shortcuts.row_help.send_queue": "Ждать, не прерывая инструменты. Заменяет «Доставка, когда агент занят».",
+	"ui.settings.shortcuts.row_help.send_both": "Ждать, затем прервать, если долго. Заменяет «Доставка, когда агент занят»."
 }

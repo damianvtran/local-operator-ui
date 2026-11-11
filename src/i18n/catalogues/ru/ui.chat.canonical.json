@@ -54,7 +54,7 @@
 	"ui.chat.canonical.send_failure.late_delivery": "Предыдущее сообщение доставлено.",
 	"ui.chat.canonical.send_failure.late_delivery_draft": "Предыдущее сообщение доставлено. Текущий текст ещё не отправлен.",
 	"ui.chat.canonical.send_failure.late_delivery_overlap": "Предыдущее сообщение доставлено. Его текст остался в поле, поэтому повторная отправка продублирует его.",
-	"ui.chat.canonical.send_failure.delivery_unsupported": "Эта версия Local Operator не умеет менять способ отправки сообщений, пока агент занят, поэтому сообщение не отправлено. Обновите бэкенд и повторите попытку.",
+	"ui.chat.canonical.send_failure.delivery_unsupported": "Не удалось изменить доставку, пока агент занят, поэтому сообщение не отправлено. Отправьте его в режиме «направить» или обновите бэкенд.",
 	"ui.chat.canonical.turn_summary.completed": "завершено",
 	"ui.chat.canonical.turn_summary.took": "Заняло {duration}",
 	"ui.chat.canonical.untitled": "Чат без названия",

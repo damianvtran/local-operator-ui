@@ -70,5 +70,11 @@
 	"ui.chat.composer.tip.run_panel": "mở bảng lượt chạy để xem kế hoạch và tác nhân con của lượt",
 	"ui.chat.composer.tip.schedule": "đặt lịch chạy prompt theo hẹn giờ",
 	"ui.chat.composer.tip.search_past_work": "tìm cuộc trò chuyện và tác nhân để mở lại phiên trước đó",
-	"ui.chat.composer.secret_closure_notice": "Trả lời yêu cầu bí mật trong bảng câu hỏi — ô này tạm dừng cho đến khi có câu trả lời, và bản nháp của bạn vẫn được giữ lại."
+	"ui.chat.composer.secret_closure_notice": "Trả lời yêu cầu bí mật trong bảng câu hỏi — ô này tạm dừng cho đến khi có câu trả lời, và bản nháp của bạn vẫn được giữ lại.",
+	"ui.chat.composer.placeholder.waiting_steer": "Enter gửi ngay · Esc dừng",
+	"ui.chat.composer.placeholder.waiting_queue": "Enter đưa vào hàng đợi · Esc dừng",
+	"ui.chat.composer.placeholder.waiting_both": "Enter chờ, rồi ngắt · Esc dừng",
+	"ui.chat.composer.steer_hint_steer": "Gửi khi tác nhân đang làm việc (Enter) · Esc dừng lượt này",
+	"ui.chat.composer.steer_hint_queue": "Enter đưa vào hàng đợi · Esc dừng lượt này",
+	"ui.chat.composer.steer_hint_both": "Enter chờ, rồi ngắt · Esc dừng lượt này"
 }

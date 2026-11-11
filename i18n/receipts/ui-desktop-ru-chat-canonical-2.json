@@ -1,0 +1,39 @@
+{
+	"schema": 1,
+	"auditor": "codex",
+	"model": "gpt-5.6-sol",
+	"model_provenance": "codex MCP server, requested gpt-5.6-sol (served model not independently verifiable; see i18n-provenance-ui2.md 2026-11-11 manager session 2405ebc40b47)",
+	"instance": "ui-desktop-ru-chat-canonical-2",
+	"locale": "ru",
+	"namespace": "ui.chat.canonical",
+	"branch": "feat/busy-delivery-desktop",
+	"head": "485816c010 + uncommitted catalogues",
+	"date": "2026-11-11",
+	"status": "passed",
+	"audit_kind": "delta audit of the send-chord keys; all other keys byte-identical to the prior audited row (superseded by the branch's en change)",
+	"keys_audited": [
+		"ui.chat.canonical.send_failure.delivery_unsupported"
+	],
+	"key_count": 259,
+	"scope": "i18n-provenance-ui2.md: desktop send-chord copy for namespaces ui.chat.canonical (see note)",
+	"sha256": {
+		"en": "f9a9194a792c6c48abc2bb17f17bd0a76c5d19a5acb33b427ed9059d61c70daa",
+		"ru": "22a7911cee3efadf5aa79f7260b32253d1c9a7ef8e5e807fa6aaa9955f50b7d0"
+	},
+	"inputs_sha256": {
+		"en_context": "b25380d3c82b878b7c71483e39e9a7062934705b309506dbb6e70a82ac0b09db"
+	},
+	"paths": {
+		"en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+		"target": "src/i18n/catalogues/ru/ui.chat.canonical.json",
+		"context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+	},
+	"verified": [
+		"key set equals English; key count 259 for both",
+		"ICU/placeholders/tags preserved",
+		"meaning checked against en context; mode terms match the audited backend relay.composer.delivery.* / wire.settings.delivery_busy_default.* set",
+		"findings below are the final-round verdict on the shipped bytes; round-1 findings and their dispositions are in the note and in i18n-provenance-ui2.md"
+	],
+	"findings": [],
+	"note": "Changed key send_failure.delivery_unsupported; other keys byte-identical to prior row. R1 PASS 0/0. No findings open on the shipped bytes. Translator req. claude-sonnet-5-5, auditor req. gpt-5.6-sol (not independently verifiable)."
+}
