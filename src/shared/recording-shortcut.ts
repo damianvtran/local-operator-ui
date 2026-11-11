@@ -10,6 +10,22 @@ export const DEFAULT_START_RECORDING_VALUE = "primary+shift+s";
 export const PUSH_TO_TALK_SETTING_KEY = "keymap.push_to_talk";
 export const DEFAULT_PUSH_TO_TALK_VALUE = "alt-right-hold";
 
+/**
+ * The cleared state for a clearable hotkey row. The backend registry cannot
+ * store an empty/null value for these rows (validate refuses it, and `''` on
+ * edit means reset), so a cleared row stores this string sentinel. It is
+ * accepted ONLY by the two desktop-scope dictation rows that opt in
+ * (`keymap.start_recording`, `keymap.push_to_talk`); everywhere else it is an
+ * invalid value that falls back to the default. Cleared is distinct from
+ * invalid in every resolver: invalid keeps the last-good/default, while this
+ * means no door.
+ */
+export const CLEARED_SHORTCUT_VALUE = "none";
+
+export function isClearedShortcut(value: unknown): boolean {
+	return typeof value === "string" && value.trim() === CLEARED_SHORTCUT_VALUE;
+}
+
 export type RecordingShortcutInput = {
 	key: string;
 	code?: string;
@@ -25,6 +41,8 @@ export type ChordClaim = { chord: string; label: string };
 export type RecordingShortcutState = {
 	value: string;
 	canonical: string | null;
+	/** The row was explicitly cleared (`"none"`): no door, distinct from invalid. */
+	cleared?: boolean;
 	problem?: string;
 	pending?: string;
 	shadowedBy?: string;

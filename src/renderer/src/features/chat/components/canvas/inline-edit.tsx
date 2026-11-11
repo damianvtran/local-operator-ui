@@ -1087,13 +1087,15 @@ export const InlineEdit: FC<InlineEditProps> = ({
 											text={
 												!canEnableRecordingFeature
 													? speechUnavailableReason("recording", speechBlock)
-													: shortcutText === null
+													: shortcutText === null ||
+															resolvePushToTalkBinding() === null
 														? t("ui.canvas.inline_edit.start_recording")
 														: t(
 																"ui.canvas.inline_edit.start_recording_or_hold",
 																{
 																	shortcuttext: isolateLtr(shortcutText),
-																	label: resolvePushToTalkBinding().label,
+																	label:
+																		resolvePushToTalkBinding()?.label ?? "",
 																},
 															)
 											}

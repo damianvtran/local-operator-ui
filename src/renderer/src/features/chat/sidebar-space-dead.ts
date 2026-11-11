@@ -16,7 +16,7 @@
  * never runs. Rows keep their own Space behaviour - a row is a button and
  * Space presses it. A leaf function with no imports, like `clear-search.ts`
  * beside it, so the rule is testable without a DOM harness
- * (`scripts/space-hold-focus.test.mjs` bundles this module).
+ * (`scripts/dictation-space-dead.test.mjs` bundles this module).
  */
 export const sidebarScrollerSpaceIsDead = (
 	event: Pick<KeyboardEvent, "target" | "currentTarget" | "code" | "key">,

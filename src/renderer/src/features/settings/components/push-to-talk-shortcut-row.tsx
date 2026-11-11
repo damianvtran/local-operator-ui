@@ -5,7 +5,10 @@ import { effectiveChord } from "@shared/keymap/keymap-chord";
 import { KEYMAP_ACTIONS } from "@shared/keymap/keymap-registry";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { useId, useMemo, useRef } from "react";
-import { DEFAULT_PUSH_TO_TALK_VALUE } from "../../../../../shared/recording-shortcut";
+import {
+	CLEARED_SHORTCUT_VALUE,
+	DEFAULT_PUSH_TO_TALK_VALUE,
+} from "../../../../../shared/recording-shortcut";
 import { useRecordingShortcutState } from "../../../shared/hooks/use-recording-shortcut";
 import {
 	type PlatformFamily,
@@ -200,17 +203,23 @@ export function PushToTalkShortcutRow({
 	});
 	const action = t("ui.settings.shortcuts.speech.push_to_talk_hold");
 	const stored = typeof setting.value === "string" ? setting.value : "";
+	const cleared = stored.trim() === CLEARED_SHORTCUT_VALUE;
+	// A cleared row has no live binding (no door); the field shows
+	// `No shortcut` and Reset is visible (cleared is not the default).
 	// An unrecognised stored value is displayed as the binding the manager will
 	// actually use (its fallback), never as the raw token.
-	const live =
-		pushToTalkBindingForToken(stored) ??
-		pushToTalkBindingForToken(defaultToken) ??
-		pushToTalkBindingForToken(DEFAULT_PUSH_TO_TALK_VALUE);
+	const live = cleared
+		? null
+		: (pushToTalkBindingForToken(stored) ??
+			pushToTalkBindingForToken(defaultToken) ??
+			pushToTalkBindingForToken(DEFAULT_PUSH_TO_TALK_VALUE));
 	// By physical key: off macOS the default token and `meta-right-hold` name
 	// one key, and offering Reset for a key that is already the default's is noise.
+	// A cleared row is never the default: Reset stays visible and restores it.
 	const isDefault =
+		!cleared &&
 		pushToTalkBindingForToken(stored)?.code ===
-		pushToTalkBindingForToken(defaultToken)?.code;
+			pushToTalkBindingForToken(defaultToken)?.code;
 	const claimed = KEYMAP_ACTIONS.flatMap((panel) => {
 		const chord = effectiveChord(panel.id, bindings);
 		return chord ? [chord] : [];
@@ -251,11 +260,20 @@ export function PushToTalkShortcutRow({
 				"ui.settings.configuration.setting_control.label_press_the_key_you_want",
 				{ label: action },
 			)}
-			value={live?.label ?? ""}
+			value={
+				cleared
+					? t("ui.settings.shortcuts.keyboard_shortcuts_section.no_shortcut")
+					: (live?.label ?? "")
+			}
 			fieldRef={fieldRef}
 			saving={saving}
 			showReset={!isDefault}
+			showClear={setting.clearable === true && !cleared}
 			onReset={() => void write("settings.reset")}
+			onClear={() => {
+				void write("settings.edit", CLEARED_SHORTCUT_VALUE);
+				fieldRef.current?.focus();
+			}}
 			onBlur={() => {
 				// Focus (or the window) left mid-press: the release will arrive
 				// somewhere else, so nothing is committed.

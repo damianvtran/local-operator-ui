@@ -526,13 +526,15 @@ export const TeamBridgeComposer: FC<TeamBridgeComposerProps> = ({
 	 * is the arm that says only what the control does.
 	 */
 	const shortcutLabel = useRecordingShortcutLabel(rendererPlatform());
+	// Either door cleared means the plain arm: never "or hold " with an empty part.
+	const pttBinding = resolvePushToTalkBinding();
 	const recordingTitle = !canEnableRecordingFeature
 		? recordingUnavailableReason
-		: shortcutLabel === null
+		: shortcutLabel === null || pttBinding === null
 			? t("ui.chat.composer.start_recording")
 			: t("ui.chat.composer.start_recording_hint", {
 					shortcut: isolateLtr(shortcutLabel),
-					pushToTalk: resolvePushToTalkBinding().label,
+					pushToTalk: resolvePushToTalkBinding()?.label ?? "",
 				});
 
 	/*

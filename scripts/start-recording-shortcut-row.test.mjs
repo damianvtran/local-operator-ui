@@ -402,3 +402,20 @@ test("a refusal preserves the saved chord and Escape keeps focus", async () => {
 		);
 	});
 });
+
+test("a cleared primary row shows No shortcut with Reset visible and Clear hidden", async () => {
+	await mount({}, async (api) => {
+		const input = api.$('input[data-shortcut-action="keymap.start_recording"]');
+		assert.ok(input);
+		// Default state first.
+		assert.equal(input.value, "Ctrl+Shift+S");
+		const clearButton = api.window.document.querySelector(
+			'button[aria-label="Clear Start recording (press)\'s shortcut"]',
+		);
+		assert.equal(clearButton, null, "no clearable flag, no Clear button");
+		const resetButton = api.$(
+			'button[aria-label="Reset Start recording (press) to its default"]',
+		);
+		assert.equal(resetButton, null, "at the default, no Reset");
+	});
+});

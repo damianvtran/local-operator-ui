@@ -27,6 +27,8 @@ export function SpeechShortcutRowFrame({
 	saving,
 	showReset,
 	onReset,
+	showClear,
+	onClear,
 	onKeyDown,
 	onKeyUp,
 	onBlur,
@@ -42,11 +44,15 @@ export function SpeechShortcutRowFrame({
 	help: string;
 	hint: string;
 	ariaLabel: string;
+	/** The cleared display, or the field's glyph/label. */
 	value: string;
 	fieldRef: RefObject<HTMLInputElement>;
 	saving: boolean;
 	showReset: boolean;
 	onReset: () => void;
+	/** Whether this row may be cleared (the backend's `clearable` flag). */
+	showClear?: boolean;
+	onClear?: () => void;
 	onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
 	onKeyUp?: (event: KeyboardEvent<HTMLInputElement>) => void;
 	onBlur?: () => void;
@@ -110,6 +116,20 @@ export function SpeechShortcutRowFrame({
 					onKeyUp={onKeyUp}
 					onBlur={onBlur}
 				/>
+				{showClear && (
+					<Button
+						variant="secondary"
+						size="sm"
+						disabled={saving}
+						aria-label={t(
+							"ui.settings.shortcuts.keyboard_shortcuts_section.clear_label_s_shortcut",
+							{ label: action },
+						)}
+						onClick={onClear}
+					>
+						{t("ui.settings.shortcuts.keyboard_shortcuts_section.clear")}
+					</Button>
+				)}
 				{showReset && (
 					<Button
 						variant="secondary"

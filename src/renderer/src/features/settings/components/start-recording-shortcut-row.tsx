@@ -10,8 +10,10 @@ import { KEYMAP_ACTIONS } from "@shared/keymap/keymap-registry";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { useId, useMemo, useRef } from "react";
 import {
+	CLEARED_SHORTCUT_VALUE,
 	DEFAULT_START_RECORDING_VALUE,
 	canonicalRecordingChord,
+	isClearedShortcut,
 } from "../../../../../shared/recording-shortcut";
 import { rendererPlatform } from "../../../mini-view/renderer-platform";
 import {
@@ -56,12 +58,14 @@ export function StartRecordingShortcutRow({
 	// A malformed hand-edit is still displayed as the last good live binding;
 	// naming the raw token would advertise a shortcut the main process rejected.
 	const saved = recording.problem ? recording.value : stored;
+	const cleared = isClearedShortcut(stored);
 	const defaultChord =
 		typeof setting.default === "string"
 			? setting.default
 			: DEFAULT_START_RECORDING_VALUE;
 	const isDefault =
-		canonicalRecordingChord(stored) === canonicalRecordingChord(defaultChord);
+		canonicalRecordingChord(stored) === canonicalRecordingChord(defaultChord) &&
+		!cleared;
 	const assignedTo = (label: string) =>
 		t("ui.settings.shortcuts.capture.already_assigned", { label });
 	// The name the panel rows already use when THEY refuse against this chord, so
@@ -84,11 +88,20 @@ export function StartRecordingShortcutRow({
 				"ui.settings.shortcuts.keyboard_shortcuts_section.label_press_the_keys_you_want",
 				{ label: action },
 			)}
-			value={chordGlyph(saved, platform)}
+			value={
+				cleared
+					? t("ui.settings.shortcuts.keyboard_shortcuts_section.no_shortcut")
+					: chordGlyph(saved, platform)
+			}
 			fieldRef={fieldRef}
 			saving={saving}
 			showReset={!isDefault}
+			showClear={setting.clearable === true && !cleared}
 			onReset={() => void write("settings.reset")}
+			onClear={() => {
+				void write("settings.edit", CLEARED_SHORTCUT_VALUE);
+				fieldRef.current?.focus();
+			}}
 			onKeyUp={(event) => {
 				// A modifier tapped on its own is not a chord. Say so on its release,
 				// not its press: the press is also the first half of a real chord.

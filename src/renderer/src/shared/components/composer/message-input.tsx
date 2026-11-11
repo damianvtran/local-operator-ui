@@ -10252,14 +10252,16 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 																? t("ui.chat.composer.starting_recording")
 																: !canEnableRecordingFeature
 																	? recordingUnavailableReason
-																	: shortcutText === null
+																	: shortcutText === null ||
+																			resolvePushToTalkBinding() === null
 																		? t("ui.chat.composer.start_recording")
 																		: t(
 																				"ui.chat.composer.start_recording_hint",
 																				{
 																					shortcut: isolateLtr(shortcutText),
 																					pushToTalk:
-																						resolvePushToTalkBinding().label,
+																						resolvePushToTalkBinding()?.label ??
+																						"",
 																				},
 																			)
 														}
