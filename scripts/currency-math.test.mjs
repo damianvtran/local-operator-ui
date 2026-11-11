@@ -830,15 +830,43 @@ test("a digit-led price never pairs with a later $NAME or crosses prose (Q-1)", 
 test("unclosed \\( and \\[ openers parse in linear time (Q-2)", () => {
 	// QA round 1, Q-2 measured 17-49 s for 40 kB of these; each opener used to
 	// rescan to the end of its paragraph.
-	for (const source of [
-		"\\( x ".repeat(8000),
-		"\\[ x ".repeat(8000),
-		"\\[\nx\n".repeat(8000),
-	]) {
-		const started = performance.now();
-		const tree = guarded(source);
-		const elapsed = performance.now() - started;
-		assert.ok(elapsed < 1000, `${elapsed} ms for ${source.slice(0, 8)}`);
+	//
+	// Why a ratio to plain remark instead of a wall-clock limit: the old
+	// `< 1000 ms` bound failed 2 of 10 runs at load average 30+ (PR #1859 CI
+	// flake triage), and single 40 kB parses reached 1786 ms there. A 10 kB vs
+	// 40 kB size ratio does not work either: remark-parse + gfm WITHOUT any
+	// math plugin already grows ~9x as these inputs double from 24 to 48 kB
+	// (23.7 -> 211.9 ms, best of 5, load 30), so the baseline itself looks
+	// super-linear. What the Q-2 fix owns is the plugin's cost ON TOP of that
+	// baseline, and load slows both parses alike. Measured with this exact
+	// check (best of three per side), 10 serial runs x 3 inputs, load 31-36,
+	// PR #1859 triage: ratio n=30 median 1.09, max 4.48 (a 91 ms plain
+	// outlier); guarded median 415.5 ms, max 1059.4 ms. Negative control,
+	// text memo disabled: 101287 ms vs 614 ms plain, ratio 164.9 (QA round 1
+	// saw 17-49 s). So `< 8` sits ~1.8x over the worst observed ratio and
+	// ~20x under the regression; the 5000 ms ceiling is a backstop ~4.7x over
+	// the worst observed parse and ~3x under the quadratic 17 s.
+	const plain = (source) =>
+		unified().use(remarkParse).use(remarkGfm).parse(source);
+	const bestOf = (parse, source) => {
+		let best = Number.POSITIVE_INFINITY;
+		let tree;
+		for (let i = 0; i < 3; i++) {
+			const started = performance.now();
+			tree = parse(source);
+			best = Math.min(best, performance.now() - started);
+		}
+		return { best, tree };
+	};
+	for (const unit of ["\\( x ", "\\[ x ", "\\[\nx\n"]) {
+		const source = unit.repeat(8000);
+		const baseline = bestOf(plain, source).best;
+		const { best: elapsed, tree } = bestOf(guarded, source);
+		const ratio = elapsed / Math.max(baseline, 1);
+		const label = `${JSON.stringify(unit)} x8000: guarded ${elapsed.toFixed(1)} ms, plain ${baseline.toFixed(1)} ms, ratio ${ratio.toFixed(2)}`;
+		if (process.env.Q2_TIMING_LOG) console.log(label);
+		assert.ok(ratio < 8, `math plugin cost is super-linear: ${label}`);
+		assert.ok(elapsed < 5000, `too slow: ${label}`);
 		assert.equal(
 			nodesOf(tree, "inlineMath").length + nodesOf(tree, "math").length,
 			0,
