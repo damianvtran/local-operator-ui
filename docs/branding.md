@@ -1758,30 +1758,55 @@ shared layer or it is not one.
 
 ### A view that is not the newest one
 
-Five states where the app is showing something other than the owner's current
+States where the app is showing something other than the owner's current
 answer, and each has one idiom because inventing a second at the call site is
 how a system ends up with two ways to say the same thing.
 
-**One register for the status slot.** Everything that says "the pane is not
-authoritative yet" is `text-meta text-ink-dim`: the stale caption below and the
-skeleton's label. The exception is `Reconnecting`, which stays
-`text-body-sm text-ink-dim` because during the retry window it is the pane's
-ONLY statement — there are no rows under it to carry the register — so it takes
-the reading step rather than the caption step. Three type steps in one slot read
-as three severities for one condition, which is what this rule removes.
+**One loading indicator for every wait on a conversation** (operator,
+2026-11-11, superseding the caption-only rule that stood here). Four cases show
+a conversation that is still arriving, and all four render the same element,
+`ConversationLoadingIndicator` (`features/chat/canonical/conversation-loading-indicator.tsx`),
+with a different label:
 
-**A caption, not a treatment.** A stale paint — rows read back from this
-window's own memory while the snapshot is still in flight — stays at full
-`ink`. No dimming, no scrim, and **no opacity**, which is banned as a state
-signal here for the reason § 6 gives: it is unreadable on some grounds and
-invisible on others. What says "this may be behind" is one sentence,
-`text-meta text-ink-dim`, sentence case, no spinner, no icon tile, no border,
-no shadow. It is present from the first painted frame and removed in the same
-commit as the reconciled rows, so the two never disagree.
+| Case | Where it mounts | Label |
+|---|---|---|
+| Cold open: no rows painted, the first page owed | the content column, where the rows will land | `Loading conversation…` |
+| Revalidate: rows painted from this window's cache, the owner's page owed | the transcript's foot slot (`data-lo-stale-caption`) | `Checking for new messages…` |
+| Older page: an earlier page in flight | the older-history slot's busy Button | `Loading earlier messages…` |
+| Remote: a peer's conversation whose history is not proven yet | whichever of the three slots above is waiting | `Syncing from your other device…` |
 
-That sentence lives in the transcript's FOOT slot, the row reserved at the
-newest edge of the scroller (`data-lo-stale-caption`, `font-sans text-meta
-text-ink-dim`, one line, truncated). Not at the oldest edge: inside a
+The element is one `rounded-full` dot on `accent` - the liveness role (§ 2) -
+pulsing on `animate-pulse-visible` (opacity only, keyframes ending on `1`, so
+under reduced motion it parks fully visible: the § 3 indeterminate-liveness
+rule) and `aria-hidden`, beside a visible label at `text-meta text-ink-muted`,
+sentence case, trailing ellipsis. `ink-muted` is one step above the `ink-dim`
+the old caption used and the reason the state now reads as loading rather than
+as a footnote. No pill, no ground, no border, no shadow: it is a statement in
+the flow, not a floating surface, so on window glass the pane's own translucency
+shows through around it and the dot and label keep their ink roles. In its own
+slot it is an `<output>` named `Loading conversation`; inside the older-history
+Button it drops the live region, because that slot's sr-only announcer already
+says the same words. `Reconnecting` is a transport statement, not a load, and
+keeps its own `text-body-sm text-ink-dim` line.
+
+**It never adds height.** Every case mounts into a slot that is already
+reserved: the foot slot is `min-h-[1lh]` of `text-mono-sm` (12px x 1.45 =
+17.4px) and the indicator's line box is one `text-meta` line (12px x 1.45 =
+17.4px, the 8px dot centred inside it); the older-history slot is a fixed `h-7`
+in every arm; the cold indicator stands where the rows will land, in a pane
+that holds nothing else. A label change between consecutive loading states of
+one slot (cold to remote when the placement fact arrives) re-renders the same
+element in place - no `key`, no remount - so the dot's pulse does not restart.
+
+**Rows are never treated.** A stale paint - rows read back from this window's
+own memory while the snapshot is still in flight - stays at full `ink`. No
+dimming, no scrim, and **no opacity**, which is banned as a state signal here
+for the reason § 6 gives: it is unreadable on some grounds and invisible on
+others. The indicator is present from the first painted frame and removed in
+the same commit as the reconciled rows, so the two never disagree.
+
+The revalidate indicator lives in the transcript's FOOT slot, the row reserved
+at the newest edge of the scroller. Not at the oldest edge: inside a
 bottom-anchored `flex-col-reverse` scroller the first child renders thousands of
 pixels above the fold on the transcripts a cache exists for (measured at
 1280x600 on a 36-row stale transcript, top -2028 in a 560px pane), so the state
@@ -1789,28 +1814,18 @@ was indistinguishable from a live one. Not above the scroller either, which is
 where it was hoisted to: a row that exists only while the paint is cached
 changes the scroller's height when it goes (33.4px, measured), and a stale
 paint now PAINTS at once, so that move happens in front of the reader. The foot
-slot exists for every conversation with rows, so the caption's arrival and
+slot exists for every conversation with rows, so the indicator's arrival and
 removal move nothing. The trade: a reader who scrolls up through the cached
-rows during the snapshot wait (median 0.96 s) scrolls the caption off screen.
-The older-history slot is reserved empty while the paint is cached for the same
+rows during the snapshot wait (median 0.96 s) scrolls it off screen. The
+older-history slot is reserved empty while the paint is cached for the same
 reason (`OlderHistorySlotReserve`).
 
 **A loading state is not an empty state.** "There are no messages" is a claim
 about the conversation, and making it before the transcript resolves is how the
 app once flashed "no messages yet" at a populated chat. While a conversation is
-being fetched and nothing has been painted, the pane shows a skeleton: three
-`aria-hidden` bars on `elevated` and an `<output>` (same register as the caption
-above) reading `Loading conversation…`. Never a skeleton **over** painted rows,
-and never the empty state — the skeleton is the honest shape of not knowing.
-
-The bars are drawn on `elevated`, not `sunken`. The bars ARE the entire
-substance of this state, and `sunken` against `canvas` is ΔE00 1.23 in
-obsidian, 1.66 in dune, 1.82 in iceberg and 1.89 in brand-dark — at or below
-the § 3 aim of 2 on nine of the fifty-nine themes (four of the twelve the port
-started from), where the loading state is a black
-pane with one sentence. `check-themes` cannot catch it: it floors grounds at
-1.03:1, which those steps pass. `elevated` measures 6.44 dark / 4.35 light
-against `canvas`, and it is a ground role the palette already owns.
+being fetched and nothing has been painted, the pane shows the cold indicator.
+Never a skeleton **over** painted rows, and never the empty state - the
+indicator is the honest shape of not knowing.
 
 **An arrival must not move anything.** The unseen mark used to be
 `font-semibold` on a row whose title is `flex-1 truncate`, so the marking event

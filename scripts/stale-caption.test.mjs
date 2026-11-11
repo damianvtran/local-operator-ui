@@ -103,7 +103,13 @@ const { CanonicalTranscript } = await import(bundlePath.href);
 // same reason, as `ask-options.test.mjs`.
 await unlink(bundlePath);
 
-const CAPTION = "Showing the last saved view — checking for newer messages.";
+/*
+ * The cached paint's words since 2026-11-11: the shared conversation-loading
+ * indicator's `revalidating` label, which replaced the faint caption ("Showing
+ * the last saved view — checking for newer messages.") the operator reported as
+ * easy to miss and not reading as loading.
+ */
+const CAPTION = "Checking for new messages…";
 
 const TS = 1_760_000_000_000;
 const RECORDS = [
@@ -141,13 +147,19 @@ const TRANSCRIPT = {
  * conversation-gone branch, which replaces the whole status block, is not the
  * one taken.
  */
-function renderPane({ stale, missing = false }) {
+function renderPane({
+	stale,
+	missing = false,
+	remote = false,
+	records = RECORDS,
+	awaitingHydration = false,
+}) {
 	return renderToStaticMarkup(
 		createElement(
 			QueryClientProvider,
 			{ client: queryClient },
 			createElement(CanonicalTranscript, {
-				transcript: TRANSCRIPT,
+				transcript: { ...TRANSCRIPT, records },
 				gate: null,
 				waiting: false,
 				loadingOlder: false,
@@ -158,6 +170,8 @@ function renderPane({ stale, missing = false }) {
 				hydrated: true,
 				stale,
 				missing,
+				remote,
+				awaitingHydration,
 				error: null,
 				onAnswer: () => {},
 			}),
@@ -183,7 +197,7 @@ test("an authoritative paint states no caption at all", () => {
 });
 
 const FOOT_WITH_CAPTION = new RegExp(
-	`data-lo-transcript-foot="true"[^>]*>\\s*<span[^>]*data-lo-stale-caption="true"[^>]*>${CAPTION}</span>`,
+	`data-lo-transcript-foot="true"[^>]*>\\s*<div data-lo-stale-caption="true"><output[^>]*data-lo-conversation-loading="revalidating"[^>]*>[\\s\\S]*?${CAPTION}</span></output></div>`,
 );
 
 test("the caption sits in the foot slot, the row reserved for the working line", () => {
@@ -210,23 +224,69 @@ test("the caption sits in the foot slot, the row reserved for the working line",
 	);
 });
 
-test("the caption is set in the reading face, not the machine face", () => {
+test("the caption is the shared loading indicator, set in the reading face", () => {
 	// A sentence about state is not machine output: the foot slot's own
-	// `font-mono` (the working line's voice) is overridden on the caption.
+	// `font-mono` (the working line's voice) is overridden on the indicator, and
+	// the label takes the status register's size at `ink-muted` - one step above
+	// the `ink-dim` the faint caption sat at.
 	const markup = renderPane({ stale: true });
 	const tag =
-		markup.match(/<span[^>]*data-lo-stale-caption="true"[^>]*>/)?.[0] ?? "";
+		markup.match(
+			/<output[^>]*data-lo-conversation-loading="revalidating"[^>]*>/,
+		)?.[0] ?? "";
 	assert.match(
 		tag,
 		/font-sans/,
-		"the caption overrides the foot slot's monospace",
+		"the indicator overrides the foot slot's monospace",
 	);
-	assert.match(tag, /text-meta/, "and takes the status register's size");
+	assert.match(tag, /aria-label="Loading conversation"/, "a named live region");
 	assert.match(
-		tag,
-		/truncate/,
-		"and stays on one line, inside the reserved row",
+		markup,
+		/data-lo-loading-dot="true"[^>]*animate-pulse-visible|animate-pulse-visible[^>]*data-lo-loading-dot="true"/,
+		"the pulsing dot",
 	);
+	const label =
+		markup.match(new RegExp(`<span class="([^"]*)">${CAPTION}</span>`))?.[1] ??
+		"";
+	assert.match(label, /text-meta/, "the status register's size");
+	assert.match(
+		label,
+		/text-ink-muted/,
+		"at the secondary-text ink, not ink-dim",
+	);
+	assert.match(label, /truncate/, "and one line, inside the reserved row");
+	assert.equal(markup.includes(`text-ink-dim text-meta">${CAPTION}`), false);
+});
+
+test("a peer's cached paint says it is syncing from the other device", () => {
+	const markup = renderPane({ stale: true, remote: true });
+	assert.match(
+		markup,
+		/data-lo-stale-caption="true"><output[^>]*data-lo-conversation-loading="remote"/,
+	);
+	assert.ok(markup.includes("Syncing from your other device…"));
+	assert.equal(count(markup), 0, "one label per state, not both");
+});
+
+test("a cold open renders the same indicator where the rows will land", () => {
+	// No rows and a page owed: the pane holds the indicator in the content
+	// column (`transcriptPaneHoldsPlaceholder`), and for a peer's conversation it
+	// names the sync instead.
+	const cold = renderPane({
+		stale: false,
+		records: [],
+		awaitingHydration: true,
+	});
+	assert.match(cold, /<output[^>]*data-lo-conversation-loading="cold"/);
+	assert.ok(cold.includes("Loading conversation…"));
+	const remote = renderPane({
+		stale: false,
+		records: [],
+		awaitingHydration: true,
+		remote: true,
+	});
+	assert.match(remote, /<output[^>]*data-lo-conversation-loading="remote"/);
+	assert.ok(remote.includes("Syncing from your other device…"));
 });
 
 const RESERVE = /aria-hidden="true" class="@container\/olderhistory /;

@@ -975,34 +975,55 @@ test("a switch re-windows in the same render, and never from an effect again", (
 
 test("the loading indicator stays one small quiet mark", () => {
 	// The operator's shape for this state (2026-09-26): "a small loading indicator
-	// that is non-intrusive". Three pulse bars were the old shape and a regression
-	// to a skeleton would pass every behavioural test in this file, so the shape
-	// has a cheap structural pin too: no `Skeleton` bars, and exactly ONE
-	// indeterminate element (branding.md's "one such element per surface").
-	const placeholder = readFileSync(
-		"src/renderer/src/features/chat/canonical/transcript-placeholder.tsx",
+	// that is non-intrusive"; and (2026-11-11) one consistent, clearly visible
+	// indicator for every conversation-loading case. Three pulse bars were the
+	// old shape and a regression to a skeleton would pass every behavioural test
+	// in this file, so the shape has a cheap structural pin too: no `Skeleton`
+	// bars, and exactly ONE indeterminate element (branding.md's "one such
+	// element per surface").
+	const indicator = readFileSync(
+		"src/renderer/src/features/chat/canonical/conversation-loading-indicator.tsx",
 		"utf8",
 	);
 	assert.ok(
-		!placeholder.includes("<Skeleton"),
-		"the placeholder is a mark and a sentence, not a content sketch",
+		!indicator.includes("<Skeleton"),
+		"the indicator is a mark and a sentence, not a content sketch",
 	);
 	assert.equal(
 		// On the class strings rather than the bare token: the docstring names the
 		// keyframes in prose, and a count over the whole file would be counting the
 		// argument for the rule instead of the element it governs.
-		(placeholder.match(/className="[^"]*animate-pulse-visible/g) ?? []).length,
+		(indicator.match(/className="[^"]*animate-pulse-visible/g) ?? []).length,
 		1,
 		"one indeterminate element per surface",
 	);
 	assert.match(
-		placeholder,
-		// The name comes from the catalogue now (wave B keyed this surface), so the
-		// pin is on the key the region reads, not on an English literal the file no
-		// longer carries; the catalogue's own value is the sentence.
-		/aria-label=\{t\("ui\.chat\.canonical\.placeholder\.region_label"\)\}/,
+		indicator,
+		/aria-label=\{t\("ui\.chat\.canonical\.loading\.region_label"\)\}/,
 		"the live region keeps its name",
 	);
+	// Every conversation-loading site renders THE shared indicator, not a local
+	// copy of it: a second idiom at a call site is how the faint caption and the
+	// separate spinner shipped side by side.
+	const transcript = readFileSync(
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+		"utf8",
+	);
+	const slot = readFileSync(
+		"src/renderer/src/features/chat/canonical/older-history-slot.tsx",
+		"utf8",
+	);
+	assert.equal(
+		(transcript.match(/<ConversationLoadingIndicator\b/g) ?? []).length,
+		2,
+		"the cold placeholder and the stale foot slot both render the shared indicator",
+	);
+	assert.match(
+		slot,
+		/<ConversationLoadingIndicator\s+variant=\{loadingVariant\}/,
+		"the older-history busy arm renders the shared indicator",
+	);
+	assert.ok(!slot.includes("<Spinner"), "and no spinner of its own");
 });
 
 /*

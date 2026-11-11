@@ -17,11 +17,10 @@
  *   edge moved 468px -> 736px the moment the transcript landed. It now renders
  *   in the transcript region, at the same inset and bottom anchor the rows
  *   arrive at, and the composer keeps its settled geometry underneath it.
- * - The bar is `bg-elevated`, not the `Skeleton` default `sunken`: on `canvas`
- *   the default is the system's weakest adjacent pair (deltaE00 1.89 in the
- *   dark brand palette), and a placeholder whose job is to be seen cannot stand
- *   on it. The caption is visible for the same reason - the only words used to
- *   be `sr-only`.
+ * - It is the shared `ConversationLoadingIndicator` (operator 2026-11-11): one
+ *   pulsing `accent` dot and a visible `ink-muted` label, the same element every
+ *   conversation-loading case renders. `Variants` shows all four labels on the
+ *   pane's own ground so they can be judged side by side.
  *
  * The stories mount the SHIPPED component rather than a copy of its markup: a
  * stand-in is how the first version drifted from the app it was documenting.
@@ -29,7 +28,7 @@
 
 import type { Meta, StoryObj } from "@storybook/react";
 import "../../../styles/index.css";
-import { TranscriptPlaceholder } from "../canonical/transcript-placeholder";
+import { ConversationLoadingIndicator } from "../canonical/conversation-loading-indicator";
 import { CHAT_MEASURE } from "../chat-measure";
 
 /** The chat column's ground and the transcript region's own box. */
@@ -85,7 +84,21 @@ export const Settled: Story = {
 export const Hydrating: Story = {
 	render: () => (
 		<Region>
-			<TranscriptPlaceholder />
+			<ConversationLoadingIndicator variant="cold" />
+		</Region>
+	),
+};
+
+/** Every conversation-loading case, one indicator each, on the pane's ground. */
+export const Variants: Story = {
+	render: () => (
+		<Region>
+			<div className="flex flex-col gap-4">
+				<ConversationLoadingIndicator variant="cold" />
+				<ConversationLoadingIndicator variant="revalidating" />
+				<ConversationLoadingIndicator variant="older" />
+				<ConversationLoadingIndicator variant="remote" />
+			</div>
 		</Region>
 	),
 };

@@ -36,7 +36,6 @@
 	"ui.chat.canonical.transcript.reconnecting": "正在重新连接",
 	"ui.chat.canonical.transcript.send_again": "重新发送",
 	"ui.chat.canonical.transcript.source_unavailable": "此对话仍可读取，但暂时无法与来源确认消息顺序。",
-	"ui.chat.canonical.transcript.stale_caption": "显示上次保存的视图——正在检查新消息。",
 	"ui.chat.canonical.transcript.start_new_chat": "开始新对话",
 	"ui.chat.canonical.transcript.stopped_before_finishing": "生成在完成前停止",
 	"ui.chat.canonical.send_failure.unconfirmed": "无法确认消息是否已发送，可以安全地重新发送。",
@@ -63,7 +62,6 @@
 	"ui.chat.canonical.older_history.failed.short": "加载失败",
 	"ui.chat.canonical.older_history.failed.long": "无法加载更早的消息",
 	"ui.chat.canonical.older_history.try_again": "再试一次",
-	"ui.chat.canonical.older_history.loading": "正在加载更早的消息",
 	"ui.chat.canonical.older_history.load": "加载更早的消息",
 	"ui.chat.canonical.older_history.windowed.title": "上方有更早的历史记录",
 	"ui.chat.canonical.older_history.windowed.title_gesture": "上方有更早的历史记录——向上滚动即可加载",
@@ -71,8 +69,6 @@
 	"ui.chat.canonical.older_history.unproven.short": "更早内容未加载",
 	"ui.chat.canonical.older_history.unproven.long": "更早的历史记录未加载",
 	"ui.chat.canonical.older_history.conversation_start": "对话开始",
-	"ui.chat.canonical.placeholder.loading": "正在加载对话……",
-	"ui.chat.canonical.placeholder.region_label": "正在加载对话",
 	"ui.chat.canonical.tool_row.generic_verb.running": "正在调用",
 	"ui.chat.canonical.tool_row.generic_verb.settled": "已调用",
 	"ui.chat.canonical.tool_row.outcome.failed": "失败",
@@ -440,5 +436,10 @@
 	"ui.chat.canonical.notice.compaction_not_run_after_colon": "上下文压缩未执行——{detail}",
 	"ui.chat.canonical.link_toolkit.actions_for": "{name}的操作",
 	"ui.chat.canonical.tool.never_sent_composed": "未发送 · 已编写{size}",
-	"ui.chat.canonical.tool.never_sent_empty": "未发送 · 未编写内容"
+	"ui.chat.canonical.tool.never_sent_empty": "未发送 · 未编写内容",
+	"ui.chat.canonical.loading.cold": "正在加载对话……",
+	"ui.chat.canonical.loading.older": "正在加载更早的消息……",
+	"ui.chat.canonical.loading.region_label": "正在加载对话",
+	"ui.chat.canonical.loading.remote": "正在从另一台设备同步……",
+	"ui.chat.canonical.loading.revalidating": "正在检查新消息……"
 }
