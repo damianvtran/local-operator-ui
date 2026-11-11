@@ -1,0 +1,85 @@
+{
+ "schema": 1,
+ "instance": "60da9ca1b9fc",
+ "locale": "fr",
+ "namespace": "ui.chat.canonical",
+ "audit_date": "2026-11-11",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "instance": "60da9ca1b9fc",
+  "model": "deepseek/deepseek-flash",
+  "independent_from_translator_session": true,
+  "actual_model_source": "as stated in the auditor's own report record block (session runtime model header); no fallback was reported"
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "scope": "whole ui.chat.canonical namespace for fr (442 keys) at commit 659ef7e44b7c, the COMBINED bytes of #1861 rebased on #1862; semantic focus on the 2 tool.never_sent_* keys",
+ "sha256": {
+  "fr": "cea935cd4e6ba5627ffe19b4b129d4dd7f0ef60b3e8de96fa0bc1a48ca6249f1",
+  "en": "38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3",
+  "context": "c258ab485de698eec85e81ffed506866e3b1e8caf29cb3ff434901388065b390"
+ },
+ "findings": [
+  {
+   "severity": "MINOR",
+   "id": "M1",
+   "key": "ui.chat.canonical.tool.never_sent_composed",
+   "detail": "delta key: adds \"texte\" absent from the source and a second delimiter; proposal `jamais envoyé · {size} rédigé`, or keep as is"
+  },
+  {
+   "severity": "MINOR",
+   "id": "M2",
+   "key": "ui.chat.canonical.tool_row.bridge.fallback.conversation",
+   "detail": "pre-existing: definite \"cette conversation\" vs indefinite sidecar instruction; proposal `une conversation`"
+  },
+  {
+   "severity": "MINOR",
+   "id": "M3",
+   "key": "ui.chat.canonical.tool_row.verb.retrieved_secret.running",
+   "detail": "pre-existing (#1862 set): \"Chargement/Chargé\" = load, not retrieve; also .settled"
+  },
+  {
+   "severity": "MINOR",
+   "id": "M4",
+   "key": "ui.chat.canonical.tool_row.bridge.verb.directory.failed",
+   "detail": "pre-existing (#1862 set): \"l’annuaire\" vs \"l’annuaire de l’équipe\" across failed/running/settled"
+  },
+  {
+   "severity": "MINOR",
+   "id": "M5",
+   "key": "ui.chat.canonical.tool_row.bridge.verb.shared_history.settled",
+   "detail": "pre-existing: \"Lu dans la conversation partagée\" shifts meaning; proposal `Conversation partagée lue`"
+  },
+  {
+   "severity": "MINOR",
+   "id": "M6",
+   "key": "ui.chat.canonical.supplement.file_actions.reveal_in_finder",
+   "detail": "pre-existing, cross-file: `Afficher dans Finder` vs fr/ui.library.json `Afficher dans le Finder`"
+  },
+  {
+   "severity": "NIT",
+   "id": "N1",
+   "key": "ui.chat.canonical.tool_row.diff.more",
+   "detail": "pre-existing: no `many` arm for fr (also .truncated)"
+  },
+  {
+   "severity": "NIT",
+   "id": "N2",
+   "key": "ui.chat.canonical.tool_row.verb.raised_panic.running",
+   "detail": "pre-existing (#1862 set): rendering defensible; also .settled"
+  },
+  {
+   "severity": "NIT",
+   "id": "N3",
+   "key": "ui.chat.canonical.fold.count.actions_partial",
+   "detail": "mechanical, pre-existing: key order position 249 vs 241 in English"
+  }
+ ],
+ "provenance": {
+  "kind": "BINDING RECEIPT: the verdict, counts, model and session are transcribed from the auditor's own report; this file was written by the integrating coder session (agent coder), NOT by the auditor. Finding ids/keys/headlines are lifted from the report; the report is authoritative for detail.",
+  "source_report": {
+   "path": "i18n/audits/evidence/fr/ui.chat.canonical/au-1861-fr/report.md",
+   "sha256": "42733265174ae99d6156b046c6dbad0726608b1d2123688da5b9b415cdd1e8f4"
+  }
+ }
+}

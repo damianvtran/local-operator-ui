@@ -1,0 +1,25 @@
+{
+ "schema": 1,
+ "authored_by": "integrating coder session (agent coder), NOT the auditor",
+ "purpose": "Lands the independent combined-bytes audit of ui.chat.canonical (#1861 rebased onto #1862) as portable evidence; the auditor's own files are untouched.",
+ "locale": "es",
+ "namespace": "ui.chat.canonical",
+ "candidate_commit": "659ef7e44b7ccb4800e9853ef355ea58b49854cc",
+ "auditor_session": "075c98e61fad",
+ "auditor_model": "deepseek/deepseek-flash",
+ "ledger_receipt": "i18n/receipts/au1861es-combined-659ef7e4.json",
+ "files": {
+  "receipt.json": {
+   "sha256": "ddba0171eb961b17884981683de5b9d5608df145d2a065c0403131bebf9099b1",
+   "origin": "auditor-authored for es, ru, zh-CN (bytes unchanged); INTEGRATOR-TRANSCRIBED for fr, hi, vi, ur (see its provenance block)"
+  },
+  "report.md": {
+   "sha256": "4ecb0e646de2ea8c1098c73879402e1ff720ded6f7722f5dcb15a02b00688f7a",
+   "origin": "auditor report, copied byte-for-byte from the auditor session scratchpad"
+  },
+  "verify.log": {
+   "sha256": "afa82c57e06a8d0e27d268c69d627614b0465ddeb42dbfc7ede367590ff3ab2e",
+   "origin": "INTEGRATOR re-check, not the auditor"
+  }
+ }
+}
