@@ -2900,8 +2900,13 @@ function connectionsTo(pid, url) {
 		return { measured: false, detail: `cannot parse ${url}` };
 	}
 	return new Promise((resolveProbe) => {
+		// WHY per platform: Linux distributions install lsof at /usr/bin/lsof,
+		// so the macOS-only /usr/sbin path made Linux native-artifact QA report
+		// an installed probe as "lsof unavailable" and leave isolation unmeasured.
+		// Still an absolute path (no PATH lookup); a missing binary still fails
+		// closed through the error handlers below.
 		const probe = spawn(
-			"/usr/sbin/lsof",
+			process.platform === "linux" ? "/usr/bin/lsof" : "/usr/sbin/lsof",
 			["-a", "-p", String(pid), "-i", "-n", "-P"],
 			{
 				stdio: ["ignore", "pipe", "ignore"],

@@ -66,6 +66,17 @@ test("diff-history is registered, guarded, and opt-in by name only", () => {
 	assert.match(driver, /const SCENE = argValue\("--scene", "states"\);/);
 });
 
+test("the connection probe picks lsof's absolute path per platform", () => {
+	const driver = readFileSync("scripts/renderer-driver.mjs", "utf8");
+	// Linux installs lsof at /usr/bin; macOS keeps /usr/sbin. Both absolute,
+	// and the args that scope the probe to one pid are unchanged.
+	assert.match(
+		driver,
+		/spawn\(\n\t+process\.platform === "linux" \? "\/usr\/bin\/lsof" : "\/usr\/sbin\/lsof",\n\t+\["-a", "-p", String\(pid\), "-i", "-n", "-P"\],/,
+	);
+	assert.doesNotMatch(driver, /spawn\(\n\t+"\/usr\/sbin\/lsof",/);
+});
+
 test("the range label parses, grouped or not", () => {
 	assert.deepEqual(parseRange("Rows 201–263 of 263"), {
 		first: 201,
@@ -80,30 +91,55 @@ test("the range label parses, grouped or not", () => {
 	assert.equal(parseRange(""), null);
 });
 
-test("a fixture with no View full diff control FAILS, through existing verbs only", async () => {
+test("a fixture with no View full diff control FAILS, records its frame, through existing verbs only", async () => {
 	const verbs = [];
 	const checks = [];
+	const frames = [];
+	const notes = [];
+	const evaluated = [];
 	await sceneDiffHistory({
-		cdp: { evaluate: async () => ({ open: false, viewFull: 0 }) },
+		cdp: {
+			evaluate: async (expr) => {
+				evaluated.push(expr);
+				return { open: false, viewFull: 0 };
+			},
+		},
 		verb: async (_cdp, name, payload) => {
 			verbs.push([name, payload]);
-			return { ok: true };
+			return name === "queries"
+				? [
+						{ key: '["ok"]', status: "success", hasData: true },
+						{ key: '["diff"]', status: "error", hasData: false },
+					]
+				: { ok: true };
 		},
-		capture: async () => {
-			throw new Error("nothing to photograph before the control exists");
-		},
+		capture: async (_cdp, name) => frames.push(name),
 		check: (label, passed) => checks.push([label, passed]),
-		note: () => {},
+		note: (label, detail) => notes.push([label, detail]),
 		waitForCondition: async () => ({ ok: false, last: null }),
 		factsOf: async () => ({ windowMode: "headless" }),
 		session: "fc00000000a1",
 	});
 	assert.deepEqual(
 		verbs.map(([name]) => name),
-		["hello", "navigate"],
+		["hello", "navigate", "queries"],
 	);
 	assert.deepEqual(verbs[1], ["navigate", "/chat/fc00000000a1"]);
 	assert.ok(
 		checks.length > 0 && checks.every(([, passed]) => passed === false),
 	);
+	// The failure leaves evidence, and only the failure frame: no pager step ran.
+	assert.deepEqual(frames, ["diff-history-no-offer"]);
+	const queryNote = notes.find(([l]) => l === "diff-history no-offer queries");
+	assert.deepEqual(JSON.parse(queryNote[1]), {
+		count: 2,
+		notSuccess: [{ key: '["diff"]', status: "error", hasData: false }],
+	});
+	assert.ok(notes.some(([l]) => l === "diff-history no-offer dom"));
+	// Read-only: no input values, markup dumps or DOM writes in what it evaluates.
+	for (const expr of evaluated)
+		assert.doesNotMatch(
+			expr,
+			/\.value\b|innerHTML|outerHTML|setAttribute|\.click\(|dispatchEvent|\.remove\(|localStorage|cookie/,
+		);
 });

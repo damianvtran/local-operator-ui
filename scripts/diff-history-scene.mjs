@@ -7,7 +7,8 @@
  * WHY THIS EXISTS. The pager (`diff-history.tsx`) is covered by model and
  * contract tests, and bare Vite cannot mount `App` without the preload bridge,
  * so nothing had pressed its controls in the real renderer. This scene composes
- * ONLY the existing verbs (`hello`, `navigate`, `press`) plus `capture` and DOM
+ * ONLY the existing verbs (`hello`, `navigate`, `press`, and `queries` on the
+ * no-offer failure path) plus `capture` and DOM
  * reads: no new verb, no state written into React, no synthetic page. The
  * history it pages is whatever the seeded session's daemon serves.
  *
@@ -62,6 +63,29 @@ const READ = `(() => {
 		zeroBoxes: rows.filter((el) => { const r = el.getBoundingClientRect(); return r.width === 0 || r.height === 0; }).length,
 		viewport: { w: innerWidth, h: innerHeight },
 		focus: active ? active.tagName.toLowerCase() + (active.textContent ? ":" + active.textContent.slice(0, 40) : "") : null,
+	};
+})()`;
+
+/**
+ * What the session route painted when no View full diff control appeared.
+ * Read-only and bounded: route, title, readiness, and the visible controls'
+ * accessible names, roles and geometry. Never input values, innerHTML or
+ * attribute dumps: the frame beside it shows the rest, and this must stay
+ * safe to note even for a session that is not a synthetic fixture.
+ */
+export const NO_OFFER_READ = `(() => {
+	const cut = (s, n) => (s ?? "").replace(/\\s+/g, " ").trim().slice(0, n);
+	const seen = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+	const controls = [...document.querySelectorAll("button, [role=button], summary, a[href], [aria-expanded]")].filter(seen);
+	return {
+		route: location.hash || location.pathname,
+		title: cut(document.title, 80),
+		readyState: document.readyState,
+		viewFull: document.querySelectorAll(${JSON.stringify(VIEW_FULL)}).length,
+		diffRegions: document.querySelectorAll("[data-diff-line], [data-diff-history]").length,
+		controlCount: controls.length,
+		controls: controls.slice(0, 40).map((el) => { const r = el.getBoundingClientRect(); return { tag: el.tagName.toLowerCase(), type: el.getAttribute("type"), name: cut(el.getAttribute("aria-label") || el.textContent, 60), expanded: el.getAttribute("aria-expanded"), state: el.getAttribute("data-state"), box: [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)] }; }),
+		text: cut(document.querySelector("main")?.innerText ?? document.body?.innerText, 600),
 	};
 })()`;
 
@@ -141,7 +165,36 @@ export async function sceneDiffHistory({
 		`Boolean(document.querySelector(${JSON.stringify(VIEW_FULL)}))`,
 		"the seeded session offers a View full diff control",
 	);
-	if (!offered) return;
+	if (!offered) {
+		// WHY a frame on failure: native QA failed here with nothing to look at,
+		// so whether the diff block was collapsed, the route was wrong, a query
+		// failed or the paint broke was guesswork. The frame and these read-only
+		// facts are evidence for fixing the real nested view; they never mask the
+		// missing control: the settle above already recorded the FAIL and the
+		// scene still stops before any pager step.
+		await capture(cdp, "diff-history-no-offer");
+		note(
+			"diff-history no-offer dom",
+			JSON.stringify(await cdp.evaluate(NO_OFFER_READ)),
+		);
+		const queries = await verb(cdp, "queries");
+		const list = Array.isArray(queries) ? queries : [];
+		note(
+			"diff-history no-offer queries",
+			JSON.stringify({
+				count: list.length,
+				notSuccess: list
+					.filter((q) => q.status !== "success")
+					.slice(0, 20)
+					.map((q) => ({
+						key: String(q.key).slice(0, 120),
+						status: q.status,
+						hasData: q.hasData,
+					})),
+			}),
+		);
+		return;
+	}
 	await capture(cdp, "diff-history-preview");
 	if (!(await openFull("first open"))) return;
 	const first = await page("page-first");
