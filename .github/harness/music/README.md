@@ -45,8 +45,9 @@ RTL frame. Independent QA/design must judge those retained dimensions separately
 
 ## Bounds, identity and isolation
 
-- Core source is pinned to `5558d4c032748c238ac8ee4aac838df0ddecba62` (Core PR #3780 head, music tracks in
-  turn highlights; repinned to its merge SHA before #1800 merges),
+- Core source is pinned to `57d2fb95862a523f603cd999512056da9064a23a` (Core PR #3780 final head, music
+  tracks in turn highlights; reachable from Core main after #3780's merge
+  commit, so no further repin is needed),
   not stock main; worker bootstrap checks the installed module path inherited
   from that installation. Only the MODEL boundary emits scripted real tool calls.
 - Each execution owns HOME/config/cache/log/TMP/userdata/cwd beneath runner temp.

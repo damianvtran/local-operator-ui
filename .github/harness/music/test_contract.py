@@ -30,7 +30,7 @@ class PortableContracts(unittest.TestCase):
         self.assertIn("default: 'off'", text)
         self.assertIn("inputs.music_acceptance_mode == 'native'", text)
         self.assertIn("steps.music_core_preflight.outcome == 'success'", text)
-        self.assertIn('5558d4c032748c238ac8ee4aac838df0ddecba62', text)
+        self.assertIn('57d2fb95862a523f603cd999512056da9064a23a', text)
         self.assertIn('--memory-mb 1536', text)
         self.assertIn('--native-after-preflight', text)
 
