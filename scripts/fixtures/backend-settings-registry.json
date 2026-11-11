@@ -2390,6 +2390,41 @@
 					"value": "en",
 					"label": "en",
 					"description": ""
+				},
+				{
+					"value": "fr",
+					"label": "fr",
+					"description": ""
+				},
+				{
+					"value": "es",
+					"label": "es",
+					"description": ""
+				},
+				{
+					"value": "zh-CN",
+					"label": "zh-CN",
+					"description": ""
+				},
+				{
+					"value": "ru",
+					"label": "ru",
+					"description": ""
+				},
+				{
+					"value": "vi",
+					"label": "vi",
+					"description": ""
+				},
+				{
+					"value": "ur",
+					"label": "ur",
+					"description": "Terminal: best effort; requires bidi and Arabic shaping."
+				},
+				{
+					"value": "hi",
+					"label": "hi",
+					"description": ""
 				}
 			],
 			"empty_unsets": false,
