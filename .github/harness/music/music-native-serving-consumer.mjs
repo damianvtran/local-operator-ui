@@ -40,6 +40,13 @@ function note(stage,value){results.stages.push({stage,value});writeFileSync(join
 async function control(action,details={}){let id=Date.now()+':'+action;writeFileSync(join(root,'native-control.json'),JSON.stringify({id,action,...details}));for(let i=0;i<300;i++){let p=join(root,'native-control-result.json');if(existsSync(p)){let x=JSON.parse(readFileSync(p));if(x.id===id){if(x.error)throw Error(x.error);return x}}await pause(100)}throw Error('Serving graph control timed out '+action)}
 async function facts(){return await cdp.evaluate(`({route:location.hash,viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio},processing:[...document.querySelectorAll('[data-music-processing]')].map(x=>({width:x.getBoundingClientRect().width,height:x.getBoundingClientRect().height})),results:document.querySelectorAll('[data-music-result]').length,tracks:[...document.querySelectorAll('[data-music-track]')].map(x=>x.getAttribute('data-music-track')),audio:[...document.querySelectorAll('audio')].map(x=>({paused:x.paused,currentTime:x.currentTime,duration:x.duration})),buttons:[...document.querySelectorAll('button')].map(x=>({label:x.getAttribute('aria-label'),text:x.textContent?.trim().slice(0,100)})).filter(x=>x.label||x.text)})`)}
 async function frame(label){note(label+'-facts',await facts());note(label,await d.capture(cdp,label,{assertPalette:false}));}
+// Design D5 / QA Q3: a frame must show the state it is named for. The transcript
+// stays pinned to its tail, so a card higher up (the late result, the partial and
+// zero receipts, the producing turn's highlight cell) was proven by DOM facts but
+// captured out of view. Centre the element the preceding observed() located before
+// capturing; `instant` so the frame never lands mid smooth-scroll. Framing only:
+// the outcome is noted, never asserted, so no acceptance condition changes.
+async function reveal(label,selector,closest=null){note(label+'-reveal',await cdp.evaluate(`(()=>{let e=document.querySelector(${JSON.stringify(selector)});if(e&&${JSON.stringify(closest)})e=e.closest(${JSON.stringify(closest)})||e;if(!e)return {found:false};e.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});const r=e.getBoundingClientRect();return {found:true,top:r.top,bottom:r.bottom,viewport:innerHeight}})()`));await pause(150);}
 async function pressLabel(match){const label=await cdp.evaluate(`(()=>{let b=[...document.querySelectorAll('button[aria-label]')].find(x=>${match}.test(x.getAttribute('aria-label')||''));return b?.getAttribute('aria-label')||null})()`);if(!label)return false;await d.verb(cdp,'press',{selector:'button[aria-label='+JSON.stringify(label)+']'});return true;}
 try{
  context=d.prepareDriverContext({apiUrl:'http://127.0.0.1:8080'});
@@ -105,7 +112,7 @@ try{
   note('late_result_extended',{expected_card:lateOutcome,track,first_seen:lateFirst,watched_ms:Date.now()-lateStarted,asserted_bound_ms:10000});
   throw e;
  }finally{note('late_result_timeline',{expected_card:lateOutcome,track,first_seen:lateFirst,samples:lateTimeline});}
- await frame('music-late-result');
+ await reveal('music-late-result',pendingCard);await frame('music-late-result');
  // 230bede pins a detached music call OUT of its turn's "N actions" bar
  // (ownsDetachedMusicJob/groupSplitterOf), so no summary lists it: the producing call
  // is the record row owning the pending job's inline card — an observed id, never a
@@ -129,9 +136,9 @@ try{
  const committed=await d.verb(cdp,'soundsScrubFinish');demand('Actual pointerup commits seek',committed.committed===true);await frame('music-seek-committed');
  await d.verb(cdp,'press',{selector:player+' > button'});await observed('actual_player_pause',()=>d.verb(cdp,'soundsFacts'),x=>x.paused);
  await d.verb(cdp,'press',{selector:player+' > button'});await d.verb(cdp,'soundsEnd');await observed('actual_player_end',()=>d.verb(cdp,'soundsFacts'),x=>x.status==='ended'&&x.paused);await frame('music-player-ended');
- const partial=await control('start_partial');note('partial_record',partial.record);await observed('visible_partial_receipt',()=>facts(),x=>partial.record.tracks.every(v=>x.tracks.includes(v.id)));await frame('music-partial');
+ const partial=await control('start_partial');note('partial_record',partial.record);await observed('visible_partial_receipt',()=>facts(),x=>partial.record.tracks.every(v=>x.tracks.includes(v.id)));await reveal('music-partial','[data-music-track='+JSON.stringify(partial.record.tracks[0].id)+']:not([data-turn-summary] *)','[data-music-result]');await frame('music-partial');
  demand('Actual partial receipt retains billed success and zero failed sibling',partial.record.artifacts.length===1&&partial.record.tracks.some(x=>x.cost.amount_usd===0)&&partial.record.tracks.some(x=>x.cost.basis==='billed'&&x.cost.units===3000&&Math.round(x.cost.amount_usd*1e6)===7500));
- const failed=await control('start_failed');note('failed_record',failed.record);await observed('visible_failed_receipt',()=>facts(),x=>x.tracks.includes(failed.record.tracks[0].id));await frame('music-settled-zero');demand('Actual failed settlement is zero, with no playable artifact',failed.record.artifacts.length===0&&failed.record.tracks[0].cost.amount_usd===0&&failed.record.tracks[0].cost.basis==='billed');
+ const failed=await control('start_failed');note('failed_record',failed.record);await observed('visible_failed_receipt',()=>facts(),x=>x.tracks.includes(failed.record.tracks[0].id));await reveal('music-settled-zero','[data-music-track='+JSON.stringify(failed.record.tracks[0].id)+']:not([data-turn-summary] *)','[data-music-result]');await frame('music-settled-zero');demand('Actual failed settlement is zero, with no playable artifact',failed.record.artifacts.length===0&&failed.record.tracks[0].cost.amount_usd===0&&failed.record.tracks[0].cost.basis==='billed');
  // Authoritative inventory supplies service-row IDs and digest document identity.
  const zeroTrack=failed.record.tracks[0].id;
  await observed('visible_zero_is_billed_not_unknown',()=>cdp.evaluate(`(()=>{const e=document.querySelector('[data-music-track="'+${JSON.stringify(zeroTrack)}+'"]:not([data-turn-summary] *)');const r=e?.getBoundingClientRect();return {text:e?.textContent||'',width:r?.width||0,height:r?.height||0,players:e?.querySelectorAll('[data-sound-player]').length??-1}})()`),x=>x.width>0&&x.height>0&&x.players===0&&x.text.includes('$0')&&x.text.includes('(billed)')&&!x.text.toLowerCase().includes('unknown'));
@@ -173,7 +180,7 @@ try{
  const highlightSelector=await observed('actual_same_turn_highlight',()=>cdp.evaluate(`(()=>{const owners=${turnOwners};let cells=[...new Set(owners.flatMap(e=>[...e.querySelectorAll('[data-supplement-sounds] > [data-supplement-sound]')]))];const cell=cells.find(e=>e.querySelector('[data-supplement-sound-title]')?.textContent?.includes(${JSON.stringify(R.name)}));if(!cell)return null;const e=cell.querySelector('[data-sound-player] > button');if(!e)return null;let path='';for(let n=e;n&&n.parentElement;n=n.parentElement){path=n.tagName.toLowerCase()+':nth-child('+([...n.parentElement.children].indexOf(n)+1)+')'+(path?' > '+path:'');}return 'html > '+path;})()`),Boolean);
  await d.verb(cdp,'press',{selector:highlightSelector});
  await observed('same_turn_highlight_digest_playback',()=>d.verb(cdp,'soundsFacts'),x=>x.ownerId==='sound:'+D&&!x.paused&&x.time>.2&&x.src?.startsWith('blob:'));
- await frame('music-highlights');
+ await reveal('music-highlights',highlightSelector,'[data-supplement-sound]');await frame('music-highlights');
  note('coverage',{serving_graph:'asserted',seek:'asserted',reduced_motion:'asserted',error_state:'asserted',files:'Core content-addressed row (one per digest, touches>=2) + visible indexed digest row',canvas:'actual row onOpen + selected tab/panel + digest playback',highlights:'actual producing run/cell + same digest playback',sfx_neighbor:'RETAINED component presentation only: parent verified R2 sound-player blob2f0fbd5bf83149744d486bbd1c020d65b1626239; no new SFX generation claim',rtl:'RETAINED JobsCancelRtl/Urdu confirmation presentation with source/catalogue compatibility; no full-App RTL claim',acceptance:'Native predicates executed; retained dimensions still require independent QA/design judgment'});
 
 }catch(e){note('blocked',String(e));process.exitCode=1;
