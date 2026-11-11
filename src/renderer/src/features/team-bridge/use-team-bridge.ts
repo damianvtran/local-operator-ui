@@ -169,6 +169,11 @@ export function useTeamBridgeConversations(
 			),
 		enabled: enabled && Boolean(accountId),
 		staleTime: 15_000,
+		/* Kept as long as the timelines it leads into (bridge-instant-load S3b):
+		   the page unmounts when the reader leaves Team Bridge, and the app-wide
+		   10-minute default would drop a one-organization list the next visit
+		   paints from. Rows only — no message body is in this entry. */
+		gcTime: TEAM_BRIDGE_HISTORY_GC_MS,
 		refetchOnWindowFocus: true,
 	});
 }
@@ -1375,11 +1380,17 @@ export function useMarkTeamBridgeRead(
 			 * invalidations below dispatch their own, post-clear reads.
 			 */
 			cancelTeamBridgeUnreadReads(client, target.accountId);
-			await client.invalidateQueries({
-				queryKey: teamBridgeKeys.conversationsPrefix,
-			});
-			if (!target.isCurrent()) return;
-			await client.invalidateQueries({ queryKey: teamBridgeKeys.unreadPrefix });
+			/* BOTH AT ONCE (bridge-instant-load). The two reads are independent and
+			   the optimistic patch is already on screen; awaiting the list before
+			   even dispatching the badge read put a whole list round trip in front
+			   of it on every open. Both dispatch while the owner check above holds,
+			   and each read carries its own `readForBridgeOwner` fence. */
+			await Promise.all([
+				client.invalidateQueries({
+					queryKey: teamBridgeKeys.conversationsPrefix,
+				}),
+				client.invalidateQueries({ queryKey: teamBridgeKeys.unreadPrefix }),
+			]);
 		},
 	});
 	return bindBridgeMutation(mutation, () => ({
@@ -1524,11 +1535,17 @@ export function useMarkTeamBridgeThreadRead(
 		onSuccess: async (_data, { target }) => {
 			if (!target.isCurrent() || !target.accountId) return;
 			cancelTeamBridgeUnreadReads(client, target.accountId);
-			await client.invalidateQueries({
-				queryKey: teamBridgeKeys.conversationsPrefix,
-			});
-			if (!target.isCurrent()) return;
-			await client.invalidateQueries({ queryKey: teamBridgeKeys.unreadPrefix });
+			/* BOTH AT ONCE (bridge-instant-load). The two reads are independent and
+			   the optimistic patch is already on screen; awaiting the list before
+			   even dispatching the badge read put a whole list round trip in front
+			   of it on every open. Both dispatch while the owner check above holds,
+			   and each read carries its own `readForBridgeOwner` fence. */
+			await Promise.all([
+				client.invalidateQueries({
+					queryKey: teamBridgeKeys.conversationsPrefix,
+				}),
+				client.invalidateQueries({ queryKey: teamBridgeKeys.unreadPrefix }),
+			]);
 		},
 	});
 	const boundThreadRead = bindBridgeMutation(threadRead, () => ({

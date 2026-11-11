@@ -224,6 +224,11 @@ import {
 	usePendingSends,
 } from "./team-bridge-pending-sends";
 import {
+	prefetchTeamBridgeConversationNow,
+	prefetchTeamBridgeConversations,
+	teamBridgePrefetchCandidates,
+} from "./team-bridge-prefetch";
+import {
 	TeamBridgeAvatar,
 	TeamBridgeProfileCard,
 } from "./team-bridge-profile-card";
@@ -729,6 +734,9 @@ export type TeamBridgePageViewProps = {
 	 * not model a refresh.
 	 */
 	refreshingRows?: boolean;
+	/** A conversation row the reader is about to open (hover, press, focus): the
+	 * container warms its first history page. Absent in stories. */
+	onConversationIntent?: (conversation: TeamBridgeConversation) => void;
 	/**
 	 * The unread read is in flight behind painted rows. The count is the one number
 	 * a reader acts on, so it is reported separately from `refreshingRows` rather
@@ -1087,6 +1095,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	peopleIncomplete = false,
 	refreshingRows = false,
 	refreshingUnread = false,
+	onConversationIntent,
 	onRetryPeople,
 	onRetryMembers,
 	eligibility = null,
@@ -2895,6 +2904,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					}
 					onSelect={() =>
 						selectTarget({ type: "conversation", id: conversation.id })
+					}
+					onIntent={
+						onConversationIntent
+							? () => onConversationIntent(conversation)
+							: undefined
 					}
 					menu={menuFor(conversation)}
 				/>
@@ -5491,6 +5505,31 @@ const TeamBridgeOwnedPage: FC<{
 	 * keeps the controls out of action. What a verdict adds is the surface itself,
 	 * not permission to show rows the account already held.
 	 */
+	/*
+	 * WARM THE LIKELY NEXT CLICKS (bridge-instant-load S3a). The scope's own list
+	 * answer queues first-page reads for its unread and recent conversations that
+	 * have no cached timeline yet; a row the pointer reaches is moved to the
+	 * front. Only AUTHORITATIVE rows (`list.data`), never the opening snapshot:
+	 * the snapshot is the watcher's, and the watcher already warms from it. Same
+	 * gate as every other read here (`readsEnabled`); the shared query function
+	 * re-fences each read on its owner.
+	 */
+	const authoritativeRows = list.data?.conversations;
+	useEffect(() => {
+		if (!readsEnabled || !authoritativeRows) return;
+		prefetchTeamBridgeConversations(
+			client,
+			accountId,
+			teamBridgePrefetchCandidates(authoritativeRows),
+		);
+	}, [readsEnabled, authoritativeRows, client, accountId]);
+	const warmConversation = useCallback(
+		(conversation: TeamBridgeConversation) => {
+			if (readsEnabled)
+				prefetchTeamBridgeConversationNow(client, accountId, conversation);
+		},
+		[readsEnabled, client, accountId],
+	);
 	const paintedRows = conversations.length > 0;
 	const cachedPaint = gatePending && paintedRows;
 	/*
@@ -6631,6 +6670,7 @@ const TeamBridgeOwnedPage: FC<{
 				totalUnread={unread.data ? unreadView.total : 0}
 				refreshingRows={refreshingRows}
 				refreshingUnread={refreshingUnread}
+				onConversationIntent={warmConversation}
 				membershipsLoading={organizationsPending}
 				organizationsFailed={organizationsFailed}
 				selfAccountId={selfAccountId}
