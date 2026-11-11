@@ -23,6 +23,39 @@ import { build } from "esbuild";
  *    and the draft kept when the gate refuses.
  */
 
+/*
+ * The regexes, at MODULE scope (`lint/performance/useTopLevelRegex`): a literal
+ * inside a test callback is compiled on every call, and the scripts lint gate
+ * holds every touched file in `scripts/` to the whole of `biome check`.
+ */
+const DESKTOP_API_MODULE_RE = /@shared\/api\/local-operator\/desktop-api/;
+const CANONICAL_SESSION_HOOK_RE = /@shared\/hooks\/use-canonical-session/;
+const DESKTOP_HOOKS_MODULE_RE = /@shared\/api\/local-operator\/desktop-hooks/;
+const ANY_MODULE_RE = /.*/;
+const QUERY_CLIENT_MODULE_RE = /@shared\/api\/query-client/;
+const OPTIONAL_QUERY_CLIENT_HOOK_RE =
+	/@shared\/hooks\/use-optional-query-client/;
+const CONNECTION_RESET_RE = /connection reset/;
+const SEND_KEY_OF_CALL_RE = /sendKeyOf\(/;
+const INLINE_ENTER_EVENT_RE = /event\.key === "Enter" &&/;
+const INLINE_ENTER_KEY_RE = /e\.key === "Enter" &&/;
+const NATIVE_COMPOSING_RE = /isComposing: e\.nativeEvent\.isComposing/;
+const EVALUATE_BUSY_SEND_CALL_RE =
+	/evaluateBusySend\(\s*\{\s*chordDelivery: delivery \?\? null,\s*settings: busyDefaultQuery\.data\?\.settings,\s*busy: turnAliveRef\.current,\s*busyDeliverySupported,\s*\}\)/;
+const DELIVERY_VALUE_READ_RE = /const deliveryValue = evaluation\.delivery;/;
+const DELIVERY_ON_BODY_RE = /\bdelivery: deliveryValue,/;
+const BUSY_MODE_ON_BODY_RE = /\bbusyMode: evaluation\.waitMode \?\? undefined,/;
+const NOTE_BUSY_SEND_CALL_RE =
+	/noteBusySend\(\s*admissionRequestId,\s*busySend \? bodyMode : undefined,?\s*\)/;
+const EVALUATE_BUSY_SEND_RE = /evaluateBusySend\(/;
+const BUSY_DEFAULT_FROM_SETTINGS_RE = /busyDefaultFromSettings\(/;
+const DESKTOP_SETTINGS_KEY_RE = /desktopKeys\.settings/;
+const LIVE_TURN_FLAG_RE = /busy: turnAliveRef\.current/;
+const STALE_TIME_WIRING_RE = /staleTime: BUSY_DEFAULT_STALE_TIME/;
+const BUSY_DEFAULT_MODE_PROP_RE = /\bbusyDefaultMode,\s*\n\s*\t*stopOutcome,/;
+const BUSY_DEFAULT_MODE_FORWARD_RE =
+	/busyDefaultMode=\{canonical\?\.busyDefaultMode\}/;
+
 // The store side of this suite mirrors canonical-chat.test.mjs's fixture: the
 // network is faked, the registry and the store are the shipped modules.
 const values = new Map();
@@ -68,51 +101,54 @@ const bundle = await build({
 		{
 			name: "busy-delivery-transport-fixture",
 			setup(builder) {
-				builder.onResolve(
-					{ filter: /@shared\/api\/local-operator\/desktop-api/ },
-					() => ({ path: "transport", namespace: "fixture" }),
-				);
-				builder.onResolve(
-					{ filter: /@shared\/hooks\/use-canonical-session/ },
-					() => ({ path: "echo", namespace: "echo-fixture" }),
-				);
-				builder.onResolve(
-					{ filter: /@shared\/api\/local-operator\/desktop-hooks/ },
-					() => ({ path: "capabilities", namespace: "capability-fixture" }),
-				);
+				builder.onResolve({ filter: DESKTOP_API_MODULE_RE }, () => ({
+					path: "transport",
+					namespace: "fixture",
+				}));
+				builder.onResolve({ filter: CANONICAL_SESSION_HOOK_RE }, () => ({
+					path: "echo",
+					namespace: "echo-fixture",
+				}));
+				builder.onResolve({ filter: DESKTOP_HOOKS_MODULE_RE }, () => ({
+					path: "capabilities",
+					namespace: "capability-fixture",
+				}));
 				builder.onLoad(
-					{ filter: /.*/, namespace: "capability-fixture" },
+					{ filter: ANY_MODULE_RE, namespace: "capability-fixture" },
 					() => ({
 						contents:
 							'export const desktopFeatureEnabled = () => false;\nexport const desktopKeys = { capabilities: ["desktop", "capabilities"] };',
 						loader: "js",
 					}),
 				);
-				builder.onResolve({ filter: /@shared\/api\/query-client/ }, () => ({
+				builder.onResolve({ filter: QUERY_CLIENT_MODULE_RE }, () => ({
 					path: "query-client",
 					namespace: "query-fixture",
 				}));
-				builder.onLoad({ filter: /.*/, namespace: "query-fixture" }, () => ({
-					contents: "export const queryClient = { getQueryData: () => null };",
-					loader: "js",
-				}));
-				builder.onResolve(
-					{ filter: /@shared\/hooks\/use-optional-query-client/ },
+				builder.onLoad(
+					{ filter: ANY_MODULE_RE, namespace: "query-fixture" },
 					() => ({
-						path: "optional-query-client",
-						namespace: "optional-query-fixture",
+						contents:
+							"export const queryClient = { getQueryData: () => null };",
+						loader: "js",
 					}),
 				);
+				builder.onResolve({ filter: OPTIONAL_QUERY_CLIENT_HOOK_RE }, () => ({
+					path: "optional-query-client",
+					namespace: "optional-query-fixture",
+				}));
 				builder.onLoad(
-					{ filter: /.*/, namespace: "optional-query-fixture" },
+					{ filter: ANY_MODULE_RE, namespace: "optional-query-fixture" },
 					() => ({
 						contents:
 							"export const useOptionalQueryClient = () => ({ client: { invalidateQueries: async () => {} }, provided: false });",
 						loader: "js",
 					}),
 				);
-				builder.onLoad({ filter: /.*/, namespace: "echo-fixture" }, () => ({
-					contents: `
+				builder.onLoad(
+					{ filter: ANY_MODULE_RE, namespace: "echo-fixture" },
+					() => ({
+						contents: `
 export const paintPendingSend = () => {};
 export const movePendingSendIdentity = () => {};
 export const replacePendingSendText = () => {};
@@ -124,10 +160,11 @@ export const retractPendingUser = () => {};
 export const retractLocalEcho = () => "retracted";
 export const peekLocalEcho = () => "local";
 export const discardPendingEchoes = () => {};`,
-					loader: "js",
-					resolveDir: process.cwd(),
-				}));
-				builder.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({
+						loader: "js",
+						resolveDir: process.cwd(),
+					}),
+				);
+				builder.onLoad({ filter: ANY_MODULE_RE, namespace: "fixture" }, () => ({
 					contents: `export {DesktopControlError, UserFacingError, userFacingMessage} from ${JSON.stringify(
 						`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`,
 					)}
@@ -146,6 +183,7 @@ const {
 	useCanonicalSessionsStore: store,
 	admitChatDraft,
 	busySendModes,
+	noteBusySend,
 	desktopRequestSchema,
 	desktopEndpoint,
 	BUSY_DEFAULT_STALE_TIME,
@@ -346,6 +384,13 @@ test("a resolved queue/both without the feature is refused, never downgraded", (
 
 function resetStore() {
 	calls.length = 0;
+	// Every test starts from the plain transport: a case that drops a response
+	// installs its own, and one that failed half-way must not leave it behind
+	// for the next case.
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		return {};
+	};
 	store.setState({
 		sessions: [],
 		statusUnavailable: [],
@@ -363,6 +408,37 @@ const SEND_INPUT = {
 	images: [],
 	mode: "steer",
 	cwd: "/tmp",
+};
+
+/**
+ * The owner's receipt rule (`desktop_receipts.py`), with the FIRST response to
+ * any new request id dropped: a same-id retry whose body hashes differently is
+ * refused as a conflict, exactly as a live backend would, and the first answer
+ * is lost the way a dropped connection loses it.
+ */
+const lostResponseServer = () => {
+	const receipts = new Map();
+	let drop = true;
+	globalThis.__canonicalRequest = async (request) => {
+		calls.push(request);
+		if (request.op === "sessions.create")
+			return { session_id: "222222222222", binding: null };
+		const { requestId, ...body } = request;
+		const fingerprint = JSON.stringify(body, Object.keys(body).sort());
+		const seen = receipts.get(requestId);
+		if (seen && seen.fingerprint !== fingerprint)
+			throw new Error("Request ID was already used with different input");
+		if (seen) return { ...seen.result, replayed: true };
+		const result = { status: "admitted" };
+		receipts.set(requestId, { fingerprint, result });
+		if (drop) throw new Error("connection reset");
+		return result;
+	};
+	return {
+		deliver: () => {
+			drop = false;
+		},
+	};
 };
 
 test("sessions.message accepts delivery and still rejects unknown keys", () => {
@@ -484,7 +560,7 @@ test("a lost admission response replays the SAME delivery (no 409)", async () =>
 	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
 	await assert.rejects(
 		admitChatDraft(key, { ...SEND_INPUT, delivery: "queue" }),
-		/connection reset/,
+		CONNECTION_RESET_RE,
 	);
 	dropResponse = false;
 	// A retry that re-derives delivery (or drops it) hashes a different body
@@ -505,6 +581,158 @@ test("a lost admission response replays the SAME delivery (no 409)", async () =>
 		calls.push(request);
 		return {};
 	};
+});
+
+/*
+ * R-1: THE WAITING LABEL BELONGS TO THE BODY, NOT TO THE PRESS THAT RETRIES IT.
+ *
+ * A replay resends the first attempt's `delivery` (the receipt hash demands
+ * it), while the retry's own press answers a different mode. The label used to
+ * be recorded from the press, so a lost-response retry could say "steering"
+ * over a body the owner held as queued - a claim about a delivery that never
+ * happened - or the reverse. Each case below drops the first response, retries
+ * with the OPPOSITE mode, and reads both the body that left and the mode the
+ * row would draw.
+ */
+test("a queued body retried with plain Enter keeps the queued label", async () => {
+	resetStore();
+	const server = lostResponseServer();
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	await assert.rejects(
+		admitChatDraft(
+			key,
+			{ ...SEND_INPUT, delivery: "queue", busyMode: "queue" },
+			"111111111111",
+		),
+		CONNECTION_RESET_RE,
+	);
+	server.deliver();
+	// The retry presses plain Enter: the default steer, no chord, no delivery.
+	await admitChatDraft(
+		key,
+		{ ...SEND_INPUT, busyMode: "steer" },
+		"111111111111",
+	);
+	const last = calls.filter((call) => call.op === "sessions.message").at(-1);
+	assert.equal(
+		last.delivery,
+		"queue",
+		"the replayed body is the first attempt's, as the receipt requires",
+	);
+	assert.equal(
+		busySendModes().get(last.requestId),
+		"queue",
+		"and the row says what that body does, not what the retry pressed",
+	);
+});
+
+test("a steer body retried with a queue chord keeps the steer label", async () => {
+	resetStore();
+	const server = lostResponseServer();
+	const key = store.getState().stageDraft({ kind: "agent", name: "reviewer" });
+	await assert.rejects(
+		admitChatDraft(key, { ...SEND_INPUT, busyMode: "steer" }, "111111111111"),
+		CONNECTION_RESET_RE,
+	);
+	server.deliver();
+	await admitChatDraft(
+		key,
+		{ ...SEND_INPUT, delivery: "queue", busyMode: "queue" },
+		"111111111111",
+	);
+	const last = calls.filter((call) => call.op === "sessions.message").at(-1);
+	assert.ok(
+		!("delivery" in desktopEndpoint(last).body),
+		"the legacy steer body is the one that is resent, not the chord's queue body",
+	);
+	assert.equal(
+		busySendModes().get(last.requestId),
+		"steer",
+		"the label still says what the pinned body does",
+	);
+});
+
+test("a replay rebuilds a mode entry the bound dropped, or that was never written", async () => {
+	// A long session: the 100-entry bound evicts this message's entry between
+	// the lost response and the retry. The pinned body still knows the mode.
+	resetStore();
+	const evicted = lostResponseServer();
+	const evictedKey = store
+		.getState()
+		.stageDraft({ kind: "agent", name: "reviewer" });
+	await assert.rejects(
+		admitChatDraft(
+			evictedKey,
+			{ ...SEND_INPUT, delivery: "queue", busyMode: "queue" },
+			"111111111111",
+		),
+		CONNECTION_RESET_RE,
+	);
+	const firstId = calls
+		.filter((call) => call.op === "sessions.message")
+		.at(-1).requestId;
+	for (let index = 0; index < 101; index += 1)
+		noteBusySend(`between-${index}`, "steer");
+	assert.equal(
+		busySendModes().has(firstId),
+		false,
+		"the bound really dropped it",
+	);
+	evicted.deliver();
+	await admitChatDraft(
+		evictedKey,
+		{ ...SEND_INPUT, busyMode: "steer" },
+		"111111111111",
+	);
+	assert.equal(
+		busySendModes().get(firstId),
+		"queue",
+		"the replay restores the label from the pinned body",
+	);
+
+	// An original attempt that recorded nothing (a caller that carried a
+	// delivery but no press mode) is repaired the same way on its replay.
+	resetStore();
+	const silent = lostResponseServer();
+	const silentKey = store
+		.getState()
+		.stageDraft({ kind: "agent", name: "reviewer" });
+	await assert.rejects(
+		admitChatDraft(
+			silentKey,
+			{ ...SEND_INPUT, delivery: "queue" },
+			"111111111111",
+		),
+		CONNECTION_RESET_RE,
+	);
+	const unwrittenId = calls
+		.filter((call) => call.op === "sessions.message")
+		.at(-1).requestId;
+	assert.equal(
+		busySendModes().has(unwrittenId),
+		false,
+		"nothing recorded a mode for that first attempt",
+	);
+	silent.deliver();
+	await admitChatDraft(silentKey, { ...SEND_INPUT }, "111111111111");
+	assert.equal(busySendModes().get(unwrittenId), "queue");
+});
+
+test("the mode map is bounded at 100, oldest out first", () => {
+	// A run of uniquely named inserts: whatever earlier cases left in the map is
+	// older than all of these, so the 100 newest are exactly this run.
+	for (let index = 0; index < 100; index += 1)
+		noteBusySend(`bound-${index}`, "steer");
+	assert.equal(busySendModes().size, 100, "a hundred entries fit");
+	assert.equal(busySendModes().has("bound-0"), true);
+	noteBusySend("bound-100", "both");
+	assert.equal(
+		busySendModes().has("bound-0"),
+		false,
+		"the 101st insert drops the oldest entry",
+	);
+	assert.equal(busySendModes().get("bound-100"), "both");
+	assert.equal(busySendModes().size, 100, "and the map stays at the bound");
 });
 
 /* ------------------------------------------------------------------ *
@@ -546,17 +774,17 @@ test("all four Enter sites go through sendKeyOf, and no site tests Enter inline"
 		const source = codeOf(path);
 		assert.match(
 			source,
-			/sendKeyOf\(/,
+			SEND_KEY_OF_CALL_RE,
 			`${name} must decide the send key through the ONE predicate`,
 		);
 		assert.doesNotMatch(
 			source,
-			/event\.key === "Enter" &&/,
+			INLINE_ENTER_EVENT_RE,
 			`${name} must not test Enter inline beside the predicate`,
 		);
 		assert.doesNotMatch(
 			source,
-			/e\.key === "Enter" &&/,
+			INLINE_ENTER_KEY_RE,
 			`${name} must not test Enter inline beside the predicate`,
 		);
 	}
@@ -566,7 +794,7 @@ test("the hook's key handler carries the composing test through the predicate", 
 	const source = codeOf(HOOK);
 	assert.match(
 		source,
-		/isComposing: e\.nativeEvent\.isComposing/,
+		NATIVE_COMPOSING_RE,
 		"the hook's key handler unwraps nativeEvent.isComposing into the predicate — the CJK/IME case had no test here before",
 	);
 });
@@ -581,37 +809,37 @@ test("the gate lives at the one seam (chat-page send), and refuses before admiss
 	const source = codeOf(CHAT_PAGE);
 	assert.match(
 		source,
-		/evaluateBusySend\(\s*\{\s*chordDelivery: delivery \?\? null,\s*settings: busyDefaultQuery\.data\?\.settings,\s*busy: turnAliveRef\.current,\s*busyDeliverySupported,\s*\}\)/,
+		EVALUATE_BUSY_SEND_CALL_RE,
 		"regex pin: evaluateBusySend receives the press's chordDelivery, the settings row, the live turn flag and the support flag",
 	);
 	assert.match(
 		source,
-		/const deliveryValue = evaluation\.delivery;/,
+		DELIVERY_VALUE_READ_RE,
 		"regex pin: the resolved delivery is read from the evaluation",
 	);
 	assert.match(
 		source,
-		/\bdelivery: deliveryValue,/,
+		DELIVERY_ON_BODY_RE,
 		"regex pin: the resolved delivery rides the admission body",
 	);
 	assert.match(
 		source,
-		/\bbusyMode: evaluation\.waitMode \?\? undefined,/,
+		BUSY_MODE_ON_BODY_RE,
 		"regex pin: the press's mode rides the admission body for the waiting label (it is not the wire's `delivery`)",
 	);
 	assert.match(
 		codeOf("src/renderer/src/shared/store/canonical-sessions-store.ts"),
-		/noteBusySend\(admissionRequestId, input\.busyMode\)/,
-		"regex pin: the store records the mode under the admission id, the id the backend's queue carries",
+		NOTE_BUSY_SEND_CALL_RE,
+		"regex pin: the store records the mode under the admission id (the id the backend's queue carries), and the value is the body's mode - never the retry press's",
 	);
 	assert.match(
 		source,
-		/evaluateBusySend\(/,
+		EVALUATE_BUSY_SEND_RE,
 		"the page resolves the send through the extracted assembly, not an inline gate",
 	);
 	assert.match(
 		source,
-		/busyDefaultFromSettings\(/,
+		BUSY_DEFAULT_FROM_SETTINGS_RE,
 		"the page resolves the default at send time",
 	);
 	// Refusal precedes admission: the notice is set before admitChatDraft runs,
@@ -631,19 +859,19 @@ test("the gate lives at the one seam (chat-page send), and refuses before admiss
 	// The default is read from the shared settings query, not a local copy.
 	assert.match(
 		source,
-		/desktopKeys\.settings/,
+		DESKTOP_SETTINGS_KEY_RE,
 		"the default comes from the shared settings query",
 	);
 	// The send decision reads the live turn state, not the render closure
 	// captured before the awaits.
 	assert.match(
 		source,
-		/busy: turnAliveRef\.current/,
+		LIVE_TURN_FLAG_RE,
 		"the gate reads turnAliveRef, the value after the awaits",
 	);
 	assert.match(
 		source,
-		/staleTime: BUSY_DEFAULT_STALE_TIME/,
+		STALE_TIME_WIRING_RE,
 		"the settings query runs the exported freshness constant, never a second literal",
 	);
 	// Regex pin (round 3): the page hands the render-time default down to
@@ -652,13 +880,13 @@ test("the gate lives at the one seam (chat-page send), and refuses before admiss
 	// pinned by source regex and named as such.
 	assert.match(
 		source,
-		/\bbusyDefaultMode,\s*\n\s*\t*stopOutcome,/,
+		BUSY_DEFAULT_MODE_PROP_RE,
 		"regex pin: the page passes the resolved busyDefaultMode into canonical",
 	);
 	const content = codeOf(CHAT_CONTENT);
 	assert.match(
 		content,
-		/busyDefaultMode=\{canonical\?\.busyDefaultMode\}/,
+		BUSY_DEFAULT_MODE_FORWARD_RE,
 		"regex pin: chat-content forwards canonical.busyDefaultMode to MessageInput",
 	);
 });
@@ -672,8 +900,8 @@ test("busyDefaultMode plumbing is regex-pinned, not behaviourally driven (page n
 	// the mutation table can say "regex pin" rather than "behavioural kill".
 	const page = codeOf(CHAT_PAGE);
 	const content = codeOf(CHAT_CONTENT);
-	assert.match(page, /busyDefaultFromSettings\(/);
-	assert.match(content, /busyDefaultMode=\{canonical\?\.busyDefaultMode\}/);
+	assert.match(page, BUSY_DEFAULT_FROM_SETTINGS_RE);
+	assert.match(content, BUSY_DEFAULT_MODE_FORWARD_RE);
 });
 
 test("the exported staleTime constant is the neighbours' 10s window", () => {

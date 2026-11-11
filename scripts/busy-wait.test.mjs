@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { unlink, writeFile } from "node:fs/promises";
-import { test } from "node:test";
+import { after, test } from "node:test";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { build } from "esbuild";
+import { JSDOM } from "jsdom";
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
@@ -27,13 +28,83 @@ const queryClient = new QueryClient({
 	defaultOptions: { queries: { retry: false } },
 });
 
+/*
+ * THE MOUNT AT THE END OF THIS FILE IS `transcript-foot-slot.test.mjs`'s BOOT,
+ * verbatim in shape: the production `CanonicalTranscript` in jsdom with the
+ * shims the renderer's imports expect (React DOM feature-detects `document` at
+ * import time, the preference readers want `matchMedia` on the global and on
+ * the jsdom window, and the tool rows observe their own mutations). It is
+ * installed BEFORE the bundle is imported, for that reason. Everything above
+ * the mount is unaffected: `renderToStaticMarkup` beside these globals is still
+ * the server renderer it was.
+ */
+const bootstrapDOM = new JSDOM("<!doctype html>", {
+	url: "http://localhost/",
+	pretendToBeVisual: true,
+});
+const { window } = bootstrapDOM;
+const originals = new Map();
+const shims = {
+	window,
+	document: window.document,
+	HTMLElement: window.HTMLElement,
+	Node: window.Node,
+	Element: window.Element,
+	SVGElement: window.SVGElement,
+	MouseEvent: window.MouseEvent,
+	KeyboardEvent: window.KeyboardEvent,
+	FocusEvent: window.FocusEvent,
+	Event: window.Event,
+	CustomEvent: window.CustomEvent,
+	localStorage: window.localStorage,
+	navigator: window.navigator,
+	getComputedStyle: window.getComputedStyle.bind(window),
+	requestAnimationFrame: () => 0,
+	cancelAnimationFrame: () => {},
+	IS_REACT_ACT_ENVIRONMENT: true,
+	ResizeObserver: class {
+		observe() {}
+		unobserve() {}
+		disconnect() {}
+	},
+	matchMedia: (query) => ({
+		matches: false,
+		media: query,
+		onchange: null,
+		addEventListener() {},
+		removeEventListener() {},
+		addListener() {},
+		removeListener() {},
+		dispatchEvent: () => false,
+	}),
+};
+for (const [key, value] of Object.entries(shims)) {
+	originals.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
+	Object.defineProperty(globalThis, key, {
+		configurable: true,
+		writable: true,
+		value,
+	});
+}
+/* `useMediaQuery` inside the rows reads the jsdom window's, not the global. */
+window.matchMedia ??= shims.matchMedia;
+const { createRoot } = await import("react-dom/client");
+const { act } = await import("react");
+after(() => {
+	bootstrapDOM.window.close();
+	for (const [key, descriptor] of originals) {
+		if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+		else delete globalThis[key];
+	}
+});
+
 // One bundle for the whole file: the transcript is the heavy import, and the
 // pure exports ride along rather than spinning a second esbuild instance.
 const bundle = await build({
 	stdin: {
 		contents: `export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";
  export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
- export { busyWaitLabels } from "./src/renderer/src/features/chat/canonical/busy-wait";
+ export { busyWaitLabels, NO_BUSY_WAIT_LABELS } from "./src/renderer/src/features/chat/canonical/busy-wait";
  export { evaluateBusySend } from "./src/renderer/src/features/chat/composer-send-key";
  export { noteBusySend } from "./src/renderer/src/shared/store/canonical-sessions-store";
  export { MemoryRouter } from "react-router-dom";`,
@@ -65,6 +136,7 @@ const bundle = await build({
 	external: [
 		"react",
 		"react-dom",
+		"react-dom/client",
 		"react-dom/server",
 		"react/jsx-runtime",
 		"@tanstack/react-query",
@@ -75,6 +147,7 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 let CanonicalTranscript;
 let EMPTY_TRANSCRIPT;
 let busyWaitLabels;
+let NO_BUSY_WAIT_LABELS;
 let evaluateBusySend;
 let noteBusySend;
 let MemoryRouter;
@@ -83,6 +156,7 @@ try {
 		CanonicalTranscript,
 		EMPTY_TRANSCRIPT,
 		busyWaitLabels,
+		NO_BUSY_WAIT_LABELS,
 		evaluateBusySend,
 		noteBusySend,
 		MemoryRouter,
@@ -184,6 +258,23 @@ test("an unknown mode, a missing id and a non-string id are all no label", () =>
 		[...busyWaitLabels([{ id: 7 }], true, modes([["7", "queue"]]))],
 		[],
 		"an id that is not a string is not a message id",
+	);
+});
+
+test("no labels is ONE shared frozen map, so a turn's start and end repaint no row", () => {
+	// R-4: the pane hands this map to a React context. A fresh empty map per
+	// frame is a new context value on every turn start and end, which re-renders
+	// every user row for an answer that says nothing.
+	const settled = busyWaitLabels([], true, modes([["x", "queue"]]));
+	const ended = busyWaitLabels(queue("y"), false, modes([]));
+	assert.equal(settled, ended, "both label-less frames read the same instance");
+	assert.equal(settled, NO_BUSY_WAIT_LABELS);
+	assert.equal(settled.size, 0);
+	assert.ok(Object.isFrozen(settled), "and the shared instance is frozen");
+	assert.notEqual(
+		busyWaitLabels(queue("y"), true, modes([["y", "queue"]])),
+		settled,
+		"a frame that does label gets its own map",
 	);
 });
 
@@ -402,4 +493,105 @@ test("a queued id the mode map never saw draws no line, though the row renders",
 		[],
 		"with no recorded mode there is no sentence, so nothing is drawn",
 	);
+});
+
+/** The waiting line's own alignment: `text-end` beside the flex placement. */
+const LABEL_ALIGNMENT = /data-busy-wait="true"[^>]*\btext-end\b/;
+
+test("a wrapped waiting line aligns to the stamp's edge, in both writing directions", () => {
+	// `justify-end` places the flex box; a sentence long enough to wrap sets its
+	// own lines' alignment, which follows `text-align` and not the flex axis.
+	// `text-end` is the writing-direction end: right in LTR, left in RTL, the
+	// edge the stamp above the line sits on (agent review round 1, D1).
+	const records = [userRow("req-align")];
+	noteBusySend("req-align", "queue");
+	const markup = render({ records, frontend: frame(queue("req-align")) });
+	assert.match(
+		markup,
+		LABEL_ALIGNMENT,
+		"the line's own alignment follows the writing direction, like the stamp",
+	);
+});
+
+/* ------------------------------------------------------------------ */
+/* 4. The pane's memo, across a second render                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The same pane the static renders above use, MOUNTED rather than serialized:
+ * a memo can only be judged by rendering a second time. `mounted.render` takes
+ * the next frame and settles it inside `act`, so the rows' commits land before
+ * an assertion reads the DOM.
+ */
+const mountPane = (records) => {
+	const container = document.createElement("div");
+	document.body.appendChild(container);
+	const root = createRoot(container);
+	const pane = {
+		container,
+		render: async (nextFrontend) => {
+			await act(async () => {
+				root.render(
+					h(
+						MemoryRouter,
+						{},
+						h(
+							QueryClientProvider,
+							{ client: queryClient },
+							h(CanonicalTranscript, {
+								transcript: { ...EMPTY_TRANSCRIPT, records },
+								frontend: nextFrontend,
+								gate: null,
+								waiting: false,
+								awaitingHydration: false,
+								loadingOlder: false,
+								onLoadOlder: async () => true,
+								containerRef: { current: container },
+								isSmallView: false,
+								status: "live",
+								failure: null,
+								onReconnect: () => {},
+							}),
+						),
+					),
+				);
+			});
+		},
+		labels: () =>
+			[...container.querySelectorAll("[data-busy-wait]")].map(
+				(node) => node.textContent,
+			),
+		unmount: async () => {
+			await act(async () => root.unmount());
+			container.remove();
+		},
+	};
+	return pane;
+};
+
+test("flipping the streaming flag relabels the SAME queued row on the next render", async () => {
+	// The pane re-derives its labels through ONE signature string, and the turn's
+	// liveness is half of it: the same queue reads "queued" while the turn runs
+	// and "deferred" after it ends. Dropping `streaming` from that signature
+	// leaves the first render's map in the memo, so the row keeps a sentence the
+	// ended turn has just made false (agent review round 1, R-3).
+	const records = [userRow("req-flip")];
+	noteBusySend("req-flip", "queue");
+	// ONE queue array for both frames: the streaming flag is the only input that
+	// moves between the renders, which is what makes the assertion its own.
+	const queued = queue("req-flip");
+	const pane = mountPane(records);
+	await pane.render(frame(queued, true));
+	assert.deepEqual(
+		pane.labels(),
+		[LABELS.queue],
+		"a live turn: the message waits for it",
+	);
+	await pane.render(frame(queued, false));
+	assert.deepEqual(
+		pane.labels(),
+		[LABELS.deferred],
+		"the same queue after the turn ends is a deferral, and only the streaming flag says so",
+	);
+	await pane.unmount();
 });

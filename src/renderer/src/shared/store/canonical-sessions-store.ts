@@ -3214,10 +3214,32 @@ export async function admitChatDraft(
 		 * for the create hop, and this only settles its final text.
 		 */
 		if (id) replacePendingSendText(id, admissionRequestId, rendered);
-		// The label's mode is recorded with the id the queue will carry, and
-		// just before the request: a refused or failed attempt leaves an entry
-		// no queue will ever name, and an entry no queue names draws nothing.
-		noteBusySend(admissionRequestId, input.busyMode);
+		/*
+		 * THE LABEL'S MODE IS THE BODY'S MODE, NOT THIS PRESS'S (agent review
+		 * round 1, R-1). On a replay `delivery` above is the FIRST attempt's pinned
+		 * value - the receipt hash demands it - while `input.busyMode` is whatever
+		 * THIS retry pressed. A lost-response retry of a queued message sent with
+		 * plain Enter (the default steer) would otherwise record `steer` for a body
+		 * the owner holds as `queue`, and the row would claim a steer that never
+		 * happened; a queue chord over a pinned steer body would claim the reverse.
+		 * So the entry is read off the body actually sent: the effective `delivery`,
+		 * whose absence already means steer.
+		 *
+		 * ONLY A BUSY SEND EARNS AN ENTRY. A first attempt's busy-ness is the
+		 * press's own (`busyMode` is present exactly when the page decided the turn
+		 * was running); a replay's is pinned with its body, where `mode` is `steer`
+		 * for a busy send and `prompt` for an idle one. Deriving on a replay also
+		 * repairs an entry the 100-entry bound evicted between attempts, or one a
+		 * first attempt never wrote. A press the gate refused has no entry and no replay:
+		 * nothing was admitted.
+		 *
+		 * Recorded just before the request, as before: an entry no queue will ever
+		 * name draws nothing, so a failed attempt costs a slot and nothing else.
+		 */
+		const bodyMode = delivery ?? "steer";
+		const busySend =
+			replay && previous ? mode !== "prompt" : input.busyMode !== undefined;
+		noteBusySend(admissionRequestId, busySend ? bodyMode : undefined);
 		inFlight = "sessions.message";
 		await messageWithBusyResend({
 			op: "sessions.message",

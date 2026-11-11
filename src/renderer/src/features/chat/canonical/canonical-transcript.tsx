@@ -1806,11 +1806,21 @@ const UserRow = memo(function UserRow({
 				 *
 				 * `data-busy-wait` is the rig's address for the line, the same structural-
 				 * marker rule the undelivered row follows.
+				 *
+				 * `justify-end` PLACES THE BOX; `text-end` ALIGNS WHAT WRAPS INSIDE IT
+				 * (agent review round 1, D1). A sentence long enough to take a second line
+				 * starts that line at the box's start edge - the left in LTR, under the
+				 * bubble rather than under the stamp - because the default `text-align`
+				 * never follows the flex axis. `text-end` is the writing-direction end
+				 * (right in LTR, left in RTL), which is the edge the stamp above it sits
+				 * on, so a wrapped line stays flush with the message it belongs to.
 				 */}
 				{busyWait !== null && undelivered === null && (
 					<div
 						data-busy-wait
-						className={cn("flex w-full justify-end text-meta text-ink-muted")}
+						className={cn(
+							"flex w-full justify-end text-end text-meta text-ink-muted",
+						)}
 					>
 						{t(BUSY_WAIT_KEYS[busyWait])}
 					</div>
@@ -4306,7 +4316,9 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	 * new map every time and re-render every user row in the list on every
 	 * streamed token. The map is empty until the backend reports an id that
 	 * `noteBusySend` knows, so the one string below changes exactly when a
-	 * label can appear or disappear.
+	 * label can appear or disappear. And `busyWaitLabels` answers the empty case
+	 * with ONE shared frozen instance, so a turn's start and end hand the rows
+	 * the same value rather than a fresh empty map.
 	 */
 	const busyWaitQueueSignature = useMemo(() => {
 		const ids = (frontend?.queued_steering ?? [])
