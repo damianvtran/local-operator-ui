@@ -199,6 +199,8 @@ import {
 import { canvasDocumentForPath } from "../utils/canvas-document";
 import { messageBudgetRefusal } from "../utils/message-budget";
 import { ChatContent } from "./chat-content";
+import { ChatHeaderDraftTarget } from "./chat-header-draft-target";
+import { draftTargetChipShown } from "./chat-header-draft-target-model";
 import type { HeaderIdentityData } from "./chat-header-identity";
 import {
 	headerHostKey,
@@ -4852,6 +4854,26 @@ function SessionPanel({
 							sessionId={sessionId ?? undefined}
 							draftKey={draftKey ?? undefined}
 						/>
+					}
+					/*
+					 * WHO ANSWERS THIS NEW CHAT, chosen in the header (operator request,
+					 * 2026-11-11). Draft panes only - `draftTargetChipShown` states why a
+					 * live pane and a draft whose create already answered are excluded -
+					 * and it stands down while a send is starting, because a pick re-keys
+					 * the draft the admission is finishing under.
+					 */
+					draftTargetSlot={
+						draftTargetChipShown({
+							sessionId,
+							draftKey,
+							draftSessionId: draft?.sessionId,
+						}) ? (
+							<ChatHeaderDraftTarget
+								target={draft?.target}
+								capabilities={capabilities.data}
+								busy={starting || Boolean(draft?.pending)}
+							/>
+						) : null
 					}
 					deviceNotice={<ChatDeviceNotice sessionId={sessionId ?? undefined} />}
 					deviceHold={deviceHold}

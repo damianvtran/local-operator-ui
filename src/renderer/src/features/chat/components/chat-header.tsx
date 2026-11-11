@@ -150,6 +150,13 @@ type ChatHeaderProps = {
 	 */
 	deviceSlot?: ReactNode;
 	/**
+	 * The New chat pane's agent/team chip (`chat-header-draft-target.tsx`): who
+	 * will answer the conversation, chosen before the first send. A node for the
+	 * same reason `deviceSlot` is one - the page owns the draft and the store
+	 * write - and absent on every live pane, where `identity` is the switcher.
+	 */
+	draftTargetSlot?: ReactNode;
+	/**
 	 * The session the inline rename writes to, when this header offers rename.
 	 *
 	 * A session id rather than a callback, because the write path lives HERE now:
@@ -464,6 +471,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	descriptionPending = false,
 	identity,
 	deviceSlot,
+	draftTargetSlot,
 	renameSessionId,
 	sessionId,
 	onOpenOptions,
@@ -1222,6 +1230,11 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 						 * one line above the identity slot if a docked pane's header ever has to
 						 * keep the placement fact and shed the identity pair instead.
 						 */}
+						{/*
+						 * Identity before placement, the live header's order: the draft's
+						 * agent/team chip sits immediately before the device chip.
+						 */}
+						{draftTargetSlot}
 						{deviceSlot}
 					</div>
 				)}
