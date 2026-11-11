@@ -1,0 +1,113 @@
+{
+  "schema": 1,
+  "instance": "l1verb-ur-r1b",
+  "round": 1,
+  "locale": "ur",
+  "namespace": "ui.chat.canonical",
+  "audit_date": "2026-11-11",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "l1verb-ur-r1b",
+    "model": "anthropic/claude-sonnet-5-5",
+    "independent_from_translator_session": true,
+    "actual_model_source": "as stated in the auditor's own report (companion report below); no fallback was reported"
+  },
+  "status": "changes_requested",
+  "result": "changes_requested",
+  "scope": "tool_row.verb.* batch, 182 keys (91 settled/running pairs); auditor read staged values ur.json (v1); whole-file hashes below bind the catalogue as it stood at that version",
+  "sha256": {
+    "ur": "33378734e4fa54b7111e30188833cd73f20e0a8bf31bc46c3f976144389ee5c1",
+    "en": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765"
+  },
+  "findings": [
+    {
+      "severity": "BLOCKER",
+      "ordinal": 1,
+      "detail": "see companion report i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave/report-r1b.md (finding ids and text live there)"
+    },
+    {
+      "severity": "MAJOR",
+      "ordinal": 1,
+      "detail": "see companion report i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave/report-r1b.md (finding ids and text live there)"
+    },
+    {
+      "severity": "MAJOR",
+      "ordinal": 2,
+      "detail": "see companion report i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave/report-r1b.md (finding ids and text live there)"
+    },
+    {
+      "severity": "MAJOR",
+      "ordinal": 3,
+      "detail": "see companion report i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave/report-r1b.md (finding ids and text live there)"
+    },
+    {
+      "severity": "MINOR",
+      "ordinal": 1,
+      "detail": "see companion report i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave/report-r1b.md (finding ids and text live there)"
+    },
+    {
+      "severity": "MINOR",
+      "ordinal": 2,
+      "detail": "see companion report i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave/report-r1b.md (finding ids and text live there)"
+    },
+    {
+      "severity": "MINOR",
+      "ordinal": 3,
+      "detail": "see companion report i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave/report-r1b.md (finding ids and text live there)"
+    },
+    {
+      "severity": "MINOR",
+      "ordinal": 4,
+      "detail": "see companion report i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave/report-r1b.md (finding ids and text live there)"
+    },
+    {
+      "severity": "MINOR",
+      "ordinal": 5,
+      "detail": "see companion report i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave/report-r1b.md (finding ids and text live there)"
+    },
+    {
+      "severity": "MINOR",
+      "ordinal": 6,
+      "detail": "see companion report i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave/report-r1b.md (finding ids and text live there)"
+    },
+    {
+      "severity": "MINOR",
+      "ordinal": 7,
+      "detail": "see companion report i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave/report-r1b.md (finding ids and text live there)"
+    },
+    {
+      "severity": "NIT",
+      "ordinal": 1,
+      "detail": "see companion report i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave/report-r1b.md (finding ids and text live there)"
+    },
+    {
+      "severity": "NIT",
+      "ordinal": 2,
+      "detail": "see companion report i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave/report-r1b.md (finding ids and text live there)"
+    },
+    {
+      "severity": "NIT",
+      "ordinal": 3,
+      "detail": "see companion report i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave/report-r1b.md (finding ids and text live there)"
+    },
+    {
+      "severity": "NIT",
+      "ordinal": 4,
+      "detail": "see companion report i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave/report-r1b.md (finding ids and text live there)"
+    }
+  ],
+  "findings_note": "Severity counts are transcribed from the companion report; individual finding ids, keys and text are in that report, not repeated here.",
+  "provenance": {
+    "kind": "BINDING RECEIPT: the verdict, counts, model and session are transcribed from the auditor's own report; this file was written by the integrating coder session 5a80bd7da0fd (agent coder, anthropic/claude-sonnet-5-5), NOT by the auditor. The auditor audited a staging file of the 182 values, never the whole catalogue; the whole-file hashes above were computed from the catalogue bytes after those exact values were inserted.",
+    "source_report": {
+      "path": "i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave/report-r1b.md",
+      "sha256": "412c86d1117f2195689c85925412582c8dbec353c025cb2070e2b63ae276a7c2"
+    },
+    "audited_values": {
+      "file": "i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave/values.v1.json",
+      "sha256": "7525521c04130f6b8182ba941850d0cbe76f0b08bd997aa8a9fe153d05dfb5fd",
+      "key_count": 182,
+      "identical_in_bound_catalogue": 182
+    }
+  }
+}
