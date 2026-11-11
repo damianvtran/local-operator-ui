@@ -76,17 +76,63 @@ const READ = `(() => {
 export const NO_OFFER_READ = `(() => {
 	const cut = (s, n) => (s ?? "").replace(/\\s+/g, " ").trim().slice(0, n);
 	const seen = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
-	const controls = [...document.querySelectorAll("button, [role=button], summary, a[href], [aria-expanded]")].filter(seen);
+	const scope = document.querySelector("[data-lo-canonical-transcript]") ?? document.querySelector("main") ?? document.body;
+	const controls = [...scope.querySelectorAll("button, [role=button], summary, a[href], [aria-expanded]")].filter(seen);
 	return {
 		route: location.hash || location.pathname,
 		title: cut(document.title, 80),
 		readyState: document.readyState,
+		scope: scope.hasAttribute("data-lo-canonical-transcript") ? "transcript" : scope.tagName.toLowerCase(),
 		viewFull: document.querySelectorAll(${JSON.stringify(VIEW_FULL)}).length,
 		diffRegions: document.querySelectorAll("[data-diff-line], [data-diff-history]").length,
 		controlCount: controls.length,
 		controls: controls.slice(0, 40).map((el) => { const r = el.getBoundingClientRect(); return { tag: el.tagName.toLowerCase(), type: el.getAttribute("type"), name: cut(el.getAttribute("aria-label") || el.textContent, 60), expanded: el.getAttribute("aria-expanded"), state: el.getAttribute("data-state"), box: [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)] }; }),
-		text: cut(document.querySelector("main")?.innerText ?? document.body?.innerText, 600),
+		text: cut(scope.innerText, 600),
 	};
+})()`;
+
+/*
+ * THE NORMAL STEPS BEFORE A DIFF EXISTS IN THE DOM. A finished run's work is
+ * folded by design (`trace-fold.tsx`: the user's preference keeps it collapsed),
+ * and a tool row's detail, where the diff block and its View full diff control
+ * live, mounts only when that row is opened. Native QA failed waiting for the
+ * control on a transcript showing only the collapsed "3 actions" header, so the
+ * scene must make the reader's gestures first, through the existing `press`.
+ *
+ * Selectors are derived from the source, never "any button":
+ * - a fold's trigger is the `aria-expanded` button holding `[data-fold-summary]`
+ *   inside its `[data-fold-ids]` root (trace-fold.tsx);
+ * - a tool row's trigger is the `Disclosure` button holding `[data-trace-verb]`
+ *   (tool-row.tsx), addressed through its `[data-record-id]` row and only when
+ *   that selector resolves to exactly the element read, since `press` takes the
+ *   first match. Only rows whose verb reads Edited (red AND green) or Wrote.
+ * Every selector demands aria-expanded="false", so an open fold or row is never
+ * pressed closed. Counts are bounded; nothing here clicks user content.
+ */
+export const COLLAPSED_FOLD =
+	'[data-lo-canonical-transcript] [data-fold-ids] button[aria-expanded="false"]:has([data-fold-summary])';
+const TOOL_TRIGGER = 'button[aria-expanded="false"]:has([data-trace-verb])';
+const MAX_FOLD_PRESSES = 4;
+const MAX_TOOL_PRESSES = 4;
+
+/** Read-only facts about the work controls: counts, verbs, addressable rows. */
+export const WORK_READ = `(() => {
+	const root = document.querySelector("[data-lo-canonical-transcript]");
+	const viewFull = document.querySelectorAll(${JSON.stringify(VIEW_FULL)}).length;
+	if (!root) return { transcript: false, viewFull, collapsedFolds: 0, folds: 0, tools: [] };
+	const folds = root.querySelectorAll("[data-fold-ids]").length;
+	const collapsedFolds = document.querySelectorAll(${JSON.stringify(COLLAPSED_FOLD)}).length;
+	const tools = [];
+	for (const button of root.querySelectorAll(${JSON.stringify(`[data-record-id] ${TOOL_TRIGGER}`)})) {
+		const verb = (button.querySelector("[data-trace-verb]")?.textContent ?? "").trim().slice(0, 24);
+		if (verb !== "Edited" && verb !== "Wrote") continue;
+		const row = button.closest("[data-record-id]");
+		const selector = '[data-lo-canonical-transcript] [data-record-id="' + CSS.escape(row.getAttribute("data-record-id")) + '"] ' + ${JSON.stringify(TOOL_TRIGGER)};
+		if (document.querySelector(selector) === button) tools.push({ verb, selector });
+		if (tools.length >= 8) break;
+	}
+	tools.sort((a, b) => (a.verb === "Edited" ? 0 : 1) - (b.verb === "Edited" ? 0 : 1));
+	return { transcript: true, viewFull, folds, collapsedFolds, tools };
 })()`;
 
 /** "Rows 1–200 of 263" -> numbers, or null. */
@@ -160,7 +206,66 @@ export async function sceneDiffHistory({
 		return state;
 	};
 
+	/*
+	 * Open folds, then Edited/Wrote rows, until a View full diff control exists.
+	 * Each press is checked by its own aria-expanded settling, so a gesture that
+	 * does nothing is a recorded FAIL rather than a silent skip.
+	 */
+	const disclose = async (label) => {
+		await settle(
+			`Boolean(document.querySelector("[data-lo-canonical-transcript]"))`,
+			`${label}: the transcript mounts`,
+		);
+		const facts = () => cdp.evaluate(WORK_READ);
+		let state = await facts();
+		note(`diff-history ${label} work controls`, JSON.stringify(state));
+		await capture(cdp, `diff-history-${label}-initial`);
+		const pressOpen = async (selector, what, opened) => {
+			try {
+				note(
+					`press ${what} hit`,
+					JSON.stringify(
+						await verb(cdp, "press", { selector, timeoutMs: 2_000 }),
+					),
+				);
+			} catch (error) {
+				check(
+					`${label}: ${what} takes the press`,
+					false,
+					String(error).slice(0, 200),
+				);
+				return false;
+			}
+			return settle(opened, `${label}: ${what} opens`);
+		};
+		for (
+			let i = 0;
+			i < MAX_FOLD_PRESSES && !state.viewFull && state.collapsedFolds > 0;
+			i += 1
+		) {
+			const before = state.collapsedFolds;
+			const fewer = `document.querySelectorAll(${JSON.stringify(COLLAPSED_FOLD)}).length < ${before}`;
+			if (!(await pressOpen(COLLAPSED_FOLD, `work fold ${i + 1}`, fewer)))
+				break;
+			state = await facts();
+			if (state.collapsedFolds >= before) break;
+		}
+		for (
+			let i = 0;
+			i < MAX_TOOL_PRESSES && !state.viewFull && state.tools?.length;
+			i += 1
+		) {
+			const { selector, verb: rowVerb } = state.tools[0];
+			// The row's own trigger, now expanded: the same address with the state flipped.
+			const open = `Boolean(document.querySelector(${JSON.stringify(selector.replace('aria-expanded="false"', 'aria-expanded="true"'))}))`;
+			if (!(await pressOpen(selector, `${rowVerb} row ${i + 1}`, open))) break;
+			state = await facts();
+		}
+		note(`diff-history ${label} after disclosure`, JSON.stringify(state));
+	};
+
 	await verb(cdp, "navigate", `/chat/${session}`);
+	await disclose("open");
 	const offered = await settle(
 		`Boolean(document.querySelector(${JSON.stringify(VIEW_FULL)}))`,
 		"the seeded session offers a View full diff control",
@@ -270,6 +375,7 @@ export async function sceneDiffHistory({
 	}
 	await verb(cdp, "navigate", "/chat");
 	await verb(cdp, "navigate", `/chat/${session}`);
+	await disclose("replay");
 	if (
 		(await settle(
 			`Boolean(document.querySelector(${JSON.stringify(VIEW_FULL)}))`,
