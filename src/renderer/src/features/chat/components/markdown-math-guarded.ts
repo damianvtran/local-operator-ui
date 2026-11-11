@@ -51,8 +51,33 @@
  *       and `$1,000` find no closer, `\$5` is an escape. A price ahead of a
  *       formula still cannot steal it (`pay $5 now, where $x^2$ holds`): the
  *       `$5` attempt fails at its closer and scanning resumes after it.
+ *   (e) A DIGIT-LED SPAN MUST NOT END ON A WORD OR HOLD PROSE (QA round 1,
+ *       Q-1). The signal of (d) can come from prose that merely sits between
+ *       a price and a later shell variable: `Charge $5 per run, then set
+ *       RUN_COST=$COST` paired the price with `$COST` because `RUN_COST`
+ *       carries a `_`. So a digit-led span also fails when
+ *         - its closer is followed by an ASCII letter or `_` - that `$` opens
+ *           an identifier (`$COST`, `$FOO_BAR`), it does not end a formula;
+ *         - its content holds a backtick - a code span is Markdown, never
+ *           TeX, so the span is crossing prose (``Costs $5 per `run_id`,
+ *           cmd=$FOO``, which also ate the code span);
+ *         - its content holds two consecutive plain words (two or more ASCII
+ *           letters each, an optional trailing `, . ; : ! ?`) outside any
+ *           `{...}` group - TeX sets bare letters as a product of italic
+ *           variables, so an author who means words writes `\text{per
+ *           month}`, while prose between two dollars (`$10 per month (see
+ *           SKU_1)$`) always has them.
+ *       All five quantities of the operator's screenshot keep rendering: their
+ *       words sit inside `\text{}` and their closers are followed by space or
+ *       punctuation. The costs, both literal now: a digit-led formula
+ *       written with bare words (`$5 apples per x^2$`), which is not TeX a
+ *       model writes, and a unit glued to the closer (`$1\,$gap`), which is
+ *       rare and reads fine as `$1\,$ gap` - the closing `$` of `RUN_COST=$COST`
+ *       and a unit's `$` are the same shape, and only the price leak is the
+ *       operator's complaint.
  *
- * All four apply to `sizeOpen === 1` only: `$$` display and multi-dollar
+ * All five apply to `sizeOpen === 1` only (and (d), (e) to a digit-led
+ * opener only): `$$` display and multi-dollar
  * inline behaviour are upstream's, byte for byte. When a candidate close fails
  * (b), (c) or (d) the attempt FAILS: the opening `$` stays literal text and
  * scanning resumes AFTER it, so a rejected closer cannot leave the span open
@@ -68,9 +93,10 @@
  * own recovery for a size mismatch - is untouched. Rationale for each arm is
  * on the guard itself below.
  *
- * GUARD (d) AGREES WITH THE PIPELINE GATE. `markdown-math.ts`'s
+ * GUARDS (d) AND (e) AGREE WITH THE PIPELINE GATE. `markdown-math.ts`'s
  * `hasDigitLedMath` asks the same question of the raw string (digit-led span,
- * non-space before the closer, no digit after it, a TeX signal inside), so a
+ * non-space before the closer, no digit, letter or `_` after it, a TeX signal
+ * inside, no backtick and no plain-word run - `hasProseRun`), so a
  * document whose ONLY math is digit-led turns the pipeline on and a document
  * of only prices does not. The agreement is at the shape level, not the
  * document level: the gate decides per DOCUMENT whether to pay for KaTeX at
@@ -93,11 +119,12 @@
  * TO REFRESH: diff this file's `guardedMathText` against
  * `node_modules/micromark-extension-math/lib/math-text.js` after any bump of
  * the package, and re-apply the guards where the comment markers `GUARD (a)`,
- * `(b)`, `(c)`, `(d)` sit (the resolver lives in `markdown-math-resolve.ts`;
- * refresh it from the same file).
+ * `(b)`, `(c)`, `(d)`, `(e)` sit (the resolver lives in
+ * `markdown-math-resolve.ts`; refresh it from the same file).
  * `markdown-math-backslash.ts`'s flow construct follows upstream's
- * `lib/math-flow.js`; re-read it there too. The two runtime imports below (`math`, `mathFromMarkdown`)
- * come from the packages themselves and track them automatically.
+ * `lib/math-flow.js`; re-read it there too. The two runtime imports below
+ * (`math`, `mathFromMarkdown`) come from the packages themselves and track
+ * them automatically.
  *
  * THE TRADE-OFFS, stated so a reviewer does not have to derive them:
  *
@@ -202,6 +229,19 @@ const BACKSLASH = 92;
  */
 const isTexSignal = (code: Code): boolean =>
 	code === 94 || code === 95 || code === 123 || code === 125;
+/** ASCII A-Z, a-z. */
+const isAsciiLetter = (code: Code): boolean =>
+	code !== null && ((code >= 65 && code <= 90) || (code >= 97 && code <= 122));
+/** GUARD (e)'s word-final punctuation: `, . ; : ! ?`. */
+const isWordFinalPunctuation = (code: Code): boolean =>
+	code === 44 ||
+	code === 46 ||
+	code === 59 ||
+	code === 58 ||
+	code === 33 ||
+	code === 63;
+/** `` ` `` - GUARD (e): a code span inside a digit-led span is prose. */
+const BACKTICK = 96;
 
 /**
  * The single-dollar text tokenizer, upstream's `mathText` with the guards.
@@ -246,6 +286,19 @@ const guardedMathText = (
 		let sawSignal = false;
 		/** The previous data code was an unpaired backslash. */
 		let afterBackslash = false;
+		/*
+		 * GUARD (e) state. `braceDepth` counts unescaped `{`/`}`, so words
+		 * inside `\text{...}` are not prose. A data run between spaces or
+		 * line endings is one WORD: `wordLetters` counts its leading letters,
+		 * `wordShape` is "letters" while it is all letters, "punct" once one
+		 * word-final punctuation mark follows them, "other" for anything else.
+		 */
+		let braceDepth = 0;
+		let wordLetters = 0;
+		let wordShape: "letters" | "punct" | "other" = "letters";
+		let previousWordProse = false;
+		let sawProseRun = false;
+		let sawBacktick = false;
 		let size: number;
 		let token: Token;
 
@@ -326,7 +379,35 @@ const guardedMathText = (
 
 			// Data.
 			effects.enter("mathTextData");
+			wordLetters = 0;
+			wordShape = "letters";
 			return data(code);
+		}
+
+		/** GUARD (e): a word ended; two plain words in a row are prose. */
+		function endWord(): undefined {
+			const prose =
+				wordShape !== "other" && wordLetters >= 2 && braceDepth === 0;
+			if (prose && previousWordProse) sawProseRun = true;
+			previousWordProse = prose;
+		}
+
+		/** GUARD (e): fold one data code into the current word's shape. */
+		function trackWord(code: Code, escaped: boolean): undefined {
+			if (code === BACKTICK) sawBacktick = true;
+			if (!escaped && code === 123) braceDepth++;
+			if (!escaped && code === 125 && braceDepth > 0) braceDepth--;
+			if (wordShape === "letters" && !escaped && isAsciiLetter(code)) {
+				wordLetters++;
+			} else if (
+				wordShape === "letters" &&
+				wordLetters >= 2 &&
+				isWordFinalPunctuation(code)
+			) {
+				wordShape = "punct";
+			} else {
+				wordShape = "other";
+			}
 		}
 
 		/** In data. */
@@ -339,10 +420,12 @@ const guardedMathText = (
 			) {
 				// A backslash before a space, EOL or `$` is not a command.
 				afterBackslash = false;
+				endWord();
 				effects.exit("mathTextData");
 				return between(code);
 			}
 
+			trackWord(code, afterBackslash || code === BACKSLASH);
 			if (afterBackslash) {
 				// `\` + any visible character: `\mu`, `\,`, `\{`, `\\`.
 				sawSignal = true;
@@ -415,6 +498,21 @@ const guardedMathText = (
 				 * still render, as it always has.
 				 */
 				if (sizeOpen === 1 && digitLed && !sawSignal) {
+					return nok(code);
+				}
+
+				/*
+				 * GUARD (e) - A DIGIT-LED SPAN MUST NOT END ON A WORD OR HOLD
+				 * PROSE (QA round 1, Q-1; rationale in the header). Measured:
+				 * `Charge $5 per run, then set RUN_COST=$COST` typeset
+				 * `5 per run, then set RUN_COST=` because `RUN_COST` carries
+				 * (d)'s `_` signal.
+				 */
+				if (
+					sizeOpen === 1 &&
+					digitLed &&
+					(isAsciiLetter(code) || code === 95 || sawBacktick || sawProseRun)
+				) {
 					return nok(code);
 				}
 

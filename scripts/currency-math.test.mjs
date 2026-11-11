@@ -374,7 +374,8 @@ const MATH_CORPUS = [
 	],
 	["a capillary ($8\\text{ }\\mu\\text{m}$)", ["8\\text{ }\\mu\\text{m}"]],
 	["the identity $2^n - 1$ is odd", ["2^n - 1"]],
-	["thin $1\\,$gap", ["1\\,"]],
+	// Not `$1\\,$gap`: a closer glued to a letter is GUARD (e)'s refusal.
+	["thin $1\\,$ gap", ["1\\,"]],
 	["index $3_{i}$ here", ["3_{i}"]],
 	[
 		SCREENSHOT_PARAGRAPH,
@@ -709,6 +710,159 @@ test("\\[...\\] mid-paragraph is a display-mode inlineMath; prose brackets stay 
 		nodesOf(blank, "math").length + nodesOf(blank, "inlineMath").length,
 		0,
 	);
+});
+
+/** No math node of either kind in the tree, and this exact visible text. */
+const assertLiteral = (source, text) => {
+	const tree = guarded(source);
+	assert.equal(
+		nodesOf(tree, "inlineMath").length + nodesOf(tree, "math").length,
+		0,
+		source,
+	);
+	if (text !== undefined) {
+		assert.equal(textOf({ children: tree.children }), text, source);
+	}
+};
+
+test("escaped brackets in citation lines, notes and usage lines stay literal (R1-1, R1-2, Q-3)", () => {
+	// Agent review round 1, R1-1: the FLOW form read a line that starts with
+	// `\[` and ends with `\]` as one equation, because a mid-line `\]` was
+	// content and the `]` of an escape counted as a TeX signal.
+	for (const [source, text] of [
+		["\\[1\\] Smith et al. 2020, \\[2\\]", "[1] Smith et al. 2020, [2]"],
+		["\\[sic\\] and \\[1\\]", "[sic] and [1]"],
+		[
+			"\\[sic\\] is a marker\nmore text \\[1\\]",
+			"[sic] is a marker\nmore text [1]",
+		],
+		// R1-2: escaped punctuation inside `\[...\]` is Markdown, not TeX.
+		["before \\[see \\*note\\*\\] after", "before [see *note*] after"],
+		["\\[citation\\_needed\\]", "[citation_needed]"],
+		// Q-3: `=` and `|` alone no longer qualify a display span.
+		[
+			"usage: tool \\[--name=VALUE\\] \\[-v|-q\\]",
+			"usage: tool [--name=VALUE] [-v|-q]",
+		],
+		["\\[a + b = c\\]", "[a + b = c]"],
+	]) {
+		assertLiteral(source, text);
+	}
+	// R1-1's fourth repro: the reference paragraph is not split by a
+	// display block either.
+	const refs = guarded(
+		"Ref \\[1\\]: see \\[2\\]\n\\[3\\] Jones 2021 \\[web\\]",
+	);
+	assert.equal(nodesOf(refs, "math").length, 0);
+	assert.equal(nodesOf(refs, "paragraph").length, 1);
+	// The signals that remain still qualify: a command, a script, a group.
+	for (const [source, value] of [
+		["\\[\\alpha\\]", "\\alpha"],
+		["\\[x^2\\]", "x^2"],
+		["\\[\\{1, 2\\}\\]", "\\{1, 2\\}"],
+	]) {
+		assert.deepEqual(
+			nodesOf(guarded(source), "math").map((n) => n.value),
+			[value],
+			source,
+		);
+	}
+	assert.deepEqual(
+		nodesOf(guarded("so \\[a_i\\] holds"), "inlineMath").map((n) => n.value),
+		["a_i"],
+	);
+});
+
+test("a digit-led price never pairs with a later $NAME or crosses prose (Q-1)", () => {
+	// QA round 1, Q-1: each typeset the prose between a price and a later
+	// shell variable, because an identifier's `_` is a TeX signal.
+	for (const source of [
+		"Charge $5 per run, then set RUN_COST=$COST in the env.",
+		"Costs $5 per `run_id`, cmd=$FOO",
+		"$10 per month (see SKU_1)$ wait",
+		"Earned $5 on 2024_q1; total=$X",
+	]) {
+		const tree = guarded(source);
+		assert.equal(nodesOf(tree, "inlineMath").length, 0, source);
+		assert.equal(containsRenderableMath(source), false, source);
+		assert.equal(hasDigitLedMath(source), false, source);
+	}
+	// The code span survives as code.
+	assert.deepEqual(
+		nodesOf(guarded("Costs $5 per `run_id`, cmd=$FOO"), "inlineCode").map(
+			(n) => n.value,
+		),
+		["run_id"],
+	);
+	// Words inside `\text{}` are not prose; a letter-led span is not asked.
+	for (const [source, value] of [
+		["rate $5\\text{ per month}^2$ here", "5\\text{ per month}^2"],
+		["the $2^n - 1$ case", "2^n - 1"],
+		["so $x_i$Y", "x_i"],
+	]) {
+		assert.deepEqual(
+			nodesOf(guarded(source), "inlineMath").map((n) => n.value),
+			[value],
+			source,
+		);
+		assert.equal(containsRenderableMath(source), true, source);
+	}
+	// The cost, pinned: a unit glued to a digit-led closer stays literal.
+	assertLiteral("thin $1\\,$gap", "thin $1,$gap");
+	// The gate and the parser agree on the prose rule's edges.
+	for (const [source, parses] of [
+		["$5 ab cd x^2$", false],
+		["$5 ab, cd x^2$", false],
+		["$5 ab x^2$", true],
+		["$5 a b^2$", true],
+		["$5 \\mu m^2$", true],
+		["$5 {ab cd}^2$", true],
+	]) {
+		assert.equal(
+			nodesOf(guarded(source), "inlineMath").length === 1,
+			parses,
+			source,
+		);
+		assert.equal(hasDigitLedMath(source), parses, source);
+	}
+});
+
+test("unclosed \\( and \\[ openers parse in linear time (Q-2)", () => {
+	// QA round 1, Q-2 measured 17-49 s for 40 kB of these; each opener used to
+	// rescan to the end of its paragraph.
+	for (const source of [
+		"\\( x ".repeat(8000),
+		"\\[ x ".repeat(8000),
+		"\\[\nx\n".repeat(8000),
+	]) {
+		const started = performance.now();
+		const tree = guarded(source);
+		const elapsed = performance.now() - started;
+		assert.ok(elapsed < 1000, `${elapsed} ms for ${source.slice(0, 8)}`);
+		assert.equal(
+			nodesOf(tree, "inlineMath").length + nodesOf(tree, "math").length,
+			0,
+		);
+	}
+	// The no-closer memo stays inside the paragraph / kind it measured.
+	for (const [source, inline, display] of [
+		["a \\( b\n\nthen \\(x^2\\)", ["x^2"], []],
+		["a \\( b then \\[x^2\\] ok", ["x^2"], []],
+		["\\[\na^2\n\n\\[\nx^2\n\\]", [], ["x^2"]],
+		["> \\[\n> a^2\n\n\\[\nx^2\n\\]", [], ["x^2"]],
+	]) {
+		const tree = guarded(source);
+		assert.deepEqual(
+			nodesOf(tree, "inlineMath").map((n) => n.value),
+			inline,
+			source,
+		);
+		assert.deepEqual(
+			nodesOf(tree, "math").map((n) => n.value),
+			display,
+			source,
+		);
+	}
 });
 
 test("backslash delimiters never reach into inline, fenced or indented code", () => {

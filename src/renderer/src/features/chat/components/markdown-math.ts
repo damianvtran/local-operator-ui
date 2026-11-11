@@ -101,17 +101,56 @@ export const MATH_FENCE_REGEX = /^ {0,3}(?:`{3,}|~{3,})[ \t]*math[ \t]*$/m;
 /**
  * A single `$` + digit opener, candidate closer and content, for
  * `hasDigitLedMath`. The opener may not be escaped (`\$5`) or part of a `$$`
- * run; the closer may not be followed by a digit (the parser's guard (c)).
+ * run; the closer may not be followed by a digit (the parser's guard (c)) nor
+ * by a letter or `_` (guard (e): `RUN_COST=$COST` - that `$` opens a name).
  */
-const DIGIT_LED_SPAN = /(?<![\\$])\$(?=\d)([^$]*)\$(?!\d)/g;
+const DIGIT_LED_SPAN = /(?<![\\$])\$(?=\d)([^$]*)\$(?![\dA-Za-z_])/g;
 /** The parser's guard (d) signals, as one test over a span's content. */
 const TEX_SIGNAL = /\\[^\s$]|[\^_{}]/;
 /** The parser's guard (b): a closer's left neighbour is not whitespace. */
 const ENDS_VISIBLE = /\S$/;
+/** Guard (e)'s plain word: two or more letters, one optional final mark. */
+const PROSE_WORD = /^[A-Za-z]{2,}[,.;:!?]?$/;
 
 /**
- * Whether some digit-led `$...$` would pass the parser's guards (b), (c) and
- * (d): content ends on a non-space and carries a TeX signal.
+ * Guard (e)'s prose test, mirroring the parser's character walk so the gate
+ * and the tokenizer agree: words split on space and line endings (a tab is
+ * data to the parser, so it is here too), braces counted unless escaped, and
+ * a backslash pairs with the visible character after it. True when two plain
+ * words in a row sit outside every `{...}` group - prose, not TeX.
+ */
+export const hasProseRun = (inner: string): boolean => {
+	let depth = 0;
+	let escaped = false;
+	let previousProse = false;
+	let word = "";
+	const endWord = (): boolean => {
+		if (word === "") return false;
+		const prose = depth === 0 && PROSE_WORD.test(word);
+		const run = prose && previousProse;
+		previousProse = prose;
+		word = "";
+		return run;
+	};
+	for (const char of inner) {
+		if (char === " " || char === "\n" || char === "\r") {
+			escaped = false;
+			if (endWord()) return true;
+			continue;
+		}
+		// A backslash or the character it escapes never makes a plain word.
+		word += escaped || char === "\\" ? "\u0000" : char;
+		if (!escaped && char === "{") depth++;
+		if (!escaped && char === "}" && depth > 0) depth--;
+		escaped = !escaped && char === "\\";
+	}
+	return endWord();
+};
+
+/**
+ * Whether some digit-led `$...$` would pass the parser's guards (b) to (e):
+ * content ends on a non-space, carries a TeX signal, holds no backtick and no
+ * run of plain words, and the closer is not followed by a digit, letter or `_`.
  *
  * A scan rather than one regex because a REJECTED candidate must resume one
  * character after its opener, the way the tokenizer does - `costs $5 and
@@ -123,7 +162,14 @@ export const hasDigitLedMath = (content: string): boolean => {
 	let match = pattern.exec(content);
 	while (match !== null) {
 		const inner = match[1];
-		if (ENDS_VISIBLE.test(inner) && TEX_SIGNAL.test(inner)) return true;
+		if (
+			ENDS_VISIBLE.test(inner) &&
+			TEX_SIGNAL.test(inner) &&
+			!inner.includes("`") &&
+			!hasProseRun(inner)
+		) {
+			return true;
+		}
 		pattern.lastIndex = match.index + 1;
 		match = pattern.exec(content);
 	}

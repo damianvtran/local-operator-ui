@@ -124,13 +124,16 @@ const GENUINE_MATH = answer(
 const Frame = ({
 	records,
 	height,
+	width = 1024,
 }: {
 	records: TranscriptRecord[];
 	height: number;
+	/** Only the narrow display story overrides it (D1). */
+	width?: number;
 }) => {
 	const containerRef = useRef<HTMLDivElement>(null);
 	return (
-		<div className="flex flex-col bg-canvas" style={{ width: 1024, height }}>
+		<div className="flex flex-col bg-canvas" style={{ width, height }}>
 			<div className="flex min-h-0 grow flex-col px-4 pt-4">
 				<CanonicalTranscript
 					transcript={transcriptOf(records)}
@@ -204,6 +207,17 @@ const MONEY_AND_MATH = answer(
 	"The prototype cost $20,000 and $30,000 across two runs ($5M/$1.2B is the market's range, and parts run between $3–$4 per unit). Its drag scales as $10^{-3}\\,\\text{N}$ at $2^n - 1$ cycles, and the budget of $5.00 per test is unchanged.",
 );
 
+/**
+ * A degree-30 polynomial: about twice the 778px content box of the 1024px
+ * frame's display panel, so the panel's `overflow-x: auto` has something to
+ * scroll. Design review round 1, D1: the degree-14 version measured 750.5px
+ * and fit, so no frame proved the scroll.
+ */
+const WIDE_POLYNOMIAL = `f(x) = a_0 + a_1 x + ${Array.from(
+	{ length: 29 },
+	(_, i) => `a_{${i + 2}} x^{${i + 2}}`,
+).join(" + ")}`;
+
 /** One display equation per delimiter: `$$`, `\[...\]`, ```math, and `\[` mid-paragraph. */
 const DISPLAY_BLOCKS = answer(
 	"a1",
@@ -229,7 +243,7 @@ const DISPLAY_BLOCKS = answer(
 		"Inline \\(a^2 + b^2 = c^2\\) and a mid-sentence display \\[ \\nabla \\cdot \\mathbf{E} = \\frac{\\rho}{\\varepsilon_0} \\] in prose. A wide one scrolls inside its panel:",
 		"",
 		"\\[",
-		"f(x) = a_0 + a_1 x + a_2 x^2 + a_3 x^3 + a_4 x^4 + a_5 x^5 + a_6 x^6 + a_7 x^7 + a_8 x^8 + a_9 x^9 + a_{10} x^{10} + a_{11} x^{11} + a_{12} x^{12} + a_{13} x^{13} + a_{14} x^{14}",
+		WIDE_POLYNOMIAL,
 		"\\]",
 	].join("\n"),
 );
@@ -263,6 +277,16 @@ export const MoneyAndMath: Story = {
 /** Centred, tinted display panels for every delimiter, plus horizontal overflow. */
 export const DisplayBlocks: Story = {
 	render: () => <Frame records={[DISPLAY_BLOCKS]} height={760} />,
+};
+
+/**
+ * The same blocks in a 600px pane (a narrow window or split view): every
+ * panel stays inside the prose column and the wide one scrolls from its left
+ * edge rather than clipping it (design review round 1, D1). Taller than the
+ * 1024px story because the prose wraps.
+ */
+export const DisplayBlocksNarrow: Story = {
+	render: () => <Frame records={[DISPLAY_BLOCKS]} height={900} width={600} />,
 };
 
 /** Invalid TeX never breaks the message. */

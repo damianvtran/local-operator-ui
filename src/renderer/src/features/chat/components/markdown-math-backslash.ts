@@ -48,11 +48,38 @@
  *     break inside display math, and without this a stray `\[` would scan
  *     across the whole message for a `\]`.
  *   - `\[...\]` MUST LOOK LIKE MATH. Escaped brackets are common in prose -
- *     `\[1\]` reference markers, `\[sic\]`, `\[citation needed\]` - so the
- *     display delimiters require a signal in the content: a backslash command,
- *     or one of `^ _ { } = + < > |`. `\(...\)` is not asked: escaped
+ *     `\[1\]` reference markers, `\[sic\]`, `\[citation needed\]`, CLI usage
+ *     lines such as `tool \[--name=VALUE\] \[-v|-q\]` - so the display
+ *     delimiters require a signal in the content: a backslash followed by a
+ *     LETTER (a command: `\frac`, `\alpha`) or by a brace (`\{`), or one of
+ *     `^ _ { }` - the same signal set as a digit-led `$` span
+ *     (`markdown-math-guarded.ts` guard (d)). A backslash before other
+ *     punctuation is a CommonMark escape (`\*`, `\_`, `\]`) and is NOT a
+ *     signal (agent review round 1, R1-1/R1-2: `\[see \*note\*\]` and
+ *     `\[citation\_needed\]` typeset as display math). THE TRADE-OFF: a bare
+ *     `= + < > |` no longer qualifies, so `\[a + b = c\]` stays literal
+ *     brackets (QA round 1, Q-3, showed those characters are equally common
+ *     in usage lines). Such a formula renders as `$$a + b = c$$` or
+ *     `\(a + b = c\)`, and any real display equation almost always carries a
+ *     command, a script or a group anyway. `\(...\)` is not asked: escaped
  *     parentheses carry no meaning in Markdown, so a paired `\(...\)` is
  *     LaTeX's inline delimiter and nothing else.
+ *   - THE FIRST `\]` CLOSES. LaTeX ends display math at the first `\]`; the
+ *     text form always did, and the flow form fails its attempt on a `\]`
+ *     that is not the line-final closer, so `\[1\] Smith 2020, \[2\]` is a
+ *     line of prose, not one equation spanning two citations (R1-1).
+ *   - NO CLOSER IS REMEMBERED (QA round 1, Q-2). Every opener without a closer
+ *     used to scan to the end of its paragraph (text) or its blank line (flow),
+ *     so N unclosed openers cost O(N x length): 40 kB of `\( x ` took 17 s,
+ *     40 kB of `\[`-lines 49 s, on the renderer thread and again per streamed
+ *     token. When a scan reaches that end without meeting any closer of its
+ *     kind, the fact is recorded on the tokenizer context, and a later opener
+ *     inside the same scanned range fails at once - its scan would be a
+ *     suffix of the one that already failed. The memo needs no bound: it is
+ *     exact, not a heuristic. Its key is the tokenizer context, which micromark
+ *     creates per paragraph (text) and per flow region between container
+ *     changes (`document.js` closes the child flow when a container opens), so
+ *     a fact never leaks into a region it was not measured in.
  *   - A backslash inside the content consumes the character after it, so
  *     `\\` (TeX's line break) followed by `)` or `]` is never mistaken for a
  *     closer - the same pairing TeX itself applies.
@@ -61,6 +88,12 @@
  * states (the micromark type packages are not this repository's own
  * dependencies).
  */
+
+// Upstream's `resolveMathText` (micromark-extension-math@3.1.0): merge
+// adjacent space and data tokens, and mark the padding of content that both
+// starts and ends with a space (`\( x \)` -> value `x`, the same as `$ x $`
+// under upstream). One vendored copy, shared with the guarded `$` tokenizer.
+import { resolveMathText } from "./markdown-math-resolve";
 
 type Code = number | null;
 type State = (code: Code) => State | undefined;
@@ -77,7 +110,7 @@ type TokenizeContext = {
 		[string, Token, { sliceSerialize: (token: Token, eol?: boolean) => string }]
 	>;
 	parser: { lazy: Record<number, boolean> };
-	now: () => { line: number };
+	now: () => { line: number; offset: number };
 };
 type Tokenizer = (
 	this: TokenizeContext,
@@ -109,19 +142,50 @@ const isSpace = (code: Code): boolean =>
 
 /**
  * The single characters that make `\[...\]` content read as math rather than a
- * bracketed note (see THE GUARDS): `^ _ { } = + < > |`. A backslash command is
- * the other signal and is detected where the backslash is consumed.
+ * bracketed note (see THE GUARDS): `^ _ { }`. A backslash command is the other
+ * signal and is detected where the backslash is consumed (`isCommandSignal`).
  */
 const isDisplaySignal = (code: Code): boolean =>
-	code === 94 ||
-	code === 95 ||
-	code === 123 ||
-	code === 125 ||
-	code === 61 ||
-	code === 43 ||
-	code === 60 ||
-	code === 62 ||
-	code === 124;
+	code === 94 || code === 95 || code === 123 || code === 125;
+
+/**
+ * The character after a backslash makes it a TeX signal: an ASCII letter (a
+ * command) or a brace (`\{`, `\}`, set notation). Any other punctuation after
+ * `\` is a CommonMark escape (`\*`, `\_`, `\]`) that prose uses freely.
+ */
+const isCommandSignal = (code: Code): boolean =>
+	code !== null &&
+	((code >= 65 && code <= 90) ||
+		(code >= 97 && code <= 122) ||
+		code === 123 ||
+		code === 125);
+
+/**
+ * Q-2's no-closer memo (see THE GUARDS). TEXT: per paragraph context and
+ * closing code, the offset of the earliest opener whose scan reached the end
+ * of the paragraph with no closer - no later opener of that kind can close.
+ * FLOW: per flow context, the `(from, to)` range the latest failed scan
+ * covered without meeting any `\]` at all; a later `\[` inside it would end at
+ * the same blank line, lazy line or end of input with no closer either. Only
+ * the latest range is kept because micromark tries flow constructs at
+ * non-decreasing offsets: once an opener lies past a range, no later opener
+ * can fall inside it.
+ */
+const textNoCloser = new WeakMap<object, Map<number, number>>();
+const flowNoCloser = new WeakMap<object, [number, number]>();
+
+/**
+ * The tokenizer context a memo is keyed on. micromark calls a construct with
+ * the context itself, except under `effects.interrupt` (a paragraph asking
+ * whether a `\[` line interrupts it), where it passes
+ * `Object.create(context)` with an own `interrupt` field - a fresh object per
+ * call that would make the memo miss on exactly the paragraph-of-openers shape
+ * Q-2 measured.
+ */
+const memoKey = (context: object): object =>
+	Object.hasOwn(context, "interrupt")
+		? (Object.getPrototypeOf(context) as object)
+		: context;
 
 /**
  * The token type the `\[...\]` TEXT form is renamed to once its bracket is
@@ -130,14 +194,6 @@ const isDisplaySignal = (code: Code): boolean =>
  * and upstream's handler.
  */
 const DISPLAY_TEXT = "mathTextDisplay";
-
-/**
- * Upstream's `resolveMathText` (micromark-extension-math@3.1.0): merge adjacent
- * space and data tokens, and mark the padding of content that both starts and
- * ends with a space (`\( x \)` -> value `x`, the same as `$ x $` under
- * upstream). One vendored copy, shared with the guarded `$` tokenizer.
- */
-import { resolveMathText } from "./markdown-math-resolve";
 
 /* ---------------------------------------------------------------------------
  * TEXT: `\(...\)` and `\[...\]` inside a paragraph.
@@ -155,6 +211,9 @@ function tokenizeBackslashMathText(
 	let outer: Token;
 	let sawContent = false;
 	let sawSignal = false;
+	let openOffset = 0;
+	let key: object;
+	const self = this;
 
 	/** `\` + this construct's closing character, as a lookahead. */
 	const closer: Construct = { tokenize: tokenizeCloser, partial: true };
@@ -163,6 +222,8 @@ function tokenizeBackslashMathText(
 
 	function start(code: Code): State | undefined {
 		if (code !== BACKSLASH) return nok(code);
+		openOffset = self.now().offset;
+		key = memoKey(self);
 		outer = effects.enter("mathText");
 		effects.enter("mathTextSequence");
 		effects.consume(code);
@@ -179,13 +240,17 @@ function tokenizeBackslashMathText(
 		} else if (code !== LEFT_PAREN) {
 			return nok(code);
 		}
+		// Q-2: an earlier opener of this kind already scanned past here to the
+		// end of the paragraph without a closer.
+		const known = textNoCloser.get(key)?.get(closeCode);
+		if (known !== undefined && openOffset > known) return nok(code);
 		effects.consume(code);
 		effects.exit("mathTextSequence");
 		return between;
 	}
 
 	function between(code: Code): State | undefined {
-		if (code === null) return nok(code);
+		if (code === null) return noCloser(code);
 		if (code === BACKSLASH) {
 			return effects.check(closer, close, dataStart)(code);
 		}
@@ -234,9 +299,23 @@ function tokenizeBackslashMathText(
 		if (code === null || isLineEnding(code) || isSpace(code)) {
 			return data(code);
 		}
-		sawSignal = true;
+		if (isCommandSignal(code)) sawSignal = true;
 		effects.consume(code);
 		return data;
+	}
+
+	/** End of the paragraph, no closer met: remember it for later openers. */
+	function noCloser(code: Code): State | undefined {
+		let byCode = textNoCloser.get(key);
+		if (!byCode) {
+			byCode = new Map();
+			textNoCloser.set(key, byCode);
+		}
+		const known = byCode.get(closeCode);
+		if (known === undefined || openOffset < known) {
+			byCode.set(closeCode, openOffset);
+		}
+		return nok(code);
 	}
 
 	function exitDataThenClose(code: Code): State | undefined {
@@ -355,11 +434,23 @@ function tokenizeBracketFlow(
 	let sawSignal = false;
 	let lineHasContent = false;
 	let prefixLeft = 0;
+	/** Any `\]` met - a scan that met one says nothing about later openers. */
+	let sawCloseBracket = false;
+	const self = this;
+	const key = memoKey(this);
+	let openOffset = 0;
 
 	return start;
 
 	function start(code: Code): State | undefined {
 		if (code !== BACKSLASH) return nok(code);
+		openOffset = self.now().offset;
+		// Q-2: an earlier `\[` already scanned across this line to a
+		// terminator without meeting any `\]`.
+		const range = flowNoCloser.get(key);
+		if (range && openOffset > range[0] && openOffset < range[1]) {
+			return nok(code);
+		}
 		effects.enter("mathFlow");
 		effects.enter("mathFlowFence");
 		effects.enter("mathFlowFenceSequence");
@@ -393,7 +484,7 @@ function tokenizeBracketFlow(
 
 	function openDone(code: Code): State | undefined {
 		// An opener alone at the end of the input is unclosed.
-		if (code === null) return nok(code);
+		if (code === null) return noCloser(code);
 		effects.exit("mathFlowFence");
 		// The opener line counts as content-bearing: `\[` alone is the
 		// ordinary shape and must not trip the blank-line rule.
@@ -402,8 +493,19 @@ function tokenizeBracketFlow(
 	}
 
 	function lineEnd(code: Code): State | undefined {
-		if (!lineHasContent) return nok(code);
-		return effects.attempt(nonLazyContinuation, lineStart, nok)(code);
+		if (!lineHasContent) return noCloser(code);
+		return effects.attempt(nonLazyContinuation, lineStart, noCloser)(code);
+	}
+
+	/**
+	 * A terminator (blank line, lazy line, end of input) ended the attempt.
+	 * With no `\]` met on the way, record the scanned range for later openers.
+	 */
+	function noCloser(code: Code): State | undefined {
+		if (!sawCloseBracket) {
+			flowNoCloser.set(key, [openOffset, self.now().offset]);
+		}
+		return nok(code);
 	}
 
 	function lineStart(code: Code): State | undefined {
@@ -427,7 +529,7 @@ function tokenizeBracketFlow(
 	}
 
 	function beforeChunk(code: Code): State | undefined {
-		if (code === null) return nok(code);
+		if (code === null) return noCloser(code);
 		if (isLineEnding(code)) return lineEnd(code);
 		if (code === BACKSLASH) {
 			return effects.check(closingTail, closeFence, chunkStart)(code);
@@ -464,7 +566,14 @@ function tokenizeBracketFlow(
 		if (code === null || isLineEnding(code) || isSpace(code)) {
 			return chunk(code);
 		}
-		sawSignal = true;
+		// The line-final `\]` was already taken by `closingTail`; any other
+		// `\]` is LaTeX's first closer in the wrong place, so this is prose
+		// such as `\[1\] Smith 2020, \[2\]` (R1-1).
+		if (code === RIGHT_BRACKET) {
+			sawCloseBracket = true;
+			return nok(code);
+		}
+		if (isCommandSignal(code)) sawSignal = true;
 		effects.consume(code);
 		return chunk;
 	}
@@ -476,7 +585,10 @@ function tokenizeBracketFlow(
 
 	function closeFence(code: Code): State | undefined {
 		// `\[1\]` on its own line is a reference marker, not an equation.
-		if (!sawSignal) return nok(code);
+		if (!sawSignal) {
+			sawCloseBracket = true;
+			return nok(code);
+		}
 		effects.enter("mathFlowFence");
 		effects.enter("mathFlowFenceSequence");
 		effects.consume(code);
