@@ -438,5 +438,7 @@
 	"ui.chat.canonical.notice.stopped_with_error": "Đã dừng do lỗi",
 	"ui.chat.canonical.notice.compaction_not_run": "Lần nén không được thực hiện: {detail}",
 	"ui.chat.canonical.notice.compaction_not_run_after_colon": "Lần nén không được thực hiện — {detail}",
-	"ui.chat.canonical.link_toolkit.actions_for": "Thao tác với {name}"
+	"ui.chat.canonical.link_toolkit.actions_for": "Thao tác với {name}",
+	"ui.chat.canonical.tool.never_sent_composed": "không được gửi · đã soạn {size}",
+	"ui.chat.canonical.tool.never_sent_empty": "không được gửi · chưa soạn gì"
 }

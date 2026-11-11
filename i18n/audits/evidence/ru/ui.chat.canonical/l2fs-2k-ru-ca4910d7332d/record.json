@@ -1,0 +1,76 @@
+{
+ "locale": "ru",
+ "namespace": "ui.chat.canonical",
+ "audit_id": "l2fs-2k-ru-ca4910d7332d",
+ "audit_date": "2026-11-11",
+ "key_count": 2,
+ "keys": [
+  "ui.chat.canonical.tool.never_sent_composed",
+  "ui.chat.canonical.tool.never_sent_empty"
+ ],
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "ca4910d7332d",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "session runtime model header (deepseek/deepseek-flash); no provider fallback used",
+  "independent_from_translator_session": true,
+  "translator": {
+   "agent": "i18n-translator",
+   "model": "openai/gpt-6.1-sol"
+  },
+  "translator_did_not_audit_own_work": true
+ },
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+   "sha256": "27ae7327daa34be60b619be551c840e057d61c3d69dc801269e4f389edc0f031"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+   "sha256": "c0aff0d8bd80304e063b55f80875e3f8b5f50ad201e9b51770f570eb8dd253e4"
+  },
+  "ru_audited_values": {
+   "path": ".worktrees/_l2-prep/ru.json",
+   "sha256": "f1c0c9854e67ab59ae7b102cc8c1bb8ee5118f1b61f103ee09885b456b6d3c7a"
+  },
+  "ru_shipped_catalogue_baseline": {
+   "path": "src/i18n/catalogues/ru/ui.chat.canonical.json",
+   "sha256": "ea9eff38bfa4c9fcea0fa519aaa37fc890ac09977df535940494aa92194a61e3"
+  }
+ },
+ "artifacts": {
+  "audit.log": {
+   "path": "i18n/audits/evidence/ru/ui.chat.canonical/l2fs-2k-ru-ca4910d7332d/audit.log",
+   "sha256": "5c4d8072a4895388092a55516bdae850e92937159232aae1a347d92144a6f139"
+  },
+  "mechanical.json": {
+   "path": "i18n/audits/evidence/ru/ui.chat.canonical/l2fs-2k-ru-ca4910d7332d/mechanical.json",
+   "sha256": "6c77d8b7399c2ec5d4a0b126b946cab1cd23f643866ae0a29b14053c80005664"
+  },
+  "receipt.json": {
+   "path": "i18n/audits/evidence/ru/ui.chat.canonical/l2fs-2k-ru-ca4910d7332d/receipt.json",
+   "sha256": "2f499c599369e1c2cec80106804a878f379a67230a55ccd8add9f6bf798af48f"
+  }
+ },
+ "current_report_verdict": {
+  "status": "passed",
+  "unresolved_blocker_major_count": 0,
+  "finding_ids": []
+ },
+ "second_independent_pass": {
+  "performed": true,
+  "scope": "both keys re-read after the first pass; register, verb parallax, ambiguity of {size} in a tool row"
+ },
+ "audit_notes_not_execution_log": [
+  "audit.log holds captured stdout of the commands actually run this session (gates, ledger probe, mechanical script).",
+  "The linguistic judgement (meaning, idiom, terminology, width) is this auditor's reasoning and is not machine output; it lives in the audit report referenced below.",
+  "The red ledger-check rows in audit.log are the wave's in-flight repository state, not findings of this audit."
+ ],
+ "ledger_append": {
+  "status": "deferred-until-landing",
+  "reason": "ledger-assemble.mjs derives target_sha256 from the catalogue on disk and refuses an incomplete locale; the ru catalogue lacks the two keys until the landing commit.",
+  "command": "node scripts/i18n/ledger-assemble.mjs --locale ru --file src/i18n/catalogues/ru/ui.chat.canonical.json --auditor-instance ca4910d7332d --auditor-model deepseek/deepseek-flash --result clean --receipt i18n/receipts/<landed-receipt>.json --translator-agent i18n-translator --translator-model openai/gpt-6.1-sol --scope \"the 2 keys this wave adds (never_sent_composed, never_sent_empty)\" --note \"l2 file-size wave; audit l2fs-2k-ru-ca4910d7332d\"",
+  "evidence": "audit.log section 3 (verbatim refusal, exit 2, ledger bytes unchanged)"
+ },
+ "report": "~/local-operator-ui/.worktrees/_l2-prep/audit-ru.md (manager hand-off; untracked prep dir, not part of the repo)"
+}
