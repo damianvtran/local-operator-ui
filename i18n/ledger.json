@@ -6348,8 +6348,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.common.time",
-			"source_sha256": "d29ccbd6b980f727b02c9c7e60c27c0d068d8082bab2e424784bc683f1cfbdd0",
-			"target_sha256": "2b208fa332b2de5ba3896206c6c77e8e9aa2ba2b709030fdf9846ac7b0744354",
+			"source_sha256": "bb0b3aa1a71679cc73cb40d73616b5e22057c7dcbc86705c2ec4425984971e13",
+			"target_sha256": "ca96efc391c6c880900485d02da2d93011056565a49128391e77ce97fc5396b3",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -6357,22 +6357,48 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "openrouter/moonshotai/kimi-k3.1-pro",
-					"date": "2026-10-24",
-					"result": "clean",
-					"instance": "32818c8f857f",
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-12",
+					"result": "clean-with-findings",
+					"instance": "70b1568077eb",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/32818c8f857f.json",
-					"receipt_sha256": "dd9f3d21d37499ef78506d9998f3f37c71faa888b55c3402c8c078710ab0c3f9"
+					"receipt": "i18n/receipts/70b1568077eb.json",
+					"receipt_sha256": "637d48adc95205633bf9e658433ac5e405f174801994d0ba1ce1eeae309bdb47",
+					"scope": "es ui.common.time round 2: the four S16d keys (today_at, yesterday, weekday_at, date_at) plus the unchanged yesterday_at sibling, on b2110ea9cd9f",
+					"note": "R2 es on b2110ea9cd9f: 0 blocker/major on all 5 time words; weekday_at comma = Intl es own composition; date_at IDENTICAL_OK row verified load-bearing and es-scoped. ES-1 nit: row lacks provenance. Record: i18n/audits/evidence/es/ui.common.time/s16d-r2-70b1568077eb/record.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "d29ccbd6b980f727b02c9c7e60c27c0d068d8082bab2e424784bc683f1cfbdd0",
+					"target_sha256": "2b208fa332b2de5ba3896206c6c77e8e9aa2ba2b709030fdf9846ac7b0744354",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openrouter/moonshotai/kimi-k3.1-pro",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "32818c8f857f",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/32818c8f857f.json",
+							"receipt_sha256": "dd9f3d21d37499ef78506d9998f3f37c71faa888b55c3402c8c078710ab0c3f9"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "es",
@@ -18388,8 +18414,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.common.time",
-			"source_sha256": "d29ccbd6b980f727b02c9c7e60c27c0d068d8082bab2e424784bc683f1cfbdd0",
-			"target_sha256": "acde397f72b34b71035c3bda3ce2214dd883556452d9b84968d96c018fb59a97",
+			"source_sha256": "bb0b3aa1a71679cc73cb40d73616b5e22057c7dcbc86705c2ec4425984971e13",
+			"target_sha256": "61934e35bbc1451f100d5935e061d3ad869b3c5cf679dd23f933c6ac5c5684b4",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -18397,22 +18423,48 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-24",
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-12",
 					"result": "clean",
-					"instance": "d94011de0dc0",
+					"instance": "51f78513d13c",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d94011de0dc0-surfaces.json",
-					"receipt_sha256": "cdab18d3bc3b8c91215c07a178c64af0c5a1b44bf181c0b6d31e4bad14be3e8f"
+					"receipt": "i18n/receipts/51f78513d13c.json",
+					"receipt_sha256": "2cf6c89fc4ced57455ada786575d04774146817bc0709830a9d0ce3afe5cc041",
+					"scope": "ui.common.time, 4 landed keys (today_at, yesterday, weekday_at, date_at) at b2110ea9: placeholder parity, real app formatter end to end under fr Intl, typography, glossary, sibling yesterday_at.",
+					"note": "0 blocker/major/minor/nit on the 4 landed fr keys; values byte-identical to the pre-landing audit (canonical 263069ff); 2 app-side info OBS. Record: i18n/audits/evidence/fr/ui.common.time/s16dfr1/record.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "d29ccbd6b980f727b02c9c7e60c27c0d068d8082bab2e424784bc683f1cfbdd0",
+					"target_sha256": "acde397f72b34b71035c3bda3ce2214dd883556452d9b84968d96c018fb59a97",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "d94011de0dc0",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d94011de0dc0-surfaces.json",
+							"receipt_sha256": "cdab18d3bc3b8c91215c07a178c64af0c5a1b44bf181c0b6d31e4bad14be3e8f"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "fr",
@@ -30627,31 +30679,57 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.common.time",
-			"source_sha256": "d29ccbd6b980f727b02c9c7e60c27c0d068d8082bab2e424784bc683f1cfbdd0",
-			"target_sha256": "3926070cac4463c4bc5a16aa11cc4e8f9594951a92752241cbda41f82bf1ab7f",
+			"source_sha256": "bb0b3aa1a71679cc73cb40d73616b5e22057c7dcbc86705c2ec4425984971e13",
+			"target_sha256": "c8d0b2b8ca135938bdfc29e2f29550bb053bfd328503cc9fcf64b83cce535682",
 			"translator": {
-				"agent": "translator",
-				"model": "openrouter/moonshotai/kimi-k3.1-pro",
-				"date": "2026-10-24"
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-12"
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-24",
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-12",
 					"result": "clean",
-					"instance": "dab47dfc690a",
+					"instance": "a6f6c27e3b4e",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/dab47dfc690a-surfaces.json",
-					"receipt_sha256": "ef467c191feb9a91c8e4ada0c2814ec7a710506dcfd5fe0a8a4d964dc5738290"
+					"receipt": "i18n/receipts/a6f6c27e3b4e.json",
+					"receipt_sha256": "748dbeff0ef167af75043807812b1776453f9c684cba66c2ec56a2fc95ede5fd",
+					"scope": "PR #1877 S16d r2, hi/ui.common.time, 4 landed keys after the round-1 correction, judged on composed Intl output via formatDividerLabel; head b2110ea",
+					"note": "S16d r2 hi ui.common.time: को correction in weekday_at/date_at verified idiomatic on composed output ('सोमवार को 2:30 pm', '5 नवंबर 2026 को 2:30 pm'); no blocker/major on landed bytes; record i18n/audits/evidence/hi/ui.common.time/s16d-hi-r2/record.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "d29ccbd6b980f727b02c9c7e60c27c0d068d8082bab2e424784bc683f1cfbdd0",
+					"target_sha256": "3926070cac4463c4bc5a16aa11cc4e8f9594951a92752241cbda41f82bf1ab7f",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "dab47dfc690a",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/dab47dfc690a-surfaces.json",
+							"receipt_sha256": "ef467c191feb9a91c8e4ada0c2814ec7a710506dcfd5fe0a8a4d964dc5738290"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "hi",
@@ -42540,8 +42618,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.common.time",
-			"source_sha256": "d29ccbd6b980f727b02c9c7e60c27c0d068d8082bab2e424784bc683f1cfbdd0",
-			"target_sha256": "5436047ba2fc7843f2a63605c5ed74d6183ce751d1b5958c9b3850cf2f2243ea",
+			"source_sha256": "bb0b3aa1a71679cc73cb40d73616b5e22057c7dcbc86705c2ec4425984971e13",
+			"target_sha256": "45f4bdfa8813dea770ad0cc6168080034ecad25a9940b42b84726a48621b9819",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -42549,23 +42627,49 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-24",
-					"result": "clean",
-					"instance": "23463a773a32-surfaces",
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-12",
+					"result": "clean-with-findings",
+					"instance": "1d3841078034",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 2,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/23463a773a32-surfaces.json",
-					"receipt_sha256": "ffb00483f5a5b874782f3512f5de45836a54200b23fad9579f69d5803171188b",
-					"scope": "Remediation delta only: every ru value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical English/context hashes and the per-namespace target hashes recor"
+					"receipt": "i18n/receipts/1d3841078034.json",
+					"receipt_sha256": "08724cf15274eb6649188622e4d75091ad6b2df3974975d7e262d467bf264656",
+					"scope": "ru ui.common.time S16d: 4 new keys audited against en + context sidecar; composed with real Intl ru arguments",
+					"note": "S16d ru ui.common.time: clean-with-findings 0 blocker/0 major/2 minor; date_at = CLDR ru exactly; RU-01 comma in weekday_at, RU-02 app-side lowercase weekday."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "d29ccbd6b980f727b02c9c7e60c27c0d068d8082bab2e424784bc683f1cfbdd0",
+					"target_sha256": "5436047ba2fc7843f2a63605c5ed74d6183ce751d1b5958c9b3850cf2f2243ea",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "23463a773a32-surfaces",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/23463a773a32-surfaces.json",
+							"receipt_sha256": "ffb00483f5a5b874782f3512f5de45836a54200b23fad9579f69d5803171188b",
+							"scope": "Remediation delta only: every ru value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical English/context hashes and the per-namespace target hashes recor"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ru",
@@ -54543,32 +54647,58 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.common.time",
-			"source_sha256": "d29ccbd6b980f727b02c9c7e60c27c0d068d8082bab2e424784bc683f1cfbdd0",
-			"target_sha256": "89f3687b2d44d59cbc7a2fb69b29ec0e52cd79ab9743e1f2356799d6ee9f756c",
+			"source_sha256": "bb0b3aa1a71679cc73cb40d73616b5e22057c7dcbc86705c2ec4425984971e13",
+			"target_sha256": "ebd748bc470d8e649715afa0e6d7dc82d84754f61e6d1f33d9b919b02d319d95",
 			"translator": {
-				"agent": "translator",
-				"model": "openrouter/moonshotai/kimi-k3.1-pro",
-				"date": "2026-10-24"
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-12"
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-24",
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-12",
 					"result": "clean",
-					"instance": "21fe6c635cf3",
+					"instance": "d60f239900b3",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/21fe6c635cf3-surfaces.json",
-					"receipt_sha256": "c8a545503607c32407442b73c7b61ccb33fd68447cdf9c01d3a3415fcb578086",
-					"scope": "Remediation delta only: every value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical hashes recorded below."
+					"receipt": "i18n/receipts/d60f239900b3.json",
+					"receipt_sha256": "8fa87b89c6b0d4b492bab5dab605ae16c42283ed38505ebee85f3f4960ee7c4e",
+					"scope": "S16d round-2 independent re-audit of the landed ur values for all 5 ui.common.time keys (4 new: today_at, yesterday_at, weekday_at, date_at), composing real formatter output; judged the round-1 date_at correction on its merits.",
+					"note": "ur ui.common.time round 2 (S16d): 5 keys, 0 blocker/major/minor/nit. date_at {date} کو {time} accepted; weekday_at stays pure-placeholder under its scoped IDENTICAL_OK row."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "d29ccbd6b980f727b02c9c7e60c27c0d068d8082bab2e424784bc683f1cfbdd0",
+					"target_sha256": "89f3687b2d44d59cbc7a2fb69b29ec0e52cd79ab9743e1f2356799d6ee9f756c",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "21fe6c635cf3",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/21fe6c635cf3-surfaces.json",
+							"receipt_sha256": "c8a545503607c32407442b73c7b61ccb33fd68447cdf9c01d3a3415fcb578086",
+							"scope": "Remediation delta only: every value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical hashes recorded below."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",
@@ -66541,8 +66671,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.common.time",
-			"source_sha256": "d29ccbd6b980f727b02c9c7e60c27c0d068d8082bab2e424784bc683f1cfbdd0",
-			"target_sha256": "c0bed5df041a72992031e574f0f3a59cd29608a4c6dd13cb1d41186e05d1b60a",
+			"source_sha256": "bb0b3aa1a71679cc73cb40d73616b5e22057c7dcbc86705c2ec4425984971e13",
+			"target_sha256": "f87b908a4add8d24d3f52e8663b3f9198a20d77d93f6817ec413375d62a7b4fb",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -66550,22 +66680,48 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "radient/auto",
-					"date": "2026-10-24",
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-12",
 					"result": "clean",
-					"instance": "b928c7f0c96d",
+					"instance": "2a7ce8cad6b9",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/b928c7f0c96d-surfaces.json",
-					"receipt_sha256": "3f79234f1f321130c46e9a6532ee7b90826101c21da47314852c169711c070fe"
+					"receipt": "i18n/receipts/2a7ce8cad6b9.json",
+					"receipt_sha256": "0543cea94b39e86fbc0f2d59b3aeb9bf8d3707090bbd64f177303ab48a26207c",
+					"scope": "S16d delta: the four new ui.common.time values (today_at, yesterday, weekday_at, date_at) under PR #1877; the landed yesterday_at is precedent, not re-audited.",
+					"note": "S16d vi delta clean: real vi ICU args composed (Hôm nay lúc 9:05 · Thứ Hai lúc 15:42 · 5 tháng 11, 2026 lúc 14:30). Record: i18n/audits/evidence/vi/ui.common.time/s16d-vi-2a7ce8cad6b9/record.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "d29ccbd6b980f727b02c9c7e60c27c0d068d8082bab2e424784bc683f1cfbdd0",
+					"target_sha256": "c0bed5df041a72992031e574f0f3a59cd29608a4c6dd13cb1d41186e05d1b60a",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "b928c7f0c96d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b928c7f0c96d-surfaces.json",
+							"receipt_sha256": "3f79234f1f321130c46e9a6532ee7b90826101c21da47314852c169711c070fe"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "vi",
@@ -79206,8 +79362,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.common.time",
-			"source_sha256": "d29ccbd6b980f727b02c9c7e60c27c0d068d8082bab2e424784bc683f1cfbdd0",
-			"target_sha256": "6c4aa41408545720f80843c183c12b36e8ba325b4404b8ce8a2bc48e50141ff2",
+			"source_sha256": "bb0b3aa1a71679cc73cb40d73616b5e22057c7dcbc86705c2ec4425984971e13",
+			"target_sha256": "111c7c99dc0a0d3543435224dbd41b87f6e930fd966457c1ea9bd4f74f7202cc",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -79215,22 +79371,48 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "openrouter/moonshotai/kimi-k3.1-pro",
-					"date": "2026-10-24",
-					"result": "clean",
-					"instance": "5e4bc8838c01-surfaces-zh-cn-r1",
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-12",
+					"result": "clean-with-findings",
+					"instance": "4517fbb34e79",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/5e4bc8838c01-surfaces-zh-cn-r1.json",
-					"receipt_sha256": "11f672f8fa16f25cea4e723052c6f80dadc42be4d9fc458158b32f208d42194a"
+					"receipt": "i18n/receipts/4517fbb34e79.json",
+					"receipt_sha256": "ad06980d8cea99c8460f43b09ff7580d1ef344b27476c5f19f503d2c16b8d165",
+					"scope": "zh-CN ui.common.time, 4 new s16d keys at PR #1877 head b2110ea9; composed through the real formatDividerLabel under locale zh-CN",
+					"note": "independent audit 4517fbb34e79/deepseek-flash 2026-11-12: 0 blocker/major/minor, 1 nit (separator join, guide-conformant); evidence i18n/audits/evidence/zh-CN/ui.common.time/s16d-zh/record.json"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "d29ccbd6b980f727b02c9c7e60c27c0d068d8082bab2e424784bc683f1cfbdd0",
+					"target_sha256": "6c4aa41408545720f80843c183c12b36e8ba325b4404b8ce8a2bc48e50141ff2",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openrouter/moonshotai/kimi-k3.1-pro",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "5e4bc8838c01-surfaces-zh-cn-r1",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/5e4bc8838c01-surfaces-zh-cn-r1.json",
+							"receipt_sha256": "11f672f8fa16f25cea4e723052c6f80dadc42be4d9fc458158b32f208d42194a"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "zh-CN",
