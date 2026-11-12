@@ -1,0 +1,90 @@
+{
+	"schema": "i18n-audit-record/1",
+	"locale": "hi",
+	"namespace": "ui.chat.canonical",
+	"slice": "S16f (PR #1876) — round 2, independent re-audit of the landed bytes",
+	"audit_date": "2026-11-11",
+	"key_count": 10,
+	"audit_kind": "independent_translation_audit_read_only_round2",
+	"audited_head": "9931d62addf8a0606bb26d32a8bc163dc7c126b3",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "765ad2515acf",
+		"model": "deepseek/deepseek-flash",
+		"actual_model_source": "harness session header for this run; no fallback, no model switch, no role/default pin, no tool change",
+		"independent_from_translator_session": true,
+		"translator_session": {
+			"agent": "i18n-translator",
+			"model": "anthropic/claude-sonnet-5-5"
+		},
+		"independent_from_round1_auditor_session": true,
+		"round1_auditor_session": "cb317bf0f7e3",
+		"round1_report": "~/.local-operator/sessions/cb317bf0f7e3/scratchpad/audit-s16f-hi.md (input only; not run in by this auditor)"
+	},
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+			"sha256": "12ec2698434dcb39497e288af62d11d70f0fd71d494a9becf3fd611d6568bbdd",
+			"pairs_canonical_sha256": "bdd1d9d1cfcd327c7445396ad806220fa850fe820c638a59ec6bc195f882e307"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+			"sha256": "95aa203759416c93180b7eb4967e6fcf5bce0dffe20e9d005b431c645e9e11e6"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/hi/ui.chat.canonical.json",
+			"sha256": "37bca60d5a5ee2d1f19bbaed857e5294ecdb125f56dfd11170723341c4459063",
+			"pairs_canonical_sha256": "c932e7336c1f59ca0acd2aaa1effb0651de98722ed08bb7dd53db5f391471a80"
+		},
+		"canonicalisation": "sorted keys, compact JSON.stringify, UTF-8",
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/hi.md",
+			"sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+		}
+	},
+	"artifacts": [
+		{
+			"path": "i18n/audits/evidence/hi/ui.chat.canonical/s16f-r2-765ad2515acf/record.json",
+			"note": "this file"
+		},
+		{
+			"path": "i18n/audits/evidence/hi/ui.chat.canonical/s16f-r2-765ad2515acf/report.md",
+			"scratchpad_copy": "/Users/damian/.local-operator/sessions/765ad2515acf/scratchpad/audit-s16f-r2-hi.md",
+			"sha256": "6d5be54df347333ae04e0929b4734eca2724412376f1123d851586c34521fc14"
+		},
+		{
+			"path": "i18n/audits/evidence/hi/ui.chat.canonical/s16f-r2-765ad2515acf/check-hi-s16f-r2.mjs",
+			"scratchpad_copy": "/Users/damian/.local-operator/sessions/765ad2515acf/scratchpad/check-hi-s16f-r2.mjs",
+			"sha256": "74c2302092754c0147679ee3bcf6acf3c09b3a6717903defbc13ade70196fd51"
+		},
+		{
+			"path": "i18n/audits/evidence/hi/ui.chat.canonical/s16f-r2-765ad2515acf/receipt-hi-s16f-r2.json",
+			"scratchpad_copy": "/Users/damian/.local-operator/sessions/765ad2515acf/scratchpad/receipt-hi-s16f-r2.json",
+			"sha256": "5a80997f2d34cb3242942a34e2ede3aaf81385aac109c61d3c73ef3d5144c891"
+		},
+		{
+			"path": "i18n/audits/evidence/hi/ui.chat.canonical/s16f-r2-765ad2515acf/audit.log",
+			"scratchpad_copy": "/Users/damian/.local-operator/sessions/765ad2515acf/scratchpad/audit.log",
+			"sha256": "00ab371092b8434a065495e0f389b89fb48f2130d2ed0ff7930e1b0065fb5898"
+		}
+	],
+	"receipt": {
+		"instance": "765ad2515acf-hi-s16f-r2",
+		"path": "i18n/receipts/765ad2515acf-hi-s16f-r2.json",
+		"status": "passed"
+	},
+	"current_report_verdict": {
+		"status": "clean-with-findings",
+		"unresolved_blocker_major_count": 0,
+		"finding_ids": [
+			"H2-1",
+			"H2-2"
+		]
+	},
+	"audit_notes_not_execution_log": "This record is a note. audit.log holds the command transcripts actually produced in this run (validators, own grid, ledger-check before and after the receipt).",
+	"limits": "Reading plus mechanical checks; no rendered frame (read-only lane). Rendered fit remains QA/design."
+}
