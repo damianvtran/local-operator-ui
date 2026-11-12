@@ -209,6 +209,10 @@ export const LEGACY_BROWSER_CHORDS: ReadonlySet<string> = new Set([
 	"primary+shift+t",
 	"primary+l",
 	...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => `primary+${digit}`),
+	// Not a browser chord, but the same downgrade promise: it was assignable
+	// until temporary chats reserved it for `new-chat-shortcut.ts` (review
+	// R1-4), so a saved binding on it is kept dormant rather than erased.
+	"primary+shift+n",
 ]);
 
 /*

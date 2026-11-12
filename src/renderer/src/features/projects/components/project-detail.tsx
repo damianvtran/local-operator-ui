@@ -367,7 +367,6 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 			.getState()
 			.setCurrentInput(id, startSessionPrompt(project));
 		let linkFailure: string | null = null;
-		let linkRemedy: ReturnType<typeof refusalRemedy> = null;
 		try {
 			await link.mutateAsync({ key: project.id, sessionId: id });
 		} catch (error) {
@@ -375,10 +374,6 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 				error instanceof Error && error.message
 					? error.message
 					: t("ui.projects.project_detail.the_link_was_refused");
-			linkRemedy = refusalRemedy(
-				error instanceof DesktopControlError ? error.code : undefined,
-				"link",
-			);
 		}
 		if (linkFailure) {
 			showErrorToast(
@@ -386,26 +381,6 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 					"ui.projects.project_detail.session_started_but_linking_it_failed_linkfailure",
 					{ linkFailure: String(linkFailure) },
 				),
-				/*
-				 * A temporary chat cannot be linked until it is kept (409
-				 * `session_temporary`): the toast offers the press that can succeed.
-				 */
-				linkRemedy === "keep_and_link"
-					? {
-							action: {
-								label: t("ui.chat.dialogs.keep_and_link"),
-								onClick: () => {
-									void store.setSessionTemporary(id, false).then((kept) => {
-										if (kept.ok)
-											void link.mutateAsync({
-												key: project.id,
-												sessionId: id,
-											});
-									});
-								},
-							},
-						}
-					: undefined,
 			);
 		} else {
 			const withTarget = target
@@ -577,12 +552,43 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 						void link
 							.mutateAsync({ key: project.id, sessionId })
 							.catch((error: unknown) => {
+								/*
+								 * THE KEEP-AND-LINK REMEDY LIVES ON THE PICKER'S LINK (review
+								 * R1-1): the picker offers no temporary chat, but one marked on
+								 * another surface after the list read still answers 409
+								 * `session_temporary`, and the toast then offers the press that
+								 * can succeed. A start-session link never needs it: that
+								 * session is created here, and never temporary.
+								 */
+								const remedy = refusalRemedy(
+									error instanceof DesktopControlError ? error.code : undefined,
+									"link",
+								);
 								showErrorToast(
 									error instanceof Error && error.message
 										? error.message
 										: t(
 												"ui.projects.project_detail.the_session_was_not_linked",
 											),
+									remedy === "keep_and_link"
+										? {
+												action: {
+													label: t("ui.chat.dialogs.keep_and_link"),
+													onClick: () => {
+														void useCanonicalSessionsStore
+															.getState()
+															.setSessionTemporary(sessionId, false)
+															.then((kept) => {
+																if (kept.ok)
+																	void link.mutateAsync({
+																		key: project.id,
+																		sessionId,
+																	});
+															});
+													},
+												},
+											}
+										: undefined,
 								);
 							});
 					}}

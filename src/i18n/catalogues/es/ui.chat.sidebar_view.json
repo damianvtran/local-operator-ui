@@ -29,14 +29,14 @@
 	"ui.chat.sidebar_view.section.temporary": "Temporales · {count, number, ::group-off}",
 	"ui.chat.sidebar_view.temporary.deletes_in": "Se elimina en {minutes, plural, one {# min} many {# min} other {# min}}",
 	"ui.chat.sidebar_view.temporary.hold.running": "Se conserva mientras se ejecuta",
-	"ui.chat.sidebar_view.temporary.hold.on_screen": "Se conserva mientras está abierto",
-	"ui.chat.sidebar_view.temporary.hold.open_ask": "Se conserva: hay una pregunta pendiente",
-	"ui.chat.sidebar_view.temporary.hold.armed_wake": "Se conserva: hay un aviso programado",
-	"ui.chat.sidebar_view.temporary.hold.armed_monitor": "Se conserva: hay una supervisión activa",
-	"ui.chat.sidebar_view.temporary.hold.unread_mail": "Se conserva: mensajes sin leer",
-	"ui.chat.sidebar_view.temporary.hold.operator_hold": "Se conserva: en espera",
-	"ui.chat.sidebar_view.temporary.hold.unseen_result": "Se conserva: un resultado que no has visto",
+	"ui.chat.sidebar_view.temporary.hold.on_screen": "Se conserva: en pantalla",
+	"ui.chat.sidebar_view.temporary.hold.open_ask": "Se conserva: pregunta abierta",
+	"ui.chat.sidebar_view.temporary.hold.armed_wake": "Se conserva: hay un despertar",
+	"ui.chat.sidebar_view.temporary.hold.armed_monitor": "Se conserva: monitor activo",
+	"ui.chat.sidebar_view.temporary.hold.unread_mail": "Se conserva: mensaje sin leer",
+	"ui.chat.sidebar_view.temporary.hold.operator_hold": "Se conserva por una retención",
+	"ui.chat.sidebar_view.temporary.hold.unseen_result": "Se conserva: resultado sin ver",
 	"ui.chat.sidebar_view.temporary.hold.unsaved_files": "Se conserva: archivos sin guardar",
-	"ui.chat.sidebar_view.temporary.hold.linked": "Se conserva: vinculado a otro trabajo",
-	"ui.chat.sidebar_view.temporary.hold.cannot_verify": "Se conserva: aún no se puede comprobar"
+	"ui.chat.sidebar_view.temporary.hold.linked": "Se conserva: fijado o vinculado",
+	"ui.chat.sidebar_view.temporary.hold.cannot_verify": "Se conserva: sin comprobar"
 }

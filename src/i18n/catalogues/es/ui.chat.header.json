@@ -24,5 +24,6 @@
 	"ui.chat.header.temporary_hint": "No se guarda en tus chats y se elimina tras un rato de inactividad (30 min de forma predeterminada).",
 	"ui.chat.header.temporary_toggle_on": "Hacer temporal este chat nuevo",
 	"ui.chat.header.temporary_toggle_off": "Desactivar el chat temporal",
+	"ui.chat.header.temporary_peer_unavailable": "Los chats temporales aún no pueden iniciarse en otro dispositivo",
 	"ui.chat.header.temporary_ends_in": "Se elimina en {minutes, plural, one {# min} many {# min} other {# min}}"
 }

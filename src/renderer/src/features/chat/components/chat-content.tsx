@@ -137,7 +137,7 @@ import {
 	canvasPaneMode,
 	rightSlotDividerContract,
 } from "../chat-sidebar-layout";
-import { temporaryInfo } from "../chat-temporary";
+import { temporaryDraftPlaceholderKey, temporaryInfo } from "../chat-temporary";
 import type {
 	DraftPickerDestination,
 	DraftResolution,
@@ -1335,6 +1335,16 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 					? undefined
 					: state.drafts[agentId]?.temporary === true
 				: undefined,
+		);
+		// A draft aimed at a peer cannot be temporary (contract §8 deferred: the
+		// core answers 422), so the switch is shown off and disabled there.
+		const draftPeer = useCanonicalSessionsStore((state) =>
+			temporaryEnabled && !sessionId
+				? Boolean(state.drafts[agentId]?.peer)
+				: false,
+		);
+		const temporaryPlaceholderKey = temporaryDraftPlaceholderKey(
+			draftTemporary === true && !draftPeer,
 		);
 		const setDraftTemporary = useCanonicalSessionsStore(
 			(state) => state.setDraftTemporary,
@@ -2745,7 +2755,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								draftTemporary === undefined
 									? undefined
 									: {
-											on: draftTemporary,
+											on: draftTemporary && !draftPeer,
+											peerDestination: draftPeer,
 											onToggle: (on) => setDraftTemporary(agentId, on),
 										}
 							}
@@ -3244,6 +3255,17 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								noProvider={needsProvider}
 								noModel={needsModel}
 								deviceHold={deviceHold}
+								/*
+								 * A TEMPORARY DRAFT SAYS SO IN THE BOX (design round 1, D1): the
+								 * invitation slot only, so every state sentence still outranks it.
+								 * This is the mini view's seam, not the retired ask-mode routing the
+								 * note below forbids.
+								 */
+								placeholderOverride={
+									temporaryPlaceholderKey
+										? t(temporaryPlaceholderKey)
+										: undefined
+								}
 								/*
 								 * THE WAY BACK TO THE FAILED ROW'S CONTROLS (UX round 1, U3): the
 								 * line is on screen in this transcript, and the composer names it for

@@ -16,24 +16,28 @@ answering 404 `session_temporary_deleted` on its snapshot and event stream.
   no draft toggle, Ctrl+Shift+N does nothing, and the deleted id gets the generic notice. The stub's
   log for these runs carries no `include_temporary` request and no `/temporary` call (0 of 11 list
   reads per run).
-- `after/` - `--temporary-expect on`. Every frame below is preceded by a DOM check (29 PASS, 0 FAIL
-  per palette).
+- `after/` - `--temporary-expect on`. Every frame below is preceded by a DOM check (36 PASS, 0 FAIL
+  per palette since the round-1 remediation; 29 at round 1).
 
 | Frame | State | What the scene checked before the shutter |
 | --- | --- | --- |
 | `sidebar` | `/chat` at rest | `[data-sidebar-temporary-group]` drawn (after) / absent (before); no temporary row in the normal list |
-| `sidebar-group-open` | the group's header pressed | three rows; only the last-five-minutes row carries the amber countdown |
+| `sidebar-group-open` | the group's header pressed, sidebar at 260 px | three rows; only the last-five-minutes row carries the amber countdown; each row's mark sits on the ordinary rows' lead and its state line under the title |
+| `sidebar-group-open-220` | the same at the 220 px minimum | the same layout checks |
 | `live-pill` | a temporary chat open (22 min left) | `[data-session-temporary-pill="live"]`, the dashed neutral pill; the group opened by itself |
-| `countdown-pill` | a temporary chat with 4.5 min left | the pill reads `Deletes in 5 min` in the warning badge, with Keep chat beside it |
-| `menu-keep` | the header menu on a temporary chat | `[data-temporary-keep]` present (after) / absent (before) |
+| `countdown-pill` | a temporary chat with 4.5 min left | the pill reads `Deletes in 4 min` (rounded down) in the warning badge, with Keep chat beside it |
+| `menu-keep` | the header menu on a temporary chat | `[data-temporary-keep]` present (after) / absent (before); Keep chat sits above Archive with a separator between them |
 | `menu-make` | the header menu on an ordinary chat | `[data-temporary-make]` present (after) / absent (before) |
 | `confirm` | Make temporary... pressed | the confirmation is up, Cancel focused; it was then dismissed (nothing written) |
 | `draft-toggle-off` | Ctrl+N (a real CDP chord) | the dashed toggle with `aria-pressed="false"` (after) / no toggle (before) |
-| `draft-toggle-on` | Ctrl+Shift+N (a real CDP chord) | a fresh draft with the toggle `aria-pressed="true"` |
+| `draft-toggle-on` | Ctrl+Shift+N (a real CDP chord) | a fresh draft with the toggle `aria-pressed="true"`, and the composer's placeholder is the temporary sentence |
 | `tombstone` | `/chat/c0ffee5a1e04`, a deleted temporary chat | `[data-missing-session-notice="temporary"]` with New temporary chat / Back to chats (after); the generic notice (before). The stub log shows exactly one snapshot read for the id, the tombstone probe |
 
 The panes say `Reconnecting`: the stub serves no event stream for a live row, as in the
 session-archive set. That is the stub, not the feature.
+
+PNG frames under `docs/evidence/` are git-ignored rig output. The frames the round-1 remediation
+moved are committed under `docs/pr-evidence/1874-temporary-chats/`.
 
 ## Re-deriving
 

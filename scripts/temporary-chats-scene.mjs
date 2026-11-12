@@ -36,8 +36,16 @@ const NORMAL = "e059761608ae";
 const LIVE = "c0ffee5a1e01";
 const COUNTDOWN = "c0ffee5a1e02";
 const DELETED = "c0ffee5a1e04";
-// The countdown row is 4.5 min from deletion; the pill rounds up to whole minutes.
-const COUNTDOWN_TEXT = /Deletes in [45] min/;
+// The countdown row is 4.5 min from deletion; the pill rounds DOWN to whole
+// minutes (QA round 1, Q-4), so it reads 4 until the clock passes the minute.
+const COUNTDOWN_TEXT = /Deletes in [34] min/;
+// The composer's invitation on a temporary draft (design round 1, D1).
+const TEMPORARY_PLACEHOLDER =
+	"Temporary chat — not saved to your chats. Ask anything";
+// `SIDEBAR_DEFAULT_WIDTH` and `SIDEBAR_MIN_WIDTH` (`chat-sidebar-layout.ts`).
+const SIDEBAR_WIDTHS = [260, 220];
+// The rows' mark may sit within this many px of the ordinary rows' lead (D2).
+const LEAD_TOLERANCE_PX = 2;
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -156,7 +164,63 @@ export async function sceneTemporaryChats({
 			amber,
 			"no countdown on the 4.5 min row",
 		);
-		await shot("sidebar-group-open");
+		/*
+		 * The row layout (design round 1, D2/D3; QA Q-3), at the default width and
+		 * at the sidebar's minimum: the row's mark sits on the ordinary rows' lead,
+		 * and the title has its own line, so the state sentence never takes it.
+		 */
+		for (const width of SIDEBAR_WIDTHS) {
+			const applied = await verb(cdp, "setSidebarWidth", { width });
+			note("sidebar width", JSON.stringify(applied));
+			await wait(400);
+			const geometry = await cdp.evaluate(`(() => {
+				const header = document.querySelector('[data-chat-section="temporary"]');
+				const headerMark = header?.querySelectorAll('svg')[1];
+				const ordinaryMark = document.querySelector('[data-session-row] svg');
+				const rows = Array.from(document.querySelectorAll('[data-temporary-row] button'));
+				return {
+					sidebar: Math.round(header?.closest('aside, nav, [data-sidebar]')?.getBoundingClientRect().width ?? 0),
+					headerMarkX: Math.round(headerMark?.getBoundingClientRect().left ?? -1),
+					ordinaryX: Math.round(ordinaryMark?.getBoundingClientRect().left ?? -1),
+					rows: rows.map((button) => {
+						const mark = button.querySelector('svg');
+						const title = button.querySelector('span.truncate');
+						const meta = button.querySelector('[data-temporary-meta]');
+						return {
+							markX: Math.round(mark?.getBoundingClientRect().left ?? -1),
+							titleW: Math.round(title?.getBoundingClientRect().width ?? 0),
+							titleTop: Math.round(title?.getBoundingClientRect().top ?? 0),
+							metaTop: Math.round(meta?.getBoundingClientRect().top ?? 0),
+							title: title?.textContent ?? "",
+							meta: meta?.textContent ?? "",
+						};
+					}),
+				};
+			})()`);
+			note(`group geometry at ${width}px`, JSON.stringify(geometry));
+			check(
+				`at ${width}px the rows' mark sits on the ordinary rows' lead, under the header's mark`,
+				geometry.rows.length === 3 &&
+					geometry.rows.every(
+						(row) =>
+							Math.abs(row.markX - geometry.ordinaryX) <= LEAD_TOLERANCE_PX &&
+							Math.abs(row.markX - geometry.headerMarkX) <= LEAD_TOLERANCE_PX,
+					),
+				`ordinary lead x ${geometry.ordinaryX}, header mark x ${geometry.headerMarkX}, row marks ${geometry.rows.map((row) => row.markX).join(",")}`,
+			);
+			check(
+				`at ${width}px the state line is under the title, not beside it`,
+				geometry.rows.every((row) => row.metaTop > row.titleTop),
+				geometry.rows.map((row) => `${row.titleTop}/${row.metaTop}`).join(" "),
+			);
+			await shot(
+				width === SIDEBAR_WIDTHS[0]
+					? "sidebar-group-open"
+					: `sidebar-group-open-${width}`,
+			);
+		}
+		await verb(cdp, "setSidebarWidth", { width: SIDEBAR_WIDTHS[0] });
+		await wait(300);
 	}
 
 	// 2. A live temporary chat's header: the pill (or nothing).
@@ -189,6 +253,26 @@ export async function sceneTemporaryChats({
 		keep === on,
 		`[data-temporary-keep] present: ${keep}`,
 	);
+	if (on) {
+		// Design round 1, D5: Keep sits with the state rows, above Archive, and a
+		// separator stands between it and the Archive / Delete pair.
+		const order = await cdp.evaluate(`(() => {
+			const menu = document.querySelector('[role="menu"]');
+			return Array.from(menu?.children ?? []).map((node) =>
+				node.getAttribute('role') === 'separator' ? '|' : (node.textContent ?? '').trim(),
+			);
+		})()`);
+		const keepAt = order.indexOf("Keep chat");
+		const archiveAt = order.findIndex((label) => label.startsWith("Archive"));
+		check(
+			"Keep chat sits above Archive, a separator between them",
+			keepAt >= 0 &&
+				archiveAt > keepAt &&
+				order.slice(keepAt, archiveAt).includes("|"),
+			order.join(" · "),
+			order.join(" · "),
+		);
+	}
 	await shot("menu-keep");
 	await closeMenu();
 
@@ -278,6 +362,19 @@ export async function sceneTemporaryChats({
 		`aria-pressed: ${toggleOn}`,
 		String(toggleOn),
 	);
+	if (on) {
+		// Design round 1, D1: the screen says "temporary" in words, not only by
+		// the toggle's colour.
+		const placeholder = await cdp.evaluate(
+			`document.querySelector('textarea[placeholder]')?.getAttribute('placeholder') ?? null`,
+		);
+		check(
+			"a temporary draft's composer says so",
+			placeholder === TEMPORARY_PLACEHOLDER,
+			`placeholder: ${placeholder}`,
+			String(placeholder),
+		);
+	}
 	if (on) await shot("draft-toggle-on");
 
 	// 6. A deleted temporary chat: the tombstone (or the generic notice).

@@ -24,5 +24,6 @@
 	"ui.chat.header.temporary_hint": "Not saved to your chats, and deleted after a stretch of inactivity (30 min by default).",
 	"ui.chat.header.temporary_toggle_on": "Make this new chat temporary",
 	"ui.chat.header.temporary_toggle_off": "Turn off temporary chat",
+	"ui.chat.header.temporary_peer_unavailable": "Temporary chats can't start on another device yet",
 	"ui.chat.header.temporary_ends_in": "Deletes in {minutes, plural, one {# min} other {# min}}"
 }

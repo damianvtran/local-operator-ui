@@ -105,7 +105,15 @@ export function groupOpenByDefault(
 	return temporaryRows.some((row) => row.session_id === currentId);
 }
 
-/** Whole minutes left before deletion, rounded up, never below 1; `null` while held. */
+/**
+ * Whole minutes left before deletion, rounded DOWN, never below 1; `null` while
+ * held.
+ *
+ * Down, not up (QA round 1, Q-4): the core stamps `deletes_at` a fraction of a
+ * second after the mark, so a ceiling read a fresh 30-minute chat as "31 min" -
+ * longer than the window the setting names. The floor never promises more time
+ * than is left; the `1` floor keeps the last minute from reading "0".
+ */
 export function minutesLeft(
 	info: SessionTemporaryInfo,
 	nowS: number,
@@ -113,7 +121,7 @@ export function minutesLeft(
 	if (info.hold !== null && info.hold !== undefined) return null;
 	if (typeof info.deletes_at !== "number" || !Number.isFinite(info.deletes_at))
 		return null;
-	return Math.max(1, Math.ceil((info.deletes_at - nowS) / 60));
+	return Math.max(1, Math.floor((info.deletes_at - nowS) / 60));
 }
 
 /**
@@ -202,6 +210,68 @@ export function refusalRemedy(
 ): "keep_and_pin" | "keep_and_link" | null {
 	if (code !== SESSION_TEMPORARY_CODE) return null;
 	return act === "pin" ? "keep_and_pin" : "keep_and_link";
+}
+
+/**
+ * The rows a picker that ATTACHES a conversation to something durable may
+ * offer: the project "Link a session" picker and the chief-of-staff options
+ * (review round 1, R1-1). A temporary chat cannot be linked or designated until
+ * it is kept, so offering one is offering a 409; the race that can still produce
+ * one (a chat marked elsewhere after the list read) is the link handler's to
+ * remedy (`refusalRemedy`).
+ */
+export function attachableSessions<T extends RowWithTemporary>(
+	rows: T[],
+	enabled: boolean,
+): T[] {
+	return partition(rows, enabled).normal;
+}
+
+/**
+ * The rows the Ctrl+Tab switcher is built from: the normal list, plus the
+ * conversation ON SCREEN when that one is temporary (QA round 1, Q-2).
+ *
+ * The run itself still skips temporary chats; only row 0 - the chat the reader
+ * is in - needs its row back, because the switcher titles row 0 from this list
+ * and without it a temporary chat read "Untitled chat".
+ */
+export function switcherSessions<
+	T extends RowWithTemporary & { session_id: string },
+>(rows: T[], enabled: boolean, displayedId: string | null): T[] {
+	const { normal, temporary } = partition(rows, enabled);
+	if (!displayedId || temporary.length === 0) return normal;
+	const current = temporary.find((row) => row.session_id === displayedId);
+	return current ? [current, ...normal] : normal;
+}
+
+/**
+ * Whether a draft's create carries `temporary: true`.
+ *
+ * Never toward a peer (review round 1, R1-2): the core answers 422
+ * `temporary_peer_unsupported` (contract §8 defers it), so the switch is shown
+ * disabled while a peer is the destination and a draft persisted with both
+ * still creates an ordinary chat rather than failing the whole create. Never
+ * without the capability, for the persisted-draft reason on `ChatDraft.temporary`.
+ */
+export function draftCreatesTemporary(
+	draft: { temporary?: boolean; peer?: string } | null | undefined,
+	enabled: boolean,
+): boolean {
+	return enabled && draft?.temporary === true && !draft.peer;
+}
+
+/**
+ * The composer's invitation while a draft will be created temporary (design
+ * round 1, D1): the screen says so in words, not only in the toggle's colour,
+ * before the first send - the moment it matters. `null` keeps the app's own
+ * idle line.
+ */
+export function temporaryDraftPlaceholderKey(
+	draftTemporary: boolean | undefined,
+): "ui.chat.composer.placeholder.temporary" | null {
+	return draftTemporary === true
+		? "ui.chat.composer.placeholder.temporary"
+		: null;
 }
 
 /** Whether a refusal's code says the conversation was deleted as a temporary chat. */

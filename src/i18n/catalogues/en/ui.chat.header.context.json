@@ -146,10 +146,15 @@
 		"tone": "imperative action phrase",
 		"note": "Turns the new chat back into an ordinary one."
 	},
+	"ui.chat.header.temporary_peer_unavailable": {
+		"role": "native title tooltip on the disabled header toggle",
+		"tone": "plain explanation, one short sentence",
+		"note": "Shown when the new chat is aimed at another device: temporary chats can only start on this computer for now, so the toggle is disabled."
+	},
 	"ui.chat.header.temporary_ends_in": {
 		"role": "warning pill countdown in the header",
 		"tone": "short state phrase",
 		"maxCells": 20,
-		"note": "Shown only in the last five minutes before deletion; minutes is a whole number, rounded up."
+		"note": "Shown only in the last five minutes before deletion; minutes is a whole number, rounded down."
 	}
 }

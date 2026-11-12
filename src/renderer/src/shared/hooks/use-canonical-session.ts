@@ -6426,6 +6426,10 @@ export function useCanonicalSessionStream(
 				: (seed?.transcript ?? EMPTY_TRANSCRIPT),
 			stale: sameSession ? current.stale : seed !== null,
 			missing: sameSession ? current.missing : false,
+			// WHY it is missing travels with `missing` (review R1-3): the hook stays
+			// mounted across a switch, so a kept flag would paint the temporary
+			// tombstone over the next conversation's ordinary 404.
+			temporaryDeleted: sameSession ? current.temporaryDeleted : undefined,
 			status: "connecting",
 			// A different session's children are different children, and a pulse
 			// carried across is a counter no reader can match to a job.

@@ -91,6 +91,7 @@ import type { LaunchTarget } from "../../../../shared/open-session";
  * follow-up). A pure function with no React or store dependency, which is why
  * the direction is safe: this store is below it, and nothing there reads state.
  */
+import { draftCreatesTemporary } from "../../features/chat/chat-temporary";
 import { draftModelForWire } from "../../features/chat/draft-selection";
 import {
 	type PeerDeviceFact,
@@ -3047,8 +3048,9 @@ export async function admitChatDraft(
 					// for every draft nobody aimed at a peer, which is what keeps the body
 					// of an ordinary create byte-identical to what it was before the control.
 					draft.peer,
-					// Only under the capability: see the draft field's own note.
-					draft.temporary === true && store.temporaryChats ? true : undefined,
+					// Only under the capability, and never toward a peer (§8 deferred): see
+					// `draftCreatesTemporary`.
+					draftCreatesTemporary(draft, store.temporaryChats) ? true : undefined,
 				)) ?? undefined;
 			if (!id)
 				throw new UserFacingError(

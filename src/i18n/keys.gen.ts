@@ -4999,6 +4999,7 @@ export type MessageParams = {
 	"ui.chat.composer.placeholder.secret_answer": undefined;
 	"ui.chat.composer.placeholder.sending": undefined;
 	"ui.chat.composer.placeholder.stopping": undefined;
+	"ui.chat.composer.placeholder.temporary": undefined;
 	"ui.chat.composer.placeholder.unavailable": undefined;
 	"ui.chat.composer.placeholder.waiting": undefined;
 	"ui.chat.composer.processing_audio": undefined;
@@ -5239,6 +5240,7 @@ export type MessageParams = {
 	"ui.chat.header.temporary": undefined;
 	"ui.chat.header.temporary_ends_in": { minutes: number };
 	"ui.chat.header.temporary_hint": undefined;
+	"ui.chat.header.temporary_peer_unavailable": undefined;
 	"ui.chat.header.temporary_toggle_off": undefined;
 	"ui.chat.header.temporary_toggle_on": undefined;
 	"ui.chat.header.transcript_display": undefined;

@@ -24,5 +24,6 @@
 	"ui.chat.header.temporary_hint": "Не сохраняется в ваших чатах и удаляется после периода бездействия (по умолчанию 30 мин).",
 	"ui.chat.header.temporary_toggle_on": "Сделать этот новый чат временным",
 	"ui.chat.header.temporary_toggle_off": "Выключить временный чат",
+	"ui.chat.header.temporary_peer_unavailable": "Временные чаты пока нельзя начать на другом устройстве",
 	"ui.chat.header.temporary_ends_in": "Удаление через {minutes, plural, one {# мин} few {# мин} many {# мин} other {# мин}}"
 }

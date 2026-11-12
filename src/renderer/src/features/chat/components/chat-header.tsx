@@ -335,7 +335,16 @@ type ChatHeaderProps = {
 	 */
 	temporaryEnabled?: boolean;
 	temporary?: SessionTemporaryInfo | null;
-	temporaryDraft?: { on: boolean; onToggle: (on: boolean) => void };
+	temporaryDraft?: {
+		on: boolean;
+		/**
+		 * The draft is aimed at another device: a temporary chat there is contract
+		 * §8 deferred scope (the core answers 422), so the switch is disabled and
+		 * says why rather than offering a create that cannot succeed.
+		 */
+		peerDestination?: boolean;
+		onToggle: (on: boolean) => void;
+	};
 	onKeepTemporary?: () => void;
 	onMakeTemporary?: () => void;
 	/** A fixed clock (epoch ms) for stories and frames; the live header ticks. */
@@ -1371,8 +1380,10 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				{/*
 				 * THE DRAFT'S TEMPORARY SWITCH, at the head of the cluster and only on a
 				 * draft: once the first message is sent the switch becomes the STATE (the
-				 * pill below). The pressed look is the app's own toggle vocabulary
-				 * (`aria-pressed` on a ghost icon button), so no colour is new here.
+				 * pill below). The pressed look is the panel rail's lit item (the
+				 * selected-row ground) plus an accent EDGE, so ON differs from OFF by a
+				 * shape and not by hue alone (design round 1, D1: the wash alone measured
+				 * 1.06:1 against the header). The composer's placeholder carries the words.
 				 */}
 				{temporaryEnabled && temporaryDraft && (
 					<Button
@@ -1380,16 +1391,21 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 						size="icon"
 						data-temporary-toggle
 						aria-pressed={temporaryDraft.on}
+						disabled={temporaryDraft.peerDestination === true}
 						onClick={() => temporaryDraft.onToggle(!temporaryDraft.on)}
 						aria-label={
 							temporaryDraft.on
 								? t("ui.chat.header.temporary_toggle_off")
 								: t("ui.chat.header.temporary_toggle_on")
 						}
-						title={t("ui.chat.header.temporary_hint")}
+						title={
+							temporaryDraft.peerDestination
+								? t("ui.chat.header.temporary_peer_unavailable")
+								: t("ui.chat.header.temporary_hint")
+						}
 						className={cn(
 							temporaryDraft.on &&
-								"bg-accent-wash text-accent hover:text-accent",
+								"bg-row-selected text-accent ring-1 ring-accent ring-inset hover:bg-row-selected hover:text-accent",
 						)}
 					>
 						<MessageSquareDashed aria-hidden="true" />
@@ -1694,6 +1710,31 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 									</DropdownMenuRadioGroup>
 								</DropdownMenuSubContent>
 							</DropdownMenuSub>
+							{/*
+							 * KEEP / MAKE TEMPORARY SIT WITH THE CONVERSATION'S STATE ROWS (design
+							 * round 1, D5), above the separator: Keep is the safe direction, and
+							 * stacked between Archive and Delete it read as one of that pair.
+							 */}
+							{temporaryAction === "keep" && (
+								<DropdownMenuItem
+									data-temporary-keep
+									onSelect={() => onKeepTemporary?.()}
+									disabled={!onKeepTemporary}
+								>
+									<MessageSquare aria-hidden="true" />
+									<span>{t("ui.chat.header_menu.keep_chat")}</span>
+								</DropdownMenuItem>
+							)}
+							{temporaryAction === "make" && (
+								<DropdownMenuItem
+									data-temporary-make
+									onSelect={() => onMakeTemporary?.()}
+									disabled={!onMakeTemporary}
+								>
+									<MessageSquareDashed aria-hidden="true" />
+									<span>{t("ui.chat.header_menu.make_temporary")}</span>
+								</DropdownMenuItem>
+							)}
 							<DropdownMenuSeparator />
 							{archiveEnabled && (
 								<DropdownMenuItem
@@ -1718,28 +1759,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 									</span>
 								</DropdownMenuItem>
 							)}
-							{temporaryAction === "keep" && (
-								<DropdownMenuItem
-									data-temporary-keep
-									onSelect={() => onKeepTemporary?.()}
-									disabled={!onKeepTemporary}
-								>
-									<MessageSquare aria-hidden="true" />
-									<span>{t("ui.chat.header_menu.keep_chat")}</span>
-								</DropdownMenuItem>
-							)}
-							{temporaryAction === "make" && (
-								<DropdownMenuItem
-									data-temporary-make
-									onSelect={() => onMakeTemporary?.()}
-									disabled={!onMakeTemporary}
-								>
-									<MessageSquareDashed aria-hidden="true" />
-									<span>{t("ui.chat.header_menu.make_temporary")}</span>
-								</DropdownMenuItem>
-							)}
-							{(archiveEnabled || temporaryAction !== null) &&
-								deleteEnabled && <DropdownMenuSeparator />}
+							{archiveEnabled && deleteEnabled && <DropdownMenuSeparator />}
 							{deleteEnabled && (
 								<DropdownMenuItem
 									/*

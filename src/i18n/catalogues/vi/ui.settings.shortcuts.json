@@ -76,5 +76,5 @@
 	"ui.settings.shortcuts.speech.push_to_talk_overlap": "Mọi phím tắt dùng {modifier}, chẳng hạn {example}, sẽ bắt đầu ghi âm trong chốc lát.{alternative, select, none {} other { Hãy chọn {alternative} để tránh điều này.}}",
 	"ui.settings.shortcuts.speech.push_to_talk_letter_pointer": "Với phím tắt có chữ cái, hãy dùng “Bắt đầu ghi âm” ở trên.",
 	"ui.settings.shortcuts.speech.start_recording_needs_key": "Phím tắt cần có một chữ cái hoặc chữ số cùng với phím bổ trợ.",
-	"ui.settings.shortcuts.new_temporary_chat": "Đã dành riêng: bắt đầu một cuộc trò chuyện tạm thời mới."
+	"ui.settings.shortcuts.new_temporary_chat": "Dành riêng: bắt đầu một cuộc trò chuyện tạm thời mới."
 }

@@ -28,6 +28,13 @@ import { useAskClock } from "../use-ask-clock";
  * until it is kept), so the row is its title, the dashed mark and one line
  * saying how long it has left or why it is held.
  *
+ * TWO LINES, THE TITLE ON TOP (design round 1, D2/D3; QA Q-3): on one line the
+ * state sentence (95 px for "Kept while it runs") took the title's width, down
+ * to one character at the default sidebar width. Under it, both truncate on
+ * their own and the row's `title` carries both whole. The rows are inset to the
+ * header label's x - the ordinary rows' lead - so they read as the group's
+ * content rather than as siblings of its header.
+ *
  * Not rendered at all with no temporary rows, and the caller renders it only
  * under `features.temporary_chats`.
  */
@@ -75,6 +82,13 @@ export const SidebarTemporaryGroup: FC<{
 						const counting =
 							label.key === "deletes_in" && showCountdown(info.deletes_at, now);
 						const current = currentId === row.session_id;
+						const title = conversationTitleForDisplay(row.title);
+						const meta =
+							label.key === "deletes_in"
+								? t("ui.chat.sidebar_view.temporary.deletes_in", {
+										minutes: label.minutes,
+									})
+								: t(holdLabelKey(label.code));
 						return (
 							<li key={row.session_id} data-temporary-row={row.session_id}>
 								<button
@@ -82,31 +96,30 @@ export const SidebarTemporaryGroup: FC<{
 									data-chat-row
 									aria-current={current ? "page" : undefined}
 									onClick={() => onSelect(row.session_id)}
+									title={`${title}\n${meta}`}
 									className={cn(
-										"flex h-8 w-full min-w-0 items-center gap-1 rounded-md px-1 text-start text-body-sm leading-5 hover:bg-row-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2",
+										"flex w-full min-w-0 items-start gap-1.5 rounded-md py-1 ps-[1.375rem] pe-1 text-start text-body-sm leading-5 hover:bg-row-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2",
 										current &&
 											"bg-row-selected font-medium text-ink hover:bg-row-selected",
 									)}
 								>
+									{/* On the title's line box (`leading-5`), not centred on both lines. */}
 									<MessageSquareDashed
 										aria-hidden="true"
-										className="size-3.5 shrink-0 text-ink-dim"
+										className="mt-[3px] size-3.5 shrink-0 text-ink-dim"
 									/>
-									<span className="min-w-0 flex-1 truncate">
-										{conversationTitleForDisplay(row.title)}
-									</span>
-									<span
-										data-temporary-countdown={counting ? "" : undefined}
-										className={cn(
-											"ms-1 shrink-0 whitespace-nowrap font-normal text-meta",
-											counting ? "text-warning" : "text-ink-muted",
-										)}
-									>
-										{label.key === "deletes_in"
-											? t("ui.chat.sidebar_view.temporary.deletes_in", {
-													minutes: label.minutes,
-												})
-											: t(holdLabelKey(label.code))}
+									<span className="flex min-w-0 flex-1 flex-col">
+										<span className="truncate">{title}</span>
+										<span
+											data-temporary-countdown={counting ? "" : undefined}
+											data-temporary-meta=""
+											className={cn(
+												"truncate font-normal text-meta",
+												counting ? "text-warning" : "text-ink-muted",
+											)}
+										>
+											{meta}
+										</span>
 									</span>
 								</button>
 							</li>

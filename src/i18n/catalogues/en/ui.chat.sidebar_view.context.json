@@ -185,56 +185,56 @@
 	"ui.chat.sidebar_view.temporary.hold.running": {
 		"role": "sidebar row secondary line",
 		"tone": "short state phrase",
-		"note": "Why the temporary chat is not counting down (hold code running)."
+		"note": "Why the temporary chat is not counting down (hold code running). One wording across desktop, TUI and relay: mirror core tui.app.temporary_hold_running in this locale, sentence case."
 	},
 	"ui.chat.sidebar_view.temporary.hold.on_screen": {
 		"role": "sidebar row secondary line",
 		"tone": "short state phrase",
-		"note": "Why the temporary chat is not counting down (hold code on_screen)."
+		"note": "Why the temporary chat is not counting down (hold code on_screen). One wording across desktop, TUI and relay: mirror core tui.app.temporary_hold_on_screen in this locale, sentence case."
 	},
 	"ui.chat.sidebar_view.temporary.hold.open_ask": {
 		"role": "sidebar row secondary line",
 		"tone": "short state phrase",
-		"note": "Why the temporary chat is not counting down (hold code open_ask)."
+		"note": "Why the temporary chat is not counting down (hold code open_ask). One wording across desktop, TUI and relay: mirror core tui.app.temporary_hold_open_ask in this locale, sentence case."
 	},
 	"ui.chat.sidebar_view.temporary.hold.armed_wake": {
 		"role": "sidebar row secondary line",
 		"tone": "short state phrase",
-		"note": "Why the temporary chat is not counting down (hold code armed_wake)."
+		"note": "Why the temporary chat is not counting down (hold code armed_wake). One wording across desktop, TUI and relay: mirror core tui.app.temporary_hold_armed_wake in this locale, sentence case."
 	},
 	"ui.chat.sidebar_view.temporary.hold.armed_monitor": {
 		"role": "sidebar row secondary line",
 		"tone": "short state phrase",
-		"note": "Why the temporary chat is not counting down (hold code armed_monitor)."
+		"note": "Why the temporary chat is not counting down (hold code armed_monitor). One wording across desktop, TUI and relay: mirror core tui.app.temporary_hold_armed_monitor in this locale, sentence case."
 	},
 	"ui.chat.sidebar_view.temporary.hold.unread_mail": {
 		"role": "sidebar row secondary line",
 		"tone": "short state phrase",
-		"note": "Why the temporary chat is not counting down (hold code unread_mail)."
+		"note": "Why the temporary chat is not counting down (hold code unread_mail). One wording across desktop, TUI and relay: mirror core tui.app.temporary_hold_unread_mail in this locale, sentence case."
 	},
 	"ui.chat.sidebar_view.temporary.hold.operator_hold": {
 		"role": "sidebar row secondary line",
 		"tone": "short state phrase",
-		"note": "Why the temporary chat is not counting down (hold code operator_hold)."
+		"note": "Why the temporary chat is not counting down (hold code operator_hold). One wording across desktop, TUI and relay: mirror core tui.app.temporary_hold_operator_hold in this locale, sentence case."
 	},
 	"ui.chat.sidebar_view.temporary.hold.unseen_result": {
 		"role": "sidebar row secondary line",
 		"tone": "short state phrase",
-		"note": "Why the temporary chat is not counting down (hold code unseen_result)."
+		"note": "Why the temporary chat is not counting down (hold code unseen_result). One wording across desktop, TUI and relay: mirror core tui.app.temporary_hold_unseen_result in this locale, sentence case."
 	},
 	"ui.chat.sidebar_view.temporary.hold.unsaved_files": {
 		"role": "sidebar row secondary line",
 		"tone": "short state phrase",
-		"note": "Why the temporary chat is not counting down (hold code unsaved_files)."
+		"note": "Why the temporary chat is not counting down (hold code unsaved_files). One wording across desktop, TUI and relay: mirror core tui.app.temporary_hold_unsaved_files in this locale, sentence case."
 	},
 	"ui.chat.sidebar_view.temporary.hold.linked": {
 		"role": "sidebar row secondary line",
 		"tone": "short state phrase",
-		"note": "Why the temporary chat is not counting down (hold code linked)."
+		"note": "Why the temporary chat is not counting down (hold code linked). One wording across desktop, TUI and relay: mirror core tui.app.temporary_hold_linked in this locale, sentence case."
 	},
 	"ui.chat.sidebar_view.temporary.hold.cannot_verify": {
 		"role": "sidebar row secondary line",
 		"tone": "short state phrase",
-		"note": "Why the temporary chat is not counting down (hold code cannot_verify)."
+		"note": "Why the temporary chat is not counting down (hold code cannot_verify). One wording across desktop, TUI and relay: mirror core tui.app.temporary_hold_cannot_verify in this locale, sentence case."
 	}
 }
