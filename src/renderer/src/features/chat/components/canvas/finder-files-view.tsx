@@ -1682,6 +1682,15 @@ function FinderEntry({
 							>
 								{focusReason ? (
 									<bdi>{focusReason}</bdi>
+								) : remoteReason && tiled ? (
+									/*
+									 * A 117 px tile cut every reason to the device name, which
+									 * says nothing about WHY (design round 2, D2-1). The muted
+									 * name, the type glyph and the tooltip carry it on a tile;
+									 * the sentence stays in the button's name for a keyboard or
+									 * screen reader (U1-4), just not painted.
+									 */
+									<span className="sr-only">{remoteReason}</span>
 								) : remoteReason ? (
 									<bdi>{remoteReason}</bdi>
 								) : item.attachment && !item.attachment.status ? (

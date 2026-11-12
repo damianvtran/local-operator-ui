@@ -40,6 +40,7 @@ import {
 import {
 	downloadRemoteFile,
 	fetchRemoteFileBlob,
+	keepDeviceWhole,
 	useLandedPath,
 } from "../canonical/remote-file-transfer";
 import {
@@ -210,6 +211,7 @@ export const RemoteFileActionsMenu = ({
 	 * its own reason under it, since it is the only one that cannot run.
 	 */
 	const menuReason = remoteMenuReason(remote);
+	const deviceName = remote.deviceName;
 	return (
 		<DropdownMenu open={open} onOpenChange={onOpenChange}>
 			<Tooltip content={tooltip}>
@@ -239,7 +241,7 @@ export const RemoteFileActionsMenu = ({
 						className="max-w-52 font-normal text-ink-muted text-meta"
 						data-remote-menu-reason=""
 					>
-						{menuReason}
+						{keepDeviceWhole(menuReason, deviceName)}
 					</DropdownMenuLabel>
 				) : null}
 				{actions.map((action) => (
@@ -267,7 +269,7 @@ export const RemoteFileActionsMenu = ({
 								   entry; at `meta` size under the label it reads as a
 								   sublabel, not a second action. */
 								<span className="text-meta text-ink-dim">
-									{action.disabledReason}
+									{keepDeviceWhole(action.disabledReason, deviceName)}
 								</span>
 							) : null}
 						</span>

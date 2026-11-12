@@ -5,6 +5,10 @@ import { test } from "node:test";
 import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 
+const NAMED_COMMAND = /lop network update lop-remote-node-2/;
+const ANY_COMMAND = /lop network update/;
+const FALLBACK_NAME = /Update the other device/;
+
 /*
  * Remote files parity, UI half (core docs/design/remote-files-parity.md §3).
  *
@@ -47,8 +51,8 @@ const stubs = {
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { remoteOf, remoteFileActions, remoteUnreadableText, remoteMenuReason, revealableCwd, REMOTE_PREVIEW_MAX_BYTES } from "./src/renderer/src/features/chat/canonical/remote-files";
-			export { downloadRemoteFile, fetchRemoteFileBlob, landedPathFor, rememberLanded, remoteCanvasDocument } from "./src/renderer/src/features/chat/canonical/remote-file-transfer";
+			export { remoteOf, remoteFileActions, remoteUnreadableText, remoteMenuReason, revealableCwd, remoteUnsupportedSentence, REMOTE_PREVIEW_MAX_BYTES } from "./src/renderer/src/features/chat/canonical/remote-files";
+			export { downloadRemoteFile, fetchRemoteFileBlob, landedPathFor, rememberLanded, remoteCanvasDocument, RemoteFetchPendingError } from "./src/renderer/src/features/chat/canonical/remote-file-transfer";
 			export { performRemoteAction } from "./src/renderer/src/features/chat/components/remote-file-actions-menu";
 			export { indexedDocument } from "./src/renderer/src/features/chat/canonical/session-files";
 			export { AttachmentOwnerUnreachableError } from "./src/renderer/src/features/chat/canonical/use-attachment-url";
@@ -98,6 +102,7 @@ const {
 	remoteUnreadableText,
 	remoteMenuReason,
 	revealableCwd,
+	remoteUnsupportedSentence,
 	REMOTE_PREVIEW_MAX_BYTES,
 	remoteCanvasDocument,
 	downloadRemoteFile,
@@ -106,13 +111,27 @@ const {
 	performRemoteAction,
 	indexedDocument,
 	AttachmentOwnerUnreachableError,
+	RemoteFetchPendingError,
 } = await import(pathToFileURL(bundlePath).href);
 
 // ------------------------------------------------------------- the rig
 
 const OWNER_PATH = "~/.local-operator/sessions/abc/scratchpad/chart.png";
 const ISOLATES = /[\u2066-\u2069]/g;
-const plain = (text) => String(text).replace(ISOLATES, "");
+/*
+ * A toast's text, whether it is a string or a React node: the loading toast
+ * keeps the device name in a nowrap run (design round 2, D2-3), so its message
+ * is a fragment of strings and one span.
+ */
+const textOf = (node) =>
+	node === null || node === undefined || typeof node === "boolean"
+		? ""
+		: typeof node === "string" || typeof node === "number"
+			? String(node)
+			: Array.isArray(node)
+				? node.map(textOf).join("")
+				: textOf(node.props?.children);
+const plain = (text) => textOf(text).replace(ISOLATES, "");
 
 const calls = { open: [], reveal: [], read: [], clipboard: [] };
 globalThis.window = {
@@ -477,6 +496,87 @@ test("content: a 504 is AttachmentOwnerUnreachableError (retryable)", async () =
 	);
 });
 
+/*
+ * UX round 2, U2-1: a viewer's read is asked again on the transcript's 504
+ * backoff, and only an owner the backend calls unreachable is "offline"; a
+ * transfer still running is its own error, so the viewer says "still fetching".
+ */
+const remoteDoc = () => ({
+	id: "remote:x",
+	title: "notes.md",
+	path: OWNER_PATH,
+	content: "",
+	remote: remoteOf(row(), "aaaaaaaaaaaa"),
+});
+const contentPending504 = {
+	kind: "error",
+	status: 504,
+	detail: "Still fetching.",
+	refusal: { code: "attachment_fetch_pending" },
+};
+
+test("content (U2-1): a 504 is re-asked on the given backoff, with onPending before each wait", async () => {
+	resetCalls();
+	let calls = 0;
+	remoteState.media = async () =>
+		++calls < 3
+			? contentPending504
+			: {
+					kind: "bytes",
+					status: 200,
+					mimeType: "text/markdown",
+					data: new Uint8Array([35]),
+				};
+	let pendings = 0;
+	const blob = await fetchRemoteFileBlob(remoteDoc(), {
+		delays: [0, 0, 0],
+		onPending: () => {
+			pendings += 1;
+		},
+	});
+	assert.equal(blob.size, 1);
+	assert.equal(calls, 3, "two 504s, then the bytes");
+	assert.equal(pendings, 2);
+});
+
+test("content (U2-1): a transfer still running after the backoff is RemoteFetchPendingError, not offline", async () => {
+	resetCalls();
+	remoteState.media = async () => contentPending504;
+	await assert.rejects(
+		fetchRemoteFileBlob(remoteDoc(), { delays: [0] }),
+		(error) =>
+			error instanceof RemoteFetchPendingError &&
+			// Still retryable for every caller that already treats it so.
+			error instanceof AttachmentOwnerUnreachableError,
+	);
+	remoteState.media = async () => ({
+		kind: "error",
+		status: 504,
+		detail: "offline",
+		refusal: { code: "attachment_owner_unreachable" },
+	});
+	await assert.rejects(
+		fetchRemoteFileBlob(remoteDoc(), { delays: [0] }),
+		(error) =>
+			error instanceof AttachmentOwnerUnreachableError &&
+			!(error instanceof RemoteFetchPendingError),
+	);
+});
+
+test("I2-3: the older-peer command line shows only with a real device name", () => {
+	const named = remoteUnsupportedSentence({
+		unsupported_reason: "peer_update_required",
+		device_name: "lop-remote-node-2",
+	});
+	assert.match(named, NAMED_COMMAND);
+	const nameless = remoteUnsupportedSentence({
+		unsupported_reason: "peer_update_required",
+		device_name: null,
+	});
+	assert.doesNotMatch(nameless, ANY_COMMAND);
+	assert.match(nameless, FALLBACK_NAME);
+});
+
 test("download: a receipt lands the path, toasts it, and unlocks the local actions", async () => {
 	resetCalls();
 	const remote = remoteOf(row(), "aaaaaaaaaaaa");
@@ -509,6 +609,15 @@ test("download: a receipt lands the path, toasts it, and unlocks the local actio
 	// U1-2: a loading toast from the press, replaced in place by the outcome.
 	const [loading, toast] = remoteState.toasts;
 	assert.equal(loading.kind, "loading");
+	assert.equal(
+		loading.message.props.children[1].props.className,
+		"whitespace-nowrap",
+		"D2-3: the device name is one unbreakable run",
+	);
+	assert.equal(
+		loading.message.props.children[1].props.children,
+		"lop-remote-node-2",
+	);
 	assert.equal(
 		plain(loading.message),
 		"Downloading chart.png from lop-remote-node-2…",

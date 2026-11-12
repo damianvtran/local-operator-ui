@@ -27,6 +27,7 @@
  */
 
 import { cn } from "@shared/lib/utils";
+import { useState } from "react";
 import {
 	ATTACHMENT_UNAVAILABLE_COPY,
 	AttachmentFrame,
@@ -109,10 +110,19 @@ export const CanonicalImage = ({
 }: CanonicalImageProps) => {
 	const source = useAttachmentUrl(image, scope);
 	const device = useRemoteSessionDevice(scope?.sessionId);
+	// Set by this tile's Retry press, so the wait and the next Retry tile keep
+	// the reader's focus instead of dropping it to the document (U2-2).
+	const [retried, setRetried] = useState(false);
 	// A slow owner gets a labelled wait, not the bare box (U1-1). A filmstrip
 	// select keeps its own reserved button below: its action is the point.
 	if (source.state === "resolving" && source.pending && device && !press)
-		return <PendingAttachment device={device} compact={size === "thumbnail"} />;
+		return (
+			<PendingAttachment
+				device={device}
+				compact={size === "thumbnail"}
+				focusOnMount={retried}
+			/>
+		);
 	if (source.state === "resolving") {
 		const reserved = (
 			/*
@@ -177,8 +187,12 @@ export const CanonicalImage = ({
 			<RetryableAttachment
 				name={label}
 				compact={size === "thumbnail"}
-				onRetry={source.retry}
+				onRetry={() => {
+					setRetried(true);
+					source.retry();
+				}}
 				device={device}
+				focusOnMount={retried}
 			/>
 		);
 	}

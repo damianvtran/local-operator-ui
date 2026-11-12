@@ -206,7 +206,6 @@ export function localPathOf(asset: DesktopLibraryAsset): string | null {
 }
 
 /** The asset's effective display name: the user's name, else the derived one. */
-
 export function assetDisplayName(asset: DesktopLibraryAsset): string {
 	return asset.name.trim() || asset.derived_name.trim() || asset.id;
 }

@@ -1,12 +1,17 @@
-import { fetchRemoteFileBlob } from "@features/chat/canonical/remote-file-transfer";
+import {
+	RemoteFetchPendingError,
+	fetchRemoteFileBlob,
+} from "@features/chat/canonical/remote-file-transfer";
 import { remoteUnreachableText } from "@features/chat/canonical/remote-files";
 import {
+	ATTACHMENT_RETRY_DELAYS_MS,
 	AttachmentGoneError,
 	AttachmentOwnerUnreachableError,
 	fetchAttachmentBlob,
 } from "@features/chat/canonical/use-attachment-url";
 import type { CanvasDocument } from "@features/chat/types/canvas";
 import { MAX_EAGER_READ_BYTES } from "@features/chat/utils/viewer-routing";
+import { Button } from "@shared/components/ui/button";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
@@ -63,9 +68,11 @@ const NO_INSERTION_CUES = {
 	highlightActiveLineGutter: false,
 } as const;
 
-const ArtifactTextPreviewComponent: FC<{ document: CanvasDocument }> = ({
-	document,
-}) => {
+const ArtifactTextPreviewComponent: FC<{
+	document: CanvasDocument;
+	/** The 504 backoff schedule for a remote read; a parameter for tests. */
+	retryDelays?: readonly number[];
+}> = ({ document, retryDelays = ATTACHMENT_RETRY_DELAYS_MS }) => {
 	useI18nLocale();
 	const artifact = document.artifact;
 	const remote = document.remote ?? null;
@@ -78,8 +85,11 @@ const ArtifactTextPreviewComponent: FC<{ document: CanvasDocument }> = ({
 		| { status: "gone" }
 		| { status: "unreadable" }
 		| { status: "unreachable" }
+		| { status: "pending" }
 		| { status: "tooLarge" }
 	>({ status: "loading" });
+	// Bumped by Retry: the effect below reads again.
+	const [attempt, setAttempt] = useState(0);
 	// Re-read when the row's coordinates change, not on every document object.
 	const remoteKey = remote ? `${remote.sessionId}/${remote.fileId}` : null;
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `remoteKey` stands for the row's coordinates; a new `document` object for the same row must not re-fetch.
@@ -89,6 +99,7 @@ const ArtifactTextPreviewComponent: FC<{ document: CanvasDocument }> = ({
 		   while it loads (review R5-3; the canvas also remounts per tab). */
 		setState({ status: "loading" });
 		let live = true;
+		const signal = { aborted: false };
 		void (
 			artifact
 				? fetchAttachmentBlob(
@@ -98,7 +109,8 @@ const ArtifactTextPreviewComponent: FC<{ document: CanvasDocument }> = ({
 						},
 						artifact.digest,
 					)
-				: fetchRemoteFileBlob(document)
+				: /* The transcript tiles' backoff on a 504 (UX round 2, U2-1). */
+					fetchRemoteFileBlob(document, { delays: retryDelays, signal })
 		)
 			.then(async (blob) => {
 				/* The size gate above needs a listed size; a document without one
@@ -123,15 +135,18 @@ const ArtifactTextPreviewComponent: FC<{ document: CanvasDocument }> = ({
 					status:
 						error instanceof AttachmentGoneError
 							? "gone"
-							: error instanceof AttachmentOwnerUnreachableError
-								? "unreachable"
-								: "unreadable",
+							: error instanceof RemoteFetchPendingError
+								? "pending"
+								: error instanceof AttachmentOwnerUnreachableError
+									? "unreachable"
+									: "unreadable",
 				});
 			});
 		return () => {
 			live = false;
+			signal.aborted = true;
 		};
-	}, [artifact, tooLarge, remoteKey]);
+	}, [artifact, tooLarge, remoteKey, attempt]);
 	/* The editor's own theme resolution (`code-editor.tsx`), so a read-only
 	   attachment and an editable file read as the same surface. */
 	const isDark = useAppearanceIsDark();
@@ -148,20 +163,54 @@ const ArtifactTextPreviewComponent: FC<{ document: CanvasDocument }> = ({
 			/>
 		);
 	if (state.status === "loading")
-		return <FileViewerState quiet title={t("ui.common.viewer.opening")} />;
-	if (state.status !== "ready")
+		return (
+			<FileViewerState
+				quiet
+				title={
+					/* Every remote read is a fetch from the owner: name it (D1-3, U2-1). */
+					remote && !artifact
+						? t("ui.canvas.files.remoteFetching", {
+								device: remote.deviceName,
+							})
+						: t("ui.common.viewer.opening")
+				}
+			/>
+		);
+	if (state.status !== "ready") {
+		const retryable =
+			remote !== null &&
+			(state.status === "unreachable" || state.status === "pending");
 		return (
 			<FileViewerState
 				title={
 					state.status === "gone"
 						? t("ui.canvas.files.gone")
-						: state.status === "unreachable" && remote
-							? remoteUnreachableText(remote.deviceName)
-							: t("ui.canvas.files.unreadable")
+						: state.status === "pending" && remote
+							? /* The owner answered and is still sending: not "offline". */
+								t("ui.canvas.files.remoteDownloadPending", {
+									device:
+										remote.deviceName ||
+										t("ui.canvas.files.remoteDeviceFallback"),
+								})
+							: state.status === "unreachable" && remote
+								? remoteUnreachableText(remote.deviceName)
+								: t("ui.canvas.files.unreadable")
 				}
 				detail={document.title}
-			/>
+			>
+				{retryable ? (
+					<Button
+						variant="secondary"
+						size="sm"
+						data-remote-text-retry=""
+						onClick={() => setAttempt((value) => value + 1)}
+					>
+						{t("ui.canvas.files.retry")}
+					</Button>
+				) : null}
+			</FileViewerState>
 		);
+	}
 	return (
 		<div
 			className={cn("flex h-full min-h-0 grow flex-col")}

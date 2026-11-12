@@ -57,6 +57,7 @@ import { t } from "../../../../i18n/messages";
  * review round 1, R9).
  */
 
+import { ATTACHMENT_RETRY_DELAYS_MS } from "@features/chat/canonical/use-attachment-url";
 import { desktopMedia } from "@shared/api/local-operator/desktop-api";
 import {
 	createBlobUrl,
@@ -74,7 +75,11 @@ import {
 } from "../../../../shared/desktop-contract";
 
 export type FileBlobState =
-	| { status: "loading"; url: null }
+	/*
+	 * `pending`: a `remote-file:` read the owner answered 504 for, being asked
+	 * again on the backoff - the viewer names the device rather than "Opening…".
+	 */
+	| { status: "loading"; url: null; pending?: boolean }
 	| { status: "ready"; url: string }
 	| {
 			status: "unavailable";
@@ -114,7 +119,46 @@ type FileBlobOptions = {
 	 * viewer shows when that device does not answer names it (U1-6).
 	 */
 	remoteDevice?: string | null;
+	/**
+	 * The waits between attempts when a `remote-file:` read answers 504: the
+	 * transcript's own schedule (`ATTACHMENT_RETRY_DELAYS_MS`), a parameter only
+	 * so tests need not sleep through it.
+	 */
+	remoteRetryDelays?: readonly number[];
 };
+
+/** Core's 504 code for "the owner's transfer is still running" (design §1). */
+const FETCH_PENDING_CODE = "attachment_fetch_pending";
+
+/**
+ * The stated state for a `remote-file:` read that came back without bytes.
+ *
+ * A 504 is the owner not answering in time, but only `attachment_fetch_pending`
+ * says the owner DID answer and is still sending: telling that reader the device
+ * is offline is wrong (UX round 2, U2-1), so it gets the "still fetching"
+ * sentence. Every other 504 keeps the shared offline sentence (U1-6).
+ */
+function remoteReadFailure(
+	result: { status: number; refusal?: { code: string } } | null,
+	device: string | null | undefined,
+): FileBlobState {
+	const unreachable = result?.status === 504;
+	const pending = unreachable && result?.refusal?.code === FETCH_PENDING_CODE;
+	return {
+		status: "unavailable",
+		url: null,
+		code: unreachable ? "owner-unreachable" : "unreadable",
+		message: !unreachable
+			? t("ui.canvas.files.remoteReadFailed")
+			: pending
+				? t("ui.canvas.files.remoteDownloadPending", {
+						device: device || t("ui.canvas.files.remoteDeviceFallback"),
+					})
+				: device
+					? t("ui.canvas.files.remoteUnreachable", { device })
+					: t("ui.canvas.files.remoteUnreachableUnnamed"),
+	};
+}
 
 /**
  * The short, user-facing reason a preview is missing, for surfaces too small to
@@ -194,6 +238,7 @@ export function useFileBlobUrl(
 		maxBytes,
 		cachePolicy = "reuse",
 		remoteDevice,
+		remoteRetryDelays = ATTACHMENT_RETRY_DELAYS_MS,
 	}: FileBlobOptions,
 ): FileBlobState {
 	const filePath = stripFileUrl(path);
@@ -255,6 +300,13 @@ export function useFileBlobUrl(
 	useEffect(() => {
 		if (direct || overCap) return;
 		let live = true;
+		/*
+		 * Whether THIS holder took a reference. A holder that unmounts before its
+		 * bytes land never retained, and releasing anyway would spend another
+		 * holder's reference on the same key - revoking the URL that holder is still
+		 * rendering (review round 2, R2-2; remote keys are always shared).
+		 */
+		let retained = false;
 		const cached = retain(key);
 		if (cached) {
 			setState({ status: "ready", url: cached });
@@ -266,41 +318,51 @@ export function useFileBlobUrl(
 		setState({ status: "loading", url: null });
 
 		if (remote) {
+			let wait: ReturnType<typeof setTimeout> | undefined;
 			void (async () => {
-				const result = await desktopMedia(
-					{
-						op: "sessions.files.content",
-						sessionId: remote.sessionId,
-						fileId: remote.fileId,
-					},
-					null,
-				).catch(() => null);
-				if (!live) return;
-				if (result?.kind !== "bytes") {
-					const unreachable = result?.status === 504;
-					setState({
-						status: "unavailable",
-						url: null,
-						code: unreachable ? "owner-unreachable" : "unreadable",
-						// The owner-offline sentence every remote surface shares (U1-6).
-						message: !unreachable
-							? t("ui.canvas.files.remoteReadFailed")
-							: remoteDevice
-								? t("ui.canvas.files.remoteUnreachable", {
-										device: remoteDevice,
-									})
-								: t("ui.canvas.files.remoteUnreachableUnnamed"),
-					});
+				/*
+				 * The transcript tiles' backoff (UX round 2, U2-1): a 504 is the owner
+				 * being slow or its transfer still running, so it is asked again on the
+				 * same schedule, showing "Fetching from <device>…" meanwhile, before the
+				 * viewer states it and offers Retry. Failures are never published, so a
+				 * Retry that remounts reads again.
+				 */
+				for (let attempt = 0; ; attempt += 1) {
+					const result = await desktopMedia(
+						{
+							op: "sessions.files.content",
+							sessionId: remote.sessionId,
+							fileId: remote.fileId,
+						},
+						null,
+					).catch(() => null);
+					if (!live) return;
+					if (result?.kind === "bytes") {
+						// Published under the identifier and retained once the bytes land,
+						// exactly as a disk read below: holders, not requests, are counted.
+						publish(key, createBlobUrl(result.data as BlobPart, mimeType));
+						const url = retain(key);
+						retained = url !== null;
+						setState({ status: "ready", url: url ?? "" });
+						return;
+					}
+					const delay = remoteRetryDelays[attempt];
+					if (result?.status === 504 && delay !== undefined) {
+						setState({ status: "loading", url: null, pending: true });
+						await new Promise((resolve) => {
+							wait = setTimeout(resolve, delay);
+						});
+						if (!live) return;
+						continue;
+					}
+					setState(remoteReadFailure(result, remoteDevice));
 					return;
 				}
-				// Published under the identifier and retained once the bytes land,
-				// exactly as a disk read below: holders, not requests, are counted.
-				publish(key, createBlobUrl(result.data as BlobPart, mimeType));
-				setState({ status: "ready", url: retain(key) ?? "" });
 			})();
 			return () => {
 				live = false;
-				release(key);
+				clearTimeout(wait);
+				if (retained) release(key);
 			};
 		}
 
@@ -346,7 +408,9 @@ export function useFileBlobUrl(
 				// Retain AFTER the bytes land, so the count reflects holders rather
 				// than requests: a viewer that closed mid-read never retained and
 				// must not release.
-				setState({ status: "ready", url: retain(key) ?? url });
+				const held = retain(key);
+				retained = held !== null;
+				setState({ status: "ready", url: held ?? url });
 			} catch (error) {
 				if (!live) return;
 				setState({
@@ -360,9 +424,19 @@ export function useFileBlobUrl(
 
 		return () => {
 			live = false;
-			release(key);
+			if (retained) release(key);
 		};
-	}, [direct, overCap, key, mimeType, filePath, cap, remote, remoteDevice]);
+	}, [
+		direct,
+		overCap,
+		key,
+		mimeType,
+		filePath,
+		cap,
+		remote,
+		remoteDevice,
+		remoteRetryDelays,
+	]);
 
 	return state;
 }

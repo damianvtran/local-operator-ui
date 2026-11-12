@@ -24,7 +24,7 @@ import {
 	showLoadingToast,
 	showSuccessToast,
 } from "@shared/utils/toast-manager";
-import { useSyncExternalStore } from "react";
+import { type ReactNode, useSyncExternalStore } from "react";
 import type { CanvasDocument, CanvasRemoteFile } from "../types/canvas";
 import { openLocalTarget, revealLocalTarget } from "../utils/link-open";
 import { remoteUnreachableText, remoteUnreadableText } from "./remote-files";
@@ -34,6 +34,26 @@ import {
 	AttachmentOwnerUnreachableError,
 	fetchAttachmentBlob,
 } from "./use-attachment-url";
+
+/**
+ * A sentence that names a device, with the name kept on one line.
+ *
+ * Device names are hyphenated (`lop-remote-node-2`), and a wrapping toast or
+ * menu label broke them at the hyphen - "…from lop-remote-node-" / "2…"
+ * (design round 2, D2-3). The translated sentence is left whole; only the
+ * device's own run is marked `whitespace-nowrap`.
+ */
+export function keepDeviceWhole(text: string, device: string): ReactNode {
+	const at = device ? text.indexOf(device) : -1;
+	if (at < 0) return text;
+	return (
+		<>
+			{text.slice(0, at)}
+			<span className="whitespace-nowrap">{device}</span>
+			{text.slice(at + device.length)}
+		</>
+	);
+}
 
 /** The backend's download receipt (core design §3). */
 export type RemoteDownloadReceipt = {
@@ -51,10 +71,25 @@ export type RemoteDownloadReceipt = {
  * Throws `AttachmentOwnerUnreachableError` on a 504 (the owner did not answer
  * in time: worth retrying), `AttachmentGoneError` on a 404, and an Error
  * carrying the owner's reason on a 409 - the same classes the menus already
- * turn into sentences.
+ * turn into sentences. A 504 whose code says the owner's transfer is still
+ * running throws `RemoteFetchPendingError`, its subclass, so a viewer can say
+ * "still fetching" rather than "offline" (UX round 2, U2-1).
+ *
+ * `delays` re-asks a 504 on that schedule (a viewer passes the transcript's
+ * `ATTACHMENT_RETRY_DELAYS_MS`), calling `onPending` before each wait; the
+ * default is one attempt, so an action (Save as..., Copy) answers at once.
  */
 export async function fetchRemoteFileBlob(
 	document: CanvasDocument,
+	{
+		delays = [],
+		onPending,
+		signal,
+	}: {
+		delays?: readonly number[];
+		onPending?: () => void;
+		signal?: { aborted: boolean };
+	} = {},
 ): Promise<Blob> {
 	const remote = document.remote;
 	if (!remote) throw new Error("Not a remote file");
@@ -67,19 +102,44 @@ export async function fetchRemoteFileBlob(
 			},
 			document.artifact.digest,
 		);
-	const result = await desktopMedia(
-		{
-			op: "sessions.files.content",
-			sessionId: remote.sessionId,
-			fileId: remote.fileId,
-		},
-		null,
-	);
-	if (result.kind === "bytes")
-		return new Blob([result.data as BlobPart], { type: result.mimeType });
-	if (result.status === 504) throw new AttachmentOwnerUnreachableError();
-	if (result.status === 404) throw new AttachmentGoneError();
-	throw new Error(t("ui.canvas.files.remoteReadFailed"));
+	for (let attempt = 0; ; attempt += 1) {
+		const result = await desktopMedia(
+			{
+				op: "sessions.files.content",
+				sessionId: remote.sessionId,
+				fileId: remote.fileId,
+			},
+			null,
+		);
+		if (result.kind === "bytes")
+			return new Blob([result.data as BlobPart], { type: result.mimeType });
+		const delay = delays[attempt];
+		if (result.status === 504 && delay !== undefined && !signal?.aborted) {
+			onPending?.();
+			await new Promise((resolve) => setTimeout(resolve, delay));
+			if (signal?.aborted) throw new AttachmentOwnerUnreachableError();
+			continue;
+		}
+		if (result.status === 504)
+			throw result.kind === "error" &&
+				result.refusal?.code === FETCH_PENDING_CODE
+				? new RemoteFetchPendingError()
+				: new AttachmentOwnerUnreachableError();
+		if (result.status === 404) throw new AttachmentGoneError();
+		throw new Error(t("ui.canvas.files.remoteReadFailed"));
+	}
+}
+
+/**
+ * The owner answered and its transfer is still running (504
+ * `attachment_fetch_pending`). A subclass, so every caller that treats an
+ * unreachable owner as "worth retrying" keeps doing so.
+ */
+export class RemoteFetchPendingError extends AttachmentOwnerUnreachableError {
+	constructor() {
+		super();
+		this.name = "RemoteFetchPendingError";
+	}
 }
 
 /** Read a Blob as a `data:` URI, the shape the canvas opens without a path. */
@@ -171,9 +231,13 @@ export async function downloadRemoteFile(
 	}
 	// i18n: ignore toast id, never shown
 	const id = `remote-download:${keyOf(remote)}`;
-	showLoadingToast(t("ui.canvas.files.remoteDownloading", { name, device }), {
-		id,
-	});
+	showLoadingToast(
+		keepDeviceWhole(
+			t("ui.canvas.files.remoteDownloading", { name, device }),
+			device,
+		),
+		{ id },
+	);
 	for (let attempt = 0; ; attempt += 1) {
 		let response: Awaited<ReturnType<typeof desktopRequest>>;
 		try {

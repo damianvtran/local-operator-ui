@@ -487,8 +487,8 @@ export type DesktopMediaResponse =
 			code?: DesktopRefusalCode | "renderer_busy";
 			/**
 			 * The daemon's own refusal code and params, forwarded ONLY for
-			 * `notification_sounds.upload`, whose row copy switches on them (see
-			 * the relay's error branch).
+			 * `notification_sounds.upload` and `sessions.files.content`, whose copy
+			 * switches on them (see the relay's error branch).
 			 */
 			refusal?: { code: string; params?: Record<string, unknown> };
 	  };
@@ -1217,9 +1217,14 @@ export async function requestDesktopMediaOutcome(
 					 * `unsupported_format` with `params.format`, ...), and the settings
 					 * row's copy and remedy switch on that code, never on `detail`. The
 					 * pairing `code` above cannot carry it (that table is closed), so
-					 * this op alone forwards the daemon's own code and params.
+					 * only the ops whose copy switches on it forward the daemon's own
+					 * code and params. A peer file's content read is the other: its 504
+					 * is either the owner offline or its transfer still running
+					 * (`attachment_fetch_pending`), and only the first may be told
+					 * "offline" (remote files parity, UX round 2, U2-1).
 					 */
-					...(request.op === "notification_sounds.upload" &&
+					...((request.op === "notification_sounds.upload" ||
+						request.op === "sessions.files.content") &&
 					declaredCode !== undefined
 						? {
 								refusal: {

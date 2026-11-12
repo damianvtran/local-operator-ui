@@ -36,6 +36,7 @@
  */
 
 import { cn } from "@shared/lib/utils";
+import { useState } from "react";
 import {
 	AUDIO_UNAVAILABLE_COPY,
 	AttachmentFrame,
@@ -80,6 +81,8 @@ export const CanonicalAudio = ({
 	// Peaks need the digest; an inline sound has none and stays flat.
 	const peaks = useWaveform(audio.attachment, scope);
 	const device = useRemoteSessionDevice(scope?.sessionId);
+	// Set by this well's Retry press, so focus stays with it (U2-2).
+	const [retried, setRetried] = useState(false);
 	if (source.state === "missing") {
 		return <BrokenAttachment name={label} detail={AUDIO_UNAVAILABLE_COPY} />;
 	}
@@ -87,13 +90,17 @@ export const CanonicalAudio = ({
 		return (
 			<RetryableAttachment
 				name={label}
-				onRetry={source.retry}
+				onRetry={() => {
+					setRetried(true);
+					source.retry();
+				}}
 				device={device}
+				focusOnMount={retried}
 			/>
 		);
 	}
 	if (source.state === "resolving" && source.pending && device) {
-		return <PendingAttachment device={device} />;
+		return <PendingAttachment device={device} focusOnMount={retried} />;
 	}
 	if (source.state === "resolving") {
 		/*

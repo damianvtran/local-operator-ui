@@ -19,7 +19,7 @@
 
 import assert from "node:assert/strict";
 import { unlink, writeFile } from "node:fs/promises";
-import { after, test } from "node:test";
+import { after, mock, test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 
@@ -79,6 +79,8 @@ URL.revokeObjectURL = () => {
 
 const MEDIA = [];
 const READS = [];
+// A test may answer the content route itself (`contentAnswer`); null = bytes.
+let contentAnswer = null;
 globalThis.window.api = {
 	readFileBytes: async (path) => {
 		READS.push(path);
@@ -87,6 +89,8 @@ globalThis.window.api = {
 	desktop: {
 		media: async (request) => {
 			MEDIA.push(request);
+			if (request.op === "sessions.files.content" && contentAnswer)
+				return contentAnswer(request);
 			if (request.op === "sessions.files.content")
 				return {
 					status: 200,
@@ -221,4 +225,87 @@ test("a READABLE remote sound plays from the content route on a press, never fro
 		blobs.revoked - before.revoked,
 		"the row's object URL is released with it",
 	);
+});
+
+/*
+ * Review round 2, R2-3: a sound over the relay's read window could only fail
+ * on its press, with the generic read sentence. It says what the canvas open
+ * says instead, and nothing is fetched.
+ */
+test("R2-3: a remote sound over 32 MiB says it is too large to open, offers no Play, fetches nothing", async () => {
+	MEDIA.length = 0;
+	const doc = remoteDoc(null);
+	doc.remote.sizeBytes = 33 * 1024 * 1024;
+	const { container, root } = await mount(doc);
+	assert.equal(container.querySelector("[data-remote-sound-play]"), null);
+	assert.ok(
+		container.textContent.includes(
+			"Too large to open from lop-remote-node-2. Download it to this device instead.",
+		),
+		container.textContent,
+	);
+	assert.equal(MEDIA.length, 0);
+	await act(async () => root.unmount());
+});
+
+/*
+ * UX round 2, U2-1: the pressed sound rides the transcript's 504 backoff under
+ * "Fetching from <device>…", tells "still fetching" from "offline" at the end,
+ * and offers Retry, which reads again.
+ */
+test("U2-1: a remote sound's 504 is retried on the backoff, then 'still fetching' with a Retry that reads again", async (t) => {
+	mock.timers.enable({ apis: ["setTimeout"] });
+	t.after(() => {
+		mock.timers.reset();
+		contentAnswer = null;
+	});
+	const flush = async (rounds = 6) => {
+		for (let i = 0; i < rounds; i += 1)
+			await act(async () => {
+				await new Promise((resolve) => setImmediate(resolve));
+			});
+	};
+	MEDIA.length = 0;
+	contentAnswer = async () => ({
+		status: 504,
+		kind: "error",
+		detail: "Still fetching.",
+		refusal: { code: "attachment_fetch_pending" },
+	});
+	const container = document.createElement("div");
+	document.body.append(container);
+	let root;
+	await act(async () => {
+		root = mountRow(container, remoteDoc(null));
+	});
+	await flush();
+	await act(async () => {
+		container
+			.querySelector("[data-remote-sound-play]")
+			.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
+	});
+	await flush();
+	assert.ok(container.textContent.includes("Fetching from lop-remote-node-2…"));
+	for (const delay of [2000, 4000, 8000, 16000]) {
+		await act(async () => mock.timers.tick(delay));
+		await flush();
+	}
+	assert.equal(MEDIA.length, 5, "five attempts, the transcript's schedule");
+	assert.ok(
+		container.textContent.includes(
+			"Still fetching from lop-remote-node-2. Try again in a moment.",
+		),
+		container.textContent,
+	);
+	assert.ok(!container.textContent.includes("isn't answering"), "not offline");
+	const retry = container.querySelector("[data-remote-sound-retry]");
+	assert.ok(retry, "a Retry action");
+	contentAnswer = null;
+	await act(async () => {
+		retry.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
+	});
+	await flush();
+	assert.equal(MEDIA.length, 6, "Retry reads again");
+	assert.ok(container.querySelector("[data-sound-player]"), "and the player");
+	await act(async () => root.unmount());
 });

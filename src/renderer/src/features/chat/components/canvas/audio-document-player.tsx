@@ -7,6 +7,8 @@ import { Play } from "lucide-react";
 import { memo, useMemo, useState } from "react";
 import { t } from "../../../../../../i18n";
 import {
+	remoteFitsWindow,
+	remoteTooLargeText,
 	remoteUnreachableText,
 	remoteUnreadableText,
 } from "../../canonical/remote-files";
@@ -199,8 +201,22 @@ const FinderRemoteSound = memo(function FinderRemoteSound({
 }) {
 	useI18nLocale();
 	const [armed, setArmed] = useState(false);
+	// Bumped by Retry: a fresh mount of the loaded player is a fresh read,
+	// because a failed read is never published to the cache.
+	const [attempt, setAttempt] = useState(0);
 	const remote = doc.remote;
 	if (!remote) return null;
+	/*
+	 * Over the relay's read window the press could only fail, with the generic
+	 * read sentence (review round 2, R2-3): say what the canvas open says, and
+	 * leave Download (the row's menu) as the way to get it.
+	 */
+	if (!remoteFitsWindow(remote))
+		return (
+			<span className={cn("px-1 py-2 text-meta text-ink-muted")}>
+				{remoteTooLargeText(remote)}
+			</span>
+		);
 	if (!armed)
 		return (
 			<button
@@ -217,9 +233,11 @@ const FinderRemoteSound = memo(function FinderRemoteSound({
 		);
 	return (
 		<FinderRemoteSoundLoaded
+			key={attempt}
 			path={remoteFilePath(remote.sessionId, remote.fileId, doc.title)}
 			device={remote.deviceName}
 			label={label}
+			onRetry={() => setAttempt((value) => value + 1)}
 		/>
 	);
 });
@@ -228,20 +246,38 @@ const FinderRemoteSoundLoaded = ({
 	path,
 	device,
 	label,
+	onRetry,
 }: {
 	path: string;
 	device: string;
 	label: string;
+	onRetry: () => void;
 }) => {
 	const state = useFileBlobUrl(path, {
 		mimeType: mimeTypeForPath(path),
 		remoteDevice: device,
 	});
 	if (state.status === "unavailable")
+		/* The hook already waited out the backoff; what is left is a press away,
+		   as on the transcript tiles (UX round 2, U2-1). */
 		return (
-			<span className={cn("px-1 py-2 text-meta text-ink-muted")}>
-				{state.message}
-			</span>
+			<div
+				className={cn(
+					"flex items-center gap-2 px-1 py-2 text-meta text-ink-muted",
+				)}
+			>
+				<span className={cn("min-w-0")}>{state.message}</span>
+				{state.code === "owner-unreachable" ? (
+					<button
+						type="button"
+						data-remote-sound-retry=""
+						onClick={onRetry}
+						className={cn("shrink-0 text-ink hover:underline")}
+					>
+						{t("ui.canvas.files.retry")}
+					</button>
+				) : null}
+			</div>
 		);
 	if (state.status === "loading") return <RemoteSoundWait device={device} />;
 	return (

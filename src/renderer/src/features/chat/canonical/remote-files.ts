@@ -304,15 +304,17 @@ export function remoteUnsupportedSentence(page: {
 	device_name?: string | null;
 }): string {
 	if (page.unsupported_reason === "peer_update_required") {
-		const device =
-			page.device_name || t("ui.canvas.files.remoteDeviceFallback");
+		const named = page.device_name || null;
+		const device = named ?? t("ui.canvas.files.remoteDeviceFallback");
+		const what = t("ui.canvas.files.remotePeerUpdate", { device });
 		// What to do, not only what is wrong (UX round 1, U1-7): the desktop app
 		// has no peer-update action, and `lop network update <peer>` is core's own
 		// verb for it (`local_operator/network/cli.py`, the 409's sentence too).
-		return `${t("ui.canvas.files.remotePeerUpdate", { device })}\n${t(
-			"ui.canvas.files.remotePeerUpdateHow",
-			{ device },
-		)}`;
+		// Only with a real name: the fallback would make the command read
+		// "lop network update the other device" (i18n round 2, I2-3).
+		return named
+			? `${what}\n${t("ui.canvas.files.remotePeerUpdateHow", { device })}`
+			: what;
 	}
 	return REMOTE_FILES_UNSUPPORTED_SENTENCE;
 }

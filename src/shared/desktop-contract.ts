@@ -8027,9 +8027,10 @@ export type DesktopMediaResponse =
 			code?: DesktopRefusalCode;
 			/**
 			 * The daemon's own refusal code and params, forwarded only for
-			 * `notification_sounds.upload` (main `desktop-media.ts`): that row's copy
-			 * and remedy switch on the code (`too_long`, `unsupported_format` ...),
-			 * which the closed pairing table above cannot carry.
+			 * `notification_sounds.upload` and `sessions.files.content` (main
+			 * `desktop-media.ts`): their copy switches on the code (`too_long`,
+			 * `unsupported_format`, `attachment_fetch_pending` ...), which the closed
+			 * pairing table above cannot carry.
 			 */
 			refusal?: { code: string; params?: Record<string, unknown> };
 	  };
