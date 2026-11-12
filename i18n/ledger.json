@@ -2740,8 +2740,25 @@
 				"date": "2026-11-11",
 				"note": "es S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/es/ui.chat.canonical/s16a-3311618b2a8b"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-12",
+					"result": "clean-with-findings",
+					"instance": "4d7a5444aa0b",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/4d7a5444aa0b.json",
+					"receipt_sha256": "0d53576dd82e8db22742ddcaa18810c5e786cf93d88d15f0d6181de37adfc7c3",
+					"note": "S16f delta audit of the 15 keys on the merged bytes; audit record: i18n/audits/evidence/es/ui.chat.canonical/s16f-4d7a5444aa0b-r4/record.json"
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "771482d2bdef4f9d40bfbdaa35e8eebed300b0e6f9a477318557c26d1770e5a7",
@@ -14640,8 +14657,25 @@
 				"date": "2026-11-11",
 				"note": "fr S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/fr/ui.chat.canonical/s16a-2105ebeeb3e9"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-12",
+					"result": "clean-with-findings",
+					"instance": "3316c580ef05",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/3316c580ef05.json",
+					"receipt_sha256": "2e4ac73047242230a20ff56a4982652c7d56e4d1f6677d4c083bb7f1a82e8d32",
+					"note": "S16f delta audit of the 15 keys on the merged bytes; audit record: i18n/audits/evidence/fr/ui.chat.canonical/s16f-3316c580ef05-r4/record.json"
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "771482d2bdef4f9d40bfbdaa35e8eebed300b0e6f9a477318557c26d1770e5a7",
@@ -27030,15 +27064,31 @@
 			"locale": "hi",
 			"namespace": "ui.chat.canonical",
 			"source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
-			"target_sha256": "18ee2d0ae6a06f8000f0d74818637e131fa903781abcec47ad1fe49d2c07c6a4",
+			"target_sha256": "5bad55ca446e6e2e0bc853d503d94280f444cd009402431c65e8ce997528689b",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
-				"date": "2026-11-11",
-				"note": "hi S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/hi/ui.chat.canonical/s16a-2bc153cbf350"
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-11-12"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-12",
+					"result": "clean",
+					"instance": "b04b0982d048-hi-s16f-au4",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/b04b0982d048-hi-s16f-au4.json",
+					"receipt_sha256": "e786162df109f8f74890076ed8e8d39af873bf7f473376216e730d554e68d9ee",
+					"note": "S16f round-4 re-audit of the hi remediation (sound/ध्वनि consistency); audit record: i18n/audits/evidence/hi/ui.chat.canonical/s16f-au4-b04b0982/record.json"
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "771482d2bdef4f9d40bfbdaa35e8eebed300b0e6f9a477318557c26d1770e5a7",
@@ -27571,6 +27621,12 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+					"target_sha256": "18ee2d0ae6a06f8000f0d74818637e131fa903781abcec47ad1fe49d2c07c6a4",
+					"auditors": [],
+					"status": "pending"
 				}
 			]
 		},
@@ -39009,15 +39065,31 @@
 			"locale": "ru",
 			"namespace": "ui.chat.canonical",
 			"source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
-			"target_sha256": "af745c025f29e1dc76c7b6bb60305186db8157c91d4a304b293d7d7e33547b47",
+			"target_sha256": "fddef0897968450fb0157457dda37f7472fa467b4df1aea68af16bbe260f10f1",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
-				"date": "2026-11-11",
-				"note": "ru S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/ru/ui.chat.canonical/s16a-db260f728ba9"
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-11-12"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-12",
+					"result": "clean",
+					"instance": "6e7c2663da44-s16f-au4-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6e7c2663da44-s16f-au4-ru.json",
+					"receipt_sha256": "679693ab40c06fa90f1bbd809663007e5759e830b7770860a091b5f82e23f006",
+					"note": "S16f round-4 re-audit of the ru remediation (media.sound_label); audit record: i18n/audits/evidence/ru/ui.chat.canonical/s16f-6e7c2663da44-r4/record.json"
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "771482d2bdef4f9d40bfbdaa35e8eebed300b0e6f9a477318557c26d1770e5a7",
@@ -39550,6 +39622,12 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+					"target_sha256": "af745c025f29e1dc76c7b6bb60305186db8157c91d4a304b293d7d7e33547b47",
+					"auditors": [],
+					"status": "pending"
 				}
 			]
 		},
@@ -51015,8 +51093,25 @@
 				"date": "2026-11-11",
 				"note": "ur S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/ur/ui.chat.canonical/s16a-b97613446a7a"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-12",
+					"result": "clean-with-findings",
+					"instance": "1d764576d0aa-s16f-au3-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/1d764576d0aa-s16f-au3-ur.json",
+					"receipt_sha256": "e8fd11469cda736764fc3c5c2506f9e1251869bebdeee7e5e9399a76ee3850a2",
+					"note": "S16f delta audit of the 15 keys on the merged bytes; audit record: i18n/audits/evidence/ur/ui.chat.canonical/s16f-au3-ur/record.json"
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "771482d2bdef4f9d40bfbdaa35e8eebed300b0e6f9a477318557c26d1770e5a7",
@@ -62928,8 +63023,25 @@
 				"date": "2026-11-11",
 				"note": "vi S16a words (14 keys): draft v3 = translator v1 with 4 values changed by the manager on an auditor's findings; v1/v2 audits superseded. 442 earlier keys retained. Evidence: i18n/audits/evidence/vi/ui.chat.canonical/s16a-64a0e2d3b795"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-12",
+					"result": "clean",
+					"instance": "49c5a10a37b4",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/49c5a10a37b4.json",
+					"receipt_sha256": "90d86780df545711ad161761edc08a74afb896fbea091dbdbd6663b63869d086",
+					"note": "S16f delta audit of the 15 keys on the merged bytes; audit record: i18n/audits/evidence/vi/ui.chat.canonical/s16f-49c5a10a37b4-r4/record.json"
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "771482d2bdef4f9d40bfbdaa35e8eebed300b0e6f9a477318557c26d1770e5a7",
@@ -75649,8 +75761,25 @@
 				"date": "2026-11-11",
 				"note": "zh-CN S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/zh-CN/ui.chat.canonical/s16a-07b0fc8f8d80"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-12",
+					"result": "clean-with-findings",
+					"instance": "2a10c1127838-zhcn-s16f-au3",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/2a10c1127838-zhcn-s16f-au3.json",
+					"receipt_sha256": "d945a58c75c7825349f3ab87581b332b9fe08bb3fe5eccf5ff6bbfc270d2c9b7",
+					"note": "S16f delta audit of the 15 keys on the merged bytes; audit record: i18n/audits/evidence/zh-CN/ui.chat.canonical/s16f-2a10c1127838-r4/record.json"
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "771482d2bdef4f9d40bfbdaa35e8eebed300b0e6f9a477318557c26d1770e5a7",
