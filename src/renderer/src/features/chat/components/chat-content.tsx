@@ -199,6 +199,11 @@ type ChatContentProps = {
 	 */
 	deviceSlot?: React.ReactNode;
 	/**
+	 * The New chat header's agent/team chip, composed by the page for a draft
+	 * pane only; see `ChatHeaderProps.draftTargetSlot`.
+	 */
+	draftTargetSlot?: React.ReactNode;
+	/**
 	 * What the last move did, in the row under the header's band.
 	 *
 	 * A SEPARATE SLOT BECAUSE IT IS A SEPARATE PLACE: the chip answers "where does
@@ -220,6 +225,16 @@ type ChatContentProps = {
 	 * answers a capability question it cannot see.
 	 */
 	renameSessionId?: string;
+	/** `ChatHeaderProps.renameSlotReserved`, passed straight through. */
+	renameSlotReserved?: boolean;
+	/**
+	 * This pane created the conversation it shows (it mounted on a session-less
+	 * draft and the mount held through the send). Its history is therefore proven
+	 * empty before the first row from the press on (design round 1, D2): the
+	 * older-history line says "Start of conversation" from its first frame rather
+	 * than "Earlier history not loaded · Try again" until the first snapshot.
+	 */
+	createdHere?: boolean;
 	onOpenOptions: () => void;
 	/**
 	 * The missing notice's way out, threaded from the page that owns `navigate`
@@ -894,9 +909,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		descriptionPending,
 		identity,
 		deviceSlot,
+		draftTargetSlot,
 		deviceNotice,
 		deviceHold,
 		renameSessionId,
+		renameSlotReserved,
+		createdHere = false,
 		onOpenOptions,
 		onStartNewChat,
 		isOptionsSidebarOpen,
@@ -1850,8 +1868,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * HERE, AND NOT IN `chat-page.tsx`, because this is the one mount that owns the
 		 * drawer's lifetime: `sessionAsksOpen` below is what draws it, `handleCloseAskDrawer`
 		 * is its close door, and this component is keyed by conversation (`SessionPanel
-		 * key={identity}`), so a mount IS a "view" and coming back to a conversation is a
-		 * new one. `chat-page.tsx` owns the composer's answer-mode routing, which this does
+		 * key={mountKey}`, `panelMountKeyFor`: one mount per conversation, held through
+		 * its own draft's admission), so a mount IS a "view" and coming back to a
+		 * conversation is a new one. `chat-page.tsx` owns the composer's answer-mode routing, which this does
 		 * not touch: the hook writes the same store flag a press on the chip writes, through
 		 * the same writer, and nothing else. IT ALSO RETURNS the one sentence a policy open
 		 * speaks to assistive tech (design review round 1, D1), rendered by the `<output>`
@@ -1934,7 +1953,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * The unmount reset: a route with no chat surface draws none of the five.
 		 *
 		 * IT RESETS UNCONDITIONALLY, which assumes ONE ChatContent per window
-		 * (`SessionPanel key={identity}` is the only mount, and React runs the old
+		 * (`SessionPanel key={mountKey}` is the only mount, and React runs the old
 		 * tree's layout cleanup before the new tree's publish, so a swap ends
 		 * published). A second concurrent instance would have to compare the store's
 		 * facts with its own before resetting, or its unmount would release the slot
@@ -2609,7 +2628,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							descriptionPending={descriptionPending}
 							identity={identity}
 							deviceSlot={deviceSlot}
+							draftTargetSlot={draftTargetSlot}
 							renameSessionId={renameSessionId}
+							renameSlotReserved={renameSlotReserved}
 							/*
 							 * THE COPY-SESSION-ID READ (#893): the same canonical id this component already
 							 * carries as its own `sessionId` prop, passed on unchanged so the header's
@@ -2916,7 +2937,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										 * the slot renders "not loaded" and the retry below instead
 										 * of the end copy.
 										 */
-										hydrationProven={canonical.view.hydrated}
+										hydrationProven={canonical.view.hydrated || createdHere}
 										/*
 										 * And whether a read is OUT right now (remote-load-hydration, UX
 										 * round 1 U1): the retry arm's press must be acknowledged, so
@@ -2959,6 +2980,14 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										// the conversation rather than the owner's, or the
 										// conversation may not be on this machine at all.
 										stale={canonical.view.stale}
+										/*
+										 * A peer's conversation: the pane's loading indicator says
+										 * it is syncing from the other device rather than loading
+										 * (operator 2026-11-11). The same `remoteOwnedId` answer the
+										 * files lane already reads above, so the two cannot disagree
+										 * about whose conversation this is.
+										 */
+										remote={remoteFiles}
 										missing={gone}
 									/>,
 								)

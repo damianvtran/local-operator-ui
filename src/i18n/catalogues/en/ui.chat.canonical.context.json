@@ -194,13 +194,6 @@
 		"note": "Non-terminal: it must not imply the conversation is unreadable or that rows are wrong. Says the conversation is readable and only the order confirmation failed, with Reconnect beside it. Never reuse the failure notice's copy.",
 		"placeholders": {}
 	},
-	"ui.chat.canonical.transcript.stale_caption": {
-		"role": "caption above a cached transcript while a newer page is being checked for",
-		"tone": "calm status, sentence case, full stop; the em dash separates the two clauses",
-		"length": "One short sentence.",
-		"note": "States that what is on screen is the last saved view and that a check is running. The em dash is shipped punctuation: keep it inside the message, since word order differs between locales.",
-		"placeholders": {}
-	},
 	"ui.chat.canonical.transcript.start_new_chat": {
 		"role": "button in the missing-conversation notice that clears the pane for a fresh chat",
 		"tone": "verb phrase, sentence case, no trailing punctuation",
@@ -322,7 +315,6 @@
 	"ui.chat.canonical.older_history.failed.short": "Narrow-column spelling of the row for a failed load of earlier messages.",
 	"ui.chat.canonical.older_history.failed.long": "Full spelling of the failed-load row and its title attribute.",
 	"ui.chat.canonical.older_history.try_again": "Button that retries loading earlier messages.",
-	"ui.chat.canonical.older_history.loading": "Button label while earlier messages are loading; also the announcement.",
 	"ui.chat.canonical.older_history.load": "Button that loads the earlier messages when the transcript is idle.",
 	"ui.chat.canonical.older_history.windowed.title": "Row stating more history exists above and must be reached by scrolling.",
 	"ui.chat.canonical.older_history.windowed.title_gesture": "Full sentence for the windowed row, also used as its title attribute.",
@@ -330,20 +322,6 @@
 	"ui.chat.canonical.older_history.unproven.short": "Narrow-column spelling of the row that says earlier history was never proven loaded.",
 	"ui.chat.canonical.older_history.unproven.long": "Full spelling of the unproven row and its title attribute.",
 	"ui.chat.canonical.older_history.conversation_start": "Row marking the oldest message, where nothing earlier exists.",
-	"ui.chat.canonical.placeholder.loading": {
-		"role": "visible caption under the transcript while a conversation is still loading",
-		"tone": "status phrase, sentence case, trailing ellipsis character (U+2026), no period",
-		"length": "Two words.",
-		"note": "The words are VISIBLE, not sr-only: a sighted reader needs a sentence naming the wait. Keep the single-character ellipsis rather than three dots. `text-ink-dim` clears the 4.5:1 floor on every ground.",
-		"placeholders": {}
-	},
-	"ui.chat.canonical.placeholder.region_label": {
-		"role": "accessible name of the loading placeholder's live region",
-		"tone": "status phrase, sentence case, no trailing punctuation",
-		"length": "Two words.",
-		"note": "The same phrase as the visible caption without the ellipsis: it is an utterance, not a sentence. A screen reader announces this region while the transcript hydrates.",
-		"placeholders": {}
-	},
 	"ui.chat.canonical.tool_row.generic_verb.running": {
 		"role": "verb column of a running tool row whose tool has no verb of its own",
 		"tone": "present participle, lowercase, one word, no punctuation",
@@ -3251,5 +3229,130 @@
 		"placeholders": {
 			"material": "which kind of media the call generates: one of image, video, voiceover, sound_effect (callsite maps the wire's `sound-effect`); drives a select, so supply every branch"
 		}
+	},
+	"ui.chat.canonical.loading.cold": {
+		"role": "visible label while a conversation's first page is loading and nothing is painted yet",
+		"tone": "short, human status phrase, sentence case, trailing ellipsis character (U+2026), no period",
+		"length": "Two words.",
+		"note": "Shown in the transcript where the messages will appear. One of four labels beside the same pulsing dot, the app's single conversation-loading indicator; the four must read as one family. Keep the single-character ellipsis (U+2026) rather than three dots.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.loading.older": {
+		"role": "visible label, and screen-reader announcement, while an earlier page of messages is loading at the top of the conversation",
+		"tone": "short, human status phrase, sentence case, trailing ellipsis character (U+2026), no period",
+		"length": "Three or four words.",
+		"note": "Sits inside a narrow row; keep it short. One of four labels beside the same pulsing dot, the app's single conversation-loading indicator; the four must read as one family. Keep the single-character ellipsis (U+2026) rather than three dots.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.loading.region_label": {
+		"role": "accessible name of the conversation-loading indicator's live region",
+		"tone": "status phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "An utterance, not a sentence: screen readers use it to name the status region; the visible label inside it is what is announced.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.loading.remote": {
+		"role": "visible label while a conversation that lives on the user's other device (a paired computer) is being synced to this one",
+		"tone": "short, human status phrase, sentence case, trailing ellipsis character (U+2026), no period",
+		"length": "Five words or fewer.",
+		"note": "Names why the wait can be longer than a local open: the messages are coming from another of the user's own devices. 'Sync' is the app's usual term for it. One of four labels beside the same pulsing dot, the app's single conversation-loading indicator; the four must read as one family. Keep the single-character ellipsis (U+2026) rather than three dots.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.loading.revalidating": {
+		"role": "visible label at the bottom of a conversation shown from this computer's saved copy while the app checks for newer messages",
+		"tone": "short, human status phrase, sentence case, trailing ellipsis character (U+2026), no period",
+		"length": "Four words or fewer.",
+		"note": "The messages above are real and readable; this only says a check for newer ones is running. Avoid words that suggest the view is wrong or out of date. One of four labels beside the same pulsing dot, the app's single conversation-loading indicator; the four must read as one family. Keep the single-character ellipsis (U+2026) rather than three dots.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.media.image_label": {
+		"role": "accessible name and alt text of a picture a tool produced when the tool sent no file name; numbered when several share a row",
+		"tone": "bare noun, capitalised, number after the noun in English",
+		"length": "One or two words.",
+		"note": "A lone picture carries no number. The numbered branch gives the one-based position within the set. Used as the image's alt text, the fold strip's tile name and the lightbox tile label.",
+		"placeholders": {
+			"count": "how many pictures the set holds; number; `=1` selects the unnumbered form",
+			"position": "one-based position of this picture in the set; number"
+		}
+	},
+	"ui.chat.canonical.media.sound_label": {
+		"role": "accessible name of a sound a tool produced when the tool sent no file name; numbered when several share a row",
+		"tone": "bare noun, capitalised, number after the noun in English",
+		"length": "One or two words.",
+		"note": "Same rule as the picture label. It becomes the audio player's play and pause accessible name (`ui.chat.audio.play_label`), so it must read as a thing that can be played.",
+		"placeholders": {
+			"count": "how many sounds the set holds; number; `=1` selects the unnumbered form",
+			"position": "one-based position of this sound in the set; number"
+		}
+	},
+	"ui.chat.canonical.sound.batch.item_status": {
+		"role": "title line of one row in a generated-sound batch: the request's name followed by its non-success state; completed rows show the name alone and do not use this message",
+		"tone": "plain noun phrase plus a one-word state, sentence case, no punctuation",
+		"length": "Name and state share one line that wraps (break-words); keep the state to one or two words.",
+		"note": "Whole message per state so each language places the state word itself (it may precede the name). `other` covers an unrecognised status: the row has a receipt but no stated outcome, so it must read as 'unknown', never as success or failure. 'Stopped' is a request the user cancelled, not a fault.",
+		"placeholders": {
+			"status": "outcome of this request; select with the branches failed, cancelled, other (an unknown outcome); supply every branch",
+			"label": "the request's own name as the user or model wrote it (may be Latin text inside a right-to-left sentence; never translated)"
+		}
+	},
+	"ui.chat.canonical.sound.batch.latest_update": {
+		"role": "live note under a running generated-sound batch: which request reported last",
+		"tone": "plain status sentence, sentence case, full stop",
+		"length": "One short sentence that wraps under the state line.",
+		"note": "Says which item spoke last, not how many are done; do not reword it into a completion count. The item number is one-based.",
+		"placeholders": {
+			"name": "the request's own name; user data, may be Latin text, never translated",
+			"item": "one-based position of the request that reported last; number",
+			"total": "how many requests the batch holds; number"
+		}
+	},
+	"ui.chat.canonical.sound.batch.summary": {
+		"role": "one-paragraph summary above a generated-sound batch: counts of requests by outcome, then the names of those that did not complete",
+		"tone": "terse clause list separated by middle dots, lower-case clauses, one full stop before the attention list",
+		"length": "One paragraph that wraps; keep each count clause under four words.",
+		"note": "Counts are always shown for completed and failed (0 included) and only when non-zero for cancelled and unknown. Each count has its own plural so the noun or verb can agree in languages that inflect it. The separators and the sentence break are part of the message so each language can choose its own punctuation. The attention list is the names of the requests that did not complete.",
+		"placeholders": {
+			"completed": "requests that finished with audio; number, CLDR plural selector, zero allowed",
+			"failed": "requests that failed; number, CLDR plural selector, zero allowed",
+			"cancelled": "requests that were stopped; number, CLDR plural selector, zero hides the clause (=0 branch must stay empty)",
+			"unknown": "requests with a receipt but no stated outcome; number, CLDR plural selector, zero hides the clause (=0 branch must stay empty)",
+			"has_attention": "yes when at least one request did not complete, otherwise no; select, supply every branch",
+			"labels": "the names of the requests that did not complete, already joined with the language's clause separator; user data, never translated"
+		}
+	},
+	"ui.chat.canonical.sound.cost.batch_unknown": {
+		"role": "total cost line of a generated-sound batch when no amount has been reported",
+		"tone": "plain statement, sentence case, full stop",
+		"length": "One short sentence.",
+		"note": "Sibling of the per-request 'Cost not yet known.'; this one is about the whole batch.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.sound.cost.estimated_zero": {
+		"role": "cost line under a failed request of a generated-sound batch whose zero amount is an estimate, not a confirmed bill",
+		"tone": "plain statement, sentence case, one semicolon, full stop",
+		"length": "One sentence that wraps at the meta step.",
+		"note": "The `$0` is United States dollars and is part of the sentence; keep the currency sign where the language writes it. The point of the sentence is that zero is an estimate: do not shorten it to 'No charge'.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.sound.cost.no_charge": {
+		"role": "cost line under a failed request of a generated-sound batch that the provider billed nothing for",
+		"tone": "plain statement, sentence case, full stop",
+		"length": "One or two words.",
+		"note": "Only shown when the receipt confirms a zero billed amount for a failed request.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.sound.cost.unknown": {
+		"role": "cost line under one row of a generated-sound batch when the receipt carries no charge",
+		"tone": "plain statement, sentence case, full stop",
+		"length": "One short sentence at the meta step.",
+		"note": "Says only that no amount has been reported yet; it does not promise one will arrive.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.supplement.sound_fallback_label": {
+		"role": "name of a sound player in a supplement card when the card sent no title",
+		"tone": "bare noun phrase, sentence case, no punctuation",
+		"length": "Two words; the label sits on the player's control line.",
+		"note": "A fallback only: a title sent by the producer is shown as sent.",
+		"placeholders": {}
 	}
 }

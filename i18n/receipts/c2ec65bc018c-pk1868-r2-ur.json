@@ -1,0 +1,84 @@
+{
+ "schema": 1,
+ "auditor": {
+  "agent": "reviewer",
+  "session": "c2ec65bc018c",
+  "instance": "c2ec65bc018c-pk1868-r2-ur",
+  "model": "anthropic/claude-opus-5-5",
+  "requested_model": "anthropic/claude-opus-5-5",
+  "fallback": false,
+  "model_source": "Session system prompt header 'Model: anthropic/claude-opus-5-5'; no model-switch or fallback notice in this session.",
+  "independence": "Fresh independent auditor (lopdev team reviewer, PR #1868 round-2 review task); authored no translation or code in this PR. Translator: PR #1868 remediation coder (commit 175f295a0c5). This session is c2ec65bc018c.",
+  "independent_from_translator_session": true
+ },
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "c2ec65bc018c-pk1868-r2-ur",
+ "locale": "ur",
+ "date": "2026-11-11",
+ "head": "175f295a0c5ea177badc5b95e9eff0531a21bdd8",
+ "base": "80cdfe73da5f411d578e558a1498681e8d660511",
+ "pr": "https://github.com/damianvtran/local-operator-ui/pull/1868",
+ "branch": "fix/agent-passkey-prompts (PR #1868)",
+ "audit_kind": "round-2 delta audit: 3 changed + 4 added custody keys (+ fr agent_explanation), re-read of return_to_agent and agent_explanation",
+ "scope": "ui.browser at 175f295: ui.browser.browser_passkey_custody.label, ui.browser.browser_passkey_custody.message, ui.browser.browser_passkey_custody.explanation, ui.browser.browser_passkey_custody.returning, ui.browser.browser_passkey_custody.return_refused_stale, ui.browser.browser_passkey_custody.return_refused_not_held, ui.browser.browser_passkey_custody.return_failed, ui.browser.browser_passkey_custody.return_to_agent, ui.browser.browser_passkey_notice.agent_explanation. Read against English source, English context sidecar, core glossary and the locale style guide. All other keys byte-identical to base 769a8d8 and not re-audited.",
+ "union_proof": "Computed from git objects: for en and every locale, 175f295 ui.browser.json keys == 80cdfe7 keys + exactly browser_passkey_custody.{returning,return_refused_stale,return_refused_not_held,return_failed}; changed vs 80cdfe7: custody label/message/explanation (+ fr agent_explanation); 0 removed; no non-passkey key differs from base 769a8d8; worktree bytes == HEAD blob.",
+ "round1_carry": "no round-1 findings",
+ "references": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/ur.md",
+   "sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+  },
+  "glossary_style_revision": "b42471d3935cb7e95d64428af27c32626665f4c0"
+ },
+ "status": "passed",
+ "result": "clean",
+ "counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 0
+ },
+ "findings": [],
+ "namespaces": {
+  "ui.browser": {
+   "namespace": "ui.browser",
+   "status": "passed",
+   "result": "clean",
+   "sha256": {
+    "ur": "16011cfbec6d47aacc55b580521787526448cb2977177b54ea679b3e678fa68d",
+    "en": "e331d1a2d9abc72abc529ade9d23797134feddff50598cdd7b35e1b3addaca16"
+   },
+   "context_sha256": "4ba70db381c18feb87cd761a4f5490600c712f18a84f16e30913dccbb14cf285",
+   "keys_reviewed": [
+    "ui.browser.browser_passkey_custody.label",
+    "ui.browser.browser_passkey_custody.message",
+    "ui.browser.browser_passkey_custody.explanation",
+    "ui.browser.browser_passkey_custody.returning",
+    "ui.browser.browser_passkey_custody.return_refused_stale",
+    "ui.browser.browser_passkey_custody.return_refused_not_held",
+    "ui.browser.browser_passkey_custody.return_failed",
+    "ui.browser.browser_passkey_custody.return_to_agent",
+    "ui.browser.browser_passkey_notice.agent_explanation"
+   ],
+   "keys_read": 9,
+   "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "findings": []
+  }
+ },
+ "checks": [
+  "ICU parse (repo @formatjs/icu-messageformat-parser) of all reviewed values: 0 errors, no arguments, matching English.",
+  "Meaning vs English/context: neutral password-manager wording (no passkey/provider/native/OS claim); human custody stated (only the user sees/answers; agent paused); reload-cancels-unfinished-sign-in-or-save consequence kept; 'you may need to ask it to continue' kept (no promise the agent resumes); refusal toasts match stale / not-held / failed semantics.",
+  "'Prompt' rendered as request/dialog, not the glossary AI-prompt term; glossary agent term used.",
+  "No ASCII apostrophe or manual bidi controls; locale punctuation (fr U+202F, zh full-width, ur Arabic semicolon, hi danda) verified."
+ ],
+ "limitations": "Source/text audit only; no rendered-fit or execution claim beyond the ICU parse."
+}

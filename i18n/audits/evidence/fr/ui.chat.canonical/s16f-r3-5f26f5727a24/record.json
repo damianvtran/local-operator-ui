@@ -1,0 +1,152 @@
+{
+ "schema": 1,
+ "audit_id": "s16f-r3-5f26f5727a24",
+ "locale": "fr",
+ "namespace": "ui.chat.canonical",
+ "audit_date": "2026-11-11",
+ "round": 3,
+ "key_count": 10,
+ "keys": [
+  "ui.chat.canonical.sound.batch.item_status",
+  "ui.chat.canonical.sound.batch.summary",
+  "ui.chat.canonical.sound.batch.latest_update",
+  "ui.chat.canonical.sound.cost.unknown",
+  "ui.chat.canonical.sound.cost.no_charge",
+  "ui.chat.canonical.sound.cost.estimated_zero",
+  "ui.chat.canonical.sound.cost.batch_unknown",
+  "ui.chat.canonical.media.image_label",
+  "ui.chat.canonical.media.sound_label",
+  "ui.chat.canonical.supplement.sound_fallback_label"
+ ],
+ "head": "af876eb052db12ec587ef6353aecebd2c769ae22",
+ "pr": 1876,
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "5f26f5727a24",
+  "instance": "5f26f5727a24",
+  "model": "deepseek/deepseek-flash",
+  "independent_from_translator_session": true,
+  "actual_model_source": "this session's own runtime model header: deepseek/deepseek-flash",
+  "fallback": {
+   "used": false,
+   "note": "no fallback model was used and none was reported; the model above is the model that ran the audit"
+  }
+ },
+ "translator": {
+  "agent": "i18n-translator",
+  "model": "anthropic/claude-sonnet-5-5",
+  "note": "not this session; the audited bytes were landed by the translator working the S16f slice, and this audit is an independent round-3 read of those bytes"
+ },
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+   "sha256": "12ec2698434dcb39497e288af62d11d70f0fd71d494a9becf3fd611d6568bbdd"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+   "sha256": "95aa203759416c93180b7eb4967e6fcf5bce0dffe20e9d005b431c645e9e11e6"
+  },
+  "fr": {
+   "path": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+   "sha256": "34a0fdbf1ef412e9e16e3c9da7558e4c1f23ba52ef0cb7638ecd545d49404202"
+  },
+  "authority": {
+   "fr_style_guide": "~/local-operator i18n/style-guides/fr.md @ origin/main",
+   "glossary": "~/local-operator i18n/glossary.md @ origin/main"
+  }
+ },
+ "key_hashes_definition": "sha256 over UTF-8 of json.dumps({key: value}, ensure_ascii=False, sort_keys=True, separators=(',',':'))",
+ "key_hashes": {
+  "ui.chat.canonical.sound.batch.item_status": {
+   "fr": "baf91da58de738da",
+   "en": "e358c22c488a7071"
+  },
+  "ui.chat.canonical.sound.batch.summary": {
+   "fr": "e7a58def97a3c606",
+   "en": "09ae93966cdc6b3a"
+  },
+  "ui.chat.canonical.sound.batch.latest_update": {
+   "fr": "0d1f2b6f787b994e",
+   "en": "427de0b397f00337"
+  },
+  "ui.chat.canonical.sound.cost.unknown": {
+   "fr": "6234473a4f9b57ed",
+   "en": "a34c87949511c3c4"
+  },
+  "ui.chat.canonical.sound.cost.no_charge": {
+   "fr": "dd7eb405d3b14c53",
+   "en": "34fb349281118da7"
+  },
+  "ui.chat.canonical.sound.cost.estimated_zero": {
+   "fr": "0c7f9fff71e4231c",
+   "en": "7a339de1c5eb417a"
+  },
+  "ui.chat.canonical.sound.cost.batch_unknown": {
+   "fr": "6633f156ace5ed40",
+   "en": "8aabea74c95580d6"
+  },
+  "ui.chat.canonical.media.image_label": {
+   "fr": "47631358ab381012",
+   "en": "47631358ab381012"
+  },
+  "ui.chat.canonical.media.sound_label": {
+   "fr": "896840e3a17fe2e6",
+   "en": "50eaf18785e46954"
+  },
+  "ui.chat.canonical.supplement.sound_fallback_label": {
+   "fr": "c707d0bf8f62a342",
+   "en": "553bf2c11939d42e"
+  }
+ },
+ "artifacts": {
+  "report": {
+   "path": "audit-s16f-r3-fr.md",
+   "sha256": "9c5ae4252197afb429a6441c29af0bb2976cfbb4cd55251adc2b3da08c06f6ab"
+  },
+  "execution_log": {
+   "path": "audit.log",
+   "sha256": "ca8e31e752a2e59249853dfb9afd9aba4d37609bdc47920cf7f9c0a724f143c5",
+   "kind": "execution log — captured stdout of the validators, the ICU grid and the negative controls as they ran; not notes"
+  },
+  "receipt": {
+   "path": "receipt-fr-s16f-r3.json",
+   "sha256": "3fc403f2b469e3b10eb349fe41454f1f5e1b036acb7c40a0d7266c1380148d78",
+   "ledger_copy": "i18n/receipts/5f26f5727a24.json (same bytes; written by ledger-assemble)"
+  },
+  "scripts": {
+   "note": "the grid and the negative-control harness live in the auditor's session scratch only (256 MiB cap, never shipped); their behaviour is described in the report and their output is in audit.log. They are not artifacts of record.",
+   "grid": "grid.mjs — app-formatter ICU grid; negative controls: negctl.py"
+  }
+ },
+ "gates": {
+  "generate_check": "pass",
+  "check_duplicates": "pass",
+  "check_coverage": "pass",
+  "context_parity": "pass",
+  "check_strings": "pass (read-only against the worktree)",
+  "locale_parity_test": "pass 44/44",
+  "diff_own_tests": "pass — generation-card-labels 27/27, generation-card-locale-switch 1/1",
+  "icu_grid": "pass — 1452 summary renders + item_status/latest_update/media grid; all three fr CLDR categories declared and reached",
+  "negative_controls": "8/8 mutants caught",
+  "ledger_assemble": "pass — status audited, clean-with-findings, 0 blocker, 0 major, 1 minor, 1 nit",
+  "ledger_check_fr": "0 findings for fr after assembling in the mirror; the 18 remaining findings belong to es/hi/ru/ur/vi/zh-CN ui.chat.canonical rows and are not this lane's",
+  "width": "no maxCells in this sidecar; rendered widths measured (fr summary 94 cells vs en 101, item_status 35 vs 35, latest_update 60 vs 43) — wraps, no truncation risk"
+ },
+ "current_report_verdict": {
+  "status": "passed",
+  "result": "clean-with-findings",
+  "unresolved_blocker_major_count": 0,
+  "minor": 1,
+  "nit": 1,
+  "finding_ids": [
+   "M1",
+   "N1"
+  ],
+  "english_left": "none in the 10 values; named exceptions: media.image_label is the French word « Image » (identical to English by design, scoped exemption in locale-parity.test.mjs) and {label}/{labels} are user data"
+ },
+ "notes_not_execution": [
+  "The judgements in the report are reasoning against the fr style guide, the glossary and shipped precedent — no translation or MT service was used and no back-translation performed.",
+  "The diff's own two tests and check-strings ran read-only against the manager's worktree because they need the full TypeScript project, which this audit's mirror deliberately does not contain (src/renderer is never mirrored). git status was clean before and after.",
+  "Rounds 1-2 reports for this slice are not committed in the repo and were not read; this verdict is derived from the landed bytes and the authorities above."
+ ]
+}

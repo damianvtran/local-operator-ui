@@ -1,0 +1,111 @@
+{
+ "schema": 1,
+ "locale": "ru",
+ "namespace": "ui.chat.canonical",
+ "audit_date": "2026-11-11",
+ "key_count": 10,
+ "audit_round": 3,
+ "audited_head": "af876eb052db12ec587ef6353aecebd2c769ae22",
+ "pr": "damianvtran/local-operator-ui#1876",
+ "keys_audited": [
+  "ui.chat.canonical.sound.batch.item_status",
+  "ui.chat.canonical.sound.batch.summary",
+  "ui.chat.canonical.sound.batch.latest_update",
+  "ui.chat.canonical.sound.cost.unknown",
+  "ui.chat.canonical.sound.cost.no_charge",
+  "ui.chat.canonical.sound.cost.estimated_zero",
+  "ui.chat.canonical.sound.cost.batch_unknown",
+  "ui.chat.canonical.media.image_label",
+  "ui.chat.canonical.media.sound_label",
+  "ui.chat.canonical.supplement.sound_fallback_label"
+ ],
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "9f927eaac669",
+  "instance": "9f927eaac669-s16f-r3-ru",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "session header line: Model: deepseek/deepseek-flash",
+  "fallback": "none reported",
+  "independent_from_translator_session": true,
+  "translator_on_ledger_row": "i18n-translator/anthropic/claude-sonnet-5-5",
+  "independence_note": "Fresh session 9f927eaac669, read-only. Also independent of the round-2 ru auditor (i18n-auditor instance db260f728ba9) by session, though that run used the same model family per the ledger row."
+ },
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+   "sha256": "12ec2698434dcb39497e288af62d11d70f0fd71d494a9becf3fd611d6568bbdd"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+   "sha256": "95aa203759416c93180b7eb4967e6fcf5bce0dffe20e9d005b431c645e9e11e6"
+  },
+  "ru": {
+   "path": "src/i18n/catalogues/ru/ui.chat.canonical.json",
+   "sha256": "be3f1256ee3930a40f102c6ed4ce9db4aa93191f9f1f6bb5d09d031ea1608e2f"
+  },
+  "authority": {
+   "glossary": "damianvtran/local-operator origin/main:i18n/glossary.md (read 2026-11-11, unhashed)",
+   "style_guide": "damianvtran/local-operator origin/main:i18n/style-guides/ru.md (read 2026-11-11, unhashed)"
+  },
+  "audited_key_pairs_group_sha256": {
+   "definition": "JSON object of the 10 pairs, sorted keys, compact separators, UTF-8, no trailing newline",
+   "ru": "ffeb74c0b046db169b666d7f44c4a5b9e468b4f1e50f363286e55b7f5f15d6d2",
+   "en": "bdd1d9d1cfcd327c7445396ad806220fa850fe820c638a59ec6bc195f882e307"
+  }
+ },
+ "artifacts": [
+  {
+   "path": "receipt-ru-s16f-r3.json",
+   "role": "ledger-ready receipt (assembled into a mirror, not this repo)",
+   "sha256": "3d28f9cb02155fd090eecae2291759b7bcef865450e72e631d1bfaa9429b00ac"
+  },
+  {
+   "path": "audit.log",
+   "role": "actual execution log: the commands above and their captured output",
+   "sha256": "e316438ed12cf0658324bd5352ed4dd8864d10f06f4fbc4050f78227468d556c"
+  },
+  {
+   "path": "audit-s16f-r3-ru.md",
+   "role": "audit notes / findings report (notes, NOT an execution log)",
+   "sha256": "74cf14d483b6f6d75616b4a3fa6ec4356c8554df0ff1b08b9846c7758886e021"
+  }
+ ],
+ "current_report_verdict": {
+  "status": "passed",
+  "verdict": "clean-with-findings",
+  "unresolved_blocker_major_count": 0,
+  "severity_counts": {
+   "blocker": 0,
+   "major": 0,
+   "minor": 0,
+   "nit": 2
+  },
+  "finding_ids": [
+   "S16F-RU-R3-01",
+   "S16F-RU-R3-02"
+  ],
+  "finding_dispositions": {
+   "S16F-RU-R3-01": "accepted, no change requested (sound_label case trade-off, both surfaces named)",
+   "S16F-RU-R3-02": "accepted, no change requested (summary unknown-clause predication; only wording that keeps one state word across row and summary)"
+  }
+ },
+ "checks": {
+  "generate.mjs --check": "PASS",
+  "check-duplicates": "PASS",
+  "check-coverage": "PASS",
+  "locale-parity.test.mjs": "PASS 44/44",
+  "check-strings (real worktree)": "PASS",
+  "context-parity": "PASS",
+  "icu grid via src/i18n/messages.ts": "PASS 1167 renderings",
+  "AST placeholder+CLDR": "PASS",
+  "negative controls": "6/6 caught",
+  "ledger-check ru": "0 findings after assemble"
+ },
+ "audit_notes_not_execution_log": "audit-s16f-r3-ru.md plus the receipt's checks object are the auditor's notes and do not prove execution. audit.log is the captured execution log; the receipt is the claim ledger-assemble reads. Only audit.log and the commands it contains are execution evidence.",
+ "receipt": {
+  "path": "i18n/receipts/9f927eaac669-s16f-r3-ru.json",
+  "receipt_sha256": "3d28f9cb02155fd090eecae2291759b7bcef865450e72e631d1bfaa9429b00ac",
+  "ledger_row": "audited, superseded prior audits, 0 blocker / 0 major / 0 minor / 2 nit"
+ },
+ "ledger_command": "node scripts/i18n/ledger-assemble.mjs --locale ru --file src/i18n/catalogues/ru/ui.chat.canonical.json --auditor-instance 9f927eaac669-s16f-r3-ru --auditor-model deepseek/deepseek-flash --result clean-with-findings --date 2026-11-11 --receipt <scratchpad>/receipt-ru-s16f-r3.json --scope \"the 10 S16f generation-card label keys of ru/ui.chat.canonical (sound.batch.*, sound.cost.*, media.*_label, supplement.sound_fallback_label) incl. the round-3 summary unknown-clause change; the other 456 keys read only as precedent and carried on prior audits\" --note \"S16f r3 ru: 10 keys, 0 blocker/major/minor, 2 nits (sound_label case trade-off; summary clause). Record: i18n/audits/evidence/ru/ui.chat.canonical/s16f-9f927eaac669-r3/record.json\""
+}

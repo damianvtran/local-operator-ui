@@ -115,6 +115,7 @@ const {
 	modelAccessReading,
 	modelAccessPresentation,
 	modelAccessOwnsRadientStatus,
+	modelAccessIsInformational,
 	composerModelAccessReading,
 	modelAccessLocality,
 	priceUnknownText,
@@ -3097,6 +3098,70 @@ for (const control of producerControls.cases) {
 	});
 }
 
+/*
+ * Operator report, 2026-11-11: healthy borrowed access rendered a standing
+ * card above the composer. Informational states now ride the strip's `i`
+ * readout; states that ask for action (or may fail the next turn) keep the card.
+ */
+for (const [state, informational] of [
+	["effective_borrow", true],
+	["pending", true],
+	["eligible_borrow_unverified", true],
+	["expired", false],
+	["withdrawn", false],
+	["owner_unavailable", false],
+	["device_bound", false],
+	["absent", false],
+]) {
+	test(`model access ${state} is ${informational ? "informational (strip icon)" : "actionable (composer card)"}`, () => {
+		assert.equal(
+			modelAccessIsInformational(modelAccessReading(frame(state))),
+			informational,
+		);
+	});
+}
+
+test("legacy and absent access readings are never demoted to the info icon", () => {
+	assert.equal(modelAccessIsInformational(null), false);
+	assert.equal(modelAccessIsInformational(undefined), false);
+	const legacy = frame(undefined, "signed_out");
+	assert.equal(modelAccessIsInformational(modelAccessReading(legacy)), false);
+	const unavailable = frame(undefined, "temporarily_unavailable");
+	assert.equal(
+		modelAccessIsInformational(modelAccessReading(unavailable)),
+		false,
+	);
+	// An unknown future state reads as `pending` (the reader's conservative
+	// default) and so is informational — never invented as healthy access.
+	assert.equal(
+		modelAccessReading(frame("some_future_state")).effectiveState,
+		"pending",
+	);
+});
+
+/*
+ * Design D1 (PR #1871): the strip's 256px tooltip broke the joined history
+ * sentence mid-timestamp, and its reuse caveat read as a warning on a healthy
+ * state. The tooltip takes one timestamp per line and no caveat; the card keeps
+ * the joined sentence with the caveat.
+ */
+test("the access history reaches the tooltip one timestamp per line, without the card's caveat", () => {
+	const p = modelAccessPresentation(
+		modelAccessReading(frame("effective_borrow")),
+	);
+	assert.equal(p.historyLines.length, 3);
+	assert.match(p.historyLines[0], /^Last checked/);
+	assert.match(p.historyLines[1], /^Last resolved/);
+	assert.match(p.historyLines[2], /^Recorded grant expiry/);
+	for (const line of p.historyLines) assert.doesNotMatch(line, /History only/);
+	assert.equal(
+		p.history,
+		[...p.historyLines, "History only; not permission to reuse access."].join(
+			" ",
+		),
+	);
+});
+
 test("the real page/content/composer wires the tested serving context and decision", () => {
 	const page = readFileSync(
 		"src/renderer/src/features/chat/components/chat-page.tsx",
@@ -3119,6 +3184,10 @@ test("the real page/content/composer wires the tested serving context and decisi
 	assert.ok(content.includes('servingLocality?: "local" | "remote"'));
 	assert.ok(content.includes("sessionStatus={sessionStatus}"));
 	assert.ok(composer.includes("composerModelAccessReading(sessionStatus)"));
+	assert.ok(
+		composer.includes("!modelAccessIsInformational(modelAccess) &&"),
+		"the composer card yields informational access to the strip's icon",
+	);
 	assert.ok(
 		composer.includes(
 			"!modelAccessOwnsRadientStatus(modelAccess) && radientIssueBlock",

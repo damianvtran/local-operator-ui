@@ -75,6 +75,7 @@ const MAX_DEPTH = 16;
  * so they share its risk profile and its 20 s daemon budget.
  */
 async function runFixed(
+	ctx: BrowserActionContext,
 	record: TabRecord,
 	source: string,
 	args: Arg[],
@@ -84,9 +85,11 @@ async function runFixed(
 		.map((arg) => JSON.stringify(arg))
 		.join(", ")})`;
 	return await deadline(
-		record.view.webContents.executeJavaScriptInIsolatedWorld(
-			ISOLATED_WORLD_ID,
-			[{ code }],
+		ctx.registry.guardRead(record, () =>
+			record.view.webContents.executeJavaScriptInIsolatedWorld(
+				ISOLATED_WORLD_ID,
+				[{ code }],
+			),
 		),
 		SCRIPTING_DEADLINE_MS,
 		label,
@@ -160,6 +163,7 @@ export async function styles(
 	let result: unknown;
 	try {
 		result = await runFixed(
+			ctx,
 			record,
 			READ_STYLES_SOURCE,
 			[selector, properties],
@@ -182,11 +186,13 @@ export async function styles(
  * point with no element. Exported so `hover` reports exactly the descriptor
  * `hit_test` does rather than keeping a second reader of the same facts. */
 export async function hitAt(
+	ctx: BrowserActionContext,
 	record: TabRecord,
 	x: number,
 	y: number,
 ): Promise<unknown> {
 	return await runFixed(
+		ctx,
 		record,
 		HIT_TEST_SOURCE,
 		[x, y],
@@ -212,7 +218,7 @@ export async function hitTest(
 			"'hit_test' needs numeric x and y (viewport coordinates)",
 		);
 	}
-	const result = await hitAt(record, x, y);
+	const result = await hitAt(ctx, record, x, y);
 	if (result === null || result === undefined) {
 		throw new BrowserHostError(
 			"element_not_found",
@@ -244,6 +250,7 @@ export async function ancestors(
 	let result: unknown;
 	try {
 		result = await runFixed(
+			ctx,
 			record,
 			ANCESTORS_SOURCE,
 			[selector, depth],

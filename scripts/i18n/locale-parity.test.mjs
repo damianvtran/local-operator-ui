@@ -220,6 +220,10 @@ const IDENTICAL_OK = new Map([
 		"fr:ui.chat.canonical.image_label",
 		"French UI noun: Image, same spelling as English; scoped to fr so other locales still translate it",
 	],
+	[
+		"fr:ui.chat.canonical.media.image_label",
+		"French UI noun: Image, same spelling as English; scoped to fr so other locales still translate it",
+	],
 	["fr:ui.notifications.nav.label", "French UI noun: Notifications"],
 	["fr:ui.notifications.page.title", "French UI noun: Notifications"],
 	[

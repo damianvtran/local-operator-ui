@@ -1,0 +1,98 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "deepseek/deepseek-flash",
+	"instance": "b04b0982d048-hi-s16f-au4",
+	"run_id": "b04b0982d048",
+	"status": "passed",
+	"result": "clean",
+	"namespace": "ui.chat.canonical",
+	"locale": "hi",
+	"date": "2026-11-12",
+	"audit_kind": "delta",
+	"head": "cbb8782a39b5692ae46bfc3aa6930840420e9b14",
+	"base": "8180eff1f705eb79d4df5123d6108c539b585b2e",
+	"pr": "https://github.com/damianvtran/local-operator-ui/pull/1876",
+	"key_count": 9,
+	"keys_read": [
+		"ui.chat.canonical.image_gen.state.done",
+		"ui.chat.canonical.image_gen.state.done_batch",
+		"ui.chat.canonical.image_gen.state.failed",
+		"ui.chat.canonical.image_gen.state.failed_batch",
+		"ui.chat.canonical.image_gen.state.running",
+		"ui.chat.canonical.image_gen.state.running_batch",
+		"ui.chat.canonical.media.sound_label",
+		"ui.chat.canonical.sound.player_failed",
+		"ui.chat.canonical.supplement.sound_fallback_label"
+	],
+	"scope": "Round-4 delta audit at cbb8782a: the 3 values this commit changed (media.sound_label, sound.player_failed, supplement.sound_fallback_label) plus all 6 image_gen state keys that carry the sibling compound साउंड इफ़ेक्ट, read in full to judge that the noun is now consistent. The other 464 values are byte-identical to 8180eff1 (verified: 464/467 identical, 3 differing, 3 differing raw lines, key order unchanged) and are retained on that proof, not re-read. Key sets equal English (467/467).",
+	"summary": "changes_requested is answered correctly; no blocker/major remains. The bare noun ध्वनि is the catalogue's own word for the sound artifact (canvas Sounds row = ध्वनियाँ, notifications heading = ध्वनि, 27 keys), the composed player names read naturally (ध्वनि चलाएँ / ध्वनि रोकें), gender agreement and the playback verb चलाना are right, and the kept compound साउंड इफ़ेक्ट is the living Hindi term for that material kind, consistent across all six state keys.",
+	"sha256": {
+		"hi": "5bad55ca446e6e2e0bc853d503d94280f444cd009402431c65e8ce997528689b",
+		"en": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+		"context": "8f56e0d2b384c6b41add57a64e6c863e565cb61d5a7c0de482d42f380be3acfe",
+		"glossary": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+		"style_guide": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+	},
+	"keys_changed": {
+		"ui.chat.canonical.media.sound_label": {
+			"en": "{count, plural, =1 {Sound} other {Sound {position, number, ::group-off}}}",
+			"before": "{count, plural, =1 {साउंड} other {साउंड {position, number, ::group-off}}}",
+			"after": "{count, plural, =1 {ध्वनि} other {ध्वनि {position, number, ::group-off}}}"
+		},
+		"ui.chat.canonical.sound.player_failed": {
+			"en": "This sound could not be played",
+			"before": "यह साउंड नहीं बजाया जा सका",
+			"after": "यह ध्वनि नहीं चलाई जा सकी"
+		},
+		"ui.chat.canonical.supplement.sound_fallback_label": {
+			"en": "Generated sound",
+			"before": "बनाया गया साउंड",
+			"after": "बनाई गई ध्वनि"
+		}
+	},
+	"findings": [],
+	"severity_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"observations": [
+		"INFO: sound.player_failed (…नहीं चलाई जा सकी) and ui.settings.notifications.preview.failed (…नहीं चल सकी।) render the same idea with two constructions; both are idiomatic and each mirrors its own English. Not unified, not a defect.",
+		"INFO: media.sound_label mirrors English's =1/other rather than hi's one/other. Count 0 is unreachable for this label, so the rendering matches English for every reachable count; moving to 'one' would depart from the source structure for no gain.",
+		"INFO: the commit message's '28 times' for ध्वनि is a near-count; measured here as 32 occurrences over 27 keys. Immaterial to the decision, recorded so the figure is not read later as an audit measurement.",
+		"INFO: no rendered frame was captured (read-only lane, machine near its RAM limit). Fit is argued from cell counts and the surfaces named in the sidecar; a rendered check of the player's control line remains QA/design work."
+	],
+	"checks": [
+		"repo validators at cbb8782a: locale-parity.test.mjs 44/44 pass; check-duplicates '0 duplicate key(s)' over 1437 files; context-parity ok; generate --check 'keys.gen.ts is byte-identical'",
+		"slice guards: generation-card-labels.test.mjs 27/27 pass; hi-activation.test.mjs 3/3 pass",
+		"own ICU grid (check-hi-s16f-au4.mjs, @formatjs/icu-messageformat-parser): argument names and explicit types identical, plural/select structure identical including the full material[video|voiceover|sound_effect|other] select, every plural carries 'other', hi categories measured one/other via Intl.PluralRules",
+		"integrity: 467/467 keys both sides, symmetric difference 0; key order identical to 8180eff1; 464 values byte-identical, exactly the 3 landed values differ; 469 raw lines before and after with 3 differing lines; file ends with a newline",
+		"added/merged 15-key group (10 the PR adds over origin/main + 5 main brought in the 8180eff1 merge): 13 identical to their previously audited values, the 2 that moved (media.sound_label, supplement.sound_fallback_label) are in this commit's scope; sound.player_failed is a pre-existing key whose single change is also in scope",
+		"meaning and register against the English source and the en context sidecar, key by key, for all 9 keys in scope",
+		"terminology: ध्वनि measured across the hi catalogue (ui.settings.notifications 23 keys/27 occurrences, ui.canvas 1/1, ui.chat.canonical 3/4); साउंड confined to 6 keys/7 occurrences, all the fixed compound साउंड इफ़ेक्ट; ऑडियो reserved for the medium (ऑडियो फ़ाइल/अटैचमेंट)",
+		"composed accessible names rendered from ui.chat.json templates: ध्वनि चलाएँ, ध्वनि रोकें, ध्वनि की प्लेबैक स्थिति",
+		"Unicode hygiene: no ZWJ/ZWNJ, no bidi controls, no BOM, no precomposed U+095E (catalogue uses combining U+093C: 2610 occurrences, 0 precomposed); no Devanagari digits; no exclamation mark",
+		"fit: cell widths 71/23/12 (was 71/24/14) — every changed value is the same length or shorter than the string it replaces and shorter than English; no maxCells/maxChars hint exists for these keys in the sidecar",
+		"worktree HEAD verified cbb8782a39b5692ae46bfc3aa6930840420e9b14 (= PR headRefOid) and git status --porcelain empty before and after; nothing written to the repository"
+	],
+	"independence": {
+		"translator_agent": "i18n-translator",
+		"translator_session": "not supplied in my brief; a different instance from this one",
+		"auditor_agent": "i18n-auditor",
+		"auditor_session": "b04b0982d048",
+		"independent_from_translator": true,
+		"round3_auditor_session": "not supplied in my brief; a different instance from this one — this is the first independent read of the corrected values",
+		"independent_from_round3_auditor": true,
+		"actual_model_source": "harness session header for this run (Model: deepseek/deepseek-flash); no fallback, no model switch, no role/default pin, no tool change",
+		"disclosure": "One shared GitHub account authors the PR and its comments, so authorship of a comment proves nothing; independence here rests on agent and session identity, both different from the translator and from the round-3 auditor."
+	},
+	"references": {
+		"glossary": "~/local-operator/i18n/glossary.md @ 4981010c6 (sha256 0eb34437…)",
+		"style_guide": "~/local-operator/i18n/style-guides/hi.md @ 14f73c4dc (sha256 82292dc8…)",
+		"policy": "docs/I18N.md 'Retain checkable audit records'; core RFC §2.2, §6",
+		"record": "i18n/audits/evidence/hi/ui.chat.canonical/s16f-au4-b04b0982/record.json",
+		"report": "i18n/audits/evidence/hi/ui.chat.canonical/s16f-au4-b04b0982/report.md",
+		"execution_log": "i18n/audits/evidence/hi/ui.chat.canonical/s16f-au4-b04b0982/audit.log"
+	}
+}
