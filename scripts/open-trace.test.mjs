@@ -34,6 +34,8 @@ const bundle = await build({
 });
 const {
 	createOpenTracer,
+	createPanePaintTrace,
+	tracePanePaint,
 	watchSendable,
 	afterNextPaint,
 	formatOpenTraceLine,
@@ -893,6 +895,162 @@ test("paint fields are counts and a fixed vocabulary, never text", () => {
 });
 
 /*
+ * THE PANE'S OWN COMMIT (`tracePanePaint`). These are the decisions a source
+ * regex could not pin: whether a pane may speak for a trace it did not mount
+ * for, which of the two miss kinds a trace reports, and whether the fill is the
+ * scroller's inner box or its raw `clientHeight` (agent review round 1, R1-1/R1-2).
+ */
+function paneRig(init = {}) {
+	const live = {
+		target: null,
+		token: null,
+		cached: null,
+		miss: null,
+		visibleRows: 5,
+		boxes: {
+			contentHeight: 500,
+			scrollerClientHeight: 532,
+			paddingTop: 16,
+			paddingBottom: 16,
+		},
+		...init,
+	};
+	const stamps = [];
+	const deps = {
+		activeSessionId: () => live.target,
+		currentToken: () => live.token,
+		notePaint: (sessionId, token, stamp) =>
+			stamps.push({ sessionId, token, stamp }),
+		readPaint: () => live.cached,
+		missReason: () => live.miss,
+		get visibleRows() {
+			return live.visibleRows;
+		},
+		boxes: () => live.boxes,
+	};
+	return { live, stamps, deps };
+}
+
+const seededEntry = (rows, bytes) => ({ transcript: { records: rows }, bytes });
+
+test("R1-1: a pane that mounted with no trace never stamps the trace that starts later", () => {
+	const pane = paneRig();
+	const trace = createPanePaintTrace();
+	// Mounted before the click (a restored window): no trace was open.
+	tracePanePaint(trace, pane.deps);
+	// The click begins B while this pane is still the mounted one, and it commits
+	// a row-count change before React swaps B's keyed pane in.
+	pane.live.target = "bbb";
+	pane.live.token = 7;
+	pane.live.cached = seededEntry([1, 2], 9);
+	tracePanePaint(trace, pane.deps);
+	assert.deepEqual(
+		pane.stamps,
+		[],
+		"this pane never committed B's rows, so it can say nothing about B's paint",
+	);
+});
+
+test("R1-1: a trace active at the first commit is stamped once, with that run's token", () => {
+	const pane = paneRig({
+		target: "abc",
+		token: 3,
+		cached: seededEntry([1, 2, 3], 30),
+	});
+	const trace = createPanePaintTrace();
+	tracePanePaint(trace, pane.deps);
+	// A newer trace begins, and this pane commits again on the same mount.
+	pane.live.token = 4;
+	pane.live.cached = seededEntry([], 0);
+	tracePanePaint(trace, pane.deps);
+	assert.deepEqual(
+		pane.stamps.map((stamp) => stamp.stamp.kind),
+		["seed", "fills"],
+		"one seed and one fill: the mount's first commit speaks once",
+	);
+	assert.equal(pane.stamps[0].token, 3, "the token of the run that stamped");
+	assert.equal(pane.stamps[0].sessionId, "abc");
+	assert.equal(pane.stamps[0].stamp.rows, 3);
+	assert.equal(pane.stamps[1].token, 3);
+});
+
+test("R1-2: no fills when the pane has no row up, but the seed still stands", () => {
+	const pane = paneRig({
+		target: "abc",
+		token: 1,
+		cached: seededEntry([1, 2], 20),
+		// A filter or a hold: the entry was read, but there is no filled box to
+		// measure, so `paint` stays `cache` and `fills` is left unset.
+		visibleRows: 0,
+	});
+	const trace = createPanePaintTrace();
+	tracePanePaint(trace, pane.deps);
+	assert.deepEqual(
+		pane.stamps.map((stamp) => stamp.stamp.kind),
+		["seed"],
+		"a zero-row commit would report every pane as under-filled",
+	);
+	assert.equal(pane.stamps[0].stamp.source, "cache");
+});
+
+test("R1-2: a miss is none when nothing was cached and empty when something was dropped", () => {
+	const cold = paneRig({ target: "cold", token: 1 });
+	tracePanePaint(createPanePaintTrace(), cold.deps);
+	assert.equal(cold.stamps.length, 1);
+	assert.equal(cold.stamps[0].stamp.source, "none");
+	assert.equal(cold.stamps[0].stamp.reason, "no-entry");
+
+	// An entry existed here and was evicted: a different answer about the same click.
+	const dropped = paneRig({ target: "dropped", token: 1, miss: "evicted" });
+	tracePanePaint(createPanePaintTrace(), dropped.deps);
+	assert.equal(dropped.stamps[0].stamp.source, "empty");
+	assert.equal(dropped.stamps[0].stamp.reason, "evicted");
+});
+
+test("R1-2: the fill is the scroller's inner box, not its clientHeight", () => {
+	// 500 content in a 532px scroller with 16px padding top and bottom: the inner
+	// box is exactly 500, so the paint fills it - the raw clientHeight would say
+	// it is 32px short.
+	const pane = paneRig({
+		target: "abc",
+		token: 1,
+		cached: seededEntry([1, 2], 20),
+		visibleRows: 2,
+	});
+	tracePanePaint(createPanePaintTrace(), pane.deps);
+	const fill = pane.stamps.find((stamp) => stamp.stamp.kind === "fills");
+	assert.equal(fill?.stamp.fills, true, "padding comes off the scroller's box");
+
+	const short = paneRig({
+		target: "abc",
+		token: 1,
+		cached: seededEntry([1, 2], 20),
+		visibleRows: 2,
+	});
+	short.live.boxes = { ...short.live.boxes, contentHeight: 480 };
+	tracePanePaint(createPanePaintTrace(), short.deps);
+	assert.equal(
+		short.stamps.find((stamp) => stamp.stamp.kind === "fills")?.stamp.fills,
+		false,
+		"a pane that really under-fills still reads as short",
+	);
+});
+
+test("R1-2: a pane whose refs are not attached stamps the seed and no fill", () => {
+	const pane = paneRig({
+		target: "abc",
+		token: 1,
+		cached: seededEntry([1], 8),
+	});
+	pane.live.boxes = null;
+	tracePanePaint(createPanePaintTrace(), pane.deps);
+	assert.deepEqual(
+		pane.stamps.map((stamp) => stamp.stamp.kind),
+		["seed"],
+	);
+});
+
+/*
  * The cache side of those fields: the byte count is the one the bound was
  * measured in (so the trace cannot disagree with it), and a miss says why when
  * this window can still tell (a cache that keeps nothing and one never asked
@@ -956,36 +1114,76 @@ test("a paint trimmed to nothing, and one evicted, each leave their reason", () 
 	assert.equal(paintCache.paintMissReason("never"), null);
 });
 
-test("wiring: the pane stamps the paint fields on the trace's own target", () => {
+test("the miss notes are capped, and the oldest ages out first", () => {
+	paintCache.__resetPaintCache();
+	for (let index = 0; index < 65; index += 1) {
+		// Every row in flight: a write that keeps nothing, so each leaves a note.
+		paintCache.writePaint(`note-${String(index)}`, {
+			transcript: stateOf([{ id: "live", kind: "assistant", streaming: true }]),
+		});
+	}
+	assert.equal(
+		paintCache.paintMissReason("note-0"),
+		null,
+		"the bound is what keeps a backend id from being remembered forever",
+	);
+	assert.equal(paintCache.paintMissReason("note-1"), "empty-after-trim");
+	assert.equal(
+		paintCache.paintMissReason("note-64"),
+		"empty-after-trim",
+		"the newest note is the one kept",
+	);
+});
+
+test("dropPaint forgets the miss note with the entry", () => {
+	paintCache.__resetPaintCache();
+	paintCache.writePaint("dropped", {
+		transcript: stateOf([{ id: "live", kind: "assistant", streaming: true }]),
+	});
+	assert.equal(paintCache.paintMissReason("dropped"), "empty-after-trim");
+	paintCache.dropPaint("dropped");
+	assert.equal(
+		paintCache.paintMissReason("dropped"),
+		null,
+		"a dropped conversation is not a cache that kept nothing",
+	);
+});
+
+test("wiring: the pane delegates its first commit to the tested tracePanePaint", () => {
 	const transcript = read("features/chat/canonical/canonical-transcript.tsx");
 	/*
 	 * The trace's OWN target, not `frontend?.session_id`: a cached paint's rows are
 	 * on screen while `frontend` is still null, which is the blind spot these
-	 * fields exist to close. The cache read uses the same id, so "an entry is
-	 * present" is the same claim as "the hook seeded from one" (`paintSeed` IS
-	 * `readPaint`).
+	 * fields exist to close. The latch, the cache read and the fill measurement live
+	 * in `tracePanePaint` (`open-trace.ts`) and are unit-tested above; this pins the
+	 * pane's side - it hands over its own target, token, cache entry and boxes.
 	 */
+	assert.match(transcript, /tracePanePaint\(trace, \{/);
 	assert.match(
 		transcript,
-		/const target = openTrace\.activeSessionId\(\);[\s\S]{0,1200}?const cached = readPaint\(target\);/,
+		/activeSessionId: \(\) => openTrace\.activeSessionId\(\),/,
 	);
 	assert.match(
 		transcript,
-		/kind: "seed",[\s\S]{0,400}?rows: cached\.transcript\.records\.length,\s*bytes: cached\.bytes,/,
+		/currentToken: \(\) => openTrace\.currentToken\(\),/,
 	);
-	// The miss path carries the cache's own reason rather than inventing one.
-	assert.match(transcript, /const miss = paintMissReason\(target\);/);
+	assert.match(transcript, /readPaint,\s*missReason: paintMissReason,/);
+	assert.match(transcript, /visibleRows: visible\.length,/);
+	assert.match(
+		transcript,
+		/contentHeight: content\.getBoundingClientRect\(\)\.height,/,
+	);
+	assert.match(transcript, /scrollerClientHeight: scroller\.clientHeight,/);
 	/*
 	 * The fill is measured on the CONTENT column against the scroller's inner box:
 	 * a scroller's `scrollHeight` is never below its `clientHeight`, so that
 	 * comparison cannot fail and would report every pane - including an empty one -
-	 * as filled.
+	 * as filled. Asserted on the module that owns the comparison now.
 	 */
-	assert.match(
-		transcript,
-		/fills: content\.getBoundingClientRect\(\)\.height >= inner,/,
+	assert.doesNotMatch(
+		read("features/chat/open-trace.ts"),
+		/scrollHeight\s*[<>=]/,
 	);
-	assert.doesNotMatch(transcript, /scrollHeight\s*>=\s*\w+\.clientHeight/);
 });
 
 /*

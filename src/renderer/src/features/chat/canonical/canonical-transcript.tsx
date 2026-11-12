@@ -176,7 +176,12 @@ import { TurnSummary } from "../components/trace/turn-summary";
 import { WorkingLine } from "../components/trace/working-line";
 import { focusComposer } from "../composer-field";
 import { MISSING_SESSION_NOTICE_ID } from "../missing-session-notice";
-import { openTrace } from "../open-trace";
+import {
+	type PanePaintTrace,
+	createPanePaintTrace,
+	openTrace,
+	tracePanePaint,
+} from "../open-trace";
 import {
 	DEFAULT_TRANSCRIPT_DISPLAY_MODE,
 	type TranscriptDisplayMode,
@@ -5388,73 +5393,62 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	 * own target is the id the click named AND the id the paint cache is addressed
 	 * by (`paintSeed` is `readPaint`), so the two agree by construction.
 	 *
-	 * WHY THE CACHE IS READ HERE rather than handed down: the pane is the only
-	 * surface that knows when its rows first COMMITTED, and the write that decides
-	 * what it seeded from lands in that same commit (the pane being left writes its
-	 * paint in its own unmount cleanup, before this effect runs). Reading it here
-	 * also makes the claim checkable against the thing it describes - an entry
-	 * present is a seed, an absent one is no seed - and one `Map` read is the cost.
+	 * WHY THE CACHE IS READ AT THE PANE'S OWN COMMIT rather than handed down: the
+	 * pane is the only surface that knows when its rows first COMMITTED, and the
+	 * entry it reads was written when that conversation was last left.
 	 *
-	 * `fills` IS MEASURED ON THE CONTENT COLUMN, not on `scrollHeight`: a scroller's
-	 * `scrollHeight` is never below its `clientHeight` (it is the content plus
-	 * padding, floored at the box), so the scrollHeight-vs-clientHeight test is true
-	 * for every pane including an empty one - a check that cannot fail. The painted
-	 * content is `contentRef`'s own box, which is what "the cached paint fills the
-	 * pane" is a claim about. Counting bytes, rows and a boolean changes nothing
-	 * about what is rendered; the read only forces the layout the browser was about
-	 * to do anyway.
+	 * THE OLD PANE'S WRITE DOES NOT PRECEDE THIS READ (agent review round 1, R1-4).
+	 * `writePaint` runs from a `useEffect` cleanup ("Cache this conversation's paint
+	 * on the way out", `use-canonical-session.ts`), and in React 18 a deleted
+	 * subtree's passive cleanups run AFTER the new tree's layout effects - so the
+	 * pane being left writes after this reads. The claim that survives, and is the
+	 * one this needs, is narrower: the TARGET's own entry was written when that
+	 * conversation was last left, and no other writer of that key runs between that
+	 * write and this read.
+	 *
+	 * ONE `Map` read is the cost, and it makes the claim checkable against the thing
+	 * it describes: an entry present is a seed, an absent one is no seed.
+	 *
+	 * WHAT IS MEASURED, AND THE ONCE-PER-MOUNT RULE, LIVE IN `tracePanePaint`
+	 * (`open-trace.ts`): they decide what a pane may say, and a source regex cannot
+	 * tell a pane that mounted BEFORE the click from one that mounted FOR it (agent
+	 * review round 1, R1-1/R1-2). In particular `fills` is the content column's own
+	 * box against the scroller's inner box - `open-trace.ts` carries why
+	 * `scrollHeight` cannot be the test there.
 	 */
-	const paintTraced = useRef(false);
+	const paintTrace = useRef<PanePaintTrace | null>(null);
+	// React keeps the first initialiser's value; the null check keeps the latch from
+	// being rebuilt on every streaming render.
+	if (paintTrace.current === null) paintTrace.current = createPanePaintTrace();
 	useLayoutEffect(() => {
-		if (paintTraced.current) return;
-		const target = openTrace.activeSessionId();
-		// No trace, no open to report on (a restored window mounts with none).
-		if (target === null) return;
-		paintTraced.current = true;
-		const token = openTrace.currentToken();
-		const cached = readPaint(target);
-		if (!cached) {
-			const miss = paintMissReason(target);
-			openTrace.notePaint(target, token, {
-				kind: "seed",
-				// A note means an entry existed here and was dropped (trimmed to nothing,
-				// or evicted); no note means nothing was ever cached under this id.
-				source: miss === null ? "none" : "empty",
-				rows: 0,
-				bytes: 0,
-				reason: miss ?? "no-entry",
-			});
-			return;
-		}
-		openTrace.notePaint(target, token, {
-			kind: "seed",
-			source: "cache",
-			rows: cached.transcript.records.length,
-			bytes: cached.bytes,
-		});
-		const content = contentRef.current;
-		const scroller = containerRef.current;
-		// No rows on screen (filtered out, or a hold): there is no painted height to
-		// compare, and a zero-row commit would report every pane as under-filled.
-		if (visible.length === 0 || !content || !scroller) return;
-		/*
-		 * The scroller's INNER box, not `clientHeight`: `clientHeight` includes the
-		 * container's own padding (`p-4`), so a conversation that exactly fills the
-		 * visible area would read as 32px short of it. Padding comes from the computed
-		 * style rather than a constant because the collapsed pane is `p-0`. Guarded
-		 * because a diagnostic must never be able to break a mount.
-		 */
-		let inner = scroller.clientHeight;
-		if (typeof getComputedStyle === "function") {
-			const style = getComputedStyle(scroller);
-			const padding =
-				Number.parseFloat(style.paddingTop) +
-				Number.parseFloat(style.paddingBottom);
-			if (Number.isFinite(padding)) inner -= padding;
-		}
-		openTrace.notePaint(target, token, {
-			kind: "fills",
-			fills: content.getBoundingClientRect().height >= inner,
+		const trace = paintTrace.current;
+		if (trace === null) return;
+		tracePanePaint(trace, {
+			activeSessionId: () => openTrace.activeSessionId(),
+			currentToken: () => openTrace.currentToken(),
+			notePaint: (target, token, stamp) =>
+				openTrace.notePaint(target, token, stamp),
+			readPaint,
+			missReason: paintMissReason,
+			visibleRows: visible.length,
+			boxes: () => {
+				const content = contentRef.current;
+				const scroller = containerRef.current;
+				if (!content || !scroller) return null;
+				let paddingTop = 0;
+				let paddingBottom = 0;
+				if (typeof getComputedStyle === "function") {
+					const style = getComputedStyle(scroller);
+					paddingTop = Number.parseFloat(style.paddingTop);
+					paddingBottom = Number.parseFloat(style.paddingBottom);
+				}
+				return {
+					contentHeight: content.getBoundingClientRect().height,
+					scrollerClientHeight: scroller.clientHeight,
+					paddingTop,
+					paddingBottom,
+				};
+			},
 		});
 	}, [containerRef, visible.length]);
 

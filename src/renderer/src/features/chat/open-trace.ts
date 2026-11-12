@@ -95,7 +95,9 @@
  *   - `paint`    `cache` when the pane's first commit was seeded from the paint
  *                cache, `none` when nothing was cached (a cold open), `empty`
  *                when an entry existed here but was dropped (trimmed to nothing,
- *                or evicted), `-` when no pane stamped this trace at all.
+ *                or evicted), `-` when no pane stamped this trace at all. It is a
+ *                claim about the ENTRY, not about the screen: it stands even when
+ *                no row was visible at that commit, which reads `paintFills=-`.
  *   - `paintAt`  the pane's first commit under this trace, ms from the click -
  *                for a hit, the commit the seeded rows first painted in, which is
  *                the stage timing a cached paint otherwise has none of.
@@ -492,6 +494,137 @@ export function createOpenTracer(deps: OpenTraceDeps): OpenTracer {
 			else listener();
 		},
 	};
+}
+
+/*
+ * THE PANE'S FIRST COMMIT, as a function rather than an effect body (agent review
+ * round 1, R1-1/R1-2). The once-per-mount rule and the fill measurement were
+ * pinned by a source regex, which cannot tell a pane that mounted BEFORE the
+ * click from one that mounted FOR it; both decide what a pane is allowed to say,
+ * so both live here and are unit-tested.
+ *
+ * WHAT A PANE MAY SAY. Exactly what its own first commit was, once, for the trace
+ * that was open at that moment. Any other answer reports some other pane's boxes
+ * under this trace's id.
+ */
+
+/** The entry `paint-cache.ts`'s `readPaint` returns, structurally. */
+export interface PanePaintEntry {
+	transcript: { records: readonly unknown[] };
+	bytes: number;
+}
+
+/** The pane's committed boxes at its first commit. */
+export interface PanePaintBoxes {
+	/** `contentRef`'s rect height: the painted content column. */
+	contentHeight: number;
+	/** The scroller's `clientHeight`, which INCLUDES its own padding. */
+	scrollerClientHeight: number;
+	paddingTop: number;
+	paddingBottom: number;
+}
+
+export interface PanePaintDeps {
+	/** The open trace's target, or null when no trace is open. */
+	activeSessionId(): string | null;
+	/** The open trace's token, or null. */
+	currentToken(): number | null;
+	notePaint(
+		sessionId: string | null | undefined,
+		token: number | null | undefined,
+		stamp: PaintStamp,
+	): void;
+	/** `paint-cache.ts`'s `readPaint`: the entry this mount seeded from. */
+	readPaint(sessionId: string): PanePaintEntry | null;
+	/** `paint-cache.ts`'s `paintMissReason`: why an id has no entry, if known. */
+	missReason(sessionId: string): PaintMiss | null;
+	/** Rows this pane has on screen; zero means nothing was painted to measure. */
+	visibleRows: number;
+	/** The committed boxes, or null when the refs are not attached. */
+	boxes(): PanePaintBoxes | null;
+}
+
+/** One pane's latch, kept for its whole mount. See `tracePanePaint`. */
+export interface PanePaintTrace {
+	spent: boolean;
+}
+
+export function createPanePaintTrace(): PanePaintTrace {
+	return { spent: false };
+}
+
+/**
+ * Records what this mount's first commit was, once per mount.
+ *
+ * WHY THE LATCH IS SPENT EVEN WITH NO TRACE OPEN (agent review round 1, R1-1).
+ * The pane being left is still mounted between the click (`begin(B)`) and React
+ * swapping B's keyed pane in, and it re-runs this on every row-count change. If a
+ * null target left the latch unspent, that pane's next commit - A streaming while
+ * the reader clicks away is the usual case - would read `target = B` and stamp
+ * B's `paint`, `paintAt` and `paintFills` measured on A's own boxes. First write
+ * wins per field, so B's real pane would then be ignored for the rest of the
+ * trace. A pane that latched while nothing was open can never speak for an open
+ * that starts later.
+ *
+ * ORDER. The seed is stamped before the fill is measured, and the seed's write is
+ * what timestamps the stage, so a commit with no rows reports where it seeded
+ * from (`paint=cache` for an entry that existed) with no `paintFills` reading:
+ * "an entry was seeded, but nothing was on screen to measure".
+ */
+export function tracePanePaint(
+	trace: PanePaintTrace,
+	deps: PanePaintDeps,
+): void {
+	if (trace.spent) return;
+	trace.spent = true;
+	const target = deps.activeSessionId();
+	// No trace, no open to report on (a restored window mounts with none).
+	if (target === null) return;
+	/*
+	 * The token is read on the run that stamps, so the fields and the trace they
+	 * belong to are always the same commit's.
+	 */
+	const token = deps.currentToken();
+	const cached = deps.readPaint(target);
+	if (!cached) {
+		const miss = deps.missReason(target);
+		deps.notePaint(target, token, {
+			kind: "seed",
+			// A note means an entry existed here and was dropped (trimmed to nothing,
+			// or evicted); no note means nothing was ever cached under this id.
+			source: miss === null ? "none" : "empty",
+			rows: 0,
+			bytes: 0,
+			reason: miss ?? "no-entry",
+		});
+		return;
+	}
+	deps.notePaint(target, token, {
+		kind: "seed",
+		source: "cache",
+		rows: cached.transcript.records.length,
+		bytes: cached.bytes,
+	});
+	// No rows on screen (filtered out, or a hold): there is no painted height to
+	// compare, and a zero-row commit would report every pane as under-filled.
+	if (deps.visibleRows === 0) return;
+	const boxes = deps.boxes();
+	if (boxes === null) return;
+	/*
+	 * The scroller's INNER box, not `clientHeight`: `clientHeight` includes the
+	 * container's own padding (`p-4`), so a conversation that exactly fills the
+	 * visible area would read as 32px short of it. Padding comes from the computed
+	 * style rather than a constant because the collapsed pane is `p-0`. Guarded
+	 * because a diagnostic must never be able to break a mount.
+	 */
+	const padding = boxes.paddingTop + boxes.paddingBottom;
+	const inner = Number.isFinite(padding)
+		? boxes.scrollerClientHeight - padding
+		: boxes.scrollerClientHeight;
+	deps.notePaint(target, token, {
+		kind: "fills",
+		fills: boxes.contentHeight >= inner,
+	});
 }
 
 /*
