@@ -2709,31 +2709,31 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "664a23730b7244a096f53a6e55e2014bd16400fb8846b25bd242b2668d6efa1a",
-			"target_sha256": "665714045ac0422f0cca6293214c0db7de104defaf371d06ddb7aad7d1d844be",
+			"source_sha256": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd",
+			"target_sha256": "04f155b9b3de84c32e7701890a1e0926001da393385691f4be77fb2bf6b485cc",
 			"translator": {
-				"agent": "coder",
-				"model": "anthropic/claude-opus-5-5",
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
 				"date": "2026-11-11",
-				"note": "loading.* (5 keys) translated by coder job 6ca5ea22d2ab at 80a346fd5; 438 earlier keys retained byte-identical from prior audited rows (see superseded)"
+				"note": "es S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/es/ui.chat.canonical/s16a-3311618b2a8b"
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-11",
-					"result": "clean",
-					"instance": "4b8febc34595-es",
+					"result": "clean-with-findings",
+					"instance": "3311618b2a8b",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 4
 					},
-					"receipt": "i18n/receipts/4b8febc34595-es.json",
-					"receipt_sha256": "3361c8fae708f66766f769a9c4d16ec00aa9ca8aa6f08b700de93a180b88e614",
-					"scope": "the 5 loading.* keys added and 4 keys removed at 80a346fd5; 438 retained values byte-identical to the previously audited bytes",
-					"note": "Delta audit of the conversation-loading indicator copy at 80a346fd5; 0 blocker/major. Detail: i18n/receipts/4b8febc34595-es.json"
+					"receipt": "i18n/receipts/3311618b2a8b.json",
+					"receipt_sha256": "0c312561277294bfe5997fa20435d76d92ff9a04656c39c719e8cb97f74b470d",
+					"scope": "the 14 new S16a tool-state/image-generation keys (draft audited by hash; landed values proven equal); other 442 keys byte-identical to the superseded combined-bytes audit",
+					"note": "S16a status words, PR #1870; binding receipt integrator-transcribed (see evidence). Detail: i18n/audits/evidence/es/ui.chat.canonical/s16a-3311618b2a8b/report.md"
 				}
 			],
 			"status": "audited",
@@ -14532,31 +14532,31 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "664a23730b7244a096f53a6e55e2014bd16400fb8846b25bd242b2668d6efa1a",
-			"target_sha256": "f32d9174d2699599ea8b50804accddad0ad379a2608d61d35727cad9c623d2a6",
+			"source_sha256": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd",
+			"target_sha256": "00a6251e4aed7baa2f2ed28040eab21afe2352f3e0adb29a0176d939269e35e3",
 			"translator": {
-				"agent": "coder",
-				"model": "anthropic/claude-opus-5-5",
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
 				"date": "2026-11-11",
-				"note": "loading.* (5 keys) translated by coder job 6ca5ea22d2ab at 80a346fd5; 438 earlier keys retained byte-identical from prior audited rows (see superseded)"
+				"note": "fr S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/fr/ui.chat.canonical/s16a-2105ebeeb3e9"
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-11",
-					"result": "clean",
-					"instance": "4b8febc34595-fr",
+					"result": "clean-with-findings",
+					"instance": "2105ebeeb3e9",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/4b8febc34595-fr.json",
-					"receipt_sha256": "1a21709e885c8799377f070afa9ff6ee7b2597c1e263e9d517de7381147cebff",
-					"scope": "the 5 loading.* keys added and 4 keys removed at 80a346fd5; 438 retained values byte-identical to the previously audited bytes",
-					"note": "Delta audit of the conversation-loading indicator copy at 80a346fd5; 0 blocker/major. Detail: i18n/receipts/4b8febc34595-fr.json"
+					"receipt": "i18n/receipts/2105ebeeb3e9.json",
+					"receipt_sha256": "d1aad291452304f1bb1480dbee2088aaeb0d2a2d6860da6654b4f8d0dae6c8d1",
+					"scope": "the 14 new S16a tool-state/image-generation keys (draft audited by hash; landed values proven equal); other 442 keys byte-identical to the superseded combined-bytes audit",
+					"note": "S16a status words, PR #1870; binding receipt integrator-transcribed (see evidence). Detail: i18n/audits/evidence/fr/ui.chat.canonical/s16a-2105ebeeb3e9/report.md"
 				}
 			],
 			"status": "audited",
@@ -26852,31 +26852,31 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "664a23730b7244a096f53a6e55e2014bd16400fb8846b25bd242b2668d6efa1a",
-			"target_sha256": "e7df253d068d9058e7e29e6d46f14a842d728e8d01fa389175795f7a33c867a5",
+			"source_sha256": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd",
+			"target_sha256": "4678c723a8aba6c2d1ef63cb3bb9255967f0a02107baa99da2129480dff750c4",
 			"translator": {
-				"agent": "coder",
-				"model": "anthropic/claude-opus-5-5",
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
 				"date": "2026-11-11",
-				"note": "loading.* (5 keys) translated by coder job 6ca5ea22d2ab at 80a346fd5; 438 earlier keys retained byte-identical from prior audited rows (see superseded)"
+				"note": "hi S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/hi/ui.chat.canonical/s16a-2bc153cbf350"
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-11",
 					"result": "clean",
-					"instance": "4b8febc34595-hi",
+					"instance": "2bc153cbf350",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/4b8febc34595-hi.json",
-					"receipt_sha256": "d873578f92bbc5b79c9c327e1659d380ead369cc79455d40fee41f7aacd50c83",
-					"scope": "the 5 loading.* keys added and 4 keys removed at 80a346fd5; 438 retained values byte-identical to the previously audited bytes",
-					"note": "Delta audit of the conversation-loading indicator copy at 80a346fd5; 0 blocker/major. Detail: i18n/receipts/4b8febc34595-hi.json"
+					"receipt": "i18n/receipts/2bc153cbf350.json",
+					"receipt_sha256": "0bb1887c8f4b2c2ba8f3b4af8130166a93b86beadc8abc00eb2d197a360bd671",
+					"scope": "the 14 new S16a tool-state/image-generation keys (draft audited by hash; landed values proven equal); other 442 keys byte-identical to the superseded combined-bytes audit",
+					"note": "S16a status words, PR #1870; binding receipt integrator-transcribed (see evidence). Detail: i18n/audits/evidence/hi/ui.chat.canonical/s16a-2bc153cbf350/report.md"
 				}
 			],
 			"status": "audited",
@@ -38754,31 +38754,31 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "664a23730b7244a096f53a6e55e2014bd16400fb8846b25bd242b2668d6efa1a",
-			"target_sha256": "193220cead49cf7a0b20deb9ba3625f51416b34214ece1f328840db01dce3d27",
+			"source_sha256": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd",
+			"target_sha256": "4fd63ae8ce587ca23cd188cb99e514bd44eac954a04ce40d2ae4dfd840eb5231",
 			"translator": {
-				"agent": "coder",
-				"model": "anthropic/claude-opus-5-5",
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
 				"date": "2026-11-11",
-				"note": "loading.* (5 keys) translated by coder job 6ca5ea22d2ab at 80a346fd5; 438 earlier keys retained byte-identical from prior audited rows (see superseded)"
+				"note": "ru S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/ru/ui.chat.canonical/s16a-db260f728ba9"
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-11",
-					"result": "clean",
-					"instance": "4b8febc34595-ru",
+					"result": "clean-with-findings",
+					"instance": "db260f728ba9",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 4
 					},
-					"receipt": "i18n/receipts/4b8febc34595-ru.json",
-					"receipt_sha256": "5346db5346cf7feea958843ad9d26e64c95d9990878b2cb3de43919cae85e70d",
-					"scope": "the 5 loading.* keys added and 4 keys removed at 80a346fd5; 438 retained values byte-identical to the previously audited bytes",
-					"note": "Delta audit of the conversation-loading indicator copy at 80a346fd5; 0 blocker/major. Detail: i18n/receipts/4b8febc34595-ru.json"
+					"receipt": "i18n/receipts/db260f728ba9.json",
+					"receipt_sha256": "dd6ab68f2f29d6d671656fe0a6e08296682e6681d3af10f33e9233bd4911ef48",
+					"scope": "the 14 new S16a tool-state/image-generation keys (draft audited by hash; landed values proven equal); other 442 keys byte-identical to the superseded combined-bytes audit",
+					"note": "S16a status words, PR #1870; binding receipt integrator-transcribed (see evidence). Detail: i18n/audits/evidence/ru/ui.chat.canonical/s16a-db260f728ba9/report.md"
 				}
 			],
 			"status": "audited",
@@ -50676,31 +50676,31 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "664a23730b7244a096f53a6e55e2014bd16400fb8846b25bd242b2668d6efa1a",
-			"target_sha256": "51c22b35bf0606434da06aba5f53d11c0c2289b9807ad1e172aff9ec98f48851",
+			"source_sha256": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd",
+			"target_sha256": "633991b9affe83c9f3df7a4a9cf9053244c9891844d6ba591f9179acc73c7900",
 			"translator": {
-				"agent": "coder",
-				"model": "anthropic/claude-opus-5-5",
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
 				"date": "2026-11-11",
-				"note": "loading.* (5 keys) translated by coder job 6ca5ea22d2ab at 80a346fd5; 438 earlier keys retained byte-identical from prior audited rows (see superseded)"
+				"note": "ur S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/ur/ui.chat.canonical/s16a-b97613446a7a"
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-11",
 					"result": "clean-with-findings",
-					"instance": "4b8febc34595-ur",
+					"instance": "b97613446a7a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 1
+						"minor": 1,
+						"nit": 3
 					},
-					"receipt": "i18n/receipts/4b8febc34595-ur.json",
-					"receipt_sha256": "80bd3f612132b34ddd77c9a9f5d2b5e06065e35fcd0e0432bd67eee66d7f7120",
-					"scope": "the 5 loading.* keys added and 4 keys removed at 80a346fd5; 438 retained values byte-identical to the previously audited bytes",
-					"note": "Delta audit of the conversation-loading indicator copy at 80a346fd5; 0 blocker/major. Detail: i18n/receipts/4b8febc34595-ur.json"
+					"receipt": "i18n/receipts/b97613446a7a.json",
+					"receipt_sha256": "97bc679c4250778ee58b5142c76dbffb987945cb65a72da9a1eeb0bfe617285f",
+					"scope": "the 14 new S16a tool-state/image-generation keys (draft audited by hash; landed values proven equal); other 442 keys byte-identical to the superseded combined-bytes audit",
+					"note": "S16a status words, PR #1870; binding receipt integrator-transcribed (see evidence). Detail: i18n/audits/evidence/ur/ui.chat.canonical/s16a-b97613446a7a/report.md"
 				}
 			],
 			"status": "audited",
@@ -62512,31 +62512,31 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "664a23730b7244a096f53a6e55e2014bd16400fb8846b25bd242b2668d6efa1a",
-			"target_sha256": "1138c00435ef90eb8fe82d04c8acf222c12d9e580356355470bd3e10ab2021bf",
+			"source_sha256": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd",
+			"target_sha256": "c3d90f71c4e53d8b96bfb24f9c7e5f7c3d0c2ccda55d3aa3fb0bfee87dbb88c0",
 			"translator": {
-				"agent": "coder",
-				"model": "anthropic/claude-opus-5-5",
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
 				"date": "2026-11-11",
-				"note": "loading.* (5 keys) translated by coder job 6ca5ea22d2ab at 80a346fd5; 438 earlier keys retained byte-identical from prior audited rows (see superseded)"
+				"note": "vi S16a words (14 keys): draft v3 = translator v1 with 4 values changed by the manager on an auditor's findings; v1/v2 audits superseded. 442 earlier keys retained. Evidence: i18n/audits/evidence/vi/ui.chat.canonical/s16a-64a0e2d3b795"
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-11",
 					"result": "clean-with-findings",
-					"instance": "4b8febc34595-vi",
+					"instance": "64a0e2d3b795",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/4b8febc34595-vi.json",
-					"receipt_sha256": "9a73b971aa5c980d78ba96b4aaefc36b3b56ba0025d9e2291ccde0c21bef878f",
-					"scope": "the 5 loading.* keys added and 4 keys removed at 80a346fd5; 438 retained values byte-identical to the previously audited bytes",
-					"note": "Delta audit of the conversation-loading indicator copy at 80a346fd5; 0 blocker/major. Detail: i18n/receipts/4b8febc34595-vi.json"
+					"receipt": "i18n/receipts/64a0e2d3b795.json",
+					"receipt_sha256": "072aad3fcd743e1b4674711c226c99fcd560c90c4b88e2e1aa5063a244c34590",
+					"scope": "the 14 new S16a tool-state/image-generation keys (draft audited by hash; landed values proven equal); other 442 keys byte-identical to the superseded combined-bytes audit",
+					"note": "S16a status words, PR #1870; binding receipt integrator-transcribed (see evidence). Detail: i18n/audits/evidence/vi/ui.chat.canonical/s16a-64a0e2d3b795/report.md"
 				}
 			],
 			"status": "audited",
@@ -75156,31 +75156,31 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "664a23730b7244a096f53a6e55e2014bd16400fb8846b25bd242b2668d6efa1a",
-			"target_sha256": "ae7a368534aa8533f3225d913625c818178557e39759354a9810e96a726dfcd7",
+			"source_sha256": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd",
+			"target_sha256": "d8c6e5cec877feabe15133d4e1391f295d45920d050528005b242b8029958a29",
 			"translator": {
-				"agent": "coder",
-				"model": "anthropic/claude-opus-5-5",
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
 				"date": "2026-11-11",
-				"note": "loading.* (5 keys) translated by coder job 6ca5ea22d2ab at 80a346fd5; 438 earlier keys retained byte-identical from prior audited rows (see superseded)"
+				"note": "zh-CN S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/zh-CN/ui.chat.canonical/s16a-07b0fc8f8d80"
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-11",
-					"result": "clean",
-					"instance": "4b8febc34595-zh-cn",
+					"result": "clean-with-findings",
+					"instance": "07b0fc8f8d80",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 3
 					},
-					"receipt": "i18n/receipts/4b8febc34595-zh-cn.json",
-					"receipt_sha256": "6e0670d8b88a927e02aa9661ed9ce2fe96b250134d37fd8e1e7db48f05b06846",
-					"scope": "the 5 loading.* keys added and 4 keys removed at 80a346fd5; 438 retained values byte-identical to the previously audited bytes",
-					"note": "Delta audit of the conversation-loading indicator copy at 80a346fd5; 0 blocker/major. Detail: i18n/receipts/4b8febc34595-zh-cn.json"
+					"receipt": "i18n/receipts/07b0fc8f8d80.json",
+					"receipt_sha256": "9253c5dd7d9761b7cfb6e87ec842586378be519166b7a91efc9fd0b3e631f74f",
+					"scope": "the 14 new S16a tool-state/image-generation keys (draft audited by hash; landed values proven equal); other 442 keys byte-identical to the superseded combined-bytes audit",
+					"note": "S16a status words, PR #1870; binding receipt integrator-transcribed (see evidence). Detail: i18n/audits/evidence/zh-CN/ui.chat.canonical/s16a-07b0fc8f8d80/report.md"
 				}
 			],
 			"status": "audited",

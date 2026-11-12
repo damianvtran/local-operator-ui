@@ -101,6 +101,7 @@ import {
 	type ImageGenCardActions,
 	type ImageGenCardState,
 	type ImageGenCardView,
+	type ImageGenMaterial,
 	imageGenCardControls,
 	imageGenMaterialNoun,
 	withoutSettlementClause,
@@ -309,6 +310,17 @@ function SoundGeneratingTile({
 	);
 }
 
+/**
+ * The ICU `select` token for a material: the wire spells the sound effect
+ * `sound-effect`, but a select branch name cannot carry a hyphen. Every state
+ * message supplies `video`, `voiceover` and `sound_effect` branches and puts
+ * the image wording under `other`, so a material this build does not know yet
+ * degrades to the image sentence exactly like `imageGenMaterialNoun` does.
+ */
+function materialToken(material: ImageGenMaterial): string {
+	return material === "sound-effect" ? "sound_effect" : material;
+}
+
 /** One state line: the words at body ink, the datum at meta ink beside them. */
 function StateLine({
 	view,
@@ -322,7 +334,9 @@ function StateLine({
 	let emphasis = false;
 	switch (view.state) {
 		case "queued":
-			text = view.composing ? "Writing the request…" : "Queued";
+			text = view.composing
+				? t("ui.chat.canonical.image_gen.state.writing_request")
+				: t("ui.chat.canonical.image_gen.state.queued");
 			/*
 			 * The datum slot, one precedence: a STATED queue depth wins (the
 			 * live field's only render, and the fact a waiting reader wants),
@@ -337,10 +351,16 @@ function StateLine({
 			 * meaning in this card's terse register: the state line already says
 			 * "Queued", so the datum only needs the count and its direction, not
 			 * the noun again.
+			 *
+			 * The count goes in as a NUMBER, 0 included: the message pluralises on
+			 * it per the language's own categories (`0 ahead` is a real reading,
+			 * not a missing one), and writes the digits without grouping.
 			 */
 			detail =
 				view.queuePosition !== null
-					? `${view.queuePosition} ahead`
+					? t("ui.chat.canonical.image_gen.state.queue_ahead", {
+							count: view.queuePosition,
+						})
 					: view.argumentBytes > 0
 						? formatBytes(view.argumentBytes)
 						: null;
@@ -355,8 +375,13 @@ function StateLine({
 			 * failure fallback cannot spell one material three ways.
 			 */
 			text = view.batchProgress
-				? `Generating ${view.batchProgress.total} ${imageGenMaterialNoun(view.material)}${view.batchProgress.total === 1 ? "" : "s"}…`
-				: `Generating ${imageGenMaterialNoun(view.material)}…`;
+				? t("ui.chat.canonical.image_gen.state.running_batch", {
+						material: materialToken(view.material),
+						total: view.batchProgress.total,
+					})
+				: t("ui.chat.canonical.image_gen.state.running", {
+						material: materialToken(view.material),
+					});
 			detail = elapsed === null ? null : formatDuration(elapsed);
 			break;
 		case "cancelling":
@@ -379,10 +404,14 @@ function StateLine({
 			 */
 			text =
 				view.receipt === "already-finished"
-					? "Already finished."
+					? t("ui.chat.canonical.image_gen.state.already_finished")
 					: view.batch
-						? `${batchMaterialTitle(view.material)} batch`
-						: `Generated ${imageGenMaterialNoun(view.material)}`;
+						? t("ui.chat.canonical.image_gen.state.done_batch", {
+								material: materialToken(view.material),
+							})
+						: t("ui.chat.canonical.image_gen.state.done", {
+								material: materialToken(view.material),
+							});
 			detail =
 				view.receipt === "already-finished" || view.durationS === null
 					? null
@@ -399,9 +428,13 @@ function StateLine({
 			 * (branding section 8).
 			 */
 			text = view.batch
-				? `${batchMaterialTitle(view.material)} batch failed.`
+				? t("ui.chat.canonical.image_gen.state.failed_batch", {
+						material: materialToken(view.material),
+					})
 				: (view.message ??
-					`The ${imageGenMaterialNoun(view.material)} could not be generated.`);
+					t("ui.chat.canonical.image_gen.state.failed", {
+						material: materialToken(view.material),
+					}));
 			emphasis = true;
 			break;
 		case "cancelled": {
@@ -741,9 +774,13 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 						 * voiceover or a sound effect is the fact `view.material` carries, so
 						 * the label reads `Generated voiceover`, never `Generated audio`.
 						 */
-						const noun = `Generated ${imageGenMaterialNoun(
-							image.kind === "audio" ? view.material : (image.kind ?? "image"),
-						)}`;
+						const noun = t("ui.chat.canonical.image_gen.state.done", {
+							material: materialToken(
+								image.kind === "audio"
+									? view.material
+									: (image.kind ?? "image"),
+							),
+						});
 						const label =
 							view.images.length === 1 ? noun : `${noun} ${index + 1}`;
 						return image.kind === "video" ? (

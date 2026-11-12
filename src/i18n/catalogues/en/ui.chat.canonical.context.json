@@ -3118,6 +3118,118 @@
 		"length": "Short; shares one row with the tool name and truncates with an ellipsis when narrow.",
 		"note": "Sibling of never_sent_composed with nothing to measure: 'nothing composed' = the model had not written any of the request. Keep the two lines parallel in wording."
 	},
+	"ui.chat.canonical.tool.composing_sized": {
+		"role": "one-line status of a tool call that is composing (the model is still writing the call's arguments), with how much of the request is written",
+		"tone": "terse lower-case status line, no trailing punctuation; the middle dot is a separator between status and detail",
+		"length": "Short; shares one row with the tool name and truncates with an ellipsis when narrow.",
+		"note": "Whole line is one message so word order can follow the target language. 'composing' = the model is still writing the call's arguments. Keep the middle dot (U+00B7) as the separator. Sibling of never_sent_composed: keep the registers parallel.",
+		"placeholders": {
+			"size": "an already-localized file size such as 12.4 KB (from formatBytes / formatByteQuantity); insert verbatim, do not translate or reformat"
+		}
+	},
+	"ui.chat.canonical.tool.composing_empty": {
+		"role": "one-line status of a tool call that is composing before any request content is measured",
+		"tone": "terse lower-case status line, no trailing punctuation; the middle dot is a separator between status and detail",
+		"length": "One word or short phrase.",
+		"note": "Sibling of composing_sized without a measurement: it must read as the same state with the size left off."
+	},
+	"ui.chat.canonical.tool.queued_sized": {
+		"role": "one-line status of a tool call that is queued (dictation is over but the call has not started), with how much of the request is written",
+		"tone": "terse lower-case status line, no trailing punctuation; the middle dot is a separator between status and detail",
+		"length": "Short; shares one row with the tool name and truncates with an ellipsis when narrow.",
+		"note": "Whole line is one message so word order can follow the target language. 'queued' = dictation is over but the call has not started. Keep the middle dot (U+00B7) as the separator. Sibling of never_sent_composed: keep the registers parallel.",
+		"placeholders": {
+			"size": "an already-localized file size such as 12.4 KB (from formatBytes / formatByteQuantity); insert verbatim, do not translate or reformat"
+		}
+	},
+	"ui.chat.canonical.tool.queued_empty": {
+		"role": "one-line status of a tool call that is queued before any request content is measured",
+		"tone": "terse lower-case status line, no trailing punctuation; the middle dot is a separator between status and detail",
+		"length": "One word or short phrase.",
+		"note": "Sibling of queued_sized without a measurement: it must read as the same state with the size left off."
+	},
+	"ui.chat.canonical.image_gen.state.queued": {
+		"role": "state line of a generation card whose request is waiting to start",
+		"tone": "sentence case, no punctuation",
+		"length": "One word; the datum sits beside it on the same baseline.",
+		"note": "Request submitted, provider has not started. Not 'pending' (a different state) and not a count."
+	},
+	"ui.chat.canonical.image_gen.state.writing_request": {
+		"role": "state line of a generation card while the model is still dictating the request",
+		"tone": "sentence case, ends with a horizontal ellipsis (U+2026)",
+		"length": "Two to four words.",
+		"note": "Same slot as 'Queued' but before dictation finishes. Keep the trailing ellipsis; it is part of the message."
+	},
+	"ui.chat.canonical.image_gen.state.queue_ahead": {
+		"role": "datum beside a queued generation card's state word: how many requests are ahead of this one",
+		"tone": "terse, no noun, lower-case; the card already says 'Queued'",
+		"length": "Two to three words; the datum never wraps (shrink-0).",
+		"note": "Counts requests AHEAD (FAL queue_position semantics), not the position: '2 ahead' means two others first. Zero must still read as 'nothing ahead', not as a rank.",
+		"placeholders": {
+			"count": "requests ahead of this one (0 = nothing ahead, NOT a 1-based rank); number, CLDR plural selector"
+		}
+	},
+	"ui.chat.canonical.image_gen.state.running": {
+		"role": "state line of a generation card while the provider is producing one item",
+		"tone": "sentence case, present participle, trailing ellipsis (U+2026)",
+		"length": "Two to four words.",
+		"note": "One whole message per material so each language inflects the noun itself; do not assemble verb + noun.",
+		"placeholders": {
+			"material": "which kind of media the call generates: one of image, video, voiceover, sound_effect (callsite maps the wire's `sound-effect`); drives a select, so supply every branch"
+		}
+	},
+	"ui.chat.canonical.image_gen.state.running_batch": {
+		"role": "state line of a generation card producing a batch of several items",
+		"tone": "sentence case, present participle, trailing ellipsis (U+2026)",
+		"length": "Three to five words.",
+		"note": "Total can be 1 (the English path kept it singular). Every material × plural category is a separate branch because the noun inflects with the count.",
+		"placeholders": {
+			"material": "which kind of media the call generates: one of image, video, voiceover, sound_effect (callsite maps the wire's `sound-effect`); drives a select, so supply every branch",
+			"total": "how many items the batch will produce; number, CLDR plural selector"
+		}
+	},
+	"ui.chat.canonical.image_gen.state.done": {
+		"role": "state line of a finished generation card (single item)",
+		"tone": "sentence case, past tense, no punctuation",
+		"length": "Two to three words.",
+		"note": "Receipt for one finished item. Also the model for the per-item aria/alt label (see remainder R5).",
+		"placeholders": {
+			"material": "which kind of media the call generates: one of image, video, voiceover, sound_effect (callsite maps the wire's `sound-effect`); drives a select, so supply every branch"
+		}
+	},
+	"ui.chat.canonical.image_gen.state.done_batch": {
+		"role": "state line of a finished generation card that produced several items",
+		"tone": "sentence case, noun phrase, no punctuation",
+		"length": "Two to three words.",
+		"note": "Capitalization is part of each branch, not computed at runtime.",
+		"placeholders": {
+			"material": "which kind of media the call generates: one of image, video, voiceover, sound_effect (callsite maps the wire's `sound-effect`); drives a select, so supply every branch"
+		}
+	},
+	"ui.chat.canonical.image_gen.state.already_finished": {
+		"role": "state line of a generation card when a stop request lost the race with completion",
+		"tone": "sentence case, full stop",
+		"length": "One short sentence.",
+		"note": "States only that the work had finished; no duration is claimed."
+	},
+	"ui.chat.canonical.image_gen.state.failed": {
+		"role": "fallback sentence of a failed generation card whose record carries no error text",
+		"tone": "plain failure statement, sentence case, full stop",
+		"length": "One short sentence; wraps.",
+		"note": "Only used when the platform sent NO error text; supplied error text is shown verbatim (model/server-authored, stays as sent).",
+		"placeholders": {
+			"material": "which kind of media the call generates: one of image, video, voiceover, sound_effect (callsite maps the wire's `sound-effect`); drives a select, so supply every branch"
+		}
+	},
+	"ui.chat.canonical.image_gen.state.failed_batch": {
+		"role": "failure line of a generation card that produced several items",
+		"tone": "plain failure statement, sentence case, full stop",
+		"length": "One short sentence.",
+		"note": "Whole sentence per material; do not build it from the batch title.",
+		"placeholders": {
+			"material": "which kind of media the call generates: one of image, video, voiceover, sound_effect (callsite maps the wire's `sound-effect`); drives a select, so supply every branch"
+		}
+	},
 	"ui.chat.canonical.loading.cold": {
 		"role": "visible label while a conversation's first page is loading and nothing is painted yet",
 		"tone": "short, human status phrase, sentence case, trailing ellipsis character (U+2026), no period",
