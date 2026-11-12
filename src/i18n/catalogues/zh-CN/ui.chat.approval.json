@@ -1,4 +1,5 @@
 {
+	"ui.chat.approval.escape.bridge_latched": "此对话中已关闭“Allow all”和auto。要开启auto，请在终端中输入/approvals auto，或使用/new开始新对话。",
 	"ui.chat.approval.escape.default_saved": "此对话已设为自动，并保存为后续会话的默认设置；已有自己设置的对话保持不变。此请求仍需要回答。",
 	"ui.chat.approval.escape.default_saved_session_failed": "已将自动保存为后续会话的默认设置。会话部分未生效：{detail}。此请求仍需要回答。",
 	"ui.chat.approval.escape.global_default": "审批：{mode}——全局默认。",

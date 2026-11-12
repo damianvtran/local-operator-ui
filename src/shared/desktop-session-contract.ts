@@ -701,6 +701,28 @@ export type PendingDesktopGate = {
 	 */
 	approval_global_mode?: "ask" | "auto" | "";
 	/**
+	 * Team Bridge taint, as the host stamps it (the core's `PendingRequest`).
+	 * `bridge_latched`: the conversation holds a teammate agent's message, so no
+	 * mode change from the desktop may answer or loosen this card - the backend
+	 * refuses `approvals auto` here (`approval_reason: "bridge_latched"`) and the
+	 * card must not offer a control that can only fail. `taint_raised`: the taint
+	 * seam is what made this call ask. Both are host-set, never derived from the
+	 * title.
+	 *
+	 * ADDITIVE and OPTIONAL for the same version-skew reason as the fields above:
+	 * an older backend never sends them, and absent reads as false (today's
+	 * unlatched card).
+	 */
+	bridge_latched?: boolean;
+	taint_raised?: boolean;
+	/**
+	 * `"bridge"` when a session auto granted before the conversation latched has
+	 * stopped covering calls, so this gate asks. Sent only in that case; absent
+	 * otherwise. A card carrying it is latched for the purposes of this client
+	 * even if `bridge_latched` were ever missing.
+	 */
+	approval_suspended?: "bridge";
+	/**
 	 * The session's display name, for the notification banner only.
 	 *
 	 * ADDITIVE and OPTIONAL: absent on any backend older than the composed
