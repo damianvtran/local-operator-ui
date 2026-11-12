@@ -465,5 +465,17 @@
 	"ui.chat.canonical.sound.cost.estimated_zero": "Chi phí ước tính là $0; khoản phí cuối cùng chưa được xác nhận.",
 	"ui.chat.canonical.sound.cost.no_charge": "Không tính phí.",
 	"ui.chat.canonical.sound.cost.unknown": "Chưa biết chi phí.",
-	"ui.chat.canonical.supplement.sound_fallback_label": "Âm thanh được tạo"
+	"ui.chat.canonical.supplement.sound_fallback_label": "Âm thanh được tạo",
+	"ui.chat.canonical.image_gen.state.cancelled_batch": "{material, select, video {Loạt video đã dừng.} voiceover {Loạt lời thuyết minh đã dừng.} sound_effect {Loạt hiệu ứng âm thanh đã dừng.} other {Loạt hình ảnh đã dừng.}}",
+	"ui.chat.canonical.image_gen.cancel.queued": "Đã dừng trước khi gọi nhà cung cấp; sẽ không bị tính phí.",
+	"ui.chat.canonical.image_gen.cancel.running": "Đã gửi yêu cầu dừng. Nhà cung cấp không có endpoint hủy; quá trình tạo vẫn tiếp tục và sẽ bị tính phí nếu tạo ra âm thanh.",
+	"ui.chat.canonical.image_gen.cancel.checking": "Đang xác nhận khoản phí.",
+	"ui.chat.canonical.image_gen.settlement.pending": "Đang chờ quyết toán — khoản phí cuối cùng sẽ xuất hiện khi nhà cung cấp báo cáo.",
+	"ui.chat.canonical.image_gen.error.audio_rate_limited": "Tạo âm thanh đang bận. Hãy thử lại sau giây lát.",
+	"ui.chat.canonical.image_gen.error_class.audio_rate_limited": "Giới hạn tần suất âm thanh",
+	"ui.chat.canonical.image_gen.error_class.unknown_tool": "Công cụ không xác định",
+	"ui.chat.canonical.image_gen.error_class.invalid_arguments": "Đối số không hợp lệ",
+	"ui.chat.canonical.image_gen.error_class.duplicate_id": "Trùng id",
+	"ui.chat.canonical.image_gen.error_class.denied": "Bị từ chối",
+	"ui.chat.canonical.image_gen.error_class.gate_failed": "Bị cổng chặn"
 }

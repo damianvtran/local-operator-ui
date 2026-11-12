@@ -1,0 +1,209 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "slice": "S16e",
+  "locale": "ur",
+  "namespace": "ui.chat.canonical",
+  "key_count": 12,
+  "date": "2026-11-12",
+  "instance": "047163c943ad-s16e-ur",
+  "model": "deepseek/deepseek-flash",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "team": "lopdev",
+    "session": "047163c943ad",
+    "instance": "047163c943ad-s16e-ur",
+    "model": "deepseek/deepseek-flash",
+    "actual_model": "deepseek/deepseek-flash",
+    "date": "2026-11-12",
+    "independent_from_translator_session": true,
+    "actual_model_source": "Session model header `deepseek/deepseek-flash`; no model-switch card and no [session incident] in this run, so nothing here descends from a fallback. Disclosed: the translator's own notes name the same model family (deepseek/deepseek-flash, translator session 67f256dc8662). Independence in this audit therefore rests on being a different run that did not translate, not on a different model."
+  },
+  "status": "passed",
+  "verdict": "passed",
+  "unresolved_blocker_major_count": 0,
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 2,
+    "nit": 2
+  },
+  "draft": {
+    "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e/ur/draft-ur-s16e.json",
+    "sha256": "e9666a75e6d318448b530290d99ab3c88b8a29901e3fa8beeb5c3411f7fa4051",
+    "matches_manifest": true
+  },
+  "sha256": {
+    "en": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17",
+    "ur": "e9666a75e6d318448b530290d99ab3c88b8a29901e3fa8beeb5c3411f7fa4051"
+  },
+  "inputs": {
+    "en_catalogue": {
+      "path": "~/local-operator-ui/.worktrees/i18n-s16e/src/i18n/catalogues/en/ui.chat.canonical.json",
+      "sha256": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17"
+    },
+    "en_context_sidecar": {
+      "path": "~/local-operator-ui/.worktrees/i18n-s16e/src/i18n/catalogues/en/ui.chat.canonical.context.json",
+      "sha256": "ec598772089552ace910c857a38b364bdfa83a32c76c62b752b761527531e7b7"
+    },
+    "slice_brief": {
+      "path": "/Users/damian/.local-operator/.local-operator/sessions/3ef6295a5545/scratchpad/s16e-brief.json (as delivered: /Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e-brief.json)",
+      "sha256": "a0326137bff43ed38fc4a1c63d4a26e1887cfd56d4826df0e615df28055bef0c"
+    },
+    "shipped_target_catalogue": {
+      "path": "~/local-operator-ui/.worktrees/i18n-s16e/src/i18n/catalogues/ur/ui.chat.canonical.json",
+      "sha256": "fd1116ccb5e847eb7f28c4cf5d1084efad95edf52d638d1a6144e065ce7d98a7",
+      "note": "terminology authority for this surface; 467 keys, none of the 12 slice keys yet present"
+    },
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ur.md",
+      "sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+    },
+    "call_sites": {
+      "worktree": "~/local-operator-ui/.worktrees/i18n-s16e",
+      "head": "bd8e90542506e8bec4a98862b868095409b28329",
+      "files": [
+        "src/renderer/src/features/chat/canonical/image-gen-card.tsx",
+        "src/renderer/src/features/chat/canonical/image-gen-card-model.ts",
+        "scripts/image-gen-card.test.mjs"
+      ],
+      "read_only_observed": "git status --porcelain clean before and after the audit; the auditor wrote nothing into the worktree (one transient log file created by a driver cwd slip was removed, path named, worktree clean and re-verified)"
+    }
+  },
+  "axes": {
+    "mechanical": {
+      "result": "pass",
+      "detail": "JSON valid; 12/12 slice keys present in the draft and no extras; every value parses under @formatjs/icu-messageformat-parser (requiresOtherClause) from the primary checkout's node_modules; argument name/kind set identical to English; the {material} select keeps exactly video|voiceover|sound_effect|other on both sides and each branch is a complete sentence ending in ۔; no bidi control characters; braces balanced; values NFC-stable; leading/trailing whitespace clean. No plural argument exists in this slice, so the ur one/other CLDR categories are not engaged.",
+      "negative_controls": "Four structural controls in the auditor's own scratchpad fail as required: dropped voiceover branch (FAIL, keyword set), renamed argument (FAIL, argument shape), unbalanced brace (FAIL, parse + balance), injected U+200F RLM (FAIL, bidi). A fifth control (an English value copied in byte-identical) passes the mechanical checks by design and is caught only by the Latin-token report; that limitation is stated rather than hidden. Honesty note: the first version of the checker had wrong TYPE constants and reported PASS for the dropped-branch control; the controls caught the checker bug, which was fixed before any judgement was recorded."
+    },
+    "accuracy": {
+      "result": "pass",
+      "detail": "No omission, addition or polarity error. cancel.queued keeps the one and only no-charge promise, flat and unhedged (آپ سے کوئی چارج نہیں لیا جائے گا), matching the English's prohibition on softening it into a maybe. cancel.running promises nothing: the stop is stated as a request (روکنے کی درخواست دی گئی), the provider's lack of a cancellation endpoint is stated, the generation is said to continue and the charge is conditioned on audio being produced — no guarantee of cancellation or of no charge. settlement.pending states no amount and no zero. error.audio_rate_limited promises no success and names no specific wait time. The six failure-class labels stay mutually distinguishable: مسترد (denied) vs گیٹ ناکام (gate failed), نامعلوم ٹول (unknown tool) vs غلط آرگیومنٹس (invalid arguments)."
+    },
+    "idiom_register": {
+      "result": "pass",
+      "detail": "آپ address throughout; the single instruction uses the respectful imperative دوبارہ کوشش کریں; no exclamation marks, no براہ کرم the English does not have, no padding. Labels are label register with no full stop; sentences end in the Urdu full stop ۔. Semicolon ؛ and em dash — are both live in the shipped ur catalogue, so their use here is a locale convention, not a calque of English punctuation. No Hindi danda, no Arabic-only signs, no ZWNJ, letter forms consistently Urdu (U+06CC/06A9/06C1/06D2, zero Arabic-form ي/ك/ه)."
+    },
+    "terminology": {
+      "result": "pass_with_minor_findings",
+      "detail": "provider فراہم کنندہ, charge چارج, stopped روک دیا گیا, stop request روکنے کی درخواست, batch مجموعہ, settlement تصفیہ, tool ٹول, denied مسترد, gate گیٹ, arguments آرگیومنٹس, rate-limit root شرح — all consistent with the shipped ur catalogue and the glossary; every material noun in cancelled_batch is byte-identical to the shipped done_batch/failed_batch branch noun. Two MINORs on token/construction consistency (UR-S16E-01, UR-S16E-02) and two NITs on cross-string harmonisation (UR-S16E-03, UR-S16E-04)."
+    },
+    "fit": {
+      "result": "pass",
+      "detail": "No maxCells/maxChars hint exists for these 12 keys (the context sidecar carries prose length hints only), so the budget held to is the English length plus the style guide's ≈1 cell per Arabic-script character. The six labels are 5–17 characters against 6–18 English and cannot wrap. The five sentence keys measure 22–119 characters against 24–125 English (queued 82/64, running 119/125, checking 22/24, settlement 72/79, error sentence 60/64): every one of them but queued is shorter than its English source, and each is documented as wrapping inside the card. No overflow risk found. The state line's rendered branch is 28 characters against 20 English, in the same family as the much longer shipped running_batch line. Wide-glyph/combining risk: none beyond the style guide's recorded TUI stance, which is a renderer matter."
+    },
+    "rtl_bidi": {
+      "result": "pass",
+      "detail": "No hand-inserted RLM/LRM/FSI/PDI/ALM anywhere (style guide forbids them; the render layer isolates). The two Latin islands were judged rather than assumed: (1) endpoint in cancel.running — endorsed, kept Latin by glossary §Wave-2 ('endpoint (Latin, undeclined)') and by two shipped ur values, and it sits between Urdu words with no punctuation inside the island, so it reads in place; (2) id in duplicate_id — a trailing LTR token at the end of an RTL string, which the bidi algorithm places at the visual left, i.e. after مکرر in reading order, so it is legible and needs no control; the only hazard would be Urdu punctuation appended directly after the Latin run, which this value does not do. No arrows or glyph hints in this copy; no digits, so the digits-policy question does not arise here."
+    }
+  },
+  "findings": [
+    {
+      "id": "UR-S16E-01",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.image_gen.error_class.duplicate_id",
+      "current": "مکرر id",
+      "problem": "The identifier token is lowercase Latin `id`. In the shipped ur catalogue the only lowercase `id` occurrences are ICU placeholders ({id}); every prose occurrence of the identifier token is uppercase `ID` (25 of them: سیشن ID, ایجنٹ ID, شیڈول ID). This value would be the first lowercase identifier token in ur prose. The English source is 'Duplicate id' (itself the only lowercase-id value in the English catalogue), so the draft mirrors English casing rather than the locale's convention.",
+      "suggested": "مکرر ID — or, if the label should be self-explaining in isolation, پہلے سے موجود ID ('id already exists')",
+      "blocking": false
+    },
+    {
+      "id": "UR-S16E-02",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+      "current": "آڈیو کی شرح محدود",
+      "problem": "Meaning is intact and the class is distinguishable, so this is not a blocker; the issue is construction. 'آڈیو کی شرح محدود' reads as a possessive phrase ('audio's rate [is] limited'), attributing the limit to audio's rate rather than to the generation being rate limited, and it diverges from the product's established noun for the same concept, شرح کی حد, which ships in ui.chat.error_block.rate_limit.* and ui.chat.usage_reset.*. The result is two constructions for one error concept on the same surface. The translator's notes record they considered and rejected 'آڈیو کی شرح کی حد' (double کی, reads as a bare heading); that rejection is fair, and the alternative below avoids both problems.",
+      "suggested": "آڈیو پر شرح کی حد ('rate limit on audio') — label-shaped, reuses the shipped noun unchanged",
+      "blocking": false
+    },
+    {
+      "id": "UR-S16E-03",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.cancel.queued",
+      "current": "فراہم کنندہ کو کال کیے جانے سے پہلے روک دیا گیا؛ …",
+      "problem": "Not a defect: کال is attested user-facing vocabulary in the shipped catalogue (ٹول کال, فراہم کنندہ کال, نیٹ ورک کال), so reading it as a phone call would be a misjudgement and I withdrew that reading after checking. The only point is that the sibling for the same fact, control.stop_hint_queued, renders it as درخواست بھیجے جانے سے پہلے. Both are correct; harmonising would make the family read as one voice.",
+      "suggested": "فراہم کنندہ کو درخواست بھیجے جانے سے پہلے روک دیا گیا؛ آپ سے کوئی چارج نہیں لیا جائے گا۔ (optional)",
+      "blocking": false
+    },
+    {
+      "id": "UR-S16E-04",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.cancel.running",
+      "current": "… اور آڈیو بننے پر چارج لگے گا۔",
+      "problem": "The same English clause ('will be charged if it produces audio') ships in sound.stop.warning rendered with لاگت لگے گی, so one surface family currently carries two nouns for the charged amount. The draft's چارج is the better word — it matches English 'charged', the shipped 'حتمی چارج' and 'کوئی چارج نہیں', while لاگت is the shipped word for a cost amount — so the draft is right and the shipped sibling is the outlier. Recorded so the divergence is not rediscovered as a new finding.",
+      "suggested": "No change to this draft; harmonise the shipped ui.chat.canonical.sound.stop.warning from لاگت لگے گی to چارج لگے گا in a later wave, and record charge/cost as a glossary row.",
+      "blocking": false
+    }
+  ],
+  "observations_not_findings": [
+    "state.cancelled_batch asserts a completed stop (روک دیا گیا) while cancel.running says an in-flight stop is only a request (روکنے کی درخواست). The English source makes exactly the same assertion ('Video batch stopped.' vs 'Stop requested.'), so the translation mirrors the source correctly; the tension, if it is one, is a source-side design question and not this locale's defect.",
+    "cancel.checking is joined to cancel.running by a single space at the callsite; the draft ends both sentences in ۔, so the join produces two clean sentences and no doubled or missing punctuation.",
+    "No glossary row exists for charge/cost, settlement, rate limit, gate or arguments; the translator has proposed rows, and this audit's terminology evidence (shipped values quoted in audit.log) would support them."
+  ],
+  "artifacts": {
+    "receipt": "/Users/damian/.local-operator/sessions/047163c943ad/scratchpad/receipt.json",
+    "report": "/Users/damian/.local-operator/sessions/047163c943ad/scratchpad/report.md",
+    "audit_log": "/Users/damian/.local-operator/sessions/047163c943ad/scratchpad/audit.log",
+    "checker": "/Users/damian/.local-operator/sessions/047163c943ad/scratchpad/s16e-ur-check.mjs",
+    "facts": "/Users/damian/.local-operator/sessions/047163c943ad/scratchpad/s16e-ur-facts.py",
+    "evidence_query": "/Users/damian/.local-operator/sessions/047163c943ad/scratchpad/s16e-ur-evidence.py",
+    "run_driver": "/Users/damian/.local-operator/sessions/047163c943ad/scratchpad/s16e-ur-run-log.sh",
+    "audited_copy": "/Users/damian/.local-operator/sessions/047163c943ad/scratchpad/ur-draft-copy.json",
+    "negative_controls": [
+      "/Users/damian/.local-operator/sessions/047163c943ad/scratchpad/nc1-drop-branch.json",
+      "/Users/damian/.local-operator/sessions/047163c943ad/scratchpad/nc2-argname.json",
+      "/Users/damian/.local-operator/sessions/047163c943ad/scratchpad/nc3-brace.json",
+      "/Users/damian/.local-operator/sessions/047163c943ad/scratchpad/nc4-rlm.json"
+    ],
+    "sha256": {
+      "report.md": "b8a9620909dc4f72167f9da40fb16a297c63436fd083dc5aca704fe9c7e8d03e",
+      "audit.log": "956799f4a563dfa7567fbe45de10ca6c9503a0c8b2c150d7b3ace0fc4ca83cec",
+      "s16e-ur-check.mjs": "b3e445b1f9423bd78124d3c434a42efd90485c8f653ea0ed9b91c0a05e4c338a",
+      "s16e-ur-facts.py": "b2f9cd5588e9fbd9b351ebe598f4b49c7d97abcfaeff3bf540e0429a88dc679e",
+      "s16e-ur-evidence.py": "7fb18158d871addb14222b03ec5bb064b8107005da0818c99b70f2c7abfe77c1",
+      "s16e-ur-run-log.sh": "9b12137e53200dd22f003d62bda9affd49a0db468beb301abe6913e425769ada",
+      "ur-draft-copy.json": "e9666a75e6d318448b530290d99ab3c88b8a29901e3fa8beeb5c3411f7fa4051"
+    },
+    "audited_copy_matches_draft": true
+  },
+  "ledger": {
+    "command": "node scripts/i18n/ledger-assemble.mjs --file src/i18n/catalogues/ur/ui.chat.canonical.json --receipt <this receipt> --auditor-instance 047163c943ad-s16e-ur --auditor-model deepseek/deepseek-flash --result <derived>",
+    "not_run_by_auditor": true,
+    "why": "The audited bytes are a 12-key slice draft in another session's scratchpad, not the namespace catalogue on disk: ledger-assemble hashes src/i18n/catalogues/<locale>/<namespace>.json itself and refuses a receipt naming other bytes (safe refusal, no write). It also writes i18n/ledger.json, and this auditor is read-only on the worktree. The manager runs it after the slice lands, when the landed file's hash is what the row must bind; if the slice values are byte-identical to this draft but the file hash differs, the receipt must be re-issued against the landed file rather than relabelled."
+  },
+  "audit_date": "2026-11-12",
+  "input_hashes": {
+    "en": {
+      "path": "~/local-operator-ui/.worktrees/i18n-s16e/src/i18n/catalogues/en/ui.chat.canonical.json",
+      "sha256": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17"
+    },
+    "context": {
+      "path": "~/local-operator-ui/.worktrees/i18n-s16e/src/i18n/catalogues/en/ui.chat.canonical.context.json",
+      "sha256": "ec598772089552ace910c857a38b364bdfa83a32c76c62b752b761527531e7b7"
+    },
+    "ur": {
+      "path": "~/local-operator-ui/.worktrees/i18n-s16e/src/i18n/catalogues/ur/ui.chat.canonical.json",
+      "sha256": "fd1116ccb5e847eb7f28c4cf5d1084efad95edf52d638d1a6144e065ce7d98a7",
+      "role": "terminology authority (shipped catalogue); the audited slice draft is named in .draft"
+    }
+  },
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "UR-S16E-01",
+      "UR-S16E-02",
+      "UR-S16E-03",
+      "UR-S16E-04"
+    ]
+  },
+  "audit_notes_not_execution_log": false,
+  "execution_log": {
+    "path": "audit.log",
+    "note": "captured stdout/stderr of 12 real command runs (draft hash parity, input hashes, checker PASS, four negative controls, fact and evidence queries); nothing in it is typed from memory"
+  }
+}

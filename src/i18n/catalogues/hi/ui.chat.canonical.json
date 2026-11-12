@@ -465,5 +465,17 @@
 	"ui.chat.canonical.sound.cost.estimated_zero": "अनुमानित लागत $0; अंतिम शुल्क की पुष्टि नहीं हुई।",
 	"ui.chat.canonical.sound.cost.no_charge": "कोई शुल्क नहीं।",
 	"ui.chat.canonical.sound.cost.unknown": "लागत अभी पता नहीं है।",
-	"ui.chat.canonical.supplement.sound_fallback_label": "बनाई गई ध्वनि"
+	"ui.chat.canonical.supplement.sound_fallback_label": "बनाई गई ध्वनि",
+	"ui.chat.canonical.image_gen.state.cancelled_batch": "{material, select, video {वीडियो का बैच रोक दिया गया।} voiceover {वॉइसओवर का बैच रोक दिया गया।} sound_effect {साउंड इफ़ेक्ट का बैच रोक दिया गया।} other {तस्वीरों का बैच रोक दिया गया।}}",
+	"ui.chat.canonical.image_gen.cancel.queued": "प्रोवाइडर को कॉल किए जाने से पहले रोक दिया गया; कोई शुल्क नहीं लगेगा।",
+	"ui.chat.canonical.image_gen.cancel.running": "रोकने का अनुरोध किया गया। प्रोवाइडर के पास रद्द करने का कोई endpoint नहीं है; जनरेशन जारी रहेगा और ऑडियो बनने पर उसका शुल्क लगेगा।",
+	"ui.chat.canonical.image_gen.cancel.checking": "शुल्क की पुष्टि जाँची जा रही है।",
+	"ui.chat.canonical.image_gen.settlement.pending": "शुल्क की पुष्टि लंबित — प्रोवाइडर के रिपोर्ट करने पर अंतिम शुल्क दिखेगा।",
+	"ui.chat.canonical.image_gen.error.audio_rate_limited": "अभी ऑडियो जनरेशन व्यस्त है। थोड़ी देर में फिर कोशिश करें।",
+	"ui.chat.canonical.image_gen.error_class.audio_rate_limited": "ऑडियो दर सीमा",
+	"ui.chat.canonical.image_gen.error_class.unknown_tool": "अज्ञात टूल",
+	"ui.chat.canonical.image_gen.error_class.invalid_arguments": "अमान्य आर्ग्युमेंट",
+	"ui.chat.canonical.image_gen.error_class.duplicate_id": "डुप्लिकेट id",
+	"ui.chat.canonical.image_gen.error_class.denied": "अस्वीकृत",
+	"ui.chat.canonical.image_gen.error_class.gate_failed": "गेट विफल"
 }

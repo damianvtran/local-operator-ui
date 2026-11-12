@@ -2732,8 +2732,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
-			"target_sha256": "547b85e9670eec79f82211f50325092bf75c13eda4504995cce1a1d5ab25e272",
+			"source_sha256": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17",
+			"target_sha256": "6975073712a4a3400b0d04d67a82ef7b16ce0fafd78b319a2a8023099a0ca2ab",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
@@ -2745,17 +2745,35 @@
 					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-12",
-					"result": "clean-with-findings",
-					"instance": "4d7a5444aa0b",
+					"result": "clean",
+					"instance": "15b65aa91541-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 2
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/4d7a5444aa0b.json",
-					"receipt_sha256": "0d53576dd82e8db22742ddcaa18810c5e786cf93d88d15f0d6181de37adfc7c3",
-					"note": "S16f delta audit of the 15 keys on the merged bytes; audit record: i18n/audits/evidence/es/ui.chat.canonical/s16f-4d7a5444aa0b-r4/record.json"
+					"receipt": "i18n/receipts/15b65aa91541-es.json",
+					"receipt_sha256": "4bb34951d5d99ea406da4f866dd4d58d2115ac758e0cb346b8626284e76d6e9b",
+					"scope": "the 12 new S16e image-gen card keys (first/second independent pass1), audited as the 12-key draft (sha256 b9290ae76d05); the 467 retained keys ride the previously audited bytes (verify.log)",
+					"note": "S16e renderer card slice, PR #1884; binding receipt transcribed from the auditor's own record (session 15b65aa91541), integrated bytes; evidence i18n/audits/evidence/es/ui.chat.canonical/s16e-6975073712a4"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-12",
+					"result": "clean",
+					"instance": "s16e-au2-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/s16e-au2-es.json",
+					"receipt_sha256": "827a415824e63b1559d248cb18cf2f2fa1562d5ca7fc7ab73661ffb176089bcc",
+					"scope": "the 12 new S16e image-gen card keys (first/second independent pass2), audited as the 12-key draft (sha256 b9290ae76d05); the 467 retained keys ride the previously audited bytes (verify.log)",
+					"note": "S16e renderer card slice, PR #1884; binding receipt transcribed from the auditor's own record (session cc045047b39e), integrated bytes; evidence i18n/audits/evidence/es/ui.chat.canonical/s16e-6975073712a4"
 				}
 			],
 			"status": "audited",
@@ -3290,6 +3308,29 @@
 							"receipt_sha256": "60f9f9cde7bd24c5ae2ecf59b7acbdf88d7e68d9fcb737722ad78870eba3b9ef",
 							"scope": "whole merged file at c213a0616: #1870's 14 status keys + this PR's 5 loading.* keys; seam review + merge-integrity proof",
 							"note": "Post-merge re-bind (PR #1875); 0 new findings; 4 carried nits (3311618b2a8b). Detail: i18n/receipts/15686088b7ce-es.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+					"target_sha256": "547b85e9670eec79f82211f50325092bf75c13eda4504995cce1a1d5ab25e272",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "4d7a5444aa0b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/4d7a5444aa0b.json",
+							"receipt_sha256": "0d53576dd82e8db22742ddcaa18810c5e786cf93d88d15f0d6181de37adfc7c3",
+							"note": "S16f delta audit of the 15 keys on the merged bytes; audit record: i18n/audits/evidence/es/ui.chat.canonical/s16f-4d7a5444aa0b-r4/record.json"
 						}
 					],
 					"status": "audited"
@@ -14649,8 +14690,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
-			"target_sha256": "99f7c0b27d6c75b16935cc58874477cab24da430284576defaacf19e209c88f6",
+			"source_sha256": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17",
+			"target_sha256": "67372a8280150ac24402a427aff3c71fe07aa00841c41c57513a470b6abbc7ac",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
@@ -14663,16 +14704,34 @@
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-12",
 					"result": "clean-with-findings",
-					"instance": "3316c580ef05",
+					"instance": "s16e-au-fr-2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 1
+						"minor": 0,
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/3316c580ef05.json",
-					"receipt_sha256": "2e4ac73047242230a20ff56a4982652c7d56e4d1f6677d4c083bb7f1a82e8d32",
-					"note": "S16f delta audit of the 15 keys on the merged bytes; audit record: i18n/audits/evidence/fr/ui.chat.canonical/s16f-3316c580ef05-r4/record.json"
+					"receipt": "i18n/receipts/s16e-au-fr-2.json",
+					"receipt_sha256": "41d7e558f9f321df058b59e0fce26a6ce524dabacdba6bbe9a03bf54d0253c02",
+					"scope": "the 12 new S16e image-gen card keys (first/second independent pass1), audited as the 12-key draft (sha256 a46fdb56c600); the 467 retained keys ride the previously audited bytes (verify.log)",
+					"note": "S16e renderer card slice, PR #1884; binding receipt transcribed from the auditor's own record (session c25b8a640092), integrated bytes; evidence i18n/audits/evidence/fr/ui.chat.canonical/s16e-67372a828015"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-12",
+					"result": "clean-with-findings",
+					"instance": "s16e-au2-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/s16e-au2-fr.json",
+					"receipt_sha256": "17668dee1d4b24bda03f5de079d94185f293dbc6b17c982d681a9ec792a3a945",
+					"scope": "the 12 new S16e image-gen card keys (first/second independent pass2), audited as the 12-key draft (sha256 a46fdb56c600); the 467 retained keys ride the previously audited bytes (verify.log)",
+					"note": "S16e renderer card slice, PR #1884; binding receipt transcribed from the auditor's own record (session cc045047b39e), integrated bytes; evidence i18n/audits/evidence/fr/ui.chat.canonical/s16e-67372a828015"
 				}
 			],
 			"status": "audited",
@@ -15222,6 +15281,29 @@
 							"receipt_sha256": "357b88f435e501c5bf7c3a34bff3fa5b01e161372b1f68343aa3e8db7265d835",
 							"scope": "whole merged file at c213a0616: #1870's 14 status keys + this PR's 5 loading.* keys; seam review + merge-integrity proof",
 							"note": "Post-merge re-bind (PR #1875); 0 new findings; 2 carried nits (2105ebeeb3e9). Detail: i18n/receipts/15686088b7ce-fr.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+					"target_sha256": "99f7c0b27d6c75b16935cc58874477cab24da430284576defaacf19e209c88f6",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "3316c580ef05",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/3316c580ef05.json",
+							"receipt_sha256": "2e4ac73047242230a20ff56a4982652c7d56e4d1f6677d4c083bb7f1a82e8d32",
+							"note": "S16f delta audit of the 15 keys on the merged bytes; audit record: i18n/audits/evidence/fr/ui.chat.canonical/s16f-3316c580ef05-r4/record.json"
 						}
 					],
 					"status": "audited"
@@ -27063,8 +27145,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
-			"target_sha256": "5bad55ca446e6e2e0bc853d503d94280f444cd009402431c65e8ce997528689b",
+			"source_sha256": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17",
+			"target_sha256": "64a962929428922c1224a09147a4ec06bf45c78cf54f31050f3ee92151a4280f",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -27075,17 +27157,35 @@
 					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-12",
-					"result": "clean",
-					"instance": "b04b0982d048-hi-s16f-au4",
+					"result": "clean-with-findings",
+					"instance": "d8a457984829",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 1,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/b04b0982d048-hi-s16f-au4.json",
-					"receipt_sha256": "e786162df109f8f74890076ed8e8d39af873bf7f473376216e730d554e68d9ee",
-					"note": "S16f round-4 re-audit of the hi remediation (sound/ध्वनि consistency); audit record: i18n/audits/evidence/hi/ui.chat.canonical/s16f-au4-b04b0982/record.json"
+					"receipt": "i18n/receipts/d8a457984829.json",
+					"receipt_sha256": "519fc9587efd9c2cbefc8a6c690c7fcdb708553a2245409b0e10d8807f751ab6",
+					"scope": "the 12 new S16e image-gen card keys (first/second independent pass1), audited as the 12-key draft (sha256 41e9e50f80fb); the 467 retained keys ride the previously audited bytes (verify.log)",
+					"note": "S16e renderer card slice, PR #1884; binding receipt transcribed from the auditor's own record (session d8a457984829), integrated bytes; evidence i18n/audits/evidence/hi/ui.chat.canonical/s16e-64a962929428"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-12",
+					"result": "clean-with-findings",
+					"instance": "s16e-au2-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/s16e-au2-hi.json",
+					"receipt_sha256": "20d6f71afa5afa1e6b9a56d225005459d4930eba4d7a1df9902c9b04ff17573e",
+					"scope": "the 12 new S16e image-gen card keys (first/second independent pass2), audited as the 12-key draft (sha256 41e9e50f80fb); the 467 retained keys ride the previously audited bytes (verify.log)",
+					"note": "S16e renderer card slice, PR #1884; binding receipt transcribed from the auditor's own record (session cc045047b39e), integrated bytes; evidence i18n/audits/evidence/hi/ui.chat.canonical/s16e-64a962929428"
 				}
 			],
 			"status": "audited",
@@ -27627,6 +27727,29 @@
 					"target_sha256": "18ee2d0ae6a06f8000f0d74818637e131fa903781abcec47ad1fe49d2c07c6a4",
 					"auditors": [],
 					"status": "pending"
+				},
+				{
+					"source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+					"target_sha256": "5bad55ca446e6e2e0bc853d503d94280f444cd009402431c65e8ce997528689b",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-12",
+							"result": "clean",
+							"instance": "b04b0982d048-hi-s16f-au4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b04b0982d048-hi-s16f-au4.json",
+							"receipt_sha256": "e786162df109f8f74890076ed8e8d39af873bf7f473376216e730d554e68d9ee",
+							"note": "S16f round-4 re-audit of the hi remediation (sound/ध्वनि consistency); audit record: i18n/audits/evidence/hi/ui.chat.canonical/s16f-au4-b04b0982/record.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -39064,8 +39187,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
-			"target_sha256": "fddef0897968450fb0157457dda37f7472fa467b4df1aea68af16bbe260f10f1",
+			"source_sha256": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17",
+			"target_sha256": "29d932f30c329a27731a9b3f3f8179b569f6a44309a45eb1ac9fe1e5109b20df",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -39076,17 +39199,35 @@
 					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-12",
+					"result": "clean-with-findings",
+					"instance": "s16e-ru-20261112",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/s16e-ru-20261112.json",
+					"receipt_sha256": "acd16534111562a6271f2bfcc398bfccbc14539c6ea4a1a5190726f28bb8fccb",
+					"scope": "the 12 new S16e image-gen card keys (first/second independent pass1), audited as the 12-key draft (sha256 ccc4674d071c); the 467 retained keys ride the previously audited bytes (verify.log)",
+					"note": "S16e renderer card slice, PR #1884; binding receipt transcribed from the auditor's own record (session 17d1e8b0f671), integrated bytes; evidence i18n/audits/evidence/ru/ui.chat.canonical/s16e-29d932f30c32"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-12",
 					"result": "clean",
-					"instance": "6e7c2663da44-s16f-au4-ru",
+					"instance": "s16e-au2-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6e7c2663da44-s16f-au4-ru.json",
-					"receipt_sha256": "679693ab40c06fa90f1bbd809663007e5759e830b7770860a091b5f82e23f006",
-					"note": "S16f round-4 re-audit of the ru remediation (media.sound_label); audit record: i18n/audits/evidence/ru/ui.chat.canonical/s16f-6e7c2663da44-r4/record.json"
+					"receipt": "i18n/receipts/s16e-au2-ru.json",
+					"receipt_sha256": "0449abfe5b31671da7bfa1ebb4dea745b8fbdb47169113c2d439f5fe8c245629",
+					"scope": "the 12 new S16e image-gen card keys (first/second independent pass2), audited as the 12-key draft (sha256 ccc4674d071c); the 467 retained keys ride the previously audited bytes (verify.log)",
+					"note": "S16e renderer card slice, PR #1884; binding receipt transcribed from the auditor's own record (session cc045047b39e), integrated bytes; evidence i18n/audits/evidence/ru/ui.chat.canonical/s16e-29d932f30c32"
 				}
 			],
 			"status": "audited",
@@ -39628,6 +39769,29 @@
 					"target_sha256": "af745c025f29e1dc76c7b6bb60305186db8157c91d4a304b293d7d7e33547b47",
 					"auditors": [],
 					"status": "pending"
+				},
+				{
+					"source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+					"target_sha256": "fddef0897968450fb0157457dda37f7472fa467b4df1aea68af16bbe260f10f1",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-12",
+							"result": "clean",
+							"instance": "6e7c2663da44-s16f-au4-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6e7c2663da44-s16f-au4-ru.json",
+							"receipt_sha256": "679693ab40c06fa90f1bbd809663007e5759e830b7770860a091b5f82e23f006",
+							"note": "S16f round-4 re-audit of the ru remediation (media.sound_label); audit record: i18n/audits/evidence/ru/ui.chat.canonical/s16f-6e7c2663da44-r4/record.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -51085,8 +51249,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
-			"target_sha256": "fd1116ccb5e847eb7f28c4cf5d1084efad95edf52d638d1a6144e065ce7d98a7",
+			"source_sha256": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17",
+			"target_sha256": "d239e2a665505002cdb0a8e4f6a6fc2009003ea5026a95695dee9ad7573165dd",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
@@ -51099,16 +51263,34 @@
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-12",
 					"result": "clean-with-findings",
-					"instance": "1d764576d0aa-s16f-au3-ur",
+					"instance": "047163c943ad-s16e-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/047163c943ad-s16e-ur.json",
+					"receipt_sha256": "ff3cb32e65d3e420a0d1c0c82908fe481676a4fe7860d32a81c9182ece1e84ec",
+					"scope": "the 12 new S16e image-gen card keys (first/second independent pass1), audited as the 12-key draft (sha256 e9666a75e6d3); the 467 retained keys ride the previously audited bytes (verify.log)",
+					"note": "S16e renderer card slice, PR #1884; binding receipt transcribed from the auditor's own record (session 047163c943ad), integrated bytes; evidence i18n/audits/evidence/ur/ui.chat.canonical/s16e-d239e2a66550"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-12",
+					"result": "clean-with-findings",
+					"instance": "s16e-au2-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 3
 					},
-					"receipt": "i18n/receipts/1d764576d0aa-s16f-au3-ur.json",
-					"receipt_sha256": "e8fd11469cda736764fc3c5c2506f9e1251869bebdeee7e5e9399a76ee3850a2",
-					"note": "S16f delta audit of the 15 keys on the merged bytes; audit record: i18n/audits/evidence/ur/ui.chat.canonical/s16f-au3-ur/record.json"
+					"receipt": "i18n/receipts/s16e-au2-ur.json",
+					"receipt_sha256": "4c913fc96ccffd2ec4b7f165acf3a3ba5729ca43d76b7976dd3678edbb417141",
+					"scope": "the 12 new S16e image-gen card keys (first/second independent pass2), audited as the 12-key draft (sha256 e9666a75e6d3); the 467 retained keys ride the previously audited bytes (verify.log)",
+					"note": "S16e renderer card slice, PR #1884; binding receipt transcribed from the auditor's own record (session cc045047b39e), integrated bytes; evidence i18n/audits/evidence/ur/ui.chat.canonical/s16e-d239e2a66550"
 				}
 			],
 			"status": "audited",
@@ -51690,6 +51872,29 @@
 							"receipt_sha256": "7839f436d915dca7bb9328a2a0fc94cb2e350b793d8e9d5336272dca0de274eb",
 							"scope": "whole merged file at c213a0616: #1870's 14 status keys + this PR's 5 loading.* keys; seam review + merge-integrity proof",
 							"note": "Post-merge re-bind (PR #1875); 0 new findings; carried 1 minor + 3 nits (b97613446a7a), 1 nit (4b8febc34595-ur). Detail: i18n/receipts/15686088b7ce-ur.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+					"target_sha256": "fd1116ccb5e847eb7f28c4cf5d1084efad95edf52d638d1a6144e065ce7d98a7",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "1d764576d0aa-s16f-au3-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/1d764576d0aa-s16f-au3-ur.json",
+							"receipt_sha256": "e8fd11469cda736764fc3c5c2506f9e1251869bebdeee7e5e9399a76ee3850a2",
+							"note": "S16f delta audit of the 15 keys on the merged bytes; audit record: i18n/audits/evidence/ur/ui.chat.canonical/s16f-au3-ur/record.json"
 						}
 					],
 					"status": "audited"
@@ -63015,8 +63220,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
-			"target_sha256": "a37a5690412c841379ea44d6d63f4a5314579f4a157ff3c7f67be2ee872fe750",
+			"source_sha256": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17",
+			"target_sha256": "1ff9b17c9a2ac5f276e03f433a2187385af5b0130d95ba2624f2bc7ad77c92cf",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
@@ -63028,17 +63233,35 @@
 					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-12",
-					"result": "clean",
-					"instance": "49c5a10a37b4",
+					"result": "clean-with-findings",
+					"instance": "462e1eb39290",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 2,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/49c5a10a37b4.json",
-					"receipt_sha256": "90d86780df545711ad161761edc08a74afb896fbea091dbdbd6663b63869d086",
-					"note": "S16f delta audit of the 15 keys on the merged bytes; audit record: i18n/audits/evidence/vi/ui.chat.canonical/s16f-49c5a10a37b4-r4/record.json"
+					"receipt": "i18n/receipts/462e1eb39290.json",
+					"receipt_sha256": "9adf24895e2d3e9b5c9c7f3da391790ef685c5b8deccc9e75ac3ababb32a3d12",
+					"scope": "the 12 new S16e image-gen card keys (first/second independent pass1), audited as the 12-key draft (sha256 c0e8df525f03); the 467 retained keys ride the previously audited bytes (verify.log)",
+					"note": "S16e renderer card slice, PR #1884; binding receipt transcribed from the auditor's own record (session 462e1eb39290), integrated bytes; evidence i18n/audits/evidence/vi/ui.chat.canonical/s16e-1ff9b17c9a2a"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-12",
+					"result": "clean-with-findings",
+					"instance": "s16e-au2-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/s16e-au2-vi.json",
+					"receipt_sha256": "39108eaac8ab0b78046e0309690b073749702d1602c9992a5c24bedf53ea9980",
+					"scope": "the 12 new S16e image-gen card keys (first/second independent pass2), audited as the 12-key draft (sha256 c0e8df525f03); the 467 retained keys ride the previously audited bytes (verify.log)",
+					"note": "S16e renderer card slice, PR #1884; binding receipt transcribed from the auditor's own record (session cc045047b39e), integrated bytes; evidence i18n/audits/evidence/vi/ui.chat.canonical/s16e-1ff9b17c9a2a"
 				}
 			],
 			"status": "audited",
@@ -63612,6 +63835,29 @@
 							"receipt_sha256": "1f94175cc0958dc60c5e9973b5dee49b1ca22863870a34c60ab15ed0de679aae",
 							"scope": "whole merged file at c213a0616: #1870's 14 status keys + this PR's 5 loading.* keys; seam review + merge-integrity proof",
 							"note": "Post-merge re-bind (PR #1875); 0 new findings; carried 2 nits (64a0e2d3b795), 1 nit (4b8febc34595-vi). Detail: i18n/receipts/15686088b7ce-vi.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+					"target_sha256": "a37a5690412c841379ea44d6d63f4a5314579f4a157ff3c7f67be2ee872fe750",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-12",
+							"result": "clean",
+							"instance": "49c5a10a37b4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/49c5a10a37b4.json",
+							"receipt_sha256": "90d86780df545711ad161761edc08a74afb896fbea091dbdbd6663b63869d086",
+							"note": "S16f delta audit of the 15 keys on the merged bytes; audit record: i18n/audits/evidence/vi/ui.chat.canonical/s16f-49c5a10a37b4-r4/record.json"
 						}
 					],
 					"status": "audited"
@@ -75753,8 +75999,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
-			"target_sha256": "35f8058839549d4a8be28792c279784c75a624b9c076fc98d359bae1fe1db12c",
+			"source_sha256": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17",
+			"target_sha256": "752b0388f4e0a677fe614bfe8c5dcb5ed29d79a77ef7e6476a80afc3b93888b4",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
@@ -75767,16 +76013,34 @@
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-11-12",
 					"result": "clean-with-findings",
-					"instance": "2a10c1127838-zhcn-s16f-au3",
+					"instance": "s16e-zhcn-a1",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 2
+						"minor": 1,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/2a10c1127838-zhcn-s16f-au3.json",
-					"receipt_sha256": "d945a58c75c7825349f3ab87581b332b9fe08bb3fe5eccf5ff6bbfc270d2c9b7",
-					"note": "S16f delta audit of the 15 keys on the merged bytes; audit record: i18n/audits/evidence/zh-CN/ui.chat.canonical/s16f-2a10c1127838-r4/record.json"
+					"receipt": "i18n/receipts/s16e-zhcn-a1.json",
+					"receipt_sha256": "b56df72e049cbc8254a870b67a0c3a692b423e7986e2dee6b2a8919ba8eb29e7",
+					"scope": "the 12 new S16e image-gen card keys (first/second independent pass1), audited as the 12-key draft (sha256 121951c9665e); the 467 retained keys ride the previously audited bytes (verify.log)",
+					"note": "S16e renderer card slice, PR #1884; binding receipt transcribed from the auditor's own record (session f9df9ab87b40), integrated bytes; evidence i18n/audits/evidence/zh-CN/ui.chat.canonical/s16e-752b0388f4e0"
+				},
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-12",
+					"result": "clean-with-findings",
+					"instance": "s16e-au2-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/s16e-au2-zh-cn.json",
+					"receipt_sha256": "2b6507260b6948722fcc1985146bb9705014a75302baa009d31221aad900924c",
+					"scope": "the 12 new S16e image-gen card keys (first/second independent pass2), audited as the 12-key draft (sha256 121951c9665e); the 467 retained keys ride the previously audited bytes (verify.log)",
+					"note": "S16e renderer card slice, PR #1884; binding receipt transcribed from the auditor's own record (session cc045047b39e), integrated bytes; evidence i18n/audits/evidence/zh-CN/ui.chat.canonical/s16e-752b0388f4e0"
 				}
 			],
 			"status": "audited",
@@ -76326,6 +76590,29 @@
 							"receipt_sha256": "387a8210934a6f670bca7f39ddf6dffc18600495459c540c99c491b41d076206",
 							"scope": "whole merged file at c213a0616: #1870's 14 status keys + this PR's 5 loading.* keys; seam review + merge-integrity proof",
 							"note": "Post-merge re-bind (PR #1875); 0 new findings; 3 carried nits (07b0fc8f8d80). Detail: i18n/receipts/15686088b7ce-zh-cn.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+					"target_sha256": "35f8058839549d4a8be28792c279784c75a624b9c076fc98d359bae1fe1db12c",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "2a10c1127838-zhcn-s16f-au3",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/2a10c1127838-zhcn-s16f-au3.json",
+							"receipt_sha256": "d945a58c75c7825349f3ab87581b332b9fe08bb3fe5eccf5ff6bbfc270d2c9b7",
+							"note": "S16f delta audit of the 15 keys on the merged bytes; audit record: i18n/audits/evidence/zh-CN/ui.chat.canonical/s16f-2a10c1127838-r4/record.json"
 						}
 					],
 					"status": "audited"
