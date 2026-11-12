@@ -862,6 +862,70 @@ was converted), so the keychain group's value did not change.
    required by the addon and Electron 45 `platformPasskeys` paths, which would
    reach only relying parties whose AASA lists our app id.
 
+### 3.8 Password-manager prompts in agent tabs: user custody (2026-11-11)
+
+**Report.** Microsoft's sign-in (`login.microsoft.com/consumers/fido/get`) sat on
+"Face, fingerprint, PIN or security key" with Try again disabled in an
+agent-driven tab; the same sign-in completed in a tab the operator opened.
+
+**Root cause (ours, not native).** `extensions/subframe-policy.ts` refuses every
+`chrome-extension://` subframe in a tab whose owner is not the user. 1Password
+answers WebAuthn in page script and shows its passkey UI in such a frame, so in
+an agent tab its request could never be answered. Measured on the installed
+0.54.1 with 1Password 8.12.44.33, synthetic RP on `http://localhost`: 1Password
+installs an accessor `get` on the `navigator.credentials` instance that bypasses
+the prototype-level shim of §3.6 (`L(e){return await q(e?.publicKey?.hints)?H(e):d.credentials.get(e…`);
+a `create()` inserted `com-1password-notification` whose frame was refused.
+In the shipped bundle the passkey sign-in and save UI is
+`inline/notification/notification.html` (`passkey-signin-prompt`,
+`sign-in-with-passkey`, `select-passkey-item`, `use-system-passkeys`), finished
+in `inline/universal-sign-on/universal-sign-on.html`; `modal.html` has no passkey
+route and `menu.html` is the autofill menu.
+
+**Decision.** `extensions/passkey-custody.ts`: a known, installed provider's
+measured prompt document is admitted in an agent tab only after a hold is in
+place, synchronously in `will-frame-navigate`. While held: `registry.requireSurface`
+refuses the tab (handle-less `close` included); `CdpPool.sendTo` refuses every
+command but the origin gate's `Fetch` answers and capture teardown
+(`Page.stopScreencast`, `Page.stopScreenRecording`, `IO.close` — never `IO.read` —
+`Emulation.clearDeviceMetricsOverride`, `Page.disable`) and drops a result that
+was in flight when the hold began;
+isolated-world reads that cross the hold are dropped (`registry.guardRead`);
+CDP events other than `Fetch.*` reach no subscriber (console and network
+captures see nothing of the hold); frame walks refuse any `chrome-extension:`
+document independent of custody. A running recording is DISCARDED when the hold
+begins (`discardRecordingForCustody`, tombstone `record_aborted` /
+`passkey_custody`), not paused: Chromium's default recorder encodes the
+composited surface with no event to filter, so a paused clip would still carry
+the prompt to the agent at `record_stop`. The tab is activated, the renderer opens its
+conversation's browser pane, and `window-raise.ts` raises under the launch plan
+(`passkey-custody` trigger). Only the user's trusted **Return to agent** ends a
+hold — no timer. A provider frame still present at release, or any frame
+admitted during the hold that is not yet destroyed (it may not have committed),
+reloads the page first; the hold lifts on the new document's commit, and a
+second press meanwhile does not reload again. The previous tab, and in the
+renderer the previous route, conversation or draft and pane state
+(`shared/browser-passkey-custody-handoff.ts`), come back only if the user is
+still where the handoff put them; one hold (`{tabId, at}`) moves the user at
+most once. OS focus is not handed back to another app (Electron cannot).
+
+**Band copy** (`ui.browser.browser_passkey_custody.*`, eight locales): neutral
+"password manager" wording because the same frame hosts the save-login prompt;
+it says returning with the prompt open reloads and cancels an unfinished
+sign-in or save, and that the agent may need asking to continue. The button
+shows `returning` until the hold lifts; refusals toast `return_refused_stale`,
+`return_refused_not_held` or `return_failed`.
+
+**Accepted side effect.** `notification.html` is 1Password's generic notification
+host (its hash is `type=notificationManager` for every kind), so a "save this
+login?" prompt in an agent tab also enters custody.
+
+**Not changed.** Native reach (§3.5): synced iCloud Keychain passkeys for
+arbitrary relying parties still need Apple's browser entitlement plus a
+platform bridge Electron 45 does not ship (its `platformPasskeys` uses the
+public per-RP API with associated domains). Other managers' prompts stay
+refused until measured.
+
 ---
 
 ## 4. Evidence

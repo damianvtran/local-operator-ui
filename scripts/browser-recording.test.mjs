@@ -3395,3 +3395,148 @@ test("m-a: main accepts a configured answer only for the size and encoder it ask
 	assert.ok(host.includes("isWellFormedChunk(event)"));
 	assert.ok(host.includes("answersTheRequest(event, asked)"));
 });
+
+// ---- passkey custody: a hold DISCARDS every recording (PR #1868 R1/R2) -------
+//
+// WHY. Chromium's default recorder (`Page.startScreenRecording`) encodes the
+// composited surface with no CDP event custody could filter, so a password
+// manager's prompt shown under custody would be in the clip `record_stop` hands
+// the agent after the user returns the tab. `discardRecordingForCustody` runs
+// synchronously when the hold begins; these cases pin that no recorded byte is
+// ever delivered: not by a later stop, not by a stop already in flight, not by a
+// start already in flight, and not through the high-quality engine.
+
+test("custody discards a standard recording: tombstone, recorder stopped, stream closed unread, nothing written", async () => {
+	const dir = scratchDir();
+	const path = join(dir, "clip.mp4");
+	const { start, stop, commands, tabs } = fixture({
+		path,
+		chunks: [Buffer.from("PROMPT-PIXELS")],
+	});
+	await start({ path });
+	const before = commands.length;
+	mod.discardRecordingForCustody(tabs.get("tab").id);
+	await new Promise((done) => setTimeout(done, 20));
+	const teardown = commands.slice(before).map((call) => call.method);
+	assert.ok(teardown.includes("Page.stopScreenRecording"), "recorder stopped");
+	assert.ok(teardown.includes("IO.close"), "stream closed");
+	assert.equal(teardown.includes("IO.read"), false, "no byte was read");
+	// The owner's next stop learns why, once, and gets no clip.
+	await rejectsReason(stop(), "internal", "record_aborted");
+	await rejectsReason(stop(), "internal", "record_not_active");
+	assert.equal(existsSync(path), false, "no clip published");
+	assert.deepEqual(partFiles(dir), [], "no part left behind");
+});
+
+test("custody tombstone names the cause and the caller's next step", async () => {
+	const dir = scratchDir();
+	const path = join(dir, "clip.mp4");
+	const { start, stop, tabs } = fixture({ path });
+	await start({ path });
+	mod.discardRecordingForCustody(tabs.get("tab").id);
+	const error = await stop().catch((caught) => caught);
+	assert.equal(error.data?.reason, "record_aborted");
+	assert.equal(error.data?.detail, "passkey_custody");
+	assert.match(error.message, /password manager prompt/);
+	assert.doesNotMatch(error.message, /DevTools/, "not the detach sentence");
+});
+
+test("a stop already reading the stream when custody begins publishes nothing", async () => {
+	const dir = scratchDir();
+	const path = join(dir, "clip.mp4");
+	let releaseRead;
+	let reads = 0;
+	const base = stream([
+		Buffer.from("PROMPT-PIXELS-1"),
+		Buffer.from("PROMPT-2"),
+	]);
+	const { start, stop, commands, tabs } = fixture({
+		path,
+		handler: (call) => {
+			if (call.method === "IO.read" && reads++ === 0) {
+				// The first page is in flight when the hold begins.
+				return new Promise((done) => {
+					releaseRead = () => done(base(call));
+				});
+			}
+			return base(call);
+		},
+	});
+	await start({ path });
+	const stopping = stop();
+	while (!releaseRead) await new Promise((done) => setTimeout(done, 2));
+	mod.discardRecordingForCustody(tabs.get("tab").id);
+	releaseRead();
+	await rejectsReason(stopping, "internal", "record_aborted");
+	assert.equal(existsSync(path), false, "the in-flight stop published nothing");
+	assert.deepEqual(partFiles(dir), [], "its part was removed");
+	assert.equal(
+		commands.filter((call) => call.method === "Page.stopScreenRecording")
+			.length,
+		1,
+		"a stop already under way is not stopped twice",
+	);
+	assert.ok(commands.some((call) => call.method === "IO.close"));
+});
+
+test("a standard start in flight when custody begins is stopped and answers the custody refusal", async () => {
+	const dir = scratchDir();
+	const path = join(dir, "clip.mp4");
+	let answerStart;
+	const base = stream([Buffer.from("x")]);
+	const { start, commands, tabs } = fixture({
+		path,
+		handler: (call) => {
+			if (call.method === "Page.startScreenRecording") {
+				// Chromium starts the recorder; the pool then drops the answer under
+				// custody, which is what the rejection stands for here.
+				return new Promise((_done, fail) => {
+					answerStart = () =>
+						fail(
+							new mod.BrowserHostError("owner_refused", "held", {
+								reason: "passkey_custody",
+							}),
+						);
+				});
+			}
+			return base(call);
+		},
+	});
+	const starting = start({ path });
+	while (!answerStart) await new Promise((done) => setTimeout(done, 2));
+	mod.discardRecordingForCustody(tabs.get("tab").id);
+	answerStart();
+	await rejectsReason(starting, "owner_refused", "passkey_custody");
+	const methods = commands.map((call) => call.method);
+	assert.ok(
+		methods.includes("Page.stopScreenRecording"),
+		"the recorder the start may have begun is stopped",
+	);
+	assert.equal(methods.includes("IO.read"), false);
+	assert.equal(existsSync(path), false);
+});
+
+test("custody discards a high-quality recording with the tombstone, not a capture failure, and clears the viewport", async () => {
+	const h = hqFixture();
+	await h.start({ path: h.path, quality: "high", width: 1280, height: 720 });
+	h.frame(0);
+	await new Promise((done) => setTimeout(done, 20));
+	const before = h.commands.length;
+	mod.discardRecordingForCustody(h.id);
+	await new Promise((done) => setTimeout(done, 40));
+	const teardown = h.commands.slice(before).map((call) => call.method);
+	assert.ok(teardown.includes("Page.stopScreencast"), "screencast stopped");
+	assert.ok(
+		teardown.includes("Emulation.clearDeviceMetricsOverride"),
+		"the user's tab gets its own size back",
+	);
+	assert.equal(teardown.includes("Page.startScreencast"), false, "no restart");
+	assert.ok(
+		h.windows.every((window) => window.disposed),
+		"encoder disposed",
+	);
+	const error = await h.stop().catch((caught) => caught);
+	assert.equal(error.data?.reason, "record_aborted");
+	assert.equal(error.data?.detail, "passkey_custody");
+	assert.equal(existsSync(h.path), false, "no clip published");
+});

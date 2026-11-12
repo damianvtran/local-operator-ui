@@ -1340,8 +1340,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.browser",
-			"source_sha256": "6d23b23923950590497a81defd8c40ea5f11779426a656efb88a08f066c82f6c",
-			"target_sha256": "ae0585169e755fdff5772dfc1823badd1aa1a83976fd7838200137fdc3427138",
+			"source_sha256": "e331d1a2d9abc72abc529ade9d23797134feddff50598cdd7b35e1b3addaca16",
+			"target_sha256": "280f949126f502ad23bb22f79c60e343719911bb324e5f12252b37b851a32b80",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 9d6c2bba4d3b job e76e3cc7e513)",
@@ -1352,18 +1352,18 @@
 				{
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-10",
+					"date": "2026-11-11",
 					"result": "clean",
-					"instance": "62d3b7ccfced-agentpk-r2-es",
+					"instance": "c2ec65bc018c-pk1868-r2-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/62d3b7ccfced-agentpk-r2-es.json",
-					"receipt_sha256": "833da7caa6fc2962df7c30ec4957b546ab0fa7eed82f86490df3b4f78a723a4e",
-					"scope": "Independent round-2 delta copy audit at e6c56de for PR #1846: rewritten browser_passkey_notice.agent_explanation, 5 added continue_refused_*/continue_unavailable keys, re-read of the 2 round-1 keys; namespace hashes bind bytes, not a whole-namespace audit"
+					"receipt": "i18n/receipts/c2ec65bc018c-pk1868-r2-es.json",
+					"receipt_sha256": "43967a5cb42ff34b01f19abb9c401635c1c94fe5d96556ea79214f35da73f69b",
+					"scope": "Independent round-2 delta copy audit at 175f295 for PR #1868: 7 browser_passkey_custody.* keys changed/added (+fr agent_explanation), return_to_agent re-read; namespace hashes bind bytes, not a whole-namespace audit"
 				}
 			],
 			"status": "audited",
@@ -1641,6 +1641,29 @@
 							"receipt": "i18n/receipts/64e4e919c5b0-agentpk-r1-es.json",
 							"receipt_sha256": "72e3d92a8f1346e60beae03a9206519c3962b80051ba0ef7a600cf8bcb947f91",
 							"scope": "Independent three-key delta copy audit (ui.browser.browser_passkey_notice.continue_in_own_tab, .agent_explanation, ui.browser.use_browser_chrome.passkey_continue_failed) at 8c1dcceb6a2 for PR #1846; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6d23b23923950590497a81defd8c40ea5f11779426a656efb88a08f066c82f6c",
+					"target_sha256": "ae0585169e755fdff5772dfc1823badd1aa1a83976fd7838200137fdc3427138",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-10",
+							"result": "clean",
+							"instance": "62d3b7ccfced-agentpk-r2-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/62d3b7ccfced-agentpk-r2-es.json",
+							"receipt_sha256": "833da7caa6fc2962df7c30ec4957b546ab0fa7eed82f86490df3b4f78a723a4e",
+							"scope": "Independent round-2 delta copy audit at e6c56de for PR #1846: rewritten browser_passkey_notice.agent_explanation, 5 added continue_refused_*/continue_unavailable keys, re-read of the 2 round-1 keys; namespace hashes bind bytes, not a whole-namespace audit"
 						}
 					],
 					"status": "audited"
@@ -13139,8 +13162,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.browser",
-			"source_sha256": "6d23b23923950590497a81defd8c40ea5f11779426a656efb88a08f066c82f6c",
-			"target_sha256": "6e0f5934f013c07cf26c96c5c86b4a9c315a652b4c2a0624dec245eea61fde96",
+			"source_sha256": "e331d1a2d9abc72abc529ade9d23797134feddff50598cdd7b35e1b3addaca16",
+			"target_sha256": "cb1031802424e377015c5f712b293b7ca9efcd9667ef9dc0e80ee6cc28ef82a2",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 7bf560d5dcc5 job f3024578bae5)",
@@ -13151,18 +13174,18 @@
 				{
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-10",
-					"result": "clean",
-					"instance": "62d3b7ccfced-agentpk-r2-fr",
+					"date": "2026-11-11",
+					"result": "clean-with-findings",
+					"instance": "c2ec65bc018c-pk1868-r2-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/62d3b7ccfced-agentpk-r2-fr.json",
-					"receipt_sha256": "4372e3c53c1eaaa3d56fae2355366a477553ea26c0713c05d2bdb0651488c972",
-					"scope": "Independent round-2 delta copy audit at e6c56de for PR #1846: rewritten browser_passkey_notice.agent_explanation, 5 added continue_refused_*/continue_unavailable keys, re-read of the 2 round-1 keys; namespace hashes bind bytes, not a whole-namespace audit"
+					"receipt": "i18n/receipts/c2ec65bc018c-pk1868-r2-fr.json",
+					"receipt_sha256": "362d4a1cb92e5b66ab1a9eeb88de9204b1ec98550fffc5e24b4b7b859ddba6f2",
+					"scope": "Independent round-2 delta copy audit at 175f295 for PR #1868: 7 browser_passkey_custody.* keys changed/added (+fr agent_explanation), return_to_agent re-read; namespace hashes bind bytes, not a whole-namespace audit"
 				}
 			],
 			"status": "audited",
@@ -13440,6 +13463,29 @@
 							"receipt": "i18n/receipts/64e4e919c5b0-agentpk-r1-fr.json",
 							"receipt_sha256": "7af0fb21e29833ff091f551c75b2846449ea5bf6c78722204dbbfc01f5482d72",
 							"scope": "Independent three-key delta copy audit (ui.browser.browser_passkey_notice.continue_in_own_tab, .agent_explanation, ui.browser.use_browser_chrome.passkey_continue_failed) at 8c1dcceb6a2 for PR #1846; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6d23b23923950590497a81defd8c40ea5f11779426a656efb88a08f066c82f6c",
+					"target_sha256": "6e0f5934f013c07cf26c96c5c86b4a9c315a652b4c2a0624dec245eea61fde96",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-10",
+							"result": "clean",
+							"instance": "62d3b7ccfced-agentpk-r2-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/62d3b7ccfced-agentpk-r2-fr.json",
+							"receipt_sha256": "4372e3c53c1eaaa3d56fae2355366a477553ea26c0713c05d2bdb0651488c972",
+							"scope": "Independent round-2 delta copy audit at e6c56de for PR #1846: rewritten browser_passkey_notice.agent_explanation, 5 added continue_refused_*/continue_unavailable keys, re-read of the 2 round-1 keys; namespace hashes bind bytes, not a whole-namespace audit"
 						}
 					],
 					"status": "audited"
@@ -25502,8 +25548,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.browser",
-			"source_sha256": "6d23b23923950590497a81defd8c40ea5f11779426a656efb88a08f066c82f6c",
-			"target_sha256": "210f27a00e77e318e4d1b167fb311cd6ecdf70e05147828f989c1474c884ea69",
+			"source_sha256": "e331d1a2d9abc72abc529ade9d23797134feddff50598cdd7b35e1b3addaca16",
+			"target_sha256": "4b141053c9a9261ef4ae625b69b9f7eaa6b3e57a6461d1c4d5c5be0f351c7396",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session fe3e687905c1 job 2296f594b388)",
@@ -25514,18 +25560,18 @@
 				{
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-10",
+					"date": "2026-11-11",
 					"result": "clean",
-					"instance": "62d3b7ccfced-agentpk-r2-hi",
+					"instance": "c2ec65bc018c-pk1868-r2-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/62d3b7ccfced-agentpk-r2-hi.json",
-					"receipt_sha256": "35e73b26307ba450af8ed6db8b5031358b2c3b33e136e3246da763456081e5bd",
-					"scope": "Independent round-2 delta copy audit at e6c56de for PR #1846: rewritten browser_passkey_notice.agent_explanation, 5 added continue_refused_*/continue_unavailable keys, re-read of the 2 round-1 keys; namespace hashes bind bytes, not a whole-namespace audit"
+					"receipt": "i18n/receipts/c2ec65bc018c-pk1868-r2-hi.json",
+					"receipt_sha256": "04be1b3e7b2f8080265825336c15ce15cb8bd3cc075a07bb8ad6422721eabb78",
+					"scope": "Independent round-2 delta copy audit at 175f295 for PR #1868: 7 browser_passkey_custody.* keys changed/added (+fr agent_explanation), return_to_agent re-read; namespace hashes bind bytes, not a whole-namespace audit"
 				}
 			],
 			"status": "audited",
@@ -25803,6 +25849,29 @@
 							"receipt": "i18n/receipts/64e4e919c5b0-agentpk-r1-hi.json",
 							"receipt_sha256": "3c5c1dd3980dd91a2be3d6541b2234e446f8f370242d40809fc9f14547579ab8",
 							"scope": "Independent three-key delta copy audit (ui.browser.browser_passkey_notice.continue_in_own_tab, .agent_explanation, ui.browser.use_browser_chrome.passkey_continue_failed) at 8c1dcceb6a2 for PR #1846; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6d23b23923950590497a81defd8c40ea5f11779426a656efb88a08f066c82f6c",
+					"target_sha256": "210f27a00e77e318e4d1b167fb311cd6ecdf70e05147828f989c1474c884ea69",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-10",
+							"result": "clean",
+							"instance": "62d3b7ccfced-agentpk-r2-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/62d3b7ccfced-agentpk-r2-hi.json",
+							"receipt_sha256": "35e73b26307ba450af8ed6db8b5031358b2c3b33e136e3246da763456081e5bd",
+							"scope": "Independent round-2 delta copy audit at e6c56de for PR #1846: rewritten browser_passkey_notice.agent_explanation, 5 added continue_refused_*/continue_unavailable keys, re-read of the 2 round-1 keys; namespace hashes bind bytes, not a whole-namespace audit"
 						}
 					],
 					"status": "audited"
@@ -37430,8 +37499,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.browser",
-			"source_sha256": "6d23b23923950590497a81defd8c40ea5f11779426a656efb88a08f066c82f6c",
-			"target_sha256": "8d146c96f88a300874498b4e9c399fbf4854a6d5ce7a77121e8ef0bcf5d39da2",
+			"source_sha256": "e331d1a2d9abc72abc529ade9d23797134feddff50598cdd7b35e1b3addaca16",
+			"target_sha256": "3ecc38f38dcaff0ab995144f74f88080ba61b5431293c0661a3c0206227cb416",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 74a8df6e024e job edb91c63ad6a)",
@@ -37442,18 +37511,18 @@
 				{
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-10",
-					"result": "clean",
-					"instance": "62d3b7ccfced-agentpk-r2-ru",
+					"date": "2026-11-11",
+					"result": "clean-with-findings",
+					"instance": "c2ec65bc018c-pk1868-r2-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/62d3b7ccfced-agentpk-r2-ru.json",
-					"receipt_sha256": "485014ff77a2ec0502bddfb4697028f68907cddc06d69e83f254b182cae26ee7",
-					"scope": "Independent round-2 delta copy audit at e6c56de for PR #1846: rewritten browser_passkey_notice.agent_explanation, 5 added continue_refused_*/continue_unavailable keys, re-read of the 2 round-1 keys; namespace hashes bind bytes, not a whole-namespace audit"
+					"receipt": "i18n/receipts/c2ec65bc018c-pk1868-r2-ru.json",
+					"receipt_sha256": "0d0e72e7823f3e397faacfc407aa02560b2e20501b90fee7d45ec516d01ca284",
+					"scope": "Independent round-2 delta copy audit at 175f295 for PR #1868: 7 browser_passkey_custody.* keys changed/added (+fr agent_explanation), return_to_agent re-read; namespace hashes bind bytes, not a whole-namespace audit"
 				}
 			],
 			"status": "audited",
@@ -37730,6 +37799,29 @@
 							"receipt": "i18n/receipts/64e4e919c5b0-agentpk-r1-ru.json",
 							"receipt_sha256": "9ab12a4e28a69451c4f7b2f0993bfa58c147dac14779a20931f0f74ab23949c1",
 							"scope": "Independent three-key delta copy audit (ui.browser.browser_passkey_notice.continue_in_own_tab, .agent_explanation, ui.browser.use_browser_chrome.passkey_continue_failed) at 8c1dcceb6a2 for PR #1846; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6d23b23923950590497a81defd8c40ea5f11779426a656efb88a08f066c82f6c",
+					"target_sha256": "8d146c96f88a300874498b4e9c399fbf4854a6d5ce7a77121e8ef0bcf5d39da2",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-10",
+							"result": "clean",
+							"instance": "62d3b7ccfced-agentpk-r2-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/62d3b7ccfced-agentpk-r2-ru.json",
+							"receipt_sha256": "485014ff77a2ec0502bddfb4697028f68907cddc06d69e83f254b182cae26ee7",
+							"scope": "Independent round-2 delta copy audit at e6c56de for PR #1846: rewritten browser_passkey_notice.agent_explanation, 5 added continue_refused_*/continue_unavailable keys, re-read of the 2 round-1 keys; namespace hashes bind bytes, not a whole-namespace audit"
 						}
 					],
 					"status": "audited"
@@ -49279,8 +49371,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.browser",
-			"source_sha256": "6d23b23923950590497a81defd8c40ea5f11779426a656efb88a08f066c82f6c",
-			"target_sha256": "1940f8af08bccaec141f1d3173c4c367d7ed089add40485ce26ec6f7edf0f98e",
+			"source_sha256": "e331d1a2d9abc72abc529ade9d23797134feddff50598cdd7b35e1b3addaca16",
+			"target_sha256": "16011cfbec6d47aacc55b580521787526448cb2977177b54ea679b3e678fa68d",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 3c0d98370d76 job f701c763e4bb)",
@@ -49291,18 +49383,18 @@
 				{
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-10",
+					"date": "2026-11-11",
 					"result": "clean",
-					"instance": "62d3b7ccfced-agentpk-r2-ur",
+					"instance": "c2ec65bc018c-pk1868-r2-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/62d3b7ccfced-agentpk-r2-ur.json",
-					"receipt_sha256": "c6ce0ea19da2f5199cb12e50b0c5c03b419fed76af4f228d1c576ee52a31449f",
-					"scope": "Independent round-2 delta copy audit at e6c56de for PR #1846: rewritten browser_passkey_notice.agent_explanation, 5 added continue_refused_*/continue_unavailable keys, re-read of the 2 round-1 keys; namespace hashes bind bytes, not a whole-namespace audit"
+					"receipt": "i18n/receipts/c2ec65bc018c-pk1868-r2-ur.json",
+					"receipt_sha256": "d8f33a236d741367ca8b3b6f58f47d335ace589cb5306da85fdf786d28b07f21",
+					"scope": "Independent round-2 delta copy audit at 175f295 for PR #1868: 7 browser_passkey_custody.* keys changed/added (+fr agent_explanation), return_to_agent re-read; namespace hashes bind bytes, not a whole-namespace audit"
 				}
 			],
 			"status": "audited",
@@ -49603,6 +49695,29 @@
 							"receipt": "i18n/receipts/64e4e919c5b0-agentpk-r1-ur.json",
 							"receipt_sha256": "53090c6dfa299ec67b2efd8aee22167329dbf25dd492f05ea8252d4dde95c0a8",
 							"scope": "Independent three-key delta copy audit (ui.browser.browser_passkey_notice.continue_in_own_tab, .agent_explanation, ui.browser.use_browser_chrome.passkey_continue_failed) at 8c1dcceb6a2 for PR #1846; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6d23b23923950590497a81defd8c40ea5f11779426a656efb88a08f066c82f6c",
+					"target_sha256": "1940f8af08bccaec141f1d3173c4c367d7ed089add40485ce26ec6f7edf0f98e",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-10",
+							"result": "clean",
+							"instance": "62d3b7ccfced-agentpk-r2-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/62d3b7ccfced-agentpk-r2-ur.json",
+							"receipt_sha256": "c6ce0ea19da2f5199cb12e50b0c5c03b419fed76af4f228d1c576ee52a31449f",
+							"scope": "Independent round-2 delta copy audit at e6c56de for PR #1846: rewritten browser_passkey_notice.agent_explanation, 5 added continue_refused_*/continue_unavailable keys, re-read of the 2 round-1 keys; namespace hashes bind bytes, not a whole-namespace audit"
 						}
 					],
 					"status": "audited"
@@ -61153,8 +61268,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.browser",
-			"source_sha256": "6d23b23923950590497a81defd8c40ea5f11779426a656efb88a08f066c82f6c",
-			"target_sha256": "98ac97ff690b378d9bd2128abf9b4f57d209111fdeecfc67d99fc759f29e4041",
+			"source_sha256": "e331d1a2d9abc72abc529ade9d23797134feddff50598cdd7b35e1b3addaca16",
+			"target_sha256": "fe1bc7b257c0efd2ad8dc3fb522ac2af6156688b03edc68890de6cbf9107ff4f",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 5baf5b219d15 job c798e751c62b)",
@@ -61165,18 +61280,18 @@
 				{
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-10",
-					"result": "clean-with-findings",
-					"instance": "62d3b7ccfced-agentpk-r2-vi",
+					"date": "2026-11-11",
+					"result": "clean",
+					"instance": "c2ec65bc018c-pk1868-r2-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/62d3b7ccfced-agentpk-r2-vi.json",
-					"receipt_sha256": "6879942c6677521c2aeb33d79376d4fa8acd96a3ca892bb52824bc020a312334",
-					"scope": "Independent round-2 delta copy audit at e6c56de for PR #1846: rewritten browser_passkey_notice.agent_explanation, 5 added continue_refused_*/continue_unavailable keys, re-read of the 2 round-1 keys; namespace hashes bind bytes, not a whole-namespace audit"
+					"receipt": "i18n/receipts/c2ec65bc018c-pk1868-r2-vi.json",
+					"receipt_sha256": "747650aa34d85a18e411580142f6e881985ef99c6fed32527f4a2989a4c8581f",
+					"scope": "Independent round-2 delta copy audit at 175f295 for PR #1868: 7 browser_passkey_custody.* keys changed/added (+fr agent_explanation), return_to_agent re-read; namespace hashes bind bytes, not a whole-namespace audit"
 				}
 			],
 			"status": "audited",
@@ -61457,6 +61572,29 @@
 						}
 					],
 					"status": "changes_requested"
+				},
+				{
+					"source_sha256": "6d23b23923950590497a81defd8c40ea5f11779426a656efb88a08f066c82f6c",
+					"target_sha256": "98ac97ff690b378d9bd2128abf9b4f57d209111fdeecfc67d99fc759f29e4041",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-10",
+							"result": "clean-with-findings",
+							"instance": "62d3b7ccfced-agentpk-r2-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/62d3b7ccfced-agentpk-r2-vi.json",
+							"receipt_sha256": "6879942c6677521c2aeb33d79376d4fa8acd96a3ca892bb52824bc020a312334",
+							"scope": "Independent round-2 delta copy audit at e6c56de for PR #1846: rewritten browser_passkey_notice.agent_explanation, 5 added continue_refused_*/continue_unavailable keys, re-read of the 2 round-1 keys; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -73746,8 +73884,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.browser",
-			"source_sha256": "6d23b23923950590497a81defd8c40ea5f11779426a656efb88a08f066c82f6c",
-			"target_sha256": "6079e3cc3726be9ca6b68c9651aae2de5a19e9c75d18b0379610c06d251ec6f1",
+			"source_sha256": "e331d1a2d9abc72abc529ade9d23797134feddff50598cdd7b35e1b3addaca16",
+			"target_sha256": "f6755b48fd9efc4f6ece83b995f33f067263047df8dbbae845826eae64e259c2",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 2071a6d2f218 job a1a155d78afc)",
@@ -73758,18 +73896,18 @@
 				{
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-10",
-					"result": "clean-with-findings",
-					"instance": "62d3b7ccfced-agentpk-r2-zh-cn",
+					"date": "2026-11-11",
+					"result": "clean",
+					"instance": "c2ec65bc018c-pk1868-r2-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/62d3b7ccfced-agentpk-r2-zh-cn.json",
-					"receipt_sha256": "0b5c31284c12aeb3823d35922ad5146d3520138e667990f4ff8b9d15579684a2",
-					"scope": "Independent round-2 delta copy audit at e6c56de for PR #1846: rewritten browser_passkey_notice.agent_explanation, 5 added continue_refused_*/continue_unavailable keys, re-read of the 2 round-1 keys; namespace hashes bind bytes, not a whole-namespace audit"
+					"receipt": "i18n/receipts/c2ec65bc018c-pk1868-r2-zh-cn.json",
+					"receipt_sha256": "e9b2930da51ed62a1d54dd65e441f8dca8303c7dcf94fa8284e3a58ebc847744",
+					"scope": "Independent round-2 delta copy audit at 175f295 for PR #1868: 7 browser_passkey_custody.* keys changed/added (+fr agent_explanation), return_to_agent re-read; namespace hashes bind bytes, not a whole-namespace audit"
 				}
 			],
 			"status": "audited",
@@ -74074,6 +74212,29 @@
 						}
 					],
 					"status": "changes_requested"
+				},
+				{
+					"source_sha256": "6d23b23923950590497a81defd8c40ea5f11779426a656efb88a08f066c82f6c",
+					"target_sha256": "6079e3cc3726be9ca6b68c9651aae2de5a19e9c75d18b0379610c06d251ec6f1",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-10",
+							"result": "clean-with-findings",
+							"instance": "62d3b7ccfced-agentpk-r2-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/62d3b7ccfced-agentpk-r2-zh-cn.json",
+							"receipt_sha256": "0b5c31284c12aeb3823d35922ad5146d3520138e667990f4ff8b9d15579684a2",
+							"scope": "Independent round-2 delta copy audit at e6c56de for PR #1846: rewritten browser_passkey_notice.agent_explanation, 5 added continue_refused_*/continue_unavailable keys, re-read of the 2 round-1 keys; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -101408,6 +101569,209 @@
 					},
 					"receipt": "i18n/receipts/1b1866b4f2ed-settings-intents-zh-cn.json",
 					"receipt_sha256": "76c1f64c3320c493c83d58e67ac4d1be5a92cf2dd7caa6d80dd5026fee7a84ff"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.chat.draft_target",
+			"source_sha256": "9e1d8af469c096d1613e66fad35244fbf3d8f8f37b44f0e78fa3a731fb14c771",
+			"target_sha256": "58cdabbd5f873cac194e626dc7d718c7d9328b5342752d8619b4f41e6119dc58",
+			"translator": {
+				"agent": "new-chat-agent-picker (coder)",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-11"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-11",
+					"result": "clean-with-findings",
+					"instance": "80ddb5783f8e-draft-target-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/80ddb5783f8e-draft-target-es.json",
+					"receipt_sha256": "d632c1cc6c492e15fdc89cd3a0409adb450c00f40f617fd4a7facd2155e061ed"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.chat.draft_target",
+			"source_sha256": "9e1d8af469c096d1613e66fad35244fbf3d8f8f37b44f0e78fa3a731fb14c771",
+			"target_sha256": "7d4d0fcd8821bb76be69bf2477aa8607710c744f2144f1252d13a5ed72d57605",
+			"translator": {
+				"agent": "new-chat-agent-picker (coder)",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-11"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-11",
+					"result": "clean-with-findings",
+					"instance": "80ddb5783f8e-draft-target-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/80ddb5783f8e-draft-target-fr.json",
+					"receipt_sha256": "7e46ad22d52ddd900a0c9536f56c84399b71d7ae0efe840cd24224b69992e27c"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat.draft_target",
+			"source_sha256": "9e1d8af469c096d1613e66fad35244fbf3d8f8f37b44f0e78fa3a731fb14c771",
+			"target_sha256": "5371e697808a251cc890e3bed611e26edd4a411a21e00938c97d9d482df422ba",
+			"translator": {
+				"agent": "new-chat-agent-picker (coder)",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-11"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-11",
+					"result": "clean",
+					"instance": "80ddb5783f8e-draft-target-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/80ddb5783f8e-draft-target-hi.json",
+					"receipt_sha256": "0d02b6e58e583092b5f4158d704cc7d636f878cbcd0466c39af78ac5eb6db31b"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.chat.draft_target",
+			"source_sha256": "9e1d8af469c096d1613e66fad35244fbf3d8f8f37b44f0e78fa3a731fb14c771",
+			"target_sha256": "313dd2ef2a76abb3254f09666f8e6db95f6d1686d195f60a0b09a52eb12fec00",
+			"translator": {
+				"agent": "new-chat-agent-picker (coder)",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-11"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-11",
+					"result": "clean-with-findings",
+					"instance": "80ddb5783f8e-draft-target-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/80ddb5783f8e-draft-target-ru.json",
+					"receipt_sha256": "18ae32aca45c7038e20f238be897fde3224f886696b7b37f04c2f20624b8ecc9"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.chat.draft_target",
+			"source_sha256": "9e1d8af469c096d1613e66fad35244fbf3d8f8f37b44f0e78fa3a731fb14c771",
+			"target_sha256": "249114686a14f62b85c98c73c5a67aabc54a64a428d16e450a307ce031722c31",
+			"translator": {
+				"agent": "new-chat-agent-picker (coder)",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-11"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-11",
+					"result": "clean",
+					"instance": "80ddb5783f8e-draft-target-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/80ddb5783f8e-draft-target-ur.json",
+					"receipt_sha256": "39abb17591316f7042704021843a59dcaa7518eaf76a30e0d7ff0fb35e1a2fff"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.chat.draft_target",
+			"source_sha256": "9e1d8af469c096d1613e66fad35244fbf3d8f8f37b44f0e78fa3a731fb14c771",
+			"target_sha256": "7e08fc97bf0ea44e68a191dc37192d5db199a9a225d312d6fb843edd3a4c950f",
+			"translator": {
+				"agent": "new-chat-agent-picker (coder)",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-11"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-11",
+					"result": "clean-with-findings",
+					"instance": "80ddb5783f8e-draft-target-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/80ddb5783f8e-draft-target-vi.json",
+					"receipt_sha256": "14a2bf639493b3cbdf7c88ba23b7a7e0782c39d669f1eb26bea45a40a92801e1"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.chat.draft_target",
+			"source_sha256": "9e1d8af469c096d1613e66fad35244fbf3d8f8f37b44f0e78fa3a731fb14c771",
+			"target_sha256": "32c7299406df58ad4b3aa7e781b42e40cd7525e329a7b3d12efe5913b6ebed38",
+			"translator": {
+				"agent": "new-chat-agent-picker (coder)",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-11"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-11",
+					"result": "clean",
+					"instance": "80ddb5783f8e-draft-target-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/80ddb5783f8e-draft-target-zh-cn.json",
+					"receipt_sha256": "fe2b56aa34f75738636064dd37a5e8320b496007102a67de0dc515c8e0fb0ef1"
 				}
 			],
 			"status": "audited"
