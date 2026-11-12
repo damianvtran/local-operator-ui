@@ -198,14 +198,134 @@ test("in-flight rows are still dropped, and the flag does not smuggle them in", 
 	assert.equal(paint?.busy, true, "but the turn's liveness is");
 });
 
-test("recording a place without a paint is a no-op", () => {
-	// A conversation this window never painted has no rows to restore into; the
-	// write must not mint an entry with rows the store never saw.
+test("recording a place without a paint keeps it for the write that follows", () => {
+	// THE FIRST-LEAVE CASE (agent review C1 / QA Q1). The transcript measures its
+	// scroller in a LAYOUT cleanup and the hook writes the paint in the PASSIVE one
+	// that follows, so a session this window has never painted has no entry when
+	// the place is measured. Dropping it there lost the reader's place on 4 of 4
+	// first leaves. It is kept BESIDE the cache rather than as an entry: minting a
+	// row-less entry would make `readPaint` answer for a conversation no paint was
+	// ever written for.
 	reset();
 	paintCache.writePaintScroll(session, {
 		pinned: false,
 		id: "a1",
 		offsetPx: 4,
 	});
-	assert.equal(paintCache.readPaint(session), null);
+	assert.equal(
+		paintCache.readPaint(session),
+		null,
+		"measuring a place does not mint an entry",
+	);
+	paintCache.writePaint(session, {
+		transcript: transcriptOf([user("u1"), answer("a1")]),
+		busy: false,
+	});
+	assert.deepEqual(
+		paintCache.readPaint(session)?.scroll,
+		{ pinned: false, id: "a1", offsetPx: 4 },
+		"the write consumes the measurement instead of falling back to the tail",
+	);
+	// Consumed, not copied: the NEXT paint has no measurement of its own and
+	// carries the entry's own place forward, which is `writePaint`'s existing
+	// contract for a caller that supplies none.
+	paintCache.writePaint(session, {
+		transcript: transcriptOf([user("u1"), answer("a1")]),
+		busy: false,
+	});
+	assert.deepEqual(paintCache.readPaint(session)?.scroll, {
+		pinned: false,
+		id: "a1",
+		offsetPx: 4,
+	});
+});
+
+test("a place on a row the paint dropped is stored as the tail", () => {
+	// C5: the in-flight row the anchor names is not cached, so the seeded mount
+	// could not restore it. Storing the tail makes that the module's decision
+	// instead of a silent fallback at mount.
+	reset();
+	paintCache.writePaint(session, {
+		transcript: transcriptOf([user("u1"), answer("a1")]),
+		busy: false,
+	});
+	paintCache.writePaintScroll(session, {
+		pinned: false,
+		id: "a1",
+		offsetPx: 30,
+	});
+	paintCache.writePaint(session, {
+		transcript: transcriptOf([user("u1"), streaming("a1")]),
+		busy: true,
+	});
+	assert.deepEqual(paintCache.readPaint(session)?.scroll, { pinned: true });
+});
+
+test("a place beyond the retained rows is stored as the tail", () => {
+	// C5, the trim's half: the row ceiling keeps the NEWEST rows, so an anchor on
+	// one of the oldest is gone by the time the paint is read back.
+	reset();
+	const many = Array.from({ length: 205 }, (_, index) => user(`u${index}`));
+	paintCache.writePaint(session, {
+		transcript: transcriptOf(many.slice(-200)),
+		busy: false,
+	});
+	paintCache.writePaintScroll(session, {
+		pinned: false,
+		id: "u0",
+		offsetPx: 30,
+	});
+	paintCache.writePaint(session, {
+		transcript: transcriptOf(many),
+		busy: false,
+	});
+	const paint = paintCache.readPaint(session);
+	assert.equal(paint?.transcript.records.length, 200, "the row ceiling held");
+	assert.deepEqual(paint?.scroll, { pinned: true });
+});
+
+test("dropPaint forgets a place that had no paint", () => {
+	reset();
+	paintCache.writePaintScroll(session, {
+		pinned: false,
+		id: "a1",
+		offsetPx: 4,
+	});
+	paintCache.dropPaint(session);
+	paintCache.writePaint(session, {
+		transcript: transcriptOf([user("u1"), answer("a1")]),
+		busy: false,
+	});
+	assert.deepEqual(paintCache.readPaint(session)?.scroll, { pinned: true });
+});
+
+test("unwritten places are bounded, oldest first", () => {
+	// The only way one outlives its mount is a conversation with no rows (the hook
+	// skips `writePaint` for those), so a run of them must not grow without limit.
+	reset();
+	const bound = paintCache.PENDING_SCROLL_MAX;
+	for (let index = 0; index < bound + 1; index += 1) {
+		paintCache.writePaintScroll(`s${index}`, {
+			pinned: false,
+			id: "row",
+			offsetPx: index,
+		});
+	}
+	const write = (id) =>
+		paintCache.writePaint(id, {
+			transcript: transcriptOf([user("row")]),
+			busy: false,
+		});
+	write("s0");
+	assert.deepEqual(
+		paintCache.readPaint("s0")?.scroll,
+		{ pinned: true },
+		"the oldest measurement was evicted",
+	);
+	write(`s${bound}`);
+	assert.deepEqual(paintCache.readPaint(`s${bound}`)?.scroll, {
+		pinned: false,
+		id: "row",
+		offsetPx: bound,
+	});
 });

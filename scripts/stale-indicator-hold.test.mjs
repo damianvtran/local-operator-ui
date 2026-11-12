@@ -66,8 +66,12 @@ const { useStaleIndicatorHold, STALE_INDICATOR_DELAY_MS } = await import(
 /** Mounts the hook and records what it returns on every render. */
 function mount(stale, delayMs) {
 	const seen = [];
+	// A STABLE component with moving props, not a new component type per call:
+	// a fresh type would remount and reset the hook's own state, which is exactly
+	// the state the latch case below is about.
+	let props = { stale, delayMs };
 	const Probe = () => {
-		const shown = useStaleIndicatorHold(stale, delayMs);
+		const shown = useStaleIndicatorHold(props.stale, props.delayMs);
 		seen.push(shown);
 		return null;
 	};
@@ -76,16 +80,10 @@ function mount(stale, delayMs) {
 	return {
 		seen,
 		last: () => seen.at(-1),
-		rerender: (next, nextDelay) =>
-			act(() =>
-				root.render(
-					React.createElement(() => {
-						const shown = useStaleIndicatorHold(next, nextDelay);
-						seen.push(shown);
-						return null;
-					}),
-				),
-			),
+		rerender: (next, nextDelay) => {
+			props = { stale: next, delayMs: nextDelay };
+			act(() => root.render(React.createElement(Probe)));
+		},
 		unmount: () => act(() => root.unmount()),
 	};
 }
@@ -148,6 +146,36 @@ test("a zero delay states the signal at once, for a caller with no hold", () => 
 			probe.last(),
 			true,
 			"the remote/unproven case cannot wait: there are no readable rows under it",
+		);
+		probe.unmount();
+	} finally {
+		mock.timers.reset();
+	}
+});
+
+test("a shown caption stays up when the delay grows mid-episode", () => {
+	// C3: a remote session's `hydrationProven` can flip while the snapshot is still
+	// owed, moving the caller's delay from 0 to 500. Without a latch the caption
+	// the reader was already looking at vanished for half a second and returned.
+	mock.timers.enable({ apis: ["setTimeout"] });
+	try {
+		const probe = mount(true, 0);
+		assert.equal(probe.last(), true, "remote and unproven states it at once");
+		probe.rerender(true, STALE_INDICATOR_DELAY_MS);
+		assert.equal(
+			probe.last(),
+			true,
+			"the proof moving under a shown caption cannot take it away",
+		);
+		act(() => mock.timers.tick(STALE_INDICATOR_DELAY_MS));
+		assert.equal(probe.last(), true);
+		probe.rerender(false, STALE_INDICATOR_DELAY_MS);
+		assert.equal(probe.last(), false, "only the end of the episode clears it");
+		probe.rerender(true, STALE_INDICATOR_DELAY_MS);
+		assert.equal(
+			probe.last(),
+			false,
+			"and the next episode waits its own hold",
 		);
 		probe.unmount();
 	} finally {

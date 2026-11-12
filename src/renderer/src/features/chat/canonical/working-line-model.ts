@@ -481,6 +481,19 @@ export type WorkingLineInput = {
 	 * that predates this field derives exactly what it derived before.
 	 */
 	idleDisputed?: boolean;
+	/**
+	 * A live claim whose START this pane cannot vouch for.
+	 *
+	 * The cached paint's `busy` bit says a turn was running when the reader left;
+	 * it cannot say WHEN that turn began. A clock counted from this mount is
+	 * therefore an invented age - measured as `thinking 0s` ticking up, then
+	 * jumping to `1h4m` when the snapshot landed (design round 1, D1). Only the
+	 * number is withheld and the label stands, reusing the disputed idle's
+	 * clock-withhold shape: a working line without a number is honest, a wrong
+	 * number is not. Absent means false, so every caller that predates this field
+	 * derives exactly what it derived before.
+	 */
+	clockWithheld?: boolean;
 	/** A question is pending; it outranks every working state (branding § 7). */
 	gate: boolean;
 	/**
@@ -539,6 +552,13 @@ export function deriveWorkingLine(
 	 * that RESOLVES the press window.
 	 */
 	if (input.idleDisputed === true) return { ...live, clock: false };
+	/*
+	 * The paint's half (D1): the same clock-only overlay, for a claim that is true
+	 * but whose start this pane cannot date. `stopping` and `idleDisputed` above
+	 * are facts about the reader's press and the runtime's receipt; this is a fact
+	 * about the PANE - it is showing a cached claim, not the turn's own state.
+	 */
+	if (input.clockWithheld === true) return { ...live, clock: false };
 	return live;
 }
 
@@ -831,6 +851,8 @@ export function workingLineInputFor(pane: {
 	stopping?: boolean;
 	/** See `WorkingLineInput.idleDisputed`: the disputed idle's clock-withhold. */
 	idleDisputed?: boolean;
+	/** See `WorkingLineInput.clockWithheld`: the cached paint's clock-withhold. */
+	clockWithheld?: boolean;
 	gate?: unknown;
 	unavailable: boolean;
 	records: TranscriptRecord[];
@@ -877,6 +899,8 @@ export function workingLineInputFor(pane: {
 		...(pane.stopping === true ? { stopping: true } : {}),
 		// Spread, for the same shape reason as `folded` above.
 		...(pane.idleDisputed === true ? { idleDisputed: true } : {}),
+		// Spread, for the same shape reason as `folded` above.
+		...(pane.clockWithheld === true ? { clockWithheld: true } : {}),
 		gate: Boolean(pane.gate),
 		unavailable: pane.unavailable,
 		...folded,

@@ -1869,6 +1869,17 @@ so the label's arrival and its removal move nothing. The cold and remote
 variants are never held: a cold open has no rows to be quiet about, and a peer's
 unproven history is not readable yet, so that wait IS the sync.
 
+The hold's limit is stated rather than implied. A snapshot that lands 500-650 ms
+after the click BLINKS the label rather than hiding it: the design sweep measured
+38 ms visible at a 500 ms landing, 69–132 ms at 540 ms, ~190 ms at 650 ms and
+~340 ms at 800 ms (design round 1's D2). And holding is the minority case on a
+real machine: this operator's own app log (294 settled opens, 2026-11-10..12,
+installed 0.54.3) puts the request-to-snapshot wait at a median of ~1.3 s (p90
+3.2 s, max 13 s), so on most real opens the hold does not hide the label at all
+— it only removes it on genuinely quick returns. That is the trade the constant
+makes: no flash on the measured quick path, an honest and sometimes brief state
+on the slow one.
+
 **A cached paint carries one liveness bit.** When a turn was running at unmount,
 the paint records that fact beside the rows — the flag only: the in-flight rows
 are still dropped on write, because a cached streaming row can never advance. A
@@ -1878,8 +1889,15 @@ frame instead of idle chrome for the length of the revalidate, and the snapshot
 the rows. Where both claims are true the working line wins the foot slot over
 the revalidating label ("the agent is working" outranks "this view is being
 checked"), and the slot is the same box either way, so the order costs no
-layout. The flag is presentation only: the composer's idle placeholder and stop
-affordance still read the live turn.
+layout. While a running turn revalidates, the pane therefore shows the working
+line and no caption by design; on a scrolled-up return the caption is in that
+same foot slot, at the newest edge, off screen by design rather than lost. The
+flag is presentation only, and the composer is where its account stops: in a
+return's first frames the idle placeholder and the stop affordance still read
+the live turn (`chat-page.tsx`'s `turnAlive`) until the snapshot lands. That is
+a disclosed gap, because seeding those would change send mode and the interrupt
+path from a cached claim; a prompt sent inside that ~1 s window is sent as a new
+turn rather than as a steer (measured: UX review round 1's U8, pre-existing).
 
 **A scrolled-up return lands where it left.** The paint carries the reader's
 place in the same entry as the rows: pinned, or the id of the row they were
@@ -1892,6 +1910,12 @@ layout phase, so the first painted frame of the return is already the reader's
 place. A row the transcript no longer holds is a missing anchor, and the tail is
 the honest fallback rather than a guess at the nearest neighbour. A reader who
 left at the tail is already home, so the return stays pinned and nothing moves.
+The geometry claim this paragraph rests on — painted rows move 1 px or less on a
+return — holds at widths of ~1380 px and up. At the 800 px minimum width the
+first paint reflows before the reader can act on it: rows move up to 96 px at
+roughly 25 ms and 4 px at the snapshot. That reflow is PRE-EXISTING and
+identical on the base commit (design round 1's D6, QA round 1's Q3), and this
+change does not address it.
 
 **A loading state is not an empty state.** "There are no messages" is a claim
 about the conversation, and making it before the transcript resolves is how the

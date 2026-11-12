@@ -1510,6 +1510,51 @@ function turnRunning(state: {
 }
 
 /**
+ * Whether the paint should CLAIM a turn was running.
+ *
+ * WHY IT IS NOT `turnRunning` ABOVE (UX blocker U6 / QA Q2, #1883 round 1). That
+ * predicate answers the LABEL HOLD's question, and its first term is "no
+ * terminal event has been seen since" - which is FALSE the instant a turn
+ * STARTS: `TERMINAL_EVENTS` includes `turn_start`, `agent_start`,
+ * `provider_start` and `steering_delivered`. So `busy: turnRunning(...)` wrote
+ * `false` for every turn this pane watched begin, and a cached return painted
+ * idle chrome over a running session - a CDP breakpoint at the write read
+ * `busy:false` while the UI showed the working line, and a turn started in the
+ * mounted pane then left painted no working line for the whole revalidate
+ * (3/3; it only worked when the leaving pane had seen the turn through a
+ * SNAPSHOT, which clears `terminal`).
+ *
+ * WHAT IT ASKS INSTEAD is the signal the pane's working line is drawn from,
+ * `chat-page.tsx`'s `turnAlive`: `frontend.streaming`, with the held reading
+ * across a receipt gap (the same pair `turnRunning` reads last), plus the app's
+ * own admitted send, which is the working line's `starting` arm and exists
+ * before any owner frame does. A terminal event does NOT end it - the owner's
+ * own statement does (a frontend update or the snapshot, both of which carry
+ * `streaming`), which is exactly how a turn that finished while the reader was
+ * away loses the line in the commit that replaces the rows. A failure ends it,
+ * as it does everywhere else in this file.
+ */
+export function paintTurnBusy(
+	state: {
+		/*
+		 * `terminal` is deliberately NOT part of this type (U6): the label hold's
+		 * latch is set by a turn's START, so reading it here is the defect. Leaving
+		 * it out makes re-adding that term a compile error rather than a regression
+		 * only a rendered frame would catch.
+		 */
+		failure: unknown;
+		frontend: { streaming: boolean } | null;
+		heldFrontend: { streaming: boolean } | null;
+	},
+	/** Whether an admitted send has no answer yet; see `pendingSendForView`. */
+	sendPending: boolean,
+): boolean {
+	if (state.failure) return false;
+	if ((state.frontend ?? state.heldFrontend)?.streaming === true) return true;
+	return sendPending;
+}
+
+/**
  * Whether a call's label is still OWED, which is the question the hold asks.
  *
  * TWO TERMS, and the second is round 2's M3: (a) a call no page has named whose
@@ -6565,8 +6610,16 @@ export function useCanonicalSessionStream(
 					 * cached streaming row can never advance), so without this bit every
 					 * cached transcript reads as settled and a return paints idle chrome
 					 * over a running turn until the snapshot lands (UX review, 2026-11-12).
+					 *
+					 * `paintTurnBusy`, NOT `turnRunning`: the latter is false for any turn
+					 * whose `turn_start` this pane saw (U6/Q2). The pending-send half is
+					 * read here rather than in the predicate so the registry stays the one
+					 * source of what this pane was still waiting on.
 					 */
-					busy: turnRunning(viewRef.current),
+					busy: paintTurnBusy(
+						viewRef.current,
+						pendingSendForView(identity) !== null,
+					),
 				});
 			/*
 			 * AND THIS PANE'S OUTSTANDING READS GO WITH IT (agent review round 3, M2's
@@ -6593,7 +6646,7 @@ export function useCanonicalSessionStream(
 				labelGapRef.current.inFlight.delete(id);
 			inFlightOwned.current.clear();
 		};
-	}, [sessionId]);
+	}, [identity, sessionId]);
 
 	/*
 	 * The first-paint hold's wall-clock backstop, and the ONE place its deadline is

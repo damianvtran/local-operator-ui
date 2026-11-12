@@ -1004,6 +1004,28 @@ test("a pane whose fold states nothing keeps the local zero", async () => {
 	});
 });
 
+test("a paint's running claim wears no invented clock", async () => {
+	/*
+	 * DESIGN ROUND 1, D1. The paint carries one bit - a turn was running - and no
+	 * start instant, so a clock counted from this mount is a fabricated age:
+	 * `thinking 0s` ticking up, then jumping to `1h4m` when the snapshot landed.
+	 * The label stands and the number is withheld until the snapshot replaces
+	 * the claim with the turn's own state (`paintRunning && stale`).
+	 */
+	await paneFixture(PHASE_STARTED_MS, async (api) => {
+		await api.render(
+			{ activity_phase: "", activity_phase_started_at: null },
+			{ waiting: false, paintRunning: true, stale: true },
+		);
+		assert.ok(api.line(), "the claim still paints the working line");
+		assert.equal(
+			api.label(),
+			"",
+			"and no number: this pane cannot date a turn it did not see start",
+		);
+	});
+});
+
 test("a reconnecting pane keeps its working line, and a terminal statement takes it", async () => {
 	/*
 	 * The call site's half of the operator incident (2026-10-07), through the

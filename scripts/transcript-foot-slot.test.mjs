@@ -327,6 +327,13 @@ test("no conversation rows, no foot slot", () => {
  * are painted into. jsdom has no layout engine, so the assertion is the class
  * list - the terms the box is built from - across the three states, which is
  * the same instrument the idle-reserve case above uses.
+ *
+ * WHAT THIS CANNOT PROVE (agent review C6): equal class strings are equal
+ * INTENT, not equal height. A descendant could grow this box while the slot's
+ * own classes stay identical. The height claim rests on rendered measurements
+ * instead - design round 1 measured 17.4 px in all 48 runs at 1380 and 600 px -
+ * and this case is the cheap guard that the three states keep sharing the slot's
+ * own terms.
  */
 test("the foot slot is the same box empty, revalidating and working", () => {
 	const idle = mount(SETTLED);

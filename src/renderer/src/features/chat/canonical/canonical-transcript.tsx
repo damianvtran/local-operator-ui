@@ -4903,6 +4903,14 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					// rung's number and the sentence cannot disagree about whether
 					// the pane can vouch for a duration.
 					idleDisputed: idleDisputed === true,
+					/*
+					 * AND THE CACHED CLAIM WEARS NO CLOCK (design round 1, D1). The paint's
+					 * `busy` bit says a turn was running, not when it started, so a number
+					 * counted from this mount would be an invented age - `thinking 0s`
+					 * ticking up, then jumping to the snapshot's true age. The label stands
+					 * and only the number is withheld, the disputed idle's shape.
+					 */
+					clockWithheld: paintRunning && stale,
 					gate,
 					// The rung yields to a TERMINAL statement and not to a reconnect
 					// (operator incident, 2026-10-07): a receipt gap drops the
@@ -5643,15 +5651,26 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	 * A LAYOUT cleanup, for two measured reasons: it is the last moment this
 	 * scroller is still in the document (React removes the deleted node after its
 	 * layout destroys run), and it runs BEFORE the session hook's passive cleanup
-	 * writes the paint - `writePaintScroll` records onto the paint the hook is
-	 * about to replace, and `writePaint` carries the value forward for exactly
-	 * that ordering.
+	 * writes the paint - `writePaintScroll` hands it the place, and `writePaint`
+	 * carries the value forward for exactly that ordering (including a session's
+	 * first leave, where no paint entry exists yet).
 	 */
 	useLayoutEffect(() => {
 		if (!conversationId) return;
 		return () => {
 			const region = containerRef.current;
-			if (!region?.isConnected || region.clientHeight === 0) return;
+			/*
+			 * A SKIPPED MEASUREMENT RECORDS THE TAIL (agent review C4). Returning
+			 * here left whatever the PREVIOUS visit wrote standing, so a cleanup that
+			 * could not measure (a detached node, a zero-height pane) restored a place
+			 * from two visits ago. The reader is at no measured place, and the tail is
+			 * the honest one; recording it also tells `writePaint` that this visit's
+			 * answer is known rather than absent.
+			 */
+			if (!region?.isConnected || region.clientHeight === 0) {
+				writePaintScroll(conversationId, PINNED_SCROLL);
+				return;
+			}
 			writePaintScroll(conversationId, measuredScroll(region));
 		};
 	}, [conversationId, containerRef]);

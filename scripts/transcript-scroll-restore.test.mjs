@@ -89,6 +89,8 @@ window.matchMedia ??= shims.matchMedia;
 const ROWS = new Map();
 const writes = [];
 let initialScroll = 0;
+/** The scroller's measured height; `0` is the detached/zero-height pane case. */
+let scrollerHeight = 600;
 const isScroller = (el) => el?.hasAttribute?.("data-lo-canonical-transcript");
 const rect = (top, height) => ({
 	top,
@@ -116,7 +118,7 @@ for (const proto of [window.Element.prototype, window.HTMLElement.prototype]) {
 	Object.defineProperty(proto, "clientHeight", {
 		configurable: true,
 		get() {
-			return isScroller(this) ? 600 : 0;
+			return isScroller(this) ? scrollerHeight : 0;
 		},
 	});
 	Object.defineProperty(proto, "scrollTop", {
@@ -150,7 +152,7 @@ const ROOT = resolve(import.meta.dirname, "..");
 const bundle = await build({
 	stdin: {
 		contents:
-			'export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";\nexport { writePaint, readPaint, __resetPaintCache } from "./src/renderer/src/shared/store/paint-cache";',
+			'export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";\nexport { writePaint, writePaintScroll, readPaint, __resetPaintCache } from "./src/renderer/src/shared/store/paint-cache";',
 		resolveDir: ROOT,
 	},
 	bundle: true,
@@ -185,8 +187,13 @@ const cache = join(ROOT, "node_modules", ".cache", "transcript-scroll-restore");
 mkdirSync(cache, { recursive: true });
 const bundlePath = join(cache, `bundle-${process.pid}.mjs`);
 writeFileSync(bundlePath, bundle.outputFiles[0].text);
-const { CanonicalTranscript, writePaint, readPaint, __resetPaintCache } =
-	await import(pathToFileURL(bundlePath).href);
+const {
+	CanonicalTranscript,
+	writePaint,
+	writePaintScroll,
+	readPaint,
+	__resetPaintCache,
+} = await import(pathToFileURL(bundlePath).href);
 
 const TS = 1_760_000_000_000;
 const userRecord = (id) => ({
@@ -226,7 +233,7 @@ const mount = (over = {}) => {
 				QueryClientProvider,
 				{ client: queryClient },
 				h(CanonicalTranscript, {
-					transcript: transcriptOf(RECORDS),
+					transcript: transcriptOf(over.records ?? RECORDS),
 					gate: null,
 					waiting: false,
 					loadingOlder: false,
@@ -253,11 +260,12 @@ const mount = (over = {}) => {
 	};
 };
 
-const setup = ({ scroll = 0, rows = [] } = {}) => {
+const setup = ({ scroll = 0, rows = [], height = 600 } = {}) => {
 	__resetPaintCache();
 	ROWS.clear();
 	writes.length = 0;
 	initialScroll = scroll;
+	scrollerHeight = height;
 	for (const [id, top] of rows) ROWS.set(id, { top, height: 60 });
 };
 
@@ -313,6 +321,88 @@ test("a row the transcript no longer holds falls back to the tail", () => {
 	mounted.unmount();
 });
 
+test("a first leave keeps its place without a paint written before it", () => {
+	// THE DEFECT C1/Q1 PINS (agent review and QA round 1, 4 of 4 deterministic):
+	// the layout cleanup measures and records the place, then the session hook
+	// writes the paint - and on a session this window has never painted there was
+	// no entry to record onto, so the write stored the tail. NO `writePaint` seed
+	// below; the mount is the first thing that touches the cache.
+	setup({
+		scroll: -500,
+		rows: [
+			["user:1", -40],
+			["answer:1", 20],
+		],
+	});
+	const mounted = mount({ conversationId: "s1" });
+	assert.ok(mounted.scroller, "the scroller is mounted");
+	mounted.unmount();
+	// The hook's passive cleanup, one commit later, exactly as the app orders it.
+	writePaint("s1", { transcript: transcriptOf(RECORDS), busy: false });
+	const paint = readPaint("s1");
+	assert.deepEqual(
+		paint?.scroll,
+		{ pinned: false, id: "user:1", offsetPx: -40 },
+		"the measured place survived the paint write that follows it",
+	);
+	// And the return lands there in its own layout pass: a fresh scroller starts
+	// at the tail (0), so the write below is the restore moving it.
+	setup({
+		scroll: 0,
+		rows: [
+			// The same content at the tail: 500 px further up than it sat at the
+			// leaving scroll, because the reader is back at the newest edge before
+			// the restore moves them.
+			["user:1", -540],
+			["answer:1", -480],
+		],
+	});
+	const back = mount({
+		conversationId: "s1",
+		restoredScroll: paint?.scroll ?? null,
+	});
+	assert.deepEqual(
+		writes,
+		[-500],
+		"scrollTop = 0 + (row at -40) - (region at 0) - (wanted -40)",
+	);
+	assert.equal(back.scroller?.scrollTop, -500);
+	back.unmount();
+});
+
+test("an anchor the render window has not mounted widens it, then restores", () => {
+	// The window is the newest WINDOW (60) rows, snapped up to the turn the edge
+	// lands in; an anchor further up is not in the DOM on the first pass, so the
+	// effect must widen to the row's own DISTANCE and restore on the commit that
+	// mounts it rather than fall back to the tail.
+	//
+	// Alternating rows keep the runs two rows long, so the snap lands on the
+	// window's own edge and the window stays at 60: the widening below is the
+	// effect's branch, not the collapse model's allowance.
+	const many = Array.from({ length: 250 }, (_, index) => [
+		userRecord(`user:${index}`),
+		answerRecord(`answer:${index}`),
+	]).flat();
+	setup({ scroll: -500, rows: [["user:100", 260]] });
+	const mounted = mount({
+		records: many,
+		conversationId: "s1",
+		// 200 rows behind this one: distance = 500 - 200 = 300.
+		restoredScroll: { pinned: false, id: "user:100", offsetPx: 100 },
+	});
+	assert.equal(
+		mounted.container.querySelectorAll("[data-record-id]").length,
+		300,
+		"the window widened to the anchor's distance",
+	);
+	assert.deepEqual(
+		writes,
+		[-340],
+		"the restore runs on the widened pass, not before it",
+	);
+	mounted.unmount();
+});
+
 test("leaving a scrolled transcript records the row the reader was on", () => {
 	// The write side of R5, through the shipped unmount path: the transcript's
 	// layout cleanup records onto the paint the session hook is about to replace.
@@ -334,6 +424,35 @@ test("leaving a scrolled transcript records the row the reader was on", () => {
 		readPaint("s1")?.scroll,
 		{ pinned: false, id: "user:1", offsetPx: -40 },
 		"the first row whose bottom is still below the scrollport's top is the reader's row, with its own offset",
+	);
+});
+
+test("a cleanup that cannot measure records the tail, not the previous visit's place", () => {
+	// C4: the pane was detached or zero-height at unmount, so there is no measured
+	// place. Returning there left whatever the PREVIOUS visit wrote standing, and
+	// the paint restored a position from two visits ago.
+	setup({
+		scroll: -500,
+		rows: [
+			["user:1", -40],
+			["answer:1", 20],
+		],
+	});
+	writePaint("s1", { transcript: transcriptOf(RECORDS), busy: false });
+	writePaintScroll("s1", { pinned: false, id: "user:1", offsetPx: -40 });
+	scrollerHeight = 0;
+	const mounted = mount({ conversationId: "s1" });
+	assert.equal(
+		mounted.scroller?.clientHeight,
+		0,
+		"the pane cannot be measured",
+	);
+	mounted.unmount();
+	writePaint("s1", { transcript: transcriptOf(RECORDS), busy: false });
+	assert.deepEqual(
+		readPaint("s1")?.scroll,
+		{ pinned: true },
+		"the tail is the honest answer when this visit measured nothing",
 	);
 });
 

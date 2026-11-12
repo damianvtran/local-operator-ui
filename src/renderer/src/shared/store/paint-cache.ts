@@ -188,6 +188,39 @@ type Entry = PaintedConversation & { bytes: number };
 const cache = new Map<string, Entry>();
 
 /**
+ * Places measured for a conversation whose paint has not been written yet.
+ *
+ * WHY THIS EXISTS (agent review C1 / QA Q1 on #1883). The transcript measures
+ * its scroller in a LAYOUT cleanup and the session hook writes the paint in the
+ * PASSIVE one that follows - so on a session's FIRST leave the position is
+ * recorded before any entry exists. The old `writePaintScroll` was a no-op
+ * without an entry, so `writePaint` found nothing to carry forward and stored
+ * the tail: 4 of 4 first leaves from a scrolled-up conversation came back at the
+ * bottom, while later leaves kept their place. A place is measured once per
+ * leave and consumed by the write that follows it, so this holds at most one
+ * small object per conversation and normally for a single commit.
+ *
+ * BOUNDED ANYWAY (PENDING_SCROLL_MAX). The one way an entry outlives its mount is
+ * a conversation with no rows (the hook skips `writePaint` for those, and an
+ * empty transcript has no place worth restoring), so a run of opened-and-left
+ * empty conversations could otherwise leave one id behind each. Eviction is by
+ * insertion order, the same rule the paint cache itself uses.
+ */
+const pendingScroll = new Map<string, PaintedScroll>();
+
+/**
+ * How many unwritten places may stand at once.
+ *
+ * Not a measured threshold: it bounds a map whose entries are an id and a
+ * number, in a renderer that only ever needs the one the next `writePaint` will
+ * read. Thirty-two is comfortably above the handful a reader produces between
+ * two paints (one per leave) and small enough that the leftover-empty-session
+ * case stays a rounding error beside the 4 MiB row budget. Exported so the
+ * bound's test names the constant rather than a copy of its value.
+ */
+export const PENDING_SCROLL_MAX = 32;
+
+/**
  * UTF-8 bytes of the retained rows, which is the unit the bounds are stated in.
  *
  * Only the ROWS: the anchor and the liveness flag beside them are one id and one
@@ -272,18 +305,18 @@ export function writePaint(
 		/** Replay-born record ids not yet named by a page; see `replayBorn`. */
 		replayBorn?: ReadonlySet<string>;
 		/**
-		 * The reader's place, when the caller has it. Omitted means "keep whatever
-		 * `writePaintScroll` already recorded for this session": the transcript
-		 * measures its scroller in a LAYOUT cleanup, and this write runs in a
-		 * PASSIVE one, so the anchor is normally written FIRST and must survive
-		 * this function replacing the entry.
+		 * The reader's place, when the caller has it. Omitted means "keep what
+		 * `writePaintScroll` recorded for this session": an entry's own value, or the
+		 * one measured before any entry existed (the first leave - the transcript's
+		 * layout cleanup runs before this passive one). Either way the anchor is
+		 * normally written FIRST and must survive this function replacing the entry.
 		 */
 		scroll?: PaintedScroll;
 		/**
 		 * Whether a turn was running. Always supplied by the one caller that knows
-		 * (the session hook reads `turnRunning` at the same instant), because a
-		 * carried-forward flag would resurrect a claim the last paint has no
-		 * evidence for: absent means "settled", not "unchanged".
+		 * (the session hook derives it from the pane's own live reading at the same
+		 * instant), because a carried-forward flag would resurrect a claim the last
+		 * paint has no evidence for: absent means "settled", not "unchanged".
 		 */
 		busy?: boolean;
 	},
@@ -299,6 +332,9 @@ export function writePaint(
 	);
 	if (records.length === 0) {
 		cache.delete(sessionId);
+		// Nothing to place a reader in: a measured position for an empty
+		// transcript is not a place this cache can keep.
+		pendingScroll.delete(sessionId);
 		return;
 	}
 	// `index` is rebuilt here rather than stored: it is a Map, so it cannot be
@@ -347,11 +383,31 @@ export function writePaint(
 		replayBorn: new Set(
 			[...(input.replayBorn ?? [])].filter((id) => transcript.index.has(id)),
 		),
-		// Read BEFORE the delete below: this is the anchor a layout cleanup just
-		// wrote for the session being replaced.
-		scroll: input.scroll ?? cache.get(sessionId)?.scroll ?? PINNED_SCROLL,
+		/*
+		 * The reader's place, resolved in the order the writes can arrive: an
+		 * explicitly supplied one, then the layout cleanup's measurement that has no
+		 * entry to sit on yet (the first-leave case), then whatever this entry held
+		 * before it was replaced. Consumed here rather than read twice, so a place
+		 * cannot be restored by two paints.
+		 *
+		 * VALIDATED AGAINST THE ROWS THAT SURVIVED (agent review C5): an anchor on a
+		 * row the in-flight drop or the trim removed would restore nothing and fall
+		 * back to the tail silently. An anchor the retained rows cannot answer is the
+		 * tail, and storing that is what makes the fallback a decision this module
+		 * made rather than a surprise at mount.
+		 */
+		scroll: retainedScroll(
+			input.scroll ??
+				pendingScroll.get(sessionId) ??
+				cache.get(sessionId)?.scroll ??
+				PINNED_SCROLL,
+			transcript.index,
+		),
 		busy: input.busy === true,
 	};
+	// The measurement belongs to THIS write; a later paint of this conversation
+	// measures its own.
+	pendingScroll.delete(sessionId);
 	// Delete before set so the re-inserted key is the newest for eviction order.
 	cache.delete(sessionId);
 	cache.set(sessionId, entry);
@@ -389,6 +445,21 @@ function carriedLabelsFor(
 /** The shared empty carried set, so an unchanged paint keeps its identity. */
 const EMPTY_OWED: ReadonlySet<string> = new Set();
 
+/**
+ * A place the cached rows can still answer, or the tail.
+ *
+ * Pinned is already the tail and needs no lookup; a scrolled place needs its row
+ * in the retained index, because the seeded mount restores by `data-record-id`
+ * and a row this paint did not keep has no element to restore to.
+ */
+function retainedScroll(
+	scroll: PaintedScroll,
+	index: ReadonlyMap<string, number>,
+): PaintedScroll {
+	if (scroll.pinned) return PINNED_SCROLL;
+	return index.has(scroll.id) ? scroll : PINNED_SCROLL;
+}
+
 /** The cached paint for `sessionId`, or null. Does not change eviction order. */
 export function readPaint(sessionId: string): PaintedConversation | null {
 	const entry = cache.get(sessionId);
@@ -400,10 +471,13 @@ export function readPaint(sessionId: string): PaintedConversation | null {
 /** Forget one conversation. Used when the backend says it is gone (M6). */
 export function dropPaint(sessionId: string): void {
 	cache.delete(sessionId);
+	// A place measured for the paint that will never be written describes rows
+	// this window no longer holds.
+	pendingScroll.delete(sessionId);
 }
 
 /**
- * Record the reader's place for a conversation this cache already holds.
+ * Record the reader's place for a conversation.
  *
  * Called from the transcript's LAYOUT-effect cleanup, which runs while the
  * scroller is still in the document (measurement is still meaningful) and, on
@@ -411,16 +485,29 @@ export function dropPaint(sessionId: string): void {
  * the entry this writes is usually the one `writePaint` is about to replace,
  * and `writePaint` carries the value forward for exactly that ordering.
  *
- * A no-op without an entry: a conversation this window never painted has no
- * paint to restore a position into, and creating one here would mint a cache
- * entry with rows this module never saw.
+ * WITHOUT AN ENTRY THE PLACE IS KEPT FOR THE WRITE THAT FOLLOWS, not dropped. A
+ * session's first leave has no entry yet (the paint is written one cleanup
+ * later), and discarding the measurement there lost the reader's place on 4 of
+ * 4 first leaves (C1/Q1). The pending map is consumed by `writePaint`, which is
+ * also what keeps this from minting an entry with rows this module never saw.
  */
 export function writePaintScroll(
 	sessionId: string,
 	scroll: PaintedScroll,
 ): void {
 	const entry = cache.get(sessionId);
-	if (entry) entry.scroll = scroll;
+	if (entry) {
+		entry.scroll = scroll;
+		return;
+	}
+	// Delete before set so the re-inserted key is the newest for eviction order.
+	pendingScroll.delete(sessionId);
+	pendingScroll.set(sessionId, scroll);
+	while (pendingScroll.size > PENDING_SCROLL_MAX) {
+		const oldest = pendingScroll.keys().next().value;
+		if (oldest === undefined) break;
+		pendingScroll.delete(oldest);
+	}
 }
 
 /**
@@ -438,6 +525,9 @@ function evict(): void {
 		if (oldest === undefined) break;
 		const entry = cache.get(oldest);
 		cache.delete(oldest);
+		// An evicted conversation's rows are gone; a place for the paint that was
+		// never written describes the same gone rows.
+		pendingScroll.delete(oldest);
 		total -= entry?.bytes ?? 0;
 	}
 }
@@ -460,4 +550,5 @@ export function __paintCacheStats(): {
 /** Drop everything. Test-only; nothing in the app needs to empty the cache. */
 export function __resetPaintCache(): void {
 	cache.clear();
+	pendingScroll.clear();
 }

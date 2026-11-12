@@ -30,21 +30,37 @@ export const STALE_INDICATOR_DELAY_MS = 500;
  * `0` or less states the signal immediately (no timer), which is the honest
  * value for a caller that knows its page is owed - and it is how the rendered
  * markup tests exercise the post-threshold state without a clock.
+ *
+ * ONCE SHOWN, STAYS SHOWN FOR THIS STALE EPISODE (agent review C3). The delay is
+ * not constant in practice: a remote conversation's `hydrationProven` can flip
+ * while the snapshot is still owed, moving the caller's delay from 0 to 500. A
+ * plain `elapsed` flag resets on that change - so the caption the reader was
+ * already looking at vanished for half a second and then returned. A stale
+ * episode is one observation: the hold decides WHEN it starts announcing it and
+ * never takes the announcement back; only `stale` clearing ends it.
  */
 export function useStaleIndicatorHold(
 	stale: boolean,
 	delayMs: number = STALE_INDICATOR_DELAY_MS,
 ): boolean {
-	const [elapsed, setElapsed] = useState(false);
+	const [shown, setShown] = useState(false);
 	useEffect(() => {
-		if (!stale || delayMs <= 0) {
+		if (!stale) {
 			// Reset rather than leave a raised flag behind: the next cached paint
 			// must wait its own delay, not inherit the previous one's clock.
-			setElapsed(false);
+			setShown(false);
 			return;
 		}
-		const timer = window.setTimeout(() => setElapsed(true), delayMs);
+		// Already announcing this episode: the delay changing cannot un-announce it.
+		if (shown) return;
+		if (delayMs <= 0) {
+			// Remembered as well as returned, so the 0 -> 500 flip above is a no-op
+			// rather than a disappearance.
+			setShown(true);
+			return;
+		}
+		const timer = window.setTimeout(() => setShown(true), delayMs);
 		return () => window.clearTimeout(timer);
-	}, [stale, delayMs]);
-	return stale && (delayMs <= 0 || elapsed);
+	}, [stale, delayMs, shown]);
+	return stale && (delayMs <= 0 || shown);
 }
