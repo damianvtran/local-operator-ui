@@ -19,6 +19,15 @@ import type {
  * - an unknown `refusal_class` drops the parenthetical (the generic refusal);
  * - an unknown `hold_class` drops the reason (the generic hold).
  *
+ * `not_delivered` IS A REFUSAL WITHOUT A CLASS. Since agent-server #377 the hub
+ * serves a SENDER a recipient's moderation refusal as `state:"not_delivered"`
+ * with no `refusal_class` (a neutral sender-side view); only the recipient
+ * endpoint's owner still gets `refused` plus the class. Reading it as an unknown
+ * state would drop the one line telling the sender WHICH recipient did not get
+ * the message, so it renders and counts exactly like a classless `refused`.
+ * Any class on it is ignored, never shown: the hub's contract is that the
+ * sender gets none. An older hub never sends it, so nothing changes there.
+ *
  * SECURITY SHAPE. The line names the recipient agent, its owner and, at most,
  * ONE coarse class from a closed list. It never reads anything else off the
  * entry: the hub sends no score, reason or body, and a passthrough field a
@@ -87,6 +96,10 @@ const isHoldClass = (value: unknown): value is TeamBridgeHoldClass =>
 	(TEAM_BRIDGE_HOLD_CLASSES as readonly unknown[]).includes(value);
 const isHoldPhase = (value: unknown): value is TeamBridgeHoldPhase =>
 	(TEAM_BRIDGE_HOLD_PHASES as readonly unknown[]).includes(value);
+// The owner's classed `refused` and the sender's neutral `not_delivered`
+// (agent-server #377) are one terminal outcome for the line and the count.
+const isNotDelivered = (state: string): boolean =>
+	state === "refused" || state === "not_delivered";
 
 /**
  * One line per non-delivered recipient, in the hub's order.
@@ -137,7 +150,7 @@ export function teamBridgeDeliveryLines(
 		const agent = entry.recipient_label.trim();
 		const owner = entry.recipient_owner_label.trim();
 		const key = `${entry.state}:${entry.endpoint_id}`;
-		if (entry.state === "refused") {
+		if (isNotDelivered(entry.state)) {
 			seen.add(entry.endpoint_id);
 			lines.push({
 				kind: "refused",
@@ -145,7 +158,9 @@ export function teamBridgeDeliveryLines(
 				agent,
 				owner,
 				refusalClass:
-					knownHuman && isRefusalClass(entry.refusal_class)
+					entry.state === "refused" &&
+					knownHuman &&
+					isRefusalClass(entry.refusal_class)
 						? entry.refusal_class
 						: null,
 			});
@@ -322,7 +337,7 @@ function countsFromStates(
 		// Same first-entry-wins dedup as the lines, so the count matches them.
 		if (seen.has(entry.endpoint_id)) continue;
 		if (entry.state === "delivered") counts.delivered += 1;
-		else if (entry.state === "refused") counts.notDelivered += 1;
+		else if (isNotDelivered(entry.state)) counts.notDelivered += 1;
 		else if (entry.state === "held") {
 			const phase = isHoldPhase(entry.phase) ? entry.phase : null;
 			if (phase === "not_reviewed") counts.notReviewed += 1;
