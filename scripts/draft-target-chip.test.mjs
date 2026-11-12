@@ -120,6 +120,7 @@ const bundle = await build({
 		contents: `
 			export * from "./src/renderer/src/features/chat/components/chat-header-draft-target-model";
 			export { ChatHeaderDraftTarget } from "./src/renderer/src/features/chat/components/chat-header-draft-target";
+			export { ChatHeader } from "./src/renderer/src/features/chat/components/chat-header";
 			export { useCanonicalSessionsStore, admitChatDraft } from "./src/renderer/src/shared/store/canonical-sessions-store";
 			export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";
 			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -131,6 +132,10 @@ const bundle = await build({
 	platform: "node",
 	packages: "external",
 	jsx: "automatic",
+	// The header's graph reads `import.meta.env` at module load (the app
+	// config); Node has none, so it is the empty object Vite would give a key
+	// it does not define.
+	define: { "import.meta.env": "{}" },
 	loader: { ".css": "empty" },
 	alias: {
 		"@shared": resolve("src/renderer/src/shared"),
@@ -164,11 +169,14 @@ const bundlePath = join(CACHE, `draft-target-${process.pid}.mjs`);
 writeFileSync(bundlePath, bundle.outputFiles[0].text);
 
 const {
+	ChatHeader,
 	ChatHeaderDraftTarget,
 	QueryClient,
 	QueryClientProvider,
 	admitChatDraft,
+	draftTargetChipClass,
 	draftTargetChipShown,
+	draftTargetGlyphClass,
 	draftTargetIsCurrent,
 	draftTargetLabel,
 	draftTargetPick,
@@ -374,75 +382,254 @@ async function openMenu(chip) {
 	return document.querySelector("[data-draft-target-menu]");
 }
 
-test("the chip reads the default, opens the rosters, and a pick restages the store", async () => {
-	reset();
-	store().stageDraft(undefined, true);
-	const view = await mount(undefined);
-	const chip = view.chip();
-	assert.ok(chip, "the chip renders");
-	assert.equal(chip.textContent.replace("\u200b", ""), "Default agent");
-	assert.equal(
-		chip.getAttribute("aria-label"),
-		"Start this chat with Default agent. Choose an agent or team",
-	);
-	const menu = await openMenu(chip);
-	assert.ok(menu, "Enter on the trigger opens the menu");
+/*
+ * Every mount tears down in `finally` (agent review round 1, NIT-1): a failed
+ * assertion left the root mounted and the file ended SIGKILLed ~19 s later
+ * instead of reporting which assertion broke.
+ */
+async function withMount(target, extra, body) {
+	const view = await mount(target, extra);
+	try {
+		await body(view);
+	} finally {
+		await view.unmount();
+	}
+}
+
+async function waitForRow(menu, id) {
 	// The rosters load on the first open (lazy, like the project picker), so
 	// the rows land a few ticks after the menu does.
 	for (
 		let tick = 0;
-		tick < 50 && !menu.querySelector('[data-draft-target-row="team:ops"]');
+		tick < 50 && !menu.querySelector(`[data-draft-target-row="${id}"]`);
 		tick += 1
 	)
 		await act(async () => new Promise((done) => setTimeout(done, 5)));
-	const rows = [...menu.querySelectorAll("[data-draft-target-row]")].map(
-		(row) => row.getAttribute("data-draft-target-row"),
-	);
-	assert.deepEqual(rows, [
-		"default",
-		"agent:scout",
-		"agent:reviewer",
-		"team:lopdev",
-		"team:ops",
-	]);
-	assert.ok(
-		menu
-			.querySelector('[data-draft-target-row="default"]')
-			.hasAttribute("data-draft-target-current"),
-		"the default row is marked current",
-	);
-	assert.match(menu.textContent, TEAM_LABEL, "teams by label");
-	await act(async () => {
-		menu.querySelector('[data-draft-target-row="team:lopdev"]').click();
-	});
-	assert.deepEqual(store().drafts[store().activeDraftKey]?.target, {
-		kind: "team",
-		name: "lopdev",
-	});
-	await view.render({ target: { kind: "team", name: "lopdev" } });
-	assert.equal(
-		view.chip().textContent.replace("\u200b", ""),
-		"Local Operator Dev",
-		"a staged team reads by its label (the sidebar's 'New chat with <team>' arrives the same way)",
-	);
-	await view.unmount();
-});
+}
 
-test("a busy chip does not open", async () => {
+const rowIds = (menu) =>
+	[...menu.querySelectorAll("[data-draft-target-row]")].map((row) =>
+		row.getAttribute("data-draft-target-row"),
+	);
+
+const OPACITY = /(^|\s)([\w-]+:)*opacity-/;
+const HOVER_GROUND = /(^|\s)hover:bg-/;
+const MENU_HEIGHT_BOUND =
+	/max-h-\[min\(26rem,var\(--radix-dropdown-menu-content-available-height\)\)\]/;
+const INK_DISABLED = /\btext-ink-disabled\b/;
+const HOVER_ROW = /hover:bg-row-hover/;
+const OPEN_ELEVATED = /data-\[state=open\]:bg-elevated/;
+const AGENTS_HEADING = /Agents/;
+const MIN_H_5 = /\bmin-h-5\b/;
+const WRAP_OR_CLIP = /flex-wrap|overflow-clip/;
+const YIELDS = /\bmin-w-0\b.*\btruncate\b/;
+const MIN_W_0 = /\bmin-w-0\b/;
+const SHRINK_2 = /\bshrink-\[2\]/;
+const TRUNCATE = /\btruncate\b/;
+const SHRINK_0 = /\bshrink-0\b/;
+const WRAP_AND_CLIP = /flex-wrap overflow-clip/;
+const OVERFLOW_X_CLIP = /\boverflow-x-clip\b/;
+
+test("the chip reads the default, opens the rosters, and a pick restages the store", async () => {
 	reset();
 	store().stageDraft(undefined, true);
-	const view = await mount(undefined, { busy: true });
-	assert.equal(view.chip().getAttribute("aria-disabled"), "true");
-	const menu = await openMenu(view.chip());
-	assert.equal(menu, null);
-	await view.unmount();
+	await withMount(undefined, {}, async (view) => {
+		const chip = view.chip();
+		assert.ok(chip, "the chip renders");
+		assert.equal(chip.textContent.replace("\u200b", ""), "Default agent");
+		assert.equal(
+			chip.getAttribute("aria-label"),
+			"Start this chat with Default agent. Choose an agent or team",
+		);
+		const menu = await openMenu(chip);
+		assert.ok(menu, "Enter on the trigger opens the menu");
+		await waitForRow(menu, "agent:reviewer");
+		/*
+		 * Default, then Teams, then Agents (UX round 1, U-2): with a real roster
+		 * of agents, teams listed last sat below the menu's fold - and finding
+		 * teams from New chat is the operator's request.
+		 */
+		assert.deepEqual(rowIds(menu), [
+			"default",
+			"team:lopdev",
+			"team:ops",
+			"agent:scout",
+			"agent:reviewer",
+		]);
+		assert.ok(
+			menu
+				.querySelector('[data-draft-target-row="default"]')
+				.hasAttribute("data-draft-target-current"),
+			"the default row is marked current",
+		);
+		assert.match(menu.textContent, TEAM_LABEL, "teams by label");
+		assert.equal(
+			menu
+				.querySelector('[data-draft-target-row="team:lopdev"]')
+				.getAttribute("title"),
+			"Local Operator Dev",
+			"a truncated row keeps its full name one hover away (design D-2)",
+		);
+		/*
+		 * The list is bounded by the room Radix found, not a fixed height alone
+		 * (U-2): a short window scrolls inside the menu.
+		 */
+		assert.match(menu.className, MENU_HEIGHT_BOUND);
+		await act(async () => {
+			menu.querySelector('[data-draft-target-row="team:lopdev"]').click();
+		});
+		assert.deepEqual(store().drafts[store().activeDraftKey]?.target, {
+			kind: "team",
+			name: "lopdev",
+		});
+		await view.render({ target: { kind: "team", name: "lopdev" } });
+		assert.equal(
+			view.chip().textContent.replace("\u200b", ""),
+			"Local Operator Dev",
+			"a staged team reads by its label (the sidebar's 'New chat with <team>' arrives the same way)",
+		);
+	});
+});
+
+test("a busy chip does not open, and steps colour rather than opacity", async () => {
+	reset();
+	store().stageDraft(undefined, true);
+	await withMount(undefined, { busy: true }, async (view) => {
+		const chip = view.chip();
+		assert.equal(chip.getAttribute("aria-disabled"), "true");
+		/*
+		 * Design round 1, D-1: "Disabled changes colour, never opacity". Every
+		 * painted part of the busy chip takes `ink-disabled`, and no hover ground
+		 * answers a pointer the chip will refuse.
+		 */
+		const classes = [chip, ...chip.querySelectorAll("svg")].map(
+			(node) => node.getAttribute("class") ?? "",
+		);
+		for (const cls of classes) {
+			assert.doesNotMatch(cls, OPACITY, `no opacity on a busy part: ${cls}`);
+			assert.doesNotMatch(cls, HOVER_GROUND, `no hover ground: ${cls}`);
+		}
+		assert.match(classes[0], INK_DISABLED, "the label");
+		assert.equal(classes.length, 3, "the glyph and the chevron");
+		for (const cls of classes.slice(1)) assert.match(cls, INK_DISABLED);
+		const menu = await openMenu(chip);
+		assert.equal(menu, null);
+	});
+	/* A negative control: the pins fire on the class list this replaced. */
+	assert.match("cursor-default opacity-60 hover:bg-transparent", OPACITY);
+	assert.match("cursor-default opacity-60 hover:bg-transparent", HOVER_GROUND);
+	/* And the idle chip keeps its grounds: open is the live chips' `elevated` (D-3). */
+	assert.match(draftTargetChipClass(false), HOVER_ROW);
+	assert.match(draftTargetChipClass(false), OPEN_ELEVATED);
+	assert.doesNotMatch(draftTargetChipClass(false), OPACITY);
+	assert.equal(draftTargetGlyphClass(false), "size-3 shrink-0 text-ink-dim");
+});
+
+test("a backend with only the team catalogue offers teams and no agents", async () => {
+	reset();
+	store().stageDraft(undefined, true);
+	await withMount(
+		undefined,
+		{
+			capabilities: {
+				desktop_available: true,
+				features: { team_catalogue: 1 },
+			},
+		},
+		async (view) => {
+			assert.ok(view.chip(), "one catalogue is enough for the chip");
+			const menu = await openMenu(view.chip());
+			assert.ok(menu);
+			await waitForRow(menu, "team:ops");
+			assert.deepEqual(rowIds(menu), ["default", "team:lopdev", "team:ops"]);
+			assert.doesNotMatch(
+				menu.textContent,
+				AGENTS_HEADING,
+				"no Agents section",
+			);
+		},
+	);
 });
 
 test("a backend with neither catalogue renders no chip", async () => {
 	reset();
-	const view = await mount(undefined, {
-		capabilities: { desktop_available: true, features: {} },
+	await withMount(
+		undefined,
+		{ capabilities: { desktop_available: true, features: {} } },
+		async (view) => {
+			assert.equal(view.chip(), null);
+		},
+	);
+});
+
+// ------------------------------------------------------------------ header row
+
+/*
+ * THE CHIPS STAY ON THE PAINTED LINE (UX round 1, U-1). A pick lengthens the
+ * title to "New chat with <name>", and the draft row used to keep the title
+ * block's `flex-wrap overflow-clip`: both chips folded onto the clipped second
+ * line at 800-900px - unpainted, yet still in the Tab order. The row now takes
+ * the live identity controls' no-wrap arm, so the title and the path truncate
+ * and the chips (shrink-0) keep their room.
+ *
+ * Node has no layout engine, so this pins the class contract that decides the
+ * geometry; the PR's 640/800/900 frames and their `elementFromPoint` reads are
+ * the painted proof.
+ */
+const { renderToStaticMarkup } = await import("react-dom/server");
+const { MemoryRouter } = await import("react-router-dom");
+
+function headerRow(props) {
+	const markup = renderToStaticMarkup(
+		React.createElement(
+			MemoryRouter,
+			{ initialEntries: ["/chat"] },
+			React.createElement(ChatHeader, {
+				agentName: "New chat with Local Operator Dev",
+				description: "/srv/work/local-operator-ui",
+				deviceSlot: React.createElement("button", { "data-device-chip": "" }),
+				...props,
+			}),
+		),
+	);
+	const host = document.createElement("div");
+	host.innerHTML = markup;
+	const device = host.querySelector("[data-device-chip]");
+	assert.ok(device, "the device chip is drawn");
+	return {
+		row: device.parentElement,
+		path: host.querySelector("[data-header-path]"),
+		title: host.querySelector("[data-header-title]"),
+	};
+}
+
+test("a staged draft's header row does not wrap its chips onto the clipped line", () => {
+	const { row, path, title } = headerRow({
+		draftTargetSlot: React.createElement("button", {
+			"data-draft-target-chip": "team",
+		}),
 	});
-	assert.equal(view.chip(), null);
-	await view.unmount();
+	assert.ok(
+		row.querySelector(":scope > [data-draft-target-chip]"),
+		"both chips share the title row",
+	);
+	assert.match(row.className, MIN_H_5);
+	assert.doesNotMatch(row.className, WRAP_OR_CLIP);
+	assert.match(
+		row.className,
+		OVERFLOW_X_CLIP,
+		"but it stops at its own edge, so a chip never paints over the action cluster",
+	);
+	assert.match(title.className, YIELDS, "the title yields");
+	assert.match(path.className, MIN_W_0, "the path yields too");
+	assert.match(path.className, SHRINK_2, "and first");
+	assert.match(path.className, TRUNCATE);
+	assert.doesNotMatch(path.className, SHRINK_0);
+});
+
+test("negative control: without the agent/team chip the row keeps its wrap-and-clip", () => {
+	const { row, path } = headerRow({});
+	assert.match(row.className, WRAP_AND_CLIP);
+	assert.match(path.className, SHRINK_0, "the path folds away whole");
+	assert.doesNotMatch(path.className, TRUNCATE);
 });

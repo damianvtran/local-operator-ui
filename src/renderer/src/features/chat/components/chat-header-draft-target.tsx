@@ -47,6 +47,8 @@ import { type FC, type ReactNode, useMemo, useState } from "react";
 import { errorText } from "../pickers/use-picker-backend";
 import {
 	type DraftTargetRow,
+	draftTargetChipClass,
+	draftTargetGlyphClass,
 	draftTargetIsCurrent,
 	draftTargetLabel,
 	draftTargetPick,
@@ -94,6 +96,9 @@ const TargetItem: FC<{
 			// Typeahead matches what the row shows (a team's label, not its slug).
 			textValue={label}
 			onSelect={onPick}
+			// The row truncates in a 288px menu; two long slugs sharing a prefix
+			// (design D-2) are told apart by the full name one hover away.
+			title={label}
 			className="gap-2 py-1.5"
 		>
 			<Glyph aria-hidden="true" className="size-3.5 shrink-0 text-ink-dim" />
@@ -204,26 +209,17 @@ export const ChatHeaderDraftTarget: FC<ChatHeaderDraftTargetProps> = ({
 					aria-label={sentence}
 					aria-disabled={busy || undefined}
 					title={sentence}
-					className={cn(
-						// The device chip's own contract (`chat-header-device.tsx`): `h-5`
-						// and `rounded-xs` keep the title block's line height, `pe-1` pairs
-						// with the zero-width carrier below.
-						"inline-flex h-5 max-w-full shrink-0 cursor-pointer items-center gap-1 rounded-xs pe-1",
-						"select-none whitespace-nowrap text-body-sm",
-						"text-ink-muted hover:bg-row-hover hover:text-ink",
-						"data-[state=open]:bg-row-hover data-[state=open]:text-ink",
-						busy && "cursor-default opacity-60 hover:bg-transparent",
-					)}
+					className={draftTargetChipClass(busy)}
 				>
 					{/* The baseline carrier: see `ChipButton` in `chat-header-device.tsx`. */}
 					<span aria-hidden="true" className="font-mono text-mono-sm">
 						{"\u200b"}
 					</span>
-					<Glyph aria-hidden="true" className="size-3 shrink-0 text-ink-dim" />
+					<Glyph aria-hidden="true" className={draftTargetGlyphClass(busy)} />
 					<span className="max-w-[24ch] truncate">{label}</span>
 					<ChevronDown
 						aria-hidden="true"
-						className="size-3 shrink-0 text-ink-dim"
+						className={draftTargetGlyphClass(busy)}
 					/>
 				</button>
 			</DropdownMenuTrigger>
@@ -231,7 +227,10 @@ export const ChatHeaderDraftTarget: FC<ChatHeaderDraftTargetProps> = ({
 				align="start"
 				side="bottom"
 				data-draft-target-menu=""
-				className="flex max-h-[26rem] w-72 flex-col overflow-hidden"
+				// Capped at the design's 26rem when there is room and at the room
+				// Radix found when there is not (the composer directory menu's idiom),
+				// so a short window scrolls the list instead of pushing rows off-screen.
+				className="flex max-h-[min(26rem,var(--radix-dropdown-menu-content-available-height))] w-72 flex-col overflow-hidden"
 			>
 				<div className="min-h-0 flex-1 overflow-y-auto">
 					<DropdownMenuLabel className="text-meta text-ink-dim">
@@ -243,8 +242,13 @@ export const ChatHeaderDraftTarget: FC<ChatHeaderDraftTargetProps> = ({
 						current={draftTargetIsCurrent(target, null)}
 						onPick={() => pick(null)}
 					/>
-					{agentsOffered ? section("agents", roster.agents, profiles) : null}
+					{/*
+					 * Teams before Agents (UX round 1, U-2): a real roster holds a dozen
+					 * agents and a handful of teams, and finding teams from New chat is
+					 * the operator's request - listed last, they sat below the fold.
+					 */}
 					{teamsOffered ? section("teams", roster.teams, teams) : null}
+					{agentsOffered ? section("agents", roster.agents, profiles) : null}
 				</div>
 			</DropdownMenuContent>
 		</DropdownMenu>

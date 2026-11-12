@@ -111,3 +111,31 @@ export function draftTargetPick(
 	if (draftTargetIsCurrent(current, row)) return null;
 	return { target: row ? { kind: row.kind, name: row.name } : undefined };
 }
+
+/*
+ * The chip's classes, here so the busy state is pinned without a renderer.
+ *
+ * BUSY STEPS COLOUR, NEVER OPACITY (design round 1, D-1; AGENTS.md "Design and
+ * branding", `docs/branding.md` "Disabled changes colour, never opacity"):
+ * opacity also fades the ground, producing a colour nobody designed. Busy is
+ * seen on every first send from a New chat, so it takes `ink-disabled` on the
+ * label, glyph and chevron, and drops the hover and open grounds entirely -
+ * a control that will not open must not answer the pointer.
+ *
+ * The open ground is `bg-elevated`, the live identity chips' (`TRIGGER_BOX` in
+ * `chat-header-identity.tsx`; design D-3): `row-hover` on `canvas` is 1.01:1 in
+ * light, so the open state was imperceptible there.
+ */
+const CHIP_BOX =
+	// The device chip's own contract (`chat-header-device.tsx`): `h-5` and
+	// `rounded-xs` keep the title block's line height, `pe-1` pairs with the
+	// zero-width carrier.
+	"inline-flex h-5 max-w-full shrink-0 items-center gap-1 rounded-xs pe-1 select-none whitespace-nowrap text-body-sm";
+
+export const draftTargetChipClass = (busy: boolean): string =>
+	busy
+		? `${CHIP_BOX} cursor-default text-ink-disabled`
+		: `${CHIP_BOX} cursor-pointer text-ink-muted hover:bg-row-hover hover:text-ink data-[state=open]:bg-elevated data-[state=open]:text-ink`;
+
+export const draftTargetGlyphClass = (busy: boolean): string =>
+	busy ? "size-3 shrink-0 text-ink-disabled" : "size-3 shrink-0 text-ink-dim";

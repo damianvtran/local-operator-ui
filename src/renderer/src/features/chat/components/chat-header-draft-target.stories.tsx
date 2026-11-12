@@ -28,6 +28,8 @@ export default meta;
 type Story = StoryObj;
 
 const DRAFT = "draft-4f2c";
+/** A 36-character slug: past the chip's 24ch cap and the menu row's width. */
+const LONG_AGENT = "pergamon-service-delivery-specialist";
 const SELF = "d_9f3ac1e0b7d2aa41";
 const CAPABILITIES = {
 	desktop_available: true,
@@ -59,10 +61,21 @@ const installBridge = () => {
 				return ok({ self_device_id: SELF, networks: [] });
 			case "profiles.list":
 				return ok({
+					/*
+					 * Nine agents, the roster UX round 1 measured (U-2): enough that
+					 * the menu needs its internal scroll, and two long slugs sharing a
+					 * prefix for the truncation frames (design D-2).
+					 */
 					profiles: [
 						profile("coder"),
 						profile("reviewer"),
 						profile("scout"),
+						profile("architect"),
+						profile("qa-tester"),
+						profile("manager"),
+						profile("ux-reviewer"),
+						profile(LONG_AGENT),
+						profile(`${LONG_AGENT}-eu`),
 						profile("designer", "builtin"),
 					],
 				});
@@ -107,11 +120,17 @@ const seed = (target?: ChatTarget) => {
 	});
 };
 
-const Band = ({ children }: { children: ReactNode }) => (
+const Band = ({
+	children,
+	width = 1000,
+}: {
+	children: ReactNode;
+	width?: number;
+}) => (
 	<div
 		data-header-band=""
 		className={cn("flex shrink-0 flex-col bg-canvas")}
-		style={{ width: 1000 }}
+		style={{ width }}
 	>
 		{children}
 	</div>
@@ -121,7 +140,7 @@ const Band = ({ children }: { children: ReactNode }) => (
  * Opens the chip's menu once the rosters have painted, holding the capture
  * latch until then so the frame is the open menu and not its loading row.
  */
-const OpenOnMount = () => {
+const OpenOnMount = ({ reveal = false }: { reveal?: boolean }) => {
 	useEffect(() => {
 		const root = document.documentElement;
 		root.dataset.capturePending = "";
@@ -138,16 +157,24 @@ const OpenOnMount = () => {
 					new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
 				);
 			}
+			// Both rosters painted: Teams, then Agents, the menu's order.
 			if (
-				document.querySelector('[data-draft-target-row="team:ops"]') ||
+				(document.querySelector('[data-draft-target-row="team:ops"]') &&
+					document.querySelector('[data-draft-target-row="agent:coder"]')) ||
 				tries > 100
 			) {
 				window.clearInterval(timer);
+				// Story-only: bring the current row into the list's view, so a
+				// frame of a long roster shows the row it is about.
+				if (reveal)
+					document
+						.querySelector("[data-draft-target-current]")
+						?.scrollIntoView({ block: "nearest" });
 				delete root.dataset.capturePending;
 			}
 		}, 50);
 		return () => window.clearInterval(timer);
-	}, []);
+	}, [reveal]);
 	return null;
 };
 
@@ -156,11 +183,17 @@ const Mount = ({
 	target,
 	withChip = true,
 	open = false,
+	reveal = false,
+	busy = false,
+	width,
 }: {
 	title?: string;
 	target?: ChatTarget;
 	withChip?: boolean;
 	open?: boolean;
+	reveal?: boolean;
+	busy?: boolean;
+	width?: number;
 }) => {
 	useLayoutEffect(() => {
 		installBridge();
@@ -168,7 +201,7 @@ const Mount = ({
 	}, [target]);
 	return (
 		<div className={cn("flex min-h-[30rem] flex-col bg-canvas")}>
-			<Band>
+			<Band width={width}>
 				<ChatHeader
 					agentName={title}
 					description="~/local-operator-ui"
@@ -180,13 +213,14 @@ const Mount = ({
 							<ChatHeaderDraftTarget
 								target={target}
 								capabilities={CAPABILITIES}
+								busy={busy}
 							/>
 						) : undefined
 					}
 					deviceSlot={<ChatDeviceSlot draftKey={DRAFT} />}
 				/>
 			</Band>
-			{open ? <OpenOnMount /> : null}
+			{open ? <OpenOnMount reveal={reveal} /> : null}
 		</div>
 	);
 };
@@ -201,7 +235,7 @@ export const DefaultClosed: Story = {
 	render: () => <Mount />,
 };
 
-/** The chip's menu: the default, then agents, then teams (by label). */
+/** The chip's menu: the default, then teams (by label), then agents. */
 export const MenuOpen: Story = {
 	render: () => <Mount open={true} />,
 };
@@ -225,3 +259,78 @@ export const AgentPicked: Story = {
 		/>
 	),
 };
+
+/**
+ * A send is starting (`starting || draft.pending`): the chip will not open, and
+ * says so by colour - `ink-disabled` on the label, glyph and chevron - never by
+ * opacity (design D-1).
+ */
+export const Busy: Story = {
+	render: () => (
+		<Mount
+			title="New chat with Local Operator Dev"
+			target={{ kind: "team", name: "lopdev" }}
+			busy={true}
+		/>
+	),
+};
+
+/** The menu with a team current: the check sits on the team row (design D-2). */
+export const MenuOpenTeamCurrent: Story = {
+	render: () => (
+		<Mount
+			title="New chat with Local Operator Dev"
+			target={{ kind: "team", name: "lopdev" }}
+			open={true}
+		/>
+	),
+};
+
+/** A 36-character agent picked: the chip ellipsises at 24ch (design D-2). */
+export const LongAgentPicked: Story = {
+	render: () => (
+		<Mount
+			title={`New chat with ${LONG_AGENT}`}
+			target={{ kind: "agent", name: LONG_AGENT }}
+		/>
+	),
+};
+
+/**
+ * The same, menu open and scrolled to the current row: the two long rows
+ * truncate and carry a `title`.
+ */
+export const LongAgentMenuOpen: Story = {
+	render: () => (
+		<Mount
+			title={`New chat with ${LONG_AGENT}`}
+			target={{ kind: "agent", name: LONG_AGENT }}
+			open={true}
+			reveal={true}
+		/>
+	),
+};
+
+/*
+ * NARROW WINDOWS WITH A TEAM PICKED (UX round 1, U-1): the title and the path
+ * yield, both chips stay on the painted line.
+ *
+ * The band is sized so the title row matches the APP's at that window width,
+ * not the story's: UX round 1 measured a 408px title row in an 800px window
+ * (sidebar, padding and action cluster take the other 392px), and this band
+ * loses 76px to its own padding and cluster - so band = window - 316. The 900
+ * and 640 rows assume the same 392px around the row.
+ */
+const teamPickedInWindow = (windowWidth: number): Story => ({
+	render: () => (
+		<Mount
+			title="New chat with Local Operator Dev"
+			target={{ kind: "team", name: "lopdev" }}
+			width={windowWidth - 316}
+		/>
+	),
+});
+
+export const TeamPicked900: Story = teamPickedInWindow(900);
+export const TeamPicked800: Story = teamPickedInWindow(800);
+export const TeamPicked640: Story = teamPickedInWindow(640);
