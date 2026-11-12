@@ -41,7 +41,9 @@ import {
 	type RaiseReport,
 	focusBrowserChordTarget,
 	presentPopupWindow,
+	raiseWindow,
 } from "../window-raise";
+import { discardRecordingForCustody } from "./actions/recording";
 import {
 	createRecordingEncoderService,
 	disposeAllRecordingEncoders,
@@ -76,6 +78,13 @@ import webStorePreload from "./extensions/chrome-web-store/chrome-web-store.prel
 import { installExtensionDialogs } from "./extensions/dialogs";
 import { ExtensionManager } from "./extensions/manager";
 import {
+	PASSKEY_CUSTODY_ATTENTION_CHANNEL,
+	PASSKEY_CUSTODY_ENDED_CHANNEL,
+	PasskeyCustody,
+	passkeyPromptProvider,
+} from "./extensions/passkey-custody";
+import {
+	isExtensionDocumentUrl,
 	mustReloadOnOwnerChange,
 	refusesExtensionSubframe,
 } from "./extensions/subframe-policy";
@@ -553,6 +562,13 @@ export function startBrowserHost(
 				bindings.passkeyNotice?.continueInUserTab?.(tabId, at) ?? {
 					ok: false,
 					reason: t("ui.browser.browser_passkey_notice.continue_unavailable"),
+				},
+		},
+		passkeyCustody: {
+			release: (tabId, at, trusted) =>
+				bindings.passkeyCustody?.release(tabId, at, trusted) ?? {
+					ok: false,
+					reason: "not_held",
 				},
 		},
 		mediaPermission: {
@@ -1037,6 +1053,79 @@ async function initializeBrowserHost(
 		});
 		const cdp = new CdpPool({ log });
 		rollback.add(() => cdp.close());
+		/**
+		 * Passkey custody (`extensions/passkey-custody.ts`): a password manager's
+		 * passkey prompt in an AGENT tab is admitted only with the agent locked out
+		 * of that tab, and the tab is brought to the user to answer it.
+		 *
+		 * BRINGING IT TO THE USER is the one place the browser host asks for the
+		 * window on its own, and it goes through `raiseWindow` so the launch plan
+		 * still decides (`inactive` never takes focus, `never` raises nothing). The
+		 * tab the user was looking at is remembered and given back on release ONLY
+		 * if they are still on the custody tab — a tab they chose meanwhile is
+		 * theirs. Focus is never handed back to another app: Electron has no honest
+		 * way to do that, and taking it away again would be a second interruption.
+		 *
+		 * `registry` is declared further down; both callbacks run only once a tab
+		 * exists, so the forward reference is safe (the `passkeyNotices` pattern).
+		 */
+		const custodyReturnTab = new Map<number, number | null>();
+		const passkeyCustody = new PasskeyCustody({
+			log,
+			// A recording would keep encoding the prompt underneath the hold and hand
+			// it to the agent at `record_stop`: discard it the moment the hold begins
+			// (review R1/R2; `discardRecordingForCustody` has the why).
+			onHold: (webContentsId) => discardRecordingForCustody(webContentsId),
+			onBegin: (view) => {
+				const record = registry.get(view.tabId);
+				if (!record) return;
+				// The band beside a prompt the user can now see would contradict it.
+				passkeyNotices.clearNotice(view.tabId);
+				const previous = registry.activeTab?.tabId ?? null;
+				custodyReturnTab.set(
+					view.tabId,
+					previous === view.tabId ? null : previous,
+				);
+				registry.activate(view.tabId);
+				if (options.window.isDestroyed()) return;
+				// `at` is the hold's identity: the renderer snapshots the user's view
+				// once per hold and gives it back on the matching ended event.
+				options.window.webContents.send(PASSKEY_CUSTODY_ATTENTION_CHANNEL, {
+					tabId: view.tabId,
+					at: view.at,
+					requesterSessionId: record.sessionId ?? null,
+				});
+				raiseWindow(options.window, options.windowShow, {
+					trigger: "passkey-custody",
+					report: log,
+				});
+			},
+			onEnd: (view) => {
+				// Whatever the page's request reported while the user had it (their own
+				// cancel in the provider's window is a NotAllowed too) is not a failure
+				// to explain afterwards.
+				passkeyNotices.clearNotice(view.tabId);
+				const previous = custodyReturnTab.get(view.tabId);
+				custodyReturnTab.delete(view.tabId);
+				if (
+					previous !== undefined &&
+					previous !== null &&
+					registry.activeTab?.tabId === view.tabId &&
+					registry.get(previous)
+				)
+					registry.activate(previous);
+				else notifyChanged();
+				// The renderer half of the give-back: route, conversation and pane
+				// return only if the user is still where the handoff put them
+				// (`passkey-custody-handoff.ts`).
+				if (!options.window.isDestroyed())
+					options.window.webContents.send(PASSKEY_CUSTODY_ENDED_CHANNEL, {
+						tabId: view.tabId,
+						at: view.at,
+					});
+			},
+		});
+		cdp.setCustodyGate(passkeyCustody);
 		/** Child views by tab id, so close and quit can release each one, and a
 		 * webContents that dies on its own can be matched back to its tab. */
 		const views = new Map<number, WebContentsView>();
@@ -1249,13 +1338,34 @@ async function initializeBrowserHost(
 				// one (registry.ownerChanged below). Rule: subframe-policy.ts.
 				view.webContents.on("will-frame-navigate", (event) => {
 					if (
-						refusesExtensionSubframe({
+						!refusesExtensionSubframe({
 							isMainFrame: event.isMainFrame,
 							url: event.url,
 							owner: registry.get(tabId)?.owner,
 						})
 					)
-						event.preventDefault();
+						return;
+					// The one exception: a known password manager's passkey prompt,
+					// admitted ONLY with the agent already locked out of this tab
+					// (`admit` puts the hold in place before it returns true, and this
+					// handler runs before the frame's document exists).
+					if (
+						passkeyCustody.admit({
+							webContentsId: view.webContents.id,
+							tabId,
+							url: event.url,
+							isInstalled: (id) => extensions.isActive(id),
+							// Tracked so a Return that races this navigation's commit
+							// reloads instead of unlocking (review R3).
+							frame: (event as { frame?: Electron.WebFrameMain | null }).frame,
+						})
+					)
+						return;
+					if (passkeyPromptProvider(event.url))
+						log(
+							`[browser] tab ${tabId}: refused a password manager prompt frame (extension not active)`,
+						);
+					event.preventDefault();
 				});
 				return view as unknown as DriveableView;
 			},
@@ -1288,6 +1398,7 @@ async function initializeBrowserHost(
 			},
 		);
 		registryForDownloads = registry;
+		registry.setCustodyGate(passkeyCustody);
 		const userTabFocused = (contents?: Electron.WebContents) => {
 			const active = registry.activeTab;
 			return (
@@ -1462,6 +1573,8 @@ async function initializeBrowserHost(
 		 * three (R5).
 		 */
 		function releaseTab(tabId: number, webContentsId: number): void {
+			// A closed tab's hold ends with it; nothing is left to protect.
+			passkeyCustody.forget(webContentsId);
 			// Link tabs this tab's page opened die with it unless a session adopted
 			// them (R1-1): an agent's unadopted link tab is counted against
 			// MAX_AGENT_TABS and no scope will ever close it. `destroy` re-enters this
@@ -1628,6 +1741,7 @@ async function initializeBrowserHost(
 									: "platform",
 						},
 			passkeyNotice: (tabId) => passkeyNotices.viewFor(tabId),
+			passkeyCustody: (tabId) => passkeyCustody.viewForTab(tabId),
 			mediaPermission: (tabId) => mediaPermissions.viewFor(tabId),
 			approvalsCard: approvalsOverlay
 				? {
@@ -2002,6 +2116,47 @@ async function initializeBrowserHost(
 						openUserTab: (id) => host.continueAgentTabInUserTab(id),
 						log,
 					}),
+			},
+			/*
+			 * "Return to agent" on a passkey custody notice: the ONLY way a hold ends
+			 * short of closing the tab. Human-only twice over: the IPC is
+			 * sender-checked (no RPC method reaches it) and the click must be a trusted
+			 * event. If a provider frame is still in the tab, the page reloads first
+			 * and the agent gets it back only once that new document has committed.
+			 */
+			passkeyCustody: {
+				release: (tabId, at, trusted) => {
+					if (!trusted) return { ok: false, reason: "not_trusted" };
+					const outcome = passkeyCustody.release({
+						tabId,
+						at,
+						hasProviderFrame: (webContentsId) => {
+							const record = registry.byWebContentsId(webContentsId);
+							const frame = (
+								record?.view.webContents as unknown as
+									| Electron.WebContents
+									| undefined
+							)?.mainFrame;
+							if (!frame) return false;
+							return frame.framesInSubtree.some(
+								(child) => child !== frame && isExtensionDocumentUrl(child.url),
+							);
+						},
+						reload: (webContentsId) => {
+							const record = registry.byWebContentsId(webContentsId);
+							if (!record) throw new Error("the tab is gone");
+							(
+								record.view.webContents as unknown as Electron.WebContents
+							).reload();
+						},
+					});
+					notifyChanged();
+					// `reloaded` tells the band to stay busy until the hold actually
+					// lifts on the reload's commit (review U2).
+					return outcome.ok
+						? { ok: true, reloaded: outcome.reloaded }
+						: { ok: false, reason: outcome.reason };
+				},
 			},
 			clearData: async (what: ClearWhat) => {
 				await sessionCookies.clearBrowsingData(what);
@@ -2679,6 +2834,10 @@ async function initializeBrowserHost(
 				// The tab is on a document now, so whatever the last navigation was refused
 				// for no longer describes what is on screen.
 				host.clearLoadFailure(tabId);
+				// A release waiting for its reload lifts here: the document that held
+				// the provider's frame is gone. A hold the user has NOT returned stays
+				// across the sign-in's own redirects.
+				passkeyCustody.committed(contents.id);
 				// Returning to an approved site must not expose logs buffered while
 				// an autonomous unapproved document occupied this same WebContents.
 				stopLogCapture(contents.id);

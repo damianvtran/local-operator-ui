@@ -13,6 +13,7 @@ import {
 import { basename, dirname, isAbsolute, resolve } from "node:path";
 import type { CdpContents } from "../cdp";
 import { BrowserHostError } from "../errors";
+import { custodyRefusal } from "../extensions/passkey-custody";
 import { CDP_DEADLINE_MS } from "../vendor/driver/deadline";
 import type { BrowserActionContext } from "./context";
 import { requesterOf, stringParam } from "./context";
@@ -235,6 +236,9 @@ const reservations = new Map<
 		webContentsId: number;
 		path: string;
 		cancelled: boolean;
+		/** Why `abortRecording` cancelled this start: passkey custody is answered
+		 * differently from a released tab (see `recordStart`). */
+		cancelReason?: string;
 		large: boolean;
 		/** A high-quality start's teardown, registered before its first `await` so an
 		 * abort that lands while the encoder window is still opening can destroy it. */
@@ -1258,6 +1262,39 @@ export async function abortAndEnd(
 	await endReplaced(recording);
 }
 
+/** The reason (and tombstone `detail`) of a recording passkey custody ended. */
+export const CUSTODY_DISCARD_REASON = "passkey_custody";
+
+/**
+ * A password manager's prompt just came up in this tab under passkey custody
+ * (`extensions/passkey-custody.ts`): DISCARD every recording on it, now.
+ *
+ * WHY DISCARD, NOT PAUSE (review R1/Q1, R2/Q2). The default engine is
+ * Chromium's in-process recorder (`Page.startScreenRecording`): it encodes the
+ * composited surface, prompt frame included, and raises no CDP event custody
+ * could drop, so its clip would carry the prompt to the agent at `record_stop`.
+ * The high-quality engine could be paused in principle, but its screencast
+ * restarts and frame acks are refused under custody and it would fail or freeze
+ * instead. So both end here, with a tombstone that tells the owner's
+ * `record_stop` why, and nothing is written.
+ *
+ * Synchronous bookkeeping first (`abortRecording`: aborted flag, timer, encoder
+ * window, start reservations), then Chromium's recorder is stopped and its
+ * stream closed UNREAD (`endReplaced`; `IO.read` stays refused under custody).
+ * A stop already in flight (`finishing`) is not stopped twice: it sees
+ * `aborted` and throws before publishing, and its `IO.read` is refused.
+ */
+export function discardRecordingForCustody(webContentsId: number): void {
+	const recording = recordings.get(webContentsId);
+	const stopping = !!recording?.finishing;
+	abortRecording(webContentsId, CUSTODY_DISCARD_REASON, {
+		tombstone: true,
+		explanation:
+			"A password manager prompt needed the user in this tab, so the recording was discarded to keep the prompt out of it. Nothing was written; start a new recording once the user returns the tab.",
+	});
+	if (recording && !stopping) void endReplaced(recording);
+}
+
 /** Finalize at most once per recording, and share the result. */
 function finish(
 	webContentsId: number,
@@ -1409,6 +1446,7 @@ export async function recordStart(
 		webContentsId: number;
 		path: string;
 		cancelled: boolean;
+		cancelReason?: string;
 		large: boolean;
 		dispose?: () => void;
 	} = {
@@ -1485,7 +1523,15 @@ export async function recordStart(
 				);
 				started = true;
 			} catch (error) {
-				throw classifyStartFailure(error);
+				// Passkey custody began while this start was in flight: the pool drops
+				// Chromium's answer (`cdp.ts`), but the recorder may well be running,
+				// with nobody left to stop it. Treat it as started so the cancelled
+				// branch below stops it (`Page.stopScreenRecording` + `IO.close` are
+				// custody teardown) and the agent gets the custody refusal. Other
+				// cancellations keep their answer: their tab is going away.
+				if (entry.cancelReason !== CUSTODY_DISCARD_REASON)
+					throw classifyStartFailure(error);
+				started = true;
 			}
 		}
 	} catch (error) {
@@ -1521,6 +1567,7 @@ export async function recordStart(
 		} else if (size && viewportToken) {
 			await clearViewport(ctx.cdp, contents, viewportToken);
 		}
+		if (entry.cancelReason === CUSTODY_DISCARD_REASON) throw custodyRefusal();
 		throw new BrowserHostError(
 			"internal",
 			"that browser tab was released while the recording was starting; nothing was saved. Use 'open' with a URL to get a new tab.",
@@ -1688,13 +1735,20 @@ function detachExplanation(): string {
 export function abortRecording(
 	webContentsId: number,
 	reason: string,
-	options: { tombstone?: boolean; clearSettled?: boolean } = {},
+	options: {
+		tombstone?: boolean;
+		clearSettled?: boolean;
+		/** The tombstone's sentence, where the cause is known (custody); the
+		 * default is the detach event's deliberately cause-free one. */
+		explanation?: string;
+	} = {},
 ): void {
 	// A start in flight for this tab is cancelled with the handle: if its CDP call
 	// still lands, it must not register a recording nobody can stop (review F4).
 	for (const [token, entry] of reservations) {
 		if (entry.webContentsId === webContentsId) {
 			entry.cancelled = true;
+			entry.cancelReason = reason;
 			reservations.delete(token);
 			// A high-quality start still opening its window: destroy it now.
 			entry.dispose?.();
@@ -1734,7 +1788,8 @@ export function abortRecording(
 			owner: recording.owner,
 			error: new BrowserHostError(
 				"internal",
-				`${detachExplanation()}; the recording was discarded (${reason}). Nothing was written.`,
+				options.explanation ??
+					`${detachExplanation()}; the recording was discarded (${reason}). Nothing was written.`,
 				{ reason: "record_aborted", detail: reason },
 			),
 		});

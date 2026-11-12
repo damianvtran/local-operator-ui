@@ -1237,7 +1237,7 @@
 	"ui.browser.browser_passkey_notice.agent_explanation": {
 		"role": "explanatory text \u2014 passkey notice strip, agent-driven tab only",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
-		"note": "Conditional, not a diagnosis: the request may have failed for another reason (NotAllowed cannot tell a cancellation from a missing credential), so keep the 'If\u2026'. 'Its prompt' is the password manager's own passkey dialog window (e.g. 1Password's), NOT an AI prompt \u2014 translate as a window/dialog, not the glossary's 'prompt' (\u63d0\u793a\u8bcd/\u043f\u0440\u043e\u043c\u043f\u0442). 'Your own tab' is the tab the 'Continue in your own tab' button opens; do not repeat the button label. It is in the same app browser and shares its sign-in (cookies), so the remaining step is the user asking the agent to reload 'this page' (the agent's tab, whose site may differ from the frame named in the sentence before). Do not imply the system browser's session is shared; do not promise the sign-in will succeed."
+		"note": "Conditional, not a diagnosis, and now narrower: some password managers CAN show their passkey window in an agent tab (the user answers it there), so the sentence covers only one that can't. Also conditional because the request may have failed for another reason (NotAllowed cannot tell a cancellation from a missing credential), so keep the 'If\u2026'. 'Its prompt' is the password manager's own passkey dialog window (e.g. 1Password's), NOT an AI prompt \u2014 translate as a window/dialog, not the glossary's 'prompt' (\u63d0\u793a\u8bcd/\u043f\u0440\u043e\u043c\u043f\u0442). 'Your own tab' is the tab the 'Continue in your own tab' button opens; do not repeat the button label. It is in the same app browser and shares its sign-in (cookies), so the remaining step is the user asking the agent to reload 'this page' (the agent's tab, whose site may differ from the frame named in the sentence before). Do not imply the system browser's session is shared; do not promise the sign-in will succeed."
 	},
 	"ui.browser.browser_passkey_notice.continue_refused_stale": {
 		"role": "error reason \u2014 passkey notice continue toast",
@@ -1287,5 +1287,45 @@
 		"placeholders": {
 			"shortcut": "The platform's shortcut glyphs (for example \u2318R); do not translate."
 		}
+	},
+	"ui.browser.browser_passkey_custody.label": {
+		"role": "accessible region name \u2014 password manager custody band, agent-driven tab only",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Names the band for screen readers. The band covers ANY prompt a password manager (e.g. 1Password) shows inside a tab an AI agent is driving \u2014 a passkey sign-in, or a \u201csave this login?\u201d offer \u2014 so do not narrow it to passkeys. \u201cPrompt\u201d is the password manager\u2019s own dialog window, NOT an AI prompt (not \u63d0\u793a\u8bcd/\u043f\u0440\u043e\u043c\u043f\u0442): translate as a request/dialog. Compact, around the English footprint."
+	},
+	"ui.browser.browser_passkey_custody.message": {
+		"role": "status text \u2014 password manager custody band, agent-driven tab only",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "The bold first sentence of the band. The user\u2019s password manager has opened its own dialog inside the browser tab an AI agent was using, and only the user can deal with it. Neutral on purpose: it may be a passkey sign-in or a \u201csave this login?\u201d offer, so do not mention passkeys, confirming or a specific product. \u201cThis agent\u2019s tab\u201d is the tab the agent was using."
+	},
+	"ui.browser.browser_passkey_custody.explanation": {
+		"role": "explanatory text \u2014 password manager custody band, agent-driven tab only",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Follows the message in the same paragraph. Three facts, keep all three: (1) only the user can see and answer the password manager\u2019s prompt, and the agent\u2019s work on this tab is paused; (2) when finished, the user gives the tab back with the \u201cReturn to agent\u201d button, and the agent does NOT necessarily carry on by itself \u2014 the user may have to ask it to continue (keep the hedge \u201cmay\u201d); (3) pressing the button while the prompt is still open reloads the page, which cancels a sign-in or a login save that was not finished. \u201cIts prompt\u201d is the password manager\u2019s dialog, NOT an AI prompt. Do not promise the sign-in succeeded or that biometrics completed."
+	},
+	"ui.browser.browser_passkey_custody.return_to_agent": {
+		"role": "button label \u2014 passkey custody band",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Hands the tab back to the AI agent so it can continue. Short imperative, around the English footprint. \"Agent\" uses the glossary term for an AI agent (vi t\u00e1c nh\u00e2n, zh-CN \u667a\u80fd\u4f53)."
+	},
+	"ui.browser.browser_passkey_custody.returning": {
+		"role": "button label (busy) \u2014 password manager custody band",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Replaces \u201cReturn to agent\u201d on the same button while the tab is being handed back (the page may be reloading first). Present progressive, ends with the ellipsis character \u2026; around the English footprint so the button does not grow."
+	},
+	"ui.browser.browser_passkey_custody.return_refused_stale": {
+		"role": "error toast \u2014 password manager custody band",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Shown when the user pressed \u201cReturn to agent\u201d on a band that a newer prompt in the same tab has already replaced. The tab stays with the user (the agent is still paused); a full sentence that stands alone."
+	},
+	"ui.browser.browser_passkey_custody.return_refused_not_held": {
+		"role": "error toast \u2014 password manager custody band",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Shown when the user pressed \u201cReturn to agent\u201d but the tab was no longer held for them (it was already returned, or it closed). Nothing is wrong; a full sentence that stands alone."
+	},
+	"ui.browser.browser_passkey_custody.return_failed": {
+		"role": "error toast \u2014 password manager custody band",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "Shown when handing the tab back failed (for example, the page could not reload). The tab stays with the user and the button works again, so invite another try."
 	}
 }

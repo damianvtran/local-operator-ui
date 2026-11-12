@@ -40,3 +40,18 @@ export interface PasskeyNoticeView {
 	/** Signals for this tab dropped by the rate limit since the last notice. */
 	suppressed: number;
 }
+
+/**
+ * The active tab's passkey custody, when it has one
+ * (`main/browser/extensions/passkey-custody.ts`): a password manager's passkey
+ * prompt is up in an agent-driven tab, the agent is paused on that tab, and only
+ * the user can return it. `at` identifies the hold; the renderer echoes it on
+ * release so a click on an earlier hold's notice cannot end a later one.
+ */
+export interface PasskeyCustodyView {
+	tabId: number;
+	at: number;
+	/** The Chrome Web Store id of the prompt's extension. Not shown: the notice
+	 * names no provider, so the copy never claims which manager is asking. */
+	providerId: string;
+}

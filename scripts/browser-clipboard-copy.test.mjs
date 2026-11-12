@@ -664,6 +664,9 @@ function fixture(html) {
 	const touched = [];
 	const ctx = {
 		registry: {
+			// The real registry drops a read that crossed a passkey hold; no hold
+			// exists in these fixtures, so the read runs as-is.
+			guardRead: (_record, run) => run(),
 			requireSurface(tab) {
 				assert.equal(tab, "tab-1");
 				return {
@@ -825,6 +828,7 @@ test("copy needs a selector and never touches the page without one", async () =>
 test("an invalid selector is the caller's input error, not a host fault", async () => {
 	const ctx = {
 		registry: {
+			guardRead: (_record, run) => run(),
 			requireSurface: () => ({
 				tabId: 1,
 				view: {

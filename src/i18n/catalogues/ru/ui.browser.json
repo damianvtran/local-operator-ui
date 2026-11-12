@@ -137,7 +137,7 @@
 	"ui.browser.browser_passkey_notice.message": "{who, select, agent {{site} во вкладке под управлением агента запросил ключ доступа и, возможно, ждёт ответа.} agentFrame {Фрейм {site} во вкладке под управлением агента запросил ключ доступа и, возможно, ждёт ответа.} userFrame {Фрейм {site} на этой странице запросил ключ доступа и, возможно, ждёт ответа.} other {{site} запросил ключ доступа и, возможно, ждёт ответа.}}",
 	"ui.browser.browser_passkey_notice.open_in_system_browser": "Открыть в системном браузере",
 	"ui.browser.browser_passkey_notice.continue_in_own_tab": "Продолжить в своей вкладке",
-	"ui.browser.browser_passkey_notice.agent_explanation": "Если ваш ключ доступа хранится в менеджере паролей, его окно не может появиться во вкладке, которой управляет агент. Ваша вкладка использует ту же сессию этого браузера, поэтому после входа в ней попросите агента перезагрузить эту страницу.",
+	"ui.browser.browser_passkey_notice.agent_explanation": "Если ваш менеджер паролей не может показать окно ключа доступа во вкладке, которой управляет агент, продолжите в своей вкладке. Она использует ту же сессию этого браузера, поэтому после входа в ней попросите агента перезагрузить эту страницу.",
 	"ui.browser.browser_passkey_notice.continue_refused_stale": "Это уведомление о ключе доступа уже неактуально.",
 	"ui.browser.browser_passkey_notice.continue_refused_not_agent": "Этой вкладкой больше не управляет агент.",
 	"ui.browser.browser_passkey_notice.continue_refused_in_flight": "Ваша вкладка уже открывается.",
@@ -255,5 +255,13 @@
 	"ui.browser.webauthn_chooser.the_site_stored_no_name_for_this": "Сайт не сохранил имя для этого ключа доступа.",
 	"ui.browser.webauthn_chooser.this_passkey_request_expired": "Срок этого запроса ключа доступа истёк",
 	"ui.browser.webauthn_chooser.this_passkey_request_was_cancelled": "Этот запрос ключа доступа отменён",
-	"ui.browser.browser_url_bar.reload_shortcut": "Перезагрузить ({shortcut})"
+	"ui.browser.browser_url_bar.reload_shortcut": "Перезагрузить ({shortcut})",
+	"ui.browser.browser_passkey_custody.label": "Запрос менеджера паролей ждёт вас",
+	"ui.browser.browser_passkey_custody.message": "Ваш менеджер паролей ждёт вас во вкладке этого агента.",
+	"ui.browser.browser_passkey_custody.explanation": "Видеть его запрос и отвечать на него можете только вы, а агент в этой вкладке приостановлен. Когда закончите, верните вкладку агенту; возможно, придётся попросить его продолжить. Если вернуть её, пока запрос ещё открыт, страница перезагрузится, а незавершённый вход или сохранение будут отменены.",
+	"ui.browser.browser_passkey_custody.return_to_agent": "Вернуть агенту",
+	"ui.browser.browser_passkey_custody.returning": "Возвращаем…",
+	"ui.browser.browser_passkey_custody.return_refused_stale": "Это уведомление устарело; вкладка по-прежнему у вас.",
+	"ui.browser.browser_passkey_custody.return_refused_not_held": "Эта вкладка вас больше не ждёт.",
+	"ui.browser.browser_passkey_custody.return_failed": "Не удалось вернуть вкладку агенту. Попробуйте ещё раз."
 }

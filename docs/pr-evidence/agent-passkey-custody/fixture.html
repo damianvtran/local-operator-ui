@@ -1,0 +1,36 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Passkey fixture</title></head>
+<body><h1>Passkey fixture (synthetic RP: localhost)</h1>
+<button id="get">Call get()</button> <button id="create">Call create()</button>
+<pre id="diag"></pre><pre id="log"></pre>
+<script>
+const log = (m) => { document.getElementById('log').textContent += new Date().toISOString().slice(11,23) + ' ' + m + '\n'; };
+function diag() {
+  const own = Object.getOwnPropertyDescriptor(navigator.credentials, 'get');
+  const proto = CredentialsContainer.prototype.get;
+  const lines = [
+    'instance own get: ' + (own ? typeof own.value + '/' + (own.get ? 'accessor' : 'data') : 'none'),
+    'navigator.credentials.get === proto.get: ' + (navigator.credentials.get === proto),
+    'proto.get src: ' + String(proto).slice(0, 80).replace(/\s+/g,' '),
+    'instance get src: ' + String(navigator.credentials.get).slice(0, 80).replace(/\s+/g,' '),
+    'lop marker: ' + !!CredentialsContainer.prototype[Symbol.for('local-operator.passkey-notice')],
+    'iframes: ' + [...document.querySelectorAll('iframe')].map(f => f.src || f.name || f.id || '(anon)').join(' | '),
+    'custom elements w/ shadow: ' + [...document.querySelectorAll('*')].filter(e => e.shadowRoot || e.tagName.includes('-')).map(e => e.tagName.toLowerCase()).join(','),
+    'visibility: ' + document.visibilityState + ' hasFocus: ' + document.hasFocus(),
+    'uvpaa: ' + window.__uvpaa,
+  ];
+  document.getElementById('diag').textContent = lines.join('\n');
+}
+PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().then(v => { window.__uvpaa = v; diag(); });
+setInterval(diag, 500); diag();
+const rnd = (n) => crypto.getRandomValues(new Uint8Array(n));
+document.getElementById('get').onclick = () => {
+  log('get() called');
+  navigator.credentials.get({ publicKey: { challenge: rnd(32), rpId: location.hostname, allowCredentials: [], userVerification: 'preferred', timeout: 120000 } })
+    .then(c => log('get() RESOLVED type=' + (c && c.type)), e => log('get() REJECTED ' + e.name));
+};
+document.getElementById('create').onclick = () => {
+  log('create() called');
+  navigator.credentials.create({ publicKey: { challenge: rnd(32), rp: { id: location.hostname, name: 'LOP fixture' }, user: { id: rnd(16), name: 'fixture-user', displayName: 'Fixture User' }, pubKeyCredParams: [{ type: 'public-key', alg: -7 }], authenticatorSelection: { residentKey: 'required', userVerification: 'preferred' }, timeout: 120000 } })
+    .then(c => log('create() RESOLVED type=' + (c && c.type)), e => log('create() REJECTED ' + e.name));
+};
+</script></body></html>
