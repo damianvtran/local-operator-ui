@@ -63,6 +63,19 @@ function ProposalCard({
 	const [conflict, setConflict] = useState(false);
 	const section = useRef<HTMLElement>(null);
 	const heading = useRef<HTMLHeadingElement>(null);
+	const editToggle = useRef<HTMLButtonElement>(null);
+	// Leaving edit mode by Cancel (button or Escape) must discard the draft:
+	// the textarea re-seeds from `drafts`, and Accept sends `drafts`, so a kept
+	// draft would let a later Edit → Accept write text the person cancelled
+	// (QA Q-1). Focus goes back to the toggle so keyboard users land on the
+	// control they used (UX U14). A different proposal remounts this card
+	// (keyed by id), so its drafts never leak across records.
+	const cancelEditing = () => {
+		setDrafts({});
+		setEditing(false);
+		setError(null);
+		editToggle.current?.focus({ preventScroll: true });
+	};
 	useEffect(() => {
 		if (highlighted && detail.data) {
 			section.current?.scrollIntoView?.({ block: "nearest" });
@@ -190,6 +203,16 @@ function ProposalCard({
 											[change.field]: event.target.value,
 										}))
 									}
+									onKeyDown={(event) => {
+										// Escape confirms an IME candidate while composing;
+										// only a plain Escape cancels, and it stops here so
+										// no enclosing surface also closes on it (QA Q-2).
+										if (event.key !== "Escape" || event.nativeEvent.isComposing)
+											return;
+										event.preventDefault();
+										event.stopPropagation();
+										cancelEditing();
+									}}
 									disabled={busy || stale}
 									rows={6}
 									className="w-full rounded-sm border border-hairline bg-sunken p-2 font-mono text-mono-sm text-ink focus-visible:outline-accent"
@@ -231,10 +254,14 @@ function ProposalCard({
 							<Button
 								size="sm"
 								variant="ghost"
+								ref={editToggle}
 								disabled={busy || stale}
 								onClick={() => {
-									setEditing(!editing);
-									setError(null);
+									if (editing) cancelEditing();
+									else {
+										setEditing(true);
+										setError(null);
+									}
 								}}
 							>
 								{t(

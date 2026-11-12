@@ -278,6 +278,114 @@ test("panel: Edit & accept updates live diff and sends only edited after field",
 		{ instructions: "Be concise, clear and direct." },
 	);
 });
+const CANCELLED = /CANCELLED TEXT/;
+/** Type into the first edit textarea through React's tracked value setter. */
+async function typeDraft(text) {
+	const input = document.querySelector("textarea");
+	await act(async () => {
+		Object.getOwnPropertyDescriptor(
+			HTMLTextAreaElement.prototype,
+			"value",
+		).set.call(input, text);
+		input.dispatchEvent(new Event("input", { bubbles: true }));
+	});
+	return input;
+}
+async function pressEscape(input, { isComposing = false } = {}) {
+	const event = new window.KeyboardEvent("keydown", {
+		key: "Escape",
+		bubbles: true,
+		cancelable: true,
+		isComposing,
+	});
+	await act(async () => {
+		input.dispatchEvent(event);
+		await flush();
+	});
+	return event;
+}
+test("panel: Cancel editing discards the draft; re-edit and Accept use the proposal text (Q-1)", async () => {
+	const calls = bridge();
+	await mount(ProfileProposalPanel, { ...props, key: "cancel" });
+	await click(button("Edit & accept"));
+	await typeDraft("CANCELLED TEXT");
+	await click(button("Cancel editing"));
+	assert.ok(!document.querySelector("textarea"), "edit mode closed");
+	// Compare identity, never the nodes: a failing assert would util.inspect
+	// the whole jsdom graph and trip the memory guard.
+	assert.ok(
+		document.activeElement === button("Edit & accept"),
+		`focus on Edit & accept, got ${document.activeElement?.textContent}`,
+	);
+	await click(button("Edit & accept"));
+	assert.equal(
+		document.querySelector("textarea").value,
+		"Be concise and direct.",
+	);
+	await click(button("Cancel editing"));
+	await click(button("Accept"));
+	const sent = calls.find((c) => c.op === "profileProposals.accept");
+	assert.ok(sent, "accept was called");
+	assert.equal(sent.after, undefined);
+	assert.doesNotMatch(JSON.stringify(calls), CANCELLED);
+});
+test("panel: re-edit after cancel then Accept sends the proposal's own text, not the cancelled draft (Q-1)", async () => {
+	const calls = bridge();
+	await mount(ProfileProposalPanel, { ...props, key: "cancel-reedit" });
+	await click(button("Edit & accept"));
+	await typeDraft("CANCELLED TEXT");
+	await click(button("Cancel editing"));
+	await click(button("Edit & accept"));
+	await click(button("Accept edited change"));
+	// An unedited draft carries no override (editedAfterBody), so core applies
+	// the proposal's own text; the cancelled draft must be nowhere in the call.
+	const sent = calls.find((c) => c.op === "profileProposals.accept");
+	assert.ok(sent, "accept was called");
+	assert.equal(sent.after, undefined);
+	assert.doesNotMatch(JSON.stringify(calls), CANCELLED);
+});
+test("panel: Escape in the draft cancels editing, discards it and refocuses Edit & accept (Q-2, U14)", async () => {
+	const calls = bridge();
+	await mount(ProfileProposalPanel, { ...props, key: "escape" });
+	let outer = 0;
+	const onOuter = () => outer++;
+	document.addEventListener("keydown", onOuter);
+	try {
+		await click(button("Edit & accept"));
+		const input = await typeDraft("CANCELLED TEXT");
+		const event = await pressEscape(input);
+		assert.equal(event.defaultPrevented, true);
+		assert.equal(outer, 0, "Escape must not reach an enclosing surface");
+		assert.ok(!document.querySelector("textarea"), "edit mode closed");
+		// Compare identity, never the nodes: a failing assert would util.inspect
+		// the whole jsdom graph and trip the memory guard.
+		assert.ok(
+			document.activeElement === button("Edit & accept"),
+			`focus on Edit & accept, got ${document.activeElement?.textContent}`,
+		);
+		await click(button("Edit & accept"));
+		assert.equal(
+			document.querySelector("textarea").value,
+			"Be concise and direct.",
+		);
+		assert.equal(
+			calls.filter((c) => c.op === "profileProposals.accept").length,
+			0,
+		);
+	} finally {
+		document.removeEventListener("keydown", onOuter);
+	}
+});
+test("panel: Escape during IME composition does not cancel editing (Q-2)", async () => {
+	bridge();
+	await mount(ProfileProposalPanel, { ...props, key: "escape-ime" });
+	await click(button("Edit & accept"));
+	const input = await typeDraft("下書き");
+	const event = await pressEscape(input, { isComposing: true });
+	assert.equal(event.defaultPrevented, false);
+	assert.equal(document.querySelector("textarea")?.value, "下書き");
+	assert.ok(button("Cancel editing"), "still editing");
+});
 test("panel: stale and 409 block Accept, keep Reject and originating conversation", async () => {
 	bridge({ state: "stale" });
 	await mount(ProfileProposalPanel, { ...props, key: "stale" });
