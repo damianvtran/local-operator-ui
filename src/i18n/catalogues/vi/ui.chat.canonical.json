@@ -464,5 +464,5 @@
 	"ui.chat.canonical.sound.cost.batch_unknown": "Chưa biết tổng chi phí.",
 	"ui.chat.canonical.media.image_label": "{count, plural, =1 {Hình ảnh} other {Hình ảnh {position, number, ::group-off}}}",
 	"ui.chat.canonical.media.sound_label": "{count, plural, =1 {Âm thanh} other {Âm thanh {position, number, ::group-off}}}",
-	"ui.chat.canonical.supplement.sound_fallback_label": "Âm thanh đã tạo"
+	"ui.chat.canonical.supplement.sound_fallback_label": "Âm thanh được tạo"
 }
