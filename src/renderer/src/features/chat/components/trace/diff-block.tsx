@@ -358,8 +358,14 @@ export const DiffBlock: FC<DiffBlockProps> = ({
 						</>
 					))
 			}
-			{!full && body.expandable && (
+			{!full && body.expandable && !pageable && (
 				/*
+				 * NOT WHEN THE ARCHIVE IS OFFERED (design round 3, U7): "View full
+				 * diff · 505 lines" sat directly above "… 158 more diff lines", two
+				 * "more" controls whose counts disagree (41 + 158 ≠ 505) because the
+				 * expander only counts the inline preview's own rows. The archive
+				 * offer reaches every row, so it is the one way on.
+				 *
 				 * STICKY, and this is the one thing in the well that must not be
 				 * allowed to scroll away. The ceiling above is derived for UNWRAPPED
 				 * rows, where the toggle sits inside it by construction; a wrapped

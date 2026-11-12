@@ -26,6 +26,7 @@ for (const [key, value] of Object.entries({
 	HTMLElement: dom.window.HTMLElement,
 	IS_REACT_ACT_ENVIRONMENT: true,
 	requestAnimationFrame: (cb) => setTimeout(cb, 0),
+	cancelAnimationFrame: (id) => clearTimeout(id),
 })) {
 	originals.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
 	Object.defineProperty(globalThis, key, {
@@ -41,6 +42,7 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export { DiffBlock } from "./src/renderer/src/features/chat/components/trace/diff-block";',
+			'export { Disclosure } from "./src/renderer/src/shared/components/ui/disclosure";',
 			'export * from "./src/renderer/src/features/chat/components/trace/diff-history-model";',
 			'export { setLocale } from "./src/renderer/src/shared/i18n";',
 			'export { createElement, act } from "react";',
@@ -58,7 +60,15 @@ const bundle = await build({
 		"@shared": "./src/renderer/src/shared",
 		"@renderer": "./src/renderer/src",
 	},
-	external: ["react", "react-dom", "react-dom/client", "react/jsx-runtime"],
+	// lucide-react (the animated Disclosure's chevron) ships CJS that requires
+	// react: left to node, it shares the one external react.
+	external: [
+		"react",
+		"react-dom",
+		"react-dom/client",
+		"react/jsx-runtime",
+		"lucide-react",
+	],
 	tsconfig: "tsconfig.app.json",
 });
 const bundlePath = new URL(
@@ -68,7 +78,20 @@ const bundlePath = new URL(
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 const m = await import(bundlePath.href);
 await unlink(bundlePath);
-const { DiffBlock, setLocale, createElement: h, act, createRoot } = m;
+const {
+	DiffBlock,
+	Disclosure,
+	setLocale,
+	createElement: h,
+	act,
+	createRoot,
+} = m;
+// The animated disclosure subscribes to reduced motion; jsdom has no matchMedia.
+dom.window.matchMedia = () => ({
+	matches: false,
+	addEventListener() {},
+	removeEventListener() {},
+});
 setLocale("en");
 after(() => {
 	dom.window.close();
@@ -203,7 +226,7 @@ dom.window.api = {
 
 const flush = () => act(() => new Promise((resolve) => setTimeout(resolve, 0)));
 
-async function mount(props = {}) {
+async function mount(props = {}, { wrap = (el) => el } = {}) {
 	const scroller = document.createElement("div");
 	scroller.setAttribute("data-lo-canonical-transcript", "");
 	const host = document.createElement("div");
@@ -212,20 +235,23 @@ async function mount(props = {}) {
 	const root = createRoot(host);
 	await act(() =>
 		root.render(
-			h(DiffBlock, {
-				diff: ARTIFACT.slice(0, 202),
-				truncatedRows: TOTAL - 202,
-				history: {
-					scope: { sessionId: "a1b2c3d4e5f6", childId: "0f0f0f0f0f0f" },
-					callId: "toolu_01ABC",
-					descriptor: { state: "archived", rows: TOTAL },
-				},
-				...props,
-			}),
+			wrap(
+				h(DiffBlock, {
+					diff: ARTIFACT.slice(0, 202),
+					truncatedRows: TOTAL - 202,
+					history: {
+						scope: { sessionId: "a1b2c3d4e5f6", childId: "0f0f0f0f0f0f" },
+						callId: "toolu_01ABC",
+						descriptor: { state: "archived", rows: TOTAL },
+					},
+					...props,
+				}),
+			),
 		),
 	);
 	return {
 		host,
+		scroller,
 		rows: () => [
 			...host.querySelectorAll("[data-diff-history] [data-diff-line]"),
 		],
@@ -926,4 +952,210 @@ test("archive-only row: a non-archived descriptor states its own reason, no coun
 	assert.equal(v.host.querySelector("[data-diff-view-full]"), null);
 	assert.equal(requests.length, 0);
 	v.unmount();
+});
+
+// ---- PR #1829 design round 3 / QA round 6 ----------------------------------
+
+/** Overflow classes that make a box a scroll container (sticky pins to it). */
+const SCROLL_CONTAINER = /(^|\s)overflow(-[xy])?-(hidden|auto|scroll)(\s|$)/;
+
+test("D1: inside an open animated trace fold, nothing between the bar and the transcript is a scroll container", async () => {
+	// The child reader's Edited row sits inside an open TraceFold, whose body is
+	// the animated disclosure: its `overflow-hidden` pair pinned the sticky bar
+	// to a box that never scrolls (bar at y -2595 in QA round 6).
+	const v = await mount(
+		{},
+		{
+			wrap: (el) =>
+				h(
+					Disclosure,
+					{ summary: "Edited 3 files", animate: true, open: true },
+					el,
+				),
+		},
+	);
+	await v.click(v.button("View full diff · 998 lines"));
+	const nav = v.host.querySelector("[data-diff-history] > nav");
+	assert.match(nav.className, /\bsticky\b/);
+	const walked = [];
+	for (
+		let el = nav.parentElement;
+		el && el !== v.scroller;
+		el = el.parentElement
+	) {
+		walked.push(String(el.className));
+		assert.doesNotMatch(
+			String(el.className),
+			SCROLL_CONTAINER,
+			`ancestor ${walked.length} is a scroll container: ${el.className}`,
+		);
+	}
+	assert.ok(
+		walked.some((c) => /\boverflow-clip\b/.test(c)),
+		"the fold still clips (overflow-clip), it is just not a scroll container",
+	);
+	v.unmount();
+});
+
+/*
+ * A reverse (bottom-anchored) transcript in jsdom: the pager's root ENDS at a
+ * fixed document line, so a taller page grows UPWARD (the tail stays put) —
+ * exactly what left the reader at the page's tail. The bar is sticky: it pins
+ * at the scroller's top inset (16px, the scroller's padding) and never past
+ * its own root's end. Every other direct child of the root sits in flow.
+ */
+function reverseScrollerModel(v) {
+	const SCROLLER_TOP = 100;
+	const INSET = 16;
+	const NAV_H = 30;
+	const ROW_H = 17;
+	const ROOT_ENDS_AT = 600;
+	const heightOf = (el) =>
+		el.tagName === "NAV"
+			? NAV_H
+			: el.tagName === "OUTPUT"
+				? el.textContent
+					? ROW_H
+					: 0
+				: ROW_H;
+	return function rect() {
+		const top = (() => {
+			if (this === v.scroller) return SCROLLER_TOP;
+			const root = this.closest?.("[data-diff-history]");
+			if (!root) return 0;
+			const kids = [...root.children];
+			const total = kids.reduce((sum, el) => sum + heightOf(el), 0);
+			const rootTop =
+				SCROLLER_TOP + ROOT_ENDS_AT - total - v.scroller.scrollTop;
+			if (this === root) return rootTop;
+			const own = kids.find((el) => el === this || el.contains(this));
+			let at = rootTop;
+			for (const el of kids) {
+				if (el === own) break;
+				at += heightOf(el);
+			}
+			if (own.tagName !== "NAV") return at;
+			const pinned = SCROLLER_TOP + INSET;
+			return Math.max(at, Math.min(pinned, rootTop + total - NAV_H));
+		})();
+		const height = this === v.scroller ? 800 : 17;
+		return {
+			top,
+			bottom: top + height,
+			height,
+			left: 0,
+			right: 400,
+			width: 400,
+		};
+	};
+}
+
+test("U6: opening and every page move put the page's first row directly under the pinned bar", async () => {
+	const proto = dom.window.HTMLElement.prototype;
+	const oldRect = proto.getBoundingClientRect;
+	const v = await mount();
+	proto.getBoundingClientRect = reverseScrollerModel(v);
+	try {
+		const under = (what) => {
+			const nav = v.host.querySelector("[data-diff-history] > nav");
+			const first = v.host.querySelector(
+				"[data-diff-history] > [data-diff-hunk-context], [data-diff-history] > [data-diff-line]",
+			);
+			assert.ok(first, `${what}: a page is painted`);
+			const bar = nav.getBoundingClientRect();
+			const row = first.getBoundingClientRect();
+			assert.ok(bar.top >= 100, `${what}: the bar is on screen (${bar.top})`);
+			assert.ok(
+				Math.abs(row.top - bar.bottom) < 1,
+				`${what}: first row top ${row.top} sits under the bar's bottom ${bar.bottom}`,
+			);
+		};
+		await v.click(v.button("View full diff · 998 lines"));
+		under("open");
+		const range1 = v.range();
+		await v.click(v.button("Next"));
+		assert.notEqual(v.range(), range1);
+		under("Next");
+		await v.click(v.button("Previous"));
+		assert.equal(v.range(), range1);
+		under("Previous");
+		await v.click(v.button("Last"));
+		under("Last");
+		await v.click(v.button("First"));
+		under("First");
+		// The foot bar: the same Next at the page's end, landing the same way.
+		const foot = v.host.querySelector("[data-diff-history-foot]");
+		assert.ok(foot, "a painted page offers Previous / range / Next at its end");
+		assert.equal(foot.querySelector("span").textContent, v.range());
+		assert.equal(foot.getAttribute("aria-live"), null);
+		await v.click(
+			[...foot.querySelectorAll("button")].find(
+				(b) => b.textContent === "Next",
+			),
+		);
+		assert.notEqual(v.range(), range1);
+		under("foot Next");
+	} finally {
+		proto.getBoundingClientRect = oldRect;
+		v.unmount();
+	}
+});
+
+test("D3: a failed move keeps the page it left under the error line, and offers no inert paging", async () => {
+	let fail = false;
+	respond = (request) =>
+		fail
+			? { status: 503, body: { detail: "down" } }
+			: {
+					status: 200,
+					body: {
+						result: pageOf(request.start, request.limit, request.offset ?? 0),
+					},
+				};
+	try {
+		const v = await mount();
+		await v.click(v.button("View full diff · 998 lines"));
+		const range = v.range();
+		const rows = painted(v);
+		fail = true;
+		await v.click(v.button("Next"));
+		assert.match(v.host.textContent, /Couldn't load the full diff/);
+		assert.ok(v.button("Retry"), "Retry is offered");
+		// The range is still true: it names the rows still painted under it.
+		assert.equal(v.range(), range);
+		assert.deepEqual(painted(v), rows);
+		for (const name of ["First", "Previous", "Next", "Last"])
+			assert.equal(v.button(name), undefined, `no inert ${name} in the error`);
+		assert.equal(v.host.querySelector("[data-diff-history-foot]"), null);
+		// The error line comes first, the kept rows after it.
+		const status = v.host.querySelector("[data-diff-history-status]");
+		assert.ok(
+			status.compareDocumentPosition(v.rows()[0]) &
+				dom.window.Node.DOCUMENT_POSITION_FOLLOWING,
+		);
+		fail = false;
+		await v.click(v.button("Retry"));
+		assert.notEqual(v.range(), range);
+		assert.ok(v.button("Next"), "paging returns with the page");
+		v.unmount();
+	} finally {
+		respond = (request) => ({
+			status: 200,
+			body: {
+				result: pageOf(request.start, request.limit, request.offset ?? 0),
+			},
+		});
+	}
+});
+
+test("U7: when the archive is offered, the preview has no second '… N more' control", async () => {
+	const v = await mount();
+	assert.ok(v.button("View full diff · 998 lines"));
+	assert.doesNotMatch(v.host.textContent, /more diff line/);
+	assert.equal(v.host.querySelector("button[aria-expanded]"), null);
+	v.unmount();
+	// Without an archive the inline expander is still the way to the rest.
+	const plain = await mount({ truncatedRows: 0, history: undefined });
+	assert.match(plain.host.textContent, /… \d+ more diff lines/);
+	plain.unmount();
 });

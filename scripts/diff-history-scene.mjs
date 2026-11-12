@@ -110,6 +110,13 @@ export function diffHistorySceneRefusal({
 		return "--live-session must differ from --session: the live step needs a session with no rows yet";
 	const parsed = parseDiffExpect(expect);
 	if (parsed.error) return parsed.error;
+	// Only the child walk pages Wrote rows and looks for the oversized note: in
+	// parent mode these fields would be accepted and never asserted (R9).
+	if (
+		child === null &&
+		(parsed.value?.write !== undefined || parsed.value?.oversized !== undefined)
+	)
+		return "--diff-expect.write and .oversized need --child: only the child walk asserts them";
 	return null;
 }
 
@@ -141,6 +148,8 @@ export const readPager = (root) => `(() => {
 		nav: box(root.querySelector(":scope > nav")),
 		rowCount: rows.length,
 		firstRow: rows[0] ? { index: rows[0].getAttribute("data-diff-line"), box: box(rows[0]) } : null,
+		head: box(root.querySelector(":scope > [data-diff-hunk-context], :scope > [data-diff-line]")),
+		scroller: (() => { const s = root.closest("[data-lo-canonical-transcript]"); return s ? { top: Math.round(s.getBoundingClientRect().top), scrollTop: Math.round(s.scrollTop), min: Math.round(s.clientHeight - s.scrollHeight) } : null; })(),
 		lastRow: rows.at(-1) ? { index: rows.at(-1).getAttribute("data-diff-line"), text: rows.at(-1).firstChild?.textContent?.slice(0, 80), box: box(rows.at(-1)) } : null,
 		signs,
 		zeroBoxes: rows.filter((el) => { const r = el.getBoundingClientRect(); return r.width === 0 || r.height === 0; }).length,
@@ -172,7 +181,17 @@ const scrollGeometry = (root) => `(() => {
 	const rect = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left), right: Math.round(r.right) }; };
 	const well = rect(p); const rows = p.querySelectorAll("[data-diff-line]");
 	const top = Math.max(well.top, 0); const bottom = Math.min(well.bottom, innerHeight);
-	return { vh: innerHeight, nav: rect(p.querySelector(":scope > nav")), last: rect(rows[rows.length - 1]), lastIndex: rows[rows.length - 1]?.getAttribute("data-diff-line") ?? null, point: { x: Math.round((well.left + well.right) / 2), y: Math.round(bottom > top ? (top + bottom) / 2 : innerHeight / 2) } };
+	const navEl = p.querySelector(":scope > nav");
+	const scroller = p.closest("[data-lo-canonical-transcript]");
+	// D1: every box between the bar and the transcript scroller that is itself a
+	// scroll container (computed hidden/auto/scroll) - sticky would pin to it.
+	const scrollBoxes = [];
+	for (let el = navEl?.parentElement ?? null; el && el !== scroller; el = el.parentElement) {
+		const cs = getComputedStyle(el);
+		if ([cs.overflowX, cs.overflowY].some((v) => v === "hidden" || v === "auto" || v === "scroll"))
+			scrollBoxes.push({ tag: el.tagName.toLowerCase(), x: cs.overflowX, y: cs.overflowY, cls: String(el.className).slice(0, 80) });
+	}
+	return { vh: innerHeight, scroller: Boolean(scroller), scrollBoxes, foot: rect(p.querySelector(":scope > [data-diff-history-foot]")), nav: rect(navEl), last: rect(rows[rows.length - 1]), lastIndex: rows[rows.length - 1]?.getAttribute("data-diff-line") ?? null, point: { x: Math.round((well.left + well.right) / 2), y: Math.round(bottom > top ? (top + bottom) / 2 : innerHeight / 2) } };
 })()`;
 
 /** A press target's box, for the layout-settle wait (D6). */
@@ -186,10 +205,10 @@ const boxOf = (selector) =>
  * attribute dumps. It notes visible transcript text, so it is for the owned
  * synthetic fixtures the QA gate requires (R6-1).
  */
-export const NO_OFFER_READ = `(() => {
+export const noOfferRead = (transcript) => `(() => {
 	const cut = (s, n) => (s ?? "").replace(/\\s+/g, " ").trim().slice(0, n);
 	const seen = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
-	const scope = document.querySelector("[data-lo-canonical-transcript]") ?? document.querySelector("main") ?? document.body;
+	const scope = document.querySelector(${JSON.stringify(transcript)}) ?? document.querySelector("main") ?? document.body;
 	const controls = [...scope.querySelectorAll("button, [role=button], summary, a[href], [aria-expanded]")].filter(seen);
 	return {
 		route: location.hash || location.pathname,
@@ -202,6 +221,52 @@ export const NO_OFFER_READ = `(() => {
 		controls: controls.slice(0, 40).map((el) => { const r = el.getBoundingClientRect(); return { tag: el.tagName.toLowerCase(), type: el.getAttribute("type"), name: cut(el.getAttribute("aria-label") || el.textContent, 60), expanded: el.getAttribute("aria-expanded"), state: el.getAttribute("data-state"), box: [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)] }; }),
 		text: cut(scope.innerText, 600),
 	};
+})()`;
+/** The parent chat's no-offer read; child mode reads `CHILD_SCOPE` instead. */
+export const NO_OFFER_READ = noOfferRead(PARENT_SCOPE);
+
+/**
+ * D6 (QA round 6): bring a press target clear of fixed chrome BEFORE the
+ * press. If its centre does not hit-test to it where it is (below the
+ * reader's foot band, under the header, banner, composer or the
+ * scroll-to-bottom button), its nearest scrolling ancestor is moved so the
+ * centre lands at a few viewport fractions in turn until it does. Read-only
+ * otherwise; a target that already hit-tests is never scrolled.
+ */
+export const clearForPress = (selector) => `(async () => {
+	const el = document.querySelector(${JSON.stringify(selector)});
+	if (!el) return { found: false };
+	const frame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+	const probe = () => { const r = el.getBoundingClientRect(); const x = r.left + r.width / 2; const y = r.top + r.height / 2; const h = document.elementFromPoint(x, y); return { ok: h !== null && (h === el || el.contains(h)), y: Math.round(y), hit: h ? h.tagName.toLowerCase() + ":" + (h.textContent ?? "").replace(/\\s+/g, " ").trim().slice(0, 30) : null }; };
+	let seen = probe();
+	if (seen.ok) return { found: true, scrolled: false, ...seen };
+	let scroller = el.parentElement;
+	while (scroller) { const cs = getComputedStyle(scroller); if (/(auto|scroll)/.test(cs.overflowY) && scroller.scrollHeight > scroller.clientHeight) break; scroller = scroller.parentElement; }
+	if (!scroller) return { found: true, scrolled: false, ...seen };
+	const tried = [];
+	for (const f of [0.5, 0.35, 0.65, 0.25, 0.75]) {
+		const s = scroller.getBoundingClientRect();
+		const r = el.getBoundingClientRect();
+		scroller.scrollTop += r.top + r.height / 2 - (s.top + s.height * f);
+		await frame();
+		seen = probe();
+		tried.push(f);
+		if (seen.ok) break;
+	}
+	return { found: true, scrolled: true, tried, ...seen };
+})()`;
+
+/**
+ * A frame shows the state that was asserted, not the one before it (QA round
+ * 6: Run panel frames still showing the chat, a Loading frame for a loaded
+ * page). Finite animations finish (bounded), then two frames are painted.
+ */
+export const PAINT_SETTLED = `(async () => {
+	const t0 = performance.now();
+	const moving = () => document.getAnimations().some((a) => a.playState === "running" && a.effect?.getTiming?.().iterations !== Infinity);
+	while (performance.now() - t0 < 2000 && moving()) await new Promise((r) => setTimeout(r, 50));
+	await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+	return true;
 })()`;
 
 /*
@@ -402,6 +467,12 @@ export async function sceneDiffHistory({
 			check(label, r.ok, `last reading: ${JSON.stringify(r.last)}`);
 			return r.ok;
 		});
+	/* Capture once the asserted state is painted (QA round 6 harness note). */
+	const shot = async (label, ready = null) => {
+		if (ready) await waitForCondition(cdp, ready, 10_000);
+		await cdp.evaluate(PAINT_SETTLED);
+		return capture(cdp, label);
+	};
 	const step = (name) =>
 		handshake
 			? awaitHandshake({
@@ -422,6 +493,8 @@ export async function sceneDiffHistory({
 	 * whatever was there mid-layout; the hit test is recorded AND checked.
 	 */
 	const pressSettled = async (selector, what) => {
+		const clear = await cdp.evaluate(clearForPress(selector));
+		note(`${what}: clear of chrome`, JSON.stringify(clear));
 		let last = null;
 		let stable = false;
 		for (let i = 0; i < 30 && !stable; i += 1) {
@@ -468,7 +541,7 @@ export async function sceneDiffHistory({
 			);
 		let state = await facts();
 		note(`diff-history ${label} work controls`, JSON.stringify(state));
-		await capture(cdp, `diff-history-${label}-initial`);
+		await shot(`diff-history-${label}-initial`);
 		if (row && (await cdp.evaluate(`Boolean(${q(viewFullIn(row))})`)) === true)
 			return row;
 		// Outer TurnSummary headers come first in the read, then TraceFolds, so an
@@ -514,11 +587,35 @@ export async function sceneDiffHistory({
 			state.zeroBoxes === 0,
 			JSON.stringify(state),
 		);
+		/*
+		 * U6: the page's first row (its `@@` context or first row) sits directly
+		 * under the bar, within 12px. A short page at the very end of the
+		 * transcript cannot be lifted further (scrollTop 0 in the reverse
+		 * scroller), so there it need only start below the bar and on screen.
+		 */
+		const bar = state.nav ? state.nav.y + state.nav.h : null;
+		const atEnd = Math.abs(state.scroller?.scrollTop ?? 1) <= 1;
+		check(
+			`${label}: the page's first row sits directly under the pinned bar (U6)`,
+			state.head != null &&
+				bar !== null &&
+				state.nav.y >= (state.scroller?.top ?? 0) - 1 &&
+				(Math.abs(state.head.y - bar) <= 12 ||
+					(atEnd &&
+						state.head.y >= bar - 1 &&
+						state.head.y < state.viewport.h)),
+			JSON.stringify({
+				nav: state.nav,
+				head: state.head,
+				scroller: state.scroller,
+			}),
+			JSON.stringify({ navBottom: bar, head: state.head?.y }),
+		);
 		if (tally && state.signs) {
 			tally.added += state.signs.added;
 			tally.removed += state.signs.removed;
 		}
-		await capture(cdp, `diff-history-${label}`);
+		await shot(`diff-history-${label}`, pagerReady(root));
 		return state;
 	};
 	const pressNav = async (root, label, what) => {
@@ -551,6 +648,7 @@ export async function sceneDiffHistory({
 	const stickyNav = async (root, label) => {
 		let geometry = null;
 		let visible = false;
+		let wheels = 0;
 		for (let i = 0; i < 40; i += 1) {
 			geometry = await cdp.evaluate(scrollGeometry(root));
 			if (!geometry?.last) break;
@@ -558,6 +656,7 @@ export async function sceneDiffHistory({
 				visible = true;
 				break;
 			}
+			wheels += 1;
 			await cdp.send("Input.dispatchMouseEvent", {
 				type: "mouseWheel",
 				x: geometry.point.x,
@@ -567,25 +666,37 @@ export async function sceneDiffHistory({
 			});
 			await sleep(150);
 		}
-		await capture(cdp, `diff-history-${label}-page-first-scrolled`);
-		note(`${label}: D1 scroll`, JSON.stringify(geometry));
+		await shot(`diff-history-${label}-page-first-scrolled`);
+		note(`${label}: D1 scroll`, JSON.stringify({ wheels, geometry }));
 		check(
 			`${label}: the first page's last row scrolls into view inside the page`,
 			visible,
-			JSON.stringify(geometry),
+			JSON.stringify({ wheels, geometry }),
+			JSON.stringify({ wheels, scrolled: wheels > 0 }),
+		);
+		check(
+			`${label}: nothing between the bar and the transcript scroller is a scroll container (D1)`,
+			geometry?.scroller === true &&
+				Array.isArray(geometry.scrollBoxes) &&
+				geometry.scrollBoxes.length === 0,
+			JSON.stringify({
+				scroller: geometry?.scroller,
+				scrollBoxes: geometry?.scrollBoxes,
+			}),
+			JSON.stringify({ scrollBoxes: geometry?.scrollBoxes?.length ?? null }),
 		);
 		const nav = geometry?.nav;
 		check(
 			`${label}: the page nav stays on screen at the page end (D1)`,
 			visible && nav !== null && nav?.top >= 0 && nav?.bottom <= geometry.vh,
-			JSON.stringify({ nav, vh: geometry?.vh }),
-			JSON.stringify({ nav, vh: geometry?.vh }),
+			JSON.stringify({ nav, vh: geometry?.vh, wheels }),
+			JSON.stringify({ nav, vh: geometry?.vh, scrolled: wheels > 0 }),
 		);
 	};
 
 	/* Error (QA stops then restarts the backend), from the first page. */
 	const errorAndRetry = async (root, label, fromRange) => {
-		await capture(cdp, `diff-history-${label}-error-before`);
+		await shot(`diff-history-${label}-error-before`);
 		if (!(await step("error-stop"))) return null;
 		if ((await pressNav(root, "Next", label)) === null) return null;
 		const errored = await settle(
@@ -597,7 +708,7 @@ export async function sceneDiffHistory({
 			`${label}: error state`,
 			JSON.stringify(await cdp.evaluate(readPager(root))),
 		);
-		await capture(cdp, `diff-history-${label}-error`);
+		await shot(`diff-history-${label}-error`, pagerErrored(root));
 		if (!errored) return null;
 		if (!(await step("error-restart"))) return null;
 		if (!(await pressSettled(`${pagerIn(root)} > button`, `${label}: Retry`)))
@@ -687,11 +798,20 @@ export async function sceneDiffHistory({
 				))
 			)
 				last = await page(root, `${label}-page-last`, tally);
-		} else
+		} else {
 			note(
 				`${label}: paging`,
 				"the diff fits one page: Next/Previous/Last not offered",
 			);
+			// The handshake's error and Retry proof runs only from a multi-page
+			// call; skipping it silently would PASS a run that never tested it (R9).
+			if (error)
+				check(
+					`${label}: handshake error steps need a multi-page call`,
+					false,
+					JSON.stringify(firstRange),
+				);
+		}
 		const lastRange = parseRange(last.range);
 		check(
 			`${label}: Last ends on the final row`,
@@ -719,7 +839,7 @@ export async function sceneDiffHistory({
 				`!${q(pagerIn(root))} && Boolean(document.activeElement?.matches(${JSON.stringify(viewFullIn(root))}))`,
 				`${label}: Back closes the pager and focus returns to View full diff`,
 			);
-			await capture(cdp, `diff-history-${label}-closed`);
+			await shot(`diff-history-${label}-closed`);
 		}
 		if (await openFull(root, `${label} reopen`)) {
 			const again = await page(root, `${label}-page-reopened`);
@@ -734,14 +854,14 @@ export async function sceneDiffHistory({
 		return first;
 	};
 
-	const noOffer = async () => {
+	const noOffer = async (scope = PARENT_SCOPE) => {
 		// WHY a frame on failure: native QA failed here with nothing to look at.
 		// The frame and these read-only facts never mask the missing control:
 		// the settle before this already recorded the FAIL.
-		await capture(cdp, "diff-history-no-offer");
+		await shot("diff-history-no-offer");
 		note(
 			"diff-history no-offer dom",
-			JSON.stringify(await cdp.evaluate(NO_OFFER_READ)),
+			JSON.stringify(await cdp.evaluate(noOfferRead(scope))),
 		);
 		const queries = await verb(cdp, "queries");
 		const list = Array.isArray(queries) ? queries : [];
@@ -777,7 +897,7 @@ export async function sceneDiffHistory({
 			);
 			note(`${label}-${i + 1}: offer`, JSON.stringify(offer));
 			if (offer?.notice) {
-				await capture(cdp, `diff-history-${label}-${i + 1}-notice`);
+				await shot(`diff-history-${label}-${i + 1}-notice`);
 				check(
 					`${label}-${i + 1}: a ${offer.notice} write states its note and offers no View full`,
 					!offer.full,
@@ -836,10 +956,10 @@ export async function sceneDiffHistory({
 					),
 				),
 			);
-			await capture(cdp, "diff-history-child-no-row");
+			await shot("diff-history-child-no-row");
 			return;
 		}
-		await capture(cdp, "diff-history-child-run-panel");
+		await shot("diff-history-child-run-panel", `Boolean(${q(rowButton)})`);
 		if (!(await pressSettled(rowButton, "child: subagent row"))) return;
 		if (
 			!(await settle(
@@ -848,7 +968,10 @@ export async function sceneDiffHistory({
 			))
 		)
 			return;
-		await capture(cdp, "diff-history-child-reader");
+		await shot(
+			"diff-history-child-reader",
+			`Boolean(document.querySelector(${JSON.stringify(CHILD_SCOPE)}))`,
+		);
 		const editRow = await disclose("child-edit", CHILD_SCOPE, {
 			verb: "Edited",
 		});
@@ -858,9 +981,9 @@ export async function sceneDiffHistory({
 				"child: the reader's Edited row offers View full diff",
 			))
 		)
-			await noOffer();
+			await noOffer(CHILD_SCOPE);
 		else {
-			await capture(cdp, "diff-history-child-edit-preview");
+			await shot("diff-history-child-edit-preview");
 			await walkCall(editRow ?? CHILD_SCOPE, {
 				label: "child-edit",
 				kind: "edit",
@@ -890,7 +1013,7 @@ export async function sceneDiffHistory({
 			await noOffer();
 			return;
 		}
-		await capture(cdp, "diff-history-preview");
+		await shot("diff-history-preview");
 		const root = row ?? PARENT_SCOPE;
 		const first = await walkCall(root, {
 			label: "parent-edit",
@@ -904,6 +1027,13 @@ export async function sceneDiffHistory({
 		await verb(cdp, "navigate", "/chat");
 		await verb(cdp, "navigate", `/chat/${session}`);
 		const again = await disclose("renavigated", PARENT_SCOPE, { row: root });
+		// The regression this step exists for is "the row cannot be re-found
+		// after the round-trip": a miss is a FAIL, never a silent skip (R9).
+		check(
+			"re-navigated: the same call's row is found again",
+			first !== null && again !== null,
+			JSON.stringify({ first: first?.range ?? null, row: root, again }),
+		);
 		if (first && again && (await openFull(again, "renavigated"))) {
 			const state = await page(again, "page-renavigated");
 			check(
@@ -923,15 +1053,16 @@ export async function sceneDiffHistory({
 		);
 		const before = await cdp.evaluate(verbCounts(PARENT_SCOPE));
 		note("live: before", JSON.stringify(before));
-		await capture(cdp, "diff-history-live-before");
+		await shot("diff-history-live-before");
 		check(
 			"live: no Wrote/Edited row before the turn",
 			before?.wrote === 0 && before?.edited === 0,
 			JSON.stringify(before),
 		);
 		if (await step("live")) {
+			const workArrived = `(() => { const c = ${verbCounts(PARENT_SCOPE)}; return c.origin === ${JSON.stringify(before?.origin)} && c.route === ${JSON.stringify(before?.route)} && ((c.wrote > 0 && c.edited > 0) || c.headers > ${Number(before?.headers ?? 0)}); })()`;
 			const arrived = await settle(
-				`(() => { const c = ${verbCounts(PARENT_SCOPE)}; return c.origin === ${JSON.stringify(before?.origin)} && c.route === ${JSON.stringify(before?.route)} && ((c.wrote > 0 && c.edited > 0) || c.headers > ${Number(before?.headers ?? 0)}); })()`,
+				workArrived,
 				"live: the turn's work appears without a reload or navigation",
 				90_000,
 			);
@@ -939,7 +1070,7 @@ export async function sceneDiffHistory({
 				"live: after",
 				JSON.stringify(await cdp.evaluate(verbCounts(PARENT_SCOPE))),
 			);
-			await capture(cdp, "diff-history-live-after");
+			await shot("diff-history-live-after", workArrived);
 			if (arrived) {
 				const row = await disclose("live-edit", PARENT_SCOPE, {
 					verb: "Edited",

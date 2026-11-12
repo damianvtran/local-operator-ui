@@ -295,6 +295,40 @@ export function useDiffHistory(
 const CANCELLED = Symbol("diff-history-cancelled");
 
 /**
+ * ANCHOR ON THE PAGE'S FIRST ROW, NEVER ON THE BAR (design round 3, U6).
+ * The bar is `sticky`: once pinned, its rect is always in view, so an
+ * anchor measured from it read "already in place" (delta 0) and the
+ * bottom-anchored (flex-col-reverse) transcript kept its TAIL — every Next
+ * landed the reader on the page's last rows with the `@@` header and ~160
+ * rows above the viewport. The anchor is the status region directly after
+ * the bar: in flow, never sticky, and the page's rows (or its loading /
+ * error sentence) start at its top.
+ *
+ * Two measured moves, because where the bar pins is the browser's to say
+ * (the scroller's padding, its top inset): first bring the region to the
+ * scroller's top edge, which pins the bar; then read the PINNED bar and lift
+ * the region to sit directly under it. A short well (loading) can hold the
+ * bar against its own end, so the second move repeats until it is still.
+ */
+function anchorFirstRow(nav: HTMLElement | null): void {
+	const scroller = nav?.closest<HTMLElement>("[data-lo-canonical-transcript]");
+	const start = nav?.nextElementSibling;
+	if (!scroller || !nav || !(start instanceof HTMLElement)) return;
+	scroller.scrollTop +=
+		start.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+	const view = nav.ownerDocument.defaultView;
+	const gap =
+		Number.parseFloat(view?.getComputedStyle(nav).marginBottom ?? "") || 0;
+	for (let i = 0; i < 3; i += 1) {
+		const delta =
+			start.getBoundingClientRect().top -
+			(nav.getBoundingClientRect().bottom + gap);
+		if (Math.abs(delta) < 1) break;
+		scroller.scrollTop += delta;
+	}
+}
+
+/**
  * Text-button treatment shared with the preview's toggle (underline, dim ink).
  *
  * Unavailable actions are `aria-disabled`, not `disabled` (review round 1,
@@ -334,7 +368,8 @@ export const DiffHistoryPager: FC<{
 	const headerRows = knownHeaderRows ?? measuredHeaderRows.current;
 	const rootRef = useRef<HTMLDivElement>(null);
 	const navRef = useRef<HTMLElement>(null);
-	const anchorRef = useRef<{ scroller: HTMLElement; top: number } | null>(null);
+	/** Set on open and on every page move until the new page has painted. */
+	const anchorPending = useRef(false);
 	/*
 	 * The last page painted, kept while the next one loads or fails so the bar
 	 * keeps its controls (and the focused one stays in the DOM) and the range
@@ -346,41 +381,20 @@ export const DiffHistoryPager: FC<{
 	/** Set when an action began with focus inside the pager. */
 	const holdFocus = useRef(false);
 
-	const scrollerOf = () =>
-		rootRef.current?.closest<HTMLElement>("[data-lo-canonical-transcript]") ??
-		null;
-
-	/*
-	 * The canonical transcript is bottom-anchored (flex-col-reverse), so a page
-	 * of a different height would otherwise move the pager bar under the
-	 * reader's pointer. Same anchoring as the preview's expand toggle: remember
-	 * the bar's viewport offset before navigating, restore it before paint.
-	 */
-	const captureAnchor = () => {
-		const scroller = scrollerOf();
-		if (scroller && navRef.current) {
-			anchorRef.current = {
-				scroller,
-				top:
-					navRef.current.getBoundingClientRect().top -
-					scroller.getBoundingClientRect().top,
-			};
-		}
-	};
 	const act = (enabled: boolean, action: () => void) => () => {
 		if (!enabled) return;
 		holdFocus.current = Boolean(
 			rootRef.current?.contains(document.activeElement),
 		);
-		captureAnchor();
+		anchorPending.current = true;
 		action();
 	};
 	/*
-	 * Entering full mode: bring the pager bar into view and hold it there while
-	 * the first page arrives. Without this the reverse scroller keeps its TAIL
-	 * when the page grows the well, so the reader lands on row ~170 with the
-	 * bar (and its range label) scrolled off the top — measured in the first
-	 * rendered frame of this story, before this anchor existed.
+	 * Entering full mode: bring the pager bar into view and hold the first row
+	 * under it while the first page arrives. Without this the reverse scroller
+	 * keeps its TAIL when the page grows the well, so the reader lands on row
+	 * ~170 with the bar (and its range label) scrolled off the top — measured
+	 * in the first rendered frame of this story, before this anchor existed.
 	 *
 	 * Scoped to the transcript scroller (POLISH D5): `scrollIntoView` also
 	 * scrolled every ancestor, the Storybook page included. Focus moves to the
@@ -388,24 +402,16 @@ export const DiffHistoryPager: FC<{
 	 */
 	// biome-ignore lint/correctness/useExhaustiveDependencies: mount-only by design
 	useLayoutEffect(() => {
-		const scroller = scrollerOf();
-		const nav = navRef.current;
-		if (scroller && nav) {
-			const top =
-				nav.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
-			if (top < 0 || top > scroller.clientHeight) scroller.scrollTop += top;
-		}
-		nav?.focus({ preventScroll: true });
-		captureAnchor();
+		anchorPending.current = true;
+		anchorFirstRow(navRef.current);
+		navRef.current?.focus({ preventScroll: true });
 	}, []);
 	useLayoutEffect(() => {
-		const anchor = anchorRef.current;
-		if (anchor && state.kind !== "loading" && navRef.current) {
-			anchorRef.current = null;
-			const top =
-				navRef.current.getBoundingClientRect().top -
-				anchor.scroller.getBoundingClientRect().top;
-			anchor.scroller.scrollTop += top - anchor.top;
+		// Before paint, on every state of a move (its loading sentence, then the
+		// page or the error): the reader never sees the tail flash first.
+		if (anchorPending.current) {
+			anchorFirstRow(navRef.current);
+			if (state.kind !== "loading") anchorPending.current = false;
 		}
 		/*
 		 * The focused control can still leave the DOM (Retry is replaced by the
@@ -427,14 +433,30 @@ export const DiffHistoryPager: FC<{
 	const shown = page ?? (state.kind === "notice" ? null : lastPageRef.current);
 	const range =
 		shown && shown.rows.length > 0 ? pageRange(shown, headerRows) : null;
-	const body = page ? diffPageLines(page) : null;
+	/*
+	 * A failed move keeps the page the reader was on UNDER its error line
+	 * (design round 3, D3): the range then still describes rows on screen,
+	 * instead of naming rows the well no longer shows.
+	 */
+	const painted = page ?? (state.kind === "error" ? lastPageRef.current : null);
+	const body = painted ? diffPageLines(painted) : null;
 	const clippedCount = page?.clippedRows.length ?? 0;
 	/*
 	 * Paging controls only exist once there is something to page (D3): on a
-	 * first load, an error with no page, a notice or an empty diff, four inert
-	 * buttons would only obscure the one sentence that matters. Back stays.
+	 * first load, an error, a notice or an empty diff, four inert buttons would
+	 * only obscure the one sentence that matters — an error's way on is its
+	 * Retry, which replays the move that failed. Back stays.
 	 */
-	const paging = range !== null;
+	const paging = range !== null && state.kind !== "error";
+	/*
+	 * The same Previous / range / Next again at the page's END (design round 3,
+	 * recommended with D1): after reading 200 rows the reader's eye and pointer
+	 * are there, ~700px from the pinned bar. Existing copy only; the range here
+	 * is not a live region (the bar's already announces it). Only while a page
+	 * is painted, so it never offers inert controls under a sentence.
+	 */
+	const foot =
+		paging && page !== null && body !== null && body.lines.length > 0;
 	const status =
 		state.kind === "loading"
 			? diffFullLoadingLabel()
@@ -583,6 +605,32 @@ export const DiffHistoryPager: FC<{
 				<span className="mt-2 block text-ink-dim">
 					{diffFullClippedLabel(clippedCount)}
 				</span>
+			)}
+			{foot && range && (
+				<div
+					data-diff-history-foot=""
+					className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-ink-dim"
+				>
+					<button
+						type="button"
+						className={NAV_BUTTON}
+						aria-disabled={!pager.canPrev}
+						onClick={act(pager.canPrev, pager.prev)}
+					>
+						{diffFullPrevLabel()}
+					</button>
+					<span>
+						{diffFullRangeLabel(range.first, range.last, range.total)}
+					</span>
+					<button
+						type="button"
+						className={NAV_BUTTON}
+						aria-disabled={!pager.canNext}
+						onClick={act(pager.canNext, pager.next)}
+					>
+						{diffFullNextLabel()}
+					</button>
+				</div>
 			)}
 		</div>
 	);

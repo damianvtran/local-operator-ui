@@ -634,3 +634,334 @@ test("--child opens the Run panel, then the subagent's row, then reads only the 
 		),
 	);
 });
+
+// ---- PR #1829 agent review round 9, design round 3, QA round 6 -------------
+
+/*
+ * Namespace access, so a symbol missing on an older scene fails ITS test
+ * rather than the whole file's import.
+ */
+const S = await import("./diff-history-scene.mjs");
+
+/**
+ * A parent run against a model app: one Edited row, a single-page pager whose
+ * reading is `pager` (override per test), a press that always hit-tests.
+ * `renavigatedRow` false = the row is gone after the route round-trip.
+ */
+async function parentRun({
+	pager = {},
+	geometry = null,
+	renavigatedRow = true,
+	handshake = false,
+} = {}) {
+	const edited =
+		'[data-lo-canonical-transcript] [data-record-id="e1"] button[aria-expanded="false"]:has([data-trace-verb])';
+	let navigations = 0;
+	let opened = false;
+	const evaluated = [];
+	const checks = [];
+	const order = [];
+	const reading = {
+		open: true,
+		range: "Rows 1–10 of 10",
+		status: "",
+		busy: "false",
+		buttons: [{ text: "Back to preview", disabled: null }],
+		signs: { added: 2, removed: 1, addedBadSign: 0, removedBadSign: 0 },
+		zeroBoxes: 0,
+		nav: { x: 0, y: 100, w: 600, h: 30 },
+		head: { x: 0, y: 130, w: 600, h: 17 },
+		scroller: { top: 100, scrollTop: -900, min: -5000 },
+		viewport: { w: 1380, h: 900 },
+		lastRow: { index: "9", text: "+x" },
+		...pager,
+	};
+	await sceneDiffHistory({
+		cdp: {
+			evaluate: async (expr) => {
+				evaluated.push(expr);
+				order.push(["eval", expr]);
+				if (expr === WORK_READ) {
+					const gone = navigations >= 3 && !renavigatedRow;
+					return {
+						transcript: true,
+						viewFull: 0,
+						disclosures: [],
+						ambiguous: 0,
+						tools:
+							gone || (opened && navigations < 3)
+								? []
+								: [{ verb: "Edited", selector: edited }],
+					};
+				}
+				if (expr.startsWith("(() => { const el = document.querySelector("))
+					return "10,20,300,17";
+				if (expr.includes("lastIndex")) return geometry;
+				if (expr.startsWith("(async () => {")) return { found: true, ok: true };
+				return reading;
+			},
+			send: async () => {},
+		},
+		verb: async (_cdp, name, payload) => {
+			order.push(["verb", name, payload?.selector ?? payload]);
+			if (name === "navigate") navigations += 1;
+			if (name === "press" && payload.selector === edited) opened = true;
+			return name === "queries" ? [] : { ok: true, hitTest: true };
+		},
+		capture: async (_cdp, name) => order.push(["capture", name]),
+		check: (label, passed, detail, summary) =>
+			checks.push({ label, passed, detail, summary }),
+		note: () => {},
+		waitForCondition: async () => ({ ok: true, last: null }),
+		factsOf: async () => ({}),
+		session: "fc00000000a1",
+		handshake,
+		outDir: "/nonexistent",
+		files: { exists: async () => false, write: async () => {} },
+		sleep: async () => {},
+		now: (() => {
+			let t = 0;
+			return () => {
+				t += 1_000;
+				return t;
+			};
+		})(),
+		handshakeMs: 1,
+	});
+	const verdict = (label) => checks.find((c) => c.label === label);
+	return { checks, verdict, evaluated, order, edited };
+}
+
+test("R9: a re-navigated row that cannot be re-found is a recorded FAIL, not a skip", async () => {
+	const missing = await parentRun({ renavigatedRow: false });
+	assert.equal(
+		missing.verdict("re-navigated: the same call's row is found again")?.passed,
+		false,
+	);
+	const found = await parentRun();
+	assert.equal(
+		found.verdict("re-navigated: the same call's row is found again")?.passed,
+		true,
+	);
+	assert.equal(
+		found.verdict("re-navigated: the same call pages the same first page")
+			?.passed,
+		true,
+	);
+});
+
+test("R9: --handshake with a one-page call FAILS its error steps instead of skipping them", async () => {
+	const run = await parentRun({ handshake: true });
+	assert.equal(
+		run.verdict("parent-edit: handshake error steps need a multi-page call")
+			?.passed,
+		false,
+	);
+	const plain = await parentRun();
+	assert.equal(
+		plain.verdict("parent-edit: handshake error steps need a multi-page call"),
+		undefined,
+	);
+});
+
+test("R9: --diff-expect write/oversized are refused without --child", () => {
+	const base = { ...ok, session: "fc00000000a1" };
+	for (const expect of [
+		'{"write":{"total":3}}',
+		'{"oversized":true}',
+		'{"oversized":false}',
+	]) {
+		assert.match(
+			diffHistorySceneRefusal({ ...base, expect }),
+			/need --child/,
+			expect,
+		);
+		assert.equal(
+			diffHistorySceneRefusal({ ...base, child: "29aca806b290", expect }),
+			null,
+		);
+	}
+	assert.equal(
+		diffHistorySceneRefusal({ ...base, expect: '{"edit":{"total":3}}' }),
+		null,
+	);
+});
+
+test("D1: the scene FAILS when a box between the bar and the scroller is a scroll container, and says whether it scrolled", async () => {
+	const at = (top) => ({ top, bottom: top + 18, left: 0, right: 600 });
+	const geometry = (scrollBoxes) => ({
+		vh: 900,
+		scroller: true,
+		scrollBoxes,
+		foot: null,
+		nav: at(100),
+		last: at(500),
+		lastIndex: "9",
+		point: { x: 300, y: 400 },
+	});
+	const label =
+		"parent-edit: nothing between the bar and the transcript scroller is a scroll container (D1)";
+	const bad = await parentRun({
+		geometry: geometry([{ tag: "div", x: "hidden", y: "hidden" }]),
+	});
+	assert.equal(bad.verdict(label)?.passed, false);
+	const good = await parentRun({ geometry: geometry([]) });
+	assert.equal(good.verdict(label)?.passed, true);
+	// No wheel was needed here, and the check says so.
+	const scrolled = good.verdict(
+		"parent-edit: the first page's last row scrolls into view inside the page",
+	);
+	assert.match(scrolled.summary, /"scrolled":false/);
+	// The geometry read walks computed overflow, not class names.
+	const read = good.evaluated.find((e) => e.includes("lastIndex"));
+	assert.match(read, /getComputedStyle\(el\)/);
+	assert.match(read, /"hidden" \|\| v === "auto" \|\| v === "scroll"/);
+});
+
+test("U6: a page whose first row is not under the bar FAILS; one directly under it passes", async () => {
+	const label =
+		"parent-edit-page-first: the page's first row sits directly under the pinned bar (U6)";
+	const tail = await parentRun({
+		pager: { head: { x: 0, y: -1383, w: 600, h: 17 } },
+	});
+	assert.equal(tail.verdict(label)?.passed, false);
+	const under = await parentRun();
+	assert.equal(under.verdict(label)?.passed, true);
+	// At the transcript's very end a short page cannot be lifted: below the bar
+	// and on screen is enough there, and only there.
+	const end = await parentRun({
+		pager: {
+			head: { x: 0, y: 400, w: 600, h: 17 },
+			scroller: { top: 100, scrollTop: 0, min: -300 },
+		},
+	});
+	assert.equal(end.verdict(label)?.passed, true);
+	const midway = await parentRun({
+		pager: { head: { x: 0, y: 400, w: 600, h: 17 } },
+	});
+	assert.equal(midway.verdict(label)?.passed, false);
+});
+
+test("D6: every press first clears its target of fixed chrome; every frame waits for paint", async () => {
+	const run = await parentRun();
+	const presses = run.order.filter(([k, n]) => k === "verb" && n === "press");
+	assert.ok(presses.length >= 3);
+	for (const [, , selector] of presses) {
+		const at = run.order.findIndex(
+			(e) => e[0] === "verb" && e[1] === "press" && e[2] === selector,
+		);
+		const cleared = run.order.findIndex(
+			(e) => e[0] === "eval" && e[1] === S.clearForPress(selector),
+		);
+		assert.ok(
+			cleared >= 0 && cleared < at,
+			`cleared before pressing ${selector}`,
+		);
+	}
+	const captures = run.order
+		.map((e, i) => [e, i])
+		.filter(([e]) => e[0] === "capture");
+	assert.ok(captures.length > 0);
+	for (const [[, name], i] of captures)
+		assert.deepEqual(
+			run.order[i - 1],
+			["eval", S.PAINT_SETTLED],
+			`${name} is captured only after paint settles`,
+		);
+});
+
+test("D6: clearForPress scrolls a target hidden under chrome until its centre hit-tests to it", async () => {
+	const { JSDOM } = await import("jsdom");
+	const dom = new JSDOM(
+		'<!doctype html><div id="s" style="overflow-y:auto"><button id="b">View full diff</button></div><div id="band">Read-only</div>',
+		{ runScripts: "outside-only", pretendToBeVisual: true },
+	);
+	const w = dom.window;
+	const scroller = w.document.getElementById("s");
+	const button = w.document.getElementById("b");
+	const band = w.document.getElementById("band");
+	Object.defineProperty(scroller, "scrollHeight", { value: 5000 });
+	Object.defineProperty(scroller, "clientHeight", { value: 718 });
+	let scrollTop = 0;
+	Object.defineProperty(scroller, "scrollTop", {
+		get: () => scrollTop,
+		set: (v) => {
+			scrollTop = v;
+		},
+	});
+	// The viewport ends at 818 for the transcript; the reader's foot band
+	// (and anything else fixed) owns the pixels below it.
+	scroller.getBoundingClientRect = () => ({
+		top: 100,
+		height: 718,
+		bottom: 818,
+		left: 0,
+		right: 600,
+		width: 600,
+	});
+	button.getBoundingClientRect = () => {
+		const top = 835 - scrollTop;
+		return {
+			top,
+			height: 16,
+			bottom: top + 16,
+			left: 10,
+			right: 200,
+			width: 190,
+		};
+	};
+	w.document.elementFromPoint = (_x, y) =>
+		y >= 100 && y < 818 ? button : band;
+	const before = await w.eval(S.clearForPress("#b"));
+	assert.equal(before.found, true);
+	assert.equal(before.ok, true, JSON.stringify(before));
+	assert.equal(before.scrolled, true);
+	assert.ok(scrollTop > 0);
+	// A target that already hit-tests is never moved.
+	const moved = scrollTop;
+	const again = await w.eval(S.clearForPress("#b"));
+	assert.equal(again.scrolled, false);
+	assert.equal(scrollTop, moved);
+	w.close();
+});
+
+test("child mode reads the CHILD transcript for its no-offer diagnostic", async () => {
+	const evaluated = [];
+	await sceneDiffHistory({
+		cdp: {
+			evaluate: async (expr) => {
+				evaluated.push(expr);
+				if (expr.startsWith("(() => { const el = document.querySelector("))
+					return "10,20,300,17";
+				if (expr === workRead(CHILD_SCOPE))
+					return {
+						transcript: true,
+						viewFull: 0,
+						disclosures: [],
+						ambiguous: 0,
+						tools: [],
+					};
+				return { open: false };
+			},
+			send: async () => {},
+		},
+		verb: async (_cdp, name) =>
+			name === "queries" ? [] : { ok: true, hitTest: true },
+		capture: async () => {},
+		check: () => {},
+		note: () => {},
+		waitForCondition: async (_cdp, expr) => ({
+			ok:
+				expr.includes("data-run-panel-row") ||
+				expr.endsWith('[data-lo-canonical-transcript]"))'),
+			last: null,
+		}),
+		factsOf: async () => ({}),
+		session: "fc00000000d1",
+		child: "29aca806b290",
+		sleep: async () => {},
+	});
+	assert.equal(typeof S.noOfferRead, "function");
+	assert.ok(evaluated.includes(S.noOfferRead(CHILD_SCOPE)));
+	assert.ok(!evaluated.includes(S.NO_OFFER_READ));
+});
