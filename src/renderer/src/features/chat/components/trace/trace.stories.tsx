@@ -11,6 +11,7 @@
  * the theme off the root and a wrapper attribute alone leaves them unstyled.
  */
 
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import { type ReactNode, useEffect } from "react";
@@ -301,6 +302,10 @@ const CONVERSATION: Message[] = [
  * evidence about the story.
  */
 const ConversationList = () => {
+	// `groupMessages` formats the day divider at call time in the live locale;
+	// subscribing repaints it on a language switch instead of leaving the old
+	// locale's divider until a remount (design review r1 D1).
+	useI18nLocale();
 	const showAgentReasoning = useUiPreferencesStore(
 		(state) => state.showAgentReasoning,
 	);
