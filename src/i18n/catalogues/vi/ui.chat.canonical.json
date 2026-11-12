@@ -459,5 +459,15 @@
 	"ui.chat.canonical.temporary_deleted.title": "Cuộc trò chuyện tạm thời này đã bị xóa",
 	"ui.chat.canonical.temporary_deleted.detail": "Nó đã bị xóa sau khi không hoạt động và không thể mở lại. Các tệp nó đã thay đổi trên máy tính của bạn vẫn còn đó.",
 	"ui.chat.canonical.temporary_deleted.new": "Cuộc trò chuyện tạm thời mới",
-	"ui.chat.canonical.temporary_deleted.back": "Quay lại danh sách trò chuyện"
+	"ui.chat.canonical.temporary_deleted.back": "Quay lại danh sách trò chuyện",
+	"ui.chat.canonical.media.image_label": "{count, plural, =1 {Hình ảnh} other {Hình ảnh {position, number, ::group-off}}}",
+	"ui.chat.canonical.media.sound_label": "{count, plural, =1 {Âm thanh} other {Âm thanh {position, number, ::group-off}}}",
+	"ui.chat.canonical.sound.batch.item_status": "{status, select, failed {{label} · Thất bại} cancelled {{label} · Đã dừng} other {{label} · Không rõ trạng thái}}",
+	"ui.chat.canonical.sound.batch.latest_update": "Cập nhật gần nhất: {name} (mục {item, number, ::group-off}/{total, number, ::group-off}).",
+	"ui.chat.canonical.sound.batch.summary": "{completed, plural, other {{completed, number, ::group-off} hoàn tất}} · {failed, plural, other {{failed, number, ::group-off} thất bại}}{cancelled, plural, =0 {} other { · {cancelled, number, ::group-off} đã dừng}}{unknown, plural, =0 {} other { · {unknown, number, ::group-off} không rõ trạng thái}}{has_attention, select, yes {. Cần chú ý: {labels}} other {}}",
+	"ui.chat.canonical.sound.cost.batch_unknown": "Chưa biết tổng chi phí.",
+	"ui.chat.canonical.sound.cost.estimated_zero": "Chi phí ước tính là $0; khoản phí cuối cùng chưa được xác nhận.",
+	"ui.chat.canonical.sound.cost.no_charge": "Không tính phí.",
+	"ui.chat.canonical.sound.cost.unknown": "Chưa biết chi phí.",
+	"ui.chat.canonical.supplement.sound_fallback_label": "Âm thanh được tạo"
 }

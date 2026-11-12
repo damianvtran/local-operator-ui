@@ -1,0 +1,116 @@
+{
+ "schema": 1,
+ "locale": "ur",
+ "namespace": "ui.chat.canonical",
+ "pr": "damianvtran/local-operator-ui#1876",
+ "branch_base": "7c43086791f3571a20a2ab85b6e9f49365cd99c6",
+ "audited_head": "9931d62addf8a0606bb26d32a8bc163dc7c126b3",
+ "date": "2026-11-11",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "33f0800c30f3",
+  "instance": "33f0800c30f3-s16f-r2-ur",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "session default model header; no provider fallback signalled in this run",
+  "independent_from_translator_session": true,
+  "independence": "Fresh second-round i18n-auditor, not the translator (i18n-translator, anthropic/claude-sonnet-5-5) and not the round-1 auditor of ur (session 65809453d7b2): their report was read as input only and every value was re-judged here against the English source, its context sidecar, the ur corpus and the core glossary/style guide. The round-1 corrections (منسوخ single state word in summary+item_status; مجموعی لاگت in batch_unknown) had no independent reader before this session, so they were re-derived, not accepted."
+ },
+ "agent": "i18n-auditor",
+ "model": "deepseek/deepseek-flash",
+ "fallback": "none reported",
+ "instance": "33f0800c30f3-s16f-r2-ur",
+ "session": "33f0800c30f3",
+ "status": "passed",
+ "result": "clean",
+ "scope": "S16f round 2 on the LANDED bytes: the 10 generation-card label keys ur/ui.chat.canonical added by PR #1876 (sound.batch.item_status, sound.batch.summary, sound.batch.latest_update, sound.cost.unknown, sound.cost.no_charge, sound.cost.estimated_zero, sound.cost.batch_unknown, media.image_label, media.sound_label, supplement.sound_fallback_label). All 10 re-read and re-rendered; the other 456 namespace keys unchanged by this PR and carried on their prior audits. Catalogue audit only: not rendered fit, activation or release.",
+ "keys_audited": [
+  "ui.chat.canonical.sound.batch.item_status",
+  "ui.chat.canonical.sound.batch.summary",
+  "ui.chat.canonical.sound.batch.latest_update",
+  "ui.chat.canonical.sound.cost.unknown",
+  "ui.chat.canonical.sound.cost.no_charge",
+  "ui.chat.canonical.sound.cost.estimated_zero",
+  "ui.chat.canonical.sound.cost.batch_unknown",
+  "ui.chat.canonical.media.image_label",
+  "ui.chat.canonical.media.sound_label",
+  "ui.chat.canonical.supplement.sound_fallback_label"
+ ],
+ "sha256": {
+  "en": "12ec2698434dcb39497e288af62d11d70f0fd71d494a9becf3fd611d6568bbdd",
+  "ur": "ff384788791f2bfbde96860706123a80a98c85f20008465d4abdaa165da49f01",
+  "context": "95aa203759416c93180b7eb4967e6fcf5bce0dffe20e9d005b431c645e9e11e6",
+  "glossary (damianvtran/local-operator origin/main 27bfbdb21c3e:i18n/glossary.md)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "style_guide (damianvtran/local-operator origin/main 27bfbdb21c3e:i18n/style-guides/ur.md)": "7276e96210fe5f23fd82a39ae4cc0c88b2c1009d3a551d914efc3f61516eddc4"
+ },
+ "source_bundle_sha256": {
+  "en_10_pairs_sorted_compact": "bdd1d9d1cfcd327c7445396ad806220fa850fe820c638a59ec6bc195f882e307",
+  "ur_10_pairs_sorted_compact": "5693ac5ea7c2aa721728f454c0015f71bb2a862feb8a09e18966f7c92238cdaa"
+ },
+ "pair_sha256": {
+  "ui.chat.canonical.sound.batch.item_status": {
+   "en": "e358c22c488a70710e7bd3bd9e3c6211286461e1dacb8072367e49e73f559f10",
+   "ur": "144538a1a6bdf3215879b0b8848ca5251f852721630f623e47328e8c2968bf2b"
+  },
+  "ui.chat.canonical.sound.batch.summary": {
+   "en": "09ae93966cdc6b3aa654ed80309002e7b6fb98d65d8011263b6018544764c6a1",
+   "ur": "90913eac9a11251c1b2328630ccd9adc32692290467e72dd87fc905cdb3fb32d"
+  },
+  "ui.chat.canonical.sound.batch.latest_update": {
+   "en": "427de0b397f0033745908950e3edcbd4931f51b6d4ee73547a72eb039fba74b2",
+   "ur": "a446212f663853b2ba9082effdc1a25c4963fcccb1e2aaa945c579935d5370ba"
+  },
+  "ui.chat.canonical.sound.cost.unknown": {
+   "en": "a34c87949511c3c4c516818f52886f4ece1067df07cf37d2ad397695d31bbd77",
+   "ur": "e10a7b98e7d7554e7e98ba4713581e78cb1224cb99923e61f557c8b86ac2c67f"
+  },
+  "ui.chat.canonical.sound.cost.no_charge": {
+   "en": "34fb349281118da77d1d41683e46d00f98e4afb1b86a1a80374358f57dc338e7",
+   "ur": "8d4d9208ce97369ecd67699b4b6a4e04f12116c427531542470ecc47908dd575"
+  },
+  "ui.chat.canonical.sound.cost.estimated_zero": {
+   "en": "7a339de1c5eb417ab59accd72d89b9d84c7fbc808934bf2a21f6188868e85387",
+   "ur": "32cf0e7cafc66b8d074a6b32b0556bb04fb7e7a321219f314173674b43732e7e"
+  },
+  "ui.chat.canonical.sound.cost.batch_unknown": {
+   "en": "8aabea74c95580d6499ea0030eb458088b49a68b209ce67334bd30efbf5d48fd",
+   "ur": "29f63b9626c7d834d2795cb4cf15ff5a7a2a129cb284f75a0241445f9af1f685"
+  },
+  "ui.chat.canonical.media.image_label": {
+   "en": "47631358ab381012419b4ee7b6159a1a88df04875314d2e205372f7b8890a78e",
+   "ur": "fda4dbeed929c33061436e7f60b3a025734732099e30ec9ec0169989107cc90d"
+  },
+  "ui.chat.canonical.media.sound_label": {
+   "en": "50eaf18785e46954337a6e7c08dab1b016a4cd9bc0d11e03774ed24c33cf44a2",
+   "ur": "20d0aadd59e793b0c5fdc5bafa29fb7db8ee394ce57140e88f196604c17c225c"
+  },
+  "ui.chat.canonical.supplement.sound_fallback_label": {
+   "en": "553bf2c11939d42e948de5fa4ea288b269eeda0b3090c65f567f625f9938cab1",
+   "ur": "94942b5f6cf37a06b87ea0982b3aabe4982b5eafd3fd759fab4833356a3e3b6e"
+  }
+ },
+ "checks": {
+  "generator_freshness": "PASS - node scripts/i18n/generate.mjs --check: keys.gen.ts byte-identical to a fresh generation",
+  "coverage": "PASS - check-coverage.mjs exit 0: 7 gated languages over 158 namespaces, 0 allowed keys remaining",
+  "locale_parity": "PASS - node --test scripts/i18n/locale-parity.test.mjs: 44/44",
+  "duplicates": "PASS - check-duplicates.mjs: 1428 files, 0 duplicate keys",
+  "context_parity": "PASS - context-parity.mjs: every English key covered apart from 129 allowed gaps",
+  "diff_tests": "PASS - generation-card-labels.test.mjs 27/27 and generation-card-locale-switch.test.mjs 1/1 at the audited head",
+  "activation_gate": "PASS - ur-activation.test.mjs 3/3: no manual bidi controls, no forbidden script across 9113 values",
+  "icu_parse_and_structure": "PASS - all 10 parse with intl-messageformat; AST signatures (argument names/types, select branches, plural arms, nesting) identical to English",
+  "render_grid": "PASS - 2065 cells through IntlMessageFormat('ur') over counts 0,1,2,3,5,11,21,22,100,1000,1000000 x statuses failed/cancelled/other/unrecognised x has_attention yes/no x label shapes; no throws, no leftover { } # undefined NaN [object; Latin digits only; no thousands grouping at 1000/1000000",
+  "cldr_categories": "PASS - ur one/other present wherever a plural exists; =1+other on the media labels covers ur one (1 is the only count selecting one); every select carries other",
+  "zero_hiding": "PASS - all-zero summary renders exactly 0 مکمل · 0 ناکام; both =0 arms empty",
+  "money_literal": "PASS - $0 kept unsplit in estimated_zero and rendered intact",
+  "typography": "PASS - NFC; ۔ ، ؛ only; middle dot only as ' · '; no ASCII sentence punctuation; no manual bidi controls; no Devanagari/danda",
+  "negative_control": "7/7 mutants flagged (dropped placeholder, missing plural arm, English leftover, dropped select branch, manual bidi control, lost $0, danda)"
+ },
+ "findings": [],
+ "considered_not_raised": [
+  "cost.no_charge 'کوئی چارج نہیں۔' is three words against the sidecar's one-or-two hint; kept - it matches providers.provider_catalog.* 'کوئی اضافی چارج نہیں۔' and sits on a full-width meta line.",
+  "latest_update 'از' vs 'میں سے' for X of Y: the neighbouring lightbox already ships 'تصویر {index} از {count}' for the same positional construction.",
+  "estimated_zero 'تخمینہ شدہ' (rather than 'تخمینی') follows the corpus's productive شدہ/کردہ forms (تیار کردہ، شائع شدہ، محفوظ شدہ، منسوخ شدہ).",
+  "summary keeps the count adjectives invariant (مکمل/ناکام); precedent milestone_summary '{completed} مکمل' and mesh_approvals_tray.failed_count '{count} ناکام'. The implicit counted noun has no knowable gender.",
+  "آواز (sound) vs آڈیو (audio attachment/file) split mirrors the English sound/audio split: sound.player_failed 'یہ آواز نہیں چلائی جا سکی' vs sound.batch_attachment_unavailable 'آڈیو کی منسلک فائل'."
+ ],
+ "evidence_note": "Audit report and checker live in session 33f0800c30f3 scratchpad (audit-s16f-r2-ur.md, check-ur-r2.mjs); the tracked bundle belongs at i18n/audits/evidence/ur/ui.chat.canonical/s16f-au2-ur/"
+}

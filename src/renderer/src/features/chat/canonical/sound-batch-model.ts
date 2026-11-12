@@ -1,3 +1,4 @@
+import { formatClauses, t } from "@shared/i18n";
 import { soundCostCaption } from "./sound-cost-caption";
 import type { TranscriptImage } from "./transcript-reducer";
 
@@ -96,9 +97,10 @@ function batchItemCostCaption(
 		(result.status === "failed" || result.error) &&
 		result.cost_usd === 0
 	) {
-		if (cost?.basis === "billed") return "No charge.";
+		if (cost?.basis === "billed")
+			return t("ui.chat.canonical.sound.cost.no_charge");
 		if (cost?.basis === "estimated")
-			return "Estimated cost $0; final charge not confirmed.";
+			return t("ui.chat.canonical.sound.cost.estimated_zero");
 	}
 	return soundCostCaption({
 		...result,
@@ -106,11 +108,20 @@ function batchItemCostCaption(
 	});
 }
 
-/** Never relabel a known subtotal as a final charge or sum money in the UI. */
+/**
+ * Never relabel a known subtotal as a final charge or sum money in the UI.
+ *
+ * NOT YET KEYED, ON PURPOSE: the known-total sentence below is cut from
+ * `soundCostCaption`'s English output (`caption.slice(5)` drops "Cost "), so it
+ * cannot be localised until that caption returns structured amount + basis
+ * facts. The reducer also bakes the same caption into settled records, which a
+ * render-time key cannot repaint. Both belong to the structured-cost slice;
+ * only the all-unknown sentence, which needs neither, is keyed here.
+ */
 export function soundBatchCostCaption(details: unknown): string {
 	const result = details as Record<string, unknown>;
 	const caption = batchItemCostCaption(result);
-	if (!caption) return "Total cost not yet known.";
+	if (!caption) return t("ui.chat.canonical.sound.cost.batch_unknown");
 	const complete = result.cost_complete === true;
 	return `${complete ? "Total cost" : "Known total cost"} ${caption.slice(5)}${complete ? "" : " Unknown or late charges are not included."}`;
 }
@@ -138,7 +149,21 @@ export function soundBatchSummary(
 	const cancelled = count("cancelled");
 	const unknown = items.filter((item) => item.status === "unknown").length;
 	const attention = items.filter((item) => item.status !== "completed");
-	return `${count("completed")} completed · ${count("failed")} failed${cancelled ? ` · ${cancelled} cancelled/stopped` : ""}${unknown ? ` · ${unknown} status unknown` : ""}${attention.length ? `. Needs attention: ${attention.map((item) => item.label).join("; ")}` : ""}`;
+	/*
+	 * ONE MESSAGE FOR THE WHOLE PARAGRAPH, rendered here at view-build time:
+	 * `imageGenCardView` runs inside the tool row's render, which subscribes to
+	 * the locale, so a language switch rebuilds it. The names are joined with the
+	 * locale's own clause separator (`formatClauses`: "; " in English, a
+	 * full-width or Arabic-script semicolon elsewhere), never a hard-coded "; ".
+	 */
+	return t("ui.chat.canonical.sound.batch.summary", {
+		completed: count("completed"),
+		failed: count("failed"),
+		cancelled,
+		unknown,
+		has_attention: attention.length ? "yes" : "no",
+		labels: formatClauses(attention.map((item) => item.label)),
+	});
 }
 
 /** The aggregate cause belongs beside item errors, not hidden by them. */
@@ -185,7 +210,11 @@ export function soundBatchProgress(
 		item >= 1 &&
 		item <= total &&
 		typeof result.name === "string"
-			? `Latest update: ${result.name} (item ${item} of ${total}).`
+			? t("ui.chat.canonical.sound.batch.latest_update", {
+					name: result.name,
+					item,
+					total,
+				})
 			: null;
 	return { total, note };
 }

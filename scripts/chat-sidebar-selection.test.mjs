@@ -1161,8 +1161,14 @@ test("the selected row's mark and its aria-current read the same terms", () => {
 	 * third element (the mark) came to disagree with both — and with the mark gone,
 	 * the pair that remains is still the pair that can disagree.
 	 */
+	/*
+	 * The terms moved into `currentSessionRowId` (send-path design round 1, D3:
+	 * the active draft's created session is the current row from the commit that
+	 * lists it); the property this test owns - ONE named read - is unchanged, and
+	 * the helper's own walk is pinned in drafts-clear-on-send.test.mjs.
+	 */
 	const declaration =
-		"const current = selectedConversation === row.session_id && !activeDraftKey;";
+		"const current =\n\t\t\tcurrentRowId !== undefined && currentRowId === row.session_id;";
 	assert.ok(
 		source.includes(declaration),
 		`the session row's current-row predicate is no longer one named read, so the wrapper and the button can disagree about it:\n${declaration}`,

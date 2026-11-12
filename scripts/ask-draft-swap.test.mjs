@@ -1955,13 +1955,18 @@ test("the session drawer is remounted per conversation, so a hold never crosses 
 	);
 	assert.match(
 		page.slice(pageStart),
-		/<SessionPanel\s+key=\{identity\}/,
-		"SessionPanel is keyed by the conversation's identity",
+		/<SessionPanel\s+key=\{mountKey\}/,
+		"SessionPanel is keyed by the conversation's mount key",
 	);
+	/*
+	 * The mount key is the conversation identity except across a draft's OWN
+	 * admission (`panelMountKeyFor`; the send-flicker fix). A switch to another
+	 * conversation still changes it - `canonical-chat.test.mjs` walks both arms.
+	 */
 	assert.match(
 		page.slice(pageStart),
-		/const identity = panelIdentityFor\(draftKey, id\);/,
-		"and that identity is the conversation (session id, else draft key)",
+		/const mountKey = panelMountKeyFor\(panelMount\.current, draftKey, id\);/,
+		"and that key is the conversation (session id, else draft key), held only across admission",
 	);
 	const chat = readFileSync(
 		"src/renderer/src/features/chat/components/chat-content.tsx",

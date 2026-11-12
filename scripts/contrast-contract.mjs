@@ -744,9 +744,14 @@ const STRUCTURAL_CALL_SITES = [
 		 * un-mark the conversation — by dropping the reference, or by weakening
 		 * the predicate so the row never reaches it. Both are this substring.
 		 *
-		 * `!activeDraftKey` is in the pin because it is the same term the row's
+		 * `currentRowId` is in the pin because it is the same term the row's
 		 * `aria-current` reads: the row may not paint a ground the accessibility
-		 * tree does not claim, and it may not claim one it does not paint.
+		 * tree does not claim, and it may not claim one it does not paint. It is
+		 * `currentSessionRowId` (`draft-rows.ts`), which hands the mark to a new
+		 * chat's row from the create's answer (send-path design round 1, D3) where
+		 * the old `selectedConversation === row.session_id && !activeDraftKey` left
+		 * it unmarked until the first send completed; the `also` entry keeps that
+		 * source on the read. The formatter writes the declaration on two lines.
 		 *
 		 * ONE READ, THREE ELEMENTS (review round 1, A7): the predicate used to be
 		 * written out at the wrapper, at the button and at the mark, which is how the
@@ -757,13 +762,15 @@ const STRUCTURAL_CALL_SITES = [
 		 */
 		what: "chat session row current-row predicate",
 		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
-		must: "const current = selectedConversation === row.session_id && !activeDraftKey;",
+		must: "const current =\n\t\t\tcurrentRowId !== undefined && currentRowId === row.session_id;",
+		also: ["const currentRowId = currentSessionRowId("],
 		why: "the row the operator reported is marked on two terms — the ground and `aria-current` — and the predicate is named once so the two cannot drift apart. A weakened predicate un-marks the conversation in both places at once, which is why the pin is on the declaration rather than on one use",
 	},
 	{
 		what: "chat session row current-row mark",
 		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
-		must: "const current = selectedConversation === row.session_id && !activeDraftKey;",
+		must: "const current =\n\t\t\tcurrentRowId !== undefined && currentRowId === row.session_id;",
+		also: ["const currentRowId = currentSessionRowId("],
 		why: "this is the mark the operator reported missing; the predicate and the ground have to stay on the row together, which is what `aria-current` on the same two terms asserts to a screen reader, and the single read is what keeps the wrapper, the button and the mark from disagreeing about it",
 	},
 	{

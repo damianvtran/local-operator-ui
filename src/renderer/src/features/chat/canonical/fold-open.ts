@@ -104,3 +104,40 @@ export function withFoldOpen(
 	if (!wrote) next.push({ ids: [...ids], open });
 	return next.filter((entry) => entry.ids.some((id) => keep.has(id)));
 }
+
+/** The transcript's conversation identity: the last stated id and the React key its stores and rows are mounted under. */
+export type FoldIdentity = {
+	/** The last STATED session id (sticky across a null; see `foldIdentityFor`). */
+	session: string | null;
+	/** What the row list and its per-conversation stores are keyed on. */
+	key: string;
+};
+
+/**
+ * The transcript's conversation identity after this render's `sessionId`.
+ *
+ * STICKY ACROSS A NULL: a reconnect gap arms a null `frontend`, and the last
+ * stated id is held until a different one arrives - a gap keeps the
+ * conversation, a switch changes it.
+ *
+ * THE FIRST STATED ID IS AN ADOPTION, NOT A SWITCH (QA round 1, Q1, send flicker
+ * 2026-11-11). A new chat's pane mounts before its session exists, so the
+ * transcript's id is null until the subscription's first snapshot names it.
+ * Keying the rows on the raw id flipped `null:0` -> `<id>:0` at that snapshot
+ * and remounted every row - the echo the press had just painted lost its node
+ * and its arrival fade mid-curve (built app, real-shaped owner: 8/8 runs, +150
+ * to +703 ms after the press). Nothing on screen changed conversation, so the
+ * key is kept and only the id is learned. The pane above already remounts this
+ * component for a real switch (`panelMountKeyFor`), and a later different id
+ * still re-keys here.
+ */
+export function foldIdentityFor(
+	previous: FoldIdentity | null,
+	sessionId: string | null,
+): FoldIdentity {
+	if (previous === null) return { session: sessionId, key: String(sessionId) };
+	if (sessionId === null || sessionId === previous.session) return previous;
+	if (previous.session === null)
+		return { session: sessionId, key: previous.key };
+	return { session: sessionId, key: sessionId };
+}

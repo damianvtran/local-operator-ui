@@ -459,5 +459,15 @@
 	"ui.chat.canonical.temporary_deleted.title": "Este chat temporal se eliminó",
 	"ui.chat.canonical.temporary_deleted.detail": "Se eliminó tras quedar inactivo y no se puede volver a abrir. Los archivos que cambió en tu equipo siguen ahí.",
 	"ui.chat.canonical.temporary_deleted.new": "Nuevo chat temporal",
-	"ui.chat.canonical.temporary_deleted.back": "Volver a los chats"
+	"ui.chat.canonical.temporary_deleted.back": "Volver a los chats",
+	"ui.chat.canonical.media.image_label": "{count, plural, =1 {Imagen} other {Imagen {position, number, ::group-off}}}",
+	"ui.chat.canonical.media.sound_label": "{count, plural, =1 {Sonido} other {Sonido {position, number, ::group-off}}}",
+	"ui.chat.canonical.sound.batch.item_status": "{status, select, failed {{label} · Fallida} cancelled {{label} · Detenida} other {{label} · Estado desconocido}}",
+	"ui.chat.canonical.sound.batch.latest_update": "Última actualización: {name} (elemento {item, number, ::group-off} de {total, number, ::group-off}).",
+	"ui.chat.canonical.sound.batch.summary": "{completed, plural, one {{completed, number, ::group-off} completada} many {{completed, number, ::group-off} de completadas} other {{completed, number, ::group-off} completadas}} · {failed, plural, one {{failed, number, ::group-off} fallida} many {{failed, number, ::group-off} de fallidas} other {{failed, number, ::group-off} fallidas}}{cancelled, plural, =0 {} one { · {cancelled, number, ::group-off} detenida} many { · {cancelled, number, ::group-off} de detenidas} other { · {cancelled, number, ::group-off} detenidas}}{unknown, plural, =0 {} one { · {unknown, number, ::group-off} con estado desconocido} many { · {unknown, number, ::group-off} con estado desconocido} other { · {unknown, number, ::group-off} con estado desconocido}}{has_attention, select, yes {. Atención: {labels}} other {}}",
+	"ui.chat.canonical.sound.cost.batch_unknown": "Coste total aún sin determinar.",
+	"ui.chat.canonical.sound.cost.estimated_zero": "Coste estimado de $0; cobro final sin confirmar.",
+	"ui.chat.canonical.sound.cost.no_charge": "Sin cargo.",
+	"ui.chat.canonical.sound.cost.unknown": "Coste aún sin determinar.",
+	"ui.chat.canonical.supplement.sound_fallback_label": "Sonido generado"
 }

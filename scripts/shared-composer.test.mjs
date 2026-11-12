@@ -2321,3 +2321,37 @@ test("the Start recording chord replaces a hold that is already recording", asyn
 	});
 	mic.next = null;
 });
+
+test("the band and splash never transition their layout, so reduced motion paints the first send's final frame (QA round 1, Q3)", async () => {
+	/*
+	 * The reduced-motion cap (styles/index.css) gives EVERY element a 0.01 ms
+	 * transition-duration, and an element with no transition of its own still has
+	 * the initial `transition-property: all` - so the first send's `grow` ->
+	 * `shrink-0` flip painted its START value for one frame: the band still
+	 * greeting-tall, the echo laid out 104 px up under the header, then dropped
+	 * (built app, 3/3 reduced-motion runs). jsdom has no layout, so the reading is
+	 * the class both elements carry in BOTH states the flip moves between.
+	 */
+	const frame = await mount({ messages: [] });
+	try {
+		const host = () =>
+			frame.container.querySelector("[data-lo-composer-splash]");
+		assert.match(
+			frame.band().className,
+			/\bgrow\b/,
+			"the empty chat claims the column",
+		);
+		for (const node of [frame.band(), host()])
+			assert.match(node.className, /\btransition-none\b/);
+		await frame.rerender({ messages: [{ id: "m1" }] });
+		assert.match(
+			frame.band().className,
+			/\bshrink-0\b/,
+			"the conversation docks the band",
+		);
+		for (const node of [frame.band(), host()])
+			assert.match(node.className, /\btransition-none\b/);
+	} finally {
+		await act(async () => root.unmount());
+	}
+});

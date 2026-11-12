@@ -128,6 +128,20 @@ test("the group opens by itself only while it holds the chat on screen", () => {
 	assert.equal(groupOpenByDefault(undefined, []), false);
 });
 
+// Convergence with #1872: the normal list marks `currentSessionRowId`, which
+// follows a draft's session from the create's answer. Fed `selectedConversation`
+// instead, a temporary first send's row would sit unmarked (and its group
+// closed) until the draft retired - the flicker #1872 removed from the list.
+const RE_GROUP_CURRENT =
+	/<SidebarTemporaryGroup[\s\S]*?currentId=\{currentRowId\}[\s\S]*?\/>/;
+test("the group marks the same current row the list does, from the create's answer", () => {
+	const sidebar = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		"utf8",
+	);
+	assert.match(sidebar, RE_GROUP_CURRENT);
+});
+
 /* --------------------------------------------------------- countdown */
 
 test("the countdown shows in the last five minutes only", () => {

@@ -1,0 +1,83 @@
+{
+ "schema": 1,
+ "instance": "5f26f5727a24",
+ "locale": "fr",
+ "namespace": "ui.chat.canonical",
+ "audit_date": "2026-11-11",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "instance": "5f26f5727a24",
+  "session": "5f26f5727a24",
+  "model": "deepseek/deepseek-flash",
+  "independent_from_translator_session": true,
+  "actual_model_source": "the session's own runtime model header (deepseek/deepseek-flash); no fallback was reported or used. This run is round 3 of the S16f audit and did not translate these keys: the translator is i18n-translator (anthropic/claude-sonnet-5-5), and the rounds 1-2 auditors were different sessions."
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "scope": "the 10 new S16f generation-card keys of ui.chat.canonical for fr, at the LANDED bytes of af876eb052db12ec587ef6353aecebd2c769ae22 (round 3, after the round-2 corrections): sound.batch.item_status, sound.batch.summary, sound.batch.latest_update, sound.cost.unknown, sound.cost.no_charge, sound.cost.estimated_zero, sound.cost.batch_unknown, media.image_label, media.sound_label, supplement.sound_fallback_label. The other 456 keys of the file were not re-audited (unchanged bytes, covered by the superseded row audits).",
+ "sha256": {
+  "fr": "34a0fdbf1ef412e9e16e3c9da7558e4c1f23ba52ef0cb7638ecd545d49404202",
+  "en": "12ec2698434dcb39497e288af62d11d70f0fd71d494a9becf3fd611d6568bbdd",
+  "context": "95aa203759416c93180b7eb4967e6fcf5bce0dffe20e9d005b431c645e9e11e6"
+ },
+ "key_hashes": {
+  "definition": "sha256 over UTF-8 of json.dumps({key: value}, ensure_ascii=False, sort_keys=True, separators=(',',':'))",
+  "ui.chat.canonical.sound.batch.item_status": { "fr": "baf91da58de738da", "en": "e358c22c488a7071" },
+  "ui.chat.canonical.sound.batch.summary": { "fr": "e7a58def97a3c606", "en": "09ae93966cdc6b3a" },
+  "ui.chat.canonical.sound.batch.latest_update": { "fr": "0d1f2b6f787b994e", "en": "427de0b397f00337" },
+  "ui.chat.canonical.sound.cost.unknown": { "fr": "6234473a4f9b57ed", "en": "a34c87949511c3c4" },
+  "ui.chat.canonical.sound.cost.no_charge": { "fr": "dd7eb405d3b14c53", "en": "34fb349281118da7" },
+  "ui.chat.canonical.sound.cost.estimated_zero": { "fr": "0c7f9fff71e4231c", "en": "7a339de1c5eb417a" },
+  "ui.chat.canonical.sound.cost.batch_unknown": { "fr": "6633f156ace5ed40", "en": "8aabea74c95580d6" },
+  "ui.chat.canonical.media.image_label": { "fr": "47631358ab381012", "en": "47631358ab381012" },
+  "ui.chat.canonical.media.sound_label": { "fr": "896840e3a17fe2e6", "en": "50eaf18785e46954" },
+  "ui.chat.canonical.supplement.sound_fallback_label": { "fr": "c707d0bf8f62a342", "en": "553bf2c11939d42e" }
+ },
+ "findings": [
+  {
+   "severity": "MINOR",
+   "id": "M1",
+   "key": "ui.chat.canonical.sound.cost.estimated_zero",
+   "current": "Coût estimé à 0\u00a0$\u202f; frais finaux non confirmés.",
+   "problem": "A bare `$` is the one dollar rendering fr uses nowhere else. The shipped fr prose spells the currency as the ISO code (`ui.providers.phone.action.activate` « Activer pour {amount} USD par mois », `ui.common.account.low_credits_dialog.detail` « {detail} USD »), and the formatter the app itself uses for money renders fr USD as `0 $US` (Intl.NumberFormat('fr', {style:'currency', currency:'USD'}).format(0) = \"0\\u00a0$US\"). In French, an unqualified `$` is the generic dollar sign and, in a Canadian reading, defaults to CAD; `$US`/`USD` is the disambiguated form and this is the product's billing currency. Not MAJOR: the amount is zero, so no monetary misreading is possible, and the sentence's claim (estimate, not a confirmed bill) survives intact.",
+   "replacement": "Coût estimé à 0\u00a0$US\u202f; frais finaux non confirmés.",
+   "replacement_note": "U+00A0 between `0` and `$US` (exactly what the app's own fr currency formatter emits), U+202F before `;`. The corpus-consistent alternative, if the integrator prefers a code to the sign, is `Coût estimé à 0\u00a0USD\u202f; frais finaux non confirmés.` Both keep the sentence the sidecar forbids shortening to « Sans frais »."
+  },
+  {
+   "severity": "NIT",
+   "id": "N1",
+   "key": "ui.chat.canonical.sound.batch.item_status",
+   "current": "… {{label} · Échoué} / {{label} · Arrêté} / {{label} · Statut inconnu}",
+   "problem": "Capitalised state after the middle dot, where this same file's other middle-dot clauses are lower-case (`tool_row.bridge.outcome.failed` « échoué · {code} », `tool.composing_sized` « rédaction · {size} »). Capitalised after « · » is also precedented for a trailing state label (`ui.hub.links.source_private` « {organization} · Privé », `ui.chat.ask_queue.chip.label_lapse` « · Prioritaire ») and the English source capitalises here, so this is a recorded choice, not a defect. No change requested.",
+   "replacement": null
+  }
+ ],
+ "checks": {
+  "mechanical": {
+   "generate_check": "pass (keys.gen.ts byte-identical)",
+   "check_duplicates": "pass (1428 files, 0 duplicate keys)",
+   "check_coverage": "pass (7 locales, 158 namespaces, 0 allowed keys)",
+   "context_parity": "pass (every English key covered, 129 pre-existing allowed gaps)",
+   "locale_parity_test": "pass (44/44 subtests, incl. every fr key present, no key fr-only, every placeholder preserved)",
+   "check_strings": "pass, run read-only against the worktree (1668 files scanned, 0 new literals)",
+   "diff_own_tests": "pass — generation-card-labels.test.mjs 27/27, generation-card-locale-switch.test.mjs 1/1",
+   "icu_grid": "pass — 1452 summary renders over counts 0,1,2,3,5,11,21,22,100,1000,1000000 x cancelled/unknown 0,1,2 x has_attention yes/no, plus item_status x 4 statuses x 3 labels, latest_update x 3, media labels x 3 counts: no throws, no ICU syntax left, no undefined; fr categories one|many|other all reached and all declared",
+   "negative_controls": "8/8 mutants caught (dropped many arm, dropped partitive 'de', renamed placeholder {label}->{nom}, dropped item_status other arm, ASCII space before ';', NFD 'é', English 'Sound' left, second word for the unknown state)",
+   "nfc_and_specials": "all 10 values NFC; no ASCII apostrophe; no ASCII space before French punctuation; U+00A0 between 0 and the currency sign and U+202F before ';' and before ':' as landed"
+  },
+  "english_left": "none in the 10 values. Named exceptions: `media.image_label` is identical to English by design (« Image » is the French word; the locale-parity identical-value exemption added by this PR states why), and the item `{label}`/`{labels}` are user data. `media.sound_label` renders « Son », so no key in this delta is an English stub.",
+  "verdict": "clean-with-findings: 0 blocker, 0 major, 1 minor, 1 nit. No BLOCKER or MAJOR remains, so status is `passed`."
+ },
+ "artifacts": {
+  "report": "audit-s16f-r3-fr.md",
+  "record": "record.json",
+  "log": "audit.log",
+  "grid_script": "scratch work/mirror/grid.mjs (session scratch, not shipped)",
+  "negative_control_script": "scratch work/negctl.py (session scratch, not shipped)"
+ },
+ "provenance": {
+  "written_by": "the auditor session itself (i18n-auditor, 5f26f5727a24); no integrator transcription",
+  "read_only": "no repo edits, commits or pushes; validators ran in a git-archive mirror of af876eb (src/i18n, scripts, i18n, package.json, tsconfig*, node_modules symlinked) except check-strings and the two diff-owned tests, which need the full TypeScript project and ran read-only against the manager's worktree (git status clean before and after)",
+  "rounds": "round 3 — a fresh independent session; rounds 1-2 reports were not read in this run (none are committed in the repo), so this verdict is derived from the landed bytes, the fr style guide, the glossary and the shipped catalogue precedent"
+ }
+}

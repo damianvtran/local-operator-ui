@@ -1,0 +1,71 @@
+{
+ "schema": 1,
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "756ed6175781",
+  "instance": "756ed6175781",
+  "model": "deepseek/deepseek-flash",
+  "model_note": "Model is this session's own header line (deepseek/deepseek-flash); no fallback commanded or observed. The served provider cannot be independently verified from inside the session, so actual_model_source is the session header.",
+  "independence": "Round-2 independent auditor: not the i18n-translator (anthropic/claude-sonnet-5-5) and not the round-1 auditor of this locale (session 7a0414234ed5, deepseek/deepseek-flash). Fresh session, never saw the round-1 transcript; its report was read afterwards as context only, and every correction was re-judged on the landed bytes. Judgments are reasoned from the English source, its context sidecar, the core glossary and the es style guide, shipped es catalogue precedent, and real renders of the card under es. No translation/MT service used."
+ },
+ "agent": "i18n-auditor",
+ "model": "deepseek/deepseek-flash",
+ "fallback": "none reported",
+ "instance": "756ed6175781",
+ "session": "756ed6175781",
+ "locale": "es",
+ "namespace": "ui.chat.canonical",
+ "pr": "damianvtran/local-operator-ui#1876",
+ "audited_head": "9931d62addf8a0606bb26d32a8bc163dc7c126b3",
+ "date": "2026-11-11",
+ "translator": "i18n-translator, anthropic/claude-sonnet-5-5 (per the S16f drafts); round-1 auditor 7a0414234ed5 applied three exact corrections to sound.batch.summary before the bytes landed",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "scope": "Round-2 independent audit of the 10 S16f generation-card keys this PR adds to ui.chat.canonical (sound.batch.item_status, sound.batch.summary, sound.batch.latest_update, sound.cost.unknown, sound.cost.no_charge, sound.cost.estimated_zero, sound.cost.batch_unknown, media.image_label, media.sound_label, supplement.sound_fallback_label) on the LANDED bytes at 9931d62addf8; the other 456 keys are untouched by this PR and were read only as precedent. Catalogue audit only: not activation, not rendered fit beyond string width.",
+ "keys_audited": [
+  "ui.chat.canonical.sound.batch.item_status",
+  "ui.chat.canonical.sound.batch.summary",
+  "ui.chat.canonical.sound.batch.latest_update",
+  "ui.chat.canonical.sound.cost.unknown",
+  "ui.chat.canonical.sound.cost.no_charge",
+  "ui.chat.canonical.sound.cost.estimated_zero",
+  "ui.chat.canonical.sound.cost.batch_unknown",
+  "ui.chat.canonical.media.image_label",
+  "ui.chat.canonical.media.sound_label",
+  "ui.chat.canonical.supplement.sound_fallback_label"
+ ],
+ "sha256": {
+  "es": "1098c579c75debf77b9339dbaf87232d51850a592499c4481275e922a09196bb",
+  "en": "12ec2698434dcb39497e288af62d11d70f0fd71d494a9becf3fd611d6568bbdd",
+  "context": "95aa203759416c93180b7eb4967e6fcf5bce0dffe20e9d005b431c645e9e11e6",
+  "ten_es_pairs_sorted_key_compact_utf8_json": "fac4c52e211fa93044ec89506976f17a9868e1b6e5e5f58d90ac251613cdbea6",
+  "glossary (local-operator i18n/glossary.md)": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+  "style_guide (local-operator i18n/style-guides/es.md)": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e"
+ },
+ "checks": {
+  "icu_parse_and_argument_parity": "PASS — arguments and their types identical to English for all 10 keys, compared PER plural/select ARM (a placeholder dropped from one arm fails); a mutant dropping {label} from the failed arm was caught",
+  "plural_categories": "PASS — es CLDR is one/many/other; every plural the English source branches by category carries one+many+other in es (cancelled/unknown keep their empty =0 arms, offsets unchanged); media.*_label correctly stays =1/other because the source has no category arms",
+  "render_grid": "PASS — 51 renders through new IntlMessageFormat(es) (counts 0,1,2,3,5,11,21,22,100,1000,1e6,1.5e6,2e6 x statuses failed/cancelled/other/unknown-value/empty x has_attention yes/no x positions 0..1e6): no throw, no leftover {}, #, undefined/NaN/null, no space before ; : . ! ?, no double spaces",
+  "key_set": "PASS — 466 keys, identical to English; valid JSON",
+  "typography": "PASS — NFC, no bidi controls, no quote or ellipsis drift, no slash alternatives where English has none",
+  "dollar_zero": "PASS — 'Coste estimado de $0; cobro final sin confirmar.' keeps the literal $0",
+  "english_leakage": "PASS for the 10 values — only $0 and user-data placeholders are Latin",
+  "repo_validators": "PASS — generate.mjs --check byte-identical; check-coverage 0 gaps; locale-parity 44/44; check-duplicates 0; context-parity ok; generation-card-labels.test.mjs 27/27",
+  "rendered_surfaces": "PASS — card rendered under es: summary, item status row line, latest-update note, per-row cost lines, batch-unknown line, Imagen N / Sonido N alt and player names all read Spanish",
+  "negative_control": "7 in-memory mutants (dropped arm placeholder, dropped many arm, missing one arm, English leftover, slash alternative, lost $0, renamed placeholder) each made the same checker exit 1"
+ },
+ "findings": [
+  {
+   "id": "S16F-ES-R2-01",
+   "severity": "NIT",
+   "key": "ui.chat.canonical.sound.batch.summary",
+   "note": "The unknown count clause renders '1 con estado desconocido' at a million-scale clause length the sidecar caps at 'under four words'; no shorter form keeps the neither-success-nor-failure reading the sidecar demands. Recommend no change."
+  }
+ ],
+ "out_of_scope_observations": [
+  {
+   "surface": "soundBatchCostCaption (src/renderer/src/features/chat/canonical/sound-batch-model.ts)",
+   "note": "Pre-existing and explicitly deferred in a code comment: the batch total line is built from English literals plus caption.slice(5), so under es it renders 'Known total cost $0.65 (estimated). Unknown or late charges are not included.' and the per-row settled-cost line renders 'Cost $0.4 (billed).'. Not one of this PR's 10 keys and not introduced here; it blocks the operator's no-English claim for this card until the structured-cost slice lands. Reported, not gated."
+  }
+ ]
+}
