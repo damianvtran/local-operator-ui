@@ -4103,8 +4103,9 @@ export const ARRIVAL_BAND_ALPHA = 0.12;
  * footnote, and a ground nobody measures is the unlisted pairing this file
  * exists to refuse. `evaluatePalette` asserts `inkMuted` at the text floor on the
  * composite over every ground the indicator can mount on - the transcript's
- * `canvas`, the pane's `surface`, and `elevated` for a slot inside a raised
- * panel (worst 5.40:1, kanagawaLotus on canvas; 5.78:1 nightfox on elevated).
+ * `canvas`, the pane's `surface`, `elevated` for a slot inside a raised
+ * panel, and `accentWash` under the hovered older-history Button (worst
+ * 4.92:1, kanagawaLotus on accentWash; 5.40:1 kanagawaLotus on canvas).
  *
  * The SPINNER is not on the pill, by measurement: on this composite its
  * `borderControl` track would fall under the 3:1 that "spinner track against its

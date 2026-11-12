@@ -729,11 +729,11 @@ const placeholderPresent = () =>
  * pulses, so the capture rig refuses anything under full opacity.
  */
 const placeholderOpacity = () => {
-	const bar = document.querySelector(
+	const mark = document.querySelector(
 		'[aria-label="Loading conversation"]',
 	)?.firstElementChild;
-	if (!(bar instanceof HTMLElement)) return null;
-	return Math.round(Number(getComputedStyle(bar).opacity) * 100) / 100;
+	if (!(mark instanceof HTMLElement)) return null;
+	return Math.round(Number(getComputedStyle(mark).opacity) * 100) / 100;
 };
 const rowInView = (el: Element | null) => {
 	if (!(el instanceof HTMLElement)) return false;

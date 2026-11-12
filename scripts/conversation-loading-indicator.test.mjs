@@ -108,6 +108,11 @@ for (const [variant, label] of Object.entries(LABELS)) {
 		assert.match(mark, /(^| )border-control( |$)/);
 		assert.match(mark, /(^| )border-t-accent( |$)/);
 		assert.match(mark, /(^| )size-4( |$)/, "Spinner `sm`, 16px");
+		// A 2px ring at the same 16px: `sm`'s 1px arc measured 2.96:1 at its
+		// weakest angle in light and read as a status circle (D-M1 follow-up).
+		// `border-2` must REPLACE `sm`'s `border`, not sit beside it.
+		assert.match(mark, /(^| )border-2( |$)/, "a 2px ring");
+		assert.doesNotMatch(mark, /(^| )border( |$)/, "not `sm`'s 1px border");
 		// Forced colours flatten author borders to one system colour, which
 		// would hide the arc; system colours survive there.
 		assert.match(mark, /(^| )forced-colors:border-\[CanvasText\]( |$)/);
@@ -208,4 +213,62 @@ test("a variant change updates the mounted element in place, never remounts it",
 		assert.equal(region.dataset.loConversationLoading, variant);
 	}
 	await act(async () => root.unmount());
+});
+
+/*
+ * The pill's contrast contract, exercised on the two places it could go quietly
+ * blind (round-3 m2, n2). The palette loop and the alpha read-back live in
+ * `theme-engine/evaluate.mjs`; `pnpm check-themes` runs them over the shipped
+ * palettes and this file, so these are the negative controls - each proves the
+ * gate FAILS on the defect it claims to hold.
+ */
+const { createRun, evaluatePalette, loadingPillAlphas } = await import(
+	"../src/shared/theme-engine/evaluate.mjs"
+);
+const { loadPalettes } = await import("./palette-source.mjs");
+
+const pillFailures = (entry) => {
+	const run = createRun();
+	evaluatePalette(run, entry);
+	return run.log.filter((line) => line.includes("loading pill label"));
+};
+
+test("the pill contract measures the label over accentWash (the busy older Button's hover)", () => {
+	const light = loadPalettes().find((e) => e.id === "localOperatorLight");
+	assert.ok(light, "localOperatorLight is a shipped palette");
+	assert.deepEqual(pillFailures(light), [], "the shipped palette holds");
+	// A wash dark enough that `inkMuted` cannot reach 4.5:1 on the pill over it:
+	// the gate must name that ground, or the hover state is unmeasured.
+	const darkWash = pillFailures({
+		...light,
+		palette: { ...light.palette, accentWash: "#3a3a3a" },
+	});
+	assert.equal(darkWash.length, 1, darkWash.join("\n"));
+	assert.match(darkWash[0], /over accentWash\) = [\d.]+:1, need 4\.5:1/);
+});
+
+test("the pill alpha read-back counts every bg-accent/N in every class string", () => {
+	assert.deepEqual(
+		loadingPillAlphas('<span className="rounded-full bg-accent/10 px-2" />'),
+		[10],
+	);
+	// Two in ONE class string: the second ships, so both must be seen and the
+	// contract's "exactly one" fails.
+	assert.deepEqual(
+		loadingPillAlphas('<span className="bg-accent/10 px-2 bg-accent/20" />'),
+		[10, 20],
+	);
+	assert.deepEqual(
+		loadingPillAlphas(
+			'<i className="bg-accent/10" /><b className="bg-accent/15" />',
+		),
+		[10, 15],
+	);
+	// Prose and variants are not the pill's ground.
+	assert.deepEqual(
+		loadingPillAlphas(
+			'// `bg-accent/10`\n<span className="hover:bg-accent/20" />',
+		),
+		[],
+	);
 });

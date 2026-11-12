@@ -341,6 +341,22 @@ export const createRun = ({ composed = false, capturePairs = false } = {}) => {
 };
 
 /**
+ * Every `bg-accent/<N>` alpha the loading indicator's class strings carry, in
+ * source order. The contract holds the pill to exactly ONE, equal to
+ * `LOADING_PILL_ALPHA`. Every token in every class string counts, not just the
+ * first per string: `bg-accent/10 bg-accent/20` in one className ships the
+ * LAST (tailwind's cascade), so reading only the first would pass a pill this
+ * gate never measured (round-3 n2). Class strings only: the component's own
+ * comments name the class in prose.
+ */
+export const loadingPillAlphas = (source) =>
+	[...source.matchAll(/className="([^"]*)"/g)].flatMap(([, classes]) =>
+		[...classes.matchAll(/(?:^|\s)bg-accent\/(\d+)(?=\s|$)/g)].map((m) =>
+			Number(m[1]),
+		),
+	);
+
+/**
  * Assert every per-palette floor in the contract over ONE palette, into `run`.
  *
  * This is the contract's per-palette loop body, moved verbatim (only the run
@@ -2038,8 +2054,11 @@ export const evaluatePalette = (run, entry) => {
 		/*
 		 * THE CONVERSATION-LOADING PILL (reasoning at `LOADING_PILL_ALPHA`): the
 		 * label on the tint, over every ground the indicator mounts on.
+		 * `accentWash` is one of them: the `older` indicator sits inside the
+		 * older-history slot's ghost Button, whose hover paints that wash under
+		 * the pill (round-3 m2).
 		 */
-		for (const ground of ["canvas", "surface", "elevated"]) {
+		for (const ground of ["canvas", "surface", "elevated", "accentWash"]) {
 			const pill = over(p.accent, p[ground], LOADING_PILL_ALPHA);
 			for (const [role, floor, label] of [
 				["inkMuted", FLOOR.text, "loading pill label"],

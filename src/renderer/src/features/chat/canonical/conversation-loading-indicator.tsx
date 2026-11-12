@@ -42,6 +42,17 @@ import type { FC } from "react";
  * It is `aria-hidden` (no `label`): the visible text beside it is the
  * announcement, and a labelled spinner would say it twice.
  *
+ * A 2px RING AT THE SAME 16px (design review, D-M1 follow-up). `sm`'s own 1px
+ * border left the light-theme arc as 2-8 accent pixels: measured from frames
+ * at c85b0cc95 it was 2.96-4.22:1 across the rotation, under the 3:1 non-text
+ * floor at its weakest angle, and a still frame read as an empty grey circle -
+ * the sidebar's idle-session status circle, not work in progress. `border-2`
+ * replaces `sm`'s `border` (`cn` merges them as one border-width group, last
+ * wins) and the box stays `size-4`: preflight's `box-sizing: border-box` keeps
+ * the outer diameter at 16px, so nothing in the row moves. Scoped here rather
+ * than in `Spinner`'s `SIZES`: the shared `sm` sits in buttons and captions
+ * this measurement did not cover.
+ *
  * Reduced motion: the global cap in `styles/index.css` truncates
  * `animate-spin` to one 0.01ms iteration rather than cancelling it, and
  * `spin` ends at `rotate(360deg)` - the identity - so the ring and its arc
@@ -131,7 +142,7 @@ export const ConversationLoadingIndicator: FC<
 			<span data-lo-loading-mark={true} className="inline-flex shrink-0">
 				<Spinner
 					size="sm"
-					className="forced-colors:border-[CanvasText] forced-colors:border-t-[Highlight]"
+					className="border-2 forced-colors:border-[CanvasText] forced-colors:border-t-[Highlight]"
 				/>
 			</span>
 			<span

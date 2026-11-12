@@ -17,8 +17,9 @@
  *   edge moved 468px -> 736px the moment the transcript landed. It now renders
  *   in the transcript region, at the same inset and bottom anchor the rows
  *   arrive at, and the composer keeps its settled geometry underneath it.
- * - It is the shared `ConversationLoadingIndicator` (operator 2026-11-11): one
- *   pulsing `accent` dot and a visible `ink-muted` label, the same element every
+ * - It is the shared `ConversationLoadingIndicator` (operator 2026-11-11): the
+ *   app's `Spinner` (a 2px `accent` arc on a `border-control` ring, 16px) beside
+ *   an `ink-muted` label on its `bg-accent/10` pill, the same element every
  *   conversation-loading case renders. `Variants` shows all four labels on the
  *   pane's own ground so they can be judged side by side.
  *

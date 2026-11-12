@@ -154,6 +154,7 @@ import { applyContrast } from "../src/shared/theme-engine/contrast.mjs";
 import {
 	createRun,
 	evaluatePalette,
+	loadingPillAlphas,
 } from "../src/shared/theme-engine/evaluate.mjs";
 import {
 	BACKDROP_GRAY,
@@ -1281,10 +1282,7 @@ for (const entry of palettes) evaluatePalette(run, entry);
 		),
 		"utf8",
 	);
-	// Class strings only: the component's own comment names the class too.
-	const alphas = [
-		...source.matchAll(/className="[^"]*\bbg-accent\/(\d+)\b/g),
-	].map((m) => Number(m[1]));
+	const alphas = loadingPillAlphas(source);
 	run.assertions++;
 	const shipped = alphas.length === 1 ? alphas[0] : null;
 	if (shipped !== Math.round(LOADING_PILL_ALPHA * 100)) {

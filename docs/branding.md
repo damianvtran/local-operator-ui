@@ -1776,7 +1776,12 @@ with a different label:
 | Remote: a peer's conversation whose history is not proven yet | whichever of the three slots above is waiting | `Syncing from your other device…` |
 
 The mark is the shared `Spinner` at `sm` (16px): an `accent` arc turning on a
-`border-control` ring, the one indeterminate-progress shape this app has. It
+`border-control` ring, the one indeterminate-progress shape this app has, drawn
+here with a **2px** ring (`border-2`) at the same 16px border-box, so no
+geometry moves. `sm`'s own 1px ring left the light-theme arc as a few accent
+pixels — measured from frames, 2.96:1 at its weakest angle, under the 3:1
+non-text floor — and a still frame read as an empty grey circle, the sidebar's
+idle-session status circle rather than work in progress. It
 replaced a pulsing `accent` dot (design review round 1, D-M1) because a small
 green dot beside a line of text reads as **presence** — online, connected — not
 as work in progress, which is exactly the "doesn't read as loading" the operator
@@ -1793,9 +1798,11 @@ The label sits in a pill: `rounded-full bg-accent/10 px-2`. The tint is the
 `pnpm check-themes`), so it follows the theme and, on window glass, tints what is
 behind it instead of painting an opaque patch. No border, no shadow — it is a
 statement in the flow, not a floating surface. The contract asserts `ink-muted`
-at 4.5:1 on the pill's composite over `canvas`, `surface` and `elevated` in every
-palette (worst 5.40:1, kanagawaLotus on `canvas`; `localOperatorLight` 6.70:1,
-`localOperatorDark` 7.70:1).
+at 4.5:1 on the pill's composite over `canvas`, `surface`, `elevated` and
+`accentWash` (the hovered older-history Button the `older` case sits in) in every
+palette (worst 4.92:1, kanagawaLotus on `accentWash`, then 5.40:1 on its
+`canvas`; `localOperatorLight` 6.70:1 and `localOperatorDark` 6.31:1 at their
+weakest grounds).
 
 **The spinner sits beside the pill, not in it**, in the same flex row and gap so
 the two read as one unit. Inside, the ring's `border-control` track would sit on
@@ -1818,7 +1825,7 @@ padding — only `px-2`, which widens the indicator and moves no row); the older
 in every arm; the cold indicator stands where the rows will land, in a pane
 that holds nothing else. A label change between consecutive loading states of
 one slot (cold to remote when the placement fact arrives) re-renders the same
-element in place — no `key`, no remount — so the dot's pulse does not restart.
+element in place — no `key`, no remount — so the spinner's rotation does not restart.
 
 **Rows are never treated.** A stale paint — rows read back from this window's
 own memory while the snapshot is still in flight — stays at full `ink`. No
