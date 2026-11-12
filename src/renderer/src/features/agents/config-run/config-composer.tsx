@@ -53,7 +53,7 @@ import {
 } from "@shared/components/composer";
 import { Button } from "@shared/components/ui/button";
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
-import { t } from "@shared/i18n";
+import { formatTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
@@ -61,6 +61,7 @@ import { useConversationInputStore } from "@shared/store/conversation-input-stor
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, Square } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { isolateClock } from "../../../../../i18n/bidi";
 import type { RunTarget } from "./config-run-store";
 import type { ConfigRunHandle } from "./use-config-run";
 
@@ -159,10 +160,12 @@ function RunActivity({ run }: { run: ConfigRunHandle }) {
 					className="flex items-baseline gap-2 text-body-sm"
 				>
 					<span className="text-ink-dim tabular-nums">
-						{new Date(row.ts).toLocaleTimeString([], {
-							hour: "2-digit",
-							minute: "2-digit",
-						})}
+						{isolateClock(
+							formatTime(new Date(row.ts), {
+								hour: "2-digit",
+								minute: "2-digit",
+							}),
+						)}
 					</span>
 					<span className="text-ink">{row.verb}</span>
 				</li>
