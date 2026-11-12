@@ -148,7 +148,11 @@ import {
 	turnStopped,
 } from "../canonical/working-line-model";
 import { useStripSpeaksConnection } from "../chat-status-presence";
-import { catalogueTitleUpdate, resolveChatTitle } from "../chat-title";
+import {
+	catalogueTitleUpdate,
+	resolveChatTitle,
+	resolveFirstSendDescription,
+} from "../chat-title";
 /* The ask band's machine anchor: its accessible name is translated, so the
  * keyboard probes below cannot query the English label they used to spell
  * (i18n audit, C2). */
@@ -3882,6 +3886,15 @@ function SessionPanel({
 	 */
 	const bornFromDraft = useRef(draftKey !== null && !sessionId);
 	/*
+	 * The target a targeted draft's header named at the press, held past the
+	 * draft row retiring so the second line stays on it until the owner states
+	 * the identity (design D6) - the draft, and so `draft.target`, is gone from
+	 * the commit the create answers.
+	 */
+	const sendTargetDisplay = useRef<string | undefined>(undefined);
+	if (draftKey && draft?.target)
+		sendTargetDisplay.current = loadedTargetDisplay;
+	/*
 	 * Nothing has named this session's identity yet, and the panel is waiting for
 	 * the stream that will.
 	 *
@@ -4938,8 +4951,18 @@ function SessionPanel({
 								 * the sidebar - the line names the conversation's directory, so
 								 * the header swaps once, together with the sidebar.
 								 */
+								/*
+								 * An untargeted draft keeps its own directory line through the
+								 * press rather than flashing "Starting the session" for the ~3
+								 * frames the create takes (design D6); the transcript's wait
+								 * line already says the session is starting.
+								 */
 								starting && !draft?.sessionId
-								? (loadedTargetDisplay ?? t("ui.chat.header.starting_session"))
+								? resolveFirstSendDescription({
+										targetDisplay: loadedTargetDisplay,
+										liveCwd: canonical.frontend?.cwd,
+										stagedCwd: cwd,
+									})
 								: draft?.sessionId
 									? canonical.frontend?.cwd ||
 										cwd ||
@@ -4986,9 +5009,18 @@ function SessionPanel({
 								 * (D1b): the draft arm above read the same staged `cwd`, so the
 								 * retire is text-for-text in the same span.
 								 */
-								live.cwd ||
-								(bornFromDraft.current && cwd) ||
-								HELD_DESCRIPTION_LINE)
+								/*
+								 * And it holds that text until the identity controls replace it
+								 * (QA Q4): a targeted chat keeps the target it named at the
+								 * press, so the line never blanks or detours through the path.
+								 */
+								(bornFromDraft.current
+									? resolveFirstSendDescription({
+											targetDisplay: sendTargetDisplay.current,
+											liveCwd: live.cwd,
+											stagedCwd: cwd,
+										})
+									: live.cwd) || HELD_DESCRIPTION_LINE)
 					}
 					descriptionPending={identityPending}
 					identity={identityControls}

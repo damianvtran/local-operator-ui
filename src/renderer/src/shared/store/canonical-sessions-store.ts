@@ -2064,7 +2064,7 @@ export function panelMountKeyFor(
 		draftKey !== null &&
 		draftKey === previous.draftKey
 	)
-		return `${previous.key}#unbound`;
+		return `${previous.key}#unbound`; // i18n: ignore React mount key suffix, never rendered
 	const admitted =
 		previous.draftKey !== null &&
 		previous.sessionId === undefined &&

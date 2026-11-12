@@ -4288,6 +4288,8 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	rawRecords.current = transcript.records;
 	const arrivalLedger = useRef<{
 		session: string | null;
+		/** The stated id the ledger was last seeded under (`foldIdentity.session`). */
+		stated: string | null;
 		epoch: number;
 		ids: Set<string>;
 	} | null>(null);
@@ -6888,6 +6890,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	) {
 		arrivalLedger.current = {
 			session: foldKey,
+			stated: foldIdentity.current.session,
 			epoch: transcript.viewEpoch,
 			ids: new Set(rows.map((row) => row.record.id)),
 		};
@@ -6896,6 +6899,30 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 			entries: [],
 			heights: new Map(),
 			representations: new Map(),
+		};
+	} else if (
+		arrivalLedger.current.stated === null &&
+		foldIdentity.current.session !== null
+	) {
+		/*
+		 * THE ID IS LEARNED UNDER A KEPT KEY (R2-1). The key stays at the null
+		 * pane's so a new chat's echo keeps its node (Q1), which means the branch
+		 * above no longer re-seeds when a cold-opened conversation's first
+		 * snapshot lands - and that snapshot carries the whole history in the
+		 * same commit as the id, so on a live turn every history user row would
+		 * rise. History is not an arrival: every row this commit brings is
+		 * seeded as known. Rows painted BEFORE the id (a new chat's own echo) are
+		 * left out so they keep their arrival standing; their class is latched at
+		 * mount, and slot extents and the previous slot plan are untouched, so
+		 * nothing already on screen remounts or re-measures.
+		 */
+		const painted = arrivalLedger.current.ids;
+		arrivalLedger.current = {
+			...arrivalLedger.current,
+			stated: foldIdentity.current.session,
+			ids: new Set(
+				rows.map((row) => row.record.id).filter((id) => !painted.has(id)),
+			),
 		};
 	}
 	const known = arrivalLedger.current.ids;

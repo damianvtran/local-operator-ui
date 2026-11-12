@@ -34,7 +34,7 @@ globalThis.__canonicalRequest = async (request) => {
 const bundle = await build({
 	stdin: {
 		contents:
-			'export { t } from "./src/i18n"; export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {isBlankTitle, resolveChatTitle, catalogueTitleUpdate, UNTITLED_CHAT_KEY} from "./src/renderer/src/features/chat/chat-title";',
+			'export { t } from "./src/i18n"; export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {isBlankTitle, resolveChatTitle, resolveFirstSendDescription, catalogueTitleUpdate, UNTITLED_CHAT_KEY} from "./src/renderer/src/features/chat/chat-title";',
 		resolveDir: process.cwd(),
 	},
 	/*
@@ -90,6 +90,7 @@ const {
 	useCanonicalSessionsStore: store,
 	isBlankTitle,
 	resolveChatTitle,
+	resolveFirstSendDescription,
 	catalogueTitleUpdate,
 	t,
 	UNTITLED_CHAT_KEY,
@@ -306,4 +307,49 @@ test("isBlankTitle is the one definition both rules read", () => {
 	assert.equal(isBlankTitle(""), true);
 	assert.equal(isBlankTitle("  \t\n"), true);
 	assert.equal(isBlankTitle("Named"), false);
+});
+
+/**
+ * The header's second line across a new chat's first send changes once, text
+ * for text, when the identity controls replace it: no "Starting the session"
+ * flash at the press (design D6) and no blank between the create and the
+ * controls (QA Q4). Each case walks the page's arms in order - the draft line
+ * before the press, the press, then the created session before the owner
+ * names an identity - with the inputs each arm reads at that moment.
+ */
+test("a new chat's first send keeps the header's second line on one text until the identity replaces it (D6, Q4)", () => {
+	const starting = t("ui.chat.header.starting_session");
+	// Untargeted, with a staged directory: the path, all the way through.
+	const staged = [
+		resolveFirstSendDescription({ stagedCwd: "~/project" }),
+		resolveFirstSendDescription({ liveCwd: undefined, stagedCwd: "~/project" }),
+	];
+	assert.deepEqual(staged, ["~/project", "~/project"]);
+	// Untargeted, nothing staged: the line it wore before the press (empty), and
+	// never the progress sentence in between.
+	const bare = [
+		resolveFirstSendDescription({}),
+		resolveFirstSendDescription({ liveCwd: "", stagedCwd: "" }),
+	];
+	assert.deepEqual(bare, ["", ""]);
+	assert.ok(![...staged, ...bare].includes(starting));
+	// Targeted: the target from the press until the owner reports, even with a
+	// staged path and a live one available, so no target -> path -> target.
+	assert.equal(
+		resolveFirstSendDescription({ targetDisplay: "coder", stagedCwd: "~/p" }),
+		"coder",
+	);
+	assert.equal(
+		resolveFirstSendDescription({
+			targetDisplay: "coder",
+			liveCwd: "/home/u/p",
+			stagedCwd: "~/p",
+		}),
+		"coder",
+	);
+	// The owner's directory outranks the staged one once it is reported.
+	assert.equal(
+		resolveFirstSendDescription({ liveCwd: "/home/u/p", stagedCwd: "~/p" }),
+		"/home/u/p",
+	);
 });

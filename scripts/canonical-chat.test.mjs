@@ -3440,7 +3440,7 @@ test("the header stops announcing that the session has not started once one exis
 	 * the directory the footer names.
 	 */
 	const rung = rendered.match(
-		/starting(?:\s*&&\s*!draft\?\.sessionId)?\s*\?\s*\(loadedTargetDisplay \?\? t\("ui\.chat\.header\.starting_session"\)\)\s*:\s*draft\?\.sessionId\s*\?\s*([\s\S]{0,200}?)\s*:/,
+		/starting(?:\s*&&\s*!draft\?\.sessionId)?\s*\?\s*resolveFirstSendDescription\(\{[\s\S]{0,160}?\}\)\s*:\s*draft\?\.sessionId\s*\?\s*([\s\S]{0,200}?)\s*:/,
 	);
 	assert.ok(
 		rung,
@@ -5844,13 +5844,15 @@ test("a new chat's first send changes the header once: no pencil jump, no skelet
 	);
 	assert.match(
 		page,
-		/live\.cwd \|\|\s*\(bornFromDraft\.current && cwd\) \|\|\s*HELD_DESCRIPTION_LINE\)/,
+		/\(bornFromDraft\.current\s*\? resolveFirstSendDescription\(\{\s*targetDisplay: sendTargetDisplay\.current,\s*liveCwd: live\.cwd,\s*stagedCwd: cwd,\s*\}\)\s*: live\.cwd\) \|\| HELD_DESCRIPTION_LINE\)/,
 	);
-	// (c) "Starting the session" lasts only until the create answers.
+	// (c) The press keeps the draft's own line - its target, else its directory
+	// - instead of flashing "Starting the session" (round 2, D6).
 	assert.match(
 		page,
-		/starting && !draft\?\.sessionId\s*\? \(loadedTargetDisplay \?\? t\("ui\.chat\.header\.starting_session"\)\)/,
+		/starting && !draft\?\.sessionId\s*\? resolveFirstSendDescription\(\{\s*targetDisplay: loadedTargetDisplay,\s*liveCwd: canonical\.frontend\?\.cwd,\s*stagedCwd: cwd,\s*\}\)/,
 	);
+	assert.doesNotMatch(page, /ui\.chat\.header\.starting_session/);
 });
 
 test("a conversation this pane created reads 'Start of conversation' from its first frame (design round 1, D2)", () => {
