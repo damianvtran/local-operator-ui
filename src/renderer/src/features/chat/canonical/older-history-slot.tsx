@@ -1,8 +1,11 @@
-import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { FC } from "react";
+import {
+	ConversationLoadingIndicator,
+	conversationLoadingLabel,
+} from "./conversation-loading-indicator";
 
 /**
  * The one row above the transcript that says what is happening to its history.
@@ -105,6 +108,13 @@ export type OlderHistoryState =
 export type OlderHistorySlotProps = {
 	state: OlderHistoryState;
 	/**
+	 * Which words the `loading` arm says: an ordinary earlier page (`older`, the
+	 * default) or, for a peer's conversation whose history is not proven yet, the
+	 * sync from that device (`remote`). Only the label changes; the arm is the
+	 * same shared `ConversationLoadingIndicator` either way.
+	 */
+	loadingVariant?: "older" | "remote";
+	/**
 	 * The session is not live, so a retry cannot succeed and the transcript's
 	 * own notice below is already explaining why. The slot goes quiet rather
 	 * than stacking a second, louder, contradicting line on top of it.
@@ -175,6 +185,7 @@ export const OLDER_HISTORY_HINT_ID = "lo-older-history-hint";
 
 export const OlderHistorySlot: FC<OlderHistorySlotProps> = ({
 	state,
+	loadingVariant = "older",
 	transportDown = false,
 	onLoadOlder,
 	onRetryHydration,
@@ -197,7 +208,7 @@ export const OlderHistorySlot: FC<OlderHistorySlotProps> = ({
 	// same contradiction D4 removes from the visual row.
 	const announcement =
 		state === "loading"
-			? t("ui.chat.canonical.older_history.loading")
+			? conversationLoadingLabel(loadingVariant)
 			: state === "failed"
 				? transportDown
 					? t("ui.chat.canonical.older_history.transport.long")
@@ -297,10 +308,19 @@ export const OlderHistorySlot: FC<OlderHistorySlotProps> = ({
 					onClick={(event) => {
 						event.preventDefault();
 					}}
-					className="text-ink-muted"
+					className="min-w-0 text-ink-muted"
 				>
-					<Spinner size="sm" />
-					{t("ui.chat.canonical.older_history.loading")}
+					{/* The shared conversation-loading indicator, not a spinner of its
+					    own: one idiom for every wait on a conversation. `announce` off,
+					    because this slot's sr-only `<output>` above already announces
+					    the state and a status region nested in a button is a second
+					    announcement of the same words. The indicator's 17.4px line box
+					    sits inside the Button's `h-7`, which is the slot's own height,
+					    so the arm changes content, never height. */}
+					<ConversationLoadingIndicator
+						variant={loadingVariant}
+						announce={false}
+					/>
 				</Button>
 			) : state === "idle" ? (
 				<Button variant="ghost" size="sm" onClick={onLoadOlder}>

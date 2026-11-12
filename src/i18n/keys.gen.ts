@@ -70,6 +70,7 @@ import enUiChatDevice from "./catalogues/en/ui.chat.device.json";
 import enUiChatDeviceMove from "./catalogues/en/ui.chat.device_move.json";
 import enUiChatDialogs from "./catalogues/en/ui.chat.dialogs.json";
 import enUiChatDirectory from "./catalogues/en/ui.chat.directory.json";
+import enUiChatDraftTarget from "./catalogues/en/ui.chat.draft_target.json";
 import enUiChatFastMode from "./catalogues/en/ui.chat.fast_mode.json";
 import enUiChatHeader from "./catalogues/en/ui.chat.header.json";
 import enUiChatHeaderMenu from "./catalogues/en/ui.chat.header_menu.json";
@@ -228,6 +229,7 @@ import esUiChatDevice from "./catalogues/es/ui.chat.device.json";
 import esUiChatDeviceMove from "./catalogues/es/ui.chat.device_move.json";
 import esUiChatDialogs from "./catalogues/es/ui.chat.dialogs.json";
 import esUiChatDirectory from "./catalogues/es/ui.chat.directory.json";
+import esUiChatDraftTarget from "./catalogues/es/ui.chat.draft_target.json";
 import esUiChatFastMode from "./catalogues/es/ui.chat.fast_mode.json";
 import esUiChatHeader from "./catalogues/es/ui.chat.header.json";
 import esUiChatHeaderMenu from "./catalogues/es/ui.chat.header_menu.json";
@@ -386,6 +388,7 @@ import frUiChatDevice from "./catalogues/fr/ui.chat.device.json";
 import frUiChatDeviceMove from "./catalogues/fr/ui.chat.device_move.json";
 import frUiChatDialogs from "./catalogues/fr/ui.chat.dialogs.json";
 import frUiChatDirectory from "./catalogues/fr/ui.chat.directory.json";
+import frUiChatDraftTarget from "./catalogues/fr/ui.chat.draft_target.json";
 import frUiChatFastMode from "./catalogues/fr/ui.chat.fast_mode.json";
 import frUiChatHeader from "./catalogues/fr/ui.chat.header.json";
 import frUiChatHeaderMenu from "./catalogues/fr/ui.chat.header_menu.json";
@@ -544,6 +547,7 @@ import hiUiChatDevice from "./catalogues/hi/ui.chat.device.json";
 import hiUiChatDeviceMove from "./catalogues/hi/ui.chat.device_move.json";
 import hiUiChatDialogs from "./catalogues/hi/ui.chat.dialogs.json";
 import hiUiChatDirectory from "./catalogues/hi/ui.chat.directory.json";
+import hiUiChatDraftTarget from "./catalogues/hi/ui.chat.draft_target.json";
 import hiUiChatFastMode from "./catalogues/hi/ui.chat.fast_mode.json";
 import hiUiChatHeader from "./catalogues/hi/ui.chat.header.json";
 import hiUiChatHeaderMenu from "./catalogues/hi/ui.chat.header_menu.json";
@@ -702,6 +706,7 @@ import ruUiChatDevice from "./catalogues/ru/ui.chat.device.json";
 import ruUiChatDeviceMove from "./catalogues/ru/ui.chat.device_move.json";
 import ruUiChatDialogs from "./catalogues/ru/ui.chat.dialogs.json";
 import ruUiChatDirectory from "./catalogues/ru/ui.chat.directory.json";
+import ruUiChatDraftTarget from "./catalogues/ru/ui.chat.draft_target.json";
 import ruUiChatFastMode from "./catalogues/ru/ui.chat.fast_mode.json";
 import ruUiChatHeader from "./catalogues/ru/ui.chat.header.json";
 import ruUiChatHeaderMenu from "./catalogues/ru/ui.chat.header_menu.json";
@@ -860,6 +865,7 @@ import urUiChatDevice from "./catalogues/ur/ui.chat.device.json";
 import urUiChatDeviceMove from "./catalogues/ur/ui.chat.device_move.json";
 import urUiChatDialogs from "./catalogues/ur/ui.chat.dialogs.json";
 import urUiChatDirectory from "./catalogues/ur/ui.chat.directory.json";
+import urUiChatDraftTarget from "./catalogues/ur/ui.chat.draft_target.json";
 import urUiChatFastMode from "./catalogues/ur/ui.chat.fast_mode.json";
 import urUiChatHeader from "./catalogues/ur/ui.chat.header.json";
 import urUiChatHeaderMenu from "./catalogues/ur/ui.chat.header_menu.json";
@@ -1018,6 +1024,7 @@ import viUiChatDevice from "./catalogues/vi/ui.chat.device.json";
 import viUiChatDeviceMove from "./catalogues/vi/ui.chat.device_move.json";
 import viUiChatDialogs from "./catalogues/vi/ui.chat.dialogs.json";
 import viUiChatDirectory from "./catalogues/vi/ui.chat.directory.json";
+import viUiChatDraftTarget from "./catalogues/vi/ui.chat.draft_target.json";
 import viUiChatFastMode from "./catalogues/vi/ui.chat.fast_mode.json";
 import viUiChatHeader from "./catalogues/vi/ui.chat.header.json";
 import viUiChatHeaderMenu from "./catalogues/vi/ui.chat.header_menu.json";
@@ -1176,6 +1183,7 @@ import zhCNUiChatDevice from "./catalogues/zh-CN/ui.chat.device.json";
 import zhCNUiChatDeviceMove from "./catalogues/zh-CN/ui.chat.device_move.json";
 import zhCNUiChatDialogs from "./catalogues/zh-CN/ui.chat.dialogs.json";
 import zhCNUiChatDirectory from "./catalogues/zh-CN/ui.chat.directory.json";
+import zhCNUiChatDraftTarget from "./catalogues/zh-CN/ui.chat.draft_target.json";
 import zhCNUiChatFastMode from "./catalogues/zh-CN/ui.chat.fast_mode.json";
 import zhCNUiChatHeader from "./catalogues/zh-CN/ui.chat.header.json";
 import zhCNUiChatHeaderMenu from "./catalogues/zh-CN/ui.chat.header_menu.json";
@@ -1337,6 +1345,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChatDeviceMove,
 	...enUiChatDialogs,
 	...enUiChatDirectory,
+	...enUiChatDraftTarget,
 	...enUiChatFastMode,
 	...enUiChatHeader,
 	...enUiChatHeaderMenu,
@@ -1503,6 +1512,7 @@ export const bundledCatalogues: Readonly<
 		...esUiChatDeviceMove,
 		...esUiChatDialogs,
 		...esUiChatDirectory,
+		...esUiChatDraftTarget,
 		...esUiChatFastMode,
 		...esUiChatHeader,
 		...esUiChatHeaderMenu,
@@ -1663,6 +1673,7 @@ export const bundledCatalogues: Readonly<
 		...frUiChatDeviceMove,
 		...frUiChatDialogs,
 		...frUiChatDirectory,
+		...frUiChatDraftTarget,
 		...frUiChatFastMode,
 		...frUiChatHeader,
 		...frUiChatHeaderMenu,
@@ -1823,6 +1834,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiChatDeviceMove,
 		...hiUiChatDialogs,
 		...hiUiChatDirectory,
+		...hiUiChatDraftTarget,
 		...hiUiChatFastMode,
 		...hiUiChatHeader,
 		...hiUiChatHeaderMenu,
@@ -1983,6 +1995,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiChatDeviceMove,
 		...ruUiChatDialogs,
 		...ruUiChatDirectory,
+		...ruUiChatDraftTarget,
 		...ruUiChatFastMode,
 		...ruUiChatHeader,
 		...ruUiChatHeaderMenu,
@@ -2143,6 +2156,7 @@ export const bundledCatalogues: Readonly<
 		...urUiChatDeviceMove,
 		...urUiChatDialogs,
 		...urUiChatDirectory,
+		...urUiChatDraftTarget,
 		...urUiChatFastMode,
 		...urUiChatHeader,
 		...urUiChatHeaderMenu,
@@ -2303,6 +2317,7 @@ export const bundledCatalogues: Readonly<
 		...viUiChatDeviceMove,
 		...viUiChatDialogs,
 		...viUiChatDirectory,
+		...viUiChatDraftTarget,
 		...viUiChatFastMode,
 		...viUiChatHeader,
 		...viUiChatHeaderMenu,
@@ -2463,6 +2478,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiChatDeviceMove,
 		...zhCNUiChatDialogs,
 		...zhCNUiChatDirectory,
+		...zhCNUiChatDraftTarget,
 		...zhCNUiChatFastMode,
 		...zhCNUiChatHeader,
 		...zhCNUiChatHeaderMenu,
@@ -3721,6 +3737,14 @@ export type MessageParams = {
 	"ui.browser.browser_pane.close_browser": undefined;
 	"ui.browser.browser_pane.this_conversation": undefined;
 	"ui.browser.browser_pane.which_tabs_to_show": undefined;
+	"ui.browser.browser_passkey_custody.explanation": undefined;
+	"ui.browser.browser_passkey_custody.label": undefined;
+	"ui.browser.browser_passkey_custody.message": undefined;
+	"ui.browser.browser_passkey_custody.return_failed": undefined;
+	"ui.browser.browser_passkey_custody.return_refused_not_held": undefined;
+	"ui.browser.browser_passkey_custody.return_refused_stale": undefined;
+	"ui.browser.browser_passkey_custody.return_to_agent": undefined;
+	"ui.browser.browser_passkey_custody.returning": undefined;
 	"ui.browser.browser_passkey_notice.agent_explanation": undefined;
 	"ui.browser.browser_passkey_notice.continue_in_own_tab": undefined;
 	"ui.browser.browser_passkey_notice.continue_refused_in_flight": undefined;
@@ -4597,6 +4621,11 @@ export type MessageParams = {
 	};
 	"ui.chat.canonical.lightbox.show_image": { index: number; count: number };
 	"ui.chat.canonical.link_toolkit.actions_for": { name: string };
+	"ui.chat.canonical.loading.cold": undefined;
+	"ui.chat.canonical.loading.older": undefined;
+	"ui.chat.canonical.loading.region_label": undefined;
+	"ui.chat.canonical.loading.remote": undefined;
+	"ui.chat.canonical.loading.revalidating": undefined;
 	"ui.chat.canonical.notice.compaction_not_run": { detail: string };
 	"ui.chat.canonical.notice.compaction_not_run_after_colon": { detail: string };
 	"ui.chat.canonical.notice.interrupted": undefined;
@@ -4605,7 +4634,6 @@ export type MessageParams = {
 	"ui.chat.canonical.older_history.failed.long": undefined;
 	"ui.chat.canonical.older_history.failed.short": undefined;
 	"ui.chat.canonical.older_history.load": undefined;
-	"ui.chat.canonical.older_history.loading": undefined;
 	"ui.chat.canonical.older_history.transport.long": undefined;
 	"ui.chat.canonical.older_history.transport.short": undefined;
 	"ui.chat.canonical.older_history.try_again": undefined;
@@ -4614,8 +4642,6 @@ export type MessageParams = {
 	"ui.chat.canonical.older_history.windowed.short_gesture": undefined;
 	"ui.chat.canonical.older_history.windowed.title": undefined;
 	"ui.chat.canonical.older_history.windowed.title_gesture": undefined;
-	"ui.chat.canonical.placeholder.loading": undefined;
-	"ui.chat.canonical.placeholder.region_label": undefined;
 	"ui.chat.canonical.raw_information": undefined;
 	"ui.chat.canonical.security_notice.aria": undefined;
 	"ui.chat.canonical.security_notice.blocked": undefined;
@@ -4985,7 +5011,6 @@ export type MessageParams = {
 	"ui.chat.canonical.transcript.reconnecting": undefined;
 	"ui.chat.canonical.transcript.send_again": undefined;
 	"ui.chat.canonical.transcript.source_unavailable": undefined;
-	"ui.chat.canonical.transcript.stale_caption": undefined;
 	"ui.chat.canonical.transcript.start_new_chat": undefined;
 	"ui.chat.canonical.transcript.stopped_before_finishing": undefined;
 	"ui.chat.canonical.transcript.worked": undefined;
@@ -5224,6 +5249,9 @@ export type MessageParams = {
 	"ui.chat.directory.tooltip.pending_move": { path: string };
 	"ui.chat.directory.tooltip.set": undefined;
 	"ui.chat.directory.tooltip.truncated_move_cost": { path: string };
+	"ui.chat.draft_target.aria_label": { target: string };
+	"ui.chat.draft_target.default_agent": undefined;
+	"ui.chat.draft_target.menu_heading": undefined;
 	"ui.chat.fast_mode.dial_differs": { dial: string; requested: string };
 	"ui.chat.fast_mode.first_message_off": undefined;
 	"ui.chat.fast_mode.first_message_on": undefined;

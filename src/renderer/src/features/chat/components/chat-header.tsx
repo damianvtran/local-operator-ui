@@ -159,6 +159,13 @@ type ChatHeaderProps = {
 	 */
 	deviceSlot?: ReactNode;
 	/**
+	 * The New chat pane's agent/team chip (`chat-header-draft-target.tsx`): who
+	 * will answer the conversation, chosen before the first send. A node for the
+	 * same reason `deviceSlot` is one - the page owns the draft and the store
+	 * write - and absent on every live pane, where `identity` is the switcher.
+	 */
+	draftTargetSlot?: ReactNode;
+	/**
 	 * The session the inline rename writes to, when this header offers rename.
 	 *
 	 * A session id rather than a callback, because the write path lives HERE now:
@@ -547,6 +554,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	descriptionPending = false,
 	identity,
 	deviceSlot,
+	draftTargetSlot,
 	renameSessionId,
 	sessionId,
 	onOpenOptions,
@@ -678,6 +686,9 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	 */
 	const shownDescription = formatDirectory(description, homeDirectory);
 	const showDescription = shownDescription !== "~" && shownDescription !== "";
+	// Controls in the title block keep the row from wrapping (see the row's
+	// class below): the live identity pair, or a New chat's agent/team chip.
+	const noWrapControls = Boolean(identity) || Boolean(draftTargetSlot);
 	// Read here rather than passed in: the pane is a property of the window's right
 	// slot, so the control that opens it and the slot that renders it have to answer
 	// from ONE field — the same reason the canvas button reads `isCanvasOpen` itself.
@@ -995,9 +1006,22 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							// Interactive rows need their natural height: a larger font or a
 							// multiline title must not have its ink/focus clipped to 20px.
 							// Keep the historical one-line clip only for decorative metadata.
-							identity
+							// A New chat's agent/team chip is a control too (UX round 1 of
+							// the draft-target PR, U-1): its pick lengthens the title to "New
+							// chat with <name>", and under the wrap both chips folded onto the
+							// clipped line at 900px while staying Tab-reachable. Same ruling as
+							// the identity controls: the line does not wrap, the text yields.
+							noWrapControls
 								? "min-h-5"
 								: cn(rowClassName, "flex-wrap overflow-clip"),
+							// ...but a draft row still stops at its own edge. Below the
+							// app's 800px minimum the two chips outgrow the row once the
+							// title has yielded, and unclipped the device chip painted over
+							// the action cluster's `...` button (measured: a 248px row put
+							// it at x 197-351 across the button at 276-308). Clipping the
+							// x axis only keeps the chips' ink and focus rings whole
+							// vertically; `clip` makes no scrollport for focus to move.
+							!identity && draftTargetSlot && "overflow-x-clip",
 						)}
 					>
 						{/* `text-body` (14), not `text-heading` (16) and not `text-title` (20):
@@ -1295,7 +1319,11 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 								className={cn(
 									// `font-mono` as well as the step: `text-mono-sm` is a SIZE, and
 									// without the family the chip rendered in the sans face (D6).
-									"shrink-0 whitespace-nowrap font-mono text-ink-dim text-mono-sm",
+									"whitespace-nowrap font-mono text-ink-dim text-mono-sm",
+									// On a row that does not wrap, the path cannot fold away whole,
+									// so it yields first instead: `shrink-[2]` against the title's 1,
+									// and the chips (shrink-0) keep their room.
+									noWrapControls ? "min-w-0 shrink-[2] truncate" : "shrink-0",
 								)}
 								title={description}
 							>
@@ -1321,6 +1349,11 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 						 * one line above the identity slot if a docked pane's header ever has to
 						 * keep the placement fact and shed the identity pair instead.
 						 */}
+						{/*
+						 * Identity before placement, the live header's order: the draft's
+						 * agent/team chip sits immediately before the device chip.
+						 */}
+						{draftTargetSlot}
 						{deviceSlot}
 					</div>
 				)}

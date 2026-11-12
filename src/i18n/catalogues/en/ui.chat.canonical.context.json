@@ -194,13 +194,6 @@
 		"note": "Non-terminal: it must not imply the conversation is unreadable or that rows are wrong. Says the conversation is readable and only the order confirmation failed, with Reconnect beside it. Never reuse the failure notice's copy.",
 		"placeholders": {}
 	},
-	"ui.chat.canonical.transcript.stale_caption": {
-		"role": "caption above a cached transcript while a newer page is being checked for",
-		"tone": "calm status, sentence case, full stop; the em dash separates the two clauses",
-		"length": "One short sentence.",
-		"note": "States that what is on screen is the last saved view and that a check is running. The em dash is shipped punctuation: keep it inside the message, since word order differs between locales.",
-		"placeholders": {}
-	},
 	"ui.chat.canonical.transcript.start_new_chat": {
 		"role": "button in the missing-conversation notice that clears the pane for a fresh chat",
 		"tone": "verb phrase, sentence case, no trailing punctuation",
@@ -322,7 +315,6 @@
 	"ui.chat.canonical.older_history.failed.short": "Narrow-column spelling of the row for a failed load of earlier messages.",
 	"ui.chat.canonical.older_history.failed.long": "Full spelling of the failed-load row and its title attribute.",
 	"ui.chat.canonical.older_history.try_again": "Button that retries loading earlier messages.",
-	"ui.chat.canonical.older_history.loading": "Button label while earlier messages are loading; also the announcement.",
 	"ui.chat.canonical.older_history.load": "Button that loads the earlier messages when the transcript is idle.",
 	"ui.chat.canonical.older_history.windowed.title": "Row stating more history exists above and must be reached by scrolling.",
 	"ui.chat.canonical.older_history.windowed.title_gesture": "Full sentence for the windowed row, also used as its title attribute.",
@@ -330,20 +322,6 @@
 	"ui.chat.canonical.older_history.unproven.short": "Narrow-column spelling of the row that says earlier history was never proven loaded.",
 	"ui.chat.canonical.older_history.unproven.long": "Full spelling of the unproven row and its title attribute.",
 	"ui.chat.canonical.older_history.conversation_start": "Row marking the oldest message, where nothing earlier exists.",
-	"ui.chat.canonical.placeholder.loading": {
-		"role": "visible caption under the transcript while a conversation is still loading",
-		"tone": "status phrase, sentence case, trailing ellipsis character (U+2026), no period",
-		"length": "Two words.",
-		"note": "The words are VISIBLE, not sr-only: a sighted reader needs a sentence naming the wait. Keep the single-character ellipsis rather than three dots. `text-ink-dim` clears the 4.5:1 floor on every ground.",
-		"placeholders": {}
-	},
-	"ui.chat.canonical.placeholder.region_label": {
-		"role": "accessible name of the loading placeholder's live region",
-		"tone": "status phrase, sentence case, no trailing punctuation",
-		"length": "Two words.",
-		"note": "The same phrase as the visible caption without the ellipsis: it is an utterance, not a sentence. A screen reader announces this region while the transcript hydrates.",
-		"placeholders": {}
-	},
 	"ui.chat.canonical.tool_row.generic_verb.running": {
 		"role": "verb column of a running tool row whose tool has no verb of its own",
 		"tone": "present participle, lowercase, one word, no punctuation",
@@ -3271,5 +3249,40 @@
 		"placeholders": {
 			"material": "which kind of media the call generates: one of image, video, voiceover, sound_effect (callsite maps the wire's `sound-effect`); drives a select, so supply every branch"
 		}
+	},
+	"ui.chat.canonical.loading.cold": {
+		"role": "visible label while a conversation's first page is loading and nothing is painted yet",
+		"tone": "short, human status phrase, sentence case, trailing ellipsis character (U+2026), no period",
+		"length": "Two words.",
+		"note": "Shown in the transcript where the messages will appear. One of four labels beside the same pulsing dot, the app's single conversation-loading indicator; the four must read as one family. Keep the single-character ellipsis (U+2026) rather than three dots.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.loading.revalidating": {
+		"role": "visible label at the bottom of a conversation shown from this computer's saved copy while the app checks for newer messages",
+		"tone": "short, human status phrase, sentence case, trailing ellipsis character (U+2026), no period",
+		"length": "Four words or fewer.",
+		"note": "The messages above are real and readable; this only says a check for newer ones is running. Avoid words that suggest the view is wrong or out of date. One of four labels beside the same pulsing dot, the app's single conversation-loading indicator; the four must read as one family. Keep the single-character ellipsis (U+2026) rather than three dots.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.loading.older": {
+		"role": "visible label, and screen-reader announcement, while an earlier page of messages is loading at the top of the conversation",
+		"tone": "short, human status phrase, sentence case, trailing ellipsis character (U+2026), no period",
+		"length": "Three or four words.",
+		"note": "Sits inside a narrow row; keep it short. One of four labels beside the same pulsing dot, the app's single conversation-loading indicator; the four must read as one family. Keep the single-character ellipsis (U+2026) rather than three dots.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.loading.remote": {
+		"role": "visible label while a conversation that lives on the user's other device (a paired computer) is being synced to this one",
+		"tone": "short, human status phrase, sentence case, trailing ellipsis character (U+2026), no period",
+		"length": "Five words or fewer.",
+		"note": "Names why the wait can be longer than a local open: the messages are coming from another of the user's own devices. 'Sync' is the app's usual term for it. One of four labels beside the same pulsing dot, the app's single conversation-loading indicator; the four must read as one family. Keep the single-character ellipsis (U+2026) rather than three dots.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.loading.region_label": {
+		"role": "accessible name of the conversation-loading indicator's live region",
+		"tone": "status phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "An utterance, not a sentence: screen readers use it to name the status region; the visible label inside it is what is announced.",
+		"placeholders": {}
 	}
 }

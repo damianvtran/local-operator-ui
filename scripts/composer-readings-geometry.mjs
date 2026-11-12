@@ -146,7 +146,8 @@ const STATES = flag("states") ? flag("states").split(",") : ["idle", "running"];
  * `READINGS_FIXTURES` in the harness - a name here the page does not know
  * throws on mount, which is loud rather than a blank row, but still a wasted run.
  */
-const READING_FIXTURES = ["plain", "issue", "fullest", "reported"];
+/* `borrowed` is `fullest` plus the borrowed-access `i` readout (PR #1871). */
+const READING_FIXTURES = ["plain", "issue", "fullest", "reported", "borrowed"];
 
 const THEMES =
 	THEME_MODE === "both"
@@ -248,7 +249,9 @@ const PROBE = `(() => {
 							? el
 							: (el.querySelector("[aria-label]") ?? el);
 					const label = reading.getAttribute("aria-label") ?? "";
-					const kind = label.startsWith("Active time:")
+					const kind = el.querySelector("[data-lo-model-access]")
+						? "access"
+						: label.startsWith("Active time:")
 						? "duration"
 						: label.startsWith("Model:")
 							? "model"
