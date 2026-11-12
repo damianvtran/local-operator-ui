@@ -70,6 +70,7 @@ import {
 	remoteOwnedId,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
+import { paintMissReason, readPaint } from "@shared/store/paint-cache";
 import {
 	type InternalEpisodeIdentitySnapshot,
 	captureInternalEpisodeIdentity,
@@ -175,7 +176,12 @@ import { TurnSummary } from "../components/trace/turn-summary";
 import { WorkingLine } from "../components/trace/working-line";
 import { focusComposer } from "../composer-field";
 import { MISSING_SESSION_NOTICE_ID } from "../missing-session-notice";
-import { openTrace } from "../open-trace";
+import {
+	type PanePaintTrace,
+	createPanePaintTrace,
+	openTrace,
+	tracePanePaint,
+} from "../open-trace";
 import {
 	DEFAULT_TRANSCRIPT_DISPLAY_MODE,
 	type TranscriptDisplayMode,
@@ -5375,6 +5381,76 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		}
 		performance.clearMarks("lop:open:requested");
 	}, [visible.length, sessionId]);
+
+	/*
+	 * THE PAINT FIELDS of the open trace (`paint=`, see `open-trace.ts`): what this
+	 * mount's FIRST committed rows were, and whether they filled the pane.
+	 *
+	 * WHY THIS IS KEYED ON THE TRACE'S TARGET AND NOT ON `sessionId`: the rows a
+	 * seeded paint shows exist while `frontend` is still null, which is exactly
+	 * the window `routed` and `content` above are blind to - they pass
+	 * `frontend?.session_id`, so a cached paint left no mark at all. The trace's
+	 * own target is the id the click named AND the id the paint cache is addressed
+	 * by (`paintSeed` is `readPaint`), so the two agree by construction.
+	 *
+	 * WHY THE CACHE IS READ AT THE PANE'S OWN COMMIT rather than handed down: the
+	 * pane is the only surface that knows when its rows first COMMITTED, and the
+	 * entry it reads was written when that conversation was last left.
+	 *
+	 * THE OLD PANE'S WRITE DOES NOT PRECEDE THIS READ (agent review round 1, R1-4).
+	 * `writePaint` runs from a `useEffect` cleanup ("Cache this conversation's paint
+	 * on the way out", `use-canonical-session.ts`), and in React 18 a deleted
+	 * subtree's passive cleanups run AFTER the new tree's layout effects - so the
+	 * pane being left writes after this reads. The claim that survives, and is the
+	 * one this needs, is narrower: the TARGET's own entry was written when that
+	 * conversation was last left, and no other writer of that key runs between that
+	 * write and this read.
+	 *
+	 * ONE `Map` read is the cost, and it makes the claim checkable against the thing
+	 * it describes: an entry present is a seed, an absent one is no seed.
+	 *
+	 * WHAT IS MEASURED, AND THE ONCE-PER-MOUNT RULE, LIVE IN `tracePanePaint`
+	 * (`open-trace.ts`): they decide what a pane may say, and a source regex cannot
+	 * tell a pane that mounted BEFORE the click from one that mounted FOR it (agent
+	 * review round 1, R1-1/R1-2). In particular `fills` is the content column's own
+	 * box against the scroller's inner box - `open-trace.ts` carries why
+	 * `scrollHeight` cannot be the test there.
+	 */
+	const paintTrace = useRef<PanePaintTrace | null>(null);
+	// React keeps the first initialiser's value; the null check keeps the latch from
+	// being rebuilt on every streaming render.
+	if (paintTrace.current === null) paintTrace.current = createPanePaintTrace();
+	useLayoutEffect(() => {
+		const trace = paintTrace.current;
+		if (trace === null) return;
+		tracePanePaint(trace, {
+			activeSessionId: () => openTrace.activeSessionId(),
+			currentToken: () => openTrace.currentToken(),
+			notePaint: (target, token, stamp) =>
+				openTrace.notePaint(target, token, stamp),
+			readPaint,
+			missReason: paintMissReason,
+			visibleRows: visible.length,
+			boxes: () => {
+				const content = contentRef.current;
+				const scroller = containerRef.current;
+				if (!content || !scroller) return null;
+				let paddingTop = 0;
+				let paddingBottom = 0;
+				if (typeof getComputedStyle === "function") {
+					const style = getComputedStyle(scroller);
+					paddingTop = Number.parseFloat(style.paddingTop);
+					paddingBottom = Number.parseFloat(style.paddingBottom);
+				}
+				return {
+					contentHeight: content.getBoundingClientRect().height,
+					scrollerClientHeight: scroller.clientHeight,
+					paddingTop,
+					paddingBottom,
+				};
+			},
+		});
+	}, [containerRef, visible.length]);
 
 	// Both growth paths now go through one policy. The local window used to
 	// widen from its own raw `scroll` listener, once per EVENT below 320px from
