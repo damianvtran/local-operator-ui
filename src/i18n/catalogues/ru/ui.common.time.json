@@ -1,3 +1,7 @@
 {
-	"ui.common.time.yesterday_at": "Вчера в {time}"
+	"ui.common.time.yesterday_at": "Вчера в {time}",
+	"ui.common.time.today_at": "Сегодня в {time}",
+	"ui.common.time.yesterday": "Вчера",
+	"ui.common.time.weekday_at": "{weekday}, {time}",
+	"ui.common.time.date_at": "{date} в {time}"
 }

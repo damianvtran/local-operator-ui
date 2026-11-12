@@ -20,7 +20,12 @@
  * add a category without a renderer release.
  */
 
-import { type WithoutParams, formatByteQuantity, t } from "@shared/i18n";
+import {
+	type WithoutParams,
+	formatByteQuantity,
+	formatDate,
+	t,
+} from "@shared/i18n";
 import type {
 	DesktopLibraryAsset,
 	DesktopLibraryCategory,
@@ -484,7 +489,10 @@ export function relativeTime(
 /** An absolute timestamp for the preview's metadata line. */
 export function absoluteDate(seconds: number | null | undefined): string {
 	if (!seconds) return "";
-	return new Date(seconds * 1000).toLocaleDateString(undefined, {
+	// The live UI locale (the layer), not the OS default: `undefined` here
+	// printed `Nov 5, 2026` / `5 nov. 2026` by the operating system's region
+	// while every other word on the preview followed the chosen language.
+	return formatDate(new Date(seconds * 1000), {
 		year: "numeric",
 		month: "short",
 		day: "numeric",
