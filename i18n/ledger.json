@@ -2732,31 +2732,30 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "0c9b709973d3b7769708502491a0d3d81798ac2ac68319967198e53e2d495113",
-			"target_sha256": "0271a631b9ea25446cbc0ca41ece31d0c5496392d606768f0e8ded64feb19469",
+			"source_sha256": "6ad5fa8c4d8924cacc11df6b336e14684d86eb010b669863dcf058de7aca77dd",
+			"target_sha256": "167a478925e972f7c7c19d06a74d43b60b81c928be738e9a850f20d7490f593a",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
-				"date": "2026-11-11",
-				"note": "es S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/es/ui.chat.canonical/s16a-3311618b2a8b"
+				"agent": "lopdev coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-12",
+				"note": "Mixed provenance (one translator field per row): 4 temporary_deleted.* keys by lopdev coder (UI #1874); 14 status keys by i18n-translator claude-sonnet-5-5 (#1870); 5 loading.* keys per #1875 (row 15686088b7ce); rest per superseded rows. Auditor same model as coder: disclosed."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-12",
-					"result": "clean-with-findings",
-					"instance": "15686088b7ce-es",
+					"result": "clean",
+					"instance": "94f6e325484c-canon2-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 4
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/15686088b7ce-es.json",
-					"receipt_sha256": "60f9f9cde7bd24c5ae2ecf59b7acbdf88d7e68d9fcb737722ad78870eba3b9ef",
-					"scope": "whole merged file at c213a0616: #1870's 14 status keys + this PR's 5 loading.* keys; seam review + merge-integrity proof",
-					"note": "Post-merge re-bind (PR #1875); 0 new findings; 4 carried nits (3311618b2a8b). Detail: i18n/receipts/15686088b7ce-es.json"
+					"receipt": "i18n/receipts/94f6e325484c-canon2-es.json",
+					"receipt_sha256": "d8e667b210e76517d010ae90c287b1b43187902f91c4aaa836d95703d4c99023",
+					"scope": "merged ui.chat.canonical, UI #1874 @ 7177d51df: 5 #1875 loading.* + 4 temporary_deleted.* keys"
 				}
 			],
 			"status": "audited",
@@ -3243,6 +3242,30 @@
 							"receipt_sha256": "0c312561277294bfe5997fa20435d76d92ff9a04656c39c719e8cb97f74b470d",
 							"scope": "the 14 new S16a tool-state/image-generation keys (draft audited by hash; landed values proven equal); other 442 keys byte-identical to the superseded combined-bytes audit",
 							"note": "S16a status words, PR #1870; binding receipt integrator-transcribed (see evidence). Detail: i18n/audits/evidence/es/ui.chat.canonical/s16a-3311618b2a8b/report.md"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0c9b709973d3b7769708502491a0d3d81798ac2ac68319967198e53e2d495113",
+					"target_sha256": "0271a631b9ea25446cbc0ca41ece31d0c5496392d606768f0e8ded64feb19469",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "15686088b7ce-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 4
+							},
+							"receipt": "i18n/receipts/15686088b7ce-es.json",
+							"receipt_sha256": "60f9f9cde7bd24c5ae2ecf59b7acbdf88d7e68d9fcb737722ad78870eba3b9ef",
+							"scope": "whole merged file at c213a0616: #1870's 14 status keys + this PR's 5 loading.* keys; seam review + merge-integrity proof",
+							"note": "Post-merge re-bind (PR #1875); 0 new findings; 4 carried nits (3311618b2a8b). Detail: i18n/receipts/15686088b7ce-es.json"
 						}
 					],
 					"status": "audited"
@@ -14744,31 +14767,30 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "0c9b709973d3b7769708502491a0d3d81798ac2ac68319967198e53e2d495113",
-			"target_sha256": "cc20ec4a5065b396d933164b0c3318bdd5a2970fcbc082e023a6a5a80202d807",
+			"source_sha256": "6ad5fa8c4d8924cacc11df6b336e14684d86eb010b669863dcf058de7aca77dd",
+			"target_sha256": "24c3abe09f43c9de2de809e7c1347228652880b45545f468ea8e8cc22178771f",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
-				"date": "2026-11-11",
-				"note": "fr S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/fr/ui.chat.canonical/s16a-2105ebeeb3e9"
+				"agent": "lopdev coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-12",
+				"note": "Mixed provenance (one translator field per row): 4 temporary_deleted.* keys by lopdev coder (UI #1874); 14 status keys by i18n-translator claude-sonnet-5-5 (#1870); 5 loading.* keys per #1875 (row 15686088b7ce); rest per superseded rows. Auditor same model as coder: disclosed."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-12",
-					"result": "clean-with-findings",
-					"instance": "15686088b7ce-fr",
+					"result": "clean",
+					"instance": "94f6e325484c-canon2-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 2
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/15686088b7ce-fr.json",
-					"receipt_sha256": "357b88f435e501c5bf7c3a34bff3fa5b01e161372b1f68343aa3e8db7265d835",
-					"scope": "whole merged file at c213a0616: #1870's 14 status keys + this PR's 5 loading.* keys; seam review + merge-integrity proof",
-					"note": "Post-merge re-bind (PR #1875); 0 new findings; 2 carried nits (2105ebeeb3e9). Detail: i18n/receipts/15686088b7ce-fr.json"
+					"receipt": "i18n/receipts/94f6e325484c-canon2-fr.json",
+					"receipt_sha256": "e5437a89c28cce7a7eebd1131254e74b33871ac59141c02a5f5acdfd9a27a1cf",
+					"scope": "merged ui.chat.canonical, UI #1874 @ 7177d51df: 5 #1875 loading.* + 4 temporary_deleted.* keys"
 				}
 			],
 			"status": "audited",
@@ -15270,6 +15292,30 @@
 							"receipt_sha256": "d1aad291452304f1bb1480dbee2088aaeb0d2a2d6860da6654b4f8d0dae6c8d1",
 							"scope": "the 14 new S16a tool-state/image-generation keys (draft audited by hash; landed values proven equal); other 442 keys byte-identical to the superseded combined-bytes audit",
 							"note": "S16a status words, PR #1870; binding receipt integrator-transcribed (see evidence). Detail: i18n/audits/evidence/fr/ui.chat.canonical/s16a-2105ebeeb3e9/report.md"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0c9b709973d3b7769708502491a0d3d81798ac2ac68319967198e53e2d495113",
+					"target_sha256": "cc20ec4a5065b396d933164b0c3318bdd5a2970fcbc082e023a6a5a80202d807",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "15686088b7ce-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/15686088b7ce-fr.json",
+							"receipt_sha256": "357b88f435e501c5bf7c3a34bff3fa5b01e161372b1f68343aa3e8db7265d835",
+							"scope": "whole merged file at c213a0616: #1870's 14 status keys + this PR's 5 loading.* keys; seam review + merge-integrity proof",
+							"note": "Post-merge re-bind (PR #1875); 0 new findings; 2 carried nits (2105ebeeb3e9). Detail: i18n/receipts/15686088b7ce-fr.json"
 						}
 					],
 					"status": "audited"
@@ -27252,31 +27298,30 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "0c9b709973d3b7769708502491a0d3d81798ac2ac68319967198e53e2d495113",
-			"target_sha256": "ffe83915104a5568509f9c851db46917edb0da704d83c315d4686c9e60d15b9c",
+			"source_sha256": "6ad5fa8c4d8924cacc11df6b336e14684d86eb010b669863dcf058de7aca77dd",
+			"target_sha256": "799a864cd75bc0153a7f1768ec57125033bddf92bbbfdc0cf1a43a43752d91d8",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
-				"date": "2026-11-11",
-				"note": "hi S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/hi/ui.chat.canonical/s16a-2bc153cbf350"
+				"agent": "lopdev coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-12",
+				"note": "Mixed provenance (one translator field per row): 4 temporary_deleted.* keys by lopdev coder (UI #1874); 14 status keys by i18n-translator claude-sonnet-5-5 (#1870); 5 loading.* keys per #1875 (row 15686088b7ce); rest per superseded rows. Auditor same model as coder: disclosed."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-12",
-					"result": "clean",
-					"instance": "15686088b7ce-hi",
+					"result": "clean-with-findings",
+					"instance": "94f6e325484c-canon2-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/15686088b7ce-hi.json",
-					"receipt_sha256": "2bd34eae0c97ba3a1d2ea7dfbda81054b3e482a3d4b6369e709e1bde80ab0fe2",
-					"scope": "whole merged file at c213a0616: #1870's 14 status keys + this PR's 5 loading.* keys; seam review + merge-integrity proof",
-					"note": "Post-merge re-bind (PR #1875); 0 new findings; none carried. Detail: i18n/receipts/15686088b7ce-hi.json"
+					"receipt": "i18n/receipts/94f6e325484c-canon2-hi.json",
+					"receipt_sha256": "fd0f14a41eb60a3b4897a4fe12e29600a1104caec5a1675daf8cae3b0424b457",
+					"scope": "merged ui.chat.canonical, UI #1874 @ 7177d51df: 5 #1875 loading.* + 4 temporary_deleted.* keys"
 				}
 			],
 			"status": "audited",
@@ -27761,6 +27806,30 @@
 							"receipt_sha256": "0bb1887c8f4b2c2ba8f3b4af8130166a93b86beadc8abc00eb2d197a360bd671",
 							"scope": "the 14 new S16a tool-state/image-generation keys (draft audited by hash; landed values proven equal); other 442 keys byte-identical to the superseded combined-bytes audit",
 							"note": "S16a status words, PR #1870; binding receipt integrator-transcribed (see evidence). Detail: i18n/audits/evidence/hi/ui.chat.canonical/s16a-2bc153cbf350/report.md"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0c9b709973d3b7769708502491a0d3d81798ac2ac68319967198e53e2d495113",
+					"target_sha256": "ffe83915104a5568509f9c851db46917edb0da704d83c315d4686c9e60d15b9c",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean",
+							"instance": "15686088b7ce-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/15686088b7ce-hi.json",
+							"receipt_sha256": "2bd34eae0c97ba3a1d2ea7dfbda81054b3e482a3d4b6369e709e1bde80ab0fe2",
+							"scope": "whole merged file at c213a0616: #1870's 14 status keys + this PR's 5 loading.* keys; seam review + merge-integrity proof",
+							"note": "Post-merge re-bind (PR #1875); 0 new findings; none carried. Detail: i18n/receipts/15686088b7ce-hi.json"
 						}
 					],
 					"status": "audited"
@@ -39343,31 +39412,30 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "0c9b709973d3b7769708502491a0d3d81798ac2ac68319967198e53e2d495113",
-			"target_sha256": "b64272223f0b60c89403698036ddde9b89551b8edfe79711c8b74a18d74052ea",
+			"source_sha256": "6ad5fa8c4d8924cacc11df6b336e14684d86eb010b669863dcf058de7aca77dd",
+			"target_sha256": "52f07b972c18d5853d43e557bf8e8432bd84097f6f1c757f4bcbb20db12f02a8",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
-				"date": "2026-11-11",
-				"note": "ru S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/ru/ui.chat.canonical/s16a-db260f728ba9"
+				"agent": "lopdev coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-12",
+				"note": "Mixed provenance (one translator field per row): 4 temporary_deleted.* keys by lopdev coder (UI #1874); 14 status keys by i18n-translator claude-sonnet-5-5 (#1870); 5 loading.* keys per #1875 (row 15686088b7ce); rest per superseded rows. Auditor same model as coder: disclosed."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-12",
-					"result": "clean-with-findings",
-					"instance": "15686088b7ce-ru",
+					"result": "clean",
+					"instance": "94f6e325484c-canon2-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 4
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/15686088b7ce-ru.json",
-					"receipt_sha256": "f5e5bfd99fdce322ee147650a0b72ea9474a16c696562d89f250bf985966f6d7",
-					"scope": "whole merged file at c213a0616: #1870's 14 status keys + this PR's 5 loading.* keys; seam review + merge-integrity proof",
-					"note": "Post-merge re-bind (PR #1875); 0 new findings; 4 carried nits (db260f728ba9). Detail: i18n/receipts/15686088b7ce-ru.json"
+					"receipt": "i18n/receipts/94f6e325484c-canon2-ru.json",
+					"receipt_sha256": "ecca57bc6bee416b033fea90a0e70cb4ad749679fb33868b038614f0246bd43e",
+					"scope": "merged ui.chat.canonical, UI #1874 @ 7177d51df: 5 #1875 loading.* + 4 temporary_deleted.* keys"
 				}
 			],
 			"status": "audited",
@@ -39852,6 +39920,30 @@
 							"receipt_sha256": "dd6ab68f2f29d6d671656fe0a6e08296682e6681d3af10f33e9233bd4911ef48",
 							"scope": "the 14 new S16a tool-state/image-generation keys (draft audited by hash; landed values proven equal); other 442 keys byte-identical to the superseded combined-bytes audit",
 							"note": "S16a status words, PR #1870; binding receipt integrator-transcribed (see evidence). Detail: i18n/audits/evidence/ru/ui.chat.canonical/s16a-db260f728ba9/report.md"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0c9b709973d3b7769708502491a0d3d81798ac2ac68319967198e53e2d495113",
+					"target_sha256": "b64272223f0b60c89403698036ddde9b89551b8edfe79711c8b74a18d74052ea",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "15686088b7ce-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 4
+							},
+							"receipt": "i18n/receipts/15686088b7ce-ru.json",
+							"receipt_sha256": "f5e5bfd99fdce322ee147650a0b72ea9474a16c696562d89f250bf985966f6d7",
+							"scope": "whole merged file at c213a0616: #1870's 14 status keys + this PR's 5 loading.* keys; seam review + merge-integrity proof",
+							"note": "Post-merge re-bind (PR #1875); 0 new findings; 4 carried nits (db260f728ba9). Detail: i18n/receipts/15686088b7ce-ru.json"
 						}
 					],
 					"status": "audited"
@@ -51451,31 +51543,30 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "0c9b709973d3b7769708502491a0d3d81798ac2ac68319967198e53e2d495113",
-			"target_sha256": "8221d473390d835abadb219470689c01f7e21fd2814ec1faf7177872fc814563",
+			"source_sha256": "6ad5fa8c4d8924cacc11df6b336e14684d86eb010b669863dcf058de7aca77dd",
+			"target_sha256": "3f6ddbd2f5bde3b71246144ba39f3574a0e32d4c67a39c40dc6a18b4436d8fb9",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
-				"date": "2026-11-11",
-				"note": "ur S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/ur/ui.chat.canonical/s16a-b97613446a7a"
+				"agent": "lopdev coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-12",
+				"note": "Mixed provenance (one translator field per row): 4 temporary_deleted.* keys by lopdev coder (UI #1874); 14 status keys by i18n-translator claude-sonnet-5-5 (#1870); 5 loading.* keys per #1875 (row 15686088b7ce); rest per superseded rows. Auditor same model as coder: disclosed."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-12",
-					"result": "clean-with-findings",
-					"instance": "15686088b7ce-ur",
+					"result": "clean",
+					"instance": "94f6e325484c-canon2-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 4
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/15686088b7ce-ur.json",
-					"receipt_sha256": "7839f436d915dca7bb9328a2a0fc94cb2e350b793d8e9d5336272dca0de274eb",
-					"scope": "whole merged file at c213a0616: #1870's 14 status keys + this PR's 5 loading.* keys; seam review + merge-integrity proof",
-					"note": "Post-merge re-bind (PR #1875); 0 new findings; carried 1 minor + 3 nits (b97613446a7a), 1 nit (4b8febc34595-ur). Detail: i18n/receipts/15686088b7ce-ur.json"
+					"receipt": "i18n/receipts/94f6e325484c-canon2-ur.json",
+					"receipt_sha256": "0ff89d2df967bcf8ebec2c0e271e1e67b20dd52ba89836b459c389121d62446e",
+					"scope": "merged ui.chat.canonical, UI #1874 @ 7177d51df: 5 #1875 loading.* + 4 temporary_deleted.* keys"
 				}
 			],
 			"status": "audited",
@@ -52009,6 +52100,30 @@
 							"receipt_sha256": "97bc679c4250778ee58b5142c76dbffb987945cb65a72da9a1eeb0bfe617285f",
 							"scope": "the 14 new S16a tool-state/image-generation keys (draft audited by hash; landed values proven equal); other 442 keys byte-identical to the superseded combined-bytes audit",
 							"note": "S16a status words, PR #1870; binding receipt integrator-transcribed (see evidence). Detail: i18n/audits/evidence/ur/ui.chat.canonical/s16a-b97613446a7a/report.md"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0c9b709973d3b7769708502491a0d3d81798ac2ac68319967198e53e2d495113",
+					"target_sha256": "8221d473390d835abadb219470689c01f7e21fd2814ec1faf7177872fc814563",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "15686088b7ce-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 4
+							},
+							"receipt": "i18n/receipts/15686088b7ce-ur.json",
+							"receipt_sha256": "7839f436d915dca7bb9328a2a0fc94cb2e350b793d8e9d5336272dca0de274eb",
+							"scope": "whole merged file at c213a0616: #1870's 14 status keys + this PR's 5 loading.* keys; seam review + merge-integrity proof",
+							"note": "Post-merge re-bind (PR #1875); 0 new findings; carried 1 minor + 3 nits (b97613446a7a), 1 nit (4b8febc34595-ur). Detail: i18n/receipts/15686088b7ce-ur.json"
 						}
 					],
 					"status": "audited"
@@ -63476,13 +63591,13 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "0c9b709973d3b7769708502491a0d3d81798ac2ac68319967198e53e2d495113",
-			"target_sha256": "3c6f6097083fd0e921fc5f6c2c436633cb4ce522e35a66d329e4fecfaf9a1b65",
+			"source_sha256": "6ad5fa8c4d8924cacc11df6b336e14684d86eb010b669863dcf058de7aca77dd",
+			"target_sha256": "384a66eb03fa5ac35603bba2b18529156fcf1308a66eafba93bc56b5f5327f70",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
-				"date": "2026-11-11",
-				"note": "vi S16a words (14 keys): draft v3 = translator v1 with 4 values changed by the manager on an auditor's findings; v1/v2 audits superseded. 442 earlier keys retained. Evidence: i18n/audits/evidence/vi/ui.chat.canonical/s16a-64a0e2d3b795"
+				"agent": "lopdev coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-12",
+				"note": "Mixed provenance (one translator field per row): 4 temporary_deleted.* keys by lopdev coder (UI #1874); 14 status keys by i18n-translator claude-sonnet-5-5 (#1870); 5 loading.* keys per #1875 (row 15686088b7ce); rest per superseded rows. Auditor same model as coder: disclosed."
 			},
 			"auditors": [
 				{
@@ -63490,17 +63605,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-12",
 					"result": "clean-with-findings",
-					"instance": "15686088b7ce-vi",
+					"instance": "94f6e325484c-canon2-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 3
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/15686088b7ce-vi.json",
-					"receipt_sha256": "1f94175cc0958dc60c5e9973b5dee49b1ca22863870a34c60ab15ed0de679aae",
-					"scope": "whole merged file at c213a0616: #1870's 14 status keys + this PR's 5 loading.* keys; seam review + merge-integrity proof",
-					"note": "Post-merge re-bind (PR #1875); 0 new findings; carried 2 nits (64a0e2d3b795), 1 nit (4b8febc34595-vi). Detail: i18n/receipts/15686088b7ce-vi.json"
+					"receipt": "i18n/receipts/94f6e325484c-canon2-vi.json",
+					"receipt_sha256": "b5da5370d231dcc5bdd610a7c35629dd54944866ef6550b6d40297f41b96d6b5",
+					"scope": "merged ui.chat.canonical, UI #1874 @ 7177d51df: 5 #1875 loading.* + 4 temporary_deleted.* keys"
 				}
 			],
 			"status": "audited",
@@ -64026,6 +64140,30 @@
 							"receipt_sha256": "072aad3fcd743e1b4674711c226c99fcd560c90c4b88e2e1aa5063a244c34590",
 							"scope": "the 14 new S16a tool-state/image-generation keys (draft audited by hash; landed values proven equal); other 442 keys byte-identical to the superseded combined-bytes audit",
 							"note": "S16a status words, PR #1870; binding receipt integrator-transcribed (see evidence). Detail: i18n/audits/evidence/vi/ui.chat.canonical/s16a-64a0e2d3b795/report.md"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0c9b709973d3b7769708502491a0d3d81798ac2ac68319967198e53e2d495113",
+					"target_sha256": "3c6f6097083fd0e921fc5f6c2c436633cb4ce522e35a66d329e4fecfaf9a1b65",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "15686088b7ce-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 3
+							},
+							"receipt": "i18n/receipts/15686088b7ce-vi.json",
+							"receipt_sha256": "1f94175cc0958dc60c5e9973b5dee49b1ca22863870a34c60ab15ed0de679aae",
+							"scope": "whole merged file at c213a0616: #1870's 14 status keys + this PR's 5 loading.* keys; seam review + merge-integrity proof",
+							"note": "Post-merge re-bind (PR #1875); 0 new findings; carried 2 nits (64a0e2d3b795), 1 nit (4b8febc34595-vi). Detail: i18n/receipts/15686088b7ce-vi.json"
 						}
 					],
 					"status": "audited"
@@ -76309,31 +76447,30 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "0c9b709973d3b7769708502491a0d3d81798ac2ac68319967198e53e2d495113",
-			"target_sha256": "75d40f4e93c12a4e0ee91600aa5d606c0ef7bc1a6a91330ce22963bc07f86a7d",
+			"source_sha256": "6ad5fa8c4d8924cacc11df6b336e14684d86eb010b669863dcf058de7aca77dd",
+			"target_sha256": "8a5ef6f0a3a5b9b684d9b5a660612fa6c5ed7a11bc0774aee44457c33d56d883",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
-				"date": "2026-11-11",
-				"note": "zh-CN S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/zh-CN/ui.chat.canonical/s16a-07b0fc8f8d80"
+				"agent": "lopdev coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-12",
+				"note": "Mixed provenance (one translator field per row): 4 temporary_deleted.* keys by lopdev coder (UI #1874); 14 status keys by i18n-translator claude-sonnet-5-5 (#1870); 5 loading.* keys per #1875 (row 15686088b7ce); rest per superseded rows. Auditor same model as coder: disclosed."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-12",
-					"result": "clean-with-findings",
-					"instance": "15686088b7ce-zh-cn",
+					"result": "clean",
+					"instance": "94f6e325484c-canon2-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 3
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/15686088b7ce-zh-cn.json",
-					"receipt_sha256": "387a8210934a6f670bca7f39ddf6dffc18600495459c540c99c491b41d076206",
-					"scope": "whole merged file at c213a0616: #1870's 14 status keys + this PR's 5 loading.* keys; seam review + merge-integrity proof",
-					"note": "Post-merge re-bind (PR #1875); 0 new findings; 3 carried nits (07b0fc8f8d80). Detail: i18n/receipts/15686088b7ce-zh-cn.json"
+					"receipt": "i18n/receipts/94f6e325484c-canon2-zh-cn.json",
+					"receipt_sha256": "94df6be1d09b8181d4c051056860afa73b0ba14f9b5ca29d72a59cec1f7e02c0",
+					"scope": "merged ui.chat.canonical, UI #1874 @ 7177d51df: 5 #1875 loading.* + 4 temporary_deleted.* keys"
 				}
 			],
 			"status": "audited",
@@ -76835,6 +76972,30 @@
 							"receipt_sha256": "9253c5dd7d9761b7cfb6e87ec842586378be519166b7a91efc9fd0b3e631f74f",
 							"scope": "the 14 new S16a tool-state/image-generation keys (draft audited by hash; landed values proven equal); other 442 keys byte-identical to the superseded combined-bytes audit",
 							"note": "S16a status words, PR #1870; binding receipt integrator-transcribed (see evidence). Detail: i18n/audits/evidence/zh-CN/ui.chat.canonical/s16a-07b0fc8f8d80/report.md"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0c9b709973d3b7769708502491a0d3d81798ac2ac68319967198e53e2d495113",
+					"target_sha256": "75d40f4e93c12a4e0ee91600aa5d606c0ef7bc1a6a91330ce22963bc07f86a7d",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "15686088b7ce-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 3
+							},
+							"receipt": "i18n/receipts/15686088b7ce-zh-cn.json",
+							"receipt_sha256": "387a8210934a6f670bca7f39ddf6dffc18600495459c540c99c491b41d076206",
+							"scope": "whole merged file at c213a0616: #1870's 14 status keys + this PR's 5 loading.* keys; seam review + merge-integrity proof",
+							"note": "Post-merge re-bind (PR #1875); 0 new findings; 3 carried nits (07b0fc8f8d80). Detail: i18n/receipts/15686088b7ce-zh-cn.json"
 						}
 					],
 					"status": "audited"
