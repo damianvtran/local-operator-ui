@@ -83,6 +83,46 @@
  *                conversation".
  *   - `settled`  the later of `painted` and `sendable`: the switch is done.
  *
+ * THE PAINT FIELDS (appended to the line; they are not stages): whether the pane
+ * painted from the cache at the click, which no stage above can answer. Every
+ * stage before `content` is keyed on `frontend?.session_id`, which is null until
+ * the snapshot - and a cached paint is exactly the case where rows are on screen
+ * while `frontend` is still null, so a seeded paint used to leave no mark at all
+ * and `content` read as the snapshot's own time. These fields are keyed on the
+ * trace's OWN target instead: the id the click named, which is also the paint
+ * cache's key, so they appear whatever `frontend` says.
+ *
+ *   - `paint`    `cache` when the pane's first commit was seeded from the paint
+ *                cache, `none` when nothing was cached (a cold open), `empty`
+ *                when an entry existed here but was dropped (trimmed to nothing,
+ *                or evicted), `-` when no pane stamped this trace at all.
+ *   - `paintAt`  the pane's first commit under this trace, ms from the click -
+ *                for a hit, the commit the seeded rows first painted in, which is
+ *                the stage timing a cached paint otherwise has none of.
+ *   - `paintRows`, `paintBytes`  the seeded rows and their UTF-8 bytes, as
+ *                `paint-cache.ts` measures them; zero for none/empty.
+ *   - `paintReason`  `no-entry` | `empty-after-trim` | `evicted` on a miss, `-`
+ *                on a hit. `evicted` is reported where the cache can tell it;
+ *                a note past its short bound reads `no-entry`.
+ *   - `paintFills`  whether the painted content column reached the scroller's
+ *                inner box (its `clientHeight` less its own padding) at that
+ *                commit, so a hit that still under-fills the pane is
+ *                distinguishable from one that fills it (`-` when there was no
+ *                seeded paint to measure). Measured on the content column rather
+ *                than on `scrollHeight`: a scroller's `scrollHeight` is never
+ *                below its `clientHeight`, so that comparison cannot fail and
+ *                would call every pane full.
+ *
+ * Counts, bytes and milliseconds only, like the stages: no row id, no text.
+ *
+ * WHAT IS NOT ON THIS LINE, deliberately. The renderer-side split of `snapshot`
+ * already exists as its own line, `[snapshot-receipt]`
+ * (`shared/snapshot-receipt.ts`): the main process's record/fold/emit times, the
+ * IPC bridge approximations and the parse span, printed when the snapshot frame
+ * is parsed. It carries the same `openToken` as this line's `t`, so a reader joins
+ * the two on that token; copying those fields here would make one measurement
+ * drift in two places.
+ *
  * OUTCOMES. `settled`; `superseded` (a newer open began before this one settled -
  * its stages so far are recorded, and the line names the token that replaced it,
  * so an A->B burst never reports A's time as B's latency); `missing` (the stream
@@ -113,6 +153,37 @@ export type OpenOutcome =
 	| "missing"
 	| "left"
 	| "timeout";
+
+/** Where a pane's first committed rows came from. See the header's paint fields. */
+export type PaintSource = "cache" | "none" | "empty";
+/**
+ * Why a pane had no seeded paint. `evicted` and `empty-after-trim` are the two
+ * the cache can still name when the click arrives; `no-entry` is the remaining
+ * case - this window never painted the conversation, or the cache's short miss
+ * note has aged out.
+ */
+export type PaintMiss = "no-entry" | "empty-after-trim" | "evicted";
+
+/**
+ * One writer's contribution to the `paint*` fields.
+ *
+ * TWO WRITERS, DIFFERENT MOMENTS: the pane's seed is known at its first commit
+ * (the rows, their bytes and whether anything was cached), while `fills` can only
+ * be measured from the committed layout in that same commit. They are separate
+ * stamps so that either order works - a child's layout effect runs before its
+ * parent's - and neither erases the other.
+ */
+export type PaintStamp =
+	| {
+			kind: "seed";
+			source: PaintSource;
+			/** Seeded rows; zero for `none`/`empty`. */
+			rows: number;
+			/** UTF-8 bytes of those rows, as `paint-cache.ts` measured them. */
+			bytes: number;
+			reason?: PaintMiss;
+	  }
+	| { kind: "fills"; fills: boolean };
 
 /** Stage order as printed; `settled` is derived and appended. */
 export const OPEN_STAGES: readonly OpenStage[] = [
@@ -159,6 +230,22 @@ interface Trace {
 	clickEpochMs?: number;
 	stages: Partial<Record<OpenStage, number>>;
 	/**
+	 * The `paint*` fields (see the header). Held apart from `stages` because the
+	 * value that matters is the seed's kind and its counts, not a bare
+	 * timestamp; `at` is the one timing and is printed as `paintAt`.
+	 *
+	 * First write wins PER FIELD: the seed and `fills` come from different writers
+	 * in the same commit, so neither may overwrite the other.
+	 */
+	paint?: {
+		at?: number;
+		source?: PaintSource;
+		rows?: number;
+		bytes?: number;
+		reason?: PaintMiss;
+		fills?: boolean;
+	};
+	/**
 	 * Stages whose stamp is a FALLBACK: a value recorded by a writer that knows
 	 * the stage happened but not that it is the one to report. Folded into
 	 * `stages` at `finish` only when nothing better stamped the stage - see
@@ -194,6 +281,23 @@ export interface OpenTracer {
 	): void;
 	/** Ends the open trace for `sessionId` with a terminal non-settled outcome. */
 	fail(sessionId: string | null | undefined, outcome: "missing" | "left"): void;
+	/**
+	 * Records one of the `paint*` fields for the open trace whose target is
+	 * `sessionId`: the seed the pane's first commit came from, then whether that
+	 * paint filled the scroller. Keyed on the trace's own target - the click's
+	 * id, as `begin` was given it - because this is the one part of the line that
+	 * must report while `frontend` is still null.
+	 *
+	 * First write wins per field, and the seed's write is what stamps `paintAt`,
+	 * so the two writers (the session hook's seed, the pane's measured height) can
+	 * arrive in either order without one erasing the other. With `token`, also only
+	 * if that trace is still the open one, like `note`.
+	 */
+	notePaint(
+		sessionId: string | null | undefined,
+		token: number | null | undefined,
+		stamp: PaintStamp,
+	): void;
 	/** The open trace's target, for observers that must not do work otherwise. */
 	activeSessionId(): string | null;
 	/** The open trace's token, so an observer can tell its own trace from a newer one. */
@@ -209,7 +313,13 @@ export interface OpenTracer {
 export function formatOpenTraceLine(
 	trace: Pick<
 		Trace,
-		"token" | "sessionId" | "entrance" | "start" | "stages" | "clickEpochMs"
+		| "token"
+		| "sessionId"
+		| "entrance"
+		| "start"
+		| "stages"
+		| "clickEpochMs"
+		| "paint"
 	>,
 	outcome: OpenOutcome,
 	supersededBy?: number,
@@ -218,11 +328,14 @@ export function formatOpenTraceLine(
 	const entrance = ENTRANCES.includes(trace.entrance) ? trace.entrance : "open";
 	const ms = (at: number | undefined) =>
 		at === undefined ? "-" : String(Math.max(0, Math.round(at - trace.start)));
+	const count = (value: number | undefined) =>
+		value === undefined ? "-" : String(Math.max(0, Math.round(value)));
 	const { painted, sendable } = trace.stages;
 	const settled =
 		painted !== undefined && sendable !== undefined
 			? Math.max(painted, sendable)
 			: undefined;
+	const paint = trace.paint;
 	const parts = [
 		OPEN_TRACE_PREFIX,
 		`t=${trace.token}`,
@@ -232,6 +345,25 @@ export function formatOpenTraceLine(
 		`outcome=${outcome}`,
 		...OPEN_STAGES.map((stage) => `${stage}=${ms(trace.stages[stage])}`),
 		`settled=${ms(settled)}`,
+		/*
+		 * The paint fields are APPENDED rather than folded into the stage list, so a
+		 * reader of an older line (and the grammar the tests pin) keeps working: a
+		 * stage prints a bare number, and `paint` prints a kind.
+		 * `paintFills` is answered only for a seeded paint - a cold pane's first rows
+		 * come from the snapshot, so "did the seed fill the pane" has no answer there.
+		 */
+		`paint=${paint?.source ?? "-"}`,
+		`paintAt=${ms(paint?.at)}`,
+		`paintRows=${count(paint?.rows)}`,
+		`paintBytes=${count(paint?.bytes)}`,
+		`paintReason=${paint?.source === "cache" ? "-" : (paint?.reason ?? "-")}`,
+		`paintFills=${
+			paint?.source === "cache" && paint.fills !== undefined
+				? paint.fills
+					? "1"
+					: "0"
+				: "-"
+		}`,
 	];
 	if (supersededBy !== undefined) parts.push(`by=t${supersededBy}`);
 	return parts.join(" ");
@@ -320,6 +452,34 @@ export function createOpenTracer(deps: OpenTraceDeps): OpenTracer {
 		fail(sessionId, outcome) {
 			if (!current || !sessionId || current.sessionId !== sessionId) return;
 			finish(outcome);
+		},
+		notePaint(sessionId, token, stamp) {
+			const trace = current;
+			if (!trace || !sessionId || trace.sessionId !== sessionId) return;
+			if (token !== undefined && token !== null && token !== trace.token)
+				return;
+			// Created once: the seed and `fills` share this record, and a later caller
+			// adds a field rather than replacing the object the first one wrote into.
+			if (trace.paint === undefined) trace.paint = {};
+			const paint = trace.paint;
+			if (stamp.kind === "fills") {
+				// The pane's measurement of ITS OWN first commit. A later commit is a
+				// different paint, so the first reading is the one this field is about.
+				if (paint.fills === undefined) paint.fills = stamp.fills;
+				return;
+			}
+			// The seed's own write is what stamps the stage: this is the commit the
+			// pane first had rows to paint, seeded or not.
+			if (paint.at === undefined) paint.at = deps.now();
+			if (paint.source !== undefined) return;
+			paint.source = stamp.source;
+			paint.rows = stamp.rows;
+			paint.bytes = stamp.bytes;
+			paint.reason =
+				stamp.source === "cache"
+					? undefined
+					: (stamp.reason ??
+						(stamp.source === "empty" ? "empty-after-trim" : "no-entry"));
 		},
 		activeSessionId() {
 			return current?.sessionId ?? null;
