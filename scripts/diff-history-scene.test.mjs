@@ -611,10 +611,22 @@ test("--child opens the Run panel, then the subagent's row, then reads only the 
 		child: "29aca806b290",
 		sleep: async () => {},
 	});
+	// Twice: the walk, then the route round-trip re-opens the same reader
+	// (QA round 7, Q7-2: "found again" now runs in --child too).
 	assert.deepEqual(presses, [
 		"[data-run-panel-trigger]",
 		'[data-run-panel-row="29aca806b290"] button',
+		"[data-run-panel-trigger]",
+		'[data-run-panel-row="29aca806b290"] button',
 	]);
+	// Reachable and fail-closed: with no paged first call it is a FAIL, not absent.
+	assert.ok(
+		checks.some(
+			([l, p]) =>
+				l === "child: re-navigated: the same call's row is found again" && !p,
+		),
+		"the child walk records the found-again check",
+	);
 	assert.ok(evaluated.includes(workRead(CHILD_SCOPE)));
 	assert.ok(
 		!evaluated.includes(WORK_READ),

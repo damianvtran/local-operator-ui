@@ -310,6 +310,11 @@ const CANCELLED = Symbol("diff-history-cancelled");
  * the region to sit directly under it. A short well (loading) can hold the
  * bar against its own end, so the second move repeats until it is still.
  */
+/** How long a landed move keeps re-asserting its anchor (Q7-1). */
+export const ANCHOR_SETTLE_MS = 500;
+/** Bound on the hold while a page is still loading; arrival re-arms it. */
+const ANCHOR_LOADING_MS = 10_000;
+
 function anchorFirstRow(nav: HTMLElement | null): void {
 	const scroller = nav?.closest<HTMLElement>("[data-lo-canonical-transcript]");
 	const start = nav?.nextElementSibling;
@@ -354,9 +359,20 @@ export const DiffHistoryPager: FC<{
 	 */
 	headerRows?: number;
 	onBack: () => void;
-}> = ({ scope, callId, headerRows: knownHeaderRows, onBack }) => {
+	/**
+	 * The pager answered a notice (evicted, unavailable, not found...): the
+	 * archive the descriptor promised cannot be read, so the caller falls back
+	 * to its inline record (agent review round 10, U7).
+	 */
+	onNotice?: (notice: DiffFullNotice) => void;
+}> = ({ scope, callId, headerRows: knownHeaderRows, onBack, onNotice }) => {
 	const pager = useDiffHistory(scope, callId);
 	const { state } = pager;
+	const noticeSeen = state.kind === "notice" ? state.notice : null;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reported once per answer, not per callback identity
+	useEffect(() => {
+		if (noticeSeen) onNotice?.(noticeSeen);
+	}, [noticeSeen]);
 	const measuredHeaderRows = useRef(0);
 	if (
 		state.kind === "page" &&
@@ -406,11 +422,81 @@ export const DiffHistoryPager: FC<{
 		anchorFirstRow(navRef.current);
 		navRef.current?.focus({ preventScroll: true });
 	}, []);
+	/*
+	 * HOLD THE ANCHOR UNTIL IT SETTLES (QA round 7, Q7-1 / design round 4,
+	 * U6). One before-paint write was not enough, and the cause is measured,
+	 * not inferred: the transcript's own standing reader-hold
+	 * (`use-scroll-paging.ts` `correctAnchor`) runs AFTER this component's
+	 * layout effects in the same commit (a parent's layout effect follows its
+	 * child's) and again on its content ResizeObserver. It sees the extent
+	 * change this page caused and pulls the record it sampled before the press
+	 * (the tool row holding this well) back to its old offset, undoing the
+	 * anchor. Probed in Chromium with the shipped hook: the anchor placed the
+	 * first row 8px under the bar, then `correctAnchor` wrote +336px and left it
+	 * 328px ABOVE the bar — QA's −144 against a 185 bar bottom, the same 329px.
+	 *
+	 * So the anchor is re-applied on every frame and every resize of the
+	 * transcript content while a move settles (the page has arrived, plus
+	 * `ANCHOR_SETTLE_MS`), and released the moment the reader takes the scroll
+	 * (wheel, pointer, key, touch): their own scroll always wins. By then the
+	 * hold has re-read the extent, so it has nothing left to pull.
+	 */
+	const settleUntil = useRef(0);
+	const startSettle = useRef<() => void>(() => {});
+	useEffect(() => {
+		const scroller = navRef.current?.closest<HTMLElement>(
+			"[data-lo-canonical-transcript]",
+		);
+		if (!scroller) return;
+		let frame = 0;
+		const active = () => performance.now() < settleUntil.current;
+		const tick = () => {
+			frame = 0;
+			if (!active()) return;
+			anchorFirstRow(navRef.current);
+			frame = requestAnimationFrame(tick);
+		};
+		const start = () => {
+			if (frame === 0 && active()) frame = requestAnimationFrame(tick);
+		};
+		const release = () => {
+			settleUntil.current = 0;
+		};
+		startSettle.current = start;
+		const observer =
+			typeof ResizeObserver === "undefined"
+				? null
+				: new ResizeObserver(() => {
+						if (active()) anchorFirstRow(navRef.current);
+					});
+		observer?.observe(
+			scroller.querySelector("[data-lo-transcript-content]") ?? scroller,
+		);
+		if (rootRef.current) observer?.observe(rootRef.current);
+		const input = ["wheel", "pointerdown", "keydown", "touchstart"] as const;
+		for (const type of input)
+			scroller.addEventListener(type, release, {
+				capture: true,
+				passive: true,
+			});
+		start();
+		return () => {
+			startSettle.current = () => {};
+			if (frame) cancelAnimationFrame(frame);
+			observer?.disconnect();
+			for (const type of input)
+				scroller.removeEventListener(type, release, { capture: true });
+		};
+	}, []);
 	useLayoutEffect(() => {
 		// Before paint, on every state of a move (its loading sentence, then the
 		// page or the error): the reader never sees the tail flash first.
 		if (anchorPending.current) {
 			anchorFirstRow(navRef.current);
+			settleUntil.current =
+				performance.now() +
+				(state.kind === "loading" ? ANCHOR_LOADING_MS : ANCHOR_SETTLE_MS);
+			startSettle.current();
 			if (state.kind !== "loading") anchorPending.current = false;
 		}
 		/*

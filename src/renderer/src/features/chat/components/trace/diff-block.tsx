@@ -64,6 +64,7 @@ import { type FC, useId, useLayoutEffect, useRef, useState } from "react";
 import { DiffHistoryPager, type DiffHistoryScope } from "./diff-history";
 import {
 	type DiffFullDescriptor,
+	type DiffFullNotice,
 	diffFullNoticeLabel,
 	diffFullViewLabel,
 	namelessHeaderRows,
@@ -152,6 +153,20 @@ export const DiffBlock: FC<DiffBlockProps> = ({
 	const descriptor = omitted ? (history?.descriptor ?? null) : null;
 	const pageable =
 		descriptor?.state === "archived" && history?.scope ? history : null;
+	/*
+	 * What the pager ANSWERED for this row, once it has. The descriptor is the
+	 * record's claim; whether the archive still exists is only known when it is
+	 * read (a shared LRU evicts older sessions' archives). After a notice the
+	 * offer is withdrawn and the inline record is the way on again: its
+	 * expander comes back and the footer states the notice instead of a
+	 * "View full diff" that leads to the same dead end (agent review round
+	 * 10 / design round 4, U7).
+	 */
+	const [noticed, setNoticed] = useState<DiffFullNotice | null>(null);
+	const offer = pageable && !noticed ? pageable : null;
+	const notice: DiffFullNotice | null =
+		noticed ??
+		(descriptor && descriptor.state !== "archived" ? descriptor.state : null);
 	const wellId = useId();
 	const wellRef = useRef<HTMLDivElement>(null);
 	const toggleRef = useRef<HTMLButtonElement>(null);
@@ -271,7 +286,7 @@ export const DiffBlock: FC<DiffBlockProps> = ({
 							// the footer and toggle must both fit without an inner scroll.
 							// A non-archived descriptor states WHY in one more row.
 							omitted
-								? descriptor && descriptor.state !== "archived"
+								? notice && !noticed
 									? "max-h-[776px]"
 									: "max-h-[758px]"
 								: "max-h-[740px]",
@@ -279,11 +294,12 @@ export const DiffBlock: FC<DiffBlockProps> = ({
 				className,
 			)}
 		>
-			{full && pageable?.scope ? (
+			{full && pageable?.scope && (
 				<DiffHistoryPager
 					scope={pageable.scope}
 					callId={pageable.callId}
 					headerRows={archiveOnly ? undefined : headerRows}
+					onNotice={setNoticed}
 					onBack={() => {
 						setFull(false);
 						// Back lands on the preview's own top, not wherever the
@@ -292,32 +308,42 @@ export const DiffBlock: FC<DiffBlockProps> = ({
 						// pressed Back button no longer exists.
 						requestAnimationFrame(() => {
 							wellRef.current?.scrollIntoView({ block: "nearest" });
-							viewFullRef.current?.focus({ preventScroll: true });
+							// After a notice the offer is gone; the expander is the way on.
+							(viewFullRef.current ?? toggleRef.current)?.focus({
+								preventScroll: true,
+							});
 						});
 					}}
 				/>
-			) : body.withheld ? (
-				// One notice instead of the old core's stand-in plus a column of
-				// blank rows: the diff it stood for was never stored, so there is
-				// nothing to expand and no count worth stating.
-				<span className="block text-ink-dim">{diffWithheldLabel()}</span>
-			) : (
-				body.lines.map((line, index) => (
-					// Position is the key because a diff is an ordered record with no
-					// identity of its own: the same line text legitimately appears
-					// twice (a repeated `+` line), and the list never reorders in
-					// place.
-					// biome-ignore lint/suspicious/noArrayIndexKey: an immutable ordered record
-					<Line key={index} line={line} index={index} />
-				))
 			)}
+			{
+				// In the pager's notice state the inline record follows the notice,
+				// as the oversized case already reads: the reader is never left
+				// with a notice and nothing under it.
+				(!full || noticed) &&
+					(body.withheld ? (
+						// One notice instead of the old core's stand-in plus a column of
+						// blank rows: the diff it stood for was never stored, so there is
+						// nothing to expand and no count worth stating.
+						<span className="block text-ink-dim">{diffWithheldLabel()}</span>
+					) : (
+						body.lines.map((line, index) => (
+							// Position is the key because a diff is an ordered record with no
+							// identity of its own: the same line text legitimately appears
+							// twice (a repeated `+` line), and the list never reorders in
+							// place.
+							// biome-ignore lint/suspicious/noArrayIndexKey: an immutable ordered record
+							<Line key={index} line={line} index={index} />
+						))
+					))
+			}
 			{
 				// Producer truncation is independent of display collapse: disclose
 				// the missing record even before the reader reveals its stored tail.
 				!full &&
 					!body.withheld &&
 					omitted &&
-					(pageable ? (
+					(offer ? (
 						/*
 						 * The omitted rows WERE archived, so "not recorded" would be
 						 * false: the footer becomes the way to them. Same row, same
@@ -340,25 +366,25 @@ export const DiffBlock: FC<DiffBlockProps> = ({
 						</button>
 					) : (
 						<>
-							{truncatedRows > 0 && (
+							{truncatedRows > 0 && !noticed && (
 								// Never "0 more lines": an archive-only row states only
 								// its descriptor's reason below.
 								<span className="block text-ink-dim">
 									{diffTruncatedLabel(truncatedRows)}
 								</span>
 							)}
-							{descriptor && descriptor.state !== "archived" && (
+							{notice && (
 								<span
-									data-diff-full-notice={descriptor.state}
+									data-diff-full-notice={notice}
 									className="block text-ink-dim"
 								>
-									{diffFullNoticeLabel(descriptor.state)}
+									{diffFullNoticeLabel(notice)}
 								</span>
 							)}
 						</>
 					))
 			}
-			{!full && body.expandable && !pageable && (
+			{(!full || noticed) && body.expandable && !offer && (
 				/*
 				 * NOT WHEN THE ARCHIVE IS OFFERED (design round 3, U7): "View full
 				 * diff · 505 lines" sat directly above "… 158 more diff lines", two

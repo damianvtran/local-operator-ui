@@ -928,6 +928,70 @@ export async function sceneDiffHistory({
 		return seen;
 	};
 
+	/*
+	 * The route round-trip (R5-3: re-navigated, NOT a cold saved replay), for
+	 * EVERY walk that pages a call: parent, child reader and live (QA round 7,
+	 * Q7-2 — it ran only without `--child`, so the briefed command never
+	 * exercised it). `prefix` keeps the parent's check names unchanged.
+	 */
+	const refound = async (prefix, target, scope, root, first, remount) => {
+		await verb(cdp, "navigate", "/chat");
+		await verb(cdp, "navigate", `/chat/${target}`);
+		const mounted = await remount();
+		const tag = prefix
+			? `${prefix.replace(/: $/, "")}-renavigated`
+			: "renavigated";
+		const again = mounted ? await disclose(tag, scope, { row: root }) : null;
+		// The regression this step exists for is "the row cannot be re-found
+		// after the round-trip": a miss is a FAIL, never a silent skip (R9).
+		check(
+			`${prefix}re-navigated: the same call's row is found again`,
+			first !== null && again !== null,
+			JSON.stringify({ first: first?.range ?? null, row: root, again }),
+		);
+		if (first && again && (await openFull(again, tag))) {
+			const state = await page(
+				again,
+				`${prefix ? `${tag}-` : ""}page-renavigated`,
+			);
+			check(
+				`${prefix}re-navigated: the same call pages the same first page`,
+				state.range === first.range &&
+					state.lastRow?.text === first.lastRow?.text,
+				JSON.stringify({ renavigated: state.range, first: first.range }),
+			);
+		}
+	};
+
+	/** The Run panel, the subagent's row, then its contained reader. */
+	const openChildReader = async (again = false) => {
+		const tag = again ? "child (re-navigated)" : "child";
+		await settle(
+			`Boolean(document.querySelector(${JSON.stringify(PARENT_SCOPE)}))`,
+			`${tag}: the parent transcript mounts`,
+		);
+		if (
+			!(await pressSettled(
+				"[data-run-panel-trigger]",
+				`${tag}: Run panel trigger`,
+			))
+		)
+			return false;
+		const rowButton = `[data-run-panel-row="${child}"] button`;
+		if (
+			!(await settle(
+				`Boolean(${q(rowButton)})`,
+				`${tag}: the Run panel lists the subagent's row`,
+			))
+		)
+			return false;
+		if (!(await pressSettled(rowButton, `${tag}: subagent row`))) return false;
+		return settle(
+			`Boolean(document.querySelector(${JSON.stringify(CHILD_SCOPE)}))`,
+			`${tag}: the reader mounts the child transcript`,
+		);
+	};
+
 	await verb(cdp, "navigate", `/chat/${session}`);
 	if (child !== null) {
 		await settle(
@@ -972,6 +1036,7 @@ export async function sceneDiffHistory({
 			"diff-history-child-reader",
 			`Boolean(document.querySelector(${JSON.stringify(CHILD_SCOPE)}))`,
 		);
+		let childFirst = null;
 		const editRow = await disclose("child-edit", CHILD_SCOPE, {
 			verb: "Edited",
 		});
@@ -984,7 +1049,7 @@ export async function sceneDiffHistory({
 			await noOffer(CHILD_SCOPE);
 		else {
 			await shot("diff-history-child-edit-preview");
-			await walkCall(editRow ?? CHILD_SCOPE, {
+			childFirst = await walkCall(editRow ?? CHILD_SCOPE, {
 				label: "child-edit",
 				kind: "edit",
 				truth: expect?.edit ?? null,
@@ -1003,6 +1068,14 @@ export async function sceneDiffHistory({
 				writes.oversized > 0,
 				JSON.stringify(writes),
 			);
+		await refound(
+			"child: ",
+			session,
+			CHILD_SCOPE,
+			editRow ?? CHILD_SCOPE,
+			childFirst,
+			() => openChildReader(true),
+		);
 	} else {
 		const row = await disclose("open", PARENT_SCOPE, { verb: "Edited" });
 		const offered = await settle(
@@ -1022,27 +1095,8 @@ export async function sceneDiffHistory({
 			d1: true,
 			error: handshake,
 		});
-		// A route round-trip (R5-3: re-navigated, NOT a cold saved replay), then
-		// the SAME call reopened and compared once its range is set.
-		await verb(cdp, "navigate", "/chat");
-		await verb(cdp, "navigate", `/chat/${session}`);
-		const again = await disclose("renavigated", PARENT_SCOPE, { row: root });
-		// The regression this step exists for is "the row cannot be re-found
-		// after the round-trip": a miss is a FAIL, never a silent skip (R9).
-		check(
-			"re-navigated: the same call's row is found again",
-			first !== null && again !== null,
-			JSON.stringify({ first: first?.range ?? null, row: root, again }),
-		);
-		if (first && again && (await openFull(again, "renavigated"))) {
-			const state = await page(again, "page-renavigated");
-			check(
-				"re-navigated: the same call pages the same first page",
-				state.range === first.range &&
-					state.lastRow?.text === first.lastRow?.text,
-				JSON.stringify({ renavigated: state.range, first: first.range }),
-			);
-		}
+		// The SAME call reopened after the round-trip, compared once its range is set.
+		await refound("", session, PARENT_SCOPE, root, first, async () => true);
 	}
 
 	if (liveSession !== null) {
@@ -1076,18 +1130,32 @@ export async function sceneDiffHistory({
 					verb: "Edited",
 				});
 				check("live: the new Edited row is reachable", row !== null, "");
-				if (row)
-					await walkCall(row, {
-						label: "live-edit",
-						kind: "edit",
-						truth: expect?.liveEdit ?? null,
-					});
+				const liveFirst = row
+					? await walkCall(row, {
+							label: "live-edit",
+							kind: "edit",
+							truth: expect?.liveEdit ?? null,
+						})
+					: null;
 				await walkWrites(PARENT_SCOPE, "live-write", expect?.liveWrite ?? null);
 				const after = await cdp.evaluate(verbCounts(PARENT_SCOPE));
 				check(
 					"live: still the same document (no reload) after paging",
 					after?.origin === before?.origin,
 					JSON.stringify({ before: before?.origin, after: after?.origin }),
+				);
+				// After the same-document check: the round-trip is a navigation.
+				await refound(
+					"live: ",
+					liveSession,
+					PARENT_SCOPE,
+					row ?? PARENT_SCOPE,
+					liveFirst,
+					() =>
+						settle(
+							`Boolean(document.querySelector(${JSON.stringify(PARENT_SCOPE)}))`,
+							"live (re-navigated): the live session's transcript mounts",
+						),
 				);
 			}
 		}

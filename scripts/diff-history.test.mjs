@@ -45,7 +45,7 @@ const bundle = await build({
 			'export { Disclosure } from "./src/renderer/src/shared/components/ui/disclosure";',
 			'export * from "./src/renderer/src/features/chat/components/trace/diff-history-model";',
 			'export { setLocale } from "./src/renderer/src/shared/i18n";',
-			'export { createElement, act } from "react";',
+			'export { createElement, act, useLayoutEffect } from "react";',
 			'export { createRoot } from "react-dom/client";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -84,6 +84,7 @@ const {
 	setLocale,
 	createElement: h,
 	act,
+	useLayoutEffect,
 	createRoot,
 } = m;
 // The animated disclosure subscribes to reduced motion; jsdom has no matchMedia.
@@ -1101,6 +1102,78 @@ test("U6: opening and every page move put the page's first row directly under th
 	}
 });
 
+test("Q7-1/U6: the anchor holds when the transcript's reader-hold re-pins after it", async () => {
+	/*
+	 * The measured cause: `use-scroll-paging.ts` `correctAnchor` runs AFTER the
+	 * pager's layout pass (its every-commit layout effect is the parent's, and
+	 * its content ResizeObserver is delivered after layout), sees the extent
+	 * change and pulls its sampled record back — +336px in the Chromium probe.
+	 * A MutationObserver stands in for that observer (jsdom has none): it fires
+	 * after the commit, before the next frame, exactly when a single
+	 * before-paint anchor has already let go.
+	 */
+	const proto = dom.window.HTMLElement.prototype;
+	const oldRect = proto.getBoundingClientRect;
+	const v = await mount();
+	proto.getBoundingClientRect = reverseScrollerModel(v);
+	let lastRange = null;
+	let pulls = 0;
+	const hold = new dom.window.MutationObserver(() => {
+		const range = v.range();
+		if (range && range !== lastRange) {
+			lastRange = range;
+			v.scroller.scrollTop += 336;
+			pulls += 1;
+		}
+	});
+	hold.observe(v.scroller, {
+		subtree: true,
+		childList: true,
+		characterData: true,
+	});
+	const settle = async () => {
+		for (let i = 0; i < 4; i += 1) await flush();
+	};
+	const under = (what) => {
+		const nav = v.host.querySelector("[data-diff-history] > nav");
+		const first = v.host.querySelector(
+			"[data-diff-history] > [data-diff-hunk-context], [data-diff-history] > [data-diff-line]",
+		);
+		const gap =
+			first.getBoundingClientRect().top - nav.getBoundingClientRect().bottom;
+		assert.ok(Math.abs(gap) < 1, `${what}: first row ${gap}px from the bar`);
+	};
+	try {
+		await v.click(v.button("View full diff · 998 lines"));
+		await settle();
+		under("open");
+		await v.click(v.button("Next"));
+		await settle();
+		under("Next");
+		assert.ok(pulls >= 2, "the hold pulled after each move");
+		// The reader's own scroll always wins: after a wheel nothing re-anchors.
+		v.scroller.dispatchEvent(
+			new dom.window.WheelEvent("wheel", { bubbles: true }),
+		);
+		v.scroller.scrollTop -= 200;
+		await settle();
+		const nav = v.host.querySelector("[data-diff-history] > nav");
+		const first = v.host.querySelector(
+			"[data-diff-history] > [data-diff-hunk-context], [data-diff-history] > [data-diff-line]",
+		);
+		assert.ok(
+			Math.abs(
+				first.getBoundingClientRect().top - nav.getBoundingClientRect().bottom,
+			) > 1,
+			"a wheel releases the hold",
+		);
+	} finally {
+		hold.disconnect();
+		proto.getBoundingClientRect = oldRect;
+		v.unmount();
+	}
+});
+
 test("D3: a failed move keeps the page it left under the error line, and offers no inert paging", async () => {
 	let fail = false;
 	respond = (request) =>
@@ -1158,4 +1231,76 @@ test("U7: when the archive is offered, the preview has no second '… N more' co
 	const plain = await mount({ truncatedRows: 0, history: undefined });
 	assert.match(plain.host.textContent, /… \d+ more diff lines/);
 	plain.unmount();
+});
+
+test("U7: an archive the pager cannot read falls back to the inline expander, in the notice and after Back", async () => {
+	const noticeOf = (state) => () => ({
+		status: 200,
+		body: {
+			result: {
+				state,
+				start: 0,
+				total_rows: 0,
+				rows: [],
+				hunk_header: null,
+				next_start: null,
+				clipped_rows: [],
+			},
+		},
+	});
+	const cases = [
+		["evicted", noticeOf("evicted")],
+		["unavailable", noticeOf("unavailable")],
+		[
+			"not_found",
+			() => ({ status: 404, body: { detail: { code: "diff_not_found" } } }),
+		],
+	];
+	const saved = respond;
+	try {
+		for (const [name, answer] of cases) {
+			respond = answer;
+			const v = await mount();
+			await v.click(v.button("View full diff · 998 lines"));
+			// The notice state: the notice, then the inline preview and its expander.
+			const status = v.host.querySelector("[data-diff-history-status]");
+			assert.ok(status.textContent.length > 0, `${name}: the notice is stated`);
+			const more = () =>
+				[...v.host.querySelectorAll("button[aria-expanded]")].find((b) =>
+					/… \d+ more diff lines/.test(b.textContent),
+				);
+			assert.ok(
+				more(),
+				`${name}: the inline expander is offered under the notice`,
+			);
+			assert.ok(
+				v.host.querySelectorAll(":scope [data-diff-line]").length > 0,
+				`${name}: the inline rows are painted under the notice`,
+			);
+			// After Back: the expander stays, and the notice replaces View full.
+			await v.click(v.button("Back to preview"));
+			assert.equal(
+				v.host.querySelector("[data-diff-view-full]"),
+				null,
+				`${name}: no View full leading to the same dead end`,
+			);
+			assert.equal(
+				v.host
+					.querySelector("[data-diff-full-notice]")
+					?.getAttribute("data-diff-full-notice"),
+				name,
+				`${name}: the row's notice stands in its place`,
+			);
+			assert.ok(more(), `${name}: the expander remains after Back`);
+			await v.click(more());
+			assert.equal(
+				v.host.querySelectorAll("[data-diff-line]").length,
+				200,
+				`${name}: the expander reaches every inline row (202 minus the nameless pair)`,
+			);
+			v.unmount();
+		}
+	} finally {
+		respond = saved;
+	}
 });
