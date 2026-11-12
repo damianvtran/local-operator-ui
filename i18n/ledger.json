@@ -2578,31 +2578,30 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.attachments",
-			"source_sha256": "4927bb91ea69c1abda5254b4da9bd7dc8b1ced003f2662537e796534f5988453",
-			"target_sha256": "d3f34ca4fa9fdf0ddcf0cd67d08617493d37af96e0fc1feae07971a4674c91f1",
+			"source_sha256": "0e6e4457711073f2b604e9b5374b91a2ed782064a00e486f3fb446ea3f2284be",
+			"target_sha256": "775c44570162b0e7105d98f8788ee345d731fbe634c0f6fb54195112d7d79e81",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 9d6c2bba4d3b job e76e3cc7e513)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (ui-attachments-coder / radient/auto / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-12",
+				"note": "PR #1880: 18 added keys translated by coder; earlier keys keep prior translators (see superseded)."
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-02",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-12",
 					"result": "clean",
-					"instance": "62bb649752be-1603r1-es",
+					"instance": "1c4ab04dbe3e-1880r1-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/62bb649752be-1603r1-es.json",
-					"receipt_sha256": "f5ed0a163dd8c2bf0ec6f55e3ced6bba1795de660c6e9da9a6b1860657d289a3",
-					"scope": "Round-1 full review (62bb649752be) at ab45351362a of the 5 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta c86525720075. Counts are open findings.",
-					"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/62bb649752be-1603r1-es.json"
+					"receipt": "i18n/receipts/1c4ab04dbe3e-1880r1-es.json",
+					"receipt_sha256": "1faacd9efc8ebd03a4479db52d54b68cad5ceef5ef1f218df685c5d0f44d989c",
+					"scope": "PR #1880 round 1 (83a18c632..a4462e721): the 18 added keys"
 				}
 			],
 			"status": "audited",
@@ -2723,6 +2722,30 @@
 							"receipt_sha256": "d4072f97a56b573e38fa965da46548fa3c0aa3556ad0f5a96961da41ee9e318c",
 							"scope": "ui.chat.attachments: verification of the hand-union (5 branch keys + 1 main key onto the 12-key base)",
 							"note": "PR #1481: union verified key-for-key; no value drift from either side."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4927bb91ea69c1abda5254b4da9bd7dc8b1ced003f2662537e796534f5988453",
+					"target_sha256": "d3f34ca4fa9fdf0ddcf0cd67d08617493d37af96e0fc1feae07971a4674c91f1",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "62bb649752be-1603r1-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/62bb649752be-1603r1-es.json",
+							"receipt_sha256": "f5ed0a163dd8c2bf0ec6f55e3ced6bba1795de660c6e9da9a6b1860657d289a3",
+							"scope": "Round-1 full review (62bb649752be) at ab45351362a of the 5 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.chat)), fixed at 011c0f4f4ca and passed by round-2 delta c86525720075. Counts are open findings.",
+							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/62bb649752be-1603r1-es.json"
 						}
 					],
 					"status": "audited"
@@ -26791,31 +26814,30 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.attachments",
-			"source_sha256": "4927bb91ea69c1abda5254b4da9bd7dc8b1ced003f2662537e796534f5988453",
-			"target_sha256": "88b7909df02647db93a3660f5334873946adfd051444d301f375b80e1a96177a",
+			"source_sha256": "0e6e4457711073f2b604e9b5374b91a2ed782064a00e486f3fb446ea3f2284be",
+			"target_sha256": "8cda49df1622d3e6b9c6f3f9d53ad793d5f02486ab2268bc74197394e8c654b4",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session fe3e687905c1 job 2296f594b388)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (ui-attachments-coder / radient/auto / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-12",
+				"note": "PR #1880: 18 added keys translated by coder; earlier keys keep prior translators (see superseded)."
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-02",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-12",
 					"result": "clean",
-					"instance": "a8b33d269fce-1603r1-hi",
+					"instance": "1c4ab04dbe3e-1880r1-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/a8b33d269fce-1603r1-hi.json",
-					"receipt_sha256": "6e6c16a177d9b7428b0404309161ad873e0065f54d676237fed2b404400f4437",
-					"scope": "Round-1 full review (a8b33d269fce) at ab45351362a of the 5 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.common.layout), A-1p (ui.chat.pickers), A-1c (ui.chat), A-2 (ui.agents.teams)), fixed at 011c0f4f4ca and passed by round-2 delta 553e1ccbd7b1. Counts are open findings.",
-					"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/a8b33d269fce-1603r1-hi.json"
+					"receipt": "i18n/receipts/1c4ab04dbe3e-1880r1-hi.json",
+					"receipt_sha256": "7e7bb0df60996a4b4a6e601bf78aefcd30068a5f821161a199dc6851aaba6eed",
+					"scope": "PR #1880 round 1 (83a18c632..a4462e721): the 18 added keys"
 				}
 			],
 			"status": "audited",
@@ -26960,6 +26982,30 @@
 							"receipt_sha256": "f645740f120be78519bc7c99f9bca2f331d4bcf37788e65e117c536009cbf4ca",
 							"scope": "ui.chat.attachments: verification of the hand-union (5 branch keys + 1 main key onto the 12-key base)",
 							"note": "PR #1481: union verified key-for-key; no value drift from either side."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4927bb91ea69c1abda5254b4da9bd7dc8b1ced003f2662537e796534f5988453",
+					"target_sha256": "88b7909df02647db93a3660f5334873946adfd051444d301f375b80e1a96177a",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "a8b33d269fce-1603r1-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/a8b33d269fce-1603r1-hi.json",
+							"receipt_sha256": "6e6c16a177d9b7428b0404309161ad873e0065f54d676237fed2b404400f4437",
+							"scope": "Round-1 full review (a8b33d269fce) at ab45351362a of the 5 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.common.layout), A-1p (ui.chat.pickers), A-1c (ui.chat), A-2 (ui.agents.teams)), fixed at 011c0f4f4ca and passed by round-2 delta 553e1ccbd7b1. Counts are open findings.",
+							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/a8b33d269fce-1603r1-hi.json"
 						}
 					],
 					"status": "audited"
@@ -38764,31 +38810,30 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.attachments",
-			"source_sha256": "4927bb91ea69c1abda5254b4da9bd7dc8b1ced003f2662537e796534f5988453",
-			"target_sha256": "9ca3923135a96eebe4cfb25447fd4e751557c16411574ae327c6755544e6275b",
+			"source_sha256": "0e6e4457711073f2b604e9b5374b91a2ed782064a00e486f3fb446ea3f2284be",
+			"target_sha256": "85af776254f4df0461b387a7cfa0257e0cba1132906896f36fff4b842d14017b",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 74a8df6e024e job edb91c63ad6a)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (ui-attachments-coder / radient/auto / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-12",
+				"note": "PR #1880: 18 added keys translated by coder; earlier keys keep prior translators (see superseded)."
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-02",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-12",
 					"result": "clean",
-					"instance": "e74efd41e786-1603r1-ru",
+					"instance": "1c4ab04dbe3e-1880r1-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/e74efd41e786-1603r1-ru.json",
-					"receipt_sha256": "aa70bf0097fab7022a5e3e47fcd8c5d53127bdc0da10d0fb9cf627e555cd055d",
-					"scope": "Round-1 full review (e74efd41e786) at ab45351362a of the 5 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.common.layout)), fixed at 011c0f4f4ca and passed by round-2 delta ed052586f8fb. Counts are open findings.",
-					"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/e74efd41e786-1603r1-ru.json"
+					"receipt": "i18n/receipts/1c4ab04dbe3e-1880r1-ru.json",
+					"receipt_sha256": "a5b8dae8c7f4d48cc58f1f80bb9d91420a01ce6f09d2b573c75f54d0c2986021",
+					"scope": "PR #1880 round 1 (83a18c632..a4462e721): the 18 added keys"
 				}
 			],
 			"status": "audited",
@@ -38909,6 +38954,30 @@
 							"receipt_sha256": "1057a962bdf394c3ed4196e6161e2891b59f79c2b3ded02f031aaa792e60f2c9",
 							"scope": "ui.chat.attachments: verification of the hand-union (5 branch keys + 1 main key onto the 12-key base)",
 							"note": "PR #1481: union verified key-for-key; no value drift from either side."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4927bb91ea69c1abda5254b4da9bd7dc8b1ced003f2662537e796534f5988453",
+					"target_sha256": "9ca3923135a96eebe4cfb25447fd4e751557c16411574ae327c6755544e6275b",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "e74efd41e786-1603r1-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/e74efd41e786-1603r1-ru.json",
+							"receipt_sha256": "aa70bf0097fab7022a5e3e47fcd8c5d53127bdc0da10d0fb9cf627e555cd055d",
+							"scope": "Round-1 full review (e74efd41e786) at ab45351362a of the 5 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.common.layout)), fixed at 011c0f4f4ca and passed by round-2 delta ed052586f8fb. Counts are open findings.",
+							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/e74efd41e786-1603r1-ru.json"
 						}
 					],
 					"status": "audited"
@@ -75290,31 +75359,30 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.attachments",
-			"source_sha256": "4927bb91ea69c1abda5254b4da9bd7dc8b1ced003f2662537e796534f5988453",
-			"target_sha256": "5fb6a1d24bb742f742c6dbac2c803eb1b498456992b1a9be676ad60a8a7b00e7",
+			"source_sha256": "0e6e4457711073f2b604e9b5374b91a2ed782064a00e486f3fb446ea3f2284be",
+			"target_sha256": "56fbe6922b33a5f601ca1c65243e4376e171f330f579209c4a2b5622421c6b15",
 			"translator": {
-				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1603 prop-copy keys, 2026-11-02, session 2071a6d2f218 job a1a155d78afc)",
-				"date": "2026-11-02",
-				"note": "Row restarted for PR #1603: keys that predate the PR keep their earlier translator (ui-attachments-coder / radient/auto / 2026-10-23); the PR's added keys were translated by the run named in model. Set by the PR #1603 receipts commit, not by ledger-assemble (it only sets a translator on a NEW row)."
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-12",
+				"note": "PR #1880: 18 added keys translated by coder; earlier keys keep prior translators (see superseded)."
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-02",
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-12",
 					"result": "clean",
-					"instance": "0bb8123f20fc-1603r1-zh-cn",
+					"instance": "1c4ab04dbe3e-1880r1-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/0bb8123f20fc-1603r1-zh-cn.json",
-					"receipt_sha256": "5ce56c39bc182a3ee0551c3363050165b4512407a7193cfbb77cf3aa66c0cf53",
-					"scope": "Round-1 full review (0bb8123f20fc) at ab45351362a of the 5 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.agents.detail)), fixed at 011c0f4f4ca and passed by round-2 delta e98e27ec97a4. Counts are open findings.",
-					"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/0bb8123f20fc-1603r1-zh-cn.json"
+					"receipt": "i18n/receipts/1c4ab04dbe3e-1880r1-zh-cn.json",
+					"receipt_sha256": "4b7b4381a9ce66db4093392f455320816eea11c78542251ae53ac854c4ebee05",
+					"scope": "PR #1880 round 1 (83a18c632..a4462e721): the 18 added keys"
 				}
 			],
 			"status": "audited",
@@ -75452,6 +75520,30 @@
 							"receipt_sha256": "334106dc09f74ec3788ad2ef68e54a70327c7abdb49dd6f6963bc31a362346b9",
 							"scope": "ui.chat.attachments: verification of the hand-union (5 branch keys + 1 main key onto the 12-key base)",
 							"note": "PR #1481: union verified key-for-key; no value drift from either side."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4927bb91ea69c1abda5254b4da9bd7dc8b1ced003f2662537e796534f5988453",
+					"target_sha256": "5fb6a1d24bb742f742c6dbac2c803eb1b498456992b1a9be676ad60a8a7b00e7",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-02",
+							"result": "clean",
+							"instance": "0bb8123f20fc-1603r1-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/0bb8123f20fc-1603r1-zh-cn.json",
+							"receipt_sha256": "5ce56c39bc182a3ee0551c3363050165b4512407a7193cfbb77cf3aa66c0cf53",
+							"scope": "Round-1 full review (0bb8123f20fc) at ab45351362a of the 5 keys PR #1603 added; bytes identical at 011c0f4f4ca. No BLOCKER/MAJOR of its own; locale-level round-1 verdict was changes_requested only for MAJOR(s) in other namespaces (A-1 (ui.agents.detail)), fixed at 011c0f4f4ca and passed by round-2 delta e98e27ec97a4. Counts are open findings.",
+							"note": "PR #1603 round-1 full review at ab45351362a; bytes unchanged at 011c0f4f4ca; locale round-1 verdict was changes_requested only for MAJOR(s) now fixed. Detail: i18n/receipts/0bb8123f20fc-1603r1-zh-cn.json"
 						}
 					],
 					"status": "audited"
