@@ -10,7 +10,8 @@ taken by the same rig bytes with the same fixture and the same steps.
 | | |
 |---|---|
 | BEFORE | `c1ba44696` (origin/main base), built with `src/` clean at build start and end |
-| AFTER | `79f3126b4` (`80a346fd5` implementation + `79f3126b4` i18n audit), built with `src/` clean and HEAD verified at build start and end |
+| AFTER | **`7887d0bf0`** (`80a346fd5` implementation + `79f3126b4` i18n audit + `7887d0bf0` review-round-1 fix). Every AFTER frame, matrix, filmstrip and reading here was captured at `7887d0bf0`, built with `src/` clean and HEAD verified at build start and end. |
+| Round 0 | `79f3126b4`: the head the previous version of this set (`8b4355d43`) described. `8b4355d43` adds only docs, so the two are source-identical. It is used only in `dot-trough.png` and `pulseCycle`, and was re-captured from the same `79f3126b4` build with a full pulse cycle held. |
 | Runtime | Electron 45.1.0, app 0.54.2, Linux under Xvfb, `--window-mode=headless` (window never shown: `visible=false focused=false`) |
 | Viewport | 1380x872 CSS px at DPR 1. The app's own `capturePage()` reported this viewport for every frame. |
 | Palettes | `localOperatorLight`, `localOperatorDark`, set through the dev-driver `setTheme` verb (the settings picker's own action) |
@@ -24,7 +25,8 @@ taken by the same rig bytes with the same fixture and the same steps.
 | `matrix-glass-sim.png` | AFTER only, light and dark, with the **glass simulation** (see the limitation below). It is **not proof of real translucency.** |
 | `after-<case>-<theme>.png` | Full 1380x872 AFTER frames with glass off, lossless (pixel-identical to the raw capture). |
 | `sequence-<case>-<theme>.png` | 12 consecutive AFTER `capturePage()` frames around the release of the held read: 3 before the release, 9 after. Each frame is cropped to the indicator plus the last row and shown at 50%. Each caption gives two readings. `image:` is what the pixels show: the indicator by a label-region match, and rows by ink in the transcript area. `DOM@t` is the rAF sampler at the moment the shot started: the indicator, the row count and the last row's `y`. |
-| `rects-summary.json` | For all 16 runs (4 cases x 2 themes x glass off/sim), the shift and flicker readings BEFORE vs AFTER (table below), plus per-run contrast measured from pixels. |
+| `dot-trough.png` | The cold-open dot, light and dark, at its **brightest and dimmest captured** pulse phase, round 0 (`79f3126b4`) vs round 1 (`7887d0bf0`). Each cell has the measured dot colour, ground, contrast and the DOM's computed opacity at that shot. The last column is round 1 under **`prefers-reduced-motion: reduce`** (CDP `Emulation.setEmulatedMedia`). Crops are shown at 3x nearest-neighbour. |
+| `rects-summary.json` | For all 16 runs (4 cases x 2 themes x glass off/sim): the shift and flicker readings BEFORE vs AFTER (table below), per-run contrast measured from pixels, and `pulseCycle`, the full-cycle trough and peak of the dot. |
 
 ## The rig
 
@@ -42,8 +44,19 @@ after its session had loaded painted 24 rows and showed no placeholder.
 
 For the sequences, an in-page `requestAnimationFrame` sampler records the rects of every
 frame (median gap 16.7 ms), and `capturePage()` runs in a loop at the same time (median
-gap 43-64 ms, at least 26 images per run). The rig scripts live outside the repo, in the
-session scratchpad (`loading-capture/`).
+gap 43-62 ms, at least 26 images per run). The rig scripts live outside the repo, in the
+session scratchpad (`loading-capture/`). The `7887d0bf0` matrix ran on the same rig bytes
+as BEFORE (md5 `5b9211c3…`).
+
+The trough and reduced-motion frames come from a copy of the rig with two opt-in flags
+that are off by default:
+
+- `--pre-ms 2600` holds the cold case for more than one 2 s pulse cycle while
+  `capturePage()` loops (~35-44 ms per image);
+- `--reduced-motion` emulates `prefers-reduced-motion: reduce`.
+
+The probe also records the dot's computed `opacity` and `animation-name` on every
+animation frame.
 
 ## No layout shift, no flicker
 
@@ -72,8 +85,8 @@ as the reconciled rows (stale, where the foot slot keeps its 17.4 px height).
 
 **`capturePage()` can lag the DOM.** On this hidden Linux/Xvfb window, a shot taken
 within about 150 ms of a commit can return the previous presented frame. For example, in
-`sequence-cold-light.png` the shot started at 443 ms still shows the indicator, while the
-sampler had rows at 328 ms. That is capture latency, not a frame the user sees twice: the
+`sequence-cold-light.png` the shot started at 424 ms (done at 463 ms) still shows the
+indicator, while the sampler had rows at 327 ms. That is capture latency, not a frame the user sees twice: the
 next image is the landed state, and no image shows an intermediate or blank state. So
 the timing claims come from the rAF sampler, and the images back the *shape* of the
 transition.
@@ -81,24 +94,47 @@ transition.
 **Older, both arms:** the held page lands about 330 ms in. Scroll anchoring keeps the
 reader's rows in place (the last row reads `y=2861.4` throughout), and the 24 new rows
 appear above them, so the slot moves to `y≈-2760`. It stays busy off-screen until about
-526 ms (AFTER) or 593 ms (BEFORE), then reads `Load earlier messages`. The reader never
-sees it flip.
+540-565 ms (AFTER) or 510-595 ms (BEFORE), then reads `Load earlier messages`. The reader
+never sees it flip.
 
 ## Contrast, measured from pixels
 
-The ground is the modal colour of the indicator row. The mark is the first ink cluster
-from the left. The label value is the most extreme ink to the right of the mark. Mark
-ranges cover the still plus every pre-release sequence frame, so they include the pulse
-(`pulse-visible`, opacity 1 -> 0.7 -> 1 over 2 s). Ratios are WCAG 2.x.
+Ratios are WCAG 2.x.
 
-| Case | Theme | BEFORE mark | BEFORE label | AFTER mark (8 px accent dot) | AFTER label |
+### The dot across a full pulse cycle (cold open; `dot-trough.png`, `pulseCycle`)
+
+The dot is the centre pixel (396,104) and the ground is (300,104). Every capture of a
+held cold open spanned more than 2.5 s. The DOM opacity is the computed value on every
+animation frame.
+
+| Theme | Round | Animation | DOM opacity range | Dimmest captured | Brightest captured |
 |---|---|---|---|---|---|
-| cold / remote | light | 8 px `bg-elevated` dot, **1.10-1.12:1** | `ink-dim` 12 px, 5.36:1 | 2.84-3.86:1 | `ink-muted` 12 px, 7.66:1 |
-| cold / remote | dark | 8 px dot, **1.12-1.15:1** | 6.60:1 | 4.48-6.02:1 | 9.09:1 |
-| stale | light | **none** (text only) | `ink-dim`, 5.36:1 | 2.84-3.69:1 | 7.66:1 |
-| stale | dark | **none** | 6.60:1 | 4.48-6.02:1 | 9.09:1 |
-| older | light | 18 px green spinner ring, 3.00-3.64:1 | 7.66:1 | 2.84-3.59:1 | 7.66:1 |
-| older | dark | ring, 4.64-6.98:1 | 9.09:1 | 4.48-5.70:1 | 9.09:1 |
+| light | 0 (`79f3126b4`) | `pulse-visible` 1 -> 0.7 | 0.70-1 | `#569b73`, **2.84:1** | `#137742`, 4.81:1 |
+| light | 1 (`7887d0bf0`) | `lo-intent-pulse` 1 -> 0.75 | 0.75-1 | `#4b956a`, **3.10:1** | `#137742`, 4.81:1 |
+| dark | 0 | `pulse-visible` | 0.70-1 | `#2f9451`, 4.48:1 | `#38c96a`, 7.97:1 |
+| dark | 1 | `lo-intent-pulse` | 0.75-1 | `#319c54`, 4.92:1 | `#37c869`, 7.88:1 |
+| light | 1, reduced motion | `animation-name: none` | 1 on every sample | `#137742`, 4.81:1 | same |
+| dark | 1, reduced motion | `none` | 1 on every sample | `#38c96a`, 7.97:1 | same |
+
+At its dimmest captured phase, the round-1 light dot clears the 3:1 non-text minimum by
+0.10. Blending the light accent `#137742` at 0.75 over `#f2ede3` gives `#4b946a` at 3.13:1,
+which agrees with the 3.10 measured.
+
+### Per case (stills plus the pre-release frames of each sequence)
+
+The ground is the modal colour of the indicator row. The mark is the first ink cluster
+from the left. The label value is the most extreme ink to the right of the mark. These
+mark ranges cover only the ~300 ms before release, which is a **partial** pulse phase. The
+full-cycle extremes are in the table above.
+
+| Case | Theme | BEFORE mark | BEFORE label | AFTER mark (8 px accent dot, partial phase) | AFTER label |
+|---|---|---|---|---|---|
+| cold / remote | light | 8 px `bg-elevated` dot, **1.10-1.12:1** | `ink-dim` 12 px, 5.36:1 | 3.10-3.97:1 | `ink-muted` 12 px, 7.66:1 |
+| cold / remote | dark | 8 px dot, **1.12-1.15:1** | 6.60:1 | 4.92-6.49:1 | 9.09:1 |
+| stale | light | **none** (text only) | `ink-dim`, 5.36:1 | 3.10-3.86:1 | 7.66:1 |
+| stale | dark | **none** | 6.60:1 | 4.92-6.02:1 | 9.09:1 |
+| older | light | 18 px green spinner ring, 3.00-3.64:1 | 7.66:1 | 3.10-3.68:1 | 7.66:1 |
+| older | dark | ring, 4.64-6.98:1 | 9.09:1 | 4.92-6.09:1 | 9.09:1 |
 
 Grounds: light `#f2ede3`, dark `#1d1b17` (`#181714` with glass-sim).
 

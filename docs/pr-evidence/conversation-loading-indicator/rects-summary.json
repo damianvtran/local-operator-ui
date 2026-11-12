@@ -1,5 +1,5 @@
 {
-  "note": "Per run: before (base c1ba44696) vs after (head 79f3126b4). Rects sampled every requestAnimationFrame in the page; images are the app's own capturePage() in a loop. t is ms on the page timeline; the hold is released at triggerAtMs.",
+  "note": "Per run: before (base c1ba44696) vs after (head 7887d0bf0). Rects sampled every requestAnimationFrame in the page; images are the app's own capturePage() in a loop. t is ms on the page timeline; the hold is released at triggerAtMs.",
   "runs": {
     "cold-light": {
       "before": {
@@ -45,24 +45,24 @@
           "blankImages": 0,
           "bothImages": 0,
           "firstImageWithoutIndicator": {
-            "i": 8,
-            "tBefore": 485.1,
-            "tAfter": 537.7
+            "i": 9,
+            "tBefore": 463.1,
+            "tAfter": 517.7
           },
           "lastImageWithIndicator": {
-            "i": 7,
-            "tBefore": 443,
-            "tAfter": 485.1
+            "i": 8,
+            "tBefore": 423.9,
+            "tAfter": 463.1
           }
         },
         "indicatorKey": "unified",
-        "samples": 107,
+        "samples": 109,
         "rafMedianMs": 16.7,
-        "images": 35,
-        "imageMedianGapMs": 52.2,
-        "triggerAtMs": 301.9,
+        "images": 40,
+        "imageMedianGapMs": 44.1,
+        "triggerAtMs": 302.2,
         "indicatorVisibleAtStart": true,
-        "indicatorOffAtMs": 327.8,
+        "indicatorOffAtMs": 326.9,
         "indicatorTransitions": 1,
         "bounces": 0,
         "indicatorMaxYDriftWhileOnScreenPx": 0,
@@ -118,23 +118,23 @@
           "bothImages": 0,
           "firstImageWithoutIndicator": {
             "i": 7,
-            "tBefore": 390.8,
-            "tAfter": 431.8
+            "tBefore": 515.7,
+            "tAfter": 573.4
           },
           "lastImageWithIndicator": {
             "i": 6,
-            "tBefore": 295.8,
-            "tAfter": 390.8
+            "tBefore": 458.1,
+            "tAfter": 515.7
           }
         },
         "indicatorKey": "unified",
-        "samples": 114,
+        "samples": 112,
         "rafMedianMs": 16.7,
-        "images": 39,
-        "imageMedianGapMs": 48.4,
-        "triggerAtMs": 302.1,
+        "images": 30,
+        "imageMedianGapMs": 61,
+        "triggerAtMs": 337.9,
         "indicatorVisibleAtStart": true,
-        "indicatorOffAtMs": 331.3,
+        "indicatorOffAtMs": 366.2,
         "indicatorTransitions": 1,
         "bounces": 0,
         "indicatorMaxYDriftWhileOnScreenPx": 0,
@@ -189,24 +189,24 @@
           "blankImages": 0,
           "bothImages": 0,
           "firstImageWithoutIndicator": {
-            "i": 9,
-            "tBefore": 390.2,
-            "tAfter": 435.2
+            "i": 7,
+            "tBefore": 398,
+            "tAfter": 474.1
           },
           "lastImageWithIndicator": {
-            "i": 8,
-            "tBefore": 302,
-            "tAfter": 390.2
+            "i": 6,
+            "tBefore": 290,
+            "tAfter": 398
           }
         },
         "indicatorKey": "unified",
-        "samples": 113,
+        "samples": 112,
         "rafMedianMs": 16.7,
-        "images": 43,
-        "imageMedianGapMs": 42.7,
-        "triggerAtMs": 301.3,
+        "images": 39,
+        "imageMedianGapMs": 48.9,
+        "triggerAtMs": 300.4,
         "indicatorVisibleAtStart": true,
-        "indicatorOffAtMs": 333.8,
+        "indicatorOffAtMs": 319.4,
         "indicatorTransitions": 1,
         "bounces": 0,
         "indicatorMaxYDriftWhileOnScreenPx": 0,
@@ -261,24 +261,24 @@
           "blankImages": 0,
           "bothImages": 0,
           "firstImageWithoutIndicator": {
-            "i": 7,
-            "tBefore": 417.6,
-            "tAfter": 484.3
+            "i": 8,
+            "tBefore": 380.9,
+            "tAfter": 431.1
           },
           "lastImageWithIndicator": {
-            "i": 6,
-            "tBefore": 308.4,
-            "tAfter": 417.6
+            "i": 7,
+            "tBefore": 295.7,
+            "tAfter": 380.9
           }
         },
         "indicatorKey": "unified",
-        "samples": 112,
+        "samples": 113,
         "rafMedianMs": 16.7,
-        "images": 39,
-        "imageMedianGapMs": 47.7,
-        "triggerAtMs": 306.5,
+        "images": 42,
+        "imageMedianGapMs": 43.8,
+        "triggerAtMs": 301.8,
         "indicatorVisibleAtStart": true,
-        "indicatorOffAtMs": 335.5,
+        "indicatorOffAtMs": 332.8,
         "indicatorTransitions": 1,
         "bounces": 0,
         "indicatorMaxYDriftWhileOnScreenPx": 0,
@@ -331,24 +331,24 @@
           "blankImages": 0,
           "bothImages": 0,
           "firstImageWithoutIndicator": {
-            "i": 7,
-            "tBefore": 472.1,
-            "tAfter": 527.6
+            "i": 6,
+            "tBefore": 410.1,
+            "tAfter": 460.9
           },
           "lastImageWithIndicator": {
-            "i": 6,
-            "tBefore": 419.4,
-            "tAfter": 472.1
+            "i": 5,
+            "tBefore": 313,
+            "tAfter": 410.1
           }
         },
         "indicatorKey": "unified",
-        "samples": 112,
+        "samples": 113,
         "rafMedianMs": 16.7,
-        "images": 37,
-        "imageMedianGapMs": 50.1,
-        "triggerAtMs": 301.6,
+        "images": 39,
+        "imageMedianGapMs": 46.9,
+        "triggerAtMs": 303.2,
         "indicatorVisibleAtStart": true,
-        "indicatorOffAtMs": 323.3,
+        "indicatorOffAtMs": 343.5,
         "indicatorTransitions": 1,
         "bounces": 0,
         "indicatorMaxYDriftWhileOnScreenPx": 0,
@@ -400,23 +400,23 @@
           "bothImages": 0,
           "firstImageWithoutIndicator": {
             "i": 6,
-            "tBefore": 532.1,
-            "tAfter": 594.9
+            "tBefore": 397.5,
+            "tAfter": 444.3
           },
           "lastImageWithIndicator": {
             "i": 5,
-            "tBefore": 452.1,
-            "tAfter": 532.1
+            "tBefore": 306.9,
+            "tAfter": 397.5
           }
         },
         "indicatorKey": "unified",
-        "samples": 107,
+        "samples": 114,
         "rafMedianMs": 16.7,
-        "images": 31,
-        "imageMedianGapMs": 56.7,
-        "triggerAtMs": 300.7,
+        "images": 32,
+        "imageMedianGapMs": 57.9,
+        "triggerAtMs": 301.9,
         "indicatorVisibleAtStart": true,
-        "indicatorOffAtMs": 322.6,
+        "indicatorOffAtMs": 330.2,
         "indicatorTransitions": 1,
         "bounces": 0,
         "indicatorMaxYDriftWhileOnScreenPx": 0,
@@ -467,24 +467,24 @@
           "blankImages": 0,
           "bothImages": 0,
           "firstImageWithoutIndicator": {
-            "i": 7,
-            "tBefore": 427.6,
-            "tAfter": 476.5
+            "i": 6,
+            "tBefore": 382,
+            "tAfter": 433
           },
           "lastImageWithIndicator": {
-            "i": 6,
-            "tBefore": 332.3,
-            "tAfter": 427.6
+            "i": 5,
+            "tBefore": 296.6,
+            "tAfter": 382
           }
         },
         "indicatorKey": "unified",
-        "samples": 112,
+        "samples": 114,
         "rafMedianMs": 16.7,
-        "images": 39,
-        "imageMedianGapMs": 47.4,
-        "triggerAtMs": 330.3,
+        "images": 40,
+        "imageMedianGapMs": 45.1,
+        "triggerAtMs": 301.1,
         "indicatorVisibleAtStart": true,
-        "indicatorOffAtMs": 351.8,
+        "indicatorOffAtMs": 328.8,
         "indicatorTransitions": 1,
         "bounces": 0,
         "indicatorMaxYDriftWhileOnScreenPx": 0,
@@ -535,24 +535,24 @@
           "blankImages": 0,
           "bothImages": 0,
           "firstImageWithoutIndicator": {
-            "i": 7,
-            "tBefore": 414.7,
-            "tAfter": 460.4
+            "i": 6,
+            "tBefore": 459.3,
+            "tAfter": 502.1
           },
           "lastImageWithIndicator": {
-            "i": 6,
-            "tBefore": 327.2,
-            "tAfter": 414.7
+            "i": 5,
+            "tBefore": 322.4,
+            "tAfter": 459.3
           }
         },
         "indicatorKey": "unified",
-        "samples": 114,
+        "samples": 112,
         "rafMedianMs": 16.7,
-        "images": 40,
-        "imageMedianGapMs": 45.5,
-        "triggerAtMs": 325.7,
+        "images": 38,
+        "imageMedianGapMs": 46.1,
+        "triggerAtMs": 318.4,
         "indicatorVisibleAtStart": true,
-        "indicatorOffAtMs": 350.2,
+        "indicatorOffAtMs": 335.8,
         "indicatorTransitions": 1,
         "bounces": 0,
         "indicatorMaxYDriftWhileOnScreenPx": 0,
@@ -603,24 +603,24 @@
           "blankImages": 0,
           "bothImages": 0,
           "firstImageWithoutIndicator": {
-            "i": 7,
-            "tBefore": 421.2,
-            "tAfter": 467.2
+            "i": 6,
+            "tBefore": 422.3,
+            "tAfter": 467.4
           },
           "lastImageWithIndicator": {
-            "i": 6,
-            "tBefore": 319.3,
-            "tAfter": 421.2
+            "i": 5,
+            "tBefore": 306.8,
+            "tAfter": 422.3
           }
         },
         "indicatorKey": "unified",
-        "samples": 114,
+        "samples": 111,
         "rafMedianMs": 16.7,
-        "images": 36,
-        "imageMedianGapMs": 49.7,
-        "triggerAtMs": 316.2,
+        "images": 35,
+        "imageMedianGapMs": 49.2,
+        "triggerAtMs": 306.8,
         "indicatorVisibleAtStart": true,
-        "indicatorOffAtMs": 526.4,
+        "indicatorOffAtMs": 553.9,
         "indicatorTransitions": 1,
         "bounces": 0,
         "indicatorMaxYDriftWhileOnScreenPx": 0,
@@ -671,24 +671,24 @@
           "blankImages": 0,
           "bothImages": 0,
           "firstImageWithoutIndicator": {
-            "i": 7,
-            "tBefore": 377.9,
-            "tAfter": 423.2
+            "i": 6,
+            "tBefore": 418.5,
+            "tAfter": 462
           },
           "lastImageWithIndicator": {
-            "i": 6,
-            "tBefore": 289.3,
-            "tAfter": 377.9
+            "i": 5,
+            "tBefore": 369.7,
+            "tAfter": 418.5
           }
         },
         "indicatorKey": "unified",
-        "samples": 108,
+        "samples": 113,
         "rafMedianMs": 16.7,
-        "images": 36,
-        "imageMedianGapMs": 48.1,
-        "triggerAtMs": 301.4,
+        "images": 34,
+        "imageMedianGapMs": 51.8,
+        "triggerAtMs": 308.7,
         "indicatorVisibleAtStart": true,
-        "indicatorOffAtMs": 531.6,
+        "indicatorOffAtMs": 541.2,
         "indicatorTransitions": 1,
         "bounces": 0,
         "indicatorMaxYDriftWhileOnScreenPx": 0,
@@ -740,23 +740,23 @@
           "bothImages": 0,
           "firstImageWithoutIndicator": {
             "i": 6,
-            "tBefore": 418.2,
-            "tAfter": 468.9
+            "tBefore": 437.2,
+            "tAfter": 486.1
           },
           "lastImageWithIndicator": {
             "i": 5,
-            "tBefore": 317.4,
-            "tAfter": 418.2
+            "tBefore": 329.3,
+            "tAfter": 437.2
           }
         },
         "indicatorKey": "unified",
-        "samples": 115,
+        "samples": 110,
         "rafMedianMs": 16.7,
-        "images": 39,
-        "imageMedianGapMs": 44.6,
-        "triggerAtMs": 310.6,
+        "images": 35,
+        "imageMedianGapMs": 54,
+        "triggerAtMs": 310.4,
         "indicatorVisibleAtStart": true,
-        "indicatorOffAtMs": 531,
+        "indicatorOffAtMs": 563.6,
         "indicatorTransitions": 1,
         "bounces": 0,
         "indicatorMaxYDriftWhileOnScreenPx": 0,
@@ -808,23 +808,23 @@
           "bothImages": 0,
           "firstImageWithoutIndicator": {
             "i": 7,
-            "tBefore": 425,
-            "tAfter": 468.3
+            "tBefore": 428.5,
+            "tAfter": 484.3
           },
           "lastImageWithIndicator": {
             "i": 6,
-            "tBefore": 317.6,
-            "tAfter": 425
+            "tBefore": 320.2,
+            "tAfter": 428.5
           }
         },
         "indicatorKey": "unified",
         "samples": 113,
         "rafMedianMs": 16.7,
-        "images": 40,
-        "imageMedianGapMs": 43.6,
-        "triggerAtMs": 315.5,
+        "images": 38,
+        "imageMedianGapMs": 48,
+        "triggerAtMs": 317.5,
         "indicatorVisibleAtStart": true,
-        "indicatorOffAtMs": 542,
+        "indicatorOffAtMs": 551.4,
         "indicatorTransitions": 1,
         "bounces": 0,
         "indicatorMaxYDriftWhileOnScreenPx": 0,
@@ -877,24 +877,24 @@
           "blankImages": 0,
           "bothImages": 0,
           "firstImageWithoutIndicator": {
-            "i": 9,
-            "tBefore": 455.2,
-            "tAfter": 510.8
+            "i": 7,
+            "tBefore": 387.2,
+            "tAfter": 430.6
           },
           "lastImageWithIndicator": {
-            "i": 8,
-            "tBefore": 406.8,
-            "tAfter": 455.2
+            "i": 6,
+            "tBefore": 285.7,
+            "tAfter": 387.2
           }
         },
         "indicatorKey": "unified",
-        "samples": 112,
+        "samples": 114,
         "rafMedianMs": 16.7,
         "images": 39,
-        "imageMedianGapMs": 49,
-        "triggerAtMs": 301,
+        "imageMedianGapMs": 48.4,
+        "triggerAtMs": 300.9,
         "indicatorVisibleAtStart": true,
-        "indicatorOffAtMs": 325.4,
+        "indicatorOffAtMs": 333.4,
         "indicatorTransitions": 1,
         "bounces": 0,
         "indicatorMaxYDriftWhileOnScreenPx": 0,
@@ -949,24 +949,24 @@
           "blankImages": 0,
           "bothImages": 0,
           "firstImageWithoutIndicator": {
-            "i": 7,
-            "tBefore": 416.7,
-            "tAfter": 469.8
+            "i": 8,
+            "tBefore": 417.6,
+            "tAfter": 458.8
           },
           "lastImageWithIndicator": {
-            "i": 6,
-            "tBefore": 323.9,
-            "tAfter": 416.7
+            "i": 7,
+            "tBefore": 324.5,
+            "tAfter": 417.6
           }
         },
         "indicatorKey": "unified",
         "samples": 113,
         "rafMedianMs": 16.7,
-        "images": 39,
-        "imageMedianGapMs": 47.7,
-        "triggerAtMs": 321,
+        "images": 42,
+        "imageMedianGapMs": 42.8,
+        "triggerAtMs": 323.1,
         "indicatorVisibleAtStart": true,
-        "indicatorOffAtMs": 345.8,
+        "indicatorOffAtMs": 352.7,
         "indicatorTransitions": 1,
         "bounces": 0,
         "indicatorMaxYDriftWhileOnScreenPx": 0,
@@ -1022,23 +1022,23 @@
           "bothImages": 0,
           "firstImageWithoutIndicator": {
             "i": 7,
-            "tBefore": 422.2,
-            "tAfter": 480.4
+            "tBefore": 485.5,
+            "tAfter": 568.6
           },
           "lastImageWithIndicator": {
             "i": 6,
-            "tBefore": 321.6,
-            "tAfter": 422.2
+            "tBefore": 437.8,
+            "tAfter": 485.5
           }
         },
         "indicatorKey": "unified",
-        "samples": 114,
+        "samples": 108,
         "rafMedianMs": 16.7,
-        "images": 31,
-        "imageMedianGapMs": 59.2,
-        "triggerAtMs": 319.1,
+        "images": 29,
+        "imageMedianGapMs": 62.4,
+        "triggerAtMs": 303.2,
         "indicatorVisibleAtStart": true,
-        "indicatorOffAtMs": 345.6,
+        "indicatorOffAtMs": 329.8,
         "indicatorTransitions": 1,
         "bounces": 0,
         "indicatorMaxYDriftWhileOnScreenPx": 0,
@@ -1094,23 +1094,23 @@
           "bothImages": 0,
           "firstImageWithoutIndicator": {
             "i": 9,
-            "tBefore": 383.1,
-            "tAfter": 433.7
+            "tBefore": 415.9,
+            "tAfter": 461.2
           },
           "lastImageWithIndicator": {
             "i": 8,
-            "tBefore": 309.2,
-            "tAfter": 383.1
+            "tBefore": 315.5,
+            "tAfter": 415.9
           }
         },
         "indicatorKey": "unified",
-        "samples": 114,
+        "samples": 112,
         "rafMedianMs": 16.7,
         "images": 40,
-        "imageMedianGapMs": 47.7,
-        "triggerAtMs": 307.9,
+        "imageMedianGapMs": 45.6,
+        "triggerAtMs": 313.9,
         "indicatorVisibleAtStart": true,
-        "indicatorOffAtMs": 330,
+        "indicatorOffAtMs": 344.5,
         "indicatorTransitions": 1,
         "bounces": 0,
         "indicatorMaxYDriftWhileOnScreenPx": 0,
@@ -1123,7 +1123,7 @@
     }
   },
   "contrast": {
-    "note": "From pixels: ground = modal colour of the indicator row; mark = first ink cluster from the left (the dot; BEFORE stale has no mark, so its 'mark' is the label's first glyph; BEFORE older's is the 18px spinner ring); label = most extreme ink right of the mark. markRatioRange spans the still plus every pre-release sequence frame (pulse phases).",
+    "note": "From pixels: ground = modal colour of the indicator row; mark = first ink cluster from the left (the dot; BEFORE stale has no mark, so its 'mark' is the label's first glyph; BEFORE older's is the 18px spinner ring); label = most extreme ink right of the mark. markRatioRange spans the still plus every pre-release sequence frame: only ~300 ms of the 2 s pulse, so it is a PARTIAL phase range. The full-cycle trough/peak is `pulseCycle` below.",
     "runs": {
       "cold-light": {
         "before": {
@@ -1153,8 +1153,8 @@
         "after": {
           "ground": "#f2ede3",
           "mark": {
-            "color": "#338859",
-            "ratio": 3.74,
+            "color": "#2c8454",
+            "ratio": 3.97,
             "box": [
               393,
               101,
@@ -1169,10 +1169,10 @@
             "x1": 538
           },
           "markRatioRange": [
-            2.84,
-            3.74
+            3.1,
+            3.97
           ],
-          "preReleaseFrames": 6
+          "preReleaseFrames": 7
         }
       },
       "cold-light-glass-sim": {
@@ -1203,8 +1203,8 @@
         "after": {
           "ground": "#f2ede3",
           "mark": {
-            "color": "#318758",
-            "ratio": 3.8,
+            "color": "#2e8556",
+            "ratio": 3.91,
             "box": [
               393,
               101,
@@ -1219,10 +1219,10 @@
             "x1": 538
           },
           "markRatioRange": [
-            2.84,
-            3.8
+            3.91,
+            4.81
           ],
-          "preReleaseFrames": 6
+          "preReleaseFrames": 4
         }
       },
       "cold-dark": {
@@ -1253,8 +1253,8 @@
         "after": {
           "ground": "#1d1b17",
           "mark": {
-            "color": "#33ae5c",
-            "ratio": 6.02,
+            "color": "#35b560",
+            "ratio": 6.49,
             "box": [
               393,
               101,
@@ -1269,10 +1269,10 @@
             "x1": 538
           },
           "markRatioRange": [
-            4.48,
-            6.02
+            4.92,
+            6.49
           ],
-          "preReleaseFrames": 7
+          "preReleaseFrames": 6
         }
       },
       "cold-dark-glass-sim": {
@@ -1303,7 +1303,7 @@
         "after": {
           "ground": "#181714",
           "mark": {
-            "color": "#32ae5c",
+            "color": "#32ae5d",
             "ratio": 6.27,
             "box": [
               393,
@@ -1319,10 +1319,10 @@
             "x1": 538
           },
           "markRatioRange": [
-            4.61,
-            6.27
+            6.27,
+            8.22
           ],
-          "preReleaseFrames": 5
+          "preReleaseFrames": 7
         }
       },
       "stale-light": {
@@ -1353,8 +1353,8 @@
         "after": {
           "ground": "#f2ede3",
           "mark": {
-            "color": "#35895a",
-            "ratio": 3.69,
+            "color": "#2f8656",
+            "ratio": 3.86,
             "box": [
               393,
               709,
@@ -1369,10 +1369,10 @@
             "x1": 574
           },
           "markRatioRange": [
-            2.84,
-            3.69
+            3.1,
+            3.86
           ],
-          "preReleaseFrames": 5
+          "preReleaseFrames": 4
         }
       },
       "stale-light-glass-sim": {
@@ -1403,8 +1403,8 @@
         "after": {
           "ground": "#f2ede3",
           "mark": {
-            "color": "#388b5d",
-            "ratio": 3.59,
+            "color": "#2e8556",
+            "ratio": 3.91,
             "box": [
               393,
               709,
@@ -1419,8 +1419,8 @@
             "x1": 574
           },
           "markRatioRange": [
-            2.84,
-            3.59
+            3.91,
+            4.81
           ],
           "preReleaseFrames": 4
         }
@@ -1469,7 +1469,7 @@
             "x1": 574
           },
           "markRatioRange": [
-            4.48,
+            4.92,
             6.02
           ],
           "preReleaseFrames": 5
@@ -1503,8 +1503,8 @@
         "after": {
           "ground": "#181714",
           "mark": {
-            "color": "#32aa5b",
-            "ratio": 6.01,
+            "color": "#33af5d",
+            "ratio": 6.34,
             "box": [
               393,
               709,
@@ -1519,10 +1519,10 @@
             "x1": 574
           },
           "markRatioRange": [
-            4.61,
-            6.01
+            5.07,
+            6.34
           ],
-          "preReleaseFrames": 5
+          "preReleaseFrames": 4
         }
       },
       "older-light": {
@@ -1553,8 +1553,8 @@
         "after": {
           "ground": "#f2ede3",
           "mark": {
-            "color": "#388b5d",
-            "ratio": 3.59,
+            "color": "#36895c",
+            "ratio": 3.68,
             "box": [
               401,
               105,
@@ -1569,10 +1569,10 @@
             "x1": 572
           },
           "markRatioRange": [
-            2.84,
-            3.59
+            3.1,
+            3.68
           ],
-          "preReleaseFrames": 5
+          "preReleaseFrames": 4
         }
       },
       "older-light-glass-sim": {
@@ -1603,8 +1603,8 @@
         "after": {
           "ground": "#f2ede3",
           "mark": {
-            "color": "#3a8c5e",
-            "ratio": 3.53,
+            "color": "#35895a",
+            "ratio": 3.69,
             "box": [
               401,
               105,
@@ -1619,10 +1619,10 @@
             "x1": 572
           },
           "markRatioRange": [
-            2.84,
-            3.53
+            3.1,
+            3.69
           ],
-          "preReleaseFrames": 6
+          "preReleaseFrames": 4
         }
       },
       "older-dark": {
@@ -1653,8 +1653,8 @@
         "after": {
           "ground": "#1d1b17",
           "mark": {
-            "color": "#32a95a",
-            "ratio": 5.7,
+            "color": "#34af5e",
+            "ratio": 6.09,
             "box": [
               401,
               105,
@@ -1669,8 +1669,8 @@
             "x1": 572
           },
           "markRatioRange": [
-            4.48,
-            5.7
+            4.92,
+            6.09
           ],
           "preReleaseFrames": 4
         }
@@ -1703,8 +1703,8 @@
         "after": {
           "ground": "#181714",
           "mark": {
-            "color": "#32a95a",
-            "ratio": 5.94,
+            "color": "#32ae5d",
+            "ratio": 6.27,
             "box": [
               401,
               105,
@@ -1719,8 +1719,8 @@
             "x1": 572
           },
           "markRatioRange": [
-            4.61,
-            5.94
+            5.07,
+            6.27
           ],
           "preReleaseFrames": 5
         }
@@ -1753,8 +1753,8 @@
         "after": {
           "ground": "#f2ede3",
           "mark": {
-            "color": "#2f8656",
-            "ratio": 3.86,
+            "color": "#2e8556",
+            "ratio": 3.91,
             "box": [
               393,
               101,
@@ -1769,10 +1769,10 @@
             "x1": 593
           },
           "markRatioRange": [
-            2.84,
-            3.86
+            3.1,
+            3.91
           ],
-          "preReleaseFrames": 7
+          "preReleaseFrames": 6
         }
       },
       "remote-light-glass-sim": {
@@ -1803,8 +1803,8 @@
         "after": {
           "ground": "#f2ede3",
           "mark": {
-            "color": "#338859",
-            "ratio": 3.74,
+            "color": "#35895a",
+            "ratio": 3.69,
             "box": [
               393,
               101,
@@ -1819,10 +1819,10 @@
             "x1": 593
           },
           "markRatioRange": [
-            2.84,
-            3.74
+            3.69,
+            4.81
           ],
-          "preReleaseFrames": 5
+          "preReleaseFrames": 6
         }
       },
       "remote-dark": {
@@ -1853,8 +1853,8 @@
         "after": {
           "ground": "#1d1b17",
           "mark": {
-            "color": "#33ae5c",
-            "ratio": 6.02,
+            "color": "#33ac5c",
+            "ratio": 5.89,
             "box": [
               393,
               101,
@@ -1869,8 +1869,8 @@
             "x1": 593
           },
           "markRatioRange": [
-            4.48,
-            6.02
+            4.92,
+            5.89
           ],
           "preReleaseFrames": 5
         }
@@ -1903,8 +1903,8 @@
         "after": {
           "ground": "#181714",
           "mark": {
-            "color": "#32ae5c",
-            "ratio": 6.27,
+            "color": "#34b25f",
+            "ratio": 6.56,
             "box": [
               393,
               101,
@@ -1919,10 +1919,115 @@
             "x1": 593
           },
           "markRatioRange": [
-            4.61,
-            6.27
+            5.07,
+            6.56
           ],
           "preReleaseFrames": 7
+        }
+      }
+    }
+  },
+  "pulseCycle": {
+    "note": "Cold case held >=2.6 s (more than one 2 s pulse cycle), capturePage() in a loop (~35-44 ms gap). Dot = centre pixel (396,104), ground = (300,104), WCAG 2.x. domOpacity = computed opacity of [data-lo-loading-dot] on every rAF. r0 = 79f3126b4 build (the head the 8b4355d43 frames describe; 8b4355d43 adds only docs), r1 = 7887d0bf0.",
+    "runs": {
+      "r0-light": {
+        "frames": 61,
+        "spanMs": 2591,
+        "domOpacity": {
+          "min": 0.7,
+          "max": 1,
+          "samples": 156
+        },
+        "dimmest": {
+          "i": 5,
+          "t": 211.1,
+          "file": "cycle-r0/sequence/cold-light/frame-005.png",
+          "dot": "#569b73",
+          "bg": "#f2ede3",
+          "ratio": 2.84
+        },
+        "brightest": {
+          "i": 28,
+          "t": 1297.3,
+          "file": "cycle-r0/sequence/cold-light/frame-028.png",
+          "dot": "#137742",
+          "bg": "#f2ede3",
+          "ratio": 4.81
+        }
+      },
+      "r0-dark": {
+        "frames": 64,
+        "spanMs": 2593,
+        "domOpacity": {
+          "min": 0.7,
+          "max": 1,
+          "samples": 156
+        },
+        "dimmest": {
+          "i": 5,
+          "t": 223.9,
+          "file": "cycle-r0/sequence/cold-dark/frame-005.png",
+          "dot": "#2f9451",
+          "bg": "#1d1b17",
+          "ratio": 4.48
+        },
+        "brightest": {
+          "i": 30,
+          "t": 1278.4,
+          "file": "cycle-r0/sequence/cold-dark/frame-030.png",
+          "dot": "#38c96a",
+          "bg": "#1d1b17",
+          "ratio": 7.97
+        }
+      },
+      "r1-light": {
+        "frames": 65,
+        "spanMs": 2593,
+        "domOpacity": {
+          "min": 0.75,
+          "max": 1,
+          "samples": 156
+        },
+        "dimmest": {
+          "i": 5,
+          "t": 211,
+          "file": "cycle-r1/sequence/cold-light/frame-005.png",
+          "dot": "#4b956a",
+          "bg": "#f2ede3",
+          "ratio": 3.1
+        },
+        "brightest": {
+          "i": 32,
+          "t": 1311.5,
+          "file": "cycle-r1/sequence/cold-light/frame-032.png",
+          "dot": "#137742",
+          "bg": "#f2ede3",
+          "ratio": 4.81
+        }
+      },
+      "r1-dark": {
+        "frames": 67,
+        "spanMs": 2571,
+        "domOpacity": {
+          "min": 0.75,
+          "max": 1,
+          "samples": 156
+        },
+        "dimmest": {
+          "i": 5,
+          "t": 236.9,
+          "file": "cycle-r1/sequence/cold-dark/frame-005.png",
+          "dot": "#319c54",
+          "bg": "#1d1b17",
+          "ratio": 4.92
+        },
+        "brightest": {
+          "i": 34,
+          "t": 1331.2,
+          "file": "cycle-r1/sequence/cold-dark/frame-034.png",
+          "dot": "#37c869",
+          "bg": "#1d1b17",
+          "ratio": 7.88
         }
       }
     }
