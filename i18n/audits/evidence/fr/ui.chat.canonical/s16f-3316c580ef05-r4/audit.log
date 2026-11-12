@@ -1,0 +1,282 @@
+AUDIT LOG — fr / ui.chat.canonical / PR #1876 (S16f)
+instance 3316c580ef05 · session 9d5e5bb1a1d4 · model deepseek/deepseek-flash · 2026-11-12
+worktree /Users/damian/local-operator-ui/.worktrees/i18n-s16a @ 8180eff1f705eb79d4df5123d6108c539b585b2e
+Every line below is the actual command and its actual output from this session; nothing is reconstructed.
+
+$ git rev-parse HEAD && git status --porcelain | head -5 && echo '(clean if empty above)'
+8180eff1f705eb79d4df5123d6108c539b585b2e
+(clean if empty above)
+[exit 0]
+
+$ sha256sum src/i18n/catalogues/fr/ui.chat.canonical.json src/i18n/catalogues/en/ui.chat.canonical.json src/i18n/catalogues/en/ui.chat.canonical.context.json ~/local-operator/i18n/glossary.md ~/local-operator/i18n/style-guides/fr.md
+99f7c0b27d6c75b16935cc58874477cab24da430284576defaacf19e209c88f6  src/i18n/catalogues/fr/ui.chat.canonical.json
+905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e  src/i18n/catalogues/en/ui.chat.canonical.json
+8f56e0d2b384c6b41add57a64e6c863e565cb61d5a7c0de482d42f380be3acfe  src/i18n/catalogues/en/ui.chat.canonical.context.json
+0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8  /Users/damian/local-operator/i18n/glossary.md
+ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226  /Users/damian/local-operator/i18n/style-guides/fr.md
+[exit 0]
+
+$ env -u CMUX_SESSION_ID node --test scripts/i18n/locale-parity.test.mjs 2>&1 | tail -12
+✔ [zh-CN] names only keys the English source defines (32.48575ms)
+✔ [zh-CN] preserves every ICU placeholder from the English source (86.523667ms)
+✔ [zh-CN] is not an English stub (no value identical to the source) (11.689583ms)
+✔ a locale-scoped identical-value exemption does not exempt another locale (0.180292ms)
+ℹ tests 44
+ℹ suites 0
+ℹ pass 44
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5923.121375
+[exit 0]
+
+$ env -u CMUX_SESSION_ID node /Users/damian/.local-operator/sessions/9d5e5bb1a1d4/scratchpad/s16f-au3-fr/mechanical.mjs /Users/damian/local-operator-ui/.worktrees/i18n-s16a fr
+parser: @formatjs/icu-messageformat-parser · locale fr · CLDR categories one,many,other
+ok   ui.chat.canonical.loading.cold
+ok   ui.chat.canonical.loading.older
+ok   ui.chat.canonical.loading.region_label
+ok   ui.chat.canonical.loading.remote
+ok   ui.chat.canonical.loading.revalidating
+FLAG ui.chat.canonical.media.image_label
+       arg {count} options en[=1,other] fr[=1,other] plural{=1,other} keyword-categories-covered=other not-keyed=one,many
+FLAG ui.chat.canonical.media.sound_label
+       arg {count} options en[=1,other] fr[=1,other] plural{=1,other} keyword-categories-covered=other not-keyed=one,many
+FLAG ui.chat.canonical.sound.batch.item_status
+       arg {status} options en[cancelled,failed,other] fr[cancelled,failed,other]
+ok   ui.chat.canonical.sound.batch.latest_update
+FLAG ui.chat.canonical.sound.batch.summary
+       arg {completed} options en[one,other] fr[many,one,other] branch diff {"missing":[],"extra":["many"]}
+       arg {failed} options en[one,other] fr[many,one,other] branch diff {"missing":[],"extra":["many"]}
+       arg {cancelled} options en[=0,one,other] fr[=0,many,one,other] branch diff {"missing":[],"extra":["many"]}
+       arg {unknown} options en[=0,one,other] fr[=0,many,one,other] branch diff {"missing":[],"extra":["many"]}
+       arg {has_attention} options en[other,yes] fr[other,yes]
+       token set differs en[group-off,group-off,group-off,group-off,group-off,group-off,group-off,group-off] fr[group-off,group-off,group-off,group-off,group-off,group-off,group-off,group-off,group-off,group-off,group-off,group-off]
+ok   ui.chat.canonical.sound.cost.batch_unknown
+ok   ui.chat.canonical.sound.cost.estimated_zero
+ok   ui.chat.canonical.sound.cost.no_charge
+ok   ui.chat.canonical.sound.cost.unknown
+ok   ui.chat.canonical.supplement.sound_fallback_label
+
+problems=1 keys=15
+[exit 0]
+
+$ env -u CMUX_SESSION_ID node /Users/damian/.local-operator/sessions/9d5e5bb1a1d4/scratchpad/s16f-au3-fr/integrity.mjs /Users/damian/local-operator-ui/.worktrees/i18n-s16a fr
+keys deleted by main (must be absent from the merge): 4 ["ui.chat.canonical.transcript.stale_caption","ui.chat.canonical.older_history.loading","ui.chat.canonical.placeholder.loading","ui.chat.canonical.placeholder.region_label"]
+  of those still present in the merged file: 0
+file            : src/i18n/catalogues/fr/ui.chat.canonical.json
+key counts: mergedFile 467; origin/main 457; prHead 466; main+PRadded 467
+identical to origin/main : 457
+identical to PR head     : 10  (PR-added keys: 10)
+main-only keys (deleted by the PR side or absent at PR head): 5 ["ui.chat.canonical.loading.cold","ui.chat.canonical.loading.older","ui.chat.canonical.loading.region_label","ui.chat.canonical.loading.remote","ui.chat.canonical.loading.revalidating"]
+pr-only keys (added by the PR): 14 ["ui.chat.canonical.transcript.stale_caption","ui.chat.canonical.older_history.loading","ui.chat.canonical.placeholder.loading","ui.chat.canonical.placeholder.region_label","ui.chat.canonical.sound.batch.item_status","ui.chat.canonical.sound.batch.summary","ui.chat.canonical.sound.batch.latest_update","ui.chat.canonical.sound.cost.unknown","ui.chat.canonical.sound.cost.no_charge","ui.chat.canonical.sound.cost.estimated_zero","ui.chat.canonical.sound.cost.batch_unknown","ui.chat.canonical.media.image_label","ui.chat.canonical.media.sound_label","ui.chat.canonical.supplement.sound_fallback_label"]
+unexpected differences   : 0
+[exit 0]
+
+$ env -u CMUX_SESSION_ID node /Users/damian/.local-operator/sessions/9d5e5bb1a1d4/scratchpad/s16f-au3-fr/render.cjs /Users/damian/local-operator-ui/.worktrees/i18n-s16a
+
+ui.chat.canonical.loading.cold {}
+  en (21 ch): "Loading conversation…"
+  fr (30 ch, +43%): "Chargement de la conversation…"
+
+ui.chat.canonical.loading.older {}
+  en (25 ch): "Loading earlier messages…"
+  fr (35 ch, +40%): "Chargement des messages précédents…"
+
+ui.chat.canonical.loading.region_label {}
+  en (20 ch): "Loading conversation"
+  fr (29 ch, +45%): "Chargement de la conversation"
+
+ui.chat.canonical.loading.remote {}
+  en (31 ch): "Syncing from your other device…"
+  fr (44 ch, +42%): "Synchronisation depuis votre autre appareil…"
+
+ui.chat.canonical.loading.revalidating {}
+  en (26 ch): "Checking for new messages…"
+  fr (31 ch, +19%): "Recherche de nouveaux messages…"
+
+ui.chat.canonical.media.image_label {"count":1}
+  en (5 ch): "Image"
+  fr (5 ch): "Image"
+
+ui.chat.canonical.media.image_label {"count":3,"position":2}
+  en (7 ch): "Image 2"
+  fr (7 ch): "Image 2"
+
+ui.chat.canonical.media.image_label {"count":1000000,"position":1000000}
+  en (13 ch): "Image 1000000"
+  fr (13 ch): "Image 1000000"
+
+ui.chat.canonical.media.sound_label {"count":1}
+  en (5 ch): "Sound"
+  fr (3 ch): "Son"
+
+ui.chat.canonical.media.sound_label {"count":2,"position":2}
+  en (7 ch): "Sound 2"
+  fr (5 ch): "Son 2"
+
+ui.chat.canonical.sound.batch.item_status {"status":"failed","label":"voix douce"}
+  en (19 ch): "voix douce · Failed"
+  fr (19 ch): "voix douce · Échoué"
+
+ui.chat.canonical.sound.batch.item_status {"status":"cancelled","label":"voix douce"}
+  en (20 ch): "voix douce · Stopped"
+  fr (19 ch): "voix douce · Arrêté"
+
+ui.chat.canonical.sound.batch.item_status {"status":"weird","label":"voix douce"}
+  en (27 ch): "voix douce · Status unknown"
+  fr (27 ch): "voix douce · Statut inconnu"
+
+ui.chat.canonical.sound.batch.latest_update {"name":"voix douce","item":2,"total":5}
+  en (40 ch): "Latest update: voix douce (item 2 of 5)."
+  fr (52 ch, +30%): "Dernière mise à jour : voix douce (élément 2 sur 5)."
+
+ui.chat.canonical.sound.batch.summary {"completed":1,"failed":0,"cancelled":0,"unknown":0,"has_attention":"no"}
+  en (22 ch): "1 completed · 0 failed"
+  fr (20 ch): "1 terminé · 0 échoué"
+
+ui.chat.canonical.sound.batch.summary {"completed":12,"failed":1,"cancelled":2,"unknown":0,"has_attention":"yes","labels":"a · b"}
+  en (69 ch): "12 completed · 1 failed · 2 cancelled/stopped. Needs attention: a · b"
+  fr (54 ch): "12 terminés · 1 échoué · 2 arrêtés. À examiner : a · b"
+
+ui.chat.canonical.sound.batch.summary {"completed":0,"failed":0,"cancelled":1,"unknown":1,"has_attention":"yes","labels":"x · y"}
+  en (87 ch): "0 completed · 0 failed · 1 cancelled/stopped · 1 status unknown. Needs attention: x · y"
+  fr (73 ch): "0 terminé · 0 échoué · 1 arrêté · 1 au statut inconnu. À examiner : x · y"
+
+ui.chat.canonical.sound.batch.summary {"completed":1000000,"failed":0,"cancelled":0,"unknown":0,"has_attention":"no"}
+  en (28 ch): "1000000 completed · 0 failed"
+  fr (30 ch, +7%): "1000000 de terminés · 0 échoué"
+
+ui.chat.canonical.sound.batch.summary {"completed":1000001,"failed":2,"cancelled":0,"unknown":0,"has_attention":"yes","labels":"z"}
+  en (48 ch): "1000001 completed · 2 failed. Needs attention: z"
+  fr (44 ch): "1000001 terminés · 2 échoués. À examiner : z"
+
+ui.chat.canonical.sound.cost.batch_unknown {}
+  en (25 ch): "Total cost not yet known."
+  fr (26 ch, +4%): "Coût total encore inconnu."
+
+ui.chat.canonical.sound.cost.estimated_zero {}
+  en (46 ch): "Estimated cost $0; final charge not confirmed."
+  fr (47 ch, +2%): "Coût estimé à 0 $ ; frais finaux non confirmés."
+
+ui.chat.canonical.sound.cost.no_charge {}
+  en (10 ch): "No charge."
+  fr (11 ch, +10%): "Sans frais."
+
+ui.chat.canonical.sound.cost.unknown {}
+  en (19 ch): "Cost not yet known."
+  fr (20 ch, +5%): "Coût encore inconnu."
+
+ui.chat.canonical.supplement.sound_fallback_label {}
+  en (15 ch): "Generated sound"
+  fr (10 ch): "Son généré"
+
+--- width report (chars / words) ---
+ui.chat.canonical.loading.cold [en] 21 ch, 2 w: Loading conversation…
+ui.chat.canonical.loading.cold [fr] 30 ch, 4 w: Chargement de la conversation…
+ui.chat.canonical.loading.older [en] 25 ch, 3 w: Loading earlier messages…
+ui.chat.canonical.loading.older [fr] 35 ch, 4 w: Chargement des messages précédents…
+ui.chat.canonical.loading.region_label [en] 20 ch, 2 w: Loading conversation
+ui.chat.canonical.loading.region_label [fr] 29 ch, 4 w: Chargement de la conversation
+ui.chat.canonical.loading.remote [en] 31 ch, 5 w: Syncing from your other device…
+ui.chat.canonical.loading.remote [fr] 44 ch, 5 w: Synchronisation depuis votre autre appareil…
+ui.chat.canonical.loading.revalidating [en] 26 ch, 4 w: Checking for new messages…
+ui.chat.canonical.loading.revalidating [fr] 31 ch, 4 w: Recherche de nouveaux messages…
+ui.chat.canonical.supplement.sound_fallback_label [en] 15 ch, 2 w: Generated sound
+ui.chat.canonical.supplement.sound_fallback_label [fr] 10 ch, 2 w: Son généré
+ui.chat.canonical.sound.cost.estimated_zero [en] 46 ch, 7 w: Estimated cost $0; final charge not confirmed.
+ui.chat.canonical.sound.cost.estimated_zero [fr] 47 ch, 10 w: Coût estimé à 0 $ ; frais finaux non confirmés.
+[exit 0]
+
+$ python3 - <<'PY'
+import json
+keys='''ui.chat.canonical.loading.cold ui.chat.canonical.loading.older ui.chat.canonical.loading.region_label ui.chat.canonical.loading.remote ui.chat.canonical.loading.revalidating ui.chat.canonical.media.image_label ui.chat.canonical.media.sound_label ui.chat.canonical.sound.batch.item_status ui.chat.canonical.sound.batch.latest_update ui.chat.canonical.sound.batch.summary ui.chat.canonical.sound.cost.batch_unknown ui.chat.canonical.sound.cost.estimated_zero ui.chat.canonical.sound.cost.no_charge ui.chat.canonical.sound.cost.unknown ui.chat.canonical.supplement.sound_fallback_label'''.split()
+d=json.load(open('src/i18n/catalogues/fr/ui.chat.canonical.json'))
+BIDI={0x061c,0x200e,0x200f,0x202a,0x202b,0x202c,0x202d,0x202e,0x2066,0x2067,0x2068,0x2069}
+import unicodedata
+print('valid JSON:', d is not None, 'keys in file:', len(d))
+print('NFC violations:', [k for k in keys if unicodedata.normalize('NFC', d[k]) != d[k]])
+print('bidi controls:', [k for k in keys if any(ord(c) in BIDI for c in d[k])])
+print('ascii ... :', [k for k in keys if '...' in d[k]])
+print('straight apostrophe:', [k for k in keys if chr(39) in d[k]])
+print('U+2026 in:', [k for k in keys if chr(0x2026) in d[k]])
+print('U+202F in:', [k for k in keys if chr(0x202f) in d[k]])
+print('markup/backtick/percent-s:', [k for k in keys if any(t in d[k] for t in ('<','>','`','%s'))])
+PY
+valid JSON: True keys in file: 467
+NFC violations: []
+bidi controls: []
+ascii ... : []
+straight apostrophe: []
+U+2026 in: ['ui.chat.canonical.loading.cold', 'ui.chat.canonical.loading.older', 'ui.chat.canonical.loading.remote', 'ui.chat.canonical.loading.revalidating']
+U+202F in: ['ui.chat.canonical.sound.batch.latest_update', 'ui.chat.canonical.sound.batch.summary', 'ui.chat.canonical.sound.cost.estimated_zero']
+markup/backtick/percent-s: []
+[exit 0]
+
+$ python3 - <<'PY'
+import json,glob,re
+hits={'USD':0,'$US':0,'bare-dollar':[]}
+for p in sorted(glob.glob('src/i18n/catalogues/fr/*.json')):
+    if p.endswith('.context.json'): continue
+    d=json.load(open(p))
+    for k,v in d.items():
+        if not isinstance(v,str): continue
+        if 'USD' in v: hits['USD']+=1
+        if '$US' in v: hits['$US']+=1
+        if chr(36) in v and 'USD' not in v and chr(36)+'US' not in v: hits['bare-dollar'].append(k)
+print(hits)
+PY
+node -e 'const f=new Intl.NumberFormat("fr",{style:"currency",currency:"USD"});console.log("Intl fr USD:", JSON.stringify(f.format(0)))'
+{'USD': 3, '$US': 0, 'bare-dollar': ['ui.chat.canonical.sound.cost.estimated_zero', 'ui.chat.run_details.mcp_auth.no_references', 'ui.chat.slash.skill.click_footer', 'ui.chat.slash.skill.enter_footer']}
+Intl fr USD: "0,00 $US"
+[exit 0]
+
+$ python3 - <<'PY'
+import json
+d=json.load(open('i18n/ledger.json'))
+row=[e for e in d['entries'] if e.get('locale')=='fr' and e.get('namespace')=='ui.chat.canonical'][0]
+print('ledger row status:', row['status'], '| auditors on row:', len(row['auditors']), '| superseded:', len(row.get('superseded',[])))
+print('row source_sha256:', row['source_sha256'])
+print('row target_sha256:', row['target_sha256'])
+for s in row.get('superseded',[])[-2:]:
+    for a in s['auditors']:
+        print(' prior:', a.get('agent'), a.get('model'), a.get('date'), a.get('result'), a.get('instance'), a.get('findings'))
+PY
+ledger row status: pending | auditors on row: 0 | superseded: 21
+row source_sha256: 905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e
+row target_sha256: 99f7c0b27d6c75b16935cc58874477cab24da430284576defaacf19e209c88f6
+ prior: i18n-auditor deepseek/deepseek-flash 2026-11-11 clean-with-findings 5f26f5727a24 {'blocker': 0, 'major': 0, 'minor': 1, 'nit': 1}
+ prior: reviewer anthropic/claude-opus-5-5 2026-11-12 clean-with-findings 15686088b7ce-fr {'blocker': 0, 'major': 0, 'minor': 0, 'nit': 2}
+[exit 0]
+
+$ python3 - <<'PY'
+import json,hashlib
+keys=[k for k in json.load(open('src/i18n/catalogues/en/ui.chat.canonical.json')) if k.startswith(('ui.chat.canonical.loading.','ui.chat.canonical.media.'))]
+keys+= ['ui.chat.canonical.sound.batch.item_status','ui.chat.canonical.sound.batch.latest_update','ui.chat.canonical.sound.batch.summary','ui.chat.canonical.sound.cost.batch_unknown','ui.chat.canonical.sound.cost.estimated_zero','ui.chat.canonical.sound.cost.no_charge','ui.chat.canonical.sound.cost.unknown','ui.chat.canonical.supplement.sound_fallback_label']
+en=json.load(open('src/i18n/catalogues/en/ui.chat.canonical.json'))
+fr=json.load(open('src/i18n/catalogues/fr/ui.chat.canonical.json'))
+def h(d,k): return hashlib.sha256(json.dumps({k:d[k]},ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()[:16]
+print('keys hashed:', len(keys))
+for k in keys: print(' ', k.replace('ui.chat.canonical.',''), 'fr', h(fr,k), 'en', h(en,k))
+print('cross-check vs receipt 5f26f5727a24: media.image_label fr expected 47631358ab381012 ->', h(fr,'ui.chat.canonical.media.image_label'))
+print('cross-check vs receipt 5f26f5727a24: sound.cost.estimated_zero fr expected 0c7f9fff71e4231c ->', h(fr,'ui.chat.canonical.sound.cost.estimated_zero'))
+PY
+keys hashed: 15
+  loading.cold fr d04ab90893c76289 en d9c23b02c9a2b1f4
+  loading.older fr c620b958907111e3 en 25ee19aed06e0a38
+  loading.region_label fr b75e99f33289d541 en 080dcc14ce3983ed
+  loading.remote fr 4053ab0240beb15f en 577105ad956c4002
+  loading.revalidating fr 4b7e9ece0146b7fb en 347373b54a390d78
+  media.image_label fr 47631358ab381012 en 47631358ab381012
+  media.sound_label fr 896840e3a17fe2e6 en 50eaf18785e46954
+  sound.batch.item_status fr baf91da58de738da en e358c22c488a7071
+  sound.batch.latest_update fr 0d1f2b6f787b994e en 427de0b397f00337
+  sound.batch.summary fr e7a58def97a3c606 en 09ae93966cdc6b3a
+  sound.cost.batch_unknown fr 6633f156ace5ed40 en 8aabea74c95580d6
+  sound.cost.estimated_zero fr 0c7f9fff71e4231c en 7a339de1c5eb417a
+  sound.cost.no_charge fr dd7eb405d3b14c53 en 34fb349281118da7
+  sound.cost.unknown fr 6234473a4f9b57ed en a34c87949511c3c4
+  supplement.sound_fallback_label fr c707d0bf8f62a342 en 553bf2c11939d42e
+cross-check vs receipt 5f26f5727a24: media.image_label fr expected 47631358ab381012 -> 47631358ab381012
+cross-check vs receipt 5f26f5727a24: sound.cost.estimated_zero fr expected 0c7f9fff71e4231c -> 0c7f9fff71e4231c
+[exit 0]
