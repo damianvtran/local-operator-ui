@@ -70,6 +70,7 @@ import {
 	remoteOwnedId,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
+import { paintMissReason, readPaint } from "@shared/store/paint-cache";
 import {
 	type InternalEpisodeIdentitySnapshot,
 	captureInternalEpisodeIdentity,
@@ -5375,6 +5376,87 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		}
 		performance.clearMarks("lop:open:requested");
 	}, [visible.length, sessionId]);
+
+	/*
+	 * THE PAINT FIELDS of the open trace (`paint=`, see `open-trace.ts`): what this
+	 * mount's FIRST committed rows were, and whether they filled the pane.
+	 *
+	 * WHY THIS IS KEYED ON THE TRACE'S TARGET AND NOT ON `sessionId`: the rows a
+	 * seeded paint shows exist while `frontend` is still null, which is exactly
+	 * the window `routed` and `content` above are blind to - they pass
+	 * `frontend?.session_id`, so a cached paint left no mark at all. The trace's
+	 * own target is the id the click named AND the id the paint cache is addressed
+	 * by (`paintSeed` is `readPaint`), so the two agree by construction.
+	 *
+	 * WHY THE CACHE IS READ HERE rather than handed down: the pane is the only
+	 * surface that knows when its rows first COMMITTED, and the write that decides
+	 * what it seeded from lands in that same commit (the pane being left writes its
+	 * paint in its own unmount cleanup, before this effect runs). Reading it here
+	 * also makes the claim checkable against the thing it describes - an entry
+	 * present is a seed, an absent one is no seed - and one `Map` read is the cost.
+	 *
+	 * `fills` IS MEASURED ON THE CONTENT COLUMN, not on `scrollHeight`: a scroller's
+	 * `scrollHeight` is never below its `clientHeight` (it is the content plus
+	 * padding, floored at the box), so the scrollHeight-vs-clientHeight test is true
+	 * for every pane including an empty one - a check that cannot fail. The painted
+	 * content is `contentRef`'s own box, which is what "the cached paint fills the
+	 * pane" is a claim about. Counting bytes, rows and a boolean changes nothing
+	 * about what is rendered; the read only forces the layout the browser was about
+	 * to do anyway.
+	 */
+	const paintTraced = useRef(false);
+	useLayoutEffect(() => {
+		if (paintTraced.current) return;
+		const target = openTrace.activeSessionId();
+		// No trace, no open to report on (a restored window mounts with none).
+		if (target === null) return;
+		paintTraced.current = true;
+		const token = openTrace.currentToken();
+		const cached = readPaint(target);
+		if (!cached) {
+			const miss = paintMissReason(target);
+			openTrace.notePaint(target, token, {
+				kind: "seed",
+				// A note means an entry existed here and was dropped (trimmed to nothing,
+				// or evicted); no note means nothing was ever cached under this id.
+				source: miss === null ? "none" : "empty",
+				rows: 0,
+				bytes: 0,
+				reason: miss ?? "no-entry",
+			});
+			return;
+		}
+		openTrace.notePaint(target, token, {
+			kind: "seed",
+			source: "cache",
+			rows: cached.transcript.records.length,
+			bytes: cached.bytes,
+		});
+		const content = contentRef.current;
+		const scroller = containerRef.current;
+		// No rows on screen (filtered out, or a hold): there is no painted height to
+		// compare, and a zero-row commit would report every pane as under-filled.
+		if (visible.length === 0 || !content || !scroller) return;
+		/*
+		 * The scroller's INNER box, not `clientHeight`: `clientHeight` includes the
+		 * container's own padding (`p-4`), so a conversation that exactly fills the
+		 * visible area would read as 32px short of it. Padding comes from the computed
+		 * style rather than a constant because the collapsed pane is `p-0`. Guarded
+		 * because a diagnostic must never be able to break a mount.
+		 */
+		let inner = scroller.clientHeight;
+		if (typeof getComputedStyle === "function") {
+			const style = getComputedStyle(scroller);
+			const padding =
+				Number.parseFloat(style.paddingTop) +
+				Number.parseFloat(style.paddingBottom);
+			if (Number.isFinite(padding)) inner -= padding;
+		}
+		openTrace.notePaint(target, token, {
+			kind: "fills",
+			fills: content.getBoundingClientRect().height >= inner,
+		});
+	}, [containerRef, visible.length]);
 
 	// Both growth paths now go through one policy. The local window used to
 	// widen from its own raw `scroll` listener, once per EVENT below 320px from

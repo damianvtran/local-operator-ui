@@ -42,6 +42,55 @@ const {
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 
+/*
+ * The paint cache, bundled separately: the trace's paint fields report what this
+ * module measured (`bytes`) and why an id had nothing to paint (`paintMissReason`),
+ * so its contract is part of what those fields claim.
+ *
+ * THE i18n STUBS ARE AN ENVIRONMENT WORKAROUND, NOT A SHORTCUT. `paint-cache`
+ * imports `dropLiveRecords` from the transcript reducer, which imports
+ * `src/i18n/messages.ts` and `bidi.ts`; those two import the DECLARED and LOCKED
+ * `intl-messageformat` / `@formatjs/icu-messageformat-parser`, which are missing
+ * from this checkout's `node_modules` (`scripts/seed-label-gap.test.mjs` fails to
+ * build for exactly the same reason on this host). Nothing this test exercises
+ * formats a message, so the boundary is stubbed rather than the cache being
+ * re-implemented here.
+ */
+const i18nStub = {
+	name: "i18n-boundary-stub",
+	setup(builder) {
+		builder.onResolve({ filter: /^intl-messageformat$|^@formatjs\// }, () => ({
+			path: "i18n-boundary",
+			namespace: "i18n-stub",
+		}));
+		builder.onLoad({ filter: /.*/, namespace: "i18n-stub" }, () => ({
+			contents:
+				'export class IntlMessageFormat { constructor() {} format() { return ""; } }\n' +
+				"export const TYPE = { literal: 0, argument: 1, number: 2, date: 3, time: 4, select: 5, plural: 6, pound: 7, tag: 8 };\n",
+			loader: "js",
+		}));
+	},
+};
+
+const paintBundle = await build({
+	stdin: {
+		contents: 'export * from "./src/renderer/src/shared/store/paint-cache";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+		"@features": "./src/renderer/src/features",
+	},
+	plugins: [i18nStub],
+});
+const paintCache = await import(
+	`data:text/javascript;base64,${Buffer.from(paintBundle.outputFiles[0].text).toString("base64")}`
+);
+
 /** A tracer on a fake clock, frame queue and timer list. */
 function rig() {
 	const clock = { now: 0 };
@@ -116,7 +165,7 @@ test("a full switch reports every stage in ms from the click and settles once", 
 	assert.equal(r.lines.length, 1);
 	assert.equal(
 		r.lines[0],
-		`[open-trace] t=${t} clickEpochMs=${fields(r.lines[0]).clickEpochMs} session=abc123 via=sidebar outcome=settled store=- routed=4 request=- snapshot=800 content=900 painted=916 sendable=810 settled=916`,
+		`[open-trace] t=${t} clickEpochMs=${fields(r.lines[0]).clickEpochMs} session=abc123 via=sidebar outcome=settled store=- routed=4 request=- snapshot=800 content=900 painted=916 sendable=810 settled=916 paint=- paintAt=- paintRows=- paintBytes=- paintReason=- paintFills=-`,
 	);
 	assert.ok(Number(fields(r.lines[0]).clickEpochMs) >= beforeClickEpoch);
 	assert.ok(Number(fields(r.lines[0]).clickEpochMs) <= afterClickEpoch);
@@ -263,7 +312,7 @@ test("fail ends only the matching trace", () => {
 
 test("no-content guard: the line is a fixed grammar of ids, labels and numbers", () => {
 	const shape =
-		/^\[open-trace\] t=\d+ clickEpochMs=(\d+(\.\d+)?|-) session=([A-Za-z0-9_-]{1,80}|\?) via=(sidebar|open|native) outcome=(settled|superseded|missing|left|timeout) store=(\d+|-) routed=(\d+|-) request=(\d+|-) snapshot=(\d+|-) content=(\d+|-) painted=(\d+|-) sendable=(\d+|-) settled=(\d+|-)( by=t\d+)?$/;
+		/^\[open-trace\] t=\d+ clickEpochMs=(\d+(\.\d+)?|-) session=([A-Za-z0-9_-]{1,80}|\?) via=(sidebar|open|native) outcome=(settled|superseded|missing|left|timeout) store=(\d+|-) routed=(\d+|-) request=(\d+|-) snapshot=(\d+|-) content=(\d+|-) painted=(\d+|-) sendable=(\d+|-) settled=(\d+|-) paint=(cache|none|empty|-) paintAt=(\d+|-) paintRows=(\d+|-) paintBytes=(\d+|-) paintReason=(no-entry|empty-after-trim|evicted|-) paintFills=([01]|-)( by=t\d+)?$/;
 	const line = formatOpenTraceLine(
 		{
 			token: 7,
@@ -620,6 +669,323 @@ test("a fallback never displaces a real stamp, and never overwrites another", ()
 	r.tracer.note("abc123", "content");
 	r.flushFrames(620);
 	assert.equal(fields(r.lines[0]).request, "10", "the real stamp holds");
+});
+
+/*
+ * THE PAINT FIELDS (`paint=`, `paintAt=`, `paintRows=`, `paintBytes=`,
+ * `paintReason=`, `paintFills=`). Every stage above is keyed on
+ * `frontend?.session_id`, which is null until the snapshot - and a cached paint
+ * is exactly the case whose rows are on screen while it is still null. These are
+ * keyed on the trace's own target instead, which is what lets a shipped-app log
+ * say whether the click painted from the cache and where its time went.
+ */
+test("a seeded paint reports its rows, bytes and fill, timed from the click", () => {
+	const r = rig();
+	r.at(1000);
+	const t = r.tracer.begin("abc123", "sidebar");
+	r.at(1006);
+	r.tracer.notePaint("abc123", t, {
+		kind: "seed",
+		source: "cache",
+		rows: 100,
+		bytes: 241232,
+	});
+	r.tracer.notePaint("abc123", t, { kind: "fills", fills: true });
+	r.at(1900);
+	r.tracer.note("abc123", "content");
+	r.tracer.note("abc123", "sendable");
+	r.flushFrames(1916);
+	const f = fields(r.lines[0]);
+	assert.equal(f.outcome, "settled");
+	assert.equal(f.paint, "cache");
+	assert.equal(f.paintAt, "6", "the seed's commit, ms from the click");
+	assert.equal(f.paintRows, "100");
+	assert.equal(f.paintBytes, "241232");
+	assert.equal(f.paintReason, "-", "a hit has no reason to explain");
+	assert.equal(f.paintFills, "1");
+});
+
+test("a cold pane says none and a dropped entry says empty, each with why", () => {
+	const cold = rig();
+	cold.tracer.begin("cold1", "sidebar");
+	cold.at(4);
+	cold.tracer.notePaint("cold1", null, {
+		kind: "seed",
+		source: "none",
+		rows: 0,
+		bytes: 0,
+		reason: "no-entry",
+	});
+	cold.fireTimers(OPEN_TRACE_TIMEOUT_MS);
+	const fc = fields(cold.lines[0]);
+	assert.equal(fc.paint, "none");
+	assert.equal(fc.paintAt, "4");
+	assert.equal(fc.paintRows, "0");
+	assert.equal(fc.paintBytes, "0");
+	assert.equal(fc.paintReason, "no-entry");
+	assert.equal(
+		fc.paintFills,
+		"-",
+		"nothing was seeded, so there is no painted height this field could be about",
+	);
+
+	// An entry that existed and was trimmed to nothing, and one evicted: the two
+	// are different answers about the same click, so both the kind and the reason
+	// have to survive the round trip.
+	const trimmed = rig();
+	trimmed.tracer.begin("trim1", "sidebar");
+	trimmed.tracer.notePaint("trim1", null, {
+		kind: "seed",
+		source: "empty",
+		rows: 0,
+		bytes: 0,
+	});
+	trimmed.fireTimers(OPEN_TRACE_TIMEOUT_MS);
+	assert.equal(fields(trimmed.lines[0]).paint, "empty");
+	assert.equal(
+		fields(trimmed.lines[0]).paintReason,
+		"empty-after-trim",
+		"a stamp with no reason defaults by its kind",
+	);
+
+	const evicted = rig();
+	evicted.tracer.begin("evict1", "sidebar");
+	evicted.tracer.notePaint("evict1", null, {
+		kind: "seed",
+		source: "empty",
+		rows: 0,
+		bytes: 0,
+		reason: "evicted",
+	});
+	evicted.fireTimers(OPEN_TRACE_TIMEOUT_MS);
+	assert.equal(fields(evicted.lines[0]).paintReason, "evicted");
+});
+
+test("the paint stage is stamped once and refused for another id or a stale token", () => {
+	const r = rig();
+	r.at(1000);
+	const t = r.tracer.begin("abc123", "sidebar");
+	// Another conversation's pane, and a null id: neither may stamp this trace.
+	r.at(1002);
+	r.tracer.notePaint("other", t, {
+		kind: "seed",
+		source: "cache",
+		rows: 5,
+		bytes: 10,
+	});
+	r.tracer.notePaint(null, t, {
+		kind: "seed",
+		source: "cache",
+		rows: 5,
+		bytes: 10,
+	});
+	r.at(1020);
+	r.tracer.notePaint("abc123", t, {
+		kind: "seed",
+		source: "cache",
+		rows: 100,
+		bytes: 241232,
+	});
+	// A later mount for the same conversation inside this trace cannot move it.
+	r.at(9000);
+	r.tracer.notePaint("abc123", t, {
+		kind: "seed",
+		source: "none",
+		rows: 0,
+		bytes: 0,
+	});
+	// The clock is past 60 s by now, so the timeout is due at its own instant.
+	r.fireTimers(OPEN_TRACE_TIMEOUT_MS + 20_000);
+	const f = fields(r.lines[0]);
+	assert.equal(f.paint, "cache", "the first seed holds");
+	assert.equal(f.paintAt, "20");
+	assert.equal(f.paintRows, "100");
+});
+
+test("the pane's fill and the hook's seed may arrive in either order", () => {
+	const r = rig();
+	const t = r.tracer.begin("s1", "open");
+	// A child layout effect runs before its parent's, so the measured height can
+	// be the first of the two writers.
+	r.at(3);
+	r.tracer.notePaint("s1", t, { kind: "fills", fills: false });
+	r.at(9);
+	r.tracer.notePaint("s1", t, {
+		kind: "seed",
+		source: "cache",
+		rows: 3,
+		bytes: 42,
+	});
+	r.fireTimers(OPEN_TRACE_TIMEOUT_MS);
+	const f = fields(r.lines[0]);
+	assert.equal(f.paint, "cache");
+	assert.equal(f.paintAt, "9", "only the seed stamps the stage");
+	assert.equal(f.paintFills, "0", "the earlier reading is not overwritten");
+});
+
+test("A->B: A keeps its own paint and B is never stamped by A's pane", () => {
+	const r = rig();
+	r.at(0);
+	const a = r.tracer.begin("aaa", "sidebar");
+	r.at(7);
+	r.tracer.notePaint("aaa", a, {
+		kind: "seed",
+		source: "cache",
+		rows: 12,
+		bytes: 2048,
+	});
+	r.tracer.notePaint("aaa", a, { kind: "fills", fills: false });
+	r.at(40);
+	const b = r.tracer.begin("bbb", "sidebar");
+	const fa = fields(r.lines[0]);
+	assert.equal(fa.outcome, "superseded");
+	assert.equal(fa.paint, "cache");
+	assert.equal(fa.paintRows, "12");
+	assert.equal(fa.paintFills, "0");
+	// A's token is no longer the open one: a late stamp from its pane is refused.
+	r.tracer.notePaint("bbb", a, {
+		kind: "seed",
+		source: "cache",
+		rows: 12,
+		bytes: 2048,
+	});
+	assert.equal(r.tracer.currentToken(), b);
+	r.at(200);
+	r.tracer.notePaint("bbb", b, {
+		kind: "seed",
+		source: "none",
+		rows: 0,
+		bytes: 0,
+	});
+	r.fireTimers(OPEN_TRACE_TIMEOUT_MS + 20_000);
+	const fb = fields(r.lines[1]);
+	assert.equal(fb.paint, "none", "B reports what B's own pane found");
+	assert.equal(fb.paintAt, "160", "ms from B's click, not from A's");
+});
+
+test("paint fields are counts and a fixed vocabulary, never text", () => {
+	const line = formatOpenTraceLine(
+		{
+			token: 1,
+			sessionId: "abc123",
+			entrance: "sidebar",
+			start: 0,
+			stages: {},
+			paint: { at: 2.4, source: "cache", rows: 3.6, bytes: 99.2, fills: true },
+		},
+		"timeout",
+	);
+	assert.match(
+		line,
+		/ paint=cache paintAt=2 paintRows=4 paintBytes=99 paintReason=- paintFills=1$/,
+	);
+	const f = fields(line);
+	for (const key of [
+		"paintAt",
+		"paintRows",
+		"paintBytes",
+		"paintReason",
+		"paintFills",
+	]) {
+		assert.match(f[key], /^(\d+|no-entry|empty-after-trim|evicted|-)$/);
+	}
+	assert.match(f.paint, /^(cache|none|empty|-)$/);
+});
+
+/*
+ * The cache side of those fields: the byte count is the one the bound was
+ * measured in (so the trace cannot disagree with it), and a miss says why when
+ * this window can still tell (a cache that keeps nothing and one never asked
+ * look identical in a hit rate).
+ */
+function stateOf(records) {
+	return {
+		records,
+		index: new Map(records.map((record, position) => [record.id, position])),
+		oldestId: null,
+		oldestTs: 0,
+		hasMore: false,
+		argsByCall: new Map(),
+	};
+}
+
+const row = (id, length) => ({
+	id,
+	kind: "user",
+	ts: 1,
+	text: "x".repeat(length),
+});
+
+test("readPaint reports the bytes the cache's bound is stated in", () => {
+	paintCache.__resetPaintCache();
+	paintCache.writePaint("bytes1", {
+		transcript: stateOf([row("a", 100), row("b", 50)]),
+	});
+	const paint = paintCache.readPaint("bytes1");
+	assert.equal(paint.transcript.records.length, 2);
+	assert.equal(
+		paint.bytes,
+		new TextEncoder().encode(JSON.stringify(paint.transcript.records)).length,
+		"the same UTF-8 measurement, not a second opinion",
+	);
+});
+
+test("a paint trimmed to nothing, and one evicted, each leave their reason", () => {
+	paintCache.__resetPaintCache();
+	// Every row in flight: nothing durable to keep.
+	paintCache.writePaint("gone", {
+		transcript: stateOf([{ id: "live", kind: "assistant", streaming: true }]),
+	});
+	assert.equal(paintCache.readPaint("gone"), null);
+	assert.equal(paintCache.paintMissReason("gone"), "empty-after-trim");
+	// A stored paint answers the question, so the note goes.
+	paintCache.writePaint("gone", { transcript: stateOf([row("a", 10)]) });
+	assert.equal(paintCache.paintMissReason("gone"), null);
+	assert.notEqual(paintCache.readPaint("gone"), null);
+	// The byte bound evicts the oldest, and says which.
+	paintCache.__resetPaintCache();
+	paintCache.writePaint("oldest", { transcript: stateOf([row("a", 900_000)]) });
+	for (let index = 0; index < 4; index += 1) {
+		paintCache.writePaint(`newer-${String(index)}`, {
+			transcript: stateOf([row("a", 900_000)]),
+		});
+	}
+	assert.equal(paintCache.readPaint("oldest"), null);
+	assert.equal(paintCache.paintMissReason("oldest"), "evicted");
+	// An id this window never painted has nothing to explain.
+	assert.equal(paintCache.paintMissReason("never"), null);
+});
+
+test("wiring: the pane stamps the paint fields on the trace's own target", () => {
+	const transcript = read("features/chat/canonical/canonical-transcript.tsx");
+	/*
+	 * The trace's OWN target, not `frontend?.session_id`: a cached paint's rows are
+	 * on screen while `frontend` is still null, which is the blind spot these
+	 * fields exist to close. The cache read uses the same id, so "an entry is
+	 * present" is the same claim as "the hook seeded from one" (`paintSeed` IS
+	 * `readPaint`).
+	 */
+	assert.match(
+		transcript,
+		/const target = openTrace\.activeSessionId\(\);[\s\S]{0,1200}?const cached = readPaint\(target\);/,
+	);
+	assert.match(
+		transcript,
+		/kind: "seed",[\s\S]{0,400}?rows: cached\.transcript\.records\.length,\s*bytes: cached\.bytes,/,
+	);
+	// The miss path carries the cache's own reason rather than inventing one.
+	assert.match(transcript, /const miss = paintMissReason\(target\);/);
+	/*
+	 * The fill is measured on the CONTENT column against the scroller's inner box:
+	 * a scroller's `scrollHeight` is never below its `clientHeight`, so that
+	 * comparison cannot fail and would report every pane - including an empty one -
+	 * as filled.
+	 */
+	assert.match(
+		transcript,
+		/fills: content\.getBoundingClientRect\(\)\.height >= inner,/,
+	);
+	assert.doesNotMatch(transcript, /scrollHeight\s*>=\s*\w+\.clientHeight/);
 });
 
 /*
