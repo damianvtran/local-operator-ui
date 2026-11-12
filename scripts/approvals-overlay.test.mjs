@@ -238,6 +238,7 @@ test("controller: hidden startup loads detached and hide/reshow preserves the re
 		controller.setModel({ entries: entries(1) });
 		controller.onLayout({
 			presented: true,
+			chromeVisible: true,
 			contentRect: rect(0, 0, 1000, 700),
 			revision: 1,
 		});
@@ -257,12 +258,14 @@ test("controller: hidden startup loads detached and hide/reshow preserves the re
 		);
 		controller.onLayout({
 			presented: false,
+			chromeVisible: false,
 			contentRect: rect(0, 0, 1000, 700),
 			revision: 2,
 		});
 		assert.deepEqual(children, []);
 		controller.onLayout({
 			presented: true,
+			chromeVisible: true,
 			contentRect: rect(0, 0, 1000, 700),
 			revision: 3,
 		});
@@ -271,6 +274,127 @@ test("controller: hidden startup loads detached and hide/reshow preserves the re
 	} finally {
 		controller.dispose("test");
 		assert.deepEqual(children, []);
+	}
+});
+
+test("controller: pending consent auto-presents and explicitly opens on empty and own/start canvas without a native page", async () => {
+	for (const label of ["empty canvas", "own/start page"]) {
+		const children = [];
+		const controller = new mod.ApprovalsOverlayController({
+			window: {
+				isDestroyed: () => false,
+				contentView: {
+					get children() {
+						return children;
+					},
+					addChildView(view) {
+						const at = children.indexOf(view);
+						if (at >= 0) children.splice(at, 1);
+						children.push(view);
+					},
+					removeChildView(view) {
+						const at = children.indexOf(view);
+						if (at >= 0) children.splice(at, 1);
+					},
+				},
+			},
+			documentUrl: "file:///tmp/browser-approvals-overlay.html",
+		});
+		try {
+			controller.onLayout({
+				chromeVisible: true,
+				presented: false,
+				contentRect: rect(0, 0, 1000, 700),
+				revision: 1,
+			});
+			controller.setModel({ entries: entries(1) });
+			await waitFor(() => controller.facts().ready, `${label} ready child`);
+			assert.equal(
+				controller.facts().visible,
+				true,
+				`${label}: consent must not require an already-presented page`,
+			);
+			assert.equal(controller.facts().presented, false);
+			assert.equal(controller.facts().chromeVisible, true);
+			assert.equal(children.length, 1);
+			controller.close("test dismissal");
+			controller.open({ focus: false });
+			assert.equal(
+				controller.facts().visible,
+				true,
+				`${label}: explicit recall`,
+			);
+		} finally {
+			controller.dispose("test");
+		}
+	}
+});
+
+test("controller: own canvas route/modal return restores only live undismissed consent", async () => {
+	const { controller, children } = await presentedController();
+	const layout = (chromeVisible, contentRect, revision) =>
+		controller.onLayout({
+			chromeVisible,
+			presented: false,
+			contentRect,
+			revision,
+		});
+	try {
+		layout(true, rect(0, 0, 900, 600), 2);
+		assert.equal(controller.facts().visible, true);
+		for (const [label, hiddenRect] of [
+			["route", null],
+			["dialog/menu", rect(0, 0, 900, 600)],
+		]) {
+			layout(false, hiddenRect, 3);
+			assert.equal(controller.facts().visible, false, `${label} hides consent`);
+			assert.equal(children.length, 0);
+			layout(true, rect(0, 0, 900, 600), 4);
+			assert.equal(
+				controller.facts().visible,
+				true,
+				`${label} return restores consent`,
+			);
+		}
+		const facts = controller.facts();
+		const child = children.at(-1);
+		mod.emitIpc(
+			"browser-approvals-card-dismiss",
+			{ sender: child.webContents, senderFrame: child.webContents.mainFrame },
+			{
+				seq: facts.seq,
+				entryId: facts.requestEntryId,
+			},
+		);
+		assert.equal(controller.facts().visible, false);
+		layout(false, null, 5);
+		layout(true, rect(0, 0, 900, 600), 6);
+		assert.equal(
+			controller.facts().visible,
+			false,
+			"route return must not undo dismissal",
+		);
+		controller.open({ focus: false });
+		assert.equal(
+			controller.facts().visible,
+			true,
+			"explicit recall still works",
+		);
+		// Expiry belongs to ApprovalStore: its pruned queue projection, not a
+		// timestamp the controller reinterprets, removes the actionable request.
+		controller.setModel({ entries: [] });
+		assert.equal(
+			controller.facts().visible,
+			false,
+			"expired consent cannot remain actionable",
+		);
+		assert.equal(
+			controller.facts().actions.decided,
+			0,
+			"visibility/dismissal/expiry never grant permission",
+		);
+	} finally {
+		controller.dispose("test");
 	}
 });
 
@@ -423,6 +547,7 @@ test("controller: the child's URL carries the palette resolved before it existed
 	controller.setModel({ entries: entries(1) });
 	controller.onLayout({
 		presented: true,
+		chromeVisible: true,
 		contentRect: rect(0, 0, 1000, 700),
 		revision: 1,
 	});
@@ -552,6 +677,7 @@ test("geometry: resize rebuild keeps the card at the new width", async () => {
 	});
 	controller.onLayout({
 		presented: true,
+		chromeVisible: true,
 		contentRect: rect(0, 0, 264, 600),
 		revision: 1,
 	});
@@ -567,6 +693,7 @@ test("geometry: resize rebuild keeps the card at the new width", async () => {
 	assert.equal(first.bounds.width, 264);
 	controller.onLayout({
 		presented: true,
+		chromeVisible: true,
 		contentRect: rect(0, 0, 900, 600),
 		revision: 2,
 	});
@@ -583,6 +710,7 @@ test("geometry: resize rebuild keeps the card at the new width", async () => {
 	assert.equal(second.bounds.x, 532);
 	controller.onLayout({
 		presented: true,
+		chromeVisible: true,
 		contentRect: rect(0, 0, 264, 600),
 		revision: 3,
 	});
@@ -629,6 +757,7 @@ test("controller: a zero-width load is not measured as the card height", async (
 	assert.equal(controller.facts().bounds, null, "no bounds before a layout");
 	controller.onLayout({
 		presented: true,
+		chromeVisible: true,
 		contentRect: rect(0, 0, 1000, 700),
 		revision: 1,
 	});
@@ -744,6 +873,7 @@ test("controller: auto-presents unfocused, last, transparent, and hides without 
 	const pageRect = rect(0, 0, 1000, 700);
 	controller.onLayout({
 		presented: true,
+		chromeVisible: true,
 		contentRect: pageRect,
 		revision: 1,
 	});
@@ -771,6 +901,7 @@ test("controller: auto-presents unfocused, last, transparent, and hides without 
 
 	controller.onLayout({
 		presented: true,
+		chromeVisible: true,
 		contentRect: { ...pageRect },
 		revision: 2,
 	});
@@ -787,6 +918,7 @@ test("controller: auto-presents unfocused, last, transparent, and hides without 
 
 	controller.onLayout({
 		presented: true,
+		chromeVisible: true,
 		contentRect: rect(0, 0, 1200, 700),
 		revision: 3,
 	});
@@ -794,6 +926,7 @@ test("controller: auto-presents unfocused, last, transparent, and hides without 
 
 	controller.onLayout({
 		presented: false,
+		chromeVisible: false,
 		contentRect: null,
 		revision: 4,
 	});
@@ -808,6 +941,7 @@ test("controller: auto-presents unfocused, last, transparent, and hides without 
 
 	controller.onLayout({
 		presented: true,
+		chromeVisible: true,
 		contentRect: rect(0, 0, 1000, 700),
 		revision: 5,
 	});
@@ -840,6 +974,7 @@ test("controller: the opaque fallback is a full-bleed opaque view", async () => 
 	});
 	controller.onLayout({
 		presented: true,
+		chromeVisible: true,
 		contentRect: rect(0, 0, 264, 600),
 		revision: 1,
 	});
@@ -1044,6 +1179,7 @@ test("controller: explicit open focuses the card through the gated helper; close
 	});
 	controller.onLayout({
 		presented: true,
+		chromeVisible: true,
 		contentRect: rect(0, 0, 600, 500),
 		revision: 1,
 	});
@@ -1100,6 +1236,7 @@ test("controller: the two card channels are sender-pinned, seq-checked and route
 	});
 	controller.onLayout({
 		presented: true,
+		chromeVisible: true,
 		contentRect: rect(0, 0, 600, 500),
 		revision: 1,
 	});
@@ -1191,6 +1328,7 @@ test("controller: auto-present is not an explicit open, and the latch clears on 
 	});
 	controller.onLayout({
 		presented: true,
+		chromeVisible: true,
 		contentRect: rect(0, 0, 900, 600),
 		revision: 1,
 	});
@@ -1237,6 +1375,7 @@ test("controller: an open with an empty queue arms nothing (M3)", async () => {
 	});
 	controller.onLayout({
 		presented: true,
+		chromeVisible: true,
 		contentRect: rect(0, 0, 900, 600),
 		revision: 1,
 	});
@@ -1279,6 +1418,7 @@ test("controller: a fully dismissed queue is recallable from the shield (U3)", a
 	});
 	controller.onLayout({
 		presented: true,
+		chromeVisible: true,
 		contentRect: rect(0, 0, 900, 600),
 		revision: 1,
 	});
@@ -1330,6 +1470,7 @@ test("controller: a selected pending entry may be decided, not only the oldest (
 	});
 	controller.onLayout({
 		presented: true,
+		chromeVisible: true,
 		contentRect: rect(0, 0, 900, 600),
 		revision: 1,
 	});
@@ -1377,6 +1518,7 @@ test("controller: setContext re-pushes the locale and mirrors the view (U5)", as
 	});
 	controller.onLayout({
 		presented: true,
+		chromeVisible: true,
 		contentRect: rect(0, 0, 900, 600),
 		revision: 1,
 	});
@@ -1423,6 +1565,7 @@ async function presentedController(extra = {}) {
 	});
 	controller.onLayout({
 		presented: true,
+		chromeVisible: true,
 		contentRect: rect(0, 0, 900, 600),
 		revision: 1,
 	});
@@ -1548,6 +1691,7 @@ test("D1: a height growth that the child's viewport did not follow rebuilds the 
 				: Promise.resolve(0);
 	controller.onLayout({
 		presented: true,
+		chromeVisible: true,
 		contentRect: rect(0, 0, 900, 600),
 		revision: 2,
 	});
