@@ -10,8 +10,8 @@ taken by the same rig bytes with the same fixture and the same steps.
 | | |
 |---|---|
 | BEFORE | `c1ba44696` (origin/main base), built with `src/` clean at build start and end |
-| AFTER | **`7887d0bf0`** (`80a346fd5` implementation + `79f3126b4` i18n audit + `7887d0bf0` review-round-1 fix). Every AFTER frame, matrix, filmstrip and reading here was captured at `7887d0bf0`, built with `src/` clean and HEAD verified at build start and end. |
-| Round 0 | `79f3126b4`: the head the previous version of this set (`8b4355d43`) described. `8b4355d43` adds only docs, so the two are source-identical. It is used only in `dot-trough.png` and `pulseCycle`, and was re-captured from the same `79f3126b4` build with a full pulse cycle held. |
+| AFTER | **`c85b0cc95`** (`80a346fd5` implementation, `79f3126b4` i18n audit, `7887d0bf0` review round 1, `c85b0cc95` D-M1 mark). Every AFTER frame, matrix, filmstrip, reading and `mark.png` here was captured at `c85b0cc95`, built with `src/` clean and HEAD verified at build start and end. |
+| Round 1 | `7887d0bf0`: the previous head (pulsing 8 px dot). It is used only as the geometry baseline in `geometry-dm1.json`, from the same rig bytes and fixture. |
 | Runtime | Electron 45.1.0, app 0.54.2, Linux under Xvfb, `--window-mode=headless` (window never shown: `visible=false focused=false`) |
 | Viewport | 1380x872 CSS px at DPR 1. The app's own `capturePage()` reported this viewport for every frame. |
 | Palettes | `localOperatorLight`, `localOperatorDark`, set through the dev-driver `setTheme` verb (the settings picker's own action) |
@@ -25,8 +25,9 @@ taken by the same rig bytes with the same fixture and the same steps.
 | `matrix-glass-sim.png` | AFTER only, light and dark, with the **glass simulation** (see the limitation below). It is **not proof of real translucency.** |
 | `after-<case>-<theme>.png` | Full 1380x872 AFTER frames with glass off, lossless (pixel-identical to the raw capture). |
 | `sequence-<case>-<theme>.png` | 12 consecutive AFTER `capturePage()` frames around the release of the held read: 3 before the release, 9 after. Each frame is cropped to the indicator plus the last row and shown at 50%. Each caption gives two readings. `image:` is what the pixels show: the indicator by a label-region match, and rows by ink in the transcript area. `DOM@t` is the rAF sampler at the moment the shot started: the indicator, the row count and the last row's `y`. |
-| `dot-trough.png` | The cold-open dot, light and dark, at its **brightest and dimmest captured** pulse phase, round 0 (`79f3126b4`) vs round 1 (`7887d0bf0`). Each cell has the measured dot colour, ground, contrast and the DOM's computed opacity at that shot. The last column is round 1 under **`prefers-reduced-motion: reduce`** (CDP `Emulation.setEmulatedMedia`). Crops are shown at 3x nearest-neighbour. |
-| `rects-summary.json` | For all 16 runs (4 cases x 2 themes x glass off/sim): the shift and flicker readings BEFORE vs AFTER (table below), per-run contrast measured from pixels, and `pulseCycle`, the full-cycle trough and peak of the dot. |
+| `mark.png` | The D-M1 mark on a cold open, light and dark: six frames across one rotation of the 16 px `Spinner` (the shared `sm` size: a 1 px `border-control` track with an accent arc, `animate-spin`), each with the measured arc and track contrast, then a **reduced-motion** still (CDP `Emulation.setEmulatedMedia`, `prefers-reduced-motion: reduce`) showing the static ring and arc, with the label-on-pill contrast. Crops are shown at 3x nearest-neighbour. |
+| `geometry-dm1.json` | The geometry proof, `c85b0cc95` vs `7887d0bf0`, for every case, theme and glass mode: slot height, indicator height and y, last row y (loading and settled), scroller `scrollHeight` (loading and settled), and the distinct last-row y and `scrollHeight` values over every rAF sample of each phase. |
+| `rects-summary.json` | For all 16 runs (4 cases x 2 themes x glass off/sim): the shift and flicker readings BEFORE vs AFTER (table below), per-run contrast measured from pixels, and `markSpin`, the arc and track contrast over a full rotation. |
 
 ## The rig
 
@@ -45,18 +46,39 @@ after its session had loaded painted 24 rows and showed no placeholder.
 For the sequences, an in-page `requestAnimationFrame` sampler records the rects of every
 frame (median gap 16.7 ms), and `capturePage()` runs in a loop at the same time (median
 gap 43-62 ms, at least 26 images per run). The rig scripts live outside the repo, in the
-session scratchpad (`loading-capture/`). The `7887d0bf0` matrix ran on the same rig bytes
+session scratchpad (`loading-capture/`). The `c85b0cc95` matrix ran on the same rig bytes
 as BEFORE (md5 `5b9211c3…`).
 
-The trough and reduced-motion frames come from a copy of the rig with two opt-in flags
+The rotation and reduced-motion frames come from a copy of the rig with two opt-in flags
 that are off by default:
 
-- `--pre-ms 2600` holds the cold case for more than one 2 s pulse cycle while
-  `capturePage()` loops (~35-44 ms per image);
+- `--pre-ms 1400` holds the cold case for more than one 1 s rotation while
+  `capturePage()` loops (~46-48 ms per image);
 - `--reduced-motion` emulates `prefers-reduced-motion: reduce`.
 
-The probe also records the dot's computed `opacity` and `animation-name` on every
-animation frame.
+The probe also records the mark's computed `transform`, `animation-name` and border
+colours, and the pill's box and colours, on every animation frame.
+
+## Geometry: D-M1 vs round 1 (`geometry-dm1.json`)
+
+D-M1 swapped the dot for a spinner and a pill inside the same slots. These are the
+maximum |delta| values across all 16 runs, `c85b0cc95` minus `7887d0bf0`:
+
+| Metric | Max \|delta\| |
+|---|---|
+| Slot height (foot slot 17.39, older-history slot 28, the indicator's own line for cold/remote) | 0 px |
+| Indicator bounding height (17.39) | 0 px |
+| Indicator y | 0 px |
+| Last row y, loading still | 0 px |
+| Last row y, settled still | 0 px |
+| Scroller `scrollHeight`, loading still | 0 px |
+| Scroller `scrollHeight`, settled still | 0 px |
+| Distinct last-row y over every rAF sample, while loading / after | 0 / 0 px |
+| Distinct `scrollHeight` over every rAF sample, while loading / after | 0 / 0 px |
+
+Width grows only where the box is content-sized: older-history goes from 172.5 to 196.5 px.
+Cold, remote and stale stay full-width at 810 px. The 16 px ring sits inside the 17.39 px
+line box, and the pill has horizontal padding only, so it is 17.39 px tall too.
 
 ## No layout shift, no flicker
 
@@ -101,40 +123,44 @@ never sees it flip.
 
 Ratios are WCAG 2.x.
 
-### The dot across a full pulse cycle (cold open; `dot-trough.png`, `pulseCycle`)
+### The D-M1 mark across a full rotation (cold open; `mark.png`, `markSpin`)
 
-The dot is the centre pixel (396,104) and the ground is (300,104). Every capture of a
-held cold open spanned more than 2.5 s. The DOM opacity is the computed value on every
-animation frame.
+The arc is the most contrasting saturated (accent) pixel inside the ring. The track is the
+most contrasting grey ring pixel. Both are measured against the ground beside the ring. The
+arc and track are 1 px borders, so the measured ink depends on how a rotation phase
+anti-aliases them. The declared colours are accent `#137742` / `#38c96a` and track
+`rgb(133,127,112)` / `rgb(131,124,109)` (light / dark).
 
-| Theme | Round | Animation | DOM opacity range | Dimmest captured | Brightest captured |
-|---|---|---|---|---|---|
-| light | 0 (`79f3126b4`) | `pulse-visible` 1 -> 0.7 | 0.70-1 | `#569b73`, **2.84:1** | `#137742`, 4.81:1 |
-| light | 1 (`7887d0bf0`) | `lo-intent-pulse` 1 -> 0.75 | 0.75-1 | `#4b956a`, **3.10:1** | `#137742`, 4.81:1 |
-| dark | 0 | `pulse-visible` | 0.70-1 | `#2f9451`, 4.48:1 | `#38c96a`, 7.97:1 |
-| dark | 1 | `lo-intent-pulse` | 0.75-1 | `#319c54`, 4.92:1 | `#37c869`, 7.88:1 |
-| light | 1, reduced motion | `animation-name: none` | 1 on every sample | `#137742`, 4.81:1 | same |
-| dark | 1, reduced motion | `none` | 1 on every sample | `#38c96a`, 7.97:1 | same |
+| Theme | Frames over 1 rotation | Arc | Accent-coloured px in the arc | Track | Label on pill | Pill vs ground |
+|---|---|---|---|---|---|---|
+| light | 30 (1398 ms, 67 distinct transforms) | **2.96-4.22:1** | 2-8 | 2.53-3.24:1 | `#4e4940` on `#dbe0d2`, 6.64:1 | 1.15:1 |
+| dark | 32 (1386 ms, 69 distinct transforms) | 4.64-6.98:1 | 12-14 | 3.03-3.71:1 | `#c2bcaf` on `#202c1f`, 7.70:1 | 1.18:1 |
+| light, reduced motion | static (`transform: none` on every sample) | 4.22:1 | 8 | 3.24:1 | 6.64:1 | 1.15:1 |
+| dark, reduced motion | static | 6.98:1 | 14 | 3.92:1 | 7.70:1 | 1.18:1 |
 
-At its dimmest captured phase, the round-1 light dot clears the 3:1 non-text minimum by
-0.10. Blending the light accent `#137742` at 0.75 over `#f2ede3` gives `#4b946a` at 3.13:1,
-which agrees with the 3.10 measured.
+At its weakest rotation phase, the light arc measures **2.96:1**, below the 3:1 non-text
+minimum: the 1 px arc anti-aliases into the ground on the diagonals. The ring's outline
+(track plus arc) keeps the mark visible, and the label carries the meaning. Under reduced
+motion the spin runs one 0.01 ms iteration (the global reduced-motion cap) and parks at its
+end keyframe, so the ring is static with the arc at the top.
 
 ### Per case (stills plus the pre-release frames of each sequence)
 
-The ground is the modal colour of the indicator row. The mark is the first ink cluster
-from the left. The label value is the most extreme ink to the right of the mark. These
-mark ranges cover only the ~300 ms before release, which is a **partial** pulse phase. The
-full-cycle extremes are in the table above.
+BEFORE: the ground is the modal colour of the indicator row, the mark is the first ink
+cluster from the left, and the label is the most extreme ink right of it. AFTER: as above
+(arc, track, label on pill). These ranges cover only the ~300 ms before release, a
+**partial** rotation; the full rotation is in the table above.
 
-| Case | Theme | BEFORE mark | BEFORE label | AFTER mark (8 px accent dot, partial phase) | AFTER label |
+| Case | Theme | BEFORE mark | BEFORE label | AFTER arc / track | AFTER label on pill |
 |---|---|---|---|---|---|
-| cold / remote | light | 8 px `bg-elevated` dot, **1.10-1.12:1** | `ink-dim` 12 px, 5.36:1 | 3.10-3.97:1 | `ink-muted` 12 px, 7.66:1 |
-| cold / remote | dark | 8 px dot, **1.12-1.15:1** | 6.60:1 | 4.92-6.49:1 | 9.09:1 |
-| stale | light | **none** (text only) | `ink-dim`, 5.36:1 | 3.10-3.86:1 | 7.66:1 |
-| stale | dark | **none** | 6.60:1 | 4.92-6.02:1 | 9.09:1 |
-| older | light | 18 px green spinner ring, 3.00-3.64:1 | 7.66:1 | 3.10-3.68:1 | 7.66:1 |
-| older | dark | ring, 4.64-6.98:1 | 9.09:1 | 4.92-6.09:1 | 9.09:1 |
+| cold / remote | light | 8 px `bg-elevated` dot, **1.10-1.12:1** | `ink-dim` 12 px, 5.36:1 | 2.96-4.09 / 2.52-3.03:1 | `ink-muted` 12 px, 6.64:1 |
+| cold / remote | dark | 8 px dot, **1.12-1.15:1** | 6.60:1 | 4.64-6.98 / 3.07-3.91:1 | 7.70:1 |
+| stale | light | **none** (text only) | `ink-dim`, 5.36:1 | 3.01-3.63 / 2.52-2.72:1 | 6.64:1 |
+| stale | dark | **none** | 6.60:1 | 4.70-6.98 / 3.07-3.87:1 | 7.70:1 |
+| older | light | 18 px green spinner ring, 3.00-3.64:1 | 7.66:1 | 3.00-4.22 / 2.53-3.24:1 | 6.64:1 |
+| older | dark | ring, 4.64-6.98:1 | 9.09:1 | 4.64-6.02 / 3.03-3.66:1 | 7.70:1 |
+
+With glass-sim, the dark label on pill is 8.13:1 (pill `#1b281c`).
 
 Grounds: light `#f2ede3`, dark `#1d1b17` (`#181714` with glass-sim).
 
