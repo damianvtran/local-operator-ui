@@ -49,6 +49,24 @@ export const CHILD_SCOPE =
 	"[data-run-panel-pane] [data-lo-canonical-transcript]";
 export const HANDSHAKE_STEPS = ["error-stop", "error-restart", "live"];
 
+/** Existing root breadcrumb: leaves any child reader for the roster. */
+export const RUN_PANEL_ROOT =
+	"[data-run-panel-pane] > div:first-child nav > button:first-child";
+
+/** Read only PAINTED pane state, not the preference store or React internals. */
+export const runPanelRead = (row = null) => `(() => {
+	const pane = document.querySelector("[data-run-panel-pane]");
+	const painted = (el) => { const r = el?.getBoundingClientRect(); return Boolean(r && r.width > 0 && r.height > 0); };
+	const requested = ${row ? `document.querySelector(${JSON.stringify(row)})` : "null"};
+	return {
+		drawn: painted(pane),
+		pressed: document.querySelector("[data-run-panel-trigger]")?.getAttribute("aria-pressed") === "true",
+		reader: painted(pane?.querySelector("[data-lo-canonical-transcript]")),
+		requested: Boolean(requested && pane?.contains(requested) && painted(requested)),
+		root: painted(document.querySelector(${JSON.stringify(RUN_PANEL_ROOT)})),
+	};
+})()`;
+
 const EXPECT_KEYS = ["edit", "write", "liveEdit", "liveWrite"];
 
 /** `--diff-expect` JSON: `{edit|write|liveEdit|liveWrite: {total, last?}, oversized?}`. */
@@ -963,28 +981,70 @@ export async function sceneDiffHistory({
 		}
 	};
 
-	/** The Run panel, the subagent's row, then its contained reader. */
-	const openChildReader = async (again = false) => {
+	/** Ensure-open, never blindly toggle a panel restored by route memory (R11 F2). */
+	const openChildReader = async (again = false, row = null) => {
 		const tag = again ? "child (re-navigated)" : "child";
-		await settle(
-			`Boolean(document.querySelector(${JSON.stringify(PARENT_SCOPE)}))`,
-			`${tag}: the parent transcript mounts`,
-		);
 		if (
-			!(await pressSettled(
-				"[data-run-panel-trigger]",
-				`${tag}: Run panel trigger`,
+			!(await settle(
+				`Boolean(document.querySelector(${JSON.stringify(PARENT_SCOPE)}))`,
+				`${tag}: the parent transcript mounts`,
 			))
 		)
 			return false;
+		const read = runPanelRead(row);
+		let pane = await cdp.evaluate(read);
+		if (!pane.drawn) {
+			// A pressed trigger can precede the pane's paint. Wait for it rather
+			// than toggling the remembered open choice shut while it mounts.
+			if (
+				!pane.pressed &&
+				!(await pressSettled(
+					"[data-run-panel-trigger]",
+					`${tag}: Run panel trigger`,
+				))
+			)
+				return false;
+			if (
+				!(await settle(`(${read}).drawn`, `${tag}: the Run panel is painted`))
+			)
+				return false;
+			pane = await cdp.evaluate(read);
+		}
+		if (pane.reader && pane.requested) return true;
+		if (pane.reader) {
+			// A different (or not identifiable) restored reader: the root crumb
+			// is the normal UI route back to the roster, not the close toggle.
+			check(
+				`${tag}: the reader offers its roster breadcrumb`,
+				pane.root === true,
+				JSON.stringify(pane),
+			);
+			if (
+				!pane.root ||
+				!(await pressSettled(RUN_PANEL_ROOT, `${tag}: roster breadcrumb`))
+			)
+				return false;
+		}
 		const rowButton = `[data-run-panel-row="${child}"] button`;
 		if (
 			!(await settle(
 				`Boolean(${q(rowButton)})`,
 				`${tag}: the Run panel lists the subagent's row`,
 			))
-		)
+		) {
+			note(
+				`${tag}: Run panel rows present`,
+				JSON.stringify(
+					await cdp.evaluate(
+						`[...document.querySelectorAll("[data-run-panel-row]")].slice(0, 20).map((el) => el.getAttribute("data-run-panel-row"))`,
+					),
+				),
+			);
+			await shot("diff-history-child-no-row");
 			return false;
+		}
+		if (!again)
+			await shot("diff-history-child-run-panel", `Boolean(${q(rowButton)})`);
 		if (!(await pressSettled(rowButton, `${tag}: subagent row`))) return false;
 		return settle(
 			`Boolean(document.querySelector(${JSON.stringify(CHILD_SCOPE)}))`,
@@ -994,44 +1054,7 @@ export async function sceneDiffHistory({
 
 	await verb(cdp, "navigate", `/chat/${session}`);
 	if (child !== null) {
-		await settle(
-			`Boolean(document.querySelector(${JSON.stringify(PARENT_SCOPE)}))`,
-			"child: the parent transcript mounts",
-		);
-		if (
-			!(await pressSettled(
-				"[data-run-panel-trigger]",
-				"child: Run panel trigger",
-			))
-		)
-			return;
-		const rowButton = `[data-run-panel-row="${child}"] button`;
-		if (
-			!(await settle(
-				`Boolean(${q(rowButton)})`,
-				"child: the Run panel lists the subagent's row",
-			))
-		) {
-			note(
-				"child: Run panel rows present",
-				JSON.stringify(
-					await cdp.evaluate(
-						`[...document.querySelectorAll("[data-run-panel-row]")].slice(0, 20).map((el) => el.getAttribute("data-run-panel-row"))`,
-					),
-				),
-			);
-			await shot("diff-history-child-no-row");
-			return;
-		}
-		await shot("diff-history-child-run-panel", `Boolean(${q(rowButton)})`);
-		if (!(await pressSettled(rowButton, "child: subagent row"))) return;
-		if (
-			!(await settle(
-				`Boolean(document.querySelector(${JSON.stringify(CHILD_SCOPE)}))`,
-				"child: the reader mounts the child transcript",
-			))
-		)
-			return;
+		if (!(await openChildReader())) return;
 		await shot(
 			"diff-history-child-reader",
 			`Boolean(document.querySelector(${JSON.stringify(CHILD_SCOPE)}))`,
@@ -1074,7 +1097,7 @@ export async function sceneDiffHistory({
 			CHILD_SCOPE,
 			editRow ?? CHILD_SCOPE,
 			childFirst,
-			() => openChildReader(true),
+			() => openChildReader(true, editRow),
 		);
 	} else {
 		const row = await disclose("open", PARENT_SCOPE, { verb: "Edited" });

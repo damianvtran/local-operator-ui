@@ -1174,6 +1174,104 @@ test("Q7-1/U6: the anchor holds when the transcript's reader-hold re-pins after 
 	}
 });
 
+test("F1: input during loading invalidates the request's anchor and focus hold", async (t) => {
+	const proto = dom.window.HTMLElement.prototype;
+	const oldRect = proto.getBoundingClientRect;
+	const saved = respond;
+	for (const input of ["wheel", "pointerdown", "keydown", "touchstart"]) {
+		for (const outcome of ["page", "error", "notice"]) {
+			await t.test(`${input} before ${outcome}`, async () => {
+				const v = await mount();
+				proto.getBoundingClientRect = reverseScrollerModel(v);
+				const elsewhere = document.createElement("button");
+				elsewhere.textContent = "another transcript control";
+				v.scroller.append(elsewhere);
+				try {
+					await v.click(v.button("View full diff · 998 lines"));
+					let finish;
+					let requested;
+					respond = (request) => {
+						requested = request;
+						return new Promise((resolve) => {
+							finish = resolve;
+						});
+					};
+					v.button("Next").focus();
+					await v.click(v.button("Next"));
+					assert.equal(
+						v.host
+							.querySelector("[data-diff-history]")
+							.getAttribute("aria-busy"),
+						"true",
+					);
+					assert.ok(finish, "the page response is still outstanding");
+					elsewhere.dispatchEvent(
+						new dom.window.Event(input, { bubbles: true }),
+					);
+					elsewhere.focus();
+					v.scroller.scrollTop = -1234;
+					for (let i = 0; i < 4; i += 1) await flush();
+					assert.equal(
+						v.scroller.scrollTop,
+						-1234,
+						"input cancels the active loading hold",
+					);
+					const answer =
+						outcome === "page"
+							? saved(requested)
+							: outcome === "error"
+								? { status: 503, body: { detail: "down" } }
+								: { status: 404, body: { detail: { code: "diff_not_found" } } };
+					await act(async () => {
+						finish(answer);
+					});
+					for (let i = 0; i < 4; i += 1) await flush();
+					assert.equal(
+						v.scroller.scrollTop,
+						-1234,
+						"the delayed response must not snap back or restart its hold",
+					);
+					assert.equal(
+						document.activeElement,
+						elsewhere,
+						"the delayed response must not reclaim focus",
+					);
+					// A fresh scroll after arrival also stays put: no restarted timer.
+					v.scroller.scrollTop = -1456;
+					for (let i = 0; i < 4; i += 1) await flush();
+					assert.equal(
+						v.scroller.scrollTop,
+						-1456,
+						"no per-frame hold restarts after arrival",
+					);
+					if (outcome === "page") {
+						respond = saved;
+						v.button("Next").dispatchEvent(
+							new dom.window.Event("pointerdown", { bubbles: true }),
+						);
+						await v.click(v.button("Next"));
+						const nav = v.host.querySelector("[data-diff-history] > nav");
+						const first = v.host.querySelector(
+							"[data-diff-history] > [data-diff-hunk-context], [data-diff-history] > [data-diff-line]",
+						);
+						assert.ok(
+							Math.abs(
+								first.getBoundingClientRect().top -
+									nav.getBoundingClientRect().bottom,
+							) < 1,
+							"a new deliberate pager action may anchor again",
+						);
+					}
+				} finally {
+					respond = saved;
+					proto.getBoundingClientRect = oldRect;
+					v.unmount();
+				}
+			});
+		}
+	}
+});
+
 test("D3: a failed move keeps the page it left under the error line, and offers no inert paging", async () => {
 	let fail = false;
 	respond = (request) =>

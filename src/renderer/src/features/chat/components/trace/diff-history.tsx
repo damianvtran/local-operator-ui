@@ -460,7 +460,14 @@ export const DiffHistoryPager: FC<{
 			if (frame === 0 && active()) frame = requestAnimationFrame(tick);
 		};
 		const release = () => {
+			// Reader input owns this request's eventual response too (R11 F1),
+			// not just the current animation. Only a new deliberate pager action
+			// may re-arm the pending anchor and focus handoff.
+			anchorPending.current = false;
+			holdFocus.current = false;
 			settleUntil.current = 0;
+			if (frame) cancelAnimationFrame(frame);
+			frame = 0;
 		};
 		startSettle.current = start;
 		const observer =

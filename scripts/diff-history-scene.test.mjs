@@ -571,11 +571,19 @@ test("the pager oracle never accepts Loading: open means a set range on a settle
 test("--child opens the Run panel, then the subagent's row, then reads only the child reader", async () => {
 	const presses = [];
 	const evaluated = [];
+	let paneDrawn = false;
 	const checks = [];
 	await sceneDiffHistory({
 		cdp: {
 			evaluate: async (expr) => {
 				evaluated.push(expr);
+				if (expr.includes("const pane = document.querySelector("))
+					return {
+						drawn: paneDrawn,
+						pressed: paneDrawn,
+						reader: false,
+						requested: false,
+					};
 				if (expr.startsWith("(() => { const el = document.querySelector("))
 					return "10,20,300,17";
 				if (expr === workRead(CHILD_SCOPE))
@@ -591,7 +599,12 @@ test("--child opens the Run panel, then the subagent's row, then reads only the 
 			send: async () => {},
 		},
 		verb: async (_cdp, name, payload) => {
-			if (name === "press") presses.push(payload.selector);
+			if (name === "navigate") paneDrawn = false;
+			if (name === "press") {
+				presses.push(payload.selector);
+				if (payload.selector === "[data-run-panel-trigger]")
+					paneDrawn = !paneDrawn;
+			}
 			return name === "queries" ? [] : { ok: true, hitTest: true };
 		},
 		capture: async () => {},
@@ -599,6 +612,7 @@ test("--child opens the Run panel, then the subagent's row, then reads only the 
 		note: () => {},
 		waitForCondition: async (_cdp, expr) => ({
 			ok:
+				(expr.includes("const pane = document.querySelector(") && paneDrawn) ||
 				expr.includes("data-run-panel-row") ||
 				expr ===
 					`Boolean(document.querySelector(${JSON.stringify(PARENT_SCOPE)}))` ||
@@ -939,10 +953,18 @@ test("D6: clearForPress scrolls a target hidden under chrome until its centre hi
 
 test("child mode reads the CHILD transcript for its no-offer diagnostic", async () => {
 	const evaluated = [];
+	let paneDrawn = false;
 	await sceneDiffHistory({
 		cdp: {
 			evaluate: async (expr) => {
 				evaluated.push(expr);
+				if (expr.includes("const pane = document.querySelector("))
+					return {
+						drawn: paneDrawn,
+						pressed: paneDrawn,
+						reader: false,
+						requested: false,
+					};
 				if (expr.startsWith("(() => { const el = document.querySelector("))
 					return "10,20,300,17";
 				if (expr === workRead(CHILD_SCOPE))
@@ -957,13 +979,18 @@ test("child mode reads the CHILD transcript for its no-offer diagnostic", async 
 			},
 			send: async () => {},
 		},
-		verb: async (_cdp, name) =>
-			name === "queries" ? [] : { ok: true, hitTest: true },
+		verb: async (_cdp, name, payload) => {
+			if (name === "navigate") paneDrawn = false;
+			if (name === "press" && payload.selector === "[data-run-panel-trigger]")
+				paneDrawn = !paneDrawn;
+			return name === "queries" ? [] : { ok: true, hitTest: true };
+		},
 		capture: async () => {},
 		check: () => {},
 		note: () => {},
 		waitForCondition: async (_cdp, expr) => ({
 			ok:
+				(expr.includes("const pane = document.querySelector(") && paneDrawn) ||
 				expr.includes("data-run-panel-row") ||
 				expr.endsWith('[data-lo-canonical-transcript]"))'),
 			last: null,
@@ -976,4 +1003,230 @@ test("child mode reads the CHILD transcript for its no-offer diagnostic", async 
 	assert.equal(typeof S.noOfferRead, "function");
 	assert.ok(evaluated.includes(S.noOfferRead(CHILD_SCOPE)));
 	assert.ok(!evaluated.includes(S.NO_OFFER_READ));
+});
+
+/** Model the real toggle plus the conversation's remembered pane on return. */
+async function rememberedChildRun({
+	restored = "reader",
+	missing = false,
+} = {}) {
+	const row = `${CHILD_SCOPE} [data-record-id="e1"]`;
+	const edited = `${row} button[aria-expanded="false"]:has([data-trace-verb])`;
+	const trigger = "[data-run-panel-trigger]";
+	const rosterRow = '[data-run-panel-row="29aca806b290"] button';
+	const rootCrumb =
+		"[data-run-panel-pane] > div:first-child nav > button:first-child";
+	let pane = "closed";
+	let navigations = 0;
+	const presses = [];
+	const checks = [];
+	const returned = () => navigations >= 3;
+	const hasRow = () => pane === "reader" && !(returned() && missing);
+	const panel = () => ({
+		drawn: pane !== "closed",
+		pressed: pane !== "closed",
+		reader: pane === "reader" || pane === "other-reader",
+		requested: hasRow(),
+		roster: pane === "roster",
+		root: pane === "reader" || pane === "other-reader",
+	});
+	const reading = {
+		open: true,
+		range: "Rows 1–10 of 10",
+		status: "",
+		busy: "false",
+		buttons: [{ text: "Back to preview", disabled: null }],
+		signs: { added: 2, removed: 1, addedBadSign: 0, removedBadSign: 0 },
+		zeroBoxes: 0,
+		nav: { x: 0, y: 100, w: 600, h: 30 },
+		head: { x: 0, y: 130, w: 600, h: 17 },
+		scroller: { top: 100, scrollTop: -900, min: -5000 },
+		viewport: { w: 1380, h: 900 },
+		lastRow: { index: "9", text: "+x" },
+	};
+	await sceneDiffHistory({
+		cdp: {
+			evaluate: async (expr) => {
+				if (expr.includes("const pane = document.querySelector("))
+					return panel();
+				if (expr === workRead(CHILD_SCOPE))
+					return {
+						transcript: pane === "reader",
+						viewFull: 0,
+						disclosures: [],
+						ambiguous: 0,
+						tools: hasRow() ? [{ verb: "Edited", selector: edited }] : [],
+					};
+				if (
+					expr.startsWith("Boolean(document.querySelector(") &&
+					expr.includes("data-diff-view-full")
+				)
+					return hasRow();
+				if (expr.startsWith("(() => { const el = document.querySelector("))
+					return "10,20,300,17";
+				if (expr.includes("lastIndex")) return null;
+				if (expr.startsWith("(async () => {")) return { found: true, ok: true };
+				return reading;
+			},
+			send: async () => {},
+		},
+		verb: async (_cdp, name, payload) => {
+			if (name === "navigate") {
+				navigations += 1;
+				if (returned()) pane = restored;
+			}
+			if (name === "press") {
+				presses.push(payload.selector);
+				if (payload.selector === trigger)
+					pane = pane === "closed" ? "roster" : "closed";
+				if (payload.selector === rootCrumb && pane !== "closed")
+					pane = "roster";
+				if (payload.selector === rosterRow && pane === "roster")
+					pane = "reader";
+			}
+			return name === "queries" ? [] : { ok: true, hitTest: true };
+		},
+		capture: async () => {},
+		check: (label, passed) => checks.push({ label, passed }),
+		note: () => {},
+		waitForCondition: async (_cdp, expr) => ({
+			ok: expr.includes("const pane = document.querySelector(")
+				? panel().drawn
+				: expr.includes("data-run-panel-row")
+					? pane === "roster"
+					: expr ===
+							`Boolean(document.querySelector(${JSON.stringify(CHILD_SCOPE)}))`
+						? pane === "reader"
+						: true,
+			last: null,
+		}),
+		factsOf: async () => ({}),
+		session: "fc00000000d1",
+		child: "29aca806b290",
+		sleep: async () => {},
+	});
+	return {
+		presses,
+		trigger,
+		rosterRow,
+		rootCrumb,
+		found: checks.find(
+			(c) =>
+				c.label === "child: re-navigated: the same call's row is found again",
+		)?.passed,
+		compared: checks.find(
+			(c) =>
+				c.label ===
+				"child: re-navigated: the same call pages the same first page",
+		)?.passed,
+	};
+}
+
+test("F2: a remembered open child reader is reused, never blindly toggled closed", async () => {
+	const run = await rememberedChildRun();
+	assert.equal(
+		run.found,
+		true,
+		"the route round-trip finds the same call again",
+	);
+	assert.equal(
+		run.compared,
+		true,
+		"the refound call pages the same first page",
+	);
+	assert.equal(
+		run.presses.filter((s) => s === run.trigger).length,
+		1,
+		"only the initially closed panel is toggled",
+	);
+	assert.equal(
+		run.presses.filter((s) => s === run.rosterRow).length,
+		1,
+		"the restored requested reader is reused",
+	);
+});
+
+test("F2: closed, restored-roster and other-reader panes reach the child via normal controls", async () => {
+	for (const restored of ["closed", "roster", "other-reader"]) {
+		const run = await rememberedChildRun({ restored });
+		assert.equal(run.found, true, `${restored}: route refound succeeds`);
+		assert.equal(run.compared, true, `${restored}: the same page is compared`);
+		assert.equal(
+			run.presses.filter((s) => s === run.trigger).length,
+			restored === "closed" ? 2 : 1,
+			`${restored}: toggle only a closed pane`,
+		);
+		assert.equal(
+			run.presses.filter((s) => s === run.rosterRow).length,
+			2,
+			`${restored}: choose the child from the roster`,
+		);
+		assert.equal(
+			run.presses.filter((s) => s === run.rootCrumb).length,
+			restored === "other-reader" ? 1 : 0,
+			`${restored}: the root breadcrumb reaches the roster`,
+		);
+	}
+});
+
+test("F2: a genuine refound call miss remains an explicit FAIL", async () => {
+	const run = await rememberedChildRun({ missing: true });
+	assert.equal(run.found, false);
+	assert.equal(
+		run.compared,
+		undefined,
+		"a missing call cannot silently pass the page comparison",
+	);
+});
+
+test("F2: pane inspection uses painted DOM and the requested call, not remembered state", async () => {
+	const { JSDOM } = await import("jsdom");
+	const dom = new JSDOM(
+		`<!doctype html><body>
+		<button data-run-panel-trigger aria-pressed="true"></button>
+		<section data-run-panel-pane>
+			<div><nav><button>Subagents</button><span><button aria-current="page">Child</button></span></nav></div>
+			<div data-lo-canonical-transcript><div data-record-id="e1"></div></div>
+		</section>
+	</body>`,
+		{ runScripts: "outside-only" },
+	);
+	try {
+		const { document, HTMLElement } = dom.window;
+		HTMLElement.prototype.getBoundingClientRect = function () {
+			return { width: this.hidden ? 0 : 500, height: this.hidden ? 0 : 100 };
+		};
+		const row = `${CHILD_SCOPE} [data-record-id="e1"]`;
+		const read = () =>
+			JSON.parse(JSON.stringify(dom.window.eval(S.runPanelRead(row))));
+		assert.deepEqual(read(), {
+			drawn: true,
+			pressed: true,
+			reader: true,
+			requested: true,
+			root: true,
+		});
+		document.querySelector('[data-record-id="e1"]').hidden = true;
+		assert.equal(
+			read().requested,
+			false,
+			"a non-painted record cannot identify a reusable reader",
+		);
+		document.querySelector("[data-lo-canonical-transcript]").remove();
+		assert.equal(
+			read().reader,
+			false,
+			"a pane need not be showing a child reader",
+		);
+		document.querySelector("[data-run-panel-pane]").remove();
+		const opening = read();
+		assert.equal(opening.drawn, false);
+		assert.equal(
+			opening.pressed,
+			true,
+			"a pressed trigger is distinct from the pane's paint",
+		);
+	} finally {
+		dom.window.close();
+	}
 });
