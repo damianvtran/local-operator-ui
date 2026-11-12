@@ -222,3 +222,60 @@ export function untargetedDraftRows(
 	}
 	return rows.reverse();
 }
+
+/**
+ * The sessions whose row says `Not sent yet`: a draft that has learned its
+ * session id and whose send hop is NOT live.
+ *
+ * WHY `pending` IS EXCLUDED (send smoothness, 2026-11-11): every new chat's
+ * first send holds its draft (with the created session's id) until the send
+ * completes, so without this term the sidebar drew `Untitled chat · Not sent
+ * yet` for the ~150 ms between the create's answer and the completion - an
+ * intermediate entry between the draft row and the conversation's own row, for
+ * a message that was in fact being sent. The suffix is for a claim that settled
+ * without a completed send (a failed or refused first send). The sidebar's
+ * `forkable` deliberately keeps the wider set: a session mid-first-send has
+ * nothing to clone yet.
+ */
+export function unsentSessionIds(
+	drafts: Record<string, ChatDraft>,
+): Set<string> {
+	const out = new Set<string>();
+	for (const draft of Object.values(drafts))
+		if (draft.sessionId && draft.pending !== true) out.add(draft.sessionId);
+	return out;
+}
+
+/**
+ * Which conversation row the sidebar marks current.
+ *
+ * WHY THE DRAFT'S SESSION (send-path design round 1, D3): a new chat's first
+ * send lists the created session's row from the create's answer, while the
+ * draft stays active until the send completes. Marking only `selectedConversation
+ * && !activeDraftKey` painted that new row unselected for ~125 ms - and the
+ * `New chat` item still selected - before both swapped. The pane is already
+ * showing that session (`panelSessionIdOfView`), so the row it lists is the
+ * current one from its first commit.
+ */
+export function currentSessionRowId(
+	activeDraftKey: string | null,
+	drafts: Record<string, ChatDraft>,
+	selectedConversation: string | undefined,
+): string | undefined {
+	if (!activeDraftKey) return selectedConversation;
+	return drafts[activeDraftKey]?.sessionId;
+}
+
+/**
+ * Whether the `New chat` item is the current one: an active untargeted draft
+ * that has not yet created its conversation (once it has, `currentSessionRowId`
+ * hands the mark to that conversation's row in the same commit).
+ */
+export function newChatCurrent(
+	activeDraftKey: string | null,
+	drafts: Record<string, ChatDraft>,
+): boolean {
+	if (!activeDraftKey) return false;
+	const draft = drafts[activeDraftKey];
+	return !draft?.target && !draft?.sessionId;
+}

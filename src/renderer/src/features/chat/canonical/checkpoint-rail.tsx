@@ -658,8 +658,9 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 			 *
 			 * SCOPE (agent review round 5, R12): this latch is what the ordering above is
 			 * about, and the ordering is real in a rig that re-renders the rail with new
-			 * props. The app mounts the rail's panel with `key={identity}`
-			 * (`features/chat/components/chat-page.tsx`), so a conversation SWITCH remounts
+			 * props. The app mounts the rail's panel with `key={mountKey}`
+			 * (`panelMountKeyFor` in `features/chat/components/chat-page.tsx`, which
+			 * holds only through a draft's own admission), so a conversation SWITCH remounts
 			 * the rail - fresh refs, and this guard cannot be what positions or fails to
 			 * position the port there. A warm re-open that still moves the marks is
 			 * therefore NOT evidence this guard is wrong, and this guard being right is not

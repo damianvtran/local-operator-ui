@@ -112,12 +112,17 @@ export function resolveChatTitle(input: {
 	 * straight through to `UNTITLED_CHAT` would blank the header to "Untitled
 	 * chat" for exactly the window the user is watching their first send. The
 	 * binding is the durable identity the header's description line already names,
-	 * so it is the honest stand-in for a targeted row; an UNTARGETED draft (⌘N,
-	 * the New-chat row) has no binding and keeps the sentence it wore before the
-	 * send: "New chat". "Untitled chat" is for a conversation that exists and has
-	 * no name, which is not this.
+	 * so it is the honest stand-in for a targeted row.
+	 *
+	 * AN UNTARGETED DRAFT IS "Untitled chat" FROM THE CREATE (send-path design
+	 * round 1, D1c - superseding round 2's D8 "keep New chat"). Holding "New chat"
+	 * past the create left the header disagreeing with the sidebar, which lists
+	 * the conversation as "Untitled chat" from that very commit, and then flipped
+	 * when the draft row retired ~120 ms later: two swaps the reader watched
+	 * during their first send. Switching here makes it one swap, in the commit the
+	 * sidebar row appears, and the retire changes nothing.
 	 */
-	if (draftKey) return draftTarget ?? t("ui.chat.header.new_chat");
+	if (draftKey && draftTarget) return draftTarget;
 	return t(UNTITLED_CHAT_KEY);
 }
 
@@ -145,4 +150,33 @@ export function catalogueTitleUpdate(input: {
 	const { liveTitle } = input;
 	if (!isBlankTitle(liveTitle)) return { title: liveTitle as string };
 	return {};
+}
+
+/**
+ * The header's second line across a new chat's first send, from the press until
+ * the stream states who is answering (PR #1872 QA Q4, design D6).
+ *
+ * The slot changes ONCE, text for text, when the identity is stated - never
+ * through a progress sentence or an empty line in between. "Starting the
+ * session" here was a ~3-frame flash at the press (the create answers that
+ * fast), then the line went blank for the create-to-first-snapshot wait before
+ * the agent/team controls replaced it; the transcript's wait line already
+ * states that the session is starting. One precedence serves both stretches -
+ * the press before the create answers, and this pane's created session before
+ * the owner names an identity: a targeted draft names its target (held from the
+ * press, so the line never goes target -> path -> target), an untargeted one
+ * keeps the directory line it already wore - the owner's, then the staged one.
+ *
+ * Empty means the slot has nothing to say; the caller keeps its own held line
+ * box for that.
+ */
+export function resolveFirstSendDescription(input: {
+	/** The draft's bound target as the header names it, held from the press. */
+	targetDisplay?: string | null;
+	/** The directory the live stream (or a pending move) reports. */
+	liveCwd?: string | null;
+	/** The directory the draft staged for `sessions.create`. */
+	stagedCwd?: string | null;
+}): string {
+	return input.targetDisplay || input.liveCwd || input.stagedCwd || "";
 }
