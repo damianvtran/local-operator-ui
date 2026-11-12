@@ -112,12 +112,17 @@ export function resolveChatTitle(input: {
 	 * straight through to `UNTITLED_CHAT` would blank the header to "Untitled
 	 * chat" for exactly the window the user is watching their first send. The
 	 * binding is the durable identity the header's description line already names,
-	 * so it is the honest stand-in for a targeted row; an UNTARGETED draft (⌘N,
-	 * the New-chat row) has no binding and keeps the sentence it wore before the
-	 * send: "New chat". "Untitled chat" is for a conversation that exists and has
-	 * no name, which is not this.
+	 * so it is the honest stand-in for a targeted row.
+	 *
+	 * AN UNTARGETED DRAFT IS "Untitled chat" FROM THE CREATE (send-path design
+	 * round 1, D1c - superseding round 2's D8 "keep New chat"). Holding "New chat"
+	 * past the create left the header disagreeing with the sidebar, which lists
+	 * the conversation as "Untitled chat" from that very commit, and then flipped
+	 * when the draft row retired ~120 ms later: two swaps the reader watched
+	 * during their first send. Switching here makes it one swap, in the commit the
+	 * sidebar row appears, and the retire changes nothing.
 	 */
-	if (draftKey) return draftTarget ?? t("ui.chat.header.new_chat");
+	if (draftKey && draftTarget) return draftTarget;
 	return t(UNTITLED_CHAT_KEY);
 }
 

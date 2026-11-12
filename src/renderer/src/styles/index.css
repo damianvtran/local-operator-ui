@@ -6,8 +6,8 @@
 /* Arrival reserves final layout immediately and never replays on history
  * restore or virtual remount. Streamed answers have no arrival fade at all:
  * live text is the committed DOM, parsed per block. Every arriving row is ink
- * only (opacity) EXCEPT the user's own message, which also rises 6px into its
- * slot (`lo-transcript-arrival-rise` below). */
+ * only (opacity) EXCEPT a user message, which also rises 5px into its slot
+ * (`lo-transcript-arrival-rise` below). */
 @keyframes lo-transcript-arrival {
 	from {
 		opacity: 0;
@@ -26,21 +26,27 @@
 	}
 }
 
-/* THE USER'S OWN MESSAGE FADES INTO POSITION (operator request, 2026-11-11:
- * "the sending should be optimistic where we fade the message into position").
- * Only the echo of a send rises, because it is the one row the reader caused and
- * is watching for; agent rows, tool rows and the wait line stay ink-only so a
- * streaming turn does not jostle. Compositor-only: the layout box is final from
- * the first frame (transform does not move the stick-to-bottom measurements),
- * and only opacity and transform animate. `backwards`, not `both`: once the
- * rise ends the row carries no residual `transform`, which would otherwise keep
- * a containing block and stacking context on every user row for its lifetime.
- * The class is fixed at the row's mount, so owner coalescing (the same node
- * re-rendering) cannot replay it. Reduced motion: the row simply appears. */
-@keyframes lo-transcript-arrival-rise {
+/* A USER MESSAGE FADES INTO POSITION (operator request, 2026-11-11: "the
+ * sending should be optimistic where we fade the message into position").
+ * Every user row that arrives LIVE rises - the echo of this window's own send,
+ * and equally a message typed in the TUI, a peer or another window arriving
+ * while the reader watches (agent review round 1, F4: the same object arriving
+ * the same way gets the same entrance). Agent rows, tool rows and the wait line
+ * stay ink-only so a streaming turn does not jostle; history and remounts never
+ * enter (`entered` is fixed at the row's mount). Compositor-only: the layout box
+ * is final from the first frame (transform does not move the stick-to-bottom
+ * measurements), and only opacity and transform animate. `backwards`, not
+ * `both`: once the rise ends the row carries no residual `transform`, which
+ * would otherwise keep a containing block and stacking context on every user
+ * row for its lifetime. Reduced motion: the row simply appears.
+ *
+ * ONE KEYFRAME FOR A MESSAGE ROW'S RISE (design round 1, D4), shared with Team
+ * Bridge's `lo-team-bridge-arrival` below, whose comment records why the
+ * offset is 5px; one definition so the two message lists cannot drift. */
+@keyframes lo-message-rise {
 	from {
 		opacity: 0;
-		transform: translateY(6px);
+		transform: translateY(5px);
 	}
 	to {
 		opacity: 1;
@@ -48,8 +54,8 @@
 	}
 }
 .lo-transcript-arrival-rise {
-	animation: lo-transcript-arrival-rise var(--duration-slow)
-		var(--ease-out-quart) backwards;
+	animation: lo-message-rise var(--duration-slow) var(--ease-out-quart)
+		backwards;
 }
 @media (prefers-reduced-motion: reduce) {
 	.lo-transcript-arrival-rise {
@@ -90,19 +96,9 @@
  * 240ms `--duration-slow` and `--ease-out-quart`, so the two entrances agree on
  * timing and differ only in scale. Changing this number means re-shooting the
  * arrival frames, which is why it is stated here rather than tuned in review. */
-@keyframes lo-team-bridge-arrival {
-	from {
-		opacity: 0;
-		transform: translateY(5px);
-	}
-	to {
-		opacity: 1;
-		transform: translateY(0);
-	}
-}
 .lo-team-bridge-arrival {
-	animation: lo-team-bridge-arrival var(--duration-slow) var(--ease-out-quart)
-		both;
+	/* `lo-message-rise` (above) is the 5px rise this comment decides. */
+	animation: lo-message-rise var(--duration-slow) var(--ease-out-quart) both;
 }
 @media (prefers-reduced-motion: reduce) {
 	.lo-team-bridge-arrival {

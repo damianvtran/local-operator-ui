@@ -3865,6 +3865,23 @@ function SessionPanel({
 		? { ...canonical, status: "live" as const, error: null }
 		: canonical;
 	/*
+	 * THIS MOUNT BEGAN AS A DRAFT WITH NO SESSION (design round 1, D1b and D2).
+	 * The pane's mount key holds through its own draft's admission and retirement
+	 * (`panelMountKeyFor`), so a panel that mounted on a session-less draft is, for
+	 * its whole life, a conversation this pane CREATED. Two facts follow:
+	 * - It has painted the header as text since its first frame. When the draft
+	 *   row retired while the new session's stream was still connecting,
+	 *   `identityPending` read true and turned that text back into the pulsing
+	 *   skeleton (~220 ms after the press): a reload where nothing reloaded.
+	 * - Nothing precedes its first row, so its history is proven empty before any
+	 *   read (`createdHere` on the transcript), instead of "Earlier history not
+	 *   loaded · Try again" over the message the user just sent.
+	 * A draft mounted already bound to a session (a reload, a stable team row that
+	 * created one earlier) is NOT this: that session may have history, and a cold
+	 * open still holds the slot with the skeleton.
+	 */
+	const bornFromDraft = useRef(draftKey !== null && !sessionId);
+	/*
 	 * Nothing has named this session's identity yet, and the panel is waiting for
 	 * the stream that will.
 	 *
@@ -3882,7 +3899,11 @@ function SessionPanel({
 	 * that states what it has. `view` and not `canonical`, so this reads the same
 	 * status the panel below it renders from.
 	 */
-	const identityPending = !loaded && !draftKey && view.status === "connecting";
+	const identityPending =
+		!loaded &&
+		!draftKey &&
+		!bornFromDraft.current &&
+		view.status === "connecting";
 	/*
 	 * WHETHER THE HEADER'S IDENTITY SLOT OFFERS THE TWO SWITCHERS, computed here
 	 * because this is the component that owns the four facts the gate reads -
@@ -4911,7 +4932,13 @@ function SessionPanel({
 								 * always has). The directory is also the exact thing the footer
 								 * declares immutable, so the two lines now state one fact.
 								 */
-								starting
+								/*
+								 * Only until the create answers (design round 1, D1c): from the
+								 * commit that writes `sessionId` - the one that lists the row in
+								 * the sidebar - the line names the conversation's directory, so
+								 * the header swaps once, together with the sidebar.
+								 */
+								starting && !draft?.sessionId
 								? (loadedTargetDisplay ?? t("ui.chat.header.starting_session"))
 								: draft?.sessionId
 									? canonical.frontend?.cwd ||
@@ -4953,7 +4980,15 @@ function SessionPanel({
 								 * no-break space keeps the `text-body-sm` line box, so the title does
 								 * not jump the 3.8 px the skeleton-to-text swap measured.
 								 */
-								live.cwd || HELD_DESCRIPTION_LINE)
+								/*
+								 * A mount born from this pane's draft keeps the directory it
+								 * already painted while the new session's stream connects
+								 * (D1b): the draft arm above read the same staged `cwd`, so the
+								 * retire is text-for-text in the same span.
+								 */
+								live.cwd ||
+								(bornFromDraft.current && cwd) ||
+								HELD_DESCRIPTION_LINE)
 					}
 					descriptionPending={identityPending}
 					identity={identityControls}
@@ -4984,6 +5019,11 @@ function SessionPanel({
 						sessionId && desktopFeatureEnabled(capabilities.data, "commands")
 							? sessionId
 							: undefined
+					}
+					// The pencil's box, held from the draft so its mount moves nothing (D1a).
+					createdHere={bornFromDraft.current}
+					renameSlotReserved={
+						!sessionId && desktopFeatureEnabled(capabilities.data, "commands")
 					}
 					onOpenOptions={() => setOptions((value) => !value)}
 					isOptionsSidebarOpen={false}
@@ -5488,12 +5528,17 @@ export function ChatPage() {
 	const identity = panelIdentityFor(draftKey, id);
 	// The panel's MOUNT key, which unlike `identity` survives the draft's own
 	// admission: remounting there repainted the echo the press had just painted
-	// (`panelMountKeyFor`). Assigned during render, like the transcript's sticky
-	// `foldSession`, because the key must be right in the commit that flips.
+	// (`panelMountKeyFor`). Derived during render from the COMMITTED mount, and
+	// recorded only once this render commits (agent review round 1, F2): a
+	// render React discards must not leave its inputs behind as "the mount".
 	const panelMount = useRef<PanelMount | null>(null);
 	const mountKey = panelMountKeyFor(panelMount.current, draftKey, id);
-	panelMount.current =
-		mountKey === undefined ? null : { key: mountKey, draftKey, sessionId: id };
+	useLayoutEffect(() => {
+		panelMount.current =
+			mountKey === undefined
+				? null
+				: { key: mountKey, draftKey, sessionId: id };
+	}, [mountKey, draftKey, id]);
 	// The route-level sentence, when one shows; see the `role="alert"` note below.
 	const routeSentence =
 		routeError ||

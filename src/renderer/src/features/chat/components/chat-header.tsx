@@ -164,6 +164,14 @@ type ChatHeaderProps = {
 	 */
 	renameSessionId?: string;
 	/**
+	 * Hold the pencil's 20px box (plus the group's gap) before `renameSessionId`
+	 * exists, on a pane whose conversation will gain one - a new chat on a
+	 * backend with `commands` (design round 1, D1a). The pencil mounted at the
+	 * create hop and pushed the line beside it 24px right with no visible cause;
+	 * an empty `aria-hidden` box of the same size makes that mount a swap in place.
+	 */
+	renameSlotReserved?: boolean;
+	/**
 	 * The conversation's own id, copied by the overflow menu's "Copy session ID"
 	 * item (#893) - a DIFFERENT prop from `renameSessionId` above, and the two do
 	 * not collapse into one.
@@ -465,6 +473,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	identity,
 	deviceSlot,
 	renameSessionId,
+	renameSlotReserved = false,
 	sessionId,
 	onOpenOptions,
 	reserveTrailingChrome = false,
@@ -1060,7 +1069,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 									</h2>
 								</>
 							)}
-							{renameSessionId && (
+							{renameSessionId ? (
 								<button
 									ref={renameControlRef}
 									type="button"
@@ -1147,7 +1156,9 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 										<Pencil className={cn("size-3")} aria-hidden="true" />
 									)}
 								</button>
-							)}
+							) : renameSlotReserved ? (
+								<span aria-hidden="true" className={cn("size-5 shrink-0")} />
+							) : null}
 						</span>
 						{/*
 						 * THE QUIET PATH, and the `~` form is the point of it.

@@ -1991,10 +1991,11 @@ export function panelSessionIdOfView(
 }
 
 /**
- * The pane's own KEY - `panelIdentityFor` applied to the session id above.
+ * The pane's own IDENTITY - `panelIdentityFor` applied to the session id above.
  *
- * The pane keys its panel on this, which is what makes it the right answer to
- * "did the flow move the view": a surface that is not the pane (the command
+ * The pane's view is this identity (its panel MOUNTS under `panelMountKeyFor`,
+ * which differs only across a draft's own admission - the same view), which is
+ * what makes it the right answer to "did the flow move the view": a surface that is not the pane (the command
  * palette's close-time restore, which yields when a pick moved the view) can ask
  * for it without keeping a second copy of the expression that computes it - and
  * a second copy is how the two sides of that comparison come to describe
@@ -2044,6 +2045,26 @@ export function panelMountKeyFor(
 ): string | undefined {
 	const identity = panelIdentityFor(draftKey, sessionId);
 	if (!previous || identity === undefined) return identity;
+	// Nothing moved: the key is whatever this mount already holds.
+	if (draftKey === previous.draftKey && sessionId === previous.sessionId)
+		return previous.key;
+	/*
+	 * THE DRAFT LOST ITS SESSION (agent review round 1, F1). A failed first send
+	 * leaves the draft bound `(D, S)`; S's stream answering 404, or S being
+	 * deleted, unbinds it to `(D, undefined)`. Base remounted there because the
+	 * identity flipped `S -> D`, and the 404 arm relies on it
+	 * (`use-canonical-session`: "the pane re-keys onto the draft and its first
+	 * frame is a working composer instead of 'This conversation is gone'"). The
+	 * held key would be `D` again here, so derive a distinct one from the held
+	 * key: the pane resets, and later renders hold it like any other.
+	 */
+	if (
+		previous.sessionId !== undefined &&
+		sessionId === undefined &&
+		draftKey !== null &&
+		draftKey === previous.draftKey
+	)
+		return `${previous.key}#unbound`;
 	const admitted =
 		previous.draftKey !== null &&
 		previous.sessionId === undefined &&

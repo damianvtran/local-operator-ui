@@ -245,3 +245,37 @@ export function unsentSessionIds(
 		if (draft.sessionId && draft.pending !== true) out.add(draft.sessionId);
 	return out;
 }
+
+/**
+ * Which conversation row the sidebar marks current.
+ *
+ * WHY THE DRAFT'S SESSION (send-path design round 1, D3): a new chat's first
+ * send lists the created session's row from the create's answer, while the
+ * draft stays active until the send completes. Marking only `selectedConversation
+ * && !activeDraftKey` painted that new row unselected for ~125 ms - and the
+ * `New chat` item still selected - before both swapped. The pane is already
+ * showing that session (`panelSessionIdOfView`), so the row it lists is the
+ * current one from its first commit.
+ */
+export function currentSessionRowId(
+	activeDraftKey: string | null,
+	drafts: Record<string, ChatDraft>,
+	selectedConversation: string | undefined,
+): string | undefined {
+	if (!activeDraftKey) return selectedConversation;
+	return drafts[activeDraftKey]?.sessionId;
+}
+
+/**
+ * Whether the `New chat` item is the current one: an active untargeted draft
+ * that has not yet created its conversation (once it has, `currentSessionRowId`
+ * hands the mark to that conversation's row in the same commit).
+ */
+export function newChatCurrent(
+	activeDraftKey: string | null,
+	drafts: Record<string, ChatDraft>,
+): boolean {
+	if (!activeDraftKey) return false;
+	const draft = drafts[activeDraftKey];
+	return !draft?.target && !draft?.sessionId;
+}

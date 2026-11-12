@@ -291,7 +291,7 @@ export function messageBudgetRefusal(
 	 * bytes per UTF-16 unit (a `\uXXXX` escape; any unescaped unit is <= 3 UTF-8
 	 * bytes, a surrogate pair 4 for two units), and the rest of the body is the
 	 * fixed envelope `MESSAGE_ENVELOPE_BOUND_BYTES` bounds (pinned against the real
-	 * serialization by `scripts/message-budget.test.mjs`). Below that bound the
+	 * serialization by `scripts/desktop-renderer-transport.test.mjs`). Below that bound the
 	 * exact count could only say "fits", so it is not computed; anything near the
 	 * budget still takes the exact path.
 	 */

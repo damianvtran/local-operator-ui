@@ -250,8 +250,17 @@ test("a draft that has already created a conversation names the conversation, no
 			liveTitle: "",
 			catalogueTitle: "",
 		}),
-		"New chat",
-		"an untargeted draft (⌘N) keeps the sentence it wore before the send, not Untitled chat (design round 2's D8)",
+		t(UNTITLED_CHAT_KEY),
+		"an untargeted draft (⌘N) is named like its sidebar row from the create, so the header swaps once, with the sidebar (send-path design round 1, D1c)",
+	);
+	assert.equal(
+		resolveChatTitle({
+			draftKey: null,
+			liveTitle: "",
+			catalogueTitle: "",
+		}),
+		t(UNTITLED_CHAT_KEY),
+		"and the draft row retiring into its session changes nothing",
 	);
 });
 

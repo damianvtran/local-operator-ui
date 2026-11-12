@@ -64,7 +64,7 @@ globalThis.__canonicalEcho = (event) => {
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {DesktopControlError} from "@shared/api/local-operator/desktop-api"; export {desktopRequestSchema} from "./src/shared/desktop-contract"; export {desktopFeatureEnabled} from "./src/renderer/src/shared/api/local-operator/desktop-hooks"; export {mergeReturnedText, mergeReturnedPayload} from "./src/renderer/src/shared/store/conversation-input-store";export { sendUnsettledForSession } from "./src/renderer/src/features/chat/canonical/working-line-model"; export { composerIdentityFor, panelIdentityFor as composerPanelIdentity } from "./src/renderer/src/shared/store/canonical-sessions-store"; export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store"; export { rehydrateInputRows } from "./src/renderer/src/shared/store/conversation-input-store"; export { heldSendClaimsBySession, resolveHeldSendsFromServer } from "./src/renderer/src/features/chat/draft-resolution"; export { discardSuccessorIndex, unsentSessionIds, untargetedDraftRows } from "./src/renderer/src/features/chat/draft-rows"; export { ARCHIVE_UNDO_TOAST_MS } from "./src/renderer/src/features/chat/archive-undo";',
+			'export * from "./src/renderer/src/shared/store/canonical-sessions-store"; export {DesktopControlError} from "@shared/api/local-operator/desktop-api"; export {desktopRequestSchema} from "./src/shared/desktop-contract"; export {desktopFeatureEnabled} from "./src/renderer/src/shared/api/local-operator/desktop-hooks"; export {mergeReturnedText, mergeReturnedPayload} from "./src/renderer/src/shared/store/conversation-input-store";export { sendUnsettledForSession } from "./src/renderer/src/features/chat/canonical/working-line-model"; export { composerIdentityFor, panelIdentityFor as composerPanelIdentity } from "./src/renderer/src/shared/store/canonical-sessions-store"; export {useConversationInputStore} from "./src/renderer/src/shared/store/conversation-input-store"; export { rehydrateInputRows } from "./src/renderer/src/shared/store/conversation-input-store"; export { heldSendClaimsBySession, resolveHeldSendsFromServer } from "./src/renderer/src/features/chat/draft-resolution"; export { currentSessionRowId, discardSuccessorIndex, newChatCurrent, unsentSessionIds, untargetedDraftRows } from "./src/renderer/src/features/chat/draft-rows"; export { ARCHIVE_UNDO_TOAST_MS } from "./src/renderer/src/features/chat/archive-undo";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -206,6 +206,8 @@ const {
 	resolveHeldSendsFromServer,
 	discardSuccessorIndex,
 	unsentSessionIds,
+	currentSessionRowId,
+	newChatCurrent,
 	untargetedDraftRows,
 	ARCHIVE_UNDO_TOAST_MS,
 } = module;
@@ -932,4 +934,31 @@ test("the discard offer's life has one home, sonner's duration of the archive fa
 		"the offer's life must not grow a second clock: sonner's duration is it, imported from archive-undo.ts",
 	);
 	assert.equal(ARCHIVE_UNDO_TOAST_MS, 8_000);
+});
+
+test("the created conversation's row is the current one from the commit it is listed in (design round 1, D3)", () => {
+	const key = "draft:5e2b7a10-0000-4000-8000-000000000003";
+	const staged = { [key]: { pending: false } };
+	const sending = { [key]: { pending: true } };
+	const created = { [key]: { pending: true, sessionId: "777777777777" } };
+	// Typing, and the press before the create answers: `New chat` is current.
+	assert.equal(newChatCurrent(key, staged), true);
+	assert.equal(currentSessionRowId(key, staged, undefined), undefined);
+	assert.equal(newChatCurrent(key, sending), true);
+	// The create answers: the row it lists is current in that same commit, and
+	// `New chat` lets go - one selection on screen, never two or none.
+	assert.equal(currentSessionRowId(key, created, undefined), "777777777777");
+	assert.equal(newChatCurrent(key, created), false);
+	// The draft retiring into its session changes nothing the reader sees.
+	assert.equal(currentSessionRowId(null, {}, "777777777777"), "777777777777");
+	assert.equal(newChatCurrent(null, {}), false);
+	// A targeted draft belongs to its agent's row, never `New chat`.
+	assert.equal(
+		newChatCurrent(key, {
+			[key]: { target: { kind: "agent", name: "coder" } },
+		}),
+		false,
+	);
+	// A stale route id never outranks the active draft.
+	assert.equal(currentSessionRowId(key, staged, "888888888888"), undefined);
 });

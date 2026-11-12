@@ -191,7 +191,13 @@ import { CheckpointRail } from "./checkpoint-rail";
 import { visibleRecords } from "./cross-session-visibility";
 import { isRecordReachable } from "./failed-row-jump";
 import { FoldMedia } from "./fold-media";
-import { type FoldOpenEntry, foldOpenOf, withFoldOpen } from "./fold-open";
+import {
+	type FoldIdentity,
+	type FoldOpenEntry,
+	foldIdentityFor,
+	foldOpenOf,
+	withFoldOpen,
+} from "./fold-open";
 import { ImageGenCard } from "./image-gen-card";
 import {
 	imageGenCardMountActions,
@@ -4074,8 +4080,10 @@ const TranscriptRow = memo(function TranscriptRow({
 					 */
 					messageRow && "group focus-visible:outline-none",
 					/*
-					 * The user's own echo rises into place; every other arriving row is
-					 * ink only (see `lo-transcript-arrival-rise` in styles/index.css).
+					 * A live-arriving user row - this window's echo or a message from
+					 * the TUI, a peer or another window - rises into place; every other
+					 * arriving row is ink only (`lo-transcript-arrival-rise` in
+					 * styles/index.css, F4).
 					 * `entered` is fixed at mount, so the class never changes on this
 					 * node and the animation plays exactly once.
 					 */
@@ -4499,23 +4507,32 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	 * on every reconnect. The last STATED id is held until a different one
 	 * arrives - a gap keeps the conversation, a switch changes it.
 	 */
+	/*
+	 * `foldIdentity.key` is what the row list and the stores below are keyed on;
+	 * a new chat's null id learning its first stated id keeps it (Q1, see
+	 * `foldIdentityFor`), so the snapshot that names the session does not remount
+	 * the echo the press just painted.
+	 */
+	const foldIdentity = useRef<FoldIdentity | null>(null);
+	foldIdentity.current = foldIdentityFor(foldIdentity.current, sessionId);
+	const foldKey = foldIdentity.current.key;
 	const foldSession = useRef(sessionId);
-	if (sessionId !== null) foldSession.current = sessionId;
+	foldSession.current = foldIdentity.current.session;
 	const viewState = useRef({
-		session: foldSession.current,
+		session: foldKey,
 		store: new TranscriptViewState(),
 	});
-	if (viewState.current.session !== foldSession.current)
+	if (viewState.current.session !== foldKey)
 		viewState.current = {
-			session: foldSession.current,
+			session: foldKey,
 			store: new TranscriptViewState(),
 		};
 	const [foldOpen, setFoldOpen] = useState<{
-		session: string | null;
+		session: string;
 		entries: readonly FoldOpenEntry[];
-	}>(() => ({ session: foldSession.current, entries: [] }));
-	if (foldOpen.session !== foldSession.current) {
-		setFoldOpen({ session: foldSession.current, entries: [] });
+	}>(() => ({ session: foldKey, entries: [] }));
+	if (foldOpen.session !== foldKey) {
+		setFoldOpen({ session: foldKey, entries: [] });
 	}
 	/**
 	 * The reader's press on a fold, recorded against the fold's CURRENT id set.
@@ -4527,10 +4544,11 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	 */
 	const setFoldOpenFor = (ids: readonly string[], open: boolean) => {
 		const keep = new Set(rawRecords.current.map((record) => record.id));
+		const key = foldIdentity.current?.key ?? foldKey;
 		setFoldOpen((current) => ({
-			session: foldSession.current,
+			session: key,
 			entries: withFoldOpen(
-				current.session === foldSession.current ? current.entries : [],
+				current.session === key ? current.entries : [],
 				ids,
 				open,
 				keep,
@@ -6853,7 +6871,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		regionRef: containerRef,
 		entriesRef,
 		layout: scrollLayout,
-		sessionKey: `${foldSession.current ?? ""}:${transcript.viewEpoch}`,
+		sessionKey: `${foldKey}:${transcript.viewEpoch}`,
 		requested: domWindowRequested,
 		contentPresent: !holdPlaceholder && !collapsed,
 	});
@@ -6865,11 +6883,11 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	};
 	// Arrival is a model-tail event, never a history prepend or DOM remount.
 	if (
-		arrivalLedger.current?.session !== foldSession.current ||
+		arrivalLedger.current?.session !== foldKey ||
 		arrivalLedger.current?.epoch !== transcript.viewEpoch
 	) {
 		arrivalLedger.current = {
-			session: foldSession.current,
+			session: foldKey,
 			epoch: transcript.viewEpoch,
 			ids: new Set(rows.map((row) => row.record.id)),
 		};
@@ -7396,6 +7414,14 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		<div
 			className={cn(
 				CHAT_COLUMN_CONTAINER,
+				/*
+				 * No transition on this flip (QA round 1, Q3): reduced motion's global
+				 * 0.01 ms cap turns the initial `transition-property: all` into a
+				 * one-frame transition, which painted the first send with this column
+				 * still collapsed (64 px) and the echo under the header - the composer
+				 * band carries the same class for the same reason.
+				 */
+				"transition-none",
 				collapsed
 					? "relative h-0 grow-0 overflow-hidden"
 					: // `min-h-16`, not `min-h-0`: the docked ask (70% of the column, see
@@ -7624,6 +7650,8 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 						// region, the reserved gutter and the bottom anchor autoscroll reads
 						// are all as they were.
 						"relative flex w-full flex-col-reverse [scrollbar-gutter:stable_both-edges] will-change-[scroll-position] [overflow-anchor:auto] [transform:translateZ(0)]",
+						// Q3: the same one-frame reduced-motion transition as the column above.
+						"transition-none",
 						collapsed
 							? "h-0 grow-0 overflow-hidden p-0"
 							: "min-h-0 grow overflow-auto p-4",
@@ -7912,7 +7940,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 							 * they had and nothing about their tree changes shape.
 							 */
 							<TranscriptViewStateContext.Provider
-								key={`${foldSession.current}:${transcript.viewEpoch}`}
+								key={`${foldKey}:${transcript.viewEpoch}`}
 								value={viewState.current.store}
 							>
 								<CanvasPaneProvider conversationId={conversationId}>
@@ -8012,7 +8040,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 													key={slot.key}
 													entryKey={slot.key}
 													signature={descriptor.signature}
-													sessionKey={`${foldSession.current}:${transcript.viewEpoch}`}
+													sessionKey={`${foldKey}:${transcript.viewEpoch}`}
 													expanded={facts[0].open}
 													anchorHeader={
 														facts[0].candidate ||

@@ -1236,6 +1236,57 @@ test("the panel's mount key survives its draft's admission, and nothing else (se
 	);
 });
 
+test("a draft that loses its session re-keys the panel, once (agent review round 1, F1)", () => {
+	/*
+	 * A failed first send leaves `(D, S)`; S's stream 404ing (or S being deleted)
+	 * unbinds it to `(D, undefined)`, and the 404 arm counts on a remount so the
+	 * pane's first frame is a working composer, not "This conversation is gone".
+	 * The held key alone would read `D` again - the same key, no reset.
+	 */
+	const key = "draft:7d1c2a4e-0000-4000-8000-0000000000f1";
+	const sid = "555555555555";
+	const walk = (steps, renders = 1) => {
+		// `renders` > 1 replays each step against the SAME committed mount, the
+		// way a StrictMode double render (or a discarded render) does.
+		let mount = null;
+		return steps.map(([draftKey, sessionId]) => {
+			let k;
+			for (let i = 0; i < renders; i++)
+				k = panelMountKeyFor(mount, draftKey, sessionId);
+			mount = k === undefined ? null : { key: k, draftKey, sessionId };
+			return k;
+		});
+	};
+	const keys = walk([
+		[key, undefined],
+		[key, sid],
+		[key, undefined], // unbound: must re-key
+		[key, undefined], // and then hold
+		[key, sid], // a second admission of the same draft keeps the new mount
+		[key, undefined], // a second unbind re-keys again
+	]);
+	assert.equal(keys[0], key);
+	assert.equal(keys[1], key, "admission holds the mount");
+	assert.notEqual(keys[2], keys[1], "the unbind resets the pane");
+	assert.equal(keys[3], keys[2], "and the unbound pane is then stable");
+	assert.equal(keys[4], keys[3]);
+	assert.notEqual(keys[5], keys[4]);
+	assert.deepEqual(
+		walk(
+			[
+				[key, undefined],
+				[key, sid],
+				[key, undefined],
+				[key, undefined],
+				[null, "666666666666"],
+			],
+			2,
+		),
+		keys.slice(0, 4).concat("666666666666"),
+		"rendering each step twice changes nothing",
+	);
+});
+
 /**
  * The composer's send state is retired by the POST, not by the event stream.
  *
@@ -3389,7 +3440,7 @@ test("the header stops announcing that the session has not started once one exis
 	 * the directory the footer names.
 	 */
 	const rung = rendered.match(
-		/starting\s*\?\s*\(loadedTargetDisplay \?\? t\("ui\.chat\.header\.starting_session"\)\)\s*:\s*draft\?\.sessionId\s*\?\s*([\s\S]{0,200}?)\s*:/,
+		/starting(?:\s*&&\s*!draft\?\.sessionId)?\s*\?\s*\(loadedTargetDisplay \?\? t\("ui\.chat\.header\.starting_session"\)\)\s*:\s*draft\?\.sessionId\s*\?\s*([\s\S]{0,200}?)\s*:/,
 	);
 	assert.ok(
 		rung,
@@ -5701,16 +5752,23 @@ test("the user's echo fades INTO position once; every other arriving row stays i
 		return css.slice(at, css.indexOf("}", at));
 	};
 	const frames = css.slice(
-		css.indexOf("@keyframes lo-transcript-arrival-rise"),
+		css.indexOf("@keyframes lo-message-rise"),
 		css.indexOf(".lo-transcript-arrival-rise {"),
 	);
-	assert.match(frames, /from \{\s*opacity: 0;\s*transform: translateY\(6px\);/);
+	// 5px, ONE keyframe shared with Team Bridge's message row (design D4).
+	assert.match(frames, /from \{\s*opacity: 0;\s*transform: translateY\(5px\);/);
+	assert.equal(css.match(/@keyframes [a-z-]*rise\b/g)?.length, 1);
+	assert.doesNotMatch(css, /@keyframes lo-team-bridge-arrival\b/);
+	assert.match(
+		rule(".lo-team-bridge-arrival"),
+		/animation: lo-message-rise [^;]*\sboth;/,
+	);
 	assert.match(frames, /to \{\s*opacity: 1;\s*transform: translateY\(0\);/);
 	// Compositor-only, and nothing left behind: `backwards` drops the transform
 	// at the end instead of pinning a containing block on every user row.
 	assert.match(
 		rule(".lo-transcript-arrival-rise"),
-		/animation: lo-transcript-arrival-rise [^;]* backwards;/,
+		/animation: lo-message-rise [^;]*\sbackwards;/,
 	);
 	assert.doesNotMatch(rule(".lo-transcript-arrival-rise"), /\bboth\b|forwards/);
 	// Reduced motion: no animation at all.
@@ -5735,4 +5793,94 @@ test("the user's echo fades INTO position once; every other arriving row stays i
 		/entered\.current &&\s*\(record\.kind === "user"\s*\? "lo-transcript-arrival-rise"\s*: "lo-transcript-arrival"\)/,
 	);
 	assert.match(row, /const entered = useRef\(enter\);/);
+});
+
+test("the panel's mount is recorded only once its render commits (agent review round 1, F2)", () => {
+	const page = readFileSync(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	// Derived during render from the COMMITTED mount...
+	assert.match(
+		page,
+		/const mountKey = panelMountKeyFor\(panelMount\.current, draftKey, id\);/,
+	);
+	// ...and written from a layout effect, never from the render body, so a
+	// render React throws away cannot leave its inputs behind as "the mount".
+	const writes = [...page.matchAll(/panelMount\.current =/g)];
+	assert.equal(writes.length, 1);
+	const before = page.slice(0, writes[0].index);
+	assert.match(
+		before.slice(before.lastIndexOf("const mountKey")),
+		/useLayoutEffect\(\(\) => \{\s*$/,
+	);
+});
+
+test("a new chat's first send changes the header once: no pencil jump, no skeleton, named with the sidebar (design round 1, D1)", () => {
+	const strip = (path) =>
+		readFileSync(path, "utf8").replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	const page = strip("src/renderer/src/features/chat/components/chat-page.tsx");
+	const header = strip(
+		"src/renderer/src/features/chat/components/chat-header.tsx",
+	);
+	// (a) The pencil's 20px box is held, aria-hidden, until the pencil mounts.
+	assert.match(
+		header,
+		/\) : renameSlotReserved \? \(\s*<span aria-hidden="true" className=\{cn\("size-5 shrink-0"\)\} \/>\s*\) : null\}/,
+	);
+	assert.match(
+		page,
+		/renameSlotReserved=\{\s*!sessionId && desktopFeatureEnabled\(capabilities\.data, "commands"\)\s*\}/,
+	);
+	// (b) A mount that began on a session-less draft never returns to the
+	// skeleton, and keeps the directory it painted while the stream connects.
+	assert.match(
+		page,
+		/const bornFromDraft = useRef\(draftKey !== null && !sessionId\);/,
+	);
+	assert.match(
+		page,
+		/const identityPending =\s*!loaded &&\s*!draftKey &&\s*!bornFromDraft\.current &&\s*view\.status === "connecting";/,
+	);
+	assert.match(
+		page,
+		/live\.cwd \|\|\s*\(bornFromDraft\.current && cwd\) \|\|\s*HELD_DESCRIPTION_LINE\)/,
+	);
+	// (c) "Starting the session" lasts only until the create answers.
+	assert.match(
+		page,
+		/starting && !draft\?\.sessionId\s*\? \(loadedTargetDisplay \?\? t\("ui\.chat\.header\.starting_session"\)\)/,
+	);
+});
+
+test("a conversation this pane created reads 'Start of conversation' from its first frame (design round 1, D2)", () => {
+	const strip = (path) =>
+		readFileSync(path, "utf8").replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	const content = strip(
+		"src/renderer/src/features/chat/components/chat-content.tsx",
+	);
+	const page = strip("src/renderer/src/features/chat/components/chat-page.tsx");
+	assert.match(
+		content,
+		/hydrationProven=\{canonical\.view\.hydrated \|\| createdHere\}/,
+	);
+	assert.match(content, /createdHere = false,/);
+	assert.match(page, /createdHere=\{bornFromDraft\.current\}/);
+});
+
+test("the transcript column's collapse flip never transitions, so reduced motion's first send frame is final (QA round 1, Q3)", () => {
+	const source = readFileSync(
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	assert.match(
+		source,
+		/CHAT_COLUMN_CONTAINER,\s*"transition-none",\s*collapsed\s*\? "relative h-0 grow-0 overflow-hidden"\s*:\s*"relative flex min-h-16 flex-1 basis-0 flex-col",/,
+	);
+	// And the scroller inside it, whose `p-0 grow-0` -> `p-4 grow` flip held the
+	// echo 16 px high for the same one frame.
+	assert.match(
+		source,
+		/\[transform:translateZ\(0\)\]",\s*"transition-none",\s*collapsed\s*\? "h-0 grow-0 overflow-hidden p-0"/,
+	);
 });
