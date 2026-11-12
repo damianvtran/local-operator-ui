@@ -454,5 +454,15 @@
 	"ui.chat.canonical.image_gen.state.done_batch": "{material, select, video {वीडियो का बैच} voiceover {वॉइसओवर का बैच} sound_effect {साउंड इफ़ेक्ट का बैच} other {तस्वीरों का बैच}}",
 	"ui.chat.canonical.image_gen.state.already_finished": "यह पहले ही पूरा हो चुका है।",
 	"ui.chat.canonical.image_gen.state.failed": "{material, select, video {वीडियो नहीं बनाया जा सका।} voiceover {वॉइसओवर नहीं बनाया जा सका।} sound_effect {साउंड इफ़ेक्ट नहीं बनाया जा सका।} other {तस्वीर नहीं बनाई जा सकी।}}",
-	"ui.chat.canonical.image_gen.state.failed_batch": "{material, select, video {वीडियो का बैच विफल रहा।} voiceover {वॉइसओवर का बैच विफल रहा।} sound_effect {साउंड इफ़ेक्ट का बैच विफल रहा।} other {तस्वीरों का बैच विफल रहा।}}"
+	"ui.chat.canonical.image_gen.state.failed_batch": "{material, select, video {वीडियो का बैच विफल रहा।} voiceover {वॉइसओवर का बैच विफल रहा।} sound_effect {साउंड इफ़ेक्ट का बैच विफल रहा।} other {तस्वीरों का बैच विफल रहा।}}",
+	"ui.chat.canonical.sound.batch.item_status": "{status, select, failed {{label} · विफल} cancelled {{label} · रोका गया} other {{label} · स्थिति अज्ञात}}",
+	"ui.chat.canonical.sound.batch.summary": "{completed, plural, one {पूरा हुआ: {completed, number, ::group-off}} other {पूरे हुए: {completed, number, ::group-off}}} · {failed, plural, one {विफल: {failed, number, ::group-off}} other {विफल: {failed, number, ::group-off}}}{cancelled, plural, =0 {} one { · रोका गया: {cancelled, number, ::group-off}} other { · रोके गए: {cancelled, number, ::group-off}}}{unknown, plural, =0 {} one { · स्थिति अज्ञात: {unknown, number, ::group-off}} other { · स्थिति अज्ञात: {unknown, number, ::group-off}}}{has_attention, select, yes {। ध्यान देने की ज़रूरत: {labels}} other {}}",
+	"ui.chat.canonical.sound.batch.latest_update": "नवीनतम अपडेट: {name} (कुल {total, number, ::group-off} में से आइटम {item, number, ::group-off})।",
+	"ui.chat.canonical.sound.cost.unknown": "लागत अभी पता नहीं है।",
+	"ui.chat.canonical.sound.cost.no_charge": "कोई शुल्क नहीं।",
+	"ui.chat.canonical.sound.cost.estimated_zero": "अनुमानित लागत $0; अंतिम शुल्क की पुष्टि नहीं हुई।",
+	"ui.chat.canonical.sound.cost.batch_unknown": "कुल लागत अभी पता नहीं है।",
+	"ui.chat.canonical.media.image_label": "{count, plural, =1 {तस्वीर} other {तस्वीर {position, number, ::group-off}}}",
+	"ui.chat.canonical.media.sound_label": "{count, plural, =1 {साउंड} other {साउंड {position, number, ::group-off}}}",
+	"ui.chat.canonical.supplement.sound_fallback_label": "बनाया गया साउंड"
 }

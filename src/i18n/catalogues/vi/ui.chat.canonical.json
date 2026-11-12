@@ -454,5 +454,15 @@
 	"ui.chat.canonical.image_gen.state.done_batch": "{material, select, video {Loạt video} voiceover {Loạt lời thuyết minh} sound_effect {Loạt hiệu ứng âm thanh} other {Loạt hình ảnh}}",
 	"ui.chat.canonical.image_gen.state.already_finished": "Đã hoàn tất rồi.",
 	"ui.chat.canonical.image_gen.state.failed": "{material, select, video {Không thể tạo video.} voiceover {Không thể tạo lời thuyết minh.} sound_effect {Không thể tạo hiệu ứng âm thanh.} other {Không thể tạo hình ảnh.}}",
-	"ui.chat.canonical.image_gen.state.failed_batch": "{material, select, video {Loạt video không thành công.} voiceover {Loạt lời thuyết minh không thành công.} sound_effect {Loạt hiệu ứng âm thanh không thành công.} other {Loạt hình ảnh không thành công.}}"
+	"ui.chat.canonical.image_gen.state.failed_batch": "{material, select, video {Loạt video không thành công.} voiceover {Loạt lời thuyết minh không thành công.} sound_effect {Loạt hiệu ứng âm thanh không thành công.} other {Loạt hình ảnh không thành công.}}",
+	"ui.chat.canonical.sound.batch.item_status": "{status, select, failed {{label} · Thất bại} cancelled {{label} · Đã dừng} other {{label} · Không rõ trạng thái}}",
+	"ui.chat.canonical.sound.batch.summary": "{completed, plural, other {{completed, number, ::group-off} hoàn tất}} · {failed, plural, other {{failed, number, ::group-off} thất bại}}{cancelled, plural, =0 {} other { · {cancelled, number, ::group-off} đã dừng}}{unknown, plural, =0 {} other { · {unknown, number, ::group-off} không rõ trạng thái}}{has_attention, select, yes {. Cần chú ý: {labels}} other {}}",
+	"ui.chat.canonical.sound.batch.latest_update": "Cập nhật gần nhất: {name} (mục {item, number, ::group-off}/{total, number, ::group-off}).",
+	"ui.chat.canonical.sound.cost.unknown": "Chưa biết chi phí.",
+	"ui.chat.canonical.sound.cost.no_charge": "Không tính phí.",
+	"ui.chat.canonical.sound.cost.estimated_zero": "Chi phí ước tính là $0; khoản phí cuối cùng chưa được xác nhận.",
+	"ui.chat.canonical.sound.cost.batch_unknown": "Chưa biết tổng chi phí.",
+	"ui.chat.canonical.media.image_label": "{count, plural, =1 {Hình ảnh} other {Hình ảnh {position, number, ::group-off}}}",
+	"ui.chat.canonical.media.sound_label": "{count, plural, =1 {Âm thanh} other {Âm thanh {position, number, ::group-off}}}",
+	"ui.chat.canonical.supplement.sound_fallback_label": "Âm thanh đã tạo"
 }

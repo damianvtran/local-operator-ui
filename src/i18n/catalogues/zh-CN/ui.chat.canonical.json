@@ -454,5 +454,15 @@
 	"ui.chat.canonical.image_gen.state.done_batch": "{material, select, video {视频批次} voiceover {旁白批次} sound_effect {音效批次} other {图像批次}}",
 	"ui.chat.canonical.image_gen.state.already_finished": "已经完成。",
 	"ui.chat.canonical.image_gen.state.failed": "{material, select, video {无法生成视频。} voiceover {无法生成旁白。} sound_effect {无法生成音效。} other {无法生成图像。}}",
-	"ui.chat.canonical.image_gen.state.failed_batch": "{material, select, video {视频批次生成失败。} voiceover {旁白批次生成失败。} sound_effect {音效批次生成失败。} other {图像批次生成失败。}}"
+	"ui.chat.canonical.image_gen.state.failed_batch": "{material, select, video {视频批次生成失败。} voiceover {旁白批次生成失败。} sound_effect {音效批次生成失败。} other {图像批次生成失败。}}",
+	"ui.chat.canonical.sound.batch.item_status": "{status, select, failed {{label} · 失败} cancelled {{label} · 已停止} other {{label} · 状态未知}}",
+	"ui.chat.canonical.sound.batch.summary": "{completed, plural, other {已完成{completed, number, ::group-off}项}} · {failed, plural, other {失败{failed, number, ::group-off}项}}{cancelled, plural, =0 {} other { · 已停止{cancelled, number, ::group-off}项}}{unknown, plural, =0 {} other { · 状态未知{unknown, number, ::group-off}项}}{has_attention, select, yes {。需要关注：{labels}} other {}}",
+	"ui.chat.canonical.sound.batch.latest_update": "最近更新：{name}（第{item, number, ::group-off}项，共{total, number, ::group-off}项）。",
+	"ui.chat.canonical.sound.cost.unknown": "费用尚不明确。",
+	"ui.chat.canonical.sound.cost.no_charge": "未收费。",
+	"ui.chat.canonical.sound.cost.estimated_zero": "估算费用为$0；最终计费尚未确认。",
+	"ui.chat.canonical.sound.cost.batch_unknown": "总费用尚不明确。",
+	"ui.chat.canonical.media.image_label": "{count, plural, =1 {图片} other {第{position, number, ::group-off}张图片}}",
+	"ui.chat.canonical.media.sound_label": "{count, plural, =1 {声音} other {第{position, number, ::group-off}个声音}}",
+	"ui.chat.canonical.supplement.sound_fallback_label": "生成的声音"
 }
