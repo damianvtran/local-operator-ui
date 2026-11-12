@@ -15,6 +15,9 @@ import {
 	temporaryInfo,
 } from "../chat-temporary";
 import { useAskClock } from "../use-ask-clock";
+// A cycle (chat-sidebar renders this group), but `rowCurrent` is read only at
+// render time, after both modules have evaluated, so the live binding is set.
+import { rowCurrent } from "./chat-sidebar";
 
 /**
  * The sidebar's `Temporary · N` group: the one place a temporary chat is listed.
@@ -99,8 +102,7 @@ export const SidebarTemporaryGroup: FC<{
 									title={`${title}\n${meta}`}
 									className={cn(
 										"flex w-full min-w-0 items-start gap-1.5 rounded-md py-1 ps-[1.375rem] pe-1 text-start text-body-sm leading-5 hover:bg-row-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2",
-										current &&
-											"bg-row-selected font-medium text-ink hover:bg-row-selected",
+										current && rowCurrent,
 									)}
 								>
 									{/* On the title's line box (`leading-5`), not centred on both lines. */}
