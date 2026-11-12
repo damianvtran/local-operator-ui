@@ -1,0 +1,205 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "delta",
+  "date": "2026-11-12",
+  "locale": "vi",
+  "namespace": "ui.chat.canonical",
+  "file_group": "S16f generation-card labels merged with main's loading.* keys (15 keys audited: 5 loading.* from main, 10 PR-added sound.batch.*, sound.cost.*, media.*_label, supplement.sound_fallback_label)",
+  "round": 1,
+  "branch": "feat/i18n-s16f-generation-card-labels",
+  "head": "8180eff1f705eb79d4df5123d6108c539b585b2e",
+  "worktree": "~/local-operator-ui/.worktrees/i18n-s16a (manager-owned, read-only for this audit; nothing edited, staged, committed or checked out)",
+  "authority": {
+    "glossary": "~/local-operator i18n/glossary.md at origin/main",
+    "style_guide": "~/local-operator i18n/style-guides/vi.md at origin/main"
+  },
+  "instance": "49c5a10a37b4",
+  "agent": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "4e31230c2dd6",
+    "instance": "49c5a10a37b4",
+    "model": "deepseek/deepseek-flash",
+    "fallback": false,
+    "actual_model_source": "Harness model header for session 4e31230c2dd6 reported deepseek/deepseek-flash for the whole run; no model-switch card, no provider-failure notice and no [session incident] appeared, so no fallback descent is disclosed.",
+    "independent_from_translator_session": true,
+    "independence": "Did not translate, edit or commit these values and wrote no file inside the repository. Read the English source, its context sidecar, the vi catalogue, the core glossary/style guide and the prior receipts; wrote only the files listed under artifacts, in session scratch."
+  },
+  "status": "passed",
+  "result": "clean",
+  "key_count": 15,
+  "keys_read": 15,
+  "keys_read_note": "All 15 merged keys read in full (5 main-added loading.{cold,older,region_label,remote,revalidating}; 10 PR-added media.{image_label,sound_label}, sound.batch.{item_status,latest_update,summary}, sound.cost.{batch_unknown,estimated_zero,no_charge,unknown}, supplement.sound_fallback_label). Integrity script result: 467 keys merged; 452 keys byte-identical to origin/main, 5/5 loading.* equal to origin/main, 10/10 PR-added equal to 107ff1dd, 0 changed outside the 15, 0 keys added/dropped beyond the moves, the 4 renamed keys absent (467 = 457 + 10); RESULT PASS.",
+  "source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+  "target_sha256": "a37a5690412c841379ea44d6d63f4a5314579f4a157ff3c7f67be2ee872fe750",
+  "sha256": {
+    "en": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+    "en_context": "8f56e0d2b384c6b41add57a64e6c863e565cb61d5a7c0de482d42f380be3acfe",
+    "vi": "a37a5690412c841379ea44d6d63f4a5314579f4a157ff3c7f67be2ee872fe750"
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+      "sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+      "sha256": "8f56e0d2b384c6b41add57a64e6c863e565cb61d5a7c0de482d42f380be3acfe"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/vi/ui.chat.canonical.json",
+      "sha256": "a37a5690412c841379ea44d6d63f4a5314579f4a157ff3c7f67be2ee872fe750"
+    }
+  },
+  "integrity": {
+    "method": "python3 integrity_vi.py — reads the worktree file plus `git show origin/main:<path>` and `git show 107ff1dd0bddd0dbefa60e27cb179ee636d923a1:<path>`; nothing checked out",
+    "merged_key_count": 467,
+    "origin_main_key_count": 457,
+    "pr_head_107ff1dd_key_count": 466,
+    "unchanged_vs_origin_main": 452,
+    "main_added_loading_equal_to_main": "5/5",
+    "pr_added_equal_to_107ff1dd": "10/10",
+    "changed_outside_the_15": 0,
+    "keys_added_beyond_pr_set": 0,
+    "keys_dropped_beyond_renames": 0,
+    "renamed_keys_absent": [
+      "ui.chat.canonical.older_history.loading",
+      "ui.chat.canonical.placeholder.loading",
+      "ui.chat.canonical.placeholder.region_label",
+      "ui.chat.canonical.transcript.stale_caption"
+    ],
+    "vi_at_origin_main_sha256": "3c6f6097083fd0e921fc5f6c2c436633cb4ce522e35a66d329e4fecfaf9a1b65",
+    "vi_at_107ff1dd_sha256": "65beedffec6a88924e977f5aadafbf52ed4cfb508d46975481273c7103e12900",
+    "result": "PASS"
+  },
+  "mechanical": {
+    "repo_validator": "node --test --test-name-pattern '[vi]' scripts/i18n/locale-parity.test.mjs -> 6 tests, 6 pass, 0 fail",
+    "check_duplicates": "ok — 1437 file(s) scanned, 0 duplicate key(s)",
+    "context_parity": "ok — every English key covered, 129 allowed gaps in 4 namespaces (shrink-only); none in ui.chat.canonical",
+    "generate_check": "keys.gen.ts byte-identical to a fresh generation",
+    "own_icu_check": "15/15 keys: argument sets identical to English; every plural has `other`; no branch outside vi's CLDR set (other-only); `=1` exact branches and `=0 {}` hide-branches preserved; the has_attention select keeps the data values yes/other; every number argument keeps ::group-off; all values NFC; U+2026 where English has it and absent in region_label; no space before punctuation; no English prose",
+    "skeleton_parity": "0 unique (argument, style) sets differ across the 15 keys"
+  },
+  "findings": [],
+  "findings_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "observations": [
+    {
+      "id": "vi-s16f-au3-o1",
+      "severity": "info",
+      "key": "ui.chat.canonical.loading.older",
+      "text": "`Đang tải tin nhắn trước…` — `trước` can also parse as 'in advance'. Concur with the earlier NIT disposition (no change): three shipped siblings use the same words (Tải tin nhắn trước, Không tải được tin nhắn trước, Tìm trong tin nhắn trước), so a single-key rewording would create the drift it claims to fix."
+    },
+    {
+      "id": "vi-s16f-au3-o2",
+      "severity": "info",
+      "key": "ui.chat.canonical.loading.revalidating",
+      "text": "`Đang kiểm tra tin nhắn mới…` renders 'checking for new messages' as kiểm tra + noun, the shipped pattern for 'checking for updates' (Đang kiểm tra bản cập nhật…, ui.browser.extensions). Calque-free."
+    },
+    {
+      "id": "vi-s16f-au3-o3",
+      "severity": "info",
+      "key": "ui.chat.canonical.sound.batch.summary",
+      "text": "English 'cancelled/stopped' collapses to `đã dừng`: truthful for both outcomes and consistent with this card's own item_status mapping (cancelled -> Đã dừng) and shipped ui.projects.project_model.stopped. Not read as an omission."
+    },
+    {
+      "id": "vi-s16f-au3-o4",
+      "severity": "info",
+      "key": "ui.chat.canonical.sound.batch.latest_update",
+      "text": "`mục {item}/{total}` keeps 'item X of Y' compactly without a calqued `của`; nothing lost, and it keeps the wrapping row short."
+    },
+    {
+      "id": "vi-s16f-au3-o5",
+      "severity": "info",
+      "key": "ui.chat.canonical.supplement.sound_fallback_label",
+      "text": "`Âm thanh được tạo` — noun + passive is right for a name; the status line `Đã tạo hình ảnh` is verb-initial by role. Agrees with the r3 INFO note: do not unify these later."
+    },
+    {
+      "id": "vi-s16f-au3-o6",
+      "severity": "info",
+      "key": "ui.chat.canonical.sound.batch.item_status",
+      "text": "`Không rõ trạng thái` is three words against the sidecar's 'one or two words' hint. Cleared: the sidecar says the line wraps, there is no maxCells/maxChars hint in this namespace's sidecar, and the identical string ships in ui.ownerAudit.unknown_status."
+    }
+  ],
+  "prior_audits_consulted": [
+    {
+      "receipt": "i18n/receipts/d29293b521fd.json",
+      "scope": "same vi bytes 65beedff, 10 S16f keys",
+      "verdict": "passed, 0 findings, 1 INFO"
+    },
+    {
+      "receipt": "i18n/receipts/15686088b7ce-vi.json",
+      "scope": "vi at origin/main bytes 3c6f6097, 5 loading.* keys",
+      "verdict": "passed, 3 carried NITs"
+    },
+    {
+      "receipt": "i18n/receipts/4b8febc34595-vi.json",
+      "scope": "N1 on loading.older",
+      "verdict": "no change required — consistent with audited neighbour"
+    }
+  ],
+  "prior_audit_judgement": "Independently concur with both prior verdicts; the concurrence is reasoned from the bytes and shipped vi copy in report.md (observations 1-6), not deferred to those receipts.",
+  "current_report_verdict": {
+    "status": "passed",
+    "result": "clean",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [],
+    "info_observation_ids": [
+      "vi-s16f-au3-o1",
+      "vi-s16f-au3-o2",
+      "vi-s16f-au3-o3",
+      "vi-s16f-au3-o4",
+      "vi-s16f-au3-o5",
+      "vi-s16f-au3-o6"
+    ]
+  },
+  "artifacts": {
+    "receipt": {
+      "path": "/Users/damian/.local-operator/sessions/4e31230c2dd6/scratchpad/49c5a10a37b4-receipt.json",
+      "sha256": "self",
+      "retention_target": "i18n/receipts/49c5a10a37b4.json",
+      "kind": "binding-receipt",
+      "note": "Session scratch until the integrator copies it byte-for-byte into i18n/receipts/. Its bytes must not be amended after ledger-assemble binds them."
+    },
+    "report.md": {
+      "path": "/Users/damian/.local-operator/sessions/4e31230c2dd6/scratchpad/report.md",
+      "sha256": "03e95668c43ebc30b56ba3ff803f5b57938aaa5ced1598d6c7f68953a88d49a7",
+      "retention_target": "i18n/audits/evidence/vi/ui.chat.canonical/s16f-au3-49c5a10a/report.md",
+      "kind": "audit-notes-not-execution-log"
+    },
+    "audit.log": {
+      "path": "/Users/damian/.local-operator/sessions/4e31230c2dd6/scratchpad/audit.log",
+      "sha256": "862938f105a67e3ee8728f8c778ec7b808fb9d0bed877743709b2cbf7281d19a",
+      "retention_target": "i18n/audits/evidence/vi/ui.chat.canonical/s16f-au3-49c5a10a/audit.log",
+      "kind": "execution-log",
+      "note": "Commands actually run in this session with their real output and exit codes, including two failures of my own rigs (a wrong arithmetic assertion and three checker bugs) kept rather than elided."
+    },
+    "integrity_vi.py": {
+      "path": "/Users/damian/.local-operator/sessions/4e31230c2dd6/scratchpad/integrity_vi.py",
+      "sha256": "30998856069e28ca24ebff9cef2819ea31109b63070b7722134127d420546599",
+      "kind": "audit-tool"
+    },
+    "icu_vi_check.mjs": {
+      "path": "/Users/damian/.local-operator/sessions/4e31230c2dd6/scratchpad/icu_vi_check.mjs",
+      "sha256": "7d3a001083eee56246437f9d914d6a020dbbec47efc4f60cf35b0e0a78f62a30",
+      "kind": "audit-tool"
+    }
+  },
+  "committed": false,
+  "tracked": false,
+  "replacement": null,
+  "original_lost_evidence": {
+    "status": "none-lost",
+    "original_path": null,
+    "expected_original_sha256": null
+  },
+  "backdated": false,
+  "new_report_is_original": true,
+  "new_report_is_historical_R2_recreation": false
+}

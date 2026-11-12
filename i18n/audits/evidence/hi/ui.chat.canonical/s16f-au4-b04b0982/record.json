@@ -1,0 +1,140 @@
+{
+	"schema": "i18n-audit-record/1",
+	"locale": "hi",
+	"namespace": "ui.chat.canonical",
+	"slice": "S16f (PR #1876) — round 4, independent delta audit of the landed round-3 remediation",
+	"audit_date": "2026-11-12",
+	"key_count": 9,
+	"audit_kind": "independent_translation_audit_read_only_delta",
+	"audited_head": "cbb8782a39b5692ae46bfc3aa6930840420e9b14",
+	"head_verified_against_pr": "gh pr view 1876 → state OPEN, headRefOid cbb8782a39b5692ae46bfc3aa6930840420e9b14 (the pushed head, not a local copy)",
+	"baseline_for_delta": "8180eff1f705eb79d4df5123d6108c539b585b2e",
+	"scope": {
+		"read_in_full": [
+			"ui.chat.canonical.media.sound_label",
+			"ui.chat.canonical.sound.player_failed",
+			"ui.chat.canonical.supplement.sound_fallback_label",
+			"ui.chat.canonical.image_gen.state.done",
+			"ui.chat.canonical.image_gen.state.done_batch",
+			"ui.chat.canonical.image_gen.state.failed",
+			"ui.chat.canonical.image_gen.state.failed_batch",
+			"ui.chat.canonical.image_gen.state.running",
+			"ui.chat.canonical.image_gen.state.running_batch"
+		],
+		"retained_on_byte_identity": 458,
+		"why": "The 3 values cbb8782a changed, plus every other key in the namespace whose value carries the same noun (ध्वनि) or the kept compound (साउंड इफ़ेक्ट), so the noun consistency the commit claims is judged directly. The remaining 458 values (464 identical keys minus the 6 siblings already read above) are byte-identical to 8180eff1 and are carried on that proof, not re-read.",
+		"prev_head_audit_status": "8180eff1 carried an independent round-3 audit that returned changes_requested for hi; this record answers it"
+	},
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "b04b0982d048",
+		"model": "deepseek/deepseek-flash",
+		"actual_model_source": "harness session header for this run; no fallback, no model switch, no role/default pin, no tool change",
+		"independent_from_translator_session": true,
+		"translator_session": {
+			"agent": "i18n-translator",
+			"session": "not supplied in my brief",
+			"note": "the independent translator who decided the corrections; a different instance from this one"
+		},
+		"independent_from_round3_auditor_session": true,
+		"round3_auditor_session": "not supplied in my brief; a different instance from this one — this is the first independent read of the corrected values",
+		"independence_disclosure": "One shared GitHub account (damianvtran) authors the PR and every comment, so comment authorship proves nothing; independence rests on agent and session identity, both different from the translator and from the round-3 auditor."
+	},
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+			"sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+			"key_count": 467
+		},
+		"target": {
+			"path": "src/i18n/catalogues/hi/ui.chat.canonical.json",
+			"sha256": "5bad55ca446e6e2e0bc853d503d94280f444cd009402431c65e8ce997528689b",
+			"key_count": 467
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+			"sha256": "8f56e0d2b384c6b41add57a64e6c863e565cb61d5a7c0de482d42f380be3acfe"
+		},
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"core_rev": "4981010c6fb68d2b1f02e08b7cd58a06965e8c33",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/hi.md",
+			"core_rev": "14f73c4dcce62d858508fb6313b7f0416999a63b",
+			"sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+		},
+		"canonicalisation": "sorted keys, compact JSON.stringify, UTF-8 (per-key value hashes in the receipt)"
+	},
+	"integrity": {
+		"key_sets_equal_english": "467 en / 467 hi, symmetric difference 0",
+		"key_order_vs_baseline": "identical",
+		"values_byte_identical_to_baseline": 464,
+		"values_differing_from_baseline": 3,
+		"differing_keys": [
+			"ui.chat.canonical.media.sound_label",
+			"ui.chat.canonical.sound.player_failed",
+			"ui.chat.canonical.supplement.sound_fallback_label"
+		],
+		"raw_file": "469 lines before and after, 3 differing lines, tab-indented catalogue shape, trailing newline present",
+		"added_merged_group": {
+			"size": 15,
+			"members": "10 keys the PR adds over origin/main + 5 keys main brought in the 8180eff1 merge",
+			"unchanged_from_previous_audited_values": 13,
+			"moved": [
+				"ui.chat.canonical.media.sound_label",
+				"ui.chat.canonical.supplement.sound_fallback_label"
+			],
+			"note": "sound.player_failed is a pre-existing key (present on origin/main); its single change is in this commit's scope and audited here."
+		}
+	},
+	"artifacts": [
+		{
+			"path": "i18n/audits/evidence/hi/ui.chat.canonical/s16f-au4-b04b0982/record.json",
+			"note": "this file"
+		},
+		{
+			"path": "i18n/audits/evidence/hi/ui.chat.canonical/s16f-au4-b04b0982/report.md",
+			"scratchpad_copy": "/Users/damian/.local-operator/sessions/b04b0982d048/scratchpad/s16f-au4-hi/report.md",
+			"sha256": "e04b0305f18aea9eb98be96da2d287096e9ea2f4ea97abb9c244221c3e042573"
+		},
+		{
+			"path": "i18n/audits/evidence/hi/ui.chat.canonical/s16f-au4-b04b0982/audit.log",
+			"scratchpad_copy": "/Users/damian/.local-operator/sessions/b04b0982d048/scratchpad/s16f-au4-hi/audit.log",
+			"sha256": "18c09ec2e9e8a6fc32e6e337f7e5e68d26c0da92fcb63f1b0d3a8729821e0037",
+			"note": "real command transcripts; every command was re-executed while the log was written"
+		},
+		{
+			"path": "i18n/audits/evidence/hi/ui.chat.canonical/s16f-au4-b04b0982/receipt-hi-s16f-au4.json",
+			"scratchpad_copy": "/Users/damian/.local-operator/sessions/b04b0982d048/scratchpad/s16f-au4-hi/receipt-hi-s16f-au4.json",
+			"sha256": "e786162df109f8f74890076ed8e8d39af873bf7f473376216e730d554e68d9ee"
+		},
+		{
+			"path": "i18n/audits/evidence/hi/ui.chat.canonical/s16f-au4-b04b0982/check-hi-s16f-au4.mjs",
+			"scratchpad_copy": "/Users/damian/.local-operator/sessions/b04b0982d048/scratchpad/s16f-au4-hi/check-hi-s16f-au4.mjs",
+			"sha256": "afb1bcc897c546694f955e05d2e7474ec9103bfb39b7d3f25c18206ddd8d8079",
+			"note": "the auditor's own ICU grid; its console output is in audit.log"
+		},
+		{
+			"path": "i18n/audits/evidence/hi/ui.chat.canonical/s16f-au4-b04b0982/run-audit.sh",
+			"scratchpad_copy": "/Users/damian/.local-operator/sessions/b04b0982d048/scratchpad/s16f-au4-hi/run-audit.sh",
+			"sha256": "a7dd22afcd8a0a749b3736c4c7a76437bf1d5fe5f6b4f43d6aa775139f95c1f1",
+			"note": "the script that produced audit.log; re-runnable for reproduction"
+		}
+	],
+	"receipt": {
+		"instance": "b04b0982d048-hi-s16f-au4",
+		"path": "i18n/receipts/b04b0982d048-hi-s16f-au4.json",
+		"status": "passed",
+		"result_for_ledger_assemble": "clean",
+		"ledger_landing": "NOT performed by this auditor: the worktree is read-only for me and ledger-assemble.mjs writes i18n/ledger.json, so the row is the manager's/coder's step with scripts/i18n/ledger-assemble.mjs --locale hi --file src/i18n/catalogues/hi/ui.chat.canonical.json --auditor-instance b04b0982d048-hi-s16f-au4 --auditor-model deepseek/deepseek-flash --result clean --receipt <this receipt>"
+	},
+	"current_report_verdict": {
+		"status": "passed",
+		"unresolved_blocker_major_count": 0,
+		"finding_ids": []
+	},
+	"audit_notes_not_execution_log": "This record is a note. audit.log holds the command transcripts actually produced in this run: HEAD/status/PR-head checks, the four repo validators, the two slice guards, the integrity derivation, and the auditor's ICU grid with its own output.",
+	"limits": "Reading plus mechanical checks plus an ICU-AST comparison; no rendered frame and no runtime session. Fit is argued from cell counts and the surfaces the sidecar names, so the rendered check of the player's control line remains QA/design work. The namespace was last read in full by the round-2/round-3 rounds; this is a delta read plus the noun-consistency keys."
+}

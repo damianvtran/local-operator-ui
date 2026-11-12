@@ -208,6 +208,7 @@ import {
 } from "./image-gen-card-model";
 import { LinkToolkit } from "./link-toolkit";
 import type { LoadOlderOutcome } from "./load-older";
+import { imageLabel, soundLabel } from "./media-label";
 import { forkEntryId } from "./message-actions";
 import { AnswerActionRow } from "./message-actions-row";
 import { noticeText } from "./notice-copy";
@@ -1041,7 +1042,7 @@ const toolImageLabel = (
 	image: TranscriptImage,
 	index: number,
 	count: number,
-): string => image.name ?? (count === 1 ? "Image" : `Image ${index + 1}`);
+): string => image.name ?? imageLabel(index + 1, count);
 
 /**
  * The audio sibling of `toolImageLabel`: the same rule (the wire's own name
@@ -1056,7 +1057,7 @@ const toolAudioLabel = (
 	audio: TranscriptImage,
 	index: number,
 	count: number,
-): string => audio.name ?? (count === 1 ? "Sound" : `Sound ${index + 1}`);
+): string => audio.name ?? soundLabel(index + 1, count);
 
 const UserRow = memo(function UserRow({
 	record,

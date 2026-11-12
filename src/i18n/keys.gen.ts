@@ -4626,6 +4626,8 @@ export type MessageParams = {
 	"ui.chat.canonical.loading.region_label": undefined;
 	"ui.chat.canonical.loading.remote": undefined;
 	"ui.chat.canonical.loading.revalidating": undefined;
+	"ui.chat.canonical.media.image_label": { count: number; position: number };
+	"ui.chat.canonical.media.sound_label": { count: number; position: number };
 	"ui.chat.canonical.notice.compaction_not_run": { detail: string };
 	"ui.chat.canonical.notice.compaction_not_run_after_colon": { detail: string };
 	"ui.chat.canonical.notice.interrupted": undefined;
@@ -4661,7 +4663,28 @@ export type MessageParams = {
 	"ui.chat.canonical.send_failure.send_lock": undefined;
 	"ui.chat.canonical.send_failure.unconfirmed": undefined;
 	"ui.chat.canonical.send_failure.unreachable": undefined;
+	"ui.chat.canonical.sound.batch.item_status": {
+		status: string;
+		label: string;
+	};
+	"ui.chat.canonical.sound.batch.latest_update": {
+		name: string;
+		item: number;
+		total: number;
+	};
+	"ui.chat.canonical.sound.batch.summary": {
+		completed: number;
+		failed: number;
+		cancelled: number;
+		unknown: number;
+		has_attention: string;
+		labels: string;
+	};
 	"ui.chat.canonical.sound.batch_attachment_unavailable": undefined;
+	"ui.chat.canonical.sound.cost.batch_unknown": undefined;
+	"ui.chat.canonical.sound.cost.estimated_zero": undefined;
+	"ui.chat.canonical.sound.cost.no_charge": undefined;
+	"ui.chat.canonical.sound.cost.unknown": undefined;
 	"ui.chat.canonical.sound.player_failed": undefined;
 	"ui.chat.canonical.sound.stop.confirm_label": undefined;
 	"ui.chat.canonical.sound.stop.keep_waiting": undefined;
@@ -4681,6 +4704,7 @@ export type MessageParams = {
 	"ui.chat.canonical.supplement.preview_unavailable": undefined;
 	"ui.chat.canonical.supplement.send": undefined;
 	"ui.chat.canonical.supplement.show_fewer": undefined;
+	"ui.chat.canonical.supplement.sound_fallback_label": undefined;
 	"ui.chat.canonical.supplement.withheld.line": {
 		count: number;
 		reason: string;

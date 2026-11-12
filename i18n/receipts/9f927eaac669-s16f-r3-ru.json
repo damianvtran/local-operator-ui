@@ -1,0 +1,77 @@
+{
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "9f927eaac669",
+    "instance": "9f927eaac669-s16f-r3-ru",
+    "model": "deepseek/deepseek-flash",
+    "model_note": "Actual model is this session's own header line (deepseek/deepseek-flash); the model is the i18n-auditor role default, not a mid-run fallback. The served provider cannot be independently verified from inside the session.",
+    "independence": "Third-round independent audit: fresh session 9f927eaac669, not the PR #1876 translator (i18n-translator/anthropic/claude-sonnet-5-5) and not the round-2 auditor (i18n-auditor instance db260f728ba9, same model deepseek/deepseek-flash, per the ledger row). Read-only: this audit edited, committed and pushed nothing; every check ran against a git-archive mirror of HEAD af876eb052db12ec587ef6353aecebd2c769ae22 in this session's scratchpad. Disclosure: the model family is the same as round 2's, so independence here is by session and by re-derivation from the bytes, not by model diversity.",
+    "actual_model_source": "session header line: Model: deepseek/deepseek-flash"
+  },
+  "agent": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "9f927eaac669-s16f-r3-ru",
+  "session": "9f927eaac669",
+  "locale": "ru",
+  "namespace": "ui.chat.canonical",
+  "pr": "damianvtran/local-operator-ui#1876",
+  "audited_head": "af876eb052db12ec587ef6353aecebd2c769ae22",
+  "date": "2026-11-11",
+  "translator": "i18n-translator/anthropic/claude-sonnet-5-5 (per the ru/ui.chat.canonical ledger row; PR #1876's own labels are the S16f translation)",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "scope": "Round-3 (and second independent) read of the 10 S16f generation-card label keys in ru/ui.chat.canonical.json: sound.batch.item_status, sound.batch.summary, sound.batch.latest_update, sound.cost.unknown, sound.cost.no_charge, sound.cost.estimated_zero, sound.cost.batch_unknown, media.image_label, media.sound_label, supplement.sound_fallback_label. Includes the round-3 delta (summary unknown clause 'неизвестный статус:' -> 'статус неизвестен:' in all four arms) and the two round-2 replacements already landed. Other 456 keys read only as precedent and carried on the prior audits. Catalogue audit only: not rendered fit, activation or release.",
+  "keys_audited": [
+    "ui.chat.canonical.sound.batch.item_status",
+    "ui.chat.canonical.sound.batch.summary",
+    "ui.chat.canonical.sound.batch.latest_update",
+    "ui.chat.canonical.sound.cost.unknown",
+    "ui.chat.canonical.sound.cost.no_charge",
+    "ui.chat.canonical.sound.cost.estimated_zero",
+    "ui.chat.canonical.sound.cost.batch_unknown",
+    "ui.chat.canonical.media.image_label",
+    "ui.chat.canonical.media.sound_label",
+    "ui.chat.canonical.supplement.sound_fallback_label"
+  ],
+  "sha256": {
+    "ru": "be3f1256ee3930a40f102c6ed4ce9db4aa93191f9f1f6bb5d09d031ea1608e2f",
+    "en": "12ec2698434dcb39497e288af62d11d70f0fd71d494a9becf3fd611d6568bbdd",
+    "context": "95aa203759416c93180b7eb4967e6fcf5bce0dffe20e9d005b431c645e9e11e6",
+    "glossary (damianvtran/local-operator origin/main:i18n/glossary.md)": "unhashed-in-this-receipt; read at origin/main of ~/local-operator on 2026-11-11",
+    "style_guide (damianvtran/local-operator origin/main:i18n/style-guides/ru.md)": "unhashed-in-this-receipt; read at origin/main of ~/local-operator on 2026-11-11"
+  },
+  "checks": {
+    "generate_mjs_check": "PASS - src/i18n/keys.gen.ts byte-identical to a fresh generation (git-archive mirror of HEAD)",
+    "check_duplicates": "PASS - 1428 files scanned, 0 duplicate keys",
+    "check_coverage": "PASS - 7 gated languages over 158 namespaces, 0 allowed keys remaining",
+    "locale_parity_test": "PASS - 44/44 (ru included): every key present, no unknown keys, every ICU placeholder preserved, not an English stub",
+    "check_strings": "PASS - 1668 files, 0 literals at or below baseline (run in the real worktree; the mirror reports a false FAIL because it deliberately contains no src/renderer)",
+    "context_parity": "PASS - every English key covered apart from 129 allowed gaps in 4 namespaces",
+    "icu_grid": "PASS - 1167 renderings through the app's own path (src/i18n/messages.ts -> intl-messageformat): counts {0,1,2,3,5,11,21,22,100,1000,1000000} x statuses {failed,cancelled,other,queued,undefined} x has_attention {yes,no}; no throws, no leftover ICU braces, no raw key, no empty render, no English leftover, all NFC",
+    "cldr_categories": "PASS - completed/failed/cancelled/unknown plurals each carry one+few+many+other, and cancelled/unknown keep the '=0' hide-branch (verified in the AST and at render: unknown=0 renders no clause)",
+    "placeholder_parity": "PASS - argument name/type multiset identical to English once the arm multiplicity is normalised (ru has 4 arms where en has 2); =0 arms preserved on exactly the two selectors English hides",
+    "negative_controls": "6/6 CAUGHT in memory: dropping one CLDR arm, renaming a placeholder, dropping a =0 branch, injecting U+200F, decomposing to NFD and an unbalanced brace each turn the same checker red",
+    "ledger_check": "ru/ui.chat.canonical was stale before this audit (ledger source d6d47d31667f/12ec2698434d and target 4fd63ae8ce58/be3f1256ee39) -> this receipt rebinds the current bytes; after assemble in the mirror, 0 findings remain for ru"
+  },
+  "findings": [
+    {
+      "id": "S16F-RU-R3-01",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.media.sound_label",
+      "current": "{count, plural, =1 {звук} one {звук {position, ...}} few {...} many {...} other {...}}",
+      "problem": "Lower case 'звук' where the sibling media.image_label and every other shipped locale capitalise the same label (Image/Изображение, Son, Sonido, Âm thanh). The sidecar tone field says 'bare noun, capitalised'. The lower case is, however, a reasoned choice rather than an oversight: the same value is substituted into ui.chat.audio.play_label/pause_label ('Воспроизвести {label}'), where a capital would be a mid-sentence spelling error in Russian. The two surfaces pull opposite ways and the composed aria-label is the invisible one, so the visible tile label is the weaker of the two readings.",
+      "disposition": "accepted, no change requested in this round",
+      "replacement_if_ever_taken": "{count, plural, =1 {Звук} one {Звук {position, number, ::group-off}} few {Звук {position, number, ::group-off}} many {Звук {position, number, ::group-off}} other {Звук {position, number, ::group-off}}} - and in the same change accept 'Воспроизвести Звук 2' in the accessible name, or lower case the audio play/pause template instead. Decide both surfaces together; do not flip this key alone.",
+      "note": "Recorded so a later wave does not silently reverse a call that reads correctly today."
+    },
+    {
+      "id": "S16F-RU-R3-02",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.sound.batch.summary",
+      "current": "... · статус неизвестен: {unknown, number, ::group-off}",
+      "problem": "This round-3 clause is the only full predication in a colon-count list whose siblings are labels ('Завершено: 3', 'сбоев: 1', 'остановлено: 2'), so a native reader parses 'статус неизвестен: 5' as a statement with a dangling count. It is the better of the two available readings, because it is the ONLY wording that keeps one state word across the row and the summary (item_status 'other' says 'Статус неизвестен'), which is the rule this round was asked to satisfy.",
+      "disposition": "accepted, no change requested in this round",
+      "note": "If a future wave reworks this line, change item_status 'other' and this clause in one commit; the round-2 wording 'неизвестный статус:' read better as a label but gave the same state two names."
+    }
+  ]
+}

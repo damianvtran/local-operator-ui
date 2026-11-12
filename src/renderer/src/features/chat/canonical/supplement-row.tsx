@@ -262,6 +262,9 @@ const SupplementSoundLine = memo(function SupplementSoundLine({
 	cwd?: string | null;
 	pane: CanvasPane | null;
 }) {
+	// `memo` blocks a parent's locale repaint, and the fallback name below is
+	// read through `t()` at render time: subscribe so a language switch repaints.
+	useI18nLocale();
 	/*
 	 * A WRITTEN audio file (`origin: "file"`, 2026-11-03) plays from its
 	 * attachment digest exactly like a generated one — the core copied the bytes
@@ -292,7 +295,7 @@ const SupplementSoundLine = memo(function SupplementSoundLine({
 		scope,
 	);
 	const peaks = useWaveform(sound.attachment, scope);
-	const label = title || "Generated sound";
+	const label = title || t("ui.chat.canonical.supplement.sound_fallback_label");
 	/*
 	 * THE NAME DOES NOT WAIT FOR THE BYTES. A sound's title is known the moment
 	 * the record arrives (it is the producer's own string), so it is drawn over
