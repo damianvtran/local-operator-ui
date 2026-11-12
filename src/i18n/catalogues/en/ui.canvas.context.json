@@ -1617,12 +1617,10 @@
 	"ui.canvas.files.remoteUnreachable": {
 		"role": "status",
 		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
-		"note": "Shown in the canvas viewer and as a toast when another of the user's devices that holds a file did not answer in time."
-	},
-	"ui.canvas.files.remoteUnreachableRetry": {
-		"role": "button",
-		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
-		"note": "Clickable line in place of a sound player when the device holding the sound did not answer; clicking retries."
+		"note": "Shown when the other device that holds a file does not answer (it may be asleep or offline). Used on picture tiles, file viewers, sound rows and download toasts; the user can retry once it is online.",
+		"placeholders": {
+			"device": "Name of the device that holds the file (a user-chosen device name such as a laptop name); retain verbatim."
+		}
 	},
 	"ui.canvas.files.remoteOn": {
 		"role": "tooltip",
@@ -1690,7 +1688,8 @@
 		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
 		"note": "Success toast after a file from another device was saved on this computer; buttons below it open the file or its folder.",
 		"placeholders": {
-			"name": "The file name; retain verbatim."
+			"name": "The file name; retain verbatim.",
+			"folder": "Name of the folder on this computer the file landed in, e.g. 'Downloads'; retain verbatim."
 		}
 	},
 	"ui.canvas.files.remoteDownloadPending": {
@@ -1726,5 +1725,68 @@
 		"role": "fragment",
 		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
 		"note": "Used as {device} in 'Update {device} to see its files here.' when the device has no name."
+	},
+	"ui.canvas.files.remoteUnreachableUnnamed": {
+		"role": "status",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown when the other device that holds a file does not answer and its name is unknown. The user can retry later; 'online' means the device is switched on and connected."
+	},
+	"ui.canvas.files.remoteFetching": {
+		"role": "status",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Waiting state while a file, picture or sound is fetched from another of the user's devices that is answering slowly; shown beside a spinner.",
+		"placeholders": {
+			"device": "Name of the device that holds the file (a user-chosen device name such as a laptop name); retain verbatim."
+		}
+	},
+	"ui.canvas.files.remoteDownloading": {
+		"role": "toast",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Loading toast while a file from another device is downloaded to this computer; replaced by the outcome.",
+		"placeholders": {
+			"name": "The file name; retain verbatim.",
+			"device": "Name of the device that holds the file (a user-chosen device name such as a laptop name); retain verbatim."
+		}
+	},
+	"ui.canvas.files.remoteAlreadyDownloaded": {
+		"role": "toast",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Success toast when the identical file was already downloaded to this computer, so nothing new was written; buttons below it open the file or its folder.",
+		"placeholders": {
+			"name": "The file name; retain verbatim.",
+			"folder": "Name of the folder on this computer the file is in, e.g. 'Downloads'; retain verbatim."
+		}
+	},
+	"ui.canvas.files.remoteReadOnly": {
+		"role": "label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Caption above a text file shown from another device: it cannot be edited here. Matches the existing read-only caption for attachments.",
+		"placeholders": {
+			"device": "Name of the device that holds the file (a user-chosen device name such as a laptop name); retain verbatim."
+		}
+	},
+	"ui.canvas.files.remoteTooLargeToOpen": {
+		"role": "message",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown when a file on another device is too large to open inside the app; downloading it to this computer still works.",
+		"placeholders": {
+			"device": "Name of the device that holds the file (a user-chosen device name such as a laptop name); retain verbatim."
+		}
+	},
+	"ui.canvas.files.remotePeerUpdateHow": {
+		"role": "message",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Second line under 'Update {device} to see its files here.' It tells the user how: run a command on this computer or update the app on the other device, then press Retry. 'lop network update' is a command; keep it verbatim and untranslated.",
+		"placeholders": {
+			"device": "Name of the other device that needs updating; retain verbatim."
+		}
+	},
+	"ui.canvas.files.remotePlay": {
+		"role": "button",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Control on a sound that lives on another device; pressing it fetches the sound so it can be played.",
+		"placeholders": {
+			"device": "Name of the device that holds the file (a user-chosen device name such as a laptop name); retain verbatim."
+		}
 	}
 }

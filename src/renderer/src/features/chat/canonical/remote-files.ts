@@ -80,6 +80,55 @@ export function remoteUnreadableText(remote: CanvasRemoteFile): string {
 	}
 }
 
+/** Whether this row's bytes fit the window's read ceiling (an unknown size does). */
+export function remoteFitsWindow(remote: CanvasRemoteFile): boolean {
+	return (
+		remote.sizeBytes === null || remote.sizeBytes <= REMOTE_PREVIEW_MAX_BYTES
+	);
+}
+
+/** Why a readable row too large for this window cannot open here. */
+export function remoteTooLargeText(remote: CanvasRemoteFile): string {
+	return t("ui.canvas.files.remoteTooLargeToOpen", {
+		device: remote.deviceName,
+	});
+}
+
+/**
+ * The one sentence an unreadable row's menu leads with, or `null` when every
+ * entry the row offers can run. Every disabled entry of an unreadable row fails
+ * for the same owner-side reason, so it is said once, at the top (D1-4).
+ */
+export function remoteMenuReason(remote: CanvasRemoteFile): string | null {
+	return remote.unreadable ? remoteUnreadableText(remote) : null;
+}
+
+/**
+ * The folder the Files header's Open folder may reveal, or `null` to hide it.
+ *
+ * A remote session's `cwd` is the OWNER's working directory: revealing it here
+ * opens whatever folder this disk has at that path, or fails (QA round 1,
+ * Q1-1). The header shows the device line instead (I3-1, as for rows).
+ */
+export function revealableCwd(
+	cwd: string | undefined,
+	remote: boolean,
+): string | undefined {
+	return remote ? undefined : cwd;
+}
+
+/**
+ * The owner-offline sentence every remote surface shares (UX round 1, U1-6):
+ * the transcript tile, the canvas viewers, the sound line and the toasts.
+ */
+export function remoteUnreachableText(device: string): string {
+	// A sentence can't start with the lower-case fallback name, so a nameless
+	// owner gets its own wording rather than "the other device isn't…".
+	return device
+		? t("ui.canvas.files.remoteUnreachable", { device })
+		: t("ui.canvas.files.remoteUnreachableUnnamed");
+}
+
 export type RemoteActionId =
 	| "show-in-canvas"
 	| "expand-image"
@@ -115,15 +164,20 @@ export type RemoteActionOptions = {
 /**
  * The §3 action table for one remote row.
  *
- * | Action             | readable                     | unreadable            |
- * |--------------------|------------------------------|-----------------------|
- * | Show in canvas     | yes (content route / digest) | disabled + reason     |
- * | Download           | yes, until landed            | hidden                |
- * | Open file/folder   | after download, landed path  | disabled + reason     |
- * | Copy file path     | after download, landed path  | -                     |
- * | Copy path on <dev> | before download (text only)  | yes (text only)       |
- * | Save as...         | yes, <= 32 MiB               | hidden                |
- * | Copy image         | images, <= 32 MiB            | hidden                |
+ * | Action             | readable                       | unreadable          |
+ * |--------------------|--------------------------------|---------------------|
+ * | Show in canvas     | yes; disabled + reason > 32 MiB| disabled + reason   |
+ * | Download           | yes, until landed              | disabled + reason   |
+ * | Open file/folder   | after download, landed path    | -                   |
+ * | Copy file path     | after download, landed path    | -                   |
+ * | Copy path on dev.  | path rows, until landed        | path rows           |
+ * | Save as...         | yes, <= 32 MiB                 | disabled + reason   |
+ * | Copy image         | images, <= 32 MiB              | -                   |
+ *
+ * An unreadable row offers the SAME entries, in the same order, as a readable
+ * one that has not been downloaded, with the transfer entries disabled (design
+ * round 1, D1-4): the menu keeps one shape, and the reason is stated once by
+ * the menu (`remoteMenuReason`), not under one entry.
  */
 export function remoteFileActions(
 	remote: CanvasRemoteFile,
@@ -155,28 +209,29 @@ export function remoteFileActions(
 					]
 				: []),
 			{
-				id: "open-file",
-				label: t("ui.common.file_actions.open_file"),
-				disabledReason: reason,
-				target: null,
-			},
-			{
-				id: "open-folder",
-				label: t("ui.common.file_actions.open_folder"),
+				id: "download",
+				label: t("ui.canvas.files.remoteDownload"),
 				disabledReason: reason,
 				target: null,
 			},
 			...copyOwner,
+			{
+				id: "save-as",
+				label: t("ui.chat.image_actions.save_as"),
+				disabledReason: reason,
+				target: null,
+			},
 		];
 	}
-	const fitsWindow =
-		remote.sizeBytes === null || remote.sizeBytes <= REMOTE_PREVIEW_MAX_BYTES;
+	const fitsWindow = remoteFitsWindow(remote);
 	const actions: RemoteAction[] = [];
 	if (canShowInCanvas)
 		actions.push({
 			id: "show-in-canvas",
 			label: t("ui.common.file_actions.show_in_canvas"),
-			disabledReason: null,
+			// Above the relay's ceiling an open can only fail (review R1-4), so the
+			// entry says why and Download, which lands it on disk, stays offered.
+			disabledReason: fitsWindow ? null : remoteTooLargeText(remote),
 			target: null,
 		});
 	if (canExpand && mediaKind === "image")
@@ -248,10 +303,17 @@ export function remoteUnsupportedSentence(page: {
 	unsupported_reason?: string | null;
 	device_name?: string | null;
 }): string {
-	if (page.unsupported_reason === "peer_update_required")
-		return t("ui.canvas.files.remotePeerUpdate", {
-			device: page.device_name || t("ui.canvas.files.remoteDeviceFallback"),
-		});
+	if (page.unsupported_reason === "peer_update_required") {
+		const device =
+			page.device_name || t("ui.canvas.files.remoteDeviceFallback");
+		// What to do, not only what is wrong (UX round 1, U1-7): the desktop app
+		// has no peer-update action, and `lop network update <peer>` is core's own
+		// verb for it (`local_operator/network/cli.py`, the 409's sentence too).
+		return `${t("ui.canvas.files.remotePeerUpdate", { device })}\n${t(
+			"ui.canvas.files.remotePeerUpdateHow",
+			{ device },
+		)}`;
+	}
 	return REMOTE_FILES_UNSUPPORTED_SENTENCE;
 }
 

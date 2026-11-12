@@ -24,6 +24,7 @@
  * here".
  */
 
+import { Spinner } from "@shared/components/common/spinner";
 import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import { ImageOff, RotateCw } from "lucide-react";
@@ -268,20 +269,30 @@ export const BrokenAttachment = ({
  * same sunken well in the flow - so a slot does not change size between the
  * two states, but it is a BUTTON: the bytes exist on a device that may come
  * back, and the reader's click starts a fresh fetch cycle. The glyph is the
- * retry arrow rather than the torn picture, because the picture is not gone.
+ * retry arrow rather than the torn picture, because the picture is not gone,
+ * and the compact tile captions it "Retry" (design round 1, D1-2): a lone
+ * arrow beside loaded pictures read as "still loading".
+ *
+ * `device` names the owner when the transcript knows it, in the sentence every
+ * remote surface shares (U1-6); without it, the device-less fragment.
  */
 export const RetryableAttachment = ({
 	name,
 	onRetry,
 	className,
 	compact = false,
+	device = null,
 }: {
 	name: string;
 	onRetry: () => void;
 	className?: string;
 	compact?: boolean;
+	device?: string | null;
 }) => {
-	const detail = t("ui.chat.attachments.owner_unreachable");
+	const sentence = device
+		? t("ui.canvas.files.remoteUnreachable", { device })
+		: null;
+	const detail = sentence ?? t("ui.chat.attachments.owner_unreachable");
 	const action = t("ui.chat.attachments.retry_fetch");
 	return compact ? (
 		<button
@@ -292,7 +303,7 @@ export const RetryableAttachment = ({
 				onRetry();
 			}}
 			className={cn(
-				"flex h-[78px] w-[117px] items-center justify-center rounded-sm border border-control bg-sunken hover:bg-row-hover",
+				"flex h-[78px] w-[117px] flex-col items-center justify-center gap-1 rounded-sm border border-control bg-sunken hover:bg-row-hover",
 				className,
 			)}
 			aria-label={`${name} ${detail} ${action}`}
@@ -300,6 +311,9 @@ export const RetryableAttachment = ({
 			data-attachment-retryable=""
 		>
 			<RotateCw className="size-4 shrink-0 text-ink-dim" aria-hidden={true} />
+			<span className="text-ink-muted text-meta" aria-hidden={true}>
+				{action}
+			</span>
 		</button>
 	) : (
 		<div
@@ -312,7 +326,14 @@ export const RetryableAttachment = ({
 			<RotateCw className="size-4 shrink-0 text-ink-dim" aria-hidden={true} />
 			<span className="min-w-0 text-body-sm text-ink-muted">
 				<span className="truncate font-mono text-ink text-mono-sm">{name}</span>
-				{` ${detail}`}
+				{sentence ? (
+					<>
+						<span aria-hidden={true}> · </span>
+						{sentence}
+					</>
+				) : (
+					` ${detail}`
+				)}
 			</span>
 			<button
 				type="button"
@@ -325,5 +346,46 @@ export const RetryableAttachment = ({
 				{action}
 			</button>
 		</div>
+	);
+};
+
+/**
+ * The waiting state of a PEER-held attachment whose owner has answered 504 at
+ * least once (`AttachmentSource` `resolving` + `pending`).
+ *
+ * Seconds, not a frame: the backoff runs up to 30 s, so the bare reserved box
+ * read as "broken" (UX round 1, U1-1) and, in the flow, as an empty text field
+ * the width of the column (design D1-3). It keeps the slot's own box - the
+ * 117x78 tile when compact, a fitted sunken well otherwise - and centres the
+ * shared spinner with "Fetching from <device>…". The tile has no room for the
+ * sentence, so it carries it as its name and `title`.
+ */
+export const PendingAttachment = ({
+	device,
+	compact = false,
+}: {
+	device: string;
+	compact?: boolean;
+}) => {
+	const label = t("ui.canvas.files.remoteFetching", { device });
+	return compact ? (
+		<output
+			aria-label={label}
+			title={label}
+			className="flex h-[78px] w-[117px] items-center justify-center rounded-sm border border-control bg-sunken"
+			data-attachment-pending=""
+		>
+			<Spinner size="sm" className="text-ink-dim" />
+		</output>
+	) : (
+		<output
+			className="flex w-fit max-w-full items-center gap-2.5 rounded-sm border border-hairline bg-sunken px-3 py-2"
+			data-attachment-pending=""
+		>
+			<Spinner size="sm" className="text-ink-dim" />
+			<span className="min-w-0 truncate text-body-sm text-ink-muted">
+				{label}
+			</span>
+		</output>
 	);
 };

@@ -223,6 +223,13 @@ export function FinderFilesView({
 	 * keyboard user to Tab in from the top.
 	 */
 	const [retrying, setRetrying] = useState(false);
+	/* The owning device of a peer session's rows (every row shares it). */
+	const remoteDevice = useMemo(
+		() =>
+			items.find((item) => item.row.document.remote)?.row.document.remote
+				?.deviceName ?? null,
+		[items],
+	);
 	const retryStartedAt = useRef(0);
 	const retryButton = useRef<HTMLButtonElement>(null);
 	const refocusRetry = useRef(false);
@@ -682,7 +689,7 @@ export function FinderFilesView({
 						"flex min-h-7 items-center justify-between gap-2 text-meta text-ink-dim",
 					)}
 				>
-					<span>
+					<span className="flex min-w-0 items-center whitespace-pre">
 						{index.mode === "index" && index.state !== "ready" && !items.length
 							? ""
 							: narrowing
@@ -714,6 +721,20 @@ export function FinderFilesView({
 								: !index.statComplete
 									? ` · ${t("ui.canvas.files.readingStats")}`
 									: ""}
+						{remoteDevice ? (
+							/*
+							 * ONE mark per panel (design round 1, D1-1): in a peer session
+							 * every row is remote, so a glyph per row told rows apart from
+							 * nothing. It sits on the count line, outside the sticky
+							 * headers, and rows keep "On <device>" in their tooltip.
+							 */
+							<>
+								<span aria-hidden="true" className="whitespace-pre">
+									{" · "}
+								</span>
+								<RemoteFileMark device={remoteDevice} withLabel={true} />
+							</>
+						) : null}
 					</span>
 					{cwd && (
 						<Button
@@ -840,7 +861,8 @@ export function FinderFilesView({
 							{index.state === "error"
 								? (index.error ?? t("ui.canvas.files.error"))
 								: index.state === "unsupported"
-									? (index.error ?? t("ui.canvas.files.remote"))
+									? // Its first line; a "how to fix it" line follows below (U1-7).
+										(index.error ?? t("ui.canvas.files.remote")).split("\n")[0]
 									: index.state === "loading" || attachments.state === "loading"
 										? t("ui.canvas.files.loading")
 										: index.state === "building"
@@ -849,6 +871,11 @@ export function FinderFilesView({
 												? t("ui.canvas.files.noMatch")
 												: t("ui.canvas.files.empty")}
 						</p>
+						{index.state === "unsupported" && index.error?.includes("\n") ? (
+							<p className={cn("max-w-prose text-body-sm text-ink-muted")}>
+								{index.error.split("\n").slice(1).join(" ")}
+							</p>
+						) : null}
 						{index.state === "ready" &&
 							attachments.state !== "loading" &&
 							!narrowing && (
@@ -1290,7 +1317,16 @@ function FinderEntry({
 	const [keyboardFocus, setKeyboardFocus] = useState(false);
 	const focusReason =
 		refused && keyboardFocus ? t("ui.canvas.files.attachmentRefused") : null;
-	const sentenceNote = Boolean(item.attachment?.status || focusReason);
+	/*
+	 * A remote row the owner cannot serve states WHY in its status slot, where a
+	 * refused or gone local row states its own (D1-5 / U1-4), so the reason is on
+	 * screen for pointer and keyboard alike, not only in the tooltip and menu.
+	 * A missing remote row says it in the device's words (U1-5), not "disk".
+	 */
+	const remoteReason = remote?.unreadable ? remoteUnreadableText(remote) : null;
+	const sentenceNote = Boolean(
+		item.attachment?.status || focusReason || remoteReason,
+	);
 	const openMenu = () => {
 		/*
 		 * Announce whenever the menu would show NO entry (QA R6 Q4): a refused
@@ -1364,9 +1400,14 @@ function FinderEntry({
 	const meta = item.attachment
 		? item.attachment.note
 		: item.row.missing
-			? doc.artifact
-				? t("ui.canvas.files.gone")
-				: t("ui.canvas.files.missing")
+			? remote
+				? // The owner's disk, in the owner's words (U1-5): "disk" read as this one.
+					t("ui.canvas.files.remoteReason.missing", {
+						device: remote.deviceName,
+					})
+				: doc.artifact
+					? t("ui.canvas.files.gone")
+					: t("ui.canvas.files.missing")
 			: sort === "modified" || sort === "created"
 				? dateMetric
 				: sort === "size"
@@ -1422,12 +1463,11 @@ function FinderEntry({
 						}}
 						className={cn(
 							"min-w-0 flex-1 truncate rounded-sm py-1 text-start text-body-sm",
-							item.row.missing ? "text-ink-muted" : "text-ink",
+							item.row.missing || remoteReason ? "text-ink-muted" : "text-ink",
 						)}
 					>
 						{item.row.name}
 					</button>
-					{remote ? <RemoteFileMark device={remote.deviceName} /> : null}
 					<span
 						title={
 							timestamp === null ? undefined : formatDateTime(timestamp * 1000)
@@ -1523,7 +1563,7 @@ function FinderEntry({
 				className={cn(
 					"w-full min-w-0 rounded-sm p-1 text-start",
 					!tiled && "flex items-center gap-2 pe-8",
-					item.row.missing && "text-ink-muted",
+					(item.row.missing || remoteReason) && "text-ink-muted",
 				)}
 				style={{ height: band.height - (tiled ? 4 : 0) }}
 			>
@@ -1555,7 +1595,10 @@ function FinderEntry({
 						</span>
 					) : thumb.state === "loading" &&
 						item.row.media === "image" &&
-						!item.row.missing ? null : (
+						!item.row.missing &&
+						// An unreadable remote picture is never fetched: its well shows
+						// the type glyph, not a loading-looking blank (D1-5 / U1-4).
+						!remoteReason ? null : (
 						<File size={16} aria-hidden="true" />
 					)}
 				</span>
@@ -1587,12 +1630,13 @@ function FinderEntry({
 								!tiled && sentenceNote
 									? "min-w-[min(6rem,50%)] shrink"
 									: "flex-1",
-								item.row.missing ? "text-ink-muted" : "text-ink",
+								item.row.missing || remoteReason
+									? "text-ink-muted"
+									: "text-ink",
 							)}
 						>
 							{item.row.name}
 						</span>
-						{remote ? <RemoteFileMark device={remote.deviceName} /> : null}
 						{!tiled && item.row.showParent && item.row.parent && (
 							<span
 								className={cn(
@@ -1638,6 +1682,8 @@ function FinderEntry({
 							>
 								{focusReason ? (
 									<bdi>{focusReason}</bdi>
+								) : remoteReason ? (
+									<bdi>{remoteReason}</bdi>
 								) : item.attachment && !item.attachment.status ? (
 									/* Size and date as two runs with the separator in markup, on
 									 * tiles AND list rows: one `<bdi>` around "286 KB · 27 اکتوبر"

@@ -12,7 +12,7 @@ import {
 } from "./file-freshness";
 
 /** A document whose path is a URL (`blob:`/`data:`) names no file to write. */
-const URL_PATH = /^(blob|data):/;
+const URL_PATH = /^(blob|data|remote-file):/;
 
 /**
  * THE BUFFER OWNER.
@@ -479,8 +479,8 @@ export async function saveBuffer(
 	 * this is the one place every save passes through.
 	 */
 	if (isArtifactPath(entry.path)) return { status: "unavailable" };
-	// A URL is not a file either: a peer-held document opened over its bytes
-	// (`remoteOpenableDocument`, `blob:`) has no path on this disk to write.
+	// A URL is not a file either, and neither is a peer-held document's
+	// `remote-file:` identifier (`remoteCanvasDocument`): nothing here to write.
 	if (URL_PATH.test(entry.path)) return { status: "unavailable" };
 	/*
 	 * An automatic save has nothing to do while the document is held: the row has

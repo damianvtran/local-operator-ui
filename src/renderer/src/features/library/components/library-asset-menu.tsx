@@ -44,7 +44,7 @@ import {
 } from "lucide-react";
 import type { FC } from "react";
 import type { DesktopLibraryAsset } from "../../../../../shared/desktop-control-contract";
-import { saveAssetCopy } from "../library-download";
+import { assetCopyFailure, saveAssetCopy } from "../library-download";
 
 export type LibraryAssetMenuProps = {
 	asset: DesktopLibraryAsset;
@@ -87,8 +87,8 @@ export const LibraryAssetMenu: FC<LibraryAssetMenuProps> = ({
 		try {
 			await saveAssetCopy(asset);
 			showSuccessToast(t("ui.library.menu.saved_a_copy"));
-		} catch {
-			showErrorToast(t("ui.library.menu.save_failed"));
+		} catch (error) {
+			showErrorToast(assetCopyFailure(error, t("ui.library.menu.save_failed")));
 		}
 	};
 

@@ -22,6 +22,7 @@ import {
 	Maximize2,
 } from "lucide-react";
 import { t } from "../../../../../i18n";
+import { remoteUnreachableText } from "../canonical/remote-files";
 import {
 	AttachmentGoneError,
 	AttachmentOwnerUnreachableError,
@@ -154,7 +155,7 @@ const failureSentence = (
 		: // A peer-held digest whose owner did not answer (504): say so, since a
 			// retry later can succeed where the generic sentence implies it cannot.
 			error instanceof AttachmentOwnerUnreachableError
-			? t("ui.canvas.files.remoteUnreachable")
+			? remoteUnreachableText("")
 			: fallback;
 
 /**

@@ -16,7 +16,9 @@ import { blobFromDataUrl } from "../../utils/image-actions";
  * warm across virtualization unmounts, evict only unobserved entries. Original
  * bytes are never retained here; a lightbox/action resolves them on demand.
  * Files enter only from the authoritative local index or the old-backend fallback.
- * A remote unsupported index never produces rows, so it cannot call readFileBytes.
+ * A PEER-held row never reaches readFileBytes: `finderOriginal` sends it to the
+ * content route (or its digest) before any path read, and an unreadable one is
+ * never asked for at all (`FinderEntry`'s thumbnail gate).
  */
 const LIMIT = 150;
 const READ_CAP = 16 * 1024 * 1024;

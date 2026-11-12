@@ -364,6 +364,13 @@ test("remote session with features.remote_files lists rows like a local one", as
 		true,
 		"the list shows a listable remote session's rows",
 	);
+	// Q1-1: the view hides the header's Open folder on this flag, since the
+	// session's cwd is the OWNER's (`revealableCwd`, remote-files.test.mjs).
+	assert.equal(
+		host.snapshot.remote,
+		true,
+		"the hook says the rows are a peer's",
+	);
 });
 
 test("peer_update_required names the owner to update", async (t) => {
@@ -393,8 +400,9 @@ test("peer_update_required names the owner to update", async (t) => {
 	const host = await rig(t);
 	host.render({});
 	await host.until(() => host.snapshot.state === "unsupported");
+	// The sentence, then the how (U1-7): core's own `lop network update` verb.
 	assert.equal(
 		host.snapshot.error.replace(ISOLATES, ""),
-		"Update lop-remote-node-2 to see its files here.",
+		"Update lop-remote-node-2 to see its files here.\nRun lop network update lop-remote-node-2 on this device, or update Local Operator on lop-remote-node-2, then retry.",
 	);
 });

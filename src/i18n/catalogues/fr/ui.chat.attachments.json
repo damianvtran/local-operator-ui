@@ -22,6 +22,6 @@
 	"ui.chat.attachments.expand_title": "Cliquez pour agrandir {name}",
 	"ui.chat.attachments.open_title": "Cliquez pour ouvrir {name}",
 	"ui.chat.attachments.not_viewable": "Fichier non affichable : {name}",
-	"ui.chat.attachments.owner_unreachable": "n'a pas pu être récupéré depuis l'appareil qui le contient.",
+	"ui.chat.attachments.owner_unreachable": "n’a pas pu être récupéré depuis l’appareil qui le contient.",
 	"ui.chat.attachments.retry_fetch": "Réessayer"
 }

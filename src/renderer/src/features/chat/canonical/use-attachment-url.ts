@@ -278,7 +278,13 @@ function abandonFetch(digest: string) {
  */
 export type AttachmentSource =
 	| { state: "ready"; url: string }
-	| { state: "resolving" }
+	/*
+	 * `pending` = the owner of a peer-held digest has answered 504 at least once
+	 * in this cycle (or the reader pressed Retry): the wait is now seconds, not
+	 * a frame, so the caller paints a labelled waiting state instead of the bare
+	 * reserved box (UX round 1, U1-1; design D1-3).
+	 */
+	| { state: "resolving"; pending?: boolean }
 	| { state: "missing" }
 	/*
 	 * The owner of a peer-held digest kept answering 504 through the whole
@@ -337,6 +343,12 @@ export function useAttachmentSource(
 	 * counter rather than a boolean because two clicks are two cycles.
 	 */
 	const [cycle, setCycle] = useState(0);
+	/*
+	 * The digest whose owner is known to be slow (a 504 came back, or Retry was
+	 * pressed). Keyed by digest so a row re-pointed at another attachment never
+	 * inherits the previous one's waiting state.
+	 */
+	const [waitingFor, setWaitingFor] = useState<string | null>(null);
 	/*
 	 * The scope's two ids as PRIMITIVES, read once.
 	 *
@@ -403,6 +415,7 @@ export function useAttachmentSource(
 						// The bytes are absent rather than late - a 404/409 or a transport
 						// failure - and this is the only path allowed to say so.
 						setFailed("missing");
+						setWaitingFor(null);
 						return;
 					}
 					const delay = ATTACHMENT_RETRY_DELAYS_MS[index];
@@ -410,6 +423,7 @@ export function useAttachmentSource(
 						setFailed("retryable");
 						return;
 					}
+					setWaitingFor(digest);
 					wait = setTimeout(() => {
 						wait = undefined;
 						if (live) attempt(index + 1);
@@ -419,6 +433,7 @@ export function useAttachmentSource(
 				// Retain AFTER the fetch, so the count reflects holders rather than
 				// requests: a row unmounted mid-flight never retained and must not
 				// release.
+				setWaitingFor(null);
 				setResolved(retain(digest));
 			});
 		};
@@ -447,8 +462,16 @@ export function useAttachmentSource(
 	if (!ref.attachment || !scopeSessionId || failed === "missing")
 		return { state: "missing" };
 	if (failed === "retryable")
-		return { state: "retryable", retry: () => setCycle((n) => n + 1) };
-	return { state: "resolving" };
+		return {
+			state: "retryable",
+			retry: () => {
+				// The owner was slow a moment ago: the fresh cycle shows the waiting
+				// state from its first frame, never the empty box (U1-1).
+				setWaitingFor(ref.attachment ?? null);
+				setCycle((n) => n + 1);
+			},
+		};
+	return { state: "resolving", pending: waitingFor === ref.attachment };
 }
 
 /**

@@ -296,5 +296,8 @@ export function useSessionFiles(
 			(!remote || remoteListing) &&
 			mode !== "negotiating" &&
 			snapshot.state !== "unsupported",
+		// The session lives on another device: its `cwd` and every row path are
+		// the OWNER's, so the Files header never reveals them here (Q1-1).
+		remote,
 	};
 }

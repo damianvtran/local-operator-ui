@@ -1,5 +1,8 @@
+import { fetchRemoteFileBlob } from "@features/chat/canonical/remote-file-transfer";
+import { remoteUnreachableText } from "@features/chat/canonical/remote-files";
 import {
 	AttachmentGoneError,
+	AttachmentOwnerUnreachableError,
 	fetchAttachmentBlob,
 } from "@features/chat/canonical/use-attachment-url";
 import type { CanvasDocument } from "@features/chat/types/canvas";
@@ -46,6 +49,13 @@ import { FileViewerState } from "./file-viewer-state";
  *   Library read-only preview's classes and with no rule or fill (the
  *   borderless-chrome rules), and the active-line band - CodeMirror's "your
  *   cursor is here" cue - is off.
+ *
+ * A PEER-held text file (`document.remote`, no digest) opens here too (UX
+ * round 1, U1-3): in the live editor its edits could never reach the owner and
+ * the save failed silently. Its bytes come over the content route on mount,
+ * its caption names the device, and nothing reaches the disk or the store -
+ * which also retires the local-disk freshness strip that read "No longer on
+ * disk" about a file that was never on this one (QA Q1-3).
  */
 /** Nothing that implies an insertion point in a view that takes none (D14). */
 const NO_INSERTION_CUES = {
@@ -58,6 +68,7 @@ const ArtifactTextPreviewComponent: FC<{ document: CanvasDocument }> = ({
 }) => {
 	useI18nLocale();
 	const artifact = document.artifact;
+	const remote = document.remote ?? null;
 	const tooLarge =
 		typeof document.sizeBytes === "number" &&
 		document.sizeBytes > MAX_EAGER_READ_BYTES;
@@ -66,17 +77,28 @@ const ArtifactTextPreviewComponent: FC<{ document: CanvasDocument }> = ({
 		| { status: "ready"; text: string }
 		| { status: "gone" }
 		| { status: "unreadable" }
+		| { status: "unreachable" }
 		| { status: "tooLarge" }
 	>({ status: "loading" });
+	// Re-read when the row's coordinates change, not on every document object.
+	const remoteKey = remote ? `${remote.sessionId}/${remote.fileId}` : null;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `remoteKey` stands for the row's coordinates; a new `document` object for the same row must not re-fetch.
 	useEffect(() => {
-		if (!artifact || tooLarge) return;
+		if ((!artifact && !remote) || tooLarge) return;
 		/* A new digest on a live instance never shows the previous file's text
 		   while it loads (review R5-3; the canvas also remounts per tab). */
 		setState({ status: "loading" });
 		let live = true;
-		void fetchAttachmentBlob(
-			{ sessionId: artifact.sessionId, childId: artifact.childId ?? null },
-			artifact.digest,
+		void (
+			artifact
+				? fetchAttachmentBlob(
+						{
+							sessionId: artifact.sessionId,
+							childId: artifact.childId ?? null,
+						},
+						artifact.digest,
+					)
+				: fetchRemoteFileBlob(document)
 		)
 			.then(async (blob) => {
 				/* The size gate above needs a listed size; a document without one
@@ -98,13 +120,18 @@ const ArtifactTextPreviewComponent: FC<{ document: CanvasDocument }> = ({
 			.catch((error: unknown) => {
 				if (!live) return;
 				setState({
-					status: error instanceof AttachmentGoneError ? "gone" : "unreadable",
+					status:
+						error instanceof AttachmentGoneError
+							? "gone"
+							: error instanceof AttachmentOwnerUnreachableError
+								? "unreachable"
+								: "unreadable",
 				});
 			});
 		return () => {
 			live = false;
 		};
-	}, [artifact, tooLarge]);
+	}, [artifact, tooLarge, remoteKey]);
 	/* The editor's own theme resolution (`code-editor.tsx`), so a read-only
 	   attachment and an editable file read as the same surface. */
 	const isDark = useAppearanceIsDark();
@@ -128,7 +155,9 @@ const ArtifactTextPreviewComponent: FC<{ document: CanvasDocument }> = ({
 				title={
 					state.status === "gone"
 						? t("ui.canvas.files.gone")
-						: t("ui.canvas.files.unreadable")
+						: state.status === "unreachable" && remote
+							? remoteUnreachableText(remote.deviceName)
+							: t("ui.canvas.files.unreadable")
 				}
 				detail={document.title}
 			/>
@@ -148,7 +177,9 @@ const ArtifactTextPreviewComponent: FC<{ document: CanvasDocument }> = ({
 					"flex h-8 shrink-0 items-center truncate ps-2.5 pe-2 text-meta text-ink-muted",
 				)}
 			>
-				{t("ui.canvas.files.attachmentReadOnly")}
+				{remote
+					? t("ui.canvas.files.remoteReadOnly", { device: remote.deviceName })
+					: t("ui.canvas.files.attachmentReadOnly")}
 			</p>
 			<div className={cn("relative min-h-0 grow overflow-auto text-mono")}>
 				<CodeMirror

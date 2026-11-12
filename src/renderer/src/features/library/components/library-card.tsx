@@ -18,6 +18,7 @@
 import { SoundPlayer } from "@features/chat/canonical/sound-player";
 import { rowCurrent } from "@features/chat/components/chat-sidebar";
 import { RemoteFileMark } from "@features/chat/components/remote-file-mark";
+import { Spinner } from "@shared/components/common/spinner";
 import { Badge, Button } from "@shared/components/ui";
 import { useEverInView } from "@shared/hooks/use-ever-in-view";
 import { t } from "@shared/i18n";
@@ -25,7 +26,7 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Heart, LoaderCircle, MessagesSquare, Star } from "lucide-react";
 import type { FC } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DesktopLibraryAsset } from "../../../../../shared/desktop-control-contract";
 import {
 	useLibraryBytes,
@@ -182,7 +183,14 @@ const TagStrip: FC<{ asset: DesktopLibraryAsset }> = ({ asset }) => {
  */
 const CardAudioWell: FC<{ asset: DesktopLibraryAsset }> = ({ asset }) => {
 	const [wellRef, near] = useEverInView("300px");
-	const wantsBytes = asset.exists && near;
+	/*
+	 * A PEER's sound is fetched over the mesh, so being scrolled into view is
+	 * not a reason to pull it (QA round 1, Q1-2; core §5 "no per-view mesh
+	 * fetch"). Its card shows the glyph as a Play control, and only that press
+	 * arms the read; a local card keeps reading when near, as before.
+	 */
+	const [armed, setArmed] = useState(false);
+	const wantsBytes = asset.exists && (asset.remote ? armed : near);
 	const content = useLibraryBytes(asset.id, "content", wantsBytes);
 	const peaks = useLibraryWaveform(asset.id, wantsBytes);
 	const source = useObjectUrl(
@@ -203,6 +211,31 @@ const CardAudioWell: FC<{ asset: DesktopLibraryAsset }> = ({ asset }) => {
 					label={assetDisplayName(asset)}
 					peaks={peaks}
 					durationHint={asset.duration_s}
+				/>
+			) : asset.remote && asset.exists && !armed ? (
+				<button
+					type="button"
+					data-library-remote-play=""
+					aria-label={t("ui.canvas.files.remotePlay", {
+						device: remoteDevice(asset),
+					})}
+					title={t("ui.canvas.files.remotePlay", {
+						device: remoteDevice(asset),
+					})}
+					onClick={(event) => {
+						event.stopPropagation();
+						setArmed(true);
+					}}
+					className="flex size-full items-center justify-center rounded-sm text-ink-dim hover:text-ink"
+				>
+					<KindGlyph kind={asset.kind} size={28} />
+				</button>
+			) : armed && content.loading ? (
+				<Spinner
+					size="sm"
+					label={t("ui.canvas.files.remoteFetching", {
+						device: remoteDevice(asset),
+					})}
 				/>
 			) : (
 				<KindGlyph kind={asset.kind} size={28} className="text-ink-dim" />

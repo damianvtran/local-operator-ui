@@ -31,6 +31,7 @@ import {
 	ATTACHMENT_UNAVAILABLE_COPY,
 	AttachmentFrame,
 	BrokenAttachment,
+	PendingAttachment,
 	RetryableAttachment,
 } from "../components/message-item/attachment-frame";
 import { ImageAttachment } from "../components/message-item/image-attachment";
@@ -44,6 +45,7 @@ import {
 } from "./image-group-lightbox";
 import type { TranscriptImage } from "./transcript-reducer";
 import { type AttachmentScope, useAttachmentUrl } from "./use-attachment-url";
+import { useRemoteSessionDevice } from "./use-remote-device";
 
 export type CanonicalImageProps = {
 	image: TranscriptImage;
@@ -106,6 +108,11 @@ export const CanonicalImage = ({
 	pathActions,
 }: CanonicalImageProps) => {
 	const source = useAttachmentUrl(image, scope);
+	const device = useRemoteSessionDevice(scope?.sessionId);
+	// A slow owner gets a labelled wait, not the bare box (U1-1). A filmstrip
+	// select keeps its own reserved button below: its action is the point.
+	if (source.state === "resolving" && source.pending && device && !press)
+		return <PendingAttachment device={device} compact={size === "thumbnail"} />;
 	if (source.state === "resolving") {
 		const reserved = (
 			/*
@@ -171,6 +178,7 @@ export const CanonicalImage = ({
 				name={label}
 				compact={size === "thumbnail"}
 				onRetry={source.retry}
+				device={device}
 			/>
 		);
 	}

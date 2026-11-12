@@ -41,6 +41,7 @@ import { useState } from "react";
 import {
 	AttachmentFrame,
 	BrokenAttachment,
+	PendingAttachment,
 	RetryableAttachment,
 	VIDEO_UNAVAILABLE_COPY,
 } from "../components/message-item/attachment-frame";
@@ -49,6 +50,7 @@ import {
 	type AttachmentScope,
 	useAttachmentSource,
 } from "./use-attachment-url";
+import { useRemoteSessionDevice } from "./use-remote-device";
 
 export type CanonicalVideoProps = {
 	/** The video ref, from the record's media extraction (`kind: "video"`). */
@@ -79,8 +81,18 @@ export const CanonicalVideo = ({
 	 * the one receipt below.
 	 */
 	const [decodeFailed, setDecodeFailed] = useState(false);
+	const device = useRemoteSessionDevice(scope?.sessionId);
 	if (source.state === "retryable") {
-		return <RetryableAttachment name={label} onRetry={source.retry} />;
+		return (
+			<RetryableAttachment
+				name={label}
+				onRetry={source.retry}
+				device={device}
+			/>
+		);
+	}
+	if (source.state === "resolving" && source.pending && device) {
+		return <PendingAttachment device={device} />;
 	}
 	if (source.state === "missing" || decodeFailed) {
 		return <BrokenAttachment name={label} detail={VIDEO_UNAVAILABLE_COPY} />;

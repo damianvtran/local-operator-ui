@@ -40,6 +40,7 @@ import {
 	AUDIO_UNAVAILABLE_COPY,
 	AttachmentFrame,
 	BrokenAttachment,
+	PendingAttachment,
 	RetryableAttachment,
 } from "../components/message-item/attachment-frame";
 import { SoundPlayer } from "./sound-player";
@@ -48,6 +49,7 @@ import {
 	type AttachmentScope,
 	useAttachmentSource,
 } from "./use-attachment-url";
+import { useRemoteSessionDevice } from "./use-remote-device";
 import { useWaveform } from "./use-waveform";
 
 export type CanonicalAudioProps = {
@@ -77,11 +79,21 @@ export const CanonicalAudio = ({
 	const source = useAttachmentSource(audio, scope);
 	// Peaks need the digest; an inline sound has none and stays flat.
 	const peaks = useWaveform(audio.attachment, scope);
+	const device = useRemoteSessionDevice(scope?.sessionId);
 	if (source.state === "missing") {
 		return <BrokenAttachment name={label} detail={AUDIO_UNAVAILABLE_COPY} />;
 	}
 	if (source.state === "retryable") {
-		return <RetryableAttachment name={label} onRetry={source.retry} />;
+		return (
+			<RetryableAttachment
+				name={label}
+				onRetry={source.retry}
+				device={device}
+			/>
+		);
+	}
+	if (source.state === "resolving" && source.pending && device) {
+		return <PendingAttachment device={device} />;
 	}
 	if (source.state === "resolving") {
 		/*

@@ -17,16 +17,19 @@ import {
 	desktopRequest,
 } from "@shared/api/local-operator/desktop-api";
 import { t } from "@shared/i18n";
+import { remoteFilePath } from "@shared/lib/remote-file-path";
 import {
 	showErrorToast,
 	showInfoToast,
+	showLoadingToast,
 	showSuccessToast,
 } from "@shared/utils/toast-manager";
 import { useSyncExternalStore } from "react";
 import type { CanvasDocument, CanvasRemoteFile } from "../types/canvas";
 import { openLocalTarget, revealLocalTarget } from "../utils/link-open";
-import { remoteUnreadableText } from "./remote-files";
+import { remoteUnreachableText, remoteUnreadableText } from "./remote-files";
 import {
+	ATTACHMENT_RETRY_DELAYS_MS,
 	AttachmentGoneError,
 	AttachmentOwnerUnreachableError,
 	fetchAttachmentBlob,
@@ -129,50 +132,116 @@ export function rememberLanded(remote: CanvasRemoteFile, path: string) {
 
 /** The status a pending transfer answers; a re-POST joins the same transfer. */
 const PENDING_STATUS = 504;
+/** Core's 504 code for "the transfer is still running" (design §1). */
+const FETCH_PENDING_CODE = "attachment_fetch_pending";
+
+const PATH_SEPARATOR = /[\\/]/;
+
+/** The folder a landed path sits in, as the toast names it ("Downloads"). */
+function folderOf(path: string): string {
+	const parts = path.split(PATH_SEPARATOR).filter(Boolean);
+	return parts.length > 1 ? (parts[parts.length - 2] ?? "") : "";
+}
 
 /**
  * Land one remote row on this device and answer the receipt (or `null` after
  * telling the reader why not). The success toast carries the local actions,
  * on the LANDED path only.
+ *
+ * WHAT THE READER SEES (UX round 1, U1-2): a loading toast from the press,
+ * which the outcome replaces in place (one toast id). A 504 whose code says
+ * the transfer is still running is re-POSTed on the bytes' own backoff
+ * (`ATTACHMENT_RETRY_DELAYS_MS`; the POST is idempotent and joins the
+ * backend's single flight), so the file lands without a re-click; any other
+ * 504 is the owner being offline and says so in the shared sentence (U1-6).
+ * The receipt toast names the folder and stays 8 s, long enough to reach its
+ * three actions (U1-9), and an identical file already there says so (Q1-5).
+ *
+ * `delays` is the retry schedule, a parameter only so tests need not wait it.
  */
 export async function downloadRemoteFile(
 	remote: CanvasRemoteFile,
+	name: string,
+	{ delays = ATTACHMENT_RETRY_DELAYS_MS }: { delays?: readonly number[] } = {},
 ): Promise<RemoteDownloadReceipt | null> {
 	const device = remote.deviceName;
 	if (remote.unreadable) {
 		showInfoToast(remoteUnreadableText(remote));
 		return null;
 	}
-	let response: Awaited<ReturnType<typeof desktopRequest>>;
-	try {
-		response = await desktopRequest({
-			op: "sessions.files.download",
-			sessionId: remote.sessionId,
-			fileId: remote.fileId,
-		});
-	} catch {
-		showErrorToast(t("ui.canvas.files.remoteDownloadFailed", { device }));
+	// i18n: ignore toast id, never shown
+	const id = `remote-download:${keyOf(remote)}`;
+	showLoadingToast(t("ui.canvas.files.remoteDownloading", { name, device }), {
+		id,
+	});
+	for (let attempt = 0; ; attempt += 1) {
+		let response: Awaited<ReturnType<typeof desktopRequest>>;
+		try {
+			response = await desktopRequest({
+				op: "sessions.files.download",
+				sessionId: remote.sessionId,
+				fileId: remote.fileId,
+			});
+		} catch {
+			showErrorToast(t("ui.canvas.files.remoteDownloadFailed", { device }), {
+				id,
+			});
+			return null;
+		}
+		const body = response.body as {
+			result?: RemoteDownloadReceipt;
+			detail?: { code?: string } | string;
+		} | null;
+		const receipt = body?.result;
+		if (response.status === 200 && receipt?.path) {
+			rememberLanded(remote, receipt.path);
+			const folder = folderOf(receipt.path);
+			showSuccessToast(
+				receipt.created === false
+					? t("ui.canvas.files.remoteAlreadyDownloaded", {
+							name: receipt.name,
+							folder,
+						})
+					: t("ui.canvas.files.remoteDownloaded", {
+							name: receipt.name,
+							folder,
+						}),
+				{
+					id,
+					duration: LANDED_TOAST_MS,
+					description: <LandedActions path={receipt.path} />,
+				},
+			);
+			return receipt;
+		}
+		if (response.status !== PENDING_STATUS) {
+			showErrorToast(t("ui.canvas.files.remoteDownloadFailed", { device }), {
+				id,
+			});
+			return null;
+		}
+		const code =
+			typeof body?.detail === "object" ? (body.detail?.code ?? null) : null;
+		const delay = delays[attempt];
+		if (code === FETCH_PENDING_CODE && delay !== undefined) {
+			await new Promise((resolve) => setTimeout(resolve, delay));
+			continue;
+		}
+		showErrorToast(
+			code === FETCH_PENDING_CODE
+				? t("ui.canvas.files.remoteDownloadPending", { device })
+				: remoteUnreachableText(device),
+			{ id },
+		);
 		return null;
 	}
-	const receipt = (response.body as { result?: RemoteDownloadReceipt } | null)
-		?.result;
-	if (response.status === 200 && receipt?.path) {
-		rememberLanded(remote, receipt.path);
-		showSuccessToast(
-			t("ui.canvas.files.remoteDownloaded", { name: receipt.name }),
-			{
-				description: <LandedActions path={receipt.path} />,
-			},
-		);
-		return receipt;
-	}
-	showErrorToast(
-		response.status === PENDING_STATUS
-			? t("ui.canvas.files.remoteDownloadPending", { device })
-			: t("ui.canvas.files.remoteDownloadFailed", { device }),
-	);
-	return null;
 }
+
+/**
+ * How long the receipt toast stays: its three actions need reaching, and
+ * Sonner's 4 s default dismissed them mid-read (UX round 1, U1-9).
+ */
+const LANDED_TOAST_MS = 8000;
 
 /** The receipt's three local actions, on the landed path and nothing else. */
 function LandedActions({ path }: { path: string }) {
@@ -223,31 +292,30 @@ function LandedActions({ path }: { path: string }) {
 }
 
 /**
- * A peer-held document made openable without a path on this disk.
+ * A peer-held document as the canvas opens it: the same document with its
+ * owner's display path replaced by a `remote-file:` identifier
+ * (`shared/lib/remote-file-path.ts`), and no bytes.
  *
- * Its `path` becomes a `blob:` URL over the fetched bytes: every byte viewer
- * reads a URL path through `useFileBlobUrl` as is, a text viewer gets its
- * decoded text as `content`, and the save path refuses a URL (a URL is not a
- * file). NOT a `data:` URI: the canvas store is persisted whole to
- * localStorage, and a 32 MiB file as base64 there would exceed its quota. The
- * owner's display path is dropped from the opened document entirely, so
- * nothing downstream can probe, open or write it (I3-1).
+ * NO bytes and NO object URL here (agent review round 1, R1-2/R1-3): the
+ * viewer fetches over the content route on mount, under one refcounted cache
+ * entry it releases when the tab closes, and the persisted canvas store keeps
+ * only the identifier, so a reloaded tab fetches again instead of holding a
+ * dead `blob:` URL. The owner's display path is dropped from the opened
+ * document entirely, so nothing downstream can probe, open or write it (I3-1).
  */
-export async function remoteOpenableDocument(
-	document: CanvasDocument,
-	blob: Blob,
-	encoding: "utf-8" | "base64" | "bytes" | "range",
-): Promise<CanvasDocument> {
-	let content = "";
-	if (encoding === "utf-8") content = await blob.text();
-	else if (encoding === "base64") {
-		const dataUrl = await blobToDataUrl(blob);
-		content = dataUrl.slice(dataUrl.indexOf(",") + 1);
-	}
+export function remoteCanvasDocument(document: CanvasDocument): CanvasDocument {
+	const remote = document.remote;
+	if (!remote) return document;
 	return {
 		...document,
-		path: URL.createObjectURL(blob),
-		content,
+		path: remoteFilePath(remote.sessionId, remote.fileId, document.title),
+		content: "",
 		availability: undefined,
 	};
+}
+
+/** A Blob's bytes as bare base64, the encoding the spreadsheet viewer parses. */
+export async function blobToBase64(blob: Blob): Promise<string> {
+	const dataUrl = await blobToDataUrl(blob);
+	return dataUrl.slice(dataUrl.indexOf(",") + 1);
 }

@@ -55,7 +55,10 @@ export function peaksFrom(value: unknown): number[] | null {
 }
 
 /** Digests whose fetch is in flight, or whose answer is already known. */
-const cache = new Map<string, Promise<number[] | null | typeof PENDING>>();
+const cache = new Map<
+	string,
+	Promise<number[] | null | typeof PENDING | typeof UNKEPT>
+>();
 
 /**
  * The relay call for one digest's sidecar, exported so the node tests can drive
@@ -66,7 +69,7 @@ export async function fetchWaveformPeaks(
 	digest: string,
 ): Promise<number[] | null> {
 	const outcome = await fetchWaveformOutcome(scope, digest);
-	return outcome === PENDING ? null : outcome;
+	return outcome === PENDING || outcome === UNKEPT ? null : outcome;
 }
 
 /**
@@ -77,10 +80,19 @@ export async function fetchWaveformPeaks(
  */
 const PENDING = Symbol("waveform-pending");
 
+/**
+ * A 409: the store or the owner of a peer-held digest could not serve the
+ * sidecar THIS time (`attachment_on_peer`, an offline replica). Painted flat,
+ * like `null`, but never kept: the bytes beside it are re-asked on remount,
+ * and the waveform has to follow them, or a sound that came back stays flat
+ * for the app's lifetime (QA round 1, Q1-4).
+ */
+const UNKEPT = Symbol("waveform-unkept");
+
 async function fetchWaveformOutcome(
 	scope: AttachmentScope,
 	digest: string,
-): Promise<number[] | null | typeof PENDING> {
+): Promise<number[] | null | typeof PENDING | typeof UNKEPT> {
 	try {
 		const result = await desktopMedia(
 			{
@@ -103,6 +115,7 @@ async function fetchWaveformOutcome(
 			}
 		}
 		if (result.status === 504) return PENDING;
+		if (result.status === 409) return UNKEPT;
 		return null;
 	} catch {
 		return null;
@@ -136,6 +149,10 @@ export function useWaveform(
 		const attempt = (index: number) => {
 			requestPeaks({ sessionId, childId }, digest).then((value) => {
 				if (!live) return;
+				if (value === UNKEPT) {
+					setPeaks(null);
+					return;
+				}
 				if (value !== PENDING) {
 					setPeaks(value);
 					return;
@@ -172,13 +189,14 @@ const settled = new Map<string, number[] | null>();
 function requestPeaks(
 	scope: AttachmentScope,
 	digest: string,
-): Promise<number[] | null | typeof PENDING> {
+): Promise<number[] | null | typeof PENDING | typeof UNKEPT> {
 	const existing = cache.get(digest);
 	if (existing) return existing;
 	const pending = fetchWaveformOutcome(scope, digest)
 		.then((value) => {
-			if (value === PENDING) {
-				// Never cache a 504: the next attempt must reach the relay.
+			if (value === PENDING || value === UNKEPT) {
+				// Never cache a 504 or a 409: the next attempt (or the next mount)
+				// must reach the relay.
 				cache.delete(digest);
 				return value;
 			}

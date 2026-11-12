@@ -57,6 +57,7 @@ import { t } from "../../../../i18n/messages";
  * review round 1, R9).
  */
 
+import { desktopMedia } from "@shared/api/local-operator/desktop-api";
 import {
 	createBlobUrl,
 	peek,
@@ -65,7 +66,8 @@ import {
 	retain,
 	revokeBlobUrl,
 } from "@shared/lib/blob-url-cache";
-import { useEffect, useState } from "react";
+import { parseRemoteFilePath } from "@shared/lib/remote-file-path";
+import { useEffect, useMemo, useState } from "react";
 import {
 	MAX_FILE_READ_BYTES,
 	type ReadFileBytesFailure,
@@ -77,7 +79,7 @@ export type FileBlobState =
 	| {
 			status: "unavailable";
 			url: null;
-			code: ReadFileBytesFailure | "no-bridge";
+			code: ReadFileBytesFailure | "no-bridge" | "owner-unreachable";
 			message: string;
 			sizeBytes?: number;
 	  };
@@ -107,6 +109,11 @@ type FileBlobOptions = {
 	 * holds whether or not the size was known.
 	 */
 	maxBytes?: number | null;
+	/**
+	 * The owning device's name, for a `remote-file:` identifier: the sentence a
+	 * viewer shows when that device does not answer names it (U1-6).
+	 */
+	remoteDevice?: string | null;
 };
 
 /**
@@ -117,9 +124,11 @@ type FileBlobOptions = {
  * `null` for `no-bridge`, which is a fact about the host and not the file.
  */
 export function previewFailureReason(
-	code: ReadFileBytesFailure | "no-bridge",
+	code: ReadFileBytesFailure | "no-bridge" | "owner-unreachable",
 ): string | null {
 	switch (code) {
+		case "owner-unreachable":
+			return t("ui.common.errors.file_unreadable");
 		case "too-large":
 			return t("ui.common.errors.file_too_large");
 		case "not-found":
@@ -173,9 +182,6 @@ const stripFileUrl = (path: string): string =>
  */
 const isDirectUrl = (path: string): boolean =>
 	path.startsWith("data:") ||
-	// A peer-held file opened in the canvas (`remoteOpenableDocument`): its
-	// bytes are already in this window behind the URL, and no disk holds them.
-	path.startsWith("blob:") ||
 	path.startsWith("http://") ||
 	path.startsWith("https://");
 
@@ -187,9 +193,17 @@ export function useFileBlobUrl(
 		sizeBytes,
 		maxBytes,
 		cachePolicy = "reuse",
+		remoteDevice,
 	}: FileBlobOptions,
 ): FileBlobState {
 	const filePath = stripFileUrl(path);
+	/*
+	 * A PEER-held file (`remote-file:`, `shared/lib/remote-file-path.ts`): its
+	 * bytes come over the media relay's content route, never this disk (I3-1).
+	 * The identifier is its own shared key - every holder of one row joins one
+	 * object URL, and the last to unmount (the tab closing) revokes it.
+	 */
+	const remote = useMemo(() => parseRemoteFilePath(filePath), [filePath]);
 	/*
 	 * A `data:`/`http(s):` document is already a URL, so there is nothing to fetch
 	 * and nothing to revoke. This is settled here rather than at the call sites
@@ -202,7 +216,9 @@ export function useFileBlobUrl(
 	// A lazy initializer, so the id is drawn once per holder and survives
 	// re-renders; the key it feeds is stable for the holder's whole life.
 	const [holderId] = useState(() => nextHolderId++);
-	const sharedKey = cacheKey(filePath, mtimeMs, sizeBytes, holderId);
+	const sharedKey = remote
+		? filePath
+		: cacheKey(filePath, mtimeMs, sizeBytes, holderId);
 	// A retry owns fresh bytes without evicting or revoking other mounted viewers.
 	const key =
 		cachePolicy === "reload" ? `${sharedKey}:reload-${holderId}` : sharedKey;
@@ -248,6 +264,45 @@ export function useFileBlobUrl(
 			};
 		}
 		setState({ status: "loading", url: null });
+
+		if (remote) {
+			void (async () => {
+				const result = await desktopMedia(
+					{
+						op: "sessions.files.content",
+						sessionId: remote.sessionId,
+						fileId: remote.fileId,
+					},
+					null,
+				).catch(() => null);
+				if (!live) return;
+				if (result?.kind !== "bytes") {
+					const unreachable = result?.status === 504;
+					setState({
+						status: "unavailable",
+						url: null,
+						code: unreachable ? "owner-unreachable" : "unreadable",
+						// The owner-offline sentence every remote surface shares (U1-6).
+						message: !unreachable
+							? t("ui.canvas.files.remoteReadFailed")
+							: remoteDevice
+								? t("ui.canvas.files.remoteUnreachable", {
+										device: remoteDevice,
+									})
+								: t("ui.canvas.files.remoteUnreachableUnnamed"),
+					});
+					return;
+				}
+				// Published under the identifier and retained once the bytes land,
+				// exactly as a disk read below: holders, not requests, are counted.
+				publish(key, createBlobUrl(result.data as BlobPart, mimeType));
+				setState({ status: "ready", url: retain(key) ?? "" });
+			})();
+			return () => {
+				live = false;
+				release(key);
+			};
+		}
 
 		const bridge = window.api?.readFileBytes;
 		if (typeof bridge !== "function") {
@@ -307,7 +362,7 @@ export function useFileBlobUrl(
 			live = false;
 			release(key);
 		};
-	}, [direct, overCap, key, mimeType, filePath, cap]);
+	}, [direct, overCap, key, mimeType, filePath, cap, remote, remoteDevice]);
 
 	return state;
 }

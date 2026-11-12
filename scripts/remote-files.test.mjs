@@ -31,11 +31,14 @@ const stubs = {
 		const note = (kind) => (message, options) => { globalThis.__remote.toasts.push({ kind, message, options }); return 1; };
 		export const showErrorToast = note("error");
 		export const showInfoToast = note("info");
-		export const showSuccessToast = note("success");`,
+		export const showSuccessToast = note("success");
+		export const showLoadingToast = note("loading");
+		export const dismissToast = () => {};`,
 	"@shared/components/ui": `
 		const C = () => null;
 		export const Button = C, DropdownMenu = C, DropdownMenuContent = C,
-			DropdownMenuItem = C, DropdownMenuTrigger = C, Tooltip = C;`,
+			DropdownMenuItem = C, DropdownMenuLabel = C, DropdownMenuTrigger = C,
+			Tooltip = C;`,
 	"@shared/i18n/use-locale": "export const useI18nLocale = () => 'en';",
 	"@shared/lib/external-open-refusal":
 		"export const showExternalOpenRefusal = () => {};",
@@ -44,8 +47,8 @@ const stubs = {
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { remoteOf, remoteFileActions, remoteUnreadableText, REMOTE_PREVIEW_MAX_BYTES } from "./src/renderer/src/features/chat/canonical/remote-files";
-			export { downloadRemoteFile, fetchRemoteFileBlob, landedPathFor, rememberLanded } from "./src/renderer/src/features/chat/canonical/remote-file-transfer";
+			export { remoteOf, remoteFileActions, remoteUnreadableText, remoteMenuReason, revealableCwd, REMOTE_PREVIEW_MAX_BYTES } from "./src/renderer/src/features/chat/canonical/remote-files";
+			export { downloadRemoteFile, fetchRemoteFileBlob, landedPathFor, rememberLanded, remoteCanvasDocument } from "./src/renderer/src/features/chat/canonical/remote-file-transfer";
 			export { performRemoteAction } from "./src/renderer/src/features/chat/components/remote-file-actions-menu";
 			export { indexedDocument } from "./src/renderer/src/features/chat/canonical/session-files";
 			export { AttachmentOwnerUnreachableError } from "./src/renderer/src/features/chat/canonical/use-attachment-url";
@@ -93,7 +96,10 @@ const {
 	remoteOf,
 	remoteFileActions,
 	remoteUnreadableText,
+	remoteMenuReason,
+	revealableCwd,
 	REMOTE_PREVIEW_MAX_BYTES,
+	remoteCanvasDocument,
 	downloadRemoteFile,
 	fetchRemoteFileBlob,
 	landedPathFor,
@@ -141,7 +147,11 @@ globalThis.document = {
 	createElement: () => ({ click() {} }),
 	body: { appendChild() {}, removeChild() {} },
 };
-globalThis.URL.createObjectURL = () => "blob:test/1";
+const objectUrls = { created: 0 };
+globalThis.URL.createObjectURL = () => {
+	objectUrls.created += 1;
+	return "blob:test/1";
+};
 globalThis.URL.revokeObjectURL = () => {};
 
 const remoteState = { request: null, media: null, toasts: [] };
@@ -279,18 +289,30 @@ test("readable over 32 MiB: Download stays, Save as and Copy image are hidden", 
 		row({ size_bytes: REMOTE_PREVIEW_MAX_BYTES + 1 }),
 		"aaaaaaaaaaaa",
 	);
-	const ids = remoteFileActions(remote, {
+	const actions = remoteFileActions(remote, {
 		mediaKind: "image",
 		canShowInCanvas: true,
 		canExpand: false,
 		landedPath: null,
-	}).map((action) => action.id);
+	});
+	const ids = actions.map((action) => action.id);
 	assert.ok(ids.includes("download"));
 	assert.ok(!ids.includes("save-as"));
 	assert.ok(!ids.includes("copy-image"));
+	// R1-4: an open can only fail above the relay's ceiling, so it says why.
+	const show = actions.find((action) => action.id === "show-in-canvas");
+	assert.equal(
+		plain(show.disabledReason),
+		"Too large to open from lop-remote-node-2. Download it to this device instead.",
+	);
+	assert.equal(
+		actions.find((action) => action.id === "download").disabledReason,
+		null,
+		"Download stays offered",
+	);
 });
 
-test("unreadable rows: preview/open/folder disabled WITH the reason, byte actions hidden, owner path still copyable", () => {
+test("unreadable rows: the readable row's entries, transfers disabled, the reason said once (D1-4)", () => {
 	for (const reason of REASONS) {
 		const remote = remoteOf(
 			row({ remote_read: null, remote_unreadable: reason }),
@@ -304,16 +326,24 @@ test("unreadable rows: preview/open/folder disabled WITH the reason, byte action
 		});
 		const sentence = remoteUnreadableText(remote);
 		assert.ok(plain(sentence).includes("lop-remote-node-2"), reason);
-		for (const id of ["show-in-canvas", "open-file", "open-folder"]) {
+		assert.equal(remoteMenuReason(remote), sentence, `${reason}: menu header`);
+		assert.deepEqual(
+			actions.map((action) => action.id),
+			["show-in-canvas", "download", "copy-owner-path", "save-as"],
+			`${reason}: same shape as a readable row`,
+		);
+		for (const id of ["show-in-canvas", "download", "save-as"]) {
 			const action = actions.find((entry) => entry.id === id);
 			assert.equal(action.disabledReason, sentence, `${reason}: ${id}`);
 			assert.equal(action.target, null);
 		}
-		const ids = actions.map((action) => action.id);
-		for (const hidden of ["download", "save-as", "copy-image", "expand-image"])
-			assert.ok(!ids.includes(hidden), `${reason}: ${hidden} hidden`);
-		assert.ok(ids.includes("copy-owner-path"));
+		assert.equal(
+			actions.find((action) => action.id === "copy-owner-path").disabledReason,
+			null,
+		);
 	}
+	const readable = remoteOf(row(), "aaaaaaaaaaaa");
+	assert.equal(remoteMenuReason(readable), null);
 	const workspace = remoteOf(
 		row({ remote_read: null, remote_unreadable: "outside_session_files" }),
 		"aaaaaaaaaaaa",
@@ -466,7 +496,7 @@ test("download: a receipt lands the path, toasts it, and unlocks the local actio
 			},
 		};
 	};
-	const receipt = await downloadRemoteFile(remote);
+	const receipt = await downloadRemoteFile(remote, "chart.png");
 	assert.equal(receipt.path, landed);
 	assert.deepEqual(remoteState.requests, [
 		{
@@ -476,9 +506,18 @@ test("download: a receipt lands the path, toasts it, and unlocks the local actio
 		},
 	]);
 	assert.equal(landedPathFor(remote), landed);
-	const toast = remoteState.toasts.at(-1);
+	// U1-2: a loading toast from the press, replaced in place by the outcome.
+	const [loading, toast] = remoteState.toasts;
+	assert.equal(loading.kind, "loading");
+	assert.equal(
+		plain(loading.message),
+		"Downloading chart.png from lop-remote-node-2…",
+	);
 	assert.equal(toast.kind, "success");
-	assert.equal(plain(toast.message), "Downloaded chart.png");
+	assert.equal(toast.options.id, loading.options.id, "one toast, replaced");
+	// D1-8 / U1-9: where it landed, for long enough to reach the actions.
+	assert.equal(plain(toast.message), "Downloaded chart.png to Downloads");
+	assert.equal(toast.options.duration, 8000);
 	assert.ok(toast.options?.description, "the receipt carries its actions");
 	const open = remoteFileActions(remote, {
 		mediaKind: "image",
@@ -499,15 +538,103 @@ test("download: a receipt lands the path, toasts it, and unlocks the local actio
 	assert.deepEqual(calls.open, [landed]);
 });
 
-test("download: a 504 says the transfer is still running and lands nothing", async () => {
+const receiptOf = (path, created = true) => ({
+	status: 200,
+	body: {
+		result: {
+			path,
+			name: "chart.png",
+			bytes: 4,
+			sha256: "0".repeat(64),
+			created,
+		},
+	},
+});
+const pending504 = {
+	status: 504,
+	body: { detail: { code: "attachment_fetch_pending" } },
+};
+const offline504 = {
+	status: 504,
+	body: { detail: { code: "attachment_owner_unreachable" } },
+};
+
+test("download: a still-running transfer is re-sent on the backoff and lands without a re-click (U1-2)", async () => {
 	resetCalls();
 	const remote = remoteOf(row(), "aaaaaaaaaaaa");
-	remoteState.request = async () => ({ status: 504, body: null });
-	assert.equal(await downloadRemoteFile(remote), null);
+	const answers = [
+		pending504,
+		pending504,
+		receiptOf("/home/me/Downloads/chart.png"),
+	];
+	remoteState.request = async (request) => {
+		remoteState.requests.push(request);
+		return answers.shift();
+	};
+	const receipt = await downloadRemoteFile(remote, "chart.png", {
+		delays: [0, 0, 0, 0],
+	});
+	assert.equal(receipt.path, "/home/me/Downloads/chart.png");
+	assert.equal(
+		remoteState.requests.length,
+		3,
+		"two re-POSTs joined the transfer",
+	);
+	assert.deepEqual(
+		remoteState.toasts.map((toast) => toast.kind),
+		["loading", "success"],
+		"no error toast while it was still running",
+	);
+});
+
+test("download: an offline owner says so in the shared sentence and is not retried (U1-6)", async () => {
+	resetCalls();
+	const remote = remoteOf(row(), "aaaaaaaaaaaa");
+	remoteState.request = async (request) => {
+		remoteState.requests.push(request);
+		return offline504;
+	};
+	assert.equal(
+		await downloadRemoteFile(remote, "chart.png", { delays: [0, 0] }),
+		null,
+	);
+	assert.equal(remoteState.requests.length, 1);
 	assert.equal(landedPathFor(remote), null);
+	const toast = remoteState.toasts.at(-1);
+	assert.equal(toast.kind, "error");
+	assert.equal(
+		plain(toast.message),
+		"lop-remote-node-2 isn't answering. Try again when it's online.",
+	);
+});
+
+test("download: a transfer still running after the whole backoff says so and lands nothing", async () => {
+	resetCalls();
+	const remote = remoteOf(row(), "aaaaaaaaaaaa");
+	remoteState.request = async (request) => {
+		remoteState.requests.push(request);
+		return pending504;
+	};
+	assert.equal(
+		await downloadRemoteFile(remote, "chart.png", { delays: [0, 0] }),
+		null,
+	);
+	assert.equal(remoteState.requests.length, 3, "first try plus two waits");
 	assert.equal(
 		plain(remoteState.toasts.at(-1).message),
 		"Still fetching from lop-remote-node-2. Try again in a moment.",
+	);
+});
+
+test("download: an identical file already there says so instead of Downloaded (Q1-5)", async () => {
+	resetCalls();
+	const remote = remoteOf(row(), "aaaaaaaaaaaa");
+	remoteState.request = async () =>
+		receiptOf("/home/me/Downloads/chart.png", false);
+	await downloadRemoteFile(remote, "chart.png");
+	assert.equal(
+		plain(remoteState.toasts.at(-1).message),
+		"chart.png is already in Downloads on this device",
 	);
 });
 
@@ -517,6 +644,34 @@ test("download: an unreadable row never reaches the backend", async () => {
 		row({ remote_read: null, remote_unreadable: "sensitive" }),
 		"aaaaaaaaaaaa",
 	);
-	assert.equal(await downloadRemoteFile(remote), null);
+	assert.equal(await downloadRemoteFile(remote, "chart.png"), null);
 	assert.equal(remoteState.requests.length, 0);
+});
+
+// ------------------------------------------------------------- Q1-1, R1-2/R1-3
+
+test("Q1-1: a remote session's header never reveals the owner's cwd here", () => {
+	assert.equal(revealableCwd("/Users/me/project", true), undefined);
+	assert.equal(revealableCwd("/Users/me/project", false), "/Users/me/project");
+});
+
+test("R1-2/R1-3: a remote document opens as an identifier with no bytes and no object URL", () => {
+	const remote = remoteOf(row({ name: "report.pdf" }), "aaaaaaaaaaaa");
+	const before = objectUrls.created;
+	const opened = remoteCanvasDocument({
+		id: "doc",
+		title: "report.pdf",
+		path: OWNER_PATH,
+		content: "",
+		type: "pdf",
+		remote,
+	});
+	assert.equal(
+		opened.path,
+		`remote-file:aaaaaaaaaaaa/${remote.fileId}/report.pdf`,
+		"the persisted path is a re-fetchable identifier, never a blob: URL",
+	);
+	assert.ok(!opened.path.includes(OWNER_PATH), "I3-1: the owner path is gone");
+	assert.equal(opened.content, "");
+	assert.equal(objectUrls.created, before, "opening creates no object URL");
 });
