@@ -1,0 +1,121 @@
+{
+  "audit_id": "s16f-r2-4184f7fa45be",
+  "locale": "zh-CN",
+  "namespace": "ui.chat.canonical",
+  "audit_date": "2026-11-11",
+  "round": 2,
+  "key_count": 10,
+  "scope": "the 10 new S16f generation-card label keys, audited on the LANDED bytes at PR #1876 head 9931d62addf8a0606bb26d32a8bc163dc7c126b3 (round 2: re-judged after the round-1 Z1/Z2/Z3 corrections landed verbatim)",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "team": "lopdev",
+    "session": "4184f7fa45be",
+    "instance": "zh-cn-s16f-r2",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "session model header; no switch, fallback or provider substitution observed",
+    "independent_from_translator_session": true,
+    "independent_from_round1_auditor_session": "c69a71ac5b59 (read as input only)",
+    "translator": {
+      "agent": "i18n-translator",
+      "model": "anthropic/claude-sonnet-5-5"
+    }
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+      "sha256": "12ec2698434dcb39497e288af62d11d70f0fd71d494a9becf3fd611d6568bbdd"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+      "sha256": "95aa203759416c93180b7eb4967e6fcf5bce0dffe20e9d005b431c645e9e11e6"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+      "sha256": "13bbc7ac23ef6f38a92adb0b27c1e2b5fc9593784a1bb0ab1c1a4029cdd4b708"
+    },
+    "landed_pairs_en": {
+      "sha256": "bdd1d9d1cfcd327c7445396ad806220fa850fe820c638a59ec6bc195f882e307",
+      "bytes": 1503,
+      "canonicalisation": "sorted keys, compact separators, ensure_ascii=false, UTF-8"
+    },
+    "landed_pairs_zh": {
+      "sha256": "c812d30be5d1fb914fe157368ff2547c8d594b3aeae8efb499b3612e47f6a4a3",
+      "bytes": 1320,
+      "canonicalisation": "sorted keys, compact separators, ensure_ascii=false, UTF-8"
+    },
+    "references": {
+      "glossary": {
+        "path": "~/local-operator/i18n/glossary.md",
+        "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+      },
+      "style_guide": {
+        "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+        "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+      }
+    }
+  },
+  "artifacts": {
+    "bundle_root": "i18n/audits/evidence/zh-CN/ui.chat.canonical/s16f-r2-4184f7fa45be/",
+    "files": [
+      {
+        "path": "audit-s16f-r2-zh-CN.md",
+        "sha256": "8adfa6e19f1827505cc5196e4f97969ac16c45a824582979b82ef346410a47e9"
+      },
+      {
+        "path": "check.mjs",
+        "sha256": "d7eae7efb85b7087849f3416d548d0be1e8ec185f23c9798db68605e0e5baf62"
+      },
+      {
+        "path": "check-r2.log",
+        "sha256": "6908a41593e0dd678b0425a5760b60837f7a8e21285624b3c50b75d9013f8100"
+      },
+      {
+        "path": "repo-checks.log",
+        "sha256": "60716eb231272210302663e71bac78e669ddeba818b4d3ed5e92efceccb49b25"
+      },
+      {
+        "path": "receipt-zh-CN-s16f-r2.json",
+        "sha256": "d056f738f10785f941b1e7e39f0b687a8ad2a808598ef9c5637b03931981caf2"
+      }
+    ],
+    "note": "These basenames are the tracked bundle names the integrator copies; this directory is the staging original. audit-s16f-r2-zh-CN.md is audit notes, not an execution log; check-r2.log and repo-checks.log are actual command output."
+  },
+  "current_report_verdict": {
+    "status": "passed",
+    "result": "clean",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [],
+    "findings": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 0,
+      "nit": 0
+    }
+  },
+  "round1_disposition": {
+    "round1_session": "c69a71ac5b59",
+    "round1_status": "changes_requested",
+    "round1_findings": {
+      "blocker": 0,
+      "major": 2,
+      "minor": 1,
+      "nit": 0
+    },
+    "addressed": [
+      "Z1 ui.chat.canonical.media.image_label",
+      "Z2 ui.chat.canonical.media.sound_label",
+      "Z3 ui.chat.canonical.sound.cost.estimated_zero"
+    ],
+    "evidence": "the 10-pair hash of the landed zh-CN values (c812d30b…) equals round 1's candidate_pairs_with_auditor_fixes"
+  },
+  "provenance_notes": [
+    "audit_notes_not_execution_log: record.json and audit-s16f-r2-zh-CN.md describe the work; check-r2.log and repo-checks.log are actual command output.",
+    "No translation or MT service was used by the auditor; no back-translation.",
+    "No repository file was modified by the auditor; the tracked bundle has to be copied in by the integrator.",
+    "The round-1 report path named in the brief (~/.local-operator/sessions/c69a71ac5b59/scratchpad/audit-s16f-zh-CN.md) is empty/absent; the round-1 bundle is at .../scratchpad/s16f-zh-audit/ and was read there."
+  ],
+  "original_lost_evidence": null,
+  "new_report_is_original": true,
+  "new_report_is_historical_R2_recreation": false,
+  "backdated": false
+}

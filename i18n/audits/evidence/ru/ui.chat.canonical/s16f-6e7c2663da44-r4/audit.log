@@ -1,0 +1,198 @@
+
+$ git rev-parse HEAD
+# (worktree identity)
+cbb8782a39b5692ae46bfc3aa6930840420e9b14
+# exit=0
+
+$ git status --porcelain=v1
+# (worktree clean at audit start)
+# exit=0
+
+$ git diff --stat 8180eff1f705eb79d4df5123d6108c539b585b2e..HEAD -- src/i18n i18n
+# (audited commit delta vs the round-3 head)
+ src/i18n/catalogues/hi/ui.chat.canonical.json | 6 +++---
+ src/i18n/catalogues/ru/ui.chat.canonical.json | 2 +-
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+# exit=0
+
+$ git diff 8180eff1f705eb79d4df5123d6108c539b585b2e..HEAD -- src/i18n/catalogues/ru/ui.chat.canonical.json
+# (ru delta (the bytes this audit judges))
+diff --git a/src/i18n/catalogues/ru/ui.chat.canonical.json b/src/i18n/catalogues/ru/ui.chat.canonical.json
+index 94f8c819f7c..afe09cb83fb 100644
+--- a/src/i18n/catalogues/ru/ui.chat.canonical.json
++++ b/src/i18n/catalogues/ru/ui.chat.canonical.json
+@@ -457,7 +457,7 @@
+ 	"ui.chat.canonical.loading.remote": "Синхронизация с вашего другого устройства…",
+ 	"ui.chat.canonical.loading.revalidating": "Проверка новых сообщений…",
+ 	"ui.chat.canonical.media.image_label": "{count, plural, =1 {Изображение} one {Изображение {position, number, ::group-off}} few {Изображение {position, number, ::group-off}} many {Изображение {position, number, ::group-off}} other {Изображение {position, number, ::group-off}}}",
+-	"ui.chat.canonical.media.sound_label": "{count, plural, =1 {звук} one {звук {position, number, ::group-off}} few {звук {position, number, ::group-off}} many {звук {position, number, ::group-off}} other {звук {position, number, ::group-off}}}",
++	"ui.chat.canonical.media.sound_label": "{count, plural, =1 {Звук} one {Звук {position, number, ::group-off}} few {Звук {position, number, ::group-off}} many {Звук {position, number, ::group-off}} other {Звук {position, number, ::group-off}}}",
+ 	"ui.chat.canonical.sound.batch.item_status": "{status, select, failed {{label} · Сбой} cancelled {{label} · Остановлено} other {{label} · Статус неизвестен}}",
+ 	"ui.chat.canonical.sound.batch.latest_update": "Последнее обновление: {name} (элемент {item, number, ::group-off} из {total, number, ::group-off}).",
+ 	"ui.chat.canonical.sound.batch.summary": "{completed, plural, one {Завершено: {completed, number, ::group-off}} few {Завершено: {completed, number, ::group-off}} many {Завершено: {completed, number, ::group-off}} other {Завершено: {completed, number, ::group-off}}} · {failed, plural, one {сбоев: {failed, number, ::group-off}} few {сбоев: {failed, number, ::group-off}} many {сбоев: {failed, number, ::group-off}} other {сбоев: {failed, number, ::group-off}}}{cancelled, plural, =0 {} one { · остановлено: {cancelled, number, ::group-off}} few { · остановлено: {cancelled, number, ::group-off}} many { · остановлено: {cancelled, number, ::group-off}} other { · остановлено: {cancelled, number, ::group-off}}}{unknown, plural, =0 {} one { · статус неизвестен: {unknown, number, ::group-off}} few { · статус неизвестен: {unknown, number, ::group-off}} many { · статус неизвестен: {unknown, number, ::group-off}} other { · статус неизвестен: {unknown, number, ::group-off}}}{has_attention, select, yes {. Требуется внимание: {labels}} other {}}",
+# exit=0
+
+$ shasum -a 256 src/i18n/catalogues/ru/ui.chat.canonical.json src/i18n/catalogues/en/ui.chat.canonical.json src/i18n/catalogues/en/ui.chat.canonical.context.json
+# (file hashes under audit)
+fddef0897968450fb0157457dda37f7472fa467b4df1aea68af16bbe260f10f1  src/i18n/catalogues/ru/ui.chat.canonical.json
+905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e  src/i18n/catalogues/en/ui.chat.canonical.json
+8f56e0d2b384c6b41add57a64e6c863e565cb61d5a7c0de482d42f380be3acfe  src/i18n/catalogues/en/ui.chat.canonical.context.json
+# exit=0
+
+$ node /Users/damian/.local-operator/sessions/6e7c2663da44/scratchpad/s16f-au4-ru/integrity.mjs /Users/damian/local-operator-ui/.worktrees/i18n-s16a
+# (integrity script (key sets, byte identity, carry, hygiene))
+PASS	sha256.ru.head	fddef0897968450fb0157457dda37f7472fa467b4df1aea68af16bbe260f10f1
+PASS	sha256.en.head	905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e
+PASS	sha256.ru.prev(8180eff1)	af745c025f29e1dc76c7b6bb60305186db8157c91d4a304b293d7d7e33547b47
+PASS	sha256.en.prev(8180eff1)	905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e
+PASS	sha256.context.head	8f56e0d2b384c6b41add57a64e6c863e565cb61d5a7c0de482d42f380be3acfe
+PASS	keyset.ru_eq_en	ru=467 en=467 dupes_in_ru=0
+PASS	keyset.en_unchanged_vs_prev	en prev=467
+PASS	file.line_identical_except_changed_line	differing 1-based lines=[460] total head lines=470 prev=470
+PASS	values.identical_except_changed_keys	changed=[ui.chat.canonical.media.sound_label] added_vs_prev=[]
+PASS	en.values_untouched_by_landed_commit	changed=[]
+PASS	carry.10_pr_added_equal_prev_audited	pr_added=10 ["media.image_label","media.sound_label","sound.batch.item_status","sound.batch.latest_update","sound.batch.summary","sound.cost.batch_unknown","sound.cost.estimated_zero","sound.cost.no_charge","sound.cost.unknown","supplement.sound_fallback_label"]
+PASS	carry.5_main_added_equal_origin_main	main_added=["loading.cold","loading.older","loading.region_label","loading.remote","loading.revalidating"]
+PASS	carry.detail	ui.chat.canonical.media.sound_label: CHANGED (this round's landed fix)
+PASS	icu.check	see icu.log: AST argument-set, plural-shape, CLDR-category and render checks
+PASS	changed_key.value	"{count, plural, =1 {Звук} one {Звук {position, number, ::group-off}} few {Звук {position, number, ::group-off}} many {Звук {position, number, ::group-off}} other {Звук {position, number, ::group-off}}}"
+PASS	changed_key.en_value	"{count, plural, =1 {Sound} other {Sound {position, number, ::group-off}}}"
+PASS	changed_key.only_lowercase_zvuk_differs	capitalisation is the only byte-level difference
+PASS	same_noun.keys	image_gen.state.done="{material, select, video {Видео создано} voiceover {Озвучка создана} sound_effect {Звуков ; image_gen.state.done_batch="{material, select, video {Набор видео} voiceover {Набор озвучек} sound_effect {Набор звук ; image_gen.state.failed="{material, select, video {Не удалось создать видео.} voiceover {Не удалось создать озвучк ; image_gen.state.failed_batch="{material, select, video {Не удалось создать набор видео.} voiceover {Не удалось создать  ; image_gen.state.running="{material, select, video {Генерация видео…} voiceover {Генерация озвучки…} sound_effect { ; image_gen.state.running_batch="{material, select, video {{total, plural, one {Генерация # видео…} few {Генерация # видео ; media.sound_label="{count, plural, =1 {Звук} one {Звук {position, number, ::group-off}} few {Звук {position, ; sound.player_failed="Не удалось воспроизвести звук" ; supplement.sound_fallback_label="Созданный звук"
+# exit=0
+
+$ node /Users/damian/.local-operator/sessions/6e7c2663da44/scratchpad/s16f-au4-ru/icu.mjs /Users/damian/local-operator-ui/.worktrees/i18n-s16a
+# (ICU/CLDR AST + render through the app's own formatter)
+PASS	icu.parse.all_keys	parsed 467 ru + 467 en messages
+PASS	icu.arg_multiset_eq_en	every argument name/type identical to English on all 467 keys
+PASS	icu.plural_count_eq_en	plural-vs-select nesting shape identical to English
+PASS	cldr.ru_plural_categories_complete	every ru plural carries one+few+many+other (exact =N arms allowed and preserved)
+PASS	render.changed_key.no_throw	12 counts rendered, locale ru
+PASS	render.numbering_rule_one_unnumbered	unnumbered at counts=[1] (expected [1])
+PASS	render.numbered_branch_shape	counts 0,2,3,5,11,21,22,25,100,101,1000 x positions 2,7,1000 all read "Звук <position>", no grouping separator at 1000 (::group-off)
+PASS	composed.audio_play_label	"Воспроизвести Звук 2" (known deferral: ui.chat.audio.play_label/pause_label, not this namespace)
+PASS	render.image_label_sibling	1 -> "Изображение", 2 -> "Изображение 2"
+--- rendered grid (changed key) ---
+   0 -> ru "Звук 2" | en "Sound 2"
+   1 -> ru "Звук" | en "Sound"
+   2 -> ru "Звук 2" | en "Sound 2"
+   3 -> ru "Звук 2" | en "Sound 2"
+   5 -> ru "Звук 2" | en "Sound 2"
+  11 -> ru "Звук 2" | en "Sound 2"
+  21 -> ru "Звук 2" | en "Sound 2"
+  22 -> ru "Звук 2" | en "Sound 2"
+  25 -> ru "Звук 2" | en "Sound 2"
+ 100 -> ru "Звук 2" | en "Sound 2"
+ 101 -> ru "Звук 2" | en "Sound 2"
+1000 -> ru "Звук 2" | en "Sound 2"
+# exit=0
+
+$ node --test scripts/i18n/locale-parity.test.mjs
+# (repo validator: locale parity)
+✔ the English source is non-empty (the guard would pass vacuously otherwise) (0.782709ms)
+✔ [es] ships at least one message (not an empty claim) (43.652167ms)
+✔ [es] defines each key in at most one namespace file (13.410083ms)
+✔ [es] carries EVERY key of each namespace file it ships (28.04575ms)
+✔ [es] names only keys the English source defines (12.234958ms)
+✔ [es] preserves every ICU placeholder from the English source (68.441459ms)
+✔ [es] is not an English stub (no value identical to the source) (28.362583ms)
+✔ [fr] ships at least one message (not an empty claim) (52.261125ms)
+✔ [fr] defines each key in at most one namespace file (17.976833ms)
+✔ [fr] carries EVERY key of each namespace file it ships (25.210959ms)
+✔ [fr] names only keys the English source defines (12.236416ms)
+✔ [fr] preserves every ICU placeholder from the English source (43.65475ms)
+✔ [fr] is not an English stub (no value identical to the source) (24.462083ms)
+✔ [hi] ships at least one message (not an empty claim) (43.118334ms)
+✔ [hi] defines each key in at most one namespace file (12.882292ms)
+✔ [hi] carries EVERY key of each namespace file it ships (23.424209ms)
+✔ [hi] names only keys the English source defines (13.426125ms)
+✔ [hi] preserves every ICU placeholder from the English source (34.441125ms)
+✔ [hi] is not an English stub (no value identical to the source) (15.091292ms)
+✔ [ru] ships at least one message (not an empty claim) (46.108084ms)
+✔ [ru] defines each key in at most one namespace file (13.893667ms)
+✔ [ru] carries EVERY key of each namespace file it ships (24.556833ms)
+✔ [ru] names only keys the English source defines (11.418291ms)
+✔ [ru] preserves every ICU placeholder from the English source (34.335083ms)
+✔ [ru] is not an English stub (no value identical to the source) (13.020417ms)
+✔ [ur] ships at least one message (not an empty claim) (41.920709ms)
+✔ [ur] defines each key in at most one namespace file (11.84575ms)
+✔ [ur] carries EVERY key of each namespace file it ships (22.954375ms)
+✔ [ur] names only keys the English source defines (11.268208ms)
+✔ [ur] preserves every ICU placeholder from the English source (30.707167ms)
+✔ [ur] is not an English stub (no value identical to the source) (11.948375ms)
+✔ [vi] ships at least one message (not an empty claim) (41.716916ms)
+✔ [vi] defines each key in at most one namespace file (12.877875ms)
+✔ [vi] carries EVERY key of each namespace file it ships (22.798875ms)
+✔ [vi] names only keys the English source defines (10.766833ms)
+✔ [vi] preserves every ICU placeholder from the English source (30.295625ms)
+✔ [vi] is not an English stub (no value identical to the source) (11.266708ms)
+✔ [zh-CN] ships at least one message (not an empty claim) (40.508584ms)
+✔ [zh-CN] defines each key in at most one namespace file (10.280833ms)
+✔ [zh-CN] carries EVERY key of each namespace file it ships (19.61375ms)
+✔ [zh-CN] names only keys the English source defines (9.823208ms)
+✔ [zh-CN] preserves every ICU placeholder from the English source (26.359042ms)
+✔ [zh-CN] is not an English stub (no value identical to the source) (9.484875ms)
+✔ a locale-scoped identical-value exemption does not exempt another locale (0.132ms)
+ℹ tests 44
+ℹ suites 0
+ℹ pass 44
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1170.366834
+# exit=0
+
+$ node scripts/i18n/check-duplicates.mjs
+# (repo validator: duplicate keys)
+check-duplicates: ok — 1437 file(s) scanned, 0 duplicate key(s)
+# exit=0
+
+$ node scripts/i18n/context-parity.mjs
+# (repo validator: context parity)
+context-parity: ok — every English key is covered, apart from 129 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).
+# exit=0
+
+$ node scripts/i18n/generate.mjs --check
+# (repo validator: generator freshness)
+/Users/damian/local-operator-ui/.worktrees/i18n-s16a/src/i18n/keys.gen.ts is byte-identical to a fresh generation.
+# exit=0
+
+$ git status --porcelain=v1
+# (worktree still clean at audit end (auditor made no edits))
+# exit=0
+
+# --- environment (names only for the session env, values never echoed) ---
+# node: v24.22.1
+# worktree HEAD confirmed before and after every run above
+# CMUX_* stripped: 0
+
+# --- record validation: the receipt through the repo's own ledger writer ---
+# A MINIMAL MIRROR (scripts/i18n/{ledger-assemble,ledger-rules}.mjs, the en+ru
+# catalogue files, i18n/ledger.json, i18n/languages.json) was copied into this
+# scratchpad. The shared worktree stays read-only; assemble wrote only the mirror.
+$ cd <scratchpad>/mirror && node scripts/i18n/ledger-assemble.mjs --repo <mirror> --locale ru --file src/i18n/catalogues/ru/ui.chat.canonical.json --auditor-instance 6e7c2663da44-s16f-au4-ru --auditor-model deepseek/deepseek-flash --result clean --receipt <scratchpad>/receipt.json --scope "round-4 delta: media.sound_label capitalisation + same-noun family" --note "delta re-audit (round 4) of the round-3 sound_label fix; scratchpad record 6e7c2663da44/s16f-au4-ru" --date 2026-11-12
+ledger-assemble: ru/ui.chat.canonical -> status audited (prior audits were of older bytes: moved to superseded) | clean, 0 blocker, 0 major, 0 minor, 0 nit
+$ shasum -a 256 <scratchpad>/receipt.json
+679693ab40c06fa90f1bbd809663007e5759e830b7770860a091b5f82e23f006  /Users/damian/.local-operator/sessions/6e7c2663da44/scratchpad/s16f-au4-ru/receipt.json
+
+$ (cd worktree && git rev-parse HEAD && git status --porcelain=v1)
+cbb8782a39b5692ae46bfc3aa6930840420e9b14
+# exit=0
+
+# --- hi CROSS-CHECK (not this record's locale; no verdict recorded) ---
+# Derived so the report does not quote the commit message: occurrence counts.
+$ grep -o "ध्वनि" src/i18n/catalogues/hi/*.json | wc -l
+      32
+$ grep -c "ध्वनि" src/i18n/catalogues/hi/*.json | grep -v ":0"
+src/i18n/catalogues/hi/ui.canvas.json:1
+src/i18n/catalogues/hi/ui.chat.canonical.json:3
+src/i18n/catalogues/hi/ui.settings.notifications.json:23
+$ grep -o "साउंड" src/i18n/catalogues/hi/*.json | wc -l
+       7
+$ grep -c "साउंड इफ़ेक्ट" src/i18n/catalogues/hi/ui.chat.canonical.json
+6
+$ git diff 8180eff1f705eb79d4df5123d6108c539b585b2e..HEAD --stat -- src/i18n/catalogues/hi/ui.chat.canonical.json
+ src/i18n/catalogues/hi/ui.chat.canonical.json | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+# exit=0

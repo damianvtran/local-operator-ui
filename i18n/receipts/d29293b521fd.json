@@ -1,0 +1,71 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "audit_kind": "independent-namespace-delta-translation-audit",
+ "date": "2026-11-11",
+ "round": 3,
+ "locale": "vi",
+ "namespace": "ui.chat.canonical",
+ "branch": "feat/i18n-s16f-generation-card-labels",
+ "head": "af876eb052db12ec587ef6353aecebd2c769ae22",
+ "instance": "d29293b521fd",
+ "agent": "i18n-auditor",
+ "model": "deepseek/deepseek-flash",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "d29293b521fd",
+  "instance": "d29293b521fd",
+  "model": "deepseek/deepseek-flash",
+  "fallback": false,
+  "actual_model_source": "Harness model header for session d29293b521fd reported deepseek/deepseek-flash for the whole run; no provider fallback notice, no model pin change.",
+  "independent_from_translator_session": true,
+  "independence": "Fresh auditor instance; did not translate, edit, commit or push. Read-only audit; wrote only this receipt and its own evidence bundle in session scratch."
+ },
+ "status": "passed",
+ "result": "clean",
+ "key_count": 10,
+ "source_sha256": "12ec2698434dcb39497e288af62d11d70f0fd71d494a9becf3fd611d6568bbdd",
+ "target_sha256": "65beedffec6a88924e977f5aadafbf52ed4cfb508d46975481273c7103e12900",
+ "sha256": {
+  "en": "12ec2698434dcb39497e288af62d11d70f0fd71d494a9becf3fd611d6568bbdd",
+  "en_context": "95aa203759416c93180b7eb4967e6fcf5bce0dffe20e9d005b431c645e9e11e6",
+  "vi": "65beedffec6a88924e977f5aadafbf52ed4cfb508d46975481273c7103e12900"
+ },
+ "source": {
+  "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+  "sha256": "12ec2698434dcb39497e288af62d11d70f0fd71d494a9becf3fd611d6568bbdd"
+ },
+ "context": {
+  "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+  "sha256": "95aa203759416c93180b7eb4967e6fcf5bce0dffe20e9d005b431c645e9e11e6"
+ },
+ "target": {
+  "path": "src/i18n/catalogues/vi/ui.chat.canonical.json",
+  "sha256": "65beedffec6a88924e977f5aadafbf52ed4cfb508d46975481273c7103e12900"
+ },
+ "findings": [],
+ "findings_counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 0
+ },
+ "observations": [
+  {
+   "id": "vi-s16f-r3-i1",
+   "severity": "info",
+   "key": "ui.chat.canonical.supplement.sound_fallback_label",
+   "text": "image_gen.state.done renders Generated X verb-initially (Đã tạo hình ảnh) while this player name reads noun+passive (Âm thanh được tạo). Correct for their different roles (status line vs name); recorded so a later wave does not unify the name back to the calque."
+  }
+ ],
+ "answered_round2": [
+  "vi S16f r2: supplement.sound_fallback_label Âm thanh đã tạo -> Âm thanh được tạo; verified correct in this round"
+ ],
+ "verdict_reason": "All 10 landed values pass the five repo gates and the surface's 32 tests, plus a 761-case ICU grid on the app's own formatter (0 throws, 0 leftovers, placeholders and branch names identical to English, vi other-only plurals complete, all NFC). The round-3 change fixes a register error: a player name takes noun + passive (được tạo), not the subjectless attributive đã tạo. No English remains outside the named exceptions ({name}, {label}, $0).",
+ "committed": false,
+ "bundle_companions_paths": {
+  "record.json": "i18n/audits/evidence/vi/ui.chat.canonical/s16f-r3-d29293b5/record.json",
+  "audit.log": "i18n/audits/evidence/vi/ui.chat.canonical/s16f-r3-d29293b5/audit.log",
+  "report.md": "i18n/audits/evidence/vi/ui.chat.canonical/s16f-r3-d29293b5/report.md"
+ }
+}

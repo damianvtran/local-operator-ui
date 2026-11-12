@@ -455,5 +455,15 @@
 	"ui.chat.canonical.loading.older": "Đang tải tin nhắn trước…",
 	"ui.chat.canonical.loading.region_label": "Đang tải cuộc trò chuyện",
 	"ui.chat.canonical.loading.remote": "Đang đồng bộ từ thiết bị khác của bạn…",
-	"ui.chat.canonical.loading.revalidating": "Đang kiểm tra tin nhắn mới…"
+	"ui.chat.canonical.loading.revalidating": "Đang kiểm tra tin nhắn mới…",
+	"ui.chat.canonical.media.image_label": "{count, plural, =1 {Hình ảnh} other {Hình ảnh {position, number, ::group-off}}}",
+	"ui.chat.canonical.media.sound_label": "{count, plural, =1 {Âm thanh} other {Âm thanh {position, number, ::group-off}}}",
+	"ui.chat.canonical.sound.batch.item_status": "{status, select, failed {{label} · Thất bại} cancelled {{label} · Đã dừng} other {{label} · Không rõ trạng thái}}",
+	"ui.chat.canonical.sound.batch.latest_update": "Cập nhật gần nhất: {name} (mục {item, number, ::group-off}/{total, number, ::group-off}).",
+	"ui.chat.canonical.sound.batch.summary": "{completed, plural, other {{completed, number, ::group-off} hoàn tất}} · {failed, plural, other {{failed, number, ::group-off} thất bại}}{cancelled, plural, =0 {} other { · {cancelled, number, ::group-off} đã dừng}}{unknown, plural, =0 {} other { · {unknown, number, ::group-off} không rõ trạng thái}}{has_attention, select, yes {. Cần chú ý: {labels}} other {}}",
+	"ui.chat.canonical.sound.cost.batch_unknown": "Chưa biết tổng chi phí.",
+	"ui.chat.canonical.sound.cost.estimated_zero": "Chi phí ước tính là $0; khoản phí cuối cùng chưa được xác nhận.",
+	"ui.chat.canonical.sound.cost.no_charge": "Không tính phí.",
+	"ui.chat.canonical.sound.cost.unknown": "Chưa biết chi phí.",
+	"ui.chat.canonical.supplement.sound_fallback_label": "Âm thanh được tạo"
 }

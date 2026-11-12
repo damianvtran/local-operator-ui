@@ -1,0 +1,214 @@
+# s16f-au3-zhCN — independent zh-CN audit log (ui.chat.canonical)
+# auditor: i18n-auditor (lopdev); session 2a10c1127838; model deepseek/deepseek-flash
+# date(UTC): 2026-11-12T10:34:45Z
+# every block below is the command as run and its actual output
+
+== 1. bound bytes ==
+$ git rev-parse HEAD; git status --porcelain; git rev-parse --abbrev-ref HEAD
+8180eff1f705eb79d4df5123d6108c539b585b2e
+status: []
+feat/i18n-s16f-generation-card-labels
+$ gh pr view 1876 --json number,headRefOid,state,isDraft,baseRefName
+{"baseRefName":"main","headRefOid":"8180eff1f705eb79d4df5123d6108c539b585b2e","isDraft":false,"number":1876,"state":"OPEN"}
+$ git rev-parse origin/main; git cat-file -t 107ff1dd0bddd0dbefa60e27cb179ee636d923a1
+9ef579fe12abe99409c4ed0b52a3d125afdc1b10
+commit
+
+== 2. ICU / placeholder / render grid (repo parser: @formatjs/icu-messageformat-parser + intl-messageformat) ==
+$ NODE_PATH=$WT/node_modules node scratchpad/icu-check.cjs
+== 1. ICU parse (repo parser: @formatjs/icu-messageformat-parser) ==
+PASS  all 467 zh-CN messages parse  []
+PASS  all 467 English messages parse
+
+== 2. structure parity: placeholder names/types/styles, select branches ==
+PASS  element skeleton identical to English (all keys)  []
+PASS  plural option contents identical for every shared option  []
+PASS  placeholder name sets identical (all keys)  []
+
+== 3. zh-CN plural categories: other only (=N exact selectors allowed) ==
+PASS  every plural has other, no one/few/many/zero/two  []
+   plurals in zh-CN: 69; in en: 69
+PASS  every select field and all its branches identical to English  []
+   select messages: 8 in en/zh-CN
+
+== 4. code spans / markup / printf / identifiers byte-identical ==
+PASS  en code spans/markup/printf present verbatim in target  []
+
+== 5. render the delta keys (real IntlMessageFormat, zh-CN) ==
+   media.image_label {"count":1,"position":1} -> "图片"
+   media.image_label {"count":3,"position":1} -> "第1张图片"
+   media.image_label {"count":3,"position":2} -> "第2张图片"
+   media.sound_label {"count":1,"position":1} -> "声音"
+   media.sound_label {"count":3,"position":2} -> "第2个声音"
+   sound.batch.item_status {"status":"failed","label":"rain"} -> "rain · 失败"
+   sound.batch.item_status {"status":"cancelled","label":"rain"} -> "rain · 已停止"
+   sound.batch.item_status {"status":"weird","label":"rain"} -> "rain · 状态未知"
+   sound.batch.latest_update {"name":"rain","item":2,"total":3} -> "最近更新：rain（第2项，共3项）。"
+   sound.batch.summary {"completed":2,"failed":1,"cancelled":0,"unknown":0,"has_attention":"yes","labels":"rain"} -> "已完成2项 · 失败1项。需要关注：rain"
+   sound.batch.summary {"completed":0,"failed":0,"cancelled":2,"unknown":1,"has_attention":"yes","labels":"a · b"} -> "已完成0项 · 失败0项 · 已停止2项 · 状态未知1项。需要关注：a · b"
+   sound.batch.summary {"completed":3,"failed":0,"cancelled":0,"unknown":0,"has_attention":"no","labels":""} -> "已完成3项 · 失败0项"
+
+== 6. delta keys: placeholder sets vs en ==
+   OK   loading.cold  en={} zh={}
+   OK   loading.older  en={} zh={}
+   OK   loading.region_label  en={} zh={}
+   OK   loading.remote  en={} zh={}
+   OK   loading.revalidating  en={} zh={}
+   OK   media.image_label  en={count,position} zh={count,position}
+   OK   media.sound_label  en={count,position} zh={count,position}
+   OK   sound.batch.item_status  en={label,status} zh={label,status}
+   OK   sound.batch.latest_update  en={item,name,total} zh={item,name,total}
+   OK   sound.batch.summary  en={cancelled,completed,failed,has_attention,labels,unknown} zh={cancelled,completed,failed,has_attention,labels,unknown}
+   OK   sound.cost.batch_unknown  en={} zh={}
+   OK   sound.cost.estimated_zero  en={} zh={}
+   OK   sound.cost.no_charge  en={} zh={}
+   OK   sound.cost.unknown  en={} zh={}
+   OK   supplement.sound_fallback_label  en={} zh={}
+
+failures: none
+
+== 3. merge integrity: non-PR keys vs origin/main, PR keys vs 107ff1dd ==
+$ python3 scratchpad/integrity.py
+== A. counts ==
+   merged zh-CN=467  origin/main zh-CN=457  PR-base(107ff1dd) zh-CN=466
+   merged en=467  origin/main en=457  PR-base en=466
+   arithmetic: 466 (PR base) + 5 (main loading.*) - 4 (main renames) = 467 vs merged 467
+
+== B. non-PR keys byte-identical to origin/main ==
+   non-PR keys compared: 457
+   identical: 457   changed: 0
+PASS  every non-PR value equals origin/main  []
+PASS  no non-PR key absent from origin/main  []
+PASS  no origin/main key missing from merged  []
+   keys only in origin/main (main's deleted renames, expected): []
+   keys added by this PR over main: ['ui.chat.canonical.media.image_label', 'ui.chat.canonical.media.sound_label', 'ui.chat.canonical.sound.batch.item_status', 'ui.chat.canonical.sound.batch.latest_update', 'ui.chat.canonical.sound.batch.summary', 'ui.chat.canonical.sound.cost.batch_unknown', 'ui.chat.canonical.sound.cost.estimated_zero', 'ui.chat.canonical.sound.cost.no_charge', 'ui.chat.canonical.sound.cost.unknown', 'ui.chat.canonical.supplement.sound_fallback_label']
+
+== C. the 10 PR-added keys equal the audited PR values ==
+   PR-added keys present in merged: 10/10
+   present in PR base file: 10/10
+PASS  PR-added values unchanged since the PR audit (107ff1dd)  []
+PASS  PR-added keys absent from origin/main (i.e. really new here)  []
+
+== D. English side of the merge ==
+PASS  English text of non-PR keys unchanged since origin/main  []
+PASS  English text of the 10 PR keys unchanged since 107ff1dd  []
+   English keys: new in merged (the 5 loading.* ) = ['ui.chat.canonical.media.image_label', 'ui.chat.canonical.media.sound_label', 'ui.chat.canonical.sound.batch.item_status', 'ui.chat.canonical.sound.batch.latest_update', 'ui.chat.canonical.sound.batch.summary', 'ui.chat.canonical.sound.cost.batch_unknown', 'ui.chat.canonical.sound.cost.estimated_zero', 'ui.chat.canonical.sound.cost.no_charge', 'ui.chat.canonical.sound.cost.unknown', 'ui.chat.canonical.supplement.sound_fallback_label']; dropped by main = ['ui.chat.canonical.older_history.loading', 'ui.chat.canonical.placeholder.loading', 'ui.chat.canonical.placeholder.region_label', 'ui.chat.canonical.transcript.stale_caption']
+
+== E. delta key presence, values, cell widths ==
+   English context sidecar entries: 467; delta keys with context: 15/15
+   sidecar entries carrying a numeric maxCells/maxChars: 0
+   loading.cold                             cells= 14 chars=  8  正在加载对话……
+   loading.older                            cells= 20 chars= 11  正在加载更早的消息……
+   loading.region_label                     cells= 12 chars=  6  正在加载对话
+   loading.remote                           cells= 22 chars= 12  正在从另一台设备同步……
+   loading.revalidating                     cells= 16 chars=  9  正在检查新消息……
+   media.image_label                        cells= 74 chars= 68  {count, plural, =1 {图片} other {第{position, number, ::group-off}张图片}}
+   media.sound_label                        cells= 74 chars= 68  {count, plural, =1 {声音} other {第{position, number, ::group-off}个声音}}
+   sound.batch.item_status                  cells= 97 chars= 88  {status, select, failed {{label} · 失败} cancelled {{label} · 已停止} other {{label} · 状态未知}}
+   sound.batch.latest_update                cells= 87 chars= 74  最近更新：{name}（第{item, number, ::group-off}项，共{total, number, ::group-off}项）。
+   sound.batch.summary                      cells=347 chars=325  {completed, plural, other {已完成{completed, number, ::group-off}项}} · {failed, plural, other {失败{failed, number, ::group-off}项}}{cancelled, plural, =0 {} other { · 已停止{cancelled, number, ::group-off}项}}{unknown, plural, =0 {} other { · 状态未知{unknown, number, ::group-off}项}}{has_attention, select, yes {。需要关注：{labels}} other {}}
+   sound.cost.batch_unknown                 cells= 16 chars=  8  总费用尚不明确。
+   sound.cost.estimated_zero                cells= 32 chars= 17  估算费用为$0；最终计费尚未确认。
+   sound.cost.no_charge                     cells=  8 chars=  4  未收费。
+   sound.cost.unknown                       cells= 14 chars=  7  费用尚不明确。
+   supplement.sound_fallback_label          cells= 10 chars=  5  生成的声音
+
+== F. hashes (worktree files on disk) ==
+   en          905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e
+   context     8f56e0d2b384c6b41add57a64e6c863e565cb61d5a7c0de482d42f380be3acfe
+   zh-CN       35f8058839549d4a8be28792c279784c75a624b9c076fc98d359bae1fe1db12c
+
+failures: none
+
+== 4. repo gates (cheap, read-only) ==
+$ node scripts/i18n/context-parity.mjs
+context-parity: ok — every English key is covered, apart from 129 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).
+exit=0
+
+$ node scripts/i18n/ledger-check.mjs
+ledger-check: es/ui.chat.canonical: status is "pending", not "audited" — an unaudited locale must not ship
+ledger-check: es/ui.chat.canonical: no auditor recorded
+ledger-check: fr/ui.chat.canonical: status is "pending", not "audited" — an unaudited locale must not ship
+ledger-check: fr/ui.chat.canonical: no auditor recorded
+ledger-check: hi/ui.chat.canonical: status is "pending", not "audited" — an unaudited locale must not ship
+ledger-check: hi/ui.chat.canonical: no auditor recorded
+ledger-check: ru/ui.chat.canonical: status is "pending", not "audited" — an unaudited locale must not ship
+ledger-check: ru/ui.chat.canonical: no auditor recorded
+ledger-check: ur/ui.chat.canonical: status is "pending", not "audited" — an unaudited locale must not ship
+ledger-check: ur/ui.chat.canonical: no auditor recorded
+ledger-check: vi/ui.chat.canonical: status is "pending", not "audited" — an unaudited locale must not ship
+ledger-check: vi/ui.chat.canonical: no auditor recorded
+ledger-check: zh-CN/ui.chat.canonical: status is "pending", not "audited" — an unaudited locale must not ship
+ledger-check: zh-CN/ui.chat.canonical: no auditor recorded
+ledger-check: FAILED — 14 finding(s) across 1113 ledger entr(ies)
+exit=1
+
+== 5. typography spot checks on the 15 delta values ==
+$ python3 - <<PY (ASCII ellipsis / half-width punctuation / CJK-Latin space)
+  OK   loading.cold: none
+  OK   loading.older: none
+  OK   loading.region_label: none
+  OK   loading.remote: none
+  OK   loading.revalidating: none
+  OK   media.image_label: none
+  OK   media.sound_label: none
+  OK   sound.batch.item_status: none
+  OK   sound.batch.latest_update: none
+  OK   sound.batch.summary: none
+  OK   sound.cost.batch_unknown: none
+  OK   sound.cost.estimated_zero: none
+  OK   sound.cost.no_charge: none
+  OK   sound.cost.unknown: none
+  OK   supplement.sound_fallback_label: none
+
+  U+2026 count in delta values: 8
+  half-width parens/comma/colon/semicolon in any delta value: ['media.image_label', 'media.sound_label', 'sound.batch.item_status', 'sound.batch.summary']
+
+== 6. ledger state before integration (this audit ships no repo change) ==
+$ python3 - (i18n/ledger.json zh-CN ui.chat.canonical row)
+  status: pending
+  auditors on row: 0
+  superseded audits kept: 21
+  row source_sha256: 905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e
+  row target_sha256: 35f8058839549d4a8be28792c279784c75a624b9c076fc98d359bae1fe1db12c
+
+== 7. input hashes (worktree files on disk) ==
+$ shasum -a 256 <en> <context> <zh-CN>
+905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e  src/i18n/catalogues/en/ui.chat.canonical.json
+8f56e0d2b384c6b41add57a64e6c863e565cb61d5a7c0de482d42f380be3acfe  src/i18n/catalogues/en/ui.chat.canonical.context.json
+35f8058839549d4a8be28792c279784c75a624b9c076fc98d359bae1fe1db12c  src/i18n/catalogues/zh-CN/ui.chat.canonical.json
+$ shasum -a 256 ~/local-operator/i18n/glossary.md ~/local-operator/i18n/style-guides/zh-CN.md
+0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8  /Users/damian/local-operator/i18n/glossary.md
+8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c  /Users/damian/local-operator/i18n/style-guides/zh-CN.md
+
+== 8. receipt accepted by the repo writer + gate (scratch mirror, NOT the worktree) ==
+# mirror: git archive HEAD src/i18n i18n scripts package.json -> scratchpad/mirror; node_modules
+#         symlinked to the shared worktree (no install); the receipt copied to i18n/receipts/ inside it.
+# the worktree ledger.json was never written (git status below).
+$ node scripts/i18n/ledger-assemble.mjs --repo <mirror> --locale zh-CN --auditor-instance 2a10c1127838-zhcn-s16f-au3 --auditor-model deepseek/deepseek-flash --result clean-with-findings --receipt i18n/receipts/2a10c1127838-zhcn-s16f-au3.json --date 2026-11-12
+ledger-assemble: zh-CN/ui.chat.canonical -> status audited | clean-with-findings, 0 blocker, 0 major, 0 minor, 2 nit
+exit=0
+
+$ node scripts/i18n/ledger-check.mjs   (mirror, after assembly)
+exit=1
+ledger-check: vi/ui.chat.canonical: no auditor recorded
+ledger-check: FAILED — 12 finding(s) across 1113 ledger entr(ies)
+$ grep -c "^ledger-check: zh-CN/ui.chat.canonical" ledger-check-mirror.out   # this audit's row
+0
+$ grep "^ledger-check: .*ui\.chat\.canonical" ledger-check-mirror.out | sed "s#^ledger-check: ##; s#/.*##" | sort | uniq -c
+   2 es
+   2 fr
+   2 hi
+   2 ru
+   2 ur
+   2 vi
+
+$ python3 - (assembled zh-CN row, from the mirror ledger)
+  status: audited
+  source_sha256: 905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e
+  target_sha256: 35f8058839549d4a8be28792c279784c75a624b9c076fc98d359bae1fe1db12c
+  auditor: {"agent": "i18n-auditor", "model": "deepseek/deepseek-flash", "instance": "2a10c1127838-zhcn-s16f-au3", "date": "2026-11-12", "result": "clean-with-findings", "receipt": "i18n/receipts/2a10c1127838-zhcn-s16f-au3.json"}
+  superseded kept: 21
+
+$ cd ~/local-operator-ui/.worktrees/i18n-s16a && git status --porcelain   # worktree untouched
+status lines: 0

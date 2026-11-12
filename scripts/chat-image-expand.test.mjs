@@ -150,6 +150,7 @@ const bundle = await build({
 			export { SCROLLBAR_HOLD_MS } from "./src/renderer/src/shared/lib/scrollbar-activity";
 			export { CONTROLS_RESTING_CLASS } from "./src/renderer/src/shared/components/common/image-lightbox";
 			export { t } from "@shared/i18n";
+			export { setLocale, registerCatalogue, clearRegisteredCatalogues } from "./src/i18n";
 		`,
 		resolveDir: ROOT,
 	},
@@ -207,6 +208,9 @@ const {
 	SCROLLBAR_HOLD_MS,
 	CONTROLS_RESTING_CLASS,
 	t,
+	setLocale,
+	registerCatalogue,
+	clearRegisteredCatalogues,
 } = await import(pathToFileURL(bundlePath).href);
 
 /* ------------------------------------------------------------------ fixtures */
@@ -2799,6 +2803,63 @@ test("a walk from a strip tile moves focus with the picture - and off the tiles 
 			"and sits on the dialog's layer",
 		);
 	});
+});
+
+test("a walk from a strip tile still moves focus under another language (the lookup is by slot, not by the English name)", async () => {
+	/*
+	 * `focusFor` used to find the next tile with
+	 * `button[aria-label="Show image N of M"]` - the ENGLISH accessible name - so
+	 * once the label was keyed the query matched nothing and focus silently fell
+	 * to the dialog layer. A marker catalogue renames every tile; the walk must
+	 * still land on the next tile's own control. (A stub, not a translation: only
+	 * the name changes.)
+	 */
+	clearRegisteredCatalogues();
+	registerCatalogue("fr", {
+		"ui.chat.canonical.lightbox.show_image":
+			"fr-tile {index, number, ::group-off}/{count, number, ::group-off}",
+	});
+	setLocale("fr");
+	try {
+		await mount(async (api) => {
+			await api.render(
+				React.createElement(FoldMedia, {
+					images: [IMAGE_ONE, IMAGE_TWO, IMAGE_ABSENT],
+					scope: transcriptScope,
+					onRevealMore: () => {},
+				}),
+			);
+			await api.click(
+				// By shape (the first picture's press), not by its name: the shipped
+				// fr catalogue is bundled, so "Expand Image 1" is French here.
+				api.document
+					.querySelector("[data-fold-media] button img")
+					?.closest("button"),
+			);
+			const tiles = [
+				...api.document.querySelectorAll(`${FILMSTRIP} button`),
+			].filter((tile) =>
+				(tile.getAttribute("aria-label") ?? "").startsWith("fr-tile"),
+			);
+			assert.deepEqual(
+				tiles.map((tile) => tile.getAttribute("aria-label")),
+				["fr-tile 1/3", "fr-tile 2/3"],
+				"the tiles carry the keyed name, none of the English",
+			);
+			act(() => {
+				tiles[0].focus();
+			});
+			await api.pressKey("ArrowRight");
+			assert.equal(
+				api.document.activeElement?.getAttribute("aria-label"),
+				"fr-tile 2/3",
+				"focus followed the walk to the new current tile",
+			);
+		});
+	} finally {
+		setLocale("en");
+		clearRegisteredCatalogues();
+	}
 });
 
 test("the walk scrolls the current slot into view, a receipt's slot included", async () => {

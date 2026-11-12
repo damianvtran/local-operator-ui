@@ -455,5 +455,15 @@
 	"ui.chat.canonical.loading.older": "Chargement des messages précédents…",
 	"ui.chat.canonical.loading.region_label": "Chargement de la conversation",
 	"ui.chat.canonical.loading.remote": "Synchronisation depuis votre autre appareil…",
-	"ui.chat.canonical.loading.revalidating": "Recherche de nouveaux messages…"
+	"ui.chat.canonical.loading.revalidating": "Recherche de nouveaux messages…",
+	"ui.chat.canonical.media.image_label": "{count, plural, =1 {Image} other {Image {position, number, ::group-off}}}",
+	"ui.chat.canonical.media.sound_label": "{count, plural, =1 {Son} other {Son {position, number, ::group-off}}}",
+	"ui.chat.canonical.sound.batch.item_status": "{status, select, failed {{label} · Échoué} cancelled {{label} · Arrêté} other {{label} · Statut inconnu}}",
+	"ui.chat.canonical.sound.batch.latest_update": "Dernière mise à jour : {name} (élément {item, number, ::group-off} sur {total, number, ::group-off}).",
+	"ui.chat.canonical.sound.batch.summary": "{completed, plural, one {{completed, number, ::group-off} terminé} many {{completed, number, ::group-off} de terminés} other {{completed, number, ::group-off} terminés}} · {failed, plural, one {{failed, number, ::group-off} échoué} many {{failed, number, ::group-off} d’échoués} other {{failed, number, ::group-off} échoués}}{cancelled, plural, =0 {} one { · {cancelled, number, ::group-off} arrêté} many { · {cancelled, number, ::group-off} d’arrêtés} other { · {cancelled, number, ::group-off} arrêtés}}{unknown, plural, =0 {} one { · {unknown, number, ::group-off} au statut inconnu} many { · {unknown, number, ::group-off} au statut inconnu} other { · {unknown, number, ::group-off} au statut inconnu}}{has_attention, select, yes {. À examiner : {labels}} other {}}",
+	"ui.chat.canonical.sound.cost.batch_unknown": "Coût total encore inconnu.",
+	"ui.chat.canonical.sound.cost.estimated_zero": "Coût estimé à 0 $ ; frais finaux non confirmés.",
+	"ui.chat.canonical.sound.cost.no_charge": "Sans frais.",
+	"ui.chat.canonical.sound.cost.unknown": "Coût encore inconnu.",
+	"ui.chat.canonical.supplement.sound_fallback_label": "Son généré"
 }
