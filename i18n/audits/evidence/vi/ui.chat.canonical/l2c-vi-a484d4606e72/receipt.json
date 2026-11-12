@@ -1,0 +1,61 @@
+{
+ "schema": 1,
+ "instance": "a484d4606e72",
+ "locale": "vi",
+ "namespace": "ui.chat.canonical",
+ "audit_date": "2026-11-11",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "instance": "a484d4606e72",
+  "model": "deepseek/deepseek-flash",
+  "independent_from_translator_session": true,
+  "actual_model_source": "as stated in the auditor's own report record block (session runtime model header); no fallback was reported"
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "scope": "whole ui.chat.canonical namespace for vi (442 keys) at commit 659ef7e44b7c, the COMBINED bytes of #1861 rebased on #1862; semantic focus on the 2 tool.never_sent_* keys",
+ "sha256": {
+  "vi": "325e37d1a3b5e8a0bbdfbf57bbb5ea3208fb377e35407ca989cba6d5e08b6cb8",
+  "en": "38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3",
+  "context": "c258ab485de698eec85e81ffed506866e3b1e8caf29cb3ff434901388065b390"
+ },
+ "findings": [
+  {
+   "severity": "MINOR",
+   "id": "vi-1",
+   "key": "ui.chat.canonical.tool_row.verb.steered.running",
+   "detail": "pre-existing: `chuyển hướng` vs house `định hướng` (also .settled)"
+  },
+  {
+   "severity": "MINOR",
+   "id": "vi-2",
+   "key": "ui.chat.canonical.tool_row.verb.cancelled_wake.running",
+   "detail": "pre-existing: `thức dậy` vs shipped noun `đánh thức` (also cancelled_wake.*, listed_wakes.*)"
+  },
+  {
+   "severity": "NIT",
+   "id": "vi-3",
+   "key": "ui.chat.canonical.tool_row.bridge.verb.ack_done.settled",
+   "detail": "pre-existing: `nhả` dev shorthand (also .failed/.running)"
+  },
+  {
+   "severity": "NIT",
+   "id": "vi-4",
+   "key": "ui.chat.canonical.lightbox.show_image",
+   "detail": "pre-existing: `index/count` reads as a fraction; suggests `trên`"
+  },
+  {
+   "severity": "NIT",
+   "id": "vi-5",
+   "key": "ui.chat.canonical.send_failure.aside_not_answered",
+   "detail": "pre-existing: `chưa` shifts to still-pending reading"
+  }
+ ],
+ "provenance": {
+  "kind": "BINDING RECEIPT: the verdict, counts, model and session are transcribed from the auditor's own report; this file was written by the integrating coder session (agent coder), NOT by the auditor. Finding ids/keys/headlines are lifted from the report; the report is authoritative for detail.",
+  "source_report": {
+   "path": "i18n/audits/evidence/vi/ui.chat.canonical/l2c-vi-a484d4606e72/report.md",
+   "sha256": "a561aee134407eb1f896fbdd92ccfce95e7d3eaafa342ac67541c275989474c8"
+  }
+ }
+}

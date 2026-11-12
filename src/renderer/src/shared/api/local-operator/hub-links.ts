@@ -92,7 +92,25 @@ export type HubUnresolvedLink = {
 	hub_id: string;
 	/** A diagnostic, NOT an origin, writable policy, grant or synthetic link ID. */
 	reason: "source-unresolved";
+	/**
+	 * WHY the source is unresolved (local-operator PR #3807, additive): absent on
+	 * a core from before the field, so every read tolerates `undefined`.
+	 */
+	detail?: HubUnresolvedDetail;
 };
+/**
+ * Core's `_unresolved_detail` codes. `legacy-scope-ambiguous`: a known-scope
+ * record carrying a tenant id, which an authenticated read cannot tell apart
+ * from a public pull (that stored the publisher's tenant), so core refuses to
+ * guess; `scope-unknown`: the record never knew its scope; `no-origin`: a
+ * tenant-free record no anonymous check has served yet (the next successful
+ * check attaches it). Open-ended so a future code reads as unknown, not a crash.
+ */
+export type HubUnresolvedDetail =
+	| "legacy-scope-ambiguous"
+	| "scope-unknown"
+	| "no-origin"
+	| (string & {});
 /**
  * The link's content fact, normalized against older rows that omit the field.
  *

@@ -11,7 +11,10 @@ import type {
 	MediaPermissionDecision,
 	MediaPermissionView,
 } from "../../../../../shared/browser-media-permission";
-import type { PasskeyNoticeView } from "../../../../../shared/browser-passkey-notice";
+import type {
+	PasskeyCustodyView,
+	PasskeyNoticeView,
+} from "../../../../../shared/browser-passkey-notice";
 import type { HumanTabActionOutcome } from "../../../../../shared/browser-tab-action";
 import {
 	type TabActionsMenuRequest,
@@ -132,6 +135,10 @@ export interface ApprovalView {
 	grantedAt: number;
 }
 
+/** What "Return to agent" came to: handed back now, handed back once the
+ * reload commits, or refused (already explained to the user). */
+export type PasskeyCustodyReturnOutcome = "returned" | "reloading" | "refused";
+
 export interface BrowserChromeState {
 	/** S4b: which list presenter the product chrome has. `suspend` is Tier 1 —
 	 * the field works, the native list does not. Absent on a pre-S4b main. */
@@ -189,6 +196,10 @@ export interface BrowserChromeState {
 	 * provide" notice, or null. Main's facts only (origin, owner); see
 	 * `src/shared/browser-passkey-notice.ts`. Optional for a host that predates it. */
 	passkeyNotice?: PasskeyNoticeView | null;
+	/** The active tab's passkey custody (a password manager's prompt is up in an
+	 * agent tab and the agent is paused there), or null. Optional for a host that
+	 * predates it. */
+	passkeyCustody?: PasskeyCustodyView | null;
 	/** The active tab's camera/microphone prompt (or macOS notice), or null. Main's
 	 * facts only; see `src/shared/browser-media-permission.ts`. Optional for a host
 	 * that predates it. */
@@ -520,6 +531,16 @@ export interface BrowserChrome {
 		tabId: number,
 		at: number,
 	) => Promise<boolean>;
+	/** "Return to agent" on a passkey custody notice. `trusted` must be the
+	 * click's own `event.isTrusted`: main releases nothing without it. Answers
+	 * what main did, so the band can stay busy through a reload (`reloading`)
+	 * instead of re-enabling a button whose press is still in progress (review
+	 * U2). A refusal has already been shown as a toast. */
+	releasePasskeyCustody: (
+		tabId: number,
+		at: number,
+		trusted: boolean,
+	) => Promise<PasskeyCustodyReturnOutcome>;
 	/** Answer the camera/microphone prompt. `trusted` must be the click's own
 	 * `event.isTrusted`: main grants nothing without it. */
 	decideMediaPermission: (
@@ -952,6 +973,29 @@ export function useBrowserChrome(): BrowserChrome {
 			clearData: (what) => runVoid(() => api?.clearData(what)),
 			dismissPasskeyNotice: (tabId, at) =>
 				runVoid(() => api?.dismissPasskeyNotice(tabId, at)),
+			releasePasskeyCustody: async (tabId, at, trusted) => {
+				let outcome: PasskeyCustodyReturnOutcome = "refused";
+				await runVoid(async () => {
+					const answer = await api?.releasePasskeyCustody?.(tabId, at, trusted);
+					if (answer?.ok === true) {
+						outcome = answer.reloaded ? "reloading" : "returned";
+						return;
+					}
+					// Main's reasons are codes here, not sentences: each maps to one
+					// catalogue message, and an unknown code gets the generic one.
+					const reason = answer && answer.ok === false ? answer.reason : "";
+					showErrorToast(
+						reason === "stale"
+							? t("ui.browser.browser_passkey_custody.return_refused_stale")
+							: reason === "not_held"
+								? t(
+										"ui.browser.browser_passkey_custody.return_refused_not_held",
+									)
+								: t("ui.browser.browser_passkey_custody.return_failed"),
+					);
+				});
+				return outcome;
+			},
 			decideMediaPermission: (tabId, id, decision, trusted) =>
 				runVoid(() => api?.decideMediaPermission(tabId, id, decision, trusted)),
 			openMediaSystemSettings: (tabId, id) =>

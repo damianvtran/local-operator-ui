@@ -109,6 +109,7 @@ import {
 	teamBridgeBannerText,
 	teamBridgePreviewText,
 } from "./team-bridge-banner-format";
+import { TEAM_BRIDGE_HISTORY_GC_MS } from "./team-bridge-channel-cache";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
 	asTeamBridgeTenantId,
@@ -823,7 +824,20 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 		refetchIntervalInBackground: true,
 		refetchOnWindowFocus: true,
 		retry: 1,
+		/* The rail's opening snapshot (`openingRows`) is this entry; keep it for as
+		   long as the timelines it leads into (bridge-instant-load S3b). */
+		gcTime: TEAM_BRIDGE_HISTORY_GC_MS,
 	});
+	/*
+	 * NO PREFETCH FROM THIS WATCHER, deliberately (bridge-instant-load). Warming
+	 * timelines here was tried and reverted: this watcher's contract is that a
+	 * conversation never opened gets no history read (see
+	 * `syncUnmountedConversations`), and its banner read joins any in-flight read
+	 * of the same key — a warming read dispatched before the new message existed
+	 * would hand the banner a page without it (measured: 12 failing cases in
+	 * team-bridge-notifications-mount.test.mjs). Warming lives on the page
+	 * (`team-bridge-prefetch.ts`), where a list answer and a hovered row ask for it.
+	 */
 
 	const cursors = useRef<Map<string, number>>(new Map());
 	/** `latest_seq` last seen per tenant+conversation (see `syncUnmountedConversations`). */

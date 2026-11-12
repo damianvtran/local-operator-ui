@@ -9,7 +9,6 @@ import {
 import { decodeProfileImage } from "@shared/api/radient/profile-image";
 import { AvatarCropper } from "@shared/components/avatar-cropper";
 import { Button, Input, Label, Textarea } from "@shared/components/ui";
-import type { SearchableOption } from "@shared/components/ui/searchable-select";
 import { SearchableSelect } from "@shared/components/ui/searchable-select";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
@@ -28,6 +27,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { timezoneOptions } from "./timezone-options";
 
 export type AccountProfileEditorProps = {
 	snapshot: AccountProfileSnapshot;
@@ -61,41 +61,6 @@ const DESCRIPTION_LINES = 8;
 type TextField = keyof typeof FIELD_LIMITS;
 type FieldError = { field: TextField; reason: "length" | "lines" };
 
-const zoneName = (format: Intl.DateTimeFormat) =>
-	format.formatToParts(new Date()).find((part) => part.type === "timeZoneName")
-		?.value;
-/** Search by what people actually type for a zone ("PST", "GMT+1"), not only by
- * IANA city names. Both terms come from `Intl` itself, so there is no table to
- * keep current; the offset is evaluated now, which is what a reader setting
- * their zone today means. A zone `Intl` cannot name simply has fewer terms. */
-function timezoneOptions(): SearchableOption[] {
-	return [...new Set(["UTC", ...Intl.supportedValuesOf("timeZone")])].map(
-		(zone) => {
-			const offset = zoneName(
-				new Intl.DateTimeFormat("en-US", {
-					timeZone: zone,
-					timeZoneName: "shortOffset",
-				}),
-			);
-			const short = zoneName(
-				new Intl.DateTimeFormat("en-US", {
-					timeZone: zone,
-					timeZoneName: "short",
-				}),
-			);
-			const keywords = [offset, short].filter(
-				(term): term is string => Boolean(term) && term !== zone,
-			);
-			return {
-				id: zone,
-				name: zone.split("_").join(" "),
-				description: offset,
-				keywords,
-			};
-		},
-	);
-}
-
 export function AccountProfileEditor({
 	snapshot,
 	initialDraft,
@@ -105,7 +70,7 @@ export function AccountProfileEditor({
 	onUpload,
 	onRemove,
 }: AccountProfileEditorProps) {
-	useI18nLocale();
+	const locale = useI18nLocale();
 	const id = useId();
 	const [baseline, setBaseline] = useState(() => textFields(snapshot));
 	const [draft, setDraft] = useState(() => ({
@@ -152,7 +117,7 @@ export function AccountProfileEditor({
 		title: useRef<HTMLInputElement>(null),
 		description: useRef<HTMLTextAreaElement>(null),
 	};
-	const timezones = useMemo(timezoneOptions, []);
+	const timezones = useMemo(() => timezoneOptions(locale), [locale]);
 	const [discard, setDiscard] = useState(false);
 	const [remove, setRemove] = useState(false);
 	const [source, setSource] = useState<ImageBitmap>();

@@ -63,6 +63,7 @@ import {
 	LIFT,
 	LINE_SEPARATION_FLOOR,
 	LIVENESS_PAIR_FLOOR,
+	LOADING_PILL_ALPHA,
 	MEDIA_SURFACE_DELTA_E,
 	MEDIA_SURFACE_LIGHTNESS_STEP,
 	MESSAGE_SURFACE_DELTA_E,
@@ -338,6 +339,22 @@ export const createRun = ({ composed = false, capturePairs = false } = {}) => {
 	});
 	return run;
 };
+
+/**
+ * Every `bg-accent/<N>` alpha the loading indicator's class strings carry, in
+ * source order. The contract holds the pill to exactly ONE, equal to
+ * `LOADING_PILL_ALPHA`. Every token in every class string counts, not just the
+ * first per string: `bg-accent/10 bg-accent/20` in one className ships the
+ * LAST (tailwind's cascade), so reading only the first would pass a pill this
+ * gate never measured (round-3 n2). Class strings only: the component's own
+ * comments name the class in prose.
+ */
+export const loadingPillAlphas = (source) =>
+	[...source.matchAll(/className="([^"]*)"/g)].flatMap(([, classes]) =>
+		[...classes.matchAll(/(?:^|\s)bg-accent\/(\d+)(?=\s|$)/g)].map((m) =>
+			Number(m[1]),
+		),
+	);
 
 /**
  * Assert every per-palette floor in the contract over ONE palette, into `run`.
@@ -2033,6 +2050,28 @@ export const evaluatePalette = (run, entry) => {
 			fail(
 				`${id}: ${label} — ${role} ${ink} on the arrival band ${band} (accent ${ARRIVAL_BAND_ALPHA} over surface) = ${got}:1, need ${floor}:1`,
 			);
+		}
+		/*
+		 * THE CONVERSATION-LOADING PILL (reasoning at `LOADING_PILL_ALPHA`): the
+		 * label on the tint, over every ground the indicator mounts on.
+		 * `accentWash` is one of them: the `older` indicator sits inside the
+		 * older-history slot's ghost Button, whose hover paints that wash under
+		 * the pill (round-3 m2).
+		 */
+		for (const ground of ["canvas", "surface", "elevated", "accentWash"]) {
+			const pill = over(p.accent, p[ground], LOADING_PILL_ALPHA);
+			for (const [role, floor, label] of [
+				["inkMuted", FLOOR.text, "loading pill label"],
+			]) {
+				const fg = p[role];
+				if (!isHex(fg)) continue;
+				run.assertions++;
+				const got = r2(ratio(fg, pill));
+				if (got >= floor) continue;
+				fail(
+					`${id}: ${label} — ${role} ${fg} on the loading pill ${pill} (accent ${LOADING_PILL_ALPHA} over ${ground}) = ${got}:1, need ${floor}:1`,
+				);
+			}
 		}
 		const arrival = ratio(band, p.surface);
 		const hover = ratio(p.rowHover, p.surface);

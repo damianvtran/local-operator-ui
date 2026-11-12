@@ -99,7 +99,34 @@ type BridgeStatusAuthority = {
 	state: AgentMessagesStatus["state"];
 	readOnly: boolean;
 	localEnabled: boolean;
+	/*
+	 * THE ORGANIZATIONS THE STATUS ADMITS, as a sorted id list joined into one
+	 * string so the comparison stays a primitive `!==` (bridge-instant-load S1).
+	 * An organization leaving `status.tenants` is the one authority change a
+	 * read can cross while account, state, read-only and local all stay put —
+	 * the reader was removed from one org of several — so a read started under
+	 * the old set must not warm a cache under the new one. Sorted because the
+	 * server's row order is not part of the authority; ids only, because the
+	 * rows' other fields (`tenant_name`, `endpoint` posture) move without
+	 * changing who may read (see the known gap below for `endpoint`). A `null`
+	 * `status` block projects to "" — a ready status without it names no
+	 * organization at all, which is itself a different authority.
+	 */
+	tenantIds: string;
 };
+
+/**
+ * The projection's field list, pinned so a new authority field is added here
+ * deliberately (and the fence test that iterates it fails until it is covered),
+ * never by an object spread that quietly widens or narrows the comparison.
+ */
+export const BRIDGE_STATUS_AUTHORITY_FIELDS = [
+	"accountId",
+	"state",
+	"readOnly",
+	"localEnabled",
+	"tenantIds",
+] as const satisfies readonly (keyof BridgeStatusAuthority)[];
 
 export function bridgeStatusAuthority(
 	status: AgentMessagesStatus | undefined,
@@ -110,6 +137,10 @@ export function bridgeStatusAuthority(
 		state: status.state,
 		readOnly: Boolean(status.read_only),
 		localEnabled: status.local.enabled,
+		tenantIds: (status.status?.tenants ?? [])
+			.map((tenant) => tenant.tenant_id)
+			.sort()
+			.join("\u0000"),
 	};
 }
 
@@ -120,11 +151,8 @@ function bridgeStatusAuthorityChanged(
 	after: BridgeStatusAuthority | null,
 ): boolean {
 	if (!before || !after) return true;
-	return (
-		before.accountId !== after.accountId ||
-		before.state !== after.state ||
-		before.readOnly !== after.readOnly ||
-		before.localEnabled !== after.localEnabled
+	return BRIDGE_STATUS_AUTHORITY_FIELDS.some(
+		(field) => before[field] !== after[field],
 	);
 }
 

@@ -7633,6 +7633,7 @@ export function ChatSidebar({
 					{unresolvedOrigins.length > 0 && (
 						<HubUnresolvedMark
 							item={name}
+							details={unresolvedOrigins.map((origin) => origin.detail)}
 							staged={staged}
 							onResolve={() =>
 								navigate(

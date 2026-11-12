@@ -107,6 +107,7 @@ import type { SessionAskFrame } from "@features/chat/session-asks";
 import {
 	bandYieldsToRadientIssue,
 	composerModelAccessReading,
+	modelAccessIsInformational,
 	modelAccessOwnsRadientStatus,
 	radientCalloutOwnsTheSignIn,
 } from "@features/chat/session-status/session-model";
@@ -8290,8 +8291,16 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * on screen, so those states keep it (`radientCalloutOwnsTheSignIn` states
 		 * why; any other provider cannot collide with the connector).
 		 */
+		/*
+		 * An INFORMATIONAL reading (healthy borrowed access, or access the runtime
+		 * is still resolving on its own) asks nothing of the user, so it is not a
+		 * standing card: the session strip carries it as an `i` icon beside the
+		 * model and effort chips (`modelAccessIsInformational` records the
+		 * per-state decision; operator report 2026-11-11).
+		 */
 		const modelAccessBlock =
 			modelAccess &&
+			!modelAccessIsInformational(modelAccess) &&
 			!bandYieldsToRadientIssue(
 				modelAccess,
 				radientCalloutOwnsTheSignIn(radientIssue.issue),

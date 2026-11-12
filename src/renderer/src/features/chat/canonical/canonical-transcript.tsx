@@ -181,6 +181,7 @@ import { parseReplies } from "../utils/reply-utils";
 import { CanonicalAudio } from "./canonical-audio";
 import { CanonicalImage } from "./canonical-image";
 import { CheckpointRail } from "./checkpoint-rail";
+import { ConversationLoadingIndicator } from "./conversation-loading-indicator";
 import { visibleRecords } from "./cross-session-visibility";
 import { isRecordReachable } from "./failed-row-jump";
 import { FoldMedia } from "./fold-media";
@@ -262,7 +263,6 @@ import {
 	transcriptPaneCollapses,
 	transcriptPaneHoldsPlaceholder,
 } from "./transcript-pane";
-import { TranscriptPlaceholder } from "./transcript-placeholder";
 import {
 	type TranscriptImage,
 	type TranscriptRecord,
@@ -784,15 +784,25 @@ export type CanonicalTranscriptProps = {
 	 *
 	 * It is a rendered state, not a hint: rows stay at full `ink` (a cached row is
 	 * a real row, and opacity is banned as a state signal in this system), and
-	 * what says "this may be behind" is ONE caption in the transcript's foot
-	 * slot (`data-lo-stale-caption`), the row reserved for the working line, so
-	 * its removal moves nothing. The rows PAINT while the page is owed - the
-	 * pane no longer holds a placeholder over them. It is present from the
-	 * cached paint's first frame and goes in the same commit as
-	 * the reconciled rows, so the reader never sees reconciled rows labelled
-	 * "last saved" or the reverse.
+	 * what says "newer messages may be on the way" is ONE loading indicator in the
+	 * transcript's foot slot (`data-lo-stale-caption`), the row reserved for the
+	 * working line, so its removal moves nothing. The rows PAINT while the page
+	 * is owed - the pane no longer holds a placeholder over them. It is present
+	 * from the cached paint's first frame and goes in the same commit as the
+	 * reconciled rows, so the reader never sees reconciled rows still labelled
+	 * as being checked, or the reverse.
 	 */
 	stale?: boolean;
+	/**
+	 * True when this conversation is owned by another device (the catalogue's
+	 * placement fact or row `locality`, `remoteOwnedId`). Changes only the WORDS
+	 * of the loading indicator: for a peer's conversation every wait this pane
+	 * shows before the history is proven is the sync from that device, and
+	 * "Syncing from your other device…" is the one label that says why it can take
+	 * longer than a local open. Optional, defaulting false: absence is not proof of
+	 * remote, and a caller that omits it gets the local labels.
+	 */
+	remote?: boolean;
 	/**
 	 * True when the backend says this conversation is not on this machine (M6).
 	 *
@@ -2277,6 +2287,26 @@ const AssistantRow = memo(function AssistantRow({
 });
 
 /**
+ * Whether the tool row's summary is a sentence the CATALOGUE wrote (`never sent`,
+ * `composing`, `queued`) rather than text built from the call's arguments.
+ *
+ * The row needs the distinction to pick the summary's direction: arguments are
+ * machine voice (paths, commands) and stay left-to-right in every locale, a keyed
+ * sentence follows the locale's own direction (design review round 1, D1). It is
+ * ONE predicate shared with `toolRecordSummary`, so the words and the direction
+ * they are painted in cannot drift apart.
+ */
+function toolRecordStatusKind(
+	record: Extract<TranscriptRecord, { kind: "tool" }>,
+): "never_sent" | "composing" | "queued" | null {
+	if (record.neverSent === true || Boolean(record.notRunReason))
+		return "never_sent";
+	if (record.phase === "composing") return "composing";
+	if (record.phase === "queued") return "queued";
+	return null;
+}
+
+/**
  * The row's own summary text — the object column before the row's bare-name drop.
  *
  * Shared with the trace fold's live clause (wired as `summaryOf` in the fold's
@@ -2294,22 +2324,41 @@ const AssistantRow = memo(function AssistantRow({
 function toolRecordSummary(
 	record: Extract<TranscriptRecord, { kind: "tool" }>,
 ): string {
-	const composing = record.phase === "composing";
-	const queued = record.phase === "queued";
-	const neverSent = record.neverSent === true || Boolean(record.notRunReason);
-	if (neverSent)
+	const kind = toolRecordStatusKind(record);
+	const composing = kind === "composing";
+	const queued = kind === "queued";
+	if (kind === "never_sent")
 		// `never sent`, not `failed`: the call produced no result to fail, and the
 		// size is the record of how far the model got before nothing would receive
 		// it (`ToolCard.mark_not_run`). An empty payload is named rather than
 		// rendered as `0 B`, which would claim a measurement.
-		return `never sent · ${record.argumentBytes ? `${formatBytes(record.argumentBytes)} composed` : "nothing composed"}`;
+		return record.argumentBytes
+			? t("ui.chat.canonical.tool.never_sent_composed", {
+					size: formatBytes(record.argumentBytes),
+				})
+			: t("ui.chat.canonical.tool.never_sent_empty");
+	/*
+	 * Whole-line messages, sized and empty, for the same reason `never sent`
+	 * above has two: the separator and the size sit INSIDE the message so a
+	 * language can order them its own way, and no English fragment is glued
+	 * on here. Resolved per call (the row and the fold both re-render on a
+	 * locale change), never at module load.
+	 */
 	if (composing)
-		return `composing${record.argumentBytes ? ` · ${formatBytes(record.argumentBytes)}` : ""}`;
+		return record.argumentBytes
+			? t("ui.chat.canonical.tool.composing_sized", {
+					size: formatBytes(record.argumentBytes),
+				})
+			: t("ui.chat.canonical.tool.composing_empty");
 	if (queued)
 		// Dictation is over and the call has not started: the byte count stays
 		// (it is how far the model got), and the status word stops claiming work
 		// the model finished writing.
-		return `queued${record.argumentBytes ? ` · ${formatBytes(record.argumentBytes)}` : ""}`;
+		return record.argumentBytes
+			? t("ui.chat.canonical.tool.queued_sized", {
+					size: formatBytes(record.argumentBytes),
+				})
+			: t("ui.chat.canonical.tool.queued_empty");
 	return summaryFromArgs(record.toolName, record.args);
 }
 
@@ -2764,6 +2813,12 @@ const ToolRow = memo(function ToolRow({
 				 */
 				op={toolOp(record.args)}
 				summary={summary}
+				/*
+				 * Keyed status copy (`composing`, `queued`, `never sent`) follows the
+				 * locale's direction; arguments (paths, commands) stay machine voice.
+				 * A bridge row's summary is its own text, never this copy.
+				 */
+				summaryIsCopy={!bridge && toolRecordStatusKind(record) !== null}
 				summaryFallback={derived}
 				summaryHold={
 					/*
@@ -4049,6 +4104,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	hydrationProven = true,
 	historyReadPending = false,
 	stale = false,
+	remote = false,
 	missing = false,
 	attachmentScope,
 	conversationId,
@@ -7551,8 +7607,16 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				    Rendered inside the content column so it lands at the same inset and the
 				    same bottom anchor the rows will, rather than at the pane's centre in
 				    the composer band. */}
+						{/* A peer's conversation says "syncing" only while its history is
+				    unproven, the same gate as the older slot's row below: the hold
+				    can also be the LOCAL settings-filter wait (`holdFiltering`) over
+				    a peer conversation already read, and that is not a sync (code
+				    review round 1, C2). */}
 						{holdPlaceholder && (
-							<TranscriptPlaceholder isSmallView={isSmallView} />
+							<ConversationLoadingIndicator
+								variant={remote && !hydrationProven ? "remote" : "cold"}
+								isSmallView={isSmallView}
+							/>
 						)}
 						{/* Older rows: durable pages, then the local window. One fixed-height
 				    slot for every state of both, so a state change above the oldest
@@ -7574,7 +7638,8 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				    cursor (its rows are trimmed), which the slot reads as `exhausted`
 				    and says "Start of conversation" over a transcript that may be a
 				    thousand messages in. Measured on a captured frame, not inferred.
-				    The caption in the foot slot below already says the view is not authoritative.
+				    The loading indicator in the foot slot below already says the view is
+				    still being checked.
 				    AND NOT WHILE THE FILTER IS HELD (`holdFiltering`): the slot is the
 				    top of a conversation, and a conversation whose rows are withheld for
 				    a settings answer is not a conversation this pane has painted. The
@@ -7589,6 +7654,14 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 							!holdFiltering && (
 								<OlderHistorySlot
 									state={slotState}
+									/* For a peer's conversation whose history is not yet proven,
+									 * the slot's pending row IS the sync (the `unproven` arm's
+									 * retry, or the warm re-arm's walk), so it says so; once a
+									 * page has proven the history, an earlier page is an ordinary
+									 * older-page load. */
+									loadingVariant={
+										remote && !hydrationProven ? "remote" : "older"
+									}
 									// A retry cannot succeed while the transport is down, and the
 									// transcript's own notice below already explains why. The slot
 									// drops its gesture hint rather than stacking a second claim on
@@ -7606,7 +7679,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 							)}
 
 						{/*
-						 * THE STALE CAPTION IS NOT PAINTED IN HERE EITHER (design round 2, D10):
+						 * THE STALE INDICATOR IS NOT PAINTED IN HERE EITHER (design round 2, D10):
 						 * it is stated ONCE, in the foot slot below, and `stale-caption.test.mjs`
 						 * counts it. An earlier shape painted the same sentence twice on every
 						 * short pane - once pinned above the scroller, once immediately above the
@@ -7616,13 +7689,10 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 						 * This surface's contract is ONE caption for one status, and a status the
 						 * reader has already read is not improved by being repeated.
 						 *
-						 * The loading skeleton is not rendered here either: it is
-						 * `TranscriptPlaceholder`, inside the content column above, because the
-						 * pane's own decision module (`transcript-pane.ts`) is the single
-						 * authority for when a row-less pane holds a placeholder — and because the
-						 * ground the old inline bars used (`sunken`, the weakest adjacent step in
-						 * most palettes) was measured against the pane's `canvas` and replaced
-						 * with `elevated` there.
+						 * The cold loading state is not rendered here either: it is the shared
+						 * `ConversationLoadingIndicator`, inside the content column above, because
+						 * the pane's own decision module (`transcript-pane.ts`) is the single
+						 * authority for when a row-less pane holds a placeholder.
 						 */}
 						{missing ? (
 							/*
@@ -7936,12 +8006,25 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 								)}
 							>
 								{stale ? (
-									<span
-										data-lo-stale-caption={true}
-										className="block truncate font-sans text-ink-dim text-meta"
-									>
-										{t("ui.chat.canonical.transcript.stale_caption")}
-									</span>
+									/*
+									 * The cached paint's revalidation, as the shared loading
+									 * indicator (operator 2026-11-11: the faint `ink-dim`
+									 * sentence that stood here was easy to miss and did not read
+									 * as loading). Its line box is one `text-meta` line, 12px x
+									 * 1.45 = 17.4px, which is exactly this row's `1lh` reserve
+									 * (`text-mono-sm`, also 12px x 1.45), so it fills the slot
+									 * without growing it. `data-lo-stale-caption` stays as the
+									 * probe name the switch-latency rig and the tests read.
+									 * "Remote" behind the same proof gate as the cold slot and
+									 * the older slot, so the three never disagree.
+									 */
+									<div data-lo-stale-caption={true}>
+										<ConversationLoadingIndicator
+											variant={
+												remote && !hydrationProven ? "remote" : "revalidating"
+											}
+										/>
+									</div>
 								) : (
 									working &&
 									!internalLiveLeaf && (

@@ -1,0 +1,53 @@
+{
+	"auditor": "reviewer (independent i18n auditor, lopdev team)",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "4b8febc34595-hi",
+	"run_id": "4b8febc34595",
+	"status": "passed",
+	"result": "clean",
+	"namespace": "ui.chat.canonical",
+	"locale": "hi",
+	"date": "2026-11-11",
+	"head": "80a346fd5fa2c79b29f6f37a27332bdd7dca59f5",
+	"base": "c1ba44696",
+	"key_count": 443,
+	"scope": "Delta audit at 80a346fd5 of the 5 added keys ui.chat.canonical.loading.{cold,revalidating,older,remote,region_label} and the 4 removed keys (placeholder.loading, placeholder.region_label, older_history.loading, transcript.stale_caption). The other 438 values were compared against c1ba44696 and are byte-identical; c1ba44696's hi bytes (da636c7580e9...) are the target the current ledger audit 7bfe4bf0bb78 bound, so they are retained on that proof, not re-read.",
+	"audited_values": {
+		"ui.chat.canonical.loading.cold": "बातचीत लोड हो रही है…",
+		"ui.chat.canonical.loading.revalidating": "नए संदेशों की जाँच हो रही है…",
+		"ui.chat.canonical.loading.older": "पहले के संदेश लोड हो रहे हैं…",
+		"ui.chat.canonical.loading.remote": "आपके दूसरे डिवाइस से सिंक हो रहा है…",
+		"ui.chat.canonical.loading.region_label": "बातचीत लोड हो रही है"
+	},
+	"checks": [
+		"meaning against en and the en context sidecar for each key",
+		"register: आप, everyday Hindi with living loans (लोड, सिंक, डिवाइस), progressive statuses with correct agreement (बातचीत f., संदेश m.pl., डिवाइस m. -> दूसरे), single U+2026 ellipsis, no danda on a status fragment; region_label without ellipsis",
+		"glossary: device -> डिवाइस; sync -> सिंक (matches tool_row.verb.synced_agents.running and settings last_known)",
+		"consistency: cold/region_label equal the audited placeholder.loading/region_label; older equals audited older_history.loading plus ellipsis and matches older_history.load (पहले के संदेश); revalidating matches अपडेट जाँचे जा रहे हैं / बदलाव जाँचे जा रहे हैं… family; दूसरे डिवाइस matches attachment_refusal",
+		"no placeholders or ICU in source or target; no ZWJ/ZWNJ or bidi controls"
+	],
+	"findings": [],
+	"severity_counts": { "blocker": 0, "major": 0, "minor": 0, "nit": 0 },
+	"observations": [
+		"INFO: region_label (en source 'Loading conversation') names the live region for all four variants, including revalidating while the transcript is already readable; that is English-source/product scope, not translation, and the hi rendering is faithful."
+	],
+	"independence": {
+		"translator_agent": "coder",
+		"translator_job": "6ca5ea22d2ab",
+		"translator_model": "anthropic/claude-opus-5-5 (as relayed by the manager brief)",
+		"auditor_agent": "reviewer",
+		"auditor_session": "4b8febc34595",
+		"independent_from_translator": true,
+		"disclosure": "different agent and session from the translator; same served model family, disclosed"
+	},
+	"references": {
+		"glossary": "~/local-operator/i18n/glossary.md @ 5079899f0",
+		"style_guide": "~/local-operator/i18n/style-guides/hi.md @ 5079899f0",
+		"policy": "docs/I18N.md 'Retain checkable audit records'"
+	},
+	"sha256": {
+		"target": "e7df253d068d9058e7e29e6d46f14a842d728e8d01fa389175795f7a33c867a5",
+		"en": "664a23730b7244a096f53a6e55e2014bd16400fb8846b25bd242b2668d6efa1a",
+		"context": "98c3bc0ac341eda0dec29f8b2698e40b860fa22e66a1dc471880054794a90e0b"
+	}
+}

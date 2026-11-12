@@ -1043,3 +1043,59 @@ test("the adapter's canEnableAutoPush is the shared gate, so a public no-grant l
 		false,
 	);
 });
+
+/*
+ * Design B6.2.4 / core #3807 review round 1 (m1): after a startup 401 core's
+ * /links keeps `pull.state="failed"` with `no-credential/rejected` until the
+ * next check. A sign-in failure is the ACCOUNT's, stated once by the section's
+ * sign-in line, so it must not draw a failed or review mark on every row.
+ */
+test("a sign-in failure draws no failed or review mark", () => {
+	for (const state of ["failed", "retry-wait"]) {
+		const mark = hubLinkMark(
+			link({ pull: direction({ state, signInNeeded: true }) }),
+		);
+		assert.equal(mark.kind, "healthy", state);
+		assert.equal(mark.action, "policy", state);
+	}
+	// Control: the same non-retryable failure without the sign-in fact still
+	// opens review, so the quieting is keyed on the class, not on the state.
+	assert.equal(
+		hubLinkMark(link({ pull: direction({ state: "failed" }) })).kind,
+		"review",
+	);
+	// A real, retryable failure in the OTHER direction is not hidden by it.
+	assert.equal(
+		hubLinkMark(
+			link({
+				pull: direction({ state: "failed", signInNeeded: true }),
+				push: direction({ state: "retry-wait", retryable: true }),
+				policy: { subscribe: true, autoPush: true, revision: "r" },
+			}),
+		).kind,
+		"failed",
+	);
+});
+
+test("the adapter marks no-credential (with or without a sub-class) as a sign-in failure", () => {
+	const raw = (error_class, error_subclass = null) =>
+		rawLink({
+			pull: {
+				...rawLink().pull,
+				state: "failed",
+				error_class,
+				error_subclass,
+			},
+		});
+	assert.equal(
+		hubLinkView(raw("no-credential", "rejected")).pull.signInNeeded,
+		true,
+	);
+	assert.equal(hubLinkView(raw("no-credential")).pull.signInNeeded, true);
+	assert.equal(hubLinkView(raw("hub-error")).pull.signInNeeded, false);
+	assert.equal(
+		hubLinkMark(hubLinkView(raw("no-credential", "rejected"))).kind,
+		"healthy",
+	);
+	assert.equal(hubLinkMark(hubLinkView(raw("hub-error"))).kind, "failed");
+});
