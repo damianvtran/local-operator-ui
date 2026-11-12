@@ -237,11 +237,26 @@ export type ImageGenCancelFact = {
  * progress frame — reads as "no fact", and the card then renders exactly the
  * text it rendered before: the wire's sentence, or the keyed generating/queued
  * fallback it used to hold as a constant.
+ *
+ * A NAMED ERROR IS NOT A STOP RECEIPT EITHER (review round 1, F1, 2026-11-12):
+ * `error_type` on a cancel payload means the stop did NOT happen —
+ * `media_already_completed` is a stop that lost its race with the finish — so
+ * the cost consequence `vendor_stopped` carries does not describe this call.
+ * The conflict must keep the wire's own "Not cancelled — already completed."
+ * text, and ARM 1 (`record.stopped === true`, the user's interrupt) is
+ * evaluated BEFORE the `media_already_completed` branch, so accepting the fact
+ * here would let the keyed "stop requested, will be charged" sentence outrank
+ * it. Refusing any non-empty `error_type` is the narrow rule: the plain-cancel
+ * arm already requires `error_type === null` to reach its keyed fact, so this
+ * refusal changes nothing for a real cancel and only restores the wire's
+ * precedence for a refused one.
  */
 function cancelFact(details: unknown): ImageGenCancelFact | null {
 	if (!details || typeof details !== "object") return null;
 	const result = details as Record<string, unknown>;
 	if (result.stage !== "cancelled") return null;
+	const errorType = result.error_type;
+	if (typeof errorType === "string" && errorType) return null;
 	const settling = result.settling;
 	if (typeof settling !== "boolean") return null;
 	if (!("vendor_stopped" in result)) return null;

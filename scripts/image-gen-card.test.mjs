@@ -2614,3 +2614,82 @@ test("images and videos keep the rectangular generating tile", () => {
 		);
 	}
 });
+
+/*
+ * A STOP THAT LOST ITS RACE IS NOT A COST RECEIPT (review round 1, F1,
+ * 2026-11-12). `cancelFact` reads `stage`/`settling`/`vendor_stopped` as the
+ * stop's cost consequence, and ARM 1 (`record.stopped === true`, the user's
+ * interrupt) is evaluated BEFORE the `media_already_completed` branch — so a
+ * stop pressed as the generation finished used to render the in-flight
+ * sentence ("Stop requested… will be charged") over the server's own
+ * "Not cancelled — already completed.", the one statement that the artifact
+ * may already exist. A payload that names an `error_type` describes a stop that
+ * did NOT happen, so it carries no cost consequence to render: the wire's
+ * sentence keeps its precedence, exactly as before the keying.
+ */
+test("a stop that raced the completion keeps the wire's conflict receipt (F1)", () => {
+	const CONFLICT = "Not cancelled — already completed.";
+	const record = tool({
+		toolName: "generate_voiceover",
+		stopped: true,
+		startedAt: 1,
+		isError: true,
+		phase: "error",
+		output: CONFLICT,
+		details: {
+			stage: "cancelled",
+			settling: false,
+			vendor_stopped: false,
+			error: CONFLICT,
+			error_type: "media_already_completed",
+		},
+	});
+	const view = imageGenCardView(record);
+	assert.equal(view.state, "cancelled");
+	assert.equal(
+		view.cancel,
+		undefined,
+		"a named error is not a stop receipt, so no keyed cost sentence is available",
+	);
+	assert.equal(view.message, CONFLICT, "the record keeps the wire's own words");
+	const markup = markupOf(view, ALL_ACTIONS);
+	assert.equal(
+		markup.includes(CONFLICT),
+		true,
+		"the card states the server's conflict receipt",
+	);
+	assert.equal(
+		markup.includes("Stop requested"),
+		false,
+		"and never claims a stop is in flight when the generation had finished",
+	);
+	assert.equal(
+		markup.includes("you will not be charged"),
+		false,
+		"nor a no-charge promise it cannot make",
+	);
+	// The direct neighbour is untouched: a plain cancel (no `error_type`) still
+	// renders the keyed sentence chosen from its fields.
+	const plain = imageGenCardView(
+		tool({
+			toolName: "generate_voiceover",
+			stopped: true,
+			startedAt: 1,
+			isError: true,
+			details: {
+				stage: "cancelled",
+				settling: false,
+				vendor_stopped: false,
+			},
+		}),
+	);
+	assert.deepEqual(plain.cancel, { vendorStopped: false, settling: false });
+	const plainMarkup = markupOf(plain, ALL_ACTIONS);
+	assert.equal(
+		plainMarkup.includes(
+			"Stop requested. The provider has no cancellation endpoint; the generation continues and will be charged if it produces audio.",
+		),
+		true,
+		"a real in-flight stop still states the request and its consequence",
+	);
+});

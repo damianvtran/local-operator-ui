@@ -2736,9 +2736,9 @@
 			"target_sha256": "6975073712a4a3400b0d04d67a82ef7b16ce0fafd78b319a2a8023099a0ca2ab",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
-				"date": "2026-11-11",
-				"note": "es S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/es/ui.chat.canonical/s16a-3311618b2a8b"
+				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows); deepseek/deepseek-flash (PR #1884 S16e stop/settlement/error copy (12 keys), session faa30b32ec20)",
+				"date": "2026-11-12",
+				"note": "es S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/es/ui.chat.canonical/s16a-3311618b2a8b; S16e stop/settlement/error copy (12 keys) by i18n-translator, deepseek/deepseek-flash, 2026-11-12, session faa30b32ec20, evidence i18n/audits/evidence/es/ui.chat.canonical/s16e-6975073712a4"
 			},
 			"auditors": [
 				{
@@ -14694,9 +14694,9 @@
 			"target_sha256": "67372a8280150ac24402a427aff3c71fe07aa00841c41c57513a470b6abbc7ac",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
-				"date": "2026-11-11",
-				"note": "fr S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/fr/ui.chat.canonical/s16a-2105ebeeb3e9"
+				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows); deepseek/deepseek-flash (PR #1884 S16e stop/settlement/error copy (12 keys), session d44a8e38edc2)",
+				"date": "2026-11-12",
+				"note": "fr S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/fr/ui.chat.canonical/s16a-2105ebeeb3e9; S16e stop/settlement/error copy (12 keys) by i18n-translator, deepseek/deepseek-flash, 2026-11-12, session d44a8e38edc2, evidence i18n/audits/evidence/fr/ui.chat.canonical/s16e-67372a828015"
 			},
 			"auditors": [
 				{
@@ -51253,9 +51253,9 @@
 			"target_sha256": "d239e2a665505002cdb0a8e4f6a6fc2009003ea5026a95695dee9ad7573165dd",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
-				"date": "2026-11-11",
-				"note": "ur S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/ur/ui.chat.canonical/s16a-b97613446a7a"
+				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows); deepseek/deepseek-flash (PR #1884 S16e stop/settlement/error copy (12 keys), session 67f256dc8662)",
+				"date": "2026-11-12",
+				"note": "ur S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/ur/ui.chat.canonical/s16a-b97613446a7a; S16e stop/settlement/error copy (12 keys) by i18n-translator, deepseek/deepseek-flash, 2026-11-12, session 67f256dc8662, evidence i18n/audits/evidence/ur/ui.chat.canonical/s16e-d239e2a66550"
 			},
 			"auditors": [
 				{
@@ -63224,9 +63224,9 @@
 			"target_sha256": "1ff9b17c9a2ac5f276e03f433a2187385af5b0130d95ba2624f2bc7ad77c92cf",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
-				"date": "2026-11-11",
-				"note": "vi S16a words (14 keys): draft v3 = translator v1 with 4 values changed by the manager on an auditor's findings; v1/v2 audits superseded. 442 earlier keys retained. Evidence: i18n/audits/evidence/vi/ui.chat.canonical/s16a-64a0e2d3b795"
+				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows); deepseek/deepseek-flash (PR #1884 S16e stop/settlement/error copy (12 keys), session 1c02fde1d57b)",
+				"date": "2026-11-12",
+				"note": "vi S16a words (14 keys): draft v3 = translator v1 with 4 values changed by the manager on an auditor's findings; v1/v2 audits superseded. 442 earlier keys retained. Evidence: i18n/audits/evidence/vi/ui.chat.canonical/s16a-64a0e2d3b795; S16e stop/settlement/error copy (12 keys) by i18n-translator, deepseek/deepseek-flash, 2026-11-12, session 1c02fde1d57b, evidence i18n/audits/evidence/vi/ui.chat.canonical/s16e-1ff9b17c9a2a"
 			},
 			"auditors": [
 				{
@@ -76003,9 +76003,9 @@
 			"target_sha256": "752b0388f4e0a677fe614bfe8c5dcb5ed29d79a77ef7e6476a80afc3b93888b4",
 			"translator": {
 				"agent": "i18n-translator",
-				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
-				"date": "2026-11-11",
-				"note": "zh-CN S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/zh-CN/ui.chat.canonical/s16a-07b0fc8f8d80"
+				"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows); deepseek/deepseek-flash (PR #1884 S16e stop/settlement/error copy (12 keys), session d6f7ff126b01)",
+				"date": "2026-11-12",
+				"note": "zh-CN S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/zh-CN/ui.chat.canonical/s16a-07b0fc8f8d80; S16e stop/settlement/error copy (12 keys) by i18n-translator, deepseek/deepseek-flash, 2026-11-12, session d6f7ff126b01, evidence i18n/audits/evidence/zh-CN/ui.chat.canonical/s16e-752b0388f4e0"
 			},
 			"auditors": [
 				{
