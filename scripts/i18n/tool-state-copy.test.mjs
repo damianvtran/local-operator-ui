@@ -38,10 +38,10 @@ import { renderToStaticMarkup } from "react-dom/server";
  *    is a marker, so a wrong plural category or a missed branch shows up as the
  *    wrong marker. Real translations live in `src/i18n/catalogues/<locale>/`.
  * 3. SOURCE GUARD. The summary function and the state line hold no English
- *    literal of the old copy. The one allowed exception is the cancelled batch
- *    sentence (`<Noun> batch stopped.`), which belongs to the cancel-copy slice
- *    (model-layer English that needs a code-not-string refactor) and is pinned
- *    here so it cannot silently grow a neighbour.
+ *    literal of the old copy. From S16e the cancel, settlement, error-class and
+ *    batch-stopped sentences are catalogue keys too, so the last allowed
+ *    exception is gone: the guard now covers `batch stopped.` and the old
+ *    model constants, and a neighbour cannot silently grow back.
  */
 
 const ROOT = process.cwd();
@@ -396,7 +396,7 @@ const CARD_CASES = [
 		],
 		[
 			`failed ${material}`,
-			{ state: "failed", material, message: null, errorType: null },
+			{ state: "failed", material, message: null, errorCode: null },
 		],
 		[
 			`failed ${material} batch`,
@@ -404,7 +404,7 @@ const CARD_CASES = [
 				state: "failed",
 				material,
 				message: null,
-				errorType: null,
+				errorCode: null,
 				batch: [ITEM],
 			},
 		],
@@ -512,7 +512,7 @@ test("English: every state-line branch of the generation card is byte-identical 
 			state: "failed",
 			material: "video",
 			message: "out of credits",
-			errorType: null,
+			errorCode: null,
 		}),
 		{ text: "out of credits", datum: null },
 	);
@@ -684,7 +684,7 @@ for (const loc of ["fr", "ru", "ur"]) {
 					state: "failed",
 					material: "video",
 					message: "out of credits",
-					errorType: null,
+					errorCode: null,
 				}).text,
 				"out of credits",
 			);
@@ -821,6 +821,7 @@ const OLD_COPY = [
 	/Already finished/,
 	/could not be generated/,
 	/ batch(?! stopped\.)/,
+	/batch stopped\./,
 ];
 
 test("source guard: toolRecordSummary holds no composing/queued literal", () => {
@@ -835,14 +836,15 @@ test("source guard: toolRecordSummary holds no composing/queued literal", () => 
 	assert.ok(OLD_COPY.slice(0, 3).some((re) => re.test(old)));
 });
 
-test("source guard: the card's state line holds none of the old copy (batch-stopped excepted)", () => {
+test("source guard: the card's state line holds none of the old copy", () => {
 	const body = bodyOf(cardSource, "function StateLine(");
 	for (const key of STATE_KEYS)
 		assert.ok(body.includes(key), `StateLine routes ${key}`);
 	for (const re of OLD_COPY)
 		assert.ok(!re.test(body), `StateLine still holds ${re}`);
-	// The allowed exception stays exactly one line, named, until its own slice.
-	assert.equal(body.match(/batch stopped\./g)?.length, 1);
+	// The batch-stopped sentence is a KEY now (S16e): no concatenated headline.
+	assert.ok(body.includes("ui.chat.canonical.image_gen.state.cancelled_batch"));
+	assert.equal(body.match(/batch stopped\./g), null);
 	// Negative control.
 	assert.ok(OLD_COPY.some((re) => re.test('? "Already finished."')));
 });
@@ -858,10 +860,43 @@ test("source guard: the result players' label reuses the done message, no `Gener
 	);
 });
 
-test("source guard: only the sanctioned English remains in the model-layer constants", () => {
-	// The cancel copy is model-layer English owned by a later slice; this pins
-	// that the card routes the OTHER state words (not these) through t().
-	assert.match(cardSource, /CANCEL_RUNNING_COPY/);
+test("source guard: no model-layer English constant survives on the card", () => {
+	/*
+	 * S16e retired the last sanctioned English: `CANCEL_QUEUED_COPY`,
+	 * `CANCEL_RUNNING_COPY` and `AUDIO_RATE_LIMITED_COPY` are catalogue keys the
+	 * CARD composes at render time (`cancel.*`, `error.audio_rate_limited`), and
+	 * the model carries the wire's structured fact instead of a sentence. The
+	 * guard is that the constants are gone from BOTH files and the keyed path is
+	 * actually routed, so a reintroduced sentence fails here rather than shipping
+	 * in English under every language.
+	 */
+	const modelSource = readFileSync(
+		join(
+			ROOT,
+			"src/renderer/src/features/chat/canonical/image-gen-card-model.ts",
+		),
+		"utf8",
+	);
+	for (const constant of [
+		"CANCEL_QUEUED_COPY",
+		"CANCEL_RUNNING_COPY",
+		"AUDIO_RATE_LIMITED_COPY",
+		"imageGenMaterialNoun",
+		"batchMaterialTitle",
+	])
+		assert.equal(cardSource.includes(constant), false, constant);
+	assert.equal(modelSource.includes("AUDIO_RATE_LIMITED_COPY"), false);
+	for (const key of [
+		"ui.chat.canonical.image_gen.cancel.queued",
+		"ui.chat.canonical.image_gen.cancel.running",
+		"ui.chat.canonical.image_gen.cancel.checking",
+		"ui.chat.canonical.image_gen.error.audio_rate_limited",
+		"ui.chat.canonical.image_gen.settlement.pending",
+	])
+		assert.ok(cardSource.includes(key), `the card routes ${key}`);
+	// The security split's two sentences are not literals in either file.
+	assert.ok(!/you will not be charged/.test(modelSource));
+	assert.ok(!/you will not be charged/.test(cardSource));
 });
 
 /* -------------------------------------------------------------------------- */
@@ -1304,6 +1339,54 @@ for (const loc of ["fr", "es", "ru", "hi", "zh-CN", "ur", "vi"]) {
 		for (const key of [...TOOL_KEYS, ...STATE_KEYS]) {
 			assert.equal(typeof real[key], "string", `${loc} has ${key}`);
 			assert.notEqual(real[key], enCatalogue[key], `${loc} ${key} is English`);
+		}
+	});
+}
+
+/*
+ * S16e'S ENGLISH-FIRST WAVE, AS A RATCHET RATHER THAN A NOTE.
+ *
+ * This pull request keys the cancel, settlement, batch-stopped and failure-class
+ * copy in English ONLY: no shipped locale carries a value yet, and each falls
+ * back to the English message per key through the existing missing-key path. The
+ * translation wave that follows fills all seven, and the coverage gate is what
+ * finally proves it (see `i18n/coverage-allowance.json`, which cannot grow).
+ *
+ * The list below is that gap made executable: while a key is still absent from a
+ * shipped locale this test passes, and the FIRST locale that gains one breaks it,
+ * naming the key to move into `STATE_KEYS` above and the real-catalogue oracle
+ * with it. A half-translated wave therefore fails here instead of riding green,
+ * and the entry cannot be forgotten because deleting it is the only way to pass.
+ */
+const S16E_PENDING = [
+	"ui.chat.canonical.image_gen.state.cancelled_batch",
+	"ui.chat.canonical.image_gen.cancel.queued",
+	"ui.chat.canonical.image_gen.cancel.running",
+	"ui.chat.canonical.image_gen.cancel.checking",
+	"ui.chat.canonical.image_gen.settlement.pending",
+	"ui.chat.canonical.image_gen.error.audio_rate_limited",
+	"ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+	"ui.chat.canonical.image_gen.error_class.unknown_tool",
+	"ui.chat.canonical.image_gen.error_class.invalid_arguments",
+	"ui.chat.canonical.image_gen.error_class.duplicate_id",
+	"ui.chat.canonical.image_gen.error_class.denied",
+	"ui.chat.canonical.image_gen.error_class.gate_failed",
+];
+
+for (const loc of ["fr", "es", "ru", "hi", "zh-CN", "ur", "vi"]) {
+	test(`${loc}: none of the ${S16E_PENDING.length} S16e keys has a value yet`, () => {
+		const real = JSON.parse(
+			readFileSync(
+				join(ROOT, `src/i18n/catalogues/${loc}/ui.chat.canonical.json`),
+				"utf8",
+			),
+		);
+		for (const key of S16E_PENDING) {
+			assert.equal(
+				key in real,
+				false,
+				`${loc} has ${key}: move it out of S16E_PENDING, into STATE_KEYS and the oracle`,
+			);
 		}
 	});
 }
