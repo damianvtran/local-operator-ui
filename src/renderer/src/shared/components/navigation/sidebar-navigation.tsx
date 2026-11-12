@@ -25,6 +25,7 @@ import {
 	rowDragging,
 	rowDraggingMark,
 } from "@features/chat/components/chat-sidebar";
+import { newChatCurrent } from "@features/chat/draft-rows";
 import { newChatShortcutCap } from "@features/chat/new-chat-shortcut";
 import { openConversation } from "@features/chat/open-conversation";
 import {
@@ -1951,9 +1952,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 * current while one is up - the same terms the list's old `New chat` row
 	 * used. A draft with a target belongs to its agent's row.
 	 */
-	const untargetedDraft =
-		Boolean(activeDraftKey) &&
-		!(activeDraftKey ? drafts[activeDraftKey] : undefined)?.target;
+	const untargetedDraft = newChatCurrent(activeDraftKey, drafts);
 	const stageNewChat = () => {
 		useCanonicalSessionsStore.getState().stageDraft(undefined, true);
 		navigate("/chat");

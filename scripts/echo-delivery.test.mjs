@@ -753,6 +753,37 @@ test("the mint's bridge id landing on a draft pane keeps the transcript the pres
 	);
 });
 
+test("a draft pane gaining its session id keeps the row the press painted (send flicker, 2026-11-11)", () => {
+	reset();
+	/*
+	 * The draft pane now stays MOUNTED through its own admission
+	 * (`panelMountKeyFor`), so the reset effect sees the stream move from the
+	 * draft's (nothing, or the mint's bridge id) to the session the create
+	 * answered. Resetting there is the blank the remount used to paint over: the
+	 * built-app trace measured the echo's node replaced ~100 ms after the press.
+	 */
+	assert.equal(
+		streamChangeKeepsTranscript(undefined, SESSION_ID, true, false),
+		true,
+		"no stream yet -> the created session is the same conversation",
+	);
+	assert.equal(
+		streamChangeKeepsTranscript("7f5d0a3e-warm", SESSION_ID, true, false),
+		true,
+		"the mint's bridge -> the created session is the same conversation",
+	);
+	assert.equal(
+		streamChangeKeepsTranscript("111111111111", SESSION_ID, true, true),
+		false,
+		"a session -> another session is still a real change, and resets",
+	);
+	assert.equal(
+		streamChangeKeepsTranscript(undefined, SESSION_ID, true),
+		false,
+		"the default stays the pre-draft answer for every other caller",
+	);
+});
+
 test("the re-key runs before anything can await: from inside the seam, the session id already answers", async () => {
 	reset();
 	/*
@@ -2035,5 +2066,28 @@ test("R2-2/U5: a settled claim stops answering for the send that follows", async
 		pendingSendForView(SESSION_ID),
 		null,
 		"with every claim answered, nothing answers `still going out`",
+	);
+});
+
+test("the press commits the claim and the echo in ONE commit (send flicker, 2026-11-11)", async () => {
+	/*
+	 * By the time the page calls `admitChatDraft` the press has crossed an `await`
+	 * (`encodeAttachments`), so the echo's `setView` no longer carries the click's
+	 * priority while the draft's `pending` (a store update) still commits
+	 * synchronously. The built-app trace measured the frame between them: the
+	 * greeting gone and the pane empty for ~35 ms before the row. `flushSync`
+	 * around the call's synchronous prefix is what puts them in one commit;
+	 * `ChatPage` cannot be mounted in a node test, so the seam is pinned by source.
+	 */
+	const { readFileSync } = await import("node:fs");
+	const page = readFileSync(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	);
+	assert.match(page, /import \{ flushSync \} from "react-dom";/);
+	assert.match(
+		page,
+		/await flushSync\(\(\) =>\s*admitChatDraft\(/,
+		"the admission's synchronous prefix is flushed as one commit",
 	);
 });
