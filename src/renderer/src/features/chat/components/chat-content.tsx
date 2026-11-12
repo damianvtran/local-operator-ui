@@ -199,6 +199,11 @@ type ChatContentProps = {
 	 */
 	deviceSlot?: React.ReactNode;
 	/**
+	 * The New chat header's agent/team chip, composed by the page for a draft
+	 * pane only; see `ChatHeaderProps.draftTargetSlot`.
+	 */
+	draftTargetSlot?: React.ReactNode;
+	/**
 	 * What the last move did, in the row under the header's band.
 	 *
 	 * A SEPARATE SLOT BECAUSE IT IS A SEPARATE PLACE: the chip answers "where does
@@ -894,6 +899,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		descriptionPending,
 		identity,
 		deviceSlot,
+		draftTargetSlot,
 		deviceNotice,
 		deviceHold,
 		renameSessionId,
@@ -2609,6 +2615,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							descriptionPending={descriptionPending}
 							identity={identity}
 							deviceSlot={deviceSlot}
+							draftTargetSlot={draftTargetSlot}
 							renameSessionId={renameSessionId}
 							/*
 							 * THE COPY-SESSION-ID READ (#893): the same canonical id this component already

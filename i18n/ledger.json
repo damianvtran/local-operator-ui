@@ -101572,6 +101572,209 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.chat.draft_target",
+			"source_sha256": "9e1d8af469c096d1613e66fad35244fbf3d8f8f37b44f0e78fa3a731fb14c771",
+			"target_sha256": "58cdabbd5f873cac194e626dc7d718c7d9328b5342752d8619b4f41e6119dc58",
+			"translator": {
+				"agent": "new-chat-agent-picker (coder)",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-11"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-11",
+					"result": "clean-with-findings",
+					"instance": "80ddb5783f8e-draft-target-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/80ddb5783f8e-draft-target-es.json",
+					"receipt_sha256": "d632c1cc6c492e15fdc89cd3a0409adb450c00f40f617fd4a7facd2155e061ed"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.chat.draft_target",
+			"source_sha256": "9e1d8af469c096d1613e66fad35244fbf3d8f8f37b44f0e78fa3a731fb14c771",
+			"target_sha256": "7d4d0fcd8821bb76be69bf2477aa8607710c744f2144f1252d13a5ed72d57605",
+			"translator": {
+				"agent": "new-chat-agent-picker (coder)",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-11"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-11",
+					"result": "clean-with-findings",
+					"instance": "80ddb5783f8e-draft-target-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/80ddb5783f8e-draft-target-fr.json",
+					"receipt_sha256": "7e46ad22d52ddd900a0c9536f56c84399b71d7ae0efe840cd24224b69992e27c"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat.draft_target",
+			"source_sha256": "9e1d8af469c096d1613e66fad35244fbf3d8f8f37b44f0e78fa3a731fb14c771",
+			"target_sha256": "5371e697808a251cc890e3bed611e26edd4a411a21e00938c97d9d482df422ba",
+			"translator": {
+				"agent": "new-chat-agent-picker (coder)",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-11"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-11",
+					"result": "clean",
+					"instance": "80ddb5783f8e-draft-target-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/80ddb5783f8e-draft-target-hi.json",
+					"receipt_sha256": "0d02b6e58e583092b5f4158d704cc7d636f878cbcd0466c39af78ac5eb6db31b"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.chat.draft_target",
+			"source_sha256": "9e1d8af469c096d1613e66fad35244fbf3d8f8f37b44f0e78fa3a731fb14c771",
+			"target_sha256": "313dd2ef2a76abb3254f09666f8e6db95f6d1686d195f60a0b09a52eb12fec00",
+			"translator": {
+				"agent": "new-chat-agent-picker (coder)",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-11"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-11",
+					"result": "clean-with-findings",
+					"instance": "80ddb5783f8e-draft-target-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/80ddb5783f8e-draft-target-ru.json",
+					"receipt_sha256": "18ae32aca45c7038e20f238be897fde3224f886696b7b37f04c2f20624b8ecc9"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.chat.draft_target",
+			"source_sha256": "9e1d8af469c096d1613e66fad35244fbf3d8f8f37b44f0e78fa3a731fb14c771",
+			"target_sha256": "249114686a14f62b85c98c73c5a67aabc54a64a428d16e450a307ce031722c31",
+			"translator": {
+				"agent": "new-chat-agent-picker (coder)",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-11"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-11",
+					"result": "clean",
+					"instance": "80ddb5783f8e-draft-target-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/80ddb5783f8e-draft-target-ur.json",
+					"receipt_sha256": "39abb17591316f7042704021843a59dcaa7518eaf76a30e0d7ff0fb35e1a2fff"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.chat.draft_target",
+			"source_sha256": "9e1d8af469c096d1613e66fad35244fbf3d8f8f37b44f0e78fa3a731fb14c771",
+			"target_sha256": "7e08fc97bf0ea44e68a191dc37192d5db199a9a225d312d6fb843edd3a4c950f",
+			"translator": {
+				"agent": "new-chat-agent-picker (coder)",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-11"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-11",
+					"result": "clean-with-findings",
+					"instance": "80ddb5783f8e-draft-target-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/80ddb5783f8e-draft-target-vi.json",
+					"receipt_sha256": "14a2bf639493b3cbdf7c88ba23b7a7e0782c39d669f1eb26bea45a40a92801e1"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.chat.draft_target",
+			"source_sha256": "9e1d8af469c096d1613e66fad35244fbf3d8f8f37b44f0e78fa3a731fb14c771",
+			"target_sha256": "32c7299406df58ad4b3aa7e781b42e40cd7525e329a7b3d12efe5913b6ebed38",
+			"translator": {
+				"agent": "new-chat-agent-picker (coder)",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-11"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-11",
+					"result": "clean",
+					"instance": "80ddb5783f8e-draft-target-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/80ddb5783f8e-draft-target-zh-cn.json",
+					"receipt_sha256": "fe2b56aa34f75738636064dd37a5e8320b496007102a67de0dc515c8e0fb0ef1"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }
