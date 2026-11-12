@@ -140,6 +140,7 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { foldMediaRows, foldMediaSlots } from "../canonical/trace-fold-model";
 import { CanonicalImage } from "./canonical-image";
+import { imageLabel } from "./media-label";
 import type { TranscriptImage } from "./transcript-reducer";
 import type { AttachmentScope } from "./use-attachment-url";
 
@@ -158,7 +159,7 @@ const foldMediaLabel = (
 	_image: TranscriptImage,
 	index: number,
 	count: number,
-): string => (count === 1 ? "Image" : `Image ${index + 1}`);
+): string => imageLabel(index + 1, count);
 
 export type FoldMediaProps = {
 	/** The run's images, in row order (`foldImages`). */

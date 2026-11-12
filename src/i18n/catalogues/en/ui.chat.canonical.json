@@ -454,5 +454,15 @@
 	"ui.chat.canonical.image_gen.state.done_batch": "{material, select, video {Video batch} voiceover {Voiceover batch} sound_effect {Sound effect batch} other {Image batch}}",
 	"ui.chat.canonical.image_gen.state.already_finished": "Already finished.",
 	"ui.chat.canonical.image_gen.state.failed": "{material, select, video {The video could not be generated.} voiceover {The voiceover could not be generated.} sound_effect {The sound effect could not be generated.} other {The image could not be generated.}}",
-	"ui.chat.canonical.image_gen.state.failed_batch": "{material, select, video {Video batch failed.} voiceover {Voiceover batch failed.} sound_effect {Sound effect batch failed.} other {Image batch failed.}}"
+	"ui.chat.canonical.image_gen.state.failed_batch": "{material, select, video {Video batch failed.} voiceover {Voiceover batch failed.} sound_effect {Sound effect batch failed.} other {Image batch failed.}}",
+	"ui.chat.canonical.sound.batch.item_status": "{status, select, failed {{label} · Failed} cancelled {{label} · Stopped} other {{label} · Status unknown}}",
+	"ui.chat.canonical.sound.batch.summary": "{completed, plural, one {{completed, number, ::group-off} completed} other {{completed, number, ::group-off} completed}} · {failed, plural, one {{failed, number, ::group-off} failed} other {{failed, number, ::group-off} failed}}{cancelled, plural, =0 {} one { · {cancelled, number, ::group-off} cancelled/stopped} other { · {cancelled, number, ::group-off} cancelled/stopped}}{unknown, plural, =0 {} one { · {unknown, number, ::group-off} status unknown} other { · {unknown, number, ::group-off} status unknown}}{has_attention, select, yes {. Needs attention: {labels}} other {}}",
+	"ui.chat.canonical.sound.batch.latest_update": "Latest update: {name} (item {item, number, ::group-off} of {total, number, ::group-off}).",
+	"ui.chat.canonical.sound.cost.unknown": "Cost not yet known.",
+	"ui.chat.canonical.sound.cost.no_charge": "No charge.",
+	"ui.chat.canonical.sound.cost.estimated_zero": "Estimated cost $0; final charge not confirmed.",
+	"ui.chat.canonical.sound.cost.batch_unknown": "Total cost not yet known.",
+	"ui.chat.canonical.media.image_label": "{count, plural, =1 {Image} other {Image {position, number, ::group-off}}}",
+	"ui.chat.canonical.media.sound_label": "{count, plural, =1 {Sound} other {Sound {position, number, ::group-off}}}",
+	"ui.chat.canonical.supplement.sound_fallback_label": "Generated sound"
 }
