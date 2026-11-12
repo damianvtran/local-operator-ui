@@ -737,10 +737,9 @@ async function answerBinding(
 		return;
 	}
 	try {
-		// Resolved lazily for the reason `actions/page.ts` states: this module is
-		// reachable from node-only test bundles, and an electron import at module
-		// scope would make them require the electron binary just to load.
-		const { clipboard } = await import("electron");
+		// Stay lazy for node-only rigs, but use CommonJS: the packaged bytecode
+		// loader has no vm.Script dynamic-import callback (see actions/page.ts).
+		const { clipboard } = require("electron") as typeof import("electron");
 		await clipboard.writeText(text);
 		state.log?.(
 			`[browser] wrote a page clipboard copy on view ${webContentsId} (frame ${known.frameId}, ${verdict.reason})`,

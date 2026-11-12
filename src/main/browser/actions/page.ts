@@ -316,17 +316,12 @@ export async function copy(
 	}
 	const text = read.text;
 	/*
-	 * WHY THE ELECTRON IMPORT IS DYNAMIC AND NOT AT MODULE SCOPE: this module is
-	 * bundled by several node-only rigs (`browser-select`, `browser-chord`,
-	 * `browser-page-controls`, `browser-toolbar`, `browser-chrome-gaps` all reach it
-	 * through `select.ts`/`input.ts`/`query.ts`), and the electron package's
-	 * `index.js` calls `getElectronPath()` at module scope, which throws in plain
-	 * Node when the binary is not where it expects. A static import here would make
-	 * every one of those bundles require the electron binary just to load a module
-	 * that never touches the clipboard — so the import happens inside the ONE
-	 * function that needs it, and a rig that never calls `copy` never resolves it.
+	 * Keep Electron lazy for node-only rigs that load this module without calling
+	 * copy. Use the main bundle's CommonJS require, NOT import(): packaged builds
+	 * execute V8 bytecode through vm.Script without a dynamic-import callback, so
+	 * import("electron") rejects there even though plain-JS dev builds work.
 	 */
-	const { clipboard } = await import("electron");
+	const { clipboard } = require("electron") as typeof import("electron");
 	try {
 		// `await` because this runtime's clipboard is PROMISE-ONLY (Electron 45 made
 		// `writeText`/`readText` async — the same change `index.ts`'s paste handler
