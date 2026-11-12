@@ -94610,8 +94610,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.approval",
-			"source_sha256": "c9113bac64df27adf7110419f2ea19d9162ae1cdb2b7c82f3361b4925e4adbfe",
-			"target_sha256": "4d7c0ecd1743417ee39c9480406ad295b45fb79e02a485dfb95527fefdfe5fe9",
+			"source_sha256": "815a4ff369d33bc106b35aa74589f4f000811d24aa24519094c4373283d7ec8f",
+			"target_sha256": "240d348c20a0737109301f0149c1effcb02c2b8e07a83667b3f062d5c0a46ed0",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -94619,24 +94619,49 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
+					"agent": "reviewer",
 					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-08",
+					"date": "2026-11-12",
 					"result": "clean",
-					"instance": "ebc5b152-s3c-es",
+					"instance": "pr1881-es-46289ddf",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/ebc5b152-s3c-es.json",
-					"receipt_sha256": "16955117e46742f6a8613b5490ff61d58d4aaa71c3b33bc5ce5fec92af773a45",
-					"scope": "ui.chat.approval: 17 keys read against English before release (wave s3c, receipt ebc5b152-s3c-es).",
-					"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+					"receipt": "i18n/receipts/pr1881-es-46289ddf.json",
+					"receipt_sha256": "09833adb7a11aa791c6564e9304e98ee1ba0d20512a4905f668ebbe496e9e8eb",
+					"scope": "ui.chat.approval: new key escape.bridge_latched in full (byte-identical to core wire.bridge_taint.card_options_off); 17 other keys unchanged, carried"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "c9113bac64df27adf7110419f2ea19d9162ae1cdb2b7c82f3361b4925e4adbfe",
+					"target_sha256": "4d7c0ecd1743417ee39c9480406ad295b45fb79e02a485dfb95527fefdfe5fe9",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "ebc5b152-s3c-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ebc5b152-s3c-es.json",
+							"receipt_sha256": "16955117e46742f6a8613b5490ff61d58d4aaa71c3b33bc5ce5fec92af773a45",
+							"scope": "ui.chat.approval: 17 keys read against English before release (wave s3c, receipt ebc5b152-s3c-es).",
+							"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "es",
@@ -95261,8 +95286,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.approval",
-			"source_sha256": "c9113bac64df27adf7110419f2ea19d9162ae1cdb2b7c82f3361b4925e4adbfe",
-			"target_sha256": "b16053ace97730778a2e51a685381b526ee5f1b86bc4dac7178eee97ff02e9f7",
+			"source_sha256": "815a4ff369d33bc106b35aa74589f4f000811d24aa24519094c4373283d7ec8f",
+			"target_sha256": "ef0e242dca891b7739fd81a46d6fce5c5791aec3508e5dfa954564281fa55ca2",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -95270,24 +95295,49 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-08",
-					"result": "clean-with-findings",
-					"instance": "564797e3-s3c-fr",
+					"agent": "reviewer",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-12",
+					"result": "clean",
+					"instance": "pr1881-fr-459652a5",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/564797e3-s3c-fr.json",
-					"receipt_sha256": "ee4d0127880c89ce6c1b71c76510344a1a114f2428573b15a6356da852bcd1ac",
-					"scope": "ui.chat.approval: 17 keys read against English before release (wave s3c, receipt 564797e3-s3c-fr).",
-					"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+					"receipt": "i18n/receipts/pr1881-fr-459652a5.json",
+					"receipt_sha256": "332cd0a0ed7031047b66f8098157479798a20c421dca387e380c624939388e42",
+					"scope": "ui.chat.approval: new key escape.bridge_latched in full (byte-identical to core wire.bridge_taint.card_options_off); 17 other keys unchanged, carried"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "c9113bac64df27adf7110419f2ea19d9162ae1cdb2b7c82f3361b4925e4adbfe",
+					"target_sha256": "b16053ace97730778a2e51a685381b526ee5f1b86bc4dac7178eee97ff02e9f7",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-08",
+							"result": "clean-with-findings",
+							"instance": "564797e3-s3c-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/564797e3-s3c-fr.json",
+							"receipt_sha256": "ee4d0127880c89ce6c1b71c76510344a1a114f2428573b15a6356da852bcd1ac",
+							"scope": "ui.chat.approval: 17 keys read against English before release (wave s3c, receipt 564797e3-s3c-fr).",
+							"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "fr",
@@ -95912,8 +95962,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.approval",
-			"source_sha256": "c9113bac64df27adf7110419f2ea19d9162ae1cdb2b7c82f3361b4925e4adbfe",
-			"target_sha256": "8cf1a180c24dd563c9798290bf386a8b18db7275c1d7682913bd229cf7259c1f",
+			"source_sha256": "815a4ff369d33bc106b35aa74589f4f000811d24aa24519094c4373283d7ec8f",
+			"target_sha256": "baef7d01953b10e6c227e5b2a1536e47a1441ac665abc8408a6760c81901a2aa",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -95921,24 +95971,49 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-08",
-					"result": "clean",
-					"instance": "cbb5be6a-s3c-hi",
+					"agent": "reviewer",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-12",
+					"result": "clean-with-findings",
+					"instance": "pr1881-hi-7c6055be",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/cbb5be6a-s3c-hi.json",
-					"receipt_sha256": "95be7ae4db4b5a60c1ef828f838550086abc8ef27531140c26c07f10e603b3c9",
-					"scope": "ui.chat.approval: 17 keys read against English before release (wave s3c, receipt cbb5be6a-s3c-hi).",
-					"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+					"receipt": "i18n/receipts/pr1881-hi-7c6055be.json",
+					"receipt_sha256": "c509a0c5fc31d4438ebdaaa88247b50cfe91434af8d92631af779499a88c1f6e",
+					"scope": "ui.chat.approval: new key escape.bridge_latched in full (byte-identical to core wire.bridge_taint.card_options_off); 17 other keys unchanged, carried"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "c9113bac64df27adf7110419f2ea19d9162ae1cdb2b7c82f3361b4925e4adbfe",
+					"target_sha256": "8cf1a180c24dd563c9798290bf386a8b18db7275c1d7682913bd229cf7259c1f",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "cbb5be6a-s3c-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/cbb5be6a-s3c-hi.json",
+							"receipt_sha256": "95be7ae4db4b5a60c1ef828f838550086abc8ef27531140c26c07f10e603b3c9",
+							"scope": "ui.chat.approval: 17 keys read against English before release (wave s3c, receipt cbb5be6a-s3c-hi).",
+							"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "hi",
@@ -96563,8 +96638,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.approval",
-			"source_sha256": "c9113bac64df27adf7110419f2ea19d9162ae1cdb2b7c82f3361b4925e4adbfe",
-			"target_sha256": "b602531f6a3803a54adf7ffa71cdf2d4f1374612f9788e29d7af3ec67b5189b3",
+			"source_sha256": "815a4ff369d33bc106b35aa74589f4f000811d24aa24519094c4373283d7ec8f",
+			"target_sha256": "c81bc2f348323e0b6e69ae72ea417596a48c764e3fd5127e20ae1e49eac60145",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -96572,24 +96647,49 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
+					"agent": "reviewer",
 					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-08",
-					"result": "clean",
-					"instance": "3a7aab10-s3c-ru",
+					"date": "2026-11-12",
+					"result": "clean-with-findings",
+					"instance": "pr1881-ru-5fe57626",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 2,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/3a7aab10-s3c-ru.json",
-					"receipt_sha256": "ebfc41257421db543a85918c287a0324fe70c864e62ad532bec5ab2787e870c7",
-					"scope": "ui.chat.approval: 17 keys read against English before release (wave s3c, receipt 3a7aab10-s3c-ru).",
-					"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+					"receipt": "i18n/receipts/pr1881-ru-5fe57626.json",
+					"receipt_sha256": "bc667c9648c2606c95091c77b0e32290ae77a9b5de474adee3ff123aff728765",
+					"scope": "ui.chat.approval: new key escape.bridge_latched in full (byte-identical to core wire.bridge_taint.card_options_off); 17 other keys unchanged, carried"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "c9113bac64df27adf7110419f2ea19d9162ae1cdb2b7c82f3361b4925e4adbfe",
+					"target_sha256": "b602531f6a3803a54adf7ffa71cdf2d4f1374612f9788e29d7af3ec67b5189b3",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "3a7aab10-s3c-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3a7aab10-s3c-ru.json",
+							"receipt_sha256": "ebfc41257421db543a85918c287a0324fe70c864e62ad532bec5ab2787e870c7",
+							"scope": "ui.chat.approval: 17 keys read against English before release (wave s3c, receipt 3a7aab10-s3c-ru).",
+							"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ru",
@@ -97214,8 +97314,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.approval",
-			"source_sha256": "c9113bac64df27adf7110419f2ea19d9162ae1cdb2b7c82f3361b4925e4adbfe",
-			"target_sha256": "29d27224b758a1cf65003bf4e6f42bc6c12ce144693222e8eff805b8d3f1530e",
+			"source_sha256": "815a4ff369d33bc106b35aa74589f4f000811d24aa24519094c4373283d7ec8f",
+			"target_sha256": "ca83c72097bb0d0b3bbd2d2a2c71fb2fc13909a1edd4456ddceb5a9259914306",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -97223,24 +97323,49 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-08",
-					"result": "clean",
-					"instance": "3e9c47b1-s3c-ur",
+					"agent": "reviewer",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-11-12",
+					"result": "clean-with-findings",
+					"instance": "pr1881-ur-bbac41af",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 2,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/3e9c47b1-s3c-ur.json",
-					"receipt_sha256": "150c95a5363232a607392df6cb68554c43d1647c42dd1a345d1af98099ba04cc",
-					"scope": "ui.chat.approval: 17 keys read against English before release (wave s3c, receipt 3e9c47b1-s3c-ur).",
-					"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+					"receipt": "i18n/receipts/pr1881-ur-bbac41af.json",
+					"receipt_sha256": "8dc276e5c48bd9795bf4a185a883639f4e16677a6f56ee0e655e4cb7ea605a08",
+					"scope": "ui.chat.approval: new key escape.bridge_latched in full (byte-identical to core wire.bridge_taint.card_options_off); 17 other keys unchanged, carried"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "c9113bac64df27adf7110419f2ea19d9162ae1cdb2b7c82f3361b4925e4adbfe",
+					"target_sha256": "29d27224b758a1cf65003bf4e6f42bc6c12ce144693222e8eff805b8d3f1530e",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "3e9c47b1-s3c-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3e9c47b1-s3c-ur.json",
+							"receipt_sha256": "150c95a5363232a607392df6cb68554c43d1647c42dd1a345d1af98099ba04cc",
+							"scope": "ui.chat.approval: 17 keys read against English before release (wave s3c, receipt 3e9c47b1-s3c-ur).",
+							"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",
@@ -97865,8 +97990,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.approval",
-			"source_sha256": "c9113bac64df27adf7110419f2ea19d9162ae1cdb2b7c82f3361b4925e4adbfe",
-			"target_sha256": "bcb7ebb4b94f00f26c06d2329b11deaa1251ab3fc66fa44843652d059fa869eb",
+			"source_sha256": "815a4ff369d33bc106b35aa74589f4f000811d24aa24519094c4373283d7ec8f",
+			"target_sha256": "9c2f68a256b6e49c94320b721f4e6d75e31894228580eb1278d2adf077503623",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -97874,24 +97999,49 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
+					"agent": "reviewer",
 					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-08",
-					"result": "clean",
-					"instance": "97ea8fa7-s3c-vi",
+					"date": "2026-11-12",
+					"result": "clean-with-findings",
+					"instance": "pr1881-vi-18911e1f",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/97ea8fa7-s3c-vi.json",
-					"receipt_sha256": "98021d954d23a4eb9b3519134418efdc8ffca5f160690384883daebc2992e87f",
-					"scope": "ui.chat.approval: 17 keys read against English before release (wave s3c, receipt 97ea8fa7-s3c-vi).",
-					"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+					"receipt": "i18n/receipts/pr1881-vi-18911e1f.json",
+					"receipt_sha256": "2db84e11c60f725d7e9ce2cb72bc39a97c074445b967c6694aa6088100903e8b",
+					"scope": "ui.chat.approval: new key escape.bridge_latched in full (byte-identical to core wire.bridge_taint.card_options_off); 17 other keys unchanged, carried"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "c9113bac64df27adf7110419f2ea19d9162ae1cdb2b7c82f3361b4925e4adbfe",
+					"target_sha256": "bcb7ebb4b94f00f26c06d2329b11deaa1251ab3fc66fa44843652d059fa869eb",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean",
+							"instance": "97ea8fa7-s3c-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/97ea8fa7-s3c-vi.json",
+							"receipt_sha256": "98021d954d23a4eb9b3519134418efdc8ffca5f160690384883daebc2992e87f",
+							"scope": "ui.chat.approval: 17 keys read against English before release (wave s3c, receipt 97ea8fa7-s3c-vi).",
+							"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "vi",
@@ -98516,8 +98666,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.approval",
-			"source_sha256": "c9113bac64df27adf7110419f2ea19d9162ae1cdb2b7c82f3361b4925e4adbfe",
-			"target_sha256": "f962bc8fd46af551e6a26cf802a6eff7920b39d18cac1371ea4ca5130d69c42c",
+			"source_sha256": "815a4ff369d33bc106b35aa74589f4f000811d24aa24519094c4373283d7ec8f",
+			"target_sha256": "07b2d6891d821dd6164b9f45aa39ebf67de0519e63cf7c3dc63b38b053f8c9ca",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -98525,24 +98675,49 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
+					"agent": "reviewer",
 					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-11-08",
+					"date": "2026-11-12",
 					"result": "clean-with-findings",
-					"instance": "7c3e91d4-s3c-zh-cn",
+					"instance": "pr1881-zh-cn-4e007bc9",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/7c3e91d4-s3c-zh-cn.json",
-					"receipt_sha256": "1809b8c090337a43422a6eda523d3d7417afd52b18a4888dee1597c102645f82",
-					"scope": "ui.chat.approval: 17 keys read against English before release (wave s3c, receipt 7c3e91d4-s3c-zh-cn).",
-					"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+					"receipt": "i18n/receipts/pr1881-zh-cn-4e007bc9.json",
+					"receipt_sha256": "a2440d9a40cf861858d16cad4d5388f8b42c13ddfa1d533f95143a235bddfd43",
+					"scope": "ui.chat.approval: new key escape.bridge_latched in full (byte-identical to core wire.bridge_taint.card_options_off); 17 other keys unchanged, carried"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "c9113bac64df27adf7110419f2ea19d9162ae1cdb2b7c82f3361b4925e4adbfe",
+					"target_sha256": "f962bc8fd46af551e6a26cf802a6eff7920b39d18cac1371ea4ca5130d69c42c",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-11-08",
+							"result": "clean-with-findings",
+							"instance": "7c3e91d4-s3c-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/7c3e91d4-s3c-zh-cn.json",
+							"receipt_sha256": "1809b8c090337a43422a6eda523d3d7417afd52b18a4888dee1597c102645f82",
+							"scope": "ui.chat.approval: 17 keys read against English before release (wave s3c, receipt 7c3e91d4-s3c-zh-cn).",
+							"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "zh-CN",

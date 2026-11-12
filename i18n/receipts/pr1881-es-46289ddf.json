@@ -1,0 +1,37 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "date": "2026-11-12",
+ "locale": "es",
+ "instance": "pr1881-es-46289ddf",
+ "session": "f7bc238e97e6",
+ "auditor": {
+  "agent": "reviewer",
+  "session": "f7bc238e97e6",
+  "instance": "pr1881-es-46289ddf",
+  "model": "anthropic/claude-sonnet-5-5",
+  "fallback": "none (the session header model was served; no provider fallback occurred)",
+  "independent_from_translator_session": true
+ },
+ "model": "anthropic/claude-sonnet-5-5",
+ "independence": "Fresh reviewer session (f7bc238e97e6) acting as translation auditor for es only. Did not write any of these files and had not audited this locale or namespace before. Read at pinned head 8efa3b0ff5bb: src/i18n/catalogues/en/ui.chat.approval.json, es/ui.chat.approval.json, en/ui.chat.approval.context.json, the diff 5033f64235..8efa3b0ff5 for the es/en/context files, approval-escape.tsx (to see where the key renders), and from local-operator origin/main: i18n/glossary.md, i18n/style-guides/es.md, local_operator/i18n/catalogues/{en,es}/wire.bridge_taint.json and the en context sidecar. The byte-identity of the new key to core wire.bridge_taint.card_options_off was verified by parsing both files, not taken from the PR description. Placeholders, key set, duplicate keys and non-ASCII characters were checked by parsing bytes.",
+ "branch": "approval-card-latched",
+ "head": "8efa3b0ff5bb6aec505c559b9e3518d75a6a240b",
+ "pr": "damianvtran/local-operator-ui#1881",
+ "scope": "es only, ui.chat.approval at the pinned head: the one NEW key ui.chat.approval.escape.bridge_latched audited in full (meaning, idiom, register, verbatim commands, glossary/style guide); the other 17 keys confirmed by parsing (key set equals en and the context sidecar, placeholder sets identical, es bytes of every pre-existing key identical to origin/main 5033f64235, diff shows exactly one added line) and carry their previous audit.",
+ "status": "passed",
+ "result": "clean",
+ "namespaces": {
+  "ui.chat.approval": {
+   "status": "passed",
+   "keys_audited": 18,
+   "sha256": {
+    "en": "815a4ff369d33bc106b35aa74589f4f000811d24aa24519094c4373283d7ec8f",
+    "es": "240d348c20a0737109301f0149c1effcb02c2b8e07a83667b3f062d5c0a46ed0",
+    "context": "9ee5d1341420c59b38f1d451848f2da76bc9397c5d7811196356fbd98968bb2f"
+   },
+   "findings": []
+  }
+ },
+ "findings": []
+}
