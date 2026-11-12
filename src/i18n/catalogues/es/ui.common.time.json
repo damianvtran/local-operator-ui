@@ -1,3 +1,7 @@
 {
-	"ui.common.time.yesterday_at": "Ayer {time}"
+	"ui.common.time.yesterday_at": "Ayer {time}",
+	"ui.common.time.today_at": "Hoy {time}",
+	"ui.common.time.yesterday": "Ayer",
+	"ui.common.time.weekday_at": "{weekday}, {time}",
+	"ui.common.time.date_at": "{date}, {time}"
 }

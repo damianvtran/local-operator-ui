@@ -1,3 +1,7 @@
 {
-	"ui.common.time.yesterday_at": "Hôm qua lúc {time}"
+	"ui.common.time.yesterday_at": "Hôm qua lúc {time}",
+	"ui.common.time.today_at": "Hôm nay lúc {time}",
+	"ui.common.time.yesterday": "Hôm qua",
+	"ui.common.time.weekday_at": "{weekday} lúc {time}",
+	"ui.common.time.date_at": "{date} lúc {time}"
 }

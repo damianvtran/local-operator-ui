@@ -1,0 +1,87 @@
+{
+	"schema": 1,
+	"auditor": "i18n-auditor",
+	"agent": "i18n-auditor",
+	"model": "deepseek/deepseek-flash",
+	"session": "2a7ce8cad6b9",
+	"instance": "2a7ce8cad6b9",
+	"model_source": "session model header: deepseek/deepseek-flash (no model-switch notice in this session)",
+	"fallback": "not indicated in this session",
+	"independent_from_translator_session": true,
+	"independence": "Independent auditor; did not author or modify any translation. Read-only: no edits, commits or posts.",
+	"locale": "vi",
+	"date": "2026-11-12",
+	"namespace": "ui.common.time",
+	"status": "passed",
+	"result": "clean",
+	"base": "7c2b6af66486",
+	"head": "dcdcb6a9d8c4a80d239fc56498765c2b64417d38",
+	"pr": 1877,
+	"scope": "S16d delta: the four NEW ui.common.time values (today_at, yesterday, weekday_at, date_at). The landed yesterday_at is precedent/context, not re-audited.",
+	"sha256": {
+		"en": "bb0b3aa1a71679cc73cb40d73616b5e22057c7dcbc86705c2ec4425984971e13",
+		"vi": "f87b908a4add8d24d3f52e8663b3f9198a20d77d93f6817ec413375d62a7b4fb"
+	},
+	"target_hash_status": "predicted_pre_landing",
+	"target_hash_note": "The value is not landed yet. The vi sha256 above is the PREDICTED landed file: current vi/ui.common.time.json plus the 4 candidate values in en key order, tab indent, one key per line, trailing newline. That serializer reproduces 4 existing catalogue files byte-for-byte (ui.common.time, ui.chat.ask_queue, ui.notifications, ui.hub). ledger-assemble refuses a receipt that does not name the on-disk bytes, so a mismatch fails safe; re-derive the hash after landing and update this field if it differs.",
+	"pre_landing_target_sha256": "c0bed5df041a72992031e574f0f3a59cd29608a4c6dd13cb1d41186e05d1b60a",
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.common.time.json",
+			"sha256": "bb0b3aa1a71679cc73cb40d73616b5e22057c7dcbc86705c2ec4425984971e13"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.common.time.context.json",
+			"sha256": "a9069037edc11c59288a7c2d3171496b1ef44a0982fc28e6a0edb4bcae0f98d2"
+		},
+		"target": {
+			"path": "src/i18n/catalogues/vi/ui.common.time.json",
+			"sha256": "f87b908a4add8d24d3f52e8663b3f9198a20d77d93f6817ec413375d62a7b4fb",
+			"status": "predicted_pre_landing"
+		},
+		"candidate": {
+			"path": "vi-s16d.json (translator drafts)",
+			"sha256": "303a1bc3a27a886027516399574f2c9965e956965cd8526ddacab0237d3cf489",
+			"sorted_key_compact_digest_prefix": "8fea7522"
+		}
+	},
+	"keys_read": 4,
+	"reviewed_keys": [
+		"ui.common.time.today_at",
+		"ui.common.time.yesterday",
+		"ui.common.time.weekday_at",
+		"ui.common.time.date_at"
+	],
+	"composed_evidence": {
+		"ui.common.time.today_at": "Hôm nay lúc 9:05",
+		"ui.common.time.weekday_at": "Thứ Hai lúc 15:42",
+		"ui.common.time.date_at": "5 tháng 11, 2026 lúc 14:30",
+		"ui.common.time.yesterday": "Hôm qua",
+		"ui.common.time.yesterday_at": "Hôm qua lúc 23:50"
+	},
+	"findings": {
+		"blocker": [],
+		"major": [],
+		"minor": [],
+		"nit": []
+	},
+	"severity_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"observations_not_findings": [
+		"date_at renders '5 tháng 11, 2026 lúc 14:30': the comma before 2026 is ICU's long-date output, not catalogue text; the catalogue's 'lúc' avoids stacking a second comma.",
+		"weekday_at inherits CLDR's capital 'Thứ'; harmless at label start, would only read wrong if a future site embedded {weekday} mid-sentence.",
+		"Mechanical checks ran through the app's own formatter (intl-messageformat + real Intl.DateTimeFormat vi), not repo catalogue validators; generate.mjs --check validates en->keys.gen only."
+	],
+	"artifacts": {
+		"report": "audit-s16d-vi.md",
+		"checker": "check-s16d-vi.mjs"
+	},
+	"kind": "independent_delta_i18n_audit",
+	"audit_kind": "linguistic_and_mechanical_delta",
+	"round": 1,
+	"audited_namespaces": ["ui.common.time"]
+}

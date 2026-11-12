@@ -1,0 +1,67 @@
+{
+	"schema": 1,
+	"instance": "70b1568077eb",
+	"audit_id": "s16d-r2-es",
+	"locale": "es",
+	"namespace": "ui.common.time",
+	"audit_date": "2026-11-12",
+	"round": 2,
+	"head": "b2110ea9cd9fd0c103891a4a77b65ba741012cf4",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"instance": "70b1568077eb",
+		"session": "70b1568077eb",
+		"model": "deepseek/deepseek-flash",
+		"fallback": null,
+		"independent_from_translator_session": true,
+		"actual_model_source": "Session runtime model header for this run: deepseek/deepseek-flash. No provider fallback was reported to this session; no translation or back-translation service was used."
+	},
+	"status": "passed",
+	"result": "clean-with-findings",
+	"scope": "Independent round-2 audit of the landed es ui.common.time catalogue at b2110ea9cd9f: the four S16d keys (today_at, yesterday, weekday_at, date_at) plus the unchanged yesterday_at sibling. Judges the round-1 weekday_at comma correction and the es:ui.common.time.date_at identical-value exemption row on their merits. Read-only: no repo edits, commits, pushes or PR posts.",
+	"sha256": {
+		"es": "ca96efc391c6c880900485d02da2d93011056565a49128391e77ce97fc5396b3",
+		"en": "bb0b3aa1a71679cc73cb40d73616b5e22057c7dcbc86705c2ec4425984971e13",
+		"context": "a9069037edc11c59288a7c2d3171496b1ef44a0982fc28e6a0edb4bcae0f98d2"
+	},
+	"key_hashes": {
+		"ui.common.time.today_at": {
+			"es": "11eec25726a707cf73968d2642eb18c906365f94ea8b48e96f89a73ed13e5f64",
+			"en": "d8a5619c331c9d3aa6de00bb5c1e9753fe53b989ba048d6f3777170943bd4846"
+		},
+		"ui.common.time.yesterday": {
+			"es": "870fed0e7dd877501b73ecbbf66bb4668438257c816a6503de717fb28aaa63b8",
+			"en": "6f8ff3faff42fc2c09be64b375050ea192d49bfa1235e857ac84eb1810b35cc5"
+		},
+		"ui.common.time.weekday_at": {
+			"es": "ce19c890bdacf048f4a72243f4ddd774d5501225b9b681d6337d8d5e37e1dd4e",
+			"en": "8b0e07916d34e297405fa4179980b735e9e1a2f6fec26bcda728837e3e6ce4e0"
+		},
+		"ui.common.time.date_at": {
+			"es": "66adc508522fe70ad1baec159c07a7a06be3b46d220aea4ca18ba28bad74a998",
+			"en": "66adc508522fe70ad1baec159c07a7a06be3b46d220aea4ca18ba28bad74a998",
+			"note": "identical by design; covered by the scoped es:ui.common.time.date_at IDENTICAL_OK row"
+		}
+	},
+	"findings": [
+		{
+			"severity": "NIT",
+			"id": "ES-1",
+			"key": "es:ui.common.time.date_at",
+			"where": "scripts/i18n/locale-parity.test.mjs IDENTICAL_OK row",
+			"detail": "exemption is correct, load-bearing and es-scoped, but unlike its neighbours it cites no audit round or revision; suggest appending \"; independently audited in S16d round 1 and round 2 (b2110ea9cd9f)\""
+		}
+	],
+	"ledger_receipt": {
+		"path": "i18n/receipts/70b1568077eb.json",
+		"sha256": "637d48adc95205633bf9e658433ac5e405f174801994d0ba1ce1eeae309bdb47",
+		"assembled_row_status": "audited",
+		"ledger_check_es_findings": 0
+	},
+	"companions": {
+		"record.json": "this bundle's required record",
+		"report.md": "findings, reasoning and the round-1 judgement",
+		"audit.log": "execution log: the commands and their actual output",
+		"ledger-receipt.json": "byte copy of the receipt the ledger row references"
+	}
+}

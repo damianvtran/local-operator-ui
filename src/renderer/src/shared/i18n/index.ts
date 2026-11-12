@@ -24,6 +24,7 @@ export {
 	currentLocaleState,
 	DEFAULT_LOCALE,
 	formatByteQuantity,
+	FULL_NUMERIC_STAMP,
 	formatBytes,
 	formatDate,
 	formatDateTime,

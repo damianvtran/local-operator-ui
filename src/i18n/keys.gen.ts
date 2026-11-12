@@ -7941,6 +7941,10 @@ export type MessageParams = {
 	"ui.common.speech.speak_control.replay_speech": undefined;
 	"ui.common.speech.speak_control.speak_aloud": undefined;
 	"ui.common.speech.speak_control.stop": undefined;
+	"ui.common.time.date_at": { date: string; time: string };
+	"ui.common.time.today_at": { time: string };
+	"ui.common.time.weekday_at": { weekday: string; time: string };
+	"ui.common.time.yesterday": undefined;
 	"ui.common.time.yesterday_at": { time: string };
 	"ui.common.updates.check_for_updates_button.at_an_unknown_time": undefined;
 	"ui.common.updates.check_for_updates_button.check_for_updates": undefined;
