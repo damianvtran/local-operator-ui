@@ -1,6 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import type { DriveableView } from "./electron-types";
 import { BrowserHostError } from "./errors";
+import { custodyRefusal } from "./extensions/passkey-custody";
 import {
 	displayTitleFor,
 	displayUrlFor,
@@ -362,6 +363,36 @@ export class TabRegistry {
 		) => void = () => {},
 	) {}
 
+	/** Passkey custody (`extensions/passkey-custody.ts`), installed by the host
+	 * after construction. Null refuses nothing. */
+	private custody: {
+		isHeld(webContentsId: number): boolean;
+		epoch(webContentsId: number): number;
+	} | null = null;
+
+	setCustodyGate(gate: TabRegistry["custody"]): void {
+		this.custody = gate;
+	}
+
+	/**
+	 * Run a read that does NOT go through CDP (the isolated-world scripts of
+	 * `read`, `query`, `copy` and the geometry probes) and drop its answer if a
+	 * passkey hold began on the tab while it ran. `requireSurface` already refused
+	 * a held tab at the start; this closes the window between that check and the
+	 * answer, which is the one `cdp.ts` closes for CDP commands.
+	 */
+	async guardRead<T>(record: TabRecord, run: () => Promise<T>): Promise<T> {
+		const id = record.view.webContents.id;
+		const epoch = this.custody?.epoch(id) ?? 0;
+		const result = await run();
+		if (
+			this.custody &&
+			(this.custody.isHeld(id) || this.custody.epoch(id) !== epoch)
+		)
+			throw custodyRefusal();
+		return result;
+	}
+
 	// ---- creation, addressing, listing ---------------------------------------
 
 	/**
@@ -599,7 +630,23 @@ export class TabRegistry {
 				{ reason: "internal_page" },
 			);
 		}
+		// A password manager's passkey prompt is up in this tab and only the user
+		// may see or answer it. Refused here, before any action does anything, and
+		// again per command in `cdp.ts` for any path that does not come through here.
+		this.assertNotInCustody(record);
 		return record;
+	}
+
+	/**
+	 * Refuse an agent path on a tab the user holds for a password manager prompt
+	 * (`extensions/passkey-custody.ts`), with the one custody refusal every agent
+	 * path answers. `requireSurface` calls it; a path that reaches a record
+	 * WITHOUT a handle (handle-less `close`, review Q3) must call it itself.
+	 */
+	assertNotInCustody(record: TabRecord): void {
+		if (this.custody?.isHeld(record.view.webContents.id)) {
+			throw custodyRefusal();
+		}
 	}
 
 	/** Touch a tab driven by an agent, so `tabs` can order by recency. */

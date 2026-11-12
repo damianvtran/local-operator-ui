@@ -190,6 +190,47 @@ identical to within 0.05px on every case in both trees.
    why each rung is declared twice — once per state — rather than being a
    single width.
 
+8. **The borrowed-access `i` readout is a second state half (PR #1871).**
+   A remote session on healthy borrowed access draws an in-flow `i` after
+   the effort chip: a 22px box plus the cluster's 4px gap, 26px measured.
+   It never sheds (it is the one reading that says whose credentials the
+   session spends), so every value rung moves by 26px while it is drawn,
+   the way the third box moves them by 36px. The rungs live in one table,
+   `SHED_RUNGS` in `session-status-strip.tsx`, keyed by (third box, access):
+
+   | rung | two-box | third-box | two-box + access | third-box + access |
+   | --- | --- | --- | --- | --- |
+   | effort | c750 | c780 | c775 (col 823) | c810 (col 858) |
+   | cost | c705 | c740 | c730 (col 778) | c765 (col 813) |
+   | context | c640 | c675 | c660 (col 708) | c695 (col 743) |
+
+   Before the access columns existed, the `borrowed` fixture (`fullest`
+   plus `model_access: effective_borrow`) overran the controls at every
+   tight rung: `glyphOverlap` +18.0 (col 688), +19.6 (753), +19.5 (798),
+   idle and running alike, with the model chip at its 56px floor
+   (harness `--only=fullest,borrowed`, fe7ee1818ac). After, measured in the
+   harness page rendered in the operator's browser (the headless sweep was
+   killed twice by the machine's memory guard), `fullest`+access at the
+   tightest column of each rung — the free gap between the last reading and
+   the first control, and the model chip's width against its 56px floor:
+
+   | col · state | readings shown | gap to controls | model |
+   | --- | --- | --- | --- |
+   | 823 idle | model · effort · i · context · cost | 2.0 | 59.5 |
+   | 822 idle | model · i · context · cost (effort shed) | 2.0 | 103.4 |
+   | 798 idle / running | model · i · context · cost | 2.0 | 79.4 |
+   | 778 idle | model · i · context · cost | 2.0 | 59.4 |
+   | 753 idle / running | model · i · context | 2.0 | 101.0 |
+   | 708 idle | model · i · context | 2.0 | 56.0 (floor) |
+   | 688 idle / running | model · i | 87.9 | 120.1 |
+   | 858 recording | model · effort · i · context · cost | 2.0 | 58.5 |
+   | 813 recording | model · i · context · cost | 2.0 | 58.4 |
+   | 743 recording | model · i · context | 0.95 | 56.0 (floor) |
+
+   `running` here is two boxes (Stop takes Send's slot); only `recording`
+   draws the third. No case overruns; the frames are in
+   `docs/pr-evidence/remote-access-info-icon/row-*.png`.
+
 ## What this set cannot show, and what it does not claim
 
 - **The post-stop grace window is not a state a mount can hold.** The
