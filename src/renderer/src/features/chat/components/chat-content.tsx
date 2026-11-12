@@ -3001,6 +3001,14 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 											// the conversation rather than the owner's, or the
 											// conversation may not be on this machine at all.
 											stale={canonical.view.stale}
+											/*
+											 * A peer's conversation: the pane's loading indicator says
+											 * it is syncing from the other device rather than loading
+											 * (operator 2026-11-11). The same `remoteOwnedId` answer the
+											 * files lane already reads above, so the two cannot disagree
+											 * about whose conversation this is.
+											 */
+											remote={remoteFiles}
 											missing={gone}
 										/>
 										<JobCancelPopover {...musicJobCancel.popover} />

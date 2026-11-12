@@ -4653,6 +4653,11 @@ export type MessageParams = {
 	};
 	"ui.chat.canonical.lightbox.show_image": { index: number; count: number };
 	"ui.chat.canonical.link_toolkit.actions_for": { name: string };
+	"ui.chat.canonical.loading.cold": undefined;
+	"ui.chat.canonical.loading.older": undefined;
+	"ui.chat.canonical.loading.region_label": undefined;
+	"ui.chat.canonical.loading.remote": undefined;
+	"ui.chat.canonical.loading.revalidating": undefined;
 	"ui.chat.canonical.notice.compaction_not_run": { detail: string };
 	"ui.chat.canonical.notice.compaction_not_run_after_colon": { detail: string };
 	"ui.chat.canonical.notice.interrupted": undefined;
@@ -4661,7 +4666,6 @@ export type MessageParams = {
 	"ui.chat.canonical.older_history.failed.long": undefined;
 	"ui.chat.canonical.older_history.failed.short": undefined;
 	"ui.chat.canonical.older_history.load": undefined;
-	"ui.chat.canonical.older_history.loading": undefined;
 	"ui.chat.canonical.older_history.transport.long": undefined;
 	"ui.chat.canonical.older_history.transport.short": undefined;
 	"ui.chat.canonical.older_history.try_again": undefined;
@@ -4670,8 +4674,6 @@ export type MessageParams = {
 	"ui.chat.canonical.older_history.windowed.short_gesture": undefined;
 	"ui.chat.canonical.older_history.windowed.title": undefined;
 	"ui.chat.canonical.older_history.windowed.title_gesture": undefined;
-	"ui.chat.canonical.placeholder.loading": undefined;
-	"ui.chat.canonical.placeholder.region_label": undefined;
 	"ui.chat.canonical.raw_information": undefined;
 	"ui.chat.canonical.security_notice.aria": undefined;
 	"ui.chat.canonical.security_notice.blocked": undefined;
@@ -5037,7 +5039,6 @@ export type MessageParams = {
 	"ui.chat.canonical.transcript.reconnecting": undefined;
 	"ui.chat.canonical.transcript.send_again": undefined;
 	"ui.chat.canonical.transcript.source_unavailable": undefined;
-	"ui.chat.canonical.transcript.stale_caption": undefined;
 	"ui.chat.canonical.transcript.start_new_chat": undefined;
 	"ui.chat.canonical.transcript.stopped_before_finishing": undefined;
 	"ui.chat.canonical.transcript.worked": undefined;

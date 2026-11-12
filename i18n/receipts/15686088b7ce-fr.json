@@ -1,0 +1,72 @@
+{
+	"auditor": "reviewer",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "15686088b7ce-fr",
+	"run_id": "15686088b7ce",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"namespace": "ui.chat.canonical",
+	"locale": "fr",
+	"date": "2026-11-12",
+	"head": "c213a0616d0272b53fee8293fbc0a241255b2a52",
+	"key_count": 457,
+	"scope": "whole merged file at c213a0616: #1870's 14 status keys + this PR's 5 loading.* keys; seam review and merge-integrity proof",
+	"merge_integrity": "all 457 values equal origin/main or 10eba3637 (14 #1870 keys = main, 5 loading.* = 10eba3637); only raw-line change is a trailing comma on main's last line; removed vs main = the 4 audited removals",
+	"checks": [
+		"loading.* meaning/register vs en + context (values = 4b8febc34595 audit)",
+		"seam: nominal status phrases Chargement/Synchronisation/Recherche match main's Génération/Rédaction and existing 'Chargement du graphique…', 'Synchronisation des agents'; vous (votre autre appareil); glossary device -> appareil",
+		"ellipsis: single U+2026, no space before, wherever en has one, all 19 keys; no ASCII ...",
+		"ICU args identical to en; no bidi controls; no duplicate loading.* values",
+		"glossary/style guide unchanged since 5079899f0"
+	],
+	"audited_values": {
+		"ui.chat.canonical.loading.cold": "Chargement de la conversation…",
+		"ui.chat.canonical.loading.revalidating": "Recherche de nouveaux messages…",
+		"ui.chat.canonical.loading.older": "Chargement des messages précédents…",
+		"ui.chat.canonical.loading.remote": "Synchronisation depuis votre autre appareil…",
+		"ui.chat.canonical.loading.region_label": "Chargement de la conversation"
+	},
+	"findings": [
+		{
+			"id": "2105ebeeb3e9/N1",
+			"severity": "NIT",
+			"origin": "i18n/receipts/2105ebeeb3e9.json",
+			"disposition": "carried from origin (key and detail there): bytes unchanged, still applies, severity concurred; deferred"
+		},
+		{
+			"id": "2105ebeeb3e9/N2",
+			"severity": "NIT",
+			"origin": "i18n/receipts/2105ebeeb3e9.json",
+			"disposition": "carried from origin (key and detail there): bytes unchanged, still applies, severity concurred; deferred"
+		}
+	],
+	"severity_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 2
+	},
+	"supersedes": [
+		"2105ebeeb3e9",
+		"4b8febc34595-fr"
+	],
+	"independence": {
+		"translators": [
+			"i18n-translator anthropic/claude-sonnet-5-5 (14 keys)",
+			"coder 6ca5ea22d2ab anthropic/claude-opus-5-5 (loading.*)"
+		],
+		"auditor_agent": "reviewer",
+		"auditor_session": "15686088b7ce",
+		"independent_from_translator": true,
+		"disclosure": "different agent/session from both translators; same model family as coder; no fallback"
+	},
+	"references": {
+		"glossary": "~/local-operator/i18n/glossary.md @ ad910f5da",
+		"style_guide": "~/local-operator/i18n/style-guides/fr.md @ ad910f5da"
+	},
+	"sha256": {
+		"target": "cc20ec4a5065b396d933164b0c3318bdd5a2970fcbc082e023a6a5a80202d807",
+		"en": "0c9b709973d3b7769708502491a0d3d81798ac2ac68319967198e53e2d495113",
+		"context": "5eeed243125c66031b335e1dcdf029ce54306db70fb1fb65e69dc53d64e30391"
+	}
+}
