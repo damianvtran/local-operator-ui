@@ -53,7 +53,13 @@
  *   panels are given numbers and format them once.
  */
 
-import { formatByteQuantity, formatDate, formatNumber, t } from "@shared/i18n";
+import {
+	currentLocale,
+	formatByteQuantity,
+	formatDate,
+	formatNumber,
+	t,
+} from "@shared/i18n";
 import { pyFixed } from "../../session-status/fixed-point";
 
 /**
@@ -348,9 +354,26 @@ export function formatPercent(fraction: number | null | undefined): string {
 	// authority above (so `99%` for 99.6 and the ties are unchanged); `Intl`
 	// only spells the integer that is left, and English stays `73%` byte-for-byte.
 	const whole = pct > 99 && pct < 100 ? 99 : roundHalfEven(pct);
-	return formatNumber(whole / 100, {
+	// origin/main spelled `Infinity%` for an infinite rate (roundHalfEven passes
+	// ±Infinity through) where CLDR's English spelling is `∞%`. No rate this
+	// panel derives is infinite, but English must stay byte-identical, so the
+	// English locales (`en`, `en-US`, ...) keep the old spelling; every other locale uses its
+	// own CLDR symbol rather than an English word.
+	if (
+		(whole === Number.POSITIVE_INFINITY ||
+			whole === Number.NEGATIVE_INFINITY) &&
+		currentLocale().split("-")[0].toLowerCase() === "en"
+	)
+		return `${whole}%`;
+	// `-0 + 0` is `0`: Intl signs a negative zero (`-0%`), the old template
+	// printed `0%` (`${-0}` is `"0"`).
+	return formatNumber((whole + 0) / 100, {
 		style: "percent",
 		maximumFractionDigits: 0,
+		// origin/main printed `1234%` for a 12.34 fraction; CLDR's English
+		// grouping would print `1,234%`. Ungrouped matches it in every locale
+		// (the same stance as the integer helpers above).
+		useGrouping: false,
 	});
 }
 

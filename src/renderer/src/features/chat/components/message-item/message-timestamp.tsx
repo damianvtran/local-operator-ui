@@ -38,6 +38,8 @@ import {
 } from "@shared/utils/date-utils";
 import type { FC } from "react";
 
+import { isolateClock } from "../../../../../../i18n/bidi";
+
 export type MessageTimestampProps = {
 	timestamp: Date;
 	className?: string;
@@ -53,7 +55,7 @@ export const MessageTimestamp: FC<MessageTimestampProps> = ({
 	useI18nLocale();
 	return (
 		<Tooltip
-			content={formatCalendarDateTime(timestamp)}
+			content={isolateClock(formatCalendarDateTime(timestamp))}
 			side="bottom"
 			delayDuration={1200}
 		>
@@ -63,7 +65,7 @@ export const MessageTimestamp: FC<MessageTimestampProps> = ({
 					className,
 				)}
 			>
-				{formatMessageDateTime(timestamp)}
+				{isolateClock(formatMessageDateTime(timestamp))}
 			</span>
 		</Tooltip>
 	);

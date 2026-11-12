@@ -112,7 +112,7 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
-import { isolateSigilRun } from "../../../../../i18n/bidi";
+import { isolateClock, isolateSigilRun } from "../../../../../i18n/bidi";
 import type { DesktopModelSelection } from "../../../../../shared/desktop-contract";
 import type {
 	DesktopLoopState,
@@ -4107,9 +4107,8 @@ export const ResumePicker: FC<PickerContext> = ({
 				),
 				// `toLocaleString()` spelled the full numeric date and clock with seconds
 				// (`11/5/2026, 3:42:01 PM`); the same components, now in the live locale.
-				meta: formatDateTime(
-					new Date((row.mtime ?? 0) * 1000),
-					FULL_NUMERIC_STAMP,
+				meta: isolateClock(
+					formatDateTime(new Date((row.mtime ?? 0) * 1000), FULL_NUMERIC_STAMP),
 				),
 				current: row.id === sessionId,
 				keywords: [row.id],

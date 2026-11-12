@@ -48,6 +48,7 @@ const bundle = await build({
 			export { clearRegisteredCatalogues, registerCatalogue } from "./src/i18n/messages";
 			export { setLocale } from "./src/i18n/locale";
 			export { bundledEnglish } from "./src/i18n/keys.gen";
+			export { isolateClock } from "./src/i18n/bidi";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -203,6 +204,62 @@ test("English: formatPercent equals the pre-change formula over 0..1 in 0.1% ste
 	assert.equal(mod.formatPercent(0.73), "73%");
 	assert.equal(mod.formatPercent(0.996), "99%");
 	assert.equal(mod.formatPercent(1), "100%");
+});
+
+test("English: formatPercent equals the pre-change formula for large, negative, signed-zero, tiny and non-finite inputs (r1 F1)", () => {
+	// Review r1 R1-2 / QA Q2: CLDR English groups >= 1000% (`1,234%`) and spells
+	// infinity `∞%`; origin/main printed `1234%` / `Infinity%`. The grid is every
+	// input class, each compared against the copied pre-change formula.
+	const inputs = [
+		12.34,
+		12.5,
+		10,
+		9.99,
+		10.005,
+		100,
+		1e6,
+		12345.678,
+		1e9,
+		-12.34,
+		-10,
+		-1e6,
+		-0,
+		0,
+		1e-9,
+		-1e-9,
+		0.0004,
+		-0.004,
+		0.005,
+		-0.005,
+		0.99999,
+		Number.POSITIVE_INFINITY,
+		Number.NEGATIVE_INFINITY,
+		Number.NaN,
+	];
+	for (const value of inputs) {
+		assert.equal(
+			mod.formatPercent(value),
+			OLD_formatPercent(value),
+			String(value),
+		);
+	}
+	assert.equal(mod.formatPercent(12.34), "1234%");
+	assert.equal(mod.formatPercent(Number.POSITIVE_INFINITY), "Infinity%");
+	assert.equal(mod.formatPercent(Number.NEGATIVE_INFINITY), "-Infinity%");
+});
+
+test("non-English percents keep CLDR spacing and never grow an English word (r1 F1)", () => {
+	assert.equal(
+		underLocale("fr", () => mod.formatPercent(0.42)).replace(/\s/g, " "),
+		"42 %",
+	);
+	// Ungrouped like origin/main, but in the locale's own spelling.
+	const big = underLocale("fr", () => mod.formatPercent(12.34));
+	assert.equal(big.replace(/\s/g, " "), "1234 %");
+	assert.doesNotMatch(
+		underLocale("fr", () => mod.formatPercent(Number.POSITIVE_INFINITY)),
+		/Infinity/,
+	);
 });
 
 test("English: the hover-row stamp is unchanged for today / yesterday / weekday / ISO", () => {
@@ -519,4 +576,77 @@ test("the message stamp subscribes to the locale (a memoised row repaints on a l
 		/import \{ useI18nLocale \} from "@shared\/i18n\/use-locale"/,
 	);
 	assert.match(source, /=> \{\s*useI18nLocale\(\);/);
+});
+
+/* ------------------------------------------------------------------ */
+/* r1 F2: clocks that are not t() arguments are isolated in RTL.        */
+/* ------------------------------------------------------------------ */
+
+const FSI = "\u2068";
+const PDI = "\u2069";
+
+test("ur: a formatted clock is wrapped in FSI...PDI; en and every LTR locale get it untouched (r1 F2)", () => {
+	const stamp = new Date(2026, 10, 5, 0, 5, 0);
+	for (const [name, format] of [
+		["message time", () => mod.formatMessageDateTime(stamp)],
+		[
+			"full numeric stamp",
+			() => mod.formatDateTime(stamp, mod.FULL_NUMERIC_STAMP),
+		],
+	]) {
+		const bare = underLocale("ur", format);
+		assert.equal(
+			underLocale("ur", () => mod.isolateClock(format())),
+			`${FSI}${bare}${PDI}`,
+			`ur ${name}`,
+		);
+		for (const loc of ["en", "en-US", "fr", "es", "zh-CN", "ru", "vi", "hi"]) {
+			const plain = underLocale(loc, format);
+			assert.equal(
+				underLocale(loc, () => mod.isolateClock(format())),
+				plain,
+				`${loc} ${name} must carry no bidi control`,
+			);
+		}
+	}
+	// An empty value must not become a bare pair of controls.
+	assert.equal(
+		underLocale("ur", () => mod.isolateClock("")),
+		"",
+	);
+});
+
+test("each non-t() clock site routes through isolateClock (r1 F2)", () => {
+	const SITES = [
+		[
+			"src/renderer/src/features/chat/components/message-item/message-timestamp.tsx",
+			/isolateClock\(formatMessageDateTime\(timestamp\)\)/,
+		],
+		[
+			"src/renderer/src/features/chat/components/message-item/message-timestamp.tsx",
+			/isolateClock\(formatCalendarDateTime\(timestamp\)\)/,
+		],
+		[
+			"src/renderer/src/shared/components/common/check-for-updates-button.tsx",
+			/isolateClock\(\s*formatDateTime\(/,
+		],
+		[
+			"src/renderer/src/features/chat/pickers/destination-pickers.tsx",
+			/meta: isolateClock\(\s*formatDateTime\(/,
+		],
+		[
+			"src/renderer/src/features/agents/config-run/config-composer.tsx",
+			/isolateClock\(\s*formatTime\(/,
+		],
+	];
+	for (const [file, pattern] of SITES) {
+		assert.match(code(file), pattern, `${file}: clock not isolated`);
+	}
+});
+
+test("the story's day divider subscribes to the locale (r1 F3)", () => {
+	const story = code(
+		"src/renderer/src/features/chat/components/trace/trace.stories.tsx",
+	);
+	assert.match(story, /useI18nLocale\(\);/);
 });
