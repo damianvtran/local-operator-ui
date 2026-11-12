@@ -133,6 +133,37 @@ const STATE_KEYS = [
 	"failed_batch",
 ].map((k) => `ui.chat.canonical.image_gen.state.${k}`);
 
+/*
+ * S16e'S CARD COPY, TRANSLATED IN ALL SEVEN LOCALES.
+ *
+ * The English-first wave left these keys as a ratchet (`S16E_PENDING`) that failed
+ * the FIRST locale to gain a value, so a half-translated wave could not ride
+ * green. The translation wave filled all 84 values (12 keys x 7 locales), so the
+ * keys live here and the real-catalogue oracle below checks them exactly as it
+ * checks the tool and state words.
+ *
+ * They are deliberately NOT folded into `STATE_KEYS`: that list ALSO drives the
+ * StateLine source guard, which requires every key to appear inside
+ * `function StateLine(`. These render elsewhere on the card - the composed stop
+ * sentence (`runningStopSentence`), the batch title, the settlement note and the
+ * failure-class mapper - so folding them in would make that guard assert the
+ * wrong thing and fail a correct tree.
+ */
+const S16E_KEYS = [
+	"ui.chat.canonical.image_gen.state.cancelled_batch",
+	"ui.chat.canonical.image_gen.cancel.queued",
+	"ui.chat.canonical.image_gen.cancel.running",
+	"ui.chat.canonical.image_gen.cancel.checking",
+	"ui.chat.canonical.image_gen.settlement.pending",
+	"ui.chat.canonical.image_gen.error.audio_rate_limited",
+	"ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+	"ui.chat.canonical.image_gen.error_class.unknown_tool",
+	"ui.chat.canonical.image_gen.error_class.invalid_arguments",
+	"ui.chat.canonical.image_gen.error_class.duplicate_id",
+	"ui.chat.canonical.image_gen.error_class.denied",
+	"ui.chat.canonical.image_gen.error_class.gate_failed",
+];
+
 /* -------------------------------------------------------------------------- */
 /* Rendering seams                                                            */
 /* -------------------------------------------------------------------------- */
@@ -1329,67 +1360,20 @@ test("ur (RTL): the size datum stays isolated and the Urdu words are not reorder
 });
 
 for (const loc of ["fr", "es", "ru", "hi", "zh-CN", "ur", "vi"]) {
-	test(`${loc}: every one of the 14 keys is a real translation (not the English source) in the shipped catalogue`, () => {
+	test(`${loc}: every one of the ${TOOL_KEYS.length + STATE_KEYS.length + S16E_KEYS.length} keys is a real translation (not the English source) in the shipped catalogue`, () => {
 		const real = JSON.parse(
 			readFileSync(
 				join(ROOT, `src/i18n/catalogues/${loc}/ui.chat.canonical.json`),
 				"utf8",
 			),
 		);
-		for (const key of [...TOOL_KEYS, ...STATE_KEYS]) {
+		for (const key of [...TOOL_KEYS, ...STATE_KEYS, ...S16E_KEYS]) {
 			assert.equal(typeof real[key], "string", `${loc} has ${key}`);
 			assert.notEqual(real[key], enCatalogue[key], `${loc} ${key} is English`);
 		}
 	});
 }
 
-/*
- * S16e'S ENGLISH-FIRST WAVE, AS A RATCHET RATHER THAN A NOTE.
- *
- * This pull request keys the cancel, settlement, batch-stopped and failure-class
- * copy in English ONLY: no shipped locale carries a value yet, and each falls
- * back to the English message per key through the existing missing-key path. The
- * translation wave that follows fills all seven, and the coverage gate is what
- * finally proves it (see `i18n/coverage-allowance.json`, which cannot grow).
- *
- * The list below is that gap made executable: while a key is still absent from a
- * shipped locale this test passes, and the FIRST locale that gains one breaks it,
- * naming the key to move into `STATE_KEYS` above and the real-catalogue oracle
- * with it. A half-translated wave therefore fails here instead of riding green,
- * and the entry cannot be forgotten because deleting it is the only way to pass.
- */
-const S16E_PENDING = [
-	"ui.chat.canonical.image_gen.state.cancelled_batch",
-	"ui.chat.canonical.image_gen.cancel.queued",
-	"ui.chat.canonical.image_gen.cancel.running",
-	"ui.chat.canonical.image_gen.cancel.checking",
-	"ui.chat.canonical.image_gen.settlement.pending",
-	"ui.chat.canonical.image_gen.error.audio_rate_limited",
-	"ui.chat.canonical.image_gen.error_class.audio_rate_limited",
-	"ui.chat.canonical.image_gen.error_class.unknown_tool",
-	"ui.chat.canonical.image_gen.error_class.invalid_arguments",
-	"ui.chat.canonical.image_gen.error_class.duplicate_id",
-	"ui.chat.canonical.image_gen.error_class.denied",
-	"ui.chat.canonical.image_gen.error_class.gate_failed",
-];
-
-for (const loc of ["fr", "es", "ru", "hi", "zh-CN", "ur", "vi"]) {
-	test(`${loc}: none of the ${S16E_PENDING.length} S16e keys has a value yet`, () => {
-		const real = JSON.parse(
-			readFileSync(
-				join(ROOT, `src/i18n/catalogues/${loc}/ui.chat.canonical.json`),
-				"utf8",
-			),
-		);
-		for (const key of S16E_PENDING) {
-			assert.equal(
-				key in real,
-				false,
-				`${loc} has ${key}: move it out of S16E_PENDING, into STATE_KEYS and the oracle`,
-			);
-		}
-	});
-}
 
 /* -------------------------------------------------------------------------- */
 /* D1 (design review round 1): the summary column's direction                 */
