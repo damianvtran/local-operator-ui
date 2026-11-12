@@ -39,6 +39,7 @@ import {
 	searchChats,
 } from "@features/chat/chat-search";
 import type { ArchiveView } from "@features/chat/chat-search";
+import { partition as partitionTemporary } from "@features/chat/chat-temporary";
 import { useMeshMembership } from "@features/mesh/mesh-store";
 import { presentSetting } from "@features/settings/backend-setting-copy";
 import { DEFAULT_SETTINGS_SECTIONS } from "@features/settings/components/settings-sidebar";
@@ -331,6 +332,10 @@ export function usePaletteItems({
 		capabilities.data,
 		"session_archive",
 	);
+	const temporaryEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"temporary_chats",
+	);
 	/*
 	 * The team catalogue, for the CHAT ROWS' hint labels AND for the palette's own
 	 * team rows (issue #849). Widened from `wantsChats` to the roster scope so the
@@ -420,7 +425,14 @@ export function usePaletteItems({
 
 	/* ---------------------------- conversations ---------------------------- */
 
-	const sessions = useCanonicalSessionsStore((state) => state.sessions);
+	// Temporary chats are left out of every palette row, as they are out of
+	// every normal list (`chat-temporary.ts`); without the capability this is
+	// the store's own array.
+	const allSessions = useCanonicalSessionsStore((state) => state.sessions);
+	const sessions = useMemo(
+		() => partitionTemporary(allSessions, temporaryEnabled).normal,
+		[allSessions, temporaryEnabled],
+	);
 	/*
 	 * THE PALETTE'S OWN VIEW OF WHAT MAY NOT BE DRAWN (agent review round 2, R2-2).
 	 *
@@ -982,6 +994,7 @@ export function usePaletteItems({
 				hasConversation,
 				isCanvasOpen,
 				canStageDraft,
+				canStageTemporary: canStageDraft && temporaryEnabled,
 			}),
 		),
 		...panelItems,
@@ -1044,11 +1057,14 @@ function buildPaletteActions({
 	hasConversation,
 	isCanvasOpen,
 	canStageDraft,
+	canStageTemporary = false,
 }: {
 	isOnChatPage: boolean;
 	hasConversation: boolean;
 	isCanvasOpen: boolean;
 	canStageDraft: boolean;
+	/** `canStageDraft` and `features.temporary_chats`: absent means no row. */
+	canStageTemporary?: boolean;
 }) {
 	return [
 		...(canStageDraft
@@ -1061,6 +1077,18 @@ function buildPaletteActions({
 						verb: t("ui.command_palette.use_palette_sources.start"),
 						command: "new-chat" as const,
 						featured: true,
+					},
+				]
+			: []),
+		...(canStageTemporary
+			? [
+					{
+						id: "new-temporary-chat",
+						name: t("ui.command_palette.new_temporary_chat"),
+						icon: "new-temporary-chat" as const,
+						keywords: ["temporary", "private", "incognito", "not saved"],
+						verb: t("ui.command_palette.use_palette_sources.start"),
+						command: "new-temporary-chat" as const,
 					},
 				]
 			: []),

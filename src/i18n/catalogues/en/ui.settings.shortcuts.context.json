@@ -486,5 +486,10 @@
 		"tone": "Plain, short.",
 		"length": "One short sentence.",
 		"note": "Shown when the user pressed only a modifier key (Command, Control, Option, Shift) in the field that records a shortcut."
+	},
+	"ui.settings.shortcuts.new_temporary_chat": {
+		"role": "reserved shortcut explanation",
+		"tone": "plain sentence, matches sibling reserved entries",
+		"note": "Ctrl+Shift+N / Cmd+Shift+N starts a temporary chat."
 	}
 }

@@ -169,5 +169,72 @@
 		"length": "One short word.",
 		"note": "Heading of the residual group when the list is grouped by agent and team; drawn last. Other headings are agent or team names, so this one must read as a category, not a name.",
 		"placeholders": {}
+	},
+	"ui.chat.sidebar_view.section.temporary": {
+		"role": "sidebar group heading with count",
+		"tone": "short noun plus count",
+		"maxCells": 20,
+		"note": "Group of temporary chats at the head of the chat list; count is the number of chats."
+	},
+	"ui.chat.sidebar_view.temporary.deletes_in": {
+		"role": "sidebar row secondary line",
+		"tone": "short state phrase",
+		"maxCells": 20,
+		"note": "Minutes left before the temporary chat is deleted."
+	},
+	"ui.chat.sidebar_view.temporary.hold.running": {
+		"role": "sidebar row secondary line",
+		"tone": "short state phrase",
+		"note": "Why the temporary chat is not counting down (hold code running)."
+	},
+	"ui.chat.sidebar_view.temporary.hold.on_screen": {
+		"role": "sidebar row secondary line",
+		"tone": "short state phrase",
+		"note": "Why the temporary chat is not counting down (hold code on_screen)."
+	},
+	"ui.chat.sidebar_view.temporary.hold.open_ask": {
+		"role": "sidebar row secondary line",
+		"tone": "short state phrase",
+		"note": "Why the temporary chat is not counting down (hold code open_ask)."
+	},
+	"ui.chat.sidebar_view.temporary.hold.armed_wake": {
+		"role": "sidebar row secondary line",
+		"tone": "short state phrase",
+		"note": "Why the temporary chat is not counting down (hold code armed_wake)."
+	},
+	"ui.chat.sidebar_view.temporary.hold.armed_monitor": {
+		"role": "sidebar row secondary line",
+		"tone": "short state phrase",
+		"note": "Why the temporary chat is not counting down (hold code armed_monitor)."
+	},
+	"ui.chat.sidebar_view.temporary.hold.unread_mail": {
+		"role": "sidebar row secondary line",
+		"tone": "short state phrase",
+		"note": "Why the temporary chat is not counting down (hold code unread_mail)."
+	},
+	"ui.chat.sidebar_view.temporary.hold.operator_hold": {
+		"role": "sidebar row secondary line",
+		"tone": "short state phrase",
+		"note": "Why the temporary chat is not counting down (hold code operator_hold)."
+	},
+	"ui.chat.sidebar_view.temporary.hold.unseen_result": {
+		"role": "sidebar row secondary line",
+		"tone": "short state phrase",
+		"note": "Why the temporary chat is not counting down (hold code unseen_result)."
+	},
+	"ui.chat.sidebar_view.temporary.hold.unsaved_files": {
+		"role": "sidebar row secondary line",
+		"tone": "short state phrase",
+		"note": "Why the temporary chat is not counting down (hold code unsaved_files)."
+	},
+	"ui.chat.sidebar_view.temporary.hold.linked": {
+		"role": "sidebar row secondary line",
+		"tone": "short state phrase",
+		"note": "Why the temporary chat is not counting down (hold code linked)."
+	},
+	"ui.chat.sidebar_view.temporary.hold.cannot_verify": {
+		"role": "sidebar row secondary line",
+		"tone": "short state phrase",
+		"note": "Why the temporary chat is not counting down (hold code cannot_verify)."
 	}
 }

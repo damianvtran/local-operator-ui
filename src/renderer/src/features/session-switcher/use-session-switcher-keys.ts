@@ -30,6 +30,7 @@
  */
 
 import { browserOwnsTabChord } from "@features/browser/hooks/use-browser-chords";
+import { partition } from "@features/chat/chat-temporary";
 import { pressLandsOnOverlay } from "@features/chat/keyboard-scopes";
 import { openConversation } from "@features/chat/open-conversation";
 import {
@@ -194,7 +195,9 @@ export function useSessionSwitcherKeys(): SessionSwitcherView & {
 					) || null
 				: null;
 			const rows = buildSwitcherRows({
-				sessions: sessions.sessions,
+				// Temporary chats are not history: the switcher's run skips them, as
+				// every normal list does (the store's capability flag gates it).
+				sessions: partition(sessions.sessions, sessions.temporaryChats).normal,
 				recents: parseConversationRecents(
 					useUiPreferencesStore.getState().conversationRecents,
 				),

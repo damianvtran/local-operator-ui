@@ -8,5 +8,11 @@
 	"ui.chat.dialogs.options.clear_message": "Every message in it is deleted from this computer, and there is no undo. The agent itself is not affected.",
 	"ui.chat.dialogs.options.clear_title": "Clear this conversation?",
 	"ui.chat.dialogs.options.description": "Customize settings for this agent",
-	"ui.chat.dialogs.options.title": "Chat options"
+	"ui.chat.dialogs.options.title": "Chat options",
+	"ui.chat.dialogs.make_temporary_title": "Make this chat temporary?",
+	"ui.chat.dialogs.make_temporary_deleted": "It leaves your chats now. Once it has been idle for its set time (30 min by default), this chat, its messages and its attachments are deleted.",
+	"ui.chat.dialogs.make_temporary_kept": "Kept: files it changed on your computer.",
+	"ui.chat.dialogs.make_temporary_confirm": "Make temporary",
+	"ui.chat.dialogs.keep_and_link": "Keep and link",
+	"ui.chat.dialogs.keep_and_pin": "Keep and pin"
 }

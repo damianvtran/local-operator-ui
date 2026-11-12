@@ -70,6 +70,7 @@ import {
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
+import { showErrorToast } from "@shared/utils/toast-manager";
 import { useQueryClient } from "@tanstack/react-query";
 import React, {
 	type FC,
@@ -136,6 +137,7 @@ import {
 	canvasPaneMode,
 	rightSlotDividerContract,
 } from "../chat-sidebar-layout";
+import { temporaryInfo } from "../chat-temporary";
 import type {
 	DraftPickerDestination,
 	DraftResolution,
@@ -164,6 +166,7 @@ import {
 import { DEFAULT_MESSAGE_SUGGESTIONS } from "./composer-suggestions";
 import { DeleteConversationDialog } from "./delete-conversation-dialog";
 import type { DirectoryWritePath } from "./directory-indicator";
+import { MakeTemporaryDialog } from "./make-temporary-dialog";
 import { RawInfoView } from "./raw-info-view";
 import { type McpServerRow, type RunDetails, RunPanel } from "./run-details";
 import type { JobControls } from "./run-details/use-job-controls";
@@ -1025,6 +1028,10 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			capabilities.data,
 			"session_delete",
 		);
+		const temporaryEnabled = desktopFeatureEnabled(
+			capabilities.data,
+			"temporary_chats",
+		);
 		/*
 		 * WHETHER THE OWNER QUEUES AN ADOPT PRESSED MID-TURN (`aside_adopt_queue`,
 		 * backend D4/D5). Read here, beside `turnAlive`, because this component hands
@@ -1305,6 +1312,49 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				});
 			},
 			[sessionId, agentName, setSessionArchived, requestArchiveConfirm],
+		);
+		/*
+		 * TEMPORARY CHATS (`features.temporary_chats`). The row's `temporary` is the
+		 * core's answer; on a DRAFT (no session yet) the switch lives on the draft row
+		 * the pane is keyed on (`agentId` is the draft key there), and the create
+		 * carries it. Every read is gated, so an older core renders nothing new.
+		 */
+		const temporaryRow = useCanonicalSessionsStore((state) =>
+			temporaryEnabled && sessionId
+				? (state.sessions.find((row) => row.session_id === sessionId)
+						?.temporary ?? null)
+				: null,
+		);
+		const temporaryInfoNow = temporaryInfo(
+			{ temporary: temporaryRow },
+			temporaryEnabled,
+		);
+		const draftTemporary = useCanonicalSessionsStore((state) =>
+			temporaryEnabled && !sessionId
+				? state.drafts[agentId] === undefined
+					? undefined
+					: state.drafts[agentId]?.temporary === true
+				: undefined,
+		);
+		const setDraftTemporary = useCanonicalSessionsStore(
+			(state) => state.setDraftTemporary,
+		);
+		const setSessionTemporary = useCanonicalSessionsStore(
+			(state) => state.setSessionTemporary,
+		);
+		const [makeTemporaryOpen, setMakeTemporaryOpen] = useState(false);
+		const writeTemporary = useCallback(
+			async (next: boolean) => {
+				if (!sessionId) return;
+				const result = await setSessionTemporary(sessionId, next);
+				// The core's own keyed sentence names the refusal (pinned, in a
+				// project); a bare failure falls back to the app's generic line.
+				if (!result.ok)
+					showErrorToast(
+						result.detail || t("ui.common.errors.desktop_refusal_placeholder"),
+					);
+			},
+			[sessionId, setSessionTemporary],
 		);
 		const requestSessionDelete = useCanonicalSessionsStore(
 			(state) => state.requestSessionDelete,
@@ -2689,6 +2739,22 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							onSetArchived={
 								sessionId ? (next) => archiveFromHeader(next) : undefined
 							}
+							temporaryEnabled={temporaryEnabled}
+							temporary={temporaryInfoNow}
+							temporaryDraft={
+								draftTemporary === undefined
+									? undefined
+									: {
+											on: draftTemporary,
+											onToggle: (on) => setDraftTemporary(agentId, on),
+										}
+							}
+							onKeepTemporary={
+								sessionId ? () => void writeTemporary(false) : undefined
+							}
+							onMakeTemporary={
+								sessionId ? () => setMakeTemporaryOpen(true) : undefined
+							}
 							deleteEnabled={deleteEnabled}
 							onRequestDelete={
 								sessionId ? () => requestSessionDelete(sessionId) : undefined
@@ -2746,6 +2812,16 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 									)
 							}
 						/>
+						{temporaryEnabled && sessionId && (
+							<MakeTemporaryDialog
+								open={makeTemporaryOpen}
+								onCancel={() => setMakeTemporaryOpen(false)}
+								onConfirm={() => {
+									setMakeTemporaryOpen(false);
+									void writeTemporary(true);
+								}}
+							/>
+						)}
 						{/*
 						 * WHAT THE LAST MOVE DID, directly under the header that issued it: the notice
 						 * is about a request this pane made, so it belongs in the pane, above the
@@ -2960,6 +3036,10 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										// conversation may not be on this machine at all.
 										stale={canonical.view.stale}
 										missing={gone}
+										missingTemporary={
+											temporaryEnabled &&
+											canonical.view.temporaryDeleted === true
+										}
 									/>,
 								)
 							: asTabPanel(

@@ -19,5 +19,10 @@
 	"ui.chat.header.session_model_switch": "मॉडल बदलें",
 	"ui.chat.header.transcript_display": "ट्रांसक्रिप्ट प्रदर्शन",
 	"ui.chat.header.starting_session": "सत्र शुरू हो रहा है",
-	"ui.chat.header.canonical_chat": "कैननिकल चैट"
+	"ui.chat.header.canonical_chat": "कैननिकल चैट",
+	"ui.chat.header.temporary": "अस्थायी",
+	"ui.chat.header.temporary_hint": "आपकी चैट में सहेजी नहीं जाती, और कुछ समय निष्क्रिय रहने के बाद हटा दी जाती है (डिफ़ॉल्ट रूप से 30 मिनट)।",
+	"ui.chat.header.temporary_toggle_on": "इस नई चैट को अस्थायी बनाएँ",
+	"ui.chat.header.temporary_toggle_off": "अस्थायी चैट बंद करें",
+	"ui.chat.header.temporary_ends_in": "{minutes, plural, one {# मिनट} other {# मिनट}} में हटेगी"
 }

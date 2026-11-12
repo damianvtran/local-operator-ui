@@ -440,5 +440,9 @@
 	"ui.chat.canonical.notice.compaction_not_run_after_colon": "上下文压缩未执行——{detail}",
 	"ui.chat.canonical.link_toolkit.actions_for": "{name}的操作",
 	"ui.chat.canonical.tool.never_sent_composed": "未发送 · 已编写{size}",
-	"ui.chat.canonical.tool.never_sent_empty": "未发送 · 未编写内容"
+	"ui.chat.canonical.tool.never_sent_empty": "未发送 · 未编写内容",
+	"ui.chat.canonical.temporary_deleted.title": "此临时对话已被删除",
+	"ui.chat.canonical.temporary_deleted.detail": "它在闲置后被删除，无法重新打开。它在你电脑上修改过的文件仍然保留。",
+	"ui.chat.canonical.temporary_deleted.new": "新建临时对话",
+	"ui.chat.canonical.temporary_deleted.back": "返回对话列表"
 }

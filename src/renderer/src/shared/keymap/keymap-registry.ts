@@ -277,6 +277,9 @@ export const RESERVED_CHORDS: ReadonlyMap<string, string> =
 		// action.
 		["primary+k", () => t("ui.settings.shortcuts.reserved.palette_chats")],
 		["primary+n", () => t("ui.settings.shortcuts.reserved.new_chat")],
+		// The temporary-chat chord (`new-chat-shortcut.ts`); reserved even on a core
+		// without `temporary_chats` so a binding cannot start firing once it lands.
+		["primary+shift+n", () => t("ui.settings.shortcuts.new_temporary_chat")],
 		["primary+b", () => t("ui.settings.shortcuts.reserved.toggle_sidebar")],
 		// Focus-dependent: inside the browser surface these are page back/forward
 		// (`shared/browser-chord.ts`); everywhere else they move between chats.

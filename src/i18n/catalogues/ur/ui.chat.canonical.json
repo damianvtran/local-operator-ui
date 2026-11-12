@@ -440,5 +440,9 @@
 	"ui.chat.canonical.notice.compaction_not_run_after_colon": "کمپریشن نہیں چلا — {detail}",
 	"ui.chat.canonical.link_toolkit.actions_for": "{name} کے لیے اقدامات",
 	"ui.chat.canonical.tool.never_sent_composed": "نہیں بھیجا گیا · {size} لکھا گیا",
-	"ui.chat.canonical.tool.never_sent_empty": "نہیں بھیجا گیا · کچھ نہیں لکھا گیا"
+	"ui.chat.canonical.tool.never_sent_empty": "نہیں بھیجا گیا · کچھ نہیں لکھا گیا",
+	"ui.chat.canonical.temporary_deleted.title": "یہ عارضی چیٹ حذف ہو گئی",
+	"ui.chat.canonical.temporary_deleted.detail": "غیر فعال رہنے کے بعد اسے حذف کر دیا گیا، اور اسے دوبارہ نہیں کھولا جا سکتا۔ اس نے آپ کے کمپیوٹر پر جو فائلیں بدلیں وہ اب بھی موجود ہیں۔",
+	"ui.chat.canonical.temporary_deleted.new": "نئی عارضی چیٹ",
+	"ui.chat.canonical.temporary_deleted.back": "چیٹس پر واپس جائیں"
 }

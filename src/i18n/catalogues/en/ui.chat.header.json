@@ -19,5 +19,10 @@
 	"ui.chat.header.session_model_switch": "Switch model",
 	"ui.chat.header.transcript_display": "Transcript display",
 	"ui.chat.header.starting_session": "Starting the session",
-	"ui.chat.header.canonical_chat": "Canonical chat"
+	"ui.chat.header.canonical_chat": "Canonical chat",
+	"ui.chat.header.temporary": "Temporary",
+	"ui.chat.header.temporary_hint": "Not saved to your chats, and deleted after a stretch of inactivity (30 min by default).",
+	"ui.chat.header.temporary_toggle_on": "Make this new chat temporary",
+	"ui.chat.header.temporary_toggle_off": "Turn off temporary chat",
+	"ui.chat.header.temporary_ends_in": "Deletes in {minutes, plural, one {# min} other {# min}}"
 }

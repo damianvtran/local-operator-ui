@@ -25,5 +25,18 @@
 	"ui.chat.sidebar_view.relative_short": "{unit, select, now {ابھی} minute {{count, number, ::group-off} منٹ قبل} hour {{count, number, ::group-off} گھنٹے قبل} day {{count, number, ::group-off} دن قبل} week {{count, number, ::group-off} ہفتے قبل} year {{count, number, ::group-off} سال قبل} other {ابھی}}",
 	"ui.chat.sidebar_view.relative_created": "{unit, select, now {ابھی بنائی گئی} minute {{count, plural, one {# منٹ پہلے بنائی گئی} other {# منٹ پہلے بنائی گئی}}} hour {{count, plural, one {# گھنٹہ پہلے بنائی گئی} other {# گھنٹے پہلے بنائی گئی}}} day {{count, plural, one {# دن پہلے بنائی گئی} other {# دن پہلے بنائی گئی}}} week {{count, plural, one {# ہفتہ پہلے بنائی گئی} other {# ہفتے پہلے بنائی گئی}}} year {{count, plural, one {# سال پہلے بنائی گئی} other {# سال پہلے بنائی گئی}}} other {ابھی بنائی گئی}}",
 	"ui.chat.sidebar_view.relative_active": "{unit, select, now {ابھی فعال تھی} minute {{count, plural, one {# منٹ پہلے آخری بار فعال تھی} other {# منٹ پہلے آخری بار فعال تھی}}} hour {{count, plural, one {# گھنٹہ پہلے آخری بار فعال تھی} other {# گھنٹے پہلے آخری بار فعال تھی}}} day {{count, plural, one {# دن پہلے آخری بار فعال تھی} other {# دن پہلے آخری بار فعال تھی}}} week {{count, plural, one {# ہفتہ پہلے آخری بار فعال تھی} other {# ہفتے پہلے آخری بار فعال تھی}}} year {{count, plural, one {# سال پہلے آخری بار فعال تھی} other {# سال پہلے آخری بار فعال تھی}}} other {ابھی فعال تھی}}",
-	"ui.chat.sidebar_view.ungrouped": "بغیر گروہ"
+	"ui.chat.sidebar_view.ungrouped": "بغیر گروہ",
+	"ui.chat.sidebar_view.section.temporary": "عارضی · {count, number, ::group-off}",
+	"ui.chat.sidebar_view.temporary.deletes_in": "{minutes, plural, one {# منٹ} other {# منٹ}} میں حذف ہو گی",
+	"ui.chat.sidebar_view.temporary.hold.running": "چلنے کے دوران رکھی گئی ہے",
+	"ui.chat.sidebar_view.temporary.hold.on_screen": "کھلی رہنے تک رکھی گئی ہے",
+	"ui.chat.sidebar_view.temporary.hold.open_ask": "رکھی گئی ہے: ایک سوال جواب کا منتظر ہے",
+	"ui.chat.sidebar_view.temporary.hold.armed_wake": "رکھی گئی ہے: ایک ویک اپ مقرر ہے",
+	"ui.chat.sidebar_view.temporary.hold.armed_monitor": "رکھی گئی ہے: ایک مانیٹر نگرانی کر رہا ہے",
+	"ui.chat.sidebar_view.temporary.hold.unread_mail": "رکھی گئی ہے: بغیر پڑھے پیغامات",
+	"ui.chat.sidebar_view.temporary.hold.operator_hold": "رکھی گئی ہے: حذف روکا گیا ہے",
+	"ui.chat.sidebar_view.temporary.hold.unseen_result": "رکھی گئی ہے: ایک نتیجہ جو آپ نے نہیں دیکھا",
+	"ui.chat.sidebar_view.temporary.hold.unsaved_files": "رکھی گئی ہے: غیر محفوظ فائلیں",
+	"ui.chat.sidebar_view.temporary.hold.linked": "رکھی گئی ہے: دوسرے کام سے منسلک",
+	"ui.chat.sidebar_view.temporary.hold.cannot_verify": "رکھی گئی ہے: ابھی جانچ نہیں ہو سکتی"
 }

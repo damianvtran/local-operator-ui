@@ -25,5 +25,18 @@
 	"ui.chat.sidebar_view.relative_short": "{unit, select, now {刚刚} minute {{count, number, ::group-off}分} hour {{count, number, ::group-off}小时} day {{count, number, ::group-off}天} week {{count, number, ::group-off}周} year {{count, number, ::group-off}年} other {刚刚}}",
 	"ui.chat.sidebar_view.relative_created": "{unit, select, now {刚刚创建} minute {{count, plural, other {创建于#分钟前}}} hour {{count, plural, other {创建于#小时前}}} day {{count, plural, other {创建于#天前}}} week {{count, plural, other {创建于#周前}}} year {{count, plural, other {创建于#年前}}} other {刚刚创建}}",
 	"ui.chat.sidebar_view.relative_active": "{unit, select, now {刚刚活跃过} minute {{count, plural, other {上次活跃于#分钟前}}} hour {{count, plural, other {上次活跃于#小时前}}} day {{count, plural, other {上次活跃于#天前}}} week {{count, plural, other {上次活跃于#周前}}} year {{count, plural, other {上次活跃于#年前}}} other {刚刚活跃过}}",
-	"ui.chat.sidebar_view.ungrouped": "未分组"
+	"ui.chat.sidebar_view.ungrouped": "未分组",
+	"ui.chat.sidebar_view.section.temporary": "临时 · {count, number, ::group-off}",
+	"ui.chat.sidebar_view.temporary.deletes_in": "{minutes, plural, other {# 分钟}}后删除",
+	"ui.chat.sidebar_view.temporary.hold.running": "运行期间保留",
+	"ui.chat.sidebar_view.temporary.hold.on_screen": "打开期间保留",
+	"ui.chat.sidebar_view.temporary.hold.open_ask": "保留：有问题待回答",
+	"ui.chat.sidebar_view.temporary.hold.armed_wake": "保留：已设置唤醒",
+	"ui.chat.sidebar_view.temporary.hold.armed_monitor": "保留：监视器正在运行",
+	"ui.chat.sidebar_view.temporary.hold.unread_mail": "保留：有未读消息",
+	"ui.chat.sidebar_view.temporary.hold.operator_hold": "保留：已暂停删除",
+	"ui.chat.sidebar_view.temporary.hold.unseen_result": "保留：有你尚未查看的结果",
+	"ui.chat.sidebar_view.temporary.hold.unsaved_files": "保留：有未保存的文件",
+	"ui.chat.sidebar_view.temporary.hold.linked": "保留：已关联其他工作",
+	"ui.chat.sidebar_view.temporary.hold.cannot_verify": "保留：暂时无法检查"
 }

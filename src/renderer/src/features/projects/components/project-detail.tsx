@@ -46,6 +46,7 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
  * the prompt is deliberately NOT auto-sent.
  */
 
+import { refusalRemedy } from "@features/chat/chat-temporary";
 import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
@@ -366,6 +367,7 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 			.getState()
 			.setCurrentInput(id, startSessionPrompt(project));
 		let linkFailure: string | null = null;
+		let linkRemedy: ReturnType<typeof refusalRemedy> = null;
 		try {
 			await link.mutateAsync({ key: project.id, sessionId: id });
 		} catch (error) {
@@ -373,6 +375,10 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 				error instanceof Error && error.message
 					? error.message
 					: t("ui.projects.project_detail.the_link_was_refused");
+			linkRemedy = refusalRemedy(
+				error instanceof DesktopControlError ? error.code : undefined,
+				"link",
+			);
 		}
 		if (linkFailure) {
 			showErrorToast(
@@ -380,6 +386,26 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 					"ui.projects.project_detail.session_started_but_linking_it_failed_linkfailure",
 					{ linkFailure: String(linkFailure) },
 				),
+				/*
+				 * A temporary chat cannot be linked until it is kept (409
+				 * `session_temporary`): the toast offers the press that can succeed.
+				 */
+				linkRemedy === "keep_and_link"
+					? {
+							action: {
+								label: t("ui.chat.dialogs.keep_and_link"),
+								onClick: () => {
+									void store.setSessionTemporary(id, false).then((kept) => {
+										if (kept.ok)
+											void link.mutateAsync({
+												key: project.id,
+												sessionId: id,
+											});
+									});
+								},
+							},
+						}
+					: undefined,
 			);
 		} else {
 			const withTarget = target

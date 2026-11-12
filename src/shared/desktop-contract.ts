@@ -1738,6 +1738,17 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			 */
 			include_archived: z.boolean().optional(),
 			/*
+			 * Whether TEMPORARY chats (`features.temporary_chats`) belong in the answer.
+			 *
+			 * ABSENT MEANS `false`, `include_archived`'s compatibility promise: the core's
+			 * query model is closed, so the flag is sent only when the capability is
+			 * advertised, and a client that never sends it never sees a temporary chat.
+			 * This app asks for them and partitions them into the sidebar's own
+			 * `Temporary` group (`features/chat/chat-temporary.ts`), which is what lets
+			 * the open temporary chat know its own countdown from the same fetch.
+			 */
+			include_temporary: z.boolean().optional(),
+			/*
 			 * Whether conversations OTHER devices hold belong in the answer.
 			 *
 			 * ABSENT MEANS `false`, the same compatibility promise `include_archived`
@@ -1860,6 +1871,24 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	/*
+	 * Mark or keep ONE conversation as a temporary chat:
+	 * `POST /v1/desktop/sessions/{id}/temporary` (`features.temporary_chats`).
+	 *
+	 * `sessions.archive`'s twin and for its reason: DESIRED STATE on the wire, so a
+	 * retried request cannot flip the chat back - which here would mean a "Keep"
+	 * replayed into a mark, and a kept chat deleted after its idle window. The
+	 * server does not confirm; "Make temporary…" asks in the UI first. Refusals
+	 * (409 `session_pinned`, `session_in_project`, `session_not_user`; 404
+	 * `session_temporary_deleted`) arrive as the error's `code`.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.temporary"),
+			sessionId,
+			temporary: z.boolean(),
+		})
+		.strict(),
+	/*
 	 * Delete ONE conversation PERMANENTLY: `DELETE /v1/desktop/sessions/{id}`.
 	 *
 	 * `confirmed: true` is required and is not a receipt: it is the wire's own echo
@@ -1951,6 +1980,14 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			 * thing the route declines to express.
 			 */
 			peer: meshId.optional(),
+			/*
+			 * Create the conversation as a TEMPORARY chat (`features.temporary_chats`):
+			 * the core writes the mark before the create answers and refuses the create
+			 * if it cannot. Sent only when true and only under the capability, so an
+			 * ordinary create stays byte-identical (the closed model would 422 an
+			 * unknown key on an older core).
+			 */
+			temporary: z.boolean().optional(),
 		})
 		.strict(),
 	/*
@@ -9175,6 +9212,10 @@ export function desktopEndpoint(request: DesktopRequest): {
 			// newest member of the query string, and nothing that never asks for it
 			// may move.
 			if (request.sort) params.set("sort", request.sort);
+			// LAST, and omitted when false, for the same byte-order promise: it is the
+			// newest parameter, and an older core's closed query model must never see
+			// it (the caller sends it only under `features.temporary_chats`).
+			if (request.include_temporary) params.set("include_temporary", "true");
 			return {
 				path: `/v1/desktop/sessions?${params}`,
 				method: "GET",
@@ -9217,6 +9258,13 @@ export function desktopEndpoint(request: DesktopRequest): {
 				// The desired state, never a toggle: see the op's own comment for why a
 				// retried toggle is the bug this shape exists to make impossible.
 				body: { archived: request.archived },
+			};
+		case "sessions.temporary":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/temporary`,
+				method: "POST",
+				// The desired state, never a toggle: see the op's own comment.
+				body: { temporary: request.temporary },
 			};
 		case "sessions.delete":
 			return {
@@ -9261,6 +9309,8 @@ export function desktopEndpoint(request: DesktopRequest): {
 					// own note for the byte-identity promise this keeps.
 					...(request.draftId ? { draft_id: request.draftId } : {}),
 					...(request.purpose ? { purpose: request.purpose } : {}),
+					// Omitted unless asked for: see the field's own note.
+					...(request.temporary ? { temporary: true } : {}),
 				},
 			};
 		case "sessions.preview":

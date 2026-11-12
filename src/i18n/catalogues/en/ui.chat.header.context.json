@@ -124,5 +124,32 @@
 		"tone": "Noun phrase",
 		"length_hint": "Two words",
 		"note": "Fallback noun phrase; 'canonical' means the native chat view."
+	},
+	"ui.chat.header.temporary": {
+		"role": "header state pill label",
+		"tone": "single adjective, sentence case",
+		"maxCells": 14,
+		"note": "Marks the open conversation as a temporary chat that the backend deletes after its idle window."
+	},
+	"ui.chat.header.temporary_hint": {
+		"role": "native title tooltip on the header toggle and pill",
+		"tone": "plain explanation, one sentence",
+		"note": "30 min is the backend default idle window; the setting can change it, hence \"by default\"."
+	},
+	"ui.chat.header.temporary_toggle_on": {
+		"role": "accessible name of the header toggle while off",
+		"tone": "imperative action phrase",
+		"note": "Shown only on a new chat before its first message."
+	},
+	"ui.chat.header.temporary_toggle_off": {
+		"role": "accessible name of the header toggle while on",
+		"tone": "imperative action phrase",
+		"note": "Turns the new chat back into an ordinary one."
+	},
+	"ui.chat.header.temporary_ends_in": {
+		"role": "warning pill countdown in the header",
+		"tone": "short state phrase",
+		"maxCells": 20,
+		"note": "Shown only in the last five minutes before deletion; minutes is a whole number, rounded up."
 	}
 }

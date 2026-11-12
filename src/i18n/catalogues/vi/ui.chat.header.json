@@ -19,5 +19,10 @@
 	"ui.chat.header.session_model_switch": "Đổi mô hình",
 	"ui.chat.header.transcript_display": "Hiển thị bản ghi",
 	"ui.chat.header.starting_session": "Đang bắt đầu phiên",
-	"ui.chat.header.canonical_chat": "Cuộc trò chuyện chuẩn"
+	"ui.chat.header.canonical_chat": "Cuộc trò chuyện chuẩn",
+	"ui.chat.header.temporary": "Tạm thời",
+	"ui.chat.header.temporary_hint": "Không được lưu vào danh sách trò chuyện, và bị xóa sau một khoảng thời gian không hoạt động (mặc định 30 phút).",
+	"ui.chat.header.temporary_toggle_on": "Đặt cuộc trò chuyện mới này là tạm thời",
+	"ui.chat.header.temporary_toggle_off": "Tắt trò chuyện tạm thời",
+	"ui.chat.header.temporary_ends_in": "Xóa sau {minutes, plural, other {# phút}}"
 }

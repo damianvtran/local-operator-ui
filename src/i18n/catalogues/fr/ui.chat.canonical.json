@@ -440,5 +440,9 @@
 	"ui.chat.canonical.notice.compaction_not_run_after_colon": "Le compactage du contexte n’a pas été exécuté — {detail}",
 	"ui.chat.canonical.link_toolkit.actions_for": "Actions pour {name}",
 	"ui.chat.canonical.tool.never_sent_composed": "jamais envoyé · texte rédigé : {size}",
-	"ui.chat.canonical.tool.never_sent_empty": "jamais envoyé · aucun texte rédigé"
+	"ui.chat.canonical.tool.never_sent_empty": "jamais envoyé · aucun texte rédigé",
+	"ui.chat.canonical.temporary_deleted.title": "Cette conversation temporaire a été supprimée",
+	"ui.chat.canonical.temporary_deleted.detail": "Elle a été supprimée après une période d’inactivité et ne peut pas être rouverte. Les fichiers qu’elle a modifiés sur votre ordinateur sont toujours là.",
+	"ui.chat.canonical.temporary_deleted.new": "Nouvelle conversation temporaire",
+	"ui.chat.canonical.temporary_deleted.back": "Retour aux conversations"
 }

@@ -41,6 +41,8 @@ import {
 	GitPullRequest,
 	Globe,
 	Info,
+	MessageSquare,
+	MessageSquareDashed,
 	MonitorSmartphone,
 	MoreHorizontal,
 	Pencil,
@@ -50,9 +52,15 @@ import {
 	X,
 } from "lucide-react";
 import { type FC, type ReactNode, useEffect, useRef, useState } from "react";
+import type { SessionTemporaryInfo } from "../../../../../shared/desktop-session-contract";
 import { HEADER_AVATAR_BOX, parseAgentAvatarSize } from "../agent-avatar-size";
 import type { AskScope } from "../ask-queue";
 import { archiveControlLabel } from "../chat-archived";
+import {
+	minutesLeft,
+	showCountdown,
+	temporaryMenuAction,
+} from "../chat-temporary";
 /*
  * THE ACT'S OWN WRITE (#893), the same module the sidebar row menu calls: one
  * door per surface, one implementation of what is copied and what it says.
@@ -66,6 +74,7 @@ import {
 	parseTranscriptDisplayMode,
 	transcriptDisplayModeLabel,
 } from "../transcript-display-mode";
+import { useAskClock } from "../use-ask-clock";
 import { AsksScopeIcon } from "./asks/asks-scope-icon";
 import {
 	ChatHeaderIdentity,
@@ -314,6 +323,23 @@ type ChatHeaderProps = {
 	onSetArchived?: (archived: boolean) => void;
 	deleteEnabled?: boolean;
 	onRequestDelete?: () => void;
+	/**
+	 * Temporary chats (`features.temporary_chats`), passed down like the archive
+	 * pair so the header and the sidebar gate on one answer.
+	 *
+	 * `temporary` is the live chat's state (`null`: not temporary). `temporaryDraft`
+	 * is present only on a DRAFT under the capability: the dashed toggle that
+	 * decides whether the chat is created temporary. `onKeepTemporary` writes
+	 * straight through (the safe direction, no confirmation); `onMakeTemporary`
+	 * OPENS the host's confirmation and writes nothing itself.
+	 */
+	temporaryEnabled?: boolean;
+	temporary?: SessionTemporaryInfo | null;
+	temporaryDraft?: { on: boolean; onToggle: (on: boolean) => void };
+	onKeepTemporary?: () => void;
+	onMakeTemporary?: () => void;
+	/** A fixed clock (epoch ms) for stories and frames; the live header ticks. */
+	temporaryNowMs?: number;
 };
 
 /**
@@ -457,6 +483,54 @@ const HeaderAvatarScope: FC<{
 		children({ avatar: null, rowClassName: NO_MARK_ROW })
 	);
 
+/**
+ * The live temporary chat's STATE: the archived pill's sibling with a dashed
+ * edge, neutral at rest. In the last five minutes (and never while a hold
+ * applies) it turns to the existing warning badge and counts down, with a Keep
+ * action beside it - the archived pill + restore pair's arrangement. It
+ * re-renders on the ask clock's 30 s cadence; nothing animates.
+ */
+const TemporaryPill: FC<{
+	info: SessionTemporaryInfo;
+	nowMs?: number;
+	onKeep?: () => void;
+}> = ({ info, nowMs, onKeep }) => {
+	const now = useAskClock(true, nowMs) / 1000;
+	const counting = info.hold == null && showCountdown(info.deletes_at, now);
+	const minutes = counting ? minutesLeft(info, now) : null;
+	if (counting && minutes !== null) {
+		return (
+			<>
+				<Badge
+					shape="pill"
+					variant="warning"
+					className="border-dashed"
+					data-session-temporary-pill="countdown"
+				>
+					<MessageSquareDashed aria-hidden="true" />
+					{t("ui.chat.header.temporary_ends_in", { minutes })}
+				</Badge>
+				{onKeep && (
+					<Button variant="ghost" size="sm" onClick={onKeep}>
+						{t("ui.chat.header_menu.keep_chat")}
+					</Button>
+				)}
+			</>
+		);
+	}
+	return (
+		<Badge
+			shape="pill"
+			className="border-control border-dashed"
+			data-session-temporary-pill="live"
+			title={t("ui.chat.header.temporary_hint")}
+		>
+			<MessageSquareDashed aria-hidden="true" />
+			{t("ui.chat.header.temporary")}
+		</Badge>
+	);
+};
+
 export const ChatHeader: FC<ChatHeaderProps> = ({
 	agentName = "Local Operator",
 	agentAvatar = null,
@@ -474,6 +548,12 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	onSetArchived,
 	deleteEnabled = false,
 	onRequestDelete,
+	temporaryEnabled = false,
+	temporary = null,
+	temporaryDraft,
+	onKeepTemporary,
+	onMakeTemporary,
+	temporaryNowMs,
 	onOpenConsole,
 	onOpenCodeReview,
 	onToggleAsks,
@@ -515,6 +595,16 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	 * see the menu root's note on why the ask waits for the menu to close.
 	 */
 	const [menuOpen, setMenuOpen] = useState(false);
+	// A draft shows the toggle, never the pill or the menu item: it has no
+	// conversation for either to describe yet.
+	const temporaryInfoShown =
+		temporaryEnabled && !temporaryDraft ? temporary : null;
+	const temporaryAction = temporaryMenuAction(
+		temporaryEnabled &&
+			(onKeepTemporary !== undefined || onMakeTemporary !== undefined),
+		temporaryDraft !== undefined,
+		temporaryInfoShown,
+	);
 	const moveRequestedRef = useRef(false);
 	const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
 	const isCanvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
@@ -1278,6 +1368,40 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				 * the rule the pin control is written under: a control whose name is a state
 				 * makes a screen reader ask what pressing it would do.
 				 */}
+				{/*
+				 * THE DRAFT'S TEMPORARY SWITCH, at the head of the cluster and only on a
+				 * draft: once the first message is sent the switch becomes the STATE (the
+				 * pill below). The pressed look is the app's own toggle vocabulary
+				 * (`aria-pressed` on a ghost icon button), so no colour is new here.
+				 */}
+				{temporaryEnabled && temporaryDraft && (
+					<Button
+						variant="ghost"
+						size="icon"
+						data-temporary-toggle
+						aria-pressed={temporaryDraft.on}
+						onClick={() => temporaryDraft.onToggle(!temporaryDraft.on)}
+						aria-label={
+							temporaryDraft.on
+								? t("ui.chat.header.temporary_toggle_off")
+								: t("ui.chat.header.temporary_toggle_on")
+						}
+						title={t("ui.chat.header.temporary_hint")}
+						className={cn(
+							temporaryDraft.on &&
+								"bg-accent-wash text-accent hover:text-accent",
+						)}
+					>
+						<MessageSquareDashed aria-hidden="true" />
+					</Button>
+				)}
+				{temporaryEnabled && temporaryInfoShown && (
+					<TemporaryPill
+						info={temporaryInfoShown}
+						nowMs={temporaryNowMs}
+						onKeep={onKeepTemporary}
+					/>
+				)}
 				{archiveEnabled && archived && (
 					<>
 						<Badge
@@ -1320,6 +1444,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				 * a menu that advertises a feature the backend does not have.
 				 */}
 				{(archiveEnabled ||
+					temporaryAction !== null ||
 					deleteEnabled ||
 					onToggleAsks ||
 					onToggleBrowser ||
@@ -1593,7 +1718,28 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 									</span>
 								</DropdownMenuItem>
 							)}
-							{archiveEnabled && deleteEnabled && <DropdownMenuSeparator />}
+							{temporaryAction === "keep" && (
+								<DropdownMenuItem
+									data-temporary-keep
+									onSelect={() => onKeepTemporary?.()}
+									disabled={!onKeepTemporary}
+								>
+									<MessageSquare aria-hidden="true" />
+									<span>{t("ui.chat.header_menu.keep_chat")}</span>
+								</DropdownMenuItem>
+							)}
+							{temporaryAction === "make" && (
+								<DropdownMenuItem
+									data-temporary-make
+									onSelect={() => onMakeTemporary?.()}
+									disabled={!onMakeTemporary}
+								>
+									<MessageSquareDashed aria-hidden="true" />
+									<span>{t("ui.chat.header_menu.make_temporary")}</span>
+								</DropdownMenuItem>
+							)}
+							{(archiveEnabled || temporaryAction !== null) &&
+								deleteEnabled && <DropdownMenuSeparator />}
 							{deleteEnabled && (
 								<DropdownMenuItem
 									/*

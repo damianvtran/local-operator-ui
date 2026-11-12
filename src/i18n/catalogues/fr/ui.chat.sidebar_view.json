@@ -25,5 +25,18 @@
 	"ui.chat.sidebar_view.relative_short": "{unit, select, now {0 min} minute {{count, number, ::group-off} min} hour {{count, number, ::group-off} h} day {{count, number, ::group-off} j} week {{count, number, ::group-off} sem} year {{count, number, ::group-off} an} other {0 min}}",
 	"ui.chat.sidebar_view.relative_created": "{unit, select, now {créée à l’instant} minute {{count, plural, one {créée il y a # minute} many {créée il y a # de minutes} other {créée il y a # minutes}}} hour {{count, plural, one {créée il y a # heure} many {créée il y a # d’heures} other {créée il y a # heures}}} day {{count, plural, one {créée il y a # jour} many {créée il y a # de jours} other {créée il y a # jours}}} week {{count, plural, one {créée il y a # semaine} many {créée il y a # de semaines} other {créée il y a # semaines}}} year {{count, plural, one {créée il y a # an} many {créée il y a # d’ans} other {créée il y a # ans}}} other {créée à l’instant}}",
 	"ui.chat.sidebar_view.relative_active": "{unit, select, now {dernière activité à l’instant} minute {{count, plural, one {dernière activité il y a # minute} many {dernière activité il y a # de minutes} other {dernière activité il y a # minutes}}} hour {{count, plural, one {dernière activité il y a # heure} many {dernière activité il y a # d’heures} other {dernière activité il y a # heures}}} day {{count, plural, one {dernière activité il y a # jour} many {dernière activité il y a # de jours} other {dernière activité il y a # jours}}} week {{count, plural, one {dernière activité il y a # semaine} many {dernière activité il y a # de semaines} other {dernière activité il y a # semaines}}} year {{count, plural, one {dernière activité il y a # an} many {dernière activité il y a # d’ans} other {dernière activité il y a # ans}}} other {dernière activité à l’instant}}",
-	"ui.chat.sidebar_view.ungrouped": "Non groupées"
+	"ui.chat.sidebar_view.ungrouped": "Non groupées",
+	"ui.chat.sidebar_view.section.temporary": "Temporaires · {count, number, ::group-off}",
+	"ui.chat.sidebar_view.temporary.deletes_in": "Supprimée dans {minutes, plural, one {# min} many {# min} other {# min}}",
+	"ui.chat.sidebar_view.temporary.hold.running": "Conservée pendant l’exécution",
+	"ui.chat.sidebar_view.temporary.hold.on_screen": "Conservée tant qu’elle est ouverte",
+	"ui.chat.sidebar_view.temporary.hold.open_ask": "Conservée : une question attend",
+	"ui.chat.sidebar_view.temporary.hold.armed_wake": "Conservée : un réveil est programmé",
+	"ui.chat.sidebar_view.temporary.hold.armed_monitor": "Conservée : une surveillance est active",
+	"ui.chat.sidebar_view.temporary.hold.unread_mail": "Conservée : messages non lus",
+	"ui.chat.sidebar_view.temporary.hold.operator_hold": "Conservée : en attente",
+	"ui.chat.sidebar_view.temporary.hold.unseen_result": "Conservée : un résultat non consulté",
+	"ui.chat.sidebar_view.temporary.hold.unsaved_files": "Conservée : fichiers non enregistrés",
+	"ui.chat.sidebar_view.temporary.hold.linked": "Conservée : liée à un autre travail",
+	"ui.chat.sidebar_view.temporary.hold.cannot_verify": "Conservée : vérification impossible pour l’instant"
 }

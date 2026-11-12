@@ -440,5 +440,9 @@
 	"ui.chat.canonical.notice.compaction_not_run_after_colon": "संपीडन नहीं चला — {detail}",
 	"ui.chat.canonical.link_toolkit.actions_for": "{name} की कार्रवाइयाँ",
 	"ui.chat.canonical.tool.never_sent_composed": "नहीं भेजा गया · {size} लिखा गया",
-	"ui.chat.canonical.tool.never_sent_empty": "नहीं भेजा गया · कुछ नहीं लिखा गया"
+	"ui.chat.canonical.tool.never_sent_empty": "नहीं भेजा गया · कुछ नहीं लिखा गया",
+	"ui.chat.canonical.temporary_deleted.title": "यह अस्थायी चैट हटा दी गई",
+	"ui.chat.canonical.temporary_deleted.detail": "निष्क्रिय रहने के बाद इसे हटा दिया गया, और इसे फिर से नहीं खोला जा सकता। इसने आपके कंप्यूटर पर जो फ़ाइलें बदलीं, वे अब भी वहीं हैं।",
+	"ui.chat.canonical.temporary_deleted.new": "नई अस्थायी चैट",
+	"ui.chat.canonical.temporary_deleted.back": "चैट पर वापस जाएँ"
 }

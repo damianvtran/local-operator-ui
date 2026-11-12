@@ -440,5 +440,9 @@
 	"ui.chat.canonical.notice.compaction_not_run_after_colon": "Compaction did not run — {detail}",
 	"ui.chat.canonical.link_toolkit.actions_for": "Actions for {name}",
 	"ui.chat.canonical.tool.never_sent_composed": "never sent \u00b7 {size} composed",
-	"ui.chat.canonical.tool.never_sent_empty": "never sent \u00b7 nothing composed"
+	"ui.chat.canonical.tool.never_sent_empty": "never sent \u00b7 nothing composed",
+	"ui.chat.canonical.temporary_deleted.title": "This temporary chat was deleted",
+	"ui.chat.canonical.temporary_deleted.detail": "It was deleted after it went quiet, and it cannot be reopened. Files it changed on your computer are still there.",
+	"ui.chat.canonical.temporary_deleted.new": "New temporary chat",
+	"ui.chat.canonical.temporary_deleted.back": "Back to chats"
 }
