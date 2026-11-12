@@ -43,6 +43,13 @@ const MEASUREMENT_REQUEST_ID = "00000000-0000-0000-0000-000000000000";
  * the same serialization the guard applies - the mismatch this whole change
  * exists to remove is two places computing "the size" differently.
  */
+/**
+ * An upper bound on a text-only message body's bytes OTHER than the text's own
+ * (field names, the fixed-width ids, `mode`, punctuation). See the fast path in
+ * `messageBudgetRefusal`; the suite pins it above the real envelope.
+ */
+export const MESSAGE_ENVELOPE_BOUND_BYTES = 1024;
+
 export function messageBodyBytes(text: string, images: WireImage[]): number {
 	const target = desktopEndpoint({
 		op: "sessions.message",
@@ -275,6 +282,24 @@ export function messageBudgetRefusal(
 			limit: formatNumber(DESKTOP_MESSAGE_MAX_CHARS),
 		});
 	}
+	/*
+	 * THE PRESS PATH SKIPS THE SERIALIZATION WHEN THE ANSWER IS ALREADY KNOWN
+	 * (send smoothness, 2026-11-11). This runs between the press and the commit
+	 * that paints the echo, and building the endpoint body plus a `TextEncoder`
+	 * pass measured ~2-4 ms of that budget for a one-line message. A text-only
+	 * body can be bounded without building it: `JSON.stringify` writes at most 6
+	 * bytes per UTF-16 unit (a `\uXXXX` escape; any unescaped unit is <= 3 UTF-8
+	 * bytes, a surrogate pair 4 for two units), and the rest of the body is the
+	 * fixed envelope `MESSAGE_ENVELOPE_BOUND_BYTES` bounds (pinned against the real
+	 * serialization by `scripts/desktop-renderer-transport.test.mjs`). Below that bound the
+	 * exact count could only say "fits", so it is not computed; anything near the
+	 * budget still takes the exact path.
+	 */
+	if (
+		images.length === 0 &&
+		MESSAGE_ENVELOPE_BOUND_BYTES + text.length * 6 <= budget
+	)
+		return null;
 	const total = messageBodyBytes(text, images);
 	if (total <= budget) return null;
 	const textBytes = messageBodyBytes(text, []);

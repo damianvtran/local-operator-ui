@@ -455,5 +455,15 @@
 	"ui.chat.canonical.loading.older": "Загрузка предыдущих сообщений…",
 	"ui.chat.canonical.loading.region_label": "Загрузка разговора",
 	"ui.chat.canonical.loading.remote": "Синхронизация с вашего другого устройства…",
-	"ui.chat.canonical.loading.revalidating": "Проверка новых сообщений…"
+	"ui.chat.canonical.loading.revalidating": "Проверка новых сообщений…",
+	"ui.chat.canonical.media.image_label": "{count, plural, =1 {Изображение} one {Изображение {position, number, ::group-off}} few {Изображение {position, number, ::group-off}} many {Изображение {position, number, ::group-off}} other {Изображение {position, number, ::group-off}}}",
+	"ui.chat.canonical.media.sound_label": "{count, plural, =1 {Звук} one {Звук {position, number, ::group-off}} few {Звук {position, number, ::group-off}} many {Звук {position, number, ::group-off}} other {Звук {position, number, ::group-off}}}",
+	"ui.chat.canonical.sound.batch.item_status": "{status, select, failed {{label} · Сбой} cancelled {{label} · Остановлено} other {{label} · Статус неизвестен}}",
+	"ui.chat.canonical.sound.batch.latest_update": "Последнее обновление: {name} (элемент {item, number, ::group-off} из {total, number, ::group-off}).",
+	"ui.chat.canonical.sound.batch.summary": "{completed, plural, one {Завершено: {completed, number, ::group-off}} few {Завершено: {completed, number, ::group-off}} many {Завершено: {completed, number, ::group-off}} other {Завершено: {completed, number, ::group-off}}} · {failed, plural, one {сбоев: {failed, number, ::group-off}} few {сбоев: {failed, number, ::group-off}} many {сбоев: {failed, number, ::group-off}} other {сбоев: {failed, number, ::group-off}}}{cancelled, plural, =0 {} one { · остановлено: {cancelled, number, ::group-off}} few { · остановлено: {cancelled, number, ::group-off}} many { · остановлено: {cancelled, number, ::group-off}} other { · остановлено: {cancelled, number, ::group-off}}}{unknown, plural, =0 {} one { · статус неизвестен: {unknown, number, ::group-off}} few { · статус неизвестен: {unknown, number, ::group-off}} many { · статус неизвестен: {unknown, number, ::group-off}} other { · статус неизвестен: {unknown, number, ::group-off}}}{has_attention, select, yes {. Требуется внимание: {labels}} other {}}",
+	"ui.chat.canonical.sound.cost.batch_unknown": "Общая стоимость пока неизвестна.",
+	"ui.chat.canonical.sound.cost.estimated_zero": "Ориентировочная стоимость $0; итоговая плата не подтверждена.",
+	"ui.chat.canonical.sound.cost.no_charge": "Плата не взималась.",
+	"ui.chat.canonical.sound.cost.unknown": "Стоимость пока неизвестна.",
+	"ui.chat.canonical.supplement.sound_fallback_label": "Созданный звук"
 }

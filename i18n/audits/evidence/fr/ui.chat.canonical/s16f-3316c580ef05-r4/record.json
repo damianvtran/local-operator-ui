@@ -1,0 +1,87 @@
+{
+ "schema": 1,
+ "audit_id": "s16f-3316c580ef05-r4",
+ "locale": "fr",
+ "namespace": "ui.chat.canonical",
+ "audit_date": "2026-11-12",
+ "slice": "S16f (damianvtran/local-operator-ui#1876) — delta audit, landed in the round-4 integration commit",
+ "head": "8180eff1f705eb79d4df5123d6108c539b585b2e",
+ "pr": 1876,
+ "audit_kind": "delta — fresh independent audit of the 15 keys on the MERGED bytes (main's 5 loading.* keys + the PR's 10 generation-card keys), after the ledger row was reset to pending; plus merge-integrity proof for the other 452 values, which were not re-read",
+ "scope": "fr, ui.chat.canonical: every one of the 15 keys read in full (mechanical, accuracy, idiom, register, glossary, fit, typography). The other 452 values were not re-audited: a script proved all 457 non-PR values byte-identical to origin/main and all 10 PR-added values byte-identical to 107ff1dd, so the surviving audits on those bytes stand.",
+ "key_count": 15,
+ "namespace_key_count": 467,
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "9d5e5bb1a1d4",
+  "instance": "3316c580ef05",
+  "model": "deepseek/deepseek-flash",
+  "independent_from_translator_session": true,
+  "independence": {
+   "translator_agent": "i18n-translator (10 S16f keys, per the ledger row's translator field); the 5 loading.* keys were translated under main's own audit history",
+   "translator_model": "not re-stated here; see i18n/ledger.json and i18n/receipts for the rows this audit supersedes",
+   "auditor_agent": "i18n-auditor",
+   "auditor_session": "9d5e5bb1a1d4",
+   "independent_from_translator": true,
+   "disclosure": "a different agent and session from the translator; the served model is deepseek/deepseek-flash, the same family some earlier fr audits used — disclosed rather than presented as a different family"
+  },
+  "second_pass": "not performed: the manager's brief assigned this group as a delta audit (15 keys) with no second independent pass requested for fr",
+  "actual_model_source": "this session's own runtime model header (deepseek/deepseek-flash), reported as served; no model pin or fallback was requested, observed or used. The auditor did not translate these files and cannot edit them; the S16f keys were translated by i18n-translator and the 5 loading.* keys landed on main with their own audit history."
+ },
+ "translator": null,
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+   "sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+   "sha256": "8f56e0d2b384c6b41add57a64e6c863e565cb61d5a7c0de482d42f380be3acfe"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+   "sha256": "99f7c0b27d6c75b16935cc58874477cab24da430284576defaacf19e209c88f6"
+  }
+ },
+ "artifacts": {
+  "report": {
+   "path": "report.md",
+   "sha256": "950510dd5a8cf88b73563a008093c07b58576875b26efb7cadc75ebaa9686451"
+  },
+  "execution_log": {
+   "path": "audit.log",
+   "sha256": "4914fca3f36a5309ea8455adf4243ea911f2608cf5c09a04d6cf616e8356aaf2",
+   "note": "the auditor's execution log as supplied, copied byte-for-byte; it is command output, not notes"
+  },
+  "receipt": {
+   "path": "i18n/receipts/3316c580ef05.json",
+   "sha256": "2e4ac73047242230a20ff56a4982652c7d56e4d1f6677d4c083bb7f1a82e8d32",
+   "note": "byte-for-byte copy written by scripts/i18n/ledger-assemble.mjs; the binding receipt lives there"
+  }
+ },
+ "companions_present": [
+  "audit.log",
+  "report.md"
+ ],
+ "current_report_verdict": {
+  "status": "passed",
+  "result": "clean-with-findings",
+  "unresolved_blocker_major_count": 0,
+  "counts": {
+   "blocker": 0,
+   "major": 0,
+   "minor": 1,
+   "nit": 1
+  },
+  "finding_ids": [
+   "M1",
+   "N1"
+  ]
+ },
+ "provenance": {
+  "record_written_by": "integrator s16f-integrator-3 from the receipt and the auditor's report — NOT written by the auditor",
+  "source_receipt": "~/.local-operator/sessions/9d5e5bb1a1d4/scratchpad/s16f-au3-fr/receipt.json",
+  "receipt_sha256": "2e4ac73047242230a20ff56a4982652c7d56e4d1f6677d4c083bb7f1a82e8d32",
+  "why_note": "locales whose auditor wrote its own record.json (ur, hi) keep that file verbatim; this record is derived, so it cites only receipt fields and re-computed hashes"
+ }
+}

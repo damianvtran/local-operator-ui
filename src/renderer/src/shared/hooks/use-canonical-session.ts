@@ -2131,8 +2131,19 @@ export function streamChangeKeepsTranscript(
 	next: string | undefined,
 	/** Whether `next` is a session this pane can be owed a page for. */
 	nextIsSession: boolean,
+	/**
+	 * Whether `previous` was a SESSION, rather than a draft's stream (nothing, or
+	 * the mint's bridge id). A draft pane now stays MOUNTED through its own
+	 * admission (`panelMountKeyFor`), so the move from a draft's stream to the
+	 * session the create answered is the same conversation gaining its id, and the
+	 * row the press painted must survive it: resetting here is what would blank
+	 * the pane the remount used to repaint. A pane that is switched to another
+	 * conversation is remounted, so it never reaches this with a draft behind it.
+	 */
+	previousIsSession = true,
 ): boolean {
 	if (previous === next) return true;
+	if (!previousIsSession) return true;
 	return !nextIsSession;
 }
 
@@ -2777,6 +2788,9 @@ export function useCanonicalSessionStream(
 	 * `streamChangeKeepsTranscript`, UX round 1's U1).
 	 */
 	const transcriptSession = useRef<string | undefined>(sessionId);
+	/** Whether `transcriptSession` named a SESSION or a draft's stream; see
+	 * `streamChangeKeepsTranscript`'s `previousIsSession`. */
+	const transcriptWasSession = useRef(isSession);
 	// Mutable side-channel for the frame pump; React state is the published,
 	// coalesced view. Frames arriving between renders collect here.
 	const pending = useRef<DesktopSessionFrame[]>([]);
@@ -6301,13 +6315,16 @@ export function useCanonicalSessionStream(
 			transcriptSession.current,
 			sessionId,
 			isSession,
+			transcriptWasSession.current,
 		);
 		transcriptSession.current = sessionId;
+		transcriptWasSession.current = isSession;
 		// The cached rows when this window has shown the conversation before, so a
 		// switch paints in its first frame; empty otherwise. The paint is NOT
-		// written from here — the panel is keyed by identity, so a switch unmounts
-		// this hook, and the cleanup effect below is the only moment that always
-		// happens.
+		// written from here — the panel is keyed by conversation (`panelMountKeyFor`),
+		// so a switch unmounts this hook, and the cleanup effect below is the only
+		// moment that always happens. The one in-place change is the pane's own
+		// draft learning its session id, which is the same conversation.
 		const seed = sessionId ? readPaint(sessionId) : null;
 		/*
 		 * THE SEED IS A PAINT LIKE ANY OTHER (#876). `paintedIds` is "the index
@@ -6438,8 +6455,9 @@ export function useCanonicalSessionStream(
 	/*
 	 * Cache this conversation's paint on the way out.
 	 *
-	 * The panel is keyed by identity, so a switch to another conversation UNMOUNTS
-	 * this hook rather than re-running it with a new id — which makes this cleanup
+	 * The panel is keyed by conversation (`panelMountKeyFor`), so a switch to
+	 * another conversation UNMOUNTS this hook rather than re-running it with a new
+	 * id (a draft learning its own session id is the same conversation) — which makes this cleanup
 	 * the only moment that always happens. It is also the right moment for the
 	 * reason the cache exists: the rows the ref holds here are exactly the rows
 	 * that were last on screen.

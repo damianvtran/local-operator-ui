@@ -3,9 +3,11 @@
 @import "tw-animate-css";
 @import "./themes.generated.css";
 
-/* Arrival is ink only: reserve final layout immediately and never replay on
- * history restore or virtual remount. Streamed answers have no arrival
- * fade at all: live text is the committed DOM, parsed per block. */
+/* Arrival reserves final layout immediately and never replays on history
+ * restore or virtual remount. Streamed answers have no arrival fade at all:
+ * live text is the committed DOM, parsed per block. Every arriving row is ink
+ * only (opacity) EXCEPT a user message, which also rises 5px into its slot
+ * (`lo-transcript-arrival-rise` below). */
 @keyframes lo-transcript-arrival {
 	from {
 		opacity: 0;
@@ -20,6 +22,43 @@
 }
 @media (prefers-reduced-motion: reduce) {
 	.lo-transcript-arrival {
+		animation: none;
+	}
+}
+
+/* A USER MESSAGE FADES INTO POSITION (operator request, 2026-11-11: "the
+ * sending should be optimistic where we fade the message into position").
+ * Every user row that arrives LIVE rises - the echo of this window's own send,
+ * and equally a message typed in the TUI, a peer or another window arriving
+ * while the reader watches (agent review round 1, F4: the same object arriving
+ * the same way gets the same entrance). Agent rows, tool rows and the wait line
+ * stay ink-only so a streaming turn does not jostle; history and remounts never
+ * enter (`entered` is fixed at the row's mount). Compositor-only: the layout box
+ * is final from the first frame (transform does not move the stick-to-bottom
+ * measurements), and only opacity and transform animate. `backwards`, not
+ * `both`: once the rise ends the row carries no residual `transform`, which
+ * would otherwise keep a containing block and stacking context on every user
+ * row for its lifetime. Reduced motion: the row simply appears.
+ *
+ * ONE KEYFRAME FOR A MESSAGE ROW'S RISE (design round 1, D4), shared with Team
+ * Bridge's `lo-team-bridge-arrival` below, whose comment records why the
+ * offset is 5px; one definition so the two message lists cannot drift. */
+@keyframes lo-message-rise {
+	from {
+		opacity: 0;
+		transform: translateY(5px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+.lo-transcript-arrival-rise {
+	animation: lo-message-rise var(--duration-slow) var(--ease-out-quart)
+		backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+	.lo-transcript-arrival-rise {
 		animation: none;
 	}
 }
@@ -57,19 +96,9 @@
  * 240ms `--duration-slow` and `--ease-out-quart`, so the two entrances agree on
  * timing and differ only in scale. Changing this number means re-shooting the
  * arrival frames, which is why it is stated here rather than tuned in review. */
-@keyframes lo-team-bridge-arrival {
-	from {
-		opacity: 0;
-		transform: translateY(5px);
-	}
-	to {
-		opacity: 1;
-		transform: translateY(0);
-	}
-}
 .lo-team-bridge-arrival {
-	animation: lo-team-bridge-arrival var(--duration-slow) var(--ease-out-quart)
-		both;
+	/* `lo-message-rise` (above) is the 5px rise this comment decides. */
+	animation: lo-message-rise var(--duration-slow) var(--ease-out-quart) both;
 }
 @media (prefers-reduced-motion: reduce) {
 	.lo-team-bridge-arrival {
@@ -786,6 +815,24 @@
 		black var(--lo-transcript-top-fade),
 		black 100%
 	);
+}
+
+/*
+ * THE SCROLLER'S TRANSITION LIST NAMES ONLY THE SCROLLBAR FADE (QA round 1, Q3).
+ * Under reduced motion the global cap gives every element a 0.01 ms
+ * `transition-duration`. An element that has not been scrolled yet carries no
+ * `data-lo-scrollbar` and so keeps the initial `transition-property: all`. A new
+ * chat's first send flips this scroller from `p-0 grow-0` to `p-4 grow`, and the
+ * transition painted the start value for one frame. Measured on the built app:
+ * the echo sat at y 124 for two frames, then 140.
+ *
+ * Why not a `transition-none` utility: on this element it would also replace
+ * the `--lo-sb` fade, and `scripts/scrollbar-activity.test.mjs` forbids that.
+ * This sets only the property list, to the one property the fade animates, so
+ * the fade keeps its duration whichever rule comes later.
+ */
+[data-lo-canonical-transcript] {
+	transition-property: --lo-sb;
 }
 
 @supports (animation-timeline: scroll()) {

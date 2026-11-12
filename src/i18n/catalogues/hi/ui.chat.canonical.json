@@ -8,7 +8,7 @@
 	"ui.chat.canonical.security_notice.blocked": "जोखिमभरी कार्रवाई रोकी गई",
 	"ui.chat.canonical.security_notice.show_code": "समीक्षा किया गया कोड दिखाएँ",
 	"ui.chat.canonical.sound.batch_attachment_unavailable": "ऑडियो अटैचमेंट उपलब्ध नहीं है।",
-	"ui.chat.canonical.sound.player_failed": "यह साउंड नहीं बजाया जा सका",
+	"ui.chat.canonical.sound.player_failed": "यह ध्वनि नहीं चलाई जा सकी",
 	"ui.chat.canonical.sound.stop.confirm_label": "रोकने के अनुरोध की पुष्टि",
 	"ui.chat.canonical.sound.stop.keep_waiting": "इंतज़ार जारी रखें",
 	"ui.chat.canonical.sound.stop.question": "यह जनरेशन रोकें?",
@@ -455,5 +455,15 @@
 	"ui.chat.canonical.loading.older": "पहले के संदेश लोड हो रहे हैं…",
 	"ui.chat.canonical.loading.region_label": "बातचीत लोड हो रही है",
 	"ui.chat.canonical.loading.remote": "आपके दूसरे डिवाइस से सिंक हो रहा है…",
-	"ui.chat.canonical.loading.revalidating": "नए संदेशों की जाँच हो रही है…"
+	"ui.chat.canonical.loading.revalidating": "नए संदेशों की जाँच हो रही है…",
+	"ui.chat.canonical.media.image_label": "{count, plural, =1 {तस्वीर} other {तस्वीर {position, number, ::group-off}}}",
+	"ui.chat.canonical.media.sound_label": "{count, plural, =1 {ध्वनि} other {ध्वनि {position, number, ::group-off}}}",
+	"ui.chat.canonical.sound.batch.item_status": "{status, select, failed {{label} · विफल} cancelled {{label} · रोका गया} other {{label} · स्थिति अज्ञात}}",
+	"ui.chat.canonical.sound.batch.latest_update": "नवीनतम अपडेट: {name} (कुल {total, number, ::group-off} में से आइटम {item, number, ::group-off})।",
+	"ui.chat.canonical.sound.batch.summary": "{completed, plural, one {पूरा हुआ: {completed, number, ::group-off}} other {पूरे हुए: {completed, number, ::group-off}}} · {failed, plural, one {विफल: {failed, number, ::group-off}} other {विफल: {failed, number, ::group-off}}}{cancelled, plural, =0 {} one { · रोका गया: {cancelled, number, ::group-off}} other { · रोके गए: {cancelled, number, ::group-off}}}{unknown, plural, =0 {} one { · स्थिति अज्ञात: {unknown, number, ::group-off}} other { · स्थिति अज्ञात: {unknown, number, ::group-off}}}{has_attention, select, yes {। ध्यान देने की ज़रूरत: {labels}} other {}}",
+	"ui.chat.canonical.sound.cost.batch_unknown": "कुल लागत अभी पता नहीं है।",
+	"ui.chat.canonical.sound.cost.estimated_zero": "अनुमानित लागत $0; अंतिम शुल्क की पुष्टि नहीं हुई।",
+	"ui.chat.canonical.sound.cost.no_charge": "कोई शुल्क नहीं।",
+	"ui.chat.canonical.sound.cost.unknown": "लागत अभी पता नहीं है।",
+	"ui.chat.canonical.supplement.sound_fallback_label": "बनाई गई ध्वनि"
 }

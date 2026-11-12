@@ -455,5 +455,15 @@
 	"ui.chat.canonical.loading.older": "پچھلے پیغامات لوڈ ہو رہے ہیں…",
 	"ui.chat.canonical.loading.region_label": "گفتگو لوڈ ہو رہی ہے",
 	"ui.chat.canonical.loading.remote": "آپ کی دوسری ڈیوائس سے ہم آہنگی ہو رہی ہے…",
-	"ui.chat.canonical.loading.revalidating": "نئے پیغامات کی جانچ ہو رہی ہے…"
+	"ui.chat.canonical.loading.revalidating": "نئے پیغامات کی جانچ ہو رہی ہے…",
+	"ui.chat.canonical.media.image_label": "{count, plural, =1 {تصویر} other {تصویر {position, number, ::group-off}}}",
+	"ui.chat.canonical.media.sound_label": "{count, plural, =1 {آواز} other {آواز {position, number, ::group-off}}}",
+	"ui.chat.canonical.sound.batch.item_status": "{status, select, failed {{label} · ناکام} cancelled {{label} · منسوخ} other {{label} · حالت نامعلوم}}",
+	"ui.chat.canonical.sound.batch.latest_update": "تازہ ترین اپ ڈیٹ: {name} (آئٹم {item, number, ::group-off} از {total, number, ::group-off})۔",
+	"ui.chat.canonical.sound.batch.summary": "{completed, plural, one {{completed, number, ::group-off} مکمل} other {{completed, number, ::group-off} مکمل}} · {failed, plural, one {{failed, number, ::group-off} ناکام} other {{failed, number, ::group-off} ناکام}}{cancelled, plural, =0 {} one { · {cancelled, number, ::group-off} منسوخ} other { · {cancelled, number, ::group-off} منسوخ}}{unknown, plural, =0 {} one { · {unknown, number, ::group-off} حالت نامعلوم} other { · {unknown, number, ::group-off} حالت نامعلوم}}{has_attention, select, yes {۔ توجہ درکار: {labels}} other {}}",
+	"ui.chat.canonical.sound.cost.batch_unknown": "مجموعی لاگت ابھی معلوم نہیں۔",
+	"ui.chat.canonical.sound.cost.estimated_zero": "تخمینہ شدہ لاگت $0؛ حتمی چارج کی تصدیق نہیں ہوئی۔",
+	"ui.chat.canonical.sound.cost.no_charge": "کوئی چارج نہیں۔",
+	"ui.chat.canonical.sound.cost.unknown": "لاگت ابھی معلوم نہیں۔",
+	"ui.chat.canonical.supplement.sound_fallback_label": "تیار کردہ آواز"
 }

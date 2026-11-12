@@ -296,8 +296,10 @@ import { clearSearch } from "../clear-search";
  */
 import { copySessionId } from "../copy-session-id";
 import {
+	currentSessionRowId,
 	discardDraftLabel,
 	discardSuccessorIndex,
+	unsentSessionIds,
 	untargetedDraftRows,
 } from "../draft-rows";
 import { fleetAsksBySession, useFleetAsks } from "../fleet-asks";
@@ -4258,6 +4260,13 @@ export function ChatSidebar({
 	 */
 	const sidebarView = view;
 	const draft = activeDraftKey ? drafts[activeDraftKey] : undefined;
+	// The row marked current, which follows the active draft's session from the
+	// create's answer (`currentSessionRowId`, design round 1 D3).
+	const currentRowId = currentSessionRowId(
+		activeDraftKey,
+		drafts,
+		selectedConversation,
+	);
 	const bindingName = (row: CanonicalSessionRow) =>
 		row.binding?.team || row.binding?.agent || "";
 	/*
@@ -4473,8 +4482,9 @@ export function ChatSidebar({
 	// completed for it, so say so instead of showing it as an ordinary untitled
 	// chat. ("No send has completed" rather than the stronger "it never carried a
 	// message": `finishDraft` clears the draft on send COMPLETION, so a session
-	// whose first send is still in flight is drawn as unstarted for that window —
-	// the same caveat `forkable`'s own comment states.)
+	// whose first send is still in flight is in this set for that window - the
+	// same caveat `forkable`'s own comment states. What the row SAYS reads the
+	// narrower `notSent` below, which leaves an in-flight first send out.)
 	const unstarted = useMemo(
 		() =>
 			new Set(
@@ -4484,6 +4494,9 @@ export function ChatSidebar({
 			),
 		[drafts],
 	);
+	// What the row SAYS is narrower than what it permits: a first send still on
+	// the wire is not `Not sent yet` (`unsentSessionIds` carries the why).
+	const notSent = useMemo(() => unsentSessionIds(drafts), [drafts]);
 	/*
 	 * THERE IS NO PER-ROW BROWSER CONTROL ANY MORE (operator ask, 2026-09-18).
 	 *
@@ -4680,7 +4693,7 @@ export function ChatSidebar({
 	) => {
 		const trailing = rowTrailingStatement({
 			marked: conversationMatches.has(row.session_id),
-			unstarted: unstarted.has(row.session_id),
+			unstarted: notSent.has(row.session_id),
 			nested,
 			binding: bindingName(row),
 			team: teamName(row),
@@ -4821,7 +4834,8 @@ export function ChatSidebar({
 		 * two elements paint one state, so two copies of this expression would be two chances
 		 * for them to disagree (review round 1, A7 — a predicate spelled more than once is
 		 * what let the deleted browser mark paint its hover fill over the selected row). */
-		const current = selectedConversation === row.session_id && !activeDraftKey;
+		const current =
+			currentRowId !== undefined && currentRowId === row.session_id;
 		/*
 		 * WHETHER THIS ROW CARRIES THE MENU AT ALL, read once beside `current` for
 		 * the same reason: three consumers hang off it - the button's
@@ -5010,7 +5024,7 @@ export function ChatSidebar({
 								: t("ui.chat.sidebar.row.recent")))}
 					{silent ? ` · ${silentRemedyClause()}` : ""}
 					{openedByNote(row)}
-					{unstarted.has(row.session_id)
+					{notSent.has(row.session_id)
 						? t("ui.chat.sidebar.row.not_sent_suffix")
 						: ""}
 					{unreadMarkKind(row) !== null
