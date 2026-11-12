@@ -23,6 +23,9 @@
  */
 import type { SearchableOption } from "@shared/components/ui/searchable-select";
 
+/** `UTC−5` (U+2212) -> `UTC-5`: the keyboard's hyphen-minus. */
+const ASCII_MINUS = (term: string) => term.replace(/\u2212/g, "-");
+
 const zoneName = (format: Intl.DateTimeFormat, at: Date) =>
 	format.formatToParts(at).find((part) => part.type === "timeZoneName")?.value;
 
@@ -48,14 +51,22 @@ export function timezoneOptions(
 					now,
 				);
 			const offset = spell(locale, "shortOffset");
+			const spelled = [
+				offset,
+				spell(locale, "short"),
+				spell(SEARCH_LOCALE, "shortOffset"),
+				spell(SEARCH_LOCALE, "short"),
+			];
 			const keywords = [
 				...new Set(
-					[
-						offset,
-						spell(locale, "short"),
-						spell(SEARCH_LOCALE, "shortOffset"),
-						spell(SEARCH_LOCALE, "short"),
-					].filter((term): term is string => Boolean(term) && term !== zone),
+					spelled
+						// A locale that writes a negative offset with U+2212 (fr `UTC−5`,
+						// ru `GMT−5`) gets an ASCII-hyphen twin: nobody types U+2212, so
+						// `UTC-5` must still find the zone the screen shows as `UTC−5`.
+						.flatMap((term) =>
+							term === undefined ? [] : [term, ASCII_MINUS(term)],
+						)
+						.filter((term): term is string => Boolean(term) && term !== zone),
 				),
 			];
 			return {

@@ -90,6 +90,26 @@ export function formatDate(
 	return dateFormatFor(locale ?? currentLocale(), options).format(date);
 }
 
+/**
+ * The components `Date.prototype.toLocaleString()` printed with no arguments:
+ * numeric date plus a clock with seconds (`11/5/2026, 3:42:01 PM` in en-US).
+ *
+ * WHY A NAMED BAG. Several sites (session picker rows, the update notice's
+ * "Detected ...", the main process's "Install started ...") wrote a bare
+ * `toLocaleString()`, which reads the OPERATING SYSTEM's region rather than the
+ * language the user chose. Passing this bag to `formatDateTime` keeps the same
+ * components (so English is byte-identical) while the locale becomes the live
+ * UI one. Pinned against the bare call in `scripts/i18n/s16d-live-locale.test.mjs`.
+ */
+export const FULL_NUMERIC_STAMP: Intl.DateTimeFormatOptions = {
+	year: "numeric",
+	month: "numeric",
+	day: "numeric",
+	hour: "numeric",
+	minute: "numeric",
+	second: "numeric",
+};
+
 /** The clock half — same pass-through; the name is the call site's intent. */
 export function formatTime(
 	date: Date | number,

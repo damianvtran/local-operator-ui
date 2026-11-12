@@ -30,6 +30,7 @@
  */
 
 import { Tooltip } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	formatCalendarDateTime,
@@ -45,19 +46,25 @@ export type MessageTimestampProps = {
 export const MessageTimestamp: FC<MessageTimestampProps> = ({
 	timestamp,
 	className,
-}) => (
-	<Tooltip
-		content={formatCalendarDateTime(timestamp)}
-		side="bottom"
-		delayDuration={1200}
-	>
-		<span
-			className={cn(
-				"shrink-0 whitespace-nowrap text-ink-dim text-meta",
-				className,
-			)}
+}) => {
+	// The stamp's words and clock are formatted at render time in the live
+	// locale; subscribing repaints a mounted (and possibly memoised) row on a
+	// language switch instead of leaving the old locale's text until it remounts.
+	useI18nLocale();
+	return (
+		<Tooltip
+			content={formatCalendarDateTime(timestamp)}
+			side="bottom"
+			delayDuration={1200}
 		>
-			{formatMessageDateTime(timestamp)}
-		</span>
-	</Tooltip>
-);
+			<span
+				className={cn(
+					"shrink-0 whitespace-nowrap text-ink-dim text-meta",
+					className,
+				)}
+			>
+				{formatMessageDateTime(timestamp)}
+			</span>
+		</Tooltip>
+	);
+};

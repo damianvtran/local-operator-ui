@@ -343,8 +343,15 @@ export function formatModelSpec(
 export function formatPercent(fraction: number | null | undefined): string {
 	if (fraction === null || fraction === undefined) return UNKNOWN;
 	const pct = fraction * 100;
-	if (pct > 99 && pct < 100) return "99%";
-	return `${roundHalfEven(pct)}%`;
+	// The percent SIGN is CLDR text, not a literal: French and Russian print `73 %`
+	// (a no-break space before it). Rounding stays the half-even
+	// authority above (so `99%` for 99.6 and the ties are unchanged); `Intl`
+	// only spells the integer that is left, and English stays `73%` byte-for-byte.
+	const whole = pct > 99 && pct < 100 ? 99 : roundHalfEven(pct);
+	return formatNumber(whole / 100, {
+		style: "percent",
+		maximumFractionDigits: 0,
+	});
 }
 
 /**
