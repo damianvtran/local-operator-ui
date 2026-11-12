@@ -1,0 +1,1930 @@
+{
+  "note": "Per run: before (base c1ba44696) vs after (head 79f3126b4). Rects sampled every requestAnimationFrame in the page; images are the app's own capturePage() in a loop. t is ms on the page timeline; the hold is released at triggerAtMs.",
+  "runs": {
+    "cold-light": {
+      "before": {
+        "images_pixels": {
+          "note": "What each capturePage() image SHOWS (pixel test), independent of the DOM sampler.",
+          "transitions": 1,
+          "bounces": 0,
+          "blankImages": 0,
+          "bothImages": 0,
+          "firstImageWithoutIndicator": {
+            "i": 8,
+            "tBefore": 503.3,
+            "tAfter": 550.2
+          },
+          "lastImageWithIndicator": {
+            "i": 7,
+            "tBefore": 469.1,
+            "tAfter": 503.3
+          }
+        },
+        "indicatorKey": "placeholder",
+        "samples": 109,
+        "rafMedianMs": 16.7,
+        "images": 39,
+        "imageMedianGapMs": 46.4,
+        "triggerAtMs": 315.7,
+        "indicatorVisibleAtStart": true,
+        "indicatorOffAtMs": 350.2,
+        "indicatorTransitions": 1,
+        "bounces": 0,
+        "indicatorMaxYDriftWhileOnScreenPx": 0,
+        "lastRowMaxAbsDyWhileMountedPx": 0,
+        "lastRowShiftEvents": 0,
+        "blankFramesAfterTrigger": 0,
+        "framesWithIndicatorAndRows": 0,
+        "finalRowCount": 24
+      },
+      "after": {
+        "images_pixels": {
+          "note": "What each capturePage() image SHOWS (pixel test), independent of the DOM sampler.",
+          "transitions": 1,
+          "bounces": 0,
+          "blankImages": 0,
+          "bothImages": 0,
+          "firstImageWithoutIndicator": {
+            "i": 8,
+            "tBefore": 485.1,
+            "tAfter": 537.7
+          },
+          "lastImageWithIndicator": {
+            "i": 7,
+            "tBefore": 443,
+            "tAfter": 485.1
+          }
+        },
+        "indicatorKey": "unified",
+        "samples": 107,
+        "rafMedianMs": 16.7,
+        "images": 35,
+        "imageMedianGapMs": 52.2,
+        "triggerAtMs": 301.9,
+        "indicatorVisibleAtStart": true,
+        "indicatorOffAtMs": 327.8,
+        "indicatorTransitions": 1,
+        "bounces": 0,
+        "indicatorMaxYDriftWhileOnScreenPx": 0,
+        "lastRowMaxAbsDyWhileMountedPx": 0,
+        "lastRowShiftEvents": 0,
+        "blankFramesAfterTrigger": 0,
+        "framesWithIndicatorAndRows": 0,
+        "finalRowCount": 24
+      }
+    },
+    "cold-light-glass-sim": {
+      "before": {
+        "images_pixels": {
+          "note": "What each capturePage() image SHOWS (pixel test), independent of the DOM sampler.",
+          "transitions": 1,
+          "bounces": 0,
+          "blankImages": 0,
+          "bothImages": 0,
+          "firstImageWithoutIndicator": {
+            "i": 8,
+            "tBefore": 527.5,
+            "tAfter": 571.4
+          },
+          "lastImageWithIndicator": {
+            "i": 7,
+            "tBefore": 441.1,
+            "tAfter": 527.5
+          }
+        },
+        "indicatorKey": "placeholder",
+        "samples": 107,
+        "rafMedianMs": 16.7,
+        "images": 36,
+        "imageMedianGapMs": 50,
+        "triggerAtMs": 301.2,
+        "indicatorVisibleAtStart": true,
+        "indicatorOffAtMs": 328.2,
+        "indicatorTransitions": 1,
+        "bounces": 0,
+        "indicatorMaxYDriftWhileOnScreenPx": 0,
+        "lastRowMaxAbsDyWhileMountedPx": 0,
+        "lastRowShiftEvents": 0,
+        "blankFramesAfterTrigger": 0,
+        "framesWithIndicatorAndRows": 0,
+        "finalRowCount": 24
+      },
+      "after": {
+        "images_pixels": {
+          "note": "What each capturePage() image SHOWS (pixel test), independent of the DOM sampler.",
+          "transitions": 1,
+          "bounces": 0,
+          "blankImages": 0,
+          "bothImages": 0,
+          "firstImageWithoutIndicator": {
+            "i": 7,
+            "tBefore": 390.8,
+            "tAfter": 431.8
+          },
+          "lastImageWithIndicator": {
+            "i": 6,
+            "tBefore": 295.8,
+            "tAfter": 390.8
+          }
+        },
+        "indicatorKey": "unified",
+        "samples": 114,
+        "rafMedianMs": 16.7,
+        "images": 39,
+        "imageMedianGapMs": 48.4,
+        "triggerAtMs": 302.1,
+        "indicatorVisibleAtStart": true,
+        "indicatorOffAtMs": 331.3,
+        "indicatorTransitions": 1,
+        "bounces": 0,
+        "indicatorMaxYDriftWhileOnScreenPx": 0,
+        "lastRowMaxAbsDyWhileMountedPx": 0,
+        "lastRowShiftEvents": 0,
+        "blankFramesAfterTrigger": 0,
+        "framesWithIndicatorAndRows": 0,
+        "finalRowCount": 24
+      }
+    },
+    "cold-dark": {
+      "before": {
+        "images_pixels": {
+          "note": "What each capturePage() image SHOWS (pixel test), independent of the DOM sampler.",
+          "transitions": 1,
+          "bounces": 0,
+          "blankImages": 0,
+          "bothImages": 0,
+          "firstImageWithoutIndicator": {
+            "i": 9,
+            "tBefore": 379.4,
+            "tAfter": 423.7
+          },
+          "lastImageWithIndicator": {
+            "i": 8,
+            "tBefore": 307.8,
+            "tAfter": 379.4
+          }
+        },
+        "indicatorKey": "placeholder",
+        "samples": 115,
+        "rafMedianMs": 16.7,
+        "images": 42,
+        "imageMedianGapMs": 44.3,
+        "triggerAtMs": 305.4,
+        "indicatorVisibleAtStart": true,
+        "indicatorOffAtMs": 328.1,
+        "indicatorTransitions": 1,
+        "bounces": 0,
+        "indicatorMaxYDriftWhileOnScreenPx": 0,
+        "lastRowMaxAbsDyWhileMountedPx": 0,
+        "lastRowShiftEvents": 0,
+        "blankFramesAfterTrigger": 0,
+        "framesWithIndicatorAndRows": 0,
+        "finalRowCount": 24
+      },
+      "after": {
+        "images_pixels": {
+          "note": "What each capturePage() image SHOWS (pixel test), independent of the DOM sampler.",
+          "transitions": 1,
+          "bounces": 0,
+          "blankImages": 0,
+          "bothImages": 0,
+          "firstImageWithoutIndicator": {
+            "i": 9,
+            "tBefore": 390.2,
+            "tAfter": 435.2
+          },
+          "lastImageWithIndicator": {
+            "i": 8,
+            "tBefore": 302,
+            "tAfter": 390.2
+          }
+        },
+        "indicatorKey": "unified",
+        "samples": 113,
+        "rafMedianMs": 16.7,
+        "images": 43,
+        "imageMedianGapMs": 42.7,
+        "triggerAtMs": 301.3,
+        "indicatorVisibleAtStart": true,
+        "indicatorOffAtMs": 333.8,
+        "indicatorTransitions": 1,
+        "bounces": 0,
+        "indicatorMaxYDriftWhileOnScreenPx": 0,
+        "lastRowMaxAbsDyWhileMountedPx": 0,
+        "lastRowShiftEvents": 0,
+        "blankFramesAfterTrigger": 0,
+        "framesWithIndicatorAndRows": 0,
+        "finalRowCount": 24
+      }
+    },
+    "cold-dark-glass-sim": {
+      "before": {
+        "images_pixels": {
+          "note": "What each capturePage() image SHOWS (pixel test), independent of the DOM sampler.",
+          "transitions": 1,
+          "bounces": 0,
+          "blankImages": 0,
+          "bothImages": 0,
+          "firstImageWithoutIndicator": {
+            "i": 9,
+            "tBefore": 441.7,
+            "tAfter": 493.9
+          },
+          "lastImageWithIndicator": {
+            "i": 8,
+            "tBefore": 404.9,
+            "tAfter": 441.7
+          }
+        },
+        "indicatorKey": "placeholder",
+        "samples": 112,
+        "rafMedianMs": 16.7,
+        "images": 42,
+        "imageMedianGapMs": 43.7,
+        "triggerAtMs": 302.6,
+        "indicatorVisibleAtStart": true,
+        "indicatorOffAtMs": 330.9,
+        "indicatorTransitions": 1,
+        "bounces": 0,
+        "indicatorMaxYDriftWhileOnScreenPx": 0,
+        "lastRowMaxAbsDyWhileMountedPx": 0,
+        "lastRowShiftEvents": 0,
+        "blankFramesAfterTrigger": 0,
+        "framesWithIndicatorAndRows": 0,
+        "finalRowCount": 24
+      },
+      "after": {
+        "images_pixels": {
+          "note": "What each capturePage() image SHOWS (pixel test), independent of the DOM sampler.",
+          "transitions": 1,
+          "bounces": 0,
+          "blankImages": 0,
+          "bothImages": 0,
+          "firstImageWithoutIndicator": {
+            "i": 7,
+            "tBefore": 417.6,
+            "tAfter": 484.3
+          },
+          "lastImageWithIndicator": {
+            "i": 6,
+            "tBefore": 308.4,
+            "tAfter": 417.6
+          }
+        },
+        "indicatorKey": "unified",
+        "samples": 112,
+        "rafMedianMs": 16.7,
+        "images": 39,
+        "imageMedianGapMs": 47.7,
+        "triggerAtMs": 306.5,
+        "indicatorVisibleAtStart": true,
+        "indicatorOffAtMs": 335.5,
+        "indicatorTransitions": 1,
+        "bounces": 0,
+        "indicatorMaxYDriftWhileOnScreenPx": 0,
+        "lastRowMaxAbsDyWhileMountedPx": 0,
+        "lastRowShiftEvents": 0,
+        "blankFramesAfterTrigger": 0,
+        "framesWithIndicatorAndRows": 0,
+        "finalRowCount": 24
+      }
+    },
+    "stale-light": {
+      "before": {
+        "images_pixels": {
+          "note": "What each capturePage() image SHOWS (pixel test), independent of the DOM sampler.",
+          "transitions": 1,
+          "bounces": 0,
+          "blankImages": 0,
+          "bothImages": 0,
+          "firstImageWithoutIndicator": {
+            "i": 6,
+            "tBefore": 578.2,
+            "tAfter": 634
+          },
+          "lastImageWithIndicator": {
+            "i": 5,
+            "tBefore": 503,
+            "tAfter": 578.2
+          }
+        },
+        "indicatorKey": "staleCaption",
+        "samples": 104,
+        "rafMedianMs": 16.7,
+        "images": 29,
+        "imageMedianGapMs": 60.2,
+        "triggerAtMs": 334.3,
+        "indicatorVisibleAtStart": true,
+        "indicatorOffAtMs": 367.4,
+        "indicatorTransitions": 1,
+        "bounces": 0,
+        "indicatorMaxYDriftWhileOnScreenPx": 0,
+        "lastRowMaxAbsDyWhileMountedPx": 0,
+        "lastRowShiftEvents": 0,
+        "finalRowCount": 24
+      },
+      "after": {
+        "images_pixels": {
+          "note": "What each capturePage() image SHOWS (pixel test), independent of the DOM sampler.",
+          "transitions": 1,
+          "bounces": 0,
+          "blankImages": 0,
+          "bothImages": 0,
+          "firstImageWithoutIndicator": {
+            "i": 7,
+            "tBefore": 472.1,
+            "tAfter": 527.6
+          },
+          "lastImageWithIndicator": {
+            "i": 6,
+            "tBefore": 419.4,
+            "tAfter": 472.1
+          }
+        },
+        "indicatorKey": "unified",
+        "samples": 112,
+        "rafMedianMs": 16.7,
+        "images": 37,
+        "imageMedianGapMs": 50.1,
+        "triggerAtMs": 301.6,
+        "indicatorVisibleAtStart": true,
+        "indicatorOffAtMs": 323.3,
+        "indicatorTransitions": 1,
+        "bounces": 0,
+        "indicatorMaxYDriftWhileOnScreenPx": 0,
+        "lastRowMaxAbsDyWhileMountedPx": 0,
+        "lastRowShiftEvents": 0,
+        "finalRowCount": 24
+      }
+    },
+    "stale-light-glass-sim": {
+      "before": {
+        "images_pixels": {
+          "note": "What each capturePage() image SHOWS (pixel test), independent of the DOM sampler.",
+          "transitions": 1,
+          "bounces": 0,
+          "blankImages": 0,
+          "bothImages": 0,
+          "firstImageWithoutIndicator": {
+            "i": 7,
+            "tBefore": 395.2,
+            "tAfter": 438.6
+          },
+          "lastImageWithIndicator": {
+            "i": 6,
+            "tBefore": 315.6,
+            "tAfter": 395.2
+          }
+        },
+        "indicatorKey": "staleCaption",
+        "samples": 115,
+        "rafMedianMs": 16.7,
+        "images": 42,
+        "imageMedianGapMs": 43.4,
+        "triggerAtMs": 312.6,
+        "indicatorVisibleAtStart": true,
+        "indicatorOffAtMs": 340.1,
+        "indicatorTransitions": 1,
+        "bounces": 0,
+        "indicatorMaxYDriftWhileOnScreenPx": 0,
+        "lastRowMaxAbsDyWhileMountedPx": 0,
+        "lastRowShiftEvents": 0,
+        "finalRowCount": 24
+      },
+      "after": {
+        "images_pixels": {
+          "note": "What each capturePage() image SHOWS (pixel test), independent of the DOM sampler.",
+          "transitions": 1,
+          "bounces": 0,
+          "blankImages": 0,
+          "bothImages": 0,
+          "firstImageWithoutIndicator": {
+            "i": 6,
+            "tBefore": 532.1,
+            "tAfter": 594.9
+          },
+          "lastImageWithIndicator": {
+            "i": 5,
+            "tBefore": 452.1,
+            "tAfter": 532.1
+          }
+        },
+        "indicatorKey": "unified",
+        "samples": 107,
+        "rafMedianMs": 16.7,
+        "images": 31,
+        "imageMedianGapMs": 56.7,
+        "triggerAtMs": 300.7,
+        "indicatorVisibleAtStart": true,
+        "indicatorOffAtMs": 322.6,
+        "indicatorTransitions": 1,
+        "bounces": 0,
+        "indicatorMaxYDriftWhileOnScreenPx": 0,
+        "lastRowMaxAbsDyWhileMountedPx": 0,
+        "lastRowShiftEvents": 0,
+        "finalRowCount": 24
+      }
+    },
+    "stale-dark": {
+      "before": {
+        "images_pixels": {
+          "note": "What each capturePage() image SHOWS (pixel test), independent of the DOM sampler.",
+          "transitions": 1,
+          "bounces": 0,
+          "blankImages": 0,
+          "bothImages": 0,
+          "firstImageWithoutIndicator": {
+            "i": 6,
+            "tBefore": 389,
+            "tAfter": 443.7
+          },
+          "lastImageWithIndicator": {
+            "i": 5,
+            "tBefore": 297,
+            "tAfter": 389
+          }
+        },
+        "indicatorKey": "staleCaption",
+        "samples": 113,
+        "rafMedianMs": 16.7,
+        "images": 37,
+        "imageMedianGapMs": 50.2,
+        "triggerAtMs": 302,
+        "indicatorVisibleAtStart": true,
+        "indicatorOffAtMs": 323.8,
+        "indicatorTransitions": 1,
+        "bounces": 0,
+        "indicatorMaxYDriftWhileOnScreenPx": 0,
+        "lastRowMaxAbsDyWhileMountedPx": 0,
+        "lastRowShiftEvents": 0,
+        "finalRowCount": 24
+      },
+      "after": {
+        "images_pixels": {
+          "note": "What each capturePage() image SHOWS (pixel test), independent of the DOM sampler.",
+          "transitions": 1,
+          "bounces": 0,
+          "blankImages": 0,
+          "bothImages": 0,
+          "firstImageWithoutIndicator": {
+            "i": 7,
+            "tBefore": 427.6,
+            "tAfter": 476.5
+          },
+          "lastImageWithIndicator": {
+            "i": 6,
+            "tBefore": 332.3,
+            "tAfter": 427.6
+          }
+        },
+        "indicatorKey": "unified",
+        "samples": 112,
+        "rafMedianMs": 16.7,
+        "images": 39,
+        "imageMedianGapMs": 47.4,
+        "triggerAtMs": 330.3,
+        "indicatorVisibleAtStart": true,
+        "indicatorOffAtMs": 351.8,
+        "indicatorTransitions": 1,
+        "bounces": 0,
+        "indicatorMaxYDriftWhileOnScreenPx": 0,
+        "lastRowMaxAbsDyWhileMountedPx": 0,
+        "lastRowShiftEvents": 0,
+        "finalRowCount": 24
+      }
+    },
+    "stale-dark-glass-sim": {
+      "before": {
+        "images_pixels": {
+          "note": "What each capturePage() image SHOWS (pixel test), independent of the DOM sampler.",
+          "transitions": 1,
+          "bounces": 0,
+          "blankImages": 0,
+          "bothImages": 0,
+          "firstImageWithoutIndicator": {
+            "i": 7,
+            "tBefore": 425,
+            "tAfter": 467.1
+          },
+          "lastImageWithIndicator": {
+            "i": 6,
+            "tBefore": 317.8,
+            "tAfter": 425
+          }
+        },
+        "indicatorKey": "staleCaption",
+        "samples": 114,
+        "rafMedianMs": 16.7,
+        "images": 41,
+        "imageMedianGapMs": 44.3,
+        "triggerAtMs": 316.2,
+        "indicatorVisibleAtStart": true,
+        "indicatorOffAtMs": 334.3,
+        "indicatorTransitions": 1,
+        "bounces": 0,
+        "indicatorMaxYDriftWhileOnScreenPx": 0,
+        "lastRowMaxAbsDyWhileMountedPx": 0,
+        "lastRowShiftEvents": 0,
+        "finalRowCount": 24
+      },
+      "after": {
+        "images_pixels": {
+          "note": "What each capturePage() image SHOWS (pixel test), independent of the DOM sampler.",
+          "transitions": 1,
+          "bounces": 0,
+          "blankImages": 0,
+          "bothImages": 0,
+          "firstImageWithoutIndicator": {
+            "i": 7,
+            "tBefore": 414.7,
+            "tAfter": 460.4
+          },
+          "lastImageWithIndicator": {
+            "i": 6,
+            "tBefore": 327.2,
+            "tAfter": 414.7
+          }
+        },
+        "indicatorKey": "unified",
+        "samples": 114,
+        "rafMedianMs": 16.7,
+        "images": 40,
+        "imageMedianGapMs": 45.5,
+        "triggerAtMs": 325.7,
+        "indicatorVisibleAtStart": true,
+        "indicatorOffAtMs": 350.2,
+        "indicatorTransitions": 1,
+        "bounces": 0,
+        "indicatorMaxYDriftWhileOnScreenPx": 0,
+        "lastRowMaxAbsDyWhileMountedPx": 0,
+        "lastRowShiftEvents": 0,
+        "finalRowCount": 24
+      }
+    },
+    "older-light": {
+      "before": {
+        "images_pixels": {
+          "note": "What each capturePage() image SHOWS (pixel test), independent of the DOM sampler.",
+          "transitions": 1,
+          "bounces": 0,
+          "blankImages": 0,
+          "bothImages": 0,
+          "firstImageWithoutIndicator": {
+            "i": 5,
+            "tBefore": 526.3,
+            "tAfter": 629.2
+          },
+          "lastImageWithIndicator": {
+            "i": 4,
+            "tBefore": 428.2,
+            "tAfter": 526.3
+          }
+        },
+        "indicatorKey": "olderSlot",
+        "samples": 104,
+        "rafMedianMs": 16.7,
+        "images": 26,
+        "imageMedianGapMs": 63.7,
+        "triggerAtMs": 323.7,
+        "indicatorVisibleAtStart": true,
+        "indicatorOffAtMs": 593.1,
+        "indicatorTransitions": 1,
+        "bounces": 0,
+        "indicatorMaxYDriftWhileOnScreenPx": 0,
+        "lastRowMaxAbsDyWhileMountedPx": 0,
+        "lastRowShiftEvents": 0,
+        "finalRowCount": 48
+      },
+      "after": {
+        "images_pixels": {
+          "note": "What each capturePage() image SHOWS (pixel test), independent of the DOM sampler.",
+          "transitions": 1,
+          "bounces": 0,
+          "blankImages": 0,
+          "bothImages": 0,
+          "firstImageWithoutIndicator": {
+            "i": 7,
+            "tBefore": 421.2,
+            "tAfter": 467.2
+          },
+          "lastImageWithIndicator": {
+            "i": 6,
+            "tBefore": 319.3,
+            "tAfter": 421.2
+          }
+        },
+        "indicatorKey": "unified",
+        "samples": 114,
+        "rafMedianMs": 16.7,
+        "images": 36,
+        "imageMedianGapMs": 49.7,
+        "triggerAtMs": 316.2,
+        "indicatorVisibleAtStart": true,
+        "indicatorOffAtMs": 526.4,
+        "indicatorTransitions": 1,
+        "bounces": 0,
+        "indicatorMaxYDriftWhileOnScreenPx": 0,
+        "lastRowMaxAbsDyWhileMountedPx": 0,
+        "lastRowShiftEvents": 0,
+        "finalRowCount": 48
+      }
+    },
+    "older-light-glass-sim": {
+      "before": {
+        "images_pixels": {
+          "note": "What each capturePage() image SHOWS (pixel test), independent of the DOM sampler.",
+          "transitions": 1,
+          "bounces": 0,
+          "blankImages": 0,
+          "bothImages": 0,
+          "firstImageWithoutIndicator": {
+            "i": 7,
+            "tBefore": 456.9,
+            "tAfter": 521.2
+          },
+          "lastImageWithIndicator": {
+            "i": 6,
+            "tBefore": 390.2,
+            "tAfter": 456.9
+          }
+        },
+        "indicatorKey": "olderSlot",
+        "samples": 108,
+        "rafMedianMs": 16.7,
+        "images": 27,
+        "imageMedianGapMs": 64.3,
+        "triggerAtMs": 321.3,
+        "indicatorVisibleAtStart": true,
+        "indicatorOffAtMs": 569.6,
+        "indicatorTransitions": 1,
+        "bounces": 0,
+        "indicatorMaxYDriftWhileOnScreenPx": 0,
+        "lastRowMaxAbsDyWhileMountedPx": 0,
+        "lastRowShiftEvents": 0,
+        "finalRowCount": 48
+      },
+      "after": {
+        "images_pixels": {
+          "note": "What each capturePage() image SHOWS (pixel test), independent of the DOM sampler.",
+          "transitions": 1,
+          "bounces": 0,
+          "blankImages": 0,
+          "bothImages": 0,
+          "firstImageWithoutIndicator": {
+            "i": 7,
+            "tBefore": 377.9,
+            "tAfter": 423.2
+          },
+          "lastImageWithIndicator": {
+            "i": 6,
+            "tBefore": 289.3,
+            "tAfter": 377.9
+          }
+        },
+        "indicatorKey": "unified",
+        "samples": 108,
+        "rafMedianMs": 16.7,
+        "images": 36,
+        "imageMedianGapMs": 48.1,
+        "triggerAtMs": 301.4,
+        "indicatorVisibleAtStart": true,
+        "indicatorOffAtMs": 531.6,
+        "indicatorTransitions": 1,
+        "bounces": 0,
+        "indicatorMaxYDriftWhileOnScreenPx": 0,
+        "lastRowMaxAbsDyWhileMountedPx": 0,
+        "lastRowShiftEvents": 0,
+        "finalRowCount": 48
+      }
+    },
+    "older-dark": {
+      "before": {
+        "images_pixels": {
+          "note": "What each capturePage() image SHOWS (pixel test), independent of the DOM sampler.",
+          "transitions": 1,
+          "bounces": 0,
+          "blankImages": 0,
+          "bothImages": 0,
+          "firstImageWithoutIndicator": {
+            "i": 6,
+            "tBefore": 397.2,
+            "tAfter": 440.9
+          },
+          "lastImageWithIndicator": {
+            "i": 5,
+            "tBefore": 302.1,
+            "tAfter": 397.2
+          }
+        },
+        "indicatorKey": "olderSlot",
+        "samples": 113,
+        "rafMedianMs": 16.7,
+        "images": 39,
+        "imageMedianGapMs": 47.6,
+        "triggerAtMs": 301.6,
+        "indicatorVisibleAtStart": true,
+        "indicatorOffAtMs": 511.6,
+        "indicatorTransitions": 1,
+        "bounces": 0,
+        "indicatorMaxYDriftWhileOnScreenPx": 0,
+        "lastRowMaxAbsDyWhileMountedPx": 0,
+        "lastRowShiftEvents": 0,
+        "finalRowCount": 48
+      },
+      "after": {
+        "images_pixels": {
+          "note": "What each capturePage() image SHOWS (pixel test), independent of the DOM sampler.",
+          "transitions": 1,
+          "bounces": 0,
+          "blankImages": 0,
+          "bothImages": 0,
+          "firstImageWithoutIndicator": {
+            "i": 6,
+            "tBefore": 418.2,
+            "tAfter": 468.9
+          },
+          "lastImageWithIndicator": {
+            "i": 5,
+            "tBefore": 317.4,
+            "tAfter": 418.2
+          }
+        },
+        "indicatorKey": "unified",
+        "samples": 115,
+        "rafMedianMs": 16.7,
+        "images": 39,
+        "imageMedianGapMs": 44.6,
+        "triggerAtMs": 310.6,
+        "indicatorVisibleAtStart": true,
+        "indicatorOffAtMs": 531,
+        "indicatorTransitions": 1,
+        "bounces": 0,
+        "indicatorMaxYDriftWhileOnScreenPx": 0,
+        "lastRowMaxAbsDyWhileMountedPx": 0,
+        "lastRowShiftEvents": 0,
+        "finalRowCount": 48
+      }
+    },
+    "older-dark-glass-sim": {
+      "before": {
+        "images_pixels": {
+          "note": "What each capturePage() image SHOWS (pixel test), independent of the DOM sampler.",
+          "transitions": 1,
+          "bounces": 0,
+          "blankImages": 0,
+          "bothImages": 0,
+          "firstImageWithoutIndicator": {
+            "i": 6,
+            "tBefore": 477.1,
+            "tAfter": 543.9
+          },
+          "lastImageWithIndicator": {
+            "i": 5,
+            "tBefore": 424,
+            "tAfter": 477.1
+          }
+        },
+        "indicatorKey": "olderSlot",
+        "samples": 105,
+        "rafMedianMs": 16.7,
+        "images": 34,
+        "imageMedianGapMs": 51.8,
+        "triggerAtMs": 303.1,
+        "indicatorVisibleAtStart": true,
+        "indicatorOffAtMs": 580.8,
+        "indicatorTransitions": 1,
+        "bounces": 0,
+        "indicatorMaxYDriftWhileOnScreenPx": 0,
+        "lastRowMaxAbsDyWhileMountedPx": 0,
+        "lastRowShiftEvents": 0,
+        "finalRowCount": 48
+      },
+      "after": {
+        "images_pixels": {
+          "note": "What each capturePage() image SHOWS (pixel test), independent of the DOM sampler.",
+          "transitions": 1,
+          "bounces": 0,
+          "blankImages": 0,
+          "bothImages": 0,
+          "firstImageWithoutIndicator": {
+            "i": 7,
+            "tBefore": 425,
+            "tAfter": 468.3
+          },
+          "lastImageWithIndicator": {
+            "i": 6,
+            "tBefore": 317.6,
+            "tAfter": 425
+          }
+        },
+        "indicatorKey": "unified",
+        "samples": 113,
+        "rafMedianMs": 16.7,
+        "images": 40,
+        "imageMedianGapMs": 43.6,
+        "triggerAtMs": 315.5,
+        "indicatorVisibleAtStart": true,
+        "indicatorOffAtMs": 542,
+        "indicatorTransitions": 1,
+        "bounces": 0,
+        "indicatorMaxYDriftWhileOnScreenPx": 0,
+        "lastRowMaxAbsDyWhileMountedPx": 0,
+        "lastRowShiftEvents": 0,
+        "finalRowCount": 48
+      }
+    },
+    "remote-light": {
+      "before": {
+        "images_pixels": {
+          "note": "What each capturePage() image SHOWS (pixel test), independent of the DOM sampler.",
+          "transitions": 1,
+          "bounces": 0,
+          "blankImages": 0,
+          "bothImages": 0,
+          "firstImageWithoutIndicator": {
+            "i": 6,
+            "tBefore": 582.1,
+            "tAfter": 627.3
+          },
+          "lastImageWithIndicator": {
+            "i": 5,
+            "tBefore": 518.4,
+            "tAfter": 582.1
+          }
+        },
+        "indicatorKey": "placeholder",
+        "samples": 102,
+        "rafMedianMs": 16.7,
+        "images": 34,
+        "imageMedianGapMs": 46.5,
+        "triggerAtMs": 306.7,
+        "indicatorVisibleAtStart": true,
+        "indicatorOffAtMs": 351.9,
+        "indicatorTransitions": 1,
+        "bounces": 0,
+        "indicatorMaxYDriftWhileOnScreenPx": 0,
+        "lastRowMaxAbsDyWhileMountedPx": 0,
+        "lastRowShiftEvents": 0,
+        "blankFramesAfterTrigger": 0,
+        "framesWithIndicatorAndRows": 0,
+        "finalRowCount": 24
+      },
+      "after": {
+        "images_pixels": {
+          "note": "What each capturePage() image SHOWS (pixel test), independent of the DOM sampler.",
+          "transitions": 1,
+          "bounces": 0,
+          "blankImages": 0,
+          "bothImages": 0,
+          "firstImageWithoutIndicator": {
+            "i": 9,
+            "tBefore": 455.2,
+            "tAfter": 510.8
+          },
+          "lastImageWithIndicator": {
+            "i": 8,
+            "tBefore": 406.8,
+            "tAfter": 455.2
+          }
+        },
+        "indicatorKey": "unified",
+        "samples": 112,
+        "rafMedianMs": 16.7,
+        "images": 39,
+        "imageMedianGapMs": 49,
+        "triggerAtMs": 301,
+        "indicatorVisibleAtStart": true,
+        "indicatorOffAtMs": 325.4,
+        "indicatorTransitions": 1,
+        "bounces": 0,
+        "indicatorMaxYDriftWhileOnScreenPx": 0,
+        "lastRowMaxAbsDyWhileMountedPx": 0,
+        "lastRowShiftEvents": 0,
+        "blankFramesAfterTrigger": 0,
+        "framesWithIndicatorAndRows": 0,
+        "finalRowCount": 24
+      }
+    },
+    "remote-light-glass-sim": {
+      "before": {
+        "images_pixels": {
+          "note": "What each capturePage() image SHOWS (pixel test), independent of the DOM sampler.",
+          "transitions": 1,
+          "bounces": 0,
+          "blankImages": 0,
+          "bothImages": 0,
+          "firstImageWithoutIndicator": {
+            "i": 8,
+            "tBefore": 384.9,
+            "tAfter": 436
+          },
+          "lastImageWithIndicator": {
+            "i": 7,
+            "tBefore": 303.2,
+            "tAfter": 384.9
+          }
+        },
+        "indicatorKey": "placeholder",
+        "samples": 115,
+        "rafMedianMs": 16.7,
+        "images": 42,
+        "imageMedianGapMs": 45,
+        "triggerAtMs": 301.8,
+        "indicatorVisibleAtStart": true,
+        "indicatorOffAtMs": 324,
+        "indicatorTransitions": 1,
+        "bounces": 0,
+        "indicatorMaxYDriftWhileOnScreenPx": 0,
+        "lastRowMaxAbsDyWhileMountedPx": 0,
+        "lastRowShiftEvents": 0,
+        "blankFramesAfterTrigger": 0,
+        "framesWithIndicatorAndRows": 0,
+        "finalRowCount": 24
+      },
+      "after": {
+        "images_pixels": {
+          "note": "What each capturePage() image SHOWS (pixel test), independent of the DOM sampler.",
+          "transitions": 1,
+          "bounces": 0,
+          "blankImages": 0,
+          "bothImages": 0,
+          "firstImageWithoutIndicator": {
+            "i": 7,
+            "tBefore": 416.7,
+            "tAfter": 469.8
+          },
+          "lastImageWithIndicator": {
+            "i": 6,
+            "tBefore": 323.9,
+            "tAfter": 416.7
+          }
+        },
+        "indicatorKey": "unified",
+        "samples": 113,
+        "rafMedianMs": 16.7,
+        "images": 39,
+        "imageMedianGapMs": 47.7,
+        "triggerAtMs": 321,
+        "indicatorVisibleAtStart": true,
+        "indicatorOffAtMs": 345.8,
+        "indicatorTransitions": 1,
+        "bounces": 0,
+        "indicatorMaxYDriftWhileOnScreenPx": 0,
+        "lastRowMaxAbsDyWhileMountedPx": 0,
+        "lastRowShiftEvents": 0,
+        "blankFramesAfterTrigger": 0,
+        "framesWithIndicatorAndRows": 0,
+        "finalRowCount": 24
+      }
+    },
+    "remote-dark": {
+      "before": {
+        "images_pixels": {
+          "note": "What each capturePage() image SHOWS (pixel test), independent of the DOM sampler.",
+          "transitions": 1,
+          "bounces": 0,
+          "blankImages": 0,
+          "bothImages": 0,
+          "firstImageWithoutIndicator": {
+            "i": 8,
+            "tBefore": 412.8,
+            "tAfter": 471.2
+          },
+          "lastImageWithIndicator": {
+            "i": 7,
+            "tBefore": 315.5,
+            "tAfter": 412.8
+          }
+        },
+        "indicatorKey": "placeholder",
+        "samples": 112,
+        "rafMedianMs": 16.7,
+        "images": 39,
+        "imageMedianGapMs": 46.6,
+        "triggerAtMs": 313.9,
+        "indicatorVisibleAtStart": true,
+        "indicatorOffAtMs": 331.8,
+        "indicatorTransitions": 1,
+        "bounces": 0,
+        "indicatorMaxYDriftWhileOnScreenPx": 0,
+        "lastRowMaxAbsDyWhileMountedPx": 0,
+        "lastRowShiftEvents": 0,
+        "blankFramesAfterTrigger": 0,
+        "framesWithIndicatorAndRows": 0,
+        "finalRowCount": 24
+      },
+      "after": {
+        "images_pixels": {
+          "note": "What each capturePage() image SHOWS (pixel test), independent of the DOM sampler.",
+          "transitions": 1,
+          "bounces": 0,
+          "blankImages": 0,
+          "bothImages": 0,
+          "firstImageWithoutIndicator": {
+            "i": 7,
+            "tBefore": 422.2,
+            "tAfter": 480.4
+          },
+          "lastImageWithIndicator": {
+            "i": 6,
+            "tBefore": 321.6,
+            "tAfter": 422.2
+          }
+        },
+        "indicatorKey": "unified",
+        "samples": 114,
+        "rafMedianMs": 16.7,
+        "images": 31,
+        "imageMedianGapMs": 59.2,
+        "triggerAtMs": 319.1,
+        "indicatorVisibleAtStart": true,
+        "indicatorOffAtMs": 345.6,
+        "indicatorTransitions": 1,
+        "bounces": 0,
+        "indicatorMaxYDriftWhileOnScreenPx": 0,
+        "lastRowMaxAbsDyWhileMountedPx": 0,
+        "lastRowShiftEvents": 0,
+        "blankFramesAfterTrigger": 0,
+        "framesWithIndicatorAndRows": 0,
+        "finalRowCount": 24
+      }
+    },
+    "remote-dark-glass-sim": {
+      "before": {
+        "images_pixels": {
+          "note": "What each capturePage() image SHOWS (pixel test), independent of the DOM sampler.",
+          "transitions": 1,
+          "bounces": 0,
+          "blankImages": 0,
+          "bothImages": 0,
+          "firstImageWithoutIndicator": {
+            "i": 9,
+            "tBefore": 408.7,
+            "tAfter": 459.6
+          },
+          "lastImageWithIndicator": {
+            "i": 8,
+            "tBefore": 311.2,
+            "tAfter": 408.7
+          }
+        },
+        "indicatorKey": "placeholder",
+        "samples": 113,
+        "rafMedianMs": 16.7,
+        "images": 40,
+        "imageMedianGapMs": 46.5,
+        "triggerAtMs": 310,
+        "indicatorVisibleAtStart": true,
+        "indicatorOffAtMs": 330.2,
+        "indicatorTransitions": 1,
+        "bounces": 0,
+        "indicatorMaxYDriftWhileOnScreenPx": 0,
+        "lastRowMaxAbsDyWhileMountedPx": 0,
+        "lastRowShiftEvents": 0,
+        "blankFramesAfterTrigger": 0,
+        "framesWithIndicatorAndRows": 0,
+        "finalRowCount": 24
+      },
+      "after": {
+        "images_pixels": {
+          "note": "What each capturePage() image SHOWS (pixel test), independent of the DOM sampler.",
+          "transitions": 1,
+          "bounces": 0,
+          "blankImages": 0,
+          "bothImages": 0,
+          "firstImageWithoutIndicator": {
+            "i": 9,
+            "tBefore": 383.1,
+            "tAfter": 433.7
+          },
+          "lastImageWithIndicator": {
+            "i": 8,
+            "tBefore": 309.2,
+            "tAfter": 383.1
+          }
+        },
+        "indicatorKey": "unified",
+        "samples": 114,
+        "rafMedianMs": 16.7,
+        "images": 40,
+        "imageMedianGapMs": 47.7,
+        "triggerAtMs": 307.9,
+        "indicatorVisibleAtStart": true,
+        "indicatorOffAtMs": 330,
+        "indicatorTransitions": 1,
+        "bounces": 0,
+        "indicatorMaxYDriftWhileOnScreenPx": 0,
+        "lastRowMaxAbsDyWhileMountedPx": 0,
+        "lastRowShiftEvents": 0,
+        "blankFramesAfterTrigger": 0,
+        "framesWithIndicatorAndRows": 0,
+        "finalRowCount": 24
+      }
+    }
+  },
+  "contrast": {
+    "note": "From pixels: ground = modal colour of the indicator row; mark = first ink cluster from the left (the dot; BEFORE stale has no mark, so its 'mark' is the label's first glyph; BEFORE older's is the 18px spinner ring); label = most extreme ink right of the mark. markRatioRange spans the still plus every pre-release sequence frame (pulse phases).",
+    "runs": {
+      "cold-light": {
+        "before": {
+          "ground": "#f2ede3",
+          "mark": {
+            "color": "#fcfaf6",
+            "ratio": 1.12,
+            "box": [
+              393,
+              101,
+              8,
+              8
+            ]
+          },
+          "label": {
+            "ink": "#656056",
+            "ratio": 5.36,
+            "x0": 402,
+            "x1": 538
+          },
+          "markRatioRange": [
+            1.1,
+            1.12
+          ],
+          "preReleaseFrames": 5
+        },
+        "after": {
+          "ground": "#f2ede3",
+          "mark": {
+            "color": "#338859",
+            "ratio": 3.74,
+            "box": [
+              393,
+              101,
+              8,
+              8
+            ]
+          },
+          "label": {
+            "ink": "#4e4940",
+            "ratio": 7.66,
+            "x0": 402,
+            "x1": 538
+          },
+          "markRatioRange": [
+            2.84,
+            3.74
+          ],
+          "preReleaseFrames": 6
+        }
+      },
+      "cold-light-glass-sim": {
+        "before": {
+          "ground": "#f2ede3",
+          "mark": {
+            "color": "#fcfbf6",
+            "ratio": 1.13,
+            "box": [
+              393,
+              101,
+              8,
+              8
+            ]
+          },
+          "label": {
+            "ink": "#656056",
+            "ratio": 5.36,
+            "x0": 402,
+            "x1": 538
+          },
+          "markRatioRange": [
+            1.1,
+            1.13
+          ],
+          "preReleaseFrames": 6
+        },
+        "after": {
+          "ground": "#f2ede3",
+          "mark": {
+            "color": "#318758",
+            "ratio": 3.8,
+            "box": [
+              393,
+              101,
+              8,
+              8
+            ]
+          },
+          "label": {
+            "ink": "#4e4940",
+            "ratio": 7.66,
+            "x0": 402,
+            "x1": 538
+          },
+          "markRatioRange": [
+            2.84,
+            3.8
+          ],
+          "preReleaseFrames": 6
+        }
+      },
+      "cold-dark": {
+        "before": {
+          "ground": "#1d1b17",
+          "mark": {
+            "color": "#2b271d",
+            "ratio": 1.15,
+            "box": [
+              393,
+              101,
+              8,
+              8
+            ]
+          },
+          "label": {
+            "ink": "#a6a091",
+            "ratio": 6.6,
+            "x0": 402,
+            "x1": 538
+          },
+          "markRatioRange": [
+            1.12,
+            1.15
+          ],
+          "preReleaseFrames": 7
+        },
+        "after": {
+          "ground": "#1d1b17",
+          "mark": {
+            "color": "#33ae5c",
+            "ratio": 6.02,
+            "box": [
+              393,
+              101,
+              8,
+              8
+            ]
+          },
+          "label": {
+            "ink": "#c2bcaf",
+            "ratio": 9.09,
+            "x0": 402,
+            "x1": 538
+          },
+          "markRatioRange": [
+            4.48,
+            6.02
+          ],
+          "preReleaseFrames": 7
+        }
+      },
+      "cold-dark-glass-sim": {
+        "before": {
+          "ground": "#181714",
+          "mark": {
+            "color": "#2b271c",
+            "ratio": 1.2,
+            "box": [
+              393,
+              101,
+              8,
+              8
+            ]
+          },
+          "label": {
+            "ink": "#a6a091",
+            "ratio": 6.88,
+            "x0": 402,
+            "x1": 538
+          },
+          "markRatioRange": [
+            1.15,
+            1.2
+          ],
+          "preReleaseFrames": 7
+        },
+        "after": {
+          "ground": "#181714",
+          "mark": {
+            "color": "#32ae5c",
+            "ratio": 6.27,
+            "box": [
+              393,
+              101,
+              8,
+              8
+            ]
+          },
+          "label": {
+            "ink": "#c2bcaf",
+            "ratio": 9.48,
+            "x0": 402,
+            "x1": 538
+          },
+          "markRatioRange": [
+            4.61,
+            6.27
+          ],
+          "preReleaseFrames": 5
+        }
+      },
+      "stale-light": {
+        "before": {
+          "ground": "#f2ede3",
+          "mark": {
+            "color": "#656056",
+            "ratio": 5.36,
+            "box": [
+              393,
+              709,
+              6,
+              9
+            ]
+          },
+          "label": {
+            "ink": "#656056",
+            "ratio": 5.36,
+            "x0": 400,
+            "x1": 737
+          },
+          "markRatioRange": [
+            5.36,
+            5.36
+          ],
+          "preReleaseFrames": 3
+        },
+        "after": {
+          "ground": "#f2ede3",
+          "mark": {
+            "color": "#35895a",
+            "ratio": 3.69,
+            "box": [
+              393,
+              709,
+              8,
+              8
+            ]
+          },
+          "label": {
+            "ink": "#4e4940",
+            "ratio": 7.66,
+            "x0": 402,
+            "x1": 574
+          },
+          "markRatioRange": [
+            2.84,
+            3.69
+          ],
+          "preReleaseFrames": 5
+        }
+      },
+      "stale-light-glass-sim": {
+        "before": {
+          "ground": "#f2ede3",
+          "mark": {
+            "color": "#656056",
+            "ratio": 5.36,
+            "box": [
+              393,
+              709,
+              6,
+              9
+            ]
+          },
+          "label": {
+            "ink": "#656056",
+            "ratio": 5.36,
+            "x0": 400,
+            "x1": 737
+          },
+          "markRatioRange": [
+            5.36,
+            5.36
+          ],
+          "preReleaseFrames": 5
+        },
+        "after": {
+          "ground": "#f2ede3",
+          "mark": {
+            "color": "#388b5d",
+            "ratio": 3.59,
+            "box": [
+              393,
+              709,
+              8,
+              8
+            ]
+          },
+          "label": {
+            "ink": "#4e4940",
+            "ratio": 7.66,
+            "x0": 402,
+            "x1": 574
+          },
+          "markRatioRange": [
+            2.84,
+            3.59
+          ],
+          "preReleaseFrames": 4
+        }
+      },
+      "stale-dark": {
+        "before": {
+          "ground": "#1d1b17",
+          "mark": {
+            "color": "#a6a091",
+            "ratio": 6.6,
+            "box": [
+              393,
+              709,
+              6,
+              9
+            ]
+          },
+          "label": {
+            "ink": "#a6a091",
+            "ratio": 6.6,
+            "x0": 400,
+            "x1": 737
+          },
+          "markRatioRange": [
+            6.6,
+            6.6
+          ],
+          "preReleaseFrames": 5
+        },
+        "after": {
+          "ground": "#1d1b17",
+          "mark": {
+            "color": "#33ae5c",
+            "ratio": 6.02,
+            "box": [
+              393,
+              709,
+              8,
+              8
+            ]
+          },
+          "label": {
+            "ink": "#c2bcaf",
+            "ratio": 9.09,
+            "x0": 402,
+            "x1": 574
+          },
+          "markRatioRange": [
+            4.48,
+            6.02
+          ],
+          "preReleaseFrames": 5
+        }
+      },
+      "stale-dark-glass-sim": {
+        "before": {
+          "ground": "#181714",
+          "mark": {
+            "color": "#a6a091",
+            "ratio": 6.88,
+            "box": [
+              393,
+              709,
+              6,
+              9
+            ]
+          },
+          "label": {
+            "ink": "#a6a091",
+            "ratio": 6.88,
+            "x0": 400,
+            "x1": 737
+          },
+          "markRatioRange": [
+            6.88,
+            6.88
+          ],
+          "preReleaseFrames": 5
+        },
+        "after": {
+          "ground": "#181714",
+          "mark": {
+            "color": "#32aa5b",
+            "ratio": 6.01,
+            "box": [
+              393,
+              709,
+              8,
+              8
+            ]
+          },
+          "label": {
+            "ink": "#c2bcaf",
+            "ratio": 9.48,
+            "x0": 402,
+            "x1": 574
+          },
+          "markRatioRange": [
+            4.61,
+            6.01
+          ],
+          "preReleaseFrames": 5
+        }
+      },
+      "older-light": {
+        "before": {
+          "ground": "#f2ede3",
+          "mark": {
+            "color": "#50976e",
+            "ratio": 3,
+            "box": [
+              400,
+              100,
+              18,
+              18
+            ]
+          },
+          "label": {
+            "ink": "#4e4940",
+            "ratio": 7.66,
+            "x0": 419,
+            "x1": 567
+          },
+          "markRatioRange": [
+            3,
+            3.64
+          ],
+          "preReleaseFrames": 3
+        },
+        "after": {
+          "ground": "#f2ede3",
+          "mark": {
+            "color": "#388b5d",
+            "ratio": 3.59,
+            "box": [
+              401,
+              105,
+              8,
+              8
+            ]
+          },
+          "label": {
+            "ink": "#4e4940",
+            "ratio": 7.66,
+            "x0": 410,
+            "x1": 572
+          },
+          "markRatioRange": [
+            2.84,
+            3.59
+          ],
+          "preReleaseFrames": 5
+        }
+      },
+      "older-light-glass-sim": {
+        "before": {
+          "ground": "#f2ede3",
+          "mark": {
+            "color": "#3b8c5f",
+            "ratio": 3.53,
+            "box": [
+              400,
+              100,
+              18,
+              18
+            ]
+          },
+          "label": {
+            "ink": "#4e4940",
+            "ratio": 7.66,
+            "x0": 419,
+            "x1": 567
+          },
+          "markRatioRange": [
+            3.11,
+            4.23
+          ],
+          "preReleaseFrames": 5
+        },
+        "after": {
+          "ground": "#f2ede3",
+          "mark": {
+            "color": "#3a8c5e",
+            "ratio": 3.53,
+            "box": [
+              401,
+              105,
+              8,
+              8
+            ]
+          },
+          "label": {
+            "ink": "#4e4940",
+            "ratio": 7.66,
+            "x0": 410,
+            "x1": 572
+          },
+          "markRatioRange": [
+            2.84,
+            3.53
+          ],
+          "preReleaseFrames": 6
+        }
+      },
+      "older-dark": {
+        "before": {
+          "ground": "#1d1b17",
+          "mark": {
+            "color": "#31a357",
+            "ratio": 5.33,
+            "box": [
+              400,
+              100,
+              18,
+              18
+            ]
+          },
+          "label": {
+            "ink": "#c2bcaf",
+            "ratio": 9.09,
+            "x0": 419,
+            "x1": 567
+          },
+          "markRatioRange": [
+            4.64,
+            6.98
+          ],
+          "preReleaseFrames": 4
+        },
+        "after": {
+          "ground": "#1d1b17",
+          "mark": {
+            "color": "#32a95a",
+            "ratio": 5.7,
+            "box": [
+              401,
+              105,
+              8,
+              8
+            ]
+          },
+          "label": {
+            "ink": "#c2bcaf",
+            "ratio": 9.09,
+            "x0": 410,
+            "x1": 572
+          },
+          "markRatioRange": [
+            4.48,
+            5.7
+          ],
+          "preReleaseFrames": 4
+        }
+      },
+      "older-dark-glass-sim": {
+        "before": {
+          "ground": "#181714",
+          "mark": {
+            "color": "#30a257",
+            "ratio": 5.49,
+            "box": [
+              400,
+              100,
+              18,
+              18
+            ]
+          },
+          "label": {
+            "ink": "#c2bcaf",
+            "ratio": 9.48,
+            "x0": 419,
+            "x1": 567
+          },
+          "markRatioRange": [
+            4.77,
+            5.56
+          ],
+          "preReleaseFrames": 4
+        },
+        "after": {
+          "ground": "#181714",
+          "mark": {
+            "color": "#32a95a",
+            "ratio": 5.94,
+            "box": [
+              401,
+              105,
+              8,
+              8
+            ]
+          },
+          "label": {
+            "ink": "#c2bcaf",
+            "ratio": 9.48,
+            "x0": 410,
+            "x1": 572
+          },
+          "markRatioRange": [
+            4.61,
+            5.94
+          ],
+          "preReleaseFrames": 5
+        }
+      },
+      "remote-light": {
+        "before": {
+          "ground": "#f2ede3",
+          "mark": {
+            "color": "#fcfaf6",
+            "ratio": 1.12,
+            "box": [
+              393,
+              101,
+              8,
+              8
+            ]
+          },
+          "label": {
+            "ink": "#656056",
+            "ratio": 5.36,
+            "x0": 402,
+            "x1": 538
+          },
+          "markRatioRange": [
+            1.1,
+            1.12
+          ],
+          "preReleaseFrames": 4
+        },
+        "after": {
+          "ground": "#f2ede3",
+          "mark": {
+            "color": "#2f8656",
+            "ratio": 3.86,
+            "box": [
+              393,
+              101,
+              8,
+              8
+            ]
+          },
+          "label": {
+            "ink": "#4e4940",
+            "ratio": 7.66,
+            "x0": 402,
+            "x1": 593
+          },
+          "markRatioRange": [
+            2.84,
+            3.86
+          ],
+          "preReleaseFrames": 7
+        }
+      },
+      "remote-light-glass-sim": {
+        "before": {
+          "ground": "#f2ede3",
+          "mark": {
+            "color": "#fdfbf7",
+            "ratio": 1.13,
+            "box": [
+              393,
+              101,
+              8,
+              8
+            ]
+          },
+          "label": {
+            "ink": "#656056",
+            "ratio": 5.36,
+            "x0": 402,
+            "x1": 538
+          },
+          "markRatioRange": [
+            1.1,
+            1.13
+          ],
+          "preReleaseFrames": 6
+        },
+        "after": {
+          "ground": "#f2ede3",
+          "mark": {
+            "color": "#338859",
+            "ratio": 3.74,
+            "box": [
+              393,
+              101,
+              8,
+              8
+            ]
+          },
+          "label": {
+            "ink": "#4e4940",
+            "ratio": 7.66,
+            "x0": 402,
+            "x1": 593
+          },
+          "markRatioRange": [
+            2.84,
+            3.74
+          ],
+          "preReleaseFrames": 5
+        }
+      },
+      "remote-dark": {
+        "before": {
+          "ground": "#1d1b17",
+          "mark": {
+            "color": "#2b271d",
+            "ratio": 1.15,
+            "box": [
+              393,
+              101,
+              8,
+              8
+            ]
+          },
+          "label": {
+            "ink": "#a6a091",
+            "ratio": 6.6,
+            "x0": 402,
+            "x1": 538
+          },
+          "markRatioRange": [
+            1.12,
+            1.15
+          ],
+          "preReleaseFrames": 6
+        },
+        "after": {
+          "ground": "#1d1b17",
+          "mark": {
+            "color": "#33ae5c",
+            "ratio": 6.02,
+            "box": [
+              393,
+              101,
+              8,
+              8
+            ]
+          },
+          "label": {
+            "ink": "#c2bcaf",
+            "ratio": 9.09,
+            "x0": 402,
+            "x1": 593
+          },
+          "markRatioRange": [
+            4.48,
+            6.02
+          ],
+          "preReleaseFrames": 5
+        }
+      },
+      "remote-dark-glass-sim": {
+        "before": {
+          "ground": "#181714",
+          "mark": {
+            "color": "#2a261c",
+            "ratio": 1.19,
+            "box": [
+              393,
+              101,
+              8,
+              8
+            ]
+          },
+          "label": {
+            "ink": "#a6a091",
+            "ratio": 6.88,
+            "x0": 402,
+            "x1": 538
+          },
+          "markRatioRange": [
+            1.15,
+            1.19
+          ],
+          "preReleaseFrames": 7
+        },
+        "after": {
+          "ground": "#181714",
+          "mark": {
+            "color": "#32ae5c",
+            "ratio": 6.27,
+            "box": [
+              393,
+              101,
+              8,
+              8
+            ]
+          },
+          "label": {
+            "ink": "#c2bcaf",
+            "ratio": 9.48,
+            "x0": 402,
+            "x1": 593
+          },
+          "markRatioRange": [
+            4.61,
+            6.27
+          ],
+          "preReleaseFrames": 7
+        }
+      }
+    }
+  }
+}
