@@ -5880,9 +5880,18 @@ test("the transcript column's collapse flip never transitions, so reduced motion
 		/CHAT_COLUMN_CONTAINER,\s*"transition-none",\s*collapsed\s*\? "relative h-0 grow-0 overflow-hidden"\s*:\s*"relative flex min-h-16 flex-1 basis-0 flex-col",/,
 	);
 	// And the scroller inside it, whose `p-0 grow-0` -> `p-4 grow` flip held the
-	// echo 16 px high for the same one frame.
+	// echo 16 px high for the same one frame. Its list names only the scrollbar
+	// fade, in the sheet, because a utility on the scroller would also replace
+	// that fade (`scrollbar-activity.test.mjs`'s census). It must not be
+	// `transition-none`, and it must not be missing either.
+	const sheet = readFileSync("src/renderer/src/styles/index.css", "utf8");
+	assert.match(
+		sheet,
+		/\n\[data-lo-canonical-transcript\] \{\s*transition-property: --lo-sb;\s*\}/,
+	);
 	assert.match(
 		source,
-		/\[transform:translateZ\(0\)\]",\s*"transition-none",\s*collapsed\s*\? "h-0 grow-0 overflow-hidden p-0"/,
+		/ref=\{containerRef\}\s*data-lo-canonical-transcript=\{true\}/,
+		"the attribute the sheet keys the list on is the scroller's own",
 	);
 });

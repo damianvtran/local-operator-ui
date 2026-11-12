@@ -7677,8 +7677,6 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 						// region, the reserved gutter and the bottom anchor autoscroll reads
 						// are all as they were.
 						"relative flex w-full flex-col-reverse [scrollbar-gutter:stable_both-edges] will-change-[scroll-position] [overflow-anchor:auto] [transform:translateZ(0)]",
-						// Q3: the same one-frame reduced-motion transition as the column above.
-						"transition-none",
 						collapsed
 							? "h-0 grow-0 overflow-hidden p-0"
 							: "min-h-0 grow overflow-auto p-4",

@@ -817,6 +817,24 @@
 	);
 }
 
+/*
+ * THE SCROLLER'S TRANSITION LIST NAMES ONLY THE SCROLLBAR FADE (QA round 1, Q3).
+ * Under reduced motion the global cap gives every element a 0.01 ms
+ * `transition-duration`. An element that has not been scrolled yet carries no
+ * `data-lo-scrollbar` and so keeps the initial `transition-property: all`. A new
+ * chat's first send flips this scroller from `p-0 grow-0` to `p-4 grow`, and the
+ * transition painted the start value for one frame. Measured on the built app:
+ * the echo sat at y 124 for two frames, then 140.
+ *
+ * Why not a `transition-none` utility: on this element it would also replace
+ * the `--lo-sb` fade, and `scripts/scrollbar-activity.test.mjs` forbids that.
+ * This sets only the property list, to the one property the fade animates, so
+ * the fade keeps its duration whichever rule comes later.
+ */
+[data-lo-canonical-transcript] {
+	transition-property: --lo-sb;
+}
+
 @supports (animation-timeline: scroll()) {
 	[data-lo-canonical-transcript] {
 		animation-name: transcript-top-fade;
