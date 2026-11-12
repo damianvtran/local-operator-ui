@@ -2292,6 +2292,26 @@ const AssistantRow = memo(function AssistantRow({
 });
 
 /**
+ * Whether the tool row's summary is a sentence the CATALOGUE wrote (`never sent`,
+ * `composing`, `queued`) rather than text built from the call's arguments.
+ *
+ * The row needs the distinction to pick the summary's direction: arguments are
+ * machine voice (paths, commands) and stay left-to-right in every locale, a keyed
+ * sentence follows the locale's own direction (design review round 1, D1). It is
+ * ONE predicate shared with `toolRecordSummary`, so the words and the direction
+ * they are painted in cannot drift apart.
+ */
+function toolRecordStatusKind(
+	record: Extract<TranscriptRecord, { kind: "tool" }>,
+): "never_sent" | "composing" | "queued" | null {
+	if (record.neverSent === true || Boolean(record.notRunReason))
+		return "never_sent";
+	if (record.phase === "composing") return "composing";
+	if (record.phase === "queued") return "queued";
+	return null;
+}
+
+/**
  * The row's own summary text — the object column before the row's bare-name drop.
  *
  * Shared with the trace fold's live clause (wired as `summaryOf` in the fold's
@@ -2309,10 +2329,10 @@ const AssistantRow = memo(function AssistantRow({
 function toolRecordSummary(
 	record: Extract<TranscriptRecord, { kind: "tool" }>,
 ): string {
-	const composing = record.phase === "composing";
-	const queued = record.phase === "queued";
-	const neverSent = record.neverSent === true || Boolean(record.notRunReason);
-	if (neverSent)
+	const kind = toolRecordStatusKind(record);
+	const composing = kind === "composing";
+	const queued = kind === "queued";
+	if (kind === "never_sent")
 		// `never sent`, not `failed`: the call produced no result to fail, and the
 		// size is the record of how far the model got before nothing would receive
 		// it (`ToolCard.mark_not_run`). An empty payload is named rather than
@@ -2322,13 +2342,28 @@ function toolRecordSummary(
 					size: formatBytes(record.argumentBytes),
 				})
 			: t("ui.chat.canonical.tool.never_sent_empty");
+	/*
+	 * Whole-line messages, sized and empty, for the same reason `never sent`
+	 * above has two: the separator and the size sit INSIDE the message so a
+	 * language can order them its own way, and no English fragment is glued
+	 * on here. Resolved per call (the row and the fold both re-render on a
+	 * locale change), never at module load.
+	 */
 	if (composing)
-		return `composing${record.argumentBytes ? ` · ${formatBytes(record.argumentBytes)}` : ""}`;
+		return record.argumentBytes
+			? t("ui.chat.canonical.tool.composing_sized", {
+					size: formatBytes(record.argumentBytes),
+				})
+			: t("ui.chat.canonical.tool.composing_empty");
 	if (queued)
 		// Dictation is over and the call has not started: the byte count stays
 		// (it is how far the model got), and the status word stops claiming work
 		// the model finished writing.
-		return `queued${record.argumentBytes ? ` · ${formatBytes(record.argumentBytes)}` : ""}`;
+		return record.argumentBytes
+			? t("ui.chat.canonical.tool.queued_sized", {
+					size: formatBytes(record.argumentBytes),
+				})
+			: t("ui.chat.canonical.tool.queued_empty");
 	return summaryFromArgs(record.toolName, record.args);
 }
 
@@ -2909,6 +2944,12 @@ const ToolRow = memo(function ToolRow({
 				 */
 				op={toolOp(record.args)}
 				summary={summary}
+				/*
+				 * Keyed status copy (`composing`, `queued`, `never sent`) follows the
+				 * locale's direction; arguments (paths, commands) stay machine voice.
+				 * A bridge row's summary is its own text, never this copy.
+				 */
+				summaryIsCopy={!bridge && toolRecordStatusKind(record) !== null}
 				summaryFallback={derived}
 				summaryHold={
 					/*

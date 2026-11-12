@@ -236,11 +236,24 @@ test("one direction provider gives every portalled menu the locale direction", (
 	assert.match(tabs, /aria-haspopup="menu"/);
 });
 
+/*
+ * THE TOOL-ROW SUMMARY WRAPPER, as source. Two intents live in one expression
+ * (S16a design D1): machine text (a path, a command, an identifier) is an
+ * isolated `<bdi>` forced `ltr`, so a leading slash cannot move in RTL prose;
+ * keyed status copy (`summaryIsCopy`) is the same isolate but takes the
+ * locale's `direction`. The regex accepts exactly that ternary and nothing
+ * looser: dropping the `"ltr"` machine-voice branch, swapping the arms, or
+ * losing the `<bdi>` isolation all fail it. The rendered behaviour is pinned in
+ * `scripts/i18n/tool-state-copy.test.mjs`; this is the cheap source-level guard.
+ */
+const TOOL_SUMMARY_WRAPPER =
+	/<bdi dir=\{summaryIsCopy \? direction : "ltr"\}>\{summaryText\}<\/bdi>/;
+
 test("technical runs are isolated inside RTL prose", () => {
 	assert.match(
 		source("src/renderer/src/features/chat/components/trace/tool-row.tsx"),
-		/<bdi dir="ltr">\{summaryText\}<\/bdi>/,
-		"a tool summary keeps its own order: a leading slash must not move",
+		TOOL_SUMMARY_WRAPPER,
+		"a tool summary keeps its own order: a leading slash must not move, and keyed copy follows the locale",
 	);
 	assert.match(
 		source(
