@@ -229,6 +229,11 @@ const mount = (records, over = {}) => {
 					failure: null,
 					awaitingHydration: false,
 					onReconnect: () => {},
+					stale: over.stale ?? false,
+					// The indicator's hold, so the caption cases render the
+					// post-threshold state without a clock.
+					staleIndicatorDelayMs: over.staleIndicatorDelayMs ?? 0,
+					paintRunning: over.paintRunning ?? false,
 				}),
 			),
 		);
@@ -310,6 +315,82 @@ test("no conversation rows, no foot slot", () => {
 		footSlot(container),
 		null,
 		"the reserve belongs to a conversation, not to the pane: an empty transcript reserves nothing",
+	);
+	unmount();
+});
+
+/*
+ * THE RESERVED ROW IS ONE BOX IN EVERY STATE (UX review, 2026-11-12, R2).
+ *
+ * The caption, the working line and nothing-at-all are three contents of the
+ * same row, and the no-shift property is exactly the equality of the box they
+ * are painted into. jsdom has no layout engine, so the assertion is the class
+ * list - the terms the box is built from - across the three states, which is
+ * the same instrument the idle-reserve case above uses.
+ */
+test("the foot slot is the same box empty, revalidating and working", () => {
+	const idle = mount(SETTLED);
+	const revalidating = mount(SETTLED, {
+		stale: true,
+		staleIndicatorDelayMs: 0,
+	});
+	const working = mount(WORKING, { waiting: true });
+	const boxes = [idle, revalidating, working].map(
+		(entry) => footSlot(entry.container)?.className,
+	);
+	assert.ok(boxes[0], "the idle pane has the slot");
+	assert.ok(boxes[1], "the revalidating paint has the same slot");
+	assert.ok(boxes[2], "and the running turn mounts into it");
+	assert.equal(
+		boxes[1],
+		boxes[0],
+		"a revalidating paint does not change the slot's box",
+	);
+	assert.equal(boxes[2], boxes[0], "and neither does a running turn");
+	idle.unmount();
+	revalidating.unmount();
+	working.unmount();
+});
+
+test("a running cached paint paints the working line, not idle chrome", () => {
+	// UX review round 1's U2: a return to a RUNNING session rendered as idle for
+	// the whole revalidate because the in-flight rows are dropped on write and
+	// the pane had nothing to say a turn was live. The cache's `busy` flag is
+	// that one bit, and this is the first painted frame with it.
+	const { container, unmount } = mount(SETTLED, {
+		stale: true,
+		paintRunning: true,
+		staleIndicatorDelayMs: 0,
+	});
+	const line = container.querySelector("[data-lo-working-line]");
+	assert.ok(
+		line,
+		"the working line is painted from the cache's claim about the turn",
+	);
+	assert.equal(
+		container.querySelector("[data-lo-stale-caption]"),
+		null,
+		"and the working line wins the slot over the revalidating caption (U4)",
+	);
+	assert.equal(
+		container.textContent?.includes("Ask anything") ?? false,
+		false,
+		"the transcript never paints the composer's idle sentence",
+	);
+	unmount();
+});
+
+test("a finished cached paint keeps its caption and paints no working line", () => {
+	// The control: the same stale paint without the flag. Without this case the
+	// one above would pass for a pane that paints a working line unconditionally.
+	const { container, unmount } = mount(SETTLED, {
+		stale: true,
+		staleIndicatorDelayMs: 0,
+	});
+	assert.equal(container.querySelector("[data-lo-working-line]"), null);
+	assert.ok(
+		container.querySelector("[data-lo-stale-caption]"),
+		"the revalidation is what a settled cached paint says",
 	);
 	unmount();
 });

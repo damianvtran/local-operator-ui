@@ -117,6 +117,7 @@ import {
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { dropPaint, readPaint, writePaint } from "@shared/store/paint-cache";
+import type { PaintedScroll } from "@shared/store/paint-cache";
 import { forgetTurnCollapseOpen } from "@shared/store/turn-collapse-open";
 import { forgetWatchedRun } from "@shared/store/turn-collapse-watched";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -470,6 +471,27 @@ export type CanonicalSessionView = {
 	 * only an authoritative reconcile makes them not-cached.
 	 */
 	stale: boolean;
+	/**
+	 * Where the reader was in the painted conversation when this window last
+	 * showed it, or null when the paint carried no place (a cold mount, or the
+	 * tail, which is the scroller's own default).
+	 *
+	 * Read ONCE by the pane's mount to put a scrolled-up reader back where they
+	 * left; a return that was pinned stays pinned and nothing is written.
+	 */
+	paintScroll: PaintedScroll | null;
+	/**
+	 * A turn was running when this window last showed the conversation.
+	 *
+	 * A CLAIM carried by the paint, not the owner's state: the in-flight rows are
+	 * dropped on write, so a seeded transcript reads as settled, and the pane
+	 * otherwise paints idle chrome over a running session for the whole
+	 * revalidate (UX review, 2026-11-12: no working line, no stop affordance).
+	 * It is presentation only - it never reaches the send mode, the interrupt
+	 * path or `frontend` - and the snapshot clears it in the same commit that
+	 * replaces the rows.
+	 */
+	paintBusy: boolean;
 	/**
 	 * True when the backend says this conversation is not on this machine (M6).
 	 *
@@ -2274,6 +2296,8 @@ function paintSeed(sessionId: string): {
 	stale: boolean;
 	owedLabels: ReadonlySet<string>;
 	markLabels: ReadonlySet<string>;
+	scroll: PaintedScroll | null;
+	busy: boolean;
 } {
 	const cached = readPaint(sessionId);
 	if (!cached) {
@@ -2282,6 +2306,8 @@ function paintSeed(sessionId: string): {
 			stale: false,
 			owedLabels: NO_LABELS_PENDING,
 			markLabels: NO_LABELS_MARKED,
+			scroll: null,
+			busy: false,
 		};
 	}
 	return {
@@ -2296,6 +2322,12 @@ function paintSeed(sessionId: string): {
 		// Same argument one state over: rows cannot say whether a column owes the
 		// mark or may fall back to the call's OUTPUT.
 		markLabels: cached.markLabels,
+		// Where the reader was, so a return to a scrolled-up conversation does not
+		// re-anchor at the tail (QA measured 0 of 12 returns keeping their place).
+		scroll: cached.scroll,
+		// A turn was running when this window last showed the conversation. A
+		// claim, corrected by the snapshot in the commit that replaces the rows.
+		busy: cached.busy,
 	};
 }
 
@@ -2650,6 +2682,10 @@ export function useCanonicalSessionStream(
 			// A cached paint is a real memory of a real transcript, but it is not the
 			// owner's current state — so it says so until the snapshot lands.
 			stale: seed?.stale ?? false,
+			// The reader's place and the turn's liveness travel with the paint; both are
+			// consumed once and both are corrected by the snapshot.
+			paintScroll: seed?.scroll ?? null,
+			paintBusy: seed?.busy ?? false,
 			missing: false,
 			loadingOlder: false,
 			olderFailed: false,
@@ -4960,6 +4996,12 @@ export function useCanonicalSessionStream(
 								// never sees a reconciled transcript labelled as last-saved or
 								// the reverse.
 								stale: false,
+								// And the paint's claim about a running turn goes with it: the
+								// snapshot's own `frontend.streaming` is the authority from this
+								// commit on, so a flag the owner's answer did not keep cannot
+								// outlive the answer.
+								paintBusy: false,
+								paintScroll: null,
 								frontend: {
 									...snapshot.frontend.snapshot,
 									/*
@@ -6405,6 +6447,12 @@ export function useCanonicalSessionStream(
 				? current.transcript
 				: (seed?.transcript ?? EMPTY_TRANSCRIPT),
 			stale: sameSession ? current.stale : seed !== null,
+			// The paint's place and its liveness follow the same rule as `stale`: they
+			// describe the rows, so a same-session remount keeps what it has (the
+			// place is spent by then - `null` keeps it from being restored twice),
+			// and a genuine change takes the new paint's.
+			paintScroll: sameSession ? null : (seed?.scroll ?? null),
+			paintBusy: sameSession ? current.paintBusy : seed?.busy === true,
 			missing: sameSession ? current.missing : false,
 			status: "connecting",
 			// A different session's children are different children, and a pulse
@@ -6511,6 +6559,14 @@ export function useCanonicalSessionStream(
 					 * is withheld. `writePaint` intersects it with the rows that survive.
 					 */
 					replayBorn: new Set(replayBornIds.current),
+					/*
+					 * AND THE TURN'S LIVENESS AT THIS INSTANT, read from the same ref as the
+					 * rows. The in-flight rows themselves are dropped by `writePaint` (a
+					 * cached streaming row can never advance), so without this bit every
+					 * cached transcript reads as settled and a return paints idle chrome
+					 * over a running turn until the snapshot lands (UX review, 2026-11-12).
+					 */
+					busy: turnRunning(viewRef.current),
 				});
 			/*
 			 * AND THIS PANE'S OUTSTANDING READS GO WITH IT (agent review round 3, M2's
