@@ -268,6 +268,7 @@ import { sceneAgentMessages } from "./agent-messages-scene.mjs";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import {
 	diffHistorySceneRefusal,
+	parseDiffExpect,
 	sceneDiffHistory,
 } from "./diff-history-scene.mjs";
 import { installedElectronBinary } from "./electron-runtime-path.mjs";
@@ -507,6 +508,15 @@ const PROJECT = argValue("--project", null);
  * seed created rather than an id baked in here.
  */
 const SESSION = argValue("--session", null);
+/*
+ * `--scene diff-history` only (see `scripts/diff-history-scene.mjs`): the
+ * subagent job whose Run panel row opens the child reader, the QA handshake
+ * opt-in, a second session for the live step, and the fixture's ground truth.
+ */
+const DIFF_CHILD = argValue("--child", null);
+const DIFF_HANDSHAKE = process.argv.includes("--handshake");
+const DIFF_LIVE_SESSION = argValue("--live-session", null);
+const DIFF_EXPECT = argValue("--diff-expect", null);
 /**
  * The command that starts a fresh daemon on the `--backend` address, for
  * `--scene connection-drop`'s reconnect half.
@@ -50496,6 +50506,10 @@ async function main() {
 			backend: BACKEND,
 			backendRecords: BACKEND_RECORDS,
 			session: SESSION,
+			child: DIFF_CHILD,
+			liveSession: DIFF_LIVE_SESSION,
+			handshake: DIFF_HANDSHAKE,
+			expect: DIFF_EXPECT,
 		});
 		if (refusal !== null) throw new Error(refusal);
 	}
@@ -51117,6 +51131,11 @@ async function main() {
 					waitForCondition,
 					factsOf,
 					session: SESSION,
+					child: DIFF_CHILD,
+					liveSession: DIFF_LIVE_SESSION,
+					handshake: DIFF_HANDSHAKE,
+					expect: parseDiffExpect(DIFF_EXPECT).value,
+					outDir: FRAMES,
 				});
 			else if (SCENE === "turn-highlights")
 				await sceneTurnHighlights({

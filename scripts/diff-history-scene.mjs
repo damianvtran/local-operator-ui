@@ -2,44 +2,125 @@
  * `--scene diff-history`: the full-diff pager, walked in the BUILT app.
  *
  *     node scripts/renderer-driver.mjs --scene diff-history --backend <url> \
- *       --backend-records <file> --session <12 lowercase hex> --out <dir>
+ *       --backend-records <file> --session <12 lowercase hex> --out <dir> \
+ *       [--child <job id>] [--handshake] [--live-session <12 lowercase hex>] \
+ *       [--diff-expect '<json>']
  *
  * WHY THIS EXISTS. The pager (`diff-history.tsx`) is covered by model and
  * contract tests, and bare Vite cannot mount `App` without the preload bridge,
  * so nothing had pressed its controls in the real renderer. This scene composes
  * ONLY the existing verbs (`hello`, `navigate`, `press`, and `queries` on the
- * no-offer failure path) plus `capture` and DOM
- * reads: no new verb, no state written into React, no synthetic page. The
- * history it pages is whatever the seeded session's daemon serves.
+ * no-offer failure path) plus `capture`, DOM reads and scene-level CDP input
+ * (`Input.dispatchMouseEvent` wheel, as the `palette` scene drives CDP input):
+ * no new verb, no state written into React, no synthetic page. The history it
+ * pages is whatever the seeded session's daemon serves.
  *
- * WHAT IT CANNOT SEE, stated rather than implied. The contained child reader
- * (`run-child-reader.tsx`) is not walked: this scene has no reviewed selector
- * for opening it, so child paging stays unproven here. Empty, error and
- * loading states are only noted when the fixture actually reaches them.
- * A fixture with no pageable diff row FAILS the scene; it never passes vacuously.
+ * MODES.
+ * - default: the parent session's Edited row, paged, closed, reopened on the
+ *   SAME call, then re-navigated (a route round-trip, NOT a cold replay).
+ * - `--child <job id>`: the operator's case. The Run panel trigger, the
+ *   subagent's row (`[data-run-panel-row=<job id>]`, run-panel.tsx), then the
+ *   contained child reader (`[data-run-panel-pane]`): its Edited row paged with
+ *   the D1 sticky-nav scroll, then every Wrote row: an archived one is paged to
+ *   its last page, an oversized one must state its note and offer no View full.
+ * - `--handshake`: QA acts mid-run. The scene writes `<out>/ready-<step>` and
+ *   waits (bounded, HANDSHAKE_MS) for QA's `<out>/go-<step>`. Steps, in order:
+ *   `error-stop` (QA stops the backend; the scene presses Next and asserts the
+ *   error + Retry), `error-restart` (QA restarts it; Retry must load the next
+ *   page), then `live` (with `--live-session`: QA posts the turn; the new rows
+ *   must appear without a reload and page).
+ * - `--diff-expect`: the fixture's ground truth (display-row totals, final row
+ *   text), so a page is checked against the fixture, not the UI's own numbers.
+ *
+ * WHAT IT CANNOT SEE, stated rather than implied. Empty and evicted states are
+ * not reachable from these fixtures. A fixture with no pageable diff row FAILS
+ * the scene; it never passes vacuously. Labels are matched in English.
  */
+import { access, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 
 /** The contract's `sessionIdPattern` (`src/shared/desktop-contract.ts`). */
 export const SESSION_ID = /^[a-f0-9]{12}$/;
+/** How long a handshake step waits for QA's go file. */
+export const HANDSHAKE_MS = 120_000;
+/** The parent chat's transcript, and the child reader's inside the Run panel. */
+export const PARENT_SCOPE = "[data-lo-canonical-transcript]";
+export const CHILD_SCOPE =
+	"[data-run-panel-pane] [data-lo-canonical-transcript]";
+export const HANDSHAKE_STEPS = ["error-stop", "error-restart", "live"];
+
+const EXPECT_KEYS = ["edit", "write", "liveEdit", "liveWrite"];
+
+/** `--diff-expect` JSON: `{edit|write|liveEdit|liveWrite: {total, last?}, oversized?}`. */
+export function parseDiffExpect(text) {
+	if (text === null || text === undefined) return { value: null };
+	let raw;
+	try {
+		raw = JSON.parse(text);
+	} catch {
+		return { error: "--diff-expect is not JSON" };
+	}
+	if (!raw || typeof raw !== "object" || Array.isArray(raw))
+		return { error: "--diff-expect must be a JSON object" };
+	const value = {};
+	for (const [key, entry] of Object.entries(raw)) {
+		if (key === "oversized") {
+			if (typeof entry !== "boolean")
+				return { error: "--diff-expect.oversized must be a boolean" };
+			value.oversized = entry;
+		} else if (!EXPECT_KEYS.includes(key)) {
+			return { error: `--diff-expect: unknown key ${JSON.stringify(key)}` };
+		} else if (
+			!entry ||
+			!Number.isInteger(entry.total) ||
+			entry.total <= 0 ||
+			(entry.last !== undefined && typeof entry.last !== "string")
+		) {
+			return {
+				error: `--diff-expect.${key} needs {total: positive integer, last?: string}`,
+			};
+		} else value[key] = { total: entry.total, last: entry.last ?? null };
+	}
+	return { value };
+}
 
 /** Refusal text for a run that cannot prove anything, or null when it can. */
-export function diffHistorySceneRefusal({ backend, backendRecords, session }) {
+export function diffHistorySceneRefusal({
+	backend,
+	backendRecords,
+	session,
+	child = null,
+	liveSession = null,
+	handshake = false,
+	expect = null,
+}) {
 	if (backend === null)
 		return "--scene diff-history needs --backend: the pager reads the archived diff from a live daemon's scoped diff route";
 	if (backendRecords === null)
 		return "--scene diff-history needs --backend-records: without the daemon's own record discovery does not admit it";
 	if (session === null || !SESSION_ID.test(session))
 		return `--scene diff-history needs --session <12 lowercase hex>: got ${JSON.stringify(session)}`;
+	if (child !== null && !SESSION_ID.test(child))
+		return `--child needs the subagent's job id (12 lowercase hex), as the Run panel row carries it: got ${JSON.stringify(child)}`;
+	if (liveSession !== null && !SESSION_ID.test(liveSession))
+		return `--live-session needs <12 lowercase hex>: got ${JSON.stringify(liveSession)}`;
+	if (liveSession !== null && !handshake)
+		return "--live-session needs --handshake: the live step waits for QA to post the turn";
+	if (liveSession !== null && liveSession === session)
+		return "--live-session must differ from --session: the live step needs a session with no rows yet";
+	const parsed = parseDiffExpect(expect);
+	if (parsed.error) return parsed.error;
 	return null;
 }
 
-const VIEW_FULL = "[data-diff-view-full]";
-const NAV_BUTTONS = "[data-diff-history] > nav > button";
+const viewFullIn = (root) => `${root} [data-diff-view-full]`;
+const pagerIn = (root) => `${root} [data-diff-history]`;
+const q = (selector) => `document.querySelector(${JSON.stringify(selector)})`;
 
-/** One reading of the pager as painted: range, status, rows, inks, geometry, focus. */
-const READ = `(() => {
-	const root = document.querySelector("[data-diff-history]");
-	if (!root) return { open: false, viewFull: document.querySelectorAll(${JSON.stringify(VIEW_FULL)}).length };
+/** One reading of a pager as painted: range, status, rows, inks, geometry, focus. */
+export const readPager = (root) => `(() => {
+	const root = ${q(pagerIn(root))};
+	if (!root) return { open: false, viewFull: document.querySelectorAll(${JSON.stringify(viewFullIn(root))}).length };
 	const rows = [...root.querySelectorAll("[data-diff-line]")];
 	const ink = (el) => el.classList.contains("text-success") ? "added" : el.classList.contains("text-danger") ? "removed" : "other";
 	const signs = { added: 0, removed: 0, addedBadSign: 0, removedBadSign: 0 };
@@ -55,7 +136,9 @@ const READ = `(() => {
 		range: root.querySelector("[data-diff-history-range]")?.textContent ?? "",
 		status: root.querySelector("[data-diff-history-status]")?.textContent ?? "",
 		busy: root.getAttribute("aria-busy"),
+		retry: Boolean(root.querySelector(":scope > button")),
 		buttons: [...root.querySelectorAll(":scope > nav > button")].map((b) => ({ text: b.textContent, disabled: b.getAttribute("aria-disabled") })),
+		nav: box(root.querySelector(":scope > nav")),
 		rowCount: rows.length,
 		firstRow: rows[0] ? { index: rows[0].getAttribute("data-diff-line"), box: box(rows[0]) } : null,
 		lastRow: rows.at(-1) ? { index: rows.at(-1).getAttribute("data-diff-line"), text: rows.at(-1).firstChild?.textContent?.slice(0, 80), box: box(rows.at(-1)) } : null,
@@ -67,11 +150,41 @@ const READ = `(() => {
 })()`;
 
 /**
+ * THE REPLAY ORACLE (QA round 5, N9): a pager counts as open only once its
+ * range is SET and it is no longer busy. "Loading full diff…" in the status
+ * region is not an open pager, so a mid-load frame can never be compared.
+ */
+export const pagerReady = (root) =>
+	`(() => { const p = ${q(pagerIn(root))}; return Boolean(p) && p.getAttribute("aria-busy") !== "true" && Boolean(p.querySelector("[data-diff-history-range]")?.textContent); })()`;
+
+/** The pager's error state: not busy, a status sentence, and its Retry. */
+export const pagerErrored = (root) =>
+	`(() => { const p = ${q(pagerIn(root))}; return Boolean(p) && p.getAttribute("aria-busy") !== "true" && Boolean(p.querySelector(":scope > button")) && Boolean(p.querySelector("[data-diff-history-status]")?.textContent); })()`;
+
+/* A NEW, non-empty range on a settled pager: a blank range (loading, error) never counts as moved. */
+export const rangeMoved = (root, from) =>
+	`(() => { const p = ${q(pagerIn(root))}; const r = p?.querySelector("[data-diff-history-range]")?.textContent ?? ""; return Boolean(p) && p.getAttribute("aria-busy") !== "true" && r !== "" && r !== ${JSON.stringify(from)}; })()`;
+
+/** D1: where the pager's last row and nav are, and a wheel point inside the well. */
+const scrollGeometry = (root) => `(() => {
+	const p = ${q(pagerIn(root))};
+	if (!p) return null;
+	const rect = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left), right: Math.round(r.right) }; };
+	const well = rect(p); const rows = p.querySelectorAll("[data-diff-line]");
+	const top = Math.max(well.top, 0); const bottom = Math.min(well.bottom, innerHeight);
+	return { vh: innerHeight, nav: rect(p.querySelector(":scope > nav")), last: rect(rows[rows.length - 1]), lastIndex: rows[rows.length - 1]?.getAttribute("data-diff-line") ?? null, point: { x: Math.round((well.left + well.right) / 2), y: Math.round(bottom > top ? (top + bottom) / 2 : innerHeight / 2) } };
+})()`;
+
+/** A press target's box, for the layout-settle wait (D6). */
+const boxOf = (selector) =>
+	`(() => { const el = ${q(selector)}; if (!el) return null; const r = el.getBoundingClientRect(); return [r.x, r.y, r.width, r.height].map(Math.round).join(","); })()`;
+
+/**
  * What the session route painted when no View full diff control appeared.
  * Read-only and bounded: route, title, readiness, and the visible controls'
  * accessible names, roles and geometry. Never input values, innerHTML or
- * attribute dumps: the frame beside it shows the rest, and this must stay
- * safe to note even for a session that is not a synthetic fixture.
+ * attribute dumps. It notes visible transcript text, so it is for the owned
+ * synthetic fixtures the QA gate requires (R6-1).
  */
 export const NO_OFFER_READ = `(() => {
 	const cut = (s, n) => (s ?? "").replace(/\\s+/g, " ").trim().slice(0, n);
@@ -83,7 +196,7 @@ export const NO_OFFER_READ = `(() => {
 		title: cut(document.title, 80),
 		readyState: document.readyState,
 		scope: scope.hasAttribute("data-lo-canonical-transcript") ? "transcript" : scope.tagName.toLowerCase(),
-		viewFull: document.querySelectorAll(${JSON.stringify(VIEW_FULL)}).length,
+		viewFull: document.querySelectorAll("[data-diff-view-full]").length,
 		diffRegions: document.querySelectorAll("[data-diff-line], [data-diff-history]").length,
 		controlCount: controls.length,
 		controls: controls.slice(0, 40).map((el) => { const r = el.getBoundingClientRect(); return { tag: el.tagName.toLowerCase(), type: el.getAttribute("type"), name: cut(el.getAttribute("aria-label") || el.textContent, 60), expanded: el.getAttribute("aria-expanded"), state: el.getAttribute("data-state"), box: [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)] }; }),
@@ -112,7 +225,10 @@ export const NO_OFFER_READ = `(() => {
  * re-reading the very header it pressed, addressed by its root's stable stamp,
  * flipping to aria-expanded="true".
  *
- * Selectors are derived from the source, never "any button":
+ * Selectors are derived from the source, never "any button", and every one is
+ * prefixed by the transcript SCOPE being walked (the parent chat's, or the
+ * child reader's inside the Run panel), so a parent row is never pressed while
+ * the child is the subject:
  * - a header is "own" only when its nearest `[data-turn-summary]`/`[data-fold-ids]`
  *   ancestor is its root, so a nested inner header is never taken for the outer;
  * - a TurnSummary is addressed by `[data-turn-summary][data-record-id=..]`
@@ -128,24 +244,25 @@ export const NO_OFFER_READ = `(() => {
  * Every selector demands aria-expanded="false", so an open fold or row is never
  * pressed closed. Counts are bounded; nothing here clicks user content.
  */
-export const COLLAPSED_FOLD =
-	'[data-lo-canonical-transcript] [data-fold-ids] button[aria-expanded="false"]:has([data-fold-summary])';
+export const collapsedFold = (scope) =>
+	`${scope} [data-fold-ids] button[aria-expanded="false"]:has([data-fold-summary])`;
+export const COLLAPSED_FOLD = collapsedFold(PARENT_SCOPE);
 const TOOL_TRIGGER = 'button[aria-expanded="false"]:has([data-trace-verb])';
 /** Nearest owning disclosure root of a header: decides "own" vs nested inner. */
 const HEADER_OWNER = "[data-turn-summary], [data-fold-ids]";
 const TURN_HEADER = "button[aria-expanded]";
 const FOLD_HEADER = "button[aria-expanded]:has([data-fold-summary])";
 const MAX_FOLD_PRESSES = 4;
-const MAX_TOOL_PRESSES = 4;
+const MAX_WRITE_ROWS = 4;
 
-/** Read-only facts about the work controls: counts, verbs, addressable rows. */
-export const WORK_READ = `(() => {
-	const root = document.querySelector("[data-lo-canonical-transcript]");
-	const viewFull = document.querySelectorAll(${JSON.stringify(VIEW_FULL)}).length;
+/** Read-only facts about one scope's work controls: counts, verbs, addressable rows. */
+export const workRead = (scope) => `(() => {
+	const root = document.querySelector(${JSON.stringify(scope)});
+	const viewFull = root ? root.querySelectorAll("[data-diff-view-full]").length : 0;
 	if (!root) return { transcript: false, viewFull, collapsedFolds: 0, folds: 0, disclosures: [], ambiguous: 0, tools: [] };
 	const folds = root.querySelectorAll("[data-fold-ids]").length;
 	// Diagnostic only: never the progress signal (see THE NORMAL STEPS above).
-	const collapsedFolds = document.querySelectorAll(${JSON.stringify(COLLAPSED_FOLD)}).length;
+	const collapsedFolds = document.querySelectorAll(${JSON.stringify(collapsedFold(scope))}).length;
 	const owner = ${JSON.stringify(HEADER_OWNER)};
 	const disclosures = [];
 	let ambiguous = 0;
@@ -153,7 +270,7 @@ export const WORK_READ = `(() => {
 		const b = [...el.querySelectorAll(header)].find((x) => x.closest(owner) === el);
 		if (!b || b.getAttribute("aria-expanded") !== "false") return;
 		const base = kind === "turn" ? "[data-turn-summary]" : "";
-		const rootSel = '[data-lo-canonical-transcript] ' + base + '[' + attr + '="' + CSS.escape(el.getAttribute(attr) ?? "") + '"]';
+		const rootSel = ${JSON.stringify(`${scope} `)} + base + '[' + attr + '="' + CSS.escape(el.getAttribute(attr) ?? "") + '"]';
 		const selector = rootSel + ' ' + header.replace("[aria-expanded]", '[aria-expanded="false"]');
 		if (document.querySelectorAll(rootSel).length === 1 && document.querySelector(selector) === b)
 			disclosures.push({ kind, root: rootSel, header, selector });
@@ -168,13 +285,24 @@ export const WORK_READ = `(() => {
 		const verb = (button.querySelector("[data-trace-verb]")?.textContent ?? "").trim().slice(0, 24);
 		if (verb !== "Edited" && verb !== "Wrote") continue;
 		const row = button.closest("[data-record-id]");
-		const selector = '[data-lo-canonical-transcript] [data-record-id="' + CSS.escape(row.getAttribute("data-record-id")) + '"] ' + ${JSON.stringify(TOOL_TRIGGER)};
+		const selector = ${JSON.stringify(`${scope} [data-record-id="`)} + CSS.escape(row.getAttribute("data-record-id")) + '"] ' + ${JSON.stringify(TOOL_TRIGGER)};
 		if (document.querySelector(selector) === button) tools.push({ verb, selector });
 		if (tools.length >= 8) break;
 	}
 	tools.sort((a, b) => (a.verb === "Edited" ? 0 : 1) - (b.verb === "Edited" ? 0 : 1));
 	return { transcript: true, viewFull, folds, collapsedFolds, disclosures, ambiguous, tools };
 })()`;
+export const WORK_READ = workRead(PARENT_SCOPE);
+
+/** A tool entry's row root: its press selector without the trigger suffix. */
+export const rowRootOf = (selector) =>
+	selector.endsWith(` ${TOOL_TRIGGER}`)
+		? selector.slice(0, -(TOOL_TRIGGER.length + 1))
+		: null;
+
+/** Rendered Wrote/Edited counts in a scope, plus the document's identity. */
+const verbCounts = (scope) =>
+	`(() => { const root = ${q(scope)}; const verbs = root ? [...root.querySelectorAll("[data-trace-verb]")].map((el) => el.textContent.trim()) : []; return { route: location.hash, origin: performance.timeOrigin, wrote: verbs.filter((v) => v === "Wrote").length, edited: verbs.filter((v) => v === "Edited").length, headers: root ? root.querySelectorAll("[data-turn-summary], [data-fold-ids]").length : 0 }; })()`;
 
 /**
  * Whether the header a disclosure entry pressed now reads open: the root's OWN
@@ -191,6 +319,63 @@ export function parseRange(text) {
 	return { first: n(m[1]), last: n(m[2]), total: n(m[3]) };
 }
 
+const realFiles = {
+	write: (path, text) => writeFile(path, text),
+	exists: (path) =>
+		access(path).then(
+			() => true,
+			() => false,
+		),
+};
+const realSleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * One QA handshake step: write `<out>/ready-<step>`, then wait at most `ms`
+ * for `<out>/go-<step>`. A go file that exists BEFORE ready is written is a
+ * stale answer from another run and FAILS instead of passing instantly.
+ */
+export async function awaitHandshake({
+	step,
+	outDir,
+	ms = HANDSHAKE_MS,
+	files = realFiles,
+	sleep = realSleep,
+	now = Date.now,
+	check,
+	note,
+}) {
+	const ready = join(outDir, `ready-${step}`);
+	const go = join(outDir, `go-${step}`);
+	if (await files.exists(go)) {
+		check(
+			`handshake ${step}: no stale go file before ready`,
+			false,
+			`${go} already exists`,
+		);
+		return false;
+	}
+	await files.write(
+		ready,
+		`${JSON.stringify({ step, at: new Date(now()).toISOString() })}\n`,
+	);
+	note(`handshake ${step}`, `wrote ${ready}; waiting up to ${ms}ms for ${go}`);
+	const started = now();
+	while (now() - started < ms) {
+		if (await files.exists(go)) {
+			check(
+				`handshake ${step}: QA answered`,
+				true,
+				undefined,
+				`${now() - started}ms`,
+			);
+			return true;
+		}
+		await sleep(500);
+	}
+	check(`handshake ${step}: QA answered within ${ms}ms`, false, `no ${go}`);
+	return false;
+}
+
 export async function sceneDiffHistory({
 	cdp,
 	verb,
@@ -200,95 +385,95 @@ export async function sceneDiffHistory({
 	waitForCondition,
 	factsOf,
 	session,
+	child = null,
+	liveSession = null,
+	handshake = false,
+	expect = null,
+	outDir = null,
+	handshakeMs = HANDSHAKE_MS,
+	files = realFiles,
+	sleep = realSleep,
+	now = Date.now,
 }) {
 	note("diff-history facts", JSON.stringify(await factsOf(cdp)));
 	note("diff-history hello", JSON.stringify(await verb(cdp, "hello")));
-	const read = () => cdp.evaluate(READ);
-	const settle = (expr, label) =>
-		waitForCondition(cdp, expr, 30_000).then((r) => {
+	const settle = (expr, label, ms = 30_000) =>
+		waitForCondition(cdp, expr, ms).then((r) => {
 			check(label, r.ok, `last reading: ${JSON.stringify(r.last)}`);
 			return r.ok;
 		});
-	const pressLabel = async (label) => {
-		const state = await read();
-		const index = state.buttons?.findIndex((b) => b.text === label) ?? -1;
-		if (index < 0 || state.buttons[index].disabled === "true") {
-			check(
-				`pager offers an enabled "${label}"`,
-				false,
-				JSON.stringify(state.buttons),
-			);
+	const step = (name) =>
+		handshake
+			? awaitHandshake({
+					step: name,
+					outDir,
+					ms: handshakeMs,
+					files,
+					sleep,
+					now,
+					check,
+					note,
+				})
+			: Promise.resolve(false);
+
+	/*
+	 * D6: a press is made only once its target's box has stopped moving (two
+	 * equal non-empty reads), so `press` hit-tests the painted row rather than
+	 * whatever was there mid-layout; the hit test is recorded AND checked.
+	 */
+	const pressSettled = async (selector, what) => {
+		let last = null;
+		let stable = false;
+		for (let i = 0; i < 30 && !stable; i += 1) {
+			const box = await cdp.evaluate(boxOf(selector));
+			const size = typeof box === "string" ? box.split(",").map(Number) : [];
+			const nonEmpty = size[2] > 0 && size[3] > 0;
+			stable = nonEmpty && box === last;
+			last = box;
+			if (!stable) await sleep(100);
+		}
+		note(`${what}: layout`, JSON.stringify({ settled: stable, box: last }));
+		let hit;
+		try {
+			hit = await verb(cdp, "press", { selector, timeoutMs: 2_000 });
+		} catch (error) {
+			check(`${what}: takes the press`, false, String(error).slice(0, 200));
 			return null;
 		}
-		const hit = await verb(cdp, "press", {
-			selector: `${NAV_BUTTONS}:nth-of-type(${index + 1})`,
-		});
-		note(`press "${label}" hit`, JSON.stringify(hit));
-		return state.range;
-	};
-	const rangeMoved = (from) =>
-		`(document.querySelector("[data-diff-history-range]")?.textContent ?? "") !== ${JSON.stringify(from)} && document.querySelector("[data-diff-history]")?.getAttribute("aria-busy") !== "true"`;
-	const openFull = async (label) => {
-		const hit = await verb(cdp, "press", { selector: VIEW_FULL });
-		note(`press view-full (${label}) hit`, JSON.stringify(hit));
-		return settle(
-			`Boolean(document.querySelector("[data-diff-history-range]")?.textContent) || Boolean(document.querySelector("[data-diff-history-status]")?.textContent)`,
-			`full diff opens (${label})`,
-		);
-	};
-	const page = async (label) => {
-		const state = await read();
-		note(`diff-history ${label}`, JSON.stringify(state));
+		note(`press ${what} hit`, JSON.stringify(hit));
 		check(
-			`${label}: added rows paint text-success with "+", removed rows text-danger with "-"`,
-			state.signs.addedBadSign === 0 && state.signs.removedBadSign === 0,
-			JSON.stringify(state.signs),
-			JSON.stringify(state.signs),
+			`${what}: the press hit-tests its own target`,
+			hit?.hitTest === true,
+			JSON.stringify(hit),
+			JSON.stringify({ hitTest: hit?.hitTest }),
 		);
-		check(
-			`${label}: every row has painted geometry`,
-			state.zeroBoxes === 0,
-			JSON.stringify(state),
-		);
-		await capture(cdp, `diff-history-${label}`);
-		return state;
+		return hit;
 	};
 
 	/*
-	 * Open folds, then Edited/Wrote rows, until a View full diff control exists.
-	 * Each press is checked by its own aria-expanded settling, so a gesture that
-	 * does nothing is a recorded FAIL rather than a silent skip.
+	 * Open folds, then ONE closed row with the wanted verb (or the named row),
+	 * and return that row's root. Each press is checked by its own
+	 * aria-expanded settling, so a gesture that does nothing is a recorded FAIL.
 	 */
-	const disclose = async (label) => {
+	const disclose = async (label, scope, { verb: want, row = null } = {}) => {
 		await settle(
-			`Boolean(document.querySelector("[data-lo-canonical-transcript]"))`,
+			`Boolean(document.querySelector(${JSON.stringify(scope)}))`,
 			`${label}: the transcript mounts`,
 		);
-		const facts = () => cdp.evaluate(WORK_READ);
+		const read = workRead(scope);
+		const facts = () => cdp.evaluate(read);
+		const candidate = (state) =>
+			(state.tools ?? []).find((t) =>
+				row ? rowRootOf(t.selector) === row : t.verb === want,
+			);
 		let state = await facts();
 		note(`diff-history ${label} work controls`, JSON.stringify(state));
 		await capture(cdp, `diff-history-${label}-initial`);
-		const pressOpen = async (selector, what, opened) => {
-			try {
-				note(
-					`press ${what} hit`,
-					JSON.stringify(
-						await verb(cdp, "press", { selector, timeoutMs: 2_000 }),
-					),
-				);
-			} catch (error) {
-				check(
-					`${label}: ${what} takes the press`,
-					false,
-					String(error).slice(0, 200),
-				);
-				return false;
-			}
-			return settle(opened, `${label}: ${what} opens`);
-		};
+		if (row && (await cdp.evaluate(`Boolean(${q(viewFullIn(row))})`)) === true)
+			return row;
 		// Outer TurnSummary headers come first in the read, then TraceFolds, so an
 		// outer bar opens before the inner folds it reveals are pressed.
-		for (let i = 0; i < MAX_FOLD_PRESSES && !state.viewFull; i += 1) {
+		for (let i = 0; i < MAX_FOLD_PRESSES && !candidate(state); i += 1) {
 			const next = state.disclosures?.[0];
 			if (!next) {
 				if (state.ambiguous)
@@ -299,37 +484,260 @@ export async function sceneDiffHistory({
 					);
 				break;
 			}
-			const what = `${next.kind === "turn" ? "turn summary" : "work fold"} ${i + 1}`;
-			if (!(await pressOpen(next.selector, what, headerOpened(next)))) break;
+			const what = `${label}: ${next.kind === "turn" ? "turn summary" : "work fold"} ${i + 1}`;
+			if (!(await pressSettled(next.selector, what))) break;
+			if (!(await settle(headerOpened(next), `${what} opens`))) break;
 			state = await facts();
 		}
-		for (
-			let i = 0;
-			i < MAX_TOOL_PRESSES && !state.viewFull && state.tools?.length;
-			i += 1
-		) {
-			const { selector, verb: rowVerb } = state.tools[0];
-			// The row's own trigger, now expanded: the same address with the state flipped.
-			const open = `Boolean(document.querySelector(${JSON.stringify(selector.replace('aria-expanded="false"', 'aria-expanded="true"'))}))`;
-			if (!(await pressOpen(selector, `${rowVerb} row ${i + 1}`, open))) break;
-			state = await facts();
-		}
+		const tool = candidate(state);
 		note(`diff-history ${label} after disclosure`, JSON.stringify(state));
+		if (!tool) return null;
+		const what = `${label}: ${tool.verb} row`;
+		if (!(await pressSettled(tool.selector, what))) return null;
+		// The row's own trigger, now expanded: the same address with the state flipped.
+		const open = `Boolean(document.querySelector(${JSON.stringify(tool.selector.replace('aria-expanded="false"', 'aria-expanded="true"'))}))`;
+		if (!(await settle(open, `${what} opens`))) return null;
+		return rowRootOf(tool.selector);
 	};
 
-	await verb(cdp, "navigate", `/chat/${session}`);
-	await disclose("open");
-	const offered = await settle(
-		`Boolean(document.querySelector(${JSON.stringify(VIEW_FULL)}))`,
-		"the seeded session offers a View full diff control",
-	);
-	if (!offered) {
-		// WHY a frame on failure: native QA failed here with nothing to look at,
-		// so whether the diff block was collapsed, the route was wrong, a query
-		// failed or the paint broke was guesswork. The frame and these read-only
-		// facts are evidence for fixing the real nested view; they never mask the
-		// missing control: the settle above already recorded the FAIL and the
-		// scene still stops before any pager step.
+	const page = async (root, label, tally) => {
+		const state = await cdp.evaluate(readPager(root));
+		note(`diff-history ${label}`, JSON.stringify(state));
+		check(
+			`${label}: added rows paint text-success with "+", removed rows text-danger with "-"`,
+			state.signs?.addedBadSign === 0 && state.signs?.removedBadSign === 0,
+			JSON.stringify(state.signs),
+			JSON.stringify(state.signs),
+		);
+		check(
+			`${label}: every row has painted geometry`,
+			state.zeroBoxes === 0,
+			JSON.stringify(state),
+		);
+		if (tally && state.signs) {
+			tally.added += state.signs.added;
+			tally.removed += state.signs.removed;
+		}
+		await capture(cdp, `diff-history-${label}`);
+		return state;
+	};
+	const pressNav = async (root, label, what) => {
+		const state = await cdp.evaluate(readPager(root));
+		const index = state.buttons?.findIndex((b) => b.text === label) ?? -1;
+		if (index < 0 || state.buttons[index].disabled === "true") {
+			check(
+				`${what}: pager offers an enabled "${label}"`,
+				false,
+				JSON.stringify(state.buttons),
+			);
+			return null;
+		}
+		const hit = await pressSettled(
+			`${pagerIn(root)} > nav > button:nth-of-type(${index + 1})`,
+			`${what} "${label}"`,
+		);
+		return hit ? state.range : null;
+	};
+	const openFull = async (root, label) => {
+		if (!(await pressSettled(viewFullIn(root), `${label}: View full diff`)))
+			return false;
+		return settle(
+			pagerReady(root),
+			`${label}: full diff opens with its range set and not busy`,
+		);
+	};
+
+	/* D1: wheel inside the well until the page's last row is on screen, then the nav must be too. */
+	const stickyNav = async (root, label) => {
+		let geometry = null;
+		let visible = false;
+		for (let i = 0; i < 40; i += 1) {
+			geometry = await cdp.evaluate(scrollGeometry(root));
+			if (!geometry?.last) break;
+			if (geometry.last.top >= 0 && geometry.last.bottom <= geometry.vh) {
+				visible = true;
+				break;
+			}
+			await cdp.send("Input.dispatchMouseEvent", {
+				type: "mouseWheel",
+				x: geometry.point.x,
+				y: geometry.point.y,
+				deltaX: 0,
+				deltaY: 600,
+			});
+			await sleep(150);
+		}
+		await capture(cdp, `diff-history-${label}-page-first-scrolled`);
+		note(`${label}: D1 scroll`, JSON.stringify(geometry));
+		check(
+			`${label}: the first page's last row scrolls into view inside the page`,
+			visible,
+			JSON.stringify(geometry),
+		);
+		const nav = geometry?.nav;
+		check(
+			`${label}: the page nav stays on screen at the page end (D1)`,
+			visible && nav !== null && nav?.top >= 0 && nav?.bottom <= geometry.vh,
+			JSON.stringify({ nav, vh: geometry?.vh }),
+			JSON.stringify({ nav, vh: geometry?.vh }),
+		);
+	};
+
+	/* Error (QA stops then restarts the backend), from the first page. */
+	const errorAndRetry = async (root, label, fromRange) => {
+		await capture(cdp, `diff-history-${label}-error-before`);
+		if (!(await step("error-stop"))) return null;
+		if ((await pressNav(root, "Next", label)) === null) return null;
+		const errored = await settle(
+			pagerErrored(root),
+			`${label}: Next with the backend stopped shows the error and Retry`,
+			60_000,
+		);
+		note(
+			`${label}: error state`,
+			JSON.stringify(await cdp.evaluate(readPager(root))),
+		);
+		await capture(cdp, `diff-history-${label}-error`);
+		if (!errored) return null;
+		if (!(await step("error-restart"))) return null;
+		if (!(await pressSettled(`${pagerIn(root)} > button`, `${label}: Retry`)))
+			return null;
+		if (
+			!(await settle(
+				rangeMoved(root, fromRange),
+				`${label}: Retry loads the next page`,
+				60_000,
+			))
+		)
+			return null;
+		return page(root, `${label}-page-retried`);
+	};
+
+	/*
+	 * One call's pager: open, page First/Next/Previous/Last against the
+	 * fixture's truth, assert colours by COUNT (R5-1), Back, and reopen the
+	 * SAME call (the replay oracle fix).
+	 */
+	const walkCall = async (
+		root,
+		{ label, kind, truth = null, d1 = false, error = false },
+	) => {
+		if (!(await openFull(root, label))) return null;
+		const tally = { added: 0, removed: 0 };
+		const first = await page(root, `${label}-page-first`, tally);
+		const firstRange = parseRange(first.range);
+		check(
+			`${label}: first page states its range`,
+			firstRange !== null,
+			JSON.stringify(first),
+		);
+		if (truth)
+			check(
+				`${label}: the range total is the fixture's ${truth.total} display rows`,
+				firstRange?.total === truth.total,
+				JSON.stringify(firstRange),
+			);
+		if (d1) await stickyNav(root, label);
+		let last = first;
+		if (firstRange && firstRange.last < firstRange.total) {
+			let next = null;
+			if (error) next = await errorAndRetry(root, label, first.range);
+			else {
+				const from = await pressNav(root, "Next", label);
+				if (
+					from !== null &&
+					(await settle(
+						rangeMoved(root, from),
+						`${label}: Next moves the range`,
+					))
+				)
+					next = await page(root, `${label}-page-next`, tally);
+			}
+			if (next) {
+				if (error && next.signs) {
+					tally.added += next.signs.added;
+					tally.removed += next.signs.removed;
+				}
+				check(
+					`${label}: Next starts after the first page`,
+					parseRange(next.range)?.first === firstRange.last + 1,
+					JSON.stringify(parseRange(next.range)),
+				);
+				const back = await pressNav(root, "Previous", label);
+				if (
+					back !== null &&
+					(await settle(
+						rangeMoved(root, back),
+						`${label}: Previous moves the range`,
+					))
+				)
+					check(
+						`${label}: Previous returns to the first page`,
+						parseRange((await page(root, `${label}-page-previous`)).range)
+							?.first === firstRange.first,
+						"",
+					);
+			}
+			const toLast = await pressNav(root, "Last", label);
+			if (
+				toLast !== null &&
+				(await settle(
+					rangeMoved(root, toLast),
+					`${label}: Last moves the range`,
+				))
+			)
+				last = await page(root, `${label}-page-last`, tally);
+		} else
+			note(
+				`${label}: paging`,
+				"the diff fits one page: Next/Previous/Last not offered",
+			);
+		const lastRange = parseRange(last.range);
+		check(
+			`${label}: Last ends on the final row`,
+			lastRange !== null && lastRange.last === lastRange.total,
+			JSON.stringify({ lastRange, lastRow: last.lastRow }),
+		);
+		if (truth?.last)
+			check(
+				`${label}: the final row is the fixture's ${JSON.stringify(truth.last)}`,
+				last.lastRow?.text === truth.last,
+				JSON.stringify(last.lastRow),
+				JSON.stringify(last.lastRow),
+			);
+		note(`${label}: colour counts`, JSON.stringify(tally));
+		check(
+			kind === "edit"
+				? `${label}: an edit paints both green and red rows (counts)`
+				: `${label}: a write paints green rows (counts)`,
+			kind === "edit" ? tally.added > 0 && tally.removed > 0 : tally.added > 0,
+			JSON.stringify(tally),
+			JSON.stringify(tally),
+		);
+		if ((await pressNav(root, "Back to preview", label)) !== null) {
+			await settle(
+				`!${q(pagerIn(root))} && Boolean(document.activeElement?.matches(${JSON.stringify(viewFullIn(root))}))`,
+				`${label}: Back closes the pager and focus returns to View full diff`,
+			);
+			await capture(cdp, `diff-history-${label}-closed`);
+		}
+		if (await openFull(root, `${label} reopen`)) {
+			const again = await page(root, `${label}-page-reopened`);
+			check(
+				`${label}: reopening the same call lands on the same first page`,
+				again.range === first.range &&
+					again.lastRow?.text === first.lastRow?.text,
+				JSON.stringify({ again: again.range, first: first.range }),
+			);
+			await pressNav(root, "Back to preview", `${label} reopen`);
+		}
+		return first;
+	};
+
+	const noOffer = async () => {
+		// WHY a frame on failure: native QA failed here with nothing to look at.
+		// The frame and these read-only facts never mask the missing control:
+		// the settle before this already recorded the FAIL.
 		await capture(cdp, "diff-history-no-offer");
 		note(
 			"diff-history no-offer dom",
@@ -342,110 +750,219 @@ export async function sceneDiffHistory({
 			JSON.stringify({
 				count: list.length,
 				notSuccess: list
-					.filter((q) => q.status !== "success")
+					.filter((query) => query.status !== "success")
 					.slice(0, 20)
-					.map((q) => ({
-						key: String(q.key).slice(0, 120),
-						status: q.status,
-						hasData: q.hasData,
+					.map((query) => ({
+						key: String(query.key).slice(0, 120),
+						status: query.status,
+						hasData: query.hasData,
 					})),
 			}),
 		);
-		return;
-	}
-	await capture(cdp, "diff-history-preview");
-	if (!(await openFull("first open"))) return;
-	const first = await page("page-first");
-	const firstRange = parseRange(first.range);
-	if (first.status) note("diff-history reached status", first.status);
-	check(
-		"first page states its range",
-		firstRange !== null,
-		JSON.stringify(first),
-	);
-	if (firstRange && firstRange.last < firstRange.total) {
-		const from = await pressLabel("Next");
-		if (
-			from !== null &&
-			(await settle(rangeMoved(from), "Next moves the range"))
-		) {
-			const next = parseRange((await page("page-next")).range);
-			check(
-				"Next starts after the first page",
-				next?.first === firstRange.last + 1,
-				JSON.stringify(next),
+	};
+
+	/* Every Wrote row in a scope: archived ones are paged, oversized ones noted. */
+	const walkWrites = async (scope, label, truth) => {
+		const seen = { archived: 0, oversized: 0 };
+		for (let i = 0; i < MAX_WRITE_ROWS; i += 1) {
+			const row = await disclose(`${label}-${i + 1}`, scope, { verb: "Wrote" });
+			if (!row) break;
+			await waitForCondition(
+				cdp,
+				`Boolean(${q(viewFullIn(row))}) || Boolean(${q(`${row} [data-diff-full-notice]`)})`,
+				10_000,
 			);
-		}
-		const back = await pressLabel("Previous");
-		if (
-			back !== null &&
-			(await settle(rangeMoved(back), "Previous moves the range"))
-		) {
-			const prev = parseRange((await page("page-previous")).range);
-			check(
-				"Previous returns to the first page",
-				prev?.first === firstRange.first,
-				JSON.stringify(prev),
+			const offer = await cdp.evaluate(
+				`({ full: Boolean(${q(viewFullIn(row))}), notice: ${q(`${row} [data-diff-full-notice]`)}?.getAttribute("data-diff-full-notice") ?? null })`,
 			);
+			note(`${label}-${i + 1}: offer`, JSON.stringify(offer));
+			if (offer?.notice) {
+				await capture(cdp, `diff-history-${label}-${i + 1}-notice`);
+				check(
+					`${label}-${i + 1}: a ${offer.notice} write states its note and offers no View full`,
+					!offer.full,
+					JSON.stringify(offer),
+					JSON.stringify(offer),
+				);
+				if (offer.notice === "oversized") seen.oversized += 1;
+			} else if (offer?.full) {
+				await walkCall(row, {
+					label: `${label}-${i + 1}`,
+					kind: "write",
+					truth,
+				});
+				seen.archived += 1;
+			} else
+				check(
+					`${label}-${i + 1}: the opened Wrote row shows View full or a note`,
+					false,
+					JSON.stringify(offer),
+				);
 		}
-		const toLast = await pressLabel("Last");
-		if (
-			toLast !== null &&
-			(await settle(rangeMoved(toLast), "Last moves the range"))
-		) {
-			const last = await page("page-last");
-			const range = parseRange(last.range);
-			check(
-				"Last ends on the final row",
-				range !== null && range.last === range.total,
-				JSON.stringify({ range, lastRow: last.lastRow }),
-				JSON.stringify({
-					range,
-					lastRow: last.lastRow,
-					rowCount: last.rowCount,
-				}),
-			);
-		}
-	} else
-		note(
-			"diff-history paging",
-			"the fixture's diff fits one page: Next/Previous/Last not offered",
-		);
-	if ((await pressLabel("Back to preview")) !== null) {
-		await settle(
-			`!document.querySelector("[data-diff-history]") && document.activeElement?.matches(${JSON.stringify(VIEW_FULL)})`,
-			"Back closes the pager and focus returns to View full diff",
-		);
-		await capture(cdp, "diff-history-closed");
-	}
-	if (await openFull("reopen")) {
-		const again = await page("page-reopened");
 		check(
-			"reopen lands on the first page again",
-			again.range === first.range,
-			JSON.stringify(again.range),
+			`${label}: at least one archived Wrote row was paged`,
+			seen.archived > 0,
+			JSON.stringify(seen),
+			JSON.stringify(seen),
 		);
-	}
-	await verb(cdp, "navigate", "/chat");
+		return seen;
+	};
+
 	await verb(cdp, "navigate", `/chat/${session}`);
-	await disclose("replay");
-	if (
-		(await settle(
-			`Boolean(document.querySelector(${JSON.stringify(VIEW_FULL)}))`,
-			"replayed session offers View full diff again",
-		)) &&
-		(await openFull("replay"))
-	) {
-		const replay = await page("page-replayed");
-		check(
-			"replayed session pages the same first page",
-			replay.range === first.range &&
-				replay.lastRow?.text === first.lastRow?.text,
-			JSON.stringify({ replay: replay.range, first: first.range }),
+	if (child !== null) {
+		await settle(
+			`Boolean(document.querySelector(${JSON.stringify(PARENT_SCOPE)}))`,
+			"child: the parent transcript mounts",
 		);
+		if (
+			!(await pressSettled(
+				"[data-run-panel-trigger]",
+				"child: Run panel trigger",
+			))
+		)
+			return;
+		const rowButton = `[data-run-panel-row="${child}"] button`;
+		if (
+			!(await settle(
+				`Boolean(${q(rowButton)})`,
+				"child: the Run panel lists the subagent's row",
+			))
+		) {
+			note(
+				"child: Run panel rows present",
+				JSON.stringify(
+					await cdp.evaluate(
+						`[...document.querySelectorAll("[data-run-panel-row]")].slice(0, 20).map((el) => el.getAttribute("data-run-panel-row"))`,
+					),
+				),
+			);
+			await capture(cdp, "diff-history-child-no-row");
+			return;
+		}
+		await capture(cdp, "diff-history-child-run-panel");
+		if (!(await pressSettled(rowButton, "child: subagent row"))) return;
+		if (
+			!(await settle(
+				`Boolean(document.querySelector(${JSON.stringify(CHILD_SCOPE)}))`,
+				"child: the reader mounts the child transcript",
+			))
+		)
+			return;
+		await capture(cdp, "diff-history-child-reader");
+		const editRow = await disclose("child-edit", CHILD_SCOPE, {
+			verb: "Edited",
+		});
+		if (
+			!(await settle(
+				`Boolean(${q(viewFullIn(editRow ?? CHILD_SCOPE))})`,
+				"child: the reader's Edited row offers View full diff",
+			))
+		)
+			await noOffer();
+		else {
+			await capture(cdp, "diff-history-child-edit-preview");
+			await walkCall(editRow ?? CHILD_SCOPE, {
+				label: "child-edit",
+				kind: "edit",
+				truth: expect?.edit ?? null,
+				d1: true,
+				error: handshake,
+			});
+		}
+		const writes = await walkWrites(
+			CHILD_SCOPE,
+			"child-write",
+			expect?.write ?? null,
+		);
+		if (expect?.oversized)
+			check(
+				"child: the oversized write is shown with its note",
+				writes.oversized > 0,
+				JSON.stringify(writes),
+			);
+	} else {
+		const row = await disclose("open", PARENT_SCOPE, { verb: "Edited" });
+		const offered = await settle(
+			`Boolean(${q(viewFullIn(row ?? PARENT_SCOPE))})`,
+			"the seeded session offers a View full diff control",
+		);
+		if (!offered) {
+			await noOffer();
+			return;
+		}
+		await capture(cdp, "diff-history-preview");
+		const root = row ?? PARENT_SCOPE;
+		const first = await walkCall(root, {
+			label: "parent-edit",
+			kind: "edit",
+			truth: expect?.edit ?? null,
+			d1: true,
+			error: handshake,
+		});
+		// A route round-trip (R5-3: re-navigated, NOT a cold saved replay), then
+		// the SAME call reopened and compared once its range is set.
+		await verb(cdp, "navigate", "/chat");
+		await verb(cdp, "navigate", `/chat/${session}`);
+		const again = await disclose("renavigated", PARENT_SCOPE, { row: root });
+		if (first && again && (await openFull(again, "renavigated"))) {
+			const state = await page(again, "page-renavigated");
+			check(
+				"re-navigated: the same call pages the same first page",
+				state.range === first.range &&
+					state.lastRow?.text === first.lastRow?.text,
+				JSON.stringify({ renavigated: state.range, first: first.range }),
+			);
+		}
+	}
+
+	if (liveSession !== null) {
+		await verb(cdp, "navigate", `/chat/${liveSession}`);
+		await settle(
+			`Boolean(document.querySelector(${JSON.stringify(PARENT_SCOPE)}))`,
+			"live: the live session's transcript mounts",
+		);
+		const before = await cdp.evaluate(verbCounts(PARENT_SCOPE));
+		note("live: before", JSON.stringify(before));
+		await capture(cdp, "diff-history-live-before");
+		check(
+			"live: no Wrote/Edited row before the turn",
+			before?.wrote === 0 && before?.edited === 0,
+			JSON.stringify(before),
+		);
+		if (await step("live")) {
+			const arrived = await settle(
+				`(() => { const c = ${verbCounts(PARENT_SCOPE)}; return c.origin === ${JSON.stringify(before?.origin)} && c.route === ${JSON.stringify(before?.route)} && ((c.wrote > 0 && c.edited > 0) || c.headers > ${Number(before?.headers ?? 0)}); })()`,
+				"live: the turn's work appears without a reload or navigation",
+				90_000,
+			);
+			note(
+				"live: after",
+				JSON.stringify(await cdp.evaluate(verbCounts(PARENT_SCOPE))),
+			);
+			await capture(cdp, "diff-history-live-after");
+			if (arrived) {
+				const row = await disclose("live-edit", PARENT_SCOPE, {
+					verb: "Edited",
+				});
+				check("live: the new Edited row is reachable", row !== null, "");
+				if (row)
+					await walkCall(row, {
+						label: "live-edit",
+						kind: "edit",
+						truth: expect?.liveEdit ?? null,
+					});
+				await walkWrites(PARENT_SCOPE, "live-write", expect?.liveWrite ?? null);
+				const after = await cdp.evaluate(verbCounts(PARENT_SCOPE));
+				check(
+					"live: still the same document (no reload) after paging",
+					after?.origin === before?.origin,
+					JSON.stringify({ before: before?.origin, after: after?.origin }),
+				);
+			}
+		}
 	}
 	note(
 		"diff-history unproven",
-		"contained child reader paging; empty/error/loading unless noted above",
+		"empty and evicted states; anything a FAIL above stopped short of",
 	);
 }
