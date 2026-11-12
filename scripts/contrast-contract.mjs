@@ -106,6 +106,7 @@ import {
 	LIFT,
 	LINE_SEPARATION_FLOOR,
 	LIVENESS_PAIR_FLOOR,
+	LOADING_PILL_ALPHA,
 	MEDIA_SURFACE_DELTA_E,
 	MEDIA_SURFACE_LIGHTNESS_STEP,
 	MESSAGE_SURFACE_DELTA_E,
@@ -153,6 +154,7 @@ import { applyContrast } from "../src/shared/theme-engine/contrast.mjs";
 import {
 	createRun,
 	evaluatePalette,
+	loadingPillAlphas,
 } from "../src/shared/theme-engine/evaluate.mjs";
 import {
 	BACKDROP_GRAY,
@@ -1263,6 +1265,33 @@ for (const entry of palettes) evaluatePalette(run, entry);
 					? "no `bg-hairline/<alpha>` class"
 					: `\`bg-hairline/${alphas.join(", ")}\``
 			} but this gate measures \`PANEL_SEAM_ALPHA ${PANEL_SEAM_ALPHA}\` - the class that ships and the number every seam assertion used must be one value`,
+		);
+	}
+}
+
+/*
+ * The loading pill's alpha, read back from the component the same way: the
+ * palette loop measures `LOADING_PILL_ALPHA`, and this fails when the class that
+ * ships carries another number (or none, or two).
+ */
+{
+	const source = readFileSync(
+		join(
+			ROOT,
+			"src/renderer/src/features/chat/canonical/conversation-loading-indicator.tsx",
+		),
+		"utf8",
+	);
+	const alphas = loadingPillAlphas(source);
+	run.assertions++;
+	const shipped = alphas.length === 1 ? alphas[0] : null;
+	if (shipped !== Math.round(LOADING_PILL_ALPHA * 100)) {
+		fail(
+			`conversation-loading-indicator.tsx paints ${
+				alphas.length === 0
+					? "no `bg-accent/<alpha>` class"
+					: `\`bg-accent/${alphas.join(", ")}\``
+			} but this gate measures \`LOADING_PILL_ALPHA ${LOADING_PILL_ALPHA}\` - the class that ships and the number every pill assertion used must be one value`,
 		);
 	}
 }

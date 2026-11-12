@@ -44,7 +44,6 @@
 	"ui.chat.canonical.transcript.reconnecting": "फिर कनेक्ट हो रहा है",
 	"ui.chat.canonical.transcript.send_again": "फिर भेजें",
 	"ui.chat.canonical.transcript.source_unavailable": "यह बातचीत पढ़ी जा सकती है, लेकिन अभी स्रोत से उसके संदेशों के क्रम की पुष्टि नहीं हो सकी।",
-	"ui.chat.canonical.transcript.stale_caption": "अंतिम सहेजा दृश्य दिखाया जा रहा है — नए संदेशों की जाँच हो रही है।",
 	"ui.chat.canonical.transcript.start_new_chat": "नई चैट शुरू करें",
 	"ui.chat.canonical.transcript.stopped_before_finishing": "उत्तर पूरा होने से पहले रोक दिया गया",
 	"ui.chat.canonical.send_failure.unconfirmed": "आपका संदेश भेजे जाने की पुष्टि नहीं हो सकी। इसे फिर भेजना सुरक्षित है।",
@@ -71,7 +70,6 @@
 	"ui.chat.canonical.older_history.failed.short": "लोड नहीं हो सका",
 	"ui.chat.canonical.older_history.failed.long": "पहले के संदेश लोड नहीं हो सके",
 	"ui.chat.canonical.older_history.try_again": "फिर कोशिश करें",
-	"ui.chat.canonical.older_history.loading": "पहले के संदेश लोड हो रहे हैं",
 	"ui.chat.canonical.older_history.load": "पहले के संदेश लोड करें",
 	"ui.chat.canonical.older_history.windowed.title": "ऊपर पहले का इतिहास",
 	"ui.chat.canonical.older_history.windowed.title_gesture": "ऊपर पहले का इतिहास — लोड करने के लिए ऊपर स्क्रॉल करें",
@@ -79,8 +77,6 @@
 	"ui.chat.canonical.older_history.unproven.short": "पहले लोड नहीं हुआ",
 	"ui.chat.canonical.older_history.unproven.long": "पहले का इतिहास लोड नहीं हुआ",
 	"ui.chat.canonical.older_history.conversation_start": "बातचीत की शुरुआत",
-	"ui.chat.canonical.placeholder.loading": "बातचीत लोड हो रही है…",
-	"ui.chat.canonical.placeholder.region_label": "बातचीत लोड हो रही है",
 	"ui.chat.canonical.tool_row.generic_verb.running": "कॉल जारी",
 	"ui.chat.canonical.tool_row.generic_verb.settled": "कॉल पूर्ण",
 	"ui.chat.canonical.tool_row.outcome.failed": "विफल",
@@ -454,5 +450,10 @@
 	"ui.chat.canonical.image_gen.state.done_batch": "{material, select, video {वीडियो का बैच} voiceover {वॉइसओवर का बैच} sound_effect {साउंड इफ़ेक्ट का बैच} other {तस्वीरों का बैच}}",
 	"ui.chat.canonical.image_gen.state.already_finished": "यह पहले ही पूरा हो चुका है।",
 	"ui.chat.canonical.image_gen.state.failed": "{material, select, video {वीडियो नहीं बनाया जा सका।} voiceover {वॉइसओवर नहीं बनाया जा सका।} sound_effect {साउंड इफ़ेक्ट नहीं बनाया जा सका।} other {तस्वीर नहीं बनाई जा सकी।}}",
-	"ui.chat.canonical.image_gen.state.failed_batch": "{material, select, video {वीडियो का बैच विफल रहा।} voiceover {वॉइसओवर का बैच विफल रहा।} sound_effect {साउंड इफ़ेक्ट का बैच विफल रहा।} other {तस्वीरों का बैच विफल रहा।}}"
+	"ui.chat.canonical.image_gen.state.failed_batch": "{material, select, video {वीडियो का बैच विफल रहा।} voiceover {वॉइसओवर का बैच विफल रहा।} sound_effect {साउंड इफ़ेक्ट का बैच विफल रहा।} other {तस्वीरों का बैच विफल रहा।}}",
+	"ui.chat.canonical.loading.cold": "बातचीत लोड हो रही है…",
+	"ui.chat.canonical.loading.older": "पहले के संदेश लोड हो रहे हैं…",
+	"ui.chat.canonical.loading.region_label": "बातचीत लोड हो रही है",
+	"ui.chat.canonical.loading.remote": "आपके दूसरे डिवाइस से सिंक हो रहा है…",
+	"ui.chat.canonical.loading.revalidating": "नए संदेशों की जाँच हो रही है…"
 }

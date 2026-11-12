@@ -36,7 +36,6 @@
 	"ui.chat.canonical.transcript.reconnecting": "Переподключение",
 	"ui.chat.canonical.transcript.send_again": "Отправить снова",
 	"ui.chat.canonical.transcript.source_unavailable": "Разговор доступен для чтения, но сейчас не удалось подтвердить порядок сообщений по источнику.",
-	"ui.chat.canonical.transcript.stale_caption": "Показана последняя сохранённая версия — идёт проверка новых сообщений.",
 	"ui.chat.canonical.transcript.start_new_chat": "Начать новый чат",
 	"ui.chat.canonical.transcript.stopped_before_finishing": "Остановлено до завершения",
 	"ui.chat.canonical.send_failure.unconfirmed": "Не удалось подтвердить отправку сообщения. Повторная отправка безопасна.",
@@ -63,7 +62,6 @@
 	"ui.chat.canonical.older_history.failed.short": "Не удалось загрузить",
 	"ui.chat.canonical.older_history.failed.long": "Не удалось загрузить предыдущие сообщения",
 	"ui.chat.canonical.older_history.try_again": "Повторить",
-	"ui.chat.canonical.older_history.loading": "Загрузка предыдущих сообщений",
 	"ui.chat.canonical.older_history.load": "Загрузить предыдущие сообщения",
 	"ui.chat.canonical.older_history.windowed.title": "Выше — более ранняя история",
 	"ui.chat.canonical.older_history.windowed.title_gesture": "Выше — более ранняя история: прокрутите вверх, чтобы загрузить",
@@ -71,8 +69,6 @@
 	"ui.chat.canonical.older_history.unproven.short": "Ранняя история не загружена",
 	"ui.chat.canonical.older_history.unproven.long": "Более ранняя история не загружена",
 	"ui.chat.canonical.older_history.conversation_start": "Начало разговора",
-	"ui.chat.canonical.placeholder.loading": "Загрузка разговора…",
-	"ui.chat.canonical.placeholder.region_label": "Загрузка разговора",
 	"ui.chat.canonical.tool_row.generic_verb.running": "Вызывается",
 	"ui.chat.canonical.tool_row.generic_verb.settled": "Вызван",
 	"ui.chat.canonical.tool_row.outcome.failed": "сбой",
@@ -454,5 +450,10 @@
 	"ui.chat.canonical.image_gen.state.done_batch": "{material, select, video {Набор видео} voiceover {Набор озвучек} sound_effect {Набор звуковых эффектов} other {Набор изображений}}",
 	"ui.chat.canonical.image_gen.state.already_finished": "Уже завершено.",
 	"ui.chat.canonical.image_gen.state.failed": "{material, select, video {Не удалось создать видео.} voiceover {Не удалось создать озвучку.} sound_effect {Не удалось создать звуковой эффект.} other {Не удалось создать изображение.}}",
-	"ui.chat.canonical.image_gen.state.failed_batch": "{material, select, video {Не удалось создать набор видео.} voiceover {Не удалось создать набор озвучек.} sound_effect {Не удалось создать набор звуковых эффектов.} other {Не удалось создать набор изображений.}}"
+	"ui.chat.canonical.image_gen.state.failed_batch": "{material, select, video {Не удалось создать набор видео.} voiceover {Не удалось создать набор озвучек.} sound_effect {Не удалось создать набор звуковых эффектов.} other {Не удалось создать набор изображений.}}",
+	"ui.chat.canonical.loading.cold": "Загрузка разговора…",
+	"ui.chat.canonical.loading.older": "Загрузка предыдущих сообщений…",
+	"ui.chat.canonical.loading.region_label": "Загрузка разговора",
+	"ui.chat.canonical.loading.remote": "Синхронизация с вашего другого устройства…",
+	"ui.chat.canonical.loading.revalidating": "Проверка новых сообщений…"
 }

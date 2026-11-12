@@ -146,10 +146,16 @@ const UNPROVEN_FULL = /Earlier history not loaded/;
 const UNPROVEN_SHORT = /Earlier not loaded/;
 
 /** The slot on its own, in one state, with the transport the caller claims. */
-const slot = ({ state, transportDown = false, onRetryHydration }) =>
+const slot = ({
+	state,
+	transportDown = false,
+	onRetryHydration,
+	loadingVariant,
+}) =>
 	renderToStaticMarkup(
 		h(OlderHistorySlot, {
 			state,
+			loadingVariant,
 			transportDown,
 			onLoadOlder: () => {},
 			onRetryHydration,
@@ -331,4 +337,64 @@ test("the unproven row drops its retry while the transport is down", () => {
 		false,
 		"a retry that cannot succeed must not be painted beside the transcript's own notice",
 	);
+});
+
+/*
+ * THE BUSY ARM IS THE SHARED CONVERSATION-LOADING INDICATOR (operator
+ * 2026-11-11: one consistent, clearly visible indicator for every
+ * conversation-loading case). It replaces the slot's own spinner, keeps the
+ * `aria-disabled` Button that holds the reader's focus, and nests no second
+ * live region inside that Button: the slot's sr-only announcer already says it.
+ */
+const BUSY_BUTTON =
+	/<button[^>]*aria-disabled="true"[^>]*>([\s\S]*?)<\/button>/;
+
+test("a loading page renders the shared indicator inside the focus-keeping button", () => {
+	const html = slot({ state: "loading" });
+	const inner = html.match(BUSY_BUTTON)?.[1] ?? "";
+	assert.match(inner, /data-lo-conversation-loading="older"/);
+	assert.match(inner, /data-lo-loading-mark="true"/, "the spinner mark");
+	assert.match(inner, /data-lo-loading-pill="true"/, "the label's pill");
+	assert.match(inner, /Loading earlier messages…/, "the visible label");
+	assert.equal(
+		inner.includes("<output"),
+		false,
+		"no live region nested in the button",
+	);
+	// One spinner in the whole slot: the shared indicator's mark. The slot's own
+	// spinner idiom is gone; the indicator brought the app's one spinner back as
+	// its mark (design review round 1, D-M1).
+	assert.equal(html.match(/animate-spin/g)?.length, 1, "exactly one spinner");
+	assert.match(
+		inner,
+		/data-lo-loading-mark="true"[^>]*><span aria-hidden="true" class="[^"]*animate-spin/,
+		"and it is the indicator's mark",
+	);
+});
+
+test("a peer's unproven history says it is syncing, a proven one loads earlier messages", () => {
+	const remote = transcriptRender({
+		olderFailed: false,
+		hydrationProven: false,
+		historyReadPending: true,
+		remote: true,
+	});
+	assert.match(remote, /data-lo-conversation-loading="remote"/);
+	assert.match(textOf(remote), /Syncing from your other device…/);
+	const local = transcriptRender({
+		olderFailed: false,
+		hydrationProven: false,
+		historyReadPending: true,
+	});
+	assert.match(local, /data-lo-conversation-loading="older"/);
+	assert.match(textOf(local), /Loading earlier messages…/);
+	// Proven history: an earlier page is an ordinary older-page load even for a
+	// peer's conversation.
+	const provenRemote = transcriptRender({
+		olderFailed: false,
+		hydrationProven: true,
+		loadingOlder: true,
+		remote: true,
+	});
+	assert.match(provenRemote, /data-lo-conversation-loading="older"/);
 });

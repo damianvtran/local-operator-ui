@@ -33,7 +33,7 @@
  *    the notes that QUOTE the old sentence are not findings).
  *
  * WHAT IT DOES NOT PROVE: pixels. These are the same components the app mounts
- * (`TranscriptPlaceholder`, `RunDetailsPanel`, `AtPicker` …) and their call
+ * (`ConversationLoadingIndicator`, `RunDetailsPanel`, `AtPicker` …) and their call
  * sites are proven here at the seam they use; the rendered frames belong to the
  * review round, not to this file.
  */
@@ -547,9 +547,8 @@ const REMOVED = {
 		"Enter needs a row you pick",
 		"Click runs /",
 	],
-	"src/renderer/src/features/chat/canonical/transcript-placeholder.tsx": [
-		"Loading conversation",
-	],
+	"src/renderer/src/features/chat/canonical/conversation-loading-indicator.tsx":
+		["Loading conversation"],
 	"src/renderer/src/features/chat/components/at-picker.tsx": [
 		'aria-label="Files"',
 		'"Projects" : "Files"',
@@ -638,7 +637,7 @@ test("every shipped locale resolves each key the wave added", () => {
 			"ui.chat.device.footer.move_deletes_copy",
 			"ui.chat.status.degraded",
 			"ui.chat.pickers.slash.region_label",
-			"ui.chat.canonical.placeholder.loading",
+			"ui.chat.canonical.loading.cold",
 			"ui.chat.run_details.nothing_in_flight",
 			"ui.agents.config.disabled_gate",
 			"ui.common.connection.session_loss.lost",

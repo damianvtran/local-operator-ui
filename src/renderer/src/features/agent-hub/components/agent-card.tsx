@@ -426,7 +426,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 			{actionError && (
 				/*
 				 * `<output>` rather than a `div` with `role="status"`: the element
-				 * carries that role itself (see `transcript-placeholder.tsx` and
+				 * carries that role itself (see `conversation-loading-indicator.tsx` and
 				 * `canonical-transcript.tsx`, which say the same for the trace's own
 				 * live regions), for the same reason the role is `status` rather than
 				 * `alert` — the failure is already the answer to something the user
