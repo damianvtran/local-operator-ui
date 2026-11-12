@@ -172,7 +172,6 @@ const conversations = [
 		status: { code: "recent", label: "Recent" },
 		binding: { agent: null, team: null },
 	},
-	,
 	{
 		id: "c0ffee5a1e01",
 		name: "Quick regex question",
@@ -416,6 +415,17 @@ const route = (method, pathname, query, body) => {
 		if (!row) {
 			return { status: 404, body: { detail: "No such conversation." } };
 		}
+		// A temporary chat cannot be pinned until it is kept (contract §5).
+		if (TEMPORARY && row.temporary_spec && body?.pinned === true)
+			return {
+				status: 409,
+				body: {
+					detail: {
+						code: "session_temporary",
+						message: "This is a temporary chat. Keep it before pinning it.",
+					},
+				},
+			};
 		row.pinned = body?.pinned === true;
 		return ok({ session_id: row.id, pinned: row.pinned === true });
 	}

@@ -36,6 +36,8 @@ const NORMAL = "e059761608ae";
 const LIVE = "c0ffee5a1e01";
 const COUNTDOWN = "c0ffee5a1e02";
 const DELETED = "c0ffee5a1e04";
+// The countdown row is 4.5 min from deletion; the pill rounds up to whole minutes.
+const COUNTDOWN_TEXT = /Deletes in [45] min/;
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -196,7 +198,7 @@ export async function sceneTemporaryChats({
 		const countdown = await textOf('[data-session-temporary-pill="countdown"]');
 		check(
 			"the pill counts down in its last five minutes",
-			/Deletes in [45] min/.test(countdown),
+			COUNTDOWN_TEXT.test(countdown),
 			`read "${countdown}"`,
 			countdown,
 		);
