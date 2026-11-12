@@ -63,6 +63,7 @@ import {
 	LIFT,
 	LINE_SEPARATION_FLOOR,
 	LIVENESS_PAIR_FLOOR,
+	LOADING_PILL_ALPHA,
 	MEDIA_SURFACE_DELTA_E,
 	MEDIA_SURFACE_LIGHTNESS_STEP,
 	MESSAGE_SURFACE_DELTA_E,
@@ -2033,6 +2034,25 @@ export const evaluatePalette = (run, entry) => {
 			fail(
 				`${id}: ${label} — ${role} ${ink} on the arrival band ${band} (accent ${ARRIVAL_BAND_ALPHA} over surface) = ${got}:1, need ${floor}:1`,
 			);
+		}
+		/*
+		 * THE CONVERSATION-LOADING PILL (reasoning at `LOADING_PILL_ALPHA`): the
+		 * label on the tint, over every ground the indicator mounts on.
+		 */
+		for (const ground of ["canvas", "surface", "elevated"]) {
+			const pill = over(p.accent, p[ground], LOADING_PILL_ALPHA);
+			for (const [role, floor, label] of [
+				["inkMuted", FLOOR.text, "loading pill label"],
+			]) {
+				const fg = p[role];
+				if (!isHex(fg)) continue;
+				run.assertions++;
+				const got = r2(ratio(fg, pill));
+				if (got >= floor) continue;
+				fail(
+					`${id}: ${label} — ${role} ${fg} on the loading pill ${pill} (accent ${LOADING_PILL_ALPHA} over ${ground}) = ${got}:1, need ${floor}:1`,
+				);
+			}
 		}
 		const arrival = ratio(band, p.surface);
 		const hover = ratio(p.rowHover, p.surface);

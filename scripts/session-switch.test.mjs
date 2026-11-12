@@ -993,16 +993,18 @@ test("the loading indicator stays one small quiet mark", () => {
 		// On the class strings rather than the bare token: the docstring names the
 		// keyframes in prose, and a count over the whole file would be counting the
 		// argument for the rule instead of the element it governs.
-		// `lo-intent-pulse`, the 0.75-trough pulse: the skeleton's 0.7 trough took
-		// `accent` under 3:1 on eight light palettes (design review round 1, D1).
-		(indicator.match(/className="[^"]*\blo-intent-pulse\b/g) ?? []).length,
+		// The mark is the shared `Spinner` (design review round 1, D-M1: the
+		// pulsing accent dot read as presence, not loading), and it is the only
+		// animated element - no pulse beside it.
+		(indicator.match(/<Spinner\b/g) ?? []).length,
 		1,
 		"one indeterminate element per surface",
 	);
 	assert.equal(
-		(indicator.match(/className="[^"]*animate-pulse-visible/g) ?? []).length,
+		(indicator.match(/className="[^"]*(lo-intent-pulse|animate-pulse)/g) ?? [])
+			.length,
 		0,
-		"the dot does not use the skeleton's 0.7-trough pulse",
+		"no pulsing dot alongside the spinner",
 	);
 	assert.match(
 		indicator,

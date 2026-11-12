@@ -10,10 +10,10 @@ import { JSDOM } from "jsdom";
  * loading indicator ... no layout shift or flicker").
  *
  * What this file owns: the component's own contract - every variant paints the
- * same two parts (an aria-hidden pulsing dot and a visible label), the
+ * same two parts (an aria-hidden spinner and a visible label on its pill), the
  * announcing form is ONE named `<output>`, the non-announcing form carries no
  * live region, and a variant change re-uses the mounted element rather than
- * remounting it (a remount restarts the pulse and swaps the node under a
+ * remounting it (a remount restarts the rotation and swaps the node under a
  * screen reader - the "flash" the request rules out). Where each case is wired
  * is asserted by `stale-caption.test.mjs` (cold, revalidating, remote in the
  * transcript) and `older-history-slot.test.mjs` (older, remote in the slot).
@@ -79,7 +79,7 @@ const LABELS = {
 };
 
 for (const [variant, label] of Object.entries(LABELS)) {
-	test(`${variant}: one named live region holding the dot and the label`, () => {
+	test(`${variant}: one named live region holding the spinner and the label`, () => {
 		const html = renderToStaticMarkup(
 			h(ConversationLoadingIndicator, { variant }),
 		);
@@ -95,27 +95,47 @@ for (const [variant, label] of Object.entries(LABELS)) {
 			assert.equal(html.includes("aria-label"), false, "no region name");
 		}
 		assert.match(html, new RegExp(`data-lo-conversation-loading="${variant}"`));
-		const dot = html.match(
-			/<span aria-hidden="true" data-lo-loading-dot="true" class="([^"]*)"/,
+		// THE MARK is the shared Spinner ring, not a dot: a small accent dot
+		// beside text read as presence, not loading (design review round 1,
+		// D-M1). Exactly one ring, aria-hidden (the label is the announcement),
+		// rotating, with the accent arc on the control track.
+		const mark = html.match(
+			/<span data-lo-loading-mark="true" class="[^"]*"><span aria-hidden="true" class="([^"]*)"><\/span><\/span>/,
 		)?.[1];
-		assert.ok(dot, "an aria-hidden dot");
-		// Opacity-only liveness on the accent role (branding § 2 / § 3): never a
-		// hex, never a layout property. `lo-intent-pulse` holds its trough at
-		// 0.75, where `accent` still clears 3:1 on every palette; the skeleton's
-		// `animate-pulse-visible` dips to 0.7, under it on eight light ones
-		// (design review round 1, D1).
-		assert.match(dot, /(^| )lo-intent-pulse( |$)/);
-		assert.doesNotMatch(dot, /animate-pulse/);
-		assert.match(dot, /(^| )bg-accent( |$)/);
-		// Forced colours drop background colours; every accent status dot
-		// repaints in `CanvasText` (design review round 1, D3).
-		assert.match(dot, /(^| )forced-colors:bg-\[CanvasText\]( |$)/);
-		assert.match(dot, /rounded-full/);
-		assert.match(
-			html,
+		assert.ok(mark, "an aria-hidden spinner ring inside the mark");
+		assert.equal(html.match(/animate-spin/g)?.length, 1, "exactly one ring");
+		assert.match(mark, /(^| )animate-spin( |$)/);
+		assert.match(mark, /(^| )border-control( |$)/);
+		assert.match(mark, /(^| )border-t-accent( |$)/);
+		assert.match(mark, /(^| )size-4( |$)/, "Spinner `sm`, 16px");
+		// Forced colours flatten author borders to one system colour, which
+		// would hide the arc; system colours survive there.
+		assert.match(mark, /(^| )forced-colors:border-\[CanvasText\]( |$)/);
+		assert.match(mark, /(^| )forced-colors:border-t-\[Highlight\]( |$)/);
+		assert.equal(html.includes("lo-intent-pulse"), false, "no pulsing dot");
+		assert.equal(html.includes("data-lo-loading-dot"), false);
+		// THE PILL carries the label only - the spinner beside it keeps its track
+		// on the slot's ground, where the contract holds it at 3:1. Translucent
+		// accent tint, no border/shadow, and NO HEIGHT: no `py-*`, no `h-*`, no
+		// `min-h-*`, so it stays one `text-meta` line and no slot grows.
+		const pill = html.match(
 			new RegExp(
-				`<span class="[^"]*text-ink-muted[^"]*text-meta[^"]*">${label}</span>`,
+				`<span data-lo-loading-pill="true" class="([^"]*)">${label}</span>`,
 			),
+		)?.[1];
+		assert.ok(pill, "the label is the pill");
+		assert.match(pill, /(^| )bg-accent\/10( |$)/);
+		assert.match(pill, /(^| )rounded-full( |$)/);
+		assert.match(pill, /(^| )px-2( |$)/);
+		assert.match(pill, /(^| )text-ink-muted( |$)/);
+		assert.match(pill, /(^| )text-meta( |$)/);
+		assert.doesNotMatch(pill, /(^| )(py|pt|pb|p|h|min-h|leading)-/);
+		assert.doesNotMatch(pill, /(^| )(border|shadow|ring)(-|$| )/);
+		assert.equal(
+			html.indexOf("data-lo-loading-mark") <
+				html.indexOf("data-lo-loading-pill"),
+			true,
+			"spinner first, then the pill, in one row",
 		);
 	});
 }
@@ -127,7 +147,8 @@ test("the non-announcing form is the same marks with no live region", () => {
 	assert.equal(html.includes("<output"), false);
 	assert.equal(html.includes("aria-label"), false);
 	assert.match(html, /^<span data-lo-conversation-loading="older"/);
-	assert.match(html, /data-lo-loading-dot="true"/);
+	assert.match(html, /data-lo-loading-mark="true"/);
+	assert.match(html, /data-lo-loading-pill="true"/);
 	assert.ok(html.includes(LABELS.older));
 });
 
@@ -161,7 +182,8 @@ test("a variant change updates the mounted element in place, never remounts it",
 		root.render(h(ConversationLoadingIndicator, { variant: "cold" }));
 	});
 	const region = container.querySelector("output");
-	const dot = container.querySelector("[data-lo-loading-dot]");
+	const mark = container.querySelector("[data-lo-loading-mark] > span");
+	const pill = container.querySelector("[data-lo-loading-pill]");
 	assert.equal(region.textContent, LABELS.cold);
 	for (const variant of ["remote", "revalidating", "older"]) {
 		await act(async () => {
@@ -173,9 +195,14 @@ test("a variant change updates the mounted element in place, never remounts it",
 			`${variant}: same region node`,
 		);
 		assert.equal(
-			container.querySelector("[data-lo-loading-dot]"),
-			dot,
-			`${variant}: same dot node`,
+			container.querySelector("[data-lo-loading-mark] > span"),
+			mark,
+			`${variant}: same spinner node (its rotation does not restart)`,
+		);
+		assert.equal(
+			container.querySelector("[data-lo-loading-pill]"),
+			pill,
+			`${variant}: same pill node`,
 		);
 		assert.equal(region.textContent, LABELS[variant]);
 		assert.equal(region.dataset.loConversationLoading, variant);

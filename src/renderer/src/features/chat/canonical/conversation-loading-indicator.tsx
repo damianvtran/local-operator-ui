@@ -1,3 +1,4 @@
+import { Spinner } from "@shared/components/common/spinner";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
@@ -31,33 +32,48 @@ import type { FC } from "react";
  * in the older-history slot and an `elevated` dot under the cold placeholder.
  * Three shapes for one condition is what branding.md § 7 asks us not to ship.
  *
- * THE MARK. One `rounded-full` dot (the contract's word for a status dot) on
- * `accent`, the role branding.md § 2 reserves for liveness marks - the one state
- * vocabulary this app has. It replaces `elevated`, which is a GROUND: it cleared
- * the perceptual threshold against `canvas` but was, by construction, the
- * quietest mark that could. Over window glass the dot still reads, because
- * `accent` is an ink-strength role and the pane's translucency changes only the
- * ground under it, not the dot. No pill, no border, no shadow: this is a
- * statement in the flow, not a floating surface.
+ * THE MARK is the app's one indeterminate-progress affordance, `Spinner` at
+ * `sm` (16px: a `border-control` ring with an `accent` arc, rotating). It was a
+ * pulsing `accent` dot until design review round 1 (D-M1): a small green dot
+ * beside a line of text reads as PRESENCE - "online", "connected" - which is
+ * the reading the operator had already rejected ("doesn't read as loading").
+ * A rotating arc is the one shape this app spends on "working on it", so the
+ * slot now says loading in the same word every other wait in the app uses.
+ * It is `aria-hidden` (no `label`): the visible text beside it is the
+ * announcement, and a labelled spinner would say it twice.
  *
- * THE PULSE is `lo-intent-pulse` (styles/index.css), not the skeleton's
- * `animate-pulse-visible`: same 2s opacity-only curve, but its trough is 0.75
- * rather than 0.7, and that 0.05 is the difference between `accent` clearing
- * branding.md § 3's 3:1 floor for a meaningful mark on every palette and
- * dipping to 2.77-2.99:1 on eight light ones, the default among them (design
- * review round 1, D1). Under reduced motion it sets `animation: none`, which
- * leaves the dot still at full opacity (branding.md § 3, the
- * indeterminate-liveness rule: one such element per surface, never a layout
- * property). Forced colours paint it `CanvasText`, like every other accent
- * status dot, since a background colour is otherwise dropped there. It is
- * `aria-hidden` - the label beside it is the announcement.
+ * Reduced motion: the global cap in `styles/index.css` truncates
+ * `animate-spin` to one 0.01ms iteration rather than cancelling it, and
+ * `spin` ends at `rotate(360deg)` - the identity - so the ring and its arc
+ * stay fully painted as a static mark. Forced colours flatten every author
+ * border to one system colour, which would draw a plain circle with nothing
+ * turning in it; system colours are honoured there, so the ring is
+ * `CanvasText` and the arc `Highlight`.
+ *
+ * THE PILL is the label's own ground: `accent` at `LOADING_PILL_ALPHA`
+ * (`bg-accent/10`, pinned in `theme-engine/contract-tables.mjs` and read back
+ * from this file by the contrast contract) - a translucent, role-derived tint,
+ * so it follows the theme and, over window glass, tints whatever is behind it
+ * rather than painting an opaque patch. It is what turns a line of text into
+ * an object the eye finds. No border and no shadow - it is a statement in the
+ * flow, not a floating surface - and NO VERTICAL PADDING (see "No height").
+ *
+ * THE SPINNER SITS OUTSIDE THE PILL, on the slot's own ground, and that is
+ * measured: on the tint the ring's `border-control` track falls under the 3:1
+ * the contract holds it to on every plain ground (2.77:1 on rosePineDawn over
+ * `canvas`, 2.99:1 on `localOperatorLight`, eight palettes under on `canvas`),
+ * and no alpha restores it - 4 % still leaves rosePineDawn at 2.98:1. Beside the
+ * pill, in the same flex row and gap, the spinner keeps every existing contract
+ * row while mark and label still read as one unit.
  *
  * THE LABEL is `text-ink-muted text-meta`, one step above the `ink-dim` the old
- * caption sat at; `ink-muted` is the secondary-text role and clears 4.5:1 on
- * every ground. Short, sentence case, trailing ellipsis.
+ * caption sat at; `ink-muted` is the secondary-text role, and on the pill it
+ * still clears 4.5:1 in every palette (the contract asserts it on the pill's
+ * composite over `canvas`, `surface` and `elevated`). Short, sentence case, trailing ellipsis.
  *
  * NO HEIGHT OF ITS OWN. The row is `text-meta` (12px x 1.45 = 17.4px) and the
- * dot is 8px centred inside it, so the indicator's line box is exactly one
+ * spinner is 16px centred beside it, and the pill adds only horizontal padding,
+ * so the indicator's line box is exactly one
  * `text-meta` line - the same 17.4px as the foot slot's `min-h-[1lh]` reserve
  * (`text-mono-sm`, also 12px x 1.45) and well inside the older-history slot's
  * `h-7`. Mounting it changes what is IN a slot, never the slot.
@@ -65,7 +81,7 @@ import type { FC } from "react";
  * STABLE ACROSS LABELS. A slot that moves from one loading state to another
  * (cold -> remote when the placement fact arrives) re-renders this same element
  * with a new `variant`; callers render it at one tree position with no `key`,
- * so the dot's animation does not restart and the label swaps in place.
+ * so the spinner's rotation does not restart and the label swaps in place.
  */
 
 export type ConversationLoadingVariant =
@@ -112,12 +128,17 @@ export const ConversationLoadingIndicator: FC<
 
 	const content = (
 		<>
+			<span data-lo-loading-mark={true} className="inline-flex shrink-0">
+				<Spinner
+					size="sm"
+					className="forced-colors:border-[CanvasText] forced-colors:border-t-[Highlight]"
+				/>
+			</span>
 			<span
-				aria-hidden="true"
-				data-lo-loading-dot={true}
-				className="lo-intent-pulse size-2 shrink-0 rounded-full bg-accent forced-colors:bg-[CanvasText]"
-			/>
-			<span className="min-w-0 truncate text-ink-muted text-meta">
+				data-lo-loading-pill={true}
+				// No `py-*` and no height: the pill must stay one `text-meta` line.
+				className="min-w-0 truncate rounded-full bg-accent/10 px-2 text-ink-muted text-meta"
+			>
 				{conversationLoadingLabel(variant)}
 			</span>
 		</>

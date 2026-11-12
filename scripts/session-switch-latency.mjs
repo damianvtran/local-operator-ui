@@ -148,10 +148,10 @@ const LIVE = ARGS.includes("--live");
  *   tombstone. The frame therefore asserts the state the design has now: the
  *   view on the refused conversation, the tombstone sentence in the pane, and
  *   the composer disabled under its own "This conversation is gone".
- * - `slow`: the same hydrating state at the pulse TROUGH. At shipped latency
+ * - `slow`: the same hydrating state held on a slow backend. At shipped latency
  *   this state is three frames and invisible; on a slow or remote backend it is
- *   the whole first impression, and it is the frame that exposes a placeholder
- *   whose animation takes it under the contract's floor.
+ *   the whole first impression. (It was shot at a pulse trough while the mark
+ *   pulsed; the spinner that replaced it has no trough.)
  * - `held-press`: a send pressed inside the read window. The state the arm used
  *   to photograph was `refusal` - the composer painting "Sending works once it
  *   is ready" - and the press no longer takes that route on this head: since
@@ -185,17 +185,6 @@ const FRAME_STATES = [
 	"settled",
 	"error",
 ];
-/**
- * The placeholder's pulse floor, as `styles/index.css` defines it.
- *
- * Held here as a number rather than read from the page because BOTH uses need
- * it: the capture waits for the trough, and `shoot` refuses a `slow` frame that
- * is not at it (design round 2, D8 - the floor moved from Tailwind's 0.5 to
- * 0.7 because the light brand palette's trough delivered deltaE00 1.63 against
- * the pane's canvas, under the ~2 the contract records; on the re-captured
- * frames the same measurement is 2.81 light and 4.26 dark).
- */
-const PULSE_TROUGH = 0.7;
 /**
  * WHICH states a `--frames` capture writes: `--states=hydrating,settled`.
  *
@@ -1086,55 +1075,13 @@ const prepareState = async (cdp, state) => {
 	}
 
 	/*
-	 * THE PULSE'S PHASE, waited for rather than hoped for.
-	 *
-	 * The pulse runs on its own two-second clock, so a frame that claims a phase
-	 * has to be shot AT that phase or it is a picture of an arbitrary moment with
-	 * a measurement beside it describing a state the pixels do not show. Two
-	 * phases are claimed here: `slow` is the TROUGH (the state D2/D8 is about,
-	 * where the bar's step is at its weakest), and the hydrating states are shot
-	 * at REST, which is what the "at rest" numbers beside them are measured
-	 * against. The readback in `shoot` records the opacity that was actually on
-	 * screen, so the frame states the phase it was taken at instead of the
-	 * harness asserting one it hoped for.
+	 * No phase to wait for. The loading mark used to pulse, and this waited for
+	 * the trough (`slow`) or rest (hydrating) before shooting; it is the shared
+	 * spinner now (design review round 1, D-M1), whose rotation changes no
+	 * colour or opacity, so every instant is the same frame as far as contrast is
+	 * concerned.
 	 */
-	if (state !== "settled" && state !== "error")
-		await awaitPulse(
-			cdp,
-			state === "slow" ? `<= ${PULSE_TROUGH + 0.03}` : ">= 0.995",
-		);
 };
-
-/**
- * Wait for the placeholder's first bar to reach a phase of its pulse.
- *
- * `comparison` is the test on the element's rendered opacity, written out
- * rather than passed as a number because the two phases are opposite
- * inequalities: a ceiling for the trough (the animation's floor, plus the same
- * small slack the first version of this wait used, so the sample lands near the
- * floor rather than exactly on it) and a floor for rest. The rest test is
- * 0.995 rather than 0.97 on purpose: both ends of the animation are eased with
- * `cubic-bezier(0.4, 0, 0.6, 1)`, whose slope at the extremes is flat, so near
- * the peak the opacity barely moves across the screenshot round trip - while
- * catching the curve mid-FALL at 0.97 would let the capture land below the
- * rest guard a frame later and fail for being right about a different moment.
- */
-const awaitPulse = (cdp, comparison) =>
-	cdp.send("Runtime.evaluate", {
-		awaitPromise: true,
-		expression: `(async () => {
-			const bar = () =>
-				document.querySelector('[aria-label="Loading conversation"]')
-					?.firstElementChild;
-			const deadline = performance.now() + 20_000;
-			while (performance.now() < deadline) {
-				const el = bar();
-				const opacity = el ? Number(getComputedStyle(el).opacity) : null;
-				if (opacity !== null && opacity ${comparison}) return;
-				await new Promise((r) => requestAnimationFrame(() => r()));
-			}
-		})()`,
-	});
 
 /**
  * Type into the composer and submit, the way the app's own user does it: real
@@ -1230,13 +1177,6 @@ const shoot = async (cdp, path, state, theme) => {
 		if (state === "mark") {
 			if (!seen.rowInView) refuse("the switched-to sidebar row is not in view");
 		}
-		if (
-			state === "slow" &&
-			!((seen.placeholderOpacity ?? 1) <= PULSE_TROUGH + 0.1)
-		)
-			refuse(
-				`the placeholder is not at its pulse trough (opacity ${seen.placeholderOpacity})`,
-			);
 		if (state === "held-press") {
 			/*
 			 * The state is the HELD PRESS, and the frame has to be a picture of both
@@ -1262,18 +1202,13 @@ const shoot = async (cdp, path, state, theme) => {
 				refuse(`a message reached the transport (${seen.sentMessages})`);
 		}
 		/*
-		 * The mirror of the trough guard: the hydrating states are measured as the
-		 * pulse's REST phase (that is what "at rest" means beside those numbers),
-		 * so a frame caught mid-fade is refused rather than published under a
-		 * measurement it does not show.
+		 * The loading mark carries no opacity animation (it is a spinner, not a
+		 * pulse), so anything under full opacity is a regression to a fading mark
+		 * that the frame's "at rest" numbers would not describe.
 		 */
-		if (
-			state !== "slow" &&
-			state !== "settled" &&
-			(seen.placeholderOpacity ?? 1) < 0.99
-		)
+		if (state !== "settled" && (seen.placeholderOpacity ?? 1) < 0.99)
 			refuse(
-				`the placeholder is not at the pulse's rest phase (opacity ${seen.placeholderOpacity})`,
+				`the loading mark is not fully opaque (opacity ${seen.placeholderOpacity})`,
 			);
 	}
 	const { data } = await cdp.send("Page.captureScreenshot", {

@@ -250,12 +250,21 @@ test("the caption is the shared loading indicator, set in the reading face", () 
 	);
 	assert.match(
 		markup,
-		/data-lo-loading-dot="true" class="lo-intent-pulse /,
-		"the pulsing dot",
+		/data-lo-loading-mark="true"[^>]*><span aria-hidden="true" class="[^"]*animate-spin/,
+		"the spinner, not a presence-style dot (design review round 1, D-M1)",
 	);
 	const label =
-		markup.match(new RegExp(`<span class="([^"]*)">${CAPTION}</span>`))?.[1] ??
-		"";
+		markup.match(
+			new RegExp(
+				`<span data-lo-loading-pill="true" class="([^"]*)">${CAPTION}</span>`,
+			),
+		)?.[1] ?? "";
+	assert.match(label, /bg-accent\/10/, "on its translucent accent pill");
+	assert.doesNotMatch(
+		label,
+		/(^| )(py|pt|pb|p|h|min-h)-/,
+		"the pill adds no height to the reserved row",
+	);
 	assert.match(label, /text-meta/, "the status register's size");
 	assert.match(
 		label,

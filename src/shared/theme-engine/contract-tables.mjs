@@ -4095,6 +4095,27 @@ export const PANEL_SEAM_ALPHA = 0.75;
  */
 export const ARRIVAL_BAND_ALPHA = 0.12;
 
+/*
+ * THE CONVERSATION-LOADING PILL (`conversation-loading-indicator.tsx`,
+ * `bg-accent/10`): the `accent` role at `LOADING_PILL_ALPHA` behind the loading
+ * indicator's `text-ink-muted` label. Design review round 1 (D-M1) gave the
+ * label a ground of its own so the indicator reads as an object rather than a
+ * footnote, and a ground nobody measures is the unlisted pairing this file
+ * exists to refuse. `evaluatePalette` asserts `inkMuted` at the text floor on the
+ * composite over every ground the indicator can mount on - the transcript's
+ * `canvas`, the pane's `surface`, and `elevated` for a slot inside a raised
+ * panel (worst 5.40:1, kanagawaLotus on canvas; 5.78:1 nightfox on elevated).
+ *
+ * The SPINNER is not on the pill, by measurement: on this composite its
+ * `borderControl` track would fall under the 3:1 that "spinner track against its
+ * ground" holds on every plain ground (2.77:1 rosePineDawn on canvas, eight
+ * palettes under), and no alpha restores it (4 % still leaves 2.98:1). It sits
+ * beside the pill on the slot's ground instead, so that row keeps meaning what it
+ * says. The alpha is read back from the component by the contract, the
+ * `PANEL_SEAM_ALPHA` pattern.
+ */
+export const LOADING_PILL_ALPHA = 0.1;
+
 /** The (drawn-on, faces) pair each panel seam can produce, per palette. */
 export const SEAM_PAIRS = [
 	["surface", "canvas"],

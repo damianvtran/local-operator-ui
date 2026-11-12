@@ -1775,17 +1775,35 @@ with a different label:
 | Older page: an earlier page in flight | the older-history slot's busy Button | `Loading earlier messages…` |
 | Remote: a peer's conversation whose history is not proven yet | whichever of the three slots above is waiting | `Syncing from your other device…` |
 
-The element is one `rounded-full` dot on `accent` — the liveness role (§ 2) —
-pulsing on `lo-intent-pulse`: opacity only, with a `0.75` trough because the
-skeleton's `0.7` takes `accent` under the § 3 floor of 3:1 on eight light
-palettes, and `animation: none` under reduced motion, so the dot stays fully
-visible (the § 3 indeterminate-liveness rule). Forced colours repaint it
-`CanvasText`. It is `aria-hidden`, beside a visible label at
-`text-meta text-ink-muted`, sentence case, trailing ellipsis. `ink-muted` is one step above the `ink-dim`
-the old caption used and the reason the state now reads as loading rather than
-as a footnote. No pill, no ground, no border, no shadow: it is a statement in
-the flow, not a floating surface, so on window glass the pane's own translucency
-shows through around it and the dot and label keep their ink roles. In its own
+The mark is the shared `Spinner` at `sm` (16px): an `accent` arc turning on a
+`border-control` ring, the one indeterminate-progress shape this app has. It
+replaced a pulsing `accent` dot (design review round 1, D-M1) because a small
+green dot beside a line of text reads as **presence** — online, connected — not
+as work in progress, which is exactly the "doesn't read as loading" the operator
+reported. Under reduced motion the global duration cap ends `spin` on its
+identity keyframe, so ring and arc stay painted as a static mark; forced colours
+repaint the ring `CanvasText` and the arc `Highlight` so the arc survives the
+border flattening. It is `aria-hidden`, beside a visible label at
+`text-meta text-ink-muted`, sentence case, trailing ellipsis. `ink-muted` is one
+step above the `ink-dim` the old caption used.
+
+The label sits in a pill: `rounded-full bg-accent/10 px-2`. The tint is the
+`accent` role at an alpha (`LOADING_PILL_ALPHA`, pinned in
+`theme-engine/contract-tables.mjs` and read back from the component by
+`pnpm check-themes`), so it follows the theme and, on window glass, tints what is
+behind it instead of painting an opaque patch. No border, no shadow — it is a
+statement in the flow, not a floating surface. The contract asserts `ink-muted`
+at 4.5:1 on the pill's composite over `canvas`, `surface` and `elevated` in every
+palette (worst 5.40:1, kanagawaLotus on `canvas`; `localOperatorLight` 6.70:1,
+`localOperatorDark` 7.70:1).
+
+**The spinner sits beside the pill, not in it**, in the same flex row and gap so
+the two read as one unit. Inside, the ring's `border-control` track would sit on
+the tint and lose the 3:1 the contract holds it to on every plain ground: 2.77:1
+on rosePineDawn over `canvas`, 2.99:1 on `localOperatorLight`, eight palettes
+under on `canvas` and five on `surface` — and no alpha fixes it (4 % still
+leaves rosePineDawn at 2.98:1, against 3.13:1 bare). On the slot's own ground the
+spinner keeps every existing row. In its own
 slot it is an `<output>`, named `Loading conversation` only in the cold case
 (over painted rows that name would contradict the screen, so the label alone
 is the status); inside the older-history Button it drops the live region,
@@ -1795,7 +1813,8 @@ keeps its own `text-body-sm text-ink-dim` line.
 **It never adds height.** Every case mounts into a slot that is already
 reserved: the foot slot is `min-h-[1lh]` of `text-mono-sm` (12px x 1.45 =
 17.4px) and the indicator's line box is one `text-meta` line (12px x 1.45 =
-17.4px, the 8px dot centred inside it); the older-history slot is a fixed `h-7`
+17.4px, the 16px spinner centred inside it, and the pill has no vertical
+padding — only `px-2`, which widens the indicator and moves no row); the older-history slot is a fixed `h-7`
 in every arm; the cold indicator stands where the rows will land, in a pane
 that holds nothing else. A label change between consecutive loading states of
 one slot (cold to remote when the placement fact arrives) re-renders the same

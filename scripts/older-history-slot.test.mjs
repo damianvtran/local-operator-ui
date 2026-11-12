@@ -353,14 +353,23 @@ test("a loading page renders the shared indicator inside the focus-keeping butto
 	const html = slot({ state: "loading" });
 	const inner = html.match(BUSY_BUTTON)?.[1] ?? "";
 	assert.match(inner, /data-lo-conversation-loading="older"/);
-	assert.match(inner, /data-lo-loading-dot="true"/, "the pulsing dot");
+	assert.match(inner, /data-lo-loading-mark="true"/, "the spinner mark");
+	assert.match(inner, /data-lo-loading-pill="true"/, "the label's pill");
 	assert.match(inner, /Loading earlier messages…/, "the visible label");
 	assert.equal(
 		inner.includes("<output"),
 		false,
 		"no live region nested in the button",
 	);
-	assert.equal(/animate-spin/.test(html), false, "the old spinner is gone");
+	// One spinner in the whole slot: the shared indicator's mark. The slot's own
+	// spinner idiom is gone; the indicator brought the app's one spinner back as
+	// its mark (design review round 1, D-M1).
+	assert.equal(html.match(/animate-spin/g)?.length, 1, "exactly one spinner");
+	assert.match(
+		inner,
+		/data-lo-loading-mark="true"[^>]*><span aria-hidden="true" class="[^"]*animate-spin/,
+		"and it is the indicator's mark",
+	);
 });
 
 test("a peer's unproven history says it is syncing, a proven one loads earlier messages", () => {
