@@ -30,6 +30,16 @@ export function useHubLinks(enabled: boolean) {
 		staleTime: 30_000,
 		refetchInterval: 60_000,
 		refetchIntervalInBackground: false,
+		/*
+		 * A returning window re-reads the inventory EVEN INSIDE `staleTime`
+		 * (operator report, 2026-11-11). The interval pauses while the window is
+		 * hidden, and a failed poll keeps the last good data, so a startup
+		 * snapshot's failure marks outlived the store that had already cleared
+		 * them. "always" makes coming back to the window the moment a mark is
+		 * re-proved; it is one local read, not a hub fetch.
+		 */
+		refetchOnWindowFocus: "always",
+		refetchOnReconnect: "always",
 		retry: retryDesktopQuery,
 	});
 }

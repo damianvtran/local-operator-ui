@@ -5,29 +5,21 @@ import { test } from "node:test";
 import { build } from "esbuild";
 
 /*
- * SPACE-HOLD DICTATION MUST ONLY ENGAGE ON DEAD SPACE (focus +
- * auto-repeat), AND THE SIDEBAR SCROLLER MUST NOT SCROLL ON SPACE.
+ * BARE SPACE NEVER ENGAGES DICTATION (the legacy hold gesture is deleted),
+ * AND THE SIDEBAR SCROLLER MUST NOT SCROLL ON SPACE.
  *
- * The operator report: focus sits somewhere invisible (the sidebar's scroller
- * `<div tabIndex={-1} data-sidebar-region="scroller">`, focused by a click on
- * its empty area, no focus ring), holding Space starts voice dictation, and
- * Chromium's own Space action scrolls the sidebar to the bottom.
+ * The bare-Space hold ("hold Space on dead space to dictate") was removed:
+ * it engaged dictation from a dead-space focus that a user in the composer
+ * did not expect, and its form on dead space was never the documented door.
+ * The modifier PTT binding (e.g. `alt-right-hold`) is the remaining hold
+ * door. What survives here: the sidebar scroller's own Space-is-dead
+ * predicate (`sidebar-space-dead.ts`, kept from the same round) so Space
+ * landing on the scroller never page-scrolls the conversation list.
  *
- * Root causes, driven here against the shipped manager:
- *  (a) `spaceFocusGuardRefuses()` refused bare-Space only for
- *      INPUT/TEXTAREA/contentEditable. Any other focused element — the
- *      scroller, a button, a link — let Space engage dictation. The legacy
- *      gesture is 'hold Space, outside any editable field', meant for DEAD
- *      space (focus on body), not an orphaned focus target.
- *  (b) The `event.repeat` branch returned before `engage()`, so only the
- *      first keydown got `preventDefault`; every auto-repeat keydown kept
- *      Chromium's default Space action = page-scroll of the focused scroller.
- *  (c) The sidebar scroller itself never ignored Space.
- *
- * Fix: bare-Space engages only when `document.activeElement` is null, body or
- * the document element; a repeating key for an engaged hold calls
- * `preventDefault()` before returning; the scroller calls `preventDefault()`
- * when Space lands on the scroller itself (rows keep their own behaviour).
+ * This file pins: (1) Space NEVER engages, whatever the focus (body, null,
+ * document element, scroller, button, input, textarea), and is never
+ * claimed; (2) the PTT modifier still engages with a focused element;
+ * (3) the scroller predicate and its chat-sidebar wiring.
  */
 
 const listeners = [];
@@ -102,7 +94,7 @@ const managerBundle = await build({
 	write: false,
 });
 const bundlePath = new URL(
-	`./_space-hold-focus-${process.pid}.mjs`,
+	`./_dictation-space-dead-${process.pid}.mjs`,
 	import.meta.url,
 );
 await writeFile(bundlePath, managerBundle.outputFiles[0].text);
@@ -177,71 +169,47 @@ const scrollerStandIn = () => ({
 	dataset: { sidebarRegion: "scroller" },
 });
 
-test("Space with a focused scroller div refuses dictation and never preventDefaults", () => {
-	const { starts, onKeyDown } = managerWithHandler();
-	setFocus(scrollerStandIn());
-	const event = keyEvent();
-	onKeyDown(event);
-	assert.deepEqual(starts, [], "dictation must not engage on the scroller");
-	assert.equal(
-		event.defaultPrevented,
-		false,
-		"the refused press is not claimed",
-	);
-});
-
-test("Space with a focused BUTTON refuses dictation", () => {
-	const { starts, onKeyDown } = managerWithHandler();
-	setFocus({ tagName: "BUTTON", isContentEditable: false });
-	const event = keyEvent();
-	onKeyDown(event);
-	assert.deepEqual(starts, [], "dictation must not engage on a button");
-	assert.equal(event.defaultPrevented, false);
-});
-
-test("Space with a focused INPUT or TEXTAREA still refuses", () => {
-	for (const tagName of ["INPUT", "TEXTAREA"]) {
+test("Space never engages dictation, whatever the focus, and is never claimed", () => {
+	// The bare-Space hold is deleted: handler.start must NOT be called and
+	// the keydown must NOT be prevented, on any of these focuses.
+	const focuses = [
+		fakeBody,
+		null,
+		fakeDocumentElement,
+		scrollerStandIn(),
+		{ tagName: "BUTTON", isContentEditable: false },
+		{ tagName: "INPUT", isContentEditable: false },
+		{ tagName: "TEXTAREA", isContentEditable: false },
+	];
+	for (const element of focuses) {
 		const { starts, onKeyDown } = managerWithHandler();
-		setFocus({ tagName, isContentEditable: false });
+		setFocus(element);
 		const event = keyEvent();
 		onKeyDown(event);
-		assert.deepEqual(starts, [], `dictation must not engage on ${tagName}`);
-		assert.equal(event.defaultPrevented, false);
+		assert.deepEqual(
+			starts,
+			[],
+			`dictation must not engage with focus ${element?.tagName ?? "null"}`,
+		);
+		assert.equal(event.defaultPrevented, false, "Space is never claimed");
 	}
 });
 
-test("Space on body engages dictation and the first keydown is claimed", () => {
+test("an auto-repeat of the PTT key while engaged is claimed (the hold owns the key)", () => {
 	const { starts, onKeyDown } = managerWithHandler();
 	setFocus(fakeBody);
-	const event = keyEvent();
-	onKeyDown(event);
-	assert.deepEqual(starts, ["start"], "dictation engages on dead space");
-	assert.equal(event.defaultPrevented, true, "engage claims the press");
-});
-
-test("Space with no active element engages dictation", () => {
-	const { starts, onKeyDown } = managerWithHandler();
-	setFocus(null);
-	const event = keyEvent();
-	onKeyDown(event);
-	assert.deepEqual(starts, ["start"]);
-	assert.equal(event.defaultPrevented, true);
-});
-
-test("Space on the document element engages dictation", () => {
-	const { starts, onKeyDown } = managerWithHandler();
-	setFocus(fakeDocumentElement);
-	const event = keyEvent();
-	onKeyDown(event);
-	assert.deepEqual(starts, ["start"]);
-	assert.equal(event.defaultPrevented, true);
-});
-
-test("an auto-repeat while engaged is claimed so the scroller never scrolls", () => {
-	const { starts, onKeyDown } = managerWithHandler();
-	setFocus(fakeBody);
-	onKeyDown(keyEvent());
-	const repeat = keyEvent({ repeat: true });
+	const binding = resolvePushToTalkBinding();
+	assert.ok(binding, "a PTT binding is resolved by default");
+	const first = keyEvent({
+		key: binding.code === "AltRight" ? "Alt" : "Meta",
+		code: binding.code,
+	});
+	onKeyDown(first);
+	const repeat = keyEvent({
+		key: binding.code === "AltRight" ? "Alt" : "Meta",
+		code: binding.code,
+		repeat: true,
+	});
 	onKeyDown(repeat);
 	assert.deepEqual(starts, ["start"], "a repeat never re-engages");
 	assert.equal(
@@ -251,23 +219,11 @@ test("an auto-repeat while engaged is claimed so the scroller never scrolls", ()
 	);
 });
 
-test("an auto-repeat while NOT engaged is ignored without claiming", () => {
-	const { starts, onKeyDown } = managerWithHandler();
-	setFocus(fakeBody);
-	const repeat = keyEvent({ repeat: true });
-	onKeyDown(repeat);
-	assert.deepEqual(starts, [], "a lone repeat starts nothing");
-	assert.equal(
-		repeat.defaultPrevented,
-		false,
-		"nothing to hold, nothing claimed",
-	);
-});
-
 test("the modifier PTT binding still engages with a focused element", () => {
 	const { starts, onKeyDown } = managerWithHandler();
 	setFocus(scrollerStandIn());
 	const binding = resolvePushToTalkBinding();
+	assert.ok(binding, "a PTT binding is resolved by default");
 	const event = keyEvent({
 		key: binding.code === "AltRight" ? "Alt" : "Meta",
 		code: binding.code,
@@ -276,7 +232,7 @@ test("the modifier PTT binding still engages with a focused element", () => {
 	assert.deepEqual(
 		starts,
 		["start"],
-		"the modifier binding never consults the guard",
+		"the modifier binding engages regardless of focus",
 	);
 	assert.equal(event.defaultPrevented, true);
 });

@@ -438,5 +438,21 @@
 	"ui.chat.canonical.notice.stopped_with_error": "Đã dừng do lỗi",
 	"ui.chat.canonical.notice.compaction_not_run": "Lần nén không được thực hiện: {detail}",
 	"ui.chat.canonical.notice.compaction_not_run_after_colon": "Lần nén không được thực hiện — {detail}",
-	"ui.chat.canonical.link_toolkit.actions_for": "Thao tác với {name}"
+	"ui.chat.canonical.link_toolkit.actions_for": "Thao tác với {name}",
+	"ui.chat.canonical.tool.never_sent_composed": "không được gửi · đã soạn {size}",
+	"ui.chat.canonical.tool.never_sent_empty": "không được gửi · chưa soạn gì",
+	"ui.chat.canonical.tool.composing_sized": "đang soạn · {size}",
+	"ui.chat.canonical.tool.composing_empty": "đang soạn",
+	"ui.chat.canonical.tool.queued_sized": "đang xếp hàng · {size}",
+	"ui.chat.canonical.tool.queued_empty": "đang xếp hàng",
+	"ui.chat.canonical.image_gen.state.queued": "Đang xếp hàng",
+	"ui.chat.canonical.image_gen.state.writing_request": "Đang viết yêu cầu…",
+	"ui.chat.canonical.image_gen.state.queue_ahead": "{count, plural, other {{count, number, ::group-off} yêu cầu trước}}",
+	"ui.chat.canonical.image_gen.state.running": "{material, select, video {Đang tạo video…} voiceover {Đang tạo lời thuyết minh…} sound_effect {Đang tạo hiệu ứng âm thanh…} other {Đang tạo hình ảnh…}}",
+	"ui.chat.canonical.image_gen.state.running_batch": "{material, select, video {{total, plural, other {Đang tạo # video…}}} voiceover {{total, plural, other {Đang tạo # lời thuyết minh…}}} sound_effect {{total, plural, other {Đang tạo # hiệu ứng âm thanh…}}} other {{total, plural, other {Đang tạo # hình ảnh…}}}}",
+	"ui.chat.canonical.image_gen.state.done": "{material, select, video {Đã tạo video} voiceover {Đã tạo lời thuyết minh} sound_effect {Đã tạo hiệu ứng âm thanh} other {Đã tạo hình ảnh}}",
+	"ui.chat.canonical.image_gen.state.done_batch": "{material, select, video {Loạt video} voiceover {Loạt lời thuyết minh} sound_effect {Loạt hiệu ứng âm thanh} other {Loạt hình ảnh}}",
+	"ui.chat.canonical.image_gen.state.already_finished": "Đã hoàn tất rồi.",
+	"ui.chat.canonical.image_gen.state.failed": "{material, select, video {Không thể tạo video.} voiceover {Không thể tạo lời thuyết minh.} sound_effect {Không thể tạo hiệu ứng âm thanh.} other {Không thể tạo hình ảnh.}}",
+	"ui.chat.canonical.image_gen.state.failed_batch": "{material, select, video {Loạt video không thành công.} voiceover {Loạt lời thuyết minh không thành công.} sound_effect {Loạt hiệu ứng âm thanh không thành công.} other {Loạt hình ảnh không thành công.}}"
 }

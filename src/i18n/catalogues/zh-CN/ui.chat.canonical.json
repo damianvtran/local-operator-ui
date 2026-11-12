@@ -438,5 +438,21 @@
 	"ui.chat.canonical.notice.stopped_with_error": "因出错而停止",
 	"ui.chat.canonical.notice.compaction_not_run": "上下文压缩未执行：{detail}",
 	"ui.chat.canonical.notice.compaction_not_run_after_colon": "上下文压缩未执行——{detail}",
-	"ui.chat.canonical.link_toolkit.actions_for": "{name}的操作"
+	"ui.chat.canonical.link_toolkit.actions_for": "{name}的操作",
+	"ui.chat.canonical.tool.never_sent_composed": "未发送 · 已编写{size}",
+	"ui.chat.canonical.tool.never_sent_empty": "未发送 · 未编写内容",
+	"ui.chat.canonical.tool.composing_sized": "正在编写 · {size}",
+	"ui.chat.canonical.tool.composing_empty": "正在编写",
+	"ui.chat.canonical.tool.queued_sized": "排队中 · {size}",
+	"ui.chat.canonical.tool.queued_empty": "排队中",
+	"ui.chat.canonical.image_gen.state.queued": "排队中",
+	"ui.chat.canonical.image_gen.state.writing_request": "正在编写请求……",
+	"ui.chat.canonical.image_gen.state.queue_ahead": "{count, plural, other {前面还有{count, number, ::group-off}个}}",
+	"ui.chat.canonical.image_gen.state.running": "{material, select, video {正在生成视频……} voiceover {正在生成旁白……} sound_effect {正在生成音效……} other {正在生成图像……}}",
+	"ui.chat.canonical.image_gen.state.running_batch": "{material, select, video {{total, plural, other {正在生成#个视频……}}} voiceover {{total, plural, other {正在生成#段旁白……}}} sound_effect {{total, plural, other {正在生成#个音效……}}} other {{total, plural, other {正在生成#张图像……}}}}",
+	"ui.chat.canonical.image_gen.state.done": "{material, select, video {已生成视频} voiceover {已生成旁白} sound_effect {已生成音效} other {已生成图像}}",
+	"ui.chat.canonical.image_gen.state.done_batch": "{material, select, video {视频批次} voiceover {旁白批次} sound_effect {音效批次} other {图像批次}}",
+	"ui.chat.canonical.image_gen.state.already_finished": "已经完成。",
+	"ui.chat.canonical.image_gen.state.failed": "{material, select, video {无法生成视频。} voiceover {无法生成旁白。} sound_effect {无法生成音效。} other {无法生成图像。}}",
+	"ui.chat.canonical.image_gen.state.failed_batch": "{material, select, video {视频批次生成失败。} voiceover {旁白批次生成失败。} sound_effect {音效批次生成失败。} other {图像批次生成失败。}}"
 }

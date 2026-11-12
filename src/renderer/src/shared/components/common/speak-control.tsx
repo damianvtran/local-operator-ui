@@ -1,4 +1,4 @@
-import { t } from "@shared/i18n";
+import { formatNumber, t } from "@shared/i18n";
 /**
  * @file speak-control.tsx
  * @description
@@ -291,7 +291,7 @@ export function useSpeakControl({
 			showInfoToast(
 				t(
 					"ui.common.speech.speak_control.reading_the_first_characters_the_rest_is_not_read_aloud",
-					{ tolocalestring: text.length.toLocaleString("en-US") },
+					{ tolocalestring: formatNumber(text.length) },
 				),
 			);
 		}

@@ -438,5 +438,21 @@
 	"ui.chat.canonical.notice.stopped_with_error": "Остановлено из-за ошибки",
 	"ui.chat.canonical.notice.compaction_not_run": "Сжатие не выполнено: {detail}",
 	"ui.chat.canonical.notice.compaction_not_run_after_colon": "Сжатие не выполнено — {detail}",
-	"ui.chat.canonical.link_toolkit.actions_for": "Действия для {name}"
+	"ui.chat.canonical.link_toolkit.actions_for": "Действия для {name}",
+	"ui.chat.canonical.tool.never_sent_composed": "не отправлено · написано {size}",
+	"ui.chat.canonical.tool.never_sent_empty": "не отправлено · ничего не написано",
+	"ui.chat.canonical.tool.composing_sized": "формируется · {size}",
+	"ui.chat.canonical.tool.composing_empty": "формируется",
+	"ui.chat.canonical.tool.queued_sized": "в очереди · {size}",
+	"ui.chat.canonical.tool.queued_empty": "в очереди",
+	"ui.chat.canonical.image_gen.state.queued": "В очереди",
+	"ui.chat.canonical.image_gen.state.writing_request": "Формирование запроса…",
+	"ui.chat.canonical.image_gen.state.queue_ahead": "{count, plural, one {впереди: {count, number, ::group-off}} few {впереди: {count, number, ::group-off}} many {впереди: {count, number, ::group-off}} other {впереди: {count, number, ::group-off}}}",
+	"ui.chat.canonical.image_gen.state.running": "{material, select, video {Генерация видео…} voiceover {Генерация озвучки…} sound_effect {Генерация звукового эффекта…} other {Генерация изображения…}}",
+	"ui.chat.canonical.image_gen.state.running_batch": "{material, select, video {{total, plural, one {Генерация # видео…} few {Генерация # видео…} many {Генерация # видео…} other {Генерация # видео…}}} voiceover {{total, plural, one {Генерация # озвучки…} few {Генерация # озвучек…} many {Генерация # озвучек…} other {Генерация # озвучек…}}} sound_effect {{total, plural, one {Генерация # звукового эффекта…} few {Генерация # звуковых эффектов…} many {Генерация # звуковых эффектов…} other {Генерация # звуковых эффектов…}}} other {{total, plural, one {Генерация # изображения…} few {Генерация # изображений…} many {Генерация # изображений…} other {Генерация # изображений…}}}}",
+	"ui.chat.canonical.image_gen.state.done": "{material, select, video {Видео создано} voiceover {Озвучка создана} sound_effect {Звуковой эффект создан} other {Изображение создано}}",
+	"ui.chat.canonical.image_gen.state.done_batch": "{material, select, video {Набор видео} voiceover {Набор озвучек} sound_effect {Набор звуковых эффектов} other {Набор изображений}}",
+	"ui.chat.canonical.image_gen.state.already_finished": "Уже завершено.",
+	"ui.chat.canonical.image_gen.state.failed": "{material, select, video {Не удалось создать видео.} voiceover {Не удалось создать озвучку.} sound_effect {Не удалось создать звуковой эффект.} other {Не удалось создать изображение.}}",
+	"ui.chat.canonical.image_gen.state.failed_batch": "{material, select, video {Не удалось создать набор видео.} voiceover {Не удалось создать набор озвучек.} sound_effect {Не удалось создать набор звуковых эффектов.} other {Не удалось создать набор изображений.}}"
 }

@@ -104,6 +104,13 @@ the chord a row already shows changes nothing; pressing its default while an
 override exists is the override's own reset (U3). The recorder's refusal sentence
 names the platform's own modifier key (U5).
 
+The two Speech to text rows (`keymap.start_recording`, `keymap.push_to_talk`)
+follow the same Clear/Reset rule: Clear stores the string sentinel `"none"`
+(a backend-owned row cannot store an empty value), Reset deletes the key and
+restores the default. A cleared row's field shows "No shortcut" and Reset stays
+visible while cleared. Cleared is distinct from invalid in every resolver:
+invalid falls back to the default, `"none"` is no door.
+
 ## The recipe for a seventh action
 
 1. Add the action to `KEYMAP_ACTIONS` (id, label, category, defaultChord,

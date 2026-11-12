@@ -52,7 +52,7 @@
 
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { t } from "@shared/i18n";
-import { useI18nLocale } from "@shared/i18n/use-locale";
+import { useTextDirection } from "@shared/i18n/use-document-direction";
 import { cn } from "@shared/lib/utils";
 import { type ReactNode, useEffect, useState } from "react";
 import {
@@ -252,6 +252,19 @@ export type ToolRowProps = {
 	 * for its whole sentence at the cost of a second line.
 	 */
 	summaryWrap?: boolean;
+	/**
+	 * The summary is a sentence the CATALOGUE wrote (`composing · 2.4 KB`,
+	 * `never sent`), not text built from the call's arguments.
+	 *
+	 * The summary cell forces `ltr` because it normally holds machine voice (a
+	 * path, a command, an identifier). Keyed status copy is the other kind: it is
+	 * written in the language and must read in that language's direction, or an
+	 * RTL row prints its datum at the start edge, ahead of the status word, and a
+	 * narrow row clips the status word first - the reverse of every LTR locale
+	 * (design review round 1, D1). Default false: every other caller's summary is
+	 * arguments, a name or a peer's text, and keeps the machine-voice direction.
+	 */
+	summaryIsCopy?: boolean;
 	outcome: ToolRowOutcome;
 	/**
 	 * How a `send` call's delivery ended, when the result stated it
@@ -904,6 +917,7 @@ export const ToolRow = ({
 	summaryFallback = null,
 	summaryHold = false,
 	summaryWrap = false,
+	summaryIsCopy = false,
 	outcome,
 	deliveryState = null,
 	settledVerb = null,
@@ -919,8 +933,10 @@ export const ToolRow = ({
 }: ToolRowProps) => {
 	/* A subscription, not a value: `outcomeLabel` resolves through `t()` when the
 	 * row renders, and an interface-language switch has to repaint the verdict
-	 * word rather than wait for the next stream event. */
-	useI18nLocale();
+	 * word rather than wait for the next stream event. `useTextDirection` is the
+	 * same subscription (it reads `useI18nLocale`) and also answers the locale's
+	 * direction, which a keyed-copy summary takes (see `summaryIsCopy`). */
+	const direction = useTextDirection();
 	const running = outcome === "running";
 	// The GROUND is gated on the `error` outcome alone, deliberately: see
 	// `neverSent` below, which states why a not-run row does not claim the wash.
@@ -1118,8 +1134,16 @@ export const ToolRow = ({
 					 * character: `tmp/qa-rtl/ledger.md/` reordered the slash onto the far
 					 * side of the run. `dir="ltr"` on an isolated run keeps the token's own
 					 * order without imposing direction on the row it sits in.
+					 *
+					 * EXCEPT keyed status copy (`summaryIsCopy`, design round 1, D1): words
+					 * the catalogue wrote take the LOCALE's direction - stated, not
+					 * `auto`, for the same reason the fold's units state it (an `auto`
+					 * isolate follows the first strong letter, and a copy that opens with
+					 * a Latin tool name would lay out against its row). In a left-to-right
+					 * locale that is `ltr` again, so every LTR row is byte-identical to
+					 * before; the size inside the copy is already its own FSI..PDI run.
 					 */
-					<bdi dir="ltr">{summaryText}</bdi>
+					<bdi dir={summaryIsCopy ? direction : "ltr"}>{summaryText}</bdi>
 				)}
 			</span>
 			<DiffCounters added={added} removed={removed} />

@@ -1,0 +1,208 @@
+{
+  "schema": 1,
+  "locale": "ru",
+  "namespace": "ui.chat.canonical",
+  "audit_date": "2026-11-11",
+  "audit_kind": "fresh independent audit of the COMBINED namespace bytes after the #1861-on-#1862 rebase (not a replacement, not a re-audit of a merged bundle)",
+  "subject": {
+    "repo": "damianvtran/local-operator-ui",
+    "pull_request": 1861,
+    "commit": "659ef7e44b7c",
+    "branch": "cand-rebased-unaudited",
+    "read_method": "git show only; nothing checked out, built, installed or generated"
+  },
+  "key_count": 442,
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "e8fd410766e5",
+    "model": "deepseek/deepseek-flash",
+    "independent_from_translator_session": true,
+    "actual_model_source": "harness session header for this run (\"Model: deepseek/deepseek-flash\"); no fallback declared or used"
+  },
+  "translators_of_record": [
+    {
+      "scope": "tool_row.verb.* (182 keys, PR #1862, on main)",
+      "agent": "i18n-translator",
+      "model": "openai/gpt-6.1-sol"
+    },
+    {
+      "scope": "tool.never_sent_* (2 keys, PR #1861)",
+      "agent": "i18n-translator",
+      "model": "anthropic/claude-sonnet-5-5"
+    }
+  ],
+  "style_guide": {
+    "path": "~/local-operator/i18n/style-guides/ru.md",
+    "sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+  },
+  "glossary": {
+    "path": "~/local-operator/i18n/glossary.md",
+    "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+      "sha256": "38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+      "sha256": "c258ab485de698eec85e81ffed506866e3b1e8caf29cb3ff434901388065b390"
+    },
+    "ru": {
+      "path": "src/i18n/catalogues/ru/ui.chat.canonical.json",
+      "sha256": "a84811e9c087aa79873ef756a2a268e298ebe4b6789d7dd834f4f51a127b4acb"
+    }
+  },
+  "reference_hashes_at_origin_main": {
+    "en": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765",
+    "context": "2e755f12e46bb6dded6dbf950eda6402a0b7bcb05e9489fa17f7369543f3ac7f",
+    "ru": "75ec2986a0248f8b36bb4e34b091f83da911e45ba731551457d58a837da95e64",
+    "note": "equal to the current ledger row / receipt l1verb-ru-r2.json, which therefore binds older bytes"
+  },
+  "checks_executed": [
+    "shasum -a 256 over the three git show outputs",
+    "au1861ru/mech.py (key set, order, duplicate keys)",
+    "au1861ru/order.py, order2.py (order divergence vs en and vs origin/main)",
+    "au1861ru/mech2.py (empty/whitespace/NFC/latin-token census)",
+    "au1861ru/mech3.py (BOM, CRLF, backtick/markup, quotes, trailing punctuation)",
+    "au1861ru/icu2.mjs (formatjs parser: arguments, plurals, selects, tags, number skeletons)",
+    "au1861ru/intl.mjs (Intl.NumberFormat ru short unit forms, ICU 78.3 / CLDR 48.0)",
+    "au1861ru/fit.mjs (widest rendered arm per message)",
+    "au1861ru/check-receipt2.mjs (deriveReceiptAudit / validateAuditSet / supportedStatus from the repo's own ledger-rules.mjs)"
+  ],
+  "checks_not_executed": [
+    "node scripts/i18n/check-i18n.mjs / generate.mjs --check / any node --test suite: refused under the memory guard and the read-only mandate; CI must run them",
+    "no translation or MT service was used at any point"
+  ],
+  "artifacts": [
+    {
+      "path": "audit-1861-ru.md",
+      "sha256": "e9d69fefd369c0f94e6f527cfd2146de8f3393a52c874066fd103f7758eb02e2",
+      "kind": "audit report"
+    },
+    {
+      "path": "au1861ru/audit.log",
+      "sha256": "9489dcf7db579913fe7d29ac478a08cd43608055f10ca12fa7fec8227c6c01fb",
+      "kind": "EXECUTION LOG (real command output)"
+    },
+    {
+      "path": "au1861ru/mech.py",
+      "sha256": "814151ff3589edf7332aa70c414ab5061d8d466815a9af9e228291f72ff1dea9",
+      "kind": "probe script"
+    },
+    {
+      "path": "au1861ru/mech2.py",
+      "sha256": "527c6f9696af58938ea67d3d01d7ba13ad3dcb49c93cdd62593bfe510ab45529",
+      "kind": "probe script"
+    },
+    {
+      "path": "au1861ru/mech3.py",
+      "sha256": "fe17f70421b5243f65c0e2d9680c9623d61978cbaa0d37193b2a160eeaa28fb7",
+      "kind": "probe script"
+    },
+    {
+      "path": "au1861ru/icu.mjs",
+      "sha256": "415baeac38d2406dec472e688c516f34c7f9cf6cce620cfe515d95c3dd32d13b",
+      "kind": "probe script (first pass)"
+    },
+    {
+      "path": "au1861ru/icu2.mjs",
+      "sha256": "36177d36974780e1b14a5e6223f6e1ba867f753ca2b5f539fab210b2468c5cd6",
+      "kind": "probe script (strict ICU parity)"
+    },
+    {
+      "path": "au1861ru/intl.mjs",
+      "sha256": "ea89f00f3498820b8f21ab48d49ec87578e9d1bf3cb7f1dd0c925f353d1ef7f3",
+      "kind": "probe script (CLDR ru unit forms)"
+    },
+    {
+      "path": "au1861ru/fit.mjs",
+      "sha256": "09155592344edbaba00f90d61129adefc7317edb0a69f8aba119dae51a658c18",
+      "kind": "probe script (widest rendered arm)"
+    },
+    {
+      "path": "au1861ru/order.py",
+      "sha256": "c1ae1cf23d568507ce46c7c8905f3d4740e7b5fdbaa6a940a5a4e0e8907635c1",
+      "kind": "probe script"
+    },
+    {
+      "path": "au1861ru/order2.py",
+      "sha256": "56a1a47c1cdbbfb3613d671e289ae47e7ea774e0c49c2f09242c5e8ef8a6a997",
+      "kind": "probe script"
+    },
+    {
+      "path": "au1861ru/check-receipt2.mjs",
+      "sha256": "d337ca9a9dbc02b7377a5e18810d152b8acec31027d7f859a89b8cb2d04daaa2",
+      "kind": "probe script (receipt validation via repo ledger-rules.mjs)"
+    },
+    {
+      "path": "au1861ru/ledger-rules.mjs",
+      "sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6",
+      "kind": "read-only extraction of scripts/i18n/ledger-rules.mjs at 659ef7e44b7c, imported by the probe"
+    }
+  ],
+  "audit_notes_not_execution_log": "The report's prose is analysis and interpretation. Only au1861ru/audit.log holds command output, and it holds a re-run of the two decisive probes plus the input hashes; the remaining probes' outputs are quoted in the report's sections 2-5.",
+  "current_report_verdict": {
+    "status": "clean-with-findings",
+    "ledger_status": "audited",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "M1",
+      "M2",
+      "N1",
+      "N2",
+      "N3",
+      "N4"
+    ],
+    "counts": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 2,
+      "nit": 4
+    },
+    "finding_scope_note": "all six are pre-existing: every affected value is byte-identical to origin/main and untouched by this PR"
+  },
+  "original_lost_evidence": null,
+  "new_report_is_original": true,
+  "new_report_is_historical_R2_recreation": false,
+  "backdated": false,
+  "repo_writes": "none — this auditor is read-only; record, receipt draft and probes live in the session scratchpad and must be copied into i18n/audits/evidence/ru/ui.chat.canonical/<audit-id>/ and i18n/receipts/ by the implementing session",
+  "ledger_command_for_implementer": "node scripts/i18n/ledger-assemble.mjs --locale ru --file src/i18n/catalogues/ru/ui.chat.canonical.json --auditor-instance e8fd410766e5 --auditor-model deepseek/deepseek-flash --result clean-with-findings --receipt i18n/receipts/e8fd410766e5.json --scope \"whole ui.chat.canonical namespace (442 keys) at 659ef7e44b7c, focused on the 2 size keys\" --note \"see i18n/audits/evidence/ru/ui.chat.canonical/e8fd410766e5-b1861/\"",
+  "receipt_draft": {
+    "scratchpad_path": "au1861ru/receipt.e8fd410766e5.json",
+    "sha256": "4df70a4dc704641a03838ef552e365fc3948208d25efaf9b0c3e7274cad39000",
+    "destination": "i18n/receipts/e8fd410766e5.json",
+    "derived_by_repo_rules": {
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 2,
+        "nit": 4
+      },
+      "supported_status_with_assembler_row_shape": "audited"
+    }
+  },
+  "observations": [
+    {
+      "id": "O1",
+      "note": "composing/queued phases still render raw English template literals in canonical-transcript.tsx (not introduced by this PR, no gate flags them) - keying gap for the coder lane"
+    },
+    {
+      "id": "O2",
+      "note": "pre-existing key-order mismatch: fold.count.actions_partial at ru 248 vs en 240, identical at origin/main and at the head; no gate enforces order"
+    },
+    {
+      "id": "O3",
+      "note": "new sub-namespace ui.chat.canonical.tool.* beside tool_row.* - English-side naming choice, outside locale scope"
+    },
+    {
+      "id": "O4",
+      "note": "worktree checkout is fbecdf64fc6 (260 keys, pre-rebase), NOT the candidate 659ef7e44b7c (442 keys, branch cand-rebased-unaudited); read the commit object, never the checkout"
+    },
+    {
+      "id": "O5",
+      "note": "read-only respected: worktree git status empty, HEAD and branch unchanged"
+    }
+  ]
+}

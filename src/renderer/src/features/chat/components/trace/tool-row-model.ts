@@ -13,7 +13,7 @@
  * cell grid — but which fact lands in which column, and which fact is dropped
  * first when there is no room, are decisions this file keeps identical.
  */
-import { type WithoutParams, t } from "@shared/i18n";
+import { type WithoutParams, formatByteQuantity, t } from "@shared/i18n";
 import { bridgeRow, bridgeSummary, bridgeVerb } from "./bridge-row-model";
 
 /**
@@ -1202,9 +1202,18 @@ function fixed1(value: number): string {
  * at a glance, which is the whole point of the field.
  */
 export function formatBytes(count: number): string {
-	if (count < 1024) return `${count} B`;
-	if (count < 1024 * 1024) return `${fixed1(count / 1024)} KB`;
-	return `${fixed1(count / (1024 * 1024))} MB`;
+	// `fixed1` keeps the TUI's half-even tenth; the shared helper only spells the
+	// already-rounded number and unit for the active locale.
+	const oneDecimal = { minimumFractionDigits: 1, maximumFractionDigits: 1 };
+	if (count < 1024)
+		return formatByteQuantity(count, "B", { maximumFractionDigits: 0 });
+	if (count < 1024 * 1024)
+		return formatByteQuantity(Number(fixed1(count / 1024)), "KB", oneDecimal);
+	return formatByteQuantity(
+		Number(fixed1(count / (1024 * 1024))),
+		"MB",
+		oneDecimal,
+	);
 }
 
 /**

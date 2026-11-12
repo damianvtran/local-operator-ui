@@ -1,0 +1,128 @@
+{
+ "audit_id": "s16a-au-zh-CN",
+ "audit_kind": "translation-audit (single independent pass; second pass not requested)",
+ "locale": "zh-CN",
+ "namespace": "ui.chat.canonical",
+ "file_group": "s16a — 14 new keys: tool.composing_* / tool.queued_* / image_gen.state.* (tool-row status words and generation-card state lines)",
+ "audit_date": "2026-11-11",
+ "key_count": 14,
+ "source_commit": "93a61605b059ada503d75da6e9e38e8ef14e1b67",
+ "status": "passed",
+ "scope": "Translator draft (LLM translator) audited against the English catalogue at 93a61605 and its context sidecar. Catalogue audit only: not rendered fit, activation/eligibility or release approval. The 14 values are NOT yet applied to src/i18n/catalogues/zh-CN/ui.chat.canonical.json (that file still matches ledger target 4176670606…).",
+ "translator": {
+  "agent": "i18n-translator",
+  "model": "anthropic/claude-sonnet-5-5",
+  "session": "manager session 3ef6295a5545 (drafts under its scratchpad s16a-drafts/)",
+  "note": "Translating agent named in the audit brief; this auditor did not translate, edit or back-translate any value."
+ },
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "07b0fc8f8d80",
+  "instance": "s16a-au-zh-CN",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "session model header (/model line: deepseek/deepseek-flash); no fallback observed",
+  "independent_from_translator_session": true,
+  "readiness": "native-fluent catalogue review by reasoning only; no translation API/SDK/MT service used, no back-translation"
+ },
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+   "sha256": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd",
+   "note": "14 new keys at the end of the file (456 keys total); group keys verified present, no key added or dropped"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+   "sha256": "ef8a12dea1835c241af3a166754322ce093af88592ec625036211458a50accac",
+   "note": "carries all 14 group entries (role/tone/length/note/placeholders); scripts/i18n/context-parity.mjs exit 0"
+  },
+  "target_locale": {
+   "path": "scratchpad of manager session 3ef6295a5545 (/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16a-drafts/zh-CN-s16a.json)",
+   "sha256": "cbc586651c9e1f37b57a85a84701a213dad5b1761f9bab4e41b70012cfdc83cf",
+   "note": "sha256 matches the hash stated in the audit brief"
+  },
+  "target_catalogue_on_disk": {
+   "path": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+   "sha256": "4176670606e68058e498a36006ba8c770af64489ec77d77e78d3a2754ab2ddf0",
+   "note": "audited as the shipped-terminology reference only; it does not yet contain these 14 keys"
+  }
+ },
+ "current_report_verdict": {
+  "status": "passed",
+  "unresolved_blocker_major_count": 0,
+  "counts": {
+   "blocker": 0,
+   "major": 0,
+   "minor": 0,
+   "nit": 3
+  },
+  "finding_ids": [
+   "N1",
+   "N2",
+   "N3"
+  ]
+ },
+ "audit_rounds": [
+  {
+   "round": 1,
+   "instance": "s16a-au-zh-CN",
+   "session": "07b0fc8f8d80",
+   "model": "deepseek/deepseek-flash",
+   "keys_audited": 14,
+   "status": "passed",
+   "mechanical": "run-audit.sh -> checks.mjs: key-set parity (14/14), placeholder names/types identical, every message parses under intl-messageformat 12.1.3, plural categories = CLDR ['other'] only (1 + 4 nested), every select carries all four branches, ::group-off kept on queue_ahead, no leftover braces, widths all narrower than English (audit.log §1-§7)",
+   "findings": [
+    {
+     "id": "N1",
+     "severity": "NIT",
+     "key": "ui.chat.canonical.image_gen.state.done_batch"
+    },
+    {
+     "id": "N2",
+     "severity": "NIT",
+     "key": "ui.chat.canonical.image_gen.state.already_finished"
+    },
+    {
+     "id": "N3",
+     "severity": "NIT",
+     "key": "ui.chat.canonical.image_gen.state.queue_ahead"
+    }
+   ]
+  }
+ ],
+ "artifacts": {
+  "report": "i18n/audits/evidence/zh-CN/ui.chat.canonical/s16a-au-zh-CN/report.md",
+  "audit_log": "i18n/audits/evidence/zh-CN/ui.chat.canonical/s16a-au-zh-CN/audit.log",
+  "checks_script": "i18n/audits/evidence/zh-CN/ui.chat.canonical/s16a-au-zh-CN/checks.mjs",
+  "runner": "i18n/audits/evidence/zh-CN/ui.chat.canonical/s16a-au-zh-CN/run-audit.sh",
+  "receipt": "i18n/audits/evidence/zh-CN/ui.chat.canonical/s16a-au-zh-CN/receipt.json",
+  "sha256": {
+   "report.md": "6f980676c0b5ccc6bdaaa434446e3b178c9fe0c656359da2c9d15df29ac1de61",
+   "audit.log": "82d6f2dbc038d96de1c2c1d0fbba50366e8b488de4d6cab60d23d9a07da77da3",
+   "checks.mjs": "5e25749c1b9c29fe649568c571d1692d7be9de25e1533f1dfc19a3a0661e3adb",
+   "run-audit.sh": "6f7bd0ab359b95532d6e6e83dcd15f75aed0a2058634d0b197749c60e1a7a03a",
+   "receipt.json": "76e0b63190f77f633022d161de3b9ebe1a59074e2a4b1196d472a45f15ff7c5f"
+  }
+ },
+ "staging": "The five artifact files currently sit in this auditor's session scratchpad directory s16a-au-zh-CN/ and are UNTRACKED. Paths above are the canonical tracked locations; they must be copied there verbatim before the bundle is presented as repository evidence. Hashes in `artifacts.sha256` are of the staged files and stay valid through a byte-identical copy.",
+ "execution_evidence": {
+  "audit.log": "REAL captured stdout of run-audit.sh (bash > audit.log): input sha256 values, key-set parity, ICU/plural/select integrity, formatted output for counts 0/1/2/3/5/11/21/22/100/1000000 and every material, width comparison, ellipsis census of the shipped zh-CN catalogues, translator-claim verification. plus a read-only context-parity run",
+  "audit_notes_not_execution_log": [
+   "The semantic/idiom/terminology reasoning in report.md (and the shipped-copy greps quoted in it) is audit notes; only audit.log carries executed command output."
+  ]
+ },
+ "ledger_row": "NOT ASSEMBLED. i18n/ledger.json's zh-CN/ui.chat.canonical entry records source 38f10696… / target 4176670606… for the 442-key file on disk; these 14 values are unapplied and the English source hash has moved to d6d47d31…, so scripts/i18n/ledger-check.mjs would refuse or record bytes that are not the shipped copy. Apply step and the auditor fields to append are in report.md (Ledger row).",
+ "original_lost_evidence": {
+  "status": "none - no prior evidence for this audit was lost",
+  "original_path": null,
+  "expected_original_sha256": null
+ },
+ "new_report_is_original": true,
+ "new_report_is_historical_R2_recreation": false,
+ "backdated": false,
+ "limitations": [
+  "Catalogue audit of a draft; rendered fit, activation and release readiness are not claimed. Width evidence is cell arithmetic against the English, not rendered pixels.",
+  "No second independent pass; the brief did not request one (the group includes failure copy, so that call is the manager's).",
+  "The auditor is not a certified native zh-CN speaker: high-level reading by reasoning plus shipped-copy evidence, stated in report.md.",
+  "Evidence files are untracked until the manager's commit includes them."
+ ]
+}

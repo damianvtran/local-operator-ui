@@ -1,6 +1,9 @@
 import type { HubLinkAction } from "@shared/api/local-operator/hub-link-actions";
-import type { HubDirectionStatus } from "@shared/api/local-operator/hub-links";
-import { t } from "@shared/i18n";
+import type {
+	HubDirectionStatus,
+	HubUnresolvedDetail,
+} from "@shared/api/local-operator/hub-links";
+import { formatDateTime, t } from "@shared/i18n";
 
 /**
  * Translate service codes at the point of use. No raw exception or private body
@@ -86,6 +89,64 @@ export function hubFailureReasonText(status: HubDirectionStatus): string {
 		status.error_class,
 		t("ui.hub.links.incoming_failed_no_reason"),
 	);
+}
+
+/**
+ * The reason-and-freshness tail a COLLAPSED mark's tooltip carries for a
+ * direction that holds an error, or "" when it holds none.
+ *
+ * WHY (operator report, 2026-11-11): the sidebar's failed mark read only
+ * "Retry Incoming update for <team> at <source>" - no cause, and no way to tell
+ * a live failure from a snapshot the window had kept since startup. The cause is
+ * the same sentence the popover already shows (`hubFailureReasonText`: core's
+ * scrubbed `safe_message`, else the translated class), and the check time is the
+ * service's own `last_checked_at`, so a stale mark says how old it is. Both are
+ * existing catalogue keys; nothing here is new copy.
+ */
+export function hubMarkFailureDetail(status: HubDirectionStatus): string {
+	if (!status.error_class) return "";
+	const reason = hubFailureReasonText(status);
+	const checked = status.last_checked_at;
+	if (!checked || !Number.isFinite(Date.parse(checked))) return reason;
+	// Date AND time: a same-day stale snapshot is the case this exists for, and
+	// a bare `formatDateTime` renders the date alone.
+	const time = formatDateTime(new Date(checked), {
+		dateStyle: "medium",
+		timeStyle: "short",
+	});
+	return `${reason} ${t("ui.hub.status.last_checked", { time })}`;
+}
+
+/**
+ * Why an unresolved ("?") roster row has no confirmed source, from core's
+ * additive `detail` code on `links_snapshot` unresolved rows (local-operator
+ * PR #3807).
+ *
+ * WHY: the bare "?" read as a fault waiting for a fix, while one of its causes
+ * is a dead end core holds ON PURPOSE (`legacy-scope-ambiguous`: a pre-origin
+ * public pull stored the publisher's tenant, so certifying it as an org link
+ * would bypass public-egress consent). Saying which case it is lets the reader
+ * tell "wait for the next check" from "this needs your confirmation".
+ *
+ * Returns null for an absent code (a core from before the field) and for a code
+ * this build does not know: the mark then keeps its existing label alone rather
+ * than guessing a meaning (the rule `hubOutcomeText` and `hubReasonText` follow).
+ * This only EXPLAINS the state; the scope-confirmation write is a deferred
+ * product decision and is deliberately not offered here.
+ */
+export function hubUnresolvedDetailText(
+	detail: HubUnresolvedDetail | null | undefined,
+): string | null {
+	switch (detail) {
+		case "legacy-scope-ambiguous":
+			return t("ui.hub.links.unresolved_detail_scope_ambiguous");
+		case "scope-unknown":
+			return t("ui.hub.links.unresolved_detail_scope_unknown");
+		case "no-origin":
+			return t("ui.hub.links.unresolved_detail_no_origin");
+		default:
+			return null;
+	}
 }
 
 /**

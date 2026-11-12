@@ -23,7 +23,7 @@ const bundled = await build({
 		"@features": "./src/renderer/src/features",
 	},
 });
-const { hubReasonText } = await import(
+const { hubReasonText, hubMarkFailureDetail } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString("base64")}`
 );
 
@@ -50,5 +50,57 @@ test("origin-conflict still reports merge lineage", () => {
 	assert.equal(
 		hubReasonText("origin-conflict"),
 		"This copy includes changes from another source. Automatic publication is paused.",
+	);
+});
+
+/*
+ * Operator report 2026-11-11: the collapsed failed mark said only "Retry
+ * Incoming update for <team> at <source>". Its tooltip tail now carries the
+ * service's own reason and when it was last checked, so a snapshot kept since
+ * startup reads as old rather than current.
+ */
+const direction = (over) => ({
+	state: "failed",
+	classification: null,
+	enabled: true,
+	last_checked_at: null,
+	last_success_at: null,
+	attempts: 0,
+	next_retry_at: null,
+	error_class: null,
+	error_subclass: null,
+	safe_message: null,
+	operation_id: null,
+	model_used: null,
+	summary: {},
+	backup_receipt: null,
+	...over,
+});
+
+test("a healthy direction adds nothing to the mark tooltip", () => {
+	assert.equal(hubMarkFailureDetail(direction({ state: "idle" })), "");
+});
+
+test("a rejected sign-in names the hub's reason and the check time", () => {
+	const detail = hubMarkFailureDetail(
+		direction({
+			error_class: "no-credential",
+			error_subclass: "rejected",
+			safe_message:
+				"the hub did not accept the sign-in (HTTP 401: invalid API key format)",
+			last_checked_at: "2026-11-11T15:55:16Z",
+		}),
+	);
+	assert.match(
+		detail,
+		/^Reason: the hub did not accept the sign-in \(HTTP 401: invalid API key format\) Last checked: .+$/,
+	);
+	assert.ok(!detail.includes("2026-11-11T15:55:16Z"), "the time is formatted");
+});
+
+test("a failure with no stored sentence falls back to the translated class", () => {
+	assert.equal(
+		hubMarkFailureDetail(direction({ error_class: "no-credential" })),
+		"Sign in to the hub before trying this action.",
 	);
 });

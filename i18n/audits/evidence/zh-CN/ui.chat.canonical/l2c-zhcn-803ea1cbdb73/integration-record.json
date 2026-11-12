@@ -1,0 +1,33 @@
+{
+ "schema": 1,
+ "authored_by": "integrating coder session (agent coder), NOT the auditor",
+ "purpose": "Lands the independent combined-bytes audit of ui.chat.canonical (#1861 rebased onto #1862) as portable evidence; the auditor's own files are untouched.",
+ "locale": "zh-CN",
+ "namespace": "ui.chat.canonical",
+ "candidate_commit": "659ef7e44b7ccb4800e9853ef355ea58b49854cc",
+ "auditor_session": "803ea1cbdb73",
+ "auditor_model": "deepseek/deepseek-flash",
+ "ledger_receipt": "i18n/receipts/803ea1cbdb73.json",
+ "files": {
+  "audit.log": {
+   "sha256": "bc6cf0b99919ebd78efe9f0ff38ef376df97610b758e1b8df82c113a37f99d10",
+   "origin": "auditor execution log, byte-for-byte"
+  },
+  "receipt.json": {
+   "sha256": "4401b4db88cbb67b10c5dfca4358611d79ebb55008ed37c99acaab4771d40ca3",
+   "origin": "auditor-authored for es, ru, zh-CN (bytes unchanged); INTEGRATOR-TRANSCRIBED for fr, hi, vi, ur (see its provenance block)"
+  },
+  "record.json": {
+   "sha256": "65f4d9be7017bf4e0382760b64894cb4f82a184b8b9e7eae2742af6c2f39fa7f",
+   "origin": "auditor-authored (ru, zh-CN, ur only); zh-CN is the auditor's record.suggested.json renamed, bytes unchanged"
+  },
+  "report.md": {
+   "sha256": "ad3404985b26a79781e8bdac66f5dfdb70c8129fbeb978bce7bdc048a2a9564f",
+   "origin": "auditor report, copied byte-for-byte from the auditor session scratchpad"
+  },
+  "verify.log": {
+   "sha256": "ccd89c546966e5ddcf8a890fd9b12745b4d425bf69b6aaec0b67ed7b4b0db44c",
+   "origin": "INTEGRATOR re-check, not the auditor"
+  }
+ }
+}

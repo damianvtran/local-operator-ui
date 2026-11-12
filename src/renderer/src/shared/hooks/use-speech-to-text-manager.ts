@@ -3,6 +3,7 @@ import {
 	desktopResult,
 } from "@shared/api/local-operator/desktop-api";
 import { useCallback, useEffect, useRef } from "react";
+import { isClearedShortcut } from "../../../../shared/recording-shortcut";
 
 /**
  * Priority levels for speech-to-text handlers
@@ -153,18 +154,50 @@ export const pushToTalkTokenForCode = (
 const platformDefaultBinding = (): PushToTalkBinding =>
 	pushToTalkBindingForToken("alt-right-hold") as PushToTalkBinding;
 
-let resolvedPushToTalkBinding: PushToTalkBinding | null = null;
+/**
+ * `null` means nothing has been resolved yet (cold start): the platform
+ * default applies. A stored cleared sentinel resolves to `null` here — no
+ * door. An invalid/unknown value is NOT a resolution at all: it falls back
+ * to the platform default exactly as a missing row does. The cleared state
+ * is kept apart so it can never be mistaken for invalid (which would
+ * silently re-bind the default).
+ */
+let resolvedPushToTalk: PushToTalkBinding | null | undefined = undefined;
 
 /**
  * Bumped by every direct write of the binding (`setPushToTalkBinding`). A read
  * that started before the bump carries the value from BEFORE the write, so its
  * answer is dropped rather than allowed to undo the save that followed it.
+ * A cleared write bumps it like any other write: a cleared save must not be
+ * undone by a stale read that left before it.
  */
 let bindingGeneration = 0;
 
-/** The live binding: the last resolved row, or the platform default. */
-export const resolvePushToTalkBinding = (): PushToTalkBinding =>
-	resolvedPushToTalkBinding ?? platformDefaultBinding();
+/**
+ * The live binding: `null` when the row is explicitly cleared (no door);
+ * otherwise the last resolved binding, or the platform default. TypeScript
+ * sees the `| null` so every consumer must handle the cleared door, never
+ * reading `.label` off a cleared binding.
+ */
+export const resolvePushToTalkBinding = (): PushToTalkBinding | null => {
+	if (resolvedPushToTalk === null) return null;
+	return resolvedPushToTalk ?? platformDefaultBinding();
+};
+
+function applyPushToTalkValue(raw: unknown): void {
+	if (isClearedShortcut(raw)) {
+		resolvedPushToTalk = null;
+		return;
+	}
+	const binding = pushToTalkBindingForToken(raw);
+	// An invalid/unknown value is not a resolution: it falls back to the
+	// platform default, exactly as a missing row or a dead transport does.
+	// The fallback is recorded as the default binding (not left as the
+	// previous binding): an invalid read must not keep serving a binding
+	// that is no longer what the row says. Cleared stays distinct: it is
+	// resolved above, never a fallback.
+	resolvedPushToTalk = binding ?? platformDefaultBinding();
+}
 
 /**
  * Apply a value the caller just PERSISTED, so the very next keydown matches it.
@@ -177,7 +210,7 @@ export const resolvePushToTalkBinding = (): PushToTalkBinding =>
  */
 export const setPushToTalkBinding = (raw: unknown): void => {
 	bindingGeneration += 1;
-	resolvedPushToTalkBinding = pushToTalkBindingForToken(raw);
+	applyPushToTalkValue(raw);
 };
 
 let pushToTalkRefresh: Promise<void> | null = null;
@@ -220,7 +253,7 @@ export const refreshPushToTalkBinding = async (): Promise<void> => {
 						(setting) => setting.key === "keymap.push_to_talk",
 					);
 					if (generation === bindingGeneration) {
-						resolvedPushToTalkBinding = pushToTalkBindingForToken(row?.value);
+						applyPushToTalkValue(row?.value);
 					}
 				} catch {
 					/* Keep the last resolution (see the doc above). */
@@ -391,31 +424,6 @@ export class SpeechToTextManager {
 	};
 
 	/**
-	 * Whether a bare-Space hold may engage: only on dead space. Space anywhere a
-	 * focus target lives must keep its own meaning there - a space in an input,
-	 * a press on a focused button.
-	 *
-	 * DEAD SPACE IS `null`, `<body>` or the document element. The older shape
-	 * refused only INPUT/TEXTAREA/contentEditable, so a bare `tabIndex={-1}`
-	 * scroller sitting under an invisible focus (the sidebar's conversation
-	 * list, focused by a click on its empty area) or a focused button, link or
-	 * select engaged dictation on Space - the press meant for that element.
-	 *
-	 * THE GUARD IS KEPT FOR THE LEGACY BINDING ONLY. The modifier combo does not
-	 * consult it: `AltRight` types nothing in a textarea, so suppressing it
-	 * while the user is typing would be the old defect (the composer is exactly
-	 * where someone dictating sits) wearing a different key.
-	 */
-	private spaceFocusGuardRefuses(): boolean {
-		const activeElement = document.activeElement as HTMLElement | null;
-		if (!activeElement) return false;
-		return (
-			activeElement !== document.body &&
-			activeElement !== document.documentElement
-		);
-	}
-
-	/**
 	 * The highest-priority handler that would accept a hold right now.
 	 */
 	private highestActive(): SpeechToTextHandler | null {
@@ -427,7 +435,7 @@ export class SpeechToTextManager {
 
 	/**
 	 * Dispatch a hold. `preventDefault` so the binding never types: that is
-	 * load-bearing for the modifier combo exactly as it was for Space.
+	 * load-bearing for the modifier combo.
 	 */
 	private engage(event: KeyboardEvent): void {
 		const active = this.highestActive();
@@ -457,22 +465,20 @@ export class SpeechToTextManager {
 		 * An IME composition owns its keys; a hold is never part of one.
 		 */
 		if (event.isComposing) return;
+		// A cleared push-to-talk binding is no door: read the resolution once
+		// (not twice): `ptt` is null exactly when cleared.
 		const ptt = resolvePushToTalkBinding();
-		const isPttKey = event.code === ptt.code;
-		const isSpace = event.code === "Space";
+		const isPttKey = ptt !== null && event.code === ptt.code;
 		if (event.repeat) {
 			/*
 			 * Auto-repeat is the key still being held, not a second press, and
 			 * not a second key. While a hold is engaged the hold OWNS the key
 			 * until keyup, so the repeat must be claimed too: only the first
 			 * keydown gets `preventDefault` through `engage()`, and every
-			 * repeat that falls through keeps Chromium's default - for Space
-			 * that is the page-scroll of whatever the focus orphan (the
-			 * sidebar's scroller) holds, which is the list running to the
-			 * bottom while the user just holds Space. When nothing is engaged
-			 * a repeat is still ignored entirely, as before.
+			 * repeat that falls through keeps Chromium's default. When nothing
+			 * is engaged a repeat is still ignored entirely, as before.
 			 */
-			if (isPttKey || isSpace) {
+			if (isPttKey) {
 				if (this.engaged) event.preventDefault();
 				return;
 			}
@@ -515,10 +521,6 @@ export class SpeechToTextManager {
 			this.releaseHold("abort");
 			return;
 		}
-		if (isSpace) {
-			if (this.spaceFocusGuardRefuses()) return;
-			this.engage(event);
-		}
 	};
 
 	/**
@@ -528,7 +530,7 @@ export class SpeechToTextManager {
 	private handleKeyUp = (event: KeyboardEvent): void => {
 		if (!this.engaged) return;
 		const ptt = resolvePushToTalkBinding();
-		if (event.code === ptt.code || event.code === "Space") {
+		if (ptt !== null && event.code === ptt.code) {
 			event.preventDefault();
 			this.releaseHold("release");
 		}

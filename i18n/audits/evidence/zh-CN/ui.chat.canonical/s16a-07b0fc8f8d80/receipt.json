@@ -1,0 +1,68 @@
+{
+ "schema": 1,
+ "instance": "07b0fc8f8d80",
+ "locale": "zh-CN",
+ "namespace": "ui.chat.canonical",
+ "audit_date": "2026-11-11",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "instance": "07b0fc8f8d80",
+  "session": "07b0fc8f8d80",
+  "model": "deepseek/deepseek-flash",
+  "independent_from_translator_session": true,
+  "actual_model_source": "as stated in the auditor's own record (session runtime model header deepseek/deepseek-flash); no fallback was reported"
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "scope": "the 14 NEW tool-state / image-generation status keys of ui.chat.canonical for zh-CN (PR #1870, S16a), audited as the translator's draft zh-CN-s16a.json (sha256 cbc586651c9e1f37b57a85a84701a213dad5b1761f9bab4e41b70012cfdc83cf); the other 442 keys are byte-identical to the origin/main bytes covered by the superseded row audits (verify.log)",
+ "sha256": {
+  "zh-CN": "d8c6e5cec877feabe15133d4e1391f295d45920d050528005b242b8029958a29",
+  "en": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd",
+  "context": "ef8a12dea1835c241af3a166754322ce093af88592ec625036211458a50accac"
+ },
+ "findings": [
+  {
+   "severity": "NIT",
+   "id": "N1",
+   "key": "ui.chat.canonical.image_gen.state.done_batch",
+   "detail": "`批次` has 0 shipped occurrences; `批量` reads adverbially in the noun slot; no change requested"
+  },
+  {
+   "severity": "NIT",
+   "id": "N2",
+   "key": "ui.chat.canonical.image_gen.state.already_finished",
+   "detail": "auditor proposes `已完成。` for `已经完成。` (optional)"
+  },
+  {
+   "severity": "NIT",
+   "id": "N3",
+   "key": "ui.chat.canonical.image_gen.state.queue_ahead",
+   "detail": "width of the datum beside the state word; accepted as-is"
+  }
+ ],
+ "provenance": {
+  "kind": "BINDING RECEIPT: verdict, counts, model and session are transcribed from the auditor's own record/report; this file was written by the integrating coder session (agent coder), NOT by the auditor. The auditor audited the 14-key draft fragment, so no auditor-authored file can name the landed catalogue hash; this receipt names it, and verify.log proves the 14 landed values equal the audited draft. Finding ids/keys/headlines are lifted from the auditor record/report (the report is authoritative for detail).",
+  "auditor_record_instance_label": "s16a-au-zh-CN",
+  "source_report": {
+   "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/s16a-07b0fc8f8d80/report.md",
+   "sha256": "6f980676c0b5ccc6bdaaa434446e3b178c9fe0c656359da2c9d15df29ac1de61"
+  },
+  "auditor_record": {
+   "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/s16a-07b0fc8f8d80/record.json",
+   "sha256": "f7f255db8fe222113e44fa698b91d976c3dc19ea199262a526d385b98c7c36de"
+  },
+  "auditor_authored_receipt": {
+   "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/s16a-07b0fc8f8d80/auditor-receipt.json",
+   "sha256": "76e0b63190f77f633022d161de3b9ebe1a59074e2a4b1196d472a45f15ff7c5f",
+   "note": "the auditor's own receipt, bytes unchanged; it names the draft hash (and a placeholder/draft target), not the landed catalogue, so it cannot back the ledger row"
+  },
+  "audited_draft": {
+   "file": "zh-CN-s16a.json",
+   "sha256": "cbc586651c9e1f37b57a85a84701a213dad5b1761f9bab4e41b70012cfdc83cf"
+  },
+  "landed_value_proof": {
+   "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/s16a-07b0fc8f8d80/verify.log",
+   "sha256": "74905230b6feac926d504f3b6eddd456dd6700e884ed56b011ef8f9ac6226f4e"
+  }
+ }
+}
