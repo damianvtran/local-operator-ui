@@ -4793,8 +4793,10 @@ type CanonicalSessionsState = {
 	 * Re-stage the pane's ACTIVE draft under a picked identity, carrying the
 	 * box's text across the key flip. See the action's own comment for why the
 	 * flip is a remount and why the text has to move with it (issue #780).
+	 * `undefined` re-stages a bare (default-agent) draft: the New chat header's
+	 * target chip offers "Default agent" as a way back from a picked identity.
 	 */
-	restageDraft: (target: ChatTarget, carry?: string) => string;
+	restageDraft: (target: ChatTarget | undefined, carry?: string) => string;
 	/**
 	 * The missing-session notice's way out: a fresh new chat, carrying the box the
 	 * dead conversation still held.
@@ -7817,6 +7819,13 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			 */
 			restageDraft: (target, carry) => {
 				const from = get().activeDraftKey;
+				/*
+				 * NO TARGET IS A FRESH BARE DRAFT, never the source row reused: a
+				 * bare draft's key is a `draft:<uuid>` mint, and `stageDraft()` with
+				 * no target mints one, so "back to the default agent" lands on a row
+				 * that carries no `target` and the first send creates a default
+				 * session (`sessions.create` omits `target`).
+				 */
 				const key = get().stageDraft(target);
 				// The flip is a remount; `carryComposerText` is the one expression that
 				// moves the box with it (its own note carries the why and the source's

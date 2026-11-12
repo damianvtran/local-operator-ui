@@ -21,8 +21,8 @@
  * - **In-flight rows** (`dropLiveRecords`): a streaming assistant row or a
  *   running tool row painted from a cache is a line that will never advance,
  *   because the deltas that would advance it were consumed by the previous
- *   mount. The stale caption is what stops a cached paint from reading as live
- *   state, but a caption cannot make a half-written row honest.
+ *   mount. The stale indicator is what stops a cached paint from reading as live
+ *   state, but an indicator cannot make a half-written row honest.
  * - **`argsByCall`**: the session-scale call-id -> arguments map exists to label
  *   live rows whose arguments have not landed yet, and it is rebuilt by the
  *   reconcile page. Retained rows carry their own `args` on the tool record, so

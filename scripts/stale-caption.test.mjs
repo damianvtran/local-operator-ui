@@ -103,7 +103,13 @@ const { CanonicalTranscript } = await import(bundlePath.href);
 // same reason, as `ask-options.test.mjs`.
 await unlink(bundlePath);
 
-const CAPTION = "Showing the last saved view — checking for newer messages.";
+/*
+ * The cached paint's words since 2026-11-11: the shared conversation-loading
+ * indicator's `revalidating` label, which replaced the faint caption ("Showing
+ * the last saved view — checking for newer messages.") the operator reported as
+ * easy to miss and not reading as loading.
+ */
+const CAPTION = "Checking for new messages…";
 
 const TS = 1_760_000_000_000;
 const RECORDS = [
@@ -141,13 +147,20 @@ const TRANSCRIPT = {
  * conversation-gone branch, which replaces the whole status block, is not the
  * one taken.
  */
-function renderPane({ stale, missing = false }) {
+function renderPane({
+	stale,
+	missing = false,
+	remote = false,
+	records = RECORDS,
+	awaitingHydration = false,
+	hydrationProven = true,
+}) {
 	return renderToStaticMarkup(
 		createElement(
 			QueryClientProvider,
 			{ client: queryClient },
 			createElement(CanonicalTranscript, {
-				transcript: TRANSCRIPT,
+				transcript: { ...TRANSCRIPT, records },
 				gate: null,
 				waiting: false,
 				loadingOlder: false,
@@ -158,6 +171,9 @@ function renderPane({ stale, missing = false }) {
 				hydrated: true,
 				stale,
 				missing,
+				remote,
+				awaitingHydration,
+				hydrationProven,
 				error: null,
 				onAnswer: () => {},
 			}),
@@ -183,7 +199,7 @@ test("an authoritative paint states no caption at all", () => {
 });
 
 const FOOT_WITH_CAPTION = new RegExp(
-	`data-lo-transcript-foot="true"[^>]*>\\s*<span[^>]*data-lo-stale-caption="true"[^>]*>${CAPTION}</span>`,
+	`data-lo-transcript-foot="true"[^>]*>\\s*<div data-lo-stale-caption="true"><output[^>]*data-lo-conversation-loading="revalidating"[^>]*>[\\s\\S]*?${CAPTION}</span></output></div>`,
 );
 
 test("the caption sits in the foot slot, the row reserved for the working line", () => {
@@ -210,23 +226,137 @@ test("the caption sits in the foot slot, the row reserved for the working line",
 	);
 });
 
-test("the caption is set in the reading face, not the machine face", () => {
+test("the caption is the shared loading indicator, set in the reading face", () => {
 	// A sentence about state is not machine output: the foot slot's own
-	// `font-mono` (the working line's voice) is overridden on the caption.
+	// `font-mono` (the working line's voice) is overridden on the indicator, and
+	// the label takes the status register's size at `ink-muted` - one step above
+	// the `ink-dim` the faint caption sat at.
 	const markup = renderPane({ stale: true });
 	const tag =
-		markup.match(/<span[^>]*data-lo-stale-caption="true"[^>]*>/)?.[0] ?? "";
+		markup.match(
+			/<output[^>]*data-lo-conversation-loading="revalidating"[^>]*>/,
+		)?.[0] ?? "";
 	assert.match(
 		tag,
 		/font-sans/,
-		"the caption overrides the foot slot's monospace",
+		"the indicator overrides the foot slot's monospace",
 	);
-	assert.match(tag, /text-meta/, "and takes the status register's size");
+	// A live region, but not one named "Loading conversation": the rows under it
+	// are already readable (code review round 1, C3).
+	assert.equal(
+		tag.includes("aria-label"),
+		false,
+		"the revalidating region is not named as a load",
+	);
 	assert.match(
-		tag,
-		/truncate/,
-		"and stays on one line, inside the reserved row",
+		markup,
+		/data-lo-loading-mark="true"[^>]*><span aria-hidden="true" class="[^"]*animate-spin/,
+		"the spinner, not a presence-style dot (design review round 1, D-M1)",
 	);
+	const label =
+		markup.match(
+			new RegExp(
+				`<span data-lo-loading-pill="true" class="([^"]*)">${CAPTION}</span>`,
+			),
+		)?.[1] ?? "";
+	assert.match(label, /bg-accent\/10/, "on its translucent accent pill");
+	assert.doesNotMatch(
+		label,
+		/(^| )(py|pt|pb|p|h|min-h)-/,
+		"the pill adds no height to the reserved row",
+	);
+	assert.match(label, /text-meta/, "the status register's size");
+	assert.match(
+		label,
+		/text-ink-muted/,
+		"at the secondary-text ink, not ink-dim",
+	);
+	assert.match(label, /truncate/, "and one line, inside the reserved row");
+	assert.equal(markup.includes(`text-ink-dim text-meta">${CAPTION}`), false);
+});
+
+test("a peer's cached paint says it is syncing from the other device", () => {
+	const markup = renderPane({
+		stale: true,
+		remote: true,
+		hydrationProven: false,
+	});
+	assert.match(
+		markup,
+		/data-lo-stale-caption="true"><output[^>]*data-lo-conversation-loading="remote"/,
+	);
+	assert.ok(markup.includes("Syncing from your other device…"));
+	assert.equal(count(markup), 0, "one label per state, not both");
+});
+
+test("a cold open renders the same indicator where the rows will land", () => {
+	// No rows and a page owed: the pane holds the indicator in the content
+	// column (`transcriptPaneHoldsPlaceholder`), and for a peer's conversation it
+	// names the sync instead.
+	const cold = renderPane({
+		stale: false,
+		records: [],
+		awaitingHydration: true,
+	});
+	assert.match(cold, /<output[^>]*data-lo-conversation-loading="cold"/);
+	assert.ok(cold.includes("Loading conversation…"));
+	const remote = renderPane({
+		stale: false,
+		records: [],
+		awaitingHydration: true,
+		remote: true,
+		hydrationProven: false,
+	});
+	assert.match(remote, /<output[^>]*data-lo-conversation-loading="remote"/);
+	assert.ok(remote.includes("Syncing from your other device…"));
+});
+
+/*
+ * The settings-filter hold, armed the way a real window arms it: a persisted
+ * `display.hide_cross_session: true` seed and a settings answer still owed (a
+ * server render never resolves the query). The hold is LOCAL - the pane is
+ * waiting on this window's own settings read - so it is a sync only when the
+ * peer conversation's history is also unproven (code review round 1, C2).
+ */
+function renderFilterHeld(props) {
+	const previous = globalThis.localStorage;
+	const seed = JSON.stringify({ "display.hide_cross_session": true });
+	globalThis.localStorage = {
+		getItem: (key) => (key === "display-settings" ? seed : null),
+		setItem: () => {},
+		removeItem: () => {},
+	};
+	try {
+		return renderPane({ stale: false, ...props });
+	} finally {
+		globalThis.localStorage = previous;
+	}
+}
+
+test("a local filter hold over a peer's proven history says loading, not syncing", () => {
+	const proven = renderFilterHeld({ remote: true, hydrationProven: true });
+	// The control that the hold is what is rendering: rows withheld, the cold
+	// slot standing in for them.
+	assert.match(proven, /<output[^>]*data-lo-conversation-loading="cold"/);
+	assert.equal(proven.includes(RECORDS[1].text), false, "rows are withheld");
+	assert.ok(proven.includes("Loading conversation…"));
+	assert.equal(proven.includes("Syncing from your other device…"), false);
+	const unproven = renderFilterHeld({ remote: true, hydrationProven: false });
+	assert.match(unproven, /<output[^>]*data-lo-conversation-loading="remote"/);
+	assert.ok(unproven.includes("Syncing from your other device…"));
+});
+
+test("a peer's cached paint over proven history is a revalidation, not a sync", () => {
+	const markup = renderPane({
+		stale: true,
+		remote: true,
+		hydrationProven: true,
+	});
+	assert.match(
+		markup,
+		/data-lo-stale-caption="true"><output[^>]*data-lo-conversation-loading="revalidating"/,
+	);
+	assert.equal(markup.includes("Syncing from your other device…"), false);
 });
 
 const RESERVE = /aria-hidden="true" class="@container\/olderhistory /;
