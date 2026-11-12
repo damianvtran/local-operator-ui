@@ -2732,30 +2732,30 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "6ad5fa8c4d8924cacc11df6b336e14684d86eb010b669863dcf058de7aca77dd",
-			"target_sha256": "167a478925e972f7c7c19d06a74d43b60b81c928be738e9a850f20d7490f593a",
+			"source_sha256": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731",
+			"target_sha256": "ff55a933e7bdff8f171a11f678ccd16b12367afca3b26e1b9262c92cddad006f",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-12",
-				"note": "Mixed provenance (one translator field per row): 4 temporary_deleted.* keys by lopdev coder (UI #1874); 14 status keys by i18n-translator claude-sonnet-5-5 (#1870); 5 loading.* keys per #1875 (row 15686088b7ce); rest per superseded rows. Auditor same model as coder: disclosed."
+				"note": "Mixed provenance (one translator field per row): 4 temporary_deleted.* keys by lopdev coder (UI #1874); #1870 keys by i18n-translator claude-sonnet-5-5; #1875 loading.* and #1876 media/sound keys per superseded upstream rows. Auditor = coder model: disclosed."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-12",
-					"result": "clean",
-					"instance": "94f6e325484c-canon2-es",
+					"result": "clean-with-findings",
+					"instance": "94f6e325484c-canon3-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 1,
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/94f6e325484c-canon2-es.json",
-					"receipt_sha256": "d8e667b210e76517d010ae90c287b1b43187902f91c4aaa836d95703d4c99023",
-					"scope": "merged ui.chat.canonical, UI #1874 @ 7177d51df: 5 #1875 loading.* + 4 temporary_deleted.* keys"
+					"receipt": "i18n/receipts/94f6e325484c-canon3-es.json",
+					"receipt_sha256": "37f1ae99bbe237203d3617645c6623fbb83c6b4f03bd774ee3afeeffcfe33910",
+					"scope": "merged ui.chat.canonical, UI #1874 @ fa3c17b63: #1876 media/sound keys + 4 temporary_deleted.* keys"
 				}
 			],
 			"status": "audited",
@@ -3266,6 +3266,29 @@
 							"receipt_sha256": "60f9f9cde7bd24c5ae2ecf59b7acbdf88d7e68d9fcb737722ad78870eba3b9ef",
 							"scope": "whole merged file at c213a0616: #1870's 14 status keys + this PR's 5 loading.* keys; seam review + merge-integrity proof",
 							"note": "Post-merge re-bind (PR #1875); 0 new findings; 4 carried nits (3311618b2a8b). Detail: i18n/receipts/15686088b7ce-es.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6ad5fa8c4d8924cacc11df6b336e14684d86eb010b669863dcf058de7aca77dd",
+					"target_sha256": "167a478925e972f7c7c19d06a74d43b60b81c928be738e9a850f20d7490f593a",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean",
+							"instance": "94f6e325484c-canon2-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/94f6e325484c-canon2-es.json",
+							"receipt_sha256": "d8e667b210e76517d010ae90c287b1b43187902f91c4aaa836d95703d4c99023",
+							"scope": "merged ui.chat.canonical, UI #1874 @ 7177d51df: 5 #1875 loading.* + 4 temporary_deleted.* keys"
 						}
 					],
 					"status": "audited"
@@ -14767,30 +14790,30 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "6ad5fa8c4d8924cacc11df6b336e14684d86eb010b669863dcf058de7aca77dd",
-			"target_sha256": "24c3abe09f43c9de2de809e7c1347228652880b45545f468ea8e8cc22178771f",
+			"source_sha256": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731",
+			"target_sha256": "e7e0a64cd4a279eb99b991eebc5e22b40d5902ff5df74e95cbeab438aea43645",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-12",
-				"note": "Mixed provenance (one translator field per row): 4 temporary_deleted.* keys by lopdev coder (UI #1874); 14 status keys by i18n-translator claude-sonnet-5-5 (#1870); 5 loading.* keys per #1875 (row 15686088b7ce); rest per superseded rows. Auditor same model as coder: disclosed."
+				"note": "Mixed provenance (one translator field per row): 4 temporary_deleted.* keys by lopdev coder (UI #1874); #1870 keys by i18n-translator claude-sonnet-5-5; #1875 loading.* and #1876 media/sound keys per superseded upstream rows. Auditor = coder model: disclosed."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-12",
-					"result": "clean",
-					"instance": "94f6e325484c-canon2-fr",
+					"result": "clean-with-findings",
+					"instance": "94f6e325484c-canon3-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 1,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/94f6e325484c-canon2-fr.json",
-					"receipt_sha256": "e5437a89c28cce7a7eebd1131254e74b33871ac59141c02a5f5acdfd9a27a1cf",
-					"scope": "merged ui.chat.canonical, UI #1874 @ 7177d51df: 5 #1875 loading.* + 4 temporary_deleted.* keys"
+					"receipt": "i18n/receipts/94f6e325484c-canon3-fr.json",
+					"receipt_sha256": "9c4ebbbfb93d5dbccccbf7ea62049e8b2e1fe333007fec99873c9088de84c046",
+					"scope": "merged ui.chat.canonical, UI #1874 @ fa3c17b63: #1876 media/sound keys + 4 temporary_deleted.* keys"
 				}
 			],
 			"status": "audited",
@@ -15316,6 +15339,29 @@
 							"receipt_sha256": "357b88f435e501c5bf7c3a34bff3fa5b01e161372b1f68343aa3e8db7265d835",
 							"scope": "whole merged file at c213a0616: #1870's 14 status keys + this PR's 5 loading.* keys; seam review + merge-integrity proof",
 							"note": "Post-merge re-bind (PR #1875); 0 new findings; 2 carried nits (2105ebeeb3e9). Detail: i18n/receipts/15686088b7ce-fr.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6ad5fa8c4d8924cacc11df6b336e14684d86eb010b669863dcf058de7aca77dd",
+					"target_sha256": "24c3abe09f43c9de2de809e7c1347228652880b45545f468ea8e8cc22178771f",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean",
+							"instance": "94f6e325484c-canon2-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/94f6e325484c-canon2-fr.json",
+							"receipt_sha256": "e5437a89c28cce7a7eebd1131254e74b33871ac59141c02a5f5acdfd9a27a1cf",
+							"scope": "merged ui.chat.canonical, UI #1874 @ 7177d51df: 5 #1875 loading.* + 4 temporary_deleted.* keys"
 						}
 					],
 					"status": "audited"
@@ -27298,13 +27344,13 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "6ad5fa8c4d8924cacc11df6b336e14684d86eb010b669863dcf058de7aca77dd",
-			"target_sha256": "799a864cd75bc0153a7f1768ec57125033bddf92bbbfdc0cf1a43a43752d91d8",
+			"source_sha256": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731",
+			"target_sha256": "060d7a7ce641bdcb01e5b33a0d967af53d11b06d2e97499ae684cc74bbf4dd34",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-12",
-				"note": "Mixed provenance (one translator field per row): 4 temporary_deleted.* keys by lopdev coder (UI #1874); 14 status keys by i18n-translator claude-sonnet-5-5 (#1870); 5 loading.* keys per #1875 (row 15686088b7ce); rest per superseded rows. Auditor same model as coder: disclosed."
+				"note": "Mixed provenance (one translator field per row): 4 temporary_deleted.* keys by lopdev coder (UI #1874); #1870 keys by i18n-translator claude-sonnet-5-5; #1875 loading.* and #1876 media/sound keys per superseded upstream rows. Auditor = coder model: disclosed."
 			},
 			"auditors": [
 				{
@@ -27312,16 +27358,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-12",
 					"result": "clean-with-findings",
-					"instance": "94f6e325484c-canon2-hi",
+					"instance": "94f6e325484c-canon3-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 1
 					},
-					"receipt": "i18n/receipts/94f6e325484c-canon2-hi.json",
-					"receipt_sha256": "fd0f14a41eb60a3b4897a4fe12e29600a1104caec5a1675daf8cae3b0424b457",
-					"scope": "merged ui.chat.canonical, UI #1874 @ 7177d51df: 5 #1875 loading.* + 4 temporary_deleted.* keys"
+					"receipt": "i18n/receipts/94f6e325484c-canon3-hi.json",
+					"receipt_sha256": "df022fd5442ca19b1f583fa12761a1c32448eeb999019430f538c80e25c46f46",
+					"scope": "merged ui.chat.canonical, UI #1874 @ fa3c17b63: #1876 media/sound keys + 4 temporary_deleted.* keys"
 				}
 			],
 			"status": "audited",
@@ -27830,6 +27876,29 @@
 							"receipt_sha256": "2bd34eae0c97ba3a1d2ea7dfbda81054b3e482a3d4b6369e709e1bde80ab0fe2",
 							"scope": "whole merged file at c213a0616: #1870's 14 status keys + this PR's 5 loading.* keys; seam review + merge-integrity proof",
 							"note": "Post-merge re-bind (PR #1875); 0 new findings; none carried. Detail: i18n/receipts/15686088b7ce-hi.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6ad5fa8c4d8924cacc11df6b336e14684d86eb010b669863dcf058de7aca77dd",
+					"target_sha256": "799a864cd75bc0153a7f1768ec57125033bddf92bbbfdc0cf1a43a43752d91d8",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "94f6e325484c-canon2-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/94f6e325484c-canon2-hi.json",
+							"receipt_sha256": "fd0f14a41eb60a3b4897a4fe12e29600a1104caec5a1675daf8cae3b0424b457",
+							"scope": "merged ui.chat.canonical, UI #1874 @ 7177d51df: 5 #1875 loading.* + 4 temporary_deleted.* keys"
 						}
 					],
 					"status": "audited"
@@ -39412,13 +39481,13 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "6ad5fa8c4d8924cacc11df6b336e14684d86eb010b669863dcf058de7aca77dd",
-			"target_sha256": "52f07b972c18d5853d43e557bf8e8432bd84097f6f1c757f4bcbb20db12f02a8",
+			"source_sha256": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731",
+			"target_sha256": "595666fd8f34ab80ccfc4e51d6ed0dbdca606760fb50fe21c11473eedc4a1737",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-12",
-				"note": "Mixed provenance (one translator field per row): 4 temporary_deleted.* keys by lopdev coder (UI #1874); 14 status keys by i18n-translator claude-sonnet-5-5 (#1870); 5 loading.* keys per #1875 (row 15686088b7ce); rest per superseded rows. Auditor same model as coder: disclosed."
+				"note": "Mixed provenance (one translator field per row): 4 temporary_deleted.* keys by lopdev coder (UI #1874); #1870 keys by i18n-translator claude-sonnet-5-5; #1875 loading.* and #1876 media/sound keys per superseded upstream rows. Auditor = coder model: disclosed."
 			},
 			"auditors": [
 				{
@@ -39426,16 +39495,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-12",
 					"result": "clean",
-					"instance": "94f6e325484c-canon2-ru",
+					"instance": "94f6e325484c-canon3-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/94f6e325484c-canon2-ru.json",
-					"receipt_sha256": "ecca57bc6bee416b033fea90a0e70cb4ad749679fb33868b038614f0246bd43e",
-					"scope": "merged ui.chat.canonical, UI #1874 @ 7177d51df: 5 #1875 loading.* + 4 temporary_deleted.* keys"
+					"receipt": "i18n/receipts/94f6e325484c-canon3-ru.json",
+					"receipt_sha256": "fbefaf0396d96634c6272fa93d0f4b0272a4b7e0fb9db985670cb2f2edf0c53a",
+					"scope": "merged ui.chat.canonical, UI #1874 @ fa3c17b63: #1876 media/sound keys + 4 temporary_deleted.* keys"
 				}
 			],
 			"status": "audited",
@@ -39944,6 +40013,29 @@
 							"receipt_sha256": "f5e5bfd99fdce322ee147650a0b72ea9474a16c696562d89f250bf985966f6d7",
 							"scope": "whole merged file at c213a0616: #1870's 14 status keys + this PR's 5 loading.* keys; seam review + merge-integrity proof",
 							"note": "Post-merge re-bind (PR #1875); 0 new findings; 4 carried nits (db260f728ba9). Detail: i18n/receipts/15686088b7ce-ru.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6ad5fa8c4d8924cacc11df6b336e14684d86eb010b669863dcf058de7aca77dd",
+					"target_sha256": "52f07b972c18d5853d43e557bf8e8432bd84097f6f1c757f4bcbb20db12f02a8",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean",
+							"instance": "94f6e325484c-canon2-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/94f6e325484c-canon2-ru.json",
+							"receipt_sha256": "ecca57bc6bee416b033fea90a0e70cb4ad749679fb33868b038614f0246bd43e",
+							"scope": "merged ui.chat.canonical, UI #1874 @ 7177d51df: 5 #1875 loading.* + 4 temporary_deleted.* keys"
 						}
 					],
 					"status": "audited"
@@ -51543,30 +51635,30 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "6ad5fa8c4d8924cacc11df6b336e14684d86eb010b669863dcf058de7aca77dd",
-			"target_sha256": "3f6ddbd2f5bde3b71246144ba39f3574a0e32d4c67a39c40dc6a18b4436d8fb9",
+			"source_sha256": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731",
+			"target_sha256": "11a1ee69f9df72062e42ac8b2ab5a6993af3b68e1675bbaae5d0b9e5363019a5",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-12",
-				"note": "Mixed provenance (one translator field per row): 4 temporary_deleted.* keys by lopdev coder (UI #1874); 14 status keys by i18n-translator claude-sonnet-5-5 (#1870); 5 loading.* keys per #1875 (row 15686088b7ce); rest per superseded rows. Auditor same model as coder: disclosed."
+				"note": "Mixed provenance (one translator field per row): 4 temporary_deleted.* keys by lopdev coder (UI #1874); #1870 keys by i18n-translator claude-sonnet-5-5; #1875 loading.* and #1876 media/sound keys per superseded upstream rows. Auditor = coder model: disclosed."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-12",
-					"result": "clean",
-					"instance": "94f6e325484c-canon2-ur",
+					"result": "clean-with-findings",
+					"instance": "94f6e325484c-canon3-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/94f6e325484c-canon2-ur.json",
-					"receipt_sha256": "0ff89d2df967bcf8ebec2c0e271e1e67b20dd52ba89836b459c389121d62446e",
-					"scope": "merged ui.chat.canonical, UI #1874 @ 7177d51df: 5 #1875 loading.* + 4 temporary_deleted.* keys"
+					"receipt": "i18n/receipts/94f6e325484c-canon3-ur.json",
+					"receipt_sha256": "279d7638f124ed450d916cfabf79c9f86496963742be9d1467fed0a4a4748df2",
+					"scope": "merged ui.chat.canonical, UI #1874 @ fa3c17b63: #1876 media/sound keys + 4 temporary_deleted.* keys"
 				}
 			],
 			"status": "audited",
@@ -52124,6 +52216,29 @@
 							"receipt_sha256": "7839f436d915dca7bb9328a2a0fc94cb2e350b793d8e9d5336272dca0de274eb",
 							"scope": "whole merged file at c213a0616: #1870's 14 status keys + this PR's 5 loading.* keys; seam review + merge-integrity proof",
 							"note": "Post-merge re-bind (PR #1875); 0 new findings; carried 1 minor + 3 nits (b97613446a7a), 1 nit (4b8febc34595-ur). Detail: i18n/receipts/15686088b7ce-ur.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6ad5fa8c4d8924cacc11df6b336e14684d86eb010b669863dcf058de7aca77dd",
+					"target_sha256": "3f6ddbd2f5bde3b71246144ba39f3574a0e32d4c67a39c40dc6a18b4436d8fb9",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean",
+							"instance": "94f6e325484c-canon2-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/94f6e325484c-canon2-ur.json",
+							"receipt_sha256": "0ff89d2df967bcf8ebec2c0e271e1e67b20dd52ba89836b459c389121d62446e",
+							"scope": "merged ui.chat.canonical, UI #1874 @ 7177d51df: 5 #1875 loading.* + 4 temporary_deleted.* keys"
 						}
 					],
 					"status": "audited"
@@ -63591,13 +63706,13 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "6ad5fa8c4d8924cacc11df6b336e14684d86eb010b669863dcf058de7aca77dd",
-			"target_sha256": "384a66eb03fa5ac35603bba2b18529156fcf1308a66eafba93bc56b5f5327f70",
+			"source_sha256": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731",
+			"target_sha256": "ad2bc4870aefc08190576e588d493ae99b5ff0bdd043afbdfb8f873edfa111a2",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-12",
-				"note": "Mixed provenance (one translator field per row): 4 temporary_deleted.* keys by lopdev coder (UI #1874); 14 status keys by i18n-translator claude-sonnet-5-5 (#1870); 5 loading.* keys per #1875 (row 15686088b7ce); rest per superseded rows. Auditor same model as coder: disclosed."
+				"note": "Mixed provenance (one translator field per row): 4 temporary_deleted.* keys by lopdev coder (UI #1874); #1870 keys by i18n-translator claude-sonnet-5-5; #1875 loading.* and #1876 media/sound keys per superseded upstream rows. Auditor = coder model: disclosed."
 			},
 			"auditors": [
 				{
@@ -63605,16 +63720,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-12",
 					"result": "clean-with-findings",
-					"instance": "94f6e325484c-canon2-vi",
+					"instance": "94f6e325484c-canon3-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 1
 					},
-					"receipt": "i18n/receipts/94f6e325484c-canon2-vi.json",
-					"receipt_sha256": "b5da5370d231dcc5bdd610a7c35629dd54944866ef6550b6d40297f41b96d6b5",
-					"scope": "merged ui.chat.canonical, UI #1874 @ 7177d51df: 5 #1875 loading.* + 4 temporary_deleted.* keys"
+					"receipt": "i18n/receipts/94f6e325484c-canon3-vi.json",
+					"receipt_sha256": "2384ddaa3fdcc687c8a1391e24d39eceb2aff1bd0201d9ab2f07b92fb190ff3e",
+					"scope": "merged ui.chat.canonical, UI #1874 @ fa3c17b63: #1876 media/sound keys + 4 temporary_deleted.* keys"
 				}
 			],
 			"status": "audited",
@@ -64164,6 +64279,29 @@
 							"receipt_sha256": "1f94175cc0958dc60c5e9973b5dee49b1ca22863870a34c60ab15ed0de679aae",
 							"scope": "whole merged file at c213a0616: #1870's 14 status keys + this PR's 5 loading.* keys; seam review + merge-integrity proof",
 							"note": "Post-merge re-bind (PR #1875); 0 new findings; carried 2 nits (64a0e2d3b795), 1 nit (4b8febc34595-vi). Detail: i18n/receipts/15686088b7ce-vi.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6ad5fa8c4d8924cacc11df6b336e14684d86eb010b669863dcf058de7aca77dd",
+					"target_sha256": "384a66eb03fa5ac35603bba2b18529156fcf1308a66eafba93bc56b5f5327f70",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "94f6e325484c-canon2-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/94f6e325484c-canon2-vi.json",
+							"receipt_sha256": "b5da5370d231dcc5bdd610a7c35629dd54944866ef6550b6d40297f41b96d6b5",
+							"scope": "merged ui.chat.canonical, UI #1874 @ 7177d51df: 5 #1875 loading.* + 4 temporary_deleted.* keys"
 						}
 					],
 					"status": "audited"
@@ -76447,30 +76585,30 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "6ad5fa8c4d8924cacc11df6b336e14684d86eb010b669863dcf058de7aca77dd",
-			"target_sha256": "8a5ef6f0a3a5b9b684d9b5a660612fa6c5ed7a11bc0774aee44457c33d56d883",
+			"source_sha256": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731",
+			"target_sha256": "5401f32fb9890ae192945f8b8c76ace2c7a723da00b4148acaf707a0f84ac12c",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
 				"date": "2026-11-12",
-				"note": "Mixed provenance (one translator field per row): 4 temporary_deleted.* keys by lopdev coder (UI #1874); 14 status keys by i18n-translator claude-sonnet-5-5 (#1870); 5 loading.* keys per #1875 (row 15686088b7ce); rest per superseded rows. Auditor same model as coder: disclosed."
+				"note": "Mixed provenance (one translator field per row): 4 temporary_deleted.* keys by lopdev coder (UI #1874); #1870 keys by i18n-translator claude-sonnet-5-5; #1875 loading.* and #1876 media/sound keys per superseded upstream rows. Auditor = coder model: disclosed."
 			},
 			"auditors": [
 				{
 					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-12",
-					"result": "clean",
-					"instance": "94f6e325484c-canon2-zh-cn",
+					"result": "clean-with-findings",
+					"instance": "94f6e325484c-canon3-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/94f6e325484c-canon2-zh-cn.json",
-					"receipt_sha256": "94df6be1d09b8181d4c051056860afa73b0ba14f9b5ca29d72a59cec1f7e02c0",
-					"scope": "merged ui.chat.canonical, UI #1874 @ 7177d51df: 5 #1875 loading.* + 4 temporary_deleted.* keys"
+					"receipt": "i18n/receipts/94f6e325484c-canon3-zh-cn.json",
+					"receipt_sha256": "6c3ac51fa4351feb4bcab3a02b182f68b5e2f4ac15a32efb87b8ae7ca2a9fd56",
+					"scope": "merged ui.chat.canonical, UI #1874 @ fa3c17b63: #1876 media/sound keys + 4 temporary_deleted.* keys"
 				}
 			],
 			"status": "audited",
@@ -76996,6 +77134,29 @@
 							"receipt_sha256": "387a8210934a6f670bca7f39ddf6dffc18600495459c540c99c491b41d076206",
 							"scope": "whole merged file at c213a0616: #1870's 14 status keys + this PR's 5 loading.* keys; seam review + merge-integrity proof",
 							"note": "Post-merge re-bind (PR #1875); 0 new findings; 3 carried nits (07b0fc8f8d80). Detail: i18n/receipts/15686088b7ce-zh-cn.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6ad5fa8c4d8924cacc11df6b336e14684d86eb010b669863dcf058de7aca77dd",
+					"target_sha256": "8a5ef6f0a3a5b9b684d9b5a660612fa6c5ed7a11bc0774aee44457c33d56d883",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean",
+							"instance": "94f6e325484c-canon2-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/94f6e325484c-canon2-zh-cn.json",
+							"receipt_sha256": "94df6be1d09b8181d4c051056860afa73b0ba14f9b5ca29d72a59cec1f7e02c0",
+							"scope": "merged ui.chat.canonical, UI #1874 @ 7177d51df: 5 #1875 loading.* + 4 temporary_deleted.* keys"
 						}
 					],
 					"status": "audited"
