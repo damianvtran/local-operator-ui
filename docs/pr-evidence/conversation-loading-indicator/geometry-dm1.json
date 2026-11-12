@@ -1,5 +1,5 @@
 {
-  "note": "D-M1 head c85b0cc95 vs round-1 head 7887d0bf0, same rig bytes and fixture. Heights and row positions must be 0 px; width may grow. Values in CSS px at DPR 1, viewport 1380x872. seq_* compare the DISTINCT values seen across every rAF sample of each phase (loading = indicator mounted).",
+  "note": "Head 06db777c7 (key `dm1`) vs round-1 head 7887d0bf0 (key `r1`), same rig bytes and fixture. Heights and row positions must be 0 px; width may grow. Values in CSS px at DPR 1, viewport 1380x872. seq_* compare the DISTINCT values seen across every rAF sample of each phase (loading = indicator mounted).",
   "maxAbsDelta": {
     "slotH": 0,
     "indicatorH": 0,

@@ -1,5 +1,5 @@
 {
-  "note": "Per run: before (base c1ba44696) vs after (head c85b0cc95). Rects sampled every requestAnimationFrame in the page; images are the app's own capturePage() in a loop. t is ms on the page timeline; the hold is released at triggerAtMs.",
+  "note": "Per run: before (base c1ba44696) vs after (head 06db777c7). Rects sampled every requestAnimationFrame in the page; images are the app's own capturePage() in a loop. t is ms on the page timeline; the hold is released at triggerAtMs.",
   "runs": {
     "cold-light": {
       "before": {
@@ -45,24 +45,24 @@
           "blankImages": 0,
           "bothImages": 0,
           "firstImageWithoutIndicator": {
-            "i": 10,
-            "tBefore": 487.4,
-            "tAfter": 535.2
+            "i": 9,
+            "tBefore": 465.8,
+            "tAfter": 508.8
           },
           "lastImageWithIndicator": {
-            "i": 9,
-            "tBefore": 453.8,
-            "tAfter": 487.4
+            "i": 8,
+            "tBefore": 429,
+            "tAfter": 465.8
           }
         },
         "indicatorKey": "unified",
-        "samples": 109,
+        "samples": 110,
         "rafMedianMs": 16.7,
         "images": 42,
-        "imageMedianGapMs": 42.6,
-        "triggerAtMs": 305.2,
+        "imageMedianGapMs": 43,
+        "triggerAtMs": 300.9,
         "indicatorVisibleAtStart": true,
-        "indicatorOffAtMs": 327.4,
+        "indicatorOffAtMs": 325.2,
         "indicatorTransitions": 1,
         "bounces": 0,
         "indicatorMaxYDriftWhileOnScreenPx": 0,
@@ -118,23 +118,23 @@
           "bothImages": 0,
           "firstImageWithoutIndicator": {
             "i": 8,
-            "tBefore": 437.6,
-            "tAfter": 492
+            "tBefore": 456.6,
+            "tAfter": 497.9
           },
           "lastImageWithIndicator": {
             "i": 7,
-            "tBefore": 405.5,
-            "tAfter": 437.6
+            "tBefore": 405.1,
+            "tAfter": 456.6
           }
         },
         "indicatorKey": "unified",
-        "samples": 110,
+        "samples": 111,
         "rafMedianMs": 16.7,
-        "images": 39,
-        "imageMedianGapMs": 45,
-        "triggerAtMs": 302.1,
+        "images": 43,
+        "imageMedianGapMs": 41.3,
+        "triggerAtMs": 301.6,
         "indicatorVisibleAtStart": true,
-        "indicatorOffAtMs": 332.3,
+        "indicatorOffAtMs": 329.3,
         "indicatorTransitions": 1,
         "bounces": 0,
         "indicatorMaxYDriftWhileOnScreenPx": 0,
@@ -190,23 +190,23 @@
           "bothImages": 0,
           "firstImageWithoutIndicator": {
             "i": 8,
-            "tBefore": 478,
-            "tAfter": 518.3
+            "tBefore": 409.3,
+            "tAfter": 453.8
           },
           "lastImageWithIndicator": {
             "i": 7,
-            "tBefore": 415.3,
-            "tAfter": 478
+            "tBefore": 306.8,
+            "tAfter": 409.3
           }
         },
         "indicatorKey": "unified",
-        "samples": 109,
+        "samples": 112,
         "rafMedianMs": 16.7,
-        "images": 38,
-        "imageMedianGapMs": 49.4,
-        "triggerAtMs": 302.2,
+        "images": 43,
+        "imageMedianGapMs": 42.7,
+        "triggerAtMs": 304.4,
         "indicatorVisibleAtStart": true,
-        "indicatorOffAtMs": 335.7,
+        "indicatorOffAtMs": 325.1,
         "indicatorTransitions": 1,
         "bounces": 0,
         "indicatorMaxYDriftWhileOnScreenPx": 0,
@@ -262,23 +262,23 @@
           "bothImages": 0,
           "firstImageWithoutIndicator": {
             "i": 9,
-            "tBefore": 421.6,
-            "tAfter": 464.2
+            "tBefore": 437.8,
+            "tAfter": 480.3
           },
           "lastImageWithIndicator": {
             "i": 8,
-            "tBefore": 306.3,
-            "tAfter": 421.6
+            "tBefore": 401.5,
+            "tAfter": 437.8
           }
         },
         "indicatorKey": "unified",
-        "samples": 112,
+        "samples": 111,
         "rafMedianMs": 16.7,
-        "images": 40,
-        "imageMedianGapMs": 44.8,
-        "triggerAtMs": 304.6,
+        "images": 43,
+        "imageMedianGapMs": 42,
+        "triggerAtMs": 302.1,
         "indicatorVisibleAtStart": true,
-        "indicatorOffAtMs": 322.4,
+        "indicatorOffAtMs": 322,
         "indicatorTransitions": 1,
         "bounces": 0,
         "indicatorMaxYDriftWhileOnScreenPx": 0,
@@ -331,24 +331,24 @@
           "blankImages": 0,
           "bothImages": 0,
           "firstImageWithoutIndicator": {
-            "i": 6,
-            "tBefore": 392.2,
-            "tAfter": 447.7
+            "i": 8,
+            "tBefore": 441,
+            "tAfter": 482.8
           },
           "lastImageWithIndicator": {
-            "i": 5,
-            "tBefore": 297,
-            "tAfter": 392.2
+            "i": 7,
+            "tBefore": 396.2,
+            "tAfter": 441
           }
         },
         "indicatorKey": "unified",
         "samples": 112,
         "rafMedianMs": 16.7,
-        "images": 38,
-        "imageMedianGapMs": 48.3,
-        "triggerAtMs": 301,
+        "images": 42,
+        "imageMedianGapMs": 42.7,
+        "triggerAtMs": 301.8,
         "indicatorVisibleAtStart": true,
-        "indicatorOffAtMs": 325.7,
+        "indicatorOffAtMs": 333.9,
         "indicatorTransitions": 1,
         "bounces": 0,
         "indicatorMaxYDriftWhileOnScreenPx": 0,
@@ -399,24 +399,24 @@
           "blankImages": 0,
           "bothImages": 0,
           "firstImageWithoutIndicator": {
-            "i": 6,
-            "tBefore": 378.8,
-            "tAfter": 424
+            "i": 7,
+            "tBefore": 388.9,
+            "tAfter": 433
           },
           "lastImageWithIndicator": {
-            "i": 5,
-            "tBefore": 280.9,
-            "tAfter": 378.8
+            "i": 6,
+            "tBefore": 313.5,
+            "tAfter": 388.9
           }
         },
         "indicatorKey": "unified",
-        "samples": 114,
+        "samples": 116,
         "rafMedianMs": 16.7,
-        "images": 39,
-        "imageMedianGapMs": 45.3,
-        "triggerAtMs": 302.2,
+        "images": 44,
+        "imageMedianGapMs": 42.1,
+        "triggerAtMs": 312.1,
         "indicatorVisibleAtStart": true,
-        "indicatorOffAtMs": 320.8,
+        "indicatorOffAtMs": 337.3,
         "indicatorTransitions": 1,
         "bounces": 0,
         "indicatorMaxYDriftWhileOnScreenPx": 0,
@@ -468,23 +468,23 @@
           "bothImages": 0,
           "firstImageWithoutIndicator": {
             "i": 7,
-            "tBefore": 426.2,
-            "tAfter": 471
+            "tBefore": 395.7,
+            "tAfter": 437
           },
           "lastImageWithIndicator": {
             "i": 6,
-            "tBefore": 323,
-            "tAfter": 426.2
+            "tBefore": 308.3,
+            "tAfter": 395.7
           }
         },
         "indicatorKey": "unified",
-        "samples": 113,
+        "samples": 115,
         "rafMedianMs": 16.7,
-        "images": 38,
-        "imageMedianGapMs": 51.1,
-        "triggerAtMs": 321.2,
+        "images": 43,
+        "imageMedianGapMs": 41.8,
+        "triggerAtMs": 307,
         "indicatorVisibleAtStart": true,
-        "indicatorOffAtMs": 344.3,
+        "indicatorOffAtMs": 334.5,
         "indicatorTransitions": 1,
         "bounces": 0,
         "indicatorMaxYDriftWhileOnScreenPx": 0,
@@ -535,24 +535,24 @@
           "blankImages": 0,
           "bothImages": 0,
           "firstImageWithoutIndicator": {
-            "i": 8,
-            "tBefore": 452.1,
-            "tAfter": 499.5
+            "i": 7,
+            "tBefore": 381.1,
+            "tAfter": 425.3
           },
           "lastImageWithIndicator": {
-            "i": 7,
-            "tBefore": 407.7,
-            "tAfter": 452.1
+            "i": 6,
+            "tBefore": 295.5,
+            "tAfter": 381.1
           }
         },
         "indicatorKey": "unified",
-        "samples": 111,
+        "samples": 115,
         "rafMedianMs": 16.7,
-        "images": 40,
-        "imageMedianGapMs": 45.3,
-        "triggerAtMs": 301.9,
+        "images": 41,
+        "imageMedianGapMs": 45.9,
+        "triggerAtMs": 300.7,
         "indicatorVisibleAtStart": true,
-        "indicatorOffAtMs": 332.9,
+        "indicatorOffAtMs": 319,
         "indicatorTransitions": 1,
         "bounces": 0,
         "indicatorMaxYDriftWhileOnScreenPx": 0,
@@ -604,23 +604,23 @@
           "bothImages": 0,
           "firstImageWithoutIndicator": {
             "i": 7,
-            "tBefore": 402.8,
-            "tAfter": 456.4
+            "tBefore": 400.5,
+            "tAfter": 440.1
           },
           "lastImageWithIndicator": {
             "i": 6,
-            "tBefore": 320.9,
-            "tAfter": 402.8
+            "tBefore": 310.8,
+            "tAfter": 400.5
           }
         },
         "indicatorKey": "unified",
         "samples": 114,
         "rafMedianMs": 16.7,
-        "images": 39,
-        "imageMedianGapMs": 49.4,
-        "triggerAtMs": 317.8,
+        "images": 42,
+        "imageMedianGapMs": 42.1,
+        "triggerAtMs": 307.4,
         "indicatorVisibleAtStart": true,
-        "indicatorOffAtMs": 528,
+        "indicatorOffAtMs": 518.6,
         "indicatorTransitions": 1,
         "bounces": 0,
         "indicatorMaxYDriftWhileOnScreenPx": 0,
@@ -671,24 +671,24 @@
           "blankImages": 0,
           "bothImages": 0,
           "firstImageWithoutIndicator": {
-            "i": 6,
-            "tBefore": 398.5,
-            "tAfter": 447.7
+            "i": 7,
+            "tBefore": 379.3,
+            "tAfter": 430.1
           },
           "lastImageWithIndicator": {
-            "i": 5,
-            "tBefore": 303.3,
-            "tAfter": 398.5
+            "i": 6,
+            "tBefore": 289.5,
+            "tAfter": 379.3
           }
         },
         "indicatorKey": "unified",
-        "samples": 114,
+        "samples": 112,
         "rafMedianMs": 16.7,
-        "images": 38,
-        "imageMedianGapMs": 49.2,
-        "triggerAtMs": 303.2,
+        "images": 41,
+        "imageMedianGapMs": 43.4,
+        "triggerAtMs": 302.2,
         "indicatorVisibleAtStart": true,
-        "indicatorOffAtMs": 516.8,
+        "indicatorOffAtMs": 531.4,
         "indicatorTransitions": 1,
         "bounces": 0,
         "indicatorMaxYDriftWhileOnScreenPx": 0,
@@ -740,23 +740,23 @@
           "bothImages": 0,
           "firstImageWithoutIndicator": {
             "i": 7,
-            "tBefore": 447,
-            "tAfter": 499.4
+            "tBefore": 409.1,
+            "tAfter": 449.4
           },
           "lastImageWithIndicator": {
             "i": 6,
-            "tBefore": 313.4,
-            "tAfter": 447
+            "tBefore": 314.1,
+            "tAfter": 409.1
           }
         },
         "indicatorKey": "unified",
-        "samples": 110,
+        "samples": 115,
         "rafMedianMs": 16.7,
-        "images": 37,
-        "imageMedianGapMs": 47.2,
-        "triggerAtMs": 310.9,
+        "images": 42,
+        "imageMedianGapMs": 41.3,
+        "triggerAtMs": 311.5,
         "indicatorVisibleAtStart": true,
-        "indicatorOffAtMs": 564.6,
+        "indicatorOffAtMs": 521.6,
         "indicatorTransitions": 1,
         "bounces": 0,
         "indicatorMaxYDriftWhileOnScreenPx": 0,
@@ -808,23 +808,23 @@
           "bothImages": 0,
           "firstImageWithoutIndicator": {
             "i": 6,
-            "tBefore": 462,
-            "tAfter": 513.8
+            "tBefore": 391.4,
+            "tAfter": 442.2
           },
           "lastImageWithIndicator": {
             "i": 5,
-            "tBefore": 372.8,
-            "tAfter": 462
+            "tBefore": 306.7,
+            "tAfter": 391.4
           }
         },
         "indicatorKey": "unified",
-        "samples": 109,
+        "samples": 113,
         "rafMedianMs": 16.7,
-        "images": 34,
-        "imageMedianGapMs": 53.8,
-        "triggerAtMs": 316.1,
+        "images": 37,
+        "imageMedianGapMs": 50.7,
+        "triggerAtMs": 305.9,
         "indicatorVisibleAtStart": true,
-        "indicatorOffAtMs": 581.1,
+        "indicatorOffAtMs": 511.6,
         "indicatorTransitions": 1,
         "bounces": 0,
         "indicatorMaxYDriftWhileOnScreenPx": 0,
@@ -877,24 +877,24 @@
           "blankImages": 0,
           "bothImages": 0,
           "firstImageWithoutIndicator": {
-            "i": 9,
-            "tBefore": 413.5,
-            "tAfter": 461.7
+            "i": 8,
+            "tBefore": 431.5,
+            "tAfter": 478.9
           },
           "lastImageWithIndicator": {
-            "i": 8,
-            "tBefore": 318.1,
-            "tAfter": 413.5
+            "i": 7,
+            "tBefore": 395.5,
+            "tAfter": 431.5
           }
         },
         "indicatorKey": "unified",
-        "samples": 115,
+        "samples": 113,
         "rafMedianMs": 16.7,
-        "images": 42,
-        "imageMedianGapMs": 43.6,
-        "triggerAtMs": 316.3,
+        "images": 43,
+        "imageMedianGapMs": 42.5,
+        "triggerAtMs": 301.9,
         "indicatorVisibleAtStart": true,
-        "indicatorOffAtMs": 335.6,
+        "indicatorOffAtMs": 330.4,
         "indicatorTransitions": 1,
         "bounces": 0,
         "indicatorMaxYDriftWhileOnScreenPx": 0,
@@ -949,24 +949,24 @@
           "blankImages": 0,
           "bothImages": 0,
           "firstImageWithoutIndicator": {
-            "i": 8,
-            "tBefore": 445.7,
-            "tAfter": 496.6
+            "i": 7,
+            "tBefore": 402.7,
+            "tAfter": 457.4
           },
           "lastImageWithIndicator": {
-            "i": 7,
-            "tBefore": 404.5,
-            "tAfter": 445.7
+            "i": 6,
+            "tBefore": 286.1,
+            "tAfter": 402.7
           }
         },
         "indicatorKey": "unified",
         "samples": 112,
         "rafMedianMs": 16.7,
-        "images": 38,
-        "imageMedianGapMs": 50,
-        "triggerAtMs": 301.4,
+        "images": 40,
+        "imageMedianGapMs": 46.2,
+        "triggerAtMs": 302.4,
         "indicatorVisibleAtStart": true,
-        "indicatorOffAtMs": 331.3,
+        "indicatorOffAtMs": 321.5,
         "indicatorTransitions": 1,
         "bounces": 0,
         "indicatorMaxYDriftWhileOnScreenPx": 0,
@@ -1021,24 +1021,24 @@
           "blankImages": 0,
           "bothImages": 0,
           "firstImageWithoutIndicator": {
-            "i": 9,
-            "tBefore": 454.2,
-            "tAfter": 510.3
+            "i": 8,
+            "tBefore": 421.3,
+            "tAfter": 463
           },
           "lastImageWithIndicator": {
-            "i": 8,
-            "tBefore": 412.7,
-            "tAfter": 454.2
+            "i": 7,
+            "tBefore": 323.6,
+            "tAfter": 421.3
           }
         },
         "indicatorKey": "unified",
-        "samples": 109,
+        "samples": 113,
         "rafMedianMs": 16.7,
-        "images": 39,
-        "imageMedianGapMs": 47.7,
-        "triggerAtMs": 302.7,
+        "images": 44,
+        "imageMedianGapMs": 41.3,
+        "triggerAtMs": 322.4,
         "indicatorVisibleAtStart": true,
-        "indicatorOffAtMs": 330.6,
+        "indicatorOffAtMs": 354.2,
         "indicatorTransitions": 1,
         "bounces": 0,
         "indicatorMaxYDriftWhileOnScreenPx": 0,
@@ -1093,24 +1093,24 @@
           "blankImages": 0,
           "bothImages": 0,
           "firstImageWithoutIndicator": {
-            "i": 8,
-            "tBefore": 410.1,
-            "tAfter": 475.5
+            "i": 7,
+            "tBefore": 382.5,
+            "tAfter": 424.5
           },
           "lastImageWithIndicator": {
-            "i": 7,
-            "tBefore": 298.8,
-            "tAfter": 410.1
+            "i": 6,
+            "tBefore": 276.4,
+            "tAfter": 382.5
           }
         },
         "indicatorKey": "unified",
-        "samples": 111,
+        "samples": 113,
         "rafMedianMs": 16.7,
-        "images": 43,
-        "imageMedianGapMs": 41.9,
-        "triggerAtMs": 302.8,
+        "images": 41,
+        "imageMedianGapMs": 43.6,
+        "triggerAtMs": 302.6,
         "indicatorVisibleAtStart": true,
-        "indicatorOffAtMs": 333.2,
+        "indicatorOffAtMs": 327.1,
         "indicatorTransitions": 1,
         "bounces": 0,
         "indicatorMaxYDriftWhileOnScreenPx": 0,
@@ -1153,12 +1153,12 @@
         "after": {
           "ground": "#f2ede3",
           "arcRatioRange": [
-            3,
-            4.09
+            4.73,
+            4.81
           ],
           "trackRatioRange": [
-            2.52,
-            3.03
+            3.42,
+            3.42
           ],
           "pill": {
             "color": "#dbe0d2",
@@ -1199,12 +1199,12 @@
         "after": {
           "ground": "#f2ede3",
           "arcRatioRange": [
-            3,
-            4.22
+            4.73,
+            4.81
           ],
           "trackRatioRange": [
-            3.07,
-            4.23
+            4.42,
+            4.49
           ],
           "pill": {
             "color": "#dbe0d2",
@@ -1245,12 +1245,12 @@
         "after": {
           "ground": "#1d1b17",
           "arcRatioRange": [
-            4.64,
-            6.02
+            7.73,
+            7.97
           ],
           "trackRatioRange": [
-            3.17,
-            3.66
+            4.09,
+            4.15
           ],
           "pill": {
             "color": "#202c1f",
@@ -1291,12 +1291,12 @@
         "after": {
           "ground": "#181714",
           "arcRatioRange": [
-            4.83,
-            6.21
+            8.06,
+            8.31
           ],
           "trackRatioRange": [
-            3.82,
-            4.72
+            5.3,
+            5.44
           ],
           "pill": {
             "color": "#1b281c",
@@ -1337,12 +1337,12 @@
         "after": {
           "ground": "#f2ede3",
           "arcRatioRange": [
-            3.01,
-            3.63
+            4.73,
+            4.81
           ],
           "trackRatioRange": [
-            2.52,
-            2.72
+            3.37,
+            3.42
           ],
           "pill": {
             "color": "#dbe0d2",
@@ -1352,7 +1352,7 @@
             "ink": "#4e4940",
             "onPill": 6.64
           },
-          "frames": 6
+          "frames": 7
         }
       },
       "stale-light-glass-sim": {
@@ -1383,12 +1383,12 @@
         "after": {
           "ground": "#f2ede3",
           "arcRatioRange": [
-            3,
-            3.64
+            4.67,
+            4.81
           ],
           "trackRatioRange": [
-            3.1,
-            3.84
+            4.42,
+            4.49
           ],
           "pill": {
             "color": "#dbe0d2",
@@ -1429,12 +1429,12 @@
         "after": {
           "ground": "#1d1b17",
           "arcRatioRange": [
-            4.7,
-            6.98
+            7.73,
+            7.97
           ],
           "trackRatioRange": [
-            3.07,
-            3.87
+            4.04,
+            4.15
           ],
           "pill": {
             "color": "#202c1f",
@@ -1475,12 +1475,12 @@
         "after": {
           "ground": "#181714",
           "arcRatioRange": [
-            4.77,
-            7.2
+            8.06,
+            8.31
           ],
           "trackRatioRange": [
-            4.03,
-            4.98
+            5.3,
+            5.44
           ],
           "pill": {
             "color": "#1b281c",
@@ -1521,12 +1521,12 @@
         "after": {
           "ground": "#f2ede3",
           "arcRatioRange": [
-            3,
-            4.22
+            4.73,
+            4.81
           ],
           "trackRatioRange": [
-            2.53,
-            3.24
+            3.37,
+            3.42
           ],
           "pill": {
             "color": "#dbe0d2",
@@ -1567,12 +1567,12 @@
         "after": {
           "ground": "#f2ede3",
           "arcRatioRange": [
-            2.96,
-            3.64
+            4.73,
+            4.81
           ],
           "trackRatioRange": [
-            3.1,
-            3.69
+            4.42,
+            4.49
           ],
           "pill": {
             "color": "#dbe0d2",
@@ -1582,7 +1582,7 @@
             "ink": "#4e4940",
             "onPill": 6.64
           },
-          "frames": 5
+          "frames": 7
         }
       },
       "older-dark": {
@@ -1613,12 +1613,12 @@
         "after": {
           "ground": "#1d1b17",
           "arcRatioRange": [
-            4.64,
-            6.02
+            7.73,
+            7.97
           ],
           "trackRatioRange": [
-            3.03,
-            3.66
+            4.04,
+            4.15
           ],
           "pill": {
             "color": "#202c1f",
@@ -1659,12 +1659,12 @@
         "after": {
           "ground": "#181714",
           "arcRatioRange": [
-            5.49,
-            6.21
+            8.06,
+            8.31
           ],
           "trackRatioRange": [
-            3.81,
-            4.72
+            5.3,
+            5.44
           ],
           "pill": {
             "color": "#1b281c",
@@ -1705,12 +1705,12 @@
         "after": {
           "ground": "#f2ede3",
           "arcRatioRange": [
-            2.96,
-            4.09
+            4.67,
+            4.81
           ],
           "trackRatioRange": [
-            2.52,
-            3.03
+            3.37,
+            3.42
           ],
           "pill": {
             "color": "#dbe0d2",
@@ -1720,7 +1720,7 @@
             "ink": "#4e4940",
             "onPill": 6.64
           },
-          "frames": 8
+          "frames": 7
         }
       },
       "remote-light-glass-sim": {
@@ -1751,12 +1751,12 @@
         "after": {
           "ground": "#f2ede3",
           "arcRatioRange": [
-            3.01,
-            4.22
+            4.67,
+            4.81
           ],
           "trackRatioRange": [
-            3.07,
-            4.23
+            4.42,
+            4.49
           ],
           "pill": {
             "color": "#dbe0d2",
@@ -1797,12 +1797,12 @@
         "after": {
           "ground": "#1d1b17",
           "arcRatioRange": [
-            4.64,
-            6.98
+            7.73,
+            7.97
           ],
           "trackRatioRange": [
-            3.07,
-            3.91
+            4.04,
+            4.15
           ],
           "pill": {
             "color": "#202c1f",
@@ -1812,7 +1812,7 @@
             "ink": "#c2bcaf",
             "onPill": 7.7
           },
-          "frames": 8
+          "frames": 7
         }
       },
       "remote-dark-glass-sim": {
@@ -1843,12 +1843,12 @@
         "after": {
           "ground": "#181714",
           "arcRatioRange": [
-            4.89,
-            7.2
+            8.06,
+            8.31
           ],
           "trackRatioRange": [
-            3.82,
-            4.98
+            5.3,
+            5.44
           ],
           "pill": {
             "color": "#1b281c",
@@ -1858,7 +1858,7 @@
             "ink": "#c2bcaf",
             "onPill": 8.13
           },
-          "frames": 8
+          "frames": 7
         }
       }
     }
@@ -1867,30 +1867,30 @@
     "note": "Cold open held 1.4 s (more than one 1 s rotation), capturePage() in a loop, pre-release frames only; arc/track per frame via markm.cjs. Reduced motion: CDP Emulation.setEmulatedMedia prefers-reduced-motion: reduce.",
     "runs": {
       "light": {
-        "frames": 30,
-        "spanMs": 1398,
-        "distinctTransforms": 67,
+        "frames": 34,
+        "spanMs": 1393,
+        "distinctTransforms": 71,
         "arc": [
-          2.96,
-          4.22
+          4.67,
+          4.81
         ],
         "arcPixels": [
-          2,
-          8
+          16,
+          18
         ],
         "track": [
-          2.53,
-          3.24
+          3.37,
+          3.42
         ],
         "reducedMotion": {
           "arc": {
-            "color": "#23804e",
-            "ratio": 4.22,
-            "saturatedPixels": 8
+            "color": "#137742",
+            "ratio": 4.81,
+            "saturatedPixels": 18
           },
           "track": {
-            "color": "#898374",
-            "ratio": 3.24
+            "color": "#857f70",
+            "ratio": 3.42
           },
           "label": {
             "ink": "#4e4940",
@@ -1908,241 +1908,269 @@
         "perFrame": [
           {
             "i": 0,
-            "t": 0.9,
-            "arc": 3,
-            "arcPixels": 2,
-            "track": 2.76
+            "t": 1,
+            "arc": 4.81,
+            "arcPixels": 16,
+            "track": 3.42
           },
           {
             "i": 1,
-            "t": 35.9,
-            "arc": 3.37,
-            "arcPixels": 4,
-            "track": 2.66
+            "t": 34.3,
+            "arc": 4.81,
+            "arcPixels": 18,
+            "track": 3.42
           },
           {
             "i": 2,
-            "t": 97.3,
-            "arc": 3.53,
-            "arcPixels": 4,
-            "track": 2.65
+            "t": 69.1,
+            "arc": 4.73,
+            "arcPixels": 17,
+            "track": 3.42
           },
           {
             "i": 3,
-            "t": 139.3,
-            "arc": 2.96,
-            "arcPixels": 2,
-            "track": 2.76
+            "t": 108.4,
+            "arc": 4.81,
+            "arcPixels": 16,
+            "track": 3.42
           },
           {
             "i": 4,
-            "t": 188.9,
-            "arc": 3.53,
-            "arcPixels": 5,
-            "track": 2.65
+            "t": 154.8,
+            "arc": 4.81,
+            "arcPixels": 16,
+            "track": 3.42
           },
           {
             "i": 5,
-            "t": 240.2,
-            "arc": 3.64,
-            "arcPixels": 3,
-            "track": 3.03
+            "t": 202.6,
+            "arc": 4.81,
+            "arcPixels": 17,
+            "track": 3.42
           },
           {
             "i": 6,
-            "t": 290,
-            "arc": 3.63,
-            "arcPixels": 4,
-            "track": 2.69
+            "t": 236.8,
+            "arc": 4.73,
+            "arcPixels": 17,
+            "track": 3.37
           },
           {
             "i": 7,
-            "t": 336.7,
-            "arc": 3.53,
-            "arcPixels": 6,
-            "track": 2.65
+            "t": 270.5,
+            "arc": 4.81,
+            "arcPixels": 16,
+            "track": 3.42
           },
           {
             "i": 8,
-            "t": 387.3,
-            "arc": 3,
-            "arcPixels": 2,
-            "track": 2.76
+            "t": 301.8,
+            "arc": 4.81,
+            "arcPixels": 16,
+            "track": 3.42
           },
           {
             "i": 9,
-            "t": 439.7,
-            "arc": 3.53,
-            "arcPixels": 5,
-            "track": 2.65
+            "t": 335.4,
+            "arc": 4.73,
+            "arcPixels": 17,
+            "track": 3.37
           },
           {
             "i": 10,
-            "t": 491.4,
-            "arc": 4.09,
-            "arcPixels": 3,
-            "track": 2.99
+            "t": 368.2,
+            "arc": 4.81,
+            "arcPixels": 18,
+            "track": 3.42
           },
           {
             "i": 11,
-            "t": 538.6,
-            "arc": 3.37,
-            "arcPixels": 4,
-            "track": 2.66
+            "t": 403,
+            "arc": 4.74,
+            "arcPixels": 16,
+            "track": 3.42
           },
           {
             "i": 12,
-            "t": 602.8,
-            "arc": 3.01,
-            "arcPixels": 4,
-            "track": 2.55
+            "t": 448,
+            "arc": 4.81,
+            "arcPixels": 16,
+            "track": 3.42
           },
           {
             "i": 13,
-            "t": 648.6,
-            "arc": 2.97,
-            "arcPixels": 4,
-            "track": 2.53
+            "t": 488.5,
+            "arc": 4.73,
+            "arcPixels": 17,
+            "track": 3.42
           },
           {
             "i": 14,
-            "t": 697,
-            "arc": 3.53,
-            "arcPixels": 5,
-            "track": 2.65
+            "t": 537.8,
+            "arc": 4.81,
+            "arcPixels": 16,
+            "track": 3.42
           },
           {
             "i": 15,
-            "t": 730.9,
-            "arc": 3.63,
-            "arcPixels": 5,
-            "track": 2.69
+            "t": 585.3,
+            "arc": 4.73,
+            "arcPixels": 17,
+            "track": 3.37
           },
           {
             "i": 16,
-            "t": 764.6,
-            "arc": 4.22,
-            "arcPixels": 8,
-            "track": 3.24
+            "t": 619.4,
+            "arc": 4.81,
+            "arcPixels": 16,
+            "track": 3.42
           },
           {
             "i": 17,
-            "t": 796.7,
-            "arc": 3.63,
-            "arcPixels": 4,
-            "track": 2.69
+            "t": 651.9,
+            "arc": 4.74,
+            "arcPixels": 16,
+            "track": 3.42
           },
           {
             "i": 18,
-            "t": 832.6,
-            "arc": 3.53,
-            "arcPixels": 6,
-            "track": 2.65
+            "t": 689.2,
+            "arc": 4.81,
+            "arcPixels": 17,
+            "track": 3.42
           },
           {
             "i": 19,
-            "t": 882.3,
-            "arc": 3,
-            "arcPixels": 2,
-            "track": 2.76
+            "t": 736.7,
+            "arc": 4.73,
+            "arcPixels": 17,
+            "track": 3.37
           },
           {
             "i": 20,
-            "t": 943.7,
-            "arc": 3.53,
-            "arcPixels": 5,
-            "track": 2.65
+            "t": 769.6,
+            "arc": 4.81,
+            "arcPixels": 16,
+            "track": 3.42
           },
           {
             "i": 21,
-            "t": 989.7,
-            "arc": 4.09,
-            "arcPixels": 3,
-            "track": 2.99
+            "t": 805.1,
+            "arc": 4.81,
+            "arcPixels": 16,
+            "track": 3.42
           },
           {
             "i": 22,
-            "t": 1034.3,
-            "arc": 3.37,
-            "arcPixels": 4,
-            "track": 2.66
+            "t": 842.3,
+            "arc": 4.67,
+            "arcPixels": 16,
+            "track": 3.37
           },
           {
             "i": 23,
-            "t": 1091.4,
-            "arc": 3.53,
-            "arcPixels": 4,
-            "track": 2.65
+            "t": 897.3,
+            "arc": 4.74,
+            "arcPixels": 16,
+            "track": 3.42
           },
           {
             "i": 24,
-            "t": 1133.2,
-            "arc": 2.96,
-            "arcPixels": 2,
-            "track": 2.76
+            "t": 944.7,
+            "arc": 4.81,
+            "arcPixels": 16,
+            "track": 3.42
           },
           {
             "i": 25,
-            "t": 1182.9,
-            "arc": 3.53,
-            "arcPixels": 6,
-            "track": 2.71
+            "t": 995.3,
+            "arc": 4.73,
+            "arcPixels": 17,
+            "track": 3.42
           },
           {
             "i": 26,
-            "t": 1215.9,
-            "arc": 3.63,
-            "arcPixels": 5,
-            "track": 2.69
+            "t": 1039.2,
+            "arc": 4.81,
+            "arcPixels": 16,
+            "track": 3.42
           },
           {
             "i": 27,
-            "t": 1269.4,
-            "arc": 4.22,
-            "arcPixels": 3,
-            "track": 3.07
+            "t": 1086.9,
+            "arc": 4.73,
+            "arcPixels": 17,
+            "track": 3.37
           },
           {
             "i": 28,
-            "t": 1316.5,
-            "arc": 3.53,
-            "arcPixels": 5,
-            "track": 2.65
+            "t": 1129.7,
+            "arc": 4.81,
+            "arcPixels": 17,
+            "track": 3.42
           },
           {
             "i": 29,
-            "t": 1366.1,
-            "arc": 3.01,
-            "arcPixels": 4,
-            "track": 2.56
+            "t": 1175.1,
+            "arc": 4.81,
+            "arcPixels": 17,
+            "track": 3.42
+          },
+          {
+            "i": 30,
+            "t": 1219.5,
+            "arc": 4.74,
+            "arcPixels": 16,
+            "track": 3.37
+          },
+          {
+            "i": 31,
+            "t": 1253.5,
+            "arc": 4.73,
+            "arcPixels": 17,
+            "track": 3.42
+          },
+          {
+            "i": 32,
+            "t": 1285.9,
+            "arc": 4.81,
+            "arcPixels": 18,
+            "track": 3.42
+          },
+          {
+            "i": 33,
+            "t": 1328.8,
+            "arc": 4.67,
+            "arcPixels": 16,
+            "track": 3.37
           }
         ]
       },
       "dark": {
-        "frames": 32,
-        "spanMs": 1386,
-        "distinctTransforms": 69,
+        "frames": 36,
+        "spanMs": 1398,
+        "distinctTransforms": 68,
         "arc": [
-          4.64,
-          6.98
+          7.73,
+          7.97
         ],
         "arcPixels": [
-          12,
-          14
+          21,
+          24
         ],
         "track": [
-          3.03,
-          3.71
+          4.04,
+          4.15
         ],
         "reducedMotion": {
           "arc": {
-            "color": "#35bc63",
-            "ratio": 6.98,
-            "saturatedPixels": 14
+            "color": "#38c96a",
+            "ratio": 7.97,
+            "saturatedPixels": 22
           },
           "track": {
-            "color": "#7f7868",
-            "ratio": 3.92
+            "color": "#837c6d",
+            "ratio": 4.15
           },
           "label": {
             "ink": "#c2bcaf",
@@ -2160,227 +2188,255 @@
         "perFrame": [
           {
             "i": 0,
-            "t": 1.4,
-            "arc": 4.7,
-            "arcPixels": 14,
-            "track": 3.34
+            "t": 2.2,
+            "arc": 7.97,
+            "arcPixels": 22,
+            "track": 4.15
           },
           {
             "i": 1,
-            "t": 40.4,
-            "arc": 6.77,
-            "arcPixels": 12,
-            "track": 3.66
+            "t": 37.6,
+            "arc": 7.73,
+            "arcPixels": 22,
+            "track": 4.04
           },
           {
             "i": 2,
-            "t": 86.9,
-            "arc": 5.64,
-            "arcPixels": 13,
-            "track": 3.16
+            "t": 81,
+            "arc": 7.97,
+            "arcPixels": 23,
+            "track": 4.15
           },
           {
             "i": 3,
-            "t": 151.5,
-            "arc": 4.64,
-            "arcPixels": 14,
-            "track": 3.39
+            "t": 125.5,
+            "arc": 7.97,
+            "arcPixels": 22,
+            "track": 4.15
           },
           {
             "i": 4,
-            "t": 195.4,
-            "arc": 5.76,
-            "arcPixels": 13,
-            "track": 3.24
+            "t": 157.8,
+            "arc": 7.97,
+            "arcPixels": 23,
+            "track": 4.15
           },
           {
             "i": 5,
-            "t": 228.2,
-            "arc": 5.51,
-            "arcPixels": 14,
-            "track": 3.07
+            "t": 193.2,
+            "arc": 7.73,
+            "arcPixels": 23,
+            "track": 4.09
           },
           {
             "i": 6,
-            "t": 260.8,
-            "arc": 6.02,
-            "arcPixels": 12,
-            "track": 3.66
+            "t": 241.4,
+            "arc": 7.97,
+            "arcPixels": 22,
+            "track": 4.15
           },
           {
             "i": 7,
-            "t": 296,
-            "arc": 6.98,
-            "arcPixels": 12,
-            "track": 3.71
+            "t": 274.5,
+            "arc": 7.97,
+            "arcPixels": 22,
+            "track": 4.15
           },
           {
             "i": 8,
-            "t": 328.4,
-            "arc": 5.33,
-            "arcPixels": 13,
-            "track": 3.03
+            "t": 306.2,
+            "arc": 7.73,
+            "arcPixels": 23,
+            "track": 4.09
           },
           {
             "i": 9,
-            "t": 360.2,
-            "arc": 5.76,
-            "arcPixels": 13,
-            "track": 3.21
+            "t": 341.2,
+            "arc": 7.97,
+            "arcPixels": 23,
+            "track": 4.15
           },
           {
             "i": 10,
-            "t": 396.5,
-            "arc": 4.7,
-            "arcPixels": 14,
-            "track": 3.34
+            "t": 374.5,
+            "arc": 7.97,
+            "arcPixels": 22,
+            "track": 4.15
           },
           {
             "i": 11,
-            "t": 445.7,
-            "arc": 5.64,
-            "arcPixels": 13,
-            "track": 3.17
+            "t": 408,
+            "arc": 7.97,
+            "arcPixels": 23,
+            "track": 4.15
           },
           {
             "i": 12,
-            "t": 498.3,
-            "arc": 6.77,
-            "arcPixels": 12,
-            "track": 3.61
+            "t": 448.3,
+            "arc": 7.73,
+            "arcPixels": 23,
+            "track": 4.09
           },
           {
             "i": 13,
-            "t": 548.1,
-            "arc": 5.39,
-            "arcPixels": 14,
-            "track": 3.29
+            "t": 491.4,
+            "arc": 7.97,
+            "arcPixels": 22,
+            "track": 4.15
           },
           {
             "i": 14,
-            "t": 599.8,
-            "arc": 5.76,
-            "arcPixels": 13,
-            "track": 3.21
+            "t": 525.4,
+            "arc": 7.97,
+            "arcPixels": 22,
+            "track": 4.15
           },
           {
             "i": 15,
-            "t": 649,
-            "arc": 4.64,
-            "arcPixels": 14,
-            "track": 3.39
+            "t": 560.3,
+            "arc": 7.73,
+            "arcPixels": 23,
+            "track": 4.09
           },
           {
             "i": 16,
-            "t": 698.3,
-            "arc": 5.64,
-            "arcPixels": 13,
-            "track": 3.17
+            "t": 589.9,
+            "arc": 7.97,
+            "arcPixels": 23,
+            "track": 4.15
           },
           {
             "i": 17,
-            "t": 749.2,
-            "arc": 6.02,
-            "arcPixels": 12,
-            "track": 3.66
+            "t": 626,
+            "arc": 7.97,
+            "arcPixels": 22,
+            "track": 4.15
           },
           {
             "i": 18,
-            "t": 796.7,
-            "arc": 5.95,
-            "arcPixels": 14,
-            "track": 3.29
+            "t": 658.3,
+            "arc": 7.97,
+            "arcPixels": 23,
+            "track": 4.15
           },
           {
             "i": 19,
-            "t": 845.6,
-            "arc": 5.64,
-            "arcPixels": 13,
-            "track": 3.17
+            "t": 691,
+            "arc": 7.81,
+            "arcPixels": 21,
+            "track": 4.09
           },
           {
             "i": 20,
-            "t": 877.7,
-            "arc": 4.75,
-            "arcPixels": 14,
-            "track": 3.07
+            "t": 724.2,
+            "arc": 7.73,
+            "arcPixels": 22,
+            "track": 4.04
           },
           {
             "i": 21,
-            "t": 912.8,
-            "arc": 4.81,
-            "arcPixels": 14,
-            "track": 3.39
+            "t": 760.1,
+            "arc": 7.97,
+            "arcPixels": 22,
+            "track": 4.15
           },
           {
             "i": 22,
-            "t": 956,
-            "arc": 5.64,
-            "arcPixels": 13,
-            "track": 3.17
+            "t": 809.7,
+            "arc": 7.73,
+            "arcPixels": 23,
+            "track": 4.09
           },
           {
             "i": 23,
-            "t": 996.5,
-            "arc": 5.34,
-            "arcPixels": 14,
-            "track": 3.3
+            "t": 841.1,
+            "arc": 7.97,
+            "arcPixels": 23,
+            "track": 4.15
           },
           {
             "i": 24,
-            "t": 1035.8,
-            "arc": 6.77,
-            "arcPixels": 12,
-            "track": 3.66
+            "t": 876,
+            "arc": 7.97,
+            "arcPixels": 22,
+            "track": 4.15
           },
           {
             "i": 25,
-            "t": 1085.7,
-            "arc": 5.64,
-            "arcPixels": 13,
-            "track": 3.16
+            "t": 908.3,
+            "arc": 7.97,
+            "arcPixels": 23,
+            "track": 4.15
           },
           {
             "i": 26,
-            "t": 1129.1,
-            "arc": 4.8,
-            "arcPixels": 14,
-            "track": 3.07
+            "t": 941,
+            "arc": 7.81,
+            "arcPixels": 21,
+            "track": 4.09
           },
           {
             "i": 27,
-            "t": 1160.5,
-            "arc": 4.64,
-            "arcPixels": 14,
-            "track": 3.39
+            "t": 974.4,
+            "arc": 7.73,
+            "arcPixels": 22,
+            "track": 4.04
           },
           {
             "i": 28,
-            "t": 1194.4,
-            "arc": 5.76,
-            "arcPixels": 13,
-            "track": 3.24
+            "t": 1007.6,
+            "arc": 7.97,
+            "arcPixels": 22,
+            "track": 4.15
           },
           {
             "i": 29,
-            "t": 1230,
-            "arc": 5.95,
-            "arcPixels": 14,
-            "track": 3.29
+            "t": 1059.5,
+            "arc": 7.73,
+            "arcPixels": 23,
+            "track": 4.09
           },
           {
             "i": 30,
-            "t": 1285.9,
-            "arc": 6.98,
-            "arcPixels": 12,
-            "track": 3.71
+            "t": 1098,
+            "arc": 7.97,
+            "arcPixels": 24,
+            "track": 4.15
           },
           {
             "i": 31,
-            "t": 1339.2,
-            "arc": 5.64,
-            "arcPixels": 13,
-            "track": 3.17
+            "t": 1151,
+            "arc": 7.97,
+            "arcPixels": 23,
+            "track": 4.15
+          },
+          {
+            "i": 32,
+            "t": 1200.4,
+            "arc": 7.73,
+            "arcPixels": 23,
+            "track": 4.09
+          },
+          {
+            "i": 33,
+            "t": 1249.7,
+            "arc": 7.97,
+            "arcPixels": 22,
+            "track": 4.15
+          },
+          {
+            "i": 34,
+            "t": 1301.9,
+            "arc": 7.73,
+            "arcPixels": 23,
+            "track": 4.09
+          },
+          {
+            "i": 35,
+            "t": 1343.3,
+            "arc": 7.97,
+            "arcPixels": 24,
+            "track": 4.15
           }
         ]
       }
