@@ -74,6 +74,19 @@ const FinderArtifactSound = memo(function FinderArtifactSound({
 			</span>
 		);
 	}
+	if (source.state === "retryable") {
+		return (
+			<button
+				type="button"
+				onClick={source.retry}
+				className={cn(
+					"px-1 py-2 text-start text-meta text-ink-muted hover:text-ink",
+				)}
+			>
+				{t("ui.canvas.files.remoteUnreachableRetry")}
+			</button>
+		);
+	}
 	if (source.state === "resolving") {
 		// A reserved line at the player's own height, so the row does not jump when
 		// the bytes land (the same reason the transcript's boxes reserve).

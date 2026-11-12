@@ -81,8 +81,30 @@ export type AttachmentScope = {
  */
 const inflight = new Map<
 	string,
-	{ promise: Promise<string | null>; holders: number }
+	{ promise: Promise<FetchOutcome>; holders: number }
 >();
+
+/**
+ * What one attempt came back with: a URL, or the STATUS that refused it.
+ *
+ * The status is the whole point (docs/design/remote-files-parity.md §1, I1-2):
+ * a peer-held digest whose owner is unreachable, or whose transfer is still
+ * running, answers 504 and is worth asking again; a 404/409 is a permanent
+ * answer from the store or the owner. `null` is a transport failure with no
+ * status, which keeps today's `missing` meaning.
+ */
+type FetchOutcome = { url: string } | { url: null; status: number | null };
+
+/**
+ * The retry schedule for a 504, in milliseconds between attempts: five
+ * attempts in all (the first plus four waits), then a click-to-retry state.
+ * 2 + 4 + 8 + 16 = 30 s covers a transfer the backend left running after its
+ * own 20 s wait (`REMOTE_FETCH_WAIT_S`) without polling an owner that is gone.
+ */
+export const ATTACHMENT_RETRY_DELAYS_MS = [2000, 4000, 8000, 16000] as const;
+
+/** The status the backend uses for "ask again" and nothing else. */
+const RETRYABLE_STATUS = 504;
 
 /*
  * `peek`, `retain` and `release` come from `shared/lib/blob-url-cache`, keyed by
@@ -107,15 +129,15 @@ const inflight = new Map<
 function fetchAttachment(
 	scope: AttachmentScope,
 	digest: string,
-): Promise<string | null> {
+): Promise<FetchOutcome> {
 	const existing = inflight.get(digest);
 	if (existing) {
 		existing.holders += 1;
 		return existing.promise;
 	}
-	const record: { promise: Promise<string | null>; holders: number } = {
+	const record: { promise: Promise<FetchOutcome>; holders: number } = {
 		holders: 1,
-		promise: null as unknown as Promise<string | null>,
+		promise: null as unknown as Promise<FetchOutcome>,
 	};
 	record.promise = (async () => {
 		try {
@@ -134,7 +156,10 @@ function fetchAttachment(
 						},
 				null,
 			);
-			if (result.kind !== "bytes") return null;
+			// A refusal is returned, never published: only bytes enter the shared
+			// cache, so no failure (a 504 above all) outlives this attempt.
+			if (result.kind !== "bytes")
+				return { url: null, status: result.status ?? null };
 			const url = createBlobUrl(result.data as BlobPart, result.mimeType);
 			if (record.holders <= 0) {
 				// Everyone who asked for this is gone. Publishing it would strand an
@@ -142,14 +167,14 @@ function fetchAttachment(
 				// (the cache's own revoke, so the bytes it keeps for `Copy image`
 				// go with the URL).
 				revokeBlobUrl(url);
-				return null;
+				return { url: null, status: null };
 			}
 			publish(digest, url);
-			return url;
+			return { url };
 		} catch {
 			// Never throw: the caller's contract is that an unresolvable image is
 			// a placeholder, not an error boundary.
-			return null;
+			return { url: null, status: null };
 		} finally {
 			inflight.delete(digest);
 		}
@@ -163,6 +188,18 @@ export class AttachmentGoneError extends Error {
 	constructor() {
 		super("This item is no longer in the session");
 		this.name = "AttachmentGoneError";
+	}
+}
+
+/**
+ * The device that holds this digest did not answer in time (the relay
+ * answered 504: owner unreachable, or its transfer is still running). Unlike
+ * `AttachmentGoneError` this is worth retrying, and the toast says so.
+ */
+export class AttachmentOwnerUnreachableError extends Error {
+	constructor() {
+		super("The device that holds these bytes did not answer in time");
+		this.name = "AttachmentOwnerUnreachableError";
 	}
 }
 
@@ -200,6 +237,8 @@ export async function fetchAttachmentBlob(
 		// interrupted write); anything else is the relay failing, which a retry can
 		// clear. The two want different sentences, so the type says which it was.
 		if (result.status === 404) throw new AttachmentGoneError();
+		if (result.status === RETRYABLE_STATUS)
+			throw new AttachmentOwnerUnreachableError();
 		throw new Error("These bytes are not available right now");
 	}
 	return new Blob([result.data as BlobPart], { type: result.mimeType });
@@ -240,7 +279,14 @@ function abandonFetch(digest: string) {
 export type AttachmentSource =
 	| { state: "ready"; url: string }
 	| { state: "resolving" }
-	| { state: "missing" };
+	| { state: "missing" }
+	/*
+	 * The owner of a peer-held digest kept answering 504 through the whole
+	 * backoff. Not `missing`: the bytes exist on a device that may come back, so
+	 * the caller paints the receipt WITH a retry, and `retry` starts a fresh
+	 * five-attempt cycle.
+	 */
+	| { state: "retryable"; retry: () => void };
 
 /**
  * The fields the resolver reads off any attachment ref, whatever its kind.
@@ -285,7 +331,12 @@ export function useAttachmentSource(
 	 * cold mount and a 404 are the same value there - the conflation this exists to
 	 * end.
 	 */
-	const [failed, setFailed] = useState(false);
+	const [failed, setFailed] = useState<null | "missing" | "retryable">(null);
+	/*
+	 * Bumped by `retry` to re-arm the effect for a fresh backoff cycle. A
+	 * counter rather than a boolean because two clicks are two cycles.
+	 */
+	const [cycle, setCycle] = useState(0);
 	/*
 	 * The scope's two ids as PRIMITIVES, read once.
 	 *
@@ -301,13 +352,14 @@ export function useAttachmentSource(
 	const scopeChildId = scope?.childId ?? null;
 
 	useEffect(() => {
+		void cycle;
 		const digest = ref.attachment;
 		if (inline || !digest || !scopeSessionId) return;
 		let live = true;
 		const cached = retain(digest);
 		if (cached) {
 			setResolved(cached);
-			setFailed(false);
+			setFailed(null);
 			return () => {
 				live = false;
 				release(digest);
@@ -321,7 +373,7 @@ export function useAttachmentSource(
 		// THIS attempt is not the last attempt's failure: clearing the flag is what
 		// lets the box be reserved again rather than the receipt re-painted over a
 		// picture that is on its way (a retry after a dropped relay frame).
-		setFailed(false);
+		setFailed(null);
 		// Tracks whether this mount is still party to the fetch it started.
 		// `inflight` is keyed by DIGEST, not by attempt, so once our own attempt
 		// settles and deletes its record, a later row retrying the same digest
@@ -329,32 +381,51 @@ export function useAttachmentSource(
 		// that stranger's count — one we never incremented — and the resolver
 		// would then discard bytes out from under a row still on screen. The
 		// path is ordinary, not exotic: `desktopMedia` answers any non-2xx or
-		// transport failure with `{kind:"error"}`, which resolves `null` without
+		// transport failure with `{kind:"error"}`, which resolves without
 		// throwing and leaves the row mounted on `BrokenAttachment`.
-		let joined = true;
-		// Rebuilt from the two primitives rather than closed over: the effect
-		// references nothing that is not in its dependency list, which is what the
-		// hook rule is for.
-		void fetchAttachment(
-			{ sessionId: scopeSessionId, childId: scopeChildId },
-			digest,
-		).then((url) => {
-			joined = false;
-			if (!live) return;
-			if (!url) {
-				// The bytes are absent rather than late - `desktopMedia` answers any
-				// non-2xx or transport failure with an error, and this is the only
-				// path allowed to say so.
-				setFailed(true);
-				return;
-			}
-			// Retain AFTER the fetch, so the count reflects holders rather than
-			// requests: a row unmounted mid-flight never retained and must not
-			// release.
-			setResolved(retain(digest));
-		});
+		let joined = false;
+		let wait: ReturnType<typeof setTimeout> | undefined;
+		const scopeNow = { sessionId: scopeSessionId, childId: scopeChildId };
+		/*
+		 * One cycle: up to `ATTACHMENT_RETRY_DELAYS_MS.length + 1` attempts while
+		 * the relay answers 504, then `retryable`. The row stays `resolving`
+		 * between attempts (the box is reserved, nothing flickers), and each
+		 * attempt goes back through `fetchAttachment`, so N rows waiting on one
+		 * peer-held digest still make one request per attempt.
+		 */
+		const attempt = (index: number) => {
+			joined = true;
+			void fetchAttachment(scopeNow, digest).then((outcome) => {
+				joined = false;
+				if (!live) return;
+				if (outcome.url === null) {
+					if (outcome.status !== RETRYABLE_STATUS) {
+						// The bytes are absent rather than late - a 404/409 or a transport
+						// failure - and this is the only path allowed to say so.
+						setFailed("missing");
+						return;
+					}
+					const delay = ATTACHMENT_RETRY_DELAYS_MS[index];
+					if (delay === undefined) {
+						setFailed("retryable");
+						return;
+					}
+					wait = setTimeout(() => {
+						wait = undefined;
+						if (live) attempt(index + 1);
+					}, delay);
+					return;
+				}
+				// Retain AFTER the fetch, so the count reflects holders rather than
+				// requests: a row unmounted mid-flight never retained and must not
+				// release.
+				setResolved(retain(digest));
+			});
+		};
+		attempt(0);
 		return () => {
 			live = false;
+			if (wait !== undefined) clearTimeout(wait);
 			// Two different books to close, and both are needed. `release` pays
 			// back a retain this mount made (a no-op if the fetch never landed),
 			// while `abandonFetch` drops this mount's claim on a result still in
@@ -363,7 +434,7 @@ export function useAttachmentSource(
 			if (joined) abandonFetch(digest);
 			release(digest);
 		};
-	}, [ref.attachment, inline, scopeSessionId, scopeChildId]);
+	}, [ref.attachment, inline, scopeSessionId, scopeChildId, cycle]);
 
 	const url = inline ?? resolved;
 	if (url) return { state: "ready", url };
@@ -373,9 +444,11 @@ export function useAttachmentSource(
 	 * all, or no scope to ask - can never produce one, and says so on the first
 	 * render.
 	 */
-	return ref.attachment && scopeSessionId && !failed
-		? { state: "resolving" }
-		: { state: "missing" };
+	if (!ref.attachment || !scopeSessionId || failed === "missing")
+		return { state: "missing" };
+	if (failed === "retryable")
+		return { state: "retryable", retry: () => setCycle((n) => n + 1) };
+	return { state: "resolving" };
 }
 
 /**

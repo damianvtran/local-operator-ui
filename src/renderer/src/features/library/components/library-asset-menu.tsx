@@ -92,7 +92,12 @@ export const LibraryAssetMenu: FC<LibraryAssetMenuProps> = ({
 		}
 	};
 
-	const revealable = Boolean(asset.ref.type === "path" && asset.ref.path);
+	// A PEER's asset has no path on this disk (core §5): never reveal or copy
+	// one, even if a row ever carried one. Its Download reads `library.content`.
+	const remote = Boolean(asset.remote);
+	const revealable = Boolean(
+		!remote && asset.ref.type === "path" && asset.ref.path,
+	);
 	const occurrences = asset.occurrences;
 
 	return (
@@ -180,7 +185,7 @@ export const LibraryAssetMenu: FC<LibraryAssetMenuProps> = ({
 					<span>{t("ui.library.menu.edit_tags")}</span>
 				</DropdownMenuItem>
 				<DropdownMenuSeparator />
-				{asset.ref.path ? (
+				{asset.ref.path && !remote ? (
 					<DropdownMenuItem
 						onSelect={() =>
 							void copy(

@@ -24,8 +24,9 @@
  * here".
  */
 
+import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
-import { ImageOff } from "lucide-react";
+import { ImageOff, RotateCw } from "lucide-react";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
 export type AttachmentFrameProps = {
@@ -258,3 +259,71 @@ export const BrokenAttachment = ({
 			</span>
 		</div>
 	);
+
+/**
+ * The receipt for a PEER-held attachment whose owner did not answer through
+ * the whole backoff (`AttachmentSource` `retryable`).
+ *
+ * The same box as `BrokenAttachment` - the same 117x78 tile when compact, the
+ * same sunken well in the flow - so a slot does not change size between the
+ * two states, but it is a BUTTON: the bytes exist on a device that may come
+ * back, and the reader's click starts a fresh fetch cycle. The glyph is the
+ * retry arrow rather than the torn picture, because the picture is not gone.
+ */
+export const RetryableAttachment = ({
+	name,
+	onRetry,
+	className,
+	compact = false,
+}: {
+	name: string;
+	onRetry: () => void;
+	className?: string;
+	compact?: boolean;
+}) => {
+	const detail = t("ui.chat.attachments.owner_unreachable");
+	const action = t("ui.chat.attachments.retry_fetch");
+	return compact ? (
+		<button
+			type="button"
+			onClick={(event) => {
+				// A tile sits inside a clickable fold; retrying must not open it.
+				event.stopPropagation();
+				onRetry();
+			}}
+			className={cn(
+				"flex h-[78px] w-[117px] items-center justify-center rounded-sm border border-control bg-sunken hover:bg-row-hover",
+				className,
+			)}
+			aria-label={`${name} ${detail} ${action}`}
+			title={`${name} ${detail} ${action}`}
+			data-attachment-retryable=""
+		>
+			<RotateCw className="size-4 shrink-0 text-ink-dim" aria-hidden={true} />
+		</button>
+	) : (
+		<div
+			className={cn(
+				"flex w-fit max-w-full items-center gap-2.5 rounded-sm border border-hairline bg-sunken px-3 py-2",
+				className,
+			)}
+			data-attachment-retryable=""
+		>
+			<RotateCw className="size-4 shrink-0 text-ink-dim" aria-hidden={true} />
+			<span className="min-w-0 text-body-sm text-ink-muted">
+				<span className="truncate font-mono text-ink text-mono-sm">{name}</span>
+				{` ${detail}`}
+			</span>
+			<button
+				type="button"
+				onClick={(event) => {
+					event.stopPropagation();
+					onRetry();
+				}}
+				className="shrink-0 rounded-sm px-1 text-accent text-body-sm hover:underline"
+			>
+				{action}
+			</button>
+		</div>
+	);
+};

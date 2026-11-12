@@ -198,6 +198,16 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 			digest: z.string().regex(/^[a-f0-9]{32}$/),
 		})
 		.strict(),
+	// A peer-held Files row's bytes (`features.remote_files`), by the owner's
+	// row id: the 16-hex id the files index mints, never a path. The backend
+	// re-asks the owner for the row, so the id selects; it does not authorise.
+	z
+		.object({
+			op: z.literal("sessions.files.content"),
+			sessionId: z.string().regex(/^[a-f0-9]{12}$/),
+			fileId: z.string().regex(/^[a-f0-9]{16}$/),
+		})
+		.strict(),
 	// The child-scoped twin of the op above, for the run panel's reader: a
 	// child's durable rows reference attachments in the same content-addressed
 	// store, and the parent's route takes the session whose transcript holds the
@@ -535,6 +545,11 @@ function endpoint(request: DesktopMediaRequest): {
 				path: `/v1/desktop/sessions/${request.sessionId}/attachments/${request.digest}`,
 				method: "GET",
 			};
+		case "sessions.files.content":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/files/${request.fileId}/content`,
+				method: "GET",
+			};
 		case "subagents.attachment":
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/children/${request.childId}/attachments/${request.digest}`,
@@ -862,6 +877,7 @@ export async function requestDesktopMediaOutcome(
 		request.op === "agent.avatar" ||
 		request.op === "agent.avatar.delete" ||
 		request.op === "sessions.attachment" ||
+		request.op === "sessions.files.content" ||
 		request.op === "subagents.attachment" ||
 		request.op === "sessions.attachment.waveform" ||
 		request.op === "sessions.supplementDocument" ||

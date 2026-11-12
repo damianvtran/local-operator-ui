@@ -40,6 +40,7 @@ import {
 	AUDIO_UNAVAILABLE_COPY,
 	AttachmentFrame,
 	BrokenAttachment,
+	RetryableAttachment,
 } from "../components/message-item/attachment-frame";
 import { SoundPlayer } from "./sound-player";
 import type { TranscriptImage } from "./transcript-reducer";
@@ -78,6 +79,9 @@ export const CanonicalAudio = ({
 	const peaks = useWaveform(audio.attachment, scope);
 	if (source.state === "missing") {
 		return <BrokenAttachment name={label} detail={AUDIO_UNAVAILABLE_COPY} />;
+	}
+	if (source.state === "retryable") {
+		return <RetryableAttachment name={label} onRetry={source.retry} />;
 	}
 	if (source.state === "resolving") {
 		/*

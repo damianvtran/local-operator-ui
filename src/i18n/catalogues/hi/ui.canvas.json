@@ -358,5 +358,21 @@
 	"ui.canvas.files.attachmentGone": "स्थानांतरित या हटाया गया · कोई सहेजी गई प्रति नहीं",
 	"ui.canvas.files.attachmentMeta": "{size} · {when}",
 	"ui.canvas.files.attachmentRefused": "यह गोपनीय जानकारी लगती है, इसलिए फ़ाइल कार्रवाइयाँ बंद हैं",
-	"ui.canvas.files.attachmentReadOnly": "केवल पढ़ने के लिए — अटैचमेंट की सहेजी गई प्रति"
+	"ui.canvas.files.attachmentReadOnly": "केवल पढ़ने के लिए — अटैचमेंट की सहेजी गई प्रति",
+	"ui.canvas.files.remoteUnreachable": "इस फ़ाइल वाले डिवाइस से संपर्क नहीं हो सका। थोड़ी देर में फिर से कोशिश करें।",
+	"ui.canvas.files.remoteUnreachableRetry": "इस ध्वनि वाले डिवाइस से संपर्क नहीं हो सका। फिर से कोशिश करने के लिए क्लिक करें।",
+	"ui.canvas.files.remoteOn": "{device} पर",
+	"ui.canvas.files.remoteReason.missing": "अब {device} पर नहीं है",
+	"ui.canvas.files.remoteReason.tooLarge": "{device} से लाने के लिए बहुत बड़ी है",
+	"ui.canvas.files.remoteReason.sensitive": "{device} इस फ़ाइल को निजी रखता है",
+	"ui.canvas.files.remoteReason.notReferenced": "{device} अब यह फ़ाइल साझा नहीं करता",
+	"ui.canvas.files.remoteReason.workspace": "यह {device} के वर्कस्पेस में है। सत्र से इसे अपने स्क्रैचपैड में कॉपी करने को कहें।",
+	"ui.canvas.files.remoteCopyOwnerPath": "{device} पर पथ कॉपी करें",
+	"ui.canvas.files.remoteDownload": "इस डिवाइस पर डाउनलोड करें",
+	"ui.canvas.files.remoteDownloaded": "{name} डाउनलोड हो गई",
+	"ui.canvas.files.remoteDownloadPending": "अभी भी {device} से लाई जा रही है। थोड़ी देर में फिर से कोशिश करें।",
+	"ui.canvas.files.remoteDownloadFailed": "{device} से डाउनलोड नहीं हो सका।",
+	"ui.canvas.files.remoteReadFailed": "यह फ़ाइल उसे रखने वाले डिवाइस से पढ़ी नहीं जा सकी।",
+	"ui.canvas.files.remotePeerUpdate": "इसकी फ़ाइलें यहाँ देखने के लिए {device} को अपडेट करें।",
+	"ui.canvas.files.remoteDeviceFallback": "दूसरा डिवाइस"
 }

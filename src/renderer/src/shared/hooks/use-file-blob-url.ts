@@ -173,6 +173,9 @@ const stripFileUrl = (path: string): string =>
  */
 const isDirectUrl = (path: string): boolean =>
 	path.startsWith("data:") ||
+	// A peer-held file opened in the canvas (`remoteOpenableDocument`): its
+	// bytes are already in this window behind the URL, and no disk holds them.
+	path.startsWith("blob:") ||
 	path.startsWith("http://") ||
 	path.startsWith("https://");
 

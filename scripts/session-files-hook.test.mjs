@@ -7,7 +7,14 @@ import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import React, { act } from "react";
 import { createRoot } from "react-dom/client";
-const state = { request: null, capable: true };
+const state = {
+	request: null,
+	capable: true,
+	// Remote-files parity: whether the session is peer-owned, and whether the
+	// daemon advertises `features.remote_files`.
+	remote: false,
+	remoteFiles: false,
+};
 globalThis.__filesHookControl = state;
 const { outputFiles } = await build({
 	entryPoints: [
@@ -41,6 +48,11 @@ const { outputFiles } = await build({
 							resolveDir: dirname(resolve(path)),
 						}),
 					);
+				// The REAL catalogue and `t()`, so a sentence assertion reads the
+				// English the person sees rather than a key.
+				builder.onResolve({ filter: /^@shared\/i18n$/ }, () => ({
+					path: resolve("src/i18n/index.ts"),
+				}));
 				builder.onResolve({ filter: /^@shared\// }, (args) => ({
 					path: args.path,
 					namespace: "edge",
@@ -49,8 +61,8 @@ const { outputFiles } = await build({
 					contents: path.endsWith("desktop-api")
 						? "export const desktopRequest = req => globalThis.__filesHookControl.request(req);"
 						: path.endsWith("desktop-hooks")
-							? "export const useDesktopCapabilities = () => ({data:{features:{session_files:globalThis.__filesHookControl.capable ? 1 : 0}}}); export const desktopFeatureEnabled = data => data.features.session_files === 1;"
-							: "export const remoteOwnedId = () => false; export const useCanonicalSessionsStore = selector => selector({sessions:[],placementFacts:{}});",
+							? "export const useDesktopCapabilities = () => ({data:{features:{session_files:globalThis.__filesHookControl.capable ? 1 : 0, remote_files:globalThis.__filesHookControl.remoteFiles ? 1 : 0}}}); export const desktopFeatureEnabled = (data, feature) => data.features[feature] === 1;"
+							: "export const remoteOwnedId = () => globalThis.__filesHookControl.remote; export const useCanonicalSessionsStore = selector => selector({sessions:[],placementFacts:{}});",
 					loader: "js",
 				}));
 			},
@@ -297,4 +309,92 @@ test("capable draft is empty ready and issues no request", async (t) => {
 	await host.until(() => host.snapshot.state === "ready");
 	assert.equal(host.snapshot.rows.length, 0);
 	assert.equal(calls, 0);
+});
+
+// ------------------------------------------------- remote files parity (§6)
+const ISOLATES = /[\u2066-\u2069]/g;
+
+test("remote session without features.remote_files keeps today's sentence and asks nothing", async (t) => {
+	let calls = 0;
+	state.request = async () => {
+		calls++;
+		return page(1, 1);
+	};
+	state.remote = true;
+	state.remoteFiles = false;
+	t.after(() => {
+		state.remote = false;
+	});
+	const host = await rig(t);
+	host.render({});
+	await host.until(() => host.snapshot.state === "unsupported");
+	assert.equal(
+		host.snapshot.error,
+		"Remote files cannot be opened on this device.",
+		"byte-for-byte today's sentence on an older daemon",
+	);
+	assert.equal(calls, 0, "no request: an old daemon has no peer index");
+	assert.equal(host.snapshot.localReadAllowed, false);
+});
+
+test("remote session with features.remote_files lists rows like a local one", async (t) => {
+	state.request = async () => {
+		const answer = page(1, 2);
+		for (const r of answer.body.result.rows) {
+			r.remote = true;
+			r.origin_device = { id: "d2", name: "lop-remote-node-2" };
+			r.remote_read = { kind: "path" };
+			r.remote_unreadable = null;
+		}
+		return answer;
+	};
+	state.remote = true;
+	state.remoteFiles = true;
+	t.after(() => {
+		state.remote = false;
+		state.remoteFiles = false;
+	});
+	const host = await rig(t);
+	host.render({});
+	await host.until(() => host.snapshot.state === "ready");
+	assert.equal(host.snapshot.rows.length, 2);
+	assert.equal(host.snapshot.rows[0].remote, true);
+	assert.equal(
+		host.snapshot.localReadAllowed,
+		true,
+		"the list shows a listable remote session's rows",
+	);
+});
+
+test("peer_update_required names the owner to update", async (t) => {
+	state.request = async () => ({
+		status: 200,
+		body: {
+			result: {
+				state: "unsupported",
+				unsupported_reason: "peer_update_required",
+				device_name: "lop-remote-node-2",
+				revision: 0,
+				total: 0,
+				rows: [],
+				next_cursor: null,
+				cursor_reset: false,
+				stat_complete: true,
+				scan: { covered_bytes: 0, total_bytes: 0 },
+			},
+		},
+	});
+	state.remote = true;
+	state.remoteFiles = true;
+	t.after(() => {
+		state.remote = false;
+		state.remoteFiles = false;
+	});
+	const host = await rig(t);
+	host.render({});
+	await host.until(() => host.snapshot.state === "unsupported");
+	assert.equal(
+		host.snapshot.error.replace(ISOLATES, ""),
+		"Update lop-remote-node-2 to see its files here.",
+	);
 });

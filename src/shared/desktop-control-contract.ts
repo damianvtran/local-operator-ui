@@ -855,6 +855,13 @@ export type DesktopLibraryAsset = {
 	locked: boolean;
 	favorite: boolean;
 	archived: boolean;
+	/**
+	 * The device that holds this asset when it is indexed from a PEER's session
+	 * (core remote-files-parity §5; additive, absent on older daemons). A remote
+	 * asset has no `ref.path` by construction; its bytes come only from
+	 * `library.content`.
+	 */
+	remote?: { device_id: string; device_name: string | null } | null;
 };
 
 /** The `library.list` answer. */

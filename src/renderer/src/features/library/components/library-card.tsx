@@ -17,6 +17,7 @@
 
 import { SoundPlayer } from "@features/chat/canonical/sound-player";
 import { rowCurrent } from "@features/chat/components/chat-sidebar";
+import { RemoteFileMark } from "@features/chat/components/remote-file-mark";
 import { Badge, Button } from "@shared/components/ui";
 import { useEverInView } from "@shared/hooks/use-ever-in-view";
 import { t } from "@shared/i18n";
@@ -38,6 +39,7 @@ import {
 	formatDuration,
 	libraryKindLabel,
 	originGroupLabelKey,
+	remoteDevice,
 } from "../library-model";
 import { LibraryAssetMenu } from "./library-asset-menu";
 import { KindGlyph } from "./library-glyph";
@@ -279,6 +281,9 @@ export const LibraryCard: FC<
 							})}
 						</span>
 					)}
+					{asset.remote ? (
+						<RemoteFileMark device={remoteDevice(asset)} />
+					) : null}
 					{asset.favorite && <FavoriteMark />}
 				</div>
 			</div>
@@ -375,6 +380,7 @@ export const LibraryRow: FC<
 					<bdi>{formatBytes(asset.size_bytes)}</bdi>
 				</span>
 				<OriginBadge group={asset.origin_group} />
+				{asset.remote ? <RemoteFileMark device={remoteDevice(asset)} /> : null}
 				{asset.favorite && <FavoriteMark />}
 			</div>
 		</button>

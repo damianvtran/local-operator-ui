@@ -1,6 +1,7 @@
 import { t } from "@shared/i18n";
 import { createBlobUrl, revokeBlobUrl } from "@shared/lib/blob-url-cache";
 import { useEffect, useState } from "react";
+import { fetchRemoteFileBlob } from "../../canonical/remote-file-transfer";
 import { fetchAttachmentBlob } from "../../canonical/use-attachment-url";
 import type { CanvasDocument } from "../../types/canvas";
 import { mimeTypeForPath } from "../../utils/file-kind";
@@ -51,6 +52,9 @@ const keyOf = (document: CanvasDocument) =>
 		: `finder:${document.path}:${document.lastAgentModified ?? 0}:${document.sizeBytes ?? 0}`;
 
 export async function finderOriginal(document: CanvasDocument): Promise<Blob> {
+	// A PEER-held row's `path` is the owner's display path: never read it from
+	// this disk (I3-1). Its bytes come over the content route or its digest.
+	if (document.remote) return fetchRemoteFileBlob(document);
 	if (document.artifact)
 		return fetchAttachmentBlob(
 			{

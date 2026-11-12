@@ -31,6 +31,7 @@ import {
 	ATTACHMENT_UNAVAILABLE_COPY,
 	AttachmentFrame,
 	BrokenAttachment,
+	RetryableAttachment,
 } from "../components/message-item/attachment-frame";
 import { ImageAttachment } from "../components/message-item/image-attachment";
 import type {
@@ -162,6 +163,15 @@ export const CanonicalImage = ({
 			<div className={cn("inline-block max-w-full")} aria-hidden={true}>
 				{reserved}
 			</div>
+		);
+	}
+	if (source.state === "retryable") {
+		return (
+			<RetryableAttachment
+				name={label}
+				compact={size === "thumbnail"}
+				onRetry={source.retry}
+			/>
 		);
 	}
 	if (source.state === "missing") {

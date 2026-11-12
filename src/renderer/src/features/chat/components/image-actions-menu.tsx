@@ -22,7 +22,10 @@ import {
 	Maximize2,
 } from "lucide-react";
 import { t } from "../../../../../i18n";
-import { AttachmentGoneError } from "../canonical/use-attachment-url";
+import {
+	AttachmentGoneError,
+	AttachmentOwnerUnreachableError,
+} from "../canonical/use-attachment-url";
 import {
 	type ImageAction,
 	type ImageActionId,
@@ -145,7 +148,14 @@ const failureSentence = (
 	fallback: string,
 	gone: string,
 	error: unknown,
-): string => (error instanceof AttachmentGoneError ? gone : fallback);
+): string =>
+	error instanceof AttachmentGoneError
+		? gone
+		: // A peer-held digest whose owner did not answer (504): say so, since a
+			// retry later can succeed where the generic sentence implies it cannot.
+			error instanceof AttachmentOwnerUnreachableError
+			? t("ui.canvas.files.remoteUnreachable")
+			: fallback;
 
 /**
  * The entries `ImageActionsMenu` would render for these props - the one

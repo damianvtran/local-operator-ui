@@ -358,5 +358,21 @@
 	"ui.canvas.files.attachmentGone": "منتقل یا حذف شدہ · کوئی محفوظ شدہ نقل نہیں",
 	"ui.canvas.files.attachmentMeta": "{size} · {when}",
 	"ui.canvas.files.attachmentRefused": "یہ راز معلوم ہوتا ہے، اس لیے فائل کے اعمال بند ہیں",
-	"ui.canvas.files.attachmentReadOnly": "صرف پڑھنے کے لیے — منسلکہ کی محفوظ شدہ نقل"
+	"ui.canvas.files.attachmentReadOnly": "صرف پڑھنے کے لیے — منسلکہ کی محفوظ شدہ نقل",
+	"ui.canvas.files.remoteUnreachable": "اس فائل والے آلے سے رابطہ نہیں ہو سکا۔ تھوڑی دیر میں دوبارہ کوشش کریں۔",
+	"ui.canvas.files.remoteUnreachableRetry": "اس آواز والے آلے سے رابطہ نہیں ہو سکا۔ دوبارہ کوشش کے لیے کلک کریں۔",
+	"ui.canvas.files.remoteOn": "{device} پر",
+	"ui.canvas.files.remoteReason.missing": "اب {device} پر موجود نہیں",
+	"ui.canvas.files.remoteReason.tooLarge": "{device} سے لانے کے لیے بہت بڑی ہے",
+	"ui.canvas.files.remoteReason.sensitive": "{device} اس فائل کو نجی رکھتا ہے",
+	"ui.canvas.files.remoteReason.notReferenced": "{device} اب یہ فائل شیئر نہیں کرتا",
+	"ui.canvas.files.remoteReason.workspace": "یہ {device} کی ورک اسپیس میں ہے۔ سیشن سے کہیں کہ اسے اپنے اسکریچ پیڈ میں کاپی کرے۔",
+	"ui.canvas.files.remoteCopyOwnerPath": "{device} پر راستہ کاپی کریں",
+	"ui.canvas.files.remoteDownload": "اس آلے پر ڈاؤن لوڈ کریں",
+	"ui.canvas.files.remoteDownloaded": "{name} ڈاؤن لوڈ ہو گئی",
+	"ui.canvas.files.remoteDownloadPending": "ابھی {device} سے لائی جا رہی ہے۔ تھوڑی دیر میں دوبارہ کوشش کریں۔",
+	"ui.canvas.files.remoteDownloadFailed": "{device} سے ڈاؤن لوڈ نہیں ہو سکی۔",
+	"ui.canvas.files.remoteReadFailed": "یہ فائل اسے رکھنے والے آلے سے پڑھی نہیں جا سکی۔",
+	"ui.canvas.files.remotePeerUpdate": "اس کی فائلیں یہاں دیکھنے کے لیے {device} کو اپ ڈیٹ کریں۔",
+	"ui.canvas.files.remoteDeviceFallback": "دوسرا آلہ"
 }

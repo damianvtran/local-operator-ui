@@ -2,6 +2,7 @@ import {
 	type LocalOperatorClient,
 	createLocalOperatorClient,
 } from "@shared/api/local-operator";
+import { Button } from "@shared/components/ui";
 import { apiConfig } from "@shared/config";
 import { useFileBlobUrl } from "@shared/hooks/use-file-blob-url";
 import { t } from "@shared/i18n";
@@ -124,6 +125,15 @@ const ArtifactVideoPreview: FC<{ document: CanvasDocument }> = ({
 			</ViewerChrome>
 			{source.state === "resolving" ? (
 				<FileViewerState quiet title={t("ui.common.viewer.opening")} />
+			) : source.state === "retryable" ? (
+				<FileViewerState
+					title={t("ui.canvas.files.remoteUnreachable")}
+					detail={document.title}
+				>
+					<Button variant="secondary" size="sm" onClick={source.retry}>
+						{t("ui.canvas.files.retry")}
+					</Button>
+				</FileViewerState>
 			) : source.state === "missing" || playbackFailed ? (
 				<FileViewerState
 					title={

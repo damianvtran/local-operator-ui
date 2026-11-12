@@ -41,6 +41,7 @@ import { useState } from "react";
 import {
 	AttachmentFrame,
 	BrokenAttachment,
+	RetryableAttachment,
 	VIDEO_UNAVAILABLE_COPY,
 } from "../components/message-item/attachment-frame";
 import type { TranscriptImage } from "./transcript-reducer";
@@ -78,6 +79,9 @@ export const CanonicalVideo = ({
 	 * the one receipt below.
 	 */
 	const [decodeFailed, setDecodeFailed] = useState(false);
+	if (source.state === "retryable") {
+		return <RetryableAttachment name={label} onRetry={source.retry} />;
+	}
 	if (source.state === "missing" || decodeFailed) {
 		return <BrokenAttachment name={label} detail={VIDEO_UNAVAILABLE_COPY} />;
 	}

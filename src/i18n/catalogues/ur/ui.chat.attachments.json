@@ -21,5 +21,7 @@
 	"ui.chat.attachments.expand_aria": "{name} کو بڑا کریں",
 	"ui.chat.attachments.expand_title": "{name} کو بڑا کرنے کے لیے کلک کریں",
 	"ui.chat.attachments.open_title": "{name} کھولنے کے لیے کلک کریں",
-	"ui.chat.attachments.not_viewable": "فائل دیکھی نہیں جا سکتی: {name}"
+	"ui.chat.attachments.not_viewable": "فائل دیکھی نہیں جا سکتی: {name}",
+	"ui.chat.attachments.owner_unreachable": "اسے رکھنے والے آلے سے حاصل نہیں کی جا سکی۔",
+	"ui.chat.attachments.retry_fetch": "دوبارہ کوشش کریں"
 }

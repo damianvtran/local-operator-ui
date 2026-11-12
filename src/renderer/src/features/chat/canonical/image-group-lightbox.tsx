@@ -67,6 +67,7 @@ import {
 	ATTACHMENT_UNAVAILABLE_COPY,
 	AttachmentFrame,
 	BrokenAttachment,
+	RetryableAttachment,
 } from "../components/message-item/attachment-frame";
 import { CanonicalImage } from "./canonical-image";
 import type { TranscriptImage } from "./transcript-reducer";
@@ -495,7 +496,11 @@ export const ImageGroupLightbox: FC<ImageGroupLightboxProps> = ({
 			 * moved/renamed/deleted cause a path could honestly carry.
 			 */
 			fallback={
-				<BrokenAttachment name={label} detail={ATTACHMENT_UNAVAILABLE_COPY} />
+				source.state === "retryable" ? (
+					<RetryableAttachment name={label} onRetry={source.retry} />
+				) : (
+					<BrokenAttachment name={label} detail={ATTACHMENT_UNAVAILABLE_COPY} />
+				)
 			}
 			layerRef={layerRef}
 			group={{ index: safeIndex, count, onPrev, onNext, filmstrip }}

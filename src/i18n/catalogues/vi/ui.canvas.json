@@ -358,5 +358,21 @@
 	"ui.canvas.files.attachmentGone": "Đã di chuyển hoặc bị xóa · không có bản sao đã lưu",
 	"ui.canvas.files.attachmentMeta": "{size} · {when}",
 	"ui.canvas.files.attachmentRefused": "Có vẻ là thông tin bí mật nên thao tác với tệp đã bị tắt",
-	"ui.canvas.files.attachmentReadOnly": "Chỉ đọc — bản sao đã lưu của tệp đính kèm"
+	"ui.canvas.files.attachmentReadOnly": "Chỉ đọc — bản sao đã lưu của tệp đính kèm",
+	"ui.canvas.files.remoteUnreachable": "Không thể kết nối tới thiết bị đang giữ tệp này. Hãy thử lại sau giây lát.",
+	"ui.canvas.files.remoteUnreachableRetry": "Không thể kết nối tới thiết bị đang giữ âm thanh này. Nhấp để thử lại.",
+	"ui.canvas.files.remoteOn": "Trên {device}",
+	"ui.canvas.files.remoteReason.missing": "Không còn trên {device}",
+	"ui.canvas.files.remoteReason.tooLarge": "Quá lớn để lấy từ {device}",
+	"ui.canvas.files.remoteReason.sensitive": "{device} giữ tệp này ở chế độ riêng tư",
+	"ui.canvas.files.remoteReason.notReferenced": "{device} không còn chia sẻ tệp này",
+	"ui.canvas.files.remoteReason.workspace": "Nằm trong không gian làm việc của {device}. Hãy yêu cầu phiên sao chép nó vào vùng nháp của phiên.",
+	"ui.canvas.files.remoteCopyOwnerPath": "Sao chép đường dẫn trên {device}",
+	"ui.canvas.files.remoteDownload": "Tải xuống thiết bị này",
+	"ui.canvas.files.remoteDownloaded": "Đã tải xuống {name}",
+	"ui.canvas.files.remoteDownloadPending": "Vẫn đang lấy từ {device}. Hãy thử lại sau giây lát.",
+	"ui.canvas.files.remoteDownloadFailed": "Không thể tải xuống từ {device}.",
+	"ui.canvas.files.remoteReadFailed": "Không thể đọc tệp này từ thiết bị đang giữ nó.",
+	"ui.canvas.files.remotePeerUpdate": "Hãy cập nhật {device} để xem tệp của nó tại đây.",
+	"ui.canvas.files.remoteDeviceFallback": "thiết bị kia"
 }

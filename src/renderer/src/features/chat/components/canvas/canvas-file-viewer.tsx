@@ -8,11 +8,18 @@ import { READ_ENCODING, viewerFor } from "@features/chat/utils/viewer-routing";
 import { desktopRequest } from "@shared/api/local-operator/desktop-api";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useCanvasStore } from "@shared/store/canvas-store";
-import { showErrorToast } from "@shared/utils/toast-manager";
+import { showErrorToast, showInfoToast } from "@shared/utils/toast-manager";
 import type { FC } from "react";
 import { memo, useCallback, useMemo } from "react";
 import { t } from "../../../../../../i18n";
+import {
+	downloadRemoteFile,
+	fetchRemoteFileBlob,
+	remoteOpenableDocument,
+} from "../../canonical/remote-file-transfer";
+import { remoteUnreadableText } from "../../canonical/remote-files";
 import { indexedDocument } from "../../canonical/session-files";
+import { AttachmentOwnerUnreachableError } from "../../canonical/use-attachment-url";
 import type { MentionScanHandle } from "../../canonical/use-mentioned-files";
 import type { useSessionFiles } from "../../canonical/use-session-files";
 import { materialiseUserAttachment } from "../../canonical/use-user-attachments";
@@ -153,6 +160,13 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 			 * `null` is not an error: it is the documented downgrade to the OS.
 			 */
 			const kind = viewerFor(fileDoc.path, fileDoc.type);
+
+			// A peer-held document arrives with its bytes behind a `blob:` URL
+			// (`remoteOpenableDocument`): open it as is, never probe or read a path.
+			if (fileDoc.remote && fileDoc.path.startsWith("blob:")) {
+				openDocument(fileDoc);
+				return;
+			}
 
 			/*
 			 * A session artifact opens BY DIGEST, before anything that assumes a
@@ -436,6 +450,47 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 				retry: attachments?.retry ?? (() => {}),
 			}}
 			onOpen={(document) => {
+				/*
+				 * A PEER-held row (`features.remote_files`) never opens through this
+				 * disk (I3-1): an unreadable one says why, a digest-backed picture,
+				 * clip or sound opens by digest (fetch-on-miss), and anything else
+				 * reads its bytes over the content route into a `data:` document.
+				 */
+				if (document.remote) {
+					const remote = document.remote;
+					if (remote.unreadable) {
+						showInfoToast(remoteUnreadableText(remote));
+						return;
+					}
+					if (
+						document.artifact &&
+						(document.type === "image" ||
+							document.type === "video" ||
+							document.type === "audio")
+					) {
+						void handleFileClick(document);
+						return;
+					}
+					const kind = viewerFor(document.path, document.type);
+					if (kind === null) {
+						// Nothing here can show it; landing it is the honest offer.
+						void downloadRemoteFile(remote);
+						return;
+					}
+					void fetchRemoteFileBlob(document)
+						.then((blob) =>
+							remoteOpenableDocument(document, blob, READ_ENCODING[kind]),
+						)
+						.then((opened) => handleFileClick(opened))
+						.catch((error: unknown) =>
+							showErrorToast(
+								error instanceof AttachmentOwnerUnreachableError
+									? t("ui.canvas.files.remoteUnreachable")
+									: t("ui.canvas.files.remoteReadFailed"),
+							),
+						);
+					return;
+				}
 				/*
 				 * A refused row with no stored bytes has nothing the app may show:
 				 * its document is the bare name, and a probe or a "no longer exists"

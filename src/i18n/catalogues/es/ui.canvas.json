@@ -358,5 +358,21 @@
 	"ui.canvas.files.attachmentGone": "Movido o eliminado · sin copia guardada",
 	"ui.canvas.files.attachmentMeta": "{size} · {when}",
 	"ui.canvas.files.attachmentRefused": "Parece un secreto, acciones del archivo desactivadas",
-	"ui.canvas.files.attachmentReadOnly": "Solo lectura — copia guardada de un adjunto"
+	"ui.canvas.files.attachmentReadOnly": "Solo lectura — copia guardada de un adjunto",
+	"ui.canvas.files.remoteUnreachable": "No se pudo contactar con el dispositivo que tiene este archivo. Inténtalo de nuevo en un momento.",
+	"ui.canvas.files.remoteUnreachableRetry": "No se pudo contactar con el dispositivo que tiene este sonido. Haz clic para reintentar.",
+	"ui.canvas.files.remoteOn": "En {device}",
+	"ui.canvas.files.remoteReason.missing": "Ya no está en {device}",
+	"ui.canvas.files.remoteReason.tooLarge": "Demasiado grande para traerlo desde {device}",
+	"ui.canvas.files.remoteReason.sensitive": "{device} mantiene este archivo privado",
+	"ui.canvas.files.remoteReason.notReferenced": "{device} ya no comparte este archivo",
+	"ui.canvas.files.remoteReason.workspace": "Está en el espacio de trabajo de {device}. Pide a la sesión que lo copie a su borrador.",
+	"ui.canvas.files.remoteCopyOwnerPath": "Copiar ruta en {device}",
+	"ui.canvas.files.remoteDownload": "Descargar en este dispositivo",
+	"ui.canvas.files.remoteDownloaded": "{name} descargado",
+	"ui.canvas.files.remoteDownloadPending": "Aún se está trayendo desde {device}. Inténtalo de nuevo en un momento.",
+	"ui.canvas.files.remoteDownloadFailed": "No se pudo descargar desde {device}.",
+	"ui.canvas.files.remoteReadFailed": "No se pudo leer este archivo desde el dispositivo que lo tiene.",
+	"ui.canvas.files.remotePeerUpdate": "Actualiza {device} para ver aquí sus archivos.",
+	"ui.canvas.files.remoteDeviceFallback": "el otro dispositivo"
 }

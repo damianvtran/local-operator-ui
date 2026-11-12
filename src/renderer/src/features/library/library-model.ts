@@ -189,6 +189,11 @@ export function organizedParam(
 }
 
 /** The asset's effective display name: the user's name, else the derived one. */
+/** The device a remote asset lives on, as the card's mark names it. */
+export function remoteDevice(asset: DesktopLibraryAsset): string {
+	return asset.remote?.device_name || asset.remote?.device_id || "";
+}
+
 export function assetDisplayName(asset: DesktopLibraryAsset): string {
 	return asset.name.trim() || asset.derived_name.trim() || asset.id;
 }

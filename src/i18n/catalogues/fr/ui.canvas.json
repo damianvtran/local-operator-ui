@@ -358,5 +358,21 @@
 	"ui.canvas.files.attachmentGone": "Déplacé ou supprimé · aucune copie conservée",
 	"ui.canvas.files.attachmentMeta": "{size} · {when}",
 	"ui.canvas.files.attachmentRefused": "Ressemble à un secret, actions sur le fichier désactivées",
-	"ui.canvas.files.attachmentReadOnly": "Lecture seule — copie conservée d’une pièce jointe"
+	"ui.canvas.files.attachmentReadOnly": "Lecture seule — copie conservée d’une pièce jointe",
+	"ui.canvas.files.remoteUnreachable": "Impossible de joindre l'appareil qui contient ce fichier. Réessayez dans un instant.",
+	"ui.canvas.files.remoteUnreachableRetry": "Impossible de joindre l'appareil qui contient ce son. Cliquez pour réessayer.",
+	"ui.canvas.files.remoteOn": "Sur {device}",
+	"ui.canvas.files.remoteReason.missing": "N'est plus sur {device}",
+	"ui.canvas.files.remoteReason.tooLarge": "Trop volumineux pour être récupéré depuis {device}",
+	"ui.canvas.files.remoteReason.sensitive": "{device} garde ce fichier privé",
+	"ui.canvas.files.remoteReason.notReferenced": "{device} ne partage plus ce fichier",
+	"ui.canvas.files.remoteReason.workspace": "Se trouve dans l'espace de travail de {device}. Demandez à la session de le copier dans son brouillon.",
+	"ui.canvas.files.remoteCopyOwnerPath": "Copier le chemin sur {device}",
+	"ui.canvas.files.remoteDownload": "Télécharger sur cet appareil",
+	"ui.canvas.files.remoteDownloaded": "{name} téléchargé",
+	"ui.canvas.files.remoteDownloadPending": "Récupération en cours depuis {device}. Réessayez dans un instant.",
+	"ui.canvas.files.remoteDownloadFailed": "Impossible de télécharger depuis {device}.",
+	"ui.canvas.files.remoteReadFailed": "Impossible de lire ce fichier depuis l'appareil qui le contient.",
+	"ui.canvas.files.remotePeerUpdate": "Mettez à jour {device} pour voir ses fichiers ici.",
+	"ui.canvas.files.remoteDeviceFallback": "l'autre appareil"
 }

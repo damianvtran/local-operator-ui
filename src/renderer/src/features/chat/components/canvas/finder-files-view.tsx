@@ -44,6 +44,7 @@ import {
 	formatDateTime,
 	formatNumber,
 } from "../../../../../../i18n/format";
+import { remoteUnreadableText } from "../../canonical/remote-files";
 import type { FileIndexState } from "../../canonical/use-session-files";
 import { canMaterialiseAttachment } from "../../canonical/user-attachments";
 import type { CanvasDocument } from "../../types/canvas";
@@ -55,6 +56,8 @@ import {
 import { revealLocalTarget } from "../../utils/link-open";
 import { viewerFor } from "../../utils/viewer-routing";
 import { ImageActionsMenu, imageMenuActions } from "../image-actions-menu";
+import { RemoteFileActionsMenu } from "../remote-file-actions-menu";
+import { RemoteFileMark } from "../remote-file-mark";
 import { attachmentTooltipText } from "./attachment-items";
 import { AudioDocumentPlayer } from "./audio-document-player";
 import { FILE_KIND_GROUPS, filterAndSearchRows } from "./file-rows";
@@ -1229,7 +1232,10 @@ function FinderEntry({
 	const [nearRef, near] = useEverInView("200px");
 	const thumb = useFinderThumbnail(
 		doc,
-		near && item.row.media === "image" && !item.row.missing,
+		near &&
+			item.row.media === "image" &&
+			!item.row.missing &&
+			!doc.remote?.unreadable,
 	);
 	const [menuOpen, setMenuOpen] = useState(false);
 	const rowControl = useRef<HTMLButtonElement | null>(null);
@@ -1253,11 +1259,21 @@ function FinderEntry({
 	 * has no actions, and silence beside a sibling that has them read as a
 	 * glitch (UX R2 U13): the tooltip says why, once (R7-2).
 	 */
-	const tooltip = attachmentTooltipText(
-		identity,
-		item.attachment?.status,
-		refused,
-	);
+	/*
+	 * A PEER-held row (`features.remote_files`) names its device in the tooltip
+	 * and, when the owner cannot serve it, the reason - the same sentence its
+	 * disabled menu entries carry, so the row and its menu never disagree.
+	 */
+	const remote = doc.remote ?? null;
+	const tooltip = remote
+		? [
+				identity,
+				t("ui.canvas.files.remoteOn", { device: remote.deviceName }),
+				remote.unreadable ? remoteUnreadableText(remote) : null,
+			]
+				.filter(Boolean)
+				.join("\n")
+		: attachmentTooltipText(identity, item.attachment?.status, refused);
 	/*
 	 * THE CONTEXT-MENU KEY ON A REFUSED ROW SAYS WHY (UX R3 U18). A native
 	 * `title` never shows on keyboard focus, and the refused row has no menu, so
@@ -1294,10 +1310,14 @@ function FinderEntry({
 	 * path. A refused row WITH bytes keeps its digest-only entries (a picture's
 	 * Expand / Copy image).
 	 */
-	const hasMenu = !(
-		(item.attachment && item.row.missing && !PATH_SEPARATOR.test(doc.path)) ||
-		(gated && !doc.artifact)
-	);
+	// A remote row always has a menu: its unreadable entries are disabled
+	// WITH the reason, never absent (core design §3).
+	const hasMenu =
+		Boolean(remote) ||
+		!(
+			(item.attachment && item.row.missing && !PATH_SEPARATOR.test(doc.path)) ||
+			(gated && !doc.artifact)
+		);
 	/*
 	 * The entries the row's menu would render, asked of the menu's own rule
 	 * (`imageMenuActions`), so the key and the menu cannot disagree about
@@ -1309,28 +1329,32 @@ function FinderEntry({
 		doc.artifact && !item.attachment
 			? artifactFileName(doc.artifact)
 			: undefined;
+	const remoteSaveName = doc.artifact
+		? artifactFileName(doc.artifact)
+		: doc.title;
 	const menuResolvePath =
 		doc.artifact && !item.row.missing ? materialise : undefined;
 	const menuMissing = item.row.missing && !doc.artifact;
 	const menuHasEntries =
-		hasMenu &&
-		imageMenuActions({
-			file: doc.path,
-			resolvePath: menuResolvePath,
-			missing: menuMissing,
-			onShowInCanvas: menuShowInCanvas,
-			mediaKind:
-				band.kind === "audio"
-					? "audio"
-					: item.row.media === "image"
-						? "image"
-						: "video",
-			onExpand:
-				band.kind !== "audio" && item.row.media === "image"
-					? onExpand
-					: undefined,
-			saveName: menuSaveName,
-		}).length > 0;
+		Boolean(remote) ||
+		(hasMenu &&
+			imageMenuActions({
+				file: doc.path,
+				resolvePath: menuResolvePath,
+				missing: menuMissing,
+				onShowInCanvas: menuShowInCanvas,
+				mediaKind:
+					band.kind === "audio"
+						? "audio"
+						: item.row.media === "image"
+							? "image"
+							: "video",
+				onExpand:
+					band.kind !== "audio" && item.row.media === "image"
+						? onExpand
+						: undefined,
+				saveName: menuSaveName,
+			}).length > 0);
 	const sort = useUiPreferencesStore((state) => state.finderFiles.sort);
 	const timestamp = sort === "created" ? item.created : item.modified;
 	const dateMetric =
@@ -1403,6 +1427,7 @@ function FinderEntry({
 					>
 						{item.row.name}
 					</button>
+					{remote ? <RemoteFileMark device={remote.deviceName} /> : null}
 					<span
 						title={
 							timestamp === null ? undefined : formatDateTime(timestamp * 1000)
@@ -1414,26 +1439,45 @@ function FinderEntry({
 				</div>
 				<AudioDocumentPlayer doc={doc} label={item.row.name} />
 				<div className={REVEAL} onKeyDown={(event) => event.stopPropagation()}>
-					<ImageActionsMenu
-						file={doc.path}
-						tooltip={t(
-							"ui.canvas.finder_files_view.ui_canvas_files_fileactions",
-						)}
-						label={doc.title}
-						open={menuOpen}
-						onOpenChange={setMenuOpen}
-						onCloseAutoFocus={(event) => {
-							event.preventDefault();
-							rowControl.current?.focus({ preventScroll: true });
-						}}
-						triggerTabIndex={-1}
-						mediaKind="audio"
-						onShowInCanvas={menuShowInCanvas}
-						resolveBytes={() => finderOriginal(doc)}
-						saveName={menuSaveName}
-						resolvePath={menuResolvePath}
-						missing={menuMissing}
-					/>
+					{remote ? (
+						<RemoteFileActionsMenu
+							document={doc}
+							mediaKind="audio"
+							saveName={remoteSaveName}
+							tooltip={t(
+								"ui.canvas.finder_files_view.ui_canvas_files_fileactions",
+							)}
+							open={menuOpen}
+							onOpenChange={setMenuOpen}
+							onCloseAutoFocus={(event) => {
+								event.preventDefault();
+								rowControl.current?.focus({ preventScroll: true });
+							}}
+							triggerTabIndex={-1}
+							onShowInCanvas={menuShowInCanvas}
+						/>
+					) : (
+						<ImageActionsMenu
+							file={doc.path}
+							tooltip={t(
+								"ui.canvas.finder_files_view.ui_canvas_files_fileactions",
+							)}
+							label={doc.title}
+							open={menuOpen}
+							onOpenChange={setMenuOpen}
+							onCloseAutoFocus={(event) => {
+								event.preventDefault();
+								rowControl.current?.focus({ preventScroll: true });
+							}}
+							triggerTabIndex={-1}
+							mediaKind="audio"
+							onShowInCanvas={menuShowInCanvas}
+							resolveBytes={() => finderOriginal(doc)}
+							saveName={menuSaveName}
+							resolvePath={menuResolvePath}
+							missing={menuMissing}
+						/>
+					)}
 				</div>
 			</div>
 		);
@@ -1548,6 +1592,7 @@ function FinderEntry({
 						>
 							{item.row.name}
 						</span>
+						{remote ? <RemoteFileMark device={remote.deviceName} /> : null}
 						{!tiled && item.row.showParent && item.row.parent && (
 							<span
 								className={cn(
@@ -1644,7 +1689,33 @@ function FinderEntry({
 						</Button>
 					</Tooltip>
 				)}
-				{hasMenu && (
+				{remote ? (
+					<RemoteFileActionsMenu
+						document={doc}
+						mediaKind={
+							item.row.media === "image"
+								? "image"
+								: item.row.media === "video"
+									? "video"
+									: "file"
+						}
+						saveName={remoteSaveName}
+						tooltip={
+							item.row.media === "image"
+								? t("ui.canvas.finder_files_view.ui_canvas_files_imageactions")
+								: t("ui.canvas.finder_files_view.ui_canvas_files_fileactions")
+						}
+						open={menuOpen}
+						onOpenChange={setMenuOpen}
+						onCloseAutoFocus={(event) => {
+							event.preventDefault();
+							rowControl.current?.focus({ preventScroll: true });
+						}}
+						triggerTabIndex={-1}
+						onShowInCanvas={menuShowInCanvas}
+						onExpand={item.row.media === "image" ? onExpand : undefined}
+					/>
+				) : hasMenu ? (
 					<ImageActionsMenu
 						file={doc.path}
 						tooltip={
@@ -1668,7 +1739,7 @@ function FinderEntry({
 						resolvePath={menuResolvePath}
 						missing={menuMissing}
 					/>
-				)}
+				) : null}
 			</div>
 		</div>
 	);

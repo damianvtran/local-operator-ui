@@ -5,6 +5,7 @@ import {
 import type { CanvasDocument } from "@features/chat/types/canvas";
 import { artifactFileName } from "@features/chat/utils/artifact-identity";
 import { mimeTypeForPath } from "@features/chat/utils/file-kind";
+import { Button } from "@shared/components/ui";
 import { useFileBlobUrl } from "@shared/hooks/use-file-blob-url";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
@@ -131,6 +132,15 @@ const ArtifactImagePreview: FC<{ document: CanvasDocument }> = ({
 				</div>
 			) : source.state === "resolving" ? (
 				<FileViewerState quiet title={t("ui.common.viewer.opening")} />
+			) : source.state === "retryable" ? (
+				<FileViewerState
+					title={t("ui.canvas.files.remoteUnreachable")}
+					detail={document.title}
+				>
+					<Button variant="secondary" size="sm" onClick={source.retry}>
+						{t("ui.canvas.files.retry")}
+					</Button>
+				</FileViewerState>
 			) : (
 				<FileViewerState
 					title={

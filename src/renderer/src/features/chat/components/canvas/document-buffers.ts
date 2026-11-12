@@ -11,6 +11,9 @@ import {
 	setDocumentFact,
 } from "./file-freshness";
 
+/** A document whose path is a URL (`blob:`/`data:`) names no file to write. */
+const URL_PATH = /^(blob|data):/;
+
 /**
  * THE BUFFER OWNER.
  *
@@ -476,6 +479,9 @@ export async function saveBuffer(
 	 * this is the one place every save passes through.
 	 */
 	if (isArtifactPath(entry.path)) return { status: "unavailable" };
+	// A URL is not a file either: a peer-held document opened over its bytes
+	// (`remoteOpenableDocument`, `blob:`) has no path on this disk to write.
+	if (URL_PATH.test(entry.path)) return { status: "unavailable" };
 	/*
 	 * An automatic save has nothing to do while the document is held: the row has
 	 * told the reader the file moved on, and their two routes out are the control
