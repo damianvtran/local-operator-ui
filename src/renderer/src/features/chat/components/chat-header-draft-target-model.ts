@@ -132,10 +132,18 @@ const CHIP_BOX =
 	// zero-width carrier.
 	"inline-flex h-5 max-w-full shrink-0 items-center gap-1 rounded-xs pe-1 select-none whitespace-nowrap text-body-sm";
 
+// Plain literals joined, not a template literal: the row-state guard in
+// `scripts/chat-sidebar-selection.test.mjs` reads string literals only, and it
+// refuses a `hover:bg-row-hover` that shares a template with a substitution.
+// Not `cn()` either: tailwind-merge may drop or reorder tokens it reads as
+// conflicting, and this string must resolve exactly as written.
 export const draftTargetChipClass = (busy: boolean): string =>
-	busy
-		? `${CHIP_BOX} cursor-default text-ink-disabled`
-		: `${CHIP_BOX} cursor-pointer text-ink-muted hover:bg-row-hover hover:text-ink data-[state=open]:bg-elevated data-[state=open]:text-ink`;
+	[
+		CHIP_BOX,
+		busy
+			? "cursor-default text-ink-disabled"
+			: "cursor-pointer text-ink-muted hover:bg-row-hover hover:text-ink data-[state=open]:bg-elevated data-[state=open]:text-ink",
+	].join(" ");
 
 export const draftTargetGlyphClass = (busy: boolean): string =>
 	busy ? "size-3 shrink-0 text-ink-disabled" : "size-3 shrink-0 text-ink-dim";
