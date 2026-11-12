@@ -4577,6 +4577,19 @@ export type MessageParams = {
 	"ui.chat.canonical.image_gen.control.stop_hint_queued": undefined;
 	"ui.chat.canonical.image_gen.control.stop_hint_running": undefined;
 	"ui.chat.canonical.image_gen.progress": undefined;
+	"ui.chat.canonical.image_gen.state.already_finished": undefined;
+	"ui.chat.canonical.image_gen.state.done": { material: string };
+	"ui.chat.canonical.image_gen.state.done_batch": { material: string };
+	"ui.chat.canonical.image_gen.state.failed": { material: string };
+	"ui.chat.canonical.image_gen.state.failed_batch": { material: string };
+	"ui.chat.canonical.image_gen.state.queue_ahead": { count: number };
+	"ui.chat.canonical.image_gen.state.queued": undefined;
+	"ui.chat.canonical.image_gen.state.running": { material: string };
+	"ui.chat.canonical.image_gen.state.running_batch": {
+		material: string;
+		total: number;
+	};
+	"ui.chat.canonical.image_gen.state.writing_request": undefined;
 	"ui.chat.canonical.image_label": undefined;
 	"ui.chat.canonical.lightbox.filmstrip_aria": {
 		count: number;
@@ -4657,8 +4670,12 @@ export type MessageParams = {
 	"ui.chat.canonical.temporary_deleted.new": undefined;
 	"ui.chat.canonical.temporary_deleted.title": undefined;
 	"ui.chat.canonical.this_chat": undefined;
+	"ui.chat.canonical.tool.composing_empty": undefined;
+	"ui.chat.canonical.tool.composing_sized": { size: string };
 	"ui.chat.canonical.tool.never_sent_composed": { size: string };
 	"ui.chat.canonical.tool.never_sent_empty": undefined;
+	"ui.chat.canonical.tool.queued_empty": undefined;
+	"ui.chat.canonical.tool.queued_sized": { size: string };
 	"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.label": undefined;
 	"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.note": undefined;
 	"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.short": undefined;
