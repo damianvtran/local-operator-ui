@@ -153,6 +153,7 @@ function renderPane({
 	remote = false,
 	records = RECORDS,
 	awaitingHydration = false,
+	hydrationProven = true,
 }) {
 	return renderToStaticMarkup(
 		createElement(
@@ -172,6 +173,7 @@ function renderPane({
 				missing,
 				remote,
 				awaitingHydration,
+				hydrationProven,
 				error: null,
 				onAnswer: () => {},
 			}),
@@ -239,10 +241,16 @@ test("the caption is the shared loading indicator, set in the reading face", () 
 		/font-sans/,
 		"the indicator overrides the foot slot's monospace",
 	);
-	assert.match(tag, /aria-label="Loading conversation"/, "a named live region");
+	// A live region, but not one named "Loading conversation": the rows under it
+	// are already readable (code review round 1, C3).
+	assert.equal(
+		tag.includes("aria-label"),
+		false,
+		"the revalidating region is not named as a load",
+	);
 	assert.match(
 		markup,
-		/data-lo-loading-dot="true"[^>]*animate-pulse-visible|animate-pulse-visible[^>]*data-lo-loading-dot="true"/,
+		/data-lo-loading-dot="true" class="lo-intent-pulse /,
 		"the pulsing dot",
 	);
 	const label =
@@ -259,7 +267,11 @@ test("the caption is the shared loading indicator, set in the reading face", () 
 });
 
 test("a peer's cached paint says it is syncing from the other device", () => {
-	const markup = renderPane({ stale: true, remote: true });
+	const markup = renderPane({
+		stale: true,
+		remote: true,
+		hydrationProven: false,
+	});
 	assert.match(
 		markup,
 		/data-lo-stale-caption="true"><output[^>]*data-lo-conversation-loading="remote"/,
@@ -284,9 +296,58 @@ test("a cold open renders the same indicator where the rows will land", () => {
 		records: [],
 		awaitingHydration: true,
 		remote: true,
+		hydrationProven: false,
 	});
 	assert.match(remote, /<output[^>]*data-lo-conversation-loading="remote"/);
 	assert.ok(remote.includes("Syncing from your other device…"));
+});
+
+/*
+ * The settings-filter hold, armed the way a real window arms it: a persisted
+ * `display.hide_cross_session: true` seed and a settings answer still owed (a
+ * server render never resolves the query). The hold is LOCAL - the pane is
+ * waiting on this window's own settings read - so it is a sync only when the
+ * peer conversation's history is also unproven (code review round 1, C2).
+ */
+function renderFilterHeld(props) {
+	const previous = globalThis.localStorage;
+	const seed = JSON.stringify({ "display.hide_cross_session": true });
+	globalThis.localStorage = {
+		getItem: (key) => (key === "display-settings" ? seed : null),
+		setItem: () => {},
+		removeItem: () => {},
+	};
+	try {
+		return renderPane({ stale: false, ...props });
+	} finally {
+		globalThis.localStorage = previous;
+	}
+}
+
+test("a local filter hold over a peer's proven history says loading, not syncing", () => {
+	const proven = renderFilterHeld({ remote: true, hydrationProven: true });
+	// The control that the hold is what is rendering: rows withheld, the cold
+	// slot standing in for them.
+	assert.match(proven, /<output[^>]*data-lo-conversation-loading="cold"/);
+	assert.equal(proven.includes(RECORDS[1].text), false, "rows are withheld");
+	assert.ok(proven.includes("Loading conversation…"));
+	assert.equal(proven.includes("Syncing from your other device…"), false);
+	const unproven = renderFilterHeld({ remote: true, hydrationProven: false });
+	assert.match(unproven, /<output[^>]*data-lo-conversation-loading="remote"/);
+	assert.ok(unproven.includes("Syncing from your other device…"));
+});
+
+test("a peer's cached paint over proven history is a revalidation, not a sync", () => {
+	const markup = renderPane({
+		stale: true,
+		remote: true,
+		hydrationProven: true,
+	});
+	assert.match(
+		markup,
+		/data-lo-stale-caption="true"><output[^>]*data-lo-conversation-loading="revalidating"/,
+	);
+	assert.equal(markup.includes("Syncing from your other device…"), false);
 });
 
 const RESERVE = /aria-hidden="true" class="@container\/olderhistory /;

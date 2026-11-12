@@ -40,10 +40,17 @@ import type { FC } from "react";
  * ground under it, not the dot. No pill, no border, no shadow: this is a
  * statement in the flow, not a floating surface.
  *
- * THE PULSE is `animate-pulse-visible`: opacity only, keyframes ending on 1, so
- * under reduced motion the dot is parked fully visible (branding.md § 3, the
+ * THE PULSE is `lo-intent-pulse` (styles/index.css), not the skeleton's
+ * `animate-pulse-visible`: same 2s opacity-only curve, but its trough is 0.75
+ * rather than 0.7, and that 0.05 is the difference between `accent` clearing
+ * branding.md § 3's 3:1 floor for a meaningful mark on every palette and
+ * dipping to 2.77-2.99:1 on eight light ones, the default among them (design
+ * review round 1, D1). Under reduced motion it sets `animation: none`, which
+ * leaves the dot still at full opacity (branding.md § 3, the
  * indeterminate-liveness rule: one such element per surface, never a layout
- * property). It is `aria-hidden` - the label beside it is the announcement.
+ * property). Forced colours paint it `CanvasText`, like every other accent
+ * status dot, since a background colour is otherwise dropped there. It is
+ * `aria-hidden` - the label beside it is the announcement.
  *
  * THE LABEL is `text-ink-muted text-meta`, one step above the `ink-dim` the old
  * caption sat at; `ink-muted` is the secondary-text role and clears 4.5:1 on
@@ -85,7 +92,7 @@ type ConversationLoadingIndicatorProps = {
 	variant: ConversationLoadingVariant;
 	/**
 	 * Whether this element is its own live region. True (the default) renders an
-	 * `<output>` named by `region_label`. False renders a plain `<span>`, for a
+	 * `<output>` (named by `region_label` only for `cold`; see below). False renders a plain `<span>`, for a
 	 * host that already announces the state itself and must not be given a
 	 * nested status region - the older-history slot's Button, whose slot owns an
 	 * sr-only announcer.
@@ -108,7 +115,7 @@ export const ConversationLoadingIndicator: FC<
 			<span
 				aria-hidden="true"
 				data-lo-loading-dot={true}
-				className="size-2 shrink-0 animate-pulse-visible rounded-full bg-accent"
+				className="lo-intent-pulse size-2 shrink-0 rounded-full bg-accent forced-colors:bg-[CanvasText]"
 			/>
 			<span className="min-w-0 truncate text-ink-muted text-meta">
 				{conversationLoadingLabel(variant)}
@@ -124,14 +131,23 @@ export const ConversationLoadingIndicator: FC<
 	return announce ? (
 		/*
 		 * `<output>` rather than a div with role="status": the same implicit
-		 * live-region semantics from a native element (the a11y lint's ask), and the
-		 * `aria-label` names the region. The label lives INSIDE it, so the whole
-		 * indicator is one subtree - the transcript's "is there content yet" reads
-		 * exclude this element by that name, and a label outside it would read as a
-		 * transcript row.
+		 * live-region semantics from a native element (the a11y lint's ask). The
+		 * label lives INSIDE it, so the whole indicator is one subtree - a label
+		 * outside it would read as a transcript row.
+		 *
+		 * NAMED ONLY WHEN COLD. "Loading conversation" is true while nothing is
+		 * painted; under rows that are already readable (`revalidating`, `remote`)
+		 * it contradicts the screen, so those regions go unnamed and the visible
+		 * label - the status content a live region reads - is the whole statement
+		 * (code review round 1, C3). The cold name is also the selector the
+		 * session-switch and draft-splash rigs read the placeholder by.
 		 */
 		<output
-			aria-label={t("ui.chat.canonical.loading.region_label")}
+			aria-label={
+				variant === "cold"
+					? t("ui.chat.canonical.loading.region_label")
+					: undefined
+			}
 			data-lo-conversation-loading={variant}
 			className={classes}
 		>

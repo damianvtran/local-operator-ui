@@ -993,14 +993,21 @@ test("the loading indicator stays one small quiet mark", () => {
 		// On the class strings rather than the bare token: the docstring names the
 		// keyframes in prose, and a count over the whole file would be counting the
 		// argument for the rule instead of the element it governs.
-		(indicator.match(/className="[^"]*animate-pulse-visible/g) ?? []).length,
+		// `lo-intent-pulse`, the 0.75-trough pulse: the skeleton's 0.7 trough took
+		// `accent` under 3:1 on eight light palettes (design review round 1, D1).
+		(indicator.match(/className="[^"]*\blo-intent-pulse\b/g) ?? []).length,
 		1,
 		"one indeterminate element per surface",
 	);
+	assert.equal(
+		(indicator.match(/className="[^"]*animate-pulse-visible/g) ?? []).length,
+		0,
+		"the dot does not use the skeleton's 0.7-trough pulse",
+	);
 	assert.match(
 		indicator,
-		/aria-label=\{t\("ui\.chat\.canonical\.loading\.region_label"\)\}/,
-		"the live region keeps its name",
+		/variant === "cold"\s*\?\s*t\("ui\.chat\.canonical\.loading\.region_label"\)/,
+		"the cold live region keeps its name",
 	);
 	// Every conversation-loading site renders THE shared indicator, not a local
 	// copy of it: a second idiom at a call site is how the faint caption and the
@@ -1024,6 +1031,24 @@ test("the loading indicator stays one small quiet mark", () => {
 		"the older-history busy arm renders the shared indicator",
 	);
 	assert.ok(!slot.includes("<Spinner"), "and no spinner of its own");
+	// The mesh case's labels are decided by ONE prop at the pane's real call
+	// site: the transcript tests pass `remote: true` straight to the component,
+	// so dropping it here would keep them green while a peer's conversation fell
+	// back to the local labels (code review round 1, C1).
+	const chatContent = readFileSync(
+		"src/renderer/src/features/chat/components/chat-content.tsx",
+		"utf8",
+	);
+	assert.match(
+		chatContent,
+		/<CanonicalTranscript\b[\s\S]*?\sremote=\{remoteFiles\}/,
+		"the chat pane tells the transcript when the conversation is a peer's",
+	);
+	assert.match(
+		chatContent,
+		/const remoteFiles = useCanonicalSessionsStore\(\(state\) =>\s+sessionId\s+\? remoteOwnedId\(/,
+		"from the placement-aware ownership read",
+	);
 });
 
 /*

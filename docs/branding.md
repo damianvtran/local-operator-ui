@@ -1775,18 +1775,21 @@ with a different label:
 | Older page: an earlier page in flight | the older-history slot's busy Button | `Loading earlier messages…` |
 | Remote: a peer's conversation whose history is not proven yet | whichever of the three slots above is waiting | `Syncing from your other device…` |
 
-The element is one `rounded-full` dot on `accent` - the liveness role (§ 2) -
-pulsing on `animate-pulse-visible` (opacity only, keyframes ending on `1`, so
-under reduced motion it parks fully visible: the § 3 indeterminate-liveness
-rule) and `aria-hidden`, beside a visible label at `text-meta text-ink-muted`,
-sentence case, trailing ellipsis. `ink-muted` is one step above the `ink-dim`
+The element is one `rounded-full` dot on `accent` — the liveness role (§ 2) —
+pulsing on `lo-intent-pulse`: opacity only, with a `0.75` trough because the
+skeleton's `0.7` takes `accent` under the § 3 floor of 3:1 on eight light
+palettes, and `animation: none` under reduced motion, so the dot stays fully
+visible (the § 3 indeterminate-liveness rule). Forced colours repaint it
+`CanvasText`. It is `aria-hidden`, beside a visible label at
+`text-meta text-ink-muted`, sentence case, trailing ellipsis. `ink-muted` is one step above the `ink-dim`
 the old caption used and the reason the state now reads as loading rather than
 as a footnote. No pill, no ground, no border, no shadow: it is a statement in
 the flow, not a floating surface, so on window glass the pane's own translucency
 shows through around it and the dot and label keep their ink roles. In its own
-slot it is an `<output>` named `Loading conversation`; inside the older-history
-Button it drops the live region, because that slot's sr-only announcer already
-says the same words. `Reconnecting` is a transport statement, not a load, and
+slot it is an `<output>`, named `Loading conversation` only in the cold case
+(over painted rows that name would contradict the screen, so the label alone
+is the status); inside the older-history Button it drops the live region,
+because that slot's sr-only announcer already says the same words. `Reconnecting` is a transport statement, not a load, and
 keeps its own `text-body-sm text-ink-dim` line.
 
 **It never adds height.** Every case mounts into a slot that is already
@@ -1796,10 +1799,10 @@ reserved: the foot slot is `min-h-[1lh]` of `text-mono-sm` (12px x 1.45 =
 in every arm; the cold indicator stands where the rows will land, in a pane
 that holds nothing else. A label change between consecutive loading states of
 one slot (cold to remote when the placement fact arrives) re-renders the same
-element in place - no `key`, no remount - so the dot's pulse does not restart.
+element in place — no `key`, no remount — so the dot's pulse does not restart.
 
-**Rows are never treated.** A stale paint - rows read back from this window's
-own memory while the snapshot is still in flight - stays at full `ink`. No
+**Rows are never treated.** A stale paint — rows read back from this window's
+own memory while the snapshot is still in flight — stays at full `ink`. No
 dimming, no scrim, and **no opacity**, which is banned as a state signal here
 for the reason § 6 gives: it is unreadable on some grounds and invisible on
 others. The indicator is present from the first painted frame and removed in
@@ -1824,7 +1827,7 @@ reason (`OlderHistorySlotReserve`).
 about the conversation, and making it before the transcript resolves is how the
 app once flashed "no messages yet" at a populated chat. While a conversation is
 being fetched and nothing has been painted, the pane shows the cold indicator.
-Never a skeleton **over** painted rows, and never the empty state - the
+Never a skeleton **over** painted rows, and never the empty state — the
 indicator is the honest shape of not knowing.
 
 **An arrival must not move anything.** The unseen mark used to be

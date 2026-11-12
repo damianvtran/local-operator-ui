@@ -84,16 +84,32 @@ for (const [variant, label] of Object.entries(LABELS)) {
 			h(ConversationLoadingIndicator, { variant }),
 		);
 		assert.equal(html.match(/<output/g)?.length, 1, "exactly one live region");
-		assert.match(html, /^<output aria-label="Loading conversation"/);
+		// Named only while nothing is painted: "Loading conversation" over rows the
+		// reader can already see contradicts the screen, so the other variants are
+		// unnamed and the status content (the label) is the statement (code review
+		// round 1, C3).
+		if (variant === "cold") {
+			assert.match(html, /^<output aria-label="Loading conversation"/);
+		} else {
+			assert.match(html, /^<output data-lo-conversation-loading=/);
+			assert.equal(html.includes("aria-label"), false, "no region name");
+		}
 		assert.match(html, new RegExp(`data-lo-conversation-loading="${variant}"`));
 		const dot = html.match(
 			/<span aria-hidden="true" data-lo-loading-dot="true" class="([^"]*)"/,
 		)?.[1];
 		assert.ok(dot, "an aria-hidden dot");
 		// Opacity-only liveness on the accent role (branding § 2 / § 3): never a
-		// hex, never a layout property.
-		assert.match(dot, /animate-pulse-visible/);
-		assert.match(dot, /bg-accent/);
+		// hex, never a layout property. `lo-intent-pulse` holds its trough at
+		// 0.75, where `accent` still clears 3:1 on every palette; the skeleton's
+		// `animate-pulse-visible` dips to 0.7, under it on eight light ones
+		// (design review round 1, D1).
+		assert.match(dot, /(^| )lo-intent-pulse( |$)/);
+		assert.doesNotMatch(dot, /animate-pulse/);
+		assert.match(dot, /(^| )bg-accent( |$)/);
+		// Forced colours drop background colours; every accent status dot
+		// repaints in `CanvasText` (design review round 1, D3).
+		assert.match(dot, /(^| )forced-colors:bg-\[CanvasText\]( |$)/);
 		assert.match(dot, /rounded-full/);
 		assert.match(
 			html,
@@ -113,6 +129,29 @@ test("the non-announcing form is the same marks with no live region", () => {
 	assert.match(html, /^<span data-lo-conversation-loading="older"/);
 	assert.match(html, /data-lo-loading-dot="true"/);
 	assert.ok(html.includes(LABELS.older));
+});
+
+test("the region's accessible name is the cold name only while cold", async () => {
+	// The name a screen reader speaks on moving onto the region, read off the
+	// mounted DOM as the variant changes in place: the cold name must not survive
+	// into a state whose rows are painted, nor be missing when it returns.
+	const container = document.getElementById("root");
+	const root = createRoot(container);
+	const names = {};
+	for (const variant of ["cold", "revalidating", "remote", "cold"]) {
+		await act(async () => {
+			root.render(h(ConversationLoadingIndicator, { variant }));
+		});
+		const region = container.querySelector("output");
+		names[variant] = region.getAttribute("aria-label");
+		assert.equal(region.textContent, LABELS[variant], `${variant}: content`);
+	}
+	assert.deepEqual(names, {
+		cold: "Loading conversation",
+		revalidating: null,
+		remote: null,
+	});
+	await act(async () => root.unmount());
 });
 
 test("a variant change updates the mounted element in place, never remounts it", async () => {

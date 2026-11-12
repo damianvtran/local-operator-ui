@@ -7707,9 +7707,14 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				    Rendered inside the content column so it lands at the same inset and the
 				    same bottom anchor the rows will, rather than at the pane's centre in
 				    the composer band. */}
+						{/* A peer's conversation says "syncing" only while its history is
+				    unproven, the same gate as the older slot's row below: the hold
+				    can also be the LOCAL settings-filter wait (`holdFiltering`) over
+				    a peer conversation already read, and that is not a sync (code
+				    review round 1, C2). */}
 						{holdPlaceholder && (
 							<ConversationLoadingIndicator
-								variant={remote ? "remote" : "cold"}
+								variant={remote && !hydrationProven ? "remote" : "cold"}
 								isSmallView={isSmallView}
 							/>
 						)}
@@ -8110,10 +8115,14 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 									 * (`text-mono-sm`, also 12px x 1.45), so it fills the slot
 									 * without growing it. `data-lo-stale-caption` stays as the
 									 * probe name the switch-latency rig and the tests read.
+									 * "Remote" behind the same proof gate as the cold slot and
+									 * the older slot, so the three never disagree.
 									 */
 									<div data-lo-stale-caption={true}>
 										<ConversationLoadingIndicator
-											variant={remote ? "remote" : "revalidating"}
+											variant={
+												remote && !hydrationProven ? "remote" : "revalidating"
+											}
 										/>
 									</div>
 								) : (

@@ -33,7 +33,7 @@
  *    the notes that QUOTE the old sentence are not findings).
  *
  * WHAT IT DOES NOT PROVE: pixels. These are the same components the app mounts
- * (`TranscriptPlaceholder`, `RunDetailsPanel`, `AtPicker` …) and their call
+ * (`ConversationLoadingIndicator`, `RunDetailsPanel`, `AtPicker` …) and their call
  * sites are proven here at the seam they use; the rendered frames belong to the
  * review round, not to this file.
  */
