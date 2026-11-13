@@ -83,6 +83,24 @@ function fixture(t, mutate = () => {}) {
 	return { root, temp, result };
 }
 
+test("Mac CI build gets bounded heap without changing Linux or Electron runtime probes", () => {
+	const build = job.steps.find(
+		(step) => step.name === "Build main with V8 bytecode",
+	);
+	assert.equal(
+		build.env.NODE_OPTIONS,
+		"${{ matrix.runner == 'macos-15' && '--max-old-space-size=4096' || '' }}",
+	);
+	// Scope matters as much as size: Electron disallows some Node options, and
+	// its runtime identity probe must measure the shipped runtime unmodified.
+	assert.equal(workflow.env?.NODE_OPTIONS, undefined);
+	assert.equal(job.env.NODE_OPTIONS, undefined);
+	for (const step of job.steps.filter((step) => step !== build)) {
+		assert.equal(step.env?.NODE_OPTIONS, undefined, step.name);
+	}
+	assert.equal(build.run, "pnpm build");
+});
+
 test("native artifact retains Linux gate, adds one Mac build and uploads only staged output", () => {
 	assert.deepEqual(job.strategy.matrix.runner, ["ubuntu-latest", "macos-15"]);
 	assert.equal(job.strategy["fail-fast"], false);
