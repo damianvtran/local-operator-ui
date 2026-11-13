@@ -76,6 +76,31 @@ export const subscribeDesktopStream = () => () => {};`,
 					resolveDir: process.cwd(),
 				}));
 				/*
+				 * The composer reads the configured send chords off the preferences
+				 * store (`ui-preferences-store`), and that store's own import chain
+				 * reaches `@shared/themes` -> `base-theme` -> `@mui/material` and
+				 * `@emotion/react`, which call into React at module scope
+				 * (`createContext`, `forwardRef`). Those modules are not under test
+				 * here, and the note below says why this bundle must not carry a
+				 * renderer, so the store is answered at the one attribute the send
+				 * path reads: `shortcutBindings`, whose shipped initial state is
+				 * empty - every action then dispatches on its registry default
+				 * (see the `shortcutBindings: {}` initial state in
+				 * `ui-preferences-store.ts`).
+				 */
+				builder.onResolve(
+					{ filter: /^@shared\/store\/ui-preferences-store$/ },
+					() => ({ path: "ui-preferences", namespace: "echo-fixture-prefs" }),
+				);
+				builder.onLoad(
+					{ filter: /.*/, namespace: "echo-fixture-prefs" },
+					() => ({
+						contents: `const state = { shortcutBindings: {} };
+export const useUiPreferencesStore = { getState: () => state, subscribe: () => () => {} };`,
+						loader: "js",
+					}),
+				);
+				/*
 				 * React is never imported by the DELIVERY fixtures - the hook module is
 				 * pulled in for its module-level registry there, and a node bundle must
 				 * not drag a renderer in behind it. The COMPOSER cases at the foot of

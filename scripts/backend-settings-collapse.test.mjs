@@ -442,9 +442,10 @@ test(
 		await type(search(), "");
 		assert.equal(
 			openSections(),
-			// Model, approvals, fork, web tools, plus `session` and `session_delegated`
-			// (see ARRIVAL_FOCUSABLE_CENSUS in backend-settings-tiers.test.mjs).
-			6,
+			// One per section holding an arrival key: model, composer, approvals,
+			// `session`, `session_delegated`, fork and web tools (see
+			// ARRIVAL_FOCUSABLE_CENSUS in backend-settings-tiers.test.mjs).
+			7,
 			"clearing the query restores the arrival layout, not a query-shaped one",
 		);
 		assert.ok(rowShown("hosting"), "and Model's own row is on screen again");
