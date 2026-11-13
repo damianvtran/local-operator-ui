@@ -25,7 +25,10 @@ import { askQueueView, askRevisionEvidence } from "@features/chat/ask-queue";
  * read answers `dismissed`, the content stays on screen with a notice and the
  * actions disabled, rather than the pane closing under the reader.
  */
-import { ASK_BOUND_ATTR } from "@features/chat/components/asks/ask-bounds";
+import {
+	ASK_BOUND_ATTR,
+	ASK_LIST_ATTR,
+} from "@features/chat/components/asks/ask-bounds";
 import { AskPanel } from "@features/chat/components/asks/ask-panel";
 import { FLEET_ASKS_QUERY_KEY, useFleetAsks } from "@features/chat/fleet-asks";
 import { useAskOutcomes } from "@features/chat/use-ask-outcomes";
@@ -137,14 +140,14 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 			 * The column is bounded by its parent's `min-w-0` now, and long unbroken text
 			 * wraps (`[overflow-wrap:anywhere]` below), so there is nothing to hide.
 			 */
-			className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto px-6 py-4 [overflow-wrap:anywhere] [scrollbar-gutter:stable]"
+			className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto px-6 pt-4 [overflow-wrap:anywhere] [scrollbar-gutter:stable] [scroll-padding-bottom:calc(var(--lo-ask-actions-h,0px)+4px)]"
 			/*
 			 * The pane bounds the ask card it embeds (design D3): its first ask body
 			 * sizes itself to what is left of THIS pane's height under the header,
 			 * title and actions, so options, Other and Send answer are in view
 			 * without scrolling. See `ASK_BOUND_ATTR` in `ask-bounds.tsx`.
 			 */
-			{...{ [ASK_BOUND_ATTR]: "" }}
+			{...{ [ASK_BOUND_ATTR]: "", [ASK_LIST_ATTR]: "" }}
 		>
 			<div className="flex items-center justify-between gap-2">
 				{narrow ? (

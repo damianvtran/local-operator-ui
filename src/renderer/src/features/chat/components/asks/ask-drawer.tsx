@@ -29,10 +29,13 @@
  * ## Scroll ownership (the D1 fix)
  *
  * Three regions, and only the middle one scrolls: the chrome bar is `shrink-0`, the
- * list is `min-h-0 flex-1 overflow-y-auto`, and there is no footer (the actions live
- * in each card). The transcript does not move when this opens, and the fix is
- * checkable as a number rather than by eye: the scroller's `scrollHeight` is what it
- * is, and `clip` is gone from the page (`virtual_size == size` on the page scroller).
+ * list is `min-h-0 flex-1 overflow-y-auto`, and there is no drawer-level footer - the
+ * actions live in each card, where the card's own row pins to this scroller's bottom
+ * while that card is the one in view (`ask-panel.tsx`'s pinned row, and the list's
+ * `scroll-padding-bottom`, which keeps Tab focus above it). The transcript does not
+ * move when this opens, and the fix is checkable as a number rather than by eye: the
+ * scroller's `scrollHeight` is what it is, and `clip` is gone from the page
+ * (`virtual_size == size` on the page scroller).
  *
  * ## Dismiss
  *
@@ -102,8 +105,10 @@ import {
 	type ReactNode,
 	useCallback,
 	useEffect,
+	useId,
 	useLayoutEffect,
 	useRef,
+	useState,
 } from "react";
 import type { CanonicalFrontendState } from "../../../../../../shared/desktop-session-contract";
 import type {
@@ -375,6 +380,42 @@ export const AskDrawer = ({
 	const view = askQueueView(frontend, outcomes);
 	const now = useAskClock(view.open > 0, nowMs);
 	const rootRef = useRef<HTMLElement | null>(null);
+	const listRef = useRef<HTMLDivElement | null>(null);
+	/*
+	 * THE LIST'S KEYBOARD STOP, AND WHY IT IS MEASURED (the long-ask keyboard fix).
+	 *
+	 * A wheel over a question or an option row now reaches this scroller (the cards no
+	 * longer `overscroll-contain` it away). The KEYBOARD did not have that path at all:
+	 * the cards' controls are buttons, and a page key pressed on one of them scrolls the
+	 * nearest scrollable ancestor - which, with the old containment, was nothing. So the
+	 * list itself takes a Tab stop while it actually overflows, the same contract
+	 * `AskScrollBody` keeps for a long question and `aside-panel.tsx` keeps for an
+	 * exchange: a labelled scroll region in the walk, so PageDown/End/Space have
+	 * somewhere to land without a click first. A list that fits takes neither the stop
+	 * nor the role - an empty Tab stop in front of every short queue is noise.
+	 *
+	 * The name is the bar's own scope line (`aria-labelledby`), which already says what
+	 * the list holds - this adds no copy, and it is not the section's name repeated.
+	 */
+	const [listOverflows, setListOverflows] = useState(false);
+	const scopeId = useId();
+	useEffect(() => {
+		const node = listRef.current;
+		if (!node) return;
+		const measure = () =>
+			setListOverflows(node.scrollHeight > node.clientHeight + 1);
+		measure();
+		if (typeof ResizeObserver === "undefined") return;
+		const observer = new ResizeObserver(measure);
+		observer.observe(node);
+		/*
+		 * The CONTENT's own size is the other input: a card growing (a settled frame, the
+		 * dismiss chooser opening) does not resize the scroller, so its wrapper is watched
+		 * too - the same two-node shape `AskScrollBody` measures with.
+		 */
+		if (node.firstElementChild) observer.observe(node.firstElementChild);
+		return () => observer.disconnect();
+	}, []);
 	/*
 	 * THE UNREAD FRAME IS THE VIEW'S OWN FACT, not a second read of `frontend` here
 	 * (remediation round 1, D1 keeps it separate from `published`, and R1 needs it in
@@ -1150,10 +1191,14 @@ export const AskDrawer = ({
 				)}
 			>
 				<span
+					id={scopeId}
 					className="truncate text-ink-muted text-xs"
 					/*
 					 * The scope line is the surface's own name, so a reader who arrives by
-					 * keyboard hears which queue this is rather than only "Asks".
+					 * keyboard hears which queue this is rather than only "Asks". It names the
+					 * LIST's own scroll region too (`aria-labelledby` on the scroller), which is
+					 * why it carries an id: the region holds this queue, and the line already
+					 * says which one and how much is in it.
 					 */
 					data-ask-scope=""
 				>
@@ -1186,8 +1231,60 @@ export const AskDrawer = ({
 			{tabs?.strip}
 			{tabs?.body ?? null}
 			<div
+				ref={listRef}
+				data-lo-ask-list=""
+				/*
+				 * THE LIST OWNS THIS SURFACE'S SCROLL, and three contracts come with that:
+				 *
+				 * 1. THE CARD'S ACTIONS PIN INSIDE IT. Each card's `Send answer`/`Decline` row is
+				 *    `sticky bottom-0`, so it holds at the bottom of this box while its card is the
+				 *    one crossing the fold (see the row's note in `ask-panel.tsx`).
+				 * 2. TAB FOCUS LANDS ABOVE THAT ROW. The row publishes its measured height here
+				 *    (`--lo-ask-actions-h`), and this padding makes a focus or `scrollIntoView`
+				 *    stop short of it: the browser only scrolls an element that is outside the
+				 *    scrollport, and under a sticky bar it is INSIDE - the same defect
+				 *    `EditFooter` fixed for the agents pane. The 4 px is the focus ring's
+				 *    offset-and-width, so the ring clears the bar too.
+				 * 3. THE REGION IS IN THE TAB WALK WHILE IT SCROLLS (`tabIndex`/`role` below,
+				 *    measured, not unconditional).
+				 */
+				// The stop is the remedy, not a non-interactive tabindex: the list is the thing that scrolls, and it takes the key only while it really overflows.
+				tabIndex={listOverflows ? 0 : undefined}
+				role={listOverflows ? "region" : undefined}
+				aria-labelledby={listOverflows ? scopeId : undefined}
+				/*
+				 * SPACE IS THE ONE PAGE KEY THE PLATFORM DOES NOT GIVE A FOCUSED SCROLL
+				 * CONTAINER. PageDown, End, Home and the arrows are Chromium's own on a
+				 * focusable scroller (measured: 1756 px on the first PageDown, End at the
+				 * maximum, Home back at 0); Space scrolls only the DOCUMENT, so on this stop
+				 * it did nothing at all. The reader's expectation is the platform's, so the
+				 * region takes the key itself - by the scrollport's height less a line of
+				 * overlap, which is what a browser's own page scroll leaves.
+				 *
+				 * ONLY ON THE REGION ITSELF (`target === currentTarget`): a focused control
+				 * inside it - a button, the `Other` field - keeps its own Space, which is
+				 * activation and typing, not scrolling.
+				 */
+				onKeyDown={(event) => {
+					if (event.key !== " " || event.target !== event.currentTarget) return;
+					if (event.metaKey || event.ctrlKey || event.altKey) return;
+					event.preventDefault();
+					event.currentTarget.scrollBy({
+						top: Math.round(event.currentTarget.clientHeight * 0.9),
+					});
+				}}
 				className={cn(
-					"min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2",
+					/*
+					 * NO BOTTOM PADDING, and it is the pinned row that needs it: a scroller
+					 * clips at its PADDING box and `sticky bottom-0` stops there, so any
+					 * bottom padding is a strip the band cannot paint - 8 px of the question
+					 * text scrolling visibly under the bar. The cards keep their own 12 px
+					 * (`p-3`), which is where the breathing room at the end of the list comes
+					 * from; the top padding is the space between the tab strip and the first
+					 * card and has no such constraint.
+					 */
+					"min-h-0 flex-1 flex-col overflow-y-auto px-3 pt-2",
+					"[scroll-padding-bottom:calc(var(--lo-ask-actions-h,0px)+4px)]",
 					tabs?.body ? "hidden" : "flex",
 				)}
 			>

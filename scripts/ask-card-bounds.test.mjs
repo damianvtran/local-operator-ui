@@ -1288,3 +1288,102 @@ test("S7: on a proposal card the pinned order is header, headline, body, pair, s
 		assert.ok(classesOf(part).split(/\s+/).includes("shrink-0"));
 	await view.unmount();
 });
+
+/*
+ * THE LONG-ASK SCROLL CONTRACT: THE CARD MUST NOT TAKE THE GESTURE AWAY FROM THE
+ * SCROLLER THAT OWNS IT.
+ *
+ * Measured on the assembled app (Chromium 156): a wheel over a two-line question in
+ * the asks drawer moved the drawer's list 0 px, because `overscroll-behavior:
+ * contain` on the body (and on the option list) stops the chain even at a box with
+ * nothing to scroll. The containment is the DOCK's rule - its card floats over the
+ * transcript, so the conversation behind it must not start scrolling - while the
+ * panel's card is a CHILD of the host's scroller (the drawer's list, the
+ * notifications detail pane), which is the surface that owns the scroll.
+ *
+ * jsdom has no wheel, so the two presentations' contracts are asserted as the
+ * classes they apply: the dock's body and its pinned-row sibling keep
+ * `overscroll-contain`, and nothing inside the panel's card does. The panel's
+ * action row is also the PINNED one - `sticky bottom-0` on the isolating band, a
+ * direct child of the card so its containing block is the card it belongs to.
+ */
+test("the dock contains the wheel; the panel hands it to its host", async () => {
+	const dock = await mount(
+		h(M.QuestionDock, {
+			gate: gate({ title: LONG, options: [{ label: "Ship it" }] }),
+		}),
+	);
+	assert.ok(
+		classesOf(dock.host.querySelector("[data-lo-ask-scroll]"))
+			.split(/\s+/)
+			.includes("overscroll-contain"),
+		"the dock's body contains the gesture: its card floats over the transcript",
+	);
+	await dock.unmount();
+
+	const panel = await mount(
+		h(M.AskPanel, {
+			view: M.askQueueView(
+				{
+					asks: [
+						{
+							ask_id: "scroll-1",
+							session_id: "s-1",
+							created_at: Date.now() - 60_000,
+							expires_at: Date.now() + 3_600_000,
+							timeout_s: 3600,
+							urgent: false,
+							status: "open",
+							delivered: false,
+							questions: [
+								{
+									id: "q-scroll",
+									question: LONG,
+									options: [{ label: "Yes" }, { label: "No" }],
+								},
+							],
+						},
+					],
+					asks_open: 1,
+					asks_truncated: false,
+				},
+				{},
+			),
+			nowMs: Date.now(),
+			outcomes: {},
+			drafts: {},
+			onDraftChange: () => undefined,
+			onAnswer: () => undefined,
+			onDecline: () => undefined,
+		}),
+	);
+	const body = panel.host.querySelector("[data-lo-ask-scroll]");
+	assert.equal(
+		classesOf(body).split(/\s+/).includes("overscroll-contain"),
+		false,
+		"a body inside the host's scroller must hand the wheel up to it",
+	);
+	const options = panel.host.querySelector("[data-lo-ask-options-scroll]");
+	assert.equal(
+		classesOf(options).split(/\s+/).includes("overscroll-contain"),
+		false,
+		"so must the capped option list",
+	);
+	const card = panel.host.querySelector("[data-lo-ask-row]");
+	const actions = panel.host.querySelector("[data-lo-ask-actions]");
+	assert.ok(actions, "the answer row is the pinned one");
+	assert.equal(
+		actions.parentElement,
+		card,
+		"sticky is bounded by the card it belongs to, so the row is its direct child",
+	);
+	const classes = classesOf(actions).split(/\s+/);
+	for (const cls of ["sticky", "bottom-0", "bg-elevated"])
+		assert.ok(classes.includes(cls), `pinned row is ${cls}`);
+	assert.equal(
+		actions.getAttribute("data-glass-plane"),
+		"band-backdrop",
+		"on glass the row masks moving content with the isolating band, not a wash",
+	);
+	await panel.unmount();
+});
