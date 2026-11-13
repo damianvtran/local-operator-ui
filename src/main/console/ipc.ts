@@ -225,15 +225,40 @@ export function registerConsoleIpc(options: RegisterConsoleIpcOptions): void {
 	 * 11.4): it goes renderer -> here -> the pty master and nowhere else. */
 	ipcMain.handle(
 		"console-input",
-		async (event, surface: unknown, text: unknown) => {
+		async (event, surface: unknown, text: unknown, options: unknown) => {
 			const host = authorize(event);
 			if (typeof text !== "string") {
 				throw new Error("Console input must be a string.");
 			}
+			/*
+			 * `paste` is the ONE option the renderer may set, and it is the host's
+			 * existing one (§10.5): main wraps the text in bracketed-paste guards
+			 * only when the shell enabled that mode, read live from the record. The
+			 * ask card's Insert / Run… path types a suggested command as a paste, so
+			 * a line editor treats it as pasted text rather than as keystrokes it
+			 * might bind. Optional and validated: an absent options object is the
+			 * old two-argument call, byte for byte; anything but a boolean is refused
+			 * rather than coerced.
+			 */
+			let paste = false;
+			if (options !== undefined && options !== null) {
+				if (typeof options !== "object" || Array.isArray(options)) {
+					throw new Error("Console input options must be an object.");
+				}
+				const value = (options as { paste?: unknown }).paste;
+				if (value !== undefined && typeof value !== "boolean") {
+					throw new Error("Console input options.paste must be a boolean.");
+				}
+				paste = value === true;
+			}
 			// `"user"`: this handler is the pane's own path, and §10.5's sentence —
 			// "human typing needs no encoder we own" — is only true while the two
 			// paths stay distinguishable in the record.
-			return host.input(stringOrThrow(surface, "surface"), { text }, "user");
+			return host.input(
+				stringOrThrow(surface, "surface"),
+				paste ? { text, paste: true } : { text },
+				"user",
+			);
 		},
 	);
 
