@@ -373,6 +373,11 @@
 	/* The caption buttons' HEIGHT where they trail, for the panel rail's top
 	   clearance (#872). 0 wherever the OS draws no buttons over the app. */
 	--chrome-inset-end-h: 0px;
+	/* The full-screen top inset: one 8px step of the spacing grid. It is a named
+	   property rather than a literal in the full-screen rule below so the design
+	   review has ONE number to tune and a story rig can read the same value; see
+	   that rule for why full screen is not simply 0. */
+	--chrome-fullscreen-top: 8px;
 }
 
 /*
@@ -440,14 +445,40 @@
 }
 
 /*
- * Full screen: the lane collapses to 0 and both insets fall with it. Driven by
+ * Full screen: the OS's controls leave the window, so both insets fall to 0 and the
+ * top inset drops from the windowed lane to `--chrome-fullscreen-top`. Driven by
  * main's `enter-full-screen`/`leave-full-screen`, because full screen is not
  * something the renderer can observe - on macOS the lights come back on the
  * slide-down title bar, and on Linux the WCO rect goes empty and Blink REMOVES the
  * four `titlebar-area-*` env vars, so the fallbacks above already resolve to 0.
+ *
+ * WHY NOT 0 (operator, 2026-11-13): at 0 the sidebar's brand row, the chat
+ * header and the panel rail sat hard against the screen's top edge, which read
+ * as cramped once there is no window frame above them. The inset is PADDING
+ * INSIDE EACH COLUMN, never a band: it rides `--chrome-strip-h`, which every
+ * full-height column already turns into `panel-top-pad` / `panel-scroll` (and the
+ * shell's `<main>` into its one pad for ordinary routes), so each column's own
+ * ground still reaches y0 and all first rows move down together on one line.
+ * The lane that `--chrome-strip-h` sizes is hidden in full screen (below), so the
+ * number buys no drag surface and paints nothing of its own.
+ *
+ * EVERY MODE, NOT ONLY `integrated`. A native-frame window (Windows/Linux
+ * fallback) also loses its OS title bar in full screen, so its columns hit the
+ * same edge; main pushes the full-screen fact in both modes (`window-chrome.ts`),
+ * so the same rule gives every OS the same full-screen layout while each
+ * windowed layout stays exactly as it was (none of them can match this rule).
+ *
+ * NO TRANSITION. The value lands in the same frame as the attribute flip: a
+ * transition on `padding-top` would relayout every column per frame, and the
+ * OS's own full-screen animation is already the motion the user sees. Scroll
+ * regions keep their `scrollTop` - only a padding (or `panel-scroll`'s margin
+ * and height) changes, never the scroller's content.
+ *
+ * `[data-chrome-mode]` (any value) keeps the specificity equal to the mac rule
+ * above, which this one beats by coming later.
  */
-[data-chrome-mode="integrated"][data-chrome-fullscreen="true"] {
-	--chrome-strip-h: 0px;
+[data-chrome-mode][data-chrome-fullscreen="true"] {
+	--chrome-strip-h: var(--chrome-fullscreen-top);
 	--chrome-inset-start: 0px;
 	--chrome-inset-end: 0px;
 	--chrome-inset-end-h: 0px;
@@ -701,6 +732,20 @@
  */
 [data-chrome-mode="integrated"][data-chrome-leading="true"]
 	[data-chrome-route-band] {
+	display: none;
+}
+
+/*
+ * NO DRAG SURFACE IN FULL SCREEN. A full-screen window cannot be moved, and with
+ * `--chrome-strip-h` at the full-screen inset the mac lane would otherwise come back
+ * as an 8px drag strip over every column's top padding; on Windows the route band
+ * would add the caption height on top of the inset if Blink still reported it. Both
+ * leave the flow, as their own rules do outside their gates. Four attribute tests so
+ * this outranks the route band's `:not(...)` arm (0,4,0) and the lane's (0,3,0) by
+ * specificity, with source order as the tie-break against the band.
+ */
+[data-chrome-mode][data-chrome-platform][data-chrome-fullscreen="true"]
+	:is([data-titlebar-lane], [data-chrome-route-band]) {
 	display: none;
 }
 

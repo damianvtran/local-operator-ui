@@ -116,6 +116,17 @@ why will get the next case right where a checklist would not name it.
   band this rule forbids; a content column inside a grounded, `panel-flush`
   ancestor needs no ground of its own, and adding one there is a second tone
   step where the panel already has one.
+- **Full screen keeps the same rule with a smaller number.** With no OS
+  controls over the window, every OS and chrome mode resolves the top inset to
+  `--chrome-fullscreen-top` (one 8px step, `styles/index.css`) instead of 0, so
+  first rows do not sit hard against the screen edge. It is still **padding
+  inside each panel** — it rides `--chrome-strip-h`, which `panel-top-pad`,
+  `panel-scroll` and the shell's `<main>` already read — never a strip or band:
+  every panel's ground still reaches y0, and the lane and route band are hidden
+  so no drag surface or second inset appears. Windowed layouts (mac lane, WCO
+  insets, native frames) do not change. No transition on the padding; it flips
+  in the frame the `data-chrome-fullscreen` attribute does.
+  `scripts/chrome-fullscreen-inset.test.mjs` resolves the cascade per state.
 - **Separate panels by ground value; a panel's edge may carry one `PanelEdge`
   seam, never a border.** The tone step is what separates two planes, and the
   old borders were removed three times, each time because the line started
