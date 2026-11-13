@@ -11,6 +11,7 @@
 	"ui.chat.composer.placeholder.secret_answer": "सवालों के पैनल में गोपनीय अनुरोध का जवाब दें",
 	"ui.chat.composer.placeholder.sending": "आपका संदेश भेजा जा रहा है",
 	"ui.chat.composer.placeholder.stopping": "टर्न रोका जा रहा है",
+	"ui.chat.composer.placeholder.temporary": "अस्थायी चैट — आपकी चैट में सहेजी नहीं जाती। कुछ भी पूछें",
 	"ui.chat.composer.placeholder.unavailable": "यह बातचीत अब मौजूद नहीं है",
 	"ui.chat.composer.placeholder.waiting": "एजेंट को दिशा दें। Enter अभी भेजता है · Esc रोकता है",
 	"ui.chat.composer.start_recording": "रिकॉर्डिंग शुरू करें",

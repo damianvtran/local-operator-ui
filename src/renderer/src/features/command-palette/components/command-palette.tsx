@@ -350,6 +350,15 @@ export const CommandPalette: FC = () => {
 		navigate("/chat");
 	}, [closeCommandPalette, navigate]);
 
+	// The temporary twin of New chat: the same fresh draft, switched on before
+	// anything is sent. Offered only under `features.temporary_chats`.
+	const handleNewTemporaryChat = useCallback(() => {
+		const store = useCanonicalSessionsStore.getState();
+		store.setDraftTemporary(store.stageDraft(undefined, true), true);
+		closeCommandPalette();
+		navigate("/chat");
+	}, [closeCommandPalette, navigate]);
+
 	const handleToggleCanvas = useCallback(() => {
 		setCanvasOpen(!isCanvasOpen);
 		closeCommandPalette();
@@ -392,6 +401,9 @@ export const CommandPalette: FC = () => {
 				case "new-chat":
 					handleNewChat();
 					return;
+				case "new-temporary-chat":
+					handleNewTemporaryChat();
+					return;
 				case "toggle-canvas":
 					handleToggleCanvas();
 					return;
@@ -407,6 +419,7 @@ export const CommandPalette: FC = () => {
 			handleConnectProvider,
 			handleChangeLanguage,
 			handleNewChat,
+			handleNewTemporaryChat,
 			handleToggleCanvas,
 			handleClearConversation,
 		],

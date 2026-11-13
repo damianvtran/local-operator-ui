@@ -98,6 +98,7 @@ import {
 	seedSettledCalls,
 	seedWaitingComposes,
 } from "@features/chat/canonical/transcript-reducer";
+import { isTemporaryDeleted } from "@features/chat/chat-temporary";
 import { tailCarriesOutcome } from "@features/chat/components/compact-receipt";
 import { openTrace } from "@features/chat/open-trace";
 import {
@@ -105,6 +106,7 @@ import {
 	modelSelector,
 } from "@features/chat/session-status/session-model";
 import {
+	DesktopControlError,
 	desktopResult,
 	subscribeDesktopStream,
 } from "@shared/api/local-operator/desktop-api";
@@ -506,6 +508,14 @@ export type CanonicalSessionView = {
 	 * reaches it, because it deliberately spends no validating round trip.
 	 */
 	missing: boolean;
+	/**
+	 * True when the conversation that is `missing` was deleted as a TEMPORARY chat
+	 * (`features.temporary_chats`): the core's tombstone answers the snapshot read
+	 * with 404 `session_temporary_deleted`. The pane then paints the temporary
+	 * tombstone rather than the generic "no longer on this machine". Optional and
+	 * absent on every other path, which is the generic notice.
+	 */
+	temporaryDeleted?: boolean;
 	/** The painted conversation, durable and live, oldest first. */
 	transcript: TranscriptState;
 	/** Older durable rows are being fetched. */
@@ -5985,6 +5995,33 @@ export function useCanonicalSessionStream(
 								// applies to every other reading of the same session.
 								heldFrontend: null,
 							}));
+							/*
+							 * WHY IT IS GONE, asked once: the stream's 404 carries no body
+							 * through the relay, so the snapshot read is what can name a
+							 * temporary chat the core deleted (its tombstone code). Only under
+							 * the capability, and the answer lands only if this subscription is
+							 * still the current one; any other outcome leaves the generic notice.
+							 */
+							if (
+								sessionId &&
+								useCanonicalSessionsStore.getState().temporaryChats
+							) {
+								void desktopResult({ op: "sessions.get", sessionId }).catch(
+									(error: unknown) => {
+										if (generationRef.current !== generation) return;
+										if (
+											!(error instanceof DesktopControlError) ||
+											!isTemporaryDeleted(error.code)
+										)
+											return;
+										commitView((current) =>
+											current.missing
+												? { ...current, temporaryDeleted: true }
+												: current,
+										);
+									},
+								);
+							}
 							return;
 						}
 						const detail =
@@ -6561,6 +6598,10 @@ export function useCanonicalSessionStream(
 			paintScroll: sameSession ? null : (seed?.scroll ?? null),
 			paintBusy: sameSession ? current.paintBusy : seed?.busy === true,
 			missing: sameSession ? current.missing : false,
+			// WHY it is missing travels with `missing` (review R1-3): the hook stays
+			// mounted across a switch, so a kept flag would paint the temporary
+			// tombstone over the next conversation's ordinary 404.
+			temporaryDeleted: sameSession ? current.temporaryDeleted : undefined,
 			status: "connecting",
 			// A different session's children are different children, and a pulse
 			// carried across is a counter no reader can match to a job.

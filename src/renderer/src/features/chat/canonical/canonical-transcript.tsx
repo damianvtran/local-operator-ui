@@ -118,12 +118,6 @@ import type {
 	PendingDesktopGate,
 } from "../../../../../shared/desktop-session-contract";
 import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-notice";
-import type { ProfileRevertDescriptor } from "../../../../../shared/profile-consent";
-import {
-	profileRevertUnavailable,
-	profileRevertView,
-} from "../../mesh/mesh-profile-approval";
-import { ProfileConsentCard } from "../../mesh/profile-consent-card";
 import { parseAgentAvatarSize, turnMarkHeight } from "../agent-avatar-size";
 import { askResponseSummary, askTimeoutSummary } from "../ask-queue";
 import { CHAT_COLUMN_CONTAINER, CHAT_MEASURE } from "../chat-measure";
@@ -146,7 +140,6 @@ import {
 	type BridgeRowView,
 	bridgeRowView as composeBridgeRowView,
 } from "../components/trace/bridge-row-model";
-import { profileSaveCall } from "../components/trace/profile-save-card-model";
 import {
 	hubIdentity,
 	isInternalReceipt,
@@ -180,7 +173,10 @@ import { TraceFold } from "../components/trace/trace-fold";
 import { TurnSummary } from "../components/trace/turn-summary";
 import { WorkingLine } from "../components/trace/working-line";
 import { focusComposer } from "../composer-field";
-import { MISSING_SESSION_NOTICE_ID } from "../missing-session-notice";
+import {
+	MISSING_SESSION_NOTICE_ID,
+	missingSessionNotice,
+} from "../missing-session-notice";
 import { openTrace } from "../open-trace";
 import {
 	DEFAULT_TRANSCRIPT_DISPLAY_MODE,
@@ -233,10 +229,6 @@ import {
 	OlderHistorySlotReserve,
 } from "./older-history-slot";
 import type { OpenFrameFacts } from "./open-frame";
-import {
-	profileRevertOutcome,
-	statusAnswerIsBound,
-} from "./profile-revert-status";
 import {
 	type ProviderErrorAction,
 	providerErrorGuidance,
@@ -349,10 +341,6 @@ import { useBridgeConversationNames } from "./use-bridge-conversation-names";
 import { useCheckpoints } from "./use-checkpoints";
 import { useCrossSessionVisibility } from "./use-cross-session-hidden";
 import { useLinkSubject } from "./use-link-subject";
-import {
-	useProfileRevertAnswer,
-	useProfileRevertStatus,
-} from "./use-profile-revert";
 import { useScrollPaging } from "./use-scroll-paging";
 import {
 	STALE_INDICATOR_DELAY_MS,
@@ -882,6 +870,12 @@ export type CanonicalTranscriptProps = {
 	 * spent to learn it.
 	 */
 	missing?: boolean;
+	/**
+	 * The `missing` conversation was deleted as a TEMPORARY chat (the core's
+	 * tombstone): the notice becomes the temporary tombstone with "New temporary
+	 * chat" and "Back to chats" (`missingSessionNotice`). Ignored unless `missing`.
+	 */
+	missingTemporary?: boolean;
 
 	/**
 	 * Which conversation's rows this is, for attachment resolution — defaulting
@@ -2546,7 +2540,7 @@ const ToolRow = memo(function ToolRow({
 	stopping = false,
 	settledSound = false,
 	onInterruptTurn,
-	approvalEpoch = null,
+	approvalEpoch: _approvalEpoch = null,
 }: {
 	record: Extract<TranscriptRecord, { kind: "tool" }>;
 	isSmallView: boolean;
@@ -2590,50 +2584,10 @@ const ToolRow = memo(function ToolRow({
 	 */
 	const resolveConversation = useBridgeConversationNames();
 	/*
-	 * BOTH ARE UNCONDITIONAL, like the two above: a hook may not be skipped by a
-	 * branch, and the parse is a pure read of a settled result. `profileCall` is
-	 * null for every row but a bound `profile_save`/`profile_revert` answer, so the
-	 * branches below are unchanged for every other tool.
-	 */
-	const profileCall =
-		record.phase === "done" && record.output !== null
-			? profileSaveCall({
-					toolName: record.toolName,
-					output: record.output,
-					details:
-						typeof record.details === "object" && record.details !== null
-							? (record.details as Record<string, unknown>)
-							: null,
-				})
-			: null;
-	const revertAnswer = useProfileRevertAnswer();
-	/*
 	 * Unconditional like the hooks above; null for every row but a music call
 	 * that registered a detached job (`music-generating-model.ts`).
 	 */
 	const musicView = useMusicGeneratingView(record.toolName, record.details);
-	/*
-	 * THE STATUS SEAM IS THE ONLY AUTHORITY (core's revert gate is a live
-	 * action-registration/status read; a persisted `revert_verified` is proof of
-	 * nothing). `profile-revert-status.ts` answers `unavailable` for anything but a
-	 * fresh, identity-bound read (an older backend without the route included), so the
-	 * control renders disabled with its reason — never enabled off the payload's flag.
-	 */
-	const revertIdentity =
-		profileCall?.descriptor && record.toolCallId
-			? {
-					action_id: profileCall.descriptor.action_id,
-					receipt_id: profileCall.descriptor.receipt_id,
-					profile_kind: profileCall.descriptor.profile_kind,
-					profile_name: profileCall.descriptor.profile_name,
-					/* Bound to THIS row: an answer for another call may not enable it. */
-					tool_call_id: record.toolCallId,
-				}
-			: null;
-	const revertStatus = useProfileRevertStatus(
-		scope?.sessionId ?? null,
-		revertIdentity,
-	);
 	if (flagged !== null && record.toolName === "notify") {
 		return (
 			<MessageContainer isUser={false} isSmallView={isSmallView}>
@@ -2683,96 +2637,10 @@ const ToolRow = memo(function ToolRow({
 			</MessageContainer>
 		);
 	}
-	/*
-	 * THE SAVED-PROFILE CARD IS THE ROW for a settled `profile_save` answer this
-	 * build can bound (operator request: profile name, the changed fields, and a
-	 * one-click revert). It stands in the ledger row's place for the same reason
-	 * the image card does: two renderings of one call is the duplication this
-	 * transcript's own anatomy forbids. Everything it cannot bound keeps today's
-	 * row exactly — `profileSaveCall` returns null rather than guessing.
-	 */
-	if (profileCall) {
-		/*
-		 * WHO MAY PRESS, AND WHY A PAYLOAD FLAG IS NOT ENOUGH (review R2).
-		 *
-		 * `revert_verified` inside a tool result records what SOME producer once
-		 * verified when it wrote that text. A reload, a restored transcript or an
-		 * agent could put it there, so it proves nothing about THIS process. The
-		 * right to answer is decided here from current runtime facts only:
-		 *   - the running backend registers the kind (`profile_approvals`); without
-		 *     that there is no route family behind the action at all;
-		 *   - the card has the conversation's gate identity (session + owner epoch),
-		 *     which is what `sessions.answer` requires;
-		 *   - the descriptor names the record this card is describing, so an action
-		 *     about another profile cannot be executed from this one's button.
-		 * A descriptor that fails any of these renders `unavailable` with its
-		 * sentence — never an enabled control, and never a silent disabled one.
-		 */
-		const descriptor = profileCall.descriptor;
-		const namesThisRecord =
-			descriptor !== null &&
-			descriptor.profile_kind === profileCall.view.kind &&
-			descriptor.profile_name === profileCall.view.name;
-		/*
-		 * THE ANSWER MUST BE ABOUT THIS ACTION (QA round 4). `status.state` alone let a
-		 * hook that had switched identity hand row B an `available` read for row A, and
-		 * the control enabled on evidence gathered for a different record. Binding the
-		 * answer to the row's own identity is the second half of that fix - the hook is
-		 * the first.
-		 */
-		// A bound read establishes what happened, not permission to do it again.
-		// Gating presentation on `available` hid real succeeded/stale/pending answers
-		// behind "unavailable" after a successful restore (Q9-A).
-		const boundRead = Boolean(
-			descriptor &&
-				namesThisRecord &&
-				scope?.sessionId &&
-				approvalEpoch &&
-				statusAnswerIsBound(revertStatus, revertIdentity),
-		);
-		const ownOutcome =
-			revertAnswer.outcome?.requestId === descriptor?.action_id
-				? revertAnswer.outcome
-				: null;
-		const submitted = revertAnswer.submitted === descriptor?.action_id;
-		const pressable =
-			boundRead &&
-			revertStatus?.state === "available" &&
-			!submitted &&
-			ownOutcome === null;
-		const terminal =
-			revertStatus &&
-			["succeeded", "stale", "failed"].includes(revertStatus.state)
-				? profileRevertOutcome(revertStatus)
-				: null;
-		const revert = descriptor
-			? boundRead && (revertStatus?.state !== "unavailable" || ownOutcome)
-				? profileRevertView(descriptor, {
-						submitted: submitted || revertStatus?.state === "pending",
-						outcome: ownOutcome ?? terminal,
-					})
-				: profileRevertUnavailable()
-			: null;
-		return (
-			<MessageContainer isUser={false} isSmallView={isSmallView}>
-				<ProfileConsentCard
-					view={revert ? { ...profileCall.view, revert } : profileCall.view}
-					onRevert={
-						pressable && descriptor
-							? () =>
-									revertAnswer.press({
-										descriptor: descriptor as ProfileRevertDescriptor,
-										sessionId: scope?.sessionId ?? null,
-										ownerEpoch: approvalEpoch,
-										status: revertStatus,
-										identity: revertIdentity,
-									})
-							: undefined
-					}
-				/>
-			</MessageContainer>
-		);
-	}
+	// Agent/team/skill management stays an ordinary expandable tool trace. Its
+	// receipt is evidence, not an inline approval widget; pending proposals are
+	// reviewed in Agents. In particular do not replace a successful create with
+	// a dark consent card or infer failed execution from a proposed receipt.
 	const running = record.phase !== "done";
 	const composing = record.phase === "composing";
 	/*
@@ -4374,6 +4242,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	restoredScroll = null,
 	remote = false,
 	missing = false,
+	missingTemporary = false,
 	attachmentScope,
 	conversationId,
 	labelPending,
@@ -4439,6 +4308,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		entryIds: ReadonlyMap<string, readonly string[]>;
 		order: ReadonlyMap<string, number>;
 	} | null>(null);
+	const missingNotice = missingSessionNotice(missingTemporary);
 	const [domWindowRequested] = useState(transcriptDomWindowEnabled);
 	const slotExtents = useRef(new Map<string, SlotExtent>());
 	const previousSlotPlan = useRef<{
@@ -8148,44 +8018,72 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 								<p
 									id={MISSING_SESSION_NOTICE_ID}
 									className="text-body-sm text-ink"
+									data-missing-session-notice={missingNotice.kind}
 								>
-									{t("ui.chat.canonical.transcript.missing_session")}
+									{t(missingNotice.title)}
 								</p>
 								<p className="text-ink-dim text-meta">
-									{t("ui.chat.canonical.transcript.missing_session_detail")}
+									{t(missingNotice.detail)}
 								</p>
-								<Button
-									variant="outline"
-									size="sm"
-									className="self-start"
-									/*
-									 * THE WORDS THE DEAD CONVERSATION'S BOX HELD FOLLOW THE READER
-									 * (the operator's report, 2026-10-23). Clearing the selection alone
-									 * left no draft at all: the pane fell to its residue arm and the text
-									 * stayed filed under the conversation that is gone - present on disk,
-									 * addressed by nothing on screen. `startNewChat` is the store's own
-									 * answer to that rule (a draft follows the user back, or it is
-									 * discarded), and `conversationId` is the identity this pane's composer
-									 * uses - the same value `composerIdentityFor` answers here, threaded as
-									 * the pane's identity, never recomputed from the draft and session ids.
-									 */
-									onClick={() => {
-										// Read at click time rather than subscribed: this component
-										// must not re-render every time the catalogue does.
-										useCanonicalSessionsStore
-											.getState()
-											.startNewChat(conversationId);
+								{missingNotice.kind === "temporary" ? (
+									<div className="flex flex-wrap gap-2">
+										{missingNotice.actions.map((action) => (
+											<Button
+												key={action.key}
+												variant="outline"
+												size="sm"
+												data-temporary-tombstone-action={
+													action.temporary ? "new" : "back"
+												}
+												onClick={() => {
+													// The generic press's own path (the draft follows the
+													// reader, the address leaves the dead id), with the
+													// temporary switch on for "New temporary chat".
+													const store = useCanonicalSessionsStore.getState();
+													const key = store.startNewChat(conversationId);
+													if (action.temporary)
+														store.setDraftTemporary(key, true);
+													onStartNewChat?.();
+												}}
+											>
+												{t(action.key)}
+											</Button>
+										))}
+									</div>
+								) : (
+									<Button
+										variant="outline"
+										size="sm"
+										className="self-start"
 										/*
-										 * AND THE ADDRESS FOLLOWS (agent review round 1 / QA round 1,
-										 * Q1): the store has staged the new chat and cleared the dead
-										 * selection, so leaving the route on the dead id would make a
-										 * reload re-open the conversation this press just left.
+										 * THE WORDS THE DEAD CONVERSATION'S BOX HELD FOLLOW THE READER
+										 * (the operator's report, 2026-10-23). Clearing the selection alone
+										 * left no draft at all: the pane fell to its residue arm and the text
+										 * stayed filed under the conversation that is gone - present on disk,
+										 * addressed by nothing on screen. `startNewChat` is the store's own
+										 * answer to that rule (a draft follows the user back, or it is
+										 * discarded), and `conversationId` is the identity this pane's composer
+										 * uses - the same value `composerIdentityFor` answers here, threaded as
+										 * the pane's identity, never recomputed from the draft and session ids.
 										 */
-										onStartNewChat?.();
-									}}
-								>
-									{t("ui.chat.canonical.transcript.start_new_chat")}
-								</Button>
+										onClick={() => {
+											// Read at click time rather than subscribed: this component
+											// must not re-render every time the catalogue does.
+											useCanonicalSessionsStore
+												.getState()
+												.startNewChat(conversationId);
+											/*
+											 * AND THE ADDRESS FOLLOWS (agent review round 1 / QA round 1,
+											 * Q1): the store has staged the new chat and cleared the dead
+											 * selection, so leaving the route on the dead id would make a
+											 * reload re-open the conversation this press just left.
+											 */
+											onStartNewChat?.();
+										}}
+									>
+										{t("ui.chat.canonical.transcript.start_new_chat")}
+									</Button>
+								)}
 							</div>
 						) : null}
 

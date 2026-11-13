@@ -44,6 +44,30 @@
  * USAGE.
  *   node scripts/generate-condense-parity.mjs           # write both files
  *   node scripts/generate-condense-parity.mjs --check   # exit 1 when they differ
+ *   node scripts/generate-condense-parity.mjs --resolve-merge
+ *       # inside a CONFLICTED `git merge origin/main`: see RESOLVING A PIN CONFLICT
+ *
+ * WHAT THE SOURCE PIN COVERS (2026-11-13). `desktop.sourceHash` / `modelSources`
+ * name the files that CONTRIBUTE CODE to the bundle - esbuild's
+ * `metafile.outputs[*].inputs[file].bytesInOutput > 0` - not every file the build
+ * merely read. A file that is read but emits zero bytes (a type-only module, a
+ * barrel whose re-exports are tree-shaken, a helper the entry points never call)
+ * cannot change a decision, yet pinning it made the fixture + manifest conflict on
+ * every merge that touched it: the last five pin-touching merges changed ONLY pins
+ * and zero decisions. The invariant, stated once: "a source edit that can change
+ * the generated bundle moves `sourceHash`". It is strict because (a) the list is
+ * derived from esbuild, never hand-listed, and (b) the one way a zero-byte input
+ * could still alter output - a TypeScript `enum`/`const enum`, whose members esbuild
+ * inlines into importers - is forbidden by `scripts/condense-parity.test.mjs`.
+ * The hashing scheme (path NUL bytes NUL over the listed files, sorted) is
+ * unchanged: the core repo's mobile-web verifier recomputes it from `modelSources`.
+ *
+ * RESOLVING A PIN CONFLICT. Both fixture files are generated, so a textual merge
+ * of them is meaningless. When `git merge origin/main` conflicts and the ONLY
+ * unmerged paths are those two files, run `--resolve-merge`: it takes our side of
+ * both, regenerates them from the merged working tree, `git add`s them and tells
+ * you to commit. It REFUSES (exit 1, nothing touched) if anything else is
+ * unmerged, because a regeneration cannot paper over a real conflict in code.
  */
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -210,8 +234,30 @@ const PERMUTATIONS = [
  * files and are dropped: the synthetic stdin entry, and any `node_modules` path
  * (a dependency bump is not a model change, and the lockfile already pins it).
  */
-async function bundleModel() {
+async function bundleModel({ overrides = {}, extraEntry = "" } = {}) {
+	/*
+	 * `overrides` ({repo-relative path: source}) and `extraEntry` exist ONLY for the
+	 * invariant tests (perturb an input, or make a file contribute) without
+	 * touching the tree; the generator itself never passes them.
+	 */
+	const overridePlugin = {
+		name: "test-overrides",
+		setup(b) {
+			b.onLoad({ filter: /\.(ts|tsx|mjs|js)$/ }, (args) => {
+				const rel = args.path.startsWith(`${ROOT}/`)
+					? args.path.slice(ROOT.length + 1)
+					: args.path;
+				if (!(rel in overrides)) return undefined;
+				return {
+					contents: overrides[rel],
+					loader: rel.endsWith("x") ? "tsx" : "ts",
+					resolveDir: dirname(args.path),
+				};
+			});
+		},
+	};
 	const bundle = await build({
+		plugins: [overridePlugin],
 		stdin: {
 			contents: [
 				'export * from "./src/renderer/src/features/chat/canonical/turn-segments";',
@@ -220,6 +266,7 @@ async function bundleModel() {
 				'export * from "./src/renderer/src/features/chat/canonical/trace-fold-model";',
 				'export { isFailedResult, toolOp } from "./src/renderer/src/features/chat/components/trace/tool-row-model";',
 				'export { isInternalReceipt } from "./src/renderer/src/features/chat/components/trace/receipt-row-model";',
+				extraEntry,
 			].join("\n"),
 			resolveDir: ROOT,
 		},
@@ -257,40 +304,54 @@ async function bundleModel() {
 		 */
 		absWorkingDir: ROOT,
 	});
+	/*
+	 * CONTRIBUTING = emitted at least one byte. Summed over every output so a future
+	 * code-split build cannot hide a contributor in a second chunk.
+	 */
+	const emitted = new Map();
+	for (const output of Object.values(bundle.metafile.outputs))
+		for (const [input, { bytesInOutput }] of Object.entries(output.inputs))
+			emitted.set(input, (emitted.get(input) ?? 0) + bytesInOutput);
+	const eligible = (input) =>
+		!input.includes("node_modules") &&
+		!input.startsWith("<") &&
+		/*
+		 * CATALOGUE COPY IS NOT A DECISION. Wave B keys the row labels, so the
+		 * model bundle now loads the whole English catalogue set; pinning those
+		 * ~760 files would make every copy edit invalidate a fixture that records
+		 * only ids, segment keys, counts and label KINDS, and the i18n gates own
+		 * the values. The pin therefore covers the model's CODE and the locale
+		 * manifest, not the copy it renders.
+		 */
+		!input.startsWith("src/i18n/catalogues/") &&
+		/*
+		 * AND NOT THE GENERATED KEY TABLE. `src/i18n/keys.gen.ts` is
+		 * DERIVED from those catalogues — it is a list of key ids and their
+		 * parameter types. Pinning it re-admits copy changes through the back
+		 * door: adding a messenger sentence regenerates the table, the table's
+		 * bytes change, and the fixture goes STALE even though not one id,
+		 * count or label kind the fixture records has moved. That is what left
+		 * `main` red on this suite for hours on 2026-10-29, with every branch
+		 * cut from it inheriting the failure.
+		 *
+		 * The pin exists to catch a change in the model's DECISIONS. A
+		 * generated type table cannot hold a decision; it can only reflect a
+		 * catalogue edit the i18n gates already own.
+		 */
+		!input.endsWith("src/i18n/keys.gen.ts");
+	const normalise = (list) =>
+		list.map((input) => input.replace(/^\.\//, "")).sort();
+	const read = normalise(Object.keys(bundle.metafile.inputs).filter(eligible));
 	return {
 		code: bundle.outputFiles[0].text,
-		inputs: Object.keys(bundle.metafile.inputs)
-			.filter(
-				(input) =>
-					!input.includes("node_modules") &&
-					!input.startsWith("<") &&
-					/*
-					 * CATALOGUE COPY IS NOT A DECISION. Wave B keys the row labels, so the
-					 * model bundle now loads the whole English catalogue set; pinning those
-					 * ~760 files would make every copy edit invalidate a fixture that records
-					 * only ids, segment keys, counts and label KINDS, and the i18n gates own
-					 * the values. The pin therefore covers the model's CODE and the locale
-					 * manifest, not the copy it renders.
-					 */
-					!input.startsWith("src/i18n/catalogues/") &&
-					/*
-					 * AND NOT THE GENERATED KEY TABLE. `src/i18n/keys.gen.ts` is
-					 * DERIVED from those catalogues — it is a list of key ids and their
-					 * parameter types. Pinning it re-admits copy changes through the back
-					 * door: adding a messenger sentence regenerates the table, the table's
-					 * bytes change, and the fixture goes STALE even though not one id,
-					 * count or label kind the fixture records has moved. That is what left
-					 * `main` red on this suite for hours on 2026-10-29, with every branch
-					 * cut from it inheriting the failure.
-					 *
-					 * The pin exists to catch a change in the model's DECISIONS. A
-					 * generated type table cannot hold a decision; it can only reflect a
-					 * catalogue edit the i18n gates already own.
-					 */
-					!input.endsWith("src/i18n/keys.gen.ts"),
-			)
-			.map((input) => input.replace(/^\.\//, ""))
-			.sort(),
+		/* What the pin covers: inputs that put code in the bundle. */
+		inputs: normalise(
+			Object.keys(bundle.metafile.inputs).filter(
+				(input) => eligible(input) && (emitted.get(input) ?? 0) > 0,
+			),
+		),
+		/* Everything eligible that was read; the zero-byte remainder is `inputs`' complement. */
+		read,
 	};
 }
 
@@ -562,12 +623,16 @@ function latchFrames(model, tokens) {
  * metafile (`bundleModel().inputs`). Round 1 hand-listed seven of the twenty, so a
  * change to one of the other thirteen moved the fixture while this pin stood still.
  */
-function hashSources(inputs) {
+function hashSources(
+	inputs,
+	/* Test seam: lets the invariant tests perturb one file without editing the tree. */
+	readSource = (file) => readFileSync(join(ROOT, file)),
+) {
 	const digest = createHash("sha256");
 	for (const file of inputs) {
 		digest.update(file);
 		digest.update("\u0000");
-		digest.update(readFileSync(join(ROOT, file)));
+		digest.update(readSource(file));
 		digest.update("\u0000");
 	}
 	return digest.digest("hex");
@@ -580,6 +645,49 @@ export async function modelSourceHash() {
 /** The repository files the bundle reads, sorted: what the source pin covers. */
 export async function bundledSources() {
 	return (await bundleModel()).inputs;
+}
+
+/** Eligible files the build READ but emitted no code from (not pinned). */
+export async function readButNotPinned() {
+	const { inputs, read } = await bundleModel();
+	return read.filter((file) => !inputs.includes(file));
+}
+
+/** Invariant-test seam: bundle with in-memory source overrides / an extra entry. */
+export async function bundleForTest(options) {
+	const out = await bundleModel(options);
+	return { code: out.code, inputs: out.inputs, read: out.read };
+}
+
+/** Hash an explicit list with the pin's scheme (test seam). */
+export const hashSourceList = (inputs, readSource) =>
+	hashSources(inputs, readSource);
+
+/**
+ * GUARD FOR `--resolve-merge`, pure over `git diff --name-only --diff-filter=U`.
+ * Only the two generated fixture files may be unmerged: anything else is a real
+ * conflict that regeneration cannot resolve, and silently taking "ours" for the
+ * fixtures would then bake a half-merged tree into the pin.
+ */
+export function resolveMergeGuard(unmerged) {
+	const allowed = new Set([
+		"scripts/fixtures/condense.parity.json",
+		"scripts/fixtures/condense.parity.manifest.json",
+	]);
+	const paths = unmerged.map((p) => p.trim()).filter(Boolean);
+	if (paths.length === 0)
+		return {
+			ok: false,
+			message:
+				"--resolve-merge: no unmerged paths; run it inside a conflicted `git merge origin/main`.",
+		};
+	const others = paths.filter((p) => !allowed.has(p));
+	if (others.length > 0)
+		return {
+			ok: false,
+			message: `--resolve-merge: refusing; unmerged paths other than the two condense parity fixtures need a human:\n  ${others.join("\n  ")}`,
+		};
+	return { ok: true, message: "" };
 }
 
 /** The shapes each declared suite drives, for the corpus-coverage test. */
@@ -666,7 +774,34 @@ function serialize(value) {
 	return `${JSON.stringify(head, null, "\t").replace(TRAILING_NEWLINE_BRACE, "")},\n\t"cases": [\n${lines.join(",\n")}\n\t]\n}\n`;
 }
 
+function resolveMerge() {
+	const git = (...args) =>
+		execFileSync("git", ["-C", ROOT, ...args], { encoding: "utf8" });
+	const guard = resolveMergeGuard(
+		git("diff", "--name-only", "--diff-filter=U").split("\n"),
+	);
+	if (!guard.ok) {
+		console.error(guard.message);
+		process.exit(1);
+	}
+	const files = [
+		"scripts/fixtures/condense.parity.json",
+		"scripts/fixtures/condense.parity.manifest.json",
+	];
+	/* OUR side only clears the markers; the regeneration below overwrites the bytes. */
+	git("checkout", "--ours", "--", ...files);
+	execFileSync(process.execPath, [fileURLToPath(import.meta.url)], {
+		cwd: ROOT,
+		stdio: "inherit",
+	});
+	git("add", "--", ...files);
+	console.log(
+		"condense parity fixtures regenerated from the merged tree and staged. Next: `git commit --no-edit`.",
+	);
+}
+
 async function main() {
+	if (process.argv.includes("--resolve-merge")) return resolveMerge();
 	const check = process.argv.includes("--check");
 	/*
 	 * `--print` emits the exact FIXTURE bytes a regeneration would write, and writes
