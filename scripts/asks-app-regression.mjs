@@ -1047,8 +1047,18 @@ export const CASES = {
 			"A four-decision ask whose bodies and option lists all overflow: a wheel over the question text, an option row and the option list, and PageDown/Home/End/Space, have to move the drawer's LIST; each card's action row has to stay inside that list's port at the top of the scroll and at its maximum; and a Tab walk through the card must never leave a focused control covered by that pinned row. Wheel and key events go through Chromium's own input pipeline (CDP), never scrollIntoView.",
 		route: "/chat",
 		frames: {
-			control: ["long-ask-440x1024", "long-ask-440x700", "long-ask-440x1400"],
-			candidate: ["long-ask-440x1024", "long-ask-440x700", "long-ask-440x1400"],
+			control: [
+				"long-ask-440x1024",
+				"long-ask-440x700",
+				"long-ask-440x1400",
+				"long-ask-440x600",
+			],
+			candidate: [
+				"long-ask-440x1024",
+				"long-ask-440x700",
+				"long-ask-440x1400",
+				"long-ask-440x600",
+			],
 		},
 		coverage:
 			"real assembled app renderer/handlers/store; wheel and key events through Chromium's input pipeline, not scrollIntoView",
@@ -1276,16 +1286,19 @@ export const CASES = {
 			}
 			const dpr = await cdp.evaluate("window.devicePixelRatio");
 			/*
-			 * THREE VIEWPORTS, and the 800x600 window floor is not one of them: 440 is the
-			 * narrowest port the drawer is drawn in at all (below the family's dock
-			 * breakpoint it is a right-anchored sheet), and 700/1400 are the short and tall
-			 * ends the same question has to survive. The device scale factor is the window's
-			 * own, so a frame's pixels and its `viewport` reading agree.
+			 * FOUR VIEWPORTS. 440 is the width the operator's own report came from - below the
+			 * family's dock breakpoint the drawer is a right-anchored sheet - and 600 is the
+			 * app's WINDOW FLOOR, the shortest a sheet can ever be. 700/1024/1400 are the
+			 * short, laptop and tall ends the same question has to work at. The device scale
+			 * factor is the window's own, so a frame's pixels and its `viewport` reading
+			 * agree.
 			 */
 			for (const [width, height] of [
 				[440, 1024],
 				[440, 700],
 				[440, 1400],
+				/* THE APP'S WINDOW FLOOR (800x600): a sheet can never be shorter than this. */
+				[440, 600],
 			]) {
 				const size = `${width}x${height}`;
 				await cdp
@@ -1297,7 +1310,8 @@ export const CASES = {
 					})
 					.catch(() => null);
 				await pause(400);
-				if (!(await facts()).dom.ask) await press('[data-panel-rail-item="ask"]');
+				if (!(await facts()).dom.ask)
+					await press('[data-panel-rail-item="ask"]');
 				await wait('Boolean(document.querySelector("[data-lo-ask-row]"))');
 				/*
 				 * THE FRAME IS OF THE UNTOUCHED SCROLL POSITION: the previous size's Tab walk
@@ -1467,10 +1481,8 @@ export const CASES = {
 						},
 						tabWalk: {
 							steps: entry.tab.path.length,
-							covered: entry.tab.path.filter((step) => step.covered)
-								.length,
-							outsidePort: entry.tab.path.filter((step) => !step.inside)
-								.length,
+							covered: entry.tab.path.filter((step) => step.covered).length,
+							outsidePort: entry.tab.path.filter((step) => !step.inside).length,
 							sample: entry.tab.path.slice(0, 4),
 							tail: entry.tab.path.slice(-4),
 							/*
@@ -1533,7 +1545,7 @@ export const CASES = {
 						`${size}: the stop must carry an accessible name`,
 					);
 					assert(
-						/^[1-9]/u.test(entry.list.padding),
+						Number.parseFloat(entry.list.padding) > 0,
 						`${size}: the list needs a scroll-padding-bottom that clears the pinned row (got ${entry.list.padding})`,
 					);
 					assert.equal(
