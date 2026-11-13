@@ -13,7 +13,7 @@
 	"ui.chat.composer.placeholder.stopping": "Stopping the turn",
 	"ui.chat.composer.placeholder.temporary": "Temporary chat — not saved to your chats. Ask anything",
 	"ui.chat.composer.placeholder.unavailable": "This conversation is gone",
-	"ui.chat.composer.placeholder.waiting": "Steer the agent. Enter sends now · Esc stops",
+	"ui.chat.composer.placeholder.waiting": "Send while the agent works. Enter sends now · Esc stops",
 	"ui.chat.composer.start_recording": "Start recording",
 	"ui.chat.composer.confirm_recording": "Confirm recording",
 	"ui.chat.composer.confirm_recording_hint": "Confirm recording (Enter)",
@@ -23,7 +23,7 @@
 	"ui.chat.composer.insert_transcript_hint": "Insert transcript to review (Enter)",
 	"ui.chat.composer.send_recording": "Send recording",
 	"ui.chat.composer.send_recording_hint": "Transcribe and send now, no review",
-	"ui.chat.composer.steer_hint": "Steer the agent now (Enter) · Esc stops the turn",
+	"ui.chat.composer.steer_hint": "Send while the agent works (Enter) · Esc stops the turn",
 	"ui.chat.composer.stop": "Stop",
 	"ui.chat.composer.stop_work_hint": "Stop this session's current work (Esc)",
 	"ui.chat.composer.stop_agent": "Stop agent",
@@ -71,5 +71,11 @@
 	"ui.chat.composer.secret_fill_refused": "The secret field did not take that value. Your text is kept — the asks panel shows why.",
 	"ui.chat.composer.secret_fill_unavailable": "Could not reach the secret field. Your text is kept.",
 	"ui.chat.composer.secret_fill_multi": "This request asks for more than one secret. Your text is kept — choose the field in the asks panel.",
-	"ui.chat.composer.secret_closure_notice": "Answer the secret request in the asks panel — this box is paused until it is answered, and your draft is kept."
+	"ui.chat.composer.secret_closure_notice": "Answer the secret request in the asks panel — this box is paused until it is answered, and your draft is kept.",
+	"ui.chat.composer.placeholder.waiting_steer": "Enter sends now · Esc stops",
+	"ui.chat.composer.placeholder.waiting_queue": "Enter queues it · Esc stops",
+	"ui.chat.composer.placeholder.waiting_both": "Enter queues, then steers · Esc stops",
+	"ui.chat.composer.steer_hint_steer": "Send while the agent works (Enter) · Esc stops the turn",
+	"ui.chat.composer.steer_hint_queue": "Enter queues it · Esc stops the turn",
+	"ui.chat.composer.steer_hint_both": "Enter queues, then steers · Esc stops the turn"
 }

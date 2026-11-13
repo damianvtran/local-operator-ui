@@ -1,0 +1,48 @@
+{
+	"schema": 1,
+	"auditor": "codex",
+	"agent": "codex",
+	"model": "gpt-5.6-sol",
+	"model_provenance": "Codex MCP, requested gpt-5.6-sol (served model not independently verifiable: the read-only run returned no session header). Strings were supplied to it per locale; it edited nothing.",
+	"instance": "2405ebc40b47-s8-es",
+	"locale": "es",
+	"branch": "feat/busy-delivery-desktop",
+	"head": "857e97d593 + uncommitted catalogues (English 47880cebc6)",
+	"date": "2026-11-11",
+	"status": "passed",
+	"audit_kind": "DELTA audit of exactly the 9 desktop busy-send keys of the queue-then-steer rename, per locale. Not a full-file audit and not a human review. The backend wire.settings / relay.composer / tui.busy_delivery keys of the same rename were audited in the same per-locale run and are recorded in the backend repository's receipts, not here.",
+	"independence": "A different agent and model family from the translator. The desktop keys were translated by task subagents requested anthropic/claude-sonnet-5-5 (self-reported; not independently verifiable); this audit ran read-only through the codex MCP. The coder that assembled this receipt neither translated nor audited.",
+	"keys_audited": [
+		"ui.chat.composer.placeholder.waiting_both",
+		"ui.chat.composer.steer_hint_both",
+		"ui.chat.canonical.transcript.busy_wait.steer",
+		"ui.chat.canonical.transcript.busy_wait.queue",
+		"ui.chat.canonical.transcript.busy_wait.both",
+		"ui.chat.canonical.transcript.busy_wait.joined",
+		"ui.chat.canonical.transcript.busy_wait.deferred",
+		"ui.settings.shortcuts.action.send_both",
+		"ui.settings.shortcuts.row_help.send_both"
+	],
+	"rounds": "The audit ran per locale until PASS with 0 blocker/major. The retained record is the final per-locale verdict (manager session 2405ebc40b47 scratchpad/audit-s8.json, byte-identical to audit-s8-final.json); it carries no round markers, so this receipt records that final verdict and the findings still open on the shipped bytes, not a claimed round count.",
+	"source": "Verdicts and finding text transcribed without rewording from scratchpad/audit-s8.json; hashes computed by ledger-assemble from the catalogue bytes on disk.",
+	"namespaces": {
+		"ui.chat.composer": {
+			"status": "passed",
+			"en_sha256": "a1c0c78eb379a8868a942d4bc9aacb319ebaf146b157c56ec58044fb2902f4cb",
+			"es_sha256": "029e9e849bd78d2268e1212d093c93719fc2a7a459333d90300115fb306ad290",
+			"findings": []
+		},
+		"ui.chat.canonical": {
+			"status": "passed",
+			"en_sha256": "772c42f90c0c636791982347ab48d31fe69f6e2fcf6b6f1614c35f766601e0f7",
+			"es_sha256": "bd99b8899d7a6ec0fd5331bbaf6ce14005ad92bdfd9093863693ad7fc4ae4edf",
+			"findings": []
+		},
+		"ui.settings.shortcuts": {
+			"status": "passed",
+			"en_sha256": "0f470f3464bebb819072f7d604d4327184bf40190144b4c5d3478358da2db21a",
+			"es_sha256": "862afc0eafa76d3d9df32110425ffe560c6f24fdce49e27f4c723adc0903007e",
+			"findings": []
+		}
+	}
+}

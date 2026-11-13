@@ -725,6 +725,17 @@ export type DesktopFeature =
 	 */
 	| "input_mode"
 	/**
+	 * `delivery` on `sessions.message`: how a message sent while the session is
+	 * busy reaches the running turn (`steer` / `queue` / `both`).
+	 *
+	 * ITS OWN KEY for the same reason `input_mode` has one: the field rides a
+	 * body an older harness validates with `extra="forbid"`, so a renderer
+	 * must ASK before sending it. Absent means the legacy body (field absent,
+	 * which the wire reads as steer), and a resolved queue/both without the key
+	 * is refused rather than sent as steer (see `composer-send-key.ts`).
+	 */
+	| "busy_delivery"
+	/**
 	 * `frontend.replace`: the desktop-only replacement frame that carries an
 	 * accepted move's directory to an already-mounted viewer.
 	 *

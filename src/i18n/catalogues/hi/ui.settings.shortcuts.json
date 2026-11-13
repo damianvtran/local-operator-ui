@@ -76,5 +76,18 @@
 	"ui.settings.shortcuts.speech.push_to_talk_overlap": "{modifier} का उपयोग करने वाला हर शॉर्टकट, जैसे {example}, कुछ क्षण के लिए रिकॉर्डिंग शुरू कर देगा।{alternative, select, none {} other { इससे बचने के लिए {alternative} चुनें।}}",
 	"ui.settings.shortcuts.speech.push_to_talk_letter_pointer": "अक्षर वाले शॉर्टकट के लिए ऊपर “रिकॉर्डिंग शुरू करें” का उपयोग करें।",
 	"ui.settings.shortcuts.speech.start_recording_needs_key": "शॉर्टकट के लिए मॉडिफ़ायर कुंजी के साथ एक अक्षर या अंक भी चाहिए।",
+	"ui.settings.shortcuts.action.send_both": "कतार में, फिर दिशा देकर भेजें",
+	"ui.settings.shortcuts.action.send_queue": "कतार में भेजें",
+	"ui.settings.shortcuts.action.send_steer": "दिशा देकर भेजें",
+	"ui.settings.shortcuts.category.sending": "भेजना",
+	"ui.settings.shortcuts.category.sending_description": "Enter उस मोड से भेजता है जो “व्यस्त होने पर भेजने का तरीका” (बैकएंड सेटिंग्स) में चुना गया है। असाइन की गई कुंजी इसके बजाय अपने मोड से भेजती है।",
+	"ui.settings.shortcuts.reserved.enter": "आरक्षित: संदेश बॉक्स से संदेश भेजता है। अकेला Enter हमेशा भेजता है, और Shift+Enter नई पंक्ति जोड़ता है।",
+	"ui.settings.shortcuts.capture.send_newline": "Enter के साथ Ctrl/⌘ या Alt का उपयोग करें। Shift+Enter नई पंक्ति जोड़ता है।",
+	"ui.settings.shortcuts.capture.send_needs_modifier": "Enter के साथ Ctrl/⌘ या Alt का उपयोग करें।",
+	"ui.settings.shortcuts.capture.panel_enter": "संदेश भेजने वाली कुंजी के लिए “भेजना” की किसी पंक्ति का उपयोग करें।",
+	"ui.settings.shortcuts.capture.send_prompt": "Ctrl/⌘+Enter या Alt+Enter दबाएँ। अकेला Enter संपादन समाप्त करता है।",
+	"ui.settings.shortcuts.row_help.send_steer": "अभी भेजकर चल रहे चरण को रोकता है। उस संदेश के लिए “व्यस्त होने पर भेजने का तरीका” की जगह लागू होता है।",
+	"ui.settings.shortcuts.row_help.send_queue": "चरण पूरा होने तक रुकता है; टूल को कभी नहीं रोकता। उस संदेश के लिए “व्यस्त होने पर भेजने का तरीका” की जगह लागू होता है।",
+	"ui.settings.shortcuts.row_help.send_both": "पहले प्रतीक्षा करता है, देर हो तो दिशा देता है। उस संदेश के लिए “व्यस्त होने पर भेजने का तरीका” की जगह लागू होता है।",
 	"ui.settings.shortcuts.new_temporary_chat": "आरक्षित: नई अस्थायी चैट शुरू करता है।"
 }

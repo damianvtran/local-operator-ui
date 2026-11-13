@@ -76,5 +76,18 @@
 	"ui.settings.shortcuts.speech.push_to_talk_overlap": "Todos los atajos que usan {modifier}, como {example}, iniciarán la grabación un instante.{alternative, select, none {} other { Elige {alternative} para evitarlo.}}",
 	"ui.settings.shortcuts.speech.push_to_talk_letter_pointer": "Para un atajo con una letra, usa “Iniciar grabación” arriba.",
 	"ui.settings.shortcuts.speech.start_recording_needs_key": "Un atajo necesita una letra o un número además de una tecla modificadora.",
+	"ui.settings.shortcuts.action.send_both": "Enviar: en cola, luego guiar",
+	"ui.settings.shortcuts.action.send_queue": "Enviar: en cola",
+	"ui.settings.shortcuts.action.send_steer": "Enviar: guiar",
+	"ui.settings.shortcuts.category.sending": "Envío",
+	"ui.settings.shortcuts.category.sending_description": "Enter envía con el modo definido en “Entrega con el agente ocupado” (Ajustes del backend). Una tecla asignada envía con su propio modo.",
+	"ui.settings.shortcuts.reserved.enter": "Reservado: envía el mensaje desde el compositor. Enter por sí solo siempre envía, y Shift+Enter añade una línea nueva.",
+	"ui.settings.shortcuts.capture.send_newline": "Usa Ctrl/⌘ o Alt con Enter. Shift+Enter añade una línea nueva.",
+	"ui.settings.shortcuts.capture.send_needs_modifier": "Usa Ctrl/⌘ o Alt con Enter.",
+	"ui.settings.shortcuts.capture.panel_enter": "Usa una fila de Envío para una tecla que envíe un mensaje.",
+	"ui.settings.shortcuts.capture.send_prompt": "Pulsa Ctrl/⌘+Enter o Alt+Enter. Enter por sí solo termina la edición.",
+	"ui.settings.shortcuts.row_help.send_steer": "Envía ya e interrumpe el paso. Anula “Entrega con el agente ocupado”.",
+	"ui.settings.shortcuts.row_help.send_queue": "Espera a que termine el paso; nunca interrumpe las herramientas. Anula “Entrega con el agente ocupado”.",
+	"ui.settings.shortcuts.row_help.send_both": "Espera y luego guía si tarda. Anula “Entrega con el agente ocupado”.",
 	"ui.settings.shortcuts.new_temporary_chat": "Reservado: inicia un chat temporal nuevo."
 }

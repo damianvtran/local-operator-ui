@@ -13,7 +13,7 @@
 	"ui.chat.composer.placeholder.stopping": "Deteniendo el turno",
 	"ui.chat.composer.placeholder.temporary": "Chat temporal — no se guarda en tus chats. Pregunta lo que quieras",
 	"ui.chat.composer.placeholder.unavailable": "Esta conversación ya no existe",
-	"ui.chat.composer.placeholder.waiting": "Guía al agente. Intro envía ya · Esc detiene",
+	"ui.chat.composer.placeholder.waiting": "Envía mientras el agente trabaja. Enter envía ya · Esc detiene",
 	"ui.chat.composer.start_recording": "Iniciar grabación",
 	"ui.chat.composer.confirm_recording": "Confirmar grabación",
 	"ui.chat.composer.confirm_recording_hint": "Confirmar grabación (Intro)",
@@ -23,7 +23,7 @@
 	"ui.chat.composer.insert_transcript_hint": "Insertar la transcripción para revisarla (Intro)",
 	"ui.chat.composer.send_recording": "Enviar grabación",
 	"ui.chat.composer.send_recording_hint": "Transcribir y enviar ahora, sin revisar",
-	"ui.chat.composer.steer_hint": "Guiar al agente ahora (Intro) · Esc detiene el turno",
+	"ui.chat.composer.steer_hint": "Enviar mientras el agente trabaja (Enter) · Esc detiene el turno",
 	"ui.chat.composer.stop": "Detener",
 	"ui.chat.composer.stop_work_hint": "Detener el trabajo actual de esta sesión (Esc)",
 	"ui.chat.composer.stop_agent": "Detener agente",
@@ -71,5 +71,11 @@
 	"ui.chat.composer.secret_fill_refused": "El campo secreto no aceptó ese valor. Tu texto se conserva; el panel de consultas explica por qué.",
 	"ui.chat.composer.secret_fill_unavailable": "No se pudo acceder al campo secreto. Tu texto se conserva.",
 	"ui.chat.composer.secret_fill_multi": "Esta solicitud pide más de un secreto. Tu texto se conserva; elige el campo en el panel de consultas.",
-	"ui.chat.composer.secret_closure_notice": "Responde a la solicitud de secreto en el panel de consultas — este cuadro está en pausa hasta que la respondas, y tu borrador se conserva."
+	"ui.chat.composer.secret_closure_notice": "Responde a la solicitud de secreto en el panel de consultas — este cuadro está en pausa hasta que la respondas, y tu borrador se conserva.",
+	"ui.chat.composer.placeholder.waiting_steer": "Enter envía ya · Esc detiene",
+	"ui.chat.composer.placeholder.waiting_queue": "Enter lo pone en cola · Esc detiene",
+	"ui.chat.composer.placeholder.waiting_both": "Enter: en cola, luego guía · Esc detiene",
+	"ui.chat.composer.steer_hint_steer": "Enviar mientras el agente trabaja (Enter) · Esc detiene el turno",
+	"ui.chat.composer.steer_hint_queue": "Enter lo pone en cola · Esc detiene el turno",
+	"ui.chat.composer.steer_hint_both": "Enter lo pone en cola y luego guía · Esc detiene el turno"
 }

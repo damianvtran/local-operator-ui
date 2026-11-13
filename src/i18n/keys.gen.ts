@@ -4772,6 +4772,7 @@ export type MessageParams = {
 	"ui.chat.canonical.send_failure.aside_not_answered": undefined;
 	"ui.chat.canonical.send_failure.aside_still_answering": undefined;
 	"ui.chat.canonical.send_failure.busy": undefined;
+	"ui.chat.canonical.send_failure.delivery_unsupported": undefined;
 	"ui.chat.canonical.send_failure.gate_lock": undefined;
 	"ui.chat.canonical.send_failure.generic": undefined;
 	"ui.chat.canonical.send_failure.gone": undefined;
@@ -5139,6 +5140,11 @@ export type MessageParams = {
 	"ui.chat.canonical.tool_row.verb.wrote.running": undefined;
 	"ui.chat.canonical.tool_row.verb.wrote.settled": undefined;
 	"ui.chat.canonical.transcript.answer_may_be_missing": undefined;
+	"ui.chat.canonical.transcript.busy_wait.both": undefined;
+	"ui.chat.canonical.transcript.busy_wait.deferred": undefined;
+	"ui.chat.canonical.transcript.busy_wait.joined": undefined;
+	"ui.chat.canonical.transcript.busy_wait.queue": undefined;
+	"ui.chat.canonical.transcript.busy_wait.steer": undefined;
 	"ui.chat.canonical.transcript.connect_provider": undefined;
 	"ui.chat.canonical.transcript.credential_lost": undefined;
 	"ui.chat.canonical.transcript.earlier_text_offscreen": undefined;
@@ -5189,6 +5195,9 @@ export type MessageParams = {
 	"ui.chat.composer.placeholder.temporary": undefined;
 	"ui.chat.composer.placeholder.unavailable": undefined;
 	"ui.chat.composer.placeholder.waiting": undefined;
+	"ui.chat.composer.placeholder.waiting_both": undefined;
+	"ui.chat.composer.placeholder.waiting_queue": undefined;
+	"ui.chat.composer.placeholder.waiting_steer": undefined;
 	"ui.chat.composer.processing_audio": undefined;
 	"ui.chat.composer.secret_ask_notice": undefined;
 	"ui.chat.composer.secret_ask_open": undefined;
@@ -5217,6 +5226,9 @@ export type MessageParams = {
 	"ui.chat.composer.starting": undefined;
 	"ui.chat.composer.starting_recording": undefined;
 	"ui.chat.composer.steer_hint": undefined;
+	"ui.chat.composer.steer_hint_both": undefined;
+	"ui.chat.composer.steer_hint_queue": undefined;
+	"ui.chat.composer.steer_hint_steer": undefined;
 	"ui.chat.composer.stop": undefined;
 	"ui.chat.composer.stop_agent": undefined;
 	"ui.chat.composer.stop_work_hint": undefined;
@@ -12223,11 +12235,20 @@ export type MessageParams = {
 	"ui.settings.shortcuts.action.open_code_review": undefined;
 	"ui.settings.shortcuts.action.open_console": undefined;
 	"ui.settings.shortcuts.action.open_run_details": undefined;
+	"ui.settings.shortcuts.action.send_both": undefined;
+	"ui.settings.shortcuts.action.send_queue": undefined;
+	"ui.settings.shortcuts.action.send_steer": undefined;
 	"ui.settings.shortcuts.capture.already_assigned": { label: string };
 	"ui.settings.shortcuts.capture.needs_modifier": undefined;
 	"ui.settings.shortcuts.capture.needs_modifier_mac": undefined;
+	"ui.settings.shortcuts.capture.panel_enter": undefined;
+	"ui.settings.shortcuts.capture.send_needs_modifier": undefined;
+	"ui.settings.shortcuts.capture.send_newline": undefined;
+	"ui.settings.shortcuts.capture.send_prompt": undefined;
 	"ui.settings.shortcuts.capture.unbindable": undefined;
 	"ui.settings.shortcuts.category.panels": undefined;
+	"ui.settings.shortcuts.category.sending": undefined;
+	"ui.settings.shortcuts.category.sending_description": undefined;
 	"ui.settings.shortcuts.category.speech_to_text": undefined;
 	"ui.settings.shortcuts.keyboard_shortcuts_section.browser_shortcuts_answer_only_while_the_browser_has_focus": undefined;
 	"ui.settings.shortcuts.keyboard_shortcuts_section.clear": undefined;
@@ -12269,6 +12290,7 @@ export type MessageParams = {
 	"ui.settings.shortcuts.reserved.close": undefined;
 	"ui.settings.shortcuts.reserved.copy": undefined;
 	"ui.settings.shortcuts.reserved.cut": undefined;
+	"ui.settings.shortcuts.reserved.enter": undefined;
 	"ui.settings.shortcuts.reserved.find": undefined;
 	"ui.settings.shortcuts.reserved.minimise": undefined;
 	"ui.settings.shortcuts.reserved.new_chat": undefined;
@@ -12292,6 +12314,9 @@ export type MessageParams = {
 	"ui.settings.shortcuts.row.code_review": undefined;
 	"ui.settings.shortcuts.row.console": undefined;
 	"ui.settings.shortcuts.row.execution": undefined;
+	"ui.settings.shortcuts.row_help.send_both": undefined;
+	"ui.settings.shortcuts.row_help.send_queue": undefined;
+	"ui.settings.shortcuts.row_help.send_steer": undefined;
 	"ui.settings.shortcuts.speech.primary": undefined;
 	"ui.settings.shortcuts.speech.push_to_talk_hint": undefined;
 	"ui.settings.shortcuts.speech.push_to_talk_hold": undefined;

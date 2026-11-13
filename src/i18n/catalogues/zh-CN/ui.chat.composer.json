@@ -11,7 +11,7 @@
 	"ui.chat.composer.insert_transcript_hint": "插入转写文字以供查看（Enter）",
 	"ui.chat.composer.send_recording": "发送录音",
 	"ui.chat.composer.send_recording_hint": "转写并立即发送，无需查看",
-	"ui.chat.composer.steer_hint": "立即引导智能体（Enter）· Esc停止本轮",
+	"ui.chat.composer.steer_hint": "智能体工作时发送（Enter）· Esc停止本轮",
 	"ui.chat.composer.stop": "停止",
 	"ui.chat.composer.stop_work_hint": "停止此会话当前的工作（Esc）",
 	"ui.chat.composer.stop_agent": "停止智能体",
@@ -51,7 +51,7 @@
 	"ui.chat.composer.placeholder.stopping": "正在停止轮次",
 	"ui.chat.composer.placeholder.temporary": "临时对话——不会保存到你的对话列表。有问题尽管问",
 	"ui.chat.composer.placeholder.unavailable": "此对话已不存在",
-	"ui.chat.composer.placeholder.waiting": "引导智能体。Enter立即发送 · Esc停止",
+	"ui.chat.composer.placeholder.waiting": "智能体工作时发送。Enter立即发送 · Esc停止",
 	"ui.chat.composer.suggestion.code_review_agent": "构建一个代码审查智能体",
 	"ui.chat.composer.suggestion.create_team": "创建一个智能体团队",
 	"ui.chat.composer.suggestion.last_turn": "告诉我智能体在上一轮做了什么",
@@ -71,5 +71,11 @@
 	"ui.chat.composer.tip.run_panel": "打开运行面板，查看当前轮次的计划和子智能体",
 	"ui.chat.composer.tip.schedule": "设置定时，按时运行提示词",
 	"ui.chat.composer.tip.search_past_work": "搜索对话和智能体，重新打开先前的会话",
-	"ui.chat.composer.secret_closure_notice": "请在请求面板中回复这条敏感信息请求——在它得到答复前，此输入框暂停使用，草稿已保留。"
+	"ui.chat.composer.secret_closure_notice": "请在请求面板中回复这条敏感信息请求——在它得到答复前，此输入框暂停使用，草稿已保留。",
+	"ui.chat.composer.placeholder.waiting_steer": "Enter立即发送 · Esc停止",
+	"ui.chat.composer.placeholder.waiting_queue": "Enter排队发送 · Esc停止",
+	"ui.chat.composer.placeholder.waiting_both": "Enter 排队后引导 · Esc 停止",
+	"ui.chat.composer.steer_hint_steer": "智能体工作时发送（Enter）· Esc停止本轮",
+	"ui.chat.composer.steer_hint_queue": "Enter排队发送 · Esc停止本轮",
+	"ui.chat.composer.steer_hint_both": "Enter 排队后引导 · Esc 停止本轮"
 }

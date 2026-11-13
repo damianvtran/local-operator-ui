@@ -34,6 +34,8 @@ export const shouldReinitialiseComposer = (
  * Hook for managing message input with robust per-conversation persistence and log-based history navigation.
  */
 
+import type { DeliveryMode } from "@features/chat/composer-send-key";
+import { sendChordBindings, sendKeyOf } from "@features/chat/composer-send-key";
 /*
  * THE CORE, BY A RELATIVE SPECIFIER (this file's existing reason, one door
  * along): `@shared/i18n` re-exports the renderer's query-client writer, so a
@@ -43,6 +45,7 @@ export const shouldReinitialiseComposer = (
  * the core module itself, which imports nothing from the renderer.
  */
 import type { MessageKey } from "@shared/i18n";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { t } from "../../../../i18n/messages";
@@ -356,6 +359,9 @@ export const COMPOSER_PLACEHOLDER = {
 	 */
 	recording: "ui.chat.composer.placeholder.recording",
 	waiting: "ui.chat.composer.placeholder.waiting",
+	waitingSteer: "ui.chat.composer.placeholder.waiting_steer",
+	waitingQueue: "ui.chat.composer.placeholder.waiting_queue",
+	waitingBoth: "ui.chat.composer.placeholder.waiting_both",
 	/**
 	 * Nothing connected: the invitation would be a lie, and this is the one
 	 * sentence that names the action instead (design audit section 6).
@@ -426,6 +432,11 @@ export const composerPlaceholder = (state: {
 	/** A send has been issued and the agent has not painted anything yet. */
 	awaitingReply: boolean;
 	/**
+	 * The resolved default busy-send mode, so the waiting sentence names what
+	 * Enter does. `steer` or absent keeps the existing key's steer wording.
+	 */
+	busyDefaultMode?: "steer" | "queue" | "both";
+	/**
 	 * No model provider is connected. LAST of the readings, because it is the
 	 * only one that is not about this turn: a send in flight, a pending question
 	 * or a refused box are all things the user is doing right now, and telling
@@ -466,7 +477,15 @@ export const composerPlaceholder = (state: {
 	if (state.asideAttached) return t(COMPOSER_PLACEHOLDER.aside);
 	if (state.stopping) return t(COMPOSER_PLACEHOLDER.stopping);
 	if (state.sendingUnsettled) return t(COMPOSER_PLACEHOLDER.sending);
-	if (state.awaitingReply) return t(COMPOSER_PLACEHOLDER.waiting);
+	if (state.awaitingReply) {
+		if (state.busyDefaultMode === "queue")
+			return t(COMPOSER_PLACEHOLDER.waitingQueue);
+		if (state.busyDefaultMode === "both")
+			return t(COMPOSER_PLACEHOLDER.waitingBoth);
+		if (state.busyDefaultMode === "steer")
+			return t(COMPOSER_PLACEHOLDER.waitingSteer);
+		return t(COMPOSER_PLACEHOLDER.waiting);
+	}
 	if (state.noProvider) return t(COMPOSER_PLACEHOLDER.noProvider);
 	return state.idle ?? t(COMPOSER_PLACEHOLDER.idle);
 };
@@ -617,10 +636,18 @@ type UseMessageInputOptions = {
 	 * left. Callers that have no transcript to be painted into (the legacy chat
 	 * path, the composer's own fixtures) may ignore it; the box is then cleared
 	 * when the submit settles, which is what that path always did.
+	 *
+	 * The third argument is the press's own delivery selection: the chord mode
+	 * when the press was a bound chord, and `null` for plain Enter ("use the
+	 * default mode"), which only the key path sets. Callers that submit through
+	 * no key (the Send button, a retry) pass no argument and are treated
+	 * identically: a plain Enter. The page resolves it against the settings
+	 * default and the `features.busy_delivery` gate.
 	 */
 	onSubmit?: (
 		message: string,
 		onEchoPainted?: () => void,
+		options?: { delivery?: DeliveryMode | null },
 	) => SendOutcome | Promise<SendOutcome>;
 	scrollToBottom?: () => void;
 };
@@ -1056,355 +1083,362 @@ export const useMessageInput = ({
 	// Admission, not the keypress, retires a draft. A refused send hands its text
 	// back to the box; an UNCONFIRMED one leaves its text with the claim that
 	// carries the retry, so nothing the user typed is lost either way.
-	const handleSubmit = useCallback(async () => {
-		/*
-		 * ATTACHMENTS ALONE ARE A MESSAGE, so this guard cannot be the text's alone
-		 * (QA round 1, Q1). The composer's two VISIBLE gates - the Send predicate and
-		 * the form's own guard - already arm and admit on `text OR attachments`
-		 * (`message-input.tsx`); this third door, the submit every acceptance path
-		 * passes, required text and returned SILENTLY. An image-only press was
-		 * therefore armed by both visible gates and swallowed here: no request, no
-		 * copy, no toast - the same disagreement #790 filed, one door over, and it
-		 * is what made the >8-image refusal unreachable for image-only drafts.
-		 *
-		 * THE STAGED SNAPSHOT IS TAKEN FIRST so the guard and the payload read ONE
-		 * answer. Frozen at the press, like the text: a chip the user attaches while
-		 * the request is in flight belongs to their NEXT message, and a refusal must
-		 * not hand it back as though it had been sent (see `stagedPayloadOf`); both
-		 * reads live in the same synchronous tick, so hoisting the read changes
-		 * nothing it did not already decide.
-		 */
-		const staged = conversationId ? stagedPayloadOf(conversationId) : undefined;
-		if (
-			!conversationId ||
-			(!inputValue.trim() &&
-				(staged?.attachments.length ?? 0) === 0 &&
-				!hasAdditionalContent)
-		)
-			return;
-		/*
-		 * A SECOND PRESS IS REPORTED, NOT SWALLOWED.
-		 *
-		 * This guard used to `return` and say nothing, so a user who pressed Enter
-		 * again while their last message was still going out got no acknowledgement at
-		 * all - indistinguishable from a dead key, and the one place the composer's own
-		 * "still sending" sentence was supposed to appear (review round 1, U6: the line
-		 * never showed on a second press, because the press never reached the sentence).
-		 *
-		 * The press is therefore handed on like any other, and the PANE's send lock
-		 * answers it: that lock is the single gate on "a send is already out", it is
-		 * where the sentence lives, and its refusal returns `false` - which this
-		 * function reads as "the payload stays in the box", exactly as it does for every
-		 * other refusal. If the lock no longer holds the send (the microtask between the
-		 * pane's own `finally` and this one) the press is admitted as a normal send
-		 * instead, which is why this is a delegation rather than a second path.
-		 *
-		 * `submittingRef` still guards THIS hook's own re-entry, and the send-in-flight
-		 * flag still describes the real send: the second call does not take ownership of
-		 * either.
-		 */
-		const alreadySubmitting = submittingRef.current;
-		submittingRef.current = true;
-		if (!alreadySubmitting) {
-			setSendInFlight(true);
-			// The press opens the window a transcript must respect, and the clear
-			// below (or the refusal arm) closes it. A DELEGATED second press opens
-			// nothing: it owns no clear, and a flag it raised would strand the next
-			// transcript with no writer left to collect it.
-			sendClearPendingRef.current = true;
-		}
-		/*
-		 * THE TEXT LEAVES THE BOX WHEN THE TRANSCRIPT RECEIVES IT, NOT BEFORE.
-		 *
-		 * The clear used to run right here, one line before the await, on the
-		 * argument that `admitChatDraft` paints the echo synchronously so the text
-		 * moves box -> transcript in a single frame. That is true on the
-		 * existing-session path and false on the New-chat one: a staged draft has
-		 * no session id until `sessions.create` returns, so the echo cannot exist
-		 * for the whole create hop (p50 142 ms, max 409 ms at load 433-445, UX
-		 * round 1's measurement), and the user spent that hop looking at a box the
-		 * app had already emptied and a transcript that had nothing in it - which
-		 * reads as the message having been thrown away.
-		 *
-		 * So the clear is no longer the submit's to time. `onEchoPainted` fires when
-		 * the echo has been applied to a mounted transcript, and on THAT path it is
-		 * the only clear: synchronously with the echo, so the box empties in the same
-		 * commit the row appears (still one frame).
-		 *
-		 * It is NOT the only clear in this file, and on the New-chat path it is not
-		 * the one the user sees. There the drain delivers the callback into the
-		 * composer the identity flip has already unmounted - the store patches the
-		 * session id and fires the echo before this hook resumes - so the clear it
-		 * requests lands on a component that is gone. What ends the interval is that
-		 * the replacement panel never held the text and paints the echo in its first
-		 * state (U3). The `clearOnce()` after the await below is the fallback for
-		 * every send that never echoes at all - a slash command, a gate answer, the
-		 * legacy model path - and it is what a harness holding ONE mounted composer
-		 * observes on the buffered path (round 7, F1). Both triggers clear once per
-		 * submit, and neither of them clears anything but the payload this submit is
-		 * carrying.
-		 *
-		 * The payload is still captured ONCE and threaded through every consumer
-		 * below. Re-reading `inputValue` after a clear yields "", which would
-		 * submit an empty message and make the store's unchanged-payload guard
-		 * compare every retry against "" and refuse it. One value, one meaning.
-		 *
-		 * THE OTHER HALVES OF THAT PAYLOAD MOVE ON THE SAME TRIGGER, which is the
-		 * second half of this rule and the reason `clearOnce` is where both happen.
-		 * The chip row and the staged quotes used to leave only when the send's
-		 * promise SETTLED, while the text left at the echo - so the whole in-flight
-		 * window showed the user's message with its attachment in the transcript AND
-		 * the chip for that attachment in the composer. One file apparently sent
-		 * twice, on a send that appears to have half-happened. Captured here beside
-		 * the text, so all three registers are recognisably ONE payload, and taken
-		 * by the one call above, so no later edit can put them on two clocks (see
-		 * `clearStagedPayload`).
-		 */
-		const submitted = inputValue;
-		/*
-		 * One clear per submit, whichever of its two triggers gets there first,
-		 * and only over the payload this submit is actually carrying: an echo that
-		 * lands late - or on a composer that has since been remounted - must not
-		 * clear something the user has typed or attached in the meantime.
-		 *
-		 * BOTH HALVES LEAVE HERE, in this one call. The text is the box's and the
-		 * chips are the store row's, but they are one payload and they leave on one
-		 * clock - which is the defect this trigger exists for, not two clearers that
-		 * agree today (see `clearStagedPayload`).
-		 */
-		let cleared = false;
-		/*
-		 * Set only for an OFF-RECORD ask, whose staged halves are not the press's to
-		 * take: an answered ask consumed them and a refused one did not (review round
-		 * 2, F6), so they are settled on the ask's own answer below and `clearOnce`
-		 * takes the text alone. Without this the post-await `clearOnce()` - the one
-		 * trigger an ask ever reaches, since it paints no echo - would retire a staged
-		 * reply at the press, and a refusal would leave the user without the quote
-		 * the panel's refusal sentence invites them to send again.
-		 */
-		let stagedSettledByAsk = false;
-		/*
-		 * Declared OUTSIDE the try because the box's own retirement is decided after
-		 * it, from the outcome: see `recordsSubmittedMessage` for the one accepted
-		 * outcome that is deliberately not written to the history log.
-		 */
-		let outcome: SendOutcome;
-		/*
-		 * One clear per submit, whichever of its two triggers gets there first, and
-		 * only over the payload this submit is actually carrying: an echo that lands
-		 * late - or on a composer that has since been remounted - must not clear
-		 * something the user has typed or attached in the meantime.
-		 *
-		 * ONE STORE UPDATE TAKES ALL THREE REGISTERS, which is why the chips and the
-		 * quotes are cleared here beside the text rather than by three separate
-		 * callers that agree today: they are one payload, they leave on one clock,
-		 * and `inFlight` is the record of what left (see `beginInFlight`).
-		 */
-		const clearOnce = (record = false) => {
-			if (cleared && !record) return;
-			cleared = true;
+	const handleSubmit = useCallback(
+		async (options?: { delivery?: DeliveryMode | null }) => {
 			/*
-			 * THE TRANSCRIPT'S WAIT ENDS HERE, composed into this one clear.
-			 * The two writes must land as one: the clear decides what of the sent
-			 * text survives (usually nothing), and the transcript was captured
-			 * WHILE that was still undecided. Written separately they can take
-			 * each other's work back; written together, the box ends up holding
-			 * exactly the transcript beside whatever the clear kept.
-			 */
-			const pendingTranscript = pendingTranscriptRef.current;
-			if (pendingTranscript) pendingTranscriptRef.current = "";
-			sendClearPendingRef.current = false;
-			/*
-			 * A TRANSCRIPTLESS HOST'S BOX IS THE ONLY COPY OF WHAT IT SENT (UX
-			 * exploration, U1 — a BLOCKER, because this page's sends WRITE the agent
-			 * and team registries: a box that keeps its text makes the next Enter a
-			 * second run, and a second run is a second write).
+			 * ATTACHMENTS ALONE ARE A MESSAGE, so this guard cannot be the text's alone
+			 * (QA round 1, Q1). The composer's two VISIBLE gates - the Send predicate and
+			 * the form's own guard - already arm and admit on `text OR attachments`
+			 * (`message-input.tsx`); this third door, the submit every acceptance path
+			 * passes, required text and returned SILENTLY. An image-only press was
+			 * therefore armed by both visible gates and swallowed here: no request, no
+			 * copy, no toast - the same disagreement #790 filed, one door over, and it
+			 * is what made the >8-image refusal unreachable for image-only drafts.
 			 *
-			 * WHY THE EARLY RETURN CANNOT APPLY THERE. It exists because a composer
-			 * that never took charge of the row has nothing to clear — the row is
-			 * another mount's, and the echo it paints is the transcript's. A host
-			 * that paints NO transcript has no echo to clear the box on: the
-			 * post-await clear is its ONLY clear, so returning here leaves the sent
-			 * text in the box and the next Enter re-sends it.
-			 *
-			 * GATED ON `transcriptless`, so chat is byte-identical: every chat
-			 * composer still retires its text on the echo, through this same branch.
+			 * THE STAGED SNAPSHOT IS TAKEN FIRST so the guard and the payload read ONE
+			 * answer. Frozen at the press, like the text: a chip the user attaches while
+			 * the request is in flight belongs to their NEXT message, and a refusal must
+			 * not hand it back as though it had been sent (see `stagedPayloadOf`); both
+			 * reads live in the same synchronous tick, so hoisting the read changes
+			 * nothing it did not already decide.
 			 */
-			if (!transcriptless && initializedRef.current !== conversationId) {
-				// This composer never took charge of the row, so it has nothing to
-				// clear - but the row is still the transcript's home and the next
-				// mount paints from it.
-				if (pendingTranscript) appendToDraft(pendingTranscript);
-				return;
-			}
-			setInputValue((current) => clearSubmittedText(current, submitted));
-			if (conversationId)
-				beginInFlight(
-					conversationId,
-					{
-						text: submitted,
-						attachments: stagedSettledByAsk ? [] : (staged?.attachments ?? []),
-						replies: stagedSettledByAsk ? [] : (staged?.replies ?? []),
-						/*
-						 * A value typed into a MASKED capture never reaches disk (§6):
-						 * the record carries the flag and `partialize` blanks the text,
-						 * so a restart in that window restores the files and the quotes
-						 * without a credential that was never stored.
-						 */
-						volatileText: draftHeld,
-					},
-					record,
-				);
-			if (pendingTranscript) appendToDraft(pendingTranscript);
-		};
-		/*
-		 * The persisted draft is retired as the send settles, not as it starts,
-		 * because until then the text is still this composer's: the box is holding
-		 * it, or a refusal is about to put it back.
-		 */
-		const retireDraft = () => {
-			/*
-			 * ONLY THE COPY THE SEND ACTUALLY RETIRED (QA round 1, Q-2; the rule and
-			 * its reasoning live on `retireDraftApplies`). A register holding
-			 * something newer than this send - typed or dictated since the press -
-			 * is the user's, and clearing it both lost the persisted copy and made
-			 * the next landing REPLACE the box's visible text.
-			 */
+			const staged = conversationId
+				? stagedPayloadOf(conversationId)
+				: undefined;
 			if (
-				conversationId &&
-				!retireDraftApplies(getCurrentInput(conversationId), submitted)
+				!conversationId ||
+				(!inputValue.trim() &&
+					(staged?.attachments.length ?? 0) === 0 &&
+					!hasAdditionalContent)
 			)
 				return;
-			lastPushedRef.current = "";
-			setCurrentInput(conversationId, "");
-			resetCurrentHistoryIndex(conversationId);
 			/*
-			 * THE SENT DRAFT LANDS NOW, not 300 ms from now. A retire that is still
-			 * queued behind a coalescing window is a restart restoring the message the
-			 * user just sent into the box it was sent from - the one draft resurrection
-			 * this store must never allow. The write is the retire's own empty draft, so
-			 * flushing here is what makes "the send emptied it" durable.
+			 * A SECOND PRESS IS REPORTED, NOT SWALLOWED.
+			 *
+			 * This guard used to `return` and say nothing, so a user who pressed Enter
+			 * again while their last message was still going out got no acknowledgement at
+			 * all - indistinguishable from a dead key, and the one place the composer's own
+			 * "still sending" sentence was supposed to appear (review round 1, U6: the line
+			 * never showed on a second press, because the press never reached the sentence).
+			 *
+			 * The press is therefore handed on like any other, and the PANE's send lock
+			 * answers it: that lock is the single gate on "a send is already out", it is
+			 * where the sentence lives, and its refusal returns `false` - which this
+			 * function reads as "the payload stays in the box", exactly as it does for every
+			 * other refusal. If the lock no longer holds the send (the microtask between the
+			 * pane's own `finally` and this one) the press is admitted as a normal send
+			 * instead, which is why this is a delegation rather than a second path.
+			 *
+			 * `submittingRef` still guards THIS hook's own re-entry, and the send-in-flight
+			 * flag still describes the real send: the second call does not take ownership of
+			 * either.
 			 */
-			flushComposerDraftPersist();
-			draftMessageRef.current = "";
-		};
-		try {
-			/*
-			 * The echo trigger RECORDS and the post-await fallback does not, and the
-			 * difference is the whole of the quit-mid-flight fix: the payload is held
-			 * as in flight only while its outcome is unknown. A `clearOnce()` after
-			 * the await runs for a send that has already settled - a slash command, a
-			 * gate answer, an accepted message with no echo - and recording there
-			 * would leave a durable "unconfirmed" record over a message the owner
-			 * took, which a restart would then hand back to the user as unsent.
-			 */
-			outcome = await onSubmit?.(submitted, () => clearOnce(true));
-			if (outcome === false) {
-				/*
-				 * THE FAILURE ARM'S WHOLE JOB IS TO NOT UNDO THE STORE'S WORK, and since
-				 * S4 the store's work is the ROW's: a post-paint failure keeps the
-				 * message in the conversation, with the class's sentence and remedies on
-				 * it, and deliberately does NOT hand the payload back to the composer.
-				 *
-				 * So: no local restore, no `retireDraft` (it would wipe a box the user
-				 * may have typed into since - the box was already emptied at the press,
-				 * which is where the text left for the transcript), and no
-				 * `addSubmittedMessage`. A restore performed HERE would only work while
-				 * this component stays mounted, and on the New-chat path the identity
-				 * flip unmounts it mid-send (UX round 3, U14) - which is also why a
-				 * second home was the wrong shape for this fact to begin with.
-				 *
-				 * AND THE TRANSCRIPT'S WINDOW ENDS HERE TOO: this refusal keeps the
-				 * text in the box and runs no clear, so a transcript that arrived
-				 * meanwhile would otherwise wait for a writer that never comes.
-				 */
-				sendClearPendingRef.current = false;
-				const strandedTranscript = pendingTranscriptRef.current;
-				if (strandedTranscript) {
-					pendingTranscriptRef.current = "";
-					appendToDraft(strandedTranscript);
-				}
-				return;
-			}
-		} finally {
-			/*
-			 * Only the call that owns the send clears its state: a delegated second
-			 * press settles the moment the pane refuses it, and clearing here would take
-			 * the wait down while the first send is still going out - which is the fact
-			 * the sentence it just raised is about.
-			 */
+			const alreadySubmitting = submittingRef.current;
+			submittingRef.current = true;
 			if (!alreadySubmitting) {
-				submittingRef.current = false;
-				/*
-				 * The wait ends with the submit, whichever way it ended. Deliberately not
-				 * with the echo: between the echo and the settle the message IS on screen
-				 * and the send is still unconfirmed, which is the window the composer's
-				 * sentence is about.
-				 */
-				setSendInFlight(false);
+				setSendInFlight(true);
+				// The press opens the window a transcript must respect, and the clear
+				// below (or the refusal arm) closes it. A DELEGATED second press opens
+				// nothing: it owns no clear, and a flag it raised would strand the next
+				// transcript with no writer left to collect it.
+				sendClearPendingRef.current = true;
 			}
-		}
+			/*
+			 * THE TEXT LEAVES THE BOX WHEN THE TRANSCRIPT RECEIVES IT, NOT BEFORE.
+			 *
+			 * The clear used to run right here, one line before the await, on the
+			 * argument that `admitChatDraft` paints the echo synchronously so the text
+			 * moves box -> transcript in a single frame. That is true on the
+			 * existing-session path and false on the New-chat one: a staged draft has
+			 * no session id until `sessions.create` returns, so the echo cannot exist
+			 * for the whole create hop (p50 142 ms, max 409 ms at load 433-445, UX
+			 * round 1's measurement), and the user spent that hop looking at a box the
+			 * app had already emptied and a transcript that had nothing in it - which
+			 * reads as the message having been thrown away.
+			 *
+			 * So the clear is no longer the submit's to time. `onEchoPainted` fires when
+			 * the echo has been applied to a mounted transcript, and on THAT path it is
+			 * the only clear: synchronously with the echo, so the box empties in the same
+			 * commit the row appears (still one frame).
+			 *
+			 * It is NOT the only clear in this file, and on the New-chat path it is not
+			 * the one the user sees. There the drain delivers the callback into the
+			 * composer the identity flip has already unmounted - the store patches the
+			 * session id and fires the echo before this hook resumes - so the clear it
+			 * requests lands on a component that is gone. What ends the interval is that
+			 * the replacement panel never held the text and paints the echo in its first
+			 * state (U3). The `clearOnce()` after the await below is the fallback for
+			 * every send that never echoes at all - a slash command, a gate answer, the
+			 * legacy model path - and it is what a harness holding ONE mounted composer
+			 * observes on the buffered path (round 7, F1). Both triggers clear once per
+			 * submit, and neither of them clears anything but the payload this submit is
+			 * carrying.
+			 *
+			 * The payload is still captured ONCE and threaded through every consumer
+			 * below. Re-reading `inputValue` after a clear yields "", which would
+			 * submit an empty message and make the store's unchanged-payload guard
+			 * compare every retry against "" and refuse it. One value, one meaning.
+			 *
+			 * THE OTHER HALVES OF THAT PAYLOAD MOVE ON THE SAME TRIGGER, which is the
+			 * second half of this rule and the reason `clearOnce` is where both happen.
+			 * The chip row and the staged quotes used to leave only when the send's
+			 * promise SETTLED, while the text left at the echo - so the whole in-flight
+			 * window showed the user's message with its attachment in the transcript AND
+			 * the chip for that attachment in the composer. One file apparently sent
+			 * twice, on a send that appears to have half-happened. Captured here beside
+			 * the text, so all three registers are recognisably ONE payload, and taken
+			 * by the one call above, so no later edit can put them on two clocks (see
+			 * `clearStagedPayload`).
+			 */
+			const submitted = inputValue;
+			/*
+			 * One clear per submit, whichever of its two triggers gets there first,
+			 * and only over the payload this submit is actually carrying: an echo that
+			 * lands late - or on a composer that has since been remounted - must not
+			 * clear something the user has typed or attached in the meantime.
+			 *
+			 * BOTH HALVES LEAVE HERE, in this one call. The text is the box's and the
+			 * chips are the store row's, but they are one payload and they leave on one
+			 * clock - which is the defect this trigger exists for, not two clearers that
+			 * agree today (see `clearStagedPayload`).
+			 */
+			let cleared = false;
+			/*
+			 * Set only for an OFF-RECORD ask, whose staged halves are not the press's to
+			 * take: an answered ask consumed them and a refused one did not (review round
+			 * 2, F6), so they are settled on the ask's own answer below and `clearOnce`
+			 * takes the text alone. Without this the post-await `clearOnce()` - the one
+			 * trigger an ask ever reaches, since it paints no echo - would retire a staged
+			 * reply at the press, and a refusal would leave the user without the quote
+			 * the panel's refusal sentence invites them to send again.
+			 */
+			let stagedSettledByAsk = false;
+			/*
+			 * Declared OUTSIDE the try because the box's own retirement is decided after
+			 * it, from the outcome: see `recordsSubmittedMessage` for the one accepted
+			 * outcome that is deliberately not written to the history log.
+			 */
+			let outcome: SendOutcome;
+			/*
+			 * One clear per submit, whichever of its two triggers gets there first, and
+			 * only over the payload this submit is actually carrying: an echo that lands
+			 * late - or on a composer that has since been remounted - must not clear
+			 * something the user has typed or attached in the meantime.
+			 *
+			 * ONE STORE UPDATE TAKES ALL THREE REGISTERS, which is why the chips and the
+			 * quotes are cleared here beside the text rather than by three separate
+			 * callers that agree today: they are one payload, they leave on one clock,
+			 * and `inFlight` is the record of what left (see `beginInFlight`).
+			 */
+			const clearOnce = (record = false) => {
+				if (cleared && !record) return;
+				cleared = true;
+				/*
+				 * THE TRANSCRIPT'S WAIT ENDS HERE, composed into this one clear.
+				 * The two writes must land as one: the clear decides what of the sent
+				 * text survives (usually nothing), and the transcript was captured
+				 * WHILE that was still undecided. Written separately they can take
+				 * each other's work back; written together, the box ends up holding
+				 * exactly the transcript beside whatever the clear kept.
+				 */
+				const pendingTranscript = pendingTranscriptRef.current;
+				if (pendingTranscript) pendingTranscriptRef.current = "";
+				sendClearPendingRef.current = false;
+				/*
+				 * A TRANSCRIPTLESS HOST'S BOX IS THE ONLY COPY OF WHAT IT SENT (UX
+				 * exploration, U1 — a BLOCKER, because this page's sends WRITE the agent
+				 * and team registries: a box that keeps its text makes the next Enter a
+				 * second run, and a second run is a second write).
+				 *
+				 * WHY THE EARLY RETURN CANNOT APPLY THERE. It exists because a composer
+				 * that never took charge of the row has nothing to clear — the row is
+				 * another mount's, and the echo it paints is the transcript's. A host
+				 * that paints NO transcript has no echo to clear the box on: the
+				 * post-await clear is its ONLY clear, so returning here leaves the sent
+				 * text in the box and the next Enter re-sends it.
+				 *
+				 * GATED ON `transcriptless`, so chat is byte-identical: every chat
+				 * composer still retires its text on the echo, through this same branch.
+				 */
+				if (!transcriptless && initializedRef.current !== conversationId) {
+					// This composer never took charge of the row, so it has nothing to
+					// clear - but the row is still the transcript's home and the next
+					// mount paints from it.
+					if (pendingTranscript) appendToDraft(pendingTranscript);
+					return;
+				}
+				setInputValue((current) => clearSubmittedText(current, submitted));
+				if (conversationId)
+					beginInFlight(
+						conversationId,
+						{
+							text: submitted,
+							attachments: stagedSettledByAsk
+								? []
+								: (staged?.attachments ?? []),
+							replies: stagedSettledByAsk ? [] : (staged?.replies ?? []),
+							/*
+							 * A value typed into a MASKED capture never reaches disk (§6):
+							 * the record carries the flag and `partialize` blanks the text,
+							 * so a restart in that window restores the files and the quotes
+							 * without a credential that was never stored.
+							 */
+							volatileText: draftHeld,
+						},
+						record,
+					);
+				if (pendingTranscript) appendToDraft(pendingTranscript);
+			};
+			/*
+			 * The persisted draft is retired as the send settles, not as it starts,
+			 * because until then the text is still this composer's: the box is holding
+			 * it, or a refusal is about to put it back.
+			 */
+			const retireDraft = () => {
+				/*
+				 * ONLY THE COPY THE SEND ACTUALLY RETIRED (QA round 1, Q-2; the rule and
+				 * its reasoning live on `retireDraftApplies`). A register holding
+				 * something newer than this send - typed or dictated since the press -
+				 * is the user's, and clearing it both lost the persisted copy and made
+				 * the next landing REPLACE the box's visible text.
+				 */
+				if (
+					conversationId &&
+					!retireDraftApplies(getCurrentInput(conversationId), submitted)
+				)
+					return;
+				lastPushedRef.current = "";
+				setCurrentInput(conversationId, "");
+				resetCurrentHistoryIndex(conversationId);
+				/*
+				 * THE SENT DRAFT LANDS NOW, not 300 ms from now. A retire that is still
+				 * queued behind a coalescing window is a restart restoring the message the
+				 * user just sent into the box it was sent from - the one draft resurrection
+				 * this store must never allow. The write is the retire's own empty draft, so
+				 * flushing here is what makes "the send emptied it" durable.
+				 */
+				flushComposerDraftPersist();
+				draftMessageRef.current = "";
+			};
+			try {
+				/*
+				 * The echo trigger RECORDS and the post-await fallback does not, and the
+				 * difference is the whole of the quit-mid-flight fix: the payload is held
+				 * as in flight only while its outcome is unknown. A `clearOnce()` after
+				 * the await runs for a send that has already settled - a slash command, a
+				 * gate answer, an accepted message with no echo - and recording there
+				 * would leave a durable "unconfirmed" record over a message the owner
+				 * took, which a restart would then hand back to the user as unsent.
+				 */
+				outcome = await onSubmit?.(submitted, () => clearOnce(true), options);
+				if (outcome === false) {
+					/*
+					 * THE FAILURE ARM'S WHOLE JOB IS TO NOT UNDO THE STORE'S WORK, and since
+					 * S4 the store's work is the ROW's: a post-paint failure keeps the
+					 * message in the conversation, with the class's sentence and remedies on
+					 * it, and deliberately does NOT hand the payload back to the composer.
+					 *
+					 * So: no local restore, no `retireDraft` (it would wipe a box the user
+					 * may have typed into since - the box was already emptied at the press,
+					 * which is where the text left for the transcript), and no
+					 * `addSubmittedMessage`. A restore performed HERE would only work while
+					 * this component stays mounted, and on the New-chat path the identity
+					 * flip unmounts it mid-send (UX round 3, U14) - which is also why a
+					 * second home was the wrong shape for this fact to begin with.
+					 *
+					 * AND THE TRANSCRIPT'S WINDOW ENDS HERE TOO: this refusal keeps the
+					 * text in the box and runs no clear, so a transcript that arrived
+					 * meanwhile would otherwise wait for a writer that never comes.
+					 */
+					sendClearPendingRef.current = false;
+					const strandedTranscript = pendingTranscriptRef.current;
+					if (strandedTranscript) {
+						pendingTranscriptRef.current = "";
+						appendToDraft(strandedTranscript);
+					}
+					return;
+				}
+			} finally {
+				/*
+				 * Only the call that owns the send clears its state: a delegated second
+				 * press settles the moment the pane refuses it, and clearing here would take
+				 * the wait down while the first send is still going out - which is the fact
+				 * the sentence it just raised is about.
+				 */
+				if (!alreadySubmitting) {
+					submittingRef.current = false;
+					/*
+					 * The wait ends with the submit, whichever way it ended. Deliberately not
+					 * with the echo: between the echo and the settle the message IS on screen
+					 * and the send is still unconfirmed, which is the window the composer's
+					 * sentence is about.
+					 */
+					setSendInFlight(false);
+				}
+			}
 
-		/*
-		 * Nothing echoed and nothing is being held: an accepted send with no echo at
-		 * all - a slash command, a gate answer, the legacy model path - still has to
-		 * retire the box. When the echo did clear it, this is a no-op.
-		 *
-		 * An off-record ask retires its TEXT here like any accepted send (the box is
-		 * handed back at the press, F1) and its staged halves on the ask's answer,
-		 * by the same identity rule the echo's clear uses - so a quote staged while
-		 * the aside was answering is the user's next payload, not this ask's.
-		 */
-		if (isOffRecordAsk(outcome)) {
-			stagedSettledByAsk = true;
-			if (conversationId && staged)
-				settleOffRecordPayload(outcome, () =>
-					clearStagedPayload(conversationId, staged),
-				);
-		}
-		clearOnce();
-		/*
-		 * AND THE HISTORY LOG IS FOR THE CONVERSATION'S OWN SENDS ONLY: an off-record
-		 * ask retires the box exactly like any other accepted send, but leaves no
-		 * entry for Up-arrow to recall and nothing on disk. See `OffRecordAsk`.
-		 */
-		if (recordsSubmittedMessage(outcome))
-			addSubmittedMessage(conversationId, submitted);
-		// Cleared BEFORE the store write so a synchronous restore inside
-		// `onSubmit` is not immediately overwritten by this submit's own clear.
-		retireDraft();
-		if (scrollToBottom) {
-			// Use requestAnimationFrame to ensure DOM updates before scrolling
-			requestAnimationFrame(() => {
-				scrollToBottom();
-			});
-		}
-	}, [
-		inputValue,
-		conversationId,
-		onSubmit,
-		addSubmittedMessage,
-		setCurrentInput,
-		resetCurrentHistoryIndex,
-		scrollToBottom,
-		beginInFlight,
-		draftHeld,
-		/*
-		 * The transcript's flush rides this submit's clear (see `clearOnce`),
-		 * and `retireDraft` reads this register to decide what its settle may
-		 * retire (QA round 1, Q-2) - so both are dependencies of this callback
-		 * in the literal sense the lint gate enforces.
-		 */
-		appendToDraft,
-		getCurrentInput,
-		/*
-		 * U1: `clearOnce` reads it to decide whether an accepted send retires the
-		 * box itself (a transcriptless host has no echo to do it), so the lint gate
-		 * is right that it belongs here.
-		 */
-		hasAdditionalContent,
-		transcriptless,
-	]);
+			/*
+			 * Nothing echoed and nothing is being held: an accepted send with no echo at
+			 * all - a slash command, a gate answer, the legacy model path - still has to
+			 * retire the box. When the echo did clear it, this is a no-op.
+			 *
+			 * An off-record ask retires its TEXT here like any accepted send (the box is
+			 * handed back at the press, F1) and its staged halves on the ask's answer,
+			 * by the same identity rule the echo's clear uses - so a quote staged while
+			 * the aside was answering is the user's next payload, not this ask's.
+			 */
+			if (isOffRecordAsk(outcome)) {
+				stagedSettledByAsk = true;
+				if (conversationId && staged)
+					settleOffRecordPayload(outcome, () =>
+						clearStagedPayload(conversationId, staged),
+					);
+			}
+			clearOnce();
+			/*
+			 * AND THE HISTORY LOG IS FOR THE CONVERSATION'S OWN SENDS ONLY: an off-record
+			 * ask retires the box exactly like any other accepted send, but leaves no
+			 * entry for Up-arrow to recall and nothing on disk. See `OffRecordAsk`.
+			 */
+			if (recordsSubmittedMessage(outcome))
+				addSubmittedMessage(conversationId, submitted);
+			// Cleared BEFORE the store write so a synchronous restore inside
+			// `onSubmit` is not immediately overwritten by this submit's own clear.
+			retireDraft();
+			if (scrollToBottom) {
+				// Use requestAnimationFrame to ensure DOM updates before scrolling
+				requestAnimationFrame(() => {
+					scrollToBottom();
+				});
+			}
+		},
+		[
+			inputValue,
+			conversationId,
+			onSubmit,
+			addSubmittedMessage,
+			setCurrentInput,
+			resetCurrentHistoryIndex,
+			scrollToBottom,
+			beginInFlight,
+			draftHeld,
+			/*
+			 * The transcript's flush rides this submit's clear (see `clearOnce`),
+			 * and `retireDraft` reads this register to decide what its settle may
+			 * retire (QA round 1, Q-2) - so both are dependencies of this callback
+			 * in the literal sense the lint gate enforces.
+			 */
+			appendToDraft,
+			getCurrentInput,
+			/*
+			 * U1: `clearOnce` reads it to decide whether an accepted send retires the
+			 * box itself (a transcriptless host has no echo to do it), so the lint gate
+			 * is right that it belongs here.
+			 */
+			hasAdditionalContent,
+			transcriptless,
+		],
+	);
 
 	// Cursor position helpers
 	const getCursorPosition = useCallback((): {
@@ -1433,9 +1467,29 @@ export const useMessageInput = ({
 	const handleKeyDown = useCallback(
 		(e: KeyboardEvent<HTMLTextAreaElement>) => {
 			if (!conversationId) return;
-			if (e.key === "Enter" && !e.shiftKey) {
+			/*
+			 * THE SEND KEY, THROUGH THE ONE PREDICATE. This handler previously
+			 * tested only `key === "Enter" && !shiftKey` — a CJK/IME Enter that
+			 * commits a composition submitted the message mid-composition, and a
+			 * modified Enter without a binding submits as today (the predicate's
+			 * plain arm). The predicate owns the composing test so this handler
+			 * carries none of its own.
+			 */
+			const sendKey = sendKeyOf(
+				{
+					key: e.key,
+					shiftKey: e.shiftKey,
+					ctrlKey: e.ctrlKey,
+					metaKey: e.metaKey,
+					altKey: e.altKey,
+					isComposing: e.nativeEvent.isComposing,
+					keyCode: e.keyCode,
+				},
+				sendChordBindings(useUiPreferencesStore.getState().shortcutBindings),
+			);
+			if (sendKey) {
 				e.preventDefault();
-				handleSubmit();
+				void handleSubmit({ delivery: sendKey.delivery });
 				return;
 			}
 			if (!submittedMessages.length) return;

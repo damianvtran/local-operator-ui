@@ -143,6 +143,7 @@ import {
 	rightSlotDividerContract,
 } from "../chat-sidebar-layout";
 import { temporaryDraftPlaceholderKey, temporaryInfo } from "../chat-temporary";
+import type { DeliveryMode as ComposerDeliveryMode } from "../composer-send-key";
 import type {
 	DraftPickerDestination,
 	DraftResolution,
@@ -296,6 +297,18 @@ type ChatContentProps = {
 		 * credential handed over in a conversation's first message is stored.
 		 */
 		beforeAdmission?: (sessionId: string) => Promise<string | undefined>,
+		/**
+		 * See `MessageInputProps.onSendMessage`: how the box produced the message
+		 * (`typed` / `dictated` / `mixed`). Forwarded verbatim to the page's
+		 * `send`, which gates it behind `features.input_mode`.
+		 */
+		inputMode?: "typed" | "dictated" | "mixed",
+		/**
+		 * See `MessageInputProps.onSendMessage`: which delivery mode the press
+		 * selected (`null` for plain Enter). Forwarded verbatim to the page's
+		 * `send`, which resolves it against the settings default.
+		 */
+		delivery?: ComposerDeliveryMode | null,
 	) => SendOutcome | Promise<SendOutcome>;
 	currentJobId: string | null;
 	onCancelJob: (jobId: string) => void;
@@ -507,6 +520,13 @@ type ChatContentProps = {
 		 * backend that cannot interrupt.
 		 */
 		turnAlive: boolean;
+		/**
+		 * The resolved default busy-send mode (`delivery.busy_default`), read at
+		 * render from the shared settings query. The composer's busy placeholder
+		 * and send hint name what Enter does, and they must name the mode the page
+		 * will resolve, not a hard-coded steer.
+		 */
+		busyDefaultMode?: ComposerDeliveryMode;
 		/**
 		 * The Stop press's own window: `"pending"` from the press until its
 		 * receipt or its bound; `"awaiting-end"` once a receipt confirmed the
@@ -3421,6 +3441,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 											}),
 										),
 								)}
+								busyDefaultMode={canonical?.busyDefaultMode}
 								conversationId={conversationId}
 								messages={
 									canonical

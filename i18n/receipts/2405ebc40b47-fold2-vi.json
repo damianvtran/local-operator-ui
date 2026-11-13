@@ -1,0 +1,66 @@
+{
+	"schema": 1,
+	"auditor": "codex",
+	"agent": "codex",
+	"model": "gpt-5.6-sol",
+	"model_provenance": "Codex MCP, requested gpt-5.6-sol (served model not independently verifiable: the read-only run returned no session header). Strings were supplied to it per locale; it edited nothing.",
+	"instance": "2405ebc40b47-fold2-vi",
+	"locale": "vi",
+	"branch": "feat/busy-delivery-desktop",
+	"head": "7a1ab39aa9 + the manager's uncommitted convergence edits",
+	"date": "2026-11-13",
+	"status": "passed",
+	"audit_kind": "DELTA audit of exactly the 27 keys this branch adds or changes across ui.settings.shortcuts (13), ui.chat.composer (8: 6 added, 2 changed) and ui.chat.canonical (6), read on the MERGED catalogue bytes. Not a full-file audit and not a human review: every other key of these three files is byte-identical to one of the two independently audited parents (catalogue-union-parity reports no value differences), so their audits stand in the superseded rows.",
+	"independence": "A different agent and model family from the translators. The 27 keys were translated this wave by i18n-translator anthropic/claude-sonnet-5-5 (self-reported); this audit ran read-only through the codex MCP with the strings, the English source, the context sidecar, a style-guide excerpt and the shipped vocabulary pasted into the prompt. The coder that assembled this receipt neither translated nor audited.",
+	"keys_audited": [
+		"ui.settings.shortcuts.action.send_both",
+		"ui.settings.shortcuts.action.send_queue",
+		"ui.settings.shortcuts.action.send_steer",
+		"ui.settings.shortcuts.category.sending",
+		"ui.settings.shortcuts.category.sending_description",
+		"ui.settings.shortcuts.reserved.enter",
+		"ui.settings.shortcuts.capture.send_newline",
+		"ui.settings.shortcuts.capture.send_needs_modifier",
+		"ui.settings.shortcuts.capture.panel_enter",
+		"ui.settings.shortcuts.capture.send_prompt",
+		"ui.settings.shortcuts.row_help.send_steer",
+		"ui.settings.shortcuts.row_help.send_queue",
+		"ui.settings.shortcuts.row_help.send_both",
+		"ui.chat.composer.placeholder.waiting_steer",
+		"ui.chat.composer.placeholder.waiting_queue",
+		"ui.chat.composer.placeholder.waiting_both",
+		"ui.chat.composer.steer_hint_steer",
+		"ui.chat.composer.steer_hint_queue",
+		"ui.chat.composer.steer_hint_both",
+		"ui.chat.composer.placeholder.waiting",
+		"ui.chat.composer.steer_hint",
+		"ui.chat.canonical.send_failure.delivery_unsupported",
+		"ui.chat.canonical.transcript.busy_wait.steer",
+		"ui.chat.canonical.transcript.busy_wait.queue",
+		"ui.chat.canonical.transcript.busy_wait.both",
+		"ui.chat.canonical.transcript.busy_wait.joined",
+		"ui.chat.canonical.transcript.busy_wait.deferred"
+	],
+	"rounds": "Round 3 PASS, 0 findings. Round 1 failed on 2 majors and round 2 on 1 major (ui.settings.shortcuts.action.send_both) plus 4 minors; the convergence edits fixed the major and the composer/action/reserved wording, and round 3 re-audited the whole 27-key set. Round-2 minors it did not repeat are unchanged on disk - the retained record is the round-3 verdict on these bytes, not a claim that every earlier minor was edited.",
+	"source": "Verdict and finding text transcribed without rewording from the manager's retained audit record: session 2405ebc40b47 scratchpad/round 3 (audit-fold2-r3.json). Catalogue hashes are of the bytes on disk at assembly time; the audit prompt was built from these same files, and no audited file was edited after the round that cleared it.",
+	"namespaces": {
+		"ui.settings.shortcuts": {
+			"status": "passed",
+			"en_sha256": "2a27a8fb0bd4b0a138e243c90dea1568455c2b00d78f98cde7b8aa306589daf2",
+			"vi_sha256": "068a787ce21e587ef6015c218df0dc6d0fc2db0fe2eb03f7d7e9f8c66a8d47b8",
+			"findings": []
+		},
+		"ui.chat.composer": {
+			"status": "passed",
+			"en_sha256": "186846e309af1ccc8d70ab6ef7fd56c7b90c4b977f893e4e6be8d3df95ea088a",
+			"vi_sha256": "2dca884af2c7e991b2be058b11a03a7ed46548e45874b2f347588a03e418e3b3",
+			"findings": []
+		},
+		"ui.chat.canonical": {
+			"status": "passed",
+			"en_sha256": "3d9cd2d3daec3583cba51c4e8fb9a1cab2623c35c3ffa70d578cdab43393e974",
+			"vi_sha256": "b3b6c294c6974bb43f563c0921b6787879586ed01bdb2b5cb0bf776bd4ef776f",
+			"findings": []
+		}
+	}
+}

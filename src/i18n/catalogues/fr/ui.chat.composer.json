@@ -13,7 +13,7 @@
 	"ui.chat.composer.placeholder.stopping": "Arrêt du tour",
 	"ui.chat.composer.placeholder.temporary": "Conversation temporaire — non enregistrée dans vos conversations. Posez votre question",
 	"ui.chat.composer.placeholder.unavailable": "Cette conversation n’existe plus",
-	"ui.chat.composer.placeholder.waiting": "Orientez l’agent. Entrée envoie maintenant · Échap arrête",
+	"ui.chat.composer.placeholder.waiting": "Envoyez pendant que l’agent travaille. Entrée envoie maintenant · Échap arrête",
 	"ui.chat.composer.start_recording": "Démarrer l’enregistrement",
 	"ui.chat.composer.confirm_recording": "Confirmer l’enregistrement",
 	"ui.chat.composer.confirm_recording_hint": "Confirmer l’enregistrement (Entrée)",
@@ -23,7 +23,7 @@
 	"ui.chat.composer.insert_transcript_hint": "Insérer la transcription pour la relire (Entrée)",
 	"ui.chat.composer.send_recording": "Envoyer l’enregistrement",
 	"ui.chat.composer.send_recording_hint": "Transcrire et envoyer maintenant, sans relecture",
-	"ui.chat.composer.steer_hint": "Orienter l’agent maintenant (Entrée) · Échap arrête le tour",
+	"ui.chat.composer.steer_hint": "Envoyer pendant que l’agent travaille (Enter) · Esc arrête le tour",
 	"ui.chat.composer.stop": "Arrêter",
 	"ui.chat.composer.stop_work_hint": "Arrêter le travail en cours de cette session (Échap)",
 	"ui.chat.composer.stop_agent": "Arrêter l’agent",
@@ -71,5 +71,11 @@
 	"ui.chat.composer.secret_fill_refused": "Le champ secret n’a pas accepté cette valeur. Votre texte est conservé — le panneau des demandes en indique la raison.",
 	"ui.chat.composer.secret_fill_unavailable": "Impossible d’atteindre le champ secret. Votre texte est conservé.",
 	"ui.chat.composer.secret_fill_multi": "Cette demande exige plusieurs secrets. Votre texte est conservé — choisissez le champ dans le panneau des demandes.",
-	"ui.chat.composer.secret_closure_notice": "Répondez à la demande de secret dans le panneau des demandes — ce champ reste en pause jusqu’à votre réponse, et votre brouillon est conservé."
+	"ui.chat.composer.secret_closure_notice": "Répondez à la demande de secret dans le panneau des demandes — ce champ reste en pause jusqu’à votre réponse, et votre brouillon est conservé.",
+	"ui.chat.composer.placeholder.waiting_steer": "Entrée envoie maintenant · Échap arrête",
+	"ui.chat.composer.placeholder.waiting_queue": "Entrée met en file d’attente · Échap arrête",
+	"ui.chat.composer.placeholder.waiting_both": "Entrée : file d’attente, puis oriente · Échap arrête",
+	"ui.chat.composer.steer_hint_steer": "Envoyer pendant que l’agent travaille (Enter) · Esc arrête le tour",
+	"ui.chat.composer.steer_hint_queue": "Entrée met en file d’attente · Échap arrête le tour",
+	"ui.chat.composer.steer_hint_both": "Entrée met en file d’attente, puis oriente · Échap arrête le tour"
 }

@@ -255,8 +255,12 @@ test("arrival opens the core-heavy sections and nothing else", () => {
 	// policy out of "Session storage": `session` kept only autosave (1 of 1 core)
 	// and the delegated class is on by default and deletes without asking each time,
 	// so both of its rows are core (2 of 2). `session_cleanup` stays closed (1 of 5).
+	// `composer` joined with the busy-delivery backend slice (S1): its one row
+	// (`delivery.busy_default`) is a choice the label alone states, so the single-
+	// member section opens on its row (1 of 1 core) like `session` does.
 	assert.deepEqual(open, [
 		"approvals",
+		"composer",
 		"fork",
 		"model",
 		"session",
@@ -521,8 +525,16 @@ test("the fixture's voicing rows are the daemon's own declarations", () => {
 		"the declarations file is empty, so this arm would pass over nothing",
 	);
 	for (const { name, payload } of fixtures) {
-		const rows = payload.settings.filter(
-			(setting) => setting.section === "speech",
+		/*
+		 * THE DECLARATIONS ARE `speech.voice.*`, per their own derivation
+		 * (`s.key.startswith('speech.voice.')`), so the fixture side of the
+		 * comparison is filtered the same way. The `speech` section now also
+		 * carries `speech.transcription.cleanup` (the transcription surface,
+		 * not voicing), and the section filter let it slip into a comparison
+		 * the declarations never made (the busy-delivery fixture refresh).
+		 */
+		const rows = payload.settings.filter((setting) =>
+			setting.key.startsWith("speech.voice."),
 		);
 		assert.deepEqual(
 			rows.map((row) => row.key),

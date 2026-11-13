@@ -11,7 +11,7 @@
 	"ui.chat.composer.insert_transcript_hint": "Chèn bản chép lời để xem lại (Enter)",
 	"ui.chat.composer.send_recording": "Gửi bản ghi âm",
 	"ui.chat.composer.send_recording_hint": "Chép lời và gửi ngay, không xem lại",
-	"ui.chat.composer.steer_hint": "Định hướng tác nhân ngay (Enter) · Esc dừng lượt này",
+	"ui.chat.composer.steer_hint": "Gửi khi tác nhân đang làm việc (Enter) · Esc dừng lượt này",
 	"ui.chat.composer.stop": "Dừng",
 	"ui.chat.composer.stop_work_hint": "Dừng công việc hiện tại của phiên này (Esc)",
 	"ui.chat.composer.stop_agent": "Dừng tác nhân",
@@ -51,7 +51,7 @@
 	"ui.chat.composer.placeholder.stopping": "Đang dừng lượt chạy",
 	"ui.chat.composer.placeholder.temporary": "Cuộc trò chuyện tạm thời — không được lưu vào danh sách trò chuyện. Hỏi bất cứ điều gì",
 	"ui.chat.composer.placeholder.unavailable": "Cuộc trò chuyện này không còn nữa",
-	"ui.chat.composer.placeholder.waiting": "Định hướng tác nhân. Enter gửi ngay · Esc dừng",
+	"ui.chat.composer.placeholder.waiting": "Gửi khi tác nhân đang làm việc. Enter gửi ngay · Esc dừng",
 	"ui.chat.composer.suggestion.code_review_agent": "Tạo tác nhân rà soát mã",
 	"ui.chat.composer.suggestion.create_team": "Tạo nhóm tác nhân",
 	"ui.chat.composer.suggestion.last_turn": "Xem tác nhân đã làm gì ở lượt trước",
@@ -71,5 +71,11 @@
 	"ui.chat.composer.tip.run_panel": "mở bảng lượt chạy để xem kế hoạch và tác nhân con của lượt",
 	"ui.chat.composer.tip.schedule": "đặt lịch chạy prompt theo hẹn giờ",
 	"ui.chat.composer.tip.search_past_work": "tìm cuộc trò chuyện và tác nhân để mở lại phiên trước đó",
-	"ui.chat.composer.secret_closure_notice": "Trả lời yêu cầu bí mật trong bảng câu hỏi — ô này tạm dừng cho đến khi có câu trả lời, và bản nháp của bạn vẫn được giữ lại."
+	"ui.chat.composer.secret_closure_notice": "Trả lời yêu cầu bí mật trong bảng câu hỏi — ô này tạm dừng cho đến khi có câu trả lời, và bản nháp của bạn vẫn được giữ lại.",
+	"ui.chat.composer.placeholder.waiting_steer": "Enter gửi ngay · Esc dừng",
+	"ui.chat.composer.placeholder.waiting_queue": "Enter đưa vào hàng đợi · Esc dừng",
+	"ui.chat.composer.placeholder.waiting_both": "Enter đưa vào hàng đợi, rồi định hướng · Esc dừng",
+	"ui.chat.composer.steer_hint_steer": "Gửi khi tác nhân đang làm việc (Enter) · Esc dừng lượt này",
+	"ui.chat.composer.steer_hint_queue": "Enter đưa vào hàng đợi · Esc dừng lượt này",
+	"ui.chat.composer.steer_hint_both": "Enter đưa vào hàng đợi, rồi định hướng · Esc dừng lượt này"
 }

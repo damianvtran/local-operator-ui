@@ -1,0 +1,44 @@
+{
+	"schema": 1,
+	"auditor": "codex",
+	"model": "gpt-5.6-sol",
+	"model_provenance": "codex MCP server, requested gpt-5.6-sol (served model not independently verifiable; see i18n-provenance-ui2.md 2026-11-11 manager session 2405ebc40b47)",
+	"instance": "ui-desktop-es-chat-composer-2",
+	"locale": "es",
+	"namespace": "ui.chat.composer",
+	"branch": "feat/busy-delivery-desktop",
+	"head": "485816c010 + uncommitted catalogues",
+	"date": "2026-11-11",
+	"status": "passed",
+	"audit_kind": "delta audit of the send-chord keys; all other keys byte-identical to the prior audited row (superseded by the branch's en change)",
+	"keys_audited": [
+		"ui.chat.composer.placeholder.waiting_steer",
+		"ui.chat.composer.placeholder.waiting_queue",
+		"ui.chat.composer.placeholder.waiting_both",
+		"ui.chat.composer.steer_hint_steer",
+		"ui.chat.composer.steer_hint_queue",
+		"ui.chat.composer.steer_hint_both"
+	],
+	"key_count": 78,
+	"scope": "i18n-provenance-ui2.md: desktop send-chord copy for namespaces ui.chat.composer (see note)",
+	"sha256": {
+		"en": "4bd6b28c696cef8d8e4dff48dfb8bfb757cbbca6416c3de42ecea28bf5f861e3",
+		"es": "28550bb919aa49db8d7cc6d29eb0a0dcfb31efbfe951d200345eee86ae5c7b65"
+	},
+	"inputs_sha256": {
+		"en_context": "12196f90dd7882bdf04219b5db8b8e45ef6430fe7e5af56013117d2c687932ba"
+	},
+	"paths": {
+		"en": "src/i18n/catalogues/en/ui.chat.composer.json",
+		"target": "src/i18n/catalogues/es/ui.chat.composer.json",
+		"context": "src/i18n/catalogues/en/ui.chat.composer.context.json"
+	},
+	"verified": [
+		"key set equals English; key count 78 for both",
+		"ICU/placeholders/tags preserved",
+		"meaning checked against en context; mode terms match the audited backend relay.composer.delivery.* / wire.settings.delivery_busy_default.* set",
+		"findings below are the final-round verdict on the shipped bytes; round-1 findings and their dispositions are in the note and in i18n-provenance-ui2.md"
+	],
+	"findings": [],
+	"note": "6 new keys (waiting_steer/queue/both, steer_hint_steer/queue/both); other keys byte-identical to prior row. R1 PASS 0/0. No findings open on the shipped bytes. Translator req. claude-sonnet-5-5, auditor req. gpt-5.6-sol (not independently verifiable)."
+}

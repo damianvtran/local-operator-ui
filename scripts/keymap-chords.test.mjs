@@ -150,7 +150,25 @@ test("chordFromEvent: the event shapes the recorder and dispatcher pass", () => 
 		null,
 	);
 	assert.equal(chordFromEvent(press({ key: "F13", metaKey: true })), null);
-	assert.equal(chordFromEvent(press({ key: "Enter", metaKey: true })), null);
+	// A MODIFIED Enter spells a chord (the send rows record exactly this);
+	// a bare Enter spells none.
+	assert.equal(
+		chordFromEvent(press({ key: "Enter", metaKey: true })),
+		"primary+enter",
+	);
+	assert.equal(
+		chordFromEvent(press({ key: "Enter", ctrlKey: true })),
+		"primary+enter",
+	);
+	assert.equal(
+		chordFromEvent(press({ key: "Enter", altKey: true })),
+		"alt+enter",
+	);
+	assert.equal(
+		chordFromEvent(press({ key: "Enter", metaKey: true, shiftKey: true })),
+		"primary+shift+enter",
+	);
+	assert.equal(chordFromEvent(press({ key: "Enter" })), null);
 	assert.equal(chordFromEvent(press({ key: "Escape" })), null);
 	assert.equal(
 		chordFromEvent(
@@ -334,6 +352,21 @@ test("effectiveChord and buildChordMap: override ?? default, first claim wins", 
 		"panel.browser": "primary+j",
 	});
 	assert.equal(freed.get("primary+j"), "panel.browser");
+});
+
+test("buildChordMap never routes a composer send row (scope is the filter)", () => {
+	const map = buildChordMap({
+		"panel.browser": "primary+i",
+		"composer.send_queue": "primary+enter",
+		"composer.send_steer": "alt+enter",
+		"composer.send_both": "primary+alt+enter",
+	});
+	assert.equal(map.get("primary+enter"), undefined);
+	assert.equal(map.get("alt+enter"), undefined);
+	assert.equal(map.get("primary+alt+enter"), undefined);
+	assert.equal(map.get("primary+i"), "panel.browser");
+	assert.equal(map.get("primary+j"), "panel.console");
+	assert.equal(map.size, 3);
 });
 
 test("sanitizeShortcutBindings: junk, unknown ids, reserved chords, duplicates", () => {

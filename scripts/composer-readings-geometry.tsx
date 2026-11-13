@@ -196,6 +196,16 @@ const THEME = (params.get("theme") ?? DEFAULT_THEME) as ThemeName;
 const MEASURE_PARAM = Number(params.get("measure") ?? 0);
 const MEASURE = MEASURE_PARAM > 0 ? MEASURE_PARAM : null;
 /*
+ * The busy-send mode the running placeholder names (`?mode=queue|both`): the
+ * harness passes it as `busyDefaultMode` so a round can photograph each mode's
+ * sentence at a width. Absent means the prop is absent (steer).
+ */
+const BUSY_MODE_PARAM = params.get("mode");
+const BUSY_MODE =
+	BUSY_MODE_PARAM === "queue" || BUSY_MODE_PARAM === "both"
+		? BUSY_MODE_PARAM
+		: undefined;
+/*
  * THE ROW'S DIRECTION. `ur` is a shipped locale and `dir="rtl"` mirrors the
  * composer row, so a fit rule that only reads physical edges passes every LTR
  * frame and hides the reading in that locale. This is the driver's hook for
@@ -632,6 +642,7 @@ const Harness = () => {
 				cwdWritePath={MOVING_CWD}
 				sessionStatus={sessionStatus}
 				awaitingReply={running}
+				busyDefaultMode={BUSY_MODE}
 				recordingProbe={recordingProbe}
 				canonicalStop={
 					running ? { active: true, stopping, onStop: () => {} } : undefined

@@ -7,7 +7,7 @@
 	"ui.chat.composer.insert_transcript_hint": "Вставить расшифровку для проверки (Enter)",
 	"ui.chat.composer.send_recording": "Отправить запись",
 	"ui.chat.composer.send_recording_hint": "Расшифровать и отправить сразу, без проверки",
-	"ui.chat.composer.steer_hint": "Направить агента сейчас (Enter) · Esc остановит ход",
+	"ui.chat.composer.steer_hint": "Отправить, пока агент работает (Enter) · Esc остановит ход",
 	"ui.chat.composer.clear_message": "Очистить сообщение",
 	"ui.chat.composer.confirm_recording": "Подтвердить запись",
 	"ui.chat.composer.confirm_recording_hint": "Подтвердить запись (Enter)",
@@ -51,7 +51,7 @@
 	"ui.chat.composer.placeholder.stopping": "Остановка хода",
 	"ui.chat.composer.placeholder.temporary": "Временный чат — не сохраняется в ваших чатах. Спросите что угодно",
 	"ui.chat.composer.placeholder.unavailable": "Этого разговора больше нет",
-	"ui.chat.composer.placeholder.waiting": "Направляйте агента. Enter отправит сразу · Esc остановит",
+	"ui.chat.composer.placeholder.waiting": "Отправляйте, пока агент работает. Enter отправит сразу · Esc остановит",
 	"ui.chat.composer.suggestion.code_review_agent": "Создайте агента для код-ревью",
 	"ui.chat.composer.suggestion.create_team": "Создайте команду агентов",
 	"ui.chat.composer.suggestion.last_turn": "Что агент сделал в прошлом ходе",
@@ -71,5 +71,11 @@
 	"ui.chat.composer.tip.run_panel": "откройте панель выполнения: план хода и субагенты",
 	"ui.chat.composer.tip.schedule": "настройте расписание, чтобы промпт выполнялся по таймеру",
 	"ui.chat.composer.tip.search_past_work": "ищите по чатам и агентам, чтобы открыть прежнюю сессию",
-	"ui.chat.composer.secret_closure_notice": "Ответьте на запрос секрета на панели запросов — ввод в этом поле приостановлен до ответа, черновик сохранён."
+	"ui.chat.composer.secret_closure_notice": "Ответьте на запрос секрета на панели запросов — ввод в этом поле приостановлен до ответа, черновик сохранён.",
+	"ui.chat.composer.placeholder.waiting_steer": "Enter отправит сразу · Esc остановит",
+	"ui.chat.composer.placeholder.waiting_queue": "Enter поставит в очередь · Esc остановит",
+	"ui.chat.composer.placeholder.waiting_both": "Enter поставит в очередь, затем направит · Esc остановит",
+	"ui.chat.composer.steer_hint_steer": "Отправить, пока агент работает (Enter) · Esc остановит ход",
+	"ui.chat.composer.steer_hint_queue": "Enter поставит в очередь · Esc остановит ход",
+	"ui.chat.composer.steer_hint_both": "Enter ставит в очередь, затем направляет · Esc остановит ход"
 }

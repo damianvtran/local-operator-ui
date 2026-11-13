@@ -13,7 +13,7 @@
 	"ui.chat.composer.placeholder.stopping": "باری روکی جا رہی ہے",
 	"ui.chat.composer.placeholder.temporary": "عارضی چیٹ — آپ کی چیٹس میں محفوظ نہیں ہوتی۔ کچھ بھی پوچھیں",
 	"ui.chat.composer.placeholder.unavailable": "یہ گفتگو اب موجود نہیں",
-	"ui.chat.composer.placeholder.waiting": "ایجنٹ کو ہدایت دیں۔ Enter ابھی بھیجتا ہے · Esc روکتا ہے",
+	"ui.chat.composer.placeholder.waiting": "ایجنٹ کے کام کے دوران بھیجیں۔ Enter ابھی بھیجتا ہے · Esc روکتا ہے",
 	"ui.chat.composer.start_recording": "ریکارڈنگ شروع کریں",
 	"ui.chat.composer.confirm_recording": "ریکارڈنگ کی تصدیق کریں",
 	"ui.chat.composer.confirm_recording_hint": "ریکارڈنگ کی تصدیق کریں (Enter)",
@@ -23,7 +23,7 @@
 	"ui.chat.composer.insert_transcript_hint": "جانچنے کے لیے ٹرانسکرپٹ داخل کریں (Enter)",
 	"ui.chat.composer.send_recording": "ریکارڈنگ بھیجیں",
 	"ui.chat.composer.send_recording_hint": "ٹرانسکرائب کر کے ابھی بھیجیں، جانچے بغیر",
-	"ui.chat.composer.steer_hint": "ایجنٹ کو ابھی ہدایت دیں (Enter) · Esc موجودہ باری روکتا ہے",
+	"ui.chat.composer.steer_hint": "ایجنٹ کے کام کے دوران بھیجیں (Enter) · Esc موجودہ باری کو روکتا ہے",
 	"ui.chat.composer.stop": "روکیں",
 	"ui.chat.composer.stop_work_hint": "اس سیشن کا موجودہ کام روکیں (Esc)",
 	"ui.chat.composer.stop_agent": "ایجنٹ روکیں",
@@ -71,5 +71,11 @@
 	"ui.chat.composer.secret_fill_refused": "راز کے خانے نے یہ قدر قبول نہیں کی۔ آپ کا متن محفوظ ہے — سوالات کے پینل میں وجہ دیکھیں۔",
 	"ui.chat.composer.secret_fill_unavailable": "راز کے خانے تک رسائی نہیں ہو سکی۔ آپ کا متن محفوظ ہے۔",
 	"ui.chat.composer.secret_fill_multi": "اس درخواست میں ایک سے زیادہ راز درکار ہیں۔ آپ کا متن محفوظ ہے — سوالات کے پینل میں خانہ منتخب کریں۔",
-	"ui.chat.composer.secret_closure_notice": "سوالات کے پینل میں راز کی درخواست کا جواب دیں — جواب ملنے تک یہ خانہ موقوف ہے، اور آپ کا مسودہ محفوظ رہتا ہے۔"
+	"ui.chat.composer.secret_closure_notice": "سوالات کے پینل میں راز کی درخواست کا جواب دیں — جواب ملنے تک یہ خانہ موقوف ہے، اور آپ کا مسودہ محفوظ رہتا ہے۔",
+	"ui.chat.composer.placeholder.waiting_steer": "Enter ابھی بھیجتا ہے · Esc روکتا ہے",
+	"ui.chat.composer.placeholder.waiting_queue": "Enter قطار میں رکھتا ہے · Esc روکتا ہے",
+	"ui.chat.composer.placeholder.waiting_both": "Enter قطار میں رکھتا ہے، پھر ہدایت دیتا ہے · Esc روکتا ہے",
+	"ui.chat.composer.steer_hint_steer": "ایجنٹ کے کام کے دوران بھیجیں (Enter) · Esc موجودہ باری کو روکتا ہے",
+	"ui.chat.composer.steer_hint_queue": "Enter قطار میں رکھتا ہے · Esc موجودہ باری کو روکتا ہے",
+	"ui.chat.composer.steer_hint_both": "Enter قطار میں رکھتا ہے، پھر ہدایت دیتا ہے · Esc موجودہ باری کو روکتا ہے"
 }

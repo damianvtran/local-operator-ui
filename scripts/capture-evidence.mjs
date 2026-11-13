@@ -4684,6 +4684,79 @@ export const STORIES = [
 			},
 		},
 	],
+	[
+		"settings-keyboard-shortcuts--sending-empty",
+		1024,
+		640,
+		{
+			expect: {
+				pollMs: 30000,
+				expression: `(() => {
+					const field = document.querySelector('input[data-shortcut-action="composer.send_queue"]');
+					if (!field) return "the send queue row is not rendered";
+					if (field.value !== "No shortcut") return "an unbound send row must read No shortcut, read " + JSON.stringify(field.value);
+					return true;
+				})()`,
+				message: "the Sending group shows three unbound send rows",
+			},
+		},
+	],
+	[
+		"settings-keyboard-shortcuts--sending-assigned",
+		1024,
+		640,
+		{
+			expect: {
+				pollMs: 30000,
+				expression: `(() => {
+					const field = document.querySelector('input[data-shortcut-action="composer.send_queue"]');
+					if (!field) return "the send queue row is not rendered";
+					if (field.value === "No shortcut") return "the captured chord did not take";
+					return true;
+				})()`,
+				message: "a captured primary+enter press is shown on the send row",
+			},
+		},
+	],
+	[
+		"settings-keyboard-shortcuts--sending-recording",
+		1024,
+		640,
+		{
+			expect: {
+				pollMs: 30000,
+				expression: `(() => {
+					const active = document.activeElement;
+					if (!active || active.getAttribute("data-shortcut-action") !== "composer.send_steer") return "the send steer field does not hold focus, so the frame is not the recording state";
+					return true;
+				})()`,
+				message: "the send recording state is the focused send field",
+			},
+		},
+	],
+	[
+		"settings-keyboard-shortcuts--sending-refused",
+		1024,
+		640,
+		{
+			expect: {
+				pollMs: 30000,
+				expression: `(() => {
+					const field = document.querySelector('input[data-shortcut-action="panel.console"]');
+					if (!field) return "the console row is not rendered";
+					const refusal = document.querySelector("output");
+					if (!refusal) return "the refusal line is not rendered";
+					return true;
+				})()`,
+				message:
+					"the console row and its refusal line are drawn before the sentence is read",
+			},
+			expectSentence: {
+				selector: "output",
+				includes: "Reserved: sends the message from the composer.",
+			},
+		},
+	],
 	/*
 	 * And the state this list deliberately does NOT carry, so the omission is a
 	 * decision rather than an oversight: `no-sessions-at-all` renders ONE line (the

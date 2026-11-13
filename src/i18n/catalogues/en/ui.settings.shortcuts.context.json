@@ -487,6 +487,91 @@
 		"length": "One short sentence.",
 		"note": "Shown when the user pressed only a modifier key (Command, Control, Option, Shift) in the field that records a shortcut."
 	},
+	"ui.settings.shortcuts.action.send_both": {
+		"role": "Shortcut settings row label",
+		"tone": "Concise mode noun.",
+		"length": "One shortcut row label; keep compact.",
+		"note": "The Sending group row that sends as queue, then steer: waits like queue, then steers like steer if the message has waited too long. Matches the mode words the busy-delivery setting uses."
+	},
+	"ui.settings.shortcuts.action.send_queue": {
+		"role": "Shortcut settings row label",
+		"tone": "Concise mode noun.",
+		"length": "One shortcut row label; keep compact.",
+		"note": "The Sending group row that sends as queue: waits for the current step to finish and never interrupts running tools. Matches the mode word the busy-delivery setting uses."
+	},
+	"ui.settings.shortcuts.action.send_steer": {
+		"role": "Shortcut settings row label",
+		"tone": "Concise mode noun.",
+		"length": "One shortcut row label; keep compact.",
+		"note": "The Sending group row that sends as steer: interrupts the running step and sends now. Matches the mode word the busy-delivery setting uses."
+	},
+	"ui.settings.shortcuts.category.sending": {
+		"role": "Shortcut category",
+		"tone": "Concise grouping noun.",
+		"length": "One shortcut group heading; keep short.",
+		"note": "Groups the three delivery-mode send chords in shortcut settings."
+	},
+	"ui.settings.shortcuts.category.sending_description": {
+		"role": "Shortcut group one-line help",
+		"tone": "Plain explanatory sentence, sentence case.",
+		"length": "Two sentences; keep under about 45 words.",
+		"note": "Sits above the three Sending rows. Says that Enter follows the mode set in Delivery when busy (Backend settings), while a bound key sends with its own mode instead."
+	},
+	"ui.settings.shortcuts.reserved.enter": {
+		"role": "Reserved-chord refusal sentence",
+		"tone": "Names the job rather than the owner.",
+		"length": "One sentence with a full stop; keep concise.",
+		"note": "Why a panel shortcut cannot claim a modified Enter: Enter alone always sends from the composer, and Shift+Enter adds a newline. The send rows are the only rows that may end in Enter."
+	},
+	"ui.settings.shortcuts.capture.send_newline": {
+		"role": "Shortcut capture validation",
+		"tone": "Direct and helpful validation.",
+		"length": "One sentence plus the remedy; keep compact.",
+		"note": "Shown while recording a send shortcut when Shift+Enter is pressed: Shift+Enter adds a newline rather than sending, so the key needs a modifier.",
+		"placeholders": {}
+	},
+	"ui.settings.shortcuts.capture.send_needs_modifier": {
+		"role": "Shortcut capture validation",
+		"tone": "Direct and helpful validation.",
+		"length": "One short sentence.",
+		"note": "Shown while recording a send shortcut when bare Enter is pressed: Enter alone sends, so the row needs Ctrl/⌘ or Alt.",
+		"placeholders": {}
+	},
+	"ui.settings.shortcuts.capture.panel_enter": {
+		"role": "Shortcut capture validation",
+		"tone": "Direct and helpful validation.",
+		"length": "One short sentence.",
+		"note": "Shown while recording a panel shortcut when a modified Enter is pressed: a panel row cannot send, so the key belongs to a Sending row.",
+		"placeholders": {}
+	},
+	"ui.settings.shortcuts.capture.send_prompt": {
+		"role": "Shortcut capture hint",
+		"tone": "Short imperative instruction.",
+		"length": "One short sentence naming the keys.",
+		"note": "Shown while a Sending row records: which key chords the send rows accept, and that bare Enter ends the edit.",
+		"placeholders": {}
+	},
+	"ui.settings.shortcuts.row_help.send_steer": {
+		"role": "Shortcut row help",
+		"tone": "Short explanatory sentence, sentence case.",
+		"length": "One short sentence.",
+		"note": "Sits under the Send as steer row: what the key does and that it overrides Delivery when busy.",
+		"placeholders": {}
+	},
+	"ui.settings.shortcuts.row_help.send_queue": {
+		"role": "Shortcut row help",
+		"tone": "Short explanatory sentence, sentence case.",
+		"length": "One short sentence.",
+		"note": "Sits under the Send as queue row: what the key does and that it overrides Delivery when busy.",
+		"placeholders": {}
+	},
+	"ui.settings.shortcuts.row_help.send_both": {
+		"role": "Shortcut row help",
+		"tone": "Short explanatory sentence, sentence case.",
+		"length": "One short sentence.",
+		"note": "Sits under the Send as queue, then steer row: what the key does and that it overrides Delivery when busy.",
+		"placeholders": {}
+	},
 	"ui.settings.shortcuts.new_temporary_chat": {
 		"role": "Shortcut capture refusal",
 		"tone": "Factual explanation of a fixed application shortcut.",

@@ -76,5 +76,18 @@
 	"ui.settings.shortcuts.speech.push_to_talk_overlap": "Every shortcut that uses {modifier}, such as {example}, will start recording for a moment.{alternative, select, none {} other { Choose {alternative} to avoid this.}}",
 	"ui.settings.shortcuts.speech.push_to_talk_letter_pointer": "For a shortcut with a letter, use Start recording above.",
 	"ui.settings.shortcuts.speech.start_recording_needs_key": "A shortcut needs a letter or number as well as a modifier key.",
+	"ui.settings.shortcuts.action.send_both": "Send as queue, then steer",
+	"ui.settings.shortcuts.action.send_queue": "Send as queue",
+	"ui.settings.shortcuts.action.send_steer": "Send as steer",
+	"ui.settings.shortcuts.category.sending": "Sending",
+	"ui.settings.shortcuts.category.sending_description": "Enter sends with the mode set in Delivery when busy (Backend settings). A bound key sends with its own mode instead.",
+	"ui.settings.shortcuts.reserved.enter": "Reserved: sends the message from the composer. Enter alone always sends, and Shift+Enter adds a newline.",
+	"ui.settings.shortcuts.capture.send_newline": "Use Ctrl/⌘ or Alt with Enter. Shift+Enter adds a newline.",
+	"ui.settings.shortcuts.capture.send_needs_modifier": "Use Ctrl/⌘ or Alt with Enter.",
+	"ui.settings.shortcuts.capture.panel_enter": "Use a Sending row for a key that sends a message.",
+	"ui.settings.shortcuts.capture.send_prompt": "Press Ctrl/⌘+Enter or Alt+Enter. Enter alone ends the edit.",
+	"ui.settings.shortcuts.row_help.send_steer": "Send now, interrupting the step. Overrides Delivery when busy.",
+	"ui.settings.shortcuts.row_help.send_queue": "Wait for the step; never interrupt tools. Overrides Delivery when busy.",
+	"ui.settings.shortcuts.row_help.send_both": "Wait, then steer if slow. Overrides Delivery when busy.",
 	"ui.settings.shortcuts.new_temporary_chat": "Reserved: starts a new temporary chat."
 }
