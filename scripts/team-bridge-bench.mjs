@@ -132,6 +132,10 @@ import {
 	parseLatency,
 	runInstantLoad,
 } from "./team-bridge-instant-load.mjs";
+import {
+	diagnosticsDir,
+	preserveLaunchDiagnostics,
+} from "./team-bridge-launch-diagnostics.mjs";
 
 /* ------------------------------------------------------------------- the CLI */
 
@@ -222,6 +226,13 @@ const HISTORY_429 = (() => {
 })();
 const SIZE = flag("size", "1380x900");
 const JSON_OUT = flag("json", null);
+/**
+ * `--diagnostics=<dir>`: where a launch that never reached a mounted page leaves
+ * its evidence (app stdout/stderr, log dirs, CDP answers, exit status, load). By
+ * default a run-unique `launch-diagnostics-<ts>-<pid>/` beside `--json`. See
+ * `team-bridge-launch-diagnostics.mjs` for why (QA finding Q2-1 on ui#1889).
+ */
+const DIAGNOSTICS_DIR = flag("diagnostics", null);
 /**
  * `--frames=<dir>`: capture rendered PNGs for the design and UX reviewers instead
  * of measuring a scenario. Same stub, same headless launch, same reaping - the
@@ -1162,7 +1173,16 @@ function launchApp({ port, scratch, size }) {
 	const userData = join(scratch, "profile");
 	const home = join(scratch, "home");
 	mkdirSync(home, { recursive: true });
-	const child = spawn(
+	const env = {
+		HOME: home,
+		LOCAL_OPERATOR_CONFIG_DIR: join(scratch, "config"),
+		LOCAL_OPERATOR_LOG_DIR: join(scratch, "logs"),
+		LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
+		LOCAL_OPERATOR_NO_NOTIFICATIONS: "1",
+		LOCAL_OPERATOR_UI_TELEMETRY: "off",
+		CMUX_SESSION_ID: "",
+	};
+	const argv = [
 		process.execPath,
 		[
 			join(ROOT, "node_modules", "electron", "cli.js"),
@@ -1181,26 +1201,36 @@ function launchApp({ port, scratch, size }) {
 			// screen (`scripts/chrome-keychain.mjs`).
 			MOCK_KEYCHAIN_SWITCH,
 		],
-		{
-			cwd: ROOT,
-			env: {
-				...process.env,
-				HOME: home,
-				LOCAL_OPERATOR_CONFIG_DIR: join(scratch, "config"),
-				LOCAL_OPERATOR_LOG_DIR: join(scratch, "logs"),
-				LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
-				LOCAL_OPERATOR_NO_NOTIFICATIONS: "1",
-				LOCAL_OPERATOR_UI_TELEMETRY: "off",
-				CMUX_SESSION_ID: "",
-			},
-			stdio: ["ignore", "pipe", "pipe"],
-			detached: true,
-		},
-	);
+	];
+	const child = spawn(argv[0], argv[1], {
+		cwd: ROOT,
+		env: { ...process.env, ...env },
+		stdio: ["ignore", "pipe", "pipe"],
+		detached: true,
+	});
+	// The interleaved log the mount-failure message filters, plus each stream on its
+	// own for the launch diagnostics: a crash's last words are on stderr.
 	const log = [];
-	child.stdout.on("data", (chunk) => log.push(String(chunk)));
-	child.stderr.on("data", (chunk) => log.push(String(chunk)));
-	return { child, userData, log: () => log.join("") };
+	const out = [];
+	const err = [];
+	child.stdout.on("data", (chunk) => {
+		log.push(String(chunk));
+		out.push(String(chunk));
+	});
+	child.stderr.on("data", (chunk) => {
+		log.push(String(chunk));
+		err.push(String(chunk));
+	});
+	return {
+		child,
+		userData,
+		log: () => log.join(""),
+		stdout: () => out.join(""),
+		stderr: () => err.join(""),
+		// For diagnostics: argv is safe to keep; the environment is NAMES only.
+		argv: [argv[0], ...argv[1]],
+		envKeys: Object.keys(env),
+	};
 }
 
 /**
@@ -2120,6 +2150,12 @@ async function measure({ scenario, messageCount, keepScratch = false }) {
 	let app = null;
 	let client = null;
 	let reaped = null;
+	/*
+	 * How far the launch got, for the diagnostics a failure keeps (Q2-1): anything
+	 * before `measure` is a launch that never produced a mounted page, and its
+	 * evidence lives in the scratch the reap below deletes.
+	 */
+	let phase = "launch";
 
 	const reap = async () => {
 		if (client) {
@@ -2161,7 +2197,9 @@ async function measure({ scenario, messageCount, keepScratch = false }) {
 		app = launchApp({ port: cdpPort, scratch, size: SIZE });
 		// The synchronous last resort: `process.exit` runs no `finally` at all.
 		reapOnExit({ pid: app.child.pid, userData: app.userData });
+		phase = "waitForTarget";
 		client = await cdp(cdpPort);
+		phase = "mount";
 		await client.send("Runtime.enable");
 		await client.send("Page.enable");
 		let mounted;
@@ -2198,6 +2236,7 @@ async function measure({ scenario, messageCount, keepScratch = false }) {
 					.join("\n")}\n--- app log ---\n${appLog}`,
 			);
 		}
+		phase = "measure";
 		const installed = await client.evaluate(INSTRUMENT);
 		if (!installed.ok)
 			throw new Error(
@@ -2255,6 +2294,37 @@ async function measure({ scenario, messageCount, keepScratch = false }) {
 			console: client.console(),
 			identity: identity(startedAt),
 		};
+	} catch (error) {
+		/*
+		 * BEFORE the reap in `finally`, which deletes the scratch these files live
+		 * in. Best-effort: a diagnostics failure is reported and the ORIGINAL error
+		 * is what the run fails with. The teardown itself is untouched.
+		 */
+		if (phase !== "measure") {
+			try {
+				const kept = await preserveLaunchDiagnostics({
+					dir: diagnosticsDir({
+						explicit: DIAGNOSTICS_DIR,
+						jsonOut: JSON_OUT,
+						scratchRoot: SCRATCH_ROOT,
+						now: Date.now(),
+						pid: process.pid,
+					}),
+					app,
+					scratch,
+					port: cdpPort,
+					error,
+					startedAt,
+					phase,
+				});
+				process.stderr.write(`${kept.line}\n`);
+			} catch (diagnosticsError) {
+				process.stderr.write(
+					`team-bridge-bench: launch diagnostics could not be kept: ${String(diagnosticsError)}\n`,
+				);
+			}
+		}
+		throw error;
 	} finally {
 		activeReap = null;
 		await reap();
