@@ -1741,10 +1741,19 @@ export const formatWakeCadence = (
 	remaining: number | null,
 ): string => {
 	if (everyMs === null) return t("ui.chat.run_details.wake.cadence_once");
-	const cadence = `every ${formatWakeDuration(everyMs)}`;
-	if (remaining === null) return cadence;
-	if (remaining === 0) return `${cadence} · no deliveries left`;
-	return `${cadence} · ${remaining} left`;
+	// Whole messages per shape rather than `${cadence} · …` glued here, so a
+	// locale can reorder the interval and the remaining count.
+	const duration = formatWakeDuration(everyMs);
+	if (remaining === null)
+		return t("ui.chat.run_details.wake.every", { duration });
+	if (remaining === 0)
+		return t("ui.chat.run_details.wake.cadence_finished", { duration });
+	return t("ui.chat.run_details.wake.cadence_remaining", {
+		duration,
+		remaining,
+		// Raw interpolation, as before: a negative wire count prints as sent.
+		remaining_display: String(remaining),
+	});
 };
 
 /**
@@ -1788,7 +1797,10 @@ export const wakeClause = (count: number): string =>
  * `wakeClause`'s own note about the band's `N scheduled`.
  */
 export const monitorClause = (count: number): string =>
-	count === 1 ? "1 monitor armed" : `${count} monitors armed`;
+	t("ui.chat.run_details.monitor.armed_count", {
+		count,
+		count_display: String(count),
+	});
 
 /**
  * One wire schedule as a row, or `null` when the record carries nothing a user
@@ -1978,22 +1990,29 @@ const deriveMonitor = (
 		name,
 		description: wireText(record.description),
 		whenLabel: disabled
-			? "disabled"
+			? t("ui.chat.run_details.monitor.disabled")
 			: nextDueAt === null
-				? "waiting"
+				? t("ui.chat.run_details.monitor.waiting")
 				: formatWakeDue(nextDueAt, nowMs),
 		interval:
 			everyMs === null
 				? t("ui.chat.run_details.wake.cadence_once")
-				: `every ${formatWakeDuration(everyMs)}`,
+				: t("ui.chat.run_details.wake.every", {
+						duration: formatWakeDuration(everyMs),
+					}),
 		lastCheckLabel:
 			lastCheckAt === null
 				? ""
-				: `last check ${formatWakeDue(lastCheckAt, nowMs)}`,
+				: t("ui.chat.run_details.monitor.last_check", {
+						when: formatWakeDue(lastCheckAt, nowMs),
+					}),
 		healthLabel: disabled
 			? oneLine(wireText(record.disabled_reason))
 			: failing
-				? `${failures} failed`
+				? t("ui.chat.run_details.monitor.failed_count", {
+						count: failures,
+						count_display: String(failures),
+					})
 				: "",
 		alerting: disabled || failing,
 		nextDueAt,
@@ -2788,7 +2807,11 @@ export type McpRemedy =
  * there, over the same `env`/`headers` map).
  */
 const MCP_WORDS: Record<string, string> = {
-	"auth-required": "Manage this server's credentials in Settings",
+	// A getter so the sentence resolves in the locale active when the row is
+	// derived (per render), not the one active when this module loaded.
+	get "auth-required"() {
+		return t("ui.chat.run_details.mcp.credentials_in_settings");
+	},
 };
 
 /**
@@ -2806,11 +2829,24 @@ const MCP_WORDS: Record<string, string> = {
  * nothing else this surface owns.
  */
 export const MCP_CONTROL_WORD = {
-	grant: "Grant account access",
-	key: "Enter API key",
-	reconnect: "Reconnect",
-	reload: "Reload",
-} as const;
+	/*
+	 * Getters, not values: both surfaces read a word at render, and a value
+	 * resolved at import time would keep the start-up language after a live
+	 * locale switch.
+	 */
+	get grant(): string {
+		return t("ui.chat.run_details.mcp.control.grant");
+	},
+	get key(): string {
+		return t("ui.chat.run_details.mcp.control.key");
+	},
+	get reconnect(): string {
+		return t("ui.chat.run_details.mcp.control.reconnect");
+	},
+	get reload(): string {
+		return t("ui.chat.run_details.mcp.control.reload");
+	},
+};
 
 /**
  * A sign-in this surface started, as the READ carries it (`mcp.list` returns
@@ -3299,6 +3335,17 @@ export function mcpErrorTexts(rows: unknown): Record<string, string> {
 }
 
 /**
+ * A server row's tool count (`1 tool` / `12 tools`), one spelling for the row's
+ * trailing value and its expanded detail line. `count_display` is the raw
+ * `String(count)` the template literal printed, so English stays ungrouped.
+ */
+export const mcpToolCount = (count: number): string =>
+	t("ui.chat.run_details.mcp.tool_count", {
+		count,
+		count_display: String(count),
+	});
+
+/**
  * The MCP section's trailing tally, in the model because the TRIGGER already
  * counts the same servers there and the two must not disagree.
  *
@@ -3324,7 +3371,11 @@ export function mcpTally(
 	if (mcpServersAreCold(rows)) return t(MCP_COLD_LINE);
 	const connected = rows.filter((row) => row.status === "connected").length;
 	const problems = rows.filter((row) => row.problem).length;
-	const base = `${connected} of ${rows.length} connected`;
+	const base = t("ui.chat.run_details.mcp.connected_tally", {
+		total: rows.length,
+		connected_display: String(connected),
+		total_display: String(rows.length),
+	});
 	if (problems === 0) return base;
 	const full = `${base} · ${attentionClause(problems)}`;
 	/*

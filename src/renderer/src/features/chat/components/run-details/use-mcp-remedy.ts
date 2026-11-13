@@ -49,6 +49,7 @@ import {
 	desktopResult,
 } from "@shared/api/local-operator/desktop-api";
 import { fetchMcpProbe, mcpKeys } from "@shared/api/local-operator/mcp-list";
+import { t } from "@shared/i18n";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import type { DesktopMcpState } from "../../../../../../shared/desktop-control-contract";
@@ -68,6 +69,33 @@ import { type McpServerRow, mcpGrantInFlight } from "./run-detail-model";
  * wording instead of probing again.
  */
 export type McpRefusal = "not-oauth" | "refused";
+
+/**
+ * The sentence for a credential write that answered but did not save.
+ *
+ * Pure and exported so the copy can be pinned without a React tree. Four whole
+ * messages rather than `why + " Saved: …"`: the trailing clause is a second
+ * sentence, and its separator and order belong to the locale. The IDs are key
+ * names (machine tokens), joined exactly as before and never translated.
+ * Resolved when the outcome is recorded, the same moment `mcpFailure` resolves
+ * its sentence.
+ */
+export function mcpKeyStoreOutcome(
+	result:
+		| { code: string; saved_ids: string[]; failed_ids: string[] }
+		| undefined,
+	submittedIds: readonly string[],
+): string {
+	const saved = result?.saved_ids.length ? result.saved_ids.join(", ") : null;
+	const failed = (result?.failed_ids ?? submittedIds).join(", ");
+	if (result?.code === "replace_confirmation_required")
+		return saved === null
+			? t("ui.chat.run_details.mcp_key.replace_confirmation")
+			: t("ui.chat.run_details.mcp_key.replace_confirmation_saved", { saved });
+	return saved === null
+		? t("ui.chat.run_details.mcp_key.not_saved", { failed })
+		: t("ui.chat.run_details.mcp_key.not_saved_saved", { failed, saved });
+}
 
 /** What the section needs to render and start a remedy. */
 export type McpRemedyControls = {
@@ -371,10 +399,7 @@ export function useMcpRemedy({
 				});
 				if (stored.data?.code !== "saved") {
 					const result = stored.data;
-					const why =
-						result?.code === "replace_confirmation_required"
-							? "Confirm replacement of the existing shared keys before saving."
-							: `Not saved: ${(result?.failed_ids ?? Object.keys(values)).join(", ")}. Unlock or repair the encrypted store, then retry.`;
+					const message = mcpKeyStoreOutcome(result, Object.keys(values));
 					// An OUTCOME rather than an exception: the write answered, and the
 					// answer is what the sentence reports. Its cause is `unknown` because
 					// only the failed IDs are known — the store's reason is not on this
@@ -385,11 +410,7 @@ export function useMcpRemedy({
 							cause: "unknown",
 							phase: "key",
 							detail: null,
-							message:
-								why +
-								(result?.saved_ids.length
-									? ` Saved: ${result.saved_ids.join(", ")}.`
-									: ""),
+							message,
 						},
 					}));
 					setPendingName(null);
@@ -423,8 +444,7 @@ export function useMcpRemedy({
 						cause: "unknown",
 						phase: "reconnect",
 						detail: null,
-						message:
-							"The keys were saved, but this server is not connected. Check the credentials and server setup, then retry.",
+						message: t("ui.chat.run_details.mcp_key.saved_not_connected"),
 					},
 				}));
 				return false;
