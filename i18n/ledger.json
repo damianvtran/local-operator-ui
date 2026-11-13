@@ -102961,6 +102961,958 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.music",
+			"source_sha256": "817613556a302f39a2704a64624c17c4f2dcf6677f15ec7c3a328ae5e8aad172",
+			"target_sha256": "282a76f27c51f6814334a46a85033681c7ebf3d47cefcf02e36f7e3c47f3e5c7",
+			"translator": {
+				"agent": "coder",
+				"session": "07cc6c9ad446",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-10",
+				"fallback": "none",
+				"note": "finished_after_cancel translated in d210b3cac5a by a lopdev coder (anthropic/claude-opus-5-5); that commit and PR #1800 do not record its session id, so the session above is the prior translator of the other 14 keys"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"instance": "fbc3c870c82c",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
+					"result": "clean-with-findings",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/music-after-cancel-fbc3c870c82c-fr.json",
+					"receipt_sha256": "08d85986872fbff59b0976c7c7517ab2464d5fb1d941c8f0b228e8370e4f88d1",
+					"scope": "1 new key finished_after_cancel; 14 prior keys byte-identical, retained from round 15"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "bd05c0f816b8421ce42aeac422b168ee94f98fe1e7200ea8d3d82982cc0b61c3",
+					"target_sha256": "92929ffbd0a911a90987c55e89cd8a5ef6d43bcadd39d618dbe6f6e5c038f9f9",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"instance": "fbc3c870c82c",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-09",
+							"result": "clean-with-findings",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/music-inline-fbc3c870c82c-fr.json",
+							"receipt_sha256": "d8d9c43c78edde9a639f18cf12abec9bc0801cd92fb8985914b3888b618cb11c",
+							"scope": "8 inline-generating keys; 6 prior keys unchanged, retained (prior linguistic audits music-c6abfadb3c9f-* in superseded history)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "e4bfc1ac870036a1efd34cbd0b79e9c23cf92f360eb6325fdaa8451a1c25f1af",
+					"target_sha256": "8b33521b964c26260e52bf793bc9c86ac9710001797864110f935a20033d16bf",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"instance": "c6abfadb3c9f",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/music-c6abfadb3c9f-fr.json",
+							"receipt_sha256": "847e9b84144cde5cd0c55e8f2d38a4fe59c38930e6ac80fb43a20b426872e56d",
+							"scope": "Full six-key namespace. Secondary independent safety audit covers cancel_warning only; retained separately, not claimed as a full namespace audit."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3bb58635be3fd3b69d25fba7a87eba51add3c5042c89d887c8d1aa9d0c9cbc19",
+					"target_sha256": "a9922a77729e4fbe69d1a6a98cb1816f738b1189c70bbd71472c09989e0f5913",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "68a17109903b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a17109903b.json",
+							"receipt_sha256": "5b19e3910c3f27104ec704275c51f1671757c005a53c153dfbb5d0094bbc7b50",
+							"scope": "Fresh independent mechanical-format retention; decoded JSON unchanged; original linguistic audits retained in superseded history; not a new linguistic, audio, pixel or flow audit"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.music",
+			"source_sha256": "817613556a302f39a2704a64624c17c4f2dcf6677f15ec7c3a328ae5e8aad172",
+			"target_sha256": "3603e734e9dc9e40065dd6fd8d24ae7bc1708f029d2a74b25678c9699b944ee0",
+			"translator": {
+				"agent": "coder",
+				"session": "07cc6c9ad446",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-10",
+				"fallback": "none",
+				"note": "finished_after_cancel translated in d210b3cac5a by a lopdev coder (anthropic/claude-opus-5-5); that commit and PR #1800 do not record its session id, so the session above is the prior translator of the other 14 keys"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"instance": "fbc3c870c82c",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
+					"result": "clean",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/music-after-cancel-fbc3c870c82c-es.json",
+					"receipt_sha256": "60b3239563e3848ad0ec1eb9d07d6d25d3a537de47f11d740c8be740a62299d5",
+					"scope": "1 new key finished_after_cancel; 14 prior keys byte-identical, retained from round 15"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "bd05c0f816b8421ce42aeac422b168ee94f98fe1e7200ea8d3d82982cc0b61c3",
+					"target_sha256": "8e1d9f98cbbea51b1618d3a3bf31f8178403a5235fbd05564b2e4c59be875636",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"instance": "fbc3c870c82c",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-09",
+							"result": "clean-with-findings",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/music-inline-fbc3c870c82c-es.json",
+							"receipt_sha256": "82a69c623d368bf8af1a2dcba7168260cf3cc2be0dbfe6aa71cd7a8e82c3ab76",
+							"scope": "8 inline-generating keys; 6 prior keys unchanged, retained (prior linguistic audits music-c6abfadb3c9f-* in superseded history)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "e4bfc1ac870036a1efd34cbd0b79e9c23cf92f360eb6325fdaa8451a1c25f1af",
+					"target_sha256": "e18186c45fe5a0922b29ddb2016358b56db79f7d9180225067a15dc0c466dc7e",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"instance": "c6abfadb3c9f",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/music-c6abfadb3c9f-es.json",
+							"receipt_sha256": "b3eac0eeb76c0ee573fb2d6e82e0b46eb26eba34e954cdc5cf42f56f4f78d093",
+							"scope": "Full six-key namespace. Secondary independent safety audit covers cancel_warning only; retained separately, not claimed as a full namespace audit."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3bb58635be3fd3b69d25fba7a87eba51add3c5042c89d887c8d1aa9d0c9cbc19",
+					"target_sha256": "704f98572dcfa93b9efa7566df3ba124f1e3c9c8c99b3343d3baeca6f6eced0d",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "68a17109903b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a17109903b.json",
+							"receipt_sha256": "5b19e3910c3f27104ec704275c51f1671757c005a53c153dfbb5d0094bbc7b50",
+							"scope": "Fresh independent mechanical-format retention; decoded JSON unchanged; original linguistic audits retained in superseded history; not a new linguistic, audio, pixel or flow audit"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.music",
+			"source_sha256": "817613556a302f39a2704a64624c17c4f2dcf6677f15ec7c3a328ae5e8aad172",
+			"target_sha256": "ab21c465a57ba7a1b9fe945c47a3d2ff0ad9bd4630e1dc603ec2203362c67351",
+			"translator": {
+				"agent": "coder",
+				"session": "07cc6c9ad446",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-10",
+				"fallback": "none",
+				"note": "finished_after_cancel translated in d210b3cac5a by a lopdev coder (anthropic/claude-opus-5-5); that commit and PR #1800 do not record its session id, so the session above is the prior translator of the other 14 keys"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"instance": "fbc3c870c82c",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
+					"result": "clean",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/music-after-cancel-fbc3c870c82c-zh-cn.json",
+					"receipt_sha256": "11106e73d45017215f51a69938e21ffcef2703e4e5b65735896e8afb45b08eb9",
+					"scope": "1 new key finished_after_cancel; 14 prior keys byte-identical, retained from round 15"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "bd05c0f816b8421ce42aeac422b168ee94f98fe1e7200ea8d3d82982cc0b61c3",
+					"target_sha256": "ec4888d26153ef64c76da94c69f2d5d0d6792f32036488f64021435b623d8df5",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"instance": "fbc3c870c82c",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-09",
+							"result": "clean-with-findings",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/music-inline-fbc3c870c82c-zh-cn.json",
+							"receipt_sha256": "cdcba7f4dc9fe65f22be3e63b6311ef871c543c42c42490a10b7f769b0f8cee1",
+							"scope": "8 inline-generating keys; 6 prior keys unchanged, retained (prior linguistic audits music-c6abfadb3c9f-* in superseded history)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "e4bfc1ac870036a1efd34cbd0b79e9c23cf92f360eb6325fdaa8451a1c25f1af",
+					"target_sha256": "eefa96f3854ef64790aa4e2266b40f5b1379708023b4c3caee85c94eea6c3a7f",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"instance": "c6abfadb3c9f",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/music-c6abfadb3c9f-zh-cn.json",
+							"receipt_sha256": "9b67cbdc5a2445ca1fe50bdd6138c354cbe2921f6ce439bc46e96463aa0e7d6d",
+							"scope": "Full six-key namespace. Secondary independent safety audit covers cancel_warning only; retained separately, not claimed as a full namespace audit."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3bb58635be3fd3b69d25fba7a87eba51add3c5042c89d887c8d1aa9d0c9cbc19",
+					"target_sha256": "93b8b71789d4953407815bdb11f7e2632e01422505fb81437be5e28550c5d9bc",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "68a17109903b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a17109903b.json",
+							"receipt_sha256": "5b19e3910c3f27104ec704275c51f1671757c005a53c153dfbb5d0094bbc7b50",
+							"scope": "Fresh independent mechanical-format retention; decoded JSON unchanged; original linguistic audits retained in superseded history; not a new linguistic, audio, pixel or flow audit"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.music",
+			"source_sha256": "817613556a302f39a2704a64624c17c4f2dcf6677f15ec7c3a328ae5e8aad172",
+			"target_sha256": "981bfe2a284d30b8ecbd14a3836ea5be987de49a65782f426547d115f5e52ecd",
+			"translator": {
+				"agent": "coder",
+				"session": "07cc6c9ad446",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-10",
+				"fallback": "none",
+				"note": "finished_after_cancel translated in d210b3cac5a by a lopdev coder (anthropic/claude-opus-5-5); that commit and PR #1800 do not record its session id, so the session above is the prior translator of the other 14 keys"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"instance": "fbc3c870c82c",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
+					"result": "clean",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/music-after-cancel-fbc3c870c82c-ru.json",
+					"receipt_sha256": "9da4356a7570126aa13f5a691fca70b2a0362e36d102af0ae7e132ced6ba44be",
+					"scope": "1 new key finished_after_cancel; 14 prior keys byte-identical, retained from round 15"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "bd05c0f816b8421ce42aeac422b168ee94f98fe1e7200ea8d3d82982cc0b61c3",
+					"target_sha256": "21e55537ec8d438d238a18c27afa2c5779de31a7e65b9a5ec48019ef2c3b5da6",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"instance": "fbc3c870c82c",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-09",
+							"result": "clean",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/music-inline-fbc3c870c82c-ru.json",
+							"receipt_sha256": "8313eef558da96484bcc9d03cb7b22c5dfab310108bd5ac25048154c9ce28bf9",
+							"scope": "8 inline-generating keys; 6 prior keys unchanged, retained (prior linguistic audits music-c6abfadb3c9f-* in superseded history)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "e4bfc1ac870036a1efd34cbd0b79e9c23cf92f360eb6325fdaa8451a1c25f1af",
+					"target_sha256": "36bf0442156598f4c858a2d06b1e58101abf0dfcd0484be562b0b369bc4ea040",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"instance": "c6abfadb3c9f",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/music-c6abfadb3c9f-ru.json",
+							"receipt_sha256": "d341986f858f81e23ba356666c7f8f2e65ba1926399bc0a5a7e0cc377aaa2466",
+							"scope": "Full six-key namespace. Secondary independent safety audit covers cancel_warning only; retained separately, not claimed as a full namespace audit."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3bb58635be3fd3b69d25fba7a87eba51add3c5042c89d887c8d1aa9d0c9cbc19",
+					"target_sha256": "999793f8d1b8b4dfcc126bccefa158c3466737e54dbe297603e87e066c2493c9",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "68a17109903b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a17109903b.json",
+							"receipt_sha256": "5b19e3910c3f27104ec704275c51f1671757c005a53c153dfbb5d0094bbc7b50",
+							"scope": "Fresh independent mechanical-format retention; decoded JSON unchanged; original linguistic audits retained in superseded history; not a new linguistic, audio, pixel or flow audit"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.music",
+			"source_sha256": "817613556a302f39a2704a64624c17c4f2dcf6677f15ec7c3a328ae5e8aad172",
+			"target_sha256": "68dd214711c7244f6cd829d1fa4afd4f254cbb5f39bbcb1278e95b05b5956125",
+			"translator": {
+				"agent": "coder",
+				"session": "07cc6c9ad446",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-10",
+				"fallback": "none",
+				"note": "finished_after_cancel translated in d210b3cac5a by a lopdev coder (anthropic/claude-opus-5-5); that commit and PR #1800 do not record its session id, so the session above is the prior translator of the other 14 keys"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"instance": "fbc3c870c82c",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
+					"result": "clean",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/music-after-cancel-fbc3c870c82c-vi.json",
+					"receipt_sha256": "97d15901d21c0eeba0e830f95844cf361a482db398687189a51893961667d4ff",
+					"scope": "1 new key finished_after_cancel; 14 prior keys byte-identical, retained from round 15"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "bd05c0f816b8421ce42aeac422b168ee94f98fe1e7200ea8d3d82982cc0b61c3",
+					"target_sha256": "599396b17f5cbc071a98ff73bd563a2c05ba45caa6393ba0db50073da5bc7b58",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"instance": "fbc3c870c82c",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-09",
+							"result": "clean",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/music-inline-fbc3c870c82c-vi.json",
+							"receipt_sha256": "7f180355ac4602d81c43d0f4dcb1ca0dbdd87e8d4a27327aa96d34c7e558a964",
+							"scope": "8 inline-generating keys; 6 prior keys unchanged, retained (prior linguistic audits music-c6abfadb3c9f-* in superseded history)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "e4bfc1ac870036a1efd34cbd0b79e9c23cf92f360eb6325fdaa8451a1c25f1af",
+					"target_sha256": "0c0b58cd2851b72ab711d0574083b0fdd67e9f8bbf8d23bd91ca6267d3ec7423",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"instance": "c6abfadb3c9f",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/music-c6abfadb3c9f-vi.json",
+							"receipt_sha256": "bc5771330d975efc72ea09238e2e4d5edd602d3b73dc0d0317304cbc2ff8aee3",
+							"scope": "Full six-key namespace. Secondary independent safety audit covers cancel_warning only; retained separately, not claimed as a full namespace audit."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3bb58635be3fd3b69d25fba7a87eba51add3c5042c89d887c8d1aa9d0c9cbc19",
+					"target_sha256": "57a280f70c700ca6eb8a592d9b91ae530bfcf8f13c8078915bf823e6d1c8748c",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "68a17109903b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a17109903b.json",
+							"receipt_sha256": "5b19e3910c3f27104ec704275c51f1671757c005a53c153dfbb5d0094bbc7b50",
+							"scope": "Fresh independent mechanical-format retention; decoded JSON unchanged; original linguistic audits retained in superseded history; not a new linguistic, audio, pixel or flow audit"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.music",
+			"source_sha256": "817613556a302f39a2704a64624c17c4f2dcf6677f15ec7c3a328ae5e8aad172",
+			"target_sha256": "bedee48cebf9922bf81e2fcb59435bd34bf4059e3092054daeb08b012338bd66",
+			"translator": {
+				"agent": "coder",
+				"session": "07cc6c9ad446",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-10",
+				"fallback": "none",
+				"note": "finished_after_cancel translated in d210b3cac5a by a lopdev coder (anthropic/claude-opus-5-5); that commit and PR #1800 do not record its session id, so the session above is the prior translator of the other 14 keys"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"instance": "fbc3c870c82c",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
+					"result": "clean",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/music-after-cancel-fbc3c870c82c-ur.json",
+					"receipt_sha256": "78c986190c619b786e0bf148aea48eb557a2b49401c1d0e64b1b15585b742a93",
+					"scope": "1 new key finished_after_cancel; 14 prior keys byte-identical, retained from round 15"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "bd05c0f816b8421ce42aeac422b168ee94f98fe1e7200ea8d3d82982cc0b61c3",
+					"target_sha256": "c796c294d742221fca4d75429899cb5f8cc83a346eccc3d11deba66643358a5d",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"instance": "fbc3c870c82c",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-09",
+							"result": "clean",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/music-inline-fbc3c870c82c-ur.json",
+							"receipt_sha256": "8b761b4fde49ba2a7d9dd0a1854b33e0786b760d348cec36c8511e0466dffa24",
+							"scope": "8 inline-generating keys; 6 prior keys unchanged, retained (prior linguistic audits music-c6abfadb3c9f-* in superseded history)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "e4bfc1ac870036a1efd34cbd0b79e9c23cf92f360eb6325fdaa8451a1c25f1af",
+					"target_sha256": "355efb29e8d89fd2cb09192379e82e9ab273b626f548b4fefa9c6e8c2f072ff5",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"instance": "c6abfadb3c9f",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/music-c6abfadb3c9f-ur.json",
+							"receipt_sha256": "b4b5d3fad65a852968d7beb89011adfab5a894e6379920c79cb8ef228e880bf0",
+							"scope": "Full six-key namespace. Secondary independent safety audit covers cancel_warning only; retained separately, not claimed as a full namespace audit."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3bb58635be3fd3b69d25fba7a87eba51add3c5042c89d887c8d1aa9d0c9cbc19",
+					"target_sha256": "5242a42f207c9a85d0843d0b8b3cbb07e3c302701a5fa054b441cd0f9a39887c",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "68a17109903b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a17109903b.json",
+							"receipt_sha256": "5b19e3910c3f27104ec704275c51f1671757c005a53c153dfbb5d0094bbc7b50",
+							"scope": "Fresh independent mechanical-format retention; decoded JSON unchanged; original linguistic audits retained in superseded history; not a new linguistic, audio, pixel or flow audit"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.music",
+			"source_sha256": "817613556a302f39a2704a64624c17c4f2dcf6677f15ec7c3a328ae5e8aad172",
+			"target_sha256": "8af29708a1a92046ea76caa90b054778569003188ae68f138fdcda049db18631",
+			"translator": {
+				"agent": "coder",
+				"session": "07cc6c9ad446",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-10",
+				"fallback": "none",
+				"note": "finished_after_cancel translated in d210b3cac5a by a lopdev coder (anthropic/claude-opus-5-5); that commit and PR #1800 do not record its session id, so the session above is the prior translator of the other 14 keys"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"instance": "fbc3c870c82c",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-10",
+					"result": "clean",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/music-after-cancel-fbc3c870c82c-hi.json",
+					"receipt_sha256": "936e652875782c90b1a1f0bc72f583ee57eea007d6a267cad72d57d627fadf37",
+					"scope": "1 new key finished_after_cancel; 14 prior keys byte-identical, retained from round 15"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "bd05c0f816b8421ce42aeac422b168ee94f98fe1e7200ea8d3d82982cc0b61c3",
+					"target_sha256": "6c6da02caa4969536e73f7cd0a35d55ca71a43fb0fc20922cba877fc2fd3e96e",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"instance": "fbc3c870c82c",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-09",
+							"result": "clean",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/music-inline-fbc3c870c82c-hi.json",
+							"receipt_sha256": "e32d607de83e09bcba472ad404b985580381ba47cc2da4b3ba3689be0d82748f",
+							"scope": "8 inline-generating keys; 6 prior keys unchanged, retained (prior linguistic audits music-c6abfadb3c9f-* in superseded history)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "e4bfc1ac870036a1efd34cbd0b79e9c23cf92f360eb6325fdaa8451a1c25f1af",
+					"target_sha256": "032c95246831de66bf5e8e55179cd6b7f27ed240ce4df92dc9043da11ee89ada",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"instance": "c6abfadb3c9f",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/music-c6abfadb3c9f-hi.json",
+							"receipt_sha256": "b819da02a05475ee1ac1a5b5cd44b7800302cfa4f90c3e433a28e01cb55ebb6f",
+							"scope": "Full six-key namespace. Secondary independent safety audit covers cancel_warning only; retained separately, not claimed as a full namespace audit."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "3bb58635be3fd3b69d25fba7a87eba51add3c5042c89d887c8d1aa9d0c9cbc19",
+					"target_sha256": "26ec304c0d2c25dd1402a83d4ee3e9826056b50650c3afa1197b7c9a9ef8c0b9",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "68a17109903b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/68a17109903b.json",
+							"receipt_sha256": "5b19e3910c3f27104ec704275c51f1671757c005a53c153dfbb5d0094bbc7b50",
+							"scope": "Fresh independent mechanical-format retention; decoded JSON unchanged; original linguistic audits retained in superseded history; not a new linguistic, audio, pixel or flow audit"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.music.job_status",
+			"source_sha256": "b71126a2206711a86590573565bd5ec6e0177055db2ce9bf5a23895133653141",
+			"target_sha256": "4a107f682e333c1c786c8ccf6b8cde4b05cec1f75e043922158a2f5247b7c37d",
+			"translator": {
+				"agent": "coder",
+				"session": "7ca90b654475",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-09",
+				"fallback": "none"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"instance": "fbc3c870c82c",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/music-job-status-fbc3c870c82c-fr.json",
+					"receipt_sha256": "4ca9dcac7942965de42f3bd29512210168ba3b43bfc386f7f42f29127945b43f",
+					"scope": "1 key ui.music.job_status.unavailable; full namespace"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.music.job_status",
+			"source_sha256": "b71126a2206711a86590573565bd5ec6e0177055db2ce9bf5a23895133653141",
+			"target_sha256": "2c6368e68d59a548da082318f367a052e585c81a066c58363c7ed0d680939f46",
+			"translator": {
+				"agent": "coder",
+				"session": "7ca90b654475",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-09",
+				"fallback": "none"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"instance": "fbc3c870c82c",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/music-job-status-fbc3c870c82c-es.json",
+					"receipt_sha256": "59df0cbfe605b92e2d2adcebb34397767092ec219369b73066a79c6c68c93f70",
+					"scope": "1 key ui.music.job_status.unavailable; full namespace"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.music.job_status",
+			"source_sha256": "b71126a2206711a86590573565bd5ec6e0177055db2ce9bf5a23895133653141",
+			"target_sha256": "522d6b27bedaa1b229a332983fa937e3feb88537b4cfa67aeedf56db68b47580",
+			"translator": {
+				"agent": "coder",
+				"session": "7ca90b654475",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-09",
+				"fallback": "none"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"instance": "fbc3c870c82c",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/music-job-status-fbc3c870c82c-zh-cn.json",
+					"receipt_sha256": "29a0e56f3227b130db5c5e628f3b96234adf5f42fcafc084cd9d308c3b82b5df",
+					"scope": "1 key ui.music.job_status.unavailable; full namespace"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.music.job_status",
+			"source_sha256": "b71126a2206711a86590573565bd5ec6e0177055db2ce9bf5a23895133653141",
+			"target_sha256": "4a540394f14ccc015673adc48b3a0efec9c36ea949e732b82e9757733f6fc270",
+			"translator": {
+				"agent": "coder",
+				"session": "7ca90b654475",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-09",
+				"fallback": "none"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"instance": "fbc3c870c82c",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/music-job-status-fbc3c870c82c-ru.json",
+					"receipt_sha256": "ef893b585bc54484e188e68fcfa644c1a0108358e1fe543d7f0bedff26d073fc",
+					"scope": "1 key ui.music.job_status.unavailable; full namespace"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.music.job_status",
+			"source_sha256": "b71126a2206711a86590573565bd5ec6e0177055db2ce9bf5a23895133653141",
+			"target_sha256": "a2d1de68a8c851bc251c16bfe12f3a8e54ec151958b4b4f56b4bc1b2d583f7f7",
+			"translator": {
+				"agent": "coder",
+				"session": "7ca90b654475",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-09",
+				"fallback": "none"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"instance": "fbc3c870c82c",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/music-job-status-fbc3c870c82c-vi.json",
+					"receipt_sha256": "ad5b251f6c748bf52072183fe92a936ba6be5e576032c925fcd6956d4e167998",
+					"scope": "1 key ui.music.job_status.unavailable; full namespace"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.music.job_status",
+			"source_sha256": "b71126a2206711a86590573565bd5ec6e0177055db2ce9bf5a23895133653141",
+			"target_sha256": "d085364f262b795fa97c382ee6a9088f92226b816f56a67ee495a39fa049ed30",
+			"translator": {
+				"agent": "coder",
+				"session": "7ca90b654475",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-09",
+				"fallback": "none"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"instance": "fbc3c870c82c",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/music-job-status-fbc3c870c82c-ur.json",
+					"receipt_sha256": "eda429eec6a827c892ca68d2d154efca5b5e14d75ab1cb648a54291e0808202d",
+					"scope": "1 key ui.music.job_status.unavailable; full namespace"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.music.job_status",
+			"source_sha256": "b71126a2206711a86590573565bd5ec6e0177055db2ce9bf5a23895133653141",
+			"target_sha256": "eeec4abf0f9953005f89fe543e2118a44de845b5c69202f929b3dcb49e65d0a5",
+			"translator": {
+				"agent": "coder",
+				"session": "7ca90b654475",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-09",
+				"fallback": "none"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"instance": "fbc3c870c82c",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-09",
+					"result": "clean",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/music-job-status-fbc3c870c82c-hi.json",
+					"receipt_sha256": "71faebfe7ca7df0420494e4b1825cf2000470bb5df1f972dee07107a48b0e082",
+					"scope": "1 key ui.music.job_status.unavailable; full namespace"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }

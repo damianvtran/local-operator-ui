@@ -1,0 +1,63 @@
+{
+	"id": "c35fe7950e46419eb81baa9f704806c1",
+	"ts": 1794331990.16097,
+	"type": "message",
+	"payload": {
+		"kind": "custom",
+		"custom_type": "job_result",
+		"attribution": "user",
+		"details": {
+			"job_id": "96de655246c3",
+			"text": "background job 'Music' completed:\nMusic ready \u2014 job a911f847e12e.",
+			"job": "a911f847e12e",
+			"material": "music",
+			"model": "radient/music",
+			"provider": "radient",
+			"tracks": [
+				{
+					"id": "aud_serving_8",
+					"title": "Owned silent music fixture",
+					"variant_index": 0,
+					"status": "COMPLETED",
+					"settled": true,
+					"cost": {
+						"v": 1,
+						"amount_usd": 0.007500000000000001,
+						"basis": "billed",
+						"units": 3000,
+						"unit": "millisecond",
+						"provider": "radient",
+						"model": "radient/music",
+						"tool_type": "music_generation",
+						"usage_record_id": "synthetic_usage_aud_serving_8",
+						"price_version": "music-fixed-requested-ms@2026-11-08"
+					},
+					"error_type": null,
+					"artifacts_registered": true
+				}
+			],
+			"artifacts": [
+				{
+					"digest": "34681b9e4cf82622b22fabbafab1d748",
+					"kind": "audio",
+					"name": "owned-silent-music-fixture.mp3",
+					"content_type": "audio/mpeg",
+					"size_bytes": 24493,
+					"width": null,
+					"height": null,
+					"duration_s": 3.0,
+					"material": "music",
+					"track_id": "aud_serving_8",
+					"artifact_id": "artifact_aud_serving_8",
+					"role": "full_mix",
+					"variant_index": 0,
+					"title": "Owned silent music fixture",
+					"operation": "compose",
+					"attribution": "Synthetic QA upstream; no resale authorization"
+				}
+			],
+			"attribution": "Synthetic QA upstream; no resale authorization"
+		}
+	},
+	"ts_source": "entry"
+}
