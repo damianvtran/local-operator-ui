@@ -59,6 +59,7 @@ import { MessageInput } from "@shared/components/composer/message-input";
 import { cn } from "@shared/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react";
 import { type FC, useEffect, useRef } from "react";
+import { marketingGlass } from "./docs-glass-backdrop";
 
 /* ---------------------------------------------------------------- the world */
 
@@ -66,9 +67,25 @@ import { type FC, useEffect, useRef } from "react";
 const TAUGHT_SESSION = "session/7b21c0e94f3a";
 const RECALLED_SESSION = "session/c48e5d1a2b90";
 
-/** One anchor instant, so relative labels read as today whatever day it runs. */
-const NOW = Date.now();
-const at = (minutesAgo: number) => NOW - minutesAgo * 60_000;
+/**
+ * FIXED WALL CLOCKS, one per scene. The transcript prints a clock, and anchoring
+ * it to load time made every capture read differently (taught 11:03 light,
+ * 11:04 dark) and put the recall minutes after the teaching (design round 2 D1,
+ * QA F1). The recall is the point of the figure, so it reads DAYS later: the
+ * fact is taught three days back at 10:12 and recalled today at 09:40, both
+ * local, whatever day the capture runs.
+ */
+const sceneClock = (daysAgo: number, hour: number, minute: number) => {
+	const date = new Date();
+	date.setDate(date.getDate() - daysAgo);
+	date.setHours(hour, minute, 0, 0);
+	return date.getTime();
+};
+const TAUGHT_AT = sceneClock(3, 10, 12);
+const RECALLED_AT = sceneClock(0, 9, 40);
+/** `minutesAgo` before a scene's own clock. */
+const taughtAt = (minutesAgo: number) => TAUGHT_AT - minutesAgo * 60_000;
+const recalledAt = (minutesAgo: number) => RECALLED_AT - minutesAgo * 60_000;
 
 /** Core's literal approval line for `memory op=store scope=global`. */
 const GLOBAL_STORE_APPROVAL =
@@ -86,26 +103,18 @@ const FACT_ID = "019a6f3e-7c41-7d2a-9b1e-5f0c2a8d4e61";
 const FACT_VERSION = "019a6f3e-7c42-7f10-8c3d-1e9b7a4f2c05";
 const FACT_URI = `memory://global/${FACT_ID}`;
 
-const user = (
-	id: string,
-	text: string,
-	minutesAgo: number,
-): TranscriptRecord => ({
+const user = (id: string, text: string, ts: number): TranscriptRecord => ({
 	kind: "user",
 	id,
-	ts: at(minutesAgo),
+	ts,
 	text,
 	images: [],
 });
 
-const assistant = (
-	id: string,
-	text: string,
-	minutesAgo: number,
-): TranscriptRecord => ({
+const assistant = (id: string, text: string, ts: number): TranscriptRecord => ({
 	kind: "assistant",
 	id,
-	ts: at(minutesAgo),
+	ts,
 	text,
 	streaming: false,
 	stopReason: null,
@@ -118,7 +127,7 @@ type ToolRecord = Extract<TranscriptRecord, { kind: "tool" }>;
 /** The docs library's tool-row defaults (`docs-library.stories.tsx`). */
 const tool = (over: Partial<ToolRecord> & { id: string }): ToolRecord => ({
 	kind: "tool",
-	ts: NOW,
+	ts: RECALLED_AT,
 	toolCallId: over.id,
 	toolName: "bash",
 	intent: null,
@@ -174,7 +183,13 @@ const MemoryPane: FC<{
 }> = ({ sessionId, records, gate = null }) => {
 	const containerRef = useRef<HTMLDivElement>(null);
 	return (
-		<div className="flex h-screen min-h-0 w-full flex-col overflow-hidden bg-background">
+		/* `canvas-backing` as `app.tsx` marks its `<main>`: under the marketing
+		   glass this paints the column's canvas at the shipped alpha; with glass
+		   off no rule matches and `bg-background` holds. */
+		<main
+			data-glass-region="canvas-backing"
+			className="flex h-screen min-h-0 w-full flex-col overflow-hidden bg-background"
+		>
 			{/*
 			 * No `ChatHeader`: at the marketing set's 720px height the docked
 			 * approval card plus the composer leave the transcript ~75px, and the
@@ -228,7 +243,7 @@ const MemoryPane: FC<{
 					onSendMessage={async () => true}
 				/>
 			</div>
-		</div>
+		</main>
 	);
 };
 
@@ -299,6 +314,9 @@ const ExpandRow = ({
 
 const meta: Meta = {
 	title: "Docs/Memory",
+	/* The shipped glass over a stand-in desktop, like the other marketing
+	   scenes (design round 2 D8, QA F4); the seam is shared with #1825. */
+	...marketingGlass,
 	parameters: { layout: "fullscreen" },
 };
 
@@ -311,10 +329,8 @@ const TAUGHT_ASK = user(
 	// One line on purpose: the docked approval card takes most of a 720px
 	// frame, and a wrapped ask scrolls its own first line out of view.
 	"From now on, keep PR descriptions to what changed and how it was verified.",
-	6,
+	taughtAt(6),
 );
-
-const STORE_ARGS = { op: "store", text: PREFERENCE, scope: "global" };
 
 /* -- A. Taught: the save, parked on its approval --------------------------- */
 
@@ -344,61 +360,6 @@ export const Taught: Story = {
 	),
 };
 
-/* -- A'. Taught, approved: the receipt row --------------------------------- */
-
-/**
- * The same conversation after Approve: the `memory` call settles as an
- * ordinary tool row whose receipt carries the stored id, the `memory://` uri
- * and the bank's lifetime label. An alternate for frame A when the figure
- * wants the outcome rather than the gate.
- */
-export const TaughtSaved: Story = {
-	render: () => (
-		<>
-			<ExpandRow marker="Saving the PR-description preference" open="turn" />
-			<MemoryPane
-				sessionId={TAUGHT_SESSION}
-				records={[
-					TAUGHT_ASK,
-					tool({
-						id: "taught-store",
-						ts: at(5),
-						toolName: "memory",
-						intent: "Saving the PR-description preference",
-						args: STORE_ARGS,
-						output: JSON.stringify(
-							{
-								id: FACT_ID,
-								version: FACT_VERSION,
-								scope: "global",
-								status: "active",
-								quota: {
-									scope: "global",
-									owner: "operator",
-									used_tokens: 412,
-									cap_tokens: 16000,
-									percent: 2.6,
-									headroom_tokens: 15588,
-								},
-								uri: FACT_URI,
-								lifetime: "global/across sessions",
-							},
-							null,
-							2,
-						),
-						durationS: 0.05,
-					}),
-					assistant(
-						"taught-reply",
-						"Saved to global memory, so it carries into new conversations. When a PR request comes up I'll check it and write the description as **What changed** and **How it was verified**, nothing else.",
-						5,
-					),
-				]}
-			/>
-		</>
-	),
-};
-
 /* -- B. Recalled: a later session reads the fact and follows it ------------ */
 
 /**
@@ -421,11 +382,11 @@ export const Recalled: Story = {
 					user(
 						"recalled-user",
 						"The date-format fix for the invoice export is on `fix/export-dates` and the tests pass. Open the PR.",
-						4,
+						recalledAt(4),
 					),
 					tool({
 						id: "recalled-read",
-						ts: at(4),
+						ts: recalledAt(4),
 						toolName: "read",
 						intent: "Reading the saved PR-description preference",
 						args: { path: FACT_URI },
@@ -446,7 +407,7 @@ export const Recalled: Story = {
 					}),
 					tool({
 						id: "recalled-pr",
-						ts: at(3),
+						ts: recalledAt(3),
 						toolName: "bash",
 						intent: "Opening the pull request",
 						args: {
@@ -459,7 +420,7 @@ export const Recalled: Story = {
 					assistant(
 						"recalled-reply",
 						"Opened [#214](https://github.com/northwind/invoices/pull/214). Description, per your saved rule:\n\n**What changed** — the March export writes invoice dates as ISO 8601 (`2026-03-05`) instead of the locale format, so the ledger import stops reading 05/03 as May.\n\n**How it was verified** — `pytest tests/test_export.py` (12 passed) and a re-run of the March export, which the ledger imported with no date warnings.",
-						3,
+						recalledAt(3),
 					),
 				]}
 			/>
