@@ -343,7 +343,8 @@ const I18N_PREFIXES = ["src/i18n/", "i18n/", "scripts/i18n/"];
 
 /**
  * Every repository file the condense parity pin covers, copied from its own
- * `desktop.modelSources`.
+ * `desktop.modelSources` (2026-11-13: only inputs that emit code into the bundle,
+ * so a file the build merely reads no longer selects the job).
  *
  * THE LIST IS THE FIXTURE'S CLAIM, NOT A SECOND OPINION ABOUT IT. A regenerated
  * pin that names a file this set does not is a FAILING TEST (`ci-scope.test.mjs`
@@ -362,8 +363,6 @@ export const PARITY_MODEL_SOURCES = new Set([
 	"src/i18n/bidi.ts",
 	"src/i18n/catalogue-locale.ts",
 	"src/i18n/direction.ts",
-	"src/i18n/format.ts",
-	"src/i18n/index.ts",
 	"src/i18n/locale.ts",
 	"src/i18n/messages.ts",
 	"src/renderer/src/features/chat/canonical/harness-chrome.ts",
@@ -371,33 +370,19 @@ export const PARITY_MODEL_SOURCES = new Set([
 	"src/renderer/src/features/chat/canonical/journal-order.ts",
 	// The fold model's music-job predicates; dependency-free by design (R16-1).
 	"src/renderer/src/features/chat/canonical/music-gen-tool.ts",
-	// Receipt enrichment is now bundled by the reducer and hashed by the pin;
-	// changing it must select parity just like every other declared model input.
-	"src/renderer/src/features/chat/canonical/music-receipt-model.ts",
-	"src/renderer/src/features/chat/canonical/notice-copy.ts",
 	"src/renderer/src/features/chat/canonical/profile-history-replacement.ts",
 	"src/renderer/src/features/chat/canonical/record-immutability.ts",
-	"src/renderer/src/features/chat/canonical/skill-row.ts",
-	"src/renderer/src/features/chat/canonical/sound-batch-model.ts",
-	"src/renderer/src/features/chat/canonical/sound-cost-caption.ts",
-	"src/renderer/src/features/chat/canonical/supplement-model.ts",
 	"src/renderer/src/features/chat/canonical/trace-fold-model.ts",
 	"src/renderer/src/features/chat/canonical/transcript-reducer.ts",
 	"src/renderer/src/features/chat/canonical/transcript-rows.ts",
 	"src/renderer/src/features/chat/canonical/turn-collapse-model.ts",
 	"src/renderer/src/features/chat/canonical/turn-segments.ts",
 	"src/renderer/src/features/chat/components/skill-invocation.ts",
-	"src/renderer/src/features/chat/components/skill-rank.ts",
-	"src/renderer/src/features/chat/components/slash-rank.ts",
 	"src/renderer/src/features/chat/components/slash-token.ts",
-	"src/renderer/src/features/chat/components/trace/bridge-receipt-model.ts",
 	"src/renderer/src/features/chat/components/trace/bridge-row-model.ts",
 	"src/renderer/src/features/chat/components/trace/receipt-row-model.ts",
-	"src/renderer/src/features/chat/components/trace/tool-result-details.ts",
 	"src/renderer/src/features/chat/components/trace/tool-row-model.ts",
 	"src/renderer/src/features/chat/transcript-display-mode.ts",
-	"src/renderer/src/features/chat/utils/reply-utils.ts",
-	"src/shared/desktop-session-contract.ts",
 	"src/shared/profile-consent.ts",
 ]);
 
