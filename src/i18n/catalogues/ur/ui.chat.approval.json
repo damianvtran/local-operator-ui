@@ -1,4 +1,5 @@
 {
+	"ui.chat.approval.escape.bridge_latched": "اس گفتگو میں “Allow all” اور auto بند ہیں۔ auto آن کرنے کے لیے ٹرمینل میں /approvals auto ٹائپ کریں، یا نئی گفتگو کے لیے /new استعمال کریں۔",
 	"ui.chat.approval.escape.default_saved": "اس گفتگو میں خودکار مقرر ہو گیا اور بعد کے سیشنز کے لیے ڈیفالٹ کے طور پر محفوظ ہو گیا۔ جن گفتگوؤں کا اپنا انتخاب ہے وہ اسے برقرار رکھتی ہیں۔ اس درخواست کا جواب ابھی باقی ہے۔",
 	"ui.chat.approval.escape.default_saved_session_failed": "خودکار بعد کے سیشنز کے لیے ڈیفالٹ کے طور پر محفوظ ہو گیا۔ سیشن والا حصہ لاگو نہیں ہوا: {detail}۔ اس درخواست کا جواب ابھی باقی ہے۔",
 	"ui.chat.approval.escape.global_default": "منظوریاں: {mode} — عالمی ڈیفالٹ۔",

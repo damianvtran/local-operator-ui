@@ -1,4 +1,11 @@
 {
+	"ui.chat.approval.escape.bridge_latched": {
+		"length": "",
+		"note": "Names two typed terminal commands, /approvals auto and /new; keep them exactly as written. Do not translate them.",
+		"placeholders": {},
+		"role": "inline note on an approval request, shown in place of the two set-auto links when the conversation holds a teammate agent's message and auto cannot be turned on from the desktop",
+		"tone": "two short plain sentences, each ending with a full stop"
+	},
 	"ui.chat.approval.escape.default_saved": {
 		"length": "",
 		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",

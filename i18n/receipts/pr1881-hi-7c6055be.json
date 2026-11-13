@@ -1,0 +1,54 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "date": "2026-11-12",
+ "locale": "hi",
+ "instance": "pr1881-hi-7c6055be",
+ "session": "c9b847b0e147",
+ "auditor": {
+  "agent": "reviewer (translation audit, hi)",
+  "session": "c9b847b0e147",
+  "instance": "pr1881-hi-7c6055be",
+  "model": "anthropic/claude-sonnet-5-5",
+  "fallback": "none (the session header model was served; no provider fallback occurred)",
+  "independent_from_translator_session": true
+ },
+ "model": "anthropic/claude-sonnet-5-5",
+ "independence": "Fresh reviewer session; did not write or translate any hi file and had not audited this locale before. Read from the worktree .worktrees/approval-card-latched @ 8efa3b0ff5bb: src/i18n/catalogues/en/ui.chat.approval.json, hi/ui.chat.approval.json, en/ui.chat.approval.context.json, scripts/i18n/ledger-assemble.mjs (receipt contract), docs/I18N.md (audit records), i18n/receipts/ebc5b152-s3c-es.json (model). Read from core origin/main via git show: i18n/glossary.md, i18n/style-guides/hi.md, and local_operator/i18n/catalogues/hi/wire.bridge_taint.json (and its en source). Key set, ICU placeholders, bidi/format characters, duplicate keys and core byte-identity were checked by parsing the bytes; the diff 5033f64235..8efa3b0ff5 for the hi file was read and shows one added line.",
+ "branch": "approval-card-latched",
+ "head": "8efa3b0ff5bb6aec505c559b9e3518d75a6a240b",
+ "pr": "damianvtran/local-operator-ui#1881",
+ "scope": "hi only, ui.chat.approval: the new key ui.chat.approval.escape.bridge_latched audited in full (meaning, idiom, commands verbatim, glossary/style guide, byte-identity with core wire.bridge_taint.card_options_off). The other 17 keys: key set equals English, per-key placeholders identical, and git diff 5033f64235..8efa3b0ff5 on the hi file shows only the one added line, so those 17 keys are CARRIED from their previous audit (not re-audited here).",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "namespaces": {
+  "ui.chat.approval": {
+   "status": "passed",
+   "keys_audited": 18,
+   "sha256": {
+    "en": "815a4ff369d33bc106b35aa74589f4f000811d24aa24519094c4373283d7ec8f",
+    "hi": "baef7d01953b10e6c227e5b2a1536e47a1441ac665abc8408a6760c81901a2aa",
+    "context": "9ee5d1341420c59b38f1d451848f2da76bc9397c5d7811196356fbd98968bb2f"
+   },
+   "findings": [
+    {
+     "severity": "MINOR",
+     "key": "ui.chat.approval.escape.bridge_latched",
+     "ns": "ui.chat.approval",
+     "note": "The two prose mentions of the auto mode are Latin 'auto', while every other mention of that mode in this namespace is Devanagari 'ऑटो' (mode.auto, set_session, set_all, session_saved, default_saved*). The sentence therefore shows 'auto' where the card's own chip reads 'ऑटो'. Latin is defensible only for the typed token in '/approvals auto', which stays verbatim. Not blocking: the bytes are the core repo's own wire.bridge_taint.card_options_off by design, so a fix means changing core text too (ऑटो in the two prose spots, 'Allow all' unchanged); record as a follow-up, no remediation round needed."
+    }
+   ]
+  }
+ },
+ "findings": [
+  {
+   "severity": "MINOR",
+   "key": "ui.chat.approval.escape.bridge_latched",
+   "ns": "ui.chat.approval",
+   "note": "The two prose mentions of the auto mode are Latin 'auto', while every other mention of that mode in this namespace is Devanagari 'ऑटो' (mode.auto, set_session, set_all, session_saved, default_saved*). The sentence therefore shows 'auto' where the card's own chip reads 'ऑटो'. Latin is defensible only for the typed token in '/approvals auto', which stays verbatim. Not blocking: the bytes are the core repo's own wire.bridge_taint.card_options_off by design, so a fix means changing core text too (ऑटो in the two prose spots, 'Allow all' unchanged); record as a follow-up, no remediation round needed."
+  }
+ ],
+ "verdict": {
+  "overall": "clean-with-findings: 0 blocker, 0 major, 1 minor, 0 nit across 18 keys (1 new key audited in full, 17 carried)"
+ }
+}
