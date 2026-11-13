@@ -398,6 +398,39 @@ export const SummaryDerivedWithoutHubSummary: Story = {
 	args: { states: CHANNEL_STATES },
 };
 
+/* The sender's neutral view since agent-server #377: a refusal arrives as
+ * `not_delivered` with no class, and the details still name the recipient
+ * (the classless refusal line). Single recipient, then one of a group. */
+export const NotDeliveredSenderSingleOpen: Story = {
+	args: {
+		states: [state({ state: "not_delivered" })],
+		summary: { total: 1, not_delivered: 1 },
+	},
+	play: openDetails,
+};
+
+export const NotDeliveredSenderGroupOpen: Story = {
+	args: {
+		states: [
+			state({
+				endpoint_id: "bep_bo",
+				recipient_label: "Bo's assistant",
+				recipient_owner_label: "Bo Chen",
+				state: "delivered",
+			}),
+			state({ state: "not_delivered" }),
+			state({
+				endpoint_id: "bep_cy",
+				recipient_label: "Cy",
+				recipient_owner_label: "Cyrus Patel",
+				state: "delivered",
+			}),
+		],
+		summary: { total: 3, delivered: 2, not_delivered: 1 },
+	},
+	play: openDetails,
+};
+
 export const SummarySingleRecipientDm: Story = {
 	args: {
 		states: [
