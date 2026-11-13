@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -90,7 +91,7 @@ const bundle = await build({
 		contents: `
 			export { useCanonicalSessionStream } from "./src/renderer/src/shared/hooks/use-canonical-session";
 			export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
-			export { __resetPaintCache, writePaint, writePaintScroll } from "./src/renderer/src/shared/store/paint-cache";
+			export { __resetPaintCache, readPaint, writePaint, writePaintScroll } from "./src/renderer/src/shared/store/paint-cache";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -140,11 +141,21 @@ const {
 	useCanonicalSessionStream,
 	useCanonicalSessionsStore,
 	__resetPaintCache,
+	readPaint,
 	writePaint,
 	writePaintScroll,
 } = hook;
 
 const SESSION = "paint-claims-session";
+
+/**
+ * The C8 pins, at module scope so biome's `useTopLevelRegex` stays quiet: the
+ * hook's unmount cleanup cannot be driven into this state through a mounted
+ * draft panel, so its two facts are read off the source.
+ */
+const PAINT_CLEANUP_IDENTITY = /pendingSendForView\(identityRef\.current\)/;
+const PAINT_CLEANUP_DEPS =
+	/inFlightOwned\.current\.clear\(\);[\s\S]{0,400}?\}, \[sessionId\]\);/;
 
 /* ------------------------------------- the React stand-in (one cell per call) */
 
@@ -418,4 +429,81 @@ test("the seeded claims stand in the first frame and the snapshot clears both", 
 	);
 	assert.equal(settled.stale, false, "the rows are the owner's now");
 	assert.equal(settled.frontend?.streaming, true, "and the live claim stands");
+});
+
+test("a seeded claim survives a leave taken before the snapshot", async () => {
+	/*
+	 * Agent review round 2, C7. The seeded mount paints a working line in its
+	 * first frame with NO live reading behind it (`frontend` and `heldFrontend`
+	 * are null until the snapshot lands), so a leave taken inside that window - the
+	 * measured median is ~1.3 s, which makes a quick toggle common - wrote
+	 * `busy:false` over the running turn and the next return painted idle chrome.
+	 *
+	 * Driven through the SHIPPED hook, because the defect lives at the write: the
+	 * predicate cases beside this file pin the rule, and this one pins that the
+	 * rule is the one the unmount uses.
+	 */
+	__resetPaintCache();
+	writePaint(SESSION, { transcript: PAINTED, busy: true });
+	subscriptions.length = 0;
+	requests.length = 0;
+	rafQueue = [];
+	useCanonicalSessionsStore.setState({
+		activeSessionId: null,
+		drafts: {},
+		sessions: [],
+	});
+
+	const runtime = makeRuntime();
+	let mountedSession = SESSION;
+	runtime.render = () => useCanonicalSessionStream(mountedSession, true);
+	runtime.rerender();
+	assert.equal(
+		readPaint(SESSION).busy,
+		true,
+		"the seeded mount still holds the claim (the snapshot has not answered)",
+	);
+	// Leave without ever delivering the snapshot: this is the second toggle.
+	mountedSession = null;
+	runtime.rerender();
+	const left = readPaint(SESSION);
+	assert.equal(
+		left.busy,
+		true,
+		"the claim this mount painted travels with its rows",
+	);
+});
+
+test("the paint's cleanup depends on the conversation, not the identity", () => {
+	/*
+	 * Agent review round 2, C8. A fresh draft's identity moves `draftKey` ->
+	 * the created session's id while the STREAM id stays the same, so an
+	 * `identity` dependency fired this cleanup mid-session: it wrote a paint for
+	 * a conversation the reader was still looking at and dropped this mount's
+	 * `inFlight` label reads with it. The identity is read through a ref for
+	 * exactly that reason, and the write still names the CURRENT identity because
+	 * the echo registry a send paints into is keyed by it.
+	 *
+	 * ASSERTED IN THE SOURCE, the shape the siblings use for a call-site fact
+	 * (`working-line-clock.test.mjs`'s memo-dependency case): the hook's unmount
+	 * cleanup cannot be driven into this state through the shipped hook without
+	 * a mounted draft panel, and the two things that must hold are both lexical -
+	 * the ref read at the write, and `sessionId` alone in the array.
+	 */
+	const source = readFileSync(
+		"src/renderer/src/shared/hooks/use-canonical-session.ts",
+		"utf8",
+	)
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+	assert.match(
+		source,
+		PAINT_CLEANUP_IDENTITY,
+		"the write reads the identity of the last committed render",
+	);
+	assert.match(
+		source,
+		PAINT_CLEANUP_DEPS,
+		"and the cleanup runs on a conversation change alone",
+	);
 });

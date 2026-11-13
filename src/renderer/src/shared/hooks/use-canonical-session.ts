@@ -1545,12 +1545,27 @@ export function paintTurnBusy(
 		failure: unknown;
 		frontend: { streaming: boolean } | null;
 		heldFrontend: { streaming: boolean } | null;
+		/*
+		 * THE CLAIM THIS MOUNT WAS SEEDED WITH (`view.paintBusy`), which the snapshot
+		 * withdraws in the commit that replaces its rows (agent review round 2, C7).
+		 * Without this term a mount seeded from a cached paint has NOTHING to carry
+		 * forward: its `frontend`/`heldFrontend` are null until the snapshot lands
+		 * (one measured trace puts that wait at a median of ~1.3 s), so a reader who
+		 * leaves again inside that window wrote `busy:false` over a running turn —
+		 * and the third return painted idle chrome over it. Only a SEEDED claim reaches here as
+		 * `true`; the snapshot sets the field `false`, so a withdrawn claim cannot
+		 * outlive its answer.
+		 */
+		paintBusy: boolean;
 	},
 	/** Whether an admitted send has no answer yet; see `pendingSendForView`. */
 	sendPending: boolean,
 ): boolean {
 	if (state.failure) return false;
 	if ((state.frontend ?? state.heldFrontend)?.streaming === true) return true;
+	// A seeded claim the snapshot has not yet withdrawn. `failure` above already
+	// refuted it: a failure is the owner's statement that the turn ended.
+	if (state.paintBusy === true) return true;
 	return sendPending;
 }
 
@@ -6546,6 +6561,21 @@ export function useCanonicalSessionStream(
 	}, [sessionId, isSession]);
 
 	/*
+	 * The identity this pane addresses, read through a ref so the PAINT'S CLEANUP
+	 * depends on the conversation alone (agent review round 2, C8).
+	 *
+	 * A fresh draft's identity moves `draftKey` -> the created session's id while
+	 * `sessionId` - the stream id - stays the same, so an `identity` dependency
+	 * fired this cleanup MID-SESSION: it wrote a paint for a conversation the
+	 * reader was still looking at, and dropped this mount's `inFlight` label reads
+	 * with it. The registry entry a send paints is keyed by the identity of the
+	 * moment, so the cleanup must read the CURRENT one; a ref is how it sees the
+	 * render that was last committed, not the one that created this closure (the
+	 * rule `viewRef` above already follows).
+	 */
+	const identityRef = useRef(identity);
+	identityRef.current = identity;
+	/*
 	 * Cache this conversation's paint on the way out.
 	 *
 	 * The panel is keyed by conversation (`panelMountKeyFor`), so a switch to
@@ -6615,10 +6645,18 @@ export function useCanonicalSessionStream(
 					 * whose `turn_start` this pane saw (U6/Q2). The pending-send half is
 					 * read here rather than in the predicate so the registry stays the one
 					 * source of what this pane was still waiting on.
+					 *
+					 * AND THE SEEDED CLAIM IS THE PREDICATE'S THIRD TERM (agent review
+					 * round 2, C7): a mount seeded from a cached paint has no live reading
+					 * until the snapshot lands, so a reader who leaves AGAIN inside that
+					 * window would otherwise write `busy:false` over the working line their
+					 * own frame was painting. The term lives in the pure function so a test
+					 * can assert the rule itself; the snapshot's commit is what withdraws
+					 * it (`view.paintBusy: false`).
 					 */
 					busy: paintTurnBusy(
 						viewRef.current,
-						pendingSendForView(identity) !== null,
+						pendingSendForView(identityRef.current) !== null,
 					),
 				});
 			/*
@@ -6646,7 +6684,11 @@ export function useCanonicalSessionStream(
 				labelGapRef.current.inFlight.delete(id);
 			inFlightOwned.current.clear();
 		};
-	}, [identity, sessionId]);
+		/*
+		 * `sessionId` ALONE: a draft learning its own id is the same conversation
+		 * (C8 above), and `identity` is read through the ref for exactly that reason.
+		 */
+	}, [sessionId]);
 
 	/*
 	 * The first-paint hold's wall-clock backstop, and the ONE place its deadline is

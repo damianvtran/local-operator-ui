@@ -85,6 +85,7 @@ const state = (over = {}) => ({
 	failure: null,
 	frontend: { streaming: true },
 	heldFrontend: null,
+	paintBusy: false,
 	...over,
 });
 
@@ -148,5 +149,47 @@ test("a finished turn is settled, and a failure settles it", () => {
 		paintTurnBusy(state({ frontend: null, heldFrontend: null }), false),
 		false,
 		"nothing was running and nothing is waiting",
+	);
+});
+
+test("a seeded claim the snapshot has not withdrawn carries forward", () => {
+	/*
+	 * The C7 shape (agent review round 2): a mount seeded from a cached paint has
+	 * NO live reading until the snapshot lands, so only the seed can say the turn
+	 * was running. A reader who leaves inside that gap must write the claim their
+	 * own frame painted, not the absence of a reading they have not received.
+	 */
+	assert.equal(
+		paintTurnBusy(
+			state({ frontend: null, heldFrontend: null, paintBusy: true }),
+			false,
+		),
+		true,
+		"the seeded frame shows a working line, so the leave keeps it",
+	);
+	// A failure is the owner's statement that the turn ended - it refutes the
+	// seed exactly as it refutes a live reading.
+	assert.equal(
+		paintTurnBusy(
+			state({
+				frontend: null,
+				heldFrontend: null,
+				paintBusy: true,
+				failure: { statement: "gone" },
+			}),
+			false,
+		),
+		false,
+	);
+	// And once the snapshot has landed, `paintBusy` is what that commit set: the
+	// authority is `frontend.streaming`, so a turn that ended while the reader was
+	// away is settled.
+	assert.equal(
+		paintTurnBusy(
+			state({ frontend: { streaming: false }, paintBusy: false }),
+			false,
+		),
+		false,
+		"a withdrawn claim cannot outlive the answer that withdrew it",
 	);
 });
