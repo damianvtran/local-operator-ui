@@ -434,3 +434,30 @@ export const SummaryNarrowTruncates: Story = {
 		},
 	},
 };
+
+/* ONE RECIPIENT IN TOTAL (operator request 2026-11-10): a 1:1 conversation
+ * reads "Being screened" / "Held for review", not "1 being screened"; the
+ * count adds nothing when there is only one recipient. There is no delivered
+ * story: a fully delivered message renders no line since #1858. */
+export const SummarySingleRecipientScreening: Story = {
+	args: { states: undefined, summary: { total: 1, screening: 1 } },
+};
+
+/* The two terminal outcomes alone (design review D2), so all four uncounted
+ * forms stay in visual review (held is `SummarySingleRecipientDm`). */
+export const SummarySingleRecipientNotReviewed: Story = {
+	args: { states: undefined, summary: { total: 1, not_reviewed: 1 } },
+};
+
+export const SummarySingleRecipientNotDelivered: Story = {
+	args: { states: undefined, summary: { total: 1, not_delivered: 1 } },
+};
+
+/* Several recipients with one bucket at 1 KEEP their counts: "Delivered ·
+ * 1 being screened" would hide how many received it. */
+export const SummaryMultiRecipientOneScreening: Story = {
+	args: {
+		states: undefined,
+		summary: { total: 3, delivered: 2, screening: 1 },
+	},
+};

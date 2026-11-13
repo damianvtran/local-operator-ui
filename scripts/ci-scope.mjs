@@ -369,6 +369,11 @@ export const PARITY_MODEL_SOURCES = new Set([
 	"src/renderer/src/features/chat/canonical/harness-chrome.ts",
 	"src/renderer/src/features/chat/canonical/image-gen-card-model.ts",
 	"src/renderer/src/features/chat/canonical/journal-order.ts",
+	// The fold model's music-job predicates; dependency-free by design (R16-1).
+	"src/renderer/src/features/chat/canonical/music-gen-tool.ts",
+	// Receipt enrichment is now bundled by the reducer and hashed by the pin;
+	// changing it must select parity just like every other declared model input.
+	"src/renderer/src/features/chat/canonical/music-receipt-model.ts",
 	"src/renderer/src/features/chat/canonical/notice-copy.ts",
 	"src/renderer/src/features/chat/canonical/profile-history-replacement.ts",
 	"src/renderer/src/features/chat/canonical/record-immutability.ts",

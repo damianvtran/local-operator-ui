@@ -54,6 +54,7 @@ import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import type { Ref } from "react";
+import { MusicJobMotif } from "../../canonical/music-job-motif";
 import { type JobCancelSection, jobRowCanCancel } from "./job-controls-model";
 import {
 	type RunDetails,
@@ -89,7 +90,17 @@ const JobRow = ({
 			data-run-panel-row={row.id}
 			className={cn("flex items-start gap-2 px-3 py-1.5")}
 		>
-			<SubagentRowBody row={row} />
+			<div className={cn("flex min-w-0 flex-1 flex-col")}>
+				<SubagentRowBody row={row} />
+				{row.jobType === "music" && (
+					<MusicJobMotif
+						active={row.music?.stage === "polling"}
+						completed={row.music?.completed}
+						total={row.music?.total}
+						attribution={row.music?.attribution}
+					/>
+				)}
+			</div>
 			{jobRowCanCancel(row) && (
 				<Button
 					variant="ghost"

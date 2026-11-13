@@ -21,5 +21,7 @@
 	"ui.chat.attachments.expand_aria": "Ampliar {name}",
 	"ui.chat.attachments.expand_title": "Haz clic para ampliar {name}",
 	"ui.chat.attachments.open_title": "Haz clic para abrir {name}",
-	"ui.chat.attachments.not_viewable": "No se puede ver el archivo: {name}"
+	"ui.chat.attachments.not_viewable": "No se puede ver el archivo: {name}",
+	"ui.chat.attachments.owner_unreachable": "no se pudo traer desde el dispositivo que lo tiene.",
+	"ui.chat.attachments.retry_fetch": "Reintentar"
 }

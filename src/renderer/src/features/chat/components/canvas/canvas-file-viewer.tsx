@@ -7,12 +7,27 @@ import { getFileTypeFromPath } from "@features/chat/utils/file-types";
 import { READ_ENCODING, viewerFor } from "@features/chat/utils/viewer-routing";
 import { desktopRequest } from "@shared/api/local-operator/desktop-api";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import { isRemoteFilePath } from "@shared/lib/remote-file-path";
 import { useCanvasStore } from "@shared/store/canvas-store";
-import { showErrorToast } from "@shared/utils/toast-manager";
+import { showErrorToast, showInfoToast } from "@shared/utils/toast-manager";
 import type { FC } from "react";
 import { memo, useCallback, useMemo } from "react";
 import { t } from "../../../../../../i18n";
+import {
+	blobToBase64,
+	downloadRemoteFile,
+	fetchRemoteFileBlob,
+	remoteCanvasDocument,
+} from "../../canonical/remote-file-transfer";
+import {
+	remoteFitsWindow,
+	remoteTooLargeText,
+	remoteUnreachableText,
+	remoteUnreadableText,
+	revealableCwd,
+} from "../../canonical/remote-files";
 import { indexedDocument } from "../../canonical/session-files";
+import { AttachmentOwnerUnreachableError } from "../../canonical/use-attachment-url";
 import type { MentionScanHandle } from "../../canonical/use-mentioned-files";
 import type { useSessionFiles } from "../../canonical/use-session-files";
 import { materialiseUserAttachment } from "../../canonical/use-user-attachments";
@@ -153,6 +168,13 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 			 * `null` is not an error: it is the documented downgrade to the OS.
 			 */
 			const kind = viewerFor(fileDoc.path, fileDoc.type);
+
+			// A peer-held document arrives as a `remote-file:` identifier
+			// (`remoteCanvasDocument`): open it as is, never probe or read a path.
+			if (fileDoc.remote && isRemoteFilePath(fileDoc.path)) {
+				openDocument(fileDoc);
+				return;
+			}
 
 			/*
 			 * A session artifact opens BY DIGEST, before anything that assumes a
@@ -426,7 +448,11 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 			conversationId={conversationId}
 			index={index.mode === "fallback" ? { ...index, state: "ready" } : index}
 			legacyScan={scan}
-			cwd={index.state === "unsupported" ? undefined : cwd}
+			cwd={
+				index.state === "unsupported"
+					? undefined
+					: revealableCwd(cwd, index.remote)
+			}
 			materialise={materialise}
 			attachments={{
 				items: attachmentItems,
@@ -436,6 +462,64 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 				retry: attachments?.retry ?? (() => {}),
 			}}
 			onOpen={(document) => {
+				/*
+				 * A PEER-held row (`features.remote_files`) never opens through this
+				 * disk (I3-1): an unreadable one says why, a digest-backed picture,
+				 * clip or sound opens by digest (fetch-on-miss), and anything else
+				 * opens as a `remote-file:` identifier whose viewer reads the bytes
+				 * over the content route (a workbook's are read here, as base64).
+				 */
+				if (document.remote) {
+					const remote = document.remote;
+					if (remote.unreadable) {
+						showInfoToast(remoteUnreadableText(remote));
+						return;
+					}
+					if (
+						document.artifact &&
+						(document.type === "image" ||
+							document.type === "video" ||
+							document.type === "audio")
+					) {
+						void handleFileClick(document);
+						return;
+					}
+					const kind = viewerFor(document.path, document.type);
+					if (kind === null) {
+						// Nothing here can show it; landing it is the honest offer.
+						void downloadRemoteFile(remote, document.title);
+						return;
+					}
+					if (!remoteFitsWindow(remote)) {
+						// The relay refuses above its ceiling; say so before a fetch
+						// that can only fail (review R1-4). Download stays offered.
+						showInfoToast(remoteTooLargeText(remote));
+						return;
+					}
+					const opened = remoteCanvasDocument(document);
+					// A CSV is shown as read-only text (`canvas-content.tsx`), which
+					// fetches its own bytes; only a workbook needs them up front.
+					if (
+						READ_ENCODING[kind] !== "base64" ||
+						opened.path.toLowerCase().endsWith(".csv")
+					) {
+						void handleFileClick(opened);
+						return;
+					}
+					// A workbook's viewer parses `content`, so its bytes are read once
+					// here; it never gets an object URL (review R1-2).
+					void fetchRemoteFileBlob(document)
+						.then(blobToBase64)
+						.then((content) => handleFileClick({ ...opened, content }))
+						.catch((error: unknown) =>
+							showErrorToast(
+								error instanceof AttachmentOwnerUnreachableError
+									? remoteUnreachableText(remote.deviceName)
+									: t("ui.canvas.files.remoteReadFailed"),
+							),
+						);
+					return;
+				}
 				/*
 				 * A refused row with no stored bytes has nothing the app may show:
 				 * its document is the bare name, and a probe or a "no longer exists"

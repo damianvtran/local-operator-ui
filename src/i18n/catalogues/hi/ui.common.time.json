@@ -1,3 +1,7 @@
 {
-	"ui.common.time.yesterday_at": "कल {time}"
+	"ui.common.time.yesterday_at": "कल {time}",
+	"ui.common.time.today_at": "आज {time}",
+	"ui.common.time.yesterday": "कल",
+	"ui.common.time.weekday_at": "{weekday} को {time}",
+	"ui.common.time.date_at": "{date} को {time}"
 }

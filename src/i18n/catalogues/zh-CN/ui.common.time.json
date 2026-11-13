@@ -1,3 +1,7 @@
 {
-	"ui.common.time.yesterday_at": "昨天{time}"
+	"ui.common.time.yesterday_at": "昨天{time}",
+	"ui.common.time.today_at": "今天{time}",
+	"ui.common.time.yesterday": "昨天",
+	"ui.common.time.weekday_at": "{weekday}{time}",
+	"ui.common.time.date_at": "{date}{time}"
 }

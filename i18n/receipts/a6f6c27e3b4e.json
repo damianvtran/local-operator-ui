@@ -1,0 +1,94 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "locale": "hi",
+ "locale_name": "Hindi",
+ "namespace": "ui.common.time",
+ "audit_round": 2,
+ "pr": 1877,
+ "branch": "feat/i18n-s16d-live-locale-formatting",
+ "audited_head": "b2110ea9cd9fd0c103891a4a77b65ba741012cf4",
+ "date": "2026-11-12",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "role": "independent translation auditor (team lopdev, s16d round 2 for hi); authored no catalogue value and edited nothing",
+  "team": "lopdev",
+  "instance": "a6f6c27e3b4e",
+  "session": "a6f6c27e3b4e",
+  "model": "deepseek/deepseek-flash",
+  "actual_model": "deepseek/deepseek-flash",
+  "actual_model_source": "harness session-state header reports 'Model: deepseek/deepseek-flash'; no provider fallback was reported or observed",
+  "fallback_used": false,
+  "independent_from_translator_session": true,
+  "translator_session_not_mine": "i18n-translator / anthropic/claude-sonnet-5-5 (per manager brief); round-1 hi auditor is a different run",
+  "guidance_read": [
+   "~/local-operator i18n/style-guides/hi.md at origin/main 5795d70",
+   "~/local-operator i18n/glossary.md at origin/main 5795d70"
+  ]
+ },
+ "translator": {
+  "agent": "i18n-translator",
+  "model": "anthropic/claude-sonnet-5-5"
+ },
+ "instance": "a6f6c27e3b4e",
+ "model": "deepseek/deepseek-flash",
+ "status": "passed",
+ "scope": "PR #1877 S16d r2, hi/ui.common.time: the 4 landed keys (today_at, yesterday, weekday_at, date_at) after the round-1 correction, judged on composed Intl output through formatDividerLabel; key_count 5",
+ "sha256": {
+  "en": "bb0b3aa1a71679cc73cb40d73616b5e22057c7dcbc86705c2ec4425984971e13",
+  "hi": "c8d0b2b8ca135938bdfc29e2f29550bb053bfd328503cc9fcf64b83cce535682"
+ },
+ "context_sha256": {
+  "path": "src/i18n/catalogues/en/ui.common.time.context.json",
+  "sha256": "a9069037edc11c59288a7c2d3171496b1ef44a0982fc28e6a0edb4bcae0f98d2"
+ },
+ "key_count": 5,
+ "findings": [
+  {
+   "severity": "INFO",
+   "key": "ui.common.time.weekday_at",
+   "observation": "Round-1 MAJOR (stub-identical to English) is resolved: '{weekday} को {time}' composes as 'सोमवार को 2:30 pm'. को after a weekday name is the standard Hindi 'on Monday'; it is grammatical and idiomatic for a terse divider and does not read as a calque."
+  },
+  {
+   "severity": "INFO",
+   "key": "ui.common.time.date_at",
+   "observation": "'{date} को {time}' composes as '5 नवंबर 2026 को 2:30 pm'. Date + को + clock is standard Hindi date-time phrasing; a comma joiner would also be acceptable, but को is not wrong for a past date and needs no replacement."
+  },
+  {
+   "severity": "INFO",
+   "key": "ui.common.time.today_at",
+   "observation": "'आज {time}' with no को is correct and consistent: आज/कल are time adverbs taking no postposition, while weekday names and dates take को. The difference is grammatical, not an inconsistency."
+  },
+  {
+   "severity": "INFO",
+   "key": "ui.common.time.date_at",
+   "observation": "बजे is deliberately absent: the injected {time} is the Intl hi clock '2:30 pm', so appending बजे would read '2:30 pm बजे'. Consistent with today_at/yesterday_at, which were audited in an earlier round."
+  },
+  {
+   "severity": "INFO",
+   "key": "ui.common.time.yesterday",
+   "observation": "'कल' also means 'tomorrow', the language's own ambiguity; in a past-message meta row the context disambiguates and no better single word exists, so it is not a defect."
+  }
+ ],
+ "checks": {
+  "generate_check": "PASS (keys.gen.ts byte-identical to a fresh generation)",
+  "check_coverage": "PASS (7 gated languages over 158 namespaces, 0 allowed keys)",
+  "locale_parity_test": "PASS 44/44, incl. hi: every key, no extra keys, placeholders preserved, not an English stub",
+  "check_duplicates": "PASS (1428 files, 0 duplicate keys)",
+  "context_parity": "PASS (129 allowed gaps in 4 namespaces, shrink-only)",
+  "hi_activation_test": "PASS 3/3",
+  "check_strings": "NOT EVALUABLE in the src/i18n-only mirror (its literal allowance names renderer files the mirror does not carry); not evidence of failure and not counted",
+  "own_icu_grid": "PASS: all 5 values parse with intl-messageformat under hi; placeholder sets identical to en; NFC; no Cf/Cc/bidi controls; negative controls on in-memory mutants discriminate"
+ },
+ "input_hashes": {
+  "en": "bb0b3aa1a71679cc73cb40d73616b5e22057c7dcbc86705c2ec4425984971e13",
+  "context": "a9069037edc11c59288a7c2d3171496b1ef44a0982fc28e6a0edb4bcae0f98d2",
+  "hi": "c8d0b2b8ca135938bdfc29e2f29550bb053bfd328503cc9fcf64b83cce535682"
+ },
+ "not_audited": [
+  "other hi namespaces",
+  "other locales",
+  "runtime rendering"
+ ],
+ "no_edits": true
+}

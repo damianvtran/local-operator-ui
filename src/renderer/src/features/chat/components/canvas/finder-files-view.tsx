@@ -44,6 +44,7 @@ import {
 	formatDateTime,
 	formatNumber,
 } from "../../../../../../i18n/format";
+import { remoteUnreadableText } from "../../canonical/remote-files";
 import type { FileIndexState } from "../../canonical/use-session-files";
 import { canMaterialiseAttachment } from "../../canonical/user-attachments";
 import type { CanvasDocument } from "../../types/canvas";
@@ -55,6 +56,8 @@ import {
 import { revealLocalTarget } from "../../utils/link-open";
 import { viewerFor } from "../../utils/viewer-routing";
 import { ImageActionsMenu, imageMenuActions } from "../image-actions-menu";
+import { RemoteFileActionsMenu } from "../remote-file-actions-menu";
+import { RemoteFileMark } from "../remote-file-mark";
 import { attachmentTooltipText } from "./attachment-items";
 import { AudioDocumentPlayer } from "./audio-document-player";
 import { FILE_KIND_GROUPS, filterAndSearchRows } from "./file-rows";
@@ -220,6 +223,13 @@ export function FinderFilesView({
 	 * keyboard user to Tab in from the top.
 	 */
 	const [retrying, setRetrying] = useState(false);
+	/* The owning device of a peer session's rows (every row shares it). */
+	const remoteDevice = useMemo(
+		() =>
+			items.find((item) => item.row.document.remote)?.row.document.remote
+				?.deviceName ?? null,
+		[items],
+	);
 	const retryStartedAt = useRef(0);
 	const retryButton = useRef<HTMLButtonElement>(null);
 	const refocusRetry = useRef(false);
@@ -679,7 +689,7 @@ export function FinderFilesView({
 						"flex min-h-7 items-center justify-between gap-2 text-meta text-ink-dim",
 					)}
 				>
-					<span>
+					<span className="flex min-w-0 items-center whitespace-pre">
 						{index.mode === "index" && index.state !== "ready" && !items.length
 							? ""
 							: narrowing
@@ -711,6 +721,20 @@ export function FinderFilesView({
 								: !index.statComplete
 									? ` · ${t("ui.canvas.files.readingStats")}`
 									: ""}
+						{remoteDevice ? (
+							/*
+							 * ONE mark per panel (design round 1, D1-1): in a peer session
+							 * every row is remote, so a glyph per row told rows apart from
+							 * nothing. It sits on the count line, outside the sticky
+							 * headers, and rows keep "On <device>" in their tooltip.
+							 */
+							<>
+								<span aria-hidden="true" className="whitespace-pre">
+									{" · "}
+								</span>
+								<RemoteFileMark device={remoteDevice} withLabel={true} />
+							</>
+						) : null}
 					</span>
 					{cwd && (
 						<Button
@@ -837,7 +861,8 @@ export function FinderFilesView({
 							{index.state === "error"
 								? (index.error ?? t("ui.canvas.files.error"))
 								: index.state === "unsupported"
-									? (index.error ?? t("ui.canvas.files.remote"))
+									? // Its first line; a "how to fix it" line follows below (U1-7).
+										(index.error ?? t("ui.canvas.files.remote")).split("\n")[0]
 									: index.state === "loading" || attachments.state === "loading"
 										? t("ui.canvas.files.loading")
 										: index.state === "building"
@@ -846,6 +871,11 @@ export function FinderFilesView({
 												? t("ui.canvas.files.noMatch")
 												: t("ui.canvas.files.empty")}
 						</p>
+						{index.state === "unsupported" && index.error?.includes("\n") ? (
+							<p className={cn("max-w-prose text-body-sm text-ink-muted")}>
+								{index.error.split("\n").slice(1).join(" ")}
+							</p>
+						) : null}
 						{index.state === "ready" &&
 							attachments.state !== "loading" &&
 							!narrowing && (
@@ -1229,7 +1259,10 @@ function FinderEntry({
 	const [nearRef, near] = useEverInView("200px");
 	const thumb = useFinderThumbnail(
 		doc,
-		near && item.row.media === "image" && !item.row.missing,
+		near &&
+			item.row.media === "image" &&
+			!item.row.missing &&
+			!doc.remote?.unreadable,
 	);
 	const [menuOpen, setMenuOpen] = useState(false);
 	const rowControl = useRef<HTMLButtonElement | null>(null);
@@ -1253,11 +1286,21 @@ function FinderEntry({
 	 * has no actions, and silence beside a sibling that has them read as a
 	 * glitch (UX R2 U13): the tooltip says why, once (R7-2).
 	 */
-	const tooltip = attachmentTooltipText(
-		identity,
-		item.attachment?.status,
-		refused,
-	);
+	/*
+	 * A PEER-held row (`features.remote_files`) names its device in the tooltip
+	 * and, when the owner cannot serve it, the reason - the same sentence its
+	 * disabled menu entries carry, so the row and its menu never disagree.
+	 */
+	const remote = doc.remote ?? null;
+	const tooltip = remote
+		? [
+				identity,
+				t("ui.canvas.files.remoteOn", { device: remote.deviceName }),
+				remote.unreadable ? remoteUnreadableText(remote) : null,
+			]
+				.filter(Boolean)
+				.join("\n")
+		: attachmentTooltipText(identity, item.attachment?.status, refused);
 	/*
 	 * THE CONTEXT-MENU KEY ON A REFUSED ROW SAYS WHY (UX R3 U18). A native
 	 * `title` never shows on keyboard focus, and the refused row has no menu, so
@@ -1274,7 +1317,16 @@ function FinderEntry({
 	const [keyboardFocus, setKeyboardFocus] = useState(false);
 	const focusReason =
 		refused && keyboardFocus ? t("ui.canvas.files.attachmentRefused") : null;
-	const sentenceNote = Boolean(item.attachment?.status || focusReason);
+	/*
+	 * A remote row the owner cannot serve states WHY in its status slot, where a
+	 * refused or gone local row states its own (D1-5 / U1-4), so the reason is on
+	 * screen for pointer and keyboard alike, not only in the tooltip and menu.
+	 * A missing remote row says it in the device's words (U1-5), not "disk".
+	 */
+	const remoteReason = remote?.unreadable ? remoteUnreadableText(remote) : null;
+	const sentenceNote = Boolean(
+		item.attachment?.status || focusReason || remoteReason,
+	);
 	const openMenu = () => {
 		/*
 		 * Announce whenever the menu would show NO entry (QA R6 Q4): a refused
@@ -1294,10 +1346,14 @@ function FinderEntry({
 	 * path. A refused row WITH bytes keeps its digest-only entries (a picture's
 	 * Expand / Copy image).
 	 */
-	const hasMenu = !(
-		(item.attachment && item.row.missing && !PATH_SEPARATOR.test(doc.path)) ||
-		(gated && !doc.artifact)
-	);
+	// A remote row always has a menu: its unreadable entries are disabled
+	// WITH the reason, never absent (core design §3).
+	const hasMenu =
+		Boolean(remote) ||
+		!(
+			(item.attachment && item.row.missing && !PATH_SEPARATOR.test(doc.path)) ||
+			(gated && !doc.artifact)
+		);
 	/*
 	 * The entries the row's menu would render, asked of the menu's own rule
 	 * (`imageMenuActions`), so the key and the menu cannot disagree about
@@ -1309,28 +1365,32 @@ function FinderEntry({
 		doc.artifact && !item.attachment
 			? artifactFileName(doc.artifact)
 			: undefined;
+	const remoteSaveName = doc.artifact
+		? artifactFileName(doc.artifact)
+		: doc.title;
 	const menuResolvePath =
 		doc.artifact && !item.row.missing ? materialise : undefined;
 	const menuMissing = item.row.missing && !doc.artifact;
 	const menuHasEntries =
-		hasMenu &&
-		imageMenuActions({
-			file: doc.path,
-			resolvePath: menuResolvePath,
-			missing: menuMissing,
-			onShowInCanvas: menuShowInCanvas,
-			mediaKind:
-				band.kind === "audio"
-					? "audio"
-					: item.row.media === "image"
-						? "image"
-						: "video",
-			onExpand:
-				band.kind !== "audio" && item.row.media === "image"
-					? onExpand
-					: undefined,
-			saveName: menuSaveName,
-		}).length > 0;
+		Boolean(remote) ||
+		(hasMenu &&
+			imageMenuActions({
+				file: doc.path,
+				resolvePath: menuResolvePath,
+				missing: menuMissing,
+				onShowInCanvas: menuShowInCanvas,
+				mediaKind:
+					band.kind === "audio"
+						? "audio"
+						: item.row.media === "image"
+							? "image"
+							: "video",
+				onExpand:
+					band.kind !== "audio" && item.row.media === "image"
+						? onExpand
+						: undefined,
+				saveName: menuSaveName,
+			}).length > 0);
 	const sort = useUiPreferencesStore((state) => state.finderFiles.sort);
 	const timestamp = sort === "created" ? item.created : item.modified;
 	const dateMetric =
@@ -1340,9 +1400,14 @@ function FinderEntry({
 	const meta = item.attachment
 		? item.attachment.note
 		: item.row.missing
-			? doc.artifact
-				? t("ui.canvas.files.gone")
-				: t("ui.canvas.files.missing")
+			? remote
+				? // The owner's disk, in the owner's words (U1-5): "disk" read as this one.
+					t("ui.canvas.files.remoteReason.missing", {
+						device: remote.deviceName,
+					})
+				: doc.artifact
+					? t("ui.canvas.files.gone")
+					: t("ui.canvas.files.missing")
 			: sort === "modified" || sort === "created"
 				? dateMetric
 				: sort === "size"
@@ -1398,7 +1463,7 @@ function FinderEntry({
 						}}
 						className={cn(
 							"min-w-0 flex-1 truncate rounded-sm py-1 text-start text-body-sm",
-							item.row.missing ? "text-ink-muted" : "text-ink",
+							item.row.missing || remoteReason ? "text-ink-muted" : "text-ink",
 						)}
 					>
 						{item.row.name}
@@ -1414,26 +1479,45 @@ function FinderEntry({
 				</div>
 				<AudioDocumentPlayer doc={doc} label={item.row.name} />
 				<div className={REVEAL} onKeyDown={(event) => event.stopPropagation()}>
-					<ImageActionsMenu
-						file={doc.path}
-						tooltip={t(
-							"ui.canvas.finder_files_view.ui_canvas_files_fileactions",
-						)}
-						label={doc.title}
-						open={menuOpen}
-						onOpenChange={setMenuOpen}
-						onCloseAutoFocus={(event) => {
-							event.preventDefault();
-							rowControl.current?.focus({ preventScroll: true });
-						}}
-						triggerTabIndex={-1}
-						mediaKind="audio"
-						onShowInCanvas={menuShowInCanvas}
-						resolveBytes={() => finderOriginal(doc)}
-						saveName={menuSaveName}
-						resolvePath={menuResolvePath}
-						missing={menuMissing}
-					/>
+					{remote ? (
+						<RemoteFileActionsMenu
+							document={doc}
+							mediaKind="audio"
+							saveName={remoteSaveName}
+							tooltip={t(
+								"ui.canvas.finder_files_view.ui_canvas_files_fileactions",
+							)}
+							open={menuOpen}
+							onOpenChange={setMenuOpen}
+							onCloseAutoFocus={(event) => {
+								event.preventDefault();
+								rowControl.current?.focus({ preventScroll: true });
+							}}
+							triggerTabIndex={-1}
+							onShowInCanvas={menuShowInCanvas}
+						/>
+					) : (
+						<ImageActionsMenu
+							file={doc.path}
+							tooltip={t(
+								"ui.canvas.finder_files_view.ui_canvas_files_fileactions",
+							)}
+							label={doc.title}
+							open={menuOpen}
+							onOpenChange={setMenuOpen}
+							onCloseAutoFocus={(event) => {
+								event.preventDefault();
+								rowControl.current?.focus({ preventScroll: true });
+							}}
+							triggerTabIndex={-1}
+							mediaKind="audio"
+							onShowInCanvas={menuShowInCanvas}
+							resolveBytes={() => finderOriginal(doc)}
+							saveName={menuSaveName}
+							resolvePath={menuResolvePath}
+							missing={menuMissing}
+						/>
+					)}
 				</div>
 			</div>
 		);
@@ -1479,7 +1563,7 @@ function FinderEntry({
 				className={cn(
 					"w-full min-w-0 rounded-sm p-1 text-start",
 					!tiled && "flex items-center gap-2 pe-8",
-					item.row.missing && "text-ink-muted",
+					(item.row.missing || remoteReason) && "text-ink-muted",
 				)}
 				style={{ height: band.height - (tiled ? 4 : 0) }}
 			>
@@ -1511,7 +1595,10 @@ function FinderEntry({
 						</span>
 					) : thumb.state === "loading" &&
 						item.row.media === "image" &&
-						!item.row.missing ? null : (
+						!item.row.missing &&
+						// An unreadable remote picture is never fetched: its well shows
+						// the type glyph, not a loading-looking blank (D1-5 / U1-4).
+						!remoteReason ? null : (
 						<File size={16} aria-hidden="true" />
 					)}
 				</span>
@@ -1543,7 +1630,9 @@ function FinderEntry({
 								!tiled && sentenceNote
 									? "min-w-[min(6rem,50%)] shrink"
 									: "flex-1",
-								item.row.missing ? "text-ink-muted" : "text-ink",
+								item.row.missing || remoteReason
+									? "text-ink-muted"
+									: "text-ink",
 							)}
 						>
 							{item.row.name}
@@ -1593,6 +1682,17 @@ function FinderEntry({
 							>
 								{focusReason ? (
 									<bdi>{focusReason}</bdi>
+								) : remoteReason && tiled ? (
+									/*
+									 * A 117 px tile cut every reason to the device name, which
+									 * says nothing about WHY (design round 2, D2-1). The muted
+									 * name, the type glyph and the tooltip carry it on a tile;
+									 * the sentence stays in the button's name for a keyboard or
+									 * screen reader (U1-4), just not painted.
+									 */
+									<span className="sr-only">{remoteReason}</span>
+								) : remoteReason ? (
+									<bdi>{remoteReason}</bdi>
 								) : item.attachment && !item.attachment.status ? (
 									/* Size and date as two runs with the separator in markup, on
 									 * tiles AND list rows: one `<bdi>` around "286 KB · 27 اکتوبر"
@@ -1644,7 +1744,33 @@ function FinderEntry({
 						</Button>
 					</Tooltip>
 				)}
-				{hasMenu && (
+				{remote ? (
+					<RemoteFileActionsMenu
+						document={doc}
+						mediaKind={
+							item.row.media === "image"
+								? "image"
+								: item.row.media === "video"
+									? "video"
+									: "file"
+						}
+						saveName={remoteSaveName}
+						tooltip={
+							item.row.media === "image"
+								? t("ui.canvas.finder_files_view.ui_canvas_files_imageactions")
+								: t("ui.canvas.finder_files_view.ui_canvas_files_fileactions")
+						}
+						open={menuOpen}
+						onOpenChange={setMenuOpen}
+						onCloseAutoFocus={(event) => {
+							event.preventDefault();
+							rowControl.current?.focus({ preventScroll: true });
+						}}
+						triggerTabIndex={-1}
+						onShowInCanvas={menuShowInCanvas}
+						onExpand={item.row.media === "image" ? onExpand : undefined}
+					/>
+				) : hasMenu ? (
 					<ImageActionsMenu
 						file={doc.path}
 						tooltip={
@@ -1668,7 +1794,7 @@ function FinderEntry({
 						resolvePath={menuResolvePath}
 						missing={menuMissing}
 					/>
-				)}
+				) : null}
 			</div>
 		</div>
 	);

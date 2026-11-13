@@ -1,0 +1,104 @@
+{
+	"_provenance": "Core 859729bd: assistant/tool payloads are the VERBATIM output of executing local_operator/tools/music_tool.py::_start (provider HTTP stubbed at MusicClient.request, job registry stubbed to return the failing native run's job id 11f41d8c66d0) serialized by Message.tool_result + transcript.encode_message_payload; the {id, ts, type, payload.kind} entry envelope is the shape of the durable page captured in desktop-app run 42747060041 receipt.json stage music_status_result. User and closing-answer rows reproduce that run's turn (marker prompt, 'Owned synthetic music QA turn complete.'). No credentials present.",
+	"core_tool_result": {
+		"tool_call_id": "music-qa-16b1ea2a05804a5a8a996fff23874c56",
+		"tool_name": "generate_music",
+		"content": [
+			{
+				"type": "text",
+				"text": "Music generation started — job 11f41d8c66d0."
+			}
+		],
+		"details": {
+			"job_id": "11f41d8c66d0",
+			"stage": "queued",
+			"material": "music",
+			"model": "radient/music",
+			"tracks": [],
+			"cancel_support": "queued_only"
+		},
+		"duration_s": null,
+		"is_error": false,
+		"useless": false
+	},
+	"entries": [
+		{
+			"id": "u-native-pending",
+			"ts": 1794286870.1,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "user",
+				"content": [
+					{
+						"text": "MUSIC_QA_TOOL music-qa-16b1ea2a05804a5a8a996fff23874c56"
+					}
+				]
+			}
+		},
+		{
+			"id": "a-native-pending-call",
+			"ts": 1794286870.2,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "music-qa-16b1ea2a05804a5a8a996fff23874c56",
+						"name": "generate_music",
+						"arguments": {
+							"prompt": "Native owned pending",
+							"duration_ms": 3000,
+							"variations": 1
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			}
+		},
+		{
+			"id": "t-native-pending-result",
+			"ts": 1794286870.3,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "Music generation started — job 11f41d8c66d0."
+					}
+				],
+				"tool_call_id": "music-qa-16b1ea2a05804a5a8a996fff23874c56",
+				"tool_name": "generate_music",
+				"provider_payload": {
+					"details": {
+						"job_id": "11f41d8c66d0",
+						"stage": "queued",
+						"material": "music",
+						"model": "radient/music",
+						"tracks": [],
+						"cancel_support": "queued_only"
+					},
+					"useless": false,
+					"duration_s": null
+				}
+			}
+		},
+		{
+			"id": "a-native-pending-answer",
+			"ts": 1794286870.4,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"text": "Owned synthetic music QA turn complete."
+					}
+				],
+				"stop_reason": "stop"
+			}
+		}
+	]
+}

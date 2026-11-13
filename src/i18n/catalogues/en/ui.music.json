@@ -1,0 +1,17 @@
+{
+	"ui.music.label": "Music",
+	"ui.music.progress": "{completed}/{total} tracks settled",
+	"ui.music.cancel_warning": "Work already started on “{label}” may still finish and be charged. Results remain available.",
+	"ui.music.track": "Track {index}",
+	"ui.music.failed": "This track could not be generated.",
+	"ui.music.empty": "No tracks were returned.",
+	"ui.music.queued": "Music queued",
+	"ui.music.generating": "Generating music…",
+	"ui.music.generating_tracks": "{count, plural, one {Generating # track…} other {Generating # tracks…}}",
+	"ui.music.modifying": "Modifying music…",
+	"ui.music.cancel_requested": "Cancellation requested",
+	"ui.music.ready": "Music ready",
+	"ui.music.job_failed": "Music generation failed.",
+	"ui.music.job_cancelled": "Music generation cancelled.",
+	"ui.music.finished_after_cancel": "Music finished before it could be cancelled."
+}

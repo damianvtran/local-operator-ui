@@ -1,0 +1,18 @@
+{
+  "locale": "en",
+  "namespace": "ui.music",
+  "source_sha256": "e4bfc1ac870036a1efd34cbd0b79e9c23cf92f360eb6325fdaa8451a1c25f1af",
+  "target_sha256": "e4bfc1ac870036a1efd34cbd0b79e9c23cf92f360eb6325fdaa8451a1c25f1af",
+  "context_sha256": "6bd4f8752a91f6df0bdbcdaf01bb0b83035f580852a6cc55e4a4a53f811f9a0e",
+  "auditor": {
+    "agent": "reviewer",
+    "instance": "c6abfadb3c9f",
+    "model": "openai/gpt-6.1-sol",
+    "date": "2026-11-09"
+  },
+  "status": "passed",
+  "findings": [],
+  "scope": "Full six-key namespace; independent primary report 3fc2d895c4cc",
+  "source_report": "i18n/receipts/music-copy-audit-primary.json",
+  "secondary_warning_only": "i18n/receipts/music-financial-warning-secondary-audit.json"
+}

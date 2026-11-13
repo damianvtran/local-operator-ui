@@ -20,7 +20,12 @@
  * add a category without a renderer release.
  */
 
-import { type WithoutParams, formatByteQuantity, t } from "@shared/i18n";
+import {
+	type WithoutParams,
+	formatByteQuantity,
+	formatDate,
+	t,
+} from "@shared/i18n";
 import type {
 	DesktopLibraryAsset,
 	DesktopLibraryCategory,
@@ -186,6 +191,23 @@ export function organizedParam(
 	if (status === "unorganized") return false;
 	if (status === "highlighted" || status === "favorite") return undefined;
 	return undefined;
+}
+
+/** The device a remote asset lives on, as the card's mark names it. */
+export function remoteDevice(asset: DesktopLibraryAsset): string {
+	return asset.remote?.device_name || asset.remote?.device_id || "";
+}
+
+/**
+ * The asset's path ON THIS DISK, or `null`. The one gate every Library surface
+ * asks before opening, revealing or reading a path (review round 1, R1-6): a
+ * PEER's asset is never read from here, even if its row ever carried a path
+ * (core §5 makes `ref.path` null for remote rows today; this keeps the drawer
+ * honest if that changes), the same rule as the Files panel's I3-1.
+ */
+export function localPathOf(asset: DesktopLibraryAsset): string | null {
+	if (asset.remote) return null;
+	return asset.ref.type === "path" && asset.ref.path ? asset.ref.path : null;
 }
 
 /** The asset's effective display name: the user's name, else the derived one. */
@@ -484,7 +506,10 @@ export function relativeTime(
 /** An absolute timestamp for the preview's metadata line. */
 export function absoluteDate(seconds: number | null | undefined): string {
 	if (!seconds) return "";
-	return new Date(seconds * 1000).toLocaleDateString(undefined, {
+	// The live UI locale (the layer), not the OS default: `undefined` here
+	// printed `Nov 5, 2026` / `5 nov. 2026` by the operating system's region
+	// while every other word on the preview followed the chosen language.
+	return formatDate(new Date(seconds * 1000), {
 		year: "numeric",
 		month: "short",
 		day: "numeric",

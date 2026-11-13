@@ -44,7 +44,7 @@ import {
 } from "lucide-react";
 import type { FC } from "react";
 import type { DesktopLibraryAsset } from "../../../../../shared/desktop-control-contract";
-import { saveAssetCopy } from "../library-download";
+import { assetCopyFailure, saveAssetCopy } from "../library-download";
 
 export type LibraryAssetMenuProps = {
 	asset: DesktopLibraryAsset;
@@ -87,12 +87,17 @@ export const LibraryAssetMenu: FC<LibraryAssetMenuProps> = ({
 		try {
 			await saveAssetCopy(asset);
 			showSuccessToast(t("ui.library.menu.saved_a_copy"));
-		} catch {
-			showErrorToast(t("ui.library.menu.save_failed"));
+		} catch (error) {
+			showErrorToast(assetCopyFailure(error, t("ui.library.menu.save_failed")));
 		}
 	};
 
-	const revealable = Boolean(asset.ref.type === "path" && asset.ref.path);
+	// A PEER's asset has no path on this disk (core §5): never reveal or copy
+	// one, even if a row ever carried one. Its Download reads `library.content`.
+	const remote = Boolean(asset.remote);
+	const revealable = Boolean(
+		!remote && asset.ref.type === "path" && asset.ref.path,
+	);
 	const occurrences = asset.occurrences;
 
 	return (
@@ -180,7 +185,7 @@ export const LibraryAssetMenu: FC<LibraryAssetMenuProps> = ({
 					<span>{t("ui.library.menu.edit_tags")}</span>
 				</DropdownMenuItem>
 				<DropdownMenuSeparator />
-				{asset.ref.path ? (
+				{asset.ref.path && !remote ? (
 					<DropdownMenuItem
 						onSelect={() =>
 							void copy(
