@@ -131,6 +131,6 @@
 	"ui.notifications.drawer.empty": "Nada señalado en esta conversación.",
 	"ui.notifications.drawer.view_details": "Ver detalles",
 	"ui.notifications.drawer.view_details_for": "Ver detalles: {title}",
-	"ui.notifications.drawer.back": "Volver a actualizaciones",
+	"ui.notifications.drawer.back": "Volver a las actualizaciones",
 	"ui.notifications.drawer.open_in_notifications": "Abrir en Notificaciones"
 }
