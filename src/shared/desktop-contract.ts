@@ -18,6 +18,7 @@ import { DESKTOP_MESSAGE_MAX_FILES } from "./attachment-upload";
 // against, so the request schema below and the renderer's pure model cannot
 // disagree about what an id is.
 import { SIDEBAR_DESTINATION_IDS } from "./desktop-control-contract";
+import { DESKTOP_DIFF_PAGE_MAX_ROWS } from "./desktop-diff-page";
 // The feed's frame family lives beside the session stream's, so the two cannot
 // drift into disagreeing about the envelope they deliberately share.
 import type { DesktopFeedFrame } from "./desktop-session-contract";
@@ -37,11 +38,33 @@ const DOT_ONLY_VARIABLE_KEY = /^\.+$/;
 const PUBLICATION_FORMAT_POINT = /\p{Cf}/u;
 const PUBLICATION_PATH_SEPARATOR = /[/\\:]/;
 
+/**
+ * The full-diff page cap lives in a leaf module so the condense parity bundle
+ * (which reaches it through the transcript reducer) does not pull this whole
+ * contract in; see `desktop-diff-page.ts`. Re-exported so importers of the
+ * contract keep one name.
+ */
+export { DESKTOP_DIFF_PAGE_MAX_ROWS } from "./desktop-diff-page";
+
 const id = z
 	.string()
 	.min(1)
 	.max(128)
 	.regex(/^[a-zA-Z0-9_-]+$/);
+/**
+ * A full-diff route's call id: a provider tool-call id (`id`'s alphabet), or a
+ * NESTED `write`/`edit` id the eval bridge mints as `<outer id>:<suffix>`
+ * (`harness/loop.py`, `f"{call.id}:{uuid4().hex}"`). Without the one colon a
+ * nested call's archive - the only way a subagent's eval-made edits are ever
+ * seen again on replay - was refused here before the request left the app.
+ * Exactly one separator, both halves in `id`'s alphabet: still never a path.
+ * 256 = two `id` halves plus the separator's headroom.
+ */
+const diffCallId = z
+	.string()
+	.min(1)
+	.max(256)
+	.regex(/^[a-zA-Z0-9_-]+(?::[a-zA-Z0-9_-]+)?$/);
 /**
  * A stored login's reference, as a provider block publishes it.
  *
@@ -2249,6 +2272,55 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 				.regex(/^[a-zA-Z0-9_:-]+$/)
 				.optional(),
 			limit: z.number().int().min(1).max(500).optional(),
+		})
+		.strict(),
+	/*
+	 * One page of a write/edit call's FULL historical diff: the redacted,
+	 * immutable artifact the core archived when the call ran, beyond the 200-row
+	 * inline preview its transcript row carries.
+	 *
+	 * The request names the CALL, never the artifact: there is deliberately no
+	 * digest/ref field. The route proves membership itself (the transcript of
+	 * THIS session — or of THIS child, contained by the parent's roster — holds a
+	 * tool result with this id whose descriptor names the artifact), so a
+	 * renderer that learned a ref some other way still cannot read it. The child
+	 * twin mirrors `subagents.attachment`/`subagents.transcript`: a child is not a
+	 * user session, so the parent route refuses it.
+	 *
+	 * `callId` is a provider tool-call id (`toolu_…`, `call_…`), not a path:
+	 * `id`'s charset, so no `/`, `.` or `%` ever reaches the URL. `start` is an
+	 * artifact ROW index (rows never move: the artifact is immutable), and
+	 * `limit` is capped at the route's 200 — the route may still return fewer
+	 * under its byte budget and says where to resume (`next_start`).
+	 *
+	 * `offset` (v1 extension, review round 2): a row longer than one page's byte
+	 * budget is CONTINUED, never clipped, so the resume point is the PAIR
+	 * (`next_start`, `next_offset`). `offset` is the server-issued position
+	 * inside row `start`'s body, counted in Unicode code points by the core —
+	 * the renderer treats it as an opaque integer it echoes back and never
+	 * slices JS text by. Optional (default 0) so a row-aligned request stays
+	 * the frozen v1 shape; always sent on the wire for the same reason
+	 * `start`/`limit` are.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.diff"),
+			sessionId,
+			callId: diffCallId,
+			start: z.number().int().min(0).max(1_000_000),
+			offset: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
+			limit: z.number().int().min(1).max(DESKTOP_DIFF_PAGE_MAX_ROWS),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("subagents.diff"),
+			sessionId,
+			childId: sessionId,
+			callId: diffCallId,
+			start: z.number().int().min(0).max(1_000_000),
+			offset: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
+			limit: z.number().int().min(1).max(DESKTOP_DIFF_PAGE_MAX_ROWS),
 		})
 		.strict(),
 	z
@@ -7446,6 +7518,9 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"sessions.variables.list",
 	"skills.list",
 	"subagents.transcript",
+	// The full-diff pages: reads of an immutable archived artifact.
+	"sessions.diff",
+	"subagents.diff",
 	"teams.effective",
 	"teams.get",
 	"teams.list",
@@ -9361,6 +9436,16 @@ export function desktopEndpoint(request: DesktopRequest): {
 				// This build renders supplements; declare it for each cold page,
 				// never infer HTTP intent from a different SSE subscriber.
 				query.set("supplements", "1");
+				/*
+				 * `diff_bindings=1` rides WITH the open frame and only with it: this build's
+				 * reducer paints nested write/edit diff bindings (`tool_call_diff_binding_v1`,
+				 * `diff-history-model.ts`), and the core serves them only inside the projected
+				 * frame, rebuilt from validated fields - so the flag is meaningless without
+				 * `open_frame=1`, and coupling them keeps every request identity and cache key
+				 * that already distinguishes the open frame distinguishing this too. An older
+				 * backend ignores the unknown parameter and keeps dropping the rows.
+				 */
+				query.set("diff_bindings", "1");
 			}
 			if (request.journalOrder) {
 				query.set("journal_order", "1");
@@ -9450,6 +9535,26 @@ export function desktopEndpoint(request: DesktopRequest): {
 			if (request.entryId) query.set("entry_id", request.entryId);
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/children/${request.childId}/transcript?${query}`,
+				method: "GET",
+			};
+		}
+		case "sessions.diff":
+		case "subagents.diff": {
+			// `start` and `limit` are ALWAYS sent, like `subagents.transcript`'s
+			// limit: the route's defaults are a second authority, and the page's
+			// `next_start` is a fact about the range the caller actually asked for.
+			const query = new URLSearchParams({
+				start: String(request.start),
+				offset: String(request.offset ?? 0),
+				limit: String(request.limit),
+			});
+			const call = encodeURIComponent(request.callId);
+			const owner =
+				request.op === "subagents.diff"
+					? `${request.sessionId}/children/${request.childId}`
+					: request.sessionId;
+			return {
+				path: `/v1/desktop/sessions/${owner}/tool-calls/${call}/diff?${query}`,
 				method: "GET",
 			};
 		}

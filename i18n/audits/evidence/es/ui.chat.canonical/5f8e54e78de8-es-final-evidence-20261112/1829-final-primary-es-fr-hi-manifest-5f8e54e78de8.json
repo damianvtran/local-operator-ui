@@ -1,0 +1,107 @@
+{
+  "kind": "independent primary supplemental-disposition handoff",
+  "not_a_ledger_receipt": true,
+  "date": "2026-11-12T23:51:06.126339+00:00",
+  "auditor": "translation-auditor",
+  "session": "5f8e54e78de8",
+  "model": "openai/gpt-6.1-sol",
+  "fallback": null,
+  "overall_verdict": "Terminal clean-with-findings for the expressly bounded convergence/captured-element scope, all3locales. No global/native/interaction approval.",
+  "new_catalogue_semantic_keys_read": 0,
+  "original_source_target_context_triples_per_locale": 49,
+  "original_mechanical_keys_per_locale": 490,
+  "render_evidence_scope_keys_per_locale": 23,
+  "personally_opened_images": 15,
+  "source_files_bound_to_index": 19,
+  "manifest_pngs_hash_verified": 150,
+  "literal_selector_hold": "Inapplicable under direct user final policy disposition, not retroactive deletion of old reports.",
+  "assembler_consumable": true,
+  "assembler_condition": "Only consume new uniquely named receipts for their exact scopes; preserve companion supplements, old immutable records and all findings. Frozen actual assembler/rules bytes verified; pure deriveReceiptAudit accepted all3. No writer invoked. One auditor session,not3independentaudits.",
+  "validation": {
+    "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-receipt-validation-5f8e54e78de8.json",
+    "sha256": "39789cc4d3a24d02de697792d9cd36fbb48a44b42562f765f8ee80e6badcdf8c"
+  },
+  "locales": {
+    "es": {
+      "namespace": "ui.chat.canonical",
+      "result": "clean-with-findings",
+      "receipt": {
+        "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-receipt-es-5f8e54e78de8.json",
+        "sha256": "af42e387835676d187cf0b8345a4f7174c9b0c04e010132d78db3de265959df6"
+      },
+      "supplement": {
+        "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-supplement-es-5f8e54e78de8.json",
+        "sha256": "98edc4e2c65a36f6b15bf0870987674440e66f4cbd4a1b2710c316c506a75489"
+      },
+      "instance": "5f8e54e78de8-es-final-evidence-20261112",
+      "sha256_bindings": {
+        "en": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "es": "4074681ab095ccfb3917e0f1e8f31e2d2c92c1c47742153db82dda80502c1e51",
+        "context": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae"
+      },
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 5,
+        "nit": 2
+      },
+      "original_input_reference_fields": [
+        "policy_inputs"
+      ]
+    },
+    "fr": {
+      "namespace": "ui.chat.canonical",
+      "result": "clean-with-findings",
+      "receipt": {
+        "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-receipt-fr-5f8e54e78de8.json",
+        "sha256": "9a08f3af4a3c96ed4a6c2e81ef305401a03a7b8a1a009f948df89d0cecb69799"
+      },
+      "supplement": {
+        "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-supplement-fr-5f8e54e78de8.json",
+        "sha256": "05279e4dc7905d91835b7b9544ed7f12f420c8942571d563e3812b9a1575c3f0"
+      },
+      "instance": "5f8e54e78de8-fr-final-evidence-20261112",
+      "sha256_bindings": {
+        "en": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "fr": "e7d21936f30d7bcb95a86c08c6774c0572d13bd32e7220ab9e36c02327c31fbd",
+        "context": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae"
+      },
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 4,
+        "nit": 3
+      },
+      "original_input_reference_fields": [
+        "policy_inputs"
+      ]
+    },
+    "hi": {
+      "namespace": "ui.chat.canonical",
+      "result": "clean-with-findings",
+      "receipt": {
+        "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-receipt-hi-5f8e54e78de8.json",
+        "sha256": "9a5a40a864e6f1d70bfb76fbe2b2de3c9e3e313b49ccf0c22c5ba9e63f31c2a4"
+      },
+      "supplement": {
+        "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-supplement-hi-5f8e54e78de8.json",
+        "sha256": "ec880ca7ee16954d4d57f773052273eafccae40594d3ab31e6e66faa5500d706"
+      },
+      "instance": "5f8e54e78de8-hi-final-evidence-20261112",
+      "sha256_bindings": {
+        "en": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "hi": "8792c9a8f9df03f7c586d45e3f3b6f89b25ec6097a9aab1e310bb4e210677393",
+        "context": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae"
+      },
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 2,
+        "nit": 0
+      },
+      "original_input_reference_fields": [
+        "policy_inputs"
+      ]
+    }
+  }
+}

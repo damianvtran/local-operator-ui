@@ -1,0 +1,130 @@
+{
+ "audit": "French 2-key source delta (source-only)",
+ "date": "2026-11-11T03:52:42Z",
+ "pr": "https://github.com/damianvtran/local-operator-ui/pull/1829",
+ "worktree": "/Users/damian/local-operator-ui/.worktrees/full-diff-history",
+ "worktree_head_at_read": "8878d0df62d88defc37684f9898cc38dfaa9c57a (== origin/feat/full-diff-history; the fr bytes are already committed and pushed there, the brief expected 81ef362e + uncommitted)",
+ "compared_against": [
+  "21bb3f5dcb5fdabf77f1415480be310b6454d666",
+  "81ef362e4d857d84c933376068320e8167e2a58b"
+ ],
+ "auditor": {
+  "agent": "reviewer",
+  "team": "lopdev",
+  "instance": "567a24a88e45",
+  "model": "anthropic/claude-opus-5-5",
+  "model_source": "session system context; no fallback notice in this session; no other host trace visible to this role",
+  "independence": "not translator/coder a6c2dd3ff1eb, f1932d263d6c, ebb1d6beb853; no other auditor findings read; no c028 artifacts read"
+ },
+ "hashes": {
+  "files": {
+   "en": {
+    "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+    "sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e"
+   },
+   "es": {
+    "path": "src/i18n/catalogues/es/ui.chat.canonical.json",
+    "sha256": "db9923d6038ef32906ab0bcfeff99d358d01ec610d50256749f31b360962b22a"
+   },
+   "fr": {
+    "path": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+    "sha256": "620d4ab2d3db4a9c16b64c62fdd44c4e44ff55fe65b1b7f06e835db435319877"
+   },
+   "hi": {
+    "path": "src/i18n/catalogues/hi/ui.chat.canonical.json",
+    "sha256": "3bf3915206f534281383edacf7524d11641b7400dbfea3837be8f8ac1a8fb851"
+   },
+   "ru": {
+    "path": "src/i18n/catalogues/ru/ui.chat.canonical.json",
+    "sha256": "ad6c5d631d59a8e73189ddb24943c19871b510d6e7928f3286c35de5057feb97"
+   },
+   "ur": {
+    "path": "src/i18n/catalogues/ur/ui.chat.canonical.json",
+    "sha256": "447dbfa53dd70eb8148495b2badc03e12ee3fcef935fd98280cd3665f31e655e"
+   },
+   "vi": {
+    "path": "src/i18n/catalogues/vi/ui.chat.canonical.json",
+    "sha256": "c23bbd6bbaa34f4ae660d502f7c5503d565711d9e6fa4faebe506882296c222b"
+   },
+   "zh-CN": {
+    "path": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+    "sha256": "8db6da0aab5182efae83c3287758ba820dbdea60458d9c34dc384698d912d67b"
+   }
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+   "sha256": "04bfe86405155bf8437c4f867eea4dc9bfd4c277d2ae6b0aa7d6a1bf20390087"
+  },
+  "core": {
+   "repo": "~/local-operator",
+   "commit": "b42471d3935cb7e95d64428af27c32626665f4c0",
+   "glossary_sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+   "fr_style_sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226",
+   "unchanged_since_prior_audit": true
+  }
+ },
+ "byte_proof": {
+  "fr_matches_brief": true,
+  "other_files": "en, es, hi, ru, ur, vi, zh-CN and the en context are whole-file byte-identical at 21bb, 81ef and the current tree",
+  "fr_key_set_order": "identical to 21bb (281 entries)",
+  "fr_changed_values": 2,
+  "fr_other_values": "279 equal to 21bb, including the other 21 diff.full entries"
+ },
+ "entries": {
+  "ui.chat.canonical.tool_row.diff.full.unavailable": {
+   "value": "Le diff complet n’a pas pu être enregistré pour cette modification",
+   "codepath": "diff-history-model.ts:682-683 (descriptor state unavailable)",
+   "result": "PASS",
+   "note": "Says the save failed and is distinct from not_recorded. No ICU arguments; no bidi or control characters."
+  },
+  "ui.chat.canonical.tool_row.diff.full.not_recorded": {
+   "value": "Diff complet absent — modification antérieure à l’enregistrement des diffs",
+   "codepath": "diff-history-model.ts:686-687 (descriptor absent on a truncated preview = predates archive, :19-20)",
+   "result": "PASS",
+   "note": "Matches the context: the change predates diff recording. No ICU arguments; no bidi or control characters."
+  }
+ },
+ "findings": [
+  {
+   "id": "I-FR-3",
+   "severity": "nit",
+   "entry": "ui.chat.canonical.tool_row.diff.full.not_recorded",
+   "message": "About 75 chars (en 41), beyond the fr style guide length note (15-25% longer, fr.md:67). It is a dim wrapping status, so fit is not proven or claimed.",
+   "fix": "Optional: \"Diff complet absent — modification antérieure à l’archivage des diffs\"; deferred, not gating"
+  }
+ ],
+ "out_of_scope": [
+  "English source semantics: unavailable also covers an unknown descriptor version or state (diff-history-model.ts:62-84), where \"could not be saved\" slightly overclaims. That is pre-existing source copy, not this French delta."
+ ],
+ "retained": "Prior approval of the 21 other fr diff.full entries and of all entries in the other 7 locale files and the context is retained on byte identity (above). Prior I-FR-1 (identical unavailable/not_recorded) is resolved by this delta. Earlier minors outside fr are unchanged and stay deferred.",
+ "verdict": "PASS (clean-with-findings: 0 blocker, 0 major, 0 minor, 1 nit) for fr ui.chat.canonical at sha256 620d4ab2d3db4a9c16b64c62fdd44c4e44ff55fe65b1b7f06e835db435319877; source-only; rendered fit or RTL not claimed",
+ "not_done": "No PR comment posted (brief says manager posts); no receipt or ledger authored.",
+ "counts_clarification": {
+  "date": "2026-11-11T04:15:25Z",
+  "type": "metadata only; no new review",
+  "fr_namespace_unresolved": {
+   "blocker": 0,
+   "major": 0,
+   "minor": 0,
+   "nit": 2,
+   "ids": {
+    "I-FR-2": "nit, retained/deferred; evicted value byte-unchanged since 21bb (one of the 279 equal values)",
+    "I-FR-3": "nit, new/deferred"
+   }
+  },
+  "delta_only": {
+   "blocker": 0,
+   "major": 0,
+   "minor": 0,
+   "nit": 1,
+   "ids": [
+    "I-FR-3"
+   ]
+  },
+  "resolved": {
+   "I-FR-1": "minor in round 1, resolved by this delta (unavailable and not_recorded now distinct)"
+  },
+  "result": "clean-with-findings",
+  "other_locales": "retained counts from the original current-source audit, unchanged"
+ }
+}

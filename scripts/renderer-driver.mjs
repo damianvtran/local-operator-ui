@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-update-assets|project-open|library-asset|mesh-tab|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|sidebar-layout|sidebar-docking|mini-view|drafts|stale-team-draft|team-newchat|scrollbar-fade|composer-drop|attach|output-artifact|image-copy|hub-links|hub-links-actions|hub-skills|hub-skills-egress|none|skill-seal|notification-sounds>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-update-assets|project-open|library-asset|mesh-tab|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|sidebar-layout|sidebar-docking|mini-view|drafts|stale-team-draft|team-newchat|scrollbar-fade|composer-drop|attach|output-artifact|image-copy|hub-links|hub-links-actions|hub-skills|hub-skills-egress|none|skill-seal|notification-sounds|diff-history>
  *                          which built-in scene to run (default: states)
  *   --attach <absolute-path> (with --scene attach, repeatable) one file the
  *                          paperclip press stages; ONLY the native picker is
@@ -266,6 +266,11 @@ import { basename, isAbsolute, join, resolve, sep } from "node:path";
 import sharp from "sharp";
 import { sceneAgentMessages } from "./agent-messages-scene.mjs";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
+import {
+	diffHistorySceneRefusal,
+	parseDiffExpect,
+	sceneDiffHistory,
+} from "./diff-history-scene.mjs";
 import { installedElectronBinary } from "./electron-runtime-path.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
 import { EVIDENCE_TZ } from "./evidence-tz.mjs";
@@ -503,6 +508,15 @@ const PROJECT = argValue("--project", null);
  * seed created rather than an id baked in here.
  */
 const SESSION = argValue("--session", null);
+/*
+ * `--scene diff-history` only (see `scripts/diff-history-scene.mjs`): the
+ * subagent job whose Run panel row opens the child reader, the QA handshake
+ * opt-in, a second session for the live step, and the fixture's ground truth.
+ */
+const DIFF_CHILD = argValue("--child", null);
+const DIFF_HANDSHAKE = process.argv.includes("--handshake");
+const DIFF_LIVE_SESSION = argValue("--live-session", null);
+const DIFF_EXPECT = argValue("--diff-expect", null);
 /**
  * The command that starts a fresh daemon on the `--backend` address, for
  * `--scene connection-drop`'s reconnect half.
@@ -2896,8 +2910,13 @@ function connectionsTo(pid, url) {
 		return { measured: false, detail: `cannot parse ${url}` };
 	}
 	return new Promise((resolveProbe) => {
+		// WHY per platform: Linux distributions install lsof at /usr/bin/lsof,
+		// so the macOS-only /usr/sbin path made Linux native-artifact QA report
+		// an installed probe as "lsof unavailable" and leave isolation unmeasured.
+		// Still an absolute path (no PATH lookup); a missing binary still fails
+		// closed through the error handlers below.
 		const probe = spawn(
-			"/usr/sbin/lsof",
+			process.platform === "linux" ? "/usr/bin/lsof" : "/usr/sbin/lsof",
 			["-a", "-p", String(pid), "-i", "-n", "-P"],
 			{
 				stdio: ["ignore", "pipe", "ignore"],
@@ -50482,6 +50501,18 @@ async function main() {
 			"--scene output-artifact needs --session <id>: it photographs the seeded session, and a default would photograph whatever chat happens to open",
 		);
 	}
+	if (SCENE === "diff-history") {
+		const refusal = diffHistorySceneRefusal({
+			backend: BACKEND,
+			backendRecords: BACKEND_RECORDS,
+			session: SESSION,
+			child: DIFF_CHILD,
+			liveSession: DIFF_LIVE_SESSION,
+			handshake: DIFF_HANDSHAKE,
+			expect: DIFF_EXPECT,
+		});
+		if (refusal !== null) throw new Error(refusal);
+	}
 	if (SCENE === "skill-seal" && BACKEND === null) {
 		throw new Error(
 			"--scene skill-seal needs --backend: the invocation it photographs is a PERSISTED payload read back from a daemon's history route, and with no backend the chat route draws its refusal surface instead",
@@ -51090,6 +51121,22 @@ async function main() {
 			else if (SCENE === "mentions") await sceneMentions(cdp);
 			else if (SCENE === "shell-evidence") await sceneShellEvidence(cdp);
 			else if (SCENE === "transcript-rail") await sceneTranscriptRail(cdp);
+			else if (SCENE === "diff-history")
+				await sceneDiffHistory({
+					cdp,
+					verb,
+					capture,
+					check,
+					note,
+					waitForCondition,
+					factsOf,
+					session: SESSION,
+					child: DIFF_CHILD,
+					liveSession: DIFF_LIVE_SESSION,
+					handshake: DIFF_HANDSHAKE,
+					expect: parseDiffExpect(DIFF_EXPECT).value,
+					outDir: FRAMES,
+				});
 			else if (SCENE === "turn-highlights")
 				await sceneTurnHighlights({
 					cdp,

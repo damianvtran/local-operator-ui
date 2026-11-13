@@ -163,6 +163,7 @@ import {
 	deliveryRowOutcome,
 	formatBytes,
 	formatDuration,
+	isArchiveOnlyDiffRow,
 	isBareToolName,
 	isDiffBodyRow,
 	isFailedResult,
@@ -2845,8 +2846,21 @@ const ToolRow = memo(function ToolRow({
 				</pre>
 			</div>
 		</div>
-	) : isDiffBodyRow(record) ? (
-		<DiffBlock diff={record.diff} truncatedRows={record.diffTruncatedRows} />
+	) : isDiffBodyRow(record) || isArchiveOnlyDiffRow(record) ? (
+		<DiffBlock
+			// `?? []`: an archive-only row (see `isArchiveOnlyDiffRow`) has no
+			// inline rows at all; the well then carries only the archive's offer
+			// or its descriptor notice.
+			diff={record.diff ?? []}
+			truncatedRows={record.diffTruncatedRows}
+			// The row's own scope (parent, or the child reader's) decides which
+			// route pages the archive — the same seam media rows resolve through.
+			history={{
+				scope,
+				callId: record.toolCallId,
+				descriptor: record.diffFull ?? null,
+			}}
+		/>
 	) : bridge && !running ? (
 		<BridgeDetail
 			record={record}
@@ -2989,15 +3003,22 @@ const ToolRow = memo(function ToolRow({
 							isInterruptedFault(record.notRunKind)
 							? "interrupted"
 							: "not-run"
-						: running
-							? "running"
-							: partial
-								? "partial"
-								: record.isError
-									? "error"
-									: record.stopped
-										? "interrupted"
-										: "success"
+						: record.captureOnly
+							? /* A row built only from the host's diff binding proves the
+							     CAPTURE, not the executor's completion: it is a quiet
+							     receipt (no success or failure claim, no announcement),
+							     and its body is the full-diff pager. A live record for the
+							     same call never carries the flag (`bindingRecord`). */
+								"receipt"
+							: running
+								? "running"
+								: partial
+									? "partial"
+									: record.isError
+										? "error"
+										: record.stopped
+											? "interrupted"
+											: "success"
 				}
 				deliveryState={record.delivery}
 				settledVerb={bridge?.failedVerb ?? null}

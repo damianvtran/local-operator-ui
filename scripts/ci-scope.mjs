@@ -387,11 +387,13 @@ export const PARITY_MODEL_SOURCES = new Set([
 	"src/renderer/src/features/chat/components/slash-token.ts",
 	"src/renderer/src/features/chat/components/trace/bridge-receipt-model.ts",
 	"src/renderer/src/features/chat/components/trace/bridge-row-model.ts",
+	"src/renderer/src/features/chat/components/trace/diff-history-model.ts",
 	"src/renderer/src/features/chat/components/trace/receipt-row-model.ts",
 	"src/renderer/src/features/chat/components/trace/tool-result-details.ts",
 	"src/renderer/src/features/chat/components/trace/tool-row-model.ts",
 	"src/renderer/src/features/chat/transcript-display-mode.ts",
 	"src/renderer/src/features/chat/utils/reply-utils.ts",
+	"src/shared/desktop-diff-page.ts",
 	"src/shared/desktop-session-contract.ts",
 	"src/shared/profile-consent.ts",
 ]);

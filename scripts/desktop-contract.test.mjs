@@ -540,7 +540,7 @@ test("canonical session operations preserve identity, arguments and main-owned a
 				beforeId: "entry-1",
 				openFrame: true,
 			},
-			`/${sessionId}/history?limit=100&before_id=entry-1&open_frame=1&supplements=1`,
+			`/${sessionId}/history?limit=100&before_id=entry-1&open_frame=1&supplements=1&diff_bindings=1`,
 			"GET",
 			undefined,
 		],
@@ -626,6 +626,37 @@ test("canonical session operations preserve identity, arguments and main-owned a
 				limit: 25,
 			},
 			`/${sessionId}/children/${childId}/transcript?limit=25&before_id=entry-abc`,
+			"GET",
+			undefined,
+		],
+		/*
+		 * Full-diff pages (parent and contained child): the CALL id and the row
+		 * window, nothing else — no digest ever reaches the wire.
+		 */
+		[
+			{
+				op: "sessions.diff",
+				sessionId,
+				callId: "toolu_01AbC",
+				start: 0,
+				limit: 200,
+			},
+			`/${sessionId}/tool-calls/toolu_01AbC/diff?start=0&offset=0&limit=200`,
+			"GET",
+			undefined,
+		],
+		[
+			{
+				op: "subagents.diff",
+				sessionId,
+				childId,
+				callId: "call_9",
+				start: 417,
+				// A continuation cursor: the server-issued offset is echoed as-is.
+				offset: 12_000,
+				limit: 200,
+			},
+			`/${sessionId}/children/${childId}/tool-calls/call_9/diff?start=417&offset=12000&limit=200`,
 			"GET",
 			undefined,
 		],
@@ -743,6 +774,52 @@ test("canonical session operations preserve identity, arguments and main-owned a
 			beforeId: "e".repeat(129),
 		},
 		{ op: "subagents.transcript", sessionId, childId, path: "/etc/passwd" },
+		// Full-diff pages: no path-shaped call id, the 200-row cap, and no digest.
+		{ op: "sessions.diff", sessionId, callId: "../x", start: 0, limit: 200 },
+		{ op: "sessions.diff", sessionId, callId: "a/b", start: 0, limit: 200 },
+		{ op: "sessions.diff", sessionId, callId: "c", start: 0, limit: 201 },
+		{ op: "sessions.diff", sessionId, callId: "c", start: -1, limit: 1 },
+		{ op: "sessions.diff", sessionId, callId: "c", start: 0.5, limit: 1 },
+		{
+			op: "sessions.diff",
+			sessionId,
+			callId: "c",
+			start: 0,
+			offset: -1,
+			limit: 1,
+		},
+		{
+			op: "sessions.diff",
+			sessionId,
+			callId: "c",
+			start: 0,
+			offset: 1.5,
+			limit: 1,
+		},
+		{
+			op: "sessions.diff",
+			sessionId,
+			callId: "c",
+			start: 0,
+			offset: "3",
+			limit: 1,
+		},
+		{
+			op: "sessions.diff",
+			sessionId,
+			callId: "c",
+			start: 0,
+			limit: 1,
+			digest: "a".repeat(32),
+		},
+		{
+			op: "subagents.diff",
+			sessionId,
+			childId: "../config",
+			callId: "c",
+			start: 0,
+			limit: 1,
+		},
 	])
 		assert.equal((await requestDesktop(input, url, token)).status, 422);
 	assert.equal(seen.length, count);

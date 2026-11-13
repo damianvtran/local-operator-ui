@@ -1,0 +1,352 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "a0245acae0c5-1829-final-zh-cn-20261112t234806z-issued",
+  "session": "a0245acae0c5",
+  "profile_revision": "definition-revision:v1:977d12b70eb8adff7d8b9491e8e59b748a9fac283683abd963fdf586cb596f8a",
+  "launch_selection": "parent, inherited; no override",
+  "fallback": "No in-session fallback observed; no coordinator-only fallback authorization claimed",
+  "date": "2026-11-12T23:50:32.524965+00:00",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "locale": "zh-CN",
+  "namespace": "ui.chat.canonical",
+  "sha256": {
+    "en": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+    "zh-CN": "e6b3846b553cde65b671cec6b9b34a869bd3cffc3f42b9fec981a710501e5e81"
+  },
+  "context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+  "source_path": "/home/ec2-user/local-operator-ui/.worktrees/full-diff-metadata/src/i18n/catalogues/en/ui.chat.canonical.json",
+  "target_path": "/home/ec2-user/local-operator-ui/.worktrees/full-diff-metadata/src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+  "context_path": "/home/ec2-user/local-operator-ui/.worktrees/full-diff-metadata/src/i18n/catalogues/en/ui.chat.canonical.context.json",
+  "audit_kind": "New scoped supplemental evidence-disposition after accepted23-key capture; independent same-session convergence certification, not490-key fresh semantic audit",
+  "scope": "PR1829 accepted scoped convergence: retained23 full-diff source/target/context keys and captured22-visible+nav-AX evidence; exact467 incoming-main members inherited by raw-byte ancestry; retained parent findings. No fresh490 semantic, native/full-app, all-actions or global RTL certification.",
+  "key_counts": {
+    "convergence_PR_keys": 23,
+    "visible_key_elements_per_locale": 22,
+    "nav_accessible_name_key": 1,
+    "new_semantic_keys_read_this_resumption": 0,
+    "original_substantive_keys_read_by_this_auditor": 25,
+    "original_key_list": [
+      "ui.chat.canonical.sound.batch.latest_update",
+      "ui.chat.canonical.sound.cost.estimated_zero",
+      "ui.chat.canonical.tool_row.diff.full.back",
+      "ui.chat.canonical.tool_row.diff.full.clipped",
+      "ui.chat.canonical.tool_row.diff.full.clipped_row",
+      "ui.chat.canonical.tool_row.diff.full.continued",
+      "ui.chat.canonical.tool_row.diff.full.continues",
+      "ui.chat.canonical.tool_row.diff.full.empty",
+      "ui.chat.canonical.tool_row.diff.full.error",
+      "ui.chat.canonical.tool_row.diff.full.evicted",
+      "ui.chat.canonical.tool_row.diff.full.first",
+      "ui.chat.canonical.tool_row.diff.full.inline",
+      "ui.chat.canonical.tool_row.diff.full.last",
+      "ui.chat.canonical.tool_row.diff.full.loading",
+      "ui.chat.canonical.tool_row.diff.full.nav",
+      "ui.chat.canonical.tool_row.diff.full.next",
+      "ui.chat.canonical.tool_row.diff.full.not_found",
+      "ui.chat.canonical.tool_row.diff.full.not_recorded",
+      "ui.chat.canonical.tool_row.diff.full.oversized",
+      "ui.chat.canonical.tool_row.diff.full.prev",
+      "ui.chat.canonical.tool_row.diff.full.range",
+      "ui.chat.canonical.tool_row.diff.full.retry",
+      "ui.chat.canonical.tool_row.diff.full.unavailable",
+      "ui.chat.canonical.tool_row.diff.full.view",
+      "ui.chat.canonical.tool_row.diff.full.withheld"
+    ],
+    "current_namespace_key_count": 490,
+    "inherited_main_members_exact": 467,
+    "mechanical_and_provenance_only_keys_in_original_review": 490,
+    "not490_fresh_semantics": true
+  },
+  "findings": [
+    {
+      "ids": [
+        "ZH-1"
+      ],
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.diff.full.loading",
+      "path": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+      "line": 258,
+      "current": "正在加载完整diff…",
+      "proposed": "正在加载完整diff……",
+      "reason": "The current single ellipsis «…» differs from the locale guide’s required Chinese ellipsis «……».",
+      "disposition": "Retained, deferred, non-gating in parent; unchanged and still applicable in this source-only review.",
+      "introduced_by_convergence": false
+    },
+    {
+      "ids": [
+        "N1"
+      ],
+      "severity": "NIT",
+      "key": "ui.chat.canonical.sound.batch.latest_update",
+      "path": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+      "line": 485,
+      "current": "最近更新：{name}（第{item, number, ::group-off}项，共{total, number, ::group-off}项）。",
+      "proposed": "最新动态：{name}（第{item, number, ::group-off}项，共{total, number, ::group-off}项）。",
+      "reason": "The contextual message names the most recently reporting request; «最近更新» can read as a modification-time label rather than the latest activity.",
+      "disposition": "Retained, deferred, non-gating in parent; unchanged and still applicable in this source-only review.",
+      "introduced_by_convergence": false
+    },
+    {
+      "ids": [
+        "N2"
+      ],
+      "severity": "NIT",
+      "key": "ui.chat.canonical.sound.cost.estimated_zero",
+      "path": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+      "line": 488,
+      "current": "估算费用为$0；最终计费尚未确认。",
+      "proposed": "估算费用为$0；最终收费尚未确认。",
+      "reason": "«最终计费» can denote the billing action, whereas the source describes the unconfirmed final charge; «最终收费» keeps that distinction.",
+      "disposition": "Retained, deferred, non-gating in parent; unchanged and still applicable in this source-only review.",
+      "introduced_by_convergence": false
+    }
+  ],
+  "findings_count": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 2
+  },
+  "independence": "Separate auditor instance from translator/coder. No current mirror auditor output read. Same session lineage as original a024 review and bounded readback.",
+  "independence_lineage_note": "Same actual auditor session/model as original a024 review; unique per-locale receipt instances are artifact identifiers, NOT new independent auditors. Do not count these as the second high-visibility independent audit.",
+  "evidence_disposition": {
+    "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-zh-CN-record-20261112T234806Z.json",
+    "sha256": "c67e6290cbc3981c2046a90f141095869e177fdb43dd8725ca9aae73a5e41fe6",
+    "canonical_destination": "i18n/audits/evidence/zh-CN/ui.chat.canonical/a0245acae0c5-1829-final-zh-cn-20261112t234806z-issued/record.json"
+  },
+  "primary_evidence": [
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json",
+      "sha256": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30",
+      "kind": "This auditor accepted bounded evidence readback; actual pixels personally viewed in the preceding bounded turn, not freshly rendered now"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.md",
+      "sha256": "a8cbf67eef4052484b4bbc1937a7a6b4b1d3328a71cb813bc3a8f0119cc275ac",
+      "kind": "This auditor readback narrative and exact23 mapping"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/frames-manifest.json",
+      "sha256": "12babe07d87bb5d193d3fd909919e1645706e06984129055d4547ded21321db5",
+      "kind": "150 image entries, every current artifact re-hash-checked"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-source.json",
+      "sha256": "011d373b047026492d9ca73f7ec6747df1a90daeb7cb2c805aa9b4dade46ca34",
+      "kind": "Capture source identity, all19 source hashes match frozen index"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-coverage.json",
+      "sha256": "8e754d0655e7a0bc3494473e1dec22adbe67ab715e39ab56632db5ad79b73a1c",
+      "kind": "Routing plan only, not geometry or executed observations"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/convergence-independent-provenance.json",
+      "sha256": "5dc88629e7163a62b95edaebda77d0e23f0a702ad3479253cc441b802d91df4b",
+      "kind": "This auditor original independent raw-member provenance; earlier broad mechanical scope, not fresh490 semantics"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/convergence-provenance-map.json",
+      "sha256": "c98003c8e1d98699885e8ab51308634d21e9cf59ce01de6d7925d29e7bb20720",
+      "kind": "Coder map provided as reference; substantive byte ancestry was independently checked, not accepted on trust"
+    }
+  ],
+  "parent_receipts": [
+    {
+      "parent": "1bfbe9b42df53a231311ab1731501af2de640810",
+      "parent_label": "HEAD",
+      "instance": "567a24a88e45-chat-canonical-zh-cn-r2",
+      "model": "anthropic/claude-opus-5-5",
+      "receipt_path": "i18n/receipts/567a24a88e45-chat-canonical-zh-cn-r2.json",
+      "receipt_sha256": "9af4b89197158320c540f84524760c8d2853cc4306dc11259ab6f6b8013ea5d7",
+      "sha256_matches_parent_ledger": true,
+      "retained_exact_in_index": true,
+      "source_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+      "target_sha256": "8db6da0aab5182efae83c3287758ba820dbdea60458d9c34dc384698d912d67b",
+      "parent_hashes_independently_validated": true,
+      "parent_recorded_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings_as_recorded": [],
+      "current_applicability": "Whole-file source/target hashes are stale for the resolved tree and cannot directly support it; all PR-owned or incoming-owned key/value raw member bytes remain exact. Listed minor/nit key wording is current and retained, not silently resolved or reset to zero. Historical superseded receipts remain history, not fresh approvals."
+    },
+    {
+      "parent": "1bfbe9b42df53a231311ab1731501af2de640810",
+      "parent_label": "HEAD",
+      "instance": "c7b72ef216da-zh-cn-chat-canonical-r2",
+      "model": "anthropic/claude-opus-5-5",
+      "receipt_path": "i18n/receipts/c7b72ef216da-zh-cn-chat-canonical-r2.json",
+      "receipt_sha256": "08fc27c49450b779c82e83bc912c7bdb9360cec5b3bb6efd2ca8949eab9df23d",
+      "sha256_matches_parent_ledger": true,
+      "retained_exact_in_index": true,
+      "source_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+      "target_sha256": "8db6da0aab5182efae83c3287758ba820dbdea60458d9c34dc384698d912d67b",
+      "parent_hashes_independently_validated": true,
+      "parent_recorded_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      },
+      "findings_as_recorded": [
+        {
+          "id": "ZH-1",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.loading",
+          "disposition": "deferred — non-gating minor, no remediation cycle",
+          "evidence": "'正在加载完整diff…' uses a single '…'; zh-CN style guide (Punctuation) requires '……' and the catalogue's 正在… strings use '……' (e.g. 正在加载……, 正在加载对话……)",
+          "proposed": {
+            "ui.chat.canonical.tool_row.diff.full.loading": "正在加载完整diff……"
+          }
+        }
+      ],
+      "current_applicability": "Whole-file source/target hashes are stale for the resolved tree and cannot directly support it; all PR-owned or incoming-owned key/value raw member bytes remain exact. Listed minor/nit key wording is current and retained, not silently resolved or reset to zero. Historical superseded receipts remain history, not fresh approvals."
+    },
+    {
+      "parent": "b0edf02e5d37db5c5527cf66465131a4019fed10",
+      "parent_label": "MERGE_HEAD",
+      "instance": "2a10c1127838-zhcn-s16f-au3",
+      "model": "deepseek/deepseek-flash",
+      "receipt_path": "i18n/receipts/2a10c1127838-zhcn-s16f-au3.json",
+      "receipt_sha256": "d945a58c75c7825349f3ab87581b332b9fe08bb3fe5eccf5ff6bbfc270d2c9b7",
+      "sha256_matches_parent_ledger": true,
+      "retained_exact_in_index": true,
+      "source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+      "target_sha256": "35f8058839549d4a8be28792c279784c75a624b9c076fc98d359bae1fe1db12c",
+      "parent_hashes_independently_validated": true,
+      "parent_recorded_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 2
+      },
+      "findings_as_recorded": [
+        {
+          "id": "N1",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.sound.batch.latest_update",
+          "current": "最近更新：{name}（第{item, number, ::group-off}项，共{total, number, ::group-off}项）。",
+          "problem": "最近更新 is this app's settled label for `recently updated` (ui.hub.pages.sort.recently_updated = 最近更新), i.e. a sort/timestamp label, while the message reports which request spoke last. A reader can take the colon as introducing a timestamp rather than a name.",
+          "suggestion": "最新动态：{name}（第{item, number, ::group-off}项，共{total, number, ::group-off}项）。 — same length, names the line as the newest activity rather than a modification time.",
+          "blocking": false
+        },
+        {
+          "id": "N2",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.sound.cost.estimated_zero",
+          "current": "估算费用为$0；最终计费尚未确认。",
+          "problem": "计费 is used as a verb elsewhere in this catalogue (sound.stop.warning 则会计费 / 免于计费, ui.chat.slash.arg.price_usage_based 按用量计费), so 最终计费 reads as the billing action being unconfirmed, where the English sentence is about the final charge amount.",
+          "suggestion": "估算费用为$0；最终收费尚未确认。 — 收费 keeps the sentence about the amount, and 未收费 is already the noun form used by its sibling sound.cost.no_charge.",
+          "blocking": false
+        }
+      ],
+      "current_applicability": "Whole-file source/target hashes are stale for the resolved tree and cannot directly support it; all PR-owned or incoming-owned key/value raw member bytes remain exact. Listed minor/nit key wording is current and retained, not silently resolved or reset to zero. Historical superseded receipts remain history, not fresh approvals."
+    }
+  ],
+  "current_applicability": "23 raw PR members equal HEAD and earliest21bb; other467 raw members equal incoming main; all4 obsolete removals retained. Parent receipt whole-file hashes are historical, not directly current; this newly authored receipt binds current bytes and preserves applicable findings.",
+  "source_record_refs": [
+    {
+      "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/source-records/fr2.json",
+      "sha256": "b837e9feb21dda08fcda7df990e40931ca8f444ec9076c1b7566b524fff2cada",
+      "read_scope": "Original source evidence and assigned-locale blocks; French-only delta tracked as outside assigned scope, not a new French audit"
+    },
+    {
+      "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/source-records/r2.json",
+      "sha256": "43c365ffb262cf4d1f486ac9a764b2a09664c9b4395589e2b092a02c4e581f30",
+      "read_scope": "Original source evidence and assigned-locale blocks; French-only delta tracked as outside assigned scope, not a new French audit"
+    },
+    {
+      "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/source-records/fr_delta.json",
+      "sha256": "6a8ee6855512e1bf519aafacc80ebc824cfb1758346b73aeb8bc55d6b9a3f763",
+      "read_scope": "Original source evidence and assigned-locale blocks; French-only delta tracked as outside assigned scope, not a new French audit"
+    },
+    {
+      "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/source-records/second_audit.json",
+      "sha256": "08cd91c44e04b55d9222c83f56a77600c294cb39fe33c7a8edd32751b70e58cf",
+      "read_scope": "Original source evidence and assigned-locale blocks; French-only delta tracked as outside assigned scope, not a new French audit"
+    }
+  ],
+  "glossary_style_refs": {
+    "glossary": {
+      "path": "/home/ec2-user/local-operator/i18n/glossary.md",
+      "original_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+      "current_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+      "same_bytes": true
+    },
+    "style_guide": {
+      "path": "/home/ec2-user/local-operator/i18n/style-guides/zh-CN.md",
+      "original_sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c",
+      "current_sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c",
+      "same_bytes": true
+    }
+  },
+  "policy_authority": {
+    "basis": "Direct user FINAL POLICY DISPOSITION in this resumed conversation; authoritative scope interpretation, not an independently fetched remote comment or a claim of altered policy files.",
+    "policy_owner_session_as_supplied": "3ef6295a5545",
+    "accepted_evidence": {
+      "json": {
+        "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json",
+        "sha256": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30"
+      },
+      "markdown": {
+        "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.md",
+        "sha256": "a8cbf67eef4052484b4bbc1937a7a6b4b1d3328a71cb813bc3a8f0119cc275ac"
+      },
+      "final_manifest_sha256": "12babe07d87bb5d193d3fd909919e1645706e06984129055d4547ded21321db5"
+    },
+    "interpretation": "The captured exact23-key evidence is accepted for this scoped convergence disposition. Actual-locale CLDR categories are valid; literal preservation of English selectors is not the rule. The French/Spanish selector hold is inapplicable; four unrelated keys remain outside this23. No translate-many removal or catalogue edits. Urdu code-bidi MINOR is deferred to the design thread, not a new correction round. No fresh native/all490 pixel demand applies to this bounded scope.",
+    "citations_as_supplied_not_fetched": [
+      {
+        "role": "design thread",
+        "url": "https://github.com/damianvtran/local-operator-ui/pull/1829#issuecomment-6839007319",
+        "remote_body_read_this_turn": false
+      },
+      {
+        "role": "design thread",
+        "url": "https://github.com/damianvtran/local-operator-ui/pull/1829#issuecomment-6839204455",
+        "remote_body_read_this_turn": false
+      },
+      {
+        "role": "Aida authority citation supplied by user",
+        "url": "https://github.com/damianvtran/local-operator-ui/pull/1829#issuecomment-6836069213",
+        "remote_body_read_this_turn": false
+      }
+    ],
+    "not_a_fake_verdict_command": "The independent decision below follows original source/target review, exact current byte ancestry, personally viewed bounded image evidence retained in the accepted readback, current artifact hash checks, and explicitly limited policy scope. It is not a claim that unobserved runtime work passed."
+  },
+  "limitations": {
+    "scope": "No new490-key or whole-locale semantic audit. This record is an independent supplement to this same auditor session’s original convergence review and accepted exact23-key evidence readback.",
+    "interaction_outcomes": "First/Last/Previous/Back/Retry completed outcomes remain UNPROVEN in this disposition. split-next is observed only as the recorded resulting state; no all23-interactions-PASS claim. No retained historical functional test is promoted into a new runtime claim.",
+    "count_variants": "Captured offer count598 and clipped aggregate count1; not all plural/count variants rendered. Earlier mechanical source/target ICU inspection and valid actual-locale CLDR findings are retained, not confused with all-branch rendered evidence.",
+    "geometry_fonts": "Selected/declared360px fixture width; no measured DOM geometry, extreme-width matrix or font-fallback measurement.",
+    "runtime": "No new browser/native/app/build/install/test. Integrated full-app/native RTL behavior, global RTL, eligibility/activation and release remain unobserved or outside scope.",
+    "pseudo": "15 original +2 focused synthetic pseudo frames derived from expanded English registered as en. Not shipped production pseudo support and not RTL pseudo.",
+    "images": "Personally viewed contacts, targeted Urdu/code/continuation originals/crops and all16 focused originals in the accepted prior readback under this same independent session. This resumed disposition reread/hash-checked that record and primary artifacts; it did not recapture or invent new pixel observations.",
+    "historical_record": "All old withholds, changes_requested source records, original receipts and clarification bytes stay historical and unchanged. This new evidence/scope-specific disposition is not a retroactive flip.",
+    "independence": "Same actual auditor session/model as original a024 review; unique per-locale receipt instances are artifact identifiers, NOT new independent auditors. Do not count these as the second high-visibility independent audit."
+  },
+  "terminal_verdict": "clean-with-findings FOR ACCEPTED SCOPED CONVERGENCE ONLY",
+  "not_a_global_release_approval": true,
+  "assembler_consumable_for_declared_scope": true,
+  "new_receipt_not_replacement_or_rewrite": true,
+  "writer_contract": {
+    "path": "/home/ec2-user/local-operator-ui/.worktrees/full-diff-metadata/scripts/i18n/ledger-assemble.mjs",
+    "sha256": "63651def0c5be756f61e71e5905bcf090a1c709464292864f1a6429d06e676a5",
+    "rules_path": "/home/ec2-user/local-operator-ui/.worktrees/full-diff-metadata/scripts/i18n/ledger-rules.mjs",
+    "rules_sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6",
+    "inspected_ranges": "ledger-assemble 130-220,220-352,352-409; ledger-rules deriveReceiptAudit516-618",
+    "actual_behavior": "derives current English/target hashes and severity counts from receipt; validates identity/model/result and existing history; archives stale row; copies immutable receipt under i18n/receipts/<instance>.json; retains supplied scope/note. It does not itself copy all canonical evidence companions.",
+    "not_invoked": true,
+    "dry_run": "No dry-run invoked or invented",
+    "companion_retention": "Exclusive coder/authorized owner must preserve these immutable companions under canonical evidence path (or tracked mapped equivalent) and keep the same scope/note; this auditor performs no repository writer/copy action."
+  },
+  "consume_only_this_issued_receipt_for_this_run": true,
+  "same_session_candidates_are_not_additional_independent_auditors": true
+}

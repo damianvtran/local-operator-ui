@@ -1,0 +1,39 @@
+{
+  "kind": "source-only fr 2-key delta audit (FR-1 recheck); not a ledger receipt",
+  "date": "2026-11-10",
+  "pr": "https://github.com/damianvtran/local-operator-ui/pull/1829",
+  "auditor": {"agent": "reviewer", "session": "c7b72ef216da", "model": "anthropic/claude-opus-5-5", "model_source": "host system prompt Model line; no fallback observed"},
+  "independence": "did not read the UI coder's or the twin auditor's findings; not translator a6c2dd3ff1eb / f1932d263d6c / ebb1d6beb853",
+  "prior": ["https://github.com/damianvtran/local-operator-ui/pull/1829#issuecomment-6782913624 (FR-1 MAJOR)"],
+  "worktree": "/Users/damian/local-operator-ui/.worktrees/full-diff-history",
+  "head_observed": "8878d0df62d88defc37684f9898cc38dfaa9c57a (clean tree; equals origin feat/full-diff-history; child of briefed 81ef362e)",
+  "files_sha256": {
+    "en": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+    "en_context": "04bfe86405155bf8437c4f867eea4dc9bfd4c277d2ae6b0aa7d6a1bf20390087",
+    "fr": "620d4ab2d3db4a9c16b64c62fdd44c4e44ff55fe65b1b7f06e835db435319877",
+    "es": "db9923d6038ef32906ab0bcfeff99d358d01ec610d50256749f31b360962b22a",
+    "hi": "3bf3915206f534281383edacf7524d11641b7400dbfea3837be8f8ac1a8fb851",
+    "ru": "ad6c5d631d59a8e73189ddb24943c19871b510d6e7928f3286c35de5057feb97",
+    "ur": "447dbfa53dd70eb8148495b2badc03e12ee3fcef935fd98280cd3665f31e655e",
+    "vi": "c23bbd6bbaa34f4ae660d502f7c5503d565711d9e6fa4faebe506882296c222b",
+    "zh-CN": "8db6da0aab5182efae83c3287758ba820dbdea60458d9c34dc384698d912d67b",
+    "core_fr_style_guide": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226",
+    "core_glossary": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "core_revision": "b42471d3935cb7e95d64428af27c32626665f4c0 (fr guide + glossary hashes identical to the prior audit)"
+  },
+  "byte_proof": {
+    "en, en_context, es, hi, ru, ur, vi, zh-CN": "whole-file SHA-256 identical across 21bb3f5, 81ef362e and the current working tree",
+    "fr": "21bb3f5 == 81ef362e; current file differs ONLY at lines 274 and 276 (1-based) of 283 = the two keys below; key order and set unchanged; the other 21 diff.full keys and all other keys byte-identical; current fr bytes == git show 8878d0df:fr file"
+  },
+  "keys": {
+    "ui.chat.canonical.tool_row.diff.full.unavailable": {"value": "Le diff complet n’a pas pu être enregistré pour cette modification", "context": "full diff could not be saved", "verdict": "PASS", "notes": "reads as a failed save; U+2019 apostrophe per fr guide; no full stop; no placeholders"},
+    "ui.chat.canonical.tool_row.diff.full.not_recorded": {"value": "Diff complet absent — modification antérieure à l’enregistrement des diffs", "context": "change made before full diffs were recorded", "verdict": "PASS", "notes": "'antérieure à' conveys predating; spaced em dash matches sibling fr notices (oversized/withheld/evicted); no full stop; no placeholders"}
+  },
+  "checks": {"distinct_23_fr_values": true, "icu_placeholders": "none in either string (matches en)", "bidi_controls": "none"},
+  "findings": [],
+  "status": "clean",
+  "fr_counts": {"blocker": 0, "major": 0, "minor": 0, "nit": 0},
+  "FR-1": "resolved at fr sha256 620d4ab2…319877",
+  "retained": "prior semantic results for the other 21 fr keys and the other 6 locales hold only because their bytes are proven identical (above); prior non-gating minors RU-1, ZH-1, HI-1, UR-1, EN-1 and nit EN-2 remain open (deferred: no remediation cycle)",
+  "not_proven": "source-only: no rendering, layout or fit"
+}

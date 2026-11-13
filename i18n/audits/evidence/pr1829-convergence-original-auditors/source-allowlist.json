@@ -1,0 +1,1713 @@
+{
+  "kind": "coordinator read-only pure receipt/assembler-precondition validation; not auditor-authored verdict or ledger application",
+  "observed_at": "2026-11-12T23:54:49.115Z",
+  "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+  "context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+  "namespace": "ui.chat.canonical",
+  "frozen_tree": "2d89bff82f58b84744ddc469e3532377df26d278",
+  "historical_artifacts_checked": 26,
+  "historical_artifact_mismatches": [],
+  "assembler_invoked": false,
+  "ledger_written": false,
+  "receipts": [
+    {
+      "session": "5f8e54e78de8",
+      "locale": "es",
+      "receipt": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-receipt-es-5f8e54e78de8.json",
+      "record": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-supplement-es-5f8e54e78de8.json",
+      "companions": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-supplement-es-5f8e54e78de8.json",
+          "sha256": "98edc4e2c65a36f6b15bf0870987674440e66f4cbd4a1b2710c316c506a75489",
+          "bytes": 55658
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-primary-es-fr-hi-manifest-5f8e54e78de8.json",
+          "sha256": "643638e6d7011ce1fd7d4a3ae4adcd4174f3e23cecf01e75cf02933755e7c918",
+          "bytes": 4768
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-receipt-validation-5f8e54e78de8.json",
+          "sha256": "39789cc4d3a24d02de697792d9cd36fbb48a44b42562f765f8ee80e6badcdf8c",
+          "bytes": 4420
+        }
+      ],
+      "record_sha256": "98edc4e2c65a36f6b15bf0870987674440e66f4cbd4a1b2710c316c506a75489",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "5f8e54e78de8-es-final-evidence-20261112",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 5,
+          "nit": 2
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "4074681ab095ccfb3917e0f1e8f31e2d2c92c1c47742153db82dda80502c1e51",
+        "receipt_sha256": "af42e387835676d187cf0b8345a4f7174c9b0c04e010132d78db3de265959df6"
+      },
+      "context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+      "authoritative_scope": {
+        "namespace": "ui.chat.canonical",
+        "locale": "es",
+        "terminal_scope": "Retained23-key PR semantic proof + French2-key delta where applicable + exact467-main ancestry + accepted bounded23-key captured evidence on current source/target/context hashes; no fresh490-key audit.",
+        "render_delta_keys": 23,
+        "visible_elements": 22,
+        "nonvisual_nav_keys": 1,
+        "original_semantic_keys_read": 49,
+        "new_semantic_keys_read": 0,
+        "retained_mechanical_keys": 490,
+        "main_parent_keys_retained": 467,
+        "main_changes_retained": 213,
+        "removed_obsolete_keys": [
+          "ui.chat.canonical.older_history.loading",
+          "ui.chat.canonical.placeholder.loading",
+          "ui.chat.canonical.placeholder.region_label",
+          "ui.chat.canonical.transcript.stale_caption"
+        ],
+        "hindi_incoming_sound_player_failed_retained": true,
+        "fresh_full_namespace_semantic_audit": false,
+        "all23_interactions_pass": false
+      },
+      "scope_statement": null,
+      "findings": [
+        {
+          "id": "I-ES-1",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+          "current": "Diff completo retenido: no se pudo censurar de forma segura",
+          "proposed": "Diff completo retenido: no se pudieron ocultar los datos sensibles de forma segura",
+          "reason": "Credential redaction is rendered as censurar (censor), rather than ocultar datos sensibles; retain the parent terminology follow-up. ",
+          "disposition": "deferred — non-gating; retained from PR parent",
+          "retained_original_disposition": "deferred — non-gating; retained from PR parent",
+          "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment."
+        },
+        {
+          "id": "S16F-ES-A3-01",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.sound.batch.summary",
+          "current": "{completed, plural, one {{completed, number, ::group-off} completada} many {{completed, number, ::group-off} de completadas} other {{completed, number, ::group-off} completadas}} · {failed, plural, one {{failed, number, ::group-off} fallida} many {{failed, number, ::group-off} de fallidas} other {{failed, number, ::group-off} fallidas}}{cancelled, plural, =0 {} one { · {cancelled, number, ::group-off} detenida} many { · {cancelled, number, ::group-off} de detenidas} other { · {cancelled, number, ::group-off} detenidas}}{unknown, plural, =0 {} one { · {unknown, number, ::group-off} con estado desconocido} many { · {unknown, number, ::group-off} con estado desconocido} other { · {unknown, number, ::group-off} con estado desconocido}}{has_attention, select, yes {. Atención: {labels}} other {}}",
+          "proposed": "Use '#' in the four many arms: many {# de completadas}, many {# de fallidas}, many {# de detenidas}, many {# con estado desconocido}. Every other arm keeps the '::group-off' skeleton exactly as English.",
+          "reason": "The 'many' arms are es-authored (English has no category arms here) and exist because es CLDR puts exact millions in 'many' ('un millón de completadas'). Each one reuses the sibling arms' '::group-off' skeleton, so the only number that can reach it prints ungrouped: rendering completed=1000000 gives \"1000000 de completadas\". Spanish always groups, and the es style guide's own exemplar for this category is many {# de sesiones}, illustrated as \"1.000.000 de sesiones\". Verified: many {# de completadas} renders \"1.000.000 de completadas\". Real but unreachable in practice (>=1,000,000 requests in one sound batch), and a one-commit fix, hence MINOR rather than MAJOR.",
+          "disposition": "reported; does not gate (no BLOCKER/MAJOR)",
+          "historical_reason_verbatim": true,
+          "retained_original_disposition": "reported; does not gate (no BLOCKER/MAJOR)",
+          "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment."
+        },
+        {
+          "id": "S16F-ES-A3-02",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.media.sound_label",
+          "current": "{count, plural, =1 {Sonido} other {Sonido {position, number, ::group-off}}}",
+          "proposed": "No change requested now (screen-reader-only, invisible, and the sidecar's tone field asks for a capitalised bare noun). If a later wave decides, change 'Sonido'/'Imagen' together with the audio play/pause/position templates in one commit; never flip this key alone.",
+          "reason": "This value is also the audio player's accessible name: media-label.ts documents it, and sound-player.tsx composes it into ui.chat.audio.play_label / pause_label / position_label, producing \"Reproducir Sonido 2\" — a capitalised common noun mid-sentence, an orthography error in Spanish. The visible tile/alt-text surface wants the capital ('Imagen' keeps it for the same reason); the composed accessible name wants lower case. Same trade-off the ru round-3 audit recorded as S16F-RU-R3-01.",
+          "disposition": "accepted, no change requested",
+          "historical_reason_verbatim": true,
+          "retained_original_disposition": "accepted, no change requested",
+          "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment."
+        },
+        {
+          "id": "S16F-ES-A3-03",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.sound.cost.no_charge",
+          "current": "Sin cargo.",
+          "proposed": "No change recommended. Recorded so a later wave does not silently reverse a precedent-backed call, and so my own reversal (MINOR -> NIT on finding the plan_clause precedent) is visible rather than dropped.",
+          "reason": "'Charge' has two renderings inside one card: 'cobro' in sound.cost.estimated_zero ('cobro final sin confirmar') and sound.stop.warning ('se cobrará … el cobro'), and 'cargo' here. Reviewed and downgraded from MINOR: the shipped es catalogue already names an unbilled amount 'sin cargo' (ui.chat.session_spend.plan_clause: '…equivalente a API, sin cargo'), so this follows product precedent rather than inventing a term. 'Sin coste.' would be the alternative if card-internal uniformity is ever wanted.",
+          "disposition": "accepted, no change requested",
+          "historical_reason_verbatim": true,
+          "retained_original_disposition": "accepted, no change requested",
+          "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment."
+        },
+        {
+          "id": "CONV-ES-MANY-VIEW",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.view",
+          "current": "{count, plural, one {Ver diff completo · # línea} other {Ver diff completo · # líneas}}",
+          "proposed": "{count, plural, one {Ver diff completo · # línea} many {Ver diff completo · # de líneas} other {Ver diff completo · # líneas}}",
+          "reason": "The es/fr guide requires a many category for exact millions, but this message only has one/other and formats a million without the required de/d’; the clipped case is only a categorical-completeness follow-up because a page is bounded.",
+          "origin": "retained PR-parent wording; extremely large-count follow-up, not merge regression",
+          "disposition": "Non-gating language/CLDR follow-up; actual formatter output retained in ICU evidence.",
+          "retained_original_disposition": "Non-gating language/CLDR follow-up; actual formatter output retained in ICU evidence.",
+          "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment."
+        },
+        {
+          "id": "CONV-ES-MANY-CLIPPED",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.clipped",
+          "current": "{count, plural, one {# línea larga de esta página está acortada} other {# líneas largas de esta página están acortadas}}",
+          "proposed": "{count, plural, one {# línea larga de esta página está acortada} many {# de líneas largas de esta página están acortadas} other {# líneas largas de esta página están acortadas}}",
+          "reason": "The es/fr guide requires a many category for exact millions, but this message only has one/other and formats a million without the required de/d’; the clipped case is only a categorical-completeness follow-up because a page is bounded.",
+          "origin": "retained PR-parent wording; extremely large-count follow-up, not merge regression",
+          "disposition": "Non-gating language/CLDR follow-up; actual formatter output retained in ICU evidence.",
+          "retained_original_disposition": "Non-gating language/CLDR follow-up; actual formatter output retained in ICU evidence.",
+          "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment."
+        },
+        {
+          "id": "CONV-ES-FIT-1",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.back",
+          "current": "Volver a la vista previa",
+          "proposed": "Vista previa",
+          "reason": "At 24 code points versus English’s 15, this short button is 60% longer; keep the natural wording unless a rendered pager check requires the shorter context-dependent label.",
+          "disposition": "Rendered check required; source risk, not observed clipping",
+          "retained_original_disposition": "Rendered check required; source risk, not observed clipping",
+          "supplemental_evidence_disposition": "Bounded captured fit evidence now available; no obvious cutoff in viewed assigned-locale sample. Historical MINOR/NIT ID/severity retained; no new remediation cycle; no universal width/geometry claim."
+        }
+      ],
+      "limitations": {
+        "new_semantic_audit": "None: retained original49 source/target/context key readings per locale and490 mechanical/provenance checks per locale; zero new catalogue semantic review in this supplement.",
+        "personal_viewing": "Exactly15 listed images personally opened:3 assigned-locale contacts,6 actual focused frames,2 French notices,Hindi error/retry,pseudo contact and2 pseudo focused. Contact thumbnails are overview aids. Remaining full-size key visibility relies on accepted hash-bound readback, not personal full-size inspection.",
+        "fit": "Targeted samples show no obvious text cutoff. Declared360px fixture width is not independently measured DOM geometry. No all-width/all-theme/490-key pixel,font-fallback,native/full-app certification.",
+        "functional": "UNPROVEN here: all23 interactions,Back/Retry/view/First/Previous/Last action outcomes and comprehensive Next navigation. Stored split-next body/focus is not a full navigation suite. No exact prior locale-specific outcome/count-variant proof is promoted.",
+        "counts": "Focused view sample598 and aggregate clipped sample1 only. Other plural counts,millions,negative values,full category matrices are NOT newly validated by images. Retain original non-gating language/count follow-ups.",
+        "pseudo": "Synthetic expanded English registered under en: accepted record15 originals+2focused, not production pseudo,en-XA/qps,RTL pseudo or shipped/native mode. Personally viewed pseudo contact+2focused.",
+        "rtl": "Assigned es/fr/hi are LTR. No global/Urdu RTL certification; deferred Urdu code-bidi MINOR user disposition outside this lane.",
+        "stored_AX": "Stored nav text/title read for assigned locales. Transport details URL is stale ru for selected split-next records; locale association rests on native nav text,title,bound catalogues and accepted capture mapping,not that stale URL. No new AX/screen-reader capture.",
+        "authority": "Remote design links are user-supplied citations,not independently read bodies. Binding authority is direct user disposition plus independently read accepted evidence.",
+        "release": "One primary auditor session only. Separate second independent lane remains separate. Machine-valid scoped receipt is not global release/native/interaction approval."
+      },
+      "canonical_record": "i18n/audits/evidence/es/ui.chat.canonical/5f8e54e78de8-es-final-evidence-20261112/record.json",
+      "canonical_receipt": "i18n/receipts/5f8e54e78de8-es-final-evidence-20261112.json",
+      "proposed_note": "PR1829 supplemental: retained 23-key copy + captured-element evidence; mapped 467 parent keys. See record/companions; no fresh 490-key, functional, measured-fit, native or shipped-pseudo claim.",
+      "proposed_note_length": 193,
+      "machine_preconditions_pass": true,
+      "author_disposition": "See immutable auditor record; coordinator does not author or alter result"
+    },
+    {
+      "session": "6dfaec49abf0",
+      "locale": "es",
+      "receipt": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-es-final-policy-evidence-20261112-receipt.json",
+      "record": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-es-final-policy-evidence-20261112-supplement.json",
+      "companions": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-es-final-policy-evidence-20261112-supplement.json",
+          "sha256": "62b4b8b5ecaf8cd08ddba818328e5983e8bb39b48890651836dd78648bb5d13e",
+          "bytes": 55985
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-es-final-policy-evidence-20261112-retention-companion.json",
+          "sha256": "dc88ad10a87fe627f7cbbc641aa1b409b3d4bb57146f219f06d719477174925a",
+          "bytes": 22727
+        }
+      ],
+      "record_sha256": "62b4b8b5ecaf8cd08ddba818328e5983e8bb39b48890651836dd78648bb5d13e",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "6dfaec49abf0-es-final-policy-evidence-20261112",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 2,
+          "nit": 2
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "4074681ab095ccfb3917e0f1e8f31e2d2c92c1c47742153db82dda80502c1e51",
+        "receipt_sha256": "9f41eff67d1c407e55c91becb96b7ce20baa2d66837b82c99c7d65d74fa5a2da"
+      },
+      "context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+      "authoritative_scope": {
+        "pr_keys": [
+          "ui.chat.canonical.tool_row.diff.full.back",
+          "ui.chat.canonical.tool_row.diff.full.clipped",
+          "ui.chat.canonical.tool_row.diff.full.clipped_row",
+          "ui.chat.canonical.tool_row.diff.full.continued",
+          "ui.chat.canonical.tool_row.diff.full.continues",
+          "ui.chat.canonical.tool_row.diff.full.empty",
+          "ui.chat.canonical.tool_row.diff.full.error",
+          "ui.chat.canonical.tool_row.diff.full.evicted",
+          "ui.chat.canonical.tool_row.diff.full.first",
+          "ui.chat.canonical.tool_row.diff.full.inline",
+          "ui.chat.canonical.tool_row.diff.full.last",
+          "ui.chat.canonical.tool_row.diff.full.loading",
+          "ui.chat.canonical.tool_row.diff.full.nav",
+          "ui.chat.canonical.tool_row.diff.full.next",
+          "ui.chat.canonical.tool_row.diff.full.not_found",
+          "ui.chat.canonical.tool_row.diff.full.not_recorded",
+          "ui.chat.canonical.tool_row.diff.full.oversized",
+          "ui.chat.canonical.tool_row.diff.full.prev",
+          "ui.chat.canonical.tool_row.diff.full.range",
+          "ui.chat.canonical.tool_row.diff.full.retry",
+          "ui.chat.canonical.tool_row.diff.full.unavailable",
+          "ui.chat.canonical.tool_row.diff.full.view",
+          "ui.chat.canonical.tool_row.diff.full.withheld"
+        ],
+        "key_count": 23,
+        "fr_two_key_delta": null,
+        "previous_semantic_read_count": 31,
+        "new_semantic_read_count": 0,
+        "current_namespace_key_count": 490,
+        "previous_mechanical_key_count": 490
+      },
+      "scope_statement": "Retained 23-key PR semantic audit, French 2-key approved delta as applicable, exact 467-key incoming-main ancestry and accepted captured visual/AX evidence; no fresh 490-key semantics or global release approval.",
+      "findings": [
+        {
+          "id": "I-ES-1",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+          "current": "Diff completo retenido: no se pudo censurar de forma segura",
+          "proposed": "Diff completo retenido: no se pudieron ocultar los datos sensibles de forma segura",
+          "reason": "\"censurar\" (censor) for credential redaction is off-register; es catalogues use \"ocultar\" (20 hits) and \"censur\" appears only here.",
+          "disposition": "deferred — non-gating",
+          "origin_receipt": "i18n/receipts/567a24a88e45-chat-canonical-es-r2.json",
+          "origin_receipt_sha256": "b48040f237a0a2da586d9df6068cfd428b54e85cb05bb6321757ebc3e92ad168",
+          "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+          "inherited": true
+        },
+        {
+          "id": "S16F-ES-A3-01",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.sound.batch.summary",
+          "current": "{completed, plural, one {{completed, number, ::group-off} completada} many {{completed, number, ::group-off} de completadas} other {{completed, number, ::group-off} completadas}} · {failed, plural, one {{failed, number, ::group-off} fallida} many {{failed, number, ::group-off} de fallidas} other {{failed, number, ::group-off} fallidas}}{cancelled, plural, =0 {} one { · {cancelled, number, ::group-off} detenida} many { · {cancelled, number, ::group-off} de detenidas} other { · {cancelled, number, ::group-off} detenidas}}{unknown, plural, =0 {} one { · {unknown, number, ::group-off} con estado desconocido} many { · {unknown, number, ::group-off} con estado desconocido} other { · {unknown, number, ::group-off} con estado desconocido}}{has_attention, select, yes {. Atención: {labels}} other {}}",
+          "proposed": "{completed, plural, one {{completed, number, ::group-off} completada} many {# de completadas} other {{completed, number, ::group-off} completadas}} · {failed, plural, one {{failed, number, ::group-off} fallida} many {# de fallidas} other {{failed, number, ::group-off} fallidas}}{cancelled, plural, =0 {} one { · {cancelled, number, ::group-off} detenida} many { · # de detenidas} other { · {cancelled, number, ::group-off} detenidas}}{unknown, plural, =0 {} one { · {unknown, number, ::group-off} con estado desconocido} many { · # con estado desconocido} other { · {unknown, number, ::group-off} con estado desconocido}}{has_attention, select, yes {. Atención: {labels}} other {}}",
+          "reason": "The 'many' arms are es-authored (English has no category arms here) and exist because es CLDR puts exact millions in 'many' ('un millón de completadas'). Each one reuses the sibling arms' '::group-off' skeleton, so the only number that can reach it prints ungrouped: rendering completed=1000000 gives \"1000000 de completadas\". Spanish always groups, and the es style guide's own exemplar for this category is many {# de sesiones}, illustrated as \"1.000.000 de sesiones\". Verified: many {# de completadas} renders \"1.000.000 de completadas\". Real but unreachable in practice (>=1,000,000 requests in one sound batch), and a one-commit fix, hence MINOR rather than MAJOR.",
+          "disposition": "reported; does not gate (no BLOCKER/MAJOR)",
+          "origin_receipt": "i18n/receipts/4d7a5444aa0b.json",
+          "origin_receipt_sha256": "0d53576dd82e8db22742ddcaa18810c5e786cf93d88d15f0d6181de37adfc7c3",
+          "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+          "inherited": true
+        },
+        {
+          "id": "S16F-ES-A3-02",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.media.sound_label",
+          "current": "{count, plural, =1 {Sonido} other {Sonido {position, number, ::group-off}}}",
+          "proposed": "{count, plural, =1 {Sonido} other {Sonido {position, number, ::group-off}}}",
+          "reason": "This value is also the audio player's accessible name: media-label.ts documents it, and sound-player.tsx composes it into ui.chat.audio.play_label / pause_label / position_label, producing \"Reproducir Sonido 2\" — a capitalised common noun mid-sentence, an orthography error in Spanish. The visible tile/alt-text surface wants the capital ('Imagen' keeps it for the same reason); the composed accessible name wants lower case. Same trade-off the ru round-3 audit recorded as S16F-RU-R3-01.",
+          "disposition": "accepted, no change requested",
+          "origin_receipt": "i18n/receipts/4d7a5444aa0b.json",
+          "origin_receipt_sha256": "0d53576dd82e8db22742ddcaa18810c5e786cf93d88d15f0d6181de37adfc7c3",
+          "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+          "inherited": true
+        },
+        {
+          "id": "S16F-ES-A3-03",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.sound.cost.no_charge",
+          "current": "Sin cargo.",
+          "proposed": "Sin cargo.",
+          "reason": "'Charge' has two renderings inside one card: 'cobro' in sound.cost.estimated_zero ('cobro final sin confirmar') and sound.stop.warning ('se cobrará … el cobro'), and 'cargo' here. Reviewed and downgraded from MINOR: the shipped es catalogue already names an unbilled amount 'sin cargo' (ui.chat.session_spend.plan_clause: '…equivalente a API, sin cargo'), so this follows product precedent rather than inventing a term. 'Sin coste.' would be the alternative if card-internal uniformity is ever wanted.",
+          "disposition": "accepted, no change requested",
+          "origin_receipt": "i18n/receipts/4d7a5444aa0b.json",
+          "origin_receipt_sha256": "0d53576dd82e8db22742ddcaa18810c5e786cf93d88d15f0d6181de37adfc7c3",
+          "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+          "inherited": true
+        }
+      ],
+      "limitations": {
+        "fresh_catalogue_key_readings": 0,
+        "fresh_490_key_audit": false,
+        "original_side_by_side_key_readings": "es 31; fr 31; hi 32. Supplemental work reads evidence and verifies retained 23-key value identities; it does not add fresh semantic key readings.",
+        "visible_evidence": "22 visible elements plus .nav accessible-name evidence for 23 keys per assigned actual locale. Full mapping is accepted evidence readback plus own contact-sheet and six focused-frame observations.",
+        "native": "UNPROVEN: no native/full-app integrated execution or screen-reader speech observed by this auditor.",
+        "geometry": "UNPROVEN: no measured DOM geometry, scrollWidth/clientWidth, pixel-coordinate overflow measurement, font-fallback proof, other-theme/width matrix. 360px is a declared fixture setting, not my measured box.",
+        "functional_outcomes": "UNPROVEN in this disposition: no all-23-interactions pass; First/Last/Previous/Back/Retry/offer activation outcomes are not certified. Accepted split-next record shows a next-state/body/focus change only, not a complete functional suite. No exact historical interaction proof plus render-path compatibility is being claimed.",
+        "count_variants": "Only captured offer count 598 and clipped aggregate count 1 personally observed; no all-count/plural-variant runtime pass claimed. Prior structural ICU checks remain structural evidence only.",
+        "pseudo": "Relied on accepted readback for 15 original plus 2 focused synthetic expanded-English frames registered as en; not personally viewed in this supplement, not production pseudo, RTL pseudo, activation, or a whole-namespace pixel review.",
+        "rtl": "Assigned es/fr/hi are LTR. No global RTL approval. User-disposition Urdu code-bidi MINOR is outside these locale receipts and remains deferred in the design thread; no fix round implied.",
+        "release": "No global/native/release/merge/activation approval; only bounded source-convergence and captured-evidence disposition."
+      },
+      "canonical_record": "i18n/audits/evidence/es/ui.chat.canonical/6dfaec49abf0-es-final-policy-evidence-20261112/record.json",
+      "canonical_receipt": "i18n/receipts/6dfaec49abf0-es-final-policy-evidence-20261112.json",
+      "proposed_note": "PR1829 supplemental: retained 23-key copy + captured-element evidence; mapped 467 parent keys. See record/companions; no fresh 490-key, functional, measured-fit, native or shipped-pseudo claim.",
+      "proposed_note_length": 193,
+      "machine_preconditions_pass": true,
+      "author_disposition": "See immutable auditor record; coordinator does not author or alter result"
+    },
+    {
+      "session": "5f8e54e78de8",
+      "locale": "fr",
+      "receipt": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-receipt-fr-5f8e54e78de8.json",
+      "record": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-supplement-fr-5f8e54e78de8.json",
+      "companions": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-supplement-fr-5f8e54e78de8.json",
+          "sha256": "05279e4dc7905d91835b7b9544ed7f12f420c8942571d563e3812b9a1575c3f0",
+          "bytes": 55099
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-primary-es-fr-hi-manifest-5f8e54e78de8.json",
+          "sha256": "643638e6d7011ce1fd7d4a3ae4adcd4174f3e23cecf01e75cf02933755e7c918",
+          "bytes": 4768
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-receipt-validation-5f8e54e78de8.json",
+          "sha256": "39789cc4d3a24d02de697792d9cd36fbb48a44b42562f765f8ee80e6badcdf8c",
+          "bytes": 4420
+        }
+      ],
+      "record_sha256": "05279e4dc7905d91835b7b9544ed7f12f420c8942571d563e3812b9a1575c3f0",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "5f8e54e78de8-fr-final-evidence-20261112",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 4,
+          "nit": 3
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "e7d21936f30d7bcb95a86c08c6774c0572d13bd32e7220ab9e36c02327c31fbd",
+        "receipt_sha256": "9a08f3af4a3c96ed4a6c2e81ef305401a03a7b8a1a009f948df89d0cecb69799"
+      },
+      "context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+      "authoritative_scope": {
+        "namespace": "ui.chat.canonical",
+        "locale": "fr",
+        "terminal_scope": "Retained23-key PR semantic proof + French2-key delta where applicable + exact467-main ancestry + accepted bounded23-key captured evidence on current source/target/context hashes; no fresh490-key audit.",
+        "render_delta_keys": 23,
+        "visible_elements": 22,
+        "nonvisual_nav_keys": 1,
+        "original_semantic_keys_read": 49,
+        "new_semantic_keys_read": 0,
+        "retained_mechanical_keys": 490,
+        "main_parent_keys_retained": 467,
+        "main_changes_retained": 213,
+        "removed_obsolete_keys": [
+          "ui.chat.canonical.older_history.loading",
+          "ui.chat.canonical.placeholder.loading",
+          "ui.chat.canonical.placeholder.region_label",
+          "ui.chat.canonical.transcript.stale_caption"
+        ],
+        "hindi_incoming_sound_player_failed_retained": true,
+        "fresh_full_namespace_semantic_audit": false,
+        "all23_interactions_pass": false
+      },
+      "scope_statement": null,
+      "findings": [
+        {
+          "id": "I-FR-2",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.tool_row.diff.full.evicted",
+          "current": "Diff complet plus conservé — les anciens diffs sont supprimés pour libérer de l’espace",
+          "proposed": "Le diff complet n’est plus conservé — les anciens diffs sont supprimés pour libérer de l’espace",
+          "reason": "The telegraphic plus conservé drops n’est and can briefly read ambiguously; the parent deferred wording nit still applies.",
+          "disposition": "deferred — retained; non-gating",
+          "retained_original_disposition": "deferred — retained; non-gating",
+          "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment."
+        },
+        {
+          "id": "I-FR-3",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.tool_row.diff.full.not_recorded",
+          "current": "Diff complet absent — modification antérieure à l’enregistrement des diffs",
+          "proposed": "Diff complet absent — modification antérieure à l’archivage des diffs",
+          "reason": "The current 74-code-point wrapping status is materially longer than English’s 41; preserve the parent fit follow-up and require a rendered check.",
+          "disposition": "deferred — non-gating; no rendered fit proven",
+          "retained_original_disposition": "deferred — non-gating; no rendered fit proven",
+          "supplemental_evidence_disposition": "Bounded captured fit evidence now available; no obvious cutoff in viewed assigned-locale sample. Historical MINOR/NIT ID/severity retained; no new remediation cycle; no universal width/geometry claim."
+        },
+        {
+          "id": "M1",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.sound.cost.estimated_zero",
+          "current": "Coût estimé à 0 $ ; frais finaux non confirmés.",
+          "proposed": "Coût estimé à 0 $US ; frais finaux non confirmés.",
+          "reason": "Bare `$` is the only MONEY rendering in the shipped fr corpus (the three other fr values that contain a `$` are JavaScript template/code tokens — `${name}`, `$'{'NAME'}'` — not amounts; counted in audit.log). The corpus writes the currency as the ISO code after the amount (`ui.common.account.low_credits_dialog.detail` « {detail} USD », `ui.providers.phone.action.activate` « Activer pour {amount} USD par mois », `ui.providers.phone.consent` « … à {amount} USD par mois … »), and the runtime's own fr money formatter renders USD as `0,00 $US` (Intl.NumberFormat('fr', {style:'currency', currency:'USD'}).format(0) = \"0,00\\u00a0$US\"). An unqualified `$` is read as CAD in a Canadian reading, while this is a USD billing sentence. Not MAJOR: the amount is zero, so no charge can be misread, and the sentence's real claim (estimate, not a confirmed bill) survives.",
+          "disposition": "retained, non-gating; no new remediation authorization",
+          "historical_reason_verbatim": true,
+          "retained_original_disposition": "retained, non-gating; no new remediation authorization",
+          "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment."
+        },
+        {
+          "id": "N1",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.media.sound_label",
+          "current": "{count, plural, =1 {Son} other {Son {position, number, ::group-off}}}",
+          "proposed": "{count, plural, =1 {Audio} other {Audio {position, number, ::group-off}}}",
+          "reason": "`Son` is correct French and matches the namespace's prose (« Impossible de lire ce son », « Son généré »), but as a standalone label it is homographic with the possessive determiner `son`, and it is always read after a verb: `ui.chat.audio.play_label` is « Lire {label} », so the accessible names become « Lire Son » / « Lire Son 2 ». The namespace's own noun for the media type in a name position is `audio` (« Pièce jointe audio indisponible », « … sera facturée si elle produit un audio »). « Audio » is unambiguous there and costs no width (5 characters, shorter than English's « Sound »).",
+          "disposition": "retained, non-gating; no new remediation authorization",
+          "historical_reason_verbatim": true,
+          "retained_original_disposition": "retained, non-gating; no new remediation authorization",
+          "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment."
+        },
+        {
+          "id": "CONV-FR-MANY-VIEW",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.view",
+          "current": "{count, plural, one {Voir le diff complet · # ligne} other {Voir le diff complet · # lignes}}",
+          "proposed": "{count, plural, one {Voir le diff complet · # ligne} many {Voir le diff complet · # de lignes} other {Voir le diff complet · # lignes}}",
+          "reason": "The es/fr guide requires a many category for exact millions, but this message only has one/other and formats a million without the required de/d’; the clipped case is only a categorical-completeness follow-up because a page is bounded.",
+          "origin": "retained PR-parent wording; extremely large-count follow-up, not merge regression",
+          "disposition": "Non-gating language/CLDR follow-up; actual formatter output retained in ICU evidence.",
+          "retained_original_disposition": "Non-gating language/CLDR follow-up; actual formatter output retained in ICU evidence.",
+          "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment."
+        },
+        {
+          "id": "CONV-FR-MANY-CLIPPED",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.clipped",
+          "current": "{count, plural, one {# ligne longue de cette page est raccourcie} other {# lignes longues de cette page sont raccourcies}}",
+          "proposed": "{count, plural, one {# ligne longue de cette page est raccourcie} many {# de lignes longues de cette page sont raccourcies} other {# lignes longues de cette page sont raccourcies}}",
+          "reason": "The es/fr guide requires a many category for exact millions, but this message only has one/other and formats a million without the required de/d’; the clipped case is only a categorical-completeness follow-up because a page is bounded.",
+          "origin": "retained PR-parent wording; extremely large-count follow-up, not merge regression",
+          "disposition": "Non-gating language/CLDR follow-up; actual formatter output retained in ICU evidence.",
+          "retained_original_disposition": "Non-gating language/CLDR follow-up; actual formatter output retained in ICU evidence.",
+          "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment."
+        },
+        {
+          "id": "CONV-FR-FIT-1",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.unavailable",
+          "current": "Le diff complet n’a pas pu être enregistré pour cette modification",
+          "proposed": "Diff complet non enregistré pour cette modification",
+          "reason": "At 66 code points versus English’s 38, this status materially expands; check wrapping with the new pager before claiming fit.",
+          "disposition": "Rendered check required; source risk, not observed clipping",
+          "related_risk": {
+            "key": "ui.chat.canonical.tool_row.diff.full.empty",
+            "current": "Cette modification ne contient aucune ligne de diff",
+            "proposed": "Ce changement n’a aucune ligne de diff",
+            "source_code_points": 29,
+            "target_code_points": 51,
+            "reason": "Same wrapping-status fit check; keep ordinary context and no trailing stop."
+          },
+          "retained_original_disposition": "Rendered check required; source risk, not observed clipping",
+          "supplemental_evidence_disposition": "Bounded captured fit evidence now available; no obvious cutoff in viewed assigned-locale sample. Historical MINOR/NIT ID/severity retained; no new remediation cycle; no universal width/geometry claim."
+        }
+      ],
+      "limitations": {
+        "new_semantic_audit": "None: retained original49 source/target/context key readings per locale and490 mechanical/provenance checks per locale; zero new catalogue semantic review in this supplement.",
+        "personal_viewing": "Exactly15 listed images personally opened:3 assigned-locale contacts,6 actual focused frames,2 French notices,Hindi error/retry,pseudo contact and2 pseudo focused. Contact thumbnails are overview aids. Remaining full-size key visibility relies on accepted hash-bound readback, not personal full-size inspection.",
+        "fit": "Targeted samples show no obvious text cutoff. Declared360px fixture width is not independently measured DOM geometry. No all-width/all-theme/490-key pixel,font-fallback,native/full-app certification.",
+        "functional": "UNPROVEN here: all23 interactions,Back/Retry/view/First/Previous/Last action outcomes and comprehensive Next navigation. Stored split-next body/focus is not a full navigation suite. No exact prior locale-specific outcome/count-variant proof is promoted.",
+        "counts": "Focused view sample598 and aggregate clipped sample1 only. Other plural counts,millions,negative values,full category matrices are NOT newly validated by images. Retain original non-gating language/count follow-ups.",
+        "pseudo": "Synthetic expanded English registered under en: accepted record15 originals+2focused, not production pseudo,en-XA/qps,RTL pseudo or shipped/native mode. Personally viewed pseudo contact+2focused.",
+        "rtl": "Assigned es/fr/hi are LTR. No global/Urdu RTL certification; deferred Urdu code-bidi MINOR user disposition outside this lane.",
+        "stored_AX": "Stored nav text/title read for assigned locales. Transport details URL is stale ru for selected split-next records; locale association rests on native nav text,title,bound catalogues and accepted capture mapping,not that stale URL. No new AX/screen-reader capture.",
+        "authority": "Remote design links are user-supplied citations,not independently read bodies. Binding authority is direct user disposition plus independently read accepted evidence.",
+        "release": "One primary auditor session only. Separate second independent lane remains separate. Machine-valid scoped receipt is not global release/native/interaction approval."
+      },
+      "canonical_record": "i18n/audits/evidence/fr/ui.chat.canonical/5f8e54e78de8-fr-final-evidence-20261112/record.json",
+      "canonical_receipt": "i18n/receipts/5f8e54e78de8-fr-final-evidence-20261112.json",
+      "proposed_note": "PR1829 supplemental: retained 23-key copy + captured-element evidence; mapped 467 parent keys. See record/companions; no fresh 490-key, functional, measured-fit, native or shipped-pseudo claim.",
+      "proposed_note_length": 193,
+      "machine_preconditions_pass": true,
+      "author_disposition": "See immutable auditor record; coordinator does not author or alter result"
+    },
+    {
+      "session": "6dfaec49abf0",
+      "locale": "fr",
+      "receipt": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-fr-final-policy-evidence-20261112-receipt.json",
+      "record": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-fr-final-policy-evidence-20261112-supplement.json",
+      "companions": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-fr-final-policy-evidence-20261112-supplement.json",
+          "sha256": "03c37b8a7aecc78fb2dbff50326f04dd3633120c650c44dc168c531efe0651bc",
+          "bytes": 54930
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-fr-final-policy-evidence-20261112-retention-companion.json",
+          "sha256": "c686b2d996870e32d5f9e6568779b724d77ca28e041e9c611e23513067b216a8",
+          "bytes": 22828
+        }
+      ],
+      "record_sha256": "03c37b8a7aecc78fb2dbff50326f04dd3633120c650c44dc168c531efe0651bc",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "6dfaec49abf0-fr-final-policy-evidence-20261112",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 3
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "e7d21936f30d7bcb95a86c08c6774c0572d13bd32e7220ab9e36c02327c31fbd",
+        "receipt_sha256": "e77f2830dce176484f88a2cce2fa43bd8d1ffc7aab3caaf4fadfd5c2488b6118"
+      },
+      "context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+      "authoritative_scope": {
+        "pr_keys": [
+          "ui.chat.canonical.tool_row.diff.full.back",
+          "ui.chat.canonical.tool_row.diff.full.clipped",
+          "ui.chat.canonical.tool_row.diff.full.clipped_row",
+          "ui.chat.canonical.tool_row.diff.full.continued",
+          "ui.chat.canonical.tool_row.diff.full.continues",
+          "ui.chat.canonical.tool_row.diff.full.empty",
+          "ui.chat.canonical.tool_row.diff.full.error",
+          "ui.chat.canonical.tool_row.diff.full.evicted",
+          "ui.chat.canonical.tool_row.diff.full.first",
+          "ui.chat.canonical.tool_row.diff.full.inline",
+          "ui.chat.canonical.tool_row.diff.full.last",
+          "ui.chat.canonical.tool_row.diff.full.loading",
+          "ui.chat.canonical.tool_row.diff.full.nav",
+          "ui.chat.canonical.tool_row.diff.full.next",
+          "ui.chat.canonical.tool_row.diff.full.not_found",
+          "ui.chat.canonical.tool_row.diff.full.not_recorded",
+          "ui.chat.canonical.tool_row.diff.full.oversized",
+          "ui.chat.canonical.tool_row.diff.full.prev",
+          "ui.chat.canonical.tool_row.diff.full.range",
+          "ui.chat.canonical.tool_row.diff.full.retry",
+          "ui.chat.canonical.tool_row.diff.full.unavailable",
+          "ui.chat.canonical.tool_row.diff.full.view",
+          "ui.chat.canonical.tool_row.diff.full.withheld"
+        ],
+        "key_count": 23,
+        "fr_two_key_delta": "not_recorded/unavailable at 8878d0df; remaining 21 at 21bb3f5",
+        "previous_semantic_read_count": 31,
+        "new_semantic_read_count": 0,
+        "current_namespace_key_count": 490,
+        "previous_mechanical_key_count": 490
+      },
+      "scope_statement": "Retained 23-key PR semantic audit, French 2-key approved delta as applicable, exact 467-key incoming-main ancestry and accepted captured visual/AX evidence; no fresh 490-key semantics or global release approval.",
+      "findings": [
+        {
+          "id": "I-FR-2",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.tool_row.diff.full.evicted",
+          "current": "Diff complet plus conservé — les anciens diffs sont supprimés pour libérer de l’espace",
+          "proposed": "Le diff complet n’est plus conservé — les anciens diffs sont supprimés pour libérer de l’espace",
+          "reason": "\"Diff complet plus conservé\" drops \"n’est\" and reads telegraphic or ambiguous.",
+          "disposition": "deferred — retained; value byte-unchanged since 21bb",
+          "origin_receipt": "i18n/receipts/567a24a88e45-chat-canonical-fr-r2.json",
+          "origin_receipt_sha256": "dd65b57c3bf1ac4a5190900a561aa5a3dac554ce5d6fc7b884b3f1914110f1dc",
+          "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+          "inherited": true
+        },
+        {
+          "id": "I-FR-3",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.tool_row.diff.full.not_recorded",
+          "current": "Diff complet absent — modification antérieure à l’enregistrement des diffs",
+          "proposed": "Diff complet absent — modification antérieure à l’archivage des diffs",
+          "reason": "About 75 chars (en 41), beyond the fr style guide length note (15-25% longer, fr.md:67). It is a dim wrapping status, so fit is not proven or claimed.",
+          "disposition": "deferred — non-gating nit",
+          "origin_receipt": "i18n/receipts/567a24a88e45-chat-canonical-fr-r2.json",
+          "origin_receipt_sha256": "dd65b57c3bf1ac4a5190900a561aa5a3dac554ce5d6fc7b884b3f1914110f1dc",
+          "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+          "inherited": true
+        },
+        {
+          "id": "M1",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.sound.cost.estimated_zero",
+          "current": "Coût estimé à 0 $ ; frais finaux non confirmés.",
+          "proposed": "Coût estimé à 0 $US ; frais finaux non confirmés.",
+          "reason": "Bare `$` is the only MONEY rendering in the shipped fr corpus (the three other fr values that contain a `$` are JavaScript template/code tokens — `${name}`, `$'{'NAME'}'` — not amounts; counted in audit.log). The corpus writes the currency as the ISO code after the amount (`ui.common.account.low_credits_dialog.detail` « {detail} USD », `ui.providers.phone.action.activate` « Activer pour {amount} USD par mois », `ui.providers.phone.consent` « … à {amount} USD par mois … »), and the runtime's own fr money formatter renders USD as `0,00 $US` (Intl.NumberFormat('fr', {style:'currency', currency:'USD'}).format(0) = \"0,00\\u00a0$US\"). An unqualified `$` is read as CAD in a Canadian reading, while this is a USD billing sentence. Not MAJOR: the amount is zero, so no charge can be misread, and the sentence's real claim (estimate, not a confirmed bill) survives.",
+          "disposition": "retained, non-gating; no change made",
+          "origin_receipt": "i18n/receipts/3316c580ef05.json",
+          "origin_receipt_sha256": "2e4ac73047242230a20ff56a4982652c7d56e4d1f6677d4c083bb7f1a82e8d32",
+          "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+          "inherited": true
+        },
+        {
+          "id": "N1",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.media.sound_label",
+          "current": "{count, plural, =1 {Son} other {Son {position, number, ::group-off}}}",
+          "proposed": "{count, plural, =1 {Audio} other {Audio {position, number, ::group-off}}}",
+          "reason": "`Son` is correct French and matches the namespace's prose (« Impossible de lire ce son », « Son généré »), but as a standalone label it is homographic with the possessive determiner `son`, and it is always read after a verb: `ui.chat.audio.play_label` is « Lire {label} », so the accessible names become « Lire Son » / « Lire Son 2 ». The namespace's own noun for the media type in a name position is `audio` (« Pièce jointe audio indisponible », « … sera facturée si elle produit un audio »). « Audio » is unambiguous there and costs no width (5 characters, shorter than English's « Sound »).",
+          "disposition": "retained, non-gating; no change made",
+          "origin_receipt": "i18n/receipts/3316c580ef05.json",
+          "origin_receipt_sha256": "2e4ac73047242230a20ff56a4982652c7d56e4d1f6677d4c083bb7f1a82e8d32",
+          "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+          "inherited": true
+        }
+      ],
+      "limitations": {
+        "fresh_catalogue_key_readings": 0,
+        "fresh_490_key_audit": false,
+        "original_side_by_side_key_readings": "es 31; fr 31; hi 32. Supplemental work reads evidence and verifies retained 23-key value identities; it does not add fresh semantic key readings.",
+        "visible_evidence": "22 visible elements plus .nav accessible-name evidence for 23 keys per assigned actual locale. Full mapping is accepted evidence readback plus own contact-sheet and six focused-frame observations.",
+        "native": "UNPROVEN: no native/full-app integrated execution or screen-reader speech observed by this auditor.",
+        "geometry": "UNPROVEN: no measured DOM geometry, scrollWidth/clientWidth, pixel-coordinate overflow measurement, font-fallback proof, other-theme/width matrix. 360px is a declared fixture setting, not my measured box.",
+        "functional_outcomes": "UNPROVEN in this disposition: no all-23-interactions pass; First/Last/Previous/Back/Retry/offer activation outcomes are not certified. Accepted split-next record shows a next-state/body/focus change only, not a complete functional suite. No exact historical interaction proof plus render-path compatibility is being claimed.",
+        "count_variants": "Only captured offer count 598 and clipped aggregate count 1 personally observed; no all-count/plural-variant runtime pass claimed. Prior structural ICU checks remain structural evidence only.",
+        "pseudo": "Relied on accepted readback for 15 original plus 2 focused synthetic expanded-English frames registered as en; not personally viewed in this supplement, not production pseudo, RTL pseudo, activation, or a whole-namespace pixel review.",
+        "rtl": "Assigned es/fr/hi are LTR. No global RTL approval. User-disposition Urdu code-bidi MINOR is outside these locale receipts and remains deferred in the design thread; no fix round implied.",
+        "release": "No global/native/release/merge/activation approval; only bounded source-convergence and captured-evidence disposition."
+      },
+      "canonical_record": "i18n/audits/evidence/fr/ui.chat.canonical/6dfaec49abf0-fr-final-policy-evidence-20261112/record.json",
+      "canonical_receipt": "i18n/receipts/6dfaec49abf0-fr-final-policy-evidence-20261112.json",
+      "proposed_note": "PR1829 supplemental: retained 23-key copy + captured-element evidence; mapped 467 parent keys. See record/companions; no fresh 490-key, functional, measured-fit, native or shipped-pseudo claim.",
+      "proposed_note_length": 193,
+      "machine_preconditions_pass": true,
+      "author_disposition": "See immutable auditor record; coordinator does not author or alter result"
+    },
+    {
+      "session": "5f8e54e78de8",
+      "locale": "hi",
+      "receipt": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-receipt-hi-5f8e54e78de8.json",
+      "record": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-supplement-hi-5f8e54e78de8.json",
+      "companions": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-supplement-hi-5f8e54e78de8.json",
+          "sha256": "ec880ca7ee16954d4d57f773052273eafccae40594d3ab31e6e66faa5500d706",
+          "bytes": 47292
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-primary-es-fr-hi-manifest-5f8e54e78de8.json",
+          "sha256": "643638e6d7011ce1fd7d4a3ae4adcd4174f3e23cecf01e75cf02933755e7c918",
+          "bytes": 4768
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-receipt-validation-5f8e54e78de8.json",
+          "sha256": "39789cc4d3a24d02de697792d9cd36fbb48a44b42562f765f8ee80e6badcdf8c",
+          "bytes": 4420
+        }
+      ],
+      "record_sha256": "ec880ca7ee16954d4d57f773052273eafccae40594d3ab31e6e66faa5500d706",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "5f8e54e78de8-hi-final-evidence-20261112",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 2,
+          "nit": 0
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "8792c9a8f9df03f7c586d45e3f3b6f89b25ec6097a9aab1e310bb4e210677393",
+        "receipt_sha256": "9a5a40a864e6f1d70bfb76fbe2b2de3c9e3e313b49ccf0c22c5ba9e63f31c2a4"
+      },
+      "context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+      "authoritative_scope": {
+        "namespace": "ui.chat.canonical",
+        "locale": "hi",
+        "terminal_scope": "Retained23-key PR semantic proof + French2-key delta where applicable + exact467-main ancestry + accepted bounded23-key captured evidence on current source/target/context hashes; no fresh490-key audit.",
+        "render_delta_keys": 23,
+        "visible_elements": 22,
+        "nonvisual_nav_keys": 1,
+        "original_semantic_keys_read": 49,
+        "new_semantic_keys_read": 0,
+        "retained_mechanical_keys": 490,
+        "main_parent_keys_retained": 467,
+        "main_changes_retained": 214,
+        "removed_obsolete_keys": [
+          "ui.chat.canonical.older_history.loading",
+          "ui.chat.canonical.placeholder.loading",
+          "ui.chat.canonical.placeholder.region_label",
+          "ui.chat.canonical.transcript.stale_caption"
+        ],
+        "hindi_incoming_sound_player_failed_retained": true,
+        "fresh_full_namespace_semantic_audit": false,
+        "all23_interactions_pass": false
+      },
+      "scope_statement": null,
+      "findings": [
+        {
+          "id": "I-HI-1",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+          "current": "पूरा diff रोका गया — इसे सुरक्षित रूप से छिपाया नहीं जा सका",
+          "proposed": "पूरा diff रोका गया — इसकी संवेदनशील जानकारी सुरक्षित रूप से हटाई नहीं जा सकी",
+          "reason": "इसे ... छिपाया refers to hiding the diff itself rather than safely removing secrets; retain the parent semantic-clarity follow-up.",
+          "aliases": [
+            "HI-1"
+          ],
+          "disposition": "Both parent IDs describe one defect; both original deferred dispositions retained, counted once in this fresh receipt.",
+          "retained_original_disposition": "Both parent IDs describe one defect; both original deferred dispositions retained, counted once in this fresh receipt.",
+          "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment."
+        },
+        {
+          "id": "CONV-HI-FIT-1",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.retry",
+          "current": "फिर से कोशिश करें",
+          "proposed": "फिर कोशिश करें",
+          "reason": "The short retry control expands from 5 English code points to 17 Devanagari code points; this is a fit risk requiring real font/layout measurement, not proof of overflow.",
+          "disposition": "Rendered check required; code points are not Devanagari cell/pixel widths",
+          "retained_original_disposition": "Rendered check required; code points are not Devanagari cell/pixel widths",
+          "supplemental_evidence_disposition": "Bounded captured fit evidence now available; no obvious cutoff in viewed assigned-locale sample. Historical MINOR/NIT ID/severity retained; no new remediation cycle; no universal width/geometry claim."
+        }
+      ],
+      "limitations": {
+        "new_semantic_audit": "None: retained original49 source/target/context key readings per locale and490 mechanical/provenance checks per locale; zero new catalogue semantic review in this supplement.",
+        "personal_viewing": "Exactly15 listed images personally opened:3 assigned-locale contacts,6 actual focused frames,2 French notices,Hindi error/retry,pseudo contact and2 pseudo focused. Contact thumbnails are overview aids. Remaining full-size key visibility relies on accepted hash-bound readback, not personal full-size inspection.",
+        "fit": "Targeted samples show no obvious text cutoff. Declared360px fixture width is not independently measured DOM geometry. No all-width/all-theme/490-key pixel,font-fallback,native/full-app certification.",
+        "functional": "UNPROVEN here: all23 interactions,Back/Retry/view/First/Previous/Last action outcomes and comprehensive Next navigation. Stored split-next body/focus is not a full navigation suite. No exact prior locale-specific outcome/count-variant proof is promoted.",
+        "counts": "Focused view sample598 and aggregate clipped sample1 only. Other plural counts,millions,negative values,full category matrices are NOT newly validated by images. Retain original non-gating language/count follow-ups.",
+        "pseudo": "Synthetic expanded English registered under en: accepted record15 originals+2focused, not production pseudo,en-XA/qps,RTL pseudo or shipped/native mode. Personally viewed pseudo contact+2focused.",
+        "rtl": "Assigned es/fr/hi are LTR. No global/Urdu RTL certification; deferred Urdu code-bidi MINOR user disposition outside this lane.",
+        "stored_AX": "Stored nav text/title read for assigned locales. Transport details URL is stale ru for selected split-next records; locale association rests on native nav text,title,bound catalogues and accepted capture mapping,not that stale URL. No new AX/screen-reader capture.",
+        "authority": "Remote design links are user-supplied citations,not independently read bodies. Binding authority is direct user disposition plus independently read accepted evidence.",
+        "release": "One primary auditor session only. Separate second independent lane remains separate. Machine-valid scoped receipt is not global release/native/interaction approval."
+      },
+      "canonical_record": "i18n/audits/evidence/hi/ui.chat.canonical/5f8e54e78de8-hi-final-evidence-20261112/record.json",
+      "canonical_receipt": "i18n/receipts/5f8e54e78de8-hi-final-evidence-20261112.json",
+      "proposed_note": "PR1829 supplemental: retained 23-key copy + captured-element evidence; mapped 467 parent keys. See record/companions; no fresh 490-key, functional, measured-fit, native or shipped-pseudo claim.",
+      "proposed_note_length": 193,
+      "machine_preconditions_pass": true,
+      "author_disposition": "See immutable auditor record; coordinator does not author or alter result"
+    },
+    {
+      "session": "6dfaec49abf0",
+      "locale": "hi",
+      "receipt": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-final-policy-evidence-20261112-receipt.json",
+      "record": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-final-policy-evidence-20261112-supplement.json",
+      "companions": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-final-policy-evidence-20261112-supplement.json",
+          "sha256": "fca07367eb4b13287e4a8db30a4bf7038681d5c96b91ec329ae071b2be955251",
+          "bytes": 47512
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-final-policy-evidence-20261112-retention-companion.json",
+          "sha256": "ba520402bca53480146c1c0bf0cee565fb570f528978c7619656e270fbe834a4",
+          "bytes": 20233
+        }
+      ],
+      "record_sha256": "fca07367eb4b13287e4a8db30a4bf7038681d5c96b91ec329ae071b2be955251",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "6dfaec49abf0-hi-final-policy-evidence-20261112",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 0
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "8792c9a8f9df03f7c586d45e3f3b6f89b25ec6097a9aab1e310bb4e210677393",
+        "receipt_sha256": "5e305a30e908346adc22a8e7e3bbf398ffdcee305774e6e0e13e71d70d44618f"
+      },
+      "context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+      "authoritative_scope": {
+        "pr_keys": [
+          "ui.chat.canonical.tool_row.diff.full.back",
+          "ui.chat.canonical.tool_row.diff.full.clipped",
+          "ui.chat.canonical.tool_row.diff.full.clipped_row",
+          "ui.chat.canonical.tool_row.diff.full.continued",
+          "ui.chat.canonical.tool_row.diff.full.continues",
+          "ui.chat.canonical.tool_row.diff.full.empty",
+          "ui.chat.canonical.tool_row.diff.full.error",
+          "ui.chat.canonical.tool_row.diff.full.evicted",
+          "ui.chat.canonical.tool_row.diff.full.first",
+          "ui.chat.canonical.tool_row.diff.full.inline",
+          "ui.chat.canonical.tool_row.diff.full.last",
+          "ui.chat.canonical.tool_row.diff.full.loading",
+          "ui.chat.canonical.tool_row.diff.full.nav",
+          "ui.chat.canonical.tool_row.diff.full.next",
+          "ui.chat.canonical.tool_row.diff.full.not_found",
+          "ui.chat.canonical.tool_row.diff.full.not_recorded",
+          "ui.chat.canonical.tool_row.diff.full.oversized",
+          "ui.chat.canonical.tool_row.diff.full.prev",
+          "ui.chat.canonical.tool_row.diff.full.range",
+          "ui.chat.canonical.tool_row.diff.full.retry",
+          "ui.chat.canonical.tool_row.diff.full.unavailable",
+          "ui.chat.canonical.tool_row.diff.full.view",
+          "ui.chat.canonical.tool_row.diff.full.withheld"
+        ],
+        "key_count": 23,
+        "fr_two_key_delta": null,
+        "previous_semantic_read_count": 32,
+        "new_semantic_read_count": 0,
+        "current_namespace_key_count": 490,
+        "previous_mechanical_key_count": 490
+      },
+      "scope_statement": "Retained 23-key PR semantic audit, French 2-key approved delta as applicable, exact 467-key incoming-main ancestry and accepted captured visual/AX evidence; no fresh 490-key semantics or global release approval.",
+      "findings": [
+        {
+          "id": "I-HI-1",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+          "current": "पूरा diff रोका गया — इसे सुरक्षित रूप से छिपाया नहीं जा सका",
+          "proposed": "पूरा diff रोका गया — इसकी संवेदनशील जानकारी सुरक्षित रूप से हटाई नहीं जा सकी",
+          "reason": "\"इसे सुरक्षित रूप से छिपाया नहीं जा सका\" says the diff itself could not be hidden, which contradicts \"withheld\" and drops the secrets meaning (context note: redaction = removing secrets).",
+          "disposition": "deferred — non-gating; I-HI-1 and HI-1 are two parent IDs for the same unchanged defect, counted once",
+          "origin_receipt": "i18n/receipts/567a24a88e45-chat-canonical-hi-r2.json",
+          "origin_receipt_sha256": "0d68dfc22cedd9e91fc0175b27f292ce96cde76372d479ae43391598d5afd74b",
+          "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+          "inherited": true,
+          "also_recorded_as": [
+            "HI-1"
+          ]
+        }
+      ],
+      "limitations": {
+        "fresh_catalogue_key_readings": 0,
+        "fresh_490_key_audit": false,
+        "original_side_by_side_key_readings": "es 31; fr 31; hi 32. Supplemental work reads evidence and verifies retained 23-key value identities; it does not add fresh semantic key readings.",
+        "visible_evidence": "22 visible elements plus .nav accessible-name evidence for 23 keys per assigned actual locale. Full mapping is accepted evidence readback plus own contact-sheet and six focused-frame observations.",
+        "native": "UNPROVEN: no native/full-app integrated execution or screen-reader speech observed by this auditor.",
+        "geometry": "UNPROVEN: no measured DOM geometry, scrollWidth/clientWidth, pixel-coordinate overflow measurement, font-fallback proof, other-theme/width matrix. 360px is a declared fixture setting, not my measured box.",
+        "functional_outcomes": "UNPROVEN in this disposition: no all-23-interactions pass; First/Last/Previous/Back/Retry/offer activation outcomes are not certified. Accepted split-next record shows a next-state/body/focus change only, not a complete functional suite. No exact historical interaction proof plus render-path compatibility is being claimed.",
+        "count_variants": "Only captured offer count 598 and clipped aggregate count 1 personally observed; no all-count/plural-variant runtime pass claimed. Prior structural ICU checks remain structural evidence only.",
+        "pseudo": "Relied on accepted readback for 15 original plus 2 focused synthetic expanded-English frames registered as en; not personally viewed in this supplement, not production pseudo, RTL pseudo, activation, or a whole-namespace pixel review.",
+        "rtl": "Assigned es/fr/hi are LTR. No global RTL approval. User-disposition Urdu code-bidi MINOR is outside these locale receipts and remains deferred in the design thread; no fix round implied.",
+        "release": "No global/native/release/merge/activation approval; only bounded source-convergence and captured-evidence disposition."
+      },
+      "canonical_record": "i18n/audits/evidence/hi/ui.chat.canonical/6dfaec49abf0-hi-final-policy-evidence-20261112/record.json",
+      "canonical_receipt": "i18n/receipts/6dfaec49abf0-hi-final-policy-evidence-20261112.json",
+      "proposed_note": "PR1829 supplemental: retained 23-key copy + captured-element evidence; mapped 467 parent keys. See record/companions; no fresh 490-key, functional, measured-fit, native or shipped-pseudo claim.",
+      "proposed_note_length": 193,
+      "machine_preconditions_pass": true,
+      "author_disposition": "See immutable auditor record; coordinator does not author or alter result"
+    },
+    {
+      "session": "a0245acae0c5",
+      "locale": "ru",
+      "receipt": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-ru-receipt-20261112T234806Z.json",
+      "record": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-ru-record-20261112T234806Z.json",
+      "companions": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-ru-record-20261112T234806Z.json",
+          "sha256": "83829a305cac008499ca389ac0d972cb3158186ebeee735efc8e1e45a46b021d",
+          "bytes": 46303
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-artifacts-20261112T234806Z.json",
+          "sha256": "b44e242108588557721aad0d2d9a6487155b76f989b41042a1926d0b6ecdf0b9",
+          "bytes": 7510
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-receipt-derivation-20261112T234806Z.json",
+          "sha256": "82fe722100e5e80ec8f555708e94405a690fcdbee0a72ba1cc12b1bc0d190aba",
+          "bytes": 4832
+        }
+      ],
+      "record_sha256": "83829a305cac008499ca389ac0d972cb3158186ebeee735efc8e1e45a46b021d",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "a0245acae0c5-1829-final-ru-20261112t234806z-issued",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 1
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "325fe1a5b211db3408ee9786a1a7e6ab724d79315176019b6b55291b0e8ab71e",
+        "receipt_sha256": "ffe4cdaada97aa732cac6a16168b7bc9cc2cba480efe1f4532bba5c1734939b9"
+      },
+      "context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+      "authoritative_scope": "PR1829 accepted scoped convergence: retained23 full-diff source/target/context keys and captured22-visible+nav-AX evidence; exact467 incoming-main members inherited by raw-byte ancestry; retained parent findings. No fresh490 semantic, native/full-app, all-actions or global RTL certification.",
+      "scope_statement": null,
+      "findings": [
+        {
+          "ids": [
+            "I-RU-1",
+            "RU-1"
+          ],
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.back",
+          "path": "src/i18n/catalogues/ru/ui.chat.canonical.json",
+          "line": 247,
+          "current": "Назад к превью",
+          "proposed": "Назад к предпросмотру",
+          "reason": "«превью» drifts from «предпросмотр», independently observed in supplement.preview_unavailable, supplement.withheld.reason_too_large and other Russian namespaces; both name the same preview.",
+          "disposition": "Retained, deferred, non-gating in parent; unchanged and still applicable in this source-only review.",
+          "introduced_by_convergence": false
+        },
+        {
+          "ids": [
+            "I-RU-2"
+          ],
+          "severity": "NIT",
+          "key": "ui.chat.canonical.tool_row.diff.full.prev",
+          "path": "src/i18n/catalogues/ru/ui.chat.canonical.json",
+          "line": 264,
+          "current": "Назад",
+          "proposed": "Предыдущая",
+          "reason": "The pager places «Назад» beside «Назад к превью» for different actions; «Предыдущая» distinguishes previous-page navigation (with a coordinated «Следующая» follow-up for Next).",
+          "disposition": "Retained, deferred, non-gating in parent; unchanged and still applicable in this source-only review.",
+          "introduced_by_convergence": false
+        }
+      ],
+      "limitations": {
+        "scope": "No new490-key or whole-locale semantic audit. This record is an independent supplement to this same auditor session’s original convergence review and accepted exact23-key evidence readback.",
+        "interaction_outcomes": "First/Last/Previous/Back/Retry completed outcomes remain UNPROVEN in this disposition. split-next is observed only as the recorded resulting state; no all23-interactions-PASS claim. No retained historical functional test is promoted into a new runtime claim.",
+        "count_variants": "Captured offer count598 and clipped aggregate count1; not all plural/count variants rendered. Earlier mechanical source/target ICU inspection and valid actual-locale CLDR findings are retained, not confused with all-branch rendered evidence.",
+        "geometry_fonts": "Selected/declared360px fixture width; no measured DOM geometry, extreme-width matrix or font-fallback measurement.",
+        "runtime": "No new browser/native/app/build/install/test. Integrated full-app/native RTL behavior, global RTL, eligibility/activation and release remain unobserved or outside scope.",
+        "pseudo": "15 original +2 focused synthetic pseudo frames derived from expanded English registered as en. Not shipped production pseudo support and not RTL pseudo.",
+        "images": "Personally viewed contacts, targeted Urdu/code/continuation originals/crops and all16 focused originals in the accepted prior readback under this same independent session. This resumed disposition reread/hash-checked that record and primary artifacts; it did not recapture or invent new pixel observations.",
+        "historical_record": "All old withholds, changes_requested source records, original receipts and clarification bytes stay historical and unchanged. This new evidence/scope-specific disposition is not a retroactive flip.",
+        "independence": "Same actual auditor session/model as original a024 review; unique per-locale receipt instances are artifact identifiers, NOT new independent auditors. Do not count these as the second high-visibility independent audit."
+      },
+      "canonical_record": "i18n/audits/evidence/ru/ui.chat.canonical/a0245acae0c5-1829-final-ru-20261112t234806z-issued/record.json",
+      "canonical_receipt": "i18n/receipts/a0245acae0c5-1829-final-ru-20261112t234806z-issued.json",
+      "proposed_note": "PR1829 supplemental: retained 23-key copy + captured-element evidence; mapped 467 parent keys. See record/companions; no fresh 490-key, functional, measured-fit, native or shipped-pseudo claim.",
+      "proposed_note_length": 193,
+      "machine_preconditions_pass": true,
+      "author_disposition": "See immutable auditor record; coordinator does not author or alter result"
+    },
+    {
+      "session": "0e471bff3c0f",
+      "locale": "ru",
+      "receipt": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-1829-final-evidence-ru.json",
+      "record": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-1829-final-evidence-ru.json",
+      "companions": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-1829-final-evidence-ru.json",
+          "sha256": "ab27262aab91ede71d9564ab1e2e7bfeac3394a01e3810f73abbbdfd0b3fce5f",
+          "bytes": 83684
+        }
+      ],
+      "record_sha256": "ab27262aab91ede71d9564ab1e2e7bfeac3394a01e3810f73abbbdfd0b3fce5f",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "0e471bff3c0f-1829-final-evidence-ru",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 1
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "325fe1a5b211db3408ee9786a1a7e6ab724d79315176019b6b55291b0e8ab71e",
+        "receipt_sha256": "ab27262aab91ede71d9564ab1e2e7bfeac3394a01e3810f73abbbdfd0b3fce5f"
+      },
+      "context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+      "authoritative_scope": "NEW evidence-disposition delta only: retained 23 PR keys plus captured-element review; exact 467 incoming-main ancestry is retained from my earlier independent byte proof and mapped parent audits. No new 490-key semantics audit. 22 visible elements + nav AX per assigned locale; accepted captured/synthetic pseudo scope only, not all functional variants/native/global release.",
+      "scope_statement": null,
+      "findings": [
+        {
+          "id": "CV2-RU-1",
+          "parent_ids": [
+            "I-RU-1",
+            "RU-1"
+          ],
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.back",
+          "current": "Назад к превью",
+          "proposed": "Назад к предпросмотру",
+          "reason": "The short preview is called предпросмотр elsewhere in ru catalogues, whereas this retained label uses превью for the same UI role.",
+          "disposition": "retained parent non-gating follow-up; not fixed by convergence",
+          "origin": "PR-parent current receipts 567a24a88e45-chat-canonical-ru-r2 and c7b72ef216da-ru-chat-canonical-r2",
+          "catalogue_path": "src/i18n/catalogues/ru/ui.chat.canonical.json",
+          "line": 247
+        },
+        {
+          "id": "CV2-RU-2",
+          "parent_ids": [
+            "I-RU-2"
+          ],
+          "severity": "NIT",
+          "key": "ui.chat.canonical.tool_row.diff.full.prev",
+          "current": "Назад",
+          "proposed": "Предыдущая",
+          "reason": "The pager shows Назад beside Назад к превью, so a page-specific label distinguishes previous-page navigation from returning to the preview.",
+          "disposition": "retained parent non-gating follow-up; parent also suggests Следующая for next if adopting page adjectives",
+          "origin": "PR-parent current receipt 567a24a88e45-chat-canonical-ru-r2",
+          "catalogue_path": "src/i18n/catalogues/ru/ui.chat.canonical.json",
+          "line": 264
+        }
+      ],
+      "limitations": [
+        "No new capture/browser/native/runtime/build/install/test operations or source/index/ledger writes.",
+        "No new 490-key semantics or human-native-speaker approval.",
+        "No measured DOM geometry/font-fallback/global RTL/native certification.",
+        "No completed action matrix or all count variants claimed.",
+        "This is bounded convergence/captured-element approval, not blanket product release or closure of deeper historical findings."
+      ],
+      "canonical_record": "i18n/audits/evidence/ru/ui.chat.canonical/0e471bff3c0f-1829-final-evidence-ru/record.json",
+      "canonical_receipt": "i18n/receipts/0e471bff3c0f-1829-final-evidence-ru.json",
+      "proposed_note": "PR1829 supplemental: retained 23-key copy + captured-element evidence; mapped 467 parent keys. See record/companions; no fresh 490-key, functional, measured-fit, native or shipped-pseudo claim.",
+      "proposed_note_length": 193,
+      "machine_preconditions_pass": true,
+      "author_disposition": "See immutable auditor record; coordinator does not author or alter result"
+    },
+    {
+      "session": "a0245acae0c5",
+      "locale": "ur",
+      "receipt": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-ur-receipt-20261112T234806Z.json",
+      "record": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-ur-record-20261112T234806Z.json",
+      "companions": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-ur-record-20261112T234806Z.json",
+          "sha256": "676a55b06e713435524a3bf852156e1b946b26e9f815045c96f245ef98af6764",
+          "bytes": 50597
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-artifacts-20261112T234806Z.json",
+          "sha256": "b44e242108588557721aad0d2d9a6487155b76f989b41042a1926d0b6ecdf0b9",
+          "bytes": 7510
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-receipt-derivation-20261112T234806Z.json",
+          "sha256": "82fe722100e5e80ec8f555708e94405a690fcdbee0a72ba1cc12b1bc0d190aba",
+          "bytes": 4832
+        }
+      ],
+      "record_sha256": "676a55b06e713435524a3bf852156e1b946b26e9f815045c96f245ef98af6764",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "a0245acae0c5-1829-final-ur-20261112t234806z-issued",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 2,
+          "nit": 1
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "06d76892a9c2a92cc5e2574a4ad71879d1c9a1a761e6dce5f9f75572abfc18b2",
+        "receipt_sha256": "90dc7d28af80385f6e6b7ebf05c6c4fbefb49fe126683d36fe6104a1379cc33e"
+      },
+      "context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+      "authoritative_scope": "PR1829 accepted scoped convergence: retained23 full-diff source/target/context keys and captured22-visible+nav-AX evidence; exact467 incoming-main members inherited by raw-byte ancestry; retained parent findings. No fresh490 semantic, native/full-app, all-actions or global RTL certification.",
+      "scope_statement": null,
+      "findings": [
+        {
+          "ids": [
+            "I-UR-1",
+            "UR-1"
+          ],
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+          "path": "src/i18n/catalogues/ur/ui.chat.canonical.json",
+          "line": 269,
+          "current": "مکمل diff روک لیا گیا — اسے محفوظ طریقے سے چھپایا نہیں جا سکا",
+          "proposed": "مکمل diff روک لیا گیا — اس کی حساس معلومات محفوظ طریقے سے ہٹائی نہیں جا سکیں",
+          "reason": "The current pronoun says the diff could not be hidden, whereas the source/context mean its sensitive information could not safely be removed.",
+          "disposition": "Retained, deferred, non-gating in parent; unchanged and still applicable in this source-only review.",
+          "introduced_by_convergence": false
+        },
+        {
+          "ids": [
+            "NIT-1"
+          ],
+          "severity": "NIT",
+          "key": "ui.chat.canonical.sound.cost.estimated_zero",
+          "path": "src/i18n/catalogues/ur/ui.chat.canonical.json",
+          "line": 488,
+          "current": "تخمینہ شدہ لاگت $0؛ حتمی چارج کی تصدیق نہیں ہوئی۔",
+          "proposed": "تخمینہ شدہ لاگت $0؛ حتمی چارج کی تصدیق نہیں ہوئی۔",
+          "reason": "Retain the parent’s rendered-check concern for the Latin currency run $0: bidi.ts only isolates a sigil opening a Latin letter, but no Chromium/Electron observation here establishes that $0 actually paints incorrectly.",
+          "disposition": "Retained informational NIT, not a reproduced rendering defect; no copy change or manual bidi controls; request an RTL capture.",
+          "introduced_by_convergence": false
+        },
+        {
+          "id": "A024-UR-BIDI-1",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.continued",
+          "related_keys": [
+            "ui.chat.canonical.tool_row.diff.full.continues",
+            "ui.chat.canonical.tool_row.diff.full.range"
+          ],
+          "category": "rendered code-body bidi / deferred design issue, not a translation-wording defect",
+          "current": "(پچھلے صفحے سے جاری)",
+          "current_code_surface": "Approved Urdu page/split fixture paints some + and - markers on the physical right and reorders mixed Urdu filename/Latin code punctuation. Plain block spans inherit RTL without a separate code direction boundary.",
+          "proposed": "(پچھلے صفحے سے جاری)",
+          "proposed_action": "No catalogue change. Preserve logical text and no manual bidi controls; handle code-body direction/isolation in the deferred design thread if pursued. Verify integrated direction before asserting a native/full-app regression.",
+          "reason": "Personally viewed Urdu fixture pixels and immediate component ancestry support inherited-direction weakness, but do not establish a full-app regression; user final disposition explicitly accepts it as deferred MINOR. Natural RTL range 198–1 alone is not a translation defect.",
+          "disposition": "Deferred MINOR under direct-user final policy disposition; design thread citations supplied above, bodies not fetched; no new minor-fix round.",
+          "origin": "This auditor’s accepted bounded evidence readback plus direct-user disposition; A024-local ID, not an invented remote design finding ID",
+          "introduced_by_convergence": "Not established; no attribution to new catalogue wording",
+          "evidence": [
+            {
+              "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json",
+              "sha256": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30",
+              "section": "urdu_direction"
+            },
+            {
+              "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-next-360.png",
+              "sha256": "879181543e45653256d653a91d060b1c4938d3f675cf57d97874868f3f0d32a2"
+            }
+          ]
+        }
+      ],
+      "limitations": {
+        "scope": "No new490-key or whole-locale semantic audit. This record is an independent supplement to this same auditor session’s original convergence review and accepted exact23-key evidence readback.",
+        "interaction_outcomes": "First/Last/Previous/Back/Retry completed outcomes remain UNPROVEN in this disposition. split-next is observed only as the recorded resulting state; no all23-interactions-PASS claim. No retained historical functional test is promoted into a new runtime claim.",
+        "count_variants": "Captured offer count598 and clipped aggregate count1; not all plural/count variants rendered. Earlier mechanical source/target ICU inspection and valid actual-locale CLDR findings are retained, not confused with all-branch rendered evidence.",
+        "geometry_fonts": "Selected/declared360px fixture width; no measured DOM geometry, extreme-width matrix or font-fallback measurement.",
+        "runtime": "No new browser/native/app/build/install/test. Integrated full-app/native RTL behavior, global RTL, eligibility/activation and release remain unobserved or outside scope.",
+        "pseudo": "15 original +2 focused synthetic pseudo frames derived from expanded English registered as en. Not shipped production pseudo support and not RTL pseudo.",
+        "images": "Personally viewed contacts, targeted Urdu/code/continuation originals/crops and all16 focused originals in the accepted prior readback under this same independent session. This resumed disposition reread/hash-checked that record and primary artifacts; it did not recapture or invent new pixel observations.",
+        "historical_record": "All old withholds, changes_requested source records, original receipts and clarification bytes stay historical and unchanged. This new evidence/scope-specific disposition is not a retroactive flip.",
+        "independence": "Same actual auditor session/model as original a024 review; unique per-locale receipt instances are artifact identifiers, NOT new independent auditors. Do not count these as the second high-visibility independent audit."
+      },
+      "canonical_record": "i18n/audits/evidence/ur/ui.chat.canonical/a0245acae0c5-1829-final-ur-20261112t234806z-issued/record.json",
+      "canonical_receipt": "i18n/receipts/a0245acae0c5-1829-final-ur-20261112t234806z-issued.json",
+      "proposed_note": "PR1829 supplemental: retained 23-key copy + captured-element evidence; mapped 467 parent keys. See record/companions; no fresh 490-key, functional, measured-fit, native or shipped-pseudo claim.",
+      "proposed_note_length": 193,
+      "machine_preconditions_pass": true,
+      "author_disposition": "See immutable auditor record; coordinator does not author or alter result"
+    },
+    {
+      "session": "0e471bff3c0f",
+      "locale": "ur",
+      "receipt": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-1829-final-evidence-ur.json",
+      "record": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-1829-final-evidence-ur.json",
+      "companions": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-1829-final-evidence-ur.json",
+          "sha256": "b0d3da25151c5c82878072195d10cea1f83b6d883c4b73720e2fedde9c2e2a4d",
+          "bytes": 90956
+        }
+      ],
+      "record_sha256": "b0d3da25151c5c82878072195d10cea1f83b6d883c4b73720e2fedde9c2e2a4d",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "0e471bff3c0f-1829-final-evidence-ur",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 2,
+          "nit": 1
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "06d76892a9c2a92cc5e2574a4ad71879d1c9a1a761e6dce5f9f75572abfc18b2",
+        "receipt_sha256": "b0d3da25151c5c82878072195d10cea1f83b6d883c4b73720e2fedde9c2e2a4d"
+      },
+      "context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+      "authoritative_scope": "NEW evidence-disposition delta only: retained 23 PR keys plus captured-element review; exact 467 incoming-main ancestry is retained from my earlier independent byte proof and mapped parent audits. No new 490-key semantics audit. 22 visible elements + nav AX per assigned locale; accepted captured/synthetic pseudo scope only, not all functional variants/native/global release.",
+      "scope_statement": null,
+      "findings": [
+        {
+          "id": "CV2-UR-1",
+          "parent_ids": [
+            "I-UR-1",
+            "UR-1"
+          ],
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+          "current": "مکمل diff روک لیا گیا — اسے محفوظ طریقے سے چھپایا نہیں جا سکا",
+          "proposed": "مکمل diff روک لیا گیا — اس کی حساس معلومات محفوظ طریقے سے ہٹائی نہیں جا سکیں",
+          "reason": "اسے … چھپایا makes the diff itself the thing that could not be hidden, while the context says secrets could not be safely removed from it.",
+          "disposition": "retained parent non-gating follow-up; not fixed by convergence",
+          "origin": "PR-parent current receipts 567a24a88e45-chat-canonical-ur-r2 and c7b72ef216da-ur-chat-canonical-r2",
+          "catalogue_path": "src/i18n/catalogues/ur/ui.chat.canonical.json",
+          "line": 269
+        },
+        {
+          "id": "CV2-UR-2",
+          "parent_ids": [
+            "NIT-1"
+          ],
+          "severity": "NIT",
+          "key": "ui.chat.canonical.sound.cost.estimated_zero",
+          "current": "تخمینہ شدہ لاگت $0؛ حتمی چارج کی تصدیق نہیں ہوئی۔",
+          "proposed": "تخمینہ شدہ لاگت $0؛ حتمی چارج کی تصدیق نہیں ہوئی۔",
+          "reason": "Parent retains an unresolved rendered-direction check of the Latin $0 run; current bidi.ts still only isolates sigils before Latin words, and this audit has no painted evidence to close that observation.",
+          "disposition": "retained rendered-fit follow-up, no catalogue change proposed; do not reorder $0 or insert manual bidi controls",
+          "origin": "incoming current receipt 1d764576d0aa-s16f-au3-ur; parent itself classifies this as non-gating NIT and records divergent FriBidi/UAX interpretations",
+          "catalogue_path": "src/i18n/catalogues/ur/ui.chat.canonical.json",
+          "line": 488
+        },
+        {
+          "id": "D11",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full",
+          "key_kind": "message-family surface identifier; not a catalogue key or translation defect",
+          "surface": "DiffHistoryPager rendered code/annotation body",
+          "current": "Indirect actual-Urdu fixture shows trailing/right +/- markers and reordered mixed code fragments. Integrated native/full-app outcome remains unobserved.",
+          "proposed": "Deferred design follow-up: an appropriate LTR/isolation region for code tokens while Urdu annotations retain locale direction. No catalogue edit or manual bidi controls.",
+          "reason": "Personally viewed focused Urdu captures and page/split-next crops show code-order weakness; accepted readback supplies inherited-direction source corroboration, not proof of an integrated native regression.",
+          "disposition": "User-authorized deferred design-thread MINOR (D11), non-gating for this bounded convergence; NOT a new minor fix round.",
+          "authority_citations": [
+            {
+              "url": "https://github.com/damianvtran/local-operator-ui/pull/1829#issuecomment-6839007319",
+              "remote_comment_read": false,
+              "authority": "user-supplied citation only"
+            },
+            {
+              "url": "https://github.com/damianvtran/local-operator-ui/pull/1829#issuecomment-6839204455",
+              "remote_comment_read": false,
+              "authority": "user-supplied citation only"
+            }
+          ],
+          "range_limit": "Physical 198–1 alone is not classified as a natural-RTL translation defect."
+        }
+      ],
+      "limitations": [
+        "No new capture/browser/native/runtime/build/install/test operations or source/index/ledger writes.",
+        "No new 490-key semantics or human-native-speaker approval.",
+        "No measured DOM geometry/font-fallback/global RTL/native certification.",
+        "No completed action matrix or all count variants claimed.",
+        "This is bounded convergence/captured-element approval, not blanket product release or closure of deeper historical findings."
+      ],
+      "canonical_record": "i18n/audits/evidence/ur/ui.chat.canonical/0e471bff3c0f-1829-final-evidence-ur/record.json",
+      "canonical_receipt": "i18n/receipts/0e471bff3c0f-1829-final-evidence-ur.json",
+      "proposed_note": "PR1829 supplemental: retained 23-key copy + captured-element evidence; mapped 467 parent keys. See record/companions; no fresh 490-key, functional, measured-fit, native or shipped-pseudo claim.",
+      "proposed_note_length": 193,
+      "machine_preconditions_pass": true,
+      "author_disposition": "See immutable auditor record; coordinator does not author or alter result"
+    },
+    {
+      "session": "a0245acae0c5",
+      "locale": "vi",
+      "receipt": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-vi-receipt-20261112T234806Z.json",
+      "record": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-vi-record-20261112T234806Z.json",
+      "companions": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-vi-record-20261112T234806Z.json",
+          "sha256": "9272dc5a132e4e7be7c5956d08cc26193f5dbb8b9c2a980c8cdf9a61edb02000",
+          "bytes": 43723
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-artifacts-20261112T234806Z.json",
+          "sha256": "b44e242108588557721aad0d2d9a6487155b76f989b41042a1926d0b6ecdf0b9",
+          "bytes": 7510
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-receipt-derivation-20261112T234806Z.json",
+          "sha256": "82fe722100e5e80ec8f555708e94405a690fcdbee0a72ba1cc12b1bc0d190aba",
+          "bytes": 4832
+        }
+      ],
+      "record_sha256": "9272dc5a132e4e7be7c5956d08cc26193f5dbb8b9c2a980c8cdf9a61edb02000",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "a0245acae0c5-1829-final-vi-20261112t234806z-issued",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0,
+          "nit": 0
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "e5c472aaa257bc7acded037a73c470ed79a1e3cc8dc162d854052b3aa89746fb",
+        "receipt_sha256": "bffc8b06c8c5b7b1eb5c26a4b31e97071b7c574deab6d6368c4c69853bd6e5a1"
+      },
+      "context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+      "authoritative_scope": "PR1829 accepted scoped convergence: retained23 full-diff source/target/context keys and captured22-visible+nav-AX evidence; exact467 incoming-main members inherited by raw-byte ancestry; retained parent findings. No fresh490 semantic, native/full-app, all-actions or global RTL certification.",
+      "scope_statement": null,
+      "findings": [],
+      "limitations": {
+        "scope": "No new490-key or whole-locale semantic audit. This record is an independent supplement to this same auditor session’s original convergence review and accepted exact23-key evidence readback.",
+        "interaction_outcomes": "First/Last/Previous/Back/Retry completed outcomes remain UNPROVEN in this disposition. split-next is observed only as the recorded resulting state; no all23-interactions-PASS claim. No retained historical functional test is promoted into a new runtime claim.",
+        "count_variants": "Captured offer count598 and clipped aggregate count1; not all plural/count variants rendered. Earlier mechanical source/target ICU inspection and valid actual-locale CLDR findings are retained, not confused with all-branch rendered evidence.",
+        "geometry_fonts": "Selected/declared360px fixture width; no measured DOM geometry, extreme-width matrix or font-fallback measurement.",
+        "runtime": "No new browser/native/app/build/install/test. Integrated full-app/native RTL behavior, global RTL, eligibility/activation and release remain unobserved or outside scope.",
+        "pseudo": "15 original +2 focused synthetic pseudo frames derived from expanded English registered as en. Not shipped production pseudo support and not RTL pseudo.",
+        "images": "Personally viewed contacts, targeted Urdu/code/continuation originals/crops and all16 focused originals in the accepted prior readback under this same independent session. This resumed disposition reread/hash-checked that record and primary artifacts; it did not recapture or invent new pixel observations.",
+        "historical_record": "All old withholds, changes_requested source records, original receipts and clarification bytes stay historical and unchanged. This new evidence/scope-specific disposition is not a retroactive flip.",
+        "independence": "Same actual auditor session/model as original a024 review; unique per-locale receipt instances are artifact identifiers, NOT new independent auditors. Do not count these as the second high-visibility independent audit."
+      },
+      "canonical_record": "i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-1829-final-vi-20261112t234806z-issued/record.json",
+      "canonical_receipt": "i18n/receipts/a0245acae0c5-1829-final-vi-20261112t234806z-issued.json",
+      "proposed_note": "PR1829 supplemental: retained 23-key copy + captured-element evidence; mapped 467 parent keys. See record/companions; no fresh 490-key, functional, measured-fit, native or shipped-pseudo claim.",
+      "proposed_note_length": 193,
+      "machine_preconditions_pass": true,
+      "author_disposition": "See immutable auditor record; coordinator does not author or alter result"
+    },
+    {
+      "session": "0e471bff3c0f",
+      "locale": "vi",
+      "receipt": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-1829-final-evidence-vi.json",
+      "record": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-1829-final-evidence-vi.json",
+      "companions": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-1829-final-evidence-vi.json",
+          "sha256": "0eaa29282ea974559c613226a7742b308dc69beafeeef98ff93c83df0e307bc1",
+          "bytes": 84056
+        }
+      ],
+      "record_sha256": "0eaa29282ea974559c613226a7742b308dc69beafeeef98ff93c83df0e307bc1",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "0e471bff3c0f-1829-final-evidence-vi",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0,
+          "nit": 0
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "e5c472aaa257bc7acded037a73c470ed79a1e3cc8dc162d854052b3aa89746fb",
+        "receipt_sha256": "0eaa29282ea974559c613226a7742b308dc69beafeeef98ff93c83df0e307bc1"
+      },
+      "context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+      "authoritative_scope": "NEW evidence-disposition delta only: retained 23 PR keys plus captured-element review; exact 467 incoming-main ancestry is retained from my earlier independent byte proof and mapped parent audits. No new 490-key semantics audit. 22 visible elements + nav AX per assigned locale; accepted captured/synthetic pseudo scope only, not all functional variants/native/global release.",
+      "scope_statement": null,
+      "findings": [],
+      "limitations": [
+        "No new capture/browser/native/runtime/build/install/test operations or source/index/ledger writes.",
+        "No new 490-key semantics or human-native-speaker approval.",
+        "No measured DOM geometry/font-fallback/global RTL/native certification.",
+        "No completed action matrix or all count variants claimed.",
+        "This is bounded convergence/captured-element approval, not blanket product release or closure of deeper historical findings."
+      ],
+      "canonical_record": "i18n/audits/evidence/vi/ui.chat.canonical/0e471bff3c0f-1829-final-evidence-vi/record.json",
+      "canonical_receipt": "i18n/receipts/0e471bff3c0f-1829-final-evidence-vi.json",
+      "proposed_note": "PR1829 supplemental: retained 23-key copy + captured-element evidence; mapped 467 parent keys. See record/companions; no fresh 490-key, functional, measured-fit, native or shipped-pseudo claim.",
+      "proposed_note_length": 193,
+      "machine_preconditions_pass": true,
+      "author_disposition": "See immutable auditor record; coordinator does not author or alter result"
+    },
+    {
+      "session": "a0245acae0c5",
+      "locale": "zh-CN",
+      "receipt": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-zh-CN-receipt-20261112T234806Z.json",
+      "record": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-zh-CN-record-20261112T234806Z.json",
+      "companions": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-zh-CN-record-20261112T234806Z.json",
+          "sha256": "c67e6290cbc3981c2046a90f141095869e177fdb43dd8725ca9aae73a5e41fe6",
+          "bytes": 48356
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-artifacts-20261112T234806Z.json",
+          "sha256": "b44e242108588557721aad0d2d9a6487155b76f989b41042a1926d0b6ecdf0b9",
+          "bytes": 7510
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-receipt-derivation-20261112T234806Z.json",
+          "sha256": "82fe722100e5e80ec8f555708e94405a690fcdbee0a72ba1cc12b1bc0d190aba",
+          "bytes": 4832
+        }
+      ],
+      "record_sha256": "c67e6290cbc3981c2046a90f141095869e177fdb43dd8725ca9aae73a5e41fe6",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "a0245acae0c5-1829-final-zh-cn-20261112t234806z-issued",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 2
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "e6b3846b553cde65b671cec6b9b34a869bd3cffc3f42b9fec981a710501e5e81",
+        "receipt_sha256": "b0fea61e9063e03486d2a8f2babf1379c5819f0e2d8a845194be6b8ccf3a2230"
+      },
+      "context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+      "authoritative_scope": "PR1829 accepted scoped convergence: retained23 full-diff source/target/context keys and captured22-visible+nav-AX evidence; exact467 incoming-main members inherited by raw-byte ancestry; retained parent findings. No fresh490 semantic, native/full-app, all-actions or global RTL certification.",
+      "scope_statement": null,
+      "findings": [
+        {
+          "ids": [
+            "ZH-1"
+          ],
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.loading",
+          "path": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+          "line": 258,
+          "current": "正在加载完整diff…",
+          "proposed": "正在加载完整diff……",
+          "reason": "The current single ellipsis «…» differs from the locale guide’s required Chinese ellipsis «……».",
+          "disposition": "Retained, deferred, non-gating in parent; unchanged and still applicable in this source-only review.",
+          "introduced_by_convergence": false
+        },
+        {
+          "ids": [
+            "N1"
+          ],
+          "severity": "NIT",
+          "key": "ui.chat.canonical.sound.batch.latest_update",
+          "path": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+          "line": 485,
+          "current": "最近更新：{name}（第{item, number, ::group-off}项，共{total, number, ::group-off}项）。",
+          "proposed": "最新动态：{name}（第{item, number, ::group-off}项，共{total, number, ::group-off}项）。",
+          "reason": "The contextual message names the most recently reporting request; «最近更新» can read as a modification-time label rather than the latest activity.",
+          "disposition": "Retained, deferred, non-gating in parent; unchanged and still applicable in this source-only review.",
+          "introduced_by_convergence": false
+        },
+        {
+          "ids": [
+            "N2"
+          ],
+          "severity": "NIT",
+          "key": "ui.chat.canonical.sound.cost.estimated_zero",
+          "path": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+          "line": 488,
+          "current": "估算费用为$0；最终计费尚未确认。",
+          "proposed": "估算费用为$0；最终收费尚未确认。",
+          "reason": "«最终计费» can denote the billing action, whereas the source describes the unconfirmed final charge; «最终收费» keeps that distinction.",
+          "disposition": "Retained, deferred, non-gating in parent; unchanged and still applicable in this source-only review.",
+          "introduced_by_convergence": false
+        }
+      ],
+      "limitations": {
+        "scope": "No new490-key or whole-locale semantic audit. This record is an independent supplement to this same auditor session’s original convergence review and accepted exact23-key evidence readback.",
+        "interaction_outcomes": "First/Last/Previous/Back/Retry completed outcomes remain UNPROVEN in this disposition. split-next is observed only as the recorded resulting state; no all23-interactions-PASS claim. No retained historical functional test is promoted into a new runtime claim.",
+        "count_variants": "Captured offer count598 and clipped aggregate count1; not all plural/count variants rendered. Earlier mechanical source/target ICU inspection and valid actual-locale CLDR findings are retained, not confused with all-branch rendered evidence.",
+        "geometry_fonts": "Selected/declared360px fixture width; no measured DOM geometry, extreme-width matrix or font-fallback measurement.",
+        "runtime": "No new browser/native/app/build/install/test. Integrated full-app/native RTL behavior, global RTL, eligibility/activation and release remain unobserved or outside scope.",
+        "pseudo": "15 original +2 focused synthetic pseudo frames derived from expanded English registered as en. Not shipped production pseudo support and not RTL pseudo.",
+        "images": "Personally viewed contacts, targeted Urdu/code/continuation originals/crops and all16 focused originals in the accepted prior readback under this same independent session. This resumed disposition reread/hash-checked that record and primary artifacts; it did not recapture or invent new pixel observations.",
+        "historical_record": "All old withholds, changes_requested source records, original receipts and clarification bytes stay historical and unchanged. This new evidence/scope-specific disposition is not a retroactive flip.",
+        "independence": "Same actual auditor session/model as original a024 review; unique per-locale receipt instances are artifact identifiers, NOT new independent auditors. Do not count these as the second high-visibility independent audit."
+      },
+      "canonical_record": "i18n/audits/evidence/zh-CN/ui.chat.canonical/a0245acae0c5-1829-final-zh-cn-20261112t234806z-issued/record.json",
+      "canonical_receipt": "i18n/receipts/a0245acae0c5-1829-final-zh-cn-20261112t234806z-issued.json",
+      "proposed_note": "PR1829 supplemental: retained 23-key copy + captured-element evidence; mapped 467 parent keys. See record/companions; no fresh 490-key, functional, measured-fit, native or shipped-pseudo claim.",
+      "proposed_note_length": 193,
+      "machine_preconditions_pass": true,
+      "author_disposition": "See immutable auditor record; coordinator does not author or alter result"
+    },
+    {
+      "session": "0e471bff3c0f",
+      "locale": "zh-CN",
+      "receipt": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-1829-final-evidence-zh-cn.json",
+      "record": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-1829-final-evidence-zh-cn.json",
+      "companions": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-1829-final-evidence-zh-cn.json",
+          "sha256": "a101269b47ccfaf75ca9c0e70e90e7a4113b487758eaebbb11a0041796c6d3b9",
+          "bytes": 86032
+        }
+      ],
+      "record_sha256": "a101269b47ccfaf75ca9c0e70e90e7a4113b487758eaebbb11a0041796c6d3b9",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "0e471bff3c0f-1829-final-evidence-zh-cn",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 2
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "e6b3846b553cde65b671cec6b9b34a869bd3cffc3f42b9fec981a710501e5e81",
+        "receipt_sha256": "a101269b47ccfaf75ca9c0e70e90e7a4113b487758eaebbb11a0041796c6d3b9"
+      },
+      "context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+      "authoritative_scope": "NEW evidence-disposition delta only: retained 23 PR keys plus captured-element review; exact 467 incoming-main ancestry is retained from my earlier independent byte proof and mapped parent audits. No new 490-key semantics audit. 22 visible elements + nav AX per assigned locale; accepted captured/synthetic pseudo scope only, not all functional variants/native/global release.",
+      "scope_statement": null,
+      "findings": [
+        {
+          "id": "ZH-1",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.loading",
+          "current": "正在加载完整diff…",
+          "proposed": "正在加载完整diff……",
+          "reason": "Retained parent finding: the single ellipsis differs from the locale guide’s Chinese double-ellipsis convention.",
+          "disposition": "deferred — non-gating minor, no remediation cycle; carried in this NEW record",
+          "origin": {
+            "path": "i18n/receipts/c7b72ef216da-zh-cn-chat-canonical-r2.json",
+            "sha256": "08fc27c49450b779c82e83bc912c7bdb9360cec5b3bb6efd2ca8949eab9df23d"
+          },
+          "prior_omission_disclosure": "My original receipt omitted this existing current-parent MINOR despite its preserved parent evidence. This new record corrects that count; old bytes and old verdict remain unchanged, not retroactively rewritten."
+        },
+        {
+          "id": "CV2-ZH-1",
+          "parent_ids": [
+            "N1"
+          ],
+          "severity": "NIT",
+          "key": "ui.chat.canonical.sound.batch.latest_update",
+          "current": "最近更新：{name}（第{item, number, ::group-off}项，共{total, number, ::group-off}项）。",
+          "proposed": "最新动态：{name}（第{item, number, ::group-off}项，共{total, number, ::group-off}项）。",
+          "reason": "The context names the latest reporting request, while 最近更新 is also the locale’s recently-updated sort/time label; 最新动态 makes the activity role clearer.",
+          "disposition": "retained incoming-parent non-gating follow-up; not fixed by convergence",
+          "origin": "incoming current receipt 2a10c1127838-zhcn-s16f-au3",
+          "catalogue_path": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+          "line": 485
+        },
+        {
+          "id": "CV2-ZH-2",
+          "parent_ids": [
+            "N2"
+          ],
+          "severity": "NIT",
+          "key": "ui.chat.canonical.sound.cost.estimated_zero",
+          "current": "估算费用为$0；最终计费尚未确认。",
+          "proposed": "估算费用为$0；最终收费尚未确认。",
+          "reason": "最终计费 emphasizes the billing action, while the source distinguishes an estimated amount from the final charge; 收费 also agrees with sibling 未收费。",
+          "disposition": "retained incoming-parent non-gating follow-up; not fixed by convergence",
+          "origin": "incoming current receipt 2a10c1127838-zhcn-s16f-au3",
+          "catalogue_path": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+          "line": 488
+        }
+      ],
+      "limitations": [
+        "No new capture/browser/native/runtime/build/install/test operations or source/index/ledger writes.",
+        "No new 490-key semantics or human-native-speaker approval.",
+        "No measured DOM geometry/font-fallback/global RTL/native certification.",
+        "No completed action matrix or all count variants claimed.",
+        "This is bounded convergence/captured-element approval, not blanket product release or closure of deeper historical findings."
+      ],
+      "canonical_record": "i18n/audits/evidence/zh-CN/ui.chat.canonical/0e471bff3c0f-1829-final-evidence-zh-cn/record.json",
+      "canonical_receipt": "i18n/receipts/0e471bff3c0f-1829-final-evidence-zh-cn.json",
+      "proposed_note": "PR1829 supplemental: retained 23-key copy + captured-element evidence; mapped 467 parent keys. See record/companions; no fresh 490-key, functional, measured-fit, native or shipped-pseudo claim.",
+      "proposed_note_length": 193,
+      "machine_preconditions_pass": true,
+      "author_disposition": "See immutable auditor record; coordinator does not author or alter result"
+    }
+  ],
+  "existing_rows": [
+    {
+      "locale": "es",
+      "source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+      "target_sha256": "547b85e9670eec79f82211f50325092bf75c13eda4504995cce1a1d5ab25e272",
+      "status": "audited",
+      "existing_receipts_verified": true,
+      "stale": true,
+      "writer_would_archive_without_overwriting": true
+    },
+    {
+      "locale": "fr",
+      "source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+      "target_sha256": "99f7c0b27d6c75b16935cc58874477cab24da430284576defaacf19e209c88f6",
+      "status": "audited",
+      "existing_receipts_verified": true,
+      "stale": true,
+      "writer_would_archive_without_overwriting": true
+    },
+    {
+      "locale": "hi",
+      "source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+      "target_sha256": "5bad55ca446e6e2e0bc853d503d94280f444cd009402431c65e8ce997528689b",
+      "status": "audited",
+      "existing_receipts_verified": true,
+      "stale": true,
+      "writer_would_archive_without_overwriting": true
+    },
+    {
+      "locale": "ru",
+      "source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+      "target_sha256": "fddef0897968450fb0157457dda37f7472fa467b4df1aea68af16bbe260f10f1",
+      "status": "audited",
+      "existing_receipts_verified": true,
+      "stale": true,
+      "writer_would_archive_without_overwriting": true
+    },
+    {
+      "locale": "ur",
+      "source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+      "target_sha256": "fd1116ccb5e847eb7f28c4cf5d1084efad95edf52d638d1a6144e065ce7d98a7",
+      "status": "audited",
+      "existing_receipts_verified": true,
+      "stale": true,
+      "writer_would_archive_without_overwriting": true
+    },
+    {
+      "locale": "vi",
+      "source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+      "target_sha256": "a37a5690412c841379ea44d6d63f4a5314579f4a157ff3c7f67be2ee872fe750",
+      "status": "audited",
+      "existing_receipts_verified": true,
+      "stale": true,
+      "writer_would_archive_without_overwriting": true
+    },
+    {
+      "locale": "zh-CN",
+      "source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+      "target_sha256": "35f8058839549d4a8be28792c279784c75a624b9c076fc98d359bae1fe1db12c",
+      "status": "audited",
+      "existing_receipts_verified": true,
+      "stale": true,
+      "writer_would_archive_without_overwriting": true
+    }
+  ],
+  "proposed_current_sets": {
+    "es": {
+      "original_author_sessions": [
+        "5f8e54e78de8",
+        "6dfaec49abf0"
+      ],
+      "new_instances": [
+        "5f8e54e78de8-es-final-evidence-20261112",
+        "6dfaec49abf0-es-final-policy-evidence-20261112"
+      ],
+      "machine_supported_status": "audited",
+      "scope": "bounded 23-key retained-copy/captured-element disposition plus mapped 467-parent ancestry; not global/native/full490 audit"
+    },
+    "fr": {
+      "original_author_sessions": [
+        "5f8e54e78de8",
+        "6dfaec49abf0"
+      ],
+      "new_instances": [
+        "5f8e54e78de8-fr-final-evidence-20261112",
+        "6dfaec49abf0-fr-final-policy-evidence-20261112"
+      ],
+      "machine_supported_status": "audited",
+      "scope": "bounded 23-key retained-copy/captured-element disposition plus mapped 467-parent ancestry; not global/native/full490 audit"
+    },
+    "hi": {
+      "original_author_sessions": [
+        "5f8e54e78de8",
+        "6dfaec49abf0"
+      ],
+      "new_instances": [
+        "5f8e54e78de8-hi-final-evidence-20261112",
+        "6dfaec49abf0-hi-final-policy-evidence-20261112"
+      ],
+      "machine_supported_status": "audited",
+      "scope": "bounded 23-key retained-copy/captured-element disposition plus mapped 467-parent ancestry; not global/native/full490 audit"
+    },
+    "ru": {
+      "original_author_sessions": [
+        "a0245acae0c5",
+        "0e471bff3c0f"
+      ],
+      "new_instances": [
+        "a0245acae0c5-1829-final-ru-20261112t234806z-issued",
+        "0e471bff3c0f-1829-final-evidence-ru"
+      ],
+      "machine_supported_status": "audited",
+      "scope": "bounded 23-key retained-copy/captured-element disposition plus mapped 467-parent ancestry; not global/native/full490 audit"
+    },
+    "ur": {
+      "original_author_sessions": [
+        "a0245acae0c5",
+        "0e471bff3c0f"
+      ],
+      "new_instances": [
+        "a0245acae0c5-1829-final-ur-20261112t234806z-issued",
+        "0e471bff3c0f-1829-final-evidence-ur"
+      ],
+      "machine_supported_status": "audited",
+      "scope": "bounded 23-key retained-copy/captured-element disposition plus mapped 467-parent ancestry; not global/native/full490 audit"
+    },
+    "vi": {
+      "original_author_sessions": [
+        "a0245acae0c5",
+        "0e471bff3c0f"
+      ],
+      "new_instances": [
+        "a0245acae0c5-1829-final-vi-20261112t234806z-issued",
+        "0e471bff3c0f-1829-final-evidence-vi"
+      ],
+      "machine_supported_status": "audited",
+      "scope": "bounded 23-key retained-copy/captured-element disposition plus mapped 467-parent ancestry; not global/native/full490 audit"
+    },
+    "zh-CN": {
+      "original_author_sessions": [
+        "a0245acae0c5",
+        "0e471bff3c0f"
+      ],
+      "new_instances": [
+        "a0245acae0c5-1829-final-zh-cn-20261112t234806z-issued",
+        "0e471bff3c0f-1829-final-evidence-zh-cn"
+      ],
+      "machine_supported_status": "audited",
+      "scope": "bounded 23-key retained-copy/captured-element disposition plus mapped 467-parent ancestry; not global/native/full490 audit"
+    }
+  },
+  "contract_files": [
+    {
+      "path": "scripts/i18n/ledger-assemble.mjs",
+      "sha256": "63651def0c5be756f61e71e5905bcf090a1c709464292864f1a6429d06e676a5",
+      "same_frozen": true,
+      "same_disk": true
+    },
+    {
+      "path": "scripts/i18n/ledger-rules.mjs",
+      "sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6",
+      "same_frozen": true,
+      "same_disk": true
+    }
+  ],
+  "end_state": {
+    "HEAD": "1bfbe9b42df53a231311ab1731501af2de640810",
+    "MERGE_HEAD": "b0edf02e5d37db5c5527cf66465131a4019fed10",
+    "index_sha256": "f51e7673dab7b96a8376cc2393a7505773827724fa9bbcf31bc2b5d37724020d",
+    "unstaged_tracked": "",
+    "unmerged": ""
+  },
+  "validation_passed": true,
+  "receipt_count": 14,
+  "remaining_application": "Only custody owner may invoke assembler later with exact receipt/derived values and preserved explicit scope; retain canonical record/companions separately. No dry-run exists. No writer invoked here."
+}

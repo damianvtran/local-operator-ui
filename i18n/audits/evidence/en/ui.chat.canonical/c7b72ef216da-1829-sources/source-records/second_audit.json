@@ -1,0 +1,219 @@
+{
+  "kind": "current-head-audit-second",
+  "pr": "https://github.com/damianvtran/local-operator-ui/pull/1829",
+  "date": "2026-11-10",
+  "session": "c7b72ef216da",
+  "auditor": {
+    "agent": "reviewer",
+    "instance": "c7b72ef216da",
+    "model": "anthropic/claude-opus-5-5"
+  },
+  "model_source": "host system prompt 'Model: anthropic/claude-opus-5-5' (no fallback observed)",
+  "independence": {
+    "translators": [
+      "f1932d263d6c",
+      "ebb1d6beb853"
+    ],
+    "first_auditor": "567a24a88e45",
+    "first_auditor_report_read": false
+  },
+  "scope": {
+    "base": "1268e8a5929d9aea7429a1e042be8ba5bae5dc15",
+    "head": "21bb3f5dcb5fdabf77f1415480be310b6454d666",
+    "namespace": "ui.chat.canonical",
+    "new_keys": 23,
+    "keys": [
+      "ui.chat.canonical.tool_row.diff.full.view",
+      "ui.chat.canonical.tool_row.diff.full.back",
+      "ui.chat.canonical.tool_row.diff.full.range",
+      "ui.chat.canonical.tool_row.diff.full.nav",
+      "ui.chat.canonical.tool_row.diff.full.first",
+      "ui.chat.canonical.tool_row.diff.full.prev",
+      "ui.chat.canonical.tool_row.diff.full.next",
+      "ui.chat.canonical.tool_row.diff.full.last",
+      "ui.chat.canonical.tool_row.diff.full.loading",
+      "ui.chat.canonical.tool_row.diff.full.error",
+      "ui.chat.canonical.tool_row.diff.full.retry",
+      "ui.chat.canonical.tool_row.diff.full.empty",
+      "ui.chat.canonical.tool_row.diff.full.oversized",
+      "ui.chat.canonical.tool_row.diff.full.withheld",
+      "ui.chat.canonical.tool_row.diff.full.unavailable",
+      "ui.chat.canonical.tool_row.diff.full.evicted",
+      "ui.chat.canonical.tool_row.diff.full.not_recorded",
+      "ui.chat.canonical.tool_row.diff.full.inline",
+      "ui.chat.canonical.tool_row.diff.full.not_found",
+      "ui.chat.canonical.tool_row.diff.full.clipped",
+      "ui.chat.canonical.tool_row.diff.full.clipped_row",
+      "ui.chat.canonical.tool_row.diff.full.continued",
+      "ui.chat.canonical.tool_row.diff.full.continues"
+    ],
+    "unchanged_proof": "all 8 locale files: 23 keys added, 0 removed, 0 changed vs base; only i18n files touched: ui.chat.canonical(.context).json x en + 7 targets, keys.gen.ts"
+  },
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+      "sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+      "sha256": "04bfe86405155bf8437c4f867eea4dc9bfd4c277d2ae6b0aa7d6a1bf20390087"
+    },
+    "fr": {
+      "path": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+      "sha256": "933bc72d0569b56b203f528cc5549e900d261350b8a1cabfb162869d403d9ba4"
+    },
+    "ru": {
+      "path": "src/i18n/catalogues/ru/ui.chat.canonical.json",
+      "sha256": "ad6c5d631d59a8e73189ddb24943c19871b510d6e7928f3286c35de5057feb97"
+    },
+    "zh-CN": {
+      "path": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+      "sha256": "8db6da0aab5182efae83c3287758ba820dbdea60458d9c34dc384698d912d67b"
+    },
+    "hi": {
+      "path": "src/i18n/catalogues/hi/ui.chat.canonical.json",
+      "sha256": "3bf3915206f534281383edacf7524d11641b7400dbfea3837be8f8ac1a8fb851"
+    },
+    "ur": {
+      "path": "src/i18n/catalogues/ur/ui.chat.canonical.json",
+      "sha256": "447dbfa53dd70eb8148495b2badc03e12ee3fcef935fd98280cd3665f31e655e"
+    },
+    "es": {
+      "path": "src/i18n/catalogues/es/ui.chat.canonical.json",
+      "sha256": "db9923d6038ef32906ab0bcfeff99d358d01ec610d50256749f31b360962b22a"
+    },
+    "vi": {
+      "path": "src/i18n/catalogues/vi/ui.chat.canonical.json",
+      "sha256": "c23bbd6bbaa34f4ae660d502f7c5503d565711d9e6fa4faebe506882296c222b"
+    },
+    "languages_json": {
+      "path": "i18n/languages.json",
+      "sha256": "7fd056b916fc3d56ddf36991a09b29864ea0b0f825d938aead1ed165926f8d63"
+    }
+  },
+  "guides": {
+    "core_revision": "b42471d3935cb7e95d64428af27c32626665f4c0",
+    "glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style-guides/fr.md": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226",
+    "style-guides/ru.md": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5",
+    "style-guides/zh-CN.md": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c",
+    "style-guides/hi.md": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+    "style-guides/ur.md": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60",
+    "style-guides/es.md": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e",
+    "style-guides/vi.md": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888"
+  },
+  "source_findings_en": [
+    {
+      "id": "EN-1",
+      "severity": "minor",
+      "key": "ui.chat.canonical.tool_row.diff.full.not_recorded",
+      "evidence": "English 'wasn't saved' (unavailable) vs 'wasn't recorded' (not_recorded) are near-synonyms; context says not_recorded = change predates full-diff recording. Root of FR-1; not blamed on other locales",
+      "proposed": "Full diffs weren't recorded yet when this change was made"
+    },
+    {
+      "id": "EN-2",
+      "severity": "nit",
+      "keys": [
+        "ui.chat.canonical.tool_row.diff.full.range",
+        "ui.chat.canonical.tool_row.diff.full.view",
+        "ui.chat.canonical.tool_row.diff.full.clipped"
+      ],
+      "evidence": "same unit called 'Rows' in range but 'line(s)' in view/clipped/clipped_row; pageRange counts logical rows (diff-history-model.ts:360-366), so both are correct; es mirrors it (Filas vs líneas)"
+    }
+  ],
+  "code_checks": [
+    "range first/last/total = logical rows via pageRange (diff-history-model.ts:360-366), not fragments",
+    "view count = total rows (diff-history-model.ts:403)",
+    "continued/continues set per fragment from page.offset/nextOffset (diff-history-model.ts:304-312); text of a continuing fragment not trimmed",
+    "clipped notice only when clippedRows non-empty (diff-history.tsx:576); clipped_row per row (568-571)",
+    "7 availability states map to 7 distinct keys (diff-history-model.ts:468-484)",
+    "ICU: placeholders count/first/last/total preserved; plural arms en/es/fr/hi/ur one+other, ru one/few/many/other, vi/zh-CN other; no bidi controls (U+200E/F, 202A-E, 2066-9, 061C) in any of 161 strings; no trailing full stops"
+  ],
+  "per_locale": {
+    "fr": {
+      "path": "/Users/damian/.local-operator/sessions/c7b72ef216da/scratchpad/i18n-audit2/receipt-fr.json",
+      "sha256": "6e521a9d16092557a9d95881d2a34ef9ec34dc0ea6abf08f28cacf7ee7f6e20d",
+      "status": "changes_requested",
+      "counts": {
+        "blocker": 0,
+        "major": 1,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    "ru": {
+      "path": "/Users/damian/.local-operator/sessions/c7b72ef216da/scratchpad/i18n-audit2/receipt-ru.json",
+      "sha256": "95f26af5eee22985c1e2778c756e474eac1a79bf753cc3bf660e9a33a2837b43",
+      "status": "clean-with-findings",
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      }
+    },
+    "zh-CN": {
+      "path": "/Users/damian/.local-operator/sessions/c7b72ef216da/scratchpad/i18n-audit2/receipt-zh-CN.json",
+      "sha256": "29c736a189ec262af4ef2d80a407ec6419ab4672590daa4cacba946eaddd54f6",
+      "status": "clean-with-findings",
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      }
+    },
+    "hi": {
+      "path": "/Users/damian/.local-operator/sessions/c7b72ef216da/scratchpad/i18n-audit2/receipt-hi.json",
+      "sha256": "c793aa853f16936a1b735d546ead0b432ed29e601c7b9b1649b2566d51f576de",
+      "status": "clean-with-findings",
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      }
+    },
+    "ur": {
+      "path": "/Users/damian/.local-operator/sessions/c7b72ef216da/scratchpad/i18n-audit2/receipt-ur.json",
+      "sha256": "5fd7340ee6a193a2d41576b9a0afad0b0c5c44863b2cb1d985aeea4392ed7615",
+      "status": "clean-with-findings",
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      }
+    },
+    "es": {
+      "path": "/Users/damian/.local-operator/sessions/c7b72ef216da/scratchpad/i18n-audit2/receipt-es.json",
+      "sha256": "0bf14ab0e977bd2ae65aed24f5db45c14d0e5e9375b5ba13fdb093e24623ee59",
+      "status": "clean",
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    "vi": {
+      "path": "/Users/damian/.local-operator/sessions/c7b72ef216da/scratchpad/i18n-audit2/receipt-vi.json",
+      "sha256": "13ac5b5a725cf9b504fdac7c7f013468994651709a773890d82a119536924381",
+      "status": "clean",
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    }
+  },
+  "status": "changes_requested",
+  "totals": {
+    "blocker": 0,
+    "major": 1,
+    "minor": 4,
+    "nit": 0
+  },
+  "not_proven": "source-only; no rendering, RTL layout or fit measured"
+}

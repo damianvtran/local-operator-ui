@@ -1,0 +1,19 @@
+{
+ "auditor": "reviewer",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "567a24a88e45-chat-canonical-vi-r2",
+ "auditor_session": "567a24a88e45",
+ "status": "passed",
+ "namespace": "ui.chat.canonical",
+ "locale": "vi",
+ "sha256": {
+  "en": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+  "vi": "c23bbd6bbaa34f4ae660d502f7c5503d565711d9e6fa4faebe506882296c222b"
+ },
+ "context_sha256": "04bfe86405155bf8437c4f867eea4dc9bfd4c277d2ae6b0aa7d6a1bf20390087",
+ "findings": [],
+ "verdict_date": "2026-11-10T23:50:48Z",
+ "serialized_at": "2026-11-11T04:32:28Z",
+ "basis": "r2 verdict; target bytes identical to the audited head 21bb3f5d",
+ "note": "Portable serialization of existing audit record(s); not a new audit and not backdated. Source-only; rendered/RTL fit unproven."
+}

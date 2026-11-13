@@ -1,0 +1,541 @@
+{
+  "kind": "Custody-owner retention/application manifest; not an auditor verdict",
+  "applied_at": "2026-11-13T00:00:13.777569+00:00",
+  "source_allowlist": "i18n/audits/evidence/pr1829-convergence-original-auditors/source-allowlist.json",
+  "source_allowlist_sha256": "e5ccb9d0a0b6283231fe87d73ebbdbe86f126207134795acdfc4534d888cff5e",
+  "source_report": "i18n/audits/evidence/pr1829-convergence-original-auditors/source-report.md",
+  "source_report_sha256": "f0580980d3af0171f7a27aebba8c076ebdd465050e0b4bca050541febb4ab3f4",
+  "frozen_renderer_and_catalogue_tree_before_metadata": "2d89bff82f58b84744ddc469e3532377df26d278",
+  "auditors": [
+    {
+      "locale": "es",
+      "session": "5f8e54e78de8",
+      "record": "i18n/audits/evidence/es/ui.chat.canonical/5f8e54e78de8-es-final-evidence-20261112/record.json",
+      "receipt": "i18n/receipts/5f8e54e78de8-es-final-evidence-20261112.json",
+      "scope": "Retained23-key PR semantic proof + French2-key delta where applicable + exact467-main ancestry + accepted bounded23-key captured evidence on current source/target/context hashes; no fresh490-key audit.",
+      "note": "PR1829 scoped supplement; record: i18n/audits/evidence/es/ui.chat.canonical/5f8e54e78de8-es-final-evidence-20261112/record.json; retained MINOR/NIT dispositions. No fresh490-key, native or all-actions claim.",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "5f8e54e78de8-es-final-evidence-20261112",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 5,
+          "nit": 2
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "4074681ab095ccfb3917e0f1e8f31e2d2c92c1c47742153db82dda80502c1e51",
+        "receipt_sha256": "af42e387835676d187cf0b8345a4f7174c9b0c04e010132d78db3de265959df6"
+      },
+      "companions": [
+        "i18n/audits/evidence/es/ui.chat.canonical/5f8e54e78de8-es-final-evidence-20261112/1829-final-primary-es-fr-hi-manifest-5f8e54e78de8.json",
+        "i18n/audits/evidence/es/ui.chat.canonical/5f8e54e78de8-es-final-evidence-20261112/1829-final-receipt-validation-5f8e54e78de8.json"
+      ]
+    },
+    {
+      "locale": "es",
+      "session": "6dfaec49abf0",
+      "record": "i18n/audits/evidence/es/ui.chat.canonical/6dfaec49abf0-es-final-policy-evidence-20261112/record.json",
+      "receipt": "i18n/receipts/6dfaec49abf0-es-final-policy-evidence-20261112.json",
+      "scope": "Retained 23-key PR semantic audit, French 2-key approved delta as applicable, exact 467-key incoming-main ancestry and accepted captured visual/AX evidence; no fresh 490-key semantics or global release approval.",
+      "note": "PR1829 scoped supplement; record: i18n/audits/evidence/es/ui.chat.canonical/6dfaec49abf0-es-final-policy-evidence-20261112/record.json; retained MINOR/NIT dispositions. No fresh490-key, native or all-actions claim.",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "6dfaec49abf0-es-final-policy-evidence-20261112",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 2,
+          "nit": 2
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "4074681ab095ccfb3917e0f1e8f31e2d2c92c1c47742153db82dda80502c1e51",
+        "receipt_sha256": "9f41eff67d1c407e55c91becb96b7ce20baa2d66837b82c99c7d65d74fa5a2da"
+      },
+      "companions": [
+        "i18n/audits/evidence/es/ui.chat.canonical/6dfaec49abf0-es-final-policy-evidence-20261112/6dfaec49abf0-es-final-policy-evidence-20261112-retention-companion.json"
+      ]
+    },
+    {
+      "locale": "fr",
+      "session": "5f8e54e78de8",
+      "record": "i18n/audits/evidence/fr/ui.chat.canonical/5f8e54e78de8-fr-final-evidence-20261112/record.json",
+      "receipt": "i18n/receipts/5f8e54e78de8-fr-final-evidence-20261112.json",
+      "scope": "Retained23-key PR semantic proof + French2-key delta where applicable + exact467-main ancestry + accepted bounded23-key captured evidence on current source/target/context hashes; no fresh490-key audit.",
+      "note": "PR1829 scoped supplement; record: i18n/audits/evidence/fr/ui.chat.canonical/5f8e54e78de8-fr-final-evidence-20261112/record.json; retained MINOR/NIT dispositions. No fresh490-key, native or all-actions claim.",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "5f8e54e78de8-fr-final-evidence-20261112",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 4,
+          "nit": 3
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "e7d21936f30d7bcb95a86c08c6774c0572d13bd32e7220ab9e36c02327c31fbd",
+        "receipt_sha256": "9a08f3af4a3c96ed4a6c2e81ef305401a03a7b8a1a009f948df89d0cecb69799"
+      },
+      "companions": [
+        "i18n/audits/evidence/fr/ui.chat.canonical/5f8e54e78de8-fr-final-evidence-20261112/1829-final-primary-es-fr-hi-manifest-5f8e54e78de8.json",
+        "i18n/audits/evidence/fr/ui.chat.canonical/5f8e54e78de8-fr-final-evidence-20261112/1829-final-receipt-validation-5f8e54e78de8.json"
+      ]
+    },
+    {
+      "locale": "fr",
+      "session": "6dfaec49abf0",
+      "record": "i18n/audits/evidence/fr/ui.chat.canonical/6dfaec49abf0-fr-final-policy-evidence-20261112/record.json",
+      "receipt": "i18n/receipts/6dfaec49abf0-fr-final-policy-evidence-20261112.json",
+      "scope": "Retained 23-key PR semantic audit, French 2-key approved delta as applicable, exact 467-key incoming-main ancestry and accepted captured visual/AX evidence; no fresh 490-key semantics or global release approval.",
+      "note": "PR1829 scoped supplement; record: i18n/audits/evidence/fr/ui.chat.canonical/6dfaec49abf0-fr-final-policy-evidence-20261112/record.json; retained MINOR/NIT dispositions. No fresh490-key, native or all-actions claim.",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "6dfaec49abf0-fr-final-policy-evidence-20261112",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 3
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "e7d21936f30d7bcb95a86c08c6774c0572d13bd32e7220ab9e36c02327c31fbd",
+        "receipt_sha256": "e77f2830dce176484f88a2cce2fa43bd8d1ffc7aab3caaf4fadfd5c2488b6118"
+      },
+      "companions": [
+        "i18n/audits/evidence/fr/ui.chat.canonical/6dfaec49abf0-fr-final-policy-evidence-20261112/6dfaec49abf0-fr-final-policy-evidence-20261112-retention-companion.json"
+      ]
+    },
+    {
+      "locale": "hi",
+      "session": "5f8e54e78de8",
+      "record": "i18n/audits/evidence/hi/ui.chat.canonical/5f8e54e78de8-hi-final-evidence-20261112/record.json",
+      "receipt": "i18n/receipts/5f8e54e78de8-hi-final-evidence-20261112.json",
+      "scope": "Retained23-key PR semantic proof + French2-key delta where applicable + exact467-main ancestry + accepted bounded23-key captured evidence on current source/target/context hashes; no fresh490-key audit.",
+      "note": "PR1829 scoped supplement; record: i18n/audits/evidence/hi/ui.chat.canonical/5f8e54e78de8-hi-final-evidence-20261112/record.json; retained MINOR/NIT dispositions. No fresh490-key, native or all-actions claim.",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "5f8e54e78de8-hi-final-evidence-20261112",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 2,
+          "nit": 0
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "8792c9a8f9df03f7c586d45e3f3b6f89b25ec6097a9aab1e310bb4e210677393",
+        "receipt_sha256": "9a5a40a864e6f1d70bfb76fbe2b2de3c9e3e313b49ccf0c22c5ba9e63f31c2a4"
+      },
+      "companions": [
+        "i18n/audits/evidence/hi/ui.chat.canonical/5f8e54e78de8-hi-final-evidence-20261112/1829-final-primary-es-fr-hi-manifest-5f8e54e78de8.json",
+        "i18n/audits/evidence/hi/ui.chat.canonical/5f8e54e78de8-hi-final-evidence-20261112/1829-final-receipt-validation-5f8e54e78de8.json"
+      ]
+    },
+    {
+      "locale": "hi",
+      "session": "6dfaec49abf0",
+      "record": "i18n/audits/evidence/hi/ui.chat.canonical/6dfaec49abf0-hi-final-policy-evidence-20261112/record.json",
+      "receipt": "i18n/receipts/6dfaec49abf0-hi-final-policy-evidence-20261112.json",
+      "scope": "Retained 23-key PR semantic audit, French 2-key approved delta as applicable, exact 467-key incoming-main ancestry and accepted captured visual/AX evidence; no fresh 490-key semantics or global release approval.",
+      "note": "PR1829 scoped supplement; record: i18n/audits/evidence/hi/ui.chat.canonical/6dfaec49abf0-hi-final-policy-evidence-20261112/record.json; retained MINOR/NIT dispositions. No fresh490-key, native or all-actions claim.",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "6dfaec49abf0-hi-final-policy-evidence-20261112",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 0
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "8792c9a8f9df03f7c586d45e3f3b6f89b25ec6097a9aab1e310bb4e210677393",
+        "receipt_sha256": "5e305a30e908346adc22a8e7e3bbf398ffdcee305774e6e0e13e71d70d44618f"
+      },
+      "companions": [
+        "i18n/audits/evidence/hi/ui.chat.canonical/6dfaec49abf0-hi-final-policy-evidence-20261112/6dfaec49abf0-hi-final-policy-evidence-20261112-retention-companion.json"
+      ]
+    },
+    {
+      "locale": "ru",
+      "session": "a0245acae0c5",
+      "record": "i18n/audits/evidence/ru/ui.chat.canonical/a0245acae0c5-1829-final-ru-20261112t234806z-issued/record.json",
+      "receipt": "i18n/receipts/a0245acae0c5-1829-final-ru-20261112t234806z-issued.json",
+      "scope": "PR1829 accepted scoped convergence: retained23 full-diff source/target/context keys and captured22-visible+nav-AX evidence; exact467 incoming-main members inherited by raw-byte ancestry; retained parent findings. No fresh490 semantic, native/full-app, all-actions or global RTL certification.",
+      "note": "PR1829 scoped supplement; record: i18n/audits/evidence/ru/ui.chat.canonical/a0245acae0c5-1829-final-ru-20261112t234806z-issued/record.json; retained MINOR/NIT dispositions. No fresh490-key, native or all-actions claim.",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "a0245acae0c5-1829-final-ru-20261112t234806z-issued",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 1
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "325fe1a5b211db3408ee9786a1a7e6ab724d79315176019b6b55291b0e8ab71e",
+        "receipt_sha256": "ffe4cdaada97aa732cac6a16168b7bc9cc2cba480efe1f4532bba5c1734939b9"
+      },
+      "companions": [
+        "i18n/audits/evidence/ru/ui.chat.canonical/a0245acae0c5-1829-final-ru-20261112t234806z-issued/1829-issued-artifacts-20261112T234806Z.json",
+        "i18n/audits/evidence/ru/ui.chat.canonical/a0245acae0c5-1829-final-ru-20261112t234806z-issued/1829-issued-receipt-derivation-20261112T234806Z.json"
+      ]
+    },
+    {
+      "locale": "ru",
+      "session": "0e471bff3c0f",
+      "record": "i18n/audits/evidence/ru/ui.chat.canonical/0e471bff3c0f-1829-final-evidence-ru/record.json",
+      "receipt": "i18n/receipts/0e471bff3c0f-1829-final-evidence-ru.json",
+      "scope": "NEW evidence-disposition delta only: retained 23 PR keys plus captured-element review; exact 467 incoming-main ancestry is retained from my earlier independent byte proof and mapped parent audits. No new 490-key semantics audit. 22 visible elements + nav AX per assigned locale; accepted captured/synthetic pseudo scope only, not all functional variants/native/global release.",
+      "note": "PR1829 scoped supplement; record: i18n/audits/evidence/ru/ui.chat.canonical/0e471bff3c0f-1829-final-evidence-ru/record.json; retained MINOR/NIT dispositions. No fresh490-key, native or all-actions claim.",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "0e471bff3c0f-1829-final-evidence-ru",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 1
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "325fe1a5b211db3408ee9786a1a7e6ab724d79315176019b6b55291b0e8ab71e",
+        "receipt_sha256": "ab27262aab91ede71d9564ab1e2e7bfeac3394a01e3810f73abbbdfd0b3fce5f"
+      },
+      "companions": []
+    },
+    {
+      "locale": "ur",
+      "session": "a0245acae0c5",
+      "record": "i18n/audits/evidence/ur/ui.chat.canonical/a0245acae0c5-1829-final-ur-20261112t234806z-issued/record.json",
+      "receipt": "i18n/receipts/a0245acae0c5-1829-final-ur-20261112t234806z-issued.json",
+      "scope": "PR1829 accepted scoped convergence: retained23 full-diff source/target/context keys and captured22-visible+nav-AX evidence; exact467 incoming-main members inherited by raw-byte ancestry; retained parent findings. No fresh490 semantic, native/full-app, all-actions or global RTL certification.",
+      "note": "PR1829 scoped supplement; record: i18n/audits/evidence/ur/ui.chat.canonical/a0245acae0c5-1829-final-ur-20261112t234806z-issued/record.json; retained MINOR/NIT dispositions. No fresh490-key, native or all-actions claim.",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "a0245acae0c5-1829-final-ur-20261112t234806z-issued",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 2,
+          "nit": 1
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "06d76892a9c2a92cc5e2574a4ad71879d1c9a1a761e6dce5f9f75572abfc18b2",
+        "receipt_sha256": "90dc7d28af80385f6e6b7ebf05c6c4fbefb49fe126683d36fe6104a1379cc33e"
+      },
+      "companions": [
+        "i18n/audits/evidence/ur/ui.chat.canonical/a0245acae0c5-1829-final-ur-20261112t234806z-issued/1829-issued-artifacts-20261112T234806Z.json",
+        "i18n/audits/evidence/ur/ui.chat.canonical/a0245acae0c5-1829-final-ur-20261112t234806z-issued/1829-issued-receipt-derivation-20261112T234806Z.json"
+      ]
+    },
+    {
+      "locale": "ur",
+      "session": "0e471bff3c0f",
+      "record": "i18n/audits/evidence/ur/ui.chat.canonical/0e471bff3c0f-1829-final-evidence-ur/record.json",
+      "receipt": "i18n/receipts/0e471bff3c0f-1829-final-evidence-ur.json",
+      "scope": "NEW evidence-disposition delta only: retained 23 PR keys plus captured-element review; exact 467 incoming-main ancestry is retained from my earlier independent byte proof and mapped parent audits. No new 490-key semantics audit. 22 visible elements + nav AX per assigned locale; accepted captured/synthetic pseudo scope only, not all functional variants/native/global release.",
+      "note": "PR1829 scoped supplement; record: i18n/audits/evidence/ur/ui.chat.canonical/0e471bff3c0f-1829-final-evidence-ur/record.json; retained MINOR/NIT dispositions. No fresh490-key, native or all-actions claim.",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "0e471bff3c0f-1829-final-evidence-ur",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 2,
+          "nit": 1
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "06d76892a9c2a92cc5e2574a4ad71879d1c9a1a761e6dce5f9f75572abfc18b2",
+        "receipt_sha256": "b0d3da25151c5c82878072195d10cea1f83b6d883c4b73720e2fedde9c2e2a4d"
+      },
+      "companions": []
+    },
+    {
+      "locale": "vi",
+      "session": "a0245acae0c5",
+      "record": "i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-1829-final-vi-20261112t234806z-issued/record.json",
+      "receipt": "i18n/receipts/a0245acae0c5-1829-final-vi-20261112t234806z-issued.json",
+      "scope": "PR1829 accepted scoped convergence: retained23 full-diff source/target/context keys and captured22-visible+nav-AX evidence; exact467 incoming-main members inherited by raw-byte ancestry; retained parent findings. No fresh490 semantic, native/full-app, all-actions or global RTL certification.",
+      "note": "PR1829 scoped supplement; record: i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-1829-final-vi-20261112t234806z-issued/record.json; retained MINOR/NIT dispositions. No fresh490-key, native or all-actions claim.",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "a0245acae0c5-1829-final-vi-20261112t234806z-issued",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0,
+          "nit": 0
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "e5c472aaa257bc7acded037a73c470ed79a1e3cc8dc162d854052b3aa89746fb",
+        "receipt_sha256": "bffc8b06c8c5b7b1eb5c26a4b31e97071b7c574deab6d6368c4c69853bd6e5a1"
+      },
+      "companions": [
+        "i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-1829-final-vi-20261112t234806z-issued/1829-issued-artifacts-20261112T234806Z.json",
+        "i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-1829-final-vi-20261112t234806z-issued/1829-issued-receipt-derivation-20261112T234806Z.json"
+      ]
+    },
+    {
+      "locale": "vi",
+      "session": "0e471bff3c0f",
+      "record": "i18n/audits/evidence/vi/ui.chat.canonical/0e471bff3c0f-1829-final-evidence-vi/record.json",
+      "receipt": "i18n/receipts/0e471bff3c0f-1829-final-evidence-vi.json",
+      "scope": "NEW evidence-disposition delta only: retained 23 PR keys plus captured-element review; exact 467 incoming-main ancestry is retained from my earlier independent byte proof and mapped parent audits. No new 490-key semantics audit. 22 visible elements + nav AX per assigned locale; accepted captured/synthetic pseudo scope only, not all functional variants/native/global release.",
+      "note": "PR1829 scoped supplement; record: i18n/audits/evidence/vi/ui.chat.canonical/0e471bff3c0f-1829-final-evidence-vi/record.json; retained MINOR/NIT dispositions. No fresh490-key, native or all-actions claim.",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "0e471bff3c0f-1829-final-evidence-vi",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0,
+          "nit": 0
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "e5c472aaa257bc7acded037a73c470ed79a1e3cc8dc162d854052b3aa89746fb",
+        "receipt_sha256": "0eaa29282ea974559c613226a7742b308dc69beafeeef98ff93c83df0e307bc1"
+      },
+      "companions": []
+    },
+    {
+      "locale": "zh-CN",
+      "session": "a0245acae0c5",
+      "record": "i18n/audits/evidence/zh-CN/ui.chat.canonical/a0245acae0c5-1829-final-zh-cn-20261112t234806z-issued/record.json",
+      "receipt": "i18n/receipts/a0245acae0c5-1829-final-zh-cn-20261112t234806z-issued.json",
+      "scope": "PR1829 accepted scoped convergence: retained23 full-diff source/target/context keys and captured22-visible+nav-AX evidence; exact467 incoming-main members inherited by raw-byte ancestry; retained parent findings. No fresh490 semantic, native/full-app, all-actions or global RTL certification.",
+      "note": "PR1829 scoped supplement; record: i18n/audits/evidence/zh-CN/ui.chat.canonical/a0245acae0c5-1829-final-zh-cn-20261112t234806z-issued/record.json; retained MINOR/NIT dispositions. No fresh490-key, native or all-actions claim.",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "a0245acae0c5-1829-final-zh-cn-20261112t234806z-issued",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 2
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "e6b3846b553cde65b671cec6b9b34a869bd3cffc3f42b9fec981a710501e5e81",
+        "receipt_sha256": "b0fea61e9063e03486d2a8f2babf1379c5819f0e2d8a845194be6b8ccf3a2230"
+      },
+      "companions": [
+        "i18n/audits/evidence/zh-CN/ui.chat.canonical/a0245acae0c5-1829-final-zh-cn-20261112t234806z-issued/1829-issued-artifacts-20261112T234806Z.json",
+        "i18n/audits/evidence/zh-CN/ui.chat.canonical/a0245acae0c5-1829-final-zh-cn-20261112t234806z-issued/1829-issued-receipt-derivation-20261112T234806Z.json"
+      ]
+    },
+    {
+      "locale": "zh-CN",
+      "session": "0e471bff3c0f",
+      "record": "i18n/audits/evidence/zh-CN/ui.chat.canonical/0e471bff3c0f-1829-final-evidence-zh-cn/record.json",
+      "receipt": "i18n/receipts/0e471bff3c0f-1829-final-evidence-zh-cn.json",
+      "scope": "NEW evidence-disposition delta only: retained 23 PR keys plus captured-element review; exact 467 incoming-main ancestry is retained from my earlier independent byte proof and mapped parent audits. No new 490-key semantics audit. 22 visible elements + nav AX per assigned locale; accepted captured/synthetic pseudo scope only, not all functional variants/native/global release.",
+      "note": "PR1829 scoped supplement; record: i18n/audits/evidence/zh-CN/ui.chat.canonical/0e471bff3c0f-1829-final-evidence-zh-cn/record.json; retained MINOR/NIT dispositions. No fresh490-key, native or all-actions claim.",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "0e471bff3c0f-1829-final-evidence-zh-cn",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 2
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "e6b3846b553cde65b671cec6b9b34a869bd3cffc3f42b9fec981a710501e5e81",
+        "receipt_sha256": "a101269b47ccfaf75ca9c0e70e90e7a4113b487758eaebbb11a0041796c6d3b9"
+      },
+      "companions": []
+    }
+  ],
+  "retained_files": [
+    {
+      "path": "i18n/audits/evidence/es/ui.chat.canonical/5f8e54e78de8-es-final-evidence-20261112/record.json",
+      "original_path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-supplement-es-5f8e54e78de8.json",
+      "sha256": "98edc4e2c65a36f6b15bf0870987674440e66f4cbd4a1b2710c316c506a75489"
+    },
+    {
+      "path": "i18n/audits/evidence/es/ui.chat.canonical/5f8e54e78de8-es-final-evidence-20261112/1829-final-primary-es-fr-hi-manifest-5f8e54e78de8.json",
+      "original_path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-primary-es-fr-hi-manifest-5f8e54e78de8.json",
+      "sha256": "643638e6d7011ce1fd7d4a3ae4adcd4174f3e23cecf01e75cf02933755e7c918"
+    },
+    {
+      "path": "i18n/audits/evidence/es/ui.chat.canonical/5f8e54e78de8-es-final-evidence-20261112/1829-final-receipt-validation-5f8e54e78de8.json",
+      "original_path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-receipt-validation-5f8e54e78de8.json",
+      "sha256": "39789cc4d3a24d02de697792d9cd36fbb48a44b42562f765f8ee80e6badcdf8c"
+    },
+    {
+      "path": "i18n/audits/evidence/es/ui.chat.canonical/6dfaec49abf0-es-final-policy-evidence-20261112/record.json",
+      "original_path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-es-final-policy-evidence-20261112-supplement.json",
+      "sha256": "62b4b8b5ecaf8cd08ddba818328e5983e8bb39b48890651836dd78648bb5d13e"
+    },
+    {
+      "path": "i18n/audits/evidence/es/ui.chat.canonical/6dfaec49abf0-es-final-policy-evidence-20261112/6dfaec49abf0-es-final-policy-evidence-20261112-retention-companion.json",
+      "original_path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-es-final-policy-evidence-20261112-retention-companion.json",
+      "sha256": "dc88ad10a87fe627f7cbbc641aa1b409b3d4bb57146f219f06d719477174925a"
+    },
+    {
+      "path": "i18n/audits/evidence/fr/ui.chat.canonical/5f8e54e78de8-fr-final-evidence-20261112/record.json",
+      "original_path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-supplement-fr-5f8e54e78de8.json",
+      "sha256": "05279e4dc7905d91835b7b9544ed7f12f420c8942571d563e3812b9a1575c3f0"
+    },
+    {
+      "path": "i18n/audits/evidence/fr/ui.chat.canonical/5f8e54e78de8-fr-final-evidence-20261112/1829-final-primary-es-fr-hi-manifest-5f8e54e78de8.json",
+      "original_path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-primary-es-fr-hi-manifest-5f8e54e78de8.json",
+      "sha256": "643638e6d7011ce1fd7d4a3ae4adcd4174f3e23cecf01e75cf02933755e7c918"
+    },
+    {
+      "path": "i18n/audits/evidence/fr/ui.chat.canonical/5f8e54e78de8-fr-final-evidence-20261112/1829-final-receipt-validation-5f8e54e78de8.json",
+      "original_path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-receipt-validation-5f8e54e78de8.json",
+      "sha256": "39789cc4d3a24d02de697792d9cd36fbb48a44b42562f765f8ee80e6badcdf8c"
+    },
+    {
+      "path": "i18n/audits/evidence/fr/ui.chat.canonical/6dfaec49abf0-fr-final-policy-evidence-20261112/record.json",
+      "original_path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-fr-final-policy-evidence-20261112-supplement.json",
+      "sha256": "03c37b8a7aecc78fb2dbff50326f04dd3633120c650c44dc168c531efe0651bc"
+    },
+    {
+      "path": "i18n/audits/evidence/fr/ui.chat.canonical/6dfaec49abf0-fr-final-policy-evidence-20261112/6dfaec49abf0-fr-final-policy-evidence-20261112-retention-companion.json",
+      "original_path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-fr-final-policy-evidence-20261112-retention-companion.json",
+      "sha256": "c686b2d996870e32d5f9e6568779b724d77ca28e041e9c611e23513067b216a8"
+    },
+    {
+      "path": "i18n/audits/evidence/hi/ui.chat.canonical/5f8e54e78de8-hi-final-evidence-20261112/record.json",
+      "original_path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-supplement-hi-5f8e54e78de8.json",
+      "sha256": "ec880ca7ee16954d4d57f773052273eafccae40594d3ab31e6e66faa5500d706"
+    },
+    {
+      "path": "i18n/audits/evidence/hi/ui.chat.canonical/5f8e54e78de8-hi-final-evidence-20261112/1829-final-primary-es-fr-hi-manifest-5f8e54e78de8.json",
+      "original_path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-primary-es-fr-hi-manifest-5f8e54e78de8.json",
+      "sha256": "643638e6d7011ce1fd7d4a3ae4adcd4174f3e23cecf01e75cf02933755e7c918"
+    },
+    {
+      "path": "i18n/audits/evidence/hi/ui.chat.canonical/5f8e54e78de8-hi-final-evidence-20261112/1829-final-receipt-validation-5f8e54e78de8.json",
+      "original_path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-receipt-validation-5f8e54e78de8.json",
+      "sha256": "39789cc4d3a24d02de697792d9cd36fbb48a44b42562f765f8ee80e6badcdf8c"
+    },
+    {
+      "path": "i18n/audits/evidence/hi/ui.chat.canonical/6dfaec49abf0-hi-final-policy-evidence-20261112/record.json",
+      "original_path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-final-policy-evidence-20261112-supplement.json",
+      "sha256": "fca07367eb4b13287e4a8db30a4bf7038681d5c96b91ec329ae071b2be955251"
+    },
+    {
+      "path": "i18n/audits/evidence/hi/ui.chat.canonical/6dfaec49abf0-hi-final-policy-evidence-20261112/6dfaec49abf0-hi-final-policy-evidence-20261112-retention-companion.json",
+      "original_path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-final-policy-evidence-20261112-retention-companion.json",
+      "sha256": "ba520402bca53480146c1c0bf0cee565fb570f528978c7619656e270fbe834a4"
+    },
+    {
+      "path": "i18n/audits/evidence/ru/ui.chat.canonical/a0245acae0c5-1829-final-ru-20261112t234806z-issued/record.json",
+      "original_path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-ru-record-20261112T234806Z.json",
+      "sha256": "83829a305cac008499ca389ac0d972cb3158186ebeee735efc8e1e45a46b021d"
+    },
+    {
+      "path": "i18n/audits/evidence/ru/ui.chat.canonical/a0245acae0c5-1829-final-ru-20261112t234806z-issued/1829-issued-artifacts-20261112T234806Z.json",
+      "original_path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-artifacts-20261112T234806Z.json",
+      "sha256": "b44e242108588557721aad0d2d9a6487155b76f989b41042a1926d0b6ecdf0b9"
+    },
+    {
+      "path": "i18n/audits/evidence/ru/ui.chat.canonical/a0245acae0c5-1829-final-ru-20261112t234806z-issued/1829-issued-receipt-derivation-20261112T234806Z.json",
+      "original_path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-receipt-derivation-20261112T234806Z.json",
+      "sha256": "82fe722100e5e80ec8f555708e94405a690fcdbee0a72ba1cc12b1bc0d190aba"
+    },
+    {
+      "path": "i18n/audits/evidence/ru/ui.chat.canonical/0e471bff3c0f-1829-final-evidence-ru/record.json",
+      "original_path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-1829-final-evidence-ru.json",
+      "sha256": "ab27262aab91ede71d9564ab1e2e7bfeac3394a01e3810f73abbbdfd0b3fce5f"
+    },
+    {
+      "path": "i18n/audits/evidence/ur/ui.chat.canonical/a0245acae0c5-1829-final-ur-20261112t234806z-issued/record.json",
+      "original_path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-ur-record-20261112T234806Z.json",
+      "sha256": "676a55b06e713435524a3bf852156e1b946b26e9f815045c96f245ef98af6764"
+    },
+    {
+      "path": "i18n/audits/evidence/ur/ui.chat.canonical/a0245acae0c5-1829-final-ur-20261112t234806z-issued/1829-issued-artifacts-20261112T234806Z.json",
+      "original_path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-artifacts-20261112T234806Z.json",
+      "sha256": "b44e242108588557721aad0d2d9a6487155b76f989b41042a1926d0b6ecdf0b9"
+    },
+    {
+      "path": "i18n/audits/evidence/ur/ui.chat.canonical/a0245acae0c5-1829-final-ur-20261112t234806z-issued/1829-issued-receipt-derivation-20261112T234806Z.json",
+      "original_path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-receipt-derivation-20261112T234806Z.json",
+      "sha256": "82fe722100e5e80ec8f555708e94405a690fcdbee0a72ba1cc12b1bc0d190aba"
+    },
+    {
+      "path": "i18n/audits/evidence/ur/ui.chat.canonical/0e471bff3c0f-1829-final-evidence-ur/record.json",
+      "original_path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-1829-final-evidence-ur.json",
+      "sha256": "b0d3da25151c5c82878072195d10cea1f83b6d883c4b73720e2fedde9c2e2a4d"
+    },
+    {
+      "path": "i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-1829-final-vi-20261112t234806z-issued/record.json",
+      "original_path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-vi-record-20261112T234806Z.json",
+      "sha256": "9272dc5a132e4e7be7c5956d08cc26193f5dbb8b9c2a980c8cdf9a61edb02000"
+    },
+    {
+      "path": "i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-1829-final-vi-20261112t234806z-issued/1829-issued-artifacts-20261112T234806Z.json",
+      "original_path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-artifacts-20261112T234806Z.json",
+      "sha256": "b44e242108588557721aad0d2d9a6487155b76f989b41042a1926d0b6ecdf0b9"
+    },
+    {
+      "path": "i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-1829-final-vi-20261112t234806z-issued/1829-issued-receipt-derivation-20261112T234806Z.json",
+      "original_path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-receipt-derivation-20261112T234806Z.json",
+      "sha256": "82fe722100e5e80ec8f555708e94405a690fcdbee0a72ba1cc12b1bc0d190aba"
+    },
+    {
+      "path": "i18n/audits/evidence/vi/ui.chat.canonical/0e471bff3c0f-1829-final-evidence-vi/record.json",
+      "original_path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-1829-final-evidence-vi.json",
+      "sha256": "0eaa29282ea974559c613226a7742b308dc69beafeeef98ff93c83df0e307bc1"
+    },
+    {
+      "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/a0245acae0c5-1829-final-zh-cn-20261112t234806z-issued/record.json",
+      "original_path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-zh-CN-record-20261112T234806Z.json",
+      "sha256": "c67e6290cbc3981c2046a90f141095869e177fdb43dd8725ca9aae73a5e41fe6"
+    },
+    {
+      "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/a0245acae0c5-1829-final-zh-cn-20261112t234806z-issued/1829-issued-artifacts-20261112T234806Z.json",
+      "original_path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-artifacts-20261112T234806Z.json",
+      "sha256": "b44e242108588557721aad0d2d9a6487155b76f989b41042a1926d0b6ecdf0b9"
+    },
+    {
+      "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/a0245acae0c5-1829-final-zh-cn-20261112t234806z-issued/1829-issued-receipt-derivation-20261112T234806Z.json",
+      "original_path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-receipt-derivation-20261112T234806Z.json",
+      "sha256": "82fe722100e5e80ec8f555708e94405a690fcdbee0a72ba1cc12b1bc0d190aba"
+    },
+    {
+      "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/0e471bff3c0f-1829-final-evidence-zh-cn/record.json",
+      "original_path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-1829-final-evidence-zh-cn.json",
+      "sha256": "a101269b47ccfaf75ca9c0e70e90e7a4113b487758eaebbb11a0041796c6d3b9"
+    },
+    {
+      "path": "i18n/audits/evidence/pr1829-convergence-original-auditors/source-allowlist.json",
+      "original_path": "/home/ec2-user/.local-operator/sessions/74bc9d540e75/scratchpad/final-original-auditor-supplements-manifest.json",
+      "sha256": "e5ccb9d0a0b6283231fe87d73ebbdbe86f126207134795acdfc4534d888cff5e"
+    },
+    {
+      "path": "i18n/audits/evidence/pr1829-convergence-original-auditors/source-report.md",
+      "original_path": "/home/ec2-user/.local-operator/sessions/74bc9d540e75/scratchpad/final-original-auditor-supplements-report.md",
+      "sha256": "f0580980d3af0171f7a27aebba8c076ebdd465050e0b4bca050541febb4ab3f4"
+    }
+  ]
+}

@@ -95,6 +95,7 @@ import {
 	seedWaitingComposes,
 } from "@features/chat/canonical/transcript-reducer";
 import { tailCarriesOutcome } from "@features/chat/components/compact-receipt";
+import { admitProjectedDiffBindings } from "@features/chat/components/trace/diff-history-model";
 import { openTrace } from "@features/chat/open-trace";
 import {
 	frontendNamesModel,
@@ -2400,6 +2401,24 @@ function markPageBorn(
 const isJournalOrderCorrection = (frame: DesktopSessionFrame): boolean =>
 	frame.type === "event" && frame.payload?.type === "journal_order_ready";
 
+/**
+ * Door 1 of the diff-binding admission (`diff-history-model.ts`): a page THIS
+ * view asked for with `open_frame=1` (which carries `diff_bindings=1`, see
+ * `desktop-contract.ts`) is the core's projection, so its binding rows are
+ * admitted - re-validated against the session the view REQUESTED, never the
+ * row's own claim. A page asked for without the open frame is raw and admits
+ * nothing. Returns the page so it can sit in a promise chain.
+ */
+function admitPageDiffBindings(
+	page: DesktopHistoryPage,
+	requestedSessionId: string | null | undefined,
+	projected: boolean,
+): DesktopHistoryPage {
+	if (projected && requestedSessionId)
+		admitProjectedDiffBindings(page.entries ?? [], requestedSessionId);
+	return page;
+}
+
 export function useCanonicalSessionStream(
 	sessionId: string | undefined,
 	enabled: boolean,
@@ -2491,6 +2510,13 @@ export function useCanonicalSessionStream(
 	journalOrderRef.current = journalOrder;
 	const openFrameRef = useRef(openFrame);
 	openFrameRef.current = openFrame;
+	/**
+	 * The session a live subscription declared `open_frame=1&diff_bindings=1`
+	 * for, or `null` when it did not. The snapshot frame's binding rows are
+	 * admitted against THIS view's id - never the row's own `session_id`
+	 * claim - and only when the frame was projected (see `admitPageDiffBindings`).
+	 */
+	const streamBindingScopeRef = useRef<string | null>(null);
 	const peerJournalSource = options.peerJournalSource === true;
 	const peerJournalSourceRef = useRef(peerJournalSource);
 	peerJournalSourceRef.current = peerJournalSource;
@@ -3695,6 +3721,7 @@ export function useCanonicalSessionStream(
 								}
 							: {}),
 					});
+					admitPageDiffBindings(page, sessionId, openFrameRef.current);
 				} catch {
 					// A cleared view has nothing left to read for: without this the
 					// nothing-painted branch below would take the emptied pane for a pane
@@ -4864,6 +4891,11 @@ export function useCanonicalSessionStream(
 								// runs on the open path's critical task, and the 400-row page is
 								// where per-row cost would show.
 								performance.mark("lop:open:history:start");
+								admitPageDiffBindings(
+									snapshot.history,
+									streamBindingScopeRef.current,
+									streamBindingScopeRef.current !== null,
+								);
 								transcript = applyHistoryPage(transcript, snapshot.history, {
 									authoritative: true,
 									orderRead: dispatched,
@@ -5703,6 +5735,11 @@ export function useCanonicalSessionStream(
 			 * connection for the same conversation from stamping a newer trace with an
 			 * older request.
 			 */
+			// The scope this subscription's snapshot frames are projected for: the
+			// open frame (and so `diff_bindings=1`) is decided HERE, per subscribe.
+			streamBindingScopeRef.current = openFrameRef.current
+				? (sessionId ?? null)
+				: null;
 			dispose = subscribeDesktopStream(
 				{
 					sessionId,
@@ -7194,13 +7231,15 @@ export function useCanonicalSessionStream(
 		// page instead of one for the transcript they are looking at.
 		const outcome = await loader.load(`${requested}#${epoch}`, {
 			getTranscript: () => viewRef.current.transcript,
-			readPage: (beforeId) =>
-				desktopResult<DesktopHistoryPage>({
+			readPage: (beforeId) => {
+				// Read once: the page is judged under the flag it was ASKED with.
+				const projected = openFrameRef.current;
+				return desktopResult<DesktopHistoryPage>({
 					op: "sessions.history",
 					sessionId: requested,
 					beforeId,
 					limit: 100,
-					openFrame: openFrameRef.current,
+					openFrame: projected,
 					...(journalOrderRef.current
 						? {
 								journalOrder: true,
@@ -7212,7 +7251,8 @@ export function useCanonicalSessionStream(
 								...(peerScopedNow() ? { peerJournalSource: true } : {}),
 							}
 						: {}),
-				}),
+				}).then((page) => admitPageDiffBindings(page, requested, projected));
+			},
 			isCurrent: () => stillHere() && notCleared(),
 			commit: (update) =>
 				commitView((current) => {
@@ -7304,6 +7344,7 @@ export function useCanonicalSessionStream(
 							}
 						: {}),
 				});
+				admitPageDiffBindings(page, requested, openFrameRef.current);
 				if (
 					sessionRef.current !== requested ||
 					currentOrderRevision(viewRef.current.transcript) !== sourceRevision

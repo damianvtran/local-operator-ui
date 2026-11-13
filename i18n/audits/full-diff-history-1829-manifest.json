@@ -1,0 +1,315 @@
+{
+  "schema": 1,
+  "head": "8878d0df62d88defc37684f9898cc38dfaa9c57a",
+  "scope": "PR #1829 ui.chat.canonical: 14 per-locale receipts issued by two auditor sessions (567a24a88e45, c7b72ef216da; 7 scoped instances each, not 14 people). Static source-only linguistic audit; rendered/RTL fit unproven. NOT runtime/rendered evidence. English-source findings are retained in each issuing manifest, not in target receipts.",
+  "records": [
+    {
+      "locale": "es",
+      "namespace": "ui.chat.canonical",
+      "receipt": "i18n/receipts/567a24a88e45-chat-canonical-es-r2.json",
+      "receipt_sha256": "b48040f237a0a2da586d9df6068cfd428b54e85cb05bb6321757ebc3e92ad168",
+      "record": "i18n/audits/evidence/es/ui.chat.canonical/567a24a88e45-chat-canonical-es-r2/record.json",
+      "record_sha256": "b48040f237a0a2da586d9df6068cfd428b54e85cb05bb6321757ebc3e92ad168",
+      "companions": [
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/issuing-manifest.json",
+          "sha256": "99677f4652b99bdf457743214606e1dfc705119ee8c8aa267e4f264c6c92d2d4"
+        },
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/source-records/r2.json",
+          "sha256": "43c365ffb262cf4d1f486ac9a764b2a09664c9b4395589e2b092a02c4e581f30"
+        },
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/source-records/fr2.json",
+          "sha256": "b837e9feb21dda08fcda7df990e40931ca8f444ec9076c1b7566b524fff2cada"
+        }
+      ]
+    },
+    {
+      "locale": "fr",
+      "namespace": "ui.chat.canonical",
+      "receipt": "i18n/receipts/567a24a88e45-chat-canonical-fr-r2.json",
+      "receipt_sha256": "dd65b57c3bf1ac4a5190900a561aa5a3dac554ce5d6fc7b884b3f1914110f1dc",
+      "record": "i18n/audits/evidence/fr/ui.chat.canonical/567a24a88e45-chat-canonical-fr-r2/record.json",
+      "record_sha256": "dd65b57c3bf1ac4a5190900a561aa5a3dac554ce5d6fc7b884b3f1914110f1dc",
+      "companions": [
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/issuing-manifest.json",
+          "sha256": "99677f4652b99bdf457743214606e1dfc705119ee8c8aa267e4f264c6c92d2d4"
+        },
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/source-records/r2.json",
+          "sha256": "43c365ffb262cf4d1f486ac9a764b2a09664c9b4395589e2b092a02c4e581f30"
+        },
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/source-records/fr2.json",
+          "sha256": "b837e9feb21dda08fcda7df990e40931ca8f444ec9076c1b7566b524fff2cada"
+        }
+      ]
+    },
+    {
+      "locale": "hi",
+      "namespace": "ui.chat.canonical",
+      "receipt": "i18n/receipts/567a24a88e45-chat-canonical-hi-r2.json",
+      "receipt_sha256": "0d68dfc22cedd9e91fc0175b27f292ce96cde76372d479ae43391598d5afd74b",
+      "record": "i18n/audits/evidence/hi/ui.chat.canonical/567a24a88e45-chat-canonical-hi-r2/record.json",
+      "record_sha256": "0d68dfc22cedd9e91fc0175b27f292ce96cde76372d479ae43391598d5afd74b",
+      "companions": [
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/issuing-manifest.json",
+          "sha256": "99677f4652b99bdf457743214606e1dfc705119ee8c8aa267e4f264c6c92d2d4"
+        },
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/source-records/r2.json",
+          "sha256": "43c365ffb262cf4d1f486ac9a764b2a09664c9b4395589e2b092a02c4e581f30"
+        },
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/source-records/fr2.json",
+          "sha256": "b837e9feb21dda08fcda7df990e40931ca8f444ec9076c1b7566b524fff2cada"
+        }
+      ]
+    },
+    {
+      "locale": "ru",
+      "namespace": "ui.chat.canonical",
+      "receipt": "i18n/receipts/567a24a88e45-chat-canonical-ru-r2.json",
+      "receipt_sha256": "e27c5b959f365dbe17b83951b1796f34dea84fff9f13db05f98d50f97539c63e",
+      "record": "i18n/audits/evidence/ru/ui.chat.canonical/567a24a88e45-chat-canonical-ru-r2/record.json",
+      "record_sha256": "e27c5b959f365dbe17b83951b1796f34dea84fff9f13db05f98d50f97539c63e",
+      "companions": [
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/issuing-manifest.json",
+          "sha256": "99677f4652b99bdf457743214606e1dfc705119ee8c8aa267e4f264c6c92d2d4"
+        },
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/source-records/r2.json",
+          "sha256": "43c365ffb262cf4d1f486ac9a764b2a09664c9b4395589e2b092a02c4e581f30"
+        },
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/source-records/fr2.json",
+          "sha256": "b837e9feb21dda08fcda7df990e40931ca8f444ec9076c1b7566b524fff2cada"
+        }
+      ]
+    },
+    {
+      "locale": "ur",
+      "namespace": "ui.chat.canonical",
+      "receipt": "i18n/receipts/567a24a88e45-chat-canonical-ur-r2.json",
+      "receipt_sha256": "c4dcdb3d25588590dbb377ec31069b3d59538f48f76ecedbe179c40ed747ee3e",
+      "record": "i18n/audits/evidence/ur/ui.chat.canonical/567a24a88e45-chat-canonical-ur-r2/record.json",
+      "record_sha256": "c4dcdb3d25588590dbb377ec31069b3d59538f48f76ecedbe179c40ed747ee3e",
+      "companions": [
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/issuing-manifest.json",
+          "sha256": "99677f4652b99bdf457743214606e1dfc705119ee8c8aa267e4f264c6c92d2d4"
+        },
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/source-records/r2.json",
+          "sha256": "43c365ffb262cf4d1f486ac9a764b2a09664c9b4395589e2b092a02c4e581f30"
+        },
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/source-records/fr2.json",
+          "sha256": "b837e9feb21dda08fcda7df990e40931ca8f444ec9076c1b7566b524fff2cada"
+        }
+      ]
+    },
+    {
+      "locale": "vi",
+      "namespace": "ui.chat.canonical",
+      "receipt": "i18n/receipts/567a24a88e45-chat-canonical-vi-r2.json",
+      "receipt_sha256": "6fde1388ccca128f6a909ce0588f4c3dd71b8925326c6cbd7eca3a875ef9642f",
+      "record": "i18n/audits/evidence/vi/ui.chat.canonical/567a24a88e45-chat-canonical-vi-r2/record.json",
+      "record_sha256": "6fde1388ccca128f6a909ce0588f4c3dd71b8925326c6cbd7eca3a875ef9642f",
+      "companions": [
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/issuing-manifest.json",
+          "sha256": "99677f4652b99bdf457743214606e1dfc705119ee8c8aa267e4f264c6c92d2d4"
+        },
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/source-records/r2.json",
+          "sha256": "43c365ffb262cf4d1f486ac9a764b2a09664c9b4395589e2b092a02c4e581f30"
+        },
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/source-records/fr2.json",
+          "sha256": "b837e9feb21dda08fcda7df990e40931ca8f444ec9076c1b7566b524fff2cada"
+        }
+      ]
+    },
+    {
+      "locale": "zh-CN",
+      "namespace": "ui.chat.canonical",
+      "receipt": "i18n/receipts/567a24a88e45-chat-canonical-zh-cn-r2.json",
+      "receipt_sha256": "9af4b89197158320c540f84524760c8d2853cc4306dc11259ab6f6b8013ea5d7",
+      "record": "i18n/audits/evidence/zh-CN/ui.chat.canonical/567a24a88e45-chat-canonical-zh-cn-r2/record.json",
+      "record_sha256": "9af4b89197158320c540f84524760c8d2853cc4306dc11259ab6f6b8013ea5d7",
+      "companions": [
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/issuing-manifest.json",
+          "sha256": "99677f4652b99bdf457743214606e1dfc705119ee8c8aa267e4f264c6c92d2d4"
+        },
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/source-records/r2.json",
+          "sha256": "43c365ffb262cf4d1f486ac9a764b2a09664c9b4395589e2b092a02c4e581f30"
+        },
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/source-records/fr2.json",
+          "sha256": "b837e9feb21dda08fcda7df990e40931ca8f444ec9076c1b7566b524fff2cada"
+        }
+      ]
+    },
+    {
+      "locale": "es",
+      "namespace": "ui.chat.canonical",
+      "receipt": "i18n/receipts/c7b72ef216da-es-chat-canonical-r2.json",
+      "receipt_sha256": "61f0538e84f988e65260b2e3999b0f94edd3852a27df0f328f717a843c35a587",
+      "record": "i18n/audits/evidence/es/ui.chat.canonical/c7b72ef216da-es-chat-canonical-r2/record.json",
+      "record_sha256": "61f0538e84f988e65260b2e3999b0f94edd3852a27df0f328f717a843c35a587",
+      "companions": [
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/issuing-manifest.json",
+          "sha256": "045b2526257ed2a9d1525a868035748fe8920e1c44450ceab869c34e898538be"
+        },
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/source-records/second_audit.json",
+          "sha256": "08cd91c44e04b55d9222c83f56a77600c294cb39fe33c7a8edd32751b70e58cf"
+        },
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/source-records/fr_delta.json",
+          "sha256": "6a8ee6855512e1bf519aafacc80ebc824cfb1758346b73aeb8bc55d6b9a3f763"
+        }
+      ]
+    },
+    {
+      "locale": "fr",
+      "namespace": "ui.chat.canonical",
+      "receipt": "i18n/receipts/c7b72ef216da-fr-chat-canonical-r2.json",
+      "receipt_sha256": "fd908f5c08759f5fe7041bc5518f6b5618fe49beffda5c1f4bd73ffff9290302",
+      "record": "i18n/audits/evidence/fr/ui.chat.canonical/c7b72ef216da-fr-chat-canonical-r2/record.json",
+      "record_sha256": "fd908f5c08759f5fe7041bc5518f6b5618fe49beffda5c1f4bd73ffff9290302",
+      "companions": [
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/issuing-manifest.json",
+          "sha256": "045b2526257ed2a9d1525a868035748fe8920e1c44450ceab869c34e898538be"
+        },
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/source-records/second_audit.json",
+          "sha256": "08cd91c44e04b55d9222c83f56a77600c294cb39fe33c7a8edd32751b70e58cf"
+        },
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/source-records/fr_delta.json",
+          "sha256": "6a8ee6855512e1bf519aafacc80ebc824cfb1758346b73aeb8bc55d6b9a3f763"
+        }
+      ]
+    },
+    {
+      "locale": "hi",
+      "namespace": "ui.chat.canonical",
+      "receipt": "i18n/receipts/c7b72ef216da-hi-chat-canonical-r2.json",
+      "receipt_sha256": "637da859de3160a4e6207e3d906cf786762d4266486d5a4356a9918a96256e08",
+      "record": "i18n/audits/evidence/hi/ui.chat.canonical/c7b72ef216da-hi-chat-canonical-r2/record.json",
+      "record_sha256": "637da859de3160a4e6207e3d906cf786762d4266486d5a4356a9918a96256e08",
+      "companions": [
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/issuing-manifest.json",
+          "sha256": "045b2526257ed2a9d1525a868035748fe8920e1c44450ceab869c34e898538be"
+        },
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/source-records/second_audit.json",
+          "sha256": "08cd91c44e04b55d9222c83f56a77600c294cb39fe33c7a8edd32751b70e58cf"
+        },
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/source-records/fr_delta.json",
+          "sha256": "6a8ee6855512e1bf519aafacc80ebc824cfb1758346b73aeb8bc55d6b9a3f763"
+        }
+      ]
+    },
+    {
+      "locale": "ru",
+      "namespace": "ui.chat.canonical",
+      "receipt": "i18n/receipts/c7b72ef216da-ru-chat-canonical-r2.json",
+      "receipt_sha256": "aba2071cd968d577d97bb45a72c1c28fcefc2a5a94f861c24363bb13faaed383",
+      "record": "i18n/audits/evidence/ru/ui.chat.canonical/c7b72ef216da-ru-chat-canonical-r2/record.json",
+      "record_sha256": "aba2071cd968d577d97bb45a72c1c28fcefc2a5a94f861c24363bb13faaed383",
+      "companions": [
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/issuing-manifest.json",
+          "sha256": "045b2526257ed2a9d1525a868035748fe8920e1c44450ceab869c34e898538be"
+        },
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/source-records/second_audit.json",
+          "sha256": "08cd91c44e04b55d9222c83f56a77600c294cb39fe33c7a8edd32751b70e58cf"
+        },
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/source-records/fr_delta.json",
+          "sha256": "6a8ee6855512e1bf519aafacc80ebc824cfb1758346b73aeb8bc55d6b9a3f763"
+        }
+      ]
+    },
+    {
+      "locale": "ur",
+      "namespace": "ui.chat.canonical",
+      "receipt": "i18n/receipts/c7b72ef216da-ur-chat-canonical-r2.json",
+      "receipt_sha256": "d9b8f3039ebd222389635620350ea4d17ea28c1cac9f5a3c68cb1d6f7a616dc3",
+      "record": "i18n/audits/evidence/ur/ui.chat.canonical/c7b72ef216da-ur-chat-canonical-r2/record.json",
+      "record_sha256": "d9b8f3039ebd222389635620350ea4d17ea28c1cac9f5a3c68cb1d6f7a616dc3",
+      "companions": [
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/issuing-manifest.json",
+          "sha256": "045b2526257ed2a9d1525a868035748fe8920e1c44450ceab869c34e898538be"
+        },
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/source-records/second_audit.json",
+          "sha256": "08cd91c44e04b55d9222c83f56a77600c294cb39fe33c7a8edd32751b70e58cf"
+        },
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/source-records/fr_delta.json",
+          "sha256": "6a8ee6855512e1bf519aafacc80ebc824cfb1758346b73aeb8bc55d6b9a3f763"
+        }
+      ]
+    },
+    {
+      "locale": "vi",
+      "namespace": "ui.chat.canonical",
+      "receipt": "i18n/receipts/c7b72ef216da-vi-chat-canonical-r2.json",
+      "receipt_sha256": "694bf1359f228ec3bad9dad1622f0d20cd3f5729b94ee5926e86300118141577",
+      "record": "i18n/audits/evidence/vi/ui.chat.canonical/c7b72ef216da-vi-chat-canonical-r2/record.json",
+      "record_sha256": "694bf1359f228ec3bad9dad1622f0d20cd3f5729b94ee5926e86300118141577",
+      "companions": [
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/issuing-manifest.json",
+          "sha256": "045b2526257ed2a9d1525a868035748fe8920e1c44450ceab869c34e898538be"
+        },
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/source-records/second_audit.json",
+          "sha256": "08cd91c44e04b55d9222c83f56a77600c294cb39fe33c7a8edd32751b70e58cf"
+        },
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/source-records/fr_delta.json",
+          "sha256": "6a8ee6855512e1bf519aafacc80ebc824cfb1758346b73aeb8bc55d6b9a3f763"
+        }
+      ]
+    },
+    {
+      "locale": "zh-CN",
+      "namespace": "ui.chat.canonical",
+      "receipt": "i18n/receipts/c7b72ef216da-zh-cn-chat-canonical-r2.json",
+      "receipt_sha256": "08fc27c49450b779c82e83bc912c7bdb9360cec5b3bb6efd2ca8949eab9df23d",
+      "record": "i18n/audits/evidence/zh-CN/ui.chat.canonical/c7b72ef216da-zh-cn-chat-canonical-r2/record.json",
+      "record_sha256": "08fc27c49450b779c82e83bc912c7bdb9360cec5b3bb6efd2ca8949eab9df23d",
+      "companions": [
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/issuing-manifest.json",
+          "sha256": "045b2526257ed2a9d1525a868035748fe8920e1c44450ceab869c34e898538be"
+        },
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/source-records/second_audit.json",
+          "sha256": "08cd91c44e04b55d9222c83f56a77600c294cb39fe33c7a8edd32751b70e58cf"
+        },
+        {
+          "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/source-records/fr_delta.json",
+          "sha256": "6a8ee6855512e1bf519aafacc80ebc824cfb1758346b73aeb8bc55d6b9a3f763"
+        }
+      ]
+    }
+  ]
+}

@@ -1759,6 +1759,146 @@
 			"id": "opaque job identifier from the hub receipt; preserve as supplied"
 		}
 	},
+	"ui.chat.canonical.tool_row.diff.full.back": {
+		"role": "button returning from the full-diff pager to the short preview",
+		"tone": "action label",
+		"length": "Short.",
+		"note": "Two or three words."
+	},
+	"ui.chat.canonical.tool_row.diff.full.clipped": {
+		"role": "notice under a page where very long rows were shortened for display",
+		"tone": "plain statement",
+		"length": "Short.",
+		"note": "Count is the number of shortened rows on this page."
+	},
+	"ui.chat.canonical.tool_row.diff.full.clipped_row": {
+		"role": "dim suffix after a single shortened row",
+		"tone": "parenthetical",
+		"length": "Short.",
+		"note": "Very short; keep the parentheses."
+	},
+	"ui.chat.canonical.tool_row.diff.full.continued": {
+		"role": "dim suffix after the first row of a full-diff page when that row began on the previous page (a long line split across pages)",
+		"tone": "parenthetical, neutral",
+		"length": "Short.",
+		"note": "Says the text is the rest of a line already started, not a new line. Nothing was removed. Keep the parentheses.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.diff.full.continues": {
+		"role": "dim suffix after the last row of a full-diff page when that row goes on at the top of the next page (a long line split across pages)",
+		"tone": "parenthetical, neutral",
+		"length": "Short.",
+		"note": "Says the line is not finished and nothing was cut; the rest is on the next page. Keep the parentheses.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.diff.full.empty": {
+		"role": "dim notice when the stored full diff has zero rows",
+		"tone": "plain statement",
+		"length": "Short.",
+		"note": "No full stop."
+	},
+	"ui.chat.canonical.tool_row.diff.full.error": {
+		"role": "dim notice when a page request failed; a Retry button follows",
+		"tone": "plain statement",
+		"length": "Short.",
+		"note": "No full stop."
+	},
+	"ui.chat.canonical.tool_row.diff.full.evicted": {
+		"role": "notice: the stored full diff was later cleared by bounded storage cleanup",
+		"tone": "plain statement",
+		"length": "Short.",
+		"note": "No full stop."
+	},
+	"ui.chat.canonical.tool_row.diff.full.first": {
+		"role": "pager button: jump to the first page",
+		"tone": "action label",
+		"length": "Short.",
+		"note": "One word."
+	},
+	"ui.chat.canonical.tool_row.diff.full.inline": {
+		"role": "notice: the preview already contains the whole diff",
+		"tone": "plain statement",
+		"length": "Short.",
+		"note": "No full stop."
+	},
+	"ui.chat.canonical.tool_row.diff.full.last": {
+		"role": "pager button: jump to the last page",
+		"tone": "action label",
+		"length": "Short.",
+		"note": "One word."
+	},
+	"ui.chat.canonical.tool_row.diff.full.loading": {
+		"role": "dim status while a page loads",
+		"tone": "status",
+		"length": "Short.",
+		"note": "Ends with an ellipsis character."
+	},
+	"ui.chat.canonical.tool_row.diff.full.nav": {
+		"role": "accessible name of the pager navigation landmark",
+		"tone": "screen-reader label",
+		"length": "Short.",
+		"note": "Not visible."
+	},
+	"ui.chat.canonical.tool_row.diff.full.next": {
+		"role": "pager button: next page",
+		"tone": "action label",
+		"length": "Short.",
+		"note": "One word."
+	},
+	"ui.chat.canonical.tool_row.diff.full.not_found": {
+		"role": "notice: the app could not find a stored full diff for this tool call",
+		"tone": "plain statement",
+		"length": "Short.",
+		"note": "No full stop."
+	},
+	"ui.chat.canonical.tool_row.diff.full.not_recorded": {
+		"role": "notice: the change was made before full diffs were recorded",
+		"tone": "plain statement",
+		"length": "Short.",
+		"note": "No full stop."
+	},
+	"ui.chat.canonical.tool_row.diff.full.oversized": {
+		"role": "notice: the full diff was too large for the archive, so only the preview exists",
+		"tone": "plain statement",
+		"length": "Short.",
+		"note": "No full stop."
+	},
+	"ui.chat.canonical.tool_row.diff.full.prev": {
+		"role": "pager button: previous page",
+		"tone": "action label",
+		"length": "Short.",
+		"note": "One word."
+	},
+	"ui.chat.canonical.tool_row.diff.full.range": {
+		"role": "pager position label",
+		"tone": "neutral status",
+		"length": "Short.",
+		"note": "Keep all three numbers; first/last are 1-based row numbers inside the full diff."
+	},
+	"ui.chat.canonical.tool_row.diff.full.retry": {
+		"role": "button retrying a failed page request",
+		"tone": "action label",
+		"length": "Short.",
+		"note": "One word."
+	},
+	"ui.chat.canonical.tool_row.diff.full.unavailable": {
+		"role": "notice: the full diff could not be saved",
+		"tone": "plain statement",
+		"length": "Short.",
+		"note": "No full stop."
+	},
+	"ui.chat.canonical.tool_row.diff.full.view": {
+		"role": "button at the foot of a truncated diff preview that replaces the preview with the full stored diff, one page at a time",
+		"tone": "action label",
+		"length": "Short.",
+		"note": "Short; count is the number of rows in the full diff."
+	},
+	"ui.chat.canonical.tool_row.diff.full.withheld": {
+		"role": "notice: the full diff was withheld because credential redaction could not be completed safely",
+		"tone": "plain statement, reassuring",
+		"length": "Short.",
+		"note": "No full stop; redaction = removing secrets."
+	},
 	"ui.chat.canonical.tool_row.diff.more": {
 		"role": "button under a collapsed write/edit diff that reveals every remaining recorded line",
 		"tone": "terse, mirrors the terminal's overflow marker; keep the leading ellipsis",
