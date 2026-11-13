@@ -228,6 +228,7 @@ import {
 	cancelTeamBridgePrefetch,
 	prefetchTeamBridgeConversationNow,
 	prefetchTeamBridgeConversations,
+	prefetchTeamBridgeLanding,
 	teamBridgePrefetchCandidates,
 } from "./team-bridge-prefetch";
 import {
@@ -5590,6 +5591,23 @@ const TeamBridgeOwnedPage: FC<{
 		requestedAny ? null : (restoreOnOpen?.target ?? null),
 	);
 	/*
+	 * THE LANDING THIS OPEN ALREADY KNOWS, WITH ITS ORGANIZATION (first-open
+	 * latency, bridge-instant-load). Captured once, at mount: the `?tenant=` the
+	 * click carried is cleared from the URL a render later, and only the target
+	 * the page OPENED on is worth a parallel read. A remembered conversation
+	 * carries its tenant only when the record was written by a build that stores
+	 * it; an older record yields `null` here and the open behaves as before.
+	 */
+	const knownLanding = useRef<{ id: string; tenantId: string } | null>(
+		requestedConversation && requestedTenant
+			? { id: requestedConversation, tenantId: requestedTenant }
+			: !requestedAny &&
+					restoreOnOpen?.target.type === "conversation" &&
+					restoreOnOpen.tenantId
+				? { id: restoreOnOpen.target.id, tenantId: restoreOnOpen.tenantId }
+				: null,
+	).current;
+	/*
 	 * The scopes whose remembered view has already been offered this mount. The
 	 * landing effect restores a scope's record ONCE - on the first landing after
 	 * the page opens or the switcher moves to it - and lands on the default ever
@@ -5683,7 +5701,12 @@ const TeamBridgeOwnedPage: FC<{
 		 */
 		const clickedScope = asTeamBridgeTenantId(requestedTenant);
 		const storage = browserDraftStorage();
-		const remembered = { target: clicked, thread: clickedThread };
+		const remembered = {
+			target: clicked,
+			// The click names its organization; see `TeamBridgeViewMemory.tenantId`.
+			tenantId: requestedConversation ? requestedTenant : null,
+			thread: clickedThread,
+		};
 		if (viewMemory.current.scope === clickedScope)
 			viewMemory.current.view = remembered;
 		/* No account yet, or storage refused the write (R4): carry it in memory. */
@@ -5922,8 +5945,27 @@ const TeamBridgeOwnedPage: FC<{
 	) => {
 		if (!accountId) return;
 		const storage = browserDraftStorage();
+		const remembered = patch.target;
 		const view: TeamBridgeViewMemory = {
-			target: patch.target,
+			target: remembered,
+			/* The conversation's organization, so the next cold open can start its
+			   history alongside the list (`prefetchTeamBridgeLanding`). Read from
+			   the rows the reader is choosing among - never inferred from scope.
+			   The view reports on mount, before a cold list has answered: the
+			   record's own tenant for the SAME conversation is kept then, or that
+			   first report would erase the hint the next open needs. */
+			tenantId:
+				patch.tenantId ??
+				(remembered.type === "conversation"
+					? (selectableConversations(visibleConversations, archivedRows).find(
+							(row) => row.id === remembered.id,
+						)?.tenant_id ??
+						(viewMemory.current.scope === scope &&
+						viewMemory.current.view?.target.type === "conversation" &&
+						viewMemory.current.view.target.id === remembered.id
+							? (viewMemory.current.view.tenantId ?? null)
+							: null))
+					: null),
 			thread: patch.thread ?? null,
 			quickView: patch.quickView ?? null,
 			scroll: patch.scroll ?? null,
@@ -5947,6 +5989,101 @@ const TeamBridgeOwnedPage: FC<{
 		selectableConversations(visibleConversations, archivedRows),
 		selfAccountId,
 	);
+	/*
+	 * FIRST OPEN: READ THE LANDING CONVERSATION ALONGSIDE THE LIST. Without this,
+	 * the timeline's read below waits for `selected`, which waits for the list, so
+	 * a cold open paid both round trips in series (331.6 ms vs the 300 ms bar in
+	 * the instant-load bench, ui#1889 QA r4). Here the one conversation the open
+	 * is known to land on starts its first page as soon as reads are allowed:
+	 *
+	 * - the conversation this page opened on (deep link, notification click,
+	 *   remembered view), with the tenant the click or the record named, or the
+	 *   tenant of that row in the shell watcher's cached list; else
+	 * - with no target and no remembered view, the default landing row computed
+	 *   from that cached list, by the same rule the landing effect uses.
+	 *
+	 * Constraints, each tested in `team-bridge-first-open.test.mjs`:
+	 * - Display is unchanged: this fills the timeline's own cache entry and
+	 *   nothing more. The pane shows a conversation only once `selected` resolves
+	 *   from the authoritative rows, so a conversation the reader was removed from
+	 *   or that was deleted is never shown and the fallback landing still runs.
+	 * - Same fence: `readsEnabled` (the eligibility gate) and the account-keyed,
+	 *   owner-fenced query; the once-per-open marker is keyed by account, and a
+	 *   read started for one account lands under that account's key only.
+	 * - At most one extra read per open, and none when the entry is already warm
+	 *   or being read (`prefetchTeamBridgeLanding` checks the cache).
+	 * - Skipped once `selected` resolves or the list has answered: from then on
+	 *   the timeline's own read is not waiting on anything.
+	 */
+	/*
+	 * BACKFILL THE TENANT once the list confirms the remembered conversation. A
+	 * record written before the tenant was stored (or reported before a cold list
+	 * answered) gains it here, so the NEXT cold open can read in parallel even if
+	 * the reader never changes conversation, scrolls or leaves through a path that
+	 * reports. One write, only when the stored tenant differs from the confirmed
+	 * row's; never a new target, so nothing about the restore itself changes.
+	 */
+	useEffect(() => {
+		const memory = viewMemory.current;
+		const view = memory.view;
+		if (
+			!accountId ||
+			!selected ||
+			memory.scope !== scope ||
+			view?.target.type !== "conversation" ||
+			view.target.id !== selected.id ||
+			view.tenantId === selected.tenant_id
+		)
+			return;
+		const next = { ...view, tenantId: selected.tenant_id };
+		memory.view = next;
+		const storage = browserDraftStorage();
+		if (storage)
+			writeViewMemory(storage, accountId, scope, next, currentScope.current);
+	}, [accountId, selected, scope]);
+	const landingPrefetched = useRef<string | null>(null);
+	useEffect(() => {
+		if (
+			!readsEnabled ||
+			!accountId ||
+			selected !== null ||
+			list.data !== undefined ||
+			landingPrefetched.current === accountId
+		)
+			return;
+		let row: Pick<TeamBridgeConversation, "id" | "tenant_id"> | undefined;
+		if (target?.type === "conversation") {
+			const cached = openingSnapshot.find((entry) => entry.id === target.id);
+			// A cached row that is only a preview has no history to read.
+			if (cached && isPreviewConversation(cached)) return;
+			const tenantId =
+				knownLanding?.id === target.id
+					? knownLanding.tenantId
+					: cached?.tenant_id;
+			if (tenantId) row = { id: target.id, tenant_id: tenantId };
+		} else if (target === null && !requestedAny && !restoreOnOpen) {
+			const first = defaultLandingConversation(
+				visibleConversationRows(openingSnapshot, scope, organizations),
+				organizations.map((entry) => entry.tenantId),
+			);
+			if (first && !isPreviewConversation(first)) row = first;
+		}
+		if (row && prefetchTeamBridgeLanding(client, accountId, row))
+			landingPrefetched.current = accountId;
+	}, [
+		readsEnabled,
+		accountId,
+		selected,
+		list.data,
+		target,
+		openingSnapshot,
+		knownLanding,
+		requestedAny,
+		restoreOnOpen,
+		scope,
+		organizations,
+		client,
+	]);
 	const previewSelected = selected !== null && isPreviewConversation(selected);
 	// Every thread read and write names the SELECTED conversation's tenant, not
 	// the rail scope, so a merged-view row can never be read under another org.
