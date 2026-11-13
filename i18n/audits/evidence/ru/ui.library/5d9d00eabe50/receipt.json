@@ -1,0 +1,337 @@
+{
+  "locale": "ru",
+  "mode": "Fresh independent bounded delta audit; allocation fix (<2h), read-only frozen worktree. No translation/MT service.",
+  "scope": "PR damianvtran/local-operator-ui #1851; 20 NEW ui.library messages at frozen head; base 0e12072d2b3. Legacy namespace not recertified.",
+  "head_sha": "8a9ce1f808c266ebe9a0e924094344cea60c2c23",
+  "audit_date": "2026-11-10",
+  "key_count": 179,
+  "fully_audited_key_count": 20,
+  "consistency_only_key_count": 159,
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "session": "not supplied",
+    "source": "Translator agent/model supplied by manager; translator session not supplied. Auditor did not translate these values."
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "5d9d00eabe50",
+    "session": "5d9d00eabe50",
+    "model": "openai/gpt-6.1-sol",
+    "actual_model_source": "Served session header: Model openai/gpt-6.1-sol; no model switch/fallback in this audit.",
+    "fallback_used": false,
+    "independent_from_translator_session": true
+  },
+  "policy_sources": {
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ru.md",
+      "sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+    },
+    "glossary": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "note": "Binding manager-owned glossary byte-copy; recomputed hash matches supplied 0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8. Live glossary not read (outside allowlist)."
+    },
+    "expected_hashes": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/expected-hashes.json"
+    }
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "verdict": "passed; no BLOCKER/MAJOR, 2 non-gating MINOR findings (rail width, English metadata). Terminal delta audit.",
+  "findings": [
+    {
+      "id": "R1",
+      "severity": "minor",
+      "key": "ui.library.tag_category.custom",
+      "current_text": "Пользовательские",
+      "english_source": "Custom",
+      "problem": "Grammatical ellipsis for пользовательские теги, not a singular/plural meaning error. However, 16 characters/cells exceed the approximate 12-character rail hint by 4, creating a width risk (not rendered or proven clipping).",
+      "recommendation": "Optional compact rendering: Произвольные (12 characters), matching freely created tags; or explicitly accept the longer idiomatic Пользовательские after rendered fit verification. Do not replace it mechanically with singular Пользовательский.",
+      "evidence": [
+        "ui.library.filter.tags = «Теги» establishes the implied plural noun.",
+        "English custom context: tags created freely, with no fixed taxonomy; length: narrow rail header (about 12 characters).",
+        "ru style guide lines 54–56: Tighten; standard abbreviations beat truncation. Never truncate."
+      ],
+      "gates": false
+    },
+    {
+      "id": "R2",
+      "severity": "minor",
+      "key": "ui.library.kind.other (English context note)",
+      "current_text": "Rendered inside the sentence ui.library.preview.unsupported ONLY via the generic fallback; see manifest.",
+      "english_source": "Other",
+      "problem": "The note says this label is rendered inside unsupported, but the source branch for other renders unsupported_generic without a kind binding. The useful remaining badge guidance is accurate. This is misleading English metadata, not a Russian defect.",
+      "recommendation": "Use: For kind other, the unsupported viewer uses ui.library.preview.unsupported_generic, with no interpolated kind label.",
+      "evidence": [
+        "src/renderer/src/features/library/components/library-viewers.tsx: Unsupported chooses unsupported_generic when asset.kind === other, otherwise unsupported with kind: libraryKindLabel(asset.kind).",
+        "English ui.library.preview.unsupported_generic context: Shown when the file kind is the catch-all `other`; no placeholders."
+      ],
+      "gates": false
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 2,
+    "nit": 0
+  },
+  "namespaces": {
+    "ui.library": {
+      "status": "passed",
+      "result": "clean-with-findings",
+      "source_sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71",
+      "target_sha256": "a6f8aaba4f1a8eea80cd6702f481d927f076de95c59033a59efe99681dfc391a",
+      "input_hashes": {
+        "en": {
+          "path": "src/i18n/catalogues/en/ui.library.json",
+          "sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.library.context.json",
+          "sha256": "2fe63e830b49079dac67c5c4513358d0a8559a94fbf27ac8d437212b13aa2e72"
+        },
+        "ru": {
+          "path": "src/i18n/catalogues/ru/ui.library.json",
+          "sha256": "a6f8aaba4f1a8eea80cd6702f481d927f076de95c59033a59efe99681dfc391a"
+        }
+      },
+      "fully_audited_keys": [
+        "ui.library.preview.unsupported_generic",
+        "ui.library.kind.audio",
+        "ui.library.kind.code",
+        "ui.library.kind.docx",
+        "ui.library.kind.html",
+        "ui.library.kind.image",
+        "ui.library.kind.markdown",
+        "ui.library.kind.other",
+        "ui.library.kind.pdf",
+        "ui.library.kind.pptx",
+        "ui.library.kind.spreadsheet",
+        "ui.library.kind.text",
+        "ui.library.kind.video",
+        "ui.library.tag_category.custom",
+        "ui.library.tag_category.format",
+        "ui.library.tag_category.project",
+        "ui.library.tag_category.source",
+        "ui.library.tag_category.status",
+        "ui.library.tag_category.topic",
+        "ui.library.tag_category.type"
+      ],
+      "findings": [
+        {
+          "id": "R1",
+          "severity": "minor",
+          "key": "ui.library.tag_category.custom",
+          "current_text": "Пользовательские",
+          "english_source": "Custom",
+          "problem": "Grammatical ellipsis for пользовательские теги, not a singular/plural meaning error. However, 16 characters/cells exceed the approximate 12-character rail hint by 4, creating a width risk (not rendered or proven clipping).",
+          "recommendation": "Optional compact rendering: Произвольные (12 characters), matching freely created tags; or explicitly accept the longer idiomatic Пользовательские after rendered fit verification. Do not replace it mechanically with singular Пользовательский.",
+          "evidence": [
+            "ui.library.filter.tags = «Теги» establishes the implied plural noun.",
+            "English custom context: tags created freely, with no fixed taxonomy; length: narrow rail header (about 12 characters).",
+            "ru style guide lines 54–56: Tighten; standard abbreviations beat truncation. Never truncate."
+          ],
+          "gates": false
+        },
+        {
+          "id": "R2",
+          "severity": "minor",
+          "key": "ui.library.kind.other (English context note)",
+          "current_text": "Rendered inside the sentence ui.library.preview.unsupported ONLY via the generic fallback; see manifest.",
+          "english_source": "Other",
+          "problem": "The note says this label is rendered inside unsupported, but the source branch for other renders unsupported_generic without a kind binding. The useful remaining badge guidance is accurate. This is misleading English metadata, not a Russian defect.",
+          "recommendation": "Use: For kind other, the unsupported viewer uses ui.library.preview.unsupported_generic, with no interpolated kind label.",
+          "evidence": [
+            "src/renderer/src/features/library/components/library-viewers.tsx: Unsupported chooses unsupported_generic when asset.kind === other, otherwise unsupported with kind: libraryKindLabel(asset.kind).",
+            "English ui.library.preview.unsupported_generic context: Shown when the file kind is the catch-all `other`; no placeholders."
+          ],
+          "gates": false
+        }
+      ]
+    }
+  },
+  "per_key_checks": {
+    "ui.library.preview.unsupported_generic": {
+      "english": "This file has no in-app preview here.",
+      "target": "Для этого файла встроенный предпросмотр недоступен.",
+      "length_chars_and_cells": 51,
+      "mechanical": "PASS: literal-only, no ICU args/plurals/markup/code; no invisible/bidi/combining characters",
+      "semantic": "PASS grammatical impersonal sentence, no kind or placeholder; exactly parallels existing Для файла типа {kind} встроенный предпросмотр недоступен. 51 chars vs 37 English; wrapping sentence, no hard maxChars budget, no overflow asserted.",
+      "finding_ids": []
+    },
+    "ui.library.kind.audio": {
+      "english": "Audio",
+      "target": "Аудио",
+      "length_chars_and_cells": 5,
+      "mechanical": "PASS: literal-only, no ICU args/plurals/markup/code; no invisible/bidi/combining characters",
+      "semantic": "PASS: Аудио is conventional file-media noun, supported by ui.canvas.inline_edit.processing_audio = Обработка аудио. Existing plural categories sounds = Звуки (ui.library.category.sounds; ui.canvas.files.audio) name a group, not the single file format; using Звук for an audio file would narrow it to a sound. Difference justified, not a glossary conflict.",
+      "finding_ids": []
+    },
+    "ui.library.kind.code": {
+      "english": "Code",
+      "target": "Код",
+      "length_chars_and_cells": 3,
+      "mechanical": "PASS: literal-only, no ICU args/plurals/markup/code; no invisible/bidi/combining characters",
+      "semantic": "PASS: Код matches ui.library.category.code and ui.canvas.file_rows.code.",
+      "finding_ids": []
+    },
+    "ui.library.kind.docx": {
+      "english": "DOCX",
+      "target": "DOCX",
+      "length_chars_and_cells": 4,
+      "mechanical": "PASS: literal-only, no ICU args/plurals/markup/code; no invisible/bidi/combining characters",
+      "semantic": "PASS retained format acronym explicitly allowed by English metadata and glossary technology-name spelling policy; targeted Canvas/Library lookup and full ru catalogue token scan found no legacy DOCX occurrence, so no existing localized contradiction. Does not replace broader Documents/Presentations group labels.",
+      "finding_ids": []
+    },
+    "ui.library.kind.html": {
+      "english": "HTML",
+      "target": "HTML",
+      "length_chars_and_cells": 4,
+      "mechanical": "PASS: literal-only, no ICU args/plurals/markup/code; no invisible/bidi/combining characters",
+      "semantic": "PASS retained technical token; existing ui.canvas.create_file_dialog.html_html = HTML (.html)",
+      "finding_ids": []
+    },
+    "ui.library.kind.image": {
+      "english": "Image",
+      "target": "Изображение",
+      "length_chars_and_cells": 11,
+      "mechanical": "PASS: literal-only, no ICU args/plurals/markup/code; no invisible/bidi/combining characters",
+      "semantic": "PASS: Изображение singular of existing ui.library.category.images = Изображения.",
+      "finding_ids": []
+    },
+    "ui.library.kind.markdown": {
+      "english": "Markdown",
+      "target": "Markdown",
+      "length_chars_and_cells": 8,
+      "mechanical": "PASS: literal-only, no ICU args/plurals/markup/code; no invisible/bidi/combining characters",
+      "semantic": "PASS retained technical token; existing ui.canvas.create_file_dialog.markdown_md = Markdown (.md)",
+      "finding_ids": []
+    },
+    "ui.library.kind.other": {
+      "english": "Other",
+      "target": "Другое",
+      "length_chars_and_cells": 6,
+      "mechanical": "PASS: literal-only, no ICU args/plurals/markup/code; no invisible/bidi/combining characters",
+      "semantic": "PASS: Другое matches ui.library.category.other; metadata MINOR R2 separate.",
+      "finding_ids": []
+    },
+    "ui.library.kind.pdf": {
+      "english": "PDF",
+      "target": "PDF",
+      "length_chars_and_cells": 3,
+      "mechanical": "PASS: literal-only, no ICU args/plurals/markup/code; no invisible/bidi/combining characters",
+      "semantic": "PASS retained technical token; existing ui.canvas.pdf_preview.pdf = PDF: {title}",
+      "finding_ids": []
+    },
+    "ui.library.kind.pptx": {
+      "english": "PPTX",
+      "target": "PPTX",
+      "length_chars_and_cells": 4,
+      "mechanical": "PASS: literal-only, no ICU args/plurals/markup/code; no invisible/bidi/combining characters",
+      "semantic": "PASS retained format acronym explicitly allowed by English metadata and glossary technology-name spelling policy; targeted Canvas/Library lookup and full ru catalogue token scan found no legacy PPTX occurrence, so no existing localized contradiction. Does not replace broader Documents/Presentations group labels.",
+      "finding_ids": []
+    },
+    "ui.library.kind.spreadsheet": {
+      "english": "Spreadsheet",
+      "target": "Таблица",
+      "length_chars_and_cells": 7,
+      "mechanical": "PASS: literal-only, no ICU args/plurals/markup/code; no invisible/bidi/combining characters",
+      "semantic": "PASS: Таблица singular of ui.library.category.spreadsheets = Таблицы and matches sheet_unreadable = Не удалось прочитать таблицу.",
+      "finding_ids": []
+    },
+    "ui.library.kind.text": {
+      "english": "Text",
+      "target": "Текст",
+      "length_chars_and_cells": 5,
+      "mechanical": "PASS: literal-only, no ICU args/plurals/markup/code; no invisible/bidi/combining characters",
+      "semantic": "PASS: Текст matches ui.canvas.create_file_dialog.plain_text_txt = Текст (.txt).",
+      "finding_ids": []
+    },
+    "ui.library.kind.video": {
+      "english": "Video",
+      "target": "Видео",
+      "length_chars_and_cells": 5,
+      "mechanical": "PASS: literal-only, no ICU args/plurals/markup/code; no invisible/bidi/combining characters",
+      "semantic": "PASS: indeclinable Видео matches ui.library.category.video and ui.canvas.file_rows.video; no Latin Video retention.",
+      "finding_ids": []
+    },
+    "ui.library.tag_category.custom": {
+      "english": "Custom",
+      "target": "Пользовательские",
+      "length_chars_and_cells": 16,
+      "mechanical": "PASS: literal-only, no ICU args/plurals/markup/code; no invisible/bidi/combining characters",
+      "semantic": "PASS: Пользовательские [теги] is idiomatic plural heading; English singular guidance is functional, not a reason to produce an orphan masculine adjective. MINOR width R1.",
+      "finding_ids": [
+        "R1"
+      ]
+    },
+    "ui.library.tag_category.format": {
+      "english": "Format",
+      "target": "Формат",
+      "length_chars_and_cells": 6,
+      "mechanical": "PASS: literal-only, no ICU args/plurals/markup/code; no invisible/bidi/combining characters",
+      "semantic": "PASS",
+      "finding_ids": []
+    },
+    "ui.library.tag_category.project": {
+      "english": "Project",
+      "target": "Проект",
+      "length_chars_and_cells": 6,
+      "mechanical": "PASS: literal-only, no ICU args/plurals/markup/code; no invisible/bidi/combining characters",
+      "semantic": "PASS Проект follows glossary project = проект.",
+      "finding_ids": []
+    },
+    "ui.library.tag_category.source": {
+      "english": "Source",
+      "target": "Источник",
+      "length_chars_and_cells": 8,
+      "mechanical": "PASS: literal-only, no ICU args/plurals/markup/code; no invisible/bidi/combining characters",
+      "semantic": "PASS exact ui.library.filter.source = Источник; tag context distinguishes role.",
+      "finding_ids": []
+    },
+    "ui.library.tag_category.status": {
+      "english": "Status",
+      "target": "Статус",
+      "length_chars_and_cells": 6,
+      "mechanical": "PASS: literal-only, no ICU args/plurals/markup/code; no invisible/bidi/combining characters",
+      "semantic": "PASS exact ui.library.filter.status = Статус.",
+      "finding_ids": []
+    },
+    "ui.library.tag_category.topic": {
+      "english": "Topic",
+      "target": "Тема",
+      "length_chars_and_cells": 4,
+      "mechanical": "PASS: literal-only, no ICU args/plurals/markup/code; no invisible/bidi/combining characters",
+      "semantic": "PASS",
+      "finding_ids": []
+    },
+    "ui.library.tag_category.type": {
+      "english": "Type",
+      "target": "Тип",
+      "length_chars_and_cells": 3,
+      "mechanical": "PASS: literal-only, no ICU args/plurals/markup/code; no invisible/bidi/combining characters",
+      "semantic": "PASS Тип is ordinary Type; existing sort.kind = Тип is also natural. Distinct keys/roles do not require artificial Russian synonyms; English note overly prescriptive, not a translation defect.",
+      "finding_ids": []
+    }
+  },
+  "english_metadata_check": "20 entries read; role/tone/render locations accurate except non-gating misleading kind.other sentence R2. Type/Kind distinctness is not a requirement for invented Russian synonyms.",
+  "mechanical": {
+    "hash_binding": "PASS: shasum -a 256 matches expected en/ru/context hashes; glossary matches supplied full hash.",
+    "json": "PASS three files parsed and duplicateKeys repo export checked",
+    "icu": "PASS 20 en+ru messages via production parser: literal-only, zero placeholders/plural/select/tags",
+    "context": "PASS repo namespaceGap export: no uncovered/orphaned keys",
+    "delta": "PASS exactly 20 added keys; 159 prior values byte-equivalent strings; total 179; key set identical to en",
+    "invisible_bidi": "none in 20 target strings",
+    "lengths": "All 12 badges <=11 characters/cells. Custom heading 16 > approximate 12. No combining/wide glyphs."
+  },
+  "unverified": [
+    "No rendered UI/width proof; approximate rail fit risk only.",
+    "Legacy 159 values parsed, key parity and unchanged values verified, terminology sampled; NOT recertified.",
+    "No builds, installs, servers or test trees. Full check-i18n not run; scoped repo duplicateKeys/namespaceGap and production ICU parser executed.",
+    "No repository, ledger or PR writes; manager must retain scratch handoff under canonical evidence root and record ledger row."
+  ],
+  "receipt_contract_review": "Schema follows supplied fr-ds receipt and companion record; one namespace only. Session taken from scratchpad parent; actual served model stated, translator session not supplied.",
+  "audit_notes_not_execution_log": true,
+  "execution_log": "ru-sol-5d9d00eabe50.audit.log"
+}

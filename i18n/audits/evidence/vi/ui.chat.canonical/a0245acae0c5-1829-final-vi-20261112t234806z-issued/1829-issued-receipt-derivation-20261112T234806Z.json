@@ -1,0 +1,104 @@
+{
+  "kind": "pure deriveReceiptAudit validation of final issued bytes; no assembler invocation",
+  "writer_contract": {
+    "path": "/home/ec2-user/local-operator-ui/.worktrees/full-diff-metadata/scripts/i18n/ledger-assemble.mjs",
+    "sha256": "63651def0c5be756f61e71e5905bcf090a1c709464292864f1a6429d06e676a5",
+    "rules_path": "/home/ec2-user/local-operator-ui/.worktrees/full-diff-metadata/scripts/i18n/ledger-rules.mjs",
+    "rules_sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6",
+    "inspected_ranges": "ledger-assemble 130-220,220-352,352-409; ledger-rules deriveReceiptAudit516-618",
+    "actual_behavior": "derives current English/target hashes and severity counts from receipt; validates identity/model/result and existing history; archives stale row; copies immutable receipt under i18n/receipts/<instance>.json; retains supplied scope/note. It does not itself copy all canonical evidence companions.",
+    "not_invoked": true,
+    "dry_run": "No dry-run invoked or invented",
+    "companion_retention": "Exclusive coder/authorized owner must preserve these immutable companions under canonical evidence path (or tracked mapped equivalent) and keep the same scope/note; this auditor performs no repository writer/copy action."
+  },
+  "results": [
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-ru-receipt-20261112T234806Z.json",
+      "locale": "ru",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "a0245acae0c5-1829-final-ru-20261112t234806z-issued",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 1
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "325fe1a5b211db3408ee9786a1a7e6ab724d79315176019b6b55291b0e8ab71e",
+        "receipt_sha256": "ffe4cdaada97aa732cac6a16168b7bc9cc2cba480efe1f4532bba5c1734939b9"
+      },
+      "context_matches": true,
+      "claimed_counts_match": true,
+      "claimed_result_matches": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-ur-receipt-20261112T234806Z.json",
+      "locale": "ur",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "a0245acae0c5-1829-final-ur-20261112t234806z-issued",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 2,
+          "nit": 1
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "06d76892a9c2a92cc5e2574a4ad71879d1c9a1a761e6dce5f9f75572abfc18b2",
+        "receipt_sha256": "90dc7d28af80385f6e6b7ebf05c6c4fbefb49fe126683d36fe6104a1379cc33e"
+      },
+      "context_matches": true,
+      "claimed_counts_match": true,
+      "claimed_result_matches": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-vi-receipt-20261112T234806Z.json",
+      "locale": "vi",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "a0245acae0c5-1829-final-vi-20261112t234806z-issued",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0,
+          "nit": 0
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "e5c472aaa257bc7acded037a73c470ed79a1e3cc8dc162d854052b3aa89746fb",
+        "receipt_sha256": "bffc8b06c8c5b7b1eb5c26a4b31e97071b7c574deab6d6368c4c69853bd6e5a1"
+      },
+      "context_matches": true,
+      "claimed_counts_match": true,
+      "claimed_result_matches": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-issued-zh-CN-receipt-20261112T234806Z.json",
+      "locale": "zh-CN",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "a0245acae0c5-1829-final-zh-cn-20261112t234806z-issued",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 2
+        },
+        "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "target_sha256": "e6b3846b553cde65b671cec6b9b34a869bd3cffc3f42b9fec981a710501e5e81",
+        "receipt_sha256": "b0fea61e9063e03486d2a8f2babf1379c5819f0e2d8a845194be6b8ccf3a2230"
+      },
+      "context_matches": true,
+      "claimed_counts_match": true,
+      "claimed_result_matches": true
+    }
+  ]
+}

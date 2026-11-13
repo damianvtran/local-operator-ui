@@ -694,6 +694,73 @@ export const RecommendedPassedOver: Story = {
 };
 
 /*
+ * A MULTI-SELECT ASK THAT RECOMMENDS SEVERAL OPTIONS (operator report,
+ * 2026-11-10: "if it's a checkbox option then we provide multiple recommended
+ * answers").
+ *
+ * The wire sends `recommended: 0` (the first recommended row) AND
+ * `recommended_all: [0, 1]` once the model names two or more; the core has
+ * hoisted the named rows to the top in the order it listed them. Both rows carry
+ * the bold label and the badge, and NOTHING is ticked: the recommendation is
+ * advice, so the draft is empty and the user ticks the rows themselves.
+ */
+const MULTI_ASK: PendingAsk = ask({
+	ask_id: "a-5c2d",
+	questions: [
+		{
+			id: "files",
+			question: "Which files should the cleanup script touch?",
+			recommended: 0,
+			recommended_all: [0, 1],
+			options: [
+				{ label: "logs only", description: "Rotated logs older than 7 days" },
+				{ label: "logs and caches", description: "Also clears build caches" },
+				{ label: "everything under tmp", description: "Includes live sockets" },
+			],
+			multi: true,
+		},
+	],
+});
+
+export const MultiSelectTwoRecommended: Story = {
+	args: {
+		frontend: frontend([MULTI_ASK]),
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		/* Nothing is pre-ticked: the recommendation marks rows, never the draft. */
+		drafts: {},
+		onDraftChange: noop,
+		onAnswer: noop,
+		onDecline: noop,
+	},
+};
+
+/** The same ask from a runtime that predates `recommended_all`: one badge. */
+export const MultiSelectOneRecommendedLegacy: Story = {
+	args: {
+		frontend: frontend([
+			ask({
+				ask_id: "a-5c2e",
+				questions: [
+					{
+						...MULTI_ASK.questions[0],
+						recommended_all: undefined,
+					},
+				],
+			}),
+		]),
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		drafts: {},
+		onDraftChange: noop,
+		onAnswer: noop,
+		onDecline: noop,
+	},
+};
+
+/*
  * ---------------------------------------------------------------------------
  * THE CARD AT FULL TEXT (the wire stopped clipping, so the layout has to hold)
  * ---------------------------------------------------------------------------

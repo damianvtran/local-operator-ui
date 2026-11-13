@@ -10,6 +10,30 @@ export const DEFAULT_START_RECORDING_VALUE = "primary+shift+s";
 export const PUSH_TO_TALK_SETTING_KEY = "keymap.push_to_talk";
 export const DEFAULT_PUSH_TO_TALK_VALUE = "alt-right-hold";
 
+/**
+ * The cleared state for a clearable hotkey row. The backend registry cannot
+ * store an empty/null value for these rows (validate refuses it, and `''` on
+ * edit means reset), so a cleared row stores this string sentinel. It is
+ * accepted ONLY by the two desktop-scope dictation rows that opt in
+ * (`keymap.start_recording`, `keymap.push_to_talk`); everywhere else it is an
+ * invalid value that falls back to the default. Cleared is distinct from
+ * invalid in every resolver: invalid keeps the last-good/default, while this
+ * means no door.
+ */
+export const CLEARED_SHORTCUT_VALUE = "none";
+
+export function isClearedShortcut(value: unknown): boolean {
+	// Case-insensitive and trimmed: the backend's resolvers read `NONE`,
+	// `None` and ` none ` as cleared too, so a hand-edit into config.yml must
+	// agree here rather than read as invalid (QA Q-1). `''` is not cleared:
+	// it stays an invalid value that keeps last-good (the main read reports
+	// it before this check, and the renderer falls back to the default).
+	return (
+		typeof value === "string" &&
+		value.trim().toLowerCase() === CLEARED_SHORTCUT_VALUE
+	);
+}
+
 export type RecordingShortcutInput = {
 	key: string;
 	code?: string;
@@ -25,6 +49,8 @@ export type ChordClaim = { chord: string; label: string };
 export type RecordingShortcutState = {
 	value: string;
 	canonical: string | null;
+	/** The row was explicitly cleared (`"none"`): no door, distinct from invalid. */
+	cleared?: boolean;
 	problem?: string;
 	pending?: string;
 	shadowedBy?: string;
@@ -230,4 +256,22 @@ export function recordingShortcutLabel(
 			? value.trim()
 			: DEFAULT_START_RECORDING_VALUE;
 	return formatQuickSendDisplay(chord, platform);
+}
+
+/**
+ * The mic-button tooltip's two arms, as one pure choice shared by the three
+ * surfaces that teach both doors (composer, Team Bridge, canvas inline edit).
+ * Either door cleared means the plain "Start recording" arm: the composed
+ * "… (X or hold Y)" string is returned only when BOTH labels exist, so an
+ * empty half can never render as "or hold " followed by nothing. The caller
+ * still owns the i18n key (it differs per surface); it receives the labels
+ * this helper vouched for and interpolates them with `isolateLtr` as before.
+ */
+export function recordingHintParts(
+	shortcut: string | null,
+	pushToTalk: string | null,
+): { shortcut: string; pushToTalk: string } | null {
+	if (shortcut === null || pushToTalk === null) return null;
+	if (shortcut === "" || pushToTalk === "") return null;
+	return { shortcut, pushToTalk };
 }

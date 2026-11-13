@@ -1,0 +1,135 @@
+{
+ "locale": "zh-CN",
+ "namespaces": {
+  "ui.library": {
+   "status": "passed",
+   "result": "clean-with-findings",
+   "delta_key_count": 20,
+   "fully_audited_key_count": 1,
+   "carried_forward_key_count": 19,
+   "consistency_only_key_count": 159,
+   "fully_audited_keys": [
+    "ui.library.tag_category.type"
+   ],
+   "finding_ids": [
+    "N1"
+   ],
+   "input_hashes": {
+    "en": {
+     "path": "src/i18n/catalogues/en/ui.library.json",
+     "sha256": "065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71"
+    },
+    "context": {
+     "path": "src/i18n/catalogues/en/ui.library.context.json",
+     "sha256": "f799fe911107aa1f7b83b0c026ee277d5c21ee5eba297e3ae13c2da51135cc8e"
+    },
+    "zh-CN": {
+     "path": "src/i18n/catalogues/zh-CN/ui.library.json",
+     "sha256": "180a39dfac22bc99603310ce1636212dd1b915551cfbfb782c138911b7c35b89"
+    }
+   }
+  }
+ },
+ "audit_date": "2026-11-10",
+ "key_count": 20,
+ "fully_audited_key_count": 1,
+ "carried_forward_key_count": 19,
+ "consistency_only_key_count": 159,
+ "namespace_key_count": 179,
+ "scope": "PR damianvtran/local-operator-ui #1851, DELTA round: f04035bc3cb6a03644f8776a799e3daad93c7e58 (previous reviewed head 8a9ce1f808c266ebe9a0e924094344cea60c2c23; base 0e12072d2b3). Fully re-audited: the one value revised after round 1, ui.library.tag_category.type (类型 -> 种类). The other 19 delta keys were proved byte-identical to the round-1 audited bytes (git show 8a9ce1f808c2:<file> = 686dfeeaa8ee…, the target hash both round-1 zh-CN receipts record; diff to this head = exactly one line) and their round-1 wording verdicts therefore carry unchanged — they were not re-audited. The namespace's 159 legacy values are not certified. No translation service or MT engine was used; no repository file was written.",
+ "head_sha": "f04035bc3cb6a03644f8776a799e3daad93c7e58",
+ "previous_reviewed_head_sha": "8a9ce1f808c266ebe9a0e924094344cea60c2c23",
+ "base_sha": "0e12072d2b3",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "instance": "963ea9680307",
+  "session": "963ea9680307",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "Served session header for session 963ea9680307 (this run) states deepseek/deepseek-flash; no model switch, role pin override or provider fallback occurred in this session.",
+  "fallback_used": false,
+  "independent_from_translator_session": true,
+  "independent_from_round1_auditors": true
+ },
+ "translator": {
+  "agent": "i18n-translator",
+  "model": "anthropic/claude-sonnet-5-5",
+  "round1_session": "86ce45a242a4",
+  "revision_session": "2c2a584bc8f2",
+  "source": "Round-1 translator identity/session from the delegation and both round-1 zh-CN receipts; the revision is the fresh session 2c2a584bc8f2 / anthropic/claude-sonnet-5-5 per _s14-audits/f04035bc3cb6a03644f8776a799e3daad93c7e58/zh-CN-rev.json. This auditor did not translate and never opened a translator session's directory."
+ },
+ "policy_inputs": {
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+   "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+  },
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+   "note": "Recomputed identical to the manager's byte-copy at _s14-audits/f04035bc3cb6a03644f8776a799e3daad93c7e58/glossary.md. Glossary conformance checked against this copy; it has no kind/type row and no 类型/种类 string."
+  },
+  "expected_hashes": {
+   "path": "~/local-operator-ui/.worktrees/_s14-audits/f04035bc3cb6a03644f8776a799e3daad93c7e58/expected-hashes.json"
+  }
+ },
+ "artifacts": [
+  {
+   "path": "zh-CN-delta-ds-963ea9680307.json",
+   "sha256": "078f72cfd237fef7aec9f94005a43144a0ff00bfdb2f6645e4a2d33c4ffbcdf4",
+   "kind": "audit_notes_not_execution_log",
+   "record_reference": "zh-CN-delta-ds-963ea9680307.record.json"
+  },
+  {
+   "path": "zh-CN-delta-ds-963ea9680307.audit.log",
+   "sha256": "868e6028d68d34a4460fb53114f92ffb42e5678fad23c8f5063dbb03d290acba",
+   "kind": "actual_execution_log",
+   "record_reference": "zh-CN-delta-ds-963ea9680307.record.json"
+  },
+  {
+   "path": "zh-CN-delta-ds-963ea9680307-check.py",
+   "sha256": "f7528ee95076b3a02e440d51a6191241fc759df9e49adfd904f7670eff4697c3",
+   "kind": "executed_check_source",
+   "record_reference": "zh-CN-delta-ds-963ea9680307.record.json"
+  },
+  {
+   "path": "zh-CN-delta-ds-963ea9680307-check.out",
+   "sha256": "56bcf67ca91685208723fa1f65b73049c5f637353a357e5c91c0d12f1cf810df",
+   "kind": "actual_execution_output",
+   "record_reference": "zh-CN-delta-ds-963ea9680307.record.json"
+  }
+ ],
+ "current_report_verdict": {
+  "status": "passed",
+  "unresolved_blocker_major_count": 0,
+  "finding_ids": [
+   "N1"
+  ]
+ },
+ "finding_report": "zh-CN-delta-ds-963ea9680307.json",
+ "audit_notes_not_execution_log": false,
+ "execution_log": "zh-CN-delta-ds-963ea9680307.audit.log",
+ "original_lost_evidence": {
+  "status": "not_applicable",
+  "note": "No original was lost; this is a first-hand delta audit of the head under review, not a recreation."
+ },
+ "retention": {
+  "state": "scratch_handoff_only_per_explicit_read_only_task",
+  "intended_tracked_directory": "i18n/audits/evidence/zh-CN/ui.library/s14-r2-zh-CN-ds-963ea9680307",
+  "manager_action_required": "Retain this receipt plus its record.json and audit.log (and the check script/output) under the canonical evidence root, then record the ledger row with the repo's audit-ledger command. scripts/i18n/ledger-check.mjs reports stale source/target hashes for zh-CN/ui.library until that write lands (and the same for the other six locales).",
+  "proposed_note": "passed r2 delta; ui.library.tag_category.type 类型->种类 re-audited, resolves round-1 MAJOR, 1 nit (record call in zh-CN guide); 19 keys byte-identical; zh-CN/ui.library 180a39dfac22; record i18n/audits/evidence/zh-CN/ui.library/s14-r2-zh-CN-ds-963ea9680307/record.json"
+ },
+ "method": {
+  "audit_kind": "independent_delta_translation_audit",
+  "read_only": true,
+  "translation_service_used": false,
+  "wrote_outside_scratchpad": false,
+  "validator_commands": [
+   "node scripts/i18n/generate.mjs --check",
+   "node scripts/i18n/check-duplicates.mjs",
+   "node scripts/i18n/context-parity.mjs",
+   "node scripts/i18n/ledger-check.mjs",
+   "python3 zh-CN-delta-ds-963ea9680307-check.py"
+  ],
+  "validator_note": "generate --check, check-duplicates and context-parity pass; ledger-check FAILS for all seven shipped locales on ui.library (stale source/target hashes plus the 'receipt does not name the English source bytes' row) because the audited rows for this PR's ui.library delta are not recorded yet. Uniform, pre-ledger-write, and the manager's step — not a finding against the translation and not a hash-binding mismatch (the binding against expected-hashes.json is 3/3 clean).",
+  "receipt_contract_review": "Root fields mirror _s14-audits/8a9ce1f808c266ebe9a0e924094344cea60c2c23/round1/fr-ds-7c6a1a31a0fb.json/.record.json (the model named in the brief), adapted to delta mode: a `namespaces` object with exactly ONE ui.library block carrying status, result, source_sha256, target_sha256, input_hashes and findings, plus delta-specific counts (delta_key_count 20 / fully_audited 1 / carried_forward 19). Extra fields (previous_reviewed_head_sha, prior_findings_disposition, concern_verdicts, unverified) are additive and carry no verdict weight. Every JSON file was re-parsed with python json.load after writing. No repository file was written and no schema validator was run."
+ }
+}

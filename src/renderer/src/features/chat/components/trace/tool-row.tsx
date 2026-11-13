@@ -52,7 +52,7 @@
 
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { t } from "@shared/i18n";
-import { useI18nLocale } from "@shared/i18n/use-locale";
+import { useTextDirection } from "@shared/i18n/use-document-direction";
 import { cn } from "@shared/lib/utils";
 import { type ReactNode, useEffect, useState } from "react";
 import {
@@ -252,6 +252,19 @@ export type ToolRowProps = {
 	 * for its whole sentence at the cost of a second line.
 	 */
 	summaryWrap?: boolean;
+	/**
+	 * The summary is a sentence the CATALOGUE wrote (`composing · 2.4 KB`,
+	 * `never sent`), not text built from the call's arguments.
+	 *
+	 * The summary cell forces `ltr` because it normally holds machine voice (a
+	 * path, a command, an identifier). Keyed status copy is the other kind: it is
+	 * written in the language and must read in that language's direction, or an
+	 * RTL row prints its datum at the start edge, ahead of the status word, and a
+	 * narrow row clips the status word first - the reverse of every LTR locale
+	 * (design review round 1, D1). Default false: every other caller's summary is
+	 * arguments, a name or a peer's text, and keeps the machine-voice direction.
+	 */
+	summaryIsCopy?: boolean;
 	outcome: ToolRowOutcome;
 	/**
 	 * How a `send` call's delivery ended, when the result stated it
@@ -904,6 +917,7 @@ export const ToolRow = ({
 	summaryFallback = null,
 	summaryHold = false,
 	summaryWrap = false,
+	summaryIsCopy = false,
 	outcome,
 	deliveryState = null,
 	settledVerb = null,
@@ -919,8 +933,10 @@ export const ToolRow = ({
 }: ToolRowProps) => {
 	/* A subscription, not a value: `outcomeLabel` resolves through `t()` when the
 	 * row renders, and an interface-language switch has to repaint the verdict
-	 * word rather than wait for the next stream event. */
-	useI18nLocale();
+	 * word rather than wait for the next stream event. `useTextDirection` is the
+	 * same subscription (it reads `useI18nLocale`) and also answers the locale's
+	 * direction, which a keyed-copy summary takes (see `summaryIsCopy`). */
+	const direction = useTextDirection();
 	const running = outcome === "running";
 	// The GROUND is gated on the `error` outcome alone, deliberately: see
 	// `neverSent` below, which states why a not-run row does not claim the wash.
@@ -983,8 +999,18 @@ export const ToolRow = ({
 			 * which stays aligned; the verb and the object are one phrase, 8px apart
 			 * (`gap-2`, the row's own step), which is how Cursor 3 and Codex set it.
 			 *
-			 * `shrink-0` so the object is the half that truncates: a verb is at most
-			 * three short words, and it is the half that says what happened.
+			 * The object collapses FIRST: it is `flex-1` (basis 0), so at any width
+			 * it takes only what the verb leaves, and the verb's own flex-shrink
+			 * (default 1, scaled by its content basis) is the only one that bites
+			 * once the object is at zero. The verb used to be `shrink-0
+			 * whitespace-nowrap`, which was right for the five-letter English verbs
+			 * and wrong for the translated ones (`Включает аварийную блокировку`,
+			 * `Mise à jour de saisie sécurisée`): at 284px and 184px transcript
+			 * rows they ran past the row's edge and pushed the duration out or
+			 * clipped mid-word (design round 1, D1). `min-w-0 truncate` lets a verb
+			 * that cannot fit end in an ellipsis instead; the full phrase stays
+			 * readable on hover (`title`) and, being real DOM text rather than a
+			 * CSS-generated one, to assistive tech - truncation is paint only.
 			 */}
 			{verbless ? null : (
 				<span
@@ -992,10 +1018,12 @@ export const ToolRow = ({
 					className={cn(
 						// §E1: the verb is a word, so it takes the sans ramp at
 						// `text-body-sm`/13; the monospace belongs to the OBJECT.
-						"shrink-0 whitespace-nowrap text-body-sm",
+						"min-w-0 truncate text-body-sm",
 						nameInk(outcome),
 					)}
-					title={name}
+					// The tool's wire name stays on the hover (it always did); the verb
+					// is added so a truncated translation can be read in full (D1).
+					title={`${verbText} (${name})`}
 				>
 					{verbText}
 				</span>
@@ -1106,8 +1134,16 @@ export const ToolRow = ({
 					 * character: `tmp/qa-rtl/ledger.md/` reordered the slash onto the far
 					 * side of the run. `dir="ltr"` on an isolated run keeps the token's own
 					 * order without imposing direction on the row it sits in.
+					 *
+					 * EXCEPT keyed status copy (`summaryIsCopy`, design round 1, D1): words
+					 * the catalogue wrote take the LOCALE's direction - stated, not
+					 * `auto`, for the same reason the fold's units state it (an `auto`
+					 * isolate follows the first strong letter, and a copy that opens with
+					 * a Latin tool name would lay out against its row). In a left-to-right
+					 * locale that is `ltr` again, so every LTR row is byte-identical to
+					 * before; the size inside the copy is already its own FSI..PDI run.
 					 */
-					<bdi dir="ltr">{summaryText}</bdi>
+					<bdi dir={summaryIsCopy ? direction : "ltr"}>{summaryText}</bdi>
 				)}
 			</span>
 			<DiffCounters added={added} removed={removed} />

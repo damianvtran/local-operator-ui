@@ -112,6 +112,7 @@ const bundle = await build({
 				COPY_FEEDBACK_MS,
 			} from "./src/renderer/src/features/chat/canonical/message-actions";
 			export { SPEECH_MAX_CHARS } from "@shared/lib/speech-clip";
+			export { setLocale, applyCapabilities } from "@shared/i18n";
 			export {
 				speechFailureFallbackCopy,
 				speechPlaybackCopy,
@@ -662,6 +663,39 @@ test("a configured service arms Speak, and the press reaches the relay with the 
 	);
 	assert.ok(button("Stop"), "and the control is now the Stop control");
 	await unmount();
+});
+
+test("the clip disclosure's character count follows the live locale (S16c)", async () => {
+	// The count was `toLocaleString("en-US")`, so a French reader got `4,0xx`
+	// inside an otherwise translated sentence. It is `formatNumber` now: the
+	// store's locale is moved (and restored) so the live locale, not the
+	// default, is what the assertion measures.
+	const sentence = "The quick brown fox jumps over the lazy dog. ";
+	const long = sentence.repeat(250);
+	const windowText = long.slice(0, mod.SPEECH_MAX_CHARS);
+	const expected = windowText.slice(0, windowText.lastIndexOf(".") + 1);
+	try {
+		// The control is located by its English label, THEN the locale moves: the
+		// press is what reads the live locale, and the French label would not
+		// match this lookup.
+		const { button, click, flush, unmount } = await mount({ bodyText: long });
+		const speak = button("Speak aloud");
+		mod.setLocale("fr");
+		await click(speak);
+		await flush();
+		const [toast] = toasts().infos;
+		assert.ok(
+			toast.includes(expected.length.toLocaleString("fr")),
+			`the count is spelled in French grouping: ${toast}`,
+		);
+		assert.ok(
+			!toast.includes(expected.length.toLocaleString("en-US")),
+			`and not with the English comma: ${toast}`,
+		);
+		await unmount();
+	} finally {
+		mod.applyCapabilities(null);
+	}
 });
 
 test("an over-cap answer is clipped at a sentence end, disclosed, and sent as the clip", async () => {

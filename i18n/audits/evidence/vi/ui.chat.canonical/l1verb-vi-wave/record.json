@@ -1,0 +1,70 @@
+{
+  "locale": "vi",
+  "namespace": "ui.chat.canonical",
+  "final_version": "v3",
+  "final_catalogue_sha256": "cf703b1f99b8c87d4afe6e4bc6bfb708a8cf3ee1792296194639806ad24c4ea0",
+  "en_sha256": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765",
+  "chain": [
+    {
+      "instance": "l1verb-vi-r1a",
+      "round": 1,
+      "version": "v1",
+      "model": "deepseek/deepseek-flash",
+      "result": "changes_requested",
+      "counts": {
+        "BLOCKER": 0,
+        "MAJOR": 3,
+        "MINOR": 5,
+        "NIT": 2
+      },
+      "catalogue_sha256": "d32374f9e54f92b1d8bd1d483abb93f7bafd5001392c5812b05afbb6098be199",
+      "receipt": "/Users/damian/local-operator-ui/.worktrees/i18n-l1-tool-verbs/i18n/audits/evidence/vi/ui.chat.canonical/l1verb-vi-wave/l1verb-vi-r1a.receipt.json"
+    },
+    {
+      "instance": "l1verb-vi-r1b",
+      "round": 1,
+      "version": "v1",
+      "model": "anthropic/claude-sonnet-5-5",
+      "result": "changes_requested",
+      "counts": {
+        "BLOCKER": 0,
+        "MAJOR": 2,
+        "MINOR": 6,
+        "NIT": 3
+      },
+      "catalogue_sha256": "d32374f9e54f92b1d8bd1d483abb93f7bafd5001392c5812b05afbb6098be199",
+      "receipt": "/Users/damian/local-operator-ui/.worktrees/i18n-l1-tool-verbs/i18n/audits/evidence/vi/ui.chat.canonical/l1verb-vi-wave/l1verb-vi-r1b.receipt.json"
+    },
+    {
+      "instance": "l1verb-vi-r2",
+      "round": 2,
+      "version": "v2",
+      "model": "anthropic/claude-sonnet-5-5",
+      "result": "changes_requested",
+      "counts": {
+        "BLOCKER": 0,
+        "MAJOR": 1,
+        "MINOR": 3,
+        "NIT": 0
+      },
+      "catalogue_sha256": "725f6abb5ad2aba25ac4defe17807f07c32aae8b61e0fb794fb390e6faeda188",
+      "receipt": "/Users/damian/local-operator-ui/.worktrees/i18n-l1-tool-verbs/i18n/audits/evidence/vi/ui.chat.canonical/l1verb-vi-wave/l1verb-vi-r2.receipt.json"
+    },
+    {
+      "instance": "l1verb-vi-r3",
+      "round": 3,
+      "version": "v3",
+      "model": "anthropic/claude-sonnet-5-5",
+      "result": "clean-with-findings",
+      "counts": {
+        "BLOCKER": 0,
+        "MAJOR": 0,
+        "MINOR": 0,
+        "NIT": 2
+      },
+      "catalogue_sha256": "cf703b1f99b8c87d4afe6e4bc6bfb708a8cf3ee1792296194639806ad24c4ea0",
+      "receipt": "/Users/damian/local-operator-ui/.worktrees/i18n-l1-tool-verbs/i18n/audits/evidence/vi/ui.chat.canonical/l1verb-vi-wave/l1verb-vi-r3.receipt.json"
+    }
+  ],
+  "note": "Chronological audit chain of the L1 tool-row verb batch. Rounds before the final version audited older staged values and are kept as superseded history in i18n/ledger.json."
+}

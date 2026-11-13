@@ -11,6 +11,7 @@
 	"ui.providers.phone.action.sign_in": "Tiếp tục trong trình duyệt",
 	"ui.providers.phone.address_label": "Địa chỉ điện thoại",
 	"ui.providers.phone.choose_heading": "Chọn tài khoản",
+	"ui.providers.phone.connector_not_needed": "Truy cập từ điện thoại không còn cần công cụ kết nối riêng trên máy tính này. Hãy kiểm tra lại để tiếp tục thiết lập.",
 	"ui.providers.phone.consent": "Kích hoạt sẽ thiết lập gói thuê bao tunnel cho tài khoản Radient này với {amount} USD mỗi tháng, đặt trước địa chỉ điện thoại của bạn và khởi động trình kết nối nền. Thao tác này không mua tín dụng.",
 	"ui.providers.phone.failure.check": "Không kiểm tra được tính năng truy cập từ điện thoại và không có thay đổi nào.",
 	"ui.providers.phone.failure.run": "Không hoàn tất thiết lập truy cập từ điện thoại. Các bước đã hoàn thành sẽ không được hoàn tác. Hãy kiểm tra lại trước khi thử lại.",

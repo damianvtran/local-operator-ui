@@ -39,5 +39,10 @@
 	"ui.chat.asks.clause.outstanding": "{count, plural, one {{count, number, ::group-off} запрос без ответа} few {{count, number, ::group-off} запроса без ответа} many {{count, number, ::group-off} запросов без ответа} other {{count, number, ::group-off} запроса без ответа}}",
 	"ui.chat.asks.clause.waiting": "{count, plural, one {{count, number, ::group-off} вопрос ждёт ответа} few {{count, number, ::group-off} вопроса ждут ответа} many {{count, number, ::group-off} вопросов ждут ответа} other {{count, number, ::group-off} вопроса ждут ответа}}",
 	"ui.chat.asks.clause.delivering": "{count, plural, one {{count, number, ::group-off} ответ ещё не передан агенту — его можно изменить} few {{count, number, ::group-off} ответа ещё не переданы агенту — их можно изменить} many {{count, number, ::group-off} ответов ещё не передано агенту — их можно изменить} other {{count, number, ::group-off} ответа ещё не передано агенту — их можно изменить}}",
-	"ui.chat.asks.clause.timed_out": "{count, plural, one {{count, number, ::group-off} вопрос: срок ответа истёк} few {{count, number, ::group-off} вопроса: срок ответа истёк} many {{count, number, ::group-off} вопросов: срок ответа истёк} other {{count, number, ::group-off} вопроса: срок ответа истёк}}"
+	"ui.chat.asks.clause.timed_out": "{count, plural, one {{count, number, ::group-off} вопрос: срок ответа истёк} few {{count, number, ::group-off} вопроса: срок ответа истёк} many {{count, number, ::group-off} вопросов: срок ответа истёк} other {{count, number, ::group-off} вопроса: срок ответа истёк}}",
+	"ui.chat.asks.bounds.body_label": "Полный текст вопроса",
+	"ui.chat.asks.proposal.summary": "Предложенное изменение: {kind, select, agent {агент} team {команда} skill {навык} other {профиль}} {name}",
+	"ui.chat.asks.proposal.field_lines": "{label}: +{added, number} −{removed, number} строк",
+	"ui.chat.asks.proposal.field_changed": "{label}: изменено",
+	"ui.chat.asks.proposal.review": "Просмотреть изменения"
 }

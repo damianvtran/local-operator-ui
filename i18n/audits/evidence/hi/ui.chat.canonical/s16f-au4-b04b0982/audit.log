@@ -1,0 +1,207 @@
+=== audit s16f-au4-hi · 2026-11-12T11:00:15Z · locale hi · namespace ui.chat.canonical ===
+
+$ git log --oneline -1
+cbb8782a39b fix(i18n): ru sound label capitalisation and hi sound noun consistency (round-3 audit MAJORs)
+[exit 0]
+
+$ git rev-parse HEAD
+cbb8782a39b5692ae46bfc3aa6930840420e9b14
+[exit 0]
+
+$ git status --porcelain
+[exit 0]
+
+$ gh pr view 1876 --json state,headRefOid --jq "\(.state) \(.headRefOid)"
+OPEN cbb8782a39b5692ae46bfc3aa6930840420e9b14
+[exit 0]
+
+$ sh -c sha256sum src/i18n/catalogues/en/ui.chat.canonical.json src/i18n/catalogues/hi/ui.chat.canonical.json src/i18n/catalogues/en/ui.chat.canonical.context.json
+905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e  src/i18n/catalogues/en/ui.chat.canonical.json
+5bad55ca446e6e2e0bc853d503d94280f444cd009402431c65e8ce997528689b  src/i18n/catalogues/hi/ui.chat.canonical.json
+8f56e0d2b384c6b41add57a64e6c863e565cb61d5a7c0de482d42f380be3acfe  src/i18n/catalogues/en/ui.chat.canonical.context.json
+[exit 0]
+
+--- validator 1: locale-parity (key parity, placeholders, no English stub) ---
+ℹ tests 44
+ℹ suites 0
+ℹ pass 44
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1884.892417
+
+$ node scripts/i18n/check-duplicates.mjs
+check-duplicates: ok — 1437 file(s) scanned, 0 duplicate key(s)
+[exit 0]
+
+$ node scripts/i18n/context-parity.mjs
+context-parity: ok — every English key is covered, apart from 129 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).
+[exit 0]
+
+$ node scripts/i18n/generate.mjs --check
+/Users/damian/local-operator-ui/.worktrees/i18n-s16a/src/i18n/keys.gen.ts is byte-identical to a fresh generation.
+[exit 0]
+
+$ sh -c node --test scripts/i18n/generation-card-labels.test.mjs 2>&1 | tail -8
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2711.235791
+[exit 0]
+
+$ sh -c node --test scripts/i18n/hi-activation.test.mjs 2>&1 | tail -8
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 874.617792
+[exit 0]
+
+--- integrity: key sets, prior-head byte identity, 15-key added group ---
+key counts: head 467 | 8180eff1 467 | merge parents 466 457 | origin/main 457
+key ORDER identical to 8180eff1: True
+key set equal to 8180eff1: True
+values byte-identical to 8180eff1: 464 of 467
+values differing from 8180eff1: 3
+   ~ ui.chat.canonical.media.sound_label
+       was: "{count, plural, =1 {साउंड} other {साउंड {position, number, ::group-off}}}"
+       now: "{count, plural, =1 {ध्वनि} other {ध्वनि {position, number, ::group-off}}}"
+   ~ ui.chat.canonical.sound.player_failed
+       was: "यह साउंड नहीं बजाया जा सका"
+       now: "यह ध्वनि नहीं चलाई जा सकी"
+   ~ ui.chat.canonical.supplement.sound_fallback_label
+       was: "बनाया गया साउंड"
+       now: "बनाई गई ध्वनि"
+raw line count head/prior: 469 469 | differing raw lines: 3
+file ends with newline: True
+added/merged group size: 15 (10 keys the PR adds over origin/main + 5 keys main brought)
+group keys whose value moved in cbb8782a: ['ui.chat.canonical.media.sound_label', 'ui.chat.canonical.supplement.sound_fallback_label']
+group keys identical to their previous audited value: 13
+
+--- auditor's own ICU grid (real parser), 3 changed + 6 same-noun sibling keys ---
+namespace ui.chat.canonical
+en keys 467 · hi keys 467 · symmetric difference 0
+CLDR plural categories — hi one/other · en one/other
+keys under audit (3 changed + same-noun siblings): 9
+
+ui.chat.canonical.image_gen.state.done
+  en: {material, select, video {Generated video} voiceover {Generated voiceover} sound_effect {Generated sound effect} other {Generated image}}
+  hi: {material, select, video {वीडियो बन गया} voiceover {वॉइसओवर बन गया} sound_effect {साउंड इफ़ेक्ट बन गया} other {तस्वीर बन गई}}
+  args en=[material:5] hi=[material:5]
+  selectors en=[material[video|voiceover|sound_effect|other]] hi=[material[video|voiceover|sound_effect|other]]
+PASS    ui.chat.canonical.image_gen.state.done placeholder names+types identical
+PASS    ui.chat.canonical.image_gen.state.done plural/select structure identical
+PASS    ui.chat.canonical.image_gen.state.done every plural carries 'other' (mandatory CLDR fallback)
+  context role: state line of a finished generation card (single item)
+
+ui.chat.canonical.image_gen.state.done_batch
+  en: {material, select, video {Video batch} voiceover {Voiceover batch} sound_effect {Sound effect batch} other {Image batch}}
+  hi: {material, select, video {वीडियो का बैच} voiceover {वॉइसओवर का बैच} sound_effect {साउंड इफ़ेक्ट का बैच} other {तस्वीरों का बैच}}
+  args en=[material:5] hi=[material:5]
+  selectors en=[material[video|voiceover|sound_effect|other]] hi=[material[video|voiceover|sound_effect|other]]
+PASS    ui.chat.canonical.image_gen.state.done_batch placeholder names+types identical
+PASS    ui.chat.canonical.image_gen.state.done_batch plural/select structure identical
+PASS    ui.chat.canonical.image_gen.state.done_batch every plural carries 'other' (mandatory CLDR fallback)
+  context role: state line of a finished generation card that produced several items
+
+ui.chat.canonical.image_gen.state.failed
+  en: {material, select, video {The video could not be generated.} voiceover {The voiceover could not be generated.} sound_effect {The sound effect could not be generated.} other {The image could not be generated.}}
+  hi: {material, select, video {वीडियो नहीं बनाया जा सका।} voiceover {वॉइसओवर नहीं बनाया जा सका।} sound_effect {साउंड इफ़ेक्ट नहीं बनाया जा सका।} other {तस्वीर नहीं बनाई जा सकी।}}
+  args en=[material:5] hi=[material:5]
+  selectors en=[material[video|voiceover|sound_effect|other]] hi=[material[video|voiceover|sound_effect|other]]
+PASS    ui.chat.canonical.image_gen.state.failed placeholder names+types identical
+PASS    ui.chat.canonical.image_gen.state.failed plural/select structure identical
+PASS    ui.chat.canonical.image_gen.state.failed every plural carries 'other' (mandatory CLDR fallback)
+  context role: fallback sentence of a failed generation card whose record carries no error text
+
+ui.chat.canonical.image_gen.state.failed_batch
+  en: {material, select, video {Video batch failed.} voiceover {Voiceover batch failed.} sound_effect {Sound effect batch failed.} other {Image batch failed.}}
+  hi: {material, select, video {वीडियो का बैच विफल रहा।} voiceover {वॉइसओवर का बैच विफल रहा।} sound_effect {साउंड इफ़ेक्ट का बैच विफल रहा।} other {तस्वीरों का बैच विफल रहा।}}
+  args en=[material:5] hi=[material:5]
+  selectors en=[material[video|voiceover|sound_effect|other]] hi=[material[video|voiceover|sound_effect|other]]
+PASS    ui.chat.canonical.image_gen.state.failed_batch placeholder names+types identical
+PASS    ui.chat.canonical.image_gen.state.failed_batch plural/select structure identical
+PASS    ui.chat.canonical.image_gen.state.failed_batch every plural carries 'other' (mandatory CLDR fallback)
+  context role: failure line of a generation card that produced several items
+
+ui.chat.canonical.image_gen.state.running
+  en: {material, select, video {Generating video…} voiceover {Generating voiceover…} sound_effect {Generating sound effect…} other {Generating image…}}
+  hi: {material, select, video {वीडियो बन रहा है…} voiceover {वॉइसओवर बन रहा है…} sound_effect {साउंड इफ़ेक्ट बन रहा है…} other {तस्वीर बन रही है…}}
+  args en=[material:5] hi=[material:5]
+  selectors en=[material[video|voiceover|sound_effect|other]] hi=[material[video|voiceover|sound_effect|other]]
+PASS    ui.chat.canonical.image_gen.state.running placeholder names+types identical
+PASS    ui.chat.canonical.image_gen.state.running plural/select structure identical
+PASS    ui.chat.canonical.image_gen.state.running every plural carries 'other' (mandatory CLDR fallback)
+  context role: state line of a generation card while the provider is producing one item
+
+ui.chat.canonical.image_gen.state.running_batch
+  en: {material, select, video {{total, plural, one {Generating # video…} other {Generating # videos…}}} voiceover {{total, plural, one {Generating # voiceover…} other {Generating # voiceovers…}}} sound_effect {{total, plural, one {Generating # sound effect…} other {Generating # sound effects…}}} other {{total, plural, one {Generating # image…} other {Generating # images…}}}}
+  hi: {material, select, video {{total, plural, one {# वीडियो बन रहा है…} other {# वीडियो बन रहे हैं…}}} voiceover {{total, plural, one {# वॉइसओवर बन रहा है…} other {# वॉइसओवर बन रहे हैं…}}} sound_effect {{total, plural, one {# साउंड इफ़ेक्ट बन रहा है…} other {# साउंड इफ़ेक्ट बन रहे हैं…}}} other {{total, plural, one {# तस्वीर बन रही है…} other {# तस्वीरें बन रही हैं…}}}}
+  args en=[material:5 total:6] hi=[material:5 total:6]
+  selectors en=[material[video|voiceover|sound_effect|other] total[one|other] total[one|other] total[one|other] total[one|other]] hi=[material[video|voiceover|sound_effect|other] total[one|other] total[one|other] total[one|other] total[one|other]]
+PASS    ui.chat.canonical.image_gen.state.running_batch placeholder names+types identical
+PASS    ui.chat.canonical.image_gen.state.running_batch plural/select structure identical
+PASS    ui.chat.canonical.image_gen.state.running_batch every plural carries 'other' (mandatory CLDR fallback)
+  branch keywords hi: material[video|voiceover|sound_effect|other]
+  branch keywords hi: total[one|other]
+  branch keywords hi: total[one|other]
+  branch keywords hi: total[one|other]
+  branch keywords hi: total[one|other]
+  context role: state line of a generation card producing a batch of several items
+
+ui.chat.canonical.media.sound_label
+  en: {count, plural, =1 {Sound} other {Sound {position, number, ::group-off}}}
+  hi: {count, plural, =1 {ध्वनि} other {ध्वनि {position, number, ::group-off}}}
+  args en=[count:6 position:2:{"type":0,"tokens":[{"st] hi=[count:6 position:2:{"type":0,"tokens":[{"st]
+  selectors en=[count[=1|other]] hi=[count[=1|other]]
+PASS    ui.chat.canonical.media.sound_label placeholder names+types identical
+PASS    ui.chat.canonical.media.sound_label plural/select structure identical
+PASS    ui.chat.canonical.media.sound_label every plural carries 'other' (mandatory CLDR fallback)
+  branch keywords hi: count[=1|other]
+  context role: accessible name of a sound a tool produced when the tool sent no file name; numbered when several share a row
+
+ui.chat.canonical.sound.player_failed
+  en: This sound could not be played
+  hi: यह ध्वनि नहीं चलाई जा सकी
+  args en=[] hi=[]
+  selectors en=[] hi=[]
+PASS    ui.chat.canonical.sound.player_failed placeholder names+types identical
+PASS    ui.chat.canonical.sound.player_failed plural/select structure identical
+PASS    ui.chat.canonical.sound.player_failed every plural carries 'other' (mandatory CLDR fallback)
+  context role: inline error line beside the shared sound player's transport
+
+ui.chat.canonical.supplement.sound_fallback_label
+  en: Generated sound
+  hi: बनाई गई ध्वनि
+  args en=[] hi=[]
+  selectors en=[] hi=[]
+PASS    ui.chat.canonical.supplement.sound_fallback_label placeholder names+types identical
+PASS    ui.chat.canonical.supplement.sound_fallback_label plural/select structure identical
+PASS    ui.chat.canonical.supplement.sound_fallback_label every plural carries 'other' (mandatory CLDR fallback)
+  context role: name of a sound player in a supplement card when the card sent no title
+
+noun census (hi catalogue)
+  ध्वनि → ui.settings.notifications: 23 key(s) · ui.canvas: 1 key(s) · ui.chat.canonical: 3 key(s)
+  साउंड → ui.chat.canonical: 6 key(s)
+  ऑडियो → ui.settings.notifications: 3 key(s) · ui.canvas: 2 key(s) · ui.chat.canonical: 2 key(s)
+
+composed accessible names with label='ध्वनि'
+  ui.chat.audio.play_label -> ध्वनि चलाएँ
+  ui.chat.audio.pause_label -> ध्वनि रोकें
+  ui.chat.audio.position_label -> ध्वनि की प्लेबैक स्थिति
+
+ALL CHECKS PASS
+[exit 0]
+
+$ git status --porcelain
+[exit 0]
+
+=== end of audit.log ===

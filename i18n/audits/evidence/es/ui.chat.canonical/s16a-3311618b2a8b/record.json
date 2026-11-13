@@ -1,0 +1,86 @@
+{
+	"schema": 1,
+	"audit_id": "3311618b2a8b-s16a-es",
+	"auditor": "i18n-auditor",
+	"model": "deepseek/deepseek-flash",
+	"instance": "3311618b2a8b-s16a-es",
+	"session": "3311618b2a8b",
+	"date": "2026-11-11",
+	"locale": "es",
+	"namespace": "ui.chat.canonical",
+	"key_count": 14,
+	"status": "passed",
+	"result": "clean-with-findings",
+	"sha256": {
+		"en": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd",
+		"es": "d5e50601a2c09101a83f1c4f9c11ae69375e96fd6e050fff1af5f5a9ce85ae29"
+	},
+	"context_sha256": "ef8a12dea1835c241af3a166754322ce093af88592ec625036211458a50accac",
+	"audited_artifact": {
+		"path": "$LOCAL_OPERATOR_SCRATCHPAD/s16a-drafts/es-s16a.json (manager session 3ef6295a5545)",
+		"kind": "translator draft of the 14 s16a keys; NOT yet merged into src/i18n/catalogues/es/ui.chat.canonical.json",
+		"note": "sha256.es above names the DRAFT bytes actually audited. The shipped-file hash is derived by scripts/i18n/ledger-assemble.mjs at integration from the merged catalogue, whose bytes will differ from the draft file even with identical values (key order/formatting of the full file)."
+	},
+	"scope": "Round 1: the 14 NEW English keys at the end of src/i18n/catalogues/en/ui.chat.canonical.json (ui.chat.canonical.tool.composing_sized, tool.composing_empty, tool.queued_sized, tool.queued_empty, image_gen.state.queued, .writing_request, .queue_ahead, .running, .running_batch, .done, .done_batch, .already_finished, .failed, .failed_batch) audited as an es translation draft on PR #1870 head 93a61605b059ada503d75da6e9e38e8ef14e1b67. Every other key of the namespace is untouched by this draft and out of scope.",
+	"independence": "Auditor session 3311618b2a8b did not author this draft. Translator: i18n-translator, anthropic/claude-sonnet-5-5. Auditor: i18n-auditor, deepseek/deepseek-flash (different agent, different model, different session). No translation/MT service was used; findings are reasoned from the English source, the context sidecar, the es style guide/glossary and the shipped es catalogues.",
+	"findings": [
+		{
+			"severity": "NIT",
+			"key": "ui.chat.canonical.image_gen.state.queue_ahead",
+			"current": "{count, plural, one {{count, number, ::group-off} por delante} many {{count, number, ::group-off} por delante} other {{count, number, ::group-off} por delante}}",
+			"problem": "Width, not wording: the datum sits on a shrink-0, never-wrapping line beside the state word and grows by 5-6 cells over English ('100 por delante' 15 vs '100 ahead' 9; '1000000 por delante' 19 vs 13). The sidecar sets no maxCells hint and '2-3 words' is met.",
+			"suggestion": "No change recommended: 'por delante' is the shortest wording that keeps the meaning ('delante' alone is ambiguous; 'en espera' would misstate it as queue length). Risk recorded so a rendered narrow-card frame can be checked at QA."
+		},
+		{
+			"severity": "NIT",
+			"key": "ui.chat.canonical.image_gen.state.running (voiceover branch), .done, .running_batch, .done_batch",
+			"current": "Generando locución… / Locución generada / Generando # locuciones… / Lote de locuciones",
+			"problem": "'locución' is a NEW product term with no row in i18n/glossary.md and no row in the es style guide, and zero shipped precedent (0 hits for 'locución'/'voz en off' across all 159 es catalogues; the shipped generated-speech vocabulary is 'voz': ui.common.errors.speech_generation 'No se pudo generar la voz', ui.common.errors.speech_no_audio). It is native and precise (locutor/locución is the standard broadcast term) and shorter than 'voz en off'.",
+			"suggestion": "Keep 'locución'. Process follow-up, not a copy change: the wave that first uses it must record it in i18n/style-guides/es.md (or the glossary) so the next es surface reuses one word."
+		},
+		{
+			"severity": "NIT",
+			"key": "ui.chat.canonical.image_gen.state.running (all four branches)",
+			"current": "Generando vídeo… / Generando locución… / Generando efecto de sonido… / Generando imagen…",
+			"problem": "Bare singular after the gerund. Shipped es uses both patterns, but for a singular countable object it usually keeps the article (ui.chat.checkpoint.generating_name 'Generando el nombre…', 'Cargando el navegador', 'Cargando el agente guardado…'), while bare forms ship mostly with plurals/mass nouns ('Cargando agentes', 'Cargando mensajes programados…').",
+			"suggestion": "Acceptable as a deliberate terse register that also keeps the four branches parallel; if the wave prefers fuller sentences, 'Generando el vídeo… / el efecto de sonido…' still fits the 3-word budget. No change requested."
+		},
+		{
+			"severity": "NIT",
+			"key": "ui.chat.canonical.image_gen.state.running/done/running_batch/done_batch/failed/failed_batch (video branch)",
+			"current": "vídeo / Vídeo generado / Generando # vídeos… / Lote de vídeos",
+			"problem": "Cross-namespace spelling drift in SHIPPED copy, not introduced here: the draft's 'vídeo' matches ui.canvas.files.videos 'Vídeos', ui.canvas.file_rows.video 'Vídeo', ui.chat.directory.folder.videos 'Vídeos', ui.canvas.video_preview.* and ui.onboarding.tour.welcome.body.2 'vídeos' (6 values), but ui.library.category.video and ui.library.kind.video ship 'Video' without the accent (2 values).",
+			"suggestion": "No change to these 14 keys: 'vídeo' is the RAE standard form and the majority shipped spelling. The unaccented ui.library pair is a pre-existing drift whose fix belongs to ui.library, out of this scope."
+		}
+	],
+	"observations": [
+		"INFO translator notes, claim 'verbs are gerund lower-case like tool_row.verb.*.running': the shipped tool_row.verb.*.running values are capitalised ('Actualizando proyecto', 'Escribiendo'), so that citation is inaccurate; the conclusion still holds through ui.chat.canonical.tool.never_sent_composed/empty ('nada redactado', 'redactado: {size}'), which are lower-case and are the true siblings.",
+		"INFO translator notes, claim 'batch has no shipped es term': accurate for the es chat catalogues, but 'lote' already ships in ui.settings.imports.selection_limit ('por lotes') and ui.settings.configuration.delegated_retention_copy… ('en lotes limitados'), which strengthens the reuse rather than contradicting it.",
+		"INFO reuse claims verified against shipped es bytes: 'en cola' (ui.settings.imports.state_queued, ui.settings.imports.phase_queued, ui.chat.sidebar.row.bg.queued, ui.chat.ask_queue.status.open 'En cola — el agente continúa', ui.chat.aside.adopt.queued); 'redactado/nada redactado' (ui.chat.canonical.tool.never_sent_*); 'Generando' (ui.chat.checkpoint.generating_name); 'imagen/imágenes' (ui.chat.canonical.image_label, fold.*_images, attachment_refusal.images_*).",
+		"INFO error register: 'Falló el lote de …' has shipped precedent for the same construction (ui.chat.canonical.older_history.failed.short 'Falló la carga', ui.chat.run_details.reader.failed 'Falló', ui.common.errors.request_http 'La solicitud falló', ui.common.errors.speech_no_audio 'La generación de voz falló'), and 'solicitud' for request is settled (ui.common.errors.media_request, ui.browser.media_access.prompt_label 'Solicitud de micrófono').",
+		"INFO ICU execution: every message formatted with intl-messageformat (worktree node_modules) for counts 0,1,2,3,5,11,21,22,100,1000000 and materials image/video/voiceover/sound_effect plus the raw wire value 'sound-effect' and an unknown value (both fall to the 'other' branch, same as English). Outputs are grammatical in all cases, e.g. 'Generando 1 vídeo…', 'Generando 2 vídeos…', 'Generando 1.000.000 de vídeos…' ('de' correctly present only in the CLDR many category), '1000000 por delante' (group-off preserved), 'Lote de efectos de sonido', 'No se pudo generar el efecto de sonido.'.",
+		"INFO No native-speaker proof beyond the auditor's own es fluency; no rendered frame was captured, so overflow is a character-count argument, not a measured layout."
+	],
+	"not_audited": [
+		"Every other key/namespace of the es catalogue",
+		"Runtime rendering, RTL (not applicable to es), pseudo-localization",
+		"Merged-file byte identity: the ledger row and its shipped-file target hash are produced by scripts/i18n/ledger-assemble.mjs once the draft lands"
+	],
+	"reference_repository_revision": "b42471d3935cb7e95d64428af27c32626665f4c0 (local-operator core, glossary/style-guide source)",
+	"reference_hashes": {
+		"i18n/glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+		"i18n/style-guides/es.md": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e"
+	},
+	"ui_procedure": {
+		"path": "docs/I18N.md",
+		"sha256": "d58ad473701f098b3c2c24343c3a7e7236f22db22cc871016c4cb75f25f41f5c"
+	},
+	"artifacts": [
+		{ "path": "scratchpad/report.md", "kind": "audit report" },
+		{ "path": "scratchpad/mech.log", "kind": "execution log: structural/ICU/placeholder/CLDR checks (node mech.mjs)" },
+		{ "path": "scratchpad/fmt.log", "kind": "execution log: intl-messageformat render of all 14 messages" },
+		{ "path": "scratchpad/validator.log", "kind": "execution log: scripts/i18n/generate.mjs --check and context-parity.mjs on head 93a6160" },
+		{ "path": "scratchpad/receipt-validation.log", "kind": "execution log: this record validated by scripts/i18n/ledger-rules.mjs deriveReceiptAudit" }
+	],
+	"execution_limitations": "Read-only audit: not run here — scripts/i18n/ledger-check.mjs and ledger-assemble.mjs (both derive hashes from the shipped catalogue, which this draft is not yet), vitest locale-parity/catalogue tests (heavy; CI's), any rendered frame or browser run."
+}

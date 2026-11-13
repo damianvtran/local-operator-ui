@@ -1,3 +1,7 @@
 {
-	"ui.common.time.yesterday_at": "گزشتہ روز {time}"
+	"ui.common.time.yesterday_at": "گزشتہ روز {time}",
+	"ui.common.time.today_at": "آج {time}",
+	"ui.common.time.yesterday": "گزشتہ روز",
+	"ui.common.time.weekday_at": "{weekday} {time}",
+	"ui.common.time.date_at": "{date} کو {time}"
 }

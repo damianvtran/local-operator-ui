@@ -11,6 +11,7 @@
 	"ui.providers.phone.action.sign_in": "ब्राउज़र में आगे बढ़ें",
 	"ui.providers.phone.address_label": "फ़ोन का पता",
 	"ui.providers.phone.choose_heading": "खाता चुनें",
+	"ui.providers.phone.connector_not_needed": "फ़ोन एक्सेस के लिए अब इस कंप्यूटर पर अलग कनेक्टर टूल की ज़रूरत नहीं है। सेटअप जारी रखने के लिए फिर जाँचें।",
 	"ui.providers.phone.consent": "चालू करने से इस Radient खाते का टनल सब्सक्रिप्शन USD {amount} प्रति माह पर सेट होता है, आपका फ़ोन पता आरक्षित होता है और बैकग्राउंड कनेक्टर शुरू होता है। इससे क्रेडिट नहीं खरीदा जाता।",
 	"ui.providers.phone.failure.check": "फ़ोन एक्सेस जाँचा नहीं जा सका और कुछ भी नहीं बदला।",
 	"ui.providers.phone.failure.run": "फ़ोन एक्सेस का सेटअप पूरा नहीं हो सका। पूरे हो चुके चरण वापस नहीं लिए जाते। फिर कोशिश करने से पहले दोबारा जाँचें।",

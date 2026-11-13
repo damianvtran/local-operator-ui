@@ -6844,3 +6844,67 @@ test("the mark is named by the speaking agent, through every hand-off", () => {
 		'the story passes a name, so its frames render alt="coder" rather than alt=""',
 	);
 });
+
+test("the verb gives way after the object: it truncates instead of overflowing, and its full text stays on hover (design D1)", () => {
+	/*
+	 * jsdom (and `renderToStaticMarkup`) has no layout engine, so this pins the
+	 * CLASS CONTRACT that produces the geometry, not the geometry itself; the
+	 * measured readings (row box 284px and 184px, ru/fr worst cases) are on the
+	 * PR and the `LongVerbsNarrow284`/`LongVerbsNarrow184` stories re-render them.
+	 *
+	 * The regression: the verb was `shrink-0 whitespace-nowrap`, which was right
+	 * for `Read`/`Ran` and wrong for `Включает аварийную блокировку` - at narrow
+	 * widths the translated verb ran past the row's edge and pushed the duration
+	 * out. The verb must now be able to shrink (`min-w-0 truncate`), while the
+	 * object keeps `flex-1` (basis 0), which is what makes it collapse first.
+	 */
+	const markup = renderRow("read", "success");
+	const verb = markup.match(
+		/<span[^>]*data-trace-verb[^>]*>[^<]*<\/span>/,
+	)?.[0];
+	assert.ok(verb, `no verb span in ${markup.slice(0, 300)}`);
+	const classes = (verb.match(/class="([^"]*)"/) ?? [])[1].split(/\s+/);
+	assert.ok(classes.includes("min-w-0"), "the verb may shrink below its text");
+	assert.ok(classes.includes("truncate"), "the verb ends in an ellipsis");
+	assert.ok(
+		!classes.includes("shrink-0") && !classes.includes("whitespace-nowrap"),
+		"the verb is no longer pinned at full width (it overflowed the row)",
+	);
+	// The object still collapses first: basis 0 (`flex-1`), shrinkable, truncating.
+	assert.ok(
+		/class="min-w-0 flex-1 truncate[^"]*"/.test(markup),
+		"the object keeps `min-w-0 flex-1 truncate`, so it gives up its room first",
+	);
+	// A truncated translation must be readable in full on hover, and the tool's
+	// own name - what the title carried before - stays on it.
+	const title = (verb.match(/ title="([^"]*)"/) ?? [])[1];
+	assert.equal(
+		title,
+		"Read (read)",
+		"the title holds the verb AND the tool name",
+	);
+});
+
+test("a pure locale switch repaints a collapsed fold's live clause: the row groups are keyed on the locale (QA Q1)", () => {
+	/*
+	 * `rowGroups` caches `foldLive()` output, which carries `toolVerb()` text, so
+	 * a memo keyed only on the rows leaves the old language on a collapsed fold
+	 * until its rows change. The pane subscribes with `useI18nLocale()`; that
+	 * value has to be a dependency of the memo. Source guard because the memo
+	 * lives inside a 5k-line component that cannot be mounted here.
+	 */
+	const source = readFileSync(
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+		"utf8",
+	);
+	assert.match(
+		source,
+		/const locale = useI18nLocale\(\);\n\tconst capabilities = useDesktopCapabilities\(\);/,
+		"the pane keeps the locale it subscribed to",
+	);
+	assert.match(
+		source,
+		/\}, \[visible, paneIsLive, paneGap, recordIndex, locale\]\);/,
+		"rowGroups is keyed on the locale",
+	);
+});

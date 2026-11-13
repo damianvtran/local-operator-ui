@@ -2707,7 +2707,8 @@
 			"state_note": "",
 			"read_only": false,
 			"hotkey_scope": "desktop",
-			"unit": ""
+			"unit": "",
+			"clearable": true
 		},
 		{
 			"key": "tool_approval_mode",

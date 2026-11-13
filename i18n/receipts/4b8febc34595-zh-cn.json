@@ -1,0 +1,54 @@
+{
+	"auditor": "reviewer (independent i18n auditor, lopdev team)",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "4b8febc34595-zh-cn",
+	"run_id": "4b8febc34595",
+	"status": "passed",
+	"result": "clean",
+	"namespace": "ui.chat.canonical",
+	"locale": "zh-CN",
+	"date": "2026-11-11",
+	"head": "80a346fd5fa2c79b29f6f37a27332bdd7dca59f5",
+	"base": "c1ba44696",
+	"key_count": 443,
+	"scope": "Delta audit at 80a346fd5 of the 5 added keys ui.chat.canonical.loading.{cold,revalidating,older,remote,region_label} and the 4 removed keys (placeholder.loading, placeholder.region_label, older_history.loading, transcript.stale_caption). The other 438 values were compared against c1ba44696 and are byte-identical; c1ba44696's zh-CN bytes (4176670606e6...) are the target the current ledger audit 803ea1cbdb73 bound, so they are retained on that proof, not re-read.",
+	"audited_values": {
+		"ui.chat.canonical.loading.cold": "正在加载对话……",
+		"ui.chat.canonical.loading.revalidating": "正在检查新消息……",
+		"ui.chat.canonical.loading.older": "正在加载更早的消息……",
+		"ui.chat.canonical.loading.remote": "正在从另一台设备同步……",
+		"ui.chat.canonical.loading.region_label": "正在加载对话"
+	},
+	"checks": [
+		"meaning against en and the en context sidecar for each key",
+		"register: pronoun dropped per guide ('your other device' -> 另一台设备), 正在 progressive status phrases, two-mark ellipsis …… per the zh-CN guide, no full stop; region_label without ellipsis",
+		"glossary: device -> 设备; sync -> 同步 (matches tool_row.verb.synced_agents.running 正在同步智能体)",
+		"consistency: cold/region_label equal the audited placeholder.loading/region_label; older equals audited older_history.loading plus …… and matches older_history.load (更早的消息); remote matches attachment_refusal 另一台设备",
+		"no placeholders or ICU in source or target; no space between CJK and other runs; no bidi controls"
+	],
+	"findings": [],
+	"severity_counts": { "blocker": 0, "major": 0, "minor": 0, "nit": 0 },
+	"observations": [
+		"INFO: region_label (en source 'Loading conversation') names the live region for all four variants, including revalidating while the transcript is already readable; that is English-source/product scope, not translation.",
+		"INFO: some other namespaces use a single … in zh-CN (e.g. ui.browser.extensions.loading_label 正在加载扩展程序…); out of scope — pre-existing. The new keys follow the guide's ……."
+	],
+	"independence": {
+		"translator_agent": "coder",
+		"translator_job": "6ca5ea22d2ab",
+		"translator_model": "anthropic/claude-opus-5-5 (as relayed by the manager brief)",
+		"auditor_agent": "reviewer",
+		"auditor_session": "4b8febc34595",
+		"independent_from_translator": true,
+		"disclosure": "different agent and session from the translator; same served model family, disclosed"
+	},
+	"references": {
+		"glossary": "~/local-operator/i18n/glossary.md @ 5079899f0",
+		"style_guide": "~/local-operator/i18n/style-guides/zh-CN.md @ 5079899f0",
+		"policy": "docs/I18N.md 'Retain checkable audit records'"
+	},
+	"sha256": {
+		"target": "ae7a368534aa8533f3225d913625c818178557e39759354a9810e96a726dfcd7",
+		"en": "664a23730b7244a096f53a6e55e2014bd16400fb8846b25bd242b2668d6efa1a",
+		"context": "98c3bc0ac341eda0dec29f8b2698e40b860fa22e66a1dc471880054794a90e0b"
+	}
+}

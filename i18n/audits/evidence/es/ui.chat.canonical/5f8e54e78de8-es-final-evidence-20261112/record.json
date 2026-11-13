@@ -1,0 +1,927 @@
+{
+  "auditor": "translation-auditor",
+  "session": "5f8e54e78de8",
+  "model": "openai/gpt-6.1-sol",
+  "model_selection": "parent; inherited,no override",
+  "fallback": null,
+  "profile_revision": "definition-revision:v1:977d12b70eb8adff7d8b9491e8e59b748a9fac283683abd963fdf586cb596f8a",
+  "date": "2026-11-12T23:50:10.238503+00:00",
+  "namespace": "ui.chat.canonical",
+  "locale": "es",
+  "source_path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+  "target_path": "src/i18n/catalogues/es/ui.chat.canonical.json",
+  "context_path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+  "sha256": {
+    "en": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+    "es": "4074681ab095ccfb3917e0f1e8f31e2d2c92c1c47742153db82dda80502c1e51",
+    "context": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae"
+  },
+  "scope": {
+    "namespace": "ui.chat.canonical",
+    "locale": "es",
+    "terminal_scope": "Retained23-key PR semantic proof + French2-key delta where applicable + exact467-main ancestry + accepted bounded23-key captured evidence on current source/target/context hashes; no fresh490-key audit.",
+    "render_delta_keys": 23,
+    "visible_elements": 22,
+    "nonvisual_nav_keys": 1,
+    "original_semantic_keys_read": 49,
+    "new_semantic_keys_read": 0,
+    "retained_mechanical_keys": 490,
+    "main_parent_keys_retained": 467,
+    "main_changes_retained": 213,
+    "removed_obsolete_keys": [
+      "ui.chat.canonical.older_history.loading",
+      "ui.chat.canonical.placeholder.loading",
+      "ui.chat.canonical.placeholder.region_label",
+      "ui.chat.canonical.transcript.stale_caption"
+    ],
+    "hindi_incoming_sound_player_failed_retained": true,
+    "fresh_full_namespace_semantic_audit": false,
+    "all23_interactions_pass": false
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "terminal_verdict": "Terminal clean-with-findings for stated bounded convergence/evidence scope; no BLOCKER/MAJOR remains under final policy disposition. Not a retroactive flip or global approval.",
+  "findings": [
+    {
+      "id": "I-ES-1",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+      "current": "Diff completo retenido: no se pudo censurar de forma segura",
+      "proposed": "Diff completo retenido: no se pudieron ocultar los datos sensibles de forma segura",
+      "reason": "Credential redaction is rendered as censurar (censor), rather than ocultar datos sensibles; retain the parent terminology follow-up. ",
+      "disposition": "deferred — non-gating; retained from PR parent",
+      "retained_original_disposition": "deferred — non-gating; retained from PR parent",
+      "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment."
+    },
+    {
+      "id": "S16F-ES-A3-01",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.sound.batch.summary",
+      "current": "{completed, plural, one {{completed, number, ::group-off} completada} many {{completed, number, ::group-off} de completadas} other {{completed, number, ::group-off} completadas}} · {failed, plural, one {{failed, number, ::group-off} fallida} many {{failed, number, ::group-off} de fallidas} other {{failed, number, ::group-off} fallidas}}{cancelled, plural, =0 {} one { · {cancelled, number, ::group-off} detenida} many { · {cancelled, number, ::group-off} de detenidas} other { · {cancelled, number, ::group-off} detenidas}}{unknown, plural, =0 {} one { · {unknown, number, ::group-off} con estado desconocido} many { · {unknown, number, ::group-off} con estado desconocido} other { · {unknown, number, ::group-off} con estado desconocido}}{has_attention, select, yes {. Atención: {labels}} other {}}",
+      "proposed": "Use '#' in the four many arms: many {# de completadas}, many {# de fallidas}, many {# de detenidas}, many {# con estado desconocido}. Every other arm keeps the '::group-off' skeleton exactly as English.",
+      "reason": "The 'many' arms are es-authored (English has no category arms here) and exist because es CLDR puts exact millions in 'many' ('un millón de completadas'). Each one reuses the sibling arms' '::group-off' skeleton, so the only number that can reach it prints ungrouped: rendering completed=1000000 gives \"1000000 de completadas\". Spanish always groups, and the es style guide's own exemplar for this category is many {# de sesiones}, illustrated as \"1.000.000 de sesiones\". Verified: many {# de completadas} renders \"1.000.000 de completadas\". Real but unreachable in practice (>=1,000,000 requests in one sound batch), and a one-commit fix, hence MINOR rather than MAJOR.",
+      "disposition": "reported; does not gate (no BLOCKER/MAJOR)",
+      "historical_reason_verbatim": true,
+      "retained_original_disposition": "reported; does not gate (no BLOCKER/MAJOR)",
+      "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment."
+    },
+    {
+      "id": "S16F-ES-A3-02",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.media.sound_label",
+      "current": "{count, plural, =1 {Sonido} other {Sonido {position, number, ::group-off}}}",
+      "proposed": "No change requested now (screen-reader-only, invisible, and the sidecar's tone field asks for a capitalised bare noun). If a later wave decides, change 'Sonido'/'Imagen' together with the audio play/pause/position templates in one commit; never flip this key alone.",
+      "reason": "This value is also the audio player's accessible name: media-label.ts documents it, and sound-player.tsx composes it into ui.chat.audio.play_label / pause_label / position_label, producing \"Reproducir Sonido 2\" — a capitalised common noun mid-sentence, an orthography error in Spanish. The visible tile/alt-text surface wants the capital ('Imagen' keeps it for the same reason); the composed accessible name wants lower case. Same trade-off the ru round-3 audit recorded as S16F-RU-R3-01.",
+      "disposition": "accepted, no change requested",
+      "historical_reason_verbatim": true,
+      "retained_original_disposition": "accepted, no change requested",
+      "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment."
+    },
+    {
+      "id": "S16F-ES-A3-03",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.sound.cost.no_charge",
+      "current": "Sin cargo.",
+      "proposed": "No change recommended. Recorded so a later wave does not silently reverse a precedent-backed call, and so my own reversal (MINOR -> NIT on finding the plan_clause precedent) is visible rather than dropped.",
+      "reason": "'Charge' has two renderings inside one card: 'cobro' in sound.cost.estimated_zero ('cobro final sin confirmar') and sound.stop.warning ('se cobrará … el cobro'), and 'cargo' here. Reviewed and downgraded from MINOR: the shipped es catalogue already names an unbilled amount 'sin cargo' (ui.chat.session_spend.plan_clause: '…equivalente a API, sin cargo'), so this follows product precedent rather than inventing a term. 'Sin coste.' would be the alternative if card-internal uniformity is ever wanted.",
+      "disposition": "accepted, no change requested",
+      "historical_reason_verbatim": true,
+      "retained_original_disposition": "accepted, no change requested",
+      "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment."
+    },
+    {
+      "id": "CONV-ES-MANY-VIEW",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.diff.full.view",
+      "current": "{count, plural, one {Ver diff completo · # línea} other {Ver diff completo · # líneas}}",
+      "proposed": "{count, plural, one {Ver diff completo · # línea} many {Ver diff completo · # de líneas} other {Ver diff completo · # líneas}}",
+      "reason": "The es/fr guide requires a many category for exact millions, but this message only has one/other and formats a million without the required de/d’; the clipped case is only a categorical-completeness follow-up because a page is bounded.",
+      "origin": "retained PR-parent wording; extremely large-count follow-up, not merge regression",
+      "disposition": "Non-gating language/CLDR follow-up; actual formatter output retained in ICU evidence.",
+      "retained_original_disposition": "Non-gating language/CLDR follow-up; actual formatter output retained in ICU evidence.",
+      "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment."
+    },
+    {
+      "id": "CONV-ES-MANY-CLIPPED",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.diff.full.clipped",
+      "current": "{count, plural, one {# línea larga de esta página está acortada} other {# líneas largas de esta página están acortadas}}",
+      "proposed": "{count, plural, one {# línea larga de esta página está acortada} many {# de líneas largas de esta página están acortadas} other {# líneas largas de esta página están acortadas}}",
+      "reason": "The es/fr guide requires a many category for exact millions, but this message only has one/other and formats a million without the required de/d’; the clipped case is only a categorical-completeness follow-up because a page is bounded.",
+      "origin": "retained PR-parent wording; extremely large-count follow-up, not merge regression",
+      "disposition": "Non-gating language/CLDR follow-up; actual formatter output retained in ICU evidence.",
+      "retained_original_disposition": "Non-gating language/CLDR follow-up; actual formatter output retained in ICU evidence.",
+      "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment."
+    },
+    {
+      "id": "CONV-ES-FIT-1",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.diff.full.back",
+      "current": "Volver a la vista previa",
+      "proposed": "Vista previa",
+      "reason": "At 24 code points versus English’s 15, this short button is 60% longer; keep the natural wording unless a rendered pager check requires the shorter context-dependent label.",
+      "disposition": "Rendered check required; source risk, not observed clipping",
+      "retained_original_disposition": "Rendered check required; source risk, not observed clipping",
+      "supplemental_evidence_disposition": "Bounded captured fit evidence now available; no obvious cutoff in viewed assigned-locale sample. Historical MINOR/NIT ID/severity retained; no new remediation cycle; no universal width/geometry claim."
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 5,
+    "nit": 2
+  },
+  "policy_hold_dispositions": [
+    {
+      "id": "CONV-ES-ICU-1",
+      "key": "ui.chat.canonical.fold.images_aria",
+      "historical_severity": "BLOCKER",
+      "current_disposition": "INAPPLICABLE under direct final user policy interpretation; outside23 and no reproduced translation bug. Historical report unchanged. Not a current linguistic defect or demanded edit."
+    },
+    {
+      "id": "CONV-ES-ICU-2",
+      "key": "ui.chat.canonical.fold.more_images",
+      "historical_severity": "BLOCKER",
+      "current_disposition": "INAPPLICABLE under direct final user policy interpretation; outside23 and no reproduced translation bug. Historical report unchanged. Not a current linguistic defect or demanded edit."
+    },
+    {
+      "id": "CONV-ES-ICU-3",
+      "key": "ui.chat.canonical.image_gen.batch_summary",
+      "historical_severity": "BLOCKER",
+      "current_disposition": "INAPPLICABLE under direct final user policy interpretation; outside23 and no reproduced translation bug. Historical report unchanged. Not a current linguistic defect or demanded edit."
+    },
+    {
+      "id": "CONV-ES-ICU-4",
+      "key": "ui.chat.canonical.lightbox.filmstrip_aria",
+      "historical_severity": "BLOCKER",
+      "current_disposition": "INAPPLICABLE under direct final user policy interpretation; outside23 and no reproduced translation bug. Historical report unchanged. Not a current linguistic defect or demanded edit."
+    }
+  ],
+  "original_records_preserved": [
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/blocked-es-ui.chat.canonical-convergence.json",
+      "sha256": "1c0c4dd8c3554ca03686e4aa04a6b24a55098febd70b49568e242469b9a88bba"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/blocked-fr-ui.chat.canonical-convergence.json",
+      "sha256": "60802e1a170dd7693921a3f9b3eb544efaf8d48264beb43743fb19b1d14ff7f0"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/receipt-hi-ui.chat.canonical-convergence.json",
+      "sha256": "4cb742df2f8faedba0d9775b5de1371db363c95afc2abfd1547edfc184b6d3d7"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/convergence-primary-es-fr-hi-report.md",
+      "sha256": "0e282070e50dfd28967509cb507e89b2b07d27bbda18756cbb765ab17c46ab80"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/convergence-primary-es-fr-hi-policy-clarification.md",
+      "sha256": "34ff12fdeac39fa25f1eabcd34fb0b461c74d4dd8ebf20a3a65448eb37c47a1b"
+    }
+  ],
+  "parent_receipts": [
+    {
+      "ref": "1bfbe9b42df53a231311ab1731501af2de640810",
+      "path": "i18n/receipts/567a24a88e45-chat-canonical-es-r2.json",
+      "sha256": "b48040f237a0a2da586d9df6068cfd428b54e85cb05bb6321757ebc3e92ad168",
+      "instance": "567a24a88e45-chat-canonical-es-r2",
+      "model": "anthropic/claude-opus-5-5",
+      "ledger_hash_matches": true,
+      "index_bytes_equal": true,
+      "source_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+      "target_sha256": "db9923d6038ef32906ab0bcfeff99d358d01ec610d50256749f31b360962b22a",
+      "context_sha256": "04bfe86405155bf8437c4f867eea4dc9bfd4c277d2ae6b0aa7d6a1bf20390087",
+      "source_target_binding_validated_by_actual_deriveReceiptAudit": true,
+      "declared_scope": "r2 verdict; target bytes identical to the audited head 21bb3f5d",
+      "current_applicability": "Whole parent file hash is historical, not equal to merged namespace. Its selected raw source/target/context blocks remain exact: 23 selected keys from this parent. Findings below retain IDs/dispositions where the key remains selected unchanged."
+    },
+    {
+      "ref": "1bfbe9b42df53a231311ab1731501af2de640810",
+      "path": "i18n/receipts/c7b72ef216da-es-chat-canonical-r2.json",
+      "sha256": "61f0538e84f988e65260b2e3999b0f94edd3852a27df0f328f717a843c35a587",
+      "instance": "c7b72ef216da-es-chat-canonical-r2",
+      "model": "anthropic/claude-opus-5-5",
+      "ledger_hash_matches": true,
+      "index_bytes_equal": true,
+      "source_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+      "target_sha256": "db9923d6038ef32906ab0bcfeff99d358d01ec610d50256749f31b360962b22a",
+      "context_sha256": "04bfe86405155bf8437c4f867eea4dc9bfd4c277d2ae6b0aa7d6a1bf20390087",
+      "source_target_binding_validated_by_actual_deriveReceiptAudit": true,
+      "declared_scope": "source-only; rendering/RTL/fit not proven",
+      "current_applicability": "Whole parent file hash is historical, not equal to merged namespace. Its selected raw source/target/context blocks remain exact: 23 selected keys from this parent. Findings below retain IDs/dispositions where the key remains selected unchanged."
+    },
+    {
+      "ref": "b0edf02e5d37db5c5527cf66465131a4019fed10",
+      "path": "i18n/receipts/4d7a5444aa0b.json",
+      "sha256": "0d53576dd82e8db22742ddcaa18810c5e786cf93d88d15f0d6181de37adfc7c3",
+      "instance": "4d7a5444aa0b",
+      "model": "deepseek/deepseek-flash",
+      "ledger_hash_matches": true,
+      "index_bytes_equal": true,
+      "source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+      "target_sha256": "547b85e9670eec79f82211f50325092bf75c13eda4504995cce1a1d5ab25e272",
+      "context_sha256": "8f56e0d2b384c6b41add57a64e6c863e565cb61d5a7c0de482d42f380be3acfe",
+      "source_target_binding_validated_by_actual_deriveReceiptAudit": true,
+      "declared_scope": "The 15 keys named by the manager in es/ui.chat.canonical.json: loading.{cold,older,region_label,remote,revalidating}; media.{image_label,sound_label}; sound.batch.{item_status,latest_update,summary}; sound.cost.{batch_unknown,estimated_zero,no_charge,unknown}; supplement.sound_fallback_label. Read in full against the English source + context sidecar, the core glossary and the es style guide; the other 452 values were proven byte-identical to origin/main (and the 10 PR keys to 107ff1dd) rather than re-audited. Catalogue audit only: not rendered fit, activation or release.",
+      "current_applicability": "Whole parent file hash is historical, not equal to merged namespace. Its selected raw source/target/context blocks remain exact: 467 selected keys from this parent. Findings below retain IDs/dispositions where the key remains selected unchanged."
+    }
+  ],
+  "parent_source_records": [
+    {
+      "git_ref": "1bfbe9b42df53a231311ab1731501af2de640810",
+      "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/issuing-manifest.json",
+      "sha256": "99677f4652b99bdf457743214606e1dfc705119ee8c8aa267e4f264c6c92d2d4",
+      "index_equals_parent": true
+    },
+    {
+      "git_ref": "1bfbe9b42df53a231311ab1731501af2de640810",
+      "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/source-records/fr2.json",
+      "sha256": "b837e9feb21dda08fcda7df990e40931ca8f444ec9076c1b7566b524fff2cada",
+      "index_equals_parent": true
+    },
+    {
+      "git_ref": "1bfbe9b42df53a231311ab1731501af2de640810",
+      "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/source-records/r2.json",
+      "sha256": "43c365ffb262cf4d1f486ac9a764b2a09664c9b4395589e2b092a02c4e581f30",
+      "index_equals_parent": true
+    },
+    {
+      "git_ref": "1bfbe9b42df53a231311ab1731501af2de640810",
+      "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/issuing-manifest.json",
+      "sha256": "045b2526257ed2a9d1525a868035748fe8920e1c44450ceab869c34e898538be",
+      "index_equals_parent": true
+    },
+    {
+      "git_ref": "1bfbe9b42df53a231311ab1731501af2de640810",
+      "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/source-records/fr_delta.json",
+      "sha256": "6a8ee6855512e1bf519aafacc80ebc824cfb1758346b73aeb8bc55d6b9a3f763",
+      "index_equals_parent": true
+    },
+    {
+      "git_ref": "1bfbe9b42df53a231311ab1731501af2de640810",
+      "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/source-records/second_audit.json",
+      "sha256": "08cd91c44e04b55d9222c83f56a77600c294cb39fe33c7a8edd32751b70e58cf",
+      "index_equals_parent": true
+    }
+  ],
+  "retained_historical_copy_proof": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+      "current_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+      "earliest_ref": "21bb3f5dcb5fdabf77f1415480be310b6454d666",
+      "earliest_parent_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+      "keys": 23,
+      "same_earliest_blocks": 23
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+      "current_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+      "earliest_ref": "21bb3f5dcb5fdabf77f1415480be310b6454d666",
+      "earliest_parent_sha256": "04bfe86405155bf8437c4f867eea4dc9bfd4c277d2ae6b0aa7d6a1bf20390087",
+      "keys": 23,
+      "same_earliest_blocks": 23
+    },
+    "es": {
+      "path": "src/i18n/catalogues/es/ui.chat.canonical.json",
+      "current_sha256": "4074681ab095ccfb3917e0f1e8f31e2d2c92c1c47742153db82dda80502c1e51",
+      "earliest_ref": "21bb3f5dcb5fdabf77f1415480be310b6454d666",
+      "earliest_parent_sha256": "db9923d6038ef32906ab0bcfeff99d358d01ec610d50256749f31b360962b22a",
+      "keys": 23,
+      "same_earliest_blocks": 23
+    }
+  },
+  "policy_authority": {
+    "source": "Direct USER FINAL POLICY DISPOSITION in this resumed session; not inference from an unread remote comment",
+    "policy_owner_as_named_by_user": "3ef6295a5545",
+    "interpretation": "Actual-locale CLDR is valid under docs/I18N.md104-106/206-208/218-224; literal English-selector hold is inapplicable, unchanged4keys outside23. No translation/category edits required. Scoped captured23-key evidence accepted, not blanket release approval.",
+    "accepted_readback_json": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json",
+    "accepted_readback_sha256": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30",
+    "final_manifest_sha256": "12babe07d87bb5d193d3fd909919e1645706e06984129055d4547ded21321db5",
+    "unread_remote_design_citations": [
+      "https://github.com/damianvtran/local-operator-ui/pull/1829#issuecomment-6839007319",
+      "https://github.com/damianvtran/local-operator-ui/pull/1829#issuecomment-6839204455",
+      "https://github.com/damianvtran/local-operator-ui/pull/1829#issuecomment-6836069213"
+    ],
+    "remote_comment_bodies_read": false
+  },
+  "evidence_references": [
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json",
+      "sha256": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.md",
+      "sha256": "a8cbf67eef4052484b4bbc1937a7a6b4b1d3328a71cb813bc3a8f0119cc275ac"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/frames-manifest.json",
+      "sha256": "12babe07d87bb5d193d3fd909919e1645706e06984129055d4547ded21321db5"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-source.json",
+      "sha256": "011d373b047026492d9ca73f7ec6747df1a90daeb7cb2c805aa9b4dade46ca34"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-coverage.json",
+      "sha256": "8e754d0655e7a0bc3494473e1dec22adbe67ab715e39ab56632db5ad79b73a1c"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/captures.jsonl",
+      "sha256": "e9412edfebff603aa0a4b5f758b91b7175c3abc2001f6a41786b34ec28e1846d"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/independent-provenance-checks.json",
+      "sha256": "61bf9f66de23132275cc92c88ddcd652acecb270d95f750a68edb403f46b8b74"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/parent-receipt-validation.json",
+      "sha256": "b8c7b3a686ee3f172977f10f120ffb110d837cd7dc6229ca5188729ae5670822"
+    }
+  ],
+  "limitations": {
+    "new_semantic_audit": "None: retained original49 source/target/context key readings per locale and490 mechanical/provenance checks per locale; zero new catalogue semantic review in this supplement.",
+    "personal_viewing": "Exactly15 listed images personally opened:3 assigned-locale contacts,6 actual focused frames,2 French notices,Hindi error/retry,pseudo contact and2 pseudo focused. Contact thumbnails are overview aids. Remaining full-size key visibility relies on accepted hash-bound readback, not personal full-size inspection.",
+    "fit": "Targeted samples show no obvious text cutoff. Declared360px fixture width is not independently measured DOM geometry. No all-width/all-theme/490-key pixel,font-fallback,native/full-app certification.",
+    "functional": "UNPROVEN here: all23 interactions,Back/Retry/view/First/Previous/Last action outcomes and comprehensive Next navigation. Stored split-next body/focus is not a full navigation suite. No exact prior locale-specific outcome/count-variant proof is promoted.",
+    "counts": "Focused view sample598 and aggregate clipped sample1 only. Other plural counts,millions,negative values,full category matrices are NOT newly validated by images. Retain original non-gating language/count follow-ups.",
+    "pseudo": "Synthetic expanded English registered under en: accepted record15 originals+2focused, not production pseudo,en-XA/qps,RTL pseudo or shipped/native mode. Personally viewed pseudo contact+2focused.",
+    "rtl": "Assigned es/fr/hi are LTR. No global/Urdu RTL certification; deferred Urdu code-bidi MINOR user disposition outside this lane.",
+    "stored_AX": "Stored nav text/title read for assigned locales. Transport details URL is stale ru for selected split-next records; locale association rests on native nav text,title,bound catalogues and accepted capture mapping,not that stale URL. No new AX/screen-reader capture.",
+    "authority": "Remote design links are user-supplied citations,not independently read bodies. Binding authority is direct user disposition plus independently read accepted evidence.",
+    "release": "One primary auditor session only. Separate second independent lane remains separate. Machine-valid scoped receipt is not global release/native/interaction approval."
+  },
+  "independence": "Same original independent primary session5f8e54e78de8,not translator/coder331ecd98c7fb; no mirror verdict consulted. Three locale suffixes identify ONE auditor session,not three independent audits. Accepted readback explicitly authorized as evidence input,not borrowed semantic verdict.",
+  "kind": "independent scoped supplemental evidence disposition",
+  "not_a_ledger_receipt": true,
+  "images_personally_viewed": [
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-contact.jpg",
+      "sha256": "7de7959cf3994bc634c7f4d70a532164823ce7b1eeacd91583f5a72bec61481f"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-contact.jpg",
+      "sha256": "4859cfbcb3238a83b5b7c193f1d044d0a6784d36bf56aa1687e96dff9db8952a"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-contact.jpg",
+      "sha256": "4d0595a8cff6be38d462ad67cce49c4ce1a06edcf1d29d2c738ddd180b02444e"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-offer-focused-360.png",
+      "sha256": "007de621f9fbb07c54f03420533ee5ccdebeeee80670cebdc8591620b77f56fb"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-clipped-focused-360.png",
+      "sha256": "926ff12f4c45fb671b9be2519b88843b506fdaa4c17a8e2433dc015260b0cb51"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-offer-focused-360.png",
+      "sha256": "eaa2c0623e93558533b262bd78031617172f2460272eac83c177615169d09a35"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-clipped-focused-360.png",
+      "sha256": "6b540c84efcc73276fb374406aca24e4640be1e8d17d01a0396be06c7bbd1e41"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-offer-focused-360.png",
+      "sha256": "9808a9e81288a65b8a47ada2e029144142d762588ce2214b9d2903c020ce35b2"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-clipped-focused-360.png",
+      "sha256": "1642a433bffc7c3b6e254774fe5cfc30268af967adc2f0a20fcfa7b05ec58f28"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-not_recorded-360.png",
+      "sha256": "362e737908b91d2f0c086d9e13a652ea18bbe93937bb01f90c10b457325cc220"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-unavailable-360.png",
+      "sha256": "4d2659418092b079b761c553e8fb52f8b42511ffe2075d551f8736f154ffaa22"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-error-360.png",
+      "sha256": "ecaafc3b5b289f88ee3d6df4e57a4643379daf7c55ab8fe74ebec22f910317d9"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/pseudo-contact.jpg",
+      "sha256": "4e9d098114699d52f6ff98034d9fb5a94a9591ee03605a2d16029c62d4106256"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/pseudo-offer-focused-360.png",
+      "sha256": "0a2200198e171b4614d307cee4ad50d8e0c596cdeddf122e62841fca2fa8cd01"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/pseudo-clipped-focused-360.png",
+      "sha256": "e6bccc473da2dfbbab77986f167400d26dcb38b1856c05cb973c34d8e5da919e"
+    }
+  ],
+  "accepted_per_key_coverage": [
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.back",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-page-360.png",
+          "sha256": "ca5ac0c23530c499030478cc9a2cf068d951dc70f1ab401f93770397c22e995c"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-error-360.png",
+          "sha256": "fc14ef9fbd2bbe0d910f5c862ba89c5bedd1d85b74e72f83ed15f2fd7515f423"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-empty-360.png",
+          "sha256": "e9d6938aa2b05460d2221d55c1975205faedd3c18324d5556d16d635ba7ab0f8"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-loading-360.png",
+          "sha256": "0b1d7b4cfa537d96503937bcce574975b355acb63e34e2d6c4fd6a59b41d5017"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-unavailable-360.png",
+          "sha256": "80dabd88b682186450cf1631d3ae0d06e3c2e1d69369c7bb5815f573521a4a80"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-withheld-360.png",
+          "sha256": "18f96f229aa89c4dc55d1ac8f59a6ee9a60310fd162945ef42206fa224c406d7"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-oversized-360.png",
+          "sha256": "17354af4a0c4e115007f71841871b427a84cc2cdee1c2cd3b41f85a1c71dd9ee"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-evicted-360.png",
+          "sha256": "5ff18b15c585375aa65fc94f5f570fbe236f35ffea5304ef3483b10adc206c8f"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-not_recorded-360.png",
+          "sha256": "166a2ad57a5261e9bce63fab4b856775065ba88331e3594c49f2bffd064f485e"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-not_found-360.png",
+          "sha256": "93d51ef871b96bea0a4b67c51a98a20fd81b4519362591bf8290f223936d7729"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-inline-360.png",
+          "sha256": "5307d4c0bdd0a3dc66f5bd7ce1b450c04038d53756ad6654b6c539179d1704fe"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-360.png",
+          "sha256": "8d75f84b2ece5c20a2f781a4d93232f42ac8c85a302eeafa094da1f6cebac8a8"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-next-360.png",
+          "sha256": "8698573490b7ae8fdde66c49fab5436e8f2c2af0576358538342730aedcbb42b"
+        }
+      ],
+      "interpretation": "Button label visible; click-to-preview outcome NOT recorded"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.clipped",
+      "evidence_class": "visible_legacy_fixture_focused_final",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-clipped-focused-360.png",
+          "sha256": "926ff12f4c45fb671b9be2519b88843b506fdaa4c17a8e2433dc015260b0cb51"
+        }
+      ],
+      "interpretation": "Late focused image actually exposes the aggregate clipped notice with count 1 and bottom range; legacy synthetic clipped_rows fixture, not current-backend truncation proof."
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.clipped_row",
+      "evidence_class": "visible_legacy_fixture",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-clipped-360.png",
+          "sha256": "3ebd540c90e66692e12a70ddd57e7cba3722939b6d558df7a812b4880ee60ea9"
+        }
+      ],
+      "interpretation": "Annotation visible on the first mixed-code row; synthetic clipped_rows=[3], not evidence current backend truncates"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.continued",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-next-360.png",
+          "sha256": "8698573490b7ae8fdde66c49fab5436e8f2c2af0576358538342730aedcbb42b"
+        }
+      ],
+      "interpretation": "Continuation annotation near end of split-next body; not a new row"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.continues",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-360.png",
+          "sha256": "8d75f84b2ece5c20a2f781a4d93232f42ac8c85a302eeafa094da1f6cebac8a8"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-next-360.png",
+          "sha256": "8698573490b7ae8fdde66c49fab5436e8f2c2af0576358538342730aedcbb42b"
+        }
+      ],
+      "interpretation": "Continues annotation at split page end (also subsequent continuation page)"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.empty",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-empty-360.png",
+          "sha256": "e9d6938aa2b05460d2221d55c1975205faedd3c18324d5556d16d635ba7ab0f8"
+        }
+      ],
+      "interpretation": "Empty notice and Back label fit the captured box"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.error",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-error-360.png",
+          "sha256": "fc14ef9fbd2bbe0d910f5c862ba89c5bedd1d85b74e72f83ed15f2fd7515f423"
+        }
+      ],
+      "interpretation": "Error status visible; Retry label visible"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.evicted",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-evicted-360.png",
+          "sha256": "5ff18b15c585375aa65fc94f5f570fbe236f35ffea5304ef3483b10adc206c8f"
+        }
+      ],
+      "interpretation": "Notice wraps inside box; no observed clipping"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.first",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-page-360.png",
+          "sha256": "ca5ac0c23530c499030478cc9a2cf068d951dc70f1ab401f93770397c22e995c"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-360.png",
+          "sha256": "8d75f84b2ece5c20a2f781a4d93232f42ac8c85a302eeafa094da1f6cebac8a8"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-next-360.png",
+          "sha256": "8698573490b7ae8fdde66c49fab5436e8f2c2af0576358538342730aedcbb42b"
+        }
+      ],
+      "interpretation": "First disabled on initial page, enabled on split-next where visible; First click result NOT recorded"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.inline",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-inline-360.png",
+          "sha256": "5307d4c0bdd0a3dc66f5bd7ce1b450c04038d53756ad6654b6c539179d1704fe"
+        }
+      ],
+      "interpretation": "Notice visible"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.last",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-page-360.png",
+          "sha256": "ca5ac0c23530c499030478cc9a2cf068d951dc70f1ab401f93770397c22e995c"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-360.png",
+          "sha256": "8d75f84b2ece5c20a2f781a4d93232f42ac8c85a302eeafa094da1f6cebac8a8"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-next-360.png",
+          "sha256": "8698573490b7ae8fdde66c49fab5436e8f2c2af0576358538342730aedcbb42b"
+        }
+      ],
+      "interpretation": "Last label visible; Last click/result NOT recorded"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.loading",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-loading-360.png",
+          "sha256": "0b1d7b4cfa537d96503937bcce574975b355acb63e34e2d6c4fd6a59b41d5017"
+        }
+      ],
+      "interpretation": "Loading status visible"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.nav",
+      "evidence_class": "accessible_name_only",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-page-360.png",
+          "sha256": "ca5ac0c23530c499030478cc9a2cf068d951dc70f1ab401f93770397c22e995c"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-360.png",
+          "sha256": "8d75f84b2ece5c20a2f781a4d93232f42ac8c85a302eeafa094da1f6cebac8a8"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-next-360.png",
+          "sha256": "8698573490b7ae8fdde66c49fab5436e8f2c2af0576358538342730aedcbb42b"
+        }
+      ],
+      "interpretation": "Not a visible label; successful AX snapshots name navigation in all seven actual locales; no screen-reader speech claimed"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.next",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-page-360.png",
+          "sha256": "ca5ac0c23530c499030478cc9a2cf068d951dc70f1ab401f93770397c22e995c"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-360.png",
+          "sha256": "8d75f84b2ece5c20a2f781a4d93232f42ac8c85a302eeafa094da1f6cebac8a8"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-next-360.png",
+          "sha256": "8698573490b7ae8fdde66c49fab5436e8f2c2af0576358538342730aedcbb42b"
+        }
+      ],
+      "interpretation": "Next label visible, split-next changed cursor body/focus is evidence of next-state only; no full navigation suite"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.not_found",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-not_found-360.png",
+          "sha256": "93d51ef871b96bea0a4b67c51a98a20fd81b4519362591bf8290f223936d7729"
+        }
+      ],
+      "interpretation": "404 notice text visible"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.not_recorded",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-not_recorded-360.png",
+          "sha256": "166a2ad57a5261e9bce63fab4b856775065ba88331e3594c49f2bffd064f485e"
+        }
+      ],
+      "interpretation": "Notice text visible"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.oversized",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-oversized-360.png",
+          "sha256": "17354af4a0c4e115007f71841871b427a84cc2cdee1c2cd3b41f85a1c71dd9ee"
+        }
+      ],
+      "interpretation": "Notice text wraps inside box"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.prev",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-page-360.png",
+          "sha256": "ca5ac0c23530c499030478cc9a2cf068d951dc70f1ab401f93770397c22e995c"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-360.png",
+          "sha256": "8d75f84b2ece5c20a2f781a4d93232f42ac8c85a302eeafa094da1f6cebac8a8"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-next-360.png",
+          "sha256": "8698573490b7ae8fdde66c49fab5436e8f2c2af0576358538342730aedcbb42b"
+        }
+      ],
+      "interpretation": "Previous disabled at beginning and enabled on split-next; Previous action/result NOT recorded"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.range",
+      "evidence_class": "visible_with_urdu_order_anomaly",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-page-360.png",
+          "sha256": "ca5ac0c23530c499030478cc9a2cf068d951dc70f1ab401f93770397c22e995c"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-360.png",
+          "sha256": "8d75f84b2ece5c20a2f781a4d93232f42ac8c85a302eeafa094da1f6cebac8a8"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-next-360.png",
+          "sha256": "8698573490b7ae8fdde66c49fab5436e8f2c2af0576358538342730aedcbb42b"
+        }
+      ],
+      "interpretation": "Initial logical arguments first=1 last=198 total=598; Urdu pixels show the 198–1 run, not a missing number; split pages show 1–1 of 2"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.retry",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-error-360.png",
+          "sha256": "fc14ef9fbd2bbe0d910f5c862ba89c5bedd1d85b74e72f83ed15f2fd7515f423"
+        }
+      ],
+      "interpretation": "Retry label visible without observed cutoff; retry action/result NOT recorded"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.unavailable",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-unavailable-360.png",
+          "sha256": "80dabd88b682186450cf1631d3ae0d06e3c2e1d69369c7bb5815f573521a4a80"
+        }
+      ],
+      "interpretation": "Notice text visible"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.view",
+      "evidence_class": "visible_focused_final",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-offer-focused-360.png",
+          "sha256": "007de621f9fbb07c54f03420533ee5ccdebeeee80670cebdc8591620b77f56fb"
+        }
+      ],
+      "interpretation": "Late focused image actually exposes View full diff control and count 598, within visible box; activation/click-result NOT recorded."
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+      "evidence_class": "visible",
+      "frames": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-withheld-360.png",
+          "sha256": "18f96f229aa89c4dc55d1ac8f59a6ee9a60310fd162945ef42206fa224c406d7"
+        }
+      ],
+      "interpretation": "Notice visible; no wording re-audit or disposition change"
+    }
+  ],
+  "stored_nav_snapshot_read": {
+    "record_index_1based": 72,
+    "locale": "es",
+    "state": "split-next",
+    "navigation_lines": [
+      "    - navigation \"Páginas del diff completo\" [e42]"
+    ],
+    "recorded_url": "http://localhost:6006/preview?locale=ru&state=page&width=360",
+    "title": "PR1829 es split"
+  },
+  "source_binding": {
+    "frozen_tree": "2d89bff82f58b84744ddc469e3532377df26d278",
+    "HEAD": "1bfbe9b42df53a231311ab1731501af2de640810",
+    "MERGE_HEAD": "b0edf02e5d37db5c5527cf66465131a4019fed10",
+    "raw_binary_index_sha256": "f51e7673dab7b96a8376cc2393a7505773827724fa9bbcf31bc2b5d37724020d",
+    "source_files": [
+      {
+        "path": "src/renderer/src/features/chat/components/trace/diff-block.tsx",
+        "sha256": "b3a5d13c5d03616d5ab7998f54d632dbdf17562b845da673ab3ae7f1b88d0778",
+        "expected": "b3a5d13c5d03616d5ab7998f54d632dbdf17562b845da673ab3ae7f1b88d0778",
+        "matches": true,
+        "worktree_equals_index": true
+      },
+      {
+        "path": "src/renderer/src/features/chat/components/trace/diff-history.tsx",
+        "sha256": "b98ac57c4d9e885cef348c364616520d378477da955b34b9b049cd589ec128b4",
+        "expected": "b98ac57c4d9e885cef348c364616520d378477da955b34b9b049cd589ec128b4",
+        "matches": true,
+        "worktree_equals_index": true
+      },
+      {
+        "path": "src/renderer/src/features/chat/components/trace/diff-history-model.ts",
+        "sha256": "ec465aca66be699316444ffdae3327c56234b768027da7f98a220cdcd96113f6",
+        "expected": "ec465aca66be699316444ffdae3327c56234b768027da7f98a220cdcd96113f6",
+        "matches": true,
+        "worktree_equals_index": true
+      },
+      {
+        "path": "src/renderer/src/features/chat/components/trace/diff-ink.ts",
+        "sha256": "43870fcc6856000e7591d99118d9b8ece84ae1e3a4bb80b60404b4923efe9abe",
+        "expected": "43870fcc6856000e7591d99118d9b8ece84ae1e3a4bb80b60404b4923efe9abe",
+        "matches": true,
+        "worktree_equals_index": true
+      },
+      {
+        "path": "src/renderer/src/features/chat/components/trace/tool-row-model.ts",
+        "sha256": "b04a055a642aabb3383128c2c68e561745e97f4df72f7826e29774432002fcdf",
+        "expected": "b04a055a642aabb3383128c2c68e561745e97f4df72f7826e29774432002fcdf",
+        "matches": true,
+        "worktree_equals_index": true
+      },
+      {
+        "path": "src/renderer/src/styles/index.css",
+        "sha256": "5c2e28c7db3ef61df57521d9c8aa8c4e0ef104cdc4d0533db6b2501754285c5e",
+        "expected": "5c2e28c7db3ef61df57521d9c8aa8c4e0ef104cdc4d0533db6b2501754285c5e",
+        "matches": true,
+        "worktree_equals_index": true
+      },
+      {
+        "path": "src/renderer/src/styles/themes.generated.css",
+        "sha256": "7ccdbe4dfecb37038d11b658e8e799bb7b3724c44fc152e84dc8d206d3e9498c",
+        "expected": "7ccdbe4dfecb37038d11b658e8e799bb7b3724c44fc152e84dc8d206d3e9498c",
+        "matches": true,
+        "worktree_equals_index": true
+      },
+      {
+        "path": "src/i18n/keys.gen.ts",
+        "sha256": "005cf91a2a3fa8db065c0d459ca21d62cb355d567c6b7a34cd593255e769341d",
+        "expected": "005cf91a2a3fa8db065c0d459ca21d62cb355d567c6b7a34cd593255e769341d",
+        "matches": true,
+        "worktree_equals_index": true
+      },
+      {
+        "path": "src/i18n/messages.ts",
+        "sha256": "79706f4e568a6194b71aa3664cf11aa8cdc5dfb760805f9d9589f631407df7f2",
+        "expected": "79706f4e568a6194b71aa3664cf11aa8cdc5dfb760805f9d9589f631407df7f2",
+        "matches": true,
+        "worktree_equals_index": true
+      },
+      {
+        "path": "src/i18n/locale.ts",
+        "sha256": "9148b99bb98005b400076b91c03fd6baffd5ac9d8be290322c5a08083d194299",
+        "expected": "9148b99bb98005b400076b91c03fd6baffd5ac9d8be290322c5a08083d194299",
+        "matches": true,
+        "worktree_equals_index": true
+      },
+      {
+        "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+        "sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "expected": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "matches": true,
+        "worktree_equals_index": true
+      },
+      {
+        "path": "src/i18n/catalogues/es/ui.chat.canonical.json",
+        "sha256": "4074681ab095ccfb3917e0f1e8f31e2d2c92c1c47742153db82dda80502c1e51",
+        "expected": "4074681ab095ccfb3917e0f1e8f31e2d2c92c1c47742153db82dda80502c1e51",
+        "matches": true,
+        "worktree_equals_index": true
+      },
+      {
+        "path": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+        "sha256": "e7d21936f30d7bcb95a86c08c6774c0572d13bd32e7220ab9e36c02327c31fbd",
+        "expected": "e7d21936f30d7bcb95a86c08c6774c0572d13bd32e7220ab9e36c02327c31fbd",
+        "matches": true,
+        "worktree_equals_index": true
+      },
+      {
+        "path": "src/i18n/catalogues/hi/ui.chat.canonical.json",
+        "sha256": "8792c9a8f9df03f7c586d45e3f3b6f89b25ec6097a9aab1e310bb4e210677393",
+        "expected": "8792c9a8f9df03f7c586d45e3f3b6f89b25ec6097a9aab1e310bb4e210677393",
+        "matches": true,
+        "worktree_equals_index": true
+      },
+      {
+        "path": "src/i18n/catalogues/ru/ui.chat.canonical.json",
+        "sha256": "325fe1a5b211db3408ee9786a1a7e6ab724d79315176019b6b55291b0e8ab71e",
+        "expected": "325fe1a5b211db3408ee9786a1a7e6ab724d79315176019b6b55291b0e8ab71e",
+        "matches": true,
+        "worktree_equals_index": true
+      },
+      {
+        "path": "src/i18n/catalogues/ur/ui.chat.canonical.json",
+        "sha256": "06d76892a9c2a92cc5e2574a4ad71879d1c9a1a761e6dce5f9f75572abfc18b2",
+        "expected": "06d76892a9c2a92cc5e2574a4ad71879d1c9a1a761e6dce5f9f75572abfc18b2",
+        "matches": true,
+        "worktree_equals_index": true
+      },
+      {
+        "path": "src/i18n/catalogues/vi/ui.chat.canonical.json",
+        "sha256": "e5c472aaa257bc7acded037a73c470ed79a1e3cc8dc162d854052b3aa89746fb",
+        "expected": "e5c472aaa257bc7acded037a73c470ed79a1e3cc8dc162d854052b3aa89746fb",
+        "matches": true,
+        "worktree_equals_index": true
+      },
+      {
+        "path": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+        "sha256": "e6b3846b553cde65b671cec6b9b34a869bd3cffc3f42b9fec981a710501e5e81",
+        "expected": "e6b3846b553cde65b671cec6b9b34a869bd3cffc3f42b9fec981a710501e5e81",
+        "matches": true,
+        "worktree_equals_index": true
+      },
+      {
+        "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+        "sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+        "expected": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+        "matches": true,
+        "worktree_equals_index": true
+      }
+    ],
+    "manifest_entries": 150,
+    "all150_png_hashes_verified": true,
+    "prior_provenance_current_hashes_unchanged": true
+  }
+}

@@ -220,6 +220,10 @@ const IDENTICAL_OK = new Map([
 		"fr:ui.chat.canonical.image_label",
 		"French UI noun: Image, same spelling as English; scoped to fr so other locales still translate it",
 	],
+	[
+		"fr:ui.chat.canonical.media.image_label",
+		"French UI noun: Image, same spelling as English; scoped to fr so other locales still translate it",
+	],
 	["fr:ui.notifications.nav.label", "French UI noun: Notifications"],
 	["fr:ui.notifications.page.title", "French UI noun: Notifications"],
 	[
@@ -1796,6 +1800,71 @@ const IDENTICAL_OK = new Map([
 	[
 		"fr:ui.chat.session_spend.summary.total",
 		"`Total {total}`: « total » is the French noun/word for a sum, spelled as in English; the amount is a placeholder.",
+	],
+	// Library kind and tag-category labels (PR #1851): format names and cognates.
+	[
+		"ui.library.kind.docx",
+		"File-format acronym/proper name (DOCX, HTML, Markdown, PDF, PPTX) kept Latin in every locale; the existing catalogues already render HTML/PDF/Markdown Latin; judged retained by 14 independent audits of PR #1851.",
+	],
+	[
+		"ui.library.kind.html",
+		"File-format acronym/proper name (DOCX, HTML, Markdown, PDF, PPTX) kept Latin in every locale; the existing catalogues already render HTML/PDF/Markdown Latin; judged retained by 14 independent audits of PR #1851.",
+	],
+	[
+		"ui.library.kind.markdown",
+		"File-format acronym/proper name (DOCX, HTML, Markdown, PDF, PPTX) kept Latin in every locale; the existing catalogues already render HTML/PDF/Markdown Latin; judged retained by 14 independent audits of PR #1851.",
+	],
+	[
+		"ui.library.kind.pdf",
+		"File-format acronym/proper name (DOCX, HTML, Markdown, PDF, PPTX) kept Latin in every locale; the existing catalogues already render HTML/PDF/Markdown Latin; judged retained by 14 independent audits of PR #1851.",
+	],
+	[
+		"ui.library.kind.pptx",
+		"File-format acronym/proper name (DOCX, HTML, Markdown, PDF, PPTX) kept Latin in every locale; the existing catalogues already render HTML/PDF/Markdown Latin; judged retained by 14 independent audits of PR #1851.",
+	],
+	[
+		"es:ui.library.kind.audio",
+		"Spanish: Audio is the ordinary Spanish noun, spelled as in English; judged retained by the independent audits of PR #1851. Scoped to Spanish only.",
+	],
+	[
+		"es:ui.library.kind.video",
+		"Spanish: Video is the ordinary Spanish noun, spelled as in English; judged retained by the independent audits of PR #1851. Scoped to Spanish only.",
+	],
+	[
+		"vi:ui.library.kind.video",
+		"Vietnamese loanword « Video » matches the existing ui.library.category.video; judged retained by the independent audits of PR #1851. Scoped to Vietnamese only.",
+	],
+	[
+		"fr:ui.library.kind.audio",
+		"French: same spelling as English, ordinary French noun; matches the existing category/filter vocabulary; judged retained by the independent audits of PR #1851. Scoped to French only.",
+	],
+	[
+		"fr:ui.library.kind.code",
+		"French: same spelling as English, ordinary French noun; matches the existing category/filter vocabulary; judged retained by the independent audits of PR #1851. Scoped to French only.",
+	],
+	[
+		"fr:ui.library.kind.image",
+		"French: same spelling as English, ordinary French noun; matches the existing category/filter vocabulary; judged retained by the independent audits of PR #1851. Scoped to French only.",
+	],
+	[
+		"fr:ui.library.tag_category.format",
+		"French: same spelling as English, ordinary French noun; matches the existing category/filter vocabulary; judged retained by the independent audits of PR #1851. Scoped to French only.",
+	],
+	[
+		"fr:ui.library.tag_category.source",
+		"French: same spelling as English, ordinary French noun; matches the existing category/filter vocabulary; judged retained by the independent audits of PR #1851. Scoped to French only.",
+	],
+	[
+		"fr:ui.library.tag_category.type",
+		"French: same spelling as English, ordinary French noun; matches the existing category/filter vocabulary; judged retained by the independent audits of PR #1851. Scoped to French only.",
+	],
+	[
+		"es:ui.common.time.date_at",
+		"Spanish long date + clock joined by the same comma as English; pure placeholder pattern, no words",
+	],
+	[
+		"ur:ui.common.time.weekday_at",
+		"pure placeholder join of weekday and clock, same order as English; ICU supplies the Urdu weekday and Latin clock",
 	],
 ]);
 

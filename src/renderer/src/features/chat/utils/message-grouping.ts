@@ -25,6 +25,7 @@
  * itself uses — filters the list first.
  */
 
+import { formatDate, formatTime, t } from "@shared/i18n";
 import type { Message } from "../types/message";
 
 /** How a row relates vertically to the row above it. */
@@ -62,37 +63,52 @@ const isSameDay = (a: Date, b: Date): boolean =>
 	a.getMonth() === b.getMonth() &&
 	a.getDate() === b.getDate();
 
-const TIME_FORMAT = new Intl.DateTimeFormat(undefined, {
-	hour: "numeric",
-	minute: "2-digit",
-});
-const WEEKDAY_FORMAT = new Intl.DateTimeFormat(undefined, { weekday: "long" });
-const DATE_FORMAT = new Intl.DateTimeFormat(undefined, {
-	day: "numeric",
-	month: "long",
-	year: "numeric",
-});
+/*
+ * THE LIVE LOCALE, AT CALL TIME. These were module-scope `Intl.DateTimeFormat(
+ * undefined, ...)` instances, which froze the OPERATING SYSTEM's region at import
+ * and so printed a `Today 3:42 PM` / `Monday` / `November 5, 2026` label whatever
+ * language the user had chosen. The layer reads the resolved UI locale on every
+ * call and caches the formatter per (locale, options), so nothing is rebuilt per
+ * row and a language switch repaints the next render.
+ */
+const CLOCK = { hour: "numeric", minute: "2-digit" } as const;
+const WEEKDAY = { weekday: "long" } as const;
+const LONG_DATE = { day: "numeric", month: "long", year: "numeric" } as const;
 
 /**
  * The divider label: a day name where the day is what changed, a clock time
  * where only the hour did. Deliberately not "2026-03-14" on every row — the
  * exact stamp of any single message is still one hover away on its meta row.
+ *
+ * Each shape is ONE keyed sentence with `{time}` / `{weekday}` / `{date}`
+ * arguments, never `` `Today ${time}` ``: where the day word sits relative to
+ * the clock is the language's call (the catalogue owns it), and the pieces are
+ * formatted by the layer in the live locale. Render-time only: this runs per
+ * render, never at module scope, so the first `t()` cannot pin the boot locale.
  */
 export const formatDividerLabel = (date: Date, now = new Date()): string => {
-	if (isSameDay(date, now)) return `Today ${TIME_FORMAT.format(date)}`;
+	const time = formatTime(date, CLOCK);
+	if (isSameDay(date, now)) return t("ui.common.time.today_at", { time });
 
 	const yesterday = new Date(now);
 	yesterday.setDate(now.getDate() - 1);
-	if (isSameDay(date, yesterday))
-		return `Yesterday ${TIME_FORMAT.format(date)}`;
+	if (isSameDay(date, yesterday)) {
+		return t("ui.common.time.yesterday_at", { time });
+	}
 
 	const weekAgo = new Date(now);
 	weekAgo.setDate(now.getDate() - 6);
 	if (date > weekAgo) {
-		return `${WEEKDAY_FORMAT.format(date)} ${TIME_FORMAT.format(date)}`;
+		return t("ui.common.time.weekday_at", {
+			weekday: formatDate(date, WEEKDAY),
+			time,
+		});
 	}
 
-	return `${DATE_FORMAT.format(date)}, ${TIME_FORMAT.format(date)}`;
+	return t("ui.common.time.date_at", {
+		date: formatDate(date, LONG_DATE),
+		time,
+	});
 };
 
 /**

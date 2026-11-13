@@ -108,6 +108,20 @@ export interface RegisterBrowserIpcOptions {
 		) => Promise<{ ok: true } | { ok: false; reason: string }>;
 	};
 	/**
+	 * Passkey custody's one user action, "Return to agent"
+	 * (`extensions/passkey-custody.ts`). `trusted` is the click's `isTrusted`;
+	 * main refuses anything else, as for the media prompt.
+	 */
+	passkeyCustody?: {
+		/** `reloaded`: the hold lifts only once the reload commits, so the band
+		 * stays busy until it disappears. */
+		release: (
+			tabId: number,
+			at: number,
+			trusted: boolean,
+		) => { ok: true; reloaded?: boolean } | { ok: false; reason: string };
+	};
+	/**
 	 * The camera/microphone prompt's one action (`media-permissions.ts`). This
 	 * channel is the ONLY route to a media grant, and `authorize()` admits only
 	 * the app window's own top frame: a driven page or the agent cannot reach it.
@@ -234,6 +248,7 @@ export const BROWSER_IPC_CHANNELS = [
 	"browser-passkey-notice-dismiss",
 	"browser-passkey-notice-open",
 	"browser-passkey-notice-continue",
+	"browser-passkey-custody-release",
 	"browser-media-permission-decide",
 	"browser-media-permission-open-settings",
 	"browser-extensions",
@@ -694,6 +709,24 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 			return options.passkeyNotice.continueInUserTab(
 				numberOrThrow(tabId, "tabId"),
 				numberOrThrow(at, "at"),
+			);
+		},
+	);
+
+	/*
+	 * "Return to agent" on a passkey custody notice: the only way an agent gets a
+	 * held tab back. Sender-checked here and trusted-click-checked in main, so
+	 * neither an agent (no RPC method) nor a page can end a hold.
+	 */
+	ipcMain.handle(
+		"browser-passkey-custody-release",
+		(event, tabId: unknown, at: unknown, trusted: unknown) => {
+			authorize(event);
+			if (!options.passkeyCustody) return { ok: false, reason: "not_held" };
+			return options.passkeyCustody.release(
+				numberOrThrow(tabId, "tabId"),
+				numberOrThrow(at, "at"),
+				trusted === true,
 			);
 		},
 	);

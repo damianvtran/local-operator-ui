@@ -278,3 +278,18 @@ whatever this process advertises rather than a fixed shape.
   drops the message (`extra="forbid"`). Same-machine forward-only use, per the
   change's own analysis; recorded here so nobody discovers it from a missing
   row.
+
+## Update — 2026-11-11: the bare-Space hold is removed
+
+This note is dated and appended rather than rewriting the sections above
+(evidence is historical). The bare-Space hold gesture — hold Space on dead
+space to dictate — has been deleted from the manager (`keymap` hold doors
+are the modifier binding `alt-right-hold` and the `primary+shift+s` toggle
+chord only). Space is now an ordinary key everywhere.
+
+The proof rig's hold-Space section (`sessionA.spaceEngages`, frames
+`05-recording-space` … `07-dictated-landed-space`) is removed with it.
+Earlier records in this directory are kept as captured; they describe the
+build that had the gesture. Both dictation rows in Settings may now be
+cleared (`clearable`), storing the sentinel `none`; a cleared door is
+distinct from an invalid value, which keeps falling back to the default.

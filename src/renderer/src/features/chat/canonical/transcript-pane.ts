@@ -74,9 +74,9 @@ import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-
  * click-to-paint), so the hold turned every revisit of a conversation the window
  * already had rows for into a second of nothing. The placeholder now belongs to
  * the pane that has NOTHING to paint: no records and a page owed. Cached rows
- * paint at once and the stale caption says what they are; the page's own commit
+ * paint at once and the stale indicator says what they are; the page's own commit
  * reconciles them underneath, as it always did on every path where the page was
- * not coming (a refusal, a failed stream), and the caption is laid out so its
+ * not coming (a refusal, a failed stream), and the indicator is laid out so its
  * removal moves nothing (`canonical-transcript.tsx`).
  *
  * WHY THE READER'S QUESTION AND NOT THE TRANSPORT'S. `awaitingHydration` asks

@@ -955,7 +955,7 @@ export async function hover(
 	});
 	await sleep(HOVER_SETTLE_MS);
 
-	const stack = await hitAt(record, x, y);
+	const stack = await hitAt(ctx, record, x, y);
 	if (stack === null || stack === undefined) {
 		throw new BrowserHostError(
 			"element_not_found",

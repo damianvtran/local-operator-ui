@@ -277,3 +277,29 @@ test("an ask made mid-flight picks up a change the flight missed (Quick send sum
 		label: "Right-Control",
 	});
 });
+
+test("a cleared push-to-talk value resolves to null, distinct from invalid (fallback)", async () => {
+	setPlatform(DARWIN);
+	// Invalid still falls back to the platform default.
+	assert.deepEqual(await resolvedWith("bogus"), DEFAULTS[DARWIN]);
+	// "none" is the explicit cleared state: the binding is null (no door).
+	assert.equal(await resolvedWith("none"), null);
+	// The leaf mapper still treats "none" as not-a-token (never a binding).
+	assert.equal(pushToTalkBindingForToken("none"), null);
+});
+
+test("invalid tokens still fall back while cleared stays null (cleared-vs-invalid pin)", async () => {
+	setPlatform(DARWIN);
+	for (const bad of [
+		"space",
+		"alt-middle-hold",
+		"",
+		"   ",
+		7,
+		null,
+		undefined,
+	]) {
+		assert.deepEqual(await resolvedWith(bad), DEFAULTS[DARWIN]);
+	}
+	assert.equal(await resolvedWith("none"), null);
+});

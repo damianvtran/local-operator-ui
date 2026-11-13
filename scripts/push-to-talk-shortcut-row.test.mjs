@@ -135,6 +135,9 @@ async function mount(
 		holdValue = "alt-right-hold",
 		hold = true,
 		focusKey = null,
+		startValue,
+		holdClearable,
+		startClearable,
 	},
 	run,
 ) {
@@ -167,9 +170,14 @@ async function mount(
 	const requests = [];
 	// The backend's own store: edits and resets land here and a reload reads it back.
 	const store = {
-		start: { ...startSetting },
+		start: {
+			...startSetting,
+			...(startClearable === undefined ? {} : { clearable: startClearable }),
+			...(startValue === undefined ? {} : { value: startValue }),
+		},
 		hold: {
 			...holdSetting,
+			...(holdClearable === undefined ? {} : { clearable: holdClearable }),
 			value: holdValue,
 			is_default: holdValue === "alt-right-hold",
 		},
@@ -208,13 +216,21 @@ async function mount(
 					if (request.op === "settings.edit") {
 						store.hold = {
 							...holdSetting,
+							...(holdClearable === undefined
+								? {}
+								: { clearable: holdClearable }),
 							value: request.value,
 							is_default: request.value === holdSetting.default,
 						};
 						return response({ ...store.hold });
 					}
 					if (request.op === "settings.reset") {
-						store.hold = { ...holdSetting };
+						store.hold = {
+							...holdSetting,
+							...(holdClearable === undefined
+								? {}
+								: { clearable: holdClearable }),
+						};
 						return response({ ...store.hold });
 					}
 				}
@@ -961,5 +977,101 @@ test("a refusal does not repeat the hint's pointer to Start recording", async ()
 		assert.equal(status.textContent.includes(pointer), false);
 		// Shown once: in the hint, which the field's description carries.
 		assert.equal(api.text().split(pointer).length - 1, 1);
+	});
+});
+
+test("a bound clearable secondary row shows Clear; clicking writes exactly 'none' and the PTT binding goes cleared", async () => {
+	await mount({ holdClearable: true }, async (api) => {
+		const field = api.$(HOLD);
+		assert.ok(field);
+		assert.equal(field.value, "Right-Option");
+		assert.equal(
+			field.className.includes("font-mono"),
+			true,
+			"bound keeps mono",
+		);
+		const clearButton = api.$(
+			'button[aria-label="Clear Push to talk (hold)\'s shortcut"]',
+		);
+		assert.ok(clearButton, "clearable + bound shows Clear");
+		await act(async () => clearButton.click());
+		for (
+			let attempt = 0;
+			attempt < 200 && field.value !== "No shortcut";
+			attempt += 1
+		) {
+			await api.settle();
+		}
+		assert.deepEqual(
+			edits(api).map((edit) => ({
+				op: edit.op,
+				key: edit.key,
+				value: edit.value,
+			})),
+			[{ op: "settings.edit", key: "keymap.push_to_talk", value: "none" }],
+		);
+		assert.equal(field.value, "No shortcut");
+		assert.equal(
+			field.className.includes("font-mono"),
+			false,
+			"cleared drops mono",
+		);
+		// The write hook's onSaved handed the save to the manager: no door.
+		assert.equal(resolvePushToTalkBinding(), null);
+		assert.equal(api.window.document.activeElement, field);
+	});
+});
+
+test("a cleared secondary row shows No shortcut with no Clear and Reset visible", async () => {
+	await mount({ holdValue: "none", holdClearable: true }, async (api) => {
+		const field = api.$(HOLD);
+		assert.ok(field);
+		assert.equal(field.value, "No shortcut");
+		assert.equal(field.className.includes("font-mono"), false);
+		assert.equal(
+			api.window.document.querySelector(
+				'button[aria-label="Clear Push to talk (hold)\'s shortcut"]',
+			),
+			null,
+		);
+		assert.ok(
+			api.$('button[aria-label="Reset Push to talk (hold) to its default"]'),
+		);
+	});
+});
+
+test("the secondary row shows no Clear button without the clearable flag", async () => {
+	for (const holdClearable of [undefined, false, null]) {
+		await mount(
+			holdClearable === undefined ? {} : { holdClearable },
+			async (api) => {
+				assert.equal(
+					api.window.document.querySelector(
+						'button[aria-label="Clear Push to talk (hold)\'s shortcut"]',
+					),
+					null,
+					`clearable=${String(holdClearable)}`,
+				);
+			},
+		);
+	}
+});
+
+test("a cleared primary row shows No shortcut with no Clear and Reset visible", async () => {
+	await mount({ startValue: "none", startClearable: true }, async (api) => {
+		const field = api.$(START);
+		assert.ok(field);
+		assert.equal(field.value, "No shortcut");
+		assert.equal(
+			api.window.document.querySelector(
+				'button[aria-label="Clear Start recording (press)\'s shortcut"]',
+			),
+			null,
+		);
+		assert.ok(
+			api.$(
+				'button[aria-label="Reset Start recording (press) to its default"]',
+			),
+		);
 	});
 });

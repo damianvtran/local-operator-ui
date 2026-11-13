@@ -120,7 +120,9 @@ test("an agent tab's notice offers Continue in your own tab, says why, and keeps
 	assert.ok(html.includes(AGENT_WHY), "the agent-tab explanation is shown");
 	// Review D1/D2/U1/U5: conditional, no repeated label or "agent-driven tab"
 	// (the message line already says it), and it names the step that remains.
-	assert.ok(AGENT_WHY.startsWith("If your passkey is in a password manager"));
+	// Narrowed with passkey custody: some managers CAN now show their window in
+	// an agent tab, so the sentence covers only one that can't.
+	assert.ok(AGENT_WHY.startsWith("If your password manager can’t show"));
 	assert.ok(!AGENT_WHY.includes(CONTINUE), "the button label is not repeated");
 	assert.ok(!AGENT_WHY.includes("agent-driven"));
 	assert.ok(AGENT_WHY.includes("ask the agent to reload this page"));

@@ -11,6 +11,7 @@
 	"ui.providers.phone.action.sign_in": "Continue in browser",
 	"ui.providers.phone.address_label": "Phone address",
 	"ui.providers.phone.choose_heading": "Choose an account",
+	"ui.providers.phone.connector_not_needed": "Phone access no longer needs a separate connector tool on this computer. Check again to continue setup.",
 	"ui.providers.phone.consent": "Activating sets up this Radient account’s tunnel subscription at USD {amount} a month, reserves your phone address and starts the background connector. It does not purchase credit.",
 	"ui.providers.phone.failure.check": "Phone access could not be checked, and nothing was changed.",
 	"ui.providers.phone.failure.run": "Phone access setup could not finish. Steps already completed are not undone. Check again before retrying.",

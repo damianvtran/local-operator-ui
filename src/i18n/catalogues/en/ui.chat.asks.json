@@ -39,5 +39,10 @@
 	"ui.chat.asks.clause.outstanding": "{count, plural, one {{count, number, ::group-off} outstanding} other {{count, number, ::group-off} outstanding}}",
 	"ui.chat.asks.clause.waiting": "{count, plural, one {{count, number, ::group-off} question waiting} other {{count, number, ::group-off} questions waiting}}",
 	"ui.chat.asks.clause.delivering": "{count, plural, one {{count, number, ::group-off} answer not yet delivered — you can still change it} other {{count, number, ::group-off} answers not yet delivered — you can still change them}}",
-	"ui.chat.asks.clause.timed_out": "{count, plural, one {{count, number, ::group-off} question timed out} other {{count, number, ::group-off} questions timed out}}"
+	"ui.chat.asks.clause.timed_out": "{count, plural, one {{count, number, ::group-off} question timed out} other {{count, number, ::group-off} questions timed out}}",
+	"ui.chat.asks.bounds.body_label": "Full question",
+	"ui.chat.asks.proposal.summary": "Proposed change to the {kind, select, agent {agent} team {team} skill {skill} other {profile}} {name}",
+	"ui.chat.asks.proposal.field_lines": "{label}: +{added, number} −{removed, number} lines",
+	"ui.chat.asks.proposal.field_changed": "{label}: changed",
+	"ui.chat.asks.proposal.review": "Review changes"
 }

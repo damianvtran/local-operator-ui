@@ -16,6 +16,7 @@
  */
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
 import { after, test } from "node:test";
 import { build } from "esbuild";
@@ -121,6 +122,7 @@ const bundle = await build({
 			'export { indexedDocument } from "./src/renderer/src/features/chat/canonical/session-files";',
 			'export { SoundPlayer } from "./src/renderer/src/features/chat/canonical/sound-player";',
 			'export { useAudioEngineStore, audioEngineElement } from "./src/renderer/src/shared/store/audio-engine-store";',
+			'export { setLocale } from "./src/i18n/locale";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -162,6 +164,7 @@ const {
 	SoundPlayer,
 	useAudioEngineStore,
 	audioEngineElement,
+	setLocale,
 } = await import(bundlePath.href);
 const React = await import("react");
 const { createRoot } = await import("react-dom/client");
@@ -262,6 +265,48 @@ test("Space starts and pauses through the shared engine; the marker follows", as
 	await act(async () => {});
 	assert.equal(useAudioEngineStore.getState().status, "paused");
 	await unmount();
+});
+
+test("a paused clip keeps its position and re-announces it in the new language", async () => {
+	// aria-valuetext is written imperatively by the frame painter, so at rest a
+	// locale switch re-renders the JSX prop (which carries 0:00) over the painted
+	// value. The painter's locale dependency re-paints the REAL position after it;
+	// without it a paused clip at 0:01 would be announced as 0:00 (census B7).
+	resetEngine();
+	const catalogue = JSON.parse(
+		readFileSync("src/i18n/catalogues/fr/ui.chat.json", "utf8"),
+	);
+	const { slider, unmount } = await mount();
+	try {
+		await press(slider, " ");
+		await act(async () => {});
+		const element = audioEngineElement();
+		await act(async () => {
+			element.duration = 20;
+			useAudioEngineStore.setState({ duration: 20 });
+		});
+		await press(slider, "ArrowRight");
+		await press(slider, " ");
+		await act(async () => {});
+		assert.equal(useAudioEngineStore.getState().status, "paused");
+		assert.equal(element.currentTime, 1);
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 40));
+		});
+		assert.equal(slider.getAttribute("aria-valuetext"), "0:01 of 0:20");
+		await act(async () => setLocale("fr"));
+		assert.equal(
+			slider.getAttribute("aria-valuetext"),
+			catalogue["ui.chat.audio.position_value"]
+				.replace("{current}", "0:01")
+				.replace("{total}", "0:20"),
+		);
+		await act(async () => setLocale("en"));
+		assert.equal(slider.getAttribute("aria-valuetext"), "0:01 of 0:20");
+	} finally {
+		setLocale("en");
+		await unmount();
+	}
 });
 
 test("arrows nudge, Home and End jump, and each seeks the element", async () => {

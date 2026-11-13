@@ -206,5 +206,6 @@
 	"ui.chat.session_status.effort_level.medium": "Medio",
 	"ui.chat.session_status.effort_level.high": "Alto",
 	"ui.chat.image_actions.actions": "Acciones de la imagen",
-	"ui.chat.audio.position_label": "Posición de {label}"
+	"ui.chat.audio.position_label": "Posición de {label}",
+	"ui.chat.audio.position_value": "{current} de {total}"
 }

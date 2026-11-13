@@ -643,6 +643,20 @@ export type PendingDesktopGate = {
 	 */
 	recommended?: number | null;
 	/**
+	 * Every recommended row of a multi-select ask, as `[0..k-1]`: present only
+	 * when the model recommended TWO OR MORE options (the core hoists them to the
+	 * top in the order it listed them, and `recommended` is then 0, the first of
+	 * them). Absent or null on a single recommendation, on a single-select ask
+	 * and on a backend older than the field.
+	 *
+	 * The rows to mark are this set when it has at least one usable entry
+	 * (a non-negative integer below the option count; each bad entry is dropped,
+	 * never clamped), otherwise `[recommended]`, validated the same way. Read it
+	 * through `ask-recommended.tsx`'s `recommendedIndexes`; it marks rows only
+	 * and pre-ticks nothing.
+	 */
+	recommended_all?: number[] | null;
+	/**
 	 * The `AskQuestion.persist` intent for a `secret: true` ask — whether the
 	 * answer is meant to be saved to the credential store rather than used
 	 * once.
@@ -754,6 +768,18 @@ export type PendingAskQuestion = {
 	 * for an absent, null, non-integer or out-of-range value.
 	 */
 	recommended?: number | null;
+	/**
+	 * Every recommended row when a multi-select ask recommends two or more
+	 * options: `[0..k-1]`, with `recommended` still the first of them (0). Absent
+	 * or null for one recommendation, for a single-select ask and on a backend
+	 * older than the field - there `recommended` alone marks exactly one row, so a
+	 * consumer must keep reading it. The rows to mark are this set when it has at
+	 * least one usable entry (a non-negative integer below the option count; each
+	 * bad entry is dropped, never clamped), otherwise `[recommended]`, validated
+	 * the same way by `ask-recommended.tsx`'s `recommendedIndexes`, which marks
+	 * rows and never changes the draft's selection.
+	 */
+	recommended_all?: number[] | null;
 	secret?: boolean;
 	persist?: boolean;
 	[key: string]: unknown;

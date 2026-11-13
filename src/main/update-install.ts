@@ -20,7 +20,12 @@ import {
 	join,
 	relative,
 } from "node:path";
-import { t } from "../i18n/index";
+import {
+	FULL_NUMERIC_STAMP,
+	formatByteQuantity,
+	formatDateTime,
+	t,
+} from "../i18n/index";
 import { isLanguageTag } from "../i18n/locale";
 import BUNDLED_RUNTIME_LAYOUT from "../shared/bundled-runtime-layout.json";
 import MACOS_ENTITLEMENT_POLICY from "../shared/macos-entitlement-policy.json";
@@ -884,7 +889,15 @@ export function requiredDiskBytes(input: {
 }
 
 function formatGiB(bytes: number): string {
-	return `${(bytes / 1024 ** 3).toFixed(1)} GiB`;
+	// `toFixed(1)` stays the rounding authority; the layer spells the result in
+	// the live locale (decimal separator, digits), which the keyed `remedy`
+	// ("Free up about {size}") needs and the support record shares. `GiB` is the
+	// ISO/IEC 80000-13 symbol and stays as written in every language
+	// (see `i18n/format.ts`).
+	return formatByteQuantity(Number((bytes / 1024 ** 3).toFixed(1)), "GiB", {
+		minimumFractionDigits: 1,
+		maximumFractionDigits: 1,
+	});
 }
 
 /**
@@ -2452,8 +2465,14 @@ export type InstallFailurePayload = {
  */
 export function installStartedText(marker: PendingInstallMarker): string {
 	const started = marker.startedAt ? new Date(marker.startedAt) : null;
+	// `toLocaleString()` read the OPERATING SYSTEM's region, so one record could
+	// mix a Russian-region stamp with an English UI. The stamp is a datum the
+	// reader compares with their own clock, so it follows the live UI locale like
+	// every other date (same components, so English is unchanged). The sentence
+	// around it stays English BY DESIGN (a support record; see
+	// `scripts/update-flow-keying.test.mjs` `ENGLISH_BY_DESIGN`).
 	return started && !Number.isNaN(started.getTime())
-		? started.toLocaleString()
+		? formatDateTime(started, FULL_NUMERIC_STAMP)
 		: "at an unknown time";
 }
 

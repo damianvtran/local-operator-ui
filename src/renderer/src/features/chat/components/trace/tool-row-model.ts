@@ -13,7 +13,7 @@
  * cell grid — but which fact lands in which column, and which fact is dropped
  * first when there is no room, are decisions this file keeps identical.
  */
-import { t } from "@shared/i18n";
+import { type WithoutParams, formatByteQuantity, t } from "@shared/i18n";
 import { bridgeRow, bridgeSummary, bridgeVerb } from "./bridge-row-model";
 
 /**
@@ -1202,9 +1202,18 @@ function fixed1(value: number): string {
  * at a glance, which is the whole point of the field.
  */
 export function formatBytes(count: number): string {
-	if (count < 1024) return `${count} B`;
-	if (count < 1024 * 1024) return `${fixed1(count / 1024)} KB`;
-	return `${fixed1(count / (1024 * 1024))} MB`;
+	// `fixed1` keeps the TUI's half-even tenth; the shared helper only spells the
+	// already-rounded number and unit for the active locale.
+	const oneDecimal = { minimumFractionDigits: 1, maximumFractionDigits: 1 };
+	if (count < 1024)
+		return formatByteQuantity(count, "B", { maximumFractionDigits: 0 });
+	if (count < 1024 * 1024)
+		return formatByteQuantity(Number(fixed1(count / 1024)), "KB", oneDecimal);
+	return formatByteQuantity(
+		Number(fixed1(count / (1024 * 1024))),
+		"MB",
+		oneDecimal,
+	);
 }
 
 /**
@@ -1433,26 +1442,104 @@ const isOpSelectable = (toolName: string): boolean =>
 		toolName.trim().toLowerCase(),
 	);
 
-const TOOL_VERBS: Record<string, Omit<ToolVerb, "named">> = {
-	bash: { settled: "Ran", running: "Running" },
-	eval: { settled: "Ran Python", running: "Running Python" },
-	read: { settled: "Read", running: "Reading" },
-	write: { settled: "Wrote", running: "Writing" },
-	edit: { settled: "Edited", running: "Editing" },
-	glob: { settled: "Listed", running: "Listing" },
-	grep: { settled: "Searched", running: "Searching" },
-	web_search: { settled: "Searched the web", running: "Searching the web" },
-	web_fetch: { settled: "Fetched", running: "Fetching" },
-	web_read: { settled: "Read", running: "Reading" },
-	browser: { settled: "Browsed", running: "Browsing" },
-	list_variables: { settled: "Listed variables", running: "Listing variables" },
-	read_variable: { settled: "Read variable", running: "Reading variable" },
-	ask: { settled: "Asked", running: "Asking" },
-	send: { settled: "Sent", running: "Sending" },
-	wait: { settled: "Waited for jobs", running: "Waiting for jobs" },
-	team_delete: { settled: "Deleted team", running: "Deleting team" },
-	project_delete: { settled: "Deleted project", running: "Deleting project" },
-	peer: { settled: "Received", running: "Receiving" },
+/**
+ * A verb row stored as catalogue KEYS, never as English words.
+ *
+ * Why keys and not strings: the tables below are module-level constants, and a
+ * `t()` call evaluated at import would freeze the locale in force at load, so a
+ * language switch would repaint everything EXCEPT the verb column (the
+ * French-census bug this closes: `Ran`/`Searching` on a French transcript).
+ * `toolVerb` calls `t()` on these keys at call time instead, which is what
+ * lets the `useI18nLocale` boundary repaint mounted rows without a remount.
+ * Typed as `WithoutParams` (a key with no ICU placeholder, which `t(key)`
+ * accepts bare) so a misspelt or deleted key fails `tsc`, not a runtime
+ * fallback to the raw id.
+ */
+type VerbKeys = { settled: WithoutParams; running: WithoutParams };
+
+/** Resolve one table row through the catalogue, at call time (see `VerbKeys`). */
+const resolveVerb = ({ settled, running }: VerbKeys) => ({
+	settled: t(settled),
+	running: t(running),
+});
+
+const TOOL_VERBS: Record<string, VerbKeys> = {
+	bash: {
+		settled: "ui.chat.canonical.tool_row.verb.ran.settled",
+		running: "ui.chat.canonical.tool_row.verb.ran.running",
+	},
+	eval: {
+		settled: "ui.chat.canonical.tool_row.verb.ran_python.settled",
+		running: "ui.chat.canonical.tool_row.verb.ran_python.running",
+	},
+	read: {
+		settled: "ui.chat.canonical.tool_row.verb.read.settled",
+		running: "ui.chat.canonical.tool_row.verb.read.running",
+	},
+	write: {
+		settled: "ui.chat.canonical.tool_row.verb.wrote.settled",
+		running: "ui.chat.canonical.tool_row.verb.wrote.running",
+	},
+	edit: {
+		settled: "ui.chat.canonical.tool_row.verb.edited.settled",
+		running: "ui.chat.canonical.tool_row.verb.edited.running",
+	},
+	glob: {
+		settled: "ui.chat.canonical.tool_row.verb.listed.settled",
+		running: "ui.chat.canonical.tool_row.verb.listed.running",
+	},
+	grep: {
+		settled: "ui.chat.canonical.tool_row.verb.searched.settled",
+		running: "ui.chat.canonical.tool_row.verb.searched.running",
+	},
+	web_search: {
+		settled: "ui.chat.canonical.tool_row.verb.searched_the_web.settled",
+		running: "ui.chat.canonical.tool_row.verb.searched_the_web.running",
+	},
+	web_fetch: {
+		settled: "ui.chat.canonical.tool_row.verb.fetched.settled",
+		running: "ui.chat.canonical.tool_row.verb.fetched.running",
+	},
+	web_read: {
+		settled: "ui.chat.canonical.tool_row.verb.read.settled",
+		running: "ui.chat.canonical.tool_row.verb.read.running",
+	},
+	browser: {
+		settled: "ui.chat.canonical.tool_row.verb.browsed.settled",
+		running: "ui.chat.canonical.tool_row.verb.browsed.running",
+	},
+	list_variables: {
+		settled: "ui.chat.canonical.tool_row.verb.listed_variables.settled",
+		running: "ui.chat.canonical.tool_row.verb.listed_variables.running",
+	},
+	read_variable: {
+		settled: "ui.chat.canonical.tool_row.verb.read_variable.settled",
+		running: "ui.chat.canonical.tool_row.verb.read_variable.running",
+	},
+	ask: {
+		settled: "ui.chat.canonical.tool_row.verb.asked.settled",
+		running: "ui.chat.canonical.tool_row.verb.asked.running",
+	},
+	send: {
+		settled: "ui.chat.canonical.tool_row.verb.sent.settled",
+		running: "ui.chat.canonical.tool_row.verb.sent.running",
+	},
+	wait: {
+		settled: "ui.chat.canonical.tool_row.verb.waited_for_jobs.settled",
+		running: "ui.chat.canonical.tool_row.verb.waited_for_jobs.running",
+	},
+	team_delete: {
+		settled: "ui.chat.canonical.tool_row.verb.deleted_team.settled",
+		running: "ui.chat.canonical.tool_row.verb.deleted_team.running",
+	},
+	project_delete: {
+		settled: "ui.chat.canonical.tool_row.verb.deleted_project.settled",
+		running: "ui.chat.canonical.tool_row.verb.deleted_project.running",
+	},
+	peer: {
+		settled: "ui.chat.canonical.tool_row.verb.received.settled",
+		running: "ui.chat.canonical.tool_row.verb.received.running",
+	},
 	/*
 	 * `task` keeps `Delegated` and it is the only entry that earns it: `task`
 	 * launches a subagent, which IS delegation. `agent`/`team`/`hub` used to sit
@@ -1461,7 +1548,10 @@ const TOOL_VERBS: Record<string, Omit<ToolVerb, "named">> = {
 	 * painted `Delegated` and folded into `delegated 3 tasks`. They live in
 	 * `TOOL_OP_VERBS` below now, where the operation picks the word.
 	 */
-	task: { settled: "Delegated", running: "Delegating" },
+	task: {
+		settled: "ui.chat.canonical.tool_row.verb.delegated.settled",
+		running: "ui.chat.canonical.tool_row.verb.delegated.running",
+	},
 };
 
 /**
@@ -1487,137 +1577,335 @@ const TOOL_VERBS: Record<string, Omit<ToolVerb, "named">> = {
  * `console`/`lsp` in the builtin tool module), so a row can only say an
  * operation the tool itself accepts.
  */
-const TOOL_OP_VERBS: Record<string, Record<string, Omit<ToolVerb, "named">>> = {
+const TOOL_OP_VERBS: Record<string, Record<string, VerbKeys>> = {
 	agent: {
-		list: { settled: "Listed agents", running: "Listing agents" },
-		show: { settled: "Viewed agent", running: "Viewing agent" },
-		search: { settled: "Searched agents", running: "Searching agents" },
-		install: { settled: "Installed agent", running: "Installing agent" },
-		reset: { settled: "Reset agent", running: "Resetting agent" },
-		create: { settled: "Created agent", running: "Creating agent" },
-		update: { settled: "Updated agent", running: "Updating agent" },
-		sync: { settled: "Synced agents", running: "Syncing agents" },
+		list: {
+			settled: "ui.chat.canonical.tool_row.verb.listed_agents.settled",
+			running: "ui.chat.canonical.tool_row.verb.listed_agents.running",
+		},
+		show: {
+			settled: "ui.chat.canonical.tool_row.verb.viewed_agent.settled",
+			running: "ui.chat.canonical.tool_row.verb.viewed_agent.running",
+		},
+		search: {
+			settled: "ui.chat.canonical.tool_row.verb.searched_agents.settled",
+			running: "ui.chat.canonical.tool_row.verb.searched_agents.running",
+		},
+		install: {
+			settled: "ui.chat.canonical.tool_row.verb.installed_agent.settled",
+			running: "ui.chat.canonical.tool_row.verb.installed_agent.running",
+		},
+		reset: {
+			settled: "ui.chat.canonical.tool_row.verb.reset_agent.settled",
+			running: "ui.chat.canonical.tool_row.verb.reset_agent.running",
+		},
+		create: {
+			settled: "ui.chat.canonical.tool_row.verb.created_agent.settled",
+			running: "ui.chat.canonical.tool_row.verb.created_agent.running",
+		},
+		update: {
+			settled: "ui.chat.canonical.tool_row.verb.updated_agent.settled",
+			running: "ui.chat.canonical.tool_row.verb.updated_agent.running",
+		},
+		sync: {
+			settled: "ui.chat.canonical.tool_row.verb.synced_agents.settled",
+			running: "ui.chat.canonical.tool_row.verb.synced_agents.running",
+		},
 	},
 	team: {
-		list: { settled: "Listed teams", running: "Listing teams" },
-		show: { settled: "Viewed team", running: "Viewing team" },
-		create: { settled: "Created team", running: "Creating team" },
-		update: { settled: "Updated team", running: "Updating team" },
+		list: {
+			settled: "ui.chat.canonical.tool_row.verb.listed_teams.settled",
+			running: "ui.chat.canonical.tool_row.verb.listed_teams.running",
+		},
+		show: {
+			settled: "ui.chat.canonical.tool_row.verb.viewed_team.settled",
+			running: "ui.chat.canonical.tool_row.verb.viewed_team.running",
+		},
+		create: {
+			settled: "ui.chat.canonical.tool_row.verb.created_team.settled",
+			running: "ui.chat.canonical.tool_row.verb.created_team.running",
+		},
+		update: {
+			settled: "ui.chat.canonical.tool_row.verb.updated_team.settled",
+			running: "ui.chat.canonical.tool_row.verb.updated_team.running",
+		},
 	},
 	hub: {
-		list: { settled: "Listed subagents", running: "Listing subagents" },
-		peek: { settled: "Peeked at", running: "Peeking at" },
-		send: { settled: "Messaged", running: "Messaging" },
-		ask: { settled: "Asked", running: "Asking" },
-		steer: { settled: "Steered", running: "Steering" },
-		pause: { settled: "Paused", running: "Pausing" },
-		cancel: { settled: "Cancelled", running: "Cancelling" },
-		resume: { settled: "Resumed", running: "Resuming" },
+		list: {
+			settled: "ui.chat.canonical.tool_row.verb.listed_subagents.settled",
+			running: "ui.chat.canonical.tool_row.verb.listed_subagents.running",
+		},
+		peek: {
+			settled: "ui.chat.canonical.tool_row.verb.peeked_at.settled",
+			running: "ui.chat.canonical.tool_row.verb.peeked_at.running",
+		},
+		send: {
+			settled: "ui.chat.canonical.tool_row.verb.messaged.settled",
+			running: "ui.chat.canonical.tool_row.verb.messaged.running",
+		},
+		ask: {
+			settled: "ui.chat.canonical.tool_row.verb.asked.settled",
+			running: "ui.chat.canonical.tool_row.verb.asked.running",
+		},
+		steer: {
+			settled: "ui.chat.canonical.tool_row.verb.steered.settled",
+			running: "ui.chat.canonical.tool_row.verb.steered.running",
+		},
+		pause: {
+			settled: "ui.chat.canonical.tool_row.verb.paused.settled",
+			running: "ui.chat.canonical.tool_row.verb.paused.running",
+		},
+		cancel: {
+			settled: "ui.chat.canonical.tool_row.verb.cancelled.settled",
+			running: "ui.chat.canonical.tool_row.verb.cancelled.running",
+		},
+		resume: {
+			settled: "ui.chat.canonical.tool_row.verb.resumed.settled",
+			running: "ui.chat.canonical.tool_row.verb.resumed.running",
+		},
 	},
 	secret: {
-		store: { settled: "Stored secret", running: "Storing secret" },
-		retrieve: { settled: "Retrieved secret", running: "Retrieving secret" },
-		list: { settled: "Listed secrets", running: "Listing secrets" },
-		describe: { settled: "Described secret", running: "Describing secret" },
-		update: { settled: "Updated secret", running: "Updating secret" },
-		delete: { settled: "Deleted secret", running: "Deleting secret" },
+		store: {
+			settled: "ui.chat.canonical.tool_row.verb.stored_secret.settled",
+			running: "ui.chat.canonical.tool_row.verb.stored_secret.running",
+		},
+		retrieve: {
+			settled: "ui.chat.canonical.tool_row.verb.retrieved_secret.settled",
+			running: "ui.chat.canonical.tool_row.verb.retrieved_secret.running",
+		},
+		list: {
+			settled: "ui.chat.canonical.tool_row.verb.listed_secrets.settled",
+			running: "ui.chat.canonical.tool_row.verb.listed_secrets.running",
+		},
+		describe: {
+			settled: "ui.chat.canonical.tool_row.verb.described_secret.settled",
+			running: "ui.chat.canonical.tool_row.verb.described_secret.running",
+		},
+		update: {
+			settled: "ui.chat.canonical.tool_row.verb.updated_secret.settled",
+			running: "ui.chat.canonical.tool_row.verb.updated_secret.running",
+		},
+		delete: {
+			settled: "ui.chat.canonical.tool_row.verb.deleted_secret.settled",
+			running: "ui.chat.canonical.tool_row.verb.deleted_secret.running",
+		},
 	},
 	project: {
-		list: { settled: "Listed projects", running: "Listing projects" },
-		show: { settled: "Viewed project", running: "Viewing project" },
-		create: { settled: "Created project", running: "Creating project" },
-		update: { settled: "Updated project", running: "Updating project" },
+		list: {
+			settled: "ui.chat.canonical.tool_row.verb.listed_projects.settled",
+			running: "ui.chat.canonical.tool_row.verb.listed_projects.running",
+		},
+		show: {
+			settled: "ui.chat.canonical.tool_row.verb.viewed_project.settled",
+			running: "ui.chat.canonical.tool_row.verb.viewed_project.running",
+		},
+		create: {
+			settled: "ui.chat.canonical.tool_row.verb.created_project.settled",
+			running: "ui.chat.canonical.tool_row.verb.created_project.running",
+		},
+		update: {
+			settled: "ui.chat.canonical.tool_row.verb.updated_project.settled",
+			running: "ui.chat.canonical.tool_row.verb.updated_project.running",
+		},
 		// `link`/`unlink` act on the session named in the object, so the verb
 		// carries the direction - `Linked session to myproject` reads as the
 		// sentence it is, where a bare `Linked myproject` would not.
-		link: { settled: "Linked session to", running: "Linking session to" },
-		unlink: {
-			settled: "Unlinked session from",
-			running: "Unlinking session from",
+		link: {
+			settled: "ui.chat.canonical.tool_row.verb.linked_session_to.settled",
+			running: "ui.chat.canonical.tool_row.verb.linked_session_to.running",
 		},
-		milestone: { settled: "Updated milestone", running: "Updating milestone" },
+		unlink: {
+			settled: "ui.chat.canonical.tool_row.verb.unlinked_session_from.settled",
+			running: "ui.chat.canonical.tool_row.verb.unlinked_session_from.running",
+		},
+		milestone: {
+			settled: "ui.chat.canonical.tool_row.verb.updated_milestone.settled",
+			running: "ui.chat.canonical.tool_row.verb.updated_milestone.running",
+		},
 		// The remove flag's own verb, composed by `toolOp`: the milestone op
 		// UPDATES when the flag is off and REMOVES when it is on, and the row
 		// says which (operator report follow-up, 2026-09-27: a removal must not
 		// read as an update any more than a read may read as a delegation).
 		"milestone-remove": {
-			settled: "Removed milestone",
-			running: "Removing milestone",
+			settled: "ui.chat.canonical.tool_row.verb.removed_milestone.settled",
+			running: "ui.chat.canonical.tool_row.verb.removed_milestone.running",
 		},
 	},
 	todo: {
 		// `view` is a read; every other op changes the list, which is the claim
 		// the five share.
-		view: { settled: "Read todos", running: "Reading todos" },
-		init: { settled: "Updated todos", running: "Updating todos" },
-		add: { settled: "Updated todos", running: "Updating todos" },
-		done: { settled: "Updated todos", running: "Updating todos" },
-		block: { settled: "Updated todos", running: "Updating todos" },
-		drop: { settled: "Updated todos", running: "Updating todos" },
+		view: {
+			settled: "ui.chat.canonical.tool_row.verb.read_todos.settled",
+			running: "ui.chat.canonical.tool_row.verb.read_todos.running",
+		},
+		init: {
+			settled: "ui.chat.canonical.tool_row.verb.updated_todos.settled",
+			running: "ui.chat.canonical.tool_row.verb.updated_todos.running",
+		},
+		add: {
+			settled: "ui.chat.canonical.tool_row.verb.updated_todos.settled",
+			running: "ui.chat.canonical.tool_row.verb.updated_todos.running",
+		},
+		done: {
+			settled: "ui.chat.canonical.tool_row.verb.updated_todos.settled",
+			running: "ui.chat.canonical.tool_row.verb.updated_todos.running",
+		},
+		block: {
+			settled: "ui.chat.canonical.tool_row.verb.updated_todos.settled",
+			running: "ui.chat.canonical.tool_row.verb.updated_todos.running",
+		},
+		drop: {
+			settled: "ui.chat.canonical.tool_row.verb.updated_todos.settled",
+			running: "ui.chat.canonical.tool_row.verb.updated_todos.running",
+		},
 	},
 	wake: {
-		create: { settled: "Scheduled", running: "Scheduling" },
-		list: { settled: "Listed wakes", running: "Listing wakes" },
-		cancel: { settled: "Cancelled wake", running: "Cancelling wake" },
+		create: {
+			settled: "ui.chat.canonical.tool_row.verb.scheduled.settled",
+			running: "ui.chat.canonical.tool_row.verb.scheduled.running",
+		},
+		list: {
+			settled: "ui.chat.canonical.tool_row.verb.listed_wakes.settled",
+			running: "ui.chat.canonical.tool_row.verb.listed_wakes.running",
+		},
+		cancel: {
+			settled: "ui.chat.canonical.tool_row.verb.cancelled_wake.settled",
+			running: "ui.chat.canonical.tool_row.verb.cancelled_wake.running",
+		},
 	},
 	jobs: {
-		list: { settled: "Listed jobs", running: "Listing jobs" },
-		peek: { settled: "Peeked at", running: "Peeking at" },
-		cancel: { settled: "Cancelled job", running: "Cancelling job" },
+		list: {
+			settled: "ui.chat.canonical.tool_row.verb.listed_jobs.settled",
+			running: "ui.chat.canonical.tool_row.verb.listed_jobs.running",
+		},
+		peek: {
+			settled: "ui.chat.canonical.tool_row.verb.peeked_at.settled",
+			running: "ui.chat.canonical.tool_row.verb.peeked_at.running",
+		},
+		cancel: {
+			settled: "ui.chat.canonical.tool_row.verb.cancelled_job.settled",
+			running: "ui.chat.canonical.tool_row.verb.cancelled_job.running",
+		},
 	},
 	network: {
 		// The reads first, each naming its own subject because the object column
 		// is empty for a call that addresses the whole device or network.
 		status: {
-			settled: "Checked network status",
-			running: "Checking network status",
+			settled: "ui.chat.canonical.tool_row.verb.checked_network_status.settled",
+			running: "ui.chat.canonical.tool_row.verb.checked_network_status.running",
 		},
-		ls: { settled: "Listed networks", running: "Listing networks" },
-		show: { settled: "Viewed network", running: "Viewing network" },
+		ls: {
+			settled: "ui.chat.canonical.tool_row.verb.listed_networks.settled",
+			running: "ui.chat.canonical.tool_row.verb.listed_networks.running",
+		},
+		show: {
+			settled: "ui.chat.canonical.tool_row.verb.viewed_network.settled",
+			running: "ui.chat.canonical.tool_row.verb.viewed_network.running",
+		},
 		peers: {
-			settled: "Listed network peers",
-			running: "Listing network peers",
+			settled: "ui.chat.canonical.tool_row.verb.listed_network_peers.settled",
+			running: "ui.chat.canonical.tool_row.verb.listed_network_peers.running",
 		},
-		log: { settled: "Read network log", running: "Reading network log" },
-		doctor: { settled: "Diagnosed network", running: "Diagnosing network" },
+		log: {
+			settled: "ui.chat.canonical.tool_row.verb.read_network_log.settled",
+			running: "ui.chat.canonical.tool_row.verb.read_network_log.running",
+		},
+		doctor: {
+			settled: "ui.chat.canonical.tool_row.verb.diagnosed_network.settled",
+			running: "ui.chat.canonical.tool_row.verb.diagnosed_network.running",
+		},
 		// Then the trust-changing six, in the CLI's own vocabulary: `init`
 		// creates, `invite` mints a token, `member_rm` removes a device,
 		// `disconnect` leaves, `panic` rotates every member's secret.
-		init: { settled: "Created network", running: "Creating network" },
-		invite: { settled: "Invited device", running: "Inviting device" },
-		join: { settled: "Joined network", running: "Joining network" },
-		member_rm: { settled: "Removed device", running: "Removing device" },
-		disconnect: { settled: "Left network", running: "Leaving network" },
-		panic: { settled: "Raised panic", running: "Raising panic" },
+		init: {
+			settled: "ui.chat.canonical.tool_row.verb.created_network.settled",
+			running: "ui.chat.canonical.tool_row.verb.created_network.running",
+		},
+		invite: {
+			settled: "ui.chat.canonical.tool_row.verb.invited_device.settled",
+			running: "ui.chat.canonical.tool_row.verb.invited_device.running",
+		},
+		join: {
+			settled: "ui.chat.canonical.tool_row.verb.joined_network.settled",
+			running: "ui.chat.canonical.tool_row.verb.joined_network.running",
+		},
+		member_rm: {
+			settled: "ui.chat.canonical.tool_row.verb.removed_device.settled",
+			running: "ui.chat.canonical.tool_row.verb.removed_device.running",
+		},
+		disconnect: {
+			settled: "ui.chat.canonical.tool_row.verb.left_network.settled",
+			running: "ui.chat.canonical.tool_row.verb.left_network.running",
+		},
+		panic: {
+			settled: "ui.chat.canonical.tool_row.verb.raised_panic.settled",
+			running: "ui.chat.canonical.tool_row.verb.raised_panic.running",
+		},
 	},
 	console: {
 		// `console` is the pane's own noun (its aria labels read "Close
 		// console", "New console"), so the rows use it too.
-		list: { settled: "Listed consoles", running: "Listing consoles" },
-		create: { settled: "Opened console", running: "Opening console" },
-		status: { settled: "Checked console", running: "Checking console" },
-		read: { settled: "Read console", running: "Reading console" },
-		screenshot: { settled: "Captured console", running: "Capturing console" },
-		input: { settled: "Typed in console", running: "Typing in console" },
-		keys: { settled: "Sent keys", running: "Sending keys" },
-		resize: { settled: "Resized console", running: "Resizing console" },
+		list: {
+			settled: "ui.chat.canonical.tool_row.verb.listed_consoles.settled",
+			running: "ui.chat.canonical.tool_row.verb.listed_consoles.running",
+		},
+		create: {
+			settled: "ui.chat.canonical.tool_row.verb.opened_console.settled",
+			running: "ui.chat.canonical.tool_row.verb.opened_console.running",
+		},
+		status: {
+			settled: "ui.chat.canonical.tool_row.verb.checked_console.settled",
+			running: "ui.chat.canonical.tool_row.verb.checked_console.running",
+		},
+		read: {
+			settled: "ui.chat.canonical.tool_row.verb.read_console.settled",
+			running: "ui.chat.canonical.tool_row.verb.read_console.running",
+		},
+		screenshot: {
+			settled: "ui.chat.canonical.tool_row.verb.captured_console.settled",
+			running: "ui.chat.canonical.tool_row.verb.captured_console.running",
+		},
+		input: {
+			settled: "ui.chat.canonical.tool_row.verb.typed_in_console.settled",
+			running: "ui.chat.canonical.tool_row.verb.typed_in_console.running",
+		},
+		keys: {
+			settled: "ui.chat.canonical.tool_row.verb.sent_keys.settled",
+			running: "ui.chat.canonical.tool_row.verb.sent_keys.running",
+		},
+		resize: {
+			settled: "ui.chat.canonical.tool_row.verb.resized_console.settled",
+			running: "ui.chat.canonical.tool_row.verb.resized_console.running",
+		},
 		// The switch toggles both ways; `secured` would be a one-way claim, and
 		// `input` is the pane's own word for it ("Secure input").
 		secure: {
-			settled: "Updated secure input",
-			running: "Updating secure input",
+			settled: "ui.chat.canonical.tool_row.verb.updated_secure_input.settled",
+			running: "ui.chat.canonical.tool_row.verb.updated_secure_input.running",
 		},
-		close: { settled: "Closed console", running: "Closing console" },
+		close: {
+			settled: "ui.chat.canonical.tool_row.verb.closed_console.settled",
+			running: "ui.chat.canonical.tool_row.verb.closed_console.running",
+		},
 	},
 	lsp: {
 		// Every lsp action is read-only (`tools/lsp.py`: `rename_preview`
 		// computes the edits a rename WOULD make), so all four are reads.
-		definitions: { settled: "Found definition", running: "Finding definition" },
-		references: { settled: "Found references", running: "Finding references" },
-		symbols: { settled: "Listed symbols", running: "Listing symbols" },
+		definitions: {
+			settled: "ui.chat.canonical.tool_row.verb.found_definition.settled",
+			running: "ui.chat.canonical.tool_row.verb.found_definition.running",
+		},
+		references: {
+			settled: "ui.chat.canonical.tool_row.verb.found_references.settled",
+			running: "ui.chat.canonical.tool_row.verb.found_references.running",
+		},
+		symbols: {
+			settled: "ui.chat.canonical.tool_row.verb.listed_symbols.settled",
+			running: "ui.chat.canonical.tool_row.verb.listed_symbols.running",
+		},
 		rename_preview: {
-			settled: "Previewed rename",
-			running: "Previewing rename",
+			settled: "ui.chat.canonical.tool_row.verb.previewed_rename.settled",
+			running: "ui.chat.canonical.tool_row.verb.previewed_rename.running",
 		},
 	},
 	sessions: {
@@ -1630,12 +1918,30 @@ const TOOL_OP_VERBS: Record<string, Record<string, Omit<ToolVerb, "named">>> = {
 		// object column then never has to say `session` twice; `peek` keeps the
 		// family's act-word (`hub`/`jobs` say `Peeked at`) with the noun beside
 		// it so the row reads as the read it is.
-		list: { settled: "Listed sessions", running: "Listing sessions" },
-		info: { settled: "Viewed session", running: "Viewing session" },
-		spawn: { settled: "Spawned session", running: "Spawning session" },
-		resume: { settled: "Resumed session", running: "Resuming session" },
-		stop: { settled: "Stopped session", running: "Stopping session" },
-		peek: { settled: "Peeked at session", running: "Peeking at session" },
+		list: {
+			settled: "ui.chat.canonical.tool_row.verb.listed_sessions.settled",
+			running: "ui.chat.canonical.tool_row.verb.listed_sessions.running",
+		},
+		info: {
+			settled: "ui.chat.canonical.tool_row.verb.viewed_session.settled",
+			running: "ui.chat.canonical.tool_row.verb.viewed_session.running",
+		},
+		spawn: {
+			settled: "ui.chat.canonical.tool_row.verb.spawned_session.settled",
+			running: "ui.chat.canonical.tool_row.verb.spawned_session.running",
+		},
+		resume: {
+			settled: "ui.chat.canonical.tool_row.verb.resumed_session.settled",
+			running: "ui.chat.canonical.tool_row.verb.resumed_session.running",
+		},
+		stop: {
+			settled: "ui.chat.canonical.tool_row.verb.stopped_session.settled",
+			running: "ui.chat.canonical.tool_row.verb.stopped_session.running",
+		},
+		peek: {
+			settled: "ui.chat.canonical.tool_row.verb.peeked_at_session.settled",
+			running: "ui.chat.canonical.tool_row.verb.peeked_at_session.running",
+		},
 	},
 };
 
@@ -1666,9 +1972,9 @@ export function toolVerb(toolName: string, op?: string | null): ToolVerb {
 		return { settled, running, named: true };
 	}
 	const byOp = token ? TOOL_OP_VERBS[name]?.[token] : undefined;
-	if (byOp) return { ...byOp, named: true };
+	if (byOp) return { ...resolveVerb(byOp), named: true };
 	const known = TOOL_VERBS[name];
-	if (known) return { ...known, named: true };
+	if (known) return { ...resolveVerb(known), named: true };
 	return {
 		settled: t("ui.chat.canonical.tool_row.generic_verb.settled"),
 		running: t("ui.chat.canonical.tool_row.generic_verb.running"),

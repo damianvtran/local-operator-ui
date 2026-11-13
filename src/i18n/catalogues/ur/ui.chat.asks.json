@@ -39,5 +39,10 @@
 	"ui.chat.asks.clause.outstanding": "{count, plural, one {{count, number, ::group-off} زیر التوا} other {{count, number, ::group-off} زیر التوا}}",
 	"ui.chat.asks.clause.waiting": "{count, plural, one {{count, number, ::group-off} سوال منتظر ہے} other {{count, number, ::group-off} سوالات منتظر ہیں}}",
 	"ui.chat.asks.clause.delivering": "{count, plural, one {{count, number, ::group-off} جواب ابھی پہنچایا نہیں گیا — آپ اسے اب بھی بدل سکتے ہیں} other {{count, number, ::group-off} جوابات ابھی پہنچائے نہیں گئے — آپ انہیں اب بھی بدل سکتے ہیں}}",
-	"ui.chat.asks.clause.timed_out": "{count, plural, one {{count, number, ::group-off} سوال کی مدت ختم ہو گئی} other {{count, number, ::group-off} سوالات کی مدت ختم ہو گئی}}"
+	"ui.chat.asks.clause.timed_out": "{count, plural, one {{count, number, ::group-off} سوال کی مدت ختم ہو گئی} other {{count, number, ::group-off} سوالات کی مدت ختم ہو گئی}}",
+	"ui.chat.asks.bounds.body_label": "مکمل سوال",
+	"ui.chat.asks.proposal.summary": "{kind, select, agent {ایجنٹ} team {ٹیم} skill {مہارت} other {پروفائل}} {name} میں مجوزہ تبدیلی",
+	"ui.chat.asks.proposal.field_lines": "{label}: +{added, number} −{removed, number} سطریں",
+	"ui.chat.asks.proposal.field_changed": "{label}: تبدیل شدہ",
+	"ui.chat.asks.proposal.review": "تبدیلیوں کا جائزہ لیں"
 }

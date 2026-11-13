@@ -67,6 +67,8 @@ const bundle = await build({
 			 * export, and a named re-export would fail the bundle instead of letting
 			 * this file run its cases against that module as the RED reproduction. */
 			export const captureBridgeStatusAuthority = owner["captureBridgeStatusAuthority"];
+			export const BRIDGE_STATUS_AUTHORITY_FIELDS = owner["BRIDGE_STATUS_AUTHORITY_FIELDS"];
+			export const bridgeStatusAuthority = owner["bridgeStatusAuthority"];
 			export { teamBridgeKeys } from "./src/renderer/src/features/team-bridge/team-bridge-keys";
 			export { radientUserKeys } from "./src/renderer/src/shared/hooks/radient-account-authority";
 			export { QueryClient } from "@tanstack/react-query";
@@ -252,6 +254,76 @@ for (const [field, next] of [
 		client.clear();
 	});
 }
+
+/*
+ * THE ORGANIZATION SET (bridge-instant-load S1). Removal from one organization
+ * of several moves no other authority field, so it is fenced on its own; the
+ * server's row ORDER and a row's non-authority fields are not authority, so a
+ * refetch that only reorders or renames must resolve in ONE attempt.
+ */
+const tenantRow = (tenant_id, overrides = {}) => ({
+	tenant_id,
+	tenant_name: tenant_id,
+	eligible: true,
+	endpoint: null,
+	...overrides,
+});
+const withTenants = (rows) => ({ status: { tenants: rows } });
+const mountWithTenants = () => {
+	const client = mount();
+	client.setQueryData(
+		m.teamBridgeKeys.statusFor(ACCOUNT),
+		status(withTenants([tenantRow("org_a1b2c3"), tenantRow("org_d4e5f6")])),
+	);
+	return client;
+};
+
+test("a mid-read organization removal rejects", async () => {
+	const client = mountWithTenants();
+	await assert.rejects(
+		readWithSwap(client, (before) => ({
+			...contentOnlyRefetch(before),
+			...withTenants([tenantRow("org_a1b2c3")]),
+		})),
+		AUTHORITY_CHANGED,
+	);
+	client.clear();
+});
+
+test("a reorder or rename of the same organizations resolves in one attempt", async () => {
+	const client = mountWithTenants();
+	let attempts = 0;
+	const before = statusFor(client);
+	const result = await m.readForBridgeOwner(client, ACCOUNT, async () => {
+		attempts += 1;
+		await refetchStatus(client, {
+			...contentOnlyRefetch(before),
+			...withTenants([
+				tenantRow("org_d4e5f6", { tenant_name: "Renamed" }),
+				tenantRow("org_a1b2c3"),
+			]),
+		});
+		assert.notEqual(statusFor(client), before);
+		return "rows";
+	});
+	assert.equal(result, "rows");
+	assert.equal(attempts, 1);
+	client.clear();
+});
+
+test("the authority field list is pinned: a new field must be added deliberately", () => {
+	/* If this fails, a field was added to (or dropped from) the projection.
+	 * Add a rejection case for it above, then update this list. */
+	assert.deepEqual(
+		[...m.BRIDGE_STATUS_AUTHORITY_FIELDS],
+		["accountId", "state", "readOnly", "localEnabled", "tenantIds"],
+	);
+	assert.deepEqual(
+		Object.keys(m.bridgeStatusAuthority(status())).sort(),
+		[...m.BRIDGE_STATUS_AUTHORITY_FIELDS].sort(),
+		"the projection and the compared list name the same fields",
+	);
+});
 
 test("the status snapshot vanishing mid-read still rejects", async () => {
 	/* A removed row is "no authority on record", never "unchanged". The owner

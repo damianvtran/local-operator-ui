@@ -125,14 +125,59 @@ const LINK_CLASS = cn(
 	"focus-visible:outline-none",
 );
 
-const PLATE_CLASS = "flex min-w-0 flex-col gap-1 p-3";
+/*
+ * THE TEXT PLATE'S RHYTHM (operator report, 2026-11-10: "cramped"). One 12px
+ * inset on every side so the text sits the same distance from each card edge,
+ * an 8px step from the source line down to the page's own words, and a 4px
+ * step between title and description so those two read as one unit that
+ * belongs to the source above it. A single `gap-1` for all three made the
+ * source line, the title and the description run together.
+ */
+const PLATE_CLASS = cn("flex min-w-0 flex-col gap-2 p-3");
 
-const SITE_ROW_CLASS =
-	"flex min-w-0 items-center gap-1.5 text-meta text-ink-muted";
+const SITE_ROW_CLASS = cn(
+	"flex min-w-0 items-center gap-1.5 text-meta text-ink-muted",
+);
 
-/* The reserved picture, whatever its dimensions: a ratio when the byte header
- * carried one, a fixed strip when it did not. Never a `0x0` box. */
-const IMAGE_CLASS = "w-full bg-media-surface object-cover";
+const TEXT_GROUP_CLASS = cn("flex min-w-0 flex-col gap-1");
+
+/*
+ * Title and description are third-party text: clamped so one page cannot make
+ * a card tall (title 2 lines, description 3), with the line-height stated here
+ * rather than inherited, because a clamp's height IS lines x line-height and a
+ * tight inherited value is what made two clamped lines read as one block.
+ * `[overflow-wrap:anywhere]` is the repo's spelling for a long unbroken token -
+ * a pasted URL as the page title, a hash in a description - which would
+ * otherwise refuse to wrap and push past the card's clipped edge instead of
+ * reaching the ellipsis. `break-words` is not enough on its own inside a flex
+ * column: it does not lower the min-content width.
+ */
+const TITLE_CLASS = cn(
+	"line-clamp-2 font-medium text-body-sm text-ink leading-5",
+	"[overflow-wrap:anywhere]",
+);
+
+const DESCRIPTION_CLASS = cn(
+	"line-clamp-3 text-ink-muted text-meta leading-normal",
+	"[overflow-wrap:anywhere]",
+);
+
+/*
+ * The reserved picture, whatever its dimensions: a ratio when the byte header
+ * carried one, a fixed strip when it did not. Never a `0x0` box.
+ *
+ * `object-contain`, NEVER `object-cover`. A preview image is a composed
+ * picture, not texture: GitHub's 1200x600 og:image carries its repository
+ * stats and its coloured language bar along the bottom edge, and the old
+ * `object-cover` centre-cropped any box shorter than the image's ratio (every
+ * card wider than 352px for a 2:1 image, see `imageStyle`), cutting those off
+ * and making GitHub's own already-tight subtitle look like our overlap. With
+ * `contain` the picture is always drawn whole at its native ratio, never
+ * stretched; when the height cap binds, the spare width shows the
+ * `media-surface` ground as a letterbox, the same ground the box shows while
+ * the bytes decode.
+ */
+const IMAGE_CLASS = cn("w-full bg-media-surface object-contain");
 
 /**
  * The card's picture box.
@@ -143,12 +188,15 @@ const IMAGE_CLASS = "w-full bg-media-surface object-cover";
  * absence means UNKNOWN, and a card that rendered `0x0` would be inventing a
  * measurement it was never given.
  *
- * THE RATIO IS HONOURED ONLY UP TO THE CAP. `maxHeight: 176` wins once the
- * container is wider than `176 * width/height` — 312.9px for a 16:9 image — so
- * at a 380px container the box measures 2.159:1, not 1.778:1, and `object-cover`
- * centre-crops the difference rather than stretching it. That cap is deliberate
- * (a card in a chat column must not grow without bound), so it is stated here:
- * the ratio is the shape up to 176px, not an unconditional promise.
+ * THE BOX'S RATIO IS HONOURED ONLY UP TO THE CAP; THE PICTURE'S ALWAYS IS.
+ * `maxHeight: 176` wins once the container is wider than `176 * width/height`
+ * — 312.9px for a 16:9 image, 352px for GitHub's 2:1 — so at a 380px
+ * container a 16:9 box measures 2.159:1. The picture inside it is drawn with
+ * `object-contain` (see IMAGE_CLASS), so it keeps its own ratio and the spare
+ * width letterboxes; nothing is cropped and nothing is stretched. The cap is
+ * deliberate (a card in a chat column must not grow without bound), so it is
+ * stated here: the box's ratio is the shape up to 176px, not an unconditional
+ * promise.
  */
 function imageStyle(card: LinkPreviewCardContent): CSSProperties {
 	const box = card.imageBox;
@@ -228,15 +276,15 @@ export const TeamBridgeLinkPreviewView: FC<TeamBridgeLinkPreviewViewProps> = ({
 					)}
 					<span className="truncate">{label}</span>
 				</div>
-				{card.title ? (
-					<span className="line-clamp-2 font-medium text-body-sm text-ink">
-						{card.title}
-					</span>
-				) : null}
-				{card.description ? (
-					<span className="line-clamp-2 text-ink-muted text-meta">
-						{card.description}
-					</span>
+				{card.title || card.description ? (
+					<div className={TEXT_GROUP_CLASS}>
+						{card.title ? (
+							<span className={TITLE_CLASS}>{card.title}</span>
+						) : null}
+						{card.description ? (
+							<span className={DESCRIPTION_CLASS}>{card.description}</span>
+						) : null}
+					</div>
 				) : null}
 			</div>
 		</>

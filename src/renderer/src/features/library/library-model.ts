@@ -20,7 +20,12 @@
  * add a category without a renderer release.
  */
 
-import { type WithoutParams, t } from "@shared/i18n";
+import {
+	type WithoutParams,
+	formatByteQuantity,
+	formatDate,
+	t,
+} from "@shared/i18n";
 import type {
 	DesktopLibraryAsset,
 	DesktopLibraryCategory,
@@ -326,18 +331,114 @@ export function groupTagsByCategory(
 		.map(([category, rows]) => ({ category, tags: rows }));
 }
 
+/*
+ * LABELS FOR THE TWO WIRE DISCRIMINANTS THE LIBRARY PAINTS AS TEXT (census B5/B6).
+ *
+ * `asset.kind` and a tag's `category` are machine values the backend sends. They
+ * stay raw everywhere they do work (the sort key, the group key, the glyph, React
+ * keys, request params); only the PRESENTATION goes through these two helpers, at
+ * render time, so a locale switch is honoured and nothing locale-dependent can
+ * leak into sorting or grouping.
+ *
+ * An unknown value (a kind or category a newer backend added) falls back to the
+ * raw string: the module docstring's extensibility rule - the UI keeps rendering
+ * without a renderer release - and the same forward-compatible data fallback the
+ * asset-category rail row already uses.
+ */
+const KIND_LABEL_KEYS: Record<DesktopLibraryKind, WithoutParams> = {
+	audio: "ui.library.kind.audio",
+	code: "ui.library.kind.code",
+	docx: "ui.library.kind.docx",
+	html: "ui.library.kind.html",
+	image: "ui.library.kind.image",
+	markdown: "ui.library.kind.markdown",
+	other: "ui.library.kind.other",
+	pdf: "ui.library.kind.pdf",
+	pptx: "ui.library.kind.pptx",
+	spreadsheet: "ui.library.kind.spreadsheet",
+	text: "ui.library.kind.text",
+	video: "ui.library.kind.video",
+};
+
+const TAG_CATEGORY_LABEL_KEYS: Record<string, WithoutParams> = {
+	custom: "ui.library.tag_category.custom",
+	format: "ui.library.tag_category.format",
+	project: "ui.library.tag_category.project",
+	source: "ui.library.tag_category.source",
+	status: "ui.library.tag_category.status",
+	topic: "ui.library.tag_category.topic",
+	// Legacy spelling the listing still carries; `format` is the core name.
+	type: "ui.library.tag_category.type",
+};
+
+/*
+ * Own-property lookups, not `in` / bare indexing: an unknown value such as
+ * "constructor" or "toString" must fall back to the raw string, not resolve to an
+ * Object.prototype member. `Object.hasOwn` would read better, but the project's
+ * TypeScript lib target predates es2022 and rejects it (TS2550).
+ */
+/** The user-facing name of an asset kind, or the raw value for an unknown one. */
+export function libraryKindLabel(kind: string): string {
+	return Object.prototype.hasOwnProperty.call(KIND_LABEL_KEYS, kind)
+		? t(KIND_LABEL_KEYS[kind as DesktopLibraryKind])
+		: kind;
+}
+
+/**
+ * The user-facing name of a tag category, or the raw value for an unknown one.
+ * An empty category is the model's `custom` bucket (see `groupTagsByCategory`).
+ */
+export function tagCategoryLabel(category: string): string {
+	const key = category || "custom";
+	return Object.prototype.hasOwnProperty.call(TAG_CATEGORY_LABEL_KEYS, key)
+		? t(TAG_CATEGORY_LABEL_KEYS[key])
+		: key;
+}
+
+/**
+ * The preview's "organized by" sentence for the actor the catalog recorded.
+ *
+ * `organized.by` is a closed id, never a display name: the backend only accepts
+ * user, librarian, agent or system (`TAG_CREATORS`), and legacy rows carry null.
+ * Each actor is its own WHOLE sentence rather than an actor noun spliced into
+ * "Organized by {by}", because articles, case and word order around the actor
+ * ("by you", "by an agent", Urdu's `نے`) cannot be translated as a bare noun.
+ * Null or an id a newer backend adds falls to the unattributed sentence, which
+ * makes no claim about who did it (it used to print the raw id, or "librarian"
+ * for null). `at` is the already-localized relative age.
+ */
+export function organizedByLabel(by: string | null, at: string): string {
+	switch (by) {
+		case "user":
+			return t("ui.library.preview.organized_by_user", { at });
+		case "librarian":
+			return t("ui.library.preview.organized_by_librarian", { at });
+		case "agent":
+			return t("ui.library.preview.organized_by_agent", { at });
+		case "system":
+			return t("ui.library.preview.organized_by_system", { at });
+		default:
+			return t("ui.library.preview.organized_unattributed", { at });
+	}
+}
+
 /** A byte count in the app's compact register. */
 export function formatBytes(bytes: number): string {
-	if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
-	const units = ["B", "KB", "MB", "GB", "TB"];
+	if (!Number.isFinite(bytes) || bytes <= 0)
+		return formatByteQuantity(0, "B", { maximumFractionDigits: 0 });
+	const units = ["B", "KB", "MB", "GB", "TB"] as const;
 	const exponent = Math.min(
 		units.length - 1,
 		Math.floor(Math.log(bytes) / Math.log(1024)),
 	);
 	const value = bytes / 1024 ** exponent;
-	const rounded =
-		value >= 10 || exponent === 0 ? Math.round(value) : value.toFixed(1);
-	return `${rounded} ${units[exponent]}`;
+	// The ladder and the one-decimal-below-ten rule are this surface's; the
+	// spelling (digits, decimal mark, unit symbol) is the shared locale-aware helper's.
+	const digits = value >= 10 || exponent === 0 ? 0 : 1;
+	return formatByteQuantity(value, units[exponent] ?? "B", {
+		minimumFractionDigits: digits,
+		maximumFractionDigits: digits,
+	});
 }
 
 /**
@@ -388,7 +489,10 @@ export function relativeTime(
 /** An absolute timestamp for the preview's metadata line. */
 export function absoluteDate(seconds: number | null | undefined): string {
 	if (!seconds) return "";
-	return new Date(seconds * 1000).toLocaleDateString(undefined, {
+	// The live UI locale (the layer), not the OS default: `undefined` here
+	// printed `Nov 5, 2026` / `5 nov. 2026` by the operating system's region
+	// while every other word on the preview followed the chosen language.
+	return formatDate(new Date(seconds * 1000), {
 		year: "numeric",
 		month: "short",
 		day: "numeric",

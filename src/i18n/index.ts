@@ -51,6 +51,8 @@ export {
 	subscribeLocale,
 } from "./locale";
 export {
+	FULL_NUMERIC_STAMP,
+	formatByteQuantity,
 	formatBytes,
 	formatDate,
 	formatDateTime,

@@ -1,6 +1,6 @@
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { FC } from "react";
-import { Suspense, lazy, useEffect } from "react";
+import { Suspense, lazy, useEffect, useRef } from "react";
 import {
 	Navigate,
 	Route,
@@ -53,6 +53,10 @@ import {
 	consentClickTarget,
 	noteConsentAttention,
 } from "@shared/browser-consent-attention";
+import {
+	CustodyHandoffs,
+	type CustodyViewSnapshot,
+} from "@shared/browser-passkey-custody-handoff";
 import { useSuppressBrowserView } from "@shared/browser-view-policy";
 import { useSettingsIntentsSync } from "@shared/hooks/use-settings-intents";
 import { useI18nLocaleSync } from "@shared/i18n/locale-sync";
@@ -81,6 +85,10 @@ import {
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import {
+	preloadWhenIdle,
+	preloadableImport,
+} from "@shared/utils/preloadable-import";
 
 // The other five routes are split out so a cold start neither downloads nor
 // parses them. They export named components rather than defaults, so each
@@ -131,8 +139,15 @@ const NotificationsPage = lazy(() =>
 		default: m.NotificationsPage,
 	})),
 );
+/* Preloadable (PR #1869 Q1): the shell downloads this chunk at idle once the
+   backend advertises Team Bridge, so the first open after launch does not pay
+   for it. `load` resolves synchronously once downloaded (see
+   `preloadable-import.ts`), so `lazy` never shows its fallback for it then. */
+const teamBridgePageChunk = preloadableImport(
+	() => import("@features/team-bridge/team-bridge-page"),
+);
 const TeamBridgePage = lazy(() =>
-	import("@features/team-bridge/team-bridge-page").then((m) => ({
+	teamBridgePageChunk.load().then((m) => ({
 		default: m.TeamBridgePage,
 	})),
 );
@@ -328,6 +343,15 @@ const App: FC = () => {
 	const bridgeState = desktopFeatureState(
 		capabilities.data,
 		"team_bridge_conversations",
+	);
+	/* Warm the Team Bridge chunk at idle, only for a backend that serves the
+	   route (the same predicate that mounts it): nobody else downloads it. */
+	useEffect(
+		() =>
+			bridgeState === "enabled"
+				? preloadWhenIdle(teamBridgePageChunk.preload)
+				: undefined,
+		[bridgeState],
 	);
 	/*
 	 * TEAM BRIDGE TAKES THE LEFT COLUMN (operator, 2026-11-03: "the left sidebar
@@ -662,6 +686,70 @@ const App: FC = () => {
 		});
 		return () => unsubscribe?.();
 	}, [navigate, setActiveSession, setBrowserPaneOpen]);
+
+	/*
+	 * A password manager's prompt came up in an agent-driven tab and the agent is
+	 * paused there until the user answers it and returns the tab
+	 * (`main/browser/extensions/passkey-custody.ts`). Main has already made that
+	 * tab the browser's active one and asked `window-raise.ts` for the window;
+	 * this half lands the user where the prompt is — the agent's conversation
+	 * with its browser pane open, or the browser route for a tab no conversation
+	 * owns — and, when the hold ends, gives them back the view they were in IF
+	 * they are still where the handoff put them (review U1/D3). The rule and its
+	 * tests live in `browser-passkey-custody-handoff.ts`.
+	 *
+	 * The route is read through a ref so the listeners are not re-registered on
+	 * every navigation (the store reads use `getState()` for the same reason).
+	 */
+	const pathnameRef = useRef(pathname);
+	pathnameRef.current = pathname;
+	const custodyHandoffs = useRef(new CustodyHandoffs()).current;
+	useEffect(() => {
+		const currentView = (): CustodyViewSnapshot => {
+			const sessions = useCanonicalSessionsStore.getState();
+			return {
+				pathname: pathnameRef.current,
+				activeSessionId: sessions.activeSessionId ?? null,
+				activeDraftKey: sessions.activeDraftKey ?? null,
+				browserPaneOpen: useUiPreferencesStore.getState().isBrowserPaneOpen,
+			};
+		};
+		const offAttention = window.api?.browser?.onPasskeyCustodyAttention?.(
+			(payload) => {
+				const target = consentClickTarget(
+					payload.requesterSessionId,
+					useCanonicalSessionsStore.getState().sessions,
+				);
+				const handoff = custodyHandoffs.begin(payload, target, currentView());
+				// The same hold again: the user was already brought to it once.
+				if (!handoff) return;
+				if (target.kind === "browser") {
+					navigate("/browser");
+					return;
+				}
+				setActiveSession(target.sessionId);
+				setBrowserPaneOpen(true);
+				navigate("/chat");
+			},
+		);
+		const offEnded = window.api?.browser?.onPasskeyCustodyEnded?.((payload) => {
+			const plan = custodyHandoffs.end(payload, currentView());
+			if (!plan) return;
+			if (plan.openDraft) {
+				const store = useCanonicalSessionsStore.getState();
+				if (store.drafts[plan.openDraft]) store.openDraft(plan.openDraft);
+			} else if (plan.session !== undefined) {
+				setActiveSession(plan.session);
+			} else if (plan.closeBrowserPane) {
+				setBrowserPaneOpen(false);
+			}
+			if (plan.navigate) navigate(plan.navigate);
+		});
+		return () => {
+			offAttention?.();
+			offEnded?.();
+		};
+	}, [custodyHandoffs, navigate, setActiveSession, setBrowserPaneOpen]);
 
 	/*
 	 * `⌘N` / `Ctrl+N` starts a new chat, from wherever the user is — the other

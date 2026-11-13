@@ -12,6 +12,8 @@ import { isDevelopmentMode } from "@shared/utils/env-utils";
 import { updateMessageOf } from "@shared/utils/update-error-copy";
 import { SLOW_WAIT_HINT_MS } from "@shared/utils/update-slow-wait";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { isolateClock } from "../../../../../i18n/bidi";
+import { FULL_NUMERIC_STAMP, formatDateTime } from "../../../../../i18n/format";
 import { t } from "../../../../../i18n/messages";
 
 /**
@@ -539,7 +541,12 @@ export const CheckForUpdatesButton = ({
 					<p className="mt-1 text-meta text-ink-dim">
 						{t("ui.common.updates.check_for_updates_button.detected")}{" "}
 						{lastAttempt.detectedAt
-							? new Date(lastAttempt.detectedAt).toLocaleString()
+							? isolateClock(
+									formatDateTime(
+										new Date(lastAttempt.detectedAt),
+										FULL_NUMERIC_STAMP,
+									),
+								)
 							: t(
 									"ui.common.updates.check_for_updates_button.at_an_unknown_time",
 								)}

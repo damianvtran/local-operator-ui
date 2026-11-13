@@ -1,0 +1,83 @@
+PASS  HEAD matches frozen head :: 8a9ce1f808c266ebe9a0e924094344cea60c2c23
+PASS  worktree clean :: (clean)
+PASS  sha256 en/ui.library :: 065ac47c67e2a82867070f9df0e33d25c0d96aedd77438b584114147db07fd71
+PASS  sha256 fr/ui.library :: 5b2b439c0837be164d52fc50a53a40a8e0ea0b5940f1dff96359f5b18f61bc0f
+PASS  sha256 en/ui.library.context :: 2fe63e830b49079dac67c5c4513358d0a8559a94fbf27ac8d437212b13aa2e72
+PASS  both catalogues parse as JSON objects
+PASS  fr key set equals en key set :: 179 en / 179 fr; only-en=[] only-fr=[]
+PASS  fr file keys are sorted (file is deterministic)
+PASS  all 20 new keys present in en and fr :: 20/20 en, 20/20 fr
+PASS  21 added lines vs base (20 new keys + 1 re-added, comma only) :: 21
+PASS  1 removed line vs base (comma-only) :: 1
+PASS  removed line is byte-identical apart from the added trailing comma :: +	"ui.library.time.years_y_ago": "{years, plural, one {il y a {years, number, ::
+PASS  the other 20 added lines are the 20 new keys :: 20
+PASS  no pre-existing value changed :: []
+PASS  the only new keys are the 20 audited ones :: []
+PASS  placeholder name/type parity for every key in the file :: []
+
+-- per-new-key placeholders / ICU --
+ui.library.kind.audio: placeholders=[] icu_plural=False
+ui.library.kind.code: placeholders=[] icu_plural=False
+ui.library.kind.docx: placeholders=[] icu_plural=False
+ui.library.kind.html: placeholders=[] icu_plural=False
+ui.library.kind.image: placeholders=[] icu_plural=False
+ui.library.kind.markdown: placeholders=[] icu_plural=False
+ui.library.kind.other: placeholders=[] icu_plural=False
+ui.library.kind.pdf: placeholders=[] icu_plural=False
+ui.library.kind.pptx: placeholders=[] icu_plural=False
+ui.library.kind.spreadsheet: placeholders=[] icu_plural=False
+ui.library.kind.text: placeholders=[] icu_plural=False
+ui.library.kind.video: placeholders=[] icu_plural=False
+ui.library.tag_category.custom: placeholders=[] icu_plural=False
+ui.library.tag_category.format: placeholders=[] icu_plural=False
+ui.library.tag_category.project: placeholders=[] icu_plural=False
+ui.library.tag_category.source: placeholders=[] icu_plural=False
+ui.library.tag_category.status: placeholders=[] icu_plural=False
+ui.library.tag_category.topic: placeholders=[] icu_plural=False
+ui.library.tag_category.type: placeholders=[] icu_plural=False
+ui.library.preview.unsupported_generic: placeholders=[] icu_plural=False
+PASS  every plural key carries exactly fr's CLDR categories one/many/other and covers English's :: []
+PASS  fr required set per style guide 'Plurals' (one, many, other)
+PASS  no 'few' category anywhere in fr (style guide: not a French category) :: ['many', 'one', 'other']
+PASS  braces balanced in every fr value
+
+-- per-new-key characters / width --
+ui.library.kind.audio: len=5 chars=[] invisible=none ctrl=none apostrophe=none trailing_ws=False
+ui.library.kind.code: len=4 chars=[] invisible=none ctrl=none apostrophe=none trailing_ws=False
+ui.library.kind.docx: len=4 chars=[] invisible=none ctrl=none apostrophe=none trailing_ws=False
+ui.library.kind.html: len=4 chars=[] invisible=none ctrl=none apostrophe=none trailing_ws=False
+ui.library.kind.image: len=5 chars=[] invisible=none ctrl=none apostrophe=none trailing_ws=False
+ui.library.kind.markdown: len=8 chars=[] invisible=none ctrl=none apostrophe=none trailing_ws=False
+ui.library.kind.other: len=5 chars=[] invisible=none ctrl=none apostrophe=none trailing_ws=False
+ui.library.kind.pdf: len=3 chars=[] invisible=none ctrl=none apostrophe=none trailing_ws=False
+ui.library.kind.pptx: len=4 chars=[] invisible=none ctrl=none apostrophe=none trailing_ws=False
+ui.library.kind.spreadsheet: len=7 chars=[] invisible=none ctrl=none apostrophe=none trailing_ws=False
+ui.library.kind.text: len=5 chars=[] invisible=none ctrl=none apostrophe=none trailing_ws=False
+ui.library.kind.video: len=5 chars=['0xe9'] invisible=none ctrl=none apostrophe=none trailing_ws=False
+ui.library.tag_category.custom: len=12 chars=['0xe9'] invisible=none ctrl=none apostrophe=none trailing_ws=False
+ui.library.tag_category.format: len=6 chars=[] invisible=none ctrl=none apostrophe=none trailing_ws=False
+ui.library.tag_category.project: len=6 chars=[] invisible=none ctrl=none apostrophe=none trailing_ws=False
+ui.library.tag_category.source: len=6 chars=[] invisible=none ctrl=none apostrophe=none trailing_ws=False
+ui.library.tag_category.status: len=6 chars=[] invisible=none ctrl=none apostrophe=none trailing_ws=False
+ui.library.tag_category.topic: len=5 chars=[] invisible=none ctrl=none apostrophe=none trailing_ws=False
+ui.library.tag_category.type: len=4 chars=[] invisible=none ctrl=none apostrophe=none trailing_ws=False
+ui.library.preview.unsupported_generic: len=40 chars=['0x2019', '0x2019', '0xe7', '0xe9', '0xe9'] invisible=none ctrl=none apostrophe=U+2019 curly trailing_ws=False
+PASS  new keys carry no ICU at all :: []
+PASS  all new values are NFC-normalised :: []
+PASS  no double spaces in new values :: []
+PASS  fr catalogue has no UTF-8 BOM
+PASS  fr catalogue decodes as UTF-8
+
+-- longest new fr values (chars) --
+ 40  ui.library.preview.unsupported_generic = 'Ce fichier n’a pas d’aperçu intégré ici.'
+ 12  ui.library.tag_category.custom = 'Personnalisé'
+  8  ui.library.kind.markdown = 'Markdown'
+  7  ui.library.kind.spreadsheet = 'Tableur'
+  6  ui.library.tag_category.status = 'Statut'
+  6  ui.library.tag_category.source = 'Source'
+en max: 37
+PASS  context sidecar covers all 20 new keys :: []
+PASS  every new context entry carries role/tone/note/length
+PASS  no machine maxCells field in the ui.library context sidecar :: maxCells occurrences: 0
+
+RESULT: ALL CHECKS PASSED

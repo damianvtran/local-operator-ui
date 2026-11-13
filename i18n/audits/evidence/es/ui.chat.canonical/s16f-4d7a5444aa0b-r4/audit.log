@@ -1,0 +1,665 @@
+# S16f es audit execution log — commands and their ACTUAL output
+# auditor: i18n-auditor, session f6655caaf9ed, model deepseek/deepseek-flash, instance 4d7a5444aa0b
+# date: 2026-11-12; worktree (read-only): /Users/damian/local-operator-ui/.worktrees/i18n-s16a
+
+$ git rev-parse HEAD
+8180eff1f705eb79d4df5123d6108c539b585b2e
+[exit=0]
+
+$ git status --porcelain | wc -l
+       0
+[exit=0]
+
+$ shasum -a 256 src/i18n/catalogues/es/ui.chat.canonical.json src/i18n/catalogues/en/ui.chat.canonical.json src/i18n/catalogues/en/ui.chat.canonical.context.json
+547b85e9670eec79f82211f50325092bf75c13eda4504995cce1a1d5ab25e272  src/i18n/catalogues/es/ui.chat.canonical.json
+905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e  src/i18n/catalogues/en/ui.chat.canonical.json
+8f56e0d2b384c6b41add57a64e6c863e565cb61d5a7c0de482d42f380be3acfe  src/i18n/catalogues/en/ui.chat.canonical.context.json
+[exit=0]
+
+$ cd ~/local-operator && git rev-parse HEAD && shasum -a 256 i18n/glossary.md i18n/style-guides/es.md && git show origin/main:i18n/style-guides/es.md | shasum -a 256
+b42471d3935cb7e95d64428af27c32626665f4c0
+0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8  i18n/glossary.md
+77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e  i18n/style-guides/es.md
+4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6  -
+[exit=0]
+
+$ python3 /Users/damian/.local-operator/sessions/f6655caaf9ed/scratchpad/es-integrity.py
+merged head keys : 467
+origin/main keys : 457
+PR-head keys     : 466
+main keys absent from merged file        : 0 []
+keys added on top of main               : 10
+  + ui.chat.canonical.media.image_label
+  + ui.chat.canonical.media.sound_label
+  + ui.chat.canonical.sound.batch.item_status
+  + ui.chat.canonical.sound.batch.latest_update
+  + ui.chat.canonical.sound.batch.summary
+  + ui.chat.canonical.sound.cost.batch_unknown
+  + ui.chat.canonical.sound.cost.estimated_zero
+  + ui.chat.canonical.sound.cost.no_charge
+  + ui.chat.canonical.sound.cost.unknown
+  + ui.chat.canonical.supplement.sound_fallback_label
+main keys whose VALUE changed in merge  : 0 []
+main keys byte-identical to origin/main : 457/457
+PR-added keys equal to 107ff1dd values  : 10/10
+non-PR keys changed vs main             : 0
+[exit=0]
+
+$ env -u CMUX node /Users/damian/.local-operator/sessions/f6655caaf9ed/scratchpad/es-mechanical.mjs
+=== 1. parse + placeholder parity + selector sets ===
+PASS ui.chat.canonical.loading.cold args identical
+   selectors en: []
+   selectors es: []
+PASS ui.chat.canonical.loading.cold es value NFC
+PASS ui.chat.canonical.loading.cold no bidi controls
+PASS ui.chat.canonical.loading.cold no double spaces
+PASS ui.chat.canonical.loading.cold no three-dot ellipsis
+PASS ui.chat.canonical.loading.older args identical
+   selectors en: []
+   selectors es: []
+PASS ui.chat.canonical.loading.older es value NFC
+PASS ui.chat.canonical.loading.older no bidi controls
+PASS ui.chat.canonical.loading.older no double spaces
+PASS ui.chat.canonical.loading.older no three-dot ellipsis
+PASS ui.chat.canonical.loading.region_label args identical
+   selectors en: []
+   selectors es: []
+PASS ui.chat.canonical.loading.region_label es value NFC
+PASS ui.chat.canonical.loading.region_label no bidi controls
+PASS ui.chat.canonical.loading.region_label no double spaces
+PASS ui.chat.canonical.loading.region_label no three-dot ellipsis
+PASS ui.chat.canonical.loading.remote args identical
+   selectors en: []
+   selectors es: []
+PASS ui.chat.canonical.loading.remote es value NFC
+PASS ui.chat.canonical.loading.remote no bidi controls
+PASS ui.chat.canonical.loading.remote no double spaces
+PASS ui.chat.canonical.loading.remote no three-dot ellipsis
+PASS ui.chat.canonical.loading.revalidating args identical
+   selectors en: []
+   selectors es: []
+PASS ui.chat.canonical.loading.revalidating es value NFC
+PASS ui.chat.canonical.loading.revalidating no bidi controls
+PASS ui.chat.canonical.loading.revalidating no double spaces
+PASS ui.chat.canonical.loading.revalidating no three-dot ellipsis
+PASS ui.chat.canonical.media.image_label args identical
+   selectors en: ["count[plural]:=1,other"]
+   selectors es: ["count[plural]:=1,other"]
+PASS ui.chat.canonical.media.image_label es value NFC
+PASS ui.chat.canonical.media.image_label no bidi controls
+PASS ui.chat.canonical.media.image_label no double spaces
+PASS ui.chat.canonical.media.image_label no three-dot ellipsis
+PASS ui.chat.canonical.media.sound_label args identical
+   selectors en: ["count[plural]:=1,other"]
+   selectors es: ["count[plural]:=1,other"]
+PASS ui.chat.canonical.media.sound_label es value NFC
+PASS ui.chat.canonical.media.sound_label no bidi controls
+PASS ui.chat.canonical.media.sound_label no double spaces
+PASS ui.chat.canonical.media.sound_label no three-dot ellipsis
+PASS ui.chat.canonical.sound.batch.item_status args identical
+   selectors en: ["status[select]:cancelled,failed,other"]
+   selectors es: ["status[select]:cancelled,failed,other"]
+PASS ui.chat.canonical.sound.batch.item_status es value NFC
+PASS ui.chat.canonical.sound.batch.item_status no bidi controls
+PASS ui.chat.canonical.sound.batch.item_status no double spaces
+PASS ui.chat.canonical.sound.batch.item_status no three-dot ellipsis
+PASS ui.chat.canonical.sound.batch.latest_update args identical
+   selectors en: []
+   selectors es: []
+PASS ui.chat.canonical.sound.batch.latest_update es value NFC
+PASS ui.chat.canonical.sound.batch.latest_update no bidi controls
+PASS ui.chat.canonical.sound.batch.latest_update no double spaces
+PASS ui.chat.canonical.sound.batch.latest_update no three-dot ellipsis
+FAIL ui.chat.canonical.sound.batch.summary args identical
+   en=["selector:completed","number:completed","number:completed","selector:failed","number:failed","number:failed","selector:cancelled","number:cancelled","number:cancelled","selector:unknown","number:unknown","number:unknown","selector:has_attention","arg:labels"]
+   es=["selector:completed","number:completed","number:completed","number:completed","selector:failed","number:failed","number:failed","number:failed","selector:cancelled","number:cancelled","number:cancelled","number:cancelled","selector:unknown","number:unknown","number:unknown","number:unknown","selector:has_attention","arg:labels"]
+   selectors en: ["completed[plural]:one,other","failed[plural]:one,other","cancelled[plural]:=0,one,other","unknown[plural]:=0,one,other","has_attention[select]:other,yes"]
+   selectors es: ["completed[plural]:many,one,other","failed[plural]:many,one,other","cancelled[plural]:=0,many,one,other","unknown[plural]:=0,many,one,other","has_attention[select]:other,yes"]
+PASS ui.chat.canonical.sound.batch.summary es value NFC
+PASS ui.chat.canonical.sound.batch.summary no bidi controls
+PASS ui.chat.canonical.sound.batch.summary no double spaces
+PASS ui.chat.canonical.sound.batch.summary no three-dot ellipsis
+PASS ui.chat.canonical.sound.cost.batch_unknown args identical
+   selectors en: []
+   selectors es: []
+PASS ui.chat.canonical.sound.cost.batch_unknown es value NFC
+PASS ui.chat.canonical.sound.cost.batch_unknown no bidi controls
+PASS ui.chat.canonical.sound.cost.batch_unknown no double spaces
+PASS ui.chat.canonical.sound.cost.batch_unknown no three-dot ellipsis
+PASS ui.chat.canonical.sound.cost.estimated_zero args identical
+   selectors en: []
+   selectors es: []
+PASS ui.chat.canonical.sound.cost.estimated_zero es value NFC
+PASS ui.chat.canonical.sound.cost.estimated_zero no bidi controls
+PASS ui.chat.canonical.sound.cost.estimated_zero no double spaces
+PASS ui.chat.canonical.sound.cost.estimated_zero no three-dot ellipsis
+PASS ui.chat.canonical.sound.cost.no_charge args identical
+   selectors en: []
+   selectors es: []
+PASS ui.chat.canonical.sound.cost.no_charge es value NFC
+PASS ui.chat.canonical.sound.cost.no_charge no bidi controls
+PASS ui.chat.canonical.sound.cost.no_charge no double spaces
+PASS ui.chat.canonical.sound.cost.no_charge no three-dot ellipsis
+PASS ui.chat.canonical.sound.cost.unknown args identical
+   selectors en: []
+   selectors es: []
+PASS ui.chat.canonical.sound.cost.unknown es value NFC
+PASS ui.chat.canonical.sound.cost.unknown no bidi controls
+PASS ui.chat.canonical.sound.cost.unknown no double spaces
+PASS ui.chat.canonical.sound.cost.unknown no three-dot ellipsis
+PASS ui.chat.canonical.supplement.sound_fallback_label args identical
+   selectors en: []
+   selectors es: []
+PASS ui.chat.canonical.supplement.sound_fallback_label es value NFC
+PASS ui.chat.canonical.supplement.sound_fallback_label no bidi controls
+PASS ui.chat.canonical.supplement.sound_fallback_label no double spaces
+PASS ui.chat.canonical.supplement.sound_fallback_label no three-dot ellipsis
+
+=== 2. CLDR categories present for es plurals ===
+NOTE ui.chat.canonical.media.image_label count[plural]:=1,other  missing: one,many
+NOTE ui.chat.canonical.media.sound_label count[plural]:=1,other  missing: one,many
+PASS ui.chat.canonical.sound.batch.summary completed[plural]:many,one,other
+PASS ui.chat.canonical.sound.batch.summary failed[plural]:many,one,other
+PASS ui.chat.canonical.sound.batch.summary cancelled[plural]:=0,many,one,other
+PASS ui.chat.canonical.sound.batch.summary unknown[plural]:=0,many,one,other
+
+=== 3. render grid through intl-messageformat (es) ===
+
+ui.chat.canonical.loading.cold
+   "Cargando la conversación…"
+
+ui.chat.canonical.loading.older
+   "Cargando mensajes anteriores…"
+
+ui.chat.canonical.loading.region_label
+   "Cargando la conversación"
+
+ui.chat.canonical.loading.remote
+   "Sincronizando desde tu otro dispositivo…"
+
+ui.chat.canonical.loading.revalidating
+   "Buscando mensajes nuevos…"
+
+ui.chat.canonical.media.image_label
+   "Imagen 0"
+   "Imagen"
+   "Imagen 2"
+   "Imagen 3"
+   "Imagen 5"
+   "Imagen 11"
+   "Imagen 21"
+   "Imagen 22"
+   "Imagen 100"
+   "Imagen 1000"
+   "Imagen 1000000"
+   "Imagen 1500000"
+
+ui.chat.canonical.media.sound_label
+   "Sonido 0"
+   "Sonido"
+   "Sonido 2"
+   "Sonido 3"
+   "Sonido 5"
+   "Sonido 11"
+   "Sonido 21"
+   "Sonido 22"
+   "Sonido 100"
+   "Sonido 1000"
+   "Sonido 1000000"
+   "Sonido 1500000"
+
+ui.chat.canonical.sound.batch.item_status
+   "lluvia · Fallida"
+   "lluvia · Detenida"
+   "lluvia · Estado desconocido"
+
+ui.chat.canonical.sound.batch.latest_update
+   "Última actualización: lluvia (elemento 2 de 5)."
+
+ui.chat.canonical.sound.batch.summary
+   "0 completadas · 0 fallidas · 2 detenidas. Atención: lluvia"
+   "0 completadas · 0 fallidas · 2 detenidas"
+   "0 completadas · 1 fallida · 2 detenidas. Atención: lluvia"
+   "0 completadas · 1 fallida · 2 detenidas"
+   "0 completadas · 3 fallidas · 2 detenidas. Atención: lluvia"
+   "0 completadas · 3 fallidas · 2 detenidas"
+   "1 completada · 0 fallidas · 2 detenidas. Atención: lluvia"
+   "1 completada · 0 fallidas · 2 detenidas"
+   "1 completada · 1 fallida · 2 detenidas. Atención: lluvia"
+   "1 completada · 1 fallida · 2 detenidas"
+   "1 completada · 3 fallidas · 2 detenidas. Atención: lluvia"
+   "1 completada · 3 fallidas · 2 detenidas"
+   "2 completadas · 0 fallidas · 2 detenidas. Atención: lluvia"
+   "2 completadas · 0 fallidas · 2 detenidas"
+   … 58 more distinct renders
+
+ui.chat.canonical.sound.cost.batch_unknown
+   "Coste total aún sin determinar."
+
+ui.chat.canonical.sound.cost.estimated_zero
+   "Coste estimado de $0; cobro final sin confirmar."
+
+ui.chat.canonical.sound.cost.no_charge
+   "Sin cargo."
+
+ui.chat.canonical.sound.cost.unknown
+   "Coste aún sin determinar."
+
+ui.chat.canonical.supplement.sound_fallback_label
+   "Sonido generado"
+
+=== 4. render totals ===
+renderings: 112, throws: 0, leftover-brace: 0
+MECHANICAL: 1 failure(s)
+[exit=0]
+
+$ env -u CMUX node /Users/damian/.local-operator/sessions/f6655caaf9ed/scratchpad/es-renders.mjs
+=== CLDR category boundary renders: completed count only (failed=0, cancelled=0, unknown=0) ===
+completed=0 -> "0 completadas · 0 fallidas"
+completed=1 -> "1 completada · 0 fallidas"
+completed=2 -> "2 completadas · 0 fallidas"
+completed=3 -> "3 completadas · 0 fallidas"
+completed=11 -> "11 completadas · 0 fallidas"
+completed=1000000 -> "1000000 de completadas · 0 fallidas"
+completed=1500000 -> "1500000 completadas · 0 fallidas"
+completed=2000000 -> "2000000 de completadas · 0 fallidas"
+completed=31000000 -> "31000000 de completadas · 0 fallidas"
+
+=== failed / cancelled / unknown arms at category boundaries ===
+failed=1 -> "0 completadas · 1 fallida"
+failed=2 -> "0 completadas · 2 fallidas"
+failed=1000000 -> "0 completadas · 1000000 de fallidas"
+failed=1500000 -> "0 completadas · 1500000 fallidas"
+cancelled=1 -> "0 completadas · 0 fallidas · 1 detenida"
+cancelled=2 -> "0 completadas · 0 fallidas · 2 detenidas"
+cancelled=1000000 -> "0 completadas · 0 fallidas · 1000000 de detenidas"
+cancelled=1500000 -> "0 completadas · 0 fallidas · 1500000 detenidas"
+unknown=1 -> "0 completadas · 0 fallidas · 1 con estado desconocido"
+unknown=2 -> "0 completadas · 0 fallidas · 2 con estado desconocido"
+unknown=1000000 -> "0 completadas · 0 fallidas · 1000000 con estado desconocido"
+unknown=1500000 -> "0 completadas · 0 fallidas · 1500000 con estado desconocido"
+attention -> "2 completadas · 1 fallida. Atención: lluvia; trueno"
+all zero, no attention -> "0 completadas · 0 fallidas"
+
+=== media labels: lone vs set ===
+position=1 count=1 image -> "Imagen"
+position=1 count=1 sound -> "Sonido"
+position=1 count=3 image -> "Imagen 1"
+position=1 count=3 sound -> "Sonido 1"
+position=3 count=3 image -> "Imagen 3"
+position=3 count=3 sound -> "Sonido 3"
+
+=== item_status arms ===
+status="failed" -> "lluvia · Fallida"
+status="cancelled" -> "lluvia · Detenida"
+status="other" -> "lluvia · Estado desconocido"
+status="queued" -> "lluvia · Estado desconocido"
+status="" -> "lluvia · Estado desconocido"
+status=undefined -> "lluvia · Estado desconocido"
+
+=== NEGATIVE CONTROLS (mutants must change the render or throw) ===
+APPLIED drop many arm of completed -> "1000000 completadas · 1 fallida"
+APPLIED rename {failed} to {failure} -> THROWs: The intl string context variable "failure" was not provided to the string "{completed, plu
+APPLIED drop the empty =0 arm of cancelled -> THROWs: DUPLICATE_PLURAL_ARGUMENT_SELECTOR
+APPLIED english leftover in completed other -> "1000000 de completadas · 1 fallida"
+APPLIED lost middle-dot separator -> "1000000 de completadas 1 fallida"
+[exit=0]
+
+$ env -u CMUX node --test scripts/i18n/locale-parity.test.mjs 2>&1 | tail -10
+✔ [zh-CN] is not an English stub (no value identical to the source) (12.706708ms)
+✔ a locale-scoped identical-value exemption does not exempt another locale (0.151375ms)
+ℹ tests 44
+ℹ suites 0
+ℹ pass 44
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2786.7815
+[exit=0]
+
+$ env -u CMUX node scripts/i18n/generate.mjs --check
+/Users/damian/local-operator-ui/.worktrees/i18n-s16a/src/i18n/keys.gen.ts is byte-identical to a fresh generation.
+[exit=0]
+
+$ env -u CMUX node scripts/i18n/check-duplicates.mjs
+check-duplicates: ok — 1437 file(s) scanned, 0 duplicate key(s)
+[exit=0]
+
+$ env -u CMUX node scripts/i18n/context-parity.mjs
+context-parity: ok — every English key is covered, apart from 129 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).
+[exit=0]
+
+$ env -u CMUX node scripts/i18n/ledger-check.mjs 2>&1 | grep -E 'es/ui\.chat\.canonical|FAILED'
+ledger-check: es/ui.chat.canonical: status is "pending", not "audited" — an unaudited locale must not ship
+ledger-check: es/ui.chat.canonical: no auditor recorded
+ledger-check: FAILED — 14 finding(s) across 1113 ledger entr(ies)
+[exit=0]
+
+$ env -u CMUX node --test scripts/i18n/generation-card-labels.test.mjs 2>&1 | tail -10
+✔ source guard: the supplement sound player's fallback name is keyed (0.900667ms)
+✔ source guard: no t() call runs at module scope in the files this slice touches (1.381167ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5060.405125
+[exit=0]
+
+# NOTE: the first es-mechanical.mjs run above reported one FAIL on sound.batch.summary.
+# That was the checker's RAW per-arm argument multiset: es legitimately has 4 arms where
+# en has 2 (it adds the es 'many' category), so the same argument appears one extra time.
+# The checker now compares arm-normalised sets and only applies CLDR categories to plurals;
+# the re-run below is the authoritative result. No translation change was made.
+
+$ env -u CMUX node /Users/damian/.local-operator/sessions/f6655caaf9ed/scratchpad/es-mechanical.mjs
+=== 1. parse + placeholder parity + selector sets ===
+PASS ui.chat.canonical.loading.cold args identical (arm-normalised) [raw multiset equal too]
+   selectors en: []
+   selectors es: []
+PASS ui.chat.canonical.loading.cold es value NFC
+PASS ui.chat.canonical.loading.cold no bidi controls
+PASS ui.chat.canonical.loading.cold no double spaces
+PASS ui.chat.canonical.loading.cold no three-dot ellipsis
+PASS ui.chat.canonical.loading.older args identical (arm-normalised) [raw multiset equal too]
+   selectors en: []
+   selectors es: []
+PASS ui.chat.canonical.loading.older es value NFC
+PASS ui.chat.canonical.loading.older no bidi controls
+PASS ui.chat.canonical.loading.older no double spaces
+PASS ui.chat.canonical.loading.older no three-dot ellipsis
+PASS ui.chat.canonical.loading.region_label args identical (arm-normalised) [raw multiset equal too]
+   selectors en: []
+   selectors es: []
+PASS ui.chat.canonical.loading.region_label es value NFC
+PASS ui.chat.canonical.loading.region_label no bidi controls
+PASS ui.chat.canonical.loading.region_label no double spaces
+PASS ui.chat.canonical.loading.region_label no three-dot ellipsis
+PASS ui.chat.canonical.loading.remote args identical (arm-normalised) [raw multiset equal too]
+   selectors en: []
+   selectors es: []
+PASS ui.chat.canonical.loading.remote es value NFC
+PASS ui.chat.canonical.loading.remote no bidi controls
+PASS ui.chat.canonical.loading.remote no double spaces
+PASS ui.chat.canonical.loading.remote no three-dot ellipsis
+PASS ui.chat.canonical.loading.revalidating args identical (arm-normalised) [raw multiset equal too]
+   selectors en: []
+   selectors es: []
+PASS ui.chat.canonical.loading.revalidating es value NFC
+PASS ui.chat.canonical.loading.revalidating no bidi controls
+PASS ui.chat.canonical.loading.revalidating no double spaces
+PASS ui.chat.canonical.loading.revalidating no three-dot ellipsis
+PASS ui.chat.canonical.media.image_label args identical (arm-normalised) [raw multiset equal too]
+   selectors en: ["count[plural]:=1,other"]
+   selectors es: ["count[plural]:=1,other"]
+PASS ui.chat.canonical.media.image_label es value NFC
+PASS ui.chat.canonical.media.image_label no bidi controls
+PASS ui.chat.canonical.media.image_label no double spaces
+PASS ui.chat.canonical.media.image_label no three-dot ellipsis
+PASS ui.chat.canonical.media.sound_label args identical (arm-normalised) [raw multiset equal too]
+   selectors en: ["count[plural]:=1,other"]
+   selectors es: ["count[plural]:=1,other"]
+PASS ui.chat.canonical.media.sound_label es value NFC
+PASS ui.chat.canonical.media.sound_label no bidi controls
+PASS ui.chat.canonical.media.sound_label no double spaces
+PASS ui.chat.canonical.media.sound_label no three-dot ellipsis
+PASS ui.chat.canonical.sound.batch.item_status args identical (arm-normalised) [raw multiset equal too]
+   selectors en: ["status[select]:cancelled,failed,other"]
+   selectors es: ["status[select]:cancelled,failed,other"]
+PASS ui.chat.canonical.sound.batch.item_status es value NFC
+PASS ui.chat.canonical.sound.batch.item_status no bidi controls
+PASS ui.chat.canonical.sound.batch.item_status no double spaces
+PASS ui.chat.canonical.sound.batch.item_status no three-dot ellipsis
+PASS ui.chat.canonical.sound.batch.latest_update args identical (arm-normalised) [raw multiset equal too]
+   selectors en: []
+   selectors es: []
+PASS ui.chat.canonical.sound.batch.latest_update es value NFC
+PASS ui.chat.canonical.sound.batch.latest_update no bidi controls
+PASS ui.chat.canonical.sound.batch.latest_update no double spaces
+PASS ui.chat.canonical.sound.batch.latest_update no three-dot ellipsis
+PASS ui.chat.canonical.sound.batch.summary args identical (arm-normalised) [raw differs only by arm count: en 14 vs es 18]
+   selectors en: ["completed[plural]:one,other","failed[plural]:one,other","cancelled[plural]:=0,one,other","unknown[plural]:=0,one,other","has_attention[select]:other,yes"]
+   selectors es: ["completed[plural]:many,one,other","failed[plural]:many,one,other","cancelled[plural]:=0,many,one,other","unknown[plural]:=0,many,one,other","has_attention[select]:other,yes"]
+PASS ui.chat.canonical.sound.batch.summary es value NFC
+PASS ui.chat.canonical.sound.batch.summary no bidi controls
+PASS ui.chat.canonical.sound.batch.summary no double spaces
+PASS ui.chat.canonical.sound.batch.summary no three-dot ellipsis
+PASS ui.chat.canonical.sound.cost.batch_unknown args identical (arm-normalised) [raw multiset equal too]
+   selectors en: []
+   selectors es: []
+PASS ui.chat.canonical.sound.cost.batch_unknown es value NFC
+PASS ui.chat.canonical.sound.cost.batch_unknown no bidi controls
+PASS ui.chat.canonical.sound.cost.batch_unknown no double spaces
+PASS ui.chat.canonical.sound.cost.batch_unknown no three-dot ellipsis
+PASS ui.chat.canonical.sound.cost.estimated_zero args identical (arm-normalised) [raw multiset equal too]
+   selectors en: []
+   selectors es: []
+PASS ui.chat.canonical.sound.cost.estimated_zero es value NFC
+PASS ui.chat.canonical.sound.cost.estimated_zero no bidi controls
+PASS ui.chat.canonical.sound.cost.estimated_zero no double spaces
+PASS ui.chat.canonical.sound.cost.estimated_zero no three-dot ellipsis
+PASS ui.chat.canonical.sound.cost.no_charge args identical (arm-normalised) [raw multiset equal too]
+   selectors en: []
+   selectors es: []
+PASS ui.chat.canonical.sound.cost.no_charge es value NFC
+PASS ui.chat.canonical.sound.cost.no_charge no bidi controls
+PASS ui.chat.canonical.sound.cost.no_charge no double spaces
+PASS ui.chat.canonical.sound.cost.no_charge no three-dot ellipsis
+PASS ui.chat.canonical.sound.cost.unknown args identical (arm-normalised) [raw multiset equal too]
+   selectors en: []
+   selectors es: []
+PASS ui.chat.canonical.sound.cost.unknown es value NFC
+PASS ui.chat.canonical.sound.cost.unknown no bidi controls
+PASS ui.chat.canonical.sound.cost.unknown no double spaces
+PASS ui.chat.canonical.sound.cost.unknown no three-dot ellipsis
+PASS ui.chat.canonical.supplement.sound_fallback_label args identical (arm-normalised) [raw multiset equal too]
+   selectors en: []
+   selectors es: []
+PASS ui.chat.canonical.supplement.sound_fallback_label es value NFC
+PASS ui.chat.canonical.supplement.sound_fallback_label no bidi controls
+PASS ui.chat.canonical.supplement.sound_fallback_label no double spaces
+PASS ui.chat.canonical.supplement.sound_fallback_label no three-dot ellipsis
+
+=== 1b. extra plural categories are legal es CLDR, few never used, =0 arms kept ===
+PASS ui.chat.canonical.media.image_label count[plural]:=1,other keeps every en selector key (missing: [])
+PASS ui.chat.canonical.media.image_label count[plural]:=1,other uses only es CLDR plural categories (illegal: [])
+PASS ui.chat.canonical.media.sound_label count[plural]:=1,other keeps every en selector key (missing: [])
+PASS ui.chat.canonical.media.sound_label count[plural]:=1,other uses only es CLDR plural categories (illegal: [])
+PASS ui.chat.canonical.sound.batch.item_status status[select]:cancelled,failed,other keeps every en selector key (missing: [])
+   (select status[select] — plural categories do not apply)
+PASS ui.chat.canonical.sound.batch.summary completed[plural]:many,one,other keeps every en selector key (missing: [])
+PASS ui.chat.canonical.sound.batch.summary completed[plural]:many,one,other uses only es CLDR plural categories (illegal: [])
+   note: es adds ["many"]
+PASS ui.chat.canonical.sound.batch.summary failed[plural]:many,one,other keeps every en selector key (missing: [])
+PASS ui.chat.canonical.sound.batch.summary failed[plural]:many,one,other uses only es CLDR plural categories (illegal: [])
+   note: es adds ["many"]
+PASS ui.chat.canonical.sound.batch.summary cancelled[plural]:=0,many,one,other keeps every en selector key (missing: [])
+PASS ui.chat.canonical.sound.batch.summary cancelled[plural]:=0,many,one,other uses only es CLDR plural categories (illegal: [])
+   note: es adds ["many"]
+PASS ui.chat.canonical.sound.batch.summary unknown[plural]:=0,many,one,other keeps every en selector key (missing: [])
+PASS ui.chat.canonical.sound.batch.summary unknown[plural]:=0,many,one,other uses only es CLDR plural categories (illegal: [])
+   note: es adds ["many"]
+PASS ui.chat.canonical.sound.batch.summary has_attention[select]:other,yes keeps every en selector key (missing: [])
+   (select has_attention[select] — plural categories do not apply)
+
+=== 2. CLDR categories present for es plurals ===
+NOTE ui.chat.canonical.media.image_label count[plural]:=1,other  missing: one,many
+NOTE ui.chat.canonical.media.sound_label count[plural]:=1,other  missing: one,many
+PASS ui.chat.canonical.sound.batch.summary completed[plural]:many,one,other
+PASS ui.chat.canonical.sound.batch.summary failed[plural]:many,one,other
+PASS ui.chat.canonical.sound.batch.summary cancelled[plural]:=0,many,one,other
+PASS ui.chat.canonical.sound.batch.summary unknown[plural]:=0,many,one,other
+
+=== 3. render grid through intl-messageformat (es) ===
+
+ui.chat.canonical.loading.cold
+   "Cargando la conversación…"
+
+ui.chat.canonical.loading.older
+   "Cargando mensajes anteriores…"
+
+ui.chat.canonical.loading.region_label
+   "Cargando la conversación"
+
+ui.chat.canonical.loading.remote
+   "Sincronizando desde tu otro dispositivo…"
+
+ui.chat.canonical.loading.revalidating
+   "Buscando mensajes nuevos…"
+
+ui.chat.canonical.media.image_label
+   "Imagen 0"
+   "Imagen"
+   "Imagen 2"
+   "Imagen 3"
+   "Imagen 5"
+   "Imagen 11"
+   "Imagen 21"
+   "Imagen 22"
+   "Imagen 100"
+   "Imagen 1000"
+   "Imagen 1000000"
+   "Imagen 1500000"
+
+ui.chat.canonical.media.sound_label
+   "Sonido 0"
+   "Sonido"
+   "Sonido 2"
+   "Sonido 3"
+   "Sonido 5"
+   "Sonido 11"
+   "Sonido 21"
+   "Sonido 22"
+   "Sonido 100"
+   "Sonido 1000"
+   "Sonido 1000000"
+   "Sonido 1500000"
+
+ui.chat.canonical.sound.batch.item_status
+   "lluvia · Fallida"
+   "lluvia · Detenida"
+   "lluvia · Estado desconocido"
+
+ui.chat.canonical.sound.batch.latest_update
+   "Última actualización: lluvia (elemento 2 de 5)."
+
+ui.chat.canonical.sound.batch.summary
+   "0 completadas · 0 fallidas · 2 detenidas. Atención: lluvia"
+   "0 completadas · 0 fallidas · 2 detenidas"
+   "0 completadas · 1 fallida · 2 detenidas. Atención: lluvia"
+   "0 completadas · 1 fallida · 2 detenidas"
+   "0 completadas · 3 fallidas · 2 detenidas. Atención: lluvia"
+   "0 completadas · 3 fallidas · 2 detenidas"
+   "1 completada · 0 fallidas · 2 detenidas. Atención: lluvia"
+   "1 completada · 0 fallidas · 2 detenidas"
+   "1 completada · 1 fallida · 2 detenidas. Atención: lluvia"
+   "1 completada · 1 fallida · 2 detenidas"
+   "1 completada · 3 fallidas · 2 detenidas. Atención: lluvia"
+   "1 completada · 3 fallidas · 2 detenidas"
+   "2 completadas · 0 fallidas · 2 detenidas. Atención: lluvia"
+   "2 completadas · 0 fallidas · 2 detenidas"
+   … 58 more distinct renders
+
+ui.chat.canonical.sound.cost.batch_unknown
+   "Coste total aún sin determinar."
+
+ui.chat.canonical.sound.cost.estimated_zero
+   "Coste estimado de $0; cobro final sin confirmar."
+
+ui.chat.canonical.sound.cost.no_charge
+   "Sin cargo."
+
+ui.chat.canonical.sound.cost.unknown
+   "Coste aún sin determinar."
+
+ui.chat.canonical.supplement.sound_fallback_label
+   "Sonido generado"
+
+=== 4. render totals ===
+renderings: 112, throws: 0, leftover-brace: 0
+MECHANICAL: no failures
+[exit=0]
+
+$ ~/local-operator/.venv/bin/python - <<'PY'
+import json
+from rich.cells import cell_len
+en=json.load(open('src/i18n/catalogues/en/ui.chat.canonical.json'))
+es=json.load(open('src/i18n/catalogues/es/ui.chat.canonical.json'))
+keys=['loading.cold','loading.older','loading.region_label','loading.remote','loading.revalidating','media.image_label','media.sound_label','sound.batch.item_status','sound.batch.latest_update','sound.batch.summary','sound.cost.batch_unknown','sound.cost.estimated_zero','sound.cost.no_charge','sound.cost.unknown','supplement.sound_fallback_label']
+for s in keys:
+    k='ui.chat.canonical.'+s
+    e,t=cell_len(en[k]),cell_len(es[k])
+    print(f'{s:26s} en={e:4d} es={t:4d} +{100*(t-e)/max(e,1):6.1f}%')
+PY
+loading.cold               en=  21 es=  25 +  19.0%
+loading.older              en=  25 es=  29 +  16.0%
+loading.region_label       en=  20 es=  24 +  20.0%
+loading.remote             en=  31 es=  40 +  29.0%
+loading.revalidating       en=  26 es=  25 +  -3.8%
+media.image_label          en=  73 es=  75 +   2.7%
+media.sound_label          en=  73 es=  75 +   2.7%
+sound.batch.item_status    en= 106 es= 112 +   5.7%
+sound.batch.latest_update  en=  89 es= 100 +  12.4%
+sound.batch.summary        en= 579 es= 801 +  38.3%
+sound.cost.batch_unknown   en=  25 es=  31 +  24.0%
+sound.cost.estimated_zero  en=  46 es=  48 +   4.3%
+sound.cost.no_charge       en=  10 es=  10 +   0.0%
+sound.cost.unknown         en=  19 es=  25 +  31.6%
+supplement.sound_fallback_label en=  15 es=  15 +   0.0%
+[exit=0]
+
+# Evidence for finding S16F-ES-A3-02: the many arm prints ungrouped because the
+# es-authored many arm reuses the sibling arms' `::group-off` skeleton; `#` groups,
+# and the es style guide's own many exemplar is `many {# de sesiones}`.
+
+$ env -u CMUX node --input-type=module -e 'import IntlMessageFormat from "file:///Users/damian/local-operator-ui/.worktrees/i18n-s16a/node_modules/intl-messageformat/index.js";
+const cur = "{completed, plural, one {{completed, number, ::group-off} completada} many {{completed, number, ::group-off} de completadas} other {{completed, number, ::group-off} completadas}}";
+const alt = "{completed, plural, one {{completed, number, ::group-off} completada} many {# de completadas} other {{completed, number, ::group-off} completadas}}";
+for (const [n,m] of [["current",cur],["with # in many",alt]]) for (const c of [1000000,2000000]) console.log(n, c, "->", JSON.stringify(new IntlMessageFormat(m,"es").format({completed:c})));
+console.log("plain es number 1e6:", new Intl.NumberFormat("es").format(1000000));'
+current 1000000 -> "1000000 de completadas"
+current 2000000 -> "2000000 de completadas"
+with # in many 1000000 -> "1.000.000 de completadas"
+with # in many 2000000 -> "2.000.000 de completadas"
+plain es number 1e6: 1.000.000
+[exit=0]
+
+# Proof the receipt is ledger-assemble-able WITHOUT touching the repo: assemble against a
+# scratch mirror (copies of i18n/ledger.json + the en/es catalogue files) -- the real worktree
+# ledger is never opened for write by this audit.
+
+$ cd /Users/damian/local-operator-ui/.worktrees/i18n-s16a && env -u CMUX node scripts/i18n/ledger-assemble.mjs --locale es --file src/i18n/catalogues/es/ui.chat.canonical.json --auditor-instance 4d7a5444aa0b --auditor-model deepseek/deepseek-flash --result clean-with-findings --receipt /Users/damian/.local-operator/sessions/f6655caaf9ed/scratchpad/receipt.json --scope '15-key merged-bytes delta audit + 457-key integrity proof' --repo /Users/damian/.local-operator/sessions/f6655caaf9ed/scratchpad/mirror
+ledger-assemble: es/ui.chat.canonical -> status audited | clean-with-findings, 0 blocker, 0 major, 1 minor, 2 nit
+[exit=0]
+
+$ python3 -c "import json;d=json.load(open('/Users/damian/.local-operator/sessions/f6655caaf9ed/scratchpad/mirror/i18n/ledger.json'));r=[e for e in d['entries'] if e['locale']=='es' and e['namespace']=='ui.chat.canonical'][0];print('mirror row status:',r['status']);print('source:',r['source_sha256']);print('target:',r['target_sha256']);print('auditor instance:',r['auditors'][0]['instance'],'| model:',r['auditors'][0]['model'],'| result:',r['auditors'][0]['result'],'| receipt_sha256:',r['auditors'][0]['receipt_sha256'])"
+mirror row status: audited
+source: 905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e
+target: 547b85e9670eec79f82211f50325092bf75c13eda4504995cce1a1d5ab25e272
+auditor instance: 4d7a5444aa0b | model: deepseek/deepseek-flash | result: clean-with-findings | receipt_sha256: 0d53576dd82e8db22742ddcaa18810c5e786cf93d88d15f0d6181de37adfc7c3
+[exit=0]
+
+$ cd /Users/damian/local-operator-ui/.worktrees/i18n-s16a && git status --porcelain | wc -l
+       0
+[exit=0]
+
+$ shasum -a 256 /Users/damian/.local-operator/sessions/f6655caaf9ed/scratchpad/receipt.json /Users/damian/.local-operator/sessions/f6655caaf9ed/scratchpad/report.md /Users/damian/.local-operator/sessions/f6655caaf9ed/scratchpad/audit.log
+0d53576dd82e8db22742ddcaa18810c5e786cf93d88d15f0d6181de37adfc7c3  /Users/damian/.local-operator/sessions/f6655caaf9ed/scratchpad/receipt.json
+53c737db14b03b87eb0f76e38ada4cf498b3c111b0fc313a97fad5062d8f548f  /Users/damian/.local-operator/sessions/f6655caaf9ed/scratchpad/report.md
+1b0df162b64302ec0fd2814d949ae927aa3c43f2af8211193f8905d317e06e77  /Users/damian/.local-operator/sessions/f6655caaf9ed/scratchpad/audit.log
+[exit=0]
+
+# FINAL artifact hashes (point-in-time; the log's own hash is not recursive):
+0d53576dd82e8db22742ddcaa18810c5e786cf93d88d15f0d6181de37adfc7c3  /Users/damian/.local-operator/sessions/f6655caaf9ed/scratchpad/receipt.json
+90f5a9673aa8abba53406c904d1870f1bff22841d49ab7bfbe6b0c835233971b  /Users/damian/.local-operator/sessions/f6655caaf9ed/scratchpad/report.md
+
+# END OF LOG — every line above is a command this session ran and its actual output.
+# SUPERSEDES the earlier FINAL artifact-hash block: report.md was edited afterwards
+# (one sentence added to finding S16F-ES-A3-01). receipt.json is unchanged.
+0d53576dd82e8db22742ddcaa18810c5e786cf93d88d15f0d6181de37adfc7c3  /Users/damian/.local-operator/sessions/f6655caaf9ed/scratchpad/receipt.json
+8ce2efa3768805d60c4c325192cedb1ab0f07a537bd013707137f49ecafdd4d1  /Users/damian/.local-operator/sessions/f6655caaf9ed/scratchpad/report.md
+
+# END OF LOG (final) — every line above is a command this session ran and its actual output.

@@ -695,14 +695,49 @@
 		"note": "English source: Open externally. Dynamic values are bindings; do not translate their names.",
 		"length": "English is 15 source characters. Keep the same shape and a comparable width."
 	},
-	"ui.library.preview.organized_by": {
+	"ui.library.preview.organized_by_agent": {
 		"role": "Library preview: control, state or viewer copy",
 		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
-		"note": "English source: Organized by {by} {at}. Dynamic values are bindings; do not translate their names.",
-		"length": "English is 22 source characters. Keep the same shape and a comparable width.",
+		"note": "English source: Organized by an agent {at}. An agent (an assistant session, not the Librarian) applied the metadata. The Library preview metadata line, shown beside size and kind; the actor is part of the sentence, never a bound value, so adapt articles, case and word order freely. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 26 source characters. Keep the same shape and a comparable width.",
 		"placeholders": {
-			"by": "Runtime value passed by the Library page or preview.",
-			"at": "Runtime value passed by the Library page or preview."
+			"at": "Compact relative age already localized by the Library (for example 2h ago); insert verbatim, do not reformat or translate."
+		}
+	},
+	"ui.library.preview.organized_by_librarian": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Organized by the Librarian {at}. The Librarian is the Library's organizing agent; use the same term as ui.library.librarian.title. The Library preview metadata line, shown beside size and kind; the actor is part of the sentence, never a bound value, so adapt articles, case and word order freely. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 31 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"at": "Compact relative age already localized by the Library (for example 2h ago); insert verbatim, do not reformat or translate."
+		}
+	},
+	"ui.library.preview.organized_by_system": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Organized automatically {at}. The catalog itself did it, with no person or agent named. The Library preview metadata line, shown beside size and kind; the actor is part of the sentence, never a bound value, so adapt articles, case and word order freely. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 28 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"at": "Compact relative age already localized by the Library (for example 2h ago); insert verbatim, do not reformat or translate."
+		}
+	},
+	"ui.library.preview.organized_by_user": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Organized by you {at}. The reader personally edited the asset; address them directly. The Library preview metadata line, shown beside size and kind; the actor is part of the sentence, never a bound value, so adapt articles, case and word order freely. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 21 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"at": "Compact relative age already localized by the Library (for example 2h ago); insert verbatim, do not reformat or translate."
+		}
+	},
+	"ui.library.preview.organized_unattributed": {
+		"role": "Library preview: control, state or viewer copy",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Organized {at}. Used when the catalog does not say who organized the asset; make no claim about the actor. The Library preview metadata line, shown beside size and kind; the actor is part of the sentence, never a bound value, so adapt articles, case and word order freely. Dynamic values are bindings; do not translate their names.",
+		"length": "English is 14 source characters. Keep the same shape and a comparable width.",
+		"placeholders": {
+			"at": "Compact relative age already localized by the Library (for example 2h ago); insert verbatim, do not reformat or translate."
 		}
 	},
 	"ui.library.preview.pptx_failed": {
@@ -812,6 +847,12 @@
 		"placeholders": {
 			"kind": "Runtime value passed by the Library page or preview."
 		}
+	},
+	"ui.library.preview.unsupported_generic": {
+		"role": "Library preview: unsupported-file state, generic",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: This file has no in-app preview here. Shown when the file kind is the catch-all `other`; no placeholders.",
+		"length": "English is 37 source characters. Keep the same shape and a comparable width."
 	},
 	"ui.library.preview.zoom_in": {
 		"role": "Library preview: control, state or viewer copy",
@@ -1028,5 +1069,119 @@
 			"years": "Whole years (12-month units), floored by the caller; never negative."
 		},
 		"plural": "ICU plural: keep one/other and the years variable; the compact unit abbreviation is the point."
+	},
+	"ui.library.kind.audio": {
+		"role": "Library card/list/preview badge: the asset's file kind (one of twelve fixed kinds)",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Audio. Names the file's media type, not a player or a category group. Short badge beside the file size on a card, list row and the preview header; a single noun, no placeholders. Translate as the locale's ordinary noun for this file kind. The raw machine value (for example 'pptx') is shown only as a data fallback when a newer backend adds a kind this catalogue does not know.",
+		"length": "English is 5 source characters. A truncating badge slot (about 12 characters); keep the same shape and a comparable width."
+	},
+	"ui.library.kind.code": {
+		"role": "Library card/list/preview badge: the asset's file kind (one of twelve fixed kinds)",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Code. A source-code file. Not the filter-rail group 'Code' (ui.library.category.code); same word today, independent role. Short badge beside the file size on a card, list row and the preview header; a single noun, no placeholders. Translate as the locale's ordinary noun for this file kind. The raw machine value (for example 'pptx') is shown only as a data fallback when a newer backend adds a kind this catalogue does not know.",
+		"length": "English is 4 source characters. A truncating badge slot (about 12 characters); keep the same shape and a comparable width."
+	},
+	"ui.library.kind.docx": {
+		"role": "Library card/list/preview badge: the asset's file kind (one of twelve fixed kinds)",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: DOCX. Microsoft Word document format. Short badge beside the file size on a card, list row and the preview header; a single noun, no placeholders. Format names are retained technical tokens and may legitimately stay identical in a locale, but keep the key so a locale can differ. The raw machine value (for example 'pptx') is shown only as a data fallback when a newer backend adds a kind this catalogue does not know.",
+		"length": "English is 4 source characters. A truncating badge slot (about 12 characters); keep the same shape and a comparable width."
+	},
+	"ui.library.kind.html": {
+		"role": "Library card/list/preview badge: the asset's file kind (one of twelve fixed kinds)",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: HTML. HTML web-page file. Short badge beside the file size on a card, list row and the preview header; a single noun, no placeholders. Format names are retained technical tokens and may legitimately stay identical in a locale, but keep the key so a locale can differ. The raw machine value (for example 'pptx') is shown only as a data fallback when a newer backend adds a kind this catalogue does not know.",
+		"length": "English is 4 source characters. A truncating badge slot (about 12 characters); keep the same shape and a comparable width."
+	},
+	"ui.library.kind.image": {
+		"role": "Library card/list/preview badge: the asset's file kind (one of twelve fixed kinds)",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Image. A picture file (raster or vector). Short badge beside the file size on a card, list row and the preview header; a single noun, no placeholders. Translate as the locale's ordinary noun for this file kind. The raw machine value (for example 'pptx') is shown only as a data fallback when a newer backend adds a kind this catalogue does not know.",
+		"length": "English is 5 source characters. A truncating badge slot (about 12 characters); keep the same shape and a comparable width."
+	},
+	"ui.library.kind.markdown": {
+		"role": "Library card/list/preview badge: the asset's file kind (one of twelve fixed kinds)",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Markdown. Markdown text file; 'Markdown' is the format's proper name. Short badge beside the file size on a card, list row and the preview header; a single noun, no placeholders. Format names are retained technical tokens and may legitimately stay identical in a locale, but keep the key so a locale can differ. The raw machine value (for example 'pptx') is shown only as a data fallback when a newer backend adds a kind this catalogue does not know.",
+		"length": "English is 8 source characters. A truncating badge slot (about 12 characters); keep the same shape and a comparable width."
+	},
+	"ui.library.kind.other": {
+		"role": "Library card/list/preview badge: the asset's file kind (one of twelve fixed kinds)",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Other. Catch-all for a file the Library could not classify. Singular adjective/noun, not an action. Badge only. For the catch-all `other` kind the unsupported-preview state uses ui.library.preview.unsupported_generic, which has no kind slot; this label is never interpolated into a sentence. Short badge beside the file size on a card, list row and the preview header; a single noun, no placeholders. Translate as the locale's ordinary noun for this file kind. The raw machine value (for example 'pptx') is shown only as a data fallback when a newer backend adds a kind this catalogue does not know.",
+		"length": "English is 5 source characters. A truncating badge slot (about 12 characters); keep the same shape and a comparable width."
+	},
+	"ui.library.kind.pdf": {
+		"role": "Library card/list/preview badge: the asset's file kind (one of twelve fixed kinds)",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: PDF. Portable Document Format. Short badge beside the file size on a card, list row and the preview header; a single noun, no placeholders. Format names are retained technical tokens and may legitimately stay identical in a locale, but keep the key so a locale can differ. The raw machine value (for example 'pptx') is shown only as a data fallback when a newer backend adds a kind this catalogue does not know.",
+		"length": "English is 3 source characters. A truncating badge slot (about 12 characters); keep the same shape and a comparable width."
+	},
+	"ui.library.kind.pptx": {
+		"role": "Library card/list/preview badge: the asset's file kind (one of twelve fixed kinds)",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: PPTX. Microsoft PowerPoint presentation format. Short badge beside the file size on a card, list row and the preview header; a single noun, no placeholders. Format names are retained technical tokens and may legitimately stay identical in a locale, but keep the key so a locale can differ. The raw machine value (for example 'pptx') is shown only as a data fallback when a newer backend adds a kind this catalogue does not know.",
+		"length": "English is 4 source characters. A truncating badge slot (about 12 characters); keep the same shape and a comparable width."
+	},
+	"ui.library.kind.spreadsheet": {
+		"role": "Library card/list/preview badge: the asset's file kind (one of twelve fixed kinds)",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Spreadsheet. A tabular workbook file (xlsx/csv). Singular: it labels ONE file, unlike the plural group ui.library.category.spreadsheets. Short badge beside the file size on a card, list row and the preview header; a single noun, no placeholders. Translate as the locale's ordinary noun for this file kind. The raw machine value (for example 'pptx') is shown only as a data fallback when a newer backend adds a kind this catalogue does not know.",
+		"length": "English is 11 source characters. A truncating badge slot (about 12 characters); keep the same shape and a comparable width."
+	},
+	"ui.library.kind.text": {
+		"role": "Library card/list/preview badge: the asset's file kind (one of twelve fixed kinds)",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Text. A plain-text file. Short badge beside the file size on a card, list row and the preview header; a single noun, no placeholders. Translate as the locale's ordinary noun for this file kind. The raw machine value (for example 'pptx') is shown only as a data fallback when a newer backend adds a kind this catalogue does not know.",
+		"length": "English is 4 source characters. A truncating badge slot (about 12 characters); keep the same shape and a comparable width."
+	},
+	"ui.library.kind.video": {
+		"role": "Library card/list/preview badge: the asset's file kind (one of twelve fixed kinds)",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Video. A video file. Singular: it labels ONE file. Short badge beside the file size on a card, list row and the preview header; a single noun, no placeholders. Translate as the locale's ordinary noun for this file kind. The raw machine value (for example 'pptx') is shown only as a data fallback when a newer backend adds a kind this catalogue does not know.",
+		"length": "English is 5 source characters. A truncating badge slot (about 12 characters); keep the same shape and a comparable width."
+	},
+	"ui.library.tag_category.custom": {
+		"role": "Library filter rail: header above one group of tags (tag category)",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Custom. Tag group for tags the user or an agent created freely, with no fixed taxonomy. It is also the fallback group for a tag with an empty category. Small muted header above that category's tag rows in the Tags section; an adjective heading over a group of tags (inflect as the target language requires), no placeholders. Names the category, not a count. The raw category string is printed as a data fallback for a category a newer backend adds that this catalogue does not know.",
+		"length": "English is 6 source characters. Narrow rail header (about 12 characters); keep the same shape and a comparable width."
+	},
+	"ui.library.tag_category.format": {
+		"role": "Library filter rail: header above one group of tags (tag category)",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Format. Tag group for file-format tags (for example 'pdf', 'csv'). Core category id: format. Small muted header above that category's tag rows in the Tags section; a single noun, no placeholders. Singular, naming the category not a count. The raw category string is printed as a data fallback for a category a newer backend adds that this catalogue does not know.",
+		"length": "English is 6 source characters. Narrow rail header (about 12 characters); keep the same shape and a comparable width."
+	},
+	"ui.library.tag_category.project": {
+		"role": "Library filter rail: header above one group of tags (tag category)",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Project. Tag group for tags that name a project or workstream the asset belongs to. A taxonomy group label, not the Projects page. Small muted header above that category's tag rows in the Tags section; a single noun, no placeholders. Singular, naming the category not a count. The raw category string is printed as a data fallback for a category a newer backend adds that this catalogue does not know.",
+		"length": "English is 7 source characters. Narrow rail header (about 12 characters); keep the same shape and a comparable width."
+	},
+	"ui.library.tag_category.source": {
+		"role": "Library filter rail: header above one group of tags (tag category)",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Source. Tag group for tags saying where an asset came from. A TAG taxonomy group, not the Source filter section (ui.library.filter.source), which lists origin groups Generated/Created/Mentioned. Small muted header above that category's tag rows in the Tags section; a single noun, no placeholders. Singular, naming the category not a count. The raw category string is printed as a data fallback for a category a newer backend adds that this catalogue does not know.",
+		"length": "English is 6 source characters. Narrow rail header (about 12 characters); keep the same shape and a comparable width."
+	},
+	"ui.library.tag_category.status": {
+		"role": "Library filter rail: header above one group of tags (tag category)",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Status. Tag group for lifecycle tags such as draft or final. A TAG taxonomy group, not the Status filter section (ui.library.filter.status), which lists Favorites/Highlighted/Unorganized. Small muted header above that category's tag rows in the Tags section; a single noun, no placeholders. Singular, naming the category not a count. The raw category string is printed as a data fallback for a category a newer backend adds that this catalogue does not know.",
+		"length": "English is 6 source characters. Narrow rail header (about 12 characters); keep the same shape and a comparable width."
+	},
+	"ui.library.tag_category.topic": {
+		"role": "Library filter rail: header above one group of tags (tag category)",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Topic. Tag group for subject-matter tags. First group in the rail. Small muted header above that category's tag rows in the Tags section; a single noun, no placeholders. Singular, naming the category not a count. The raw category string is printed as a data fallback for a category a newer backend adds that this catalogue does not know.",
+		"length": "English is 5 source characters. Narrow rail header (about 12 characters); keep the same shape and a comparable width."
+	},
+	"ui.library.tag_category.type": {
+		"role": "Library filter rail: header above one group of tags (tag category)",
+		"tone": "Concise neutral desktop UI copy, sentence case, no exclamation marks.",
+		"note": "English source: Type. LEGACY tag group id kept by the UI's ordering list; current core ids are format/status, so this is rare. Keep it distinct from the sort option 'Kind'. Small muted header above that category's tag rows in the Tags section; a single noun, no placeholders. Singular, naming the category not a count. The raw category string is printed as a data fallback for a category a newer backend adds that this catalogue does not know.",
+		"length": "English is 4 source characters. Narrow rail header (about 12 characters); keep the same shape and a comparable width."
 	}
 }

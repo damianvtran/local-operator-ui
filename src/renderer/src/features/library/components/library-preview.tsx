@@ -56,6 +56,8 @@ import { saveAssetCopy } from "../library-download";
 import {
 	assetDisplayName,
 	formatBytes,
+	libraryKindLabel,
+	organizedByLabel,
 	originGroupLabelKey,
 	relativeTime,
 } from "../library-model";
@@ -490,7 +492,7 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 					</div>
 				</div>
 				<div className="flex flex-wrap items-center gap-2 text-meta text-ink-muted">
-					<Badge variant="neutral">{asset.kind}</Badge>
+					<Badge variant="neutral">{libraryKindLabel(asset.kind)}</Badge>
 					<Badge variant="neutral">
 						{t(originGroupLabelKey(asset.origin_group))}
 					</Badge>
@@ -507,10 +509,12 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 					file.mtimeMs !== null &&
 					Math.floor(file.mtimeMs / 1000) !== Math.floor(asset.modified_at) ? (
 						<span data-library-file-live="">
-							{formatBytes(file.sizeBytes ?? asset.size_bytes)}
+							<bdi>{formatBytes(file.sizeBytes ?? asset.size_bytes)}</bdi>
 						</span>
 					) : (
-						<span>{formatBytes(asset.size_bytes)}</span>
+						<span>
+							<bdi>{formatBytes(asset.size_bytes)}</bdi>
+						</span>
 					)}
 					{asset.width && asset.height ? (
 						<span>
@@ -519,10 +523,10 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 					) : null}
 					{asset.organized ? (
 						<span>
-							{t("ui.library.preview.organized_by", {
-								by: asset.organized.by ?? "librarian",
-								at: relativeTime(asset.organized.at, nowMs),
-							})}
+							{organizedByLabel(
+								asset.organized.by,
+								relativeTime(asset.organized.at, nowMs),
+							)}
 						</span>
 					) : (
 						<span>{t("ui.library.preview.unorganized")}</span>

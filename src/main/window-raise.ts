@@ -117,7 +117,15 @@ export type RaiseTrigger =
 	 * touch `show*`/`focus` itself, and under the `never` plan this name is the
 	 * one that stays silent unless the visibility fallback fires.
 	 */
-	| "popup-open";
+	| "popup-open"
+	/*
+	 * A password manager's passkey prompt came up in an agent-driven tab and only
+	 * a person can answer it (`browser/extensions/passkey-custody.ts`). The ONE
+	 * raise the browser host may ask for on its own, and only through
+	 * `raiseWindow`, so the launch plan still decides: `inactive` shows without
+	 * focus and `never` (a headless run) raises nothing.
+	 */
+	| "passkey-custody";
 
 /**
  * Who asked for the window, when the caller can say.
@@ -368,6 +376,9 @@ const REFUSABLE_DELIVERY: Record<
 	// may appear at all is `presentPopupWindow`'s own gate, and this table's
 	// question never arises. Declared for the same totality rule as `viewer-focus`.
 	"popup-open": "never",
+	// Raises only and delivers no conversation, like `viewer-focus`; declared for
+	// the totality rule.
+	"passkey-custody": "never",
 };
 
 /**

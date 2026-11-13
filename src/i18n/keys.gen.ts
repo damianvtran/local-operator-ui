@@ -70,6 +70,7 @@ import enUiChatDevice from "./catalogues/en/ui.chat.device.json";
 import enUiChatDeviceMove from "./catalogues/en/ui.chat.device_move.json";
 import enUiChatDialogs from "./catalogues/en/ui.chat.dialogs.json";
 import enUiChatDirectory from "./catalogues/en/ui.chat.directory.json";
+import enUiChatDraftTarget from "./catalogues/en/ui.chat.draft_target.json";
 import enUiChatFastMode from "./catalogues/en/ui.chat.fast_mode.json";
 import enUiChatHeader from "./catalogues/en/ui.chat.header.json";
 import enUiChatHeaderMenu from "./catalogues/en/ui.chat.header_menu.json";
@@ -228,6 +229,7 @@ import esUiChatDevice from "./catalogues/es/ui.chat.device.json";
 import esUiChatDeviceMove from "./catalogues/es/ui.chat.device_move.json";
 import esUiChatDialogs from "./catalogues/es/ui.chat.dialogs.json";
 import esUiChatDirectory from "./catalogues/es/ui.chat.directory.json";
+import esUiChatDraftTarget from "./catalogues/es/ui.chat.draft_target.json";
 import esUiChatFastMode from "./catalogues/es/ui.chat.fast_mode.json";
 import esUiChatHeader from "./catalogues/es/ui.chat.header.json";
 import esUiChatHeaderMenu from "./catalogues/es/ui.chat.header_menu.json";
@@ -386,6 +388,7 @@ import frUiChatDevice from "./catalogues/fr/ui.chat.device.json";
 import frUiChatDeviceMove from "./catalogues/fr/ui.chat.device_move.json";
 import frUiChatDialogs from "./catalogues/fr/ui.chat.dialogs.json";
 import frUiChatDirectory from "./catalogues/fr/ui.chat.directory.json";
+import frUiChatDraftTarget from "./catalogues/fr/ui.chat.draft_target.json";
 import frUiChatFastMode from "./catalogues/fr/ui.chat.fast_mode.json";
 import frUiChatHeader from "./catalogues/fr/ui.chat.header.json";
 import frUiChatHeaderMenu from "./catalogues/fr/ui.chat.header_menu.json";
@@ -544,6 +547,7 @@ import hiUiChatDevice from "./catalogues/hi/ui.chat.device.json";
 import hiUiChatDeviceMove from "./catalogues/hi/ui.chat.device_move.json";
 import hiUiChatDialogs from "./catalogues/hi/ui.chat.dialogs.json";
 import hiUiChatDirectory from "./catalogues/hi/ui.chat.directory.json";
+import hiUiChatDraftTarget from "./catalogues/hi/ui.chat.draft_target.json";
 import hiUiChatFastMode from "./catalogues/hi/ui.chat.fast_mode.json";
 import hiUiChatHeader from "./catalogues/hi/ui.chat.header.json";
 import hiUiChatHeaderMenu from "./catalogues/hi/ui.chat.header_menu.json";
@@ -702,6 +706,7 @@ import ruUiChatDevice from "./catalogues/ru/ui.chat.device.json";
 import ruUiChatDeviceMove from "./catalogues/ru/ui.chat.device_move.json";
 import ruUiChatDialogs from "./catalogues/ru/ui.chat.dialogs.json";
 import ruUiChatDirectory from "./catalogues/ru/ui.chat.directory.json";
+import ruUiChatDraftTarget from "./catalogues/ru/ui.chat.draft_target.json";
 import ruUiChatFastMode from "./catalogues/ru/ui.chat.fast_mode.json";
 import ruUiChatHeader from "./catalogues/ru/ui.chat.header.json";
 import ruUiChatHeaderMenu from "./catalogues/ru/ui.chat.header_menu.json";
@@ -860,6 +865,7 @@ import urUiChatDevice from "./catalogues/ur/ui.chat.device.json";
 import urUiChatDeviceMove from "./catalogues/ur/ui.chat.device_move.json";
 import urUiChatDialogs from "./catalogues/ur/ui.chat.dialogs.json";
 import urUiChatDirectory from "./catalogues/ur/ui.chat.directory.json";
+import urUiChatDraftTarget from "./catalogues/ur/ui.chat.draft_target.json";
 import urUiChatFastMode from "./catalogues/ur/ui.chat.fast_mode.json";
 import urUiChatHeader from "./catalogues/ur/ui.chat.header.json";
 import urUiChatHeaderMenu from "./catalogues/ur/ui.chat.header_menu.json";
@@ -1018,6 +1024,7 @@ import viUiChatDevice from "./catalogues/vi/ui.chat.device.json";
 import viUiChatDeviceMove from "./catalogues/vi/ui.chat.device_move.json";
 import viUiChatDialogs from "./catalogues/vi/ui.chat.dialogs.json";
 import viUiChatDirectory from "./catalogues/vi/ui.chat.directory.json";
+import viUiChatDraftTarget from "./catalogues/vi/ui.chat.draft_target.json";
 import viUiChatFastMode from "./catalogues/vi/ui.chat.fast_mode.json";
 import viUiChatHeader from "./catalogues/vi/ui.chat.header.json";
 import viUiChatHeaderMenu from "./catalogues/vi/ui.chat.header_menu.json";
@@ -1176,6 +1183,7 @@ import zhCNUiChatDevice from "./catalogues/zh-CN/ui.chat.device.json";
 import zhCNUiChatDeviceMove from "./catalogues/zh-CN/ui.chat.device_move.json";
 import zhCNUiChatDialogs from "./catalogues/zh-CN/ui.chat.dialogs.json";
 import zhCNUiChatDirectory from "./catalogues/zh-CN/ui.chat.directory.json";
+import zhCNUiChatDraftTarget from "./catalogues/zh-CN/ui.chat.draft_target.json";
 import zhCNUiChatFastMode from "./catalogues/zh-CN/ui.chat.fast_mode.json";
 import zhCNUiChatHeader from "./catalogues/zh-CN/ui.chat.header.json";
 import zhCNUiChatHeaderMenu from "./catalogues/zh-CN/ui.chat.header_menu.json";
@@ -1337,6 +1345,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChatDeviceMove,
 	...enUiChatDialogs,
 	...enUiChatDirectory,
+	...enUiChatDraftTarget,
 	...enUiChatFastMode,
 	...enUiChatHeader,
 	...enUiChatHeaderMenu,
@@ -1503,6 +1512,7 @@ export const bundledCatalogues: Readonly<
 		...esUiChatDeviceMove,
 		...esUiChatDialogs,
 		...esUiChatDirectory,
+		...esUiChatDraftTarget,
 		...esUiChatFastMode,
 		...esUiChatHeader,
 		...esUiChatHeaderMenu,
@@ -1663,6 +1673,7 @@ export const bundledCatalogues: Readonly<
 		...frUiChatDeviceMove,
 		...frUiChatDialogs,
 		...frUiChatDirectory,
+		...frUiChatDraftTarget,
 		...frUiChatFastMode,
 		...frUiChatHeader,
 		...frUiChatHeaderMenu,
@@ -1823,6 +1834,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiChatDeviceMove,
 		...hiUiChatDialogs,
 		...hiUiChatDirectory,
+		...hiUiChatDraftTarget,
 		...hiUiChatFastMode,
 		...hiUiChatHeader,
 		...hiUiChatHeaderMenu,
@@ -1983,6 +1995,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiChatDeviceMove,
 		...ruUiChatDialogs,
 		...ruUiChatDirectory,
+		...ruUiChatDraftTarget,
 		...ruUiChatFastMode,
 		...ruUiChatHeader,
 		...ruUiChatHeaderMenu,
@@ -2143,6 +2156,7 @@ export const bundledCatalogues: Readonly<
 		...urUiChatDeviceMove,
 		...urUiChatDialogs,
 		...urUiChatDirectory,
+		...urUiChatDraftTarget,
 		...urUiChatFastMode,
 		...urUiChatHeader,
 		...urUiChatHeaderMenu,
@@ -2303,6 +2317,7 @@ export const bundledCatalogues: Readonly<
 		...viUiChatDeviceMove,
 		...viUiChatDialogs,
 		...viUiChatDirectory,
+		...viUiChatDraftTarget,
 		...viUiChatFastMode,
 		...viUiChatHeader,
 		...viUiChatHeaderMenu,
@@ -2463,6 +2478,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiChatDeviceMove,
 		...zhCNUiChatDialogs,
 		...zhCNUiChatDirectory,
+		...zhCNUiChatDraftTarget,
 		...zhCNUiChatFastMode,
 		...zhCNUiChatHeader,
 		...zhCNUiChatHeaderMenu,
@@ -3721,6 +3737,14 @@ export type MessageParams = {
 	"ui.browser.browser_pane.close_browser": undefined;
 	"ui.browser.browser_pane.this_conversation": undefined;
 	"ui.browser.browser_pane.which_tabs_to_show": undefined;
+	"ui.browser.browser_passkey_custody.explanation": undefined;
+	"ui.browser.browser_passkey_custody.label": undefined;
+	"ui.browser.browser_passkey_custody.message": undefined;
+	"ui.browser.browser_passkey_custody.return_failed": undefined;
+	"ui.browser.browser_passkey_custody.return_refused_not_held": undefined;
+	"ui.browser.browser_passkey_custody.return_refused_stale": undefined;
+	"ui.browser.browser_passkey_custody.return_to_agent": undefined;
+	"ui.browser.browser_passkey_custody.returning": undefined;
 	"ui.browser.browser_passkey_notice.agent_explanation": undefined;
 	"ui.browser.browser_passkey_notice.continue_in_own_tab": undefined;
 	"ui.browser.browser_passkey_notice.continue_refused_in_flight": undefined;
@@ -4402,6 +4426,7 @@ export type MessageParams = {
 	"ui.chat.asks.all_asks": undefined;
 	"ui.chat.asks.answer_aria": { question: string };
 	"ui.chat.asks.answer_options": undefined;
+	"ui.chat.asks.bounds.body_label": undefined;
 	"ui.chat.asks.cancel": undefined;
 	"ui.chat.asks.change_answer": undefined;
 	"ui.chat.asks.changed_handoff": undefined;
@@ -4430,6 +4455,14 @@ export type MessageParams = {
 	"ui.chat.asks.other_label": undefined;
 	"ui.chat.asks.outstanding_aria": { label: string };
 	"ui.chat.asks.outstanding_count": { count: number; count_display: string };
+	"ui.chat.asks.proposal.field_changed": { label: string };
+	"ui.chat.asks.proposal.field_lines": {
+		label: string;
+		added: number;
+		removed: number;
+	};
+	"ui.chat.asks.proposal.review": undefined;
+	"ui.chat.asks.proposal.summary": { kind: string; name: string };
 	"ui.chat.asks.recommended": undefined;
 	"ui.chat.asks.scope.fleet": undefined;
 	"ui.chat.asks.scope.session": undefined;
@@ -4568,6 +4601,19 @@ export type MessageParams = {
 	"ui.chat.canonical.image_gen.control.stop_hint_queued": undefined;
 	"ui.chat.canonical.image_gen.control.stop_hint_running": undefined;
 	"ui.chat.canonical.image_gen.progress": undefined;
+	"ui.chat.canonical.image_gen.state.already_finished": undefined;
+	"ui.chat.canonical.image_gen.state.done": { material: string };
+	"ui.chat.canonical.image_gen.state.done_batch": { material: string };
+	"ui.chat.canonical.image_gen.state.failed": { material: string };
+	"ui.chat.canonical.image_gen.state.failed_batch": { material: string };
+	"ui.chat.canonical.image_gen.state.queue_ahead": { count: number };
+	"ui.chat.canonical.image_gen.state.queued": undefined;
+	"ui.chat.canonical.image_gen.state.running": { material: string };
+	"ui.chat.canonical.image_gen.state.running_batch": {
+		material: string;
+		total: number;
+	};
+	"ui.chat.canonical.image_gen.state.writing_request": undefined;
 	"ui.chat.canonical.image_label": undefined;
 	"ui.chat.canonical.lightbox.filmstrip_aria": {
 		count: number;
@@ -4575,6 +4621,13 @@ export type MessageParams = {
 	};
 	"ui.chat.canonical.lightbox.show_image": { index: number; count: number };
 	"ui.chat.canonical.link_toolkit.actions_for": { name: string };
+	"ui.chat.canonical.loading.cold": undefined;
+	"ui.chat.canonical.loading.older": undefined;
+	"ui.chat.canonical.loading.region_label": undefined;
+	"ui.chat.canonical.loading.remote": undefined;
+	"ui.chat.canonical.loading.revalidating": undefined;
+	"ui.chat.canonical.media.image_label": { count: number; position: number };
+	"ui.chat.canonical.media.sound_label": { count: number; position: number };
 	"ui.chat.canonical.notice.compaction_not_run": { detail: string };
 	"ui.chat.canonical.notice.compaction_not_run_after_colon": { detail: string };
 	"ui.chat.canonical.notice.interrupted": undefined;
@@ -4583,7 +4636,6 @@ export type MessageParams = {
 	"ui.chat.canonical.older_history.failed.long": undefined;
 	"ui.chat.canonical.older_history.failed.short": undefined;
 	"ui.chat.canonical.older_history.load": undefined;
-	"ui.chat.canonical.older_history.loading": undefined;
 	"ui.chat.canonical.older_history.transport.long": undefined;
 	"ui.chat.canonical.older_history.transport.short": undefined;
 	"ui.chat.canonical.older_history.try_again": undefined;
@@ -4592,8 +4644,6 @@ export type MessageParams = {
 	"ui.chat.canonical.older_history.windowed.short_gesture": undefined;
 	"ui.chat.canonical.older_history.windowed.title": undefined;
 	"ui.chat.canonical.older_history.windowed.title_gesture": undefined;
-	"ui.chat.canonical.placeholder.loading": undefined;
-	"ui.chat.canonical.placeholder.region_label": undefined;
 	"ui.chat.canonical.raw_information": undefined;
 	"ui.chat.canonical.security_notice.aria": undefined;
 	"ui.chat.canonical.security_notice.blocked": undefined;
@@ -4613,7 +4663,28 @@ export type MessageParams = {
 	"ui.chat.canonical.send_failure.send_lock": undefined;
 	"ui.chat.canonical.send_failure.unconfirmed": undefined;
 	"ui.chat.canonical.send_failure.unreachable": undefined;
+	"ui.chat.canonical.sound.batch.item_status": {
+		status: string;
+		label: string;
+	};
+	"ui.chat.canonical.sound.batch.latest_update": {
+		name: string;
+		item: number;
+		total: number;
+	};
+	"ui.chat.canonical.sound.batch.summary": {
+		completed: number;
+		failed: number;
+		cancelled: number;
+		unknown: number;
+		has_attention: string;
+		labels: string;
+	};
 	"ui.chat.canonical.sound.batch_attachment_unavailable": undefined;
+	"ui.chat.canonical.sound.cost.batch_unknown": undefined;
+	"ui.chat.canonical.sound.cost.estimated_zero": undefined;
+	"ui.chat.canonical.sound.cost.no_charge": undefined;
+	"ui.chat.canonical.sound.cost.unknown": undefined;
 	"ui.chat.canonical.sound.player_failed": undefined;
 	"ui.chat.canonical.sound.stop.confirm_label": undefined;
 	"ui.chat.canonical.sound.stop.keep_waiting": undefined;
@@ -4633,6 +4704,7 @@ export type MessageParams = {
 	"ui.chat.canonical.supplement.preview_unavailable": undefined;
 	"ui.chat.canonical.supplement.send": undefined;
 	"ui.chat.canonical.supplement.show_fewer": undefined;
+	"ui.chat.canonical.supplement.sound_fallback_label": undefined;
 	"ui.chat.canonical.supplement.withheld.line": {
 		count: number;
 		reason: string;
@@ -4644,6 +4716,12 @@ export type MessageParams = {
 	"ui.chat.canonical.supplement.withheld.reason_separator": undefined;
 	"ui.chat.canonical.supplement.withheld.reason_too_large": undefined;
 	"ui.chat.canonical.this_chat": undefined;
+	"ui.chat.canonical.tool.composing_empty": undefined;
+	"ui.chat.canonical.tool.composing_sized": { size: string };
+	"ui.chat.canonical.tool.never_sent_composed": { size: string };
+	"ui.chat.canonical.tool.never_sent_empty": undefined;
+	"ui.chat.canonical.tool.queued_empty": undefined;
+	"ui.chat.canonical.tool.queued_sized": { size: string };
 	"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.label": undefined;
 	"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.note": undefined;
 	"ui.chat.canonical.tool_row.bridge.delivery.awaiting_acceptance.short": undefined;
@@ -4780,6 +4858,188 @@ export type MessageParams = {
 	"ui.chat.canonical.tool_row.outcome.never_ran": undefined;
 	"ui.chat.canonical.tool_row.outcome.succeeded": undefined;
 	"ui.chat.canonical.tool_row.pending": undefined;
+	"ui.chat.canonical.tool_row.verb.asked.running": undefined;
+	"ui.chat.canonical.tool_row.verb.asked.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.browsed.running": undefined;
+	"ui.chat.canonical.tool_row.verb.browsed.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.cancelled.running": undefined;
+	"ui.chat.canonical.tool_row.verb.cancelled.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.cancelled_job.running": undefined;
+	"ui.chat.canonical.tool_row.verb.cancelled_job.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.cancelled_wake.running": undefined;
+	"ui.chat.canonical.tool_row.verb.cancelled_wake.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.captured_console.running": undefined;
+	"ui.chat.canonical.tool_row.verb.captured_console.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.checked_console.running": undefined;
+	"ui.chat.canonical.tool_row.verb.checked_console.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.checked_network_status.running": undefined;
+	"ui.chat.canonical.tool_row.verb.checked_network_status.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.closed_console.running": undefined;
+	"ui.chat.canonical.tool_row.verb.closed_console.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.created_agent.running": undefined;
+	"ui.chat.canonical.tool_row.verb.created_agent.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.created_network.running": undefined;
+	"ui.chat.canonical.tool_row.verb.created_network.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.created_project.running": undefined;
+	"ui.chat.canonical.tool_row.verb.created_project.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.created_team.running": undefined;
+	"ui.chat.canonical.tool_row.verb.created_team.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.delegated.running": undefined;
+	"ui.chat.canonical.tool_row.verb.delegated.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.deleted_project.running": undefined;
+	"ui.chat.canonical.tool_row.verb.deleted_project.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.deleted_secret.running": undefined;
+	"ui.chat.canonical.tool_row.verb.deleted_secret.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.deleted_team.running": undefined;
+	"ui.chat.canonical.tool_row.verb.deleted_team.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.described_secret.running": undefined;
+	"ui.chat.canonical.tool_row.verb.described_secret.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.diagnosed_network.running": undefined;
+	"ui.chat.canonical.tool_row.verb.diagnosed_network.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.edited.running": undefined;
+	"ui.chat.canonical.tool_row.verb.edited.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.fetched.running": undefined;
+	"ui.chat.canonical.tool_row.verb.fetched.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.found_definition.running": undefined;
+	"ui.chat.canonical.tool_row.verb.found_definition.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.found_references.running": undefined;
+	"ui.chat.canonical.tool_row.verb.found_references.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.installed_agent.running": undefined;
+	"ui.chat.canonical.tool_row.verb.installed_agent.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.invited_device.running": undefined;
+	"ui.chat.canonical.tool_row.verb.invited_device.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.joined_network.running": undefined;
+	"ui.chat.canonical.tool_row.verb.joined_network.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.left_network.running": undefined;
+	"ui.chat.canonical.tool_row.verb.left_network.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.linked_session_to.running": undefined;
+	"ui.chat.canonical.tool_row.verb.linked_session_to.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.listed.running": undefined;
+	"ui.chat.canonical.tool_row.verb.listed.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.listed_agents.running": undefined;
+	"ui.chat.canonical.tool_row.verb.listed_agents.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.listed_consoles.running": undefined;
+	"ui.chat.canonical.tool_row.verb.listed_consoles.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.listed_jobs.running": undefined;
+	"ui.chat.canonical.tool_row.verb.listed_jobs.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.listed_network_peers.running": undefined;
+	"ui.chat.canonical.tool_row.verb.listed_network_peers.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.listed_networks.running": undefined;
+	"ui.chat.canonical.tool_row.verb.listed_networks.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.listed_projects.running": undefined;
+	"ui.chat.canonical.tool_row.verb.listed_projects.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.listed_secrets.running": undefined;
+	"ui.chat.canonical.tool_row.verb.listed_secrets.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.listed_sessions.running": undefined;
+	"ui.chat.canonical.tool_row.verb.listed_sessions.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.listed_subagents.running": undefined;
+	"ui.chat.canonical.tool_row.verb.listed_subagents.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.listed_symbols.running": undefined;
+	"ui.chat.canonical.tool_row.verb.listed_symbols.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.listed_teams.running": undefined;
+	"ui.chat.canonical.tool_row.verb.listed_teams.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.listed_variables.running": undefined;
+	"ui.chat.canonical.tool_row.verb.listed_variables.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.listed_wakes.running": undefined;
+	"ui.chat.canonical.tool_row.verb.listed_wakes.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.messaged.running": undefined;
+	"ui.chat.canonical.tool_row.verb.messaged.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.opened_console.running": undefined;
+	"ui.chat.canonical.tool_row.verb.opened_console.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.paused.running": undefined;
+	"ui.chat.canonical.tool_row.verb.paused.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.peeked_at.running": undefined;
+	"ui.chat.canonical.tool_row.verb.peeked_at.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.peeked_at_session.running": undefined;
+	"ui.chat.canonical.tool_row.verb.peeked_at_session.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.previewed_rename.running": undefined;
+	"ui.chat.canonical.tool_row.verb.previewed_rename.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.raised_panic.running": undefined;
+	"ui.chat.canonical.tool_row.verb.raised_panic.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.ran.running": undefined;
+	"ui.chat.canonical.tool_row.verb.ran.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.ran_python.running": undefined;
+	"ui.chat.canonical.tool_row.verb.ran_python.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.read.running": undefined;
+	"ui.chat.canonical.tool_row.verb.read.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.read_console.running": undefined;
+	"ui.chat.canonical.tool_row.verb.read_console.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.read_network_log.running": undefined;
+	"ui.chat.canonical.tool_row.verb.read_network_log.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.read_todos.running": undefined;
+	"ui.chat.canonical.tool_row.verb.read_todos.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.read_variable.running": undefined;
+	"ui.chat.canonical.tool_row.verb.read_variable.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.received.running": undefined;
+	"ui.chat.canonical.tool_row.verb.received.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.removed_device.running": undefined;
+	"ui.chat.canonical.tool_row.verb.removed_device.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.removed_milestone.running": undefined;
+	"ui.chat.canonical.tool_row.verb.removed_milestone.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.reset_agent.running": undefined;
+	"ui.chat.canonical.tool_row.verb.reset_agent.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.resized_console.running": undefined;
+	"ui.chat.canonical.tool_row.verb.resized_console.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.resumed.running": undefined;
+	"ui.chat.canonical.tool_row.verb.resumed.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.resumed_session.running": undefined;
+	"ui.chat.canonical.tool_row.verb.resumed_session.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.retrieved_secret.running": undefined;
+	"ui.chat.canonical.tool_row.verb.retrieved_secret.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.scheduled.running": undefined;
+	"ui.chat.canonical.tool_row.verb.scheduled.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.searched.running": undefined;
+	"ui.chat.canonical.tool_row.verb.searched.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.searched_agents.running": undefined;
+	"ui.chat.canonical.tool_row.verb.searched_agents.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.searched_the_web.running": undefined;
+	"ui.chat.canonical.tool_row.verb.searched_the_web.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.sent.running": undefined;
+	"ui.chat.canonical.tool_row.verb.sent.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.sent_keys.running": undefined;
+	"ui.chat.canonical.tool_row.verb.sent_keys.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.spawned_session.running": undefined;
+	"ui.chat.canonical.tool_row.verb.spawned_session.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.steered.running": undefined;
+	"ui.chat.canonical.tool_row.verb.steered.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.stopped_session.running": undefined;
+	"ui.chat.canonical.tool_row.verb.stopped_session.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.stored_secret.running": undefined;
+	"ui.chat.canonical.tool_row.verb.stored_secret.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.synced_agents.running": undefined;
+	"ui.chat.canonical.tool_row.verb.synced_agents.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.typed_in_console.running": undefined;
+	"ui.chat.canonical.tool_row.verb.typed_in_console.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.unlinked_session_from.running": undefined;
+	"ui.chat.canonical.tool_row.verb.unlinked_session_from.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.updated_agent.running": undefined;
+	"ui.chat.canonical.tool_row.verb.updated_agent.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.updated_milestone.running": undefined;
+	"ui.chat.canonical.tool_row.verb.updated_milestone.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.updated_project.running": undefined;
+	"ui.chat.canonical.tool_row.verb.updated_project.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.updated_secret.running": undefined;
+	"ui.chat.canonical.tool_row.verb.updated_secret.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.updated_secure_input.running": undefined;
+	"ui.chat.canonical.tool_row.verb.updated_secure_input.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.updated_team.running": undefined;
+	"ui.chat.canonical.tool_row.verb.updated_team.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.updated_todos.running": undefined;
+	"ui.chat.canonical.tool_row.verb.updated_todos.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.viewed_agent.running": undefined;
+	"ui.chat.canonical.tool_row.verb.viewed_agent.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.viewed_network.running": undefined;
+	"ui.chat.canonical.tool_row.verb.viewed_network.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.viewed_project.running": undefined;
+	"ui.chat.canonical.tool_row.verb.viewed_project.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.viewed_session.running": undefined;
+	"ui.chat.canonical.tool_row.verb.viewed_session.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.viewed_team.running": undefined;
+	"ui.chat.canonical.tool_row.verb.viewed_team.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.waited_for_jobs.running": undefined;
+	"ui.chat.canonical.tool_row.verb.waited_for_jobs.settled": undefined;
+	"ui.chat.canonical.tool_row.verb.wrote.running": undefined;
+	"ui.chat.canonical.tool_row.verb.wrote.settled": undefined;
 	"ui.chat.canonical.transcript.answer_may_be_missing": undefined;
 	"ui.chat.canonical.transcript.connect_provider": undefined;
 	"ui.chat.canonical.transcript.credential_lost": undefined;
@@ -4798,7 +5058,6 @@ export type MessageParams = {
 	"ui.chat.canonical.transcript.reconnecting": undefined;
 	"ui.chat.canonical.transcript.send_again": undefined;
 	"ui.chat.canonical.transcript.source_unavailable": undefined;
-	"ui.chat.canonical.transcript.stale_caption": undefined;
 	"ui.chat.canonical.transcript.start_new_chat": undefined;
 	"ui.chat.canonical.transcript.stopped_before_finishing": undefined;
 	"ui.chat.canonical.transcript.worked": undefined;
@@ -5030,6 +5289,9 @@ export type MessageParams = {
 	"ui.chat.directory.tooltip.pending_move": { path: string };
 	"ui.chat.directory.tooltip.set": undefined;
 	"ui.chat.directory.tooltip.truncated_move_cost": { path: string };
+	"ui.chat.draft_target.aria_label": { target: string };
+	"ui.chat.draft_target.default_agent": undefined;
+	"ui.chat.draft_target.menu_heading": undefined;
 	"ui.chat.fast_mode.dial_differs": { dial: string; requested: string };
 	"ui.chat.fast_mode.first_message_off": undefined;
 	"ui.chat.fast_mode.first_message_on": undefined;
@@ -5097,6 +5359,7 @@ export type MessageParams = {
 	"ui.chat.audio.play": undefined;
 	"ui.chat.audio.play_label": { label: string };
 	"ui.chat.audio.position_label": { label: string };
+	"ui.chat.audio.position_value": { current: string; total: string };
 	"ui.chat.audio.unmute": undefined;
 	"ui.chat.checkpoint.generating_name": undefined;
 	"ui.chat.checkpoint.jump_agent": {
@@ -7673,6 +7936,10 @@ export type MessageParams = {
 	"ui.common.speech.speak_control.replay_speech": undefined;
 	"ui.common.speech.speak_control.speak_aloud": undefined;
 	"ui.common.speech.speak_control.stop": undefined;
+	"ui.common.time.date_at": { date: string; time: string };
+	"ui.common.time.today_at": { time: string };
+	"ui.common.time.weekday_at": { weekday: string; time: string };
+	"ui.common.time.yesterday": undefined;
 	"ui.common.time.yesterday_at": { time: string };
 	"ui.common.updates.check_for_updates_button.at_an_unknown_time": undefined;
 	"ui.common.updates.check_for_updates_button.check_for_updates": undefined;
@@ -8231,6 +8498,9 @@ export type MessageParams = {
 	"ui.hub.links.sources_count": { count: number };
 	"ui.hub.links.title": undefined;
 	"ui.hub.links.unknown_baseline": undefined;
+	"ui.hub.links.unresolved_detail_no_origin": undefined;
+	"ui.hub.links.unresolved_detail_scope_ambiguous": undefined;
+	"ui.hub.links.unresolved_detail_scope_unknown": undefined;
 	"ui.hub.links.unresolved_mark": { item: string };
 	"ui.hub.links.unresolved_next": undefined;
 	"ui.hub.links.unresolved_what": { item: string };
@@ -8629,6 +8899,18 @@ export type MessageParams = {
 	"ui.library.filter.tags": undefined;
 	"ui.library.grid.load_more": undefined;
 	"ui.library.grid.loading_more": undefined;
+	"ui.library.kind.audio": undefined;
+	"ui.library.kind.code": undefined;
+	"ui.library.kind.docx": undefined;
+	"ui.library.kind.html": undefined;
+	"ui.library.kind.image": undefined;
+	"ui.library.kind.markdown": undefined;
+	"ui.library.kind.other": undefined;
+	"ui.library.kind.pdf": undefined;
+	"ui.library.kind.pptx": undefined;
+	"ui.library.kind.spreadsheet": undefined;
+	"ui.library.kind.text": undefined;
+	"ui.library.kind.video": undefined;
 	"ui.library.librarian.control_failed": undefined;
 	"ui.library.librarian.disabled": undefined;
 	"ui.library.librarian.enabled": undefined;
@@ -8710,7 +8992,11 @@ export type MessageParams = {
 	"ui.library.preview.not_saved": undefined;
 	"ui.library.preview.open": undefined;
 	"ui.library.preview.open_externally": undefined;
-	"ui.library.preview.organized_by": { by: string; at: string };
+	"ui.library.preview.organized_by_agent": { at: string };
+	"ui.library.preview.organized_by_librarian": { at: string };
+	"ui.library.preview.organized_by_system": { at: string };
+	"ui.library.preview.organized_by_user": { at: string };
+	"ui.library.preview.organized_unattributed": { at: string };
 	"ui.library.preview.pptx_failed": undefined;
 	"ui.library.preview.pptx_failed_detail": undefined;
 	"ui.library.preview.pptx_loading": { percent: string };
@@ -8733,6 +9019,7 @@ export type MessageParams = {
 	"ui.library.preview.unlock": undefined;
 	"ui.library.preview.unorganized": undefined;
 	"ui.library.preview.unsupported": { kind: string };
+	"ui.library.preview.unsupported_generic": undefined;
 	"ui.library.preview.zoom_in": undefined;
 	"ui.library.preview.zoom_out": undefined;
 	"ui.library.sort.created": undefined;
@@ -8745,6 +9032,13 @@ export type MessageParams = {
 	"ui.library.status.favorites": undefined;
 	"ui.library.status.highlighted": undefined;
 	"ui.library.status.unorganized": undefined;
+	"ui.library.tag_category.custom": undefined;
+	"ui.library.tag_category.format": undefined;
+	"ui.library.tag_category.project": undefined;
+	"ui.library.tag_category.source": undefined;
+	"ui.library.tag_category.status": undefined;
+	"ui.library.tag_category.topic": undefined;
+	"ui.library.tag_category.type": undefined;
 	"ui.library.time.days_d_ago": { days: number };
 	"ui.library.time.hours_h_ago": { hours: number };
 	"ui.library.time.just_now": undefined;
@@ -10193,6 +10487,7 @@ export type MessageParams = {
 	"ui.providers.phone.action.sign_in": undefined;
 	"ui.providers.phone.address_label": undefined;
 	"ui.providers.phone.choose_heading": undefined;
+	"ui.providers.phone.connector_not_needed": undefined;
 	"ui.providers.phone.consent": { amount: string };
 	"ui.providers.phone.failure.check": undefined;
 	"ui.providers.phone.failure.run": undefined;
