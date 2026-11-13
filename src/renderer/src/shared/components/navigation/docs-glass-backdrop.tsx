@@ -56,6 +56,7 @@ export const MARKETING_GLASS_ARGS = {
  * Film grain, so the blurred field reads as frosted rather than as a smooth
  * gradient. `stitchTiles` keeps the 160px tile seamless when it repeats.
  */
+// i18n: ignore CSS background-image value (SVG grain data URL), not user copy
 const GRAIN = `url("data:image/svg+xml,${encodeURIComponent(
 	'<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 1 0"/></filter><rect width="100%" height="100%" filter="url(#n)"/></svg>',
 )}")`;
@@ -66,7 +67,7 @@ const GRAIN = `url("data:image/svg+xml,${encodeURIComponent(
  */
 const MarketingWallpaper = ({ dark }: { dark: boolean }) => {
 	const t = BACKDROP_GRAY["under-window"][dark ? "dark" : "light"];
-	const tone = `rgb(${t}, ${t}, ${t})`;
+	const tone = `rgb(${t}, ${t}, ${t})`; // i18n: ignore CSS colour value, not user copy
 	/* Lighter and darker steps are small on purpose: the blur spreads them, and
 	   a wider swing would move text contrast off the solver's assumption. */
 	const tint = (hue: string, share: number) =>
@@ -102,13 +103,13 @@ const MarketingWallpaper = ({ dark }: { dark: boolean }) => {
 					inset: -96,
 					backgroundColor: tone,
 					backgroundImage: [
-						`radial-gradient(42% 55% at 12% 18%, ${blue} 0%, transparent 70%)`,
-						`radial-gradient(38% 46% at 86% 14%, ${violet} 0%, transparent 72%)`,
-						`radial-gradient(48% 52% at 78% 88%, ${sand} 0%, transparent 70%)`,
-						`radial-gradient(40% 50% at 22% 84%, ${teal} 0%, transparent 72%)`,
-						`linear-gradient(118deg, transparent 38%, ${lift} 46%, transparent 54%)`,
-						`linear-gradient(118deg, transparent 58%, ${sink} 64%, transparent 72%)`,
-						`conic-gradient(from 210deg at 54% 46%, ${tone}, ${lift}, ${tone}, ${sink}, ${tone})`,
+						`radial-gradient(42% 55% at 12% 18%, ${blue} 0%, transparent 70%)`, // i18n: ignore CSS gradient value, not user copy
+						`radial-gradient(38% 46% at 86% 14%, ${violet} 0%, transparent 72%)`, // i18n: ignore CSS gradient value, not user copy
+						`radial-gradient(48% 52% at 78% 88%, ${sand} 0%, transparent 70%)`, // i18n: ignore CSS gradient value, not user copy
+						`radial-gradient(40% 50% at 22% 84%, ${teal} 0%, transparent 72%)`, // i18n: ignore CSS gradient value, not user copy
+						`linear-gradient(118deg, transparent 38%, ${lift} 46%, transparent 54%)`, // i18n: ignore CSS gradient value, not user copy
+						`linear-gradient(118deg, transparent 58%, ${sink} 64%, transparent 72%)`, // i18n: ignore CSS gradient value, not user copy
+						`conic-gradient(from 210deg at 54% 46%, ${tone}, ${lift}, ${tone}, ${sink}, ${tone})`, // i18n: ignore CSS gradient value, not user copy
 					].join(", "),
 					filter: "blur(28px) saturate(1.25)",
 				}}
