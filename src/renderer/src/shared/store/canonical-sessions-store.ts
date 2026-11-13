@@ -82,6 +82,7 @@ import {
 	type SessionCatalogueStatus,
 	type SessionOpenedBy,
 	type SessionStatusFrameCounts,
+	type SessionTemporaryInfo,
 	mergeCompletionAttention,
 } from "../../../../shared/desktop-session-contract";
 import type { LaunchTarget } from "../../../../shared/open-session";
@@ -90,6 +91,7 @@ import type { LaunchTarget } from "../../../../shared/open-session";
  * follow-up). A pure function with no React or store dependency, which is why
  * the direction is safe: this store is below it, and nothing there reads state.
  */
+import { draftCreatesTemporary } from "../../features/chat/chat-temporary";
 import { draftModelForWire } from "../../features/chat/draft-selection";
 import {
 	type PeerDeviceFact,
@@ -215,6 +217,12 @@ export type CanonicalSessionRow = {
 	 * optimistic `true` immortal after an unarchive made somewhere else.
 	 */
 	archived?: boolean;
+	/**
+	 * The TEMPORARY-chat state as the catalogue row carried it, `null` (or absent,
+	 * on an older core) meaning not temporary. Declared for the index-signature
+	 * reason `archived` gives; read through `features/chat/chat-temporary.ts`.
+	 */
+	temporary?: SessionTemporaryInfo | null;
 	status?: SessionCatalogueStatus;
 	/**
 	 * The feed's stamp for `status`, as the catalogue row carried it.
@@ -396,6 +404,12 @@ export type HeldClaimPageEntry = { id: string; ts: number };
 
 export type PinFailure = {
 	sessionId: string;
+	/**
+	 * The refusal's machine code, when the core sent one. Read for ONE case today:
+	 * `session_temporary` (a temporary chat cannot be pinned until it is kept),
+	 * which turns the line's Retry into "Keep and pin" (`refusalRemedy`).
+	 */
+	code?: string;
 	/** The desired state that was refused, not the state on screen. */
 	pinned: boolean;
 	/**
@@ -736,6 +750,15 @@ export type ChatDraft = {
 	 * screen.
 	 */
 	peer?: string;
+	/**
+	 * Start this conversation as a TEMPORARY chat (`features.temporary_chats`):
+	 * the header's dashed toggle, Ctrl+Shift+N and the palette's "New temporary
+	 * chat" write it, and `sessions.create` sends it as the wire's `temporary`.
+	 * DRAFT state like `peer`, and sent only while the store says the core
+	 * advertises the capability (`temporaryChats`), because a persisted draft
+	 * replayed against an older core would otherwise 422 the whole create.
+	 */
+	temporary?: boolean;
 	pending?: boolean;
 	error?: string;
 	errorCode?: string;
@@ -3175,6 +3198,9 @@ export async function admitChatDraft(
 					// for every draft nobody aimed at a peer, which is what keeps the body
 					// of an ordinary create byte-identical to what it was before the control.
 					draft.peer,
+					// Only under the capability, and never toward a peer (§8 deferred): see
+					// `draftCreatesTemporary`.
+					draftCreatesTemporary(draft, store.temporaryChats) ? true : undefined,
 				)) ?? undefined;
 			if (!id)
 				throw new UserFacingError(
@@ -4586,6 +4612,25 @@ type CanonicalSessionsState = {
 	 */
 	setDraftFastCarries: (carries: boolean) => void;
 	/**
+	 * Whether the core advertises `temporary_chats`, as published by the app shell
+	 * (`app.tsx`). `false` until answered - the fail-closed direction: the list
+	 * then never asks for `include_temporary` and a create never sends
+	 * `temporary`, which is the request every older core accepts.
+	 */
+	temporaryChats: boolean;
+	setTemporaryChats: (enabled: boolean) => void;
+	/** Turn a draft's temporary switch on or off (the header toggle). */
+	setDraftTemporary: (key: string, temporary: boolean) => void;
+	/**
+	 * Mark or keep one conversation (`sessions.temporary`, desired state). The row
+	 * takes the core's answer; a refusal leaves it untouched and is returned as
+	 * its code so the caller can say why.
+	 */
+	setSessionTemporary: (
+		sessionId: string,
+		temporary: boolean,
+	) => Promise<{ ok: true } | { ok: false; code?: string; detail: string }>;
+	/**
 	 * Clear the refusal once its message's turn on the toast surface is over.
 	 *
 	 * THE WRITE ONLY, matching `setArchiveUndo` above rather than adding a third policy: the
@@ -4711,6 +4756,8 @@ type CanonicalSessionsState = {
 		 * then carries no `peer` at all - see the implementation's own note.
 		 */
 		peer?: string,
+		/** Create it as a temporary chat; omitted (not `false`) otherwise. */
+		temporary?: boolean,
 	) => Promise<string | null>;
 	/**
 	 * The turns THIS WINDOW stopped, by session id, stamped in wall-clock ms.
@@ -6230,6 +6277,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			// advertised `draft_fast` must not receive the field, because its refusal
 			// takes the whole create body (model and effort rung) with it.
 			draftFastCarries: false,
+			temporaryChats: false,
 			// Seeded from the launch argument when there is one, so the very first
 			// render is already the requested conversation rather than the persisted
 			// one. `merge` below holds the same line against hydration, which would
@@ -6422,6 +6470,13 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 								 * entirely - fails the two bullets above.
 								 */
 								include_archived: true,
+								/*
+								 * The temporary chats, under the capability only (the core's query
+								 * model is closed): one fetch then serves both the `Temporary · N`
+								 * group and the open chat's own countdown, and every normal list
+								 * partitions them out (`chat-temporary.ts`'s `partition`).
+								 */
+								...(get().temporaryChats ? { include_temporary: true } : {}),
 								/*
 								 * Omitted rather than sent as `false`, on the rule
 								 * `sessions.search`'s own query states: the pre-change request is
@@ -6788,6 +6843,8 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						op: "sessions.list",
 						limit: CATALOGUE_HEAD_PAGE,
 						include_archived: true,
+						// The head page's own flag, so the tail continues the same answer.
+						...(get().temporaryChats ? { include_temporary: true } : {}),
 						cursor,
 						/*
 						 * THE SAME ORDER THE HEAD PAGE WAS READ IN, and that sameness is the
@@ -7035,6 +7092,55 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			setCatalogueActivityHead: (activityHead) => {
 				if (get().catalogueActivityHead !== activityHead)
 					set({ catalogueActivityHead: activityHead });
+			},
+			setTemporaryChats: (enabled) => {
+				if (get().temporaryChats === enabled) return;
+				set({ temporaryChats: enabled });
+			},
+			setDraftTemporary: (key, temporary) =>
+				set((state) => {
+					// `setDraftPeer`'s rules: a pane that is gone records nothing, an
+					// unchanged value is not a change, and the create id is re-minted only
+					// while no session exists (a different body is a different request).
+					const present = state.drafts[key];
+					if (!present) return {};
+					if ((present.temporary === true) === temporary) return {};
+					return {
+						drafts: {
+							...state.drafts,
+							[key]: {
+								...present,
+								temporary: temporary ? true : undefined,
+								...(present.sessionId
+									? {}
+									: { createRequestId: crypto.randomUUID() }),
+							},
+						},
+					};
+				}),
+			setSessionTemporary: async (sessionId, temporary) => {
+				try {
+					const answer = await desktopResult<{
+						session_id: string;
+						temporary: SessionTemporaryInfo | null;
+					}>({ op: "sessions.temporary", sessionId, temporary });
+					const info =
+						answer && typeof answer.temporary === "object"
+							? answer.temporary
+							: null;
+					set((state) => ({
+						sessions: state.sessions.map((row) =>
+							row.session_id === sessionId ? { ...row, temporary: info } : row,
+						),
+					}));
+					return { ok: true };
+				} catch (error) {
+					return {
+						ok: false,
+						code: error instanceof DesktopControlError ? error.code : undefined,
+						detail: userFacingMessage(error, ""),
+					};
+				}
 			},
 			setDraftFastCarries: (carries) => {
 				if (get().draftFastCarries === carries) return;
@@ -7467,6 +7573,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				 * caller and every older daemon.
 				 */
 				peer?: string,
+				temporary?: boolean,
 			) => {
 				try {
 					const result = await desktopResult<{
@@ -7491,6 +7598,8 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						// And the third: a pane that never picked a device sends no `peer`, so its
 						// create is exactly what it always was.
 						...(peer ? { peer } : {}),
+						// Omitted unless true, the same additive rule as `peer`.
+						...(temporary ? { temporary: true } : {}),
 					});
 					/*
 					 * THE CREATED ROW CARRIES ITS BIRTH CLOCK (send smoothness, 2026-11-11).
@@ -7510,6 +7619,24 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						cwd,
 						binding: result.binding,
 						...(listed ? {} : { created_at: bornAt, updated_at: bornAt }),
+						/*
+						 * A temporary create is held as temporary from its first frame, so it
+						 * never flashes into the normal list before the next list read. The
+						 * core refuses a create whose mark it could not write, so the claim is
+						 * the create's own; `hold: "running"` is what the first turn is about
+						 * to be, and the next list read replaces the whole object with the
+						 * core's answer (idle window included).
+						 */
+						...(temporary
+							? {
+									temporary: {
+										marked_at: Date.now() / 1000,
+										idle_minutes: 30,
+										deletes_at: null,
+										hold: "running",
+									},
+								}
+							: {}),
 					});
 					/*
 					 * A CONVERSATION BORN ON A PEER SAYS SO ON ITS ROW, and the write that says
@@ -9051,6 +9178,9 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 								pinned,
 								title: before?.title || "",
 								detail: userFacingMessage(error, ""),
+								...(error instanceof DesktopControlError && error.code
+									? { code: error.code }
+									: {}),
 							},
 						};
 					});

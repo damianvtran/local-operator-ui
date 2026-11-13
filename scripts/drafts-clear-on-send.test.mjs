@@ -869,6 +869,58 @@ test("a create whose session the catalogue already listed keeps the owner's time
 	assert.equal(row.created_at, 900);
 });
 
+/*
+ * TEMPORARY CHATS THROUGH THE FIRST-SEND PATH (#1874 over #1872). Here rather
+ * than in `chat-temporary.test.mjs` because this is the suite that bundles the
+ * real store and drives `admitChatDraft` end to end; that one runs only the
+ * pure rules. The create's `temporary` and the row's birth clock are written by
+ * the same `createSession` call, so one observation at the message hop pins
+ * both features on the one path.
+ */
+test("a temporary draft's first send creates a temporary chat, and an ordinary draft's does not", async () => {
+	const observe = async (temporary) => {
+		reset();
+		store.setState({ temporaryChats: true });
+		let atMessage = null;
+		globalThis.__canonicalRequest = async (request) => {
+			calls.push(request);
+			if (request.op === "sessions.create")
+				return { session_id: "666666666666", binding: null };
+			if (request.op === "sessions.message") {
+				const state = store.getState();
+				atMessage = {
+					row: state.sessions.find((r) => r.session_id === "666666666666"),
+					draft: state.drafts[key],
+				};
+				return { status: "admitted" };
+			}
+			return { sessions: [], truncated: false };
+		};
+		const key = store.getState().stageDraft();
+		if (temporary) store.getState().setDraftTemporary(key, true);
+		try {
+			await admitChatDraft(key, input);
+		} finally {
+			store.setState({ temporaryChats: false });
+		}
+		const create = calls.find((c) => c.op === "sessions.create");
+		assert.ok(create, "the first send created its conversation");
+		assert.ok(atMessage, "the message hop ran");
+		return { create, ...atMessage };
+	};
+
+	const temp = await observe(true);
+	assert.equal(temp.create.temporary, true);
+	assert.equal(temp.row.temporary?.hold, "running");
+	assert.equal(temp.row.created_at, temp.row.updated_at);
+	assert.equal(temp.draft?.temporary, true, "the draft keeps its flag");
+
+	const plain = await observe(false);
+	assert.equal("temporary" in plain.create, false);
+	assert.equal(plain.row.temporary, undefined);
+	assert.equal(typeof plain.row.created_at, "number");
+});
+
 test("a second discard replaces the first offer, one slot", () => {
 	reset();
 	useConversationInputStore.setState({ inputByConversation: {} });

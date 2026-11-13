@@ -88,5 +88,6 @@
 	"ui.settings.shortcuts.capture.send_prompt": "Нажмите Ctrl/⌘+Enter или Alt+Enter. Один Enter завершает редактирование.",
 	"ui.settings.shortcuts.row_help.send_steer": "Отправить сразу, прервав шаг. Заменяет «Доставка, когда агент занят».",
 	"ui.settings.shortcuts.row_help.send_queue": "Ждать, не прерывая инструменты. Заменяет «Доставка, когда агент занят».",
-	"ui.settings.shortcuts.row_help.send_both": "Ждать, затем направить при долгом ожидании. Приоритетнее настройки «Доставка, когда агент занят»."
+	"ui.settings.shortcuts.row_help.send_both": "Ждать, затем направить при долгом ожидании. Приоритетнее настройки «Доставка, когда агент занят».",
+	"ui.settings.shortcuts.new_temporary_chat": "Зарезервировано: начинает новый временный чат."
 }

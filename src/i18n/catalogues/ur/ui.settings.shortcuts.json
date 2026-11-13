@@ -88,5 +88,6 @@
 	"ui.settings.shortcuts.capture.send_prompt": "Ctrl/⌘+Enter یا Alt+Enter دبائیں۔ صرف Enter ترمیم ختم کرتا ہے۔",
 	"ui.settings.shortcuts.row_help.send_steer": "فوراً بھیجتا ہے اور مرحلے میں مداخلت کرتا ہے۔ “مصروف ہونے پر ترسیل” کو بدل دیتا ہے۔",
 	"ui.settings.shortcuts.row_help.send_queue": "مرحلے کا انتظار کرتا ہے؛ ٹولز میں کبھی مداخلت نہیں کرتا۔ “مصروف ہونے پر ترسیل” کو بدل دیتا ہے۔",
-	"ui.settings.shortcuts.row_help.send_both": "انتظار، پھر دیر ہو تو ہدایت۔ “مصروف ہونے پر ترسیل” کی جگہ لاگو ہوتا ہے۔"
+	"ui.settings.shortcuts.row_help.send_both": "انتظار، پھر دیر ہو تو ہدایت۔ “مصروف ہونے پر ترسیل” کی جگہ لاگو ہوتا ہے۔",
+	"ui.settings.shortcuts.new_temporary_chat": "مخصوص: نئی عارضی چیٹ شروع کرتا ہے۔"
 }

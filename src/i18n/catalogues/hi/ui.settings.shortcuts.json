@@ -88,5 +88,6 @@
 	"ui.settings.shortcuts.capture.send_prompt": "Ctrl/⌘+Enter या Alt+Enter दबाएँ। अकेला Enter संपादन समाप्त करता है।",
 	"ui.settings.shortcuts.row_help.send_steer": "अभी भेजकर चल रहे चरण को रोकता है। उस संदेश के लिए “व्यस्त होने पर भेजने का तरीका” की जगह लागू होता है।",
 	"ui.settings.shortcuts.row_help.send_queue": "चरण पूरा होने तक रुकता है; टूल को कभी नहीं रोकता। उस संदेश के लिए “व्यस्त होने पर भेजने का तरीका” की जगह लागू होता है।",
-	"ui.settings.shortcuts.row_help.send_both": "पहले प्रतीक्षा करता है, देर हो तो दिशा देता है। उस संदेश के लिए “व्यस्त होने पर भेजने का तरीका” की जगह लागू होता है।"
+	"ui.settings.shortcuts.row_help.send_both": "पहले प्रतीक्षा करता है, देर हो तो दिशा देता है। उस संदेश के लिए “व्यस्त होने पर भेजने का तरीका” की जगह लागू होता है।",
+	"ui.settings.shortcuts.new_temporary_chat": "आरक्षित: नई अस्थायी चैट शुरू करता है।"
 }

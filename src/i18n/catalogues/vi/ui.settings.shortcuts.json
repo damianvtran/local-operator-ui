@@ -88,5 +88,6 @@
 	"ui.settings.shortcuts.capture.send_prompt": "Nhấn Ctrl/⌘+Enter hoặc Alt+Enter. Chỉ nhấn Enter sẽ kết thúc việc chỉnh sửa.",
 	"ui.settings.shortcuts.row_help.send_steer": "Gửi ngay, ngắt bước đang chạy. Ghi đè “Cách gửi khi bận”.",
 	"ui.settings.shortcuts.row_help.send_queue": "Chờ bước xong, không ngắt công cụ. Ghi đè “Cách gửi khi bận”.",
-	"ui.settings.shortcuts.row_help.send_both": "Chờ, rồi định hướng nếu chậm. Ghi đè “Cách gửi khi bận”."
+	"ui.settings.shortcuts.row_help.send_both": "Chờ, rồi định hướng nếu chậm. Ghi đè “Cách gửi khi bận”.",
+	"ui.settings.shortcuts.new_temporary_chat": "Dành riêng: bắt đầu một cuộc trò chuyện tạm thời mới."
 }

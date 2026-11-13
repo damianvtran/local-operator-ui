@@ -49,6 +49,7 @@
 	"ui.chat.composer.placeholder.secret_answer": "Ответьте на запрос секрета на панели запросов",
 	"ui.chat.composer.placeholder.sending": "Отправка сообщения",
 	"ui.chat.composer.placeholder.stopping": "Остановка хода",
+	"ui.chat.composer.placeholder.temporary": "Временный чат — не сохраняется в ваших чатах. Спросите что угодно",
 	"ui.chat.composer.placeholder.unavailable": "Этого разговора больше нет",
 	"ui.chat.composer.placeholder.waiting": "Отправляйте, пока агент работает. Enter отправит сразу · Esc остановит",
 	"ui.chat.composer.suggestion.code_review_agent": "Создайте агента для код-ревью",

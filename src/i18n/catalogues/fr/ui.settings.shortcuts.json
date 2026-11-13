@@ -88,5 +88,6 @@
 	"ui.settings.shortcuts.capture.send_prompt": "Appuyez sur Ctrl/⌘+Entrée ou Alt+Entrée. Entrée seule termine la modification.",
 	"ui.settings.shortcuts.row_help.send_steer": "Envoyer et interrompre l’étape. Remplace « Envoi quand l’agent est occupé ».",
 	"ui.settings.shortcuts.row_help.send_queue": "Attendre, sans interrompre d’outil. Remplace « Envoi quand l’agent est occupé ».",
-	"ui.settings.shortcuts.row_help.send_both": "Attendre, puis orienter si ça tarde. Remplace « Envoi quand l’agent est occupé »."
+	"ui.settings.shortcuts.row_help.send_both": "Attendre, puis orienter si ça tarde. Remplace « Envoi quand l’agent est occupé ».",
+	"ui.settings.shortcuts.new_temporary_chat": "Réservé : démarre une nouvelle conversation temporaire."
 }

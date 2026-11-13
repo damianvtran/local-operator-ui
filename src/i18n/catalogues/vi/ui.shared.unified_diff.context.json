@@ -1,0 +1,67 @@
+{
+	"ui.shared.unified_diff.accessible": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.shared.unified_diff.no_changes": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.shared.unified_diff.changes": {
+		"role": "Count of change blocks in the diff header",
+		"tone": "Plain, factual",
+		"note": "ICU plural on {count}; give every CLDR category the language needs, including a singular 'one' arm."
+	},
+	"ui.shared.unified_diff.stats_accessible": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.shared.unified_diff.position": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.shared.unified_diff.previous": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.shared.unified_diff.previous_hint": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.shared.unified_diff.next": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.shared.unified_diff.next_hint": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.shared.unified_diff.show_unchanged": {
+		"role": "Button that expands a folded run of unchanged lines in a diff",
+		"tone": "Imperative, short",
+		"note": "ICU plural on {count} (2 or more in practice, 1 possible). Provide singular agreement in a 'one' arm where the language needs it; languages without plural agreement may keep the plain {count}."
+	},
+	"ui.shared.unified_diff.hide_unchanged": {
+		"role": "Button that folds an expanded run of unchanged lines back",
+		"tone": "Imperative, short",
+		"note": "Pair of show_unchanged; same plural rules and word order so the two read as one toggle."
+	},
+	"ui.shared.unified_diff.line_added": {
+		"role": "Screen-reader-only prefix read before an added diff line",
+		"tone": "Single word or short label followed by a colon",
+		"note": "Visually hidden; spoken before the line's own text, which is user content and is not translated. Keep it short and end it the way a label ends in your language."
+	},
+	"ui.shared.unified_diff.line_removed": {
+		"role": "Screen-reader-only prefix read before a removed diff line",
+		"tone": "Single word or short label followed by a colon",
+		"note": "Visually hidden; spoken before the line's own text, which is user content and is not translated. Keep it short and end it the way a label ends in your language."
+	}
+}

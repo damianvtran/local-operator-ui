@@ -1006,6 +1006,15 @@ export type DesktopFeature =
 	 */
 	| "projects_force_done"
 	/**
+	 * Temporary chats: a conversation the core deletes after its idle window
+	 * (`temporary` on the row, `include_temporary` on the list, `temporary` on
+	 * create, `POST /v1/desktop/sessions/{id}/temporary`). Absent means no toggle,
+	 * no pill, no `Temporary` group, no Ctrl+Shift+N and no palette entry, and this
+	 * client never sends either field: the core's input models are closed, so an
+	 * ungated send would be a 422 (the `projects_force_done` precedent above).
+	 */
+	| "temporary_chats"
+	/**
 	 * Moving a conversation between devices: `POST /v1/desktop/sessions/{id}/transfer`.
 	 *
 	 * ITS OWN KEY rather than a version of `peers`, and the split is the backend's
@@ -1055,6 +1064,16 @@ export type DesktopFeature =
 	 * filed - and offers no signature.
 	 */
 	| "profile_approvals"
+	/**
+	 * PROFILE PROPOSALS (`features.profile_proposals`): the Agents-side review of
+	 * a change an agent proposed to an account agent or team -
+	 * `GET/POST /v1/desktop/profile-proposals[...]`. ITS OWN KEY because a backend
+	 * without it has no such routes, and because it is also the signal that core
+	 * stopped filing these as mesh approvals: with it present the Mesh tray drops
+	 * any profile row it still sees (`mesh-approvals.ts`). Absent ⇒ no Agents badge,
+	 * no proposal panel, no "Review in Agents" link - today's UI unchanged.
+	 */
+	| "profile_proposals"
 	/*
 	 * AIDA'S CONTROL PLANE (`features.aida`): the read and the control op the
 	 * sidebar's row and the composer's `/aida` share. ITS OWN KEY rather than a

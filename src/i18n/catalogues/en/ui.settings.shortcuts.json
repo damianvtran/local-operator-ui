@@ -88,5 +88,6 @@
 	"ui.settings.shortcuts.capture.send_prompt": "Press Ctrl/⌘+Enter or Alt+Enter. Enter alone ends the edit.",
 	"ui.settings.shortcuts.row_help.send_steer": "Send now, interrupting the step. Overrides Delivery when busy.",
 	"ui.settings.shortcuts.row_help.send_queue": "Wait for the step; never interrupt tools. Overrides Delivery when busy.",
-	"ui.settings.shortcuts.row_help.send_both": "Wait, then steer if slow. Overrides Delivery when busy."
+	"ui.settings.shortcuts.row_help.send_both": "Wait, then steer if slow. Overrides Delivery when busy.",
+	"ui.settings.shortcuts.new_temporary_chat": "Reserved: starts a new temporary chat."
 }

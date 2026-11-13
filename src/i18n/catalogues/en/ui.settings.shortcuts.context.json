@@ -571,5 +571,11 @@
 		"length": "One short sentence.",
 		"note": "Sits under the Send as queue, then steer row: what the key does and that it overrides Delivery when busy.",
 		"placeholders": {}
+	},
+	"ui.settings.shortcuts.new_temporary_chat": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: starts a new temporary chat (Ctrl+Shift+N, or Command+Shift+N on macOS)."
 	}
 }

@@ -287,6 +287,10 @@ export const LEGACY_BROWSER_CHORDS: ReadonlySet<string> = new Set([
 	"primary+shift+t",
 	"primary+l",
 	...[1, 2, 3, 4, 5, 6, 7, 8, 9].map((digit) => `primary+${digit}`),
+	// Not a browser chord, but the same downgrade promise: it was assignable
+	// until temporary chats reserved it for `new-chat-shortcut.ts` (review
+	// R1-4), so a saved binding on it is kept dormant rather than erased.
+	"primary+shift+n",
 ]);
 
 /*
@@ -355,6 +359,9 @@ export const RESERVED_CHORDS: ReadonlyMap<string, string> =
 		// action.
 		["primary+k", () => t("ui.settings.shortcuts.reserved.palette_chats")],
 		["primary+n", () => t("ui.settings.shortcuts.reserved.new_chat")],
+		// The temporary-chat chord (`new-chat-shortcut.ts`); reserved even on a core
+		// without `temporary_chats` so a binding cannot start firing once it lands.
+		["primary+shift+n", () => t("ui.settings.shortcuts.new_temporary_chat")],
 		["primary+b", () => t("ui.settings.shortcuts.reserved.toggle_sidebar")],
 		// Focus-dependent: inside the browser surface these are page back/forward
 		// (`shared/browser-chord.ts`); everywhere else they move between chats.

@@ -11,6 +11,7 @@
 	"ui.chat.composer.placeholder.secret_answer": "Answer the secret request in the asks panel",
 	"ui.chat.composer.placeholder.sending": "Sending your message",
 	"ui.chat.composer.placeholder.stopping": "Stopping the turn",
+	"ui.chat.composer.placeholder.temporary": "Temporary chat — not saved to your chats. Ask anything",
 	"ui.chat.composer.placeholder.unavailable": "This conversation is gone",
 	"ui.chat.composer.placeholder.waiting": "Send while the agent works. Enter sends now · Esc stops",
 	"ui.chat.composer.start_recording": "Start recording",

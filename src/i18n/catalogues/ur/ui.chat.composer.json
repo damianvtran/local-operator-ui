@@ -11,6 +11,7 @@
 	"ui.chat.composer.placeholder.secret_answer": "سوالات کے پینل میں راز کی درخواست کا جواب دیں",
 	"ui.chat.composer.placeholder.sending": "آپ کا پیغام بھیجا جا رہا ہے",
 	"ui.chat.composer.placeholder.stopping": "باری روکی جا رہی ہے",
+	"ui.chat.composer.placeholder.temporary": "عارضی چیٹ — آپ کی چیٹس میں محفوظ نہیں ہوتی۔ کچھ بھی پوچھیں",
 	"ui.chat.composer.placeholder.unavailable": "یہ گفتگو اب موجود نہیں",
 	"ui.chat.composer.placeholder.waiting": "ایجنٹ کے کام کے دوران بھیجیں۔ Enter ابھی بھیجتا ہے · Esc روکتا ہے",
 	"ui.chat.composer.start_recording": "ریکارڈنگ شروع کریں",

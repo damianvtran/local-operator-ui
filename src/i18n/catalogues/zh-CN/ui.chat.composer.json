@@ -49,6 +49,7 @@
 	"ui.chat.composer.placeholder.secret_answer": "在请求面板中填写敏感信息",
 	"ui.chat.composer.placeholder.sending": "正在发送消息",
 	"ui.chat.composer.placeholder.stopping": "正在停止轮次",
+	"ui.chat.composer.placeholder.temporary": "临时对话——不会保存到你的对话列表。有问题尽管问",
 	"ui.chat.composer.placeholder.unavailable": "此对话已不存在",
 	"ui.chat.composer.placeholder.waiting": "智能体工作时发送。Enter立即发送 · Esc停止",
 	"ui.chat.composer.suggestion.code_review_agent": "构建一个代码审查智能体",

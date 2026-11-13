@@ -278,10 +278,18 @@ export type ProfileTypedApproval = z.infer<typeof profileTypedApprovalSchema>;
  * is present the card says the changes are not included rather than claiming the
  * diff is empty.
  */
-export const PROFILE_RECEIPT_STATUSES = ["queued", "applied"] as const;
+export const PROFILE_RECEIPT_STATUSES = [
+	"queued",
+	"applied",
+	"proposed",
+] as const;
 export const profileQueuedReceiptSchema = z
 	.object({
 		status: z.enum(PROFILE_RECEIPT_STATUSES),
+		proposal_id: z
+			.string()
+			.regex(/^pp_[a-f0-9]{16}$/)
+			.optional(),
 		approval_id: z.string().min(1).max(64).optional(),
 		request_digest: digest.optional(),
 		expires_at: z.number().finite().optional(),

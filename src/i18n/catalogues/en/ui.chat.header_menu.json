@@ -10,5 +10,7 @@
 	"ui.chat.header_menu.open_canvas": "Open canvas",
 	"ui.chat.header_menu.open_code_review": "Open code review",
 	"ui.chat.header_menu.open_console": "Open console",
-	"ui.chat.header_menu.rename_failed": "Could not rename the conversation"
+	"ui.chat.header_menu.rename_failed": "Could not rename the conversation",
+	"ui.chat.header_menu.keep_chat": "Keep chat",
+	"ui.chat.header_menu.make_temporary": "Make temporary…"
 }

@@ -8,5 +8,11 @@
 	"ui.chat.dialogs.options.title": "चैट विकल्प",
 	"ui.chat.dialogs.delete_action": "हटाएँ",
 	"ui.chat.dialogs.archive_action": "संग्रहित करें",
-	"ui.chat.dialogs.cancel": "रद्द करें"
+	"ui.chat.dialogs.cancel": "रद्द करें",
+	"ui.chat.dialogs.make_temporary_title": "इस चैट को अस्थायी बनाएँ?",
+	"ui.chat.dialogs.make_temporary_deleted": "यह अभी आपकी चैट सूची से हट जाएगी। तय समय तक निष्क्रिय रहने पर (डिफ़ॉल्ट रूप से 30 मिनट) यह चैट, इसके संदेश और अटैचमेंट हटा दिए जाएँगे।",
+	"ui.chat.dialogs.make_temporary_kept": "रखी जाएँगी: वे फ़ाइलें जो इसने आपके कंप्यूटर पर बदलीं।",
+	"ui.chat.dialogs.make_temporary_confirm": "अस्थायी बनाएँ",
+	"ui.chat.dialogs.keep_and_link": "रखें और लिंक करें",
+	"ui.chat.dialogs.keep_and_pin": "रखें और पिन करें"
 }

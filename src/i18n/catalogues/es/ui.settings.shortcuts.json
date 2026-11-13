@@ -88,5 +88,6 @@
 	"ui.settings.shortcuts.capture.send_prompt": "Pulsa Ctrl/⌘+Enter o Alt+Enter. Enter por sí solo termina la edición.",
 	"ui.settings.shortcuts.row_help.send_steer": "Envía ya e interrumpe el paso. Anula “Entrega con el agente ocupado”.",
 	"ui.settings.shortcuts.row_help.send_queue": "Espera; no interrumpe herramientas. Anula “Entrega con el agente ocupado”.",
-	"ui.settings.shortcuts.row_help.send_both": "Espera y luego guía si tarda. Anula “Entrega con el agente ocupado”."
+	"ui.settings.shortcuts.row_help.send_both": "Espera y luego guía si tarda. Anula “Entrega con el agente ocupado”.",
+	"ui.settings.shortcuts.new_temporary_chat": "Reservado: inicia un chat temporal nuevo."
 }
