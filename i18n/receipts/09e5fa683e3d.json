@@ -1,0 +1,18 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "09e5fa683e3d",
+  "status": "passed",
+  "namespace": "ui.chat.trace",
+  "sha256": {
+    "fr": "d36e8d5b43ab8641a89f5a7c6aadc20ecf2e94f1d7c5f91c5fd21443f3d0278f",
+    "en": "0576cbf1b116e36b236c4b210607bf8d2ed5b7e2442c739f5763ef28dd154b6a"
+  },
+  "findings": [
+    {
+      "severity": "NIT",
+      "key": "ui.chat.trace.send.delivery.failed.verb",
+      "note": "Tenté kept: standalone tenté also reads 'tempted'; position and co-text rule it out, and every alternative (Tentative noun, Essayé register, any two-word form) is worse against style-guides/fr.md:17; recorded as weighed and accepted, no change requested."
+    }
+  ]
+}

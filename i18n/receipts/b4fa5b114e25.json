@@ -1,0 +1,23 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "b4fa5b114e25",
+  "status": "passed",
+  "namespace": "ui.chat.trace",
+  "sha256": {
+    "ru": "8814bddc99b29682dbf944388424ed4f1be528e97dc2ed19e4d5b5c657749aca",
+    "en": "0576cbf1b116e36b236c4b210607bf8d2ed5b7e2442c739f5763ef28dd154b6a"
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.trace.send.delivery.mailbox.label",
+      "note": "Same English term 'wake unconfirmed' renders two ways in the namespace: drawn word 'пробуждение без ответа' vs spoken label 'доставлено, пробуждение не подтверждено' (es/fr/zh-CN keep one predicate in both slots); align the sr-only label to 'доставлено, пробуждение без ответа' — never painted, so zero width cost."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.trace.send.delivery.mailbox.word",
+      "note": "Residual width after the RU-3 fix: 149.6px vs English 106.4px (1.41x, was 1.80x) leaves the amber cluster ~27px wider than the 19rem gate derivation; it cannot overflow because the word sheds to the mark below 19rem — worth a rendered frame at 414px and 320px only."
+    }
+  ]
+}
