@@ -1,4 +1,3 @@
-import { openConversation } from "@features/chat/open-conversation";
 import { retryDesktopQuery } from "@shared/api/local-operator/backend-error";
 /**
  * The asks drawer's Updates tab and its tab strip (decisions D9, design.md
@@ -34,6 +33,7 @@ import {
 import {
 	type FC,
 	type KeyboardEvent,
+	type MouseEvent,
 	useCallback,
 	useEffect,
 	useId,
@@ -373,7 +373,26 @@ export const DrawerUpdates: FC<{
 	);
 	const unread = rows.filter((item) => !item.read);
 	const read = rows.filter((item) => item.read);
-	const shown = view === "unread" ? unread : read;
+	/*
+	 * AN OPENED ROW STAYS ON UNREAD UNTIL THE NEXT NAVIGATION (UX round 1, U4) -
+	 * the page's own rule (`notifications-page.tsx`, "ROWS MARKED READ STAY ON THE
+	 * UNREAD FILTER", the Gmail/Linear rule). Opening marks the item read, and it
+	 * used to vanish from Unread: Back landed on a different row with nothing to
+	 * say why, and an Undo of a dismiss from the detail "Restored" a row that never
+	 * reappeared. Ids opened from Unread are kept (drawn as read) until the view
+	 * changes or the drawer unmounts; Back lands on the SAME row (AC3) and `U`
+	 * still makes it unread in place. Only openings are kept: `R`/`E` and the row's
+	 * own controls keep their remove-and-hand-off behaviour.
+	 */
+	const [keptRead, setKeptRead] = useState<ReadonlySet<string>>(
+		() => new Set(),
+	);
+	const shown =
+		view === "unread"
+			? keptRead.size === 0
+				? unread
+				: rows.filter((item) => !item.read || keptRead.has(item.id))
+			: read;
 	const listElement = useRef<HTMLDivElement>(null);
 	const focusedRow = useRef<{ id: string; index: number } | null>(null);
 	const focusedElement = useRef<HTMLElement | null>(null);
@@ -489,7 +508,32 @@ export const DrawerUpdates: FC<{
 				);
 		target?.focus({ preventScroll: true });
 	}, [openId, shown]);
+	/*
+	 * A DOUBLE-CLICK DOES NOT SPAN THE SWAP (UX round 1, U1). The detail takes the
+	 * list's place at the same coordinates, so the second click of a double-click
+	 * on a title landed on "Back" (the detail closed, the item silently consumed),
+	 * and the second click on Back opened - and marked read - whichever row now sat
+	 * under the pointer. After a swap, a click whose `detail` says it continues a
+	 * multi-click sequence is swallowed until a fresh press (`mousedown` with
+	 * `detail` 1) starts a new one. The bound is the platform's own double-click
+	 * interval (that is what resets `detail` to 1), so no timeout of ours guesses
+	 * at it; keyboard activation carries `detail` 0 and is never touched.
+	 */
+	const swallowRepeat = useRef(false);
+	const guardRepeat = {
+		onMouseDownCapture: (event: MouseEvent) => {
+			if (event.detail <= 1) swallowRepeat.current = false;
+		},
+		onClickCapture: (event: MouseEvent) => {
+			if (!swallowRepeat.current || event.detail <= 1) return;
+			event.preventDefault();
+			event.stopPropagation();
+		},
+	};
 	const openDetail = (item: DesktopNotificationItem) => {
+		if (view === "unread" && !keptRead.has(item.id))
+			setKeptRead((current) => new Set(current).add(item.id));
+		swallowRepeat.current = true;
 		openOrigin.current = {
 			id: item.id,
 			index: shown.findIndex((row) => row.id === item.id),
@@ -502,6 +546,7 @@ export const DrawerUpdates: FC<{
 		setOpenId(item.id);
 	};
 	const closeDetail = () => {
+		swallowRepeat.current = true;
 		focusOnSwap.current = true;
 		setOpenId(null);
 	};
@@ -688,10 +733,18 @@ export const DrawerUpdates: FC<{
 					openOrigin.current = null;
 					setOpenId(null);
 					setView(next);
+					/* A view change is the navigation that releases kept rows (U4). */
+					setKeptRead(new Set());
 				}}
 				unreadCount={unreadCount}
 				action={
-					view === "unread" && unread.length > 0 ? (
+					/*
+					 * NOT WHILE A DETAIL IS OPEN (design round 1, D5): the bulk "Mark read"
+					 * marks the whole conversation, and it sat ~80 px above the detail's
+					 * per-item "Mark read" - same words, different reach. The segmented
+					 * control sets the row's height, so hiding it moves nothing.
+					 */
+					view === "unread" && unread.length > 0 && !openItem ? (
 						<Button
 							variant="ghost"
 							size="sm"
@@ -715,7 +768,16 @@ export const DrawerUpdates: FC<{
 					key="detail"
 					ref={detailRegion}
 					data-drawer-detail={openItem.id}
-					className="flex min-h-0 flex-1 flex-col"
+					/*
+					 * FOCUSABLE, NOT TABBABLE (UX round 1, U2). A pointer press on the body
+					 * focuses the nearest focusable ancestor; without this that was the
+					 * drawer pane (`tabIndex=-1`, an ANCESTOR of this region), so the Escape
+					 * below never saw the key and the pane closed the whole drawer, detail
+					 * and all. The region itself takes that focus now.
+					 */
+					tabIndex={-1}
+					className="flex min-h-0 flex-1 flex-col outline-none"
+					{...guardRepeat}
 					/*
 					 * ESCAPE STEPS BACK ONE LEVEL. In the list Escape still closes the
 					 * drawer (`ask-drawer.tsx` claims it on the pane); inside a detail it
@@ -746,6 +808,7 @@ export const DrawerUpdates: FC<{
 						error={detail.isError}
 						nowMs={nowMs}
 						narrow
+						ground="elevated"
 						writesPaused={list.isError}
 						/* No conversation-wide dismiss here: see `onDismissSession`. */
 						sessionDismissCount={null}
@@ -754,7 +817,7 @@ export const DrawerUpdates: FC<{
 						onOpenInNotifications={(item) =>
 							navigate(notificationPath(item.id))
 						}
-						onOpenConversation={(id) => void openConversation(navigate, id)}
+						/* No `onOpenConversation`: this drawer IS that conversation (D3). */
 						onToggleRead={(item) =>
 							applyWrite(item, item.read ? "unread" : "read")
 						}
@@ -775,6 +838,7 @@ export const DrawerUpdates: FC<{
 					key="list"
 					data-drawer-updates=""
 					ref={listElement}
+					{...guardRepeat}
 					onFocusCapture={(event) => {
 						const row = (event.target as HTMLElement).closest<HTMLElement>(
 							"[data-drawer-update]",
@@ -1070,9 +1134,10 @@ const DrawerRow: FC<{
 						"focus-visible:outline-2 focus-visible:outline-accent",
 					)}
 				>
+					{/* Its own hover cue (design round 1, D7); resting pixels unchanged. */}
 					<span
 						className={cn(
-							"w-full truncate text-body-sm",
+							"w-full truncate text-body-sm underline-offset-2 hover:underline",
 							item.read ? "text-ink-muted" : "font-semibold text-ink",
 						)}
 					>

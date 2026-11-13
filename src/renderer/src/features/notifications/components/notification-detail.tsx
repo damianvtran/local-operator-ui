@@ -74,6 +74,15 @@ export type NotificationDetailProps = {
 	nowMs: number;
 	/** Narrow window: the detail replaces the list and draws a back link. */
 	narrow: boolean;
+	/*
+	 * THE GROUND THE PANE SITS ON (design round 1, D2/D6). The page draws the
+	 * detail on its `surface` panel; the conversation drawer is itself `elevated`.
+	 * The loading skeletons were forced to `bg-elevated` for the page, which on the
+	 * drawer is the drawer's own colour - 1.00:1, an empty band under a "Loading"
+	 * announcement. The sticky back row (narrow) also needs an opaque ground that
+	 * matches, or content scrolling under it shows through. Default: the page.
+	 */
+	ground?: "surface" | "elevated";
 	writesPaused: boolean;
 	/** How many items "Dismiss all from this conversation" would name. */
 	/*
@@ -97,7 +106,15 @@ export type NotificationDetailProps = {
 	 * it IS that place.
 	 */
 	onOpenInNotifications?: (item: DesktopNotificationItem) => void;
-	onOpenConversation: (sessionId: string) => void;
+	/*
+	 * OPTIONAL (design round 1, D3; code review n1). The conversation drawer lists
+	 * only the open conversation's updates, so "Open conversation" there opened the
+	 * conversation already on screen - the pane's one filled primary spent on a
+	 * no-op, and it pushed the ⋯ trigger onto a line of its own at 320 px. A surface
+	 * that passes nothing draws no such button, and the From card's name becomes
+	 * plain text rather than a link to where the reader already is.
+	 */
+	onOpenConversation?: (sessionId: string) => void;
 	onToggleRead: (item: DesktopNotificationItem) => void;
 	onDismiss: (item: DesktopNotificationItem) => void;
 	/*
@@ -127,6 +144,7 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 	error,
 	nowMs,
 	narrow,
+	ground = "surface",
 	writesPaused,
 	sessionDismissCount,
 	onClose,
@@ -173,13 +191,33 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 		>
 			{/* Wraps rather than squeezes: at the drawer's 320 px a long translation of
 			    the back link and "Open in Notifications" cannot share one line. */}
-			<div className="flex flex-wrap items-center justify-between gap-2">
+			<div
+				className={cn(
+					"flex flex-wrap items-center justify-between gap-2",
+					/*
+					 * STICKY WHEN NARROW (design round 1, D6). The row is inside this
+					 * scroller, so with a long body both of the pane's ways out - Back and
+					 * "Open in Notifications" - scrolled away with it. Pinned to the top on
+					 * the pane's own ground, bled over the scroller's padding so content
+					 * passes cleanly under it; nothing outside the pane moves.
+					 */
+					narrow && "sticky top-0 z-10 -mx-6 -mt-4 shrink-0 px-6 py-2",
+					narrow && (ground === "elevated" ? "bg-elevated" : "bg-surface"),
+				)}
+			>
 				{narrow ? (
 					<Button
 						variant="ghost"
 						size="sm"
 						onClick={onClose}
 						data-notification-detail-back=""
+						/*
+						 * ESCAPE IS ANNOUNCED, NOT ONLY HANDLED (UX round 1, U6). Focus opens
+						 * on the title, after this button, so a keyboard walk never reaches
+						 * Back; Escape does the same thing on both surfaces, and this names it
+						 * to assistive tech with no new copy.
+						 */
+						aria-keyshortcuts="Escape"
 					>
 						<ArrowLeft className="rtl:-scale-x-100" aria-hidden="true" />
 						{backLabel ?? t("ui.notifications.detail.back")}
@@ -243,8 +281,15 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 			 * is in that card; the tooltip carries the first 300 characters only
 			 * (code review R3: a 10k-character native tooltip is a wall over the pane).
 			 */}
+			{/*
+			 * `shrink-0` (design round 1, D1 = QA Q-1). `line-clamp` sets `overflow:
+			 * hidden`, which drops a flex item's automatic minimum height to 0, and this
+			 * `overflow-y-auto` column then shrank the title to 0 px whenever the body
+			 * overflowed - no visible title, and the focus that opening moves here landed
+			 * on nothing. Measured on the page's detail too; the fix holds for both.
+			 */}
 			<h2
-				className="mt-3 line-clamp-3 text-heading text-ink"
+				className="mt-3 line-clamp-3 shrink-0 text-heading text-ink"
 				title={titleTooltip(item.title)}
 				data-notification-detail-title=""
 				tabIndex={-1}
@@ -279,15 +324,17 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 			)}
 
 			<div className="mt-4 flex flex-wrap items-center gap-2">
-				<Button
-					variant="primary"
-					size="sm"
-					onClick={() => onOpenConversation(item.session.id)}
-					data-notification-open-conversation=""
-				>
-					<ExternalLink aria-hidden="true" className="rtl:-scale-x-100" />
-					{t("ui.notifications.detail.open_conversation")}
-				</Button>
+				{onOpenConversation && (
+					<Button
+						variant="primary"
+						size="sm"
+						onClick={() => onOpenConversation(item.session.id)}
+						data-notification-open-conversation=""
+					>
+						<ExternalLink aria-hidden="true" className="rtl:-scale-x-100" />
+						{t("ui.notifications.detail.open_conversation")}
+					</Button>
+				)}
 				<Button
 					variant="secondary"
 					size="sm"
@@ -389,9 +436,17 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 					role="status"
 					aria-label={t("ui.notifications.detail.loading")}
 				>
-					<Skeleton className="h-3 w-full bg-elevated" />
-					<Skeleton className="h-3 w-5/6 bg-elevated" />
-					<Skeleton className="h-3 w-2/3 bg-elevated" />
+					{/* On an elevated ground the default `bg-placeholder` is the visible
+					    step (design round 1, D2); `bg-elevated` there drew nothing. */}
+					<Skeleton
+						className={cn("h-3 w-full", ground === "surface" && "bg-elevated")}
+					/>
+					<Skeleton
+						className={cn("h-3 w-5/6", ground === "surface" && "bg-elevated")}
+					/>
+					<Skeleton
+						className={cn("h-3 w-2/3", ground === "surface" && "bg-elevated")}
+					/>
 				</div>
 			) : body ? (
 				/*
@@ -447,13 +502,23 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 
 			<DetailSection title={t("ui.notifications.detail.section.from")}>
 				<div className="flex items-center justify-between gap-3 rounded-md bg-surface px-3 py-2">
-					<button
-						type="button"
-						onClick={() => onOpenConversation(item.session.id)}
-						className="min-w-0 truncate text-start text-body-sm text-ink hover:underline"
-					>
-						{detail?.session.title || source}
-					</button>
+					{onOpenConversation ? (
+						<button
+							type="button"
+							onClick={() => onOpenConversation(item.session.id)}
+							className="min-w-0 truncate text-start text-body-sm text-ink hover:underline"
+						>
+							{detail?.session.title || source}
+						</button>
+					) : (
+						/* No door to open (D3): the name is a label, not a link. */
+						<span
+							className="min-w-0 truncate text-body-sm text-ink"
+							data-notification-from-name=""
+						>
+							{detail?.session.title || source}
+						</span>
+					)}
 					{/*
 					 * MOUNTED WHILE COUNTING (design round 5, D3). Hiding the button until the
 					 * walk answered made the From card grow 8.5 px when the number arrived,

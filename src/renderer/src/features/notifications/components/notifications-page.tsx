@@ -675,6 +675,45 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 		? (byId.get(notificationId) ?? detail.data?.item ?? null)
 		: null;
 
+	/*
+	 * A DEEP-LINKED READ ITEM IS KEPT ON THE UNREAD FILTER (UX round 1, U3).
+	 * "Open in Notifications" from the conversation drawer lands here with an item
+	 * the drawer's own opening already marked read, and the page's default Unread
+	 * filter then listed no row for it: the detail showed, but nothing in the list
+	 * was selected - the operator asked for "that notification selected". The page
+	 * already has the rule for this (ROWS MARKED READ STAY ON THE UNREAD FILTER,
+	 * above), so the linked item simply enters `stickyRead` and leaves it the way
+	 * any kept read does: on a filter change or a refresh. Once per link: after
+	 * the person clears it, it is not put back. The row is then scrolled into view.
+	 */
+	const keptLink = useRef<string | null>(null);
+	const scrollToLinked = useRef<string | null>(null);
+	useEffect(() => {
+		const item = detail.data?.item;
+		if (!notificationId) {
+			keptLink.current = null;
+			return;
+		}
+		if (item?.id !== notificationId || keptLink.current === item.id) return;
+		if (readState !== "unread" || !item.read || item.dismissed) return;
+		if (byId.has(item.id)) return;
+		keptLink.current = item.id;
+		scrollToLinked.current = item.id;
+		setStickyRead((current) => new Map(current).set(item.id, item));
+	}, [notificationId, detail.data, readState, byId]);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: order is the rendered rows' invalidation signal; the row is looked up in the DOM
+	useEffect(() => {
+		const id = scrollToLinked.current;
+		if (!id) return;
+		const node = listRef.current?.querySelector<HTMLElement>(
+			`[data-notification-row="${CSS.escape(id)}"]`,
+		);
+		if (!node) return;
+		scrollToLinked.current = null;
+		/* Optional call: jsdom (the unit tests' DOM) has no `scrollIntoView`. */
+		node.scrollIntoView?.({ block: "nearest" });
+	}, [order]);
+
 	/* Opening a detail is an explicit read; the rule (and why) lives with the
 	   pane so the conversation drawer's detail marks exactly as this page does. */
 	useOpenedDetailRead(

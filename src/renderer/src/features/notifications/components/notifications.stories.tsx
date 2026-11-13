@@ -1408,8 +1408,30 @@ export const DrawerUpdatesDetail: Story = {
 	},
 };
 
+/*
+ * THE SHUTTER WAITS FOR THE STATE THE FRAME CLAIMS (frames round 1, F4). The
+ * loading and error panes arrive after the list read and the swap, so a capture
+ * taken on mount photographed the list or an empty band under the story's name.
+ * Same latch as the ask-door stories: `capturePending` until the selector is
+ * drawn, `captureFailed` when it never is.
+ */
+const holdDetailFrame =
+	(selector: string) =>
+	async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+		const root = document.documentElement;
+		root.dataset.capturePending = "true";
+		if (await waitFor(() => canvasElement.querySelector(selector) !== null)) {
+			await document.fonts.ready;
+			await new Promise<void>((resolve) =>
+				requestAnimationFrame(() => resolve()),
+			);
+			delete root.dataset.capturePending;
+		} else root.dataset.captureFailed = "true";
+	};
+
 /** The detail read still in flight: the row's own title and excerpt, then skeletons. */
 export const DrawerUpdatesDetailLoading: Story = {
+	play: holdDetailFrame('[data-drawer-detail] [role="status"]'),
 	render: () => {
 		install({ items: DRAWER_ITEMS, waiting: [], detailMode: "hang" });
 		return (
@@ -1422,6 +1444,7 @@ export const DrawerUpdatesDetailLoading: Story = {
 
 /** The detail read refused: the row's content stays, with the pane's error notice. */
 export const DrawerUpdatesDetailError: Story = {
+	play: holdDetailFrame('[data-drawer-detail] [role="alert"]'),
 	render: () => {
 		install({ items: DRAWER_ITEMS, waiting: [], detailMode: "fail" });
 		return (

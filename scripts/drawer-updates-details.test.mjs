@@ -286,6 +286,9 @@ async function mount(options = {}) {
 								"div",
 								{
 									"data-probe-drawer": "",
+									/* Focusable like `ask-drawer.tsx`'s pane section (U2): a press
+									   on non-interactive content focuses the nearest such ancestor. */
+									tabIndex: -1,
 									onKeyDown: (event) => {
 										if (event.key === "Escape") drawerEscapes += 1;
 									},
@@ -328,6 +331,25 @@ async function mount(options = {}) {
 			node.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
 		});
 	};
+	/*
+	 * One press of a pointer sequence: `mousedown`, `mouseup`, `click`, each with
+	 * the click count `detail` the browser gives them (1 for a fresh press, 2 for
+	 * the second press of a double-click).
+	 */
+	const press = async (selector, detail = 1) => {
+		const node = q(selector);
+		assert.ok(node, `${selector} is drawn`);
+		await act(async () => {
+			for (const type of ["mousedown", "mouseup", "click"])
+				node.dispatchEvent(
+					new window.MouseEvent(type, {
+						bubbles: true,
+						cancelable: true,
+						detail,
+					}),
+				);
+		});
+	};
 	const key = async (node, value) => {
 		await act(async () => {
 			node.dispatchEvent(
@@ -350,6 +372,7 @@ async function mount(options = {}) {
 		q,
 		settle,
 		click,
+		press,
 		key,
 		details,
 		writes,
@@ -382,8 +405,10 @@ test(
 			);
 			assert.ok(described && button.contains(described));
 			/* No interactive element inside it, and it is inside none. */
-			assert.equal(button.querySelector("button, a, [tabindex]"), null);
-			assert.equal(button.parentElement.closest("button"), null);
+			/* `=== null`, never `assert.equal` on a node: its failure message
+			   inspects the React-mounted tree and hangs the run (code review m1). */
+			assert.ok(button.querySelector("button, a, [tabindex]") === null);
+			assert.ok(button.parentElement.closest("button") === null);
 			/* The row's other controls are still drawn beside it. */
 			for (const action of ["read", "dismiss"])
 				assert.ok(
@@ -426,7 +451,7 @@ test(
 				"focus moved into the detail's heading",
 			);
 			/* The list is swapped out; the view switch and footer stay put. */
-			assert.equal(page.q("[data-drawer-updates]"), null);
+			assert.ok(page.q("[data-drawer-updates]") === null, "list swapped out");
 			assert.ok(page.q('[data-drawer-read-view="unread"]'));
 			assert.ok(page.q("[data-notification-detail-back]"));
 			assert.equal(
@@ -434,7 +459,11 @@ test(
 				"Back to updates",
 			);
 			/* No conversation-wide dismiss without the page's confirmation. */
-			assert.equal(page.q("[data-detail-dismiss-all]"), null);
+			assert.ok(page.q("[data-detail-dismiss-all]") === null);
+			/* No primary that reopens this same conversation (D3), and no bulk
+			   "Mark read" beside the item's own while the detail is open (D5). */
+			assert.ok(page.q("[data-notification-open-conversation]") === null);
+			assert.ok(page.q("[data-drawer-mark-all-read]") === null);
 			assert.ok(await page.settle(() => page.writes.length > 0));
 			await page.settle(() => false, 120);
 			const reads = page.writes.filter(
@@ -478,7 +507,10 @@ test(
 				page.q('[data-drawer-view-list="read"]'),
 				"still the Read view",
 			);
-			assert.equal(window.document.activeElement, page.details("n_row2"));
+			assert.ok(
+				window.document.activeElement === page.details("n_row2"),
+				"focus returned to n_row2's details button",
+			);
 			/* Already read: opening it wrote nothing. */
 			assert.equal(page.writes.length, 0);
 		} finally {
@@ -488,7 +520,7 @@ test(
 );
 
 test(
-	"Back from an Unread row that opening marked read focuses the row now at its position",
+	"Back from an Unread row that opening marked read lands on the SAME row, kept on Unread until the view changes (U4)",
 	BOUNDED,
 	async () => {
 		const page = await mount();
@@ -499,13 +531,32 @@ test(
 				'[data-drawer-update="n_row6"] [data-row-action="details"]',
 			);
 			assert.ok(await page.settle(() => page.writes.length > 0));
+			/* Let the read's receipt land, so the row is really read when Back runs. */
+			await page.settle(() => false, 120);
 			await page.click("[data-notification-detail-back]");
+			assert.ok(page.q('[data-drawer-view-list="unread"]'));
+			assert.ok(
+				page.q('[data-drawer-update="n_row6"]'),
+				"the opened row is still on Unread",
+			);
+			assert.ok(
+				window.document.activeElement === page.details("n_row6"),
+				"focus returned to the row that was opened, not its successor",
+			);
+			/* Drawn as read: its own toggle now offers "Mark unread". */
+			assert.equal(
+				page
+					.q('[data-drawer-update="n_row6"] [data-row-action="read"]')
+					?.getAttribute("aria-label"),
+				"Mark unread",
+			);
+			/* A view change is the navigation that releases it. */
+			await page.click('[data-drawer-read-view="read"]');
+			await page.click('[data-drawer-read-view="unread"]');
 			assert.ok(
 				await page.settle(() => !page.q('[data-drawer-update="n_row6"]')),
-				"opening marked it read, so it left Unread",
+				"released from Unread after the view changed",
 			);
-			assert.ok(page.q('[data-drawer-view-list="unread"]'));
-			assert.equal(window.document.activeElement, page.details("n_row5"));
 		} finally {
 			await page.unmount();
 		}
@@ -524,9 +575,12 @@ test(
 			);
 			assert.ok(await page.settle(() => page.q("[data-notification-detail]")));
 			await page.key(window.document.activeElement, "Escape");
-			assert.equal(page.q("[data-notification-detail]"), null);
+			assert.ok(page.q("[data-notification-detail]") === null);
 			assert.equal(page.drawerEscapes(), 0, "the drawer did not see it");
-			assert.equal(window.document.activeElement, page.details("n_row1"));
+			assert.ok(
+				window.document.activeElement === page.details("n_row1"),
+				"focus returned to n_row1's details button",
+			);
 			/* In the list, Escape is the drawer's again. */
 			await page.key(window.document.activeElement, "Escape");
 			assert.equal(page.drawerEscapes(), 1);
@@ -547,7 +601,10 @@ test(
 			/* Focus opens the row's tooltip: a state update, so inside act. */
 			await act(async () => first.focus());
 			await page.key(first, "ArrowDown");
-			assert.equal(window.document.activeElement, page.details("n_row6"));
+			assert.ok(
+				window.document.activeElement === page.details("n_row6"),
+				"ArrowDown moved focus to n_row6's details button",
+			);
 			/* Enter on a native button is its click; jsdom does not synthesise it. */
 			await page.key(window.document.activeElement, "Enter");
 			await act(async () => window.document.activeElement.click());
@@ -619,6 +676,186 @@ test(
 			/* Every detail read named the raw id: nothing was read with the
 			   encoded form, which would be the router handing back `%3A`. */
 			assert.deepEqual([...new Set(page.detailReads)], [COLON_ID]);
+		} finally {
+			await page.unmount();
+		}
+	},
+);
+
+/*
+ * ROUND-1 REMEDIATION. Each test below names its finding and fails on the
+ * round-1 head (0b2d3aa2b).
+ */
+
+test(
+	"a double-click does not carry across the list/detail swap (U1)",
+	BOUNDED,
+	async () => {
+		const page = await mount();
+		try {
+			assert.ok(await page.settle(() => page.details("n_row7")));
+			/* First press of a double-click on the title opens the detail... */
+			await page.press(
+				'[data-drawer-update="n_row7"] [data-row-action="details"]',
+				1,
+			);
+			assert.ok(
+				await page.settle(() => page.q("[data-notification-detail-back]")),
+			);
+			/* ...and its second press lands on Back, which took the title's place. */
+			await page.press("[data-notification-detail-back]", 2);
+			assert.ok(
+				page.q('[data-notification-detail="n_row7"]'),
+				"the second click of the double-click did not close the detail",
+			);
+			/* A fresh press is a new intent and goes through. */
+			await page.press("[data-notification-detail-back]", 1);
+			assert.ok(await page.settle(() => page.details("n_row6")));
+			/* The second press of a double-click on Back lands on a row: ignored. */
+			await page.press(
+				'[data-drawer-update="n_row6"] [data-row-action="details"]',
+				2,
+			);
+			await page.settle(() => false, 120);
+			assert.ok(
+				page.q("[data-notification-detail]") === null,
+				"the carried-over click opened no other item",
+			);
+			const reads = page.writes.filter(
+				(write) => write.op === "notifications.read",
+			);
+			assert.deepEqual(
+				reads.flatMap((write) => write.target.items.map((token) => token.id)),
+				["n_row7"],
+				"only the item actually opened was marked read",
+			);
+		} finally {
+			await page.unmount();
+		}
+	},
+);
+
+test(
+	"after a press on the detail's body, Escape still goes back to the list, not out of the drawer (U2)",
+	BOUNDED,
+	async () => {
+		const page = await mount({ initialView: "read" });
+		try {
+			assert.ok(await page.settle(() => page.details("n_row1")));
+			await page.click(
+				'[data-drawer-update="n_row1"] [data-row-action="details"]',
+			);
+			const paragraph = () =>
+				[
+					...(page
+						.q('[data-notification-detail="n_row1"]')
+						?.querySelectorAll("p") ?? []),
+				].find((node) => node.textContent.includes("Full body of update 1."));
+			assert.ok(await page.settle(() => paragraph()));
+			/* jsdom moves no focus on a press: do what the browser does, focus the
+			   nearest focusable ancestor of the pressed text. */
+			const target = paragraph().closest(
+				"[tabindex], button, a[href], input, select, textarea",
+			);
+			assert.ok(target, "some ancestor takes the press's focus");
+			await act(async () => target.focus());
+			await page.key(window.document.activeElement, "Escape");
+			assert.equal(page.drawerEscapes(), 0, "the drawer did not close");
+			assert.ok(
+				page.q("[data-notification-detail]") === null,
+				"Escape went back to the list",
+			);
+			assert.ok(page.q('[data-drawer-view-list="read"]'));
+		} finally {
+			await page.unmount();
+		}
+	},
+);
+
+test(
+	"the detail offers Mark unread once opening has marked the item read (D4)",
+	BOUNDED,
+	async () => {
+		const page = await mount();
+		try {
+			assert.ok(await page.settle(() => page.details("n_row5")));
+			await page.click(
+				'[data-drawer-update="n_row5"] [data-row-action="details"]',
+			);
+			assert.ok(await page.settle(() => page.writes.length > 0));
+			const toggle = () =>
+				page.q(
+					'[data-notification-detail="n_row5"] [data-notification-toggle-read]',
+				)?.textContent;
+			assert.ok(
+				await page.settle(() => toggle() === "Mark unread", 1_500),
+				`the toggle reads "Mark unread" after the read (it read "${toggle()}")`,
+			);
+		} finally {
+			await page.unmount();
+		}
+	},
+);
+
+test(
+	"Open in Notifications on an item opening marked read shows it selected on the page's default Unread filter (U3)",
+	BOUNDED,
+	async () => {
+		/* A wide window, where the page draws its list beside the detail: the
+		   narrow page hides the list while a detail is open. */
+		const narrowMedia = window.matchMedia;
+		window.matchMedia = (query) => ({
+			...narrowMedia(query),
+			matches: query === "(min-width: 1100px)",
+		});
+		const page = await mount();
+		try {
+			assert.ok(await page.settle(() => page.details("n_row5")));
+			await page.click(
+				'[data-drawer-update="n_row5"] [data-row-action="details"]',
+			);
+			assert.ok(await page.settle(() => page.writes.length > 0));
+			await page.settle(() => false, 120);
+			await page.click("[data-notification-open-in-notifications]");
+			assert.equal(page.path(), DRAWER.notificationPath("n_row5"));
+			assert.ok(
+				await page.settle(() =>
+					page.q('[data-notification-row="n_row5"][data-notification-open]'),
+				),
+				"the page lists the item's row, selected, although it is read",
+			);
+		} finally {
+			await page.unmount();
+			window.matchMedia = narrowMedia;
+		}
+	},
+);
+
+test(
+	"the detail's title cannot be shrunk to nothing by its scrolling column (D1)",
+	BOUNDED,
+	async () => {
+		/*
+		 * jsdom has no layout, so the 0 px height itself is pixel evidence (design
+		 * and QA frames). This pins its cause: a `line-clamp` (overflow hidden) flex
+		 * item in an `overflow-y-auto` column must not be allowed to shrink.
+		 */
+		const page = await mount({ initialView: "read" });
+		try {
+			assert.ok(await page.settle(() => page.details("n_row1")));
+			await page.click(
+				'[data-drawer-update="n_row1"] [data-row-action="details"]',
+			);
+			const title = await (async () => {
+				await page.settle(() => page.q("[data-notification-detail-title]"));
+				return page.q("[data-notification-detail-title]");
+			})();
+			assert.ok(title, "the title is drawn");
+			assert.ok(title.classList.contains("line-clamp-3"));
+			assert.ok(
+				title.classList.contains("shrink-0"),
+				"the clamped title is not a shrinkable flex item",
+			);
 		} finally {
 			await page.unmount();
 		}
