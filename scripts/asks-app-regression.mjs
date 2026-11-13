@@ -507,6 +507,25 @@ export const CONTROL_REUSE_PARTS = [
 	"electron.vite.config.js",
 	"pnpm-lock.yaml",
 ];
+/**
+ * THE END CLAIM, IN ONE PLACE (agent review round 3, m2 + m3): "End reached the
+ * maximum" only means something on a list that has somewhere to go, and a failure
+ * has to show both readings - the one the retry replaced and the one it settled on -
+ * or a key dropped twice is indistinguishable from one short scroll. Exported so the
+ * failure shape can be driven without an assembled app; `entry` is one size's
+ * summary record, so the caller passes exactly what the run measured.
+ */
+export function assertEndReached(size, entry) {
+	const { keys } = entry;
+	assert(
+		keys.endMax > 0,
+		`${size}: the End check needs a list with somewhere to scroll (its own read: max ${keys.endMax}, client ${keys.endClient}); on a collapsed list "End reached the maximum" is true with no scroll at all`,
+	);
+	assert(
+		Math.abs(keys.end - keys.endMax) <= 1,
+		`${size}: End on the list must reach its maximum (end read scrollTop ${keys.end} of max ${keys.endMax} at client ${keys.endClient}, settled ${keys.endSettled}, quiet ${keys.endQuiet}, retry used ${keys.endRetried}; the first read was scrollTop ${keys.endFirst.scrollTop} of max ${keys.endFirst.max}; the open read was scrollTop ${entry.list.scrollTop} of max ${entry.list.max}; the 1 px slack is sub-pixel layout, not a short scroll)`,
+	);
+}
 export function controlReusePlan(revParse, control, head) {
 	const differing = CONTROL_REUSE_PARTS.filter(
 		(part) => revParse(`${control}:${part}`) !== revParse(`${head}:${part}`),
@@ -1256,7 +1275,15 @@ export const CASES = {
 					await pause(120);
 					const next = await read();
 					if (!next.list) return { ...next, quiet: false };
+					/*
+					 * A PREVIOUS READ WITH NO LIST CANNOT PROVE STILLNESS (agent review round 3, m5):
+					 * the first read can land before the card's own scroller mounts, and indexing
+					 * `last.list` there threw a TypeError out of a wait that exists to measure
+					 * stillness. An absent baseline counts as movement, so the next pair is what
+					 * gets to hold still.
+					 */
 					const moved =
+						!last.list ||
 						next.list.scrollTop !== last.list.scrollTop ||
 						(next.body?.scrollTop ?? 0) !== (last.body?.scrollTop ?? 0) ||
 						(next.options?.scrollTop ?? 0) !== (last.options?.scrollTop ?? 0);
@@ -1268,8 +1295,15 @@ export const CASES = {
 			};
 			const pressAndSettle = async (names, predicate) => {
 				await keyPress(names);
-				await awaitQuiet();
-				return settle(predicate);
+				/*
+				 * THE STILLNESS IS CARRIED OUT OF `awaitQuiet` (agent review round 3, m4): it was
+				 * awaited for its side effect only, so a scroller that never went still before the
+				 * key was pressed reported a plain "not settled" and hid the fact that the
+				 * measurement itself was still moving.
+				 */
+				const still = await awaitQuiet();
+				const state = await settle(predicate);
+				return { ...state, quiet: still.quiet === true };
 			};
 			const keyPress = async (names) => {
 				for (const [index, name] of names.entries()) {
@@ -1445,10 +1479,25 @@ export const CASES = {
 				const atListEnd = (state) =>
 					Math.abs(state.list.scrollTop - state.list.max) <= 1;
 				const afterEndFirst = await pressAndSettle(["End"], atListEnd);
-				const afterEnd =
+				const afterEndRetry =
 					kind === "candidate" && afterEndFirst.settled === false
 						? { ...(await pressAndSettle(["End"], atListEnd)), retried: true }
 						: { ...afterEndFirst, retried: false };
+				/*
+				 * THE RETRY KEEPS THE READING IT REPLACED (agent review round 3, m2): it used to
+				 * overwrite the short first read, so a failure showed only the second landing and
+				 * could not say whether End was dropped once or twice. `first` is always recorded,
+				 * so a non-retried run reads as first == final rather than as a missing field.
+				 */
+				const afterEnd = {
+					...afterEndRetry,
+					first: {
+						scrollTop: afterEndFirst.list.scrollTop,
+						max: afterEndFirst.list.max,
+						settled: afterEndFirst.settled === true,
+						quiet: afterEndFirst.quiet === true,
+					},
+				};
 				const afterHome = await pressAndSettle(
 					["Home"],
 					(state) => state.list.scrollTop === 0,
@@ -1587,7 +1636,10 @@ export const CASES = {
 							endMax: entry.keys.afterEnd.list.max,
 							endClient: entry.keys.afterEnd.list.client,
 							endSettled: entry.keys.afterEnd.settled === true,
+							/* BESIDE `settled`: a key pressed on a still-moving scroller is a dropped key. */
+							endQuiet: entry.keys.afterEnd.quiet === true,
 							endRetried: entry.keys.afterEnd.retried === true,
+							endFirst: entry.keys.afterEnd.first,
 							home: entry.keys.afterHome.list.scrollTop,
 							space: entry.keys.afterSpace.list.scrollTop,
 							shiftSpace: entry.keys.afterShiftSpace.list.scrollTop,
@@ -1706,10 +1758,7 @@ export const CASES = {
 						entry.keys.pageDown > 0,
 						`${size}: PageDown on the list must scroll it (got ${entry.keys.pageDown})`,
 					);
-					assert(
-						Math.abs(entry.keys.end - entry.keys.endMax) <= 1,
-						`${size}: End on the list must reach its maximum (end read scrollTop ${entry.keys.end} of max ${entry.keys.endMax} at client ${entry.keys.endClient}, settled ${entry.keys.endSettled}, retry used ${entry.keys.endRetried}; the open read was scrollTop ${entry.list.scrollTop} of max ${entry.list.max}; the 1 px slack is sub-pixel layout, not a short scroll)`,
-					);
+					assertEndReached(size, entry);
 					assert.equal(
 						entry.keys.home,
 						0,
@@ -2484,7 +2533,19 @@ async function main() {
 							// Only the control leg gets its Electron runtime override.
 							...(kind === "control" ? controlLegEnv : {}),
 						},
-						timeout: 150000,
+						/*
+						 * 210 s PER LEG, up from 150 s (agent review round 3, m1): the long-ask
+						 * control leg measures ~120 s (115, 120 and 122 s on three runs) and round 3's
+						 * awaitQuiet waits add ~16 s of polling, so 150 s left about 9% margin and a
+						 * slow runner would have failed on the ceiling rather than on the product.
+						 * The step runs four cases x two legs, so 8 x 210 s = 1680 s is MORE than its
+						 * own timeout-minutes: 15 (900 s in ci.yml, "Exercise assembled asks and
+						 * capture regression frames"). That is deliberate: the per-leg ceiling makes a
+						 * hung leg fail under its own name instead of the step being killed opaquely,
+						 * and the step bound stays the outer stop. It is a ceiling, not a wait - the
+						 * three measured runs took 271-294 s for all eight legs.
+						 */
+						timeout: 210000,
 						maxBuffer: 4 * 1024 * 1024,
 					},
 				);
