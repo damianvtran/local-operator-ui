@@ -1,0 +1,139 @@
+{
+	"audit_id": "pr1880-r2-es",
+	"mode": "round-2 independent delta re-audit of PR #1880's i18n remediation: every value that changed between a4462e721 and 79ae38539 in the edited pairs (I1 fixes plus the 8 added and 2 re-worded ui.canvas source keys), and verification that I1-1..I1-10 were applied as the round-1 audit asked",
+	"locale": "es",
+	"pr": 1880,
+	"repo": "damianvtran/local-operator-ui",
+	"head_sha": "79ae38539282a0c4496aaa6f63481f967f83e207",
+	"scope": "a4462e721..79ae38539",
+	"audit_date": "2026-11-12",
+	"prior_round": {
+		"comment": "https://github.com/damianvtran/local-operator-ui/pull/1880#issuecomment-6828096033",
+		"receipt": "1c4ab04dbe3e-1880r1-es"
+	},
+	"translator": {
+		"agent": "coder",
+		"note": "PR #1880 remediation coder (commit b1df80525) translated the delta, per the remediation reply https://github.com/damianvtran/local-operator-ui/pull/1880#issuecomment-6829843171"
+	},
+	"auditor": {
+		"agent": "reviewer",
+		"session": "03cedf51c7f4",
+		"instance": "03cedf51c7f4-1880r2-es",
+		"model": "anthropic/claude-opus-5-5",
+		"actual_model_source": "session runtime header names 'Model: anthropic/claude-opus-5-5'; no fallback observed",
+		"independent_from_translator": true,
+		"independent_from_round1_auditor": "different session (round 1 was 1c4ab04dbe3e)"
+	},
+	"method": "Read each changed en value with its .context.json note, the before/after target value and the call sites (remote-files.ts, remote-file-transfer.tsx, attachment-frame.tsx, audio-document-player.tsx, image/video-preview.tsx, artifact-text-preview.tsx, library-card.tsx, library-download.ts, use-file-blob-url.ts); compared terms with the core glossary, the locale style guide and the existing locale catalogue; parsed and rendered every changed value with intl-messageformat (device='MacBook-Pro', name='chart.png', folder='Downloads', and the locale fallback for {device}): 0 parse errors, placeholder sets equal to en, key sets equal to en, no bidi control characters. ur values were also rendered through src/i18n/bidi.ts (isolateArguments + isolateSigils) and fribidi --rtl. No MT service used.",
+	"i1_verification": [
+		"I1-4 remoteReason.workspace: applied exactly"
+	],
+	"source_findings_not_counted": [],
+	"references": {
+		"core_repo_rev": "ad910f5daea0bb40cf95170a5eeed496f4aebd69",
+		"glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+		"style_guide": {
+			"path": "i18n/style-guides/es.md",
+			"sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+		},
+		"ui_doc": "docs/I18N.md"
+	},
+	"rtl": "n/a (LTR)",
+	"namespaces": {
+		"ui.canvas": {
+			"status": "passed",
+			"en_sha256": "fd9548b8a57eef7acef650b76207b522cfbdfea41d2a89b747a1a14920f6c8bf",
+			"es_sha256": "ed4ef04301e906a24d0a72413edc6ee3dca735774c74acd21343d41dd0c35c69",
+			"context_sha256": "f072c0402cf26907b33cf29076cfd2694ae8fab989534b188b2b8976b0c51676",
+			"keys_audited": [
+				{
+					"key": "ui.canvas.files.remoteUnreachable",
+					"en_before": "Couldn't reach the device that holds this file. Try again in a moment.",
+					"en": "{device} isn't answering. Try again when it's online.",
+					"target_before": "No se pudo contactar con el dispositivo que tiene este archivo. Inténtalo de nuevo en un momento.",
+					"target": "{device} no responde. Inténtalo de nuevo cuando esté en línea."
+				},
+				{
+					"key": "ui.canvas.files.remoteReason.workspace",
+					"en_before": "Lives in {device}'s workspace. Ask the session to copy it to its scratchpad.",
+					"en": "Lives in {device}'s workspace. Ask the session to copy it to its scratchpad.",
+					"target_before": "Está en el espacio de trabajo de {device}. Pide a la sesión que lo copie a su borrador.",
+					"target": "Está en el espacio de trabajo de {device}. Pide a la sesión que lo copie a su scratchpad."
+				},
+				{
+					"key": "ui.canvas.files.remoteDownloaded",
+					"en_before": "Downloaded {name}",
+					"en": "Downloaded {name} to {folder}",
+					"target_before": "{name} descargado",
+					"target": "{name} descargado en {folder}"
+				},
+				{
+					"key": "ui.canvas.files.remoteUnreachableUnnamed",
+					"en_before": null,
+					"en": "The device that holds this file isn't answering. Try again when it's online.",
+					"target_before": null,
+					"target": "El dispositivo que tiene este archivo no responde. Inténtalo de nuevo cuando esté en línea."
+				},
+				{
+					"key": "ui.canvas.files.remoteFetching",
+					"en_before": null,
+					"en": "Fetching from {device}…",
+					"target_before": null,
+					"target": "Trayendo desde {device}…"
+				},
+				{
+					"key": "ui.canvas.files.remoteDownloading",
+					"en_before": null,
+					"en": "Downloading {name} from {device}…",
+					"target_before": null,
+					"target": "Descargando {name} desde {device}…"
+				},
+				{
+					"key": "ui.canvas.files.remoteAlreadyDownloaded",
+					"en_before": null,
+					"en": "{name} is already in {folder} on this device",
+					"target_before": null,
+					"target": "{name} ya está en {folder} en este dispositivo"
+				},
+				{
+					"key": "ui.canvas.files.remoteReadOnly",
+					"en_before": null,
+					"en": "From {device} · read-only",
+					"target_before": null,
+					"target": "De {device} · solo lectura"
+				},
+				{
+					"key": "ui.canvas.files.remoteTooLargeToOpen",
+					"en_before": null,
+					"en": "Too large to open from {device}. Download it to this device instead.",
+					"target_before": null,
+					"target": "Demasiado grande para abrirlo desde {device}. Descárgalo en este dispositivo."
+				},
+				{
+					"key": "ui.canvas.files.remotePeerUpdateHow",
+					"en_before": null,
+					"en": "Run lop network update {device} on this device, or update Local Operator on {device}, then retry.",
+					"target_before": null,
+					"target": "Ejecuta lop network update {device} en este dispositivo, o actualiza Local Operator en {device}, y luego reintenta."
+				},
+				{
+					"key": "ui.canvas.files.remotePlay",
+					"en_before": null,
+					"en": "Play from {device}",
+					"target_before": null,
+					"target": "Reproducir desde {device}"
+				}
+			],
+			"keys_removed": [
+				"ui.canvas.files.remoteUnreachableRetry"
+			],
+			"key_completeness": {
+				"en_keys": 383,
+				"target_keys": 383,
+				"missing": [],
+				"extra": []
+			},
+			"findings": []
+		}
+	}
+}

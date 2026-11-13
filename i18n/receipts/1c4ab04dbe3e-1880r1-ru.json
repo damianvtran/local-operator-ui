@@ -1,0 +1,164 @@
+{
+	"audit_id": "pr1880-r1-ru",
+	"mode": "round-1 independent audit of the 18 keys PR #1880 adds (16 ui.canvas.files.remote*, 2 ui.chat.attachments)",
+	"locale": "ru",
+	"pr": 1880,
+	"repo": "damianvtran/local-operator-ui",
+	"head_sha": "a4462e72159d8fa9a45931c36b380221880ffb30",
+	"scope": "83a18c632..a4462e721",
+	"audit_date": "2026-11-12",
+	"translator": {
+		"agent": "coder",
+		"note": "PR #1880 coder translated the new keys (per manager brief ce618964c88e); its served model is not recorded here"
+	},
+	"auditor": {
+		"agent": "reviewer",
+		"session": "1c4ab04dbe3e",
+		"instance": "1c4ab04dbe3e-1880r1-ru",
+		"model": "anthropic/claude-opus-5-5",
+		"actual_model_source": "session runtime header names 'Model: anthropic/claude-opus-5-5'; no fallback observed",
+		"independent_from_translator": true
+	},
+	"method": "Static reading of en value + en .context.json note per key, target value, call sites (remote-files.ts, remote-file-mark.tsx, finder-files-view.tsx, audio-document-player.tsx, attachment-frame.tsx, remote-file-transfer.tsx); term frequency against the existing locale catalogue; every value parsed and rendered with intl-messageformat (device='MacBook-Pro', remotePeerUpdate with the locale fallback; owner_unreachable prefixed with 'chart.png'): 0 parse errors, placeholders preserved byte-exactly, no bidi control characters in ur. No MT/translation service used.",
+	"references": {
+		"core_repo_rev": "ad910f5daea0bb40cf95170a5eeed496f4aebd69",
+		"glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+		"style_guide": {
+			"path": "i18n/style-guides/ru.md",
+			"sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+		},
+		"ui_doc": "docs/I18N.md"
+	},
+	"rtl": "n/a (LTR)",
+	"namespaces": {
+		"ui.canvas": {
+			"status": "changes_requested",
+			"en_sha256": "5ee4ef4891c4888131172fb02ed6d6c3ee9e54eb09fca52c5e91d693dd62d6c1",
+			"ru_sha256": "af2c2d5f928892c1cb1b6baaf972523a0493bb7f25dd08f260a9cc03229e0597",
+			"context_sha256": "e194326406b33442660eb0cbbebd70b4c7040b5773c5938a56b8aa84d35a05a3",
+			"keys_audited": [
+				{
+					"key": "ui.canvas.files.remoteUnreachable",
+					"en": "Couldn't reach the device that holds this file. Try again in a moment.",
+					"target": "Не удалось связаться с устройством, на котором хранится этот файл. Повторите попытку чуть позже."
+				},
+				{
+					"key": "ui.canvas.files.remoteUnreachableRetry",
+					"en": "Couldn't reach the device that holds this sound. Click to retry.",
+					"target": "Не удалось связаться с устройством, на котором хранится этот звук. Нажмите, чтобы повторить."
+				},
+				{
+					"key": "ui.canvas.files.remoteOn",
+					"en": "On {device}",
+					"target": "На устройстве {device}"
+				},
+				{
+					"key": "ui.canvas.files.remoteReason.missing",
+					"en": "No longer on {device}",
+					"target": "Больше нет на устройстве {device}"
+				},
+				{
+					"key": "ui.canvas.files.remoteReason.tooLarge",
+					"en": "Too large to fetch from {device}",
+					"target": "Слишком большой, чтобы получить с устройства {device}"
+				},
+				{
+					"key": "ui.canvas.files.remoteReason.sensitive",
+					"en": "{device} keeps this file private",
+					"target": "{device} держит этот файл закрытым"
+				},
+				{
+					"key": "ui.canvas.files.remoteReason.notReferenced",
+					"en": "{device} no longer shares this file",
+					"target": "{device} больше не делится этим файлом"
+				},
+				{
+					"key": "ui.canvas.files.remoteReason.workspace",
+					"en": "Lives in {device}'s workspace. Ask the session to copy it to its scratchpad.",
+					"target": "Находится в рабочей области устройства {device}. Попросите сеанс скопировать его в свой черновик."
+				},
+				{
+					"key": "ui.canvas.files.remoteCopyOwnerPath",
+					"en": "Copy path on {device}",
+					"target": "Копировать путь на устройстве {device}"
+				},
+				{
+					"key": "ui.canvas.files.remoteDownload",
+					"en": "Download to this device",
+					"target": "Скачать на это устройство"
+				},
+				{
+					"key": "ui.canvas.files.remoteDownloaded",
+					"en": "Downloaded {name}",
+					"target": "Скачано: {name}"
+				},
+				{
+					"key": "ui.canvas.files.remoteDownloadPending",
+					"en": "Still fetching from {device}. Try again in a moment.",
+					"target": "Файл ещё загружается с устройства {device}. Повторите попытку чуть позже."
+				},
+				{
+					"key": "ui.canvas.files.remoteDownloadFailed",
+					"en": "Couldn't download from {device}.",
+					"target": "Не удалось скачать с устройства {device}."
+				},
+				{
+					"key": "ui.canvas.files.remoteReadFailed",
+					"en": "This file couldn't be read from the device that holds it.",
+					"target": "Не удалось прочитать этот файл с устройства, на котором он хранится."
+				},
+				{
+					"key": "ui.canvas.files.remotePeerUpdate",
+					"en": "Update {device} to see its files here.",
+					"target": "Обновите {device}, чтобы видеть здесь его файлы."
+				},
+				{
+					"key": "ui.canvas.files.remoteDeviceFallback",
+					"en": "the other device",
+					"target": "другое устройство"
+				}
+			],
+			"key_completeness": {
+				"en_keys": 376,
+				"target_keys": 376,
+				"missing": [],
+				"extra": []
+			},
+			"findings": [
+				{
+					"id": "I1-2",
+					"severity": "MAJOR",
+					"key": "ui.canvas.files.remoteReason.workspace",
+					"current": "Находится в рабочей области устройства {device}. Попросите сеанс скопировать его в свой черновик.",
+					"corrected": "Находится в рабочем пространстве устройства {device}. Попросите сессию скопировать его в свой скретчпад.",
+					"problem": "Glossary §2 + ru guide: session → сессия (not сеанс; ru catalogue: сесси* 318 values, сеанс only this one), workspace → рабочее пространство (not рабочая область). Scratchpad also aligned with the same namespace's ui.canvas.files.pathCopyNote ('скретчпаде'), see I1-4."
+				}
+			]
+		},
+		"ui.chat.attachments": {
+			"status": "passed",
+			"en_sha256": "0e6e4457711073f2b604e9b5374b91a2ed782064a00e486f3fb446ea3f2284be",
+			"ru_sha256": "85af776254f4df0461b387a7cfa0257e0cba1132906896f36fff4b842d14017b",
+			"context_sha256": "9a10aa5f9bf67285e574b4e0b28b472b48fefff951d9d3b1b84e5a9889e4f2e6",
+			"keys_audited": [
+				{
+					"key": "ui.chat.attachments.owner_unreachable",
+					"en": "couldn't be fetched from the device that holds it.",
+					"target": "не удалось получить с устройства, на котором он хранится."
+				},
+				{
+					"key": "ui.chat.attachments.retry_fetch",
+					"en": "Retry",
+					"target": "Повторить"
+				}
+			],
+			"key_completeness": {
+				"en_keys": 25,
+				"target_keys": 25,
+				"missing": [],
+				"extra": []
+			},
+			"findings": []
+		}
+	}
+}

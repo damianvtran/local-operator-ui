@@ -130,6 +130,7 @@ const bundle = await build({
 						contents: `
 							export const showErrorToast = () => "toast";
 							export const showInfoToast = () => "toast";
+							export const showLoadingToast = () => "toast";
 							export const showSuccessToast = () => "toast";
 							export const showWarningToast = () => "toast";
 							export const dismissToast = () => {};
@@ -236,15 +237,14 @@ const mountTranscript = async (records) => {
 		records,
 		index: new Map(records.map((row, at) => [row.id, at])),
 	};
+	const client = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
 	await act(async () => {
 		root.render(
 			React.createElement(
 				QueryClientProvider,
-				{
-					client: new QueryClient({
-						defaultOptions: { queries: { retry: false } },
-					}),
-				},
+				{ client },
 				React.createElement(mod.CanonicalTranscript, {
 					transcript,
 					frontend: null,
@@ -282,6 +282,10 @@ const mountTranscript = async (records) => {
 		await act(async () => {
 			root.unmount();
 		});
+		// Unmount schedules query GC; release the fixture's cache and timers now.
+		client.clear();
+		assert.equal(client.getQueryCache().getAll().length, 0);
+		dom.window.close();
 	};
 	return { dom, userRow, answerRow, press, written, unmount };
 };

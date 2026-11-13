@@ -24,9 +24,31 @@
  * here".
  */
 
+import { Spinner } from "@shared/components/common/spinner";
+import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
-import { ImageOff } from "lucide-react";
-import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import { ImageOff, RotateCw } from "lucide-react";
+import {
+	type ComponentPropsWithoutRef,
+	type ReactNode,
+	useEffect,
+	useRef,
+} from "react";
+
+/**
+ * Take focus once on mount when asked: a Retry press swaps the pressed button
+ * for the waiting state and back, and each swap would otherwise drop keyboard
+ * focus to the document (UX round 2, U2-2). `preventScroll`, because the
+ * reader did not ask to move.
+ */
+function useFocusOnMount<T extends HTMLElement>(enabled: boolean) {
+	const ref = useRef<T>(null);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: once per mount, by design - a later prop flip is not a new swap.
+	useEffect(() => {
+		if (enabled) ref.current?.focus({ preventScroll: true });
+	}, []);
+	return ref;
+}
 
 export type AttachmentFrameProps = {
 	/**
@@ -258,3 +280,170 @@ export const BrokenAttachment = ({
 			</span>
 		</div>
 	);
+
+/**
+ * The receipt for a PEER-held attachment whose owner did not answer through
+ * the whole backoff (`AttachmentSource` `retryable`).
+ *
+ * The same box as `BrokenAttachment` - the same 117x78 tile when compact, the
+ * same sunken well in the flow - so a slot does not change size between the
+ * two states, but it is a BUTTON: the bytes exist on a device that may come
+ * back, and the reader's click starts a fresh fetch cycle. The glyph is the
+ * retry arrow rather than the torn picture, because the picture is not gone,
+ * and the compact tile captions it "Retry" (design round 1, D1-2): a lone
+ * arrow beside loaded pictures read as "still loading".
+ *
+ * `device` names the owner when the transcript knows it, in the sentence every
+ * remote surface shares (U1-6); without it, the device-less fragment.
+ */
+export const RetryableAttachment = ({
+	name,
+	onRetry,
+	className,
+	compact = false,
+	device = null,
+	focusOnMount = false,
+}: {
+	name: string;
+	onRetry: () => void;
+	className?: string;
+	compact?: boolean;
+	device?: string | null;
+	/** Mounting after this tile's own Retry press: keep the reader's focus here. */
+	focusOnMount?: boolean;
+}) => {
+	const focusRef = useFocusOnMount<HTMLButtonElement>(focusOnMount);
+	const sentence = device
+		? t("ui.canvas.files.remoteUnreachable", { device })
+		: null;
+	const detail = sentence ?? t("ui.chat.attachments.owner_unreachable");
+	const action = t("ui.chat.attachments.retry_fetch");
+	return compact ? (
+		<button
+			ref={focusRef}
+			type="button"
+			onClick={(event) => {
+				// A tile sits inside a clickable fold; retrying must not open it.
+				event.stopPropagation();
+				onRetry();
+			}}
+			className={cn(
+				"flex h-[78px] w-[117px] flex-col items-center justify-center gap-1 rounded-sm border border-control bg-sunken hover:bg-row-hover",
+				className,
+			)}
+			aria-label={`${name} ${detail} ${action}`}
+			title={`${name} ${detail} ${action}`}
+			data-attachment-retryable=""
+		>
+			<RotateCw className="size-4 shrink-0 text-ink-dim" aria-hidden={true} />
+			<span className="text-ink-muted text-meta" aria-hidden={true}>
+				{action}
+			</span>
+		</button>
+	) : (
+		<div
+			className={cn(
+				"flex w-fit max-w-full items-center gap-2.5 rounded-sm border border-hairline bg-sunken px-3 py-2",
+				className,
+			)}
+			data-attachment-retryable=""
+		>
+			<RotateCw className="size-4 shrink-0 text-ink-dim" aria-hidden={true} />
+			<span className="min-w-0 text-body-sm text-ink-muted">
+				<span className="truncate font-mono text-ink text-mono-sm">{name}</span>
+				{sentence ? (
+					<>
+						<span aria-hidden={true}> · </span>
+						{sentence}
+					</>
+				) : (
+					` ${detail}`
+				)}
+			</span>
+			<button
+				ref={focusRef}
+				type="button"
+				onClick={(event) => {
+					event.stopPropagation();
+					onRetry();
+				}}
+				className="shrink-0 rounded-sm px-1 text-accent text-body-sm hover:underline"
+			>
+				{action}
+			</button>
+		</div>
+	);
+};
+
+/**
+ * The waiting state of a PEER-held attachment whose owner has answered 504 at
+ * least once (`AttachmentSource` `resolving` + `pending`).
+ *
+ * Seconds, not a frame: the backoff runs up to 30 s, so the bare reserved box
+ * read as "broken" (UX round 1, U1-1) and, in the flow, as an empty text field
+ * the width of the column (design D1-3). It keeps the slot's own box - the
+ * 117x78 tile when compact, a fitted sunken well otherwise - and centres the
+ * shared spinner with "Fetching from <device>…". The tile has no room for the
+ * sentence, so it carries it as its name and `title`.
+ *
+ * A VIDEO well reserves the player's box (design round 2, D2-2): a 38 px pill
+ * that grew ~200 px when the clip landed pushed the transcript down. Its
+ * aspect is unknown until the bytes arrive, so it reserves 16:9 at the player's
+ * 240 px ceiling (`canonical-video`'s `max-h-[240px]`), the largest box a 16:9
+ * clip takes there.
+ *
+ * `focusOnMount` (U2-2): after a Retry press the wait takes focus
+ * (`tabIndex={-1}`: reachable by script, not a Tab stop), so the keyboard
+ * reader is not dropped to the document while the owner is asked again.
+ */
+export const PendingAttachment = ({
+	device,
+	compact = false,
+	video = false,
+	focusOnMount = false,
+}: {
+	device: string;
+	compact?: boolean;
+	video?: boolean;
+	focusOnMount?: boolean;
+}) => {
+	const focusRef = useFocusOnMount<HTMLOutputElement>(focusOnMount);
+	const label = t("ui.canvas.files.remoteFetching", { device });
+	const focusProps = focusOnMount
+		? { ref: focusRef, tabIndex: -1, "aria-busy": true as const }
+		: {};
+	return compact ? (
+		<output
+			{...focusProps}
+			aria-label={label}
+			title={label}
+			className="flex h-[78px] w-[117px] items-center justify-center rounded-sm border border-control bg-sunken"
+			data-attachment-pending=""
+		>
+			<Spinner size="sm" className="text-ink-dim" />
+		</output>
+	) : video ? (
+		<output
+			{...focusProps}
+			className="flex aspect-video w-[427px] max-w-full flex-col items-center justify-center gap-2 self-start rounded-sm border border-hairline bg-sunken px-3"
+			data-attachment-pending=""
+			data-attachment-pending-video=""
+		>
+			<Spinner size="sm" className="text-ink-dim" />
+			<span className="min-w-0 max-w-full truncate text-body-sm text-ink-muted">
+				{label}
+			</span>
+		</output>
+	) : (
+		<output
+			{...focusProps}
+			className="flex w-fit max-w-full items-center gap-2.5 rounded-sm border border-hairline bg-sunken px-3 py-2"
+			data-attachment-pending=""
+		>
+			<Spinner size="sm" className="text-ink-dim" />
+			<span className="min-w-0 truncate text-body-sm text-ink-muted">
+				{label}
+			</span>
+		</output>
+	);
+};
