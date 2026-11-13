@@ -329,6 +329,7 @@ import {
 	collapsePlanInputKey,
 	collapseRowsKey,
 	initialAlignWalkState,
+	isTraceFoldable,
 	olderRowsThanWindow,
 	paintedRows,
 	runIsCondensed,
@@ -5139,8 +5140,12 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				row.record.kind === "tool" ? row.record.startedAt : null,
 			endedAtOf: (row) =>
 				row.record.kind === "tool" ? row.record.endedAt : null,
-			isFoldable: (row) =>
-				row.record.kind === "tool" && !isQuietTurnCall(row.record),
+			/*
+			 * `isTraceFoldable` keeps a detached music job OUT of the action fold,
+			 * so its generating card is never hidden behind a closed group (Q-1 on
+			 * #1800); see the predicate for the full rule.
+			 */
+			isFoldable: (row) => isTraceFoldable(row.record),
 			isReceipt: (row) => isInternalReceipt(row.record),
 			/*
 			 * The unit grammar lives in the model (`receiptFoldUnits`): each internal

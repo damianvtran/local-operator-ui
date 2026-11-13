@@ -29,7 +29,8 @@ const bundle = await build({
 			'export { captureInternalEpisodeIdentity, retainInternalEpisodeKeys, expandedRunsOf, writeRunExpanded, forgetTurnCollapseOpen, __resetTurnCollapseOpen } from "./src/renderer/src/shared/store/turn-collapse-open";',
 			'export * from "./src/renderer/src/features/chat/canonical/open-frame";',
 			'export * from "./src/renderer/src/features/chat/canonical/turn-collapse-model";',
-			'export { runsOf, closingAnswerIds, buildRows } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
+			'export { runsOf, closingAnswerIds, buildRows, ledgerName } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
+			'export { foldRuns } from "./src/renderer/src/features/chat/canonical/trace-fold-model";',
 			'export { applyEvent, applyHistoryPage, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";',
 			'export { visibleRecords } from "./src/renderer/src/features/chat/canonical/cross-session-visibility";',
 		].join("\n"),
@@ -85,6 +86,9 @@ const {
 	openFrameFacts,
 	openFrameAttestedStart,
 	openFrameCoversHeld,
+	foldRuns,
+	ledgerName,
+	isTraceFoldable,
 } = await import(moduleUrl);
 
 /* ------------------------------- fixtures ------------------------------- */
@@ -5995,5 +5999,159 @@ test("a Core-shaped pending music job is not folded out of an ordinary turn", ()
 			.flatMap((run) => run.hidden.map((row) => row.record.id))
 			.includes(call.id),
 		"a job-less music call still folds",
+	);
+});
+
+/*
+ * A MUSIC JOB AFTER OTHER CALLS STAYS OUT OF THE ACTION FOLD (post-release QA on
+ * v0.55.0, Q-1 on #1800). The normal agent turn reads guide://music-generation
+ * and a skill or two BEFORE calling `generate_music`; that fourth call cleared
+ * `FOLD_MIN_ACTIONS`, so the generating card sat inside a closed
+ * "3 files · 1 generate_music" fold even though `collapsePlan` pinned the row.
+ * These drive Core 859729bd's real music rows behind three real `read` calls,
+ * through reducer -> rows -> foldRuns -> collapsePlan, with the transcript's own
+ * `isTraceFoldable` predicate.
+ */
+const musicAfterReads = (mutate) => {
+	const fixture = JSON.parse(
+		readFileSync(
+			new URL("./fixtures/music-pending-core-859729bd.json", import.meta.url),
+			"utf8",
+		),
+	);
+	const [userEntry, musicCall, musicResult, answer] = fixture.entries;
+	const reads = [1, 2, 3].map((n) => ({
+		id: `read-${n}`,
+		path: `~/notes/file-${n}.md`,
+	}));
+	const at = (ts) => userEntry.ts + ts;
+	const readCall = {
+		id: "a-reads",
+		ts: at(0.01),
+		type: "message",
+		payload: {
+			kind: "message",
+			role: "assistant",
+			tool_calls: reads.map((r) => ({
+				id: r.id,
+				name: "read",
+				arguments: { path: r.path },
+			})),
+			stop_reason: "toolUse",
+		},
+	};
+	const readResults = reads.map((r, i) => ({
+		id: `t-${r.id}`,
+		ts: at(0.02 + i * 0.001),
+		type: "message",
+		payload: {
+			kind: "message",
+			role: "tool",
+			content: [{ text: `contents of ${r.path}` }],
+			tool_call_id: r.id,
+			tool_name: "read",
+		},
+	}));
+	const entries = [
+		userEntry,
+		readCall,
+		...readResults,
+		musicCall,
+		musicResult,
+		answer,
+	];
+	mutate?.(entries);
+	const state = applyHistoryPage(EMPTY_TRANSCRIPT, { entries });
+	const rows = buildRows(state.records, []);
+	const groups = foldRuns(rows, {
+		nameOf: (row) => ledgerName(row.record),
+		failedOf: () => false,
+		isFoldable: (row) => isTraceFoldable(row.record),
+	});
+	const musicId = state.records.find(
+		(r) => r.kind === "tool" && r.toolName === "generate_music",
+	)?.id;
+	const plan = collapsePlan(rows, { live: false });
+	return { rows, groups, musicId, plan, fixture };
+};
+
+const foldedIdsOf = (groups) =>
+	groups
+		.filter((group) => group.kind === "run")
+		.map((group) => group.rows.map((row) => row.record.id));
+
+const looseIdsOf = (groups) =>
+	groups.filter((group) => group.kind === "row").map((g) => g.row.record.id);
+
+test("a running music job after three reads is not folded into their action group", () => {
+	const { rows, groups, musicId, plan } = musicAfterReads();
+	assert.ok(musicId, "the generate_music row projects to a tool record");
+	const folds = foldedIdsOf(groups);
+	assert.equal(folds.length, 1, JSON.stringify(folds));
+	assert.deepEqual(
+		folds[0],
+		["tool:read-1", "tool:read-2", "tool:read-3"],
+		"the reads still fold on their own count",
+	);
+	assert.ok(
+		looseIdsOf(groups).includes(musicId),
+		"the music call paints as its own row, outside any fold",
+	);
+	const hidden = plan.runs.flatMap((run) => run.hidden.map((r) => r.record.id));
+	assert.ok(!hidden.includes(musicId), JSON.stringify(hidden));
+
+	// NEGATIVE CONTROL: the pre-fix predicate (every non-quiet tool) swallows the
+	// music call into a four-action fold, which is the Q-1 frame.
+	const before = foldRuns(rows, {
+		nameOf: (row) => ledgerName(row.record),
+		failedOf: () => false,
+		isFoldable: (row) => row.record.kind === "tool",
+	});
+	assert.ok(
+		foldedIdsOf(before).some((ids) => ids.includes(musicId)),
+		"control: the old wiring folds the music call",
+	);
+});
+
+test("a finished music job after three reads stays out of the action fold too", () => {
+	const { groups, musicId, plan } = musicAfterReads((entries) => {
+		const result = entries.find((e) => e.id === "t-native-pending-result");
+		result.payload.provider_payload.details = {
+			...result.payload.provider_payload.details,
+			stage: "completed",
+			tracks: [{ id: "aud_1", status: "succeeded" }],
+		};
+	});
+	assert.ok(looseIdsOf(groups).includes(musicId));
+	assert.ok(!foldedIdsOf(groups).flat().includes(musicId));
+	assert.ok(
+		!plan.runs
+			.flatMap((run) => run.hidden.map((r) => r.record.id))
+			.includes(musicId),
+	);
+});
+
+test("ordinary tool runs and a job-less music call still fold as before", () => {
+	// A fourth ordinary call instead of the music job: one four-action fold.
+	const { groups } = musicAfterReads((entries) => {
+		const call = entries.find((e) => e.id === "a-native-pending-call");
+		call.payload.tool_calls[0].name = "read";
+		call.payload.tool_calls[0].arguments = { path: "~/notes/file-4.md" };
+		const result = entries.find((e) => e.id === "t-native-pending-result");
+		result.payload.tool_name = "read";
+		result.payload.provider_payload = undefined;
+	});
+	const folds = foldedIdsOf(groups);
+	assert.equal(folds.length, 1);
+	assert.equal(folds[0].length, 4, JSON.stringify(folds));
+
+	// A music call that registered NO job (a refusal) has no card to protect.
+	const refused = musicAfterReads((entries) => {
+		const result = entries.find((e) => e.id === "t-native-pending-result");
+		result.payload.provider_payload.details = { capabilities: { models: [] } };
+	});
+	assert.ok(
+		foldedIdsOf(refused.groups).some((ids) => ids.includes(refused.musicId)),
+		"a job-less music call still folds with its neighbours",
 	);
 });
