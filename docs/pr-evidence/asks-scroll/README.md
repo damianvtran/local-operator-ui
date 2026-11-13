@@ -21,13 +21,16 @@ descriptions, no real conversation, account or host in any frame.
 # candidate half
 ASKS_APP_ROOT=<worktree> ASKS_OUTPUT=<dir> ASKS_RECORDS=<fixture records> \
   node scripts/asks-app-regression.mjs --case asks-scroll --leg candidate
-# before half: the same case against the base build (`23576e5e5e`), `--leg control`
+# before half: the same case against the base build, `--leg control`
 ```
 
 Both halves are the same case at the same three viewports - `440x1024`,
 `440x700`, `440x1400`, the drawer as a right-anchored sheet - captured at device
 pixel ratio 2 by `Page.captureScreenshot` with no window focus, theme
-`localOperatorDark`, locale `en`.
+`localOperatorDark`, locale `en`. The `before-` half is the PR's base
+(`0de7a69e23`); the same frames captured against `23576e5e5e` - the commit the
+defect was reproduced on - are **byte-identical**, because `0de7a69e23` touches
+no path any frame in this set renders.
 
 | Frame | What it shows |
 | --- | --- |
