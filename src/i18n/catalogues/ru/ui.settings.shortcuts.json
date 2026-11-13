@@ -76,7 +76,7 @@
 	"ui.settings.shortcuts.speech.push_to_talk_overlap": "Каждое сочетание с {modifier}, например {example}, ненадолго запустит запись.{alternative, select, none {} other { Чтобы этого избежать, выберите {alternative}.}}",
 	"ui.settings.shortcuts.speech.push_to_talk_letter_pointer": "Для сочетания с буквой используйте «Начать запись» выше.",
 	"ui.settings.shortcuts.speech.start_recording_needs_key": "Для сочетания нужна буква или цифра в дополнение к клавише-модификатору.",
-	"ui.settings.shortcuts.action.send_both": "Отправить: очередь→направить",
+	"ui.settings.shortcuts.action.send_both": "Отправить в режиме «очередь, затем направить»",
 	"ui.settings.shortcuts.action.send_queue": "Отправить в режиме «очередь»",
 	"ui.settings.shortcuts.action.send_steer": "Отправить в режиме «направить»",
 	"ui.settings.shortcuts.category.sending": "Отправка",
@@ -85,9 +85,9 @@
 	"ui.settings.shortcuts.capture.send_newline": "Добавьте к Enter клавишу Ctrl/⌘ или Alt. Shift+Enter добавляет новую строку.",
 	"ui.settings.shortcuts.capture.send_needs_modifier": "Добавьте к Enter клавишу Ctrl/⌘ или Alt.",
 	"ui.settings.shortcuts.capture.panel_enter": "Клавишу, которая отправляет сообщение, назначайте в строке раздела «Отправка».",
-	"ui.settings.shortcuts.capture.send_prompt": "Нажмите Ctrl/⌘+Enter или Alt+Enter. Один Enter завершает редактирование.",
-	"ui.settings.shortcuts.row_help.send_steer": "Отправить сразу, прервав шаг. Заменяет «Доставка, когда агент занят».",
-	"ui.settings.shortcuts.row_help.send_queue": "Ждать, не прерывая инструменты. Заменяет «Доставка, когда агент занят».",
-	"ui.settings.shortcuts.row_help.send_both": "Ждать, затем направить при долгом ожидании. Приоритетнее настройки «Доставка, когда агент занят».",
+	"ui.settings.shortcuts.capture.send_prompt": "Нажмите Ctrl/⌘+Enter или Alt+Enter. Enter без модификатора завершает редактирование.",
+	"ui.settings.shortcuts.row_help.send_steer": "Отправить сразу, прервав шаг. Имеет приоритет над настройкой «Доставка, когда агент занят».",
+	"ui.settings.shortcuts.row_help.send_queue": "Ждать завершения шага, не прерывая инструменты. Имеет приоритет над настройкой «Доставка, когда агент занят».",
+	"ui.settings.shortcuts.row_help.send_both": "Ждать, затем направить при долгом ожидании. Имеет приоритет над настройкой «Доставка, когда агент занят».",
 	"ui.settings.shortcuts.new_temporary_chat": "Зарезервировано: начинает новый временный чат."
 }

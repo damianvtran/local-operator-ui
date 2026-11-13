@@ -2787,8 +2787,26 @@
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "2405ebc40b47-fold2-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2405ebc40b47-fold2-es.json",
+					"receipt_sha256": "3ee095802308a4eea4bfe42ac0d4a391caacc2913f10000c666b3bd7b57b8e74",
+					"scope": "independent cross-family audit (Codex gpt-5.6-sol) of the keys unique to this branch on the merged bytes, ui.settings.shortcuts 13 + ui.chat.composer 8 + ui.chat.canonical 6; all other keys byte-identical to an audited parent; NOT a full-file audit, NOT a human review",
+					"note": "Round 2 PASS, 0 findings: round 1's 2 majors (action.send_steer, row_help.send_queue) fixed before the round-2 audit of the full 27-key set."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "772c42f90c0c636791982347ab48d31fe69f6e2fcf6b6f1614c35f766601e0f7",
@@ -3551,8 +3569,26 @@
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "2405ebc40b47-fold2-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2405ebc40b47-fold2-es.json",
+					"receipt_sha256": "3ee095802308a4eea4bfe42ac0d4a391caacc2913f10000c666b3bd7b57b8e74",
+					"scope": "independent cross-family audit (Codex gpt-5.6-sol) of the keys unique to this branch on the merged bytes, ui.settings.shortcuts 13 + ui.chat.composer 8 + ui.chat.canonical 6; all other keys byte-identical to an audited parent; NOT a full-file audit, NOT a human review",
+					"note": "Round 2 PASS, 0 findings: round 1's 2 majors (action.send_steer, row_help.send_queue) fixed before the round-2 audit of the full 27-key set."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
@@ -9891,15 +9927,33 @@
 			"locale": "es",
 			"namespace": "ui.settings.shortcuts",
 			"source_sha256": "2a27a8fb0bd4b0a138e243c90dea1568455c2b00d78f98cde7b8aa306589daf2",
-			"target_sha256": "e293e951b863d23034c729980a5c367d062fd46aa6b70441f3feea838c437343",
+			"target_sha256": "652b0a45699ecba66d87501d38caee5c5d33544e7626befceae3282ef1f49c2f",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "2405ebc40b47-fold2-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2405ebc40b47-fold2-es.json",
+					"receipt_sha256": "3ee095802308a4eea4bfe42ac0d4a391caacc2913f10000c666b3bd7b57b8e74",
+					"scope": "independent cross-family audit (Codex gpt-5.6-sol) of the keys unique to this branch on the merged bytes, ui.settings.shortcuts 13 + ui.chat.composer 8 + ui.chat.canonical 6; all other keys byte-identical to an audited parent; NOT a full-file audit, NOT a human review",
+					"note": "Round 2 PASS, 0 findings: round 1's 2 majors (action.send_steer, row_help.send_queue) fixed before the round-2 audit of the full 27-key set."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "39560cc2eb681fae44113a3e237ea9a2a1d879366a34fae09e432abd42c765c9",
@@ -10155,6 +10209,12 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "2a27a8fb0bd4b0a138e243c90dea1568455c2b00d78f98cde7b8aa306589daf2",
+					"target_sha256": "e293e951b863d23034c729980a5c367d062fd46aa6b70441f3feea838c437343",
+					"auditors": [],
+					"status": "pending"
 				}
 			]
 		},
@@ -28151,8 +28211,26 @@
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "2405ebc40b47-fold2-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2405ebc40b47-fold2-hi.json",
+					"receipt_sha256": "373f04b7519c801c22852437301c3fb40df47c4661785f12b7b63ef1a0713722",
+					"scope": "independent cross-family audit (Codex gpt-5.6-sol) of the keys unique to this branch on the merged bytes, ui.settings.shortcuts 13 + ui.chat.composer 8 + ui.chat.canonical 6; all other keys byte-identical to an audited parent; NOT a full-file audit, NOT a human review",
+					"note": "Round 2 PASS with 3 minors on row_help.send_steer/queue/both (unnatural phrase), recorded not churned; no blocker or major."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "772c42f90c0c636791982347ab48d31fe69f6e2fcf6b6f1614c35f766601e0f7",
@@ -28919,8 +28997,26 @@
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "2405ebc40b47-fold2-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2405ebc40b47-fold2-hi.json",
+					"receipt_sha256": "373f04b7519c801c22852437301c3fb40df47c4661785f12b7b63ef1a0713722",
+					"scope": "independent cross-family audit (Codex gpt-5.6-sol) of the keys unique to this branch on the merged bytes, ui.settings.shortcuts 13 + ui.chat.composer 8 + ui.chat.canonical 6; all other keys byte-identical to an audited parent; NOT a full-file audit, NOT a human review",
+					"note": "Round 2 PASS with 3 minors on row_help.send_steer/queue/both (unnatural phrase), recorded not churned; no blocker or major."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
@@ -35526,8 +35622,26 @@
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-13",
+					"result": "clean-with-findings",
+					"instance": "2405ebc40b47-fold2-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 3,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2405ebc40b47-fold2-hi.json",
+					"receipt_sha256": "373f04b7519c801c22852437301c3fb40df47c4661785f12b7b63ef1a0713722",
+					"scope": "independent cross-family audit (Codex gpt-5.6-sol) of the keys unique to this branch on the merged bytes, ui.settings.shortcuts 13 + ui.chat.composer 8 + ui.chat.canonical 6; all other keys byte-identical to an audited parent; NOT a full-file audit, NOT a human review",
+					"note": "Round 2 PASS with 3 minors on row_help.send_steer/queue/both (unnatural phrase), recorded not churned; no blocker or major."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "39560cc2eb681fae44113a3e237ea9a2a1d879366a34fae09e432abd42c765c9",
@@ -40667,8 +40781,26 @@
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "2405ebc40b47-fold2-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2405ebc40b47-fold2-ru.json",
+					"receipt_sha256": "39e0a7a2c71ef523f42ca9fd766988e54723c734eb8177795fb4e49cb6c646c7",
+					"scope": "independent cross-family audit (Codex gpt-5.6-sol) of the keys unique to this branch on the merged bytes, ui.settings.shortcuts 13 + ui.chat.composer 8 + ui.chat.canonical 6; all other keys byte-identical to an audited parent; NOT a full-file audit, NOT a human review",
+					"note": "Round 2 PASS, 0 findings: round 1's 4 majors fixed before the round-2 audit of the full 27-key set."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "772c42f90c0c636791982347ab48d31fe69f6e2fcf6b6f1614c35f766601e0f7",
@@ -41428,15 +41560,33 @@
 			"locale": "ru",
 			"namespace": "ui.chat.composer",
 			"source_sha256": "186846e309af1ccc8d70ab6ef7fd56c7b90c4b977f893e4e6be8d3df95ea088a",
-			"target_sha256": "0f9eddd4deb2a06a0fd205b5f44c29f4566bc619d5a2ab7c5ab11799798ffa90",
+			"target_sha256": "e5b208d8d6ea3a241621382b85d8c9c5946a313105cac981c7da537c4de23b92",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "2405ebc40b47-fold2-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2405ebc40b47-fold2-ru.json",
+					"receipt_sha256": "39e0a7a2c71ef523f42ca9fd766988e54723c734eb8177795fb4e49cb6c646c7",
+					"scope": "independent cross-family audit (Codex gpt-5.6-sol) of the keys unique to this branch on the merged bytes, ui.settings.shortcuts 13 + ui.chat.composer 8 + ui.chat.canonical 6; all other keys byte-identical to an audited parent; NOT a full-file audit, NOT a human review",
+					"note": "Round 2 PASS, 0 findings: round 1's 4 majors fixed before the round-2 audit of the full 27-key set."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
@@ -41705,6 +41855,12 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "186846e309af1ccc8d70ab6ef7fd56c7b90c4b977f893e4e6be8d3df95ea088a",
+					"target_sha256": "0f9eddd4deb2a06a0fd205b5f44c29f4566bc619d5a2ab7c5ab11799798ffa90",
+					"auditors": [],
+					"status": "pending"
 				}
 			]
 		},
@@ -47888,15 +48044,33 @@
 			"locale": "ru",
 			"namespace": "ui.settings.shortcuts",
 			"source_sha256": "2a27a8fb0bd4b0a138e243c90dea1568455c2b00d78f98cde7b8aa306589daf2",
-			"target_sha256": "0d0606cdf11565880fad9da184bccde60a1777257f11518fe210121c66fec2ee",
+			"target_sha256": "a7bbfcd83e5b23fb749996e6ed336e39f5ed694220cd308b696aa3259137b747",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "2405ebc40b47-fold2-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2405ebc40b47-fold2-ru.json",
+					"receipt_sha256": "39e0a7a2c71ef523f42ca9fd766988e54723c734eb8177795fb4e49cb6c646c7",
+					"scope": "independent cross-family audit (Codex gpt-5.6-sol) of the keys unique to this branch on the merged bytes, ui.settings.shortcuts 13 + ui.chat.composer 8 + ui.chat.canonical 6; all other keys byte-identical to an audited parent; NOT a full-file audit, NOT a human review",
+					"note": "Round 2 PASS, 0 findings: round 1's 4 majors fixed before the round-2 audit of the full 27-key set."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "39560cc2eb681fae44113a3e237ea9a2a1d879366a34fae09e432abd42c765c9",
@@ -48154,6 +48328,12 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "2a27a8fb0bd4b0a138e243c90dea1568455c2b00d78f98cde7b8aa306589daf2",
+					"target_sha256": "0d0606cdf11565880fad9da184bccde60a1777257f11518fe210121c66fec2ee",
+					"auditors": [],
+					"status": "pending"
 				}
 			]
 		},
@@ -65643,8 +65823,26 @@
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "2405ebc40b47-fold2-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2405ebc40b47-fold2-vi.json",
+					"receipt_sha256": "c343845dcd0ce36d717eb9774fdbd8b29653d75f569496816f65bbf28fb2993e",
+					"scope": "independent cross-family audit (Codex gpt-5.6-sol) of the keys unique to this branch on the merged bytes, ui.settings.shortcuts 13 + ui.chat.composer 8 + ui.chat.canonical 6; all other keys byte-identical to an audited parent; NOT a full-file audit, NOT a human review",
+					"note": "Round 3 PASS, 0 findings: round 2's major (action.send_both) fixed, full 27-key set re-audited; round-2 minors it did not repeat remain unchanged on disk."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "772c42f90c0c636791982347ab48d31fe69f6e2fcf6b6f1614c35f766601e0f7",
@@ -66439,15 +66637,33 @@
 			"locale": "vi",
 			"namespace": "ui.chat.composer",
 			"source_sha256": "186846e309af1ccc8d70ab6ef7fd56c7b90c4b977f893e4e6be8d3df95ea088a",
-			"target_sha256": "ce40816051dd3bf9dd1f8ea7ae6af42030601d867120cbb1f07f67905d97bcc1",
+			"target_sha256": "2dca884af2c7e991b2be058b11a03a7ed46548e45874b2f347588a03e418e3b3",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "2405ebc40b47-fold2-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2405ebc40b47-fold2-vi.json",
+					"receipt_sha256": "c343845dcd0ce36d717eb9774fdbd8b29653d75f569496816f65bbf28fb2993e",
+					"scope": "independent cross-family audit (Codex gpt-5.6-sol) of the keys unique to this branch on the merged bytes, ui.settings.shortcuts 13 + ui.chat.composer 8 + ui.chat.canonical 6; all other keys byte-identical to an audited parent; NOT a full-file audit, NOT a human review",
+					"note": "Round 3 PASS, 0 findings: round 2's major (action.send_both) fixed, full 27-key set re-audited; round-2 minors it did not repeat remain unchanged on disk."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
@@ -66694,6 +66910,12 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "186846e309af1ccc8d70ab6ef7fd56c7b90c4b977f893e4e6be8d3df95ea088a",
+					"target_sha256": "ce40816051dd3bf9dd1f8ea7ae6af42030601d867120cbb1f07f67905d97bcc1",
+					"auditors": [],
+					"status": "pending"
 				}
 			]
 		},
@@ -73369,15 +73591,33 @@
 			"locale": "vi",
 			"namespace": "ui.settings.shortcuts",
 			"source_sha256": "2a27a8fb0bd4b0a138e243c90dea1568455c2b00d78f98cde7b8aa306589daf2",
-			"target_sha256": "60cc872e13122086adfc176e2f10dfb196ce5b4e521c3605522eb9df4356d886",
+			"target_sha256": "068a787ce21e587ef6015c218df0dc6d0fc2db0fe2eb03f7d7e9f8c66a8d47b8",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "2405ebc40b47-fold2-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2405ebc40b47-fold2-vi.json",
+					"receipt_sha256": "c343845dcd0ce36d717eb9774fdbd8b29653d75f569496816f65bbf28fb2993e",
+					"scope": "independent cross-family audit (Codex gpt-5.6-sol) of the keys unique to this branch on the merged bytes, ui.settings.shortcuts 13 + ui.chat.composer 8 + ui.chat.canonical 6; all other keys byte-identical to an audited parent; NOT a full-file audit, NOT a human review",
+					"note": "Round 3 PASS, 0 findings: round 2's major (action.send_both) fixed, full 27-key set re-audited; round-2 minors it did not repeat remain unchanged on disk."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "39560cc2eb681fae44113a3e237ea9a2a1d879366a34fae09e432abd42c765c9",
@@ -73634,6 +73874,12 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "2a27a8fb0bd4b0a138e243c90dea1568455c2b00d78f98cde7b8aa306589daf2",
+					"target_sha256": "60cc872e13122086adfc176e2f10dfb196ce5b4e521c3605522eb9df4356d886",
+					"auditors": [],
+					"status": "pending"
 				}
 			]
 		},
@@ -78895,8 +79141,26 @@
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "2405ebc40b47-fold2-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2405ebc40b47-fold2-zh-cn.json",
+					"receipt_sha256": "09b58d149db274ff574f097f4328d05542b70ba886eb715fb1293b0f88ecde5c",
+					"scope": "independent cross-family audit (Codex gpt-5.6-sol) of the keys unique to this branch on the merged bytes, ui.settings.shortcuts 13 + ui.chat.composer 8 + ui.chat.canonical 6; all other keys byte-identical to an audited parent; NOT a full-file audit, NOT a human review",
+					"note": "Round 2 PASS, 0 findings on the full 27-key set; round 1's 2 minor spacing notes were recorded, not churned (values unchanged)."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "772c42f90c0c636791982347ab48d31fe69f6e2fcf6b6f1614c35f766601e0f7",
@@ -79674,8 +79938,26 @@
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "2405ebc40b47-fold2-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2405ebc40b47-fold2-zh-cn.json",
+					"receipt_sha256": "09b58d149db274ff574f097f4328d05542b70ba886eb715fb1293b0f88ecde5c",
+					"scope": "independent cross-family audit (Codex gpt-5.6-sol) of the keys unique to this branch on the merged bytes, ui.settings.shortcuts 13 + ui.chat.composer 8 + ui.chat.canonical 6; all other keys byte-identical to an audited parent; NOT a full-file audit, NOT a human review",
+					"note": "Round 2 PASS, 0 findings on the full 27-key set; round 1's 2 minor spacing notes were recorded, not churned (values unchanged)."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
@@ -86936,8 +87218,26 @@
 				"date": "2026-11-13",
 				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "2405ebc40b47-fold2-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2405ebc40b47-fold2-zh-cn.json",
+					"receipt_sha256": "09b58d149db274ff574f097f4328d05542b70ba886eb715fb1293b0f88ecde5c",
+					"scope": "independent cross-family audit (Codex gpt-5.6-sol) of the keys unique to this branch on the merged bytes, ui.settings.shortcuts 13 + ui.chat.composer 8 + ui.chat.canonical 6; all other keys byte-identical to an audited parent; NOT a full-file audit, NOT a human review",
+					"note": "Round 2 PASS, 0 findings on the full 27-key set; round 1's 2 minor spacing notes were recorded, not churned (values unchanged)."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "39560cc2eb681fae44113a3e237ea9a2a1d879366a34fae09e432abd42c765c9",

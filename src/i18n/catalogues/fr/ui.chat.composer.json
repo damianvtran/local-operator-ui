@@ -74,8 +74,8 @@
 	"ui.chat.composer.secret_closure_notice": "Répondez à la demande de secret dans le panneau des demandes — ce champ reste en pause jusqu’à votre réponse, et votre brouillon est conservé.",
 	"ui.chat.composer.placeholder.waiting_steer": "Entrée envoie maintenant · Échap arrête",
 	"ui.chat.composer.placeholder.waiting_queue": "Entrée met en file d’attente · Échap arrête",
-	"ui.chat.composer.placeholder.waiting_both": "Entrée : file puis oriente · Échap arrête",
+	"ui.chat.composer.placeholder.waiting_both": "Entrée : file d’attente, puis oriente · Échap arrête",
 	"ui.chat.composer.steer_hint_steer": "Envoyer pendant que l’agent travaille (Entrée) · Échap arrête le tour",
 	"ui.chat.composer.steer_hint_queue": "Entrée met en file d’attente · Échap arrête le tour",
-	"ui.chat.composer.steer_hint_both": "Entrée met en file, puis oriente · Échap arrête le tour"
+	"ui.chat.composer.steer_hint_both": "Entrée met en file d’attente, puis oriente · Échap arrête le tour"
 }

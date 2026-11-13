@@ -23,7 +23,7 @@
 	"ui.chat.composer.insert_transcript_hint": "جانچنے کے لیے ٹرانسکرپٹ داخل کریں (Enter)",
 	"ui.chat.composer.send_recording": "ریکارڈنگ بھیجیں",
 	"ui.chat.composer.send_recording_hint": "ٹرانسکرائب کر کے ابھی بھیجیں، جانچے بغیر",
-	"ui.chat.composer.steer_hint": "ایجنٹ کے کام کے دوران بھیجیں (Enter) · Esc موجودہ باری روکتا ہے",
+	"ui.chat.composer.steer_hint": "ایجنٹ کے کام کے دوران بھیجیں (Enter) · Esc موجودہ باری کو روکتا ہے",
 	"ui.chat.composer.stop": "روکیں",
 	"ui.chat.composer.stop_work_hint": "اس سیشن کا موجودہ کام روکیں (Esc)",
 	"ui.chat.composer.stop_agent": "ایجنٹ روکیں",
