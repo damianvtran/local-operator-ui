@@ -3115,6 +3115,15 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 												temporaryEnabled &&
 												canonical.view.temporaryDeleted === true
 											}
+											/*
+											 * The cached paint's own two facts, beside the rows it seeded: where
+											 * the reader was, and whether a turn was running when this window
+											 * last showed the conversation. Both are claims the snapshot
+											 * corrects; both are one-shot reads of the paint, not live state
+											 * (`use-canonical-session` clears them in the snapshot's commit).
+											 */
+											restoredScroll={canonical.view.paintScroll}
+											paintRunning={canonical.view.paintBusy}
 										/>
 										<JobCancelPopover {...musicJobCancel.popover} />
 									</MusicJobsLiveContext.Provider>,

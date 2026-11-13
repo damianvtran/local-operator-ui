@@ -123,6 +123,7 @@ import {
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { dropPaint, readPaint, writePaint } from "@shared/store/paint-cache";
+import type { PaintedScroll } from "@shared/store/paint-cache";
 import { forgetTurnCollapseOpen } from "@shared/store/turn-collapse-open";
 import { forgetWatchedRun } from "@shared/store/turn-collapse-watched";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -476,6 +477,27 @@ export type CanonicalSessionView = {
 	 * only an authoritative reconcile makes them not-cached.
 	 */
 	stale: boolean;
+	/**
+	 * Where the reader was in the painted conversation when this window last
+	 * showed it, or null when the paint carried no place (a cold mount, or the
+	 * tail, which is the scroller's own default).
+	 *
+	 * Read ONCE by the pane's mount to put a scrolled-up reader back where they
+	 * left; a return that was pinned stays pinned and nothing is written.
+	 */
+	paintScroll: PaintedScroll | null;
+	/**
+	 * A turn was running when this window last showed the conversation.
+	 *
+	 * A CLAIM carried by the paint, not the owner's state: the in-flight rows are
+	 * dropped on write, so a seeded transcript reads as settled, and the pane
+	 * otherwise paints idle chrome over a running session for the whole
+	 * revalidate (UX review, 2026-11-12: no working line, no stop affordance).
+	 * It is presentation only - it never reaches the send mode, the interrupt
+	 * path or `frontend` - and the snapshot clears it in the same commit that
+	 * replaces the rows.
+	 */
+	paintBusy: boolean;
 	/**
 	 * True when the backend says this conversation is not on this machine (M6).
 	 *
@@ -1509,6 +1531,66 @@ function turnRunning(state: {
 }
 
 /**
+ * Whether the paint should CLAIM a turn was running.
+ *
+ * WHY IT IS NOT `turnRunning` ABOVE (UX blocker U6 / QA Q2, #1883 round 1). That
+ * predicate answers the LABEL HOLD's question, and its first term is "no
+ * terminal event has been seen since" - which is FALSE the instant a turn
+ * STARTS: `TERMINAL_EVENTS` includes `turn_start`, `agent_start`,
+ * `provider_start` and `steering_delivered`. So `busy: turnRunning(...)` wrote
+ * `false` for every turn this pane watched begin, and a cached return painted
+ * idle chrome over a running session - a CDP breakpoint at the write read
+ * `busy:false` while the UI showed the working line, and a turn started in the
+ * mounted pane then left painted no working line for the whole revalidate
+ * (3/3; it only worked when the leaving pane had seen the turn through a
+ * SNAPSHOT, which clears `terminal`).
+ *
+ * WHAT IT ASKS INSTEAD is the signal the pane's working line is drawn from,
+ * `chat-page.tsx`'s `turnAlive`: `frontend.streaming`, with the held reading
+ * across a receipt gap (the same pair `turnRunning` reads last), plus the app's
+ * own admitted send, which is the working line's `starting` arm and exists
+ * before any owner frame does. A terminal event does NOT end it - the owner's
+ * own statement does (a frontend update or the snapshot, both of which carry
+ * `streaming`), which is exactly how a turn that finished while the reader was
+ * away loses the line in the commit that replaces the rows. A failure ends it,
+ * as it does everywhere else in this file.
+ */
+export function paintTurnBusy(
+	state: {
+		/*
+		 * `terminal` is deliberately NOT part of this type (U6): the label hold's
+		 * latch is set by a turn's START, so reading it here is the defect. Leaving
+		 * it out makes re-adding that term a compile error rather than a regression
+		 * only a rendered frame would catch.
+		 */
+		failure: unknown;
+		frontend: { streaming: boolean } | null;
+		heldFrontend: { streaming: boolean } | null;
+		/*
+		 * THE CLAIM THIS MOUNT WAS SEEDED WITH (`view.paintBusy`), which the snapshot
+		 * withdraws in the commit that replaces its rows (agent review round 2, C7).
+		 * Without this term a mount seeded from a cached paint has NOTHING to carry
+		 * forward: its `frontend`/`heldFrontend` are null until the snapshot lands
+		 * (one measured trace puts that wait at a median of ~1.3 s), so a reader who
+		 * leaves again inside that window wrote `busy:false` over a running turn —
+		 * and the third return painted idle chrome over it. Only a SEEDED claim reaches here as
+		 * `true`; the snapshot sets the field `false`, so a withdrawn claim cannot
+		 * outlive its answer.
+		 */
+		paintBusy: boolean;
+	},
+	/** Whether an admitted send has no answer yet; see `pendingSendForView`. */
+	sendPending: boolean,
+): boolean {
+	if (state.failure) return false;
+	if ((state.frontend ?? state.heldFrontend)?.streaming === true) return true;
+	// A seeded claim the snapshot has not yet withdrawn. `failure` above already
+	// refuted it: a failure is the owner's statement that the turn ended.
+	if (state.paintBusy === true) return true;
+	return sendPending;
+}
+
+/**
  * Whether a call's label is still OWED, which is the question the hold asks.
  *
  * TWO TERMS, and the second is round 2's M3: (a) a call no page has named whose
@@ -2295,6 +2377,8 @@ function paintSeed(sessionId: string): {
 	stale: boolean;
 	owedLabels: ReadonlySet<string>;
 	markLabels: ReadonlySet<string>;
+	scroll: PaintedScroll | null;
+	busy: boolean;
 } {
 	const cached = readPaint(sessionId);
 	if (!cached) {
@@ -2303,6 +2387,8 @@ function paintSeed(sessionId: string): {
 			stale: false,
 			owedLabels: NO_LABELS_PENDING,
 			markLabels: NO_LABELS_MARKED,
+			scroll: null,
+			busy: false,
 		};
 	}
 	return {
@@ -2317,6 +2403,12 @@ function paintSeed(sessionId: string): {
 		// Same argument one state over: rows cannot say whether a column owes the
 		// mark or may fall back to the call's OUTPUT.
 		markLabels: cached.markLabels,
+		// Where the reader was, so a return to a scrolled-up conversation does not
+		// re-anchor at the tail (QA measured 0 of 12 returns keeping their place).
+		scroll: cached.scroll,
+		// A turn was running when this window last showed the conversation. A
+		// claim, corrected by the snapshot in the commit that replaces the rows.
+		busy: cached.busy,
 	};
 }
 
@@ -2671,6 +2763,10 @@ export function useCanonicalSessionStream(
 			// A cached paint is a real memory of a real transcript, but it is not the
 			// owner's current state — so it says so until the snapshot lands.
 			stale: seed?.stale ?? false,
+			// The reader's place and the turn's liveness travel with the paint; both are
+			// consumed once and both are corrected by the snapshot.
+			paintScroll: seed?.scroll ?? null,
+			paintBusy: seed?.busy ?? false,
 			missing: false,
 			loadingOlder: false,
 			olderFailed: false,
@@ -5017,6 +5113,12 @@ export function useCanonicalSessionStream(
 								// never sees a reconciled transcript labelled as last-saved or
 								// the reverse.
 								stale: false,
+								// And the paint's claim about a running turn goes with it: the
+								// snapshot's own `frontend.streaming` is the authority from this
+								// commit on, so a flag the owner's answer did not keep cannot
+								// outlive the answer.
+								paintBusy: false,
+								paintScroll: null,
 								frontend: {
 									...snapshot.frontend.snapshot,
 									/*
@@ -6489,6 +6591,12 @@ export function useCanonicalSessionStream(
 				? current.transcript
 				: (seed?.transcript ?? EMPTY_TRANSCRIPT),
 			stale: sameSession ? current.stale : seed !== null,
+			// The paint's place and its liveness follow the same rule as `stale`: they
+			// describe the rows, so a same-session remount keeps what it has (the
+			// place is spent by then - `null` keeps it from being restored twice),
+			// and a genuine change takes the new paint's.
+			paintScroll: sameSession ? null : (seed?.scroll ?? null),
+			paintBusy: sameSession ? current.paintBusy : seed?.busy === true,
 			missing: sameSession ? current.missing : false,
 			// WHY it is missing travels with `missing` (review R1-3): the hook stays
 			// mounted across a switch, so a kept flag would paint the temporary
@@ -6540,6 +6648,21 @@ export function useCanonicalSessionStream(
 		 */
 	}, [sessionId, isSession]);
 
+	/*
+	 * The identity this pane addresses, read through a ref so the PAINT'S CLEANUP
+	 * depends on the conversation alone (agent review round 2, C8).
+	 *
+	 * A fresh draft's identity moves `draftKey` -> the created session's id while
+	 * `sessionId` - the stream id - stays the same, so an `identity` dependency
+	 * fired this cleanup MID-SESSION: it wrote a paint for a conversation the
+	 * reader was still looking at, and dropped this mount's `inFlight` label reads
+	 * with it. The registry entry a send paints is keyed by the identity of the
+	 * moment, so the cleanup must read the CURRENT one; a ref is how it sees the
+	 * render that was last committed, not the one that created this closure (the
+	 * rule `viewRef` above already follows).
+	 */
+	const identityRef = useRef(identity);
+	identityRef.current = identity;
 	/*
 	 * Cache this conversation's paint on the way out.
 	 *
@@ -6599,6 +6722,30 @@ export function useCanonicalSessionStream(
 					 * is withheld. `writePaint` intersects it with the rows that survive.
 					 */
 					replayBorn: new Set(replayBornIds.current),
+					/*
+					 * AND THE TURN'S LIVENESS AT THIS INSTANT, read from the same ref as the
+					 * rows. The in-flight rows themselves are dropped by `writePaint` (a
+					 * cached streaming row can never advance), so without this bit every
+					 * cached transcript reads as settled and a return paints idle chrome
+					 * over a running turn until the snapshot lands (UX review, 2026-11-12).
+					 *
+					 * `paintTurnBusy`, NOT `turnRunning`: the latter is false for any turn
+					 * whose `turn_start` this pane saw (U6/Q2). The pending-send half is
+					 * read here rather than in the predicate so the registry stays the one
+					 * source of what this pane was still waiting on.
+					 *
+					 * AND THE SEEDED CLAIM IS THE PREDICATE'S THIRD TERM (agent review
+					 * round 2, C7): a mount seeded from a cached paint has no live reading
+					 * until the snapshot lands, so a reader who leaves AGAIN inside that
+					 * window would otherwise write `busy:false` over the working line their
+					 * own frame was painting. The term lives in the pure function so a test
+					 * can assert the rule itself; the snapshot's commit is what withdraws
+					 * it (`view.paintBusy: false`).
+					 */
+					busy: paintTurnBusy(
+						viewRef.current,
+						pendingSendForView(identityRef.current) !== null,
+					),
 				});
 			/*
 			 * AND THIS PANE'S OUTSTANDING READS GO WITH IT (agent review round 3, M2's
@@ -6625,6 +6772,10 @@ export function useCanonicalSessionStream(
 				labelGapRef.current.inFlight.delete(id);
 			inFlightOwned.current.clear();
 		};
+		/*
+		 * `sessionId` ALONE: a draft learning its own id is the same conversation
+		 * (C8 above), and `identity` is read through the ref for exactly that reason.
+		 */
 	}, [sessionId]);
 
 	/*
