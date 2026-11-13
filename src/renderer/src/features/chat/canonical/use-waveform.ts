@@ -26,7 +26,10 @@
 
 import { desktopMedia } from "@shared/api/local-operator/desktop-api";
 import { useEffect, useState } from "react";
-import type { AttachmentScope } from "./use-attachment-url";
+import {
+	ATTACHMENT_RETRY_DELAYS_MS,
+	type AttachmentScope,
+} from "./use-attachment-url";
 
 /**
  * A stored sidecar's body, as bars: `{ peaks: number[] }`, or a bare array for a
@@ -52,7 +55,10 @@ export function peaksFrom(value: unknown): number[] | null {
 }
 
 /** Digests whose fetch is in flight, or whose answer is already known. */
-const cache = new Map<string, Promise<number[] | null>>();
+const cache = new Map<
+	string,
+	Promise<number[] | null | typeof PENDING | typeof UNKEPT>
+>();
 
 /**
  * The relay call for one digest's sidecar, exported so the node tests can drive
@@ -62,6 +68,31 @@ export async function fetchWaveformPeaks(
 	scope: AttachmentScope,
 	digest: string,
 ): Promise<number[] | null> {
+	const outcome = await fetchWaveformOutcome(scope, digest);
+	return outcome === PENDING || outcome === UNKEPT ? null : outcome;
+}
+
+/**
+ * The owner of a peer-held sound answered 504 (unreachable, or its transfer is
+ * still running). Distinct from `null` because `null` is a settled answer the
+ * cache keeps forever, and a 504 must never be kept: the same digest is worth
+ * asking for again (docs/design/remote-files-parity.md §1).
+ */
+const PENDING = Symbol("waveform-pending");
+
+/**
+ * A 409: the store or the owner of a peer-held digest could not serve the
+ * sidecar THIS time (`attachment_on_peer`, an offline replica). Painted flat,
+ * like `null`, but never kept: the bytes beside it are re-asked on remount,
+ * and the waveform has to follow them, or a sound that came back stays flat
+ * for the app's lifetime (QA round 1, Q1-4).
+ */
+const UNKEPT = Symbol("waveform-unkept");
+
+async function fetchWaveformOutcome(
+	scope: AttachmentScope,
+	digest: string,
+): Promise<number[] | null | typeof PENDING | typeof UNKEPT> {
 	try {
 		const result = await desktopMedia(
 			{
@@ -83,6 +114,8 @@ export async function fetchWaveformPeaks(
 				return null;
 			}
 		}
+		if (result.status === 504) return PENDING;
+		if (result.status === 409) return UNKEPT;
 		return null;
 	} catch {
 		return null;
@@ -109,11 +142,33 @@ export function useWaveform(
 			return;
 		}
 		let live = true;
-		requestPeaks({ sessionId, childId }, digest).then((value) => {
-			if (live) setPeaks(value);
-		});
+		let wait: ReturnType<typeof setTimeout> | undefined;
+		// The bytes' own schedule (`ATTACHMENT_RETRY_DELAYS_MS`): a 504 is asked
+		// again on the same backoff, and after the last one the player keeps its
+		// flat scrubber. Nothing is cached, so a remount asks afresh.
+		const attempt = (index: number) => {
+			requestPeaks({ sessionId, childId }, digest).then((value) => {
+				if (!live) return;
+				if (value === UNKEPT) {
+					setPeaks(null);
+					return;
+				}
+				if (value !== PENDING) {
+					setPeaks(value);
+					return;
+				}
+				const delay = ATTACHMENT_RETRY_DELAYS_MS[index];
+				if (delay === undefined) return;
+				wait = setTimeout(() => {
+					wait = undefined;
+					if (live) attempt(index + 1);
+				}, delay);
+			});
+		};
+		attempt(0);
 		return () => {
 			live = false;
+			if (wait !== undefined) clearTimeout(wait);
 		};
 	}, [digest, sessionId, childId]);
 	return peaks;
@@ -134,11 +189,17 @@ const settled = new Map<string, number[] | null>();
 function requestPeaks(
 	scope: AttachmentScope,
 	digest: string,
-): Promise<number[] | null> {
+): Promise<number[] | null | typeof PENDING | typeof UNKEPT> {
 	const existing = cache.get(digest);
 	if (existing) return existing;
-	const pending = fetchWaveformPeaks(scope, digest)
+	const pending = fetchWaveformOutcome(scope, digest)
 		.then((value) => {
+			if (value === PENDING || value === UNKEPT) {
+				// Never cache a 504 or a 409: the next attempt (or the next mount)
+				// must reach the relay.
+				cache.delete(digest);
+				return value;
+			}
 			settled.set(digest, value);
 			return value;
 		})

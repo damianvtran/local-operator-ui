@@ -139,6 +139,8 @@ import enUiLibrary from "./catalogues/en/ui.library.json";
 import enUiMeshErrors from "./catalogues/en/ui.mesh.errors.json";
 import enUiMesh from "./catalogues/en/ui.mesh.json";
 import enUiMiniView from "./catalogues/en/ui.miniView.json";
+import enUiMusicJobStatus from "./catalogues/en/ui.music.job_status.json";
+import enUiMusic from "./catalogues/en/ui.music.json";
 import enUiNativeBadge from "./catalogues/en/ui.nativeBadge.json";
 import enUiNotices from "./catalogues/en/ui.notices.json";
 import enUiNotificationsBulk from "./catalogues/en/ui.notifications.bulk.json";
@@ -300,6 +302,8 @@ import esUiLibrary from "./catalogues/es/ui.library.json";
 import esUiMeshErrors from "./catalogues/es/ui.mesh.errors.json";
 import esUiMesh from "./catalogues/es/ui.mesh.json";
 import esUiMiniView from "./catalogues/es/ui.miniView.json";
+import esUiMusicJobStatus from "./catalogues/es/ui.music.job_status.json";
+import esUiMusic from "./catalogues/es/ui.music.json";
 import esUiNativeBadge from "./catalogues/es/ui.nativeBadge.json";
 import esUiNotices from "./catalogues/es/ui.notices.json";
 import esUiNotificationsBulk from "./catalogues/es/ui.notifications.bulk.json";
@@ -461,6 +465,8 @@ import frUiLibrary from "./catalogues/fr/ui.library.json";
 import frUiMeshErrors from "./catalogues/fr/ui.mesh.errors.json";
 import frUiMesh from "./catalogues/fr/ui.mesh.json";
 import frUiMiniView from "./catalogues/fr/ui.miniView.json";
+import frUiMusicJobStatus from "./catalogues/fr/ui.music.job_status.json";
+import frUiMusic from "./catalogues/fr/ui.music.json";
 import frUiNativeBadge from "./catalogues/fr/ui.nativeBadge.json";
 import frUiNotices from "./catalogues/fr/ui.notices.json";
 import frUiNotificationsBulk from "./catalogues/fr/ui.notifications.bulk.json";
@@ -622,6 +628,8 @@ import hiUiLibrary from "./catalogues/hi/ui.library.json";
 import hiUiMeshErrors from "./catalogues/hi/ui.mesh.errors.json";
 import hiUiMesh from "./catalogues/hi/ui.mesh.json";
 import hiUiMiniView from "./catalogues/hi/ui.miniView.json";
+import hiUiMusicJobStatus from "./catalogues/hi/ui.music.job_status.json";
+import hiUiMusic from "./catalogues/hi/ui.music.json";
 import hiUiNativeBadge from "./catalogues/hi/ui.nativeBadge.json";
 import hiUiNotices from "./catalogues/hi/ui.notices.json";
 import hiUiNotificationsBulk from "./catalogues/hi/ui.notifications.bulk.json";
@@ -783,6 +791,8 @@ import ruUiLibrary from "./catalogues/ru/ui.library.json";
 import ruUiMeshErrors from "./catalogues/ru/ui.mesh.errors.json";
 import ruUiMesh from "./catalogues/ru/ui.mesh.json";
 import ruUiMiniView from "./catalogues/ru/ui.miniView.json";
+import ruUiMusicJobStatus from "./catalogues/ru/ui.music.job_status.json";
+import ruUiMusic from "./catalogues/ru/ui.music.json";
 import ruUiNativeBadge from "./catalogues/ru/ui.nativeBadge.json";
 import ruUiNotices from "./catalogues/ru/ui.notices.json";
 import ruUiNotificationsBulk from "./catalogues/ru/ui.notifications.bulk.json";
@@ -944,6 +954,8 @@ import urUiLibrary from "./catalogues/ur/ui.library.json";
 import urUiMeshErrors from "./catalogues/ur/ui.mesh.errors.json";
 import urUiMesh from "./catalogues/ur/ui.mesh.json";
 import urUiMiniView from "./catalogues/ur/ui.miniView.json";
+import urUiMusicJobStatus from "./catalogues/ur/ui.music.job_status.json";
+import urUiMusic from "./catalogues/ur/ui.music.json";
 import urUiNativeBadge from "./catalogues/ur/ui.nativeBadge.json";
 import urUiNotices from "./catalogues/ur/ui.notices.json";
 import urUiNotificationsBulk from "./catalogues/ur/ui.notifications.bulk.json";
@@ -1105,6 +1117,8 @@ import viUiLibrary from "./catalogues/vi/ui.library.json";
 import viUiMeshErrors from "./catalogues/vi/ui.mesh.errors.json";
 import viUiMesh from "./catalogues/vi/ui.mesh.json";
 import viUiMiniView from "./catalogues/vi/ui.miniView.json";
+import viUiMusicJobStatus from "./catalogues/vi/ui.music.job_status.json";
+import viUiMusic from "./catalogues/vi/ui.music.json";
 import viUiNativeBadge from "./catalogues/vi/ui.nativeBadge.json";
 import viUiNotices from "./catalogues/vi/ui.notices.json";
 import viUiNotificationsBulk from "./catalogues/vi/ui.notifications.bulk.json";
@@ -1266,6 +1280,8 @@ import zhCNUiLibrary from "./catalogues/zh-CN/ui.library.json";
 import zhCNUiMeshErrors from "./catalogues/zh-CN/ui.mesh.errors.json";
 import zhCNUiMesh from "./catalogues/zh-CN/ui.mesh.json";
 import zhCNUiMiniView from "./catalogues/zh-CN/ui.miniView.json";
+import zhCNUiMusicJobStatus from "./catalogues/zh-CN/ui.music.job_status.json";
+import zhCNUiMusic from "./catalogues/zh-CN/ui.music.json";
 import zhCNUiNativeBadge from "./catalogues/zh-CN/ui.nativeBadge.json";
 import zhCNUiNotices from "./catalogues/zh-CN/ui.notices.json";
 import zhCNUiNotificationsBulk from "./catalogues/zh-CN/ui.notifications.bulk.json";
@@ -1430,6 +1446,8 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiMeshErrors,
 	...enUiMesh,
 	...enUiMiniView,
+	...enUiMusicJobStatus,
+	...enUiMusic,
 	...enUiNativeBadge,
 	...enUiNotices,
 	...enUiNotificationsBulk,
@@ -1599,6 +1617,8 @@ export const bundledCatalogues: Readonly<
 		...esUiMeshErrors,
 		...esUiMesh,
 		...esUiMiniView,
+		...esUiMusicJobStatus,
+		...esUiMusic,
 		...esUiNativeBadge,
 		...esUiNotices,
 		...esUiNotificationsBulk,
@@ -1762,6 +1782,8 @@ export const bundledCatalogues: Readonly<
 		...frUiMeshErrors,
 		...frUiMesh,
 		...frUiMiniView,
+		...frUiMusicJobStatus,
+		...frUiMusic,
 		...frUiNativeBadge,
 		...frUiNotices,
 		...frUiNotificationsBulk,
@@ -1925,6 +1947,8 @@ export const bundledCatalogues: Readonly<
 		...hiUiMeshErrors,
 		...hiUiMesh,
 		...hiUiMiniView,
+		...hiUiMusicJobStatus,
+		...hiUiMusic,
 		...hiUiNativeBadge,
 		...hiUiNotices,
 		...hiUiNotificationsBulk,
@@ -2088,6 +2112,8 @@ export const bundledCatalogues: Readonly<
 		...ruUiMeshErrors,
 		...ruUiMesh,
 		...ruUiMiniView,
+		...ruUiMusicJobStatus,
+		...ruUiMusic,
 		...ruUiNativeBadge,
 		...ruUiNotices,
 		...ruUiNotificationsBulk,
@@ -2251,6 +2277,8 @@ export const bundledCatalogues: Readonly<
 		...urUiMeshErrors,
 		...urUiMesh,
 		...urUiMiniView,
+		...urUiMusicJobStatus,
+		...urUiMusic,
 		...urUiNativeBadge,
 		...urUiNotices,
 		...urUiNotificationsBulk,
@@ -2414,6 +2442,8 @@ export const bundledCatalogues: Readonly<
 		...viUiMeshErrors,
 		...viUiMesh,
 		...viUiMiniView,
+		...viUiMusicJobStatus,
+		...viUiMusic,
 		...viUiNativeBadge,
 		...viUiNotices,
 		...viUiNotificationsBulk,
@@ -2577,6 +2607,8 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiMeshErrors,
 		...zhCNUiMesh,
 		...zhCNUiMiniView,
+		...zhCNUiMusicJobStatus,
+		...zhCNUiMusic,
 		...zhCNUiNativeBadge,
 		...zhCNUiNotices,
 		...zhCNUiNotificationsBulk,
@@ -4099,6 +4131,29 @@ export type MessageParams = {
 	"ui.canvas.files.recent": undefined;
 	"ui.canvas.files.region": undefined;
 	"ui.canvas.files.remote": undefined;
+	"ui.canvas.files.remoteAlreadyDownloaded": { name: string; folder: string };
+	"ui.canvas.files.remoteCopyOwnerPath": { device: string };
+	"ui.canvas.files.remoteDeviceFallback": undefined;
+	"ui.canvas.files.remoteDownload": undefined;
+	"ui.canvas.files.remoteDownloadFailed": { device: string };
+	"ui.canvas.files.remoteDownloadPending": { device: string };
+	"ui.canvas.files.remoteDownloaded": { name: string; folder: string };
+	"ui.canvas.files.remoteDownloading": { name: string; device: string };
+	"ui.canvas.files.remoteFetching": { device: string };
+	"ui.canvas.files.remoteOn": { device: string };
+	"ui.canvas.files.remotePeerUpdate": { device: string };
+	"ui.canvas.files.remotePeerUpdateHow": { device: string };
+	"ui.canvas.files.remotePlay": { device: string };
+	"ui.canvas.files.remoteReadFailed": undefined;
+	"ui.canvas.files.remoteReadOnly": { device: string };
+	"ui.canvas.files.remoteReason.missing": { device: string };
+	"ui.canvas.files.remoteReason.notReferenced": { device: string };
+	"ui.canvas.files.remoteReason.sensitive": { device: string };
+	"ui.canvas.files.remoteReason.tooLarge": { device: string };
+	"ui.canvas.files.remoteReason.workspace": { device: string };
+	"ui.canvas.files.remoteTooLargeToOpen": { device: string };
+	"ui.canvas.files.remoteUnreachable": { device: string };
+	"ui.canvas.files.remoteUnreachableUnnamed": undefined;
 	"ui.canvas.files.reset": undefined;
 	"ui.canvas.files.retry": undefined;
 	"ui.canvas.files.saveError": undefined;
@@ -4577,11 +4632,13 @@ export type MessageParams = {
 	"ui.chat.attachments.open": undefined;
 	"ui.chat.attachments.open_named": { name: string };
 	"ui.chat.attachments.open_title": { name: string };
+	"ui.chat.attachments.owner_unreachable": undefined;
 	"ui.chat.attachments.path_copied": undefined;
 	"ui.chat.attachments.pending_caption": undefined;
 	"ui.chat.attachments.playback_position": undefined;
 	"ui.chat.attachments.playback_rate": undefined;
 	"ui.chat.attachments.playback_rate_option": { rate: string };
+	"ui.chat.attachments.retry_fetch": undefined;
 	"ui.chat.attachments.saved_copy_label": undefined;
 	"ui.chat.attachments.saved_path_copied": undefined;
 	"ui.chat.attachments.volume": undefined;
@@ -9445,6 +9502,22 @@ export type MessageParams = {
 	"ui.miniView.sheet_model": undefined;
 	"ui.miniView.sheet_unavailable": undefined;
 	"ui.miniView.switch_failed": undefined;
+	"ui.music.job_status.unavailable": undefined;
+	"ui.music.cancel_requested": undefined;
+	"ui.music.cancel_warning": { label: string };
+	"ui.music.empty": undefined;
+	"ui.music.failed": undefined;
+	"ui.music.finished_after_cancel": undefined;
+	"ui.music.generating": undefined;
+	"ui.music.generating_tracks": { count: number };
+	"ui.music.job_cancelled": undefined;
+	"ui.music.job_failed": undefined;
+	"ui.music.label": undefined;
+	"ui.music.modifying": undefined;
+	"ui.music.progress": { completed: string; total: string };
+	"ui.music.queued": undefined;
+	"ui.music.ready": undefined;
+	"ui.music.track": { index: string };
 	"ui.nativeBadge.attention": { count: number };
 	"ui.nativeBadge.attentionPending": { count: number };
 	"ui.nativeBadge.pending": undefined;

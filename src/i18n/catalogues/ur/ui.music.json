@@ -1,0 +1,17 @@
+{
+	"ui.music.label": "موسیقی",
+	"ui.music.progress": "{completed}/{total} ٹریک مکمل ہو گئے",
+	"ui.music.cancel_warning": "”{label}“ پر شروع کیا گیا کام مکمل ہو سکتا ہے اور اس کی فیس وصول ہو سکتی ہے۔ نتائج دستیاب رہیں گے۔",
+	"ui.music.track": "ٹریک {index}",
+	"ui.music.failed": "یہ ٹریک تخلیق نہیں ہو سکا۔",
+	"ui.music.empty": "کوئی ٹریک موصول نہیں ہوا۔",
+	"ui.music.queued": "موسیقی قطار میں ہے",
+	"ui.music.generating": "موسیقی تیار کی جا رہی ہے…",
+	"ui.music.generating_tracks": "{count, plural, one {# ٹریک تیار کیا جا رہا ہے…} other {# ٹریک تیار کیے جا رہے ہیں…}}",
+	"ui.music.modifying": "موسیقی میں ترمیم کی جا رہی ہے…",
+	"ui.music.cancel_requested": "منسوخی کی درخواست بھیج دی گئی",
+	"ui.music.ready": "موسیقی تیار ہے",
+	"ui.music.job_failed": "موسیقی تیار نہیں ہو سکی۔",
+	"ui.music.job_cancelled": "موسیقی کی تیاری منسوخ کر دی گئی۔",
+	"ui.music.finished_after_cancel": "موسیقی منسوخ ہونے سے پہلے ہی مکمل ہو گئی۔"
+}

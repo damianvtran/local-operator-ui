@@ -21,5 +21,7 @@
 	"ui.chat.attachments.expand_aria": "Mở rộng {name}",
 	"ui.chat.attachments.expand_title": "Nhấp để mở rộng {name}",
 	"ui.chat.attachments.open_title": "Nhấp để mở {name}",
-	"ui.chat.attachments.not_viewable": "Không xem được tệp: {name}"
+	"ui.chat.attachments.not_viewable": "Không xem được tệp: {name}",
+	"ui.chat.attachments.owner_unreachable": "không lấy được từ thiết bị đang giữ nó.",
+	"ui.chat.attachments.retry_fetch": "Thử lại"
 }

@@ -3,6 +3,8 @@ import { resolve } from "node:path";
 import { test } from "node:test";
 import { build } from "esbuild";
 
+const OFFLINE_SENTENCE = /isn't answering/;
+
 /*
  * Coverage for the LOCAL FILE path — `use-file-blob-url.ts`.
  *
@@ -128,6 +130,23 @@ function useState(initial) {
 	return [instance.states[slot], setState];
 }
 
+/** React's memo: the value is kept while its deps are unchanged. */
+function useMemo(fn, deps) {
+	const instance = current;
+	const slot = instance.hookIndex++;
+	instance.memos ??= [];
+	const previous = instance.memos[slot];
+	if (
+		previous &&
+		deps.length === previous.deps.length &&
+		deps.every((dep, i) => Object.is(dep, previous.deps[i]))
+	)
+		return previous.value;
+	const value = fn();
+	instance.memos[slot] = { value, deps };
+	return value;
+}
+
 function useEffect(fn, deps) {
 	const instance = current;
 	const slot = instance.hookIndex++;
@@ -245,10 +264,44 @@ const bundle = await build({
 						"src/renderer/src/shared/lib/blob-url-cache.ts",
 					),
 				}));
+				builder.onResolve(
+					{ filter: /^@shared\/lib\/remote-file-path$/ },
+					() => ({
+						path: resolve(
+							process.cwd(),
+							"src/renderer/src/shared/lib/remote-file-path.ts",
+						),
+					}),
+				);
+				// REAL: the transcript's 504 schedule the remote branch reuses (U2-1).
+				builder.onResolve(
+					{ filter: /^@features\/chat\/canonical\/use-attachment-url$/ },
+					() => ({
+						path: resolve(
+							process.cwd(),
+							"src/renderer/src/features/chat/canonical/use-attachment-url.ts",
+						),
+					}),
+				);
+				// The media relay a `remote-file:` identifier reads through,
+				// answered by the test (`media` below).
+				builder.onResolve(
+					{ filter: /^@shared\/api\/local-operator\/desktop-api$/ },
+					() => ({ path: "desktop-api", namespace: "fixture" }),
+				);
+				builder.onLoad(
+					{ filter: /^desktop-api$/, namespace: "fixture" },
+					() => ({
+						contents:
+							"export const desktopMedia = (...a) => globalThis.__media(...a);",
+						loader: "js",
+					}),
+				);
 				builder.onLoad({ filter: /^react$/, namespace: "fixture" }, () => ({
 					contents:
 						"export const useState = (...a) => globalThis.__useState(...a);" +
-						"export const useEffect = (...a) => globalThis.__useEffect(...a);",
+						"export const useEffect = (...a) => globalThis.__useEffect(...a);" +
+						"export const useMemo = (...a) => globalThis.__useMemo(...a);",
 					loader: "js",
 				}));
 			},
@@ -257,6 +310,7 @@ const bundle = await build({
 });
 globalThis.__useState = useState;
 globalThis.__useEffect = useEffect;
+globalThis.__useMemo = useMemo;
 const { useFileBlobUrl, MAX_FILE_READ_BYTES } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -660,4 +714,203 @@ test("StrictMode's double mount leaks nothing", async () => {
 	await tick();
 	assert.equal(blobs.live.size, 0, "the holder's unmount revokes it");
 	assert.equal(blobs.revoked, 1, "once");
+});
+
+// ------------------------------------------------- remote-file: identifiers
+
+/*
+ * Review round 1, R1-2/R1-3. A PEER-held file opened in the canvas used to
+ * become a `blob:` path built per open and never revoked (one 30 MiB PDF
+ * opened five times pinned ~150 MiB), persisted as a dead URL across reload.
+ * It is now a `remote-file:` identifier this hook resolves over the content
+ * route, under ONE refcounted entry per row, released with its last holder.
+ */
+const media = [];
+globalThis.__media = (request) =>
+	new Promise((resolve) => {
+		media.push({ request, resolve });
+	});
+
+test("a remote-file: identifier reads over the content route, never the disk, and every holder shares one URL", async () => {
+	reset();
+	media.length = 0;
+	const id = `remote-file:aaaaaaaaaaaa/${namespace}f/report.pdf`;
+	const first = mountFile(id, { mimeType: "application/pdf" });
+	const second = mountFile(id, { mimeType: "application/pdf" });
+	assert.equal(reads.length, 0, "I3-1: readFileBytes is never asked");
+	assert.deepEqual(
+		media.map((entry) => entry.request),
+		[
+			{
+				op: "sessions.files.content",
+				sessionId: "aaaaaaaaaaaa",
+				fileId: `${namespace}f`,
+			},
+			{
+				op: "sessions.files.content",
+				sessionId: "aaaaaaaaaaaa",
+				fileId: `${namespace}f`,
+			},
+		],
+	);
+	for (const entry of media)
+		entry.resolve({
+			kind: "bytes",
+			status: 200,
+			mimeType: "application/pdf",
+			data: new Uint8Array(4),
+		});
+	await tick();
+	assert.equal(first.value.status, "ready");
+	assert.equal(first.value.url, second.value.url, "one URL per row");
+	assert.equal(blobs.live.size, 1, "the racing second copy was revoked");
+	first.unmount();
+	await tick();
+	assert.equal(blobs.live.size, 1, "the other holder still shows it");
+	second.unmount();
+	await tick();
+	assert.equal(blobs.live.size, 0, "closing the last tab revokes it");
+	assert.equal(blobs.created, blobs.revoked, "create/revoke balance");
+});
+
+test("a remote-file: identifier whose owner does not answer is a stated state naming the device", async () => {
+	reset();
+	media.length = 0;
+	const view = mountFile(`remote-file:aaaaaaaaaaaa/${namespace}g/clip.mp4`, {
+		mimeType: "video/mp4",
+		remoteDevice: "lop-remote-node-2",
+		// The backoff is pinned below; this test is about the final state.
+		remoteRetryDelays: [],
+	});
+	media[0].resolve({ kind: "error", status: 504, detail: "pending" });
+	await tick();
+	assert.equal(view.value.status, "unavailable");
+	assert.equal(view.value.code, "owner-unreachable");
+	assert.match(view.value.message, /lop-remote-node-2/);
+	assert.match(view.value.message, OFFLINE_SENTENCE, "the offline sentence");
+	assert.equal(blobs.created, 0);
+	view.unmount();
+});
+
+/*
+ * Review round 2, R2-2. A holder that unmounts before its own read lands never
+ * took a reference; releasing anyway spent the reference of another holder of
+ * the same (always shared) remote key, and revoked the URL it was rendering.
+ */
+test("R2-2: a holder that leaves mid-fetch never releases another holder's reference", async () => {
+	reset();
+	media.length = 0;
+	const id = `remote-file:aaaaaaaaaaaa/${namespace}h/song.mp3`;
+	const first = mountFile(id, { mimeType: "audio/mpeg" });
+	const second = mountFile(id, { mimeType: "audio/mpeg" });
+	assert.equal(media.length, 2, "both holders missed the cache and asked");
+	media[0].resolve({
+		kind: "bytes",
+		status: 200,
+		mimeType: "audio/mpeg",
+		data: new Uint8Array(4),
+	});
+	await tick();
+	assert.equal(first.value.status, "ready");
+	const url = first.value.url;
+	second.unmount();
+	await tick();
+	assert.ok(blobs.live.has(url), "the first holder's URL is still live");
+	first.unmount();
+	await tick();
+	assert.equal(blobs.live.size, 0, "and its own unmount revokes it");
+	assert.equal(blobs.created, blobs.revoked, "create/revoke balance");
+});
+
+/*
+ * UX round 2, U2-1. A remote read rides the transcript's 504 backoff: the
+ * state says `pending` between attempts (the viewer names the device), and a
+ * transfer still running at the end is "still fetching", never "offline".
+ */
+test("U2-1: a 504 is asked again on the backoff, `pending` meanwhile, and the bytes still land", async () => {
+	reset();
+	media.length = 0;
+	const view = mountFile(`remote-file:aaaaaaaaaaaa/${namespace}i/notes.wav`, {
+		mimeType: "audio/wav",
+		remoteDevice: "lop-remote-node-2",
+		remoteRetryDelays: [0, 0],
+	});
+	assert.equal(view.value.status, "loading");
+	assert.notEqual(view.value.pending, true, "a cold first attempt is plain");
+	media.shift().resolve({
+		kind: "error",
+		status: 504,
+		detail: "Still fetching.",
+		refusal: { code: "attachment_fetch_pending" },
+	});
+	await tick();
+	assert.equal(view.value.status, "loading");
+	assert.equal(
+		view.value.pending,
+		true,
+		"the owner is named from the first 504",
+	);
+	await tick();
+	assert.equal(media.length, 1, "the second attempt is on the wire");
+	media.shift().resolve({
+		kind: "bytes",
+		status: 200,
+		mimeType: "audio/wav",
+		data: new Uint8Array(4),
+	});
+	await tick();
+	assert.equal(view.value.status, "ready");
+	view.unmount();
+	await tick();
+	assert.equal(blobs.created, blobs.revoked);
+});
+
+test("U2-1: a transfer still running after the backoff says so, not that the owner is offline", async () => {
+	reset();
+	media.length = 0;
+	const view = mountFile(`remote-file:aaaaaaaaaaaa/${namespace}j/notes.wav`, {
+		mimeType: "audio/wav",
+		remoteDevice: "lop-remote-node-2",
+		remoteRetryDelays: [0],
+	});
+	for (let attempt = 0; attempt < 2; attempt += 1) {
+		await tick();
+		media.shift().resolve({
+			kind: "error",
+			status: 504,
+			detail: "Still fetching.",
+			refusal: { code: "attachment_fetch_pending" },
+		});
+		await tick();
+	}
+	assert.equal(media.length, 0, "two attempts in all for a one-wait schedule");
+	assert.equal(view.value.status, "unavailable");
+	assert.equal(view.value.code, "owner-unreachable", "still a retryable state");
+	assert.equal(
+		view.value.message,
+		"Still fetching from lop-remote-node-2. Try again in a moment.",
+	);
+	view.unmount();
+});
+
+test("U2-1: unmounting mid-backoff stops asking", async () => {
+	reset();
+	media.length = 0;
+	const view = mountFile(`remote-file:aaaaaaaaaaaa/${namespace}k/notes.wav`, {
+		mimeType: "audio/wav",
+		remoteRetryDelays: [5],
+	});
+	media.shift().resolve({ kind: "error", status: 504, detail: "x" });
+	await tick();
+	view.unmount();
+	await new Promise((resolve) => setTimeout(resolve, 20));
+	assert.equal(media.length, 0, "no attempt after the holder left");
+	assert.equal(blobs.created, 0);
+});
+
+test("a blob: path is no longer a pass-through document (R1-3: no dead URL survives a reload)", async () => {
+	reset();
+	const view = mountFile("blob:http://localhost/dead");
+	assert.notEqual(view.value.status, "ready");
+	view.unmount();
 });

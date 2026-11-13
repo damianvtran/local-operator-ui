@@ -7,6 +7,9 @@ import {
 	resolvePathInStorybookCache,
 } from "storybook/internal/common";
 import { pruneStorybookCacheFromEnv } from "../scripts/storybook-cache-prune.mjs";
+import { musicStoryScope } from "../scripts/storybook-music-scope.mjs";
+
+const musicScope = musicStoryScope(process.env);
 
 /*
  * Bound Storybook's on-disk cache. Storybook 8.6 never evicts it and keys it per
@@ -45,7 +48,7 @@ function getAbsolutePath(value: string) {
 }
 /** @type { import('@storybook/react-vite').StorybookConfig } */
 const config: StorybookConfig = {
-	stories: ["../src/**/*.mdx", "../src/**/*.stories.@(js|jsx|mjs|ts|tsx)"],
+	stories: musicScope.stories,
 	addons: [
 		getAbsolutePath("@storybook/addon-essentials"),
 		getAbsolutePath("@chromatic-com/storybook"),
@@ -70,7 +73,7 @@ const config: StorybookConfig = {
 		 * checker, which costs only the types-driven prop tables on the docs pages:
 		 * no story renders differently, and every committed frame is a story.
 		 */
-		reactDocgen: "react-docgen",
+		reactDocgen: musicScope.reactDocgen,
 	},
 	viteFinal: async (config) => {
 		// Add JSX runtime configuration

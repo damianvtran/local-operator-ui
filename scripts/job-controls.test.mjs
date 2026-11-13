@@ -76,6 +76,17 @@ const row = (over = {}) => ({
 test("the control rides the video row family only, and only while the row is open", () => {
 	assert.equal(VIDEO_JOB_TYPE, "video");
 	assert.equal(jobRowCanCancel(row()), true);
+	assert.equal(jobRowCanCancel(row({ jobType: "music" })), true);
+	assert.equal(
+		jobRowCanCancel(
+			row({ jobType: "music", music: { stage: "cancel_requested" } }),
+		),
+		false,
+	);
+	assert.equal(
+		jobRowCanCancel(row({ jobType: "music", status: "done" })),
+		false,
+	);
 	// Every other family and every absent word: the control is withheld rather
 	// than guessed onto a row the design did not attach it to.
 	assert.equal(jobRowCanCancel(row({ jobType: "bash" })), false);

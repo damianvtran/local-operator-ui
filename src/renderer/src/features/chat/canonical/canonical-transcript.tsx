@@ -204,6 +204,15 @@ import type { LoadOlderOutcome } from "./load-older";
 import { imageLabel, soundLabel } from "./media-label";
 import { forkEntryId } from "./message-actions";
 import { AnswerActionRow } from "./message-actions-row";
+import {
+	ConnectedMusicGeneratingCard,
+	useMusicGeneratingView,
+} from "./music-generating-card";
+import {
+	MusicJobSettlementsContext,
+	musicJobSettlementsOf,
+} from "./music-generating-model";
+import { MusicResult } from "./music-result";
 import { noticeText } from "./notice-copy";
 import {
 	OLDER_HISTORY_HINT_ID,
@@ -2527,6 +2536,11 @@ const ToolRow = memo(function ToolRow({
 	 * reads nothing until a bridge row asks.
 	 */
 	const resolveConversation = useBridgeConversationNames();
+	/*
+	 * Unconditional like the hooks above; null for every row but a music call
+	 * that registered a detached job (`music-generating-model.ts`).
+	 */
+	const musicView = useMusicGeneratingView(record.toolName, record.details);
 	if (flagged !== null && record.toolName === "notify") {
 		return (
 			<MessageContainer isUser={false} isSmallView={isSmallView}>
@@ -2544,6 +2558,19 @@ const ToolRow = memo(function ToolRow({
 	 * constant, adjustable in one place when the harness freezes the tool-name
 	 * set.
 	 */
+	/*
+	 * THE MUSIC GENERATING CARD IS THE ROW for a music call whose detached job
+	 * the chat can follow: the motif, state line and the job's own Cancel at the
+	 * call's place, settling in place when the job's `job_result` row lands (that
+	 * row keeps painting the finished tracks, unchanged).
+	 */
+	if (musicView) {
+		return (
+			<MessageContainer isUser={false} isSmallView={isSmallView}>
+				<ConnectedMusicGeneratingCard view={musicView} />
+			</MessageContainer>
+		);
+	}
 	if (isImageGenTool(record.toolName)) {
 		/*
 		 * The mount's action rule (R4, contract §4.2): a video call's work is a
@@ -2894,12 +2921,14 @@ const ProviderAction: FC<{ action: ProviderErrorAction }> = ({ action }) => (
 const NoticeRow = memo(function NoticeRow({
 	record,
 	isSmallView,
+	scope,
 }: {
 	record: Extract<
 		TranscriptRecord,
 		{ kind: "notice" | "compaction" | "custom" }
 	>;
 	isSmallView: boolean;
+	scope: AttachmentScope | null;
 }) {
 	useI18nLocale();
 	// A custom row and a notice are two registers, and the difference is what
@@ -2977,6 +3006,7 @@ const NoticeRow = memo(function NoticeRow({
 						<ProviderAction action={providerAction} />
 					)
 				) : null}
+				{record.music && <MusicResult receipt={record.music} scope={scope} />}
 			</MessageContainer>
 		);
 	}
@@ -3188,7 +3218,10 @@ const HubRow = memo(function HubRow({
 }) {
 	useI18nLocale();
 	const receipt = record.receipt;
-	if (!receipt) return <NoticeRow record={record} isSmallView={isSmallView} />;
+	if (!receipt)
+		return (
+			<NoticeRow record={record} isSmallView={isSmallView} scope={scope} />
+		);
 	return (
 		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			<ToolLedgerRow
@@ -3887,7 +3920,7 @@ const TranscriptRow = memo(function TranscriptRow({
 				) : record.receipt ? (
 					<HubRow record={record} isSmallView={isSmallView} scope={scope} />
 				) : (
-					<NoticeRow record={record} isSmallView={isSmallView} />
+					<NoticeRow record={record} isSmallView={isSmallView} scope={scope} />
 				);
 			break;
 		case "peer":
@@ -3922,7 +3955,9 @@ const TranscriptRow = memo(function TranscriptRow({
 			);
 			break;
 		default:
-			body = <NoticeRow record={record} isSmallView={isSmallView} />;
+			body = (
+				<NoticeRow record={record} isSmallView={isSmallView} scope={scope} />
+			);
 	}
 	if (body === null) return null;
 	return (
@@ -4086,11 +4121,22 @@ type SectionGroup =
  * subscription. A wrapper rather than a provider inside the pane's JSX so the
  * pane's own render tree, and its diff, are untouched.
  */
-export const CanonicalTranscript: FC<CanonicalTranscriptProps> = (props) => (
-	<SpeechGateScope>
-		<CanonicalTranscriptPane {...props} />
-	</SpeechGateScope>
-);
+export const CanonicalTranscript: FC<CanonicalTranscriptProps> = (props) => {
+	/*
+	 * Settled detached jobs by id, for the music generating card: a fact about
+	 * the LIST (the settlement is a later row), so it is derived once here and
+	 * read by context rather than threaded through every row's memo props.
+	 */
+	const records = props.transcript.records;
+	const settlements = useMemo(() => musicJobSettlementsOf(records), [records]);
+	return (
+		<MusicJobSettlementsContext.Provider value={settlements}>
+			<SpeechGateScope>
+				<CanonicalTranscriptPane {...props} />
+			</SpeechGateScope>
+		</MusicJobSettlementsContext.Provider>
+	);
+};
 
 const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	frontend,

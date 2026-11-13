@@ -135,5 +135,15 @@
 		"placeholders": {
 			"name": "File display name; do not translate."
 		}
+	},
+	"ui.chat.attachments.owner_unreachable": {
+		"role": "fragment",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Follows the attachment's file name in a receipt, e.g. 'chart.png couldn't be fetched…'. Lower-case start because it continues the name."
+	},
+	"ui.chat.attachments.retry_fetch": {
+		"role": "button",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Retries fetching an image, video or sound from the device that holds it."
 	}
 }
