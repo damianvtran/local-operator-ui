@@ -62,6 +62,7 @@ import {
 	type AskDrawerCloseOptions,
 	BROWSER_PANEL_MIN_PX,
 	CONSOLE_PANEL_MIN_PX,
+	type ConsoleCommandIntent,
 	EMPTY_RIGHT_SLOT_ROUTE,
 	RUN_PANEL_MIN_PX,
 	resolveRightSlotOccupied,
@@ -91,6 +92,11 @@ import {
 import { DelegatedCleanupNoticeBand } from "../../settings/components/delegated-cleanup-notice";
 import { settleQueuedAdoption } from "../aside";
 import { gateIsSecret } from "../ask-answer";
+import {
+	askCommandStillRunnable,
+	fileAskCommand,
+	readAskAgentPlacement,
+} from "../ask-command-actions";
 import type {
 	AskAnswerAttempt,
 	AskDismissReason,
@@ -1803,6 +1809,26 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				: canonical.asks;
 		const sessionAsksView = useMemo(() => askQueueView(askFrame), [askFrame]);
 		/*
+		 * THE CONSOLE'S SUBMIT GUARD for a suggested command's confirmed Run (QA
+		 * round 1, Q1): the console pane beside this conversation asks it at
+		 * pickup, and it answers from THIS conversation's ask view as it is at that
+		 * moment — read through a ref so the guard stays one stable function and
+		 * still sees the newest frame. The pane is scoped to this same
+		 * `sessionId`, so this view is the one its intent's ask belongs to.
+		 */
+		const sessionAsksViewRef = useRef(sessionAsksView);
+		sessionAsksViewRef.current = sessionAsksView;
+		const allowCommandSubmit = useCallback(
+			(intent: ConsoleCommandIntent) =>
+				intent.sessionId === sessionId &&
+				askCommandStillRunnable({
+					rows: sessionAsksViewRef.current.rows,
+					intent,
+					placement: readAskAgentPlacement(sessionId),
+				}),
+			[sessionId],
+		);
+		/*
 		 * THE ROW'S OWN WIDTH, which the canvas's mode, the ask sheet's geometry and the
 		 * open policy's `covers-conversation` fact are all decided from (§I).
 		 *
@@ -3115,6 +3141,15 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 												temporaryEnabled &&
 												canonical.view.temporaryDeleted === true
 											}
+											/*
+											 * The cached paint's own two facts, beside the rows it seeded: where
+											 * the reader was, and whether a turn was running when this window
+											 * last showed the conversation. Both are claims the snapshot
+											 * corrects; both are one-shot reads of the paint, not live state
+											 * (`use-canonical-session` clears them in the snapshot's commit).
+											 */
+											restoredScroll={canonical.view.paintScroll}
+											paintRunning={canonical.view.paintBusy}
 										/>
 										<JobCancelPopover {...musicJobCancel.popover} />
 									</MusicJobsLiveContext.Provider>,
@@ -3874,6 +3909,18 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								outcomes={canonical?.askOutcomes}
 								drafts={canonical?.askDrafts}
 								onDraftChange={canonical?.onAskDraftChange}
+								/*
+								 * THE SUGGESTED COMMAND lands in THIS conversation's terminal: the
+								 * drawer is the conversation's own, so the intent names `sessionId`
+								 * and the console pane that opens beside it answers it. Absent
+								 * without a conversation (nothing to type into).
+								 */
+								onCommand={
+									sessionId
+										? (request) => fileAskCommand({ sessionId, ...request })
+										: undefined
+								}
+								commandPlacementOf={() => readAskAgentPlacement(sessionId)}
 							/>
 						</PaneSlot>
 					</>
@@ -4078,6 +4125,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							<ConsolePane
 								sessionId={sessionId ?? null}
 								onClose={() => setConsolePaneOpen(false)}
+								allowCommandSubmit={allowCommandSubmit}
 							/>
 						</PaneSlot>
 					</>

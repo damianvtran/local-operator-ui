@@ -106117,6 +106117,405 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.chat.ask_command",
+			"source_sha256": "540ad96467f8cb9c33dac91006e2973344f9a14051597f359671c7ed31f2aa01",
+			"target_sha256": "a15295d9e96259064cb7ab670945f6b923bf78891f0b7deed1c8d57cd4c4ca0b",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-13"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "6246ed5b0409-askcmd-r2-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6246ed5b0409-askcmd-r2-es.json",
+					"receipt_sha256": "1b3847e6f21a2e0094bb6435f87bc822eb464d85414461f9445a539c40bd9a6b",
+					"scope": "round 2: 7 re-worded keys ui.chat.ask_command; other 10 retained from 005bcd26d12e",
+					"note": "UI #1902 round-1 remediation re-wording (5a22e8c70) by lopdev coder (anthropic/claude-opus-5-5). Round-2 audit reviewer 6246ed5b0409, same model: disclosed. Auditor-authored fixes listed as resolved in the receipt."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "8b097a9351a416ecf11110a63106e45cc8eed507f1d1b2886363251852b93b95",
+					"target_sha256": "bcbd691f674bd9577b503eb026cd5965b1ad7c2edc9aed21ca88585ba836094b",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-13",
+							"result": "clean",
+							"instance": "005bcd26d12e-askcmd-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/005bcd26d12e-askcmd-es.json",
+							"receipt_sha256": "a51256778588eceb9bfbca1b501f4746d5a2319a22b0029aa8dbf384bd59b3bd",
+							"scope": "17 keys ui.chat.ask_command; full new namespace",
+							"note": "UI #1902 ask_command keys by lopdev coder (anthropic/claude-opus-5-5, PR body). Audit reviewer 005bcd26d12e, same model: disclosed. Auditor-authored minor fixes listed as resolved in the receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.chat.ask_command",
+			"source_sha256": "540ad96467f8cb9c33dac91006e2973344f9a14051597f359671c7ed31f2aa01",
+			"target_sha256": "66a8c910baf4625400633b2d8181ef58562d2eb540ac31996037c05279256fba",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-13"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "6246ed5b0409-askcmd-r2-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6246ed5b0409-askcmd-r2-fr.json",
+					"receipt_sha256": "45da6290f66621044e2686f61cdafa25473547f45d61084c8d448a36b14ed8aa",
+					"scope": "round 2: 7 re-worded keys ui.chat.ask_command; other 10 retained from 005bcd26d12e",
+					"note": "UI #1902 round-1 remediation re-wording (5a22e8c70) by lopdev coder (anthropic/claude-opus-5-5). Round-2 audit reviewer 6246ed5b0409, same model: disclosed. Auditor-authored fixes listed as resolved in the receipt."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "8b097a9351a416ecf11110a63106e45cc8eed507f1d1b2886363251852b93b95",
+					"target_sha256": "80cd5dbc0fb39329f437220b091afd413d07599c49def85fef17e37403f74ff9",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-13",
+							"result": "clean",
+							"instance": "005bcd26d12e-askcmd-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/005bcd26d12e-askcmd-fr.json",
+							"receipt_sha256": "a75017359e876276659078cbe6edf7e443c086beb853928bbd84ec0a2ad7a9a1",
+							"scope": "17 keys ui.chat.ask_command; full new namespace",
+							"note": "UI #1902 ask_command keys by lopdev coder (anthropic/claude-opus-5-5, PR body). Audit reviewer 005bcd26d12e, same model: disclosed. Auditor-authored minor fixes listed as resolved in the receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat.ask_command",
+			"source_sha256": "540ad96467f8cb9c33dac91006e2973344f9a14051597f359671c7ed31f2aa01",
+			"target_sha256": "c1ace1e75ba27372e1f02b2f31ff245377439b1621485a28beb933639566e6d8",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-13"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "6246ed5b0409-askcmd-r2-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6246ed5b0409-askcmd-r2-hi.json",
+					"receipt_sha256": "847914b3bfbf60f165c1b255eb6eaf7494b1f3810e89d75c68735414144b3bde",
+					"scope": "round 2: 7 re-worded keys ui.chat.ask_command; other 10 retained from 005bcd26d12e",
+					"note": "UI #1902 round-1 remediation re-wording (5a22e8c70) by lopdev coder (anthropic/claude-opus-5-5). Round-2 audit reviewer 6246ed5b0409, same model: disclosed. Auditor-authored fixes listed as resolved in the receipt."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "8b097a9351a416ecf11110a63106e45cc8eed507f1d1b2886363251852b93b95",
+					"target_sha256": "ab54d3a54c1ee961ba0f7a8791ff8e51b8cb6b8bbedada3af024b60cef59c7a7",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-13",
+							"result": "clean",
+							"instance": "005bcd26d12e-askcmd-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/005bcd26d12e-askcmd-hi.json",
+							"receipt_sha256": "119ade097372d9a4cd082e1efd96cb1a57393d0a108cdbab181ce912ac1e5e16",
+							"scope": "17 keys ui.chat.ask_command; full new namespace",
+							"note": "UI #1902 ask_command keys by lopdev coder (anthropic/claude-opus-5-5, PR body). Audit reviewer 005bcd26d12e, same model: disclosed. Auditor-authored minor fixes listed as resolved in the receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.chat.ask_command",
+			"source_sha256": "540ad96467f8cb9c33dac91006e2973344f9a14051597f359671c7ed31f2aa01",
+			"target_sha256": "b44c28fd4061260cca08775e22ede7e20854374a3ff777210f349d3406441828",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-13"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "6246ed5b0409-askcmd-r2-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6246ed5b0409-askcmd-r2-ru.json",
+					"receipt_sha256": "7530116cd8539dac904a009490aa97247a8483f99e71bbea0b3ff9d026117fbe",
+					"scope": "round 2: 7 re-worded keys ui.chat.ask_command; other 10 retained from 005bcd26d12e",
+					"note": "UI #1902 round-1 remediation re-wording (5a22e8c70) by lopdev coder (anthropic/claude-opus-5-5). Round-2 audit reviewer 6246ed5b0409, same model: disclosed. Auditor-authored fixes listed as resolved in the receipt."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "8b097a9351a416ecf11110a63106e45cc8eed507f1d1b2886363251852b93b95",
+					"target_sha256": "ab22051bd853d055e12e1ffa290b7ce8edf831070106dd5ef73dca730e05ac12",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-13",
+							"result": "clean",
+							"instance": "005bcd26d12e-askcmd-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/005bcd26d12e-askcmd-ru.json",
+							"receipt_sha256": "a667f5c54efdcf23dc19c9aa11816251bb9391c80289836c2abc12c002fc8c9b",
+							"scope": "17 keys ui.chat.ask_command; full new namespace",
+							"note": "UI #1902 ask_command keys by lopdev coder (anthropic/claude-opus-5-5, PR body). Audit reviewer 005bcd26d12e, same model: disclosed. Auditor-authored minor fixes listed as resolved in the receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.chat.ask_command",
+			"source_sha256": "540ad96467f8cb9c33dac91006e2973344f9a14051597f359671c7ed31f2aa01",
+			"target_sha256": "3c95733441477917cd033945a21f382c714256ff0a7e61631c13f71009ad3967",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-13"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "6246ed5b0409-askcmd-r2-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6246ed5b0409-askcmd-r2-ur.json",
+					"receipt_sha256": "a274cd250f28d2114261cc46000d3b3f15d5c48f6ce1f58b8757070a47d6ca7c",
+					"scope": "round 2: 7 re-worded keys ui.chat.ask_command; other 10 retained from 005bcd26d12e",
+					"note": "UI #1902 round-1 remediation re-wording (5a22e8c70) by lopdev coder (anthropic/claude-opus-5-5). Round-2 audit reviewer 6246ed5b0409, same model: disclosed. Auditor-authored fixes listed as resolved in the receipt."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "8b097a9351a416ecf11110a63106e45cc8eed507f1d1b2886363251852b93b95",
+					"target_sha256": "40dc830438fe09c31937d985c0c0c7526498b8bbfde7e3d0fd0b3388b7f42f68",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-13",
+							"result": "clean",
+							"instance": "005bcd26d12e-askcmd-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/005bcd26d12e-askcmd-ur.json",
+							"receipt_sha256": "4aa87d3be7325b857945fc78c7b64eaa191d4e47c48e1334dd37cc23ec120e07",
+							"scope": "17 keys ui.chat.ask_command; full new namespace",
+							"note": "UI #1902 ask_command keys by lopdev coder (anthropic/claude-opus-5-5, PR body). Audit reviewer 005bcd26d12e, same model: disclosed. Auditor-authored minor fixes listed as resolved in the receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.chat.ask_command",
+			"source_sha256": "540ad96467f8cb9c33dac91006e2973344f9a14051597f359671c7ed31f2aa01",
+			"target_sha256": "293bd893ab9f8cfbdcdede10a6a38d5e64391240eac57deaaf4993bd521a5aa8",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-13"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "6246ed5b0409-askcmd-r2-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6246ed5b0409-askcmd-r2-vi.json",
+					"receipt_sha256": "9580398072f3b6af7e2a65227af8988b389f531df36a2752645dfea3eeaf7e16",
+					"scope": "round 2: 7 re-worded keys ui.chat.ask_command; other 10 retained from 005bcd26d12e",
+					"note": "UI #1902 round-1 remediation re-wording (5a22e8c70) by lopdev coder (anthropic/claude-opus-5-5). Round-2 audit reviewer 6246ed5b0409, same model: disclosed. Auditor-authored fixes listed as resolved in the receipt."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "8b097a9351a416ecf11110a63106e45cc8eed507f1d1b2886363251852b93b95",
+					"target_sha256": "31c3cd495e664d1f8c5ad4d57efe0a573ffdfe3e3f4cfdcea8d209c89b80599e",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-13",
+							"result": "clean",
+							"instance": "005bcd26d12e-askcmd-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/005bcd26d12e-askcmd-vi.json",
+							"receipt_sha256": "5db2919617816e6d47c7487aad1b03b718b95ab92edf5613072177a93cb53151",
+							"scope": "17 keys ui.chat.ask_command; full new namespace",
+							"note": "UI #1902 ask_command keys by lopdev coder (anthropic/claude-opus-5-5, PR body). Audit reviewer 005bcd26d12e, same model: disclosed. Auditor-authored minor fixes listed as resolved in the receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.chat.ask_command",
+			"source_sha256": "540ad96467f8cb9c33dac91006e2973344f9a14051597f359671c7ed31f2aa01",
+			"target_sha256": "357767b454835a825c0d8474bebe723b6fd5d6939467a5907c7fafaaf58c8393",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-13"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "6246ed5b0409-askcmd-r2-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/6246ed5b0409-askcmd-r2-zh-cn.json",
+					"receipt_sha256": "9bf56e608b6ea6c91cf8311cf3ee554a7da9a5392678b8967441d2b0f3947d65",
+					"scope": "round 2: 7 re-worded keys ui.chat.ask_command; other 10 retained from 005bcd26d12e",
+					"note": "UI #1902 round-1 remediation re-wording (5a22e8c70) by lopdev coder (anthropic/claude-opus-5-5). Round-2 audit reviewer 6246ed5b0409, same model: disclosed. Auditor-authored fixes listed as resolved in the receipt."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "8b097a9351a416ecf11110a63106e45cc8eed507f1d1b2886363251852b93b95",
+					"target_sha256": "6303d4c541679c03dd45366b8322f6101b43163b05a49bd2a5893a86e8d8a82a",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-13",
+							"result": "clean",
+							"instance": "005bcd26d12e-askcmd-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/005bcd26d12e-askcmd-zh-cn.json",
+							"receipt_sha256": "f1a74f77f716f24d9f2f95c9ffdfa2498d984af05026db163947a475d65ddf18",
+							"scope": "17 keys ui.chat.ask_command; full new namespace",
+							"note": "UI #1902 ask_command keys by lopdev coder (anthropic/claude-opus-5-5, PR body). Audit reviewer 005bcd26d12e, same model: disclosed. Auditor-authored minor fixes listed as resolved in the receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		}
 	]
 }

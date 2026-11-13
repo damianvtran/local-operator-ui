@@ -50,10 +50,15 @@ import {
 	TEAM_BRIDGE_MAX_CONVERSATIONS,
 	TEAM_BRIDGE_RATE_LIMIT_MAX_WAIT_MS,
 	historyRateLimitWaitMs,
+	historyReadRetry,
+	historyReadRetryDelay,
 	wasEvictedUnviewed,
 } from "./team-bridge-channel-cache";
 import { teamBridgeKeys } from "./team-bridge-keys";
-import { isPreviewConversation } from "./team-bridge-model";
+import {
+	isNotAMemberRefusal,
+	isPreviewConversation,
+} from "./team-bridge-model";
 import { teamBridgeMessagesQueryOptions } from "./use-team-bridge";
 
 /** The N most recently active conversations warmed per plan (operator target:
@@ -379,6 +384,85 @@ export function prefetchTeamBridgeConversationNow(
 		kind: intent,
 	});
 	drain(client, scheduler);
+}
+
+/**
+ * START THE LANDING CONVERSATION'S FIRST PAGE ALONGSIDE THE LIST
+ * (bridge-instant-load, first open after launch).
+ *
+ * WHY. The timeline reads its conversation only once `selected` resolves, and
+ * `selected` resolves from the LOADED conversation list. On a cold open that
+ * put the list read (~200 ms in the instant-load bench) and the first history
+ * read (~150 ms) back to back: 331.6 ms against the operator's 300 ms bar
+ * (ui#1889, QA r4). When the page already knows where it will land - a
+ * remembered view, a deep link or a notification click - this starts that one
+ * read at the same time as the list.
+ *
+ * WHAT MAKES IT SAFE (each is load-bearing, not tuning):
+ * - SAME ENTRY. It reads through `teamBridgeMessagesQueryOptions`, so the key
+ *   (conversation, tenant, account) and the `readForBridgeOwner` fence are the
+ *   timeline's own. When `selected` resolves, `useTeamBridgeMessages` adopts the
+ *   in-flight read or the cached answer; it never issues a second request.
+ * - DISPLAY IS NOT DECIDED HERE. This only fills a cache entry. Nothing renders
+ *   it until the authoritative list (or archived read) confirms the selection,
+ *   exactly as before; a conversation the reader was removed from, or one that
+ *   was deleted, is simply never selected, and its entry ages out under the
+ *   timeline's `gcTime` like any other unopened warm entry.
+ * - SILENT ON REFUSAL. The retry policy is the timeline's own: it never retries
+ *   a definite `not_a_member`, and while nobody observes the entry it retries
+ *   neither a rate limit nor an owner-fence refusal (`historyReadShouldRetry`;
+ *   ui#1895 QA Q1: an account switch must not leave a backoff chain for the
+ *   return to join). A failed read that no timeline has adopted is removed, so a later
+ *   selection starts clean - no error state is inherited and nothing is shown.
+ * - COLD ONLY, ONCE. An entry holding data, or already being read, is left
+ *   alone (the caller allows one call per open), and a rate-limit hold on the
+ *   account is honoured, as for every other prefetch here.
+ *
+ * Answers whether a read was started, so the caller can spend its one call.
+ */
+export function prefetchTeamBridgeLanding(
+	client: QueryClient,
+	accountId: string | undefined,
+	row: Pick<TeamBridgeConversation, "id" | "tenant_id">,
+): boolean {
+	if (!accountId || !row.id || !row.tenant_id) return false;
+	const scheduler = schedulerFor(client);
+	if (isHeld(scheduler, accountId)) return false;
+	const options = teamBridgeMessagesQueryOptions(
+		client,
+		row.id,
+		row.tenant_id,
+		accountId,
+	);
+	const state = client.getQueryState(options.queryKey);
+	if (state?.data !== undefined || state?.fetchStatus === "fetching")
+		return false;
+	void client
+		.fetchQuery({
+			...options,
+			staleTime: TEAM_BRIDGE_HISTORY_STALE_MS,
+			gcTime: TEAM_BRIDGE_HISTORY_GC_MS,
+			retry: historyReadRetry(client, options.queryKey, isNotAMemberRefusal),
+			retryDelay: (failures, error) => historyReadRetryDelay(failures, error),
+		})
+		.catch((error: unknown) => {
+			const wait = historyRateLimitWaitMs(error);
+			if (wait !== null)
+				scheduler.heldUntil.set(
+					accountId,
+					Date.now() + Math.max(wait, TEAM_BRIDGE_RATE_LIMIT_MAX_WAIT_MS),
+				);
+			const query = client
+				.getQueryCache()
+				.find({ queryKey: options.queryKey, exact: true });
+			if (
+				query &&
+				query.state.data === undefined &&
+				query.getObserversCount() === 0
+			)
+				client.removeQueries({ queryKey: options.queryKey, exact: true });
+		});
+	return true;
 }
 
 /**

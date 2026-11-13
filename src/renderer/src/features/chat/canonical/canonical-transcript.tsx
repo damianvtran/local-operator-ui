@@ -65,11 +65,17 @@ import { Disclosure } from "@shared/components/ui/disclosure";
 import { useCompletionView } from "@shared/hooks/use-completion-view";
 import { formatDateTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import { scrollRegionToTop } from "@shared/lib/scroll";
 import { cn } from "@shared/lib/utils";
 import {
 	remoteOwnedId,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
+import {
+	PINNED_SCROLL,
+	type PaintedScroll,
+	writePaintScroll,
+} from "@shared/store/paint-cache";
 import {
 	type InternalEpisodeIdentitySnapshot,
 	captureInternalEpisodeIdentity,
@@ -336,6 +342,10 @@ import { useCheckpoints } from "./use-checkpoints";
 import { useCrossSessionVisibility } from "./use-cross-session-hidden";
 import { useLinkSubject } from "./use-link-subject";
 import { useScrollPaging } from "./use-scroll-paging";
+import {
+	STALE_INDICATOR_DELAY_MS,
+	useStaleIndicatorHold,
+} from "./use-stale-indicator-hold";
 import {
 	type TranscriptMountAdapter,
 	transcriptDomWindowEnabled,
@@ -812,6 +822,34 @@ export type CanonicalTranscriptProps = {
 	 * as being checked, or the reverse.
 	 */
 	stale?: boolean;
+	/**
+	 * How long the cached paint stands before `stale` says so, in ms.
+	 *
+	 * The policy lives in `use-stale-indicator-hold.ts` with the measurement that
+	 * chose it; this prop exists because the hold is a policy and a caller can
+	 * honestly have a different one (a zero states the signal at once, which is
+	 * also how the rendered-markup tests reach the post-threshold state without a
+	 * clock). Omitted is the shipped hold.
+	 */
+	staleIndicatorDelayMs?: number;
+	/**
+	 * A turn was running when this paint was stored (the cache's `busy`).
+	 *
+	 * Seeds the working line for the revalidate window, so a return to a running
+	 * session does not paint idle chrome for as long as the page takes. It is
+	 * presentation ONLY: the snapshot withdraws it, and it never reaches the
+	 * composer's send mode or the interrupt path.
+	 */
+	paintRunning?: boolean;
+	/**
+	 * Where the reader was when this paint was stored (the cache's `scroll`).
+	 *
+	 * Applied ONCE, in the mount's layout phase, so the first frame of a return is
+	 * already the reader's own place rather than the bottom. Absent, pinned or a
+	 * row this transcript no longer holds all end at the tail - the scroller's
+	 * default - so a miss costs the reader nothing.
+	 */
+	restoredScroll?: PaintedScroll | null;
 	/**
 	 * True when this conversation is owned by another device (the catalogue's
 	 * placement fact or row `locality`, `remoteOwnedId`). Changes only the WORDS
@@ -4096,6 +4134,28 @@ const CHECKPOINT_JUMP_MISS_COPY =
 	"Could not reach that turn. It is further back than the loaded history — scroll up in the transcript to load more.";
 
 /**
+ * The reader's place in a reversed scroller, as the paint cache stores it.
+ *
+ * Mirrors `use-scroll-paging.ts`'s `sampleAnchor` rule - the first row whose
+ * bottom is still below the scrollport's top is the row the reader is looking
+ * at, including one scrolled halfway off - and states it in the cache's terms
+ * (`PaintedScroll`) rather than the paging hook's. `Math.abs(scrollTop) <= 1` is
+ * the tail: this scroller's origin is the bottom, so a pinned reader is at 0.
+ */
+function measuredScroll(region: HTMLElement): PaintedScroll {
+	if (Math.abs(region.scrollTop) <= 1) return PINNED_SCROLL;
+	const top = region.getBoundingClientRect().top;
+	for (const row of region.querySelectorAll<HTMLElement>("[data-record-id]")) {
+		const rect = row.getBoundingClientRect();
+		if (rect.bottom <= top) continue;
+		const id = row.dataset.recordId;
+		if (!id) continue;
+		return { pinned: false, id, offsetPx: Math.round(rect.top - top) };
+	}
+	return PINNED_SCROLL;
+}
+
+/**
  * A fold group as the aggregation pass hands it on: the partition's own
  * variants unchanged. A run group used to carry a section flag
  * (`isNewestTurn`) for the fold's condense; the condense is retired (the
@@ -4177,6 +4237,9 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	hydrationProven = true,
 	historyReadPending = false,
 	stale = false,
+	staleIndicatorDelayMs = STALE_INDICATOR_DELAY_MS,
+	paintRunning = false,
+	restoredScroll = null,
 	remote = false,
 	missing = false,
 	missingTemporary = false,
@@ -4720,7 +4783,15 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 			// ever moves off raw records, this seam moves with it.
 			deriveWorkingLine(
 				workingLineInputFor({
-					waiting,
+					/*
+					 * THE CACHED PAINT'S CLAIM IS AN INPUT, not a second derivation: a return to
+					 * a session that was running when the reader left must not paint idle chrome
+					 * for the length of the revalidate (UX review, 2026-11-12, U2). The rows
+					 * cannot say it - the in-flight ones are dropped on write - so the cache
+					 * carries the one bit, and the snapshot withdraws it by clearing
+					 * `paintRunning` in the commit that replaces the rows.
+					 */
+					waiting: waiting || paintRunning,
 					// The pass is the transcript's own fact, read here rather than
 					// latched in this view: one source for the rung and the composer's
 					// hint (see `transcript-reducer`'s `compacting`).
@@ -4748,6 +4819,14 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					// rung's number and the sentence cannot disagree about whether
 					// the pane can vouch for a duration.
 					idleDisputed: idleDisputed === true,
+					/*
+					 * AND THE CACHED CLAIM WEARS NO CLOCK (design round 1, D1). The paint's
+					 * `busy` bit says a turn was running, not when it started, so a number
+					 * counted from this mount would be an invented age - `thinking 0s`
+					 * ticking up, then jumping to the snapshot's true age. The label stands
+					 * and only the number is withheld, the disputed idle's shape.
+					 */
+					clockWithheld: paintRunning && stale,
 					gate,
 					// The rung yields to a TERMINAL statement and not to a reconnect
 					// (operator incident, 2026-10-07): a receipt gap drops the
@@ -4766,7 +4845,15 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 						status,
 						failure,
 						missing,
-						stale,
+						/*
+						 * A stale pane is terminal because it has not painted the run above it.
+						 * The paint cache's `busy` flag is the exception that proves it: the
+						 * cache DID paint that run's last durable rows and says a turn was in
+						 * flight, so the line is the honest claim for the revalidate window and
+						 * the snapshot withdraws it if the turn has ended. Without it a return
+						 * to a running session reads as idle (UX review, 2026-11-12, U2).
+						 */
+						stale: stale && !paintRunning,
 					}),
 					records: shownRecords,
 				}),
@@ -4800,6 +4887,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 			// and a memo that missed them would keep a claim the pane has withdrawn.
 			missing,
 			stale,
+			paintRunning,
 			shownRecords,
 		],
 	);
@@ -4825,6 +4913,21 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	 * `use-canonical-session`'s reconnect arm), so it is the one that decides.
 	 */
 	const paneGap = status !== "live";
+
+	/*
+	 * WHETHER THE CACHED PAINT ANNOUNCES ITSELF YET (operator report, 2026-11-12).
+	 *
+	 * The rows are already readable when the indicator would appear, so the
+	 * common return - snapshot inside the measured distribution - paints no
+	 * loader at all, and a slow page still says what the view is. The remote
+	 * variant is never held: for a peer's conversation whose history is unproven
+	 * the wait IS the sync, and the pane has nothing readable to hold it for.
+	 * See `use-stale-indicator-hold.ts` for the measurement behind the delay.
+	 */
+	const showStaleCaption = useStaleIndicatorHold(
+		stale,
+		remote && !hydrationProven ? 0 : staleIndicatorDelayMs,
+	);
 
 	/*
 	 * THE LIVE FOLD LATCH (operator report, 2026-10-21: job messages and
@@ -5409,6 +5512,84 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		// reader furthest. `visible.length` changes on both growth paths.
 		rowCount: visible.length,
 	});
+	/*
+	 * THE READER COMES BACK WHERE THEY LEFT (operator report, 2026-11-12: "when i
+	 * switch between team bridge and session ... it has some sort of loading
+	 * mechanism to load conversation"; QA measured the other half - 0 of 12
+	 * scrolled returns kept their place, because the panel unmounts on the route
+	 * change and this scroller's only resting place is the tail).
+	 *
+	 * A LAYOUT effect so the FIRST painted frame of the return is already the
+	 * reader's place rather than a bottom-anchored frame that the next one
+	 * corrects. The write is acknowledged to the paging hook for the reason the
+	 * pressed-bar correction's is: this scroller's listeners would otherwise read
+	 * it as the reader travelling older-ward and arm a page demand from it.
+	 *
+	 * A row that is not mounted (the render window is the newest 60) widens the
+	 * window to its own distance and re-runs; a row the transcript no longer
+	 * holds - the reconcile dropped it, or the paint is older than the page - is
+	 * a missing anchor, and the tail is the honest fallback rather than a guess
+	 * at the nearest neighbour.
+	 */
+	const restorePending = useRef<PaintedScroll | null>(restoredScroll);
+	useLayoutEffect(() => {
+		const anchor = restorePending.current;
+		if (!anchor || anchor.pinned) return;
+		const region = containerRef.current;
+		if (!region) return;
+		const row = [
+			...region.querySelectorAll<HTMLElement>("[data-record-id]"),
+		].find((element) => element.dataset.recordId === anchor.id);
+		if (!row) {
+			const index = rowsRef.current.findIndex(
+				(entry) => entry.record.id === anchor.id,
+			);
+			if (index === -1) {
+				restorePending.current = null;
+				return;
+			}
+			const distance = rowsRef.current.length - index;
+			if (distance > alignSize) {
+				setWindowSize(distance);
+				return;
+			}
+			restorePending.current = null;
+			return;
+		}
+		const before = region.scrollTop;
+		scrollRegionToTop(region, row, "reversed", anchor.offsetPx);
+		acknowledgeOwnWrite(before, region.scrollTop);
+		restorePending.current = null;
+	}, [acknowledgeOwnWrite, alignSize, containerRef]);
+	/*
+	 * REMEMBER THE READER'S PLACE ON THE WAY OUT.
+	 *
+	 * A LAYOUT cleanup, for two measured reasons: it is the last moment this
+	 * scroller is still in the document (React removes the deleted node after its
+	 * layout destroys run), and it runs BEFORE the session hook's passive cleanup
+	 * writes the paint - `writePaintScroll` hands it the place, and `writePaint`
+	 * carries the value forward for exactly that ordering (including a session's
+	 * first leave, where no paint entry exists yet).
+	 */
+	useLayoutEffect(() => {
+		if (!conversationId) return;
+		return () => {
+			const region = containerRef.current;
+			/*
+			 * A SKIPPED MEASUREMENT RECORDS THE TAIL (agent review C4). Returning
+			 * here left whatever the PREVIOUS visit wrote standing, so a cleanup that
+			 * could not measure (a detached node, a zero-height pane) restored a place
+			 * from two visits ago. The reader is at no measured place, and the tail is
+			 * the honest one; recording it also tells `writePaint` that this visit's
+			 * answer is known rather than absent.
+			 */
+			if (!region?.isConnected || region.clientHeight === 0) {
+				writePaintScroll(conversationId, PINNED_SCROLL);
+				return;
+			}
+			writePaintScroll(conversationId, measuredScroll(region));
+		};
+	}, [conversationId, containerRef]);
 	/*
 	 * A PRESSED BAR STAYS WHERE IT WAS PRESSED (UX review round 1 on #708, U1).
 	 *
@@ -8153,7 +8334,22 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 									"min-h-[1lh] font-mono text-mono-sm",
 								)}
 							>
-								{stale ? (
+								{working && !internalLiveLeaf ? (
+									/*
+									 * THE WORKING LINE WINS THE SLOT (UX review, 2026-11-12, U4).
+									 * Both claims are true while a cached paint of a running turn
+									 * revalidates, and the run is the one that matters: "the agent is
+									 * working" outranks "this view is being checked", and the
+									 * snapshot withdraws the working line if the turn has ended. The
+									 * slot is the same box either way, so the order costs no layout.
+									 */
+									<WorkingLine
+										activity={working.activity}
+										phase={working.phase}
+										startedAt={working.startedAt}
+										clock={working.clock}
+									/>
+								) : stale && showStaleCaption ? (
 									/*
 									 * The cached paint's revalidation, as the shared loading
 									 * indicator (operator 2026-11-11: the faint `ink-dim`
@@ -8165,6 +8361,13 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 									 * probe name the switch-latency rig and the tests read.
 									 * "Remote" behind the same proof gate as the cold slot and
 									 * the older slot, so the three never disagree.
+									 *
+									 * HELD FOR A MOMENT FIRST (operator report, 2026-11-12):
+									 * with the rows already readable, the indicator used to
+									 * flash on every switch to a conversation this window
+									 * already had - it read as a load that was not happening.
+									 * `showStaleCaption` is the hold; if the snapshot lands
+									 * first, this never renders at all.
 									 */
 									<div data-lo-stale-caption={true}>
 										<ConversationLoadingIndicator
@@ -8173,17 +8376,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 											}
 										/>
 									</div>
-								) : (
-									working &&
-									!internalLiveLeaf && (
-										<WorkingLine
-											activity={working.activity}
-											phase={working.phase}
-											startedAt={working.startedAt}
-											clock={working.clock}
-										/>
-									)
-								)}
+								) : null}
 							</div>
 						)}
 
