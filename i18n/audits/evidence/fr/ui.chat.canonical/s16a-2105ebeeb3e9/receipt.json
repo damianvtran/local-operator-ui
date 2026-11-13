@@ -1,0 +1,58 @@
+{
+ "schema": 1,
+ "instance": "2105ebeeb3e9",
+ "locale": "fr",
+ "namespace": "ui.chat.canonical",
+ "audit_date": "2026-11-11",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "instance": "2105ebeeb3e9",
+  "session": "2105ebeeb3e9",
+  "model": "deepseek/deepseek-flash",
+  "independent_from_translator_session": true,
+  "actual_model_source": "as stated in the auditor's own record (session runtime model header deepseek/deepseek-flash); no fallback was reported"
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "scope": "the 14 NEW tool-state / image-generation status keys of ui.chat.canonical for fr (PR #1870, S16a), audited as the translator's draft fr-s16a.json (sha256 e41dfcb15c773b829ab2c9fcf920a4642eb2e310c3ee79da8481f122d1830769); the other 442 keys are byte-identical to the origin/main bytes covered by the superseded row audits (verify.log)",
+ "sha256": {
+  "fr": "00a6251e4aed7baa2f2ed28040eab21afe2352f3e0adb29a0176d939269e35e3",
+  "en": "d6d47d31667fe69448cf408f5a4fecf9948782e850506a6141217585de9db1fd",
+  "context": "ef8a12dea1835c241af3a166754322ce093af88592ec625036211458a50accac"
+ },
+ "findings": [
+  {
+   "severity": "NIT",
+   "id": "N1",
+   "key": "ui.chat.canonical.tool.composing_sized / tool.composing_empty",
+   "detail": "bare noun `rédaction` where fr UI copy more often names the ongoing action; judgement call, no change requested"
+  },
+  {
+   "severity": "NIT",
+   "id": "N2",
+   "key": "ui.chat.canonical.image_gen.state.queue_ahead",
+   "detail": "zero reading renders `0 devant`: correct and non-ranking but telegraphic"
+  }
+ ],
+ "provenance": {
+  "kind": "BINDING RECEIPT: verdict, counts, model and session are transcribed from the auditor's own record/report; this file was written by the integrating coder session (agent coder), NOT by the auditor. The auditor audited the 14-key draft fragment, so no auditor-authored file can name the landed catalogue hash; this receipt names it, and verify.log proves the 14 landed values equal the audited draft. Finding ids/keys/headlines are lifted from the auditor record/report (the report is authoritative for detail).",
+  "auditor_record_instance_label": "2105ebeeb3e9",
+  "source_report": {
+   "path": "i18n/audits/evidence/fr/ui.chat.canonical/s16a-2105ebeeb3e9/report.md",
+   "sha256": "2958ac1871002fb78743427632c1224744e5318331a0bc3e302606d310292afa"
+  },
+  "auditor_record": {
+   "path": "i18n/audits/evidence/fr/ui.chat.canonical/s16a-2105ebeeb3e9/record.json",
+   "sha256": "98ccd878d0816a27909c720df833a90bc785d7722194949fc1c7746ec0fd124d"
+  },
+  "auditor_authored_receipt": null,
+  "audited_draft": {
+   "file": "fr-s16a.json",
+   "sha256": "e41dfcb15c773b829ab2c9fcf920a4642eb2e310c3ee79da8481f122d1830769"
+  },
+  "landed_value_proof": {
+   "path": "i18n/audits/evidence/fr/ui.chat.canonical/s16a-2105ebeeb3e9/verify.log",
+   "sha256": "c804db0597751eb16eb696828d8c549194e17ee3a786d4936f6bee154d8d0158"
+  }
+ }
+}

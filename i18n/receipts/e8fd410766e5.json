@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "instance": "e8fd410766e5",
+  "locale": "ru",
+  "namespace": "ui.chat.canonical",
+  "audit_date": "2026-11-11",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "e8fd410766e5",
+    "model": "deepseek/deepseek-flash",
+    "independent_from_translator_session": true,
+    "actual_model_source": "harness session header for this run (\"Model: deepseek/deepseek-flash\"); no fallback declared or used"
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "scope": "whole ui.chat.canonical namespace for ru (442 keys) at commit 659ef7e44b7c, the COMBINED bytes after the #1861-on-#1862 rebase; semantic focus on the 2 file-size keys, sampled review of the rest, terminology checked against tool_row.verb.*",
+  "sha256": {
+    "ru": "a84811e9c087aa79873ef756a2a268e298ebe4b6789d7dd834f4f51a127b4acb",
+    "en": "38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3",
+    "context": "c258ab485de698eec85e81ffed506866e3b1e8caf29cb3ff434901388065b390"
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "id": "M1",
+      "key": "ui.chat.canonical.fold.count.network",
+      "detail": "'вызов меш-сети' adds 'mesh' where en says 'network'; file and locale use 'сеть' for this tool. Pre-existing (identical at origin/main)."
+    },
+    {
+      "severity": "MINOR",
+      "id": "M2",
+      "key": "ui.chat.canonical.fold.count.lsp",
+      "detail": "'поиск по коду' reads 'search by code'; en 'code lookup' is a symbol lookup, 'поиск в коде'. Pre-existing."
+    },
+    {
+      "severity": "NIT",
+      "id": "N1",
+      "key": "ui.chat.canonical.tool_row.generic_verb.running",
+      "detail": "'Вызывается'/'Вызван' are passive while ~180 sibling verb keys are active 3rd person. Pre-existing; deliberate-passive reading is defensible."
+    },
+    {
+      "severity": "NIT",
+      "id": "N2",
+      "key": "ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.short",
+      "detail": "'под вопросом' vs 'не подтверждено' in .word/.label for the same concept. Pre-existing."
+    },
+    {
+      "severity": "NIT",
+      "id": "N3",
+      "key": "ui.chat.canonical.older_history.windowed.short_gesture",
+      "detail": "'Вверх — ранние сообщения' drops the scroll imperative of en 'Scroll up for earlier'. Pre-existing."
+    },
+    {
+      "severity": "NIT",
+      "id": "N4",
+      "key": "ui.chat.canonical.fold.receipt.steered",
+      "detail": "'Ход направлен' vs 'Скорректировал' (tool_row.verb.steered.*) for the same steer action. Pre-existing."
+    }
+  ],
+  "verdict_note": "0 blocker, 0 major, 2 minor, 4 nit; every finding is pre-existing and byte-identical to origin/main, so none gates the merge. The two new keys (tool.never_sent_composed / tool.never_sent_empty) are clean.",
+  "provenance": {
+    "kind": "AUDITOR-AUTHORED DRAFT. Written by the auditor session e8fd410766e5 as the receipt body; it is NOT yet in the repo, because this audit is read-only. The implementing session must copy it byte-for-byte to i18n/receipts/e8fd410766e5.json and run ledger-assemble.mjs.",
+    "source_report": {
+      "path": "i18n/audits/evidence/ru/ui.chat.canonical/e8fd410766e5-b1861/report.md",
+      "origin": "session scratchpad audit-1861-ru.md"
+    },
+    "record": {
+      "path": "i18n/audits/evidence/ru/ui.chat.canonical/e8fd410766e5-b1861/record.json",
+      "origin": "session scratchpad au1861ru/record.json"
+    }
+  }
+}

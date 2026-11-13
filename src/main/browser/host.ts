@@ -5,7 +5,10 @@ import type {
 } from "../../shared/browser-address-history";
 import { isExtensionId } from "../../shared/browser-extensions";
 import type { MediaPermissionView } from "../../shared/browser-media-permission";
-import type { PasskeyNoticeView } from "../../shared/browser-passkey-notice";
+import type {
+	PasskeyCustodyView,
+	PasskeyNoticeView,
+} from "../../shared/browser-passkey-notice";
 import type {
 	HumanTabAction,
 	HumanTabActionOutcome,
@@ -473,6 +476,9 @@ export interface BrowserHostOptions {
 	/** The active tab's passkey notice, from the wiring that owns the shim's state
 	 * (`passkey-notice.ts`). Absent means none: the projection then carries null. */
 	passkeyNotice?: (tabId: number) => PasskeyNoticeView | null;
+	/** The active tab's passkey custody (`extensions/passkey-custody.ts`). Absent
+	 * means none: the projection then carries null. */
+	passkeyCustody?: (tabId: number) => PasskeyCustodyView | null;
 	/** The active tab's camera/microphone prompt (or macOS notice), from
 	 * `media-permissions.ts`. Absent means none: the projection carries null. */
 	mediaPermission?: (tabId: number) => MediaPermissionView | null;
@@ -553,6 +559,7 @@ export class BrowserHost implements BrowserActionContext {
 	private readonly approvalsCard: BrowserHostOptions["approvalsCard"];
 	/** Constructor-assigned, not a field initialiser: see `tabAudio` above. */
 	private readonly passkeyNotice: BrowserHostOptions["passkeyNotice"];
+	private readonly passkeyCustody: BrowserHostOptions["passkeyCustody"];
 	private readonly mediaPermission: BrowserHostOptions["mediaPermission"];
 	private readonly isActiveExtension: BrowserHostOptions["isActiveExtension"];
 	/** S4b's popout health, read from the controller (or the launch's platform
@@ -603,6 +610,7 @@ export class BrowserHost implements BrowserActionContext {
 		this.forgetSiteData = options.forgetSiteData;
 		this.approvalsCard = options.approvalsCard;
 		this.passkeyNotice = options.passkeyNotice;
+		this.passkeyCustody = options.passkeyCustody;
 		this.mediaPermission = options.mediaPermission;
 		this.isActiveExtension = options.isActiveExtension;
 		this.addressOverlayMode =
@@ -1141,8 +1149,18 @@ export class BrowserHost implements BrowserActionContext {
 			// the same way: a background (often agent-driven) tab's request must not
 			// narrate itself into the page the user is looking at. It is shown when the
 			// user activates that tab, if it has not aged out.
-			passkeyNotice: active
-				? (this.passkeyNotice?.(active.tabId) ?? null)
+			// Suppressed while the tab is in passkey custody: the user is looking at
+			// the real prompt then, and a "could not complete" band beside it would
+			// contradict it.
+			passkeyNotice:
+				active && !this.passkeyCustody?.(active.tabId)
+					? (this.passkeyNotice?.(active.tabId) ?? null)
+					: null,
+			// Active tab only, like the notice: a hold brings its tab to the front
+			// when it begins, and a tab the user switched away from shows it again
+			// when they come back.
+			passkeyCustody: active
+				? (this.passkeyCustody?.(active.tabId) ?? null)
 				: null,
 			// The ACTIVE tab's camera/microphone prompt only, scoped like the passkey
 			// notice: a background tab's request waits (its callback held) until the

@@ -54,9 +54,11 @@ export async function query(
 	let result: unknown;
 	try {
 		result = await deadline(
-			record.view.webContents.executeJavaScriptInIsolatedWorld(
-				ISOLATED_WORLD_ID,
-				[{ code }],
+			ctx.registry.guardRead(record, () =>
+				record.view.webContents.executeJavaScriptInIsolatedWorld(
+					ISOLATED_WORLD_ID,
+					[{ code }],
+				),
 			),
 			SCRIPTING_DEADLINE_MS,
 			`query(${record.tabId})`,

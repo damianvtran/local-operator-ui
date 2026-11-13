@@ -109,6 +109,7 @@ import type { SessionAskFrame } from "@features/chat/session-asks";
 import {
 	bandYieldsToRadientIssue,
 	composerModelAccessReading,
+	modelAccessIsInformational,
 	modelAccessOwnsRadientStatus,
 	radientCalloutOwnsTheSignIn,
 } from "@features/chat/session-status/session-model";
@@ -219,6 +220,7 @@ import type {
 	CanonicalFrontendState,
 	CanonicalModel,
 } from "../../../../../shared/desktop-session-contract";
+import { recordingHintParts } from "../../../../../shared/recording-shortcut";
 
 /**
  * The capture's words, in the shape the planner takes them.
@@ -8378,8 +8380,16 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * on screen, so those states keep it (`radientCalloutOwnsTheSignIn` states
 		 * why; any other provider cannot collide with the connector).
 		 */
+		/*
+		 * An INFORMATIONAL reading (healthy borrowed access, or access the runtime
+		 * is still resolving on its own) asks nothing of the user, so it is not a
+		 * standing card: the session strip carries it as an `i` icon beside the
+		 * model and effort chips (`modelAccessIsInformational` records the
+		 * per-state decision; operator report 2026-11-11).
+		 */
 		const modelAccessBlock =
 			modelAccess &&
+			!modelAccessIsInformational(modelAccess) &&
 			!bandYieldsToRadientIssue(
 				modelAccess,
 				radientCalloutOwnsTheSignIn(radientIssue.issue),
@@ -10342,16 +10352,24 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 																? t("ui.chat.composer.starting_recording")
 																: !canEnableRecordingFeature
 																	? recordingUnavailableReason
-																	: shortcutText === null
-																		? t("ui.chat.composer.start_recording")
-																		: t(
-																				"ui.chat.composer.start_recording_hint",
-																				{
-																					shortcut: isolateLtr(shortcutText),
-																					pushToTalk:
-																						resolvePushToTalkBinding().label,
-																				},
-																			)
+																	: (() => {
+																			const hint = recordingHintParts(
+																				shortcutText,
+																				resolvePushToTalkBinding()?.label ??
+																					null,
+																			);
+																			return hint === null
+																				? t("ui.chat.composer.start_recording")
+																				: t(
+																						"ui.chat.composer.start_recording_hint",
+																						{
+																							shortcut: isolateLtr(
+																								hint.shortcut,
+																							),
+																							pushToTalk: hint.pushToTalk,
+																						},
+																					);
+																		})()
 														}
 													/>
 												}
@@ -10855,6 +10873,19 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * that then moves, and that is the honest move.
 					 */
 					bandCentred ? "grow" : "shrink-0",
+					/*
+					 * NO TRANSITION ON THE BAND'S LAYOUT, stated because reduced motion
+					 * otherwise adds one (QA round 1, Q3). The global cap in
+					 * styles/index.css sets `transition-duration: 0.01ms` on EVERY element,
+					 * and an element that declares no transition still has the initial
+					 * `transition-property: all` - so under the cap `grow` -> `shrink-0`
+					 * became a 0.01 ms transition, and a transition paints its START value
+					 * for one frame: the first send's frame laid the transcript out
+					 * against the greeting band (the echo 104 px up, under the header),
+					 * then dropped it into place. `transition-none` keeps the first frame
+					 * the final one; the band has no motion of its own to lose.
+					 */
+					"transition-none",
 					// The horizontal inset is the SHARED one and is the same at every
 					// width, because it is half of a shared edge: see
 					// `CHAT_COLUMN_INSET`. Only the VERTICAL padding compacts in the
@@ -10922,6 +10953,8 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					className={cn(
 						"flex w-full flex-col items-center justify-center",
 						bandCentred ? "grow" : null,
+						// The band's reason, for the same `grow` flip (Q3, see the band).
+						"transition-none",
 					)}
 				>
 					<div

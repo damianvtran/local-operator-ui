@@ -1,0 +1,61 @@
+{
+ "schema": 1,
+ "instance": "7bfe4bf0bb78",
+ "locale": "hi",
+ "namespace": "ui.chat.canonical",
+ "audit_date": "2026-11-11",
+ "auditor": {
+  "agent": "i18n-auditor",
+  "instance": "7bfe4bf0bb78",
+  "model": "deepseek/deepseek-flash",
+  "independent_from_translator_session": true,
+  "actual_model_source": "as stated in the auditor's own report record block (session runtime model header); no fallback was reported"
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "scope": "whole ui.chat.canonical namespace for hi (442 keys) at commit 659ef7e44b7c, the COMBINED bytes of #1861 rebased on #1862; semantic focus on the 2 tool.never_sent_* keys",
+ "sha256": {
+  "hi": "da636c7580e96efed0b3db710f577d8ced1c2321fc747b95675028ae529bbb4f",
+  "en": "38f1069648c9241799bb1b316820e0530bf9445dfba3151e1c28df70153916b3",
+  "context": "c258ab485de698eec85e81ffed506866e3b1e8caf29cb3ff434901388065b390"
+ },
+ "findings": [
+  {
+   "severity": "MINOR",
+   "id": "MINOR-1",
+   "key": "ui.chat.canonical.tool_row.verb.linked_session_to.running",
+   "detail": "pre-existing: composes wrongly with the appended object (also .settled and unlinked_session_from.*)"
+  },
+  {
+   "severity": "MINOR",
+   "id": "MINOR-2",
+   "key": "ui.chat.canonical.fold.count.list_variables",
+   "detail": "pre-existing: renames \"variable lookup\" to \"variable list\""
+  },
+  {
+   "severity": "NIT",
+   "id": "NIT-1",
+   "key": "ui.chat.canonical.notice.interrupted",
+   "detail": "pre-existing: `बीच में रोका गया` vs `रोका गया` on sibling keys"
+  },
+  {
+   "severity": "NIT",
+   "id": "NIT-2",
+   "key": "ui.chat.canonical.tool_row.diff.withheld",
+   "detail": "pre-existing: Latin `diff` mid-sentence, no glossary row (also .more/.truncated)"
+  },
+  {
+   "severity": "NIT",
+   "id": "NIT-3",
+   "key": "ui.chat.canonical.transcript.worked",
+   "detail": "mechanical, pre-existing: key order differs from English at 222/442 positions; no order gate exists"
+  }
+ ],
+ "provenance": {
+  "kind": "BINDING RECEIPT: the verdict, counts, model and session are transcribed from the auditor's own report; this file was written by the integrating coder session (agent coder), NOT by the auditor. Finding ids/keys/headlines are lifted from the report; the report is authoritative for detail.",
+  "source_report": {
+   "path": "i18n/audits/evidence/hi/ui.chat.canonical/l2-combined-hi-20261111/report.md",
+   "sha256": "460179f7fbba9548f38fc0eadc72656a3c9c970ab8754cffb87ce94fe0d4e8ab"
+  }
+ }
+}

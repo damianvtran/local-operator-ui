@@ -842,12 +842,17 @@ test("the gate lives at the one seam (chat-page send), and refuses before admiss
 		BUSY_DEFAULT_FROM_SETTINGS_RE,
 		"the page resolves the default at send time",
 	);
-	// Refusal precedes admission: the notice is set before admitChatDraft runs,
+	// Refusal precedes admission: the notice is set before the admission runs,
 	// so the draft is kept and nothing is sent as steer. The ORDER is the
 	// seam's own (refuse before resolving); the page acts on it.
+	//
+	// The admission is reached through `flushSync` since origin/main's
+	// one-commit press merged (its synchronous prefix paints the echo, the wait
+	// line and the composer's clear in one frame), so the pin matches the
+	// wrapper around `admitChatDraft` rather than an `await` on the call.
 	const evaluateAt = source.indexOf("evaluateBusySend");
 	const refusedAt = source.indexOf("evaluation.refused");
-	const admitAt = source.indexOf("await admitChatDraft");
+	const admitAt = source.indexOf("admitChatDraft(", refusedAt);
 	assert.ok(
 		evaluateAt !== -1 &&
 			refusedAt !== -1 &&

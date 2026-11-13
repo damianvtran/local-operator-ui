@@ -1,0 +1,169 @@
+{
+  "audit_id": "l1verb-hi-a",
+  "audit_kind": "independent-translation-audit",
+  "round": 1,
+  "audit_date": "2026-11-11",
+  "date": "2026-11-11",
+  "locale": "hi",
+  "namespace": "ui.chat.canonical",
+  "file_group": "tool-row verb column (L1 batch, 182 new keys / 91 settled+running pairs)",
+  "key_count": 182,
+  "keys_read": 182,
+  "source_commit": "6c0b841872d89a507dc9d45d9a2f68c92ebb6e5d",
+  "branch": "feat/i18n-l1-tool-verbs",
+  "scope": "All 182 staged keys read and judged individually: meaning fidelity per key against the English source and its context.role/notes, native idiom and register against i18n/style-guides/hi.md, glossary conformance, settled/running pair consistency, trailing-preposition relations, width, bidi/Latin isolation. The already-shipped 258 keys of hi/ui.chat.canonical.json were read only for terminology and layout precedent, not re-audited.",
+  "artifact_state": "staged-pre-merge: 0 of the 182 keys are present in src/i18n/catalogues/hi/ui.chat.canonical.json at this commit, so no namespace-level ledger row can be assembled yet. Record hashes describe the batch inputs (keys.json / hi.json), not the merged catalogue.",
+  "status": "changes_requested",
+  "result": "changes_requested",
+  "current_report_verdict": {
+    "status": "changes_requested",
+    "verdict": "blocked",
+    "unresolved_blocker_major_count": 4,
+    "finding_ids": [
+      "M1",
+      "M2",
+      "M3",
+      "M4",
+      "m1",
+      "m2",
+      "m3",
+      "m4",
+      "m5",
+      "n1",
+      "n2",
+      "n3"
+    ],
+    "counts": {
+      "blocker": 0,
+      "major": 4,
+      "minor": 5,
+      "nit": 3
+    },
+    "pass_condition": "passed only when no BLOCKER and no MAJOR remains on the re-audited delta"
+  },
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "ecb08badad9d",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "harness session model header for this run ('Model: deepseek/deepseek-flash'); no fallback model and no role/default pin was applied for this audit",
+    "independent_from_translator_session": true,
+    "translator_of_record": {
+      "agent": "i18n-translator",
+      "model": "openai/gpt-6.1-sol"
+    },
+    "independence_note": "Auditor model differs from the translator model; this is a second independent pass candidate for a high-visibility group, not the translator's own work.",
+    "method": "human-style reading of every key; mechanical checks by the auditor's own python3 script, no translation/MT service and no back-translation used"
+  },
+  "second_pass": {
+    "requested": true,
+    "reason": "tool-row verbs are a high-visibility chat surface; this is pass A of A/B, reported independently to the requesting session"
+  },
+  "input_hashes": {
+    "en": {
+      "path": "~/local-operator-ui/.worktrees/_l1-prep/keys.json",
+      "sha256": "b3f3bfe3688d1461a061009e98a58802171eb181343fdb8fcfd0af07652ca419",
+      "note": "English source with its context/notes inline per key"
+    },
+    "context": {
+      "path": "~/local-operator-ui/.worktrees/_l1-prep/keys.json",
+      "sha256": "b3f3bfe3688d1461a061009e98a58802171eb181343fdb8fcfd0af07652ca419",
+      "note": "context/meta is embedded in keys.json (context.role, context.tone, context.width, context.placeholders, notes); there is no separate sidecar for this batch"
+    },
+    "target": {
+      "path": "~/local-operator-ui/.worktrees/_l1-prep/hi.json",
+      "sha256": "41bcec4ff53bee4f45b37aa630d5b985f80646e6c8d121866efbdf193e3c97d8"
+    },
+    "en_catalogue_reference": {
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+      "sha256": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765",
+      "check": "byte-identical to keys.json 'en' for all 182 keys"
+    },
+    "target_catalogue_reference": {
+      "path": "src/i18n/catalogues/hi/ui.chat.canonical.json",
+      "sha256": "9396b17c8e3796c97eb1fc058f5600566ece111ac372578ff663541ccd559eca",
+      "note": "pre-merge state; matches the existing ledger row's target_sha256 for (hi, ui.chat.canonical)"
+    }
+  },
+  "artifacts": [
+    {
+      "path": "~/local-operator-ui/.worktrees/_l1-prep/audit-hi-A.md",
+      "sha256": "f7ac66d26798395ff19d40e51c3df992a6e36310860eec57ecff1acafe0ca33d",
+      "kind": "audit-report",
+      "note": "requested report location; untracked staging path, mirror of this record's findings"
+    },
+    {
+      "path": "i18n/audits/evidence/hi/ui.chat.canonical/l1verb-hi-a/record.json",
+      "sha256": "self",
+      "kind": "audit-record"
+    },
+    {
+      "path": "i18n/audits/evidence/hi/ui.chat.canonical/l1verb-hi-a/audit.log",
+      "sha256": "7c47772b0529597490459f5322f402c724deb4560b4e83ec99fee6cc6bb6beac",
+      "kind": "execution-log",
+      "note": "actual stdout of the auditor's verify-hi-l1.py run; regenerable from the script described in the report's Commands section"
+    },
+    {
+      "path": "i18n/audits/evidence/hi/ui.chat.canonical/l1verb-hi-a/verify.py",
+      "sha256": "58d2a07b03553dedd6542b5fd1399944fe34b026a67561a4a62b8f11b82d5529",
+      "kind": "verification-script",
+      "note": "read-only python3 checks; running it reproduces audit.log byte-for-byte modulo nothing (no timestamps printed)"
+    }
+  ],
+  "audit_notes_not_execution_log": "Findings, judgement and suggestions in the report are audit notes. The mechanics are the execution log: audit.log is the real stdout of the verification script (key set/order, empties, duplicates, stray Latin, bidi controls, word counts, shipped-term counts, running-form counts, width estimate) and every claim in the report cites either that log or a named shipped string.",
+  "commands_run": [
+    "python3 <scratchpad>/verify-hi-l1.py  (stdout = audit.log, exit 0, all checks PASS)",
+    "python3 json scans of shipped hi catalogues for term precedent (peer/milestone/variable/screenshot/secret)"
+  ],
+  "terms_resolved_against_shipped_copy": {
+    "peer": {
+      "shipped": "पीयर",
+      "shipped_file": "ui.mesh.json",
+      "shipped_values": 3,
+      "batch": "साथी",
+      "verdict": "M2"
+    },
+    "milestone": {
+      "shipped": "माइलस्टोन",
+      "shipped_file": "ui.projects.json",
+      "shipped_values": 26,
+      "batch": "पड़ाव",
+      "verdict": "M3"
+    },
+    "variable": {
+      "shipped": "वेरिएबल",
+      "shipped_file": "ui.canvas.json",
+      "shipped_values": 17,
+      "batch": "चर",
+      "verdict": "M4"
+    },
+    "todo": {
+      "shipped": "कार्य सूची",
+      "shipped_file": "ui.chat.run_details.json",
+      "shipped_values": 5,
+      "batch": "कार्य सूची",
+      "verdict": "clean"
+    },
+    "session": {
+      "shipped": "सत्र",
+      "batch": "सत्र",
+      "verdict": "clean"
+    },
+    "wake": {
+      "shipped": "जागृति",
+      "batch": "जागृति / जागृतियों",
+      "verdict": "clean"
+    },
+    "secret": {
+      "shipped": "गोपनीय जानकारी",
+      "shipped_file": "ui.chat.canonical.json",
+      "batch": "गोपनीय मान",
+      "verdict": "m2"
+    }
+  },
+  "ledger": {
+    "row_assembled": false,
+    "command": "scripts/i18n/ledger-assemble.mjs",
+    "reason_not_assembled": "the batch is not merged into hi/ui.chat.canonical.json, so the namespace target_sha256 that ledger-check re-derives does not exist yet; assembling now would record bytes that never ship and fail as stale",
+    "next_step": "after the batch lands in hi/ui.chat.canonical.json: assemble the (hi, ui.chat.canonical) row from the merged file plus an audit receipt; this audit's counts are blocker 0 / major 4 / minor 5 / nit 3 => changes_requested, so the re-audit of the remediation delta must be the receipt that promotes the row"
+  }
+}

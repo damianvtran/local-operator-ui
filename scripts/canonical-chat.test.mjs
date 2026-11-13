@@ -242,6 +242,7 @@ const {
 	sendUnsettledForSession,
 	panelIdentityFor,
 	panelIdentityOfView,
+	panelMountKeyFor,
 	composerIdentityFor,
 	buildSendPayload,
 	desktopRequestSchema,
@@ -1180,6 +1181,110 @@ test("an admitted send is observable while it is in flight, and gone once it set
 	release();
 	await send;
 	assert.equal(store.getState().drafts[key], undefined);
+});
+
+test("the panel's mount key survives its draft's admission, and nothing else (send flicker, 2026-11-11)", () => {
+	/*
+	 * Keying the panel on `panelIdentityFor` remounted the whole conversation at
+	 * the first send's create hop - the echo the press had just painted, its
+	 * arrival fade and the wait line were torn down and rebuilt while the reader
+	 * watched (built-app trace: the row's DOM node replaced ~100 ms after the
+	 * press). The mount key walks the draft's own life and keeps one value.
+	 */
+	const key = "draft:7d1c2a4e-0000-4000-8000-000000000001";
+	const sid = "333333333333";
+	const walk = (steps) => {
+		let mount = null;
+		return steps.map(([draftKey, sessionId]) => {
+			const k = panelMountKeyFor(mount, draftKey, sessionId);
+			mount = k === undefined ? null : { key: k, draftKey, sessionId };
+			return k;
+		});
+	};
+	assert.deepEqual(
+		walk([
+			[key, undefined], // staged, typing
+			[key, sid], // the create answered: identity flips, the mount must not
+			[null, sid], // the draft row retired into its session
+			[null, sid], // and later renders of that session
+		]),
+		[key, key, key, key],
+		"one mount for the whole of the draft's life",
+	);
+	assert.equal(
+		panelIdentityFor(key, sid),
+		sid,
+		"while the IDENTITY (the echo registry's address) still moves to the session",
+	);
+	const other = "draft:7d1c2a4e-0000-4000-8000-000000000002";
+	assert.deepEqual(
+		walk([
+			[key, undefined],
+			[key, sid],
+			[null, "444444444444"], // a sidebar pick: a different conversation
+			[other, undefined], // New chat: a different conversation
+		]),
+		[key, key, "444444444444", other],
+		"a real switch still remounts, in both directions",
+	);
+	assert.deepEqual(
+		walk([
+			[null, "444444444444"],
+			[key, undefined], // a fresh draft after a session is NOT that session's admission
+		]),
+		["444444444444", key],
+	);
+});
+
+test("a draft that loses its session re-keys the panel, once (agent review round 1, F1)", () => {
+	/*
+	 * A failed first send leaves `(D, S)`; S's stream 404ing (or S being deleted)
+	 * unbinds it to `(D, undefined)`, and the 404 arm counts on a remount so the
+	 * pane's first frame is a working composer, not "This conversation is gone".
+	 * The held key alone would read `D` again - the same key, no reset.
+	 */
+	const key = "draft:7d1c2a4e-0000-4000-8000-0000000000f1";
+	const sid = "555555555555";
+	const walk = (steps, renders = 1) => {
+		// `renders` > 1 replays each step against the SAME committed mount, the
+		// way a StrictMode double render (or a discarded render) does.
+		let mount = null;
+		return steps.map(([draftKey, sessionId]) => {
+			let k;
+			for (let i = 0; i < renders; i++)
+				k = panelMountKeyFor(mount, draftKey, sessionId);
+			mount = k === undefined ? null : { key: k, draftKey, sessionId };
+			return k;
+		});
+	};
+	const keys = walk([
+		[key, undefined],
+		[key, sid],
+		[key, undefined], // unbound: must re-key
+		[key, undefined], // and then hold
+		[key, sid], // a second admission of the same draft keeps the new mount
+		[key, undefined], // a second unbind re-keys again
+	]);
+	assert.equal(keys[0], key);
+	assert.equal(keys[1], key, "admission holds the mount");
+	assert.notEqual(keys[2], keys[1], "the unbind resets the pane");
+	assert.equal(keys[3], keys[2], "and the unbound pane is then stable");
+	assert.equal(keys[4], keys[3]);
+	assert.notEqual(keys[5], keys[4]);
+	assert.deepEqual(
+		walk(
+			[
+				[key, undefined],
+				[key, sid],
+				[key, undefined],
+				[key, undefined],
+				[null, "666666666666"],
+			],
+			2,
+		),
+		keys.slice(0, 4).concat("666666666666"),
+		"rendering each step twice changes nothing",
+	);
 });
 
 /**
@@ -3341,7 +3446,7 @@ test("the header stops announcing that the session has not started once one exis
 	 * the directory the footer names.
 	 */
 	const rung = rendered.match(
-		/starting\s*\?\s*\(loadedTargetDisplay \?\? t\("ui\.chat\.header\.starting_session"\)\)\s*:\s*draft\?\.sessionId\s*\?\s*([\s\S]{0,200}?)\s*:/,
+		/starting(?:\s*&&\s*!draft\?\.sessionId)?\s*\?\s*resolveFirstSendDescription\(\{[\s\S]{0,160}?\}\)\s*:\s*draft\?\.sessionId\s*\?\s*([\s\S]{0,200}?)\s*:/,
 	);
 	assert.ok(
 		rung,
@@ -5642,5 +5747,157 @@ test("R2-1: the composer derives it from the store, and no longer accepts it as 
 		composer,
 		/sendingUnsettled: sendUnsettled \|\| sendInFlight/,
 		"and the store's answer must still be OR'd with this composer's own press, which covers the arms where no row exists",
+	);
+});
+
+test("the user's echo fades INTO position once; every other arriving row stays ink only (operator request, 2026-11-11)", () => {
+	const css = readFileSync("src/renderer/src/styles/index.css", "utf8");
+	const rule = (selector) => {
+		const at = css.indexOf(`${selector} {`);
+		assert.notEqual(at, -1, `${selector} is defined`);
+		return css.slice(at, css.indexOf("}", at));
+	};
+	const frames = css.slice(
+		css.indexOf("@keyframes lo-message-rise"),
+		css.indexOf(".lo-transcript-arrival-rise {"),
+	);
+	// 5px, ONE keyframe shared with Team Bridge's message row (design D4).
+	assert.match(frames, /from \{\s*opacity: 0;\s*transform: translateY\(5px\);/);
+	assert.equal(css.match(/@keyframes [a-z-]*rise\b/g)?.length, 1);
+	assert.doesNotMatch(css, /@keyframes lo-team-bridge-arrival\b/);
+	assert.match(
+		rule(".lo-team-bridge-arrival"),
+		/animation: lo-message-rise [^;]*\sboth;/,
+	);
+	assert.match(frames, /to \{\s*opacity: 1;\s*transform: translateY\(0\);/);
+	// Compositor-only, and nothing left behind: `backwards` drops the transform
+	// at the end instead of pinning a containing block on every user row.
+	assert.match(
+		rule(".lo-transcript-arrival-rise"),
+		/animation: lo-message-rise [^;]*\sbackwards;/,
+	);
+	assert.doesNotMatch(rule(".lo-transcript-arrival-rise"), /\bboth\b|forwards/);
+	// Reduced motion: no animation at all.
+	assert.match(
+		css,
+		/@media \(prefers-reduced-motion: reduce\) \{\s*\.lo-transcript-arrival-rise \{\s*animation: none;/,
+	);
+	// The plain arrival is still opacity only.
+	const plain = css.slice(
+		css.indexOf("@keyframes lo-transcript-arrival {"),
+		css.indexOf(".lo-transcript-arrival {"),
+	);
+	assert.doesNotMatch(plain, /transform/);
+	// Only a USER row takes the rise, and the class is fixed at mount (`entered`
+	// is a ref read once), so owner coalescing cannot replay it.
+	const row = readFileSync(
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\//g, "");
+	assert.match(
+		row,
+		/entered\.current &&\s*\(record\.kind === "user"\s*\? "lo-transcript-arrival-rise"\s*: "lo-transcript-arrival"\)/,
+	);
+	assert.match(row, /const entered = useRef\(enter\);/);
+});
+
+test("the panel's mount is recorded only once its render commits (agent review round 1, F2)", () => {
+	const page = readFileSync(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	// Derived during render from the COMMITTED mount...
+	assert.match(
+		page,
+		/const mountKey = panelMountKeyFor\(panelMount\.current, draftKey, id\);/,
+	);
+	// ...and written from a layout effect, never from the render body, so a
+	// render React throws away cannot leave its inputs behind as "the mount".
+	const writes = [...page.matchAll(/panelMount\.current =/g)];
+	assert.equal(writes.length, 1);
+	const before = page.slice(0, writes[0].index);
+	assert.match(
+		before.slice(before.lastIndexOf("const mountKey")),
+		/useLayoutEffect\(\(\) => \{\s*$/,
+	);
+});
+
+test("a new chat's first send changes the header once: no pencil jump, no skeleton, named with the sidebar (design round 1, D1)", () => {
+	const strip = (path) =>
+		readFileSync(path, "utf8").replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	const page = strip("src/renderer/src/features/chat/components/chat-page.tsx");
+	const header = strip(
+		"src/renderer/src/features/chat/components/chat-header.tsx",
+	);
+	// (a) The pencil's 20px box is held, aria-hidden, until the pencil mounts.
+	assert.match(
+		header,
+		/\) : renameSlotReserved \? \(\s*<span aria-hidden="true" className=\{cn\("size-5 shrink-0"\)\} \/>\s*\) : null\}/,
+	);
+	assert.match(
+		page,
+		/renameSlotReserved=\{\s*!sessionId && desktopFeatureEnabled\(capabilities\.data, "commands"\)\s*\}/,
+	);
+	// (b) A mount that began on a session-less draft never returns to the
+	// skeleton, and keeps the directory it painted while the stream connects.
+	assert.match(
+		page,
+		/const bornFromDraft = useRef\(draftKey !== null && !sessionId\);/,
+	);
+	assert.match(
+		page,
+		/const identityPending =\s*!loaded &&\s*!draftKey &&\s*!bornFromDraft\.current &&\s*view\.status === "connecting";/,
+	);
+	assert.match(
+		page,
+		/\(bornFromDraft\.current\s*\? resolveFirstSendDescription\(\{\s*targetDisplay: sendTargetDisplay\.current,\s*liveCwd: live\.cwd,\s*stagedCwd: cwd,\s*\}\)\s*: live\.cwd\) \|\| HELD_DESCRIPTION_LINE\)/,
+	);
+	// (c) The press keeps the draft's own line - its target, else its directory
+	// - instead of flashing "Starting the session" (round 2, D6).
+	assert.match(
+		page,
+		/starting && !draft\?\.sessionId\s*\? resolveFirstSendDescription\(\{\s*targetDisplay: loadedTargetDisplay,\s*liveCwd: canonical\.frontend\?\.cwd,\s*stagedCwd: cwd,\s*\}\)/,
+	);
+	assert.doesNotMatch(page, /ui\.chat\.header\.starting_session/);
+});
+
+test("a conversation this pane created reads 'Start of conversation' from its first frame (design round 1, D2)", () => {
+	const strip = (path) =>
+		readFileSync(path, "utf8").replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	const content = strip(
+		"src/renderer/src/features/chat/components/chat-content.tsx",
+	);
+	const page = strip("src/renderer/src/features/chat/components/chat-page.tsx");
+	assert.match(
+		content,
+		/hydrationProven=\{canonical\.view\.hydrated \|\| createdHere\}/,
+	);
+	assert.match(content, /createdHere = false,/);
+	assert.match(page, /createdHere=\{bornFromDraft\.current\}/);
+});
+
+test("the transcript column's collapse flip never transitions, so reduced motion's first send frame is final (QA round 1, Q3)", () => {
+	const source = readFileSync(
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	assert.match(
+		source,
+		/CHAT_COLUMN_CONTAINER,\s*"transition-none",\s*collapsed\s*\? "relative h-0 grow-0 overflow-hidden"\s*:\s*"relative flex min-h-16 flex-1 basis-0 flex-col",/,
+	);
+	// And the scroller inside it, whose `p-0 grow-0` -> `p-4 grow` flip held the
+	// echo 16 px high for the same one frame. Its list names only the scrollbar
+	// fade, in the sheet, because a utility on the scroller would also replace
+	// that fade (`scrollbar-activity.test.mjs`'s census). It must not be
+	// `transition-none`, and it must not be missing either.
+	const sheet = readFileSync("src/renderer/src/styles/index.css", "utf8");
+	assert.match(
+		sheet,
+		/\n\[data-lo-canonical-transcript\] \{\s*transition-property: --lo-sb;\s*\}/,
+	);
+	assert.match(
+		source,
+		/ref=\{containerRef\}\s*data-lo-canonical-transcript=\{true\}/,
+		"the attribute the sheet keys the list on is the scroller's own",
 	);
 });

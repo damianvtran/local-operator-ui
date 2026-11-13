@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "instance": "l1verb-ur-r3",
+  "round": 3,
+  "locale": "ur",
+  "namespace": "ui.chat.canonical",
+  "audit_date": "2026-11-11",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "l1verb-ur-r3",
+    "model": "deepseek/deepseek-flash",
+    "session": "61867371ec45",
+    "independent_from_translator_session": true,
+    "actual_model_source": "as stated in the auditor's own report (companion report below); no fallback was reported"
+  },
+  "status": "changes_requested",
+  "result": "changes_requested",
+  "scope": "tool_row.verb.* batch, 182 keys (91 settled/running pairs); auditor read staged values ur.v3.json (v3); whole-file hashes below bind the catalogue as it stood at that version",
+  "sha256": {
+    "ur": "d0ece929e5efb9a1bf2b93fdd76dbf30816d9ff950bf7e10e7ac017520519685",
+    "en": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765"
+  },
+  "findings": [
+    {
+      "severity": "MAJOR",
+      "ordinal": 1,
+      "detail": "see companion report i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave/report-r3.md (finding ids and text live there)"
+    },
+    {
+      "severity": "NIT",
+      "ordinal": 1,
+      "detail": "see companion report i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave/report-r3.md (finding ids and text live there)"
+    },
+    {
+      "severity": "NIT",
+      "ordinal": 2,
+      "detail": "see companion report i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave/report-r3.md (finding ids and text live there)"
+    }
+  ],
+  "findings_note": "Severity counts are transcribed from the companion report; individual finding ids, keys and text are in that report, not repeated here.",
+  "provenance": {
+    "kind": "BINDING RECEIPT: the verdict, counts, model and session are transcribed from the auditor's own report; this file was written by the integrating coder session 5a80bd7da0fd (agent coder, anthropic/claude-sonnet-5-5), NOT by the auditor. The auditor audited a staging file of the 182 values, never the whole catalogue; the whole-file hashes above were computed from the catalogue bytes after those exact values were inserted.",
+    "source_report": {
+      "path": "i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave/report-r3.md",
+      "sha256": "d622ffdb76e307cd1e18053f61a0a9178b4526e4a5edb3df0cecbb61c3eeb2f4"
+    },
+    "audited_values": {
+      "file": "i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-wave/values.v3.json",
+      "sha256": "5fb74186a6e2575c08011442d0eba595ef78f7fca358df9153070a50dca227d4",
+      "key_count": 182,
+      "identical_in_bound_catalogue": 182
+    }
+  }
+}

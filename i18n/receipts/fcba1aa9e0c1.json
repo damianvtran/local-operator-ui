@@ -1,0 +1,37 @@
+{
+ "auditor": "i18n-auditor",
+ "model": "deepseek/deepseek-flash",
+ "instance": "fcba1aa9e0c1",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "namespace": "ui.chat.canonical",
+ "locale": "ur",
+ "key_count": 2,
+ "scope": "l2 file-size wave: the 2 keys ui.chat.canonical.tool.never_sent_composed / never_sent_empty (the rest of the namespace is not re-audited here)",
+ "findings": [
+  {
+   "id": "NIT-1",
+   "severity": "nit",
+   "key": "ui.chat.canonical.tool.never_sent_empty (and ui.chat.canonical.tool.never_sent_composed)",
+   "problem": "width growth informational: 34 cells vs en 29; row truncates; no maxCells declared",
+   "disposition": "no change requested"
+  }
+ ],
+ "severity_counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 1
+ },
+ "independence": {
+  "translator_agent": "i18n-translator",
+  "translator_model": "openai/gpt-6.1-sol",
+  "independent_from_translator": true,
+  "independent_auditors_for_this_locale": 1
+ },
+ "sha256": {
+  "ur": "4c72843e665319d68489c0a1aef6a4d448c22e82781fbc8e2bfa47cae45525ee",
+  "en": "27ae7327daa34be60b619be551c840e057d61c3d69dc801269e4f389edc0f031"
+ },
+ "assembled_from": "Assembled by the landing coder from the auditor's report audit-ur.md; verdict, severity counts and findings are transcribed from that report, the sha256 values are computed from the catalogue files at the landing commit. The auditor's own evidence bundle, where one exists, is under i18n/audits/evidence/ur/ui.chat.canonical/."
+}

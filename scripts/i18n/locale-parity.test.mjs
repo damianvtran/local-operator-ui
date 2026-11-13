@@ -220,6 +220,10 @@ const IDENTICAL_OK = new Map([
 		"fr:ui.chat.canonical.image_label",
 		"French UI noun: Image, same spelling as English; scoped to fr so other locales still translate it",
 	],
+	[
+		"fr:ui.chat.canonical.media.image_label",
+		"French UI noun: Image, same spelling as English; scoped to fr so other locales still translate it",
+	],
 	["fr:ui.notifications.nav.label", "French UI noun: Notifications"],
 	["fr:ui.notifications.page.title", "French UI noun: Notifications"],
 	[
@@ -1853,6 +1857,14 @@ const IDENTICAL_OK = new Map([
 	[
 		"fr:ui.library.tag_category.type",
 		"French: same spelling as English, ordinary French noun; matches the existing category/filter vocabulary; judged retained by the independent audits of PR #1851. Scoped to French only.",
+	],
+	[
+		"es:ui.common.time.date_at",
+		"Spanish long date + clock joined by the same comma as English; pure placeholder pattern, no words",
+	],
+	[
+		"ur:ui.common.time.weekday_at",
+		"pure placeholder join of weekday and clock, same order as English; ICU supplies the Urdu weekday and Latin clock",
 	],
 ]);
 

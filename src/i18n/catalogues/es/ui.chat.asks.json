@@ -39,5 +39,10 @@
 	"ui.chat.asks.clause.outstanding": "{count, plural, one {{count, number, ::group-off} sin responder} many {{count, number, ::group-off} sin responder} other {{count, number, ::group-off} sin responder}}",
 	"ui.chat.asks.clause.waiting": "{count, plural, one {{count, number, ::group-off} consulta esperando respuesta} many {{count, number, ::group-off} de consultas esperando respuesta} other {{count, number, ::group-off} consultas esperando respuesta}}",
 	"ui.chat.asks.clause.delivering": "{count, plural, one {{count, number, ::group-off} respuesta aún sin entregar — todavía puedes cambiarla} many {{count, number, ::group-off} de respuestas aún sin entregar — todavía puedes cambiarlas} other {{count, number, ::group-off} respuestas aún sin entregar — todavía puedes cambiarlas}}",
-	"ui.chat.asks.clause.timed_out": "{count, plural, one {{count, number, ::group-off} consulta caducó} many {{count, number, ::group-off} de consultas caducaron} other {{count, number, ::group-off} consultas caducaron}}"
+	"ui.chat.asks.clause.timed_out": "{count, plural, one {{count, number, ::group-off} consulta caducó} many {{count, number, ::group-off} de consultas caducaron} other {{count, number, ::group-off} consultas caducaron}}",
+	"ui.chat.asks.bounds.body_label": "Pregunta completa",
+	"ui.chat.asks.proposal.summary": "Cambio propuesto para {kind, select, agent {el agente} team {el equipo} skill {la habilidad} other {el perfil}} {name}",
+	"ui.chat.asks.proposal.field_lines": "{label}: +{added, number} −{removed, number} líneas",
+	"ui.chat.asks.proposal.field_changed": "{label}: modificado",
+	"ui.chat.asks.proposal.review": "Revisar cambios"
 }

@@ -106,6 +106,7 @@ import {
 	LIFT,
 	LINE_SEPARATION_FLOOR,
 	LIVENESS_PAIR_FLOOR,
+	LOADING_PILL_ALPHA,
 	MEDIA_SURFACE_DELTA_E,
 	MEDIA_SURFACE_LIGHTNESS_STEP,
 	MESSAGE_SURFACE_DELTA_E,
@@ -153,6 +154,7 @@ import { applyContrast } from "../src/shared/theme-engine/contrast.mjs";
 import {
 	createRun,
 	evaluatePalette,
+	loadingPillAlphas,
 } from "../src/shared/theme-engine/evaluate.mjs";
 import {
 	BACKDROP_GRAY,
@@ -742,9 +744,14 @@ const STRUCTURAL_CALL_SITES = [
 		 * un-mark the conversation — by dropping the reference, or by weakening
 		 * the predicate so the row never reaches it. Both are this substring.
 		 *
-		 * `!activeDraftKey` is in the pin because it is the same term the row's
+		 * `currentRowId` is in the pin because it is the same term the row's
 		 * `aria-current` reads: the row may not paint a ground the accessibility
-		 * tree does not claim, and it may not claim one it does not paint.
+		 * tree does not claim, and it may not claim one it does not paint. It is
+		 * `currentSessionRowId` (`draft-rows.ts`), which hands the mark to a new
+		 * chat's row from the create's answer (send-path design round 1, D3) where
+		 * the old `selectedConversation === row.session_id && !activeDraftKey` left
+		 * it unmarked until the first send completed; the `also` entry keeps that
+		 * source on the read. The formatter writes the declaration on two lines.
 		 *
 		 * ONE READ, THREE ELEMENTS (review round 1, A7): the predicate used to be
 		 * written out at the wrapper, at the button and at the mark, which is how the
@@ -755,13 +762,15 @@ const STRUCTURAL_CALL_SITES = [
 		 */
 		what: "chat session row current-row predicate",
 		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
-		must: "const current = selectedConversation === row.session_id && !activeDraftKey;",
+		must: "const current =\n\t\t\tcurrentRowId !== undefined && currentRowId === row.session_id;",
+		also: ["const currentRowId = currentSessionRowId("],
 		why: "the row the operator reported is marked on two terms — the ground and `aria-current` — and the predicate is named once so the two cannot drift apart. A weakened predicate un-marks the conversation in both places at once, which is why the pin is on the declaration rather than on one use",
 	},
 	{
 		what: "chat session row current-row mark",
 		file: "src/renderer/src/features/chat/components/chat-sidebar.tsx",
-		must: "const current = selectedConversation === row.session_id && !activeDraftKey;",
+		must: "const current =\n\t\t\tcurrentRowId !== undefined && currentRowId === row.session_id;",
+		also: ["const currentRowId = currentSessionRowId("],
 		why: "this is the mark the operator reported missing; the predicate and the ground have to stay on the row together, which is what `aria-current` on the same two terms asserts to a screen reader, and the single read is what keeps the wrapper, the button and the mark from disagreeing about it",
 	},
 	{
@@ -1263,6 +1272,33 @@ for (const entry of palettes) evaluatePalette(run, entry);
 					? "no `bg-hairline/<alpha>` class"
 					: `\`bg-hairline/${alphas.join(", ")}\``
 			} but this gate measures \`PANEL_SEAM_ALPHA ${PANEL_SEAM_ALPHA}\` - the class that ships and the number every seam assertion used must be one value`,
+		);
+	}
+}
+
+/*
+ * The loading pill's alpha, read back from the component the same way: the
+ * palette loop measures `LOADING_PILL_ALPHA`, and this fails when the class that
+ * ships carries another number (or none, or two).
+ */
+{
+	const source = readFileSync(
+		join(
+			ROOT,
+			"src/renderer/src/features/chat/canonical/conversation-loading-indicator.tsx",
+		),
+		"utf8",
+	);
+	const alphas = loadingPillAlphas(source);
+	run.assertions++;
+	const shipped = alphas.length === 1 ? alphas[0] : null;
+	if (shipped !== Math.round(LOADING_PILL_ALPHA * 100)) {
+		fail(
+			`conversation-loading-indicator.tsx paints ${
+				alphas.length === 0
+					? "no `bg-accent/<alpha>` class"
+					: `\`bg-accent/${alphas.join(", ")}\``
+			} but this gate measures \`LOADING_PILL_ALPHA ${LOADING_PILL_ALPHA}\` - the class that ships and the number every pill assertion used must be one value`,
 		);
 	}
 }

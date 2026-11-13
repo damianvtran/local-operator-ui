@@ -1,0 +1,39 @@
+{
+  "locale": "fr",
+  "namespace": "ui.library",
+  "date": "2026-11-11",
+  "slice": "P7",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "430117b1a63a",
+    "session": "430117b1a63a",
+    "model": "deepseek/deepseek-flash",
+    "independent_from_translator_session": true,
+    "actual_model_source": "as stated in the auditor's own report (companion report); no fallback reported"
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "model": "anthropic/claude-sonnet-5-5",
+    "source": "per delegation and the candidate file model field; translator session id not supplied"
+  },
+  "keys": [
+    "ui.library.preview.organized_by_agent",
+    "ui.library.preview.organized_by_librarian",
+    "ui.library.preview.organized_by_system",
+    "ui.library.preview.organized_by_user",
+    "ui.library.preview.organized_unattributed"
+  ],
+  "english_sha256": "39d053e0e00464bc6166a022d6718ac6dbe19bfb5ff2db9497d1ae06a78f4444",
+  "target_sha256": "5074ab4b22211858f57cd6afdac5df3c3e4605e7b76a289bc18dc3cd530f7012",
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "artifacts": {
+    "check_p7_fr.mjs": "a187c068b5c83e07fcffa1ecb086c3041bbf4c2fd46858e69ba33f641d6c38b5",
+    "p7-au-fr-report.json": "0c42ee2bef61e72cc1c9951a21def7a719dacdc2de10e77130c4ac87c2a66f3f",
+    "p7-au-fr-report.md": "c0fd35d74bf961cd533f17b09fc30893712a4d00405cd682b421b0da07d21536",
+    "receipt.json": "5b20220d5396d696835c378e258b5deecf66fd90b0450bdf907337b37adcbe78",
+    "verify.log": "ff49709fba6baab1af397d9b1e318bf620b16f2894aef151ff8f245a95042148"
+  },
+  "note": "record.json written by the integrating coder; verify.log is the coder re-check, not an auditor log."
+}

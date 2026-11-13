@@ -56,6 +56,10 @@ import {
 	entryRecordKey,
 	openFrameCoversHeld,
 } from "@features/chat/canonical/open-frame";
+import {
+	type CursorUpdate,
+	jobResultsOwedRead,
+} from "@features/chat/canonical/settled-job-rows";
 import { skillOf } from "@features/chat/canonical/skill-row";
 import {
 	EMPTY_TRANSCRIPT,
@@ -963,6 +967,13 @@ const LABEL_GAP_MAX_TRACKED = 512;
  * set's other members and mark nothing durable at all.
  */
 const DURABLE_ROUND_ENDINGS = new Set(["turn_end", "agent_end"]);
+/**
+ * Reads one settled job may owe before the pane stops asking for its result
+ * row. Three, because Core can advance the cursor for the music record or spend
+ * row written just before the `job_result` row, so the first read may land
+ * before the row is durable; the next cursor move (the row itself) asks again.
+ */
+const JOB_RESULT_READ_ATTEMPTS = 3;
 
 /**
  * How many read-backs one unlabelled call is worth.
@@ -2131,8 +2142,19 @@ export function streamChangeKeepsTranscript(
 	next: string | undefined,
 	/** Whether `next` is a session this pane can be owed a page for. */
 	nextIsSession: boolean,
+	/**
+	 * Whether `previous` was a SESSION, rather than a draft's stream (nothing, or
+	 * the mint's bridge id). A draft pane now stays MOUNTED through its own
+	 * admission (`panelMountKeyFor`), so the move from a draft's stream to the
+	 * session the create answered is the same conversation gaining its id, and the
+	 * row the press painted must survive it: resetting here is what would blank
+	 * the pane the remount used to repaint. A pane that is switched to another
+	 * conversation is remounted, so it never reaches this with a draft behind it.
+	 */
+	previousIsSession = true,
 ): boolean {
 	if (previous === next) return true;
+	if (!previousIsSession) return true;
 	return !nextIsSession;
 }
 
@@ -2777,6 +2799,9 @@ export function useCanonicalSessionStream(
 	 * `streamChangeKeepsTranscript`, UX round 1's U1).
 	 */
 	const transcriptSession = useRef<string | undefined>(sessionId);
+	/** Whether `transcriptSession` named a SESSION or a draft's stream; see
+	 * `streamChangeKeepsTranscript`'s `previousIsSession`. */
+	const transcriptWasSession = useRef(isSession);
 	// Mutable side-channel for the frame pump; React state is the published,
 	// coalesced view. Frames arriving between renders collect here.
 	const pending = useRef<DesktopSessionFrame[]>([]);
@@ -3020,6 +3045,13 @@ export function useCanonicalSessionStream(
 		let attempt = 0;
 		let retryTimer = 0;
 		let reconcileTimer = 0;
+		/**
+		 * History reads spent per settled job whose `job_result` row has not
+		 * painted (`settled-job-rows.ts`). Bounded so a result that never becomes
+		 * visible - filtered by the backend, or swept from the roster - cannot
+		 * drip a read behind every later cursor move.
+		 */
+		const jobResultReads = new Map<string, number>();
 		/** Armed per connection until its first snapshot; see `STREAM_SNAPSHOT_DEADLINE_MS`. */
 		let snapshotTimer = 0;
 		/** The one silent re-check after a fired bound; see `STREAM_SNAPSHOT_RECHECK_MS`. */
@@ -4312,11 +4344,33 @@ export function useCanonicalSessionStream(
 			// that never reached the pane - so a dropped page owes the walk itself,
 			// which is then the only thing that can hydrate the conversation.
 			let fencedPage = false;
-			const needsReconcile = frames.some((frame) =>
-				frame.type === "attention"
-					? !paintedAnchor(frame.payload.anchor_id)
-					: frame.type === "snapshot" && !pageIsPaintedTail(frame),
+			/*
+			 * THE THIRD READ TRIGGER: a settled job's result row, which no live
+			 * event carries (see `settled-job-rows.ts` for the measured failure).
+			 * Decided from the view the last flush left behind plus this batch's
+			 * roster changes, and spent at most JOB_RESULT_READ_ATTEMPTS times per job.
+			 */
+			const owedJobs = jobResultsOwedRead(
+				frames.flatMap((frame) =>
+					frame.type === "frontend.update"
+						? [frame.payload as CursorUpdate]
+						: [],
+				),
+				viewRef.current.frontend?.jobs ?? [],
+				viewRef.current.transcript.records,
+				(id) => paintedIds.current.has(id),
+			).filter(
+				(id) => (jobResultReads.get(id) ?? 0) < JOB_RESULT_READ_ATTEMPTS,
 			);
+			for (const id of owedJobs)
+				jobResultReads.set(id, (jobResultReads.get(id) ?? 0) + 1);
+			const needsReconcile =
+				owedJobs.length > 0 ||
+				frames.some((frame) =>
+					frame.type === "attention"
+						? !paintedAnchor(frame.payload.anchor_id)
+						: frame.type === "snapshot" && !pageIsPaintedTail(frame),
+				);
 			/*
 			 * A WARM THAT LANDS AFTER THE COLD READS RE-ARMS THE HISTORY READ
 			 * (remote-load-hydration). A stored remote session opens cold: the daemon
@@ -4417,6 +4471,13 @@ export function useCanonicalSessionStream(
 				}
 				seedEvents.push(...(frame.payload.frontend.snapshot.live_events ?? []));
 			}
+			// A settled-job read is owed by an update batch that carries no page, so
+			// the rows already on screen are its connection proof - the same set the
+			// retry paths hand `reconcileTail`. Without it the walk could never
+			// connect and would spend its whole request budget on older pages.
+			if (owedJobs.length > 0)
+				for (const key of viewRef.current.transcript.index.keys())
+					paintedEntryIds.add(key);
 			/*
 			 * A round just ended, which is the moment the round BEFORE it becomes
 			 * durable — so it is the only moment a retry can learn anything. Reading
@@ -6301,13 +6362,16 @@ export function useCanonicalSessionStream(
 			transcriptSession.current,
 			sessionId,
 			isSession,
+			transcriptWasSession.current,
 		);
 		transcriptSession.current = sessionId;
+		transcriptWasSession.current = isSession;
 		// The cached rows when this window has shown the conversation before, so a
 		// switch paints in its first frame; empty otherwise. The paint is NOT
-		// written from here — the panel is keyed by identity, so a switch unmounts
-		// this hook, and the cleanup effect below is the only moment that always
-		// happens.
+		// written from here — the panel is keyed by conversation (`panelMountKeyFor`),
+		// so a switch unmounts this hook, and the cleanup effect below is the only
+		// moment that always happens. The one in-place change is the pane's own
+		// draft learning its session id, which is the same conversation.
 		const seed = sessionId ? readPaint(sessionId) : null;
 		/*
 		 * THE SEED IS A PAINT LIKE ANY OTHER (#876). `paintedIds` is "the index
@@ -6438,8 +6502,9 @@ export function useCanonicalSessionStream(
 	/*
 	 * Cache this conversation's paint on the way out.
 	 *
-	 * The panel is keyed by identity, so a switch to another conversation UNMOUNTS
-	 * this hook rather than re-running it with a new id — which makes this cleanup
+	 * The panel is keyed by conversation (`panelMountKeyFor`), so a switch to
+	 * another conversation UNMOUNTS this hook rather than re-running it with a new
+	 * id (a draft learning its own session id is the same conversation) — which makes this cleanup
 	 * the only moment that always happens. It is also the right moment for the
 	 * reason the cache exists: the rows the ref holds here are exactly the rows
 	 * that were last on screen.

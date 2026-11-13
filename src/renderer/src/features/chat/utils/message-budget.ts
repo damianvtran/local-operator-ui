@@ -14,7 +14,7 @@
  */
 
 // Relative, not `@shared/i18n`: bundled by node tests without an alias map.
-import { formatNumber } from "../../../../../i18n/format";
+import { formatByteQuantity, formatNumber } from "../../../../../i18n/format";
 import { t } from "../../../../../i18n/messages";
 import {
 	DESKTOP_MESSAGE_BUDGET_BYTES,
@@ -43,6 +43,13 @@ const MEASUREMENT_REQUEST_ID = "00000000-0000-0000-0000-000000000000";
  * the same serialization the guard applies - the mismatch this whole change
  * exists to remove is two places computing "the size" differently.
  */
+/**
+ * An upper bound on a text-only message body's bytes OTHER than the text's own
+ * (field names, the fixed-width ids, `mode`, punctuation). See the fast path in
+ * `messageBudgetRefusal`; the suite pins it above the real envelope.
+ */
+export const MESSAGE_ENVELOPE_BOUND_BYTES = 1024;
+
 export function messageBodyBytes(text: string, images: WireImage[]): number {
 	const target = desktopEndpoint({
 		op: "sessions.message",
@@ -94,7 +101,11 @@ function formatByteSizePair(total: number, budget: number): [string, string] {
 	if (base !== formatByteSize(budget)) return [base, formatByteSize(budget)];
 	// Same unit on both sides throughout, so the sentence never asks the reader
 	// to compare a KB against an MB.
-	const inMb = base.endsWith("MB");
+	// The rung comes from the NUMBER, not from the formatted text: the text now
+	// ends in the locale's symbol (`Mo` in fr, `МБ` in ru), so `endsWith("MB")`
+	// silently took the KB branch for a megabyte-scale size (review M2 / QA Q1).
+	// 999_500 is the MB rung `formatByteSize` itself uses.
+	const inMb = total >= 999_500;
 	const divisor = inMb ? 1_000_000 : 1000;
 	const unit = inMb ? "MB" : "KB";
 	// The separator and the digits are the LOCALE's, not JavaScript's: `toFixed`
@@ -106,11 +117,11 @@ function formatByteSizePair(total: number, budget: number): [string, string] {
 			minimumFractionDigits: decimals,
 			maximumFractionDigits: decimals,
 		};
-		const totalText = formatNumber(total / divisor, digits);
-		const budgetText = formatNumber(budget / divisor, digits);
-		if (totalText !== budgetText) {
-			return [`${totalText} ${unit}`, `${budgetText} ${unit}`];
-		}
+		// Operands are spelled by the shared helper so the unit symbol and the
+		// digits are the locale's (`1 200,09 ko`), never a literal `KB`.
+		const totalText = formatByteQuantity(total / divisor, unit, digits);
+		const budgetText = formatByteQuantity(budget / divisor, unit, digits);
+		if (totalText !== budgetText) return [totalText, budgetText];
 	}
 	return [
 		t("ui.chat.message_budget.bytes", { count: total }),
@@ -271,6 +282,24 @@ export function messageBudgetRefusal(
 			limit: formatNumber(DESKTOP_MESSAGE_MAX_CHARS),
 		});
 	}
+	/*
+	 * THE PRESS PATH SKIPS THE SERIALIZATION WHEN THE ANSWER IS ALREADY KNOWN
+	 * (send smoothness, 2026-11-11). This runs between the press and the commit
+	 * that paints the echo, and building the endpoint body plus a `TextEncoder`
+	 * pass measured ~2-4 ms of that budget for a one-line message. A text-only
+	 * body can be bounded without building it: `JSON.stringify` writes at most 6
+	 * bytes per UTF-16 unit (a `\uXXXX` escape; any unescaped unit is <= 3 UTF-8
+	 * bytes, a surrogate pair 4 for two units), and the rest of the body is the
+	 * fixed envelope `MESSAGE_ENVELOPE_BOUND_BYTES` bounds (pinned against the real
+	 * serialization by `scripts/desktop-renderer-transport.test.mjs`). Below that bound the
+	 * exact count could only say "fits", so it is not computed; anything near the
+	 * budget still takes the exact path.
+	 */
+	if (
+		images.length === 0 &&
+		MESSAGE_ENVELOPE_BOUND_BYTES + text.length * 6 <= budget
+	)
+		return null;
 	const total = messageBodyBytes(text, images);
 	if (total <= budget) return null;
 	const textBytes = messageBodyBytes(text, []);

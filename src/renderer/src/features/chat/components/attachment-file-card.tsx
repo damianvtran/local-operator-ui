@@ -9,7 +9,7 @@
  * two wrappers; everything a reader parses at a glance lives here.
  */
 
-import { t } from "@shared/i18n";
+import { formatByteQuantity, t } from "@shared/i18n";
 import { formatByteSize } from "@shared/lib/format-bytes";
 import {
 	File,
@@ -71,7 +71,9 @@ export function attachmentMetaLine(
 }
 
 /**
- * An attachment's size as every attachment surface states it (`92 B`, `4 KB`).
+ * An attachment's size as every attachment surface states it (`92 B`, `4 KB`;
+ * `92 o`, `4 ko` in fr). The sub-kilobyte rung goes through the same locale-aware
+ * helper as the rest, so a 45-byte file never reads `45 B` beside `4 ko`.
  *
  * The shared formatter's floor is KB, because every other reader of it weighs
  * budgets and bundles. A composer card can hold a 45-byte PDF, which that floor
@@ -86,7 +88,9 @@ export function attachmentSizeLabel(
 ): string | null {
 	if (typeof bytes !== "number" || !Number.isFinite(bytes) || bytes < 0)
 		return null;
-	return bytes < 1000 ? `${bytes} B` : formatByteSize(bytes);
+	return bytes < 1000
+		? formatByteQuantity(bytes, "B", { maximumFractionDigits: 0 })
+		: formatByteSize(bytes);
 }
 
 const textExtensions = new Set([

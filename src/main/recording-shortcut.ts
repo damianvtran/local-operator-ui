@@ -1,11 +1,13 @@
 import type { DesktopResponse } from "../shared/desktop-contract";
 import {
+	CLEARED_SHORTCUT_VALUE,
 	type ChordClaim,
 	DEFAULT_START_RECORDING_VALUE,
 	type RecordingShortcutInput,
 	type RecordingShortcutState,
 	START_RECORDING_SETTING_KEY,
 	canonicalRecordingChord,
+	isClearedShortcut,
 	recordingConflictVariants,
 	recordingShortcutMatches,
 } from "../shared/recording-shortcut";
@@ -14,7 +16,10 @@ import { readKeymapValue } from "./local-config";
 /** One backend value plus renderer claims; no second persisted preference. */
 export class RecordingShortcutCoordinator {
 	private value = DEFAULT_START_RECORDING_VALUE;
-	private canonical = canonicalRecordingChord(this.value) as string;
+	private canonical: string | null = canonicalRecordingChord(
+		this.value,
+	) as string;
+	private cleared = false;
 	private problem: string | undefined;
 	private pending: string | undefined;
 	private claims = new Map<string, string>();
@@ -57,19 +62,36 @@ export class RecordingShortcutCoordinator {
 			}
 		} else {
 			this.lastProblem = undefined;
-			const candidate = reading.present
-				? canonicalRecordingChord(reading.value, this.platform)
-				: canonicalRecordingChord(DEFAULT_START_RECORDING_VALUE, this.platform);
-			if (candidate !== null) {
-				this.canonical = candidate;
-				this.value = reading.present
-					? reading.value.trim()
-					: DEFAULT_START_RECORDING_VALUE;
-			} else if (reading.present) {
-				this.problem = `config.yml carries an invalid recording shortcut: ${reading.value}`;
-				if (this.problem !== this.lastProblem) {
-					this.lastProblem = this.problem;
-					this.onProblem(this.problem);
+			// The cleared sentinel is tested BEFORE the grammar: `canonicalRecordingChord`
+			// would reject `none` as invalid and keep last-good. Cleared sets
+			// canonical to null and raises NO problem.
+			if (reading.present && isClearedShortcut(reading.value)) {
+				this.cleared = true;
+				this.value = CLEARED_SHORTCUT_VALUE;
+				this.canonical = null;
+				this.problem = undefined;
+			} else if (!reading.present) {
+				this.cleared = false;
+				this.value = DEFAULT_START_RECORDING_VALUE;
+				this.canonical = canonicalRecordingChord(
+					DEFAULT_START_RECORDING_VALUE,
+					this.platform,
+				);
+			} else {
+				const candidate = canonicalRecordingChord(reading.value, this.platform);
+				if (candidate !== null) {
+					this.cleared = false;
+					this.canonical = candidate;
+					this.value = reading.value.trim();
+				} else {
+					// Invalid (not cleared): keep last-good, report the problem.
+					// `cleared` is left as-is so a cleared-then-garbage edit
+					// still reports cleared until a valid value lands.
+					this.problem = `config.yml carries an invalid recording shortcut: ${reading.value}`;
+					if (this.problem !== this.lastProblem) {
+						this.lastProblem = this.problem;
+						this.onProblem(this.problem);
+					}
 				}
 			}
 		}
@@ -159,7 +181,10 @@ export class RecordingShortcutCoordinator {
 		this.emit();
 	}
 
-	private shadowedBy(canonical = this.canonical): string | undefined {
+	private shadowedBy(
+		canonical: string | null = this.canonical,
+	): string | undefined {
+		if (canonical === null) return undefined;
 		const label = this.claims.get(canonical);
 		if (label === undefined) {
 			this.lastShadow = undefined;
@@ -175,6 +200,7 @@ export class RecordingShortcutCoordinator {
 	}
 
 	matches(input: RecordingShortcutInput): boolean {
+		if (this.cleared || this.canonical === null) return false;
 		if (this.shadowedBy() !== undefined) return false;
 		return recordingShortcutMatches(this.value, input, this.platform);
 	}
@@ -183,6 +209,7 @@ export class RecordingShortcutCoordinator {
 		return {
 			value: this.value,
 			canonical: this.canonical,
+			cleared: this.cleared || undefined,
 			problem: this.problem,
 			pending: this.pending,
 			shadowedBy: this.shadowedBy(),

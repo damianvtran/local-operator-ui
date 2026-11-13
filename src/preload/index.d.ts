@@ -363,6 +363,29 @@ declare global {
 					tabId: number,
 					at: number,
 				) => Promise<{ ok: true } | { ok: false; reason: string }>;
+				/** "Return to agent" on a passkey custody notice. `trusted` is the
+				 * click's `event.isTrusted`; main refuses a release without it. */
+				releasePasskeyCustody: (
+					tabId: number,
+					at: number,
+					trusted: boolean,
+				) => Promise<
+					{ ok: true; reloaded?: boolean } | { ok: false; reason: string }
+				>;
+				/** A passkey hold began in an agent tab: bring that tab's conversation
+				 * and browser pane forward (main has already activated the tab). */
+				onPasskeyCustodyAttention: (
+					callback: (payload: {
+						tabId: number;
+						/** The hold's identity (`PasskeyCustodyView.at`). */
+						at: number;
+						requesterSessionId: string | null;
+					}) => void,
+				) => () => void;
+				/** The hold `{tabId, at}` ended (returned, or its tab closed). */
+				onPasskeyCustodyEnded: (
+					callback: (payload: { tabId: number; at: number }) => void,
+				) => () => void;
 				onStateChanged: (callback: () => void) => () => void;
 				onConsentChanged: (callback: () => void) => () => void;
 				onConsentAttention: (

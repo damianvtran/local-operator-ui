@@ -746,7 +746,7 @@ const LiveArrivalStory = () => {
 			 * timer as well as `animationend` (review round 1, A1) - so a PAUSED
 			 * animation would lose its class after 600ms and photograph a settled row.
 			 * The keyframes, duration and easing below are the shipped ones
-			 * (`lo-team-bridge-arrival`, `--duration-slow`, `--ease-out-quart`); only
+			 * (`lo-message-rise`, `--duration-slow`, `--ease-out-quart`); only
 			 * who attaches the class differs, and no product code reads this.
 			 */}
 			<style>{`
@@ -754,11 +754,11 @@ const LiveArrivalStory = () => {
 				[data-motion-frame="mid"] .lo-team-bridge-arrival { animation-delay: -100ms; animation-play-state: paused; }
 				[data-motion-frame="reduced"] .lo-team-bridge-arrival { animation: none; }
 				[data-motion-frame="start"] [data-message-id="bcmsg_live_arrival"] {
-					animation: lo-team-bridge-arrival var(--duration-slow) var(--ease-out-quart) both;
+					animation: lo-message-rise var(--duration-slow) var(--ease-out-quart) both;
 					animation-play-state: paused;
 				}
 				[data-motion-frame="mid"] [data-message-id="bcmsg_live_arrival"] {
-					animation: lo-team-bridge-arrival var(--duration-slow) var(--ease-out-quart) both;
+					animation: lo-message-rise var(--duration-slow) var(--ease-out-quart) both;
 					animation-delay: -100ms;
 					animation-play-state: paused;
 				}

@@ -75,6 +75,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	AUDIO_UNAVAILABLE_COPY,
 	BrokenAttachment,
+	RetryableAttachment,
 } from "../components/message-item/attachment-frame";
 import type { CanvasPane } from "../utils/canvas-pane";
 import { useCanvasPane } from "../utils/canvas-pane";
@@ -262,6 +263,9 @@ const SupplementSoundLine = memo(function SupplementSoundLine({
 	cwd?: string | null;
 	pane: CanvasPane | null;
 }) {
+	// `memo` blocks a parent's locale repaint, and the fallback name below is
+	// read through `t()` at render time: subscribe so a language switch repaints.
+	useI18nLocale();
 	/*
 	 * A WRITTEN audio file (`origin: "file"`, 2026-11-03) plays from its
 	 * attachment digest exactly like a generated one — the core copied the bytes
@@ -292,7 +296,7 @@ const SupplementSoundLine = memo(function SupplementSoundLine({
 		scope,
 	);
 	const peaks = useWaveform(sound.attachment, scope);
-	const label = title || "Generated sound";
+	const label = title || t("ui.chat.canonical.supplement.sound_fallback_label");
 	/*
 	 * THE NAME DOES NOT WAIT FOR THE BYTES. A sound's title is known the moment
 	 * the record arrives (it is the producer's own string), so it is drawn over
@@ -327,6 +331,8 @@ const SupplementSoundLine = memo(function SupplementSoundLine({
 				))}
 			{source.state === "missing" ? (
 				<BrokenAttachment name={label} detail={AUDIO_UNAVAILABLE_COPY} />
+			) : source.state === "retryable" ? (
+				<RetryableAttachment name={label} onRetry={source.retry} />
 			) : source.state === "resolving" ? (
 				// A reserved line at the player's height (the same reason the two
 				// media components reserve): the block must not jump when the bytes

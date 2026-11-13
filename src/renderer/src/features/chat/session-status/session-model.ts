@@ -33,7 +33,7 @@
  * is what makes the segment's presence informative.
  */
 
-import { currentLocale, formatList, t } from "@shared/i18n";
+import { currentLocale, formatDateTime, formatList, t } from "@shared/i18n";
 import type {
 	CanonicalEffectiveAccessState,
 	CanonicalFrontendState,
@@ -1051,10 +1051,12 @@ function epochSeconds(value: unknown): number | undefined {
 }
 
 function accessTime(value: number): string {
-	return new Intl.DateTimeFormat(undefined, {
+	// The live UI locale, not `undefined` (the OS default): the history sentence
+	// around this stamp is keyed copy in the chosen language.
+	return formatDateTime(new Date(value * 1000), {
 		dateStyle: "medium",
 		timeStyle: "short",
-	}).format(new Date(value * 1000));
+	});
 }
 
 /**
@@ -1071,6 +1073,14 @@ export function modelAccessPresentation(access: ModelAccessReading): {
 	title: string;
 	description: string;
 	history: string;
+	/*
+	 * The same timestamps one per entry, WITHOUT the "History only; not
+	 * permission to reuse access." caveat: the strip's `i` tooltip (PR #1871,
+	 * design D1) is 256px wide, where the joined sentence broke mid-timestamp,
+	 * and it only ever shows informational states, where a caution about reuse
+	 * reads as a warning the state does not carry. The card keeps `history`.
+	 */
+	historyLines: string[];
 	tone: "warning" | "neutral";
 	canConnect: boolean;
 	canSwitchModel: boolean;
@@ -1164,6 +1174,7 @@ export function modelAccessPresentation(access: ModelAccessReading): {
 			}),
 		);
 	}
+	const historyLines = [...context];
 	if (
 		effectiveState &&
 		(access.lastGrantAt !== undefined ||
@@ -1175,12 +1186,66 @@ export function modelAccessPresentation(access: ModelAccessReading): {
 		title,
 		description,
 		history: context.join(" "),
+		historyLines,
 		tone: effectiveState === "effective_borrow" ? "neutral" : "warning",
 		canConnect: effectiveState
 			? effectiveState === "absent" && access.connectHere === true
 			: !legacyUnavailable,
 		canSwitchModel: effectiveState !== "effective_borrow",
 	};
+}
+
+/**
+ * Whether this access reading is INFORMATIONAL — true and worth knowing, but
+ * asking nothing of the user — so it rides the session strip as an `i` icon
+ * whose tooltip carries the facts, instead of a standing card above the
+ * composer.
+ *
+ * WHY (operator report, 2026-11-11). A session running on a mesh peer with
+ * healthy borrowed access showed a persistent multi-line card ("… access from
+ * damians-MacBook-Pro / The runtime resolved borrowed access … / Last checked …
+ * History only …") for as long as the session was open. Nothing in it was
+ * actionable: the borrow is working. A card in the composer's band is the
+ * register for "this needs you"; a fact that needs nothing belongs beside the
+ * readings it qualifies (the model and effort chips).
+ *
+ * THE PER-STATE DECISION, judged on whether the state asks for ACTION:
+ * - `effective_borrow`: access resolved and serving. Icon only.
+ * - `pending`, `eligible_borrow_unverified`: the runtime is resolving access on
+ *   its own and the next request settles it; there is nothing to press. Their
+ *   card offered only `Switch model`, which the model chip right beside the icon
+ *   already opens (the same `/model` command), so no exit is lost. Icon only.
+ * - `expired`, `withdrawn`, `owner_unavailable`, `device_bound`, `absent`, and
+ *   the legacy `signed_out` / `temporarily_unavailable` readings: the session's
+ *   next turn may fail, or the user has a remedy to take (sign in on the serving
+ *   device, restore access, connect, switch). They keep the card — minimising a
+ *   warning the user must act on would hide the reason a turn fails.
+ * - `local` never reaches here (`modelAccessReading` returns null for it).
+ *
+ * The card's `tone` was `warning` for `pending` / `eligible_borrow_unverified`;
+ * the icon is deliberately neutral for all three informational states. Do not
+ * restore a warning tone on the icon: a warning that asks for nothing is the
+ * standing alarm the operator asked to remove (`modelAccessPresentation` still
+ * returns `warning` for the card, which those states no longer reach here).
+ *
+ * UNKNOWN STATES. `modelAccessReading` coerces an `effective_state` this build
+ * does not know to `pending` before this predicate sees it, so a new runtime
+ * state is informational — the icon, not the card. That is the intended
+ * default: `pending` is the reader's "the runtime is still deciding" and its
+ * copy promises nothing the user must do. A state that needs action has to be
+ * taught to the reader (and kept out of the `true` cases below) to get the card.
+ */
+export function modelAccessIsInformational(
+	access: ModelAccessReading | null | undefined,
+): boolean {
+	switch (access?.effectiveState) {
+		case "effective_borrow":
+		case "pending":
+		case "eligible_borrow_unverified":
+			return true;
+		default:
+			return false;
+	}
 }
 
 /**

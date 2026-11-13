@@ -1,0 +1,88 @@
+{
+  "schema": 1,
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "6e7c2663da44",
+    "instance": "6e7c2663da44-s16f-au4-ru",
+    "model": "deepseek/deepseek-flash",
+    "model_note": "Actual model is this session's own header line (deepseek/deepseek-flash), the i18n-auditor role default; not a mid-run fallback and not a reasoned-down tier. The served provider cannot be verified from inside the session.",
+    "independence": "Independent round-4 delta audit in a fresh session 6e7c2663da44: not the PR #1876 translator, not the round-3 auditor (instance 9f927eaac669), and not the author of the landed commit. Read-only: this audit edited, committed, pushed, checked out and installed nothing; every command below ran against the manager-owned worktree ~/local-operator-ui/.worktrees/i18n-s16a at cbb8782a, verified clean before and after. Disclosure: the round-3 auditor ran the same model (deepseek/deepseek-flash), so independence here is by session and by re-derivation from the bytes, not by model diversity.",
+    "actual_model_source": "session header line: Model: deepseek/deepseek-flash"
+  },
+  "agent": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "6e7c2663da44-s16f-au4-ru",
+  "session": "6e7c2663da44",
+  "locale": "ru",
+  "namespace": "ui.chat.canonical",
+  "pr": "damianvtran/local-operator-ui#1876",
+  "audited_head": "cbb8782a39b5692ae46bfc3aa6930840420e9b14",
+  "previous_audited_head": "8180eff1f705eb79d4df5123d6108c539b585b2e",
+  "date": "2026-11-12",
+  "audit_kind": "delta re-audit of the round-3 MAJOR remediation: ru ui.chat.canonical.media.sound_label lower case -> capitalised in all five plural arms, plus the same-noun family in the namespace (sound.player_failed, supplement.sound_fallback_label, the image_gen.state sound_effect arms)",
+  "translator": "independent translator outside this audit and outside the round-3 auditor (per the manager's brief); the landed commit is authored by the shared account Damian Tran, so the commit manifest cannot name the translator instance",
+  "status": "passed",
+  "result": "clean",
+  "keys_read": 467,
+  "keys_audited_in_full": [
+    "ui.chat.canonical.media.sound_label",
+    "ui.chat.canonical.sound.player_failed",
+    "ui.chat.canonical.supplement.sound_fallback_label",
+    "ui.chat.canonical.image_gen.state.running",
+    "ui.chat.canonical.image_gen.state.running_batch",
+    "ui.chat.canonical.image_gen.state.done",
+    "ui.chat.canonical.image_gen.state.done_batch",
+    "ui.chat.canonical.image_gen.state.failed",
+    "ui.chat.canonical.image_gen.state.failed_batch"
+  ],
+  "scope": "The one key the landed commit changes, read in full and judged from the bytes rather than inherited from the round-3 finding or the commit's rationale; the other eight keys in the namespace carrying the same noun (everything with звук/звуковой), judged for consistency, including the deliberately kept звуковой эффект compound for the sound_effect material; the other 458 keys carried on byte-identity to the round-3-audited head, never re-judged. Catalogue audit only: no rendered fit, activation or release.",
+  "sha256": {
+    "ru": "fddef0897968450fb0157457dda37f7472fa467b4df1aea68af16bbe260f10f1",
+    "en": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+    "context": "8f56e0d2b384c6b41add57a64e6c863e565cb61d5a7c0de482d42f380be3acfe"
+  },
+  "reference_sha256": {
+    "glossary": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style_guide": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+  },
+  "inputs": {
+    "source": "src/i18n/catalogues/en/ui.chat.canonical.json",
+    "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+    "target": "src/i18n/catalogues/ru/ui.chat.canonical.json",
+    "glossary": "~/local-operator/i18n/glossary.md at working tree HEAD b42471d3935cb7e95d64428af27c32626665f4c0 (clean for this file)",
+    "style_guide": "~/local-operator/i18n/style-guides/ru.md at the same tree"
+  },
+  "checks": {
+    "key_set": "PASS - ru 467 = en 467, no duplicate keys, no key added or dropped",
+    "byte_identity_vs_previous_audited_head": "PASS - exactly one differing line (460, the changed key); the other 466 keys' values byte-identical to 8180eff1; English untouched by the landed commit (905fb4d86bab... at both heads)",
+    "landed_delta_is_minimal": "PASS - the changed value equals the previous value under replaceAll('звук'->'Звук'); five capitalised arms, no other byte moved",
+    "carry_15_in_scope_keys": "PASS - the 10 PR-added keys equal the round-3-audited values except media.sound_label; the 5 main-added loading.* keys equal origin/main's ru file",
+    "icu_structure": "PASS - AST (@formatjs/icu-messageformat-parser): argument name/type set identical to English on all 467 keys (extra ru arms normalised, never counted as a difference); plural-vs-select nesting shape identical",
+    "cldr_categories": "PASS - all 63 ru plural messages in the namespace carry one+few+many+other; the =1 arm and the two =0 hide-arms mirror English",
+    "render": "PASS - through intl-messageformat (the package src/i18n/messages.ts uses) at 12 counts x 3 positions: no throw, unnumbered only at count 1, every other count reads 'Звук <position>', ::group-off holds at position 1000",
+    "text_hygiene": "PASS - all 467 values NFC; no bidi control characters in any value",
+    "terminology": "PASS - звук is the locale's settled noun (ui.settings.notifications.sound.heading 'Звук', canvas/library 'Звуки'); звуковой эффект is a distinct material and stays",
+    "width": "PASS - 'Звук' 4 cells, 'Звук 1000' 9 cells; no maxCells hint on these keys; cannot overflow a tile or player label",
+    "locale_parity_test": "PASS - node --test scripts/i18n/locale-parity.test.mjs: tests 44, pass 44, fail 0 (ru included)",
+    "check_duplicates": "PASS - 1437 files scanned, 0 duplicate keys",
+    "context_parity": "PASS - every English key covered apart from 129 allowed gaps in 4 namespaces; ui.chat.canonical is not an allowance namespace, so all 10 new keys are sidecar-covered",
+    "generate_check": "PASS - src/i18n/keys.gen.ts byte-identical to a fresh generation",
+    "worktree_untouched": "PASS - git status --porcelain empty before and after every run; HEAD still cbb8782a"
+  },
+  "findings": [],
+  "findings_count": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "notes": "The capitalisation is correct on the evidence, not because it landed: sibling media.image_label is capitalised, the locale's own bare label is 'Звук' (ui.settings.notifications.sound.heading), and it is sentence case per the ru guide. The commit's stated rationale (that lower case read wrong INSIDE ui.chat.audio.play_label) is rejected: lower case was grammatically right there, and today's composed aria-label 'Воспроизвести Звук 2' carries a capital mid-phrase. That seat is the manager's recorded deferral (ru/ui.chat namespace, not this file); suggested fix there is a colon template 'Воспроизвести: {label}'. Not gated here, no finding. hi was not my assignment and carries no verdict from me.",
+  "artifacts": {
+    "report": "s16f-au4-ru/report.md",
+    "audit_log": "s16f-au4-ru/audit.log",
+    "integrity_script": "s16f-au4-ru/integrity.mjs",
+    "icu_script": "s16f-au4-ru/icu.mjs",
+    "log_builder": "s16f-au4-ru/run-audit.sh",
+    "location": "this session's scratchpad (~/.local-operator/sessions/6e7c2663da44/scratchpad/s16f-au4-ru/); audit_notes_not_execution_log: false for audit.log, which is real command output"
+  }
+}

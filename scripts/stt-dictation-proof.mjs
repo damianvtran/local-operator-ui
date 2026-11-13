@@ -851,12 +851,6 @@ try {
 		modifiers: 1,
 		location: 2,
 	};
-	const SPACE = {
-		key: " ",
-		code: "Space",
-		windowsVirtualKeyCode: 32,
-		nativeVirtualKeyCode: 49,
-	};
 	const ENTER = {
 		key: "Enter",
 		code: "Enter",
@@ -1159,38 +1153,11 @@ try {
 		);
 	}
 
-	// 2. The legacy hold-Space binding, measured on every build. Focus is taken
-	// out of the composer first, which is the binding's own guard on both
-	// builds: typing wins over a hold (the guard the spec keeps for Space alone).
-	await cdp.evaluate(
-		"document.activeElement?.blur?.(); document.body.focus(); true",
-	);
-	const space = await measureEngage({
-		def: SPACE,
-		label: "sessionA.space",
-		budgetMs: 6000,
-	});
-	verify("sessionA.spaceEngages", space.detail.flipped, {
-		...space.detail,
-		cold: false,
-	});
-	if (space.detail.flipped) {
-		// Same settled-lane wait as the combo frame above (design round 1, D4).
-		await sleep(450);
-		await cdp.shot("05-recording-space.webp");
-		record("sessionA.recordingTreatmentSpace", await composerBox());
-		await releaseHold(SPACE);
-		await awaitTranscriptLanding("sessionA.space");
-		await cdp.shot("06-transcribing-space.webp");
-		const landed = await waitForDraft(
-			(d) => d.includes("fake upstream"),
-			20_000,
-		);
-		record("sessionA.transcriptLandedSpace", { draft: landed });
-		await cdp.shot("07-dictated-landed-space.webp");
-	} else {
-		await releaseHold(SPACE, { holdExtraMs: 0 });
-	}
+	// 2. HOLD-SPACE IS REMOVED: the bare-Space hold gesture no longer exists.
+	// Space is now an ordinary key everywhere (see the `resolvePushToTalkBinding`
+	// consumer in the manager). This rig does not probe Space: the door is gone
+	// rather than inert, so there is nothing to verify here; the ALT-RIGHT
+	// combo above is the measured arm.
 
 	// 3. SEND the mixed draft (typed + dictated) and read the wire body back from
 	// the proxy: `input_mode: "mixed"` and `mode: "prompt"`.

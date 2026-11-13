@@ -1,0 +1,129 @@
+{
+ "audit_id": "l2-a2-es-3fcd4635c3cc",
+ "locale": "es",
+ "namespace": "ui.chat.canonical",
+ "audit_date": "2026-11-11",
+ "round": 2,
+ "mode": "delta re-audit of the translator's revised pair (es.v2 after audit-es.md F1)",
+ "key_count": 2,
+ "keys": [
+  "ui.chat.canonical.tool.never_sent_composed",
+  "ui.chat.canonical.tool.never_sent_empty"
+ ],
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "3fcd4635c3cc",
+  "instance": "3fcd4635c3cc",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "session runtime model header (deepseek/deepseek-flash); no provider fallback used or declared for this run",
+  "independent_from_translator_session": true,
+  "translator": {
+   "agent": "i18n-translator",
+   "model": "openai/gpt-6.1-sol",
+   "session": "d489baef5da9"
+  },
+  "translator_did_not_audit_own_work": true
+ },
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+   "sha256": "27ae7327daa34be60b619be551c840e057d61c3d69dc801269e4f389edc0f031"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+   "sha256": "c0aff0d8bd80304e063b55f80875e3f8b5f50ad201e9b51770f570eb8dd253e4"
+  },
+  "en_keys_sidecar": {
+   "path": "../_l2-prep/keys.json",
+   "sha256": "a8cd6e7d8adbc43a55bf2b812ba32eafa9f32931830e45f84b12d8ceb60ec71b"
+  },
+  "es_target_audited": {
+   "path": "../_l2-prep/es.v2.json",
+   "sha256": "ed6a86779fa26d6678f4b1d7622fde385dd2994085909c2b0aed2219eccf531b"
+  },
+  "es_baseline_shipped": {
+   "path": "src/i18n/catalogues/es/ui.chat.canonical.json",
+   "sha256": "7735932bf45197226c40366421862f9596d224f06f463e84eadfe8bf020682d1"
+  },
+  "es_previous_v1": {
+   "path": "../_l2-prep/es.json",
+   "sha256": "8b2dd7bcb015b2301adf0da0fb539c87d27397e17253098fe61fa3c5be75cc64"
+  },
+  "revision_note": {
+   "path": "../_l2-prep/es.v2-changes.md",
+   "sha256": "3906b667d3e226303d6913c01aaf0c812113f702660853b7d685a1732b0dca51"
+  },
+  "style_guide_es": {
+   "path": "~/local-operator/i18n/style-guides/es.md",
+   "sha256": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e"
+  },
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+  }
+ },
+ "artifacts": {
+  "audit.log": {
+   "path": "i18n/audits/evidence/es/ui.chat.canonical/l2-a2-es-3fcd4635c3cc/audit.log",
+   "sha256": "81df9d13cd6c2d411a44500cab23ec984ed562604e2f1498984159fbcdd54352"
+  },
+  "mechanical.json": {
+   "path": "i18n/audits/evidence/es/ui.chat.canonical/l2-a2-es-3fcd4635c3cc/mechanical.json",
+   "sha256": "de0ea4880d1cd4869f527b8b1c4efb5f339541411a7f24eca41f41402b6dee03"
+  },
+  "receipt.json": {
+   "path": "i18n/audits/evidence/es/ui.chat.canonical/l2-a2-es-3fcd4635c3cc/receipt.json",
+   "sha256": "29a11d3f8ac0cedc3270bc3e377d3af88efebd038f7ab03d3e194658e9997279"
+  }
+ },
+ "current_report_verdict": {
+  "status": "passed",
+  "result": "clean-with-findings",
+  "unresolved_blocker_major_count": 0,
+  "finding_ids": [
+   "N1"
+  ]
+ },
+ "severity_counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 0,
+  "nit": 1
+ },
+ "prior_round": {
+  "report": "../_l2-prep/audit-es.md",
+  "verdict": "passed (0 blocker, 0 major, 1 minor, 2 nit)",
+  "findings": {
+   "F1": "fixed in v2 — verified below, all reachable values grammatical",
+   "F2": "retained by translator with reasoning; auditor agrees",
+   "F3": "retained by translator with reasoning; auditor agrees"
+  }
+ },
+ "second_independent_pass": {
+  "performed": true,
+  "scope": "both keys re-read after the mechanical pass: participle agreement against every reachable rendered value, label:value idiom against shipped es patterns, pair parallelism, truncation order in the tool row"
+ },
+ "audit_notes_not_execution_log": [
+  "audit.log holds captured stdout/stderr of the commands actually run this session (provenance, hashes, node size proof, python3 mechanical run, repo gates, ledger probe).",
+  "The linguistic judgement (meaning, idiom, register, terminology, fit) is this auditor's reasoning and is not machine output; it lives in the report referenced below.",
+  "ledger-check's red rows in audit.log are the wave's in-flight repository state (this branch's en source has the two new keys, no locale catalogue has them yet), not findings of this audit.",
+  "Nothing in this bundle is shipped product copy; it is the audit record for the pair."
+ ],
+ "ledger_append": {
+  "status": "deferred-until-landing",
+  "reason": "ledger-assemble.mjs derives target_sha256 from the catalogue on disk and refuses a locale that is not key-complete against English; the es catalogue lacks the two keys until the landing commit.",
+  "probe": {
+   "command": "node scripts/i18n/ledger-assemble.mjs --locale es --file src/i18n/catalogues/es/ui.chat.canonical.json --auditor-instance 3fcd4635c3cc --auditor-model deepseek/deepseek-flash --result clean-with-findings --receipt <bundle>/receipt.json --translator-agent i18n-translator --translator-model openai/gpt-6.1-sol",
+   "exit": 2,
+   "message": "ledger-assemble: refused - es/ui.chat.canonical is not key-complete against English (2 missing, 0 extra) - an incomplete locale cannot be recorded",
+   "ledger_bytes_unchanged": true,
+   "ledger_sha256_before_and_after": "8f3c573b78771473365aa48057e939b0395ba222ec51422ade2a624495d5c84d"
+  },
+  "landing_command": "node scripts/i18n/ledger-assemble.mjs --locale es --file src/i18n/catalogues/es/ui.chat.canonical.json --auditor-instance 3fcd4635c3cc --auditor-model deepseek/deepseek-flash --result clean-with-findings --receipt <landed receipt under i18n/receipts/> --translator-agent i18n-translator --translator-model openai/gpt-6.1-sol --scope \"the 2 keys this wave adds (never_sent_composed, never_sent_empty)\" --note \"l2 file-size wave; audit l2-a2-es-3fcd4635c3cc\"",
+  "value_check_before_assembling": "compare the two values against receipt.key_values_sha256; a mismatch means the audited bytes are not the landed bytes"
+ },
+ "out_of_scope_observations": [
+  "src/renderer/src/features/chat/canonical/canonical-transcript.tsx:2326 and :2331 (HEAD 479c2673fab) still return hardcoded English template strings `composing${...}` and `queued${...}` from the same summary function that now keys this pair. Pre-existing at base fd3e8eb757e (git show base:...| grep confirms), so not part of this pair and not a finding against these two values - but it renders English in the es tool row while carrying the localized size beside it. Reported to the manager as an observation; the fix is a code change (two new keys), not an es edit."
+ ],
+ "report": "/Users/damian/.local-operator/sessions/3fcd4635c3cc/scratchpad/audit-es-v2.md (session scratchpad; this bundle is the durable record)"
+}

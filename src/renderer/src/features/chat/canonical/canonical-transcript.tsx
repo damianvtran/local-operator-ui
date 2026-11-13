@@ -192,10 +192,17 @@ import { type BusyWaitState, busyWaitLabels } from "./busy-wait";
 import { CanonicalAudio } from "./canonical-audio";
 import { CanonicalImage } from "./canonical-image";
 import { CheckpointRail } from "./checkpoint-rail";
+import { ConversationLoadingIndicator } from "./conversation-loading-indicator";
 import { visibleRecords } from "./cross-session-visibility";
 import { isRecordReachable } from "./failed-row-jump";
 import { FoldMedia } from "./fold-media";
-import { type FoldOpenEntry, foldOpenOf, withFoldOpen } from "./fold-open";
+import {
+	type FoldIdentity,
+	type FoldOpenEntry,
+	foldIdentityFor,
+	foldOpenOf,
+	withFoldOpen,
+} from "./fold-open";
 import { ImageGenCard } from "./image-gen-card";
 import {
 	imageGenCardMountActions,
@@ -205,8 +212,18 @@ import {
 } from "./image-gen-card-model";
 import { LinkToolkit } from "./link-toolkit";
 import type { LoadOlderOutcome } from "./load-older";
+import { imageLabel, soundLabel } from "./media-label";
 import { forkEntryId } from "./message-actions";
 import { AnswerActionRow } from "./message-actions-row";
+import {
+	ConnectedMusicGeneratingCard,
+	useMusicGeneratingView,
+} from "./music-generating-card";
+import {
+	MusicJobSettlementsContext,
+	musicJobSettlementsOf,
+} from "./music-generating-model";
+import { MusicResult } from "./music-result";
 import { noticeText } from "./notice-copy";
 import {
 	OLDER_HISTORY_HINT_ID,
@@ -277,7 +294,6 @@ import {
 	transcriptPaneCollapses,
 	transcriptPaneHoldsPlaceholder,
 } from "./transcript-pane";
-import { TranscriptPlaceholder } from "./transcript-placeholder";
 import {
 	type TranscriptImage,
 	type TranscriptRecord,
@@ -803,15 +819,25 @@ export type CanonicalTranscriptProps = {
 	 *
 	 * It is a rendered state, not a hint: rows stay at full `ink` (a cached row is
 	 * a real row, and opacity is banned as a state signal in this system), and
-	 * what says "this may be behind" is ONE caption in the transcript's foot
-	 * slot (`data-lo-stale-caption`), the row reserved for the working line, so
-	 * its removal moves nothing. The rows PAINT while the page is owed - the
-	 * pane no longer holds a placeholder over them. It is present from the
-	 * cached paint's first frame and goes in the same commit as
-	 * the reconciled rows, so the reader never sees reconciled rows labelled
-	 * "last saved" or the reverse.
+	 * what says "newer messages may be on the way" is ONE loading indicator in the
+	 * transcript's foot slot (`data-lo-stale-caption`), the row reserved for the
+	 * working line, so its removal moves nothing. The rows PAINT while the page
+	 * is owed - the pane no longer holds a placeholder over them. It is present
+	 * from the cached paint's first frame and goes in the same commit as the
+	 * reconciled rows, so the reader never sees reconciled rows still labelled
+	 * as being checked, or the reverse.
 	 */
 	stale?: boolean;
+	/**
+	 * True when this conversation is owned by another device (the catalogue's
+	 * placement fact or row `locality`, `remoteOwnedId`). Changes only the WORDS
+	 * of the loading indicator: for a peer's conversation every wait this pane
+	 * shows before the history is proven is the sync from that device, and
+	 * "Syncing from your other device…" is the one label that says why it can take
+	 * longer than a local open. Optional, defaulting false: absence is not proof of
+	 * remote, and a caller that omits it gets the local labels.
+	 */
+	remote?: boolean;
 	/**
 	 * True when the backend says this conversation is not on this machine (M6).
 	 *
@@ -1029,7 +1055,7 @@ const toolImageLabel = (
 	image: TranscriptImage,
 	index: number,
 	count: number,
-): string => image.name ?? (count === 1 ? "Image" : `Image ${index + 1}`);
+): string => image.name ?? imageLabel(index + 1, count);
 
 /**
  * The audio sibling of `toolImageLabel`: the same rule (the wire's own name
@@ -1044,7 +1070,7 @@ const toolAudioLabel = (
 	audio: TranscriptImage,
 	index: number,
 	count: number,
-): string => audio.name ?? (count === 1 ? "Sound" : `Sound ${index + 1}`);
+): string => audio.name ?? soundLabel(index + 1, count);
 
 /**
  * THE BUSY-SEND WAITING LABELS, provided by the pane and read by a row.
@@ -2372,6 +2398,26 @@ const AssistantRow = memo(function AssistantRow({
 });
 
 /**
+ * Whether the tool row's summary is a sentence the CATALOGUE wrote (`never sent`,
+ * `composing`, `queued`) rather than text built from the call's arguments.
+ *
+ * The row needs the distinction to pick the summary's direction: arguments are
+ * machine voice (paths, commands) and stay left-to-right in every locale, a keyed
+ * sentence follows the locale's own direction (design review round 1, D1). It is
+ * ONE predicate shared with `toolRecordSummary`, so the words and the direction
+ * they are painted in cannot drift apart.
+ */
+function toolRecordStatusKind(
+	record: Extract<TranscriptRecord, { kind: "tool" }>,
+): "never_sent" | "composing" | "queued" | null {
+	if (record.neverSent === true || Boolean(record.notRunReason))
+		return "never_sent";
+	if (record.phase === "composing") return "composing";
+	if (record.phase === "queued") return "queued";
+	return null;
+}
+
+/**
  * The row's own summary text — the object column before the row's bare-name drop.
  *
  * Shared with the trace fold's live clause (wired as `summaryOf` in the fold's
@@ -2389,22 +2435,41 @@ const AssistantRow = memo(function AssistantRow({
 function toolRecordSummary(
 	record: Extract<TranscriptRecord, { kind: "tool" }>,
 ): string {
-	const composing = record.phase === "composing";
-	const queued = record.phase === "queued";
-	const neverSent = record.neverSent === true || Boolean(record.notRunReason);
-	if (neverSent)
+	const kind = toolRecordStatusKind(record);
+	const composing = kind === "composing";
+	const queued = kind === "queued";
+	if (kind === "never_sent")
 		// `never sent`, not `failed`: the call produced no result to fail, and the
 		// size is the record of how far the model got before nothing would receive
 		// it (`ToolCard.mark_not_run`). An empty payload is named rather than
 		// rendered as `0 B`, which would claim a measurement.
-		return `never sent · ${record.argumentBytes ? `${formatBytes(record.argumentBytes)} composed` : "nothing composed"}`;
+		return record.argumentBytes
+			? t("ui.chat.canonical.tool.never_sent_composed", {
+					size: formatBytes(record.argumentBytes),
+				})
+			: t("ui.chat.canonical.tool.never_sent_empty");
+	/*
+	 * Whole-line messages, sized and empty, for the same reason `never sent`
+	 * above has two: the separator and the size sit INSIDE the message so a
+	 * language can order them its own way, and no English fragment is glued
+	 * on here. Resolved per call (the row and the fold both re-render on a
+	 * locale change), never at module load.
+	 */
 	if (composing)
-		return `composing${record.argumentBytes ? ` · ${formatBytes(record.argumentBytes)}` : ""}`;
+		return record.argumentBytes
+			? t("ui.chat.canonical.tool.composing_sized", {
+					size: formatBytes(record.argumentBytes),
+				})
+			: t("ui.chat.canonical.tool.composing_empty");
 	if (queued)
 		// Dictation is over and the call has not started: the byte count stays
 		// (it is how far the model got), and the status word stops claiming work
 		// the model finished writing.
-		return `queued${record.argumentBytes ? ` · ${formatBytes(record.argumentBytes)}` : ""}`;
+		return record.argumentBytes
+			? t("ui.chat.canonical.tool.queued_sized", {
+					size: formatBytes(record.argumentBytes),
+				})
+			: t("ui.chat.canonical.tool.queued_empty");
 	return summaryFromArgs(record.toolName, record.args);
 }
 
@@ -2585,6 +2650,11 @@ const ToolRow = memo(function ToolRow({
 			: null;
 	const revertAnswer = useProfileRevertAnswer();
 	/*
+	 * Unconditional like the hooks above; null for every row but a music call
+	 * that registered a detached job (`music-generating-model.ts`).
+	 */
+	const musicView = useMusicGeneratingView(record.toolName, record.details);
+	/*
 	 * THE STATUS SEAM IS THE ONLY AUTHORITY (core's revert gate is a live
 	 * action-registration/status read; a persisted `revert_verified` is proof of
 	 * nothing). `profile-revert-status.ts` answers `unavailable` for anything but a
@@ -2623,6 +2693,19 @@ const ToolRow = memo(function ToolRow({
 	 * constant, adjustable in one place when the harness freezes the tool-name
 	 * set.
 	 */
+	/*
+	 * THE MUSIC GENERATING CARD IS THE ROW for a music call whose detached job
+	 * the chat can follow: the motif, state line and the job's own Cancel at the
+	 * call's place, settling in place when the job's `job_result` row lands (that
+	 * row keeps painting the finished tracks, unchanged).
+	 */
+	if (musicView) {
+		return (
+			<MessageContainer isUser={false} isSmallView={isSmallView}>
+				<ConnectedMusicGeneratingCard view={musicView} />
+			</MessageContainer>
+		);
+	}
 	if (isImageGenTool(record.toolName)) {
 		/*
 		 * The mount's action rule (R4, contract §4.2): a video call's work is a
@@ -2985,6 +3068,12 @@ const ToolRow = memo(function ToolRow({
 				 */
 				op={toolOp(record.args)}
 				summary={summary}
+				/*
+				 * Keyed status copy (`composing`, `queued`, `never sent`) follows the
+				 * locale's direction; arguments (paths, commands) stay machine voice.
+				 * A bridge row's summary is its own text, never this copy.
+				 */
+				summaryIsCopy={!bridge && toolRecordStatusKind(record) !== null}
 				summaryFallback={derived}
 				summaryHold={
 					/*
@@ -3053,12 +3142,14 @@ const ProviderAction: FC<{ action: ProviderErrorAction }> = ({ action }) => (
 const NoticeRow = memo(function NoticeRow({
 	record,
 	isSmallView,
+	scope,
 }: {
 	record: Extract<
 		TranscriptRecord,
 		{ kind: "notice" | "compaction" | "custom" }
 	>;
 	isSmallView: boolean;
+	scope: AttachmentScope | null;
 }) {
 	useI18nLocale();
 	// A custom row and a notice are two registers, and the difference is what
@@ -3136,6 +3227,7 @@ const NoticeRow = memo(function NoticeRow({
 						<ProviderAction action={providerAction} />
 					)
 				) : null}
+				{record.music && <MusicResult receipt={record.music} scope={scope} />}
 			</MessageContainer>
 		);
 	}
@@ -3347,7 +3439,10 @@ const HubRow = memo(function HubRow({
 }) {
 	useI18nLocale();
 	const receipt = record.receipt;
-	if (!receipt) return <NoticeRow record={record} isSmallView={isSmallView} />;
+	if (!receipt)
+		return (
+			<NoticeRow record={record} isSmallView={isSmallView} scope={scope} />
+		);
 	return (
 		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			<ToolLedgerRow
@@ -4046,7 +4141,7 @@ const TranscriptRow = memo(function TranscriptRow({
 				) : record.receipt ? (
 					<HubRow record={record} isSmallView={isSmallView} scope={scope} />
 				) : (
-					<NoticeRow record={record} isSmallView={isSmallView} />
+					<NoticeRow record={record} isSmallView={isSmallView} scope={scope} />
 				);
 			break;
 		case "peer":
@@ -4081,7 +4176,9 @@ const TranscriptRow = memo(function TranscriptRow({
 			);
 			break;
 		default:
-			body = <NoticeRow record={record} isSmallView={isSmallView} />;
+			body = (
+				<NoticeRow record={record} isSmallView={isSmallView} scope={scope} />
+			);
 	}
 	if (body === null) return null;
 	return (
@@ -4149,7 +4246,18 @@ const TranscriptRow = memo(function TranscriptRow({
 					 * for an `outline-none` in a component (styles/index.css).
 					 */
 					messageRow && "group focus-visible:outline-none",
-					entered.current && "lo-transcript-arrival",
+					/*
+					 * A live-arriving user row - this window's echo or a message from
+					 * the TUI, a peer or another window - rises into place; every other
+					 * arriving row is ink only (`lo-transcript-arrival-rise` in
+					 * styles/index.css, F4).
+					 * `entered` is fixed at mount, so the class never changes on this
+					 * node and the animation plays exactly once.
+					 */
+					entered.current &&
+						(record.kind === "user"
+							? "lo-transcript-arrival-rise"
+							: "lo-transcript-arrival"),
 				)}
 			>
 				{/*
@@ -4234,11 +4342,22 @@ type SectionGroup =
  * subscription. A wrapper rather than a provider inside the pane's JSX so the
  * pane's own render tree, and its diff, are untouched.
  */
-export const CanonicalTranscript: FC<CanonicalTranscriptProps> = (props) => (
-	<SpeechGateScope>
-		<CanonicalTranscriptPane {...props} />
-	</SpeechGateScope>
-);
+export const CanonicalTranscript: FC<CanonicalTranscriptProps> = (props) => {
+	/*
+	 * Settled detached jobs by id, for the music generating card: a fact about
+	 * the LIST (the settlement is a later row), so it is derived once here and
+	 * read by context rather than threaded through every row's memo props.
+	 */
+	const records = props.transcript.records;
+	const settlements = useMemo(() => musicJobSettlementsOf(records), [records]);
+	return (
+		<MusicJobSettlementsContext.Provider value={settlements}>
+			<SpeechGateScope>
+				<CanonicalTranscriptPane {...props} />
+			</SpeechGateScope>
+		</MusicJobSettlementsContext.Provider>
+	);
+};
 
 const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	frontend,
@@ -4270,6 +4389,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	hydrationProven = true,
 	historyReadPending = false,
 	stale = false,
+	remote = false,
 	missing = false,
 	attachmentScope,
 	conversationId,
@@ -4282,8 +4402,11 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	onStartNewChat,
 }) => {
 	// The pane's own subscription: the notices and status lines below are
-	// translated and the pane must repaint when the locale changes.
-	useI18nLocale();
+	// translated and the pane must repaint when the locale changes. The value is
+	// also a `rowGroups` dependency: that memo caches `foldLive()` output, which
+	// carries `toolVerb()` text, so a pure locale switch would otherwise leave a
+	// collapsed fold's live clause in the old language until its rows changed.
+	const locale = useI18nLocale();
 	const capabilities = useDesktopCapabilities();
 	const attachmentsCapable = desktopFeatureEnabled(
 		capabilities.data,
@@ -4378,6 +4501,8 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	rawRecords.current = transcript.records;
 	const arrivalLedger = useRef<{
 		session: string | null;
+		/** The stated id the ledger was last seeded under (`foldIdentity.session`). */
+		stated: string | null;
 		epoch: number;
 		ids: Set<string>;
 	} | null>(null);
@@ -4597,23 +4722,32 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	 * on every reconnect. The last STATED id is held until a different one
 	 * arrives - a gap keeps the conversation, a switch changes it.
 	 */
+	/*
+	 * `foldIdentity.key` is what the row list and the stores below are keyed on;
+	 * a new chat's null id learning its first stated id keeps it (Q1, see
+	 * `foldIdentityFor`), so the snapshot that names the session does not remount
+	 * the echo the press just painted.
+	 */
+	const foldIdentity = useRef<FoldIdentity | null>(null);
+	foldIdentity.current = foldIdentityFor(foldIdentity.current, sessionId);
+	const foldKey = foldIdentity.current.key;
 	const foldSession = useRef(sessionId);
-	if (sessionId !== null) foldSession.current = sessionId;
+	foldSession.current = foldIdentity.current.session;
 	const viewState = useRef({
-		session: foldSession.current,
+		session: foldKey,
 		store: new TranscriptViewState(),
 	});
-	if (viewState.current.session !== foldSession.current)
+	if (viewState.current.session !== foldKey)
 		viewState.current = {
-			session: foldSession.current,
+			session: foldKey,
 			store: new TranscriptViewState(),
 		};
 	const [foldOpen, setFoldOpen] = useState<{
-		session: string | null;
+		session: string;
 		entries: readonly FoldOpenEntry[];
-	}>(() => ({ session: foldSession.current, entries: [] }));
-	if (foldOpen.session !== foldSession.current) {
-		setFoldOpen({ session: foldSession.current, entries: [] });
+	}>(() => ({ session: foldKey, entries: [] }));
+	if (foldOpen.session !== foldKey) {
+		setFoldOpen({ session: foldKey, entries: [] });
 	}
 	/**
 	 * The reader's press on a fold, recorded against the fold's CURRENT id set.
@@ -4625,10 +4759,11 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	 */
 	const setFoldOpenFor = (ids: readonly string[], open: boolean) => {
 		const keep = new Set(rawRecords.current.map((record) => record.id));
+		const key = foldIdentity.current?.key ?? foldKey;
 		setFoldOpen((current) => ({
-			session: foldSession.current,
+			session: key,
 			entries: withFoldOpen(
-				current.session === foldSession.current ? current.entries : [],
+				current.session === key ? current.entries : [],
 				ids,
 				open,
 				keep,
@@ -5068,6 +5203,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	 */
 	/* The store's id index, for the latch prune (see `latchFoldedRuns`). */
 	const recordIndex = transcript.index;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `locale` is read by `foldLive` through `t()`, not as a closure value, so the rule sees it as unnecessary; it is the cache key for the translated words (a collapsed fold's live clause).
 	const rowGroups = useMemo(() => {
 		/*
 		 * `isNewestTurn` used to be computed here for the fold's condense; the
@@ -5187,7 +5323,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 					}
 				: group,
 		);
-	}, [visible, paneIsLive, paneGap, recordIndex]);
+	}, [visible, paneIsLive, paneGap, recordIndex, locale]);
 	/*
 	 * KEYED ON THE WINDOW'S SIGNATURE, NOT ON `visible` (UI perf audit P4; PR-6).
 	 * The foot is arithmetic over the same partition the plan builds - counts,
@@ -6950,7 +7086,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		regionRef: containerRef,
 		entriesRef,
 		layout: scrollLayout,
-		sessionKey: `${foldSession.current ?? ""}:${transcript.viewEpoch}`,
+		sessionKey: `${foldKey}:${transcript.viewEpoch}`,
 		requested: domWindowRequested,
 		contentPresent: !holdPlaceholder && !collapsed,
 	});
@@ -6962,11 +7098,12 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	};
 	// Arrival is a model-tail event, never a history prepend or DOM remount.
 	if (
-		arrivalLedger.current?.session !== foldSession.current ||
+		arrivalLedger.current?.session !== foldKey ||
 		arrivalLedger.current?.epoch !== transcript.viewEpoch
 	) {
 		arrivalLedger.current = {
-			session: foldSession.current,
+			session: foldKey,
+			stated: foldIdentity.current.session,
 			epoch: transcript.viewEpoch,
 			ids: new Set(rows.map((row) => row.record.id)),
 		};
@@ -6975,6 +7112,30 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 			entries: [],
 			heights: new Map(),
 			representations: new Map(),
+		};
+	} else if (
+		arrivalLedger.current.stated === null &&
+		foldIdentity.current.session !== null
+	) {
+		/*
+		 * THE ID IS LEARNED UNDER A KEPT KEY (R2-1). The key stays at the null
+		 * pane's so a new chat's echo keeps its node (Q1), which means the branch
+		 * above no longer re-seeds when a cold-opened conversation's first
+		 * snapshot lands - and that snapshot carries the whole history in the
+		 * same commit as the id, so on a live turn every history user row would
+		 * rise. History is not an arrival: every row this commit brings is
+		 * seeded as known. Rows painted BEFORE the id (a new chat's own echo) are
+		 * left out so they keep their arrival standing; their class is latched at
+		 * mount, and slot extents and the previous slot plan are untouched, so
+		 * nothing already on screen remounts or re-measures.
+		 */
+		const painted = arrivalLedger.current.ids;
+		arrivalLedger.current = {
+			...arrivalLedger.current,
+			stated: foldIdentity.current.session,
+			ids: new Set(
+				rows.map((row) => row.record.id).filter((id) => !painted.has(id)),
+			),
 		};
 	}
 	const known = arrivalLedger.current.ids;
@@ -7493,9 +7654,26 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		<div
 			className={cn(
 				CHAT_COLUMN_CONTAINER,
+				/*
+				 * No transition on this flip (QA round 1, Q3): reduced motion's global
+				 * 0.01 ms cap turns the initial `transition-property: all` into a
+				 * one-frame transition, which painted the first send with this column
+				 * still collapsed (64 px) and the echo under the header - the composer
+				 * band carries the same class for the same reason.
+				 */
+				"transition-none",
 				collapsed
 					? "relative h-0 grow-0 overflow-hidden"
-					: "relative flex min-h-0 grow flex-col",
+					: // `min-h-16`, not `min-h-0`: the docked ask (70% of the column, see
+						// `chat-content.tsx`) may squeeze the transcript, but never to
+						// nothing - a few rows of the conversation stay as context for
+						// the question (ask-card QA round 2, Q1). `basis-0` (via
+						// `flex-1`): the transcript takes only LEFTOVER space and never
+						// competes with the dock by basis. With a content basis the two
+						// shared a deficit in proportion, so the dock's proposal summary
+						// shrank to one line while the transcript still sat 56 px above
+						// its floor (ask-card design round 2, D6/S1).
+						"relative flex min-h-16 flex-1 basis-0 flex-col",
 			)}
 		>
 			{/*
@@ -7793,8 +7971,16 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				    Rendered inside the content column so it lands at the same inset and the
 				    same bottom anchor the rows will, rather than at the pane's centre in
 				    the composer band. */}
+						{/* A peer's conversation says "syncing" only while its history is
+				    unproven, the same gate as the older slot's row below: the hold
+				    can also be the LOCAL settings-filter wait (`holdFiltering`) over
+				    a peer conversation already read, and that is not a sync (code
+				    review round 1, C2). */}
 						{holdPlaceholder && (
-							<TranscriptPlaceholder isSmallView={isSmallView} />
+							<ConversationLoadingIndicator
+								variant={remote && !hydrationProven ? "remote" : "cold"}
+								isSmallView={isSmallView}
+							/>
 						)}
 						{/* Older rows: durable pages, then the local window. One fixed-height
 				    slot for every state of both, so a state change above the oldest
@@ -7816,7 +8002,8 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 				    cursor (its rows are trimmed), which the slot reads as `exhausted`
 				    and says "Start of conversation" over a transcript that may be a
 				    thousand messages in. Measured on a captured frame, not inferred.
-				    The caption in the foot slot below already says the view is not authoritative.
+				    The loading indicator in the foot slot below already says the view is
+				    still being checked.
 				    AND NOT WHILE THE FILTER IS HELD (`holdFiltering`): the slot is the
 				    top of a conversation, and a conversation whose rows are withheld for
 				    a settings answer is not a conversation this pane has painted. The
@@ -7831,6 +8018,14 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 							!holdFiltering && (
 								<OlderHistorySlot
 									state={slotState}
+									/* For a peer's conversation whose history is not yet proven,
+									 * the slot's pending row IS the sync (the `unproven` arm's
+									 * retry, or the warm re-arm's walk), so it says so; once a
+									 * page has proven the history, an earlier page is an ordinary
+									 * older-page load. */
+									loadingVariant={
+										remote && !hydrationProven ? "remote" : "older"
+									}
 									// A retry cannot succeed while the transport is down, and the
 									// transcript's own notice below already explains why. The slot
 									// drops its gesture hint rather than stacking a second claim on
@@ -7848,7 +8043,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 							)}
 
 						{/*
-						 * THE STALE CAPTION IS NOT PAINTED IN HERE EITHER (design round 2, D10):
+						 * THE STALE INDICATOR IS NOT PAINTED IN HERE EITHER (design round 2, D10):
 						 * it is stated ONCE, in the foot slot below, and `stale-caption.test.mjs`
 						 * counts it. An earlier shape painted the same sentence twice on every
 						 * short pane - once pinned above the scroller, once immediately above the
@@ -7858,13 +8053,10 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 						 * This surface's contract is ONE caption for one status, and a status the
 						 * reader has already read is not improved by being repeated.
 						 *
-						 * The loading skeleton is not rendered here either: it is
-						 * `TranscriptPlaceholder`, inside the content column above, because the
-						 * pane's own decision module (`transcript-pane.ts`) is the single
-						 * authority for when a row-less pane holds a placeholder — and because the
-						 * ground the old inline bars used (`sunken`, the weakest adjacent step in
-						 * most palettes) was measured against the pane's `canvas` and replaced
-						 * with `elevated` there.
+						 * The cold loading state is not rendered here either: it is the shared
+						 * `ConversationLoadingIndicator`, inside the content column above, because
+						 * the pane's own decision module (`transcript-pane.ts`) is the single
+						 * authority for when a row-less pane holds a placeholder.
 						 */}
 						{missing ? (
 							/*
@@ -8000,7 +8192,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 							 * they had and nothing about their tree changes shape.
 							 */
 							<TranscriptViewStateContext.Provider
-								key={`${foldSession.current}:${transcript.viewEpoch}`}
+								key={`${foldKey}:${transcript.viewEpoch}`}
 								value={viewState.current.store}
 							>
 								<CanvasPaneProvider conversationId={conversationId}>
@@ -8100,7 +8292,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 													key={slot.key}
 													entryKey={slot.key}
 													signature={descriptor.signature}
-													sessionKey={`${foldSession.current}:${transcript.viewEpoch}`}
+													sessionKey={`${foldKey}:${transcript.viewEpoch}`}
 													expanded={facts[0].open}
 													anchorHeader={
 														facts[0].candidate ||
@@ -8178,12 +8370,25 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 								)}
 							>
 								{stale ? (
-									<span
-										data-lo-stale-caption={true}
-										className="block truncate font-sans text-ink-dim text-meta"
-									>
-										{t("ui.chat.canonical.transcript.stale_caption")}
-									</span>
+									/*
+									 * The cached paint's revalidation, as the shared loading
+									 * indicator (operator 2026-11-11: the faint `ink-dim`
+									 * sentence that stood here was easy to miss and did not read
+									 * as loading). Its line box is one `text-meta` line, 12px x
+									 * 1.45 = 17.4px, which is exactly this row's `1lh` reserve
+									 * (`text-mono-sm`, also 12px x 1.45), so it fills the slot
+									 * without growing it. `data-lo-stale-caption` stays as the
+									 * probe name the switch-latency rig and the tests read.
+									 * "Remote" behind the same proof gate as the cold slot and
+									 * the older slot, so the three never disagree.
+									 */
+									<div data-lo-stale-caption={true}>
+										<ConversationLoadingIndicator
+											variant={
+												remote && !hydrationProven ? "remote" : "revalidating"
+											}
+										/>
+									</div>
 								) : (
 									working &&
 									!internalLiveLeaf && (

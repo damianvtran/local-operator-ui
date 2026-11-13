@@ -3145,7 +3145,8 @@
 				"bind",
 				"chord",
 				"hotkey"
-			]
+			],
+			"clearable": true
 		},
 		{
 			"key": "keymap.start_recording",

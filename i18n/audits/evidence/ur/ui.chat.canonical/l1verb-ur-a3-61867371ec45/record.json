@@ -1,0 +1,142 @@
+{
+ "audit_id": "l1verb-ur-a3-61867371ec45",
+ "round": 3,
+ "audit_kind": "independent-translation-audit",
+ "pass": "round-3 delta audit (single auditor; the manager's A/B split applied to round 1)",
+ "date": "2026-11-11",
+ "audit_date": "2026-11-11",
+ "locale": "ur",
+ "namespace": "ui.chat.canonical",
+ "slice": "L1 tool-row verbs",
+ "scope": "Delta scope: the 3 keys changed between .worktrees/_l1-prep/ur.v2.json and ur.v3.json (listed_network_peers.settled, sent_keys.settled, sent_keys.running) judged against their en value/context.role/notes and their sibling forms; the disposition of round-2 findings F-01 and F-02; a full mechanical pass over all 182 values (set/order, empties, whitespace, NFC, bidi+control chars, placeholders/ICU, script inventory, Arabic-only letter forms, digits, English-identical values, punctuation, widths, running-form endings). The 179 unchanged values were read only for disagreement with the changed neighbours.",
+ "status": "changes_requested",
+ "result": "changes_requested",
+ "key_count": 182,
+ "keys_read": 182,
+ "keys_changed_in_delta": 3,
+ "pairs": 91,
+ "current_report_verdict": {
+  "status": "changes_requested",
+  "unresolved_blocker_major_count": 1,
+  "finding_ids": [
+   "R3-01",
+   "R3-n1",
+   "R3-n2"
+  ],
+  "severity_counts": {
+   "blocker": 0,
+   "major": 1,
+   "minor": 0,
+   "nit": 2
+  },
+  "report": "report.md"
+ },
+ "auditors": [
+  {
+   "agent": "i18n-auditor",
+   "model": "deepseek/deepseek-flash",
+   "session": "61867371ec45",
+   "team": "lopdev",
+   "instance": "61867371ec45-l1-ur-a3",
+   "date": "2026-11-11",
+   "result": "changes_requested",
+   "findings": {
+    "blocker": 0,
+    "major": 1,
+    "minor": 0,
+    "nit": 2
+   },
+   "independent_from_translator_session": true,
+   "actual_model_source": "harness session header line 'Model: deepseek/deepseek-flash' for session 61867371ec45; no fallback observed, no role or model pin applied",
+   "fallback": null,
+   "receipt": "receipt.json"
+  }
+ ],
+ "independence": "Independent i18n-auditor (team lopdev) session 61867371ec45; translated nothing and edited no catalogue, context sidecar, ledger, receipt or prep byte (git status over src/i18n/catalogues is empty); no output of another auditor's round-3 pass was read. No MT service, translation API or SDK used and no back-translation; every cited count was recomputed here over src/i18n/catalogues/ur/*.json (8,872 shipped strings).",
+ "audited_bytes_note": "The verdict covers .worktrees/_l1-prep/ur.v3.json. The shipped ur catalogue carries 0 of the 182 keys (verified), so ledger-assemble refuses a row for these bytes (exit 2) and no ledger entry is claimed.",
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+   "sha256": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+   "sha256": "2e755f12e46bb6dded6dbf950eda6402b0a7bcb05e9489fa17f7369543f3ac7f"
+  },
+  "ur": {
+   "path": ".worktrees/_l1-prep/ur.v3.json",
+   "sha256": "5fb74186a6e2575c08011442d0eba595ef78f7fca358df9153070a50dca227d4"
+  },
+  "ur_prev_pass": {
+   "path": ".worktrees/_l1-prep/ur.v2.json",
+   "sha256": "c71f5e40612dca85cee0d05ddfe4d833d3a68d05fb7c96a3e1519dbed1f904e0"
+  }
+ },
+ "current_bytes_match_audited_hashes": true,
+ "artifacts": [
+  {
+   "path": "i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-a3-61867371ec45/report.md",
+   "sha256": "d622ffdb76e307cd1e18053f61a0a9178b4526e4a5edb3df0cecbb61c3eeb2f4"
+  },
+  {
+   "path": "i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-a3-61867371ec45/audit.log",
+   "sha256": "7c958fcef7c2d82bf25d33dfc22ee01cf73063c3dc4144aca512ab242457e25a"
+  },
+  {
+   "path": "i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-a3-61867371ec45/checks.py",
+   "sha256": "2d2b4cb7a87f225e530241d3fa720a4ecbdf78c1e894f08590b0c8c46f6a9035"
+  },
+  {
+   "path": "i18n/audits/evidence/ur/ui.chat.canonical/l1verb-ur-a3-61867371ec45/receipt.json",
+   "sha256": "cf110a012df17bb979dec0f07e983059ef42a7ca8cab9696f6eaba154362355c"
+  }
+ ],
+ "audit_notes_not_execution_log": "audit.log is the actual stdout of checks.py plus the repo gates and the corpus queries run in this session, with exit codes captured without a pipe. One line in it ('past-tense (status) uses found: 0') was printed from a literal in the query script, not computed; audit.log carries an AUDIT NOTES section saying so and lists all 56 دکھائیں values that the auditor read one by one. No rendered frame was captured; widths are measured (rich.cells.cell_len), not rendered.",
+ "ledger": {
+  "command": "node scripts/i18n/ledger-assemble.mjs --locale ur --file src/i18n/catalogues/ur/ui.chat.canonical.json --auditor-instance 61867371ec45-l1-ur-a3 --receipt receipt.json",
+  "result": "refused, exit 2",
+  "output": "ledger-assemble: refused - ur/ui.chat.canonical is not key-complete against English (182 missing, 0 extra) - an incomplete locale cannot be recorded",
+  "note": "the landing PR assembles the row against the landed catalogue, with this receipt as the audit it records"
+ },
+ "findings": [
+  {
+   "id": "R3-01",
+   "severity": "MAJOR",
+   "key": "ui.chat.canonical.tool_row.verb.listed_network_peers.settled",
+   "current": "نیٹ ورک ڈیوائسز دکھائے",
+   "proposed": "ڈیوائسز کی فہرست بنائی",
+   "proposed_pair_running": "ڈیوائسز کی فہرست بنا رہا",
+   "reason": "دکھائے is the masculine-plural past while ڈیوائسز is feminine plural in the shipped corpus; the correct short form دکھائیں is the آپ imperative (56/56 shipped uses), so the fix moves to the فہرست بنائی family (22/24 cells). The en sidecar requires the pair to share a verb, so this is a 2-key fix."
+  },
+  {
+   "id": "R3-n1",
+   "severity": "NIT",
+   "keys": [
+    "ui.chat.canonical.tool_row.verb.sent_keys.settled",
+    "ui.chat.canonical.tool_row.verb.sent_keys.running"
+   ],
+   "current": "کلیدیں ارسال کیں / کلیدیں ارسال کر رہا",
+   "proposed": "no change; record the ارسال call (folds into round-2 F-04)",
+   "reason": "New term call this delta; the guide still records none of the wave's calls."
+  },
+  {
+   "id": "R3-n2",
+   "severity": "NIT",
+   "keys": [
+    "i18n/style-guides/ur.md"
+   ],
+   "proposed": "record the دکھائیں homograph as a locale call",
+   "reason": "Feminine-plural past of دکھانا is byte-identical to the polite imperative; one guide line closes the class."
+  }
+ ],
+ "round2_disposition": {
+  "F-01": "register fixed, agreement broken → open as R3-01 (the prescription was round 2's own)",
+  "F-02": "closed"
+ },
+ "carried_findings": {
+  "F-03": "unchanged, non-gating",
+  "F-04": "open (R3-n1 folds in)",
+  "F-05": "unchanged",
+  "F-06..F-09": "untouched"
+ }
+}

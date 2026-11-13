@@ -264,6 +264,9 @@ export async function close(
 	const [record] = tabs;
 	if (!record)
 		throw new BrowserHostError("tab_closed", "no browser tab is open");
+	// The sole tab may be one the user is answering a password manager prompt in;
+	// closing it mid-answer is agent input like any other (review Q3).
+	ctx.registry.assertNotInCustody(record);
 	const closed = surfaceToken(record) ?? "";
 	ctx.registry.destroy(record.tabId);
 	ctx.onChanged();

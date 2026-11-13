@@ -5082,7 +5082,8 @@ export const STORIES = [
 	 * carries (`chat-sidebar.tsx`: `aria-current={current ? "page" : undefined}`).
 	 *
 	 * IT EARNED ITS KEEP IMMEDIATELY: the story was passing `session/<id>` while
-	 * the row compares `selectedConversation === row.session_id`, i.e. the BARE
+	 * the row compares `selectedConversation` (through `currentSessionRowId`
+	 * when no draft is active) against `row.session_id`, i.e. the BARE
 	 * id the app passes (`sidebar-navigation.tsx`), so no row was ever current -
 	 * the frame claimed the operator's own case and drew two resting rows. The
 	 * story passes the bare id now, and this entry is what keeps that true.

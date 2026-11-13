@@ -272,6 +272,8 @@ export const APPROVAL_ESCAPE_COPY = {
 		}),
 	pinnedRun: (mode: string) =>
 		t("ui.chat.approval.escape.pinned_run", { mode }),
+	/** What stands where the two handles would be on a bridge-latched card. */
+	bridgeLatched: () => t("ui.chat.approval.escape.bridge_latched"),
 };
 
 /** The localized word for an approval mode value (the value itself is protocol). */
@@ -290,6 +292,45 @@ const dropOurFailurePrefix = (text: string): string => {
 	// module-level constant would pin it to the language at load time.
 	const prefix = `${APPROVAL_ESCAPE_COPY.notChanged()}: `;
 	return text.startsWith(prefix) ? text.slice(prefix.length) : text;
+};
+
+/**
+ * Whether the backend says this card may not be loosened from here.
+ *
+ * Either flag counts, and neither is derived from the title or the detail:
+ * `bridge_latched` is the host's stamp that the conversation holds Team Bridge
+ * (teammate-agent) content, and `approval_suspended: "bridge"` says a session
+ * auto granted BEFORE that content arrived stopped covering calls. In both the
+ * backend refuses `approvals auto` from this surface (`approval_reason:
+ * "bridge_latched"`; the desktop command carries no `bridge_ack`), so a handle
+ * that offers it can only fail. Absent or false flags - an older backend, an
+ * unlatched conversation - read as not latched, which is today's behaviour.
+ */
+export const approvalGateIsBridgeLatched = (gate: {
+	bridge_latched?: boolean;
+	approval_suspended?: string;
+}): boolean =>
+	gate.bridge_latched === true || gate.approval_suspended === "bridge";
+
+/**
+ * The one line that stands where the two handles would be on a latched card.
+ *
+ * It carries no control and writes nothing: the refusal it explains is the
+ * backend's deliberate rule (a teammate's message must not be able to authorise
+ * anything), and the only deliberate loosening is the typed `/approvals auto`
+ * in the terminal, which this surface cannot send. Approve and Deny are
+ * untouched and stay the way to answer this request.
+ */
+export const ApprovalLatchedNote = ({ className }: { className?: string }) => {
+	useI18nLocale();
+	return (
+		<p
+			data-approval-latched-note=""
+			className={cn("text-ink-muted text-meta", className)}
+		>
+			{APPROVAL_ESCAPE_COPY.bridgeLatched()}
+		</p>
+	);
 };
 
 const ESCAPE_LINK =
@@ -321,10 +362,20 @@ export const ApprovalEscapeControls = ({
 	policyLine = null,
 	onSetSession,
 	onSetAll,
+	compactIdle = false,
 	className,
 }: {
 	busy?: boolean;
 	status?: ApprovalEscapeStatus;
+	/**
+	 * Drop the status slot's `2lh` reserve while nothing is in flight and no
+	 * result is showing. For a host with no height to spare - the bounded inline
+	 * dock, where the idle reserve was most of the 56 blank pixel rows design D1
+	 * measured under the policy links at 1024x600. The cost is the one the reserve exists to avoid (the
+	 * hint below moves when a result lands), accepted there because a press is
+	 * rare and a hidden question is not.
+	 */
+	compactIdle?: boolean;
 	/** The effective-mode line; absent on a backend that does not carry it. */
 	policyLine?: string | null;
 	onSetSession: () => void;
@@ -376,7 +427,8 @@ export const ApprovalEscapeControls = ({
 				id={statusId}
 				data-approval-escape-status=""
 				className={cn(
-					"block min-h-[2lh] text-meta",
+					"block text-meta",
+					compactIdle && !busy && status.kind === "idle" ? null : "min-h-[2lh]",
 					status.kind === "refused" ||
 						status.kind === "default-saved-session-failed"
 						? "text-danger"
@@ -398,8 +450,11 @@ export const ApprovalEscape = ({
 	approvalMode,
 	approvalProvenance,
 	approvalGlobalMode,
+	compactIdle = false,
 	className,
 }: {
+	/** See `ApprovalEscapeControls.compactIdle`. */
+	compactIdle?: boolean;
 	/**
 	 * The session whose live gate a press loosens. Required: a card with no
 	 * session id has no gate to address, and the dock omits the row there.
@@ -478,6 +533,7 @@ export const ApprovalEscape = ({
 			})}
 			busy={target !== null}
 			status={status}
+			compactIdle={compactIdle}
 			onSetSession={() => void choose("session")}
 			onSetAll={() => void choose("all")}
 			className={className}

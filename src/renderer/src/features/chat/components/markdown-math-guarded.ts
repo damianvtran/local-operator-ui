@@ -30,42 +30,85 @@
  * `mathFromMarkdown` transform untouched - except for the single-dollar TEXT
  * tokenizer, which is vendored with pandoc's documented guards:
  *
- *   (a) an opener's next character must exist and be neither whitespace (space,
- *       tab, EOL) nor an ASCII digit. `$ 50` cannot open a span, and neither
- *       can `$5` - which is also what stops a price from stealing a later
- *       genuine span's closer (`pay $5 now, where $x^2$ holds`).
+ *   (a) an opener's next character must exist and not be whitespace (space,
+ *       tab, EOL): `$ 50` cannot open a span. (Until 2026-11-10 an ASCII digit
+ *       was refused here too; see (d), which replaced that arm.)
  *   (b) a closer's immediate left neighbour must not be whitespace.
  *   (c) a closer's immediate right neighbour (the character after the closing
  *       run) must not be an ASCII digit.
+ *   (d) MONEY VERSUS MATH (operator report, 2026-11-10: "differentiate between
+ *       dollar values ... and latex components"). A span whose opener is
+ *       followed by a digit is accepted only if its content carries a TeX
+ *       signal: a backslash followed by a visible character (`\mu`, `\,`,
+ *       `\{`), `^`, `_`, `{` or `}`. A price never carries one - `$5/$6`,
+ *       `$5)$` and the like slip past (b) and (c) but fail here - while the
+ *       quantities the operator's screenshot showed as raw source all do:
+ *       `$10^3\text{–}10^5\times$`, `$10\text{ }\mu\text{m}^3$`,
+ *       `$20\text{ cm/s}$`, `$8\text{ }\mu\text{m}$`, and `$2^n - 1$`. The
+ *       common price shapes never reach (d) at all: `$20,000 and $30,000`,
+ *       `$5 to $10` and `costs $5 and $10` fail (b) (space before the
+ *       closer), `$3–$4` and `$5M/$1.2B` fail (c) (digit after it), `$5.00`
+ *       and `$1,000` find no closer, `\$5` is an escape. A price ahead of a
+ *       formula still cannot steal it (`pay $5 now, where $x^2$ holds`): the
+ *       `$5` attempt fails at its closer and scanning resumes after it.
+ *   (e) A DIGIT-LED SPAN MUST NOT END ON A WORD OR HOLD PROSE (QA round 1,
+ *       Q-1). The signal of (d) can come from prose that merely sits between
+ *       a price and a later shell variable: `Charge $5 per run, then set
+ *       RUN_COST=$COST` paired the price with `$COST` because `RUN_COST`
+ *       carries a `_`. So a digit-led span also fails when
+ *         - its closer is followed by an ASCII letter or `_` - that `$` opens
+ *           an identifier (`$COST`, `$FOO_BAR`), it does not end a formula;
+ *         - its content holds a backtick - a code span is Markdown, never
+ *           TeX, so the span is crossing prose (``Costs $5 per `run_id`,
+ *           cmd=$FOO``, which also ate the code span);
+ *         - its content holds two consecutive plain words (two or more ASCII
+ *           letters each, an optional trailing `, . ; : ! ?`) outside any
+ *           `{...}` group - TeX sets bare letters as a product of italic
+ *           variables, so an author who means words writes `\text{per
+ *           month}`, while prose between two dollars (`$10 per month (see
+ *           SKU_1)$`) always has them.
+ *       All five quantities of the operator's screenshot keep rendering: their
+ *       words sit inside `\text{}` and their closers are followed by space or
+ *       punctuation. The costs, both literal now: a digit-led formula
+ *       written with bare words (`$5 apples per x^2$`), which is not TeX a
+ *       model writes, and a unit glued to the closer (`$1\,$gap`), which is
+ *       rare and reads fine as `$1\,$ gap` - the closing `$` of `RUN_COST=$COST`
+ *       and a unit's `$` are the same shape, and only the price leak is the
+ *       operator's complaint.
  *
- * All three apply to `sizeOpen === 1` only: `$$` display and multi-dollar
+ * All five apply to `sizeOpen === 1` only (and (d), (e) to a digit-led
+ * opener only): `$$` display and multi-dollar
  * inline behaviour are upstream's, byte for byte. When a candidate close fails
- * (b) or (c) the attempt FAILS: the opening `$` stays literal text and
+ * (b), (c) or (d) the attempt FAILS: the opening `$` stays literal text and
  * scanning resumes AFTER it, so a rejected closer cannot leave the span open
  * for a later `$` to close across prose. Measured on the alternative (demote
  * the run to data and keep scanning), `cost $a$5 and $b$ now` became one
  * `inlineMath("a$5 and $b")` - a span across prose that KaTeX paints as a red
  * ParseError where upstream rendered two clean spans (agent review round 1,
- * R1-1; QA's live rows are its space-left and tab-left spellings). Guard (a)
- * alone keeps `$0.30/M fresh-in, $0.006/M cached-in` literal (both `$`s are
- * digit-led and refused at the opener); this rule is what keeps the same text
- * clean when an opener survives and a later closer is rejected. The OTHER
+ * R1-1; QA's live rows are its space-left and tab-left spellings). The same
+ * rule keeps `$0.30/M fresh-in, $0.006/M cached-in` literal: the first `$`
+ * opens, its candidate closer sits after a space, the attempt fails, and the
+ * second `$` finds no closer at all. The OTHER
  * demote path - a close run whose SIZE does not match the opener's, upstream's
  * own recovery for a size mismatch - is untouched. Rationale for each arm is
  * on the guard itself below.
  *
- * THE DIGIT ARM AGREES WITH THIS REPOSITORY'S OWN HEURISTIC. `markdown-math.ts`
- * gates the pipeline with "a lone dollar sign only counts when it is not
- * followed by a digit", so the parser refuses the same digit-led shape the
- * gate already reads as a price - the two rules agree on WHAT A PRICE LOOKS
- * LIKE. The agreement is at the shape level, not the document level: the gate
- * decides per DOCUMENT whether to pay for KaTeX at all (any one renderable
- * span keeps the pipeline on, whatever the other dollars look like), while
- * the parser decides per SPAN. The gate's behaviour is unchanged.
+ * GUARDS (d) AND (e) AGREE WITH THE PIPELINE GATE. `markdown-math.ts`'s
+ * `hasDigitLedMath` asks the same question of the raw string (digit-led span,
+ * non-space before the closer, no digit, letter or `_` after it, a TeX signal
+ * inside, no backtick and no plain-word run - `hasProseRun`), so a
+ * document whose ONLY math is digit-led turns the pipeline on and a document
+ * of only prices does not. The agreement is at the shape level, not the
+ * document level: the gate decides per DOCUMENT whether to pay for KaTeX at
+ * all, the parser decides per SPAN.
+ *
+ * LATEX'S OWN DELIMITERS - `\(...\)`, `\[...\]` - are a second extension the
+ * plugin below registers, documented in `markdown-math-backslash.ts`; the
+ * resolver both share is vendored once in `markdown-math-resolve.ts`.
  *
  * PROVENANCE AND REFRESH. `guardedMathText` below is
  * `micromark-extension-math@3.1.0`'s `lib/math-text.js` (MIT, © Titus Wormer
- * et al), vendored with the three guards and two changes of spelling:
+ * et al), vendored with the four guards and two changes of spelling:
  * `devlop` assertions are dropped (they are development-only, and importing
  * `devlop` would add a dependency for a no-op), and the micromark helper types
  * are spelled structurally for the reason `remark-soft-breaks.ts` states -
@@ -76,23 +119,24 @@
  * TO REFRESH: diff this file's `guardedMathText` against
  * `node_modules/micromark-extension-math/lib/math-text.js` after any bump of
  * the package, and re-apply the guards where the comment markers `GUARD (a)`,
- * `(b)`, `(c)` sit. The two runtime imports below (`math`, `mathFromMarkdown`)
- * come from the packages themselves and track them automatically.
+ * `(b)`, `(c)`, `(d)`, `(e)` sit (the resolver lives in
+ * `markdown-math-resolve.ts`; refresh it from the same file).
+ * `markdown-math-backslash.ts`'s flow construct follows upstream's
+ * `lib/math-flow.js`; re-read it there too. The two runtime imports below
+ * (`math`, `mathFromMarkdown`) come from the packages themselves and track
+ * them automatically.
  *
  * THE TRADE-OFFS, stated so a reviewer does not have to derive them:
  *
  *   - spaced single-dollar math no longer renders: `$ x + y = z $` stays
  *     literal. Pandoc's own rule refuses both ends of it, and a text that
  *     writes both spaces is far more often two prices than a formula.
- *   - digit-led single-dollar math no longer renders: `$2^n - 1$` stays
- *     literal. The gate above refuses a DOCUMENT whose only dollar signals
- *     are digit-led, but a mixed document keeps the pipeline on - `the
- *     identity $2^n - 1$ is odd and $$E = mc^2$$` rendered both spans under
- *     `remark-math` and now renders the display span alone - so a digit-led
- *     single-dollar span in a mixed document is a REAL change, not a
- *     consistency fix. If such a formula is needed, write it as display math
- *     (`$$2^n - 1$$`) or start the single-dollar span with a non-digit
- *     (`$\left(2^n - 1\right)$`).
+ *   - digit-led single-dollar math renders only with a TeX signal (guard
+ *     (d)): `$2^n - 1$` and `$10\text{ }\mu\text{m}$` render, while a
+ *     signal-free digit-led span such as `$3 + 4$` stays literal - it is
+ *     indistinguishable from a price pair by content alone. Such a formula
+ *     renders as `\(3 + 4\)` or `$$3 + 4$$`, because neither delimiter is
+ *     ever a price.
  *   - a closer followed by a digit fails the attempt (`a $x$5` is literal,
  *     while a later `$b$` in the same text still typesets), because `$5`
  *     there is a price and a span boundary drawn across it would be a guess.
@@ -108,6 +152,11 @@ import { mathFromMarkdown } from "mdast-util-math";
 import { math } from "micromark-extension-math";
 import type { Options } from "micromark-extension-math";
 import type { Processor } from "unified";
+import {
+	backslashMathFromMarkdown,
+	backslashMathSyntax,
+} from "./markdown-math-backslash";
+import { resolveMathText } from "./markdown-math-resolve";
 
 /*
  * The shapes this file reads from micromark's tokenizer protocol, spelled
@@ -164,6 +213,35 @@ const isGuardWhitespace = (code: Code): boolean =>
 /** ASCII 0-9. */
 const isDigit = (code: Code): boolean =>
 	code !== null && code >= 48 && code <= 57;
+/** `\` - micromark-util-symbol's `codes.backslash`. */
+const BACKSLASH = 92;
+/**
+ * The single characters that mark a digit-led span as TeX rather than a price:
+ * `^` (94), `_` (95), `{` (123), `}` (125). The fifth signal, a backslash
+ * followed by a visible character, needs one character of memory and is
+ * tracked in the tokenizer's `data` state.
+ *
+ * Why these and nothing else: each is meaningless in a currency amount and
+ * nearly universal in typeset quantities (exponents, subscripts, `\text{}`
+ * groups, units like `\mu`). Operators such as `\times` are commands, so they
+ * are covered by the backslash arm; a bare `*`, `/`, `-` or `=` is not a
+ * signal because prose around prices uses all of them (`$5/$6`, `$5-$10`).
+ */
+const isTexSignal = (code: Code): boolean =>
+	code === 94 || code === 95 || code === 123 || code === 125;
+/** ASCII A-Z, a-z. */
+const isAsciiLetter = (code: Code): boolean =>
+	code !== null && ((code >= 65 && code <= 90) || (code >= 97 && code <= 122));
+/** GUARD (e)'s word-final punctuation: `, . ; : ! ?`. */
+const isWordFinalPunctuation = (code: Code): boolean =>
+	code === 44 ||
+	code === 46 ||
+	code === 59 ||
+	code === 58 ||
+	code === 33 ||
+	code === 63;
+/** `` ` `` - GUARD (e): a code span inside a digit-led span is prose. */
+const BACKTICK = 96;
 
 /**
  * The single-dollar text tokenizer, upstream's `mathText` with the guards.
@@ -202,6 +280,25 @@ const guardedMathText = (
 		 * is judged the tokenizer is past the character that decides guard (b).
 		 */
 		let closeGuardPrev: Code = null;
+		/** The opener was `$` + ASCII digit: GUARD (d) applies at the closer. */
+		let digitLed = false;
+		/** The span's content so far carries a TeX signal (see `isTexSignal`). */
+		let sawSignal = false;
+		/** The previous data code was an unpaired backslash. */
+		let afterBackslash = false;
+		/*
+		 * GUARD (e) state. `braceDepth` counts unescaped `{`/`}`, so words
+		 * inside `\text{...}` are not prose. A data run between spaces or
+		 * line endings is one WORD: `wordLetters` counts its leading letters,
+		 * `wordShape` is "letters" while it is all letters, "punct" once one
+		 * word-final punctuation mark follows them, "other" for anything else.
+		 */
+		let braceDepth = 0;
+		let wordLetters = 0;
+		let wordShape: "letters" | "punct" | "other" = "letters";
+		let previousWordProse = false;
+		let sawProseRun = false;
+		let sawBacktick = false;
 		let size: number;
 		let token: Token;
 
@@ -230,17 +327,23 @@ const guardedMathText = (
 
 			/*
 			 * GUARD (a) - AN OPENER MUST TOUCH SOMETHING A FORMULA CAN START
-			 * WITH. Measured cases: `$ 50` (space), `$5` (digit) and
-			 * `pay $5 now, where $x^2$ holds` - without this arm the `$` of
-			 * `$5` opens a span that runs to the formula's opening `$`, and
-			 * the prose between them is typeset as the formula `5 now, where`.
-			 * The digit half is `markdown-math.ts`'s own gate rule ("a lone
-			 * dollar sign only counts when it is not followed by a digit"),
-			 * applied at parse time.
+			 * WITH. Measured case: `$ 50` (space) - a span may not open on
+			 * whitespace.
+			 *
+			 * A DIGIT NO LONGER REFUSES THE OPENER OUTRIGHT (operator report,
+			 * 2026-11-10: `$10^3\text{–}10^5\times$`, `$20\text{ cm/s}$` and
+			 * `$8\text{ }\mu\text{m}$` all rendered as raw source). A digit-led
+			 * opener is recorded instead, and the decision moves to the
+			 * CLOSER (GUARD (d) below), where the span's content is known: a
+			 * price never carries a TeX signal, a quantity written in TeX
+			 * almost always does. `pay $5 now, where $x^2$ holds` still keeps
+			 * its formula - the `$5` attempt reaches a closer whose left is a
+			 * space, (b) fails it, and scanning resumes after the price's `$`.
 			 */
-			if (sizeOpen === 1 && (isGuardWhitespace(code) || isDigit(code))) {
+			if (sizeOpen === 1 && isGuardWhitespace(code)) {
 				return nok(code);
 			}
+			digitLed = sizeOpen === 1 && isDigit(code);
 
 			effects.exit("mathTextSequence");
 			return between(code);
@@ -276,7 +379,35 @@ const guardedMathText = (
 
 			// Data.
 			effects.enter("mathTextData");
+			wordLetters = 0;
+			wordShape = "letters";
 			return data(code);
+		}
+
+		/** GUARD (e): a word ended; two plain words in a row are prose. */
+		function endWord(): undefined {
+			const prose =
+				wordShape !== "other" && wordLetters >= 2 && braceDepth === 0;
+			if (prose && previousWordProse) sawProseRun = true;
+			previousWordProse = prose;
+		}
+
+		/** GUARD (e): fold one data code into the current word's shape. */
+		function trackWord(code: Code, escaped: boolean): undefined {
+			if (code === BACKTICK) sawBacktick = true;
+			if (!escaped && code === 123) braceDepth++;
+			if (!escaped && code === 125 && braceDepth > 0) braceDepth--;
+			if (wordShape === "letters" && !escaped && isAsciiLetter(code)) {
+				wordLetters++;
+			} else if (
+				wordShape === "letters" &&
+				wordLetters >= 2 &&
+				isWordFinalPunctuation(code)
+			) {
+				wordShape = "punct";
+			} else {
+				wordShape = "other";
+			}
 		}
 
 		/** In data. */
@@ -287,10 +418,23 @@ const guardedMathText = (
 				code === DOLLAR_SIGN ||
 				isLineEnding(code)
 			) {
+				// A backslash before a space, EOL or `$` is not a command.
+				afterBackslash = false;
+				endWord();
 				effects.exit("mathTextData");
 				return between(code);
 			}
 
+			trackWord(code, afterBackslash || code === BACKSLASH);
+			if (afterBackslash) {
+				// `\` + any visible character: `\mu`, `\,`, `\{`, `\\`.
+				sawSignal = true;
+				afterBackslash = false;
+			} else if (code === BACKSLASH) {
+				afterBackslash = true;
+			} else if (isTexSignal(code)) {
+				sawSignal = true;
+			}
 			effects.consume(code);
 			return data;
 		}
@@ -340,6 +484,38 @@ const guardedMathText = (
 					return nok(code);
 				}
 
+				/*
+				 * GUARD (d) - A DIGIT-LED SPAN MUST PROVE IT IS TEX (operator
+				 * report, 2026-11-10: "differentiate between dollar values ...
+				 * and latex components"). The content must carry a backslash
+				 * command, `^`, `_`, `{` or `}` - see `isTexSignal`. Prices
+				 * never do: `$5/$6`, `$5)$` and every other shape that slips past
+				 * (b) and (c) has content like `5/` or `5)`, while
+				 * `$10\text{ }\mu\text{m}^3$` and `$2^n - 1$` both carry one.
+				 * Without a signal the attempt FAILS exactly as (b)/(c) do, so
+				 * the price's `$` stays literal and nothing spans prose.
+				 * Letter-led spans are not asked: `$x$` has no signal and must
+				 * still render, as it always has.
+				 */
+				if (sizeOpen === 1 && digitLed && !sawSignal) {
+					return nok(code);
+				}
+
+				/*
+				 * GUARD (e) - A DIGIT-LED SPAN MUST NOT END ON A WORD OR HOLD
+				 * PROSE (QA round 1, Q-1; rationale in the header). Measured:
+				 * `Charge $5 per run, then set RUN_COST=$COST` typeset
+				 * `5 per run, then set RUN_COST=` because `RUN_COST` carries
+				 * (d)'s `_` signal.
+				 */
+				if (
+					sizeOpen === 1 &&
+					digitLed &&
+					(isAsciiLetter(code) || code === 95 || sawBacktick || sawProseRun)
+				) {
+					return nok(code);
+				}
+
 				effects.exit("mathTextSequence");
 				effects.exit("mathText");
 				return ok(code);
@@ -351,66 +527,6 @@ const guardedMathText = (
 		}
 	}
 };
-
-/**
- * Upstream's resolver, unchanged: it merges adjacent data and marks the
- * padding spaces of a span whose ends are both spaces. (With the guards above
- * a single-dollar span can no longer start or end on a space, so for those the
- * padding branch is unreachable; it stays because `$$`-opened and multi-dollar
- * spans still reach it, and they must resolve exactly as they did.)
- */
-function resolveMathText(events: Event[]): Event[] {
-	let tailExitIndex = events.length - 4;
-	let headEnterIndex = 3;
-	let index: number;
-	let enter: number | undefined;
-
-	// If we start and end with an EOL or a space.
-	if (
-		(events[headEnterIndex][1].type === "lineEnding" ||
-			events[headEnterIndex][1].type === "space") &&
-		(events[tailExitIndex][1].type === "lineEnding" ||
-			events[tailExitIndex][1].type === "space")
-	) {
-		index = headEnterIndex;
-
-		// And we have data.
-		while (++index < tailExitIndex) {
-			if (events[index][1].type === "mathTextData") {
-				// Then we have padding.
-				events[tailExitIndex][1].type = "mathTextPadding";
-				events[headEnterIndex][1].type = "mathTextPadding";
-				headEnterIndex += 2;
-				tailExitIndex -= 2;
-				break;
-			}
-		}
-	}
-
-	// Merge adjacent spaces and data.
-	index = headEnterIndex - 1;
-	tailExitIndex++;
-	while (++index <= tailExitIndex) {
-		if (enter === undefined) {
-			if (index !== tailExitIndex && events[index][1].type !== "lineEnding") {
-				enter = index;
-			}
-		} else if (
-			index === tailExitIndex ||
-			events[index][1].type === "lineEnding"
-		) {
-			events[enter][1].type = "mathTextData";
-			if (index !== enter + 2) {
-				events[enter][1].end = events[index - 1][1].end;
-				events.splice(enter + 2, index - enter - 2);
-				tailExitIndex -= index - enter - 2;
-				index = enter + 2;
-			}
-			enter = undefined;
-		}
-	}
-	return events;
-}
 
 /**
  * Upstream's `previous` guard, unchanged: a `$` that an escape consumed
@@ -479,5 +595,13 @@ export default function remarkGuardedMath(
 		flow: upstreamMathFlow,
 		text: { [DOLLAR_SIGN]: text },
 	});
+	/*
+	 * LaTeX's own delimiters, `\(...\)` and `\[...\]` (2026-11-10), as a SECOND
+	 * extension rather than extra keys on the first, so the `$` extension stays
+	 * the identity-checked object the harness pins. Keyed on `\`, they are tried
+	 * before `characterEscape`; see `markdown-math-backslash.ts`.
+	 */
+	micromarkExtensions.push(backslashMathSyntax);
 	fromMarkdownExtensions.push(mathFromMarkdown());
+	fromMarkdownExtensions.push(backslashMathFromMarkdown);
 }

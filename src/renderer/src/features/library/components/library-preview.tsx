@@ -17,6 +17,7 @@
  * keeps a typed tag and the rail's counts in one registry.
  */
 
+import { RemoteFileMark } from "@features/chat/components/remote-file-mark";
 import {
 	InlineEditText,
 	InlineTagEditor,
@@ -52,13 +53,16 @@ import {
 	useUnlinkAssetChat,
 	useUpdateLibraryAsset,
 } from "../hooks/use-library-queries";
-import { saveAssetCopy } from "../library-download";
+import { assetCopyFailure, saveAssetCopy } from "../library-download";
 import {
 	assetDisplayName,
 	formatBytes,
 	libraryKindLabel,
+	localPathOf,
+	organizedByLabel,
 	originGroupLabelKey,
 	relativeTime,
+	remoteDevice,
 } from "../library-model";
 import { LibraryAssetMenu } from "./library-asset-menu";
 import { LibraryComposer } from "./library-composer";
@@ -346,12 +350,13 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 	};
 
 	const openExternal = () => {
-		if (asset.ref.type === "path" && asset.ref.path) {
-			window.api.openFile(asset.ref.path);
+		const local = localPathOf(asset);
+		if (local) {
+			window.api.openFile(local);
 			return;
 		}
-		void saveAssetCopy(asset).catch(() =>
-			showErrorToast(t("ui.library.menu.save_failed")),
+		void saveAssetCopy(asset).catch((error: unknown) =>
+			showErrorToast(assetCopyFailure(error, t("ui.library.menu.save_failed"))),
 		);
 	};
 
@@ -508,22 +513,28 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 					file.mtimeMs !== null &&
 					Math.floor(file.mtimeMs / 1000) !== Math.floor(asset.modified_at) ? (
 						<span data-library-file-live="">
-							{formatBytes(file.sizeBytes ?? asset.size_bytes)}
+							<bdi>{formatBytes(file.sizeBytes ?? asset.size_bytes)}</bdi>
 						</span>
 					) : (
-						<span>{formatBytes(asset.size_bytes)}</span>
+						<span>
+							<bdi>{formatBytes(asset.size_bytes)}</bdi>
+						</span>
 					)}
 					{asset.width && asset.height ? (
 						<span>
 							{asset.width}×{asset.height}
 						</span>
 					) : null}
+					{asset.remote ? (
+						/* The card's mark, said in words here (D1-6 / U1-10). */
+						<RemoteFileMark device={remoteDevice(asset)} withLabel={true} />
+					) : null}
 					{asset.organized ? (
 						<span>
-							{t("ui.library.preview.organized_by", {
-								by: asset.organized.by ?? "librarian",
-								at: relativeTime(asset.organized.at, nowMs),
-							})}
+							{organizedByLabel(
+								asset.organized.by,
+								relativeTime(asset.organized.at, nowMs),
+							)}
 						</span>
 					) : (
 						<span>{t("ui.library.preview.unorganized")}</span>
@@ -539,12 +550,13 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 						<ExternalLink aria-hidden="true" />
 						{t("ui.library.preview.open")}
 					</Button>
-					{asset.ref.type === "path" && asset.ref.path ? (
+					{localPathOf(asset) ? (
 						<Button
 							variant="ghost"
 							size="sm"
 							onClick={() => {
-								if (asset.ref.path) window.api.showItemInFolder(asset.ref.path);
+								const local = localPathOf(asset);
+								if (local) window.api.showItemInFolder(local);
 							}}
 						>
 							<FolderOpen aria-hidden="true" />
@@ -557,11 +569,18 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 						onClick={() =>
 							void saveAssetCopy(asset)
 								.then(() => showSuccessToast(t("ui.library.menu.saved_a_copy")))
-								.catch(() => showErrorToast(t("ui.library.menu.save_failed")))
+								.catch((error: unknown) =>
+									showErrorToast(
+										assetCopyFailure(error, t("ui.library.menu.save_failed")),
+									),
+								)
 						}
 					>
 						<Download aria-hidden="true" />
-						{t("ui.library.preview.download")}
+						{asset.remote
+							? // The Files menu's words for the same act (design D1-6).
+								t("ui.canvas.files.remoteDownload")
+							: t("ui.library.preview.download")}
 					</Button>
 					{asset.occurrences[0] ? (
 						<Button

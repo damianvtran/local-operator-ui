@@ -1,4 +1,5 @@
 {
+	"ui.chat.approval.escape.bridge_latched": "Allow all and auto are off in this conversation. To turn auto on, type /approvals auto in the terminal, or use /new for a fresh conversation.",
 	"ui.chat.approval.escape.default_saved": "Auto set for this conversation; saved as the default for sessions that follow it. Conversations with their own choice keep it. This request still needs an answer.",
 	"ui.chat.approval.escape.default_saved_session_failed": "Auto saved as the default for sessions that follow it. The session part did not apply: {detail}. This request still needs an answer.",
 	"ui.chat.approval.escape.global_default": "Approvals: {mode} — global default.",

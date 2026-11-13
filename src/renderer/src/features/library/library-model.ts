@@ -20,7 +20,12 @@
  * add a category without a renderer release.
  */
 
-import { type WithoutParams, t } from "@shared/i18n";
+import {
+	type WithoutParams,
+	formatByteQuantity,
+	formatDate,
+	t,
+} from "@shared/i18n";
 import type {
 	DesktopLibraryAsset,
 	DesktopLibraryCategory,
@@ -186,6 +191,23 @@ export function organizedParam(
 	if (status === "unorganized") return false;
 	if (status === "highlighted" || status === "favorite") return undefined;
 	return undefined;
+}
+
+/** The device a remote asset lives on, as the card's mark names it. */
+export function remoteDevice(asset: DesktopLibraryAsset): string {
+	return asset.remote?.device_name || asset.remote?.device_id || "";
+}
+
+/**
+ * The asset's path ON THIS DISK, or `null`. The one gate every Library surface
+ * asks before opening, revealing or reading a path (review round 1, R1-6): a
+ * PEER's asset is never read from here, even if its row ever carried a path
+ * (core §5 makes `ref.path` null for remote rows today; this keeps the drawer
+ * honest if that changes), the same rule as the Files panel's I3-1.
+ */
+export function localPathOf(asset: DesktopLibraryAsset): string | null {
+	if (asset.remote) return null;
+	return asset.ref.type === "path" && asset.ref.path ? asset.ref.path : null;
 }
 
 /** The asset's effective display name: the user's name, else the derived one. */
@@ -390,18 +412,50 @@ export function tagCategoryLabel(category: string): string {
 		: key;
 }
 
+/**
+ * The preview's "organized by" sentence for the actor the catalog recorded.
+ *
+ * `organized.by` is a closed id, never a display name: the backend only accepts
+ * user, librarian, agent or system (`TAG_CREATORS`), and legacy rows carry null.
+ * Each actor is its own WHOLE sentence rather than an actor noun spliced into
+ * "Organized by {by}", because articles, case and word order around the actor
+ * ("by you", "by an agent", Urdu's `نے`) cannot be translated as a bare noun.
+ * Null or an id a newer backend adds falls to the unattributed sentence, which
+ * makes no claim about who did it (it used to print the raw id, or "librarian"
+ * for null). `at` is the already-localized relative age.
+ */
+export function organizedByLabel(by: string | null, at: string): string {
+	switch (by) {
+		case "user":
+			return t("ui.library.preview.organized_by_user", { at });
+		case "librarian":
+			return t("ui.library.preview.organized_by_librarian", { at });
+		case "agent":
+			return t("ui.library.preview.organized_by_agent", { at });
+		case "system":
+			return t("ui.library.preview.organized_by_system", { at });
+		default:
+			return t("ui.library.preview.organized_unattributed", { at });
+	}
+}
+
 /** A byte count in the app's compact register. */
 export function formatBytes(bytes: number): string {
-	if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
-	const units = ["B", "KB", "MB", "GB", "TB"];
+	if (!Number.isFinite(bytes) || bytes <= 0)
+		return formatByteQuantity(0, "B", { maximumFractionDigits: 0 });
+	const units = ["B", "KB", "MB", "GB", "TB"] as const;
 	const exponent = Math.min(
 		units.length - 1,
 		Math.floor(Math.log(bytes) / Math.log(1024)),
 	);
 	const value = bytes / 1024 ** exponent;
-	const rounded =
-		value >= 10 || exponent === 0 ? Math.round(value) : value.toFixed(1);
-	return `${rounded} ${units[exponent]}`;
+	// The ladder and the one-decimal-below-ten rule are this surface's; the
+	// spelling (digits, decimal mark, unit symbol) is the shared locale-aware helper's.
+	const digits = value >= 10 || exponent === 0 ? 0 : 1;
+	return formatByteQuantity(value, units[exponent] ?? "B", {
+		minimumFractionDigits: digits,
+		maximumFractionDigits: digits,
+	});
 }
 
 /**
@@ -452,7 +506,10 @@ export function relativeTime(
 /** An absolute timestamp for the preview's metadata line. */
 export function absoluteDate(seconds: number | null | undefined): string {
 	if (!seconds) return "";
-	return new Date(seconds * 1000).toLocaleDateString(undefined, {
+	// The live UI locale (the layer), not the OS default: `undefined` here
+	// printed `Nov 5, 2026` / `5 nov. 2026` by the operating system's region
+	// while every other word on the preview followed the chosen language.
+	return formatDate(new Date(seconds * 1000), {
 		year: "numeric",
 		month: "short",
 		day: "numeric",

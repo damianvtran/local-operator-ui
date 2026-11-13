@@ -439,6 +439,28 @@ const READINGS_FIXTURES: Record<string, CanonicalFrontendState> = {
 	} as CanonicalFrontendState,
 };
 
+/*
+ * `borrowed` is `fullest` on a REMOTE session running on healthy borrowed
+ * access (PR #1871): the strip then carries the `i` access readout after the
+ * effort chip, an in-flow box the ladder has to account for. It is a superset
+ * of `fullest`, so the rungs measured on it are the ones the access state's
+ * half of each shed class is set from. Synthetic owner, no key material.
+ */
+READINGS_FIXTURES.borrowed = {
+	...READINGS_FIXTURES.fullest,
+	model_access: {
+		state: "ok",
+		effective_state: "effective_borrow",
+		provider: "openrouter",
+		label: "OpenRouter",
+		owner_device: "synthetic-owner",
+		owner_label: "Work laptop",
+		observed_at: 1700000000,
+		last_grant_at: 1699999900,
+		last_grant_expires_at: 1699999950,
+	},
+} as CanonicalFrontendState;
+
 const frontend = READINGS_FIXTURES[READINGS];
 if (!frontend) throw new Error(`unknown readings fixture \`${READINGS}\``);
 

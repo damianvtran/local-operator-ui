@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "instance": "l1verb-vi-r3",
+  "round": 3,
+  "locale": "vi",
+  "namespace": "ui.chat.canonical",
+  "audit_date": "2026-11-11",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "instance": "l1verb-vi-r3",
+    "model": "anthropic/claude-sonnet-5-5",
+    "session": "09c7869836e0",
+    "independent_from_translator_session": true,
+    "actual_model_source": "as stated in the auditor's own report (companion report below); no fallback was reported"
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "scope": "tool_row.verb.* batch, 182 keys (91 settled/running pairs); auditor read staged values vi.v3.json (v3); whole-file hashes below bind the catalogue as it stood at that version",
+  "sha256": {
+    "vi": "cf703b1f99b8c87d4afe6e4bc6bfb708a8cf3ee1792296194639806ad24c4ea0",
+    "en": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765"
+  },
+  "findings": [
+    {
+      "severity": "NIT",
+      "ordinal": 1,
+      "detail": "see companion report i18n/audits/evidence/vi/ui.chat.canonical/l1verb-vi-wave/report-r3.md (finding ids and text live there)"
+    },
+    {
+      "severity": "NIT",
+      "ordinal": 2,
+      "detail": "see companion report i18n/audits/evidence/vi/ui.chat.canonical/l1verb-vi-wave/report-r3.md (finding ids and text live there)"
+    }
+  ],
+  "findings_note": "Severity counts are transcribed from the companion report; individual finding ids, keys and text are in that report, not repeated here.",
+  "provenance": {
+    "kind": "BINDING RECEIPT: the verdict, counts, model and session are transcribed from the auditor's own report; this file was written by the integrating coder session 5a80bd7da0fd (agent coder, anthropic/claude-sonnet-5-5), NOT by the auditor. The auditor audited a staging file of the 182 values, never the whole catalogue; the whole-file hashes above were computed from the catalogue bytes after those exact values were inserted.",
+    "source_report": {
+      "path": "i18n/audits/evidence/vi/ui.chat.canonical/l1verb-vi-wave/report-r3.md",
+      "sha256": "25c71d9d29e08c1b0cf28dbf6c6e519f9238ec573f1f143481de12fb5aac15c3"
+    },
+    "audited_values": {
+      "file": "i18n/audits/evidence/vi/ui.chat.canonical/l1verb-vi-wave/values.v3.json",
+      "sha256": "940a3e8f1d0a03dea308ae99d6b739842f2fdb81409ee557fd015c055b7debc4",
+      "key_count": 182,
+      "identical_in_bound_catalogue": 182
+    }
+  }
+}

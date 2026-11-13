@@ -418,7 +418,7 @@ const ProjectFileTile: FC<{
 					<span className="w-full truncate text-meta text-ink">{name}</span>
 					{size && (
 						<span className="text-meta text-ink-muted tabular-nums">
-							{size}
+							<bdi>{size}</bdi>
 						</span>
 					)}
 				</AttachmentFrame>

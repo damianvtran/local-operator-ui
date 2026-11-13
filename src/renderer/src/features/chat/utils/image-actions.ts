@@ -1,5 +1,6 @@
 import { t } from "@shared/i18n";
 import { blobAt } from "@shared/lib/blob-url-cache";
+import { isRemoteFilePath } from "@shared/lib/remote-file-path";
 import { isArtifactPath } from "./artifact-identity";
 import { mimeTypeForPath } from "./file-kind";
 
@@ -71,6 +72,9 @@ export const classifyImageSource = (source: string): ImageSourceKind => {
 	if (isArtifactPath(source)) return "artifact";
 	if (source.startsWith("data:")) return "data";
 	if (source.startsWith("blob:")) return "blob";
+	// A peer's file in the canvas (`remote-file:`): its bytes are this window's
+	// blob, and it has no path here for the file-shaped actions (I3-1).
+	if (isRemoteFilePath(source)) return "blob";
 	if (source.startsWith("http://") || source.startsWith("https://")) {
 		return "http";
 	}

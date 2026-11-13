@@ -1,7 +1,7 @@
 import type { Agent } from "@shared/api/radient/types";
 import { Button, Skeleton, Tooltip } from "@shared/components/ui";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
-import { t } from "@shared/i18n";
+import { formatNumber, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Download, Heart, Star } from "lucide-react";
@@ -396,7 +396,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 								{isDownloading ? (
 									<Skeleton className="h-3 w-6" />
 								) : (
-									(agent.download_count ?? 0).toLocaleString()
+									formatNumber(agent.download_count ?? 0)
 								)}
 							</span>
 						</span>
@@ -426,7 +426,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 			{actionError && (
 				/*
 				 * `<output>` rather than a `div` with `role="status"`: the element
-				 * carries that role itself (see `transcript-placeholder.tsx` and
+				 * carries that role itself (see `conversation-loading-indicator.tsx` and
 				 * `canonical-transcript.tsx`, which say the same for the trace's own
 				 * live regions), for the same reason the role is `status` rather than
 				 * `alert` — the failure is already the answer to something the user

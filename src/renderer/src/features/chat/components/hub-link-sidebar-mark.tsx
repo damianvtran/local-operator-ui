@@ -6,7 +6,9 @@ import { hubLinkView } from "@features/agents/hub-link-adapter";
 import {
 	hubFailureReasonText,
 	hubLinkFailureText,
+	hubMarkFailureDetail,
 	hubReasonText,
+	hubUnresolvedDetailText,
 } from "@features/agents/hub-link-copy";
 import { useHubLinkSource } from "@features/agents/hub-link-source";
 import { hubLinkMark } from "@features/agents/hub-link-view";
@@ -207,7 +209,31 @@ export function HubLinkSidebarMark({
 		if (mayReadMemberships) void memberships.refetch();
 		void client.invalidateQueries({ queryKey: hubLinksKey });
 	};
-	const description = `${actionLabel} ${policies}${link.policy.auto_push && link.eligibility.reason ? ` ${t("ui.hub.subscriptions.effective_paused", { reason: hubReasonText(link.eligibility.reason) })}` : ""}`;
+	/*
+	 * A failed or review mark names WHY and WHEN in its tooltip (the direction
+	 * the mark points at, so a pull failure is not explained by push state).
+	 * Without it every failure read as the same generic retry sentence.
+	 */
+	/*
+	 * A sign-in failure draws no failed/review mark (design B6.2.4, see
+	 * `hubLinkMark`), yet a hover should still say why this link is not
+	 * updating, so its reason rides whatever mark the row does show.
+	 */
+	const signInDirection = (["pull", "push"] as const).find(
+		(direction) =>
+			link[direction].error_class?.split("/")[0] === "no-credential",
+	);
+	const failureDetail =
+		mark.kind === "failed" || mark.kind === "review"
+			? hubMarkFailureDetail(link[mark.direction])
+			: signInDirection
+				? hubMarkFailureDetail(link[signInDirection])
+				: "";
+	// A review mark's label IS the policies sentence; saying it twice buried the
+	// reason that now follows it.
+	const lead =
+		actionLabel === policies ? policies : `${actionLabel} ${policies}`;
+	const description = `${lead}${failureDetail ? ` ${failureDetail}` : ""}${link.policy.auto_push && link.eligibility.reason ? ` ${t("ui.hub.subscriptions.effective_paused", { reason: hubReasonText(link.eligibility.reason) })}` : ""}`;
 	return (
 		<Popover
 			open={open}
@@ -489,21 +515,44 @@ export function HubUnresolvedMark({
 	item,
 	staged,
 	onResolve,
-}: { item: string; staged: boolean; onResolve: () => void }) {
+	details = [],
+}: {
+	item: string;
+	staged: boolean;
+	onResolve: () => void;
+	/** Core's `detail` codes for this item's unresolved rows (PR #3807). */
+	details?: ReadonlyArray<string | undefined>;
+}) {
 	useI18nLocale();
+	const describedBy = useId();
 	/*
 	 * D25: the label NAMES the row. Two unresolved items both truncate to "legac…"
 	 * in the roster, so a mark that did not name its item left the reader unable to
 	 * tell which one it belongs to.
 	 */
 	const label = t("ui.hub.links.unresolved_mark", { item });
+	/*
+	 * WHY it is unresolved, one sentence per distinct cause (an item can sit
+	 * unresolved at more than one origin). An older core sends no code and an
+	 * unknown one has no sentence, so either case keeps the label alone. The
+	 * label stays the accessible name; the cause is its description.
+	 */
+	const why = [
+		...new Set(
+			details
+				.map((detail) => hubUnresolvedDetailText(detail))
+				.filter((text): text is string => text !== null),
+		),
+	].join(" ");
+	const content = why ? `${label} ${why}` : label;
 	return (
-		<Tooltip content={label} side="top" disableHoverableContent>
+		<Tooltip content={content} side="top" disableHoverableContent>
 			<button
 				type="button"
 				data-hub-mark="unresolved"
 				data-testid="hub-mark-unresolved"
 				aria-label={label}
+				aria-describedby={why ? describedBy : undefined}
 				className={cn(
 					"flex size-6 shrink-0 items-center justify-center rounded-md text-warning",
 					!staged && "hover:bg-row-hover",
@@ -514,6 +563,11 @@ export function HubUnresolvedMark({
 					onResolve();
 				}}
 			>
+				{why && (
+					<span id={describedBy} className="sr-only">
+						{why}
+					</span>
+				)}
 				<CircleHelp aria-hidden="true" className="size-3.5" />
 			</button>
 		</Tooltip>

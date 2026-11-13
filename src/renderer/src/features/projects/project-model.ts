@@ -31,7 +31,12 @@ import { bundledEnglish } from "../../../../i18n/keys.gen";
  * and the formatter itself is the shared layer, never hardcoded English.
  */
 
-import { formatDate, formatNumber, formatTime } from "@shared/i18n";
+import {
+	formatByteQuantity,
+	formatDate,
+	formatNumber,
+	formatTime,
+} from "@shared/i18n";
 
 import type {
 	DesktopLinkedSession,
@@ -1330,9 +1335,11 @@ export function groupUpdatesByDay(
  */
 export function attachmentSizeText(bytes: number): string {
 	if (!Number.isFinite(bytes) || bytes < 0) return "";
-	if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-	if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-	return `${bytes} B`;
+	const oneDecimal = { minimumFractionDigits: 1, maximumFractionDigits: 1 };
+	if (bytes >= 1024 * 1024)
+		return formatByteQuantity(bytes / (1024 * 1024), "MB", oneDecimal);
+	if (bytes >= 1024) return formatByteQuantity(bytes / 1024, "KB", oneDecimal);
+	return formatByteQuantity(bytes, "B", { maximumFractionDigits: 0 });
 }
 
 /* -------------------------------------------- slice 2: detail summaries ---- */

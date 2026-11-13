@@ -724,19 +724,16 @@ const transcriptHasContent = (id?: string) => {
 const placeholderPresent = () =>
 	document.querySelector('[aria-label="Loading conversation"]') !== null;
 /**
- * The placeholder bar's rendered opacity - the pulse's phase, as painted.
- *
- * Read off the FIRST bar of the live region rather than off the animation's
- * bookkeeping: a frame captured at the maximum pulse trough has to be a picture
- * of a nearly-transparent bar (design D2), and this is the number that says
- * whether the shutter landed there.
+ * The loading mark's rendered opacity, as painted - the first element of the
+ * cold live region (`data-lo-loading-mark`, the spinner). The mark no longer
+ * pulses, so the capture rig refuses anything under full opacity.
  */
 const placeholderOpacity = () => {
-	const bar = document.querySelector(
+	const mark = document.querySelector(
 		'[aria-label="Loading conversation"]',
 	)?.firstElementChild;
-	if (!(bar instanceof HTMLElement)) return null;
-	return Math.round(Number(getComputedStyle(bar).opacity) * 100) / 100;
+	if (!(mark instanceof HTMLElement)) return null;
+	return Math.round(Number(getComputedStyle(mark).opacity) * 100) / 100;
 };
 const rowInView = (el: Element | null) => {
 	if (!(el instanceof HTMLElement)) return false;

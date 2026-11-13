@@ -277,6 +277,7 @@ const RecordingBackendStory: FC<{
 			redacted: false,
 			tier: "core",
 			hotkey_scope: "desktop",
+			clearable: true,
 		};
 		const hold: BackendSettings["settings"][number] = {
 			...setting,
@@ -286,6 +287,7 @@ const RecordingBackendStory: FC<{
 			value: holdValue,
 			default: "alt-right-hold",
 			is_default: holdValue === "alt-right-hold",
+			clearable: true,
 		};
 		const ok = (result: unknown): DesktopResponse => ({
 			status: 200,
@@ -463,5 +465,49 @@ export const PrimaryOnlyOlderBackend: Story = {
 	play: async () => {
 		await screen.findByText("Start recording (press)");
 		expect(screen.queryByText("Push to talk (hold)")).toBeNull();
+	},
+};
+
+/**
+ * Cleared: the primary row stores the sentinel `none`; the field shows
+ * "No shortcut", Reset is visible, and Clear is hidden (already cleared).
+ */
+export const RecordingCleared: Story = {
+	render: () => <RecordingBackendStory value="none" />,
+	play: async () => {
+		const field = (await screen.findByLabelText(
+			"Start recording (press): press the keys you want",
+		)) as HTMLInputElement;
+		await waitFor(() => expect(field).toHaveValue("No shortcut"));
+		await screen.findByRole("button", {
+			name: "Reset Start recording (press) to its default",
+		});
+		expect(
+			screen.queryByRole("button", {
+				name: "Clear Start recording (press)'s shortcut",
+			}),
+		).toBeNull();
+	},
+};
+
+/**
+ * Cleared: the hold row stores the sentinel `none`; the field shows
+ * "No shortcut", Reset is visible, and Clear is hidden.
+ */
+export const PushToTalkCleared: Story = {
+	render: () => <RecordingBackendStory holdValue="none" />,
+	play: async () => {
+		const field = (await screen.findByLabelText(
+			"Push to talk (hold): press the key you want",
+		)) as HTMLInputElement;
+		await waitFor(() => expect(field).toHaveValue("No shortcut"));
+		await screen.findByRole("button", {
+			name: "Reset Push to talk (hold) to its default",
+		});
+		expect(
+			screen.queryByRole("button", {
+				name: "Clear Push to talk (hold)'s shortcut",
+			}),
+		).toBeNull();
 	},
 };

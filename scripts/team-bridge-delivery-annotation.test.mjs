@@ -135,8 +135,8 @@ const DELIVERED_RUN_SHRINKS =
 	/<span class="[^"]*shrink-\[999\][^"]*">Delivered to 12<\/span><span class="[^"]*">/;
 const FULL_TITLE =
 	/title="Delivered to 12 · 1 held for review · 2 not delivered"/;
-const DELIVERED_ONLY = />Delivered to 3</;
 const ANY_BUTTON = /<button/;
+const ONE_REFUSED_TEXT = /Delivered to 5 · 1 not delivered/;
 const MIN_H_6 = /\bmin-h-6\b/;
 const NOT_REVIEWED_FOOTER =
 	/A message not reviewed within a day arrives only if the recipient’s owner releases it\./;
@@ -993,6 +993,82 @@ test("mixed partial delivery names only each affected recipient", () => {
 	);
 });
 
+// agent-server #377: a sender is served a recipient's refusal as the neutral
+// `not_delivered`, with no class. It must still name WHICH recipient missed the
+// message (review R1-1 on #377), exactly like a classless `refused`.
+const NOT_DELIVERED_COUNTS = {
+	delivered: 0,
+	screening: 0,
+	held: 0,
+	notReviewed: 0,
+	notDelivered: 1,
+};
+test("a single not_delivered entry names its recipient like a classless refusal", () => {
+	const states = [entry({ state: "not_delivered" })];
+	assert.deepEqual(lineTexts(render(states)), [
+		"Not delivered to Aida (Sam). Refused by moderation.",
+	]);
+	// Even a class a future or faulty hub attaches stays unread: the sender's
+	// contract carries none.
+	assert.deepEqual(
+		lineTexts(
+			render([entry({ state: "not_delivered", refusal_class: "abusive" })]),
+		),
+		["Not delivered to Aida (Sam). Refused by moderation."],
+	);
+	const summary = teamBridgeDeliverySummary({
+		...HUMAN_SOURCE,
+		delivery_states: states,
+	});
+	assert.deepEqual(summary.counts, NOT_DELIVERED_COUNTS);
+	assert.equal(summary.lines.length, 1);
+});
+
+test("a group with one not_delivered names only that recipient and counts it", () => {
+	const states = [
+		entry({ endpoint_id: "a", state: "delivered" }),
+		entry({ endpoint_id: "b", recipient_label: "Bo", state: "not_delivered" }),
+		entry({ endpoint_id: "c", recipient_label: "Cy", state: "delivered" }),
+	];
+	assert.deepEqual(lineTexts(render(states)), [
+		"Not delivered to Bo (Sam). Refused by moderation.",
+	]);
+	const summary = teamBridgeDeliverySummary({
+		...HUMAN_SOURCE,
+		delivery_states: states,
+		delivery_summary: { total: 3, delivered: 2, not_delivered: 1 },
+	});
+	assert.deepEqual(summary.counts, { ...NOT_DELIVERED_COUNTS, delivered: 2 });
+	assert.deepEqual(
+		summary.lines.map((line) => [line.kind, line.agent, line.refusalClass]),
+		[["refused", "Bo", null]],
+	);
+	// Without the hub's summary the derived count agrees.
+	assert.deepEqual(
+		teamBridgeDeliverySummary({ ...HUMAN_SOURCE, delivery_states: states })
+			.counts,
+		{ ...NOT_DELIVERED_COUNTS, delivered: 2 },
+	);
+});
+
+test("an owner's classed refusal and a hold render unchanged beside not_delivered", () => {
+	const states = [
+		entry({ endpoint_id: "a", refusal_class: "personal_info" }),
+		entry({ endpoint_id: "b", recipient_label: "Bo", state: "held" }),
+		entry({ endpoint_id: "c", recipient_label: "Cy", state: "not_delivered" }),
+	];
+	assert.deepEqual(lineTexts(render(states)), [
+		"Not delivered to Aida (Sam): refused by their moderation (looked like a request for personal information)",
+		"Not delivered to Bo (Sam) yet…",
+		"Not delivered to Cy (Sam). Refused by moderation.",
+	]);
+	assert.deepEqual(
+		teamBridgeDeliverySummary({ ...HUMAN_SOURCE, delivery_states: states })
+			.counts,
+		{ ...NOT_DELIVERED_COUNTS, screening: 1, notDelivered: 2 },
+	);
+});
+
 test("all moderation copy in every shipped locale has no em dash", () => {
 	for (const locale of MODERATION_LOCALES) {
 		const catalogue = JSON.parse(
@@ -1004,8 +1080,10 @@ test("all moderation copy in every shipped locale has no em dash", () => {
 		// 14 lines plus `recipient_unnamed`, the in-sentence unnamed form
 		// (#1643), plus the eight summary keys (2026-11-09), plus the two phase
 		// lines (`held_screening`, `held_not_reviewed`) and the not-reviewed
-		// footer, less the dropped `summary.pending` (#1832 round 1).
-		assert.equal(entries.length, 25, locale);
+		// footer, less the dropped `summary.pending` (#1832 round 1), plus the
+		// four uncounted `summary.single.*` outstanding forms (2026-11-10; no
+		// `single.delivered`, since #1858 a complete message renders no line).
+		assert.equal(entries.length, 29, locale);
 		for (const [key, value] of entries) {
 			assert.doesNotMatch(value, MODERATION_EM_DASH, `${locale}:${key}`);
 		}
@@ -1105,18 +1183,17 @@ test("the hub's neutral summary wins over the viewer's partial entries", () => {
 	);
 });
 
-test("a non-sender gets counts and no lines; no data is silent; a hub summary always shows (R3/D4)", () => {
+test("a non-sender gets counts and no lines; no data and complete delivery are silent", () => {
 	const neutral = teamBridgeDeliverySummary({
 		delivery_summary: { delivered: 1, screening: 2 },
 	});
 	assert.deepEqual(neutral.counts, counts({ delivered: 1, screening: 2 }));
 	assert.deepEqual(neutral.lines, []);
 	assert.equal(teamBridgeDeliverySummary({}), null);
-	assert.deepEqual(
-		teamBridgeDeliverySummary({ delivery_summary: { total: 4, delivered: 4 } })
-			.counts,
-		counts({ delivered: 4 }),
-		"all delivered still confirms that screening ran",
+	assert.equal(
+		teamBridgeDeliverySummary({ delivery_summary: { total: 4, delivered: 4 } }),
+		null,
+		"every recipient delivered is complete: no line (operator 2026-11-10)",
 	);
 	assert.equal(
 		teamBridgeDeliverySummary({
@@ -1159,6 +1236,154 @@ test("the summary text keeps the order, omits zeros and pluralizes per locale", 
 	} finally {
 		setLocale("en");
 	}
+});
+
+/*
+ * ONE RECIPIENT IN TOTAL (operator request 2026-11-10): "Being screened", not
+ * "1 being screened". The trigger is the hub's whole-message total, never one
+ * bucket at 1, and the runs still concatenate to the accessible name. A 1:1
+ * message that is delivered renders nothing at all (#1858), so there is no
+ * uncounted "Delivered" form.
+ */
+const hubLine = (summary) => {
+	const s = teamBridgeDeliverySummary({ delivery_summary: summary });
+	return {
+		text: teamBridgeDeliverySummaryText(s.counts, s.single),
+		runs: teamBridgeDeliverySummaryRuns(s.counts, s.single),
+	};
+};
+
+test("a single-recipient message drops the count; several recipients keep every count", () => {
+	const cases = [
+		[{ total: 1, screening: 1 }, "Being screened"],
+		[{ total: 1, held: 1 }, "Held for review"],
+		[{ total: 1, not_reviewed: 1 }, "Not reviewed"],
+		[{ total: 1, not_delivered: 1 }, "Not delivered"],
+		// Negative controls: one bucket at 1 among several recipients.
+		[
+			{ total: 3, delivered: 2, screening: 1 },
+			"Delivered to 2 · 1 being screened",
+		],
+		[
+			{ total: 2, delivered: 1, screening: 1 },
+			"Delivered to 1 · 1 being screened",
+		],
+		[
+			{ total: 2, held: 1, not_reviewed: 1 },
+			"1 held for review · 1 not reviewed",
+		],
+	];
+	for (const [summary, expected] of cases) {
+		const { text, runs } = hubLine(summary);
+		assert.equal(text, expected, JSON.stringify(summary));
+		assert.equal(
+			runs.delivered + runs.rest,
+			expected,
+			`runs ${JSON.stringify(summary)}`,
+		);
+	}
+	assert.deepEqual(hubLine({ total: 1, screening: 1 }).runs, {
+		delivered: "",
+		rest: "Being screened",
+	});
+	try {
+		setLocale("fr");
+		assert.equal(hubLine({ total: 1, held: 1 }).text, "En attente d’examen");
+		setLocale("ru");
+		assert.equal(hubLine({ total: 1, screening: 1 }).text, "На проверке");
+	} finally {
+		setLocale("en");
+	}
+});
+
+/*
+ * Review F1/F2: only a hub summary whose `total` is 1 proves one recipient.
+ * An older hub's derived counts cover only the viewer's own agents, and a
+ * malformed bucket drops out of the parse, so both keep the count.
+ */
+test("derived or inconsistent counts keep their count even when they sum to 1", () => {
+	// An owner of one of three recipient agents, older hub (no summary).
+	const derived = teamBridgeDeliverySummary({
+		delivery_states: [
+			{
+				endpoint_id: "bep_aida",
+				recipient_label: "Aida",
+				recipient_owner_label: "Ben Tran",
+				state: "held",
+				hold_class: "awaiting_review",
+			},
+		],
+	});
+	assert.equal(derived.single, false);
+	assert.equal(
+		teamBridgeDeliverySummaryText(derived.counts, derived.single),
+		"1 held for review",
+	);
+	// A two-recipient message whose screening bucket was malformed and dropped.
+	const parsed = teamBridgeMessageSchema.parse({
+		id: "bcmsg_f2",
+		conversation_id: "bconv_1",
+		seq: 1,
+		sender: { account_id: "acct_1", kind: "human", display_label: "Ben" },
+		body: "hi",
+		origin: "human",
+		created_at: "2026-11-10T00:00:00Z",
+		delivery_summary: { total: 2, delivered: 1, screening: -1 },
+	});
+	const partial = teamBridgeDeliverySummary(parsed);
+	assert.equal(partial.single, false);
+	assert.equal(
+		teamBridgeDeliverySummaryText(partial.counts, partial.single),
+		// The dropped bucket's recipient is folded into screening (#1858).
+		"Delivered to 1 · 1 being screened",
+	);
+	// No `total` at all proves nothing either.
+	const noTotal = teamBridgeDeliverySummary({
+		delivery_summary: { screening: 1 },
+	});
+	assert.equal(noTotal.single, false);
+	assert.equal(
+		teamBridgeDeliverySummaryText(noTotal.counts, noTotal.single),
+		"1 being screened",
+	);
+});
+
+const SINGLE_VISIBLE = />Held for review</;
+const SINGLE_COUNTED = /1 held for review/;
+const SINGLE_TITLE = /title="Held for review"/;
+test("a 1:1 message renders the uncounted line as its visible text and title", () => {
+	const html = renderToStaticMarkup(
+		createElement(TeamBridgeDeliveryAnnotation, {
+			message: {
+				delivery_summary: { total: 1, held: 1 },
+				origin: "human",
+			},
+		}),
+	);
+	assert.match(html, SINGLE_VISIBLE);
+	assert.doesNotMatch(html, SINGLE_COUNTED);
+	assert.match(html, SINGLE_TITLE);
+});
+
+/*
+ * #1858 x #1840: a delivered 1:1 message is complete, so it renders no line,
+ * neither "Delivered" nor "Delivered to 1". This is why `single.delivered`
+ * was dropped rather than shipped as dead copy.
+ */
+test("a fully delivered 1:1 message renders nothing", () => {
+	assert.equal(
+		teamBridgeDeliverySummary({ delivery_summary: { total: 1, delivered: 1 } }),
+		null,
+	);
+	const html = renderToStaticMarkup(
+		createElement(TeamBridgeDeliveryAnnotation, {
+			message: {
+				delivery_summary: { total: 1, delivered: 1 },
+				origin: "human",
+			},
+		}),
+	);
+	assert.equal(html, "");
 });
 
 test("the server summary schema keeps counts only and drops bad values per field", () => {
@@ -1455,9 +1680,11 @@ test("the line truncates 'Delivered to N' first, and its runs are the full text 
 		rest: " · 1 held for review · 2 not delivered",
 	});
 	assert.equal(runs.delivered + runs.rest, teamBridgeDeliverySummaryText(c));
-	assert.deepEqual(teamBridgeDeliverySummaryRuns(counts({ held: 1 })), {
+	// Two recipients, so the counted form; a lone recipient's uncounted run is
+	// covered by the single-recipient test above.
+	assert.deepEqual(teamBridgeDeliverySummaryRuns(counts({ held: 2 })), {
 		delivered: "",
-		rest: "1 held for review",
+		rest: "2 held for review",
 	});
 	const html = renderToStaticMarkup(
 		createElement(TeamBridgeDeliveryAnnotation, {
@@ -1479,14 +1706,126 @@ test("the line truncates 'Delivered to N' first, and its runs are the full text 
 	assert.match(html, FULL_TITLE);
 });
 
-test("all delivered renders 'Delivered to N' for every member (R3/D4)", () => {
-	const html = renderToStaticMarkup(
+test("all delivered renders nothing, for members and the sender alike (operator 2026-11-10)", () => {
+	for (const message of [
+		{ delivery_summary: { total: 3, delivered: 3 } },
+		{
+			...HUMAN_SOURCE,
+			delivery_summary: { total: 1, delivered: 1 },
+			delivery_states: [entry({ state: "delivered" })],
+		},
+	]) {
+		const html = renderToStaticMarkup(
+			createElement(TeamBridgeDeliveryAnnotation, { message }),
+		);
+		assert.equal(html, "");
+	}
+});
+
+/*
+ * WHAT "COMPLETE" MEANS (operator 2026-11-10: "Don't hide a still-pending
+ * state"). The line disappears only when every recipient the hub counts is
+ * delivered; anything else keeps it up, and a `total` the buckets do not
+ * account for is a pending recipient, never a hidden one.
+ */
+test("complete: every bucket but delivered is zero and delivered matches total", () => {
+	assert.equal(
+		teamBridgeDeliverySummary({ delivery_summary: { total: 7, delivered: 7 } }),
+		null,
+	);
+	assert.equal(
+		teamBridgeDeliverySummary({ delivery_summary: { delivered: 6 } }),
+		null,
+		"an older hub with no total is judged on its buckets",
+	);
+	assert.equal(
+		teamBridgeDeliverySummary({
+			delivery_summary: {
+				total: 6,
+				delivered: 6,
+				screening: 0,
+				held: 0,
+				not_reviewed: 0,
+				not_delivered: 0,
+			},
+		}),
+		null,
+		"explicit zero buckets are still complete",
+	);
+});
+
+test("a total above the bucket sum counts the shortfall as being screened", () => {
+	const summary = teamBridgeDeliverySummary({
+		delivery_summary: { total: 6, delivered: 5 },
+	});
+	assert.deepEqual(summary.counts, counts({ delivered: 5, screening: 1 }));
+	assert.equal(
+		teamBridgeDeliverySummaryText(summary.counts),
+		"Delivered to 5 · 1 being screened",
+	);
+	assert.deepEqual(
+		teamBridgeDeliverySummary({
+			delivery_summary: { total: 7, delivered: 4, screening: 1, held: 1 },
+		}).counts,
+		counts({ delivered: 4, screening: 2, held: 1 }),
+		"the shortfall adds to the hub's own screening count",
+	);
+	assert.deepEqual(
+		teamBridgeDeliverySummary({ delivery_summary: { total: 2 } }).counts,
+		counts({ screening: 2 }),
+		"a total with no verdicts yet is all in progress",
+	);
+});
+
+test("any outstanding bucket keeps the line, for every member", () => {
+	for (const [bucket, key] of [
+		["screening", "screening"],
+		["held", "held"],
+		["not_reviewed", "notReviewed"],
+		["not_delivered", "notDelivered"],
+	]) {
+		const summary = teamBridgeDeliverySummary({
+			delivery_summary: { total: 6, delivered: 5, [bucket]: 1 },
+		});
+		assert.deepEqual(
+			summary?.counts,
+			counts({ delivered: 5, [key]: 1 }),
+			`${bucket} is outstanding`,
+		);
+		assert.deepEqual(summary.lines, [], "a non-sender still gets counts only");
+	}
+	const refusedHtml = renderToStaticMarkup(
 		createElement(TeamBridgeDeliveryAnnotation, {
-			message: { delivery_summary: { total: 3, delivered: 3 } },
+			message: {
+				delivery_summary: { total: 6, delivered: 5, not_delivered: 1 },
+			},
 		}),
 	);
-	assert.match(html, DELIVERED_ONLY);
-	assert.doesNotMatch(html, ANY_BUTTON);
+	assert.match(refusedHtml, ONE_REFUSED_TEXT);
+	assert.doesNotMatch(refusedHtml, ANY_BUTTON);
+});
+
+test("without a hub summary the derived counts are unchanged", () => {
+	assert.equal(
+		teamBridgeDeliverySummary({
+			...HUMAN_SOURCE,
+			delivery_states: [
+				entry({ state: "delivered" }),
+				entry({ endpoint_id: "bep_two", state: "delivered" }),
+			],
+		}),
+		null,
+	);
+	assert.deepEqual(
+		teamBridgeDeliverySummary({
+			...HUMAN_SOURCE,
+			delivery_states: [
+				entry({ state: "delivered" }),
+				entry({ endpoint_id: "bep_two", state: "refused" }),
+			],
+		}).counts,
+		counts({ delivered: 1, notDelivered: 1 }),
+	);
 });
 
 test("the sender's trigger has a 24px tap target (U5)", async () => {

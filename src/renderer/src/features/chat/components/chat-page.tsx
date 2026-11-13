@@ -64,6 +64,7 @@ import {
 	ANSWER_NOT_SENT_CODE,
 	ASIDE_NOT_ANSWERED_CODE,
 	ASIDE_STILL_ANSWERING_CODE,
+	type PanelMount,
 	SEND_FAILURE_COPY,
 	SESSION_UNVALIDATED_CODE,
 	UNREADABLE_ATTACHMENT_CODE,
@@ -72,6 +73,7 @@ import {
 	migrateHeldClaim,
 	paneDraftKey,
 	panelIdentityFor,
+	panelMountKeyFor,
 	panelSessionIdOfView,
 	pressLockCopy,
 	remoteOwnedId,
@@ -101,6 +103,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { flushSync } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import { pairingHasRemedy } from "../../../../../shared/backend-status";
 import { DESKTOP_REFUSAL_CODE } from "../../../../../shared/desktop-contract";
@@ -147,7 +150,11 @@ import {
 	turnStopped,
 } from "../canonical/working-line-model";
 import { useStripSpeaksConnection } from "../chat-status-presence";
-import { catalogueTitleUpdate, resolveChatTitle } from "../chat-title";
+import {
+	catalogueTitleUpdate,
+	resolveChatTitle,
+	resolveFirstSendDescription,
+} from "../chat-title";
 /* The ask band's machine anchor: its accessible name is translated, so the
  * keyboard probes below cannot query the English label they used to spell
  * (i18n audit, C2). */
@@ -208,6 +215,8 @@ import {
 import { canvasDocumentForPath } from "../utils/canvas-document";
 import { messageBudgetRefusal } from "../utils/message-budget";
 import { ChatContent } from "./chat-content";
+import { ChatHeaderDraftTarget } from "./chat-header-draft-target";
+import { draftTargetChipShown } from "./chat-header-draft-target-model";
 import type { HeaderIdentityData } from "./chat-header-identity";
 import {
 	headerHostKey,
@@ -2553,41 +2562,56 @@ function SessionPanel({
 				return false;
 			}
 			const deliveryValue = evaluation.delivery;
-			const id = await admitChatDraft(
-				key,
-				{
-					text: content,
-					attachments,
-					images,
-					...(files.length ? { files } : {}),
-					mode: turnAliveRef.current ? "steer" : "prompt",
-					cwd,
-					/*
-					 * THE CAPABILITY GATE, applied HERE rather than at the composer: this
-					 * function already reads the capability map for the `@` affordance,
-					 * and one gate at the one seam every door passes is what keeps the
-					 * suggestion grid's own sends (which pass no `inputMode`) on the
-					 * legacy body by construction.
-					 */
-					inputMode: inputModeEnabled ? inputMode : undefined,
-					/*
-					 * Resolved above: present only for a busy send whose mode is not
-					 * steer on a backend that advertises `features.busy_delivery`
-					 * (see `resolveBusyDelivery`). `undefined` sends the legacy body.
-					 */
-					delivery: deliveryValue,
-					/*
-					 * The same press's mode for the transcript's waiting label, which is
-					 * true for a steer send too - it queues while the turn runs, it just
-					 * rides no field. Never on the wire: the store records it so
-					 * `busy-wait.ts` can name a queued row (`waitMode`'s note in
-					 * composer-send-key.ts).
-					 */
-					busyMode: evaluation.waitMode ?? undefined,
-				},
-				sessionId,
-				onEchoPainted,
-				beforeAdmission,
+			/*
+			 * ONE COMMIT FOR THE PRESS (operator report, 2026-11-11: the transcript went
+			 * blank for a few frames after Send). The call's synchronous prefix marks
+			 * the draft `pending` - a store update, which React always commits
+			 * synchronously - and paints the echo through the pane's `setView`, a
+			 * plain state update. By this line the press has already crossed an
+			 * `await` (`encodeAttachments`), so that state update no longer carries the
+			 * click's priority: it rendered as default-priority, time-sliced work, and
+			 * the frame in between showed the greeting gone and the pane empty (traced:
+			 * ~35 ms, one painted frame, before the row). `flushSync` commits the
+			 * claim, the echo, the wait line and the composer's clear together; the
+			 * create and the message POST after the prefix are unaffected.
+			 */
+			const id = await flushSync(() =>
+				admitChatDraft(
+					key,
+					{
+						text: content,
+						attachments,
+						images,
+						...(files.length ? { files } : {}),
+						mode: turnAliveRef.current ? "steer" : "prompt",
+						cwd,
+						/*
+						 * THE CAPABILITY GATE, applied HERE rather than at the composer: this
+						 * function already reads the capability map for the `@` affordance,
+						 * and one gate at the one seam every door passes is what keeps the
+						 * suggestion grid's own sends (which pass no `inputMode`) on the
+						 * legacy body by construction.
+						 */
+						inputMode: inputModeEnabled ? inputMode : undefined,
+						/*
+						 * Resolved above: present only for a busy send whose mode is not
+						 * steer on a backend that advertises `features.busy_delivery`
+						 * (see `resolveBusyDelivery`). `undefined` sends the legacy body.
+						 */
+						delivery: deliveryValue,
+						/*
+						 * The same press's mode for the transcript's waiting label, which is
+						 * true for a steer send too - it queues while the turn runs, it just
+						 * rides no field. Never on the wire: the store records it so
+						 * `busy-wait.ts` can name a queued row (`waitMode`'s note in
+						 * composer-send-key.ts).
+						 */
+						busyMode: evaluation.waitMode ?? undefined,
+					},
+					sessionId,
+					onEchoPainted,
+					beforeAdmission,
+				),
 			);
 			if (!id) return false;
 			/*
@@ -3947,6 +3971,32 @@ function SessionPanel({
 		? { ...canonical, status: "live" as const, error: null }
 		: canonical;
 	/*
+	 * THIS MOUNT BEGAN AS A DRAFT WITH NO SESSION (design round 1, D1b and D2).
+	 * The pane's mount key holds through its own draft's admission and retirement
+	 * (`panelMountKeyFor`), so a panel that mounted on a session-less draft is, for
+	 * its whole life, a conversation this pane CREATED. Two facts follow:
+	 * - It has painted the header as text since its first frame. When the draft
+	 *   row retired while the new session's stream was still connecting,
+	 *   `identityPending` read true and turned that text back into the pulsing
+	 *   skeleton (~220 ms after the press): a reload where nothing reloaded.
+	 * - Nothing precedes its first row, so its history is proven empty before any
+	 *   read (`createdHere` on the transcript), instead of "Earlier history not
+	 *   loaded · Try again" over the message the user just sent.
+	 * A draft mounted already bound to a session (a reload, a stable team row that
+	 * created one earlier) is NOT this: that session may have history, and a cold
+	 * open still holds the slot with the skeleton.
+	 */
+	const bornFromDraft = useRef(draftKey !== null && !sessionId);
+	/*
+	 * The target a targeted draft's header named at the press, held past the
+	 * draft row retiring so the second line stays on it until the owner states
+	 * the identity (design D6) - the draft, and so `draft.target`, is gone from
+	 * the commit the create answers.
+	 */
+	const sendTargetDisplay = useRef<string | undefined>(undefined);
+	if (draftKey && draft?.target)
+		sendTargetDisplay.current = loadedTargetDisplay;
+	/*
 	 * Nothing has named this session's identity yet, and the panel is waiting for
 	 * the stream that will.
 	 *
@@ -3964,7 +4014,11 @@ function SessionPanel({
 	 * that states what it has. `view` and not `canonical`, so this reads the same
 	 * status the panel below it renders from.
 	 */
-	const identityPending = !loaded && !draftKey && view.status === "connecting";
+	const identityPending =
+		!loaded &&
+		!draftKey &&
+		!bornFromDraft.current &&
+		view.status === "connecting";
 	/*
 	 * WHETHER THE HEADER'S IDENTITY SLOT OFFERS THE TWO SWITCHERS, computed here
 	 * because this is the component that owns the four facts the gate reads -
@@ -4953,6 +5007,26 @@ function SessionPanel({
 							draftKey={draftKey ?? undefined}
 						/>
 					}
+					/*
+					 * WHO ANSWERS THIS NEW CHAT, chosen in the header (operator request,
+					 * 2026-11-11). Draft panes only - `draftTargetChipShown` states why a
+					 * live pane and a draft whose create already answered are excluded -
+					 * and it stands down while a send is starting, because a pick re-keys
+					 * the draft the admission is finishing under.
+					 */
+					draftTargetSlot={
+						draftTargetChipShown({
+							sessionId,
+							draftKey,
+							draftSessionId: draft?.sessionId,
+						}) ? (
+							<ChatHeaderDraftTarget
+								target={draft?.target}
+								capabilities={capabilities.data}
+								busy={starting || Boolean(draft?.pending)}
+							/>
+						) : null
+					}
 					deviceNotice={<ChatDeviceNotice sessionId={sessionId ?? undefined} />}
 					deviceHold={deviceHold}
 					agentName={title}
@@ -4993,8 +5067,24 @@ function SessionPanel({
 								 * always has). The directory is also the exact thing the footer
 								 * declares immutable, so the two lines now state one fact.
 								 */
-								starting
-								? (loadedTargetDisplay ?? t("ui.chat.header.starting_session"))
+								/*
+								 * Only until the create answers (design round 1, D1c): from the
+								 * commit that writes `sessionId` - the one that lists the row in
+								 * the sidebar - the line names the conversation's directory, so
+								 * the header swaps once, together with the sidebar.
+								 */
+								/*
+								 * An untargeted draft keeps its own directory line through the
+								 * press rather than flashing "Starting the session" for the ~3
+								 * frames the create takes (design D6); the transcript's wait
+								 * line already says the session is starting.
+								 */
+								starting && !draft?.sessionId
+								? resolveFirstSendDescription({
+										targetDisplay: loadedTargetDisplay,
+										liveCwd: canonical.frontend?.cwd,
+										stagedCwd: cwd,
+									})
 								: draft?.sessionId
 									? canonical.frontend?.cwd ||
 										cwd ||
@@ -5035,7 +5125,24 @@ function SessionPanel({
 								 * no-break space keeps the `text-body-sm` line box, so the title does
 								 * not jump the 3.8 px the skeleton-to-text swap measured.
 								 */
-								live.cwd || HELD_DESCRIPTION_LINE)
+								/*
+								 * A mount born from this pane's draft keeps the directory it
+								 * already painted while the new session's stream connects
+								 * (D1b): the draft arm above read the same staged `cwd`, so the
+								 * retire is text-for-text in the same span.
+								 */
+								/*
+								 * And it holds that text until the identity controls replace it
+								 * (QA Q4): a targeted chat keeps the target it named at the
+								 * press, so the line never blanks or detours through the path.
+								 */
+								(bornFromDraft.current
+									? resolveFirstSendDescription({
+											targetDisplay: sendTargetDisplay.current,
+											liveCwd: live.cwd,
+											stagedCwd: cwd,
+										})
+									: live.cwd) || HELD_DESCRIPTION_LINE)
 					}
 					descriptionPending={identityPending}
 					identity={identityControls}
@@ -5066,6 +5173,11 @@ function SessionPanel({
 						sessionId && desktopFeatureEnabled(capabilities.data, "commands")
 							? sessionId
 							: undefined
+					}
+					// The pencil's box, held from the draft so its mount moves nothing (D1a).
+					createdHere={bornFromDraft.current}
+					renameSlotReserved={
+						!sessionId && desktopFeatureEnabled(capabilities.data, "commands")
 					}
 					onOpenOptions={() => setOptions((value) => !value)}
 					isOptionsSidebarOpen={false}
@@ -5569,6 +5681,19 @@ export function ChatPage() {
 	// a second copy of the expression that computes it.
 	const id = panelSessionIdOfView(draftKey, draft?.sessionId, active);
 	const identity = panelIdentityFor(draftKey, id);
+	// The panel's MOUNT key, which unlike `identity` survives the draft's own
+	// admission: remounting there repainted the echo the press had just painted
+	// (`panelMountKeyFor`). Derived during render from the COMMITTED mount, and
+	// recorded only once this render commits (agent review round 1, F2): a
+	// render React discards must not leave its inputs behind as "the mount".
+	const panelMount = useRef<PanelMount | null>(null);
+	const mountKey = panelMountKeyFor(panelMount.current, draftKey, id);
+	useLayoutEffect(() => {
+		panelMount.current =
+			mountKey === undefined
+				? null
+				: { key: mountKey, draftKey, sessionId: id };
+	}, [mountKey, draftKey, id]);
 	// The route-level sentence, when one shows; see the `role="alert"` note below.
 	const routeSentence =
 		routeError ||
@@ -5692,7 +5817,7 @@ export function ChatPage() {
 					)}
 				>
 					<SessionPanel
-						key={identity}
+						key={mountKey}
 						identity={identity}
 						draftKey={draftKey}
 						sessionId={id}

@@ -25,6 +25,7 @@
  * exists).
  */
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -43,7 +44,7 @@ const bundle = await build({
 });
 
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`;
-const { foldOpenOf, withFoldOpen } = await import(moduleUrl);
+const { foldIdentityFor, foldOpenOf, withFoldOpen } = await import(moduleUrl);
 
 /** The caller's live-record set: every id the conversation still holds. */
 const keep = (...ids) => new Set(ids);
@@ -149,4 +150,56 @@ test("a fold is kept while any of its rows is still live, window or not", () => 
 	assert.equal(afterReseed.length, 1);
 	assert.equal(foldOpenOf(afterReseed, ["d1", "d2", "d3"]), false);
 	assert.equal(foldOpenOf(afterReseed, ["d4", "d5", "d6"]), false);
+});
+
+test("a new chat's first stated id is adopted without re-keying the rows (QA round 1, Q1)", () => {
+	/*
+	 * The echo paints under a null id (no snapshot yet); the subscription's first
+	 * snapshot then names the session. Re-keying there remounted every row and
+	 * cut the echo's fade mid-curve (8/8 runs against a real-shaped owner).
+	 */
+	const walk = (ids) => {
+		let identity = null;
+		return ids.map((id) => {
+			identity = foldIdentityFor(identity, id);
+			return identity;
+		});
+	};
+	const steps = walk([null, null, "abc123def456", null, "abc123def456"]);
+	assert.deepEqual(
+		steps.map((step) => step.key),
+		["null", "null", "null", "null", "null"],
+		"echo painted, snapshot lands, a reconnect gap, the snapshot again: one key",
+	);
+	assert.deepEqual(
+		steps.map((step) => step.session),
+		[null, null, "abc123def456", "abc123def456", "abc123def456"],
+		"while the id itself is learned, and sticky across the gap",
+	);
+	// A real change of conversation still re-keys, in every later step.
+	const switched = walk([null, "abc123def456", "fed987654321", "abc123def456"]);
+	assert.deepEqual(
+		switched.map((step) => step.key),
+		["null", "null", "fed987654321", "abc123def456"],
+	);
+	// A pane mounted on a stated id keys on it from the first render.
+	assert.equal(foldIdentityFor(null, "abc123def456").key, "abc123def456");
+});
+
+test("the transcript keys its rows and stores on the adopted identity, not the raw id", () => {
+	const source = readFileSync(
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\//g, "");
+	assert.match(
+		source,
+		/foldIdentity\.current = foldIdentityFor\(foldIdentity\.current, sessionId\);/,
+	);
+	assert.match(
+		source,
+		/<TranscriptViewStateContext\.Provider\s+key=\{`\$\{foldKey\}:\$\{transcript\.viewEpoch\}`\}/,
+	);
+	assert.doesNotMatch(source, /key=\{`\$\{foldSession\.current\}/);
+	assert.match(source, /arrivalLedger\.current\?\.session !== foldKey/);
+	assert.match(source, /viewState\.current\.session !== foldKey/);
 });

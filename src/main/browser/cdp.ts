@@ -2,6 +2,7 @@ import { installClipboardShim } from "./actions/clipboard-shim";
 import { stopNetworkCapture } from "./actions/network";
 import { abortRecording } from "./actions/recording";
 import { BrowserHostError } from "./errors";
+import { custodyRefusal } from "./extensions/passkey-custody";
 import {
 	hasLogCapture,
 	routeDebuggerEvent,
@@ -149,6 +150,54 @@ export interface CdpPoolOptions {
 }
 
 /**
+ * The passkey-custody gate, as the pool sees it (`extensions/passkey-custody.ts`
+ * has the why). Structural so the pool does not import the custody module, and
+ * set after construction because the custody state is wired up later in the
+ * host's start.
+ */
+export interface CdpCustodyGate {
+	isHeld(webContentsId: number): boolean;
+	epoch(webContentsId: number): number;
+}
+
+/**
+ * The ONLY commands a held view still accepts: the origin gate's own `Fetch`
+ * answers (a paused request nobody continues would hang the very sign-in the
+ * user is completing) and the TEARDOWN of what an agent had running when the
+ * hold began. None of them returns page content, and none starts a capture:
+ *   - `Page.stopScreencast` / `Page.stopScreenRecording`: end a recording that
+ *     custody discarded (`discardRecordingForCustody`). The recorder stop
+ *     answers only a stream HANDLE; reading it needs `IO.read`, which stays
+ *     refused, so the bytes never leave Chromium (review R1).
+ *   - `IO.close`: drop that unread stream.
+ *   - `Emulation.clearDeviceMetricsOverride`: give the tab the user is looking
+ *     at its own size back after a sized recording (review R2).
+ *   - `Page.disable`: the origin gate's own teardown (`gate.ts`); refusing it
+ *     left the Page domain enabled after a hold (review N3).
+ * `IO.read`, `Page.startScreencast`, `Page.screencastFrameAck`, every
+ * `Emulation.set*` and every capture stay refused.
+ */
+const CUSTODY_INFRA_METHODS: ReadonlySet<string> = new Set([
+	"Fetch.continueRequest",
+	"Fetch.failRequest",
+	"Fetch.fulfillRequest",
+	"Fetch.continueWithAuth",
+	"Fetch.disable",
+	"Page.stopScreencast",
+	"Page.stopScreenRecording",
+	"IO.close",
+	"Emulation.clearDeviceMetricsOverride",
+	"Page.disable",
+]);
+
+/** Events a held view still routes: the origin gate must keep seeing the
+ * requests it has to continue. Everything else (screencast frames, console,
+ * network) is dropped while the user has the tab. */
+function routesUnderCustody(method: string): boolean {
+	return method.startsWith("Fetch.");
+}
+
+/**
  * The pool of debugger attachments, keyed by webContents id.
  *
  * One instance per host (not module-global state): the registry's tabs and these
@@ -182,7 +231,14 @@ export class CdpPool {
 	 * callers (see `attachFrame`). */
 	private readonly frameAttaches = new Map<string, Promise<string>>();
 
+	private custody: CdpCustodyGate | null = null;
+
 	constructor(private readonly options: CdpPoolOptions = {}) {}
+
+	/** Install the passkey-custody gate (see `CdpCustodyGate`). */
+	setCustodyGate(gate: CdpCustodyGate | null): void {
+		this.custody = gate;
+	}
 
 	/**
 	 * Observe this view's CDP events for as long as the returned function has not
@@ -216,6 +272,11 @@ export class CdpPool {
 		method: string,
 		params: Record<string, unknown>,
 	): void {
+		// While the user holds the tab for a passkey prompt, no page content may
+		// leave it through an event either: a screencast frame or a console line is
+		// as much a read as a screenshot.
+		if (this.custody?.isHeld(webContentsId) && !routesUnderCustody(method))
+			return;
 		routeDebuggerEvent(webContentsId, method, params);
 		for (const listener of [...(this.subscribers.get(webContentsId) ?? [])]) {
 			listener(method, params);
@@ -558,6 +619,38 @@ export class CdpPool {
 	}
 
 	private async sendTo<T>(
+		contents: CdpContents,
+		method: string,
+		params: Record<string, unknown>,
+		deadlineMs: number,
+		sessionId?: string,
+	): Promise<T> {
+		// THE SECOND CHOKE POINT for passkey custody (the first is
+		// `registry.requireSurface`): every command any action sends lands here, so
+		// a path that skipped the registry is refused all the same, before dispatch.
+		if (!CUSTODY_INFRA_METHODS.has(method)) {
+			const gate = this.custody;
+			if (gate) {
+				if (gate.isHeld(contents.id)) throw custodyRefusal();
+				const epoch = gate.epoch(contents.id);
+				const result = await this.dispatch<T>(
+					contents,
+					method,
+					params,
+					deadlineMs,
+					sessionId,
+				);
+				// A command already in flight when a hold began (a screenshot that
+				// raced the prompt's frame) must not deliver what it captured.
+				if (gate.isHeld(contents.id) || gate.epoch(contents.id) !== epoch)
+					throw custodyRefusal();
+				return result;
+			}
+		}
+		return this.dispatch<T>(contents, method, params, deadlineMs, sessionId);
+	}
+
+	private async dispatch<T>(
 		contents: CdpContents,
 		method: string,
 		params: Record<string, unknown>,

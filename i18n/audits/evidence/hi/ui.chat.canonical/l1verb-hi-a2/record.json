@@ -1,0 +1,160 @@
+{
+  "audit_id": "l1verb-hi-a2",
+  "audit_kind": "round-2 delta re-audit of a translator remediation",
+  "locale": "hi",
+  "namespace": "ui.chat.canonical",
+  "file_group": "tool-row verb column (182 keys / 91 settled+running pairs)",
+  "round": 2,
+  "audit_date": "2026-11-11",
+  "key_count": 182,
+  "keys_judged": "all 182 read and mechanically checked; the 87 keys changed in v2 judged for accuracy/idiom/terminology, plus unchanged neighbours for contradiction",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "c311bc9814dd",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "harness session model header for this session (no fallback model, no tool-side model pin)",
+    "independent_from_translator_session": true,
+    "translator": {
+      "agent": "i18n-translator",
+      "session": "f580f0b9670b",
+      "model": "openai/gpt-6.1-sol"
+    },
+    "round1_reports_read": [
+      "_l1-prep/audit-hi-A.md (session ecb08badad9d, deepseek/deepseek-flash)",
+      "_l1-prep/audit-hi-B.md (session unnamed in its header, anthropic/claude-sonnet-5-5)"
+    ],
+    "round2_reports_read": []
+  },
+  "worktree": {
+    "path": "/Users/damian/local-operator-ui/.worktrees/i18n-l1-tool-verbs",
+    "head": "6c0b841872d89a507dc9d45d9a2f68c92ebb6e5d"
+  },
+  "input_hashes": [
+    {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_l1-prep/keys.json",
+      "sha256": "b3f3bfe3688d1461a061009e98a58802171eb181343fdb8fcfd0af07652ca419",
+      "role": "en + inline context/notes (the group's sidecar is inline; _l1-prep has no separate .context.json)"
+    },
+    {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_l1-prep/hi.json",
+      "sha256": "41bcec4ff53bee4f45b37aa630d5b985f80646e6c8d121866efbdf193e3c97d8",
+      "role": "round-1 translation, baseline for the delta"
+    },
+    {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_l1-prep/hi.v2.json",
+      "sha256": "56791690a9c9ee6b42838775a52c39b4807e8e2fc5d85ac6bf6fdc56bbbe95a6",
+      "role": "target locale file under audit (v2)"
+    },
+    {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_l1-prep/hi.v2-changes.md",
+      "sha256": "3233a594ed8ced5bb0d0f214a59268a90aea0c620e70d4d83f97eafefc2a5dba",
+      "role": "translator disposition table"
+    },
+    {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_l1-prep/audit-hi-A.md",
+      "sha256": "f7ac66d26798395ff19d40e51c3df992a6e36310860eec57ecff1acafe0ca33d",
+      "role": "round-1 report A"
+    },
+    {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_l1-prep/audit-hi-B.md",
+      "sha256": "20f7d0eccee461662757a15d0b09b73100c45ea38e9c869475624b4788702fcf",
+      "role": "round-1 report B"
+    },
+    {
+      "path": "/Users/damian/local-operator-ui/.worktrees/i18n-l1-tool-verbs/src/i18n/catalogues/hi/ui.chat.canonical.json",
+      "sha256": "9396b17c8e3796c97eb1fc058f5600566ece111ac372578ff663541ccd559eca",
+      "role": "shipped hi catalogue, precedent and ledger target (batch not yet merged: 0/182)"
+    },
+    {
+      "path": "/Users/damian/local-operator-ui/.worktrees/i18n-l1-tool-verbs/src/i18n/catalogues/en/ui.chat.canonical.json",
+      "sha256": "a385671b988e5f03df6f650beb4a06f73c9efaead2316dfa9ab15bf043798765",
+      "role": "shipped en catalogue, fidelity control"
+    },
+    {
+      "path": "/Users/damian/local-operator-ui/.worktrees/i18n-l1-tool-verbs/src/i18n/catalogues/hi/ui.mesh.json",
+      "sha256": "65cc9601bae95beaf93f5a56964c4c7d2caff46bbcb7cdf86d1c2de43a2234c2",
+      "role": "peer precedent"
+    },
+    {
+      "path": "/Users/damian/local-operator-ui/.worktrees/i18n-l1-tool-verbs/src/i18n/catalogues/hi/ui.projects.json",
+      "sha256": "92d40fafa54263c14e7ae7ae5729c2fb4be6d68a7275ca450d5d42c6df9ff462",
+      "role": "milestone precedent"
+    },
+    {
+      "path": "/Users/damian/local-operator-ui/.worktrees/i18n-l1-tool-verbs/src/i18n/catalogues/hi/ui.canvas.json",
+      "sha256": "7dc11c631235553ea73f7f0355d63d0c84598863087f35f7290506aae5b2418a",
+      "role": "variable precedent"
+    },
+    {
+      "path": "/Users/damian/local-operator-ui/.worktrees/i18n-l1-tool-verbs/src/i18n/catalogues/hi/ui.onboarding.tour.json",
+      "sha256": "1fcda0bb62279c8cec5ea7511e59165471a41450182bd0a126c82b08109d39ba",
+      "role": "screenshot precedent"
+    },
+    {
+      "path": "/Users/damian/local-operator/i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+      "role": "locale style guide"
+    },
+    {
+      "path": "/Users/damian/local-operator/i18n/style-guides/en.md",
+      "sha256": "c967c91037be79a7b184b3288b8c0326a261e4adae95b7db06d83e96f8ea6ec7",
+      "role": "source style guide"
+    },
+    {
+      "path": "/Users/damian/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "role": "shared glossary"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "/Users/damian/local-operator-ui/.worktrees/_l1-prep/audit2-hi.md",
+      "sha256": "deb102bbbb2ef04cbad05f5e839080a34394020d7b31fdb0f77c005bfe2f7526",
+      "role": "round-2 audit report (findings live here; none raised)"
+    },
+    {
+      "path": "/Users/damian/local-operator-ui/.worktrees/i18n-l1-tool-verbs/i18n/audits/evidence/hi/ui.chat.canonical/l1verb-hi-a2/audit.log",
+      "sha256": "49ef81397df9ffacd5e577af963a3cb29dc2f6e585ed1f7325acc309a48515a2",
+      "role": "execution log: captured stdout of every command actually run"
+    },
+    {
+      "path": "/Users/damian/local-operator-ui/.worktrees/i18n-l1-tool-verbs/i18n/audits/evidence/hi/ui.chat.canonical/l1verb-hi-a2/verify.py",
+      "sha256": "4bf00683f895649c2f1b1484162f5d38aa7692ea43abbb00efa8f980c3066674",
+      "role": "mechanical suite used by audit.log block 1 (regenerable)"
+    }
+  ],
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [],
+    "counts": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 0,
+      "nit": 0
+    },
+    "basis": "0 BLOCKER / 0 MAJOR on hi.v2.json 56791690…; ledger-rules.supportedStatus maps that to `passed`"
+  },
+  "declined_findings_adjudicated": [],
+  "declined_suggestion_adjudicated": [
+    {
+      "item": "B:F6 suggested नेटवर्क के डिवाइस; translator used नेटवर्क पीयर",
+      "adjudication": "upheld (translator): shipped ui.mesh uses पीयर 3 / साथी 0, and डिवाइस is the device object's word (invited_device/removed_device); the finding was accepted, only its remedy superseded"
+    },
+    {
+      "item": "translator caveat that B:F3's suggested running forms are 6 and 7 words, not 4",
+      "adjudication": "upheld (translator), verified: सत्र प्रोजेक्ट से जोड़ रहा है = 6 words/29 chars, सत्र प्रोजेक्ट से अलग कर रहा है = 7/31"
+    }
+  ],
+  "findings_summary": "21 round-1 finding IDs (A:12, B:9) each dispositioned and each verified fixed in the data; 0 declined, 0 deferred, 87 changed keys == the disposition table exactly",
+  "ledger": {
+    "row_written": false,
+    "namespace_merged_batch": "0 of 182 keys present in hi/ui.chat.canonical.json",
+    "reason": "ledger-assemble.mjs derives source/target hashes from the shipped catalogues and refuses a receipt naming other bytes; the batch has not merged, so any row written now would describe bytes that never ship and would fail ledger-check as stale",
+    "assembled_by": "the shipping wave, after the 182 keys land in hi/ui.chat.canonical.json, from a receipt naming that file's hashes",
+    "supported_status": "passed"
+  },
+  "audit_notes_not_execution_log": "Everything in record.json is structured metadata written by the auditor. Proof of execution is audit.log alone: it is captured stdout of the commands, and verify.py beside it regenerates block 1. This record is NOT an execution log and the report's prose is not evidence of a run.",
+  "original_lost_evidence": null,
+  "replacement": false
+}

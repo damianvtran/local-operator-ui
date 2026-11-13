@@ -458,12 +458,39 @@
 	margin: 0;
 }
 
-.lo-markdown .math-display {
+/*
+ * Display equations (operator report, 2026-11-10: "equation blocks that are
+ * highlighted and centered").
+ *
+ * WHY `.katex-display` AND NOT `.math-display`. `rehype-katex` REPLACES the
+ * `<pre><code class="math-display">` (from `$$`, `\[...\]` and ```math) with
+ * KaTeX's own `<span class="katex-display">`, so the `.math-display` rule this
+ * replaces never matched a rendered equation. `.katex-display` is also what a
+ * `\[...\]` written mid-paragraph becomes, so all four spellings share one look.
+ *
+ * The panel is the fenced-code block's treatment (`sunken`, `radius-md`, no
+ * border - §E5 above): the step from the prose ground is the only separation,
+ * and every palette already guarantees it. Horizontal margins are zero so the
+ * panel's left edge sits on the prose column; KaTeX centres the formula INSIDE
+ * it (`text-align: center` from katex.css). A formula wider than the column
+ * scrolls inside the panel (`overflow-x: auto`, with `overflow-y: hidden`
+ * because KaTeX's struts otherwise add a phantom vertical scrollbar), so it
+ * never widens the transcript. `overscroll-behavior-x` stops a swipe reaching
+ * the panel's edge from becoming the shell's back gesture, as on tables.
+ */
+.lo-markdown .katex-display {
 	margin: 0.75rem 0;
-	padding: 0.5rem 0;
+	padding: 0.75rem 1rem;
+	background-color: var(--lo-sunken);
+	border-radius: var(--radius-md);
+	max-width: 100%;
 	overflow-x: auto;
+	overflow-y: hidden;
+	overscroll-behavior-x: contain;
 }
 
+/* Inline math stays in the text flow at the prose baseline; only its size is
+   nudged, because KaTeX's Computer Modern reads small beside the UI face. */
 .lo-markdown .katex {
 	font-size: 1.05em;
 }

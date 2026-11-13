@@ -358,12 +358,20 @@ export const SummaryNonSenderView: Story = {
 	args: { states: undefined, summary: CHANNEL_SUMMARY },
 };
 
-/* Everything delivered: every member still sees the confirmation that
- * screening ran (review R3, design D4). */
+/* Everything delivered: renders NOTHING (operator 2026-11-10: a "Delivered to
+ * N" under every message cluttered the channel; silence now means complete). */
 export const SummaryAllDelivered: Story = {
 	args: {
 		states: undefined,
 		summary: { total: 3, delivered: 3 },
+	},
+};
+
+/* Still in progress: the line stays until every recipient is delivered. */
+export const SummaryOneBeingScreened: Story = {
+	args: {
+		states: undefined,
+		summary: { total: 6, delivered: 5, screening: 1 },
 	},
 };
 
@@ -388,6 +396,39 @@ export const SummaryNotReviewedOpen: Story = {
 /* An older hub: no summary, so the sender's counts derive from their entries. */
 export const SummaryDerivedWithoutHubSummary: Story = {
 	args: { states: CHANNEL_STATES },
+};
+
+/* The sender's neutral view since agent-server #377: a refusal arrives as
+ * `not_delivered` with no class, and the details still name the recipient
+ * (the classless refusal line). Single recipient, then one of a group. */
+export const NotDeliveredSenderSingleOpen: Story = {
+	args: {
+		states: [state({ state: "not_delivered" })],
+		summary: { total: 1, not_delivered: 1 },
+	},
+	play: openDetails,
+};
+
+export const NotDeliveredSenderGroupOpen: Story = {
+	args: {
+		states: [
+			state({
+				endpoint_id: "bep_bo",
+				recipient_label: "Bo's assistant",
+				recipient_owner_label: "Bo Chen",
+				state: "delivered",
+			}),
+			state({ state: "not_delivered" }),
+			state({
+				endpoint_id: "bep_cy",
+				recipient_label: "Cy",
+				recipient_owner_label: "Cyrus Patel",
+				state: "delivered",
+			}),
+		],
+		summary: { total: 3, delivered: 2, not_delivered: 1 },
+	},
+	play: openDetails,
 };
 
 export const SummarySingleRecipientDm: Story = {
@@ -424,5 +465,32 @@ export const SummaryNarrowTruncates: Story = {
 			not_reviewed: 1,
 			not_delivered: 4,
 		},
+	},
+};
+
+/* ONE RECIPIENT IN TOTAL (operator request 2026-11-10): a 1:1 conversation
+ * reads "Being screened" / "Held for review", not "1 being screened"; the
+ * count adds nothing when there is only one recipient. There is no delivered
+ * story: a fully delivered message renders no line since #1858. */
+export const SummarySingleRecipientScreening: Story = {
+	args: { states: undefined, summary: { total: 1, screening: 1 } },
+};
+
+/* The two terminal outcomes alone (design review D2), so all four uncounted
+ * forms stay in visual review (held is `SummarySingleRecipientDm`). */
+export const SummarySingleRecipientNotReviewed: Story = {
+	args: { states: undefined, summary: { total: 1, not_reviewed: 1 } },
+};
+
+export const SummarySingleRecipientNotDelivered: Story = {
+	args: { states: undefined, summary: { total: 1, not_delivered: 1 } },
+};
+
+/* Several recipients with one bucket at 1 KEEP their counts: "Delivered ·
+ * 1 being screened" would hide how many received it. */
+export const SummaryMultiRecipientOneScreening: Story = {
+	args: {
+		states: undefined,
+		summary: { total: 3, delivered: 2, screening: 1 },
 	},
 };
