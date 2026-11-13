@@ -1,0 +1,222 @@
+[
+  {
+    "k": "app",
+    "v": {
+      "pid": 3869063,
+      "port": 43085
+    }
+  },
+  {
+    "k": "route trigger",
+    "v": {
+      "route": "/agents",
+      "trig": null
+    }
+  },
+  {
+    "k": "route trigger",
+    "v": {
+      "route": "/settings",
+      "trig": null
+    }
+  },
+  {
+    "k": "route trigger",
+    "v": {
+      "route": "/notifications",
+      "trig": "Asks, All conversations, 1 waiting"
+    }
+  },
+  {
+    "k": "state before",
+    "v": {
+      "route": "/chat",
+      "theme": "localOperatorDark",
+      "commandPaletteOpen": false,
+      "canvasOpen": false,
+      "runPanelOpen": false,
+      "browserPaneOpen": false,
+      "rightSlotWidth": 0,
+      "rightSlotKey": "draft:aa981362-1037-448f-9dad-efb3f4f2b61f",
+      "rightSlotMemory": [],
+      "activeSessionId": null,
+      "activeDraftKey": "draft:aa981362-1037-448f-9dad-efb3f4f2b61f",
+      "drafts": {
+        "draft:aa981362-1037-448f-9dad-efb3f4f2b61f": {
+          "sessionId": null,
+          "error": false,
+          "undelivered": false,
+          "submitted": false,
+          "admissionAttempted": false,
+          "model": null
+        }
+      },
+      "sessionCount": 2,
+      "cataloguePinnedCount": 0,
+      "cataloguePageable": false,
+      "catalogueActivityHead": false,
+      "scopes": {},
+      "countsTotal": null,
+      "archiveAttempts": 4,
+      "archiveFailure": null,
+      "onboardingVisible": false
+    }
+  },
+  {
+    "k": "press rail",
+    "v": {
+      "selector": "[data-tour-tag=\"ask-pane-trigger\"]",
+      "target": "button \"Asks, All conversations, 1 waiting\"",
+      "hitTest": true,
+      "hit": "button \"Asks, All conversations, 1 waiting\"",
+      "stack": [
+        "button \"Asks, All conversations, 1 waiting\"",
+        "div \"Panels\"",
+        "div \"1\"",
+        "div \"Local OperatorNew chatCtrlNSearchCtrlPAgentsBrowserMoreAgent\""
+      ],
+      "disabled": false,
+      "rect": {
+        "x": 1342,
+        "y": 80,
+        "width": 32,
+        "height": 32
+      }
+    }
+  },
+  {
+    "k": "fleet drawer",
+    "v": {
+      "scope": "fleet",
+      "insert": true,
+      "run": true
+    }
+  },
+  {
+    "k": "frame fleet",
+    "v": {
+      "label": "fleet-card-dark",
+      "path": "/home/ec2-user/.local-operator/sessions/716d6a56a2cf/scratchpad/ask-cmd/final/fleet/fleet-card-dark.png",
+      "bytes": 111863,
+      "pixels": {
+        "width": 1380,
+        "height": 900
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 1
+      }
+    }
+  },
+  {
+    "k": "state after fleet insert",
+    "v": {
+      "route": "/chat/fa1107000001",
+      "theme": "localOperatorDark",
+      "commandPaletteOpen": false,
+      "canvasOpen": false,
+      "runPanelOpen": false,
+      "browserPaneOpen": false,
+      "rightSlotWidth": 0,
+      "rightSlotKey": "fa1107000001",
+      "rightSlotMemory": [
+        [
+          "fa1107000001",
+          "console"
+        ]
+      ],
+      "activeSessionId": "fa1107000001",
+      "activeDraftKey": null,
+      "drafts": {
+        "draft:aa981362-1037-448f-9dad-efb3f4f2b61f": {
+          "sessionId": null,
+          "error": false,
+          "undelivered": false,
+          "submitted": false,
+          "admissionAttempted": false,
+          "model": null
+        }
+      },
+      "sessionCount": 2,
+      "cataloguePinnedCount": 0,
+      "cataloguePageable": false,
+      "catalogueActivityHead": false,
+      "scopes": {},
+      "countsTotal": null,
+      "archiveAttempts": 9,
+      "archiveFailure": null,
+      "onboardingVisible": false
+    }
+  },
+  {
+    "k": "fleet insert surfaces (target conversation)",
+    "v": [
+      "con:1:8FOzXgeaqGIOZ4INg6az2w"
+    ]
+  },
+  {
+    "k": "fleet insert pty replay",
+    "v": "\u001b[?2004hbash-5.2$ \r\u001b[K\rbash-5.2$ \u001b[7mecho ASKCMD-$((6*7))\u001b[27m"
+  },
+  {
+    "k": "other conversation surfaces",
+    "v": 0
+  },
+  {
+    "k": "frame fleet after insert",
+    "v": {
+      "label": "fleet-after-insert",
+      "path": "/home/ec2-user/.local-operator/sessions/716d6a56a2cf/scratchpad/ask-cmd/final/fleet/fleet-after-insert.png",
+      "bytes": 72312,
+      "pixels": {
+        "width": 1380,
+        "height": 900
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 1
+      }
+    }
+  },
+  {
+    "k": "error",
+    "v": "Error: done (fleet mode)\n    at file:///home/ec2-user/.local-operator/sessions/716d6a56a2cf/scratchpad/ask-cmd/rig.mjs:97:9"
+  },
+  {
+    "k": "error frame",
+    "v": {
+      "label": "error",
+      "path": "/home/ec2-user/.local-operator/sessions/716d6a56a2cf/scratchpad/ask-cmd/final/fleet/error.png",
+      "bytes": 75992,
+      "pixels": {
+        "width": 1380,
+        "height": 900
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 1
+      }
+    }
+  },
+  {
+    "k": "error dom",
+    "v": {
+      "drawer": false,
+      "panel": false,
+      "rows": 0,
+      "q": []
+    }
+  },
+  {
+    "k": "fixture requests (non-GET)",
+    "v": [
+      "POST /v1/desktop/radient",
+      "POST /v1/desktop/radient",
+      "POST /v1/desktop/radient",
+      "POST /v1/desktop/radient"
+    ]
+  }
+]

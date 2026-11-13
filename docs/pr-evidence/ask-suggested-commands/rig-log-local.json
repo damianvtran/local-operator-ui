@@ -1,0 +1,264 @@
+[
+  {
+    "k": "app",
+    "v": {
+      "pid": 3867895,
+      "port": 42333
+    }
+  },
+  {
+    "k": "console.available",
+    "v": {
+      "available": true
+    }
+  },
+  {
+    "k": "press chip",
+    "v": {
+      "attempt": 1,
+      "hit": {
+        "selector": "[data-lo-ask-item-toggle]",
+        "target": "button \"Expand this conversation's asks — 1 question waiting · expir\"",
+        "hitTest": true,
+        "hit": "span \"1 question waiting\"",
+        "stack": [
+          "span \"1 question waiting\"",
+          "button \"Collapse this conversation's asks — 1 question waiting · exp\"",
+          "div \"1 question waiting · expires in 59m · 59m\"",
+          "div \"1 question waiting · expires in 59m · 59m\""
+        ],
+        "disabled": false,
+        "rect": {
+          "x": 286,
+          "y": 778,
+          "width": 230.65625,
+          "height": 24
+        }
+      }
+    }
+  },
+  {
+    "k": "press chip",
+    "v": {
+      "attempt": 2,
+      "hit": {
+        "selector": "[data-lo-ask-item-toggle]",
+        "target": "button \"Collapse this conversation's asks — 1 question waiting · exp\"",
+        "hitTest": true,
+        "hit": "span \"1 question waiting\"",
+        "stack": [
+          "span \"1 question waiting\"",
+          "button \"Expand this conversation's asks — 1 question waiting · expir\"",
+          "div \"1 question waiting · expires in 59m · 59m\"",
+          "div \"1 question waiting · expires in 59m · 59m\""
+        ],
+        "disabled": false,
+        "rect": {
+          "x": 403,
+          "y": 742,
+          "width": 230.65625,
+          "height": 24
+        }
+      }
+    }
+  },
+  {
+    "k": "row",
+    "v": {
+      "text": "echo ASKCMD-$((6*7))",
+      "insert": true,
+      "run": true,
+      "notice": null,
+      "box": {
+        "x": 765,
+        "y": 200.390625,
+        "width": 546,
+        "height": 63.390625,
+        "top": 200.390625,
+        "right": 1311,
+        "bottom": 263.78125,
+        "left": 765
+      }
+    }
+  },
+  {
+    "k": "frame card localOperatorDark",
+    "v": {
+      "label": "card-dark",
+      "path": "/home/ec2-user/.local-operator/sessions/716d6a56a2cf/scratchpad/ask-cmd/final/local/card-dark.png",
+      "bytes": 100151,
+      "pixels": {
+        "width": 1380,
+        "height": 900
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 1
+      }
+    }
+  },
+  {
+    "k": "frame card localOperatorLight",
+    "v": {
+      "label": "card-light",
+      "path": "/home/ec2-user/.local-operator/sessions/716d6a56a2cf/scratchpad/ask-cmd/final/local/card-light.png",
+      "bytes": 100150,
+      "pixels": {
+        "width": 1380,
+        "height": 900
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 1
+      }
+    }
+  },
+  {
+    "k": "surfaces before insert",
+    "v": []
+  },
+  {
+    "k": "insert surface",
+    "v": "con:1:P-2s8djFR_qZVRH-PqCRdg"
+  },
+  {
+    "k": "insert pty replay",
+    "v": "\u001b[?2004hbash-5.2$ \r\u001b[K\rbash-5.2$ \u001b[7mecho ASKCMD-$((6*7))\u001b[27m"
+  },
+  {
+    "k": "insert typed command present",
+    "v": true
+  },
+  {
+    "k": "insert executed (marker output present)",
+    "v": false
+  },
+  {
+    "k": "frame console after insert",
+    "v": {
+      "label": "console-after-insert",
+      "path": "/home/ec2-user/.local-operator/sessions/716d6a56a2cf/scratchpad/ask-cmd/final/local/console-after-insert.png",
+      "bytes": 76263,
+      "pixels": {
+        "width": 1380,
+        "height": 900
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 1
+      }
+    }
+  },
+  {
+    "k": "press chip",
+    "v": {
+      "attempt": 1,
+      "hit": {
+        "selector": "[data-lo-ask-item-toggle]",
+        "target": "button \"Collapse this conversation's asks — 1 question waiting · exp\"",
+        "hitTest": true,
+        "hit": "span \"1 question waiting\"",
+        "stack": [
+          "span \"1 question waiting\"",
+          "button \"Expand this conversation's asks — 1 question waiting · expir\"",
+          "div \"1 question waiting · expires in 59m · 59m\"",
+          "div \"1 question waiting · expires in 59m · 59m\""
+        ],
+        "disabled": false,
+        "rect": {
+          "x": 286,
+          "y": 778,
+          "width": 230.65625,
+          "height": 24
+        }
+      }
+    }
+  },
+  {
+    "k": "dialog",
+    "v": {
+      "text": "Run this command?\necho ASKCMD-$((6*7))\n\nIt runs in a new terminal on this computer, in your home folder.\n\nCommands from the agent can be wrong or unsafe. Read it before you run it.\n\nCancel\nRun in terminal",
+      "focused": true,
+      "focusedText": "Cancel"
+    }
+  },
+  {
+    "k": "surfaces while dialog open (no new one)",
+    "v": true
+  },
+  {
+    "k": "frame dialog localOperatorDark",
+    "v": {
+      "label": "dialog-dark",
+      "path": "/home/ec2-user/.local-operator/sessions/716d6a56a2cf/scratchpad/ask-cmd/final/local/dialog-dark.png",
+      "bytes": 105943,
+      "pixels": {
+        "width": 1380,
+        "height": 900
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 1
+      }
+    }
+  },
+  {
+    "k": "frame dialog localOperatorLight",
+    "v": {
+      "label": "dialog-light",
+      "path": "/home/ec2-user/.local-operator/sessions/716d6a56a2cf/scratchpad/ask-cmd/final/local/dialog-light.png",
+      "bytes": 113735,
+      "pixels": {
+        "width": 1380,
+        "height": 900
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 1
+      }
+    }
+  },
+  {
+    "k": "run surface",
+    "v": "con:2:uk0HqSSYlV72QbvLNUSZAw"
+  },
+  {
+    "k": "run pty replay",
+    "v": "\u001b[?2004hbash-5.2$ \r\u001b[K\rbash-5.2$ \u001b[7mecho ASKCMD-$((6*7))\u001b[27m\r\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[C\u001b[Cecho ASKCMD-$((6*7))\r\n\u001b[?2004l\rASKCMD-42\r\n\u001b[?2004hbash-5.2$ "
+  },
+  {
+    "k": "run executed (marker output present)",
+    "v": true
+  },
+  {
+    "k": "frame console after run",
+    "v": {
+      "label": "console-after-run",
+      "path": "/home/ec2-user/.local-operator/sessions/716d6a56a2cf/scratchpad/ask-cmd/final/local/console-after-run.png",
+      "bytes": 77689,
+      "pixels": {
+        "width": 1380,
+        "height": 900
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 1
+      }
+    }
+  },
+  {
+    "k": "fixture requests (non-GET)",
+    "v": [
+      "POST /v1/desktop/radient",
+      "POST /v1/desktop/radient",
+      "POST /v1/desktop/radient",
+      "POST /v1/desktop/radient"
+    ]
+  }
+]

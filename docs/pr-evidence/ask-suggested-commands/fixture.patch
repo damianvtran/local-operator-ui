@@ -1,0 +1,39 @@
+--- scripts/asks-app-fixture.mjs	2026-11-13 16:26:10.410664924 +0000
++++ /home/ec2-user/.local-operator/sessions/716d6a56a2cf/scratchpad/ask-cmd/fixture.mjs	2026-11-13 17:14:51.650488062 +0000
+@@ -47,13 +47,20 @@
+ 		questions: [
+ 			{
+ 				id: "environment",
+-				question: "Synthetic CI: which environment?",
++				question: process.env.ASKCMD_COMMAND ? "glab is signed out, so I can't open the merge request. Sign it back in, then tell me when it's done." : "Synthetic CI: which environment?",
+ 				multi_select: false,
+ 				allow_other: true,
+ 				recommended: 0,
+ 				options: [
+ 					{ label: "Staging", description: "Synthetic, never submitted" },
+ 				],
++				/* ask-cmd rig: the suggested command under test (env-driven). */
++				...(process.env.ASKCMD_COMMAND
++					? {
++							command: process.env.ASKCMD_COMMAND,
++							command_target: process.env.ASKCMD_TARGET || "agent",
++						}
++					: {}),
+ 			},
+ 		],
+ 	};
+@@ -168,6 +175,14 @@
+ 		asks_open: i === 0 ? 1 : 0,
+ 		cwd: "/synthetic/ci",
+ 		status: { code: "idle", label: "Idle" },
++		/* ask-cmd rig: place session 1 on a peer when asked. */
++		...(process.env.ASKCMD_REMOTE === "1" && i === 0
++			? {
++					locality: "remote",
++					owner_device: "dev-0000studio",
++					owner_device_name: "Studio Mac mini",
++				}
++			: {}),
+ 	}));
+ 	/*
+ 	 * The Radient operations this scene's own reads reach, and the synthetic answer

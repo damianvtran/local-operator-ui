@@ -1,0 +1,149 @@
+[
+  {
+    "k": "app",
+    "v": {
+      "pid": 3868442,
+      "port": 35185
+    }
+  },
+  {
+    "k": "console.available",
+    "v": {
+      "available": true
+    }
+  },
+  {
+    "k": "press chip",
+    "v": {
+      "attempt": 1,
+      "hit": {
+        "selector": "[data-lo-ask-item-toggle]",
+        "target": "button \"Expand this conversation's asks — 1 question waiting · expir\"",
+        "hitTest": true,
+        "hit": "span \"1 question waiting\"",
+        "stack": [
+          "span \"1 question waiting\"",
+          "button \"Collapse this conversation's asks — 1 question waiting · exp\"",
+          "div \"1 question waiting · expires in 59m · 59m\"",
+          "div \"1 question waiting · expires in 59m · 59m\""
+        ],
+        "disabled": false,
+        "rect": {
+          "x": 286,
+          "y": 778,
+          "width": 230.65625,
+          "height": 24
+        }
+      }
+    }
+  },
+  {
+    "k": "press chip",
+    "v": {
+      "attempt": 2,
+      "hit": {
+        "selector": "[data-lo-ask-item-toggle]",
+        "target": "button \"Collapse this conversation's asks — 1 question waiting · exp\"",
+        "hitTest": true,
+        "hit": "span \"1 question waiting\"",
+        "stack": [
+          "span \"1 question waiting\"",
+          "button \"Expand this conversation's asks — 1 question waiting · expir\"",
+          "div \"1 question waiting · expires in 59m · 59m\"",
+          "div \"1 question waiting · expires in 59m · 59m\""
+        ],
+        "disabled": false,
+        "rect": {
+          "x": 403,
+          "y": 742,
+          "width": 230.65625,
+          "height": 24
+        }
+      }
+    }
+  },
+  {
+    "k": "row",
+    "v": {
+      "text": "glab auth login --hostname gitlab.com",
+      "insert": true,
+      "run": false,
+      "notice": "The agent works on Studio Mac mini. This runs here, not there."
+    }
+  },
+  {
+    "k": "frame card localOperatorDark",
+    "v": {
+      "label": "remote-card-dark",
+      "path": "/home/ec2-user/.local-operator/sessions/716d6a56a2cf/scratchpad/ask-cmd/final/remote/remote-card-dark.png",
+      "bytes": 105165,
+      "pixels": {
+        "width": 1380,
+        "height": 900
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 1
+      }
+    }
+  },
+  {
+    "k": "frame card localOperatorLight",
+    "v": {
+      "label": "remote-card-light",
+      "path": "/home/ec2-user/.local-operator/sessions/716d6a56a2cf/scratchpad/ask-cmd/final/remote/remote-card-light.png",
+      "bytes": 105098,
+      "pixels": {
+        "width": 1380,
+        "height": 900
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 1
+      }
+    }
+  },
+  {
+    "k": "error",
+    "v": "Error: done (capture-only mode)\n    at file:///home/ec2-user/.local-operator/sessions/716d6a56a2cf/scratchpad/ask-cmd/rig.mjs:123:9"
+  },
+  {
+    "k": "error frame",
+    "v": {
+      "label": "error",
+      "path": "/home/ec2-user/.local-operator/sessions/716d6a56a2cf/scratchpad/ask-cmd/final/remote/error.png",
+      "bytes": 105090,
+      "pixels": {
+        "width": 1380,
+        "height": 900
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 1
+      }
+    }
+  },
+  {
+    "k": "error dom",
+    "v": {
+      "drawer": true,
+      "panel": true,
+      "rows": 1,
+      "q": [
+        "glab is signed out, so I can't open the merge request. Sign it back in, then tel"
+      ]
+    }
+  },
+  {
+    "k": "fixture requests (non-GET)",
+    "v": [
+      "POST /v1/desktop/radient",
+      "POST /v1/desktop/radient",
+      "POST /v1/desktop/radient",
+      "POST /v1/desktop/radient"
+    ]
+  }
+]
