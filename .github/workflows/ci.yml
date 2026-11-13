@@ -867,6 +867,12 @@ jobs:
 
       - name: Build main with V8 bytecode
         env:
+          # Run 43319106365 hit Node's ~2 GiB heap limit while bundling the
+          # renderer. Match publish's 4 GiB old-space budget on the 7 GB Mac
+          # runner, leaving headroom for native allocations and the OS. This is
+          # CI build-only: keep Linux's default and do not leak Node flags into
+          # the later Electron runtime probe or the shipped app.
+          NODE_OPTIONS: ${{ matrix.runner == 'macos-15' && '--max-old-space-size=4096' || '' }}
           VITE_GOOGLE_CLIENT_ID: ci-bytecode-check
           VITE_GOOGLE_CLIENT_SECRET: ci-bytecode-check
           VITE_MICROSOFT_CLIENT_ID: ci-bytecode-check
