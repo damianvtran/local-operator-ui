@@ -1058,6 +1058,10 @@ export const CASES = {
 				"long-ask-440x700",
 				"long-ask-440x1400",
 				"long-ask-440x600",
+				/* The D4 frame: at the maximum, where the band's bottom edge is readable. */
+				"long-ask-max-scroll-440x1024",
+				/* The m3 frame: the region's ring, focused by the keyboard, inside its port. */
+				"long-ask-focused-440x1024",
 			],
 		},
 		coverage:
@@ -1103,7 +1107,16 @@ export const CASES = {
 						box: listBox,
 						tabIndex: list.getAttribute("tabindex"),
 						role: list.getAttribute("role"),
-						name: labelled ? (document.getElementById(labelled)?.textContent ?? "").trim() : null,
+						ariaLabel: list.getAttribute("aria-label"),
+						/* The EFFECTIVE name: aria-label on the candidate, aria-labelledby before it. */
+						name:
+							list.getAttribute("aria-label") ??
+							(labelled
+								? (document.getElementById(labelled)?.textContent ?? "").trim()
+								: null),
+						scope:
+							(document.querySelector("[data-ask-scope]")?.textContent ?? "").trim() ||
+							null,
 						padding: getComputedStyle(list).scrollPaddingBottom,
 						actionsVar: list.style.getPropertyValue("--lo-ask-actions-h"),
 					},
@@ -1189,6 +1202,17 @@ export const CASES = {
 				Home: { key: "Home", code: "Home", windowsVirtualKeyCode: 36 },
 				Tab: { key: "Tab", code: "Tab", windowsVirtualKeyCode: 9 },
 				Space: { key: " ", code: "Space", windowsVirtualKeyCode: 32 },
+				/*
+				 * SHIFT+SPACE IS THE UPSIDE-DOWN SPACE (agent review round 1, m2). `modifiers: 8`
+				 * is Shift in the DevTools protocol's bitmask, so the key arrives with
+				 * `shiftKey` true and the region has to page BACK rather than forward.
+				 */
+				ShiftSpace: {
+					key: " ",
+					code: "Space",
+					windowsVirtualKeyCode: 32,
+					modifiers: 8,
+				},
 			};
 			/*
 			 * A KEY'S READING, POLLED UNTIL IT SETTLES. Chromium animates keyboard scrolling
@@ -1347,6 +1371,16 @@ export const CASES = {
 				await pause(250);
 				const stickyMax = await read();
 				/*
+				 * THE MAX-SCROLL FRAME (design round 1, D4), captured at the one scroll
+				 * position the D3 reading is about: the card's own bottom is the port's, so a
+				 * band that bleeds to the card's edge is flush with the port and one that does
+				 * not leaves a strip. CANDIDATE ONLY - the control draws no pinned row at all
+				 * (its `Send answer` sits ~2200 px down the card), so a "before" frame here
+				 * would photograph an absence.
+				 */
+				if (kind === "candidate" && size === "440x1024")
+					await frame("long-ask-max-scroll-440x1024");
+				/*
 				 * THE PAGE KEYS, from the LIST first - the stop the keyboard lands on - and then
 				 * from the QUESTION BODY, which is where a reader who tabbed into the card
 				 * actually is.
@@ -1370,6 +1404,16 @@ export const CASES = {
 				const afterSpace = await pressAndSettle(
 					["Space"],
 					(state) => state.list.scrollTop > 0,
+				);
+				/*
+				 * AND BACK UP WITH SHIFT (agent review round 1, m2): the region answered Space
+				 * with a forward page whatever the modifiers were, so the platform's
+				 * page-up gesture did nothing here. The reading is taken from where Space
+				 * settled, not from the top, so it cannot pass on a no-op.
+				 */
+				const afterShiftSpace = await pressAndSettle(
+					["ShiftSpace"],
+					(state) => state.list.scrollTop < afterSpace.list.scrollTop,
 				);
 				const bodyFocus = await focusOn("[data-lo-ask-scroll]");
 				await resetScroll();
@@ -1405,6 +1449,18 @@ export const CASES = {
 				);
 				await keyPress(["Tab"]);
 				const afterChromeTab = await read();
+				/*
+				 * THE FOCUSED FRAME (m3 = UX's U2), taken on the keyboard path: Tab from the
+				 * drawer's chrome lands on the list, so `:focus-visible` is what put the ring
+				 * on it (a programmatic `focus()` after a wheel does not always match). The
+				 * ring is drawn INSET by its own width and offset now, and the claim the frame
+				 * is here to make is geometric: all four of its edges paint inside the
+				 * scrollport, where the outset ring lost two pixels a side to the clip.
+				 * CANDIDATE ONLY: the control leg's ring IS the outset one, so its clipped
+				 * corners are the defect rather than evidence of the fix.
+				 */
+				if (kind === "candidate" && size === "440x1024")
+					await frame("long-ask-focused-440x1024");
 				const tab = await tabWalk(40);
 				readings[size] = {
 					open,
@@ -1420,6 +1476,7 @@ export const CASES = {
 						afterEnd,
 						afterHome,
 						afterSpace,
+						afterShiftSpace,
 						afterBodyPageDown,
 						afterBodyEnd,
 					},
@@ -1438,6 +1495,8 @@ export const CASES = {
 							tabIndex: entry.open.list.tabIndex,
 							role: entry.open.list.role,
 							name: entry.open.list.name,
+							ariaLabel: entry.open.list.ariaLabel,
+							scope: entry.open.list.scope,
 							padding: entry.open.list.padding,
 							actionsVar: entry.open.list.actionsVar,
 						},
@@ -1462,7 +1521,9 @@ export const CASES = {
 							top: entry.stickyTop.send,
 							max: entry.stickyMax.send,
 							pinnedTop: entry.stickyTop.pinned,
+							pinnedMax: entry.stickyMax.pinned,
 							port: entry.stickyTop.list.box,
+							portMax: entry.stickyMax.list.box,
 						},
 						keys: {
 							listFocus: entry.keys.listFocus,
@@ -1471,6 +1532,7 @@ export const CASES = {
 							end: entry.keys.afterEnd.list.scrollTop,
 							home: entry.keys.afterHome.list.scrollTop,
 							space: entry.keys.afterSpace.list.scrollTop,
+							shiftSpace: entry.keys.afterShiftSpace.list.scrollTop,
 							bodyPageDown: entry.keys.afterBodyPageDown.list.scrollTop,
 							bodyEnd: entry.keys.afterBodyEnd.list.scrollTop,
 						},
@@ -1544,6 +1606,18 @@ export const CASES = {
 						entry.list.name !== null && entry.list.name.length > 0,
 						`${size}: the stop must carry an accessible name`,
 					);
+					/*
+					 * THE NAME IS THE CONTENT'S, NOT THE STATUS LINE (agent review round 1, U3):
+					 * naming the region from the bar made it announce "1 question waiting" as if
+					 * that were the box. It now reads the rail door's register, so it differs
+					 * from the bar's own line above it and agrees with the control that opened
+					 * the pane.
+					 */
+					assert.notEqual(
+						entry.list.name,
+						entry.list.scope,
+						`${size}: the region's name must not be the status line (both read ${JSON.stringify(entry.list.name)})`,
+					);
 					assert(
 						Number.parseFloat(entry.list.padding) > 0,
 						`${size}: the list needs a scroll-padding-bottom that clears the pinned row (got ${entry.list.padding})`,
@@ -1557,6 +1631,18 @@ export const CASES = {
 						entry.sticky.max?.inPort,
 						true,
 						`${size}: Send answer must be inside the port at the maximum`,
+					);
+					/*
+					 * FLUSH AT THE MAXIMUM (design round 1, D3): the card's own bottom IS the
+					 * port's at that scroll position, so the band must reach it. `-my-2 py-2`
+					 * stopped 4 px short and left a strip of question text under the bar; the
+					 * 1 px slack is sub-pixel rounding, not the defect.
+					 */
+					assert(
+						Math.abs(
+							entry.sticky.pinnedMax.bottom - entry.sticky.portMax.bottom,
+						) <= 1,
+						`${size}: the pinned row must be flush with the port's bottom at the maximum (row bottom ${entry.sticky.pinnedMax.bottom}, port bottom ${entry.sticky.portMax.bottom})`,
 					);
 					assert(
 						entry.keys.pageDown > 0,
@@ -1574,6 +1660,10 @@ export const CASES = {
 					assert(
 						entry.keys.space > entry.keys.home,
 						`${size}: Space on the list must page it down`,
+					);
+					assert(
+						entry.keys.shiftSpace < entry.keys.space,
+						`${size}: Shift+Space on the list must page it back up (Space settled at ${entry.keys.space}, Shift+Space at ${entry.keys.shiftSpace})`,
 					);
 					assert(
 						entry.keys.bodyPageDown > 0,

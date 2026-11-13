@@ -30,7 +30,7 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export * from "./src/renderer/src/features/chat/profile-proposal-ask";',
-			'export { ASK_BODY_CAP, ASK_BODY_FLOOR, ASK_BODY_MAX_H, ASK_CARD_MAX_H, ASK_FADE_MASK, ASK_OPTIONS_MAX_H } from "./src/renderer/src/features/chat/components/asks/ask-bounds";',
+			'export { ASK_BODY_CAP, ASK_BODY_FLOOR, ASK_BODY_MAX_H, ASK_CARD_MAX_H, ASK_FADE_MASK, ASK_OPTIONS_MAX_H, publishAskActionsHeight } from "./src/renderer/src/features/chat/components/asks/ask-bounds";',
 			'export { ApprovalEscapeControls } from "./src/renderer/src/features/chat/components/trace/approval-escape";',
 			'export { titleTooltip, TITLE_TOOLTIP_MAX } from "./src/renderer/src/features/notifications/components/notification-detail";',
 			'export { QuestionDock, questionDockHint } from "./src/renderer/src/features/chat/components/trace/question-dock";',
@@ -1386,4 +1386,57 @@ test("the dock contains the wheel; the panel hands it to its host", async () => 
 		"on glass the row masks moving content with the isolating band, not a wash",
 	);
 	await panel.unmount();
+});
+
+/*
+ * THE HOST OWNS `--lo-ask-actions-h` (agent review round 1, m1). With two cards in
+ * the drawer the variable used to be written by every card's row and deleted by
+ * whichever row unmounted first - so a card that settled took the number away while
+ * another card's row was still pinned, and the padding that keeps Tab focus clear of
+ * that band vanished with a bar still on screen. The publisher takes the TALLEST row
+ * in the host, which is the deepest band any visible card can paint over a control.
+ */
+test("the tallest pinned row wins, and a card leaving keeps the other card's height", async () => {
+	const list = window.document.createElement("div");
+	list.setAttribute("data-lo-ask-list", "");
+	const tall = window.document.createElement("div");
+	tall.setAttribute("data-lo-ask-actions", "");
+	const short = window.document.createElement("div");
+	short.setAttribute("data-lo-ask-actions", "");
+	list.append(tall, short);
+	window.document.body.append(list);
+	try {
+		await withLayout(
+			(el) =>
+				el === tall
+					? { rect: { top: 0, bottom: 96 } }
+					: el === short
+						? { rect: { top: 0, bottom: 34 } }
+						: null,
+			async () => {
+				M.publishAskActionsHeight(list);
+				assert.equal(
+					list.style.getPropertyValue("--lo-ask-actions-h"),
+					"96px",
+					"the host takes the TALLEST row, not the first or the last",
+				);
+				tall.remove();
+				M.publishAskActionsHeight(list);
+				assert.equal(
+					list.style.getPropertyValue("--lo-ask-actions-h"),
+					"34px",
+					"a card whose row unmounted must leave the other card's height",
+				);
+				short.remove();
+				M.publishAskActionsHeight(list);
+				assert.equal(
+					list.style.getPropertyValue("--lo-ask-actions-h"),
+					"",
+					"no pinned row left removes the value",
+				);
+			},
+		);
+	} finally {
+		list.remove();
+	}
 });

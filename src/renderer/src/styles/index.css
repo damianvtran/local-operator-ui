@@ -2034,6 +2034,19 @@ html [data-device-chip]:focus-visible {
 }
 
 /*
+ * THE ASK LIST'S RING IS DRAWN INSIDE ITS OWN BOX, for the reason above and one
+ * the device chip does not have: this box is a SCROLLPORT (`overflow-y: auto`) and
+ * it sits inside the drawer's column, so the global 2 px/2 px outset ring was
+ * clipped at the port's edges - agent review round 1's m3 = UX's U2 measured the
+ * ring there with its outer two pixels cut on all four sides. Inset by exactly the
+ * ring's width and offset, every edge paints inside the box the reader sees, and
+ * the ring still reads as a full ring.
+ */
+html [data-lo-ask-list]:focus-visible {
+	outline-offset: -2px;
+}
+
+/*
  * `outline-none` is deliberately NOT reversed here.
  *
  * The tempting fix for Tailwind v4's `outline-none` (which pins

@@ -105,7 +105,7 @@ import { parseProfileProposalCard } from "../../profile-proposal-ask";
 import { AskRecommendedBadge, recommendedIndexes } from "../ask-recommended";
 import { AskAnswerField, commitOnEnter } from "./ask-answer-field";
 import {
-	ASK_LIST_ATTR,
+	ASK_ACTIONS_ATTR,
 	ASK_OPTIONS_MAX_H,
 	AskScrollBody,
 	ProposalReviewNotice,
@@ -1041,43 +1041,15 @@ const AskRow = ({
 	const dismissTrigger = useRef<HTMLButtonElement | null>(null);
 	const dismissFirstReason = useRef<HTMLButtonElement | null>(null);
 	/*
-	 * THE PINNED ACTION ROW (`Send answer` / `Decline`), and the height it reports.
-	 * The row sticks to the bottom of the host's scroller while this card is the one
-	 * crossing it (see the row's own note), and that scroller's
-	 * `scroll-padding-bottom` has to know how tall the bar really is - it is not a
-	 * constant once a translation or a narrow column wraps it - so the row measures
-	 * itself and publishes the number to the list. Same contract `EditFooter` keeps
-	 * with the agents pane (`--lo-pane-footer-h`).
+	 * THE PINNED ACTION ROW (`Send answer` / `Decline`) sticks to the bottom of the
+	 * host's scroller while this card is the one crossing it (see the row's own
+	 * note). Its HEIGHT is the host's to measure, not this card's: it is published
+	 * to the list by `useAskActionsHeight` (`ask-bounds.tsx`), which takes the
+	 * tallest row in the scroller - with two cards on screen, a card whose row
+	 * unmounts must not take the number another pinned row is still using with it
+	 * (agent review round 1, m1).
 	 */
 	const actionsRef = useRef<HTMLDivElement | null>(null);
-	const pinActions = (canAnswer || canDecline) && !dismissOpen;
-	// biome-ignore lint/correctness/useExhaustiveDependencies: the row's mount flag is the trigger, not a value read in the body
-	useEffect(() => {
-		const row = actionsRef.current;
-		const list = row?.closest<HTMLElement>(`[${ASK_LIST_ATTR}]`);
-		if (!row || !list) return;
-		const publish = () =>
-			list.style.setProperty(
-				"--lo-ask-actions-h",
-				`${row.getBoundingClientRect().height}px`,
-			);
-		publish();
-		/*
-		 * jsdom has no layout and no `ResizeObserver`: it publishes nothing and the
-		 * scroller's `var()` falls back, which is what an unlaid box has.
-		 */
-		if (typeof ResizeObserver === "undefined") return;
-		const observer = new ResizeObserver(publish);
-		observer.observe(row);
-		return () => {
-			observer.disconnect();
-			list.style.removeProperty("--lo-ask-actions-h");
-		};
-		/*
-		 * Re-run when the row mounts or unmounts (the dismiss chooser takes its place);
-		 * a height change inside one mounted row is the observer's business.
-		 */
-	}, [pinActions]);
 	const armTriggerFocus = useRef(false);
 	const dismissSending = outcome?.sending === true;
 	/*
@@ -1717,17 +1689,23 @@ const AskRow = ({
 				 * list's sticky headers use - because a 5% wash hides nothing from content that
 				 * MOVES under it; off glass the same element carries the flat `elevated` step. It
 				 * BLEEDS TO THE CARD'S EDGES (`-mx-3 px-3`) so no scrolled glyph shows in the
-				 * card's own 12 px padding beside the bar; `-my-2 py-2` gives the band that air
-				 * without changing the row's 34 px layout footprint (flex `gap` measures margin
-				 * boxes), so the card at rest is the height it was.
+				 * card's own 12 px padding beside the bar, and it bleeds to the card's
+				 * BOTTOM with the top half of that trick (`-mt-2 pt-2`, which gives the band
+				 * its air without changing the row's 34 px layout footprint - flex `gap`
+				 * measures margin boxes - so the card at rest is the height it was).
+				 *
+				 * THE BOTTOM BLEEDS THE WHOLE PADDING (`-mb-3 pb-3`), not the 8 px the top
+				 * uses: `-my-2 py-2` left the band 4 px short of the card's own bottom edge,
+				 * and that gap is what a reader saw at maximum scroll as a strip of the
+				 * question text under the bar (design round 1, D3).
 				 *
 				 * NO BORDER: a plate's own step is the edge the contract asks for here.
 				 */
 				<div
 					ref={actionsRef}
-					data-lo-ask-actions=""
+					{...{ [ASK_ACTIONS_ATTR]: "" }}
 					data-glass-plane="band-backdrop"
-					className="sticky bottom-0 z-[1] -mx-3 -my-2 flex items-center gap-2 bg-elevated px-3 py-2"
+					className="sticky bottom-0 z-[1] -mx-3 -mt-2 -mb-3 flex items-center gap-2 bg-elevated px-3 pt-2 pb-3"
 				>
 					{/*
 					 * ONE NEXT ACTION AFTER A TRANSPORT FAILURE (design round 1, D2). While

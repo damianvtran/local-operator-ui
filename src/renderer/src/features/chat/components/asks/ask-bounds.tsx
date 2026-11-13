@@ -4,6 +4,8 @@ import { FileDiff } from "lucide-react";
 import {
 	type CSSProperties,
 	type ReactNode,
+	type RefObject,
+	useEffect,
 	useLayoutEffect,
 	useRef,
 	useState,
@@ -124,6 +126,76 @@ export const ASK_SCROLL_ATTR = "data-lo-ask-scroll";
  * second host cannot half-adopt the contract.
  */
 export const ASK_LIST_ATTR = "data-lo-ask-list";
+/**
+ * THE PINNED ACTION ROW a card draws at the bottom of its own box
+ * (`Send answer` / `Decline`), and the ONE number the host's
+ * `scroll-padding-bottom` needs from it.
+ *
+ * THE HOST OWNS THE HEIGHT, NOT THE CARD (agent review round 1, m1). The row
+ * used to write `--lo-ask-actions-h` on the host itself and delete the property
+ * on unmount, so with two cards on screen a card whose row went away (it
+ * settled, or its dismiss chooser opened) removed the value while another
+ * card's row was still pinned - and the padding that keeps Tab focus clear of a
+ * band vanished with a bar still drawn over the list. What the host needs is the
+ * TALLEST row currently in it: the deepest band any visible card can paint over
+ * a focused control.
+ */
+export const ASK_ACTIONS_ATTR = "data-lo-ask-actions";
+export const ASK_ACTIONS_SELECTOR = `[${ASK_ACTIONS_ATTR}]`;
+
+/** Publish the tallest pinned row's height to `list`; no row left removes the value. */
+export function publishAskActionsHeight(list: HTMLElement): void {
+	let tallest = 0;
+	for (const row of list.querySelectorAll<HTMLElement>(ASK_ACTIONS_SELECTOR))
+		tallest = Math.max(tallest, row.getBoundingClientRect().height);
+	if (tallest > 0) list.style.setProperty("--lo-ask-actions-h", `${tallest}px`);
+	else list.style.removeProperty("--lo-ask-actions-h");
+}
+
+/**
+ * Keep `--lo-ask-actions-h` current on a host declared by `ASK_LIST_ATTR`.
+ *
+ * Rows mount and unmount WITH THEIR CARDS, so the observed set is rebuilt on a
+ * `childList` mutation; a height change inside one mounted row (a translation
+ * wraps it, the column narrows) is the `ResizeObserver`'s business. jsdom has no
+ * layout and no `ResizeObserver`: the mount-time publish runs and the rest is
+ * skipped, which is what an unlaid box has.
+ */
+export function useAskActionsHeight(ref: RefObject<HTMLElement | null>): void {
+	useEffect(() => {
+		const list = ref.current;
+		if (!list) return;
+		publishAskActionsHeight(list);
+		if (typeof ResizeObserver === "undefined") return;
+		const observer = new ResizeObserver(() => publishAskActionsHeight(list));
+		/*
+		 * Each row is observed ONCE (`observed`), so a mutation elsewhere in the list - a
+		 * streamed card re-rendering - costs a querySelectorAll and no re-subscription.
+		 * A row that unmounts stays in the set until this host does; it no longer
+		 * resizes, and the set is bounded by the rows this drawer has ever drawn.
+		 */
+		const observed = new Set<Element>();
+		const watch = () => {
+			for (const row of list.querySelectorAll(ASK_ACTIONS_SELECTOR)) {
+				if (observed.has(row)) continue;
+				observed.add(row);
+				observer.observe(row);
+			}
+			publishAskActionsHeight(list);
+		};
+		watch();
+		const mutations =
+			typeof MutationObserver === "undefined"
+				? null
+				: new MutationObserver(watch);
+		mutations?.observe(list, { childList: true, subtree: true });
+		return () => {
+			mutations?.disconnect();
+			observer.disconnect();
+			list.style.removeProperty("--lo-ask-actions-h");
+		};
+	}, [ref]);
+}
 /** Present while the bottom fade is drawn (overflowing, not scrolled to the end). */
 export const ASK_FADE_ATTR = "data-lo-ask-fade";
 

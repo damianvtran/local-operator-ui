@@ -105,7 +105,6 @@ import {
 	type ReactNode,
 	useCallback,
 	useEffect,
-	useId,
 	useLayoutEffect,
 	useRef,
 	useState,
@@ -122,14 +121,17 @@ import {
 	ASK_ITEM_SELECTOR,
 	ASK_RAIL_ITEM_SELECTOR,
 	EMPTY_DRAFTS,
+	askAttentionCount,
 	askDrawerUnavailableLine,
 	askDrawerUnreadLine,
 	askQueueView,
 	askScopeLine,
+	askScopeSubject,
 	noopDraftChange,
 } from "../../ask-queue";
 import { handCaretToComposer } from "../../composer-caret";
 import { useAskClock } from "../../use-ask-clock";
+import { useAskActionsHeight } from "./ask-bounds";
 import { AskPanel } from "./ask-panel";
 
 /**
@@ -394,11 +396,32 @@ export const AskDrawer = ({
 	 * somewhere to land without a click first. A list that fits takes neither the stop
 	 * nor the role - an empty Tab stop in front of every short queue is noise.
 	 *
-	 * The name is the bar's own scope line (`aria-labelledby`), which already says what
-	 * the list holds - this adds no copy, and it is not the section's name repeated.
+	 * The name is the RAIL DOOR's own (`ui.shell.rail.ask.aria[_count]`): the noun,
+	 * this queue's scope and how many of it are waiting - the register a screen-reader
+	 * user already hears for the control that opened this pane (agent review round 1,
+	 * U3). Naming the region from the bar's STATUS LINE made it announce "1 question
+	 * waiting" as if that were what the box is; the bar still says that, above it.
 	 */
 	const [listOverflows, setListOverflows] = useState(false);
-	const scopeId = useId();
+	useAskActionsHeight(listRef);
+	/*
+	 * The region's name, in the RAIL DOOR's register (`ui.shell.rail.ask.aria[_count]`):
+	 * the noun, this queue's scope and how many are waiting - no new copy, and no
+	 * chord, because this box answers none of its own.
+	 */
+	const waiting = askAttentionCount(view);
+	const regionName =
+		waiting > 0
+			? t("ui.shell.rail.ask.aria_count", {
+					chord: "",
+					subject: askScopeSubject(scope),
+					count: waiting,
+					countText: String(waiting),
+				})
+			: t("ui.shell.rail.ask.aria", {
+					chord: "",
+					subject: askScopeSubject(scope),
+				});
 	useEffect(() => {
 		const node = listRef.current;
 		if (!node) return;
@@ -1191,14 +1214,12 @@ export const AskDrawer = ({
 				)}
 			>
 				<span
-					id={scopeId}
 					className="truncate text-ink-muted text-xs"
 					/*
 					 * The scope line is the surface's own name, so a reader who arrives by
-					 * keyboard hears which queue this is rather than only "Asks". It names the
-					 * LIST's own scroll region too (`aria-labelledby` on the scroller), which is
-					 * why it carries an id: the region holds this queue, and the line already
-					 * says which one and how much is in it.
+					 * keyboard hears which queue this is rather than only "Asks". It is the
+					 * BAR's reading and not the list region's name (see the region's own note);
+					 * the two say the same scope and count different things on purpose.
 					 */
 					data-ask-scope=""
 				>
@@ -1239,19 +1260,19 @@ export const AskDrawer = ({
 				 * 1. THE CARD'S ACTIONS PIN INSIDE IT. Each card's `Send answer`/`Decline` row is
 				 *    `sticky bottom-0`, so it holds at the bottom of this box while its card is the
 				 *    one crossing the fold (see the row's note in `ask-panel.tsx`).
-				 * 2. TAB FOCUS LANDS ABOVE THAT ROW. The row publishes its measured height here
-				 *    (`--lo-ask-actions-h`), and this padding makes a focus or `scrollIntoView`
-				 *    stop short of it: the browser only scrolls an element that is outside the
-				 *    scrollport, and under a sticky bar it is INSIDE - the same defect
-				 *    `EditFooter` fixed for the agents pane. The 4 px is the focus ring's
-				 *    offset-and-width, so the ring clears the bar too.
+				 * 2. TAB FOCUS LANDS ABOVE THAT ROW. `useAskActionsHeight` (`ask-bounds.tsx`)
+				 *    publishes the TALLEST row in this scroller as `--lo-ask-actions-h` (the
+				 *    host owns the number, so no card takes another's away), and this padding
+				 *    makes a focus or `scrollIntoView` stop short of it: the browser only
+				 *    scrolls an element that is outside the scrollport, and under a sticky bar
+				 *    it is INSIDE - the same defect `EditFooter` fixed for the agents pane. The
+				 *    4 px is the focus ring's offset-and-width, so the ring clears the bar too.
 				 * 3. THE REGION IS IN THE TAB WALK WHILE IT SCROLLS (`tabIndex`/`role` below,
 				 *    measured, not unconditional).
 				 */
-				// The stop is the remedy, not a non-interactive tabindex: the list is the thing that scrolls, and it takes the key only while it really overflows.
 				tabIndex={listOverflows ? 0 : undefined}
 				role={listOverflows ? "region" : undefined}
-				aria-labelledby={listOverflows ? scopeId : undefined}
+				aria-label={listOverflows ? regionName : undefined}
 				/*
 				 * SPACE IS THE ONE PAGE KEY THE PLATFORM DOES NOT GIVE A FOCUSED SCROLL
 				 * CONTAINER. PageDown, End, Home and the arrows are Chromium's own on a
@@ -1259,7 +1280,8 @@ export const AskDrawer = ({
 				 * maximum, Home back at 0); Space scrolls only the DOCUMENT, so on this stop
 				 * it did nothing at all. The reader's expectation is the platform's, so the
 				 * region takes the key itself - by the scrollport's height less a line of
-				 * overlap, which is what a browser's own page scroll leaves.
+				 * overlap, which is what a browser's own page scroll leaves. Shift reverses
+				 * it, as it does for every other page key (agent review round 1, m2).
 				 *
 				 * ONLY ON THE REGION ITSELF (`target === currentTarget`): a focused control
 				 * inside it - a button, the `Other` field - keeps its own Space, which is
@@ -1269,8 +1291,9 @@ export const AskDrawer = ({
 					if (event.key !== " " || event.target !== event.currentTarget) return;
 					if (event.metaKey || event.ctrlKey || event.altKey) return;
 					event.preventDefault();
+					const page = Math.round(event.currentTarget.clientHeight * 0.9);
 					event.currentTarget.scrollBy({
-						top: Math.round(event.currentTarget.clientHeight * 0.9),
+						top: event.shiftKey ? -page : page,
 					});
 				}}
 				className={cn(
