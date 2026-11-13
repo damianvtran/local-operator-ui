@@ -7,6 +7,7 @@
  */
 import type { CanvasDocument, CanvasDocumentType } from "../types/canvas";
 import { canvasDocumentForPath } from "../utils/canvas-document";
+import { remoteOf } from "./remote-files";
 
 export type SessionFile = {
 	id: string;
@@ -36,6 +37,16 @@ export type SessionFile = {
 		child_id: string | null;
 		label: string | null;
 	};
+	/*
+	 * Remote-only fields (`features.remote_files`, core design §2). `remote` and
+	 * `origin_device` are stamped by THIS device's daemon from its own catalogue,
+	 * never trusted from the owner; `remote_read`/`remote_unreadable` are the
+	 * owner's advisory verdict for this page row (every read is re-checked).
+	 */
+	remote?: boolean;
+	origin_device?: { id: string; name: string | null } | null;
+	remote_read?: { kind: "attachment" | "path" } | null;
+	remote_unreadable?: string | null;
 };
 export type FilesSort =
 	| "recent"
@@ -54,6 +65,9 @@ export type SessionFilesPage = {
 	cursor_reset: boolean;
 	stat_complete: boolean;
 	scan: { covered_bytes: number; total_bytes: number };
+	/** Why a remote listing is `unsupported`, and which owner to name. */
+	unsupported_reason?: "peer_update_required" | "capability_absent" | null;
+	device_name?: string | null;
 };
 
 const KIND: Record<string, CanvasDocumentType> = {
@@ -88,10 +102,22 @@ export function indexedDocument(
 		lastAgentModified:
 			row.modified_at === null ? undefined : row.modified_at * 1000,
 	};
-	if (row.ref.type === "path")
-		return canvasDocumentForPath(row.ref.path, metadata);
+	const remote = remoteOf(row, parentSessionId);
+	if (row.ref.type === "path") {
+		if (!remote) return canvasDocumentForPath(row.ref.path, metadata);
+		// The owner's display path still classifies the row (its extension
+		// picks the viewer, its folder the parent label), but the id is the
+		// owner's row id so no local path identity is ever formed from it.
+		return {
+			...canvasDocumentForPath(row.ref.path, metadata),
+			id: `remote:${row.id}`,
+			indexedFileId: row.id,
+			remote,
+		};
+	}
 	return {
 		...metadata,
+		...(remote ? { remote } : {}),
 		// Transcript and index opens address one content identity, not two tabs.
 		// Retain the service handle separately for path materialisation only.
 		id: `artifact:${row.ref.digest}`,

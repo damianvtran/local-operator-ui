@@ -1,0 +1,17 @@
+{
+	"ui.music.label": "Музыка",
+	"ui.music.progress": "Завершено дорожек: {completed}/{total}",
+	"ui.music.cancel_warning": "Работа над «{label}» может завершиться и быть оплачена. Результаты останутся доступны.",
+	"ui.music.track": "Дорожка {index}",
+	"ui.music.failed": "Не удалось создать эту дорожку.",
+	"ui.music.empty": "Ни одной дорожки не получено.",
+	"ui.music.queued": "Музыка в очереди",
+	"ui.music.generating": "Создание музыки…",
+	"ui.music.generating_tracks": "{count, plural, one {Создание дорожек: #…} few {Создание дорожек: #…} many {Создание дорожек: #…} other {Создание дорожек: #…}}",
+	"ui.music.modifying": "Изменение музыки…",
+	"ui.music.cancel_requested": "Запрошена отмена",
+	"ui.music.ready": "Музыка готова",
+	"ui.music.job_failed": "Не удалось создать музыку.",
+	"ui.music.job_cancelled": "Создание музыки отменено.",
+	"ui.music.finished_after_cancel": "Музыка была готова раньше, чем удалось отменить создание."
+}

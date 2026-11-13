@@ -49,6 +49,7 @@ import type { JobCancelPopoverProps } from "./use-job-cancel";
 export const JobCancelPopover = ({
 	open,
 	label,
+	jobType,
 	anchor,
 	refusal,
 	refusalSeq,
@@ -157,7 +158,11 @@ export const JobCancelPopover = ({
 		>
 			<p className={cn("text-ink")}>{title}</p>
 			<p className={cn("pt-1.5 text-ink-muted")}>
-				{`The runtime asks the provider to stop “${label}”. The row says “Cancelled” only when the job settles.`}
+				{jobType === "music"
+					? t("ui.music.cancel_warning", {
+							label: label ?? t("ui.music.label"),
+						})
+					: `The runtime asks the provider to stop “${label}”. The row says “Cancelled” only when the job settles.`}
 			</p>
 			{refusal !== null && (
 				/*
