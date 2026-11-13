@@ -140,7 +140,21 @@ try{
  // call and the next user row (data-record-kind is the row's own record kind).
  const turnOwners=`(()=>{const anchor=document.querySelector(${JSON.stringify('[data-record-id='+JSON.stringify(producingRecord)+']')});if(!anchor)return [];const all=[...document.querySelectorAll('[data-record-id]')];const users=all.filter(e=>e.getAttribute('data-record-kind')==='user');const start=users.filter(u=>u.compareDocumentPosition(anchor)&Node.DOCUMENT_POSITION_FOLLOWING).pop();const end=users.find(u=>anchor.compareDocumentPosition(u)&Node.DOCUMENT_POSITION_FOLLOWING);return all.filter(e=>(!start||start.compareDocumentPosition(e)&Node.DOCUMENT_POSITION_FOLLOWING)&&(!end||e.compareDocumentPosition(end)&Node.DOCUMENT_POSITION_FOLLOWING));})()`;
  // Expand only a fold of the producing turn that is actually folded.
- const expandProducingTurn=async()=>{for(let i=0;i<8;i++){const sel=await cdp.evaluate(`(()=>{const b=${turnOwners}.filter(e=>e.matches('[data-turn-summary]')).map(e=>e.querySelector('button[aria-expanded="false"]')).find(Boolean);return b?'[data-turn-summary][data-record-id='+JSON.stringify(b.closest('[data-turn-summary]').getAttribute('data-record-id'))+'] button[aria-expanded]':null;})()`);if(!sel)return;await d.verb(cdp,'press',{selector:sel});await pause(200);}throw Error('Required actual native condition absent: producing_turn_expanded');};
+ // The turn summary can now hold NESTED disclosures (the "N actions" turn fold plus
+ // the preface reads' trace fold inside it), so the press must target the exact
+ // collapsed button found - a selector rebuilt from the summary's record id resolves
+ // to the summary's FIRST disclosure (the outer turn toggle) and just flips it open
+ // and shut (run 43436505730). The found button is tagged with a one-shot marker,
+ // pressed by that marker, and the DOM is re-queried each pass so every collapsed
+ // fold of the turn is opened; it throws only if one is still collapsed at the end.
+ const collapsedInTurn=`(()=>${turnOwners}.filter(e=>e.matches('[data-turn-summary]')).flatMap(e=>[...e.querySelectorAll('button[aria-expanded="false"]')]))()`;
+ const expandProducingTurn=async()=>{for(let i=0;i<8;i++){const sel=await cdp.evaluate(`(()=>{document.querySelectorAll('[data-lop-expand-target]').forEach(e=>e.removeAttribute('data-lop-expand-target'));const b=${collapsedInTurn}[0];if(!b)return null;const tag='x'+${JSON.stringify(String(Date.now()))}+'-'+${i};b.setAttribute('data-lop-expand-target',tag);return 'button[data-lop-expand-target='+JSON.stringify(tag)+']';})()`);if(!sel)return;await d.verb(cdp,'press',{selector:sel});await pause(200);}
+  const left=await cdp.evaluate(`${collapsedInTurn}.length`);if(left===0)return;note('producing_turn_expanded_timeout',{collapsed_left:left});throw Error('Required actual native condition absent: producing_turn_expanded');};
+ // R3: before the first expand press, prove the preface reads really are folded -
+ // the producing turn shows a collapsed disclosure and no read row is visible. An old
+ // build that rendered the reads outside the group would otherwise still pass the
+ // unexpanded-card checks above.
+ await observed('preface_reads_folded_unexpanded',()=>cdp.evaluate(`(()=>{const box=e=>{const r=e?.getBoundingClientRect();return !!r&&r.width>0&&r.height>0};return {collapsed:${collapsedInTurn}.length,reads:${JSON.stringify(pending.preface_reads)}.map(id=>({id,visible:box(document.querySelector('[data-record-id='+JSON.stringify('tool:'+id)+']'))}))}})()`),x=>x.collapsed>0&&x.reads.length===3&&x.reads.every(r=>!r.visible),5000);
  await expandProducingTurn();
  const recordId=await observed('actual_music_record',()=>cdp.evaluate(`document.querySelector('[data-music-track="'+${JSON.stringify(track)}+'"]:not([data-turn-summary] *)')?.closest('[data-record-id]')?.getAttribute('data-record-id')||null`),Boolean);
  const player='[data-record-id='+JSON.stringify(recordId)+']:not([data-turn-summary] *) [data-music-track='+JSON.stringify(track)+'] [data-sound-player]';
