@@ -3,7 +3,7 @@
 import {mkdirSync,readFileSync,writeFileSync,existsSync,symlinkSync} from 'node:fs';
 import {join} from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {assertNoAutoplay,safeCancel,signalCleanup} from './native-contracts.mjs';
+import {assertNoAutoplay,safeCancel,signalCleanup,recordRowSelector} from './native-contracts.mjs';
 process.env.GIT_CONFIG_SYSTEM='/dev/null';
 process.env.GIT_TERMINAL_PROMPT='0';
 const root=process.env.MUSIC_QA_ROOT;
@@ -71,7 +71,7 @@ try{
  // pressed yet: the card, its waveform and its Cancel must already be on screen.
  // The read rows' own visibility is evidence only (how the fold rendered them).
  demand('Pending music call must be preceded by its scripted reads',pending.preface_reads?.length===3);
- const unexpandedCard=()=>cdp.evaluate(`(()=>{const box=e=>{const r=e?.getBoundingClientRect();return !!r&&r.width>0&&r.height>0};const c=document.querySelector(${JSON.stringify('[data-music-generating='+JSON.stringify(pending.job)+']')});const reads=${JSON.stringify(pending.preface_reads)}.map(id=>{const row=document.querySelector('[data-record-id='+JSON.stringify('tool:'+id)+']');return {id,mounted:!!row,visible:box(row)}});return {card:box(c),state:c?.getAttribute('data-music-state')||null,motif:box(c?.querySelector('[data-music-motif]')),cancel:box(c?.querySelector(${JSON.stringify('[data-music-cancel='+JSON.stringify(pending.job)+']')})),record:c?.closest('[data-record-id]')?.getAttribute('data-record-id')||null,closed_folds:document.querySelectorAll('button[aria-expanded="false"]').length,reads}})()`);
+ const unexpandedCard=()=>cdp.evaluate(`(()=>{const box=e=>{const r=e?.getBoundingClientRect();return !!r&&r.width>0&&r.height>0};const c=document.querySelector(${JSON.stringify('[data-music-generating='+JSON.stringify(pending.job)+']')});const reads=${JSON.stringify(pending.preface_reads.map(id=>[id,recordRowSelector('tool:'+id)]))}.map(([id,sel])=>{const row=document.querySelector(sel);return {id,mounted:!!row,visible:box(row)}});return {card:box(c),state:c?.getAttribute('data-music-state')||null,motif:box(c?.querySelector('[data-music-motif]')),cancel:box(c?.querySelector(${JSON.stringify('[data-music-cancel='+JSON.stringify(pending.job)+']')})),record:c?.closest('[data-record-id]')?.getAttribute('data-record-id')||null,closed_folds:document.querySelectorAll('button[aria-expanded="false"]').length,reads}})()`);
  const generatingCard=await observed('generating_card_visible_unexpanded',unexpandedCard,x=>x.card&&x.motif&&x.cancel&&['queued','generating'].includes(x.state),15000);
  demand('Generating card must belong to the producing music call',generatingCard.record?.includes(pending.producing_call_id));
  await reveal('music-generating-unexpanded','[data-music-generating='+JSON.stringify(pending.job)+']');await frame('music-generating-unexpanded');
@@ -154,7 +154,9 @@ try{
  // the producing turn shows a collapsed disclosure and no read row is visible. An old
  // build that rendered the reads outside the group would otherwise still pass the
  // unexpanded-card checks above.
- await observed('preface_reads_folded_unexpanded',()=>cdp.evaluate(`(()=>{const box=e=>{const r=e?.getBoundingClientRect();return !!r&&r.width>0&&r.height>0};return {collapsed:${collapsedInTurn}.length,reads:${JSON.stringify(pending.preface_reads)}.map(id=>({id,visible:box(document.querySelector('[data-record-id='+JSON.stringify('tool:'+id)+']'))}))}})()`),x=>x.collapsed>0&&x.reads.length===3&&x.reads.every(r=>!r.visible),5000);
+ // Rows are matched by recordRowSelector, never a bare data-record-id: the collapsed
+ // bar carries the first hidden row's id (see native-contracts.mjs).
+ await observed('preface_reads_folded_unexpanded',()=>cdp.evaluate(`(()=>{const box=e=>{const r=e?.getBoundingClientRect();return !!r&&r.width>0&&r.height>0};return {collapsed:${collapsedInTurn}.length,reads:${JSON.stringify(pending.preface_reads.map(id=>[id,recordRowSelector('tool:'+id)]))}.map(([id,sel])=>({id,visible:box(document.querySelector(sel))}))}})()`),x=>x.collapsed>0&&x.reads.length===3&&x.reads.every(r=>!r.visible),5000);
  await expandProducingTurn();
  const recordId=await observed('actual_music_record',()=>cdp.evaluate(`document.querySelector('[data-music-track="'+${JSON.stringify(track)}+'"]:not([data-turn-summary] *)')?.closest('[data-record-id]')?.getAttribute('data-record-id')||null`),Boolean);
  const player='[data-record-id='+JSON.stringify(recordId)+']:not([data-turn-summary] *) [data-music-track='+JSON.stringify(track)+'] [data-sound-player]';
