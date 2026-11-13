@@ -174,7 +174,10 @@ import { TraceFold } from "../components/trace/trace-fold";
 import { TurnSummary } from "../components/trace/turn-summary";
 import { WorkingLine } from "../components/trace/working-line";
 import { focusComposer } from "../composer-field";
-import { MISSING_SESSION_NOTICE_ID } from "../missing-session-notice";
+import {
+	MISSING_SESSION_NOTICE_ID,
+	missingSessionNotice,
+} from "../missing-session-notice";
 import { openTrace } from "../open-trace";
 import {
 	DEFAULT_TRANSCRIPT_DISPLAY_MODE,
@@ -844,6 +847,12 @@ export type CanonicalTranscriptProps = {
 	 * spent to learn it.
 	 */
 	missing?: boolean;
+	/**
+	 * The `missing` conversation was deleted as a TEMPORARY chat (the core's
+	 * tombstone): the notice becomes the temporary tombstone with "New temporary
+	 * chat" and "Back to chats" (`missingSessionNotice`). Ignored unless `missing`.
+	 */
+	missingTemporary?: boolean;
 
 	/**
 	 * Which conversation's rows this is, for attachment resolution — defaulting
@@ -4311,6 +4320,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	stale = false,
 	remote = false,
 	missing = false,
+	missingTemporary = false,
 	attachmentScope,
 	conversationId,
 	labelPending,
@@ -4376,6 +4386,7 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 		entryIds: ReadonlyMap<string, readonly string[]>;
 		order: ReadonlyMap<string, number>;
 	} | null>(null);
+	const missingNotice = missingSessionNotice(missingTemporary);
 	const [domWindowRequested] = useState(transcriptDomWindowEnabled);
 	const slotExtents = useRef(new Map<string, SlotExtent>());
 	const previousSlotPlan = useRef<{
@@ -7967,44 +7978,72 @@ const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 								<p
 									id={MISSING_SESSION_NOTICE_ID}
 									className="text-body-sm text-ink"
+									data-missing-session-notice={missingNotice.kind}
 								>
-									{t("ui.chat.canonical.transcript.missing_session")}
+									{t(missingNotice.title)}
 								</p>
 								<p className="text-ink-dim text-meta">
-									{t("ui.chat.canonical.transcript.missing_session_detail")}
+									{t(missingNotice.detail)}
 								</p>
-								<Button
-									variant="outline"
-									size="sm"
-									className="self-start"
-									/*
-									 * THE WORDS THE DEAD CONVERSATION'S BOX HELD FOLLOW THE READER
-									 * (the operator's report, 2026-10-23). Clearing the selection alone
-									 * left no draft at all: the pane fell to its residue arm and the text
-									 * stayed filed under the conversation that is gone - present on disk,
-									 * addressed by nothing on screen. `startNewChat` is the store's own
-									 * answer to that rule (a draft follows the user back, or it is
-									 * discarded), and `conversationId` is the identity this pane's composer
-									 * uses - the same value `composerIdentityFor` answers here, threaded as
-									 * the pane's identity, never recomputed from the draft and session ids.
-									 */
-									onClick={() => {
-										// Read at click time rather than subscribed: this component
-										// must not re-render every time the catalogue does.
-										useCanonicalSessionsStore
-											.getState()
-											.startNewChat(conversationId);
+								{missingNotice.kind === "temporary" ? (
+									<div className="flex flex-wrap gap-2">
+										{missingNotice.actions.map((action) => (
+											<Button
+												key={action.key}
+												variant="outline"
+												size="sm"
+												data-temporary-tombstone-action={
+													action.temporary ? "new" : "back"
+												}
+												onClick={() => {
+													// The generic press's own path (the draft follows the
+													// reader, the address leaves the dead id), with the
+													// temporary switch on for "New temporary chat".
+													const store = useCanonicalSessionsStore.getState();
+													const key = store.startNewChat(conversationId);
+													if (action.temporary)
+														store.setDraftTemporary(key, true);
+													onStartNewChat?.();
+												}}
+											>
+												{t(action.key)}
+											</Button>
+										))}
+									</div>
+								) : (
+									<Button
+										variant="outline"
+										size="sm"
+										className="self-start"
 										/*
-										 * AND THE ADDRESS FOLLOWS (agent review round 1 / QA round 1,
-										 * Q1): the store has staged the new chat and cleared the dead
-										 * selection, so leaving the route on the dead id would make a
-										 * reload re-open the conversation this press just left.
+										 * THE WORDS THE DEAD CONVERSATION'S BOX HELD FOLLOW THE READER
+										 * (the operator's report, 2026-10-23). Clearing the selection alone
+										 * left no draft at all: the pane fell to its residue arm and the text
+										 * stayed filed under the conversation that is gone - present on disk,
+										 * addressed by nothing on screen. `startNewChat` is the store's own
+										 * answer to that rule (a draft follows the user back, or it is
+										 * discarded), and `conversationId` is the identity this pane's composer
+										 * uses - the same value `composerIdentityFor` answers here, threaded as
+										 * the pane's identity, never recomputed from the draft and session ids.
 										 */
-										onStartNewChat?.();
-									}}
-								>
-									{t("ui.chat.canonical.transcript.start_new_chat")}
-								</Button>
+										onClick={() => {
+											// Read at click time rather than subscribed: this component
+											// must not re-render every time the catalogue does.
+											useCanonicalSessionsStore
+												.getState()
+												.startNewChat(conversationId);
+											/*
+											 * AND THE ADDRESS FOLLOWS (agent review round 1 / QA round 1,
+											 * Q1): the store has staged the new chat and cleared the dead
+											 * selection, so leaving the route on the dead id would make a
+											 * reload re-open the conversation this press just left.
+											 */
+											onStartNewChat?.();
+										}}
+									>
+										{t("ui.chat.canonical.transcript.start_new_chat")}
+									</Button>
+								)}
 							</div>
 						) : null}
 

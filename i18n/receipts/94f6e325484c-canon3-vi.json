@@ -1,0 +1,39 @@
+{
+  "auditor": "reviewer",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "94f6e325484c-canon3-vi",
+  "date": "2026-11-12",
+  "locale": "vi",
+  "namespace": "ui.chat.canonical",
+  "status": "passed",
+  "sha256": {
+    "vi": "ad2bc4870aefc08190576e588d493ae99b5ff0bdd043afbdfb8f873edfa111a2",
+    "en": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731"
+  },
+  "context_sha256": {
+    "en": "51f705da9160454ef4f72c5f9c14004a3f31b2bccc46dac6c208a36d18cb53bf"
+  },
+  "repo": "damianvtran/local-operator-ui",
+  "pr": 1874,
+  "head": "fa3c17b63",
+  "independence": "Independent i18n auditor (lopdev reviewer, session 94f6e325484c). Not the translator of any key in this file; did not read or copy any other session's scratchpad. Same model as this PR's translator (lopdev coder, anthropic/claude-opus-5-5): disclosed.",
+  "references": {
+    "glossary": "damianvtran/local-operator@2ba8127d9 i18n/glossary.md sha256:0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style_guide": "damianvtran/local-operator@2ba8127d9 i18n/style-guides/vi.md sha256:e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888"
+  },
+  "scope": "Merged bytes at fa3c17b63 (merge of origin/main 5033f6423, #1876). Read in full against en value, en .context.json, glossary and style guide: #1876's 10 added keys (media.image_label, media.sound_label, sound.batch.item_status/latest_update/summary, sound.cost.batch_unknown/estimated_zero/no_charge/unknown, supplement.sound_fallback_label), and this PR's 4 temporary_deleted.* keys. The other values equal upstream's audited file (row 49c5a10a37b4, hashes verified at 5033f6423) or this PR's audited file (94f6e325484c-canon2, a3a8ee320).",
+  "mechanical": {
+    "threeway": "per-key three-way check base 9ef579fe1 / PR a3a8ee320 / upstream 5033f6423 / merged fa3c17b63 over en, 7 locales and en context: 0 conflicts, 0 dropped, 0 resurrected, 0 value mismatches (471 keys).",
+    "checks": "15 keys: ICU parse, args vs en, select arms, every branch formatted (counts 0/1/2/5/21/1e6 × status × has_attention), no bidi controls, NFC, locale punctuation. 0 defects. media.*_label carry only =1/other like en (missing one/many is not a defect: the other arm is invariant and =1 wins over one). Negative control caught 22."
+  },
+  "reading": "#1876 keys: Hình ảnh/Âm thanh; 'chi phí' per glossary; other-only plurals; 'mục N/M'; NFC.",
+  "findings": [
+    {
+      "severity": "NIT",
+      "id": "VI-C1",
+      "key": "ui.chat.canonical.temporary_deleted.detail",
+      "detail": "Opening pronoun 'Nó' and the relative 'các tệp nó đã thay đổi' are slightly colloquial for a conversation; the vi guide prefers dropping pronouns. Optional: 'Đã bị xóa sau một thời gian không hoạt động và không thể mở lại. Các tệp đã được thay đổi trên máy tính của bạn vẫn còn nguyên.' Meaning is correct.",
+      "disposition": "carried from 94f6e325484c-canon2: bytes unchanged, still applies; deferred"
+    }
+  ]
+}

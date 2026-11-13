@@ -995,6 +995,15 @@ export type DesktopFeature =
 	 */
 	| "projects_force_done"
 	/**
+	 * Temporary chats: a conversation the core deletes after its idle window
+	 * (`temporary` on the row, `include_temporary` on the list, `temporary` on
+	 * create, `POST /v1/desktop/sessions/{id}/temporary`). Absent means no toggle,
+	 * no pill, no `Temporary` group, no Ctrl+Shift+N and no palette entry, and this
+	 * client never sends either field: the core's input models are closed, so an
+	 * ungated send would be a 422 (the `projects_force_done` precedent above).
+	 */
+	| "temporary_chats"
+	/**
 	 * Moving a conversation between devices: `POST /v1/desktop/sessions/{id}/transfer`.
 	 *
 	 * ITS OWN KEY rather than a version of `peers`, and the split is the backend's

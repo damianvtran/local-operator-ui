@@ -283,6 +283,10 @@ import {
 	toggleTagDisclosure,
 } from "../chat-sidebar-view";
 import { useStripSpeaksConnection } from "../chat-status-presence";
+import {
+	partition as partitionTemporary,
+	refusalRemedy,
+} from "../chat-temporary";
 import { clearSearch } from "../clear-search";
 /*
  * THE ACT'S OWN WRITE (#893): copying a conversation's session id, in the one
@@ -344,6 +348,7 @@ import {
 	HubSectionLines,
 	HubUpdateMark,
 } from "./hub-update-mark";
+import { SidebarTemporaryGroup } from "./sidebar-temporary-group";
 import { TeamAvatarBubble } from "./team-avatar-bubble";
 
 /*
@@ -1309,6 +1314,9 @@ export function ChatSidebar({
 		cursor: string | null;
 	} | null>(null);
 	const pinFailure = useCanonicalSessionsStore((s) => s.pinFailure);
+	const setSessionTemporary = useCanonicalSessionsStore(
+		(s) => s.setSessionTemporary,
+	);
 	/*
 	 * The client's own pin state for conversations this panel's page does not carry
 	 * (the store's `pinFacts`). A row synthesized from a search hit is rebuilt from
@@ -2675,9 +2683,24 @@ export function ChatSidebar({
 		() => answeredArchiveRows(sessions, archiveFacts),
 		[sessions, archiveFacts],
 	);
-	const listed = useMemo(
-		() => visibleRows(answeredForMembership, archiveEnabled && !widened),
-		[answeredForMembership, archiveEnabled, widened],
+	/*
+	 * TEMPORARY CHATS LEAVE EVERY NORMAL LIST HERE (`features.temporary_chats`):
+	 * the partition runs on the rows archiving has already filtered, so a
+	 * temporary chat is drawn only in the `Temporary · N` group at the list's
+	 * head. Without the capability `partition` returns the same array and reads
+	 * no row, so the panel is the one it always was.
+	 */
+	const temporaryEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"temporary_chats",
+	);
+	const { normal: listed, temporary: temporaryRows } = useMemo(
+		() =>
+			partitionTemporary(
+				visibleRows(answeredForMembership, archiveEnabled && !widened),
+				temporaryEnabled,
+			),
+		[answeredForMembership, archiveEnabled, widened, temporaryEnabled],
 	);
 	/*
 	 * The hits the answer actually contributes, held once: `searchChats` consumes
@@ -9526,16 +9549,36 @@ export function ChatSidebar({
 				action: pinFailure.pinned ? "pin" : "unpin",
 				title: conversationTitleForDisplay(pinFailure.title, "this_chat"),
 			})}
-			{pinFailure.detail ? ` ${pinFailure.detail}` : ""}{" "}
-			<button
-				type="button"
-				className="underline"
-				onClick={() =>
-					void setSessionPin(pinFailure.sessionId, pinFailure.pinned)
-				}
-			>
-				{t("ui.common.actions.retry")}
-			</button>
+			{pinFailure.detail ? ` ${pinFailure.detail}` : ""} {/*
+			 * A TEMPORARY CHAT CANNOT BE PINNED UNTIL IT IS KEPT (409
+			 * `session_temporary`): a Retry would only be refused again, so the
+			 * line offers the one press that can succeed - keep it, then pin it.
+			 */}
+			{refusalRemedy(pinFailure.code, "pin") === "keep_and_pin" ? (
+				<button
+					type="button"
+					className="underline"
+					data-temporary-keep-and-pin
+					onClick={() => {
+						const { sessionId } = pinFailure;
+						void setSessionTemporary(sessionId, false).then((kept) => {
+							if (kept.ok) void setSessionPin(sessionId, true);
+						});
+					}}
+				>
+					{t("ui.chat.dialogs.keep_and_pin")}
+				</button>
+			) : (
+				<button
+					type="button"
+					className="underline"
+					onClick={() =>
+						void setSessionPin(pinFailure.sessionId, pinFailure.pinned)
+					}
+				>
+					{t("ui.common.actions.retry")}
+				</button>
+			)}
 		</p>
 	) : null;
 
@@ -10944,6 +10987,15 @@ export function ChatSidebar({
 				>
 					{entityRegion}
 					{pinFailureLine}
+					{listShown && temporaryEnabled && !query.trim() && (
+						<SidebarTemporaryGroup
+							rows={temporaryRows}
+							// The same current row the normal list marks (`currentSessionRowId`):
+							// a temporary first send lists its row here from the create's answer.
+							currentId={currentRowId}
+							onSelect={onSelectConversation}
+						/>
+					)}
 					{listShown && listRegion}
 				</div>
 				{/*

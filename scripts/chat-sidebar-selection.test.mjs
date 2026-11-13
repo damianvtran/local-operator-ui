@@ -90,6 +90,8 @@ import { build, transform } from "esbuild";
 
 const ROOT = process.cwd();
 const SIDEBAR = "src/renderer/src/features/chat/components/chat-sidebar.tsx";
+const TEMPORARY_GROUP =
+	"src/renderer/src/features/chat/components/sidebar-temporary-group.tsx";
 const SETTINGS_RAIL =
 	"src/renderer/src/features/settings/components/settings-sidebar.tsx";
 const LIBRARY_CARD =
@@ -1469,6 +1471,24 @@ const ROW_STATE_GROUNDS = [
 			rowTagDrag: { armedId: null },
 			row: { session_id: "synthetic-current-row" },
 		},
+		ground: () =>
+			literalClassAt(
+				SIDEBAR,
+				'aria-label={t("ui.chat.sidebar.nav.chats")}',
+				"after",
+			),
+		groundFile: SIDEBAR,
+	},
+	{
+		/*
+		 * The `Temporary · N` group's rows. The component is its own file but it is
+		 * rendered INSIDE the chats `<nav>` (chat-sidebar.tsx), so its ground is the
+		 * same element the list panel's entry above reads, not anything in this file.
+		 */
+		what: "the chat sidebar's temporary-chat group",
+		rowFile: TEMPORARY_GROUP,
+		expression: () => expressionAfter(TEMPORARY_GROUP, "data-chat-row"),
+		stubs: { current: true, rowCurrent },
 		ground: () =>
 			literalClassAt(
 				SIDEBAR,

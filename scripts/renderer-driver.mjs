@@ -306,6 +306,7 @@ import { SEAL_AUDIT_PURPOSE } from "./skill-seal-fixture.mjs";
 import { sceneSounds } from "./sounds-scene.mjs";
 import { sceneTeamNewchat } from "./team-newchat-scene.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
+import { sceneTemporaryChats } from "./temporary-chats-scene.mjs";
 import { sceneTurnHighlights } from "./turn-highlights-scene.mjs";
 
 const ROOT = process.cwd();
@@ -51069,6 +51070,19 @@ async function main() {
 					check,
 					note,
 					waitForCondition,
+				});
+			else if (SCENE === "temporary-chats")
+				await sceneTemporaryChats({
+					cdp,
+					verb,
+					capture: captureSettled,
+					check,
+					note,
+					waitForCondition,
+					pressChord,
+					modifier:
+						process.platform === "darwin" ? MODIFIER.meta : MODIFIER.ctrl,
+					shift: MODIFIER.shift,
 				});
 			else if (SCENE === "project-open") await sceneProjectOpen(cdp);
 			else if (SCENE === "agents-ask") await sceneAgentsAsk(cdp);
