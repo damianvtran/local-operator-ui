@@ -734,6 +734,35 @@ export const ApprovalSessionOverride: Story = {
 };
 
 /**
+ * The approval card on a conversation that holds a teammate agent's message
+ * (Team Bridge taint), as the backend publishes it: `bridge_latched: true`.
+ *
+ * The backend refuses `approvals auto` here, so the two "Set auto" links are not
+ * mounted at all and one line states why in the backend's own words. Approve and
+ * Deny are exactly as on the `Approval` frame. Compare the two: the property is
+ * that only the policy row changed.
+ */
+export const ApprovalBridgeLatched: Story = {
+	render: () => (
+		<Frame
+			asked="Clean the build output before rebuilding."
+			height={500}
+			pending={gate({
+				kind: "approval",
+				title: "bash",
+				detail: "run: rm -rf ./dist",
+				options: [],
+				approval_mode: "ask",
+				approval_provenance: "global",
+				approval_global_mode: "ask",
+				bridge_latched: true,
+				taint_raised: false,
+			})}
+		/>
+	),
+};
+
+/**
  * The approval card at a narrow pane.
  *
  * The two policy handles take a second line here rather than truncating either

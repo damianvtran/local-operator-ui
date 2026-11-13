@@ -8,5 +8,11 @@
 	"ui.chat.dialogs.options.clear_message": "Todos los mensajes de esta conversación se borran de este dispositivo y no hay forma de deshacerlo. El agente no se ve afectado.",
 	"ui.chat.dialogs.options.clear_title": "¿Borrar esta conversación?",
 	"ui.chat.dialogs.options.description": "Personaliza los ajustes de este agente",
-	"ui.chat.dialogs.options.title": "Opciones del chat"
+	"ui.chat.dialogs.options.title": "Opciones del chat",
+	"ui.chat.dialogs.make_temporary_title": "¿Hacer temporal este chat?",
+	"ui.chat.dialogs.make_temporary_deleted": "Sale de tus chats ahora. Cuando lleve inactivo el tiempo establecido (30 min de forma predeterminada), se eliminan este chat, sus mensajes y sus adjuntos.",
+	"ui.chat.dialogs.make_temporary_kept": "Se conservan: los archivos que cambió en tu equipo.",
+	"ui.chat.dialogs.make_temporary_confirm": "Hacer temporal",
+	"ui.chat.dialogs.keep_and_link": "Conservar y vincular",
+	"ui.chat.dialogs.keep_and_pin": "Conservar y fijar"
 }

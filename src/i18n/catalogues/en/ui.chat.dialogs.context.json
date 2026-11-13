@@ -58,5 +58,35 @@
 		"tone": "noun phrase, sentence case",
 		"note": "A settings sheet about the conversation's agent, opened from the chat header.",
 		"placeholders": {}
+	},
+	"ui.chat.dialogs.make_temporary_title": {
+		"role": "confirmation dialog title",
+		"tone": "question",
+		"note": "Asks before scheduling a deletion of an existing chat."
+	},
+	"ui.chat.dialogs.make_temporary_deleted": {
+		"role": "confirmation dialog body, what is deleted",
+		"tone": "plain statement",
+		"note": "30 min is the backend default idle window."
+	},
+	"ui.chat.dialogs.make_temporary_kept": {
+		"role": "confirmation dialog body, what is kept",
+		"tone": "plain statement",
+		"note": "Files on the computer are never deleted by this."
+	},
+	"ui.chat.dialogs.make_temporary_confirm": {
+		"role": "confirmation dialog confirm button",
+		"tone": "imperative verb phrase",
+		"maxCells": 24
+	},
+	"ui.chat.dialogs.keep_and_link": {
+		"role": "refusal remedy button",
+		"tone": "imperative verb pair",
+		"note": "Keeps the temporary chat, then links it to the project."
+	},
+	"ui.chat.dialogs.keep_and_pin": {
+		"role": "refusal remedy button",
+		"tone": "imperative verb pair",
+		"note": "Keeps the temporary chat, then pins it."
 	}
 }

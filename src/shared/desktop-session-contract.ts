@@ -20,6 +20,37 @@ export type CanonicalSessionId = string;
 export type SessionCatalogueStatus = { code: string; label: string };
 export type SessionBinding = { agent: string | null; team: string | null };
 /**
+ * Why the core is holding a temporary chat open rather than counting its idle
+ * window down (contract §2.2, a CLOSED enum the copy is keyed off). A code
+ * this build does not know is drawn as "held" without a reason rather than
+ * guessed at.
+ */
+export type TemporaryHoldCode =
+	| "running"
+	| "on_screen"
+	| "open_ask"
+	| "armed_wake"
+	| "armed_monitor"
+	| "unread_mail"
+	| "operator_hold"
+	| "unseen_result"
+	| "unsaved_files"
+	| "linked"
+	| "cannot_verify";
+/**
+ * A temporary chat's state as the core computes it (`features.temporary_chats`,
+ * wire §2.3, frozen). `null` on the row is the explicit "not temporary".
+ */
+export type SessionTemporaryInfo = {
+	/** Epoch seconds. */
+	marked_at: number;
+	/** The idle window in force (15, 30, 120 or 1440). */
+	idle_minutes: number;
+	/** Epoch seconds, or `null` while a hold applies. */
+	deletes_at: number | null;
+	hold: TemporaryHoldCode | string | null;
+};
+/**
  * Who OPENED a conversation, when it was an agent rather than the operator.
  *
  * Present ONLY on a session an agent opened as an explicitly-requested parallel
@@ -125,6 +156,13 @@ export type SessionCatalogueRow = {
 	 * by omitting archived rows could do neither.
 	 */
 	archived: boolean;
+	/**
+	 * The TEMPORARY-chat state (`features.temporary_chats`), `null` meaning "not
+	 * temporary". Always present on a capable core, like `archived` and for its
+	 * reason (the merge's "absent key is not a claim" rule); optional here only
+	 * because an older core never sends it, which reads as not temporary.
+	 */
+	temporary?: SessionTemporaryInfo | null;
 	status: SessionCatalogueStatus;
 	binding: SessionBinding;
 	/**
@@ -700,6 +738,28 @@ export type PendingDesktopGate = {
 	 * the core's not-stated stamp, like the two fields above.
 	 */
 	approval_global_mode?: "ask" | "auto" | "";
+	/**
+	 * Team Bridge taint, as the host stamps it (the core's `PendingRequest`).
+	 * `bridge_latched`: the conversation holds a teammate agent's message, so no
+	 * mode change from the desktop may answer or loosen this card - the backend
+	 * refuses `approvals auto` here (`approval_reason: "bridge_latched"`) and the
+	 * card must not offer a control that can only fail. `taint_raised`: the taint
+	 * seam is what made this call ask. Both are host-set, never derived from the
+	 * title.
+	 *
+	 * ADDITIVE and OPTIONAL for the same version-skew reason as the fields above:
+	 * an older backend never sends them, and absent reads as false (today's
+	 * unlatched card).
+	 */
+	bridge_latched?: boolean;
+	taint_raised?: boolean;
+	/**
+	 * `"bridge"` when a session auto granted before the conversation latched has
+	 * stopped covering calls, so this gate asks. Sent only in that case; absent
+	 * otherwise. A card carrying it is latched for the purposes of this client
+	 * even if `bridge_latched` were ever missing.
+	 */
+	approval_suspended?: "bridge";
 	/**
 	 * The session's display name, for the notification banner only.
 	 *

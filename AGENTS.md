@@ -2166,6 +2166,17 @@ link this checkout's `node_modules`, so the `scripts/` lint leg runs the
 repository's own biome; the `tsc` leg is out of reach there and rests on the
 classifier's tests and CI.
 
+### Condense parity fixture: conflicts and the pin
+
+`scripts/fixtures/condense.parity.json` and its manifest are GENERATED, and
+`desktop.sourceHash` pins only the bundle inputs that emit code (esbuild
+`bytesInOutput > 0`), not every file the build reads. When a merge of `origin/main`
+conflicts and the fixtures are the only unmerged paths, run
+`node scripts/generate-condense-parity.mjs --resolve-merge`: it takes our side,
+regenerates both from the merged tree, stages them and says to commit. It refuses
+if anything else is unmerged. Never hand-edit either file; the generator header
+explains the invariant and `scripts/condense-parity.test.mjs` enforces it.
+
 ## Releasing: one owner per window, and no version bumps inside feature PRs
 
 **Releasing is a decision a person makes, separately from merging.** Merging
