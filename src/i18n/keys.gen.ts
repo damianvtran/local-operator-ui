@@ -35,6 +35,7 @@ import enUiAgents from "./catalogues/en/ui.agents.json";
 import enUiAgentsModels from "./catalogues/en/ui.agents.models.json";
 import enUiAgentsNavigation from "./catalogues/en/ui.agents.navigation.json";
 import enUiAgentsPages from "./catalogues/en/ui.agents.pages.json";
+import enUiAgentsProposals from "./catalogues/en/ui.agents.proposals.json";
 import enUiAgentsPublication from "./catalogues/en/ui.agents.publication.json";
 import enUiAgentsRefusals from "./catalogues/en/ui.agents.refusals.json";
 import enUiAgentsRouting from "./catalogues/en/ui.agents.routing.json";
@@ -171,6 +172,7 @@ import enUiSettingsSearch from "./catalogues/en/ui.settings.search.json";
 import enUiSettingsShortcuts from "./catalogues/en/ui.settings.shortcuts.json";
 import enUiSettingsSpeech from "./catalogues/en/ui.settings.speech.json";
 import enUiSettingsUpdates from "./catalogues/en/ui.settings.updates.json";
+import enUiSharedUnifiedDiff from "./catalogues/en/ui.shared.unified_diff.json";
 import enUiShell from "./catalogues/en/ui.shell.json";
 import enUiShellMenubar from "./catalogues/en/ui.shell.menubar.json";
 import enUiShellRail from "./catalogues/en/ui.shell.rail.json";
@@ -196,6 +198,7 @@ import esUiAgents from "./catalogues/es/ui.agents.json";
 import esUiAgentsModels from "./catalogues/es/ui.agents.models.json";
 import esUiAgentsNavigation from "./catalogues/es/ui.agents.navigation.json";
 import esUiAgentsPages from "./catalogues/es/ui.agents.pages.json";
+import esUiAgentsProposals from "./catalogues/es/ui.agents.proposals.json";
 import esUiAgentsPublication from "./catalogues/es/ui.agents.publication.json";
 import esUiAgentsRefusals from "./catalogues/es/ui.agents.refusals.json";
 import esUiAgentsRouting from "./catalogues/es/ui.agents.routing.json";
@@ -332,6 +335,7 @@ import esUiSettingsSearch from "./catalogues/es/ui.settings.search.json";
 import esUiSettingsShortcuts from "./catalogues/es/ui.settings.shortcuts.json";
 import esUiSettingsSpeech from "./catalogues/es/ui.settings.speech.json";
 import esUiSettingsUpdates from "./catalogues/es/ui.settings.updates.json";
+import esUiSharedUnifiedDiff from "./catalogues/es/ui.shared.unified_diff.json";
 import esUiShell from "./catalogues/es/ui.shell.json";
 import esUiShellMenubar from "./catalogues/es/ui.shell.menubar.json";
 import esUiShellRail from "./catalogues/es/ui.shell.rail.json";
@@ -357,6 +361,7 @@ import frUiAgents from "./catalogues/fr/ui.agents.json";
 import frUiAgentsModels from "./catalogues/fr/ui.agents.models.json";
 import frUiAgentsNavigation from "./catalogues/fr/ui.agents.navigation.json";
 import frUiAgentsPages from "./catalogues/fr/ui.agents.pages.json";
+import frUiAgentsProposals from "./catalogues/fr/ui.agents.proposals.json";
 import frUiAgentsPublication from "./catalogues/fr/ui.agents.publication.json";
 import frUiAgentsRefusals from "./catalogues/fr/ui.agents.refusals.json";
 import frUiAgentsRouting from "./catalogues/fr/ui.agents.routing.json";
@@ -493,6 +498,7 @@ import frUiSettingsSearch from "./catalogues/fr/ui.settings.search.json";
 import frUiSettingsShortcuts from "./catalogues/fr/ui.settings.shortcuts.json";
 import frUiSettingsSpeech from "./catalogues/fr/ui.settings.speech.json";
 import frUiSettingsUpdates from "./catalogues/fr/ui.settings.updates.json";
+import frUiSharedUnifiedDiff from "./catalogues/fr/ui.shared.unified_diff.json";
 import frUiShell from "./catalogues/fr/ui.shell.json";
 import frUiShellMenubar from "./catalogues/fr/ui.shell.menubar.json";
 import frUiShellRail from "./catalogues/fr/ui.shell.rail.json";
@@ -518,6 +524,7 @@ import hiUiAgents from "./catalogues/hi/ui.agents.json";
 import hiUiAgentsModels from "./catalogues/hi/ui.agents.models.json";
 import hiUiAgentsNavigation from "./catalogues/hi/ui.agents.navigation.json";
 import hiUiAgentsPages from "./catalogues/hi/ui.agents.pages.json";
+import hiUiAgentsProposals from "./catalogues/hi/ui.agents.proposals.json";
 import hiUiAgentsPublication from "./catalogues/hi/ui.agents.publication.json";
 import hiUiAgentsRefusals from "./catalogues/hi/ui.agents.refusals.json";
 import hiUiAgentsRouting from "./catalogues/hi/ui.agents.routing.json";
@@ -654,6 +661,7 @@ import hiUiSettingsSearch from "./catalogues/hi/ui.settings.search.json";
 import hiUiSettingsShortcuts from "./catalogues/hi/ui.settings.shortcuts.json";
 import hiUiSettingsSpeech from "./catalogues/hi/ui.settings.speech.json";
 import hiUiSettingsUpdates from "./catalogues/hi/ui.settings.updates.json";
+import hiUiSharedUnifiedDiff from "./catalogues/hi/ui.shared.unified_diff.json";
 import hiUiShell from "./catalogues/hi/ui.shell.json";
 import hiUiShellMenubar from "./catalogues/hi/ui.shell.menubar.json";
 import hiUiShellRail from "./catalogues/hi/ui.shell.rail.json";
@@ -679,6 +687,7 @@ import ruUiAgents from "./catalogues/ru/ui.agents.json";
 import ruUiAgentsModels from "./catalogues/ru/ui.agents.models.json";
 import ruUiAgentsNavigation from "./catalogues/ru/ui.agents.navigation.json";
 import ruUiAgentsPages from "./catalogues/ru/ui.agents.pages.json";
+import ruUiAgentsProposals from "./catalogues/ru/ui.agents.proposals.json";
 import ruUiAgentsPublication from "./catalogues/ru/ui.agents.publication.json";
 import ruUiAgentsRefusals from "./catalogues/ru/ui.agents.refusals.json";
 import ruUiAgentsRouting from "./catalogues/ru/ui.agents.routing.json";
@@ -815,6 +824,7 @@ import ruUiSettingsSearch from "./catalogues/ru/ui.settings.search.json";
 import ruUiSettingsShortcuts from "./catalogues/ru/ui.settings.shortcuts.json";
 import ruUiSettingsSpeech from "./catalogues/ru/ui.settings.speech.json";
 import ruUiSettingsUpdates from "./catalogues/ru/ui.settings.updates.json";
+import ruUiSharedUnifiedDiff from "./catalogues/ru/ui.shared.unified_diff.json";
 import ruUiShell from "./catalogues/ru/ui.shell.json";
 import ruUiShellMenubar from "./catalogues/ru/ui.shell.menubar.json";
 import ruUiShellRail from "./catalogues/ru/ui.shell.rail.json";
@@ -840,6 +850,7 @@ import urUiAgents from "./catalogues/ur/ui.agents.json";
 import urUiAgentsModels from "./catalogues/ur/ui.agents.models.json";
 import urUiAgentsNavigation from "./catalogues/ur/ui.agents.navigation.json";
 import urUiAgentsPages from "./catalogues/ur/ui.agents.pages.json";
+import urUiAgentsProposals from "./catalogues/ur/ui.agents.proposals.json";
 import urUiAgentsPublication from "./catalogues/ur/ui.agents.publication.json";
 import urUiAgentsRefusals from "./catalogues/ur/ui.agents.refusals.json";
 import urUiAgentsRouting from "./catalogues/ur/ui.agents.routing.json";
@@ -976,6 +987,7 @@ import urUiSettingsSearch from "./catalogues/ur/ui.settings.search.json";
 import urUiSettingsShortcuts from "./catalogues/ur/ui.settings.shortcuts.json";
 import urUiSettingsSpeech from "./catalogues/ur/ui.settings.speech.json";
 import urUiSettingsUpdates from "./catalogues/ur/ui.settings.updates.json";
+import urUiSharedUnifiedDiff from "./catalogues/ur/ui.shared.unified_diff.json";
 import urUiShell from "./catalogues/ur/ui.shell.json";
 import urUiShellMenubar from "./catalogues/ur/ui.shell.menubar.json";
 import urUiShellRail from "./catalogues/ur/ui.shell.rail.json";
@@ -1001,6 +1013,7 @@ import viUiAgents from "./catalogues/vi/ui.agents.json";
 import viUiAgentsModels from "./catalogues/vi/ui.agents.models.json";
 import viUiAgentsNavigation from "./catalogues/vi/ui.agents.navigation.json";
 import viUiAgentsPages from "./catalogues/vi/ui.agents.pages.json";
+import viUiAgentsProposals from "./catalogues/vi/ui.agents.proposals.json";
 import viUiAgentsPublication from "./catalogues/vi/ui.agents.publication.json";
 import viUiAgentsRefusals from "./catalogues/vi/ui.agents.refusals.json";
 import viUiAgentsRouting from "./catalogues/vi/ui.agents.routing.json";
@@ -1137,6 +1150,7 @@ import viUiSettingsSearch from "./catalogues/vi/ui.settings.search.json";
 import viUiSettingsShortcuts from "./catalogues/vi/ui.settings.shortcuts.json";
 import viUiSettingsSpeech from "./catalogues/vi/ui.settings.speech.json";
 import viUiSettingsUpdates from "./catalogues/vi/ui.settings.updates.json";
+import viUiSharedUnifiedDiff from "./catalogues/vi/ui.shared.unified_diff.json";
 import viUiShell from "./catalogues/vi/ui.shell.json";
 import viUiShellMenubar from "./catalogues/vi/ui.shell.menubar.json";
 import viUiShellRail from "./catalogues/vi/ui.shell.rail.json";
@@ -1162,6 +1176,7 @@ import zhCNUiAgents from "./catalogues/zh-CN/ui.agents.json";
 import zhCNUiAgentsModels from "./catalogues/zh-CN/ui.agents.models.json";
 import zhCNUiAgentsNavigation from "./catalogues/zh-CN/ui.agents.navigation.json";
 import zhCNUiAgentsPages from "./catalogues/zh-CN/ui.agents.pages.json";
+import zhCNUiAgentsProposals from "./catalogues/zh-CN/ui.agents.proposals.json";
 import zhCNUiAgentsPublication from "./catalogues/zh-CN/ui.agents.publication.json";
 import zhCNUiAgentsRefusals from "./catalogues/zh-CN/ui.agents.refusals.json";
 import zhCNUiAgentsRouting from "./catalogues/zh-CN/ui.agents.routing.json";
@@ -1298,6 +1313,7 @@ import zhCNUiSettingsSearch from "./catalogues/zh-CN/ui.settings.search.json";
 import zhCNUiSettingsShortcuts from "./catalogues/zh-CN/ui.settings.shortcuts.json";
 import zhCNUiSettingsSpeech from "./catalogues/zh-CN/ui.settings.speech.json";
 import zhCNUiSettingsUpdates from "./catalogues/zh-CN/ui.settings.updates.json";
+import zhCNUiSharedUnifiedDiff from "./catalogues/zh-CN/ui.shared.unified_diff.json";
 import zhCNUiShell from "./catalogues/zh-CN/ui.shell.json";
 import zhCNUiShellMenubar from "./catalogues/zh-CN/ui.shell.menubar.json";
 import zhCNUiShellRail from "./catalogues/zh-CN/ui.shell.rail.json";
@@ -1326,6 +1342,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentsModels,
 	...enUiAgentsNavigation,
 	...enUiAgentsPages,
+	...enUiAgentsProposals,
 	...enUiAgentsPublication,
 	...enUiAgentsRefusals,
 	...enUiAgentsRouting,
@@ -1462,6 +1479,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiSettingsShortcuts,
 	...enUiSettingsSpeech,
 	...enUiSettingsUpdates,
+	...enUiSharedUnifiedDiff,
 	...enUiShell,
 	...enUiShellMenubar,
 	...enUiShellRail,
@@ -1495,6 +1513,7 @@ export const bundledCatalogues: Readonly<
 		...esUiAgentsModels,
 		...esUiAgentsNavigation,
 		...esUiAgentsPages,
+		...esUiAgentsProposals,
 		...esUiAgentsPublication,
 		...esUiAgentsRefusals,
 		...esUiAgentsRouting,
@@ -1631,6 +1650,7 @@ export const bundledCatalogues: Readonly<
 		...esUiSettingsShortcuts,
 		...esUiSettingsSpeech,
 		...esUiSettingsUpdates,
+		...esUiSharedUnifiedDiff,
 		...esUiShell,
 		...esUiShellMenubar,
 		...esUiShellRail,
@@ -1658,6 +1678,7 @@ export const bundledCatalogues: Readonly<
 		...frUiAgentsModels,
 		...frUiAgentsNavigation,
 		...frUiAgentsPages,
+		...frUiAgentsProposals,
 		...frUiAgentsPublication,
 		...frUiAgentsRefusals,
 		...frUiAgentsRouting,
@@ -1794,6 +1815,7 @@ export const bundledCatalogues: Readonly<
 		...frUiSettingsShortcuts,
 		...frUiSettingsSpeech,
 		...frUiSettingsUpdates,
+		...frUiSharedUnifiedDiff,
 		...frUiShell,
 		...frUiShellMenubar,
 		...frUiShellRail,
@@ -1821,6 +1843,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiAgentsModels,
 		...hiUiAgentsNavigation,
 		...hiUiAgentsPages,
+		...hiUiAgentsProposals,
 		...hiUiAgentsPublication,
 		...hiUiAgentsRefusals,
 		...hiUiAgentsRouting,
@@ -1957,6 +1980,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiSettingsShortcuts,
 		...hiUiSettingsSpeech,
 		...hiUiSettingsUpdates,
+		...hiUiSharedUnifiedDiff,
 		...hiUiShell,
 		...hiUiShellMenubar,
 		...hiUiShellRail,
@@ -1984,6 +2008,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiAgentsModels,
 		...ruUiAgentsNavigation,
 		...ruUiAgentsPages,
+		...ruUiAgentsProposals,
 		...ruUiAgentsPublication,
 		...ruUiAgentsRefusals,
 		...ruUiAgentsRouting,
@@ -2120,6 +2145,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiSettingsShortcuts,
 		...ruUiSettingsSpeech,
 		...ruUiSettingsUpdates,
+		...ruUiSharedUnifiedDiff,
 		...ruUiShell,
 		...ruUiShellMenubar,
 		...ruUiShellRail,
@@ -2147,6 +2173,7 @@ export const bundledCatalogues: Readonly<
 		...urUiAgentsModels,
 		...urUiAgentsNavigation,
 		...urUiAgentsPages,
+		...urUiAgentsProposals,
 		...urUiAgentsPublication,
 		...urUiAgentsRefusals,
 		...urUiAgentsRouting,
@@ -2283,6 +2310,7 @@ export const bundledCatalogues: Readonly<
 		...urUiSettingsShortcuts,
 		...urUiSettingsSpeech,
 		...urUiSettingsUpdates,
+		...urUiSharedUnifiedDiff,
 		...urUiShell,
 		...urUiShellMenubar,
 		...urUiShellRail,
@@ -2310,6 +2338,7 @@ export const bundledCatalogues: Readonly<
 		...viUiAgentsModels,
 		...viUiAgentsNavigation,
 		...viUiAgentsPages,
+		...viUiAgentsProposals,
 		...viUiAgentsPublication,
 		...viUiAgentsRefusals,
 		...viUiAgentsRouting,
@@ -2446,6 +2475,7 @@ export const bundledCatalogues: Readonly<
 		...viUiSettingsShortcuts,
 		...viUiSettingsSpeech,
 		...viUiSettingsUpdates,
+		...viUiSharedUnifiedDiff,
 		...viUiShell,
 		...viUiShellMenubar,
 		...viUiShellRail,
@@ -2473,6 +2503,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiAgentsModels,
 		...zhCNUiAgentsNavigation,
 		...zhCNUiAgentsPages,
+		...zhCNUiAgentsProposals,
 		...zhCNUiAgentsPublication,
 		...zhCNUiAgentsRefusals,
 		...zhCNUiAgentsRouting,
@@ -2609,6 +2640,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiSettingsShortcuts,
 		...zhCNUiSettingsSpeech,
 		...zhCNUiSettingsUpdates,
+		...zhCNUiSharedUnifiedDiff,
 		...zhCNUiShell,
 		...zhCNUiShellMenubar,
 		...zhCNUiShellRail,
@@ -3068,6 +3100,37 @@ export type MessageParams = {
 	"ui.agents.pages.search_aria": undefined;
 	"ui.agents.pages.tab.agents": undefined;
 	"ui.agents.pages.tab.teams": undefined;
+	"ui.agents.proposals.accept": undefined;
+	"ui.agents.proposals.accept_edits": undefined;
+	"ui.agents.proposals.accepted": { name: string };
+	"ui.agents.proposals.accessible": undefined;
+	"ui.agents.proposals.action_error": undefined;
+	"ui.agents.proposals.applying": undefined;
+	"ui.agents.proposals.cancel_edit": undefined;
+	"ui.agents.proposals.current": undefined;
+	"ui.agents.proposals.edit": undefined;
+	"ui.agents.proposals.fields": { fields: string };
+	"ui.agents.proposals.invalid_json": undefined;
+	"ui.agents.proposals.load_error": undefined;
+	"ui.agents.proposals.loading": undefined;
+	"ui.agents.proposals.new_group": undefined;
+	"ui.agents.proposals.new_row": undefined;
+	"ui.agents.proposals.not_applied": undefined;
+	"ui.agents.proposals.open_conversation": undefined;
+	"ui.agents.proposals.origin": { trigger: string };
+	"ui.agents.proposals.proposed": undefined;
+	"ui.agents.proposals.refresh": undefined;
+	"ui.agents.proposals.reject": undefined;
+	"ui.agents.proposals.rejected": { name: string };
+	"ui.agents.proposals.rejecting": undefined;
+	"ui.agents.proposals.retry": undefined;
+	"ui.agents.proposals.review": undefined;
+	"ui.agents.proposals.stale": { name: string };
+	"ui.agents.proposals.title": { name: string };
+	"ui.agents.proposals.title_create": { name: string };
+	"ui.agents.proposals.unavailable": undefined;
+	"ui.agents.proposals.untrusted": undefined;
+	"ui.agents.proposals.waiting": { count: number };
 	"ui.agents.publication.action.edit_agent": undefined;
 	"ui.agents.publication.action.edit_instructions": undefined;
 	"ui.agents.publication.action.focus_name": undefined;
@@ -12296,6 +12359,19 @@ export type MessageParams = {
 		choice: string;
 	};
 	"ui.settings.updates.update_following.update_notifications": undefined;
+	"ui.shared.unified_diff.accessible": undefined;
+	"ui.shared.unified_diff.changes": { count: number };
+	"ui.shared.unified_diff.hide_unchanged": { count: number };
+	"ui.shared.unified_diff.line_added": undefined;
+	"ui.shared.unified_diff.line_removed": undefined;
+	"ui.shared.unified_diff.next": undefined;
+	"ui.shared.unified_diff.next_hint": undefined;
+	"ui.shared.unified_diff.no_changes": undefined;
+	"ui.shared.unified_diff.position": { index: string; total: string };
+	"ui.shared.unified_diff.previous": undefined;
+	"ui.shared.unified_diff.previous_hint": undefined;
+	"ui.shared.unified_diff.show_unchanged": { count: number };
+	"ui.shared.unified_diff.stats_accessible": { added: string; removed: string };
 	"ui.shell.collapsible_app_logo.local_operator": undefined;
 	"ui.shell.panel_rail.panels": undefined;
 	"ui.shell.sidebar_navigation.agent_hub": undefined;

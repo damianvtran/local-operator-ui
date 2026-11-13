@@ -180,6 +180,13 @@ const meshId = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/);
  */
 const approvalId = z.string().regex(/^ap_[0-9a-hjkmnp-tv-z]{1,64}$/);
 /**
+ * A profile proposal's id: `pp_` + 16 hex, derived by core from the proposal's
+ * content (`local_operator/profile_proposals.py`), so filing is idempotent. The
+ * pattern is this client's own check before the id reaches a path segment.
+ */
+export const PROFILE_PROPOSAL_ID_PATTERN = /^pp_[0-9a-f]{16}$/;
+const proposalId = z.string().regex(PROFILE_PROPOSAL_ID_PATTERN);
+/**
  * What a typed credential decision echoes back: the backend's
  * `CredentialApprovalAcknowledgment`, field for field. The two credential
  * operations are the model's own `Literal`, and both digests its
@@ -4588,9 +4595,49 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	 * budget. `deny` never signs: it is write-once and settles in the safe
 	 * direction.
 	 */
+	/*
+	 * PROFILE PROPOSALS (`features.profile_proposals`, core
+	 * `server/routes/desktop_profile_proposals.py`). A change an agent proposed to
+	 * an account agent or team profile, reviewed in Agents → <name>. These used
+	 * to be filed as signed MESH approvals, which drew them in the Mesh tray and
+	 * needed a presence-backed signature this machine may not have, so they could
+	 * not be accepted from the UI at all (operator, 2026-11-09). The desktop
+	 * bearer is the human surface here, exactly as on `profiles.update`: Accept
+	 * applies through the same route-level authority the profile editor has.
+	 *
+	 * `list` is a STORE READ (one directory of small files), which is what makes
+	 * it safe for the Agents badge to poll. `accept` carries `after` only for
+	 * Edit-then-accept, restricted to the proposal's own changed fields (core
+	 * refuses any other key), and stale proposals are refused rather than rebased.
+	 * Both writes carry a `requestId` so a lost
+	 * answer is replayed by the server's receipts rather than applied twice.
+	 */
 	z
-		.object({ op: z.literal("approvals.list") })
+		.object({
+			op: z.literal("profileProposals.list"),
+			state: z.enum(["pending", "all"]).optional(),
+		})
 		.strict(),
+	z.object({ op: z.literal("profileProposals.get"), proposalId }).strict(),
+	z
+		.object({
+			op: z.literal("profileProposals.accept"),
+			proposalId,
+			requestId,
+			after: z
+				.record(z.string().regex(/^[a-z][a-z0-9_]{0,63}$/), z.unknown())
+				.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("profileProposals.reject"),
+			proposalId,
+			requestId,
+			note: z.string().max(2000).optional(),
+		})
+		.strict(),
+	z.object({ op: z.literal("approvals.list") }).strict(),
 	z.object({ op: z.literal("approvals.approve"), approvalId }).strict(),
 	z.object({ op: z.literal("approvals.deny"), approvalId }).strict(),
 	// Profile writes echo the reviewed commitments, never a model-authored command.
@@ -7458,6 +7505,8 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"analytics.get",
 	"analytics.models",
 	"approvals.list",
+	"profileProposals.list",
+	"profileProposals.get",
 	"commands.entities",
 	"commands.list",
 	"config.get",
@@ -8856,6 +8905,39 @@ export function desktopEndpoint(request: DesktopRequest): {
 					// recorded outcome instead of moving twice, and a request with no key
 					// is a different (unjournalled) request on purpose.
 					...(request.requestId ? { request_id: request.requestId } : {}),
+				},
+			};
+		/*
+		 * Profile proposals: the record's own id, `encodeURIComponent`ed for the
+		 * same reason the approval ids are. The bodies are the core route models'
+		 * snake_case fields and nothing else.
+		 */
+		case "profileProposals.list":
+			return {
+				path: `/v1/desktop/profile-proposals?state=${request.state ?? "pending"}`,
+				method: "GET",
+			};
+		case "profileProposals.get":
+			return {
+				path: `/v1/desktop/profile-proposals/${encodeURIComponent(request.proposalId)}`,
+				method: "GET",
+			};
+		case "profileProposals.accept":
+			return {
+				path: `/v1/desktop/profile-proposals/${encodeURIComponent(request.proposalId)}/accept`,
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					...(request.after ? { after: request.after } : {}),
+				},
+			};
+		case "profileProposals.reject":
+			return {
+				path: `/v1/desktop/profile-proposals/${encodeURIComponent(request.proposalId)}/reject`,
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					...(request.note ? { note: request.note } : {}),
 				},
 			};
 		case "approvals.list":

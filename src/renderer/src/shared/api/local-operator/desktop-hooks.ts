@@ -1053,6 +1053,16 @@ export type DesktopFeature =
 	 * filed - and offers no signature.
 	 */
 	| "profile_approvals"
+	/**
+	 * PROFILE PROPOSALS (`features.profile_proposals`): the Agents-side review of
+	 * a change an agent proposed to an account agent or team -
+	 * `GET/POST /v1/desktop/profile-proposals[...]`. ITS OWN KEY because a backend
+	 * without it has no such routes, and because it is also the signal that core
+	 * stopped filing these as mesh approvals: with it present the Mesh tray drops
+	 * any profile row it still sees (`mesh-approvals.ts`). Absent ⇒ no Agents badge,
+	 * no proposal panel, no "Review in Agents" link - today's UI unchanged.
+	 */
+	| "profile_proposals"
 	/*
 	 * AIDA'S CONTROL PLANE (`features.aida`): the read and the control op the
 	 * sidebar's row and the composer's `/aida` share. ITS OWN KEY rather than a
