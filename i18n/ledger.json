@@ -2785,7 +2785,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-13",
-				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
+				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; the merged bytes carry the audit this row records."
 			},
 			"auditors": [
 				{
@@ -3567,7 +3567,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-13",
-				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
+				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; the merged bytes carry the audit this row records."
 			},
 			"auditors": [
 				{
@@ -9932,7 +9932,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-13",
-				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
+				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; the merged bytes carry the audit this row records."
 			},
 			"auditors": [
 				{
@@ -15271,15 +15271,33 @@
 			"locale": "fr",
 			"namespace": "ui.chat.canonical",
 			"source_sha256": "3d9cd2d3daec3583cba51c4e8fb9a1cab2623c35c3ffa70d578cdab43393e974",
-			"target_sha256": "423b2640fd1c713465415500805154cf3ba138229ee27cedff9fc5e5922ca02d",
+			"target_sha256": "ae85569b3cd2ecccde549db76c4fc575e6f10da86a44deeae61035e809774274",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-13",
-				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
+				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; the merged bytes carry the audit this row records."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "2405ebc40b47-fold2-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2405ebc40b47-fold2-fr.json",
+					"receipt_sha256": "6c8ec403d065770e3f8de6b899ff7d718c67fa272d92336db3eeefd21341ad74",
+					"scope": "independent cross-family audit (Codex gpt-5.6-sol) of the keys unique to this branch on the merged bytes, ui.settings.shortcuts 13 + ui.chat.composer 8 + ui.chat.canonical 6; all other keys byte-identical to an audited parent; NOT a full-file audit, NOT a human review",
+					"note": "Round 4 FAIL with 0 blocker/major and 1 minor (action.send_both kept for row width); rounds 1-3 each failed on at least one major, all fixed. steer_hint and steer_hint_steer keep Enter/Esc verbatim per the sidecar although other fr composer strings say Entrée/Échap."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "772c42f90c0c636791982347ab48d31fe69f6e2fcf6b6f1614c35f766601e0f7",
@@ -16000,6 +16018,12 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "3d9cd2d3daec3583cba51c4e8fb9a1cab2623c35c3ffa70d578cdab43393e974",
+					"target_sha256": "423b2640fd1c713465415500805154cf3ba138229ee27cedff9fc5e5922ca02d",
+					"auditors": [],
+					"status": "pending"
 				}
 			]
 		},
@@ -16056,15 +16080,33 @@
 			"locale": "fr",
 			"namespace": "ui.chat.composer",
 			"source_sha256": "186846e309af1ccc8d70ab6ef7fd56c7b90c4b977f893e4e6be8d3df95ea088a",
-			"target_sha256": "4b50b0c5db144b4ba79357b260ea9e8c8ec81c0288ab0f62b80781341b4c4c6f",
+			"target_sha256": "7fc2fb036e35196e26596a1551e234e36304c3aa41ce2dc5d154b09cf6b38388",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-13",
-				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
+				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; the merged bytes carry the audit this row records."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "2405ebc40b47-fold2-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2405ebc40b47-fold2-fr.json",
+					"receipt_sha256": "6c8ec403d065770e3f8de6b899ff7d718c67fa272d92336db3eeefd21341ad74",
+					"scope": "independent cross-family audit (Codex gpt-5.6-sol) of the keys unique to this branch on the merged bytes, ui.settings.shortcuts 13 + ui.chat.composer 8 + ui.chat.canonical 6; all other keys byte-identical to an audited parent; NOT a full-file audit, NOT a human review",
+					"note": "Round 4 FAIL with 0 blocker/major and 1 minor (action.send_both kept for row width); rounds 1-3 each failed on at least one major, all fixed. steer_hint and steer_hint_steer keep Enter/Esc verbatim per the sidecar although other fr composer strings say Entrée/Échap."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
@@ -16333,6 +16375,12 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "186846e309af1ccc8d70ab6ef7fd56c7b90c4b977f893e4e6be8d3df95ea088a",
+					"target_sha256": "4b50b0c5db144b4ba79357b260ea9e8c8ec81c0288ab0f62b80781341b4c4c6f",
+					"auditors": [],
+					"status": "pending"
 				}
 			]
 		},
@@ -22805,15 +22853,33 @@
 			"locale": "fr",
 			"namespace": "ui.settings.shortcuts",
 			"source_sha256": "2a27a8fb0bd4b0a138e243c90dea1568455c2b00d78f98cde7b8aa306589daf2",
-			"target_sha256": "648963cbe26e3610253e65cfbf8d4f0eb0f5f0eadecb59e751c358774ab1c4b3",
+			"target_sha256": "776766c05959c7f882c0cb474002fb9d59d887349d91c6c770f15402cb9b6ba8",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-13",
-				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
+				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; the merged bytes carry the audit this row records."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-13",
+					"result": "clean-with-findings",
+					"instance": "2405ebc40b47-fold2-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2405ebc40b47-fold2-fr.json",
+					"receipt_sha256": "6c8ec403d065770e3f8de6b899ff7d718c67fa272d92336db3eeefd21341ad74",
+					"scope": "independent cross-family audit (Codex gpt-5.6-sol) of the keys unique to this branch on the merged bytes, ui.settings.shortcuts 13 + ui.chat.composer 8 + ui.chat.canonical 6; all other keys byte-identical to an audited parent; NOT a full-file audit, NOT a human review",
+					"note": "Round 4 FAIL with 0 blocker/major and 1 minor (action.send_both kept for row width); rounds 1-3 each failed on at least one major, all fixed. steer_hint and steer_hint_steer keep Enter/Esc verbatim per the sidecar although other fr composer strings say Entrée/Échap."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "39560cc2eb681fae44113a3e237ea9a2a1d879366a34fae09e432abd42c765c9",
@@ -23093,6 +23159,12 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "2a27a8fb0bd4b0a138e243c90dea1568455c2b00d78f98cde7b8aa306589daf2",
+					"target_sha256": "648963cbe26e3610253e65cfbf8d4f0eb0f5f0eadecb59e751c358774ab1c4b3",
+					"auditors": [],
+					"status": "pending"
 				}
 			]
 		},
@@ -28209,7 +28281,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-13",
-				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
+				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; the merged bytes carry the audit this row records."
 			},
 			"auditors": [
 				{
@@ -28995,7 +29067,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-13",
-				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
+				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; the merged bytes carry the audit this row records."
 			},
 			"auditors": [
 				{
@@ -35620,7 +35692,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-13",
-				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
+				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; the merged bytes carry the audit this row records."
 			},
 			"auditors": [
 				{
@@ -40779,7 +40851,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-13",
-				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
+				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; the merged bytes carry the audit this row records."
 			},
 			"auditors": [
 				{
@@ -41565,7 +41637,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-13",
-				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
+				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; the merged bytes carry the audit this row records."
 			},
 			"auditors": [
 				{
@@ -48049,7 +48121,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-13",
-				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
+				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; the merged bytes carry the audit this row records."
 			},
 			"auditors": [
 				{
@@ -53377,10 +53449,28 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-13",
-				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
+				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; the merged bytes carry the audit this row records."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "2405ebc40b47-fold2-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2405ebc40b47-fold2-ur.json",
+					"receipt_sha256": "da74cdad26ee3b2019d4d08d4e23976b7a686474d9bcc91ea30905ccf9c93ac5",
+					"scope": "independent cross-family audit (Codex gpt-5.6-sol) of the keys unique to this branch on the merged bytes, ui.settings.shortcuts 13 + ui.chat.composer 8 + ui.chat.canonical 6; all other keys byte-identical to an audited parent; NOT a full-file audit, NOT a human review",
+					"note": "Round 4 PASS, no findings; rounds 1-3 each failed on at least one major, all fixed. The round-3 minor on row_help.send_steer (also recorded on the backend twin wire.settings.keymap.send_steer.help) was not repeated in round 4 and its wording is unchanged."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "772c42f90c0c636791982347ab48d31fe69f6e2fcf6b6f1614c35f766601e0f7",
@@ -54183,15 +54273,33 @@
 			"locale": "ur",
 			"namespace": "ui.chat.composer",
 			"source_sha256": "186846e309af1ccc8d70ab6ef7fd56c7b90c4b977f893e4e6be8d3df95ea088a",
-			"target_sha256": "3b3d8c9f87a1bab6116a147dd7c4354ee8a271c9ec848cb84af57294f996f45e",
+			"target_sha256": "f3fe6178dc23fa578d52ed61dc912dfd0573a03b2722955d2061f1ebd1542123",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-13",
-				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
+				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; the merged bytes carry the audit this row records."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "2405ebc40b47-fold2-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2405ebc40b47-fold2-ur.json",
+					"receipt_sha256": "da74cdad26ee3b2019d4d08d4e23976b7a686474d9bcc91ea30905ccf9c93ac5",
+					"scope": "independent cross-family audit (Codex gpt-5.6-sol) of the keys unique to this branch on the merged bytes, ui.settings.shortcuts 13 + ui.chat.composer 8 + ui.chat.canonical 6; all other keys byte-identical to an audited parent; NOT a full-file audit, NOT a human review",
+					"note": "Round 4 PASS, no findings; rounds 1-3 each failed on at least one major, all fixed. The round-3 minor on row_help.send_steer (also recorded on the backend twin wire.settings.keymap.send_steer.help) was not repeated in round 4 and its wording is unchanged."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
@@ -54462,6 +54570,12 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "186846e309af1ccc8d70ab6ef7fd56c7b90c4b977f893e4e6be8d3df95ea088a",
+					"target_sha256": "3b3d8c9f87a1bab6116a147dd7c4354ee8a271c9ec848cb84af57294f996f45e",
+					"auditors": [],
+					"status": "pending"
 				}
 			]
 		},
@@ -60644,15 +60758,33 @@
 			"locale": "ur",
 			"namespace": "ui.settings.shortcuts",
 			"source_sha256": "2a27a8fb0bd4b0a138e243c90dea1568455c2b00d78f98cde7b8aa306589daf2",
-			"target_sha256": "0705c27eade05cb0dff0cd3969112acbf61d42a2b2c75881104d8b29f148dc72",
+			"target_sha256": "1a0b0e8b1e09ad9e1875653ba074aae2250c13c38ced37bb8b3c43bd651baed3",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-13",
-				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
+				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; the merged bytes carry the audit this row records."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "2405ebc40b47-fold2-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2405ebc40b47-fold2-ur.json",
+					"receipt_sha256": "da74cdad26ee3b2019d4d08d4e23976b7a686474d9bcc91ea30905ccf9c93ac5",
+					"scope": "independent cross-family audit (Codex gpt-5.6-sol) of the keys unique to this branch on the merged bytes, ui.settings.shortcuts 13 + ui.chat.composer 8 + ui.chat.canonical 6; all other keys byte-identical to an audited parent; NOT a full-file audit, NOT a human review",
+					"note": "Round 4 PASS, no findings; rounds 1-3 each failed on at least one major, all fixed. The round-3 minor on row_help.send_steer (also recorded on the backend twin wire.settings.keymap.send_steer.help) was not repeated in round 4 and its wording is unchanged."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "39560cc2eb681fae44113a3e237ea9a2a1d879366a34fae09e432abd42c765c9",
@@ -60909,6 +61041,12 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "2a27a8fb0bd4b0a138e243c90dea1568455c2b00d78f98cde7b8aa306589daf2",
+					"target_sha256": "0705c27eade05cb0dff0cd3969112acbf61d42a2b2c75881104d8b29f148dc72",
+					"auditors": [],
+					"status": "pending"
 				}
 			]
 		},
@@ -65821,7 +65959,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-13",
-				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
+				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; the merged bytes carry the audit this row records."
 			},
 			"auditors": [
 				{
@@ -66642,7 +66780,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-13",
-				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
+				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; the merged bytes carry the audit this row records."
 			},
 			"auditors": [
 				{
@@ -73596,7 +73734,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-13",
-				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
+				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; the merged bytes carry the audit this row records."
 			},
 			"auditors": [
 				{
@@ -79139,7 +79277,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-13",
-				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
+				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; the merged bytes carry the audit this row records."
 			},
 			"auditors": [
 				{
@@ -79936,7 +80074,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-13",
-				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
+				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; the merged bytes carry the audit this row records."
 			},
 			"auditors": [
 				{
@@ -87216,7 +87354,7 @@
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-13",
-				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; this row is pending until the merged bytes are re-audited."
+				"note": "Mixed provenance: this branch's busy-delivery keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); the remainder by origin/main 0de7a69e2's recorded translators (see superseded, which now carries BOTH parents' audited states: origin/main's bytes and this branch's bytes at 1e85cf3623). The merge union is not a translation audit; the merged bytes carry the audit this row records."
 			},
 			"auditors": [
 				{
