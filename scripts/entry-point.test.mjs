@@ -78,6 +78,15 @@ const desktopInventoryRefusal = {
 	stderr: /Desktop test inventory failed: Expected `list` or `run/,
 };
 
+// Refuse before git/build IO: this case must run even through a symlink.
+const musicEvidenceRefusal = {
+	script: "music-storybook-evidence.mjs",
+	args: ["invalid-mode"],
+	status: 1,
+	stdout: /^$/,
+	stderr: /Expected scope or manifest <static-output>/,
+};
+
 /** A `package.json` shaped like this repository's: tab-indented, one version line. */
 const packageJson = (version) =>
 	`{\n\t"name": "local-operator-ui",\n\t"version": "${version}",\n\t"private": true\n}\n`;
@@ -212,6 +221,7 @@ function cases(root) {
 	return [
 		{ ...desktopShardRefusal, cwd: plain, env: {} },
 		{ ...desktopInventoryRefusal, cwd: plain, env: {} },
+		{ ...musicEvidenceRefusal, cwd: plain, env: {} },
 		{
 			// Technical help exercises the real shared entry door without sealing
 			// outputs or loading Python/core/native/network/keychain prerequisites.
@@ -813,6 +823,25 @@ test("every release script runs when it is reached through a symlinked path", ()
 			// reason; only the paths inside it may differ, and none of these print one.
 			assert.equal(linked.stderr, physical.stderr, kase.script);
 		}
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+test("music evidence CLI refuses through physical and symlinked paths", () => {
+	const root = mkdtempSync(join(tmpdir(), "music-entry-point-"));
+	try {
+		const bin = stubBin(root);
+		const link = join(root, "linked-scripts");
+		symlinkSync(SCRIPTS, link);
+		assert.notEqual(realpathSync(link), link);
+		const kase = { ...musicEvidenceRefusal, cwd: root, env: {} };
+		const physical = run(join(SCRIPTS, kase.script), kase, bin, root);
+		assert.equal(physical.status, kase.status);
+		assert.match(physical.stdout, kase.stdout);
+		assert.match(physical.stderr, kase.stderr);
+		const linked = run(join(link, kase.script), kase, bin, root);
+		assert.deepEqual(linked, physical);
 	} finally {
 		rmSync(root, { recursive: true, force: true });
 	}

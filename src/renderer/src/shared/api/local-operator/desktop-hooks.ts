@@ -276,6 +276,13 @@ export type DesktopFeature =
 	| "ask_dismiss"
 	| "session_files"
 	/**
+	 * Peer-held sessions' files on this device (core design
+	 * remote-files-parity §6): fetch-on-miss for transcript bytes, the peer
+	 * Files and user-attachments listings, and the per-row content/download
+	 * routes. Absent, a remote session's Files view keeps today's sentence.
+	 */
+	| "remote_files"
+	/**
 	 * The user-attachment inventory (`GET .../user-attachments` and its
 	 * materialise child). Its own key because `session_files` describes the
 	 * agent's OUTPUT and promises nothing about inputs. Absent, the canvas lists

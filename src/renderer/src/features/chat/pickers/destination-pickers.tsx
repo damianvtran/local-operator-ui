@@ -50,7 +50,13 @@ import {
 	useSessionSettingsIntents,
 	useSettingsIntentsEnabled,
 } from "@shared/hooks/use-settings-intents";
-import { formatList, t } from "@shared/i18n";
+import {
+	FULL_NUMERIC_STAMP,
+	formatDateTime,
+	formatList,
+	formatNumber,
+	t,
+} from "@shared/i18n";
 import { useTextDirection } from "@shared/i18n/use-document-direction";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { intentOverride } from "@shared/store/settings-intents";
@@ -106,7 +112,7 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
-import { isolateSigilRun } from "../../../../../i18n/bidi";
+import { isolateClock, isolateSigilRun } from "../../../../../i18n/bidi";
 import type { DesktopModelSelection } from "../../../../../shared/desktop-contract";
 import type {
 	DesktopLoopState,
@@ -2143,7 +2149,7 @@ export const ModelPicker: FC<PickerContext> = ({
 							label={t("ui.chat.pickers.destination_pickers.context")}
 							value={
 								selectedDetails.context_window > 0
-									? selectedDetails.context_window.toLocaleString()
+									? formatNumber(selectedDetails.context_window)
 									: t("ui.chat.pickers.destination_pickers.unknown")
 							}
 						/>
@@ -2152,7 +2158,7 @@ export const ModelPicker: FC<PickerContext> = ({
 							value={
 								selectedDetails.max_output_tokens &&
 								selectedDetails.max_output_tokens > 0
-									? selectedDetails.max_output_tokens.toLocaleString()
+									? formatNumber(selectedDetails.max_output_tokens)
 									: t("ui.chat.pickers.destination_pickers.unknown")
 							}
 						/>
@@ -4099,7 +4105,11 @@ export const ResumePicker: FC<PickerContext> = ({
 						"ui.chat.pickers.destination_pickers.cold_reopens_on_the_next_message",
 					),
 				),
-				meta: new Date((row.mtime ?? 0) * 1000).toLocaleString(),
+				// `toLocaleString()` spelled the full numeric date and clock with seconds
+				// (`11/5/2026, 3:42:01 PM`); the same components, now in the live locale.
+				meta: isolateClock(
+					formatDateTime(new Date((row.mtime ?? 0) * 1000), FULL_NUMERIC_STAMP),
+				),
 				current: row.id === sessionId,
 				keywords: [row.id],
 			}));

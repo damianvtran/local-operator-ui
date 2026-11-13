@@ -268,6 +268,8 @@ export function teamBridgeDeliverySummary(message: {
 }): {
 	counts: TeamBridgeDeliveryCounts;
 	lines: TeamBridgeDeliveryLine[];
+	/* The message has exactly one recipient agent: the line drops its count. */
+	single: boolean;
 } | null {
 	const lines = teamBridgeDeliveryLines(message.delivery_states, message);
 	const fromHub = countsFromSummary(message.delivery_summary);
@@ -277,7 +279,44 @@ export function teamBridgeDeliverySummary(message: {
 	// Silence means complete (see WHEN IT IS SILENT): `countsFromSummary` has
 	// already folded any `total` shortfall into `screening`.
 	if (outstanding === 0) return null;
-	return { counts, lines };
+	return {
+		counts,
+		lines,
+		single: isSingleRecipient(message.delivery_summary, fromHub),
+	};
+}
+
+/*
+ * WHY (operator request 2026-11-10): in a 1:1 conversation "1 being screened" /
+ * "1 held for review" carries a "1" that says nothing, so a message with ONE
+ * recipient agent reads "Being screened" / "Held for review" instead.
+ *
+ * There is no uncounted "Delivered": since #1858 a fully delivered message
+ * renders no line at all (WHEN IT IS SILENT above), and with one recipient
+ * "delivered" and "outstanding" are mutually exclusive, so a single-recipient
+ * line is always exactly one outstanding state.
+ *
+ * CONSTRAINTS, each a way the uncounted form would misstate the message:
+ * - The trigger is the message's TOTAL recipients, never one bucket at 1:
+ *   "Delivered · 1 being screened" would hide how many of several received it.
+ * - Only the hub summary knows that total. Derived counts (an older hub with no
+ *   `delivery_summary`) cover only the viewer's own `delivery_states`, which can
+ *   be one agent of several, so they always keep their count (review F1).
+ * - The hub's `total` must say 1 as well as the buckets: each bucket is parsed
+ *   with `.catch(undefined)`, so a malformed bucket drops out and the rest could
+ *   sum to 1 for a larger message (review F2). An absent `total` (also dropped
+ *   when malformed) proves nothing, so it keeps the count too.
+ */
+function isSingleRecipient(
+	summary: TeamBridgeDeliverySummary | undefined,
+	fromHub: TeamBridgeDeliveryCounts | null,
+): boolean {
+	if (!summary || !fromHub || summary.total !== 1) return false;
+	const sum = TEAM_BRIDGE_DELIVERY_SEGMENTS.reduce(
+		(acc, segment) => acc + fromHub[segment],
+		0,
+	);
+	return sum === 1;
 }
 
 const zeroCounts = (): TeamBridgeDeliveryCounts => ({

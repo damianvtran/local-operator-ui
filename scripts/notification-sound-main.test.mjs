@@ -229,6 +229,33 @@ test("no other op carries a refusal (the pass-through is scoped)", async () => {
 	assert.equal(response.refusal, undefined);
 });
 
+/*
+ * Remote files parity, UX round 2 (U2-1): a peer file's 504 is either the
+ * owner offline or its transfer still running, and only the first may be
+ * called offline - so this read forwards the daemon's code too.
+ */
+test("a peer file's content read forwards its 504 code (fetch pending vs offline)", async () => {
+	const { response } = await drive(
+		{
+			op: "sessions.files.content",
+			sessionId: "aaaaaaaaaaaa",
+			fileId: "00000000000000a1",
+		},
+		null,
+		() =>
+			json(504, {
+				detail: {
+					code: "attachment_fetch_pending",
+					params: { device: "lop-remote-node-2" },
+					text: "Still fetching.",
+				},
+			}),
+	);
+	assert.equal(response.status, 504);
+	assert.equal(response.kind, "error");
+	assert.equal(response.refusal?.code, "attachment_fetch_pending");
+});
+
 test("params are kept as at most 8 short scalars", () => {
 	const many = Object.fromEntries(
 		Array.from({ length: 12 }, (_, i) => [`k${i}`, i]),

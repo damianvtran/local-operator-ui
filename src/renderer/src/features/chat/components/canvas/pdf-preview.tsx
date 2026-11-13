@@ -27,6 +27,7 @@ const PdfPreviewAttempt: FC<{
 }> = ({ document, onRetry, reload }) => {
 	useI18nLocale();
 	const state = useFileBlobUrl(document.path, {
+		remoteDevice: document.remote?.deviceName,
 		mtimeMs: document.lastAgentModified,
 		mimeType: mimeTypeForPath(document.path),
 		sizeBytes: document.sizeBytes,

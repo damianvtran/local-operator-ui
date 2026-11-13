@@ -1,0 +1,74 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "audit_kind": "s16d-delta",
+  "date": "2026-11-12",
+  "locale": "zh-CN",
+  "locale_name": "Simplified Chinese",
+  "namespace": "ui.common.time",
+  "pr": 1877,
+  "pr_url": "https://github.com/damianvtran/local-operator-ui/pull/1877",
+  "branch": "feat/i18n-s16d-live-locale-formatting",
+  "head": "b2110ea9cd9fd0c103891a4a77b65ba741012cf4",
+  "instance": "4517fbb34e79",
+  "agent": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "role": "independent i18n auditor (team lopdev); not the translator and not an earlier auditor of this group",
+    "instance": "4517fbb34e79",
+    "session": "4517fbb34e79",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "harness session 'Model:' line; no provider fallback used or observed in this run",
+    "independent_from_translator_session": true,
+    "independence": "Separate session from the translator (i18n-translator, session 3ef6295a5545, anthropic/claude-sonnet-5-5). Read-only: this run wrote no catalogue, English source, context sidecar, ledger, allowance or generated file."
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "en_sha256": "bb0b3aa1a71679cc73cb40d73616b5e22057c7dcbc86705c2ec4425984971e13",
+  "target_sha256": "111c7c99dc0a0d3543435224dbd41b87f6e930fd966457c1ea9bd4f74f7202cc",
+  "context_sha256": "a9069037edc11c59288a7c2d3171496b1ef44a0982fc28e6a0edb4bcae0f98d2",
+  "scope": "zh-CN ui.common.time, the four s16d keys (today_at, yesterday, weekday_at, date_at) at PR #1877 head b2110ea9; judged end to end through the real formatDividerLabel / formatMessageDateTime under locale zh-CN, not as isolated strings.",
+  "method": [
+    "Re-hashed the landed files at head b2110ea9 with `sha256sum` and compared against the bytes audited on the pre-landing candidate: all four values byte-identical, whole-file 111c7c99..., 4-pair canonical f053f4fa... .",
+    "Bundled the app's real modules (message-grouping.ts, date-utils.ts, i18n/messages.ts, i18n/locale.ts) with esbuild from the landed tree and drove formatDividerLabel/formatMessageDateTime under locale zh-CN with NOTHING registered, so the values came from the shipped bundled catalogue: 今天9:05 / 今天14:30 / 昨天14:30 / 星期一8:15 / 2026年10月5日16:45.",
+    "Parsed both sides with @formatjs/icu-messageformat-parser and compared placeholder names/types; checked NFC, bidi controls, markup/backticks and Latin residue; 0 plural/select messages in the group.",
+    "Ran negative controls (English left, dropped placeholder, renamed placeholder, NFD, bidi control) against the same detectors; all fired after the first-pass detector gap was fixed.",
+    "Ran the repo validators in a scratch mirror of the landed tree: generate --check (byte-identical), check-coverage (ok, 7 gated languages, 0 allowed keys), context-parity (ok), locale-parity.test.mjs (44/44) and zh-CN-activation.test.mjs (3/3)."
+  ],
+  "findings": [
+    {
+      "severity": "nit",
+      "id": "NIT-1",
+      "key": "ui.common.time.date_at",
+      "current": "{date}{time}",
+      "problem": "No separator before the clock, so the label composes to 2026年10月5日16:45 (同样 weekday_at -> 星期一8:15). Recorded, not churned: the zh-CN style guide forbids a space between Chinese and Latin/digit runs, the corpus follows that for digit joins (第2步，共5步) and the sibling yesterday_at = 昨天{time} does the same; the colon disambiguates so no meaning is at risk.",
+      "suggested": "If a wave/designer decision prefers the typographic space, change all four clock-bearing keys at once to 今天 {time} / 昨天 {time} / {weekday} {time} / {date} {time}; never one of them and never a full-width ，."
+    }
+  ],
+  "verdict": "clean-with-findings — 4/4 keys landed byte-identical to the audited candidate; blocker 0, major 0, minor 0, nit 1. Nothing English remains in the four values or in the composed divider labels; RTL does not apply to zh-CN.",
+  "values_audited": {
+    "ui.common.time.today_at": "今天{time}",
+    "ui.common.time.yesterday": "昨天",
+    "ui.common.time.weekday_at": "{weekday}{time}",
+    "ui.common.time.date_at": "{date}{time}"
+  },
+  "composed_landed_outputs": {
+    "today_at 14:30": "今天14:30",
+    "today_at 09:05": "今天9:05",
+    "yesterday_at 14:30": "昨天14:30",
+    "weekday_at 星期一 08:15": "星期一8:15",
+    "date_at 2026-10-05 16:45": "2026年10月5日16:45"
+  },
+  "observations": [
+    "Pre-existing and outside this group: ui.teamBridge.threadRow.last writes 今天 {time} / 昨天 {time} WITH a space, so zh-CN will show both joins; a corpus consistency item for a later pass, not a defect of these four values.",
+    "Formatter-side, not catalogue copy: {weekday} is Intl weekday:'long' (星期一); a compact surface could use 'short' (周一) if width ever demands it."
+  ],
+  "limitations": "Catalogue + message-runtime audit only, plus code-point cell arithmetic against the English sources: no rendered screen, screenshot or measured layout, and no native-speaker sign-off. Visual QA and design review remain separate gates.",
+  "prior_audits": [
+    {
+      "prompt": "first-pass audit of the same four VALUES on the pre-landing candidate (session 4517fbb34e79, deepseek/deepseek-flash), which predicted this landed whole-file hash",
+      "result": "clean-with-findings, 1 nit (this NIT-1)"
+    }
+  ]
+}

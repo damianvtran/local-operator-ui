@@ -1,3 +1,4 @@
+import { remoteUnreachableText } from "@features/chat/canonical/remote-files";
 import {
 	fetchAttachmentBlob,
 	useAttachmentSource,
@@ -5,6 +6,7 @@ import {
 import type { CanvasDocument } from "@features/chat/types/canvas";
 import { artifactFileName } from "@features/chat/utils/artifact-identity";
 import { mimeTypeForPath } from "@features/chat/utils/file-kind";
+import { Button } from "@shared/components/ui";
 import { useFileBlobUrl } from "@shared/hooks/use-file-blob-url";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
@@ -130,7 +132,26 @@ const ArtifactImagePreview: FC<{ document: CanvasDocument }> = ({
 					/>
 				</div>
 			) : source.state === "resolving" ? (
-				<FileViewerState quiet title={t("ui.common.viewer.opening")} />
+				<FileViewerState
+					quiet
+					title={
+						/* A slow owner is named, not "Opening…" (design D1-3). */
+						source.pending && document.remote
+							? t("ui.canvas.files.remoteFetching", {
+									device: document.remote.deviceName,
+								})
+							: t("ui.common.viewer.opening")
+					}
+				/>
+			) : source.state === "retryable" ? (
+				<FileViewerState
+					title={remoteUnreachableText(document.remote?.deviceName ?? "")}
+					detail={document.title}
+				>
+					<Button variant="secondary" size="sm" onClick={source.retry}>
+						{t("ui.canvas.files.retry")}
+					</Button>
+				</FileViewerState>
 			) : (
 				<FileViewerState
 					title={
@@ -150,6 +171,7 @@ const ArtifactImagePreview: FC<{ document: CanvasDocument }> = ({
 const PathImagePreview: FC<{ document: CanvasDocument }> = ({ document }) => {
 	useI18nLocale();
 	const state = useFileBlobUrl(document.path, {
+		remoteDevice: document.remote?.deviceName,
 		mtimeMs: document.lastAgentModified,
 		mimeType: mimeTypeForPath(document.path),
 		sizeBytes: document.sizeBytes,

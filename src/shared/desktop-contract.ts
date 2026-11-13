@@ -2116,6 +2116,16 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			fileId: z.string().regex(/^[a-f0-9]{16}$/),
 		})
 		.strict(),
+	// A PEER-held row copied onto THIS device (`features.remote_files`). The
+	// backend picks the folder and the name and answers a receipt; the renderer
+	// never names a destination, so a download cannot become a write anywhere.
+	z
+		.object({
+			op: z.literal("sessions.files.download"),
+			sessionId,
+			fileId: z.string().regex(/^[a-f0-9]{16}$/),
+		})
+		.strict(),
 	/*
 	 * The files and pictures the PERSON attached (`features.session_attachments`).
 	 * A backend read over the whole journal because history pages arrive lazily,
@@ -7109,6 +7119,21 @@ const MESH_READ_OPS: ReadonlySet<string> = new Set([
 const PROVIDER_WRITE_OPS: ReadonlySet<string> = new Set(["usage.reset"]);
 
 /**
+ * A peer-held file landed on THIS device (`features.remote_files`).
+ *
+ * A WRITE on the long budget, for the mesh-listing reason above: the backend
+ * waits up to `REMOTE_FETCH_WAIT_S = 20.0` for the owner's transfer before it
+ * answers 504 `attachment_fetch_pending` (docs/design/remote-files-parity.md
+ * §1), then hashes and links the landed copy. On the 20 s control budget this
+ * layer would give up first and call a download that was still landing a
+ * failure. Not in `READ_ONLY_OPS`: a timeout must keep the write sentence,
+ * because a file may already be in Downloads.
+ */
+const MESH_WRITE_OPS: ReadonlySet<string> = new Set([
+	"sessions.files.download",
+]);
+
+/**
  * Every op on the long budget, whichever shape put it there.
  *
  * Named for the BUDGET rather than for a read direction: one member is a write
@@ -7120,6 +7145,7 @@ const LONG_CONTROL_OPS: ReadonlySet<string> = new Set([
 	...PROVIDER_READ_OPS,
 	...MESH_READ_OPS,
 	...PROVIDER_WRITE_OPS,
+	...MESH_WRITE_OPS,
 ]);
 
 /*
@@ -7862,6 +7888,13 @@ export type DesktopMediaRequest =
 	// beside the other session operations.
 	| { op: "sessions.attachment"; sessionId: string; digest: string }
 	/*
+	 * A PEER-held Files row's bytes, addressed by the owner's row id rather than
+	 * by any path (`features.remote_files`): the row's `ref.path` is the owner's
+	 * display path and names nothing on this disk, so the viewer route asks the
+	 * owner for the row and streams what S1 confinement lets it serve.
+	 */
+	| { op: "sessions.files.content"; sessionId: string; fileId: string }
+	/*
 	 * The same fetch, scoped to a CHILD of the named session.
 	 *
 	 * The parent's op above cannot serve a child's rows: its route resolves the
@@ -8031,9 +8064,10 @@ export type DesktopMediaResponse =
 			code?: DesktopRefusalCode;
 			/**
 			 * The daemon's own refusal code and params, forwarded only for
-			 * `notification_sounds.upload` (main `desktop-media.ts`): that row's copy
-			 * and remedy switch on the code (`too_long`, `unsupported_format` ...),
-			 * which the closed pairing table above cannot carry.
+			 * `notification_sounds.upload` and `sessions.files.content` (main
+			 * `desktop-media.ts`): their copy switches on the code (`too_long`,
+			 * `unsupported_format`, `attachment_fetch_pending` ...), which the closed
+			 * pairing table above cannot carry.
 			 */
 			refusal?: { code: string; params?: Record<string, unknown> };
 	  };
@@ -9383,6 +9417,11 @@ export function desktopEndpoint(request: DesktopRequest): {
 		case "sessions.files.materialise":
 			return {
 				path: `/v1/desktop/sessions/${encodeURIComponent(request.sessionId)}/files/${encodeURIComponent(request.fileId)}/materialise`,
+				method: "POST",
+			};
+		case "sessions.files.download":
+			return {
+				path: `/v1/desktop/sessions/${encodeURIComponent(request.sessionId)}/files/${encodeURIComponent(request.fileId)}/download`,
 				method: "POST",
 			};
 		case "sessions.userAttachments":

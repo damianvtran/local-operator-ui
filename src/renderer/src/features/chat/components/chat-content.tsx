@@ -109,6 +109,11 @@ import {
 import { CanonicalTranscript } from "../canonical/canonical-transcript";
 import type { UndeliveredTurn } from "../canonical/canonical-transcript";
 import { LiveUpdatesPausedBanner } from "../canonical/live-updates-paused-banner";
+import {
+	type MusicJobsLive,
+	MusicJobsLiveContext,
+	musicJobsLiveRowsOf,
+} from "../canonical/music-generating-model";
 import { openFrameFacts } from "../canonical/open-frame";
 import {
 	canonicalTranscriptSpeaks,
@@ -169,6 +174,8 @@ import type { DirectoryWritePath } from "./directory-indicator";
 import { MakeTemporaryDialog } from "./make-temporary-dialog";
 import { RawInfoView } from "./raw-info-view";
 import { type McpServerRow, type RunDetails, RunPanel } from "./run-details";
+import { JobCancelPopover } from "./run-details/job-cancel-popover";
+import { useJobCancel } from "./run-details/use-job-cancel";
 import type { JobControls } from "./run-details/use-job-controls";
 import type { McpRemedyControls } from "./run-details/use-mcp-remedy";
 import type { MonitorControls } from "./run-details/use-monitor-controls";
@@ -976,6 +983,33 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		// Copy stays live across a backend locale change without touching tab state.
 		useI18nLocale();
 		const [isSmallView, setIsSmallView] = useState(false);
+		/*
+		 * The in-chat music generating card's live half (operator decision
+		 * a-69e7): the SAME job rows the Jobs panel paints, keyed by job id, and
+		 * the chat's own instance of the panel's confirm flow. A second
+		 * `useJobCancel` rather than a reach into the panel's: the panel may be
+		 * closed (its section is gated on open jobs and its own mount), and each
+		 * instance confirms exactly the row it was handed, so a press on one
+		 * card can only ever cancel that card's job.
+		 */
+		const musicJobCancel = useJobCancel({
+			sessionId: sessionId ?? null,
+			controls: jobControls,
+			// Escape after a card's Cancel returns to that card's control (R15-3).
+			controlAttribute: "data-music-cancel",
+		});
+		const musicJobCancelRequest = musicJobCancel.section.request;
+		const runDetailJobs = runDetails?.jobs;
+		const musicJobsLive = useMemo<MusicJobsLive>(
+			() => ({
+				// Successor observer rows (a cancel Core carried on) are indexed by
+				// the music job they carry, so a card follows its paid outcome.
+				...musicJobsLiveRowsOf(runDetailJobs ?? []),
+				request: musicJobCancelRequest,
+				loaded: runDetailJobs !== undefined,
+			}),
+			[runDetailJobs, musicJobCancelRequest],
+		);
 		/*
 		 * THE COMPOSER'S TWO HOST SEAMS (the shared-composer lift). The credential
 		 * probe and the credentials-cache invalidation used to live INSIDE
@@ -2931,156 +2965,159 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 									/* Messages container: the canonical transcript is the only
 									 * one there is. The legacy job/message list was reachable only
 									 * through the socket transport, and the transport is gone. */
-									<CanonicalTranscript
-										frontend={canonical.view.frontend}
-										transcript={canonical.view.transcript}
-										openFrame={openFrameForPane}
-										agentMark={agentAvatar}
-										agentName={agentSpeakerName}
-										undelivered={undeliveredOnScreen}
-										/*
-										 * THE ONE DERIVATION, here too (agent review
-										 * round 2, N-1). This feeds the transcript's OWN
-										 * working line and its liveness term, so reading
-										 * the raw field left the one surface that DRAWS
-										 * "the agent is parked on you" answering from the
-										 * mirrored ask while the composer's term
-										 * answered from `gate`.
-										 */
-										gate={gate}
-										/*
-										 * THE IN-FLIGHT CLAIM SURVIVES A RECEIPT GAP (operator
-										 * incident, 2026-10-07): read through the pair, so the
-										 * reconnects a busy session answers with do not blank the
-										 * line - the same pair the controls and the send mode now
-										 * read (round 1's D2; the prop's own note carries the
-										 * decision).
-										 */
-										waiting={canonical.turnAlive}
-										starting={canonical.starting === true}
-										startingAfterId={canonical.startingAfterId ?? null}
-										startingSession={canonical.startingSession === true}
-										startingSince={canonical.startingSince ?? null}
-										stopping={stoppingTurn}
-										/*
-										 * The image-gen card's Cancel, offered on the SAME two
-										 * terms the composer's Stop is: `canonicalStop`
-										 * exists only when the backend advertises
-										 * `session_interrupt` and the pane is not terminal, so
-										 * the card never draws a control whose press could
-										 * only 401 or answer "nothing was running". One
-										 * callback (`canonical.onStop`, stable since the
-										 * page's own useCallback fix), so the transcript's
-										 * memoised rows compare one reference and a press
-										 * takes the same write path as the composer's.
-										 */
-										/*
-										 * `onConfirmedStop` ALONE, never a fallback to `onStop`.
-										 * The card asks its own identical question before
-										 * dispatching, so handing it the pane's gated `onStop`
-										 * would ask twice (card, then gate) for an embedder
-										 * that supplied only that prop. Absent
-										 * `onConfirmedStop` therefore draws no cancel control,
-										 * which is the fail-closed reading: a card that cannot
-										 * skip the ask does not offer the press.
-										 */
-										onInterruptTurn={canonicalStop?.onConfirmedStop}
-										/*
-										 * The disputed idle withholds the rung's clock (U9): the
-										 * label stands - the work may be real - but the ticking
-										 * number asserts a duration the pane just admitted it
-										 * cannot vouch for. One fact with the sentence; see
-										 * `idleDisputed` on the handle type.
-										 */
-										idleDisputed={canonical.idleDisputed === true}
-										loadingOlder={canonical.view.loadingOlder}
-										onLoadOlder={canonical.view.loadOlder}
-										onLoadOlderOutcome={canonical.view.loadOlderDetailed}
-										olderFailed={canonical.view.olderFailed}
-										containerRef={messagesContainerRef}
-										isSmallView={isSmallView}
-										status={canonical.view.status}
-										failure={canonical.view.failure}
-										/*
-										 * The reader's own question, and the same value the band
-										 * below reads as `isHydrating`: the pane's hold and the
-										 * band's claim are one decision with two readers, so
-										 * they are handed one value rather than deriving it
-										 * twice. `hydrated` is deliberately NOT that value: it
-										 * answers "has a page been applied", which is false
-										 * forever for a session-less draft - the pane held
-										 * `Loading conversation…` over the splash that way.
-										 */
-										awaitingHydration={canonical.view.awaitingHydration}
-										/*
-										 * The end claim's PROOF, the sibling fact to the one above and
-										 * needed beside it (remote-load-hydration): `awaitingHydration`
-										 * ends the pane's wait, but `has_more: false` still needs a read
-										 * that could SEE the conversation before "Start of conversation"
-										 * is honest — a stored remote session's cold open answers from
-										 * a facade with no owner, and the session hook refuses to count
-										 * that answer as proof. `hydrated` is exactly that proof (a page
-										 * has been applied) and stays false until one is; without it
-										 * the slot renders "not loaded" and the retry below instead
-										 * of the end copy.
-										 */
-										hydrationProven={canonical.view.hydrated || createdHere}
-										/*
-										 * And whether a read is OUT right now (remote-load-hydration, UX
-										 * round 1 U1): the retry arm's press must be acknowledged, so
-										 * while the walk it fired is in flight the slot paints the
-										 * pending row instead of repainting the identical "not loaded"
-										 * row — and the session hook refuses a second walk while one
-										 * is out, so a held press cannot stack reads either.
-										 */
-										historyReadPending={canonical.view.historyReadPending}
-										/*
-										 * And the retry that arm offers: the same history read the cold
-										 * open fires, re-asked on the session handle — deliberately
-										 * NOT the stream's `retry`, a heavier repair than this
-										 * question needs (see `CanonicalSessionHandle.rehydrate`).
-										 */
-										onRetryHydration={canonical.view.rehydrate}
-										/*
-										 * The identity the composer BELOW is given as its
-										 * `conversationId`, and deliberately the same local
-										 * const rather than a second spelling of it: the
-										 * conversation input store files a staged quote under
-										 * this key and the composer reads its replies back out
-										 * of it, so two derivations of "which conversation is
-										 * this" is how a Quote press becomes a no-op that looks
-										 * like a broken button (see the transcript's own note).
-										 * That is why the composer's own `conversationId` and
-										 * this one are both this const and not `agentId`
-										 * written twice - they are equal today, and the point
-										 * is that they cannot drift apart.
-										 */
-										conversationId={conversationId}
-										labelPending={canonical.view.labelPending}
-										labelHoldLate={canonical.view.labelHoldLate}
-										labelMarked={canonical.view.labelMarked}
-										refusedAttachments={refusedAttachments}
-										onReconnect={canonical.view.retry}
-										onStartNewChat={onStartNewChat}
-										// The two states a notification click paints before the
-										// owner answers: the rows may be this window's memory of
-										// the conversation rather than the owner's, or the
-										// conversation may not be on this machine at all.
-										stale={canonical.view.stale}
-										/*
-										 * A peer's conversation: the pane's loading indicator says
-										 * it is syncing from the other device rather than loading
-										 * (operator 2026-11-11). The same `remoteOwnedId` answer the
-										 * files lane already reads above, so the two cannot disagree
-										 * about whose conversation this is.
-										 */
-										remote={remoteFiles}
-										missing={gone}
-										missingTemporary={
-											temporaryEnabled &&
-											canonical.view.temporaryDeleted === true
-										}
-									/>,
+									<MusicJobsLiveContext.Provider value={musicJobsLive}>
+										<CanonicalTranscript
+											frontend={canonical.view.frontend}
+											transcript={canonical.view.transcript}
+											openFrame={openFrameForPane}
+											agentMark={agentAvatar}
+											agentName={agentSpeakerName}
+											undelivered={undeliveredOnScreen}
+											/*
+											 * THE ONE DERIVATION, here too (agent review
+											 * round 2, N-1). This feeds the transcript's OWN
+											 * working line and its liveness term, so reading
+											 * the raw field left the one surface that DRAWS
+											 * "the agent is parked on you" answering from the
+											 * mirrored ask while the composer's term
+											 * answered from `gate`.
+											 */
+											gate={gate}
+											/*
+											 * THE IN-FLIGHT CLAIM SURVIVES A RECEIPT GAP (operator
+											 * incident, 2026-10-07): read through the pair, so the
+											 * reconnects a busy session answers with do not blank the
+											 * line - the same pair the controls and the send mode now
+											 * read (round 1's D2; the prop's own note carries the
+											 * decision).
+											 */
+											waiting={canonical.turnAlive}
+											starting={canonical.starting === true}
+											startingAfterId={canonical.startingAfterId ?? null}
+											startingSession={canonical.startingSession === true}
+											startingSince={canonical.startingSince ?? null}
+											stopping={stoppingTurn}
+											/*
+											 * The image-gen card's Cancel, offered on the SAME two
+											 * terms the composer's Stop is: `canonicalStop`
+											 * exists only when the backend advertises
+											 * `session_interrupt` and the pane is not terminal, so
+											 * the card never draws a control whose press could
+											 * only 401 or answer "nothing was running". One
+											 * callback (`canonical.onStop`, stable since the
+											 * page's own useCallback fix), so the transcript's
+											 * memoised rows compare one reference and a press
+											 * takes the same write path as the composer's.
+											 */
+											/*
+											 * `onConfirmedStop` ALONE, never a fallback to `onStop`.
+											 * The card asks its own identical question before
+											 * dispatching, so handing it the pane's gated `onStop`
+											 * would ask twice (card, then gate) for an embedder
+											 * that supplied only that prop. Absent
+											 * `onConfirmedStop` therefore draws no cancel control,
+											 * which is the fail-closed reading: a card that cannot
+											 * skip the ask does not offer the press.
+											 */
+											onInterruptTurn={canonicalStop?.onConfirmedStop}
+											/*
+											 * The disputed idle withholds the rung's clock (U9): the
+											 * label stands - the work may be real - but the ticking
+											 * number asserts a duration the pane just admitted it
+											 * cannot vouch for. One fact with the sentence; see
+											 * `idleDisputed` on the handle type.
+											 */
+											idleDisputed={canonical.idleDisputed === true}
+											loadingOlder={canonical.view.loadingOlder}
+											onLoadOlder={canonical.view.loadOlder}
+											onLoadOlderOutcome={canonical.view.loadOlderDetailed}
+											olderFailed={canonical.view.olderFailed}
+											containerRef={messagesContainerRef}
+											isSmallView={isSmallView}
+											status={canonical.view.status}
+											failure={canonical.view.failure}
+											/*
+											 * The reader's own question, and the same value the band
+											 * below reads as `isHydrating`: the pane's hold and the
+											 * band's claim are one decision with two readers, so
+											 * they are handed one value rather than deriving it
+											 * twice. `hydrated` is deliberately NOT that value: it
+											 * answers "has a page been applied", which is false
+											 * forever for a session-less draft - the pane held
+											 * `Loading conversation…` over the splash that way.
+											 */
+											awaitingHydration={canonical.view.awaitingHydration}
+											/*
+											 * The end claim's PROOF, the sibling fact to the one above and
+											 * needed beside it (remote-load-hydration): `awaitingHydration`
+											 * ends the pane's wait, but `has_more: false` still needs a read
+											 * that could SEE the conversation before "Start of conversation"
+											 * is honest — a stored remote session's cold open answers from
+											 * a facade with no owner, and the session hook refuses to count
+											 * that answer as proof. `hydrated` is exactly that proof (a page
+											 * has been applied) and stays false until one is; without it
+											 * the slot renders "not loaded" and the retry below instead
+											 * of the end copy.
+											 */
+											hydrationProven={canonical.view.hydrated || createdHere}
+											/*
+											 * And whether a read is OUT right now (remote-load-hydration, UX
+											 * round 1 U1): the retry arm's press must be acknowledged, so
+											 * while the walk it fired is in flight the slot paints the
+											 * pending row instead of repainting the identical "not loaded"
+											 * row — and the session hook refuses a second walk while one
+											 * is out, so a held press cannot stack reads either.
+											 */
+											historyReadPending={canonical.view.historyReadPending}
+											/*
+											 * And the retry that arm offers: the same history read the cold
+											 * open fires, re-asked on the session handle — deliberately
+											 * NOT the stream's `retry`, a heavier repair than this
+											 * question needs (see `CanonicalSessionHandle.rehydrate`).
+											 */
+											onRetryHydration={canonical.view.rehydrate}
+											/*
+											 * The identity the composer BELOW is given as its
+											 * `conversationId`, and deliberately the same local
+											 * const rather than a second spelling of it: the
+											 * conversation input store files a staged quote under
+											 * this key and the composer reads its replies back out
+											 * of it, so two derivations of "which conversation is
+											 * this" is how a Quote press becomes a no-op that looks
+											 * like a broken button (see the transcript's own note).
+											 * That is why the composer's own `conversationId` and
+											 * this one are both this const and not `agentId`
+											 * written twice - they are equal today, and the point
+											 * is that they cannot drift apart.
+											 */
+											conversationId={conversationId}
+											labelPending={canonical.view.labelPending}
+											labelHoldLate={canonical.view.labelHoldLate}
+											labelMarked={canonical.view.labelMarked}
+											refusedAttachments={refusedAttachments}
+											onReconnect={canonical.view.retry}
+											onStartNewChat={onStartNewChat}
+											// The two states a notification click paints before the
+											// owner answers: the rows may be this window's memory of
+											// the conversation rather than the owner's, or the
+											// conversation may not be on this machine at all.
+											stale={canonical.view.stale}
+											/*
+											 * A peer's conversation: the pane's loading indicator says
+											 * it is syncing from the other device rather than loading
+											 * (operator 2026-11-11). The same `remoteOwnedId` answer the
+											 * files lane already reads above, so the two cannot disagree
+											 * about whose conversation this is.
+											 */
+											remote={remoteFiles}
+											missing={gone}
+											missingTemporary={
+												temporaryEnabled &&
+												canonical.view.temporaryDeleted === true
+											}
+										/>
+										<JobCancelPopover {...musicJobCancel.popover} />
+									</MusicJobsLiveContext.Provider>,
 								)
 							: asTabPanel(
 									"raw",

@@ -1,0 +1,149 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "audit_id": "s16d-hi-r2",
+ "locale": "hi",
+ "locale_name": "Hindi",
+ "namespace": "ui.common.time",
+ "audit_date": "2026-11-12",
+ "audit_round": 2,
+ "pr": 1877,
+ "branch": "feat/i18n-s16d-live-locale-formatting",
+ "head": "b2110ea9cd9fd0c103891a4a77b65ba741012cf4",
+ "key_count": 5,
+ "keys_landed_this_pr": [
+  "ui.common.time.today_at",
+  "ui.common.time.yesterday",
+  "ui.common.time.weekday_at",
+  "ui.common.time.date_at"
+ ],
+ "auditor": {
+  "agent": "i18n-auditor",
+  "role": "independent translation auditor (team lopdev); authored no catalogue value, edited nothing (read-only)",
+  "session": "a6f6c27e3b4e",
+  "instance": "a6f6c27e3b4e",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "harness session-state header reports 'Model: deepseek/deepseek-flash'; no provider fallback was reported or observed",
+  "fallback_used": false,
+  "independent_from_translator_session": true,
+  "independent_from_round1_hi_auditor": true
+ },
+ "translator": {
+  "agent": "i18n-translator",
+  "model": "anthropic/claude-sonnet-5-5",
+  "note": "values are the translator's with the round-1 auditors' replacements applied; this auditor confirmed the landed bytes on their merits"
+ },
+ "guidance": {
+  "repo": "damianvtran/local-operator",
+  "ref": "origin/main 5795d706581efc6fd13690a8e79aa2c4bb9b8b70",
+  "files": [
+   "i18n/style-guides/hi.md",
+   "i18n/glossary.md"
+  ]
+ },
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.common.time.json",
+   "sha256": "bb0b3aa1a71679cc73cb40d73616b5e22057c7dcbc86705c2ec4425984971e13"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.common.time.context.json",
+   "sha256": "a9069037edc11c59288a7c2d3171496b1ef44a0982fc28e6a0edb4bcae0f98d2"
+  },
+  "hi": {
+   "path": "src/i18n/catalogues/hi/ui.common.time.json",
+   "sha256": "c8d0b2b8ca135938bdfc29e2f29550bb053bfd328503cc9fcf64b83cce535682"
+  }
+ },
+ "pair_hashes": {
+  "rule": "sha256(key + U+0000 + value, UTF-8)",
+  "ui.common.time.today_at": "f26c1520215c120c045dd919f900382b223e95ac0abc56e3c8a5cbf017cb9b37",
+  "ui.common.time.yesterday": "c5663ac76a20ced09a878b01c205d073554a281752764af1257efbad90d1ace9",
+  "ui.common.time.weekday_at": "9821f486638ef52344eed5f32aa2efb08c6d1c1acc62becd6b9ab1b2dc316421",
+  "ui.common.time.date_at": "f9b383b23e2ed60874dd6fc12e04fe4fd817632c2a7c51c2d0c91031ea6971f1"
+ },
+ "composed_output": {
+  "method": "app formatter: formatDividerLabel from src/renderer/src/features/chat/utils/message-grouping.ts, esbuild write:false, setLocale('hi'), real ICU arguments",
+  "weekday_at": "सोमवार को 2:30 pm / मंगलवार को 9:05 am / रविवार को 9:15 pm",
+  "date_at": "5 नवंबर 2026 को 2:30 pm / 30 अक्टूबर 2026 को 9:05 am / 2 जनवरी 2025 को 11:59 pm",
+  "today_at": "आज 2:30 pm",
+  "yesterday_at": "कल 9:05 am",
+  "yesterday": "कल"
+ },
+ "gates": {
+  "generate_check": "PASS — keys.gen.ts byte-identical to a fresh generation",
+  "check_duplicates": "PASS — 1428 files, 0 duplicate keys",
+  "context_parity": "PASS — 129 allowed gaps in 4 namespaces (shrink-only)",
+  "check_coverage": "PASS — 7 gated languages over 158 namespaces, 0 allowed keys",
+  "locale_parity": "PASS 44/44 incl. hi not an English stub and placeholder parity",
+  "hi_activation": "PASS 3/3",
+  "icu_grid_own": "PASS — 5/5 parse under hi, placeholder sets identical to en, NFC, no bidi/control chars",
+  "negative_controls": "dropped/renamed/duplicated placeholder FAIL parity; unbalanced brace ICU-rejected; English stub would FAIL the stub guard",
+  "check_strings": "NOT EVALUABLE in the src/i18n-only mirror (allowance names renderer files absent from it) — not evidence of failure",
+  "ledger_check_hi": "0 findings for hi/ui.common.time after receipt assembly"
+ },
+ "current_report_verdict": {
+  "status": "passed",
+  "unresolved_blocker_major_count": 0,
+  "finding_ids": [],
+  "observations_count": 5
+ },
+ "observations": [
+  {
+   "key": "ui.common.time.weekday_at",
+   "note": "round-1 MAJOR resolved; को after a weekday is standard 'on <day>', idiomatic, not a calque"
+  },
+  {
+   "key": "ui.common.time.date_at",
+   "note": "date + को + clock is standard Hindi date-time phrasing; a comma joiner would also be acceptable, no replacement needed"
+  },
+  {
+   "key": "ui.common.time.today_at",
+   "note": "आज/कल take no postposition; difference from weekday/date is grammatical, not inconsistent"
+  },
+  {
+   "key": "ui.common.time.date_at",
+   "note": "बजे deliberately absent because {time} already carries the Intl hi day-period; appending it would double"
+  },
+  {
+   "key": "ui.common.time.yesterday",
+   "note": "कल also means 'tomorrow'; context (past-message meta row) disambiguates; no better single word"
+  }
+ ],
+ "artifacts": [
+  {
+   "path": "i18n/audits/evidence/hi/ui.common.time/s16d-hi-r2/record.json",
+   "role": "this record",
+   "sha256": null,
+   "staged_at": "/Users/damian/.local-operator/sessions/a6f6c27e3b4e/scratchpad/audit-s16d-r2-hi-record.json"
+  },
+  {
+   "path": "i18n/audits/evidence/hi/ui.common.time/s16d-hi-r2/audit-s16d-r2-hi.md",
+   "role": "audit report",
+   "sha256": "590686fb88ae62f3760296a3d6abdee6118f69c437c3f175ba5941f5c67fea2a",
+   "staged_at": "/Users/damian/.local-operator/sessions/a6f6c27e3b4e/scratchpad/audit-s16d-r2-hi.md"
+  },
+  {
+   "path": "i18n/audits/evidence/hi/ui.common.time/s16d-hi-r2/audit.log",
+   "role": "execution log (actual command output, commands recorded verbatim)",
+   "sha256": "59ab78cc9d8af47d56599178dd45d91db9d7e6ea65fb607597d4b7d9f1b8a4ba",
+   "staged_at": "/Users/damian/.local-operator/sessions/a6f6c27e3b4e/scratchpad/s16d-r2-hi/audit.log"
+  },
+  {
+   "path": "i18n/receipts/a6f6c27e3b4e.json",
+   "role": "portable receipt copied by ledger-assemble",
+   "sha256": "748dbeff0ef167af75043807812b1776453f9c684cba66c2ec56a2fc95ede5fd",
+   "staged_at": "/Users/damian/.local-operator/sessions/a6f6c27e3b4e/scratchpad/receipt-hi-s16d-r2.json"
+  }
+ ],
+ "audit_notes_not_execution_log": "The reasoning, verdict and observations above are audit NOTES. Execution proof is audit.log: every gate was actually run with the commands it records and the outputs are verbatim from this session's mirror (~/.local-operator/sessions/a6f6c27e3b4e/scratchpad/s16d-r2-hi, git archive of b2110ea + symlinked node_modules; nothing installed). No command output was hand-written into the log.",
+ "retention": "Artifacts are staged untracked in this session's scratchpad; the implementer/manager commits them at the tracked paths above. The record is not the original of a lost file and is not backdated (no original_lost_evidence).",
+ "original_lost_evidence": null,
+ "no_edits": true,
+ "not_audited": [
+  "other hi namespaces",
+  "other locales",
+  "runtime/Electron rendering",
+  "check-strings"
+ ]
+}

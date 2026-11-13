@@ -43,7 +43,8 @@
 import { TYPE } from "@formatjs/icu-messageformat-parser";
 import type { MessageFormatElement } from "@formatjs/icu-messageformat-parser";
 
-import type { TextDirection } from "./direction";
+import { type TextDirection, textDirectionFor } from "./direction";
+import { currentLocale } from "./locale";
 
 const FSI = "\u2068";
 const LRI = "\u2066";
@@ -279,4 +280,24 @@ export function isolateSigilRun(text: string, dir: TextDirection): string {
  */
 export function isolateValue(text: string, dir: TextDirection): string {
 	return dir === "rtl" && text !== "" ? `${FSI}${text}${PDI}` : text;
+}
+
+/**
+ * A formatted clock or date (`12:05 AM`, `2026-11-05 15:42:01`) painted as an
+ * element of RTL copy, isolated in the LIVE locale's direction.
+ *
+ * WHY. Once the clock follows the locale (S16d) a Urdu window still prints a
+ * Latin-digit stamp, and a bare `12:05 AM` in a `dir=rtl` row resolves the
+ * trailing `AM` against the paragraph direction and paints `AM 12:05` (QA r1
+ * Q1; the detected-update line and the resume meta jumble the same way). The
+ * stamps in question are NOT arguments of `t()`, so `isolateArguments` never
+ * sees them; each is wrapped here at its render site.
+ *
+ * LTR LOCALES ARE UNTOUCHED: `isolateValue` returns the input by identity for
+ * every direction but `rtl`, so English and the six other LTR locales stay
+ * byte-identical. It reads the locale at CALL time and does not subscribe; every
+ * caller already re-renders on a language switch through `useI18nLocale()`.
+ */
+export function isolateClock(text: string): string {
+	return isolateValue(text, textDirectionFor(currentLocale()));
 }

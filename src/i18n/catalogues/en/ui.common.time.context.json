@@ -7,5 +7,40 @@
 		"placeholders": {
 			"time": "Runtime value; preserve the placeholder and insert it without translation."
 		}
+	},
+	"ui.common.time.today_at": {
+		"role": "Day-and-time divider label above a chat message that follows a gap, for a message sent today",
+		"tone": "Terse label, no punctuation.",
+		"length": "Two or three words; sits in a thin divider line.",
+		"note": "Pairs with yesterday_at, weekday_at and date_at; the day word and the clock may swap places if the language reads that way.",
+		"placeholders": {
+			"time": "A clock reading or date inserted by the app already formatted for the locale; insert it unchanged."
+		}
+	},
+	"ui.common.time.yesterday": {
+		"role": "Short date label on a chat message's hover row for a message sent the previous calendar day",
+		"tone": "One word, sentence case.",
+		"length": "One word; sits in a narrow meta row.",
+		"note": "Stands alone (no clock). For the divider label with a clock use yesterday_at."
+	},
+	"ui.common.time.weekday_at": {
+		"role": "Day-and-time divider label above a chat message sent earlier this week",
+		"tone": "Terse label, no punctuation.",
+		"length": "Two or three words.",
+		"note": "{weekday} is the full weekday name already in the locale (for example Monday); keep it first or last as the language reads naturally.",
+		"placeholders": {
+			"weekday": "Full weekday name, already localised; insert unchanged.",
+			"time": "A clock reading or date inserted by the app already formatted for the locale; insert it unchanged."
+		}
+	},
+	"ui.common.time.date_at": {
+		"role": "Day-and-time divider label above a chat message sent more than a week ago",
+		"tone": "Terse label.",
+		"length": "A long date plus a clock.",
+		"note": "{date} is a long calendar date already in the locale (for example November 5, 2026). The joiner between date and clock is yours to choose (comma, space, 'at').",
+		"placeholders": {
+			"date": "Long calendar date, already localised; insert unchanged.",
+			"time": "A clock reading or date inserted by the app already formatted for the locale; insert it unchanged."
+		}
 	}
 }
