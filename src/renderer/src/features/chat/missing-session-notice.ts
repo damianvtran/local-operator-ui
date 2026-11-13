@@ -26,3 +26,59 @@
  * a broken one, which is what a composer without a transcript gets.
  */
 export const MISSING_SESSION_NOTICE_ID = "lo-missing-session-notice";
+
+/**
+ * The notice's words and actions, as one decision the node suite can run.
+ *
+ * A conversation the core deleted as a TEMPORARY chat (`session_temporary_deleted`,
+ * `features.temporary_chats`) gets its own tombstone: it was not lost, it ended
+ * as promised, so the sentence says so and the first way out is another
+ * temporary chat. Both actions carry the unsent draft into the new chat (the
+ * store's `startNewChat` rule); the cached transcript was already dropped by the
+ * 404 that raised the notice. Every other missing conversation keeps the generic
+ * sentence and its one action.
+ */
+export type MissingSessionNotice =
+	| {
+			kind: "generic";
+			title: "ui.chat.canonical.transcript.missing_session";
+			detail: "ui.chat.canonical.transcript.missing_session_detail";
+			actions: readonly [
+				{
+					key: "ui.chat.canonical.transcript.start_new_chat";
+					temporary: false;
+				},
+			];
+	  }
+	| {
+			kind: "temporary";
+			title: "ui.chat.canonical.temporary_deleted.title";
+			detail: "ui.chat.canonical.temporary_deleted.detail";
+			actions: readonly [
+				{ key: "ui.chat.canonical.temporary_deleted.new"; temporary: true },
+				{ key: "ui.chat.canonical.temporary_deleted.back"; temporary: false },
+			];
+	  };
+
+export function missingSessionNotice(
+	temporaryDeleted: boolean | undefined,
+): MissingSessionNotice {
+	if (temporaryDeleted === true)
+		return {
+			kind: "temporary",
+			title: "ui.chat.canonical.temporary_deleted.title",
+			detail: "ui.chat.canonical.temporary_deleted.detail",
+			actions: [
+				{ key: "ui.chat.canonical.temporary_deleted.new", temporary: true },
+				{ key: "ui.chat.canonical.temporary_deleted.back", temporary: false },
+			],
+		};
+	return {
+		kind: "generic",
+		title: "ui.chat.canonical.transcript.missing_session",
+		detail: "ui.chat.canonical.transcript.missing_session_detail",
+		actions: [
+			{ key: "ui.chat.canonical.transcript.start_new_chat", temporary: false },
+		],
+	};
+}

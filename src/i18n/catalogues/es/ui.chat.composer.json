@@ -11,6 +11,7 @@
 	"ui.chat.composer.placeholder.secret_answer": "Responde a la solicitud de secreto en el panel de consultas",
 	"ui.chat.composer.placeholder.sending": "Enviando tu mensaje",
 	"ui.chat.composer.placeholder.stopping": "Deteniendo el turno",
+	"ui.chat.composer.placeholder.temporary": "Chat temporal — no se guarda en tus chats. Pregunta lo que quieras",
 	"ui.chat.composer.placeholder.unavailable": "Esta conversación ya no existe",
 	"ui.chat.composer.placeholder.waiting": "Guía al agente. Intro envía ya · Esc detiene",
 	"ui.chat.composer.start_recording": "Iniciar grabación",

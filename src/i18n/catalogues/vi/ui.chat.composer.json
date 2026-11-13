@@ -49,6 +49,7 @@
 	"ui.chat.composer.placeholder.secret_answer": "Trả lời yêu cầu bí mật trong bảng câu hỏi",
 	"ui.chat.composer.placeholder.sending": "Đang gửi tin nhắn của bạn",
 	"ui.chat.composer.placeholder.stopping": "Đang dừng lượt chạy",
+	"ui.chat.composer.placeholder.temporary": "Cuộc trò chuyện tạm thời — không được lưu vào danh sách trò chuyện. Hỏi bất cứ điều gì",
 	"ui.chat.composer.placeholder.unavailable": "Cuộc trò chuyện này không còn nữa",
 	"ui.chat.composer.placeholder.waiting": "Định hướng tác nhân. Enter gửi ngay · Esc dừng",
 	"ui.chat.composer.suggestion.code_review_agent": "Tạo tác nhân rà soát mã",
