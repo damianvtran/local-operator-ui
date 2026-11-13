@@ -19,6 +19,28 @@ import { createRoot } from "react-dom/client";
 // is replaced. No Finder, default app, Electron window or live config is touched.
 const CHROME_MENU_MODULE = /supplement-file-actions\.tsx$/;
 const root = process.cwd();
+// The negative controls hold the changed module at the commit the PR branched
+// from, never at a moving `origin/main`: reading `origin/main` would let the
+// next fetch silently re-point the control at newer code, so "this test is RED
+// on the base" would stop being true without anything failing. This is PR
+// #1890's base (damianvtran/local-operator-ui, branch fix/i18n-copy-path-actions).
+const CONTROL_BASE = "ba0a14e2ca716d0c3fff04378535eb943b7ca741";
+// Read one file exactly as it stood at CONTROL_BASE. A missing git object or a
+// blank read would make the control vacuously pass against the wrong source, so
+// both fail loudly here rather than greening the baseline check.
+const baseFileContents = (path) => {
+	execFileSync("git", ["cat-file", "-e", `${CONTROL_BASE}^{commit}`], {
+		cwd: root,
+		stdio: "ignore",
+	});
+	const contents = execFileSync("git", ["show", `${CONTROL_BASE}:${path}`], {
+		cwd: root,
+		encoding: "utf8",
+	});
+	assert.equal(typeof contents, "string", `base file exists as text: ${path}`);
+	assert.ok(contents.length > 0, `base file is not empty: ${path}`);
+	return contents;
+};
 // Local agent runs supply their session scratchpad; CI has no agent session.
 const scratch = process.env.LOCAL_OPERATOR_SCRATCHPAD ?? tmpdir();
 const home = mkdtempSync(join(scratch, "supplement-action-"));
@@ -115,13 +137,8 @@ const bundle = await build({
 					setup(build) {
 						// Same DOM harness with only the changed menu held at the base.
 						build.onLoad({ filter: CHROME_MENU_MODULE }, () => ({
-							contents: execFileSync(
-								"git",
-								[
-									"show",
-									"origin/main:src/renderer/src/features/chat/canonical/supplement-file-actions.tsx",
-								],
-								{ cwd: root, encoding: "utf8" },
+							contents: baseFileContents(
+								"src/renderer/src/features/chat/canonical/supplement-file-actions.tsx",
 							),
 							loader: "tsx",
 						}));
@@ -134,13 +151,8 @@ const bundle = await build({
 						name: "before-control",
 						setup(build) {
 							build.onLoad({ filter: ROW_MODULE }, () => ({
-								contents: execFileSync(
-									"git",
-									[
-										"show",
-										"origin/main:src/renderer/src/features/chat/canonical/supplement-row.tsx",
-									],
-									{ cwd: root, encoding: "utf8" },
+								contents: baseFileContents(
+									"src/renderer/src/features/chat/canonical/supplement-row.tsx",
 								),
 								loader: "tsx",
 							}));
@@ -423,7 +435,17 @@ const catalogueValue = (locale, file, key) =>
 		),
 	)[key];
 
-for (const locale of ["zh-CN", "fr", "ur", "es", "ru", "hi", "vi"]) {
+// Coverage comes from the shipped manifest rather than a hand-kept list, so a
+// newly supported locale joins this matrix automatically and a dropped one
+// leaves it; the per-locale test names stay `(<code>)` so
+// `--test-name-pattern` still selects a single locale.
+const supportedLocales = JSON.parse(
+	readFileSync(join(root, "i18n/languages.json"), "utf8"),
+)
+	.languages.filter((language) => language.status === "supported")
+	.map((language) => language.code);
+
+for (const locale of supportedLocales) {
 	test(`copy-file-path item and copied state follow the live locale (${locale})`, async () => {
 		const label = catalogueValue(
 			locale,
@@ -497,7 +519,9 @@ for (const locale of ["zh-CN", "fr", "ur", "es", "ru", "hi", "vi"]) {
 			let item = await openCopyItem();
 			assert.equal(item.textContent, "Copy file path", "en baseline");
 
-			// Live switch while the item is mounted: no remount, no English.
+			// Live switch with the menu open: the item's rendered text follows the
+			// new locale. This is a text-equality assertion only — it does not prove
+			// the row avoided remounting, so it makes no claim about one.
 			await act(async () => setLocale(locale));
 			item = [...document.querySelectorAll('[role="menuitem"]')].at(-1);
 			assert.equal(item.textContent, label);
