@@ -31,6 +31,7 @@ const bundle = await build({
 			'export * from "./src/renderer/src/features/chat/canonical/turn-collapse-model";',
 			'export { runsOf, closingAnswerIds, buildRows, ledgerName } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
 			'export { foldRuns } from "./src/renderer/src/features/chat/canonical/trace-fold-model";',
+			'export { isQuietTurnCall } from "./src/renderer/src/features/chat/canonical/turn-segments";',
 			'export { applyEvent, applyHistoryPage, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";',
 			'export { visibleRecords } from "./src/renderer/src/features/chat/canonical/cross-session-visibility";',
 		].join("\n"),
@@ -89,6 +90,7 @@ const {
 	foldRuns,
 	ledgerName,
 	isTraceFoldable,
+	isQuietTurnCall,
 } = await import(moduleUrl);
 
 /* ------------------------------- fixtures ------------------------------- */
@@ -6072,7 +6074,7 @@ const musicAfterReads = (mutate) => {
 		(r) => r.kind === "tool" && r.toolName === "generate_music",
 	)?.id;
 	const plan = collapsePlan(rows, { live: false });
-	return { rows, groups, musicId, plan, fixture };
+	return { state, rows, groups, musicId, plan, fixture };
 };
 
 const foldedIdsOf = (groups) =>
@@ -6100,12 +6102,14 @@ test("a running music job after three reads is not folded into their action grou
 	const hidden = plan.runs.flatMap((run) => run.hidden.map((r) => r.record.id));
 	assert.ok(!hidden.includes(musicId), JSON.stringify(hidden));
 
-	// NEGATIVE CONTROL: the pre-fix predicate (every non-quiet tool) swallows the
+	// NEGATIVE CONTROL: the pre-fix predicate - the transcript's exact old rule,
+	// every non-quiet tool (canonical-transcript.tsx at 87cc0d9) - swallows the
 	// music call into a four-action fold, which is the Q-1 frame.
 	const before = foldRuns(rows, {
 		nameOf: (row) => ledgerName(row.record),
 		failedOf: () => false,
-		isFoldable: (row) => row.record.kind === "tool",
+		isFoldable: (row) =>
+			row.record.kind === "tool" && !isQuietTurnCall(row.record),
 	});
 	assert.ok(
 		foldedIdsOf(before).some((ids) => ids.includes(musicId)),
@@ -6153,5 +6157,66 @@ test("ordinary tool runs and a job-less music call still fold as before", () => 
 	assert.ok(
 		foldedIdsOf(refused.groups).some((ids) => ids.includes(refused.musicId)),
 		"a job-less music call still folds with its neighbours",
+	);
+});
+
+/*
+ * AN IN-FLIGHT MUSIC CALL BREAKS THE RUN FROM ITS FIRST FRAME (agent review
+ * round 1, R1 on #1893). Before the tool result lands the call has no `job_id`,
+ * so `ownsDetachedMusicJob` cannot see it; were it foldable, the live fold would
+ * form as "3 files · 1 generate_music" and then shrink to "3 files" when the
+ * result arrived. Here the result and answer are dropped and the call is driven
+ * live (`tool_execution_start`, no end), so the record is genuinely unfinished.
+ */
+test("an unfinished music call after three reads never joins their fold", () => {
+	// The durable reads, then the music call driven live with no end event yet.
+	const { state: readsOnly, fixture } = musicAfterReads((entries) => {
+		const drop = new Set([
+			"a-native-pending-call",
+			"t-native-pending-result",
+			"a-native-pending-answer",
+		]);
+		for (let i = entries.length - 1; i >= 0; i -= 1) {
+			if (drop.has(entries[i].id)) entries.splice(i, 1);
+		}
+	});
+	const callId = fixture.core_tool_result.tool_call_id;
+	const live = [
+		{ type: "agent_start", generation: 1 },
+		{
+			type: "tool_execution_start",
+			tool_call_id: callId,
+			tool_name: "generate_music",
+			args: { prompt: "Native owned pending" },
+		},
+	].reduce((next, event, at) => applyEvent(next, event, TS + at), readsOnly);
+	const rows = buildRows(live.records, []);
+	const groups = foldRuns(rows, {
+		nameOf: (row) => ledgerName(row.record),
+		failedOf: () => false,
+		isFoldable: (row) => isTraceFoldable(row.record),
+	});
+	const musicId = `tool:${callId}`;
+	const record = live.records.find((r) => r.id === musicId);
+	assert.ok(record, "the live generate_music call projects to a tool record");
+	assert.notEqual(record.phase, "done", `phase is ${record.phase}`);
+	assert.equal(
+		record.details?.job_id,
+		undefined,
+		"no job id before the result",
+	);
+	assert.ok(
+		looseIdsOf(groups).includes(musicId),
+		"the unfinished music call paints as its own row",
+	);
+	assert.deepEqual(foldedIdsOf(groups), [
+		["tool:read-1", "tool:read-2", "tool:read-3"],
+	]);
+	// Once it settles with a job the fold's membership is the same: no shrink.
+	assert.deepEqual(foldedIdsOf(musicAfterReads().groups), foldedIdsOf(groups));
+	// A music call that FINISHES with no job (a refusal) is still foldable.
+	assert.equal(
+		isTraceFoldable({ ...record, phase: "done", details: {} }),
+		true,
 	);
 });

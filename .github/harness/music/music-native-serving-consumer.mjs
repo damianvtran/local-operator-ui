@@ -63,7 +63,19 @@ try{
  const populated=await facts();if(!populated.results||populated.tracks.length<2)throw Error('Actual serving results not rendered; no hand-authored row fallback');
  const mountedPlayers=await cdp.evaluate(`(()=>{return [...document.querySelectorAll('[data-music-track] [data-sound-player]')].filter(e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0}).length})()`);demand('Real mounted visible music players required before engine assertion',mountedPlayers>0);
  note('mounted_engine_no_autoplay',assertNoAutoplay(await d.verb(cdp,'soundsFacts')));
- const pending=await control('start_pending');note('pending_control',pending);await pause(750);await frame('music-loading-first');await pause(1000);await frame('music-loading-settled');
+ const pending=await control('start_pending');note('pending_control',pending);
+ // Q-1 (#1893, post-release QA on v0.55.0): the producing turn makes three reads
+ // BEFORE generate_music (preflight PENDING_PREFACE, worker receipt checked in
+ // pending.preface_reads), which is the shape that folded the card into a closed
+ // "3 files · 1 generate_music" action group. Nothing in the transcript has been
+ // pressed yet: the card, its waveform and its Cancel must already be on screen.
+ // The read rows' own visibility is evidence only (how the fold rendered them).
+ demand('Pending music call must be preceded by its scripted reads',pending.preface_reads?.length===3);
+ const unexpandedCard=()=>cdp.evaluate(`(()=>{const box=e=>{const r=e?.getBoundingClientRect();return !!r&&r.width>0&&r.height>0};const c=document.querySelector(${JSON.stringify('[data-music-generating='+JSON.stringify(pending.job)+']')});const reads=${JSON.stringify(pending.preface_reads)}.map(id=>{const row=document.querySelector('[data-record-id='+JSON.stringify('tool:'+id)+']');return {id,mounted:!!row,visible:box(row)}});return {card:box(c),state:c?.getAttribute('data-music-state')||null,motif:box(c?.querySelector('[data-music-motif]')),cancel:box(c?.querySelector(${JSON.stringify('[data-music-cancel='+JSON.stringify(pending.job)+']')})),record:c?.closest('[data-record-id]')?.getAttribute('data-record-id')||null,closed_folds:document.querySelectorAll('button[aria-expanded="false"]').length,reads}})()`);
+ const generatingCard=await observed('generating_card_visible_unexpanded',unexpandedCard,x=>x.card&&x.motif&&x.cancel&&['queued','generating'].includes(x.state),15000);
+ demand('Generating card must belong to the producing music call',generatingCard.record?.includes(pending.producing_call_id));
+ await reveal('music-generating-unexpanded','[data-music-generating='+JSON.stringify(pending.job)+']');await frame('music-generating-unexpanded');
+ await pause(750);await frame('music-loading-first');await pause(1000);await frame('music-loading-settled');
  await cdp.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
  const motionFirst=await motionFacts(pending.job);await frame('music-reduced-first');await pause(1000);const motionSettled=await motionFacts(pending.job);await frame('music-reduced-settled');note('reduced_motion',{first:motionFirst,settled:motionSettled});
  demand('Real pending motif must honor reduced motion and keep geometry',motionFirst.reduce&&motionSettled.reduce&&motionSettled.animation==='none'&&motionFirst.width>0&&motionFirst.height>0&&motionFirst.width===motionSettled.width&&motionFirst.height===motionSettled.height);
@@ -113,6 +125,11 @@ try{
   throw e;
  }finally{note('late_result_timeline',{expected_card:lateOutcome,track,first_seen:lateFirst,samples:lateTimeline});}
  await reveal('music-late-result',pendingCard);await frame('music-late-result');
+ // Q-1, finished half: the receipt (the producing call's settled card and the
+ // late track) is visible with STILL no transcript expand press - the first
+ // expandProducingTurn() call is below this line.
+ await observed('finished_receipt_visible_unexpanded',async()=>{const x=await lateProbe();const card=await unexpandedCard();return {track:x.track,card:x.card,card_visible:card.card,record:card.record}},x=>x.track&&x.card===lateOutcome&&x.card_visible&&x.record?.includes(pending.producing_call_id),10000);
+ await frame('music-finished-unexpanded');
  // 230bede pins a detached music call OUT of its turn's "N actions" bar
  // (ownsDetachedMusicJob/groupSplitterOf), so no summary lists it: the producing call
  // is the record row owning the pending job's inline card — an observed id, never a

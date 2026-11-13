@@ -469,16 +469,26 @@ export function ownsDetachedMusicJob(record: TranscriptRecord): boolean {
  * and the card paints as its own row between them. Pictures stay foldable: the
  * fold's media strip substitutes for their rows, a pending job has no strip.
  *
+ * AN UNFINISHED MUSIC CALL IS EXCLUDED TOO (agent review round 1, R1 on #1893).
+ * While `generate_music` executes, `details` carries no `job_id` yet, so
+ * `ownsDetachedMusicJob` is false: the live fold formed as
+ * "3 files · 1 generate_music" and then SHRANK when the result landed and the
+ * row left the run - the motion the live latch exists to prevent. Breaking the
+ * run from the call's first frame keeps the fold's membership stable. A call
+ * that finishes WITHOUT a job (a refusal, a capability probe) has no card to
+ * protect and rejoins the fold once `phase` is `done`; that change is the row's
+ * own settlement, not a liveness sample.
+ *
  * ONE predicate because the wiring is shared: the transcript, the condense
  * parity generator and the slot tests must hand `foldRuns` the same rule, or the
  * fixture pins a model nobody ships.
  */
 export function isTraceFoldable(record: TranscriptRecord): boolean {
-	return (
-		record.kind === "tool" &&
-		!isQuietTurnCall(record) &&
-		!ownsDetachedMusicJob(record)
-	);
+	if (record.kind !== "tool") return false;
+	// Checked before `isQuietTurnCall`, whose negated type guard narrows the
+	// record to `never` for the compiler.
+	if (isMusicGenTool(record.toolName) && record.phase !== "done") return false;
+	return !isQuietTurnCall(record) && !ownsDetachedMusicJob(record);
 }
 
 function internalEpisodeBoundary(record: TranscriptRecord): boolean {
