@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import {
+	blurProgrammaticFocus,
 	captureHoldTextPainted,
 	captureHoldVerdict,
 } from "../src/renderer/src/shared/components/navigation/docs-capture-hold.ts";
@@ -455,4 +456,65 @@ test("the Asks shutter hold finds drawer text outside <main>, and stays released
 		hold.indexOf("const AsksScene"),
 	);
 	assert.doesNotMatch(notifications, /within=/);
+});
+
+test("every marketing scene opts into the shipped glass, and the rig refuses one that did not", () => {
+	// Library scenes opt in per story (the file also holds non-marketing ones).
+	for (const name of ["Teams", "Mesh", "Notifications", "Asks", "ReviewPane"]) {
+		const start = library.indexOf(`export const ${name}: Story = {`);
+		assert.ok(start > 0, `${name} story exists`);
+		const head = library.slice(start, library.indexOf("render:", start));
+		assert.match(head, /\.\.\.marketingGlass,/, `${name} opts into glass`);
+	}
+	assert.match(
+		hero,
+		/export const Scene: StoryObj = \{[^}]*\.\.\.marketingGlass,/s,
+	);
+	const bridgeMeta = bridge.slice(bridge.indexOf("const meta: Meta = {"));
+	assert.match(bridgeMeta.slice(0, 300), /\.\.\.marketingGlass,/);
+	// The URL stays theme-only: the stories default glass on themselves.
+	assert.match(capture, /args=theme:\$\{theme\}`/);
+	const glassSet = capture.slice(
+		capture.indexOf("const GLASS_SCENES"),
+		capture.indexOf("]);", capture.indexOf("const GLASS_SCENES")),
+	);
+	for (const id of [
+		"docs-app-hero--scene",
+		"docs-library--teams",
+		"docs-library--mesh",
+		"docs-library--notifications",
+		"docs-library--asks",
+		"docs-library--review-pane",
+		"docs-team-bridge--channel",
+		"docs-team-bridge--thread",
+		"docs-team-bridge--approval",
+		"docs-team-bridge--mention",
+		"docs-team-bridge--launch",
+	])
+		assert.ok(glassSet.includes(`"${id}"`), `${id} is checked for glass`);
+	assert.match(capture, /glass scene rendered without glass/);
+});
+
+test("programmatic focus is blurred for the still, until a person takes over", async () => {
+	const listeners = new Map();
+	let blurs = 0;
+	const field = { blur: () => blurs++ };
+	const doc = {
+		body: {},
+		activeElement: field,
+		addEventListener: (type, fn) => listeners.set(type, fn),
+		removeEventListener: (type) => listeners.delete(type),
+	};
+	const stop = blurProgrammaticFocus(doc);
+	assert.equal(blurs, 1, "focus already taken at mount is dropped");
+	listeners.get("focusin")();
+	await new Promise((resolve) => setTimeout(resolve, 5));
+	assert.equal(blurs, 2, "a later programmatic focus is dropped");
+	// A story's own `userEvent` is untrusted and must not end the guard...
+	listeners.get("pointerdown")({ isTrusted: false });
+	assert.ok(listeners.has("focusin"));
+	// ...a real pointer does, and focus is the person's again.
+	listeners.get("pointerdown")({ isTrusted: true });
+	assert.equal(listeners.size, 0);
+	stop();
 });

@@ -82,6 +82,27 @@ const SCENES = [
 	["bridge-launch", "docs-team-bridge--launch"],
 ];
 
+/**
+ * The marketing scenes photographed under the SHIPPED window glass (on, 80,
+ * full) over the stand-in desktop of `docs-glass-backdrop.tsx` (design round 4
+ * D8). The stories default that on themselves, so the URL below stays
+ * `theme:`-only; this set is the rig's check that they still do - a scene that
+ * silently lost its opt-in would otherwise export a flat, opaque frame.
+ */
+const GLASS_SCENES = new Set([
+	"docs-app-hero--scene",
+	"docs-library--teams",
+	"docs-library--mesh",
+	"docs-library--notifications",
+	"docs-library--asks",
+	"docs-library--review-pane",
+	"docs-team-bridge--channel",
+	"docs-team-bridge--thread",
+	"docs-team-bridge--approval",
+	"docs-team-bridge--mention",
+	"docs-team-bridge--launch",
+]);
+
 /** CLI alias -> the registry's palette id. */
 const THEMES = { light: "localOperatorLight", dark: "localOperatorDark" };
 
@@ -351,6 +372,7 @@ const main = async () => {
 						`(() => {
 						const failed = document.documentElement.dataset.captureFailed || "";
 						if (failed) return "failed: " + failed;
+						if (${GLASS_SCENES.has(story)} && !(document.documentElement.dataset.glass && document.querySelector('[data-story-glass-backdrop="marketing-wallpaper"]'))) return "failed: glass scene rendered without glass";
 						return !Boolean(document.documentElement.dataset.capturePending) && document.fonts.status === "loaded" ? "ok" : "held";
 					})()`,
 					);

@@ -19,7 +19,12 @@ import type {
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
 import { ChatLayout } from "../../shared/components/common/chat-layout";
+import { blurProgrammaticFocus } from "../../shared/components/navigation/docs-capture-hold";
+import { marketingGlass } from "../../shared/components/navigation/docs-glass-backdrop";
+import { useConversationInputStore } from "../../shared/store/conversation-input-store";
+import { teamBridgeComposerKey } from "../../shared/store/team-bridge-composer-rows";
 import { useUiPreferencesStore } from "../../shared/store/ui-preferences-store";
+import { draftTargetKey } from "./team-bridge-drafts";
 import { asTeamBridgeTenantId } from "./team-bridge-model";
 import {
 	TeamBridgePageView,
@@ -462,6 +467,22 @@ const BASE: TeamBridgePageViewProps = {
 
 function MarketingShell({ children }: { children: React.ReactNode }) {
 	useLayoutEffect(() => {
+		/* THE COMPOSER DRAFT IS DURABLE, per account, scope and conversation, and
+		   Mention's play types "@" into qa-coordination's. Without this a later
+		   Channel or Thread load in the same browser showed that "@" (QA round 4
+		   Q11). Every scene starts empty; Mention types after this runs. */
+		useConversationInputStore
+			.getState()
+			.setComposerText(
+				teamBridgeComposerKey(
+					SELF,
+					TENANT,
+					draftTargetKey({ type: "conversation", id: QA.id }),
+				),
+				"",
+			);
+	}, []);
+	useLayoutEffect(() => {
 		const root = document.documentElement;
 		root.dataset.chromeMode = "integrated";
 		root.dataset.chromePlatform = "mac";
@@ -496,7 +517,13 @@ function MarketingShell({ children }: { children: React.ReactNode }) {
 				sidebar={<nav aria-label="App navigation" />}
 				routeSidebar={{}}
 				content={
-					<main className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden bg-canvas">
+					/* `canvas-backing` as `app.tsx` marks its `<main>`: under glass it
+					   paints canvas at the shipped alpha (the page's own grounds go
+					   clear); with glass off no rule matches and `bg-canvas` holds. */
+					<main
+						data-glass-region="canvas-backing"
+						className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden bg-canvas"
+					>
 						{children}
 					</main>
 				}
@@ -516,8 +543,18 @@ function MentionHold() {
 	}, []);
 	return null;
 }
+/* The shipped focus-on-open (`manageThreadFocus` puts focus on the pane's close
+   button) is right for keyboard users but shows as a ring in the top-right of
+   a still with nobody at the keyboard (design round 4 D9, QA Q13). Story-only:
+   blurred here, before any capture reads the frame. */
+function NoProgrammaticFocus() {
+	useEffect(() => blurProgrammaticFocus(document), []);
+	return null;
+}
 const meta: Meta = {
 	title: "Docs/Team Bridge",
+	/* Every scene shows the shipped glass over a stand-in desktop (D8). */
+	...marketingGlass,
 	parameters: { layout: "fullscreen" },
 };
 export default meta;
@@ -533,6 +570,7 @@ export const Channel: Story = {
 export const Thread: Story = {
 	render: () => (
 		<MarketingShell>
+			<NoProgrammaticFocus />
 			<TeamBridgePageView
 				{...BASE}
 				threadLink={{

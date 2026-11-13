@@ -104,18 +104,38 @@ import {
 	useState,
 } from "react";
 import { Route, Routes, useNavigate } from "react-router-dom";
-import { type CaptureHoldScope, captureHoldVerdict } from "./docs-capture-hold";
+import {
+	type CaptureHoldScope,
+	blurProgrammaticFocus,
+	captureHoldVerdict,
+} from "./docs-capture-hold";
+import { marketingGlass } from "./docs-glass-backdrop";
 
 /* ------------------------------------------------------------------ the world */
 
 const CONVERSATION_ID = "session/3f9c1a2b4d5e";
 
 /**
- * The world's own clock: one anchor instant, so relative labels read as a
- * session from today whatever day the capture runs.
+ * TWO CLOCKS, because the scenes print two kinds of time.
+ *
+ * `NOW`/`ago` is the real load instant. Sidebar rows ("2m", "2h") and the
+ * fleet asks' expiry countdown are RELATIVE to the moment the app renders, so
+ * they must be anchored to it or a capture taken at 18:00 would read "8h ago"
+ * and list every ask as expired.
+ *
+ * `at` is a FIXED time of day today (10:30 local). Transcript records print a
+ * wall clock, and anchoring those to load time made every capture show a
+ * different time - hero light 10:00 beside hero dark 10:02 (QA round 4 Q12).
+ * Team Bridge's marketing scenes anchor the same way (`setHours`).
  */
 const NOW = Date.now();
-const at = (minutesAgo: number) => NOW - minutesAgo * 60_000;
+const ago = (minutesAgo: number) => NOW - minutesAgo * 60_000;
+const CLOCK_NOW = (() => {
+	const date = new Date();
+	date.setHours(10, 30, 0, 0);
+	return date.getTime();
+})();
+const at = (minutesAgo: number) => CLOCK_NOW - minutesAgo * 60_000;
 
 /** One conversation row in `sessions.list`'s own wire field names. */
 type WireRow = {
@@ -159,21 +179,21 @@ const roster = (): WireRow[] => [
 	row(
 		"3f9c1a2b4d5e",
 		"Reconcile the March invoices",
-		Math.floor(at(2) / 1000),
+		Math.floor(ago(2) / 1000),
 		{
 			status: { code: "busy", label: "Working" },
 			status_revision: 3,
 		},
 	),
-	row("7c1f2e3d4a5b", "Quarterly revenue model", Math.floor(at(120) / 1000), {
+	row("7c1f2e3d4a5b", "Quarterly revenue model", Math.floor(ago(120) / 1000), {
 		pinned: true,
 	}),
-	row("5a6b7c8d9e0f", "Vendor contract renewal", Math.floor(at(40) / 1000)),
-	row("1a2b3c4d5e6f", "Supplier ledger clean-up", Math.floor(at(1800) / 1000)),
+	row("5a6b7c8d9e0f", "Vendor contract renewal", Math.floor(ago(40) / 1000)),
+	row("1a2b3c4d5e6f", "Supplier ledger clean-up", Math.floor(ago(1800) / 1000)),
 	row(
 		"2b3c4d5e6f70",
 		"Migrate the deploy script",
-		Math.floor(at(3 * 1440) / 1000),
+		Math.floor(ago(3 * 1440) / 1000),
 		{
 			status: { code: "complete", label: "Complete" },
 			status_revision: 4,
@@ -182,7 +202,7 @@ const roster = (): WireRow[] => [
 	row(
 		"3c4d5e6f7081",
 		"Draft the incident postmortem",
-		Math.floor(at(9 * 1440) / 1000),
+		Math.floor(ago(9 * 1440) / 1000),
 	),
 ];
 
@@ -807,6 +827,10 @@ const installWorldBridge = () => {
 				return ok({ asks: FLEET_ASKS });
 			case "sidebar_layout.get":
 				return ok({ layout: null });
+			/* The credentials probe `useCredentials` issues once the server reads
+			   online (see `installFetch`'s `/health`): no stored keys. */
+			case "credentials.list":
+				return ok({ keys: [] });
 			default:
 				/* Named on the document as well as thrown: a query swallows the
 				   rejection, so this attribute is how a scene that starts issuing a
@@ -852,6 +876,16 @@ const installFetch = () => {
 	const original = window.fetch;
 	window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 		const url = typeof input === "string" ? input : input.toString();
+		/*
+		 * THE SERVER IS UP IN THIS WORLD. With no `window.api.backend` in a
+		 * Storybook host, `useServerHealth` falls back to `GET <base>/health`;
+		 * refused below, the connectivity gate read "offline" and `useCredentials`
+		 * (mounted through the shell) logged "Credentials connectivity error:
+		 * Server is offline." on every scene (QA round 4 Q10).
+		 */
+		if (url.startsWith(origin) && new URL(url).pathname.endsWith("/health")) {
+			return json({ status: 200, message: "ok" });
+		}
 		if (url.includes("/__desktop")) {
 			const request = JSON.parse(String(init?.body ?? "{}"));
 			const response = await Promise.resolve(
@@ -969,7 +1003,7 @@ type ToolRecord = Extract<TranscriptRecord, { kind: "tool" }>;
 
 const tool = (over: Partial<ToolRecord> & { id: string }): ToolRecord => ({
 	kind: "tool",
-	ts: NOW,
+	ts: CLOCK_NOW,
 	toolCallId: over.id,
 	toolName: "bash",
 	intent: null,
@@ -1212,7 +1246,14 @@ const AppShell: FC<{
 			<ChatLayout
 				sidebar={<SidebarNavigation />}
 				content={
-					<main className="flex min-w-0 grow flex-col overflow-hidden">
+					/* `canvas-backing` as `app.tsx` marks its own `<main>`: under glass this
+					   element paints the content column's canvas at the shipped alpha and
+					   the page grounds inside go clear. Without it the column had no
+					   backing at all. With glass off no rule matches it. */
+					<main
+						data-glass-region="canvas-backing"
+						className="flex min-w-0 grow flex-col overflow-hidden"
+					>
 						<div
 							ref={rowRef}
 							className="flex h-full min-h-0 w-full overflow-hidden"
@@ -1277,7 +1318,10 @@ const AppShell: FC<{
 								sessionId={CONVERSATION_ID}
 								runDetails={details}
 								mcpServers={deriveMcpServers([], {}, [])}
-								listOnScreen={false}
+								/* The run-details list IS on screen while its own panel is
+								   open; `false` lit the rail item's unseen dot beside it
+								   (design round 4 D10). */
+								listOnScreen={rightPane === "run"}
 								readerChildId={null}
 								browserAttentionCount={0}
 								askCount={rail.askCount ?? 0}
@@ -1628,6 +1672,8 @@ const SubagentsScene = () => {
 /* -- 3. Teams: the release-crew roster, sidebar Teams section visible ------ */
 
 export const Teams: Story = {
+	/* Marketing scenes show the shipped glass over a stand-in desktop. */
+	...marketingGlass,
 	render: () => {
 		installWorldBridge();
 		installFetch();
@@ -1637,6 +1683,9 @@ export const Teams: Story = {
 
 const TeamsScene = () => {
 	useMacChrome();
+	/* The page lands focus in "Ask for a change"; a still shows that as a ring
+	   and caret over the model table (design round 4 D11). */
+	useEffect(() => blurProgrammaticFocus(document), []);
 	return (
 		<AppShell>
 			<RouteTo path="/agents?kind=team&name=release-crew">
@@ -2313,12 +2362,18 @@ const installMeshBridge = () => {
 };
 
 export const Mesh: Story = {
+	...marketingGlass,
 	render: () => {
 		installMeshBridge();
 		return (
-			<div className="flex h-screen flex-col bg-canvas p-6">
+			/* A `<main>` backing like the app's, so glass paints the canvas at its
+			   shipped alpha; with glass off no rule matches and `bg-canvas` holds. */
+			<main
+				data-glass-region="canvas-backing"
+				className="flex h-screen flex-col bg-canvas p-6"
+			>
 				<MeshPage />
-			</div>
+			</main>
 		);
 	},
 };
@@ -2508,6 +2563,7 @@ const ChatTraceScene = () => {
 /* -- 12. Notifications: what the other conversations reported --------------- */
 
 export const Notifications: Story = {
+	...marketingGlass,
 	render: () => {
 		installWorldBridge();
 		installFetch();
@@ -2578,7 +2634,12 @@ const NotificationsScene = () => {
 			/>
 			<AppShell rail={{ askCount: FLEET_ASKS.length, askScope: "fleet" }}>
 				<RouteTo path="/notifications">
-					<div className="h-full min-w-0 grow bg-canvas">
+					{/* A page ground like the page's own: clear under glass, so the
+					    shell's backing owns the one canvas alpha. */}
+					<div
+						data-glass-region="canvas"
+						className="h-full min-w-0 grow bg-canvas"
+					>
 						<NotificationsPage nowMs={NOTIFICATIONS_NOW_MS} />
 					</div>
 				</RouteTo>
@@ -2622,6 +2683,7 @@ const PARALLEL_CONVERSATION: TranscriptRecord[] = [
 ];
 
 export const Asks: Story = {
+	...marketingGlass,
 	render: () => {
 		installWorldBridge();
 		installFetch();
@@ -2681,6 +2743,7 @@ const REVIEW_CONVERSATION: TranscriptRecord[] = [
 ];
 
 export const ReviewPane: Story = {
+	...marketingGlass,
 	render: () => {
 		installWorldBridge();
 		installFetch();

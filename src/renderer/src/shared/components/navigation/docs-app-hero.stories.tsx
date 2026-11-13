@@ -8,6 +8,7 @@
 import { deriveRunDetails } from "@features/chat/components/run-details/run-detail-model";
 import * as runFixtures from "@features/chat/components/run-details/run-details.fixtures";
 import type { Meta, StoryObj } from "@storybook/react";
+import { marketingGlass } from "./docs-glass-backdrop";
 import { docsLibraryKit } from "./docs-library.stories";
 
 const meta: Meta = {
@@ -77,6 +78,8 @@ function HeroScene() {
 }
 
 export const Scene: StoryObj = {
+	/* The shipped glass default over a stand-in desktop (design round 4 D8). */
+	...marketingGlass,
 	render: () => {
 		installWorldBridge();
 		installFetch();
