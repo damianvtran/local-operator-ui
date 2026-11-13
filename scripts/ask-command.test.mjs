@@ -149,11 +149,24 @@ test("askCommandOf accepts a stripped one-line command and reads its target", ()
 		);
 	}
 	// Non-ASCII printable text is fine: a path or a message can carry it.
-	assert.equal(askCommandOf({ command: "echo café 日本" }).command, "echo café 日本");
+	assert.equal(
+		askCommandOf({ command: "echo café 日本" }).command,
+		"echo café 日本",
+	);
 });
 
 test("askCommandOf refuses empty, unstripped, non-string and absent commands", () => {
-	for (const command of [undefined, null, 42, {}, "", " ", " ls", "ls ", "\u00a0ls"]) {
+	for (const command of [
+		undefined,
+		null,
+		42,
+		{},
+		"",
+		" ",
+		" ls",
+		"ls ",
+		"\u00a0ls",
+	]) {
 		assert.equal(askCommandOf({ command }), null, JSON.stringify(command));
 	}
 	assert.equal(askCommandOf(null), null);
@@ -320,11 +333,19 @@ test("Run is offered only where the command will run on its intended device", ()
 
 test("the intent is one-shot: a fresh nonce per press, cleared only by its own nonce, never persisted", () => {
 	const store = useUiPreferencesStore.getState();
-	store.requestConsoleCommand({ sessionId: "s-1", command: "ls", submit: false });
+	store.requestConsoleCommand({
+		sessionId: "s-1",
+		command: "ls",
+		submit: false,
+	});
 	const first = useUiPreferencesStore.getState().consoleCommandIntent;
 	assert.equal(first.sessionId, "s-1");
 	assert.equal(first.submit, false);
-	store.requestConsoleCommand({ sessionId: "s-1", command: "ls", submit: true });
+	store.requestConsoleCommand({
+		sessionId: "s-1",
+		command: "ls",
+		submit: true,
+	});
 	const second = useUiPreferencesStore.getState().consoleCommandIntent;
 	assert.notEqual(second.nonce, first.nonce, "two presses are two intents");
 	// A late clear for the FIRST press must not wipe the second one.
@@ -404,6 +425,12 @@ test("a shell that never prints is written to at the cap — the pty buffers typ
 });
 
 /* ------------------------------------------------------------ the panel */
+
+/* The English copy these assertions read, hoisted (biome `useTopLevelRegex`). */
+const DIALOG_TITLE = /Run this command\?/;
+const NOTICE_ELSEWHERE =
+	/The agent works on Mac mini\. This runs here, not there\./;
+const DEVICE_REMOTE_USER = /not on Mac mini, where the agent works/;
 
 const { createElement } = React;
 const NOW = 1_700_000_000_000;
@@ -510,7 +537,7 @@ test("Run… needs the confirm: Cancel holds the focus, and only the confirm sub
 		const open = dialog();
 		assert.ok(open, "the press opens the confirmation");
 		assert.deepEqual(calls, [], "nothing is typed before the confirm");
-		assert.match(open.textContent, /Run this command\?/);
+		assert.match(open.textContent, DIALOG_TITLE);
 		assert.equal(
 			open.querySelector("[data-ask-command-text]").textContent,
 			"glab auth login",
@@ -551,7 +578,7 @@ test("an agent command in a conversation whose agent is elsewhere offers Insert 
 		assert.ok(row.querySelector("[data-ask-command-insert]"));
 		assert.match(
 			row.querySelector("[data-ask-command-notice]").textContent,
-			/The agent works on Mac mini\. This runs here, not there\./,
+			NOTICE_ELSEWHERE,
 		);
 	} finally {
 		await rig.unmount();
@@ -569,7 +596,7 @@ test("a user command in a remote conversation runs here, and the dialog says not
 		await click(rig.container.querySelector("[data-ask-command-run]"));
 		const line = dialog().querySelector("[data-ask-command-device]");
 		assert.equal(line.dataset.askCommandDevice, "remote_user");
-		assert.match(line.textContent, /not on Mac mini, where the agent works/);
+		assert.match(line.textContent, DEVICE_REMOTE_USER);
 	} finally {
 		await rig.unmount();
 	}
@@ -642,7 +669,7 @@ test("a forged command, a settled ask, or a read-only mount draws no terminal do
 test("an ask that closes under the open dialog withholds the confirm, with a note", async () => {
 	const calls = [];
 	const props = {
-		onCommand: (ask, command, submit) => calls.push(submit),
+		onCommand: (_ask, _command, submit) => calls.push(submit),
 		commandPlacementOf: here,
 	};
 	const rig = await mount(panelElement([commandAsk()], props));
@@ -662,7 +689,10 @@ test("an ask that closes under the open dialog withholds the confirm, with a not
 			),
 		);
 		const open = dialog();
-		assert.ok(open, "the dialog stays up rather than vanishing under the reader");
+		assert.ok(
+			open,
+			"the dialog stays up rather than vanishing under the reader",
+		);
 		assert.ok(open.querySelector("[data-ask-command-closed]"));
 		const confirm = open.querySelector("[data-confirm-action]");
 		assert.equal(confirm.disabled, true);

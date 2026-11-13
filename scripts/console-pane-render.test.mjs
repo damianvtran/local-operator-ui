@@ -2071,7 +2071,11 @@ test("a command filed for another conversation is not typed here", async () => {
 			submit: true,
 		});
 		await settle(300);
-		assert.equal(calls.create, 0, "no surface is made for someone else's press");
+		assert.equal(
+			calls.create,
+			0,
+			"no surface is made for someone else's press",
+		);
 		assert.deepEqual(writes, []);
 		assert.equal(
 			harness.useUiPreferencesStore.getState().consoleCommandIntent?.sessionId,
