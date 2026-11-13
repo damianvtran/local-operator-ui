@@ -1,0 +1,449 @@
+{
+ "fleet": [
+  {
+   "id": "U1 fleet Escape: focus returns to Run…",
+   "pass": true,
+   "actual": {
+    "tag": "BUTTON",
+    "text": "Run…",
+    "run": true,
+    "insert": false,
+    "inCommandRow": true,
+    "cancel": false,
+    "aria": null
+   }
+  },
+  {
+   "id": "F2 fleet confirmed Run runs once in the ask's conversation",
+   "pass": true,
+   "actual": {
+    "fresh": [
+     {
+      "surface": "con:1:VtogbbYYo4aE6U35IG3iGQ",
+      "session": "fa1107000001"
+     }
+    ],
+    "side": [
+     "ASKCMD-42"
+    ],
+    "active": "fa1107000001"
+   }
+  }
+ ],
+ "latency": {
+  "fleetlat-1": [
+   70.1
+  ],
+  "fleetlat-2": [
+   71
+  ],
+  "fleetlat-3": [
+   74.6
+  ],
+  "fleetlat-4": [
+   74
+  ],
+  "fleetlat-5": [
+   76.4
+  ],
+  "latency": [
+   99.6,
+   87.9,
+   59.1,
+   63.4,
+   60.5,
+   61.1,
+   64.5,
+   59.4,
+   63.8,
+   60.3
+  ]
+ },
+ "focus": [
+  {
+   "id": "U2 entry landing is not in the command row",
+   "pass": true,
+   "actual": {
+    "tag": "BUTTON",
+    "text": "Staging▸RecommendedSynthetic, never subm",
+    "run": false,
+    "insert": false,
+    "inCommandRow": false,
+    "cancel": false,
+    "aria": null
+   }
+  },
+  {
+   "id": "U4 labels Copy / Open in terminal / Run…",
+   "pass": true,
+   "actual": [
+    "Copy",
+    "Open in terminal",
+    "Run…"
+   ]
+  },
+  {
+   "id": "U5/D4 tooltips scope-neutral",
+   "pass": true,
+   "actual": {
+    "insert": [
+     "Type it into a new terminal without running it"
+    ],
+    "run": [
+     "Type it into a new terminal and run it, after you confirm"
+    ]
+   }
+  },
+  {
+   "id": "U1 Escape: focus returns to Run…",
+   "pass": true,
+   "actual": {
+    "inDialog": {
+     "tag": "BUTTON",
+     "text": "Cancel",
+     "run": false,
+     "insert": false,
+     "inCommandRow": false,
+     "cancel": true,
+     "aria": null
+    },
+    "after": {
+     "tag": "BUTTON",
+     "text": "Run…",
+     "run": true,
+     "insert": false,
+     "inCommandRow": true,
+     "cancel": false,
+     "aria": null
+    }
+   }
+  },
+  {
+   "id": "U1 EnterOnCancel: focus returns to Run…",
+   "pass": true,
+   "actual": {
+    "inDialog": {
+     "tag": "BUTTON",
+     "text": "Cancel",
+     "run": false,
+     "insert": false,
+     "inCommandRow": false,
+     "cancel": true,
+     "aria": null
+    },
+    "after": {
+     "tag": "BUTTON",
+     "text": "Run…",
+     "run": true,
+     "insert": false,
+     "inCommandRow": true,
+     "cancel": false,
+     "aria": null
+    }
+   }
+  },
+  {
+   "id": "U1 MouseCancel: focus returns to Run…",
+   "pass": true,
+   "actual": {
+    "inDialog": {
+     "tag": "BUTTON",
+     "text": "Cancel",
+     "run": false,
+     "insert": false,
+     "inCommandRow": false,
+     "cancel": true,
+     "aria": null
+    },
+    "after": {
+     "tag": "BUTTON",
+     "text": "Run…",
+     "run": true,
+     "insert": false,
+     "inCommandRow": true,
+     "cancel": false,
+     "aria": null
+    }
+   }
+  },
+  {
+   "id": "no surface while backing out",
+   "pass": true,
+   "actual": {
+    "before": 0,
+    "after": 0
+   }
+  },
+  {
+   "id": "R confirm runs exactly once",
+   "pass": true,
+   "actual": {
+    "onConfirm": "Run in terminal",
+    "fresh": [
+     "con:1:gOoiPUfQmOz186kuZcEdVA"
+    ],
+    "side": [
+     "ASKCMD-42"
+    ],
+    "markCount": 1,
+    "focusAfter": {
+     "tag": "TEXTAREA",
+     "text": "",
+     "run": false,
+     "insert": false,
+     "inCommandRow": false,
+     "cancel": false,
+     "aria": "Terminal input"
+    }
+   }
+  }
+ ],
+ "frames-500-1024": [
+  {
+   "id": "D1 local-1024x700 dark: whole command visible, no inner scroll, panel inside the window",
+   "pass": true,
+   "actual": {
+    "box": {
+     "scrollH": 172,
+     "clientH": 172,
+     "h": 174
+    },
+    "bodyScroll": [],
+    "panel": {
+     "x": 232,
+     "y": 162,
+     "w": 560,
+     "h": 375,
+     "bottom": 538
+    },
+    "viewport": {
+     "w": 1024,
+     "h": 700
+    }
+   }
+  },
+  {
+   "id": "D1 local-1024x700 light: whole command visible, no inner scroll, panel inside the window",
+   "pass": true,
+   "actual": {
+    "box": {
+     "scrollH": 172,
+     "clientH": 172,
+     "h": 174
+    },
+    "bodyScroll": [],
+    "panel": {
+     "x": 232,
+     "y": 162,
+     "w": 560,
+     "h": 375,
+     "bottom": 538
+    },
+    "viewport": {
+     "w": 1024,
+     "h": 700
+    }
+   }
+  }
+ ],
+ "frames-local-1380": [
+  {
+   "id": "D1 local-1380x900 dark: whole command visible, no inner scroll, panel inside the window",
+   "pass": true,
+   "actual": {
+    "box": {
+     "scrollH": 36,
+     "clientH": 36,
+     "h": 38
+    },
+    "bodyScroll": [],
+    "panel": {
+     "x": 410,
+     "y": 331,
+     "w": 560,
+     "h": 239,
+     "bottom": 569
+    },
+    "viewport": {
+     "w": 1380,
+     "h": 900
+    }
+   }
+  },
+  {
+   "id": "D1 local-1380x900 light: whole command visible, no inner scroll, panel inside the window",
+   "pass": true,
+   "actual": {
+    "box": {
+     "scrollH": 36,
+     "clientH": 36,
+     "h": 38
+    },
+    "bodyScroll": [],
+    "panel": {
+     "x": 410,
+     "y": 331,
+     "w": 560,
+     "h": 239,
+     "bottom": 569
+    },
+    "viewport": {
+     "w": 1380,
+     "h": 900
+    }
+   }
+  }
+ ],
+ "frames-local-vi-1024": [
+  {
+   "id": "D1 local-1024x700 dark: whole command visible, no inner scroll, panel inside the window",
+   "pass": true,
+   "actual": {
+    "box": {
+     "scrollH": 36,
+     "clientH": 36,
+     "h": 38
+    },
+    "bodyScroll": [],
+    "panel": {
+     "x": 232,
+     "y": 211,
+     "w": 560,
+     "h": 278,
+     "bottom": 489
+    },
+    "viewport": {
+     "w": 1024,
+     "h": 700
+    }
+   }
+  },
+  {
+   "id": "D1 local-1024x700 light: whole command visible, no inner scroll, panel inside the window",
+   "pass": true,
+   "actual": {
+    "box": {
+     "scrollH": 36,
+     "clientH": 36,
+     "h": 38
+    },
+    "bodyScroll": [],
+    "panel": {
+     "x": 232,
+     "y": 211,
+     "w": 560,
+     "h": 278,
+     "bottom": 489
+    },
+    "viewport": {
+     "w": 1024,
+     "h": 700
+    }
+   }
+  }
+ ],
+ "frames-short-1380": [
+  {
+   "id": "D1 local-1380x900 dark: whole command visible, no inner scroll, panel inside the window",
+   "pass": true,
+   "actual": {
+    "box": {
+     "scrollH": 36,
+     "clientH": 36,
+     "h": 38
+    },
+    "bodyScroll": [],
+    "panel": {
+     "x": 410,
+     "y": 331,
+     "w": 560,
+     "h": 239,
+     "bottom": 569
+    },
+    "viewport": {
+     "w": 1380,
+     "h": 900
+    }
+   }
+  },
+  {
+   "id": "D1 local-1380x900 light: whole command visible, no inner scroll, panel inside the window",
+   "pass": true,
+   "actual": {
+    "box": {
+     "scrollH": 36,
+     "clientH": 36,
+     "h": 38
+    },
+    "bodyScroll": [],
+    "panel": {
+     "x": 410,
+     "y": 331,
+     "w": 560,
+     "h": 239,
+     "bottom": 569
+    },
+    "viewport": {
+     "w": 1380,
+     "h": 900
+    }
+   }
+  }
+ ],
+ "insert": [
+  {
+   "id": "I Open in terminal types once, runs nothing",
+   "pass": true,
+   "actual": {
+    "fresh": [
+     "con:1:oauvETh9GfkyJ9Ohn1XL-A"
+    ],
+    "replay": "\u001b[?2004hbash-5.2$ \r\u001b[K\rbash-5.2$ \u001b[7mecho ASKCMD-$((40+2)) | tee -a qa-side.log\u001b[27m",
+    "side": [],
+    "focus": {
+     "tag": "TEXTAREA",
+     "text": "",
+     "run": false,
+     "insert": false,
+     "inCommandRow": false,
+     "cancel": false,
+     "aria": "Terminal input"
+    }
+   }
+  }
+ ],
+ "stale": [
+  {
+   "id": "Q1 confirm, leave at once, ask closes, return: nothing runs, no surface",
+   "pass": true,
+   "actual": {
+    "away": {
+     "side": 0,
+     "s1": 0,
+     "s2": 0,
+     "active": "fa1107000002"
+    },
+    "back": {
+     "side": 0,
+     "s1": 0,
+     "active": "fa1107000001"
+    }
+   }
+  },
+  {
+   "id": "Q1b confirm, leave, return while the ask is still open: nothing typed or run after leaving",
+   "pass": true,
+   "actual": {
+    "side": 0,
+    "s1": 1,
+    "replays": [
+     "\u001b[?2004hbash-5.2$ \r\u001b[K\rbash-5.2$ "
+    ],
+    "sinceFirst": {
+     "s1": 1,
+     "side": 0
+    }
+   }
+  }
+ ]
+}
