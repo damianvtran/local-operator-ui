@@ -54,11 +54,19 @@ import type { PendingAskQuestion } from "../../../../shared/desktop-session-cont
 export const ASK_COMMAND_MAX_CHARS = 500;
 
 /**
- * Cc, Cf, Zl and Zp — the categories core refuses. `\p{...}` with the `u` flag
- * is the same Unicode database classification Python's `unicodedata.category`
- * reads, so the two sides refuse the same characters.
+ * Cc, Cf, Zl and Zp, plus every Zs space other than U+0020 — the characters
+ * core refuses (`ask_command_problem`, local-operator PR #3926 from head
+ * 3e41637a8). `\p{...}` with the `u` flag is the same Unicode database
+ * classification Python's `unicodedata.category` reads, so the two sides refuse
+ * the same characters.
+ *
+ * WHY THE OTHER SPACES (agent review round 1, m1): a no-break space (U+00A0),
+ * an em space (U+2003) or an ideographic space (U+3000) LOOKS like an ordinary
+ * space on the card, but the shell does not split on it, so `echo\u00a0hi` is
+ * one word — a command that reads one way and runs another. Only the plain
+ * ASCII space separates arguments the way the reader expects.
  */
-const REFUSED_CHARACTERS = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u;
+const REFUSED_CHARACTERS = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]|(?!\u0020)\p{Zs}/u;
 
 /** Where the command is meant to run; `unknown` is anything the wire did not
  * spell as one of the two values, and it is never runnable. */

@@ -11,7 +11,7 @@
 		"note": "Keep the meaning and register of the English; the command itself is never part of this text.",
 		"placeholders": {},
 		"role": "caution line in the run dialog asking the user to read the agent's command before running it",
-		"tone": "two short sentences, direct, not alarmist"
+		"tone": "two short sentences, direct, not alarmist; \"this one\" is the single command shown above it"
 	},
 	"ui.chat.ask_command.dialog_closed": {
 		"length": "",
@@ -50,6 +50,13 @@
 		"role": "same as dialog_device_remote when the other device has no known name",
 		"tone": "one sentence"
 	},
+	"ui.chat.ask_command.dialog_refused": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; the command itself is never part of this text.",
+		"placeholders": {},
+		"role": "line shown in the run dialog when the confirm was refused at the last moment (for example the agent moved to another device), saying the command cannot run from here and that nothing ran",
+		"tone": "two short sentences: why, then that nothing ran"
+	},
 	"ui.chat.ask_command.dialog_title": {
 		"length": "",
 		"note": "Keep the meaning and register of the English; the command itself is never part of this text.",
@@ -61,14 +68,14 @@
 		"length": "",
 		"note": "Keep the meaning and register of the English; the command itself is never part of this text.",
 		"placeholders": {},
-		"role": "button that types the suggested command into a new terminal tab without running it",
-		"tone": "one verb; must stay short (dense button)"
+		"role": "button that types the suggested command into a new terminal tab without running it (opens the terminal with the command typed in)",
+		"tone": "short verb phrase naming the destination (the terminal); must stay short (dense button)"
 	},
 	"ui.chat.ask_command.insert_hint": {
 		"length": "",
 		"note": "Keep the meaning and register of the English; the command itself is never part of this text.",
 		"placeholders": {},
-		"role": "tooltip and accessible description of the Insert button",
+		"role": "tooltip and accessible description of the Open in terminal button; it may be shown from a list of every conversation, so it never says which conversation",
 		"tone": "short phrase, no trailing period"
 	},
 	"ui.chat.ask_command.label": {
@@ -98,14 +105,14 @@
 		"length": "",
 		"note": "Keep the meaning and register of the English; the command itself is never part of this text.",
 		"placeholders": {},
-		"role": "line under a suggested command when the agent's request does not say which computer the command is for, so it offers Insert only",
+		"role": "line under a suggested command when the agent's request does not say which computer the command is for, so it offers Copy and Open in terminal but not Run",
 		"tone": "one sentence, full stop"
 	},
 	"ui.chat.ask_command.notice_unplaced": {
 		"length": "",
 		"note": "Keep the meaning and register of the English; the command itself is never part of this text.",
 		"placeholders": {},
-		"role": "line under a suggested command when the app cannot tell which computer the agent works on, so it offers Insert only",
+		"role": "line under a suggested command when the app cannot tell which computer the agent works on, so it offers Copy and Open in terminal but not Run",
 		"tone": "one sentence, full stop"
 	},
 	"ui.chat.ask_command.run": {
@@ -119,7 +126,7 @@
 		"length": "",
 		"note": "Keep the meaning and register of the English; the command itself is never part of this text.",
 		"placeholders": {},
-		"role": "tooltip and accessible description of the Run… button",
+		"role": "tooltip and accessible description of the Run… button: types the command into a new terminal and presses Enter, only after a confirmation dialog",
 		"tone": "short phrase, no trailing period"
 	}
 }

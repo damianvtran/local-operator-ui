@@ -1,19 +1,20 @@
 {
 	"ui.chat.ask_command.copy": "Copiar",
-	"ui.chat.ask_command.dialog_caution": "Los comandos del agente pueden ser incorrectos o peligrosos. Léelo antes de ejecutarlo.",
+	"ui.chat.ask_command.dialog_caution": "Los comandos del agente pueden ser incorrectos o peligrosos. Lee este antes de ejecutarlo.",
 	"ui.chat.ask_command.dialog_closed": "Esta solicitud se cerró, así que el comando ya no se puede ejecutar desde ella.",
 	"ui.chat.ask_command.dialog_confirm": "Ejecutar en la terminal",
 	"ui.chat.ask_command.dialog_device_local": "Se ejecuta en una nueva terminal en este equipo, en tu carpeta personal.",
 	"ui.chat.ask_command.dialog_device_remote": "Se ejecuta en una nueva terminal en este equipo, en tu carpeta personal, no en {device}, donde trabaja el agente.",
 	"ui.chat.ask_command.dialog_device_remote_unnamed": "Se ejecuta en una nueva terminal en este equipo, en tu carpeta personal, no en el dispositivo donde trabaja el agente.",
+	"ui.chat.ask_command.dialog_refused": "Este comando ya no se puede ejecutar desde aquí. No se ejecutó nada.",
 	"ui.chat.ask_command.dialog_title": "¿Ejecutar este comando?",
-	"ui.chat.ask_command.insert": "Insertar",
-	"ui.chat.ask_command.insert_hint": "Escribirlo en una nueva terminal de esta conversación, sin ejecutarlo",
+	"ui.chat.ask_command.insert": "Abrir en la terminal",
+	"ui.chat.ask_command.insert_hint": "Escribirlo en una nueva terminal, sin ejecutarlo",
 	"ui.chat.ask_command.label": "Comando sugerido",
 	"ui.chat.ask_command.notice_elsewhere": "El agente trabaja en {device}. Esto se ejecuta aquí, no allí.",
 	"ui.chat.ask_command.notice_elsewhere_unnamed": "El agente trabaja en otro dispositivo. Esto se ejecuta aquí, no allí.",
-	"ui.chat.ask_command.notice_target_unknown": "La solicitud no indica dónde debe ejecutarse, así que solo se puede insertar.",
-	"ui.chat.ask_command.notice_unplaced": "No se puede confirmar que el agente trabaje en este equipo, así que solo se puede insertar.",
+	"ui.chat.ask_command.notice_target_unknown": "La solicitud no indica dónde debe ejecutarse, así que no se puede ejecutar desde aquí.",
+	"ui.chat.ask_command.notice_unplaced": "No se puede confirmar que el agente trabaje en este equipo, así que no se puede ejecutar desde aquí.",
 	"ui.chat.ask_command.run": "Ejecutar…",
-	"ui.chat.ask_command.run_hint": "Revisarlo y luego ejecutarlo en una nueva terminal"
+	"ui.chat.ask_command.run_hint": "Escribirlo en una nueva terminal y ejecutarlo, después de que lo confirmes"
 }

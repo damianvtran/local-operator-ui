@@ -2271,3 +2271,58 @@ test("a multi-select ask marks every recommended row and ticks none", async () =
 	});
 	assert.deepEqual(notAList.badged, ["staging"]);
 });
+
+/*
+ * THE SUGGESTED-COMMAND ROW IS NOT THE ENTRY LANDING (UX round 1, U2). The row is
+ * drawn under the prose, ABOVE the options, so the drawer's "first control in the
+ * head row" walk landed on its Copy. The landing must be what it is for the same
+ * ask without a command: the answer control.
+ */
+test("a door-opened drawer lands on the answer, not on the suggested command's Copy (U2)", async (t) => {
+	const landingFor = async (question) => {
+		const door = document.createElement("button");
+		door.setAttribute("data-tour-tag", "ask-pane-trigger");
+		document.body.appendChild(door);
+		door.focus();
+		const view = await mount(
+			h(AskDrawer, {
+				frontend: frontend([
+					{ ...openAsk, questions: [{ ...openAsk.questions[0], ...question }] },
+				]),
+				scope: "session",
+				onClose: () => {},
+				onAnswer: () => {},
+				onDecline: () => {},
+				onCommand: () => true,
+				commandPlacementOf: () => ({ kind: "here" }),
+			}),
+		);
+		t.after(() => view.unmount());
+		const landed = document.activeElement;
+		const reading = {
+			inCommandRow: landed?.closest("[data-ask-command]") !== null,
+			tag: landed?.tagName,
+			text: landed?.textContent,
+			rowHasCommand:
+				view.container.querySelector("[data-ask-command]") !== null,
+		};
+		door.remove();
+		return reading;
+	};
+	const plain = await landingFor({});
+	const withCommand = await landingFor({
+		command: "glab auth login",
+		command_target: "agent",
+	});
+	assert.equal(withCommand.rowHasCommand, true, "the row is drawn");
+	assert.equal(
+		withCommand.inCommandRow,
+		false,
+		"the entry move skips the command row",
+	);
+	assert.deepEqual(
+		{ tag: withCommand.tag, text: withCommand.text },
+		{ tag: plain.tag, text: plain.text },
+		"and lands where it lands on the same ask without a command",
+	);
+});

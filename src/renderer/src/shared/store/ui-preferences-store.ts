@@ -142,6 +142,19 @@ export type ConsoleCommandIntent = {
 	command: string;
 	submit: boolean;
 	nonce: string;
+	/**
+	 * When the press filed it, on `Date.now()`'s scale. The pane refuses an
+	 * intent older than `CONSOLE_COMMAND_PICKUP_TTL_MS` (`console-command.ts`):
+	 * a press is answered right after it, or not at all (QA round 1, Q1).
+	 */
+	filedAt: number;
+	/**
+	 * The ask and question the command came from, when an ask card filed it.
+	 * Read only by the pane's submit guard, which re-checks at pickup that this
+	 * ask is still answerable and the command still runnable here.
+	 */
+	askId?: string;
+	questionId?: string;
 };
 
 /**
@@ -807,13 +820,25 @@ type UiPreferencesState = {
 	 * the same nonce is recognised and does nothing — the command is typed at
 	 * most once per press. A new press always gets a new nonce, so two presses
 	 * of the same command are two commands, each in its own fresh terminal.
+	 *
+	 * ITS LIFETIME IS SHORT AND BOUNDED THREE WAYS (QA round 1 Q1, agent review
+	 * round 1 m2): a confirmed Run must run right after its confirm, in the
+	 * context it was confirmed in, or never. (1) The pane clears it the moment
+	 * it TAKES it, before the create round trip, so a remount mid-create cannot
+	 * take the same press twice. (2) The pane refuses one older than
+	 * `CONSOLE_COMMAND_PICKUP_TTL_MS`, so a press whose pane never mounted cannot
+	 * fire on a later visit. (3) The filer drops it when the user switches to
+	 * another conversation before pickup (`ask-command-actions.ts`). And a
+	 * `submit` is re-checked against the ask at pickup by the pane's guard.
 	 */
 	consoleCommandIntent: ConsoleCommandIntent | null;
 
 	/** File a suggested command for `sessionId`'s pane (see `consoleCommandIntent`).
 	 * The caller opens the pane itself, as `requestConsoleOpen`'s callers do; this
 	 * never opens anything. A later request replaces an unanswered earlier one. */
-	requestConsoleCommand: (intent: Omit<ConsoleCommandIntent, "nonce">) => void;
+	requestConsoleCommand: (
+		intent: Omit<ConsoleCommandIntent, "nonce" | "filedAt">,
+	) => ConsoleCommandIntent;
 
 	/** The pane has taken the request with this nonce, and only that one. */
 	clearConsoleCommandIntent: (nonce: string) => void;
@@ -2633,14 +2658,21 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			},
 
 			requestConsoleCommand: (intent) => {
-				set({
-					consoleCommandIntent: {
-						sessionId: intent.sessionId,
-						command: intent.command,
-						submit: intent.submit === true,
-						nonce: nextConsoleCommandNonce(),
-					},
-				});
+				const filed: ConsoleCommandIntent = {
+					sessionId: intent.sessionId,
+					command: intent.command,
+					submit: intent.submit === true,
+					nonce: nextConsoleCommandNonce(),
+					filedAt: Date.now(),
+					...(intent.askId === undefined ? {} : { askId: intent.askId }),
+					...(intent.questionId === undefined
+						? {}
+						: { questionId: intent.questionId }),
+				};
+				set({ consoleCommandIntent: filed });
+				// Answered with the filed copy so the caller can arm its own lifetime
+				// bounds (the conversation-switch drop) against this press's nonce.
+				return filed;
 			},
 
 			clearConsoleCommandIntent: (nonce: string) => {

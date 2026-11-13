@@ -165,6 +165,7 @@ const bundle = await build({
 			// flow under test is the flow the header drives rather than a prop the
 			// harness invents.
 			'export { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";',
+			'export { CONSOLE_COMMAND_PICKUP_TTL_MS } from "./src/renderer/src/features/console/model/console-command";',
 			'export { createRoot } from "react-dom/client";',
 			'export { createElement, Profiler } from "react";',
 			// The stub's own handles, exported through the same bundle so a test reads the very
@@ -388,7 +389,11 @@ const recordPaint = (container) => {
 	if (paints[paints.length - 1] !== text) paints.push(text);
 };
 
-const mountPane = async ({ sessionId = SESSION, onClose = () => {} } = {}) => {
+const mountPane = async ({
+	sessionId = SESSION,
+	onClose = () => {},
+	allowCommandSubmit,
+} = {}) => {
 	/*
 	 * A CONTAINER PER TEST, appended to the body, because the shared `#root` of the
 	 * mirror suite's harness is not enough here: a test that fails before its unmount
@@ -402,7 +407,11 @@ const mountPane = async ({ sessionId = SESSION, onClose = () => {} } = {}) => {
 		harness.createElement(
 			harness.Profiler,
 			{ id: "console-pane", onRender: () => recordPaint(container) },
-			harness.createElement(harness.ConsolePane, { sessionId, onClose }),
+			harness.createElement(harness.ConsolePane, {
+				sessionId,
+				onClose,
+				allowCommandSubmit,
+			}),
 		),
 	);
 	await settle(1);
@@ -2033,7 +2042,13 @@ test("a confirmed Run types the command, then presses Enter through the key enco
 	resetIntent();
 	resetCommandIntent();
 	const { calls, writes } = commandBridge();
-	const { root, container } = await mountPane();
+	const guarded = [];
+	const { root, container } = await mountPane({
+		allowCommandSubmit: (intent) => {
+			guarded.push(intent.command);
+			return true;
+		},
+	});
 	try {
 		await settle(30);
 		harness.useUiPreferencesStore.getState().requestConsoleCommand({
@@ -2052,6 +2067,7 @@ test("a confirmed Run types the command, then presses Enter through the key enco
 			},
 			{ kind: "keys", surface: "con:11:command", keys: ["enter"] },
 		]);
+		assert.deepEqual(guarded, ["gh auth status"], "asked once, at pickup");
 	} finally {
 		root.unmount();
 		container.remove();
@@ -2112,6 +2128,163 @@ test("a command is typed once per press: a remount does not replay it", async ()
 		assert.equal(calls.create, 1, "the remount makes no second surface");
 		assert.equal(writes.length, 1, "and types nothing again");
 	} finally {
+		second.root.unmount();
+		second.container.remove();
+	}
+});
+
+/*
+ * THE PRESS'S LIFETIME (QA round 1 Q1, agent review round 1 m2): a confirmed Run
+ * runs right after its confirm, in the context it was confirmed in, or never.
+ */
+test("a submit the guard refuses at pickup makes no surface and types nothing", async () => {
+	for (const [label, allowCommandSubmit] of [
+		["guard says the ask closed", () => false],
+		["no guard at all fails closed", undefined],
+	]) {
+		resetIntent();
+		resetCommandIntent();
+		const { calls, writes } = commandBridge();
+		const { root, container } = await mountPane({ allowCommandSubmit });
+		try {
+			await settle(30);
+			harness.useUiPreferencesStore.getState().requestConsoleCommand({
+				sessionId: SESSION,
+				command: "gh auth status",
+				submit: true,
+				askId: "ask-1",
+				questionId: "q1",
+			});
+			await settle(300);
+			assert.equal(calls.create, 0, `${label}: no surface`);
+			assert.deepEqual(writes, [], `${label}: nothing typed`);
+			assert.equal(
+				harness.useUiPreferencesStore.getState().consoleCommandIntent,
+				null,
+				`${label}: the press is dropped, not left to fire on a later visit`,
+			);
+		} finally {
+			resetCommandIntent();
+			root.unmount();
+			container.remove();
+		}
+	}
+});
+
+test("an Insert is never guarded: typing without Enter runs nothing", async () => {
+	resetIntent();
+	resetCommandIntent();
+	const { calls, writes } = commandBridge();
+	const { root, container } = await mountPane({
+		allowCommandSubmit: () => false,
+	});
+	try {
+		await settle(30);
+		harness.useUiPreferencesStore.getState().requestConsoleCommand({
+			sessionId: SESSION,
+			command: "echo typed",
+			submit: false,
+		});
+		await waitFor(() => writes.length > 0);
+		assert.equal(calls.create, 1);
+		assert.deepEqual(
+			writes.map((write) => write.kind),
+			["input"],
+		);
+	} finally {
+		root.unmount();
+		container.remove();
+	}
+});
+
+test("a press older than the pickup bound is dropped, not deferred", async () => {
+	resetIntent();
+	resetCommandIntent();
+	const { calls, writes } = commandBridge();
+	// File the press while this conversation's pane is NOT mounted (the user
+	// switched away first), stamped just past the bound.
+	const realNow = Date.now;
+	Date.now = () => realNow() - harness.CONSOLE_COMMAND_PICKUP_TTL_MS - 50;
+	try {
+		harness.useUiPreferencesStore.getState().requestConsoleCommand({
+			sessionId: SESSION,
+			command: "gh auth status",
+			submit: true,
+			askId: "ask-1",
+			questionId: "q1",
+		});
+	} finally {
+		Date.now = realNow;
+	}
+	const { root, container } = await mountPane({
+		allowCommandSubmit: () => true,
+	});
+	try {
+		await settle(300);
+		assert.equal(calls.create, 0, "the late visit makes nothing");
+		assert.deepEqual(writes, []);
+		assert.equal(
+			harness.useUiPreferencesStore.getState().consoleCommandIntent,
+			null,
+			"and the stale press is gone",
+		);
+	} finally {
+		resetCommandIntent();
+		root.unmount();
+		container.remove();
+	}
+});
+
+test("the press is cleared when it is TAKEN, so a remount mid-create cannot take it twice", async () => {
+	resetIntent();
+	resetCommandIntent();
+	// A create that has not answered yet: the window m2(a) is about.
+	let release = () => undefined;
+	const gate = new Promise((resolve) => {
+		release = resolve;
+	});
+	const bridge = installBridge({
+		surfaces: [],
+		create: async ({ calls, setListing }) => {
+			await gate;
+			const id = `con:${calls.create + 10}:command`;
+			setListing([surfaceRow(id, { displayed: false })]);
+			return { surface: id };
+		},
+	});
+	window.api.console.subscribe = async () => ({
+		replay_base64: Buffer.from("$ ").toString("base64"),
+		from_byte: 0,
+	});
+	window.api.console.input = async () => undefined;
+	window.api.console.keys = async () => undefined;
+	const first = await mountPane({ allowCommandSubmit: () => true });
+	try {
+		await settle(30);
+		harness.useUiPreferencesStore.getState().requestConsoleCommand({
+			sessionId: SESSION,
+			command: "gh auth status",
+			submit: true,
+			askId: "ask-1",
+			questionId: "q1",
+		});
+		await waitFor(() => bridge.calls.create === 1);
+		assert.equal(
+			harness.useUiPreferencesStore.getState().consoleCommandIntent,
+			null,
+			"taken means cleared, before the create answers",
+		);
+	} finally {
+		first.root.unmount();
+		first.container.remove();
+	}
+	const second = await mountPane({ allowCommandSubmit: () => true });
+	try {
+		await settle(200);
+		assert.equal(bridge.calls.create, 1, "the remount takes nothing");
+	} finally {
+		release();
+		await settle(30);
 		second.root.unmount();
 		second.container.remove();
 	}

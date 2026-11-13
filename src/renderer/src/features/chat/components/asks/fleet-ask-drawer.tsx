@@ -148,6 +148,7 @@ import {
 import { pressLandsOnOverlay } from "../../keyboard-scopes";
 import { useAskOutcomes } from "../../use-ask-outcomes";
 import { AskDrawer } from "./ask-drawer";
+import type { AskCommandRequest } from "./ask-panel";
 
 /**
  * Hands the router's `navigate` to the drawer through a ref, mounted only
@@ -444,13 +445,20 @@ export const FleetAskDrawer = ({
 	const inRouter = useInRouterContext();
 	const navigateRef = useRef<NavigateFunction | null>(null);
 	const onCommand = useCallback(
-		(ask: { ask_id: string }, command: string, submit: boolean) => {
-			const sessionId = fleetAskSessionFor(rows ?? [], ask.ask_id);
-			const raw = rows?.find((row) => row.ask_id === ask.ask_id);
+		(request: AskCommandRequest): boolean => {
+			const sessionId = fleetAskSessionFor(rows ?? [], request.ask.ask_id);
+			const raw = rows?.find((row) => row.ask_id === request.ask.ask_id);
 			const navigate = navigateRef.current;
-			if (!sessionId || !raw || !navigate) return;
+			if (!sessionId || !raw || !navigate) return false;
 			// The order (wave off, open, file) is `fileFleetAskCommand`'s to keep.
-			fileFleetAskCommand({ sessionId, ask: raw, command, submit, navigate });
+			return fileFleetAskCommand({
+				sessionId,
+				ask: raw,
+				questionId: request.questionId,
+				command: request.command,
+				submit: request.submit,
+				navigate,
+			});
 		},
 		[rows],
 	);

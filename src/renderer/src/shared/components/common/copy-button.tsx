@@ -27,7 +27,20 @@ export const CopyButton: FC<{
 	label: string;
 	variant?: "ghost" | "secondary" | "primary";
 	onCopied?: () => void;
-}> = ({ value, label, variant = "ghost", onCopied }) => {
+	/**
+	 * Ids of text that describes this copy action in its context — the ask
+	 * card's suggested command names its device notice here, so a screen reader
+	 * hears that the command runs on this computer (UX round 1, U3). Undefined
+	 * for every other caller.
+	 */
+	"aria-describedby"?: string;
+}> = ({
+	value,
+	label,
+	variant = "ghost",
+	onCopied,
+	"aria-describedby": describedBy,
+}) => {
 	useI18nLocale();
 	const [copied, setCopied] = useState(false);
 	useEffect(() => {
@@ -39,6 +52,7 @@ export const CopyButton: FC<{
 		<Button
 			variant={variant}
 			size="sm"
+			aria-describedby={describedBy}
 			onClick={async () => {
 				try {
 					await navigator.clipboard.writeText(value);

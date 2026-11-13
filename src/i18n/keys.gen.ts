@@ -4420,6 +4420,7 @@ export type MessageParams = {
 	"ui.chat.ask_command.dialog_device_local": undefined;
 	"ui.chat.ask_command.dialog_device_remote": { device: string };
 	"ui.chat.ask_command.dialog_device_remote_unnamed": undefined;
+	"ui.chat.ask_command.dialog_refused": undefined;
 	"ui.chat.ask_command.dialog_title": undefined;
 	"ui.chat.ask_command.insert": undefined;
 	"ui.chat.ask_command.insert_hint": undefined;

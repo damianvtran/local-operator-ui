@@ -38,12 +38,13 @@
  *   /bin/bash 5.2.15  median 28.4 ms, max 32.5 ms; first byte to last startup
  *                     byte <= 1.0 ms (the prompt arrives in one burst)
  *   /bin/sh           median  2.5 ms, max  3.2 ms
- *   zsh               not installed on the rig; the Mac reading (where zsh is
- *                     the default shell) comes with the real-Mac capture.
+ *   zsh 5.9           median 429.8 ms, max 791.2 ms — the operator's Mac, the
+ *                     default login shell there, same pty.fork method (lopdev
+ *                     manager session 79bddc262663, 2026-11-13)
  *
- * The cap is set far above that observed max (3000 ms vs 32.5 ms) because the
- * operator's interactive zsh with a framework can be two orders of magnitude
- * slower than a bare bash, and the invariant above makes a generous cap cheap:
+ * The cap is set well above the slowest observed max (3000 ms vs zsh's
+ * 791.2 ms, about 3.8x) because an interactive zsh with a heavier framework
+ * can be slower still, and the invariant above makes a generous cap cheap:
  * it only ever delays a write that the pty would have buffered anyway. The
  * quiet window (150 ms) is larger than the measured startup burst (<= 1 ms) so a
  * prompt drawn in several chunks (a two-line prompt, an instant-prompt redraw)
@@ -62,6 +63,33 @@
 export const CONSOLE_COMMAND_POLL_MS = 50;
 export const CONSOLE_COMMAND_QUIET_MS = 150;
 export const CONSOLE_COMMAND_READY_CAP_MS = 3000;
+
+/**
+ * HOW LONG A PRESS WAITS TO BE PICKED UP before the pane refuses it
+ * (`ConsolePane`'s command effect; QA round 1 Q1, agent review round 1 m2).
+ *
+ * The bound is on PICKUP — press to the pane taking the intent — not on the
+ * shell: the create and the readiness wait above both start after pickup, so
+ * a slow zsh (791.2 ms max on the operator's Mac) never eats into it. It is
+ * still set above that zsh max plus the measured pickup, so even a reading
+ * that wrongly counted shell startup would land inside it.
+ *
+ * MEASURED (lopdev Linux rig, built app, Xvfb, 2026-11-13; press to the new
+ * surface LISTED by main, which is an upper bound on pickup because pickup
+ * happens before the create call):
+ *
+ *   in-conversation Open in terminal  n=10  median  62.3 ms  max  99.6 ms
+ *   fleet press, cold pane in another
+ *   conversation (open, load, pick up) n=5   median  74.0 ms  max  76.4 ms
+ *
+ * 5000 ms sits about 50x above that max and about 5.6x above zsh's max plus it
+ * (791.2 + 99.6 = 890.8 ms). It errs long on purpose: a press dropped by this
+ * bound opens an empty terminal with nothing typed, which is the worse failure
+ * for a legitimate press, while a confirm made stale by LEAVING is already
+ * dropped at once by the leave rule (`dropConsoleCommandOnLeave`) and a closed
+ * ask is refused by the pickup guard regardless of age.
+ */
+export const CONSOLE_COMMAND_PICKUP_TTL_MS = 5000;
 
 /** The slice of `window.api.console` this procedure uses. */
 export type ConsoleCommandApi = {

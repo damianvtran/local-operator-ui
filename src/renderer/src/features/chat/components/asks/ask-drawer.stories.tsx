@@ -1172,7 +1172,7 @@ export const CommandLocal: Story = {
 		nowMs: NOW,
 		onAnswer: noop,
 		onDecline: noop,
-		onCommand: noop,
+		onCommand: () => true,
 		commandPlacementOf: () => ({ kind: "here" }),
 	},
 };

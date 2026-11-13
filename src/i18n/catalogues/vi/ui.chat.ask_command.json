@@ -1,19 +1,20 @@
 {
 	"ui.chat.ask_command.copy": "Sao chép",
-	"ui.chat.ask_command.dialog_caution": "Lệnh từ tác nhân có thể sai hoặc không an toàn. Hãy đọc kỹ trước khi chạy.",
+	"ui.chat.ask_command.dialog_caution": "Lệnh từ tác nhân có thể sai hoặc không an toàn. Hãy đọc kỹ lệnh này trước khi chạy.",
 	"ui.chat.ask_command.dialog_closed": "Yêu cầu này đã đóng, nên không thể chạy lệnh từ đây nữa.",
 	"ui.chat.ask_command.dialog_confirm": "Chạy trong cửa sổ dòng lệnh",
 	"ui.chat.ask_command.dialog_device_local": "Lệnh chạy trong một cửa sổ dòng lệnh mới trên máy tính này, trong thư mục cá nhân của bạn.",
 	"ui.chat.ask_command.dialog_device_remote": "Lệnh chạy trong một cửa sổ dòng lệnh mới trên máy tính này, trong thư mục cá nhân của bạn — không phải trên {device}, nơi tác nhân làm việc.",
 	"ui.chat.ask_command.dialog_device_remote_unnamed": "Lệnh chạy trong một cửa sổ dòng lệnh mới trên máy tính này, trong thư mục cá nhân của bạn — không phải trên thiết bị nơi tác nhân làm việc.",
+	"ui.chat.ask_command.dialog_refused": "Không thể chạy lệnh này từ đây nữa. Chưa có gì được chạy.",
 	"ui.chat.ask_command.dialog_title": "Chạy lệnh này?",
-	"ui.chat.ask_command.insert": "Chèn",
-	"ui.chat.ask_command.insert_hint": "Nhập lệnh vào một cửa sổ dòng lệnh mới của cuộc trò chuyện này, không chạy",
+	"ui.chat.ask_command.insert": "Mở trong cửa sổ dòng lệnh",
+	"ui.chat.ask_command.insert_hint": "Nhập lệnh vào một cửa sổ dòng lệnh mới, không chạy",
 	"ui.chat.ask_command.label": "Lệnh được đề xuất",
 	"ui.chat.ask_command.notice_elsewhere": "Tác nhân làm việc trên {device}. Lệnh này chạy ở đây, không phải ở đó.",
 	"ui.chat.ask_command.notice_elsewhere_unnamed": "Tác nhân làm việc trên một thiết bị khác. Lệnh này chạy ở đây, không phải ở đó.",
-	"ui.chat.ask_command.notice_target_unknown": "Yêu cầu không cho biết lệnh nên chạy ở đâu, nên chỉ có thể chèn.",
-	"ui.chat.ask_command.notice_unplaced": "Không thể xác nhận tác nhân làm việc trên máy tính này, nên chỉ có thể chèn lệnh.",
+	"ui.chat.ask_command.notice_target_unknown": "Yêu cầu không cho biết lệnh nên chạy ở đâu, nên không thể chạy lệnh từ đây.",
+	"ui.chat.ask_command.notice_unplaced": "Không thể xác nhận tác nhân làm việc trên máy tính này, nên không thể chạy lệnh từ đây.",
 	"ui.chat.ask_command.run": "Chạy…",
-	"ui.chat.ask_command.run_hint": "Xem lại, rồi chạy trong một cửa sổ dòng lệnh mới"
+	"ui.chat.ask_command.run_hint": "Nhập lệnh vào một cửa sổ dòng lệnh mới và chạy, sau khi bạn xác nhận"
 }

@@ -257,8 +257,12 @@ export type AskPanelProps = {
 	 * scope-agnostic, as it does for answers. Absent where the surface cannot
 	 * open a terminal (notifications detail, a story): the card then shows the
 	 * command and Copy only.
+	 *
+	 * The question id travels with the command so the caller matches the
+	 * question, not the text (agent review round 1, n2). Answers whether the
+	 * command was filed: a refused Run keeps its dialog open and says so (m3).
 	 */
-	onCommand?: (ask: PendingAsk, command: string, submit: boolean) => void;
+	onCommand?: (request: AskCommandRequest) => boolean;
 	/**
 	 * Where the agent of an ask's conversation works, relative to this computer
 	 * (`askAgentPlacement`). Decides whether Run… is offered at all
@@ -267,6 +271,14 @@ export type AskPanelProps = {
 	 */
 	commandPlacementOf?: (ask: PendingAsk) => AskAgentPlacement;
 	className?: string;
+};
+
+/** One press of a suggested command's Insert or confirmed Run. */
+export type AskCommandRequest = {
+	ask: PendingAsk;
+	questionId: string;
+	command: string;
+	submit: boolean;
 };
 
 /** The placement a mount that supplies none gets: not provably here. */
@@ -923,7 +935,7 @@ const AskRow = ({
 	onCommand?: AskPanelProps["onCommand"];
 	placement: AskAgentPlacement;
 	/** Open the panel's Run confirmation for this ask's command. */
-	onRunRequest?: (ask: PendingAsk, command: string) => void;
+	onRunRequest?: (ask: PendingAsk, questionId: string, command: string) => void;
 }) => {
 	const { ask, status, waiting, canAnswer, canDecline, delivering } =
 		presentation;
@@ -1579,11 +1591,18 @@ const AskRow = ({
 									onInsert:
 										onCommand === undefined
 											? undefined
-											: () => onCommand(ask, hint.command, false),
+											: () => {
+													onCommand({
+														ask,
+														questionId: question.id,
+														command: hint.command,
+														submit: false,
+													});
+												},
 									onRun:
 										onCommand === undefined || onRunRequest === undefined
 											? undefined
-											: () => onRunRequest(ask, hint.command),
+											: () => onRunRequest(ask, question.id, hint.command),
 								};
 							})()}
 						/>
@@ -2457,15 +2476,30 @@ export const AskPanel = ({
 	 */
 	const [runConfirm, setRunConfirm] = useState<{
 		ask: PendingAsk;
+		questionId: string;
 		command: string;
 		placement: AskAgentPlacement;
+		/** The press-time re-check refused the last confirm (m3). */
+		refused: boolean;
 	} | null>(null);
+	/*
+	 * THE DIALOG STAYS MOUNTED ACROSS ITS CLOSE (UX round 1, U1). `BaseDialog`
+	 * returns focus to its opener — the Run… button — only when `open` goes from
+	 * true to false while it is still mounted; unmounting it on close left focus
+	 * on `<body>`, so a keyboard user who backed out lost their place in an ask
+	 * they still had to answer. The last request is held here so the closing
+	 * render still has a command to draw while the panel animates out.
+	 */
+	const lastRunConfirm = useRef(runConfirm);
+	if (runConfirm !== null) lastRunConfirm.current = runConfirm;
 	const requestRun = useCallback(
-		(ask: PendingAsk, command: string) =>
+		(ask: PendingAsk, questionId: string, command: string) =>
 			setRunConfirm({
 				ask,
+				questionId,
 				command,
 				placement: commandPlacementOf?.(ask) ?? UNKNOWN_PLACEMENT,
+				refused: false,
 			}),
 		[commandPlacementOf],
 	);
@@ -2755,18 +2789,32 @@ export const AskPanel = ({
 					? t("ui.chat.ask_panel.empty.none_settled")
 					: null;
 
+	const shownRun = runConfirm ?? lastRunConfirm.current;
 	const runDialog =
-		onCommand !== undefined && runConfirm !== null ? (
+		onCommand !== undefined && shownRun !== null ? (
 			<AskCommandRunDialog
-				open={true}
-				command={runConfirm.command}
-				placement={runConfirm.placement}
-				askOpen={runAskOpen}
+				open={runConfirm !== null}
+				command={shownRun.command}
+				placement={shownRun.placement}
+				askOpen={runConfirm === null ? true : runAskOpen}
+				refused={shownRun.refused}
 				onCancel={() => setRunConfirm(null)}
 				onConfirm={() => {
 					const pending = runConfirm;
-					setRunConfirm(null);
-					if (runAskOpen) onCommand(pending.ask, pending.command, true);
+					if (pending === null || !runAskOpen) return;
+					const filed = onCommand({
+						ask: pending.ask,
+						questionId: pending.questionId,
+						command: pending.command,
+						submit: true,
+					});
+					/*
+					 * A REFUSED CONFIRM IS SAID, NOT SWALLOWED (agent review round 1,
+					 * m3): the press-time re-check (placement moved to a peer, the
+					 * command no longer the question's) used to close the dialog with
+					 * nothing happening. It stays up, the confirm withheld, with a reason.
+					 */
+					setRunConfirm(filed ? null : { ...pending, refused: true });
 				}}
 			/>
 		) : null;

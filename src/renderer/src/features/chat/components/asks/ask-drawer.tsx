@@ -171,6 +171,24 @@ const ASK_PANEL_SELECTOR = "[data-lo-ask-panel]";
 const ASK_LANDING_TARGET = "[data-lo-ask-row], [data-lo-ask-settled]";
 
 /**
+ * THE SUGGESTED-COMMAND ROW IS NEVER THE LANDING (UX round 1, U2). The row sits
+ * under the question prose, ABOVE the answer options, so a bare "first
+ * focusable in the row" walk put the entry focus on its Copy — the action the
+ * card is least about, where Enter only copies — instead of the answer control
+ * it landed on before the row existed. The walk skips the row's subtree; the row
+ * stays in the Tab order right where it is drawn.
+ */
+const ASK_LANDING_SKIP = "[data-ask-command]";
+
+/** The first control in `root` the entry move may land on (see above). */
+const firstLandingControl = (root: HTMLElement | null | undefined) =>
+	root
+		? (Array.from(
+				root.querySelectorAll<HTMLElement>(ASK_DRAWER_FOCUSABLE),
+			).find((node) => node.closest(ASK_LANDING_SKIP) === null) ?? null)
+		: null;
+
+/**
  * THE MENU DOOR'S RETURN TARGET (#896 round 1, Q1): the `…` menu's asks row is
  * the third door to this drawer, and the one that cannot signal its press
  * through focus - Radix hands the keyboard back to the menu's own trigger when
@@ -970,9 +988,9 @@ export const AskDrawer = ({
 		 * `[tabindex="-1"]`, so the root can never be picked as the "first control" above.
 		 */
 		const landing =
-			landingRoot?.querySelector<HTMLElement>(ASK_DRAWER_FOCUSABLE) ??
+			firstLandingControl(landingRoot) ??
 			landingRoot ??
-			panel?.querySelector<HTMLElement>(ASK_DRAWER_FOCUSABLE) ??
+			firstLandingControl(panel) ??
 			root;
 		landingRef.current = landing;
 		landing.focus();

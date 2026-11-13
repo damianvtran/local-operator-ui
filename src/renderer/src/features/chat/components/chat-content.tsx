@@ -62,6 +62,7 @@ import {
 	type AskDrawerCloseOptions,
 	BROWSER_PANEL_MIN_PX,
 	CONSOLE_PANEL_MIN_PX,
+	type ConsoleCommandIntent,
 	EMPTY_RIGHT_SLOT_ROUTE,
 	RUN_PANEL_MIN_PX,
 	resolveRightSlotOccupied,
@@ -91,7 +92,11 @@ import {
 import { DelegatedCleanupNoticeBand } from "../../settings/components/delegated-cleanup-notice";
 import { settleQueuedAdoption } from "../aside";
 import { gateIsSecret } from "../ask-answer";
-import { fileAskCommand, readAskAgentPlacement } from "../ask-command-actions";
+import {
+	askCommandStillRunnable,
+	fileAskCommand,
+	readAskAgentPlacement,
+} from "../ask-command-actions";
 import type {
 	AskAnswerAttempt,
 	AskDismissReason,
@@ -1803,6 +1808,26 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				? (canonical?.view.frontend ?? null)
 				: canonical.asks;
 		const sessionAsksView = useMemo(() => askQueueView(askFrame), [askFrame]);
+		/*
+		 * THE CONSOLE'S SUBMIT GUARD for a suggested command's confirmed Run (QA
+		 * round 1, Q1): the console pane beside this conversation asks it at
+		 * pickup, and it answers from THIS conversation's ask view as it is at that
+		 * moment — read through a ref so the guard stays one stable function and
+		 * still sees the newest frame. The pane is scoped to this same
+		 * `sessionId`, so this view is the one its intent's ask belongs to.
+		 */
+		const sessionAsksViewRef = useRef(sessionAsksView);
+		sessionAsksViewRef.current = sessionAsksView;
+		const allowCommandSubmit = useCallback(
+			(intent: ConsoleCommandIntent) =>
+				intent.sessionId === sessionId &&
+				askCommandStillRunnable({
+					rows: sessionAsksViewRef.current.rows,
+					intent,
+					placement: readAskAgentPlacement(sessionId),
+				}),
+			[sessionId],
+		);
 		/*
 		 * THE ROW'S OWN WIDTH, which the canvas's mode, the ask sheet's geometry and the
 		 * open policy's `covers-conversation` fact are all decided from (§I).
@@ -3883,8 +3908,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 */
 								onCommand={
 									sessionId
-										? (ask, command, submit) =>
-												fileAskCommand({ sessionId, ask, command, submit })
+										? (request) => fileAskCommand({ sessionId, ...request })
 										: undefined
 								}
 								commandPlacementOf={() => readAskAgentPlacement(sessionId)}
@@ -4092,6 +4116,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							<ConsolePane
 								sessionId={sessionId ?? null}
 								onClose={() => setConsolePaneOpen(false)}
+								allowCommandSubmit={allowCommandSubmit}
 							/>
 						</PaneSlot>
 					</>

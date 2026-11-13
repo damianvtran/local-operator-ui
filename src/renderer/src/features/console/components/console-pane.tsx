@@ -3,6 +3,7 @@ import { Button, Tooltip } from "@shared/components/ui";
 import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import {
+	type ConsoleCommandIntent,
 	isConsoleUnseen,
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
@@ -26,7 +27,10 @@ import {
 } from "react";
 import { useConsoleBlipPulse } from "../hooks/use-console-attention";
 import { useConsoleSession } from "../hooks/use-console-session";
-import { deliverConsoleCommand } from "../model/console-command";
+import {
+	CONSOLE_COMMAND_PICKUP_TTL_MS,
+	deliverConsoleCommand,
+} from "../model/console-command";
 import {
 	type ConsoleSurface,
 	consoleOpenAction,
@@ -130,9 +134,25 @@ export interface ConsolePaneProps {
 	/** The conversation this pane is scoped to, or `null` on a draft. */
 	sessionId: string | null;
 	onClose: () => void;
+	/**
+	 * THE SUBMIT GUARD for a suggested command's confirmed Run (`submit: true`),
+	 * asked at PICKUP — the last moment before a terminal is made and Enter is
+	 * pressed. The caller answers from what it holds NOW: that the ask the
+	 * command came from is still answerable and the command still runnable on
+	 * this computer (`chat-content.tsx`, via `askCommandStillRunnable`). A
+	 * confirm is consent to run while the request is open, not a standing order
+	 * (QA round 1, Q1). Absent means no one can vouch for it, which fails closed:
+	 * a `submit` intent is dropped with no surface created. Insert (`submit:
+	 * false`) is never guarded — typing without Enter runs nothing.
+	 */
+	allowCommandSubmit?: (intent: ConsoleCommandIntent) => boolean;
 }
 
-export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
+export const ConsolePane: FC<ConsolePaneProps> = ({
+	sessionId,
+	onClose,
+	allowCommandSubmit,
+}) => {
 	/*
 	 * THE DRAFT STATE CLOSES ON ESCAPE, like its siblings (UX round 1, U2): the Run
 	 * details and Code review notices a draft's doors open close on an unclaimed
@@ -932,13 +952,25 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 	 * `+` makes one, and the lens moves to it through `showCreated` — the same
 	 * mechanism, so the user sees the terminal the command lands in.
 	 *
-	 * AT MOST ONCE PER PRESS: `takenCommand` records the nonce this mount has taken,
-	 * so a re-run of the effect (every listing commit re-runs it) does nothing; and
-	 * the store copy is cleared by nonce once the create answers — the open path's
-	 * timing, so the loading mask below holds across the round trip — which is what
-	 * a REMOUNT sees. A create that fails clears the intent too: the pane's
-	 * create-failed state is the answer, and a retry is the user's press, not a
-	 * replay of the command.
+	 * AT MOST ONCE PER PRESS, AND ONLY RIGHT AFTER IT (QA round 1 Q1, agent review
+	 * round 1 m2). The store copy is cleared by nonce the moment this pane TAKES
+	 * it, before the create round trip: it used to be cleared only once the create
+	 * answered, so a pane that unmounted and remounted inside that window took the
+	 * same press again — a second surface and, with `submit`, a second run. The
+	 * loading mask that clear used to hold is now `creating` (the create count
+	 * this pane's own `beginCreate` raises), which is local state. `takenCommand`
+	 * still makes a re-run of the effect over the same nonce a no-op.
+	 *
+	 * A STALE PRESS IS DROPPED, NOT DEFERRED: an intent older than
+	 * `CONSOLE_COMMAND_PICKUP_TTL_MS` is cleared and nothing is made. Without the
+	 * bound a confirmed Run whose pane never mounted (the user switched away
+	 * first) waited in the store and ran on the next visit — after the ask had
+	 * closed (QA's `stale-after-return` repro). The filer also drops it on a
+	 * conversation switch; this bound covers every path that one does not see.
+	 *
+	 * A SUBMIT IS RE-CHECKED HERE (`allowCommandSubmit`): the ask must still be
+	 * answerable and the command still runnable at the moment Enter would be
+	 * pressed. Refused → cleared, no surface, nothing typed.
 	 *
 	 * NO CHORD, NO AUTO-RUN: `submit` is only ever set by the card's confirmation
 	 * dialog (`ask-command.tsx`); this effect just honours it.
@@ -962,6 +994,10 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 		}
 		const intent = commandForThisSession;
 		takenCommand.current = intent.nonce;
+		// Taken: from here the press is this mount's alone (see the note above).
+		clearCommandIntent(intent.nonce);
+		if (Date.now() - intent.filedAt > CONSOLE_COMMAND_PICKUP_TTL_MS) return;
+		if (intent.submit && !(allowCommandSubmit?.(intent) ?? false)) return;
 		const from = stored;
 		beginCreate();
 		void session
@@ -984,7 +1020,6 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 			})
 			.finally(() => {
 				endCreate();
-				clearCommandIntent(intent.nonce);
 			});
 	}, [
 		commandForThisSession,
@@ -996,6 +1031,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 		beginCreate,
 		endCreate,
 		clearCommandIntent,
+		allowCommandSubmit,
 	]);
 
 	if (sessionId === null) {

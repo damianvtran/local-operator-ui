@@ -78,7 +78,7 @@ const bundle = await build({
 			'export { ASK_COMMAND_MAX_CHARS, askCommandOf, askAgentPlacement, askCommandRunnable, askCommandNotice, askCommandDialogDevice, isLoopbackBackendUrl } from "./src/renderer/src/features/chat/ask-command";',
 			'export { deliverConsoleCommand, waitForConsoleReady, CONSOLE_COMMAND_READY_CAP_MS, CONSOLE_COMMAND_QUIET_MS } from "./src/renderer/src/features/console/model/console-command";',
 			'export { useUiPreferencesStore, persistedUiPreferences } from "./src/renderer/src/shared/store/ui-preferences-store";',
-			'export { fileAskCommand, fileFleetAskCommand } from "./src/renderer/src/features/chat/ask-command-actions";',
+			'export { fileAskCommand, fileFleetAskCommand, dropConsoleCommandOnLeave, askCommandStillRunnable } from "./src/renderer/src/features/chat/ask-command-actions";',
 			'export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -127,6 +127,8 @@ const {
 	persistedUiPreferences,
 	fileAskCommand,
 	fileFleetAskCommand,
+	dropConsoleCommandOnLeave,
+	askCommandStillRunnable,
 	useCanonicalSessionsStore,
 } = lib;
 
@@ -215,6 +217,27 @@ test("askCommandOf refuses every Cc, Cf, Zl and Zp character, anywhere", () => {
 	}
 	// The bracketed-paste terminator cannot ride in: ESC is refused.
 	assert.equal(askCommandOf({ command: "x\u001b[201~; rm -rf ~" }), null);
+});
+
+test("askCommandOf refuses every Zs space but U+0020, as core does (agent review m1)", () => {
+	// Core PR #3926 (`ask_command_problem`): a no-break or wide space LOOKS like a
+	// separator on the card but is one word to the shell.
+	for (const [name, character] of Object.entries({
+		no_break_space: "\u00a0",
+		em_space: "\u2003",
+		ideographic_space: "\u3000",
+		en_quad: "\u2000",
+		narrow_no_break_space: "\u202f",
+		medium_mathematical_space: "\u205f",
+		ogham_space_mark: "\u1680",
+	})) {
+		assert.equal(askCommandOf({ command: `echo${character}hi` }), null, name);
+	}
+	// The ordinary space is the one that stays.
+	assert.deepEqual(askCommandOf({ command: "echo hi there" }), {
+		command: "echo hi there",
+		target: "unknown",
+	});
 });
 
 /* ------------------------------------------------------- the placement rule */
@@ -436,6 +459,15 @@ const DIALOG_TITLE = /Run this command\?/;
 const NOTICE_ELSEWHERE =
 	/The agent works on Mac mini\. This runs here, not there\./;
 const DEVICE_REMOTE_USER = /not on Mac mini, where the agent works/;
+// Round 1 remediation (D1, D3, U3, U4/U5).
+const SCROLL_CAP = /max-h-|overflow-y-auto/;
+const WIDE_PANEL = /w-\[35rem\]/;
+const FULL_INK = /text-ink/;
+const CAUTION =
+	/Agent commands can be wrong or unsafe\. Read this one before you run it\./;
+const INSERT_HINT = /Type it into a new terminal without running it/;
+const COPY_LABEL = /Copy/;
+const RUN_HINT = /Type it into a new terminal and run it, after you confirm/;
 
 const { createElement } = React;
 const NOW = 1_700_000_000_000;
@@ -506,8 +538,10 @@ test("the row shows the command verbatim; Insert files it with no dialog and no 
 	const calls = [];
 	const rig = await mount(
 		panelElement([commandAsk()], {
-			onCommand: (ask, command, submit) =>
-				calls.push([ask.ask_id, command, submit]),
+			onCommand: ({ ask, questionId, command, submit }) => {
+				calls.push([ask.ask_id, questionId, command, submit]);
+				return true;
+			},
 			commandPlacementOf: here,
 		}),
 	);
@@ -519,7 +553,7 @@ test("the row shows the command verbatim; Insert files it with no dialog and no 
 			"glab auth login",
 		);
 		await click(row.querySelector("[data-ask-command-insert]"));
-		assert.deepEqual(calls, [["ask-1", "glab auth login", false]]);
+		assert.deepEqual(calls, [["ask-1", "q1", "glab auth login", false]]);
 		assert.equal(dialog(), null, "Insert opens no dialog");
 	} finally {
 		await rig.unmount();
@@ -530,8 +564,10 @@ test("Run… needs the confirm: Cancel holds the focus, and only the confirm sub
 	const calls = [];
 	const rig = await mount(
 		panelElement([commandAsk()], {
-			onCommand: (ask, command, submit) =>
-				calls.push([ask.ask_id, command, submit]),
+			onCommand: ({ ask, questionId, command, submit }) => {
+				calls.push([ask.ask_id, questionId, command, submit]);
+				return true;
+			},
 			commandPlacementOf: here,
 		}),
 	);
@@ -564,7 +600,7 @@ test("Run… needs the confirm: Cancel holds the focus, and only the confirm sub
 		// Confirm is the only way to submit.
 		await click(rig.container.querySelector("[data-ask-command-run]"));
 		await click(dialog().querySelector("[data-confirm-action]"));
-		assert.deepEqual(calls, [["ask-1", "glab auth login", true]]);
+		assert.deepEqual(calls, [["ask-1", "q1", "glab auth login", true]]);
 	} finally {
 		await rig.unmount();
 	}
@@ -573,7 +609,7 @@ test("Run… needs the confirm: Cancel holds the focus, and only the confirm sub
 test("an agent command in a conversation whose agent is elsewhere offers Insert only, and says why", async () => {
 	const rig = await mount(
 		panelElement([commandAsk()], {
-			onCommand: () => undefined,
+			onCommand: () => true,
 			commandPlacementOf: () => ({ kind: "elsewhere", device: "Mac mini" }),
 		}),
 	);
@@ -593,7 +629,7 @@ test("an agent command in a conversation whose agent is elsewhere offers Insert 
 test("a user command in a remote conversation runs here, and the dialog says not there", async () => {
 	const rig = await mount(
 		panelElement([commandAsk({}, { command_target: "user" })], {
-			onCommand: () => undefined,
+			onCommand: () => true,
 			commandPlacementOf: () => ({ kind: "elsewhere", device: "Mac mini" }),
 		}),
 	);
@@ -617,7 +653,7 @@ test("no placement supplied, or no target on the row, fails closed to Insert onl
 		],
 	]) {
 		const rig = await mount(
-			panelElement([ask], { onCommand: () => undefined, ...extra }),
+			panelElement([ask], { onCommand: () => true, ...extra }),
 		);
 		try {
 			const row = rig.container.querySelector("[data-ask-command]");
@@ -632,7 +668,7 @@ test("no placement supplied, or no target on the row, fails closed to Insert onl
 test("a forged command, a settled ask, or a read-only mount draws no terminal door", async () => {
 	const forged = await mount(
 		panelElement([commandAsk({}, { command: "ls\nrm -rf ~" })], {
-			onCommand: () => undefined,
+			onCommand: () => true,
 			commandPlacementOf: here,
 		}),
 	);
@@ -661,7 +697,7 @@ test("a forged command, a settled ask, or a read-only mount draws no terminal do
 					delivered: true,
 				}),
 			],
-			{ onCommand: () => undefined, commandPlacementOf: here },
+			{ onCommand: () => true, commandPlacementOf: here },
 		),
 	);
 	try {
@@ -726,6 +762,7 @@ test("fileAskCommand files only the ask's own validated command, and refuses a s
 		fileAskCommand({
 			sessionId: "s-1",
 			ask,
+			questionId: "q1",
 			command: "rm -rf ~",
 			submit: false,
 		}),
@@ -738,6 +775,7 @@ test("fileAskCommand files only the ask's own validated command, and refuses a s
 		fileAskCommand({
 			sessionId: "s-unknown",
 			ask,
+			questionId: "q1",
 			command: "glab auth login",
 			submit: true,
 		}),
@@ -749,6 +787,7 @@ test("fileAskCommand files only the ask's own validated command, and refuses a s
 		fileAskCommand({
 			sessionId: "s-unknown",
 			ask,
+			questionId: "q1",
 			command: "glab auth login",
 			submit: false,
 		}),
@@ -764,6 +803,7 @@ test("fileAskCommand files only the ask's own validated command, and refuses a s
 		fileAskCommand({
 			sessionId: "s-unknown",
 			ask: userAsk,
+			questionId: "q1",
 			command: "glab auth login",
 			submit: true,
 		}),
@@ -790,6 +830,7 @@ test("the fleet press waves the ask off BEFORE opening its conversation, then fi
 		{
 			sessionId: "s-9",
 			ask,
+			questionId: "q1",
 			command: "glab auth login",
 			submit: false,
 			navigate,
@@ -803,6 +844,7 @@ test("the fleet press waves the ask off BEFORE opening its conversation, then fi
 				order.push([
 					"file",
 					request.sessionId,
+					request.questionId,
 					request.command,
 					request.submit,
 				]);
@@ -814,6 +856,386 @@ test("the fleet press waves the ask off BEFORE opening its conversation, then fi
 	assert.deepEqual(order, [
 		["record", "s-9", { outstandingIds: ["ask-1"], listComplete: true }],
 		["open", "s-9", true],
-		["file", "s-9", "glab auth login", false],
+		["file", "s-9", "q1", "glab auth login", false],
 	]);
+});
+
+/* ------------------------------------------------ round 1 remediation */
+
+const settleTicks = () =>
+	act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
+const pressEscape = async () => {
+	await act(async () => {
+		(document.activeElement ?? document.body).dispatchEvent(
+			new window.KeyboardEvent("keydown", {
+				key: "Escape",
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+	});
+	await settleTicks();
+};
+
+test("closing the Run dialog returns focus to Run… — Cancel and Escape (UX U1)", async () => {
+	const rig = await mount(
+		panelElement([commandAsk()], {
+			onCommand: () => true,
+			commandPlacementOf: here,
+		}),
+	);
+	try {
+		for (const [label, close] of [
+			["Cancel", () => click(dialog().querySelector("[data-cancel-action]"))],
+			["Escape", pressEscape],
+		]) {
+			const run = rig.container.querySelector("[data-ask-command-run]");
+			run.focus();
+			await click(run);
+			await settleTicks();
+			assert.ok(dialog(), `${label}: the dialog is open`);
+			assert.ok(
+				dialog().contains(document.activeElement),
+				`${label}: focus is in the dialog while it is up`,
+			);
+			await close();
+			await settleTicks();
+			assert.equal(dialog(), null, `${label}: the dialog closed`);
+			assert.equal(
+				document.activeElement,
+				rig.container.querySelector("[data-ask-command-run]"),
+				`${label}: focus is back on Run… (was ${document.activeElement?.tagName})`,
+			);
+		}
+	} finally {
+		await rig.unmount();
+	}
+});
+
+test("a confirm the press-time re-check refuses keeps the dialog up, confirm withheld, with a reason (m3)", async () => {
+	const calls = [];
+	const rig = await mount(
+		panelElement([commandAsk()], {
+			onCommand: (request) => {
+				calls.push(request.submit);
+				return false;
+			},
+			commandPlacementOf: here,
+		}),
+	);
+	try {
+		await click(rig.container.querySelector("[data-ask-command-run]"));
+		await click(dialog().querySelector("[data-confirm-action]"));
+		assert.deepEqual(calls, [true], "the confirm was attempted once");
+		const open = dialog();
+		assert.ok(open, "the dialog did not silently close");
+		assert.ok(open.querySelector("[data-ask-command-refused]"));
+		assert.equal(open.querySelector("[data-confirm-action]").disabled, true);
+		assert.equal(open.querySelector("[data-cancel-action]").disabled, false);
+		await click(open.querySelector("[data-confirm-action]"));
+		assert.deepEqual(calls, [true], "a withheld confirm files nothing more");
+		// A fresh press starts clean.
+		await click(open.querySelector("[data-cancel-action]"));
+		await click(rig.container.querySelector("[data-ask-command-run]"));
+		assert.equal(dialog().querySelector("[data-ask-command-refused]"), null);
+	} finally {
+		await rig.unmount();
+	}
+});
+
+test("the dialog shows the whole command: no scroll cap, a wider panel, and the caution in full ink (D1, D3)", async () => {
+	const long = `echo ${"a".repeat(494)}`;
+	const rig = await mount(
+		panelElement([commandAsk({}, { command: long })], {
+			onCommand: () => true,
+			commandPlacementOf: here,
+		}),
+	);
+	try {
+		await click(rig.container.querySelector("[data-ask-command-run]"));
+		const open = dialog();
+		const text = open.querySelector("[data-ask-command-text]");
+		assert.equal(text.textContent, long, "verbatim, never truncated");
+		// Up to the message root: the dialog primitive's own body scroller (its
+		// guard for windows too small for any dialog) is not this box.
+		const message = open.querySelector("[data-ask-command-dialog]");
+		for (let node = text; node && node !== message; node = node.parentElement) {
+			assert.doesNotMatch(
+				node.className ?? "",
+				SCROLL_CAP,
+				"nothing between the command and the message caps or scrolls it",
+			);
+		}
+		assert.match(open.className, WIDE_PANEL, "the panel is ~560px wide");
+		const caution = open.querySelector("[data-ask-command-caution]");
+		assert.match(caution.className, FULL_INK);
+		assert.ok(
+			caution.querySelector("svg.text-warning"),
+			"the existing warning glyph and tone",
+		);
+		assert.match(caution.textContent, CAUTION);
+	} finally {
+		await rig.unmount();
+	}
+});
+
+test("on a remote conversation the device notice describes every button (UX U3); labels are the round-1 ones", async () => {
+	const rig = await mount(
+		panelElement([commandAsk()], {
+			onCommand: () => true,
+			commandPlacementOf: () => ({ kind: "elsewhere", device: "Mac mini" }),
+		}),
+	);
+	try {
+		const row = rig.container.querySelector("[data-ask-command]");
+		const notice = row.querySelector("[data-ask-command-notice]");
+		assert.ok(notice.id, "the notice can be referenced");
+		const describedText = (node) =>
+			(node.getAttribute("aria-describedby") ?? "")
+				.split(" ")
+				.filter(Boolean)
+				.map((id) => document.getElementById(id)?.textContent ?? "")
+				.join(" | ");
+		const insert = row.querySelector("[data-ask-command-insert]");
+		assert.equal(insert.textContent, "Open in terminal");
+		assert.match(describedText(insert), NOTICE_ELSEWHERE);
+		assert.match(
+			describedText(insert),
+			INSERT_HINT,
+			"its own hint survives beside the notice",
+		);
+		const copy = [...row.querySelectorAll("button")].find((node) =>
+			COPY_LABEL.test(node.textContent),
+		);
+		assert.match(describedText(copy), NOTICE_ELSEWHERE);
+		assert.match(describedText(row), NOTICE_ELSEWHERE, "and the group");
+	} finally {
+		await rig.unmount();
+	}
+	const local = await mount(
+		panelElement([commandAsk()], {
+			onCommand: () => true,
+			commandPlacementOf: here,
+		}),
+	);
+	try {
+		const row = local.container.querySelector("[data-ask-command]");
+		const run = row.querySelector("[data-ask-command-run]");
+		assert.equal(run.textContent, "Run…");
+		assert.match(
+			document.getElementById(run.getAttribute("aria-describedby")).textContent,
+			RUN_HINT,
+		);
+		assert.equal(row.getAttribute("aria-describedby"), null, "no notice, none");
+	} finally {
+		await local.unmount();
+	}
+});
+
+test("fileAskCommand matches the QUESTION ID, not the command text (n2)", () => {
+	const reset = () => {
+		const pending = useUiPreferencesStore.getState().consoleCommandIntent;
+		if (pending)
+			useUiPreferencesStore.getState().clearConsoleCommandIntent(pending.nonce);
+	};
+	reset();
+	const twin = commandAsk();
+	twin.questions = [
+		{ ...twin.questions[0], id: "q-agent", command_target: "agent" },
+		{ ...twin.questions[0], id: "q-user", command_target: "user" },
+	];
+	// The conversation is not provably here: the agent twin may not submit, the
+	// user twin may. A match on the text found the agent twin first and refused.
+	assert.equal(
+		fileAskCommand({
+			sessionId: "s-unknown",
+			ask: twin,
+			questionId: "q-user",
+			command: "glab auth login",
+			submit: true,
+		}),
+		true,
+	);
+	const filed = useUiPreferencesStore.getState().consoleCommandIntent;
+	assert.equal(filed?.questionId, "q-user");
+	assert.equal(filed?.askId, "ask-1");
+	reset();
+	assert.equal(
+		fileAskCommand({
+			sessionId: "s-unknown",
+			ask: twin,
+			questionId: "q-agent",
+			command: "glab auth login",
+			submit: true,
+		}),
+		false,
+	);
+	assert.equal(
+		fileAskCommand({
+			sessionId: "s-unknown",
+			ask: twin,
+			questionId: "q-missing",
+			command: "glab auth login",
+			submit: false,
+		}),
+		false,
+		"an unknown question files nothing",
+	);
+	reset();
+});
+
+test("a filed press is dropped when the user leaves its conversation before pickup (Q1, m2b)", () => {
+	const canonical = useCanonicalSessionsStore;
+	const ui = useUiPreferencesStore;
+	const reset = () => {
+		const pending = ui.getState().consoleCommandIntent;
+		if (pending) ui.getState().clearConsoleCommandIntent(pending.nonce);
+	};
+	const before = canonical.getState();
+	const view = (activeSessionId, activeDraftKey = null, drafts = {}) =>
+		canonical.setState({ activeSessionId, activeDraftKey, drafts });
+	const userAsk = commandAsk({}, { command_target: "user" });
+	try {
+		// Leaving for another conversation drops it.
+		view("s-1");
+		reset();
+		assert.equal(
+			fileAskCommand({
+				sessionId: "s-1",
+				ask: userAsk,
+				questionId: "q1",
+				command: "glab auth login",
+				submit: true,
+			}),
+			true,
+		);
+		const filed = ui.getState().consoleCommandIntent;
+		canonical.setState({ sessions: before.sessions }); // an unrelated write
+		assert.equal(
+			ui.getState().consoleCommandIntent?.nonce,
+			filed.nonce,
+			"staying put keeps it",
+		);
+		view("s-2");
+		assert.equal(ui.getState().consoleCommandIntent, null, "leaving drops it");
+		view("s-1");
+		assert.equal(
+			ui.getState().consoleCommandIntent,
+			null,
+			"coming back does not revive it",
+		);
+		// A fresh New-chat draft is leaving too; an admitted draft of THIS
+		// conversation is not.
+		fileAskCommand({
+			sessionId: "s-1",
+			ask: userAsk,
+			questionId: "q1",
+			command: "glab auth login",
+			submit: false,
+		});
+		view("s-1", "draft-a", { "draft-a": { sessionId: "s-1" } });
+		assert.ok(ui.getState().consoleCommandIntent, "admitted draft: still here");
+		view("s-1", "draft-b", { "draft-b": {} });
+		assert.equal(ui.getState().consoleCommandIntent, null, "fresh draft: left");
+		// A press that was picked up stops watching: a later switch clears nothing.
+		view("s-1");
+		fileAskCommand({
+			sessionId: "s-1",
+			ask: userAsk,
+			questionId: "q1",
+			command: "glab auth login",
+			submit: false,
+		});
+		const taken = ui.getState().consoleCommandIntent;
+		ui.getState().clearConsoleCommandIntent(taken.nonce);
+		const next = ui.getState().requestConsoleCommand({
+			sessionId: "s-2",
+			command: "ls",
+			submit: false,
+		});
+		view("s-2");
+		assert.equal(
+			ui.getState().consoleCommandIntent?.nonce,
+			next.nonce,
+			"the old watch does not touch a later press",
+		);
+	} finally {
+		reset();
+		canonical.setState({
+			activeSessionId: before.activeSessionId,
+			activeDraftKey: before.activeDraftKey,
+			drafts: before.drafts,
+		});
+		ui.getState().setConsolePaneOpen(false);
+	}
+	assert.equal(typeof dropConsoleCommandOnLeave, "function");
+});
+
+test("askCommandStillRunnable: the pane's pickup guard, every refusal", () => {
+	const rows = (ask) => askQueueView({ asks: [ask], asks_open: 1 }).rows;
+	const intent = {
+		askId: "ask-1",
+		questionId: "q1",
+		command: "glab auth login",
+	};
+	const open = rows(commandAsk());
+	assert.equal(
+		askCommandStillRunnable({ rows: open, intent, placement: here() }),
+		true,
+	);
+	for (const [label, reading] of [
+		[
+			"answered",
+			{
+				rows: rows(
+					commandAsk({ status: "answered", answers: { q1: ["Done"] } }),
+				),
+				intent,
+				placement: here(),
+			},
+		],
+		[
+			"expired",
+			{
+				rows: rows(commandAsk({ status: "expired" })),
+				intent,
+				placement: here(),
+			},
+		],
+		["gone", { rows: [], intent, placement: here() }],
+		[
+			"command changed",
+			{
+				rows: rows(commandAsk({}, { command: "gh auth login" })),
+				intent,
+				placement: here(),
+			},
+		],
+		[
+			"agent moved to a peer",
+			{
+				rows: open,
+				intent,
+				placement: { kind: "elsewhere", device: "Mac mini" },
+			},
+		],
+		[
+			"no ask id",
+			{
+				rows: open,
+				intent: { ...intent, askId: undefined },
+				placement: here(),
+			},
+		],
+		[
+			"other question",
+			{
+				rows: open,
+				intent: { ...intent, questionId: "q9" },
+				placement: here(),
+			},
+		],
+	]) {
+		assert.equal(askCommandStillRunnable(reading), false, label);
+	}
 });

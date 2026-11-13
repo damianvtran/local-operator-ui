@@ -1,19 +1,20 @@
 {
 	"ui.chat.ask_command.copy": "Copy",
-	"ui.chat.ask_command.dialog_caution": "Commands from the agent can be wrong or unsafe. Read it before you run it.",
+	"ui.chat.ask_command.dialog_caution": "Agent commands can be wrong or unsafe. Read this one before you run it.",
 	"ui.chat.ask_command.dialog_closed": "This request has closed, so the command can't be run from it.",
 	"ui.chat.ask_command.dialog_confirm": "Run in terminal",
 	"ui.chat.ask_command.dialog_device_local": "It runs in a new terminal on this computer, in your home folder.",
 	"ui.chat.ask_command.dialog_device_remote": "It runs in a new terminal on this computer, in your home folder — not on {device}, where the agent works.",
 	"ui.chat.ask_command.dialog_device_remote_unnamed": "It runs in a new terminal on this computer, in your home folder — not on the device where the agent works.",
+	"ui.chat.ask_command.dialog_refused": "This command can no longer be run from here. Nothing was run.",
 	"ui.chat.ask_command.dialog_title": "Run this command?",
-	"ui.chat.ask_command.insert": "Insert",
-	"ui.chat.ask_command.insert_hint": "Type it into a new terminal in this conversation, without running it",
+	"ui.chat.ask_command.insert": "Open in terminal",
+	"ui.chat.ask_command.insert_hint": "Type it into a new terminal without running it",
 	"ui.chat.ask_command.label": "Suggested command",
 	"ui.chat.ask_command.notice_elsewhere": "The agent works on {device}. This runs here, not there.",
 	"ui.chat.ask_command.notice_elsewhere_unnamed": "The agent works on another device. This runs here, not there.",
-	"ui.chat.ask_command.notice_target_unknown": "The request doesn't say where this should run, so it can only be inserted.",
-	"ui.chat.ask_command.notice_unplaced": "Can't confirm the agent works on this computer, so this can only be inserted.",
+	"ui.chat.ask_command.notice_target_unknown": "The request doesn't say where this should run, so it can't be run from here.",
+	"ui.chat.ask_command.notice_unplaced": "Can't confirm the agent works on this computer, so this can't be run from here.",
 	"ui.chat.ask_command.run": "Run…",
-	"ui.chat.ask_command.run_hint": "Review it, then run it in a new terminal"
+	"ui.chat.ask_command.run_hint": "Type it into a new terminal and run it, after you confirm"
 }
