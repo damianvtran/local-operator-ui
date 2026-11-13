@@ -5917,3 +5917,83 @@ test("a lone custom or supplement span stays loose instead of an empty bar", () 
 	for (const r of [custom, supplement])
 		assert.equal(emptyBarsOf([user("u1"), r]).length, 0, r.record.kind);
 });
+
+/*
+ * A PENDING MUSIC JOB STAYS INLINE IN AN ORDINARY HUMAN TURN (desktop-app run
+ * 42747060041, macOS step 16). The real app folded a queued `generate_music`
+ * call under "1 action" with "1 job running", so the inline generating card
+ * (`data-music-generating=<job>`) never mounted. The record carried the job id
+ * the whole way; the base partition simply pinned material owners only inside
+ * internal receipt episodes. The fixture is Core 859729bd's own output (see its
+ * `_provenance`), run through the same reducer -> rows -> plan path the pane uses.
+ */
+test("a Core-shaped pending music job is not folded out of an ordinary turn", () => {
+	const fixture = JSON.parse(
+		readFileSync(
+			new URL("./fixtures/music-pending-core-859729bd.json", import.meta.url),
+			"utf8",
+		),
+	);
+	const state = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: fixture.entries,
+	});
+	const call = state.records.find(
+		(record) =>
+			record.kind === "tool" &&
+			record.toolCallId === fixture.core_tool_result.tool_call_id,
+	);
+	assert.ok(call, "the durable generate_music row projects to a tool record");
+	assert.equal(call.details?.job_id, "11f41d8c66d0");
+	assert.equal(call.details?.material, "music");
+	const plan = collapsePlan(buildRows(state.records, []), { live: false });
+	const hidden = plan.runs.flatMap((run) =>
+		run.hidden.map((row) => row.record.id),
+	);
+	assert.ok(
+		!hidden.includes(call.id),
+		`the music job owner must paint inline, hidden=${JSON.stringify(hidden)}`,
+	);
+
+	// The live half: the same Core ToolResult as `tool_execution_end.result`.
+	const live = [
+		{ type: "agent_start", generation: 1 },
+		{
+			type: "tool_execution_start",
+			tool_call_id: fixture.core_tool_result.tool_call_id,
+			tool_name: "generate_music",
+			args: { prompt: "Native owned pending" },
+		},
+		{
+			type: "tool_execution_end",
+			tool_call_id: fixture.core_tool_result.tool_call_id,
+			tool_name: "generate_music",
+			result: fixture.core_tool_result,
+			is_error: false,
+		},
+	].reduce(
+		(next, event, at) => applyEvent(next, event, TS + at),
+		applyHistoryPage(EMPTY_TRANSCRIPT, {
+			entries: fixture.entries.slice(0, 1),
+		}),
+	);
+	const liveCall = live.records.find(
+		(record) => record.id === `tool:${fixture.core_tool_result.tool_call_id}`,
+	);
+	assert.equal(liveCall?.details?.job_id, "11f41d8c66d0");
+
+	// A music call WITHOUT a job (a refusal) keeps the ordinary fold.
+	const refused = structuredClone(fixture.entries);
+	refused[2].payload.provider_payload.details = {
+		capabilities: { models: [] },
+	};
+	const refusedState = applyHistoryPage(EMPTY_TRANSCRIPT, { entries: refused });
+	const refusedPlan = collapsePlan(buildRows(refusedState.records, []), {
+		live: false,
+	});
+	assert.ok(
+		refusedPlan.runs
+			.flatMap((run) => run.hidden.map((row) => row.record.id))
+			.includes(call.id),
+		"a job-less music call still folds",
+	);
+});

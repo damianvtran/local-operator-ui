@@ -44,6 +44,8 @@ import { type SubagentRow, isOpenRow } from "./run-detail-model";
 
 /** The wire's own `type` word for the video lane's detached jobs (contract §1.7 G1). */
 export const VIDEO_JOB_TYPE = "video";
+/** Music is detached too; a request to stop does not promise an upstream refund. */
+export const MUSIC_JOB_TYPE = "music";
 
 /**
  * Whether a job row offers the pane's cancel control.
@@ -56,7 +58,9 @@ export const VIDEO_JOB_TYPE = "video";
  * NOT cancellable: the control is withheld rather than guessed onto it.
  */
 export const jobRowCanCancel = (row: SubagentRow): boolean =>
-	row.jobType === VIDEO_JOB_TYPE && isOpenRow(row);
+	(row.jobType === VIDEO_JOB_TYPE || row.jobType === MUSIC_JOB_TYPE) &&
+	isOpenRow(row) &&
+	row.music?.stage !== "cancel_requested";
 
 /**
  * The frozen `not_found` phrase, as the fallback for a refusal that arrived
