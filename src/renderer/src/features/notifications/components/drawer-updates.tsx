@@ -1,3 +1,4 @@
+import { openConversation } from "@features/chat/open-conversation";
 import { retryDesktopQuery } from "@shared/api/local-operator/backend-error";
 /**
  * The asks drawer's Updates tab and its tab strip (decisions D9, design.md
@@ -21,7 +22,7 @@ import { formatNumber, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { replaceErrorToast, showInfoToast } from "@shared/utils/toast-manager";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	Check,
 	ChevronUp,
@@ -35,6 +36,7 @@ import {
 	type KeyboardEvent,
 	useCallback,
 	useEffect,
+	useId,
 	useLayoutEffect,
 	useMemo,
 	useRef,
@@ -47,10 +49,18 @@ import {
 	notificationKeys,
 	readSessionUnreadCount,
 	tokensOf,
+	useNotificationDetail,
 	useNotificationsWrite,
 	useSessionNotifications,
 } from "../notifications-api";
 import { UNDO_WINDOW_MS, rowTimeOf, seenMarkOf } from "../notifications-model";
+import {
+	NotificationDetail,
+	copyNotificationLink,
+	notificationPath,
+	refreshAfterAskSettled,
+	useOpenedDetailRead,
+} from "./notification-detail";
 import { RowAction, rowTimeText } from "./notification-row";
 import { PriorityBars } from "./priority-bars";
 
@@ -283,9 +293,17 @@ export const DrawerUpdates: FC<{
 	nowMs?: number;
 	/** Stories and evidence pin the opening view; the operator always starts on Unread. */
 	initialView?: DrawerReadView;
-}> = ({ sessionId, nowMs: pinnedNow, initialView = "unread" }) => {
+	/** Stories and evidence pin an open detail; the operator always starts on the list. */
+	initialOpenId?: string;
+}> = ({
+	sessionId,
+	nowMs: pinnedNow,
+	initialView = "unread",
+	initialOpenId,
+}) => {
 	useI18nLocale();
 	const navigate = useNavigate();
+	const client = useQueryClient();
 	const [view, setView] = useState<DrawerReadView>(initialView);
 	/* The server's count, the same figure the Updates tab prints (R4-6). */
 	const unreadCount = useSessionUnreadUpdates(sessionId, true);
@@ -311,9 +329,40 @@ export const DrawerUpdates: FC<{
 		setIsAtTop(true);
 		void resetRef.current();
 	}, []);
+	/*
+	 * THE DETAIL VIEW (operator request, 2026-11-13: "there's no way to view
+	 * details"). A row's title opens that update's full detail IN the drawer, the
+	 * same `NotificationDetail` the Notifications page draws, in its narrow form:
+	 * the detail REPLACES the list (with a back link) rather than expanding inside
+	 * it. The pane is several sections deep (body, links, asks, history), so an
+	 * inline expansion in a 48 px row list would push every row below it and nest
+	 * one scroll region in another; replace-with-back is what the page itself does
+	 * at a narrow width. The Unread | Read row and the footer stay where they are,
+	 * so nothing above or below the swapped region moves.
+	 *
+	 * The list's scroll position and the row the press came from are kept in
+	 * `openOrigin`, so Back lands where the person left (view, scroll and focus).
+	 */
+	const [openId, setOpenId] = useState<string | null>(initialOpenId ?? null);
+	const openedSnapshot = useRef<DesktopNotificationItem | null>(null);
+	const openOrigin = useRef<{
+		id: string;
+		index: number;
+		scrollTop: number;
+	} | null>(null);
+	/* Focus moves only on a press: a pinned story must not steal the page's focus. */
+	const focusOnSwap = useRef(false);
+	const detailRegion = useRef<HTMLDivElement>(null);
+	const detail = useNotificationDetail(openId, Boolean(openId));
+	/* The same explicit read the page makes when it opens a detail. */
+	useOpenedDetailRead(openId, detail.data?.item, list.isError, (item) =>
+		write.mutate({ verb: "read", target: { items: tokensOf([item]) } }),
+	);
 	useEffect(() => {
-		publishBackToTop(list.newerCount, list.newerCount > 0 ? backToTop : null);
-	}, [list.newerCount, backToTop, publishBackToTop]);
+		/* No list behind the detail, so no "newer rows above" chip for it either. */
+		const newer = openId ? 0 : list.newerCount;
+		publishBackToTop(newer, newer > 0 ? backToTop : null);
+	}, [openId, list.newerCount, backToTop, publishBackToTop]);
 	useEffect(() => () => publishBackToTop(0, null), [publishBackToTop]);
 	const rows = useMemo(
 		() =>
@@ -396,6 +445,66 @@ export const DrawerUpdates: FC<{
 			restoreRow.current = { id: focused.id, action: handoffAction.current };
 		listElement.current?.querySelector<HTMLElement>(selector)?.focus();
 	}, [shown]);
+	/*
+	 * The row as last drawn, then the detail read's row, then the row as it was
+	 * pressed: a row dismissed elsewhere leaves `rows`, and the pane must keep
+	 * drawing it (with its "dismissed" notice) rather than vanish under the reader.
+	 */
+	const openItem = openId
+		? (rows.find((item) => item.id === openId) ??
+			(detail.data?.item.id === openId ? detail.data.item : undefined) ??
+			(openedSnapshot.current?.id === openId ? openedSnapshot.current : null))
+		: null;
+	/*
+	 * FOCUS FOLLOWS THE SWAP. Into the detail's heading on open (it carries
+	 * `tabIndex=-1` for exactly this), so a screen reader announces what opened
+	 * and the next Tab walks the pane. Back to the row the press came from on
+	 * close; that row is often gone from Unread by then - opening marked it read -
+	 * so the row now at its position takes focus, then the empty heading. The
+	 * list remounted, so its scroll position is put back first.
+	 */
+	useLayoutEffect(() => {
+		if (!focusOnSwap.current) return;
+		focusOnSwap.current = false;
+		if (openId) {
+			detailRegion.current
+				?.querySelector<HTMLElement>("[data-notification-detail-title]")
+				?.focus({ preventScroll: true });
+			return;
+		}
+		const origin = openOrigin.current;
+		openOrigin.current = null;
+		const box = listElement.current;
+		if (!origin || !box) return;
+		box.scrollTop = origin.scrollTop;
+		const nextId = shown.some((item) => item.id === origin.id)
+			? origin.id
+			: shown[Math.min(origin.index, shown.length - 1)]?.id;
+		const target = nextId
+			? box.querySelector<HTMLElement>(
+					`[data-drawer-update="${CSS.escape(nextId)}"] [data-row-action="details"]`,
+				)
+			: box.querySelector<HTMLElement>(
+					"[data-drawer-empty], [data-drawer-load-more]",
+				);
+		target?.focus({ preventScroll: true });
+	}, [openId, shown]);
+	const openDetail = (item: DesktopNotificationItem) => {
+		openOrigin.current = {
+			id: item.id,
+			index: shown.findIndex((row) => row.id === item.id),
+			scrollTop: listElement.current?.scrollTop ?? 0,
+		};
+		openedSnapshot.current = item;
+		/* The list unmounts: no removal handoff may act on a position it held. */
+		focusedRow.current = null;
+		focusOnSwap.current = true;
+		setOpenId(item.id);
+	};
+	const closeDetail = () => {
+		focusOnSwap.current = true;
+		setOpenId(null);
+	};
 	/*
 	 * HAND THE JUMP TO THE TRANSCRIPT. It opens a collapsed turn, pages in older
 	 * history and flashes the row; a `querySelector` here found nothing once the
@@ -574,7 +683,12 @@ export const DrawerUpdates: FC<{
 		<div className="flex min-h-0 flex-1 flex-col">
 			<DrawerReadViews
 				view={view}
-				onView={setView}
+				onView={(next) => {
+					/* A view is a list: choosing one while a detail is open shows it. */
+					openOrigin.current = null;
+					setOpenId(null);
+					setView(next);
+				}}
 				unreadCount={unreadCount}
 				action={
 					view === "unread" && unread.length > 0 ? (
@@ -591,134 +705,203 @@ export const DrawerUpdates: FC<{
 					) : null
 				}
 			/>
-			<div
-				data-drawer-updates=""
-				ref={listElement}
-				onFocusCapture={(event) => {
-					const row = (event.target as HTMLElement).closest<HTMLElement>(
-						"[data-drawer-update]",
-					);
-					/* Do not let a focus notification from a detached action erase the
-					 * position saved while that action was connected. */
-					if (row && !row.isConnected) return;
-					focusedElement.current = row ? (event.target as HTMLElement) : null;
-					focusedRow.current = row?.dataset.drawerUpdate
-						? {
-								id: row.dataset.drawerUpdate,
-								index: shown.findIndex(
-									(item) => item.id === row.dataset.drawerUpdate,
-								),
-							}
-						: null;
-				}}
-				className="flex min-h-0 flex-1 flex-col overflow-y-auto px-1 py-2"
-				onScroll={(event) => {
+			{/*
+			 * KEYED, so the swap is a real unmount/mount. Unkeyed, both branches are a
+			 * `div` in the same slot and React reuses one node for both - the list's
+			 * scroll offset, ref and handlers would ride into the detail and back.
+			 */}
+			{openItem ? (
+				<div
+					key="detail"
+					ref={detailRegion}
+					data-drawer-detail={openItem.id}
+					className="flex min-h-0 flex-1 flex-col"
 					/*
-					 * PAGED, NOT FIRST-100-ONLY (code audit DC6): older rows in a loud
-					 * session become reachable by scrolling, exactly as the reel's list
-					 * already does. The query keys the pages on the first boundary, so
-					 * this cannot skip or duplicate rows as the session keeps writing.
+					 * ESCAPE STEPS BACK ONE LEVEL. In the list Escape still closes the
+					 * drawer (`ask-drawer.tsx` claims it on the pane); inside a detail it
+					 * returns to the list first, the way Back does, so one Escape never
+					 * throws away both the detail and the drawer. Stopped here so the
+					 * pane's own close does not also run; skipped when something inside
+					 * the detail (its ⋯ menu, an ask's field) already claimed the key.
 					 */
-					const box = event.currentTarget;
-					setIsAtTop(box.scrollTop <= 24);
-					if (
-						list.hasNextPage &&
-						!list.isFetchingNextPage &&
-						box.scrollHeight - box.scrollTop - box.clientHeight < 160
-					)
-						void list.fetchNextPage();
-				}}
-				onKeyDown={(event) => {
-					const target = event.target as HTMLElement;
-					const row = target.closest<HTMLElement>("[data-drawer-update]");
-					if (!row) return;
-					const index = shown.findIndex(
-						(item) => item.id === row.dataset.drawerUpdate,
-					);
-					const item = shown[index];
-					if (!item) return;
-					if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+					onKeyDown={(event) => {
+						if (
+							event.key !== "Escape" ||
+							event.defaultPrevented ||
+							event.nativeEvent.isComposing
+						)
+							return;
 						event.preventDefault();
-						const next =
-							shown[
-								Math.max(
-									0,
-									Math.min(
-										shown.length - 1,
-										index + (event.key === "ArrowDown" ? 1 : -1),
-									),
-								)
-							];
-						event.currentTarget
-							.querySelector<HTMLElement>(
-								`[data-drawer-update="${CSS.escape(next.id)}"] button`,
-							)
-							?.focus();
-					} else if (
-						["r", "u", "e"].includes(event.key.toLowerCase()) &&
-						!list.isError
-					) {
-						event.preventDefault();
-						applyWrite(
-							item,
-							event.key.toLowerCase() === "e"
-								? "dismiss"
-								: event.key.toLowerCase() === "u"
-									? "unread"
-									: "read",
+						event.stopPropagation();
+						closeDetail();
+					}}
+				>
+					<NotificationDetail
+						key={openItem.id}
+						item={openItem}
+						detail={
+							detail.data?.item.id === openItem.id ? detail.data : undefined
+						}
+						loading={detail.isLoading}
+						error={detail.isError}
+						nowMs={nowMs}
+						narrow
+						writesPaused={list.isError}
+						/* No conversation-wide dismiss here: see `onDismissSession`. */
+						sessionDismissCount={null}
+						onClose={closeDetail}
+						backLabel={t("ui.notifications.drawer.back")}
+						onOpenInNotifications={(item) =>
+							navigate(notificationPath(item.id))
+						}
+						onOpenConversation={(id) => void openConversation(navigate, id)}
+						onToggleRead={(item) =>
+							applyWrite(item, item.read ? "unread" : "read")
+						}
+						onDismiss={(item) => {
+							/* As on the page: a dismissed item's detail closes (with Undo). */
+							applyWrite(item, "dismiss");
+							closeDetail();
+						}}
+						onCopyLink={copyNotificationLink}
+						onOpenProject={(key) =>
+							navigate(`/projects/${encodeURIComponent(key)}`)
+						}
+						onAsksSettled={() => refreshAfterAskSettled(client, openItem.id)}
+					/>
+				</div>
+			) : (
+				<div
+					key="list"
+					data-drawer-updates=""
+					ref={listElement}
+					onFocusCapture={(event) => {
+						const row = (event.target as HTMLElement).closest<HTMLElement>(
+							"[data-drawer-update]",
 						);
-					}
-				}}
-			>
-				{shown.length === 0 && !list.hasNextPage ? (
-					<h3
-						tabIndex={-1}
-						className="px-3 py-8 text-center text-body-sm text-ink-muted"
-						data-drawer-empty={view}
-					>
-						{/* Nothing at all is one sentence; an empty inbox is "caught up". */}
-						{rows.length === 0
-							? t("ui.notifications.drawer.empty")
-							: view === "unread"
-								? t("ui.notifications.empty.caught_up.title")
-								: /* NOT "Nothing flagged in this conversation" (design round 1,
-									 * D6): the Read view can be empty while the Unread badge shows
-									 * rows, and that sentence then denies what the badge says. This
-									 * view IS a filter, and this is the catalogue sentence for one
-									 * with no matches. */
-									t("ui.notifications.empty.filtered.title")}
-					</h3>
-				) : (
-					<ul className="flex flex-col" data-drawer-view-list={view}>
-						{shown.map((item) => (
-							<DrawerRow
-								key={item.id}
-								item={item}
-								nowMs={nowMs}
-								onShow={showInConversation}
-								onToggleRead={() =>
-									applyWrite(item, item.read ? "unread" : "read")
+						/* Do not let a focus notification from a detached action erase the
+						 * position saved while that action was connected. */
+						if (row && !row.isConnected) return;
+						focusedElement.current = row ? (event.target as HTMLElement) : null;
+						focusedRow.current = row?.dataset.drawerUpdate
+							? {
+									id: row.dataset.drawerUpdate,
+									index: shown.findIndex(
+										(item) => item.id === row.dataset.drawerUpdate,
+									),
 								}
-								onDismiss={() => applyWrite(item, "dismiss")}
-								paused={list.isError}
-							/>
-						))}
-					</ul>
-				)}
-				{list.hasNextPage && (
-					<Button
-						variant="ghost"
-						size="sm"
-						data-drawer-load-more=""
-						disabled={list.isFetchingNextPage}
-						onClick={() => void list.fetchNextPage()}
-					>
-						{list.isFetchingNextPage
-							? t("ui.notifications.page.loading")
-							: t("ui.common.forms.compact_pagination.next_page")}
-					</Button>
-				)}
-			</div>
+							: null;
+					}}
+					className="flex min-h-0 flex-1 flex-col overflow-y-auto px-1 py-2"
+					onScroll={(event) => {
+						/*
+						 * PAGED, NOT FIRST-100-ONLY (code audit DC6): older rows in a loud
+						 * session become reachable by scrolling, exactly as the reel's list
+						 * already does. The query keys the pages on the first boundary, so
+						 * this cannot skip or duplicate rows as the session keeps writing.
+						 */
+						const box = event.currentTarget;
+						setIsAtTop(box.scrollTop <= 24);
+						if (
+							list.hasNextPage &&
+							!list.isFetchingNextPage &&
+							box.scrollHeight - box.scrollTop - box.clientHeight < 160
+						)
+							void list.fetchNextPage();
+					}}
+					onKeyDown={(event) => {
+						const target = event.target as HTMLElement;
+						const row = target.closest<HTMLElement>("[data-drawer-update]");
+						if (!row) return;
+						const index = shown.findIndex(
+							(item) => item.id === row.dataset.drawerUpdate,
+						);
+						const item = shown[index];
+						if (!item) return;
+						if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+							event.preventDefault();
+							const next =
+								shown[
+									Math.max(
+										0,
+										Math.min(
+											shown.length - 1,
+											index + (event.key === "ArrowDown" ? 1 : -1),
+										),
+									)
+								];
+							event.currentTarget
+								.querySelector<HTMLElement>(
+									`[data-drawer-update="${CSS.escape(next.id)}"] button`,
+								)
+								?.focus();
+						} else if (
+							["r", "u", "e"].includes(event.key.toLowerCase()) &&
+							!list.isError
+						) {
+							event.preventDefault();
+							applyWrite(
+								item,
+								event.key.toLowerCase() === "e"
+									? "dismiss"
+									: event.key.toLowerCase() === "u"
+										? "unread"
+										: "read",
+							);
+						}
+					}}
+				>
+					{shown.length === 0 && !list.hasNextPage ? (
+						<h3
+							tabIndex={-1}
+							className="px-3 py-8 text-center text-body-sm text-ink-muted"
+							data-drawer-empty={view}
+						>
+							{/* Nothing at all is one sentence; an empty inbox is "caught up". */}
+							{rows.length === 0
+								? t("ui.notifications.drawer.empty")
+								: view === "unread"
+									? t("ui.notifications.empty.caught_up.title")
+									: /* NOT "Nothing flagged in this conversation" (design round 1,
+										 * D6): the Read view can be empty while the Unread badge shows
+										 * rows, and that sentence then denies what the badge says. This
+										 * view IS a filter, and this is the catalogue sentence for one
+										 * with no matches. */
+										t("ui.notifications.empty.filtered.title")}
+						</h3>
+					) : (
+						<ul className="flex flex-col" data-drawer-view-list={view}>
+							{shown.map((item) => (
+								<DrawerRow
+									key={item.id}
+									item={item}
+									nowMs={nowMs}
+									onShow={showInConversation}
+									onOpen={() => openDetail(item)}
+									onToggleRead={() =>
+										applyWrite(item, item.read ? "unread" : "read")
+									}
+									onDismiss={() => applyWrite(item, "dismiss")}
+									paused={list.isError}
+								/>
+							))}
+						</ul>
+					)}
+					{list.hasNextPage && (
+						<Button
+							variant="ghost"
+							size="sm"
+							data-drawer-load-more=""
+							disabled={list.isFetchingNextPage}
+							onClick={() => void list.fetchNextPage()}
+						>
+							{list.isFetchingNextPage
+								? t("ui.notifications.page.loading")
+								: t("ui.common.forms.compact_pagination.next_page")}
+						</Button>
+					)}
+				</div>
+			)}
 			<div className="flex shrink-0 items-center justify-between gap-2 border-hairline border-t px-3 py-2 text-meta">
 				{/* Wraps rather than truncates: at the drawer's 320-360px widths the
 				    note lost its last word, and the button beside it never shrinks. */}
@@ -843,11 +1026,14 @@ const DrawerRow: FC<{
 	item: DesktopNotificationItem;
 	nowMs: number;
 	onShow: (item: DesktopNotificationItem) => void;
+	/** Open this row's detail in the drawer. */
+	onOpen: () => void;
 	onToggleRead: () => void;
 	onDismiss: () => void;
 	paused: boolean;
-}> = ({ item, nowMs, onShow, onToggleRead, onDismiss, paused }) => {
+}> = ({ item, nowMs, onShow, onOpen, onToggleRead, onDismiss, paused }) => {
 	const seen = seenMarkOf(item);
+	const timeId = useId();
 	return (
 		<li
 			className="group/drawer-row flex h-12 items-center gap-2 rounded-sm px-2 hover:bg-row-hover"
@@ -862,23 +1048,45 @@ const DrawerRow: FC<{
 				)}
 			/>
 			<PriorityBars priority={item.priority} />
-			<div className="flex min-w-0 flex-1 flex-col">
-				<span
+			{/*
+			 * THE ROW'S WAY IN (operator request, 2026-11-13): the title and time are
+			 * one real button that opens the detail. A sibling of the row's other
+			 * controls, never their parent, so no button sits inside another. It is
+			 * the row's Tab stop and the first button the arrow keys land on, so
+			 * Enter on a focused row opens it; `R`/`U`/`E` still act on the row.
+			 * Its name says what the press does; the time is its description.
+			 */}
+			<Tooltip content={t("ui.notifications.drawer.view_details")}>
+				<button
+					type="button"
+					data-row-action="details"
+					aria-label={t("ui.notifications.drawer.view_details_for", {
+						title: item.title,
+					})}
+					aria-describedby={timeId}
+					onClick={onOpen}
 					className={cn(
-						"truncate text-body-sm",
-						item.read ? "text-ink-muted" : "font-semibold text-ink",
+						"flex min-w-0 flex-1 flex-col self-stretch justify-center rounded-sm text-start",
+						"focus-visible:outline-2 focus-visible:outline-accent",
 					)}
 				>
-					{item.title}
-				</span>
-				<span className="truncate text-ink-dim text-meta">
-					{seen === "live"
-						? t("ui.notifications.seen.live")
-						: seen === "in_view"
-							? t("ui.notifications.seen.in_view")
-							: rowTimeText(rowTimeOf(item.updated_at, nowMs))}
-				</span>
-			</div>
+					<span
+						className={cn(
+							"w-full truncate text-body-sm",
+							item.read ? "text-ink-muted" : "font-semibold text-ink",
+						)}
+					>
+						{item.title}
+					</span>
+					<span id={timeId} className="w-full truncate text-ink-dim text-meta">
+						{seen === "live"
+							? t("ui.notifications.seen.live")
+							: seen === "in_view"
+								? t("ui.notifications.seen.in_view")
+								: rowTimeText(rowTimeOf(item.updated_at, nowMs))}
+					</span>
+				</button>
+			</Tooltip>
 			{/*
 			 * POINTER PARITY WITH THE REEL (design audit OD3): the row's own
 			 * mark-read and dismiss controls, revealed on hover/focus exactly as the

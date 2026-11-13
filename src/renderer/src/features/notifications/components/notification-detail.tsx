@@ -41,6 +41,8 @@ import {
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { formatNumber, formatTime, t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
+import { showSuccessToast } from "@shared/utils/toast-manager";
+import type { QueryClient } from "@tanstack/react-query";
 import {
 	ArrowLeft,
 	Check,
@@ -51,12 +53,13 @@ import {
 	MoreHorizontal,
 	X,
 } from "lucide-react";
-import { type FC, useMemo, useState } from "react";
+import { type FC, useEffect, useMemo, useRef, useState } from "react";
 import type {
 	DesktopNotificationDetail,
 	DesktopNotificationItem,
 } from "../../../../../shared/desktop-control-contract";
 import type { PendingAsk } from "../../../../../shared/desktop-session-contract";
+import { notificationKeys } from "../notifications-api";
 import { isLiveAsk } from "../notifications-model";
 import { rowTimeOf } from "../notifications-model";
 import { priorityName, rowTimeText } from "./notification-row";
@@ -80,10 +83,30 @@ export type NotificationDetailProps = {
 	 */
 	sessionDismissCount: number | null;
 	onClose: () => void;
+	/*
+	 * THE BACK LINK'S WORDS, narrow only. The page's back link says where it goes
+	 * ("All notifications"); the conversation drawer's goes back to that
+	 * conversation's Updates list, and saying "All notifications" there named a
+	 * place the press does not lead to.
+	 */
+	backLabel?: string;
+	/*
+	 * THE DRAWER'S DOOR TO THE PAGE, narrow only: the sidebar detail draws an
+	 * "Open in Notifications" control opposite the back link, which opens this
+	 * item selected on the Notifications page. The page itself passes nothing -
+	 * it IS that place.
+	 */
+	onOpenInNotifications?: (item: DesktopNotificationItem) => void;
 	onOpenConversation: (sessionId: string) => void;
 	onToggleRead: (item: DesktopNotificationItem) => void;
 	onDismiss: (item: DesktopNotificationItem) => void;
-	onDismissSession: (sessionId: string, title: string) => void;
+	/*
+	 * OPTIONAL: a surface with no confirmation dialog for a conversation-wide
+	 * dismiss (the conversation drawer) passes nothing, and both doors to it - the
+	 * ⋯ menu item and the "Dismiss all n" button - are not drawn. Drawing them
+	 * disabled would offer an action the surface cannot take.
+	 */
+	onDismissSession?: (sessionId: string, title: string) => void;
 	onCopyLink: (item: DesktopNotificationItem) => void;
 	onOpenProject: (key: string) => void;
 	onAsksSettled: (
@@ -107,6 +130,8 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 	writesPaused,
 	sessionDismissCount,
 	onClose,
+	backLabel,
+	onOpenInNotifications,
 	onOpenConversation,
 	onToggleRead,
 	onDismiss,
@@ -146,11 +171,18 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 			 */
 			{...{ [ASK_BOUND_ATTR]: "" }}
 		>
-			<div className="flex items-center justify-between gap-2">
+			{/* Wraps rather than squeezes: at the drawer's 320 px a long translation of
+			    the back link and "Open in Notifications" cannot share one line. */}
+			<div className="flex flex-wrap items-center justify-between gap-2">
 				{narrow ? (
-					<Button variant="ghost" size="sm" onClick={onClose}>
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={onClose}
+						data-notification-detail-back=""
+					>
 						<ArrowLeft className="rtl:-scale-x-100" aria-hidden="true" />
-						{t("ui.notifications.detail.back")}
+						{backLabel ?? t("ui.notifications.detail.back")}
 					</Button>
 				) : (
 					<span className="flex items-center gap-2 text-meta">
@@ -179,6 +211,17 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 								: t("ui.notifications.detail.kind.update")}
 						</span>
 					</span>
+				)}
+				{narrow && onOpenInNotifications && (
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={() => onOpenInNotifications(item)}
+						data-notification-open-in-notifications=""
+					>
+						{t("ui.notifications.drawer.open_in_notifications")}
+						<ExternalLink aria-hidden="true" className="rtl:-scale-x-100" />
+					</Button>
 				)}
 				{!narrow && (
 					<Button
@@ -313,17 +356,19 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 						</Button>
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="end">
-						<DropdownMenuItem
-							disabled={
-								actionsDisabled ||
-								(sessionDismissCount === null
-									? false
-									: sessionDismissCount === 0)
-							}
-							onSelect={() => onDismissSession(item.session.id, source)}
-						>
-							{t("ui.notifications.detail.more.dismiss_session", { source })}
-						</DropdownMenuItem>
+						{onDismissSession && (
+							<DropdownMenuItem
+								disabled={
+									actionsDisabled ||
+									(sessionDismissCount === null
+										? false
+										: sessionDismissCount === 0)
+								}
+								onSelect={() => onDismissSession(item.session.id, source)}
+							>
+								{t("ui.notifications.detail.more.dismiss_session", { source })}
+							</DropdownMenuItem>
+						)}
 						<DropdownMenuItem onSelect={() => onCopyLink(item)}>
 							{t("ui.notifications.detail.more.copy_link")}
 						</DropdownMenuItem>
@@ -419,7 +464,7 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 					 * room for a three-digit English count (measured 96 px for "42" at 100 %),
 					 * so the right-aligned button's left edge does not move either.
 					 */}
-					{sessionDismissCount !== 0 && (
+					{onDismissSession && sessionDismissCount !== 0 && (
 						<Button
 							variant="ghost"
 							size="sm"
@@ -669,3 +714,83 @@ const DetailAsks: FC<{
 		/>
 	);
 };
+
+/*
+ * ONE SPELLING OF AN ITEM'S PAGE ADDRESS, for every surface that opens the
+ * Notifications page on one item (the page's own rows, the drawer's "Open in
+ * Notifications"). Encoded: an ask's id is `ask:<session>:<askId>`, and a raw
+ * `:`/`/`/`%` in a route segment is the router's to interpret, not the id's.
+ * The router decodes the segment again, so `useParams` hands back the raw id.
+ */
+export const notificationPath = (id: string): string =>
+	`/notifications/${encodeURIComponent(id)}`;
+
+/*
+ * "Copy link" from any detail, page or drawer: one behaviour, one receipt.
+ * Kept byte-for-byte what the page has always copied (the raw id) - changing
+ * the copied text is not this helper's decision.
+ */
+export const copyNotificationLink = (item: DesktopNotificationItem): void => {
+	void navigator.clipboard
+		?.writeText(`/notifications/${item.id}`)
+		.then(() => showSuccessToast(t("ui.notifications.toast.copied")));
+};
+
+/*
+ * AN ANSWERED ASK REFRESHES FACTS, NOT WINDOWS (code round 8, N1). Shared by the
+ * page and the drawer so an answer from either detail refreshes the same reads.
+ * `notificationKeys.all` also reached the reel's and the drawer's scroll windows,
+ * so answering from the detail re-walked every loaded page. The ask's effects
+ * live in page one's facts (the `waiting` group), each conversation's facts, the
+ * rail's count (`waiting_count`), and the open detail's own `asks` - the asks
+ * have no query of their own here; the detail read carries them.
+ */
+export const refreshAfterAskSettled = (
+	client: QueryClient,
+	detailId: string,
+): void => {
+	void client.invalidateQueries({ queryKey: notificationKeys.factsRoot });
+	void client.invalidateQueries({ queryKey: notificationKeys.sessionFactsAll });
+	void client.invalidateQueries({ queryKey: notificationKeys.count });
+	void client.invalidateQueries({
+		queryKey: notificationKeys.detail(detailId),
+	});
+};
+
+/**
+ * OPENING A DETAIL IS AN EXPLICIT READ (contract § 6.4, design § 17.3),
+ * token-bound to the revision the detail rendered. Once per detail opening,
+ * NOT per revision: a keyed update arriving while the pane is open is not
+ * proof the new content was seen. It stays unread until a fresh explicit
+ * action or an item-specific transcript receipt (presence refinement).
+ *
+ * ONE RULE FOR EVERY SURFACE THAT OPENS A DETAIL. The page owned this as an
+ * inline effect; the conversation drawer opens the same pane, and a second copy
+ * of the rule is how the two would drift (the drawer marking on click while the
+ * page marks on the rendered revision, say). `openId` is what the surface has
+ * open (null when none); `item` is the DETAIL READ's row, never the list's, so
+ * the token is the revision the pane actually drew. `markRead` is the surface's
+ * own write - the page's quiet `write.mutate`, which the drawer reuses.
+ */
+export function useOpenedDetailRead(
+	openId: string | null,
+	item: DesktopNotificationItem | undefined,
+	writesPaused: boolean,
+	markRead: (item: DesktopNotificationItem) => void,
+): void {
+	const explicitRead = useRef<string | null>(null);
+	/* The latest write, read at fire time: the mutation object is a new value on
+	   every state change and must not re-arm the once-per-opening guard. */
+	const markReadRef = useRef(markRead);
+	markReadRef.current = markRead;
+	useEffect(() => {
+		if (!openId) {
+			explicitRead.current = null;
+			return;
+		}
+		if (!item || item.id !== openId || explicitRead.current === item.id) return;
+		explicitRead.current = item.id;
+		if (item.read || item.dismissed || writesPaused) return;
+		markReadRef.current(item);
+	}, [openId, item, writesPaused]);
+}
