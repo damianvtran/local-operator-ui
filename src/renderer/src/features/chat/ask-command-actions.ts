@@ -15,6 +15,7 @@
 import { apiConfig } from "@shared/config";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import type { NavigateFunction } from "react-router-dom";
 import type { PendingAsk } from "../../../../shared/desktop-session-contract";
 import {
 	type AskAgentPlacement,
@@ -22,6 +23,8 @@ import {
 	askCommandOf,
 	askCommandRunnable,
 } from "./ask-command";
+import { type AskDismissals, askDismissals } from "./ask-open-policy";
+import { openConversation } from "./open-conversation";
 
 /** Where the agent of `sessionId` works, relative to this computer, now. */
 export function readAskAgentPlacement(
@@ -76,4 +79,61 @@ export function fileAskCommand(request: {
 	});
 	ui.setConsolePaneOpen(true);
 	return true;
+}
+
+/**
+ * The FLEET drawer's press (decision D1): the card may belong to ANOTHER
+ * conversation, so the press opens that conversation and then files the
+ * intent for it.
+ *
+ * THREE STEPS, IN THIS ORDER, and the order is the fix for a measured defect:
+ *
+ *  1. Record the ask as waved off for its conversation (`askDismissals`).
+ *     Entering a conversation with a pending ask runs the ask-open policy, whose
+ *     `pending-on-open` verdict opens the session drawer — which claims the
+ *     right slot back from the console the press is about to open. Measured in
+ *     the built app (2026-11-13): the drawer came back over the terminal and the
+ *     command was never typed. The record is the policy's own mechanism for
+ *     "the user turned the surface away over live asks" — the in-conversation
+ *     Insert writes the same record when the console replaces the drawer (rule
+ *     4) — and it is held against THIS ask's id only, clearing itself once a
+ *     frame shows the ask is no longer outstanding. The composer's ask chip
+ *     still brings the card back at any time.
+ *  2. Open the conversation (`openConversation`: the store write and the
+ *     route, as a sidebar click does). The switch re-binds the right slot to
+ *     that conversation synchronously (`right-slot-follower.ts`).
+ *  3. File the intent and open the console (`fileAskCommand`) — now that
+ *     conversation's pane, and the intent names it (the F-6 rule).
+ *
+ * The collaborators are parameters so the order is testable without a router.
+ */
+export function fileFleetAskCommand(
+	request: {
+		sessionId: string;
+		ask: PendingAsk;
+		command: string;
+		submit: boolean;
+		navigate: NavigateFunction;
+	},
+	deps: {
+		dismissals: Pick<AskDismissals, "record">;
+		open: (navigate: NavigateFunction, sessionId: string) => unknown;
+		file: typeof fileAskCommand;
+	} = {
+		dismissals: askDismissals,
+		open: openConversation,
+		file: fileAskCommand,
+	},
+): boolean {
+	deps.dismissals.record(request.sessionId, {
+		outstandingIds: [request.ask.ask_id],
+		listComplete: true,
+	});
+	void deps.open(request.navigate, request.sessionId);
+	return deps.file({
+		sessionId: request.sessionId,
+		ask: request.ask,
+		command: request.command,
+		submit: request.submit,
+	});
 }

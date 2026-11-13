@@ -78,6 +78,8 @@ const bundle = await build({
 			'export { ASK_COMMAND_MAX_CHARS, askCommandOf, askAgentPlacement, askCommandRunnable, askCommandNotice, askCommandDialogDevice, isLoopbackBackendUrl } from "./src/renderer/src/features/chat/ask-command";',
 			'export { deliverConsoleCommand, waitForConsoleReady, CONSOLE_COMMAND_READY_CAP_MS, CONSOLE_COMMAND_QUIET_MS } from "./src/renderer/src/features/console/model/console-command";',
 			'export { useUiPreferencesStore, persistedUiPreferences } from "./src/renderer/src/shared/store/ui-preferences-store";',
+			'export { fileAskCommand, fileFleetAskCommand } from "./src/renderer/src/features/chat/ask-command-actions";',
+			'export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -123,6 +125,9 @@ const {
 	CONSOLE_COMMAND_QUIET_MS,
 	useUiPreferencesStore,
 	persistedUiPreferences,
+	fileAskCommand,
+	fileFleetAskCommand,
+	useCanonicalSessionsStore,
 } = lib;
 
 /* ------------------------------------------------------------ askCommandOf */
@@ -706,4 +711,109 @@ test("an ask that closes under the open dialog withholds the confirm, with a not
 	} finally {
 		await rig.unmount();
 	}
+});
+
+test("fileAskCommand files only the ask's own validated command, and refuses a submit Run would not offer", () => {
+	const store = useUiPreferencesStore.getState();
+	const reset = () => {
+		const pending = useUiPreferencesStore.getState().consoleCommandIntent;
+		if (pending) store.clearConsoleCommandIntent(pending.nonce);
+		useUiPreferencesStore.getState().setConsolePaneOpen(false);
+	};
+	const ask = commandAsk();
+	reset();
+	assert.equal(
+		fileAskCommand({
+			sessionId: "s-1",
+			ask,
+			command: "rm -rf ~",
+			submit: false,
+		}),
+		false,
+		"a string that is not the ask's own command is refused",
+	);
+	assert.equal(useUiPreferencesStore.getState().consoleCommandIntent, null);
+	// An unknown conversation is not provably here, so an agent command's submit fails closed.
+	assert.equal(
+		fileAskCommand({
+			sessionId: "s-unknown",
+			ask,
+			command: "glab auth login",
+			submit: true,
+		}),
+		false,
+	);
+	assert.equal(useUiPreferencesStore.getState().consoleCommandIntent, null);
+	// Insert is always allowed for a valid command.
+	assert.equal(
+		fileAskCommand({
+			sessionId: "s-unknown",
+			ask,
+			command: "glab auth login",
+			submit: false,
+		}),
+		true,
+	);
+	const filed = useUiPreferencesStore.getState().consoleCommandIntent;
+	assert.equal(filed?.sessionId, "s-unknown");
+	assert.equal(filed?.submit, false);
+	reset();
+	// A user-target command may submit wherever the agent is.
+	const userAsk = commandAsk({}, { command_target: "user" });
+	assert.equal(
+		fileAskCommand({
+			sessionId: "s-unknown",
+			ask: userAsk,
+			command: "glab auth login",
+			submit: true,
+		}),
+		true,
+	);
+	assert.equal(
+		useUiPreferencesStore.getState().consoleCommandIntent?.submit,
+		true,
+	);
+	reset();
+	assert.ok(
+		useCanonicalSessionsStore,
+		"the placement read is the real store's",
+	);
+});
+
+test("the fleet press waves the ask off BEFORE opening its conversation, then files", () => {
+	// Regression (measured in the built app): opening the conversation first let the
+	// ask-open policy re-open the session drawer over the console, so nothing was typed.
+	const order = [];
+	const navigate = () => undefined;
+	const ask = commandAsk();
+	const filed = fileFleetAskCommand(
+		{
+			sessionId: "s-9",
+			ask,
+			command: "glab auth login",
+			submit: false,
+			navigate,
+		},
+		{
+			dismissals: {
+				record: (id, reading) => order.push(["record", id, reading]),
+			},
+			open: (nav, id) => order.push(["open", id, nav === navigate]),
+			file: (request) => {
+				order.push([
+					"file",
+					request.sessionId,
+					request.command,
+					request.submit,
+				]);
+				return true;
+			},
+		},
+	);
+	assert.equal(filed, true);
+	assert.deepEqual(order, [
+		["record", "s-9", { outstandingIds: ["ask-1"], listComplete: true }],
+		["open", "s-9", true],
+		["file", "s-9", "glab auth login", false],
+	]);
 });

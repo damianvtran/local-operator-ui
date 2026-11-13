@@ -130,7 +130,7 @@ import {
 	reviseQueuedAsk,
 } from "../../ask-answer";
 import {
-	fileAskCommand,
+	fileFleetAskCommand,
 	readAskAgentPlacement,
 } from "../../ask-command-actions";
 import { askRevisionEvidence, askWithLocalSettle } from "../../ask-queue";
@@ -146,7 +146,6 @@ import {
 	useFleetAsks,
 } from "../../fleet-asks";
 import { pressLandsOnOverlay } from "../../keyboard-scopes";
-import { openConversation } from "../../open-conversation";
 import { useAskOutcomes } from "../../use-ask-outcomes";
 import { AskDrawer } from "./ask-drawer";
 
@@ -435,14 +434,9 @@ export const FleetAskDrawer = ({
 
 	/*
 	 * THE SUGGESTED-COMMAND DOORS FROM THE FLEET (decision D1): the card may
-	 * belong to ANOTHER conversation, so a press first opens that conversation
-	 * (`openConversation`: the store write and the route, as a sidebar click
-	 * does) and only then files the console intent for it. The order matters:
-	 * the switch re-binds the right slot to the target conversation
-	 * synchronously (`right-slot-follower.ts`), so the console pane the intent
-	 * opens is that conversation's, and the intent names it (the F-6 rule), so
-	 * no other conversation's pane can answer it. Opening the console replaces
-	 * this drawer in the right slot.
+	 * belong to ANOTHER conversation, so a press opens that conversation and
+	 * then files the console intent for it (`fileFleetAskCommand` holds the
+	 * order and why). Opening the console replaces this drawer in the right slot.
 	 *
 	 * Placement is per row: each card is gated on where ITS conversation's agent
 	 * works (`readAskAgentPlacement`), so a peer's ask never offers Run here.
@@ -455,8 +449,8 @@ export const FleetAskDrawer = ({
 			const raw = rows?.find((row) => row.ask_id === ask.ask_id);
 			const navigate = navigateRef.current;
 			if (!sessionId || !raw || !navigate) return;
-			void openConversation(navigate, sessionId);
-			fileAskCommand({ sessionId, ask: raw, command, submit });
+			// The order (wave off, open, file) is `fileFleetAskCommand`'s to keep.
+			fileFleetAskCommand({ sessionId, ask: raw, command, submit, navigate });
 		},
 		[rows],
 	);
