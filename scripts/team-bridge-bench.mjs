@@ -122,6 +122,13 @@ import {
 } from "./app-tree-teardown.mjs";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
+import {
+	INSTANT_MESSAGES,
+	instantConversationPlan,
+	latencyRouteOf,
+	parseLatency,
+	runInstantLoad,
+} from "./team-bridge-instant-load.mjs";
 
 /* ------------------------------------------------------------------- the CLI */
 
@@ -151,6 +158,20 @@ const ROOT = resolve(
 	flag("root", resolve(dirname(fileURLToPath(import.meta.url)), "..")),
 );
 const SCENARIO = flag("scenario", "first-paint");
+/**
+ * Per-route stub latency. `instant-load` defaults to the operator brief's table
+ * (see `team-bridge-instant-load.mjs`); every other scenario keeps the instant
+ * stub it was calibrated on unless `--latency` is passed explicitly.
+ */
+const LATENCY =
+	SCENARIO === "instant-load" || flag("latency", null) !== null
+		? parseLatency(
+				flag("latency", null),
+				SCENARIO === "instant-load" ? undefined : {},
+			)
+		: null;
+/** Where `instant-load` writes its PNGs; it always captures (they are evidence). */
+const SHOTS_DIR = flag("shots", null);
 /**
  * A COUNT FLAG, validated at the edge. `--messages=0`, `--messages=-1` and
  * `--messages=abc` all used to reach the fixture: the first renders an empty
@@ -260,6 +281,7 @@ const _SCENARIOS = [
 	"media",
 	"scroll-back",
 	"memory",
+	"instant-load",
 ];
 
 /* ------------------------------------------------------------------ fixtures */
@@ -406,13 +428,21 @@ function messageFor(conversationId, seq, attachmentCount = 0) {
  * The fixture set: 20 conversations over 2 tenants, one of them carrying
  * `messageCount` messages, and one carrying images on its first screen.
  */
-function fixtures(messageCount) {
+function fixtures(messageCount, plan = null) {
 	const random = seeded(20261105);
 	const conversations = [];
 	const counts = new Map();
 	const attachments = new Map();
 
-	const push = (id, tenantIndex, name, kind, count, imageMessages = 0) => {
+	const push = (
+		id,
+		tenantIndex,
+		name,
+		kind,
+		count,
+		imageMessages = 0,
+		overrides = {},
+	) => {
 		counts.set(id, count);
 		attachments.set(id, imageMessages);
 		conversations.push({
@@ -448,16 +478,52 @@ function fixtures(messageCount) {
 			unread_count: 3,
 			muted: false,
 			can_administer: true,
+			...overrides,
 		});
 	};
 
+	/*
+	 * `instant-load`'s plan replaces the default set: 16 conversations (channels
+	 * and agent DMs), one tenant, unread only where the plan says - the unread
+	 * pattern IS the scene's negative control, so it must not be the default 3.
+	 */
+	if (plan) {
+		const agent = PEOPLE.find((person) => person.kind === "agent");
+		for (const row of plan)
+			push(row.id, 0, row.name, row.kind, row.count, 0, {
+				last_message_at: row.lastMessageAt,
+				last_read_seq: row.unread ? row.count - 3 : row.count,
+				unread_count: row.unread ? 3 : 0,
+				...(row.kind === "dm"
+					? {
+							members: [
+								{
+									account_id: ACCOUNT,
+									kind: "human",
+									display_label: "Bench Self",
+									role: "owner",
+									state: "active",
+								},
+								{
+									account_id: agent.account_id,
+									kind: agent.kind,
+									display_label: agent.display_label,
+									role: "member",
+									state: "active",
+								},
+							],
+						}
+					: {}),
+			});
+	}
+
 	// 1. The image channel first, so an auto-selected row is not the big one.
-	push(MEDIA_CONVERSATION, 0, "Bench media", "channel", 12, 6);
+	if (!plan) push(MEDIA_CONVERSATION, 0, "Bench media", "channel", 12, 6);
 	// 2. Two named small channels the switch scenarios use.
-	push(SMALL_A, 0, "Bench small A", "channel", 120);
-	push(SMALL_B, 1, "Bench small two", "group", 180);
+	if (!plan) push(SMALL_A, 0, "Bench small A", "channel", 120);
+	if (!plan) push(SMALL_B, 1, "Bench small two", "group", 180);
 	// 3. Sixteen fillers spread over both tenants.
-	for (let index = 0; index < 16; index += 1) {
+	for (let index = 0; !plan && index < 16; index += 1) {
 		push(
 			`c_benchfiller${(index + 1).toString().padStart(8, "0")}`,
 			index % 2,
@@ -467,7 +533,7 @@ function fixtures(messageCount) {
 		);
 	}
 	// 4. The big channel LAST: never the auto-selected row.
-	push(BIG_CONVERSATION, 0, "Bench big", "channel", messageCount);
+	if (!plan) push(BIG_CONVERSATION, 0, "Bench big", "channel", messageCount);
 
 	return {
 		messageCount,
@@ -641,10 +707,30 @@ function startStub(fixture, recordsDir) {
 		trial_ended: null,
 	};
 
-	const server = createServer((request, response) => {
+	/*
+	 * Per-route latency (`--latency`, or `instant-load`'s default table): the
+	 * request is COUNTED on arrival and ANSWERED after the delay, so a scene's
+	 * request counts include reads still in flight, the way the hub's would be.
+	 */
+	const delayed = (handler) => (request, response) => {
+		const bucket = latencyRouteOf(
+			request.method,
+			new URL(request.url ?? "/", "http://127.0.0.1").pathname,
+		);
+		const delay = LATENCY && bucket ? (LATENCY[bucket] ?? 0) : 0;
+		if (delay > 0) {
+			const url = new URL(request.url ?? "/", "http://127.0.0.1");
+			count(`${request.method} ${url.pathname}${url.search || ""}`);
+			setTimeout(() => handler(request, response, true), delay);
+			return;
+		}
+		handler(request, response, false);
+	};
+
+	const handle = (request, response, counted) => {
 		const url = new URL(request.url ?? "/", "http://127.0.0.1");
 		const path = url.pathname;
-		count(`${request.method} ${path}${url.search || ""}`);
+		if (!counted) count(`${request.method} ${path}${url.search || ""}`);
 		const json = (code, body) => {
 			const text = JSON.stringify(body);
 			response.writeHead(code, {
@@ -840,7 +926,7 @@ function startStub(fixture, recordsDir) {
 			const before = url.searchParams.get("before_seq");
 			const after = url.searchParams.get("after_seq");
 			/* The replay's own timeline on stderr: when each newest-page read arrived
-			   and what it was answered, which is the retry cadence the app chose. */
+		   and what it was answered, which is the retry cadence the app chose. */
 			const replayLog = (status) =>
 				process.stderr.write(
 					`[history-429] t=${Math.round(performance.now())}ms ${conversationId} ${status}\n`,
@@ -911,7 +997,9 @@ function startStub(fixture, recordsDir) {
 		 * the page under test is the only thing being measured.
 		 */
 		if (path === "/v1/desktop/sessions")
-			return send({ result: { sessions: [], degraded: [], truncated: false } });
+			return send({
+				result: { sessions: [], degraded: [], truncated: false },
+			});
 		if (path === "/v1/desktop/peers")
 			return send({
 				result: { peers: [], self_device_id: SELF_DEVICE, degraded: [] },
@@ -979,7 +1067,9 @@ function startStub(fixture, recordsDir) {
 		 */
 		process.stderr.write(`[stub] unhandled ${request.method} ${path}\n`);
 		return refuse(404, `the stub has no route for ${request.method} ${path}`);
-	});
+	};
+
+	const server = createServer(delayed(handle));
 
 	return new Promise((resolve_, reject) => {
 		server.once("error", reject);
@@ -1462,6 +1552,53 @@ async function waitForBridge(evaluate, timeoutMs = 90_000) {
 	throw new Error(
 		`the Team Bridge page never listed a conversation. Last state: ${JSON.stringify(last)}`,
 	);
+}
+
+/**
+ * The app shell is up and has dialled this stub, WITHOUT opening Team Bridge:
+ * `instant-load`'s first open is its own measurement. Fails closed with the
+ * last state it saw.
+ */
+async function waitForShell(evaluate, stub, timeoutMs = 90_000) {
+	const started = Date.now();
+	let last = null;
+	while (Date.now() - started < timeoutMs) {
+		const state = await evaluate(`(() => ({
+			hash: window.location.hash,
+			root: document.getElementById("root")?.childElementCount ?? -1,
+		}))()`);
+		const capabilities = stub.total(/^GET \/v1\/capabilities/);
+		last = { ...state, claims: stub.claims(), capabilities };
+		if (state.root > 0 && stub.claims() > 0 && capabilities > 0) {
+			// An idle beat so boot-time reads are not inside the first-open window.
+			await sleep(2_000);
+			return last;
+		}
+		await sleep(250);
+	}
+	throw new Error(
+		`the app shell never dialled the stub. Last state: ${JSON.stringify(last)}`,
+	);
+}
+
+/** `instant-load`'s screenshot writer: settled (two identical-paint rAFs via the
+ * bench's own `settleFrame`) or deliberately un-settled for a loading frame. */
+function instantShot(client) {
+	// Under the scratch ROOT, not the per-run scratch: that one is deleted on reap
+	// and the frames must outlive the run.
+	const dir = resolve(SHOTS_DIR ?? join(SCRATCH_ROOT, "instant-load-shots"));
+	mkdirSync(dir, { recursive: true });
+	return async (name, { settled }) => {
+		if (settled) await settleFrame(client.evaluate);
+		const { data } = await client.send("Page.captureScreenshot", {
+			format: "png",
+			fromSurface: true,
+			captureBeyondViewport: false,
+		});
+		const path = join(dir, `${name}.png`);
+		writeFileSync(path, Buffer.from(data, "base64"));
+		return path;
+	};
 }
 
 /* ---------------------------------------------------------------- the scenarios */
@@ -1949,7 +2086,10 @@ async function measure({ scenario, messageCount, keepScratch = false }) {
 	);
 	rmSync(scratch, { recursive: true, force: true });
 	mkdirSync(scratch, { recursive: true });
-	const fixture = fixtures(messageCount);
+	const fixture = fixtures(
+		messageCount,
+		scenario === "instant-load" ? instantConversationPlan() : null,
+	);
 	// Declared before the try so the failure path can name them; created INSIDE the
 	// try so a throw between the stub's `listen` and the first await cannot leave the
 	// server (or its discovery record) behind.
@@ -2004,7 +2144,17 @@ async function measure({ scenario, messageCount, keepScratch = false }) {
 		await client.send("Page.enable");
 		let mounted;
 		try {
-			mounted = await waitForBridge(client.evaluate);
+			/*
+			 * `instant-load` measures the FIRST open itself, so it must not be opened
+			 * here: wait for the shell (claim exchanged, capabilities read, root
+			 * mounted) and an idle beat instead. App-level background reads the real
+			 * app makes before any click (notification watcher) stay in, as they would
+			 * for the operator.
+			 */
+			mounted =
+				scenario === "instant-load"
+					? await waitForShell(client.evaluate, stub)
+					: await waitForBridge(client.evaluate);
 		} catch (error) {
 			const interesting =
 				/team[- ]bridge|desktop|capabilit|claim|discovery|error|fail|refus/i;
@@ -2054,13 +2204,22 @@ async function measure({ scenario, messageCount, keepScratch = false }) {
 				identity: identity(startedAt),
 			};
 		}
-		const result = await runScenario({
-			scenario,
-			fixture,
-			evaluate: client.evaluate,
-			stub,
-			send: client.send,
-		});
+		const result =
+			scenario === "instant-load"
+				? await runInstantLoad({
+						evaluate: client.evaluate,
+						stub,
+						plan: instantConversationPlan(),
+						latency: LATENCY,
+						shot: instantShot(client),
+					})
+				: await runScenario({
+						scenario,
+						fixture,
+						evaluate: client.evaluate,
+						stub,
+						send: client.send,
+					});
 		const heap = await client.send("Runtime.getHeapUsage").catch(() => null);
 		const measuredAt = rendererRss(app.userData);
 		return {
@@ -2535,7 +2694,12 @@ export async function main() {
 
 	const runs = [];
 	const control = has("control");
-	const sizes = control ? [CONTROL_SMALL, MESSAGES] : [MESSAGES];
+	const sizes =
+		SCENARIO === "instant-load"
+			? [INSTANT_MESSAGES]
+			: control
+				? [CONTROL_SMALL, MESSAGES]
+				: [MESSAGES];
 
 	for (const messageCount of sizes) {
 		const samples = [];
