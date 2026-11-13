@@ -132,6 +132,27 @@ export type AskOpenVia = "menu" | "chord";
 export type AskOpenIntent = { scope: AskScope; via: AskOpenVia };
 
 /**
+ * One press of an ask card's Insert or confirmed Run… (see the state's
+ * `consoleCommandIntent`). `command` is already validated by `askCommandOf`;
+ * `submit` presses Enter after typing and is only ever set behind the card's
+ * confirmation dialog.
+ */
+export type ConsoleCommandIntent = {
+	sessionId: string;
+	command: string;
+	submit: boolean;
+	nonce: string;
+};
+
+/**
+ * A nonce unique within this renderer: a counter, not randomness — it only has
+ * to tell two presses apart in one process, and the intent is never persisted.
+ */
+let consoleCommandSequence = 0;
+const nextConsoleCommandNonce = (): string =>
+	`console-command:${++consoleCommandSequence}`;
+
+/**
 
  * Type definition for the UI preferences store state
  */
@@ -765,6 +786,37 @@ type UiPreferencesState = {
 	 * caret token's `current === applied` acknowledgement one pane over: an answer belongs
 	 * to the request it answers. */
 	clearConsoleOpenIntent: (sessionId: string) => void;
+
+	/**
+	 * A SUGGESTED COMMAND waiting to be typed into a fresh terminal of one
+	 * conversation: the ask card's Insert (`submit: false`) or its confirmed
+	 * Run… (`submit: true`). `null` when there is none.
+	 *
+	 * A ONE-SHOT EVENT, NOT A PREFERENCE, for `consoleOpenIntent`'s reasons and
+	 * one more: a persisted copy would re-type — or with `submit`, RE-RUN — a
+	 * command on the next launch with no press behind it. It is excluded from
+	 * `persistedUiPreferences`, so a launch starts with it null by construction.
+	 *
+	 * IT NAMES THE CONVERSATION (the F-6 rule `consoleOpenIntent` follows): only
+	 * the pane mounted for `sessionId` answers it, so a request filed just before
+	 * a conversation switch can never be typed into another conversation.
+	 *
+	 * THE NONCE identifies ONE press. The pane clears the intent by nonce
+	 * (`clearConsoleCommandIntent`), so its clear can never wipe a second press
+	 * made while the first was being answered, and a re-run of its effect over
+	 * the same nonce is recognised and does nothing — the command is typed at
+	 * most once per press. A new press always gets a new nonce, so two presses
+	 * of the same command are two commands, each in its own fresh terminal.
+	 */
+	consoleCommandIntent: ConsoleCommandIntent | null;
+
+	/** File a suggested command for `sessionId`'s pane (see `consoleCommandIntent`).
+	 * The caller opens the pane itself, as `requestConsoleOpen`'s callers do; this
+	 * never opens anything. A later request replaces an unanswered earlier one. */
+	requestConsoleCommand: (intent: Omit<ConsoleCommandIntent, "nonce">) => void;
+
+	/** The pane has taken the request with this nonce, and only that one. */
+	clearConsoleCommandIntent: (nonce: string) => void;
 
 	/**
 	 * How many of this conversation's console surfaces are RUNNING, as the pane
@@ -2280,6 +2332,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			askOpenIntent: null,
 			rightSlotRoute: EMPTY_RIGHT_SLOT_ROUTE,
 			consoleOpenIntent: null,
+			consoleCommandIntent: null,
 			consoleLiveSurface: null,
 			runPanelReveal: null,
 			codeReviewReveal: null,
@@ -2577,6 +2630,25 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 
 			requestConsoleOpen: (sessionId: string) => {
 				set({ consoleOpenIntent: sessionId });
+			},
+
+			requestConsoleCommand: (intent) => {
+				set({
+					consoleCommandIntent: {
+						sessionId: intent.sessionId,
+						command: intent.command,
+						submit: intent.submit === true,
+						nonce: nextConsoleCommandNonce(),
+					},
+				});
+			},
+
+			clearConsoleCommandIntent: (nonce: string) => {
+				set((state) =>
+					state.consoleCommandIntent?.nonce === nonce
+						? { consoleCommandIntent: null }
+						: {},
+				);
 			},
 
 			clearConsoleOpenIntent: (sessionId: string) => {
@@ -3069,6 +3141,7 @@ export function persistedUiPreferences<
 		runPanelReveal: unknown;
 		codeReviewReveal: unknown;
 		consoleOpenIntent: unknown;
+		consoleCommandIntent: unknown;
 		consoleLiveSurface: unknown;
 		askOpenIntent: unknown;
 		isAskDrawerOpen: unknown;
@@ -3090,6 +3163,7 @@ export function persistedUiPreferences<
 	| "runPanelReveal"
 	| "codeReviewReveal"
 	| "consoleOpenIntent"
+	| "consoleCommandIntent"
 	| "consoleLiveSurface"
 	| "askOpenIntent"
 	| "isAskDrawerOpen"
@@ -3107,6 +3181,9 @@ export function persistedUiPreferences<
 		runPanelReveal: _pending,
 		codeReviewReveal: _reveal,
 		consoleOpenIntent: _intent,
+		/* The ask card's suggested command (`consoleCommandIntent`): a restored copy
+		 * would type — or run — a command on launch with no press behind it. */
+		consoleCommandIntent: _commandIntent,
 		/*
 		 * THE LIVENESS FACT IS A RUN'S OWN READING, not a preference: a restored count
 		 * would claim a process this launch did not start. It is excluded for

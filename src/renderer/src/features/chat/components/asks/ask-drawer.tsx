@@ -125,7 +125,7 @@ import {
 } from "../../ask-queue";
 import { handCaretToComposer } from "../../composer-caret";
 import { useAskClock } from "../../use-ask-clock";
-import { AskPanel } from "./ask-panel";
+import { AskPanel, type AskPanelProps } from "./ask-panel";
 
 /**
  * What "the drawer's first control" means when focus enters it.
@@ -325,6 +325,16 @@ export type AskDrawerProps = {
 	 * exists to avoid.
 	 */
 	conversationOf?: (row: AskPresentation) => string | null;
+	/**
+	 * THE SUGGESTED-COMMAND DOORS and the placement that gates Run…, passed
+	 * straight to the panel (see `AskPanelProps.onCommand` /
+	 * `commandPlacementOf`). The CALLER supplies both for the same reason it
+	 * supplies `conversationOf`: which conversation's terminal a command lands
+	 * in, and where that conversation's agent works, are facts of the mount's
+	 * scope, not of this container.
+	 */
+	onCommand?: AskPanelProps["onCommand"];
+	commandPlacementOf?: AskPanelProps["commandPlacementOf"];
 	/** A story pins the clock so its frames are reproducible. */
 	nowMs?: number;
 	/**
@@ -359,6 +369,8 @@ export const AskDrawer = ({
 	drafts,
 	onDraftChange,
 	conversationOf,
+	onCommand,
+	commandPlacementOf,
 	nowMs,
 	tabs,
 }: AskDrawerProps) => {
@@ -1252,6 +1264,8 @@ export const AskDrawer = ({
 							 * both contexts.
 							 */
 							conversationOf={conversationOf}
+							onCommand={onCommand}
+							commandPlacementOf={commandPlacementOf}
 						/>
 					) : (
 						/*

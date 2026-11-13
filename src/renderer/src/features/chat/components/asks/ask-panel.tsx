@@ -74,6 +74,11 @@ import type {
 	PendingAsk,
 	PendingAskQuestion,
 } from "../../../../../../shared/desktop-session-contract";
+import {
+	type AskAgentPlacement,
+	type AskCommandHint,
+	askCommandOf,
+} from "../../ask-command";
 import type {
 	AskDismissReason,
 	AskDraft,
@@ -109,6 +114,7 @@ import {
 	AskScrollBody,
 	ProposalReviewNotice,
 } from "./ask-bounds";
+import { AskCommandRow, AskCommandRunDialog } from "./ask-command";
 
 /**
  * WHICH HALF OF THE LIST THE READER IS LOOKING AT (operator ask, 2026-10-05).
@@ -241,8 +247,30 @@ export type AskPanelProps = {
 	 * this prop's presence.
 	 */
 	conversationOf?: (row: AskPresentation) => string | null;
+	/**
+	 * THE SUGGESTED-COMMAND DOORS (`PendingAskQuestion.command`): type the command
+	 * into a new terminal of the ask's conversation (`submit: false`, the card's
+	 * Insert) or type it and press Enter (`submit: true`, only after the card's
+	 * own confirmation dialog). The CALLER owns where that terminal is — the
+	 * session drawer files the console intent for its conversation, the fleet
+	 * drawer navigates to the ask's conversation first — so this panel stays
+	 * scope-agnostic, as it does for answers. Absent where the surface cannot
+	 * open a terminal (notifications detail, a story): the card then shows the
+	 * command and Copy only.
+	 */
+	onCommand?: (ask: PendingAsk, command: string, submit: boolean) => void;
+	/**
+	 * Where the agent of an ask's conversation works, relative to this computer
+	 * (`askAgentPlacement`). Decides whether Run… is offered at all
+	 * (`askCommandRunnable`). Absent reads as `unknown`, which fails closed:
+	 * Insert only.
+	 */
+	commandPlacementOf?: (ask: PendingAsk) => AskAgentPlacement;
 	className?: string;
 };
+
+/** The placement a mount that supplies none gets: not provably here. */
+const UNKNOWN_PLACEMENT: AskAgentPlacement = { kind: "unknown" };
 
 /** Status glyph and ink, in one place so every row reads the same way. */
 const askStatusMark = (
@@ -402,6 +430,7 @@ const AskQuestionField = ({
 	onSecret,
 	onAdvance,
 	focusOtherRef,
+	command,
 }: {
 	question: PendingAskQuestion;
 	/** This question's draft cell: the ticked labels and, last, the `Other` text. */
@@ -430,6 +459,17 @@ const AskQuestionField = ({
 	 * mount, not on the drawer opening over a restored draft, not on a re-render.
 	 */
 	focusOtherRef: React.MutableRefObject<string | null>;
+	/**
+	 * The suggested-command row's inputs, present only while the ask is
+	 * answerable (the row's own rule: a settled or delivered ask is no longer a
+	 * request the agent is waiting on). The hint is already validated.
+	 */
+	command?: {
+		hint: AskCommandHint;
+		placement: AskAgentPlacement;
+		onInsert?: () => void;
+		onRun?: () => void;
+	};
 }) => {
 	const options = question.options ?? [];
 	const multi = question.multi === true;
@@ -539,6 +579,20 @@ const AskQuestionField = ({
 					<ProposalReviewNotice proposal={proposal} className="mt-1.5" />
 				) : null}
 			</AskScrollBody>
+			{/*
+			 * THE SUGGESTED COMMAND sits directly under the prose it belongs to and
+			 * OUTSIDE the bounded body, so a long question never scrolls the actions
+			 * out of reach; it is a sibling of the options, like them never clipped.
+			 */}
+			{command ? (
+				<AskCommandRow
+					hint={command.hint}
+					placement={command.placement}
+					onInsert={command.onInsert}
+					onRun={command.onRun}
+					enabled={!disabled}
+				/>
+			) : null}
 			{question.secret ? (
 				<input
 					data-ask-secret={question.id}
@@ -851,6 +905,9 @@ const AskRow = ({
 	onRevise,
 	onDismiss,
 	conversationOf,
+	onCommand,
+	placement,
+	onRunRequest,
 }: {
 	presentation: AskPresentation;
 	nowMs: number;
@@ -863,6 +920,10 @@ const AskRow = ({
 	onRevise?: AskPanelProps["onRevise"];
 	onDismiss?: AskPanelProps["onDismiss"];
 	conversationOf?: AskPanelProps["conversationOf"];
+	onCommand?: AskPanelProps["onCommand"];
+	placement: AskAgentPlacement;
+	/** Open the panel's Run confirmation for this ask's command. */
+	onRunRequest?: (ask: PendingAsk, command: string) => void;
 }) => {
 	const { ask, status, waiting, canAnswer, canDecline, delivering } =
 		presentation;
@@ -1501,6 +1562,30 @@ const AskRow = ({
 							}}
 							onAdvance={advanceFrom}
 							focusOtherRef={focusOtherRef}
+							command={(() => {
+								/*
+								 * ONLY WHILE ANSWERABLE, and only for a command that passes
+								 * the core's rule again here (`askCommandOf`): the change
+								 * form over a recorded answer is not a request the agent is
+								 * still waiting on, and a forged or malformed value draws
+								 * nothing at all.
+								 */
+								if (!canAnswer) return undefined;
+								const hint = askCommandOf(question);
+								if (hint === null) return undefined;
+								return {
+									hint,
+									placement,
+									onInsert:
+										onCommand === undefined
+											? undefined
+											: () => onCommand(ask, hint.command, false),
+									onRun:
+										onCommand === undefined || onRunRequest === undefined
+											? undefined
+											: () => onRunRequest(ask, hint.command),
+								};
+							})()}
 						/>
 					))
 				: null}
@@ -1922,6 +2007,8 @@ export const AskPanel = ({
 	drafts,
 	onDraftChange,
 	conversationOf,
+	onCommand,
+	commandPlacementOf,
 	className,
 }: AskPanelProps) => {
 	/*
@@ -2358,6 +2445,37 @@ export const AskPanel = ({
 	});
 
 	/*
+	 * THE RUN CONFIRMATION, held by the PANEL rather than by the card.
+	 *
+	 * The card draws its command row only while the ask is answerable, and it
+	 * collapses or moves when the ask settles. A dialog owned by the card would
+	 * vanish under the reader the moment the ask closed; held here it stays up,
+	 * and `askOpen` — re-read from THIS render's rows — withholds the confirm
+	 * with a note instead. The ask, the command and the placement are captured
+	 * at the press, so the dialog shows exactly what the press was about even if
+	 * the row changes beneath it.
+	 */
+	const [runConfirm, setRunConfirm] = useState<{
+		ask: PendingAsk;
+		command: string;
+		placement: AskAgentPlacement;
+	} | null>(null);
+	const requestRun = useCallback(
+		(ask: PendingAsk, command: string) =>
+			setRunConfirm({
+				ask,
+				command,
+				placement: commandPlacementOf?.(ask) ?? UNKNOWN_PLACEMENT,
+			}),
+		[commandPlacementOf],
+	);
+	const runAskOpen =
+		runConfirm !== null &&
+		view.rows.some(
+			(row) => row.ask.ask_id === runConfirm.ask.ask_id && row.canAnswer,
+		);
+
+	/*
 	 * ONE ROW, ONE CONSTRUCTION, used by both halves of the list: a settled ask's
 	 * expanded body is THE SAME CARD a pending ask wears, so the two cannot drift
 	 * into two ways of showing one ask. The key rides on the row because every caller
@@ -2377,6 +2495,9 @@ export const AskPanel = ({
 			onRevise={onRevise}
 			onDismiss={onDismiss === undefined ? undefined : dismissAsk}
 			conversationOf={conversationOf}
+			onCommand={onCommand}
+			placement={commandPlacementOf?.(presentation.ask) ?? UNKNOWN_PLACEMENT}
+			onRunRequest={onCommand === undefined ? undefined : requestRun}
 		/>
 	);
 
@@ -2634,6 +2755,22 @@ export const AskPanel = ({
 					? t("ui.chat.ask_panel.empty.none_settled")
 					: null;
 
+	const runDialog =
+		onCommand !== undefined && runConfirm !== null ? (
+			<AskCommandRunDialog
+				open={true}
+				command={runConfirm.command}
+				placement={runConfirm.placement}
+				askOpen={runAskOpen}
+				onCancel={() => setRunConfirm(null)}
+				onConfirm={() => {
+					const pending = runConfirm;
+					setRunConfirm(null);
+					if (runAskOpen) onCommand(pending.ask, pending.command, true);
+				}}
+			/>
+		) : null;
+
 	return (
 		<div
 			ref={panelRef}
@@ -2757,6 +2894,7 @@ export const AskPanel = ({
 					)}
 				</div>
 			) : null}
+			{runDialog}
 		</div>
 	);
 };

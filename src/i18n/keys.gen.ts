@@ -54,6 +54,7 @@ import enUiChatAnalytics from "./catalogues/en/ui.chat.analytics.json";
 import enUiChatApproval from "./catalogues/en/ui.chat.approval.json";
 import enUiChatAside from "./catalogues/en/ui.chat.aside.json";
 import enUiChatAskAnswer from "./catalogues/en/ui.chat.ask_answer.json";
+import enUiChatAskCommand from "./catalogues/en/ui.chat.ask_command.json";
 import enUiChatAskPanel from "./catalogues/en/ui.chat.ask_panel.json";
 import enUiChatAskQueue from "./catalogues/en/ui.chat.ask_queue.json";
 import enUiChatAsks from "./catalogues/en/ui.chat.asks.json";
@@ -215,6 +216,7 @@ import esUiChatAnalytics from "./catalogues/es/ui.chat.analytics.json";
 import esUiChatApproval from "./catalogues/es/ui.chat.approval.json";
 import esUiChatAside from "./catalogues/es/ui.chat.aside.json";
 import esUiChatAskAnswer from "./catalogues/es/ui.chat.ask_answer.json";
+import esUiChatAskCommand from "./catalogues/es/ui.chat.ask_command.json";
 import esUiChatAskPanel from "./catalogues/es/ui.chat.ask_panel.json";
 import esUiChatAskQueue from "./catalogues/es/ui.chat.ask_queue.json";
 import esUiChatAsks from "./catalogues/es/ui.chat.asks.json";
@@ -376,6 +378,7 @@ import frUiChatAnalytics from "./catalogues/fr/ui.chat.analytics.json";
 import frUiChatApproval from "./catalogues/fr/ui.chat.approval.json";
 import frUiChatAside from "./catalogues/fr/ui.chat.aside.json";
 import frUiChatAskAnswer from "./catalogues/fr/ui.chat.ask_answer.json";
+import frUiChatAskCommand from "./catalogues/fr/ui.chat.ask_command.json";
 import frUiChatAskPanel from "./catalogues/fr/ui.chat.ask_panel.json";
 import frUiChatAskQueue from "./catalogues/fr/ui.chat.ask_queue.json";
 import frUiChatAsks from "./catalogues/fr/ui.chat.asks.json";
@@ -537,6 +540,7 @@ import hiUiChatAnalytics from "./catalogues/hi/ui.chat.analytics.json";
 import hiUiChatApproval from "./catalogues/hi/ui.chat.approval.json";
 import hiUiChatAside from "./catalogues/hi/ui.chat.aside.json";
 import hiUiChatAskAnswer from "./catalogues/hi/ui.chat.ask_answer.json";
+import hiUiChatAskCommand from "./catalogues/hi/ui.chat.ask_command.json";
 import hiUiChatAskPanel from "./catalogues/hi/ui.chat.ask_panel.json";
 import hiUiChatAskQueue from "./catalogues/hi/ui.chat.ask_queue.json";
 import hiUiChatAsks from "./catalogues/hi/ui.chat.asks.json";
@@ -698,6 +702,7 @@ import ruUiChatAnalytics from "./catalogues/ru/ui.chat.analytics.json";
 import ruUiChatApproval from "./catalogues/ru/ui.chat.approval.json";
 import ruUiChatAside from "./catalogues/ru/ui.chat.aside.json";
 import ruUiChatAskAnswer from "./catalogues/ru/ui.chat.ask_answer.json";
+import ruUiChatAskCommand from "./catalogues/ru/ui.chat.ask_command.json";
 import ruUiChatAskPanel from "./catalogues/ru/ui.chat.ask_panel.json";
 import ruUiChatAskQueue from "./catalogues/ru/ui.chat.ask_queue.json";
 import ruUiChatAsks from "./catalogues/ru/ui.chat.asks.json";
@@ -859,6 +864,7 @@ import urUiChatAnalytics from "./catalogues/ur/ui.chat.analytics.json";
 import urUiChatApproval from "./catalogues/ur/ui.chat.approval.json";
 import urUiChatAside from "./catalogues/ur/ui.chat.aside.json";
 import urUiChatAskAnswer from "./catalogues/ur/ui.chat.ask_answer.json";
+import urUiChatAskCommand from "./catalogues/ur/ui.chat.ask_command.json";
 import urUiChatAskPanel from "./catalogues/ur/ui.chat.ask_panel.json";
 import urUiChatAskQueue from "./catalogues/ur/ui.chat.ask_queue.json";
 import urUiChatAsks from "./catalogues/ur/ui.chat.asks.json";
@@ -1020,6 +1026,7 @@ import viUiChatAnalytics from "./catalogues/vi/ui.chat.analytics.json";
 import viUiChatApproval from "./catalogues/vi/ui.chat.approval.json";
 import viUiChatAside from "./catalogues/vi/ui.chat.aside.json";
 import viUiChatAskAnswer from "./catalogues/vi/ui.chat.ask_answer.json";
+import viUiChatAskCommand from "./catalogues/vi/ui.chat.ask_command.json";
 import viUiChatAskPanel from "./catalogues/vi/ui.chat.ask_panel.json";
 import viUiChatAskQueue from "./catalogues/vi/ui.chat.ask_queue.json";
 import viUiChatAsks from "./catalogues/vi/ui.chat.asks.json";
@@ -1181,6 +1188,7 @@ import zhCNUiChatAnalytics from "./catalogues/zh-CN/ui.chat.analytics.json";
 import zhCNUiChatApproval from "./catalogues/zh-CN/ui.chat.approval.json";
 import zhCNUiChatAside from "./catalogues/zh-CN/ui.chat.aside.json";
 import zhCNUiChatAskAnswer from "./catalogues/zh-CN/ui.chat.ask_answer.json";
+import zhCNUiChatAskCommand from "./catalogues/zh-CN/ui.chat.ask_command.json";
 import zhCNUiChatAskPanel from "./catalogues/zh-CN/ui.chat.ask_panel.json";
 import zhCNUiChatAskQueue from "./catalogues/zh-CN/ui.chat.ask_queue.json";
 import zhCNUiChatAsks from "./catalogues/zh-CN/ui.chat.asks.json";
@@ -1345,6 +1353,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChatApproval,
 	...enUiChatAside,
 	...enUiChatAskAnswer,
+	...enUiChatAskCommand,
 	...enUiChatAskPanel,
 	...enUiChatAskQueue,
 	...enUiChatAsks,
@@ -1514,6 +1523,7 @@ export const bundledCatalogues: Readonly<
 		...esUiChatApproval,
 		...esUiChatAside,
 		...esUiChatAskAnswer,
+		...esUiChatAskCommand,
 		...esUiChatAskPanel,
 		...esUiChatAskQueue,
 		...esUiChatAsks,
@@ -1677,6 +1687,7 @@ export const bundledCatalogues: Readonly<
 		...frUiChatApproval,
 		...frUiChatAside,
 		...frUiChatAskAnswer,
+		...frUiChatAskCommand,
 		...frUiChatAskPanel,
 		...frUiChatAskQueue,
 		...frUiChatAsks,
@@ -1840,6 +1851,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiChatApproval,
 		...hiUiChatAside,
 		...hiUiChatAskAnswer,
+		...hiUiChatAskCommand,
 		...hiUiChatAskPanel,
 		...hiUiChatAskQueue,
 		...hiUiChatAsks,
@@ -2003,6 +2015,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiChatApproval,
 		...ruUiChatAside,
 		...ruUiChatAskAnswer,
+		...ruUiChatAskCommand,
 		...ruUiChatAskPanel,
 		...ruUiChatAskQueue,
 		...ruUiChatAsks,
@@ -2166,6 +2179,7 @@ export const bundledCatalogues: Readonly<
 		...urUiChatApproval,
 		...urUiChatAside,
 		...urUiChatAskAnswer,
+		...urUiChatAskCommand,
 		...urUiChatAskPanel,
 		...urUiChatAskQueue,
 		...urUiChatAsks,
@@ -2329,6 +2343,7 @@ export const bundledCatalogues: Readonly<
 		...viUiChatApproval,
 		...viUiChatAside,
 		...viUiChatAskAnswer,
+		...viUiChatAskCommand,
 		...viUiChatAskPanel,
 		...viUiChatAskQueue,
 		...viUiChatAsks,
@@ -2492,6 +2507,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiChatApproval,
 		...zhCNUiChatAside,
 		...zhCNUiChatAskAnswer,
+		...zhCNUiChatAskCommand,
 		...zhCNUiChatAskPanel,
 		...zhCNUiChatAskQueue,
 		...zhCNUiChatAsks,
@@ -4397,6 +4413,23 @@ export type MessageParams = {
 	"ui.chat.ask_answer.settled_elsewhere": undefined;
 	"ui.chat.ask_answer.unconfirmed": { lead: string; reason: string };
 	"ui.chat.ask_answer.unconfirmed_lead": undefined;
+	"ui.chat.ask_command.copy": undefined;
+	"ui.chat.ask_command.dialog_caution": undefined;
+	"ui.chat.ask_command.dialog_closed": undefined;
+	"ui.chat.ask_command.dialog_confirm": undefined;
+	"ui.chat.ask_command.dialog_device_local": undefined;
+	"ui.chat.ask_command.dialog_device_remote": { device: string };
+	"ui.chat.ask_command.dialog_device_remote_unnamed": undefined;
+	"ui.chat.ask_command.dialog_title": undefined;
+	"ui.chat.ask_command.insert": undefined;
+	"ui.chat.ask_command.insert_hint": undefined;
+	"ui.chat.ask_command.label": undefined;
+	"ui.chat.ask_command.notice_elsewhere": { device: string };
+	"ui.chat.ask_command.notice_elsewhere_unnamed": undefined;
+	"ui.chat.ask_command.notice_target_unknown": undefined;
+	"ui.chat.ask_command.notice_unplaced": undefined;
+	"ui.chat.ask_command.run": undefined;
+	"ui.chat.ask_command.run_hint": undefined;
 	"ui.chat.ask_panel.answer.attachment_refusal": undefined;
 	"ui.chat.ask_panel.answer.limit_notice": { max: number };
 	"ui.chat.ask_panel.dock.asking": undefined;

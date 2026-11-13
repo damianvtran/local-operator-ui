@@ -1947,3 +1947,168 @@ test("one live and one ended: the open focuses the live one and creates nothing"
 		container.remove();
 	}
 });
+
+/*
+ * THE ASK CARD'S SUGGESTED COMMAND (Insert / Run…), answered by the pane.
+ *
+ * The intent is the store's `consoleCommandIntent`; these pin the pane's half of
+ * the contract: only THIS conversation's pane answers it, it always makes a FRESH
+ * surface (never types into the one already open, which may be busy), the text
+ * goes in as a paste with no newline, Enter is pressed only for `submit`, and a
+ * press is typed at most once — a remount does not replay it.
+ */
+const commandBridge = ({ existing = [] } = {}) => {
+	const bridge = installBridge({
+		surfaces: existing,
+		create: async ({ calls, setListing }) => {
+			const id = `con:${calls.create + 10}:command`;
+			setListing([...existing, surfaceRow(id, { displayed: false })]);
+			return { surface: id };
+		},
+	});
+	const writes = [];
+	// The prompt is already in the replay: the readiness signal must come from it,
+	// because main streams live frames only to subscribed surfaces.
+	window.api.console.subscribe = async () => ({
+		replay_base64: Buffer.from("$ ").toString("base64"),
+		from_byte: 0,
+	});
+	window.api.console.input = async (surface, text, options) => {
+		writes.push({ kind: "input", surface, text, options });
+	};
+	window.api.console.keys = async (surface, keys) => {
+		writes.push({ kind: "keys", surface, keys });
+	};
+	return { ...bridge, writes };
+};
+
+const resetCommandIntent = () => {
+	const { consoleCommandIntent, clearConsoleCommandIntent } =
+		harness.useUiPreferencesStore.getState();
+	if (consoleCommandIntent !== null)
+		clearConsoleCommandIntent(consoleCommandIntent.nonce);
+};
+
+test("Insert types the command into a FRESH surface as a paste, with no Enter", async () => {
+	resetIntent();
+	resetCommandIntent();
+	const { calls, writes } = commandBridge({
+		existing: [surfaceRow("con:1:busy")],
+	});
+	const { root, container } = await mountPane();
+	try {
+		await settle(30);
+		harness.useUiPreferencesStore.getState().requestConsoleCommand({
+			sessionId: SESSION,
+			command: "glab auth login",
+			submit: false,
+		});
+		await waitFor(() => writes.length > 0);
+		await settle(100);
+		assert.equal(calls.create, 1, "exactly one new surface");
+		assert.deepEqual(writes, [
+			{
+				kind: "input",
+				surface: "con:11:command",
+				text: "glab auth login",
+				options: { paste: true },
+			},
+		]);
+		assert.ok(
+			!writes.some((write) => write.surface === "con:1:busy"),
+			"the terminal already open is never typed into",
+		);
+		assert.equal(
+			harness.useUiPreferencesStore.getState().consoleCommandIntent,
+			null,
+			"the intent is consumed",
+		);
+	} finally {
+		root.unmount();
+		container.remove();
+	}
+});
+
+test("a confirmed Run types the command, then presses Enter through the key encoder", async () => {
+	resetIntent();
+	resetCommandIntent();
+	const { calls, writes } = commandBridge();
+	const { root, container } = await mountPane();
+	try {
+		await settle(30);
+		harness.useUiPreferencesStore.getState().requestConsoleCommand({
+			sessionId: SESSION,
+			command: "gh auth status",
+			submit: true,
+		});
+		await waitFor(() => writes.length >= 2);
+		assert.equal(calls.create, 1);
+		assert.deepEqual(writes, [
+			{
+				kind: "input",
+				surface: "con:11:command",
+				text: "gh auth status",
+				options: { paste: true },
+			},
+			{ kind: "keys", surface: "con:11:command", keys: ["enter"] },
+		]);
+	} finally {
+		root.unmount();
+		container.remove();
+	}
+});
+
+test("a command filed for another conversation is not typed here", async () => {
+	resetIntent();
+	resetCommandIntent();
+	const { calls, writes } = commandBridge();
+	const { root, container } = await mountPane();
+	try {
+		await settle(30);
+		harness.useUiPreferencesStore.getState().requestConsoleCommand({
+			sessionId: "session-a-different-conversation",
+			command: "ls",
+			submit: true,
+		});
+		await settle(300);
+		assert.equal(calls.create, 0, "no surface is made for someone else's press");
+		assert.deepEqual(writes, []);
+		assert.equal(
+			harness.useUiPreferencesStore.getState().consoleCommandIntent?.sessionId,
+			"session-a-different-conversation",
+			"the request is still waiting for its own conversation's pane",
+		);
+	} finally {
+		resetCommandIntent();
+		root.unmount();
+		container.remove();
+	}
+});
+
+test("a command is typed once per press: a remount does not replay it", async () => {
+	resetIntent();
+	resetCommandIntent();
+	const { calls, writes } = commandBridge();
+	const first = await mountPane();
+	try {
+		await settle(30);
+		harness.useUiPreferencesStore.getState().requestConsoleCommand({
+			sessionId: SESSION,
+			command: "echo once",
+			submit: false,
+		});
+		await waitFor(() => writes.length > 0);
+	} finally {
+		first.root.unmount();
+		first.container.remove();
+	}
+	const second = await mountPane();
+	try {
+		await settle(300);
+		assert.equal(calls.create, 1, "the remount makes no second surface");
+		assert.equal(writes.length, 1, "and types nothing again");
+	} finally {
+		second.root.unmount();
+		second.container.remove();
+	}
+});

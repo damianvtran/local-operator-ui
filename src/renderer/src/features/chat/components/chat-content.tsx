@@ -91,6 +91,7 @@ import {
 import { DelegatedCleanupNoticeBand } from "../../settings/components/delegated-cleanup-notice";
 import { settleQueuedAdoption } from "../aside";
 import { gateIsSecret } from "../ask-answer";
+import { fileAskCommand, readAskAgentPlacement } from "../ask-command-actions";
 import type {
 	AskAnswerAttempt,
 	AskDismissReason,
@@ -3874,6 +3875,19 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								outcomes={canonical?.askOutcomes}
 								drafts={canonical?.askDrafts}
 								onDraftChange={canonical?.onAskDraftChange}
+								/*
+								 * THE SUGGESTED COMMAND lands in THIS conversation's terminal: the
+								 * drawer is the conversation's own, so the intent names `sessionId`
+								 * and the console pane that opens beside it answers it. Absent
+								 * without a conversation (nothing to type into).
+								 */
+								onCommand={
+									sessionId
+										? (ask, command, submit) =>
+												fileAskCommand({ sessionId, ask, command, submit })
+										: undefined
+								}
+								commandPlacementOf={() => readAskAgentPlacement(sessionId)}
 							/>
 						</PaneSlot>
 					</>

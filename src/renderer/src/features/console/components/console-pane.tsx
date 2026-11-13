@@ -26,6 +26,7 @@ import {
 } from "react";
 import { useConsoleBlipPulse } from "../hooks/use-console-attention";
 import { useConsoleSession } from "../hooks/use-console-session";
+import { deliverConsoleCommand } from "../model/console-command";
 import {
 	type ConsoleSurface,
 	consoleOpenAction,
@@ -155,6 +156,14 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 	const openIntent = useUiPreferencesStore((state) => state.consoleOpenIntent);
 	const clearOpenIntent = useUiPreferencesStore(
 		(state) => state.clearConsoleOpenIntent,
+	);
+	/* The ask card's suggested command, waiting for THIS conversation's pane (see
+	 * the store's `consoleCommandIntent`, and the effect that answers it below). */
+	const commandIntent = useUiPreferencesStore(
+		(state) => state.consoleCommandIntent,
+	);
+	const clearCommandIntent = useUiPreferencesStore(
+		(state) => state.clearConsoleCommandIntent,
 	);
 	/**
 	 * A ONE-SHOT request for the terminal to take the caret, handed to the mirror and
@@ -907,6 +916,88 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 		endCreate,
 	]);
 
+	/*
+	 * THE ASK CARD'S SUGGESTED COMMAND, ANSWERED (Insert / Run…).
+	 *
+	 * ONLY THIS CONVERSATION'S PANE ANSWERS IT (the F-6 rule the open request
+	 * follows): the intent names its session, and this pane is remounted per
+	 * conversation, so a press filed just before a switch is never typed into the
+	 * conversation that happened to mount next.
+	 *
+	 * ALWAYS A FRESH SURFACE, never one already open. An existing terminal may be
+	 * running something (an editor, a REPL, a half-typed line) and its prompt state
+	 * is not observable without shell integration, so typing into it could append
+	 * to a line or feed a program that is not a shell. A new surface is born with
+	 * main's defaults (login shell, home folder, `reveal: "none"`) exactly as the
+	 * `+` makes one, and the lens moves to it through `showCreated` — the same
+	 * mechanism, so the user sees the terminal the command lands in.
+	 *
+	 * AT MOST ONCE PER PRESS: `takenCommand` records the nonce this mount has taken,
+	 * so a re-run of the effect (every listing commit re-runs it) does nothing; and
+	 * the store copy is cleared by nonce once the create answers — the open path's
+	 * timing, so the loading mask below holds across the round trip — which is what
+	 * a REMOUNT sees. A create that fails clears the intent too: the pane's
+	 * create-failed state is the answer, and a retry is the user's press, not a
+	 * replay of the command.
+	 *
+	 * NO CHORD, NO AUTO-RUN: `submit` is only ever set by the card's confirmation
+	 * dialog (`ask-command.tsx`); this effect just honours it.
+	 */
+	const takenCommand = useRef<string | null>(null);
+	/** When each surface's mirror last saw output, on `Date.now()`'s scale. */
+	const outputAt = useRef(new Map<string, number>());
+	const commandForThisSession =
+		commandIntent !== null && commandIntent.sessionId === sessionId
+			? commandIntent
+			: null;
+	useEffect(() => {
+		if (commandForThisSession === null || sessionId === null) return;
+		if (takenCommand.current === commandForThisSession.nonce) return;
+		// Still loading is not an answer: `available` is unknown until the read lands.
+		if (session.loading) return;
+		if (!available) {
+			// Main's own "no console can exist here": the pane renders that state.
+			clearCommandIntent(commandForThisSession.nonce);
+			return;
+		}
+		const intent = commandForThisSession;
+		takenCommand.current = intent.nonce;
+		const from = stored;
+		beginCreate();
+		void session
+			.createSurface()
+			.then((created) => {
+				if (created === null) return;
+				setAwaitingSurface(true);
+				setShowCreated({ id: created, from });
+				const api = window.api?.console;
+				if (!api) return;
+				void deliverConsoleCommand(api, {
+					surface: created,
+					command: intent.command,
+					submit: intent.submit,
+					lastOutputAt: () => outputAt.current.get(created) ?? null,
+				}).catch(() => {
+					// A surface that died before the write has nothing to type into; the
+					// pane's listing shows its ended state, which is the honest answer.
+				});
+			})
+			.finally(() => {
+				endCreate();
+				clearCommandIntent(intent.nonce);
+			});
+	}, [
+		commandForThisSession,
+		sessionId,
+		session.loading,
+		session.createSurface,
+		available,
+		stored,
+		beginCreate,
+		endCreate,
+		clearCommandIntent,
+	]);
+
 	if (sessionId === null) {
 		return (
 			<div
@@ -988,6 +1079,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 			(session.loading ||
 				creating ||
 				unansweredForThisSession ||
+				commandForThisSession !== null ||
 				awaitingSurface) &&
 			surfaces.length === 0
 		)
@@ -1163,6 +1255,8 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 							session.reportContent(surface.surface, report)
 						}
 						onExit={() => session.refresh()}
+						/* The suggested-command readiness signal (`console-command.ts`). */
+						onActivity={() => outputAt.current.set(surface.surface, Date.now())}
 					/>
 					{/* The marker sits AFTER the mirror, where a live prompt would be, and it
 					    is chrome rather than bytes: see `ConsoleHistoryEnd`. */}
