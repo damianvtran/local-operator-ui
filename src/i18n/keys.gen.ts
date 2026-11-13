@@ -4405,6 +4405,7 @@ export type MessageParams = {
 	"ui.chat.analytics.title": undefined;
 	"ui.chat.analytics.toolbar.refreshing": undefined;
 	"ui.chat.analytics.toolbar.this_session_only": undefined;
+	"ui.chat.approval.escape.bridge_latched": undefined;
 	"ui.chat.approval.escape.default_saved": undefined;
 	"ui.chat.approval.escape.default_saved_session_failed": { detail: string };
 	"ui.chat.approval.escape.global_default": { mode: string };

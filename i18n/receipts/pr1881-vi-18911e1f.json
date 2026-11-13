@@ -1,0 +1,51 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "date": "2026-11-12",
+ "locale": "vi",
+ "instance": "pr1881-vi-18911e1f",
+ "session": "7be2ff8560d4",
+ "auditor": {
+  "agent": "reviewer",
+  "session": "7be2ff8560d4",
+  "instance": "pr1881-vi-18911e1f",
+  "model": "anthropic/claude-sonnet-5-5",
+  "fallback": "none (the session header model was served; no provider fallback occurred)",
+  "independent_from_translator_session": true
+ },
+ "model": "anthropic/claude-sonnet-5-5",
+ "independence": "Fresh reviewer session; did not write the vi files and had not audited this locale before. Read from the worktree at 8efa3b0ff5bb: src/i18n/catalogues/en/ui.chat.approval.json, vi/ui.chat.approval.json, en/ui.chat.approval.context.json (sidecar entry for the new key), the diff 5033f64235..8efa3b0ff5 for the en and vi files; core origin/main (330e43b93f) i18n/glossary.md, i18n/style-guides/vi.md and local_operator/i18n/catalogues/{en,vi}/wire.bridge_taint.json. Byte-identity to core, key-set equality, placeholder equality, bidi/NFC and duplicate-key checks were done by parsing the bytes, not taken from the translator's summary.",
+ "branch": "approval-card-latched",
+ "head": "8efa3b0ff5bb6aec505c559b9e3518d75a6a240b",
+ "pr": "damianvtran/local-operator-ui#1881",
+ "scope": "vi only, ui.chat.approval at the pinned head: the new key ui.chat.approval.escape.bridge_latched audited in full; the other 17 keys confirmed unchanged by diff (only one line added in vi) and parsed for key-set/placeholder equality against English; their previous audit is CARRIED, not redone",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "namespaces": {
+  "ui.chat.approval": {
+   "status": "passed",
+   "keys_audited": 18,
+   "sha256": {
+    "en": "815a4ff369d33bc106b35aa74589f4f000811d24aa24519094c4373283d7ec8f",
+    "vi": "9c2f68a256b6e49c94320b721f4e6d75e31894228580eb1278d2adf077503623",
+    "context": "9ee5d1341420c59b38f1d451848f2da76bc9397c5d7811196356fbd98968bb2f"
+   },
+   "findings": [
+    {
+     "severity": "MINOR",
+     "key": "ui.chat.approval.escape.bridge_latched",
+     "summary": "The sentence says lowercase English 'auto' ('auto đã tắt', 'Để bật auto') while the same namespace labels the mode 'Tự động' (ui.chat.approval.mode.auto, escape.set_session, escape.default_saved). The reader sees 'Tự động' on the card but 'auto' here. 'auto' is defensible because it is the argument of the typed command /approvals auto and core wire.bridge_taint.* (ack_refused, grant_suspended) uses the same 'auto'; no change required while the string stays byte-identical to core. Recorded for a future joint core+UI wording pass.",
+     "action": "none required; follow-up wording only"
+    }
+   ]
+  }
+ },
+ "findings": [
+  {
+   "severity": "MINOR",
+   "key": "ui.chat.approval.escape.bridge_latched",
+   "summary": "The sentence says lowercase English 'auto' ('auto đã tắt', 'Để bật auto') while the same namespace labels the mode 'Tự động' (ui.chat.approval.mode.auto, escape.set_session, escape.default_saved). The reader sees 'Tự động' on the card but 'auto' here. 'auto' is defensible because it is the argument of the typed command /approvals auto and core wire.bridge_taint.* (ack_refused, grant_suspended) uses the same 'auto'; no change required while the string stays byte-identical to core. Recorded for a future joint core+UI wording pass.",
+   "action": "none required; follow-up wording only"
+  }
+ ]
+}
