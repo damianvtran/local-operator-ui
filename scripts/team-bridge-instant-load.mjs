@@ -2,9 +2,27 @@
  * `--scenario=instant-load` for `scripts/team-bridge-bench.mjs`: the acceptance
  * timing scene for the operator's bridge-instant-load target.
  *
- *     node scripts/team-bridge-bench.mjs --scenario=instant-load \
- *         --json "$LOCAL_OPERATOR_SCRATCHPAD/instant.json" \
- *         --shots "$LOCAL_OPERATOR_SCRATCHPAD/instant-shots"
+ * RUN RECIPE (from the checkout root; one build, one launch). The build refuses
+ * to load its config unless four variables are non-empty
+ * (`scripts/vite-plugins/replace-backend-config.ts`, derived by
+ * `scripts/check-build-env.mjs`). The values below are INERT placeholders: no
+ * credential is created or read, no `.env` is needed, no sign-in is claimed.
+ * The preflight runs first so a missing dependency tree or variable fails as
+ * SETUP, never as a build error that reads like an app result (QA round 1, B1).
+ *
+ *     export VITE_GOOGLE_CLIENT_ID=evidence-build-only-not-a-credential \
+ *            VITE_GOOGLE_CLIENT_SECRET=evidence-build-only-not-a-credential \
+ *            VITE_MICROSOFT_CLIENT_ID=evidence-build-only-not-a-credential \
+ *            VITE_MICROSOFT_TENANT_ID=evidence-build-only-not-a-credential
+ *     node scripts/team-bridge-instant-load.mjs --preflight --root "$PWD" &&
+ *         node_modules/.bin/electron-vite build &&
+ *         node scripts/team-bridge-bench.mjs --scenario=instant-load --root "$PWD" \
+ *             --json "$LOCAL_OPERATOR_SCRATCHPAD/instant.json" \
+ *             --shots "$LOCAL_OPERATOR_SCRATCHPAD/instant-shots"
+ *
+ * `--shots` is a BASE directory: each run writes into its own
+ * `run-<timestamp>-<pid>/` below it, so frames from an earlier or aborted run
+ * can never pass for this run's (R1-4). Nothing is deleted.
  *
  * THE TARGET IT MEASURES (operator, verbatim in the project brief): "opening Team
  * Bridge + channels/agent DMs/sidebar <300ms, conversation switches feel
@@ -28,8 +46,10 @@
  * `--root` checkout holds: a renderer source build, not the installed `.app`.
  *
  * WHAT "USABLE" MEANS, and why it is not "the click handler returned". The clock
- * starts at the pointerdown of a real DOM click sequence on a real control (the
- * nav link / the rail row) and stops at the second rAF after the first frame in
+ * starts at the pointerdown of a SYNTHETIC in-page DOM click sequence
+ * (`dispatchEvent`, untrusted events; see INSTANT_INPUT_LABEL) on the real
+ * control - the sidebar's `[data-sidebar-row="team-bridge"]` button, with the
+ * More fold opened beforehand outside the window, and the rail row - and stops at the second rAF after the first frame in
  * which ALL of these hold (sampled every animation frame by an in-page probe):
  *   - open:   the rail lists every fixture conversation, no skeleton/loading
  *             placeholder is on screen, and the timeline holds rows of exactly ONE
@@ -49,6 +69,20 @@
  * Rank 15 is reserved for a deliberately un-settled screenshot of that loading
  * state and is excluded from the statistics.
  */
+
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
+import { cpus, loadavg } from "node:os";
+import { join, resolve } from "node:path";
+import { defaultVitePlugins, requiredBuildEnv } from "./check-build-env.mjs";
+import { isEntryPoint } from "./entry-point.mjs";
+
+/**
+ * What the measured window does and does not include (R1-3, QA N1), carried in
+ * every report so a number is never quoted as end-to-end input latency.
+ */
+export const INSTANT_INPUT_LABEL =
+	"synthetic in-page DOM dispatch (untrusted PointerEvent/MouseEvent via dispatchEvent on the real control); excludes the OS/compositor input pipeline and browser hit-testing";
 
 /** Per-route stub latency (ms) the operator's brief fixed for this scene. */
 export const INSTANT_LATENCY_DEFAULTS = Object.freeze({
@@ -136,6 +170,33 @@ export function routeCountsBetween(before, after) {
 }
 
 /**
+ * Split a step's reads into BLOCKING and BACKGROUND (agent review round 1, R1-2).
+ *
+ * WHY. A cached conversation past its 30 s `staleTime` paints from the query
+ * cache instantly AND starts a refetch on mount. Counting every `/messages` read
+ * as "not served from cache" would fail a run on a machine that is merely slow
+ * to reach the warm pass, while the user saw no wait at all. What the user waits
+ * on is a read whose RESPONSE was needed for the usable frame, so:
+ *   - `blockingReads`: answered by the stub before the scene saw "usable";
+ *   - `backgroundReads`: issued in the window but still in flight at "usable"
+ *     (a revalidation the page did not wait for).
+ * "Answered by usable" is read when the probe's promise returns, i.e. two rAFs
+ * plus one CDP hop after the detecting frame, so a refetch answered in that
+ * slack is counted as blocking. The error only ever leans toward failing.
+ * `requests` stays the total issued (the negative control needs any read).
+ */
+export function splitReads({ issued, answeredByUsable }) {
+	const blockingReads = {};
+	const backgroundReads = {};
+	for (const [bucket, count] of Object.entries(issued)) {
+		const blocking = Math.min(count, answeredByUsable[bucket] ?? 0);
+		blockingReads[bucket] = blocking;
+		backgroundReads[bucket] = count - blocking;
+	}
+	return { requests: issued, blockingReads, backgroundReads };
+}
+
+/**
  * The 16-conversation plan, NEWEST FIRST: 10 channels and 6 agent DMs
  * interleaved, 50 markdown messages each, unread only on the 4 most recent (the
  * header's negative control). Ids end in a unique 6-char suffix because message
@@ -206,6 +267,16 @@ export function instantChecks({ firstOpen, warmOpens, switches }) {
 			ok: all.every((step) => step?.ok === true),
 		},
 		{
+			/* R1-1: the headline number is a CLICK on the real sidebar row and rail
+			   row. Any other dispatch (a missing row) means the rig measured
+			   something else, so it is integrity, not a slow app. */
+			kind: "integrity",
+			name: "every open was a nav-click on the sidebar row and every switch a rail-click",
+			ok:
+				[firstOpen, ...warmOpens].every((s) => s?.dispatch === "nav-click") &&
+				switches.every((s) => s?.dispatch === "rail-click"),
+		},
+		{
 			kind: "integrity",
 			name: "at least 10 warm opens and 10 warm switches were measured",
 			ok: warmOpenStats.n >= 10 && warmSwitchStats.n >= 10,
@@ -222,8 +293,8 @@ export function instantChecks({ firstOpen, warmOpens, switches }) {
 		},
 		{
 			kind: "integrity",
-			name: "warm switches issued no /messages read (served from the query cache)",
-			ok: warm.every((s) => s.requests.messages === 0),
+			name: "warm switches waited on no /messages read (painted from the query cache; background revalidations allowed)",
+			ok: warm.every((s) => s.blockingReads?.messages === 0),
 		},
 		{
 			kind: "target",
@@ -279,19 +350,48 @@ export const INSTANT_PROBE = `(() => {
 			foreign: target ? ids.filter((id) => suffixOf(id) !== target.suffix).length : 0,
 		};
 	};
+	/* SYNTHETIC IN-PAGE DISPATCH (agent review round 1, R1-3; QA N1): untrusted
+	   PointerEvent/MouseEvent objects via dispatchEvent. They run the control's
+	   real React handlers, but skip the OS/compositor input pipeline and the
+	   browser's own hit-test, so a measured window excludes input latency. The
+	   return value records whether the press point would have hit the control
+	   (elementFromPoint), so a covered or off-screen control is visible in the
+	   report rather than "clicked" silently. */
 	probe.press = (element) => {
 		const rect = element.getBoundingClientRect();
+		const x = rect.x + rect.width / 2;
+		const y = rect.y + Math.min(rect.height / 2, 12);
+		const topmost = typeof document.elementFromPoint === "function" ? document.elementFromPoint(x, y) : null;
+		const hit = !!topmost && (topmost === element || element.contains(topmost));
 		const init = { bubbles: true, cancelable: true, composed: true, button: 0, clientX: rect.x + rect.width / 2, clientY: rect.y + Math.min(rect.height / 2, 12), view: window };
 		element.dispatchEvent(new PointerEvent("pointerdown", { ...init, buttons: 1, pointerId: 1, isPrimary: true, pointerType: "mouse" }));
 		element.dispatchEvent(new MouseEvent("mousedown", { ...init, buttons: 1 }));
 		element.dispatchEvent(new PointerEvent("pointerup", { ...init, buttons: 0, pointerId: 1, isPrimary: true, pointerType: "mouse" }));
 		element.dispatchEvent(new MouseEvent("mouseup", { ...init, buttons: 0 }));
 		element.dispatchEvent(new MouseEvent("click", { ...init, buttons: 0 }));
+		return { hit };
 	};
+	/* THE REAL SIDEBAR ROW, and nothing else (agent review round 1, R1-1). The
+	   row is a <button> inside <li data-sidebar-row="team-bridge"> that calls
+	   navigate(); its sibling ellipsis (data-sidebar-row-menu) opens a menu, so it
+	   is excluded. There is deliberately NO label/href heuristic and NO hash
+	   fallback: the old lookup matched nothing in the app (the row is not an <a>,
+	   its text carries the unread badge) and every open silently became a hash
+	   assignment reported beside a "click". A missing row now fails the step. */
 	probe.navControl = () =>
-		document.querySelector('a[href="#/team-bridge"]') ??
-		[...document.querySelectorAll("nav a, nav button, aside a, aside button, a, button")].find((node) =>
-			/^\\s*team bridge\\s*$/i.test(node.getAttribute("aria-label") || node.textContent || ""));
+		document.querySelector('[data-sidebar-row="team-bridge"] button:not([data-sidebar-row-menu])');
+	/* Team Bridge defaults into the sidebar's More fold, whose rows exist in the
+	   DOM only while More is revealed. Pressing More is setup, so the scene calls
+	   this OUTSIDE the timed window and waits two frames for the fold to render;
+	   the press persists the fold open, so later opens find the row directly. */
+	probe.revealNav = () => new Promise((resolveReveal) => {
+		if (probe.navControl()) return resolveReveal({ ok: true, via: "already-visible" });
+		const more = document.querySelector("[data-sidebar-more]");
+		if (!more) return resolveReveal({ ok: false, via: "no-more-control" });
+		if (more.getAttribute("aria-expanded") !== "true") probe.press(more);
+		requestAnimationFrame(() => requestAnimationFrame(() =>
+			resolveReveal({ ok: !!probe.navControl(), via: "more-fold" })));
+	});
 	probe.run = (spec) => new Promise((resolveRun) => {
 		const { mode, conversationId, expectRail, newest, timeoutMs } = spec;
 		const target = conversationId ? { suffix: conversationId.slice(-6), newest } : null;
@@ -299,16 +399,16 @@ export const INSTANT_PROBE = `(() => {
 		let dispatch = "none";
 		if (mode === "open") {
 			element = probe.navControl();
-			dispatch = element ? "nav-click" : "hash";
+			dispatch = element ? "nav-click" : "missing-nav-row";
 		} else {
 			element = document.querySelector('[data-conversation-id="' + conversationId + '"]');
 			dispatch = element ? "rail-click" : "missing-row";
 		}
+		if (!element)
+			return resolveRun({ ok: false, dispatch, reason: mode === "open" ? "Team Bridge sidebar row not rendered" : "rail row not rendered", frames: 0, loadingFrames: 0, usableMs: null });
 		const frames = [];
 		const t0 = performance.now();
-		if (element) probe.press(element);
-		else if (mode === "open") window.location.hash = "#/team-bridge";
-		else return resolveRun({ ok: false, dispatch, reason: "rail row not rendered", frames: 0, loadingFrames: 0, usableMs: null });
+		const { hit } = probe.press(element);
 		const usable = (s) => {
 			if (s.loading) return false;
 			if (mode === "open") {
@@ -327,6 +427,10 @@ export const INSTANT_PROBE = `(() => {
 					resolveRun({
 						ok: true,
 						dispatch,
+						hit,
+						/* The detecting frame's own time (R1-7): usableMs adds the two
+						   rAFs that prove the frame was presented, so the margin shows. */
+						detectedMs: Math.round(t * 10) / 10,
 						usableMs: Math.round((performance.now() - t0) * 10) / 10,
 						frames: frames.length,
 						loadingFrames: frames.filter((f) => f.loading).length,
@@ -339,7 +443,7 @@ export const INSTANT_PROBE = `(() => {
 				return;
 			}
 			if (t > timeoutMs) {
-				resolveRun({ ok: false, dispatch, usableMs: null, reason: "no usable frame within " + timeoutMs + " ms", frames: frames.length, loadingFrames: frames.filter((f) => f.loading).length, last: s });
+				resolveRun({ ok: false, dispatch, hit, usableMs: null, reason: "no usable frame within " + timeoutMs + " ms", frames: frames.length, loadingFrames: frames.filter((f) => f.loading).length, last: s });
 				return;
 			}
 			requestAnimationFrame(tick);
@@ -372,7 +476,8 @@ async function waitQuiet(stub, quietMs = 1_000, timeoutMs = 15_000) {
 
 /**
  * Drive the scene. `evaluate` is the bench's CDP evaluate (awaitPromise),
- * `shot(name, {settled})` writes a PNG and returns its path.
+ * `shot(name, {settled})` writes a PNG and returns its record
+ * (`makeInstantShot`: path, settled, loading before/after capture).
  */
 export async function runInstantLoad({
 	evaluate,
@@ -385,15 +490,36 @@ export async function runInstantLoad({
 }) {
 	const newestHex = INSTANT_MESSAGES.toString(16).padStart(6, "0");
 	const measureStep = async (spec) => {
+		/*
+		 * Setup OUTSIDE the timed window (R1-1): an open needs the real sidebar
+		 * row on screen, which may mean pressing More first. If it cannot be
+		 * revealed the step still runs and fails as `missing-nav-row`; there is no
+		 * hash fallback that could be mistaken for a click.
+		 */
+		const reveal =
+			spec.mode === "open"
+				? await evaluate("window.__tbInstant.revealNav()")
+				: null;
 		const before = stub.seen();
+		const answeredBefore = stub.answered();
 		const result = await evaluate(
 			`window.__tbInstant.run(${JSON.stringify({ timeoutMs: 10_000, expectRail: plan.length, newest: newestHex, ...spec })})`,
 		);
+		const answeredAtUsable = stub.answered();
 		// The window's requests include the ones still in flight at "usable", so
 		// give the wire one latency's worth of time before reading the counts.
 		await sleep(Math.max(...Object.values(latency)) + 50);
-		return { ...result, requests: routeCountsBetween(before, stub.seen()) };
+		return {
+			...result,
+			...(reveal ? { reveal } : {}),
+			...splitReads({
+				issued: routeCountsBetween(before, stub.seen()),
+				answeredByUsable: routeCountsBetween(answeredBefore, answeredAtUsable),
+			}),
+		};
 	};
+	// Leaving is setup, not measurement: a hash assignment is fine HERE because
+	// nothing is timed until the next open presses the real sidebar row.
 	const leave = async () => {
 		await evaluate(`(() => { window.location.hash = "#/"; return true; })()`);
 		await sleep(400);
@@ -480,10 +606,15 @@ export async function runInstantLoad({
 
 	const checks = instantChecks({ firstOpen, warmOpens, switches });
 	const firstVisits = switches.filter((s) => s.phase === "first-visit");
+	const warm = switches.filter((s) => s.phase === "warm");
 	return {
 		scenario: "instant-load",
 		evidence:
 			"SYNTHETIC BACKEND: real built renderer + main over the bench stub daemon with fixed per-route latencies; not live-hub end-to-end, not the installed .app",
+		input: INSTANT_INPUT_LABEL,
+		// QA N2: a miss under heavy contention reads differently from one on an
+		// idle machine, so the run carries the load it was taken under.
+		host: { loadavg: loadavg(), cpus: cpus().length },
 		latencyMs: latency,
 		fixture: {
 			conversations: plan.length,
@@ -494,6 +625,17 @@ export async function runInstantLoad({
 		targetMs: INSTANT_TARGET_MS,
 		summary: {
 			firstOpenMs: firstOpen.usableMs,
+			dispatch: {
+				opens: countBy([firstOpen, ...warmOpens].map((s) => s.dispatch)),
+				switches: countBy(switches.map((s) => s.dispatch)),
+				missedHitTest: [firstOpen, ...warmOpens, ...switches].filter(
+					(s) => s.hit === false,
+				).length,
+			},
+			warmSwitchBackgroundRefetches: warm.reduce(
+				(sum, s) => sum + (s.backgroundReads?.messages ?? 0),
+				0,
+			),
 			warmOpen: stats(warmOpens.map((o) => o.usableMs)),
 			firstVisitPrefetched: stats(
 				firstVisits.filter((s) => s.prefetched).map((s) => s.usableMs),
@@ -524,4 +666,160 @@ export async function runInstantLoad({
 		shots,
 		checks,
 	};
+}
+
+/** `{value: count}` for a list of labels (dispatch kinds in the summary). */
+export function countBy(values) {
+	const counts = {};
+	for (const value of values) {
+		const key = String(value ?? "none");
+		counts[key] = (counts[key] ?? 0) + 1;
+	}
+	return counts;
+}
+
+/**
+ * A run-unique directory under the `--shots` base (R1-4). Fixed file names in a
+ * persistent directory let an aborted run leave the previous run's frames in
+ * place looking current; a per-run subdirectory makes that impossible without
+ * deleting anything the operator put there.
+ */
+export function instantShotDir(base, now = new Date(), pid = process.pid) {
+	const stamp = now.toISOString().replace(/[:.]/g, "-");
+	return join(resolve(base), `run-${stamp}-${pid}`);
+}
+
+/**
+ * The scene's screenshot writer, with its dependencies injected so the record
+ * it returns is unit-tested (R1-4). Every shot carries its OWN evidence: whether
+ * the probe saw a loading placeholder immediately before and after the capture.
+ * A frame labelled "loading" whose record says `loading.before === false` is a
+ * mislabel the reader can see, instead of a PNG that merely has the right name.
+ */
+export function makeInstantShot({ dir, settle, capture, loadingNow, write }) {
+	return async (name, { settled }) => {
+		if (settled) await settle();
+		const before = await loadingNow();
+		const png = await capture();
+		const after = await loadingNow();
+		const path = join(dir, `${name}.png`);
+		write(path, png);
+		return {
+			path,
+			settled,
+			loading: { before: before === true, after: after === true },
+		};
+	};
+}
+
+const ms = (value) => (typeof value === "number" ? `${value}ms` : "?");
+const statLine = (s) =>
+	s && s.n > 0
+		? `n=${s.n} median=${ms(s.median)} max=${ms(s.max)} min=${ms(s.min)}`
+		: "n=0 (no samples)";
+
+/**
+ * The stderr summary for this scenario (R1-5). The bench's generic line reads
+ * `firstRow`/`settled`/`rows`, which this scene does not produce, so it printed
+ * `rows=undefined` and none of the numbers a reader would quote.
+ */
+export function instantSummaryLines(result) {
+	const s = result.summary ?? {};
+	const shots = Object.entries(result.shots ?? {});
+	const lines = [
+		`  instant-load · target <${result.targetMs ?? INSTANT_TARGET_MS}ms · ${result.evidence ?? ""}`,
+		`    input: ${result.input ?? INSTANT_INPUT_LABEL}`,
+		`    first open: ${ms(s.firstOpenMs)} (dispatch=${result.firstOpen?.dispatch ?? "?"}, loading frames=${result.firstOpen?.loadingFrames ?? "?"})`,
+		`    warm open:   ${statLine(s.warmOpen)}`,
+		`    warm switch: ${statLine(s.warmSwitch)} · background refetches=${s.warmSwitchBackgroundRefetches ?? "?"}`,
+		`    first visit prefetched: ${statLine(s.firstVisitPrefetched)}`,
+		`    first visit never-prefetched (control): ${statLine(s.firstVisitNeverPrefetched_control)}`,
+		`    dispatch: opens ${JSON.stringify(s.dispatch?.opens ?? {})} switches ${JSON.stringify(s.dispatch?.switches ?? {})} missed-hit-test=${s.dispatch?.missedHitTest ?? "?"}`,
+	];
+	if (result.host)
+		lines.push(
+			`    host: loadavg=${result.host.loadavg.map((v) => v.toFixed(1)).join("/")} cpus=${result.host.cpus}`,
+		);
+	for (const [label, shot] of shots)
+		lines.push(
+			`    shot ${label}: ${shot.path} (loading at capture: ${shot.loading?.before ? "yes" : "no"}/${shot.loading?.after ? "yes" : "no"})`,
+		);
+	return lines;
+}
+
+/**
+ * Setup preflight, run BEFORE the build (QA round 1, B1). The build's config
+ * loader throws on a missing variable before compiling anything, and that
+ * failure used to be the first thing a lane saw - indistinguishable at a glance
+ * from "the app under test is broken". This names each prerequisite and fails
+ * closed. Variable NAMES are derived from the plugins (`check-build-env.mjs`),
+ * never copied; their VALUES are never printed or read from a `.env`.
+ */
+export function buildPreflight({ root, env = process.env }) {
+	const at = (...parts) => join(root, ...parts);
+	const sha = (path) =>
+		createHash("sha256").update(readFileSync(path)).digest("hex");
+	const checks = [];
+	const electronVite = at("node_modules", ".bin", "electron-vite");
+	checks.push({
+		name: "dependency tree present (node_modules/.bin/electron-vite)",
+		ok: existsSync(electronVite),
+	});
+	checks.push({
+		name: "Electron binary installed (node_modules/electron/dist)",
+		ok: existsSync(at("node_modules", "electron", "dist")),
+	});
+	/* A tree linked from another worktree must match THIS lockfile, or the build
+	   measures a different dependency set (pnpm writes the lockfile it installed
+	   to node_modules/.pnpm/lock.yaml). */
+	const installed = at("node_modules", ".pnpm", "lock.yaml");
+	const wanted = at("pnpm-lock.yaml");
+	checks.push({
+		name: "installed dependency lock matches pnpm-lock.yaml",
+		ok:
+			existsSync(installed) && existsSync(wanted)
+				? sha(installed) === sha(wanted)
+				: false,
+	});
+	let names = [];
+	try {
+		names = requiredBuildEnv(
+			defaultVitePlugins(
+				at("electron.vite.config.js"),
+				at("scripts", "vite-plugins"),
+			),
+		);
+	} catch (error) {
+		checks.push({
+			name: `required build variables derivable (${error.message})`,
+			ok: false,
+		});
+	}
+	for (const name of names)
+		checks.push({
+			name: `build variable ${name} is set (an inert placeholder is enough)`,
+			ok: typeof env[name] === "string" && env[name].trim() !== "",
+		});
+	return { ok: checks.every((c) => c.ok), checks, requiredEnv: names };
+}
+
+if (isEntryPoint(import.meta.url)) {
+	const argv = process.argv.slice(2);
+	if (!argv.includes("--preflight")) {
+		process.stderr.write(
+			"usage: node scripts/team-bridge-instant-load.mjs --preflight [--root DIR]\n(the scene itself runs through scripts/team-bridge-bench.mjs --scenario=instant-load)\n",
+		);
+		process.exit(2);
+	}
+	const rootIndex = argv.indexOf("--root");
+	const root = resolve(rootIndex >= 0 ? argv[rootIndex + 1] : process.cwd());
+	const result = buildPreflight({ root });
+	for (const check of result.checks)
+		process.stderr.write(`${check.ok ? "ok  " : "FAIL"} ${check.name}\n`);
+	process.stderr.write(
+		result.ok
+			? `preflight ok: ${root}\n`
+			: `preflight FAILED (setup, not an app result): ${root}\n`,
+	);
+	process.exit(result.ok ? 0 : 1);
 }

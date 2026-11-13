@@ -125,7 +125,10 @@ import { isEntryPoint } from "./entry-point.mjs";
 import {
 	INSTANT_MESSAGES,
 	instantConversationPlan,
+	instantShotDir,
+	instantSummaryLines,
 	latencyRouteOf,
+	makeInstantShot,
 	parseLatency,
 	runInstantLoad,
 } from "./team-bridge-instant-load.mjs";
@@ -670,8 +673,14 @@ function startStub(fixture, recordsDir) {
 	let claims = 0;
 	const unknown = [];
 	const seen = new Map();
+	/* Requests by the moment they were ANSWERED, beside `seen` (arrival), so
+	   `instant-load` can tell a read the page waited on from a revalidation
+	   still in flight when the page was already usable (R1-2). */
+	const answered = new Map();
 
 	const count = (key) => seen.set(key, (seen.get(key) ?? 0) + 1);
+	const countAnswered = (key) =>
+		answered.set(key, (answered.get(key) ?? 0) + 1);
 
 	const status = {
 		capability: 1,
@@ -718,12 +727,17 @@ function startStub(fixture, recordsDir) {
 			new URL(request.url ?? "/", "http://127.0.0.1").pathname,
 		);
 		const delay = LATENCY && bucket ? (LATENCY[bucket] ?? 0) : 0;
+		const url = new URL(request.url ?? "/", "http://127.0.0.1");
+		const key = `${request.method} ${url.pathname}${url.search || ""}`;
 		if (delay > 0) {
-			const url = new URL(request.url ?? "/", "http://127.0.0.1");
-			count(`${request.method} ${url.pathname}${url.search || ""}`);
-			setTimeout(() => handler(request, response, true), delay);
+			count(key);
+			setTimeout(() => {
+				countAnswered(key);
+				handler(request, response, true);
+			}, delay);
 			return;
 		}
+		countAnswered(key);
 		handler(request, response, false);
 	};
 
@@ -926,7 +940,7 @@ function startStub(fixture, recordsDir) {
 			const before = url.searchParams.get("before_seq");
 			const after = url.searchParams.get("after_seq");
 			/* The replay's own timeline on stderr: when each newest-page read arrived
-		   and what it was answered, which is the retry cadence the app chose. */
+			   and what it was answered, which is the retry cadence the app chose. */
 			const replayLog = (status) =>
 				process.stderr.write(
 					`[history-429] t=${Math.round(performance.now())}ms ${conversationId} ${status}\n`,
@@ -1113,6 +1127,7 @@ function startStub(fixture, recordsDir) {
 				claims: () => claims,
 				unknown: () => [...unknown],
 				seen: () => [...seen.entries()],
+				answered: () => [...answered.entries()],
 				/** Requests whose `METHOD path?query` matches, counted or filtered. */
 				total: (pattern) =>
 					[...seen.entries()]
@@ -1205,7 +1220,7 @@ function allowStubOrigin(stubPort) {
 	const file = join(ROOT, "out", "renderer", "index.html");
 	if (!existsSync(file))
 		throw new Error(
-			`no build at ${file} - run the build in ${ROOT} first (this rig measures the built app, never source)`,
+			`no build at ${file} - run the build in ${ROOT} first (this rig measures the built app, never source; the build needs four VITE_* variables - see the run recipe in scripts/team-bridge-instant-load.mjs and its --preflight)`,
 		);
 	const html = readFileSync(file, "utf8");
 	/*
@@ -1585,20 +1600,27 @@ async function waitForShell(evaluate, stub, timeoutMs = 90_000) {
  * bench's own `settleFrame`) or deliberately un-settled for a loading frame. */
 function instantShot(client) {
 	// Under the scratch ROOT, not the per-run scratch: that one is deleted on reap
-	// and the frames must outlive the run.
-	const dir = resolve(SHOTS_DIR ?? join(SCRATCH_ROOT, "instant-load-shots"));
+	// and the frames must outlive the run. A run-unique subdirectory (R1-4) so a
+	// stale frame from an earlier run can never be read as this run's.
+	const dir = instantShotDir(
+		SHOTS_DIR ?? join(SCRATCH_ROOT, "instant-load-shots"),
+	);
 	mkdirSync(dir, { recursive: true });
-	return async (name, { settled }) => {
-		if (settled) await settleFrame(client.evaluate);
-		const { data } = await client.send("Page.captureScreenshot", {
-			format: "png",
-			fromSurface: true,
-			captureBeyondViewport: false,
-		});
-		const path = join(dir, `${name}.png`);
-		writeFileSync(path, Buffer.from(data, "base64"));
-		return path;
-	};
+	return makeInstantShot({
+		dir,
+		settle: () => settleFrame(client.evaluate),
+		capture: async () => {
+			const { data } = await client.send("Page.captureScreenshot", {
+				format: "png",
+				fromSurface: true,
+				captureBeyondViewport: false,
+			});
+			return Buffer.from(data, "base64");
+		},
+		loadingNow: () =>
+			client.evaluate("window.__tbInstant?.loadingNow?.() === true"),
+		write: (path, png) => writeFileSync(path, png),
+	});
 }
 
 /* ---------------------------------------------------------------- the scenarios */
@@ -2806,6 +2828,13 @@ export async function main() {
 	// The PROJECTION carries `aggregate`; the raw run objects do not.
 	for (const run of report.runs) {
 		const result = run.result;
+		// R1-5: this scene has no firstRow/settled/rows; print its own numbers.
+		if (result.scenario === "instant-load") {
+			lines.push(...instantSummaryLines(result));
+			for (const check of result.checks ?? [])
+				if (!check.ok) lines.push(`    FAILED (${check.kind}): ${check.name}`);
+			continue;
+		}
 		lines.push(
 			`  messages=${run.messageCount}  firstRow=${fmt(result.firstRowMs)}ms  settled=${fmt(result.settledMs)}ms  rows=${result.rows}  dom=${run.domNodes}  history-reads=${result.messageRequests ?? "?"}${result.settledMs === null ? `  (NO SETTLE: ${result.settledReason ?? "timed out"})` : ""}`,
 		);

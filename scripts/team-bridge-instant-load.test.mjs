@@ -1,18 +1,26 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
+import { runInNewContext } from "node:vm";
 import {
+	INSTANT_INPUT_LABEL,
 	INSTANT_LATENCY_DEFAULTS,
+	INSTANT_PROBE,
 	PREFETCH_RECENT,
+	buildPreflight,
 	instantChecks,
 	instantConversationPlan,
+	instantShotDir,
+	instantSummaryLines,
 	latencyRouteOf,
+	makeInstantShot,
 	newestMessageId,
 	parseLatency,
 	routeCountsBetween,
+	splitReads,
 	stats,
 } from "./team-bridge-instant-load.mjs";
 
@@ -119,20 +127,29 @@ test("stats: median of even/odd sets, nulls dropped, empty is null", () => {
 
 const step = (overrides = {}) => ({
 	ok: true,
+	dispatch: "rail-click",
 	usableMs: 40,
 	loadingFrames: 0,
 	requests: { messages: 0 },
+	blockingReads: { messages: 0 },
+	backgroundReads: { messages: 0 },
 	...overrides,
 });
+const open = (overrides = {}) => step({ dispatch: "nav-click", ...overrides });
 const healthyRun = () => ({
-	firstOpen: step({ usableMs: 250, loadingFrames: 6 }),
-	warmOpens: Array.from({ length: 10 }, () => step({ usableMs: 60 })),
+	firstOpen: open({ usableMs: 250, loadingFrames: 6 }),
+	warmOpens: Array.from({ length: 10 }, () => open({ usableMs: 60 })),
 	switches: [
 		{ phase: "first-visit", prefetched: true, ...step() },
 		{
 			phase: "first-visit",
 			prefetched: false,
-			...step({ usableMs: 190, loadingFrames: 9, requests: { messages: 1 } }),
+			...step({
+				usableMs: 190,
+				loadingFrames: 9,
+				requests: { messages: 1 },
+				blockingReads: { messages: 1 },
+			}),
 		},
 		...Array.from({ length: 10 }, () => ({
 			phase: "warm",
@@ -172,9 +189,10 @@ test("fewer than 10 warm samples, a refetching warm switch, or a slow open each 
 
 	const refetch = healthyRun();
 	refetch.switches.at(-1).requests.messages = 1;
+	refetch.switches.at(-1).blockingReads.messages = 1;
 	refetch.switches.at(-1).loadingFrames = 2;
 	assert.deepEqual(failing(instantChecks(refetch)), [
-		"integrity: warm switches issued no /messages read (served from the query cache)",
+		"integrity: warm switches waited on no /messages read (painted from the query cache; background revalidations allowed)",
 		"target: warm switches painted no loading frame",
 	]);
 
@@ -233,4 +251,279 @@ test("the control's prefetch window mirrors the app's own constant", async () =>
 	);
 	assert.ok(match, "TEAM_BRIDGE_PREFETCH_RECENT not found");
 	assert.equal(Number(match[1]), PREFETCH_RECENT);
+});
+
+test("R1-1: an open that was not a nav-click, or a switch that was not a rail-click, fails integrity", () => {
+	const hashed = healthyRun();
+	hashed.warmOpens[4].dispatch = "hash";
+	assert.deepEqual(failing(instantChecks(hashed)), [
+		"integrity: every open was a nav-click on the sidebar row and every switch a rail-click",
+	]);
+	const missing = healthyRun();
+	missing.firstOpen = open({ dispatch: "missing-nav-row" });
+	assert.match(failing(instantChecks(missing)).join("\n"), /nav-click/);
+	const noRow = healthyRun();
+	noRow.switches[0].dispatch = "missing-row";
+	assert.match(failing(instantChecks(noRow)).join("\n"), /rail-click/);
+});
+
+test("R1-2: a background revalidation on a warm switch is recorded, not counted as a wait", () => {
+	assert.deepEqual(
+		splitReads({
+			issued: { messages: 1, unread: 2 },
+			answeredByUsable: { messages: 0, unread: 1 },
+		}),
+		{
+			requests: { messages: 1, unread: 2 },
+			blockingReads: { messages: 0, unread: 1 },
+			backgroundReads: { messages: 1, unread: 1 },
+		},
+	);
+	const run = healthyRun();
+	Object.assign(run.switches.at(-1), {
+		requests: { messages: 1 },
+		blockingReads: { messages: 0 },
+		backgroundReads: { messages: 1 },
+	});
+	assert.deepEqual(failing(instantChecks(run)), []);
+	// Missing accounting fails closed rather than passing.
+	const blind = healthyRun();
+	blind.switches.at(-1).blockingReads = undefined;
+	assert.match(failing(instantChecks(blind)).join("\n"), /waited on no/);
+});
+
+/**
+ * A minimal DOM for the in-page probe, enough to run its open path in a vm:
+ * the sidebar row (optionally folded under More) and recorded dispatches.
+ */
+function fakePage({ rowVisible, moreExpanded = false }) {
+	const events = [];
+	const state = { rowVisible, hash: "#/" };
+	const element = (name, attrs = {}) => ({
+		name,
+		getAttribute: (key) => attrs[key] ?? null,
+		getBoundingClientRect: () => ({ x: 10, y: 10, width: 100, height: 24 }),
+		contains: (other) => other === null,
+		dispatchEvent: (event) => events.push(`${name}:${event.type}`),
+	});
+	const row = element("team-bridge-row");
+	const more = element("more", {
+		"aria-expanded": moreExpanded ? "true" : "false",
+	});
+	more.dispatchEvent = (event) => {
+		events.push(`more:${event.type}`);
+		if (event.type === "click") state.rowVisible = true;
+	};
+	const document = {
+		querySelector: (selector) => {
+			if (selector.includes('data-sidebar-row="team-bridge"'))
+				return state.rowVisible ? row : null;
+			if (selector === "[data-sidebar-more]") return more;
+			return null;
+		},
+		querySelectorAll: () => [],
+		elementFromPoint: () => row,
+	};
+	class Ev {
+		constructor(type) {
+			this.type = type;
+		}
+	}
+	const window = {
+		location: {
+			get hash() {
+				return state.hash;
+			},
+			set hash(value) {
+				state.hash = value;
+			},
+		},
+	};
+	const context = {
+		window,
+		document,
+		PointerEvent: Ev,
+		MouseEvent: Ev,
+		performance: { now: () => 0 },
+		requestAnimationFrame: (fn) => setImmediate(fn),
+	};
+	runInNewContext(INSTANT_PROBE, context);
+	return { probe: window.__tbInstant, events, state };
+}
+
+test("R1-1: the probe never falls back to a hash navigation when the sidebar row is missing", async () => {
+	const page = fakePage({ rowVisible: false });
+	const result = await page.probe.run({
+		mode: "open",
+		expectRail: 16,
+		newest: "000032",
+		timeoutMs: 50,
+	});
+	assert.equal(result.ok, false);
+	assert.equal(result.dispatch, "missing-nav-row");
+	assert.equal(page.state.hash, "#/", "no hash fallback");
+	assert.deepEqual(page.events, []);
+});
+
+test("R1-1: revealNav opens More (setup), then the open presses the real sidebar row", async () => {
+	const page = fakePage({ rowVisible: false });
+	// The probe's objects come from the vm realm; compare their JSON shape.
+	assert.deepEqual(JSON.parse(JSON.stringify(await page.probe.revealNav())), {
+		ok: true,
+		via: "more-fold",
+	});
+	assert.ok(page.events.includes("more:click"));
+	page.events.length = 0;
+	const result = await page.probe.run({
+		mode: "open",
+		expectRail: 16,
+		newest: "000032",
+		timeoutMs: -1,
+	});
+	assert.equal(result.dispatch, "nav-click");
+	assert.equal(result.hit, true);
+	assert.deepEqual(page.events, [
+		"team-bridge-row:pointerdown",
+		"team-bridge-row:mousedown",
+		"team-bridge-row:pointerup",
+		"team-bridge-row:mouseup",
+		"team-bridge-row:click",
+	]);
+	assert.equal(page.state.hash, "#/");
+	// An already-expanded More is not toggled shut by a second reveal.
+	const open = fakePage({ rowVisible: false, moreExpanded: true });
+	await open.probe.revealNav();
+	assert.ok(!open.events.includes("more:click"));
+});
+
+test("R1-5: the summary prints the scene's numbers, never undefined", () => {
+	const lines = instantSummaryLines({
+		scenario: "instant-load",
+		targetMs: 300,
+		evidence: "SYNTHETIC BACKEND",
+		input: INSTANT_INPUT_LABEL,
+		host: { loadavg: [3.21, 2, 1], cpus: 14 },
+		firstOpen: { dispatch: "nav-click", loadingFrames: 4 },
+		summary: {
+			firstOpenMs: 212.4,
+			dispatch: {
+				opens: { "nav-click": 11 },
+				switches: { "rail-click": 26 },
+				missedHitTest: 0,
+			},
+			warmSwitchBackgroundRefetches: 2,
+			warmOpen: { n: 10, median: 60, max: 80, min: 50 },
+			warmSwitch: { n: 12, median: 30, max: 45, min: 20 },
+			firstVisitPrefetched: { n: 7, median: 35, max: 40, min: 30 },
+			firstVisitNeverPrefetched_control: {
+				n: 7,
+				median: 190,
+				max: 220,
+				min: 170,
+			},
+		},
+		shots: {
+			controlLoading: {
+				path: "/x/run-1/06.png",
+				loading: { before: true, after: true },
+			},
+		},
+	});
+	const text = lines.join("\n");
+	assert.doesNotMatch(text, /undefined/);
+	assert.match(text, /first open: 212.4ms \(dispatch=nav-click/);
+	assert.match(text, /warm switch: n=12 median=30ms max=45ms/);
+	assert.match(text, /background refetches=2/);
+	assert.match(text, /synthetic in-page DOM dispatch/);
+	assert.match(text, /"nav-click":11/);
+	assert.match(text, /06\.png \(loading at capture: yes\/yes\)/);
+	assert.match(text, /loadavg=3\.2\/2\.0\/1\.0 cpus=14/);
+});
+
+test("R1-4: every shot records whether loading was on screen, in a run-unique dir", async () => {
+	const a = instantShotDir("/base", new Date("2026-11-12T10:00:00.000Z"), 7);
+	const b = instantShotDir("/base", new Date("2026-11-12T10:00:00.001Z"), 7);
+	assert.equal(a, "/base/run-2026-11-12T10-00-00-000Z-7");
+	assert.notEqual(a, b);
+	const written = [];
+	const reads = [true, false];
+	let settles = 0;
+	const shot = makeInstantShot({
+		dir: a,
+		settle: async () => {
+			settles += 1;
+		},
+		capture: async () => "png",
+		loadingNow: async () => reads.shift(),
+		write: (path, png) => written.push([path, png]),
+	});
+	assert.deepEqual(
+		await shot("06-control-loading-unsettled", { settled: false }),
+		{
+			path: `${a}/06-control-loading-unsettled.png`,
+			settled: false,
+			loading: { before: true, after: false },
+		},
+	);
+	assert.equal(settles, 0, "an unsettled shot does not wait for settle");
+	assert.deepEqual(written, [[`${a}/06-control-loading-unsettled.png`, "png"]]);
+});
+
+test("QA B1: the preflight names a missing build variable or dependency as SETUP, without values", () => {
+	const root = mkdtempSync(join(tmpdir(), "tb-preflight-"));
+	try {
+		cpSync(
+			join(process.cwd(), "electron.vite.config.js"),
+			join(root, "electron.vite.config.js"),
+		);
+		cpSync(
+			join(process.cwd(), "scripts", "vite-plugins"),
+			join(root, "scripts", "vite-plugins"),
+			{ recursive: true },
+		);
+		const env = {
+			VITE_GOOGLE_CLIENT_ID: "SENTINEL-VALUE-7f3a",
+			VITE_GOOGLE_CLIENT_SECRET: "SENTINEL-VALUE-7f3a",
+			VITE_MICROSOFT_CLIENT_ID: "SENTINEL-VALUE-7f3a",
+			VITE_MICROSOFT_TENANT_ID: "",
+		};
+		const bare = buildPreflight({ root, env });
+		assert.equal(bare.ok, false);
+		assert.deepEqual(bare.requiredEnv.toSorted(), Object.keys(env).toSorted());
+		const failed = bare.checks.filter((c) => !c.ok).map((c) => c.name);
+		assert.ok(failed.some((n) => /dependency tree present/.test(n)));
+		assert.ok(failed.some((n) => /lock matches/.test(n)));
+		assert.ok(failed.some((n) => /VITE_MICROSOFT_TENANT_ID/.test(n)));
+		assert.ok(!failed.some((n) => /VITE_GOOGLE_CLIENT_ID/.test(n)));
+		assert.doesNotMatch(
+			JSON.stringify(bare),
+			/SENTINEL-VALUE/,
+			"values never surface",
+		);
+
+		mkdirSync(join(root, "node_modules", ".bin"), { recursive: true });
+		mkdirSync(join(root, "node_modules", ".pnpm"), { recursive: true });
+		mkdirSync(join(root, "node_modules", "electron", "dist"), {
+			recursive: true,
+		});
+		writeFileSync(join(root, "node_modules", ".bin", "electron-vite"), "");
+		writeFileSync(join(root, "pnpm-lock.yaml"), "lock: a\n");
+		writeFileSync(
+			join(root, "node_modules", ".pnpm", "lock.yaml"),
+			"lock: b\n",
+		);
+		env.VITE_MICROSOFT_TENANT_ID = "SENTINEL-VALUE-7f3a";
+		const mismatched = buildPreflight({ root, env });
+		assert.deepEqual(
+			mismatched.checks.filter((c) => !c.ok).map((c) => c.name),
+			["installed dependency lock matches pnpm-lock.yaml"],
+		);
+		writeFileSync(
+			join(root, "node_modules", ".pnpm", "lock.yaml"),
+			"lock: a\n",
+		);
+		assert.equal(buildPreflight({ root, env }).ok, true);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
 });
