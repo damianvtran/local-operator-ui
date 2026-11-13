@@ -1225,18 +1225,54 @@ export const CASES = {
 				const deadline = Date.now() + timeoutMs;
 				let state = await read();
 				while (!predicate(state)) {
-					if (Date.now() > deadline) return state;
+					/*
+					 * THE BOUND IS REPORTED, NOT HIDDEN (review round 2, finding 3): returning the
+					 * last reading silently made a key that never arrived indistinguishable from
+					 * one that settled, so the failing assertion blamed the product without saying
+					 * the measurement itself had given up.
+					 */
+					if (Date.now() > deadline) return { ...state, settled: false };
 					await pause(120);
 					state = await read();
 				}
-				return state;
+				return { ...state, settled: true };
+			};
+			/*
+			 * THE NEXT KEY IS PRESSED ON A STILL SCROLLER. Chromium animates keyboard scrolling
+			 * (measured), and a key delivered while that animation is in flight is DROPPED rather
+			 * than queued: `End` after a PageDown landed short of the maximum on 1 of 24 measured
+			 * runs at 440x700, on the base build too, and re-pressing on a still scroller landed it
+			 * every time. Waiting for the list's reading (and the card's own scrollers') to hold
+			 * still across two polls bounds that race; it cannot mask a real shortfall, because a
+			 * key that lands short once everything is still fails exactly as before.
+			 */
+			const QUIET_POLLS = 2;
+			const QUIET_WINDOW_MS = 700;
+			const awaitQuiet = async (timeoutMs = QUIET_WINDOW_MS) => {
+				const deadline = Date.now() + timeoutMs;
+				let last = await read();
+				let steady = 0;
+				while (Date.now() < deadline) {
+					await pause(120);
+					const next = await read();
+					if (!next.list) return { ...next, quiet: false };
+					const moved =
+						next.list.scrollTop !== last.list.scrollTop ||
+						(next.body?.scrollTop ?? 0) !== (last.body?.scrollTop ?? 0) ||
+						(next.options?.scrollTop ?? 0) !== (last.options?.scrollTop ?? 0);
+					last = next;
+					steady = moved ? 0 : steady + 1;
+					if (steady >= QUIET_POLLS) return { ...last, quiet: true };
+				}
+				return { ...last, quiet: false };
 			};
 			const pressAndSettle = async (names, predicate) => {
 				await keyPress(names);
+				await awaitQuiet();
 				return settle(predicate);
 			};
 			const keyPress = async (names) => {
-				for (const name of names) {
+				for (const [index, name] of names.entries()) {
 					await cdp.send("Input.dispatchKeyEvent", {
 						type: "rawKeyDown",
 						...KEYS[name],
@@ -1246,6 +1282,8 @@ export const CASES = {
 						...KEYS[name],
 					});
 					await pause(180);
+					/* BETWEEN SEVERAL PRESSES OF ONE GESTURE, EACH ONE HAS TO LAND. */
+					if (index < names.length - 1) await awaitQuiet();
 				}
 			};
 			/*
@@ -1393,10 +1431,24 @@ export const CASES = {
 					["PageDown", "PageDown"],
 					(state) => state.list.scrollTop > 0,
 				);
-				const afterEnd = await pressAndSettle(
-					["End"],
-					(state) => Math.abs(state.list.scrollTop - state.list.max) <= 1,
-				);
+				/*
+				 * END IS READ AGAINST THE MAXIMUM FROM ITS OWN READING, and on the candidate leg a
+				 * short landing gets ONE re-press that is recorded in the summary
+				 * (`keys.endRetried`), never hidden. Both exist because the assertion used to compare
+				 * this reading with the maximum taken before any key was pressed: the list's
+				 * scrollable height is not constant across a run (a reflow changes it), so that pair
+				 * could disagree even when End had reached the maximum of its own reading - and a key
+				 * pressed while the previous scroll was still animating could be dropped. A retry
+				 * that still falls short fails the assertion below, and the control leg has no End
+				 * claim to retry for: its list is not a keyboard stop at all.
+				 */
+				const atListEnd = (state) =>
+					Math.abs(state.list.scrollTop - state.list.max) <= 1;
+				const afterEndFirst = await pressAndSettle(["End"], atListEnd);
+				const afterEnd =
+					kind === "candidate" && afterEndFirst.settled === false
+						? { ...(await pressAndSettle(["End"], atListEnd)), retried: true }
+						: { ...afterEndFirst, retried: false };
 				const afterHome = await pressAndSettle(
 					["Home"],
 					(state) => state.list.scrollTop === 0,
@@ -1492,6 +1544,7 @@ export const CASES = {
 						list: {
 							client: entry.open.list.client,
 							max: entry.open.list.max,
+							scrollTop: entry.open.list.scrollTop,
 							tabIndex: entry.open.list.tabIndex,
 							role: entry.open.list.role,
 							name: entry.open.list.name,
@@ -1530,6 +1583,11 @@ export const CASES = {
 							bodyFocus: entry.keys.bodyFocus,
 							pageDown: entry.keys.afterPageDown.list.scrollTop,
 							end: entry.keys.afterEnd.list.scrollTop,
+							/* THE SAME READ AS `end`, so the pair cannot disagree about the height. */
+							endMax: entry.keys.afterEnd.list.max,
+							endClient: entry.keys.afterEnd.list.client,
+							endSettled: entry.keys.afterEnd.settled === true,
+							endRetried: entry.keys.afterEnd.retried === true,
 							home: entry.keys.afterHome.list.scrollTop,
 							space: entry.keys.afterSpace.list.scrollTop,
 							shiftSpace: entry.keys.afterShiftSpace.list.scrollTop,
@@ -1649,8 +1707,8 @@ export const CASES = {
 						`${size}: PageDown on the list must scroll it (got ${entry.keys.pageDown})`,
 					);
 					assert(
-						Math.abs(entry.keys.end - entry.list.max) <= 1,
-						`${size}: End on the list must reach its maximum (got ${entry.keys.end}, maximum ${entry.list.max}; the 1 px slack is sub-pixel layout, not a short scroll)`,
+						Math.abs(entry.keys.end - entry.keys.endMax) <= 1,
+						`${size}: End on the list must reach its maximum (end read scrollTop ${entry.keys.end} of max ${entry.keys.endMax} at client ${entry.keys.endClient}, settled ${entry.keys.endSettled}, retry used ${entry.keys.endRetried}; the open read was scrollTop ${entry.list.scrollTop} of max ${entry.list.max}; the 1 px slack is sub-pixel layout, not a short scroll)`,
 					);
 					assert.equal(
 						entry.keys.home,
