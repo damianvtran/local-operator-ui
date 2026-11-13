@@ -13,6 +13,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import {
+	classify,
 	diagnosticsDir,
 	preserveLaunchDiagnostics,
 } from "./team-bridge-launch-diagnostics.mjs";
@@ -53,12 +54,12 @@ function exited(child) {
 	return new Promise((done) => child.once("exit", done));
 }
 
-/** A DevTools endpoint answering with a browser target and no page target. */
-async function fakeEndpoint() {
+/** A DevTools endpoint answering with `targets` (default: a browser target and no
+ * page target). */
+async function fakeEndpoint(targets = [{ type: "browser", url: "" }]) {
 	const server = createServer((request, response) => {
 		response.setHeader("content-type", "application/json");
-		if (request.url === "/json/list")
-			response.end(JSON.stringify([{ type: "browser", url: "" }]));
+		if (request.url === "/json/list") response.end(JSON.stringify(targets));
 		else response.end(JSON.stringify({ Browser: "Chrome/fake" }));
 	});
 	await new Promise((done) => server.listen(0, "127.0.0.1", done));
@@ -251,4 +252,63 @@ test("the default directory sits beside --json and is run-unique", () => {
 		}),
 		"/d",
 	);
+});
+
+/**
+ * R3-2 / Q3-1 on ui#1889: the instant-load run died in `mount` with the app's page
+ * loaded (index.html#/chat), and the line said "no-target" - pointing the reader at
+ * the renderer when the bench's own mount probe was what never passed. A `mount`
+ * failure with page targets names that, the phase, and the last probe state.
+ */
+test("a mount-phase failure with page targets is 'mount check failed', not 'no target'", async () => {
+	const { root, scratch } = fakeScratch();
+	const { server, port } = await fakeEndpoint([
+		{ type: "page", url: "file:///out/renderer/index.html#/chat" },
+	]);
+	const child = spawn(process.execPath, ["-e", "setTimeout(() => {}, 60000)"], {
+		stdio: "ignore",
+	});
+	try {
+		const lastState = { hash: "#/chat", mountId: "app", mount: -1, claims: 1 };
+		const kept = await preserveLaunchDiagnostics({
+			dir: join(root, "diag"),
+			app: appRecord(child, scratch),
+			scratch,
+			port,
+			error: Object.assign(new Error("the app shell never mounted"), {
+				lastState,
+			}),
+			startedAt: Date.now(),
+			phase: "mount",
+		});
+		assert.equal(kept.classification.kind, "mounted-check-failed");
+		assert.doesNotMatch(kept.line, /no-target|0 page targets/);
+		assert.match(
+			kept.line,
+			/launch failed during mount - child still running with 1 page target, but the mount check never passed during mount; last probe state: \{"hash":"#\/chat","mountId":"app","mount":-1,"claims":1\}/,
+		);
+		assert.deepEqual(readKept(join(root, "diag")).summary.lastState, lastState);
+	} finally {
+		child.kill("SIGKILL");
+		await exited(child);
+		await new Promise((done) => server.close(done));
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+test("classify keeps 'no target' for a mount failure with no page target", () => {
+	const running = { pid: 1, code: null, signal: null };
+	const list = { ok: true, body: JSON.stringify([{ type: "browser" }]) };
+	assert.equal(
+		classify({ exit: running, list, phase: "mount", lastState: null }).kind,
+		"running-no-target",
+	);
+	const pages = { ok: true, body: JSON.stringify([{ type: "page" }]) };
+	assert.equal(
+		classify({ exit: running, list: pages, phase: "waitForTarget" }).kind,
+		"running-no-target",
+	);
+	const verdict = classify({ exit: running, list: pages, phase: "mount" });
+	assert.equal(verdict.kind, "mounted-check-failed");
+	assert.match(verdict.text, /last probe state: not recorded/);
 });

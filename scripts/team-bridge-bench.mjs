@@ -136,6 +136,7 @@ import {
 	diagnosticsDir,
 	preserveLaunchDiagnostics,
 } from "./team-bridge-launch-diagnostics.mjs";
+import { appMountId, isMounted, mountProbe } from "./team-bridge-mount.mjs";
 
 /* ------------------------------------------------------------------- the CLI */
 
@@ -1566,7 +1567,24 @@ const bridgePath = (tenantId, conversationId) =>
  * resolution is simply overwritten. After a few tries it presses the rail row -
  * the path a reader takes - in case the Router is not listening to the hash.
  */
+/**
+ * The app's mount node, read from the measured checkout's own sources (Q3-1): a
+ * hardcoded `#root` never existed in this app and kept `waitForShell` at -1 for its
+ * whole budget. Lazy, so CLI refusals and `--self-test` never need the sources.
+ */
+let mountIdMemo = null;
+function mountId() {
+	mountIdMemo ??= appMountId(ROOT);
+	return mountIdMemo;
+}
+
+/** A wait's timeout, carrying the last probe state for the launch diagnostics. */
+function waitTimeout(message, last) {
+	return Object.assign(new Error(message), { lastState: last });
+}
+
 async function waitForBridge(evaluate, timeoutMs = 90_000) {
+	const id = mountId();
 	const started = Date.now();
 	let last = null;
 	let polls = 0;
@@ -1587,15 +1605,17 @@ async function waitForBridge(evaluate, timeoutMs = 90_000) {
 		const state = await evaluate(`(() => ({
 			hash: window.location.hash,
 			rail: document.querySelectorAll("[data-conversation-id]").length,
-			root: document.getElementById("root")?.childElementCount ?? -1,
+			mountId: ${JSON.stringify(id)},
+			mount: ${mountProbe(id)},
 			body: (document.body.innerText || "").replace(/\\s+/g, " ").slice(0, 400),
 		}))()`);
 		if (state.rail > 0) return state;
 		last = state;
 		await sleep(500);
 	}
-	throw new Error(
+	throw waitTimeout(
 		`the Team Bridge page never listed a conversation. Last state: ${JSON.stringify(last)}`,
+		last,
 	);
 }
 
@@ -1605,24 +1625,27 @@ async function waitForBridge(evaluate, timeoutMs = 90_000) {
  * last state it saw.
  */
 async function waitForShell(evaluate, stub, timeoutMs = 90_000) {
+	const id = mountId();
 	const started = Date.now();
 	let last = null;
 	while (Date.now() - started < timeoutMs) {
 		const state = await evaluate(`(() => ({
 			hash: window.location.hash,
-			root: document.getElementById("root")?.childElementCount ?? -1,
+			mountId: ${JSON.stringify(id)},
+			mount: ${mountProbe(id)},
 		}))()`);
 		const capabilities = stub.total(/^GET \/v1\/capabilities/);
 		last = { ...state, claims: stub.claims(), capabilities };
-		if (state.root > 0 && stub.claims() > 0 && capabilities > 0) {
+		if (isMounted(state.mount) && stub.claims() > 0 && capabilities > 0) {
 			// An idle beat so boot-time reads are not inside the first-open window.
 			await sleep(2_000);
 			return last;
 		}
 		await sleep(250);
 	}
-	throw new Error(
-		`the app shell never dialled the stub. Last state: ${JSON.stringify(last)}`,
+	throw waitTimeout(
+		`the app shell never mounted and dialled the stub. Last state: ${JSON.stringify(last)}`,
+		last,
 	);
 }
 
@@ -2224,7 +2247,8 @@ async function measure({ scenario, messageCount, keepScratch = false }) {
 				.filter((line) => interesting.test(line))
 				.slice(-30)
 				.join("\n");
-			throw new Error(
+			// `lastState` rides along so the diagnostics can name the probe (R3-2).
+			throw waitTimeout(
 				`${error.message}\n--- what the stub was asked for ---\n${stub
 					.seen()
 					.map(([key, value]) => `${value}× ${key}`)
@@ -2234,6 +2258,7 @@ async function measure({ scenario, messageCount, keepScratch = false }) {
 					.console()
 					.slice(-40)
 					.join("\n")}\n--- app log ---\n${appLog}`,
+				error.lastState,
 			);
 		}
 		phase = "measure";

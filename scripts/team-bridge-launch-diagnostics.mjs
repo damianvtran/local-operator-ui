@@ -63,8 +63,13 @@ async function probe(port, path) {
  * endpoint answers with no app page is "up but the renderer never loaded" (slow or
  * stuck); a running child whose endpoint never answers is "Electron never got as far
  * as DevTools".
+ *
+ * A failure in `mount` with page targets present is NOT "no target" (R3-2 / Q3-1 on
+ * ui#1889): the renderer loaded, and it was the bench's own mount check that never
+ * passed. That case names the phase and the last probe state, because the probe -
+ * not the app - is the first suspect (it once polled a `#root` the app never had).
  */
-export function classify({ exit, list }) {
+export function classify({ exit, list, phase = null, lastState = null }) {
 	// A failure before the spawn (no build, stub could not listen) has no child to
 	// describe; calling it "still running" would send the reader after a process.
 	if (!exit)
@@ -86,6 +91,11 @@ export function classify({ exit, list }) {
 		} catch {
 			// an answer that is not the target list is still an answer
 		}
+		if (phase === "mount" && pages > 0)
+			return {
+				kind: "mounted-check-failed",
+				text: `child still running with ${pages} page target${pages === 1 ? "" : "s"}, but the mount check never passed during mount; last probe state: ${lastState ? JSON.stringify(lastState) : "not recorded"}`,
+			};
 		return {
 			kind: "running-no-target",
 			text: `child still running, endpoint answered with ${pages ?? "unparseable"} page targets`,
@@ -128,7 +138,8 @@ export async function preserveLaunchDiagnostics({
 		probe(port, "/json/list"),
 		probe(port, "/json/version"),
 	]);
-	const classification = classify({ exit, list });
+	const lastState = error?.lastState ?? null;
+	const classification = classify({ exit, list, phase, lastState });
 	const uptime = spawnSync("uptime", { encoding: "utf8" });
 
 	write("stdout.log", app?.stdout?.() ?? "");
@@ -167,6 +178,7 @@ export async function preserveLaunchDiagnostics({
 		phase,
 		error: String(error?.message ?? error),
 		classification,
+		lastState,
 		exit,
 		elapsedMs: startedAt ? Date.now() - startedAt : null,
 		uptime: (uptime.stdout ?? "").trim() || null,
