@@ -125,6 +125,7 @@ const bundle = await build({
  export {TeamBridgePage} from './src/renderer/src/features/team-bridge/team-bridge-page';
  export {teamBridgeKeys} from './src/renderer/src/features/team-bridge/use-team-bridge';
  export {teamBridgeViewingConversation} from './src/renderer/src/features/team-bridge/team-bridge-viewing';
+ export {resetTeamBridgePrefetch} from './src/renderer/src/features/team-bridge/team-bridge-prefetch';
  export {QueryClient,QueryClientProvider} from '@tanstack/react-query';
  export {MemoryRouter} from 'react-router-dom';
  export {usePendingSends, resetPendingSendsForTest} from './src/renderer/src/features/team-bridge/team-bridge-pending-sends';
@@ -456,6 +457,8 @@ async function mount({
 		lifecycle,
 		historyByConversation: new Map(),
 		notAMember: new Set(),
+		// Conversation ids whose history the hub rate-limits (429 `rate_limited`).
+		rateLimited: new Set(),
 		lifecycleCalls: [],
 		deleteFailure: null,
 		lifecycleFailure: null,
@@ -698,6 +701,13 @@ async function mount({
 							before_seq: request.before_seq ?? null,
 							limit,
 						});
+						if (fixture.rateLimited.has(request.conversation_id))
+							return {
+								status: 429,
+								body: {
+									detail: { code: "rate_limited", retry_after_seconds: 5 },
+								},
+							};
 						if (fixture.notAMember.has(request.conversation_id))
 							return {
 								status: 403,

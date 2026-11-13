@@ -24,8 +24,19 @@
  *    retried, and the landing falls back as before.
  * 4. An account switch mid-flight discards the read: the fence refuses it and
  *    nothing is shown to the next account.
- * 5. With no target, a cached list's default row is read alongside the list.
+ * 5. GUARD (passes on the pre-change page too): with no target, a cached list's
+ *    default row is read alongside the list - by the landing effect and the
+ *    timeline's own read, not by `prefetchTeamBridgeLanding` (ui#1895 R1).
  * 6. Nothing cached and nothing remembered: no read before the list answers.
+ * 7. A deep link / notification click (`?conversation=&tenant=`) reads in
+ *    parallel too (ui#1895 R2).
+ * 8. A→B→A: the read the fence discarded on the way out leaves no backoff
+ *    chain behind, so the return reads at once (ui#1895 QA Q1; fails on
+ *    d38b2ab8, where the return waited ~1 s for the discarded read's retry).
+ * 9. A cached status answer is enough to start the list: a status REFETCH in
+ *    flight does not hold it (ui#1895 Q3; a guard, passes before this change).
+ * 10. A 429 on the parallel read holds the next open's parallel read
+ *    (ui#1895 R2). Last in the file: the hold lives on the shared client.
  */
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -284,7 +295,10 @@ test("an account switch while the parallel read is in flight discards it", async
 	}
 });
 
-test("with no target, a cached list's default row is read alongside the list", async () => {
+/* GUARD, not a speed-up this change makes: the landing effect sets `target`
+   from the cached snapshot in its first flush, so the timeline reads the default
+   row while the list is held on the pre-change page as well (ui#1895 R1). */
+test("guard: with no target, a cached list's default row is read alongside the list", async () => {
 	const app = await mount({
 		lifecycle: [],
 		path: "/team-bridge?tenant=org_shared",
@@ -353,6 +367,195 @@ test("nothing cached and nothing remembered: no history read before the list ans
 		});
 		assert.equal(view.tenantId, "org_shared");
 	} finally {
+		await app.close();
+	}
+});
+
+test("a deep link names its conversation and tenant: history is read alongside the list", async () => {
+	const app = await mount({
+		lifecycle: [],
+		path: "/team-bridge?conversation=launch_shared&tenant=org_shared",
+		waitReady: false,
+		seed: ({ fixture }) => scenario(fixture),
+	});
+	try {
+		await untilListHeld(app);
+		assert.equal(
+			historyReads(app, "launch_shared").length,
+			1,
+			"the linked conversation's first page is requested before the list answers",
+		);
+		await act(async () => app.fixture.listGate.resolve());
+		await until(
+			() => app.host.textContent.includes("line 2 of launch_shared"),
+			"the timeline renders the linked conversation",
+		);
+		await delay();
+		assert.equal(selected(app), "launch_shared");
+		assert.equal(historyReads(app, "launch_shared").length, 1, "read once");
+	} finally {
+		await app.close();
+	}
+});
+
+test("A→B→A: the return reads the landing conversation at once, not on a discarded read's backoff", async () => {
+	const history = deferred();
+	const app = await mount({
+		lifecycle: [],
+		path: "/team-bridge",
+		waitReady: false,
+		seed: ({ fixture }) => {
+			scenario(fixture);
+			fixture.historyGate = history;
+			remember(LAUNCH);
+		},
+	});
+	try {
+		await untilListHeld(app);
+		assert.equal(historyReads(app, "launch_shared").length, 1);
+		await app.changeAuth("acct_b");
+		// A's read answers after the switch: the owner fence refuses it.
+		await act(async () => history.resolve());
+		for (let i = 0; i < 5; i++) await delay();
+		const back = performance.now();
+		await app.changeAuth("acct_a");
+		await until(
+			() => historyReads(app, "launch_shared").length >= 2,
+			"the return to A requests the landing conversation",
+		);
+		const waited = performance.now() - back;
+		// The retry backoff starts at 1000 ms (`historyReadRetryDelay`); joining
+		// the discarded read's chain cannot answer sooner than that.
+		assert.ok(
+			waited < 500,
+			`the return's history request left ${waited.toFixed(1)} ms after returning (a joined retry chain waits >= 1000 ms)`,
+		);
+		// Only the history request is timed. The LIST read here was held across
+		// the whole A→B→A trip, so its own fence refusal and default retry (a
+		// pre-existing path this change does not touch) decide when A renders.
+		await act(async () => app.fixture.listGate.resolve());
+		await until(
+			() => app.host.textContent.includes("line 2 of launch_shared"),
+			"account A lands on its conversation",
+		);
+	} finally {
+		await app.close();
+	}
+});
+
+test("guard: a cached status answer starts the list while its refetch is still in flight", async () => {
+	const statusGate = deferred();
+	const app = await mount({
+		lifecycle: [],
+		path: "/team-bridge",
+		waitReady: false,
+		statusGate,
+		seed: ({ client, fixture }) => {
+			scenario(fixture);
+			remember(LAUNCH);
+			// What the shell's notification watcher (useTeamBridgeNotifications)
+			// leaves under the same `statusFor` key, older than its 60 s staleTime.
+			client.setQueryData(
+				ui.teamBridgeKeys.statusFor("acct_a"),
+				{
+					capability: 1,
+					state: "ready",
+					read_only: false,
+					account_id: "acct_a",
+					tenant_id: "org_shared",
+					surface_state: "D",
+					visibility: {
+						settings: true,
+						inbox: true,
+						account_door: true,
+						onboarding: false,
+					},
+					update_required: false,
+					local: { enabled: true, onboarding: "done", session: "present" },
+					status: {
+						tenants: [
+							{
+								tenant_id: "org_shared",
+								tenant_name: "Shared",
+								eligible: true,
+								endpoint: null,
+							},
+							{
+								tenant_id: "org_other",
+								tenant_name: "Other",
+								eligible: true,
+								endpoint: null,
+							},
+						],
+					},
+					consent: null,
+					error: null,
+				},
+				{ updatedAt: Date.now() - 120_000 },
+			);
+		},
+	});
+	try {
+		await untilListHeld(app);
+		assert.equal(
+			app.client.getQueryState(ui.teamBridgeKeys.statusFor("acct_a"))
+				?.fetchStatus,
+			"fetching",
+			"the stale status is being refetched (held)",
+		);
+		assert.equal(
+			historyReads(app, "launch_shared").length,
+			1,
+			"and the landing read is out alongside the list",
+		);
+	} finally {
+		await app.close();
+	}
+});
+
+test("a 429 on the parallel read holds the next open's parallel read", async () => {
+	const key = ui.teamBridgeKeys.messages(
+		"launch_shared",
+		"org_shared",
+		"acct_a",
+	);
+	const app = await mount({
+		lifecycle: [],
+		path: "/team-bridge",
+		waitReady: false,
+		seed: ({ fixture }) => {
+			scenario(fixture);
+			fixture.rateLimited.add("launch_shared");
+			remember(LAUNCH);
+		},
+	});
+	try {
+		await untilListHeld(app);
+		assert.equal(historyReads(app, "launch_shared").length, 1);
+		await until(
+			() => app.client.getQueryState(key) === undefined,
+			"the rate-limited, unadopted entry is dropped (and the hold set)",
+		);
+		app.fixture.rateLimited.delete("launch_shared");
+		// Leave and come back while the list is still held: a fresh open.
+		await app.leave();
+		await app.back();
+		for (let i = 0; i < 5; i++) await delay();
+		assert.equal(
+			historyReads(app, "launch_shared").length,
+			1,
+			"under the hold the next open starts no parallel read",
+		);
+		// Control: the hold is the only thing stopping it.
+		ui.resetTeamBridgePrefetch(app.client);
+		await app.leave();
+		await app.back();
+		await until(
+			() => historyReads(app, "launch_shared").length === 2,
+			"without the hold the same open reads in parallel",
+		);
+	} finally {
+		ui.resetTeamBridgePrefetch(app.client);
 		await app.close();
 	}
 });

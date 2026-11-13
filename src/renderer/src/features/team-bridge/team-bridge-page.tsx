@@ -5990,32 +5990,6 @@ const TeamBridgeOwnedPage: FC<{
 		selfAccountId,
 	);
 	/*
-	 * FIRST OPEN: READ THE LANDING CONVERSATION ALONGSIDE THE LIST. Without this,
-	 * the timeline's read below waits for `selected`, which waits for the list, so
-	 * a cold open paid both round trips in series (331.6 ms vs the 300 ms bar in
-	 * the instant-load bench, ui#1889 QA r4). Here the one conversation the open
-	 * is known to land on starts its first page as soon as reads are allowed:
-	 *
-	 * - the conversation this page opened on (deep link, notification click,
-	 *   remembered view), with the tenant the click or the record named, or the
-	 *   tenant of that row in the shell watcher's cached list; else
-	 * - with no target and no remembered view, the default landing row computed
-	 *   from that cached list, by the same rule the landing effect uses.
-	 *
-	 * Constraints, each tested in `team-bridge-first-open.test.mjs`:
-	 * - Display is unchanged: this fills the timeline's own cache entry and
-	 *   nothing more. The pane shows a conversation only once `selected` resolves
-	 *   from the authoritative rows, so a conversation the reader was removed from
-	 *   or that was deleted is never shown and the fallback landing still runs.
-	 * - Same fence: `readsEnabled` (the eligibility gate) and the account-keyed,
-	 *   owner-fenced query; the once-per-open marker is keyed by account, and a
-	 *   read started for one account lands under that account's key only.
-	 * - At most one extra read per open, and none when the entry is already warm
-	 *   or being read (`prefetchTeamBridgeLanding` checks the cache).
-	 * - Skipped once `selected` resolves or the list has answered: from then on
-	 *   the timeline's own read is not waiting on anything.
-	 */
-	/*
 	 * BACKFILL THE TENANT once the list confirms the remembered conversation. A
 	 * record written before the tenant was stored (or reported before a cold list
 	 * answered) gains it here, so the NEXT cold open can read in parallel even if
@@ -6041,6 +6015,37 @@ const TeamBridgeOwnedPage: FC<{
 		if (storage)
 			writeViewMemory(storage, accountId, scope, next, currentScope.current);
 	}, [accountId, selected, scope]);
+	/*
+	 * FIRST OPEN: READ THE LANDING CONVERSATION ALONGSIDE THE LIST. Without this,
+	 * the timeline's read below waits for `selected`, which waits for the list, so
+	 * a cold open paid both round trips in series (331.6 ms vs the 300 ms bar in
+	 * the instant-load bench, ui#1889 QA r4). Here the one conversation the open
+	 * is known to land on starts its first page as soon as reads are allowed:
+	 *
+	 * the conversation this page opened on (deep link, notification click,
+	 * remembered view), with the tenant the click or the record named, or the
+	 * tenant of that row in the shell watcher's cached list.
+	 *
+	 * NOT the default row of a cached list when there is no target: the landing
+	 * effect already sets `target` from that same snapshot in its first flush,
+	 * `selected` resolves from the snapshot row, and the timeline's own read
+	 * starts while the list is held - with or without this effect (ui#1895 R1;
+	 * measured 277.7 ms before vs 280.0 ms with a branch for it). The guard test
+	 * in `team-bridge-first-open.test.mjs` keeps that path parallel.
+	 *
+	 * Constraints, each tested in `team-bridge-first-open.test.mjs`:
+	 * - Display is unchanged: this fills the timeline's own cache entry and
+	 *   nothing more. The pane shows a conversation only once `selected` resolves
+	 *   from the authoritative rows, so a conversation the reader was removed from
+	 *   or that was deleted is never shown and the fallback landing still runs.
+	 * - Same fence: `readsEnabled` (the eligibility gate) and the account-keyed,
+	 *   owner-fenced query; the once-per-open marker is keyed by account, and a
+	 *   read started for one account lands under that account's key only.
+	 * - At most one extra read per open, and none when the entry is already warm
+	 *   or being read (`prefetchTeamBridgeLanding` checks the cache).
+	 * - Skipped once `selected` resolves or the list has answered: from then on
+	 *   the timeline's own read is not waiting on anything.
+	 */
 	const landingPrefetched = useRef<string | null>(null);
 	useEffect(() => {
 		if (
@@ -6061,12 +6066,6 @@ const TeamBridgeOwnedPage: FC<{
 					? knownLanding.tenantId
 					: cached?.tenant_id;
 			if (tenantId) row = { id: target.id, tenant_id: tenantId };
-		} else if (target === null && !requestedAny && !restoreOnOpen) {
-			const first = defaultLandingConversation(
-				visibleConversationRows(openingSnapshot, scope, organizations),
-				organizations.map((entry) => entry.tenantId),
-			);
-			if (first && !isPreviewConversation(first)) row = first;
 		}
 		if (row && prefetchTeamBridgeLanding(client, accountId, row))
 			landingPrefetched.current = accountId;
@@ -6078,10 +6077,6 @@ const TeamBridgeOwnedPage: FC<{
 		target,
 		openingSnapshot,
 		knownLanding,
-		requestedAny,
-		restoreOnOpen,
-		scope,
-		organizations,
 		client,
 	]);
 	const previewSelected = selected !== null && isPreviewConversation(selected);

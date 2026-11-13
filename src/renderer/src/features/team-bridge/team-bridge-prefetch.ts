@@ -387,15 +387,6 @@ export function prefetchTeamBridgeConversationNow(
 }
 
 /**
- * Drop every queued (not yet dispatched) prefetch for `client` (review R3).
- *
- * The page calls this when it unmounts and when the signed-in account changes:
- * the guesses were for a rail nobody is looking at any more, and each would
- * still spend a read from the shared bucket. Reads already in flight finish
- * (they cannot be recalled without aborting a request the click may have
- * joined) and stay owner-fenced.
- */
-/**
  * START THE LANDING CONVERSATION'S FIRST PAGE ALONGSIDE THE LIST
  * (bridge-instant-load, first open after launch).
  *
@@ -404,8 +395,8 @@ export function prefetchTeamBridgeConversationNow(
  * put the list read (~200 ms in the instant-load bench) and the first history
  * read (~150 ms) back to back: 331.6 ms against the operator's 300 ms bar
  * (ui#1889, QA r4). When the page already knows where it will land - a
- * remembered view, a deep link, a notification click, or the default row of a
- * cached list - this starts that one read at the same time as the list.
+ * remembered view, a deep link or a notification click - this starts that one
+ * read at the same time as the list.
  *
  * WHAT MAKES IT SAFE (each is load-bearing, not tuning):
  * - SAME ENTRY. It reads through `teamBridgeMessagesQueryOptions`, so the key
@@ -418,8 +409,10 @@ export function prefetchTeamBridgeConversationNow(
  *   was deleted, is simply never selected, and its entry ages out under the
  *   timeline's `gcTime` like any other unopened warm entry.
  * - SILENT ON REFUSAL. The retry policy is the timeline's own: it never retries
- *   a definite `not_a_member`, and it retries nothing while nobody observes the
- *   entry. A failed read that no timeline has adopted is removed, so a later
+ *   a definite `not_a_member`, and while nobody observes the entry it retries
+ *   neither a rate limit nor an owner-fence refusal (`historyReadShouldRetry`;
+ *   ui#1895 QA Q1: an account switch must not leave a backoff chain for the
+ *   return to join). A failed read that no timeline has adopted is removed, so a later
  *   selection starts clean - no error state is inherited and nothing is shown.
  * - COLD ONLY, ONCE. An entry holding data, or already being read, is left
  *   alone (the caller allows one call per open), and a rate-limit hold on the
@@ -472,6 +465,15 @@ export function prefetchTeamBridgeLanding(
 	return true;
 }
 
+/**
+ * Drop every queued (not yet dispatched) prefetch for `client` (review R3).
+ *
+ * The page calls this when it unmounts and when the signed-in account changes:
+ * the guesses were for a rail nobody is looking at any more, and each would
+ * still spend a read from the shared bucket. Reads already in flight finish
+ * (they cannot be recalled without aborting a request the click may have
+ * joined) and stay owner-fenced.
+ */
 export function cancelTeamBridgePrefetch(client: QueryClient): void {
 	const scheduler = schedulers.get(client);
 	if (scheduler) dropQueued(scheduler, () => true);
