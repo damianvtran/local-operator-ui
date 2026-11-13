@@ -2784,11 +2784,29 @@
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-11-11",
-				"note": "Mixed provenance: 9 busy-send keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); origin/main 87cc0d95e keys by their own translators (see superseded). The merge union is not a new audit; this row is pending until the merged bytes are re-audited."
+				"date": "2026-11-13",
+				"note": "Mixed provenance: 6 busy-send keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); 467 shared keys by origin/main 87cc0d95e's recorded translators (see superseded); the merge union is not a translation audit."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "2405ebc40b47-fold-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2405ebc40b47-fold-es.json",
+					"receipt_sha256": "2a6a5c8290a8d74d8cf6b32a84c46add551f7141716e408538b5dc382cfb9e96",
+					"scope": "merged ui.chat.canonical, feat/busy-delivery-desktop @ 9598cd2de8: the six keys this branch adds",
+					"note": "Delta audit of the six keys this branch adds; the 467 shared keys are byte-identical to an audited parent (catalogue-union-parity: 0 value differences; 4 upstream deletions)."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "772c42f90c0c636791982347ab48d31fe69f6e2fcf6b6f1614c35f766601e0f7",
@@ -15018,15 +15036,33 @@
 			"locale": "fr",
 			"namespace": "ui.chat.canonical",
 			"source_sha256": "847ba75c5185f9471df001b10aba1881e07b4432511071d05b8709784cd21dc2",
-			"target_sha256": "450d9db4ab4db6404ce888082ff855a0713b6988c671d7104e2ac9d4281f6be3",
+			"target_sha256": "0bf76f090fe12a68f751dc6d199fa26601bbcec6fb217d7121c17326a6557f75",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-11-11",
-				"note": "Mixed provenance: 9 busy-send keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); origin/main 87cc0d95e keys by their own translators (see superseded). The merge union is not a new audit; this row is pending until the merged bytes are re-audited."
+				"date": "2026-11-13",
+				"note": "Mixed provenance: 6 busy-send keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); 467 shared keys by origin/main 87cc0d95e's recorded translators (see superseded); the merge union is not a translation audit."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "2405ebc40b47-fold-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2405ebc40b47-fold-fr.json",
+					"receipt_sha256": "e2388580a892a285736e6f7b64661750d134af489c223d0e8c99ce46fdf0692c",
+					"scope": "merged ui.chat.canonical, feat/busy-delivery-desktop @ 80a27d3bfa: the six keys this branch adds",
+					"note": "Delta audit of the six keys this branch adds; the 467 shared keys are byte-identical to an audited parent (catalogue-union-parity: 0 value differences; 4 upstream deletions)."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "772c42f90c0c636791982347ab48d31fe69f6e2fcf6b6f1614c35f766601e0f7",
@@ -15671,6 +15707,12 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "847ba75c5185f9471df001b10aba1881e07b4432511071d05b8709784cd21dc2",
+					"target_sha256": "450d9db4ab4db6404ce888082ff855a0713b6988c671d7104e2ac9d4281f6be3",
+					"auditors": [],
+					"status": "pending"
 				}
 			]
 		},
@@ -27756,11 +27798,29 @@
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-11-11",
-				"note": "Mixed provenance: 9 busy-send keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); origin/main 87cc0d95e keys by their own translators (see superseded). The merge union is not a new audit; this row is pending until the merged bytes are re-audited."
+				"date": "2026-11-13",
+				"note": "Mixed provenance: 6 busy-send keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); 467 shared keys by origin/main 87cc0d95e's recorded translators (see superseded); the merge union is not a translation audit."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "2405ebc40b47-fold-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2405ebc40b47-fold-hi.json",
+					"receipt_sha256": "a51a5f6231297dc5af8689d2ba5c0fc15ccc8f947fae0a6bcfaa2161cbf7f57e",
+					"scope": "merged ui.chat.canonical, feat/busy-delivery-desktop @ 9598cd2de8: the six keys this branch adds",
+					"note": "Delta audit of the six keys this branch adds; the 467 shared keys are byte-identical to an audited parent (catalogue-union-parity: 0 value differences; 4 upstream deletions)."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "772c42f90c0c636791982347ab48d31fe69f6e2fcf6b6f1614c35f766601e0f7",
@@ -40079,11 +40139,29 @@
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-11-11",
-				"note": "Mixed provenance: 9 busy-send keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); origin/main 87cc0d95e keys by their own translators (see superseded). The merge union is not a new audit; this row is pending until the merged bytes are re-audited."
+				"date": "2026-11-13",
+				"note": "Mixed provenance: 6 busy-send keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); 467 shared keys by origin/main 87cc0d95e's recorded translators (see superseded); the merge union is not a translation audit."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "2405ebc40b47-fold-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2405ebc40b47-fold-ru.json",
+					"receipt_sha256": "9e0d5a6526c5495e00a004b994da3458f6353f1472ebd68c00c6014cbfe5e0b1",
+					"scope": "merged ui.chat.canonical, feat/busy-delivery-desktop @ 9598cd2de8: the six keys this branch adds",
+					"note": "Delta audit of the six keys this branch adds; the 467 shared keys are byte-identical to an audited parent (catalogue-union-parity: 0 value differences; 4 upstream deletions)."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "772c42f90c0c636791982347ab48d31fe69f6e2fcf6b6f1614c35f766601e0f7",
@@ -52420,11 +52498,29 @@
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-11-11",
-				"note": "Mixed provenance: 9 busy-send keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); origin/main 87cc0d95e keys by their own translators (see superseded). The merge union is not a new audit; this row is pending until the merged bytes are re-audited."
+				"date": "2026-11-13",
+				"note": "Mixed provenance: 6 busy-send keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); 467 shared keys by origin/main 87cc0d95e's recorded translators (see superseded); the merge union is not a translation audit."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-13",
+					"result": "clean-with-findings",
+					"instance": "2405ebc40b47-fold-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2405ebc40b47-fold-ur.json",
+					"receipt_sha256": "ab1914f1b1ebc06218747fbc3d8acd9ed5add735dc02507ddb7188587252fb30",
+					"scope": "merged ui.chat.canonical, feat/busy-delivery-desktop @ 9598cd2de8: the six keys this branch adds",
+					"note": "Delta audit of the six keys this branch adds; the 467 shared keys are byte-identical to an audited parent (catalogue-union-parity: 0 value differences; 4 upstream deletions)."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "772c42f90c0c636791982347ab48d31fe69f6e2fcf6b6f1614c35f766601e0f7",
@@ -64671,11 +64767,29 @@
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-11-11",
-				"note": "Mixed provenance: 9 busy-send keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); origin/main 87cc0d95e keys by their own translators (see superseded). The merge union is not a new audit; this row is pending until the merged bytes are re-audited."
+				"date": "2026-11-13",
+				"note": "Mixed provenance: 6 busy-send keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); 467 shared keys by origin/main 87cc0d95e's recorded translators (see superseded); the merge union is not a translation audit."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "2405ebc40b47-fold-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2405ebc40b47-fold-vi.json",
+					"receipt_sha256": "b590aa0c1177f316f59976a44fa75d28b95b454fd0f607c15033481cca1240df",
+					"scope": "merged ui.chat.canonical, feat/busy-delivery-desktop @ 9598cd2de8: the six keys this branch adds",
+					"note": "Delta audit of the six keys this branch adds; the 467 shared keys are byte-identical to an audited parent (catalogue-union-parity: 0 value differences; 4 upstream deletions)."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "772c42f90c0c636791982347ab48d31fe69f6e2fcf6b6f1614c35f766601e0f7",
@@ -77730,11 +77844,29 @@
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-11-11",
-				"note": "Mixed provenance: 9 busy-send keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); origin/main 87cc0d95e keys by their own translators (see superseded). The merge union is not a new audit; this row is pending until the merged bytes are re-audited."
+				"date": "2026-11-13",
+				"note": "Mixed provenance: 6 busy-send keys by i18n-translator (anthropic/claude-sonnet-5-5, self-reported); 467 shared keys by origin/main 87cc0d95e's recorded translators (see superseded); the merge union is not a translation audit."
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "codex",
+					"model": "gpt-5.6-sol",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "2405ebc40b47-fold-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/2405ebc40b47-fold-zh-cn.json",
+					"receipt_sha256": "b87b4c27bf4291fad9855cda6c7a37e6f3d94855581ce094839a25c4214ee2e7",
+					"scope": "merged ui.chat.canonical, feat/busy-delivery-desktop @ 9598cd2de8: the six keys this branch adds",
+					"note": "Delta audit of the six keys this branch adds; the 467 shared keys are byte-identical to an audited parent (catalogue-union-parity: 0 value differences; 4 upstream deletions)."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "772c42f90c0c636791982347ab48d31fe69f6e2fcf6b6f1614c35f766601e0f7",

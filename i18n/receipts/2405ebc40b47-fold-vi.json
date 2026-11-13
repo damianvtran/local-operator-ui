@@ -1,0 +1,34 @@
+{
+	"schema": 1,
+	"auditor": "codex",
+	"agent": "codex",
+	"model": "gpt-5.6-sol",
+	"model_provenance": "Codex MCP, requested gpt-5.6-sol (served model not independently verifiable: the read-only run returned no session header). Strings were supplied to it per locale; it edited nothing.",
+	"instance": "2405ebc40b47-fold-vi",
+	"locale": "vi",
+	"namespace": "ui.chat.canonical",
+	"branch": "feat/busy-delivery-desktop",
+	"head": "9598cd2de8",
+	"date": "2026-11-13",
+	"status": "passed",
+	"audit_kind": "DELTA audit of exactly the six keys this branch adds to ui.chat.canonical (five transcript.busy_wait.* labels and send_failure.delivery_unsupported), read on the MERGED file bytes. Not a full-file audit and not a human review: the other 467 keys are byte-identical to one of the two independently audited parents (catalogue-union-parity: 0 value differences; the four upstream temporary_deleted.* keys are the only keys this branch does not carry), and their audits stand in the superseded rows.",
+	"independence": "A different agent and model family from the translators. The six keys were translated this wave by i18n-translator anthropic/claude-sonnet-5-5 (self-reported); this audit ran read-only through the codex MCP with the strings, the English source, the context sidecar, a style-guide excerpt and the shipped vocabulary pasted into the prompt. The coder that assembled this receipt neither translated nor audited.",
+	"keys_audited": [
+		"ui.chat.canonical.send_failure.delivery_unsupported",
+		"ui.chat.canonical.transcript.busy_wait.both",
+		"ui.chat.canonical.transcript.busy_wait.deferred",
+		"ui.chat.canonical.transcript.busy_wait.joined",
+		"ui.chat.canonical.transcript.busy_wait.queue",
+		"ui.chat.canonical.transcript.busy_wait.steer"
+	],
+	"rounds": "One round per locale, PASS with 0 findings, on the merged bytes at 9598cd2de8 (fr: see its own rounds note - round 1 FAIL, round 2 PASS on the corrected value). The retained record is the audit's per-locale verdict (manager session 2405ebc40b47 scratchpad/audit-fold-canonical.json, 2026-11-13); this receipt records that verdict and the findings still open on the shipped bytes, not a claimed round count.",
+	"source": "Verdicts and finding text transcribed from the audit record the manager retained (session 2405ebc40b47 scratchpad/audit-fold-canonical.json, 2026-11-13). Catalogue hashes computed from the bytes on disk; ledger-assemble re-derives them and refuses a receipt that does not name the file.",
+	"namespaces": {
+		"ui.chat.canonical": {
+			"status": "passed",
+			"en_sha256": "847ba75c5185f9471df001b10aba1881e07b4432511071d05b8709784cd21dc2",
+			"vi_sha256": "fa8c5002563c666123d8726503928b122f60a8ef0f21381432aaa25996df2069",
+			"findings": []
+		}
+	}
+}
