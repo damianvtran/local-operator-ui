@@ -1,0 +1,140 @@
+{
+	"schema": 1,
+	"kind": "translation-audit-record",
+	"audit_kind": "independent-translation-audit (round 2, converged s16d delta)",
+	"audit_id": "s16d-r2-ur-d60f239900b3",
+	"date": "2026-11-12",
+	"pr": 1877,
+	"round": 2,
+	"locale": "ur",
+	"namespace": "ui.common.time",
+	"branch": "feat/i18n-s16d-live-locale-formatting",
+	"head": "b2110ea9cd9fd0c103891a4a77b65ba741012cf4",
+	"base": "7c2b6af66486c9e7ec0603141fb4529e10204c7f",
+	"instance": "d60f239900b3",
+	"agent": "i18n-auditor",
+	"model": "deepseek/deepseek-flash",
+	"auditor": {
+		"agent": "i18n-auditor",
+		"team": "lopdev",
+		"harness": "Local Operator",
+		"session": "d60f239900b3",
+		"instance": "d60f239900b3",
+		"model": "deepseek/deepseek-flash",
+		"actual_model_source": "session-configured model per the runtime banner (deepseek/deepseek-flash); no fallback was reported or observed in this run",
+		"independent_from_translator_session": true,
+		"independence": "Fresh round-2 session. Authored no catalogue, ledger, receipt or code change for PR #1877, and is not the translator (i18n-translator / anthropic/claude-sonnet-5-5) nor the round-1 auditor of ur. Read-only on the manager-owned worktree."
+	},
+	"status": "passed",
+	"result": "clean",
+	"key_count": 5,
+	"new_keys_audited": 4,
+	"source_sha256": "bb0b3aa1a71679cc73cb40d73616b5e22057c7dcbc86705c2ec4425984971e13",
+	"en_sha256": "bb0b3aa1a71679cc73cb40d73616b5e22057c7dcbc86705c2ec4425984971e13",
+	"context_sha256": "a9069037edc11c59288a7c2d3171496b1ef44a0982fc28e6a0edb4bcae0f98d2",
+	"target_sha256": "ebd748bc470d8e649715afa0e6d7dc82d84754f61e6d1f33d9b919b02d319d95",
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.common.time.json",
+			"sha256": "bb0b3aa1a71679cc73cb40d73616b5e22057c7dcbc86705c2ec4425984971e13"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.common.time.context.json",
+			"sha256": "a9069037edc11c59288a7c2d3171496b1ef44a0982fc28e6a0edb4bcae0f98d2"
+		},
+		"ur": {
+			"path": "src/i18n/catalogues/ur/ui.common.time.json",
+			"sha256": "ebd748bc470d8e649715afa0e6d7dc82d84754f61e6d1f33d9b919b02d319d95"
+		}
+	},
+	"pair_sha256_sorted_compact": {
+		"ui.common.time.date_at": "a8e7287bb3c0ee67ee5dc1c8353af1336f37e9066c3ce1546448c6fcb4238120",
+		"ui.common.time.today_at": "e48563d92b7ba49989adfc3e35bcac150aed893b3efc45a2e65cf58a1209c12e",
+		"ui.common.time.weekday_at": "78268b52f266fb56161f4fe2241ec4d6e5d651cb7c3333f76b5fa3399e159b93",
+		"ui.common.time.yesterday": "a2ec5013ac59092f22dd3ae0391fe1cc525e197505e799aff137e1a3b7a9a4b1",
+		"ui.common.time.yesterday_at": "3e91374f5753adb508973bf15cbdac6cdf2029c1d69ea26c7ad67b38de131a22"
+	},
+	"findings": [],
+	"finding_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"audited_values": {
+		"ui.common.time.today_at": "آج {time}",
+		"ui.common.time.yesterday_at": "گزشتہ روز {time}",
+		"ui.common.time.weekday_at": "{weekday} {time}",
+		"ui.common.time.date_at": "{date} کو {time}",
+		"ui.common.time.yesterday": "گزشتہ روز"
+	},
+	"checks": {
+		"validator": {
+			"generate_check": "node scripts/i18n/generate.mjs --check -> keys.gen.ts is byte-identical to a fresh generation (exit 0)",
+			"check_duplicates": "node scripts/i18n/check-duplicates.mjs -> ok, 1428 files scanned, 0 duplicate keys",
+			"context_parity": "node scripts/i18n/context-parity.mjs -> ok, every English key covered apart from 129 allowed gaps in 4 namespaces",
+			"coverage": "node scripts/i18n/check-coverage.mjs -> ok, 7 gated languages over 158 namespaces, 0 allowed keys remain",
+			"locale_parity": "node --test scripts/i18n/locale-parity.test.mjs -> 44 pass / 0 fail (incl. ur key-set, placeholder, stub guard)",
+			"ur_activation": "node --test scripts/i18n/ur-activation.test.mjs -> 3 pass / 0 fail (9107 bundled values; no manual bidi controls)"
+		},
+		"own_grid": {
+			"placeholder_identity": "ICU AST argument sets equal to English for all 5 keys (intl-messageformat parser)",
+			"no_plural_select": "no plural/select structure in this namespace (source has none)",
+			"nfc": "all 5 values NFC-normalised",
+			"bidi_controls": "none in any value",
+			"composed": {
+				"ui.common.time.today_at": "آج 3:45 PM",
+				"ui.common.time.yesterday_at": "گزشتہ روز 3:45 PM",
+				"ui.common.time.weekday_at": "جمعرات 3:45 PM",
+				"ui.common.time.date_at": "5 نومبر، 2026 کو 3:45 PM",
+				"ui.common.time.yesterday": "گزشتہ روز"
+			},
+			"rtl_reordering": "fribidi --rtl/--verbose on the composed labels: reading order 5 -> نومبر، -> 2026 -> کو -> 3:45 -> PM, clock is one LTR island; FSI/PDI-wrapped and bare forms agree",
+			"width": "date_at 24 chars/cells, weekday_at 14, yesterday_at 17, today_at 10 — under the divider budget, no maxCells hint in the sidecar"
+		},
+		"negative_controls": {
+			"stub_row": "removing the ur:ui.common.time.weekday_at IDENTICAL_OK row in the scratch mirror -> '[ur] is not an English stub' FAILS (guard is live and the row is what permits the value)",
+			"placeholder": "today_at mutated to آج {tmie} -> '[ur] preserves every ICU placeholder' FAILS",
+			"stub_value": "today_at mutated to 'Today {time}' -> '[ur] is not an English stub' FAILS",
+			"restore": "mirror restored, 44/44 pass"
+		}
+	},
+	"observations": [
+		"date_at: round-1 correction ({date}، {time} -> {date} کو {time}) judged on merit and ACCEPTED. The CLDR ur long date already carries ، inside it (\"5 نومبر، 2026\"), so the punctuation joiner doubled it; کو is the ordinary temporal postposition for a date and the composed label carries exactly one ،.",
+		"weekday_at is identical to English only as a pattern: ICU supplies the Urdu weekday (جمعرات) and no English word survives; the scoped IDENTICAL_OK row is accurate and enforced (proved by negative control).",
+		"Bare day-word + clock with no postposition is the catalogue's own precedent (ui.schedules.scheduled_task_dialog.tomorrow_at_9_00_am «کل صبح 9:00 بجے»), so weekday_at/today_at need no کو.",
+		"No English remains in the composed labels except the ICU day period (PM), a named exception: ur CLDR's abbreviated day periods are Latin. In an RTL paragraph it renders as an LTR island to the left of the digits (same arrangement as CLDR ar's «٣:٤٥ م»), i.e. the correct reading order.",
+		"Cross-surface note, not this key's defect: schedule copy writes «9:00 بجے» while the divider clock is the formatter's «3:45 PM». The catalogue cannot choose the day period; that would be an hour-cycle decision in the formatter layer."
+	],
+	"limitations": [
+		"Mirror-contained mechanical run (src/i18n, scripts/i18n, i18n, package.json via git archive, node_modules symlinked); no whole-suite run, no browser render — widths and bidi were measured on the composed strings, not on a painted frame.",
+		"Did not re-audit the other seven locales or any other namespace."
+	],
+	"artifacts": [
+		{
+			"path": "record.json",
+			"purpose": "this record"
+		},
+		{
+			"path": "receipt.json",
+			"purpose": "ledger-bound receipt (byte-identical to receipt-ur-s16d-r2.json)",
+			"sha256": "8fa87b89c6b0d4b492bab5dab605ae16c42283ed38505ebee85f3f4960ee7c4e"
+		},
+		{
+			"path": "audit.log",
+			"purpose": "command transcript",
+			"sha256": "365bcba89fc8a91c79b3008837a5a319089c6b49b04d7f2fe2ac300f74097bfb"
+		},
+		{
+			"path": "audit-s16d-r2-ur.md",
+			"purpose": "full audit report",
+			"sha256": "3a37869823d3eda5eb16ca52a48b62fe9273eb8c6dad25a8851663c06bb92d67"
+		}
+	],
+	"audit_notes_not_execution_log": "checks.* and negative_controls.* were executed in this session; the strings quoted are the commands run and their actual output.",
+	"current_report_verdict": {
+		"status": "passed",
+		"unresolved_blocker_major_count": 0,
+		"finding_ids": []
+	}
+}

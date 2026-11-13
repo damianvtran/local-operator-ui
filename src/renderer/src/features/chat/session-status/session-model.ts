@@ -33,7 +33,7 @@
  * is what makes the segment's presence informative.
  */
 
-import { currentLocale, formatList, t } from "@shared/i18n";
+import { currentLocale, formatDateTime, formatList, t } from "@shared/i18n";
 import type {
 	CanonicalEffectiveAccessState,
 	CanonicalFrontendState,
@@ -1051,10 +1051,12 @@ function epochSeconds(value: unknown): number | undefined {
 }
 
 function accessTime(value: number): string {
-	return new Intl.DateTimeFormat(undefined, {
+	// The live UI locale, not `undefined` (the OS default): the history sentence
+	// around this stamp is keyed copy in the chosen language.
+	return formatDateTime(new Date(value * 1000), {
 		dateStyle: "medium",
 		timeStyle: "short",
-	}).format(new Date(value * 1000));
+	});
 }
 
 /**

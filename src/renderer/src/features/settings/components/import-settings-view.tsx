@@ -22,7 +22,7 @@ import {
 	Progress,
 	Skeleton,
 } from "@shared/components/ui";
-import { t } from "@shared/i18n";
+import { formatNumber, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { formatCalendarDateTime } from "@shared/utils/date-utils";
@@ -667,7 +667,7 @@ export const ImportSettingsView: FC<ImportSettingsViewProps> = ({
 								<p className="text-meta text-ink-muted">
 									{t("ui.settings.imports.preview_memory", {
 										records: preview.totalMemoryRecords,
-										tokens: preview.projectedMemoryTokens.toLocaleString(),
+										tokens: formatNumber(preview.projectedMemoryTokens),
 									})}
 								</p>
 								{preview.warnings.slice(0, 4).map((warning, index) => (

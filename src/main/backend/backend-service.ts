@@ -26,6 +26,7 @@ import os from "node:os";
 import { basename, dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { app, dialog as electronDialog } from "electron";
+import { formatDate, formatTime } from "../../i18n";
 import {
 	type AddressSubstitution,
 	type DaemonStatusSnapshot,
@@ -269,24 +270,25 @@ function installName(prefix: string): string {
  * When the holder started, in the READER's own local time and at minute precision.
  *
  * WHY NOT THE APP'S `shared/utils/date-utils.ts` HELPERS (design round 1, D4): they
- * are renderer modules (`date-fns`, `navigator.language`) and this sentence is
+ * are renderer modules (`date-fns`) and this sentence is
  * composed in main, so the alternatives were a second dialect of the same fact or a
  * sentence split across two processes - and one composer for every sentence about an
  * occupant is the property this change exists to keep. What is taken from that module
  * is its SHAPE (a clock time for today, a date for anything older) and its choice
- * formatter (the platform's own, so the instant reads in the operator's locale rather
- * than in UTC). The raw ISO-8601 string with milliseconds it replaces was addressed to
+ * formatter (the i18n layer's, so the instant reads in the UI's live locale rather than
+ * in the operating system's region or in UTC). The `started` word and the rest of the
+ * holder sentence are still English: that composer is its own keying slice. The raw ISO-8601 string with milliseconds it replaces was addressed to
  * a reader comparing it against their own clock, which is the one thing UTC is not.
  */
 function describeStartedAt(startedAtMs: number): string {
 	const started = new Date(startedAtMs);
 	if (started.toDateString() === new Date().toDateString()) {
-		return `started ${started.toLocaleTimeString(undefined, {
+		return `started ${formatTime(started, {
 			hour: "numeric",
 			minute: "2-digit",
 		})}`;
 	}
-	return `started ${started.toLocaleDateString(undefined, {
+	return `started ${formatDate(started, {
 		year: "numeric",
 		month: "short",
 		day: "numeric",

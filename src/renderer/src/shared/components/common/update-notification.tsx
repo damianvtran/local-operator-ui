@@ -38,6 +38,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { formatNumber } from "../../../../../i18n/format";
 import { t } from "../../../../../i18n/messages";
 import type { BackendUpdateErrorReport } from "../../../../../main/update-service";
 import { PanelDetails } from "./panel-details";
@@ -3643,7 +3644,9 @@ export const UpdateNotification = ({
 					<ProgressContainer>
 						<p className="text-body-sm text-ink-muted">
 							{t("ui.common.updates.update_notification.downloading")}
-							{Math.round(downloadProgress.percent)}%
+							{formatNumber(Math.round(downloadProgress.percent) / 100, {
+								style: "percent",
+							})}
 						</p>
 						<Progress value={downloadProgress.percent} className="mt-2" />
 						<p
@@ -3659,8 +3662,8 @@ export const UpdateNotification = ({
 							 * eye cannot hold is not the offer this tooltip makes.
 							 */
 							title={t("ui.common.updates.update_notification.detail_v2", {
-								detail: String(downloadProgress.transferred.toLocaleString()),
-								detail2: String(downloadProgress.total.toLocaleString()),
+								detail: formatNumber(downloadProgress.transferred),
+								detail2: formatNumber(downloadProgress.total),
 							})}
 						>
 							{formatByteSize(downloadProgress.transferred)}{" "}

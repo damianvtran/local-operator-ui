@@ -5,10 +5,12 @@ import { formatDate, formatDateTime, formatTime } from "@shared/i18n";
 
 /**
  * Formats a date/time string based on when it occurred
- * - Today: just time (h:mm a)
- * - Yesterday: "Yesterday"
- * - Within the last 7 days: Day of week (e.g., "Monday")
- * - Older: Full date (yyyy-MM-dd)
+ * - Today: just the clock (the live locale's hour cycle: `3:42 PM`, `15:42`)
+ * - Yesterday: the keyed word (`ui.common.time.yesterday`)
+ * - Within the last 7 days: the weekday name in the live locale
+ * - Older: ISO `yyyy-MM-dd`, KEPT: a numeric year-month-day stamp is
+ *   unambiguous in every language and its digits are ASCII, so it is not
+ *   English text; a locale-shaped numeric date would also change English
  *
  * @param dateTimeString The date/time string to format
  * @returns Formatted date/time string
@@ -30,22 +32,26 @@ export const formatMessageDateTime = (
 
 		// Check if the message was sent today
 		if (messageDate.toDateString() === now.toDateString()) {
-			return format(messageDate, "h:mm a"); // Today: just time
+			// Today: just the clock, in the live locale's own hour cycle. date-fns'
+			// `h:mm a` was an English 12-hour `PM` in every language (a French
+			// window read `3:42 PM`); the layer prints `15:42` there and keeps
+			// `3:42 PM` in English.
+			return formatTime(messageDate, { hour: "numeric", minute: "2-digit" });
 		}
 
 		// Check if the message was sent yesterday
 		if (messageDate.toDateString() === yesterday.toDateString()) {
-			return "Yesterday"; // Yesterday
+			return t("ui.common.time.yesterday");
 		}
 
 		// Check if the message was sent this week (within the last 7 days)
 		const oneWeekAgo = new Date(now);
 		oneWeekAgo.setDate(now.getDate() - 7);
 		if (messageDate > oneWeekAgo) {
-			return format(messageDate, "EEEE"); // Day of week
+			return formatDate(messageDate, { weekday: "long" }); // Day of week
 		}
 
-		// Otherwise, show the full date
+		// Otherwise, show the full date (ISO, language-neutral; see the header)
 		return format(messageDate, "yyyy-MM-dd");
 	} catch (error) {
 		console.error("Error formatting date:", error);
