@@ -136,8 +136,9 @@ export interface ConsolePaneProps {
 	onClose: () => void;
 	/**
 	 * THE SUBMIT GUARD for a suggested command's confirmed Run (`submit: true`),
-	 * asked at PICKUP — the last moment before a terminal is made and Enter is
-	 * pressed. The caller answers from what it holds NOW: that the ask the
+	 * asked once, at PICKUP — before the terminal is made, not when Enter is
+	 * pressed (see the command effect's note). The caller answers from what it
+	 * holds NOW: that the ask the
 	 * command came from is still answerable and the command still runnable on
 	 * this computer (`chat-content.tsx`, via `askCommandStillRunnable`). A
 	 * confirm is consent to run while the request is open, not a standing order
@@ -968,9 +969,16 @@ export const ConsolePane: FC<ConsolePaneProps> = ({
 	 * closed (QA's `stale-after-return` repro). The filer also drops it on a
 	 * conversation switch; this bound covers every path that one does not see.
 	 *
-	 * A SUBMIT IS RE-CHECKED HERE (`allowCommandSubmit`): the ask must still be
-	 * answerable and the command still runnable at the moment Enter would be
-	 * pressed. Refused → cleared, no surface, nothing typed.
+	 * A SUBMIT IS RE-CHECKED HERE, AT PICKUP (`allowCommandSubmit`): the ask must
+	 * still be answerable and the command still runnable when this pane takes the
+	 * intent. Refused → cleared, no surface, nothing typed. There is deliberately
+	 * no second check after it: once a confirmed Run has been picked up, the
+	 * terminal is created and the command is typed and Enter pressed in that
+	 * same conversation's new terminal, even if the user switches away during
+	 * the readiness wait (up to `CONSOLE_COMMAND_READY_CAP_MS`, 3000 ms). That is
+	 * still the same conversation, the same device and the exact command the user
+	 * confirmed, so finishing it is what the confirm asked for (agent review
+	 * round 2 r2-m1, QA round 2 Q3).
 	 *
 	 * NO CHORD, NO AUTO-RUN: `submit` is only ever set by the card's confirmation
 	 * dialog (`ask-command.tsx`); this effect just honours it.

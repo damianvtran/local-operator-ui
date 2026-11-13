@@ -136,6 +136,12 @@ export async function waitForConsoleReady(
 /**
  * Type `command` into `surface` (as a paste), and press Enter only when
  * `submit` — which the card sets only after its confirmation dialog.
+ *
+ * No guard runs in here: the submit re-check happens once, at pickup in
+ * `ConsolePane`, before the surface is created. By the time this runs the Run
+ * was already confirmed and picked up, so it types and presses Enter after the
+ * readiness wait even if the user has switched conversations meanwhile — into
+ * the same conversation's new terminal, with the same confirmed command.
  */
 export async function deliverConsoleCommand(
 	api: ConsoleCommandApi,

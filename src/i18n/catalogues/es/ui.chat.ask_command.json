@@ -1,6 +1,6 @@
 {
 	"ui.chat.ask_command.copy": "Copiar",
-	"ui.chat.ask_command.dialog_caution": "Los comandos del agente pueden ser incorrectos o peligrosos. Lee este antes de ejecutarlo.",
+	"ui.chat.ask_command.dialog_caution": "Los comandos del agente pueden ser incorrectos o peligrosos. Lee este comando antes de ejecutarlo.",
 	"ui.chat.ask_command.dialog_closed": "Esta solicitud se cerró, así que el comando ya no se puede ejecutar desde ella.",
 	"ui.chat.ask_command.dialog_confirm": "Ejecutar en la terminal",
 	"ui.chat.ask_command.dialog_device_local": "Se ejecuta en una nueva terminal en este equipo, en tu carpeta personal.",

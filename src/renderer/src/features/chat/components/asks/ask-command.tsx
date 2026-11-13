@@ -97,8 +97,11 @@ export const AskCommandRow: FC<{
 	const runnable = askCommandRunnable(hint, placement);
 	const notice = askCommandNotice(hint, placement);
 	const ids = useId();
+	// i18n: ignore useId-derived element id; must stay stable for aria-describedby and is never rendered as text.
 	const noticeId = `${ids}-notice`;
+	// i18n: ignore useId-derived element id; must stay stable for aria-describedby and is never rendered as text.
 	const insertHintId = `${ids}-insert-hint`;
+	// i18n: ignore useId-derived element id; must stay stable for aria-describedby and is never rendered as text.
 	const runHintId = `${ids}-run-hint`;
 	/*
 	 * THE DEVICE NOTICE IS PART OF EACH BUTTON'S DESCRIPTION (UX round 1, U3): a
