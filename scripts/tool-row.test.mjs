@@ -238,17 +238,41 @@ test("a send row's delivery state is read from details, and absent or unknown is
 	 * an edit is visible in the suite, NOT as a claim that a design note asked for
 	 * them.
 	 */
-	assert.deepEqual(SEND_DELIVERY_WORD, {
+	/*
+	 * The maps hold catalogue KEYS since S17a (`ui.chat.trace.send.delivery.*`),
+	 * so a live language switch repaints them; the English is pinned here through
+	 * the accessors the row actually renders with, byte for byte as before.
+	 */
+	const STATES = ["mailbox", "unconfirmed", "failed", "delivered"];
+	const through = (fn) =>
+		Object.fromEntries(
+			STATES.map((s) => [s, fn(s, "send")]).filter(
+				([, v]) => v !== null && v !== undefined,
+			),
+		);
+	for (const map of [
+		SEND_DELIVERY_WORD,
+		SEND_DELIVERY_LABEL,
+		SEND_DELIVERY_TITLE,
+		SEND_DELIVERY_NOTE,
+	])
+		for (const key of Object.values(map))
+			assert.match(key, /^ui\.chat\.trace\.send\.delivery\./);
+	const WORD = through(deliveryWord);
+	const LABEL = through(deliveryLabel);
+	const TITLE = through(deliveryTitle);
+	const NOTE = through(deliveryNote);
+	assert.deepEqual(WORD, {
 		mailbox: "wake unconfirmed",
 		unconfirmed: "delivery unconfirmed",
 		failed: "not delivered",
 	});
-	assert.deepEqual(SEND_DELIVERY_LABEL, {
+	assert.deepEqual(LABEL, {
 		mailbox: "delivered, wake unconfirmed",
 		unconfirmed:
 			"delivery unconfirmed — it may still arrive, so check before resending",
 	});
-	assert.deepEqual(SEND_DELIVERY_TITLE, {
+	assert.deepEqual(TITLE, {
 		mailbox:
 			"In their mailbox. The wake got no answer, so they will read it on their next turn.",
 		unconfirmed:
@@ -264,22 +288,27 @@ test("a send row's delivery state is read from details, and absent or unknown is
 	assert.equal(SEND_DELIVERY_LABEL.delivered, undefined);
 	// Every word is distinct with the colour off, which is what makes the pair
 	// readable to a reader who cannot see the amber/red step.
-	assert.equal(
-		new Set(Object.values(SEND_DELIVERY_WORD)).size,
-		Object.keys(SEND_DELIVERY_WORD).length,
-	);
+	assert.equal(new Set(Object.values(WORD)).size, Object.keys(WORD).length);
 	/*
 	 * The expansion's own sentences (UX round 1, U1/U4): one per state that did not
 	 * plainly succeed, and NONE for `delivered` - a success says nothing, and its
 	 * expansion is the row it always was.
 	 */
-	assert.deepEqual(Object.keys(SEND_DELIVERY_NOTE).sort(), [
+	assert.deepEqual(Object.keys(NOTE).sort(), [
 		"failed",
 		"mailbox",
 		"unconfirmed",
 	]);
+	assert.deepEqual(NOTE, {
+		mailbox:
+			"Delivered to their mailbox. The wake got no answer, so they will read the message on their next turn. Do not send it again.",
+		unconfirmed:
+			"Not confirmed: there was no answer and the message is not in their transcript. It may still arrive, so check before resending.",
+		failed:
+			"Nothing was delivered. Fix the cause named below, or retry the send.",
+	});
 	assert.equal(SEND_DELIVERY_NOTE.delivered, undefined);
-	for (const note of Object.values(SEND_DELIVERY_NOTE)) {
+	for (const note of Object.values(NOTE)) {
 		assert.match(note, /\.$/);
 		// No agent API in a sentence a PERSON reads (U4): the check the reader can
 		// run lives in the model-facing result text, not here.
@@ -300,8 +329,8 @@ test("a send row's delivery state is read from details, and absent or unknown is
 	 * sentence, so the copy can still be rewritten without the pointer drifting
 	 * back.
 	 */
-	assert.doesNotMatch(SEND_DELIVERY_NOTE.failed, /cause above/i);
-	assert.match(SEND_DELIVERY_NOTE.failed, /cause named below/i);
+	assert.doesNotMatch(NOTE.failed, /cause above/i);
+	assert.match(NOTE.failed, /cause named below/i);
 
 	/*
 	 * Which outcome each state earns, and the COUNT rule that follows from it: the
@@ -5836,14 +5865,18 @@ test("bridge: peer_inbox, unconfirmed and awaiting acceptance are partial, never
 	);
 	assert.match(deliveryTitle("unconfirmed", "bridge"), /conversation/);
 	assert.ok(deliveryLabel("inbox_only", "bridge"));
-	// `send`'s frozen copy is untouched by the accessors.
-	assert.equal(deliveryWord("mailbox", "send"), SEND_DELIVERY_WORD.mailbox);
+	// `send`'s frozen copy is untouched by the bridge branches: the accessors
+	// still resolve `send`'s own keys (S17a: the maps hold keys, not words).
+	assert.equal(deliveryWord("mailbox", "send"), "wake unconfirmed");
 	assert.equal(
 		deliveryNote("unconfirmed", "send"),
-		SEND_DELIVERY_NOTE.unconfirmed,
+		"Not confirmed: there was no answer and the message is not in their transcript. It may still arrive, so check before resending.",
 	);
-	assert.equal(deliveryTitle("unconfirmed"), SEND_DELIVERY_TITLE.unconfirmed);
-	assert.equal(deliveryLabel("mailbox"), SEND_DELIVERY_LABEL.mailbox);
+	assert.equal(
+		deliveryTitle("unconfirmed"),
+		"No wake answer and not yet in their transcript — it may still arrive. Check before resending.",
+	);
+	assert.equal(deliveryLabel("mailbox"), "delivered, wake unconfirmed");
 	// The reducer's state follows the absent-vs-stated rule for bridge too.
 	assert.equal(
 		preferDeliveryState(undefined, "inbox_only", "bridge"),

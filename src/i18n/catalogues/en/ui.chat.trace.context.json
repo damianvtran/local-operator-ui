@@ -1,0 +1,204 @@
+{
+	"ui.chat.trace.action.ask.running": {
+		"role": "verb label of an in-progress step in the chat transcript trace",
+		"tone": "Present progressive, sentence case, no trailing punctuation or ellipsis.",
+		"note": "Shown while the step is still running: the agent asking the user a question. Replaced in place by the .settled key when the step finishes, so the two should read as the same action in two tenses.",
+		"length": "One to three words; same budget as the settled verb."
+	},
+	"ui.chat.trace.action.ask.settled": {
+		"role": "verb label of a completed step in the chat transcript trace",
+		"tone": "Past tense, sentence case, no trailing punctuation.",
+		"note": "Names the finished step: the agent asking the user a question. Sits at the start of a one-line row; a monospace object (a file path or a file count) may follow it, or a short prose narration when there is no object. Name the action in the user's terms, not the machine's (\"Read\", never \"Executed read\"). Pair with the .running key, which the same row shows while the step is in progress.",
+		"length": "One to three words; it is a row label, keep it short."
+	},
+	"ui.chat.trace.action.bye.running": {
+		"role": "verb label of an in-progress step in the chat transcript trace",
+		"tone": "Present progressive, sentence case, no trailing punctuation or ellipsis.",
+		"note": "Shown while the step is still running: the agent ending the conversation. Replaced in place by the .settled key when the step finishes, so the two should read as the same action in two tenses.",
+		"length": "One to three words; same budget as the settled verb."
+	},
+	"ui.chat.trace.action.bye.settled": {
+		"role": "verb label of a completed step in the chat transcript trace",
+		"tone": "Past tense, sentence case, no trailing punctuation.",
+		"note": "Names the finished step: the agent ending the conversation. Sits at the start of a one-line row; a monospace object (a file path or a file count) may follow it, or a short prose narration when there is no object. Name the action in the user's terms, not the machine's (\"Read\", never \"Executed read\"). Pair with the .running key, which the same row shows while the step is in progress.",
+		"length": "One to three words; it is a row label, keep it short."
+	},
+	"ui.chat.trace.action.code.running": {
+		"role": "verb label of an in-progress step in the chat transcript trace",
+		"tone": "Present progressive, sentence case, no trailing punctuation or ellipsis.",
+		"note": "Shown while the step is still running: running a block of code the agent wrote. Replaced in place by the .settled key when the step finishes, so the two should read as the same action in two tenses.",
+		"length": "One to three words; same budget as the settled verb."
+	},
+	"ui.chat.trace.action.code.settled": {
+		"role": "verb label of a completed step in the chat transcript trace",
+		"tone": "Past tense, sentence case, no trailing punctuation.",
+		"note": "Names the finished step: running a block of code the agent wrote. Sits at the start of a one-line row; a monospace object (a file path or a file count) may follow it, or a short prose narration when there is no object. Name the action in the user's terms, not the machine's (\"Read\", never \"Executed read\"). Pair with the .running key, which the same row shows while the step is in progress.",
+		"length": "One to three words; it is a row label, keep it short."
+	},
+	"ui.chat.trace.action.delegate.running": {
+		"role": "verb label of an in-progress step in the chat transcript trace",
+		"tone": "Present progressive, sentence case, no trailing punctuation or ellipsis.",
+		"note": "Shown while the step is still running: handing part of the task to another agent. Replaced in place by the .settled key when the step finishes, so the two should read as the same action in two tenses.",
+		"length": "One to three words; same budget as the settled verb."
+	},
+	"ui.chat.trace.action.delegate.settled": {
+		"role": "verb label of a completed step in the chat transcript trace",
+		"tone": "Past tense, sentence case, no trailing punctuation.",
+		"note": "Names the finished step: handing part of the task to another agent. Sits at the start of a one-line row; a monospace object (a file path or a file count) may follow it, or a short prose narration when there is no object. Name the action in the user's terms, not the machine's (\"Read\", never \"Executed read\"). Pair with the .running key, which the same row shows while the step is in progress.",
+		"length": "One to three words; it is a row label, keep it short."
+	},
+	"ui.chat.trace.action.done.running": {
+		"role": "verb label of an in-progress step in the chat transcript trace",
+		"tone": "Present progressive, sentence case, no trailing punctuation or ellipsis.",
+		"note": "Shown while the step is still running: the agent's closing step that marks the task complete. Replaced in place by the .settled key when the step finishes, so the two should read as the same action in two tenses.",
+		"length": "One to three words; same budget as the settled verb."
+	},
+	"ui.chat.trace.action.done.settled": {
+		"role": "verb label of a completed step in the chat transcript trace",
+		"tone": "Past tense, sentence case, no trailing punctuation.",
+		"note": "Names the finished step: the agent's closing step that marks the task complete. Sits at the start of a one-line row; a monospace object (a file path or a file count) may follow it, or a short prose narration when there is no object. Name the action in the user's terms, not the machine's (\"Read\", never \"Executed read\"). Pair with the .running key, which the same row shows while the step is in progress.",
+		"length": "One to three words; it is a row label, keep it short."
+	},
+	"ui.chat.trace.action.edit.running": {
+		"role": "verb label of an in-progress step in the chat transcript trace",
+		"tone": "Present progressive, sentence case, no trailing punctuation or ellipsis.",
+		"note": "Shown while the step is still running: editing an existing file in place. Replaced in place by the .settled key when the step finishes, so the two should read as the same action in two tenses.",
+		"length": "One to three words; same budget as the settled verb."
+	},
+	"ui.chat.trace.action.edit.settled": {
+		"role": "verb label of a completed step in the chat transcript trace",
+		"tone": "Past tense, sentence case, no trailing punctuation.",
+		"note": "Names the finished step: editing an existing file in place. Sits at the start of a one-line row; a monospace object (a file path or a file count) may follow it, or a short prose narration when there is no object. Name the action in the user's terms, not the machine's (\"Read\", never \"Executed read\"). Pair with the .running key, which the same row shows while the step is in progress.",
+		"length": "One to three words; it is a row label, keep it short."
+	},
+	"ui.chat.trace.action.fallback.running": {
+		"role": "verb label of an in-progress step in the chat transcript trace",
+		"tone": "Present progressive, sentence case, no trailing punctuation or ellipsis.",
+		"note": "Shown while the step is still running: a step whose action the app cannot name; the generic fallback. Replaced in place by the .settled key when the step finishes, so the two should read as the same action in two tenses.",
+		"length": "One to three words; same budget as the settled verb."
+	},
+	"ui.chat.trace.action.fallback.settled": {
+		"role": "verb label of a completed step in the chat transcript trace",
+		"tone": "Past tense, sentence case, no trailing punctuation.",
+		"note": "Names the finished step: a step whose action the app cannot name; the generic fallback. Sits at the start of a one-line row; a monospace object (a file path or a file count) may follow it, or a short prose narration when there is no object. Name the action in the user's terms, not the machine's (\"Read\", never \"Executed read\"). Pair with the .running key, which the same row shows while the step is in progress.",
+		"length": "One to three words; it is a row label, keep it short."
+	},
+	"ui.chat.trace.action.read.running": {
+		"role": "verb label of an in-progress step in the chat transcript trace",
+		"tone": "Present progressive, sentence case, no trailing punctuation or ellipsis.",
+		"note": "Shown while the step is still running: reading a file the agent named. Replaced in place by the .settled key when the step finishes, so the two should read as the same action in two tenses.",
+		"length": "One to three words; same budget as the settled verb."
+	},
+	"ui.chat.trace.action.read.settled": {
+		"role": "verb label of a completed step in the chat transcript trace",
+		"tone": "Past tense, sentence case, no trailing punctuation.",
+		"note": "Names the finished step: reading a file the agent named. Sits at the start of a one-line row; a monospace object (a file path or a file count) may follow it, or a short prose narration when there is no object. Name the action in the user's terms, not the machine's (\"Read\", never \"Executed read\"). Pair with the .running key, which the same row shows while the step is in progress.",
+		"length": "One to three words; it is a row label, keep it short."
+	},
+	"ui.chat.trace.action.write.running": {
+		"role": "verb label of an in-progress step in the chat transcript trace",
+		"tone": "Present progressive, sentence case, no trailing punctuation or ellipsis.",
+		"note": "Shown while the step is still running: writing (creating or overwriting) a file. Replaced in place by the .settled key when the step finishes, so the two should read as the same action in two tenses.",
+		"length": "One to three words; same budget as the settled verb."
+	},
+	"ui.chat.trace.action.write.settled": {
+		"role": "verb label of a completed step in the chat transcript trace",
+		"tone": "Past tense, sentence case, no trailing punctuation.",
+		"note": "Names the finished step: writing (creating or overwriting) a file. Sits at the start of a one-line row; a monospace object (a file path or a file count) may follow it, or a short prose narration when there is no object. Name the action in the user's terms, not the machine's (\"Read\", never \"Executed read\"). Pair with the .running key, which the same row shows while the step is in progress.",
+		"length": "One to three words; it is a row label, keep it short."
+	},
+	"ui.chat.trace.detail.error": {
+		"role": "small heading above the result block in an expanded tool-call row",
+		"tone": "Single noun or participle, sentence case, no punctuation.",
+		"note": "Labels the block below as a result the tool reported as a failure. Exactly one of Output / Error / Interrupted appears per row.",
+		"length": "One word."
+	},
+	"ui.chat.trace.detail.interrupted": {
+		"role": "small heading above the result block in an expanded tool-call row",
+		"tone": "Single noun or participle, sentence case, no punctuation.",
+		"note": "Labels the block below as a call that was stopped before it finished. Exactly one of Output / Error / Interrupted appears per row.",
+		"length": "One word."
+	},
+	"ui.chat.trace.detail.output": {
+		"role": "small heading above the result block in an expanded tool-call row",
+		"tone": "Single noun or participle, sentence case, no punctuation.",
+		"note": "Labels the block below as the tool call's normal result. Exactly one of Output / Error / Interrupted appears per row.",
+		"length": "One word."
+	},
+	"ui.chat.trace.object.file_count": {
+		"role": "object slot of a transcript trace row, set in monospace after the verb",
+		"tone": "Lowercase count-plus-noun, no punctuation.",
+		"note": "Counts the files a step touched when there is more than one (one file shows its path instead, so English only ever renders the plural arm). Follows a verb such as \"Read\" or \"Wrote\". Supply every plural category the language needs.",
+		"length": "Two words including the count.",
+		"placeholders": {
+			"count": "How many files the step touched; printed without digit grouping, as before."
+		},
+		"plural_guidance": "English one/other is source grammar; use the target locale's native CLDR categories."
+	},
+	"ui.chat.trace.send.delivery.failed.note": {
+		"role": "wrapping explanation in the expanded sent-message row",
+		"tone": "Plain, calm, factual.",
+		"note": "The error that caused the failure is printed BELOW this sentence; keep the direction (below) accurate in your language's layout.",
+		"length": "Two short sentences."
+	},
+	"ui.chat.trace.send.delivery.failed.verb": {
+		"role": "verb label replacing \"Sent\" on a send that delivered nothing",
+		"tone": "Plain, calm, factual.",
+		"note": "Past tense. Names the attempt, so the row does not read \"Sent ... not delivered\". Followed by the recipient and the not-delivered status word.",
+		"length": "One word."
+	},
+	"ui.chat.trace.send.delivery.failed.word": {
+		"role": "trailing status word on a sent-message row",
+		"tone": "Plain, calm, factual.",
+		"note": "The send provably delivered nothing. Red (failed) state; the word is the whole statement, so it has no hover.",
+		"length": "Two or three words."
+	},
+	"ui.chat.trace.send.delivery.mailbox.label": {
+		"role": "accessible name for the status word (screen readers)",
+		"tone": "Plain, calm, factual.",
+		"note": "Spoken instead of the drawn word for the mailbox state; must say both that it was delivered and that the wake went unanswered, because the drawn word is hidden from assistive tech.",
+		"length": "Three or four words, lowercase."
+	},
+	"ui.chat.trace.send.delivery.mailbox.note": {
+		"role": "wrapping explanation in the expanded sent-message row",
+		"tone": "Plain, calm, factual.",
+		"note": "Shown above the raw result when the row is expanded; tells the reader what happened and what to do (nothing; do not resend).",
+		"length": "Three short sentences."
+	},
+	"ui.chat.trace.send.delivery.mailbox.title": {
+		"role": "hover text on the amber status word",
+		"tone": "Plain, calm, factual.",
+		"note": "Explains wake unconfirmed: the message is safely in the recipient's mailbox; they did not answer the wake-up, so they read it when they next act. \"they\" is the recipient agent or session.",
+		"length": "Two short sentences."
+	},
+	"ui.chat.trace.send.delivery.mailbox.word": {
+		"role": "trailing status word on a sent-message row",
+		"tone": "Plain, calm, factual.",
+		"note": "The message reached the recipient's mailbox but the recipient's agent did not answer the wake-up, so it is not known whether they have seen it yet. Amber (partial) state; a hover adds the explanation.",
+		"length": "Two or three words."
+	},
+	"ui.chat.trace.send.delivery.unconfirmed.label": {
+		"role": "accessible name for the status word (screen readers)",
+		"tone": "Plain, calm, factual.",
+		"note": "Spoken instead of the drawn word; carries the same hedge as the hover so a screen-reader user is not told the message failed.",
+		"length": "One clause."
+	},
+	"ui.chat.trace.send.delivery.unconfirmed.note": {
+		"role": "wrapping explanation in the expanded sent-message row",
+		"tone": "Plain, calm, factual.",
+		"note": "Tells the reader the delivery is unknown and to check before sending again.",
+		"length": "Two short sentences."
+	},
+	"ui.chat.trace.send.delivery.unconfirmed.title": {
+		"role": "hover text on the amber status word",
+		"tone": "Plain, calm, factual.",
+		"note": "Explains delivery unconfirmed and warns against a duplicate send. Keep the hedge (may still arrive) and the instruction to check first.",
+		"length": "Two short sentences."
+	},
+	"ui.chat.trace.send.delivery.unconfirmed.word": {
+		"role": "trailing status word on a sent-message row",
+		"tone": "Plain, calm, factual.",
+		"note": "Neither the wake-up nor the recipient's transcript confirms the message arrived; it may still arrive. Amber (partial) state, distinct from not delivered.",
+		"length": "Two or three words."
+	}
+}

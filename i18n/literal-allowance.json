@@ -128,17 +128,6 @@
 			"reason": "JSX child expressions render copy inside braces, where `JsxText` cannot reach. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
 		},
 		{
-			"file": "src/renderer/src/features/chat/components/trace/tool-detail.tsx",
-			"ids": [
-				"jsx-child-expression | Error",
-				"jsx-child-expression | Interrupted",
-				"jsx-child-expression | Output"
-			],
-			"owner": "the i18n renderer-keying lane",
-			"payoff": "2027-01-31",
-			"reason": "JSX child expressions render copy inside braces, where `JsxText` cannot reach. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
-		},
-		{
 			"file": "src/renderer/src/features/mesh/mesh-canvas.tsx",
 			"ids": ["jsx-child-expression | untitled"],
 			"owner": "the i18n renderer-keying lane",

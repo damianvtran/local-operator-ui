@@ -427,7 +427,11 @@ export const ToolDetail: FC<ToolDetailProps> = ({
 							isError && !interrupted ? "text-danger" : "text-ink-dim",
 						)}
 					>
-						{interrupted ? "Interrupted" : isError ? "Error" : "Output"}
+						{interrupted
+							? t("ui.chat.trace.detail.interrupted")
+							: isError
+								? t("ui.chat.trace.detail.error")
+								: t("ui.chat.trace.detail.output")}
 					</span>
 					<div ref={outputRef} className={cn(SECTION_MAX, "overflow-auto")}>
 						{structured ? (

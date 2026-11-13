@@ -100,6 +100,7 @@ import enUiChatTagGroups from "./catalogues/en/ui.chat.tag_groups.json";
 import enUiChatTagMode from "./catalogues/en/ui.chat.tag_mode.json";
 import enUiChatTags from "./catalogues/en/ui.chat.tags.json";
 import enUiChatThreadSearch from "./catalogues/en/ui.chat.thread_search.json";
+import enUiChatTrace from "./catalogues/en/ui.chat.trace.json";
 import enUiChatTranscriptCopy from "./catalogues/en/ui.chat.transcript_copy.json";
 import enUiChatUsageReset from "./catalogues/en/ui.chat.usage_reset.json";
 import enUiChatUserTurn from "./catalogues/en/ui.chat.user_turn.json";
@@ -1391,6 +1392,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChatTagMode,
 	...enUiChatTags,
 	...enUiChatThreadSearch,
+	...enUiChatTrace,
 	...enUiChatTranscriptCopy,
 	...enUiChatUsageReset,
 	...enUiChatUserTurn,
@@ -7359,6 +7361,39 @@ export type MessageParams = {
 	"ui.chat.thread_search.stale": undefined;
 	"ui.chat.thread_search.tier.related": undefined;
 	"ui.chat.thread_search.unsupported": undefined;
+	"ui.chat.trace.action.ask.running": undefined;
+	"ui.chat.trace.action.ask.settled": undefined;
+	"ui.chat.trace.action.bye.running": undefined;
+	"ui.chat.trace.action.bye.settled": undefined;
+	"ui.chat.trace.action.code.running": undefined;
+	"ui.chat.trace.action.code.settled": undefined;
+	"ui.chat.trace.action.delegate.running": undefined;
+	"ui.chat.trace.action.delegate.settled": undefined;
+	"ui.chat.trace.action.done.running": undefined;
+	"ui.chat.trace.action.done.settled": undefined;
+	"ui.chat.trace.action.edit.running": undefined;
+	"ui.chat.trace.action.edit.settled": undefined;
+	"ui.chat.trace.action.fallback.running": undefined;
+	"ui.chat.trace.action.fallback.settled": undefined;
+	"ui.chat.trace.action.read.running": undefined;
+	"ui.chat.trace.action.read.settled": undefined;
+	"ui.chat.trace.action.write.running": undefined;
+	"ui.chat.trace.action.write.settled": undefined;
+	"ui.chat.trace.detail.error": undefined;
+	"ui.chat.trace.detail.interrupted": undefined;
+	"ui.chat.trace.detail.output": undefined;
+	"ui.chat.trace.object.file_count": { count: number };
+	"ui.chat.trace.send.delivery.failed.note": undefined;
+	"ui.chat.trace.send.delivery.failed.verb": undefined;
+	"ui.chat.trace.send.delivery.failed.word": undefined;
+	"ui.chat.trace.send.delivery.mailbox.label": undefined;
+	"ui.chat.trace.send.delivery.mailbox.note": undefined;
+	"ui.chat.trace.send.delivery.mailbox.title": undefined;
+	"ui.chat.trace.send.delivery.mailbox.word": undefined;
+	"ui.chat.trace.send.delivery.unconfirmed.label": undefined;
+	"ui.chat.trace.send.delivery.unconfirmed.note": undefined;
+	"ui.chat.trace.send.delivery.unconfirmed.title": undefined;
+	"ui.chat.trace.send.delivery.unconfirmed.word": undefined;
 	"ui.chat.transcript_copy.block.logs": undefined;
 	"ui.chat.transcript_copy.block.output": undefined;
 	"ui.chat.transcript_copy.menu.copy_markdown": undefined;
