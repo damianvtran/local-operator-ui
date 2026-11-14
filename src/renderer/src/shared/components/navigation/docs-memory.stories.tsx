@@ -10,7 +10,8 @@
  * row and a recall is an ordinary `read` of a `memory://` entry, so the scenes
  * below stage exactly those rows rather than inventing a memory card.
  *
- * WHAT IS PRODUCT TRUTH AND WHAT IS SAMPLE (core `local_operator` @ ba3fccc1d604):
+ * WHAT IS PRODUCT TRUTH AND WHAT IS SAMPLE (core `local_operator` @ ba3fccc1d604;
+ * the recall read's shape and owner re-verified @ 5859634ddd9d):
  * - The approval card's title is the tool's name and its detail is the tool's
  *   own approval describer (`session/runtime/serving.py` `PendingRequest(
  *   kind="approval", title=tool_name, detail=description)`). For a global store
@@ -25,7 +26,12 @@
  * - On a later turn up to 3 matching titles are suggested to the agent
  *   (`memory_capture.py` suggestion block, which is prompt-side and never
  *   rendered); the agent reads the full entry with `read memory://global/<id>`,
- *   whose result is `MemoryStore.show`'s shape. Recall is per relevant request,
+ *   whose result is `MemoryStore.show`'s dict unchanged (`memory_tools.py`
+ *   adds a `related` key only for `?related=true`, which this read omits):
+ *   id, version, scope, owner, status, the normalized fact (`validate_fact`
+ *   defaults plus the `prepare_fact` stamps: `source` and `created_at`),
+ *   conflicts, revisions, moved_from, untrusted. A global fact's owner is the
+ *   literal `"global"` (`MemoryIdentity.owner`). Recall is per relevant request,
  *   not applied to every turn - so scene B is a matching request.
  * - Everything else - the user's words, the agent's prose and intents, the
  *   repository, branch and PR - is sample text in the docs library's world.
@@ -33,10 +39,12 @@
  * CAPTURE. The marketing set's size: a 1280x720 viewport at
  * `deviceScaleFactor: 2`, once per theme via
  * `&args=theme:localOperatorLight|localOperatorDark`. The approval card is
- * docked synchronously, but the receipt scenes open a row's disclosure after
- * mount, so they hold the shutter (`data-capture-pending`) until the expanded
- * detail is painted and refuse the frame (`data-capture-failed`) if it never is
- * - the latch the capture rigs already honour.
+ * docked synchronously. Recalled's read row is not: a settled turn condenses
+ * its calls under a summary bar, so after mount the scene opens that bar to
+ * bring the collapsed read row on screen, holds the shutter
+ * (`data-capture-pending`) until the row is there and refuses the frame
+ * (`data-capture-failed`) if it never appears - the latch the capture rigs
+ * already honour.
  */
 
 import "../../../styles/index.css";
@@ -102,6 +110,33 @@ const PREFERENCE =
 const FACT_ID = "019a6f3e-7c41-7d2a-9b1e-5f0c2a8d4e61";
 const FACT_VERSION = "019a6f3e-7c42-7f10-8c3d-1e9b7a4f2c05";
 const FACT_URI = `memory://global/${FACT_ID}`;
+
+/**
+ * The fact as the store keeps it: `validate_fact`'s defaults for every field
+ * the writer left out, plus what `prepare_fact` stamps on every write - a
+ * `source` of kind "reported" authored by the calling agent with the host's
+ * session id, and `created_at` in Unix seconds (never null once stored).
+ */
+const STORED_FACT = {
+	title: PREFERENCE,
+	body: PREFERENCE,
+	tags: [],
+	aliases: [],
+	source: {
+		kind: "reported",
+		author: "main",
+		// The taught conversation's id: the fact crossed sessions to get here.
+		session: TAUGHT_SESSION.split("/")[1],
+	},
+	status: "active",
+	verified_at: null,
+	expires_at: null,
+	pinned: false,
+	subject: "",
+	created_at: TAUGHT_AT / 1000,
+	source_time: null,
+	replaces: "",
+};
 
 const user = (id: string, text: string, ts: number): TranscriptRecord => ({
 	kind: "user",
@@ -216,12 +251,15 @@ const MemoryPane: FC<{
 			</div>
 			{gate && (
 				// The wrapper and measure `chat-content.tsx` mounts the dock in, so the
-				// card takes the chat column's width rather than the pane's.
+				// card takes the chat column's width rather than the pane's and the
+				// same 70% height cap. It must track chat-content's wrapper class for
+				// the frame to stay the product's; the transcript's `min-h-16` floor
+				// needs no copy here, it lives on `CanonicalTranscript`'s own root.
 				<div
 					className={cn(
 						CHAT_COLUMN_CONTAINER,
 						CHAT_COLUMN_INSET,
-						"w-full shrink-0 pt-2",
+						"flex max-h-[70%] min-h-0 w-full flex-col pt-2",
 					)}
 				>
 					{/* No session behind a story: answering is a no-op. */}
@@ -241,6 +279,9 @@ const MemoryPane: FC<{
 					messages={NONEMPTY}
 					conversationId={sessionId}
 					onSendMessage={async () => true}
+					// The composer focuses itself by default, which paints a caret
+					// into a still frame (design D2).
+					autoFocus={false}
 				/>
 			</div>
 		</main>
@@ -249,29 +290,23 @@ const MemoryPane: FC<{
 
 /**
  * Bring one tool row on screen by a marker in its text, the way a reader
- * does (the turn's summary bar and the row's own button are the only
- * controls), and hold the shutter until it is there. `open: "row"` also opens
- * the row's receipt; `open: "turn"` stops at the visible collapsed row, for a
- * frame whose point is the whole turn rather than one receipt. Same latch as the docs library's `ExpandReceipt` / `HubHold`: an
- * expired hold sets `data-capture-failed` so a rig refuses the frame instead of
- * exporting a collapsed row as if it were the claimed state.
+ * does: open the settled turn's summary bar and stop at the visible,
+ * collapsed row. The frame's point is the whole turn, not one receipt (an
+ * open receipt alone is taller than the transcript's share of 720px). Same
+ * latch as the docs library's `ExpandReceipt` / `HubHold`: an expired hold
+ * sets `data-capture-failed` so a rig refuses the frame instead of exporting a
+ * condensed turn with no read row as if it were the claimed state.
  */
-const ExpandRow = ({
-	marker,
-	open,
-}: {
-	marker: string;
-	open: "row" | "turn";
-}) => {
+const ShowRow = ({ marker }: { marker: string }) => {
 	useEffect(() => {
 		const root = document.documentElement;
 		root.dataset.capturePending = "1";
 		delete root.dataset.captureFailed;
 		const started = Date.now();
-		const rowWith = (expanded: "true" | "false") =>
+		const row = () =>
 			Array.from(
 				document.querySelectorAll<HTMLButtonElement>(
-					`[data-record-kind="tool"] button[aria-expanded="${expanded}"]`,
+					'[data-record-kind="tool"] button[aria-expanded]',
 				),
 			).find((trigger) =>
 				(
@@ -279,34 +314,34 @@ const ExpandRow = ({
 				).includes(marker),
 			);
 		const timer = window.setInterval(() => {
-			if (rowWith("true") || (open === "turn" && rowWith("false"))) {
+			if (row()) {
 				root.removeAttribute("data-capture-pending");
 				window.clearInterval(timer);
 				return;
 			}
 			if (Date.now() - started > 20_000) {
-				root.dataset.captureFailed = "memory-row-not-expanded";
+				root.dataset.captureFailed = "memory-row-not-shown";
 				root.removeAttribute("data-capture-pending");
 				window.clearInterval(timer);
 				return;
 			}
-			const row = rowWith("false");
-			if (row) row.click();
 			// A settled turn condenses its calls under one summary bar
 			// (`turn-collapse-model.ts`), so the row only exists once a reader
-			// has opened that bar - open it the same way, then the row.
-			else
-				document
-					.querySelector<HTMLButtonElement>(
-						'[data-turn-summary] button[aria-expanded="false"]',
-					)
-					?.click();
+			// has opened that bar - open it the same way.
+			document
+				.querySelector<HTMLButtonElement>(
+					'[data-turn-summary] button[aria-expanded="false"]',
+				)
+				?.click();
 		}, 100);
 		return () => {
 			window.clearInterval(timer);
 			root.removeAttribute("data-capture-pending");
+			// A refusal belongs to this story's frame; left on the root it would
+			// fail the next story Storybook mounts in the same page.
+			delete root.dataset.captureFailed;
 		};
-	}, [marker, open]);
+	}, [marker]);
 	return null;
 };
 
@@ -375,7 +410,7 @@ export const Recalled: Story = {
 			 * read row and the reply must share one 720px frame, and the open
 			 * receipt alone is taller than the transcript's share of it.
 			 */}
-			<ExpandRow marker={FACT_URI} open="turn" />
+			<ShowRow marker={FACT_URI} />
 			<MemoryPane
 				sessionId={RECALLED_SESSION}
 				records={[
@@ -395,10 +430,13 @@ export const Recalled: Story = {
 								id: FACT_ID,
 								version: FACT_VERSION,
 								scope: "global",
-								owner: "operator",
+								owner: "global",
 								status: "active",
-								fact: { title: PREFERENCE, body: PREFERENCE },
+								fact: STORED_FACT,
 								conflicts: [],
+								revisions: 1,
+								moved_from: null,
+								untrusted: true,
 							},
 							null,
 							2,
@@ -419,7 +457,7 @@ export const Recalled: Story = {
 					}),
 					assistant(
 						"recalled-reply",
-						"Opened [#214](https://github.com/northwind/invoices/pull/214). Description, per your saved rule:\n\n**What changed** — the March export writes invoice dates as ISO 8601 (`2026-03-05`) instead of the locale format, so the ledger import stops reading 05/03 as May.\n\n**How it was verified** — `pytest tests/test_export.py` (12 passed) and a re-run of the March export, which the ledger imported with no date warnings.",
+						"Opened [#214](https://github.com/northwind/invoices/pull/214). Description, per your saved rule:\n\n**What changed:** the March export writes invoice dates as ISO 8601 (`2026-03-05`) instead of the locale format, so the ledger import stops reading 05/03 as May.\n\n**How it was verified:** `pytest tests/test_export.py` (12 passed) and a re-run of the March export, which the ledger imported with no date warnings.",
 						recalledAt(3),
 					),
 				]}

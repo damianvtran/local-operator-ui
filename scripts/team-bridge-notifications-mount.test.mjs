@@ -361,6 +361,16 @@ const settle = () =>
 		await new Promise((resolve) => setTimeout(resolve, 50));
 	});
 
+/*
+ * READS THE WATCHER'S BACKGROUND WARM ALREADY MADE (bridge-instant-load). Once
+ * the conversation list answers, the watcher warms the landing conversation
+ * (and the next most likely clicks) through the shared prefetch queue, so a
+ * banner's history read is no longer the first `listMessages` call. Tests that
+ * race the banner's own read take this count after the seed settles and
+ * address the banner read relative to it.
+ */
+const warmedReads = () => fixture.calls.history.length;
+
 const resetFixture = () => {
 	fixture.identity = "acct_alice";
 	fixture.account = { total: 0, organizations: [] };
@@ -680,10 +690,7 @@ for (const pending of ["history"]) {
 					email: "bob@example.test",
 				},
 			];
-			let release;
-			fixture[`${pending}Gate`] = new Promise((resolve) => {
-				release = resolve;
-			});
+			let release = () => {};
 			const mounted = await mount();
 			mounted.client.setQueryData(
 				api.teamBridgeKeys.directory("tnt_race", fixture.identity),
@@ -697,6 +704,13 @@ for (const pending of ["history"]) {
 					"seed reads",
 				);
 				await settle();
+				/* The watcher's background warm of the landing conversation has
+				   landed by now (ungated); the gate below holds only the banner's
+				   own read, which is what this matrix races. */
+				const warm = warmedReads();
+				fixture[`${pending}Gate`] = new Promise((resolve) => {
+					release = resolve;
+				});
 				fixture.account = {
 					total: 1,
 					organizations: [{ ...org, unread: 1 }],
@@ -711,14 +725,14 @@ for (const pending of ["history"]) {
 					}),
 				);
 				await until(
-					() => fixture.calls[pending].length === 1,
+					() => fixture.calls[pending].length === warm + 1,
 					`pending ${pending} read`,
 				);
 				assert.equal(mounted.notifications.length, 0);
 				// The timeline's own read, ONE PAGE of it (`limit` is the paged
 				// history contract; the read used to ask for the whole conversation),
 				// and it lands in the cache entry the page renders from.
-				assert.deepEqual(fixture.calls.history[0], {
+				assert.deepEqual(fixture.calls.history[warm], {
 					id: "bcv_race",
 					tenantId: "tnt_race",
 					limit: 60,
@@ -841,10 +855,7 @@ for (const [change, expectation] of [
 				},
 			],
 		};
-		let release;
-		fixture.historyGate = new Promise((resolve) => {
-			release = resolve;
-		});
+		let release = () => {};
 		const mounted = await mount();
 		try {
 			await until(
@@ -857,6 +868,11 @@ for (const [change, expectation] of [
 				"seed",
 			);
 			await settle();
+			// Hold only the banner's own read, not the background warm's.
+			const warm = warmedReads();
+			fixture.historyGate = new Promise((resolve) => {
+				release = resolve;
+			});
 			fixture.account = { total: 1, organizations: [{ ...org, unread: 1 }] };
 			fixture.tenants.tnt_race = {
 				total: 1,
@@ -867,7 +883,10 @@ for (const [change, expectation] of [
 					queryKey: api.teamBridgeKeys.unreadPrefix,
 				}),
 			);
-			await until(() => fixture.calls.history.length === 1, "history pending");
+			await until(
+				() => fixture.calls.history.length === warm + 1,
+				"history pending",
+			);
 			const key = api.teamBridgeKeys.statusFor(fixture.identity);
 			const before = mounted.client.getQueryData(key);
 			await act(async () => {
@@ -966,6 +985,7 @@ test("a reply candidate reads its guarded thread with the observed account and o
 			"seed reads",
 		);
 		await settle();
+		const warm = warmedReads();
 		fixture.account = { total: 1, organizations: [{ ...org, unread: 1 }] };
 		fixture.tenants.tnt_reply = {
 			total: 1,
@@ -994,7 +1014,9 @@ test("a reply candidate reads its guarded thread with the observed account and o
 				limit: 1,
 			},
 		]);
-		assert.deepEqual(fixture.calls.history, []);
+		// The banner path read the thread, never the timeline: only the warm's
+		// read (the conversation's landing page) precedes it.
+		assert.deepEqual(fixture.calls.history.slice(warm), []);
 		const banner = mounted.notifications[0];
 		assert.equal(banner.threadId, "bcmsg_root");
 		assert.equal(banner.seq, 2);
@@ -1288,10 +1310,7 @@ for (const { outcome, disable, firstSeed = false } of [
 				},
 			],
 		};
-		let release;
-		fixture.historyGate = new Promise((resolve) => {
-			release = resolve;
-		});
+		let release = () => {};
 		const mounted = await mount();
 		try {
 			await until(
@@ -1301,6 +1320,12 @@ for (const { outcome, disable, firstSeed = false } of [
 				"seed",
 			);
 			await settle();
+			// The background warm lands before the gate: only the banner's own
+			// read is held (see `warmedReads`).
+			const warm = warmedReads();
+			fixture.historyGate = new Promise((resolve) => {
+				release = resolve;
+			});
 			let finishMute;
 			let mutationResult;
 			if (outcome !== "none") {
@@ -1339,12 +1364,12 @@ for (const { outcome, disable, firstSeed = false } of [
 			if (outcome !== "none" || firstSeed) {
 				assert.equal(
 					fixture.calls.history.length,
-					0,
+					warm,
 					"pending policy or first observation must not start enrichment",
 				);
 			} else {
 				await until(
-					() => fixture.calls.history.length === 1,
+					() => fixture.calls.history.length === warm + 1,
 					"no-mute control is already planned",
 				);
 			}
@@ -1710,10 +1735,13 @@ test("an unmounted, previously visited conversation is refreshed when latest_seq
 			"first tenant read",
 		);
 		await settle();
-		assert.equal(
-			fixture.calls.history.length,
-			0,
-			"first observation reads no history",
+		/* The first observation refreshes nothing; the only read is the
+		   watcher's background warm of the one cold conversation in the list
+		   (bcv_u is already cached, so it is not read again). */
+		assert.deepEqual(
+			fixture.calls.history.map((call) => call.id),
+			["bcv_never"],
+			"first observation: only the background warm of the cold row",
 		);
 		fixture.messages = {
 			messages: [
@@ -1745,12 +1773,14 @@ test("an unmounted, previously visited conversation is refreshed when latest_seq
 			"exactly the changed key, once",
 		);
 		assert.equal(mounted.notifications.length, 0, "muted: nothing bannered");
+		/* The warm's never-opened EXTRA slot is not kept fresh (ui#1917 review
+		   R3): its `latest_seq` moved 1 -> 3, but only the landing and visited
+		   conversations join the refresh set; it revalidates when opened. */
+		await settle();
 		assert.equal(
-			mounted.client.getQueryData(
-				api.teamBridgeKeys.messages("bcv_never", "tnt_u", "acct_alice"),
-			),
-			undefined,
-			"a never-visited conversation gets no history entry",
+			fixture.calls.history.filter((call) => call.id === "bcv_never").length,
+			1,
+			"the unopened warm extra is not refreshed",
 		);
 		// The cached list rows took the unread rows' counts.
 		const rows = mounted.client.getQueryData(
@@ -2431,4 +2461,90 @@ test("a person_agent banner carries the agent's own endpoint picture, the same o
 	const person = api.notificationSender(row, "person");
 	assert.deepEqual(person?.avatar, { account_id: owner, hash: ownerHash });
 	assert.equal(person?.endpoint_avatar, undefined);
+});
+
+/*
+ * THE REASON THE FIRST WATCHER WARM WAS REVERTED, NOW HANDLED (bridge-instant-
+ * load). The background warm reads the landing conversation as soon as the list
+ * answers. A message that lands while that read is still out is announced by a
+ * banner whose read JOINS the warm (same key, `fetchQuery` dedupes) and gets the
+ * page from before the message. The banner must ask once more rather than
+ * degrade to a metadata banner with no preview and no message target.
+ */
+test("a banner whose read joins a background warm that predates the message reads once more and banners the message", async () => {
+	resetFixture();
+	const org = {
+		tenant_id: "tnt_warm",
+		tenant_name: "Warm Org",
+		unread: 0,
+		eligible: true,
+	};
+	fixture.account = { total: 0, organizations: [org] };
+	fixture.conversations = {
+		conversations: [conversation("bcv_warm", "tnt_warm")],
+	};
+	fixture.messages = { messages: [message("bcmsg_1", "bcv_warm", 1)] };
+	// Answer with the page AS OF DISPATCH, as the hub does: a read that left
+	// before the message cannot carry it.
+	const original = api.TeamBridgeApi.listMessages;
+	api.TeamBridgeApi.listMessages = async (id, options) => {
+		const page = fixture.messages;
+		fixture.calls.history.push({ id, ...options });
+		if (fixture.historyGate) await fixture.historyGate;
+		return page;
+	};
+	let release;
+	fixture.historyGate = new Promise((resolve) => {
+		release = resolve;
+	});
+	const mounted = await mount();
+	try {
+		await until(
+			() => fixture.calls.history.length === 1,
+			"the background warm is out (held)",
+		);
+		assert.equal(fixture.calls.history[0].id, "bcv_warm");
+		fixture.messages = {
+			messages: [
+				message("bcmsg_2", "bcv_warm", 2, { body: "the new one" }),
+				message("bcmsg_1", "bcv_warm", 1),
+			],
+		};
+		// The planner pairs list and unread rows on `latest_seq`: both move.
+		fixture.conversations = {
+			conversations: [
+				{ ...conversation("bcv_warm", "tnt_warm"), latest_seq: 2 },
+			],
+		};
+		fixture.account = { total: 1, organizations: [{ ...org, unread: 1 }] };
+		fixture.tenants.tnt_warm = {
+			total: 1,
+			conversations: [
+				{ ...notifyRow("bcv_warm", 2), last_read_seq: 1, unread_count: 1 },
+			],
+		};
+		await act(async () => {
+			await mounted.client.invalidateQueries({
+				queryKey: api.teamBridgeKeys.conversationsPrefix,
+			});
+			await mounted.client.invalidateQueries({
+				queryKey: api.teamBridgeKeys.unreadPrefix,
+			});
+		});
+		await settle();
+		assert.equal(fixture.calls.history.length, 1, "the banner joined the warm");
+		await act(async () => release());
+		await until(() => mounted.notifications.length === 1, "the banner");
+		assert.equal(mounted.notifications[0].messageId, "bcmsg_2");
+		assert.equal(mounted.notifications[0].body, "the new one");
+		assert.equal(
+			fixture.calls.history.filter((call) => call.id === "bcv_warm").length,
+			2,
+			"exactly one more read: the warm, then the banner's own",
+		);
+	} finally {
+		api.TeamBridgeApi.listMessages = original;
+		release();
+		await mounted.teardown();
+	}
 });

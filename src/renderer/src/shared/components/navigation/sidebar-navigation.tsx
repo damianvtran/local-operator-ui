@@ -39,6 +39,7 @@ import {
 import { useMeshMembership } from "@features/mesh/mesh-store";
 import { useNotificationsCount } from "@features/notifications/notifications-api";
 import { badgeCountOf } from "@features/notifications/notifications-model";
+import { PhoneAccessOfferIcon } from "@features/providers/phone-access-offer";
 import { useTeamBridgeNavItem } from "@features/team-bridge/team-bridge-nav";
 import {
 	desktopFeatureEnabled,
@@ -2408,6 +2409,12 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 				</div>
 				{announcementRegion}
 				<div className="mt-auto flex flex-col items-center gap-1 pb-2">
+					{/*
+					 * The phone access offer's collapsed form (UX review U1): the docked
+					 * foot's card has no room here, so an icon opens the same card in a
+					 * popover. Draws nothing unless the offer would show in the foot.
+					 */}
+					<PhoneAccessOfferIcon />
 					{/*
 					 * THE STANDING UPDATE NOTICE SITS IN THIS COLUMN ABOVE THE GEAR
 					 * (design consult §3.1): the icon, the gear, the avatar - the strip's

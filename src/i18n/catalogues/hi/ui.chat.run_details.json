@@ -143,5 +143,6 @@
 	"ui.chat.run_details.monitor.waiting": "इंतज़ार में",
 	"ui.chat.run_details.monitor.last_check": "पिछली जाँच {when}",
 	"ui.chat.run_details.monitor.failed_count": "{count, plural, one {{count_display} विफल} other {{count_display} विफल}}",
-	"ui.chat.run_details.checkpoint.turn_fallback": "टर्न {turn, number, ::group-off}"
+	"ui.chat.run_details.checkpoint.turn_fallback": "टर्न {turn, number, ::group-off}",
+	"ui.chat.run_details.subagents.show_more": "{count, number, ::group-off} और दिखाएँ"
 }

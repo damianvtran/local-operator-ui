@@ -23,5 +23,6 @@
 	"ui.chat.attachments.open_title": "Haz clic para abrir {name}",
 	"ui.chat.attachments.not_viewable": "No se puede ver el archivo: {name}",
 	"ui.chat.attachments.owner_unreachable": "no se pudo traer desde el dispositivo que lo tiene.",
-	"ui.chat.attachments.retry_fetch": "Reintentar"
+	"ui.chat.attachments.retry_fetch": "Reintentar",
+	"ui.chat.attachments.not_viewable_detail": "{name} no se puede ver (el archivo puede estar incompleto, borrado o movido)"
 }

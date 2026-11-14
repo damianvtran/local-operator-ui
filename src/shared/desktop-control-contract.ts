@@ -1065,6 +1065,14 @@ export type DesktopNotificationsList = {
 	waiting_unread_count: number;
 	/** Max `seq` this answer saw: the `throughSeq` of a mark-all / by-session write. */
 	high_water: number;
+	/**
+	 * Per-conversation totals over the WHOLE inbox at `high_water`, present only
+	 * when the request asked `include_session_counts=true` AND core supports it
+	 * (absent on older cores: the renderer then falls back to its page walk).
+	 * `undismissed` is notify rows not dismissed - the "Dismiss all from this
+	 * conversation" scope; `unread` is notify rows unread and not dismissed.
+	 */
+	session_counts?: Record<string, { undismissed: number; unread: number }>;
 };
 
 /** `GET /v1/desktop/notifications/count`, and the feed frame's payload. */

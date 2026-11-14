@@ -107,24 +107,6 @@
 		"note": "Names the finished step: writing (creating or overwriting) a file. Sits at the start of a one-line row; a monospace object (a file path or a file count) may follow it, or a short prose narration when there is no object. Name the action in the user's terms, not the machine's (\"Read\", never \"Executed read\"). Pair with the .running key, which the same row shows while the step is in progress.",
 		"length": "One to three words; it is a row label, keep it short."
 	},
-	"ui.chat.trace.detail.error": {
-		"role": "small heading above the result block in an expanded tool-call row",
-		"tone": "Single noun or participle, sentence case, no punctuation.",
-		"note": "Labels the block below as a result the tool reported as a failure. Exactly one of Output / Error / Interrupted appears per row.",
-		"length": "One word."
-	},
-	"ui.chat.trace.detail.interrupted": {
-		"role": "small heading above the result block in an expanded tool-call row",
-		"tone": "Single noun or participle, sentence case, no punctuation.",
-		"note": "Labels the block below as a call that was stopped before it finished. Exactly one of Output / Error / Interrupted appears per row.",
-		"length": "One word."
-	},
-	"ui.chat.trace.detail.output": {
-		"role": "small heading above the result block in an expanded tool-call row",
-		"tone": "Single noun or participle, sentence case, no punctuation.",
-		"note": "Labels the block below as the tool call's normal result. Exactly one of Output / Error / Interrupted appears per row.",
-		"length": "One word."
-	},
 	"ui.chat.trace.object.file_count": {
 		"role": "object slot of a transcript trace row, set in monospace after the verb",
 		"tone": "Lowercase count-plus-noun, no punctuation.",

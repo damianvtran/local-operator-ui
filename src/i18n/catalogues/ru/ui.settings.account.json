@@ -17,7 +17,7 @@
 	"ui.settings.account.radient_account_section.you_are_not_currently_signed_in_to_radient": "Вы сейчас не вошли в Radient.",
 	"ui.settings.account.radient_account_section.team_plan_line": "Тариф Radient Team добавляет Team Bridge и публикацию агентов и команд внутри вашей организации.",
 	"ui.settings.account.radient_account_section.your_radient_account_could_not_be_read_so_this_app_cannot_show_yo": "Не удалось прочитать учётную запись Radient, поэтому приложение не может показать её сведения.",
-	"ui.settings.account.settings_page.add_credits": "Добавить кредиты",
+	"ui.settings.account.settings_page.add_credits": "Пополнить баланс",
 	"ui.settings.account.settings_page.available_credits": "Доступные кредиты",
 	"ui.settings.account.settings_page.credit_balance_load_failed": "Не удалось загрузить баланс кредитов. {reason}",
 	"ui.settings.account.settings_page.credits": "Кредиты",

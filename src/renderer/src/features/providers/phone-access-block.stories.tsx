@@ -64,7 +64,39 @@ type Scenario =
 	// Transitions: the bridge answers late, so a capture can take the first frame
 	// and the settled one from the same story.
 	| "slow-plan"
-	| "slow-run";
+	| "slow-run"
+	// The #3945 remedy vocabulary (`features.tunnel_remedy_kinds`) and the #3953
+	// doctor (`features.mobile_doctor`): every `r-` scenario advertises both.
+	| "r-add_credit"
+	| "r-open_console"
+	| "r-wait_network"
+	| "r-wait_radient"
+	| "r-reconnecting"
+	| "r-stopped"
+	| "r-stopped-ready"
+	| "r-restore_owner"
+	| "r-restore_owner-plain"
+	| "r-sign_in"
+	| "r-run"
+	| "r-reconnect"
+	| "r-accept_quote"
+	| "r-check_status"
+	| "r-connected"
+	| "r-diagnostics-fail";
+
+/** Remedy-vocabulary scenarios: the backend advertises #3945 and #3953. */
+const isRemedyScenario = (scenario: Scenario) => scenario.startsWith("r-");
+
+/** The console link the backend sends with `add_credit` / `open_console`. */
+const CONSOLE_URL = "https://console.fixture.example.test/billing";
+
+/** A redacted doctor report, the shape `lop mobile doctor --json` prints. */
+const DOCTOR = {
+	version: 1,
+	desktop: { tunnel_setup: true },
+	tunnel: { state: "parked", reason: "billing_lapsed", transport: "relay" },
+	mobile: { bundle: "ready" },
+};
 
 const ok = (result: unknown): DesktopResponse => ({
 	status: 200,
@@ -153,7 +185,9 @@ const consentPlan = {
 };
 
 /** The plan each scenario answers, and what a press of the run does to it. */
-const plans = (scenario: Scenario): { plan: unknown; afterRun?: unknown } => {
+const plans = (
+	scenario: Scenario,
+): { plan: unknown; afterRun?: unknown; remedyUrl?: string } => {
 	switch (scenario) {
 		case "quote":
 			return { plan: consentPlan, afterRun: VERIFIED };
@@ -292,6 +326,124 @@ const plans = (scenario: Scenario): { plan: unknown; afterRun?: unknown } => {
 					"This account has no credit. Add credit in the Radient console yourself; setup never purchases credit. Then check again.",
 				),
 			};
+		case "r-add_credit":
+			return {
+				plan: blocked(
+					"balance",
+					"add_credit",
+					"Your Radient balance has run out, so phone access is paused. Setup never purchases credit; phone access reconnects by itself once the balance is restored.",
+					{ step: "billing_lapsed" },
+				),
+				remedyUrl: CONSOLE_URL,
+			};
+		case "r-open_console":
+			return {
+				plan: blocked(
+					"disabled",
+					"open_console",
+					"Phone access for this computer is turned off in the Radient console. It reconnects by itself once it is back on; setup will not override that choice.",
+				),
+				remedyUrl: CONSOLE_URL,
+			};
+		case "r-wait_network":
+			return {
+				plan: blocked(
+					"network",
+					"wait_network",
+					"This computer could not reach Radient (its network may have changed or dropped). Phone access reconnects by itself once the connection is back. You don't need to do anything.",
+				),
+			};
+		case "r-wait_radient":
+			return {
+				plan: blocked(
+					"radient_unavailable",
+					"wait_radient",
+					"Radient answered with a temporary server error. Nothing is wrong with this computer or its sign-in; phone access reconnects by itself once Radient recovers.",
+				),
+			};
+		case "r-reconnecting":
+			return {
+				plan: blocked(
+					"reconnecting",
+					"wait_reconnect",
+					"Phone access is reconnecting in the background after your sign-in. Nothing is charged; this clears by itself in a minute or two.",
+					{ configured: true },
+				),
+			};
+		case "r-stopped":
+		case "r-stopped-ready":
+			return {
+				plan: blocked(
+					"stopped",
+					"resume_explicitly",
+					"Remote access was deliberately stopped. Use lop tunnel start only when you intend to resume it.",
+					{ configured: true, ready: scenario === "r-stopped-ready" },
+				),
+				afterRun: VERIFIED,
+			};
+		// Design review D1: the fixture carries the sentence core ACTUALLY sends,
+		// so the frame shows what ships rather than a solved state. #3945
+		// (`37403785`) answers with `mobile.setup.owner_missing`, which still
+		// names a terminal command; #3958 (`fix/tunnel-remedy-no-commands`,
+		// unmerged) sends `owner_missing_plain` instead. Neither bumps a
+		// capability, so the renderer cannot tell them apart: both stories
+		// advertise the same features and differ only in the backend's text.
+		case "r-restore_owner":
+			return {
+				plan: blocked(
+					"owner_missing",
+					"restore_owner",
+					"Run lop login-status; restore the owning login. Setup will not repoint an existing tunnel or pending request.",
+				),
+			};
+		case "r-restore_owner-plain":
+			return {
+				plan: blocked(
+					"owner_missing",
+					"restore_owner",
+					"The Radient account that set up phone access is no longer signed in on this computer. Sign in with that account to bring phone access back.",
+				),
+			};
+		case "r-sign_in":
+			return {
+				plan: blocked(
+					"login",
+					"sign_in",
+					"Phone access needs a Radient sign-in. Sign in, then check again.",
+					{ credential_id: null, identity_label: null },
+				),
+			};
+		case "r-run":
+			return { plan: base, afterRun: VERIFIED };
+		case "r-reconnect":
+			return {
+				plan: {
+					...base,
+					step: "reconnect",
+					configured: true,
+					remedy: {
+						kind: "run",
+						text: "Radient has paused phone access for this computer, but billing is in order. Reconnecting brings it back; nothing is charged.",
+						command: null,
+						url: null,
+					},
+				},
+				afterRun: VERIFIED,
+			};
+		case "r-accept_quote":
+			return { plan: consentPlan, afterRun: VERIFIED };
+		case "r-check_status":
+		case "r-diagnostics-fail":
+			return {
+				plan: blocked(
+					"verification",
+					"check_status",
+					"The connection is not yet confirmed. Check the status again in a minute; completed steps remain saved.",
+					{ configured: true },
+				),
+			};
+		case "r-connected":
+			return { plan: VERIFIED };
 		case "quote_changed":
 			return {
 				plan: blocked(
@@ -312,7 +464,22 @@ let bridge: ((request: BridgeRequest) => Promise<DesktopResponse>) | null =
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const installBridge = (scenario: Scenario) => {
-	const { plan, afterRun } = plans(scenario);
+	const planned = plans(scenario);
+	const { afterRun, remedyUrl } = planned;
+	// The console kinds carry their link as data (`remedy.url`), as the backend's
+	// `_contract` sends it; the `blocked` helper leaves it null for every other kind.
+	const plan = (() => {
+		const p = planned.plan as { remedy?: Record<string, unknown> | undefined };
+		if (!remedyUrl) return planned.plan;
+		return {
+			...p,
+			remedy: {
+				...(p.remedy ?? {}),
+				kind: p.remedy?.kind ?? "add_credit",
+				url: remedyUrl,
+			},
+		};
+	})();
 	let current = plan;
 	// `slow-run`: the run takes long enough for the 3 s poll to land once, so the
 	// frames can be Applying with no lines, Applying with the backend's lines, and
@@ -328,7 +495,14 @@ const installBridge = (scenario: Scenario) => {
 					features:
 						scenario === "no-capability"
 							? { radient: 1 }
-							: { radient: 1, tunnel_setup: 1 },
+							: isRemedyScenario(scenario)
+								? {
+										radient: 1,
+										tunnel_setup: 1,
+										tunnel_remedy_kinds: 1,
+										mobile_doctor: 1,
+									}
+								: { radient: 1, tunnel_setup: 1 },
 				});
 			case "tunnel.setup.read":
 				if (scenario === "failed-5xx")
@@ -383,6 +557,10 @@ const installBridge = (scenario: Scenario) => {
 				}
 				if (afterRun) current = afterRun;
 				return ok(current);
+			case "mobile.doctor":
+				if (scenario === "r-diagnostics-fail")
+					return { status: 500, body: "<html>raw upstream body</html>" };
+				return ok(DOCTOR);
 			case "radient.request":
 				if (request?.control?.operation === "account")
 					return ok({
@@ -524,3 +702,51 @@ export const BillingUnconfirmed: Story = story("billing-unconfirmed");
 export const NoCapability: Story = story("no-capability", "account");
 /** Connected, in the Settings mount, to show the block inside its section. */
 export const ConnectedInSettings: Story = story("connected", "account");
+
+/*
+ * THE #3945 REMEDY VOCABULARY (`features.tunnel_remedy_kinds`) and the #3953
+ * doctor (`features.mobile_doctor`), one frame per kind (spec v2 §4.1). Settings
+ * mount, so each frame also shows Copy diagnostics below the state.
+ */
+/** Billing lapsed: "Add credit" opens the backend's console link. */
+export const RemedyAddCredit: Story = story("r-add_credit", "account");
+/** Turned off in the console: "Open Radient console" opens its link. */
+export const RemedyOpenConsole: Story = story("r-open_console", "account");
+/** Offline: static line, Last checked, quiet Check again; no spinner. */
+export const RemedyWaitNetwork: Story = story("r-wait_network", "account");
+/** Radient outage: the same waiting shape as offline. */
+export const RemedyWaitRadient: Story = story("r-wait_radient", "account");
+/** The post-sign-in reconnect: waiting shape, and it re-asks on its own. */
+export const RemedyReconnecting: Story = story("r-reconnecting", "account");
+/** Stopped by the person; the #3945 backend offers no resume (ready: false). */
+export const RemedyStopped: Story = story("r-stopped", "account");
+/** Stopped, with a backend that can resume it: Turn on. */
+export const RemedyStoppedTurnOn: Story = story("r-stopped-ready", "account");
+/**
+ * The owning login is gone: the existing browser sign-in is the fix. The
+ * sentence is #3945's real `owner_missing`, command included - what ships
+ * until the core follow-up lands.
+ */
+export const RemedyRestoreOwner: Story = story("r-restore_owner", "account");
+/** The same state with #3958's plain `owner_missing_plain` sentence. */
+export const RemedyRestoreOwnerPlain: Story = story(
+	"r-restore_owner-plain",
+	"account",
+);
+/** Not signed in: Continue in browser (Settings mount). */
+export const RemedySignIn: Story = story("r-sign_in", "account");
+/** No tunnel yet: Set up phone access. */
+export const RemedyRun: Story = story("r-run", "account");
+/** Suspended with billing in order: Reconnect (free). */
+export const RemedyReconnect: Story = story("r-reconnect", "account");
+/** Billing never activated: the price on the button, as before. */
+export const RemedyAcceptQuote: Story = story("r-accept_quote", "account");
+/** Not yet verified: backend sentence and Check again. */
+export const RemedyCheckStatus: Story = story("r-check_status", "account");
+/** Connected: the native-app next step names the account; the URL is the alternative. */
+export const RemedyConnected: Story = story("r-connected", "account");
+/** Copy diagnostics when the doctor read fails: the failure line (press the button). */
+export const RemedyDiagnosticsFailure: Story = story(
+	"r-diagnostics-fail",
+	"account",
+);

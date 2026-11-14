@@ -34,6 +34,13 @@ const hero = readFileSync(
 	),
 	"utf8",
 );
+const memory = readFileSync(
+	new URL(
+		"../src/renderer/src/shared/components/navigation/docs-memory.stories.tsx",
+		import.meta.url,
+	),
+	"utf8",
+);
 const bridge = readFileSync(
 	new URL(
 		"../src/renderer/src/features/team-bridge/team-bridge-marketing.stories.tsx",
@@ -472,6 +479,20 @@ test("every marketing scene opts into the shipped glass, and the rig refuses one
 	);
 	const bridgeMeta = bridge.slice(bridge.indexOf("const meta: Meta = {"));
 	assert.match(bridgeMeta.slice(0, 300), /\.\.\.marketingGlass,/);
+	// The memory figure's two scenes share one meta-level opt-in.
+	const memoryMeta = memory.slice(memory.indexOf("const meta: Meta = {"));
+	assert.match(memoryMeta.slice(0, 300), /\.\.\.marketingGlass,/);
+	for (const scene of ["taught", "recalled"]) {
+		assert.ok(
+			capture.includes(`["memory-${scene}", "docs-memory--${scene}"]`),
+			`memory-${scene} is captured`,
+		);
+		assert.ok(
+			memory.includes(
+				`export const ${scene[0].toUpperCase()}${scene.slice(1)}: Story`,
+			),
+		);
+	}
 	// The URL stays theme-only: the stories default glass on themselves.
 	assert.match(capture, /args=theme:\$\{theme\}`/);
 	const glassSet = capture.slice(
@@ -490,6 +511,8 @@ test("every marketing scene opts into the shipped glass, and the rig refuses one
 		"docs-team-bridge--approval",
 		"docs-team-bridge--mention",
 		"docs-team-bridge--launch",
+		"docs-memory--taught",
+		"docs-memory--recalled",
 	])
 		assert.ok(glassSet.includes(`"${id}"`), `${id} is checked for glass`);
 	assert.match(capture, /glass scene rendered without glass/);

@@ -65,5 +65,7 @@
 	"ui.agents.detail.empty.instructions": "Chưa có chỉ dẫn.",
 	"ui.agents.detail.action.create_copy": "Tạo bản sao",
 	"ui.agents.detail.action.creating": "Đang tạo…",
-	"ui.agents.detail.action.discard_new_agent": "Bỏ tác nhân mới này?"
+	"ui.agents.detail.action.discard_new_agent": "Bỏ tác nhân mới này?",
+	"ui.agents.detail.create.description_duplicate": "Bản sao của {name}. Đây là một tác nhân riêng biệt: thay đổi nó không ảnh hưởng đến bản gốc.",
+	"ui.agents.detail.create.description_new": "Chỉ dẫn có thể tái sử dụng, dùng chung cho lệnh của tác nhân, tác nhân con và nhóm. Các cuộc trò chuyện vẫn tách biệt."
 }

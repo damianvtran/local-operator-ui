@@ -1,3 +1,4 @@
+import { PhoneAccessOffer } from "@features/providers/phone-access-offer";
 import { UpdateFootIcon } from "@shared/components/common/update-foot-icon";
 import { SIDEBAR_INSET } from "@shared/components/navigation/sidebar-inset";
 import { UserProfileSidebar } from "@shared/components/navigation/user-profile-sidebar";
@@ -63,6 +64,18 @@ export const SettingsGear: FC = () => {
  * away on a route that hides this navigation (see `SettingsGear`).
  */
 export const SidebarFoot: FC = () => (
+	<>
+		{/*
+		 * The first-sign-in phone access offer (spec v2 §4.1): above the account
+		 * row it is about, in-app and non-modal. Renders nothing unless the
+		 * backend, the account and this machine's setup state all say to offer.
+		 */}
+		<PhoneAccessOffer />
+		<SidebarFootRow />
+	</>
+);
+
+const SidebarFootRow: FC = () => (
 	<div
 		className={cn(
 			"flex min-h-10 shrink-0 items-center justify-between gap-1 pb-2",
