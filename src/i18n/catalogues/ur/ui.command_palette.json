@@ -73,5 +73,6 @@
 	"ui.command_palette.use_palette_sources.settings": "ترتیبات",
 	"ui.command_palette.use_palette_sources.start": "شروع کریں",
 	"ui.command_palette.use_palette_sources.team_chat": "ٹیم چیٹ",
-	"ui.command_palette.use_palette_sources.usage_over_time": "وقت کے ساتھ استعمال"
+	"ui.command_palette.use_palette_sources.usage_over_time": "وقت کے ساتھ استعمال",
+	"ui.command_palette.new_temporary_chat": "نئی عارضی چیٹ"
 }

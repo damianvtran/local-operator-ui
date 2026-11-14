@@ -125,7 +125,7 @@ import {
 } from "../../ask-queue";
 import { handCaretToComposer } from "../../composer-caret";
 import { useAskClock } from "../../use-ask-clock";
-import { AskPanel } from "./ask-panel";
+import { AskPanel, type AskPanelProps } from "./ask-panel";
 
 /**
  * What "the drawer's first control" means when focus enters it.
@@ -169,6 +169,24 @@ const ASK_PANEL_SELECTOR = "[data-lo-ask-panel]";
  * `[data-lo-ask-settled]` marker is `ask-panel.tsx`'s own, not a new one.
  */
 const ASK_LANDING_TARGET = "[data-lo-ask-row], [data-lo-ask-settled]";
+
+/**
+ * THE SUGGESTED-COMMAND ROW IS NEVER THE LANDING (UX round 1, U2). The row sits
+ * under the question prose, ABOVE the answer options, so a bare "first
+ * focusable in the row" walk put the entry focus on its Copy — the action the
+ * card is least about, where Enter only copies — instead of the answer control
+ * it landed on before the row existed. The walk skips the row's subtree; the row
+ * stays in the Tab order right where it is drawn.
+ */
+const ASK_LANDING_SKIP = "[data-ask-command]";
+
+/** The first control in `root` the entry move may land on (see above). */
+const firstLandingControl = (root: HTMLElement | null | undefined) =>
+	root
+		? (Array.from(
+				root.querySelectorAll<HTMLElement>(ASK_DRAWER_FOCUSABLE),
+			).find((node) => node.closest(ASK_LANDING_SKIP) === null) ?? null)
+		: null;
 
 /**
  * THE MENU DOOR'S RETURN TARGET (#896 round 1, Q1): the `…` menu's asks row is
@@ -325,6 +343,16 @@ export type AskDrawerProps = {
 	 * exists to avoid.
 	 */
 	conversationOf?: (row: AskPresentation) => string | null;
+	/**
+	 * THE SUGGESTED-COMMAND DOORS and the placement that gates Run…, passed
+	 * straight to the panel (see `AskPanelProps.onCommand` /
+	 * `commandPlacementOf`). The CALLER supplies both for the same reason it
+	 * supplies `conversationOf`: which conversation's terminal a command lands
+	 * in, and where that conversation's agent works, are facts of the mount's
+	 * scope, not of this container.
+	 */
+	onCommand?: AskPanelProps["onCommand"];
+	commandPlacementOf?: AskPanelProps["commandPlacementOf"];
 	/** A story pins the clock so its frames are reproducible. */
 	nowMs?: number;
 	/**
@@ -359,6 +387,8 @@ export const AskDrawer = ({
 	drafts,
 	onDraftChange,
 	conversationOf,
+	onCommand,
+	commandPlacementOf,
 	nowMs,
 	tabs,
 }: AskDrawerProps) => {
@@ -958,9 +988,9 @@ export const AskDrawer = ({
 		 * `[tabindex="-1"]`, so the root can never be picked as the "first control" above.
 		 */
 		const landing =
-			landingRoot?.querySelector<HTMLElement>(ASK_DRAWER_FOCUSABLE) ??
+			firstLandingControl(landingRoot) ??
 			landingRoot ??
-			panel?.querySelector<HTMLElement>(ASK_DRAWER_FOCUSABLE) ??
+			firstLandingControl(panel) ??
 			root;
 		landingRef.current = landing;
 		landing.focus();
@@ -1252,6 +1282,8 @@ export const AskDrawer = ({
 							 * both contexts.
 							 */
 							conversationOf={conversationOf}
+							onCommand={onCommand}
+							commandPlacementOf={commandPlacementOf}
 						/>
 					) : (
 						/*

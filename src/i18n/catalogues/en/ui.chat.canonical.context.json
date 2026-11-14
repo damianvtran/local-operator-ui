@@ -3118,6 +3118,26 @@
 		"length": "Short; shares one row with the tool name and truncates with an ellipsis when narrow.",
 		"note": "Sibling of never_sent_composed with nothing to measure: 'nothing composed' = the model had not written any of the request. Keep the two lines parallel in wording."
 	},
+	"ui.chat.canonical.temporary_deleted.title": {
+		"role": "pane notice for a deleted temporary chat",
+		"tone": "plain statement",
+		"note": "Shown when the conversation on screen was deleted as a temporary chat."
+	},
+	"ui.chat.canonical.temporary_deleted.detail": {
+		"role": "pane notice for a deleted temporary chat",
+		"tone": "plain statement",
+		"note": "Shown when the conversation on screen was deleted as a temporary chat."
+	},
+	"ui.chat.canonical.temporary_deleted.new": {
+		"role": "pane notice action button",
+		"tone": "imperative action phrase",
+		"note": "Shown when the conversation on screen was deleted as a temporary chat."
+	},
+	"ui.chat.canonical.temporary_deleted.back": {
+		"role": "pane notice action button",
+		"tone": "imperative action phrase",
+		"note": "Shown when the conversation on screen was deleted as a temporary chat."
+	},
 	"ui.chat.canonical.tool.composing_sized": {
 		"role": "one-line status of a tool call that is composing (the model is still writing the call's arguments), with how much of the request is written",
 		"tone": "terse lower-case status line, no trailing punctuation; the middle dot is a separator between status and detail",
@@ -3229,6 +3249,92 @@
 		"placeholders": {
 			"material": "which kind of media the call generates: one of image, video, voiceover, sound_effect (callsite maps the wire's `sound-effect`); drives a select, so supply every branch"
 		}
+	},
+	"ui.chat.canonical.image_gen.state.cancelled_batch": {
+		"role": "state line of a stopped generation card that produced several items",
+		"tone": "plain statement of a stopped action, sentence case, full stop",
+		"length": "Two to four words.",
+		"note": "Sits where the failed batch's line sits, so it must read as the same family. Whole sentence per material: the noun is inside the branch because it inflects in many languages.",
+		"placeholders": {
+			"material": "which kind of media the call generates: one of image, video, voiceover, sound_effect (callsite maps the wire's `sound-effect`); drives a select, so supply every branch"
+		}
+	},
+	"ui.chat.canonical.image_gen.cancel.queued": {
+		"role": "state line of a generation stopped before the provider was called",
+		"tone": "factual, reassuring, sentence case, two clauses, full stop",
+		"length": "One sentence; wraps inside the card.",
+		"note": "The ONLY case where the interface may promise no charge, because nothing had been sent to the provider yet. Do not soften it into a maybe, and do not reuse this wording for a stop that was requested after generation started — that is `cancel.running`.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.image_gen.cancel.running": {
+		"role": "state line of a generation that was asked to stop after it had already started",
+		"tone": "factual, no promise, sentence case, full stop",
+		"length": "One long sentence; wraps inside the card.",
+		"note": "Stop is a REQUEST here: the provider has no cancellation endpoint, so the work may finish and be billed. Must never read as a guarantee that nothing was charged. Rendered together with `cancel.checking` as its own following sentence while settlement is outstanding; do not append that clause in this value.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.image_gen.cancel.checking": {
+		"role": "clause appended after `cancel.running` while a stopped generation's charge is still being confirmed",
+		"tone": "short neutral status sentence, sentence case, full stop",
+		"length": "Three words.",
+		"note": "Rendered as its own sentence immediately after `cancel.running` (the callsite joins them with a space), and DROPPED once a settlement row states the pending fact or the final charge. Keep it a complete sentence with its own full stop.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.image_gen.settlement.pending": {
+		"role": "note under a stopped sound or voiceover card whose final charge the provider has not reported yet",
+		"tone": "neutral, factual, sentence case, full stop",
+		"length": "One sentence; wraps.",
+		"note": "States that a charge is still outstanding — never an amount and never a zero. The quote the server sent is not a charge.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.image_gen.error.audio_rate_limited": {
+		"role": "failure sentence of a sound generation refused because audio generation was rate limited",
+		"tone": "calm, actionable, sentence case, two sentences",
+		"length": "Two short sentences.",
+		"note": "Used only when the result states NO sentence of its own: the server's own error text always wins. Do not promise that the next attempt will succeed, and do not mention a specific wait time.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.image_gen.error_class.audio_rate_limited": {
+		"role": "short failure-class label above the error sentence of a sound generation that was rate limited",
+		"tone": "label register, sentence case, no full stop",
+		"length": "One to three words.",
+		"note": "A class of failure, not a sentence and not an instruction: the full sentence sits below it. Keep it short enough not to wrap.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.image_gen.error_class.unknown_tool": {
+		"role": "short failure-class label above the error sentence of a call that named a tool the harness does not know",
+		"tone": "label register, sentence case, no full stop",
+		"length": "Two words.",
+		"note": "A class of failure, not a sentence: the harness's own reason sits below it.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.image_gen.error_class.invalid_arguments": {
+		"role": "short failure-class label above the error sentence of a call whose arguments could not be parsed",
+		"tone": "label register, sentence case, no full stop",
+		"length": "Two words.",
+		"note": "A class of failure, not a sentence: the parser's own reason sits below it.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.image_gen.error_class.duplicate_id": {
+		"role": "short failure-class label above the error sentence of a call that reused an id another call already had",
+		"tone": "label register, sentence case, no full stop",
+		"length": "Two words.",
+		"note": "A class of failure, not a sentence: the harness's own reason sits below it.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.image_gen.error_class.denied": {
+		"role": "short failure-class label above the error sentence of a call the user's permission settings refused",
+		"tone": "label register, sentence case, no full stop",
+		"length": "One word.",
+		"note": "A class of failure, not a sentence: the harness's own reason sits below it.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.image_gen.error_class.gate_failed": {
+		"role": "short failure-class label above the error sentence of a call a configured policy gate stopped",
+		"tone": "label register, sentence case, no full stop",
+		"length": "Two words.",
+		"note": "A class of failure, not a sentence: the gate's own reason sits below it.",
+		"placeholders": {}
 	},
 	"ui.chat.canonical.loading.cold": {
 		"role": "visible label while a conversation's first page is loading and nothing is painted yet",

@@ -128,5 +128,9 @@
 	"ui.notifications.drawer.show_in_conversation": "Show in conversation",
 	"ui.notifications.drawer.footer": "Updates from this conversation only",
 	"ui.notifications.drawer.open_notifications": "Open Notifications",
-	"ui.notifications.drawer.empty": "Nothing flagged in this conversation."
+	"ui.notifications.drawer.empty": "Nothing flagged in this conversation.",
+	"ui.notifications.drawer.view_details": "View details",
+	"ui.notifications.drawer.view_details_for": "View details: {title}",
+	"ui.notifications.drawer.back": "Back to updates",
+	"ui.notifications.drawer.open_in_notifications": "Open in Notifications"
 }

@@ -1,4 +1,5 @@
 import { parseAgentAvatarSize } from "@features/chat/agent-avatar-size";
+import { attachableSessions } from "@features/chat/chat-temporary";
 import { openConversation } from "@features/chat/open-conversation";
 import { formatDayBucket } from "@features/chat/pickers/panels/formatters";
 import { parseTranscriptDisplayMode } from "@features/chat/transcript-display-mode";
@@ -468,8 +469,15 @@ export const SettingsPage: FC = () => {
 	);
 	// The CoS designation's options are the REAL canonical store, never a
 	// synthetic list; the section renders this same array.
-	const canonicalSessions = useCanonicalSessionsStore(
-		(state) => state.sessions,
+	const canonicalRows = useCanonicalSessionsStore((state) => state.sessions);
+	const temporaryChats = useCanonicalSessionsStore(
+		(state) => state.temporaryChats,
+	);
+	// A temporary chat is never a chief-of-staff candidate: it is deleted once it
+	// goes quiet, and the core refuses to attach one until it is kept (R1-1).
+	const canonicalSessions = useMemo(
+		() => attachableSessions(canonicalRows, temporaryChats),
+		[canonicalRows, temporaryChats],
 	);
 	/*
 	 * Agent messages is the one settings section whose existence is a server

@@ -8,5 +8,11 @@
 	"ui.chat.dialogs.options.clear_message": "Tous ses messages sont supprimés de cet ordinateur, sans possibilité d’annulation. L’agent lui-même n’est pas affecté.",
 	"ui.chat.dialogs.options.clear_title": "Effacer cette conversation ?",
 	"ui.chat.dialogs.options.description": "Personnaliser les paramètres de cet agent",
-	"ui.chat.dialogs.options.title": "Options de la conversation"
+	"ui.chat.dialogs.options.title": "Options de la conversation",
+	"ui.chat.dialogs.make_temporary_title": "Rendre cette conversation temporaire ?",
+	"ui.chat.dialogs.make_temporary_deleted": "Elle quitte vos conversations dès maintenant. Après la durée d’inactivité définie (30 min par défaut), cette conversation, ses messages et ses pièces jointes sont supprimés.",
+	"ui.chat.dialogs.make_temporary_kept": "Conservés : les fichiers qu’elle a modifiés sur votre ordinateur.",
+	"ui.chat.dialogs.make_temporary_confirm": "Rendre temporaire",
+	"ui.chat.dialogs.keep_and_link": "Conserver et lier",
+	"ui.chat.dialogs.keep_and_pin": "Conserver et épingler"
 }

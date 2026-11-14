@@ -128,5 +128,9 @@
 	"ui.notifications.drawer.show_in_conversation": "在对话中定位",
 	"ui.notifications.drawer.footer": "仅显示此对话的更新",
 	"ui.notifications.drawer.open_notifications": "前往通知页",
-	"ui.notifications.drawer.empty": "此对话中暂无标记的更新。"
+	"ui.notifications.drawer.empty": "此对话中暂无标记的更新。",
+	"ui.notifications.drawer.view_details": "查看详情",
+	"ui.notifications.drawer.view_details_for": "查看详情：{title}",
+	"ui.notifications.drawer.back": "返回更新列表",
+	"ui.notifications.drawer.open_in_notifications": "在通知页中打开"
 }

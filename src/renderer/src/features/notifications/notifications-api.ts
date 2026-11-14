@@ -657,9 +657,42 @@ export function useNotificationsWrite() {
 					queryKey: notificationKeys.sessionFactsAll,
 				});
 				void client?.invalidateQueries({ queryKey: notificationKeys.count });
+				applyWriteToDetails(client, variables.verb, result.changed);
 			} else applyConfirmedWrite(client, variables.verb, result.changed);
 		},
 	});
+}
+
+/*
+ * THE OPEN DETAIL MOVES WITH THE WRITE (design round 1, D4 = QA Q-2).
+ *
+ * The detail pane draws `detail.item` before the row it was opened from, and the
+ * optimistic path above edits the windows and facts but never the per-id detail
+ * read. Opening an unread item marks it read, so the counts and the list said
+ * "read" while the pane beside them still offered "Mark read" - and pressing it
+ * re-sent a read, leaving no way to mark the item unread from the open detail, on
+ * the page and in the drawer alike. The receipt's `changed` ids are flipped in
+ * the cached detail at once (the flag only: a read moves `seq`, never the body),
+ * then the read is invalidated so the server's own answer follows, exactly as
+ * `applyConfirmedWrite` already does for the non-optimistic path.
+ */
+function applyWriteToDetails(
+	client: ReturnType<typeof useOptionalQueryClient>["client"],
+	verb: NotificationsVerb,
+	changed: readonly string[],
+): void {
+	if (!client) return;
+	const flip: Partial<DesktopNotificationItem> =
+		verb === "read" || verb === "unread"
+			? { read: verb === "read" }
+			: { dismissed: verb === "dismiss" };
+	for (const id of changed) {
+		client.setQueryData<DesktopNotificationDetail>(
+			notificationKeys.detail(id),
+			(data) => (data ? { ...data, item: { ...data.item, ...flip } } : data),
+		);
+		void client.invalidateQueries({ queryKey: notificationKeys.detail(id) });
+	}
 }
 
 /**

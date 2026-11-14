@@ -180,6 +180,13 @@ const meshId = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/);
  */
 const approvalId = z.string().regex(/^ap_[0-9a-hjkmnp-tv-z]{1,64}$/);
 /**
+ * A profile proposal's id: `pp_` + 16 hex, derived by core from the proposal's
+ * content (`local_operator/profile_proposals.py`), so filing is idempotent. The
+ * pattern is this client's own check before the id reaches a path segment.
+ */
+export const PROFILE_PROPOSAL_ID_PATTERN = /^pp_[0-9a-f]{16}$/;
+const proposalId = z.string().regex(PROFILE_PROPOSAL_ID_PATTERN);
+/**
  * What a typed credential decision echoes back: the backend's
  * `CredentialApprovalAcknowledgment`, field for field. The two credential
  * operations are the model's own `Literal`, and both digests its
@@ -1738,6 +1745,17 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			 */
 			include_archived: z.boolean().optional(),
 			/*
+			 * Whether TEMPORARY chats (`features.temporary_chats`) belong in the answer.
+			 *
+			 * ABSENT MEANS `false`, `include_archived`'s compatibility promise: the core's
+			 * query model is closed, so the flag is sent only when the capability is
+			 * advertised, and a client that never sends it never sees a temporary chat.
+			 * This app asks for them and partitions them into the sidebar's own
+			 * `Temporary` group (`features/chat/chat-temporary.ts`), which is what lets
+			 * the open temporary chat know its own countdown from the same fetch.
+			 */
+			include_temporary: z.boolean().optional(),
+			/*
 			 * Whether conversations OTHER devices hold belong in the answer.
 			 *
 			 * ABSENT MEANS `false`, the same compatibility promise `include_archived`
@@ -1860,6 +1878,24 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	/*
+	 * Mark or keep ONE conversation as a temporary chat:
+	 * `POST /v1/desktop/sessions/{id}/temporary` (`features.temporary_chats`).
+	 *
+	 * `sessions.archive`'s twin and for its reason: DESIRED STATE on the wire, so a
+	 * retried request cannot flip the chat back - which here would mean a "Keep"
+	 * replayed into a mark, and a kept chat deleted after its idle window. The
+	 * server does not confirm; "Make temporary…" asks in the UI first. Refusals
+	 * (409 `session_pinned`, `session_in_project`, `session_not_user`; 404
+	 * `session_temporary_deleted`) arrive as the error's `code`.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.temporary"),
+			sessionId,
+			temporary: z.boolean(),
+		})
+		.strict(),
+	/*
 	 * Delete ONE conversation PERMANENTLY: `DELETE /v1/desktop/sessions/{id}`.
 	 *
 	 * `confirmed: true` is required and is not a receipt: it is the wire's own echo
@@ -1951,6 +1987,14 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			 * thing the route declines to express.
 			 */
 			peer: meshId.optional(),
+			/*
+			 * Create the conversation as a TEMPORARY chat (`features.temporary_chats`):
+			 * the core writes the mark before the create answers and refuses the create
+			 * if it cannot. Sent only when true and only under the capability, so an
+			 * ordinary create stays byte-identical (the closed model would 422 an
+			 * unknown key on an older core).
+			 */
+			temporary: z.boolean().optional(),
 		})
 		.strict(),
 	/*
@@ -4551,9 +4595,49 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	 * budget. `deny` never signs: it is write-once and settles in the safe
 	 * direction.
 	 */
+	/*
+	 * PROFILE PROPOSALS (`features.profile_proposals`, core
+	 * `server/routes/desktop_profile_proposals.py`). A change an agent proposed to
+	 * an account agent or team profile, reviewed in Agents → <name>. These used
+	 * to be filed as signed MESH approvals, which drew them in the Mesh tray and
+	 * needed a presence-backed signature this machine may not have, so they could
+	 * not be accepted from the UI at all (operator, 2026-11-09). The desktop
+	 * bearer is the human surface here, exactly as on `profiles.update`: Accept
+	 * applies through the same route-level authority the profile editor has.
+	 *
+	 * `list` is a STORE READ (one directory of small files), which is what makes
+	 * it safe for the Agents badge to poll. `accept` carries `after` only for
+	 * Edit-then-accept, restricted to the proposal's own changed fields (core
+	 * refuses any other key), and stale proposals are refused rather than rebased.
+	 * Both writes carry a `requestId` so a lost
+	 * answer is replayed by the server's receipts rather than applied twice.
+	 */
 	z
-		.object({ op: z.literal("approvals.list") })
+		.object({
+			op: z.literal("profileProposals.list"),
+			state: z.enum(["pending", "all"]).optional(),
+		})
 		.strict(),
+	z.object({ op: z.literal("profileProposals.get"), proposalId }).strict(),
+	z
+		.object({
+			op: z.literal("profileProposals.accept"),
+			proposalId,
+			requestId,
+			after: z
+				.record(z.string().regex(/^[a-z][a-z0-9_]{0,63}$/), z.unknown())
+				.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("profileProposals.reject"),
+			proposalId,
+			requestId,
+			note: z.string().max(2000).optional(),
+		})
+		.strict(),
+	z.object({ op: z.literal("approvals.list") }).strict(),
 	z.object({ op: z.literal("approvals.approve"), approvalId }).strict(),
 	z.object({ op: z.literal("approvals.deny"), approvalId }).strict(),
 	// Profile writes echo the reviewed commitments, never a model-authored command.
@@ -7421,6 +7505,8 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"analytics.get",
 	"analytics.models",
 	"approvals.list",
+	"profileProposals.list",
+	"profileProposals.get",
 	"commands.entities",
 	"commands.list",
 	"config.get",
@@ -8821,6 +8907,39 @@ export function desktopEndpoint(request: DesktopRequest): {
 					...(request.requestId ? { request_id: request.requestId } : {}),
 				},
 			};
+		/*
+		 * Profile proposals: the record's own id, `encodeURIComponent`ed for the
+		 * same reason the approval ids are. The bodies are the core route models'
+		 * snake_case fields and nothing else.
+		 */
+		case "profileProposals.list":
+			return {
+				path: `/v1/desktop/profile-proposals?state=${request.state ?? "pending"}`,
+				method: "GET",
+			};
+		case "profileProposals.get":
+			return {
+				path: `/v1/desktop/profile-proposals/${encodeURIComponent(request.proposalId)}`,
+				method: "GET",
+			};
+		case "profileProposals.accept":
+			return {
+				path: `/v1/desktop/profile-proposals/${encodeURIComponent(request.proposalId)}/accept`,
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					...(request.after ? { after: request.after } : {}),
+				},
+			};
+		case "profileProposals.reject":
+			return {
+				path: `/v1/desktop/profile-proposals/${encodeURIComponent(request.proposalId)}/reject`,
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					...(request.note ? { note: request.note } : {}),
+				},
+			};
 		case "approvals.list":
 			return { path: "/v1/desktop/approvals", method: "GET" };
 		/*
@@ -9209,6 +9328,10 @@ export function desktopEndpoint(request: DesktopRequest): {
 			// newest member of the query string, and nothing that never asks for it
 			// may move.
 			if (request.sort) params.set("sort", request.sort);
+			// LAST, and omitted when false, for the same byte-order promise: it is the
+			// newest parameter, and an older core's closed query model must never see
+			// it (the caller sends it only under `features.temporary_chats`).
+			if (request.include_temporary) params.set("include_temporary", "true");
 			return {
 				path: `/v1/desktop/sessions?${params}`,
 				method: "GET",
@@ -9251,6 +9374,13 @@ export function desktopEndpoint(request: DesktopRequest): {
 				// The desired state, never a toggle: see the op's own comment for why a
 				// retried toggle is the bug this shape exists to make impossible.
 				body: { archived: request.archived },
+			};
+		case "sessions.temporary":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/temporary`,
+				method: "POST",
+				// The desired state, never a toggle: see the op's own comment.
+				body: { temporary: request.temporary },
 			};
 		case "sessions.delete":
 			return {
@@ -9295,6 +9425,8 @@ export function desktopEndpoint(request: DesktopRequest): {
 					// own note for the byte-identity promise this keeps.
 					...(request.draftId ? { draft_id: request.draftId } : {}),
 					...(request.purpose ? { purpose: request.purpose } : {}),
+					// Omitted unless asked for: see the field's own note.
+					...(request.temporary ? { temporary: true } : {}),
 				},
 			};
 		case "sessions.preview":

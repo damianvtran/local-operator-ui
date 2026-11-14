@@ -1,0 +1,31 @@
+{
+  "auditor": "reviewer",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "94f6e325484c-canon-ur",
+  "date": "2026-11-12",
+  "locale": "ur",
+  "namespace": "ui.chat.canonical",
+  "status": "passed",
+  "sha256": {
+    "ur": "439c81fc838622ece45bb670695fe0315943381f4d69293081eca3cbd949d318",
+    "en": "9430aca09d519fb168f1fbc4ae6301af5245bc63aa8a8679e91e6c3bdad558da"
+  },
+  "context_sha256": {
+    "en": "06e26330b0b9a8be1d07d47888925975aebb1678098fcfe792cd300d31e3ec09"
+  },
+  "repo": "damianvtran/local-operator-ui",
+  "pr": 1874,
+  "head": "3756de5e1",
+  "independence": "Independent i18n auditor (lopdev reviewer, session 94f6e325484c). Not the translator of any key in this file; did not read or copy any other session's scratchpad. Same model family as the PR's translator (lopdev coder, anthropic/claude-opus-5-5): disclosed.",
+  "references": {
+    "glossary": "damianvtran/local-operator@b5f1c63de i18n/glossary.md sha256:0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style_guide": "damianvtran/local-operator@b5f1c63de i18n/style-guides/ur.md sha256:7276e96210fe5f23fd82a39ae4cc0c88b2c1009d3a551d914efc3f61516eddc4"
+  },
+  "scope": "Merged bytes after 3756de5e1 (merge of origin/main 7c2b6af66). Read in full against en value, en .context.json, glossary and style guide: the 4 keys this PR adds (temporary_deleted.title/detail/new/back) and the 14 keys upstream PR #1870 added (tool.composing_*/queued_*, image_gen.state.*). The other 442 keys are byte-identical to both previously audited files (union check).",
+  "mechanical": {
+    "union": "scripts/i18n/catalogue-union-parity.mjs --head 3756de5e1 --old-head 16b14982c --base 7c2b6af66 over en + 7 locales + en context: PASS, 460 = base ∪ PR, no value differences",
+    "checks": "18 keys: ICU parse, argument names/types vs en, select arms, plural categories vs Intl.PluralRules, every branch formatted for counts 0/1/2/5/21/1000000 × 4 materials, no bidi controls, NFC, U+2026/U+00B7 kept, locale punctuation. 0 issues; negative control (renamed arg, bidi char, wrong plural cat) caught 21."
+  },
+  "reading": "temporary_deleted.*: feminine چیٹ agrees (ہو گئی) and matches sibling keys; آپ register; Urdu ، and ۔ (no Hindi danda); no bidi controls. Upstream 14: gender agreement (ویڈیو/تصویر fem., وائس اوور/صوتی اثر masc.) and one/other arms correct.",
+  "findings": []
+}

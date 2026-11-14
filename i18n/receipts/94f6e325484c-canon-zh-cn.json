@@ -1,0 +1,31 @@
+{
+  "auditor": "reviewer",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "94f6e325484c-canon-zh-cn",
+  "date": "2026-11-12",
+  "locale": "zh-CN",
+  "namespace": "ui.chat.canonical",
+  "status": "passed",
+  "sha256": {
+    "zh-CN": "5d8b59913c1496d11c841d701ccb39db2665471fad0bd17c00fd47164b84530b",
+    "en": "9430aca09d519fb168f1fbc4ae6301af5245bc63aa8a8679e91e6c3bdad558da"
+  },
+  "context_sha256": {
+    "en": "06e26330b0b9a8be1d07d47888925975aebb1678098fcfe792cd300d31e3ec09"
+  },
+  "repo": "damianvtran/local-operator-ui",
+  "pr": 1874,
+  "head": "3756de5e1",
+  "independence": "Independent i18n auditor (lopdev reviewer, session 94f6e325484c). Not the translator of any key in this file; did not read or copy any other session's scratchpad. Same model family as the PR's translator (lopdev coder, anthropic/claude-opus-5-5): disclosed.",
+  "references": {
+    "glossary": "damianvtran/local-operator@b5f1c63de i18n/glossary.md sha256:0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style_guide": "damianvtran/local-operator@b5f1c63de i18n/style-guides/zh-CN.md sha256:8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+  },
+  "scope": "Merged bytes after 3756de5e1 (merge of origin/main 7c2b6af66). Read in full against en value, en .context.json, glossary and style guide: the 4 keys this PR adds (temporary_deleted.title/detail/new/back) and the 14 keys upstream PR #1870 added (tool.composing_*/queued_*, image_gen.state.*). The other 442 keys are byte-identical to both previously audited files (union check).",
+  "mechanical": {
+    "union": "scripts/i18n/catalogue-union-parity.mjs --head 3756de5e1 --old-head 16b14982c --base 7c2b6af66 over en + 7 locales + en context: PASS, 460 = base ∪ PR, no value differences",
+    "checks": "18 keys: ICU parse, argument names/types vs en, select arms, plural categories vs Intl.PluralRules, every branch formatted for counts 0/1/2/5/21/1000000 × 4 materials, no bidi controls, NFC, U+2026/U+00B7 kept, locale punctuation. 0 issues; negative control (renamed arg, bidi char, wrong plural cat) caught 21."
+  },
+  "reading": "temporary_deleted.*: '临时对话' and '对话列表' match sibling keys (ui.chat.composer.placeholder.temporary); 你 register, pronoun-light; full-width ，。 in the sentence, no 。 on title/buttons. Upstream 14: other-only plurals with classifiers 个/段/张, …… double ellipsis.",
+  "findings": []
+}

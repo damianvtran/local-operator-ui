@@ -1,0 +1,364 @@
+{
+  "schema": "s16e-post-integration-binding-supplemental",
+  "kind": "AUDITOR-AUTHORED supplemental binding receipt (second independent pass): verifies the integrator's transcription and binds the audited 12-key slice to the integrated bytes",
+  "pr": "damianvtran/local-operator-ui#1884",
+  "slice": "S16e-renderer",
+  "namespace": "ui.chat.canonical",
+  "audited_head": "bd8e90542506e8bec4a98862b868095409b28329",
+  "integrated_head": "67ea14a7b5ef621b6f7216c74795749a927fac84",
+  "head_frozen_for_binding": true,
+  "audit_date": "2026-11-12",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "cc045047b39e",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "harness session header for session cc045047b39e; no fallback used",
+    "fallback_used": false,
+    "independent_from_translator_session": true,
+    "independent_from_first_pass": true
+  },
+  "scope_read": {
+    "keys": [
+      "ui.chat.canonical.image_gen.state.cancelled_batch",
+      "ui.chat.canonical.image_gen.cancel.queued",
+      "ui.chat.canonical.image_gen.cancel.running",
+      "ui.chat.canonical.image_gen.cancel.checking",
+      "ui.chat.canonical.image_gen.settlement.pending",
+      "ui.chat.canonical.image_gen.error.audio_rate_limited",
+      "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+      "ui.chat.canonical.image_gen.error_class.unknown_tool",
+      "ui.chat.canonical.image_gen.error_class.invalid_arguments",
+      "ui.chat.canonical.image_gen.error_class.duplicate_id",
+      "ui.chat.canonical.image_gen.error_class.denied",
+      "ui.chat.canonical.image_gen.error_class.gate_failed"
+    ],
+    "keys_count": 12,
+    "locales": [
+      "fr",
+      "es",
+      "ru",
+      "vi",
+      "zh-CN",
+      "hi",
+      "ur"
+    ],
+    "values": 84,
+    "what_i_actually_read": "the 12 new image_gen stop/settlement/error values per locale in the translator's draft, then byte-compared against the integrated catalogues; retained keys verified by direct value comparison and by recomputing the retained-key digest",
+    "NOT_claimed": [
+      "a full-file re-audit of the 479-key catalogues",
+      "a fresh reading of the 467 pre-existing keys (they ride previously audited bytes, proven byte-identical here)",
+      "rendered/browser/pseudo evidence",
+      "native-speaker review"
+    ]
+  },
+  "carry_forward_policy": {
+    "precedent": "an audit may be bound to the integrated file hash while its scope states the delta read; retained bytes proven unchanged, so no whole-file reading is claimed",
+    "gate_shape": "scripts/i18n/ledger-rules.mjs: counts derived from receipt findings, repo-relative receipt + receipt_sha256, instance must match ^[a-z0-9_-]+$",
+    "verdict": "permitted by the policy in force; no waiver needed"
+  },
+  "per_locale": {
+    "fr": {
+      "draft_sha256": "a46fdb56c6007dd225382a8f94f4972d7a4dfc6aaaab790dca2d7cdf27b4da62",
+      "integrated_whole_file_sha256": "67372a8280150ac24402a427aff3c71fe07aa00841c41c57513a470b6abbc7ac",
+      "pre_integration_whole_file_sha256": "99f7c0b27d6c75b16935cc58874477cab24da430284576defaacf19e209c88f6",
+      "retained_keys": 467,
+      "retained_digest": "0bf2c838356d822f5d9ed9ef4af4e158a36813ad72d9ac7f7f23ebadfe219d88",
+      "retained_digest_equal_before_after": true,
+      "key_count_after": 479,
+      "checks": {
+        "draft_12_byte_equal": true,
+        "no_retained_value_changed": true,
+        "no_key_removed": true,
+        "exactly_12_keys_added": true,
+        "retained_digest_equal_before_after": true,
+        "key_count_after_479": true,
+        "integrated_bytes_differ_from_audited": true
+      },
+      "preserved_original_receipt": {
+        "path": "i18n/audits/evidence/fr/ui.chat.canonical/s16e-67372a828015/receipt-second-pass-original.json",
+        "sha256": "49ebeb6bf166dfb88653a491dd666948cdaba823e20574f0d6630e0a2c4fc155",
+        "byte_identical_to_my_record": true
+      },
+      "ledger_instance_used": "s16e-au2-fr"
+    },
+    "es": {
+      "draft_sha256": "b9290ae76d05774eeca47b3bea438ac6df0be03c7907efaa3cb93a5d6082a50c",
+      "integrated_whole_file_sha256": "6975073712a4a3400b0d04d67a82ef7b16ce0fafd78b319a2a8023099a0ca2ab",
+      "pre_integration_whole_file_sha256": "547b85e9670eec79f82211f50325092bf75c13eda4504995cce1a1d5ab25e272",
+      "retained_keys": 467,
+      "retained_digest": "ec06218d0029329975b46106cf7483d19404c9d7335f678b0abbb7525edbe668",
+      "retained_digest_equal_before_after": true,
+      "key_count_after": 479,
+      "checks": {
+        "draft_12_byte_equal": true,
+        "no_retained_value_changed": true,
+        "no_key_removed": true,
+        "exactly_12_keys_added": true,
+        "retained_digest_equal_before_after": true,
+        "key_count_after_479": true,
+        "integrated_bytes_differ_from_audited": true
+      },
+      "preserved_original_receipt": {
+        "path": "i18n/audits/evidence/es/ui.chat.canonical/s16e-6975073712a4/receipt-second-pass-original.json",
+        "sha256": "f5be4b316dc40b3215cd4735cff698f138c8939895f3a5a2cfbbcb1bb7b43677",
+        "byte_identical_to_my_record": true
+      },
+      "ledger_instance_used": "s16e-au2-es"
+    },
+    "ru": {
+      "draft_sha256": "ccc4674d071cc725e48f54c2becd2ac38eaa9004dbcdde8890ecaeedcf9c6060",
+      "integrated_whole_file_sha256": "29d932f30c329a27731a9b3f3f8179b569f6a44309a45eb1ac9fe1e5109b20df",
+      "pre_integration_whole_file_sha256": "fddef0897968450fb0157457dda37f7472fa467b4df1aea68af16bbe260f10f1",
+      "retained_keys": 467,
+      "retained_digest": "75912cd549507c97fcd138ef24078d1f1f2a4a14fa7a9c44f8013a0ce3fb82a7",
+      "retained_digest_equal_before_after": true,
+      "key_count_after": 479,
+      "checks": {
+        "draft_12_byte_equal": true,
+        "no_retained_value_changed": true,
+        "no_key_removed": true,
+        "exactly_12_keys_added": true,
+        "retained_digest_equal_before_after": true,
+        "key_count_after_479": true,
+        "integrated_bytes_differ_from_audited": true
+      },
+      "preserved_original_receipt": {
+        "path": "i18n/audits/evidence/ru/ui.chat.canonical/s16e-29d932f30c32/receipt-second-pass-original.json",
+        "sha256": "9a3293c8558b1b3973066dc1bd6018e138e107443958e0ccbcef1173deb7efed",
+        "byte_identical_to_my_record": true
+      },
+      "ledger_instance_used": "s16e-au2-ru"
+    },
+    "vi": {
+      "draft_sha256": "c0e8df525f0324921dd849634e1a83d6e9d4de53db0e1f38d68c3a2b217f10a9",
+      "integrated_whole_file_sha256": "1ff9b17c9a2ac5f276e03f433a2187385af5b0130d95ba2624f2bc7ad77c92cf",
+      "pre_integration_whole_file_sha256": "a37a5690412c841379ea44d6d63f4a5314579f4a157ff3c7f67be2ee872fe750",
+      "retained_keys": 467,
+      "retained_digest": "039fa10470d3fdcc0ba52bcf53d46c0b501cf5245e862dbf6aba38d254c8c47b",
+      "retained_digest_equal_before_after": true,
+      "key_count_after": 479,
+      "checks": {
+        "draft_12_byte_equal": true,
+        "no_retained_value_changed": true,
+        "no_key_removed": true,
+        "exactly_12_keys_added": true,
+        "retained_digest_equal_before_after": true,
+        "key_count_after_479": true,
+        "integrated_bytes_differ_from_audited": true
+      },
+      "preserved_original_receipt": {
+        "path": "i18n/audits/evidence/vi/ui.chat.canonical/s16e-1ff9b17c9a2a/receipt-second-pass-original.json",
+        "sha256": "ad68a0aca4b8ab82d98751cca2077aec1ebd68b09d3ae9768e296f4c754b7491",
+        "byte_identical_to_my_record": true
+      },
+      "ledger_instance_used": "s16e-au2-vi"
+    },
+    "zh-CN": {
+      "draft_sha256": "121951c9665e715dcec2b993d85cb3d77d51c00651da275a573aa75ae6bb5688",
+      "integrated_whole_file_sha256": "752b0388f4e0a677fe614bfe8c5dcb5ed29d79a77ef7e6476a80afc3b93888b4",
+      "pre_integration_whole_file_sha256": "35f8058839549d4a8be28792c279784c75a624b9c076fc98d359bae1fe1db12c",
+      "retained_keys": 467,
+      "retained_digest": "1e202b34d5e7b9cc253c51e7271e7ec2309dfd74dd6532afb3062ea1137090b8",
+      "retained_digest_equal_before_after": true,
+      "key_count_after": 479,
+      "checks": {
+        "draft_12_byte_equal": true,
+        "no_retained_value_changed": true,
+        "no_key_removed": true,
+        "exactly_12_keys_added": true,
+        "retained_digest_equal_before_after": true,
+        "key_count_after_479": true,
+        "integrated_bytes_differ_from_audited": true
+      },
+      "preserved_original_receipt": {
+        "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/s16e-752b0388f4e0/receipt-second-pass-original.json",
+        "sha256": "8490a57fdd8a1b7dbd1d927a7a80e0dcf5aa129015682b5172ca88301da0f1cf",
+        "byte_identical_to_my_record": true
+      },
+      "ledger_instance_used": "s16e-au2-zh-cn"
+    },
+    "hi": {
+      "draft_sha256": "41e9e50f80fb89f3d39a822b1fb95461f3d8b4cd9ece1b3ed899c1fec39a9831",
+      "integrated_whole_file_sha256": "64a962929428922c1224a09147a4ec06bf45c78cf54f31050f3ee92151a4280f",
+      "pre_integration_whole_file_sha256": "5bad55ca446e6e2e0bc853d503d94280f444cd009402431c65e8ce997528689b",
+      "retained_keys": 467,
+      "retained_digest": "ff6b411475705fd631977c7758580f40110aeaba25089a132b14111eb3257b28",
+      "retained_digest_equal_before_after": true,
+      "key_count_after": 479,
+      "checks": {
+        "draft_12_byte_equal": true,
+        "no_retained_value_changed": true,
+        "no_key_removed": true,
+        "exactly_12_keys_added": true,
+        "retained_digest_equal_before_after": true,
+        "key_count_after_479": true,
+        "integrated_bytes_differ_from_audited": true
+      },
+      "preserved_original_receipt": {
+        "path": "i18n/audits/evidence/hi/ui.chat.canonical/s16e-64a962929428/receipt-second-pass-original.json",
+        "sha256": "56181673ab5217c4081abea8b776f8aa38b50dfcea943506e336d8eece90538f",
+        "byte_identical_to_my_record": true
+      },
+      "ledger_instance_used": "s16e-au2-hi"
+    },
+    "ur": {
+      "draft_sha256": "e9666a75e6d318448b530290d99ab3c88b8a29901e3fa8beeb5c3411f7fa4051",
+      "integrated_whole_file_sha256": "d239e2a665505002cdb0a8e4f6a6fc2009003ea5026a95695dee9ad7573165dd",
+      "pre_integration_whole_file_sha256": "fd1116ccb5e847eb7f28c4cf5d1084efad95edf52d638d1a6144e065ce7d98a7",
+      "retained_keys": 467,
+      "retained_digest": "af7668134800a1afcf0e559fe08c70de6cfb065da1e0d6705d6aab6b47d44873",
+      "retained_digest_equal_before_after": true,
+      "key_count_after": 479,
+      "checks": {
+        "draft_12_byte_equal": true,
+        "no_retained_value_changed": true,
+        "no_key_removed": true,
+        "exactly_12_keys_added": true,
+        "retained_digest_equal_before_after": true,
+        "key_count_after_479": true,
+        "integrated_bytes_differ_from_audited": true
+      },
+      "preserved_original_receipt": {
+        "path": "i18n/audits/evidence/ur/ui.chat.canonical/s16e-d239e2a66550/receipt-second-pass-original.json",
+        "sha256": "67b92053248b66d052b13d6508b65861da4145ac4251745c1980f96979613a57",
+        "byte_identical_to_my_record": true
+      },
+      "ledger_instance_used": "s16e-au2-ur"
+    }
+  },
+  "ledger_rows": {
+    "es": {
+      "status": "audited",
+      "target_sha256_matches_tree": true,
+      "source_sha256_matches_en": true,
+      "receipt": "i18n/receipts/s16e-au2-es.json",
+      "receipt_sha256_matches": true,
+      "result": "clean",
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "note_len": 204,
+      "note_names_evidence": true
+    },
+    "fr": {
+      "status": "audited",
+      "target_sha256_matches_tree": true,
+      "source_sha256_matches_en": true,
+      "receipt": "i18n/receipts/s16e-au2-fr.json",
+      "receipt_sha256_matches": true,
+      "result": "clean-with-findings",
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 2
+      },
+      "note_len": 204,
+      "note_names_evidence": true
+    },
+    "hi": {
+      "status": "audited",
+      "target_sha256_matches_tree": true,
+      "source_sha256_matches_en": true,
+      "receipt": "i18n/receipts/s16e-au2-hi.json",
+      "receipt_sha256_matches": true,
+      "result": "clean-with-findings",
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 1
+      },
+      "note_len": 204,
+      "note_names_evidence": true
+    },
+    "ru": {
+      "status": "audited",
+      "target_sha256_matches_tree": true,
+      "source_sha256_matches_en": true,
+      "receipt": "i18n/receipts/s16e-au2-ru.json",
+      "receipt_sha256_matches": true,
+      "result": "clean",
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "note_len": 204,
+      "note_names_evidence": true
+    },
+    "ur": {
+      "status": "audited",
+      "target_sha256_matches_tree": true,
+      "source_sha256_matches_en": true,
+      "receipt": "i18n/receipts/s16e-au2-ur.json",
+      "receipt_sha256_matches": true,
+      "result": "clean-with-findings",
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 3
+      },
+      "note_len": 204,
+      "note_names_evidence": true
+    },
+    "vi": {
+      "status": "audited",
+      "target_sha256_matches_tree": true,
+      "source_sha256_matches_en": true,
+      "receipt": "i18n/receipts/s16e-au2-vi.json",
+      "receipt_sha256_matches": true,
+      "result": "clean-with-findings",
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 2,
+        "nit": 1
+      },
+      "note_len": 204,
+      "note_names_evidence": true
+    },
+    "zh-CN": {
+      "status": "audited",
+      "target_sha256_matches_tree": true,
+      "source_sha256_matches_en": true,
+      "receipt": "i18n/receipts/s16e-au2-zh-cn.json",
+      "receipt_sha256_matches": true,
+      "result": "clean-with-findings",
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      },
+      "note_len": 207,
+      "note_names_evidence": true
+    }
+  },
+  "integrator_field_changes": [
+    {
+      "field": "instance (zh-CN only)",
+      "integrator": "s16e-au2-zh-cn",
+      "my_original": "s16e-au2-zh-CN",
+      "decision": "ACCEPTED as a required normalisation",
+      "why": "ledger-rules isPlaceholderInstance() rejects any instance failing /^[a-z0-9_-]+$/, so an uppercase locale tag cannot pass the gate; the lowercase form is the gate-legal spelling of my own id. My original record keeps the original casing and is preserved byte-identically."
+    },
+    {
+      "field": "all other transcribed fields",
+      "decision": "ACCEPTED — no substantive change",
+      "why": "identity, model, fallback, session, status, result, finding ids/severities/counts, and en/context hashes agree with my originals for all 7 locales"
+    }
+  ],
+  "preserved_originals": "all 7 receipt-second-pass-original.json files are byte-identical to my own record files",
+  "findings": "unchanged from the second independent pass: 0 BLOCKER, 0 MAJOR; 4 MINOR (vi×2, zh-CN composition, hi) and 7 NIT (fr×2, vi, hi, ur×3); all deferred",
+  "void_if": "any integrated catalogue byte changes (any integrated_whole_file_sha256) before merge — then this binding is void and the delta must be re-verified",
+  "artifact_paths": {
+    "verify_log": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-bind/verify-independent.log",
+    "ledger_check": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-bind/ledger-binding-check.log"
+  }
+}

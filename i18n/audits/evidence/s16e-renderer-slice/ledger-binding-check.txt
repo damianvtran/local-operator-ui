@@ -1,0 +1,17 @@
+# ledger binding check — ui.chat.canonical rows, second independent pass entries
+  es     instance=s16e-au2-es    result=clean              counts={'blocker': 0, 'major': 0, 'minor': 0, 'nit': 0} note_len=204 receipt=i18n/receipts/s16e-au2-es.json
+         PASS
+  fr     instance=s16e-au2-fr    result=clean-with-findings counts={'blocker': 0, 'major': 0, 'minor': 0, 'nit': 2} note_len=204 receipt=i18n/receipts/s16e-au2-fr.json
+         PASS
+  hi     instance=s16e-au2-hi    result=clean-with-findings counts={'blocker': 0, 'major': 0, 'minor': 1, 'nit': 1} note_len=204 receipt=i18n/receipts/s16e-au2-hi.json
+         PASS
+  ru     instance=s16e-au2-ru    result=clean              counts={'blocker': 0, 'major': 0, 'minor': 0, 'nit': 0} note_len=204 receipt=i18n/receipts/s16e-au2-ru.json
+         PASS
+  ur     instance=s16e-au2-ur    result=clean-with-findings counts={'blocker': 0, 'major': 0, 'minor': 0, 'nit': 3} note_len=204 receipt=i18n/receipts/s16e-au2-ur.json
+         PASS
+  vi     instance=s16e-au2-vi    result=clean-with-findings counts={'blocker': 0, 'major': 0, 'minor': 2, 'nit': 1} note_len=204 receipt=i18n/receipts/s16e-au2-vi.json
+         PASS
+  zh-CN  instance=s16e-au2-zh-cn result=clean-with-findings counts={'blocker': 0, 'major': 0, 'minor': 1, 'nit': 0} note_len=207 receipt=i18n/receipts/s16e-au2-zh-cn.json
+         PASS
+
+RESULT ledger rows bind the recomputed integrated hashes and the receipts are intact

@@ -190,68 +190,79 @@ export function imageGenMaterial(toolName: string): ImageGenMaterial {
 }
 
 /**
- * THE TWO CANCEL SENTENCES (security round 1, 2026-10-17), and the rule they
- * exist to enforce: STOP IS A REQUEST, GUARANTEED ONLY WHILE QUEUED.
+ * THE CANCEL FACT (S16e, 2026-11-12): what the server says a stop actually did.
  *
- * The frozen contract is explicit that cancellation is best-effort — once the
- * vendor is IN_PROGRESS there is no cancel endpoint, `cancellation.vendor_
- * stopped` is `false`, and the generation continues and bills if it produces
- * audio. So the card may make the no-charge claim ONLY for a stop pressed
- * before the provider was called, and must state the request (with its cost
- * consequence) for anything that had started. Showing the queued sentence for
- * an in-flight cancel is the one wording error that would read as a promise the
- * platform cannot keep.
+ * WHY A FACT AND NOT A SENTENCE. These sentences are now catalogue keys
+ * (`ui.chat.canonical.image_gen.cancel.*`), so the CARD chooses the words at
+ * render time in the reader's language. A sentence built here would either bake
+ * the boot locale — the one hazard the i18n census calls H1, a `t()` at module
+ * scope — or stay English under every language.
  *
- * COPIED VERBATIM from the security round's ruling (and its server follow-up,
- * PR #139): these two sentences are product copy, reviewed as such, and are
- * asserted byte-for-byte by the card's own suite.
+ * THE RULE THE SENTENCES EXIST TO ENFORCE (security round 1, 2026-10-17):
+ * STOP IS A REQUEST, GUARANTEED ONLY WHILE QUEUED. The frozen contract is
+ * explicit that cancellation is best-effort — once the vendor is IN_PROGRESS
+ * there is no cancel endpoint, `cancellation.vendor_stopped` is `false`, and the
+ * generation continues and bills if it produces audio. So the card may make the
+ * no-charge claim ONLY for a stop pressed before the provider was called, and
+ * must state the request (with its cost consequence) for anything that had
+ * started. Showing the queued sentence for an in-flight cancel is the one
+ * wording error that would read as a promise the platform cannot keep.
  *
- * THE RUNNING SENTENCE'S LAST CLAUSE IS A PENDING-SETTLEMENT STATE, not a
- * hedge: after a running cancel the harness bounded-polls the provider for up
- * to ~2 minutes and may later append a settlement notice with the billed cost
- * and the completed artifact. The card therefore claims "checking", never a
- * final no-charge, and the later notice renders as an ordinary custom row
- * (no second player path: a settled artifact enters the session index the
- * Files/Highlights surfaces already read).
+ * `vendorStopped` is that fact, read straight off the wire. `settling` is the
+ * pending-settlement state, not a hedge: after a running cancel the harness
+ * bounded-polls the provider for up to ~2 minutes, so the keyed sentence keeps
+ * its "checking" clause only while no settlement statement exists to answer it.
+ *
+ * `vendorStopped: null` IS PRESENT BUT STAYS UNKEYED, deliberately. The server
+ * declining to say (`vendor_stopped: null`) covers the anonymous "did not
+ * report" stop, a BYOK call with no cancel API, and a stop that was never
+ * applied (`not_found`, `timeout`, `already_completed`) — and only the cancel
+ * OUTCOME, an additive backend code that does not exist yet, tells them apart.
+ * Rendering the "did not report" sentence over a "Not cancelled - not found"
+ * receipt would state a different fact, so the card falls back to the wire's own
+ * sentence exactly as it did before this change (S16e-backend-code keys it).
  */
-export const CANCEL_QUEUED_COPY =
-	"Stopped before the provider was called; you will not be charged.";
-
-export const CANCEL_RUNNING_COPY =
-	"Stop requested. The provider has no cancellation endpoint; the generation continues and will be charged if it produces audio. Checking for settlement.";
-
-/**
- * THE RATE-LIMITED SENTENCE (sound phase, 2026-10-17). The server's fixed copy
- * for `audio_rate_limited`: a submit-time 429 the harness backs off from, or a
- * vendor 429 that settles the job as an error at zero cost. Retryable by
- * calling again — NOT by a control that promises the next call will succeed.
- *
- * Used only when the record names the TYPE and states no sentence: a tool
- * result's own message always wins (the failure arm's verbatim rule), and this
- * sentence is the absence's copy rather than a replacement for supplied text.
- */
-export const AUDIO_RATE_LIMITED_COPY =
-	"Audio generation is busy right now. Wait a moment and try again.";
+export type ImageGenCancelFact = {
+	vendorStopped: boolean | null;
+	settling: boolean;
+};
 
 /**
- * The material's noun, as the card's sentences spell it.
+ * The cancel fact a payload carries, or `null` when it carries none.
  *
- * One spelling per material, beside `imageGenMaterial` so a sentence that
- * wants a noun cannot invent a second spelling of one ("sound effect" vs
- * "sound-effect" vs "sfx"): the state line, the done receipt and the failure
- * fallback all read THIS function.
+ * `details.stage === "cancelled"` is the wire's own statement that this payload
+ * IS a stop receipt; `settling` must be a real boolean (the server writes one on
+ * every cancel receipt) and `vendor_stopped` must be present as a boolean or an
+ * explicit null. Anything else — an older durable row, another producer, a
+ * progress frame — reads as "no fact", and the card then renders exactly the
+ * text it rendered before: the wire's sentence, or the keyed generating/queued
+ * fallback it used to hold as a constant.
+ *
+ * A NAMED ERROR IS NOT A STOP RECEIPT EITHER (review round 1, F1, 2026-11-12):
+ * `error_type` on a cancel payload means the stop did NOT happen —
+ * `media_already_completed` is a stop that lost its race with the finish — so
+ * the cost consequence `vendor_stopped` carries does not describe this call.
+ * The conflict must keep the wire's own "Not cancelled — already completed."
+ * text, and ARM 1 (`record.stopped === true`, the user's interrupt) is
+ * evaluated BEFORE the `media_already_completed` branch, so accepting the fact
+ * here would let the keyed "stop requested, will be charged" sentence outrank
+ * it. Refusing any non-empty `error_type` is the narrow rule: the plain-cancel
+ * arm already requires `error_type === null` to reach its keyed fact, so this
+ * refusal changes nothing for a real cancel and only restores the wire's
+ * precedence for a refused one.
  */
-export function imageGenMaterialNoun(material: ImageGenMaterial): string {
-	switch (material) {
-		case "video":
-			return "video";
-		case "voiceover":
-			return "voiceover";
-		case "sound-effect":
-			return "sound effect";
-		default:
-			return "image";
-	}
+function cancelFact(details: unknown): ImageGenCancelFact | null {
+	if (!details || typeof details !== "object") return null;
+	const result = details as Record<string, unknown>;
+	if (result.stage !== "cancelled") return null;
+	const errorType = result.error_type;
+	if (typeof errorType === "string" && errorType) return null;
+	const settling = result.settling;
+	if (typeof settling !== "boolean") return null;
+	if (!("vendor_stopped" in result)) return null;
+	const vendorStopped = result.vendor_stopped;
+	if (vendorStopped !== null && typeof vendorStopped !== "boolean") return null;
+	return { vendorStopped, settling };
 }
 
 /**
@@ -470,12 +481,16 @@ export type ImageGenCardView =
 			 */
 			message: string | null;
 			/**
-			 * Human-readable sound/planning failure class, or null for other media
+			 * The sound/planning failure CODE as the wire spells it
+			 * (`audio_rate_limited`, `unknown_tool`, ...), or null when there is none
 			 * and when the unchanged error sentence already opens with that class.
-			 * The raw wire discriminator stays in `canonicalProgress` for state
-			 * selection; identifiers must not leak into the reader-facing label.
+			 *
+			 * The CODE, not a label: the card maps it to a catalogue key at render
+			 * time (the id itself must never reach the reader, and a label built here
+			 * would bake the boot locale). It also chooses the `audio_rate_limited`
+			 * fallback sentence, which is why it survives when no label is drawn.
 			 */
-			errorType: string | null;
+			errorCode: string | null;
 	  }
 	| {
 			state: "cancelled";
@@ -498,18 +513,38 @@ export type ImageGenCardView =
 			settled?: boolean;
 			/**
 			 * Whether the call had started executing when it was stopped. The
-			 * settled receipt's sentence follows the same queued/running split the
-			 * cancelling line does: an in-flight stop never reads as a no-charge
-			 * cancellation (`CANCEL_RUNNING_COPY`), because the vendor has no
+			 * receipt's sentence follows the same queued/running split the cancelling
+			 * line does when no structured cancel fact exists: an in-flight stop never
+			 * reads as a no-charge cancellation, because the vendor has no
 			 * cancellation endpoint and may have produced (and charged for) audio.
 			 */
 			generating: boolean;
 			/**
+			 * The wire's own structured cancel fact (`details.stage: "cancelled"`
+			 * plus `settling` and `vendor_stopped`), when the record carries one.
+			 *
+			 * PRESENT means the card renders KEYED copy chosen from these fields —
+			 * which outranks `message` — because a boolean `vendor_stopped` states
+			 * the stop's cost consequence exactly, where the wire sentence it is
+			 * carried beside is one fixed English string. Absent means this is an
+			 * older durable row or another producer: render `message` verbatim, as
+			 * before.
+			 */
+			cancel?: ImageGenCancelFact;
+			/**
 			 * The tool/server detail for the stop — the result's own content when
-			 * it stated one. Preferred over either canned sentence: the wire's
-			 * own words are the receipt (`media_already_completed`'s sibling rule).
+			 * it stated one. The receipt whenever no structured `cancel` fact
+			 * exists: the wire's own words (`media_already_completed`'s sibling
+			 * rule), unkeyed and by design (it is server prose, not app copy).
 			 */
 			message: string | null;
+			/**
+			 * A settlement is OUTSTANDING: the server quoted the call and has
+			 * reported no final charge, so the card states the pending sentence
+			 * (keyed) rather than an amount. Distinct from `settled`, which says a
+			 * statement of any kind exists; both retire the "checking" clause.
+			 */
+			settlementPending?: boolean;
 	  };
 
 /** The state tag alone, for callers that switch on it without the payload. */
@@ -563,9 +598,15 @@ export function imageGenCardView(
 				batchNote: soundBatchNote(record.details, record.output),
 			}
 		: {};
-	const settlementCaption = sound
-		? soundSettlementCaption(record.details)
-		: null;
+	const settlement = sound ? soundSettlement(record.details) : null;
+	const settlementCaption = settlement?.caption ?? null;
+	const settlementPending = settlement?.pending === true;
+	/*
+	 * The wire's own account of what the stop did, or null when it stated none.
+	 * Read once, beside the rest of the CANONICAL payload, because the card's
+	 * cancelled line branches on it (see `ImageGenCancelFact`).
+	 */
+	const cancel = cancelFact(record.details);
 	/*
 	 * ARM 1, the interrupts. `stopped` is the call that was running when the
 	 * turn was aborted; `skipped`/`aborted` are the harness's verdicts that the
@@ -586,7 +627,11 @@ export function imageGenCardView(
 					}
 				: {}),
 			...(settlementCaption ? { settlementCaption } : {}),
-			...(settlementCaption || settled ? { settled: true } : {}),
+			...(settlementPending ? { settlementPending } : {}),
+			...(cancel ? { cancel } : {}),
+			...(settlementCaption || settlementPending || settled
+				? { settled: true }
+				: {}),
 		};
 	if (record.notRunKind === "skipped" || record.notRunKind === "aborted")
 		return { state: "cancelled", generating: false, message: record.output };
@@ -605,9 +650,7 @@ export function imageGenCardView(
 			state: "failed",
 			material,
 			message: record.notRunReason,
-			errorType: sound
-				? humanErrorClass(record.notRunKind, record.notRunReason)
-				: null,
+			errorCode: errorCodeFor(record.notRunKind, record.notRunReason),
 		};
 	/*
 	 * ARM 3, the turn that died while the call was still being dictated: the
@@ -624,7 +667,7 @@ export function imageGenCardView(
 			state: "failed",
 			material,
 			message: canonical.error ?? record.output,
-			errorType: humanErrorClass(
+			errorCode: errorCodeFor(
 				canonical.errorType,
 				canonical.error ?? record.output,
 			),
@@ -667,8 +710,12 @@ export function imageGenCardView(
 				 */
 				generating: record.startedAt !== null,
 				message: canonical.error ?? record.output,
+				...(cancel ? { cancel } : {}),
 				...(settlementCaption ? { settlementCaption } : {}),
-				...(settlementCaption || settled ? { settled: true } : {}),
+				...(settlementPending ? { settlementPending } : {}),
+				...(settlementCaption || settlementPending || settled
+					? { settled: true }
+					: {}),
 			};
 		return {
 			state: "failed",
@@ -680,15 +727,11 @@ export function imageGenCardView(
 			 * the one type the server authors a reader sentence for; every other
 			 * absence keeps the card's generic fallback.
 			 */
-			message:
-				canonical.error ??
-				record.output ??
-				(canonical.errorType === "audio_rate_limited"
-					? AUDIO_RATE_LIMITED_COPY
-					: null),
-			errorType: sound
-				? humanErrorClass(canonical.errorType, canonical.error ?? record.output)
-				: null,
+			message: canonical.error ?? record.output ?? null,
+			errorCode: errorCodeFor(
+				canonical.errorType,
+				canonical.error ?? record.output,
+			),
 		};
 	}
 	/*
@@ -797,28 +840,47 @@ export function withoutSettlementClause(sentence: string): string {
 	return sentence.replace(SETTLEMENT_PENDING_CLAUSE, "").trimEnd();
 }
 
-/** A cancelled request can still be billed: retain the server's unknowns. */
-function soundSettlementCaption(details: unknown): string | null {
+/**
+ * The settlement facts a cancelled call's own details carry.
+ *
+ * Two facts, not one sentence, because the card renders both keyed: `caption`
+ * is the billed/estimated receipt (already structured, `soundCostCaption`), and
+ * `pending` is the OUTSTANDING case — a quote with nothing settled yet — whose
+ * sentence the card words itself (`ui.chat.canonical.image_gen.settlement.
+ * pending`, S16e E4) rather than this module baking English into the view.
+ */
+function soundSettlement(
+	details: unknown,
+): { caption: string | null; pending: boolean } | null {
 	if (!details || typeof details !== "object") return null;
 	const result = details as Record<string, unknown>;
 	const cost = result.cost as Record<string, unknown> | null;
-	if (result.settled === true) return soundCostCaption(details);
+	if (result.settled === true)
+		return { caption: soundCostCaption(details), pending: false };
 	return result.settled === null &&
 		result.cost_usd === null &&
 		cost?.basis === "quote"
-		? "Settlement pending — the final charge will appear once the provider reports it."
+		? { caption: null, pending: true }
 		: null;
 }
 
-/** Labels are for sound/planning failures only; never repeat the opening sentence. */
-function humanErrorClass(
+/**
+ * The failure CODE to key, or null when there is nothing to label.
+ *
+ * Returns the raw discriminator (`audio_rate_limited`, `unknown_tool`, ...). The
+ * card maps it to a catalogue key and falls back to the humanised code for a
+ * type this build does not know; identifiers must not reach the reader, and a
+ * label rendered here would pin the boot locale. Labels are for sound/planning
+ * failures only; the card never repeats the sentence that opens the line.
+ */
+function errorCodeFor(
 	kind: string | null | undefined,
 	message?: string | null,
 ): string | null {
 	if (!kind) return null;
 	const words = kind.replace(/_/g, " ");
 	if (message?.toLowerCase().startsWith(words.toLowerCase())) return null;
-	return words.charAt(0).toUpperCase() + words.slice(1);
+	return kind;
 }
 
 /** Which affordance a control is. */
