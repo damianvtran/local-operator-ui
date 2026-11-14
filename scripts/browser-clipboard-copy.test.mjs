@@ -21,9 +21,10 @@
  */
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { createRequire } from "node:module";
 import { join } from "node:path";
 import { test } from "node:test";
-import { runInNewContext } from "node:vm";
+import { Script, runInNewContext } from "node:vm";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 
@@ -60,7 +61,6 @@ const {
 	installBrowserSessionHandlers,
 	clipboardShimSource,
 	CLIPBOARD_SENTINEL,
-	installClipboardShim,
 	armHostClipboardWrite,
 	CLIPBOARD_BINDING,
 	CLIPBOARD_ACK,
@@ -68,6 +68,54 @@ const {
 	copy,
 	clipboard,
 } = mod;
+
+// Keep Electron EXTERNAL here: the ESM alias above inlines dynamic imports and
+// hid a packaged-only regression. Rehydrate real V8 cached data and execute its
+// CommonJS wrapper without importModuleDynamically, as electron-vite's loader
+// does. This is a loader contract test, not native Electron/OS clipboard proof.
+const vmBundle = await build({
+	stdin: {
+		contents: [
+			'export { copy } from "./src/main/browser/actions/page";',
+			'export * from "./src/main/browser/actions/clipboard-shim";',
+		].join("\n"),
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "cjs",
+	platform: "node",
+	write: false,
+	external: ["electron"],
+});
+const vmSource = `(function(require, module, exports) {${vmBundle.outputFiles[0].text}\n})`;
+const vmCache = new Script(vmSource).createCachedData();
+const compiled = new Script(vmSource, { cachedData: vmCache });
+assert.equal(compiled.cachedDataRejected, false);
+const vmClipboard = {
+	text: "",
+	writeText(text) {
+		this.text = text;
+	},
+	readText() {
+		return this.text;
+	},
+};
+const nodeRequire = createRequire(import.meta.url);
+let electronLoads = 0;
+const vmModule = { exports: {} };
+compiled.runInThisContext()(
+	(name) => {
+		if (name === "electron") {
+			electronLoads++;
+			return { clipboard: vmClipboard };
+		}
+		return nodeRequire(name);
+	},
+	vmModule,
+	vmModule.exports,
+);
+assert.equal(electronLoads, 0, "loading the module must not resolve Electron");
+const compiledApi = vmModule.exports;
 
 // ---- the session's permission policy --------------------------------------
 
@@ -481,10 +529,10 @@ const ACK_CALL = new RegExp(`^${CLIPBOARD_ACK}\\(\\d+, (true|false)\\)$`);
 
 const settleHost = () => new Promise((resolve) => setTimeout(resolve, 30));
 
-async function installedHost(options) {
+async function installedHost(options, api = mod) {
 	const fixture = hostFixture(options);
 	const contents = { id: 1, isDestroyed: () => false };
-	await installClipboardShim(fixture.cdp, contents, 77);
+	await api.installClipboardShim(fixture.cdp, contents, 77);
 	fixture.context(7);
 	await settleHost();
 	return { ...fixture, contents };
@@ -716,6 +764,48 @@ test("a receipt describes the bytes and never carries them", async () => {
 	);
 	assert.deepEqual(touched, [1], "a copy touches the tab it read");
 	dom.window.close();
+});
+
+test("cached-data loader without a dynamic-import callback supports secure copy", async () => {
+	// Negative control: the loader cannot run the import() that used to ship.
+	const legacy = new Script('(async () => import("electron"))()');
+	await assert.rejects(legacy.runInThisContext(), {
+		code: "ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING",
+	});
+	const { ctx, dom } = fixture(`<input id="compiled-key" value="${TOKEN}">`);
+	try {
+		const receipt = await compiledApi.copy(ctx, {
+			tab: "tab-1",
+			selector: "#compiled-key",
+		});
+		assert.equal(vmClipboard.text, TOKEN);
+		assert.equal(receipt.verified, true);
+		assert.equal(receipt.sha256, sha(TOKEN));
+		assert.ok(!JSON.stringify(receipt).includes(TOKEN));
+	} finally {
+		dom.window.close();
+	}
+});
+
+test("cached-data loader admits armed page writes and still refuses unarmed writes", async () => {
+	vmClipboard.text = "untouched";
+	const host = await installedHost({ activation: false }, compiledApi);
+	try {
+		host.bindingCall(7, `1\n${TOKEN}`);
+		await settleHost();
+		assert.equal(vmClipboard.text, "untouched");
+		assert.deepEqual(host.acks(), [`${CLIPBOARD_ACK}(1, false)`]);
+		compiledApi.armHostClipboardWrite(77);
+		host.bindingCall(7, `2\n${TOKEN}`);
+		await settleHost();
+		assert.deepEqual(host.acks(), [
+			`${CLIPBOARD_ACK}(1, false)`,
+			`${CLIPBOARD_ACK}(2, true)`,
+		]);
+		assert.equal(vmClipboard.text, TOKEN);
+	} finally {
+		compiledApi.forgetClipboardShim(1);
+	}
 });
 
 test("a form field's value is copied and named in the receipt", async () => {

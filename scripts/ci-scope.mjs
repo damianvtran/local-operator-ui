@@ -527,6 +527,10 @@ export const JOB_FLAGS = {
 	guards: ["unit"],
 	"qa-bundle": ["unit"],
 	"bytecode-build": ["bytecode"],
+	// The Mac arm64 native-bytecode artifact leg, split from `bytecode-build`
+	// so the required `Bytecode Build Check` keeps a literal name (ci.yml); it
+	// runs on exactly the same flag.
+	"bytecode-build-macos": ["bytecode"],
 	evidence: ["evidence"],
 	audit: ["audit"],
 	"npx-sanity-check": ["pack"],
@@ -632,7 +636,7 @@ export const JOB_COMMANDS = {
 		// assertions CANNOT stop running: a suite that leaves the job list and is
 		// not noticed is the "guard nothing runs" defect this change is about.
 		"node scripts/test-validate-release.mjs",
-		"node --test scripts/test-release-safety.mjs scripts/test-publish-workflow.mjs scripts/test-version-bump-guard.mjs scripts/ci-scope.test.mjs",
+		"node --test scripts/test-release-safety.mjs scripts/test-publish-workflow.mjs scripts/test-version-bump-guard.mjs scripts/ci-scope.test.mjs scripts/native-bytecode-artifact.test.mjs",
 		"node --test scripts/appimage-update-info.test.mjs",
 		"node --test scripts/release-baseline.test.mjs scripts/release-candidate.test.mjs scripts/entry-point.test.mjs scripts/require-report.test.mjs scripts/desktop-suite-checkpoints.test.mjs",
 		'bash scripts/require-report.sh "Build environment contracts" node scripts/check-build-env.mjs',
@@ -658,6 +662,11 @@ export const JOB_COMMANDS = {
  * quietly narrower than it looks.
  */
 export const LOCAL_EXCLUSIONS = {
+	"bytecode-build-macos":
+		"its local spelling is `bytecode-build`'s `pnpm build`, which already runs; " +
+		"what this job adds is an artifact for another machine - built on a macOS " +
+		"arm64 runner, hash-manifested and uploaded for native QA - not a check a " +
+		"developer's second `pnpm build` would tell them anything new about.",
 	"qa-bundle":
 		"it builds and uploads the plain-JS bundle isolated native QA downloads from " +
 		"the run. That is an artifact for another machine, not a check: a local " +
