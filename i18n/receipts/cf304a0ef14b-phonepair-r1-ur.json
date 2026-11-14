@@ -1,0 +1,64 @@
+{
+	"auditor": "translation-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "cf304a0ef14b-phonepair-r1-ur",
+	"date": "2026-11-14",
+	"locale": "ur",
+	"independence": "Independent lopdev translation-auditor session cf304a0ef14b; not the translator (coder subagent of host session 25fe8dfbf610, which runs anthropic/claude-opus-5-5; the coder child's own model was not independently confirmed). Same model family as the translator host: disclosed. Read only the PR's committed bytes; authored no catalogue change.",
+	"references": {
+		"glossary": "damianvtran/local-operator@097b9bc6c562 i18n/glossary.md",
+		"style_guide": "damianvtran/local-operator@097b9bc6c562 i18n/style-guides/ur.md",
+		"core_pairing_copy": "damianvtran/local-operator@097b9bc6c562 local_operator/i18n/catalogues/ur/relay.pairing.json and operator.pairing.json",
+		"ui_register": "src/i18n/catalogues/ur/ui.providers.json (ui.providers.phone.*), ui.settings.page.title, existing Approve/Deny/Remove buttons"
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"pr": 1912,
+	"head": "2f1f580e30d56d6c53c3ae3859be26d41161bc66",
+	"scope": "Round 1 full audit of new namespace ui.phone_pairing, all 64 keys (popup 34, setup 7, phones 19, platform 4) read against en and en .context.json, glossary, locale style guide and core relay.pairing/operator.pairing: accuracy, idiom, register, glossary (pair/approve/deny/computer/phone/approvals), placeholders and ICU plural arms with #, typography, attacker-controlled name framing, button widths (380px card, nowrap buttons). Minor/nit findings are open (deferred to the PR owner); no blocker/major.",
+	"namespace": "ui.phone_pairing",
+	"status": "passed",
+	"sha256": {
+		"en": "15d3102747401dd5b6751618303b78fdda449dcbd50daba4e509596c890e98c6",
+		"ur": "75a99d3363e4d19a56827700f1b1969a050e4c6fbe36e8c34d4cf75deee920d2"
+	},
+	"context_sha256": "ada7b58d4a4a507916b1bf8d443b1121a7d0ab142b75d1a9a936edc8b4da1394",
+	"findings": [
+		{
+			"id": "UR-1",
+			"severity": "MINOR",
+			"key": "ui.phone_pairing.setup.turn_on",
+			"keys": [
+				"ui.phone_pairing.setup.turn_on",
+				"ui.phone_pairing.setup.on",
+				"ui.phone_pairing.setup.error",
+				"ui.phone_pairing.popup.unavailable",
+				"ui.phone_pairing.popup.unavailable_where"
+			],
+			"issue": "'phone approvals' as singular فون سے منظوری; glossary (approvals → منظوریاں) and the core copy the phone shows (relay.pairing.unavailable.body, operator.pairing.prompt.setup) use plural فون سے منظوریاں.",
+			"proposed": {
+				"ui.phone_pairing.setup.turn_on": "فون سے منظوریاں آن کریں",
+				"ui.phone_pairing.setup.on": "فون سے منظوریاں آن ہیں۔ ہر نیا فون پھر بھی ایک بار آپ کے کمپیوٹر کا پاس ورڈ مانگے گا۔",
+				"ui.phone_pairing.setup.error": "فون سے منظوریاں آن نہیں ہو سکیں۔ کچھ نہیں بدلا؛ دوبارہ کوشش کریں۔",
+				"ui.phone_pairing.popup.unavailable": "یہ کمپیوٹر ابھی فون سے درخواستیں منظور کرنے کے لیے سیٹ نہیں ہے۔ پہلے فون سے منظوریاں آن کریں، یا یہ درخواست مسترد کریں۔",
+				"ui.phone_pairing.popup.unavailable_where": "آپ انھیں ترتیبات → فون کی رسائی میں، یا ٹرمینل ایپ میں /mobile approvals on سے بھی آن کر سکتے ہیں۔"
+			}
+		},
+		{
+			"id": "UR-2",
+			"severity": "MINOR",
+			"key": "ui.phone_pairing.phones.still_removing",
+			"issue": "ASCII double quotes around the button name; ur style guide punctuation rule is “ ”.",
+			"proposed": {
+				"ui.phone_pairing.phones.still_removing": "یہ فون اب یہاں درخواستیں منظور نہیں کر سکتا اور نہ اطلاعات وصول کرتا ہے، لیکن ایک مرحلہ مکمل نہیں ہوا۔ اسے مکمل کرنے کے لیے “ہٹانا مکمل کریں” استعمال کریں۔"
+			}
+		},
+		{
+			"id": "UR-3",
+			"severity": "NIT",
+			"key": "ui.phone_pairing.popup.grant",
+			"issue": "بھروسا here vs بھروسہ in core relay.pairing.intro.body; both standard spellings. The → in popup.unavailable_where follows the UI ur precedent (ui.agentMessages.dialog.*) rather than core's ←. No change requested.",
+			"proposed": null
+		}
+	],
+	"resolved": []
+}

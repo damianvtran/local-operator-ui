@@ -106698,6 +106698,99 @@
 					"status": "audited"
 				}
 			]
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.phone_pairing",
+			"source_sha256": "15d3102747401dd5b6751618303b78fdda449dcbd50daba4e509596c890e98c6",
+			"target_sha256": "47c8e6e6d2c8f324476cc11330b28f26f1a32d15c1624372e038db50f64d2fa5",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-14"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-14",
+					"result": "clean-with-findings",
+					"instance": "cf304a0ef14b-phonepair-r1-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/cf304a0ef14b-phonepair-r1-zh-cn.json",
+					"receipt_sha256": "9d3c66a98a433506b7dad38f9f4d5f9df1bbff3cc00d9f5ab4c67ad48b0fb90f",
+					"scope": "Round 1 full audit, all 64 keys ui.phone_pairing at 2f1f580e3 (PR #1912)",
+					"note": "PR #1912 U2 keys by lopdev coder (host 25fe8dfbf610, anthropic/claude-opus-5-5). Independent audit cf304a0ef14b, same model: disclosed. Open: Z-1,Z-2 minor (CJK/Latin spacing; whose password); Z-3 nit. Detail: i18n/receipts/cf304a0ef14b-phonepair-r1-zh-cn.json"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.phone_pairing",
+			"source_sha256": "15d3102747401dd5b6751618303b78fdda449dcbd50daba4e509596c890e98c6",
+			"target_sha256": "75a99d3363e4d19a56827700f1b1969a050e4c6fbe36e8c34d4cf75deee920d2",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-14"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-14",
+					"result": "clean-with-findings",
+					"instance": "cf304a0ef14b-phonepair-r1-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/cf304a0ef14b-phonepair-r1-ur.json",
+					"receipt_sha256": "399e84b76a950c42e9e3e89441be650f0dca0032aa5d1a2930173c601d0b0ee6",
+					"scope": "Round 1 full audit, all 64 keys ui.phone_pairing at 2f1f580e3 (PR #1912)",
+					"note": "PR #1912 U2 keys by lopdev coder (host 25fe8dfbf610, anthropic/claude-opus-5-5). Independent audit cf304a0ef14b, same model: disclosed. Open: UR-1,UR-2 minor (approvals plural; quotes); UR-3 nit. Detail: i18n/receipts/cf304a0ef14b-phonepair-r1-ur.json"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.phone_pairing",
+			"source_sha256": "15d3102747401dd5b6751618303b78fdda449dcbd50daba4e509596c890e98c6",
+			"target_sha256": "cde6a881a593b27bd83b0575a856607c2dbf3836e4d1fe429ab9540ccb3ed7a7",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-14"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-14",
+					"result": "clean-with-findings",
+					"instance": "cf304a0ef14b-phonepair-r1-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 3,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/cf304a0ef14b-phonepair-r1-vi.json",
+					"receipt_sha256": "09e9db30da6f4b6afd0dbbe2a9ce0634306a0e0d0836624e8217e11ed9a66682",
+					"scope": "Round 1 full audit, all 64 keys ui.phone_pairing at 2f1f580e3 (PR #1912)",
+					"note": "PR #1912 U2 keys by lopdev coder (host 25fe8dfbf610, anthropic/claude-opus-5-5). Independent audit cf304a0ef14b, same model: disclosed. Open: V-1..V-3 minor (approve term; từ điện thoại; whose password); V-4,V-5 nit. Detail: i18n/receipts/cf304a0ef14b-phonepair-r1-vi.json"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }
