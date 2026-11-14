@@ -804,34 +804,100 @@ jobs:
   # deliberately not `build:npm`, the plain-JS path that let the defect through.
   # No signing and no repository secrets are involved. The four VITE_* values are
   # required by `replace-backend-config` before any bundle is emitted; they are
-  # placeholders only; the native artifact includes these dummy values.
-  # MEASURED COST on a hosted runner: ~34s of bundling (main 5s, preload 178ms, renderer 29s) and
+  # placeholders for this check only and are never uploaded. MEASURED COST on a
+  # hosted runner: ~34s of bundling (main 5s, preload 178ms, renderer 29s) and
   # 6s of install; the job ran 78s end to end. The 20-minute ceiling is a bound,
   # not an expectation.
   bytecode-build:
-    # The branch ruleset requires a check NAMED exactly `Bytecode Build Check`:
-    # required status checks are keyed by the job's rendered display name, not
-    # its id. A bare `name:` under a matrix makes GitHub append the matrix
-    # values (`Bytecode Build Check (ubuntu-latest)`), which left the required
-    # name unreported and blocked merge ("Required status check "Bytecode Build
-    # Check" is expected"). Once `name` itself uses a matrix expression GitHub
-    # appends nothing (see `NPX Sanity Check (${{ matrix.os }})` below, which
-    # renders `NPX Sanity Check (macos-latest)`), so the Linux leg keeps the
-    # unchanged required name and the Mac artifact leg is labelled apart.
-    # Retire this when the ruleset requires `CI Gate` instead (see ci-gate).
-    name: ${{ matrix.runner == 'macos-15' && 'Bytecode Build Check (macos-15)' || 'Bytecode Build Check' }}
+    name: Bytecode Build Check
     needs: [changes]
     if: >-
       !cancelled() &&
       needs.changes.outputs.bytecode != 'false'
-    # Keep the existing Linux gate; a second native build is necessary because
-    # V8 cached data cannot cross CPU architectures. macos-15 is GitHub's arm64
-    # image. This adds hosted CI cost, NOT another local build or packaging pass.
-    strategy:
-      fail-fast: false
-      matrix:
-        runner: [ubuntu-latest, macos-15]
-    runs-on: ${{ matrix.runner }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Prepare the Electron runtime cache
+        uses: ./.github/actions/electron-runtime
+        with:
+          phase: prepare
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Assert the Electron runtime is installed
+        uses: ./.github/actions/electron-runtime
+        with:
+          phase: assert
+
+      - name: Build main with V8 bytecode
+        env:
+          VITE_GOOGLE_CLIENT_ID: ci-bytecode-check
+          VITE_GOOGLE_CLIENT_SECRET: ci-bytecode-check
+          VITE_MICROSOFT_CLIENT_ID: ci-bytecode-check
+          VITE_MICROSOFT_TENANT_ID: ci-bytecode-check
+        run: pnpm build
+
+      # A green build is not enough. If the bytecode plugin were dropped from
+      # `electron.vite.config.js`, `pnpm build` would emit plain JS, pass, and
+      # verify nothing - the shape of absence this repository treats as worse
+      # than no gate. The `.jsc` is the artifact this job exists to produce.
+      - name: Assert the main bundle really is bytecode
+        run: |
+          if [ ! -f out/main/index.jsc ]; then
+            echo 'out/main/index.jsc is missing: the main bundle was not compiled to V8 bytecode, so this check verified nothing.'
+            ls -l out/main || true
+            exit 1
+          fi
+          echo 'Main bundle compiled to V8 bytecode.'
+
+  # The Mac arm64 native bytecode artifact native QA downloads, built by its own
+  # job rather than as a matrix leg of `bytecode-build`. V8 cached data cannot
+  # cross CPU architectures, so the Linux gate's `.jsc` is useless on a Mac and a
+  # second native build is necessary; macos-15 is GitHub's arm64 image. This adds
+  # hosted CI cost, NOT another local build or packaging pass.
+  #
+  # WHY TWO JOBS, NOT A MATRIX. The branch ruleset requires a check NAMED exactly
+  # `Bytecode Build Check`, and required status checks are keyed by the job's
+  # display name, not its id. Every way of carrying that name through a matrix
+  # fails:
+  #   - a literal `name:` under a matrix gains a suffix
+  #     (`Bytecode Build Check (ubuntu-latest)`), so the required name never
+  #     reports and merge is refused ("Required status check "Bytecode Build
+  #     Check" is expected");
+  #   - an expression `name:` renders correctly while the job RUNS, but a job
+  #     skipped by its `if:` posts ONE check under the raw, unevaluated string -
+  #     main commit 92984394 shows a check literally named
+  #     `NPX Sanity Check (${{ matrix.os }})` - and the `changes` classifier
+  #     skips this job routinely, so the required check would go missing on
+  #     every such PR.
+  # So `bytecode-build` keeps its literal required name and no matrix, and this
+  # job carries the Mac-only build heap, runtime record, staging and upload.
+  # scripts/native-bytecode-artifact.test.mjs pins both shapes. It shares the
+  # gate's `needs`/`if:` and is listed in `ci-gate.needs`, so a red Mac build
+  # reds CI Gate without being a required check of its own.
+  bytecode-build-macos:
+    name: Bytecode Build Check (macos-15)
+    needs: [changes]
+    if: >-
+      !cancelled() &&
+      needs.changes.outputs.bytecode != 'false'
+    runs-on: macos-15
     timeout-minutes: 20
     # Renderer bindings are inlined by Vite: runtime env cannot repair an
     # artifact pointing at the operator's backend. Port 9 is deliberately inert;
@@ -847,9 +913,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          # Keep Linux's integration gate; the reusable Mac artifact compiles
-          # the exact immutable source head requested by native QA, not a merge.
-          ref: ${{ matrix.runner == 'macos-15' && (github.event.pull_request.head.sha || github.sha) || github.sha }}
+          # The reusable Mac artifact compiles the exact immutable source head
+          # requested by native QA, not the PR merge commit the Linux gate builds.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -880,9 +946,9 @@ jobs:
           # Run 43319106365 hit Node's ~2 GiB heap limit while bundling the
           # renderer. Match publish's 4 GiB old-space budget on the 7 GB Mac
           # runner, leaving headroom for native allocations and the OS. This is
-          # CI build-only: keep Linux's default and do not leak Node flags into
-          # the later Electron runtime probe or the shipped app.
-          NODE_OPTIONS: ${{ matrix.runner == 'macos-15' && '--max-old-space-size=4096' || '' }}
+          # CI build-only: scoped to this step so Node flags never leak into the
+          # later Electron runtime probe or the shipped app.
+          NODE_OPTIONS: --max-old-space-size=4096
           VITE_GOOGLE_CLIENT_ID: ci-bytecode-check
           VITE_GOOGLE_CLIENT_SECRET: ci-bytecode-check
           VITE_MICROSOFT_CLIENT_ID: ci-bytecode-check
@@ -906,7 +972,6 @@ jobs:
       # Only compiled UI assets + public package metadata leave the runner:
       # no dependency tree, seeds, source checkout, profile or environment files.
       - name: Record native bytecode runtime
-        if: matrix.runner == 'macos-15'
         env:
           ELECTRON_RUN_AS_NODE: '1'
         run: |
@@ -922,7 +987,6 @@ jobs:
           '
 
       - name: Stage native bytecode artifact and hash manifest
-        if: matrix.runner == 'macos-15'
         env:
           SOURCE_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
@@ -980,7 +1044,6 @@ jobs:
           NODE
 
       - name: Upload native bytecode bundle
-        if: matrix.runner == 'macos-15'
         uses: actions/upload-artifact@v4
         with:
           name: ui-native-bytecode-darwin-arm64-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -1489,7 +1552,8 @@ jobs:
   # one. A deliberately SKIPPED job is a pass: the classifier decided this diff
   # cannot affect it. `failure` and `cancelled` are not - a timeout reports as
   # `cancelled`. `Bytecode Build Check` stays required under its own name until
-  # the ruleset moves to this gate.
+  # the ruleset moves to this gate; its Mac artifact twin, `bytecode-build-macos`,
+  # is not required and is gated only here, like every other listed job.
   ci-gate:
     name: CI Gate
     needs:
@@ -1503,6 +1567,7 @@ jobs:
       - guards
       - qa-bundle
       - bytecode-build
+      - bytecode-build-macos
       - evidence
       - audit
       - npx-sanity-check

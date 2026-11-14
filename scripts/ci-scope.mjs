@@ -537,6 +537,10 @@ export const JOB_FLAGS = {
 	guards: ["unit"],
 	"qa-bundle": ["unit"],
 	"bytecode-build": ["bytecode"],
+	// The Mac arm64 native-bytecode artifact leg, split from `bytecode-build`
+	// so the required `Bytecode Build Check` keeps a literal name (ci.yml); it
+	// runs on exactly the same flag.
+	"bytecode-build-macos": ["bytecode"],
 	evidence: ["evidence"],
 	audit: ["audit"],
 	"npx-sanity-check": ["pack"],
@@ -668,6 +672,11 @@ export const JOB_COMMANDS = {
  * quietly narrower than it looks.
  */
 export const LOCAL_EXCLUSIONS = {
+	"bytecode-build-macos":
+		"its local spelling is `bytecode-build`'s `pnpm build`, which already runs; " +
+		"what this job adds is an artifact for another machine - built on a macOS " +
+		"arm64 runner, hash-manifested and uploaded for native QA - not a check a " +
+		"developer's second `pnpm build` would tell them anything new about.",
 	"qa-bundle":
 		"it builds and uploads the plain-JS bundle isolated native QA downloads from " +
 		"the run. That is an artifact for another machine, not a check: a local " +
