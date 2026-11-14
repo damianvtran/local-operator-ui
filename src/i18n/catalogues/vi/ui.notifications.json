@@ -128,5 +128,9 @@
 	"ui.notifications.drawer.show_in_conversation": "Hiện trong cuộc trò chuyện",
 	"ui.notifications.drawer.footer": "Chỉ hiện cập nhật từ cuộc trò chuyện này",
 	"ui.notifications.drawer.open_notifications": "Mở mục Thông báo",
-	"ui.notifications.drawer.empty": "Chưa có gì cần lưu ý trong cuộc trò chuyện này."
+	"ui.notifications.drawer.empty": "Chưa có gì cần lưu ý trong cuộc trò chuyện này.",
+	"ui.notifications.drawer.view_details": "Xem chi tiết",
+	"ui.notifications.drawer.view_details_for": "Xem chi tiết: {title}",
+	"ui.notifications.drawer.back": "Quay lại mục Cập nhật",
+	"ui.notifications.drawer.open_in_notifications": "Mở trong mục Thông báo"
 }

@@ -9740,11 +9740,13 @@ export type MessageParams = {
 	"ui.notifications.detail.section.links": undefined;
 	"ui.notifications.detail.section.projects": undefined;
 	"ui.notifications.detail.section.waiting": undefined;
+	"ui.notifications.drawer.back": undefined;
 	"ui.notifications.drawer.empty": undefined;
 	"ui.notifications.drawer.footer": undefined;
 	"ui.notifications.drawer.group.read": undefined;
 	"ui.notifications.drawer.group.unread": undefined;
 	"ui.notifications.drawer.mark_read": undefined;
+	"ui.notifications.drawer.open_in_notifications": undefined;
 	"ui.notifications.drawer.open_notifications": undefined;
 	"ui.notifications.drawer.show_in_conversation": undefined;
 	"ui.notifications.drawer.tab.all": undefined;
@@ -9752,6 +9754,8 @@ export type MessageParams = {
 	"ui.notifications.drawer.tab.updates": undefined;
 	"ui.notifications.drawer.tabs_label": undefined;
 	"ui.notifications.drawer.unread_count": { count: string };
+	"ui.notifications.drawer.view_details": undefined;
+	"ui.notifications.drawer.view_details_for": { title: string };
 	"ui.notifications.empty.caught_up.body": undefined;
 	"ui.notifications.empty.caught_up.show_all": undefined;
 	"ui.notifications.empty.caught_up.title": undefined;
