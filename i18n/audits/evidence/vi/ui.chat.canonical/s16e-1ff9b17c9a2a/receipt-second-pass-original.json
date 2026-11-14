@@ -1,0 +1,131 @@
+{
+  "audit_id": "s16e-au2-vi",
+  "pass": "second-independent",
+  "slice": "S16e-renderer",
+  "pr": "damianvtran/local-operator-ui#1884",
+  "locale": "vi",
+  "namespace": "ui.chat.canonical",
+  "audit_date": "2026-11-12",
+  "status": "passed",
+  "verdict": "passed",
+  "result_supported": "clean-with-findings",
+  "unresolved_blocker_major_count": 0,
+  "severity_counts": {
+    "blockers": 0,
+    "majors": 0,
+    "minors": 2,
+    "nits": 1
+  },
+  "finding_ids": [
+    "VI-2-01",
+    "VI-2-02",
+    "VI-2-03"
+  ],
+  "findings": [
+    {
+      "id": "VI-2-01",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.image_gen.cancel.checking + ui.chat.canonical.image_gen.settlement.pending",
+      "current": "Đang xác nhận khoản phí. / Đang chờ quyết toán — khoản phí cuối cùng sẽ xuất hiện khi nhà cung cấp báo cáo.",
+      "evidence": "One English concept (settlement) carries two words inside one slice: «xác nhận khoản phí» (confirming the charge) in cancel.checking and «quyết toán» in settlement.pending. «quyết toán» has 0 occurrences in the shipped vi catalogue — it is accounting-finalisation register, which sits oddly in a consumer status line, and a reader must reconcile it with the sibling key one line above that says «khoản phí».",
+      "suggested": "One family, using the shipped «khoản phí cuối cùng» (ui.chat.canonical.sound.cost.estimated_zero): cancel.checking → «Đang kiểm tra khoản phí.»; settlement.pending → «Khoản phí cuối cùng đang chờ xác nhận — sẽ hiện ra khi nhà cung cấp báo cáo.»",
+      "gating": false
+    },
+    {
+      "id": "VI-2-02",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.image_gen.error.audio_rate_limited",
+      "current": "Tạo âm thanh đang bận. Hãy thử lại sau giây lát.",
+      "evidence": "The subject of «đang bận» is a bare verb phrase («Tạo âm thanh»), which invites an imperative parse. Shipped vi always puts a noun in that slot: 7 shipped «đang bận» values, e.g. «Tác nhân đang bận» (send_failure.busy, composer.placeholder.busy), «Trung tâm đang bận» (publication.pull.busy), «Trạng thái đã đọc đang bận». This is the one line in the slice that reads translated rather than native.",
+      "suggested": "«Trình tạo âm thanh đang bận. Hãy thử lại sau giây lát.» (noun subject, same two sentences, no wait time, no promised success).",
+      "gating": false
+    },
+    {
+      "id": "VI-2-03",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.error_class.gate_failed",
+      "current": "Bị cổng chặn",
+      "evidence": "«cổng» alone is also this UI's word for a network port (ui.chat.pickers.destination_pickers.ports «Cổng», info_model.control_port «Cổng điều khiển»), and the approval-gate noun is the qualified «cổng phê duyệt». A bare «cổng» therefore leaves the reader to infer which gate; the class is still distinct from «Bị từ chối» and the gate's own reason sits below.",
+      "suggested": "«Bị chính sách chặn» (blocked by policy, mirroring the es label's clarity; «chính sách» ships in 8 vi values) or «Bị cổng kiểm tra chặn».",
+      "gating": false
+    }
+  ],
+  "key_count": 12,
+  "value_count": 84,
+  "auditor": "i18n-auditor",
+  "session": "cc045047b39e",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "harness session header for session cc045047b39e reports deepseek/deepseek-flash; no fallback model was used for this audit",
+  "fallback_used": false,
+  "independent_from_translator_session": true,
+  "independent_from_first_pass": true,
+  "first_pass_consulted_after_own_findings": true,
+  "input_hashes": {
+    "en": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/i18n-s16e/src/i18n/catalogues/en/ui.chat.canonical.json",
+      "sha256": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17"
+    },
+    "context_brief": {
+      "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e-brief.json",
+      "sha256": "a0326137bff43ed38fc4a1c63d4a26e1887cfd56d4826df0e615df28055bef0c"
+    },
+    "context_repo_sidecar": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/i18n-s16e/src/i18n/catalogues/en/ui.chat.canonical.context.json",
+      "sha256": "ec598772089552ace910c857a38b364bdfa83a32c76c62b752b761527531e7b7"
+    },
+    "manifest": {
+      "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e/manifest.json",
+      "sha256": "8896921994fbd8c5f1c75983df805c9e09a1c4dabcdfcbc0a4c9c2f900733392"
+    },
+    "draft": {
+      "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e/vi/draft-vi-s16e.json",
+      "sha256": "c0e8df525f0324921dd849634e1a83d6e9d4de53db0e1f38d68c3a2b217f10a9"
+    },
+    "shipped_catalogue": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/i18n-s16e/src/i18n/catalogues/vi/ui.chat.canonical.json",
+      "sha256": "a37a5690412c841379ea44d6d63f4a5314579f4a157ff3c7f67be2ee872fe750"
+    },
+    "glossary": {
+      "path": "/Users/damian/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "/Users/damian/local-operator/i18n/style-guides/vi.md",
+      "sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888"
+    },
+    "worktree_head": "bd8e90542506e8bec4a98862b868095409b28329"
+  },
+  "axes": {
+    "mechanical": "pass",
+    "accuracy_promises": "pass",
+    "idiom_register_typography": "pass-with-notes",
+    "terminology": "pass-with-notes",
+    "fit": "pass",
+    "rtl": "n/a",
+    "cldr_plural_categories": "n/a - no plural/selectordinal argument in this 12-key slice"
+  },
+  "executed": {
+    "icu_parser": "@formatjs/icu-messageformat-parser 3.5.21, repo dependency, read-only",
+    "negative_controls_passed": 5,
+    "values_parsed": 84,
+    "codepoint_typography_scan": true,
+    "shipped_catalogue_term_lookup": true
+  },
+  "not_claimed": [
+    "rendered/browser/Storybook/Electron/pseudo-localization evidence",
+    "native-speaker review (explicitly not a gate)",
+    "full-file audit hashes - this is a draft slice",
+    "the 467 pre-existing keys of ui.chat.canonical",
+    "any ledger append performed by this audit"
+  ],
+  "artifacts": {
+    "report": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/report-vi-s16e.md",
+    "mechanical_log": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/mech.log",
+    "typography_log": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/typo.log",
+    "evidence_log": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/evidence.log",
+    "widths_log": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/widths.log",
+    "audit_log": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/audit.log",
+    "findings_ledger": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/findings.json"
+  },
+  "note": "Draft-slice receipt, second independent pass. 3 finding(s), 0 blocker / 0 major. Full provenance and evidence paths in this record."
+}

@@ -564,7 +564,7 @@ export const Affordances: Story = {
 					state: "failed",
 					material: "image",
 					message: "This generation failed before producing output.",
-					errorType: null,
+					errorCode: null,
 				}}
 				scope={null}
 				actions={{ onCancel: noop, onRestart: noop, onEditRestart: noop }}

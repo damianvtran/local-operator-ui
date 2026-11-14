@@ -1,0 +1,56 @@
+{
+ "schema": 1,
+ "instance": "d8a457984829",
+ "locale": "hi",
+ "namespace": "ui.chat.canonical",
+ "audit_date": "2026-11-12",
+ "pass": 1,
+ "auditor": {
+  "agent": "i18n-auditor",
+  "instance": "d8a457984829",
+  "session": "d8a457984829",
+  "model": "deepseek/deepseek-flash",
+  "independent_from_translator_session": true,
+  "actual_model_source": "session runtime model header (Model: deepseek/deepseek-flash); no fallback model was used for this audit"
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "scope": "the 12 NEW S16e image-generation card stop/settlement/error keys of ui.chat.canonical (hi), audited as the translator's 12-key draft (sha256 41e9e50f80fb89f3d39a822b1fb95461f3d8b4cd9ece1b3ed899c1fec39a9831); the 467 pre-existing keys of the namespace were not re-reviewed and are proven byte-identical to the previously audited bytes by the retained-key digest in verify.log",
+ "sha256": {
+  "hi": "64a962929428922c1224a09147a4ec06bf45c78cf54f31050f3ee92151a4280f",
+  "en": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17",
+  "context": "ec598772089552ace910c857a38b364bdfa83a32c76c62b752b761527531e7b7"
+ },
+ "findings": [
+  {
+   "id": "HI-S16E-01",
+   "severity": "MINOR",
+   "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+   "current": "ऑडियो दर सीमा",
+   "problem": "Label register inconsistency inside the six-class set: the other five read as a state of the call (अस्वीकृत, गेट विफल, अज्ञात टूल, अमान्य आर्ग्युमेंट, डुप्लिकेट id), while this one is a bare noun compound meaning 'audio rate limit' — the constraint, not the failure. `दर सीमा` is the right term (attested: 'दर सीमा लगी है', 'दर-सीमाएँ'), so the fix is to carry the 'limited' state, not to replace the term.",
+   "suggested": "ऑडियो दर-सीमित",
+   "caveat": "दर-सीमित is a coinage (participle of the attested दर सीमा); if the programme rejects coinages, the hyphenated constraint label ऑडियो दर-सीमा at least matches the shipped usage_reset morphology, but it still reads as the constraint rather than the state."
+  },
+  {
+   "id": "HI-S16E-02",
+   "severity": "NIT",
+   "key": "ui.chat.canonical.image_gen.cancel.checking",
+   "current": "शुल्क की पुष्टि जाँची जा रही है।",
+   "problem": "Slightly circular: it says the *confirmation* is being checked (पुष्टि जाँची जा रही है), i.e. verifying a confirmation, where the state is that confirmation itself is in progress. Also one word longer than the English's three-word hint (the translator's note acknowledges four words).",
+   "suggested": "शुल्क की पुष्टि की जा रही है।"
+  }
+ ],
+ "provenance": {
+  "kind": "BINDING RECEIPT: verdict, severity counts, findings, session and model are transcribed from this auditor's own record (audits/hi/receipt-corrected.json); this file was written by the integrating coder session (agent coder), NOT by the auditor. The auditor reviewed the 12-key draft fragment, so no auditor-authored file can name the integrated catalogue hash; this receipt names it, and verify.log proves every landed value equals the audited draft value.",
+  "authored_by": "integrating coder session 95bd4b294de3 (agent coder)",
+  "transcribed_from": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e/audits/hi/receipt-corrected.json",
+  "transcribed_from_sha256": "706d1ba511be88a8c6c1490df8c4bfe8e98f92693ed292abf643dac5c34dfb01",
+  "instance_origin": "the auditor's own session id (the record carries no `instance`/`audit_id`)",
+  "integrated_target_sha256": "64a962929428922c1224a09147a4ec06bf45c78cf54f31050f3ee92151a4280f",
+  "not_claimed": [
+   "a full-file re-audit by this auditor: only the 12 new keys were reviewed",
+   "individual review of the retained 467 keys (they ride the previously audited bytes)",
+   "rendered/browser/pseudo-localization frames"
+  ]
+ }
+}

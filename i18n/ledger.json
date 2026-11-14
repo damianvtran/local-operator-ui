@@ -2779,8 +2779,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731",
-			"target_sha256": "ff55a933e7bdff8f171a11f678ccd16b12367afca3b26e1b9262c92cddad006f",
+			"source_sha256": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45",
+			"target_sha256": "38ec00e659d17a8d19ea765afedf99584c5e38dcec8f8e6a66056d80d7b4f8a1",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -2789,20 +2789,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-12",
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-13",
 					"result": "clean-with-findings",
-					"instance": "94f6e325484c-canon3-es",
+					"instance": "4b865abbfc0e",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 1,
-						"nit": 2
+						"nit": 6
 					},
-					"receipt": "i18n/receipts/94f6e325484c-canon3-es.json",
-					"receipt_sha256": "37f1ae99bbe237203d3617645c6623fbb83c6b4f03bd774ee3afeeffcfe33910",
-					"scope": "merged ui.chat.canonical, UI #1874 @ fa3c17b63: #1876 media/sound keys + 4 temporary_deleted.* keys"
+					"receipt": "i18n/receipts/4b865abbfc0e.json",
+					"receipt_sha256": "c0bf71d4c3416eb77aaf1539e5a1eaa91929a03c7388d671bfed485639f1658d",
+					"scope": "landed merge of UI #1874 + #1884 canonical keys (16 new keys), union proven byte-identical",
+					"note": "Independent i18n-auditor audit of the landed ui.chat.canonical bytes after merging main 0de7a69e2 (#1874 temporary_deleted.* + #1884 S16e keys) into PR #1884; prior audits described pre-merge bytes."
 				}
 			],
 			"status": "audited",
@@ -3336,6 +3337,70 @@
 							"receipt": "i18n/receipts/94f6e325484c-canon2-es.json",
 							"receipt_sha256": "d8e667b210e76517d010ae90c287b1b43187902f91c4aaa836d95703d4c99023",
 							"scope": "merged ui.chat.canonical, UI #1874 @ 7177d51df: 5 #1875 loading.* + 4 temporary_deleted.* keys"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17",
+					"target_sha256": "6975073712a4a3400b0d04d67a82ef7b16ce0fafd78b319a2a8023099a0ca2ab",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-12",
+							"result": "clean",
+							"instance": "15b65aa91541-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/15b65aa91541-es.json",
+							"receipt_sha256": "4bb34951d5d99ea406da4f866dd4d58d2115ac758e0cb346b8626284e76d6e9b",
+							"scope": "the 12 new S16e image-gen card keys (first/second independent pass1), audited as the 12-key draft (sha256 b9290ae76d05); the 467 retained keys ride the previously audited bytes (verify.log)",
+							"note": "S16e renderer card slice, PR #1884; binding receipt transcribed from the auditor's own record (session 15b65aa91541), integrated bytes; evidence i18n/audits/evidence/es/ui.chat.canonical/s16e-6975073712a4"
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-12",
+							"result": "clean",
+							"instance": "s16e-au2-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/s16e-au2-es.json",
+							"receipt_sha256": "827a415824e63b1559d248cb18cf2f2fa1562d5ca7fc7ab73661ffb176089bcc",
+							"scope": "the 12 new S16e image-gen card keys (first/second independent pass2), audited as the 12-key draft (sha256 b9290ae76d05); the 467 retained keys ride the previously audited bytes (verify.log)",
+							"note": "S16e renderer card slice, PR #1884; binding receipt transcribed from the auditor's own record (session cc045047b39e), integrated bytes; evidence i18n/audits/evidence/es/ui.chat.canonical/s16e-6975073712a4"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731",
+					"target_sha256": "ff55a933e7bdff8f171a11f678ccd16b12367afca3b26e1b9262c92cddad006f",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "94f6e325484c-canon3-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/94f6e325484c-canon3-es.json",
+							"receipt_sha256": "37f1ae99bbe237203d3617645c6623fbb83c6b4f03bd774ee3afeeffcfe33910",
+							"scope": "merged ui.chat.canonical, UI #1874 @ fa3c17b63: #1876 media/sound keys + 4 temporary_deleted.* keys"
 						}
 					],
 					"status": "audited"
@@ -14960,8 +15025,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731",
-			"target_sha256": "e7e0a64cd4a279eb99b991eebc5e22b40d5902ff5df74e95cbeab438aea43645",
+			"source_sha256": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45",
+			"target_sha256": "17e5718061f737cb466fb767fa7b4970aeaad0571c1d797fb21dfe0f3d0624c0",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -14970,20 +15035,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-12",
-					"result": "clean-with-findings",
-					"instance": "94f6e325484c-canon3-fr",
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "0eddeb61023f",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/94f6e325484c-canon3-fr.json",
-					"receipt_sha256": "9c4ebbbfb93d5dbccccbf7ea62049e8b2e1fe333007fec99873c9088de84c046",
-					"scope": "merged ui.chat.canonical, UI #1874 @ fa3c17b63: #1876 media/sound keys + 4 temporary_deleted.* keys"
+					"receipt": "i18n/receipts/0eddeb61023f.json",
+					"receipt_sha256": "907d4a5d79c709133e93c155edc20caa9aeb1d0f81b6094426de4accb390ddc8",
+					"scope": "landed merge of UI #1874 + #1884 canonical keys (16 new keys), union proven byte-identical",
+					"note": "Independent i18n-auditor audit of the landed ui.chat.canonical bytes after merging main 0de7a69e2 (#1874 temporary_deleted.* + #1884 S16e keys) into PR #1884; prior audits described pre-merge bytes."
 				}
 			],
 			"status": "audited",
@@ -15532,6 +15598,70 @@
 							"receipt": "i18n/receipts/94f6e325484c-canon2-fr.json",
 							"receipt_sha256": "e5437a89c28cce7a7eebd1131254e74b33871ac59141c02a5f5acdfd9a27a1cf",
 							"scope": "merged ui.chat.canonical, UI #1874 @ 7177d51df: 5 #1875 loading.* + 4 temporary_deleted.* keys"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17",
+					"target_sha256": "67372a8280150ac24402a427aff3c71fe07aa00841c41c57513a470b6abbc7ac",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "s16e-au-fr-2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/s16e-au-fr-2.json",
+							"receipt_sha256": "41d7e558f9f321df058b59e0fce26a6ce524dabacdba6bbe9a03bf54d0253c02",
+							"scope": "the 12 new S16e image-gen card keys (first/second independent pass1), audited as the 12-key draft (sha256 a46fdb56c600); the 467 retained keys ride the previously audited bytes (verify.log)",
+							"note": "S16e renderer card slice, PR #1884; binding receipt transcribed from the auditor's own record (session c25b8a640092), integrated bytes; evidence i18n/audits/evidence/fr/ui.chat.canonical/s16e-67372a828015"
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "s16e-au2-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/s16e-au2-fr.json",
+							"receipt_sha256": "17668dee1d4b24bda03f5de079d94185f293dbc6b17c982d681a9ec792a3a945",
+							"scope": "the 12 new S16e image-gen card keys (first/second independent pass2), audited as the 12-key draft (sha256 a46fdb56c600); the 467 retained keys ride the previously audited bytes (verify.log)",
+							"note": "S16e renderer card slice, PR #1884; binding receipt transcribed from the auditor's own record (session cc045047b39e), integrated bytes; evidence i18n/audits/evidence/fr/ui.chat.canonical/s16e-67372a828015"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731",
+					"target_sha256": "e7e0a64cd4a279eb99b991eebc5e22b40d5902ff5df74e95cbeab438aea43645",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "94f6e325484c-canon3-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/94f6e325484c-canon3-fr.json",
+							"receipt_sha256": "9c4ebbbfb93d5dbccccbf7ea62049e8b2e1fe333007fec99873c9088de84c046",
+							"scope": "merged ui.chat.canonical, UI #1874 @ fa3c17b63: #1876 media/sound keys + 4 temporary_deleted.* keys"
 						}
 					],
 					"status": "audited"
@@ -27637,8 +27767,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731",
-			"target_sha256": "060d7a7ce641bdcb01e5b33a0d967af53d11b06d2e97499ae684cc74bbf4dd34",
+			"source_sha256": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45",
+			"target_sha256": "f403a8b1941e366197ddb17393e068847d47ba5ef42f670eb3c6bf26f704943c",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -27647,20 +27777,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-12",
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-13",
 					"result": "clean-with-findings",
-					"instance": "94f6e325484c-canon3-hi",
+					"instance": "2d5628992cf1",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 1
 					},
-					"receipt": "i18n/receipts/94f6e325484c-canon3-hi.json",
-					"receipt_sha256": "df022fd5442ca19b1f583fa12761a1c32448eeb999019430f538c80e25c46f46",
-					"scope": "merged ui.chat.canonical, UI #1874 @ fa3c17b63: #1876 media/sound keys + 4 temporary_deleted.* keys"
+					"receipt": "i18n/receipts/2d5628992cf1.json",
+					"receipt_sha256": "a97247db95c065e502d788dad7abb7f1dbea84b19bdfb55fe80d68b805cd2efe",
+					"scope": "landed merge of UI #1874 + #1884 canonical keys (16 new keys), union proven byte-identical",
+					"note": "Independent i18n-auditor audit of the landed ui.chat.canonical bytes after merging main 0de7a69e2 (#1874 temporary_deleted.* + #1884 S16e keys) into PR #1884; prior audits described pre-merge bytes."
 				}
 			],
 			"status": "audited",
@@ -28192,6 +28323,70 @@
 							"receipt": "i18n/receipts/94f6e325484c-canon2-hi.json",
 							"receipt_sha256": "fd0f14a41eb60a3b4897a4fe12e29600a1104caec5a1675daf8cae3b0424b457",
 							"scope": "merged ui.chat.canonical, UI #1874 @ 7177d51df: 5 #1875 loading.* + 4 temporary_deleted.* keys"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17",
+					"target_sha256": "64a962929428922c1224a09147a4ec06bf45c78cf54f31050f3ee92151a4280f",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "d8a457984829",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/d8a457984829.json",
+							"receipt_sha256": "519fc9587efd9c2cbefc8a6c690c7fcdb708553a2245409b0e10d8807f751ab6",
+							"scope": "the 12 new S16e image-gen card keys (first/second independent pass1), audited as the 12-key draft (sha256 41e9e50f80fb); the 467 retained keys ride the previously audited bytes (verify.log)",
+							"note": "S16e renderer card slice, PR #1884; binding receipt transcribed from the auditor's own record (session d8a457984829), integrated bytes; evidence i18n/audits/evidence/hi/ui.chat.canonical/s16e-64a962929428"
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "s16e-au2-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/s16e-au2-hi.json",
+							"receipt_sha256": "20d6f71afa5afa1e6b9a56d225005459d4930eba4d7a1df9902c9b04ff17573e",
+							"scope": "the 12 new S16e image-gen card keys (first/second independent pass2), audited as the 12-key draft (sha256 41e9e50f80fb); the 467 retained keys ride the previously audited bytes (verify.log)",
+							"note": "S16e renderer card slice, PR #1884; binding receipt transcribed from the auditor's own record (session cc045047b39e), integrated bytes; evidence i18n/audits/evidence/hi/ui.chat.canonical/s16e-64a962929428"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731",
+					"target_sha256": "060d7a7ce641bdcb01e5b33a0d967af53d11b06d2e97499ae684cc74bbf4dd34",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "94f6e325484c-canon3-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/94f6e325484c-canon3-hi.json",
+							"receipt_sha256": "df022fd5442ca19b1f583fa12761a1c32448eeb999019430f538c80e25c46f46",
+							"scope": "merged ui.chat.canonical, UI #1874 @ fa3c17b63: #1876 media/sound keys + 4 temporary_deleted.* keys"
 						}
 					],
 					"status": "audited"
@@ -39897,8 +40092,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731",
-			"target_sha256": "595666fd8f34ab80ccfc4e51d6ed0dbdca606760fb50fe21c11473eedc4a1737",
+			"source_sha256": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45",
+			"target_sha256": "0348554f4683e8b42f3c80c722be8bde2c931f6255be3037b7ef9c0304f9e1b6",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -39907,20 +40102,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-12",
-					"result": "clean",
-					"instance": "94f6e325484c-canon3-ru",
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-13",
+					"result": "clean-with-findings",
+					"instance": "ef041c786677",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 3
 					},
-					"receipt": "i18n/receipts/94f6e325484c-canon3-ru.json",
-					"receipt_sha256": "fbefaf0396d96634c6272fa93d0f4b0272a4b7e0fb9db985670cb2f2edf0c53a",
-					"scope": "merged ui.chat.canonical, UI #1874 @ fa3c17b63: #1876 media/sound keys + 4 temporary_deleted.* keys"
+					"receipt": "i18n/receipts/ef041c786677.json",
+					"receipt_sha256": "9e2a7ebd68ca0bcfb88bc992484227b562ff1a2b908d1ed965838b0ce6893838",
+					"scope": "landed merge of UI #1874 + #1884 canonical keys (16 new keys), union proven byte-identical",
+					"note": "Independent i18n-auditor audit of the landed ui.chat.canonical bytes after merging main 0de7a69e2 (#1874 temporary_deleted.* + #1884 S16e keys) into PR #1884; prior audits described pre-merge bytes."
 				}
 			],
 			"status": "audited",
@@ -40452,6 +40648,70 @@
 							"receipt": "i18n/receipts/94f6e325484c-canon2-ru.json",
 							"receipt_sha256": "ecca57bc6bee416b033fea90a0e70cb4ad749679fb33868b038614f0246bd43e",
 							"scope": "merged ui.chat.canonical, UI #1874 @ 7177d51df: 5 #1875 loading.* + 4 temporary_deleted.* keys"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17",
+					"target_sha256": "29d932f30c329a27731a9b3f3f8179b569f6a44309a45eb1ac9fe1e5109b20df",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "s16e-ru-20261112",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/s16e-ru-20261112.json",
+							"receipt_sha256": "acd16534111562a6271f2bfcc398bfccbc14539c6ea4a1a5190726f28bb8fccb",
+							"scope": "the 12 new S16e image-gen card keys (first/second independent pass1), audited as the 12-key draft (sha256 ccc4674d071c); the 467 retained keys ride the previously audited bytes (verify.log)",
+							"note": "S16e renderer card slice, PR #1884; binding receipt transcribed from the auditor's own record (session 17d1e8b0f671), integrated bytes; evidence i18n/audits/evidence/ru/ui.chat.canonical/s16e-29d932f30c32"
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-12",
+							"result": "clean",
+							"instance": "s16e-au2-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/s16e-au2-ru.json",
+							"receipt_sha256": "0449abfe5b31671da7bfa1ebb4dea745b8fbdb47169113c2d439f5fe8c245629",
+							"scope": "the 12 new S16e image-gen card keys (first/second independent pass2), audited as the 12-key draft (sha256 ccc4674d071c); the 467 retained keys ride the previously audited bytes (verify.log)",
+							"note": "S16e renderer card slice, PR #1884; binding receipt transcribed from the auditor's own record (session cc045047b39e), integrated bytes; evidence i18n/audits/evidence/ru/ui.chat.canonical/s16e-29d932f30c32"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731",
+					"target_sha256": "595666fd8f34ab80ccfc4e51d6ed0dbdca606760fb50fe21c11473eedc4a1737",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean",
+							"instance": "94f6e325484c-canon3-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/94f6e325484c-canon3-ru.json",
+							"receipt_sha256": "fbefaf0396d96634c6272fa93d0f4b0272a4b7e0fb9db985670cb2f2edf0c53a",
+							"scope": "merged ui.chat.canonical, UI #1874 @ fa3c17b63: #1876 media/sound keys + 4 temporary_deleted.* keys"
 						}
 					],
 					"status": "audited"
@@ -52174,8 +52434,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731",
-			"target_sha256": "11a1ee69f9df72062e42ac8b2ab5a6993af3b68e1675bbaae5d0b9e5363019a5",
+			"source_sha256": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45",
+			"target_sha256": "a0518d898cbde5003074cacb1204c1c1d6136e3c2142697b087a22f3cd767e2b",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -52184,20 +52444,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-12",
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-13",
 					"result": "clean-with-findings",
-					"instance": "94f6e325484c-canon3-ur",
+					"instance": "addbe32949b5",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 1
+						"minor": 1,
+						"nit": 3
 					},
-					"receipt": "i18n/receipts/94f6e325484c-canon3-ur.json",
-					"receipt_sha256": "279d7638f124ed450d916cfabf79c9f86496963742be9d1467fed0a4a4748df2",
-					"scope": "merged ui.chat.canonical, UI #1874 @ fa3c17b63: #1876 media/sound keys + 4 temporary_deleted.* keys"
+					"receipt": "i18n/receipts/addbe32949b5.json",
+					"receipt_sha256": "a7ba9d9e9db2db25e382ecb83718a1cff65fef108dad9a6b3630d6a2ccbdaff6",
+					"scope": "landed merge of UI #1874 + #1884 canonical keys (16 new keys), union proven byte-identical",
+					"note": "Independent i18n-auditor audit of the landed ui.chat.canonical bytes after merging main 0de7a69e2 (#1874 temporary_deleted.* + #1884 S16e keys) into PR #1884; prior audits described pre-merge bytes."
 				}
 			],
 			"status": "audited",
@@ -52778,6 +53039,70 @@
 							"receipt": "i18n/receipts/94f6e325484c-canon2-ur.json",
 							"receipt_sha256": "0ff89d2df967bcf8ebec2c0e271e1e67b20dd52ba89836b459c389121d62446e",
 							"scope": "merged ui.chat.canonical, UI #1874 @ 7177d51df: 5 #1875 loading.* + 4 temporary_deleted.* keys"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17",
+					"target_sha256": "d239e2a665505002cdb0a8e4f6a6fc2009003ea5026a95695dee9ad7573165dd",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "047163c943ad-s16e-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/047163c943ad-s16e-ur.json",
+							"receipt_sha256": "ff3cb32e65d3e420a0d1c0c82908fe481676a4fe7860d32a81c9182ece1e84ec",
+							"scope": "the 12 new S16e image-gen card keys (first/second independent pass1), audited as the 12-key draft (sha256 e9666a75e6d3); the 467 retained keys ride the previously audited bytes (verify.log)",
+							"note": "S16e renderer card slice, PR #1884; binding receipt transcribed from the auditor's own record (session 047163c943ad), integrated bytes; evidence i18n/audits/evidence/ur/ui.chat.canonical/s16e-d239e2a66550"
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "s16e-au2-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 3
+							},
+							"receipt": "i18n/receipts/s16e-au2-ur.json",
+							"receipt_sha256": "4c913fc96ccffd2ec4b7f165acf3a3ba5729ca43d76b7976dd3678edbb417141",
+							"scope": "the 12 new S16e image-gen card keys (first/second independent pass2), audited as the 12-key draft (sha256 e9666a75e6d3); the 467 retained keys ride the previously audited bytes (verify.log)",
+							"note": "S16e renderer card slice, PR #1884; binding receipt transcribed from the auditor's own record (session cc045047b39e), integrated bytes; evidence i18n/audits/evidence/ur/ui.chat.canonical/s16e-d239e2a66550"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731",
+					"target_sha256": "11a1ee69f9df72062e42ac8b2ab5a6993af3b68e1675bbaae5d0b9e5363019a5",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "94f6e325484c-canon3-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/94f6e325484c-canon3-ur.json",
+							"receipt_sha256": "279d7638f124ed450d916cfabf79c9f86496963742be9d1467fed0a4a4748df2",
+							"scope": "merged ui.chat.canonical, UI #1874 @ fa3c17b63: #1876 media/sound keys + 4 temporary_deleted.* keys"
 						}
 					],
 					"status": "audited"
@@ -64368,8 +64693,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731",
-			"target_sha256": "ad2bc4870aefc08190576e588d493ae99b5ff0bdd043afbdfb8f873edfa111a2",
+			"source_sha256": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45",
+			"target_sha256": "e829ddaba6a7b3c16dc8213bc836a6c91f4a853057f6a900fd06e90e1d2fed33",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -64378,20 +64703,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-12",
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-13",
 					"result": "clean-with-findings",
-					"instance": "94f6e325484c-canon3-vi",
+					"instance": "3227a8cf0a47",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 1
+						"minor": 1,
+						"nit": 4
 					},
-					"receipt": "i18n/receipts/94f6e325484c-canon3-vi.json",
-					"receipt_sha256": "2384ddaa3fdcc687c8a1391e24d39eceb2aff1bd0201d9ab2f07b92fb190ff3e",
-					"scope": "merged ui.chat.canonical, UI #1874 @ fa3c17b63: #1876 media/sound keys + 4 temporary_deleted.* keys"
+					"receipt": "i18n/receipts/3227a8cf0a47.json",
+					"receipt_sha256": "0704f083e82d9c810df6a31d6f93790fdd8bc8fab4f7ba89faa7c0d40e3b57cc",
+					"scope": "landed merge of UI #1874 + #1884 canonical keys (16 new keys), union proven byte-identical",
+					"note": "Independent i18n-auditor audit of the landed ui.chat.canonical bytes after merging main 0de7a69e2 (#1874 temporary_deleted.* + #1884 S16e keys) into PR #1884; prior audits described pre-merge bytes."
 				}
 			],
 			"status": "audited",
@@ -64964,6 +65290,70 @@
 							"receipt": "i18n/receipts/94f6e325484c-canon2-vi.json",
 							"receipt_sha256": "b5da5370d231dcc5bdd610a7c35629dd54944866ef6550b6d40297f41b96d6b5",
 							"scope": "merged ui.chat.canonical, UI #1874 @ 7177d51df: 5 #1875 loading.* + 4 temporary_deleted.* keys"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17",
+					"target_sha256": "1ff9b17c9a2ac5f276e03f433a2187385af5b0130d95ba2624f2bc7ad77c92cf",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "462e1eb39290",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/462e1eb39290.json",
+							"receipt_sha256": "9adf24895e2d3e9b5c9c7f3da391790ef685c5b8deccc9e75ac3ababb32a3d12",
+							"scope": "the 12 new S16e image-gen card keys (first/second independent pass1), audited as the 12-key draft (sha256 c0e8df525f03); the 467 retained keys ride the previously audited bytes (verify.log)",
+							"note": "S16e renderer card slice, PR #1884; binding receipt transcribed from the auditor's own record (session 462e1eb39290), integrated bytes; evidence i18n/audits/evidence/vi/ui.chat.canonical/s16e-1ff9b17c9a2a"
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "s16e-au2-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/s16e-au2-vi.json",
+							"receipt_sha256": "39108eaac8ab0b78046e0309690b073749702d1602c9992a5c24bedf53ea9980",
+							"scope": "the 12 new S16e image-gen card keys (first/second independent pass2), audited as the 12-key draft (sha256 c0e8df525f03); the 467 retained keys ride the previously audited bytes (verify.log)",
+							"note": "S16e renderer card slice, PR #1884; binding receipt transcribed from the auditor's own record (session cc045047b39e), integrated bytes; evidence i18n/audits/evidence/vi/ui.chat.canonical/s16e-1ff9b17c9a2a"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731",
+					"target_sha256": "ad2bc4870aefc08190576e588d493ae99b5ff0bdd043afbdfb8f873edfa111a2",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "94f6e325484c-canon3-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/94f6e325484c-canon3-vi.json",
+							"receipt_sha256": "2384ddaa3fdcc687c8a1391e24d39eceb2aff1bd0201d9ab2f07b92fb190ff3e",
+							"scope": "merged ui.chat.canonical, UI #1874 @ fa3c17b63: #1876 media/sound keys + 4 temporary_deleted.* keys"
 						}
 					],
 					"status": "audited"
@@ -77370,8 +77760,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731",
-			"target_sha256": "5401f32fb9890ae192945f8b8c76ace2c7a723da00b4148acaf707a0f84ac12c",
+			"source_sha256": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45",
+			"target_sha256": "1cf6b5a8113cd587754c4cec8a90a8aad95d9f0b95d189d02c509db76a158f49",
 			"translator": {
 				"agent": "lopdev coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -77380,20 +77770,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-12",
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-13",
 					"result": "clean-with-findings",
-					"instance": "94f6e325484c-canon3-zh-cn",
+					"instance": "721c5ef683f2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 2
+						"minor": 2,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/94f6e325484c-canon3-zh-cn.json",
-					"receipt_sha256": "6c3ac51fa4351feb4bcab3a02b182f68b5e2f4ac15a32efb87b8ae7ca2a9fd56",
-					"scope": "merged ui.chat.canonical, UI #1874 @ fa3c17b63: #1876 media/sound keys + 4 temporary_deleted.* keys"
+					"receipt": "i18n/receipts/721c5ef683f2.json",
+					"receipt_sha256": "784d6fd6cb98e1564f9192713546216c308a8db388eb8b8bddea32f26186cfa9",
+					"scope": "landed merge of UI #1874 + #1884 canonical keys (16 new keys), union proven byte-identical",
+					"note": "Independent i18n-auditor audit of the landed ui.chat.canonical bytes after merging main 0de7a69e2 (#1874 temporary_deleted.* + #1884 S16e keys) into PR #1884; prior audits described pre-merge bytes."
 				}
 			],
 			"status": "audited",
@@ -77942,6 +78333,70 @@
 							"receipt": "i18n/receipts/94f6e325484c-canon2-zh-cn.json",
 							"receipt_sha256": "94df6be1d09b8181d4c051056860afa73b0ba14f9b5ca29d72a59cec1f7e02c0",
 							"scope": "merged ui.chat.canonical, UI #1874 @ 7177d51df: 5 #1875 loading.* + 4 temporary_deleted.* keys"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17",
+					"target_sha256": "752b0388f4e0a677fe614bfe8c5dcb5ed29d79a77ef7e6476a80afc3b93888b4",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "s16e-zhcn-a1",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/s16e-zhcn-a1.json",
+							"receipt_sha256": "b56df72e049cbc8254a870b67a0c3a692b423e7986e2dee6b2a8919ba8eb29e7",
+							"scope": "the 12 new S16e image-gen card keys (first/second independent pass1), audited as the 12-key draft (sha256 121951c9665e); the 467 retained keys ride the previously audited bytes (verify.log)",
+							"note": "S16e renderer card slice, PR #1884; binding receipt transcribed from the auditor's own record (session f9df9ab87b40), integrated bytes; evidence i18n/audits/evidence/zh-CN/ui.chat.canonical/s16e-752b0388f4e0"
+						},
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "s16e-au2-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/s16e-au2-zh-cn.json",
+							"receipt_sha256": "2b6507260b6948722fcc1985146bb9705014a75302baa009d31221aad900924c",
+							"scope": "the 12 new S16e image-gen card keys (first/second independent pass2), audited as the 12-key draft (sha256 121951c9665e); the 467 retained keys ride the previously audited bytes (verify.log)",
+							"note": "S16e renderer card slice, PR #1884; binding receipt transcribed from the auditor's own record (session cc045047b39e), integrated bytes; evidence i18n/audits/evidence/zh-CN/ui.chat.canonical/s16e-752b0388f4e0"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731",
+					"target_sha256": "5401f32fb9890ae192945f8b8c76ace2c7a723da00b4148acaf707a0f84ac12c",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "94f6e325484c-canon3-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/94f6e325484c-canon3-zh-cn.json",
+							"receipt_sha256": "6c3ac51fa4351feb4bcab3a02b182f68b5e2f4ac15a32efb87b8ae7ca2a9fd56",
+							"scope": "merged ui.chat.canonical, UI #1874 @ fa3c17b63: #1876 media/sound keys + 4 temporary_deleted.* keys"
 						}
 					],
 					"status": "audited"

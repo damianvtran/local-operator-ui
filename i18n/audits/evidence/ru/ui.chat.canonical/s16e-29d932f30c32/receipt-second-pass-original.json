@@ -1,0 +1,99 @@
+{
+  "audit_id": "s16e-au2-ru",
+  "pass": "second-independent",
+  "slice": "S16e-renderer",
+  "pr": "damianvtran/local-operator-ui#1884",
+  "locale": "ru",
+  "namespace": "ui.chat.canonical",
+  "audit_date": "2026-11-12",
+  "status": "passed",
+  "verdict": "passed",
+  "result_supported": "clean",
+  "unresolved_blocker_major_count": 0,
+  "severity_counts": {
+    "blockers": 0,
+    "majors": 0,
+    "minors": 0,
+    "nits": 0
+  },
+  "finding_ids": [],
+  "findings": [],
+  "key_count": 12,
+  "value_count": 84,
+  "auditor": "i18n-auditor",
+  "session": "cc045047b39e",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "harness session header for session cc045047b39e reports deepseek/deepseek-flash; no fallback model was used for this audit",
+  "fallback_used": false,
+  "independent_from_translator_session": true,
+  "independent_from_first_pass": true,
+  "first_pass_consulted_after_own_findings": true,
+  "input_hashes": {
+    "en": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/i18n-s16e/src/i18n/catalogues/en/ui.chat.canonical.json",
+      "sha256": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17"
+    },
+    "context_brief": {
+      "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e-brief.json",
+      "sha256": "a0326137bff43ed38fc4a1c63d4a26e1887cfd56d4826df0e615df28055bef0c"
+    },
+    "context_repo_sidecar": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/i18n-s16e/src/i18n/catalogues/en/ui.chat.canonical.context.json",
+      "sha256": "ec598772089552ace910c857a38b364bdfa83a32c76c62b752b761527531e7b7"
+    },
+    "manifest": {
+      "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e/manifest.json",
+      "sha256": "8896921994fbd8c5f1c75983df805c9e09a1c4dabcdfcbc0a4c9c2f900733392"
+    },
+    "draft": {
+      "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e/ru/draft-ru-s16e.json",
+      "sha256": "ccc4674d071cc725e48f54c2becd2ac38eaa9004dbcdde8890ecaeedcf9c6060"
+    },
+    "shipped_catalogue": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/i18n-s16e/src/i18n/catalogues/ru/ui.chat.canonical.json",
+      "sha256": "fddef0897968450fb0157457dda37f7472fa467b4df1aea68af16bbe260f10f1"
+    },
+    "glossary": {
+      "path": "/Users/damian/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "/Users/damian/local-operator/i18n/style-guides/ru.md",
+      "sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+    },
+    "worktree_head": "bd8e90542506e8bec4a98862b868095409b28329"
+  },
+  "axes": {
+    "mechanical": "pass",
+    "accuracy_promises": "pass",
+    "idiom_register_typography": "pass",
+    "terminology": "pass",
+    "fit": "pass",
+    "rtl": "n/a",
+    "cldr_plural_categories": "n/a - no plural/selectordinal argument in this 12-key slice"
+  },
+  "executed": {
+    "icu_parser": "@formatjs/icu-messageformat-parser 3.5.21, repo dependency, read-only",
+    "negative_controls_passed": 5,
+    "values_parsed": 84,
+    "codepoint_typography_scan": true,
+    "shipped_catalogue_term_lookup": true
+  },
+  "not_claimed": [
+    "rendered/browser/Storybook/Electron/pseudo-localization evidence",
+    "native-speaker review (explicitly not a gate)",
+    "full-file audit hashes - this is a draft slice",
+    "the 467 pre-existing keys of ui.chat.canonical",
+    "any ledger append performed by this audit"
+  ],
+  "artifacts": {
+    "report": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/report-ru-s16e.md",
+    "mechanical_log": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/mech.log",
+    "typography_log": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/typo.log",
+    "evidence_log": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/evidence.log",
+    "widths_log": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/widths.log",
+    "audit_log": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/audit.log",
+    "findings_ledger": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/findings.json"
+  },
+  "note": "Draft-slice receipt, second independent pass. 0 finding(s), 0 blocker / 0 major. Full provenance and evidence paths in this record."
+}

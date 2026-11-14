@@ -1,0 +1,60 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "addbe32949b5",
+  "session": "addbe32949b5",
+  "date": "2026-11-13",
+  "status": "passed",
+  "namespace": "ui.chat.canonical",
+  "locale": "ur",
+  "sha256": {
+    "ur": "a0518d898cbde5003074cacb1204c1c1d6136e3c2142697b087a22f3cd767e2b",
+    "en": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45"
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.image_gen.error_class.duplicate_id",
+      "note": "Lowercase Latin 'id' where the shipped ur catalogue writes the identifier token uppercase 'ID' in all 25 prose occurrences (سیشن ID، ایجنٹ ID، شیڈول ID) and lowercase 'id' only inside ICU placeholders. Proposed bytes: 'مکرر ID'."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+      "note": "Label construction 'آڈیو کی شرح محدود' is accurate and attested ('درخواستوں کی شرح محدود ہے'); the shipped noun form is cleaner as a one-line label. Optional: 'آڈیو پر شرح کی حد'. No merge impact."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.cancel.queued",
+      "note": "Correct ('کال' is shipped vocabulary: ٹول کال، کال جاری), but the sibling image_gen.control.stop_hint_queued states the same fact as 'درخواست بھیجے جانے سے پہلے'. Optional harmonisation only."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.cancel.running",
+      "note": "Same English clause ships as 'لاگت لگے گی' in the frozen out-of-scope sound.stop.warning while this key uses 'چارج لگے گا'. Landed key chose the stronger term (matches حتمی چارج / کوئی چارج نہیں); no change to landed bytes, remedy is a later wave on sound.stop.warning plus a glossary charge/cost row."
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 3
+  },
+  "keys_read": 16,
+  "keys_in_namespace": 483,
+  "scope": "Independent re-audit against the LANDED merge bytes of local-operator-ui #1884 folded into main, merge commit 759530dba089052f53c4c28da12c9c351cf6c1b4. A = 4 keys absent from PR head 71bf9ae3 (temporary_deleted.*, #1874); B = 12 keys absent from main 0de7a69e (image_gen.state.cancelled_batch, cancel.queued/running/checking, settlement.pending, error.audio_rate_limited, error_class.{audio_rate_limited,unknown_tool,invalid_arguments,duplicate_id,denied,gate_failed}, #1884). The other 467 keys were not re-audited; they are proven byte-identical to their source side (set(landed) == set(PR) ∪ set(main); 0 values differing from main, 0 from PR, in both the ur and en files).",
+  "format_proof": "TAB indent, single trailing newline, no BOM, no CRLF/lone CR, NFC, zero bidi controls (U+200E/RTL marks, U+202A-202E, U+2066-2069, U+061C). biome format exit 0 ('No fixes applied') on a scratch copy with the repo biome.json, negative controls exit 1 (tabs->spaces; double trailing newline).",
+  "inputs_sha256": {
+    "ur landed target": "a0518d898cbde5003074cacb1204c1c1d6136e3c2142697b087a22f3cd767e2b",
+    "en landed source": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45",
+    "en context sidecar": "97f9e0881655e98fa1df8303feda347ced36377e1b25c9375680a5cedf5ec677",
+    "style guide ~/local-operator/i18n/style-guides/ur.md": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60",
+    "glossary ~/local-operator/i18n/glossary.md": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+  },
+  "provenance": {
+    "role": "translation-auditor (lopdev team), fresh and independent",
+    "independence": "Separate session addbe32949b5, separate run from the S16e translator and from the pre-merge auditor 047163c943ad; not the author of any of these bytes; nothing edited in the repo. The pre-merge receipt was read only after the verdict was formed, to record convergence: all four findings re-derive its UR-S16E-01..04 independently, with UR-S16E-02 downgraded MINOR->NIT because the predicate construction it called divergent is itself shipped.",
+    "actual_model": "deepseek/deepseek-flash — session model header; no model-switch card and no [session incident] in this run, so no fallback occurred in this audit.",
+    "method": "Landed bytes only; read-only audit (no tests/tsc/builds/installs). Every term accepted or rejected against the shipped ur catalogues by script, glossary and style guide, plus the real consumer render sites in src/renderer.",
+    "report_path": "/Users/damian/.local-operator/sessions/addbe32949b5/scratchpad/audit-ur-canonical-landed.md"
+  }
+}

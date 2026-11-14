@@ -1,0 +1,75 @@
+{
+ "schema": 1,
+ "instance": "047163c943ad-s16e-ur",
+ "locale": "ur",
+ "namespace": "ui.chat.canonical",
+ "audit_date": "2026-11-12",
+ "pass": 1,
+ "auditor": {
+  "agent": "i18n-auditor",
+  "instance": "047163c943ad-s16e-ur",
+  "session": "047163c943ad",
+  "model": "deepseek/deepseek-flash",
+  "independent_from_translator_session": true,
+  "actual_model_source": "Session model header `deepseek/deepseek-flash`; no model-switch card and no [session incident] in this run, so nothing here descends from a fallback. Disclosed: the translator's own notes name the same model family (deepseek/deepseek-flash, translator session 67f256dc8662). Independence in this audit therefore rests on being a different run that did not translate, not on a different model."
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "scope": "the 12 NEW S16e image-generation card stop/settlement/error keys of ui.chat.canonical (ur), audited as the translator's 12-key draft (sha256 e9666a75e6d318448b530290d99ab3c88b8a29901e3fa8beeb5c3411f7fa4051); the 467 pre-existing keys of the namespace were not re-reviewed and are proven byte-identical to the previously audited bytes by the retained-key digest in verify.log",
+ "sha256": {
+  "ur": "d239e2a665505002cdb0a8e4f6a6fc2009003ea5026a95695dee9ad7573165dd",
+  "en": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17",
+  "context": "ec598772089552ace910c857a38b364bdfa83a32c76c62b752b761527531e7b7"
+ },
+ "findings": [
+  {
+   "id": "UR-S16E-01",
+   "severity": "MINOR",
+   "key": "ui.chat.canonical.image_gen.error_class.duplicate_id",
+   "current": "مکرر id",
+   "problem": "The identifier token is lowercase Latin `id`. In the shipped ur catalogue the only lowercase `id` occurrences are ICU placeholders ({id}); every prose occurrence of the identifier token is uppercase `ID` (25 of them: سیشن ID, ایجنٹ ID, شیڈول ID). This value would be the first lowercase identifier token in ur prose. The English source is 'Duplicate id' (itself the only lowercase-id value in the English catalogue), so the draft mirrors English casing rather than the locale's convention.",
+   "suggested": "مکرر ID — or, if the label should be self-explaining in isolation, پہلے سے موجود ID ('id already exists')",
+   "blocking": false
+  },
+  {
+   "id": "UR-S16E-02",
+   "severity": "MINOR",
+   "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+   "current": "آڈیو کی شرح محدود",
+   "problem": "Meaning is intact and the class is distinguishable, so this is not a blocker; the issue is construction. 'آڈیو کی شرح محدود' reads as a possessive phrase ('audio's rate [is] limited'), attributing the limit to audio's rate rather than to the generation being rate limited, and it diverges from the product's established noun for the same concept, شرح کی حد, which ships in ui.chat.error_block.rate_limit.* and ui.chat.usage_reset.*. The result is two constructions for one error concept on the same surface. The translator's notes record they considered and rejected 'آڈیو کی شرح کی حد' (double کی, reads as a bare heading); that rejection is fair, and the alternative below avoids both problems.",
+   "suggested": "آڈیو پر شرح کی حد ('rate limit on audio') — label-shaped, reuses the shipped noun unchanged",
+   "blocking": false
+  },
+  {
+   "id": "UR-S16E-03",
+   "severity": "NIT",
+   "key": "ui.chat.canonical.image_gen.cancel.queued",
+   "current": "فراہم کنندہ کو کال کیے جانے سے پہلے روک دیا گیا؛ …",
+   "problem": "Not a defect: کال is attested user-facing vocabulary in the shipped catalogue (ٹول کال, فراہم کنندہ کال, نیٹ ورک کال), so reading it as a phone call would be a misjudgement and I withdrew that reading after checking. The only point is that the sibling for the same fact, control.stop_hint_queued, renders it as درخواست بھیجے جانے سے پہلے. Both are correct; harmonising would make the family read as one voice.",
+   "suggested": "فراہم کنندہ کو درخواست بھیجے جانے سے پہلے روک دیا گیا؛ آپ سے کوئی چارج نہیں لیا جائے گا۔ (optional)",
+   "blocking": false
+  },
+  {
+   "id": "UR-S16E-04",
+   "severity": "NIT",
+   "key": "ui.chat.canonical.image_gen.cancel.running",
+   "current": "… اور آڈیو بننے پر چارج لگے گا۔",
+   "problem": "The same English clause ('will be charged if it produces audio') ships in sound.stop.warning rendered with لاگت لگے گی, so one surface family currently carries two nouns for the charged amount. The draft's چارج is the better word — it matches English 'charged', the shipped 'حتمی چارج' and 'کوئی چارج نہیں', while لاگت is the shipped word for a cost amount — so the draft is right and the shipped sibling is the outlier. Recorded so the divergence is not rediscovered as a new finding.",
+   "suggested": "No change to this draft; harmonise the shipped ui.chat.canonical.sound.stop.warning from لاگت لگے گی to چارج لگے گا in a later wave, and record charge/cost as a glossary row.",
+   "blocking": false
+  }
+ ],
+ "provenance": {
+  "kind": "BINDING RECEIPT: verdict, severity counts, findings, session and model are transcribed from this auditor's own record (audits/ur/receipt.json); this file was written by the integrating coder session (agent coder), NOT by the auditor. The auditor reviewed the 12-key draft fragment, so no auditor-authored file can name the integrated catalogue hash; this receipt names it, and verify.log proves every landed value equals the audited draft value.",
+  "authored_by": "integrating coder session 95bd4b294de3 (agent coder)",
+  "transcribed_from": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e/audits/ur/receipt.json",
+  "transcribed_from_sha256": "a874122c3034a81f3f35adc7aaa359d43669549f35f02d7f47179dcc2c9dad35",
+  "instance_origin": "the auditor's own `instance`",
+  "integrated_target_sha256": "d239e2a665505002cdb0a8e4f6a6fc2009003ea5026a95695dee9ad7573165dd",
+  "not_claimed": [
+   "a full-file re-audit by this auditor: only the 12 new keys were reviewed",
+   "individual review of the retained 467 keys (they ride the previously audited bytes)",
+   "rendered/browser/pseudo-localization frames"
+  ]
+ }
+}

@@ -1,0 +1,121 @@
+{
+  "audit_id": "s16e-au2-fr",
+  "pass": "second-independent",
+  "slice": "S16e-renderer",
+  "pr": "damianvtran/local-operator-ui#1884",
+  "locale": "fr",
+  "namespace": "ui.chat.canonical",
+  "audit_date": "2026-11-12",
+  "status": "passed",
+  "verdict": "passed",
+  "result_supported": "clean-with-findings",
+  "unresolved_blocker_major_count": 0,
+  "severity_counts": {
+    "blockers": 0,
+    "majors": 0,
+    "minors": 0,
+    "nits": 2
+  },
+  "finding_ids": [
+    "FR-2-01",
+    "FR-2-02"
+  ],
+  "findings": [
+    {
+      "id": "FR-2-01",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+      "current": "Débit audio limité",
+      "evidence": "A third construction on the rate-limit concept. The shipped fr corpus writes it as «limite de débit» (9 values, e.g. ui.chat.error_block.rate_limit.before) and «{host} limité en débit» (ui.code_review.host.cooling). Noun-first «Débit audio limité» reads first as an audio-bitrate cap in a card whose subject is audio. Not misleading — the sentence below («La génération audio est très sollicitée en ce moment.») names the condition — and the class stays distinct from the other five.",
+      "suggested": "«Audio limité en débit» (21 cells, keeps the corpus construction and its own word «débit»), or keep as is and let the sentence below disambiguate.",
+      "gating": false
+    },
+    {
+      "id": "FR-2-02",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.settlement.pending + ui.chat.canonical.image_gen.cancel.checking",
+      "current": "Règlement en attente — … / Vérification du règlement.",
+      "evidence": "«règlement» has 0 occurrences in the shipped fr catalogue (467 keys) and no glossary row, so it is a new programme term introduced silently; it is also the homonym of «règlement» = rules, which is the weaker reading of «Vérification du règlement.» in isolation. The corpus states the same pending-charge fact with «frais finaux non confirmés» (ui.chat.canonical.sound.cost.estimated_zero). Both keys use «règlement» consistently, so nothing collides inside the slice.",
+      "suggested": "Either record settlement → «règlement» as a glossary row (then both keys stand), or align to the corpus family: «Frais finaux en attente — les frais finaux apparaîtront dès que le fournisseur les aura communiqués.» / «Vérification des frais.»",
+      "gating": false
+    }
+  ],
+  "key_count": 12,
+  "value_count": 84,
+  "auditor": "i18n-auditor",
+  "session": "cc045047b39e",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "harness session header for session cc045047b39e reports deepseek/deepseek-flash; no fallback model was used for this audit",
+  "fallback_used": false,
+  "independent_from_translator_session": true,
+  "independent_from_first_pass": true,
+  "first_pass_consulted_after_own_findings": true,
+  "input_hashes": {
+    "en": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/i18n-s16e/src/i18n/catalogues/en/ui.chat.canonical.json",
+      "sha256": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17"
+    },
+    "context_brief": {
+      "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e-brief.json",
+      "sha256": "a0326137bff43ed38fc4a1c63d4a26e1887cfd56d4826df0e615df28055bef0c"
+    },
+    "context_repo_sidecar": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/i18n-s16e/src/i18n/catalogues/en/ui.chat.canonical.context.json",
+      "sha256": "ec598772089552ace910c857a38b364bdfa83a32c76c62b752b761527531e7b7"
+    },
+    "manifest": {
+      "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e/manifest.json",
+      "sha256": "8896921994fbd8c5f1c75983df805c9e09a1c4dabcdfcbc0a4c9c2f900733392"
+    },
+    "draft": {
+      "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e/fr/draft-fr-s16e.json",
+      "sha256": "a46fdb56c6007dd225382a8f94f4972d7a4dfc6aaaab790dca2d7cdf27b4da62"
+    },
+    "shipped_catalogue": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/i18n-s16e/src/i18n/catalogues/fr/ui.chat.canonical.json",
+      "sha256": "99f7c0b27d6c75b16935cc58874477cab24da430284576defaacf19e209c88f6"
+    },
+    "glossary": {
+      "path": "/Users/damian/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "/Users/damian/local-operator/i18n/style-guides/fr.md",
+      "sha256": "ae1519ab7617d19aa826918d607de1d018595094166edbc18aa58f6a8f0a4226"
+    },
+    "worktree_head": "bd8e90542506e8bec4a98862b868095409b28329"
+  },
+  "axes": {
+    "mechanical": "pass",
+    "accuracy_promises": "pass",
+    "idiom_register_typography": "pass-with-notes",
+    "terminology": "pass-with-notes",
+    "fit": "pass",
+    "rtl": "n/a",
+    "cldr_plural_categories": "n/a - no plural/selectordinal argument in this 12-key slice"
+  },
+  "executed": {
+    "icu_parser": "@formatjs/icu-messageformat-parser 3.5.21, repo dependency, read-only",
+    "negative_controls_passed": 5,
+    "values_parsed": 84,
+    "codepoint_typography_scan": true,
+    "shipped_catalogue_term_lookup": true
+  },
+  "not_claimed": [
+    "rendered/browser/Storybook/Electron/pseudo-localization evidence",
+    "native-speaker review (explicitly not a gate)",
+    "full-file audit hashes - this is a draft slice",
+    "the 467 pre-existing keys of ui.chat.canonical",
+    "any ledger append performed by this audit"
+  ],
+  "artifacts": {
+    "report": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/report-fr-s16e.md",
+    "mechanical_log": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/mech.log",
+    "typography_log": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/typo.log",
+    "evidence_log": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/evidence.log",
+    "widths_log": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/widths.log",
+    "audit_log": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/audit.log",
+    "findings_ledger": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/findings.json"
+  },
+  "note": "Draft-slice receipt, second independent pass. 2 finding(s), 0 blocker / 0 major. Full provenance and evidence paths in this record."
+}
