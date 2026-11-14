@@ -15,7 +15,14 @@
  *   the state right now, and what does activation cost". It runs once on every
  *   OPEN (the cache entry is dropped with its last observer, so a re-opened pane
  *   never shows a price or a Connected from an earlier open) and again on an
- *   explicit "Check again", never on a timer.
+ *   explicit "Check again", never on a timer. With `features.tunnel_remedy_kinds`
+ *   (local-operator #3945) it is ALSO asked on window focus, because the backend
+ *   now fixes things on its own (the post-sign-in reconnect) and a person coming
+ *   back from the browser or the console expects the panel to have caught up
+ *   (spec U10); and it polls while the answer is `reconnecting`, the one state
+ *   whose end nobody presses for. That answer is local-only on the backend (the
+ *   route short-circuits while `setup.lock` is held), so the poll costs no
+ *   upstream read until the reconnect is over.
  * - `tunnel.setup.run` (POST) is the one write, and it is only reachable from a
  *   button the user pressed, with the owner and exact fresh price in hand.
  *
@@ -211,6 +218,14 @@ export type UsePhoneSetup = {
 	 * undefined when no activation is required.
 	 */
 	run: (credentialId: number, price?: string) => void;
+	/**
+	 * Whether the backend speaks the #3945 remedy vocabulary
+	 * (`features.tunnel_remedy_kinds`). The block renders the new controls only
+	 * when it does, so an older backend gets exactly the pre-#3945 block.
+	 */
+	remedies: boolean;
+	/** When the answer on screen was observed (ms epoch), for "Last checked". */
+	checkedAt: number;
 };
 
 const parse = (raw: unknown): PhoneSetupResult =>
@@ -221,7 +236,13 @@ export function usePhoneSetup(): UsePhoneSetup {
 	const capabilities = useDesktopCapabilities();
 	// Absent key means no block AND no request: every query below is disabled.
 	const enabled = desktopFeatureEnabled(capabilities.data, "tunnel_setup");
+	const remedies =
+		enabled && desktopFeatureEnabled(capabilities.data, "tunnel_remedy_kinds");
 	const [selectedId, setSelectedId] = useState<number | null>(null);
+	// The answer on screen is THIS window's run result (with its receipts). A focus
+	// refetch would replace it with a plan that has none, so focus leaves it alone
+	// until the person asks again.
+	const [ownResultShown, setOwnResultShown] = useState(false);
 	const [failure, setFailure] = useState<PhoneSetupFailure | null>(null);
 	// A run whose answer never arrived (see the header). `since` is when we learned
 	// that, so only a local read taken AFTER it can say the run has ended.
@@ -256,6 +277,7 @@ export function usePhoneSetup(): UsePhoneSetup {
 			// transition is coming and the flag must not outlive this answer.
 			ownRunEnded.current = wasRunning.current;
 			setFailure(null);
+			setOwnResultShown(true);
 			queryClient.setQueryData(phoneSetupKeys.fresh(selectedId), result);
 		},
 		onError: (error) => {
@@ -336,8 +358,18 @@ export function usePhoneSetup(): UsePhoneSetup {
 		// `gcTime: 0` alone removes the entry on a later macrotask, so a pane that
 		// re-opens immediately (a panel switch) would re-attach to the stale entry.
 		gcTime: 0,
-		refetchOnWindowFocus: false,
+		// "always" because `staleTime` is infinite: `true` would never fire. Off on
+		// an older backend (see `remedies`), and while our own run's answer is shown.
+		refetchOnWindowFocus: remedies && !ownResultShown ? "always" : false,
 		refetchOnMount: "always",
+		// `reconnecting` ends without a press, so it is the one answer re-asked on
+		// a timer (the existing poll cadence); every other answer waits for focus
+		// or "Check again". `wait_*` kinds do not poll: their causes (offline, a
+		// Radient outage) are not this computer's to watch every 3 s.
+		refetchInterval: (query) =>
+			remedies && query.state.data?.blocked_on === "reconnecting"
+				? PHONE_SETUP_POLL_MS
+				: false,
 	});
 	// What is SHOWN must be a plan fetched since THIS open, or the answer to our
 	// own run: a price or a Connected from an earlier open is an observation nobody
@@ -414,6 +446,7 @@ export function usePhoneSetup(): UsePhoneSetup {
 
 	const check = useCallback(() => {
 		setFailure(null);
+		setOwnResultShown(false);
 		void local.refetch();
 		void fresh.refetch();
 	}, [local.refetch, fresh.refetch]);
@@ -431,5 +464,13 @@ export function usePhoneSetup(): UsePhoneSetup {
 		[run.mutate],
 	);
 
-	return { view, selectedId, choose, check, run: start };
+	return {
+		view,
+		selectedId,
+		choose,
+		check,
+		run: start,
+		remedies,
+		checkedAt: fresh.dataUpdatedAt,
+	};
 }

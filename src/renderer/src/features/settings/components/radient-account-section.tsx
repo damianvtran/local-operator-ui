@@ -175,7 +175,7 @@ export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
 				 * request sent, unless the backend advertises `tunnel_setup`.
 				 */}
 				<div className="mt-8">
-					<PhoneAccessBlock offerSignIn />
+					<PhoneAccessBlock offerSignIn diagnostics />
 				</div>
 
 				{/*

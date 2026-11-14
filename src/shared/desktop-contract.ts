@@ -3815,6 +3815,18 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			acceptMonthlyPrice: z.string().min(1).max(64).optional(),
 		})
 		.strict(),
+	/*
+	 * PHONE ACCESS DIAGNOSIS (`features.mobile_doctor`, local-operator
+	 * `routes/desktop_mobile_doctor.py`): the same read-only, already-redacted
+	 * JSON `lop mobile doctor --json` prints, for the Phone access block's "Copy
+	 * diagnostics" button. A person without a terminal can paste it to support or
+	 * to an agent instead of being asked to run shell diagnostics. No arguments:
+	 * the report is about this machine, and an older backend 404s the route, so
+	 * the renderer asks the capability first and sends nothing without it.
+	 */
+	z
+		.object({ op: z.literal("mobile.doctor") })
+		.strict(),
 	z.object({ op: z.literal("auth.start"), provider: id }).strict(),
 	z.object({ op: z.literal("auth.status"), id }).strict(),
 	z
@@ -7527,6 +7539,8 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"legacy.schedules.list",
 	"mcp.catalog",
 	"mcp.list",
+	// The phone-access diagnosis reads and redacts; it changes nothing.
+	"mobile.doctor",
 	"models.catalogue",
 	"networks.list",
 	"peers.list",
@@ -10521,6 +10535,8 @@ export function desktopEndpoint(request: DesktopRequest): {
 						: {}),
 				},
 			};
+		case "mobile.doctor":
+			return { path: "/v1/desktop/mobile/doctor", method: "GET" };
 		case "auth.start":
 			return {
 				path: "/v1/auth/login",
