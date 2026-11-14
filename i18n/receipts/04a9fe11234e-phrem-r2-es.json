@@ -1,0 +1,66 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "model_fallback": null,
+  "instance": "04a9fe11234e-phrem-r2-es",
+  "date": "2026-11-14",
+  "locale": "es",
+  "independence": "Independent of the translator (coder subagents of host session 25fe8dfbf610) and of the round-1 auditor (session 23928ce0ef1e). lopdev translation-auditor session 04a9fe11234e read only the catalogue bytes, context sidecar, style guide/glossary and component source; nothing from the translator’s or prior auditor’s sessions beyond the committed round-1 receipt used to verify replacements. Same served model family as the host session is possible and disclosed.",
+  "translator": {
+    "agent": "coder",
+    "instance": "host session 25fe8dfbf610 (coder subagent, PR #1910 round-1 remediation)",
+    "keys": "5 new ui.providers.phone.* keys; round-1 auditor replacements applied"
+  },
+  "head": "26b57d1d2df9202653c70f8fea97ee13a24f5e72",
+  "references": {
+    "glossary": "damianvtran/local-operator@9c2bbb3b6863 i18n/glossary.md",
+    "glossary_sha256": "a576d5a4b2718ba79a70a42600e3b6233ea28d716b1e2d996a208ac8dd7fabdb",
+    "style_guide": "damianvtran/local-operator@9c2bbb3b6863 i18n/style-guides/es.md",
+    "style_guide_sha256": "4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6",
+    "context_sha256": {
+      "ui.providers": "bb2fbf44e9611c29eccaa54f9697120acfce96ca82c0d5cc5a4dd332cb705aae"
+    }
+  },
+  "namespace": "ui.providers",
+  "status": "passed",
+  "sha256": {
+    "es": "b6f73d434b7d810cd029ffbc04743c1db7f0ff512287d6324242bcb6441e2aa9",
+    "en": "e3130625e74ad8efaa15207261af16f19f2510b05e56dc827902a77065b4c565"
+  },
+  "scope": {
+    "new_keys": [
+      "ui.providers.phone.announce.connected",
+      "ui.providers.phone.announce.reconnecting",
+      "ui.providers.phone.action.copying_diagnostics",
+      "ui.providers.phone.diagnostics_help",
+      "ui.providers.phone.search_terms"
+    ],
+    "changed_keys_verified": [],
+    "changed_keys_note": "No changed keys in this locale; only the 5 new keys.",
+    "context_keys_read": 57
+  },
+  "findings": [
+    {
+      "id": "T-es-r2-1",
+      "severity": "MINOR",
+      "key": "ui.providers.phone.diagnostics_help",
+      "current": "Un informe sobre el acceso desde el teléfono en este equipo, con los datos sensibles ocultos. Puedes pegarlo sin problema para quien te esté ayudando.",
+      "proposed": "Un informe sobre el acceso desde el teléfono en este equipo, con los datos sensibles ocultos. Puedes pegarlo sin riesgo en un mensaje a quien te esté ayudando.",
+      "reason": "“pegarlo … para quien” is a calque of “paste to whoever” (pegar takes a place, not a recipient); “sin riesgo” carries the English “safe” more exactly than “sin problema”. Redaction wording (“datos sensibles ocultos”) is accurate and does not overpromise."
+    },
+    {
+      "id": "T-es-r2-2",
+      "severity": "NIT",
+      "key": "ui.providers.phone.search_terms",
+      "current": "teléfono móvil celular acceso remoto aplicación túnel",
+      "proposed": "teléfono móvil celular acceso remoto app aplicación túnel",
+      "reason": "The panel’s own offer copy says “la app Local Operator”, and “app” is what people type; the search fold does not match “app” inside “aplicacion”."
+    }
+  ],
+  "checks": {
+    "mechanical": "Key parity with en (ui.providers); {email} preserved byte-exactly in next_step_app; no ICU plural/select in scope; no bidi controls (U+200E/F, U+202A-E, U+2066-9, U+061C); NFC.",
+    "register": "tú — matches the panel.",
+    "announcements": "announce.connected/reconnecting are one short sentence each, using the panel’s own heading and status terms.",
+    "search": "INFO (not counted, pre-existing code): Settings search folds via palette-search normalizeText (/[^a-z0-9]+/ after NFD mark-strip), so non-Latin search_terms (hi, ru, ur, zh-CN) and headings fold to empty and cannot match; Latin-script locales (es, fr, vi) do fold and match."
+  }
+}

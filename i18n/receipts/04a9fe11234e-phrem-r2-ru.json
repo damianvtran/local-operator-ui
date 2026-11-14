@@ -1,0 +1,60 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "model_fallback": null,
+  "instance": "04a9fe11234e-phrem-r2-ru",
+  "date": "2026-11-14",
+  "locale": "ru",
+  "independence": "Independent of the translator (coder subagents of host session 25fe8dfbf610) and of the round-1 auditor (session 23928ce0ef1e). lopdev translation-auditor session 04a9fe11234e read only the catalogue bytes, context sidecar, style guide/glossary and component source; nothing from the translator’s or prior auditor’s sessions beyond the committed round-1 receipt used to verify replacements. Same served model family as the host session is possible and disclosed.",
+  "translator": {
+    "agent": "coder",
+    "instance": "host session 25fe8dfbf610 (coder subagent, PR #1910 round-1 remediation)",
+    "keys": "5 new ui.providers.phone.* keys; round-1 auditor replacements applied"
+  },
+  "head": "26b57d1d2df9202653c70f8fea97ee13a24f5e72",
+  "references": {
+    "glossary": "damianvtran/local-operator@9c2bbb3b6863 i18n/glossary.md",
+    "glossary_sha256": "a576d5a4b2718ba79a70a42600e3b6233ea28d716b1e2d996a208ac8dd7fabdb",
+    "style_guide": "damianvtran/local-operator@9c2bbb3b6863 i18n/style-guides/ru.md",
+    "style_guide_sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5",
+    "context_sha256": {
+      "ui.providers": "bb2fbf44e9611c29eccaa54f9697120acfce96ca82c0d5cc5a4dd332cb705aae"
+    }
+  },
+  "namespace": "ui.providers",
+  "status": "passed",
+  "sha256": {
+    "ru": "7a9c6d9054415a6aad3a975f5d0bdff08776bdb1e3b0cf7bca67ede245cbdde5",
+    "en": "e3130625e74ad8efaa15207261af16f19f2510b05e56dc827902a77065b4c565"
+  },
+  "scope": {
+    "new_keys": [
+      "ui.providers.phone.announce.connected",
+      "ui.providers.phone.announce.reconnecting",
+      "ui.providers.phone.action.copying_diagnostics",
+      "ui.providers.phone.diagnostics_help",
+      "ui.providers.phone.search_terms"
+    ],
+    "changed_keys_verified": [
+      "ui.providers.phone.action.copy_diagnostics"
+    ],
+    "changed_keys_note": "Each changed value is byte-identical to the round-1 receipt’s proposed text (23928ce0ef1e-phrem-r1-ru.json) and reads well in context.",
+    "context_keys_read": 57
+  },
+  "findings": [
+    {
+      "id": "T-ru-r2-1",
+      "severity": "MINOR",
+      "key": "ui.providers.phone.diagnostics_help",
+      "current": "Отчёт о доступе с телефона на этом компьютере без конфиденциальных данных. Его можно спокойно вставить в сообщение тому, кто вам помогает.",
+      "proposed": "Отчёт о доступе с телефона на этом компьютере; конфиденциальные данные в нём скрыты. Его можно спокойно вставить в сообщение тому, кто вам помогает.",
+      "reason": "“…на этом компьютере без конфиденциальных данных” attaches ambiguously (reads as “a computer without confidential data”) and claims absence rather than redaction; “скрыты” matches the other locales’ “hidden” without overpromising."
+    }
+  ],
+  "checks": {
+    "mechanical": "Key parity with en (ui.providers); {email} preserved byte-exactly in next_step_app; no ICU plural/select in scope; no bidi controls (U+200E/F, U+202A-E, U+2066-9, U+061C); NFC.",
+    "register": "вы — matches the panel.",
+    "announcements": "announce.connected/reconnecting are one short sentence each, using the panel’s own heading and status terms.",
+    "search": "INFO (not counted, pre-existing code): Settings search folds via palette-search normalizeText (/[^a-z0-9]+/ after NFD mark-strip), so non-Latin search_terms (hi, ru, ur, zh-CN) and headings fold to empty and cannot match; Latin-script locales (es, fr, vi) do fold and match."
+  }
+}

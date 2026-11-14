@@ -8835,8 +8835,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.providers",
-			"source_sha256": "70b5e4b3348848a8b3eca926cf9ac566b04432f79900d1b9335480d3107785d4",
-			"target_sha256": "39ed252d809b9617ce439f4358ede81e6afd2b1c27a8d83de01881de58b68301",
+			"source_sha256": "e3130625e74ad8efaa15207261af16f19f2510b05e56dc827902a77065b4c565",
+			"target_sha256": "b6f73d434b7d810cd029ffbc04743c1db7f0ff512287d6324242bcb6441e2aa9",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-fable-5-2 drafts; openai/gpt-6.1-sol final intro (fallback)",
@@ -8848,18 +8848,18 @@
 					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-14",
-					"result": "clean",
-					"instance": "23928ce0ef1e-phrem-r1-es",
+					"result": "clean-with-findings",
+					"instance": "04a9fe11234e-phrem-r2-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 1,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/23928ce0ef1e-phrem-r1-es.json",
-					"receipt_sha256": "67eae447ee68ecd230ef8bf1d179ea384a39d0e9f1af72ad0cb703e3014a62ba",
-					"scope": "14 new ui.providers.phone.* keys (PR #1910 phone remedies/offer/Copy diagnostics) at d0912f37538a; other values byte-identical to base, prior audits retained",
-					"note": "PR #1910 delta audit @d0912f37538a; receipt i18n/receipts/23928ce0ef1e-phrem-r1-es.json; no findings"
+					"receipt": "i18n/receipts/04a9fe11234e-phrem-r2-es.json",
+					"receipt_sha256": "0f7935c84b9b6ffa394058cfeb8bdef1d43c987ef95326b724b3254363ffefbd",
+					"scope": "5 new ui.providers.phone.* keys + round-1 replacements (PR #1910 @26b57d1d2df9); other values byte-identical, prior audits retained",
+					"note": "PR #1910 round-2 re-audit @26b57d1d2df9; receipt i18n/receipts/04a9fe11234e-phrem-r2-es.json; 2 open minor/nit, replacements in receipt"
 				}
 			],
 			"status": "audited",
@@ -8969,6 +8969,30 @@
 							"receipt": "i18n/receipts/1736cfb27a20-relaystep-r1-es.json",
 							"receipt_sha256": "70ecf1eb6387fef71551d29ac52fdf5b298db4931f15615db58d8aa1b189bf79",
 							"scope": "Independent one-key delta copy audit (ui.providers.phone.connector_not_needed) at 76a0b500d85 for PR #1852; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "70b5e4b3348848a8b3eca926cf9ac566b04432f79900d1b9335480d3107785d4",
+					"target_sha256": "39ed252d809b9617ce439f4358ede81e6afd2b1c27a8d83de01881de58b68301",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean",
+							"instance": "23928ce0ef1e-phrem-r1-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/23928ce0ef1e-phrem-r1-es.json",
+							"receipt_sha256": "67eae447ee68ecd230ef8bf1d179ea384a39d0e9f1af72ad0cb703e3014a62ba",
+							"scope": "14 new ui.providers.phone.* keys (PR #1910 phone remedies/offer/Copy diagnostics) at d0912f37538a; other values byte-identical to base, prior audits retained",
+							"note": "PR #1910 delta audit @d0912f37538a; receipt i18n/receipts/23928ce0ef1e-phrem-r1-es.json; no findings"
 						}
 					],
 					"status": "audited"
@@ -21323,8 +21347,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.providers",
-			"source_sha256": "70b5e4b3348848a8b3eca926cf9ac566b04432f79900d1b9335480d3107785d4",
-			"target_sha256": "33cbac812eb9edd37d941951819b4586df50ec3eaa7bb135a709a61dcfbf712f",
+			"source_sha256": "e3130625e74ad8efaa15207261af16f19f2510b05e56dc827902a77065b4c565",
+			"target_sha256": "0eaa351005e56660808d1479993f9df6a926c1a65be4e67384afbab4af7f75bd",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-fable-5-2 drafts; openai/gpt-6.1-sol final intro (fallback)",
@@ -21338,17 +21362,17 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-14",
 					"result": "clean-with-findings",
-					"instance": "23928ce0ef1e-phrem-r1-fr",
+					"instance": "04a9fe11234e-phrem-r2-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/23928ce0ef1e-phrem-r1-fr.json",
-					"receipt_sha256": "3b6147a1aef0a5a394628154a89cffc40c2280ce234d84c3e7df9987d7728461",
-					"scope": "14 new ui.providers.phone.* keys (PR #1910 phone remedies/offer/Copy diagnostics) at d0912f37538a; other values byte-identical to base, prior audits retained",
-					"note": "PR #1910 delta audit @d0912f37538a; receipt i18n/receipts/23928ce0ef1e-phrem-r1-fr.json; 2 minor/0 nit open, replacements in receipt"
+					"receipt": "i18n/receipts/04a9fe11234e-phrem-r2-fr.json",
+					"receipt_sha256": "1b85391ae6e9ff3d78c1ef2b1b8808a3d364f7b7268dae3af6021adb824923c3",
+					"scope": "5 new ui.providers.phone.* keys + round-1 replacements (PR #1910 @26b57d1d2df9); other values byte-identical, prior audits retained",
+					"note": "PR #1910 round-2 re-audit @26b57d1d2df9; receipt i18n/receipts/04a9fe11234e-phrem-r2-fr.json; 1 open minor/nit, replacements in receipt"
 				}
 			],
 			"superseded": [
@@ -21457,6 +21481,30 @@
 							"receipt": "i18n/receipts/1736cfb27a20-relaystep-r1-fr.json",
 							"receipt_sha256": "8fb4f587b6175d59df2359c7307edde4442dc56b8d14c76dd95d58e94945e14b",
 							"scope": "Independent one-key delta copy audit (ui.providers.phone.connector_not_needed) at 76a0b500d85 for PR #1852; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "70b5e4b3348848a8b3eca926cf9ac566b04432f79900d1b9335480d3107785d4",
+					"target_sha256": "33cbac812eb9edd37d941951819b4586df50ec3eaa7bb135a709a61dcfbf712f",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "23928ce0ef1e-phrem-r1-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/23928ce0ef1e-phrem-r1-fr.json",
+							"receipt_sha256": "3b6147a1aef0a5a394628154a89cffc40c2280ce234d84c3e7df9987d7728461",
+							"scope": "14 new ui.providers.phone.* keys (PR #1910 phone remedies/offer/Copy diagnostics) at d0912f37538a; other values byte-identical to base, prior audits retained",
+							"note": "PR #1910 delta audit @d0912f37538a; receipt i18n/receipts/23928ce0ef1e-phrem-r1-fr.json; 2 minor/0 nit open, replacements in receipt"
 						}
 					],
 					"status": "audited"
@@ -33961,8 +34009,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.providers",
-			"source_sha256": "70b5e4b3348848a8b3eca926cf9ac566b04432f79900d1b9335480d3107785d4",
-			"target_sha256": "a3e418b6def05bc3670af8e2eba21d30867868baef7b0bf13852bd72de4980e7",
+			"source_sha256": "e3130625e74ad8efaa15207261af16f19f2510b05e56dc827902a77065b4c565",
+			"target_sha256": "d11a06e9ed97c7a6eeed2460ce6450ad1fec5b17b89045c944d8e261f9d3d2d0",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-fable-5-2 drafts; openai/gpt-6.1-sol final intro (fallback)",
@@ -33974,18 +34022,18 @@
 					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-14",
-					"result": "clean-with-findings",
-					"instance": "23928ce0ef1e-phrem-r1-hi",
+					"result": "clean",
+					"instance": "04a9fe11234e-phrem-r2-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/23928ce0ef1e-phrem-r1-hi.json",
-					"receipt_sha256": "eab7d3576b79743c0cd0b80627222fee854f82dbcda3143b4b92d07174f33bdb",
-					"scope": "14 new ui.providers.phone.* keys (PR #1910 phone remedies/offer/Copy diagnostics) at d0912f37538a; other values byte-identical to base, prior audits retained",
-					"note": "PR #1910 delta audit @d0912f37538a; receipt i18n/receipts/23928ce0ef1e-phrem-r1-hi.json; 1 minor/0 nit open, replacements in receipt"
+					"receipt": "i18n/receipts/04a9fe11234e-phrem-r2-hi.json",
+					"receipt_sha256": "0ce06b89cec4f82e923ac92eb9d53db066537a48cba073df6e5bcf7e80127deb",
+					"scope": "5 new ui.providers.phone.* keys + round-1 replacements (PR #1910 @26b57d1d2df9); other values byte-identical, prior audits retained",
+					"note": "PR #1910 round-2 re-audit @26b57d1d2df9; receipt i18n/receipts/04a9fe11234e-phrem-r2-hi.json; 0 open minor/nit, replacements in receipt"
 				}
 			],
 			"status": "audited",
@@ -34096,6 +34144,30 @@
 							"receipt": "i18n/receipts/1736cfb27a20-relaystep-r1-hi.json",
 							"receipt_sha256": "d913a0b525e1f71e61c97c3bf2fc1ba14bc524f5c047b1654f497a6e0996c519",
 							"scope": "Independent one-key delta copy audit (ui.providers.phone.connector_not_needed) at 76a0b500d85 for PR #1852; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "70b5e4b3348848a8b3eca926cf9ac566b04432f79900d1b9335480d3107785d4",
+					"target_sha256": "a3e418b6def05bc3670af8e2eba21d30867868baef7b0bf13852bd72de4980e7",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "23928ce0ef1e-phrem-r1-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/23928ce0ef1e-phrem-r1-hi.json",
+							"receipt_sha256": "eab7d3576b79743c0cd0b80627222fee854f82dbcda3143b4b92d07174f33bdb",
+							"scope": "14 new ui.providers.phone.* keys (PR #1910 phone remedies/offer/Copy diagnostics) at d0912f37538a; other values byte-identical to base, prior audits retained",
+							"note": "PR #1910 delta audit @d0912f37538a; receipt i18n/receipts/23928ce0ef1e-phrem-r1-hi.json; 1 minor/0 nit open, replacements in receipt"
 						}
 					],
 					"status": "audited"
@@ -46186,8 +46258,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.providers",
-			"source_sha256": "70b5e4b3348848a8b3eca926cf9ac566b04432f79900d1b9335480d3107785d4",
-			"target_sha256": "b6f3c2213963f238f565396bc52b9b2d7b074b4a5a0723f95ebcf50b1398de9c",
+			"source_sha256": "e3130625e74ad8efaa15207261af16f19f2510b05e56dc827902a77065b4c565",
+			"target_sha256": "7a9c6d9054415a6aad3a975f5d0bdff08776bdb1e3b0cf7bca67ede245cbdde5",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-fable-5-2 drafts; openai/gpt-6.1-sol final intro (fallback)",
@@ -46200,17 +46272,17 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-14",
 					"result": "clean-with-findings",
-					"instance": "23928ce0ef1e-phrem-r1-ru",
+					"instance": "04a9fe11234e-phrem-r2-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 1
+						"minor": 1,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/23928ce0ef1e-phrem-r1-ru.json",
-					"receipt_sha256": "2e98403ff5887128d33df1bd51cb4a60bb539ad1c45f950b2d2604d17ed06707",
-					"scope": "14 new ui.providers.phone.* keys (PR #1910 phone remedies/offer/Copy diagnostics) at d0912f37538a; other values byte-identical to base, prior audits retained",
-					"note": "PR #1910 delta audit @d0912f37538a; receipt i18n/receipts/23928ce0ef1e-phrem-r1-ru.json; 0 minor/1 nit open, replacements in receipt"
+					"receipt": "i18n/receipts/04a9fe11234e-phrem-r2-ru.json",
+					"receipt_sha256": "079661af4cdcac5c1a9a8e7f87cd546f6324eda5397ad9bfd688667b2041259a",
+					"scope": "5 new ui.providers.phone.* keys + round-1 replacements (PR #1910 @26b57d1d2df9); other values byte-identical, prior audits retained",
+					"note": "PR #1910 round-2 re-audit @26b57d1d2df9; receipt i18n/receipts/04a9fe11234e-phrem-r2-ru.json; 1 open minor/nit, replacements in receipt"
 				}
 			],
 			"status": "audited",
@@ -46320,6 +46392,30 @@
 							"receipt": "i18n/receipts/1736cfb27a20-relaystep-r1-ru.json",
 							"receipt_sha256": "5fc3d05b633c4e28e358fac76a4d588856b0828b2bd239ed0d456fe8e6389009",
 							"scope": "Independent one-key delta copy audit (ui.providers.phone.connector_not_needed) at 76a0b500d85 for PR #1852; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "70b5e4b3348848a8b3eca926cf9ac566b04432f79900d1b9335480d3107785d4",
+					"target_sha256": "b6f3c2213963f238f565396bc52b9b2d7b074b4a5a0723f95ebcf50b1398de9c",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "23928ce0ef1e-phrem-r1-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/23928ce0ef1e-phrem-r1-ru.json",
+							"receipt_sha256": "2e98403ff5887128d33df1bd51cb4a60bb539ad1c45f950b2d2604d17ed06707",
+							"scope": "14 new ui.providers.phone.* keys (PR #1910 phone remedies/offer/Copy diagnostics) at d0912f37538a; other values byte-identical to base, prior audits retained",
+							"note": "PR #1910 delta audit @d0912f37538a; receipt i18n/receipts/23928ce0ef1e-phrem-r1-ru.json; 0 minor/1 nit open, replacements in receipt"
 						}
 					],
 					"status": "audited"
@@ -58560,8 +58656,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.providers",
-			"source_sha256": "70b5e4b3348848a8b3eca926cf9ac566b04432f79900d1b9335480d3107785d4",
-			"target_sha256": "375f0c18956d7697bf1a48d1d238a702b89d4d799166e3750a2f80497cd5231c",
+			"source_sha256": "e3130625e74ad8efaa15207261af16f19f2510b05e56dc827902a77065b4c565",
+			"target_sha256": "742eb4a503d209018ed7ff3a8a747b911d0cafb031d45c035d7833fdc91f1d48",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-fable-5-2 drafts; openai/gpt-6.1-sol final intro (fallback)",
@@ -58573,18 +58669,18 @@
 					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-14",
-					"result": "clean-with-findings",
-					"instance": "23928ce0ef1e-phrem-r1-ur",
+					"result": "clean",
+					"instance": "04a9fe11234e-phrem-r2-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 3,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/23928ce0ef1e-phrem-r1-ur.json",
-					"receipt_sha256": "061a1ef48fa92b8e92110f621e3073e5a95369f0de0a3a335b17c921f9758d8f",
-					"scope": "14 new ui.providers.phone.* keys (PR #1910 phone remedies/offer/Copy diagnostics) at d0912f37538a; other values byte-identical to base, prior audits retained",
-					"note": "PR #1910 delta audit @d0912f37538a; receipt i18n/receipts/23928ce0ef1e-phrem-r1-ur.json; 3 minor/1 nit open, replacements in receipt"
+					"receipt": "i18n/receipts/04a9fe11234e-phrem-r2-ur.json",
+					"receipt_sha256": "ab034180502e5f6b65e6df6209880455b5df449d27a276e81e40fd3a027ce5e2",
+					"scope": "5 new ui.providers.phone.* keys + round-1 replacements (PR #1910 @26b57d1d2df9); other values byte-identical, prior audits retained",
+					"note": "PR #1910 round-2 re-audit @26b57d1d2df9; receipt i18n/receipts/04a9fe11234e-phrem-r2-ur.json; 0 open minor/nit, replacements in receipt"
 				}
 			],
 			"status": "audited",
@@ -58695,6 +58791,30 @@
 							"receipt": "i18n/receipts/1736cfb27a20-relaystep-r1-ur.json",
 							"receipt_sha256": "0a3f2716132301cb859859a43334ddba0fab6299e556e0cf398741ec2439db2c",
 							"scope": "Independent one-key delta copy audit (ui.providers.phone.connector_not_needed) at 76a0b500d85 for PR #1852; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "70b5e4b3348848a8b3eca926cf9ac566b04432f79900d1b9335480d3107785d4",
+					"target_sha256": "375f0c18956d7697bf1a48d1d238a702b89d4d799166e3750a2f80497cd5231c",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "23928ce0ef1e-phrem-r1-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 3,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/23928ce0ef1e-phrem-r1-ur.json",
+							"receipt_sha256": "061a1ef48fa92b8e92110f621e3073e5a95369f0de0a3a335b17c921f9758d8f",
+							"scope": "14 new ui.providers.phone.* keys (PR #1910 phone remedies/offer/Copy diagnostics) at d0912f37538a; other values byte-identical to base, prior audits retained",
+							"note": "PR #1910 delta audit @d0912f37538a; receipt i18n/receipts/23928ce0ef1e-phrem-r1-ur.json; 3 minor/1 nit open, replacements in receipt"
 						}
 					],
 					"status": "audited"
@@ -71118,8 +71238,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.providers",
-			"source_sha256": "70b5e4b3348848a8b3eca926cf9ac566b04432f79900d1b9335480d3107785d4",
-			"target_sha256": "df9491bc400d0e27dd51ea61dfe8eba56b2083e2e51fba06eb80f0f467629a2c",
+			"source_sha256": "e3130625e74ad8efaa15207261af16f19f2510b05e56dc827902a77065b4c565",
+			"target_sha256": "8dcfc9a89aa3f9e6feb7c36dae93217d56afba0cb91b2067b6c3643c25523ae8",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-fable-5-2 drafts; openai/gpt-6.1-sol final intro (fallback)",
@@ -71132,17 +71252,17 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-14",
 					"result": "clean-with-findings",
-					"instance": "23928ce0ef1e-phrem-r1-vi",
+					"instance": "04a9fe11234e-phrem-r2-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 1
+						"minor": 1,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/23928ce0ef1e-phrem-r1-vi.json",
-					"receipt_sha256": "c5564700024072c01e9ade5f6ae36ee4d780458cef9cee2b8e0fcc370273f659",
-					"scope": "14 new ui.providers.phone.* keys (PR #1910 phone remedies/offer/Copy diagnostics) at d0912f37538a; other values byte-identical to base, prior audits retained",
-					"note": "PR #1910 delta audit @d0912f37538a; receipt i18n/receipts/23928ce0ef1e-phrem-r1-vi.json; 0 minor/1 nit open, replacements in receipt"
+					"receipt": "i18n/receipts/04a9fe11234e-phrem-r2-vi.json",
+					"receipt_sha256": "d0fe39ba587f63ebf9edb6cc43f35ba185f7dd80394a0ea00ccebcf199c02fb7",
+					"scope": "5 new ui.providers.phone.* keys + round-1 replacements (PR #1910 @26b57d1d2df9); other values byte-identical, prior audits retained",
+					"note": "PR #1910 round-2 re-audit @26b57d1d2df9; receipt i18n/receipts/04a9fe11234e-phrem-r2-vi.json; 1 open minor/nit, replacements in receipt"
 				}
 			],
 			"status": "audited",
@@ -71311,6 +71431,30 @@
 							"receipt": "i18n/receipts/1736cfb27a20-relaystep-r1-vi.json",
 							"receipt_sha256": "0db39f7f402b2fca5c3661cebac51894306170b09fe879aabb9a63aa9794629d",
 							"scope": "Independent one-key delta copy audit (ui.providers.phone.connector_not_needed) at 76a0b500d85 for PR #1852; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "70b5e4b3348848a8b3eca926cf9ac566b04432f79900d1b9335480d3107785d4",
+					"target_sha256": "df9491bc400d0e27dd51ea61dfe8eba56b2083e2e51fba06eb80f0f467629a2c",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "23928ce0ef1e-phrem-r1-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/23928ce0ef1e-phrem-r1-vi.json",
+							"receipt_sha256": "c5564700024072c01e9ade5f6ae36ee4d780458cef9cee2b8e0fcc370273f659",
+							"scope": "14 new ui.providers.phone.* keys (PR #1910 phone remedies/offer/Copy diagnostics) at d0912f37538a; other values byte-identical to base, prior audits retained",
+							"note": "PR #1910 delta audit @d0912f37538a; receipt i18n/receipts/23928ce0ef1e-phrem-r1-vi.json; 0 minor/1 nit open, replacements in receipt"
 						}
 					],
 					"status": "audited"
@@ -84315,8 +84459,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.providers",
-			"source_sha256": "70b5e4b3348848a8b3eca926cf9ac566b04432f79900d1b9335480d3107785d4",
-			"target_sha256": "707fe1b1ec0c81f8e2bfea64399c2adee7fadf4ffe58ef0578cdf8cc06a5c923",
+			"source_sha256": "e3130625e74ad8efaa15207261af16f19f2510b05e56dc827902a77065b4c565",
+			"target_sha256": "388406ff598ee0bc6a4dad82e07f11bd2ddf36c72d50a7c68184b878280920f9",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-fable-5-2 drafts; openai/gpt-6.1-sol final intro (fallback)",
@@ -84329,17 +84473,17 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-14",
 					"result": "clean-with-findings",
-					"instance": "23928ce0ef1e-phrem-r1-zh-cn",
+					"instance": "04a9fe11234e-phrem-r2-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 5,
-						"nit": 1
+						"minor": 1,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/23928ce0ef1e-phrem-r1-zh-cn.json",
-					"receipt_sha256": "84d66f3b03c87d2535e09e19bf1a392fadf0f42a8474e8052ff90e96cccbd6e9",
-					"scope": "14 new ui.providers.phone.* keys (PR #1910 phone remedies/offer/Copy diagnostics) at d0912f37538a; other values byte-identical to base, prior audits retained",
-					"note": "PR #1910 delta audit @d0912f37538a; receipt i18n/receipts/23928ce0ef1e-phrem-r1-zh-cn.json; 5 minor/1 nit open, replacements in receipt"
+					"receipt": "i18n/receipts/04a9fe11234e-phrem-r2-zh-cn.json",
+					"receipt_sha256": "0f17909d09f6d5e36a80ef9619039be1e7beaec2b7876ff262d671d72c6ff621",
+					"scope": "5 new ui.providers.phone.* keys + round-1 replacements (PR #1910 @26b57d1d2df9); other values byte-identical, prior audits retained",
+					"note": "PR #1910 round-2 re-audit @26b57d1d2df9; receipt i18n/receipts/04a9fe11234e-phrem-r2-zh-cn.json; 1 open minor/nit, replacements in receipt"
 				}
 			],
 			"status": "audited",
@@ -84474,6 +84618,30 @@
 							"receipt": "i18n/receipts/1736cfb27a20-relaystep-r1-zh-cn.json",
 							"receipt_sha256": "fb538be7e5d02661e281616482da0f0bcd16924983ab765b55e2d4ab32e7a083",
 							"scope": "Independent one-key delta copy audit (ui.providers.phone.connector_not_needed) at 76a0b500d85 for PR #1852; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "70b5e4b3348848a8b3eca926cf9ac566b04432f79900d1b9335480d3107785d4",
+					"target_sha256": "707fe1b1ec0c81f8e2bfea64399c2adee7fadf4ffe58ef0578cdf8cc06a5c923",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "23928ce0ef1e-phrem-r1-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 5,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/23928ce0ef1e-phrem-r1-zh-cn.json",
+							"receipt_sha256": "84d66f3b03c87d2535e09e19bf1a392fadf0f42a8474e8052ff90e96cccbd6e9",
+							"scope": "14 new ui.providers.phone.* keys (PR #1910 phone remedies/offer/Copy diagnostics) at d0912f37538a; other values byte-identical to base, prior audits retained",
+							"note": "PR #1910 delta audit @d0912f37538a; receipt i18n/receipts/23928ce0ef1e-phrem-r1-zh-cn.json; 5 minor/1 nit open, replacements in receipt"
 						}
 					],
 					"status": "audited"
