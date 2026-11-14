@@ -1,0 +1,50 @@
+{
+	"auditor": "translation-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "e27e5fd167e9-phonepair-r3-fr",
+	"date": "2026-11-14",
+	"locale": "fr",
+	"independence": "Independent lopdev translation-auditor session e27e5fd167e9 (round-3 re-audit); not the translator (coder subagent of host session 25fe8dfbf610) and not the earlier auditors (cf304a0ef14b round 1, 190fe64b9fbc round 2). Configured model anthropic/claude-opus-5-5, the same model as the translator host and both earlier auditors: disclosed; the served model is not independently confirmable from inside the session. Read only the PR's committed bytes at the head; authored no catalogue change.",
+	"references": {
+		"style_guide": "damianvtran/local-operator i18n/style-guides/fr.md (local checkout ~/local-operator)",
+		"ui_register": "src/i18n/catalogues/fr/ui.settings.navigation.json (settings_sidebar.radient_account), ui.settings.json (ui.settings.page.title), ui.shell.json (sidebar_navigation.settings), ui.phone_pairing.json (phones.title, popup.unavailable_where), ui.agentMessages.json (dialog.* Settings paths)",
+		"real_path": "pairing-popup.tsx renders manage_where; radient-account-section.tsx mounts PhonePairingSettings (heading ui.phone_pairing.phones.title); settings-sidebar.tsx labels that page ui.settings.navigation.settings_sidebar.radient_account",
+		"round2": "i18n/receipts/190fe64b9fbc-phonepair-r2-fr.json"
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"pr": 1912,
+	"head": "9b4662dc6f480134bd5dd9139afe0d11e7c5ce40",
+	"scope": "Round 3 delta re-audit of ui.phone_pairing: the one key changed in a5001dd1..9b4662dc (ui.phone_pairing.popup.manage_where, en now 'Settings → Radient account → Paired phones', design r2 D10), read against en, its new .context.json note and the locale's own Settings / Radient account / Paired phones labels. The other 79 keys (and the en source for them) are byte-identical to a5001dd1, whose catalogue bytes equal the sha256 receipted by 190fe64b9fbc at 33e589a2 (git diff shows one changed line per file); carried, not re-read. Open findings from round 2 re-verified still present at the head and carried.",
+	"namespace": "ui.phone_pairing",
+	"status": "passed",
+	"verdict": "New manage_where reads naturally in the vous register used across the namespace; segments are the locale's own Paramètres (ui.settings.page.title / ui.shell.sidebar_navigation.settings), Compte Radient (settings_sidebar.radient_account, byte-equal) and Téléphones appairés (phones.title, byte-equal); arrows U+2192 kept, unquoted path like ui.agentMessages.dialog.* and popup.unavailable_where; no : ; ! ? so no U+202F needed. Clean.",
+	"path_segments": {
+		"settings": "Paramètres",
+		"radient_account": "Compte Radient",
+		"paired_phones": "Téléphones appairés"
+	},
+	"sha256": {
+		"en": "51f025668af39f9e58c729aa500e4c1e22aed731e72c569eeb14831186c38a83",
+		"fr": "a496a91d1e7e068ec02e426f0631e7688b92ddb4ce93d49d1ddac4c4d115c26b"
+	},
+	"context_sha256": "f21705126f5c383e409e49416c932e038127f72c26de2ddfbc870ef2a8393cbd",
+	"findings": [
+		{
+			"id": "FR-1",
+			"severity": "MINOR",
+			"key": "ui.phone_pairing.setup.finish_reason",
+			"keys": [
+				"ui.phone_pairing.setup.finish_reason",
+				"ui.phone_pairing.password.disclosure"
+			],
+			"issue": "Plain U+0020 before ':' and '?' in two new keys; fr style guide requires U+202F before : ; ! ? and every other key in this namespace already uses U+202F (a breaking space lets the mark wrap to a new line).",
+			"proposed": {
+				"ui.phone_pairing.setup.finish_reason": "La demande de mot de passe a été annulée : la configuration n’est donc pas terminée.",
+				"ui.phone_pairing.password.disclosure": "Vous utilisez votre propre tunnel ?"
+			},
+			"carried_from": "190fe64b9fbc-phonepair-r2-fr",
+			"verified_open_at": "9b4662dc6f480134bd5dd9139afe0d11e7c5ce40"
+		}
+	],
+	"resolved": []
+}
