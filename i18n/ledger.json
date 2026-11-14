@@ -107367,219 +107367,401 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.run_controls",
-			"source_sha256": "c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa",
-			"target_sha256": "45d42bdda892d564fdffa264a6bc22ba6849c234104b87b13d8da12cd19a6324",
+			"source_sha256": "7cf8524faf5ed9de2e191211f757c3b3e5af0c88e4d5b1fd27bc642decc50421",
+			"target_sha256": "2dc00848342c08714108606fe737abc4ab3e1d97a66b58610c298766472c2aff",
 			"translator": {
-				"agent": "translator",
+				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-14",
-				"note": "S17d-2, 12 keys; r1 audit PASS x7, r2 delta PASS fr/es/ru/ur; v1 drafts shipped for zh-CN, vi, hi. This file is byte-identical to the audited v2 draft (new namespace, no inherited keys)."
+				"note": "S17d-3 translation lane: 2 job-cancel refusal keys translated by i18n-translator over the S17d-2 12-key file."
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-14",
 					"result": "clean",
-					"instance": "s17d2-es-rebind-45d42bdd",
+					"instance": "s17d3-es-4375ac83",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/s17d2-es-rebind-45d42bdd.json",
-					"receipt_sha256": "c4271c4725bb0fa56233def0e29caf5492f5d1c5048986e80fcd9b58030a1b2f",
-					"scope": "S17d-2 re-bind: the new 12-key ui.chat.run_controls namespace at merged head 90f0f49b"
+					"receipt": "i18n/receipts/s17d3-es-4375ac83.json",
+					"receipt_sha256": "b28eb8fab2603c9389c2ffb920ed2338ffb1cc85b611cefc4185d78e466e1a15",
+					"scope": "S17d-3 job-cancel refusal sentences (2 keys)",
+					"note": "Audit of the two S17d-3 job-cancel keys on the new bytes; earlier S17d-2 audit superseded."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa",
+					"target_sha256": "45d42bdda892d564fdffa264a6bc22ba6849c234104b87b13d8da12cd19a6324",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-14",
+							"result": "clean",
+							"instance": "s17d2-es-rebind-45d42bdd",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/s17d2-es-rebind-45d42bdd.json",
+							"receipt_sha256": "c4271c4725bb0fa56233def0e29caf5492f5d1c5048986e80fcd9b58030a1b2f",
+							"scope": "S17d-2 re-bind: the new 12-key ui.chat.run_controls namespace at merged head 90f0f49b"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.run_controls",
-			"source_sha256": "c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa",
-			"target_sha256": "28ba35cac7e257e6603842699be2f668ebf5960a18676d8c223352e00ae3516f",
+			"source_sha256": "7cf8524faf5ed9de2e191211f757c3b3e5af0c88e4d5b1fd27bc642decc50421",
+			"target_sha256": "d6a2072ffc5bae474b43e58646837a9883b3dc1141b27a51b6a6f3e5e9f55428",
 			"translator": {
-				"agent": "translator",
+				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-14",
-				"note": "S17d-2, 12 keys; r1 audit PASS x7, r2 delta PASS fr/es/ru/ur; v1 drafts shipped for zh-CN, vi, hi. This file is byte-identical to the audited v2 draft (new namespace, no inherited keys)."
+				"note": "S17d-3 translation lane: 2 job-cancel refusal keys translated by i18n-translator over the S17d-2 12-key file."
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-14",
-					"result": "clean-with-findings",
-					"instance": "s17d2-fr-rebind-28ba35ca",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 1,
-						"nit": 1
-					},
-					"receipt": "i18n/receipts/s17d2-fr-rebind-28ba35ca.json",
-					"receipt_sha256": "54393fd4091bff3f0daafcd1940197c5334003b006010ff4be91d1bfff064d57",
-					"scope": "S17d-2 re-bind: the new 12-key ui.chat.run_controls namespace at merged head 90f0f49b"
-				}
-			],
-			"status": "audited"
-		},
-		{
-			"locale": "hi",
-			"namespace": "ui.chat.run_controls",
-			"source_sha256": "c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa",
-			"target_sha256": "19c0bcc144cea71b7be5c17932fdd32837c730d4ac4112359908a6e626685cda",
-			"translator": {
-				"agent": "translator",
-				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-11-14",
-				"note": "S17d-2, 12 keys; r1 audit PASS x7, r2 delta PASS fr/es/ru/ur; v1 drafts shipped for zh-CN, vi, hi. This file is byte-identical to the audited v1 draft (new namespace, no inherited keys)."
-			},
-			"auditors": [
-				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-14",
-					"result": "clean-with-findings",
-					"instance": "s17d2-hi-rebind-19c0bcc1",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 1,
-						"nit": 3
-					},
-					"receipt": "i18n/receipts/s17d2-hi-rebind-19c0bcc1.json",
-					"receipt_sha256": "4f6a21156aba3647778cd7bf5ac58216f01d6fea6647b1a1cd5ec3297ed2f2c7",
-					"scope": "S17d-2 re-bind: the new 12-key ui.chat.run_controls namespace at merged head 90f0f49b"
-				}
-			],
-			"status": "audited"
-		},
-		{
-			"locale": "ru",
-			"namespace": "ui.chat.run_controls",
-			"source_sha256": "c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa",
-			"target_sha256": "b2c5993276ae0776469d547b476579dd98238b7035836cf05cdea11bd6e7e900",
-			"translator": {
-				"agent": "translator",
-				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-11-14",
-				"note": "S17d-2, 12 keys; r1 audit PASS x7, r2 delta PASS fr/es/ru/ur; v1 drafts shipped for zh-CN, vi, hi. This file is byte-identical to the audited v2 draft (new namespace, no inherited keys)."
-			},
-			"auditors": [
-				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-14",
-					"result": "clean-with-findings",
-					"instance": "s17d2-ru-rebind-b2c59932",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 2
-					},
-					"receipt": "i18n/receipts/s17d2-ru-rebind-b2c59932.json",
-					"receipt_sha256": "5765a6f6009712103bdd28b6d82435f57d3daab3fd088bcf428f49ea5e1167db",
-					"scope": "S17d-2 re-bind: the new 12-key ui.chat.run_controls namespace at merged head 90f0f49b"
-				}
-			],
-			"status": "audited"
-		},
-		{
-			"locale": "ur",
-			"namespace": "ui.chat.run_controls",
-			"source_sha256": "c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa",
-			"target_sha256": "fcd479c8e28482855385daab7e50891743f05f502919e3a40bae7240e15a5fef",
-			"translator": {
-				"agent": "translator",
-				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-11-14",
-				"note": "S17d-2, 12 keys; r1 audit PASS x7, r2 delta PASS fr/es/ru/ur; v1 drafts shipped for zh-CN, vi, hi. This file is byte-identical to the audited v2 draft (new namespace, no inherited keys)."
-			},
-			"auditors": [
-				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-14",
-					"result": "clean-with-findings",
-					"instance": "s17d2-ur-rebind-fcd479c8",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 1
-					},
-					"receipt": "i18n/receipts/s17d2-ur-rebind-fcd479c8.json",
-					"receipt_sha256": "9223fd771c8fb84e64999dc610718a3a5e17a0c72348c1f46c1d7f530d0d970f",
-					"scope": "S17d-2 re-bind: the new 12-key ui.chat.run_controls namespace at merged head 90f0f49b"
-				}
-			],
-			"status": "audited"
-		},
-		{
-			"locale": "vi",
-			"namespace": "ui.chat.run_controls",
-			"source_sha256": "c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa",
-			"target_sha256": "4c7b67b96dd976f84e4d7d3f8431af8c9d70326d38ea379496840e5a4d6f332e",
-			"translator": {
-				"agent": "translator",
-				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-11-14",
-				"note": "S17d-2, 12 keys; r1 audit PASS x7, r2 delta PASS fr/es/ru/ur; v1 drafts shipped for zh-CN, vi, hi. This file is byte-identical to the audited v1 draft (new namespace, no inherited keys)."
-			},
-			"auditors": [
-				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-11-14",
-					"result": "clean-with-findings",
-					"instance": "s17d2-vi-rebind-4c7b67b9",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 1,
-						"nit": 3
-					},
-					"receipt": "i18n/receipts/s17d2-vi-rebind-4c7b67b9.json",
-					"receipt_sha256": "16719005ec334409d5f09f7d230e587be4ad75da4bda2d4925c5154b4c0daf06",
-					"scope": "S17d-2 re-bind: the new 12-key ui.chat.run_controls namespace at merged head 90f0f49b"
-				}
-			],
-			"status": "audited"
-		},
-		{
-			"locale": "zh-CN",
-			"namespace": "ui.chat.run_controls",
-			"source_sha256": "c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa",
-			"target_sha256": "3010fc82f5a52df7e94d5bba58929848561c28ca20fc49c77ff00a0160528812",
-			"translator": {
-				"agent": "translator",
-				"model": "anthropic/claude-sonnet-5-5",
-				"date": "2026-11-14",
-				"note": "S17d-2, 12 keys; r1 audit PASS x7, r2 delta PASS fr/es/ru/ur; v1 drafts shipped for zh-CN, vi, hi. This file is byte-identical to the audited v1 draft (new namespace, no inherited keys)."
-			},
-			"auditors": [
-				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-14",
 					"result": "clean",
-					"instance": "s17d2-zh-cn-rebind-3010fc82",
+					"instance": "s17d3-fr-9bb91312",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/s17d2-zh-cn-rebind-3010fc82.json",
-					"receipt_sha256": "54b02931ac1272713be8e9898933a24f4d82ac647c0ff4ecc455b6edce0d1310",
-					"scope": "S17d-2 re-bind: the new 12-key ui.chat.run_controls namespace at merged head 90f0f49b"
+					"receipt": "i18n/receipts/s17d3-fr-9bb91312.json",
+					"receipt_sha256": "72eed08373bbd34c2bde9bca060ce7266f403ef21e0ebdee8766cff29da723b2",
+					"scope": "S17d-3 job-cancel refusal sentences (2 keys)",
+					"note": "Audit of the two S17d-3 job-cancel keys on the new bytes; earlier S17d-2 audit superseded."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa",
+					"target_sha256": "28ba35cac7e257e6603842699be2f668ebf5960a18676d8c223352e00ae3516f",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "s17d2-fr-rebind-28ba35ca",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/s17d2-fr-rebind-28ba35ca.json",
+							"receipt_sha256": "54393fd4091bff3f0daafcd1940197c5334003b006010ff4be91d1bfff064d57",
+							"scope": "S17d-2 re-bind: the new 12-key ui.chat.run_controls namespace at merged head 90f0f49b"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat.run_controls",
+			"source_sha256": "7cf8524faf5ed9de2e191211f757c3b3e5af0c88e4d5b1fd27bc642decc50421",
+			"target_sha256": "f73df2b0f2281bcfdcb559c11eac5af3ce794e234702ea6b1e34466027fb38b2",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-14",
+				"note": "S17d-3 translation lane: 2 job-cancel refusal keys translated by i18n-translator over the S17d-2 12-key file."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-14",
+					"result": "clean",
+					"instance": "s17d3-hi-5f1eac72",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/s17d3-hi-5f1eac72.json",
+					"receipt_sha256": "b0b4cc014b51fbdafa478534cdb204431e19d4b69c4a287eca1f2b35e9666fec",
+					"scope": "S17d-3 job-cancel refusal sentences (2 keys)",
+					"note": "Audit of the two S17d-3 job-cancel keys on the new bytes; earlier S17d-2 audit superseded."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa",
+					"target_sha256": "19c0bcc144cea71b7be5c17932fdd32837c730d4ac4112359908a6e626685cda",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "s17d2-hi-rebind-19c0bcc1",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 3
+							},
+							"receipt": "i18n/receipts/s17d2-hi-rebind-19c0bcc1.json",
+							"receipt_sha256": "4f6a21156aba3647778cd7bf5ac58216f01d6fea6647b1a1cd5ec3297ed2f2c7",
+							"scope": "S17d-2 re-bind: the new 12-key ui.chat.run_controls namespace at merged head 90f0f49b"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.chat.run_controls",
+			"source_sha256": "7cf8524faf5ed9de2e191211f757c3b3e5af0c88e4d5b1fd27bc642decc50421",
+			"target_sha256": "09f1613f0e51e757b9dccecac8968f340be4de6b4b3090c80259e767693ac700",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-14",
+				"note": "S17d-3 translation lane: 2 job-cancel refusal keys translated by i18n-translator over the S17d-2 12-key file."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-14",
+					"result": "clean",
+					"instance": "s17d3-ru-aca7b37a",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/s17d3-ru-aca7b37a.json",
+					"receipt_sha256": "c78293aee4e2dd4ded64594409e4014f74724c810cea2b908e3d3631507a2bf3",
+					"scope": "S17d-3 job-cancel refusal sentences (2 keys)",
+					"note": "Audit of the two S17d-3 job-cancel keys on the new bytes; earlier S17d-2 audit superseded."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa",
+					"target_sha256": "b2c5993276ae0776469d547b476579dd98238b7035836cf05cdea11bd6e7e900",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "s17d2-ru-rebind-b2c59932",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/s17d2-ru-rebind-b2c59932.json",
+							"receipt_sha256": "5765a6f6009712103bdd28b6d82435f57d3daab3fd088bcf428f49ea5e1167db",
+							"scope": "S17d-2 re-bind: the new 12-key ui.chat.run_controls namespace at merged head 90f0f49b"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.chat.run_controls",
+			"source_sha256": "7cf8524faf5ed9de2e191211f757c3b3e5af0c88e4d5b1fd27bc642decc50421",
+			"target_sha256": "0b860185f9ae2f25ee8ea2c33fd090acd008e48926b3f5a0e071f5fcd94b0634",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-14",
+				"note": "S17d-3 translation lane: 2 job-cancel refusal keys translated by i18n-translator over the S17d-2 12-key file."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-14",
+					"result": "clean-with-findings",
+					"instance": "s17d3-ur-5b3775a0",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/s17d3-ur-5b3775a0.json",
+					"receipt_sha256": "24247182d1cc435f510f937e9c03caa0e20d5a7da41ac1ac5c92e9940c5bf7b5",
+					"scope": "S17d-3 job-cancel refusal sentences (2 keys)",
+					"note": "Audit of the two S17d-3 job-cancel keys on the new bytes; earlier S17d-2 audit superseded."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa",
+					"target_sha256": "fcd479c8e28482855385daab7e50891743f05f502919e3a40bae7240e15a5fef",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "s17d2-ur-rebind-fcd479c8",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/s17d2-ur-rebind-fcd479c8.json",
+							"receipt_sha256": "9223fd771c8fb84e64999dc610718a3a5e17a0c72348c1f46c1d7f530d0d970f",
+							"scope": "S17d-2 re-bind: the new 12-key ui.chat.run_controls namespace at merged head 90f0f49b"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.chat.run_controls",
+			"source_sha256": "7cf8524faf5ed9de2e191211f757c3b3e5af0c88e4d5b1fd27bc642decc50421",
+			"target_sha256": "f6ed035e603191b4febbf4f1cb3a87d6d48561f342e770779db205d88581aabb",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-14",
+				"note": "S17d-3 translation lane: 2 job-cancel refusal keys translated by i18n-translator over the S17d-2 12-key file."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-14",
+					"result": "clean",
+					"instance": "s17d3-vi-f0cc924f",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/s17d3-vi-f0cc924f.json",
+					"receipt_sha256": "f154b847327ea59666c60251cadca220d5c376bff500245dc5df3b1d01892463",
+					"scope": "S17d-3 job-cancel refusal sentences (2 keys)",
+					"note": "Audit of the two S17d-3 job-cancel keys on the new bytes; earlier S17d-2 audit superseded."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa",
+					"target_sha256": "4c7b67b96dd976f84e4d7d3f8431af8c9d70326d38ea379496840e5a4d6f332e",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "s17d2-vi-rebind-4c7b67b9",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 3
+							},
+							"receipt": "i18n/receipts/s17d2-vi-rebind-4c7b67b9.json",
+							"receipt_sha256": "16719005ec334409d5f09f7d230e587be4ad75da4bda2d4925c5154b4c0daf06",
+							"scope": "S17d-2 re-bind: the new 12-key ui.chat.run_controls namespace at merged head 90f0f49b"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.chat.run_controls",
+			"source_sha256": "7cf8524faf5ed9de2e191211f757c3b3e5af0c88e4d5b1fd27bc642decc50421",
+			"target_sha256": "480e347568bb5411bdab3e48a89b12ab8fb22009595c65ca7df806c81b4fd068",
+			"translator": {
+				"agent": "i18n-translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-14",
+				"note": "S17d-3 translation lane: 2 job-cancel refusal keys translated by i18n-translator over the S17d-2 12-key file."
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-14",
+					"result": "clean",
+					"instance": "s17d3-zh-cn-2f95290f",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/s17d3-zh-cn-2f95290f.json",
+					"receipt_sha256": "2ad92e9fb7f731f61dc019781d66625191a40bad2d24c257f802b667f45b31f0",
+					"scope": "S17d-3 job-cancel refusal sentences (2 keys)",
+					"note": "Audit of the two S17d-3 job-cancel keys on the new bytes; earlier S17d-2 audit superseded."
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa",
+					"target_sha256": "3010fc82f5a52df7e94d5bba58929848561c28ca20fc49c77ff00a0160528812",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-14",
+							"result": "clean",
+							"instance": "s17d2-zh-cn-rebind-3010fc82",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/s17d2-zh-cn-rebind-3010fc82.json",
+							"receipt_sha256": "54b02931ac1272713be8e9898933a24f4d82ac647c0ff4ecc455b6edce0d1310",
+							"scope": "S17d-2 re-bind: the new 12-key ui.chat.run_controls namespace at merged head 90f0f49b"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		}
 	]
 }

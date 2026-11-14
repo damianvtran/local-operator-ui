@@ -39,6 +39,7 @@ import {
 	DesktopControlError,
 	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
+import { t } from "@shared/i18n";
 import type { CancelCardAnchor } from "./cancel-card-placement";
 import { type SubagentRow, isOpenRow } from "./run-detail-model";
 
@@ -65,10 +66,18 @@ export const jobRowCanCancel = (row: SubagentRow): boolean =>
 /**
  * The frozen `not_found` phrase, as the fallback for a refusal that arrived
  * without the engine's own sentence (see the header). Spelled with the map's
- * own words, em dash included, because it is quoted copy rather than ours.
+ * own words, em dash included, because the ENGLISH is quoted copy rather than
+ * ours (`ui.chat.run_controls.job.not_found` pins it byte for byte).
+ *
+ * A FUNCTION, not a constant, since S17d-3: the sentence is only a fallback
+ * the UI supplies, so it is the UI's to translate, and a module-level constant
+ * would freeze whichever locale was active at import. It is read at call time
+ * so a live language switch repaints the next refusal. The engine's own
+ * sentence, when the envelope carries one, still arrives in the engine's
+ * language and is never rewritten here.
  */
-export const JOB_CANCEL_NOT_FOUND_COPY =
-	"not cancelled — the provider no longer knows the job";
+export const jobCancelNotFoundCopy = (): string =>
+	t("ui.chat.run_controls.job.not_found");
 
 /** What a cancel answered: acknowledged, or the sentence to render where it was asked. */
 export type JobCancelOutcome = { ok: true } | { ok: false; detail: string };
@@ -138,6 +147,6 @@ export const refusalDetail = (error: unknown): string => {
 		error.status === 404 &&
 		error.message === DESKTOP_REFUSAL_PLACEHOLDER
 	)
-		return JOB_CANCEL_NOT_FOUND_COPY;
-	return userFacingMessage(error, "Could not cancel the job.");
+		return jobCancelNotFoundCopy();
+	return userFacingMessage(error, t("ui.chat.run_controls.job.cancel_failed"));
 };

@@ -27,7 +27,7 @@ import { build } from "esbuild";
  */
 
 const controlBase = process.env.S17D2_CONTROL_BASE;
-const CONTROL_MODEL = /\/wake-controls-model\.ts$/;
+const CONTROL_MODEL = /\/(wake|job)-controls-model\.ts$/;
 const RUN_DETAILS = "src/renderer/src/features/chat/components/run-details";
 
 const sourceOf = (path) =>
@@ -54,6 +54,8 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export * as wake from "./${RUN_DETAILS}/wake-controls-model";
+			export * as job from "./${RUN_DETAILS}/job-controls-model";
+			export { DESKTOP_REFUSAL_PLACEHOLDER, DesktopControlError } from "@shared/api/local-operator/desktop-api";
 			export { clearRegisteredCatalogues, registerCatalogue, setLocale, t } from "@shared/i18n";`,
 		resolveDir: process.cwd(),
 	},
@@ -68,16 +70,27 @@ const bundle = await build({
 	},
 	define: { "import.meta.env": "{}" },
 });
-const { wake, clearRegisteredCatalogues, registerCatalogue, setLocale, t } =
-	await import(
-		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-	);
+const {
+	wake,
+	job,
+	DESKTOP_REFUSAL_PLACEHOLDER,
+	DesktopControlError,
+	clearRegisteredCatalogues,
+	registerCatalogue,
+	setLocale,
+	t,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+);
 
 const NS = "ui.chat.run_controls.";
 
 /* The pre-key literals, verbatim from origin/main e2d980d217. */
 const ENGLISH = {
 	"job.no_conversation": [{}, "There is no conversation to cancel a job on."],
+	/* S17d-3: the job cancel's two refusal sentences, verbatim from a114b6d102. */
+	"job.cancel_failed": [{}, "Could not cancel the job."],
+	"job.not_found": [{}, "not cancelled — the provider no longer knows the job"],
 	"monitor.no_conversation": [
 		{},
 		"There is no conversation to cancel a monitor on.",
@@ -121,7 +134,7 @@ test("every run_controls key renders today's English byte for byte", () => {
 		Object.keys(ENGLISH)
 			.map((k) => NS + k)
 			.sort(),
-		"the namespace carries exactly the twelve S17d-2 keys",
+		"the namespace carries exactly the twelve S17d-2 keys and the two S17d-3 job keys",
 	);
 	for (const [key, [args, english]] of Object.entries(ENGLISH))
 		assert.equal(t(NS + key, args), english, key);
@@ -224,4 +237,59 @@ test("the job, monitor and wake hooks read their failure sentences from keys", (
 			);
 		}
 	}
+});
+
+/*
+ * S17d-3: the job cancel's refusal sentence. `refusalDetail` is what the pane
+ * body renders inside the confirmation card, so driving it with the transport's
+ * own error shapes is driving the surface's text. Two sentences, two paths:
+ * a placeholder-only 404 (the unknown-job class) speaks the frozen not_found
+ * phrase, and an error that is not authored copy falls to the generic fallback.
+ * An authored sentence (the engine's own words) must still win untouched.
+ */
+test("the job cancel's refusal sentences keep their English byte for byte", () => {
+	setLocale("en");
+	const bare = new DesktopControlError(404, DESKTOP_REFUSAL_PLACEHOLDER);
+	assert.equal(
+		job.refusalDetail(bare),
+		"not cancelled — the provider no longer knows the job",
+	);
+	assert.equal(job.jobCancelNotFoundCopy(), job.refusalDetail(bare));
+	assert.equal(
+		job.refusalDetail(new TypeError("fetch failed")),
+		"Could not cancel the job.",
+	);
+	assert.equal(
+		job.refusalDetail(
+			new DesktopControlError(409, "job j1 was not cancelled (status: done)"),
+		),
+		"job j1 was not cancelled (status: done)",
+	);
+});
+
+test("a registered locale reaches the job cancel's refusal sentences at call time", () => {
+	const probe = Object.fromEntries(
+		Object.keys(ENGLISH).map((k) => [NS + k, `FR[${k}]`]),
+	);
+	withLocale("fr", probe, () => {
+		assert.equal(
+			job.refusalDetail(
+				new DesktopControlError(404, DESKTOP_REFUSAL_PLACEHOLDER),
+			),
+			"FR[job.not_found]",
+		);
+		assert.equal(
+			job.refusalDetail(new TypeError("fetch failed")),
+			"FR[job.cancel_failed]",
+		);
+		// The engine's own sentence is never rewritten by the UI's locale.
+		assert.equal(
+			job.refusalDetail(new DesktopControlError(409, "engine words")),
+			"engine words",
+		);
+	});
+	assert.equal(
+		job.refusalDetail(new TypeError("fetch failed")),
+		"Could not cancel the job.",
+	);
 });

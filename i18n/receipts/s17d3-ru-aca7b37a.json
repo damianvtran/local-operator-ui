@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, of the 2 S17d-3 job-cancel keys (scope: ui.chat.run_controls.job.cancel_failed, ui.chat.run_controls.job.not_found; pre-existing keys out of scope)",
+  "locale": "ru",
+  "namespace": "ui.chat.run_controls",
+  "pr": 0,
+  "pr_note": "PR not yet opened (branch feat/i18n-s17d3-job-cancel)",
+  "date": "2026-11-14",
+  "head": "1e3b4a920165c787f2532d14735d9f4e81d8625e",
+  "instance": "s17d3-ru-aca7b37a",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "role": "independent translation auditor (team lopdev); not the translator (i18n-translator on anthropic/claude-sonnet-5-5), not the integrator",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session d35a086d2ac3, a different session, agent and model from the translator. Read-only in the worktree (git show / git diff / git grep / python3 hashing only); my only writes are these receipts in my own scratchpad. Judgement derived here from the English source, the sidecar and the shipped ru corpus; no MT or translation service used.",
+    "instance": "s17d3-ru-aca7b37a"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "binding": "Verified here at 1e3b4a920165: the target file is the committed blob (git show 1e3b4a920165c787f2532d14735d9f4e81d8625e:<path>, sha256 09f1613f0e51e757b9dccecac8968f340be4de6b4b3090c80259e767693ac700); vs the merged base a114b6d102 the file gains exactly 2 lines (+2/-0) and they are the two in-scope keys, so no pre-existing key changed. 14 keys, same order as English, no duplicates (object_pairs scan), TAB indent, one trailing newline, no BOM/CR/\\u escapes, both values NFC, no Cf (format/bidi) code points, no ICU braces (English has no placeholders; none introduced), neither value byte-identical to English. Rendering path read: job-controls-model.ts:80 jobCancelNotFoundCopy() = t(not_found) as the whole refusal sentence; :151 cancel_failed as userFacingMessage fallback. cancel_failed 'Не удалось отменить задание.' mirrors run_controls.monitor.cancel_failed 'Не удалось отменить мониторинг.'; задание = job as in run_details.jobs 'Задания', job_cancel.title 'Отменить это задание?', job.no_conversation. not_found 'не отменено — провайдер больше не знает об этом задании': neuter 'отменено' is correct both as the impersonal short participle and in agreement with the neuter задание, and echoes the status «Отменено» in run_details.job_cancel.body; провайдер = provider as in that body ('Рантайм просит провайдера'). 'знать об + prep.' is the idiomatic government. Spaced dash per Russian convention. Zero Latin. Length 1.12x / 1.06x.",
+  "scope": "ui.chat.run_controls for ru: the 2 S17d-3 keys (job.cancel_failed, job.not_found) at branch head 1e3b4a920165, read against English and the sidecar",
+  "revisions": {
+    "head": "1e3b4a920165c787f2532d14735d9f4e81d8625e"
+  },
+  "en_sha256": "7cf8524faf5ed9de2e191211f757c3b3e5af0c88e4d5b1fd27bc642decc50421",
+  "context_sha256": "3ad6c356fe463c1462a446f7a6d7ac0b1d7a61169b69f2354d8cf6ea12865a9e",
+  "target_sha256": "09f1613f0e51e757b9dccecac8968f340be4de6b4b3090c80259e767693ac700",
+  "sha256": {
+    "ru": "09f1613f0e51e757b9dccecac8968f340be4de6b4b3090c80259e767693ac700",
+    "en": "7cf8524faf5ed9de2e191211f757c3b3e5af0c88e4d5b1fd27bc642decc50421"
+  }
+}

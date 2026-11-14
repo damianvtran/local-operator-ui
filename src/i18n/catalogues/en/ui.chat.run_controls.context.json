@@ -6,6 +6,20 @@
 		"note": "Defensive copy: the run panel only lists background jobs off a conversation, so this appears only if a cancel is pressed with none open. 'Conversation' is the product's word for a chat session.",
 		"placeholders": {}
 	},
+	"ui.chat.run_controls.job.cancel_failed": {
+		"role": "fallback error sentence after a background job cancel failed and the backend gave no message",
+		"tone": "plain statement, sentence case, ends with a full stop",
+		"length": "One short sentence.",
+		"note": "Shown inside the job cancel confirmation in the run panel, under the question, in the danger colour. When the backend sends its own sentence that is shown instead, so this is only the generic fallback. A 'job' is a long-running background task (such as a video or music generation) that the assistant started; keep the same word the panel uses for its Jobs section.",
+		"placeholders": {}
+	},
+	"ui.chat.run_controls.job.not_found": {
+		"role": "refusal sentence shown inside the job cancel confirmation when the cancel was refused because the provider no longer knows the job",
+		"tone": "plain statement of what did NOT happen and why; deliberately lowercase first word and no final full stop, because the English is a fragment quoted from the engine's own wording map and is rendered as the whole sentence",
+		"length": "One short clause (about eight words).",
+		"note": "Fallback the interface supplies when the refusal arrived without the engine's own sentence (an unknown job). It says that nothing was cancelled because the provider that runs the job no longer has it, so the job is probably already finished or gone. Keep the structure 'not cancelled — <reason>'. Translators may follow the target language's sentence-case convention for a standalone message, but must keep the meaning: nothing was cancelled, the provider no longer knows the job. A 'provider' is the external service that generates the video or music (not the user's account).",
+		"placeholders": {}
+	},
 	"ui.chat.run_controls.monitor.no_conversation": {
 		"role": "error sentence shown where a monitor cancel was asked, when the panel has no conversation to send it to",
 		"tone": "plain statement, sentence case, ends with a full stop",
