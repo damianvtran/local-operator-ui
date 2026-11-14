@@ -47,15 +47,13 @@ import {
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { McpAuthDialog } from "./mcp-auth-dialog";
-import {
-	MCP_SETTINGS_ACTION_LABEL,
-	mcpServerSettingsRoute,
-} from "./mcp-failure";
+import { mcpServerSettingsRoute, mcpSettingsActionLabel } from "./mcp-failure";
 import {
 	MCP_CONTROL_WORD,
 	type McpServerRow,
 	mcpServersAreCold,
 	mcpTally,
+	mcpToolCount,
 	tallyBudget,
 	tallyFitsInline,
 } from "./run-detail-model";
@@ -282,7 +280,7 @@ const McpActionLine = ({
 					data-mcp-failure-action="settings"
 				>
 					<Link to={mcpServerSettingsRoute(row.name)}>
-						{MCP_SETTINGS_ACTION_LABEL}
+						{mcpSettingsActionLabel()}
 					</Link>
 				</Button>
 			</span>
@@ -436,11 +434,7 @@ const McpRow = ({
 	 */
 	const line = mcpRowLineGrammar(paneWidth, [
 		cold ? null : row.status,
-		row.toolCount === null
-			? null
-			: row.toolCount === 1
-				? "1 tool"
-				: `${row.toolCount} tools`,
+		row.toolCount === null ? null : mcpToolCount(row.toolCount),
 		row.scope ?? null,
 	]);
 	/*
@@ -545,7 +539,7 @@ const McpRow = ({
 						<span
 							className={cn("shrink-0 tabular-nums text-meta text-ink-dim")}
 						>
-							{row.toolCount === 1 ? "1 tool" : `${row.toolCount} tools`}
+							{mcpToolCount(row.toolCount)}
 						</span>
 					)}
 					{/*

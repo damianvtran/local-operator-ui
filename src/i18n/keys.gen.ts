@@ -6901,6 +6901,7 @@ export type MessageParams = {
 	"ui.chat.response_actions.copy": undefined;
 	"ui.chat.response_actions.label": undefined;
 	"ui.chat.response_actions.yours_label": undefined;
+	"ui.chat.run_details.checkpoint.turn_fallback": { turn: number };
 	"ui.chat.run_details.child.brief.show_less": undefined;
 	"ui.chat.run_details.child.brief.show_more": { count: number };
 	"ui.chat.run_details.child.result.preview": undefined;
@@ -6915,11 +6916,24 @@ export type MessageParams = {
 	"ui.chat.run_details.chip.todos_open": { count: number };
 	"ui.chat.run_details.chip.todos_resolved": undefined;
 	"ui.chat.run_details.close_label": undefined;
+	"ui.chat.run_details.job_cancel.body": { label: string };
+	"ui.chat.run_details.job_cancel.cancelling": undefined;
+	"ui.chat.run_details.job_cancel.confirm": undefined;
+	"ui.chat.run_details.job_cancel.title": undefined;
 	"ui.chat.run_details.job_cancel_aria": { label: string };
 	"ui.chat.run_details.jobs": undefined;
 	"ui.chat.run_details.keep": undefined;
 	"ui.chat.run_details.mcp.cancel": undefined;
 	"ui.chat.run_details.mcp.cold_label": undefined;
+	"ui.chat.run_details.mcp.connected_tally": {
+		total: number;
+		connected_display: string;
+		total_display: string;
+	};
+	"ui.chat.run_details.mcp.control.grant": undefined;
+	"ui.chat.run_details.mcp.control.key": undefined;
+	"ui.chat.run_details.mcp.control.reconnect": undefined;
+	"ui.chat.run_details.mcp.control.reload": undefined;
 	"ui.chat.run_details.mcp.credential_removed": undefined;
 	"ui.chat.run_details.mcp.credentials_in_settings": undefined;
 	"ui.chat.run_details.mcp.grant.cancelled": undefined;
@@ -6927,6 +6941,10 @@ export type MessageParams = {
 	"ui.chat.run_details.mcp.grant.running": undefined;
 	"ui.chat.run_details.mcp.refused": undefined;
 	"ui.chat.run_details.mcp.servers": undefined;
+	"ui.chat.run_details.mcp.tool_count": {
+		count: number;
+		count_display: string;
+	};
 	"ui.chat.run_details.mcp.try_again": undefined;
 	"ui.chat.run_details.mcp_auth.cancel_sign_in": undefined;
 	"ui.chat.run_details.mcp_auth.checking": undefined;
@@ -6947,15 +6965,49 @@ export type MessageParams = {
 	"ui.chat.run_details.mcp_auth.waiting": undefined;
 	"ui.chat.run_details.mcp_failure.busy": { lead: string };
 	"ui.chat.run_details.mcp_failure.cancel_lead": undefined;
+	"ui.chat.run_details.mcp_failure.lead.add": undefined;
+	"ui.chat.run_details.mcp_failure.lead.disconnect": undefined;
+	"ui.chat.run_details.mcp_failure.lead.grant": undefined;
+	"ui.chat.run_details.mcp_failure.lead.key": undefined;
+	"ui.chat.run_details.mcp_failure.lead.probe": undefined;
+	"ui.chat.run_details.mcp_failure.lead.reconnect": undefined;
+	"ui.chat.run_details.mcp_failure.lead.reload": undefined;
+	"ui.chat.run_details.mcp_failure.lead.remove": undefined;
+	"ui.chat.run_details.mcp_failure.lead.status": undefined;
+	"ui.chat.run_details.mcp_failure.lead.test": undefined;
 	"ui.chat.run_details.mcp_failure.refused": { lead: string };
 	"ui.chat.run_details.mcp_failure.session": { lead: string };
+	"ui.chat.run_details.mcp_failure.settings_action": undefined;
+	"ui.chat.run_details.mcp_failure.with_reason": {
+		lead: string;
+		reason: string;
+	};
 	"ui.chat.run_details.mcp_key.cancel": undefined;
+	"ui.chat.run_details.mcp_key.not_saved": { failed: string };
+	"ui.chat.run_details.mcp_key.not_saved_saved": {
+		failed: string;
+		saved: string;
+	};
 	"ui.chat.run_details.mcp_key.replace": undefined;
+	"ui.chat.run_details.mcp_key.replace_confirmation": undefined;
+	"ui.chat.run_details.mcp_key.replace_confirmation_saved": { saved: string };
 	"ui.chat.run_details.mcp_key.save": undefined;
+	"ui.chat.run_details.mcp_key.saved_not_connected": undefined;
 	"ui.chat.run_details.mcp_key.saved_note": undefined;
 	"ui.chat.run_details.mcp_key.saving": undefined;
 	"ui.chat.run_details.mcp_key.title_credentials": { server: string };
 	"ui.chat.run_details.mcp_key.title_key": { server: string };
+	"ui.chat.run_details.monitor.armed_count": {
+		count: number;
+		count_display: string;
+	};
+	"ui.chat.run_details.monitor.disabled": undefined;
+	"ui.chat.run_details.monitor.failed_count": {
+		count: number;
+		count_display: string;
+	};
+	"ui.chat.run_details.monitor.last_check": { when: string };
+	"ui.chat.run_details.monitor.waiting": undefined;
 	"ui.chat.run_details.monitor_cancel.confirm": undefined;
 	"ui.chat.run_details.monitor_cancel.keep": undefined;
 	"ui.chat.run_details.monitor_cancel.message": { name: string };
@@ -7000,13 +7052,20 @@ export type MessageParams = {
 		count: number;
 		count_display: string;
 	};
+	"ui.chat.run_details.wake.cadence_finished": { duration: string };
 	"ui.chat.run_details.wake.cadence_once": undefined;
+	"ui.chat.run_details.wake.cadence_remaining": {
+		remaining: number;
+		duration: string;
+		remaining_display: string;
+	};
 	"ui.chat.run_details.wake.cancel": undefined;
 	"ui.chat.run_details.wake.cancel_wake": undefined;
 	"ui.chat.run_details.wake.cancel_wake_due": { due: string };
 	"ui.chat.run_details.wake.cancel_wake_named": { head: string };
 	"ui.chat.run_details.wake.cancelled": undefined;
 	"ui.chat.run_details.wake.cancelling": undefined;
+	"ui.chat.run_details.wake.every": { duration: string };
 	"ui.chat.run_details.wake.managed_by": { name: string };
 	"ui.chat.run_details.wake.managed_note": { name: string };
 	"ui.chat.run_details.wake.more": { count: number; count_display: string };
