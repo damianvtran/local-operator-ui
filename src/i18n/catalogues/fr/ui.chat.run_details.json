@@ -143,5 +143,6 @@
 	"ui.chat.run_details.monitor.waiting": "en attente",
 	"ui.chat.run_details.monitor.last_check": "dernière vérification {when}",
 	"ui.chat.run_details.monitor.failed_count": "{count, plural, one {{count_display} échec} many {{count_display} d’échecs} other {{count_display} échecs}}",
-	"ui.chat.run_details.checkpoint.turn_fallback": "Tour {turn, number, ::group-off}"
+	"ui.chat.run_details.checkpoint.turn_fallback": "Tour {turn, number, ::group-off}",
+	"ui.chat.run_details.subagents.show_more": "Afficher {count, number, ::group-off} de plus"
 }

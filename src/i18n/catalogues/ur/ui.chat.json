@@ -207,5 +207,6 @@
 	"ui.chat.session_status.effort_level.high": "زیادہ",
 	"ui.chat.image_actions.actions": "تصویر کے اعمال",
 	"ui.chat.audio.position_label": "{label} کا مقام",
-	"ui.chat.audio.position_value": "{total} میں سے {current}"
+	"ui.chat.audio.position_value": "{total} میں سے {current}",
+	"ui.chat.code_block.default_header": "کوڈ"
 }

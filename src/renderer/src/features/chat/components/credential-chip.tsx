@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Key, TriangleAlert, X } from "lucide-react";
 import type { CSSProperties, FC } from "react";
@@ -140,6 +142,22 @@ export type CredentialChipProps = {
 };
 
 /**
+ * The chip's character count, as its own component so the chip (an expression
+ * body with no hook slot, and mounted in two registers) repaints the count when
+ * the interface language changes without being rewritten around a hook. The
+ * whole phrase is ONE message, "· {chars, plural, ...}", because the separator,
+ * the count's position and the unit's plural form all vary by language.
+ */
+const CredentialChipChars: FC<{ chars: number }> = ({ chars }) => {
+	useI18nLocale();
+	return (
+		<span className="shrink-0">
+			{t("ui.chat.credential_notice.chip_chars", { chars })}
+		</span>
+	);
+};
+
+/**
  * One credential reference as a chip: glyph, name, count, and optionally the
  * control that throws it away.
  *
@@ -223,7 +241,7 @@ export const CredentialChip: FC<CredentialChipProps> = ({
 			// designer looked at the delivered frame and did not ask for it to change,
 			// and re-grouping the items to tighten it would re-price D19 itself (it
 			// takes the backed chip's own 10.7px band to about 20px).
-			<span className="shrink-0">{`· ${chars} chars`}</span>
+			<CredentialChipChars chars={chars} />
 		)}
 		{onClear && (
 			<button

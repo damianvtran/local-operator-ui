@@ -65,5 +65,7 @@
 	"ui.agents.detail.empty.instructions": "尚无指令。",
 	"ui.agents.detail.action.create_copy": "创建副本",
 	"ui.agents.detail.action.creating": "正在创建……",
-	"ui.agents.detail.action.discard_new_agent": "放弃这个新智能体？"
+	"ui.agents.detail.action.discard_new_agent": "放弃这个新智能体？",
+	"ui.agents.detail.create.description_duplicate": "{name}的副本。这是一个独立的智能体：修改它不会影响原智能体。",
+	"ui.agents.detail.create.description_new": "可复用的指令，由智能体命令、子智能体和团队共享。对话各自独立。"
 }

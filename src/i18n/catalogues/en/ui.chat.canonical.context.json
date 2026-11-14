@@ -3460,5 +3460,26 @@
 		"length": "Two words; the label sits on the player's control line.",
 		"note": "A fallback only: a title sent by the producer is shown as sent.",
 		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.detail_section.error": {
+		"role": "small label above the result of a tool call that failed, in the expanded tool-call detail panel",
+		"tone": "single noun, sentence case, no trailing punctuation",
+		"length": "One word; a section label.",
+		"note": "Names the block of text the tool returned when it failed (the block itself is shown verbatim, untranslated). Same register as the 'Output' and 'Interrupted' labels in the same slot; only one of the three is ever shown.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.detail_section.interrupted": {
+		"role": "small label above the partial result of a tool call that was stopped before it finished, in the expanded tool-call detail panel",
+		"tone": "single past participle, sentence case, no trailing punctuation",
+		"length": "One word; a section label.",
+		"note": "The operator or the system stopped the call mid-run; what is shown below is whatever it had produced by then. Same slot as 'Output' and 'Error'; only one of the three is ever shown.",
+		"placeholders": {}
+	},
+	"ui.chat.canonical.tool_row.detail_section.output": {
+		"role": "small label above the result of a tool call that succeeded, in the expanded tool-call detail panel",
+		"tone": "single noun, sentence case, no trailing punctuation",
+		"length": "One word; a section label.",
+		"note": "Names the block of text the tool returned (the block itself is shown verbatim, untranslated). Same slot as 'Error' and 'Interrupted'; only one of the three is ever shown.",
+		"placeholders": {}
 	}
 }

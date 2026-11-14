@@ -23,5 +23,6 @@
 	"ui.chat.attachments.open_title": "Нажмите, чтобы открыть {name}",
 	"ui.chat.attachments.not_viewable": "Файл нельзя просмотреть: {name}",
 	"ui.chat.attachments.owner_unreachable": "не удалось получить с устройства, на котором он хранится.",
-	"ui.chat.attachments.retry_fetch": "Повторить"
+	"ui.chat.attachments.retry_fetch": "Повторить",
+	"ui.chat.attachments.not_viewable_detail": "{name} нельзя просмотреть (файл может быть неполным, удалённым или перемещённым)"
 }

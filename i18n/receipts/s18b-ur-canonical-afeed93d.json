@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, of the 3 S18b approval-paydown keys in this namespace (scope: ui.chat.canonical.tool_row.detail_section.error, ui.chat.canonical.tool_row.detail_section.interrupted, ui.chat.canonical.tool_row.detail_section.output; pre-existing keys out of scope)",
+  "locale": "ur",
+  "namespace": "ui.chat.canonical",
+  "pr": 0,
+  "pr_note": "PR not yet opened (branch feat/i18n-s18b-approval-paydown)",
+  "date": "2026-11-14",
+  "head": "3837df2f6cfe8f355556a1e7f7ffdfae8a129176",
+  "instance": "s18b-ur-canonical-afeed93d",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "role": "independent translation auditor (team lopdev); not the translator (i18n-translator on anthropic/claude-sonnet-5-5), not the integrator",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session 097e801c9a50: a different session, agent and model from the translator. Served model anthropic/claude-opus-5-5, as stated by this session's harness system prompt; no fallback. Read-only in the worktree (git show/diff and python3 hashing/unicode/ICU scans only). My only repo writes are these untracked receipts in i18n/receipts/. Judgement derived here from English, the sidecar and the shipped corpus; no MT or translation service used.",
+    "instance": "s18b-ur-canonical-afeed93d"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "binding": "Verified here at 3837df2f6cfe: target is the committed blob (git show 3837df2f6cfe8f355556a1e7f7ffdfae8a129176:src/i18n/catalogues/ur/ui.chat.canonical.json, sha256 dd3d9e49daaa8bd557e34f4dbee102c75ea281887bb2831e0fe269bafa3a9bf8). The worktree file is byte-identical to it. Diff a114b6d102..3837df2f6c: +3/-0 lines. Every changed line is an in-scope key, or the previous last key re-emitted with a trailing comma (value unchanged; checked by value comparison, no pre-existing value changed). JSON valid, no duplicate keys, TAB indent, one trailing newline, no BOM/CR/\\u escapes. ICU check (python brace-depth and argument scan; the repo's node validator was not run under the no-node constraint): braces balanced; argument names, types and the ::group-off skeletons byte-identical to English; all values NFC; no Cf characters. ui.chat.canonical.tool_row.detail_section.error = 'خرابی' (5/5 chars, 1.00x) ui.chat.canonical.tool_row.detail_section.interrupted = 'روکی گئی' (8/11 chars, 0.73x) ui.chat.canonical.tool_row.detail_section.output = 'آؤٹ پٹ' (6/6 chars, 1.00x) Terminology checked against shipped neighbours: ui.chat.error_block.heading='خرابی'; ui.chat.canonical.notice.interrupted='روکی گئی'; ui.chat.canonical.transcript.interrupted='روکی گئی'; ui.chat.transcript_copy.block.output='آؤٹ پٹ'; ui.chat.pickers.session_panel.output='آؤٹ پٹ' RTL: python unicodedata scan. The first strong character of every value is Arabic-script, except chip_chars, whose raw first strong is the ICU keyword. Once rendered it is '· N حرف/حروف', and its first strong is U+062D ARABIC LETTER HAH (AL). No bidi or format characters. Punctuation: ۔ U+06D4 and ، U+060C. No English fragment ships: the only Latin is ICU syntax and placeholders.",
+  "scope": "ui.chat.canonical for ur: 3 S18b key(s) (ui.chat.canonical.tool_row.detail_section.error, ui.chat.canonical.tool_row.detail_section.interrupted, ui.chat.canonical.tool_row.detail_section.output) at branch head 3837df2f6cfe, read against English (source commit 6210ce4d17) and the sidecar",
+  "revisions": {
+    "head": "3837df2f6cfe8f355556a1e7f7ffdfae8a129176"
+  },
+  "en_sha256": "cbbb90eadffcc9a6ff2d7ca70794b4d39fb33e4476f610ece0a06701c1d97e4b",
+  "context_sha256": "f589e147b11533c0587d412415eed1dcc6b360b9658484fde624116f020fdbff",
+  "target_sha256": "dd3d9e49daaa8bd557e34f4dbee102c75ea281887bb2831e0fe269bafa3a9bf8",
+  "sha256": {
+    "ur": "dd3d9e49daaa8bd557e34f4dbee102c75ea281887bb2831e0fe269bafa3a9bf8",
+    "en": "cbbb90eadffcc9a6ff2d7ca70794b4d39fb33e4476f610ece0a06701c1d97e4b"
+  }
+}
