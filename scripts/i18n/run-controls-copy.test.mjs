@@ -80,8 +80,8 @@ const {
 	setLocale,
 	t,
 } = await import(
-		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-	);
+	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+);
 
 const NS = "ui.chat.run_controls.";
 
@@ -273,7 +273,9 @@ test("a registered locale reaches the job cancel's refusal sentences at call tim
 	);
 	withLocale("fr", probe, () => {
 		assert.equal(
-			job.refusalDetail(new DesktopControlError(404, DESKTOP_REFUSAL_PLACEHOLDER)),
+			job.refusalDetail(
+				new DesktopControlError(404, DESKTOP_REFUSAL_PLACEHOLDER),
+			),
 			"FR[job.not_found]",
 		);
 		assert.equal(
