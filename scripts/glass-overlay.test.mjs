@@ -231,6 +231,8 @@ const DEFERRED_PANELS = {
 		"the `:` emoji suggestions over the Bridge composer: they floated on Tailwind's `shadow-lg` until 2026-11-06 (agent review round 1, R3) and took the one shadow, which is what makes them visible here - waiting on the same rendered look at the translucent ground",
 	"src/renderer/src/features/console/components/console-pane.tsx":
 		"the console's cleanup notice over the terminal: it carried `shadow-md` and a `border-control` until 2026-11-06, and its backdrop is terminal output rather than a column the app painted, so the floor's premise would need checking as well as looking",
+	"src/renderer/src/features/phone-pairing/pairing-popup.tsx":
+		"the phone-pairing card moved from `bg-surface` to `bg-elevated` in design round 3 (D1) so its tonal Close/Deny buttons keep a visible hover fill; it holds Approve/Deny controls whose hover ramp the translucent glass ground has not been rendered against, so it stays opaque until a design round looks at it on glass",
 };
 
 /* The module-level class-constant resolver lives in `jsx-class-constants.mjs`, shared

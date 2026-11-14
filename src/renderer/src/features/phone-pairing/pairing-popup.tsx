@@ -741,9 +741,15 @@ export const PairingPopupView: FC<PairingPopupViewProps> = ({
 			 * lets the forced-colors rule in styles/index.css restore an edge
 			 * where shadows are dropped. scripts/floating-surface-no-border.test.mjs
 			 * (O-1, O-8) enforces both.
+			 *
+			 * Design r3 D1: the card is bg-elevated, not bg-surface. The tonal
+			 * Close/Deny buttons hover to bg-surface, so on a bg-surface card a
+			 * hovered button's fill measured 1.00:1 and vanished. Floating
+			 * surfaces sit on bg-elevated anyway (precedent:
+			 * shared/components/common/update-notification.tsx).
 			 */
 			data-lo-floating=""
-			className="fixed right-4 bottom-4 z-50 flex max-h-[calc(100vh-2rem)] w-[min(380px,calc(100vw-2rem))] flex-col gap-3 rounded-lg bg-surface p-4 shadow-overlay"
+			className="fixed right-4 bottom-4 z-50 flex max-h-[calc(100vh-2rem)] w-[min(380px,calc(100vw-2rem))] flex-col gap-3 rounded-lg bg-elevated p-4 shadow-overlay"
 		>
 			<header className="flex shrink-0 items-start gap-2">
 				<Smartphone
