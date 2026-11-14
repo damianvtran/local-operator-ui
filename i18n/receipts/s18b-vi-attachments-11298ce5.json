@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, of the 1 S18b approval-paydown key in this namespace (scope: ui.chat.attachments.not_viewable_detail; pre-existing keys out of scope)",
+  "locale": "vi",
+  "namespace": "ui.chat.attachments",
+  "pr": 0,
+  "pr_note": "PR not yet opened (branch feat/i18n-s18b-approval-paydown)",
+  "date": "2026-11-14",
+  "head": "3837df2f6cfe8f355556a1e7f7ffdfae8a129176",
+  "instance": "s18b-vi-attachments-11298ce5",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "role": "independent translation auditor (team lopdev); not the translator (i18n-translator on anthropic/claude-sonnet-5-5), not the integrator",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session 097e801c9a50: a different session, agent and model from the translator. Served model anthropic/claude-opus-5-5, as stated by this session's harness system prompt; no fallback. Read-only in the worktree (git show/diff and python3 hashing/unicode/ICU scans only). My only repo writes are these untracked receipts in i18n/receipts/. Judgement derived here from English, the sidecar and the shipped corpus; no MT or translation service used.",
+    "instance": "s18b-vi-attachments-11298ce5"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "binding": "Verified here at 3837df2f6cfe: target is the committed blob (git show 3837df2f6cfe8f355556a1e7f7ffdfae8a129176:src/i18n/catalogues/vi/ui.chat.attachments.json, sha256 4c67499db2ca7d14c1fb918dccf6054758b2b0e43674d976623e05c15b5a769d). The worktree file is byte-identical to it. Diff a114b6d102..3837df2f6c: +2/-1 lines. Every changed line is an in-scope key, or the previous last key re-emitted with a trailing comma (value unchanged; checked by value comparison, no pre-existing value changed). JSON valid, no duplicate keys, TAB indent, one trailing newline, no BOM/CR/\\u escapes. ICU check (python brace-depth and argument scan; the repo's node validator was not run under the no-node constraint): braces balanced; argument names, types and the ::group-off skeletons byte-identical to English; all values NFC; no Cf characters. ui.chat.attachments.not_viewable_detail = 'Không xem được {name} (tệp có thể chưa đầy đủ, đã bị xóa hoặc di chuyển)' (72/66 chars, 1.09x) Terminology checked against shipped neighbours: ui.chat.attachments.not_viewable='Không xem được tệp: {name}' No English fragment ships: the only Latin is ICU syntax and placeholders.",
+  "scope": "ui.chat.attachments for vi: 1 S18b key(s) (ui.chat.attachments.not_viewable_detail) at branch head 3837df2f6cfe, read against English (source commit 6210ce4d17) and the sidecar",
+  "revisions": {
+    "head": "3837df2f6cfe8f355556a1e7f7ffdfae8a129176"
+  },
+  "en_sha256": "69f31f3ccfd07e5c02838509aeb08cfdfd9a50bd606893add287ec2f614d7a73",
+  "context_sha256": "0fa08be3af701edcd69a050ac5ebc42d6b05d1404eb7763cd6dba557385f79da",
+  "target_sha256": "4c67499db2ca7d14c1fb918dccf6054758b2b0e43674d976623e05c15b5a769d",
+  "sha256": {
+    "vi": "4c67499db2ca7d14c1fb918dccf6054758b2b0e43674d976623e05c15b5a769d",
+    "en": "69f31f3ccfd07e5c02838509aeb08cfdfd9a50bd606893add287ec2f614d7a73"
+  }
+}

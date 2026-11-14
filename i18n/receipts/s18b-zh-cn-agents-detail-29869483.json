@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, of the 2 S18b approval-paydown keys in this namespace (scope: ui.agents.detail.create.description_duplicate, ui.agents.detail.create.description_new; pre-existing keys out of scope)",
+  "locale": "zh-CN",
+  "namespace": "ui.agents.detail",
+  "pr": 0,
+  "pr_note": "PR not yet opened (branch feat/i18n-s18b-approval-paydown)",
+  "date": "2026-11-14",
+  "head": "3837df2f6cfe8f355556a1e7f7ffdfae8a129176",
+  "instance": "s18b-zh-cn-agents-detail-29869483",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "role": "independent translation auditor (team lopdev); not the translator (i18n-translator on anthropic/claude-sonnet-5-5), not the integrator",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session 097e801c9a50: a different session, agent and model from the translator. Served model anthropic/claude-opus-5-5, as stated by this session's harness system prompt; no fallback. Read-only in the worktree (git show/diff and python3 hashing/unicode/ICU scans only). My only repo writes are these untracked receipts in i18n/receipts/. Judgement derived here from English, the sidecar and the shipped corpus; no MT or translation service used.",
+    "instance": "s18b-zh-cn-agents-detail-29869483"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "binding": "Verified here at 3837df2f6cfe: target is the committed blob (git show 3837df2f6cfe8f355556a1e7f7ffdfae8a129176:src/i18n/catalogues/zh-CN/ui.agents.detail.json, sha256 a5fe21b9d65e3c7361e7590145237e2ba371c22cda4963a0f1c173e60510a9f4). The worktree file is byte-identical to it. Diff a114b6d102..3837df2f6c: +3/-1 lines. Every changed line is an in-scope key, or the previous last key re-emitted with a trailing comma (value unchanged; checked by value comparison, no pre-existing value changed). JSON valid, no duplicate keys, TAB indent, one trailing newline, no BOM/CR/\\u escapes. ICU check (python brace-depth and argument scan; the repo's node validator was not run under the no-node constraint): braces balanced; argument names, types and the ::group-off skeletons byte-identical to English; all values NFC; no Cf characters. ui.agents.detail.create.description_duplicate = '{name}的副本。这是一个独立的智能体：修改它不会影响原智能体。' (33/83 chars, 0.40x) ui.agents.detail.create.description_new = '可复用的指令，由智能体命令、子智能体和团队共享。对话各自独立。' (31/89 chars, 0.35x) Terminology checked against shipped neighbours: ui.agents.detail.action.duplicate='复制为新智能体'; ui.agents.detail.section.instructions='指令'; ui.chat.run_details.subagents.title='子智能体'; ui.hub.pages.tab.teams='团队'; ui.agents.detail.action.new_chat='新建对话'; ui.chat.sidebar.nav.chats='对话' Full-width punctuation (，。：（）). Placeholders abut CJK with no added spaces, matching shipped ui.chat.attachments.open_named '打开{name}'. No English fragment ships: the only Latin is ICU syntax and placeholders.",
+  "scope": "ui.agents.detail for zh-CN: 2 S18b key(s) (ui.agents.detail.create.description_duplicate, ui.agents.detail.create.description_new) at branch head 3837df2f6cfe, read against English (source commit 6210ce4d17) and the sidecar",
+  "revisions": {
+    "head": "3837df2f6cfe8f355556a1e7f7ffdfae8a129176"
+  },
+  "en_sha256": "cd9956406028908098832a946b3e324159ff69da2a2986f505211d44e0933178",
+  "context_sha256": "866568f699c460e728055c30d604290668a29da49e1b1485657214e9a7fc710a",
+  "target_sha256": "a5fe21b9d65e3c7361e7590145237e2ba371c22cda4963a0f1c173e60510a9f4",
+  "sha256": {
+    "zh-CN": "a5fe21b9d65e3c7361e7590145237e2ba371c22cda4963a0f1c173e60510a9f4",
+    "en": "cd9956406028908098832a946b3e324159ff69da2a2986f505211d44e0933178"
+  }
+}
