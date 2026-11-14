@@ -4678,13 +4678,16 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z.object({ op: z.literal("approvals.approve"), approvalId }).strict(),
 	z.object({ op: z.literal("approvals.deny"), approvalId }).strict(),
 	// Profile writes echo the reviewed commitments, never a model-authored command.
+	// `pair_phone` (`features.phone_pairing`) signs a phone pairing the person has
+	// already acknowledged through `approvals.pairAck` below; the server refuses an
+	// un-acked pairing before its signer runs (`pair_op.require_acked`).
 	...(["approvals.approveOperation", "approvals.applyOperation"] as const).map(
 		(op) =>
 			z
 				.object({
 					op: z.literal(op),
 					approvalId,
-					operation: z.literal("profile_save"),
+					operation: z.enum(["profile_save", "pair_phone"]),
 					requestDigest: z.string().regex(CREDENTIAL_APPROVAL_DIGEST),
 					disclosureDigest: z.string().regex(CREDENTIAL_APPROVAL_DIGEST),
 				})
@@ -4709,6 +4712,66 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	 * `approveCredential` is review -> sign -> apply in one call;
 	 * `applyCredential` is the retry of a signed card whose apply did not finish.
 	 */
+	/*
+	 * PHONE PAIRING (`features.phone_pairing`, core pairing design v2 §2). The
+	 * person's decision on the pairing card BEFORE any signer: both digests the card
+	 * was drawn from, echoed verbatim, plus the typed `code` in code mode. Omitting
+	 * `code` is the confirm-mode "Codes match" press, which core accepts only on an
+	 * edge-attested request (else 409 `pair_code_required`). Splitting the decision
+	 * from the signature is core's: a wrong code burns a strike, never a Touch ID
+	 * gesture. `code` is bounded like the core model (`max_length=32`); core
+	 * normalises spacing and refuses non-digits without a strike.
+	 */
+	z
+		.object({
+			op: z.literal("approvals.pairAck"),
+			approvalId,
+			requestDigest: z.string().regex(CREDENTIAL_APPROVAL_DIGEST),
+			disclosureDigest: z.string().regex(CREDENTIAL_APPROVAL_DIGEST),
+			code: z.string().min(1).max(32).optional(),
+		})
+		.strict(),
+	/*
+	 * Settings → Phone access → Paired phones. A device id is what core derives
+	 * (lowercase hex) and accepts (`[A-Za-z0-9]{1,64}`, else 422 `bad_device_id`);
+	 * the pattern here is this client's own check before the id becomes a path
+	 * segment. `remove` is idempotent on core's side: a second call on a
+	 * `removing` row finishes it.
+	 */
+	z
+		.object({ op: z.literal("devices.list") })
+		.strict(),
+	z
+		.object({
+			op: z.literal("devices.remove"),
+			deviceId: z.string().regex(/^[A-Za-z0-9]{1,64}$/),
+		})
+		.strict(),
+	/*
+	 * Turn on phone approvals (`features.operator_setup`, core design v2 §6). The
+	 * POST body is closed and empty on core's side: the click is the whole request,
+	 * and the OS admin prompt is the proof, so nothing here can carry a password.
+	 */
+	z
+		.object({ op: z.literal("operator.setup.read") })
+		.strict(),
+	z.object({ op: z.literal("operator.setup.run") }).strict(),
+	/*
+	 * SHOW PHONE PASSWORD (`features.mobile_password_read`, local-operator #3963,
+	 * `routes/desktop_mobile_password.py`): the phone portal password a person who
+	 * runs their own tunnel signs the phone in with - the value `lop mobile
+	 * password` prints - for Settings → Phone access → "Using your own tunnel?".
+	 * No arguments. The renderer sends it ONLY on the person's explicit click
+	 * (never prefetched, never polled, never cached in a query), and neither main
+	 * nor the renderer logs the reply: the transport writes nothing about bodies
+	 * (`desktop-transport.ts`), and `scripts/phone-pairing.test.mjs` pins that
+	 * with a console capture across a 200 read. Core answers 404
+	 * `{detail: {code: "mobile_password_unset"}}` when none is set, with
+	 * `Cache-Control: no-store`.
+	 */
+	z
+		.object({ op: z.literal("mobile.password") })
+		.strict(),
 	z
 		.object({
 			op: z.literal("approvals.approveCredential"),
@@ -7433,6 +7496,21 @@ export function desktopRequestDeadlineMs(
 	// applies, so it waits on the same human gesture. Its retry never signs.
 	if (op === "approvals.approve" || op === "approvals.approveCredential")
 		return APPROVAL_APPROVE_DEADLINE_MS;
+	/*
+	 * A PHONE PAIRING'S SIGNATURE, a phone's removal and turning approvals on all
+	 * wait on a person at an OS prompt (Touch ID, then the admin prompt that admits
+	 * or revokes the phone), so they get the gesture budget, not the control one.
+	 * Request-keyed for the pairing: `approveOperation` for `profile_save` keeps the
+	 * budget it always had.
+	 */
+	if (
+		typeof request !== "string" &&
+		request.op === "approvals.approveOperation" &&
+		request.operation === "pair_phone"
+	)
+		return APPROVAL_APPROVE_DEADLINE_MS;
+	if (op === "devices.remove" || op === "operator.setup.run")
+		return APPROVAL_APPROVE_DEADLINE_MS;
 	if (op === "tunnel.setup.run") return PHONE_SETUP_RUN_DEADLINE_MS;
 	if (op === "tunnel.setup.plan") return PHONE_SETUP_PLAN_DEADLINE_MS;
 	const hub = hubWriteDeadlineMs(op);
@@ -7618,6 +7696,10 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	// is deliberately absent so a run that ran out of time gets the cautious sentence.
 	"tunnel.setup.plan",
 	"tunnel.setup.read",
+	"devices.list",
+	"operator.setup.read",
+	// Reads the phone password and changes nothing; a timeout gets the read sentence.
+	"mobile.password",
 	"usage.get",
 ]);
 
@@ -9026,6 +9108,34 @@ export function desktopEndpoint(request: DesktopRequest): {
 					request_digest: request.requestDigest,
 					disclosure_digest: request.disclosureDigest,
 				},
+			};
+		case "approvals.pairAck":
+			return {
+				path: `/v1/desktop/approvals/${encodeURIComponent(request.approvalId)}/pair-ack`,
+				method: "POST",
+				body: {
+					request_digest: request.requestDigest,
+					disclosure_digest: request.disclosureDigest,
+					// Omitted, never null: the confirm-mode press is the ABSENCE of a code.
+					...(request.code !== undefined ? { code: request.code } : {}),
+				},
+			};
+		case "devices.list":
+			return { path: "/v1/desktop/devices", method: "GET" };
+		case "devices.remove":
+			return {
+				path: `/v1/desktop/devices/${encodeURIComponent(request.deviceId)}`,
+				method: "DELETE",
+			};
+		case "mobile.password":
+			return { path: "/v1/desktop/mobile/password", method: "GET" };
+		case "operator.setup.read":
+			return { path: "/v1/desktop/operator/setup", method: "GET" };
+		case "operator.setup.run":
+			return {
+				path: "/v1/desktop/operator/setup",
+				method: "POST",
+				body: {},
 			};
 		case "approvals.approveCredential":
 		case "approvals.applyCredential":

@@ -2319,6 +2319,13 @@ export type DesktopFeedFrame =
 				 * Absent on older cores: unknown status is never an unread mark. */
 				attention_status?: Record<string, { code: string; revision: number }>;
 				approvals_pending?: boolean | null;
+				/**
+				 * The one live phone-pairing approval id from the same read
+				 * (`features.phone_pairing`), so a window that connects mid-request can
+				 * raise the pairing card without waiting for a change frame. Null when
+				 * none is live or the read failed; absent on older cores.
+				 */
+				approvals_pair_request?: string | null;
 				/** Null means the inbox store was unreadable, not verified empty. */
 				notifications?: {
 					revision: number;
@@ -2445,7 +2452,13 @@ export type DesktopFeedFrame =
 			epoch: string;
 			seq: number;
 			type: "approvals";
-			payload: { pending: boolean };
+			/**
+			 * `pair_request`: the live `pair_phone` approval id, or null
+			 * (`features.phone_pairing`). Published when EITHER level changes, so a
+			 * pairing withdrawn or decided elsewhere arrives as a frame. Absent on
+			 * older cores, which never file a pairing card.
+			 */
+			payload: { pending: boolean; pair_request?: string | null };
 	  }
 	/**
 	 * THE NOTIFICATIONS REEL MOVED (notifications contract § 5.3): an item was

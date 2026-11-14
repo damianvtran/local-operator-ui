@@ -8,6 +8,7 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
  * tour tag belong to the section wrapper the settings page renders around this.
  */
 
+import { PhonePairingSettings } from "@features/phone-pairing/paired-phones-section";
 import { PhoneAccessBlock } from "@features/providers/phone-access-block";
 import { subscribeUrlFor } from "@features/team-bridge-trial/team-bridge-trial-model";
 import type { AccountVerification } from "@shared/api/radient";
@@ -181,6 +182,14 @@ export const RadientAccountSection: FC<RadientAccountSectionProps> = ({
 						searchRow="radient.phone-access"
 					/>
 				</div>
+
+				{/*
+				 * Turn on phone approvals, then the phones paired by approval (pairing
+				 * design v2 §4.2). Beside the block above because it is the same
+				 * subject - what a phone can do with this computer - and absent (no
+				 * element, no spacing, no request) unless the backend advertises it.
+				 */}
+				<PhonePairingSettings className="mt-6" />
 
 				{/*
 				 * THE ONE PLACE THE TEAM PLAN IS DESCRIBED OUTSIDE A GATE (onboarding
