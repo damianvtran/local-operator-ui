@@ -407,8 +407,9 @@ resolution may not do, and a green head here is still perishable: a 19-35 minute
 CI wait against a 32-minute merge cadence means it is routinely superseded
 before it can be used. If you need the window, ask the
 current release-window owner to hold merges for one CI cycle - that role exists
-only while a `chore(release): claim release window` PR is open, so if no window is
-claimed, say so in the fold's own lane and take it: announce the hold where lanes
+only while a claim PR from a `release-next*` branch is open (find it with the
+branch lookup in step 1 of the release procedure, not a title search), so if no
+window is claimed, say so in the fold's own lane and take it: announce the hold where lanes
 read, then fold, push and merge. What the one-at-a-time window was buying is now
 bought by the retirement itself: the churn that made a green head expire was a
 stored hash of a tree the file does not own, and it is gone.
@@ -2431,12 +2432,22 @@ recording a stop), and two sessions that both look in the same minute each see
 out-of-queue releases in one window. A pull request is observable to every session
 through the forge, so the claim PR is the lock. In order:
 
-1. **Look for the lock.** `gh pr list --search '"chore(release)" in:title'
-   --state open`. An open claim/bump PR means the window is owned: its body names
-   the owning session's pid, so send that session your PR number, merge SHA and
-   `Release:` line and let it aggregate. Do not start a second release. (Quote the
-   phrase: `gh` passes it to GitHub, which reads bare parentheses as syntax and
-   returns nothing.)
+1. **Look for the lock — by branch, not by title.**
+   ```bash
+   gh pr list --state open --limit 500 --json number,title,headRefName,createdAt \
+     --jq '.[] | select(.headRefName | startswith("release-next") or startswith("release/claim"))'
+   ```
+   ANY line of output means the window has an owner — claim or bump PR alike: its
+   body names the owning session's pid, so send that session your PR number, merge
+   SHA and `Release:` line and let it aggregate. Do not start a second release.
+   Why not a title search: the claim PR is a draft titled `chore(release): claim
+   release window`, and a `--search` on `chore(release)` matches it only when the
+   phrase is quoted exactly right — unquoted, GitHub reads the parentheses as
+   syntax and returns nothing, which reads as "no owner" (measured 2026-11-14:
+   `chore(release)` and `chore(release) in:title` returned nothing while claim PR
+   #1908 was open). Sessions that searched titles nearly claimed the windows #1908
+   and #1878 already held. The branch name is the lock; `--limit 500` because
+   `gh pr list` stops at 30 by default.
 2. **Take the lock by opening the claim PR** — the owner's *first* act, before
    collecting anything (step 0 of the procedure below). It starts as one empty
    commit titled `chore(release): claim release window`, opened as a draft PR whose
@@ -2483,7 +2494,8 @@ one that ships the wrong tree.
 #    `release-next`, opened as a DRAFT PR; step 2 amends that same commit into the
 #    version change and retitles this same PR, so the lock's number never moves.
 #    Push the branch and open the PR only after step 1 of *The window, and the
-#    release owner's procedure* has found no open chore(release) PR.
+#    release owner's procedure* has found no open release-next*/release/claim*
+#    PR (the branch lookup, not a title search).
 # In-repo and at a STABLE path, never mktemp -d: eight $TMPDIR release cuts were
 # stranded after their releases. No `trap` and no `$$`: this recipe spans many
 # separate shell invocations (claim, edit, review round, merge, publish), so an
