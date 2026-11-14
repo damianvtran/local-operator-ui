@@ -50,16 +50,6 @@
 			"reason": "data-object copy properties hold sentences that reach the screen without ever passing an attribute, so no earlier slice could see them. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
 		},
 		{
-			"file": "src/renderer/src/features/chat/canonical/supplement-file-actions.tsx",
-			"ids": [
-				"jsx-child-expression | Copied",
-				"jsx-child-expression | Copy file path"
-			],
-			"owner": "the i18n renderer-keying lane",
-			"payoff": "2027-01-31",
-			"reason": "JSX child expressions render copy inside braces, where `JsxText` cannot reach. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
-		},
-		{
 			"file": "src/renderer/src/features/chat/components/credential-chip.tsx",
 			"ids": ["jsx-child-expression | · ${…} chars"],
 			"owner": "the i18n renderer-keying lane",
