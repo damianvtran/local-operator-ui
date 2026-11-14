@@ -1127,6 +1127,10 @@ const CHAT_URL_BUILDERS = {
 		count: 1,
 		why: "the Projects detail's linked-session row, which opens the conversation a project links to - the Schedules row's own case, one surface over: the session the row names may never have been opened in this window, so the row that names it has to be able to reach it",
 	},
+	"src/renderer/src/features/agents/components/profile-proposal-panel.tsx": {
+		count: 1,
+		why: "the Agents proposal card's own 'Open conversation' link to the session that filed the proposal - the Projects and Schedules rows' case: the filing session may never have been opened in this window, so the card that names it has to be able to reach it",
+	},
 };
 
 /** The files that commit a switch, and why each is allowed to. */

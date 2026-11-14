@@ -63,6 +63,45 @@ def turn_shape(messages):
     inference as run 42727770460 did."""
     return [(text.split() or [''])[0][:32] for text in current_turn_user_texts(messages)]
 
+# Q-1 (local-operator-ui#1893, post-release QA on v0.55.0): a real agent reads
+# guide://music-generation and a tool doc or two BEFORE it calls generate_music,
+# and in that shape the desktop folded the generating card into a closed
+# "3 files · 1 generate_music" action group. A command may therefore carry
+# `preface`: read-type calls the scripted model makes FIRST, in one assistant
+# message, so the music call lands as the fourth action of the turn exactly as
+# in the field. Internal URLs only (guide://, tool://): they resolve inside any
+# Core with no fixture files and no filesystem reach outside the owned root.
+#
+# The continuation request after the reads carries no marker in its tail (the
+# tail is the read RESULTS, role `tool`), so it is authorised instead by those
+# results answering THIS command's preface ids, which embed the command id:
+# a job follow-up turn's tail is a user row, never these results.
+def preface_call_ids(command):
+    return [command['id'] + '-read-' + str(n) for n in range(len(command.get('preface') or ()))]
+
+
+def tail_tool_result_ids(messages):
+    """tool_call_id of each `tool` row after the last assistant message."""
+    ids = []
+    for message in reversed(list(messages or ())):
+        role = getattr(message, 'role', None)
+        if role == 'assistant':
+            break
+        if role == 'tool':
+            ids.append(getattr(message, 'tool_call_id', None))
+    return ids[::-1]
+
+
+def preface_step(command, messages):
+    """What the prompted turn emits next: 'preface' (the reads), 'tool' (the
+    command's own call), or None when this request is not that turn's."""
+    expected = preface_call_ids(command)
+    if expected and set(expected) <= set(tail_tool_result_ids(messages)):
+        return 'tool'
+    if command['id'] in prompted_command_ids(messages):
+        return 'preface' if expected else 'tool'
+    return None
+
 scope = os.environ.get('MUSIC_QA_ROOT')
 if scope:
     root = Path(scope).resolve()
@@ -101,7 +140,8 @@ if scope:
                      command_id=command.get('id') if command else None)
                 if command and command['id'] not in self.emitted:
                     marked = prompted_command_ids(request.messages)
-                    if command['id'] not in marked:
+                    step = preface_step(command, request.messages)
+                    if step is None:
                         # Job follow-up / any turn the harness did not prompt
                         # for THIS command: answer text, leave the command for
                         # the harness's own prompted turn.
@@ -120,6 +160,20 @@ if scope:
                         note('auxiliary_call_no_requested_tool', tool=name)
                         yield StreamTextDelta(delta='Owned synthetic session')
                         yield StreamEndEvent(stop_reason='stop')
+                        return
+                    if step == 'preface':
+                        # Not `tool_emitted`: command_sequencing counts only the
+                        # command's own call, so the preface never consumes it.
+                        if 'read' not in tool_names:
+                            raise RuntimeError('QA preface needs the read tool registered')
+                        ids = preface_call_ids(command)
+                        for index, (call_id, url) in enumerate(zip(ids, command['preface'])):
+                            if not str(url).startswith(('guide://', 'tool://')):
+                                raise RuntimeError('QA preface reads internal URLs only')
+                            yield StreamToolCallDelta(index=index, id=call_id, name='read',
+                                                      argument_delta=json.dumps({'path': url}))
+                        note('preface_emitted', call_id=command['id'], reads=ids)
+                        yield StreamEndEvent(stop_reason='toolUse')
                         return
                     self.emitted.add(command['id'])
                     note('tool_emitted', tool=name, call_id=command['id'])

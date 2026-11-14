@@ -1,0 +1,38 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "deepseek/deepseek-flash",
+	"instance": "2d5628992cf1",
+	"status": "passed",
+	"namespace": "ui.chat.canonical",
+	"sha256": {
+		"hi": "f403a8b1941e366197ddb17393e068847d47ba5ef42f670eb3c6bf26f704943c",
+		"en": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45"
+	},
+	"findings": [
+		{
+			"severity": "MINOR",
+			"key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+			"note": "Term drift on 'rate limit': this key uses दर सीमा (as does ui.code_review) while ui.chat.json uses रेट सीमा and ui.chat.usage_reset.json uses दर-सीमा. No change to these bytes; align the other namespaces."
+		},
+		{
+			"severity": "NIT",
+			"key": "ui.chat.canonical.temporary_deleted.back",
+			"note": "EN plural 'chats' rendered as unmarked singular चैट and destination takes पर; optional: चैट सूची में वापस जाएँ."
+		}
+	],
+	"scope": {
+		"keys_read": 16,
+		"set_A_1874": 4,
+		"set_B_1884": 12,
+		"merge_commit": "759530dba089052f53c4c28da12c9c351cf6c1b4",
+		"note": "delta audit of the 16 landed keys; 467 pre-existing keys carried, not re-derived"
+	},
+	"severity_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 1,
+		"nit": 1
+	},
+	"verdict": "PASS",
+	"date": "2026-11-13"
+}

@@ -1,0 +1,98 @@
+{
+  "auditor": "reviewer",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "68a3f14dde44-tc-hi-r2",
+  "date": "2026-11-12",
+  "locale": "hi",
+  "independence": "Independent of the translators (coder sessions); did not read or run anything from sessions 2d1500d56d0e or 506f24a144fa or any other session scratchpad. Audit from this session's own reading.",
+  "references": {
+    "glossary": "damianvtran/local-operator@5d3db79f6e17 i18n/glossary.md",
+    "style_guide": "damianvtran/local-operator@5d3db79f6e17 i18n/style-guides/hi.md",
+    "cross_surface": "core tui.app.temporary_hold_* at the same core sha"
+  },
+  "repo": "damianvtran/local-operator-ui",
+  "pr": 1874,
+  "head": "9cfd4cd34",
+  "scope": "All 34 keys this PR adds per namespace read in full against en value + en .context.json, glossary and locale style guide; whole files mechanically checked (key parity, ICU argument names, plural categories, typography, NFC/bidi, maxCells on rendered text). Round-2 re-read of hi/ui.chat.sidebar_view on the 9cfd4cd34 bytes: all 13 added keys re-read; the diff 8b2de66ae..9cfd4cd34 changes only temporary.hold.running.",
+  "namespaces": {
+    "ui.chat.canonical": {
+      "status": "passed",
+      "sha256": {
+        "en": "8ff690628996934a90145dbd99d99e977376215a98eaa5419cafbb30670bffce",
+        "hi": "02d708170f525a14d7b22d196438b08c61c2d59e51bb803424848ff091bb48ee"
+      },
+      "findings": []
+    },
+    "ui.chat.composer": {
+      "status": "passed",
+      "sha256": {
+        "en": "a90cc99706b0a4c0958323aa0d152490e1e0518b7c4f8953ade5e6785b5fe8fd",
+        "hi": "818fe2d20ca91f416b97d042a93baa1f71a8d089fc0e18109369f54542f90bc3"
+      },
+      "findings": []
+    },
+    "ui.chat.dialogs": {
+      "status": "passed",
+      "sha256": {
+        "en": "fb527224aa77c898c3a154b05e8265f3db5c81d1789ec9b12f4cdec72f668f25",
+        "hi": "716750212a1ddf59d929367de69aa4e136a9763e78aebf16ad5dd637d5ca3695"
+      },
+      "findings": []
+    },
+    "ui.chat.header": {
+      "status": "passed",
+      "sha256": {
+        "en": "52920afe9253986f97977259ef09c46db652279ee5b383381401ac28d70055bd",
+        "hi": "5e07fd9f8b798d35f6844d278c898931fda2f4f6c9f3ffe2c1c6abe13b65b155"
+      },
+      "findings": []
+    },
+    "ui.chat.header_menu": {
+      "status": "passed",
+      "sha256": {
+        "en": "ff39f4ea0aa359910328c05023ea21e39caf2e2995bfec2e6f2e24317a26ac68",
+        "hi": "e6025f861dddb84d5c572945b11b6c15fa3db27d4dc3fb4871fc3a3a40f4a863"
+      },
+      "findings": []
+    },
+    "ui.chat.sidebar_view": {
+      "status": "passed",
+      "sha256": {
+        "en": "82bad181593074ff90e65c720e30e13a02b8ca4bf6fc0eec32dc06392c1371a6",
+        "hi": "edb6855b84e4fd87b53cbd3530d5f87e1148af8e82c3916c5d113d13cfc97ed5"
+      },
+      "findings": [],
+      "resolved": [
+        {
+          "id": "M1",
+          "severity": "MAJOR",
+          "key": "ui.chat.sidebar_view.temporary.hold.running",
+          "note": "'चलने तक रखी गई' reads 'kept until it runs' (X-ने तक = until X), the opposite of en 'Kept while it runs'. The en context requires one wording across desktop, TUI and relay mirroring core tui.app.temporary_hold_running, which core #3832 round-1 remediation (eaff8c7a9) changed from this exact wording to 'चलते समय रखी गई'.",
+          "replacement": "चलते समय रखी गई",
+          "disposition": "resolved in 9cfd4cd34: value is now 'चलते समय रखी गई' ('kept while it runs'), byte-identical to core tui.app.temporary_hold_running at damianvtran/local-operator@5d3db79f6e17"
+        }
+      ]
+    },
+    "ui.command_palette": {
+      "status": "passed",
+      "sha256": {
+        "en": "41a633c3a7006733c63e0beb15b1f0f4a867f329a2bf90bd3f6851ed225c1afb",
+        "hi": "a04082939a8d0614d81dd7e1dfe53234353151bc960a13da340d4950d9c04db0"
+      },
+      "findings": []
+    },
+    "ui.settings.shortcuts": {
+      "status": "passed",
+      "sha256": {
+        "en": "1dd7c82fb3ccd6d9d4ae7984b1b7570ca3dbff9d1343c981b0dfa2411443d0b1",
+        "hi": "7875d00f07e8f5f8e309c84b051bd503adc39a77771ff478de9719b7fd99aead"
+      },
+      "findings": []
+    }
+  },
+  "supersedes": {
+    "instance": "68a3f14dde44-tc-hi",
+    "sha256": "de91b8d506c8a5c2beab2fa8608c8d54c1f57c94d9b399f524f597711a6a84c1",
+    "why": "round-3 FAIL on hi/ui.chat.sidebar_view (M1) at 8b2de66ae; re-audited on the fixed bytes at 9cfd4cd34"
+  }
+}

@@ -105,9 +105,10 @@ import {
 	type NotificationsTarget,
 	type NotificationsVerb,
 	applyConfirmedWrite,
-	notificationKeys,
+	prefetchNotificationDetail,
 	previewNotificationSelection,
 	readSessionDismissCounts,
+	sessionDismissCountsFromFacts,
 	tokensOf,
 	useNotificationBulkState,
 	useNotificationDetail,
@@ -136,7 +137,13 @@ import {
 	scopeCountSignature,
 	sessionScopeCountsEnabled,
 } from "../notifications-model";
-import { NotificationDetail } from "./notification-detail";
+import {
+	NotificationDetail,
+	copyNotificationLink,
+	notificationPath,
+	refreshAfterAskSettled,
+	useOpenedDetailRead,
+} from "./notification-detail";
 import { NotificationRow } from "./notification-row";
 import { NotificationRowExit } from "./notification-row-exit";
 import { OperationProgressLine } from "./operation-progress-line";
@@ -232,6 +239,31 @@ const useSessionScopeCounts = (
 		pending: throughId === undefined || query.data === undefined,
 	};
 };
+
+/*
+ * Hover settle before warming a row's detail. Short enough to finish well
+ * inside the hover-to-click gap, long enough that a pointer sweeping across
+ * rows (each crossed in a few frames) does not queue a read per row.
+ */
+const DETAIL_HOVER_PREFETCH_MS = 75;
+
+/** Start a `lop:notifications:read` trace (see the read-paint effect). */
+const traceRead = (id: string) => {
+	readTraceId.current = id;
+	performance.mark("lop:notifications:read:requested");
+};
+/*
+ * Marks are spent once their measure is taken (code round 1, R1-4): every
+ * selection and read added two, forever. Same convention as the transcript's
+ * open trace (`canonical-transcript.tsx` clears `lop:open:requested`). The
+ * MEASURES stay - they are what a rig reads (`getEntriesByType("measure")`).
+ */
+const clearNotificationMarks = (...names: string[]) => {
+	for (const name of names) performance.clearMarks(`lop:notifications:${name}`);
+};
+/* Module scope so the gesture handlers can start a trace without threading a
+ * ref through every callback; one reel is mounted at a time. */
+const readTraceId: { current: string | null } = { current: null };
 
 const operationText = (progress: OperationProgress) =>
 	t("ui.notifications.operation.progress", progress);
@@ -438,11 +470,25 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 		},
 		[readActions],
 	);
-	const detail = useNotificationDetail(notificationId ?? null, enabled);
+	const { query: detail, behindLoading: detailBehind } = useNotificationDetail(
+		notificationId ?? null,
+		enabled,
+		notificationId
+			? list.data?.items.find((item) => item.id === notificationId)?.revision
+			: undefined,
+	);
+	/*
+	 * Core's per-conversation counts, when this core serves them (core PR
+	 * #3921). They replace both the whole-inbox walk and
+	 * the open conversation's facts read below, which existed only to key it.
+	 */
+	const serverScopeCounts = sessionDismissCountsFromFacts(list.data);
 	/* The open conversation's own facts feed the printed count's key (R7-2). */
 	const sessionFacts = useSessionNotificationsFacts(
 		detail.data?.item.session.id ?? null,
-		enabled && Boolean(detail.data?.item.session.id),
+		enabled &&
+			Boolean(detail.data?.item.session.id) &&
+			serverScopeCounts === undefined,
 	);
 
 	useEffect(() => {
@@ -600,7 +646,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 	 * token from a list the server can no longer confirm is a write against a
 	 * render nobody can vouch for.
 	 */
-	const refreshFailed = list.isError && Boolean(loaded);
+	const refreshFailed = list.isRefreshError && Boolean(loaded);
 	/*
 	 * THE DETAIL'S NUMBER COMES FROM THE SAME ENUMERATION THE CONFIRM USES (QA round
 	 * 3). It was bought only while the reel was grouped by CONVERSATION, so under
@@ -626,6 +672,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 	const scopeCount = useSessionScopeCounts(
 		loaded?.high_water,
 		Boolean(loaded) &&
+			serverScopeCounts === undefined &&
 			sessionScopeCountsEnabled(grouping, Boolean(notificationId)),
 		[
 			scopeCountSignature(
@@ -639,7 +686,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 			),
 		].join("|"),
 	);
-	const scopeCounts = scopeCount.counts;
+	const scopeCounts = serverScopeCounts ?? scopeCount.counts;
 	const writesPaused = refreshFailed || operationBusy;
 	const [exitingIds, setExitingIds] = useState<Set<string>>(() => new Set());
 	/*
@@ -671,25 +718,170 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 		: null;
 
 	/*
-	 * OPENING A DETAIL IS AN EXPLICIT READ (contract § 6.4, design § 17.3),
-	 * token-bound to the revision the detail rendered. Once per detail opening,
-	 * NOT per revision: a keyed update arriving while the pane is open is not
-	 * proof the new content was seen. It stays unread until a fresh explicit
-	 * action or an item-specific transcript receipt (presence refinement).
+	 * DETAIL PREFETCH. Hover/focus is intent to open, so the row's detail is
+	 * warmed then - after a short settle, so sweeping the pointer down the reel
+	 * does not queue a read per row crossed on the serial desktop transport.
+	 * `prefetchNotificationDetail` is a no-op while the cached copy is fresh.
 	 */
-	const explicitRead = useRef<string | null>(null);
+	const hoverPrefetch = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const prefetchDetail = useCallback(
+		(item: DesktopNotificationItem) => {
+			if (!client || !enabled) return;
+			if (hoverPrefetch.current) clearTimeout(hoverPrefetch.current);
+			hoverPrefetch.current = setTimeout(() => {
+				hoverPrefetch.current = null;
+				void prefetchNotificationDetail(client, item.id);
+			}, DETAIL_HOVER_PREFETCH_MS);
+		},
+		[client, enabled],
+	);
+	useEffect(
+		() => () => {
+			if (hoverPrefetch.current) clearTimeout(hoverPrefetch.current);
+		},
+		[],
+	);
+	/*
+	 * NEIGHBOUR PREFETCH: arrow keys and next/previous clicks move one row, so
+	 * once the open detail has landed (never competing with it) the rows either
+	 * side are warmed too.
+	 */
+	const detailLanded = detail.data?.item.id === notificationId;
 	useEffect(() => {
+		if (!client || !enabled || !notificationId || !detailLanded) return;
+		const at = order.findIndex((item) => item.id === notificationId);
+		if (at < 0) return;
+		for (const neighbour of [order[at - 1], order[at + 1]])
+			if (neighbour) void prefetchNotificationDetail(client, neighbour.id);
+	}, [client, enabled, notificationId, detailLanded, order]);
+
+	/*
+	 * DEV TIMING MARKS (QA reads them in the rig; same `lop:` convention as the
+	 * transcript's open trace). `lop:notifications:open-to-list` spans the
+	 * page mount to the first painted rows; `lop:notifications:detail` spans a
+	 * detail selection to its body painting, with `detail.cached` saying
+	 * whether the cache answered. Marks are cheap and unconditional, like the
+	 * transcript's; nothing reads them in production.
+	 */
+	const listPainted = useRef(false);
+	useLayoutEffect(() => {
+		performance.mark("lop:notifications:open");
+	}, []);
+	useLayoutEffect(() => {
+		if (listPainted.current || !loaded) return;
+		listPainted.current = true;
+		performance.mark("lop:notifications:list-paint");
+		performance.measure("lop:notifications:open-to-list", {
+			start: "lop:notifications:open",
+			end: "lop:notifications:list-paint",
+			detail: { rows: loaded.items.length, fromCache: !list.isFetching },
+		});
+		clearNotificationMarks("open", "list-paint");
+	}, [loaded, list.isFetching]);
+	const detailTrace = useRef<{ id: string; cached: boolean } | null>(null);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: one trace per selection; the cache state is sampled at the selection.
+	useLayoutEffect(() => {
 		if (!notificationId) {
-			explicitRead.current = null;
+			detailTrace.current = null;
 			return;
 		}
+		detailTrace.current = {
+			id: notificationId,
+			cached: detail.data?.item.id === notificationId,
+		};
+		performance.mark("lop:notifications:detail:requested");
+	}, [notificationId]);
+	useLayoutEffect(() => {
+		const trace = detailTrace.current;
+		if (!trace || !detailLanded || trace.id !== notificationId) return;
+		detailTrace.current = null;
+		performance.mark("lop:notifications:detail:painted");
+		performance.measure("lop:notifications:detail", {
+			start: "lop:notifications:detail:requested",
+			end: "lop:notifications:detail:painted",
+			detail: trace,
+		});
+		clearNotificationMarks("detail:requested", "detail:painted");
+	}, [detailLanded, notificationId]);
+
+	/*
+	 * A DEEP-LINKED READ ITEM IS KEPT ON THE UNREAD FILTER (UX round 1, U3).
+	 * "Open in Notifications" from the conversation drawer lands here with an item
+	 * the drawer's own opening already marked read, and the page's default Unread
+	 * filter then listed no row for it: the detail showed, but nothing in the list
+	 * was selected - the operator asked for "that notification selected". The page
+	 * already has the rule for this (ROWS MARKED READ STAY ON THE UNREAD FILTER,
+	 * above), so the linked item simply enters `stickyRead` and leaves it the way
+	 * any kept read does: on a filter change or a refresh. Once per link: after
+	 * the person clears it, it is not put back. The row is then scrolled into view.
+	 */
+	const keptLink = useRef<string | null>(null);
+	const scrollToLinked = useRef<string | null>(null);
+	useEffect(() => {
 		const item = detail.data?.item;
-		if (!item || item.id !== notificationId || explicitRead.current === item.id)
+		if (!notificationId) {
+			keptLink.current = null;
 			return;
-		explicitRead.current = item.id;
-		if (item.read || item.dismissed || writesPaused) return;
-		write.mutate({ verb: "read", target: { items: tokensOf([item]) } });
-	}, [notificationId, detail.data, write, writesPaused]);
+		}
+		if (item?.id !== notificationId || keptLink.current === item.id) return;
+		if (readState !== "unread" || !item.read || item.dismissed) return;
+		if (byId.has(item.id)) return;
+		keptLink.current = item.id;
+		scrollToLinked.current = item.id;
+		setStickyRead((current) => new Map(current).set(item.id, item));
+	}, [notificationId, detail.data, readState, byId]);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: order is the rendered rows' invalidation signal; the row is looked up in the DOM
+	useEffect(() => {
+		const id = scrollToLinked.current;
+		if (!id) return;
+		const node = listRef.current?.querySelector<HTMLElement>(
+			`[data-notification-row="${CSS.escape(id)}"]`,
+		);
+		if (!node) return;
+		scrollToLinked.current = null;
+		/* Optional call: jsdom (the unit tests' DOM) has no `scrollIntoView`. */
+		node.scrollIntoView?.({ block: "nearest" });
+	}, [order]);
+
+	/*
+	 * Opening a detail is an explicit read; the rule (and why) lives with the
+	 * pane (`useOpenedDetailRead`) so the conversation drawer's detail marks
+	 * exactly as this page does.
+	 *
+	 * THE CLICKED ROW, NOT THE DETAIL READ, carries the token here. Waiting for
+	 * `notifications.get` to land made the row stay bold for as long as the
+	 * detail took - seconds while the transport was busy - although the
+	 * row the operator clicked is exactly the revision they saw. The detail's
+	 * own item stays the fallback for a deep link to a row not in the reel
+	 * (`openItem` falls back to `detail.data?.item`).
+	 */
+	useOpenedDetailRead(
+		notificationId ?? null,
+		openItem ?? undefined,
+		writesPaused,
+		(item) => {
+			traceRead(item.id);
+			write.mutate({ verb: "read", target: { items: tokensOf([item]) } });
+		},
+	);
+
+	/*
+	 * `lop:notifications:read` spans a read gesture (detail open or the row's
+	 * toggle) to the row painting as read - the optimistic edit, so it should
+	 * be a frame or two; the PATCH runs behind it.
+	 */
+	useLayoutEffect(() => {
+		const id = readTraceId.current;
+		if (!id || !byId.get(id)?.read) return;
+		readTraceId.current = null;
+		performance.mark("lop:notifications:read:painted");
+		performance.measure("lop:notifications:read", {
+			start: "lop:notifications:read:requested",
+			end: "lop:notifications:read:painted",
+			detail: { id },
+		});
+		clearNotificationMarks("read:requested", "read:painted");
+	}, [byId]);
 
 	const clearSelection = useCallback(() => {
 		previewGeneration.current += 1;
@@ -914,6 +1106,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 				anyUnread ? !item.read : item.read,
 			);
 			const tokens = tokensOf(subject);
+			if (verb === "read" && subject[0]) traceRead(subject[0].id);
 			runWrite(verb, { items: tokens }, tokens, (result) =>
 				verb === "read"
 					? t("ui.notifications.toast.marked_read", {
@@ -1132,7 +1325,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 	const openDetail = useCallback(
 		(item: DesktopNotificationItem) => {
 			setFocusId(item.id);
-			navigate(`/notifications/${encodeURIComponent(item.id)}`);
+			navigate(notificationPath(item.id));
 		},
 		[navigate],
 	);
@@ -1950,6 +2143,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 										onDismiss={(item) => dismiss([item])}
 										onAnswer={answer}
 										onFocusRow={(item) => setFocusId(item.id)}
+										onPrefetch={prefetchDetail}
 										onDismissSession={requestDismissSession}
 										/*
 										 * Unknown renders NOTHING (code round 4, R4-1): the loaded
@@ -1999,8 +2193,10 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 							<NotificationDetail
 								key={openItem.id}
 								item={openItem}
-								detail={detail.data}
-								loading={detail.isLoading}
+								/* An older revision's body is withheld while its refetch runs
+								 * (design D2): the skeleton, not stale text, under the header. */
+								detail={detailBehind ? undefined : detail.data}
+								loading={detail.isLoading || detailBehind}
 								error={detail.isError}
 								nowMs={nowMs}
 								narrow={narrow}
@@ -2012,25 +2208,11 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 								onToggleRead={(item) => toggleRead([item])}
 								onDismiss={(item) => dismiss([item])}
 								onDismissSession={requestDismissSession}
-								onCopyLink={(item) => {
-									void navigator.clipboard
-										?.writeText(`/notifications/${item.id}`)
-										.then(() =>
-											showSuccessToast(t("ui.notifications.toast.copied")),
-										);
-								}}
+								onCopyLink={copyNotificationLink}
 								onOpenProject={(key) =>
 									navigate(`/projects/${encodeURIComponent(key)}`)
 								}
-								/*
-								 * AN ANSWERED ASK REFRESHES FACTS, NOT WINDOWS (code round 8, N1).
-								 * `notificationKeys.all` also reached the reel's and the drawer's
-								 * scroll windows, so answering from the detail re-walked every
-								 * loaded page. The ask's effects live in page one's facts (the
-								 * `waiting` group), each conversation's facts, the rail's count
-								 * (`waiting_count`), and this detail's own `asks` - the asks have
-								 * no query of their own here; the detail read carries them.
-								 */
+								/* Facts, not windows: see `refreshAfterAskSettled` (N1). */
 								onAsksSettled={(askId, status) => {
 									/* This detail intentionally shows conversation-wide asks. Bind the
 									 * accepted ask ID, not whichever Update happens to be selected. */
@@ -2049,18 +2231,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 											}),
 										);
 									}
-									void client.invalidateQueries({
-										queryKey: notificationKeys.factsRoot,
-									});
-									void client.invalidateQueries({
-										queryKey: notificationKeys.sessionFactsAll,
-									});
-									void client.invalidateQueries({
-										queryKey: notificationKeys.count,
-									});
-									void client.invalidateQueries({
-										queryKey: notificationKeys.detail(openItem.id),
-									});
+									refreshAfterAskSettled(client, openItem.id);
 								}}
 							/>
 						) : (
@@ -2160,6 +2331,7 @@ const GroupBlock: FC<{
 	onDismiss: (item: DesktopNotificationItem) => void;
 	onAnswer: (item: DesktopNotificationItem) => void;
 	onFocusRow: (item: DesktopNotificationItem) => void;
+	onPrefetch: (item: DesktopNotificationItem) => void;
 	onDismissSession: (sessionId: string, title: string) => void;
 	sessionCount: (sessionId: string) => number | null;
 }> = ({ group, onDismissSession, sessionCount, ...row }) => {
@@ -2277,6 +2449,7 @@ const GroupBlock: FC<{
 							onDismiss={row.onDismiss}
 							onAnswer={row.onAnswer}
 							onFocusRow={row.onFocusRow}
+							onPrefetch={row.onPrefetch}
 						/>
 					</NotificationRowExit>
 				))}

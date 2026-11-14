@@ -116,6 +116,17 @@ why will get the next case right where a checklist would not name it.
   band this rule forbids; a content column inside a grounded, `panel-flush`
   ancestor needs no ground of its own, and adding one there is a second tone
   step where the panel already has one.
+- **Full screen keeps the same rule with a smaller number.** With no OS
+  controls over the window, every OS and chrome mode resolves the top inset to
+  `--chrome-fullscreen-top` (one 8px step, `styles/index.css`) instead of 0, so
+  first rows do not sit hard against the screen edge. It is still **padding
+  inside each panel** — it rides `--chrome-strip-h`, which `panel-top-pad`,
+  `panel-scroll` and the shell's `<main>` already read — never a strip or band:
+  every panel's ground still reaches y0, and the lane and route band are hidden
+  so no drag surface or second inset appears. Windowed layouts (mac lane, WCO
+  insets, native frames) do not change. No transition on the padding; it flips
+  in the frame the `data-chrome-fullscreen` attribute does.
+  `scripts/chrome-fullscreen-inset.test.mjs` resolves the cascade per state.
 - **Separate panels by ground value; a panel's edge may carry one `PanelEdge`
   seam, never a border.** The tone step is what separates two planes, and the
   old borders were removed three times, each time because the line started
@@ -396,8 +407,10 @@ resolution may not do, and a green head here is still perishable: a 19-35 minute
 CI wait against a 32-minute merge cadence means it is routinely superseded
 before it can be used. If you need the window, ask the
 current release-window owner to hold merges for one CI cycle - that role exists
-only while a `chore(release): claim release window` PR is open, so if no window is
-claimed, say so in the fold's own lane and take it: announce the hold where lanes
+only while a release PR is open — branch `release-next*` or `release/claim*`, or
+title `chore(release)…` (find it with the lookup in step 1 of the release
+procedure, never a `--search`), so if no
+window is claimed, say so in the fold's own lane and take it: announce the hold where lanes
 read, then fold, push and merge. What the one-at-a-time window was buying is now
 bought by the retirement itself: the churn that made a green head expire was a
 stored hash of a tree the file does not own, and it is gone.
@@ -2166,6 +2179,17 @@ link this checkout's `node_modules`, so the `scripts/` lint leg runs the
 repository's own biome; the `tsc` leg is out of reach there and rests on the
 classifier's tests and CI.
 
+### Condense parity fixture: conflicts and the pin
+
+`scripts/fixtures/condense.parity.json` and its manifest are GENERATED, and
+`desktop.sourceHash` pins only the bundle inputs that emit code (esbuild
+`bytesInOutput > 0`), not every file the build reads. When a merge of `origin/main`
+conflicts and the fixtures are the only unmerged paths, run
+`node scripts/generate-condense-parity.mjs --resolve-merge`: it takes our side,
+regenerates both from the merged tree, stages them and says to commit. It refuses
+if anything else is unmerged. Never hand-edit either file; the generator header
+explains the invariant and `scripts/condense-parity.test.mjs` enforces it.
+
 ## Releasing: one owner per window, and no version bumps inside feature PRs
 
 **Releasing is a decision a person makes, separately from merging.** Merging
@@ -2409,14 +2433,29 @@ recording a stop), and two sessions that both look in the same minute each see
 out-of-queue releases in one window. A pull request is observable to every session
 through the forge, so the claim PR is the lock. In order:
 
-1. **Look for the lock.** `gh pr list --search '"chore(release)" in:title'
-   --state open`. An open claim/bump PR means the window is owned: its body names
-   the owning session's pid, so send that session your PR number, merge SHA and
-   `Release:` line and let it aggregate. Do not start a second release. (Quote the
-   phrase: `gh` passes it to GitHub, which reads bare parentheses as syntax and
-   returns nothing.)
+1. **Look for the lock — list and match locally, never `--search`.**
+   ```bash
+   gh pr list --state open --limit 500 --json number,title,headRefName,createdAt \
+     --jq '.[] | select((.headRefName | startswith("release-next") or startswith("release/claim")) or (.title | startswith("chore(release)")))'
+   ```
+   ANY line of output means the window has an owner — claim or bump PR alike: its
+   body names the owning session's pid, so send that session your PR number, merge
+   SHA and `Release:` line and let it aggregate. Do not start a second release.
+   Why not a `--search`: the claim PR is a draft titled `chore(release): claim
+   release window`, and a `--search` on `chore(release)` matches it only when the
+   phrase is quoted exactly right — unquoted, GitHub reads the parentheses as
+   syntax and returns nothing, which reads as "no owner" (measured 2026-11-14:
+   `chore(release)` and `chore(release) in:title` returned nothing while claim PR
+   #1908 was open). Sessions that searched titles nearly claimed the windows #1908
+   and #1878 already held. The branch arm survives the claim→bump retitle; the
+   title arm — a plain local string match in `--jq`, where parentheses are not
+   syntax — catches release PRs pushed from other branch names (#1797
+   `release-0529`, #1649 `release/hub-skill-adoption-window`). `--limit 500`
+   because `gh pr list` stops at 30 by default and the core repo routinely has
+   more than 30 open PRs.
 2. **Take the lock by opening the claim PR** — the owner's *first* act, before
-   collecting anything (step 0 of the procedure below). It starts as one empty
+   collecting anything (step 0 of the procedure below). Its branch MUST start with
+   `release-next`. It starts as one empty
    commit titled `chore(release): claim release window`, opened as a draft PR whose
    body names the owner's session pid from `lop sessions` and carries an empty
    checklist of the window's PRs; only then is it announced with `send` to the
@@ -2461,7 +2500,8 @@ one that ships the wrong tree.
 #    `release-next`, opened as a DRAFT PR; step 2 amends that same commit into the
 #    version change and retitles this same PR, so the lock's number never moves.
 #    Push the branch and open the PR only after step 1 of *The window, and the
-#    release owner's procedure* has found no open chore(release) PR.
+#    release owner's procedure* has found no open release-next*/release/claim*
+#    or chore(release) PR (list-and-match lookup, never --search).
 # In-repo and at a STABLE path, never mktemp -d: eight $TMPDIR release cuts were
 # stranded after their releases. No `trap` and no `$$`: this recipe spans many
 # separate shell invocations (claim, edit, review round, merge, publish), so an

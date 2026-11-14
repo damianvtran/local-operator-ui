@@ -272,6 +272,8 @@ export const APPROVAL_ESCAPE_COPY = {
 		}),
 	pinnedRun: (mode: string) =>
 		t("ui.chat.approval.escape.pinned_run", { mode }),
+	/** What stands where the two handles would be on a bridge-latched card. */
+	bridgeLatched: () => t("ui.chat.approval.escape.bridge_latched"),
 };
 
 /** The localized word for an approval mode value (the value itself is protocol). */
@@ -290,6 +292,45 @@ const dropOurFailurePrefix = (text: string): string => {
 	// module-level constant would pin it to the language at load time.
 	const prefix = `${APPROVAL_ESCAPE_COPY.notChanged()}: `;
 	return text.startsWith(prefix) ? text.slice(prefix.length) : text;
+};
+
+/**
+ * Whether the backend says this card may not be loosened from here.
+ *
+ * Either flag counts, and neither is derived from the title or the detail:
+ * `bridge_latched` is the host's stamp that the conversation holds Team Bridge
+ * (teammate-agent) content, and `approval_suspended: "bridge"` says a session
+ * auto granted BEFORE that content arrived stopped covering calls. In both the
+ * backend refuses `approvals auto` from this surface (`approval_reason:
+ * "bridge_latched"`; the desktop command carries no `bridge_ack`), so a handle
+ * that offers it can only fail. Absent or false flags - an older backend, an
+ * unlatched conversation - read as not latched, which is today's behaviour.
+ */
+export const approvalGateIsBridgeLatched = (gate: {
+	bridge_latched?: boolean;
+	approval_suspended?: string;
+}): boolean =>
+	gate.bridge_latched === true || gate.approval_suspended === "bridge";
+
+/**
+ * The one line that stands where the two handles would be on a latched card.
+ *
+ * It carries no control and writes nothing: the refusal it explains is the
+ * backend's deliberate rule (a teammate's message must not be able to authorise
+ * anything), and the only deliberate loosening is the typed `/approvals auto`
+ * in the terminal, which this surface cannot send. Approve and Deny are
+ * untouched and stay the way to answer this request.
+ */
+export const ApprovalLatchedNote = ({ className }: { className?: string }) => {
+	useI18nLocale();
+	return (
+		<p
+			data-approval-latched-note=""
+			className={cn("text-ink-muted text-meta", className)}
+		>
+			{APPROVAL_ESCAPE_COPY.bridgeLatched()}
+		</p>
+	);
 };
 
 const ESCAPE_LINK =

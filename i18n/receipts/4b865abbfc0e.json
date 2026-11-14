@@ -1,0 +1,48 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "4b865abbfc0e",
+  "status": "passed",
+  "namespace": "ui.chat.canonical",
+  "sha256": {
+    "es": "38ec00e659d17a8d19ea765afedf99584c5e38dcec8f8e6a66056d80d7b4f8a1",
+    "en": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45"
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.image_gen.error_class.duplicate_id",
+      "note": "Glossary-form drift: 'Id duplicado' vs 23 es keys rendering the identifier token as 'ID' (only ui.hub.links.hub_id uses 'Id', pre-existing). Proposed 'ID duplicado'. Non-gating: meaning unaffected, consistency only."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.error_class.gate_failed",
+      "note": "'Bloqueo por política' is 20 chars vs EN 'Gate failed' 11 (+82%), the widest of the six class labels; names the outcome rather than the gate failing, which matches the sidecar role and uses the established 'política'. Wraps in an unconstrained text-meta <p>; flagged for a rendered check at the narrowest card width, no change proposed."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.error_class.unknown_tool",
+      "note": "'Herramienta desconocida' 23 chars vs EN 12 (+92%); shortest faithful two-word label, no abbreviation licensed for user-facing copy. Wraps, no truncation, no change proposed."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.error.audio_rate_limited",
+      "note": "90 chars vs EN 64 (+41%); two sentences as the sidecar requires, rendered in the wrapping state line (min-w-0), so no truncation. Recorded for the width column, no change proposed."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.state.cancelled_batch",
+      "note": "Branches are 6-8 words against the sidecar's 'Two to four words' (worst branch 39 chars vs EN 27, +44%). Accepted: the same note requires the line read as the family of state.failed_batch ('Falló el lote de vídeos.'), which Spanish needs the verb-initial form for; a 4-word fragment would break it. Recorded exception, no change proposed."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.canonical.temporary_deleted.back",
+      "note": "'Volver a los chats' 18 chars vs EN 13 (+38%) on a button in a flex flex-wrap row (canonical-transcript.tsx:7848), which wraps rather than clips; infinitive form is the style guide's rule for action labels. No change proposed."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+      "note": "'Audio saturado' folds EN's class label 'rate limited' into the same 'saturado' the paired sentence uses for 'busy'; internally consistent pair, but the 'you hit a limit' nuance reads as service saturation. No alternative es rendering exists in the catalogue to align with. No change proposed."
+    }
+  ]
+}

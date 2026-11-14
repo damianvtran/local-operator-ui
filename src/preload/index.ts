@@ -1438,9 +1438,18 @@ const api = {
 		/** The pane switched to another surface. Never resizes either of them. */
 		selectSurface: (surface: string): Promise<unknown> =>
 			ipcRenderer.invoke("console-select-surface", surface),
-		/** Human typing. Never persisted, never logged, never readable back. */
-		input: (surface: string, text: string): Promise<unknown> =>
-			ipcRenderer.invoke("console-input", surface, text),
+		/** Human typing. Never persisted, never logged, never readable back.
+		 * `paste` asks main to bracket the text when the shell enabled bracketed
+		 * paste (the ask card's suggested command arrives as a paste). The two-
+		 * argument call is unchanged on the wire: no options, no third argument. */
+		input: (
+			surface: string,
+			text: string,
+			options?: { paste?: boolean },
+		): Promise<unknown> =>
+			options === undefined
+				? ipcRenderer.invoke("console-input", surface, text)
+				: ipcRenderer.invoke("console-input", surface, text, options),
 		keys: (surface: string, keys: string[]): Promise<unknown> =>
 			ipcRenderer.invoke("console-keys", surface, keys),
 		/** The pane's own measurements. Main decides the grid from them. */

@@ -460,6 +460,88 @@ export function prependSeenToWindow<
 }
 
 /**
+ * Reconcile the cached window with a page-one FACTS answer (PR #1900 QA round 1, Q1).
+ *
+ * WHY. The window paints from cache and is never re-read on mount, focus or a feed
+ * frame (`useNotificationsList`): only the facts are. `mergeWindowForReel` keeps every
+ * row the window holds, so a row another surface dismissed (core PATCH dismiss → 200)
+ * stayed drawn as Unread - through remounts, a backend restart and the 30 s backstop -
+ * because nothing ever told the window it was gone. Reads from elsewhere did reconcile
+ * (the facts row, newer `seq`, wins the merge); a dismissal is an ABSENCE, which the
+ * merge cannot see.
+ *
+ * WHAT COUNTS AS GONE. Core lists newest content first (`ORDER BY updated_at DESC, id
+ * DESC`, notifications/store.py `list_items`), so page one covers every row whose
+ * (updated_at, id) sorts at or above its last row - or every row at all when it has no
+ * `next_cursor`. A window row inside that range, at a `seq` the facts already cover
+ * (`seq <= high_water`), and absent from both `items` and `waiting`, is a row the server
+ * no longer lists under this state:
+ *  - `all`: it was dismissed → flip `dismissed` (the reel filters it out, exactly as a
+ *    local dismiss does; never deleted, so the window's paging is untouched). Its `seq`
+ *    is raised to the facts' `high_water` so an older cached copy (the write ledger's
+ *    base, an older page) can never win `isNewerNotification` and resurrect it.
+ *  - `unread`: it was read OR dismissed elsewhere, and this answer cannot say which.
+ *    It is flipped to read: it no longer counts as unread (the chip and the bold row
+ *    agree with core), and it does not vanish from under the reader - the same rule the
+ *    operator's own reads follow in the Unread view.
+ *
+ * WHAT IS LEFT ALONE.
+ *  - Rows the window already holds as dismissed (the operator's own dismiss: Undo is a
+ *    flag flip back and must still find them) and, in `unread`, rows already read.
+ *  - `protectedIds`: rows with a local write the facts do not yet reflect (pending, or
+ *    confirmed above the facts' `high_water`). A facts answer read before an Undo
+ *    landed must not re-dismiss what Undo restored.
+ *  - Rows below the covered range: the facts say nothing about them.
+ *
+ * Returns `null` when nothing changes, so the caller skips the cache write.
+ */
+export function reconcileWindowWithFacts<
+	Page extends { items: DesktopNotificationItem[] },
+>(
+	pages: readonly Page[],
+	facts: Pick<
+		DesktopNotificationsList,
+		"items" | "waiting" | "next_cursor" | "high_water"
+	>,
+	state: "unread" | "all",
+	protectedIds: ReadonlySet<string> = new Set(),
+): Page[] | null {
+	const listed = new Set(
+		[...facts.items, ...(facts.waiting ?? [])].map((item) => item.id),
+	);
+	const boundary = facts.next_cursor ? facts.items.at(-1) : undefined;
+	/* A truncated page with no rows covers nothing we can reason about. */
+	if (facts.next_cursor && !boundary) return null;
+	const covered = (item: DesktopNotificationItem) =>
+		!boundary ||
+		item.updated_at > boundary.updated_at ||
+		(item.updated_at === boundary.updated_at && item.id >= boundary.id);
+	let changed = false;
+	const next = pages.map((page) => {
+		let pageChanged = false;
+		const items = page.items.map((item) => {
+			if (
+				listed.has(item.id) ||
+				protectedIds.has(item.id) ||
+				item.dismissed ||
+				(state === "unread" && item.read) ||
+				item.seq > facts.high_water ||
+				!covered(item)
+			)
+				return item;
+			pageChanged = true;
+			return state === "all"
+				? { ...item, dismissed: true, seq: facts.high_water }
+				: { ...item, read: true };
+		});
+		if (!pageChanged) return page;
+		changed = true;
+		return { ...page, items };
+	});
+	return changed ? next : null;
+}
+
+/**
  * Apply a CONFIRMED write to the cached window rows (round 7, R7-1).
  *
  * The window is no longer invalidated by a write: that refetched every loaded page and,

@@ -82,5 +82,15 @@
 		"placeholders": {},
 		"role": "fallback error text when renaming the conversation failed",
 		"tone": "short clause, no full stop"
+	},
+	"ui.chat.header_menu.keep_chat": {
+		"role": "header menu item and pill action",
+		"tone": "imperative verb phrase",
+		"note": "Turns a temporary chat into an ordinary saved chat; no confirmation."
+	},
+	"ui.chat.header_menu.make_temporary": {
+		"role": "header menu item that opens a confirmation",
+		"tone": "imperative verb phrase with ellipsis",
+		"note": "The ellipsis signals a confirmation dialog follows."
 	}
 }

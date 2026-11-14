@@ -10,5 +10,7 @@
 	"ui.chat.header_menu.open_canvas": "Открыть холст",
 	"ui.chat.header_menu.open_code_review": "Открыть ревью кода",
 	"ui.chat.header_menu.open_console": "Открыть консоль",
-	"ui.chat.header_menu.rename_failed": "Не удалось переименовать разговор"
+	"ui.chat.header_menu.rename_failed": "Не удалось переименовать разговор",
+	"ui.chat.header_menu.keep_chat": "Сохранить чат",
+	"ui.chat.header_menu.make_temporary": "Сделать временным…"
 }

@@ -10,5 +10,7 @@
 	"ui.chat.header_menu.open_canvas": "Mở khung vẽ",
 	"ui.chat.header_menu.open_code_review": "Mở rà soát mã",
 	"ui.chat.header_menu.open_console": "Mở bảng điều khiển",
-	"ui.chat.header_menu.rename_failed": "Không đổi tên được cuộc trò chuyện"
+	"ui.chat.header_menu.rename_failed": "Không đổi tên được cuộc trò chuyện",
+	"ui.chat.header_menu.keep_chat": "Giữ cuộc trò chuyện",
+	"ui.chat.header_menu.make_temporary": "Đặt là tạm thời…"
 }

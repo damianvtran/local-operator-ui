@@ -25,5 +25,18 @@
 	"ui.chat.sidebar_view.relative_short": "{unit, select, now {ahora} minute {{count, number, ::group-off}min} hour {{count, number, ::group-off}h} day {{count, number, ::group-off}d} week {{count, number, ::group-off}sem} year {{count, number, ::group-off}a} other {ahora}}",
 	"ui.chat.sidebar_view.relative_created": "{unit, select, now {creada ahora mismo} minute {{count, plural, one {creada hace # minuto} many {creada hace # de minutos} other {creada hace # minutos}}} hour {{count, plural, one {creada hace # hora} many {creada hace # de horas} other {creada hace # horas}}} day {{count, plural, one {creada hace # día} many {creada hace # de días} other {creada hace # días}}} week {{count, plural, one {creada hace # semana} many {creada hace # de semanas} other {creada hace # semanas}}} year {{count, plural, one {creada hace # año} many {creada hace # de años} other {creada hace # años}}} other {creada ahora mismo}}",
 	"ui.chat.sidebar_view.relative_active": "{unit, select, now {última actividad ahora mismo} minute {{count, plural, one {última actividad hace # minuto} many {última actividad hace # de minutos} other {última actividad hace # minutos}}} hour {{count, plural, one {última actividad hace # hora} many {última actividad hace # de horas} other {última actividad hace # horas}}} day {{count, plural, one {última actividad hace # día} many {última actividad hace # de días} other {última actividad hace # días}}} week {{count, plural, one {última actividad hace # semana} many {última actividad hace # de semanas} other {última actividad hace # semanas}}} year {{count, plural, one {última actividad hace # año} many {última actividad hace # de años} other {última actividad hace # años}}} other {última actividad ahora mismo}}",
-	"ui.chat.sidebar_view.ungrouped": "Sin agrupar"
+	"ui.chat.sidebar_view.ungrouped": "Sin agrupar",
+	"ui.chat.sidebar_view.section.temporary": "Temporales · {count, number, ::group-off}",
+	"ui.chat.sidebar_view.temporary.deletes_in": "Se elimina en {minutes, plural, one {# min} many {# min} other {# min}}",
+	"ui.chat.sidebar_view.temporary.hold.running": "Se conserva mientras se ejecuta",
+	"ui.chat.sidebar_view.temporary.hold.on_screen": "Se conserva: en pantalla",
+	"ui.chat.sidebar_view.temporary.hold.open_ask": "Se conserva: pregunta abierta",
+	"ui.chat.sidebar_view.temporary.hold.armed_wake": "Se conserva: hay un despertar",
+	"ui.chat.sidebar_view.temporary.hold.armed_monitor": "Se conserva: monitor activo",
+	"ui.chat.sidebar_view.temporary.hold.unread_mail": "Se conserva: mensaje sin leer",
+	"ui.chat.sidebar_view.temporary.hold.operator_hold": "Se conserva por una retención",
+	"ui.chat.sidebar_view.temporary.hold.unseen_result": "Se conserva: resultado sin ver",
+	"ui.chat.sidebar_view.temporary.hold.unsaved_files": "Se conserva: archivos sin guardar",
+	"ui.chat.sidebar_view.temporary.hold.linked": "Se conserva: fijado o vinculado",
+	"ui.chat.sidebar_view.temporary.hold.cannot_verify": "Se conserva: sin comprobar"
 }

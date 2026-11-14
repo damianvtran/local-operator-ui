@@ -1,0 +1,83 @@
+{
+  "auditor": "reviewer",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "68a3f14dde44-tc-zh-cn",
+  "date": "2026-11-12",
+  "locale": "zh-CN",
+  "independence": "Independent of the translators (coder sessions); did not read or run anything from sessions 2d1500d56d0e or 506f24a144fa or any other session scratchpad. Audit from this session's own reading.",
+  "references": {
+    "glossary": "damianvtran/local-operator@5d3db79f6e17 i18n/glossary.md",
+    "style_guide": "damianvtran/local-operator@5d3db79f6e17 i18n/style-guides/zh-CN.md",
+    "cross_surface": "core tui.app.temporary_hold_* at the same core sha"
+  },
+  "repo": "damianvtran/local-operator-ui",
+  "pr": 1874,
+  "head": "8b2de66ae",
+  "scope": "All 34 keys this PR adds per namespace read in full against en value + en .context.json, glossary and locale style guide; whole files mechanically checked (key parity, ICU argument names, plural categories, typography, NFC/bidi, maxCells on rendered text).",
+  "namespaces": {
+    "ui.chat.canonical": {
+      "status": "passed",
+      "sha256": {
+        "en": "8ff690628996934a90145dbd99d99e977376215a98eaa5419cafbb30670bffce",
+        "zh-CN": "adb3456ef4b66b96fea0b64fef1dd920ecca2cc1d66519455e1ea27e0ba477a4"
+      },
+      "findings": []
+    },
+    "ui.chat.composer": {
+      "status": "passed",
+      "sha256": {
+        "en": "a90cc99706b0a4c0958323aa0d152490e1e0518b7c4f8953ade5e6785b5fe8fd",
+        "zh-CN": "9bb8f93873ae90fb4ec3ae682a01ffa4c0fb8c817acfdc4950d5d2a239f9b915"
+      },
+      "findings": []
+    },
+    "ui.chat.dialogs": {
+      "status": "passed",
+      "sha256": {
+        "en": "fb527224aa77c898c3a154b05e8265f3db5c81d1789ec9b12f4cdec72f668f25",
+        "zh-CN": "b17b55df3cffc66f3c69fc28c9ab677a643b73af90b2c60e4a1ec4edc1325362"
+      },
+      "findings": []
+    },
+    "ui.chat.header": {
+      "status": "passed",
+      "sha256": {
+        "en": "52920afe9253986f97977259ef09c46db652279ee5b383381401ac28d70055bd",
+        "zh-CN": "237b1cbe25cbbdb853608a95aee5f96e13d2a5c9222d6d318b4c368af62cc2d7"
+      },
+      "findings": []
+    },
+    "ui.chat.header_menu": {
+      "status": "passed",
+      "sha256": {
+        "en": "ff39f4ea0aa359910328c05023ea21e39caf2e2995bfec2e6f2e24317a26ac68",
+        "zh-CN": "cc33bfa000f03449ed132e7ee3813455ae62a76f447d099aaee68c9a8bae6b74"
+      },
+      "findings": []
+    },
+    "ui.chat.sidebar_view": {
+      "status": "passed",
+      "sha256": {
+        "en": "82bad181593074ff90e65c720e30e13a02b8ca4bf6fc0eec32dc06392c1371a6",
+        "zh-CN": "58abe323c16fb0f97237311a24bd0b2975d2bc29c4a6c46c3681723c51b9b039"
+      },
+      "findings": []
+    },
+    "ui.command_palette": {
+      "status": "passed",
+      "sha256": {
+        "en": "41a633c3a7006733c63e0beb15b1f0f4a867f329a2bf90bd3f6851ed225c1afb",
+        "zh-CN": "e8205f56a08a70d4796cdcaac012bdd7a7c7f91fa20d0ba73b15f38a27dd7b6c"
+      },
+      "findings": []
+    },
+    "ui.settings.shortcuts": {
+      "status": "passed",
+      "sha256": {
+        "en": "1dd7c82fb3ccd6d9d4ae7984b1b7570ca3dbff9d1343c981b0dfa2411443d0b1",
+        "zh-CN": "8900f6052eb6443bd4cbc3e514433bfa81ef27e534806a59fe706d5d4dd01444"
+      },
+      "findings": []
+    }
+  }
+}

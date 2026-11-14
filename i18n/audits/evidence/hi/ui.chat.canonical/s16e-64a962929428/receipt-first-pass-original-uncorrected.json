@@ -1,0 +1,160 @@
+{
+  "locale": "hi",
+  "namespace": "ui.chat.canonical",
+  "slice": "S16e",
+  "pr": "damianvtran/local-operator-ui#1884",
+  "audit_date": "2026-11-12",
+  "key_count": 12,
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "d8a457984829",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "session runtime model header (Model: deepseek/deepseek-flash); no fallback model was used for this audit",
+    "independent_from_translator_session": true,
+    "translator_session": "3ef6295a5545 (i18n-translator; notes-hi-s16e.md read only AFTER the auditor's own per-key view was formed)",
+    "role": "independent auditor — read-only, no edits to repo or draft"
+  },
+  "inputs": {
+    "draft": {
+      "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e/hi/draft-hi-s16e.json",
+      "copied_for_analysis_to": "/Users/damian/.local-operator/sessions/d8a457984829/scratchpad/s16e-hi/draft-hi.json",
+      "sha256": "41e9e50f80fb89f3d39a822b1fb95461f3d8b4cd9ece1b3ed899c1fec39a9831",
+      "matches_assigned_hash": true
+    },
+    "en_source": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/i18n-s16e/src/i18n/catalogues/en/ui.chat.canonical.json",
+      "sha256": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17",
+      "note": "sha256 equals the task-stated English source hash; the 12 en values are byte-identical to the brief's `en` strings"
+    },
+    "en_context_sidecar": {
+      "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e-brief.json",
+      "sha256": "a0326137bff43ed38fc4a1c63d4a26e1887cfd56d4826df0e615df28055bef0c",
+      "matches_assigned_hash": true
+    },
+    "shipped_target_catalogue": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/i18n-s16e/src/i18n/catalogues/hi/ui.chat.canonical.json",
+      "sha256": "5bad55ca446e6e2e0bc853d503d94280f444cd009402431c65e8ce997528689b",
+      "role": "terminology authority for this surface"
+    },
+    "glossary": {
+      "path": "/Users/damian/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "/Users/damian/local-operator/i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    },
+    "worktree": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/i18n-s16e",
+      "head": "bd8e90542506e8bec4a98862b868095409b28329",
+      "read_only": true
+    }
+  },
+  "axes": {
+    "1_mechanical": {
+      "status": "passed",
+      "validator": "node scratchpad/s16e-hi/icu-check.mjs (repo parser @formatjs/icu-messageformat-parser + intl-messageformat 12.1.3 from ~/local-operator-ui/node_modules)",
+      "checks": "12/12 keys parse; key set identical to en (none added, none dropped); placeholder name/kind identical ({material} select, keyword set video|voiceover|sound_effect|other equal to en, `other` present); every branch formats to a non-empty string with no brace leak; terminator parity (prose keys end with danda, labels end with none); valid JSON; NFC; no ZWJ/ZWNJ/bidi-control bytes",
+      "negative_controls": "4/4 raised — dropped sound_effect branch (keyword-set mismatch), dropped `other` branch (MISSING_OTHER_CLAUSE), renamed placeholder material->medium (mismatch), unclosed brace (MALFORMED_ARGUMENT). See audit.log.",
+      "repo_validator_note": "`pnpm check-i18n` was not run: the draft is not a catalogue file, so generate/ledger-check/coverage would judge the committed catalogues rather than these 12 values, and the brief forbids installs/builds in the shared worktree. `node scripts/i18n/ledger-assemble.mjs` (the RFC's audit-ledger writer) was NOT run: it derives target_sha256 from the catalogue file on disk and would refuse — correctly — a draft that is not yet in src/i18n/catalogues/hi/. The ledger row is the implementer's step once the keys land; see ledger_handoff."
+    },
+    "2_accuracy": {
+      "status": "passed",
+      "note": "Every promise boundary is preserved: cancel.queued is the only value that promises no charge and it promises it firmly ('कोई शुल्क नहीं लगेगा'); cancel.running states a REQUEST, says the provider has no cancellation endpoint, and says the charge applies if audio is produced — no no-charge promise; settlement.pending states an outstanding confirmation and no amount; error.audio_rate_limited promises no success and names no wait duration. No omission, addition, negation or polarity error found."
+    },
+    "3_idiom_register": {
+      "status": "passed-with-minor",
+      "note": "आप register, polite imperative (करें), terse standard Hindi; danda for full stops, no '!', no कृपया (English has none), nukta kept (इफ़ेक्ट). One register inconsistency in the failure-class label set — see F1."
+    },
+    "4_terminology": {
+      "status": "passed",
+      "note": "Matches the shipped hi catalogue: प्रोवाइडर, शुल्क / शुल्क लगेगा / कोई शुल्क नहीं, अंतिम शुल्क … की पुष्टि, रोकें / रोकने का अनुरोध, रद्द करना, बैच (तस्वीरों का बैच — byte-identical to shipped done_batch/failed_batch nouns), टूल, आर्ग्युमेंट, अमान्य, अस्वीकृत, विफल, गेट, व्यस्त, लंबित, जनरेशन. `endpoint` stays Latin per glossary §2 wave-2 kept-English set. cancel.running's second sentence reproduces the shipped sound.stop.warning wording, so one concept keeps one wording across the surface. Glossary rows cited: tool (टूल), and no term in this delta contradicts a §2 row."
+    },
+    "5_fit": {
+      "status": "passed",
+      "note": "No maxCells/maxChars hint is attached to any of the 12 keys in the sidecar; the six labels are 1–2 words and the longest ('अमान्य आर्ग्युमेंट', 'ऑडियो दर सीमा') sit well inside a card label cell. The three long prose values wrap inside the card exactly as their English counterparts do, and Hindi is not longer than English in cells for any of them. No truncation risk identified."
+    },
+    "6_rtl": {
+      "status": "not-applicable",
+      "note": "hi is LTR; no bidi hazards in scope for this locale."
+    }
+  },
+  "second_independent_pass": {
+    "requested_for": "high-visibility group — the error sentence and the six failure-class labels",
+    "performed": true,
+    "method": "Both passes were done by this auditor: pass 1 key-by-key before reading the translator's notes, pass 2 re-deriving each error key from the context sidecar alone (register, length, distinguishability) and re-reading the values with fresh eyes.",
+    "pass2_results": "Unchanged verdict. Specifically re-examined and cleared: (a) अस्वीकृत vs गेट विफल stay distinguishable (permission refusal vs policy gate); (b) अज्ञात टूल vs अमान्य आर्ग्युमेंट stay distinguishable; (c) singular 'आर्ग्युमेंट' does not lose the class meaning in Hindi label register — accepted, not a finding; (d) the busy sentence promises no success and no duration; (e) the one label that remains a concern is F1 (ऑडियो दर सीमा reads as the constraint noun, the only non-adjectival label of the six)."
+  },
+  "findings": [
+    {
+      "id": "HI-S16E-01",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+      "current": "ऑडियो दर सीमा",
+      "problem": "Label register inconsistency inside the six-class set: the other five read as a state of the call (अस्वीकृत, गेट विफल, अज्ञात टूल, अमान्य आर्ग्युमेंट, डुप्लिकेट id), while this one is a bare noun compound meaning 'audio rate limit' — the constraint, not the failure. `दर सीमा` is the right term (attested: 'दर सीमा लगी है', 'दर-सीमाएँ'), so the fix is to carry the 'limited' state, not to replace the term.",
+      "suggested": "ऑडियो दर-सीमित",
+      "caveat": "दर-सीमित is a coinage (participle of the attested दर सीमा); if the programme rejects coinages, the hyphenated constraint label ऑडियो दर-सीमा at least matches the shipped usage_reset morphology, but it still reads as the constraint rather than the state."
+    },
+    {
+      "id": "HI-S16E-02",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.cancel.checking",
+      "current": "शुल्क की पुष्टि जाँची जा रही है।",
+      "problem": "Slightly circular: it says the *confirmation* is being checked (पुष्टि जाँची जा रही है), i.e. verifying a confirmation, where the state is that confirmation itself is in progress. Also one word longer than the English's three-word hint (the translator's note acknowledges four words).",
+      "suggested": "शुल्क की पुष्टि की जा रही है।"
+    }
+  ],
+  "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 1
+  },
+  "verdict": "passed",
+  "verdict_basis": "No BLOCKER and no MAJOR remain: mechanical integrity is clean (12/12 keys, placeholder and select parity, non-vacuous negative controls), no promise, permission or error fact is altered, terminology follows the shipped catalogue and glossary, register follows the hi style guide. The single MINOR is a label-register consistency point, actionable in the same remediation wave without changing meaning.",
+  "considered_and_accepted": [
+    "error_class.invalid_arguments — singular 'अमान्य आर्ग्युमेंट' for English's plural: Hindi label register uses the singular for a class of failure and the shipped catalogue has only singular आर्ग्युमेंट attested. Accepted as-is.",
+    "error_class.duplicate_id — lowercase Latin 'id': the shipped hi catalogue uses BOTH 'id' (14 values, e.g. 'शीर्षक या id से खोजें', 'एसेट की id') and 'ID' (25 values); no rule violated, source casing mirrored. Accepted as-is.",
+    "settlement.pending — 'प्रोवाइडर के रिपोर्ट करने पर': grammatically sound (के … करने पर) and रिपोर्ट/दिखेगा are both attested in the shipped catalogue. Accepted as-is.",
+    "cancel.running — future 'जनरेशन जारी रहेगा' where English has present 'continues': same fact, and it reproduces the shipped sound.stop.warning sentence byte-for-byte after the first sentence. Accepted as-is."
+  ],
+  "ledger_handoff": {
+    "command": "node scripts/i18n/ledger-assemble.mjs --locale hi --file src/i18n/catalogues/hi/ui.chat.canonical.json --auditor-instance <instance> --auditor-model deepseek/deepseek-flash --result clean-with-findings --receipt <receipt.json> --scope \"S16e 12-key delta\"",
+    "why_not_run_here": "audit-ledger-assemble derives target_sha256 from the catalogue file on disk and refuses a file whose key set differs from English or whose bytes do not match the receipt; the audited bytes are a 12-key DRAFT, not yet merged into src/i18n/catalogues/hi/ui.chat.canonical.json. Writing a row now would either refuse or record a hash that cannot name those bytes. The implementer runs it after the keys land.",
+    "caution_for_implementer": "When the ledger row is written, the target file hash will be the merged catalogue's, not this draft's 41e9e50f… So the merged file must be re-checked that the 12 audited values are byte-identical to this draft before the row's status is promoted — otherwise the row names bytes no auditor saw."
+  },
+  "artifacts": [
+    {
+      "path": "/Users/damian/.local-operator/sessions/d8a457984829/scratchpad/s16e-hi/icu-check.mjs",
+      "sha256": "ee090526f9624d405a381451bc505fe549a07dfb972751397c8b17e16ec2f410",
+      "role": "mechanical checker (actual command transcript in audit.log §1)"
+    },
+    {
+      "path": "/Users/damian/.local-operator/sessions/d8a457984829/scratchpad/s16e-hi/icu-check.log",
+      "sha256": "bd4d0431d6a28a68769b5dd81f91a0f110fd6bff2715ff9bc3ad681304948d2f",
+      "role": "output of the mechanical checker"
+    },
+    {
+      "path": "/Users/damian/.local-operator/sessions/d8a457984829/scratchpad/s16e-hi/audit.sh",
+      "sha256": "<hash in report.md §Artifacts>",
+      "role": "regenerates audit.log from the real commands"
+    },
+    {
+      "path": "/Users/damian/.local-operator/sessions/d8a457984829/scratchpad/s16e-hi/receipt.json",
+      "sha256": "<self; recorded in report.md §Artifacts>",
+      "role": "this receipt"
+    },
+    {
+      "path": "/Users/damian/.local-operator/sessions/d8a457984829/scratchpad/s16e-hi/report.md",
+      "sha256": "<recorded in report.md §Artifacts>",
+      "role": "human-readable audit report"
+    },
+    {
+      "path": "/Users/damian/.local-operator/sessions/d8a457984829/scratchpad/s16e-hi/audit.log",
+      "sha256": "<recorded in report.md §Artifacts>",
+      "role": "real execution log (regenerated by audit.sh; every command and its actual output)"
+    }
+  ],
+  "audit_notes_not_execution_log": "This receipt's `axes` and `second_independent_pass` blocks are audit notes, not execution logs; the commands actually run and their actual output are in audit.log and icu-check.log beside it.",
+  "notes": "S16e hi, 12 keys, read-only audit. Draft sha256 verified 41e9e50f…831. No translation/MT service was used for comparison or back-translation; every judgement is a reading of the English, the context sidecar, the shipped hi catalogue and the two style documents."
+}

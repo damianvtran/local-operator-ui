@@ -247,6 +247,12 @@ type Stub = {
 	/** First read answers, every later read fails: the stale-list state. */
 	failAfterFirst?: boolean;
 	detail?: DesktopNotificationDetail | null;
+	/**
+	 * How the detail read answers, apart from the list: `hang` holds it (the
+	 * pane's loading state), `fail` refuses it (its error state). The list reads
+	 * normally either way, which is what the drawer's detail frames need.
+	 */
+	detailMode?: "hang" | "fail";
 	capability?: boolean;
 	/**
 	 * The conversation's asks as a STATEFUL list (the ask-pane stories): an accepted
@@ -330,6 +336,12 @@ const answer = (request: { op: string; [key: string]: unknown }) => {
 		case "notifications.count":
 			return fixture.request(request);
 		case "notifications.get": {
+			if (stub.detailMode === "hang") return new Promise(() => {});
+			if (stub.detailMode === "fail")
+				return {
+					status: 503,
+					body: { detail: "The local server did not answer." },
+				};
 			/*
 			 * The detail's `item` is the LIVE row, as the route reads it from the same
 			 * store: a fixed copy would keep saying "unread" after the page's own
@@ -1254,9 +1266,12 @@ const DRAWER_ITEMS: DesktopNotificationItem[] = [
 const Drawer = ({
 	tab,
 	view = "unread",
+	openId,
 }: {
 	tab: "updates" | "asks";
 	view?: "unread" | "read";
+	/** Pin an Updates row's detail open, for the detail frames. */
+	openId?: string;
 }) => {
 	/*
 	 * THE REAL DIRECTION SEAM, ON THIS STORY TOO (design round 2, D2).
@@ -1311,6 +1326,7 @@ const Drawer = ({
 										sessionId="aaaaaaaaaaa1"
 										nowMs={NOW}
 										initialView={view}
+										initialOpenId={openId}
 									/>
 								) : null,
 						}}
@@ -1349,6 +1365,109 @@ export const DrawerUpdatesRead: Story = {
 		return (
 			<FreshCache>
 				<Drawer tab="updates" view="read" />
+			</FreshCache>
+		);
+	},
+};
+
+/*
+ * THE DRAWER'S DETAIL VIEW (operator request, 2026-11-13): a row's title opens the
+ * page's own `NotificationDetail` inside the drawer, in place of the list, with a
+ * back link and "Open in Notifications". One frame per state the pane owns.
+ */
+const DRAWER_DETAIL: DesktopNotificationDetail = {
+	...DETAIL,
+	item: {
+		...DETAIL.item,
+		body_md: [
+			DETAIL.item.body_md ?? "",
+			"",
+			"## What changed",
+			"",
+			...Array.from(
+				{ length: 6 },
+				(_, index) =>
+					`- Hour ${index + 1}: disputes on m_4821 moved from ${8 + index} to ${30 + index * 2} per hour, with refunds lagging by about ${12 + index} minutes against the trailing week.`,
+			),
+			"",
+			`A long unbroken reference wraps rather than clipping: ${"x".repeat(120)}`,
+		].join("\n"),
+	},
+};
+
+/** The detail open over a populated, long body: it scrolls inside the list's region. */
+export const DrawerUpdatesDetail: Story = {
+	parameters: { toastDuration: Number.POSITIVE_INFINITY },
+	render: () => {
+		install({ items: DRAWER_ITEMS, waiting: [], detail: DRAWER_DETAIL });
+		return (
+			<FreshCache>
+				<Drawer tab="updates" openId={FRAUD.id} />
+			</FreshCache>
+		);
+	},
+};
+
+/*
+ * THE SHUTTER WAITS FOR THE STATE THE FRAME CLAIMS (frames round 1, F4). The
+ * loading and error panes arrive after the list read and the swap, so a capture
+ * taken on mount photographed the list or an empty band under the story's name.
+ * Same latch as the ask-door stories: `capturePending` until the selector is
+ * drawn, `captureFailed` when it never is.
+ */
+const holdDetailFrame =
+	(selector: string) =>
+	async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+		const root = document.documentElement;
+		root.dataset.capturePending = "true";
+		if (await waitFor(() => canvasElement.querySelector(selector) !== null)) {
+			await document.fonts.ready;
+			await new Promise<void>((resolve) =>
+				requestAnimationFrame(() => resolve()),
+			);
+			delete root.dataset.capturePending;
+		} else root.dataset.captureFailed = "true";
+	};
+
+/** The detail read still in flight: the row's own title and excerpt, then skeletons. */
+export const DrawerUpdatesDetailLoading: Story = {
+	play: holdDetailFrame('[data-drawer-detail] [role="status"]'),
+	render: () => {
+		install({ items: DRAWER_ITEMS, waiting: [], detailMode: "hang" });
+		return (
+			<FreshCache>
+				<Drawer tab="updates" openId={FRAUD.id} />
+			</FreshCache>
+		);
+	},
+};
+
+/** The detail read refused: the row's content stays, with the pane's error notice. */
+export const DrawerUpdatesDetailError: Story = {
+	play: holdDetailFrame('[data-drawer-detail] [role="alert"]'),
+	render: () => {
+		install({ items: DRAWER_ITEMS, waiting: [], detailMode: "fail" });
+		return (
+			<FreshCache>
+				<Drawer tab="updates" openId={FRAUD.id} />
+			</FreshCache>
+		);
+	},
+};
+
+/** Dismissed elsewhere while open: still readable, actions off, with the notice. */
+export const DrawerUpdatesDetailVanished: Story = {
+	render: () => {
+		install({
+			items: DRAWER_ITEMS.map((row) =>
+				row.id === FRAUD.id ? { ...row, dismissed: true } : row,
+			),
+			waiting: [],
+			detail: DRAWER_DETAIL,
+		});
+		return (
+			<FreshCache>
+				<Drawer tab="updates" openId={FRAUD.id} />
 			</FreshCache>
 		);
 	},

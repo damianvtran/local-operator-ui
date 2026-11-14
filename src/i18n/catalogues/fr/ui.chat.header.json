@@ -19,5 +19,11 @@
 	"ui.chat.header.session_model_switch": "Changer de modèle",
 	"ui.chat.header.transcript_display": "Affichage de la transcription",
 	"ui.chat.header.starting_session": "Démarrage de la session",
-	"ui.chat.header.canonical_chat": "Conversation canonique"
+	"ui.chat.header.canonical_chat": "Conversation canonique",
+	"ui.chat.header.temporary": "Temporaire",
+	"ui.chat.header.temporary_hint": "Non enregistrée dans vos conversations, et supprimée après une période d’inactivité (30 min par défaut).",
+	"ui.chat.header.temporary_toggle_on": "Rendre cette nouvelle conversation temporaire",
+	"ui.chat.header.temporary_toggle_off": "Désactiver la conversation temporaire",
+	"ui.chat.header.temporary_peer_unavailable": "Les conversations temporaires ne peuvent pas encore démarrer sur un autre appareil",
+	"ui.chat.header.temporary_ends_in": "Supprimée dans {minutes, plural, one {# min} many {# min} other {# min}}"
 }
