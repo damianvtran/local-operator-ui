@@ -103,6 +103,7 @@ import {
 	parseTeamBridgeNotificationSender,
 	safeTeamBridgeBannerText,
 } from "../../../../shared/team-bridge-notify";
+import { browserDraftStorage } from "../../shared/store/team-bridge-draft-account";
 import {
 	type TeamBridgeBannerCopy,
 	type TeamBridgeBannerPlace,
@@ -110,9 +111,11 @@ import {
 	teamBridgePreviewText,
 } from "./team-bridge-banner-format";
 import { TEAM_BRIDGE_HISTORY_GC_MS } from "./team-bridge-channel-cache";
+import { teamBridgeOpeningLanding } from "./team-bridge-landing";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
 	asTeamBridgeTenantId,
+	hubTenantList,
 	organizationOptions,
 	participantLabel,
 } from "./team-bridge-model";
@@ -134,6 +137,10 @@ import {
 	readForBridgeOwner,
 	useTeamBridgeAccount,
 } from "./team-bridge-owner";
+import {
+	cancelTeamBridgePrefetch,
+	prefetchTeamBridgeConversations,
+} from "./team-bridge-prefetch";
 import { TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD } from "./team-bridge-thread-gate";
 import { assertThreadPage } from "./team-bridge-thread-read";
 import { patchTeamBridgeListsFromUnread } from "./team-bridge-unread-sync";
@@ -397,25 +404,36 @@ async function deliverTeamBridgeBanner(
 			 * entry (same key, same reader as the page), so by the time the banner
 			 * can be clicked the page already holds the message it announces.
 			 */
-			const read = () =>
-				client.fetchQuery(
-					timelineReadOptions(
-						client,
-						candidate.conversationId,
-						candidate.tenantId,
-						selfAccountId,
-					),
+			const options = timelineReadOptions(
+				client,
+				candidate.conversationId,
+				candidate.tenantId,
+				selfAccountId,
+			);
+			/* A read already in flight (the watcher's background warm, a
+			   prefetch, the page's own) is JOINED by `fetchQuery`, and it may have
+			   left before this message existed. Noted before the call so a page
+			   missing the announced seq can be told apart from a message that is
+			   genuinely not on the timeline (held, deleted). */
+			const joined =
+				client.getQueryState(options.queryKey)?.fetchStatus === "fetching";
+			const read = () => client.fetchQuery(options);
+			const newestOf = (page: Awaited<ReturnType<typeof read>>) =>
+				page.messages.reduce<TeamBridgeMessage | undefined>(
+					(max, message) =>
+						max === undefined || message.seq > max.seq ? message : max,
+					undefined,
 				);
 			const page = await read().catch((error: unknown) => {
 				// Cancelled from outside: ask again, once (see the helper).
 				if (!isCancelledError(error)) throw error;
 				return read();
 			});
-			newest = page.messages.reduce<TeamBridgeMessage | undefined>(
-				(max, message) =>
-					max === undefined || message.seq > max.seq ? message : max,
-				undefined,
-			);
+			newest = newestOf(page);
+			// The joined read predated the message: ask once more, now that
+			// nothing older is in flight, rather than degrade to metadata.
+			if (joined && (newest?.seq ?? -1) < candidate.seq)
+				newest = newestOf(await read());
 		}
 		if (newest && newest.seq >= candidate.seq) {
 			/*
@@ -541,8 +559,10 @@ async function deliverTeamBridgeBanner(
  *  - Conversation-list rows take the unread row's count and cursors, so the
  *    rail and the nav badge read one set of numbers (`team-bridge-unread-sync.ts`).
  *  - A timeline entry that ALREADY EXISTS for a conversation whose `latest_seq`
- *    moved since the last answer is refetched, exactly that key. A conversation
- *    never opened gets no entry: this adds no read for history nobody looked at.
+ *    moved since the last answer is refetched, exactly that key (or, while the
+ *    background warm's first read is still out, read once more after it). A
+ *    conversation with no entry gets none from here: the only entries for
+ *    never-opened conversations are the bounded background warm's (below).
  *    The first answer only records the seq; `latest_seq` also advances for
  *    replies, which the timeline excludes, so comparing against the cached
  *    page's newest seq would refetch a reply-active thread on every poll.
@@ -569,11 +589,22 @@ function syncUnmountedConversations(
 			tenantId,
 			accountId,
 		);
-		if (client.getQueryState(options.queryKey)?.data === undefined) continue;
+		const state = client.getQueryState(options.queryKey);
+		if (state?.data === undefined && state?.fetchStatus !== "fetching")
+			continue;
 		// `fetchQuery`, not `refetchQueries`: it carries the reader itself, so an
 		// entry whose observer is long gone still refreshes, and an in-flight read
 		// of the same key (a banner's) is joined rather than cancelled.
-		void client.fetchQuery({ ...options, staleTime: 0 }).catch(() => undefined);
+		const refresh = () => client.fetchQuery({ ...options, staleTime: 0 });
+		// A FIRST read still in flight (the background warm, below in the hook)
+		// may have left before this seq existed, and joining it would cache that
+		// older page as current. Wait for it, then read once more; a failed
+		// first read (refused, fenced) ends the chain - nothing to refresh.
+		if (state?.data === undefined)
+			void refresh()
+				.then(() => refresh())
+				.catch(() => undefined);
+		else void refresh().catch(() => undefined);
 	}
 }
 
@@ -828,16 +859,6 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 		   long as the timelines it leads into (bridge-instant-load S3b). */
 		gcTime: TEAM_BRIDGE_HISTORY_GC_MS,
 	});
-	/*
-	 * NO PREFETCH FROM THIS WATCHER, deliberately (bridge-instant-load). Warming
-	 * timelines here was tried and reverted: this watcher's contract is that a
-	 * conversation never opened gets no history read (see
-	 * `syncUnmountedConversations`), and its banner read joins any in-flight read
-	 * of the same key — a warming read dispatched before the new message existed
-	 * would hand the banner a page without it (measured: 12 failing cases in
-	 * team-bridge-notifications-mount.test.mjs). Warming lives on the page
-	 * (`team-bridge-prefetch.ts`), where a list answer and a hovered row ask for it.
-	 */
 
 	const cursors = useRef<Map<string, number>>(new Map());
 	/** `latest_seq` last seen per tenant+conversation (see `syncUnmountedConversations`). */
@@ -903,11 +924,100 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 		observedLatest.current = new Map();
 		seededOrganizations.current = new Set();
 		lastPlanKey.current = null;
+		// The previous account's queued warms are guesses for a rail nobody will
+		// see; in-flight ones are refused by the owner fence and not retried.
+		lastWarmKey.current = null;
+		cancelTeamBridgePrefetch(client);
 		void client.invalidateQueries({ queryKey: teamBridgeKeys.unreadPrefix });
 		void client.invalidateQueries({
 			queryKey: teamBridgeKeys.conversationsPrefix,
 		});
 	}, [selfAccountId, client]);
+
+	/*
+	 * THE BACKGROUND WARM: THE LANDING CONVERSATION'S FIRST PAGE BEFORE THE CLICK
+	 * (bridge-instant-load; operator: "loading and updating things in the
+	 * background via a team bridge daemon/process, so that clicking in is
+	 * instant"). This watcher IS that daemon in the renderer: it lives for the
+	 * whole app window and already holds this account's conversation list. The
+	 * native bench on v0.56.1 measured the gap it closes: first open 362.4 ms
+	 * against the 300 ms bar, list already cached, 6 blocking messages reads -
+	 * the page's own landing read (`prefetchTeamBridgeLanding`) only starts at
+	 * mount, so the first open still paid one full history round trip.
+	 *
+	 * Declared AFTER the account-switch reset above, so on a switch the reset
+	 * (which drops queued warms) runs first and the new account's warm survives.
+	 *
+	 * Each time the list (or what decides the landing) changes, the conversation
+	 * the page WOULD land on (`teamBridgeOpeningLanding`: same helpers, same
+	 * order as the page) plus the next most likely clicks, at most
+	 * `TEAM_BRIDGE_BACKGROUND_WARM` in all, are handed to the page's prefetch
+	 * queue. Invariants, each held by an existing mechanism and tested in
+	 * `team-bridge-watcher-warm.test.mjs`:
+	 *
+	 * - SAME ENTRY: the queue reads through `teamBridgeMessagesQueryOptions`
+	 *   (key, `readForBridgeOwner` fence), so the timeline adopts the answer.
+	 * - MEMORY ONLY: bodies land in React Query's renderer cache like every
+	 *   history read; nothing here writes storage (the view memory is only READ,
+	 *   and holds ids, never bodies).
+	 * - COLD ONLY / BOUNDED: the queue skips an entry holding data or already in
+	 *   flight, respects the retention headroom and the 429 hold, and reads with
+	 *   `retry: false` (so `not_a_member` and an owner-fence refusal end there -
+	 *   no backoff chain survives an account switch). Freshness after that is
+	 *   `syncUnmountedConversations`' job: it refreshes a cached (or still
+	 *   in-flight) entry whose `latest_seq` moved.
+	 * - ONCE PER CHANGE: keyed on account + each warmed row's id and
+	 *   `latest_seq`; an unchanged list re-plans nothing.
+	 * - GATED: only while `active` (feature capability, preload bridge, the
+	 *   signed-in Radient account's ready, enabled, writable status). Team
+	 *   Bridge in this renderer only ever reads as that account; there is no
+	 *   agent-identity reader here to warm for.
+	 * - BANNERS: a banner read that joins a warm read still in flight asks once
+	 *   more when the joined page lacks its seq (`deliverTeamBridgeBanner`) - the
+	 *   reason the first watcher warm was reverted (12 cases in
+	 *   team-bridge-notifications-mount.test.mjs).
+	 */
+	const lastWarmKey = useRef<string | null>(null);
+	const unreadOrganizations = accountUnread.data?.organizations;
+	useEffect(() => {
+		const rows = conversations.data?.conversations;
+		if (!active || !selfAccountId || !rows) return;
+		const { warm } = teamBridgeOpeningLanding({
+			rows,
+			// The page's own organization list: memberships labelled by the hub's
+			// tenant list (`organizationOptions(..., hubTenants)`), so the scope
+			// and the merged filter resolve as they will on the page.
+			organizations: organizationOptions(
+				membershipsData?.memberships ?? [],
+				unreadOrganizations,
+				hubTenantList(status.data),
+			),
+			accountId: selfAccountId,
+			storage: browserDraftStorage(),
+		});
+		const key = [
+			selfAccountId,
+			...warm.map((row) => `${row.tenant_id}:${row.id}:${row.latest_seq}`),
+		].join("|");
+		if (lastWarmKey.current === key) return;
+		lastWarmKey.current = key;
+		prefetchTeamBridgeConversations(client, selfAccountId, warm);
+	}, [
+		active,
+		selfAccountId,
+		conversations.data,
+		membershipsData,
+		unreadOrganizations,
+		status.data,
+		client,
+	]);
+	// Off (feature, watcher or account gone): queued, not yet dispatched warms
+	// are dropped; reads in flight finish under the owner fence.
+	useEffect(() => {
+		if (active) return;
+		lastWarmKey.current = null;
+		cancelTeamBridgePrefetch(client);
+	}, [active, client]);
 
 	useEffect(() => {
 		// The key is the effect's change detector; the query objects below are
