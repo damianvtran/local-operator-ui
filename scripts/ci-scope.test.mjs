@@ -3447,8 +3447,23 @@ test("A18: CI Gate needs every job and reds only on failure or cancellation", ()
 	);
 	assert.match(body, /v\.result !== 'success' && v\.result !== 'skipped'/);
 	assert.match(body, /process\.exit\(1\)/);
-	// The existing required check keeps its exact name.
+	// The existing required check keeps its exact, LITERAL name and no matrix:
+	// a matrix suffixes the rendered name, and an expression name is posted raw
+	// when the job is skipped, so either shape strands the required check
+	// (native-bytecode-artifact.test.mjs guards every required name).
 	assert.equal(jobs["bytecode-build"].name, "Bytecode Build Check");
+	assert.equal(jobs["bytecode-build"].strategy, undefined);
+	// The Mac artifact twin runs on the same trigger and reds this gate (its
+	// membership in `needs` is covered by the deepEqual above).
+	const mac = jobs["bytecode-build-macos"];
+	assert.equal(mac.name, "Bytecode Build Check (macos-15)");
+	assert.equal(mac["runs-on"], "macos-15");
+	assert.equal(String(mac.if).trim(), String(jobs["bytecode-build"].if).trim());
+	assert.deepEqual(mac.needs, jobs["bytecode-build"].needs);
+	assert.ok(gate.needs.includes("bytecode-build-macos"));
+	assert.ok(
+		mac.steps.some((step) => step.uses?.startsWith("actions/upload-artifact@")),
+	);
 	// The QA bundle survived the shard's removal, under the artifact name QA reads.
 	const upload = jobs["qa-bundle"].steps.find((step) =>
 		step.uses?.startsWith("actions/upload-artifact@"),

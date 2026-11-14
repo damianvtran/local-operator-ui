@@ -493,7 +493,7 @@ jobs:
       - name: Check release contracts
         run: |
           node scripts/test-validate-release.mjs
-          node --test scripts/test-release-safety.mjs scripts/test-publish-workflow.mjs scripts/test-version-bump-guard.mjs scripts/ci-scope.test.mjs
+          node --test scripts/test-release-safety.mjs scripts/test-publish-workflow.mjs scripts/test-version-bump-guard.mjs scripts/ci-scope.test.mjs scripts/native-bytecode-artifact.test.mjs
           # The per-architecture contract, over EVERY workflow that packages macOS
           # rather than over the one that was fixed first. `publish.yml` was fixed
           # for the v0.30.10 brick and `signed-update-candidate.yml` was not, so its
@@ -910,6 +910,191 @@ jobs:
             exit 1
           fi
           echo 'Main bundle compiled to V8 bytecode.'
+
+  # The Mac arm64 native bytecode artifact native QA downloads, built by its own
+  # job rather than as a matrix leg of `bytecode-build`. V8 cached data cannot
+  # cross CPU architectures, so the Linux gate's `.jsc` is useless on a Mac and a
+  # second native build is necessary; macos-15 is GitHub's arm64 image. This adds
+  # hosted CI cost, NOT another local build or packaging pass.
+  #
+  # WHY TWO JOBS, NOT A MATRIX. The branch ruleset requires a check NAMED exactly
+  # `Bytecode Build Check`, and required status checks are keyed by the job's
+  # display name, not its id. Every way of carrying that name through a matrix
+  # fails:
+  #   - a literal `name:` under a matrix gains a suffix
+  #     (`Bytecode Build Check (ubuntu-latest)`), so the required name never
+  #     reports and merge is refused ("Required status check "Bytecode Build
+  #     Check" is expected");
+  #   - an expression `name:` renders correctly while the job RUNS, but a job
+  #     skipped by its `if:` posts ONE check under the raw, unevaluated string -
+  #     main commit 92984394 shows a check literally named
+  #     `NPX Sanity Check (${{ matrix.os }})` - and the `changes` classifier
+  #     skips this job routinely, so the required check would go missing on
+  #     every such PR.
+  # So `bytecode-build` keeps its literal required name and no matrix, and this
+  # job carries the Mac-only build heap, runtime record, staging and upload.
+  # scripts/native-bytecode-artifact.test.mjs pins both shapes. It shares the
+  # gate's `needs`/`if:` and is listed in `ci-gate.needs`, so a red Mac build
+  # reds CI Gate without being a required check of its own.
+  bytecode-build-macos:
+    name: Bytecode Build Check (macos-15)
+    needs: [changes]
+    if: >-
+      !cancelled() &&
+      needs.changes.outputs.bytecode != 'false'
+    runs-on: macos-15
+    timeout-minutes: 20
+    # Renderer bindings are inlined by Vite: runtime env cannot repair an
+    # artifact pointing at the operator's backend. Port 9 is deliberately inert;
+    # a consumer must own an isolated fixture there before exercising API flows.
+    env:
+      VITE_LOCAL_OPERATOR_API_URL: http://127.0.0.1:9
+      VITE_DISABLE_BACKEND_MANAGER: 'true'
+      VITE_RADIENT_SERVER_BASE_URL: http://127.0.0.1:9
+      VITE_PUBLIC_POSTHOG_HOST: http://127.0.0.1:9
+      VITE_PUBLIC_POSTHOG_KEY: ci-bytecode-check
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # The reusable Mac artifact compiles the exact immutable source head
+          # requested by native QA, not the PR merge commit the Linux gate builds.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Prepare the Electron runtime cache
+        uses: ./.github/actions/electron-runtime
+        with:
+          phase: prepare
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Assert the Electron runtime is installed
+        uses: ./.github/actions/electron-runtime
+        with:
+          phase: assert
+
+      - name: Build main with V8 bytecode
+        env:
+          # Run 43319106365 hit Node's ~2 GiB heap limit while bundling the
+          # renderer. Match publish's 4 GiB old-space budget on the 7 GB Mac
+          # runner, leaving headroom for native allocations and the OS. This is
+          # CI build-only: scoped to this step so Node flags never leak into the
+          # later Electron runtime probe or the shipped app.
+          NODE_OPTIONS: --max-old-space-size=4096
+          VITE_GOOGLE_CLIENT_ID: ci-bytecode-check
+          VITE_GOOGLE_CLIENT_SECRET: ci-bytecode-check
+          VITE_MICROSOFT_CLIENT_ID: ci-bytecode-check
+          VITE_MICROSOFT_TENANT_ID: ci-bytecode-check
+        run: pnpm build
+
+      # A green build is not enough. If the bytecode plugin were dropped from
+      # `electron.vite.config.js`, `pnpm build` would emit plain JS, pass, and
+      # verify nothing - the shape of absence this repository treats as worse
+      # than no gate. The `.jsc` is the artifact this job exists to produce.
+      - name: Assert the main bundle really is bytecode
+        run: |
+          if [ ! -f out/main/index.jsc ]; then
+            echo 'out/main/index.jsc is missing: the main bundle was not compiled to V8 bytecode, so this check verified nothing.'
+            ls -l out/main || true
+            exit 1
+          fi
+          echo 'Main bundle compiled to V8 bytecode.'
+
+      # Reuse this leg's production output, never the NO_BYTECODE QA bundle.
+      # Only compiled UI assets + public package metadata leave the runner:
+      # no dependency tree, seeds, source checkout, profile or environment files.
+      - name: Record native bytecode runtime
+        env:
+          ELECTRON_RUN_AS_NODE: '1'
+        run: |
+          node_modules/.bin/electron -e '
+            const fs = require("node:fs");
+            if (process.platform !== "darwin" || process.arch !== "arm64") throw new Error("Expected darwin arm64");
+            const pin = require("./package.json").optionalDependencies.electron;
+            if (process.versions.electron !== pin) throw new Error("Electron pin mismatch");
+            fs.writeFileSync(process.env.RUNNER_TEMP + "/bytecode-runtime.json", JSON.stringify({
+              platform: process.platform, arch: process.arch, versions: process.versions,
+              cachedDataVersionTag: require("node:v8").cachedDataVersionTag()
+            }));
+          '
+
+      - name: Stage native bytecode artifact and hash manifest
+        env:
+          SOURCE_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+          import { createHash } from 'node:crypto';
+          import { execFileSync } from 'node:child_process';
+          const runtime = JSON.parse(readFileSync(process.env.RUNNER_TEMP + '/bytecode-runtime.json'));
+          const checkout = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+          const sourceHead = process.env.SOURCE_HEAD;
+          if (sourceHead !== checkout) throw new Error('Source head is not the checked-out artifact source');
+          for (const file of ['main/index.jsc', 'main/index.js', 'preload/index.js', 'renderer/index.html', 'preload/browser-approvals-overlay.js', 'renderer/browser-approvals-overlay.html']) {
+            if (!existsSync('out/' + file)) throw new Error('Missing compiled surface: ' + file);
+          }
+          const files = [];
+          function inventory(dir) {
+            for (const name of readdirSync(dir).sort()) {
+              const path = dir + '/' + name;
+              const stat = lstatSync(path);
+              if (stat.isSymbolicLink() || name.startsWith('.env')) throw new Error('Unsafe artifact entry: ' + path);
+              if (stat.isDirectory()) inventory(path);
+              else if (stat.isFile()) {
+                const bytes = readFileSync(path);
+                files.push({ path, size: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') });
+              } else throw new Error('Non-file artifact entry: ' + path);
+            }
+          }
+          inventory('out');
+          const pkg = readFileSync('package.json');
+          files.push({ path: 'package.json', size: pkg.length, sha256: createHash('sha256').update(pkg).digest('hex') });
+          const destination = process.env.RUNNER_TEMP + '/ui-native-bytecode';
+          mkdirSync(destination);
+          cpSync('out', destination + '/out', { recursive: true });
+          writeFileSync(destination + '/package.json', pkg);
+          writeFileSync(destination + '/manifest.json', JSON.stringify({
+            schemaVersion: 1, sourceHead, checkout, runtime,
+            repository: process.env.GITHUB_REPOSITORY, workflow: process.env.GITHUB_WORKFLOW,
+            runId: process.env.GITHUB_RUN_ID, runAttempt: process.env.GITHUB_RUN_ATTEMPT,
+            compiledBindings: Object.fromEntries([
+              'VITE_LOCAL_OPERATOR_API_URL', 'VITE_DISABLE_BACKEND_MANAGER',
+              'VITE_RADIENT_SERVER_BASE_URL', 'VITE_PUBLIC_POSTHOG_HOST', 'VITE_PUBLIC_POSTHOG_KEY'
+            ].map(key => [key, process.env[key]])),
+            // Main's backend config also reads runtime env. The consumer must
+            // preserve these bindings and isolate HOME/config; this is not a
+            // self-contained executable or proof that backend discovery is safe.
+            requiredRuntimeBindings: {
+              VITE_LOCAL_OPERATOR_API_URL: process.env.VITE_LOCAL_OPERATOR_API_URL,
+              VITE_DISABLE_BACKEND_MANAGER: 'true'
+            },
+            build: 'pnpm build', configuration: 'ci-bytecode-check placeholders; no signing or repository secrets',
+            // Matching provenance is a prerequisite, not proof of native behavior.
+            requires: 'Exact Electron/platform/arch; compatible V8 cached data; separately supplied dependencies; disposable profile; native smoke test',
+            files
+          }, null, 2) + '\n');
+          NODE
+
+      - name: Upload native bytecode bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-native-bytecode-darwin-arm64-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/ui-native-bytecode/
+          if-no-files-found: error
+          retention-days: 1
 
   # THE TRACKED EVIDENCE STRUCTURE - the half of the evidence gate a fresh
   # checkout can still answer.
@@ -1509,7 +1694,8 @@ jobs:
   # one. A deliberately SKIPPED job is a pass: the classifier decided this diff
   # cannot affect it. `failure` and `cancelled` are not - a timeout reports as
   # `cancelled`. `Bytecode Build Check` stays required under its own name until
-  # the ruleset moves to this gate.
+  # the ruleset moves to this gate; its Mac artifact twin, `bytecode-build-macos`,
+  # is not required and is gated only here, like every other listed job.
   ci-gate:
     name: CI Gate
     needs:
@@ -1523,6 +1709,7 @@ jobs:
       - guards
       - qa-bundle
       - bytecode-build
+      - bytecode-build-macos
       - evidence
       - audit
       - npx-sanity-check
