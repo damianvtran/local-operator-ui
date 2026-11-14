@@ -353,7 +353,20 @@ export const DrawerUpdates: FC<{
 	/* Focus moves only on a press: a pinned story must not steal the page's focus. */
 	const focusOnSwap = useRef(false);
 	const detailRegion = useRef<HTMLDivElement>(null);
-	const detail = useNotificationDetail(openId, Boolean(openId));
+	/*
+	 * THE PAGE'S DETAIL CACHE, ITS RULES TOO. `useNotificationDetail` is the
+	 * LRU-bounded per-id cache (fix/notifications-dismiss-all-perf); passing the
+	 * list row's revision makes a keyed update (same id, new body) refetch at
+	 * once, and `behindLoading` shows the skeleton rather than the older body
+	 * while it does (design D2) - the same contract the page's pane follows.
+	 */
+	const { query: detail, behindLoading: detailBehind } = useNotificationDetail(
+		openId,
+		Boolean(openId),
+		openId
+			? list.data?.items.find((item) => item.id === openId)?.revision
+			: undefined,
+	);
 	/* The same explicit read the page makes when it opens a detail. */
 	useOpenedDetailRead(openId, detail.data?.item, list.isError, (item) =>
 		write.mutate({ verb: "read", target: { items: tokensOf([item]) } }),
@@ -802,9 +815,11 @@ export const DrawerUpdates: FC<{
 						key={openItem.id}
 						item={openItem}
 						detail={
-							detail.data?.item.id === openItem.id ? detail.data : undefined
+							!detailBehind && detail.data?.item.id === openItem.id
+								? detail.data
+								: undefined
 						}
-						loading={detail.isLoading}
+						loading={detail.isLoading || detailBehind}
 						error={detail.isError}
 						nowMs={nowMs}
 						narrow

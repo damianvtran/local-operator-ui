@@ -101,6 +101,12 @@ export type NotificationRowProps = {
 	onDismiss: (item: DesktopNotificationItem) => void;
 	onAnswer: (item: DesktopNotificationItem) => void;
 	onFocusRow: (item: DesktopNotificationItem) => void;
+	/**
+	 * Intent to open: pointer entry or keyboard focus. The reel warms the
+	 * row's detail here so the click paints from cache; optional because the
+	 * drawer has no detail pane to warm.
+	 */
+	onPrefetch?: (item: DesktopNotificationItem) => void;
 	/** Shown instead of the source on line 2 (the drawer, which implies it). */
 	hideSource?: boolean;
 };
@@ -119,6 +125,7 @@ export const NotificationRow: FC<NotificationRowProps> = ({
 	onDismiss,
 	onAnswer,
 	onFocusRow,
+	onPrefetch,
 	hideSource = false,
 }) => {
 	const liveAsk = isLiveAsk(item);
@@ -202,7 +209,11 @@ export const NotificationRow: FC<NotificationRowProps> = ({
 				}
 				onOpen(item);
 			}}
-			onFocus={() => onFocusRow(item)}
+			onFocus={() => {
+				onFocusRow(item);
+				onPrefetch?.(item);
+			}}
+			onMouseEnter={onPrefetch ? () => onPrefetch(item) : undefined}
 			className={cn(
 				/*
 				 * `items-start` + `py-2`: the text block and every side cell share one top

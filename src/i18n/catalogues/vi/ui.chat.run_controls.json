@@ -1,0 +1,14 @@
+{
+	"ui.chat.run_controls.job.no_conversation": "Không có cuộc trò chuyện nào để hủy tác vụ trong đó.",
+	"ui.chat.run_controls.monitor.no_conversation": "Không có cuộc trò chuyện nào để hủy mục giám sát trong đó.",
+	"ui.chat.run_controls.monitor.cancel_failed": "Không thể hủy mục giám sát.",
+	"ui.chat.run_controls.wake.no_conversation": "Không có cuộc trò chuyện nào để hủy lịch đánh thức trong đó.",
+	"ui.chat.run_controls.wake.cancel_failed": "Không thể hủy lịch đánh thức.",
+	"ui.chat.run_controls.wake.already_gone": "Lịch đánh thức này không còn nữa.",
+	"ui.chat.run_controls.wake_confirm.title": "Hủy lịch đánh thức này?",
+	"ui.chat.run_controls.wake_confirm.title_named": "Hủy lần kiểm tra của {name}?",
+	"ui.chat.run_controls.wake_confirm.message": "{subject, select, head {“{head}” sẽ không kích hoạt lại, và không có gì tạo lại nó. Cuộc trò chuyện vẫn giữ nguyên.} other {Lịch đánh thức này sẽ không kích hoạt lại, và không có gì tạo lại nó. Cuộc trò chuyện vẫn giữ nguyên.}}",
+	"ui.chat.run_controls.wake_confirm.message_named": "{subject, select, head {“{head}” sẽ không kích hoạt lại, và không có gì tạo lại nó. Lịch riêng của {name} không bị ảnh hưởng.} other {Lịch đánh thức này sẽ không kích hoạt lại, và không có gì tạo lại nó. Lịch riêng của {name} không bị ảnh hưởng.}}",
+	"ui.chat.run_controls.wake_confirm.action": "Hủy lịch đánh thức",
+	"ui.chat.run_controls.wake_confirm.action_named": "Hủy lần kiểm tra"
+}

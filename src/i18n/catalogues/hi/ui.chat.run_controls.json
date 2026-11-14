@@ -1,0 +1,14 @@
+{
+	"ui.chat.run_controls.job.no_conversation": "जॉब रद्द करने के लिए कोई बातचीत नहीं है।",
+	"ui.chat.run_controls.monitor.no_conversation": "मॉनिटर रद्द करने के लिए कोई बातचीत नहीं है।",
+	"ui.chat.run_controls.monitor.cancel_failed": "मॉनिटर रद्द नहीं किया जा सका।",
+	"ui.chat.run_controls.wake.no_conversation": "जागृति रद्द करने के लिए कोई बातचीत नहीं है।",
+	"ui.chat.run_controls.wake.cancel_failed": "जागृति रद्द नहीं की जा सकी।",
+	"ui.chat.run_controls.wake.already_gone": "यह जागृति अब मौजूद नहीं है।",
+	"ui.chat.run_controls.wake_confirm.title": "यह जागृति रद्द करें?",
+	"ui.chat.run_controls.wake_confirm.title_named": "{name} का चेक-इन रद्द करें?",
+	"ui.chat.run_controls.wake_confirm.message": "{subject, select, head {“{head}” वाली जागृति फिर नहीं जगेगी और इसे दोबारा नहीं बनाया जाएगा। बातचीत बनी रहेगी।} other {यह जागृति फिर नहीं जगेगी और इसे दोबारा नहीं बनाया जाएगा। बातचीत बनी रहेगी।}}",
+	"ui.chat.run_controls.wake_confirm.message_named": "{subject, select, head {“{head}” वाली जागृति फिर नहीं जगेगी और इसे दोबारा नहीं बनाया जाएगा। {name} का अपना शेड्यूल प्रभावित नहीं होगा।} other {यह जागृति फिर नहीं जगेगी और इसे दोबारा नहीं बनाया जाएगा। {name} का अपना शेड्यूल प्रभावित नहीं होगा।}}",
+	"ui.chat.run_controls.wake_confirm.action": "जागृति रद्द करें",
+	"ui.chat.run_controls.wake_confirm.action_named": "चेक-इन रद्द करें"
+}

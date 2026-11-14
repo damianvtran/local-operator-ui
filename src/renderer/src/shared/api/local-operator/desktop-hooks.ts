@@ -1168,7 +1168,24 @@ export type DesktopFeature =
 	 * route, so the block must be able to ask for this one alone. Absent means the
 	 * Phone access block is not rendered and no setup op is sent.
 	 */
-	| "tunnel_setup";
+	| "tunnel_setup"
+	/**
+	 * The WIDER phone-setup remedy vocabulary (`tunnel_remedy_kinds`, local-operator
+	 * #3945): `add_credit`/`open_console` carry `remedy.url`, the `wait_*` kinds
+	 * and the `reconnecting` plan exist, and the backend reconnects on its own
+	 * after a sign-in. Its own key because everything it unlocks is presentation
+	 * on top of `tunnel_setup`: without it the block renders exactly the pre-#3945
+	 * controls, never refetches on focus and never shows the first-sign-in offer
+	 * (an older backend has no `reconnecting` state, so a focus refetch there is a
+	 * fresh upstream quote read nobody asked for).
+	 */
+	| "tunnel_remedy_kinds"
+	/**
+	 * The phone-access diagnosis (`mobile_doctor`, local-operator #3953): the
+	 * `mobile.doctor` read behind "Copy diagnostics". Absent ⇒ the button is not
+	 * rendered and the route (404 on an older backend) is never called.
+	 */
+	| "mobile_doctor";
 
 /**
  * WHY a negotiated feature surface may not be offered.

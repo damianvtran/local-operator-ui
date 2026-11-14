@@ -1,0 +1,14 @@
+{
+	"ui.chat.run_controls.job.no_conversation": "Нет разговора, в котором можно отменить задание.",
+	"ui.chat.run_controls.monitor.no_conversation": "Нет разговора, в котором можно отменить мониторинг.",
+	"ui.chat.run_controls.monitor.cancel_failed": "Не удалось отменить мониторинг.",
+	"ui.chat.run_controls.wake.no_conversation": "Нет разговора, в котором можно отменить пробуждение.",
+	"ui.chat.run_controls.wake.cancel_failed": "Не удалось отменить пробуждение.",
+	"ui.chat.run_controls.wake.already_gone": "Этого пробуждения уже нет.",
+	"ui.chat.run_controls.wake_confirm.title": "Отменить это пробуждение?",
+	"ui.chat.run_controls.wake_confirm.title_named": "Отменить проверку ассистента {name}?",
+	"ui.chat.run_controls.wake_confirm.message": "{subject, select, head {«{head}» больше не сработает, и ничто не создаст такое пробуждение заново. Разговор сохранится.} other {Это пробуждение больше не сработает, и ничто не создаст его заново. Разговор сохранится.}}",
+	"ui.chat.run_controls.wake_confirm.message_named": "{subject, select, head {«{head}» больше не сработает, и ничто не создаст такое пробуждение заново. Собственное расписание ассистента {name} не изменится.} other {Это пробуждение больше не сработает, и ничто не создаст его заново. Собственное расписание ассистента {name} не изменится.}}",
+	"ui.chat.run_controls.wake_confirm.action": "Отменить пробуждение",
+	"ui.chat.run_controls.wake_confirm.action_named": "Отменить проверку"
+}

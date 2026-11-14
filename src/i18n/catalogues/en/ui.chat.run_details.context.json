@@ -299,5 +299,294 @@
 			"lead": "Action-specific failure clause; no terminal punctuation"
 		},
 		"note": "Lead clauses have their own owner; preserve the complete sentence and its remedy."
+	},
+	"ui.chat.run_details.mcp_failure.lead.probe": {
+		"role": "head clause of the failure sentence when checking which sign-in method an MCP server uses fails, in the MCP sign-in dialog, the run panel and Settings > Integrations",
+		"tone": "plain past-tense statement of what could not happen, sentence case",
+		"length": "Short clause; may wrap",
+		"note": "Clause that completes into a full sentence: other messages append a cause after it (`{lead}: ...`, `{lead} because ...`, `{lead}. ...`), and Settings > Integrations appends its own sentence after a period. Write it as a complete clause with no terminal punctuation.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_failure.lead.grant": {
+		"role": "head clause of the failure sentence when starting an MCP server sign-in fails, in the MCP sign-in dialog, the run panel and Settings > Integrations",
+		"tone": "plain past-tense statement of what could not happen, sentence case",
+		"length": "Short clause; may wrap",
+		"note": "Clause that completes into a full sentence: other messages append a cause after it (`{lead}: ...`, `{lead} because ...`, `{lead}. ...`), and Settings > Integrations appends its own sentence after a period. Write it as a complete clause with no terminal punctuation.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_failure.lead.reconnect": {
+		"role": "head clause of the failure sentence when reconnecting an MCP server fails, in the MCP sign-in dialog, the run panel and Settings > Integrations",
+		"tone": "plain past-tense statement of what could not happen, sentence case",
+		"length": "Short clause; may wrap",
+		"note": "Clause that completes into a full sentence: other messages append a cause after it (`{lead}: ...`, `{lead} because ...`, `{lead}. ...`), and Settings > Integrations appends its own sentence after a period. Write it as a complete clause with no terminal punctuation.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_failure.lead.reload": {
+		"role": "head clause of the failure sentence when re-reading an MCP server's configuration from disk fails, in the MCP sign-in dialog, the run panel and Settings > Integrations",
+		"tone": "plain past-tense statement of what could not happen, sentence case",
+		"length": "Short clause; may wrap",
+		"note": "Clause that completes into a full sentence: other messages append a cause after it (`{lead}: ...`, `{lead} because ...`, `{lead}. ...`), and Settings > Integrations appends its own sentence after a period. Write it as a complete clause with no terminal punctuation.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_failure.lead.add": {
+		"role": "head clause of the failure sentence when adding an MCP server fails, in the MCP sign-in dialog, the run panel and Settings > Integrations",
+		"tone": "plain past-tense statement of what could not happen, sentence case",
+		"length": "Short clause; may wrap",
+		"note": "Clause that completes into a full sentence: other messages append a cause after it (`{lead}: ...`, `{lead} because ...`, `{lead}. ...`), and Settings > Integrations appends its own sentence after a period. Write it as a complete clause with no terminal punctuation.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_failure.lead.key": {
+		"role": "head clause of the failure sentence when saving an MCP server's API keys fails, in the MCP sign-in dialog, the run panel and Settings > Integrations",
+		"tone": "plain past-tense statement of what could not happen, sentence case",
+		"length": "Short clause; may wrap",
+		"note": "Clause that completes into a full sentence: other messages append a cause after it (`{lead}: ...`, `{lead} because ...`, `{lead}. ...`), and Settings > Integrations appends its own sentence after a period. Write it as a complete clause with no terminal punctuation.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_failure.lead.status": {
+		"role": "head clause of the failure sentence when refreshing an MCP server's sign-in status fails, in the MCP sign-in dialog, the run panel and Settings > Integrations",
+		"tone": "plain past-tense statement of what could not happen, sentence case",
+		"length": "Short clause; may wrap",
+		"note": "Clause that completes into a full sentence: other messages append a cause after it (`{lead}: ...`, `{lead} because ...`, `{lead}. ...`), and Settings > Integrations appends its own sentence after a period. Write it as a complete clause with no terminal punctuation.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_failure.lead.disconnect": {
+		"role": "head clause of the failure sentence when disconnecting an MCP server fails, in the MCP sign-in dialog, the run panel and Settings > Integrations",
+		"tone": "plain past-tense statement of what could not happen, sentence case",
+		"length": "Short clause; may wrap",
+		"note": "Clause that completes into a full sentence: other messages append a cause after it (`{lead}: ...`, `{lead} because ...`, `{lead}. ...`), and Settings > Integrations appends its own sentence after a period. Write it as a complete clause with no terminal punctuation.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_failure.lead.remove": {
+		"role": "head clause of the failure sentence when removing an MCP server fails, in the MCP sign-in dialog, the run panel and Settings > Integrations",
+		"tone": "plain past-tense statement of what could not happen, sentence case",
+		"length": "Short clause; may wrap",
+		"note": "Clause that completes into a full sentence: other messages append a cause after it (`{lead}: ...`, `{lead} because ...`, `{lead}. ...`), and Settings > Integrations appends its own sentence after a period. Write it as a complete clause with no terminal punctuation.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_failure.lead.test": {
+		"role": "head clause of the failure sentence when starting an MCP server connection test fails, in the MCP sign-in dialog, the run panel and Settings > Integrations",
+		"tone": "plain past-tense statement of what could not happen, sentence case",
+		"length": "Short clause; may wrap",
+		"note": "Clause that completes into a full sentence: other messages append a cause after it (`{lead}: ...`, `{lead} because ...`, `{lead}. ...`), and Settings > Integrations appends its own sentence after a period. Write it as a complete clause with no terminal punctuation.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_failure.with_reason": {
+		"role": "MCP failure explanation that pairs the failed action with the app's own pairing/compatibility reason",
+		"tone": "Concise, factual",
+		"length": "Inline copy; may wrap",
+		"note": "Two sentences: the action that failed, then why. Use the sentence separator your language uses; keep the reason after the lead.",
+		"placeholders": {
+			"lead": "Action-specific failure clause; no terminal punctuation",
+			"reason": "A complete, already translated sentence explaining the cause, ending with its own punctuation"
+		}
+	},
+	"ui.chat.run_details.mcp_failure.settings_action": {
+		"role": "link-style button that opens Settings > Integrations scrolled to the failed MCP server's row",
+		"tone": "imperative, sentence case, no trailing punctuation",
+		"length": "Five words; one line in a dialog footer",
+		"note": "Shown under MCP sign-in, key-entry and run-panel failures. The row it opens carries the server's remaining remedies.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp.control.grant": {
+		"role": "button that starts an OAuth sign-in for an MCP server",
+		"tone": "imperative, sentence case, no trailing punctuation",
+		"length": "Three words; compact button",
+		"note": "One of the app's own control words for an MCP server remedy. The same word labels the run panel's row action and the sign-in dialog's failure actions, so the two must read identically.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp.control.key": {
+		"role": "button that opens the API key form for an MCP server",
+		"tone": "imperative, sentence case, no trailing punctuation",
+		"length": "Three words; compact button",
+		"note": "One of the app's own control words for an MCP server remedy. The same word labels the run panel's row action and the sign-in dialog's failure actions, so the two must read identically. Keep 'API' as the technical term if your language normally does.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp.control.reconnect": {
+		"role": "button that reconnects a disconnected MCP server",
+		"tone": "single verb, sentence case",
+		"length": "One word; compact button",
+		"note": "One of the app's own control words for an MCP server remedy. The same word labels the run panel's row action and the sign-in dialog's failure actions, so the two must read identically.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp.control.reload": {
+		"role": "button that re-reads an MCP server's configuration from disk (writes nothing)",
+		"tone": "single verb, sentence case",
+		"length": "One word; compact button",
+		"note": "One of the app's own control words for an MCP server remedy. The same word labels the run panel's row action and the sign-in dialog's failure actions, so the two must read identically.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp.tool_count": {
+		"role": "trailing value on an MCP server row in the run panel: how many tools the server provides",
+		"tone": "count and noun, lowercase noun, no punctuation",
+		"length": "Two words; shares one line with the server name, status and scope",
+		"note": "Provide every CLDR plural category the language needs.",
+		"placeholders": {
+			"count": "Numeric selector for CLDR plural categories. English uses exact =1 to preserve the original strict count === 1 branch; translators add their CLDR arms.",
+			"count_display": "Raw String(count), preserving the former JavaScript interpolation without rounding or grouping. Print this, not count."
+		}
+	},
+	"ui.chat.run_details.mcp.connected_tally": {
+		"role": "trailing tally of the run panel's MCP section header: connected servers against all servers",
+		"tone": "short status clause, lowercase, no trailing punctuation",
+		"length": "Four words; shares a narrow header line and may be followed by ' · N need attention'",
+		"note": "Counts MCP servers. The pane budgets this by character count, so keep it short.",
+		"placeholders": {
+			"total": "Numeric selector for CLDR plural categories: the number of configured servers. Add the arms your language needs for agreement.",
+			"connected_display": "Raw String(count) of connected servers, unrounded and ungrouped. Print this.",
+			"total_display": "Raw String(count) of configured servers, unrounded and ungrouped. Print this."
+		}
+	},
+	"ui.chat.run_details.mcp_key.replace_confirmation": {
+		"role": "MCP key form outcome when saving would overwrite keys other servers share",
+		"tone": "instruction, one sentence",
+		"length": "Inline copy; may wrap",
+		"note": "Shown in the MCP key form after the encrypted secret store answered the write.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_key.replace_confirmation_saved": {
+		"role": "MCP key form outcome when some keys were saved and the rest need confirmation to overwrite shared keys",
+		"tone": "instruction then result",
+		"length": "Inline copy; may wrap",
+		"note": "Shown in the MCP key form after the encrypted secret store answered the write.",
+		"placeholders": {
+			"saved": "comma-separated key names (environment variable identifiers such as GITHUB_TOKEN); never translate them"
+		}
+	},
+	"ui.chat.run_details.mcp_key.not_saved": {
+		"role": "MCP key form outcome when the encrypted store refused some keys",
+		"tone": "result then remedy",
+		"length": "Inline copy; may wrap",
+		"note": "Shown in the MCP key form after the encrypted secret store answered the write.",
+		"placeholders": {
+			"failed": "comma-separated key names (environment variable identifiers); never translate them"
+		}
+	},
+	"ui.chat.run_details.mcp_key.not_saved_saved": {
+		"role": "MCP key form outcome when the encrypted store refused some keys and saved others",
+		"tone": "result, remedy, then what did save",
+		"length": "Inline copy; may wrap",
+		"note": "Shown in the MCP key form after the encrypted secret store answered the write.",
+		"placeholders": {
+			"failed": "comma-separated key names that were not saved; never translate them",
+			"saved": "comma-separated key names that were saved; never translate them"
+		}
+	},
+	"ui.chat.run_details.mcp_key.saved_not_connected": {
+		"role": "MCP key form outcome when the keys saved but the server still did not connect",
+		"tone": "result then remedy",
+		"length": "Inline copy; may wrap",
+		"note": "The keys are stored; only the connection failed, so do not imply the save was lost.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.job_cancel.title": {
+		"role": "question heading and accessible name of the cancel confirmation card",
+		"tone": "short question, sentence case",
+		"length": "Three words",
+		"note": "Background-job cancel confirmation card in the run panel's Jobs section (non-music jobs).",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.job_cancel.body": {
+		"role": "explanation under the cancel question",
+		"tone": "factual, two sentences",
+		"length": "Wraps in a 288px card",
+		"note": "Background-job cancel confirmation card in the run panel's Jobs section (non-music jobs). 'Cancelled' quotes the job row's own status word; use the same word your translation uses for a cancelled job. Use your language's quotation marks.",
+		"placeholders": {
+			"label": "the job's name as the run panel shows it"
+		}
+	},
+	"ui.chat.run_details.job_cancel.confirm": {
+		"role": "destructive button that cancels the background job",
+		"tone": "single verb, sentence case",
+		"length": "One word; compact button beside Keep",
+		"note": "Background-job cancel confirmation card in the run panel's Jobs section (non-music jobs). Means stop the job, not close the card (Keep closes the card).",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.job_cancel.cancelling": {
+		"role": "the cancel button's label while the request is in flight",
+		"tone": "progressive verb with ellipsis",
+		"length": "One word",
+		"note": "Background-job cancel confirmation card in the run panel's Jobs section (non-music jobs).",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.wake.every": {
+		"role": "repeat cadence of a scheduled wake or monitor in the run panel",
+		"tone": "lowercase fragment, no punctuation",
+		"length": "Two words",
+		"note": "The duration is a compact machine-style span such as 1h or 5m30s.",
+		"placeholders": {
+			"duration": "compact duration such as 1h, 30m or 1h30m; keep as given"
+		}
+	},
+	"ui.chat.run_details.wake.cadence_finished": {
+		"role": "repeat cadence of a wake whose delivery limit is used up",
+		"tone": "lowercase fragment, no trailing punctuation",
+		"length": "Five words",
+		"note": "Keep the middle dot separator. Says the schedule is finished, not that one more delivery is coming.",
+		"placeholders": {
+			"duration": "compact duration such as 1h or 30m; keep as given"
+		}
+	},
+	"ui.chat.run_details.wake.cadence_remaining": {
+		"role": "repeat cadence of a wake with a delivery limit, plus how many deliveries remain",
+		"tone": "lowercase fragment, no trailing punctuation",
+		"length": "Four words",
+		"note": "Keep the middle dot separator. Add the CLDR plural arms your language needs for the remaining count.",
+		"placeholders": {
+			"remaining": "Numeric selector for CLDR plural categories (deliveries remaining).",
+			"remaining_display": "Raw String(remaining), unrounded and ungrouped. Print this, not remaining.",
+			"duration": "compact duration such as 1h or 30m; keep as given"
+		}
+	},
+	"ui.chat.run_details.monitor.armed_count": {
+		"role": "count clause naming how many monitors are armed, on the composer's monitors chip and as the trailing tally of the run panel's Monitors section",
+		"tone": "short status clause, lowercase after the number, no trailing punctuation",
+		"length": "Three words",
+		"note": "Monitors are read-only watches the agent armed; the Monitors section lists them in the run panel. Mirrors ui.chat.run_details.wake.armed_count; keep the two grammatically parallel.",
+		"placeholders": {
+			"count": "Numeric selector for CLDR plural categories. English uses exact =1 to preserve the original strict count === 1 branch; translators add their CLDR arms.",
+			"count_display": "Raw String(count), preserving the former JavaScript interpolation without rounding or grouping. Print this, not count."
+		}
+	},
+	"ui.chat.run_details.monitor.disabled": {
+		"role": "when-label of a monitor that is switched off",
+		"tone": "single lowercase status word",
+		"length": "One word",
+		"note": "Monitors are read-only watches the agent armed; the Monitors section lists them in the run panel.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.monitor.waiting": {
+		"role": "when-label of a monitor with no next check scheduled yet",
+		"tone": "single lowercase status word",
+		"length": "One word",
+		"note": "Monitors are read-only watches the agent armed; the Monitors section lists them in the run panel.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.monitor.last_check": {
+		"role": "secondary label on a monitor row: when it last checked",
+		"tone": "lowercase fragment, no punctuation",
+		"length": "Three or four words",
+		"note": "Monitors are read-only watches the agent armed; the Monitors section lists them in the run panel.",
+		"placeholders": {
+			"when": "localized time of the last check, e.g. 14:05 PST or a short date and time"
+		}
+	},
+	"ui.chat.run_details.monitor.failed_count": {
+		"role": "health label on a monitor row: how many checks in a row failed",
+		"tone": "count and lowercase participle, no punctuation",
+		"length": "Two words",
+		"note": "Monitors are read-only watches the agent armed; the Monitors section lists them in the run panel. Add the CLDR plural arms your language needs.",
+		"placeholders": {
+			"count": "Numeric selector for CLDR plural categories (consecutive failed checks).",
+			"count_display": "Raw String(count), unrounded and ungrouped. Print this, not count."
+		}
+	},
+	"ui.chat.run_details.checkpoint.turn_fallback": {
+		"role": "title of a completion checkpoint on the run-details rail while it has no generated name",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Shown until (or instead of) the generated name; the turn number is structural and matches the transcript's turn numbering. Use the same turn noun as ui.chat.checkpoint.turn.",
+		"placeholders": {
+			"turn": "the turn's 1-based position in the conversation"
+		}
 	}
 }
