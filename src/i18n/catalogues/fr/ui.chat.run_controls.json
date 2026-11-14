@@ -1,0 +1,14 @@
+{
+	"ui.chat.run_controls.job.no_conversation": "Il n’y a aucune conversation où annuler une tâche.",
+	"ui.chat.run_controls.monitor.no_conversation": "Il n’y a aucune conversation où annuler une surveillance.",
+	"ui.chat.run_controls.monitor.cancel_failed": "Impossible d’annuler la surveillance.",
+	"ui.chat.run_controls.wake.no_conversation": "Il n’y a aucune conversation où annuler un réveil.",
+	"ui.chat.run_controls.wake.cancel_failed": "Impossible d’annuler le réveil.",
+	"ui.chat.run_controls.wake.already_gone": "Ce réveil n’existe plus.",
+	"ui.chat.run_controls.wake_confirm.title": "Annuler ce réveil ?",
+	"ui.chat.run_controls.wake_confirm.title_named": "{name} : annuler ce point de suivi ?",
+	"ui.chat.run_controls.wake_confirm.message": "{subject, select, head {« {head} » ne se déclenchera plus, et rien ne le recréera. La conversation reste.} other {Ce réveil ne se déclenchera plus, et rien ne le recréera. La conversation reste.}}",
+	"ui.chat.run_controls.wake_confirm.message_named": "{subject, select, head {« {head} » ne se déclenchera plus, et rien ne le recréera. La planification propre à {name} n’est pas affectée.} other {Ce réveil ne se déclenchera plus, et rien ne le recréera. La planification propre à {name} n’est pas affectée.}}",
+	"ui.chat.run_controls.wake_confirm.action": "Annuler le réveil",
+	"ui.chat.run_controls.wake_confirm.action_named": "Annuler le point de suivi"
+}

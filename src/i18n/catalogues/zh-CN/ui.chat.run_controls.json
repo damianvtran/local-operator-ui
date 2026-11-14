@@ -1,0 +1,14 @@
+{
+	"ui.chat.run_controls.job.no_conversation": "当前没有对话，无法取消后台任务。",
+	"ui.chat.run_controls.monitor.no_conversation": "当前没有对话，无法取消监控。",
+	"ui.chat.run_controls.monitor.cancel_failed": "无法取消监控。",
+	"ui.chat.run_controls.wake.no_conversation": "当前没有对话，无法取消唤醒。",
+	"ui.chat.run_controls.wake.cancel_failed": "无法取消唤醒。",
+	"ui.chat.run_controls.wake.already_gone": "此唤醒已不存在。",
+	"ui.chat.run_controls.wake_confirm.title": "取消此唤醒？",
+	"ui.chat.run_controls.wake_confirm.title_named": "取消{name}的定期检查？",
+	"ui.chat.run_controls.wake_confirm.message": "{subject, select, head {“{head}”将不再触发，也不会被重新创建。对话仍会保留。} other {此唤醒将不再触发，也不会被重新创建。对话仍会保留。}}",
+	"ui.chat.run_controls.wake_confirm.message_named": "{subject, select, head {“{head}”将不再触发，也不会被重新创建。{name}自身的检查周期不受影响。} other {此唤醒将不再触发，也不会被重新创建。{name}自身的检查周期不受影响。}}",
+	"ui.chat.run_controls.wake_confirm.action": "取消唤醒",
+	"ui.chat.run_controls.wake_confirm.action_named": "取消定期检查"
+}

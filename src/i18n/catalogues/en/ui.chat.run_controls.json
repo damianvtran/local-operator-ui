@@ -1,0 +1,14 @@
+{
+	"ui.chat.run_controls.job.no_conversation": "There is no conversation to cancel a job on.",
+	"ui.chat.run_controls.monitor.no_conversation": "There is no conversation to cancel a monitor on.",
+	"ui.chat.run_controls.monitor.cancel_failed": "Could not cancel the monitor.",
+	"ui.chat.run_controls.wake.no_conversation": "There is no conversation to cancel a wake on.",
+	"ui.chat.run_controls.wake.cancel_failed": "Could not cancel the wake.",
+	"ui.chat.run_controls.wake.already_gone": "This wake is already gone.",
+	"ui.chat.run_controls.wake_confirm.title": "Cancel this wake?",
+	"ui.chat.run_controls.wake_confirm.title_named": "Cancel {name}'s check-in?",
+	"ui.chat.run_controls.wake_confirm.message": "{subject, select, head {“{head}” will not fire again, and nothing re-creates it. The conversation stays.} other {This wake will not fire again, and nothing re-creates it. The conversation stays.}}",
+	"ui.chat.run_controls.wake_confirm.message_named": "{subject, select, head {“{head}” will not fire again, and nothing re-creates it. {name}'s own cadence is unaffected.} other {This wake will not fire again, and nothing re-creates it. {name}'s own cadence is unaffected.}}",
+	"ui.chat.run_controls.wake_confirm.action": "Cancel wake",
+	"ui.chat.run_controls.wake_confirm.action_named": "Cancel check-in"
+}

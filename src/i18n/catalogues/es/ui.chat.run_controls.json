@@ -1,0 +1,14 @@
+{
+	"ui.chat.run_controls.job.no_conversation": "No hay ninguna conversación en la que cancelar un trabajo.",
+	"ui.chat.run_controls.monitor.no_conversation": "No hay ninguna conversación en la que cancelar un monitor.",
+	"ui.chat.run_controls.monitor.cancel_failed": "No se pudo cancelar el monitor.",
+	"ui.chat.run_controls.wake.no_conversation": "No hay ninguna conversación en la que cancelar un despertar.",
+	"ui.chat.run_controls.wake.cancel_failed": "No se pudo cancelar el despertar.",
+	"ui.chat.run_controls.wake.already_gone": "Este despertar ya no existe.",
+	"ui.chat.run_controls.wake_confirm.title": "¿Cancelar este despertar?",
+	"ui.chat.run_controls.wake_confirm.title_named": "¿Cancelar el seguimiento de {name}?",
+	"ui.chat.run_controls.wake_confirm.message": "{subject, select, head {“{head}” no se activará de nuevo y nada volverá a crearlo. La conversación se conserva.} other {Este despertar no se activará de nuevo y nada volverá a crearlo. La conversación se conserva.}}",
+	"ui.chat.run_controls.wake_confirm.message_named": "{subject, select, head {“{head}” no se activará de nuevo y nada volverá a crearlo. La programación propia de {name} no se ve afectada.} other {Este seguimiento no se activará de nuevo y nada volverá a crearlo. La programación propia de {name} no se ve afectada.}}",
+	"ui.chat.run_controls.wake_confirm.action": "Cancelar despertar",
+	"ui.chat.run_controls.wake_confirm.action_named": "Cancelar seguimiento"
+}

@@ -106859,6 +106859,223 @@
 					"status": "audited"
 				}
 			]
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.chat.run_controls",
+			"source_sha256": "c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa",
+			"target_sha256": "45d42bdda892d564fdffa264a6bc22ba6849c234104b87b13d8da12cd19a6324",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-14",
+				"note": "S17d-2, 12 keys; r1 audit PASS x7, r2 delta PASS fr/es/ru/ur; v1 drafts shipped for zh-CN, vi, hi. This file is byte-identical to the audited v2 draft (new namespace, no inherited keys)."
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-14",
+					"result": "clean",
+					"instance": "s17d2-es-rebind-45d42bdd",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/s17d2-es-rebind-45d42bdd.json",
+					"receipt_sha256": "c4271c4725bb0fa56233def0e29caf5492f5d1c5048986e80fcd9b58030a1b2f",
+					"scope": "S17d-2 re-bind: the new 12-key ui.chat.run_controls namespace at merged head 90f0f49b"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.chat.run_controls",
+			"source_sha256": "c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa",
+			"target_sha256": "28ba35cac7e257e6603842699be2f668ebf5960a18676d8c223352e00ae3516f",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-14",
+				"note": "S17d-2, 12 keys; r1 audit PASS x7, r2 delta PASS fr/es/ru/ur; v1 drafts shipped for zh-CN, vi, hi. This file is byte-identical to the audited v2 draft (new namespace, no inherited keys)."
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-14",
+					"result": "clean-with-findings",
+					"instance": "s17d2-fr-rebind-28ba35ca",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/s17d2-fr-rebind-28ba35ca.json",
+					"receipt_sha256": "54393fd4091bff3f0daafcd1940197c5334003b006010ff4be91d1bfff064d57",
+					"scope": "S17d-2 re-bind: the new 12-key ui.chat.run_controls namespace at merged head 90f0f49b"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat.run_controls",
+			"source_sha256": "c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa",
+			"target_sha256": "19c0bcc144cea71b7be5c17932fdd32837c730d4ac4112359908a6e626685cda",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-14",
+				"note": "S17d-2, 12 keys; r1 audit PASS x7, r2 delta PASS fr/es/ru/ur; v1 drafts shipped for zh-CN, vi, hi. This file is byte-identical to the audited v1 draft (new namespace, no inherited keys)."
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-14",
+					"result": "clean-with-findings",
+					"instance": "s17d2-hi-rebind-19c0bcc1",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 3
+					},
+					"receipt": "i18n/receipts/s17d2-hi-rebind-19c0bcc1.json",
+					"receipt_sha256": "4f6a21156aba3647778cd7bf5ac58216f01d6fea6647b1a1cd5ec3297ed2f2c7",
+					"scope": "S17d-2 re-bind: the new 12-key ui.chat.run_controls namespace at merged head 90f0f49b"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.chat.run_controls",
+			"source_sha256": "c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa",
+			"target_sha256": "b2c5993276ae0776469d547b476579dd98238b7035836cf05cdea11bd6e7e900",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-14",
+				"note": "S17d-2, 12 keys; r1 audit PASS x7, r2 delta PASS fr/es/ru/ur; v1 drafts shipped for zh-CN, vi, hi. This file is byte-identical to the audited v2 draft (new namespace, no inherited keys)."
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-14",
+					"result": "clean-with-findings",
+					"instance": "s17d2-ru-rebind-b2c59932",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/s17d2-ru-rebind-b2c59932.json",
+					"receipt_sha256": "5765a6f6009712103bdd28b6d82435f57d3daab3fd088bcf428f49ea5e1167db",
+					"scope": "S17d-2 re-bind: the new 12-key ui.chat.run_controls namespace at merged head 90f0f49b"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.chat.run_controls",
+			"source_sha256": "c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa",
+			"target_sha256": "fcd479c8e28482855385daab7e50891743f05f502919e3a40bae7240e15a5fef",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-14",
+				"note": "S17d-2, 12 keys; r1 audit PASS x7, r2 delta PASS fr/es/ru/ur; v1 drafts shipped for zh-CN, vi, hi. This file is byte-identical to the audited v2 draft (new namespace, no inherited keys)."
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-14",
+					"result": "clean-with-findings",
+					"instance": "s17d2-ur-rebind-fcd479c8",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/s17d2-ur-rebind-fcd479c8.json",
+					"receipt_sha256": "9223fd771c8fb84e64999dc610718a3a5e17a0c72348c1f46c1d7f530d0d970f",
+					"scope": "S17d-2 re-bind: the new 12-key ui.chat.run_controls namespace at merged head 90f0f49b"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.chat.run_controls",
+			"source_sha256": "c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa",
+			"target_sha256": "4c7b67b96dd976f84e4d7d3f8431af8c9d70326d38ea379496840e5a4d6f332e",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-14",
+				"note": "S17d-2, 12 keys; r1 audit PASS x7, r2 delta PASS fr/es/ru/ur; v1 drafts shipped for zh-CN, vi, hi. This file is byte-identical to the audited v1 draft (new namespace, no inherited keys)."
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-14",
+					"result": "clean-with-findings",
+					"instance": "s17d2-vi-rebind-4c7b67b9",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 3
+					},
+					"receipt": "i18n/receipts/s17d2-vi-rebind-4c7b67b9.json",
+					"receipt_sha256": "16719005ec334409d5f09f7d230e587be4ad75da4bda2d4925c5154b4c0daf06",
+					"scope": "S17d-2 re-bind: the new 12-key ui.chat.run_controls namespace at merged head 90f0f49b"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.chat.run_controls",
+			"source_sha256": "c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa",
+			"target_sha256": "3010fc82f5a52df7e94d5bba58929848561c28ca20fc49c77ff00a0160528812",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-14",
+				"note": "S17d-2, 12 keys; r1 audit PASS x7, r2 delta PASS fr/es/ru/ur; v1 drafts shipped for zh-CN, vi, hi. This file is byte-identical to the audited v1 draft (new namespace, no inherited keys)."
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-14",
+					"result": "clean",
+					"instance": "s17d2-zh-cn-rebind-3010fc82",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/s17d2-zh-cn-rebind-3010fc82.json",
+					"receipt_sha256": "54b02931ac1272713be8e9898933a24f4d82ac647c0ff4ecc455b6edce0d1310",
+					"scope": "S17d-2 re-bind: the new 12-key ui.chat.run_controls namespace at merged head 90f0f49b"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }

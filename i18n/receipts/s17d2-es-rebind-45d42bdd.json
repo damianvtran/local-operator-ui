@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent binding audit of the landed namespace (first binding; no re-bind)",
+  "locale": "es",
+  "namespace": "ui.chat.run_controls",
+  "pr": 1911,
+  "date": "2026-11-14",
+  "head": "90f0f49beae27ad35c1b05492ee150cd31e3a8c1",
+  "instance": "s17d2-es-rebind-45d42bdd",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); not the translator, not the draft auditor, not the integrator",
+    "model": "deepseek/deepseek-flash",
+    "independence": "A different session and instance from both the translator and the draft auditors; the judgement below was re-derived from the English source, the sidecar and the shipped es corpus in this run, not carried from the earlier records.",
+    "instance": "s17d2-es-rebind-45d42bdd"
+  },
+  "model": "deepseek/deepseek-flash",
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "binding": "Binds the landed es bytes 45d42bdda892d564fdffa264a6bc22ba6849c234104b87b13d8da12cd19a6324 at head 90f0f49beae27ad35c1b05492ee150cd31e3a8c1. Verified here, not inferred: (1) `git show HEAD:src/i18n/catalogues/es/ui.chat.run_controls.json` hashes to that same sha256 and `git diff HEAD -- <file>` is empty, so the bytes I read are the committed bytes the PR ships; the file is byte-identical to the audited draft es.v2.json (cmp and hash). (2) 12 keys, set-equal to English both ways, same order, no duplicate keys; TAB indent, one trailing newline, no BOM, no CRLF, NFC, no \\u escapes. (3) ICU via the repo's own @formatjs/icu-messageformat-parser: 0 syntax failures and 0 argument/select-arm mismatches across 12 keys; `subject` select arms are exactly {head, other} on both message keys; `name` on title_named and `head`+`name` on message_named; no plural argument is used by any key in this namespace, so no CLDR plural category question arises for es. Rendered every arm (subject=head and subject=other, with name=Atlas, head=Research agent, and a quoted head): all resolve, no missing-argument marker, quoting nests correctly in both branches. (4) Read all 12 values myself against English and the 12 sidecar entries. Terminology re-derived from the corpus, not from the earlier records: wake->despertar (68 corpus occurrences; i18n/style-guides/es.md 'Locale calls (es)': wake -> despertar), job->trabajo (same guide), monitor->monitor (corpus: Monitores, ¿Cancelar este monitor?), 'The conversation stays.'->'La conversación se conserva.' already byte-identical in run_details.monitor_cancel.message, 'Could not cancel the wake.'->'No se pudo cancelar el despertar.' already byte-identical in ui.schedules 'Cancelar despertar' already byte-identical in run_details.wake.cancel_wake, quotes are “ ” per the guide, address form tú (no addressed forms occur in this namespace, so no T/V risk). The one term not in the guide is 'check-in', rendered 'seguimiento' in the three named keys, which mirrors English's own two-word split (wake vs check-in) and follows the locale's one existing precedent (run_details.wake.managed_note, 'these check-ins' -> 'estos seguimientos'); each card is internally consistent (unnamed card says despertar on all three surfaces, named card says seguimiento on all three), so I hold no finding on it. (5) English sweep: zero English fragments in any value; the only non-Spanish tokens are the ICU keywords subject/select/head/other (syntax, never shown) and 'monitor', which is a Spanish word and the locale's established term for the stored monitor object. No string is byte-identical to English. (6) Measured length deltas are all normal Spanish expansion (largest: title +47%, action_named +33%, action +64%); 'Cancelar despertar' already ships in the same panel via run_details.wake.cancel_wake, so its fit has rendering precedent.",
+  "scope": "ui.chat.run_controls for es: 12 keys at PR head 90f0f49beae2, all read against English and the sidecar",
+  "revisions": {
+    "head": "90f0f49beae27ad35c1b05492ee150cd31e3a8c1"
+  },
+  "en_sha256": "c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa",
+  "context_sha256": "fe162255233a62a41add06ce77e0aff3a533c003e3fb9e504031b91aa83073de",
+  "target_sha256": "45d42bdda892d564fdffa264a6bc22ba6849c234104b87b13d8da12cd19a6324",
+  "sha256": {
+    "es": "45d42bdda892d564fdffa264a6bc22ba6849c234104b87b13d8da12cd19a6324",
+    "en": "c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa"
+  },
+  "draft_sha256": "45d42bdda892d564fdffa264a6bc22ba6849c234104b87b13d8da12cd19a6324"
+}
