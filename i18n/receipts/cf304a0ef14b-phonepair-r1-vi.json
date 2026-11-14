@@ -1,0 +1,89 @@
+{
+	"auditor": "translation-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "cf304a0ef14b-phonepair-r1-vi",
+	"date": "2026-11-14",
+	"locale": "vi",
+	"independence": "Independent lopdev translation-auditor session cf304a0ef14b; not the translator (coder subagent of host session 25fe8dfbf610, which runs anthropic/claude-opus-5-5; the coder child's own model was not independently confirmed). Same model family as the translator host: disclosed. Read only the PR's committed bytes; authored no catalogue change.",
+	"references": {
+		"glossary": "damianvtran/local-operator@097b9bc6c562 i18n/glossary.md",
+		"style_guide": "damianvtran/local-operator@097b9bc6c562 i18n/style-guides/vi.md",
+		"core_pairing_copy": "damianvtran/local-operator@097b9bc6c562 local_operator/i18n/catalogues/vi/relay.pairing.json and operator.pairing.json",
+		"ui_register": "src/i18n/catalogues/vi/ui.providers.json (ui.providers.phone.*), ui.settings.page.title, existing Approve/Deny/Remove buttons"
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"pr": 1912,
+	"head": "2f1f580e30d56d6c53c3ae3859be26d41161bc66",
+	"scope": "Round 1 full audit of new namespace ui.phone_pairing, all 64 keys (popup 34, setup 7, phones 19, platform 4) read against en and en .context.json, glossary, locale style guide and core relay.pairing/operator.pairing: accuracy, idiom, register, glossary (pair/approve/deny/computer/phone/approvals), placeholders and ICU plural arms with #, typography, attacker-controlled name framing, button widths (380px card, nowrap buttons). Minor/nit findings are open (deferred to the PR owner); no blocker/major.",
+	"namespace": "ui.phone_pairing",
+	"status": "passed",
+	"sha256": {
+		"en": "15d3102747401dd5b6751618303b78fdda449dcbd50daba4e509596c890e98c6",
+		"vi": "cde6a881a593b27bd83b0575a856607c2dbf3836e4d1fe429ab9540ccb3ed7a7"
+	},
+	"context_sha256": "ada7b58d4a4a507916b1bf8d443b1121a7d0ab142b75d1a9a936edc8b4da1394",
+	"findings": [
+		{
+			"id": "V-1",
+			"severity": "MINOR",
+			"key": "ui.phone_pairing.popup.grant",
+			"issue": "'Approving' rendered chấp thuận while every other key, the buttons and the glossary (approvals → phê duyệt) use phê duyệt.",
+			"proposed": {
+				"ui.phone_pairing.popup.grant": "Nếu bạn phê duyệt, điện thoại này có thể phê duyệt yêu cầu trên máy tính này và nhận thông báo của máy. Các máy tính tham gia cùng máy này sau này cũng sẽ tin cậy nó."
+			}
+		},
+		{
+			"id": "V-2",
+			"severity": "MINOR",
+			"key": "ui.phone_pairing.setup.turn_on",
+			"keys": [
+				"ui.phone_pairing.setup.turn_on",
+				"ui.phone_pairing.setup.on",
+				"ui.phone_pairing.setup.error",
+				"ui.phone_pairing.popup.unavailable"
+			],
+			"issue": "'phone approvals' is 'phê duyệt bằng điện thoại' here but 'phê duyệt từ điện thoại' in the core copy that tells the user what to turn on (relay.pairing.unavailable.body, operator.pairing.prompt.setup).",
+			"proposed": {
+				"ui.phone_pairing.setup.turn_on": "Bật phê duyệt từ điện thoại",
+				"ui.phone_pairing.setup.on": "Đã bật phê duyệt từ điện thoại. Mỗi điện thoại mới vẫn sẽ yêu cầu mật khẩu máy tính một lần.",
+				"ui.phone_pairing.setup.error": "Không bật được phê duyệt từ điện thoại. Không có gì thay đổi; hãy thử lại.",
+				"ui.phone_pairing.popup.unavailable": "Máy tính này chưa được thiết lập để điện thoại phê duyệt yêu cầu. Hãy bật phê duyệt từ điện thoại trước, hoặc từ chối yêu cầu này."
+			}
+		},
+		{
+			"id": "V-3",
+			"severity": "MINOR",
+			"key": "ui.phone_pairing.popup.admin_prompt",
+			"keys": [
+				"ui.phone_pairing.popup.admin_prompt",
+				"ui.phone_pairing.setup.body",
+				"ui.phone_pairing.phones.dialog_gesture"
+			],
+			"issue": "'its password' rendered as bare 'mật khẩu'; core says 'mật khẩu của chính nó' so the user does not type the Radient password.",
+			"proposed": {
+				"ui.phone_pairing.popup.admin_prompt": "Máy tính đang yêu cầu mật khẩu của chính nó để thêm điện thoại này. Hộp thoại có thể nằm sau cửa sổ này.",
+				"ui.phone_pairing.setup.body": "Máy tính sẽ hỏi mật khẩu của chính nó một lần để bật tính năng này.",
+				"ui.phone_pairing.phones.dialog_gesture": "Máy tính sẽ hỏi mật khẩu của chính nó để hoàn tất việc gỡ bỏ."
+			}
+		},
+		{
+			"id": "V-4",
+			"severity": "NIT",
+			"key": "ui.phone_pairing.phones.still_removing",
+			"issue": "The button name Hoàn tất gỡ bỏ is not quoted; vi catalogues quote UI labels with “ ”.",
+			"proposed": {
+				"ui.phone_pairing.phones.still_removing": "Điện thoại này không còn phê duyệt yêu cầu hay nhận thông báo ở đây, nhưng một bước chưa hoàn tất. Hãy dùng “Hoàn tất gỡ bỏ” để hoàn thành."
+			}
+		},
+		{
+			"id": "V-5",
+			"severity": "NIT",
+			"key": "ui.phone_pairing.popup.unavailable_where",
+			"issue": "'terminal app' as 'ứng dụng dòng lệnh'; core relay.pairing.terminal.turn_on_approving says 'ứng dụng terminal'. Understandable; align when next touched.",
+			"proposed": {
+				"ui.phone_pairing.popup.unavailable_where": "Bạn cũng có thể bật trong Cài đặt → Truy cập từ điện thoại, hoặc trong ứng dụng terminal bằng /mobile approvals on."
+			}
+		}
+	],
+	"resolved": []
+}

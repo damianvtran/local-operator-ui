@@ -1,0 +1,49 @@
+{
+	"auditor": "translation-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "190fe64b9fbc-phonepair-r2-fr",
+	"date": "2026-11-14",
+	"locale": "fr",
+	"independence": "Independent lopdev translation-auditor session 190fe64b9fbc (round-2 re-audit); not the translator (coder subagent of host session 25fe8dfbf610) and not the round-1 auditor (cf304a0ef14b). Configured model anthropic/claude-opus-5-5, the same family as the translator host: disclosed; served model not independently confirmable from inside the session. Read only the PR's committed bytes at the head; authored no catalogue change.",
+	"references": {
+		"glossary": "damianvtran/local-operator@097b9bc6c562 i18n/glossary.md",
+		"style_guide": "damianvtran/local-operator@097b9bc6c562 i18n/style-guides/fr.md",
+		"core_pairing_copy": "damianvtran/local-operator@097b9bc6c562 local_operator/i18n/catalogues/fr/relay.pairing.json and operator.pairing.json",
+		"ui_register": "src/i18n/catalogues/fr/ui.providers.json (ui.providers.phone.heading, .consent tunnel term), ui.settings.json (ui.settings.page.title)",
+		"spec": "lop-specs/mobile-pairing-design-v2.md §4.1 (grant sentence, Show phone password)",
+		"round1": "cf304a0ef14b replacements-r1.json and i18n/receipts/cf304a0ef14b-phonepair-r1-*.json"
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"pr": 1912,
+	"head": "33e589a2d522de161298bd0be7b38bd82637d6a0",
+	"scope": "Round 2 re-audit, WHOLE namespace ui.phone_pairing: all 80 keys (popup 38, setup 9, phones 19, platform 4, password 12 - incl. the 24 keys new/changed in English since 41fd2166) read against en, en .context.json, glossary, style guide and core relay.pairing/operator.pairing. Checked: pair/approve/deny/remove vocabulary vs the phone-side core copy (round-1 MAJOR resolved), ICU select arms mac/windows/other on all 7 select keys and CLDR plural arms with # (parsed + formatted per arm with intl-messageformat), placeholders, password.* claims (no security overpromise), Settings path names vs the real screen titles, quoted button names, typography, widths (action row is flex-wrap).",
+	"namespace": "ui.phone_pairing",
+	"status": "passed",
+	"sha256": {
+		"en": "ead4e5ad631a5b636664cef029a22def4a91803d1743167e9287dde2f68ed135",
+		"fr": "afa375f7655c66f60a55bd0319f4ffb47a146fef3b165c862b268d8229990636"
+	},
+	"context_sha256": "2e8c8b1004f666fb24a653bc86ae743d34bca5b18a0a37644b1750a4abbfe906",
+	"findings": [
+		{
+			"id": "FR-1",
+			"severity": "MINOR",
+			"key": "ui.phone_pairing.setup.finish_reason",
+			"keys": [
+				"ui.phone_pairing.setup.finish_reason",
+				"ui.phone_pairing.password.disclosure"
+			],
+			"issue": "Plain U+0020 before ':' and '?' in two new keys; fr style guide requires U+202F before : ; ! ? and every other key in this namespace already uses U+202F (a breaking space lets the mark wrap to a new line).",
+			"proposed": {
+				"ui.phone_pairing.setup.finish_reason": "La demande de mot de passe a été annulée : la configuration n’est donc pas terminée.",
+				"ui.phone_pairing.password.disclosure": "Vous utilisez votre propre tunnel ?"
+			}
+		}
+	],
+	"resolved": [
+		{
+			"ref": "cf304a0ef14b round-1 MAJOR (fr pair vocabulary)",
+			"verified": "appairer/appairage/appairé now used throughout (popup.title, title_settled, anti_phishing, paired, strikes, expired, phones.*), matching core relay.pairing fr; no associer/s'associer left (regex scan)."
+		}
+	]
+}

@@ -42,6 +42,18 @@ const SOURCE_LOCALE = "en";
  */
 const IDENTICAL_OK = new Map([
 	[
+		"ui.phone_pairing.platform.ios",
+		"Product name (Apple's iPhone), kept as the brand in every locale; the phone-pairing card labels the phone type with it (local-operator-ui #1912).",
+	],
+	[
+		"fr:ui.phone_pairing.popup.code_label",
+		"French cognate « Code », the label above the pairing card's six digits; the French word, not an English fallback (local-operator-ui #1912, for the i18n auditor's confirmation).",
+	],
+	[
+		"ui.phone_pairing.platform.android",
+		"Product name (Google's Android), kept as the brand in every locale; the phone-pairing card labels the phone type with it (local-operator-ui #1912).",
+	],
+	[
 		"fr:ui.settings.notifications.section.title",
 		"French cognate « Notifications »; independently audited in D2 r2 (b5bf3a7c1761). This exact French heading is not an English fallback.",
 	],

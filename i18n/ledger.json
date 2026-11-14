@@ -107762,6 +107762,477 @@
 					"status": "audited"
 				}
 			]
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.phone_pairing",
+			"source_sha256": "51f025668af39f9e58c729aa500e4c1e22aed731e72c569eeb14831186c38a83",
+			"target_sha256": "f33ebde6e97b44f862ea50c530574c3d2ab67cf066d6912efa7998c15f7bf991",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-14"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-14",
+					"result": "clean-with-findings",
+					"instance": "e27e5fd167e9-phonepair-r3-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/e27e5fd167e9-phonepair-r3-zh-cn.json",
+					"receipt_sha256": "797fe32c70c9a82d0cfa290788e1ec1926d9f690fc4bb2e2eaa2da03f226c111",
+					"scope": "Round 3 delta re-audit (manage_where) ui.phone_pairing at 9b4662dc (PR #1912)",
+					"note": "Round 3 delta (1 changed key: popup.manage_where, Settings → Radient account → Paired phones; 79 carried byte-identical from 190fe64b9fbc). Open: Z-4 minor (carried); Z-5 nit (path quoting vs agentMessages, no change). Detail: i18n/receipts/e27e5fd167e9-phonepair-r3-zh-cn.json"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "15d3102747401dd5b6751618303b78fdda449dcbd50daba4e509596c890e98c6",
+					"target_sha256": "47c8e6e6d2c8f324476cc11330b28f26f1a32d15c1624372e038db50f64d2fa5",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "cf304a0ef14b-phonepair-r1-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/cf304a0ef14b-phonepair-r1-zh-cn.json",
+							"receipt_sha256": "9d3c66a98a433506b7dad38f9f4d5f9df1bbff3cc00d9f5ab4c67ad48b0fb90f",
+							"scope": "Round 1 full audit, all 64 keys ui.phone_pairing at 2f1f580e3 (PR #1912)",
+							"note": "PR #1912 U2 keys by lopdev coder (host 25fe8dfbf610, anthropic/claude-opus-5-5). Independent audit cf304a0ef14b, same model: disclosed. Open: Z-1,Z-2 minor (CJK/Latin spacing; whose password); Z-3 nit. Detail: i18n/receipts/cf304a0ef14b-phonepair-r1-zh-cn.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ead4e5ad631a5b636664cef029a22def4a91803d1743167e9287dde2f68ed135",
+					"target_sha256": "58e2f0e3d7626bb6bf8c08bfcd64bbf461cb78dc5dcdb33d9a2993842cd5780b",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "190fe64b9fbc-phonepair-r2-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/190fe64b9fbc-phonepair-r2-zh-cn.json",
+							"receipt_sha256": "9094ab1fd4f4e2b42a2c8f3e8dcdb2b01b8e432479f3d5c8c7f6e4adcce47dac",
+							"scope": "Round 2 delta re-audit (changed keys) ui.phone_pairing at 33e589a2 (PR #1912)",
+							"note": "Round 2 delta (31 changed keys; 49 carried byte-identical from cf304a0ef14b). Open: Z-4 minor (CJK/Latin spacing in 8 keys). Detail: i18n/receipts/190fe64b9fbc-phonepair-r2-zh-cn.json"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.phone_pairing",
+			"source_sha256": "51f025668af39f9e58c729aa500e4c1e22aed731e72c569eeb14831186c38a83",
+			"target_sha256": "31b01315f1219b390fc530073bf1636a6fc74110833cd9c88d0f52bba6061047",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-14"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-14",
+					"result": "clean-with-findings",
+					"instance": "e27e5fd167e9-phonepair-r3-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/e27e5fd167e9-phonepair-r3-ur.json",
+					"receipt_sha256": "049c6f14e964b19a88a3507c9a245624b69150ba8a1c5af0d0841983fae1d449",
+					"scope": "Round 3 delta re-audit (manage_where) ui.phone_pairing at 9b4662dc (PR #1912)",
+					"note": "Round 3 delta (1 changed key: popup.manage_where, Settings → Radient account → Paired phones; 79 carried byte-identical from 190fe64b9fbc). Open: UR-4, UR-5 nits (carried, no change). Detail: i18n/receipts/e27e5fd167e9-phonepair-r3-ur.json"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "15d3102747401dd5b6751618303b78fdda449dcbd50daba4e509596c890e98c6",
+					"target_sha256": "75a99d3363e4d19a56827700f1b1969a050e4c6fbe36e8c34d4cf75deee920d2",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "cf304a0ef14b-phonepair-r1-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/cf304a0ef14b-phonepair-r1-ur.json",
+							"receipt_sha256": "399e84b76a950c42e9e3e89441be650f0dca0032aa5d1a2930173c601d0b0ee6",
+							"scope": "Round 1 full audit, all 64 keys ui.phone_pairing at 2f1f580e3 (PR #1912)",
+							"note": "PR #1912 U2 keys by lopdev coder (host 25fe8dfbf610, anthropic/claude-opus-5-5). Independent audit cf304a0ef14b, same model: disclosed. Open: UR-1,UR-2 minor (approvals plural; quotes); UR-3 nit. Detail: i18n/receipts/cf304a0ef14b-phonepair-r1-ur.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ead4e5ad631a5b636664cef029a22def4a91803d1743167e9287dde2f68ed135",
+					"target_sha256": "7dcc97cd1e3bd17dcb99cc771c37105a72f0c9c436ea29963f129e47e7cfb47f",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "190fe64b9fbc-phonepair-r2-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/190fe64b9fbc-phonepair-r2-ur.json",
+							"receipt_sha256": "3c8bb42fc954a8502f18b5d5692470316865be016bfd240b2d7bd8bedcbe88ca",
+							"scope": "Round 2 delta re-audit (changed keys) ui.phone_pairing at 33e589a2 (PR #1912)",
+							"note": "Round 2 delta (29 changed keys; 51 carried byte-identical from cf304a0ef14b). Open: UR-4, UR-5 nits. Detail: i18n/receipts/190fe64b9fbc-phonepair-r2-ur.json"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.phone_pairing",
+			"source_sha256": "51f025668af39f9e58c729aa500e4c1e22aed731e72c569eeb14831186c38a83",
+			"target_sha256": "cabdbc9c34129064227f79646997f50d48d6baead41190b92cbe01ffb461c60f",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-14"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-14",
+					"result": "clean-with-findings",
+					"instance": "e27e5fd167e9-phonepair-r3-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/e27e5fd167e9-phonepair-r3-vi.json",
+					"receipt_sha256": "84edeced1abafe7f9ddba38b5a514f2b8bd453fb468063fc55377ebf0c4d8f5c",
+					"scope": "Round 3 delta re-audit (manage_where) ui.phone_pairing at 9b4662dc (PR #1912)",
+					"note": "Round 3 delta (1 changed key: popup.manage_where, Settings → Radient account → Paired phones; 79 carried byte-identical from 190fe64b9fbc). Open: VI-6 minor (carried). Detail: i18n/receipts/e27e5fd167e9-phonepair-r3-vi.json"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "15d3102747401dd5b6751618303b78fdda449dcbd50daba4e509596c890e98c6",
+					"target_sha256": "cde6a881a593b27bd83b0575a856607c2dbf3836e4d1fe429ab9540ccb3ed7a7",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "cf304a0ef14b-phonepair-r1-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 3,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/cf304a0ef14b-phonepair-r1-vi.json",
+							"receipt_sha256": "09e9db30da6f4b6afd0dbbe2a9ce0634306a0e0d0836624e8217e11ed9a66682",
+							"scope": "Round 1 full audit, all 64 keys ui.phone_pairing at 2f1f580e3 (PR #1912)",
+							"note": "PR #1912 U2 keys by lopdev coder (host 25fe8dfbf610, anthropic/claude-opus-5-5). Independent audit cf304a0ef14b, same model: disclosed. Open: V-1..V-3 minor (approve term; từ điện thoại; whose password); V-4,V-5 nit. Detail: i18n/receipts/cf304a0ef14b-phonepair-r1-vi.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ead4e5ad631a5b636664cef029a22def4a91803d1743167e9287dde2f68ed135",
+					"target_sha256": "9415183533e04b2db3484252e6af63b3bb408733b0b63fce8692e921a659d6c5",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "190fe64b9fbc-phonepair-r2-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/190fe64b9fbc-phonepair-r2-vi.json",
+							"receipt_sha256": "94aa58e8c2fab5f07c2ce76dec916281eb8f4e61798033f548290fbe26b6d3f8",
+							"scope": "Round 2 delta re-audit (changed keys) ui.phone_pairing at 33e589a2 (PR #1912)",
+							"note": "Round 2 delta (29 changed keys; 51 carried byte-identical from cf304a0ef14b). Open: VI-6 minor (agent → tác nhân in grant). Detail: i18n/receipts/190fe64b9fbc-phonepair-r2-vi.json"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.phone_pairing",
+			"source_sha256": "51f025668af39f9e58c729aa500e4c1e22aed731e72c569eeb14831186c38a83",
+			"target_sha256": "a496a91d1e7e068ec02e426f0631e7688b92ddb4ce93d49d1ddac4c4d115c26b",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-14"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-14",
+					"result": "clean-with-findings",
+					"instance": "e27e5fd167e9-phonepair-r3-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/e27e5fd167e9-phonepair-r3-fr.json",
+					"receipt_sha256": "6be30b7fe6848b4e8f6026860623f1e11577a54c90e826b7d10acb43aacd1bf1",
+					"scope": "Round 3 delta re-audit (manage_where) ui.phone_pairing at 9b4662dc (PR #1912)",
+					"note": "Round 3 delta (1 changed key: popup.manage_where, Settings → Radient account → Paired phones; 79 carried byte-identical from 190fe64b9fbc). Open: FR-1 minor (carried). Detail: i18n/receipts/e27e5fd167e9-phonepair-r3-fr.json"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ead4e5ad631a5b636664cef029a22def4a91803d1743167e9287dde2f68ed135",
+					"target_sha256": "afa375f7655c66f60a55bd0319f4ffb47a146fef3b165c862b268d8229990636",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "190fe64b9fbc-phonepair-r2-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/190fe64b9fbc-phonepair-r2-fr.json",
+							"receipt_sha256": "c0dc6c444b28ef7268e304a7d694106f07e1625e16eac8afbab8110a6a842443",
+							"scope": "Round 2 whole-namespace re-audit, all 80 keys ui.phone_pairing at 33e589a2 (PR #1912)",
+							"note": "Round 2 (whole ns, 80 keys) after round-1 MAJOR pair vocabulary: appairer now matches the phone. Open: FR-1 minor (U+202F in 2 new keys). Detail: i18n/receipts/190fe64b9fbc-phonepair-r2-fr.json"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.phone_pairing",
+			"source_sha256": "51f025668af39f9e58c729aa500e4c1e22aed731e72c569eeb14831186c38a83",
+			"target_sha256": "87bdb5f8aaa540ebe12f2a46afddd07af4e9eeab9ede719892ad1fffe692e239",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-14"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-14",
+					"result": "clean",
+					"instance": "e27e5fd167e9-phonepair-r3-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/e27e5fd167e9-phonepair-r3-es.json",
+					"receipt_sha256": "fa7bf68ff594273d977ca0568d4a67b1345942f414d33a951600c208ef060832",
+					"scope": "Round 3 delta re-audit (manage_where) ui.phone_pairing at 9b4662dc (PR #1912)",
+					"note": "Round 3 delta (1 changed key: popup.manage_where, Settings → Radient account → Paired phones; 79 carried byte-identical from 190fe64b9fbc). No findings. Detail: i18n/receipts/e27e5fd167e9-phonepair-r3-es.json"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ead4e5ad631a5b636664cef029a22def4a91803d1743167e9287dde2f68ed135",
+					"target_sha256": "6b6912c9d82cfc6320c179680cd492da49a5b58e656c29738088611391beac09",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean",
+							"instance": "190fe64b9fbc-phonepair-r2-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/190fe64b9fbc-phonepair-r2-es.json",
+							"receipt_sha256": "5f773766de108fa02008b8f7ea40d0301bffd8901176a75e7b25913d38b564fa",
+							"scope": "Round 2 whole-namespace re-audit, all 80 keys ui.phone_pairing at 33e589a2 (PR #1912)",
+							"note": "Round 2 (whole ns, 80 keys) after round-1 MAJOR pair vocabulary: emparejar now matches the phone. No findings. Detail: i18n/receipts/190fe64b9fbc-phonepair-r2-es.json"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.phone_pairing",
+			"source_sha256": "51f025668af39f9e58c729aa500e4c1e22aed731e72c569eeb14831186c38a83",
+			"target_sha256": "2d82d6c6b7884224a90cf54a1508e149cd69aaa54f40c0a87c556ed39fe4a2dd",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-14"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-14",
+					"result": "clean-with-findings",
+					"instance": "e27e5fd167e9-phonepair-r3-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/e27e5fd167e9-phonepair-r3-ru.json",
+					"receipt_sha256": "eee4cd7544e3c01ea373539a8b9e4cf13f54f636c6d22b762e9752c571629c33",
+					"scope": "Round 3 delta re-audit (manage_where) ui.phone_pairing at 9b4662dc (PR #1912)",
+					"note": "Round 3 delta (1 changed key: popup.manage_where, Settings → Radient account → Paired phones; 79 carried byte-identical from 190fe64b9fbc). Open: RU-1 minor (carried). Detail: i18n/receipts/e27e5fd167e9-phonepair-r3-ru.json"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ead4e5ad631a5b636664cef029a22def4a91803d1743167e9287dde2f68ed135",
+					"target_sha256": "79743f81a800fb883ca134dc1c7d8a2b90d6a7e79343f381e18a00e5d406a02e",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "190fe64b9fbc-phonepair-r2-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/190fe64b9fbc-phonepair-r2-ru.json",
+							"receipt_sha256": "823a233faa72481d319a7d6c2c4a732672ea8cfead939f917661f53aefeb04ff",
+							"scope": "Round 2 whole-namespace re-audit, all 80 keys ui.phone_pairing at 33e589a2 (PR #1912)",
+							"note": "Round 2 (whole ns, 80 keys) after round-1 MAJOR pair vocabulary: сопряжение now matches the phone. Open: RU-1 minor (setup.working wording). Detail: i18n/receipts/190fe64b9fbc-phonepair-r2-ru.json"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.phone_pairing",
+			"source_sha256": "51f025668af39f9e58c729aa500e4c1e22aed731e72c569eeb14831186c38a83",
+			"target_sha256": "f37da7f9cddbfad54aee35761007e16a73ffc1a938e30590756a978da59530c6",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-14"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-14",
+					"result": "clean-with-findings",
+					"instance": "e27e5fd167e9-phonepair-r3-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/e27e5fd167e9-phonepair-r3-hi.json",
+					"receipt_sha256": "7814fb0835395a80fc51e48a9f420434f1cfe838797019c7c8d0b37833b41915",
+					"scope": "Round 3 delta re-audit (manage_where) ui.phone_pairing at 9b4662dc (PR #1912)",
+					"note": "Round 3 delta (1 changed key: popup.manage_where, Settings → Radient account → Paired phones; 79 carried byte-identical from 190fe64b9fbc). Open: HI-1 nit (carried, no change). Detail: i18n/receipts/e27e5fd167e9-phonepair-r3-hi.json"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "ead4e5ad631a5b636664cef029a22def4a91803d1743167e9287dde2f68ed135",
+					"target_sha256": "60a5a15dbed165935e8af09f1da05978bafa6ee7801038b9d5f00d36dddbd604",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "190fe64b9fbc-phonepair-r2-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/190fe64b9fbc-phonepair-r2-hi.json",
+							"receipt_sha256": "5f2bef5ccaeab5ac629b19307a5877bfce069d98175dbe45e116e83d9b0d997e",
+							"scope": "Round 2 whole-namespace re-audit, all 80 keys ui.phone_pairing at 33e589a2 (PR #1912)",
+							"note": "Round 2 (whole ns, 80 keys) after round-1 MAJOR approve term: स्वीकृति now matches glossary/phone. Open: HI-1 nit (denying width). Detail: i18n/receipts/190fe64b9fbc-phonepair-r2-hi.json"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		}
 	]
 }

@@ -1,0 +1,75 @@
+{
+	"auditor": "translation-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "cf304a0ef14b-phonepair-r1-zh-cn",
+	"date": "2026-11-14",
+	"locale": "zh-CN",
+	"independence": "Independent lopdev translation-auditor session cf304a0ef14b; not the translator (coder subagent of host session 25fe8dfbf610, which runs anthropic/claude-opus-5-5; the coder child's own model was not independently confirmed). Same model family as the translator host: disclosed. Read only the PR's committed bytes; authored no catalogue change.",
+	"references": {
+		"glossary": "damianvtran/local-operator@097b9bc6c562 i18n/glossary.md",
+		"style_guide": "damianvtran/local-operator@097b9bc6c562 i18n/style-guides/zh-CN.md",
+		"core_pairing_copy": "damianvtran/local-operator@097b9bc6c562 local_operator/i18n/catalogues/zh-CN/relay.pairing.json and operator.pairing.json",
+		"ui_register": "src/i18n/catalogues/zh-CN/ui.providers.json (ui.providers.phone.*), ui.settings.page.title, existing Approve/Deny/Remove buttons"
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"pr": 1912,
+	"head": "2f1f580e30d56d6c53c3ae3859be26d41161bc66",
+	"scope": "Round 1 full audit of new namespace ui.phone_pairing, all 64 keys (popup 34, setup 7, phones 19, platform 4) read against en and en .context.json, glossary, locale style guide and core relay.pairing/operator.pairing: accuracy, idiom, register, glossary (pair/approve/deny/computer/phone/approvals), placeholders and ICU plural arms with #, typography, attacker-controlled name framing, button widths (380px card, nowrap buttons). Minor/nit findings are open (deferred to the PR owner); no blocker/major.",
+	"namespace": "ui.phone_pairing",
+	"status": "passed",
+	"sha256": {
+		"en": "15d3102747401dd5b6751618303b78fdda449dcbd50daba4e509596c890e98c6",
+		"zh-CN": "47c8e6e6d2c8f324476cc11330b28f26f1a32d15c1624372e038db50f64d2fa5"
+	},
+	"context_sha256": "ada7b58d4a4a507916b1bf8d443b1121a7d0ab142b75d1a9a936edc8b4da1394",
+	"findings": [
+		{
+			"id": "Z-1",
+			"severity": "MINOR",
+			"key": "ui.phone_pairing.popup.attested",
+			"keys": [
+				"ui.phone_pairing.popup.attested",
+				"ui.phone_pairing.popup.expires_in",
+				"ui.phone_pairing.popup.wrong_code",
+				"ui.phone_pairing.popup.unavailable_where",
+				"ui.phone_pairing.phones.paired_at",
+				"ui.phone_pairing.phones.remove_aria",
+				"ui.phone_pairing.phones.dialog_body"
+			],
+			"issue": "Spaces between Chinese and Latin/digit/placeholder runs, against style-guide §Punctuation ('No space inserted between Chinese text and Latin/digit runs') and core usage (运行{command}，, 你的Radient密码).",
+			"proposed": {
+				"ui.phone_pairing.popup.attested": "由已登录你的Radient账户的手机发起",
+				"ui.phone_pairing.popup.expires_in": "{time}后过期",
+				"ui.phone_pairing.popup.wrong_code": "这些数字与手机上的验证码不一致。未批准任何内容。{count, plural, other {还剩#次机会。}}",
+				"ui.phone_pairing.popup.unavailable_where": "你也可以在“设置 → 手机访问”中开启，或在终端应用中使用/mobile approvals on。",
+				"ui.phone_pairing.phones.paired_at": "配对于{date}",
+				"ui.phone_pairing.phones.remove_aria": "移除{name}",
+				"ui.phone_pairing.phones.dialog_body": "它将无法再批准请求或接收通知。只要它仍登录你的Radient账户，就仍可打开聊天；在手机上退出登录即可阻止。"
+			}
+		},
+		{
+			"id": "Z-2",
+			"severity": "MINOR",
+			"key": "ui.phone_pairing.popup.admin_prompt",
+			"keys": [
+				"ui.phone_pairing.popup.admin_prompt",
+				"ui.phone_pairing.setup.body",
+				"ui.phone_pairing.phones.dialog_gesture"
+			],
+			"issue": "'its password' rendered as bare 输入密码, dropping whose password; the security point (core operator.pairing.gesture.other: 它自己的密码…并非你的Radient密码) is that it is the computer's password, not the Radient one.",
+			"proposed": {
+				"ui.phone_pairing.popup.admin_prompt": "你的电脑正在要求输入它自己的密码以添加这部手机。提示窗口可能在此窗口后面。",
+				"ui.phone_pairing.setup.body": "开启时，你的电脑只会要求输入一次它自己的密码。",
+				"ui.phone_pairing.phones.dialog_gesture": "你的电脑会要求输入它自己的密码以完成移除。"
+			}
+		},
+		{
+			"id": "Z-3",
+			"severity": "NIT",
+			"key": "ui.phone_pairing.popup.code_label",
+			"issue": "验证码 here vs 代码/配对代码 on the phone half (core relay.pairing.*). Idiomatic and unambiguous next to the six digits; no change requested.",
+			"proposed": null
+		}
+	],
+	"resolved": []
+}
