@@ -252,6 +252,7 @@ import esUiChatQuotaResend from "./catalogues/es/ui.chat.quota_resend.json";
 import esUiChatRadientSession from "./catalogues/es/ui.chat.radient_session.json";
 import esUiChatReadAck from "./catalogues/es/ui.chat.read_ack.json";
 import esUiChatResponseActions from "./catalogues/es/ui.chat.response_actions.json";
+import esUiChatRunControls from "./catalogues/es/ui.chat.run_controls.json";
 import esUiChatRunDetails from "./catalogues/es/ui.chat.run_details.json";
 import esUiChatSessionReadout from "./catalogues/es/ui.chat.session_readout.json";
 import esUiChatSessionSpend from "./catalogues/es/ui.chat.session_spend.json";
@@ -416,6 +417,7 @@ import frUiChatQuotaResend from "./catalogues/fr/ui.chat.quota_resend.json";
 import frUiChatRadientSession from "./catalogues/fr/ui.chat.radient_session.json";
 import frUiChatReadAck from "./catalogues/fr/ui.chat.read_ack.json";
 import frUiChatResponseActions from "./catalogues/fr/ui.chat.response_actions.json";
+import frUiChatRunControls from "./catalogues/fr/ui.chat.run_controls.json";
 import frUiChatRunDetails from "./catalogues/fr/ui.chat.run_details.json";
 import frUiChatSessionReadout from "./catalogues/fr/ui.chat.session_readout.json";
 import frUiChatSessionSpend from "./catalogues/fr/ui.chat.session_spend.json";
@@ -580,6 +582,7 @@ import hiUiChatQuotaResend from "./catalogues/hi/ui.chat.quota_resend.json";
 import hiUiChatRadientSession from "./catalogues/hi/ui.chat.radient_session.json";
 import hiUiChatReadAck from "./catalogues/hi/ui.chat.read_ack.json";
 import hiUiChatResponseActions from "./catalogues/hi/ui.chat.response_actions.json";
+import hiUiChatRunControls from "./catalogues/hi/ui.chat.run_controls.json";
 import hiUiChatRunDetails from "./catalogues/hi/ui.chat.run_details.json";
 import hiUiChatSessionReadout from "./catalogues/hi/ui.chat.session_readout.json";
 import hiUiChatSessionSpend from "./catalogues/hi/ui.chat.session_spend.json";
@@ -744,6 +747,7 @@ import ruUiChatQuotaResend from "./catalogues/ru/ui.chat.quota_resend.json";
 import ruUiChatRadientSession from "./catalogues/ru/ui.chat.radient_session.json";
 import ruUiChatReadAck from "./catalogues/ru/ui.chat.read_ack.json";
 import ruUiChatResponseActions from "./catalogues/ru/ui.chat.response_actions.json";
+import ruUiChatRunControls from "./catalogues/ru/ui.chat.run_controls.json";
 import ruUiChatRunDetails from "./catalogues/ru/ui.chat.run_details.json";
 import ruUiChatSessionReadout from "./catalogues/ru/ui.chat.session_readout.json";
 import ruUiChatSessionSpend from "./catalogues/ru/ui.chat.session_spend.json";
@@ -908,6 +912,7 @@ import urUiChatQuotaResend from "./catalogues/ur/ui.chat.quota_resend.json";
 import urUiChatRadientSession from "./catalogues/ur/ui.chat.radient_session.json";
 import urUiChatReadAck from "./catalogues/ur/ui.chat.read_ack.json";
 import urUiChatResponseActions from "./catalogues/ur/ui.chat.response_actions.json";
+import urUiChatRunControls from "./catalogues/ur/ui.chat.run_controls.json";
 import urUiChatRunDetails from "./catalogues/ur/ui.chat.run_details.json";
 import urUiChatSessionReadout from "./catalogues/ur/ui.chat.session_readout.json";
 import urUiChatSessionSpend from "./catalogues/ur/ui.chat.session_spend.json";
@@ -1072,6 +1077,7 @@ import viUiChatQuotaResend from "./catalogues/vi/ui.chat.quota_resend.json";
 import viUiChatRadientSession from "./catalogues/vi/ui.chat.radient_session.json";
 import viUiChatReadAck from "./catalogues/vi/ui.chat.read_ack.json";
 import viUiChatResponseActions from "./catalogues/vi/ui.chat.response_actions.json";
+import viUiChatRunControls from "./catalogues/vi/ui.chat.run_controls.json";
 import viUiChatRunDetails from "./catalogues/vi/ui.chat.run_details.json";
 import viUiChatSessionReadout from "./catalogues/vi/ui.chat.session_readout.json";
 import viUiChatSessionSpend from "./catalogues/vi/ui.chat.session_spend.json";
@@ -1236,6 +1242,7 @@ import zhCNUiChatQuotaResend from "./catalogues/zh-CN/ui.chat.quota_resend.json"
 import zhCNUiChatRadientSession from "./catalogues/zh-CN/ui.chat.radient_session.json";
 import zhCNUiChatReadAck from "./catalogues/zh-CN/ui.chat.read_ack.json";
 import zhCNUiChatResponseActions from "./catalogues/zh-CN/ui.chat.response_actions.json";
+import zhCNUiChatRunControls from "./catalogues/zh-CN/ui.chat.run_controls.json";
 import zhCNUiChatRunDetails from "./catalogues/zh-CN/ui.chat.run_details.json";
 import zhCNUiChatSessionReadout from "./catalogues/zh-CN/ui.chat.session_readout.json";
 import zhCNUiChatSessionSpend from "./catalogues/zh-CN/ui.chat.session_spend.json";
@@ -1576,6 +1583,7 @@ export const bundledCatalogues: Readonly<
 		...esUiChatRadientSession,
 		...esUiChatReadAck,
 		...esUiChatResponseActions,
+		...esUiChatRunControls,
 		...esUiChatRunDetails,
 		...esUiChatSessionReadout,
 		...esUiChatSessionSpend,
@@ -1742,6 +1750,7 @@ export const bundledCatalogues: Readonly<
 		...frUiChatRadientSession,
 		...frUiChatReadAck,
 		...frUiChatResponseActions,
+		...frUiChatRunControls,
 		...frUiChatRunDetails,
 		...frUiChatSessionReadout,
 		...frUiChatSessionSpend,
@@ -1908,6 +1917,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiChatRadientSession,
 		...hiUiChatReadAck,
 		...hiUiChatResponseActions,
+		...hiUiChatRunControls,
 		...hiUiChatRunDetails,
 		...hiUiChatSessionReadout,
 		...hiUiChatSessionSpend,
@@ -2074,6 +2084,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiChatRadientSession,
 		...ruUiChatReadAck,
 		...ruUiChatResponseActions,
+		...ruUiChatRunControls,
 		...ruUiChatRunDetails,
 		...ruUiChatSessionReadout,
 		...ruUiChatSessionSpend,
@@ -2240,6 +2251,7 @@ export const bundledCatalogues: Readonly<
 		...urUiChatRadientSession,
 		...urUiChatReadAck,
 		...urUiChatResponseActions,
+		...urUiChatRunControls,
 		...urUiChatRunDetails,
 		...urUiChatSessionReadout,
 		...urUiChatSessionSpend,
@@ -2406,6 +2418,7 @@ export const bundledCatalogues: Readonly<
 		...viUiChatRadientSession,
 		...viUiChatReadAck,
 		...viUiChatResponseActions,
+		...viUiChatRunControls,
 		...viUiChatRunDetails,
 		...viUiChatSessionReadout,
 		...viUiChatSessionSpend,
@@ -2572,6 +2585,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiChatRadientSession,
 		...zhCNUiChatReadAck,
 		...zhCNUiChatResponseActions,
+		...zhCNUiChatRunControls,
 		...zhCNUiChatRunDetails,
 		...zhCNUiChatSessionReadout,
 		...zhCNUiChatSessionSpend,
