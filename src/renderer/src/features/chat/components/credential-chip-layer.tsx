@@ -383,6 +383,22 @@ export const CredentialChipLayer = ({
 							left: box.left,
 							top: box.top,
 							width: box.width,
+							// THE BOX IS max(MARKER, CHIP MIN-CONTENT) (S18b design round 1, D1).
+							// `width` is the raw marker's rect, which is minted in English and never
+							// translates, while the chip's contents do: the count token
+							// (`shrink-0`) measures 62.25px in en but ~95.2 in fr/es and ~92.6 in ru
+							// at the 19-char marker, and the label (`min-w-0 truncate`) absorbs the
+							// whole deficit - it collapsed to 0px, so the pill lost its `#1`, its
+							// only identifier in the composer. `min-width: min-content` is the
+							// content's own floor: the flex row's min-content is the sum of its
+							// items (the label counts at its full `#1`), so a chip whose face fits
+							// the marker keeps the marker's width EXACTLY (English stays 157.33px
+							// at 1024; its face is 143.28) and a longer translation grows only as
+							// far as it must. The growth is far below the 34px overhang that
+							// `credentialMarker`'s design record rejects
+							// (`credential-capture.ts`, "THE LABEL IS THE INDEX ALONE"), and the
+							// chip's own opaque ground covers it, so nothing underneath leaks.
+							minWidth: "min-content",
 							height: box.height,
 						}}
 					/>

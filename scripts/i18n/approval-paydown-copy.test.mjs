@@ -409,3 +409,56 @@ for (const [surface, [paint, english, marker]] of Object.entries(SURFACES)) {
 		assert.ok(paint().includes(english), `${surface} repaints English`);
 	});
 }
+
+/*
+ * S18b DESIGN ROUND 1, D2 + D3 on the invalid-attachment card.
+ *
+ * D2: the sentence ends in the reason, and translation moves the width at which a one-line
+ * ellipsis begins eating it (ru below 752px, English below 579px), so the span is a two-line
+ * clamp rather than `truncate`; `break-words` keeps a long unbroken file name wrapping, which
+ * a clamp cannot ellipsise inline. jsdom has no layout, so this is a class-level pin.
+ *
+ * D3: under an RTL locale (ur) the Latin-led file name is isolated in CODE (`isolateLtr`),
+ * never in the catalogue, so a name edged by a neutral (`_backup_.pdf`) stays on its own run.
+ */
+const CLAMP_CLASS = /class="[^"]*\bline-clamp-2\b[^"]*"/;
+const TRUNCATE_CLASS = /class="[^"]*\btruncate\b[^"]*"/;
+const BIDI_ISOLATES = /[\u2066\u2069]/;
+const BIDI_CONTROLS = /[\u2066-\u2069]/;
+
+test("invalid attachment: the reason wraps to two lines instead of truncating", () => {
+	setLocale("en");
+	const painted = text(
+		markup(h(InvalidAttachment, { file: "/tmp/dir/clip.mp4" })),
+	);
+	assert.match(
+		markup(h(InvalidAttachment, { file: "/tmp/dir/clip.mp4" })),
+		CLAMP_CLASS,
+	);
+	assert.doesNotMatch(
+		markup(h(InvalidAttachment, { file: "/tmp/dir/clip.mp4" })),
+		TRUNCATE_CLASS,
+	);
+	assert.ok(painted.includes("clip.mp4 is not viewable"), "name survives");
+});
+
+test("invalid attachment: the file name is bidi-isolated under ur only, and English is byte-identical", () => {
+	const paint = () =>
+		text(markup(h(InvalidAttachment, { file: "/tmp/dir/_backup_.pdf" })));
+	setLocale("en");
+	assert.ok(
+		paint().startsWith("_backup_.pdf is not viewable"),
+		"English carries no bidi control",
+	);
+	assert.ok(!BIDI_ISOLATES.test(paint()));
+	const urdu = withLocale("ur", PROBE, paint);
+	assert.ok(
+		urdu.includes("\u2066_backup_.pdf\u2069"),
+		`ur wraps the name in LRI..PDI; got ${urdu}`,
+	);
+	const catalogueText = readFileSync(
+		join(ROOT, "src/i18n/catalogues/ur/ui.chat.attachments.json"),
+		"utf8",
+	);
+	assert.ok(!BIDI_CONTROLS.test(catalogueText), "the catalogue has none");
+});

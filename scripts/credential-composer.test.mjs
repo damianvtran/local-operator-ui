@@ -4179,6 +4179,98 @@ test("the layer reports the drop at the commit that removes the control it was s
 	host.remove();
 });
 
+/*
+ * THE CHIP'S BOX IS max(MARKER RECT, CHIP MIN-CONTENT) (S18b design round 1, D1).
+ *
+ * The box is the raw marker's rect - English, never translated - while the chip's contents
+ * translate: at the 19-char marker the count token measures 62.25px in en but 95.20 in fr/es and
+ * 92.57 in ru, and the label (`min-w-0 truncate`) absorbs the deficit, collapsing to 0px, so
+ * the pill lost its `#1`. WHAT THIS ROW CAN AND CANNOT SEE: jsdom has no layout, so it pins the
+ * one input the browser needs (the layer hands the chip `min-width: min-content` beside the
+ * marker's `width`) rather than the pixels; the pixels were measured in a real browser on the
+ * same flex row (`label.clientWidth` 0 -> 14 in fr/es/ru, en unchanged at 157.33, see the S18b
+ * remediation comment) and the model below restates that arithmetic from the design review's
+ * measured numbers so a change to the pair cannot pass silently.
+ */
+test("the composer chip's box never drops below its own content, so a translated count cannot collapse the label", async () => {
+	const host = window.document.createElement("div");
+	window.document.body.appendChild(host);
+	const mirror = window.document.createElement("div");
+	const field = window.document.createElement("textarea");
+	const run = window.document.createElement("span");
+	run.setAttribute("data-credential-run", "1");
+	run.textContent = "[Credential #1, 19 chars]";
+	mirror.appendChild(run);
+	host.append(mirror, field);
+	stubRect(mirror, { left: 0, top: 0, width: 400, height: 200 });
+	stubRect(field, { left: 0, top: 0, width: 400, height: 100 });
+	stubRect(run, { left: 10, top: 80, width: 157.33, height: 17 });
+
+	const layerRoot = createRoot(host);
+	await act(async () => {
+		layerRoot.render(
+			h(CredentialChipLayer, {
+				text: "deploy with [Credential #1, 19 chars]",
+				payloads: new Map([
+					[
+						1,
+						{
+							index: 1,
+							key: "LOP_SECRET_4CE3Y48G",
+							value: "v",
+							marker: "[Credential #1, 19 chars]",
+						},
+					],
+				]),
+				mirrorRef: { current: mirror },
+				fieldRef: { current: field },
+				onClear: () => {},
+				onControlUnmounted: () => {},
+			}),
+		);
+	});
+	const chip = host.querySelector("[data-credential-chips] > *");
+	assert.ok(chip, "the layer draws the chip");
+	assert.equal(
+		chip.style.width,
+		"157.33px",
+		"the box is still the marker's own rect",
+	);
+	assert.equal(
+		chip.style.minWidth,
+		"min-content",
+		"and the content's floor sits beside it, so a longer translation grows the box instead of collapsing the label",
+	);
+	layerRoot.unmount();
+	host.remove();
+
+	// The row's arithmetic at the 1024 rung, from the design review's measurements (px):
+	// padding 24 less the control's -4 bearing, key 12 + control 16 + three 6px gaps, label `#1`
+	// 15.01 and the locale's count token.
+	const FIXED = 24 - 4 + 12 + 16 + 18;
+	const LABEL = 15.01;
+	const MARKER = 157.33;
+	const COUNT = { en: 62.25, fr: 95.2, es: 95.2, ru: 92.57 };
+	const box = (count, minContent) =>
+		minContent ? Math.max(MARKER, FIXED + LABEL + count) : MARKER;
+	const labelWidth = (count, boxWidth) =>
+		Math.min(LABEL, Math.max(0, boxWidth - FIXED - count));
+	for (const [locale, count] of Object.entries(COUNT)) {
+		assert.ok(
+			labelWidth(count, box(count, true)) > 0,
+			`${locale}: the label keeps a non-zero width`,
+		);
+		if (locale !== "en") {
+			assert.equal(
+				labelWidth(count, box(count, false)),
+				0,
+				`${locale}: the marker-only box is the defect (label collapses)`,
+			);
+		}
+	}
+	assert.equal(box(COUNT.en, true), MARKER, "English geometry is unchanged");
+});
+
 /* Hoisted like this file's other regexes (code review round 4, R4-8): the floor's own literal. */
 const STRIP_FLOOR = /const CHIP_MIN_VISIBLE_STRIP_PX = (\d+);/;
 
