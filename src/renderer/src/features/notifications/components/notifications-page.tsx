@@ -247,6 +247,15 @@ const traceRead = (id: string) => {
 	readTraceId.current = id;
 	performance.mark("lop:notifications:read:requested");
 };
+/*
+ * Marks are spent once their measure is taken (code round 1, R1-4): every
+ * selection and read added two, forever. Same convention as the transcript's
+ * open trace (`canonical-transcript.tsx` clears `lop:open:requested`). The
+ * MEASURES stay - they are what a rig reads (`getEntriesByType("measure")`).
+ */
+const clearNotificationMarks = (...names: string[]) => {
+	for (const name of names) performance.clearMarks(`lop:notifications:${name}`);
+};
 /* Module scope so the gesture handlers can start a trace without threading a
  * ref through every callback; one reel is mounted at a time. */
 const readTraceId: { current: string | null } = { current: null };
@@ -456,7 +465,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 		},
 		[readActions],
 	);
-	const detail = useNotificationDetail(
+	const { query: detail, behindLoading: detailBehind } = useNotificationDetail(
 		notificationId ?? null,
 		enabled,
 		notificationId
@@ -632,7 +641,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 	 * token from a list the server can no longer confirm is a write against a
 	 * render nobody can vouch for.
 	 */
-	const refreshFailed = list.isError && Boolean(loaded);
+	const refreshFailed = list.isRefreshError && Boolean(loaded);
 	/*
 	 * THE DETAIL'S NUMBER COMES FROM THE SAME ENUMERATION THE CONFIRM USES (QA round
 	 * 3). It was bought only while the reel was grouped by CONVERSATION, so under
@@ -762,6 +771,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 			end: "lop:notifications:list-paint",
 			detail: { rows: loaded.items.length, fromCache: !list.isFetching },
 		});
+		clearNotificationMarks("open", "list-paint");
 	}, [loaded, list.isFetching]);
 	const detailTrace = useRef<{ id: string; cached: boolean } | null>(null);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: one trace per selection; the cache state is sampled at the selection.
@@ -786,6 +796,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 			end: "lop:notifications:detail:painted",
 			detail: trace,
 		});
+		clearNotificationMarks("detail:requested", "detail:painted");
 	}, [detailLanded, notificationId]);
 
 	/*
@@ -832,6 +843,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 			end: "lop:notifications:read:painted",
 			detail: { id },
 		});
+		clearNotificationMarks("read:requested", "read:painted");
 	}, [byId]);
 
 	const clearSelection = useCallback(() => {
@@ -2144,8 +2156,10 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 							<NotificationDetail
 								key={openItem.id}
 								item={openItem}
-								detail={detail.data}
-								loading={detail.isLoading}
+								/* An older revision's body is withheld while its refetch runs
+								 * (design D2): the skeleton, not stale text, under the header. */
+								detail={detailBehind ? undefined : detail.data}
+								loading={detail.isLoading || detailBehind}
 								error={detail.isError}
 								nowMs={nowMs}
 								narrow={narrow}

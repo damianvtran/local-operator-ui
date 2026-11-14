@@ -27,7 +27,8 @@ const bundle = await build({
 		contents: [
 			'export { desktopEndpoint, desktopRequestSchema, NOTIFICATION_PSEUDO_SESSION_IDS } from "./src/shared/desktop-contract";',
 			'export { beginOptimisticWrite, writeReceiptCount, DETAIL_CACHE_MAX, notificationCountHints, notificationKeys, previewNotificationSelection, readNotificationsFacts, sessionDismissCountsFromFacts, touchNotificationDetail } from "./src/renderer/src/features/notifications/notifications-api";',
-			'export { QueryClient } from "@tanstack/react-query";',
+			'export { reconcileWindowWithFacts } from "./src/renderer/src/features/notifications/notifications-model";',
+			'export { QueryClient, QueryObserver } from "@tanstack/react-query";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -358,4 +359,142 @@ test("the receipt's counts land without a refetch and never move backwards", () 
 	} finally {
 		client.clear();
 	}
+});
+
+/*
+ * R1-1: the LRU never evicts a detail a mounted pane is observing. Hovering 50
+ * other rows while one is open used to drop the open body back to loading.
+ */
+test("the detail LRU skips a query that is being observed", () => {
+	const client = new api.QueryClient();
+	const id = (i) => `n_obs${String(i).padStart(4, "0")}`;
+	const open = id(0);
+	client.setQueryData(api.notificationKeys.detail(open), {
+		item: { id: open },
+	});
+	api.touchNotificationDetail(client, open);
+	const observer = new api.QueryObserver(client, {
+		queryKey: api.notificationKeys.detail(open),
+		queryFn: () => new Promise(() => {}),
+		staleTime: Number.POSITIVE_INFINITY,
+	});
+	const unsubscribe = observer.subscribe(() => {});
+	try {
+		// Hover-prefetch 60 other rows: far past the cap, the open one never touched.
+		for (let i = 1; i <= 60; i++) {
+			client.setQueryData(api.notificationKeys.detail(id(i)), {
+				item: { id: id(i) },
+			});
+			api.touchNotificationDetail(client, id(i));
+		}
+		assert.deepEqual(
+			client.getQueryData(api.notificationKeys.detail(open)),
+			{ item: { id: open } },
+			"the observed detail survived eviction",
+		);
+		// The bound still holds: the open one counts inside the cap.
+		const cached = client
+			.getQueryCache()
+			.findAll({ queryKey: ["desktop", "notifications", "detail"] }).length;
+		assert.equal(cached, api.DETAIL_CACHE_MAX);
+		// Once nobody observes it, it is evictable again.
+		unsubscribe();
+		client.setQueryData(api.notificationKeys.detail(id(61)), {
+			item: { id: id(61) },
+		});
+		api.touchNotificationDetail(client, id(61));
+		assert.equal(
+			client.getQueryData(api.notificationKeys.detail(open)),
+			undefined,
+		);
+	} finally {
+		unsubscribe();
+		client.clear();
+	}
+});
+
+/*
+ * Q1: the window drops rows the server stopped listing inside the facts' covered
+ * range - and nothing else.
+ */
+const at = (i, over = {}) =>
+	row({ id: `n_rec${i}`, seq: i, updated_at: i * 10, ...over });
+test("a facts answer reconciles rows dismissed elsewhere out of the window", () => {
+	const window = [{ items: [at(9), at(8), at(7), at(3)] }];
+	// Core dismissed n_rec8 elsewhere; page one covers down to n_rec7 (has more).
+	const facts = {
+		items: [at(10), at(9), at(7)],
+		waiting: [],
+		next_cursor: "70.n_rec7",
+		high_water: 12,
+	};
+	const next = api.reconcileWindowWithFacts(window, facts, "all");
+	const byId = Object.fromEntries(next[0].items.map((item) => [item.id, item]));
+	assert.equal(byId.n_rec8.dismissed, true, "dismissed elsewhere");
+	assert.equal(byId.n_rec8.seq, 12, "fenced at the facts' high water");
+	assert.equal(byId.n_rec9.dismissed, false);
+	assert.equal(byId.n_rec7.dismissed, false);
+	assert.equal(
+		byId.n_rec3.dismissed,
+		false,
+		"below the covered range: unknown",
+	);
+	// A complete page (no cursor) covers everything below it too.
+	const all = api.reconcileWindowWithFacts(
+		window,
+		{ ...facts, next_cursor: null },
+		"all",
+	);
+	assert.equal(all[0].items.find((i) => i.id === "n_rec3").dismissed, true);
+	// Nothing to do → null, so the caller skips the cache write.
+	assert.equal(
+		api.reconcileWindowWithFacts(next, facts, "all"),
+		null,
+		"idempotent",
+	);
+});
+
+test("reconciliation leaves local writes, own dismissals and newer copies alone", () => {
+	const facts = {
+		items: [at(10)],
+		waiting: [],
+		next_cursor: null,
+		high_water: 12,
+	};
+	const window = [
+		{
+			items: [
+				at(9), // a pending/ahead local write (Undo restoring it)
+				at(8, { dismissed: true }), // the operator's own dismiss: Undo flips it back
+				at(13), // newer than the facts answer: it cannot speak for it
+				at(7, { id: "n_ask", source: "ask" }), // listed under waiting
+			],
+		},
+	];
+	const next = api.reconcileWindowWithFacts(
+		window,
+		{ ...facts, waiting: [at(7, { id: "n_ask", source: "ask" })] },
+		"all",
+		new Set(["n_rec9"]),
+	);
+	assert.equal(next, null);
+});
+
+test("in the Unread view a row read or dismissed elsewhere stops counting as unread", () => {
+	const facts = {
+		items: [at(10)],
+		waiting: [],
+		next_cursor: null,
+		high_water: 12,
+	};
+	const window = [{ items: [at(9), at(8, { read: true })] }];
+	const next = api.reconcileWindowWithFacts(window, facts, "unread");
+	const [first, second] = next[0].items;
+	assert.equal(first.read, true, "no longer unread, still drawn");
+	assert.equal(first.dismissed, false);
+	assert.equal(
+		second,
+		window[0].items[1],
+		"the operator's own read is untouched",
+	);
 });

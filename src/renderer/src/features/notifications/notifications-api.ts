@@ -67,6 +67,7 @@ import {
 	isNewerNotification,
 	mergeWindowForReel,
 	prependSeenToWindow,
+	reconcileWindowWithFacts,
 } from "./notifications-model";
 
 export const notificationKeys = {
@@ -263,6 +264,49 @@ function useKeepSeenInWindow(
 }
 
 /**
+ * The facts answer (by `high_water`) each window was last reconciled against.
+ * Keyed per client and window key so a remount does not redo work, and so a facts
+ * object that is only RE-EDITED locally (a write's `editFacts`, the ledger's
+ * projection) never re-applies an older answer over a newer local write - an Undo
+ * restoring rows the old answer lacked is exactly that case.
+ */
+const reconciledFactsAt = new WeakMap<QueryClient, Map<string, number>>();
+
+/**
+ * Drop rows the server stopped listing from the cached window (QA round 1, Q1).
+ * See `reconcileWindowWithFacts` for the rule; this applies it once per facts
+ * answer, skipping rows a local write is still ahead of the facts on.
+ */
+function useReconcileWindowWithFacts(
+	client: ReturnType<typeof useOptionalQueryClient>["client"],
+	queryKey: readonly unknown[],
+	state: "unread" | "all",
+	facts: DesktopNotificationsList | undefined,
+) {
+	const keyId = JSON.stringify(queryKey);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `keyId` is the key's identity; the array is rebuilt every render.
+	useEffect(() => {
+		if (!client || !facts || !Array.isArray(facts.items)) return;
+		let seen = reconciledFactsAt.get(client);
+		if (!seen) {
+			seen = new Map();
+			reconciledFactsAt.set(client, seen);
+		}
+		if (seen.get(keyId) === facts.high_water) return;
+		const data = client.getQueryData<{ pages?: unknown[] }>(queryKey);
+		if (!data || !Array.isArray(data.pages)) return;
+		seen.set(keyId, facts.high_water);
+		const pages = reconcileWindowWithFacts(
+			data.pages as { items: DesktopNotificationItem[] }[],
+			facts,
+			state,
+			writesAheadOf(client, facts.high_water),
+		);
+		if (pages) client.setQueryData(queryKey, { ...data, pages });
+	}, [client, keyId, state, facts]);
+}
+
+/**
  * The reel's list read. The page loads up to the route's 100-row page and the
  * `waiting` group; the client applies kind/priority/from/grouping over that set
  * (design § 2: filters are client-side over the loaded set).
@@ -351,6 +395,12 @@ export function useNotificationsList(
 		refetchIntervalInBackground: false,
 	});
 	useKeepSeenInWindow(client, notificationKeys.list(state), scroll, facts.data);
+	useReconcileWindowWithFacts(
+		client,
+		notificationKeys.list(state),
+		state,
+		facts.data,
+	);
 	const merged = mergeWindowForReel(
 		facts.data,
 		answer.data as DesktopNotificationsList | undefined,
@@ -364,6 +414,14 @@ export function useNotificationsList(
 			facts.dataUpdatedAt as number,
 		),
 		newerCount: merged?.newerCount ?? 0,
+		/*
+		 * THE STALE-LIST SIGNAL COVERS THE READ THAT ACTUALLY REFRESHES (design
+		 * round 1, D1). The window no longer refetches on mount or focus, so its
+		 * own `isError` stays false while the server is down; the facts query is
+		 * what re-reads on entry and every 30 s, and its failure is what says the
+		 * painted rows can no longer be vouched for (banner + write pause).
+		 */
+		isRefreshError: answer.isError || facts.isError,
 		/* Refresh facts without discarding the reader's cursor window. Only the
 		 * new-items chip is an intentional request to reveal page one. */
 		refresh: facts.refetch,
@@ -545,11 +603,22 @@ export function touchNotificationDetail(client: QueryClient, id: string) {
 	}
 	lru.delete(id);
 	lru.set(id, true);
-	while (lru.size > DETAIL_CACHE_MAX) {
-		const oldest = lru.keys().next().value as string;
-		lru.delete(oldest);
+	/*
+	 * NEVER EVICT A DETAIL SOMEONE IS LOOKING AT (code round 1, R1-1). The open
+	 * id is touched only when it changes, so hovering 50 other rows used to push
+	 * it out: the pane dropped to loading and re-read its body. An observed
+	 * query is skipped and stays in the LRU (it still counts toward the cap), so
+	 * the next unobserved entry goes instead.
+	 */
+	for (const candidate of [...lru.keys()]) {
+		if (lru.size <= DETAIL_CACHE_MAX) break;
+		const query = client
+			.getQueryCache()
+			.find({ queryKey: notificationKeys.detail(candidate), exact: true });
+		if (query && query.getObserversCount() > 0) continue;
+		lru.delete(candidate);
 		client.removeQueries({
-			queryKey: notificationKeys.detail(oldest),
+			queryKey: notificationKeys.detail(candidate),
 			exact: true,
 		});
 	}
@@ -599,10 +668,29 @@ export function useNotificationDetail(
 		cachedRevision !== undefined &&
 		cachedRevision < rowRevision;
 	const refetch = query.refetch;
+	/*
+	 * ONCE PER ROW REVISION (code round 1, R1-2). A failed refetch keeps the
+	 * older body, so `behind` stays true and `isFetching` falling back to false
+	 * re-ran this effect at transport-rejection speed. The attempted id@revision
+	 * is remembered; a newer row revision (or another id) tries again, and the
+	 * normal query retry/interval policy covers the rest.
+	 */
+	const attempted = useRef<string | null>(null);
 	useEffect(() => {
-		if (behind && !query.isFetching) void refetch();
-	}, [behind, query.isFetching, refetch]);
-	return query;
+		if (!behind || query.isFetching) return;
+		const key = `${id}@${rowRevision}`;
+		if (attempted.current === key) return;
+		attempted.current = key;
+		void refetch();
+	}, [behind, query.isFetching, refetch, id, rowRevision]);
+	/*
+	 * AN OLDER REVISION IS NOT THE BODY TO SHOW (design round 1, D2). The cache
+	 * is keyed by id, so a keyed update (repeat with a new body) left the old
+	 * text painted as if current until the read landed. While that refetch is in
+	 * flight the pane shows its loading skeleton under the (current) row header;
+	 * if it fails, the older body is still better than nothing.
+	 */
+	return { query, behindLoading: behind && query.isFetching };
 }
 
 /**
@@ -961,6 +1049,26 @@ type NotificationLedger = {
 	publishing: boolean;
 };
 const readLedgers = new WeakMap<QueryClient, NotificationLedger>();
+
+/**
+ * Rows a local write is still ahead of a facts answer read at `atSeq` on: the
+ * write is pending, or core confirmed it above that answer's `high_water`. A
+ * facts answer cannot speak for those rows yet (`reconcileWindowWithFacts`).
+ */
+function writesAheadOf(client: QueryClient, atSeq: number): Set<string> {
+	const ahead = new Set<string>();
+	const ledger = readLedgers.get(client);
+	if (!ledger) return ahead;
+	for (const [id, entry] of ledger.rows)
+		if (
+			entry.operations.some(
+				(operation) =>
+					operation.confirmedAt === undefined || operation.confirmedAt > atSeq,
+			)
+		)
+			ahead.add(id);
+	return ahead;
+}
 const isUnread = (row: DesktopNotificationItem) =>
 	Number(!row.read && !row.dismissed);
 
