@@ -1486,9 +1486,13 @@ test("the sender's line opens its details on a press, pins, and closes on Escape
 		assert.equal(button.getAttribute("aria-expanded"), "true");
 		const panel = document.querySelector('[aria-label="Delivery details"]');
 		assert.ok(panel, "the panel carries its accessible name");
+		// Identity as a VALUE, never node-against-node: a failed node-vs-node
+		// assert formats both jsdom elements with util.inspect and myers-diffs
+		// the two strings, which measured 3.3-4.5 GB and got the runner killed
+		// instead of producing a failure.
 		assert.equal(
-			document.activeElement,
-			panel,
+			document.activeElement === panel,
+			true,
 			"a press focuses the panel, not a glyph",
 		);
 		await act(async () => {
@@ -1500,9 +1504,23 @@ test("the sender's line opens its details on a press, pins, and closes on Escape
 			);
 		});
 		assert.doesNotMatch(document.body.textContent, DETAIL_TEXT);
+		// Radix restores focus from a `setTimeout(…, 0)` queued when its FocusScope
+		// unmounts (@radix-ui/react-focus-scope's AUTOFOCUS_ON_UNMOUNT), so the
+		// restore is a MACROTASK later than this Escape dispatch. Asserting
+		// straight after `act` raced it — focus was still `body` in roughly half of
+		// the measured runs. Let that macrotask run inside `act`, bounded, rather
+		// than sleeping for luck: a restore that never comes still fails here.
+		await act(async () => {
+			for (
+				let flush = 0;
+				flush < 3 && document.activeElement !== button;
+				flush += 1
+			)
+				await new Promise((resolve) => setTimeout(resolve, 0));
+		});
 		assert.equal(
-			document.activeElement,
-			button,
+			document.activeElement === button,
+			true,
 			"the panel took focus, so closing returns it to the trigger (U1 keeps this)",
 		);
 	} finally {
