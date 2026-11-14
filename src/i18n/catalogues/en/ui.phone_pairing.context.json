@@ -127,7 +127,7 @@
 	"ui.phone_pairing.popup.manage_where": {
 		"role": "pointer under the success line",
 		"tone": "reassuring, plain",
-		"note": "After a phone is paired: where to undo it. 'Settings → Phone access → Paired phones' is the navigation path (Settings page, its 'Phone access' heading, the 'Paired phones' list); use the same names those screens use in this language and keep the arrows."
+		"note": "After a phone is paired: where to undo it. 'Settings → Radient account → Paired phones' is the navigation path (Settings, its 'Radient account' sidebar entry - ui.settings.navigation.settings_sidebar.radient_account - and the 'Paired phones' list on that page); use the same names those screens use in this language and keep the arrows."
 	},
 	"ui.phone_pairing.popup.denied": {
 		"role": "result message",

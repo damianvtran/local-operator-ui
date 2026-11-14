@@ -24,7 +24,7 @@
 	"ui.phone_pairing.popup.failed": "Confirmation was cancelled on this computer, so nothing was installed yet.",
 	"ui.phone_pairing.popup.try_again": "Try again",
 	"ui.phone_pairing.popup.paired": "Paired. This phone can now approve requests on this computer.",
-	"ui.phone_pairing.popup.manage_where": "You can remove it any time in Settings → Phone access → Paired phones.",
+	"ui.phone_pairing.popup.manage_where": "You can remove it any time in Settings → Radient account → Paired phones.",
 	"ui.phone_pairing.popup.denied": "Denied. Nothing was installed on this computer.",
 	"ui.phone_pairing.popup.strikes": "The code didn't match three times, so this request is closed. Nothing was installed. Ask the phone to start pairing again.",
 	"ui.phone_pairing.popup.expired": "This request expired before it was approved. Nothing was installed. Ask the phone to start pairing again.",

@@ -1090,6 +1090,30 @@ test("U2: a paste that would make more than six digits is refused whole, never c
 	assert.equal(input.getAttribute("maxlength"), null);
 });
 
+test("U7: a refused seventh digit keeps the caret where it was, so Backspace removes the digit beside it", async () => {
+	script = { capabilities: caps(PAIRING), "approvals.list": list(typedRow()) };
+	await render(createElement(PhonePairingHost));
+	await until(() => $("pairing-code-input"), "the field");
+	const input = $("pairing-code-input");
+	input.focus();
+	await setValue(input, "482913", 6);
+	assert.equal(input.value, "482 913");
+	// The UX round's repro: Home, Right x2, type 5.
+	await act(async () => input.setSelectionRange(2, 2));
+	await typeAtCaret(input, "5");
+	assert.equal(input.value, "482 913", "the seventh digit is refused");
+	assert.equal(input.selectionStart, 2, "the caret stays after the 8");
+	assert.equal(input.selectionEnd, 2);
+	await pressDelete(input, "Backspace");
+	assert.equal(input.value, "429 13", "Backspace removed the 8, not the 3");
+	// A refused paste after the space keeps its caret too.
+	await setValue(input, "482913", 6);
+	await act(async () => input.setSelectionRange(5, 5));
+	await typeAtCaret(input, "77");
+	assert.equal(input.value, "482 913");
+	assert.equal(input.selectionStart, 5);
+});
+
 test("M1: a new request replacing the shown one starts with an empty field", async () => {
 	let rows = [typedRow()];
 	script = {
@@ -1235,7 +1259,8 @@ test("U1/U3/D3: focus follows the person's press, a polite region announces each
 	assert.equal($("pairing-phone-name").textContent, "Ana's iPhone");
 	assert.match(
 		$("pairing-manage-where").textContent,
-		/Settings → Phone access → Paired phones/,
+		// Design round 2, D10: the path names the sidebar entry the person sees.
+		/Settings → Radient account → Paired phones/,
 	);
 	// N4: Escape closes a settled card.
 	await keyDown($("pairing-close"), "Escape");
@@ -1268,6 +1293,99 @@ test("U1/N2: a wrong code returns focus to the field, which names the error", as
 		.getAttribute("aria-describedby")
 		.split(" ");
 	assert.ok(describedBy.includes($("pairing-error").id));
+});
+
+/*
+ * Review round 2, R2-1: after Approve the person goes back to the composer
+ * while "Confirm on your computer…" shows. The outcome, or a late failure that
+ * on the confirm route would focus Deny, must leave their focus where it is.
+ */
+async function approveThenLeave({ result, rows: settled, wait }) {
+	let finish;
+	let rows = [pairRow()];
+	script = {
+		capabilities: caps(PAIRING),
+		"approvals.list": () => list(...rows),
+		"approvals.pairAck": ok({ approval_id: ID, acked: true }),
+		"approvals.approveOperation": () =>
+			new Promise((resolve) => {
+				finish = resolve;
+			}),
+	};
+	await render(createElement(PhonePairingHost));
+	await until(() => $("pairing-approve"), "Approve");
+	$("pairing-approve").focus();
+	await click($("pairing-approve"));
+	await until(() => $("pairing-progress"), "the signing line");
+	return {
+		/** Settle the approve post with `focus` applied first. */
+		async settle(focus) {
+			await act(async () => focus());
+			if (settled) rows = settled;
+			await act(async () => finish(result));
+			await until(() => $(wait), wait);
+		},
+	};
+}
+
+test("R2-1: the outcome does not take focus back from the composer", async () => {
+	const flow = await approveThenLeave({
+		result: ok({ signed: { ok: true }, applied: { ok: true } }),
+		rows: [
+			pairRow({ reason: "paired", progress: null }, { state: "connected" }),
+		],
+		wait: "pairing-outcome",
+	});
+	const composer = document.createElement("textarea");
+	document.body.append(composer);
+	await flow.settle(() => composer.focus());
+	assert.ok(
+		document.activeElement === composer,
+		`focus stays in the composer (got ${document.activeElement?.dataset?.testid ?? document.activeElement?.tagName})`,
+	);
+});
+
+test("R2-1: a late failure does not move focus onto Deny, so Enter in the composer cannot deny", async () => {
+	const flow = await approveThenLeave({
+		result: refuse(500, "internal"),
+		wait: "pairing-error",
+	});
+	const composer = document.createElement("textarea");
+	document.body.append(composer);
+	await flow.settle(() => composer.focus());
+	assert.ok($("pairing-deny"), "the confirm route's error stage offers Deny");
+	assert.ok(
+		document.activeElement === composer,
+		`focus stays in the composer (got ${document.activeElement?.dataset?.testid ?? document.activeElement?.tagName})`,
+	);
+	assert.ok(!ops().includes("approvals.deny"), "nothing was denied");
+});
+
+test("R2-1: focus still in the card, or dropped to <body>, moves to the new stage as designed", async () => {
+	const inCard = await approveThenLeave({
+		result: refuse(500, "internal"),
+		wait: "pairing-error",
+	});
+	// Focus is on the progress line, inside the card.
+	await inCard.settle(() => $("pairing-progress").focus());
+	assert.ok(
+		document.activeElement === $("pairing-deny"),
+		"focus is on $('pairing-deny')",
+	);
+	await act(async () => root.unmount());
+	root = undefined;
+	const dropped = await approveThenLeave({
+		result: ok({ signed: { ok: true }, applied: { ok: true } }),
+		rows: [
+			pairRow({ reason: "paired", progress: null }, { state: "connected" }),
+		],
+		wait: "pairing-outcome",
+	});
+	await dropped.settle(() => document.activeElement?.blur());
+	assert.ok(
+		document.activeElement === $("pairing-close"),
+		"focus is on $('pairing-close')",
+	);
 });
 
 test("D2: Deny says Denying… while its post is in flight", async () => {
@@ -1549,6 +1667,64 @@ test("D10: 404 mobile_password_unset says no password is set; other failures are
 	await until(() => $("phone-password-error"), "the error line");
 	assert.match($("phone-password-error").textContent, /couldn't be read/);
 	assert.ok(!document.body.textContent.includes("trace"));
+});
+
+test("U6/D11: after the read, focus lands on Show (or back on the read button), and Show/Hide is a plain button", async () => {
+	let release;
+	script = {
+		capabilities: caps({ mobile_password_read: 1 }),
+		"mobile.password": () =>
+			new Promise((resolve) => {
+				release = resolve;
+			}),
+	};
+	await render(createElement(PhonePasswordDisclosure, { defaultOpen: true }));
+	await until(() => $("phone-password-read"), "the read button");
+	$("phone-password-read").focus();
+	await click($("phone-password-read"), { keyboard: true });
+	await act(async () => release(ok({ password: SECRET })));
+	await until(() => $("phone-password-masked"), "the masked value");
+	assert.ok(
+		document.activeElement === $("phone-password-toggle"),
+		`focus is on Show (got ${document.activeElement?.dataset?.testid ?? document.activeElement?.tagName})`,
+	);
+	// D11: the label says the action; no aria-pressed to contradict it.
+	const toggle = $("phone-password-toggle");
+	assert.equal(toggle.textContent, "Show");
+	assert.equal(toggle.hasAttribute("aria-pressed"), false);
+	await click(toggle, { keyboard: true });
+	assert.equal($("phone-password-toggle").textContent, "Hide");
+	assert.equal($("phone-password-toggle").hasAttribute("aria-pressed"), false);
+	assert.ok(document.activeElement === $("phone-password-toggle"));
+	await act(async () => root.unmount());
+	root = undefined;
+	// Not set: focus returns to the (re-enabled) read button beside the line.
+	script["mobile.password"] = refuse(404, "mobile_password_unset");
+	await render(createElement(PhonePasswordDisclosure, { defaultOpen: true }));
+	await until(() => $("phone-password-read"), "the read button");
+	$("phone-password-read").focus();
+	await click($("phone-password-read"), { keyboard: true });
+	await until(() => $("phone-password-unset"), "the unset line");
+	assert.ok(
+		document.activeElement === $("phone-password-read"),
+		"focus is back on the read button",
+	);
+	// A slow read never pulls focus back from somewhere else.
+	await act(async () => root.unmount());
+	root = undefined;
+	script["mobile.password"] = () =>
+		new Promise((resolve) => {
+			release = resolve;
+		});
+	await render(createElement(PhonePasswordDisclosure, { defaultOpen: true }));
+	await until(() => $("phone-password-read"), "the read button");
+	await click($("phone-password-read"), { keyboard: true });
+	const elsewhere = document.createElement("textarea");
+	document.body.append(elsewhere);
+	await act(async () => elsewhere.focus());
+	await act(async () => release(ok({ password: SECRET })));
+	await until(() => $("phone-password-masked"), "the masked value");
+	assert.ok(document.activeElement === elsewhere, "focus stays elsewhere");
 });
 
 test("contract: mobile.password is a bodiless GET of core's route", () => {

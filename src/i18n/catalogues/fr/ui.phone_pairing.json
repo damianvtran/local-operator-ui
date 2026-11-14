@@ -24,7 +24,7 @@
 	"ui.phone_pairing.popup.failed": "La confirmation a été annulée sur cet ordinateur : rien n’a encore été installé.",
 	"ui.phone_pairing.popup.try_again": "Réessayer",
 	"ui.phone_pairing.popup.paired": "Appairé. Ce téléphone peut maintenant approuver des demandes sur cet ordinateur.",
-	"ui.phone_pairing.popup.manage_where": "Vous pouvez le retirer à tout moment dans Paramètres → Accès depuis un téléphone → Téléphones appairés.",
+	"ui.phone_pairing.popup.manage_where": "Vous pouvez le retirer à tout moment dans Paramètres → Compte Radient → Téléphones appairés.",
 	"ui.phone_pairing.popup.denied": "Refusé. Rien n’a été installé sur cet ordinateur.",
 	"ui.phone_pairing.popup.strikes": "Le code ne correspondait pas après trois essais : cette demande est close. Rien n’a été installé. Demandez au téléphone de relancer l’appairage.",
 	"ui.phone_pairing.popup.expired": "Cette demande a expiré avant d’être approuvée. Rien n’a été installé. Demandez au téléphone de relancer l’appairage.",

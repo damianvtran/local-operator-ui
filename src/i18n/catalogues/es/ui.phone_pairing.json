@@ -24,7 +24,7 @@
 	"ui.phone_pairing.popup.failed": "Se canceló la confirmación en este ordenador, así que todavía no se instaló nada.",
 	"ui.phone_pairing.popup.try_again": "Reintentar",
 	"ui.phone_pairing.popup.paired": "Emparejado. Este teléfono ya puede aprobar solicitudes en este ordenador.",
-	"ui.phone_pairing.popup.manage_where": "Puedes quitarlo cuando quieras en Ajustes → Acceso desde el teléfono → Teléfonos emparejados.",
+	"ui.phone_pairing.popup.manage_where": "Puedes quitarlo cuando quieras en Ajustes → Cuenta de Radient → Teléfonos emparejados.",
 	"ui.phone_pairing.popup.denied": "Rechazado. No se instaló nada en este ordenador.",
 	"ui.phone_pairing.popup.strikes": "El código no coincidió tres veces, así que esta solicitud se cerró. No se instaló nada. Pide al teléfono que vuelva a iniciar el emparejamiento.",
 	"ui.phone_pairing.popup.expired": "Esta solicitud caducó antes de aprobarse. No se instaló nada. Pide al teléfono que vuelva a iniciar el emparejamiento.",

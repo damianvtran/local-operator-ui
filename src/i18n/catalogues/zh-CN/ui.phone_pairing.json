@@ -24,7 +24,7 @@
 	"ui.phone_pairing.popup.failed": "已在这台电脑上取消确认，因此尚未安装任何内容。",
 	"ui.phone_pairing.popup.try_again": "重试",
 	"ui.phone_pairing.popup.paired": "已配对。这部手机现在可以批准这台电脑上的请求。",
-	"ui.phone_pairing.popup.manage_where": "你可以随时在“设置 → 手机访问 → 已配对的手机”中移除它。",
+	"ui.phone_pairing.popup.manage_where": "你可以随时在“设置 → Radient账户 → 已配对的手机”中移除它。",
 	"ui.phone_pairing.popup.denied": "已拒绝。这台电脑上未安装任何内容。",
 	"ui.phone_pairing.popup.strikes": "验证码连续三次不一致，此请求已关闭。未安装任何内容。请让手机重新发起配对。",
 	"ui.phone_pairing.popup.expired": "此请求在批准前已过期。未安装任何内容。请让手机重新发起配对。",

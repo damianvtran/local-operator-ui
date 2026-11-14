@@ -24,7 +24,7 @@
 	"ui.phone_pairing.popup.failed": "Việc xác nhận đã bị hủy trên máy tính này, nên chưa có gì được cài đặt.",
 	"ui.phone_pairing.popup.try_again": "Thử lại",
 	"ui.phone_pairing.popup.paired": "Đã ghép nối. Giờ điện thoại này có thể phê duyệt yêu cầu trên máy tính này.",
-	"ui.phone_pairing.popup.manage_where": "Bạn có thể gỡ nó bất cứ lúc nào trong Cài đặt → Truy cập từ điện thoại → Điện thoại đã ghép nối.",
+	"ui.phone_pairing.popup.manage_where": "Bạn có thể gỡ nó bất cứ lúc nào trong Cài đặt → Tài khoản Radient → Điện thoại đã ghép nối.",
 	"ui.phone_pairing.popup.denied": "Đã từ chối. Không có gì được cài đặt trên máy tính này.",
 	"ui.phone_pairing.popup.strikes": "Mã không khớp ba lần nên yêu cầu này đã đóng. Không có gì được cài đặt. Hãy yêu cầu điện thoại bắt đầu ghép nối lại.",
 	"ui.phone_pairing.popup.expired": "Yêu cầu này đã hết hạn trước khi được phê duyệt. Không có gì được cài đặt. Hãy yêu cầu điện thoại bắt đầu ghép nối lại.",

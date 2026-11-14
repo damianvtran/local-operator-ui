@@ -52,6 +52,7 @@ import {
 	type HostOs,
 	type PairingCard,
 	applyCodeEdit,
+	caretBeforeRefusedEdit,
 	caretForDigitIndex,
 	deleteAcrossGroupSpace,
 	formatCountdown,
@@ -357,8 +358,17 @@ export const PairingPopupView: FC<PairingPopupViewProps> = ({
 	 * has acted INSIDE this card, each new stage takes focus at its one sensible
 	 * place. Never before they act: appearing must stay focus-neutral (spec §4.2),
 	 * which is why `acted` gates every move and the first render moves nothing.
+	 *
+	 * `acted` alone is not enough (review round 2, R2-1): it stays true for the
+	 * card's whole life, while the outcome or a late failure can arrive seconds
+	 * after the person has gone back to the composer. Taking focus then is worse
+	 * than rude - a failure on the confirm route focuses Deny, so an Enter meant
+	 * for the composer would deny a request the person never decided on. So a
+	 * stage moves focus only while it is still in the card, or has fallen to
+	 * <body> because the pressed button unmounted (the case U1 exists for).
 	 */
 	const acted = useRef(false);
+	const cardRef = useRef<HTMLElement>(null);
 	const stageRef = useRef<HTMLElement | null>(null);
 	const closeRef = useRef<HTMLButtonElement>(null);
 	const denyRef = useRef<HTMLButtonElement>(null);
@@ -373,6 +383,13 @@ export const PairingPopupView: FC<PairingPopupViewProps> = ({
 					: "decide";
 	useEffect(() => {
 		if (!acted.current) return;
+		const focused = document.activeElement;
+		if (
+			focused &&
+			focused !== document.body &&
+			!cardRef.current?.contains(focused)
+		)
+			return;
 		if (stage.startsWith("outcome:")) closeRef.current?.focus();
 		else if (stage.startsWith("progress:") || stage === "setup:running")
 			stageRef.current?.focus();
@@ -579,9 +596,26 @@ export const PairingPopupView: FC<PairingPopupViewProps> = ({
 									event.target.value,
 									event.target.selectionStart,
 								);
+								if (edit) {
+									setCode(edit);
+									return;
+								}
 								// More than six digits is refused whole, never clipped:
 								// the field keeps the code it had (see `applyCodeEdit`).
-								if (edit) setCode(edit);
+								// UX round 2, U7: with no state change React restores the
+								// old value itself after this handler, and the browser
+								// parks the caret at the END, so the next Backspace ate the
+								// last digit. Put the value back here, with the caret where
+								// the refused edit began; React then finds nothing to
+								// restore and leaves the caret alone.
+								const input = event.currentTarget;
+								const caret = caretBeforeRefusedEdit(
+									input.value,
+									input.selectionStart,
+									digits,
+								);
+								input.value = formatTypedCode(digits);
+								input.setSelectionRange(caret, caret);
 							}}
 							onKeyDown={(event) => {
 								// Enter in the field never approves: there is no form, and
@@ -680,6 +714,7 @@ export const PairingPopupView: FC<PairingPopupViewProps> = ({
 		// biome-ignore lint/a11y/useSemanticElements: a native <dialog> brings top-layer and UA positioning; this is a fixed, non-modal card that must never trap focus.
 		<section
 			role="dialog"
+			ref={cardRef}
 			aria-modal="false"
 			aria-labelledby={titleId}
 			data-testid="phone-pairing-popup"

@@ -115,7 +115,35 @@ const PhonePasswordPanel: FC<{
 		return () => clearTimeout(timer);
 	}, [copy]);
 
+	/*
+	 * FOCUS AFTER THE READ (UX round 2, U6). "Show phone password" is disabled
+	 * while it reads and, on success, unmounts for the masked value, so a
+	 * keyboard or screen-reader user was left on <body> with nothing said. Once
+	 * the read settles, focus goes to the next thing to press: Show after a
+	 * read, or the read button again (re-enabled, beside the announced line)
+	 * after "not set" or a failure. Like the pairing popup's R2-1 guard, it
+	 * moves only while focus is still in this panel or has fallen to <body>,
+	 * so a slow read never pulls the person back from wherever they went.
+	 */
+	const panelRef = useRef<HTMLDivElement>(null);
+	const toggleRef = useRef<HTMLButtonElement>(null);
+	const readRef = useRef<HTMLButtonElement>(null);
+	const focusAfterRead = useRef(false);
+	useEffect(() => {
+		if (!focusAfterRead.current || state.kind === "reading") return;
+		focusAfterRead.current = false;
+		const focused = document.activeElement;
+		if (
+			focused &&
+			focused !== document.body &&
+			!panelRef.current?.contains(focused)
+		)
+			return;
+		(state.kind === "read" ? toggleRef : readRef).current?.focus();
+	}, [state.kind]);
+
 	const onRead = () => {
+		focusAfterRead.current = true;
 		setState({ kind: "reading" });
 		setRevealed(false);
 		setCopy("idle");
@@ -141,7 +169,11 @@ const PhonePasswordPanel: FC<{
 	};
 
 	return (
-		<div className="flex flex-col gap-2" data-testid="phone-password-panel">
+		<div
+			ref={panelRef}
+			className="flex flex-col gap-2"
+			data-testid="phone-password-panel"
+		>
 			<p className="text-meta text-ink-muted">
 				{t("ui.phone_pairing.password.body")}
 			</p>
@@ -176,7 +208,12 @@ const PhonePasswordPanel: FC<{
 							type="button"
 							variant="secondary"
 							size="sm"
-							aria-pressed={revealed}
+							ref={toggleRef}
+							// Design round 2, D11: a plain button whose label says what
+							// pressing it does (Show / Hide). No aria-pressed: with the
+							// label also flipping, a screen reader said "Hide, toggle
+							// button, pressed", which contradicts itself (WAI-ARIA APG:
+							// a toggle's label must not change).
 							onClick={() => setRevealed((value) => !value)}
 							data-testid="phone-password-toggle"
 						>
@@ -208,6 +245,7 @@ const PhonePasswordPanel: FC<{
 						type="button"
 						variant="secondary"
 						size="sm"
+						ref={readRef}
 						disabled={state.kind === "reading"}
 						onClick={onRead}
 						data-testid="phone-password-read"

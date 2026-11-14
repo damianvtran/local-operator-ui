@@ -217,6 +217,26 @@ export function applyCodeEdit(
 }
 
 /**
+ * Where the caret was before an edit {@link applyCodeEdit} refused, as an offset
+ * in the restored `previous` value (UX round 2, U7). The browser only reports
+ * the caret AFTER its edit, so step back over the digits the edit added: exact
+ * for a typed digit or a paste at a caret, and still inside the field for an
+ * edit that replaced a selection. Without it the restored value leaves the caret
+ * at the end, and the next Backspace removes the last digit instead of the one
+ * the person was beside.
+ */
+export function caretBeforeRefusedEdit(
+	value: string,
+	caret: number | null,
+	previous: string,
+): number {
+	const added = value.replace(/\D/g, "").length - previous.length;
+	const before =
+		caret === null ? previous.length : digitIndexAt(value, caret) - added;
+	return caretForDigitIndex(Math.min(Math.max(before, 0), previous.length));
+}
+
+/**
  * Backspace with the caret right after the group space, or Delete right before
  * it, with nothing selected: remove the digit across the space. Null when the
  * key is not over the space (the browser's own edit is already right).
