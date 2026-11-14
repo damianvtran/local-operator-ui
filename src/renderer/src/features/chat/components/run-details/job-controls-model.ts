@@ -148,8 +148,5 @@ export const refusalDetail = (error: unknown): string => {
 		error.message === DESKTOP_REFUSAL_PLACEHOLDER
 	)
 		return jobCancelNotFoundCopy();
-	return userFacingMessage(
-		error,
-		t("ui.chat.run_controls.job.cancel_failed"),
-	);
+	return userFacingMessage(error, t("ui.chat.run_controls.job.cancel_failed"));
 };
