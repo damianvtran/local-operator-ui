@@ -1883,6 +1883,14 @@ const IDENTICAL_OK = new Map([
 		"vi:ui.chat.run_details.mcp_failure.with_reason",
 		"Pure joiner `{lead}. {reason}`: the MCP failure lead and the server's reason are both full, capitalised sentences, so this locale closes the lead with the same full stop and space as English; no lexical English (zh-CN, hi and ur differ because they use their own sentence terminators). Independently audited with the S17c drafts (PR #1897). Scoped to this locale/key only.",
 	],
+	[
+		"es:ui.chat.canonical.tool_row.detail_section.error",
+		"Spanish 'Error' is the same word as English; the S18b audit (s18b-es-canonical-8769431b) checked it against shipped neighbours (ui.chat.error_block.heading 'Detalle del error'). Scoped to Spanish only.",
+	],
+	[
+		"fr:ui.chat.code_block.default_header",
+		"French 'Code' is the same word as English; the S18b audit (s18b-fr-chat-6fdeef7b) checked it against shipped neighbours (ui.code_review.code_review_model.code and ui.library.kind.code are both 'Code'). Scoped to French only.",
+	],
 ]);
 
 /*

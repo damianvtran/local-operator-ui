@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, of the 2 S18b approval-paydown keys in this namespace (scope: ui.agents.detail.create.description_duplicate, ui.agents.detail.create.description_new; pre-existing keys out of scope)",
+  "locale": "hi",
+  "namespace": "ui.agents.detail",
+  "pr": 0,
+  "pr_note": "PR not yet opened (branch feat/i18n-s18b-approval-paydown)",
+  "date": "2026-11-14",
+  "head": "3837df2f6cfe8f355556a1e7f7ffdfae8a129176",
+  "instance": "s18b-hi-agents-detail-7fe9f0bc",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "role": "independent translation auditor (team lopdev); not the translator (i18n-translator on anthropic/claude-sonnet-5-5), not the integrator",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session 097e801c9a50: a different session, agent and model from the translator. Served model anthropic/claude-opus-5-5, as stated by this session's harness system prompt; no fallback. Read-only in the worktree (git show/diff and python3 hashing/unicode/ICU scans only). My only repo writes are these untracked receipts in i18n/receipts/. Judgement derived here from English, the sidecar and the shipped corpus; no MT or translation service used.",
+    "instance": "s18b-hi-agents-detail-7fe9f0bc"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "binding": "Verified here at 3837df2f6cfe: target is the committed blob (git show 3837df2f6cfe8f355556a1e7f7ffdfae8a129176:src/i18n/catalogues/hi/ui.agents.detail.json, sha256 f909ea78b611b68a0061d9abc9a20c962ab1460833dbb463d4693b62acc4e4ec). The worktree file is byte-identical to it. Diff a114b6d102..3837df2f6c: +3/-1 lines. Every changed line is an in-scope key, or the previous last key re-emitted with a trailing comma (value unchanged; checked by value comparison, no pre-existing value changed). JSON valid, no duplicate keys, TAB indent, one trailing newline, no BOM/CR/\\u escapes. ICU check (python brace-depth and argument scan; the repo's node validator was not run under the no-node constraint): braces balanced; argument names, types and the ::group-off skeletons byte-identical to English; all values NFC; no Cf characters. ui.agents.detail.create.description_duplicate = '{name} की कॉपी। यह एक अलग एजेंट है: इसे बदलने से मूल एजेंट नहीं बदलता।' (70/83 chars, 0.84x) ui.agents.detail.create.description_new = 'बार-बार इस्तेमाल होने वाले निर्देश, जिन्हें एजेंट कमांड, उप-एजेंट और टीमें साझा करती हैं। चैट अलग रहती हैं।' (107/89 chars, 1.20x) Terminology checked against shipped neighbours: ui.agents.detail.action.duplicate='नए एजेंट के रूप में कॉपी बनाएँ'; ui.agents.detail.section.instructions='निर्देश'; ui.chat.run_details.subagents.title='उप-एजेंट'; ui.hub.pages.tab.teams='टीमें'; ui.agents.detail.action.new_chat='नई चैट'; ui.chat.sidebar.nav.chats='चैट' Danda U+0964 closes the agents.detail sentences. Labels carry no trailing punctuation, per the sidecar. No English fragment ships: the only Latin is ICU syntax and placeholders.",
+  "scope": "ui.agents.detail for hi: 2 S18b key(s) (ui.agents.detail.create.description_duplicate, ui.agents.detail.create.description_new) at branch head 3837df2f6cfe, read against English (source commit 6210ce4d17) and the sidecar",
+  "revisions": {
+    "head": "3837df2f6cfe8f355556a1e7f7ffdfae8a129176"
+  },
+  "en_sha256": "cd9956406028908098832a946b3e324159ff69da2a2986f505211d44e0933178",
+  "context_sha256": "866568f699c460e728055c30d604290668a29da49e1b1485657214e9a7fc710a",
+  "target_sha256": "f909ea78b611b68a0061d9abc9a20c962ab1460833dbb463d4693b62acc4e4ec",
+  "sha256": {
+    "hi": "f909ea78b611b68a0061d9abc9a20c962ab1460833dbb463d4693b62acc4e4ec",
+    "en": "cd9956406028908098832a946b3e324159ff69da2a2986f505211d44e0933178"
+  }
+}

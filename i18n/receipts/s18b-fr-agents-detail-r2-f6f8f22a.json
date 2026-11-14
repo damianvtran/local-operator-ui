@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "delta re-audit after remediation of findings from the round-1 receipt s18b-fr-agents-detail-b7739558 (round 2, scope 3837df2f6c..a007916470; keys in scope: ui.agents.detail.create.description_duplicate, ui.agents.detail.create.description_new)",
+  "locale": "fr",
+  "namespace": "ui.agents.detail",
+  "pr": 0,
+  "pr_note": "PR not yet opened (branch feat/i18n-s18b-approval-paydown)",
+  "date": "2026-11-14",
+  "head": "a0079164701fc748a3ffa0ae4d6576ec4578b80f",
+  "instance": "s18b-fr-agents-detail-r2-f6f8f22a",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "role": "independent translation auditor (team lopdev); not the translator (i18n-translator on anthropic/claude-sonnet-5-5), not the integrator or remediator",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session 097e801c9a50: the same auditor session as round 1, and a different session, agent and model from the translator and the remediating commit. Served model anthropic/claude-opus-5-5, as stated by this session's harness system prompt; no fallback. Read-only in the worktree (git show/diff, python3). My only repo writes: these untracked receipts, plus deletion of the superseded round-1 receipt. No MT used.",
+    "instance": "s18b-fr-agents-detail-r2-f6f8f22a"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "binding": "Verified here at a0079164701f: target is the committed blob (git show a0079164701fc748a3ffa0ae4d6576ec4578b80f:src/i18n/catalogues/fr/ui.agents.detail.json, sha256 e30eb4c2020954c8fc0799b249fdff89ca57f0137a67bccf34d1d376d06b7921). The worktree file is byte-identical to it. Delta 3837df2f6c..a007916470 is one commit (a007916470), 5 files, +5/-5 lines. For this file, exactly one line changed: ui.agents.detail.create.description_duplicate. Key set is unchanged. English file and sidecar are byte-identical between the two heads (en cd9956406028908098832a946b3e324159ff69da2a2986f505211d44e0933178, context 866568f699c460e728055c30d604290668a29da49e1b1485657214e9a7fc710a). JSON valid, TAB indent, one trailing newline, no BOM/CR. Python checks only (no node validator, per the no-node constraint): placeholder set identical to English, NFC, no Cf characters. Round-1 MINOR fixed: U+202F now precedes ':' ('distinct : le'), matching read.effort_label and the alert bodies. Round-1 NIT fixed: 'le modifier' agrees with 'un agent distinct', the antecedent just named. No new defect: {name} is byte-identical, 84/83 chars (1.01x), NFC, no Cf. Unchanged keys in this namespace keep their round-1 judgement from s18b-fr-agents-detail-b7739558.",
+  "scope": "ui.agents.detail for fr: 2 S18b key(s) (ui.agents.detail.create.description_duplicate, ui.agents.detail.create.description_new) at branch head a0079164701f; round-2 delta re-audit of the remediated line plus a re-bind of the whole file",
+  "revisions": {
+    "head": "a0079164701fc748a3ffa0ae4d6576ec4578b80f"
+  },
+  "en_sha256": "cd9956406028908098832a946b3e324159ff69da2a2986f505211d44e0933178",
+  "context_sha256": "866568f699c460e728055c30d604290668a29da49e1b1485657214e9a7fc710a",
+  "target_sha256": "e30eb4c2020954c8fc0799b249fdff89ca57f0137a67bccf34d1d376d06b7921",
+  "sha256": {
+    "fr": "e30eb4c2020954c8fc0799b249fdff89ca57f0137a67bccf34d1d376d06b7921",
+    "en": "cd9956406028908098832a946b3e324159ff69da2a2986f505211d44e0933178"
+  }
+}

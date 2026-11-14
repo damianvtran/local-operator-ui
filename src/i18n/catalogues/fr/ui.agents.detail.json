@@ -65,5 +65,7 @@
 	"ui.agents.detail.empty.instructions": "Aucune instruction pour l’instant.",
 	"ui.agents.detail.action.create_copy": "Créer la copie",
 	"ui.agents.detail.action.creating": "Création…",
-	"ui.agents.detail.action.discard_new_agent": "Abandonner ce nouvel agent ?"
+	"ui.agents.detail.action.discard_new_agent": "Abandonner ce nouvel agent ?",
+	"ui.agents.detail.create.description_duplicate": "Une copie de {name}. C’est un agent distinct : le modifier ne change pas l’original.",
+	"ui.agents.detail.create.description_new": "Instructions réutilisables, partagées par les commandes d’agent, les sous-agents et les équipes. Les conversations restent séparées."
 }

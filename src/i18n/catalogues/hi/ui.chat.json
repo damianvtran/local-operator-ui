@@ -207,5 +207,6 @@
 	"ui.chat.session_status.effort_level.high": "उच्च",
 	"ui.chat.image_actions.actions": "तस्वीर की कार्रवाइयाँ",
 	"ui.chat.audio.position_label": "{label} की प्लेबैक स्थिति",
-	"ui.chat.audio.position_value": "{total} में से {current}"
+	"ui.chat.audio.position_value": "{total} में से {current}",
+	"ui.chat.code_block.default_header": "कोड"
 }

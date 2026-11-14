@@ -356,5 +356,21 @@
 		"tone": "Short question",
 		"length_hint": "Four words",
 		"note": "Asks before throwing away a not-yet-created agent."
+	},
+	"ui.agents.detail.create.description_duplicate": {
+		"role": "description under the heading of the form that duplicates an existing agent as a new one",
+		"tone": "two plain sentences, sentence case, full stops",
+		"length": "Two short sentences; wraps.",
+		"note": "Reassures the operator that the copy is independent of the source agent: edits to it never touch the original. 'Agent' is the product's word for a configured assistant.",
+		"placeholders": {
+			"name": "the display name of the agent being copied; keep verbatim, do not translate"
+		}
+	},
+	"ui.agents.detail.create.description_new": {
+		"role": "description under the heading of the form that creates a new agent from scratch",
+		"tone": "two plain sentences, sentence case, full stops",
+		"length": "Two short sentences; wraps.",
+		"note": "Says where the new agent's instructions can be reused (agent commands, subagents, teams) and that a chat does not share them: each chat keeps its own state.",
+		"placeholders": {}
 	}
 }

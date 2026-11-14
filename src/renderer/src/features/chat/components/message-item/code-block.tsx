@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
 import armasm from "react-syntax-highlighter/dist/esm/languages/hljs/armasm";
@@ -132,12 +134,15 @@ export const CodeBlock: FC<CodeBlockProps> = ({
 	header,
 	flexDirection = "column",
 }) => {
+	// Before the early return: a hook may not be conditional. The default header
+	// is read at render, so a live language switch repaints it.
+	useI18nLocale();
 	if (!code) return null;
 
 	return (
 		<div className="mb-4 w-full">
 			<span className="mb-1 block text-ink-dim text-meta">
-				{header || "Code"}
+				{header || t("ui.chat.code_block.default_header")}
 			</span>
 			<div
 				className={cn(

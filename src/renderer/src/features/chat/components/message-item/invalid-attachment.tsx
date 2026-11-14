@@ -1,4 +1,4 @@
-import { t } from "@shared/i18n";
+import { isolateLtr, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { CircleAlert } from "lucide-react";
 import type { FC } from "react";
@@ -38,20 +38,32 @@ export const InvalidAttachment: FC<InvalidAttachmentProps> = ({
 	onOpen,
 }) => {
 	useI18nLocale();
+	// The file name is a Latin-led LTR run inside a sentence the catalogue may set
+	// right-to-left (ur): isolated in code, never in the catalogue (S18b design
+	// round 1, D3), so a name that starts or ends on a neutral (`_backup_.pdf`)
+	// stays attached to its own run. A no-op under every LTR locale.
+	const name = isolateLtr(getFileName(file));
 	return (
 		<div
 			className="mt-2 flex w-fit max-w-full items-center rounded-sm border border-warning-border bg-warning-wash px-3 py-2 text-warning"
-			title={t("ui.chat.attachments.not_viewable", {
-				name: getFileName(file),
-			})}
+			title={t("ui.chat.attachments.not_viewable", { name })}
 		>
 			<span className="me-2 flex shrink-0 items-center">
 				<CircleAlert size={14} />
 			</span>
-			<span className="max-w-full truncate text-body-sm">
+			{/*
+			 * `line-clamp-2`, not `truncate` (S18b design round 1, D2): the sentence
+			 * ends in the reason, and a translation moves the width at which a
+			 * single-line ellipsis starts eating it (ru truncated below a 752px card
+			 * where English did below 579px). Two lines keep the file name and the
+			 * reason at every locale; `break-words` lets a long unbroken name wrap
+			 * instead of clipping without an ellipsis, which line-clamp cannot draw
+			 * inline.
+			 */}
+			<span className="line-clamp-2 max-w-full break-words text-body-sm">
 				{reason
-					? `${getFileName(file)} ${reason}`
-					: `${getFileName(file)} is not viewable (file may be incomplete, deleted, or moved)`}
+					? `${name} ${reason}`
+					: t("ui.chat.attachments.not_viewable_detail", { name })}
 			</span>
 			{onOpen ? (
 				<button

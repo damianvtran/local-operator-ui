@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "delta re-audit after remediation of findings from the round-1 receipt s18b-ru-agents-detail-fbd3fef3 (round 2, scope 3837df2f6c..a007916470; keys in scope: ui.agents.detail.create.description_duplicate, ui.agents.detail.create.description_new)",
+  "locale": "ru",
+  "namespace": "ui.agents.detail",
+  "pr": 0,
+  "pr_note": "PR not yet opened (branch feat/i18n-s18b-approval-paydown)",
+  "date": "2026-11-14",
+  "head": "a0079164701fc748a3ffa0ae4d6576ec4578b80f",
+  "instance": "s18b-ru-agents-detail-r2-fc4eb71e",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "role": "independent translation auditor (team lopdev); not the translator (i18n-translator on anthropic/claude-sonnet-5-5), not the integrator or remediator",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session 097e801c9a50: the same auditor session as round 1, and a different session, agent and model from the translator and the remediating commit. Served model anthropic/claude-opus-5-5, as stated by this session's harness system prompt; no fallback. Read-only in the worktree (git show/diff, python3). My only repo writes: these untracked receipts, plus deletion of the superseded round-1 receipt. No MT used.",
+    "instance": "s18b-ru-agents-detail-r2-fc4eb71e"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "severity": "NIT",
+      "key": "ui.agents.detail.create.description_new",
+      "note": "Round-1 MINOR resolved: Teams is «команд» again. In this product 'agent commands' is the /agent slash-command path (sidecar; ui.chat.pickers.slash.source.agent). 'вызовов агента по команде' is grammatical and reads as that. Small residue: 'по команде' sits beside 'команд' (teams). Sharper, optional: 'вызовов агента через slash-команду' (the corpus term, ui.chat.pickers.slash.region_label 'Slash-команды'). Non-gating."
+    }
+  ],
+  "binding": "Verified here at a0079164701f: target is the committed blob (git show a0079164701fc748a3ffa0ae4d6576ec4578b80f:src/i18n/catalogues/ru/ui.agents.detail.json, sha256 e5c44a4ad5f0ba6ca9601b498a1d4360e3a62b4993d5c4da572dc93305a7c41c). The worktree file is byte-identical to it. Delta 3837df2f6c..a007916470 is one commit (a007916470), 5 files, +5/-5 lines. For this file, exactly one line changed: ui.agents.detail.create.description_new. Key set is unchanged. English file and sidecar are byte-identical between the two heads (en cd9956406028908098832a946b3e324159ff69da2a2986f505211d44e0933178, context 866568f699c460e728055c30d604290668a29da49e1b1485657214e9a7fc710a). JSON valid, TAB indent, one trailing newline, no BOM/CR. Python checks only (no node validator, per the no-node constraint): placeholder set identical to English, NFC, no Cf characters. New value 'Повторно используемые инструкции, общие для вызовов агента по команде, субагентов и команд. Чаты остаются отдельными.' Teams = «команд» restored, consistent with ui.agents.detail.empty.used_by and ui.hub.pages.tab.teams. Genitive list after 'для' is correct: вызовов / субагентов / команд, all genitive plural. 117/89 chars (1.31x); the text wraps. Unchanged keys in this namespace keep their round-1 judgement from s18b-ru-agents-detail-fbd3fef3.",
+  "scope": "ui.agents.detail for ru: 2 S18b key(s) (ui.agents.detail.create.description_duplicate, ui.agents.detail.create.description_new) at branch head a0079164701f; round-2 delta re-audit of the remediated line plus a re-bind of the whole file",
+  "revisions": {
+    "head": "a0079164701fc748a3ffa0ae4d6576ec4578b80f"
+  },
+  "en_sha256": "cd9956406028908098832a946b3e324159ff69da2a2986f505211d44e0933178",
+  "context_sha256": "866568f699c460e728055c30d604290668a29da49e1b1485657214e9a7fc710a",
+  "target_sha256": "e5c44a4ad5f0ba6ca9601b498a1d4360e3a62b4993d5c4da572dc93305a7c41c",
+  "sha256": {
+    "ru": "e5c44a4ad5f0ba6ca9601b498a1d4360e3a62b4993d5c4da572dc93305a7c41c",
+    "en": "cd9956406028908098832a946b3e324159ff69da2a2986f505211d44e0933178"
+  }
+}

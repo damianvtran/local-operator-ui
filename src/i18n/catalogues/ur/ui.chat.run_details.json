@@ -143,5 +143,6 @@
 	"ui.chat.run_details.monitor.waiting": "منتظر",
 	"ui.chat.run_details.monitor.last_check": "آخری جانچ {when}",
 	"ui.chat.run_details.monitor.failed_count": "{count, plural, one {{count_display} ناکام} other {{count_display} ناکام}}",
-	"ui.chat.run_details.checkpoint.turn_fallback": "باری {turn, number, ::group-off}"
+	"ui.chat.run_details.checkpoint.turn_fallback": "باری {turn, number, ::group-off}",
+	"ui.chat.run_details.subagents.show_more": "مزید {count, number, ::group-off} دکھائیں"
 }

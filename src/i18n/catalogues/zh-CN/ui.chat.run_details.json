@@ -143,5 +143,6 @@
 	"ui.chat.run_details.monitor.waiting": "等待中",
 	"ui.chat.run_details.monitor.last_check": "上次检查于{when}",
 	"ui.chat.run_details.monitor.failed_count": "{count, plural, other {连续失败{count_display}次}}",
-	"ui.chat.run_details.checkpoint.turn_fallback": "第{turn, number, ::group-off}轮"
+	"ui.chat.run_details.checkpoint.turn_fallback": "第{turn, number, ::group-off}轮",
+	"ui.chat.run_details.subagents.show_more": "再显示{count, number, ::group-off}项"
 }

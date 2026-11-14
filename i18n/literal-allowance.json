@@ -3,16 +3,6 @@
 	"note": "Shrink-only allowance for the DATA-SHAPE literals: object-literal copy properties (`object-literal:<key>`) and JSX child expressions (`jsx-child-expression`) under src/renderer. Each id is `<shape> | <exact text>`, sorted, and both halves are the identity — the text is part of it so a finding cannot be swapped for a different one of the same shape and still fit. scripts/i18n/check-strings.mjs FAILS on any data-shape finding NOT listed here (a new literal, or a replacement of a listed one) and on any listed id that is no longer found (the allowance can only shrink; `--prune-allowance` removes the paid-off ids and never adds). The baseline (i18n/baseline.json) is untouched: the data shapes are governed HERE, not by a per-file ceiling, so this debt has one owner, one payoff and one place to pay it. A new id is a reviewed decision with a named owner and a real payoff, never a check-fix; `--allowance-base <ref>` refuses growth relative to the base branch. See docs/i18n/literal-allowance.md.",
 	"entries": [
 		{
-			"file": "src/renderer/src/features/agents/components/agent-detail.tsx",
-			"ids": [
-				"jsx-child-expression | A copy of ${…}. It is a separate agent: changing it does not change the original.",
-				"jsx-child-expression | Reusable instructions shared by agent commands, subagents and teams. Chats stay separate."
-			],
-			"owner": "the i18n renderer-keying lane",
-			"payoff": "2027-01-31",
-			"reason": "JSX child expressions render copy inside braces, where `JsxText` cannot reach. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
-		},
-		{
 			"file": "src/renderer/src/features/agents/components/team-detail.tsx",
 			"ids": [
 				"jsx-child-expression | Agent",
@@ -50,49 +40,8 @@
 			"reason": "data-object copy properties hold sentences that reach the screen without ever passing an attribute, so no earlier slice could see them. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
 		},
 		{
-			"file": "src/renderer/src/features/chat/components/credential-chip.tsx",
-			"ids": ["jsx-child-expression | · ${…} chars"],
-			"owner": "the i18n renderer-keying lane",
-			"payoff": "2027-01-31",
-			"reason": "JSX child expressions render copy inside braces, where `JsxText` cannot reach. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
-		},
-		{
-			"file": "src/renderer/src/features/chat/components/message-item/code-block.tsx",
-			"ids": ["jsx-child-expression | Code"],
-			"owner": "the i18n renderer-keying lane",
-			"payoff": "2027-01-31",
-			"reason": "JSX child expressions render copy inside braces, where `JsxText` cannot reach. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
-		},
-		{
-			"file": "src/renderer/src/features/chat/components/message-item/invalid-attachment.tsx",
-			"ids": [
-				"jsx-child-expression | ${…} is not viewable (file may be incomplete, deleted, or moved)"
-			],
-			"owner": "the i18n renderer-keying lane",
-			"payoff": "2027-01-31",
-			"reason": "JSX child expressions render copy inside braces, where `JsxText` cannot reach. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
-		},
-		{
-			"file": "src/renderer/src/features/chat/components/run-details/run-detail-subagents.tsx",
-			"ids": ["jsx-child-expression | Show ${…} more"],
-			"owner": "the i18n renderer-keying lane",
-			"payoff": "2027-01-31",
-			"reason": "JSX child expressions render copy inside braces, where `JsxText` cannot reach. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
-		},
-		{
 			"file": "src/renderer/src/features/chat/components/trace/agent-reasoning.tsx",
 			"ids": ["jsx-child-expression | ${…} for ${…}"],
-			"owner": "the i18n renderer-keying lane",
-			"payoff": "2027-01-31",
-			"reason": "JSX child expressions render copy inside braces, where `JsxText` cannot reach. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
-		},
-		{
-			"file": "src/renderer/src/features/chat/components/trace/tool-detail.tsx",
-			"ids": [
-				"jsx-child-expression | Error",
-				"jsx-child-expression | Interrupted",
-				"jsx-child-expression | Output"
-			],
 			"owner": "the i18n renderer-keying lane",
 			"payoff": "2027-01-31",
 			"reason": "JSX child expressions render copy inside braces, where `JsxText` cannot reach. Each id is one sentence to extract through the catalogue at its call site; the count may only fall."
