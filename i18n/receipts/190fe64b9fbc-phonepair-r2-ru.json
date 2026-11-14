@@ -1,0 +1,44 @@
+{
+	"auditor": "translation-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "190fe64b9fbc-phonepair-r2-ru",
+	"date": "2026-11-14",
+	"locale": "ru",
+	"independence": "Independent lopdev translation-auditor session 190fe64b9fbc (round-2 re-audit); not the translator (coder subagent of host session 25fe8dfbf610) and not the round-1 auditor (cf304a0ef14b). Configured model anthropic/claude-opus-5-5, the same family as the translator host: disclosed; served model not independently confirmable from inside the session. Read only the PR's committed bytes at the head; authored no catalogue change.",
+	"references": {
+		"glossary": "damianvtran/local-operator@097b9bc6c562 i18n/glossary.md",
+		"style_guide": "damianvtran/local-operator@097b9bc6c562 i18n/style-guides/ru.md",
+		"core_pairing_copy": "damianvtran/local-operator@097b9bc6c562 local_operator/i18n/catalogues/ru/relay.pairing.json and operator.pairing.json",
+		"ui_register": "src/i18n/catalogues/ru/ui.providers.json (ui.providers.phone.heading, .consent tunnel term), ui.settings.json (ui.settings.page.title)",
+		"spec": "lop-specs/mobile-pairing-design-v2.md §4.1 (grant sentence, Show phone password)",
+		"round1": "cf304a0ef14b replacements-r1.json and i18n/receipts/cf304a0ef14b-phonepair-r1-*.json"
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"pr": 1912,
+	"head": "33e589a2d522de161298bd0be7b38bd82637d6a0",
+	"scope": "Round 2 re-audit, WHOLE namespace ui.phone_pairing: all 80 keys (popup 38, setup 9, phones 19, platform 4, password 12 - incl. the 24 keys new/changed in English since 41fd2166) read against en, en .context.json, glossary, style guide and core relay.pairing/operator.pairing. Checked: pair/approve/deny/remove vocabulary vs the phone-side core copy (round-1 MAJOR resolved), ICU select arms mac/windows/other on all 7 select keys and CLDR plural arms with # (parsed + formatted per arm with intl-messageformat), placeholders, password.* claims (no security overpromise), Settings path names vs the real screen titles, quoted button names, typography, widths (action row is flex-wrap).",
+	"namespace": "ui.phone_pairing",
+	"status": "passed",
+	"sha256": {
+		"en": "ead4e5ad631a5b636664cef029a22def4a91803d1743167e9287dde2f68ed135",
+		"ru": "79743f81a800fb883ca134dc1c7d8a2b90d6a7e79343f381e18a00e5d406a02e"
+	},
+	"context_sha256": "2e8c8b1004f666fb24a653bc86ae743d34bca5b18a0a37644b1750a4abbfe906",
+	"findings": [
+		{
+			"id": "RU-1",
+			"severity": "MINOR",
+			"key": "ui.phone_pairing.setup.working",
+			"issue": "'Окно может быть за этим окном' ('the window may be behind this window') is a clumsy repetition with no clear antecedent; the thing hidden is the password prompt (запрос пароля) named in the first sentence.",
+			"proposed": {
+				"ui.phone_pairing.setup.working": "{os, select, mac {Ожидание запроса пароля на вашем Mac. Возможно, он скрыт за этим окном.} windows {Ожидание запроса пароля на вашем ПК. Возможно, он скрыт за этим окном.} other {Ожидание запроса пароля на вашем компьютере. Возможно, он скрыт за этим окном.}}"
+			}
+		}
+	],
+	"resolved": [
+		{
+			"ref": "cf304a0ef14b round-1 MAJOR (ru pair vocabulary)",
+			"verified": "сопряжение/сопрячь/сопряжённые throughout, matching core relay.pairing ru; the only remaining 'подключается' (password.body) is the network sense 'reaches', correct there."
+		}
+	]
+}

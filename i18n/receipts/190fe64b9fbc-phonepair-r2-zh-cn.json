@@ -1,0 +1,56 @@
+{
+	"auditor": "translation-auditor",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "190fe64b9fbc-phonepair-r2-zh-cn",
+	"date": "2026-11-14",
+	"locale": "zh-CN",
+	"independence": "Independent lopdev translation-auditor session 190fe64b9fbc (round-2 re-audit); not the translator (coder subagent of host session 25fe8dfbf610) and not the round-1 auditor (cf304a0ef14b). Configured model anthropic/claude-opus-5-5, the same family as the translator host: disclosed; served model not independently confirmable from inside the session. Read only the PR's committed bytes at the head; authored no catalogue change.",
+	"references": {
+		"glossary": "damianvtran/local-operator@097b9bc6c562 i18n/glossary.md",
+		"style_guide": "damianvtran/local-operator@097b9bc6c562 i18n/style-guides/zh-CN.md",
+		"core_pairing_copy": "damianvtran/local-operator@097b9bc6c562 local_operator/i18n/catalogues/zh-CN/relay.pairing.json and operator.pairing.json",
+		"ui_register": "src/i18n/catalogues/zh-CN/ui.providers.json (ui.providers.phone.heading, .consent tunnel term), ui.settings.json (ui.settings.page.title)",
+		"spec": "lop-specs/mobile-pairing-design-v2.md §4.1 (grant sentence, Show phone password)",
+		"round1": "cf304a0ef14b replacements-r1.json and i18n/receipts/cf304a0ef14b-phonepair-r1-*.json"
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"pr": 1912,
+	"head": "33e589a2d522de161298bd0be7b38bd82637d6a0",
+	"scope": "Round 2 delta re-audit of ui.phone_pairing: every key whose bytes changed in this locale in 41fd2166..33e589a2 (31 keys: the 24 English-driven new/changed keys incl. 12 password.*, plus 7 round-1 minor replacements applied verbatim), read against en, en .context.json, glossary, style guide and core relay.pairing/operator.pairing. The other 49 keys are byte-identical to the bytes round-1 audit cf304a0ef14b passed at 2f1f580e3 (verified by diff); carried, not re-read. Checked: ICU select arms mac/windows/other on all 7 select keys (parsed + formatted), placeholders, password.* claims, Settings path names, quoted button names, typography, widths.",
+	"namespace": "ui.phone_pairing",
+	"status": "passed",
+	"sha256": {
+		"en": "ead4e5ad631a5b636664cef029a22def4a91803d1743167e9287dde2f68ed135",
+		"zh-CN": "58e2f0e3d7626bb6bf8c08bfcd64bbf461cb78dc5dcdb33d9a2993842cd5780b"
+	},
+	"context_sha256": "2e8c8b1004f666fb24a653bc86ae743d34bca5b18a0a37644b1750a4abbfe906",
+	"findings": [
+		{
+			"id": "Z-4",
+			"severity": "MINOR",
+			"key": "ui.phone_pairing.popup.signing",
+			"keys": [
+				"ui.phone_pairing.popup.signing",
+				"ui.phone_pairing.popup.admin_prompt",
+				"ui.phone_pairing.setup.body",
+				"ui.phone_pairing.setup.working",
+				"ui.phone_pairing.setup.on",
+				"ui.phone_pairing.phones.removing",
+				"ui.phone_pairing.phones.dialog_gesture",
+				"ui.phone_pairing.password.body"
+			],
+			"issue": "Spaces between Chinese and Latin runs (你的 Mac, 你的 PC, 你的 Radient 账户) in the new select arms and password.body; zh-CN style guide: no space between Chinese and Latin/digit runs; the round-1 Z-1 fix already removed them from the other keys (popup.attested now 你的Radient账户), so the namespace is internally inconsistent.",
+			"proposed": {
+				"ui.phone_pairing.popup.signing": "{os, select, mac {请在你的Mac上确认。确认窗口可能在此窗口后面。} windows {请在你的PC上确认。确认窗口可能在此窗口后面。} other {请在你的电脑上确认。确认窗口可能在此窗口后面。}}",
+				"ui.phone_pairing.popup.admin_prompt": "{os, select, mac {你的Mac正在要求输入它自己的密码以添加这部手机。提示窗口可能在此窗口后面。} windows {你的PC正在要求输入它自己的密码以添加这部手机。提示窗口可能在此窗口后面。} other {你的电脑正在要求输入它自己的密码以添加这部手机。提示窗口可能在此窗口后面。}}",
+				"ui.phone_pairing.setup.body": "{os, select, mac {开启时，你的Mac只会要求输入一次它自己的密码。} windows {开启时，你的PC只会要求输入一次它自己的密码。} other {开启时，你的电脑只会要求输入一次它自己的密码。}}",
+				"ui.phone_pairing.setup.working": "{os, select, mac {正在等待你的Mac弹出密码提示。它可能在此窗口后面。} windows {正在等待你的PC弹出密码提示。它可能在此窗口后面。} other {正在等待你的电脑弹出密码提示。它可能在此窗口后面。}}",
+				"ui.phone_pairing.setup.on": "{os, select, mac {手机审批已开启。每部新手机仍会要求输入一次你的Mac的密码。} windows {手机审批已开启。每部新手机仍会要求输入一次你的PC的密码。} other {手机审批已开启。每部新手机仍会要求输入一次你的电脑的密码。}}",
+				"ui.phone_pairing.phones.removing": "{os, select, mac {已无法批准。还有一步需要输入你的Mac的密码。} windows {已无法批准。还有一步需要输入你的PC的密码。} other {已无法批准。还有一步需要输入你的电脑的密码。}}",
+				"ui.phone_pairing.phones.dialog_gesture": "{os, select, mac {你的Mac会要求输入它自己的密码以完成移除。} windows {你的PC会要求输入它自己的密码以完成移除。} other {你的电脑会要求输入它自己的密码以完成移除。}}",
+				"ui.phone_pairing.password.body": "如果你的手机通过你自己的隧道而不是你的Radient账户连接到这台电脑，它会使用这台电脑的手机密码登录。"
+			}
+		}
+	],
+	"resolved": []
+}
