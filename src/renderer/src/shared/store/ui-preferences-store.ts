@@ -1978,7 +1978,7 @@ export type RunPanelReveal = {
  * Default values for canvas and chat sidebar widths
  *
  * The chat sidebar's default is the ONE sidebar's: 260px, user-resizable
- * 220-320, and those three numbers live in
+ * 220-560, and those three numbers live in
  * `features/chat/chat-sidebar-layout.ts` so the component, the store's clamp and
  * the desktop suite all read one table rather than three copies of it. It was
  * 280 (clamped 240-360) when this was the chat route's SECOND column, beside a
