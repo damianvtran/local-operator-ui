@@ -87,6 +87,7 @@ import enUiChatQuotaResend from "./catalogues/en/ui.chat.quota_resend.json";
 import enUiChatRadientSession from "./catalogues/en/ui.chat.radient_session.json";
 import enUiChatReadAck from "./catalogues/en/ui.chat.read_ack.json";
 import enUiChatResponseActions from "./catalogues/en/ui.chat.response_actions.json";
+import enUiChatRunControls from "./catalogues/en/ui.chat.run_controls.json";
 import enUiChatRunDetails from "./catalogues/en/ui.chat.run_details.json";
 import enUiChatSessionReadout from "./catalogues/en/ui.chat.session_readout.json";
 import enUiChatSessionSpend from "./catalogues/en/ui.chat.session_spend.json";
@@ -1402,6 +1403,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChatRadientSession,
 	...enUiChatReadAck,
 	...enUiChatResponseActions,
+	...enUiChatRunControls,
 	...enUiChatRunDetails,
 	...enUiChatSessionReadout,
 	...enUiChatSessionSpend,
@@ -6873,6 +6875,25 @@ export type MessageParams = {
 	"ui.chat.response_actions.copy": undefined;
 	"ui.chat.response_actions.label": undefined;
 	"ui.chat.response_actions.yours_label": undefined;
+	"ui.chat.run_controls.job.no_conversation": undefined;
+	"ui.chat.run_controls.monitor.cancel_failed": undefined;
+	"ui.chat.run_controls.monitor.no_conversation": undefined;
+	"ui.chat.run_controls.wake.already_gone": undefined;
+	"ui.chat.run_controls.wake.cancel_failed": undefined;
+	"ui.chat.run_controls.wake.no_conversation": undefined;
+	"ui.chat.run_controls.wake_confirm.action": undefined;
+	"ui.chat.run_controls.wake_confirm.action_named": undefined;
+	"ui.chat.run_controls.wake_confirm.message": {
+		subject: string;
+		head: string;
+	};
+	"ui.chat.run_controls.wake_confirm.message_named": {
+		subject: string;
+		head: string;
+		name: string;
+	};
+	"ui.chat.run_controls.wake_confirm.title": undefined;
+	"ui.chat.run_controls.wake_confirm.title_named": { name: string };
 	"ui.chat.run_details.child.brief.show_less": undefined;
 	"ui.chat.run_details.child.brief.show_more": { count: number };
 	"ui.chat.run_details.child.result.preview": undefined;
