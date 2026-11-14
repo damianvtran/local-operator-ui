@@ -21,7 +21,7 @@
  * The page keeps typing and keeps its first responder while the card is shown.
  *
  * LIFETIME: one prewarmed child per host window; hidden AND detached rather than
- * destroyed when the queue empties or the page stops being presented. A tab switch with an
+ * destroyed when the queue empties or browser chrome stops being visible. A tab switch with an
  * unchanged content rect does not hide it; a content-rect RESIZE rebuilds it
  * because Electron 44.3.0 leaves the replacement WebContents viewport at the
  * old size otherwise (see `applyBounds`). A load failure or crash latches off,
@@ -62,6 +62,8 @@ import { setBrowserViewPresented } from "./view-presentation";
 
 export interface ApprovalsOverlayLayout {
 	presented: boolean;
+	/** Consent belongs to browser chrome, including before any page is presented. */
+	chromeVisible: boolean;
 	contentRect: ApprovalsCardRect | null;
 	revision: number;
 }
@@ -77,6 +79,8 @@ export interface ApprovalsOverlayFacts {
 	/** Counters for the trust tests: accepted actions and stale/forged drops. */
 	actions: { dismissed: number; decided: number; dropped: number };
 	presented: boolean;
+	/** Consent belongs to browser chrome, including before any page is presented. */
+	chromeVisible: boolean;
 	contentRect: ApprovalsCardRect | null;
 	ready: boolean;
 	visible: boolean;
@@ -326,6 +330,7 @@ export class ApprovalsOverlayController {
 		this.naturalHeight = APPROVALS_CARD_MIN_HEIGHT;
 		this.layout = {
 			presented: false,
+			chromeVisible: false,
 			contentRect: null,
 			revision: 0,
 		};
@@ -613,7 +618,7 @@ export class ApprovalsOverlayController {
 		this.reloadDocumentForTheme();
 		// A locale change changes the copy length, and a direction change moves the
 		// native view; both need the layout pass and a fresh measurement.
-		if (this.layout.presented) this.maybeShow();
+		if (this.layout.chromeVisible) this.maybeShow();
 		if (this.ready) this.measureAndShow();
 	}
 
@@ -671,11 +676,12 @@ export class ApprovalsOverlayController {
 		if (this.disposed) return;
 		this.layout = {
 			presented: snapshot.presented,
+			chromeVisible: snapshot.chromeVisible,
 			contentRect: snapshot.contentRect ? { ...snapshot.contentRect } : null,
 			revision: snapshot.revision,
 		};
-		if (!snapshot.presented || !snapshot.contentRect) {
-			// Route loss / a modal hiding the page: the card is not on screen, so the
+		if (!snapshot.chromeVisible || !snapshot.contentRect) {
+			// Route loss / a modal hiding browser chrome: the card is not on screen, so the
 			// shield must not keep claiming it is explicitly open.
 			this.explicitOpen = false;
 			this.pendingFocus = false;
@@ -704,6 +710,7 @@ export class ApprovalsOverlayController {
 			explicitOpen: this.explicitOpen,
 			actions: { ...this.actionCounts },
 			presented: this.layout.presented,
+			chromeVisible: this.layout.chromeVisible,
 			contentRect: this.layout.contentRect,
 			ready: this.ready,
 			visible: this.visible,
@@ -959,7 +966,7 @@ export class ApprovalsOverlayController {
 			this.disposed ||
 			this.failedReason !== null ||
 			this.pending <= 0 ||
-			!this.layout.presented ||
+			!this.layout.chromeVisible ||
 			!this.layout.contentRect
 		) {
 			this.hide();

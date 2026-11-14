@@ -632,7 +632,7 @@ export const JOB_COMMANDS = {
 		// assertions CANNOT stop running: a suite that leaves the job list and is
 		// not noticed is the "guard nothing runs" defect this change is about.
 		"node scripts/test-validate-release.mjs",
-		"node --test scripts/test-release-safety.mjs scripts/test-publish-workflow.mjs scripts/test-version-bump-guard.mjs scripts/ci-scope.test.mjs",
+		"node --test scripts/test-release-safety.mjs scripts/test-publish-workflow.mjs scripts/test-version-bump-guard.mjs scripts/ci-scope.test.mjs scripts/native-bytecode-artifact.test.mjs",
 		"node --test scripts/appimage-update-info.test.mjs",
 		"node --test scripts/release-baseline.test.mjs scripts/release-candidate.test.mjs scripts/entry-point.test.mjs scripts/require-report.test.mjs scripts/desktop-suite-checkpoints.test.mjs",
 		'bash scripts/require-report.sh "Build environment contracts" node scripts/check-build-env.mjs',
