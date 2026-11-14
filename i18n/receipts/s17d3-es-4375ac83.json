@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, of the 2 S17d-3 job-cancel keys (scope: ui.chat.run_controls.job.cancel_failed, ui.chat.run_controls.job.not_found; pre-existing keys out of scope)",
+  "locale": "es",
+  "namespace": "ui.chat.run_controls",
+  "pr": 0,
+  "pr_note": "PR not yet opened (branch feat/i18n-s17d3-job-cancel)",
+  "date": "2026-11-14",
+  "head": "1e3b4a920165c787f2532d14735d9f4e81d8625e",
+  "instance": "s17d3-es-4375ac83",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "role": "independent translation auditor (team lopdev); not the translator (i18n-translator on anthropic/claude-sonnet-5-5), not the integrator",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session d35a086d2ac3, a different session, agent and model from the translator. Read-only in the worktree (git show / git diff / git grep / python3 hashing only); my only writes are these receipts in my own scratchpad. Judgement derived here from the English source, the sidecar and the shipped es corpus; no MT or translation service used.",
+    "instance": "s17d3-es-4375ac83"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "binding": "Verified here at 1e3b4a920165: the target file is the committed blob (git show 1e3b4a920165c787f2532d14735d9f4e81d8625e:<path>, sha256 2dc00848342c08714108606fe737abc4ab3e1d97a66b58610c298766472c2aff); vs the merged base a114b6d102 the file gains exactly 2 lines (+2/-0) and they are the two in-scope keys, so no pre-existing key changed. 14 keys, same order as English, no duplicates (object_pairs scan), TAB indent, one trailing newline, no BOM/CR/\\u escapes, both values NFC, no Cf (format/bidi) code points, no ICU braces (English has no placeholders; none introduced), neither value byte-identical to English. Rendering path read: job-controls-model.ts:80 jobCancelNotFoundCopy() = t(not_found) as the whole refusal sentence; :151 cancel_failed as userFacingMessage fallback. cancel_failed 'No se pudo cancelar el trabajo.' mirrors run_controls.monitor.cancel_failed 'No se pudo cancelar el monitor.'; trabajo = job as in run_details.jobs 'Trabajos', run_details.job_cancel.title '¿Cancelar este trabajo?', run_controls.job.no_conversation. not_found 'no cancelado — el proveedor ya no conoce el trabajo': masculine 'cancelado' agrees with trabajo and echoes the status word 'Cancelado' in run_details.job_cancel.body; proveedor = provider as in that body ('pide al proveedor'). 'ya no conoce' renders the source's own figurative 'no longer knows' and is ordinary in Spanish technical copy; meaning (nothing cancelled, provider no longer has the job) intact. Length 1.24x / 0.98x.",
+  "scope": "ui.chat.run_controls for es: the 2 S17d-3 keys (job.cancel_failed, job.not_found) at branch head 1e3b4a920165, read against English and the sidecar",
+  "revisions": {
+    "head": "1e3b4a920165c787f2532d14735d9f4e81d8625e"
+  },
+  "en_sha256": "7cf8524faf5ed9de2e191211f757c3b3e5af0c88e4d5b1fd27bc642decc50421",
+  "context_sha256": "3ad6c356fe463c1462a446f7a6d7ac0b1d7a61169b69f2354d8cf6ea12865a9e",
+  "target_sha256": "2dc00848342c08714108606fe737abc4ab3e1d97a66b58610c298766472c2aff",
+  "sha256": {
+    "es": "2dc00848342c08714108606fe737abc4ab3e1d97a66b58610c298766472c2aff",
+    "en": "7cf8524faf5ed9de2e191211f757c3b3e5af0c88e4d5b1fd27bc642decc50421"
+  }
+}
