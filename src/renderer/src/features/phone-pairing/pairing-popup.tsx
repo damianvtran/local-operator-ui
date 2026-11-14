@@ -436,7 +436,9 @@ export const PairingPopupView: FC<PairingPopupViewProps> = ({
 			<Button
 				ref={closeRef}
 				type="button"
-				variant="secondary"
+				// tonal, not secondary: a bordered button would redraw the stroke the
+				// floating card gave up (floating-surface-no-border.test.mjs O-9b).
+				variant="tonal"
 				size="md"
 				onClick={onClose}
 				data-testid="pairing-close"
@@ -733,8 +735,15 @@ export const PairingPopupView: FC<PairingPopupViewProps> = ({
 			 * scrolling, so the title and grant sentence sat above the screen. The
 			 * header and the buttons stay pinned; only the middle scrolls, so the
 			 * name and the grant are always reachable before Approve.
+			 *
+			 * A floating surface carries no stroke (branding §2): the ground and
+			 * shadow-overlay separate it from the window, and `data-lo-floating`
+			 * lets the forced-colors rule in styles/index.css restore an edge
+			 * where shadows are dropped. scripts/floating-surface-no-border.test.mjs
+			 * (O-1, O-8) enforces both.
 			 */
-			className="fixed right-4 bottom-4 z-50 flex max-h-[calc(100vh-2rem)] w-[min(380px,calc(100vw-2rem))] flex-col gap-3 rounded-lg border border-hairline bg-surface p-4 shadow-overlay"
+			data-lo-floating=""
+			className="fixed right-4 bottom-4 z-50 flex max-h-[calc(100vh-2rem)] w-[min(380px,calc(100vw-2rem))] flex-col gap-3 rounded-lg bg-surface p-4 shadow-overlay"
 		>
 			<header className="flex shrink-0 items-start gap-2">
 				<Smartphone
@@ -773,7 +782,9 @@ const DenyButton = forwardRef<
 	<Button
 		ref={ref}
 		type="button"
-		variant="secondary"
+		// tonal for the same reason as Close: no bordered control inside the
+		// borderless floating card (O-9b). Approve stays the one primary.
+		variant="tonal"
 		size="md"
 		onClick={onDeny}
 		disabled={busy !== null}
