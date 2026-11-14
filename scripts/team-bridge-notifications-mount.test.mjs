@@ -1773,13 +1773,14 @@ test("an unmounted, previously visited conversation is refreshed when latest_seq
 			"exactly the changed key, once",
 		);
 		assert.equal(mounted.notifications.length, 0, "muted: nothing bannered");
-		/* The warmed (never-opened) conversation is kept fresh the same way:
-		   its `latest_seq` moved 1 -> 3, so its entry is read once more. */
-		await until(
-			() =>
-				fixture.calls.history.filter((call) => call.id === "bcv_never")
-					.length === 2,
-			"the warmed timeline refreshed",
+		/* The warm's never-opened EXTRA slot is not kept fresh (ui#1917 review
+		   R3): its `latest_seq` moved 1 -> 3, but only the landing and visited
+		   conversations join the refresh set; it revalidates when opened. */
+		await settle();
+		assert.equal(
+			fixture.calls.history.filter((call) => call.id === "bcv_never").length,
+			1,
+			"the unopened warm extra is not refreshed",
 		);
 		// The cached list rows took the unread rows' counts.
 		const rows = mounted.client.getQueryData(

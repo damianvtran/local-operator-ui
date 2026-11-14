@@ -34,6 +34,17 @@
  *    it can.
  * 7. Off: with Team Bridge switched off on this machine, the watcher reads no
  *    history at all.
+ *
+ * Review round 1 on ui#1917 added:
+ * - R1/R4: every remembered target type resolves as the page resolves it
+ *   (`targetConversation`): person, chief and one-recipient draft -> their DM;
+ *   a person with no DM and an Archived-view conversation -> no landing warm;
+ *   a stale record tenant does not matter (id alone).
+ * - R2: a warm landing collected by React Query's GC is warmed again, once;
+ *   an extra is not; a refused re-warm does not loop; nothing while off.
+ * - R3/Q1 (per-tenant unread drives the `latest_seq` refresh): an unopened
+ *   warm extra is not refreshed, the landing is; a row warmed because of a
+ *   new message is read once.
  */
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -128,6 +139,8 @@ const selected = (app) =>
 		.querySelector('[aria-current="page"][data-conversation-id]')
 		?.getAttribute("data-conversation-id") ?? null;
 
+const ARCHIVED_VIEW_LISTS_ARCH_1 = /Archived channels\s*arch_1/;
+
 const quiet = async (beats = 10) => {
 	for (let i = 0; i < beats; i++) await delay();
 };
@@ -149,6 +162,20 @@ async function opensFromCache(app, id) {
 		before,
 		"the open waited on no messages read: the timeline adopted the warm entry",
 	);
+}
+
+/* What React Query's GC timer does when it fires (`Removable.scheduleGc` ->
+   `Query.optionalRemove`), without waiting the 30 minutes: remove an entry
+   nobody observes and nothing is fetching. */
+async function gc(app, id) {
+	await act(async () => {
+		const query = app.client.getQueryCache().find({
+			queryKey: ui.teamBridgeKeys.messages(id, "org_shared", "acct_a"),
+			exact: true,
+		});
+		assert.ok(query, `${id} has an entry to collect`);
+		query.optionalRemove();
+	});
 }
 
 test("default landing: the watcher warms #general before the click and the page paints it from cache", async () => {
@@ -203,6 +230,191 @@ test("remembered landing: the remembered conversation is warmed first and the pa
 	}
 });
 
+/* REMEMBERED TARGETS OTHER THAN A CONVERSATION (review R1/R4 on ui#1917). The
+   page resolves the remembered target with `targetConversation`: a person or
+   chief is their DM, a one-recipient draft is that DM. The warm must land on
+   the same row, or it spends its landing slot on #general while the open waits
+   on the DM's cold read. */
+const human = (id) => ({ ...person(id), kind: "human" });
+const agent = (owner) => ({
+	account_id: owner,
+	kind: "agent",
+	display_label: `${owner}'s chief`,
+	state: "active",
+	role: "member",
+});
+const dmRow = (id, members) =>
+	row(id, 5, { kind: "dm", name: id, visibility: "private", members });
+const DM_PERSON = dmRow("dm_b", [human("acct_a"), human("acct_b")]);
+const DM_CHIEF = dmRow("dm_chief", [human("acct_a"), agent("acct_c")]);
+const DM_ROWS = [...ROWS, DM_PERSON, DM_CHIEF];
+
+/* The page opens on `id` (painted in the mount's commit) and reads it no
+   further; selection is not asserted for a DM, whose rail row is the person. */
+async function paintsFromCache(app, id) {
+	const before = readsOf(app, id);
+	await app.back();
+	assert.ok(
+		app.host.textContent.includes(`line 2 of ${id}`),
+		`${id} paints in the mount's commit, from cache`,
+	);
+	await quiet(5);
+	assert.equal(readsOf(app, id), before, `the open waited on no read of ${id}`);
+}
+
+for (const [label, target, dm] of [
+	["person", { type: "person", accountId: "acct_b" }, "dm_b"],
+	["chief", { type: "chief", accountId: "acct_c" }, "dm_chief"],
+	[
+		"one-recipient draft",
+		{
+			type: "compose",
+			recipients: [{ kind: "human", accountId: "acct_b", label: "acct_b" }],
+		},
+		"dm_b",
+	],
+]) {
+	test(`remembered ${label} target: the warm lands on the DM the page opens, not #general`, async () => {
+		const app = await mount({
+			watcher: true,
+			lifecycle: [],
+			path: "/team-bridge",
+			waitReady: false,
+			seed: ({ fixture }) => {
+				scenario(fixture, DM_ROWS);
+				// The page's restore validation keeps a person/chief target only
+				// while the organization's directory still lists them.
+				fixture.directoryMembers = ["acct_b", "acct_c"].map((id) => ({
+					account_id: id,
+					display_label: id,
+					role: "member",
+					bridge_enabled: true,
+					bridge_state: "active",
+				}));
+				remember({ target, tenantId: null });
+			},
+		});
+		try {
+			await until(() => readsOf(app, dm) === 1, `${dm} is warmed`);
+			assert.equal(historyReads(app)[0].conversation_id, dm, "landing first");
+			assert.equal(readsOf(app, "gen_org_shared"), 0, "#general is not it");
+			await quiet();
+			await paintsFromCache(app, dm);
+		} finally {
+			await app.close();
+		}
+	});
+}
+
+test("remembered person with no DM yet: no landing warm (the page shows an empty DM), only the next likely clicks", async () => {
+	const app = await mount({
+		watcher: true,
+		lifecycle: [],
+		path: "/team-bridge",
+		waitReady: false,
+		seed: ({ fixture }) => {
+			scenario(fixture);
+			// Still in the directory, so the page keeps the target (an empty DM).
+			fixture.directoryMembers = [
+				{
+					account_id: "acct_z",
+					display_label: "acct_z",
+					role: "member",
+					bridge_enabled: true,
+					bridge_state: "active",
+				},
+			];
+			remember({
+				target: { type: "person", accountId: "acct_z" },
+				tenantId: null,
+			});
+		},
+	});
+	try {
+		await until(() => historyReads(app).length === 3, "the warm");
+		await quiet();
+		assert.deepEqual(
+			historyReads(app).map((call) => call.conversation_id),
+			["recent_1", "recent_2", "recent_3"],
+			"no read is spent on #general, which the page does not show",
+		);
+		// The page's outcome: the person stays selected, no conversation is.
+		await app.back();
+		await quiet(20);
+		assert.equal(selected(app), null, "the page lands on no conversation row");
+	} finally {
+		await app.close();
+	}
+});
+
+test("remembered conversation with a stale tenant (R4): matched on id alone, like the page", async () => {
+	const app = await mount({
+		watcher: true,
+		lifecycle: [],
+		path: "/team-bridge",
+		waitReady: false,
+		seed: ({ fixture }) => {
+			scenario(fixture);
+			remember({
+				target: { type: "conversation", id: "launch_shared" },
+				tenantId: "org_gone",
+			});
+		},
+	});
+	try {
+		await until(() => readsOf(app, "launch_shared") === 1, "warmed");
+		assert.equal(historyReads(app)[0].conversation_id, "launch_shared");
+		await quiet();
+		await opensFromCache(app, "launch_shared");
+	} finally {
+		await app.close();
+	}
+});
+
+test("remembered archived conversation (Archived view): no landing warm; the page reopens the Archived view and reads arch_1 itself", async () => {
+	const archived = row("arch_1", 1, { status: "archived" });
+	const app = await mount({
+		watcher: true,
+		lifecycle: [],
+		path: "/team-bridge",
+		waitReady: false,
+		seed: ({ fixture }) => {
+			scenario(fixture);
+			fixture.listFor = (request) => ({
+				conversations: request.status === "archived" ? [archived] : ROWS,
+			});
+			fixture.historyByConversation.set("arch_1", [
+				msg("arch_1", 1),
+				msg("arch_1", 2),
+			]);
+			remember({
+				target: { type: "conversation", id: "arch_1" },
+				tenantId: "org_shared",
+				quickView: "archived",
+			});
+		},
+	});
+	try {
+		await until(() => historyReads(app).length === 3, "the warm");
+		await quiet();
+		assert.equal(readsOf(app, "gen_org_shared"), 0, "#general is not shown");
+		assert.equal(
+			readsOf(app, "arch_1"),
+			0,
+			"the watcher holds no archived list",
+		);
+		await app.back();
+		await until(() => readsOf(app, "arch_1") === 1, "the page reads arch_1");
+		// What the page shows is the Archived channels view, not #general.
+		await until(
+			() => ARCHIVED_VIEW_LISTS_ARCH_1.test(app.host.textContent),
+			"the Archived view lists arch_1",
+		);
+	} finally {
+		await app.close();
+	}
+});
+
 test("bounded: three reads per list change (landing + two most recent), none for an unchanged list", async () => {
 	const app = await mount({
 		watcher: true,
@@ -231,26 +443,28 @@ test("bounded: three reads per list change (landing + two most recent), none for
 			3,
 			"an unchanged list warms nothing",
 		);
-		// The KEY is what holds that, not only the cold-only rule: with the
-		// landing's entry gone (the retention sweep, say), an unchanged list
-		// still re-reads nothing...
-		const landingKey = ui.teamBridgeKeys.messages(
-			"gen_org_shared",
-			"org_shared",
-			"acct_a",
-		);
-		app.client.removeQueries({ queryKey: landingKey, exact: true });
-		await act(async () =>
-			app.client.invalidateQueries({
-				queryKey: ui.teamBridgeKeys.conversationsPrefix,
-			}),
-		);
+		// R2 (ui#1917): the landing's warm entry has no observer, so React Query
+		// collects it after TEAM_BRIDGE_HISTORY_GC_MS. Collected, it is warmed
+		// again - once - so a return after a quiet half hour still opens from
+		// cache.
+		await gc(app, "gen_org_shared");
+		await until(() => readsOf(app, "gen_org_shared") === 2, "re-warmed");
 		await quiet();
-		assert.equal(readsOf(app, "gen_org_shared"), 1, "same id + latest_seq");
-		// ...while a moved `latest_seq` is a change, and the cold entry is read.
+		assert.equal(historyReads(app).length, 4, "only the landing");
+		await opensFromCache(app, "gen_org_shared");
+		await app.leave();
+		// An extra slot is a guess: collected, it stays cold...
+		await gc(app, "recent_1");
+		await quiet();
+		assert.equal(
+			readsOf(app, "recent_1"),
+			1,
+			"a collected extra is not re-read",
+		);
+		// ...until the list moves it, which is a change like any other.
 		app.fixture.listFor = () => ({
 			conversations: ROWS.map((entry) =>
-				entry.id === "gen_org_shared" ? { ...entry, latest_seq: 3 } : entry,
+				entry.id === "recent_1" ? { ...entry, latest_seq: 3 } : entry,
 			),
 		});
 		await act(async () =>
@@ -258,9 +472,183 @@ test("bounded: three reads per list change (landing + two most recent), none for
 				queryKey: ui.teamBridgeKeys.conversationsPrefix,
 			}),
 		);
-		await until(() => readsOf(app, "gen_org_shared") === 2, "re-warmed");
+		await until(() => readsOf(app, "recent_1") === 2, "re-warmed on change");
 		await quiet();
-		assert.equal(historyReads(app).length, 4, "only the cold one");
+		assert.equal(
+			readsOf(app, "gen_org_shared"),
+			2,
+			"the landing is not re-read",
+		);
+	} finally {
+		await app.close();
+	}
+});
+
+for (const [label, refuse] of [
+	["not_a_member", (fixture) => fixture.notAMember.add("gen_org_shared")],
+	["429", (fixture) => fixture.rateLimited.add("gen_org_shared")],
+]) {
+	test(`R2 re-warm refused (${label}): one read, and its own collection re-warms nothing (no loop)`, async () => {
+		const app = await mount({
+			watcher: true,
+			lifecycle: [],
+			path: "/team-bridge",
+			waitReady: false,
+			seed: ({ fixture }) => scenario(fixture, ROWS.slice(0, 1)),
+		});
+		try {
+			await until(() => readsOf(app, "gen_org_shared") === 1, "the warm");
+			await quiet();
+			refuse(app.fixture);
+			await gc(app, "gen_org_shared");
+			await until(() => readsOf(app, "gen_org_shared") === 2, "the re-warm");
+			await quiet(40);
+			assert.equal(readsOf(app, "gen_org_shared"), 2, "not retried");
+			// The refused entry holds no data; collecting it is not a re-warm.
+			await gc(app, "gen_org_shared");
+			await quiet(40);
+			assert.equal(readsOf(app, "gen_org_shared"), 2, "no loop");
+			assert.deepEqual(ui.toasts, [], "nothing surfaced");
+		} finally {
+			ui.resetTeamBridgePrefetch(app.client);
+			await app.close();
+		}
+	});
+}
+
+test("R2 re-warm is off with the watcher: collected while Team Bridge is switched off, nothing is read", async () => {
+	const app = await mount({
+		watcher: true,
+		lifecycle: [],
+		path: "/team-bridge",
+		waitReady: false,
+		seed: ({ fixture }) => scenario(fixture, ROWS.slice(0, 1)),
+	});
+	try {
+		await until(() => readsOf(app, "gen_org_shared") === 1, "the warm");
+		await quiet();
+		app.fixture.enabled = false;
+		await act(async () =>
+			app.client.invalidateQueries({ queryKey: ui.teamBridgeKeys.status }),
+		);
+		await quiet(20);
+		await gc(app, "gen_org_shared");
+		await quiet(40);
+		assert.equal(readsOf(app, "gen_org_shared"), 1, "inactive: no re-warm");
+	} finally {
+		await app.close();
+	}
+});
+
+/* The watcher's `latest_seq` refresh, driven through per-tenant unread rows.
+   `rows` is mutable: a "new message" moves a row's `latest_seq` (read on both
+   the list and the unread answer) and adds that message to its history. Read
+   by the reader already (last_read_seq = latest_seq), so no banner reads. */
+function withUnread(fixture, rows) {
+	fixture.listFor = (request) => ({
+		conversations: request.status === "archived" ? [] : rows,
+	});
+	fixture.unreadFor = (request) =>
+		request.tenant_id
+			? {
+					total: 0,
+					conversations: rows.map((entry) => ({
+						conversation_id: entry.id,
+						unread_count: 0,
+						last_read_seq: entry.latest_seq,
+						latest_seq: entry.latest_seq,
+						muted: false,
+					})),
+				}
+			: {
+					total: 0,
+					organizations: [
+						{
+							tenant_id: "org_shared",
+							tenant_name: "Shared",
+							// Above 0, or the watcher never reads the tenant's rows
+							// (`teamBridgeNotifyOrganizations`).
+							unread: 1,
+							eligible: true,
+						},
+					],
+				};
+}
+async function newMessage(app, rows, id, minute) {
+	const at = rows.findIndex((entry) => entry.id === id);
+	rows[at] = row(id, minute, { ...rows[at], latest_seq: 3 });
+	rows[at].last_message_at =
+		`2026-11-13T12:${String(minute).padStart(2, "0")}:00Z`;
+	app.fixture.historyByConversation.set(id, [
+		msg(id, 1),
+		msg(id, 2),
+		msg(id, 3),
+	]);
+	await act(async () => {
+		await app.client.invalidateQueries({
+			queryKey: ui.teamBridgeKeys.unreadPrefix,
+		});
+		await app.client.invalidateQueries({
+			queryKey: ui.teamBridgeKeys.conversationsPrefix,
+		});
+	});
+}
+
+test("Q1: a row warmed BECAUSE of a new message is read once, not warmed and then refreshed", async () => {
+	const rows = [...ROWS];
+	const app = await mount({
+		watcher: true,
+		lifecycle: [],
+		path: "/team-bridge",
+		waitReady: false,
+		seed: ({ fixture }) => {
+			scenario(fixture, rows);
+			withUnread(fixture, rows);
+		},
+	});
+	try {
+		await until(() => historyReads(app).length === 3, "the warm");
+		await quiet(20);
+		// recent_4 was cold and below the cap; its new message makes it the top.
+		await newMessage(app, rows, "recent_4", 59);
+		await until(() => readsOf(app, "recent_4") >= 1, "warmed with seq 3");
+		await quiet(40);
+		await act(async () =>
+			app.client.invalidateQueries({
+				queryKey: ui.teamBridgeKeys.unreadPrefix,
+			}),
+		);
+		await quiet(40);
+		assert.equal(readsOf(app, "recent_4"), 1, "the warm already carried seq 3");
+	} finally {
+		await app.close();
+	}
+});
+
+test("R3: only the landing (and visited conversations) are refreshed on a new message; an unopened warm extra is not", async () => {
+	const rows = [...ROWS];
+	const app = await mount({
+		watcher: true,
+		lifecycle: [],
+		path: "/team-bridge",
+		waitReady: false,
+		seed: ({ fixture }) => {
+			scenario(fixture, rows);
+			withUnread(fixture, rows);
+		},
+	});
+	try {
+		await until(() => historyReads(app).length === 3, "the warm");
+		await quiet(20);
+		// recent_1 is a warm extra (never opened); #general is the landing.
+		await newMessage(app, rows, "recent_1", 51);
+		await newMessage(app, rows, "gen_org_shared", 0);
+		await until(
+			() => readsOf(app, "gen_org_shared") === 2,
+			"the landing is refreshed (control: the refresh path runs)",
+		);
+		await quiet(40);
+		assert.equal(readsOf(app, "recent_1"), 1, "the unopened extra is not");
 	} finally {
 		await app.close();
 	}

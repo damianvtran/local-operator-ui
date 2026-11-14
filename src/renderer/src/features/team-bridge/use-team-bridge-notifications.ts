@@ -93,6 +93,7 @@ import {
 	resolveIdentityAvatar,
 } from "../../../../shared/identity-avatar";
 import type {
+	TeamBridgeConversation,
 	TeamBridgeDirectoryMember,
 	TeamBridgeMessage,
 	TeamBridgeThreadPage,
@@ -110,7 +111,10 @@ import {
 	teamBridgeBannerText,
 	teamBridgePreviewText,
 } from "./team-bridge-banner-format";
-import { TEAM_BRIDGE_HISTORY_GC_MS } from "./team-bridge-channel-cache";
+import {
+	TEAM_BRIDGE_HISTORY_GC_MS,
+	channelViewOrder,
+} from "./team-bridge-channel-cache";
 import { teamBridgeOpeningLanding } from "./team-bridge-landing";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
@@ -562,7 +566,8 @@ async function deliverTeamBridgeBanner(
  *    moved since the last answer is refetched, exactly that key (or, while the
  *    background warm's first read is still out, read once more after it). A
  *    conversation with no entry gets none from here: the only entries for
- *    never-opened conversations are the bounded background warm's (below).
+ *    never-opened conversations are the bounded background warm's (below),
+ *    and of those only the landing is refreshed (`warmAllowsRefresh`).
  *    The first answer only records the seq; `latest_seq` also advances for
  *    replies, which the timeline excludes, so comparing against the cached
  *    page's newest seq would refetch a reply-active thread on every poll.
@@ -576,6 +581,14 @@ function syncUnmountedConversations(
 	rows: ReadonlyArray<{ conversation_id: string; latest_seq: number }> &
 		Parameters<typeof patchTeamBridgeListsFromUnread>[3],
 	observed: Map<string, number>,
+	/* The background warm's say over its own entries (review R3 / QA Q1 on
+	   ui#1917): `false` skips the refresh of one moved key. Absent, every
+	   cached key refreshes, as before the warm existed. */
+	warmAllowsRefresh?: (
+		key: string,
+		queryKey: string,
+		latestSeq: number,
+	) => boolean,
 ): void {
 	patchTeamBridgeListsFromUnread(client, accountId, tenantId, rows);
 	for (const row of rows) {
@@ -592,6 +605,11 @@ function syncUnmountedConversations(
 		const state = client.getQueryState(options.queryKey);
 		if (state?.data === undefined && state?.fetchStatus !== "fetching")
 			continue;
+		if (
+			warmAllowsRefresh &&
+			!warmAllowsRefresh(key, JSON.stringify(options.queryKey), row.latest_seq)
+		)
+			continue;
 		// `fetchQuery`, not `refetchQueries`: it carries the reader itself, so an
 		// entry whose observer is long gone still refreshes, and an in-flight read
 		// of the same key (a banner's) is joined rather than cancelled.
@@ -606,6 +624,31 @@ function syncUnmountedConversations(
 				.catch(() => undefined);
 		else void refresh().catch(() => undefined);
 	}
+}
+
+/**
+ * May the `latest_seq` refresh read this key, as far as the background warm
+ * is concerned (ui#1917 round 1)? `false` only for an entry the warm itself
+ * filled and:
+ *  - Q1: whose read was planned after `latestSeq` was already on the list, so
+ *    it carries that message (refreshing would read it twice); or
+ *  - R3: that fills a non-landing slot the reader has never opened
+ *    (`channelViewOrder`); it revalidates on open (`TEAM_BRIDGE_HISTORY_STALE_MS`).
+ * Every other entry (opened, page-prefetched, the landing) refreshes as before.
+ */
+function warmAllowsRefresh(
+	plan: {
+		extras: ReadonlySet<string>;
+		seqAtPlan: ReadonlyMap<string, number>;
+	} | null,
+	key: string,
+	queryKey: string,
+	latestSeq: number,
+): boolean {
+	if (!plan) return true;
+	const planned = plan.seqAtPlan.get(key);
+	if (planned !== undefined && latestSeq <= planned) return false;
+	return !(plan.extras.has(queryKey) && !channelViewOrder().includes(queryKey));
 }
 
 /**
@@ -927,6 +970,7 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 		// The previous account's queued warms are guesses for a rail nobody will
 		// see; in-flight ones are refused by the owner fence and not retried.
 		lastWarmKey.current = null;
+		warmPlan.current = null;
 		cancelTeamBridgePrefetch(client);
 		void client.invalidateQueries({ queryKey: teamBridgeKeys.unreadPrefix });
 		void client.invalidateQueries({
@@ -978,11 +1022,34 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 	 *   team-bridge-notifications-mount.test.mjs).
 	 */
 	const lastWarmKey = useRef<string | null>(null);
+	/*
+	 * WHAT THE WARM PLANNED, for the two follow-ups that need it (ui#1917 round
+	 * 1). Renderer memory only, cache-key strings and ids, reset on an account
+	 * switch like the rest of the watcher's per-account state.
+	 *
+	 * - `landing`: the planned landing row and its messages key, so the R2
+	 *   re-warm below knows which removal to answer.
+	 * - `extras`: messages keys the warm filled for the NON-landing slots. Their
+	 *   `latest_seq` refresh is skipped until the reader opens them (R3): only
+	 *   the landing and visited conversations are kept current, so the two
+	 *   guesses do not join the per-message refresh set and draw on the shared
+	 *   120/min `conversation-reads` bucket for history nobody opened.
+	 * - `seqAtPlan`: `tenant\0id` -> the row's `latest_seq` when the warm was
+	 *   planned for a COLD entry (Q1). Any read of that entry starts after the
+	 *   list showed that seq, so it already carries it; the unread poll seeing
+	 *   the same seq move must not read it a second time.
+	 */
+	const warmPlan = useRef<{
+		accountId: string;
+		landing: { key: string; row: TeamBridgeConversation } | null;
+		extras: Set<string>;
+		seqAtPlan: Map<string, number>;
+	} | null>(null);
 	const unreadOrganizations = accountUnread.data?.organizations;
 	useEffect(() => {
 		const rows = conversations.data?.conversations;
 		if (!active || !selfAccountId || !rows) return;
-		const { warm } = teamBridgeOpeningLanding({
+		const { warm, landing } = teamBridgeOpeningLanding({
 			rows,
 			// The page's own organization list: memberships labelled by the hub's
 			// tenant list (`organizationOptions(..., hubTenants)`), so the scope
@@ -1001,6 +1068,42 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 		].join("|");
 		if (lastWarmKey.current === key) return;
 		lastWarmKey.current = key;
+		if (warmPlan.current?.accountId !== selfAccountId)
+			warmPlan.current = {
+				accountId: selfAccountId,
+				landing: null,
+				extras: new Set(),
+				seqAtPlan: new Map(),
+			};
+		const plan = warmPlan.current;
+		plan.landing = null;
+		for (const row of warm) {
+			const queryKey = JSON.stringify(
+				teamBridgeMessagesQueryOptions(
+					client,
+					row.id,
+					row.tenant_id,
+					selfAccountId,
+				).queryKey,
+			);
+			const isLanding =
+				landing !== undefined &&
+				row.id === landing.id &&
+				row.tenant_id === landing.tenant_id;
+			if (isLanding) {
+				plan.landing = { key: queryKey, row };
+				plan.extras.delete(queryKey);
+			}
+			const state = client
+				.getQueryCache()
+				.find({ queryKey: JSON.parse(queryKey), exact: true })?.state;
+			// Only a COLD entry is the warm's to fill; one already holding data
+			// (or being read) belongs to whoever filled it and keeps its refresh.
+			if (state?.data !== undefined || state?.fetchStatus === "fetching")
+				continue;
+			plan.seqAtPlan.set(`${row.tenant_id}\u0000${row.id}`, row.latest_seq);
+			if (!isLanding) plan.extras.add(queryKey);
+		}
 		prefetchTeamBridgeConversations(client, selfAccountId, warm);
 	}, [
 		active,
@@ -1018,6 +1121,57 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 		lastWarmKey.current = null;
 		cancelTeamBridgePrefetch(client);
 	}, [active, client]);
+	/*
+	 * RE-WARM THE LANDING WHEN ITS ENTRY IS GARBAGE-COLLECTED (review R2 on
+	 * ui#1917). A warm entry has no observer, so React Query drops it after
+	 * `TEAM_BRIDGE_HISTORY_GC_MS` (30 min); the warm above re-plans only when
+	 * its key changes, so a quiet landing (#general on a slow afternoon) went
+	 * cold for good and the everyday "come back after half an hour" open paid
+	 * the blocking history read again.
+	 *
+	 * Bounded, and never fighting the retention sweep:
+	 * - only the planned LANDING is re-warmed (the two extra slots are guesses;
+	 *   the page's own plan covers them once mounted): at most one read per GC
+	 *   window per account, i.e. 2/hour while Team Bridge sits unopened;
+	 * - only an entry that HELD data: a refused or failed warm (`not_a_member`,
+	 *   429, fence) leaves an entry with none, so its own collection cannot
+	 *   re-warm it - no read loop on a refusal;
+	 * - through the same prefetch queue as the warm, a tick later (after any
+	 *   sweep pass finishes), so the 429 hold, the cold-only rule, the retention
+	 *   headroom and `wasEvictedUnviewed` all still apply: an entry the sweep
+	 *   evicts is NOT re-read (the sweep records it first, and it only evicts
+	 *   with the cache at its cap, where the headroom is 0);
+	 * - only while `active`, for the account the plan belongs to. Window
+	 *   visibility is not a gate, matching the watcher (its unread poll keeps
+	 *   running hidden, which is what banners need).
+	 */
+	useEffect(() => {
+		if (!active || !selfAccountId) return;
+		const timers = new Set<ReturnType<typeof setTimeout>>();
+		const unsubscribe = client.getQueryCache().subscribe((event) => {
+			if (event.type !== "removed") return;
+			const plan = warmPlan.current;
+			if (!plan || plan.accountId !== selfAccountId) return;
+			const key = JSON.stringify(event.query.queryKey);
+			if (plan.landing?.key !== key) {
+				// A dropped extra is forgotten: a later warm of it is a new guess.
+				plan.extras.delete(key);
+				return;
+			}
+			if (event.query.state.data === undefined) return;
+			const row = plan.landing.row;
+			const timer = setTimeout(() => {
+				timers.delete(timer);
+				if (warmPlan.current?.landing?.key !== key) return;
+				prefetchTeamBridgeConversations(client, selfAccountId, [row]);
+			}, 0);
+			timers.add(timer);
+		});
+		return () => {
+			unsubscribe();
+			for (const timer of timers) clearTimeout(timer);
+		};
+	}, [active, selfAccountId, client]);
 
 	useEffect(() => {
 		// The key is the effect's change detector; the query objects below are
@@ -1079,6 +1233,8 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 					organization.tenant_id,
 					data.conversations ?? [],
 					observedLatest.current,
+					(key, queryKey, latestSeq) =>
+						warmAllowsRefresh(warmPlan.current, key, queryKey, latestSeq),
 				);
 			const seeded = seededOrganizations.current.has(organization.tenant_id);
 			const owner = observedRadientAuthority(client);

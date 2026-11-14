@@ -456,6 +456,8 @@ async function mount({
 		historyGate: null,
 		// Holds the account unread read so a test can observe the refreshing state.
 		unreadGate: null,
+		// `(request, owner) => answer` for `team_bridge.unread`, or null.
+		unreadFor: null,
 		refuseHistory: new Set(),
 		/* ARCHIVE SCENARIO (review round 1, U1). `lifecycle` rows, when set, REPLACE the
 		   single group the other suites use: the live list answers the open ones and
@@ -691,6 +693,11 @@ async function mount({
 						});
 					case "team_bridge.unread":
 						if (fixture.unreadGate) await fixture.unreadGate.promise;
+						/* Per-test unread (account aggregate and per-tenant rows), so the
+						   watcher's `latest_seq` refresh can be driven; absent, the
+						   org-less default below. */
+						if (fixture.unreadFor)
+							return reply(fixture.unreadFor(request, owner));
 						return reply({
 							total: owner === "acct_a" ? 7 : 2,
 							organizations: [],
