@@ -65,5 +65,7 @@
 	"ui.agents.detail.empty.instructions": "Инструкций пока нет.",
 	"ui.agents.detail.action.create_copy": "Создать копию",
 	"ui.agents.detail.action.creating": "Создание…",
-	"ui.agents.detail.action.discard_new_agent": "Отменить создание агента?"
+	"ui.agents.detail.action.discard_new_agent": "Отменить создание агента?",
+	"ui.agents.detail.create.description_duplicate": "Копия агента {name}. Это отдельный агент: изменения в нём не затрагивают оригинал.",
+	"ui.agents.detail.create.description_new": "Повторно используемые инструкции, общие для команд агента, субагентов и групп агентов. Чаты остаются отдельными."
 }

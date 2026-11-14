@@ -143,5 +143,6 @@
 	"ui.chat.run_details.monitor.waiting": "đang chờ",
 	"ui.chat.run_details.monitor.last_check": "lần kiểm tra cuối {when}",
 	"ui.chat.run_details.monitor.failed_count": "{count, plural, other {{count_display} lần thất bại}}",
-	"ui.chat.run_details.checkpoint.turn_fallback": "Lượt {turn, number, ::group-off}"
+	"ui.chat.run_details.checkpoint.turn_fallback": "Lượt {turn, number, ::group-off}",
+	"ui.chat.run_details.subagents.show_more": "Hiện thêm {count, number, ::group-off}"
 }

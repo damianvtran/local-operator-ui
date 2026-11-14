@@ -23,5 +23,6 @@
 	"ui.chat.attachments.open_title": "点击打开{name}",
 	"ui.chat.attachments.not_viewable": "无法查看文件：{name}",
 	"ui.chat.attachments.owner_unreachable": "无法从存有它的设备获取。",
-	"ui.chat.attachments.retry_fetch": "重试"
+	"ui.chat.attachments.retry_fetch": "重试",
+	"ui.chat.attachments.not_viewable_detail": "无法查看{name}（文件可能不完整、已被删除或已被移动）"
 }

@@ -207,5 +207,6 @@
 	"ui.chat.session_status.effort_level.high": "高",
 	"ui.chat.image_actions.actions": "图片操作",
 	"ui.chat.audio.position_label": "{label}的播放位置",
-	"ui.chat.audio.position_value": "{current}，共{total}"
+	"ui.chat.audio.position_value": "{current}，共{total}",
+	"ui.chat.code_block.default_header": "代码"
 }

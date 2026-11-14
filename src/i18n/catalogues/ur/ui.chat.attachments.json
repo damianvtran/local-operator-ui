@@ -23,5 +23,6 @@
 	"ui.chat.attachments.open_title": "{name} کھولنے کے لیے کلک کریں",
 	"ui.chat.attachments.not_viewable": "فائل دیکھی نہیں جا سکتی: {name}",
 	"ui.chat.attachments.owner_unreachable": "اسے رکھنے والی ڈیوائس سے حاصل نہیں کی جا سکی۔",
-	"ui.chat.attachments.retry_fetch": "دوبارہ کوشش کریں"
+	"ui.chat.attachments.retry_fetch": "دوبارہ کوشش کریں",
+	"ui.chat.attachments.not_viewable_detail": "فائل {name} دیکھی نہیں جا سکتی (ہو سکتا ہے فائل نامکمل ہو، حذف ہو چکی ہو یا کسی اور جگہ منتقل ہو گئی ہو)"
 }

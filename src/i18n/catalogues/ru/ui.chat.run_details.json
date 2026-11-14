@@ -143,5 +143,6 @@
 	"ui.chat.run_details.monitor.waiting": "ожидает",
 	"ui.chat.run_details.monitor.last_check": "последняя проверка {when}",
 	"ui.chat.run_details.monitor.failed_count": "{count, plural, one {{count_display} сбой} few {{count_display} сбоя} many {{count_display} сбоев} other {{count_display} сбоя}}",
-	"ui.chat.run_details.checkpoint.turn_fallback": "Ход {turn, number, ::group-off}"
+	"ui.chat.run_details.checkpoint.turn_fallback": "Ход {turn, number, ::group-off}",
+	"ui.chat.run_details.subagents.show_more": "Показать ещё {count, number, ::group-off}"
 }
