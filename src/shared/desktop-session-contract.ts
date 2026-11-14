@@ -842,6 +842,24 @@ export type PendingAskQuestion = {
 	recommended_all?: number[] | null;
 	secret?: boolean;
 	persist?: boolean;
+	/**
+	 * A one-line shell command the agent suggests the user run (core's
+	 * `AskQuestion.command`): stripped, 1..500 characters, no Unicode Cc/Cf/Zl/Zp.
+	 * ADDITIVE and OPTIONAL: absent on older backends and on bridge rows (core
+	 * drops it there, so another team's agent cannot hand the operator a command).
+	 * NEVER read directly: `askCommandOf` (`features/chat/ask-command.ts`)
+	 * re-applies the core rule and answers `null` for a forged or malformed value,
+	 * so no action is ever drawn for a row the core would have refused.
+	 */
+	command?: string;
+	/**
+	 * WHERE `command` is meant to run: `"agent"` (the device the agent works on,
+	 * core's default, stamped whenever `command` is present) or `"user"` (the
+	 * user's own computer - the one showing this UI). Any other value, or its
+	 * absence beside a command, is read as UNKNOWN and fails closed: the card
+	 * offers Insert only, never Run (`askCommandRunnable`).
+	 */
+	command_target?: "agent" | "user";
 	[key: string]: unknown;
 };
 /**

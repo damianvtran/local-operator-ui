@@ -20,13 +20,15 @@ import { build } from "esbuild";
  *  - Click-to-read: the row and counts flip before the PATCH answers, a
  *    refusal rolls back, an in-flight detail read survives the write, and the
  *    receipt's counts land without refetching (never backwards).
+ *  - Convergence with the sidebar-details D4 fix: a settled write flips the
+ *    open detail's flag without re-reading the body the pane is showing.
  */
 
 const bundle = await build({
 	stdin: {
 		contents: [
 			'export { desktopEndpoint, desktopRequestSchema, NOTIFICATION_PSEUDO_SESSION_IDS } from "./src/shared/desktop-contract";',
-			'export { beginOptimisticWrite, writeReceiptCount, DETAIL_CACHE_MAX, notificationCountHints, notificationKeys, previewNotificationSelection, readNotificationsFacts, sessionDismissCountsFromFacts, touchNotificationDetail } from "./src/renderer/src/features/notifications/notifications-api";',
+			'export { applyWriteToDetails, beginOptimisticWrite, writeReceiptCount, DETAIL_CACHE_MAX, notificationCountHints, notificationKeys, previewNotificationSelection, readNotificationsFacts, sessionDismissCountsFromFacts, touchNotificationDetail } from "./src/renderer/src/features/notifications/notifications-api";',
 			'export { reconcileWindowWithFacts } from "./src/renderer/src/features/notifications/notifications-model";',
 			'export { QueryClient, QueryObserver } from "@tanstack/react-query";',
 		].join("\n"),
@@ -497,4 +499,51 @@ test("in the Unread view a row read or dismissed elsewhere stops counting as unr
 		window[0].items[1],
 		"the operator's own read is untouched",
 	);
+});
+
+test("a settled write flips the open detail's flag without re-reading its body", async () => {
+	/*
+	 * Upstream's sidebar-details D4 fix invalidated the detail after every
+	 * optimistic write; with the pane observing it that re-read the body just
+	 * drawn on each click (opening an unread item is itself a read). The flag
+	 * flip must land, the entry must go stale for its next reader, and the
+	 * observed query must NOT refetch.
+	 */
+	const client = new api.QueryClient();
+	const id = "n_aaaaaaaa";
+	let reads = 0;
+	const observer = new api.QueryObserver(client, {
+		queryKey: api.notificationKeys.detail(id),
+		queryFn: async () => {
+			reads += 1;
+			return { item: { id, revision: 1, read: false, dismissed: false } };
+		},
+		staleTime: 60_000,
+		retry: false,
+	});
+	const unsubscribe = observer.subscribe(() => {});
+	try {
+		await client.fetchQuery({
+			queryKey: api.notificationKeys.detail(id),
+			queryFn: async () => {
+				reads += 1;
+				return { item: { id, revision: 1, read: false, dismissed: false } };
+			},
+		});
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		const before = reads;
+		api.applyWriteToDetails(client, "read", [id]);
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		const query = client
+			.getQueryCache()
+			.find({ queryKey: api.notificationKeys.detail(id), exact: true });
+		assert.equal(query.state.data.item.read, true);
+		assert.equal(query.isStale(), true);
+		assert.equal(reads, before, "the observed detail was re-read");
+		api.applyWriteToDetails(client, "dismiss", [id]);
+		assert.equal(query.state.data.item.dismissed, true);
+	} finally {
+		unsubscribe();
+		client.clear();
+	}
 });

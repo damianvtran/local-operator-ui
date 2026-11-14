@@ -110,13 +110,29 @@ const FLEET_ASK_RECEIPT = {
 	},
 } as const;
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+	type MutableRefObject,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
+import {
+	type NavigateFunction,
+	useInRouterContext,
+	useNavigate,
+} from "react-router-dom";
 import {
 	answerQueuedAsk,
 	declineQueuedAsk,
 	dismissQueuedAsk,
 	reviseQueuedAsk,
 } from "../../ask-answer";
+import {
+	fileFleetAskCommand,
+	readAskAgentPlacement,
+} from "../../ask-command-actions";
 import { askRevisionEvidence, askWithLocalSettle } from "../../ask-queue";
 import type {
 	AskDismissReason,
@@ -132,6 +148,23 @@ import {
 import { pressLandsOnOverlay } from "../../keyboard-scopes";
 import { useAskOutcomes } from "../../use-ask-outcomes";
 import { AskDrawer } from "./ask-drawer";
+import type { AskCommandRequest } from "./ask-panel";
+
+/**
+ * Hands the router's `navigate` to the drawer through a ref, mounted only
+ * inside a router (`useInRouterContext`). The drawer itself must keep working
+ * where there is none — the fleet suites render it bare — and a hook cannot be
+ * called conditionally, so the one hook that needs a router lives in this child
+ * and a bare render simply offers no terminal doors.
+ */
+const NavigateInto = ({
+	target,
+}: {
+	target: MutableRefObject<NavigateFunction | null>;
+}) => {
+	target.current = useNavigate();
+	return null;
+};
 
 /** No drafts, as one stable object: a fresh `{}` per render would re-key every card. */
 const EMPTY_ASK_DRAFTS: Record<string, AskDraft> = {};
@@ -400,51 +433,91 @@ export const FleetAskDrawer = ({
 		[lock, rows, run],
 	);
 
+	/*
+	 * THE SUGGESTED-COMMAND DOORS FROM THE FLEET (decision D1): the card may
+	 * belong to ANOTHER conversation, so a press opens that conversation and
+	 * then files the console intent for it (`fileFleetAskCommand` holds the
+	 * order and why). Opening the console replaces this drawer in the right slot.
+	 *
+	 * Placement is per row: each card is gated on where ITS conversation's agent
+	 * works (`readAskAgentPlacement`), so a peer's ask never offers Run here.
+	 */
+	const inRouter = useInRouterContext();
+	const navigateRef = useRef<NavigateFunction | null>(null);
+	const onCommand = useCallback(
+		(request: AskCommandRequest): boolean => {
+			const sessionId = fleetAskSessionFor(rows ?? [], request.ask.ask_id);
+			const raw = rows?.find((row) => row.ask_id === request.ask.ask_id);
+			const navigate = navigateRef.current;
+			if (!sessionId || !raw || !navigate) return false;
+			// The order (wave off, open, file) is `fileFleetAskCommand`'s to keep.
+			return fileFleetAskCommand({
+				sessionId,
+				ask: raw,
+				questionId: request.questionId,
+				command: request.command,
+				submit: request.submit,
+				navigate,
+			});
+		},
+		[rows],
+	);
+	const commandPlacementOf = useCallback(
+		(ask: { ask_id: string }) =>
+			readAskAgentPlacement(fleetAskSessionFor(rows ?? [], ask.ask_id)),
+		[rows],
+	);
+
 	return (
-		<AskDrawer
-			frontend={frontend}
-			scope="fleet"
-			ground={ground}
-			presentation={presentation}
-			tabs={
-				notificationsEnabled
-					? {
-							strip: (
-								<DrawerTabs
-									tab="all"
-									asks={
-										(rows ?? []).filter(
-											(ask) =>
-												ask.session_id === currentSessionId &&
-												ask.status === "open",
-										).length
-									}
-									unreadUpdates={unreadUpdates}
-									sessionless={!currentSessionId}
-									onTab={(tab) => {
-										if (tab === "all" || !currentSessionId) return;
-										setTab(tab);
-										setAskDrawerOpen(true, "session");
-									}}
-								/>
-							),
-							body: null,
-						}
-					: undefined
-			}
-			onClose={(options) => {
-				setTab(null);
-				onClose(options);
-			}}
-			onAnswer={onAnswer}
-			onDecline={onDecline}
-			onRevise={onRevise}
-			onDismiss={dismissEnabled ? onDismiss : undefined}
-			answering={answering}
-			outcomes={outcomes}
-			drafts={drafts}
-			onDraftChange={onDraftChange}
-			conversationOf={conversationOf}
-		/>
+		<>
+			{inRouter ? <NavigateInto target={navigateRef} /> : null}
+			<AskDrawer
+				frontend={frontend}
+				scope="fleet"
+				ground={ground}
+				presentation={presentation}
+				tabs={
+					notificationsEnabled
+						? {
+								strip: (
+									<DrawerTabs
+										tab="all"
+										asks={
+											(rows ?? []).filter(
+												(ask) =>
+													ask.session_id === currentSessionId &&
+													ask.status === "open",
+											).length
+										}
+										unreadUpdates={unreadUpdates}
+										sessionless={!currentSessionId}
+										onTab={(tab) => {
+											if (tab === "all" || !currentSessionId) return;
+											setTab(tab);
+											setAskDrawerOpen(true, "session");
+										}}
+									/>
+								),
+								body: null,
+							}
+						: undefined
+				}
+				onClose={(options) => {
+					setTab(null);
+					onClose(options);
+				}}
+				onAnswer={onAnswer}
+				onDecline={onDecline}
+				onRevise={onRevise}
+				onDismiss={dismissEnabled ? onDismiss : undefined}
+				answering={answering}
+				outcomes={outcomes}
+				drafts={drafts}
+				onDraftChange={onDraftChange}
+				conversationOf={conversationOf}
+				onCommand={inRouter ? onCommand : undefined}
+				commandPlacementOf={commandPlacementOf}
+			/>
+		</>
 	);
 };

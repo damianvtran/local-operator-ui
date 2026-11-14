@@ -3337,6 +3337,39 @@ test("the pane's reports and the created surface are validated at the boundary",
 
 	await call("console-input", created.surface, "typed by hand");
 	await call("console-keys", created.surface, ["up"]);
+	/*
+	 * THE OPTIONAL `paste` (the ask card's suggested command): forwarded to the
+	 * host's own bracketed-paste decision, and only as a boolean. The two-argument
+	 * call stays a plain write; a non-object or non-boolean is refused, not coerced.
+	 */
+	const inputs = [];
+	const realInput = host.input.bind(host);
+	host.input = (surface, payload, actor) => {
+		inputs.push({ payload, actor });
+		return realInput(surface, payload, actor);
+	};
+	await call("console-input", created.surface, "plain");
+	await call("console-input", created.surface, "pasted", { paste: true });
+	await call("console-input", created.surface, "explicit", { paste: false });
+	assert.deepEqual(inputs, [
+		{ payload: { text: "plain" }, actor: "user" },
+		{ payload: { text: "pasted", paste: true }, actor: "user" },
+		{ payload: { text: "explicit" }, actor: "user" },
+	]);
+	assert.match(
+		(
+			await refusalOf(() =>
+				call("console-input", created.surface, "x", { paste: "yes" }),
+			)
+		).message,
+		/paste must be a boolean/,
+	);
+	assert.match(
+		(await refusalOf(() => call("console-input", created.surface, "x", true)))
+			.message,
+		/options must be an object/,
+	);
+	host.input = realInput;
 	assert.match(
 		(await refusalOf(() => call("console-input", created.surface, 42))).message,
 		/string/,

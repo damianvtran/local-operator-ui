@@ -1,0 +1,32 @@
+{
+	"auditor": "reviewer",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "rv34629daf-ru-unified-diff-r2",
+	"namespace": "ui.shared.unified_diff",
+	"locale": "ru",
+	"status": "passed",
+	"result": "clean",
+	"sha256": {
+		"en": "8c35440a996c4d4a2aa1650fdff8ced1b1b4cd6a1a3e3c0959cb62c7743cb858",
+		"ru": "0c67022a6d354950e41337fcde822c908ce924915d9263e441a40e0f87d78fbe"
+	},
+	"context_sha256": {
+		"en": "cf7ae650f7672dd36b586175ef06bf1ddd12ccb9d4b44185e83593ac49a90543",
+		"ru": "cf7ae650f7672dd36b586175ef06bf1ddd12ccb9d4b44185e83593ac49a90543"
+	},
+	"findings": [],
+	"date": "2026-11-09",
+	"scope": "every key of ui.shared.unified_diff for ru at these bytes (13 keys): round-1 full read on fb545f9 plus round-2 delta (fields, title_create, new_group, new_row, hide_unchanged; plural arms; ur nav term; key-specific contexts) on the frozen uncommitted tree",
+	"checks": "key parity with en; ICU parse of all 352 messages (8 locales x 2 namespaces) with @formatjs/icu-messageformat-parser, argument names equal to en, CLDR plural categories complete (ru one/few/many/other; hi/ur/fr/es one/other); no bidi controls; no value equal to en; ur/hi/others use ui.shell.sidebar_navigation.agents term",
+	"independence": "reviewer agent session 34629dafe61f (lopdev team); not the translator or coder; served model anthropic/claude-opus-5-5, no fallback",
+	"provenance": {
+		"round1_review": "https://github.com/damianvtran/local-operator-ui/pull/1828#issuecomment-6754498321",
+		"resolved_round1_findings": [
+			"I1",
+			"I2",
+			"I3",
+			"I4",
+			"I5"
+		]
+	}
+}

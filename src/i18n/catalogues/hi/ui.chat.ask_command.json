@@ -1,0 +1,20 @@
+{
+	"ui.chat.ask_command.copy": "कॉपी करें",
+	"ui.chat.ask_command.dialog_caution": "एजेंट के कमांड ग़लत या असुरक्षित हो सकते हैं। चलाने से पहले यह कमांड पढ़ें।",
+	"ui.chat.ask_command.dialog_closed": "यह अनुरोध बंद हो चुका है, इसलिए इससे कमांड नहीं चलाया जा सकता।",
+	"ui.chat.ask_command.dialog_confirm": "टर्मिनल में चलाएँ",
+	"ui.chat.ask_command.dialog_device_local": "यह इस कंप्यूटर पर एक नए टर्मिनल में, आपके होम फ़ोल्डर में चलेगा।",
+	"ui.chat.ask_command.dialog_device_remote": "यह इस कंप्यूटर पर एक नए टर्मिनल में, आपके होम फ़ोल्डर में चलेगा — {device} पर नहीं, जहाँ एजेंट काम करता है।",
+	"ui.chat.ask_command.dialog_device_remote_unnamed": "यह इस कंप्यूटर पर एक नए टर्मिनल में, आपके होम फ़ोल्डर में चलेगा — उस डिवाइस पर नहीं जहाँ एजेंट काम करता है।",
+	"ui.chat.ask_command.dialog_refused": "यह कमांड अब यहाँ से नहीं चलाया जा सकता। कुछ भी नहीं चलाया गया।",
+	"ui.chat.ask_command.dialog_title": "यह कमांड चलाएँ?",
+	"ui.chat.ask_command.insert": "टर्मिनल में खोलें",
+	"ui.chat.ask_command.insert_hint": "इसे नए टर्मिनल में टाइप करें, चलाए बिना",
+	"ui.chat.ask_command.label": "सुझाया गया कमांड",
+	"ui.chat.ask_command.notice_elsewhere": "एजेंट {device} पर काम करता है। यह यहाँ चलेगा, वहाँ नहीं।",
+	"ui.chat.ask_command.notice_elsewhere_unnamed": "एजेंट किसी दूसरे डिवाइस पर काम करता है। यह यहाँ चलेगा, वहाँ नहीं।",
+	"ui.chat.ask_command.notice_target_unknown": "अनुरोध में यह नहीं बताया गया कि इसे कहाँ चलाना है, इसलिए इसे यहाँ से नहीं चलाया जा सकता।",
+	"ui.chat.ask_command.notice_unplaced": "यह पुष्टि नहीं हो सकी कि एजेंट इसी कंप्यूटर पर काम करता है, इसलिए इसे यहाँ से नहीं चलाया जा सकता।",
+	"ui.chat.ask_command.run": "चलाएँ…",
+	"ui.chat.ask_command.run_hint": "पुष्टि करने के बाद, इसे नए टर्मिनल में टाइप करके चलाएँ"
+}

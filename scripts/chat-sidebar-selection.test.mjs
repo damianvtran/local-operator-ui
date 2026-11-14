@@ -539,6 +539,20 @@ const CURRENT = [
 	},
 	{
 		/*
+		 * The entity row's PROFILE-PROPOSAL badge (PR #1828): a 24px control in the
+		 * same trailing cluster that opens the record's pending proposal in Agents.
+		 * It is a row surface for the pin's reason and carries the pin's `!staged`
+		 * guard, so the pointer never repaints a current row's ground.
+		 */
+		what: "the entity row's profile-proposal badge",
+		file: SIDEBAR,
+		expression: () => expressionAfter(SIDEBAR, "data-proposal-badge={name}"),
+		stubs: { staged: true },
+		ground: false,
+		notCurrent: { staged: false },
+	},
+	{
+		/*
 		 * The conversation row's pin control, added with the pinned section. It sits
 		 * INSIDE a row that can be current, which is exactly the case this table's
 		 * count exists to force somebody to notice: it carries `hover:bg-elevated`
@@ -1014,7 +1028,10 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// copy of the page foot's own control (`data-sidebar-page-more-tag`),
 				// spelled with the foot's classes so it is the same muted row - the
 				// foot's row ground, not a menu's.
-				"hover:bg-row-hover": 17,
+				// EIGHTEEN (PR #1828): the entity row's profile-proposal badge, a
+				// control inside the row's box guarded `!staged` and resolved by its own
+				// `CURRENT` entry above, exactly like the pin control beside it.
+				"hover:bg-row-hover": 18,
 				// `rowCurrent` (1), the ground that beats the step above by merge order.
 				// PLUS ONE: the band's view-options button paints `row-selected` while the
 				// view differs from the default (`viewIsCustom`) - the mode's own
@@ -1387,6 +1404,8 @@ const AGENTS_PAGE =
 	"src/renderer/src/features/agents/components/agents-page.tsx";
 const SKILLS_LIBRARY =
 	"src/renderer/src/features/agents/components/skills-library.tsx";
+const PROPOSED_NEW =
+	"src/renderer/src/features/agents/components/proposed-new-profiles.tsx";
 const CANVAS_SECTION =
 	"src/renderer/src/features/chat/components/canvas/index.tsx";
 const FILE_ROW =
@@ -1667,6 +1686,23 @@ const ROW_STATE_GROUNDS = [
 		expression: () =>
 			expressionBefore(SKILLS_LIBRARY, "card.name === selected && rowCurrent"),
 		stubs: { card: { name: "skill" }, selected: "skill", rowCurrent },
+		ground: () => literalClassAt(AGENTS_PAGE, "<aside ", "after"),
+		groundFile: AGENTS_PAGE,
+	},
+	{
+		/*
+		 * THE "PROPOSED NEW" ROW (PR #1828, F4): a pending create proposal listed
+		 * under the agents roster, inside the same roster scroller of the page's one
+		 * `<aside>`, so its ground is the roster row's ground.
+		 */
+		what: "the agents page's proposed-new row",
+		rowFile: PROPOSED_NEW,
+		expression: () =>
+			expressionBefore(
+				PROPOSED_NEW,
+				"proposal.name === selected && rowCurrent",
+			),
+		stubs: { proposal: { name: "agent" }, selected: "agent", rowCurrent },
 		ground: () => literalClassAt(AGENTS_PAGE, "<aside ", "after"),
 		groundFile: AGENTS_PAGE,
 	},
