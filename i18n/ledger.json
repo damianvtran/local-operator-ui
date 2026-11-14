@@ -8923,8 +8923,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.providers",
-			"source_sha256": "0379d564673cfe5b344b5e2af374000d1c71543021b748dc3c1363db5d07a0fd",
-			"target_sha256": "4ecfff084eabbf1e14351c61e2b915b8df22b19e4466aa156018464ec404ec99",
+			"source_sha256": "e3130625e74ad8efaa15207261af16f19f2510b05e56dc827902a77065b4c565",
+			"target_sha256": "b6f73d434b7d810cd029ffbc04743c1db7f0ff512287d6324242bcb6441e2aa9",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-fable-5-2 drafts; openai/gpt-6.1-sol final intro (fallback)",
@@ -8933,20 +8933,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-10",
+					"date": "2026-11-14",
 					"result": "clean-with-findings",
-					"instance": "1736cfb27a20-relaystep-r1-es",
+					"instance": "04a9fe11234e-phrem-r2-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 1,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/1736cfb27a20-relaystep-r1-es.json",
-					"receipt_sha256": "70ecf1eb6387fef71551d29ac52fdf5b298db4931f15615db58d8aa1b189bf79",
-					"scope": "Independent one-key delta copy audit (ui.providers.phone.connector_not_needed) at 76a0b500d85 for PR #1852; namespace hashes bind bytes, not a whole-namespace audit"
+					"receipt": "i18n/receipts/04a9fe11234e-phrem-r2-es.json",
+					"receipt_sha256": "0f7935c84b9b6ffa394058cfeb8bdef1d43c987ef95326b724b3254363ffefbd",
+					"scope": "5 new ui.providers.phone.* keys + round-1 replacements (PR #1910 @26b57d1d2df9); other values byte-identical, prior audits retained",
+					"note": "PR #1910 round-2 re-audit @26b57d1d2df9; receipt i18n/receipts/04a9fe11234e-phrem-r2-es.json; 2 open minor/nit, replacements in receipt"
 				}
 			],
 			"status": "audited",
@@ -9033,6 +9034,53 @@
 							"receipt": "i18n/receipts/4342cfd05d3c-ovc-audit2-es.json",
 							"receipt_sha256": "3fdb7faf97550330bb05f09d3c57ccf3318598be256ba792ca7f5d9d0f717be5",
 							"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0379d564673cfe5b344b5e2af374000d1c71543021b748dc3c1363db5d07a0fd",
+					"target_sha256": "4ecfff084eabbf1e14351c61e2b915b8df22b19e4466aa156018464ec404ec99",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-10",
+							"result": "clean-with-findings",
+							"instance": "1736cfb27a20-relaystep-r1-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/1736cfb27a20-relaystep-r1-es.json",
+							"receipt_sha256": "70ecf1eb6387fef71551d29ac52fdf5b298db4931f15615db58d8aa1b189bf79",
+							"scope": "Independent one-key delta copy audit (ui.providers.phone.connector_not_needed) at 76a0b500d85 for PR #1852; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "70b5e4b3348848a8b3eca926cf9ac566b04432f79900d1b9335480d3107785d4",
+					"target_sha256": "39ed252d809b9617ce439f4358ede81e6afd2b1c27a8d83de01881de58b68301",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean",
+							"instance": "23928ce0ef1e-phrem-r1-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/23928ce0ef1e-phrem-r1-es.json",
+							"receipt_sha256": "67eae447ee68ecd230ef8bf1d179ea384a39d0e9f1af72ad0cb703e3014a62ba",
+							"scope": "14 new ui.providers.phone.* keys (PR #1910 phone remedies/offer/Copy diagnostics) at d0912f37538a; other values byte-identical to base, prior audits retained",
+							"note": "PR #1910 delta audit @d0912f37538a; receipt i18n/receipts/23928ce0ef1e-phrem-r1-es.json; no findings"
 						}
 					],
 					"status": "audited"
@@ -9236,8 +9284,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.settings.account",
-			"source_sha256": "73501a3901006b5b32dd58661c89c7331a6edb9ea11d96ff00f1d48a979ccb6e",
-			"target_sha256": "8692adfaef7fc5c056840e3c5ef1b674fdf782842afb70f54378809403c36478",
+			"source_sha256": "c50a2bcdcd5dcdcc863541707b22da622992b79e5d0d51bc60e83a00b3a89ab3",
+			"target_sha256": "92e4045511b8a8d164165da09eaa219e564b3496d68ae2f54d19cf3ace01f138",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-fable-5-2 drafts; openai/gpt-6.1-sol final intro (fallback)",
@@ -9246,36 +9294,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-fable-5-2",
-					"date": "2026-11-09",
-					"result": "clean",
-					"instance": "onboarding-value-es-909a2c50a0bd",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/onboarding-value-es-909a2c50a0bd.json",
-					"receipt_sha256": "28a6e583c4f93a74bc67fc48dba81bdbf17751f52936f3795c0238f127868cd9",
-					"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
-				},
-				{
-					"agent": "ux-reviewer",
+					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-09",
+					"date": "2026-11-14",
 					"result": "clean",
-					"instance": "4342cfd05d3c-ovc-audit2-es",
+					"instance": "23928ce0ef1e-phrem-r1-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/4342cfd05d3c-ovc-audit2-es.json",
-					"receipt_sha256": "3fdb7faf97550330bb05f09d3c57ccf3318598be256ba792ca7f5d9d0f717be5",
-					"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
+					"receipt": "i18n/receipts/23928ce0ef1e-phrem-r1-es.json",
+					"receipt_sha256": "67eae447ee68ecd230ef8bf1d179ea384a39d0e9f1af72ad0cb703e3014a62ba",
+					"scope": "ui.settings.account.settings_page.add_credits Add credits→Add credit (PR #1910) at d0912f37538a; other values byte-identical to base",
+					"note": "PR #1910 delta audit @d0912f37538a; receipt i18n/receipts/23928ce0ef1e-phrem-r1-es.json; no findings"
 				}
 			],
 			"status": "audited",
@@ -9299,6 +9332,45 @@
 							"receipt": "i18n/receipts/ea3629c2a645.json",
 							"receipt_sha256": "1adcf5201c953c8581cc9ebb888ae927bb4547d324f2ae550e1b8ca27f25874d",
 							"scope": "Full semantic read; exhaustive mechanical checks."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "73501a3901006b5b32dd58661c89c7331a6edb9ea11d96ff00f1d48a979ccb6e",
+					"target_sha256": "8692adfaef7fc5c056840e3c5ef1b674fdf782842afb70f54378809403c36478",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-fable-5-2",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "onboarding-value-es-909a2c50a0bd",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/onboarding-value-es-909a2c50a0bd.json",
+							"receipt_sha256": "28a6e583c4f93a74bc67fc48dba81bdbf17751f52936f3795c0238f127868cd9",
+							"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
+						},
+						{
+							"agent": "ux-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "4342cfd05d3c-ovc-audit2-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/4342cfd05d3c-ovc-audit2-es.json",
+							"receipt_sha256": "3fdb7faf97550330bb05f09d3c57ccf3318598be256ba792ca7f5d9d0f717be5",
+							"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
 						}
 					],
 					"status": "audited"
@@ -21451,8 +21523,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.providers",
-			"source_sha256": "0379d564673cfe5b344b5e2af374000d1c71543021b748dc3c1363db5d07a0fd",
-			"target_sha256": "44a0cb5291c575713a24d191a4d865b02c37e91f5d0ae7dca3c6b6ef4254989a",
+			"source_sha256": "e3130625e74ad8efaa15207261af16f19f2510b05e56dc827902a77065b4c565",
+			"target_sha256": "0eaa351005e56660808d1479993f9df6a926c1a65be4e67384afbab4af7f75bd",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-fable-5-2 drafts; openai/gpt-6.1-sol final intro (fallback)",
@@ -21462,20 +21534,21 @@
 			"status": "audited",
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-10",
-					"result": "clean",
-					"instance": "1736cfb27a20-relaystep-r1-fr",
+					"date": "2026-11-14",
+					"result": "clean-with-findings",
+					"instance": "04a9fe11234e-phrem-r2-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/1736cfb27a20-relaystep-r1-fr.json",
-					"receipt_sha256": "8fb4f587b6175d59df2359c7307edde4442dc56b8d14c76dd95d58e94945e14b",
-					"scope": "Independent one-key delta copy audit (ui.providers.phone.connector_not_needed) at 76a0b500d85 for PR #1852; namespace hashes bind bytes, not a whole-namespace audit"
+					"receipt": "i18n/receipts/04a9fe11234e-phrem-r2-fr.json",
+					"receipt_sha256": "1b85391ae6e9ff3d78c1ef2b1b8808a3d364f7b7268dae3af6021adb824923c3",
+					"scope": "5 new ui.providers.phone.* keys + round-1 replacements (PR #1910 @26b57d1d2df9); other values byte-identical, prior audits retained",
+					"note": "PR #1910 round-2 re-audit @26b57d1d2df9; receipt i18n/receipts/04a9fe11234e-phrem-r2-fr.json; 1 open minor/nit, replacements in receipt"
 				}
 			],
 			"superseded": [
@@ -21561,6 +21634,53 @@
 							"receipt": "i18n/receipts/4342cfd05d3c-ovc-audit2-fr.json",
 							"receipt_sha256": "1a8b32cf30d3969de14ad466b0ce0c4ca45b429a32f4bb5d30f3c41e9ca6db15",
 							"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0379d564673cfe5b344b5e2af374000d1c71543021b748dc3c1363db5d07a0fd",
+					"target_sha256": "44a0cb5291c575713a24d191a4d865b02c37e91f5d0ae7dca3c6b6ef4254989a",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-10",
+							"result": "clean",
+							"instance": "1736cfb27a20-relaystep-r1-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/1736cfb27a20-relaystep-r1-fr.json",
+							"receipt_sha256": "8fb4f587b6175d59df2359c7307edde4442dc56b8d14c76dd95d58e94945e14b",
+							"scope": "Independent one-key delta copy audit (ui.providers.phone.connector_not_needed) at 76a0b500d85 for PR #1852; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "70b5e4b3348848a8b3eca926cf9ac566b04432f79900d1b9335480d3107785d4",
+					"target_sha256": "33cbac812eb9edd37d941951819b4586df50ec3eaa7bb135a709a61dcfbf712f",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "23928ce0ef1e-phrem-r1-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/23928ce0ef1e-phrem-r1-fr.json",
+							"receipt_sha256": "3b6147a1aef0a5a394628154a89cffc40c2280ce234d84c3e7df9987d7728461",
+							"scope": "14 new ui.providers.phone.* keys (PR #1910 phone remedies/offer/Copy diagnostics) at d0912f37538a; other values byte-identical to base, prior audits retained",
+							"note": "PR #1910 delta audit @d0912f37538a; receipt i18n/receipts/23928ce0ef1e-phrem-r1-fr.json; 2 minor/0 nit open, replacements in receipt"
 						}
 					],
 					"status": "audited"
@@ -21766,8 +21886,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.settings.account",
-			"source_sha256": "73501a3901006b5b32dd58661c89c7331a6edb9ea11d96ff00f1d48a979ccb6e",
-			"target_sha256": "28f74451af9fdcbfcc3f52b3ae593c75dfdd2195563cf49c890445008971d82b",
+			"source_sha256": "c50a2bcdcd5dcdcc863541707b22da622992b79e5d0d51bc60e83a00b3a89ab3",
+			"target_sha256": "9530136852a40487afe34f5dd9d8b1c6369c734a94d9e89a932619d52e4d350f",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-fable-5-2 drafts; openai/gpt-6.1-sol final intro (fallback)",
@@ -21776,36 +21896,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-fable-5-2",
-					"date": "2026-11-09",
-					"result": "clean",
-					"instance": "onboarding-value-fr-909a2c50a0bd",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/onboarding-value-fr-909a2c50a0bd.json",
-					"receipt_sha256": "8a1c1bc19845d95bc32c85951ec1286ca21e5c688cdaa24c76c1e94540536c3d",
-					"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
-				},
-				{
-					"agent": "ux-reviewer",
+					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-09",
+					"date": "2026-11-14",
 					"result": "clean",
-					"instance": "4342cfd05d3c-ovc-audit2-fr",
+					"instance": "23928ce0ef1e-phrem-r1-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/4342cfd05d3c-ovc-audit2-fr.json",
-					"receipt_sha256": "1a8b32cf30d3969de14ad466b0ce0c4ca45b429a32f4bb5d30f3c41e9ca6db15",
-					"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
+					"receipt": "i18n/receipts/23928ce0ef1e-phrem-r1-fr.json",
+					"receipt_sha256": "3b6147a1aef0a5a394628154a89cffc40c2280ce234d84c3e7df9987d7728461",
+					"scope": "ui.settings.account.settings_page.add_credits Add credits→Add credit (PR #1910) at d0912f37538a; other values byte-identical to base",
+					"note": "PR #1910 delta audit @d0912f37538a; receipt i18n/receipts/23928ce0ef1e-phrem-r1-fr.json; no findings"
 				}
 			],
 			"status": "audited",
@@ -21853,6 +21958,45 @@
 							"receipt_sha256": "569240f5e868624550ea73bfee1fa7df69e3f3ee58c1a707442bdb0cad240618",
 							"scope": "fr ui.settings.account vs en at the #1057 re-pinned sources - full-file re-audit incl. ::group-off token mirror",
 							"note": "Independent re-audit at the re-pinned head; receipt-backed. Prior comment-based audit records retained as history in superseded. Rendered pixel fit remains a separate PR check."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "73501a3901006b5b32dd58661c89c7331a6edb9ea11d96ff00f1d48a979ccb6e",
+					"target_sha256": "28f74451af9fdcbfcc3f52b3ae593c75dfdd2195563cf49c890445008971d82b",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-fable-5-2",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "onboarding-value-fr-909a2c50a0bd",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/onboarding-value-fr-909a2c50a0bd.json",
+							"receipt_sha256": "8a1c1bc19845d95bc32c85951ec1286ca21e5c688cdaa24c76c1e94540536c3d",
+							"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
+						},
+						{
+							"agent": "ux-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "4342cfd05d3c-ovc-audit2-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/4342cfd05d3c-ovc-audit2-fr.json",
+							"receipt_sha256": "1a8b32cf30d3969de14ad466b0ce0c4ca45b429a32f4bb5d30f3c41e9ca6db15",
+							"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
 						}
 					],
 					"status": "audited"
@@ -34129,8 +34273,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.providers",
-			"source_sha256": "0379d564673cfe5b344b5e2af374000d1c71543021b748dc3c1363db5d07a0fd",
-			"target_sha256": "40441fabbbda25939eb5868b81fda6e412b770a14cbaeb17d6b5eb255755126b",
+			"source_sha256": "e3130625e74ad8efaa15207261af16f19f2510b05e56dc827902a77065b4c565",
+			"target_sha256": "d11a06e9ed97c7a6eeed2460ce6450ad1fec5b17b89045c944d8e261f9d3d2d0",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-fable-5-2 drafts; openai/gpt-6.1-sol final intro (fallback)",
@@ -34139,20 +34283,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-10",
+					"date": "2026-11-14",
 					"result": "clean",
-					"instance": "1736cfb27a20-relaystep-r1-hi",
+					"instance": "04a9fe11234e-phrem-r2-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/1736cfb27a20-relaystep-r1-hi.json",
-					"receipt_sha256": "d913a0b525e1f71e61c97c3bf2fc1ba14bc524f5c047b1654f497a6e0996c519",
-					"scope": "Independent one-key delta copy audit (ui.providers.phone.connector_not_needed) at 76a0b500d85 for PR #1852; namespace hashes bind bytes, not a whole-namespace audit"
+					"receipt": "i18n/receipts/04a9fe11234e-phrem-r2-hi.json",
+					"receipt_sha256": "0ce06b89cec4f82e923ac92eb9d53db066537a48cba073df6e5bcf7e80127deb",
+					"scope": "5 new ui.providers.phone.* keys + round-1 replacements (PR #1910 @26b57d1d2df9); other values byte-identical, prior audits retained",
+					"note": "PR #1910 round-2 re-audit @26b57d1d2df9; receipt i18n/receipts/04a9fe11234e-phrem-r2-hi.json; 0 open minor/nit, replacements in receipt"
 				}
 			],
 			"status": "audited",
@@ -34240,6 +34385,53 @@
 							"receipt": "i18n/receipts/4342cfd05d3c-ovc-audit2-hi.json",
 							"receipt_sha256": "414157a4a97dada5ee2d9b68e2bbcadc849ea41e88ffeac953238e4fb36fbf6c",
 							"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0379d564673cfe5b344b5e2af374000d1c71543021b748dc3c1363db5d07a0fd",
+					"target_sha256": "40441fabbbda25939eb5868b81fda6e412b770a14cbaeb17d6b5eb255755126b",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-10",
+							"result": "clean",
+							"instance": "1736cfb27a20-relaystep-r1-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/1736cfb27a20-relaystep-r1-hi.json",
+							"receipt_sha256": "d913a0b525e1f71e61c97c3bf2fc1ba14bc524f5c047b1654f497a6e0996c519",
+							"scope": "Independent one-key delta copy audit (ui.providers.phone.connector_not_needed) at 76a0b500d85 for PR #1852; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "70b5e4b3348848a8b3eca926cf9ac566b04432f79900d1b9335480d3107785d4",
+					"target_sha256": "a3e418b6def05bc3670af8e2eba21d30867868baef7b0bf13852bd72de4980e7",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "23928ce0ef1e-phrem-r1-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/23928ce0ef1e-phrem-r1-hi.json",
+							"receipt_sha256": "eab7d3576b79743c0cd0b80627222fee854f82dbcda3143b4b92d07174f33bdb",
+							"scope": "14 new ui.providers.phone.* keys (PR #1910 phone remedies/offer/Copy diagnostics) at d0912f37538a; other values byte-identical to base, prior audits retained",
+							"note": "PR #1910 delta audit @d0912f37538a; receipt i18n/receipts/23928ce0ef1e-phrem-r1-hi.json; 1 minor/0 nit open, replacements in receipt"
 						}
 					],
 					"status": "audited"
@@ -34444,7 +34636,7 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.settings.account",
-			"source_sha256": "73501a3901006b5b32dd58661c89c7331a6edb9ea11d96ff00f1d48a979ccb6e",
+			"source_sha256": "c50a2bcdcd5dcdcc863541707b22da622992b79e5d0d51bc60e83a00b3a89ab3",
 			"target_sha256": "cd9122e7f9c7549d76ec766799d7533ab09e6b6ad8c61ea75f797f317f923c46",
 			"translator": {
 				"agent": "coder",
@@ -34454,36 +34646,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-fable-5-2",
-					"date": "2026-11-09",
-					"result": "clean",
-					"instance": "onboarding-value-hi-909a2c50a0bd",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/onboarding-value-hi-909a2c50a0bd.json",
-					"receipt_sha256": "83107d49a6718229bd62ac88f0ae8d5055a345699d5322b83eae740c936a44c2",
-					"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
-				},
-				{
-					"agent": "ux-reviewer",
+					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-09",
+					"date": "2026-11-14",
 					"result": "clean",
-					"instance": "4342cfd05d3c-ovc-audit2-hi",
+					"instance": "23928ce0ef1e-phrem-r1-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/4342cfd05d3c-ovc-audit2-hi.json",
-					"receipt_sha256": "414157a4a97dada5ee2d9b68e2bbcadc849ea41e88ffeac953238e4fb36fbf6c",
-					"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
+					"receipt": "i18n/receipts/23928ce0ef1e-phrem-r1-hi.json",
+					"receipt_sha256": "eab7d3576b79743c0cd0b80627222fee854f82dbcda3143b4b92d07174f33bdb",
+					"scope": "ui.settings.account.settings_page.add_credits Add credits→Add credit (PR #1910) at d0912f37538a; other values byte-identical to base",
+					"note": "PR #1910 delta audit @d0912f37538a; receipt i18n/receipts/23928ce0ef1e-phrem-r1-hi.json; no findings"
 				}
 			],
 			"status": "audited",
@@ -34508,6 +34685,45 @@
 							"receipt_sha256": "ec989e0af2c264081d50d722bc33a6d7956f94477723b0e330af5e1c2101b07d",
 							"scope": "hi ui.settings.account vs en source — round 1 independent full pass, 34 keys",
 							"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "73501a3901006b5b32dd58661c89c7331a6edb9ea11d96ff00f1d48a979ccb6e",
+					"target_sha256": "cd9122e7f9c7549d76ec766799d7533ab09e6b6ad8c61ea75f797f317f923c46",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-fable-5-2",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "onboarding-value-hi-909a2c50a0bd",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/onboarding-value-hi-909a2c50a0bd.json",
+							"receipt_sha256": "83107d49a6718229bd62ac88f0ae8d5055a345699d5322b83eae740c936a44c2",
+							"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
+						},
+						{
+							"agent": "ux-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "4342cfd05d3c-ovc-audit2-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/4342cfd05d3c-ovc-audit2-hi.json",
+							"receipt_sha256": "414157a4a97dada5ee2d9b68e2bbcadc849ea41e88ffeac953238e4fb36fbf6c",
+							"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
 						}
 					],
 					"status": "audited"
@@ -46394,8 +46610,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.providers",
-			"source_sha256": "0379d564673cfe5b344b5e2af374000d1c71543021b748dc3c1363db5d07a0fd",
-			"target_sha256": "ecba51a05aeac8a83d254837ecc3767c5b512bc00a85fc5db14c9d42bc4e6b72",
+			"source_sha256": "e3130625e74ad8efaa15207261af16f19f2510b05e56dc827902a77065b4c565",
+			"target_sha256": "7a9c6d9054415a6aad3a975f5d0bdff08776bdb1e3b0cf7bca67ede245cbdde5",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-fable-5-2 drafts; openai/gpt-6.1-sol final intro (fallback)",
@@ -46404,20 +46620,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-10",
-					"result": "clean",
-					"instance": "1736cfb27a20-relaystep-r1-ru",
+					"date": "2026-11-14",
+					"result": "clean-with-findings",
+					"instance": "04a9fe11234e-phrem-r2-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/1736cfb27a20-relaystep-r1-ru.json",
-					"receipt_sha256": "5fc3d05b633c4e28e358fac76a4d588856b0828b2bd239ed0d456fe8e6389009",
-					"scope": "Independent one-key delta copy audit (ui.providers.phone.connector_not_needed) at 76a0b500d85 for PR #1852; namespace hashes bind bytes, not a whole-namespace audit"
+					"receipt": "i18n/receipts/04a9fe11234e-phrem-r2-ru.json",
+					"receipt_sha256": "079661af4cdcac5c1a9a8e7f87cd546f6324eda5397ad9bfd688667b2041259a",
+					"scope": "5 new ui.providers.phone.* keys + round-1 replacements (PR #1910 @26b57d1d2df9); other values byte-identical, prior audits retained",
+					"note": "PR #1910 round-2 re-audit @26b57d1d2df9; receipt i18n/receipts/04a9fe11234e-phrem-r2-ru.json; 1 open minor/nit, replacements in receipt"
 				}
 			],
 			"status": "audited",
@@ -46504,6 +46721,53 @@
 							"receipt": "i18n/receipts/4342cfd05d3c-ovc-audit2-ru.json",
 							"receipt_sha256": "c811160d01969581f9fa816a1b5608006da9042f876f623a990183757a9ca5e2",
 							"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0379d564673cfe5b344b5e2af374000d1c71543021b748dc3c1363db5d07a0fd",
+					"target_sha256": "ecba51a05aeac8a83d254837ecc3767c5b512bc00a85fc5db14c9d42bc4e6b72",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-10",
+							"result": "clean",
+							"instance": "1736cfb27a20-relaystep-r1-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/1736cfb27a20-relaystep-r1-ru.json",
+							"receipt_sha256": "5fc3d05b633c4e28e358fac76a4d588856b0828b2bd239ed0d456fe8e6389009",
+							"scope": "Independent one-key delta copy audit (ui.providers.phone.connector_not_needed) at 76a0b500d85 for PR #1852; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "70b5e4b3348848a8b3eca926cf9ac566b04432f79900d1b9335480d3107785d4",
+					"target_sha256": "b6f3c2213963f238f565396bc52b9b2d7b074b4a5a0723f95ebcf50b1398de9c",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "23928ce0ef1e-phrem-r1-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/23928ce0ef1e-phrem-r1-ru.json",
+							"receipt_sha256": "2e98403ff5887128d33df1bd51cb4a60bb539ad1c45f950b2d2604d17ed06707",
+							"scope": "14 new ui.providers.phone.* keys (PR #1910 phone remedies/offer/Copy diagnostics) at d0912f37538a; other values byte-identical to base, prior audits retained",
+							"note": "PR #1910 delta audit @d0912f37538a; receipt i18n/receipts/23928ce0ef1e-phrem-r1-ru.json; 0 minor/1 nit open, replacements in receipt"
 						}
 					],
 					"status": "audited"
@@ -46710,8 +46974,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.settings.account",
-			"source_sha256": "73501a3901006b5b32dd58661c89c7331a6edb9ea11d96ff00f1d48a979ccb6e",
-			"target_sha256": "723e4171e2b146fe723bc9b05b6d609c28d9c28440c3826101455e9f28d7aa99",
+			"source_sha256": "c50a2bcdcd5dcdcc863541707b22da622992b79e5d0d51bc60e83a00b3a89ab3",
+			"target_sha256": "007d1e5809cc18e5648e32c21d3ec4e6bf8c1a4fc81db1644cdfcbbe09e80080",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-fable-5-2 drafts; openai/gpt-6.1-sol final intro (fallback)",
@@ -46720,36 +46984,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-fable-5-2",
-					"date": "2026-11-09",
-					"result": "clean",
-					"instance": "onboarding-value-ru-909a2c50a0bd",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/onboarding-value-ru-909a2c50a0bd.json",
-					"receipt_sha256": "21c2e7b19b7069a0db89cc5c5dae8d558a9820710bee8dfc990df8e243e0c3ab",
-					"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
-				},
-				{
-					"agent": "ux-reviewer",
+					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-09",
+					"date": "2026-11-14",
 					"result": "clean",
-					"instance": "4342cfd05d3c-ovc-audit2-ru",
+					"instance": "23928ce0ef1e-phrem-r1-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/4342cfd05d3c-ovc-audit2-ru.json",
-					"receipt_sha256": "c811160d01969581f9fa816a1b5608006da9042f876f623a990183757a9ca5e2",
-					"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
+					"receipt": "i18n/receipts/23928ce0ef1e-phrem-r1-ru.json",
+					"receipt_sha256": "2e98403ff5887128d33df1bd51cb4a60bb539ad1c45f950b2d2604d17ed06707",
+					"scope": "ui.settings.account.settings_page.add_credits Add credits→Add credit (PR #1910) at d0912f37538a; other values byte-identical to base",
+					"note": "PR #1910 delta audit @d0912f37538a; receipt i18n/receipts/23928ce0ef1e-phrem-r1-ru.json; no findings"
 				}
 			],
 			"status": "audited",
@@ -46774,6 +47023,45 @@
 							"receipt_sha256": "8542404943d1e679b2f4d5ff9cd60e29dd499aacae63fdea990be0e608845330",
 							"scope": "Full copy audit, all keys in this namespace, PR #1181 head 65ad12e7675a132e4a677ecf7aef95f227379525",
 							"note": "Actual automatic-fallback model; fresh tranche-2 chunk-D audit-run instance. Copy only, not rendered fit or release eligibility."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "73501a3901006b5b32dd58661c89c7331a6edb9ea11d96ff00f1d48a979ccb6e",
+					"target_sha256": "723e4171e2b146fe723bc9b05b6d609c28d9c28440c3826101455e9f28d7aa99",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-fable-5-2",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "onboarding-value-ru-909a2c50a0bd",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/onboarding-value-ru-909a2c50a0bd.json",
+							"receipt_sha256": "21c2e7b19b7069a0db89cc5c5dae8d558a9820710bee8dfc990df8e243e0c3ab",
+							"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
+						},
+						{
+							"agent": "ux-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "4342cfd05d3c-ovc-audit2-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/4342cfd05d3c-ovc-audit2-ru.json",
+							"receipt_sha256": "c811160d01969581f9fa816a1b5608006da9042f876f623a990183757a9ca5e2",
+							"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
 						}
 					],
 					"status": "audited"
@@ -58808,8 +59096,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.providers",
-			"source_sha256": "0379d564673cfe5b344b5e2af374000d1c71543021b748dc3c1363db5d07a0fd",
-			"target_sha256": "575cfff5d32468110a7beaa229a1c84ef5237a6b414cbda37bc446cd36c93363",
+			"source_sha256": "e3130625e74ad8efaa15207261af16f19f2510b05e56dc827902a77065b4c565",
+			"target_sha256": "742eb4a503d209018ed7ff3a8a747b911d0cafb031d45c035d7833fdc91f1d48",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-fable-5-2 drafts; openai/gpt-6.1-sol final intro (fallback)",
@@ -58818,20 +59106,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-10",
-					"result": "clean-with-findings",
-					"instance": "1736cfb27a20-relaystep-r1-ur",
+					"date": "2026-11-14",
+					"result": "clean",
+					"instance": "04a9fe11234e-phrem-r2-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/1736cfb27a20-relaystep-r1-ur.json",
-					"receipt_sha256": "0a3f2716132301cb859859a43334ddba0fab6299e556e0cf398741ec2439db2c",
-					"scope": "Independent one-key delta copy audit (ui.providers.phone.connector_not_needed) at 76a0b500d85 for PR #1852; namespace hashes bind bytes, not a whole-namespace audit"
+					"receipt": "i18n/receipts/04a9fe11234e-phrem-r2-ur.json",
+					"receipt_sha256": "ab034180502e5f6b65e6df6209880455b5df449d27a276e81e40fd3a027ce5e2",
+					"scope": "5 new ui.providers.phone.* keys + round-1 replacements (PR #1910 @26b57d1d2df9); other values byte-identical, prior audits retained",
+					"note": "PR #1910 round-2 re-audit @26b57d1d2df9; receipt i18n/receipts/04a9fe11234e-phrem-r2-ur.json; 0 open minor/nit, replacements in receipt"
 				}
 			],
 			"status": "audited",
@@ -58919,6 +59208,53 @@
 							"receipt": "i18n/receipts/4342cfd05d3c-ovc-audit2-ur.json",
 							"receipt_sha256": "51409ec95d6b56ba7748cc5b77cb0b29d230833b29a97a61616758654383aa4a",
 							"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0379d564673cfe5b344b5e2af374000d1c71543021b748dc3c1363db5d07a0fd",
+					"target_sha256": "575cfff5d32468110a7beaa229a1c84ef5237a6b414cbda37bc446cd36c93363",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-10",
+							"result": "clean-with-findings",
+							"instance": "1736cfb27a20-relaystep-r1-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/1736cfb27a20-relaystep-r1-ur.json",
+							"receipt_sha256": "0a3f2716132301cb859859a43334ddba0fab6299e556e0cf398741ec2439db2c",
+							"scope": "Independent one-key delta copy audit (ui.providers.phone.connector_not_needed) at 76a0b500d85 for PR #1852; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "70b5e4b3348848a8b3eca926cf9ac566b04432f79900d1b9335480d3107785d4",
+					"target_sha256": "375f0c18956d7697bf1a48d1d238a702b89d4d799166e3750a2f80497cd5231c",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "23928ce0ef1e-phrem-r1-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 3,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/23928ce0ef1e-phrem-r1-ur.json",
+							"receipt_sha256": "061a1ef48fa92b8e92110f621e3073e5a95369f0de0a3a335b17c921f9758d8f",
+							"scope": "14 new ui.providers.phone.* keys (PR #1910 phone remedies/offer/Copy diagnostics) at d0912f37538a; other values byte-identical to base, prior audits retained",
+							"note": "PR #1910 delta audit @d0912f37538a; receipt i18n/receipts/23928ce0ef1e-phrem-r1-ur.json; 3 minor/1 nit open, replacements in receipt"
 						}
 					],
 					"status": "audited"
@@ -59133,8 +59469,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.settings.account",
-			"source_sha256": "73501a3901006b5b32dd58661c89c7331a6edb9ea11d96ff00f1d48a979ccb6e",
-			"target_sha256": "c661695d7d2e1f84654fca9689e94611e17859d8adbaa3d4955dc58c3aa3a045",
+			"source_sha256": "c50a2bcdcd5dcdcc863541707b22da622992b79e5d0d51bc60e83a00b3a89ab3",
+			"target_sha256": "e31f0ef124e6a1044a4d1ad62aa2e9df87c4f6f41fc9bbad96ed700d32193e2f",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-fable-5-2 drafts; openai/gpt-6.1-sol final intro (fallback)",
@@ -59143,36 +59479,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-fable-5-2",
-					"date": "2026-11-09",
-					"result": "clean",
-					"instance": "onboarding-value-ur-909a2c50a0bd",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/onboarding-value-ur-909a2c50a0bd.json",
-					"receipt_sha256": "47387e85824fbf08a53cac4ab211212baf28df9c25621d3c16e10debd7567bd7",
-					"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
-				},
-				{
-					"agent": "ux-reviewer",
+					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-09",
+					"date": "2026-11-14",
 					"result": "clean",
-					"instance": "4342cfd05d3c-ovc-audit2-ur",
+					"instance": "23928ce0ef1e-phrem-r1-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/4342cfd05d3c-ovc-audit2-ur.json",
-					"receipt_sha256": "51409ec95d6b56ba7748cc5b77cb0b29d230833b29a97a61616758654383aa4a",
-					"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
+					"receipt": "i18n/receipts/23928ce0ef1e-phrem-r1-ur.json",
+					"receipt_sha256": "061a1ef48fa92b8e92110f621e3073e5a95369f0de0a3a335b17c921f9758d8f",
+					"scope": "ui.settings.account.settings_page.add_credits Add credits→Add credit (PR #1910) at d0912f37538a; other values byte-identical to base",
+					"note": "PR #1910 delta audit @d0912f37538a; receipt i18n/receipts/23928ce0ef1e-phrem-r1-ur.json; no findings"
 				}
 			],
 			"status": "audited",
@@ -59197,6 +59518,45 @@
 							"receipt_sha256": "7be92f4a2a4f9b5aff5a834d859d39e06e341caf831df08db9f9a64a75c306bf",
 							"scope": "Full independent copy audit of the namespace at the recorded bytes; zero findings.",
 							"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "73501a3901006b5b32dd58661c89c7331a6edb9ea11d96ff00f1d48a979ccb6e",
+					"target_sha256": "c661695d7d2e1f84654fca9689e94611e17859d8adbaa3d4955dc58c3aa3a045",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-fable-5-2",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "onboarding-value-ur-909a2c50a0bd",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/onboarding-value-ur-909a2c50a0bd.json",
+							"receipt_sha256": "47387e85824fbf08a53cac4ab211212baf28df9c25621d3c16e10debd7567bd7",
+							"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
+						},
+						{
+							"agent": "ux-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "4342cfd05d3c-ovc-audit2-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/4342cfd05d3c-ovc-audit2-ur.json",
+							"receipt_sha256": "51409ec95d6b56ba7748cc5b77cb0b29d230833b29a97a61616758654383aa4a",
+							"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
 						}
 					],
 					"status": "audited"
@@ -71406,8 +71766,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.providers",
-			"source_sha256": "0379d564673cfe5b344b5e2af374000d1c71543021b748dc3c1363db5d07a0fd",
-			"target_sha256": "af0b21d2d58d9cdf31dde976167dc4682b2342e2225b4c65840b9426308f4af2",
+			"source_sha256": "e3130625e74ad8efaa15207261af16f19f2510b05e56dc827902a77065b4c565",
+			"target_sha256": "8dcfc9a89aa3f9e6feb7c36dae93217d56afba0cb91b2067b6c3643c25523ae8",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-fable-5-2 drafts; openai/gpt-6.1-sol final intro (fallback)",
@@ -71416,20 +71776,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-10",
-					"result": "clean",
-					"instance": "1736cfb27a20-relaystep-r1-vi",
+					"date": "2026-11-14",
+					"result": "clean-with-findings",
+					"instance": "04a9fe11234e-phrem-r2-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/1736cfb27a20-relaystep-r1-vi.json",
-					"receipt_sha256": "0db39f7f402b2fca5c3661cebac51894306170b09fe879aabb9a63aa9794629d",
-					"scope": "Independent one-key delta copy audit (ui.providers.phone.connector_not_needed) at 76a0b500d85 for PR #1852; namespace hashes bind bytes, not a whole-namespace audit"
+					"receipt": "i18n/receipts/04a9fe11234e-phrem-r2-vi.json",
+					"receipt_sha256": "d0fe39ba587f63ebf9edb6cc43f35ba185f7dd80394a0ea00ccebcf199c02fb7",
+					"scope": "5 new ui.providers.phone.* keys + round-1 replacements (PR #1910 @26b57d1d2df9); other values byte-identical, prior audits retained",
+					"note": "PR #1910 round-2 re-audit @26b57d1d2df9; receipt i18n/receipts/04a9fe11234e-phrem-r2-vi.json; 1 open minor/nit, replacements in receipt"
 				}
 			],
 			"status": "audited",
@@ -71575,6 +71936,53 @@
 							"receipt": "i18n/receipts/4342cfd05d3c-ovc-audit2-vi.json",
 							"receipt_sha256": "a5bb7c9e5cd086c7f013a3fefd38f7ec475d529adc91bfb14d0df453e8ef275e",
 							"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0379d564673cfe5b344b5e2af374000d1c71543021b748dc3c1363db5d07a0fd",
+					"target_sha256": "af0b21d2d58d9cdf31dde976167dc4682b2342e2225b4c65840b9426308f4af2",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-10",
+							"result": "clean",
+							"instance": "1736cfb27a20-relaystep-r1-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/1736cfb27a20-relaystep-r1-vi.json",
+							"receipt_sha256": "0db39f7f402b2fca5c3661cebac51894306170b09fe879aabb9a63aa9794629d",
+							"scope": "Independent one-key delta copy audit (ui.providers.phone.connector_not_needed) at 76a0b500d85 for PR #1852; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "70b5e4b3348848a8b3eca926cf9ac566b04432f79900d1b9335480d3107785d4",
+					"target_sha256": "df9491bc400d0e27dd51ea61dfe8eba56b2083e2e51fba06eb80f0f467629a2c",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "23928ce0ef1e-phrem-r1-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/23928ce0ef1e-phrem-r1-vi.json",
+							"receipt_sha256": "c5564700024072c01e9ade5f6ae36ee4d780458cef9cee2b8e0fcc370273f659",
+							"scope": "14 new ui.providers.phone.* keys (PR #1910 phone remedies/offer/Copy diagnostics) at d0912f37538a; other values byte-identical to base, prior audits retained",
+							"note": "PR #1910 delta audit @d0912f37538a; receipt i18n/receipts/23928ce0ef1e-phrem-r1-vi.json; 0 minor/1 nit open, replacements in receipt"
 						}
 					],
 					"status": "audited"
@@ -71804,7 +72212,7 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.settings.account",
-			"source_sha256": "73501a3901006b5b32dd58661c89c7331a6edb9ea11d96ff00f1d48a979ccb6e",
+			"source_sha256": "c50a2bcdcd5dcdcc863541707b22da622992b79e5d0d51bc60e83a00b3a89ab3",
 			"target_sha256": "0012e53925246dbf7adf0ca3065c6cdc6ceb0f63c4b4cb425fece0fd6a0846a7",
 			"translator": {
 				"agent": "coder",
@@ -71814,36 +72222,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-fable-5-2",
-					"date": "2026-11-09",
-					"result": "clean",
-					"instance": "onboarding-value-vi-909a2c50a0bd",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/onboarding-value-vi-909a2c50a0bd.json",
-					"receipt_sha256": "869c0466ce1356b2c011ee6ec88e7b73f6e23dc3b1baa52b1ca8cc3eb4b5270a",
-					"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
-				},
-				{
-					"agent": "ux-reviewer",
+					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-09",
+					"date": "2026-11-14",
 					"result": "clean",
-					"instance": "4342cfd05d3c-ovc-audit2-vi",
+					"instance": "23928ce0ef1e-phrem-r1-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/4342cfd05d3c-ovc-audit2-vi.json",
-					"receipt_sha256": "a5bb7c9e5cd086c7f013a3fefd38f7ec475d529adc91bfb14d0df453e8ef275e",
-					"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
+					"receipt": "i18n/receipts/23928ce0ef1e-phrem-r1-vi.json",
+					"receipt_sha256": "c5564700024072c01e9ade5f6ae36ee4d780458cef9cee2b8e0fcc370273f659",
+					"scope": "ui.settings.account.settings_page.add_credits Add credits→Add credit (PR #1910) at d0912f37538a; other values byte-identical to base",
+					"note": "PR #1910 delta audit @d0912f37538a; receipt i18n/receipts/23928ce0ef1e-phrem-r1-vi.json; no findings"
 				}
 			],
 			"status": "audited",
@@ -71868,6 +72261,45 @@
 							"receipt_sha256": "8d032c3981834cee2a412dca0012528b697b81f214aae00328f79f1b3bb17711",
 							"scope": "full namespace; post-remediation verification of round-1 native audit findings",
 							"note": "Full-UI vi tranche. Independent audit of the English source, context sidecar and Vietnamese bytes. Translator and auditor both ran on the harness-reported fallback model openai/gpt-6.1-sol after the pinned Anthropic model was unavailable."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "73501a3901006b5b32dd58661c89c7331a6edb9ea11d96ff00f1d48a979ccb6e",
+					"target_sha256": "0012e53925246dbf7adf0ca3065c6cdc6ceb0f63c4b4cb425fece0fd6a0846a7",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-fable-5-2",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "onboarding-value-vi-909a2c50a0bd",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/onboarding-value-vi-909a2c50a0bd.json",
+							"receipt_sha256": "869c0466ce1356b2c011ee6ec88e7b73f6e23dc3b1baa52b1ca8cc3eb4b5270a",
+							"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
+						},
+						{
+							"agent": "ux-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "4342cfd05d3c-ovc-audit2-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/4342cfd05d3c-ovc-audit2-vi.json",
+							"receipt_sha256": "a5bb7c9e5cd086c7f013a3fefd38f7ec475d529adc91bfb14d0df453e8ef275e",
+							"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
 						}
 					],
 					"status": "audited"
@@ -84643,8 +85075,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.providers",
-			"source_sha256": "0379d564673cfe5b344b5e2af374000d1c71543021b748dc3c1363db5d07a0fd",
-			"target_sha256": "91edca722bff5be2c149dd75f5324527e5ad9c761a1a7acf45ee774f61ad7b51",
+			"source_sha256": "e3130625e74ad8efaa15207261af16f19f2510b05e56dc827902a77065b4c565",
+			"target_sha256": "388406ff598ee0bc6a4dad82e07f11bd2ddf36c72d50a7c68184b878280920f9",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-fable-5-2 drafts; openai/gpt-6.1-sol final intro (fallback)",
@@ -84653,20 +85085,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-10",
+					"date": "2026-11-14",
 					"result": "clean-with-findings",
-					"instance": "1736cfb27a20-relaystep-r1-zh-cn",
+					"instance": "04a9fe11234e-phrem-r2-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 2
+						"minor": 1,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/1736cfb27a20-relaystep-r1-zh-cn.json",
-					"receipt_sha256": "fb538be7e5d02661e281616482da0f0bcd16924983ab765b55e2d4ab32e7a083",
-					"scope": "Independent one-key delta copy audit (ui.providers.phone.connector_not_needed) at 76a0b500d85 for PR #1852; namespace hashes bind bytes, not a whole-namespace audit"
+					"receipt": "i18n/receipts/04a9fe11234e-phrem-r2-zh-cn.json",
+					"receipt_sha256": "0f17909d09f6d5e36a80ef9619039be1e7beaec2b7876ff262d671d72c6ff621",
+					"scope": "5 new ui.providers.phone.* keys + round-1 replacements (PR #1910 @26b57d1d2df9); other values byte-identical, prior audits retained",
+					"note": "PR #1910 round-2 re-audit @26b57d1d2df9; receipt i18n/receipts/04a9fe11234e-phrem-r2-zh-cn.json; 1 open minor/nit, replacements in receipt"
 				}
 			],
 			"status": "audited",
@@ -84778,6 +85211,53 @@
 							"receipt": "i18n/receipts/4342cfd05d3c-ovc-audit2-zh-cn.json",
 							"receipt_sha256": "b14d00c011067040bffde176b5b1bc079fa4b722f91d3b99b7e01681b8443d02",
 							"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "0379d564673cfe5b344b5e2af374000d1c71543021b748dc3c1363db5d07a0fd",
+					"target_sha256": "91edca722bff5be2c149dd75f5324527e5ad9c761a1a7acf45ee774f61ad7b51",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-10",
+							"result": "clean-with-findings",
+							"instance": "1736cfb27a20-relaystep-r1-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/1736cfb27a20-relaystep-r1-zh-cn.json",
+							"receipt_sha256": "fb538be7e5d02661e281616482da0f0bcd16924983ab765b55e2d4ab32e7a083",
+							"scope": "Independent one-key delta copy audit (ui.providers.phone.connector_not_needed) at 76a0b500d85 for PR #1852; namespace hashes bind bytes, not a whole-namespace audit"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "70b5e4b3348848a8b3eca926cf9ac566b04432f79900d1b9335480d3107785d4",
+					"target_sha256": "707fe1b1ec0c81f8e2bfea64399c2adee7fadf4ffe58ef0578cdf8cc06a5c923",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "23928ce0ef1e-phrem-r1-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 5,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/23928ce0ef1e-phrem-r1-zh-cn.json",
+							"receipt_sha256": "84d66f3b03c87d2535e09e19bf1a392fadf0f42a8474e8052ff90e96cccbd6e9",
+							"scope": "14 new ui.providers.phone.* keys (PR #1910 phone remedies/offer/Copy diagnostics) at d0912f37538a; other values byte-identical to base, prior audits retained",
+							"note": "PR #1910 delta audit @d0912f37538a; receipt i18n/receipts/23928ce0ef1e-phrem-r1-zh-cn.json; 5 minor/1 nit open, replacements in receipt"
 						}
 					],
 					"status": "audited"
@@ -85073,7 +85553,7 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.settings.account",
-			"source_sha256": "73501a3901006b5b32dd58661c89c7331a6edb9ea11d96ff00f1d48a979ccb6e",
+			"source_sha256": "c50a2bcdcd5dcdcc863541707b22da622992b79e5d0d51bc60e83a00b3a89ab3",
 			"target_sha256": "2b4c0adee61a84a21366e8026d26fd33db410f9b8a7154eb489c439adf534b06",
 			"translator": {
 				"agent": "coder",
@@ -85083,36 +85563,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "anthropic/claude-fable-5-2",
-					"date": "2026-11-09",
-					"result": "clean",
-					"instance": "onboarding-value-zh-cn-909a2c50a0bd",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/onboarding-value-zh-cn-909a2c50a0bd.json",
-					"receipt_sha256": "fb243e9901f6041271900010583ab3c9656b299a389841a62e19683e6261d44e",
-					"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
-				},
-				{
-					"agent": "ux-reviewer",
+					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-09",
+					"date": "2026-11-14",
 					"result": "clean",
-					"instance": "4342cfd05d3c-ovc-audit2-zh-cn",
+					"instance": "23928ce0ef1e-phrem-r1-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/4342cfd05d3c-ovc-audit2-zh-cn.json",
-					"receipt_sha256": "b14d00c011067040bffde176b5b1bc079fa4b722f91d3b99b7e01681b8443d02",
-					"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
+					"receipt": "i18n/receipts/23928ce0ef1e-phrem-r1-zh-cn.json",
+					"receipt_sha256": "84d66f3b03c87d2535e09e19bf1a392fadf0f42a8474e8052ff90e96cccbd6e9",
+					"scope": "ui.settings.account.settings_page.add_credits Add credits→Add credit (PR #1910) at d0912f37538a; other values byte-identical to base",
+					"note": "PR #1910 delta audit @d0912f37538a; receipt i18n/receipts/23928ce0ef1e-phrem-r1-zh-cn.json; no findings"
 				}
 			],
 			"status": "audited",
@@ -85161,6 +85626,45 @@
 							"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
 							"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks; audited bytes are 46420b7eb2's, replayed byte-identically as 30566d8100.",
 							"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "73501a3901006b5b32dd58661c89c7331a6edb9ea11d96ff00f1d48a979ccb6e",
+					"target_sha256": "2b4c0adee61a84a21366e8026d26fd33db410f9b8a7154eb489c439adf534b06",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-fable-5-2",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "onboarding-value-zh-cn-909a2c50a0bd",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/onboarding-value-zh-cn-909a2c50a0bd.json",
+							"receipt_sha256": "fb243e9901f6041271900010583ab3c9656b299a389841a62e19683e6261d44e",
+							"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
+						},
+						{
+							"agent": "ux-reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "4342cfd05d3c-ovc-audit2-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/4342cfd05d3c-ovc-audit2-zh-cn.json",
+							"receipt_sha256": "b14d00c011067040bffde176b5b1bc079fa4b722f91d3b99b7e01681b8443d02",
+							"scope": "8d2a113b250..c6869d8d800 changed keys; unchanged translations retained"
 						}
 					],
 					"status": "audited"

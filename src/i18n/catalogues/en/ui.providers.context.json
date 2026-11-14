@@ -954,5 +954,110 @@
 		"tone": "Short imperative",
 		"length_hint": "Three words",
 		"note": "Same words as the Settings integration row's action."
+	},
+	"ui.providers.phone.action.add_credit": {
+		"role": "primary button",
+		"tone": "imperative",
+		"note": "Opens the Radient console's billing page in the browser (the backend's remedy.url) when the phone tunnel's billing has lapsed. Singular 'credit' app-wide (spec D5): the same wording as Settings' account button. This app never purchases credit itself."
+	},
+	"ui.providers.phone.action.open_console": {
+		"role": "primary button",
+		"tone": "imperative",
+		"note": "Opens the Radient console in the browser, where phone access for this computer was turned off. Radient is a product name; keep it untranslated."
+	},
+	"ui.providers.phone.action.turn_on": {
+		"role": "primary button",
+		"tone": "imperative",
+		"length_hint": "One or two words",
+		"note": "Turns phone access back on after the person stopped it on this computer. Shown only when the backend says it can do so now."
+	},
+	"ui.providers.phone.action.reconnect": {
+		"role": "primary button",
+		"tone": "imperative",
+		"length_hint": "One word",
+		"note": "Reconnects a phone tunnel Radient paused while billing is in order; nothing is charged."
+	},
+	"ui.providers.phone.action.copy_diagnostics": {
+		"role": "quiet button",
+		"tone": "imperative",
+		"note": "Copies a redacted technical report about phone access to the clipboard so the person can paste it to support or an agent. After a successful copy the label briefly becomes the shared 'Copied'."
+	},
+	"ui.providers.phone.stopped": {
+		"role": "status sentence",
+		"tone": "plain, calm",
+		"note": "Shown when the person deliberately turned phone access off on this computer. A statement of fact, not an error."
+	},
+	"ui.providers.phone.last_checked": {
+		"role": "meta line under a waiting status",
+		"tone": "neutral",
+		"placeholders": {
+			"when": "A localized relative time from Intl.RelativeTimeFormat, e.g. '12 seconds ago' / 'il y a 12 secondes'; the formatter already includes 'ago'."
+		},
+		"note": "Says when the phone access state was last observed while the app waits for it to recover on its own."
+	},
+	"ui.providers.phone.next_step_app": {
+		"role": "instruction after phone access is connected",
+		"tone": "plain, actionable",
+		"placeholders": {
+			"email": "The signed-in Radient account's email address."
+		},
+		"note": "The next step: install the native Local Operator app on the phone and sign in with this account. Local Operator is the product name; keep it untranslated."
+	},
+	"ui.providers.phone.next_step_app_no_email": {
+		"role": "instruction after phone access is connected",
+		"tone": "plain, actionable",
+		"note": "Same as next_step_app when the account email is not known. Keep Local Operator and Radient untranslated."
+	},
+	"ui.providers.phone.address_alternative": {
+		"role": "label above the phone address",
+		"tone": "neutral",
+		"note": "Introduces the web address as an alternative to the native app: opening it in the phone's browser also works. No trailing colon; the address follows on its own line."
+	},
+	"ui.providers.phone.diagnostics_failed": {
+		"role": "inline error",
+		"tone": "plain, calm",
+		"note": "The diagnostics report could not be read or put on the clipboard. Stays until the next press."
+	},
+	"ui.providers.phone.offer.title": {
+		"role": "card title (question)",
+		"tone": "friendly, low-pressure",
+		"note": "In-app card shown once after a Radient sign-in on a computer with no phone access. Local Operator is the product name; keep it untranslated."
+	},
+	"ui.providers.phone.offer.body": {
+		"role": "card body",
+		"tone": "reassuring, plain",
+		"note": "Explains the benefit and promises that any monthly price is shown before anything is billed. Nothing is set up or billed from this card."
+	},
+	"ui.providers.phone.offer.not_now": {
+		"role": "quiet button",
+		"tone": "neutral",
+		"length_hint": "One or two words",
+		"note": "Dismisses the offer card; remembered for this account on this computer."
+	},
+	"ui.providers.phone.announce.connected": {
+		"role": "screen-reader announcement",
+		"tone": "plain, calm",
+		"note": "Spoken by screen readers only (a polite live region, never shown) when phone access becomes connected without the person pressing anything, e.g. after a background reconnect. A full sentence; 'phone access' is the feature's name as in the block heading."
+	},
+	"ui.providers.phone.announce.reconnecting": {
+		"role": "screen-reader announcement",
+		"tone": "plain, calm",
+		"note": "Spoken by screen readers only (never shown) when phone access starts reconnecting in the background after a Radient sign-in. Nothing for the person to do; not an error."
+	},
+	"ui.providers.phone.action.copying_diagnostics": {
+		"role": "quiet button, in-progress label",
+		"tone": "neutral",
+		"length_hint": "About as long as 'Copy diagnostics'",
+		"note": "Replaces 'Copy diagnostics' on the same button while the report is being read and copied (can take several seconds on a slow network). Ends with an ellipsis character to say work is under way."
+	},
+	"ui.providers.phone.diagnostics_help": {
+		"role": "helper text under a button",
+		"tone": "plain, reassuring",
+		"note": "One or two short sentences under 'Copy diagnostics'. Says the copied report is about phone access on this computer, that private details (passwords, keys) are removed from it, and that it is safe to paste to support or a person or agent helping them. Avoid technical words like 'JSON' or 'redacted' if the locale has a plainer phrase."
+	},
+	"ui.providers.phone.search_terms": {
+		"role": "settings search keywords (not displayed)",
+		"tone": "keywords",
+		"note": "Space-separated words that make Settings search find the Phone access block. Never shown on screen. Give the words a person in this locale would type when looking for using the app from their phone: phone, mobile, remote access, app, etc. No punctuation needed; several synonyms are welcome."
 	}
 }
