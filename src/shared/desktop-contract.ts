@@ -74,6 +74,31 @@ const secret = z.string().min(1).max(32768);
 export const sessionIdPattern = /^[a-f0-9]{12}$/;
 const sessionId = z.string().regex(sessionIdPattern);
 /*
+ * THE SESSION IDS THE NOTIFICATIONS INBOX FILES ROWS UNDER.
+ *
+ * Not every inbox row belongs to a conversation: core files mesh credential
+ * repair items under the owner-scoped pseudo-session `network-credentials`
+ * (core `network/credentials/repair_inbox.py` `SESSION_ID`; no session
+ * directory exists, the reel shows `/network` as its title). Validating the
+ * notifications ops with the canonical 12-hex `sessionId` made the transport
+ * refuse any request that NAMED such a row - the toolbar's Dismiss all, Select
+ * all, opening that row's detail and its per-conversation dismiss all surfaced
+ * as the 422 toast "Invalid desktop operation." before reaching core.
+ *
+ * The list is closed, not a looser regex, because `sessionId` also scopes a
+ * PATCH: an arbitrary string here would let a typo dismiss nothing silently or
+ * a hostile renderer probe core's store keys. Keep it identical to core's
+ * route-side constant (core PR #3921); a new
+ * pseudo-session is added in both places at once.
+ */
+export const NOTIFICATION_PSEUDO_SESSION_IDS = ["network-credentials"] as const;
+export const isNotificationSessionId = (value: string): boolean =>
+	sessionIdPattern.test(value) ||
+	(NOTIFICATION_PSEUDO_SESSION_IDS as readonly string[]).includes(value);
+const notificationSessionId = z
+	.string()
+	.refine(isNotificationSessionId, "not a notifications session id");
+/*
  * A supplement JOB id (`supplements.persistence.new_job_id` mints 12 lowercase
  * hex) and the answer ANCHOR it attaches to (a final assistant message id).
  * Shapes are the contract's (`supplement-model.ts` states them for the
@@ -1375,7 +1400,7 @@ const notificationsTarget = z.union([
 		.strict(),
 	z
 		.object({
-			sessionId,
+			sessionId: notificationSessionId,
 			throughSeq: z.number().int().min(0),
 			observed: z
 				.array(
@@ -5106,13 +5131,26 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			// No selection_token/excluded_ids here: core's recount WITH exclusions
 			// is the PATCH body form ({op:"preview"}); 500 IDs in a GET URL exceed
 			// h11's request-line limit. The page recounts exclusions locally.
+			/*
+			 * Canonical ids only: the renderer filters its hints through
+			 * `notificationCountHints` (pseudo-sessions are not counted - an older
+			 * core would 422 on them, and a hint must never break the write it
+			 * accompanies).
+			 */
 			countSessionIds: z.array(sessionId).max(50).optional(),
+			/*
+			 * Ask core for every conversation's undismissed/unread counts in the
+			 * same answer (`session_counts`), replacing the renderer's whole-inbox
+			 * page walk. Additive: an older core ignores an unknown query param
+			 * and answers without the field, which is the renderer's fallback cue.
+			 */
+			includeSessionCounts: z.literal(true).optional(),
 			kind: z.enum(["all", "asks", "updates"]).optional(),
 			bulkPriority: z.enum(["any", "high", "normal_up"]).optional(),
 			state: z.enum(["unread", "all", "dismissed"]).optional(),
 			source: z.enum(["notify", "ask"]).optional(),
 			priority: z.enum(["high", "normal", "low"]).optional(),
-			sessionId: sessionId.optional(),
+			sessionId: notificationSessionId.optional(),
 			throughSeq: z.number().int().min(0).optional(),
 			cursor: z.string().min(1).max(64).optional(),
 			limit: z.number().int().min(1).max(100).optional(),
@@ -5185,7 +5223,8 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 				.max(50),
 			evidence: z
 				.object({
-					sessionId,
+					/* Same grammar core's `seen` evidence admits (core PR #3921). */
+					sessionId: notificationSessionId,
 					inputKind: z.enum(["pointer", "key", "wheel"]),
 					inputAtMs: z.number().int().min(0),
 					visibleSinceMs: z.number().int().min(0),
@@ -11383,6 +11422,8 @@ export function desktopEndpoint(request: DesktopRequest): {
 			const query = new URLSearchParams();
 			if (request.preview) query.set("preview", "true");
 			if (request.includeAskReads) query.set("include_ask_reads", "true");
+			if (request.includeSessionCounts)
+				query.set("include_session_counts", "true");
 			for (const id of request.countSessionIds ?? [])
 				query.append("count_session_ids", id);
 			if (request.kind) query.set("kind", request.kind);
