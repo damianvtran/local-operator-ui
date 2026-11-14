@@ -123,6 +123,12 @@ const item = (name: string) =>
 const meta = {
 	title: "Chat/Canonical/Supplement file actions",
 	component: FileActionsMenu,
+	// `actionPath` and `label` are required props, so `StoryObj<typeof meta>`
+	// demands them on every story unless meta supplies them. They mirror the
+	// fixture `Row` mounts (the custom `render` ignores args, so frames are
+	// unchanged); they exist to satisfy the Story type and describe the fixture
+	// truthfully in Storybook's controls panel.
+	args: { actionPath: ACTION_PATH, label: FILE_NAME, cwd: CWD },
 	render: () => <Row clipboard="accept" />,
 } satisfies Meta<typeof FileActionsMenu>;
 
