@@ -32,8 +32,11 @@ import { CredentialChip } from "./credential-chip";
  * have — so the chip is painted OVER the run, opaque, by this layer.
  *
  * THE MEASUREMENT IS THE HARD PART, and it is why this is a measured layer
- * rather than another class list. The chip must cover EXACTLY the box of the run
- * it stands for, or it drifts off the characters it is lying on top of. A
+ * rather than another class list. The chip's box IS the run's rect (the marker's
+ * `getClientRects()` entry) and must stay it, or it drifts off the characters it
+ * is lying on top of. The one floor under that is `min-width: min-content` (see
+ * where the box is styled below): it only bites if a translation's face outgrows
+ * the marker, and the shipped copy is written so that it does not. A
  * textarea exposes no per-run geometry — there is no DOM node per word in a text
  * control — so the only honest source is the mirror: it is already box-,
  * typography- and scroll-synced to the field, and its spans ARE the runs. Each
@@ -383,21 +386,30 @@ export const CredentialChipLayer = ({
 							left: box.left,
 							top: box.top,
 							width: box.width,
-							// THE BOX IS max(MARKER, CHIP MIN-CONTENT) (S18b design round 1, D1).
+							// THE BOX IS THE MARKER'S RECT; `min-content` IS A FLOOR UNDER IT, NOT A
+							// LICENCE TO GROW (S18b design rounds 1 and 2, D1/D5/D7).
 							// `width` is the raw marker's rect, which is minted in English and never
-							// translates, while the chip's contents do: the count token
-							// (`shrink-0`) measures 62.25px in en but ~95.2 in fr/es and ~92.6 in ru
-							// at the 19-char marker, and the label (`min-w-0 truncate`) absorbs the
-							// whole deficit - it collapsed to 0px, so the pill lost its `#1`, its
-							// only identifier in the composer. `min-width: min-content` is the
-							// content's own floor: the flex row's min-content is the sum of its
-							// items (the label counts at its full `#1`), so a chip whose face fits
-							// the marker keeps the marker's width EXACTLY (English stays 157.33px
-							// at 1024; its face is 143.28) and a longer translation grows only as
-							// far as it must. The growth is far below the 34px overhang that
-							// `credentialMarker`'s design record rejects
-							// (`credential-capture.ts`, "THE LABEL IS THE INDEX ALONE"), and the
-							// chip's own opaque ground covers it, so nothing underneath leaks.
+							// translates, while the chip's contents do: an unabbreviated fr/es/ru
+							// count token (`shrink-0`) measured ~95.2px (ru ~92.6) against 62.25 in
+							// en at the 19-char marker, and the label (`min-w-0 truncate`) absorbs
+							// the whole deficit - it collapsed to 0px, so the pill lost its `#1`,
+							// its only identifier in the composer. `min-width: min-content` keeps
+							// the label from being the item that pays.
+							//
+							// THE FLOOR MUST NEVER BITE IN SHIPPED COPY. A chip whose face fits the
+							// marker keeps the marker's width EXACTLY (English stays 157.33px at
+							// 1024; its face is 143.28), but a face wider than the marker would
+							// overhang it, and the chip's ground is OPAQUE: the overhang would paint
+							// over the operator's own text beside the run. Design round 2 measured
+							// that at 16.25-18.88px (19.30-21.77 compact) for the long fr/es/ru
+							// words and rejected it (D5), the same trade `credentialMarker`'s record
+							// rejects at 34px (`credential-capture.ts`, "THE LABEL IS THE INDEX
+							// ALONE"). So the cure is in the copy, not here: the fr/es/ru count is
+							// abbreviated (`car.`, `симв.`) so the translated face fits the English
+							// marker box, and `scripts/i18n/approval-paydown-copy.test.mjs` pins
+							// the length. A future locale whose count outgrows the marker would
+							// still get a readable label rather than a collapsed one, at the cost
+							// of that overhang; shorten its copy rather than relying on this.
 							minWidth: "min-content",
 							height: box.height,
 						}}

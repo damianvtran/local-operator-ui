@@ -4191,6 +4191,12 @@ test("the layer reports the drop at the commit that removes the control it was s
  * same flex row (`label.clientWidth` 0 -> 14 in fr/es/ru, en unchanged at 157.33, see the S18b
  * remediation comment) and the model below restates that arithmetic from the design review's
  * measured numbers so a change to the pair cannot pass silently.
+ *
+ * THE fr/es/ru NUMBERS BELOW ARE THE UNABBREVIATED WORDS (design round 2, D5). Those words were
+ * replaced by `car.` / `симв.` so the shipped face fits the marker and the floor does not bite;
+ * the fr/es/ru figures are kept as the worst case the floor exists for (a translation that
+ * outgrows the marker), and `scripts/i18n/approval-paydown-copy.test.mjs` pins the shipped copy's
+ * length.
  */
 test("the composer chip's box never drops below its own content, so a translated count cannot collapse the label", async () => {
 	const host = window.document.createElement("div");

@@ -257,6 +257,87 @@ test("the chip's phrase pluralises and never groups digits", () => {
 });
 
 /*
+ * THE CHIP'S COUNT MUST NOT REGROW (S18b design round 2, D5 MAJOR).
+ *
+ * The composer chip's box is the raw marker's rect, which is minted in English
+ * and never translates, and the chip paints an OPAQUE ground over it. A
+ * translated count that is wider than the English one makes the box overhang
+ * and cover the operator's own text (design round 2 measured 16-22px for the
+ * unabbreviated fr/es/ru words; `credential-capture.ts`, "THE LABEL IS THE
+ * INDEX ALONE", rejected a 34px overhang for that reason). The fr/es/ru copy is
+ * therefore abbreviated (`car.`, `симв.`) so the translated face fits the
+ * English marker box. This pin keeps a later translation pass from silently
+ * putting the long words back.
+ *
+ * CHARACTER LENGTH IS A PROXY, NOT A MEASUREMENT. The budget it stands for is
+ * the <=72px count token at 14px Inter derived in design round 2; no layout
+ * runs here, so the assertion compares code points of the rendered token with
+ * the English token at the same count and allows one character of slack (a
+ * glyph advance is not constant, and `car.` vs `chars` differ by more than
+ * a character in the safe direction anyway). The real pixels were measured in
+ * a browser, not by this row.
+ *
+ * Counts: 1 (en renders `1 char`, the plural's short branch), 19 (the marker a
+ * 19-char secret mints, the case the design measured) and 1000000 (the widest
+ * digit run `::group-off` can print for this field).
+ *
+ * THE CONTROL IS REAL: `S18B_CHIP_COPY_BASE=<sha>` reads the six non-en
+ * `ui.chat.credential_notice.json` files from that commit instead of the
+ * working tree; at 49cb67bb59 (before the abbreviation) the fr/es/ru rows must
+ * FAIL.
+ */
+const CHIP_KEY = "ui.chat.credential_notice.chip_chars";
+const CHIP_LOCALES = ["en", "fr", "es", "ru", "zh-CN", "vi", "hi", "ur"];
+const CHIP_COPY_BASE = process.env.S18B_CHIP_COPY_BASE;
+const chipCatalogue = (locale) =>
+	JSON.parse(
+		CHIP_COPY_BASE
+			? execFileSync(
+					"git",
+					[
+						"show",
+						`${CHIP_COPY_BASE}:src/i18n/catalogues/${locale}/ui.chat.credential_notice.json`,
+					],
+					{ encoding: "utf8" },
+				)
+			: readFileSync(
+					join(
+						ROOT,
+						`src/i18n/catalogues/${locale}/ui.chat.credential_notice.json`,
+					),
+					"utf8",
+				),
+	);
+const chipToken = (locale, chars) => {
+	// Real path: registerCatalogue -> setLocale -> t() -> IntlMessageFormat.
+	registerCatalogue(locale, { [CHIP_KEY]: chipCatalogue(locale)[CHIP_KEY] });
+	setLocale(locale);
+	try {
+		return t(CHIP_KEY, { chars });
+	} finally {
+		clearRegisteredCatalogues();
+		setLocale("en");
+	}
+};
+
+for (const locale of CHIP_LOCALES.filter((l) => l !== "en")) {
+	test(`${locale}: the chip's count token is no wider than English by more than one character`, () => {
+		for (const chars of [1, 19, 1000000]) {
+			const english = chipToken("en", chars);
+			const localized = chipToken(locale, chars);
+			assert.ok(
+				localized.includes(String(chars)),
+				`${locale} prints the count as plain digits; got ${JSON.stringify(localized)}`,
+			);
+			assert.ok(
+				[...localized].length <= [...english].length + 1,
+				`${locale} at ${chars}: ${JSON.stringify(localized)} (${[...localized].length}) outgrows English ${JSON.stringify(english)} (${[...english].length}) by more than 1 character - the chip box would overhang the marker and cover the operator's text (design round 2, D5)`,
+			);
+		}
+	});
+}
+
+/*
  * `ToolDetail` measures with `useLayoutEffect`, which React warns about on the
  * server render this suite uses; the warning is about hydration, not copy, so it
  * is dropped here rather than left to bury a real failure in the log.
