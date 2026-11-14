@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "convergence-rebind",
+  "locale": "vi",
+  "namespace": "ui.chat.run_details",
+  "pr": 1897,
+  "date": "2026-11-14",
+  "head": "dcfbcdbd0567f72233f5fb19c87b207ab7067aed",
+  "instance": "s17c-vi-rebind-76ac377d",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); not the translator, not the draft auditor, not the integrator",
+    "model": "deepseek/deepseek-flash",
+    "independence": "I translated none of these keys, ran no part of the S17c draft audit and integrated nothing; in this session I re-hashed and re-read the merged bytes, the parent prefix, the 36 values against English and the sidecar, and the render sites in the source, from scratch.",
+    "instance": "s17c-vi-rebind-76ac377d"
+  },
+  "model": "deepseek/deepseek-flash",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.run_details.mcp.connected_tally",
+      "note": "Width, arithmetic verified against the shed logic: mcpTally leaves the base un-shed and appends ` · attentionClause(problems)` when problems > 0, shedding only when `full.length > maxChars` (run-detail-model.ts:3367-3405; attentionClause is chip.attention at :4138). At 2 of 11 connected with 8 problems the rendered full is English 36 chars (`2 of 11 connected · 8 need attention`) against vi 38 (`2 trên 11 đã kết nối · 8 mục cần chú ý`), while tallyBudget(paneWidth) = floor((width-32-66)/6) = 37 at the pane's own 320px floor — so English keeps the attention clause there and vi sheds it. No data is lost (the rows and the chip tooltip still carry the problems), hence MINOR not MAJOR. Accept, or restore parity with `{connected_display}/{total_display} đã kết nối` (13 chars, full 32); either way flag the shed for a rendered frame at 320px with 11 servers / 2 connected / 8 problems."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.run_details.monitor.armed_count",
+      "note": "Width: 21 rendered chars (`2 mục giám sát đã đặt`) against English 16 (`2 monitors armed`), and this one string is both the Monitors section's trailing tally and the composer chips' label (monitorsChipLabel, composer-status-row.tsx:994-995). No shorter phrasing is available without breaking the glossary (mục giám sát = monitor, đã đặt = armed, which is what wake.armed_count also uses), and my read of the source confirmed the shared-value structure but not the chip's wrap-vs-truncate CSS, so this is a rendered-check flag at ~480px and the narrow band rather than a byte change."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.run_details.wake.armed_count",
+      "note": "Glossary drift on one English term inside this namespace: `wake` renders as `lịch thức dậy` here (`{count_display} lịch thức dậy đã đặt`) but as `lịch đánh thức` in six sibling keys of the same panel (wakes.title, wake.cancel_wake, wake.cancel_wake_named, wake.cancel_wake_due, wake.managed_note, wake.more), and the canonical tool-row layer also uses `lịch thức dậy`. This key is one of the pre-existing 109 and is byte-identical to parent ec00119944d, so the drift predates S17c and the 36 new values neither cause nor worsen it; recording it because one panel should not name the same object two ways. Alignment direction is the owner's call and it does not gate this PR."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.run_details.mcp.control.grant",
+      "note": "Width: 28 chars (`Cấp quyền truy cập tài khoản`) against English 20 (`Grant account access`), the longest control in the set; it sits in flex-wrap action rows, so it wraps rather than clipping. The shorter `Cấp quyền truy cập` (19) would drop the account object the English names, so keeping it is the right call unless a rendered frame shows the wrap hurting the footer."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.run_details.job_cancel.body",
+      "note": "Bare `Hàng` as the subject of the second sentence (`Hàng chỉ hiện “Đã hủy” khi tác vụ kết thúc.`) is the least anchored use of the corpus's row word, which is otherwise always qualified (`hàng của máy chủ`, `menu ⋯ của hàng`); English is equally bare (\"The row\"), so this is stylistic, not an accuracy defect. Optional tightening: `Hàng tác vụ chỉ hiện “Đã hủy” …`. Not worth a round."
+    }
+  ],
+  "binding": "Verified on the bytes at head dcfbcdbd0567, all four inputs re-hashed before reading: (1) parent prefix proved at the byte level, not only per value — the merged file's first 10098 bytes are byte-identical to the whole parent file (10101 bytes) less its trailing `\\n}\\n`, after which the merged text continues `,\\n\\t\"ui.chat.run_details.mcp_failure.lead.probe\": ...`; value-by-value comparison of all 109 parent keys found zero differences and the parent key order is an exact order-prefix of the merged key order; (2) the 36 new pairs equal the audited draft vi.v1.json's 36 pairs value-by-value in the same order (36/36, set and order identical, zero value mismatches); (3) the merged key set equals English's 145 both ways with no missing or extra key and no duplicate keys, the sidecar also covers exactly those 145, and all 145 values parse with the repo's own @formatjs/icu-messageformat-parser 3.5.21 (`requiresOtherClause:false`): ICU argument-name sets and number/date skeletons are identical per key, and every plural arm is legal — Intl.PluralRules('vi').resolvedOptions().pluralCategories is [\"other\"], so `other`-only is correct and the three keys carrying an English `=1` exact arm keep it; (4) every one of the 36 keys also formats without throwing through intl-messageformat at real call-site arguments, and the rendered strings match the audited numbers (e.g. `2 trên 11 đã kết nối`, `2 mục giám sát đã đặt`, `mỗi 1h · còn 3 lần gửi`); (5) format: the file re-serialises byte-identically as json.dumps(indent='\\t', ensure_ascii=False) plus one trailing newline, no BOM, no CR, no literal backslash-u escapes, all values NFC, TAB-indented entries. Only light checks were run: no test suite, no tsc, no installs; locale-parity was read statically, not executed — its vi:ui.chat.run_details.mcp_failure.with_reason IDENTICAL_OK row exists at scripts/i18n/locale-parity.test.mjs:1883, which covers the one value that is legitimately identical to English. Not verified: a rendered frame (the width findings are computed, not photographed), and the composer chip's wrap-vs-truncate CSS.",
+  "scope": "ui.chat.run_details for vi: 145 keys at PR head dcfbcdbd0567; 109 byte-identical to parent ec00119944d, 36 new read against English and the sidecar",
+  "revisions": {
+    "parent": "ec00119944dabb6a44ed8130f8864280401b1714",
+    "head": "dcfbcdbd0567f72233f5fb19c87b207ab7067aed"
+  },
+  "en_sha256": "1f1bf1d066875db81d4b5728e6a3f88c47a432d75aa8e75b92cdbefc42f2eb66",
+  "context_sha256": "8a329d4c5c6122e35986b8de3d04b6f25dfb3979349cd1675fed1b4cbc2497a6",
+  "target_sha256": "76ac377d015cbab9eb889ee74e7f2249cd9f26fddc5cd2c37a8ae00f5c21fd37",
+  "sha256": {
+    "vi": "76ac377d015cbab9eb889ee74e7f2249cd9f26fddc5cd2c37a8ae00f5c21fd37",
+    "en": "1f1bf1d066875db81d4b5728e6a3f88c47a432d75aa8e75b92cdbefc42f2eb66"
+  },
+  "draft_sha256": "80728c8b8c8b7bc21d3bb840d60fc51d47f73deeed5ad2d9eef81fdc697080f6"
+}

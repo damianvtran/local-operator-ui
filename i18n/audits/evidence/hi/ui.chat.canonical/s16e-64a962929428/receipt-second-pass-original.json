@@ -1,0 +1,121 @@
+{
+  "audit_id": "s16e-au2-hi",
+  "pass": "second-independent",
+  "slice": "S16e-renderer",
+  "pr": "damianvtran/local-operator-ui#1884",
+  "locale": "hi",
+  "namespace": "ui.chat.canonical",
+  "audit_date": "2026-11-12",
+  "status": "passed",
+  "verdict": "passed",
+  "result_supported": "clean-with-findings",
+  "unresolved_blocker_major_count": 0,
+  "severity_counts": {
+    "blockers": 0,
+    "majors": 0,
+    "minors": 1,
+    "nits": 1
+  },
+  "finding_ids": [
+    "HI-2-01",
+    "HI-2-02"
+  ],
+  "findings": [
+    {
+      "id": "HI-2-01",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.image_gen.cancel.checking",
+      "current": "शुल्क की पुष्टि जाँची जा रही है।",
+      "evidence": "Pleonastic double passive: the object of «जाँची जा रही है» is «पुष्टि», so the line says the confirmation is being examined rather than the charge being confirmed. The shipped construction this borrows from takes a report as its object (ui.chat.pickers.usage_view.checking_for_an_updated_usage_report), so the pattern does not carry over to पुष्टि. The key's contract is a three-word neutral status sentence; this runs to eight words.",
+      "suggested": "«शुल्क की पुष्टि की जा रही है।» (confirmation of the charge is underway; keeps पुष्टि and the charge noun).",
+      "gating": false
+    },
+    {
+      "id": "HI-2-02",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+      "current": "ऑडियो दर सीमा",
+      "evidence": "A bare noun compound names the constraint where the other five labels name the state or failure (अस्वीकृत, गेट विफल, अज्ञात टूल, अमान्य आर्ग्युमेंट, डुप्लिकेट id). It is grammatical as a label and the sentence below carries the meaning, but the shipped hi corpus only hyphenates this noun (दर-सीमा / दर-सीमाएँ) or uses it inside a clause (दर सीमा लगी है).",
+      "suggested": "«ऑडियो दर-सीमा» (hyphenated noun, matching the shipped form) if the noun label is kept; a participle form would read as a state but has no shipped precedent to anchor it.",
+      "gating": false
+    }
+  ],
+  "key_count": 12,
+  "value_count": 84,
+  "auditor": "i18n-auditor",
+  "session": "cc045047b39e",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "harness session header for session cc045047b39e reports deepseek/deepseek-flash; no fallback model was used for this audit",
+  "fallback_used": false,
+  "independent_from_translator_session": true,
+  "independent_from_first_pass": true,
+  "first_pass_consulted_after_own_findings": true,
+  "input_hashes": {
+    "en": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/i18n-s16e/src/i18n/catalogues/en/ui.chat.canonical.json",
+      "sha256": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17"
+    },
+    "context_brief": {
+      "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e-brief.json",
+      "sha256": "a0326137bff43ed38fc4a1c63d4a26e1887cfd56d4826df0e615df28055bef0c"
+    },
+    "context_repo_sidecar": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/i18n-s16e/src/i18n/catalogues/en/ui.chat.canonical.context.json",
+      "sha256": "ec598772089552ace910c857a38b364bdfa83a32c76c62b752b761527531e7b7"
+    },
+    "manifest": {
+      "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e/manifest.json",
+      "sha256": "8896921994fbd8c5f1c75983df805c9e09a1c4dabcdfcbc0a4c9c2f900733392"
+    },
+    "draft": {
+      "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e/hi/draft-hi-s16e.json",
+      "sha256": "41e9e50f80fb89f3d39a822b1fb95461f3d8b4cd9ece1b3ed899c1fec39a9831"
+    },
+    "shipped_catalogue": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/i18n-s16e/src/i18n/catalogues/hi/ui.chat.canonical.json",
+      "sha256": "5bad55ca446e6e2e0bc853d503d94280f444cd009402431c65e8ce997528689b"
+    },
+    "glossary": {
+      "path": "/Users/damian/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "/Users/damian/local-operator/i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    },
+    "worktree_head": "bd8e90542506e8bec4a98862b868095409b28329"
+  },
+  "axes": {
+    "mechanical": "pass",
+    "accuracy_promises": "pass",
+    "idiom_register_typography": "pass-with-notes",
+    "terminology": "pass-with-notes",
+    "fit": "pass",
+    "rtl": "n/a",
+    "cldr_plural_categories": "n/a - no plural/selectordinal argument in this 12-key slice"
+  },
+  "executed": {
+    "icu_parser": "@formatjs/icu-messageformat-parser 3.5.21, repo dependency, read-only",
+    "negative_controls_passed": 5,
+    "values_parsed": 84,
+    "codepoint_typography_scan": true,
+    "shipped_catalogue_term_lookup": true
+  },
+  "not_claimed": [
+    "rendered/browser/Storybook/Electron/pseudo-localization evidence",
+    "native-speaker review (explicitly not a gate)",
+    "full-file audit hashes - this is a draft slice",
+    "the 467 pre-existing keys of ui.chat.canonical",
+    "any ledger append performed by this audit"
+  ],
+  "artifacts": {
+    "report": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/report-hi-s16e.md",
+    "mechanical_log": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/mech.log",
+    "typography_log": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/typo.log",
+    "evidence_log": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/evidence.log",
+    "widths_log": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/widths.log",
+    "audit_log": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/audit.log",
+    "findings_ledger": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/findings.json"
+  },
+  "note": "Draft-slice receipt, second independent pass. 2 finding(s), 0 blocker / 0 major. Full provenance and evidence paths in this record."
+}

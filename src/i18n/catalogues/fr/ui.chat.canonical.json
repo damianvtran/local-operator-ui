@@ -469,5 +469,17 @@
 	"ui.chat.canonical.sound.cost.estimated_zero": "Coût estimé à 0 $ ; frais finaux non confirmés.",
 	"ui.chat.canonical.sound.cost.no_charge": "Sans frais.",
 	"ui.chat.canonical.sound.cost.unknown": "Coût encore inconnu.",
-	"ui.chat.canonical.supplement.sound_fallback_label": "Son généré"
+	"ui.chat.canonical.supplement.sound_fallback_label": "Son généré",
+	"ui.chat.canonical.image_gen.state.cancelled_batch": "{material, select, video {Lot de vidéos arrêté.} voiceover {Lot de voix off arrêté.} sound_effect {Lot d’effets sonores arrêté.} other {Lot d’images arrêté.}}",
+	"ui.chat.canonical.image_gen.cancel.queued": "Arrêtée avant l’appel au fournisseur ; vous ne serez pas facturé.",
+	"ui.chat.canonical.image_gen.cancel.running": "Arrêt demandé. Le fournisseur ne dispose d’aucun endpoint d’annulation ; la génération continue et sera facturée si elle produit un audio.",
+	"ui.chat.canonical.image_gen.cancel.checking": "Vérification du règlement.",
+	"ui.chat.canonical.image_gen.settlement.pending": "Règlement en attente — les frais finaux apparaîtront dès que le fournisseur les aura communiqués.",
+	"ui.chat.canonical.image_gen.error.audio_rate_limited": "La génération audio est très sollicitée en ce moment. Patientez un instant et réessayez.",
+	"ui.chat.canonical.image_gen.error_class.audio_rate_limited": "Débit audio limité",
+	"ui.chat.canonical.image_gen.error_class.unknown_tool": "Outil inconnu",
+	"ui.chat.canonical.image_gen.error_class.invalid_arguments": "Arguments invalides",
+	"ui.chat.canonical.image_gen.error_class.duplicate_id": "ID en double",
+	"ui.chat.canonical.image_gen.error_class.denied": "Refusé",
+	"ui.chat.canonical.image_gen.error_class.gate_failed": "Échec du contrôle"
 }
