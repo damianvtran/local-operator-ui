@@ -42,8 +42,25 @@
  * that no credit is purchased. It adds no legal gate; existing terms are unchanged.
  * The button sends back the SAME amount string it displays, so the backend's fresh
  * comparison is against what the person saw.
+ *
+ * ## The #3945 remedy vocabulary (`features.tunnel_remedy_kinds`)
+ *
+ * The operator's ask: a non-technical person signed in to Radient gets phone
+ * access without a terminal, and when the tunnel cannot come up the desktop says
+ * why in plain words and offers the fix. With the capability, the block renders
+ * one control per `remedy.kind` (spec v2 §4.1, D5): `add_credit` and
+ * `open_console` open the backend's own `remedy.url` (https only; the fix is in
+ * the Radient console, which this app has no authority to perform), a `stopped`
+ * tunnel says so and offers Turn on only when the backend says the run is ready,
+ * `restore_owner` reuses the sign-in, and the waiting kinds (`wait_network`,
+ * `wait_radient`, `wait_reconnect`, and the `reconnecting` plan) get a static
+ * status line, "Last checked" and a quiet Check again - never a spinner, because
+ * nothing on this computer is working on them (D8). Without the capability
+ * every one of those answers renders exactly as before: the backend's sentence
+ * and Check again. The new controls still never run `remedy.command`.
  */
 
+import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
@@ -51,14 +68,26 @@ import {
 import { CopyButton } from "@shared/components/common/copy-button";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui";
+import { consumePhoneAccessFocus } from "@shared/hooks/phone-access-navigation";
 import {
+	type PhoneSetupView,
 	type UsePhoneSetup,
 	usePhoneSetup,
 } from "@shared/hooks/use-phone-setup";
+import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useRadientSessionIssue } from "@shared/hooks/use-radient-session-issue";
-import { t } from "@shared/i18n";
-import { CircleCheck, ExternalLink } from "lucide-react";
-import { type FC, useEffect, useRef } from "react";
+import { formatRelativeTime, t } from "@shared/i18n";
+import { openConsolePage } from "@shared/utils/radient-account-copy";
+import { Check, CircleCheck, Copy, ExternalLink } from "lucide-react";
+import {
+	type FC,
+	useCallback,
+	useEffect,
+	useId,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 import {
 	type PhoneSetupResult,
 	phoneSetupSkipsCloudflared,
@@ -76,6 +105,69 @@ type PhoneAccessBlockProps = {
 	 * sign-in hook, which invalidates the same query keys as the panel.
 	 */
 	offerSignIn?: boolean;
+	/**
+	 * Whether this mount carries "Copy diagnostics". Settings -> Radient account
+	 * passes `true`: that is where a person is sent when phone access does not
+	 * work, and one copy of the button is enough. Still gated on
+	 * `features.mobile_doctor`.
+	 */
+	diagnostics?: boolean;
+	/**
+	 * The settings-search row id, on the Settings mount only (UX review U2). A
+	 * person who pressed "Not now" on the sidebar offer has no other way back to
+	 * setup short of knowing where it lives; the search index reads rendered
+	 * `[data-search-row]` elements only, so without this "phone" found nothing.
+	 */
+	searchRow?: string;
+};
+
+/**
+ * Kinds that clear without anyone acting, mirrored from local-operator
+ * `tunnels/gateway.py::WAITING_KINDS` (#3945). A button would invite a person to
+ * "fix" something that is not broken, so they get Check again only.
+ */
+const WAITING_KINDS: ReadonlySet<string> = new Set([
+	"wait_network",
+	"wait_radient",
+	"wait_reconnect",
+]);
+
+/**
+ * The console link a remedy carries, or null. https only: the URL is the
+ * backend's, but it is opened in the person's browser, and a remedy is not the
+ * place to accept any other scheme.
+ */
+export const phoneRemedyLink = (result: PhoneSetupResult): string | null => {
+	const url = result.remedy?.url;
+	if (typeof url !== "string" || url === "") return null;
+	try {
+		return new URL(url).protocol === "https:" ? url : null;
+	} catch {
+		return null;
+	}
+};
+
+/** "12 seconds ago" / "3 minutes ago" in the active locale, for Last checked. */
+export const phoneCheckedAgo = (then: number, now: number): string => {
+	const seconds = Math.max(1, Math.round((now - then) / 1000));
+	if (seconds < 60) return formatRelativeTime(-seconds, "second");
+	const minutes = Math.round(seconds / 60);
+	if (minutes < 60) return formatRelativeTime(-minutes, "minute");
+	return formatRelativeTime(-Math.round(minutes / 60), "hour");
+};
+
+/**
+ * The clock "Last checked" is measured against. A re-render every 10 s keeps the
+ * relative label honest while the waiting state sits on screen; it sends nothing
+ * and it lives only while that state is mounted.
+ */
+const useNow = (intervalMs: number): number => {
+	const [now, setNow] = useState(() => Date.now());
+	useEffect(() => {
+		const timer = setInterval(() => setNow(Date.now()), intervalMs);
+		return () => clearInterval(timer);
+	}, [intervalMs]);
+	return now;
 };
 
 type Status = "checking" | "applying" | "connected";
@@ -89,7 +181,20 @@ const Heading: FC<{ status?: Status }> = ({ status }) => (
 				aria-hidden="true"
 			/>
 		) : null}
-		<h4 className="text-heading text-ink">{t("ui.providers.phone.heading")}</h4>
+		{/*
+		 * Focusable by script only (`tabIndex={-1}`): the block's one stable
+		 * landing point when a state change removes the button that had focus,
+		 * when the sidebar offer navigates here, and when settings search jumps to
+		 * this row (UX review U3). Never in the Tab order.
+		 */}
+		<h4
+			tabIndex={-1}
+			data-phone-heading=""
+			data-search-control=""
+			className="rounded-sm text-heading text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+		>
+			{t("ui.providers.phone.heading")}
+		</h4>
 		{status === "checking" ? (
 			<span className="flex items-center gap-2 text-body-sm text-ink-muted">
 				<Spinner size="sm" />
@@ -203,8 +308,29 @@ const Failure: FC<{
 	</div>
 );
 
+/**
+ * The next step after success (spec U9): the native app, signed in as this
+ * Radient account. A COMPONENT so the account read mounts only here, in the one
+ * state that names the email, and only with the #3945 vocabulary; the address
+ * stays below it as the alternative.
+ */
+const NextStep: FC = () => {
+	const { user } = useRadientAuth();
+	const email = user?.email ?? "";
+	return (
+		<p className="break-words text-body-sm text-ink" data-phone-next-step="app">
+			{email
+				? t("ui.providers.phone.next_step_app", { email })
+				: t("ui.providers.phone.next_step_app_no_email")}
+		</p>
+	);
+};
+
 /** `verified: true`, the only state that earns the success treatment. */
-const Verified: FC<{ result: PhoneSetupResult }> = ({ result }) => (
+const Verified: FC<{ result: PhoneSetupResult; remedies: boolean }> = ({
+	result,
+	remedies,
+}) => (
 	<div
 		className="flex flex-col gap-3"
 		data-phone-state="verified"
@@ -212,10 +338,13 @@ const Verified: FC<{ result: PhoneSetupResult }> = ({ result }) => (
 	>
 		<Heading status="connected" />
 		<AccountLine result={result} />
+		{remedies ? <NextStep /> : null}
 		{result.url ? (
 			<div className="flex flex-col items-start gap-2">
 				<p className="text-meta text-ink-dim">
-					{t("ui.providers.phone.address_label")}
+					{remedies
+						? t("ui.providers.phone.address_alternative")
+						: t("ui.providers.phone.address_label")}
 				</p>
 				<code className="break-all text-ink text-mono-sm">{result.url}</code>
 				<CopyButton
@@ -225,9 +354,11 @@ const Verified: FC<{ result: PhoneSetupResult }> = ({ result }) => (
 				/>
 			</div>
 		) : null}
-		<p className="break-words text-body-sm text-ink-muted">
-			{t("ui.providers.phone.use_address")}
-		</p>
+		{remedies ? null : (
+			<p className="break-words text-body-sm text-ink-muted">
+				{t("ui.providers.phone.use_address")}
+			</p>
+		)}
 		<Lines
 			heading={t("ui.providers.phone.receipts_heading")}
 			lines={result.receipts.map((receipt) => receipt.text)}
@@ -278,6 +409,50 @@ const SignInAction: FC<{ onDone: () => void }> = ({ onDone }) => {
 };
 
 /**
+ * A state nothing on this computer is working on (D8): the backend's sentence as
+ * a static status line, when it was last observed, and a QUIET Check again. No
+ * spinner: a spinner says "working", and the honest answer is "waiting". The
+ * `reconnecting` plan re-asks on its own (`use-phone-setup.ts`), and a press here
+ * during it is the same read-only plan, which answers `reconnecting` again rather
+ * than an error (U10).
+ */
+const Waiting: FC<{
+	result: PhoneSetupResult;
+	setup: UsePhoneSetup;
+	kind: string;
+}> = ({ result, setup, kind }) => {
+	const now = useNow(10_000);
+	return (
+		<div
+			className="flex flex-col gap-3"
+			data-phone-state={result.blocked_on}
+			data-remedy-kind={kind}
+			data-phone-waiting="true"
+		>
+			<Heading />
+			<AccountLine result={result} />
+			{result.remedy ? (
+				<output className="block break-words text-body-sm text-ink">
+					{result.remedy.text}
+				</output>
+			) : null}
+			{setup.checkedAt > 0 ? (
+				<p className="text-meta text-ink-dim" data-phone-last-checked="">
+					{t("ui.providers.phone.last_checked", {
+						when: phoneCheckedAgo(setup.checkedAt, now),
+					})}
+				</p>
+			) : null}
+			<div className="flex flex-wrap items-center gap-2">
+				<Button variant="ghost" size="sm" onClick={setup.check}>
+					{t("ui.providers.phone.action.check_again")}
+				</Button>
+			</div>
+		</div>
+	);
+};
+
+/**
  * Every non-verified answer: the backend's remedy, then at most one primary
  * control chosen by `remedy.kind` (never by its sentence).
  */
@@ -287,6 +462,15 @@ const Blocked: FC<{
 	offerSignIn: boolean;
 }> = ({ result, setup, offerSignIn }) => {
 	const kind = result.remedy?.kind ?? null;
+	const remedies = setup.remedies;
+	if (
+		remedies &&
+		(WAITING_KINDS.has(kind ?? "") || result.blocked_on === "reconnecting")
+	) {
+		return (
+			<Waiting result={result} setup={setup} kind={kind ?? "wait_reconnect"} />
+		);
+	}
 	// The relay transport needs no `cloudflared`, so the install step is skipped:
 	// the backend's sentence (which names the binary to install) is replaced by a
 	// neutral UI sentence, and "Check again" asks the backend for a fresh plan that
@@ -311,6 +495,18 @@ const Blocked: FC<{
 	const canActivate =
 		kind === "accept_quote" && result.ready && owner !== null && price !== null;
 	const canRun = kind === "run" && result.ready && owner !== null;
+	// A tunnel the person stopped is never resumed behind their back; Turn on is
+	// offered only when the backend says the run would act on it (`ready`). The
+	// #3945 backend answers `stopped` with `ready: false` (its `apply` declines a
+	// stopped tunnel), so there the sentence stands with Check again and the
+	// backend's own remedy beneath it.
+	const stopped = remedies && result.blocked_on === "stopped";
+	const canTurnOn = stopped && result.ready && owner !== null;
+	// The console is the whole fix for these two; the backend sends the link.
+	const link =
+		remedies && (kind === "add_credit" || kind === "open_console")
+			? phoneRemedyLink(result)
+			: null;
 
 	let control = checkAgain;
 	let extra = null;
@@ -325,14 +521,39 @@ const Blocked: FC<{
 			</Button>
 		);
 		extra = checkAgain;
-	} else if (canRun && owner !== null) {
+	} else if (canTurnOn && owner !== null) {
 		control = (
 			<Button variant="primary" size="sm" onClick={() => setup.run(owner)}>
-				{t("ui.providers.phone.action.set_up")}
+				{t("ui.providers.phone.action.turn_on")}
 			</Button>
 		);
 		extra = checkAgain;
-	} else if (kind === "sign_in" && offerSignIn) {
+	} else if (canRun && owner !== null) {
+		control = (
+			<Button variant="primary" size="sm" onClick={() => setup.run(owner)}>
+				{remedies && result.step === "reconnect"
+					? t("ui.providers.phone.action.reconnect")
+					: t("ui.providers.phone.action.set_up")}
+			</Button>
+		);
+		extra = checkAgain;
+	} else if (link !== null) {
+		control = (
+			<Button variant="primary" size="sm" onClick={() => openConsolePage(link)}>
+				{kind === "add_credit"
+					? t("ui.providers.phone.action.add_credit")
+					: t("ui.providers.phone.action.open_console")}
+				<ExternalLink aria-hidden="true" />
+			</Button>
+		);
+		extra = checkAgain;
+	} else if (
+		(kind === "sign_in" || (remedies && kind === "restore_owner")) &&
+		offerSignIn
+	) {
+		// `restore_owner`: the account that set this up is no longer signed in
+		// here, and signing it back in IS the fix (the backend never switches
+		// owners). The same browser sign-in, so nothing new is trusted.
 		control = <SignInAction onDone={setup.check} />;
 		extra = checkAgain;
 	}
@@ -370,7 +591,16 @@ const Blocked: FC<{
 					))}
 				</div>
 			) : null}
-			{skipCloudflared ? (
+			{stopped ? (
+				// UI-owned (spec §4.1): the backend's sentence names a terminal
+				// command, which is what this surface exists to avoid. It is kept
+				// below only while no Turn on is offered, because it is then the only
+				// way back.
+				<p className="break-words text-body-sm text-ink">
+					{t("ui.providers.phone.stopped")}
+				</p>
+			) : null}
+			{stopped && canTurnOn ? null : skipCloudflared ? (
 				// UI-owned, not the backend's: the backend sentence is the one being
 				// suppressed, and a blocked state with no sentence reads as a bug
 				// (design review D1). It never names the transport or the tool.
@@ -405,17 +635,268 @@ const Blocked: FC<{
 	);
 };
 
-const PhoneAccessBody: FC<{ offerSignIn: boolean }> = ({ offerSignIn }) => {
+/**
+ * "Copy diagnostics": the backend's redacted `lop mobile doctor --json`, as
+ * text, on the clipboard - what a person without a terminal hands to support or
+ * to an agent. Fetched on the press, never before (it describes this machine,
+ * and nobody asked yet). "Copied" resets after 2 s like `CopyButton`; a failure
+ * (the read or the clipboard) says so in place and stays until the next press,
+ * because a vanishing error is one a person can miss.
+ *
+ * While the read runs (the backend's doctor probes the tunnel, the health route
+ * and Radient, bounded at up to ~10 s on a slow network) the button says
+ * "Copying…" with a spinner and is `aria-disabled` (UX review U5): a silent
+ * button looked dead in exactly the case someone wants diagnostics. NOT the
+ * `disabled` attribute, which would drop keyboard focus to <body> the moment
+ * the press lands; the busy guard below already ignores repeat presses. The
+ * helper line under it says what the text is for and that it is redacted, so a
+ * person knows it is safe to paste to whoever is helping.
+ */
+const CopyDiagnostics: FC = () => {
+	const [state, setState] = useState<"idle" | "busy" | "copied" | "failed">(
+		"idle",
+	);
+	useEffect(() => {
+		if (state !== "copied") return undefined;
+		const timer = setTimeout(() => setState("idle"), 2000);
+		return () => clearTimeout(timer);
+	}, [state]);
+	const copy = async () => {
+		if (state === "busy") return;
+		setState("busy");
+		try {
+			const report = await desktopResult<unknown>({ op: "mobile.doctor" });
+			await navigator.clipboard.writeText(JSON.stringify(report, null, 2));
+			setState("copied");
+		} catch {
+			setState("failed");
+		}
+	};
+	const busy = state === "busy";
+	const helpId = useId();
+	return (
+		<div
+			className="flex flex-wrap items-center gap-2"
+			data-phone-diagnostics={state}
+		>
+			<Button
+				variant="ghost"
+				size="sm"
+				onClick={() => void copy()}
+				aria-busy={busy ? true : undefined}
+				aria-disabled={busy ? true : undefined}
+				aria-describedby={helpId}
+				className={busy ? "cursor-wait text-ink-disabled" : undefined}
+			>
+				{busy ? (
+					<Spinner size="xs" />
+				) : state === "copied" ? (
+					<Check aria-hidden="true" />
+				) : (
+					<Copy aria-hidden="true" />
+				)}
+				{busy
+					? t("ui.providers.phone.action.copying_diagnostics")
+					: state === "copied"
+						? t("ui.common.actions.copied")
+						: t("ui.providers.phone.action.copy_diagnostics")}
+			</Button>
+			<p id={helpId} className="w-full break-words text-meta text-ink-dim">
+				{t("ui.providers.phone.diagnostics_help")}
+			</p>
+			{state === "failed" ? (
+				<p role="alert" className="break-words text-body-sm text-ink">
+					{t("ui.providers.phone.diagnostics_failed")}
+				</p>
+			) : null}
+		</div>
+	);
+};
+
+/**
+ * Re-plan when the Radient sign-in settles on a DIFFERENT account (U10): the
+ * answer on screen predates it, and the backend's post-sign-in reconnect may
+ * already be running. Not on the first value, which the open's own plan covers.
+ * A component so the account read mounts only with the #3945 vocabulary.
+ */
+const RefetchOnSignIn: FC<{ onChange: () => void }> = ({ onChange }) => {
+	const { user, authStatus } = useRadientAuth();
+	const accountId =
+		authStatus === "loading" || authStatus === "restoring"
+			? undefined
+			: (user?.radientUser.account.id ?? null);
+	const last = useRef<string | null | undefined>(undefined);
+	useEffect(() => {
+		if (accountId === undefined) return;
+		if (last.current !== undefined && last.current !== accountId) onChange();
+		last.current = accountId;
+	}, [accountId, onChange]);
+	return null;
+};
+
+/**
+ * What the live region compares between renders: a settled state, or null
+ * while nothing is settled (checking, applying) so a re-check's in-between
+ * never counts as a change. Only `connected` and `reconnecting` are announced
+ * (the transitions nobody pressed for); a failure carries its own
+ * `role="alert"`, and every other state is reached by a press whose result the
+ * person is already looking at.
+ */
+const announcedStatus = (
+	view: PhoneSetupView,
+	remedies: boolean,
+): string | null => {
+	if (view.kind === "failure") return "failure";
+	if (view.kind !== "result") return null;
+	if (view.result.verified) return "connected";
+	if (remedies && view.result.blocked_on === "reconnecting") {
+		return "reconnecting";
+	}
+	// i18n: ignore comparison key, never rendered or announced
+	return `blocked:${view.result.blocked_on}:${view.result.remedy?.kind ?? ""}`;
+};
+
+/**
+ * The block's polite live region (UX review U4). Kept mounted for the block's
+ * whole life: a region inserted together with its text is not announced by
+ * many screen-reader/browser pairs, which is why the reconnecting -> Connected
+ * swap (a whole new subtree) said nothing. Announces (a) the two transitions
+ * that happen without a press, and (b) after a Check again whose answer did not
+ * change the state, "Last checked ..." - otherwise a press in a waiting state
+ * changed only a plain <p> and a screen-reader user could not tell it ran.
+ */
+const useAnnouncement = (
+	view: PhoneSetupView,
+	remedies: boolean,
+	checkedAt: number,
+): { message: string; pressed: () => void } => {
+	const [message, setMessage] = useState("");
+	const previous = useRef<string | null>(null);
+	// When Check again was pressed (ms epoch), or 0 when no press is waiting for
+	// its answer. An answer counts only if it was observed after the press.
+	const pressedAt = useRef(0);
+	const status = announcedStatus(view, remedies);
+	useEffect(() => {
+		if (status === null) return;
+		const before = previous.current;
+		previous.current = status;
+		let next: string | null = null;
+		if (before !== null && before !== status) {
+			if (status === "connected") {
+				next = t("ui.providers.phone.announce.connected");
+			} else if (status === "reconnecting") {
+				next = t("ui.providers.phone.announce.reconnecting");
+			}
+		}
+		const answered = pressedAt.current > 0 && checkedAt >= pressedAt.current;
+		if (status === "failure" || answered) pressedAt.current = 0;
+		if (next === null && answered && status !== "failure") {
+			next = t("ui.providers.phone.last_checked", {
+				when: phoneCheckedAgo(checkedAt, Date.now()),
+			});
+		}
+		if (next === null) return;
+		const said = next;
+		// The same words twice in a row are not re-announced by a live region, so a
+		// second identical message differs by one invisible no-break space.
+		setMessage((current) => (current === said ? `${said}\u00a0` : said));
+	}, [status, checkedAt]);
+	const pressed = useCallback(() => {
+		pressedAt.current = Date.now();
+	}, []);
+	return { message, pressed };
+};
+
+const headingIn = (section: HTMLElement | null): HTMLElement | null =>
+	section?.querySelector<HTMLElement>("[data-phone-heading]") ?? null;
+
+const PhoneAccessBody: FC<{
+	offerSignIn: boolean;
+	diagnostics: boolean;
+	searchRow?: string;
+}> = ({ offerSignIn, diagnostics, searchRow }) => {
 	const setup = usePhoneSetup();
+	const capabilities = useDesktopCapabilities();
 	const { view } = setup;
+	const sectionRef = useRef<HTMLElement>(null);
+	const announcement = useAnnouncement(view, setup.remedies, setup.checkedAt);
+	const { pressed } = announcement;
+	const rawCheck = setup.check;
+	const check = useCallback(() => {
+		pressed();
+		rawCheck();
+	}, [pressed, rawCheck]);
+
+	// Focus that a state change would otherwise drop (UX review U3b). A poll,
+	// a focus refetch or a finished run replaces the subtree, and with it the
+	// button that had focus (Check again, Add credit), which sends a keyboard
+	// user back to the top of the document. The last control focused in here is
+	// remembered; after a commit that disconnected it while focus fell to
+	// <body>, focus moves to this block's heading. Focus that LEFT the block for
+	// another control is forgotten, and a window that merely lost focus keeps
+	// its element connected, so neither is ever pulled back.
+	const lastFocused = useRef<HTMLElement | null>(null);
+	useLayoutEffect(() => {
+		const element = lastFocused.current;
+		if (!element || element.isConnected) return;
+		lastFocused.current = null;
+		const active = document.activeElement;
+		if (active !== null && active !== document.body) return;
+		headingIn(sectionRef.current)?.focus({ preventScroll: true });
+	});
+
+	// The sidebar offer's [Set up phone access] lands here, not at the top of the
+	// Radient section (UX review U3c). The offer navigates to plain `/settings`
+	// rather than `?section=radient`: that deep link re-scrolls to the SECTION's
+	// top once the page settles (up to 2 s later) and would undo this landing.
+	const visible = view.kind !== "hidden";
+	useEffect(() => {
+		if (!visible || !sectionRef.current) return;
+		if (!consumePhoneAccessFocus()) return;
+		// Optional call: jsdom (the test rig) has no scrollIntoView.
+		sectionRef.current.scrollIntoView?.({ block: "center" });
+		headingIn(sectionRef.current)?.focus({ preventScroll: true });
+	}, [visible]);
+
 	if (view.kind === "hidden") return null;
+	const showDiagnostics =
+		diagnostics && desktopFeatureEnabled(capabilities.data, "mobile_doctor");
+	// Children press Check again through this, so the live region knows a press
+	// is waiting for its answer. The sign-in re-plan below keeps the raw check:
+	// nobody pressed anything there.
+	const pressable: UsePhoneSetup = { ...setup, check };
 
 	return (
 		<section
+			ref={sectionRef}
 			className="flex flex-col gap-3 border-hairline border-t pt-4"
 			aria-label={t("ui.providers.phone.heading")}
 			data-phone-block={view.kind}
+			data-search-row={searchRow}
+			data-search-label={
+				searchRow ? t("ui.providers.phone.heading") : undefined
+			}
+			data-search-terms={
+				searchRow ? t("ui.providers.phone.search_terms") : undefined
+			}
+			onFocus={(event) => {
+				lastFocused.current = event.target;
+			}}
+			onBlur={(event) => {
+				const to = event.relatedTarget;
+				if (to instanceof Node && !event.currentTarget.contains(to)) {
+					lastFocused.current = null;
+				}
+			}}
 		>
+			<p
+				aria-live="polite"
+				aria-atomic="true"
+				className="sr-only"
+				data-phone-announcement=""
+			>
+				{announcement.message}
+			</p>
 			{view.kind === "checking" ? (
 				<div className="flex flex-col gap-3" data-phone-state="checking">
 					<Heading status="checking" />
@@ -434,15 +915,21 @@ const PhoneAccessBody: FC<{ offerSignIn: boolean }> = ({ offerSignIn }) => {
 			{view.kind === "failure" ? (
 				<div className="flex flex-col gap-3" data-phone-state="failure">
 					<Heading />
-					<Failure failure={view.failure} onCheck={setup.check} />
+					<Failure failure={view.failure} onCheck={check} />
 				</div>
 			) : null}
 			{view.kind === "result" && view.result.verified ? (
-				<Verified result={view.result} />
+				<Verified result={view.result} remedies={setup.remedies} />
 			) : null}
 			{view.kind === "result" && !view.result.verified ? (
-				<Blocked result={view.result} setup={setup} offerSignIn={offerSignIn} />
+				<Blocked
+					result={view.result}
+					setup={pressable}
+					offerSignIn={offerSignIn}
+				/>
 			) : null}
+			{showDiagnostics ? <CopyDiagnostics /> : null}
+			{setup.remedies ? <RefetchOnSignIn onChange={setup.check} /> : null}
 		</section>
 	);
 };
@@ -454,8 +941,16 @@ const PhoneAccessBody: FC<{ offerSignIn: boolean }> = ({ offerSignIn }) => {
  */
 export const PhoneAccessBlock: FC<PhoneAccessBlockProps> = ({
 	offerSignIn = false,
+	diagnostics = false,
+	searchRow,
 }) => {
 	const capabilities = useDesktopCapabilities();
 	if (!desktopFeatureEnabled(capabilities.data, "tunnel_setup")) return null;
-	return <PhoneAccessBody offerSignIn={offerSignIn} />;
+	return (
+		<PhoneAccessBody
+			offerSignIn={offerSignIn}
+			diagnostics={diagnostics}
+			searchRow={searchRow}
+		/>
+	);
 };

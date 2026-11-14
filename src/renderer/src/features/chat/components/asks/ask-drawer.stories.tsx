@@ -1120,3 +1120,77 @@ export const SecretStoredKeyChange: Story = {
 		await screen.findByRole("button", { name: "Update answer" });
 	},
 };
+
+/*
+ * THE SUGGESTED COMMAND (`PendingAskQuestion.command`): the four states the
+ * design review renders. One question that needs the user to sign a CLI back
+ * in, with the command the agent suggests. `Command none` is the same card
+ * without the field — the before. `Command local` is a conversation whose agent
+ * works on this computer: Insert and Run… are offered. `Command remote` is a
+ * conversation whose agent works on another device: Insert only, with the line
+ * that says why. `Command run dialog` presses Run… and holds the confirmation.
+ */
+const SIGN_IN: PendingAsk = ask({
+	ask_id: "a-cmd1",
+	questions: [
+		{
+			id: "glab",
+			question:
+				"glab is signed out, so I can't open the merge request. Sign it back in, then tell me when it's done.",
+			options: [
+				{ label: "Done — signed in" },
+				{ label: "Skip the MR for now" },
+			],
+			command: "glab auth login --hostname gitlab.com",
+			command_target: "agent",
+		},
+	],
+});
+
+const {
+	command: _command,
+	command_target: _target,
+	...SIGN_IN_PLAIN
+} = SIGN_IN.questions[0];
+
+export const CommandNone: Story = {
+	args: {
+		frontend: frontend([{ ...SIGN_IN, questions: [SIGN_IN_PLAIN] }]),
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
+	},
+};
+
+export const CommandLocal: Story = {
+	args: {
+		frontend: frontend([SIGN_IN]),
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
+		onCommand: () => true,
+		commandPlacementOf: () => ({ kind: "here" }),
+	},
+};
+
+export const CommandRemote: Story = {
+	args: {
+		...CommandLocal.args,
+		commandPlacementOf: () => ({
+			kind: "elsewhere",
+			device: "Studio Mac mini",
+		}),
+	},
+};
+
+export const CommandRunDialog: Story = {
+	args: CommandLocal.args,
+	play: async () => {
+		await userEvent.click(await screen.findByRole("button", { name: "Run…" }));
+		await screen.findByRole("dialog");
+	},
+};

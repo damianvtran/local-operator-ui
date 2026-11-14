@@ -128,5 +128,9 @@
 	"ui.notifications.drawer.show_in_conversation": "Afficher dans la conversation",
 	"ui.notifications.drawer.footer": "Mises à jour de cette conversation uniquement",
 	"ui.notifications.drawer.open_notifications": "Ouvrir les notifications",
-	"ui.notifications.drawer.empty": "Rien n’a été signalé dans cette conversation."
+	"ui.notifications.drawer.empty": "Rien n’a été signalé dans cette conversation.",
+	"ui.notifications.drawer.view_details": "Voir les détails",
+	"ui.notifications.drawer.view_details_for": "Voir les détails : {title}",
+	"ui.notifications.drawer.back": "Retour aux mises à jour",
+	"ui.notifications.drawer.open_in_notifications": "Ouvrir dans les notifications"
 }

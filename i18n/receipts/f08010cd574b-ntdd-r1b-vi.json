@@ -1,0 +1,80 @@
+{
+  "auditor": "reviewer",
+  "model": "anthropic/claude-opus-5-5",
+  "model_fallback": null,
+  "instance": "f08010cd574b-ntdd-r1b-vi",
+  "date": "2026-11-13",
+  "locale": "vi",
+  "independence": "Independent of the translator (lopdev coder job 74cb13500e78, anthropic/claude-opus-5-5, same model: disclosed). Lopdev reviewer session f08010cd574b; read nothing from the translator's session or scratchpad; audit from this session's own reading.",
+  "translator": {
+    "agent": "lopdev coder",
+    "model": "anthropic/claude-opus-5-5",
+    "instance": "74cb13500e78",
+    "keys": "the 4 ui.notifications.drawer.{view_details,view_details_for,back,open_in_notifications} keys added by UI #1907"
+  },
+  "references": {
+    "glossary": "damianvtran/local-operator@8aeb9f3cd538 i18n/glossary.md",
+    "glossary_sha256": "a576d5a4b2718ba79a70a42600e3b6233ea28d716b1e2d996a208ac8dd7fabdb",
+    "style_guide": "damianvtran/local-operator@8aeb9f3cd538 i18n/style-guides/vi.md",
+    "style_guide_sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888",
+    "context_sha256": "90139d6dd2107c72c84f32bb2bae4696116ac080c4cbf3f082b389e02240adaa",
+    "previous_receipt": "i18n/receipts/cfdff5945838.json"
+  },
+  "repo": "damianvtran/local-operator-ui",
+  "pr": 1907,
+  "head": "0b2d3aa2bf517d64e8c69723dbae2abb7d581afb + remediation copy fixes (ledger-r1b.patch)",
+  "base": "5013566d21ace51619ae24e7fda3aee8aaa2677f",
+  "scope": "Audit of the FINAL values of the 4 keys PR #1907 adds to ui.notifications (drawer.view_details, view_details_for, back, open_in_notifications), read against en value + en .context.json, glossary and locale style guide; includes the round-1 remediation copy fixes. The other 130 values are byte-identical to the base file audited by the previous receipt; its open findings are carried forward.",
+  "namespaces": {
+    "ui.notifications": {
+      "status": "passed",
+      "sha256": {
+        "en": "125d29878607b2dc83657e541f1d62dfe6085e6ca990e105216b86523280045b",
+        "vi": "e06c356bdc6c21ad2dca646def18d7a15f5929f5401bde75ce1426d8191211ee"
+      },
+      "findings": [
+        {
+          "id": "V1",
+          "severity": "MINOR",
+          "key": "ui.notifications.seen.live",
+          "current_text": "Đã xem trực tiếp",
+          "proposed_text": "Đã xem khi nhận",
+          "note": "Carried forward unchanged from receipt i18n/receipts/cfdff5945838.json (auditor cfdff5945838): value byte-identical at 0b2d3aa2b, finding still open. Original reason: Trực tiếp reads as direct/live viewing (including a broadcast); the context says this provenance is being present in the conversation when the notification arrived, not watching a live transmission. Khi nhận expresses receipt-time viewing; keep the existing precise tooltip.",
+          "disposition": "carried forward; deferred (pre-existing, out of scope for PR #1907)"
+        },
+        {
+          "id": "V2",
+          "severity": "MINOR",
+          "key": "ui.notifications.read_via.explicit",
+          "current_text": "Đã đánh dấu đã đọc",
+          "proposed_text": "Đã đánh dấu là đã đọc",
+          "note": "Carried forward unchanged from receipt i18n/receipts/cfdff5945838.json (auditor cfdff5945838): value byte-identical at 0b2d3aa2b, finding still open. Original reason: The adjacent đã phrases without là make the completed-action provenance label read mechanically; inserting là gives the natural Vietnamese construction for marking something as read.",
+          "disposition": "carried forward; deferred (pre-existing, out of scope for PR #1907)"
+        }
+      ]
+    }
+  },
+  "checks": {
+    "mechanical": "Key parity with en (134 keys); {title} placeholder preserved byte-exactly in view_details_for; no ICU plural/select in new keys; no bidi control characters (U+200E/F, U+202A-E, U+2066-9, U+061C) in any value; NFC; fr U+202F before ':'; zh-CN full-width '：'; existing 130 values unchanged vs base.",
+    "gates": "generate --check, check-duplicates, check-strings, context-parity, check-added-strings (vs 5013566d2), check-coverage: all ok at 0b2d3aa2b; ledger-check: only the 7 stale ui.notifications rows."
+  },
+  "limitations": [
+    "No rendered fit or Urdu native-shaping proof; linguistic/ICU delta audit only, not visual sign-off. The back/open-in-Notifications row uses flex-wrap, so a long pair wraps rather than truncating."
+  ],
+  "final_values": {
+    "ui.notifications.drawer.view_details": "Xem chi tiết",
+    "ui.notifications.drawer.view_details_for": "Xem chi tiết: {title}",
+    "ui.notifications.drawer.back": "Quay lại mục Cập nhật",
+    "ui.notifications.drawer.open_in_notifications": "Mở trong mục Thông báo"
+  },
+  "resolved": [
+    {
+      "id": "I18N-1",
+      "key": "ui.notifications.drawer.back",
+      "was": "Quay lại cập nhật",
+      "now": "Quay lại mục Cập nhật",
+      "note": "Round-1 finding (PR #1907 i18n audit round 1, issuecomment-6864026597) fixed in the remediation commit; final value re-read and passed by this auditor."
+    }
+  ],
+  "supersedes_unlanded": "f08010cd574b-ntdd-vi (ledger-r1.patch, never committed)"
+}

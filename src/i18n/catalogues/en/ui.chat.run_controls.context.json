@@ -1,0 +1,95 @@
+{
+	"ui.chat.run_controls.job.no_conversation": {
+		"role": "error sentence shown where a background job cancel was asked, when the panel has no conversation to send it to",
+		"tone": "plain statement, sentence case, ends with a full stop",
+		"length": "One short sentence.",
+		"note": "Defensive copy: the run panel only lists background jobs off a conversation, so this appears only if a cancel is pressed with none open. 'Conversation' is the product's word for a chat session.",
+		"placeholders": {}
+	},
+	"ui.chat.run_controls.monitor.no_conversation": {
+		"role": "error sentence shown where a monitor cancel was asked, when the panel has no conversation to send it to",
+		"tone": "plain statement, sentence case, ends with a full stop",
+		"length": "One short sentence.",
+		"note": "Defensive copy: the run panel only lists monitors off a conversation, so this appears only if a cancel is pressed with none open. 'Conversation' is the product's word for a chat session.",
+		"placeholders": {}
+	},
+	"ui.chat.run_controls.monitor.cancel_failed": {
+		"role": "fallback error sentence after a monitor cancel failed and the backend gave no message",
+		"tone": "plain statement, sentence case, ends with a full stop",
+		"length": "One short sentence.",
+		"note": "Shown beside the monitor row in the run panel. When the backend sends its own sentence that is shown instead, so this is only the generic fallback.",
+		"placeholders": {}
+	},
+	"ui.chat.run_controls.wake.no_conversation": {
+		"role": "error sentence shown where a wake cancel was asked, when the panel has no conversation to send it to",
+		"tone": "plain statement, sentence case, ends with a full stop",
+		"length": "One short sentence.",
+		"note": "Defensive copy: the run panel only lists wakes off a conversation, so this appears only if a cancel is pressed with none open. 'Conversation' is the product's word for a chat session.",
+		"placeholders": {}
+	},
+	"ui.chat.run_controls.wake.cancel_failed": {
+		"role": "fallback error sentence after a wake (scheduled check-in) cancel failed and the backend gave no message",
+		"tone": "plain statement, sentence case, ends with a full stop",
+		"length": "One short sentence.",
+		"note": "Shown in the wake cancel confirmation, in the run panel or on the Schedules page. When the backend sends its own sentence that is shown instead, so this is only the generic fallback.",
+		"placeholders": {}
+	},
+	"ui.chat.run_controls.wake.already_gone": {
+		"role": "error sentence in the wake cancel confirmation when the wake no longer exists",
+		"tone": "plain statement, sentence case, ends with a full stop",
+		"length": "One short sentence.",
+		"note": "Replaces the backend's technical 'not found' reply: the wake already fired its last time or was cancelled elsewhere. A 'wake' is a scheduled follow-up message the assistant sends itself; keep the same word the panel uses for its Wakes section.",
+		"placeholders": {}
+	},
+	"ui.chat.run_controls.wake_confirm.title": {
+		"role": "title of the confirmation that cancels a wake (run panel popover and Schedules page dialog)",
+		"tone": "question, sentence case, ends with a question mark",
+		"length": "Three to five words.",
+		"note": "Used when the wake is not known to belong to the user's assistant, so the title names no one. A 'wake' is a scheduled follow-up message; keep the panel's word for it.",
+		"placeholders": {}
+	},
+	"ui.chat.run_controls.wake_confirm.title_named": {
+		"role": "title of the confirmation that cancels the assistant's own scheduled check-in",
+		"tone": "question, sentence case, ends with a question mark",
+		"length": "Three to six words.",
+		"note": "The name is the operator's own name for their assistant. Avoid a gendered pronoun for the assistant.",
+		"placeholders": {
+			"name": "the assistant's display name, as the operator configured it"
+		}
+	},
+	"ui.chat.run_controls.wake_confirm.message": {
+		"role": "body sentence of the wake cancel confirmation",
+		"tone": "two plain sentences, sentence case, reassuring about what is kept",
+		"length": "Two sentences.",
+		"note": "Translate both select branches as whole sentences. 'head' branch: the wake's own message, shown in typographic quotes (use the target language's quotation marks). 'other' branch: the wake has no message, so it is called 'this wake'. The second sentence says the conversation itself is not deleted.",
+		"placeholders": {
+			"subject": "select selector, never shown: 'head' when the wake has a message, 'other' when it has none",
+			"head": "the first line of the wake's message, user or assistant text, shown inside quotes"
+		}
+	},
+	"ui.chat.run_controls.wake_confirm.message_named": {
+		"role": "body sentence of the confirmation that cancels the assistant's own scheduled check-in",
+		"tone": "two plain sentences, sentence case, no pronoun for the assistant",
+		"length": "Two sentences.",
+		"note": "Translate both select branches as whole sentences. 'head' branch: the wake's own message, in the target language's quotation marks; 'other' branch: no message, so 'this wake'. The second sentence says the assistant's regular schedule keeps running. Avoid a gendered pronoun for the assistant.",
+		"placeholders": {
+			"subject": "select selector, never shown: 'head' when the wake has a message, 'other' when it has none",
+			"head": "the first line of the wake's message, shown inside quotes",
+			"name": "the assistant's display name, as the operator configured it"
+		}
+	},
+	"ui.chat.run_controls.wake_confirm.action": {
+		"role": "destructive confirm button in the wake cancel confirmation",
+		"tone": "verb + noun, sentence case, no trailing punctuation",
+		"length": "Two words; a button.",
+		"note": "Cancels the scheduled wake. Sits beside a 'Keep' button, so it must read as the destructive choice.",
+		"placeholders": {}
+	},
+	"ui.chat.run_controls.wake_confirm.action_named": {
+		"role": "destructive confirm button when cancelling the assistant's own check-in",
+		"tone": "verb + noun, sentence case, no trailing punctuation",
+		"length": "Two words; a button.",
+		"note": "Same action as 'Cancel wake', worded as the assistant's check-in. Sits beside a 'Keep' button.",
+		"placeholders": {}
+	}
+}

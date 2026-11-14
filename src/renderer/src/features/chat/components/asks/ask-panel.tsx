@@ -74,6 +74,11 @@ import type {
 	PendingAsk,
 	PendingAskQuestion,
 } from "../../../../../../shared/desktop-session-contract";
+import {
+	type AskAgentPlacement,
+	type AskCommandHint,
+	askCommandOf,
+} from "../../ask-command";
 import type {
 	AskDismissReason,
 	AskDraft,
@@ -110,6 +115,7 @@ import {
 	AskScrollBody,
 	ProposalReviewNotice,
 } from "./ask-bounds";
+import { AskCommandRow, AskCommandRunDialog } from "./ask-command";
 
 /**
  * WHICH HALF OF THE LIST THE READER IS LOOKING AT (operator ask, 2026-10-05).
@@ -242,8 +248,42 @@ export type AskPanelProps = {
 	 * this prop's presence.
 	 */
 	conversationOf?: (row: AskPresentation) => string | null;
+	/**
+	 * THE SUGGESTED-COMMAND DOORS (`PendingAskQuestion.command`): type the command
+	 * into a new terminal of the ask's conversation (`submit: false`, the card's
+	 * Insert) or type it and press Enter (`submit: true`, only after the card's
+	 * own confirmation dialog). The CALLER owns where that terminal is — the
+	 * session drawer files the console intent for its conversation, the fleet
+	 * drawer navigates to the ask's conversation first — so this panel stays
+	 * scope-agnostic, as it does for answers. Absent where the surface cannot
+	 * open a terminal (notifications detail, a story): the card then shows the
+	 * command and Copy only.
+	 *
+	 * The question id travels with the command so the caller matches the
+	 * question, not the text (agent review round 1, n2). Answers whether the
+	 * command was filed: a refused Run keeps its dialog open and says so (m3).
+	 */
+	onCommand?: (request: AskCommandRequest) => boolean;
+	/**
+	 * Where the agent of an ask's conversation works, relative to this computer
+	 * (`askAgentPlacement`). Decides whether Run… is offered at all
+	 * (`askCommandRunnable`). Absent reads as `unknown`, which fails closed:
+	 * Insert only.
+	 */
+	commandPlacementOf?: (ask: PendingAsk) => AskAgentPlacement;
 	className?: string;
 };
+
+/** One press of a suggested command's Insert or confirmed Run. */
+export type AskCommandRequest = {
+	ask: PendingAsk;
+	questionId: string;
+	command: string;
+	submit: boolean;
+};
+
+/** The placement a mount that supplies none gets: not provably here. */
+const UNKNOWN_PLACEMENT: AskAgentPlacement = { kind: "unknown" };
 
 /** Status glyph and ink, in one place so every row reads the same way. */
 const askStatusMark = (
@@ -403,6 +443,7 @@ const AskQuestionField = ({
 	onSecret,
 	onAdvance,
 	focusOtherRef,
+	command,
 }: {
 	question: PendingAskQuestion;
 	/** This question's draft cell: the ticked labels and, last, the `Other` text. */
@@ -431,6 +472,17 @@ const AskQuestionField = ({
 	 * mount, not on the drawer opening over a restored draft, not on a re-render.
 	 */
 	focusOtherRef: React.MutableRefObject<string | null>;
+	/**
+	 * The suggested-command row's inputs, present only while the ask is
+	 * answerable (the row's own rule: a settled or delivered ask is no longer a
+	 * request the agent is waiting on). The hint is already validated.
+	 */
+	command?: {
+		hint: AskCommandHint;
+		placement: AskAgentPlacement;
+		onInsert?: () => void;
+		onRun?: () => void;
+	};
 }) => {
 	const options = question.options ?? [];
 	const multi = question.multi === true;
@@ -540,6 +592,20 @@ const AskQuestionField = ({
 					<ProposalReviewNotice proposal={proposal} className="mt-1.5" />
 				) : null}
 			</AskScrollBody>
+			{/*
+			 * THE SUGGESTED COMMAND sits directly under the prose it belongs to and
+			 * OUTSIDE the bounded body, so a long question never scrolls the actions
+			 * out of reach; it is a sibling of the options, like them never clipped.
+			 */}
+			{command ? (
+				<AskCommandRow
+					hint={command.hint}
+					placement={command.placement}
+					onInsert={command.onInsert}
+					onRun={command.onRun}
+					enabled={!disabled}
+				/>
+			) : null}
 			{question.secret ? (
 				<input
 					data-ask-secret={question.id}
@@ -862,6 +928,9 @@ const AskRow = ({
 	onRevise,
 	onDismiss,
 	conversationOf,
+	onCommand,
+	placement,
+	onRunRequest,
 }: {
 	presentation: AskPresentation;
 	nowMs: number;
@@ -874,6 +943,10 @@ const AskRow = ({
 	onRevise?: AskPanelProps["onRevise"];
 	onDismiss?: AskPanelProps["onDismiss"];
 	conversationOf?: AskPanelProps["conversationOf"];
+	onCommand?: AskPanelProps["onCommand"];
+	placement: AskAgentPlacement;
+	/** Open the panel's Run confirmation for this ask's command. */
+	onRunRequest?: (ask: PendingAsk, questionId: string, command: string) => void;
 }) => {
 	const { ask, status, waiting, canAnswer, canDecline, delivering } =
 		presentation;
@@ -1524,6 +1597,37 @@ const AskRow = ({
 							}}
 							onAdvance={advanceFrom}
 							focusOtherRef={focusOtherRef}
+							command={(() => {
+								/*
+								 * ONLY WHILE ANSWERABLE, and only for a command that passes
+								 * the core's rule again here (`askCommandOf`): the change
+								 * form over a recorded answer is not a request the agent is
+								 * still waiting on, and a forged or malformed value draws
+								 * nothing at all.
+								 */
+								if (!canAnswer) return undefined;
+								const hint = askCommandOf(question);
+								if (hint === null) return undefined;
+								return {
+									hint,
+									placement,
+									onInsert:
+										onCommand === undefined
+											? undefined
+											: () => {
+													onCommand({
+														ask,
+														questionId: question.id,
+														command: hint.command,
+														submit: false,
+													});
+												},
+									onRun:
+										onCommand === undefined || onRunRequest === undefined
+											? undefined
+											: () => onRunRequest(ask, question.id, hint.command),
+								};
+							})()}
 						/>
 					))
 				: null}
@@ -1982,6 +2086,8 @@ export const AskPanel = ({
 	drafts,
 	onDraftChange,
 	conversationOf,
+	onCommand,
+	commandPlacementOf,
 	className,
 }: AskPanelProps) => {
 	/*
@@ -2418,6 +2524,52 @@ export const AskPanel = ({
 	});
 
 	/*
+	 * THE RUN CONFIRMATION, held by the PANEL rather than by the card.
+	 *
+	 * The card draws its command row only while the ask is answerable, and it
+	 * collapses or moves when the ask settles. A dialog owned by the card would
+	 * vanish under the reader the moment the ask closed; held here it stays up,
+	 * and `askOpen` — re-read from THIS render's rows — withholds the confirm
+	 * with a note instead. The ask, the command and the placement are captured
+	 * at the press, so the dialog shows exactly what the press was about even if
+	 * the row changes beneath it.
+	 */
+	const [runConfirm, setRunConfirm] = useState<{
+		ask: PendingAsk;
+		questionId: string;
+		command: string;
+		placement: AskAgentPlacement;
+		/** The press-time re-check refused the last confirm (m3). */
+		refused: boolean;
+	} | null>(null);
+	/*
+	 * THE DIALOG STAYS MOUNTED ACROSS ITS CLOSE (UX round 1, U1). `BaseDialog`
+	 * returns focus to its opener — the Run… button — only when `open` goes from
+	 * true to false while it is still mounted; unmounting it on close left focus
+	 * on `<body>`, so a keyboard user who backed out lost their place in an ask
+	 * they still had to answer. The last request is held here so the closing
+	 * render still has a command to draw while the panel animates out.
+	 */
+	const lastRunConfirm = useRef(runConfirm);
+	if (runConfirm !== null) lastRunConfirm.current = runConfirm;
+	const requestRun = useCallback(
+		(ask: PendingAsk, questionId: string, command: string) =>
+			setRunConfirm({
+				ask,
+				questionId,
+				command,
+				placement: commandPlacementOf?.(ask) ?? UNKNOWN_PLACEMENT,
+				refused: false,
+			}),
+		[commandPlacementOf],
+	);
+	const runAskOpen =
+		runConfirm !== null &&
+		view.rows.some(
+			(row) => row.ask.ask_id === runConfirm.ask.ask_id && row.canAnswer,
+		);
+
+	/*
 	 * ONE ROW, ONE CONSTRUCTION, used by both halves of the list: a settled ask's
 	 * expanded body is THE SAME CARD a pending ask wears, so the two cannot drift
 	 * into two ways of showing one ask. The key rides on the row because every caller
@@ -2437,6 +2589,9 @@ export const AskPanel = ({
 			onRevise={onRevise}
 			onDismiss={onDismiss === undefined ? undefined : dismissAsk}
 			conversationOf={conversationOf}
+			onCommand={onCommand}
+			placement={commandPlacementOf?.(presentation.ask) ?? UNKNOWN_PLACEMENT}
+			onRunRequest={onCommand === undefined ? undefined : requestRun}
 		/>
 	);
 
@@ -2694,6 +2849,36 @@ export const AskPanel = ({
 					? t("ui.chat.ask_panel.empty.none_settled")
 					: null;
 
+	const shownRun = runConfirm ?? lastRunConfirm.current;
+	const runDialog =
+		onCommand !== undefined && shownRun !== null ? (
+			<AskCommandRunDialog
+				open={runConfirm !== null}
+				command={shownRun.command}
+				placement={shownRun.placement}
+				askOpen={runConfirm === null ? true : runAskOpen}
+				refused={shownRun.refused}
+				onCancel={() => setRunConfirm(null)}
+				onConfirm={() => {
+					const pending = runConfirm;
+					if (pending === null || !runAskOpen) return;
+					const filed = onCommand({
+						ask: pending.ask,
+						questionId: pending.questionId,
+						command: pending.command,
+						submit: true,
+					});
+					/*
+					 * A REFUSED CONFIRM IS SAID, NOT SWALLOWED (agent review round 1,
+					 * m3): the press-time re-check (placement moved to a peer, the
+					 * command no longer the question's) used to close the dialog with
+					 * nothing happening. It stays up, the confirm withheld, with a reason.
+					 */
+					setRunConfirm(filed ? null : { ...pending, refused: true });
+				}}
+			/>
+		) : null;
+
 	return (
 		<div
 			ref={panelRef}
@@ -2817,6 +3002,7 @@ export const AskPanel = ({
 					)}
 				</div>
 			) : null}
+			{runDialog}
 		</div>
 	);
 };

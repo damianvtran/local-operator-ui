@@ -469,5 +469,17 @@
 	"ui.chat.canonical.sound.cost.estimated_zero": "Ориентировочная стоимость $0; итоговая плата не подтверждена.",
 	"ui.chat.canonical.sound.cost.no_charge": "Плата не взималась.",
 	"ui.chat.canonical.sound.cost.unknown": "Стоимость пока неизвестна.",
-	"ui.chat.canonical.supplement.sound_fallback_label": "Созданный звук"
+	"ui.chat.canonical.supplement.sound_fallback_label": "Созданный звук",
+	"ui.chat.canonical.image_gen.state.cancelled_batch": "{material, select, video {Набор видео остановлен.} voiceover {Набор озвучек остановлен.} sound_effect {Набор звуковых эффектов остановлен.} other {Набор изображений остановлен.}}",
+	"ui.chat.canonical.image_gen.cancel.queued": "Остановлено до обращения к провайдеру; плата не взимается.",
+	"ui.chat.canonical.image_gen.cancel.running": "Запрошена остановка. У провайдера нет endpoint для отмены; генерация продолжится, и если она создаст аудио, за него будет взиматься плата.",
+	"ui.chat.canonical.image_gen.cancel.checking": "Проверка расчёта.",
+	"ui.chat.canonical.image_gen.settlement.pending": "Расчёт ещё не завершён — итоговая плата появится, как только провайдер сообщит о ней.",
+	"ui.chat.canonical.image_gen.error.audio_rate_limited": "Генерация аудио сейчас перегружена. Подождите немного и повторите попытку.",
+	"ui.chat.canonical.image_gen.error_class.audio_rate_limited": "Лимит аудио",
+	"ui.chat.canonical.image_gen.error_class.unknown_tool": "Неизвестный инструмент",
+	"ui.chat.canonical.image_gen.error_class.invalid_arguments": "Неверные аргументы",
+	"ui.chat.canonical.image_gen.error_class.duplicate_id": "Повторяющийся ID",
+	"ui.chat.canonical.image_gen.error_class.denied": "Запрещено",
+	"ui.chat.canonical.image_gen.error_class.gate_failed": "Проверка не пройдена"
 }

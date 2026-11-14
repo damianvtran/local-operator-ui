@@ -128,5 +128,9 @@
 	"ui.notifications.drawer.show_in_conversation": "Показать в разговоре",
 	"ui.notifications.drawer.footer": "Только обновления из этого разговора",
 	"ui.notifications.drawer.open_notifications": "Открыть уведомления",
-	"ui.notifications.drawer.empty": "В этом разговоре ничего не помечено."
+	"ui.notifications.drawer.empty": "В этом разговоре ничего не помечено.",
+	"ui.notifications.drawer.view_details": "Подробнее",
+	"ui.notifications.drawer.view_details_for": "Подробнее: {title}",
+	"ui.notifications.drawer.back": "Назад к обновлениям",
+	"ui.notifications.drawer.open_in_notifications": "Открыть в уведомлениях"
 }

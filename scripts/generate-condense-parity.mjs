@@ -386,8 +386,7 @@ const foldOptions = (model, liveTurn, latchedFoldIds) => ({
 	startedAtOf: (row) =>
 		row.record.kind === "tool" ? row.record.startedAt : null,
 	endedAtOf: (row) => (row.record.kind === "tool" ? row.record.endedAt : null),
-	isFoldable: (row) =>
-		row.record.kind === "tool" && !model.isQuietTurnCall(row.record),
+	isFoldable: (row) => model.isTraceFoldable(row.record),
 	isReceipt: (row) => model.isInternalReceipt(row.record),
 	receiptSummaryOf: (rows) => model.receiptFoldUnits(rows),
 	liveTurn,

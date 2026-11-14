@@ -154,7 +154,10 @@ export function checkpointLeadLabel(
 export function checkpointTitle(checkpoint: Checkpoint): string {
 	const name =
 		checkpoint.naming?.state === "ready" ? checkpoint.naming.name?.trim() : "";
-	return name || `Turn ${checkpoint.turn}`;
+	return (
+		name ||
+		t("ui.chat.run_details.checkpoint.turn_fallback", { turn: checkpoint.turn })
+	);
 }
 
 /** Whether the card should say a name is still being generated. */

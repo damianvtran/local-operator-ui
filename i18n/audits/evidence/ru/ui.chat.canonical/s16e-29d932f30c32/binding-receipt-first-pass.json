@@ -1,0 +1,57 @@
+{
+ "schema": 1,
+ "instance": "s16e-ru-20261112",
+ "locale": "ru",
+ "namespace": "ui.chat.canonical",
+ "audit_date": "2026-11-12",
+ "pass": 1,
+ "auditor": {
+  "agent": "i18n-auditor",
+  "instance": "s16e-ru-20261112",
+  "session": "17d1e8b0f671",
+  "model": "deepseek/deepseek-flash",
+  "independent_from_translator_session": true,
+  "actual_model_source": "session-state environment header (no fallback observed)"
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "scope": "the 12 NEW S16e image-generation card stop/settlement/error keys of ui.chat.canonical (ru), audited as the translator's 12-key draft (sha256 ccc4674d071cc725e48f54c2becd2ac38eaa9004dbcdde8890ecaeedcf9c6060); the 467 pre-existing keys of the namespace were not re-reviewed and are proven byte-identical to the previously audited bytes by the retained-key digest in verify.log",
+ "sha256": {
+  "ru": "29d932f30c329a27731a9b3f3f8179b569f6a44309a45eb1ac9fe1e5109b20df",
+  "en": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17",
+  "context": "ec598772089552ace910c857a38b364bdfa83a32c76c62b752b761527531e7b7"
+ },
+ "findings": [
+  {
+   "id": "N1",
+   "severity": "NIT",
+   "key": "ui.chat.canonical.image_gen.error.audio_rate_limited",
+   "current": "`Генерация аудио сейчас перегружена. Подождите немного и повторите попытку.`",
+   "problem": "Grammatically correct and faithful; the slight friction is that the *process* («генерация») is said to be overloaded rather than the service behind it. Meaning, register and the \"no promise / no wait time\" constraints all hold.",
+   "suggested": "`Сервис генерации аудио сейчас перегружен. Подождите немного и повторите попытку.` (only if the copy owner wants the subject to be the service)",
+   "transcribed_from": "this audit's own report.md disposition table"
+  },
+  {
+   "id": "N2",
+   "severity": "NIT",
+   "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+   "current": "`Лимит аудио`",
+   "problem": "A bare noun phrase names the quota rather than the exceeded state that the English label reports (\"rate limited\"). It is anchored by the sentence below and collides with nothing in the shipped catalogue (checked: 0 collisions), so it works as a class label.",
+   "suggested": "`Превышен лимит аудио` (19 chars; sibling labels run to 22 — `Неизвестный инструмент`)",
+   "transcribed_from": "this audit's own report.md disposition table"
+  }
+ ],
+ "provenance": {
+  "kind": "BINDING RECEIPT: verdict, severity counts, findings, session and model are transcribed from this auditor's own record (audits/ru/receipt.json); this file was written by the integrating coder session (agent coder), NOT by the auditor. The auditor reviewed the 12-key draft fragment, so no auditor-authored file can name the integrated catalogue hash; this receipt names it, and verify.log proves every landed value equals the audited draft value.",
+  "authored_by": "integrating coder session 95bd4b294de3 (agent coder)",
+  "transcribed_from": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e/audits/ru/receipt.json",
+  "transcribed_from_sha256": "e51e45d46fd89e9998cf6653e4ca28146a4db237193c93180db9ccf5b7791d04",
+  "instance_origin": "the auditor's own `audit_id` (the record carries no `instance`/`session` at top level)",
+  "integrated_target_sha256": "29d932f30c329a27731a9b3f3f8179b569f6a44309a45eb1ac9fe1e5109b20df",
+  "not_claimed": [
+   "a full-file re-audit by this auditor: only the 12 new keys were reviewed",
+   "individual review of the retained 467 keys (they ride the previously audited bytes)",
+   "rendered/browser/pseudo-localization frames"
+  ]
+ }
+}

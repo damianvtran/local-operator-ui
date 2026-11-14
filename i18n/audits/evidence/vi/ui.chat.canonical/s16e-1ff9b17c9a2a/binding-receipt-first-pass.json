@@ -1,0 +1,73 @@
+{
+ "schema": 1,
+ "instance": "462e1eb39290",
+ "locale": "vi",
+ "namespace": "ui.chat.canonical",
+ "audit_date": "2026-11-12",
+ "pass": 1,
+ "auditor": {
+  "agent": "i18n-auditor",
+  "instance": "462e1eb39290",
+  "session": "462e1eb39290",
+  "model": "deepseek/deepseek-flash",
+  "independent_from_translator_session": true,
+  "actual_model_source": "session runtime header names 'Model: deepseek/deepseek-flash'; no fallback observed and none declared in this run"
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "scope": "the 12 NEW S16e image-generation card stop/settlement/error keys of ui.chat.canonical (vi), audited as the translator's 12-key draft (sha256 c0e8df525f0324921dd849634e1a83d6e9d4de53db0e1f38d68c3a2b217f10a9); the 467 pre-existing keys of the namespace were not re-reviewed and are proven byte-identical to the previously audited bytes by the retained-key digest in verify.log",
+ "sha256": {
+  "vi": "1ff9b17c9a2ac5f276e03f433a2187385af5b0130d95ba2624f2bc7ad77c92cf",
+  "en": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17",
+  "context": "ec598772089552ace910c857a38b364bdfa83a32c76c62b752b761527531e7b7"
+ },
+ "findings": [
+  {
+   "id": "F1",
+   "severity": "MINOR",
+   "keys": [
+    "ui.chat.canonical.image_gen.cancel.checking",
+    "ui.chat.canonical.image_gen.settlement.pending"
+   ],
+   "current": "Đang xác nhận khoản phí. / Đang chờ quyết toán — khoản phí cuối cùng sẽ xuất hiện khi nhà cung cấp báo cáo.",
+   "problem": "One English concept (settlement) is rendered with two words inside one slice: 'xác nhận khoản phí' in the checking clause, 'quyết toán' in the pending note. The checking clause also follows 'sẽ bị tính phí nếu tạo ra âm thanh' and presupposes a charge exists, where 'Checking for settlement' stays neutral about whether one results.",
+   "suggested": "Use one word family. Preferred: cancel.checking -> 'Đang chờ quyết toán.' (same term as settlement.pending, no presupposition, 20 cells). Alternative: keep 'xác nhận' in both and lead settlement.pending with 'Đang chờ xác nhận khoản phí — khoản phí cuối cùng sẽ xuất hiện khi nhà cung cấp báo cáo.'",
+   "gating": false
+  },
+  {
+   "id": "F2",
+   "severity": "MINOR",
+   "keys": [
+    "ui.chat.canonical.image_gen.error.audio_rate_limited"
+   ],
+   "current": "Tạo âm thanh đang bận. Hãy thử lại sau giây lát.",
+   "problem": "A bare verb phrase is the subject of 'đang bận', so the first two words can be read as an imperative ('generate audio'), and the shipped catalogue always puts a noun there: 'Tác nhân đang bận', 'Trung tâm đang bận'.",
+   "suggested": "Dịch vụ tạo âm thanh đang bận. Hãy thử lại sau giây lát. (or 'Trình tạo âm thanh đang bận.') - keeps two sentences, no promised wait time, no promised success.",
+   "gating": false
+  },
+  {
+   "id": "F3",
+   "severity": "NIT",
+   "keys": [
+    "ui.chat.canonical.image_gen.error_class.duplicate_id"
+   ],
+   "current": "Trùng id",
+   "problem": "Label-position labels in the shipped catalogue capitalise the token ('ID tác nhân', 'ID người dùng'); lowercase 'id' is that catalogue's prose form. English itself is lowercase 'id', so the current form is defensible.",
+   "suggested": "Trùng ID",
+   "gating": false
+  }
+ ],
+ "provenance": {
+  "kind": "BINDING RECEIPT: verdict, severity counts, findings, session and model are transcribed from this auditor's own record (audits/vi/receipt.json); this file was written by the integrating coder session (agent coder), NOT by the auditor. The auditor reviewed the 12-key draft fragment, so no auditor-authored file can name the integrated catalogue hash; this receipt names it, and verify.log proves every landed value equals the audited draft value.",
+  "authored_by": "integrating coder session 95bd4b294de3 (agent coder)",
+  "transcribed_from": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e/audits/vi/receipt.json",
+  "transcribed_from_sha256": "914ab40b72c61a2e980034b26eb830fb9214ab5803a1cc5d8e8aa1e2d2442427",
+  "instance_origin": "the auditor's own `auditor.instance`",
+  "integrated_target_sha256": "1ff9b17c9a2ac5f276e03f433a2187385af5b0130d95ba2624f2bc7ad77c92cf",
+  "not_claimed": [
+   "a full-file re-audit by this auditor: only the 12 new keys were reviewed",
+   "individual review of the retained 467 keys (they ride the previously audited bytes)",
+   "rendered/browser/pseudo-localization frames"
+  ]
+ }
+}

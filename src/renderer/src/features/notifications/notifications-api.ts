@@ -45,6 +45,7 @@ import {
 	useState,
 	useSyncExternalStore,
 } from "react";
+import { sessionIdPattern } from "../../../../shared/desktop-contract";
 import type {
 	DesktopNotificationDetail,
 	DesktopNotificationItem,
@@ -66,6 +67,7 @@ import {
 	isNewerNotification,
 	mergeWindowForReel,
 	prependSeenToWindow,
+	reconcileWindowWithFacts,
 } from "./notifications-model";
 
 export const notificationKeys = {
@@ -127,17 +129,61 @@ export function useNotificationsFacts(
 	return useQuery({
 		queryKey: notificationKeys.facts(state),
 		enabled,
-		queryFn: () =>
-			desktopResult<DesktopNotificationsList>({
-				op: "notifications.list",
-				state,
-				limit: 100,
-			}),
+		queryFn: () => readNotificationsFacts(state),
 		retry: retryDesktopQuery,
 		staleTime: 5_000,
+		/*
+		 * STALE-WHILE-REVALIDATE ACROSS VISITS comes from the app client's 10 min
+		 * gc (`query-client.ts`): reopening the reel paints the cached page at
+		 * once and this query's mount refetch (stale after 5 s) plus the feed
+		 * frame reconcile it. No per-query gc override: a longer one kept
+		 * unmounted queries' timers alive in the node suites (measured: the
+		 * drawer suite passed then held the process to its 600 s bound).
+		 */
 		refetchInterval: 30_000,
 		refetchIntervalInBackground: false,
 	});
+}
+
+/**
+ * Page one's facts read, shared by the facts query and the window's first page.
+ *
+ * ONE READ ON OPEN, NOT TWO. The facts query and the scroll window both asked
+ * for `notifications.list limit:100` at mount, concurrently - the same 100 rows
+ * twice over the serial desktop transport. The window's first page now joins
+ * this read through `fetchQuery` (which dedupes an in-flight fetch for the same
+ * key and answers from cache while fresh), so opening the reel costs one list.
+ *
+ * `includeSessionCounts` asks core for each conversation's undismissed/unread
+ * totals in the same answer (core PR #3921); an older
+ * core ignores the param and the answer simply lacks `session_counts`.
+ */
+export function readNotificationsFacts(
+	state: "unread" | "all",
+): Promise<DesktopNotificationsList> {
+	return desktopResult<DesktopNotificationsList>({
+		op: "notifications.list",
+		state,
+		limit: 100,
+		includeSessionCounts: true,
+	});
+}
+
+/**
+ * Each conversation's "Dismiss all from this conversation" count, from core's
+ * `session_counts` when the facts answer carries it; `undefined` on an older
+ * core, which tells the caller to fall back to `readSessionDismissCounts`.
+ */
+export function sessionDismissCountsFromFacts(
+	facts: DesktopNotificationsList | undefined,
+): Record<string, number> | undefined {
+	if (!facts?.session_counts) return undefined;
+	return Object.fromEntries(
+		Object.entries(facts.session_counts).map(([id, counts]) => [
+			id,
+			counts.undismissed,
+		]),
+	);
 }
 
 /**
@@ -218,6 +264,49 @@ function useKeepSeenInWindow(
 }
 
 /**
+ * The facts answer (by `high_water`) each window was last reconciled against.
+ * Keyed per client and window key so a remount does not redo work, and so a facts
+ * object that is only RE-EDITED locally (a write's `editFacts`, the ledger's
+ * projection) never re-applies an older answer over a newer local write - an Undo
+ * restoring rows the old answer lacked is exactly that case.
+ */
+const reconciledFactsAt = new WeakMap<QueryClient, Map<string, number>>();
+
+/**
+ * Drop rows the server stopped listing from the cached window (QA round 1, Q1).
+ * See `reconcileWindowWithFacts` for the rule; this applies it once per facts
+ * answer, skipping rows a local write is still ahead of the facts on.
+ */
+function useReconcileWindowWithFacts(
+	client: ReturnType<typeof useOptionalQueryClient>["client"],
+	queryKey: readonly unknown[],
+	state: "unread" | "all",
+	facts: DesktopNotificationsList | undefined,
+) {
+	const keyId = JSON.stringify(queryKey);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `keyId` is the key's identity; the array is rebuilt every render.
+	useEffect(() => {
+		if (!client || !facts || !Array.isArray(facts.items)) return;
+		let seen = reconciledFactsAt.get(client);
+		if (!seen) {
+			seen = new Map();
+			reconciledFactsAt.set(client, seen);
+		}
+		if (seen.get(keyId) === facts.high_water) return;
+		const data = client.getQueryData<{ pages?: unknown[] }>(queryKey);
+		if (!data || !Array.isArray(data.pages)) return;
+		seen.set(keyId, facts.high_water);
+		const pages = reconcileWindowWithFacts(
+			data.pages as { items: DesktopNotificationItem[] }[],
+			facts,
+			state,
+			writesAheadOf(client, facts.high_water),
+		);
+		if (pages) client.setQueryData(queryKey, { ...data, pages });
+	}, [client, keyId, state, facts]);
+}
+
+/**
  * The reel's list read. The page loads up to the route's 100-row page and the
  * `waiting` group; the client applies kind/priority/from/grouping over that set
  * (design § 2: filters are client-side over the loaded set).
@@ -249,16 +338,34 @@ export function useNotificationsList(
 			| { cursor: string; throughSeq: number }
 			| undefined,
 		queryFn: ({ pageParam }) =>
-			desktopResult<DesktopNotificationsList>({
-				op: "notifications.list",
-				state,
-				limit: 100,
-				...(pageParam ?? {}),
-			}),
+			/* Page one IS the facts read (see `readNotificationsFacts`). */
+			!pageParam && client
+				? client.fetchQuery({
+						queryKey: notificationKeys.facts(state),
+						queryFn: () => readNotificationsFacts(state),
+						staleTime: 5_000,
+					})
+				: desktopResult<DesktopNotificationsList>({
+						op: "notifications.list",
+						state,
+						limit: 100,
+						...(pageParam ?? {}),
+					}),
 		getNextPageParam: (last) =>
 			last.next_cursor
 				? { cursor: last.next_cursor, throughSeq: last.high_water }
 				: undefined,
+		/*
+		 * THE WINDOW PAINTS FROM CACHE AND IS RECONCILED BY ITS FACTS. Remounting
+		 * the reel (or refocusing the window) refetched every loaded page before
+		 * anything new could paint. The facts query is what refreshes on mount, on
+		 * the feed frame (new/ack/dismiss) and on the 30 s backstop, and
+		 * `mergeWindowForReel` + `useKeepSeenInWindow` fold its rows into this
+		 * window; writes edit this cache directly (`applyConfirmedWrite`). So the
+		 * window itself is only re-read when the operator asks for newest.
+		 */
+		refetchOnMount: false,
+		refetchOnWindowFocus: false,
 		/* Deduplicate across a cursor boundary; keep the freshest token per id. */
 		select: (answer): DesktopNotificationsList => {
 			const first = answer.pages[0] as DesktopNotificationsList;
@@ -288,6 +395,12 @@ export function useNotificationsList(
 		refetchIntervalInBackground: false,
 	});
 	useKeepSeenInWindow(client, notificationKeys.list(state), scroll, facts.data);
+	useReconcileWindowWithFacts(
+		client,
+		notificationKeys.list(state),
+		state,
+		facts.data,
+	);
 	const merged = mergeWindowForReel(
 		facts.data,
 		answer.data as DesktopNotificationsList | undefined,
@@ -301,6 +414,14 @@ export function useNotificationsList(
 			facts.dataUpdatedAt as number,
 		),
 		newerCount: merged?.newerCount ?? 0,
+		/*
+		 * THE STALE-LIST SIGNAL COVERS THE READ THAT ACTUALLY REFRESHES (design
+		 * round 1, D1). The window no longer refetches on mount or focus, so its
+		 * own `isError` stays false while the server is down; the facts query is
+		 * what re-reads on entry and every 30 s, and its failure is what says the
+		 * painted rows can no longer be vouched for (banner + write pause).
+		 */
+		isRefreshError: answer.isError || facts.isError,
 		/* Refresh facts without discarding the reader's cursor window. Only the
 		 * new-items chip is an intentional request to reveal page one. */
 		refresh: facts.refetch,
@@ -454,18 +575,122 @@ export async function readSessionUnreadCount(
 	}
 }
 
-export function useNotificationDetail(id: string | null, enabled: boolean) {
-	return useQuery({
+/*
+ * PER-ID DETAIL CACHE, LRU-BOUNDED.
+ *
+ * Clicking between notifications re-read each body even when it had just been
+ * shown, so every switch waited on a round trip. Details are now cached per id
+ * for `DETAIL_STALE_MS` (a body changes only with its row's revision, which
+ * `useNotificationDetail` checks against the list row) and prefetched on row
+ * hover/focus and for the open row's neighbours.
+ *
+ * The bound: prefetching neighbours and hovered rows could otherwise pin a
+ * detail (body, history, asks - a few KB each) for every row the pointer
+ * crossed until gc. The most recently used `DETAIL_CACHE_MAX` ids are kept;
+ * the oldest is evicted when a new id enters. 50 covers the visible rows plus
+ * neighbours of a typical reel viewport with room to click back.
+ */
+const DETAIL_STALE_MS = 60_000;
+export const DETAIL_CACHE_MAX = 50;
+const detailLru = new WeakMap<QueryClient, Map<string, true>>();
+
+/** Mark `id` most recently used; evict the least recently used beyond the cap. */
+export function touchNotificationDetail(client: QueryClient, id: string) {
+	let lru = detailLru.get(client);
+	if (!lru) {
+		lru = new Map();
+		detailLru.set(client, lru);
+	}
+	lru.delete(id);
+	lru.set(id, true);
+	/*
+	 * NEVER EVICT A DETAIL SOMEONE IS LOOKING AT (code round 1, R1-1). The open
+	 * id is touched only when it changes, so hovering 50 other rows used to push
+	 * it out: the pane dropped to loading and re-read its body. An observed
+	 * query is skipped and stays in the LRU (it still counts toward the cap), so
+	 * the next unobserved entry goes instead.
+	 */
+	for (const candidate of [...lru.keys()]) {
+		if (lru.size <= DETAIL_CACHE_MAX) break;
+		const query = client
+			.getQueryCache()
+			.find({ queryKey: notificationKeys.detail(candidate), exact: true });
+		if (query && query.getObserversCount() > 0) continue;
+		lru.delete(candidate);
+		client.removeQueries({
+			queryKey: notificationKeys.detail(candidate),
+			exact: true,
+		});
+	}
+}
+
+const readNotificationDetail = (id: string) =>
+	desktopResult<DesktopNotificationDetail>({ op: "notifications.get", id });
+
+/**
+ * Warm one detail ahead of the click (row hover/focus, the open row's
+ * neighbours). A no-op while the cached copy is fresh; never retried - a
+ * prefetch that fails costs the click its normal read and nothing more.
+ */
+export function prefetchNotificationDetail(client: QueryClient, id: string) {
+	touchNotificationDetail(client, id);
+	return client.prefetchQuery({
+		queryKey: notificationKeys.detail(id),
+		queryFn: () => readNotificationDetail(id),
+		staleTime: DETAIL_STALE_MS,
+	});
+}
+
+export function useNotificationDetail(
+	id: string | null,
+	enabled: boolean,
+	/**
+	 * The revision the list row shows. A cached detail older than it is
+	 * refetched at once: the cache is keyed by id, and a keyed notify update
+	 * (repeat, new body) bumps the revision without changing the id.
+	 */
+	rowRevision?: number,
+) {
+	const { client } = useOptionalQueryClient();
+	useEffect(() => {
+		if (client && id && enabled) touchNotificationDetail(client, id);
+	}, [client, id, enabled]);
+	const query = useQuery({
 		queryKey: notificationKeys.detail(id ?? ""),
 		enabled: enabled && Boolean(id),
-		queryFn: () =>
-			desktopResult<DesktopNotificationDetail>({
-				op: "notifications.get",
-				id: id ?? "",
-			}),
+		queryFn: () => readNotificationDetail(id ?? ""),
 		retry: retryDesktopQuery,
-		staleTime: 5_000,
+		staleTime: DETAIL_STALE_MS,
 	});
+	const cachedRevision = query.data?.item.revision;
+	const behind =
+		rowRevision !== undefined &&
+		cachedRevision !== undefined &&
+		cachedRevision < rowRevision;
+	const refetch = query.refetch;
+	/*
+	 * ONCE PER ROW REVISION (code round 1, R1-2). A failed refetch keeps the
+	 * older body, so `behind` stays true and `isFetching` falling back to false
+	 * re-ran this effect at transport-rejection speed. The attempted id@revision
+	 * is remembered; a newer row revision (or another id) tries again, and the
+	 * normal query retry/interval policy covers the rest.
+	 */
+	const attempted = useRef<string | null>(null);
+	useEffect(() => {
+		if (!behind || query.isFetching) return;
+		const key = `${id}@${rowRevision}`;
+		if (attempted.current === key) return;
+		attempted.current = key;
+		void refetch();
+	}, [behind, query.isFetching, refetch, id, rowRevision]);
+	/*
+	 * AN OLDER REVISION IS NOT THE BODY TO SHOW (design round 1, D2). The cache
+	 * is keyed by id, so a keyed update (repeat with a new body) left the old
+	 * text painted as if current until the read landed. While that refetch is in
+	 * flight the pane shows its loading skeleton under the (current) row header;
+	 * if it fails, the older body is still better than nothing.
+	 */
+	return { query, behindLoading: behind && query.isFetching };
 }
 
 /**
@@ -623,6 +848,34 @@ export function writeNotifications(
  * The mutation every surface uses. Settles by invalidating the reel's prefix,
  * so the list, the count and the drawer move together.
  */
+/** Query families a read/dismiss projection never edits (see `beginOptimisticWrite`). */
+const UNPROJECTED_READS = new Set(["detail", "session-scope-counts"]);
+
+/**
+ * The write receipt's counts into the badge's cache, unless a newer answer
+ * (a feed frame at a higher high-water) is already there: a receipt that
+ * arrives late must not move the badge backwards.
+ */
+export function writeReceiptCount(
+	client: QueryClient,
+	result: Pick<
+		DesktopNotificationsWriteResult,
+		"unread_count" | "waiting_count" | "waiting_unread_count" | "high_water"
+	>,
+) {
+	if (typeof result.unread_count !== "number") return;
+	const cached = client.getQueryData<DesktopNotificationsCount>(
+		notificationKeys.count,
+	);
+	if (cached && cached.high_water > result.high_water) return;
+	client.setQueryData<DesktopNotificationsCount>(notificationKeys.count, {
+		unread_count: result.unread_count,
+		waiting_count: result.waiting_count,
+		waiting_unread_count: result.waiting_unread_count,
+		high_water: result.high_water,
+	});
+}
+
 export function useNotificationsWrite() {
 	const { client } = useOptionalQueryClient();
 	return useMutation({
@@ -650,16 +903,67 @@ export function useNotificationsWrite() {
 				optimistic.settle(result);
 				// The ledger has already applied revision-bound accepted rows. A second
 				// id-only edit here would clear a newer revision the server skipped.
-				void client?.invalidateQueries({
-					queryKey: notificationKeys.factsRoot,
-				});
-				void client?.invalidateQueries({
-					queryKey: notificationKeys.sessionFactsAll,
-				});
-				void client?.invalidateQueries({ queryKey: notificationKeys.count });
+				/*
+				 * NO REFETCH CASCADE ON A SETTLED ROW WRITE. Every read used to
+				 * invalidate page-one facts, every conversation's facts and the count
+				 * - three `notifications.list`/count reads per click, queued on the
+				 * serial transport in front of the next click's own reads. The receipt
+				 * carries the authoritative counts, written here; the store change
+				 * also raises a feed frame, whose coalesced facts invalidation
+				 * (`invalidateSoon`) reconciles the rows, with the 30 s interval as
+				 * the backstop when the feed is down.
+				 */
+				if (client) writeReceiptCount(client, result);
+				applyWriteToDetails(client, variables.verb, result.changed);
 			} else applyConfirmedWrite(client, variables.verb, result.changed);
 		},
 	});
+}
+
+/*
+ * THE OPEN DETAIL MOVES WITH THE WRITE (design round 1, D4 = QA Q-2).
+ *
+ * The detail pane draws `detail.item` before the row it was opened from, and the
+ * optimistic path above edits the windows and facts but never the per-id detail
+ * read. Opening an unread item marks it read, so the counts and the list said
+ * "read" while the pane beside them still offered "Mark read" - and pressing it
+ * re-sent a read, leaving no way to mark the item unread from the open detail, on
+ * the page and in the drawer alike. The receipt's `changed` ids are flipped in
+ * the cached detail at once (the flag only: a read moves `seq`, never the body),
+ * then the read is marked stale (not refetched while open - see below) so the
+ * next read of it takes the server's own answer.
+ */
+/** Exported for `scripts/notifications-dismiss-all-perf.test.mjs`. */
+export function applyWriteToDetails(
+	client: ReturnType<typeof useOptionalQueryClient>["client"],
+	verb: NotificationsVerb,
+	changed: readonly string[],
+): void {
+	if (!client) return;
+	const flip: Partial<DesktopNotificationItem> =
+		verb === "read" || verb === "unread"
+			? { read: verb === "read" }
+			: { dismissed: verb === "dismiss" };
+	for (const id of changed) {
+		client.setQueryData<DesktopNotificationDetail>(
+			notificationKeys.detail(id),
+			(data) => (data ? { ...data, item: { ...data.item, ...flip } } : data),
+		);
+		/*
+		 * Stale, NOT refetched (convergence with the no-refetch-cascade rule
+		 * above): the open pane observes this query, so a plain invalidation
+		 * re-read the body it had just drawn on every click - a
+		 * `notifications.get` queued on the serial transport behind each read,
+		 * and opening an unread item is itself a read. The receipt's flag flip
+		 * is exact; a body change arrives with a new row revision, which
+		 * `useNotificationDetail` refetches, and the next mount/prefetch of
+		 * this id re-reads the stale entry.
+		 */
+		void client.invalidateQueries({
+			queryKey: notificationKeys.detail(id),
+			refetchType: "none",
+		});
+	}
 }
 
 /**
@@ -792,6 +1096,26 @@ type NotificationLedger = {
 	publishing: boolean;
 };
 const readLedgers = new WeakMap<QueryClient, NotificationLedger>();
+
+/**
+ * Rows a local write is still ahead of a facts answer read at `atSeq` on: the
+ * write is pending, or core confirmed it above that answer's `high_water`. A
+ * facts answer cannot speak for those rows yet (`reconcileWindowWithFacts`).
+ */
+function writesAheadOf(client: QueryClient, atSeq: number): Set<string> {
+	const ahead = new Set<string>();
+	const ledger = readLedgers.get(client);
+	if (!ledger) return ahead;
+	for (const [id, entry] of ledger.rows)
+		if (
+			entry.operations.some(
+				(operation) =>
+					operation.confirmedAt === undefined || operation.confirmedAt > atSeq,
+			)
+		)
+			ahead.add(id);
+	return ahead;
+}
 const isUnread = (row: DesktopNotificationItem) =>
 	Number(!row.read && !row.dismissed);
 
@@ -1078,7 +1402,17 @@ export async function beginOptimisticWrite(
 	scope?: NotificationOptimisticScope,
 ): Promise<OptimisticNotificationWrite | undefined> {
 	if (!client || (!tokens.length && !scope)) return undefined;
-	await client.cancelQueries({ queryKey: notificationKeys.all });
+	/*
+	 * Cancel only the reads whose answers this projection edits. A detail body
+	 * and the scope-count walk are not edited by a read/dismiss, and cancelling
+	 * them threw away an in-flight `notifications.get` - opening a detail fires
+	 * a read - so the pane re-requested its body behind the PATCH.
+	 */
+	await client.cancelQueries({
+		queryKey: notificationKeys.all,
+		predicate: (query) =>
+			!UNPROJECTED_READS.has(String((query.queryKey as readonly unknown[])[2])),
+	});
 	const ledger = notificationLedger(client);
 	const known = cachedRows(client);
 	const owner = Symbol("notification-write");
@@ -1510,6 +1844,31 @@ export type NotificationBulkReceipt = {
 	waiting_unread_count: number;
 };
 
+/**
+ * The `countSessionIds` HINT a preview may carry: unique canonical session ids,
+ * at most the contract's 50.
+ *
+ * WHY A FILTER AND NOT A PASS-THROUGH (the "Invalid desktop operation."
+ * Dismiss all). The hint was built from every loaded row's `session.id`, and
+ * the inbox carries rows that are not conversations - core's
+ * `network-credentials` pseudo-session, and stray ids from tests or older
+ * writers. One such id made the transport's schema refuse the whole preview,
+ * so Dismiss all and Select all failed before reaching core. The hint only
+ * decides which per-conversation subtotals the preview reports, so an id that
+ * cannot be counted is dropped rather than allowed to break the write. Pseudo-
+ * sessions are dropped too: an older core's route refuses them (422), and no
+ * conversation surface reads a pseudo-session subtotal.
+ */
+export function notificationCountHints(ids: Iterable<string>): string[] {
+	const hints: string[] = [];
+	for (const id of new Set(ids)) {
+		if (!sessionIdPattern.test(id)) continue;
+		hints.push(id);
+		if (hints.length === 50) break;
+	}
+	return hints;
+}
+
 export async function previewNotificationSelection(
 	filters: FrozenNotificationSelection["filters"],
 	state: "unread" | "all",
@@ -1524,7 +1883,7 @@ export async function previewNotificationSelection(
 		state,
 		kind: filters.kind,
 		bulkPriority: filters.priority,
-		countSessionIds,
+		countSessionIds: notificationCountHints(countSessionIds),
 		...(includeAskReads ? { includeAskReads: true } : {}),
 		...(filters.from ? { sessionId: filters.from } : {}),
 	});

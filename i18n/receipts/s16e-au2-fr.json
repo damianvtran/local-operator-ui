@@ -1,0 +1,57 @@
+{
+ "schema": 1,
+ "instance": "s16e-au2-fr",
+ "locale": "fr",
+ "namespace": "ui.chat.canonical",
+ "audit_date": "2026-11-12",
+ "pass": 2,
+ "auditor": {
+  "agent": "i18n-auditor",
+  "instance": "s16e-au2-fr",
+  "session": "cc045047b39e",
+  "model": "deepseek/deepseek-flash",
+  "independent_from_translator_session": true,
+  "actual_model_source": "auditor's own record (no fallback declared)"
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "scope": "the 12 NEW S16e image-generation card stop/settlement/error keys of ui.chat.canonical (fr), audited as the translator's 12-key draft (sha256 a46fdb56c6007dd225382a8f94f4972d7a4dfc6aaaab790dca2d7cdf27b4da62); the 467 pre-existing keys of the namespace were not re-reviewed and are proven byte-identical to the previously audited bytes by the retained-key digest in verify.log",
+ "sha256": {
+  "fr": "67372a8280150ac24402a427aff3c71fe07aa00841c41c57513a470b6abbc7ac",
+  "en": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17",
+  "context": "ec598772089552ace910c857a38b364bdfa83a32c76c62b752b761527531e7b7"
+ },
+ "findings": [
+  {
+   "id": "FR-2-01",
+   "severity": "NIT",
+   "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+   "current": "Débit audio limité",
+   "evidence": "A third construction on the rate-limit concept. The shipped fr corpus writes it as «limite de débit» (9 values, e.g. ui.chat.error_block.rate_limit.before) and «{host} limité en débit» (ui.code_review.host.cooling). Noun-first «Débit audio limité» reads first as an audio-bitrate cap in a card whose subject is audio. Not misleading — the sentence below («La génération audio est très sollicitée en ce moment.») names the condition — and the class stays distinct from the other five.",
+   "suggested": "«Audio limité en débit» (21 cells, keeps the corpus construction and its own word «débit»), or keep as is and let the sentence below disambiguate.",
+   "gating": false
+  },
+  {
+   "id": "FR-2-02",
+   "severity": "NIT",
+   "key": "ui.chat.canonical.image_gen.settlement.pending + ui.chat.canonical.image_gen.cancel.checking",
+   "current": "Règlement en attente — … / Vérification du règlement.",
+   "evidence": "«règlement» has 0 occurrences in the shipped fr catalogue (467 keys) and no glossary row, so it is a new programme term introduced silently; it is also the homonym of «règlement» = rules, which is the weaker reading of «Vérification du règlement.» in isolation. The corpus states the same pending-charge fact with «frais finaux non confirmés» (ui.chat.canonical.sound.cost.estimated_zero). Both keys use «règlement» consistently, so nothing collides inside the slice.",
+   "suggested": "Either record settlement → «règlement» as a glossary row (then both keys stand), or align to the corpus family: «Frais finaux en attente — les frais finaux apparaîtront dès que le fournisseur les aura communiqués.» / «Vérification des frais.»",
+   "gating": false
+  }
+ ],
+ "provenance": {
+  "kind": "BINDING RECEIPT: verdict, severity counts, findings, session and model are transcribed from this auditor's own record (audit2/receipt-fr-s16e.json); this file was written by the integrating coder session (agent coder), NOT by the auditor. The auditor reviewed the 12-key draft fragment, so no auditor-authored file can name the integrated catalogue hash; this receipt names it, and verify.log proves every landed value equals the audited draft value.",
+  "authored_by": "integrating coder session 95bd4b294de3 (agent coder)",
+  "transcribed_from": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e/audit2/receipt-fr-s16e.json",
+  "transcribed_from_sha256": "49ebeb6bf166dfb88653a491dd666948cdaba823e20574f0d6630e0a2c4fc155",
+  "instance_origin": "the auditor's own `audit_id` (the record carries no `instance`/`session` at top level)",
+  "integrated_target_sha256": "67372a8280150ac24402a427aff3c71fe07aa00841c41c57513a470b6abbc7ac",
+  "not_claimed": [
+   "a full-file re-audit by this auditor: only the 12 new keys were reviewed",
+   "individual review of the retained 467 keys (they ride the previously audited bytes)",
+   "rendered/browser/pseudo-localization frames"
+  ]
+ }
+}

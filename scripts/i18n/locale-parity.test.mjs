@@ -1866,6 +1866,23 @@ const IDENTICAL_OK = new Map([
 		"ur:ui.common.time.weekday_at",
 		"pure placeholder join of weekday and clock, same order as English; ICU supplies the Urdu weekday and Latin clock",
 	],
+	// Run panel MCP failure sentence (S17c, PR #1897): the lead/reason joiner.
+	[
+		"es:ui.chat.run_details.mcp_failure.with_reason",
+		"Pure joiner `{lead}. {reason}`: the MCP failure lead and the server's reason are both full, capitalised sentences, so this locale closes the lead with the same full stop and space as English; no lexical English (zh-CN, hi and ur differ because they use their own sentence terminators). Independently audited with the S17c drafts (PR #1897). Scoped to this locale/key only.",
+	],
+	[
+		"fr:ui.chat.run_details.mcp_failure.with_reason",
+		"Pure joiner `{lead}. {reason}`: the MCP failure lead and the server's reason are both full, capitalised sentences, so this locale closes the lead with the same full stop and space as English; no lexical English (zh-CN, hi and ur differ because they use their own sentence terminators). Independently audited with the S17c drafts (PR #1897). Scoped to this locale/key only.",
+	],
+	[
+		"ru:ui.chat.run_details.mcp_failure.with_reason",
+		"Pure joiner `{lead}. {reason}`: the MCP failure lead and the server's reason are both full, capitalised sentences, so this locale closes the lead with the same full stop and space as English; no lexical English (zh-CN, hi and ur differ because they use their own sentence terminators). Independently audited with the S17c drafts (PR #1897). Scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.chat.run_details.mcp_failure.with_reason",
+		"Pure joiner `{lead}. {reason}`: the MCP failure lead and the server's reason are both full, capitalised sentences, so this locale closes the lead with the same full stop and space as English; no lexical English (zh-CN, hi and ur differ because they use their own sentence terminators). Independently audited with the S17c drafts (PR #1897). Scoped to this locale/key only.",
+	],
 ]);
 
 /*

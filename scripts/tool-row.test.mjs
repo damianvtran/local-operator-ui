@@ -1123,7 +1123,7 @@ const rowsBundle = await build({
 	stdin: {
 		contents: [
 			'export { agentTurnHeads, buildRows, GAP, isTraceLike, ledgerName, paintsSomething, slotCarriesTurnHead, splitFirstLine } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
-			'export { collapsePlan } from "./src/renderer/src/features/chat/canonical/turn-collapse-model";',
+			'export { collapsePlan, isTraceFoldable } from "./src/renderer/src/features/chat/canonical/turn-collapse-model";',
 			'export { foldRuns, receiptFoldUnits } from "./src/renderer/src/features/chat/canonical/trace-fold-model";',
 			'export { isInternalReceipt } from "./src/renderer/src/features/chat/components/trace/receipt-row-model";',
 			'export { isQuietTurnCall } from "./src/renderer/src/features/chat/canonical/turn-segments";',
@@ -1170,6 +1170,7 @@ const {
 	GAP,
 	isInternalReceipt,
 	isQuietTurnCall,
+	isTraceFoldable,
 	isTraceLike,
 	ledgerName,
 	paintsSomething,
@@ -6485,8 +6486,8 @@ const foldOptions = () => ({
 	nameOf: (row) => ledgerName(row.record),
 	failedOf: () => false,
 	durationOf: () => 0.1,
-	isFoldable: (row) =>
-		row.record.kind === "tool" && !isQuietTurnCall(row.record),
+	// The transcript's own predicate, so these slots fold what the pane folds.
+	isFoldable: (row) => isTraceFoldable(row.record),
 	isReceipt: (row) => isInternalReceipt(row.record),
 	receiptSummaryOf: (rows) => receiptFoldUnits(rows),
 });

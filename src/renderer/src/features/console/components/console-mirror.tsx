@@ -106,6 +106,15 @@ export interface ConsoleMirrorProps {
 	 * which photographs a settled frame rather than a blank one (§13.3). */
 	onSettled?: (terminal: Terminal) => void;
 	/**
+	 * Called whenever this mirror receives bytes for its surface — the subscribe
+	 * REPLAY (when it is not empty) and every live frame. The pane's readiness
+	 * signal for typing a suggested command into a fresh terminal
+	 * (`console-command.ts`): main streams only to subscribed surfaces, so a
+	 * prompt printed before this mirror subscribed reaches the renderer only in
+	 * the replay, and this is the one place that sees both.
+	 */
+	onActivity?: () => void;
+	/**
 	 * Bytes to paint instead of subscribing to a surface (the capture view).
 	 *
 	 * THE CAPTURE VIEW CANNOT USE THE CONSOLE BRIDGE, and that is a decision rather
@@ -152,6 +161,7 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 	onExit,
 	onReport,
 	onSettled,
+	onActivity,
 	bytes,
 	className,
 }) => {
@@ -163,6 +173,8 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 	reportRef.current = onReport ?? null;
 	const exitRef = useRef(onExit);
 	const settledRef = useRef(onSettled);
+	const activityRef = useRef(onActivity);
+	activityRef.current = onActivity;
 	const focusTakenRef = useRef(onFocusTaken);
 	/**
 	 * THE TERMINAL THIS MOUNT HOLDS RIGHT NOW, which is not always the one the caret
@@ -531,6 +543,7 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 		const offOutput = api.onOutput((payload) => {
 			if (payload.surface !== surface) return;
 			const bytes = decodeBytes(payload.bytes_base64);
+			if (bytes.length > 0) activityRef.current?.();
 			if (streaming) terminal.write(bytes);
 			else buffered.push(bytes);
 		});
@@ -548,6 +561,7 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 				}
 				if (replay.replay_base64) {
 					terminal.write(decodeBytes(replay.replay_base64));
+					activityRef.current?.();
 				}
 				streaming = true;
 				for (const bytes of buffered.splice(0)) terminal.write(bytes);

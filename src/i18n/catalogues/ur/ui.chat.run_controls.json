@@ -1,0 +1,14 @@
+{
+	"ui.chat.run_controls.job.no_conversation": "جاب منسوخ کرنے کے لیے کوئی گفتگو نہیں ہے۔",
+	"ui.chat.run_controls.monitor.no_conversation": "نگرانی منسوخ کرنے کے لیے کوئی گفتگو نہیں ہے۔",
+	"ui.chat.run_controls.monitor.cancel_failed": "نگرانی منسوخ نہیں ہو سکی۔",
+	"ui.chat.run_controls.wake.no_conversation": "بیداری منسوخ کرنے کے لیے کوئی گفتگو نہیں ہے۔",
+	"ui.chat.run_controls.wake.cancel_failed": "بیداری منسوخ نہیں ہو سکی۔",
+	"ui.chat.run_controls.wake.already_gone": "یہ بیداری پہلے ہی ختم ہو چکی ہے۔",
+	"ui.chat.run_controls.wake_confirm.title": "یہ بیداری منسوخ کریں؟",
+	"ui.chat.run_controls.wake_confirm.title_named": "{name} کا چیک اِن منسوخ کریں؟",
+	"ui.chat.run_controls.wake_confirm.message": "{subject, select, head {“{head}” دوبارہ نہیں چلے گی اور اسے دوبارہ نہیں بنایا جائے گا۔ گفتگو برقرار رہے گی۔} other {یہ بیداری دوبارہ نہیں چلے گی اور اسے دوبارہ نہیں بنایا جائے گا۔ گفتگو برقرار رہے گی۔}}",
+	"ui.chat.run_controls.wake_confirm.message_named": "{subject, select, head {“{head}” دوبارہ نہیں چلے گی اور اسے دوبارہ نہیں بنایا جائے گا۔ {name} کا اپنا شیڈول متاثر نہیں ہو گا۔} other {یہ بیداری دوبارہ نہیں چلے گی اور اسے دوبارہ نہیں بنایا جائے گا۔ {name} کا اپنا شیڈول متاثر نہیں ہو گا۔}}",
+	"ui.chat.run_controls.wake_confirm.action": "بیداری منسوخ کریں",
+	"ui.chat.run_controls.wake_confirm.action_named": "چیک اِن منسوخ کریں"
+}

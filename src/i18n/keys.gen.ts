@@ -55,6 +55,7 @@ import enUiChatAnalytics from "./catalogues/en/ui.chat.analytics.json";
 import enUiChatApproval from "./catalogues/en/ui.chat.approval.json";
 import enUiChatAside from "./catalogues/en/ui.chat.aside.json";
 import enUiChatAskAnswer from "./catalogues/en/ui.chat.ask_answer.json";
+import enUiChatAskCommand from "./catalogues/en/ui.chat.ask_command.json";
 import enUiChatAskPanel from "./catalogues/en/ui.chat.ask_panel.json";
 import enUiChatAskQueue from "./catalogues/en/ui.chat.ask_queue.json";
 import enUiChatAsks from "./catalogues/en/ui.chat.asks.json";
@@ -86,6 +87,7 @@ import enUiChatQuotaResend from "./catalogues/en/ui.chat.quota_resend.json";
 import enUiChatRadientSession from "./catalogues/en/ui.chat.radient_session.json";
 import enUiChatReadAck from "./catalogues/en/ui.chat.read_ack.json";
 import enUiChatResponseActions from "./catalogues/en/ui.chat.response_actions.json";
+import enUiChatRunControls from "./catalogues/en/ui.chat.run_controls.json";
 import enUiChatRunDetails from "./catalogues/en/ui.chat.run_details.json";
 import enUiChatSessionReadout from "./catalogues/en/ui.chat.session_readout.json";
 import enUiChatSessionSpend from "./catalogues/en/ui.chat.session_spend.json";
@@ -218,6 +220,7 @@ import esUiChatAnalytics from "./catalogues/es/ui.chat.analytics.json";
 import esUiChatApproval from "./catalogues/es/ui.chat.approval.json";
 import esUiChatAside from "./catalogues/es/ui.chat.aside.json";
 import esUiChatAskAnswer from "./catalogues/es/ui.chat.ask_answer.json";
+import esUiChatAskCommand from "./catalogues/es/ui.chat.ask_command.json";
 import esUiChatAskPanel from "./catalogues/es/ui.chat.ask_panel.json";
 import esUiChatAskQueue from "./catalogues/es/ui.chat.ask_queue.json";
 import esUiChatAsks from "./catalogues/es/ui.chat.asks.json";
@@ -249,6 +252,7 @@ import esUiChatQuotaResend from "./catalogues/es/ui.chat.quota_resend.json";
 import esUiChatRadientSession from "./catalogues/es/ui.chat.radient_session.json";
 import esUiChatReadAck from "./catalogues/es/ui.chat.read_ack.json";
 import esUiChatResponseActions from "./catalogues/es/ui.chat.response_actions.json";
+import esUiChatRunControls from "./catalogues/es/ui.chat.run_controls.json";
 import esUiChatRunDetails from "./catalogues/es/ui.chat.run_details.json";
 import esUiChatSessionReadout from "./catalogues/es/ui.chat.session_readout.json";
 import esUiChatSessionSpend from "./catalogues/es/ui.chat.session_spend.json";
@@ -381,6 +385,7 @@ import frUiChatAnalytics from "./catalogues/fr/ui.chat.analytics.json";
 import frUiChatApproval from "./catalogues/fr/ui.chat.approval.json";
 import frUiChatAside from "./catalogues/fr/ui.chat.aside.json";
 import frUiChatAskAnswer from "./catalogues/fr/ui.chat.ask_answer.json";
+import frUiChatAskCommand from "./catalogues/fr/ui.chat.ask_command.json";
 import frUiChatAskPanel from "./catalogues/fr/ui.chat.ask_panel.json";
 import frUiChatAskQueue from "./catalogues/fr/ui.chat.ask_queue.json";
 import frUiChatAsks from "./catalogues/fr/ui.chat.asks.json";
@@ -412,6 +417,7 @@ import frUiChatQuotaResend from "./catalogues/fr/ui.chat.quota_resend.json";
 import frUiChatRadientSession from "./catalogues/fr/ui.chat.radient_session.json";
 import frUiChatReadAck from "./catalogues/fr/ui.chat.read_ack.json";
 import frUiChatResponseActions from "./catalogues/fr/ui.chat.response_actions.json";
+import frUiChatRunControls from "./catalogues/fr/ui.chat.run_controls.json";
 import frUiChatRunDetails from "./catalogues/fr/ui.chat.run_details.json";
 import frUiChatSessionReadout from "./catalogues/fr/ui.chat.session_readout.json";
 import frUiChatSessionSpend from "./catalogues/fr/ui.chat.session_spend.json";
@@ -544,6 +550,7 @@ import hiUiChatAnalytics from "./catalogues/hi/ui.chat.analytics.json";
 import hiUiChatApproval from "./catalogues/hi/ui.chat.approval.json";
 import hiUiChatAside from "./catalogues/hi/ui.chat.aside.json";
 import hiUiChatAskAnswer from "./catalogues/hi/ui.chat.ask_answer.json";
+import hiUiChatAskCommand from "./catalogues/hi/ui.chat.ask_command.json";
 import hiUiChatAskPanel from "./catalogues/hi/ui.chat.ask_panel.json";
 import hiUiChatAskQueue from "./catalogues/hi/ui.chat.ask_queue.json";
 import hiUiChatAsks from "./catalogues/hi/ui.chat.asks.json";
@@ -575,6 +582,7 @@ import hiUiChatQuotaResend from "./catalogues/hi/ui.chat.quota_resend.json";
 import hiUiChatRadientSession from "./catalogues/hi/ui.chat.radient_session.json";
 import hiUiChatReadAck from "./catalogues/hi/ui.chat.read_ack.json";
 import hiUiChatResponseActions from "./catalogues/hi/ui.chat.response_actions.json";
+import hiUiChatRunControls from "./catalogues/hi/ui.chat.run_controls.json";
 import hiUiChatRunDetails from "./catalogues/hi/ui.chat.run_details.json";
 import hiUiChatSessionReadout from "./catalogues/hi/ui.chat.session_readout.json";
 import hiUiChatSessionSpend from "./catalogues/hi/ui.chat.session_spend.json";
@@ -707,6 +715,7 @@ import ruUiChatAnalytics from "./catalogues/ru/ui.chat.analytics.json";
 import ruUiChatApproval from "./catalogues/ru/ui.chat.approval.json";
 import ruUiChatAside from "./catalogues/ru/ui.chat.aside.json";
 import ruUiChatAskAnswer from "./catalogues/ru/ui.chat.ask_answer.json";
+import ruUiChatAskCommand from "./catalogues/ru/ui.chat.ask_command.json";
 import ruUiChatAskPanel from "./catalogues/ru/ui.chat.ask_panel.json";
 import ruUiChatAskQueue from "./catalogues/ru/ui.chat.ask_queue.json";
 import ruUiChatAsks from "./catalogues/ru/ui.chat.asks.json";
@@ -738,6 +747,7 @@ import ruUiChatQuotaResend from "./catalogues/ru/ui.chat.quota_resend.json";
 import ruUiChatRadientSession from "./catalogues/ru/ui.chat.radient_session.json";
 import ruUiChatReadAck from "./catalogues/ru/ui.chat.read_ack.json";
 import ruUiChatResponseActions from "./catalogues/ru/ui.chat.response_actions.json";
+import ruUiChatRunControls from "./catalogues/ru/ui.chat.run_controls.json";
 import ruUiChatRunDetails from "./catalogues/ru/ui.chat.run_details.json";
 import ruUiChatSessionReadout from "./catalogues/ru/ui.chat.session_readout.json";
 import ruUiChatSessionSpend from "./catalogues/ru/ui.chat.session_spend.json";
@@ -870,6 +880,7 @@ import urUiChatAnalytics from "./catalogues/ur/ui.chat.analytics.json";
 import urUiChatApproval from "./catalogues/ur/ui.chat.approval.json";
 import urUiChatAside from "./catalogues/ur/ui.chat.aside.json";
 import urUiChatAskAnswer from "./catalogues/ur/ui.chat.ask_answer.json";
+import urUiChatAskCommand from "./catalogues/ur/ui.chat.ask_command.json";
 import urUiChatAskPanel from "./catalogues/ur/ui.chat.ask_panel.json";
 import urUiChatAskQueue from "./catalogues/ur/ui.chat.ask_queue.json";
 import urUiChatAsks from "./catalogues/ur/ui.chat.asks.json";
@@ -901,6 +912,7 @@ import urUiChatQuotaResend from "./catalogues/ur/ui.chat.quota_resend.json";
 import urUiChatRadientSession from "./catalogues/ur/ui.chat.radient_session.json";
 import urUiChatReadAck from "./catalogues/ur/ui.chat.read_ack.json";
 import urUiChatResponseActions from "./catalogues/ur/ui.chat.response_actions.json";
+import urUiChatRunControls from "./catalogues/ur/ui.chat.run_controls.json";
 import urUiChatRunDetails from "./catalogues/ur/ui.chat.run_details.json";
 import urUiChatSessionReadout from "./catalogues/ur/ui.chat.session_readout.json";
 import urUiChatSessionSpend from "./catalogues/ur/ui.chat.session_spend.json";
@@ -1033,6 +1045,7 @@ import viUiChatAnalytics from "./catalogues/vi/ui.chat.analytics.json";
 import viUiChatApproval from "./catalogues/vi/ui.chat.approval.json";
 import viUiChatAside from "./catalogues/vi/ui.chat.aside.json";
 import viUiChatAskAnswer from "./catalogues/vi/ui.chat.ask_answer.json";
+import viUiChatAskCommand from "./catalogues/vi/ui.chat.ask_command.json";
 import viUiChatAskPanel from "./catalogues/vi/ui.chat.ask_panel.json";
 import viUiChatAskQueue from "./catalogues/vi/ui.chat.ask_queue.json";
 import viUiChatAsks from "./catalogues/vi/ui.chat.asks.json";
@@ -1064,6 +1077,7 @@ import viUiChatQuotaResend from "./catalogues/vi/ui.chat.quota_resend.json";
 import viUiChatRadientSession from "./catalogues/vi/ui.chat.radient_session.json";
 import viUiChatReadAck from "./catalogues/vi/ui.chat.read_ack.json";
 import viUiChatResponseActions from "./catalogues/vi/ui.chat.response_actions.json";
+import viUiChatRunControls from "./catalogues/vi/ui.chat.run_controls.json";
 import viUiChatRunDetails from "./catalogues/vi/ui.chat.run_details.json";
 import viUiChatSessionReadout from "./catalogues/vi/ui.chat.session_readout.json";
 import viUiChatSessionSpend from "./catalogues/vi/ui.chat.session_spend.json";
@@ -1196,6 +1210,7 @@ import zhCNUiChatAnalytics from "./catalogues/zh-CN/ui.chat.analytics.json";
 import zhCNUiChatApproval from "./catalogues/zh-CN/ui.chat.approval.json";
 import zhCNUiChatAside from "./catalogues/zh-CN/ui.chat.aside.json";
 import zhCNUiChatAskAnswer from "./catalogues/zh-CN/ui.chat.ask_answer.json";
+import zhCNUiChatAskCommand from "./catalogues/zh-CN/ui.chat.ask_command.json";
 import zhCNUiChatAskPanel from "./catalogues/zh-CN/ui.chat.ask_panel.json";
 import zhCNUiChatAskQueue from "./catalogues/zh-CN/ui.chat.ask_queue.json";
 import zhCNUiChatAsks from "./catalogues/zh-CN/ui.chat.asks.json";
@@ -1227,6 +1242,7 @@ import zhCNUiChatQuotaResend from "./catalogues/zh-CN/ui.chat.quota_resend.json"
 import zhCNUiChatRadientSession from "./catalogues/zh-CN/ui.chat.radient_session.json";
 import zhCNUiChatReadAck from "./catalogues/zh-CN/ui.chat.read_ack.json";
 import zhCNUiChatResponseActions from "./catalogues/zh-CN/ui.chat.response_actions.json";
+import zhCNUiChatRunControls from "./catalogues/zh-CN/ui.chat.run_controls.json";
 import zhCNUiChatRunDetails from "./catalogues/zh-CN/ui.chat.run_details.json";
 import zhCNUiChatSessionReadout from "./catalogues/zh-CN/ui.chat.session_readout.json";
 import zhCNUiChatSessionSpend from "./catalogues/zh-CN/ui.chat.session_spend.json";
@@ -1362,6 +1378,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChatApproval,
 	...enUiChatAside,
 	...enUiChatAskAnswer,
+	...enUiChatAskCommand,
 	...enUiChatAskPanel,
 	...enUiChatAskQueue,
 	...enUiChatAsks,
@@ -1393,6 +1410,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChatRadientSession,
 	...enUiChatReadAck,
 	...enUiChatResponseActions,
+	...enUiChatRunControls,
 	...enUiChatRunDetails,
 	...enUiChatSessionReadout,
 	...enUiChatSessionSpend,
@@ -1533,6 +1551,7 @@ export const bundledCatalogues: Readonly<
 		...esUiChatApproval,
 		...esUiChatAside,
 		...esUiChatAskAnswer,
+		...esUiChatAskCommand,
 		...esUiChatAskPanel,
 		...esUiChatAskQueue,
 		...esUiChatAsks,
@@ -1564,6 +1583,7 @@ export const bundledCatalogues: Readonly<
 		...esUiChatRadientSession,
 		...esUiChatReadAck,
 		...esUiChatResponseActions,
+		...esUiChatRunControls,
 		...esUiChatRunDetails,
 		...esUiChatSessionReadout,
 		...esUiChatSessionSpend,
@@ -1698,6 +1718,7 @@ export const bundledCatalogues: Readonly<
 		...frUiChatApproval,
 		...frUiChatAside,
 		...frUiChatAskAnswer,
+		...frUiChatAskCommand,
 		...frUiChatAskPanel,
 		...frUiChatAskQueue,
 		...frUiChatAsks,
@@ -1729,6 +1750,7 @@ export const bundledCatalogues: Readonly<
 		...frUiChatRadientSession,
 		...frUiChatReadAck,
 		...frUiChatResponseActions,
+		...frUiChatRunControls,
 		...frUiChatRunDetails,
 		...frUiChatSessionReadout,
 		...frUiChatSessionSpend,
@@ -1863,6 +1885,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiChatApproval,
 		...hiUiChatAside,
 		...hiUiChatAskAnswer,
+		...hiUiChatAskCommand,
 		...hiUiChatAskPanel,
 		...hiUiChatAskQueue,
 		...hiUiChatAsks,
@@ -1894,6 +1917,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiChatRadientSession,
 		...hiUiChatReadAck,
 		...hiUiChatResponseActions,
+		...hiUiChatRunControls,
 		...hiUiChatRunDetails,
 		...hiUiChatSessionReadout,
 		...hiUiChatSessionSpend,
@@ -2028,6 +2052,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiChatApproval,
 		...ruUiChatAside,
 		...ruUiChatAskAnswer,
+		...ruUiChatAskCommand,
 		...ruUiChatAskPanel,
 		...ruUiChatAskQueue,
 		...ruUiChatAsks,
@@ -2059,6 +2084,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiChatRadientSession,
 		...ruUiChatReadAck,
 		...ruUiChatResponseActions,
+		...ruUiChatRunControls,
 		...ruUiChatRunDetails,
 		...ruUiChatSessionReadout,
 		...ruUiChatSessionSpend,
@@ -2193,6 +2219,7 @@ export const bundledCatalogues: Readonly<
 		...urUiChatApproval,
 		...urUiChatAside,
 		...urUiChatAskAnswer,
+		...urUiChatAskCommand,
 		...urUiChatAskPanel,
 		...urUiChatAskQueue,
 		...urUiChatAsks,
@@ -2224,6 +2251,7 @@ export const bundledCatalogues: Readonly<
 		...urUiChatRadientSession,
 		...urUiChatReadAck,
 		...urUiChatResponseActions,
+		...urUiChatRunControls,
 		...urUiChatRunDetails,
 		...urUiChatSessionReadout,
 		...urUiChatSessionSpend,
@@ -2358,6 +2386,7 @@ export const bundledCatalogues: Readonly<
 		...viUiChatApproval,
 		...viUiChatAside,
 		...viUiChatAskAnswer,
+		...viUiChatAskCommand,
 		...viUiChatAskPanel,
 		...viUiChatAskQueue,
 		...viUiChatAsks,
@@ -2389,6 +2418,7 @@ export const bundledCatalogues: Readonly<
 		...viUiChatRadientSession,
 		...viUiChatReadAck,
 		...viUiChatResponseActions,
+		...viUiChatRunControls,
 		...viUiChatRunDetails,
 		...viUiChatSessionReadout,
 		...viUiChatSessionSpend,
@@ -2523,6 +2553,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiChatApproval,
 		...zhCNUiChatAside,
 		...zhCNUiChatAskAnswer,
+		...zhCNUiChatAskCommand,
 		...zhCNUiChatAskPanel,
 		...zhCNUiChatAskQueue,
 		...zhCNUiChatAsks,
@@ -2554,6 +2585,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiChatRadientSession,
 		...zhCNUiChatReadAck,
 		...zhCNUiChatResponseActions,
+		...zhCNUiChatRunControls,
 		...zhCNUiChatRunDetails,
 		...zhCNUiChatSessionReadout,
 		...zhCNUiChatSessionSpend,
@@ -4460,6 +4492,24 @@ export type MessageParams = {
 	"ui.chat.ask_answer.settled_elsewhere": undefined;
 	"ui.chat.ask_answer.unconfirmed": { lead: string; reason: string };
 	"ui.chat.ask_answer.unconfirmed_lead": undefined;
+	"ui.chat.ask_command.copy": undefined;
+	"ui.chat.ask_command.dialog_caution": undefined;
+	"ui.chat.ask_command.dialog_closed": undefined;
+	"ui.chat.ask_command.dialog_confirm": undefined;
+	"ui.chat.ask_command.dialog_device_local": undefined;
+	"ui.chat.ask_command.dialog_device_remote": { device: string };
+	"ui.chat.ask_command.dialog_device_remote_unnamed": undefined;
+	"ui.chat.ask_command.dialog_refused": undefined;
+	"ui.chat.ask_command.dialog_title": undefined;
+	"ui.chat.ask_command.insert": undefined;
+	"ui.chat.ask_command.insert_hint": undefined;
+	"ui.chat.ask_command.label": undefined;
+	"ui.chat.ask_command.notice_elsewhere": { device: string };
+	"ui.chat.ask_command.notice_elsewhere_unnamed": undefined;
+	"ui.chat.ask_command.notice_target_unknown": undefined;
+	"ui.chat.ask_command.notice_unplaced": undefined;
+	"ui.chat.ask_command.run": undefined;
+	"ui.chat.ask_command.run_hint": undefined;
 	"ui.chat.ask_panel.answer.attachment_refusal": undefined;
 	"ui.chat.ask_panel.answer.limit_notice": { max: number };
 	"ui.chat.ask_panel.dock.asking": undefined;
@@ -4716,13 +4766,25 @@ export type MessageParams = {
 		count: number;
 		count_display: string;
 	};
+	"ui.chat.canonical.image_gen.cancel.checking": undefined;
+	"ui.chat.canonical.image_gen.cancel.queued": undefined;
+	"ui.chat.canonical.image_gen.cancel.running": undefined;
 	"ui.chat.canonical.image_gen.control.edit_and_restart": undefined;
 	"ui.chat.canonical.image_gen.control.restart": undefined;
 	"ui.chat.canonical.image_gen.control.stop": undefined;
 	"ui.chat.canonical.image_gen.control.stop_hint_queued": undefined;
 	"ui.chat.canonical.image_gen.control.stop_hint_running": undefined;
+	"ui.chat.canonical.image_gen.error.audio_rate_limited": undefined;
+	"ui.chat.canonical.image_gen.error_class.audio_rate_limited": undefined;
+	"ui.chat.canonical.image_gen.error_class.denied": undefined;
+	"ui.chat.canonical.image_gen.error_class.duplicate_id": undefined;
+	"ui.chat.canonical.image_gen.error_class.gate_failed": undefined;
+	"ui.chat.canonical.image_gen.error_class.invalid_arguments": undefined;
+	"ui.chat.canonical.image_gen.error_class.unknown_tool": undefined;
 	"ui.chat.canonical.image_gen.progress": undefined;
+	"ui.chat.canonical.image_gen.settlement.pending": undefined;
 	"ui.chat.canonical.image_gen.state.already_finished": undefined;
+	"ui.chat.canonical.image_gen.state.cancelled_batch": { material: string };
 	"ui.chat.canonical.image_gen.state.done": { material: string };
 	"ui.chat.canonical.image_gen.state.done_batch": { material: string };
 	"ui.chat.canonical.image_gen.state.failed": { material: string };
@@ -6839,6 +6901,26 @@ export type MessageParams = {
 	"ui.chat.response_actions.copy": undefined;
 	"ui.chat.response_actions.label": undefined;
 	"ui.chat.response_actions.yours_label": undefined;
+	"ui.chat.run_controls.job.no_conversation": undefined;
+	"ui.chat.run_controls.monitor.cancel_failed": undefined;
+	"ui.chat.run_controls.monitor.no_conversation": undefined;
+	"ui.chat.run_controls.wake.already_gone": undefined;
+	"ui.chat.run_controls.wake.cancel_failed": undefined;
+	"ui.chat.run_controls.wake.no_conversation": undefined;
+	"ui.chat.run_controls.wake_confirm.action": undefined;
+	"ui.chat.run_controls.wake_confirm.action_named": undefined;
+	"ui.chat.run_controls.wake_confirm.message": {
+		subject: string;
+		head: string;
+	};
+	"ui.chat.run_controls.wake_confirm.message_named": {
+		subject: string;
+		head: string;
+		name: string;
+	};
+	"ui.chat.run_controls.wake_confirm.title": undefined;
+	"ui.chat.run_controls.wake_confirm.title_named": { name: string };
+	"ui.chat.run_details.checkpoint.turn_fallback": { turn: number };
 	"ui.chat.run_details.child.brief.show_less": undefined;
 	"ui.chat.run_details.child.brief.show_more": { count: number };
 	"ui.chat.run_details.child.result.preview": undefined;
@@ -6853,11 +6935,24 @@ export type MessageParams = {
 	"ui.chat.run_details.chip.todos_open": { count: number };
 	"ui.chat.run_details.chip.todos_resolved": undefined;
 	"ui.chat.run_details.close_label": undefined;
+	"ui.chat.run_details.job_cancel.body": { label: string };
+	"ui.chat.run_details.job_cancel.cancelling": undefined;
+	"ui.chat.run_details.job_cancel.confirm": undefined;
+	"ui.chat.run_details.job_cancel.title": undefined;
 	"ui.chat.run_details.job_cancel_aria": { label: string };
 	"ui.chat.run_details.jobs": undefined;
 	"ui.chat.run_details.keep": undefined;
 	"ui.chat.run_details.mcp.cancel": undefined;
 	"ui.chat.run_details.mcp.cold_label": undefined;
+	"ui.chat.run_details.mcp.connected_tally": {
+		total: number;
+		connected_display: string;
+		total_display: string;
+	};
+	"ui.chat.run_details.mcp.control.grant": undefined;
+	"ui.chat.run_details.mcp.control.key": undefined;
+	"ui.chat.run_details.mcp.control.reconnect": undefined;
+	"ui.chat.run_details.mcp.control.reload": undefined;
 	"ui.chat.run_details.mcp.credential_removed": undefined;
 	"ui.chat.run_details.mcp.credentials_in_settings": undefined;
 	"ui.chat.run_details.mcp.grant.cancelled": undefined;
@@ -6865,6 +6960,10 @@ export type MessageParams = {
 	"ui.chat.run_details.mcp.grant.running": undefined;
 	"ui.chat.run_details.mcp.refused": undefined;
 	"ui.chat.run_details.mcp.servers": undefined;
+	"ui.chat.run_details.mcp.tool_count": {
+		count: number;
+		count_display: string;
+	};
 	"ui.chat.run_details.mcp.try_again": undefined;
 	"ui.chat.run_details.mcp_auth.cancel_sign_in": undefined;
 	"ui.chat.run_details.mcp_auth.checking": undefined;
@@ -6885,15 +6984,49 @@ export type MessageParams = {
 	"ui.chat.run_details.mcp_auth.waiting": undefined;
 	"ui.chat.run_details.mcp_failure.busy": { lead: string };
 	"ui.chat.run_details.mcp_failure.cancel_lead": undefined;
+	"ui.chat.run_details.mcp_failure.lead.add": undefined;
+	"ui.chat.run_details.mcp_failure.lead.disconnect": undefined;
+	"ui.chat.run_details.mcp_failure.lead.grant": undefined;
+	"ui.chat.run_details.mcp_failure.lead.key": undefined;
+	"ui.chat.run_details.mcp_failure.lead.probe": undefined;
+	"ui.chat.run_details.mcp_failure.lead.reconnect": undefined;
+	"ui.chat.run_details.mcp_failure.lead.reload": undefined;
+	"ui.chat.run_details.mcp_failure.lead.remove": undefined;
+	"ui.chat.run_details.mcp_failure.lead.status": undefined;
+	"ui.chat.run_details.mcp_failure.lead.test": undefined;
 	"ui.chat.run_details.mcp_failure.refused": { lead: string };
 	"ui.chat.run_details.mcp_failure.session": { lead: string };
+	"ui.chat.run_details.mcp_failure.settings_action": undefined;
+	"ui.chat.run_details.mcp_failure.with_reason": {
+		lead: string;
+		reason: string;
+	};
 	"ui.chat.run_details.mcp_key.cancel": undefined;
+	"ui.chat.run_details.mcp_key.not_saved": { failed: string };
+	"ui.chat.run_details.mcp_key.not_saved_saved": {
+		failed: string;
+		saved: string;
+	};
 	"ui.chat.run_details.mcp_key.replace": undefined;
+	"ui.chat.run_details.mcp_key.replace_confirmation": undefined;
+	"ui.chat.run_details.mcp_key.replace_confirmation_saved": { saved: string };
 	"ui.chat.run_details.mcp_key.save": undefined;
+	"ui.chat.run_details.mcp_key.saved_not_connected": undefined;
 	"ui.chat.run_details.mcp_key.saved_note": undefined;
 	"ui.chat.run_details.mcp_key.saving": undefined;
 	"ui.chat.run_details.mcp_key.title_credentials": { server: string };
 	"ui.chat.run_details.mcp_key.title_key": { server: string };
+	"ui.chat.run_details.monitor.armed_count": {
+		count: number;
+		count_display: string;
+	};
+	"ui.chat.run_details.monitor.disabled": undefined;
+	"ui.chat.run_details.monitor.failed_count": {
+		count: number;
+		count_display: string;
+	};
+	"ui.chat.run_details.monitor.last_check": { when: string };
+	"ui.chat.run_details.monitor.waiting": undefined;
 	"ui.chat.run_details.monitor_cancel.confirm": undefined;
 	"ui.chat.run_details.monitor_cancel.keep": undefined;
 	"ui.chat.run_details.monitor_cancel.message": { name: string };
@@ -6938,13 +7071,20 @@ export type MessageParams = {
 		count: number;
 		count_display: string;
 	};
+	"ui.chat.run_details.wake.cadence_finished": { duration: string };
 	"ui.chat.run_details.wake.cadence_once": undefined;
+	"ui.chat.run_details.wake.cadence_remaining": {
+		remaining: number;
+		duration: string;
+		remaining_display: string;
+	};
 	"ui.chat.run_details.wake.cancel": undefined;
 	"ui.chat.run_details.wake.cancel_wake": undefined;
 	"ui.chat.run_details.wake.cancel_wake_due": { due: string };
 	"ui.chat.run_details.wake.cancel_wake_named": { head: string };
 	"ui.chat.run_details.wake.cancelled": undefined;
 	"ui.chat.run_details.wake.cancelling": undefined;
+	"ui.chat.run_details.wake.every": { duration: string };
 	"ui.chat.run_details.wake.managed_by": { name: string };
 	"ui.chat.run_details.wake.managed_note": { name: string };
 	"ui.chat.run_details.wake.more": { count: number; count_display: string };
@@ -9706,11 +9846,13 @@ export type MessageParams = {
 	"ui.notifications.detail.section.links": undefined;
 	"ui.notifications.detail.section.projects": undefined;
 	"ui.notifications.detail.section.waiting": undefined;
+	"ui.notifications.drawer.back": undefined;
 	"ui.notifications.drawer.empty": undefined;
 	"ui.notifications.drawer.footer": undefined;
 	"ui.notifications.drawer.group.read": undefined;
 	"ui.notifications.drawer.group.unread": undefined;
 	"ui.notifications.drawer.mark_read": undefined;
+	"ui.notifications.drawer.open_in_notifications": undefined;
 	"ui.notifications.drawer.open_notifications": undefined;
 	"ui.notifications.drawer.show_in_conversation": undefined;
 	"ui.notifications.drawer.tab.all": undefined;
@@ -9718,6 +9860,8 @@ export type MessageParams = {
 	"ui.notifications.drawer.tab.updates": undefined;
 	"ui.notifications.drawer.tabs_label": undefined;
 	"ui.notifications.drawer.unread_count": { count: string };
+	"ui.notifications.drawer.view_details": undefined;
+	"ui.notifications.drawer.view_details_for": { title: string };
 	"ui.notifications.empty.caught_up.body": undefined;
 	"ui.notifications.empty.caught_up.show_all": undefined;
 	"ui.notifications.empty.caught_up.title": undefined;
@@ -10621,20 +10765,37 @@ export type MessageParams = {
 	"ui.providers.phone.account": { identity: string; id: string };
 	"ui.providers.phone.account_unlabeled": { id: string };
 	"ui.providers.phone.action.activate": { amount: string };
+	"ui.providers.phone.action.add_credit": undefined;
 	"ui.providers.phone.action.cancel": undefined;
 	"ui.providers.phone.action.check_again": undefined;
 	"ui.providers.phone.action.choose": { identity: string; id: string };
 	"ui.providers.phone.action.choose_unlabeled": { id: string };
 	"ui.providers.phone.action.copy_address": undefined;
+	"ui.providers.phone.action.copy_diagnostics": undefined;
+	"ui.providers.phone.action.copying_diagnostics": undefined;
+	"ui.providers.phone.action.open_console": undefined;
+	"ui.providers.phone.action.reconnect": undefined;
 	"ui.providers.phone.action.set_up": undefined;
 	"ui.providers.phone.action.sign_in": undefined;
+	"ui.providers.phone.action.turn_on": undefined;
+	"ui.providers.phone.address_alternative": undefined;
 	"ui.providers.phone.address_label": undefined;
+	"ui.providers.phone.announce.connected": undefined;
+	"ui.providers.phone.announce.reconnecting": undefined;
 	"ui.providers.phone.choose_heading": undefined;
 	"ui.providers.phone.connector_not_needed": undefined;
 	"ui.providers.phone.consent": { amount: string };
+	"ui.providers.phone.diagnostics_failed": undefined;
+	"ui.providers.phone.diagnostics_help": undefined;
 	"ui.providers.phone.failure.check": undefined;
 	"ui.providers.phone.failure.run": undefined;
 	"ui.providers.phone.heading": undefined;
+	"ui.providers.phone.last_checked": { when: string };
+	"ui.providers.phone.next_step_app": { email: string };
+	"ui.providers.phone.next_step_app_no_email": undefined;
+	"ui.providers.phone.offer.body": undefined;
+	"ui.providers.phone.offer.not_now": undefined;
+	"ui.providers.phone.offer.title": undefined;
 	"ui.providers.phone.outcome.billing_activated_status": undefined;
 	"ui.providers.phone.outcome.billing_already_active": undefined;
 	"ui.providers.phone.outcome.billing_not_activated": undefined;
@@ -10651,10 +10812,12 @@ export type MessageParams = {
 	"ui.providers.phone.outcome.stage_verification": undefined;
 	"ui.providers.phone.progress_heading": undefined;
 	"ui.providers.phone.receipts_heading": undefined;
+	"ui.providers.phone.search_terms": undefined;
 	"ui.providers.phone.signing_in": undefined;
 	"ui.providers.phone.status.applying": undefined;
 	"ui.providers.phone.status.checking": undefined;
 	"ui.providers.phone.status.connected": undefined;
+	"ui.providers.phone.stopped": undefined;
 	"ui.providers.phone.use_address": undefined;
 	"ui.providers.provider_catalog.a_newer_sign_in_replaced_this_one": undefined;
 	"ui.providers.provider_catalog.add_key": undefined;
