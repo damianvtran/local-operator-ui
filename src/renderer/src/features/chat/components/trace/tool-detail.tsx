@@ -68,6 +68,7 @@
 
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	type FC,
@@ -351,6 +352,8 @@ export const ToolDetail: FC<ToolDetailProps> = ({
 	interrupted = false,
 	note = null,
 }) => {
+	// The section label is read at render, so a live language switch repaints it.
+	useI18nLocale();
 	const input = argumentLines(args);
 	const structured = resultLines(output);
 	const inputRef = useRef<HTMLDivElement>(null);
@@ -427,7 +430,11 @@ export const ToolDetail: FC<ToolDetailProps> = ({
 							isError && !interrupted ? "text-danger" : "text-ink-dim",
 						)}
 					>
-						{interrupted ? "Interrupted" : isError ? "Error" : "Output"}
+						{interrupted
+							? t("ui.chat.canonical.tool_row.detail_section.interrupted")
+							: isError
+								? t("ui.chat.canonical.tool_row.detail_section.error")
+								: t("ui.chat.canonical.tool_row.detail_section.output")}
 					</span>
 					<div ref={outputRef} className={cn(SECTION_MAX, "overflow-auto")}>
 						{structured ? (

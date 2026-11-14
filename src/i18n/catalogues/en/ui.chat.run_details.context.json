@@ -588,5 +588,14 @@
 		"placeholders": {
 			"turn": "the turn's 1-based position in the conversation"
 		}
+	},
+	"ui.chat.run_details.subagents.show_more": {
+		"role": "button under the run panel's subagents list that reveals the rows beyond the first few",
+		"tone": "short imperative, sentence case, no trailing punctuation",
+		"length": "Two or three words and a number; a ghost button.",
+		"note": "Counts subagent rows (children of this run) that are folded away; the noun is left out in English, so a language that needs one may add it. The count is a plain integer and never grouped (1000 stays 1000). Pressing the button shows every row.",
+		"placeholders": {
+			"count": "how many subagent rows are folded away; always 1 or more"
+		}
 	}
 }

@@ -1076,5 +1076,12 @@
 			"current": "string: elapsed playback time as m:ss, for example 0:05; insert verbatim.",
 			"total": "string: total clip length as m:ss, for example 0:12 (0:00 while the length is unknown); insert verbatim."
 		}
+	},
+	"ui.chat.code_block.default_header": {
+		"role": "small heading above a code block in a chat message, used when the message gave the block no title of its own",
+		"tone": "single noun, sentence case, no trailing punctuation",
+		"length": "One word; a heading.",
+		"note": "Names a block of source code or a command shown verbatim below it. Only shown when no title was supplied; a supplied title is shown instead.",
+		"placeholders": {}
 	}
 }

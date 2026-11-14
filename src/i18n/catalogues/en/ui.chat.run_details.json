@@ -143,5 +143,6 @@
 	"ui.chat.run_details.monitor.waiting": "waiting",
 	"ui.chat.run_details.monitor.last_check": "last check {when}",
 	"ui.chat.run_details.monitor.failed_count": "{count, plural, other {{count_display} failed}}",
-	"ui.chat.run_details.checkpoint.turn_fallback": "Turn {turn, number, ::group-off}"
+	"ui.chat.run_details.checkpoint.turn_fallback": "Turn {turn, number, ::group-off}",
+	"ui.chat.run_details.subagents.show_more": "Show {count, number, ::group-off} more"
 }

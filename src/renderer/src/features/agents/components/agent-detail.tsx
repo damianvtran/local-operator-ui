@@ -1660,8 +1660,10 @@ export function AgentCreate({
 				<h2 className="text-title">{title}</h2>
 				<p className="text-body-sm text-ink-muted">
 					{initial
-						? `A copy of ${initial.name}. It is a separate agent: changing it does not change the original.`
-						: "Reusable instructions shared by agent commands, subagents and teams. Chats stay separate."}
+						? t("ui.agents.detail.create.description_duplicate", {
+								name: initial.name,
+							})
+						: t("ui.agents.detail.create.description_new")}
 				</p>
 			</header>
 			{error && !errorField ? (

@@ -51,7 +51,9 @@ export const InvalidAttachment: FC<InvalidAttachmentProps> = ({
 			<span className="max-w-full truncate text-body-sm">
 				{reason
 					? `${getFileName(file)} ${reason}`
-					: `${getFileName(file)} is not viewable (file may be incomplete, deleted, or moved)`}
+					: t("ui.chat.attachments.not_viewable_detail", {
+							name: getFileName(file),
+						})}
 			</span>
 			{onOpen ? (
 				<button

@@ -281,7 +281,7 @@ export const RunDetailSubagents = ({
 					onClick={onToggleExpanded}
 					data-run-panel-disclosure={expanded ? "expanded" : "collapsed"}
 				>
-					{`Show ${hidden} more`}
+					{t("ui.chat.run_details.subagents.show_more", { count: hidden })}
 				</Button>
 			)}
 		</section>
