@@ -79220,30 +79220,30 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.run_details",
-			"source_sha256": "02877dbbfba534fb2467008550d55ffd45c928c990b89c3d1a72acbfc76d2d50",
-			"target_sha256": "8c7229a394091d3b05ebb1723af637078dcc22f42720681609700c8ab594e63d",
+			"source_sha256": "1f1bf1d066875db81d4b5728e6a3f88c47a432d75aa8e75b92cdbefc42f2eb66",
+			"target_sha256": "181cd807956df562852162bbc8eda73c90f74a1a9c4c2df235890ef0bb008453",
 			"translator": {
-				"agent": "coder",
-				"model": "openai/gpt-6.1-sol",
-				"date": "2026-11-09",
-				"note": "translation lane zh-CN ran as the coder role serving openai/gpt-6.1-sol after provider-quota fallbacks; audit is an independent instance (9fa2c01bd5e2-s7a-zh-cn)."
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-14",
+				"note": "S17c: 36 keys appended byte-for-byte from draft sha256 3cdc15daf84ad29743dcd8876a0d0e3bbcf6f68d642ac27d099261cce9780aea, audited as a draft by i18n-auditor 744dc575da38 (receipt sha256 7b84234dbdd12ebe, not copied); 109 inherited keys unchanged."
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor-s7a-zh",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-11-09",
-					"result": "clean",
-					"instance": "9fa2c01bd5e2-s7a-zh-cn",
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-14",
+					"result": "clean-with-findings",
+					"instance": "s17c-zh-cn-rebind-181cd807",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 1,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/9fa2c01bd5e2-s7a-zh-cn.json",
-					"receipt_sha256": "3fb994cf34cb83dc549cc8dcf93908f58de703633733ca67402cf10f6f720efd",
-					"scope": "the 29 keys keyed in PR #1809 (agents pages, run details, notices)"
+					"receipt": "i18n/receipts/s17c-zh-cn-rebind-181cd807.json",
+					"receipt_sha256": "a0aa5fd892652fd1f3a7041c70192e97c5ba952688e3a7d7c40e4e2270dd186d",
+					"scope": "S17c re-bind: the merged 145-key namespace (109 inherited + 36 appended S17c keys)"
 				}
 			],
 			"status": "audited",
@@ -79418,6 +79418,29 @@
 							"receipt_sha256": "df3f3c8c1341cf428d1882f755e48af66db7ed7852b1c47574ea6674ea69c371",
 							"scope": "the 2 keys this PR added to ui.chat.run_details (ui1753, commit 874446c2c80), not the whole namespace; final audit at the committed bytes",
 							"note": "Final audit of the keys PR #1753 added; a round-1 audit and a delta re-audit preceded it (relayed by the manager)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "02877dbbfba534fb2467008550d55ffd45c928c990b89c3d1a72acbfc76d2d50",
+					"target_sha256": "8c7229a394091d3b05ebb1723af637078dcc22f42720681609700c8ab594e63d",
+					"auditors": [
+						{
+							"agent": "i18n-auditor-s7a-zh",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-09",
+							"result": "clean",
+							"instance": "9fa2c01bd5e2-s7a-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/9fa2c01bd5e2-s7a-zh-cn.json",
+							"receipt_sha256": "3fb994cf34cb83dc549cc8dcf93908f58de703633733ca67402cf10f6f720efd",
+							"scope": "the 29 keys keyed in PR #1809 (agents pages, run details, notices)"
 						}
 					],
 					"status": "audited"
