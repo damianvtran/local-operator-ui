@@ -1,0 +1,339 @@
+{
+  "auditor": "translation-auditor",
+  "session": "5f8e54e78de8",
+  "model": "openai/gpt-6.1-sol",
+  "model_selection": "parent; actual inherited served model, no override",
+  "fallback": null,
+  "profile_revision": "definition-revision:v1:977d12b70eb8adff7d8b9491e8e59b748a9fac283683abd963fdf586cb596f8a",
+  "date": "2026-11-14T11:07:03.385780+00:00",
+  "locale": "hi",
+  "namespace": "ui.chat.canonical",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "source_path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+  "target_path": "src/i18n/catalogues/hi/ui.chat.canonical.json",
+  "context_path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+  "sha256": {
+    "en": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+    "hi": "44d13aafbd5dc8e369a9b35a169f06e7c24b732e54fab574fe19feab98f62706",
+    "context": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7"
+  },
+  "scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+  "scope_counts": {
+    "main_parent_keys": 471,
+    "pr_parent_keys": 23,
+    "combined_keys": 494,
+    "new_semantic_keys_read": 0,
+    "mechanical_target_keys_compared": 494,
+    "new_capture_or_runtime_cases": 0
+  },
+  "frozen_identity": {
+    "HEAD": "d582c3d8a1537078bd13681dfbfe5ad31cc55f61",
+    "MERGE_HEAD": "e2d980d217ec4c72e409ef8a21a8aed9602b57a2",
+    "frozen_tree": "5df62a4bd832b1c29f90f85dbb95b2c0f5eab6f4",
+    "raw_index_sha256": "b6ef50943c49fc1f252bbdf8d477688a0f96bb2f0d0b040aab59b3a40a89d505"
+  },
+  "seam_verdict": "Exact disjoint union; zero collisions, missing/extra/duplicate keys or raw-literal/placeholder/ICU changes versus selected audited parents. No new semantic defect discovered or inferred.",
+  "findings": [
+    {
+      "id": "I-HI-1",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+      "current": "पूरा diff रोका गया — इसे सुरक्षित रूप से छिपाया नहीं जा सका",
+      "proposed": "पूरा diff रोका गया — इसकी संवेदनशील जानकारी सुरक्षित रूप से हटाई नहीं जा सकी",
+      "reason": "इसे ... छिपाया refers to hiding the diff itself rather than safely removing secrets; retain the parent semantic-clarity follow-up.",
+      "aliases": [
+        "HI-1"
+      ],
+      "disposition": "Both parent IDs describe one defect; both original deferred dispositions retained, counted once in this fresh receipt.",
+      "retained_original_disposition": "Both parent IDs describe one defect; both original deferred dispositions retained, counted once in this fresh receipt.",
+      "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment.",
+      "rebinding_disposition": "Retained unchanged wording and existing non-gating disposition; no fresh semantic adjudication. Author chooses to retain this genuine debt/risk, not erase it on receipt rebinding."
+    },
+    {
+      "id": "CONV-HI-FIT-1",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.diff.full.retry",
+      "current": "फिर से कोशिश करें",
+      "proposed": "फिर कोशिश करें",
+      "reason": "The short retry control expands from 5 English code points to 17 Devanagari code points; this is a fit risk requiring real font/layout measurement, not proof of overflow.",
+      "disposition": "Rendered check required; code points are not Devanagari cell/pixel widths",
+      "retained_original_disposition": "Rendered check required; code points are not Devanagari cell/pixel widths",
+      "supplemental_evidence_disposition": "Bounded captured fit evidence now available; no obvious cutoff in viewed assigned-locale sample. Historical MINOR/NIT ID/severity retained; no new remediation cycle; no universal width/geometry claim.",
+      "rebinding_disposition": "Retained unchanged wording and existing non-gating disposition; no fresh semantic adjudication. Author chooses to retain this genuine debt/risk, not erase it on receipt rebinding."
+    },
+    {
+      "severity": "NIT",
+      "id": "HI-C1",
+      "key": "ui.chat.canonical.temporary_deleted.back",
+      "detail": "'चैट पर वापस जाएँ' can read as singular 'back to the chat'; the English means the chat list. Optional: 'चैट सूची पर वापस जाएँ'. Not a meaning error: the invariant plural matches sibling 'आपकी चैट में' (ui.chat.composer.placeholder.temporary).",
+      "disposition": "carried from 94f6e325484c-canon2: bytes unchanged, still applies; deferred",
+      "current": "चैट पर वापस जाएँ",
+      "proposed": "चैट सूची पर वापस जाएँ",
+      "reason": "'चैट पर वापस जाएँ' can read as singular 'back to the chat'; the English means the chat list. Optional: 'चैट सूची पर वापस जाएँ'. Not a meaning error: the invariant plural matches sibling 'आपकी चैट में' (ui.chat.composer.placeholder.temporary).",
+      "rebinding_disposition": "Genuine main-parent NIT retained/deferred by this author, on exact selected-main bytes; not a newly discovered translation defect."
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 2,
+    "nit": 1
+  },
+  "findings_carry_forward_choices": [
+    {
+      "id": "HI-C1",
+      "decision": "Inherited genuine main-parent finding retained and counted; not new semantic work."
+    }
+  ],
+  "parent_receipts": [
+    {
+      "locale": "hi",
+      "ref": "d582c3d8a1537078bd13681dfbfe5ad31cc55f61",
+      "path": "i18n/receipts/5f8e54e78de8-hi-final-evidence-20261112.json",
+      "sha256": "9a5a40a864e6f1d70bfb76fbe2b2de3c9e3e313b49ccf0c22c5ba9e63f31c2a4",
+      "agent": "translation-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "instance": "5f8e54e78de8-hi-final-evidence-20261112",
+      "result": "clean-with-findings",
+      "findings_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 2,
+        "nit": 0
+      },
+      "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+      "target_sha256": "8792c9a8f9df03f7c586d45e3f3b6f89b25ec6097a9aab1e310bb4e210677393",
+      "context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae"
+    },
+    {
+      "locale": "hi",
+      "ref": "d582c3d8a1537078bd13681dfbfe5ad31cc55f61",
+      "path": "i18n/receipts/6dfaec49abf0-hi-final-policy-evidence-20261112.json",
+      "sha256": "5e305a30e908346adc22a8e7e3bbf398ffdcee305774e6e0e13e71d70d44618f",
+      "agent": "translation-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "instance": "6dfaec49abf0-hi-final-policy-evidence-20261112",
+      "result": "clean-with-findings",
+      "findings_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      },
+      "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+      "target_sha256": "8792c9a8f9df03f7c586d45e3f3b6f89b25ec6097a9aab1e310bb4e210677393",
+      "context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae"
+    },
+    {
+      "locale": "hi",
+      "ref": "e2d980d217ec4c72e409ef8a21a8aed9602b57a2",
+      "path": "i18n/receipts/94f6e325484c-canon3-hi.json",
+      "sha256": "df022fd5442ca19b1f583fa12761a1c32448eeb999019430f538c80e25c46f46",
+      "agent": "reviewer",
+      "model": "anthropic/claude-opus-5-5",
+      "instance": "94f6e325484c-canon3-hi",
+      "result": "clean-with-findings",
+      "findings_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 1
+      },
+      "source_sha256": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731",
+      "target_sha256": "060d7a7ce641bdcb01e5b33a0d967af53d11b06d2e97499ae684cc74bbf4dd34",
+      "context_sha256": "51f705da9160454ef4f72c5f9c14004a3f31b2bccc46dac6c208a36d18cb53bf"
+    }
+  ],
+  "own_prior_lineage": {
+    "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-receipt-hi-5f8e54e78de8.json",
+    "sha256": "9a5a40a864e6f1d70bfb76fbe2b2de3c9e3e313b49ccf0c22c5ba9e63f31c2a4",
+    "git_path": "i18n/receipts/5f8e54e78de8-hi-final-evidence-20261112.json",
+    "instance": "5f8e54e78de8-hi-final-evidence-20261112"
+  },
+  "style_glossary_bindings": [
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "ad910f5daea0bb40cf95170a5eeed496f4aebd69",
+      "path": "i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "ad910f5daea0bb40cf95170a5eeed496f4aebd69",
+      "path": "i18n/style-guides/es.md",
+      "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "ad910f5daea0bb40cf95170a5eeed496f4aebd69",
+      "path": "i18n/style-guides/fr.md",
+      "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "ad910f5daea0bb40cf95170a5eeed496f4aebd69",
+      "path": "i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "2ba8127d9",
+      "path": "i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "parent_main_reference": "damianvtran/local-operator@2ba8127d9 i18n/glossary.md sha256:0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "2ba8127d9",
+      "path": "i18n/style-guides/es.md",
+      "sha256": "4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6",
+      "parent_main_reference": "damianvtran/local-operator@2ba8127d9 i18n/style-guides/es.md sha256:4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "2ba8127d9",
+      "path": "i18n/style-guides/fr.md",
+      "sha256": "5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7",
+      "parent_main_reference": "damianvtran/local-operator@2ba8127d9 i18n/style-guides/fr.md sha256:5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "2ba8127d9",
+      "path": "i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+      "parent_main_reference": "damianvtran/local-operator@2ba8127d9 i18n/style-guides/hi.md sha256:82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    }
+  ],
+  "policy_authority": "Direct user authorizes this bounded seam-only rebinding; prior direct-user CLDR interpretation remains applicable. Not a waiver of native/full-release policy or a new translation audit.",
+  "limitations": {
+    "semantics": "Seam-only rebinding: zero new semantic keys. No fresh494-key audit. Original49 semantic key triples per assigned locale were historical prior work, not repeated. Current494 keys mechanically compared per target;471 from main and23 from PR.",
+    "parent_scope": "PRparent490 has467 other keys that are NOT the selected basis now. The selected non-PR basis is exact471-key current main with its actual audited source/context/target binding.",
+    "render": "Prior accepted23-key evidence remains historical bounded evidence only. No images viewed/captured anew, no fresh rendered-fit/native/global certification. Diff components retain the prior source identity; current index.css is changed to exact incoming-main bytes, so prior screenshots are NOT proof of current stylesheet pixels. Current key maps/catalogue hashes also differ; the23 selected raw messages/context are unchanged.",
+    "behavior": "No new browser/native/runtime/build/install/test. All23 interactions, complete count/plural variant matrix, measured DOM geometry/font fallback, current full-app and globalRTL remain UNPROVEN. This is not another independent audit lineage.",
+    "locale_categories": "Target CLDR-adapted branches are inherited byte-for-byte from audited parents, not forced to English selector names. Prior literal-selector-only hold remains inapplicable under retained direct-user final policy disposition. Existing many-category follow-ups remain genuine non-gating findings, not removed by this seam proof.",
+    "unresolved_debts": "All retained MINOR/NIT IDs and current dispositions remain in findings; fit-source risks are not observed fresh clipping. No claim that zeroBLOCKER/MAJOR means zero findings.",
+    "retention": "Scratch handoff only; manager/coder must retain record, receipt and necessary companions at the declared canonical paths through the prescribed later process. No ledger/index writer was invoked."
+  },
+  "independence": "Same original independent primary author5f8e54e78de8, not translator or coder331. No current mirror rebinding output read; existing parent ledger/receipt identity/hash/count evidence structurally verified as required. New instance suffix is an artifact identity, not another independent lineage.",
+  "canonical_retention_root": "i18n/audits/evidence/hi/ui.chat.canonical/5f8e54e78de8-hi-rnext-rebind-20261114",
+  "retention_plan": {
+    "record": "i18n/audits/evidence/hi/ui.chat.canonical/5f8e54e78de8-hi-rnext-rebind-20261114/record.json",
+    "receipt": "i18n/audits/evidence/hi/ui.chat.canonical/5f8e54e78de8-hi-rnext-rebind-20261114/receipt.json",
+    "companions": [
+      {
+        "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/hi/5f8e54e78de8-hi-rnext-rebind-20261114/parents-and-findings.json",
+        "sha256": "36aed18269b6051713b29cc70a83bbcb69c5c5a41c8143896aecb0db05713046",
+        "destination": "i18n/audits/evidence/hi/ui.chat.canonical/5f8e54e78de8-hi-rnext-rebind-20261114/parents-and-findings.json"
+      },
+      {
+        "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/seam-proof.json",
+        "sha256": "fae241b93352f51b329b41ea9b496309bfaaac68db61bd292a1aeea9718a4283",
+        "destination": "i18n/audits/evidence/hi/ui.chat.canonical/5f8e54e78de8-hi-rnext-rebind-20261114/seam-proof.json"
+      },
+      {
+        "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/parent-contract-validation.json",
+        "sha256": "7c4ae05726ecadafc58051f056722e34e99967ba44c0d0531ad6f0fe0e7210dd",
+        "destination": "i18n/audits/evidence/hi/ui.chat.canonical/5f8e54e78de8-hi-rnext-rebind-20261114/parent-contract-validation.json"
+      }
+    ]
+  },
+  "global_release_approval": false,
+  "lawful_assembler_consumability": "Yes for this expressly bounded seam-only current-hash clean-with-findings scope, after retaining companions/old immutable evidence and exact findings. Actual frozen writer/rules inspected; pure derivation validated separately. No writer invocation, ledger promotion or global approval performed.",
+  "kind": "independent immutable scoped supplemental rebinding record",
+  "not_a_ledger_receipt": true,
+  "companions": [
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/hi/5f8e54e78de8-hi-rnext-rebind-20261114/parents-and-findings.json",
+      "sha256": "36aed18269b6051713b29cc70a83bbcb69c5c5a41c8143896aecb0db05713046"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/seam-proof.json",
+      "sha256": "fae241b93352f51b329b41ea9b496309bfaaac68db61bd292a1aeea9718a4283"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/parent-contract-validation.json",
+      "sha256": "7c4ae05726ecadafc58051f056722e34e99967ba44c0d0531ad6f0fe0e7210dd"
+    }
+  ],
+  "prior_render_source_differences": [
+    {
+      "path": "src/renderer/src/styles/index.css",
+      "prior_capture_source_sha256": "5c2e28c7db3ef61df57521d9c8aa8c4e0ef104cdc4d0533db6b2501754285c5e",
+      "current_sha256": "29a9866e0ed0613a66606955f2ea4e48a93040c91122f84c21fb65f4998e826f",
+      "current_equals_main": true
+    },
+    {
+      "path": "src/i18n/keys.gen.ts",
+      "prior_capture_source_sha256": "005cf91a2a3fa8db065c0d459ca21d62cb355d567c6b7a34cd593255e769341d",
+      "current_sha256": "34c9db32743d275f5134a5d5664f86cd1ce18e9e21e6d5c7b1b25da23d419eeb",
+      "current_equals_main": false
+    },
+    {
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+      "prior_capture_source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+      "current_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+      "current_equals_main": false
+    },
+    {
+      "path": "src/i18n/catalogues/es/ui.chat.canonical.json",
+      "prior_capture_source_sha256": "4074681ab095ccfb3917e0f1e8f31e2d2c92c1c47742153db82dda80502c1e51",
+      "current_sha256": "528df8fc526fee090ff593a5f1122cf5a832fb461e5a3c121f72040fe1278e1d",
+      "current_equals_main": false
+    },
+    {
+      "path": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+      "prior_capture_source_sha256": "e7d21936f30d7bcb95a86c08c6774c0572d13bd32e7220ab9e36c02327c31fbd",
+      "current_sha256": "060c7967167434f91d79d3c3093642690ed8c7d95b3f9b9a36be9b4d6b17099a",
+      "current_equals_main": false
+    },
+    {
+      "path": "src/i18n/catalogues/hi/ui.chat.canonical.json",
+      "prior_capture_source_sha256": "8792c9a8f9df03f7c586d45e3f3b6f89b25ec6097a9aab1e310bb4e210677393",
+      "current_sha256": "44d13aafbd5dc8e369a9b35a169f06e7c24b732e54fab574fe19feab98f62706",
+      "current_equals_main": false
+    },
+    {
+      "path": "src/i18n/catalogues/ru/ui.chat.canonical.json",
+      "prior_capture_source_sha256": "325fe1a5b211db3408ee9786a1a7e6ab724d79315176019b6b55291b0e8ab71e",
+      "current_sha256": "6b82f62d6909a97c60e2c3de23503b68776c97f4b885da3badbe69eb78311a8b",
+      "current_equals_main": false
+    },
+    {
+      "path": "src/i18n/catalogues/ur/ui.chat.canonical.json",
+      "prior_capture_source_sha256": "06d76892a9c2a92cc5e2574a4ad71879d1c9a1a761e6dce5f9f75572abfc18b2",
+      "current_sha256": "f312b2ef48de99ca833e89b0d6f81c4044311cb07ac49ee5785c35f815fe93a9",
+      "current_equals_main": false
+    },
+    {
+      "path": "src/i18n/catalogues/vi/ui.chat.canonical.json",
+      "prior_capture_source_sha256": "e5c472aaa257bc7acded037a73c470ed79a1e3cc8dc162d854052b3aa89746fb",
+      "current_sha256": "8eb5a837b784cfcfed19ba24e7e3dde219354cd3f39a35be36d26d049a0f7779",
+      "current_equals_main": false
+    },
+    {
+      "path": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+      "prior_capture_source_sha256": "e6b3846b553cde65b671cec6b9b34a869bd3cffc3f42b9fec981a710501e5e81",
+      "current_sha256": "c69feefe7cbb568ed80f498cfb13dc8d15e1abf33ad0ea59908f6c5ce470d5cc",
+      "current_equals_main": false
+    },
+    {
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+      "prior_capture_source_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+      "current_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7",
+      "current_equals_main": false
+    }
+  ],
+  "preserve_old_hash_check": {
+    "all_unchanged": true,
+    "baseline_companion": {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/seam-proof.json",
+      "sha256": "fae241b93352f51b329b41ea9b496309bfaaac68db61bd292a1aeea9718a4283"
+    }
+  },
+  "current_contract_sha256": {
+    "docs/I18N.md": "d58ad473701f098b3c2c24343c3a7e7236f22db22cc871016c4cb75f25f41f5c",
+    "scripts/i18n/ledger-assemble.mjs": "63651def0c5be756f61e71e5905bcf090a1c709464292864f1a6429d06e676a5",
+    "scripts/i18n/ledger-rules.mjs": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6"
+  }
+}

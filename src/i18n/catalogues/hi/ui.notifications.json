@@ -128,5 +128,9 @@
 	"ui.notifications.drawer.show_in_conversation": "बातचीत में दिखाएँ",
 	"ui.notifications.drawer.footer": "सिर्फ़ इस बातचीत के अपडेट",
 	"ui.notifications.drawer.open_notifications": "सूचनाएँ खोलें",
-	"ui.notifications.drawer.empty": "इस बातचीत में आपके ध्यान के लिए कुछ नहीं है।"
+	"ui.notifications.drawer.empty": "इस बातचीत में आपके ध्यान के लिए कुछ नहीं है।",
+	"ui.notifications.drawer.view_details": "विवरण देखें",
+	"ui.notifications.drawer.view_details_for": "विवरण देखें: {title}",
+	"ui.notifications.drawer.back": "अपडेट पर वापस जाएँ",
+	"ui.notifications.drawer.open_in_notifications": "सूचनाओं में खोलें"
 }

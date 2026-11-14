@@ -19,5 +19,11 @@
 	"ui.chat.header.session_model_switch": "切换模型",
 	"ui.chat.header.transcript_display": "对话记录显示方式",
 	"ui.chat.header.starting_session": "正在启动会话",
-	"ui.chat.header.canonical_chat": "规范对话"
+	"ui.chat.header.canonical_chat": "规范对话",
+	"ui.chat.header.temporary": "临时",
+	"ui.chat.header.temporary_hint": "不会保存到你的对话列表，闲置一段时间后会被删除（默认 30 分钟）。",
+	"ui.chat.header.temporary_toggle_on": "将此新对话设为临时对话",
+	"ui.chat.header.temporary_toggle_off": "关闭临时对话",
+	"ui.chat.header.temporary_peer_unavailable": "暂不支持在其他设备上开始临时对话",
+	"ui.chat.header.temporary_ends_in": "{minutes, plural, other {# 分钟}}后删除"
 }

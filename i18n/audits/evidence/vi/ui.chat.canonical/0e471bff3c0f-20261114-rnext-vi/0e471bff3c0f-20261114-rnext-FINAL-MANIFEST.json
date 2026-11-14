@@ -1,0 +1,672 @@
+{
+  "kind": "final-allowlisted-independent-rebinding-manifest",
+  "not_a_ledger_receipt": true,
+  "author": {
+    "agent": "translation-auditor",
+    "session": "0e471bff3c0f",
+    "served_model": "openai/gpt-6.1-sol",
+    "selection": "parent inherited; no override",
+    "fallback": null,
+    "same_original_independent_lineage": true
+  },
+  "completed_at": "2026-11-14T11:07:15.888287+00:00",
+  "scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+  "frozen": {
+    "HEAD": "d582c3d8a1537078bd13681dfbfe5ad31cc55f61",
+    "MERGE_HEAD": "e2d980d217ec4c72e409ef8a21a8aed9602b57a2",
+    "tree": "5df62a4bd832b1c29f90f85dbb95b2c0f5eab6f4",
+    "raw_index_sha256": "b6ef50943c49fc1f252bbdf8d477688a0f96bb2f0d0b040aab59b3a40a89d505"
+  },
+  "allowlisted_final_receipts": [
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-20261114-rnext-ru-receipt.json",
+      "sha256": "8af0d7827c8d5b893ef55fcd900c78829115176b005d39c99e89a7c4ac9ceae0"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-20261114-rnext-ur-receipt.json",
+      "sha256": "95babf009da0b9bc76934b548f25fa8ab51d4c93bc61237042cfeae26a5c5ff2"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-20261114-rnext-vi-receipt.json",
+      "sha256": "c22f51ad52537cac57a8b93d4b32d39e984dc752b2dc90e527e624411a4d2231"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-20261114-rnext-zh-cn-receipt.json",
+      "sha256": "c1a92634f78e15b8276d24934cd9cf05dfbba83230c88f84b935560abde61177"
+    }
+  ],
+  "locales": [
+    {
+      "locale": "ru",
+      "namespace": "ui.chat.canonical",
+      "instance": "0e471bff3c0f-20261114-rnext-ru",
+      "session": "0e471bff3c0f",
+      "served_model": "openai/gpt-6.1-sol",
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 1
+      },
+      "receipt": {
+        "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-20261114-rnext-ru-receipt.json",
+        "sha256": "8af0d7827c8d5b893ef55fcd900c78829115176b005d39c99e89a7c4ac9ceae0"
+      },
+      "record": {
+        "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-20261114-rnext-ru-record.json",
+        "sha256": "b5552f7144e0fd639e925f409f63cdb13cb47305adca291dd5facb3e254ba23b"
+      },
+      "companions": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-20261114-rnext-seam-companion.json",
+          "sha256": "7eef43f3e0e16450f0250af9200647f677a634a6be5bcb95246ab838f8de610b"
+        }
+      ],
+      "current_bindings": {
+        "tree": "5df62a4bd832b1c29f90f85dbb95b2c0f5eab6f4",
+        "HEAD": "d582c3d8a1537078bd13681dfbfe5ad31cc55f61",
+        "MERGE_HEAD": "e2d980d217ec4c72e409ef8a21a8aed9602b57a2",
+        "raw_index_sha256": "b6ef50943c49fc1f252bbdf8d477688a0f96bb2f0d0b040aab59b3a40a89d505",
+        "source": {
+          "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+          "sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae"
+        },
+        "target": {
+          "path": "src/i18n/catalogues/ru/ui.chat.canonical.json",
+          "sha256": "6b82f62d6909a97c60e2c3de23503b68776c97f4b885da3badbe69eb78311a8b"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+          "sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7"
+        }
+      },
+      "seam_verdict": "PASS — exact disjoint raw-literal union of 471 main keys +23 PR keys",
+      "new_semantic_keys": 0,
+      "static_keys_verified": 494,
+      "canonical_retention": {
+        "record": "i18n/audits/evidence/ru/ui.chat.canonical/0e471bff3c0f-20261114-rnext-ru/record.json",
+        "necessary_companions": "Retain exact seam companion plus mapped parent/own-prior receipt and accepted readback evidence hashes; tracked artifact mapping, do not mutate existing records.",
+        "receipt": "i18n/receipts/0e471bff3c0f-20261114-rnext-ru.json"
+      },
+      "lawful_bounded_consumability": {
+        "lawful_for_bounded_scope": true,
+        "why": "Fresh independent seam verification of exact selected audited-parent literals, full current hash bindings, actual parent receipt identities/counts and preserved scoped lineage; caller must retain scope and companion evidence. Passing is not broad semantic/render/native approval.",
+        "frozen_contract_refs": [
+          {
+            "path": "scripts/i18n/ledger-assemble.mjs",
+            "sha256": "63651def0c5be756f61e71e5905bcf090a1c709464292864f1a6429d06e676a5",
+            "index_equals_frozen_and_disk": true
+          },
+          {
+            "path": "scripts/i18n/ledger-rules.mjs",
+            "sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6",
+            "index_equals_frozen_and_disk": true
+          }
+        ],
+        "assembler_or_ledger_checker_invoked": false
+      },
+      "unresolved_debts": [
+        {
+          "id": "CV2-RU-1",
+          "parent_ids": [
+            "I-RU-1",
+            "RU-1"
+          ],
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.back",
+          "disposition": "retained parent non-gating follow-up; not fixed by convergence"
+        },
+        {
+          "id": "CV2-RU-2",
+          "parent_ids": [
+            "I-RU-2"
+          ],
+          "severity": "NIT",
+          "key": "ui.chat.canonical.tool_row.diff.full.prev",
+          "disposition": "retained parent non-gating follow-up; parent also suggests Следующая for next if adopting page adjectives"
+        }
+      ],
+      "limitations": [
+        "Zero new semantic keys; no fresh494-key idiom/style/meaning audit. Incoming471 and prior23 semantics remain parent-authority scoped.",
+        "No new capture/browser/native/runtime/build/install/test execution. Prior22-visible+nav-AX and synthetic pseudo images remain prior bounded evidence only.",
+        "Current styles/index.css differs from prior captured bytes; no current global fit/native/RTL/pseudo or font-fallback approval is inferred. Production pager/model/runtime i18n bytes that match are individually listed, not a blanket render refresh.",
+        "First/Last/Previous/Back/Retry completed outcomes and all rendered count variants remain UNPROVEN; prior formatter-only samples do not become interaction proof.",
+        "D11 Urdu code-body direction debt remains explicitly deferred; physical RTL range order alone is not a translation bug; unrelated sound.cost.estimated_zero NIT remains unresolved.",
+        "No retrospective flip, deletion or overwrite of old withholds/changes_requested/receipts/clarifications; deeper historical findings not silently closed."
+      ],
+      "pure_deriveReceiptAudit_readback": {
+        "agent": "translation-auditor",
+        "instance": "0e471bff3c0f-20261114-rnext-ru",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 1
+        },
+        "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+        "target_sha256": "6b82f62d6909a97c60e2c3de23503b68776c97f4b885da3badbe69eb78311a8b",
+        "receipt_sha256": "8af0d7827c8d5b893ef55fcd900c78829115176b005d39c99e89a7c4ac9ceae0"
+      }
+    },
+    {
+      "locale": "ur",
+      "namespace": "ui.chat.canonical",
+      "instance": "0e471bff3c0f-20261114-rnext-ur",
+      "session": "0e471bff3c0f",
+      "served_model": "openai/gpt-6.1-sol",
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 2,
+        "nit": 1
+      },
+      "receipt": {
+        "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-20261114-rnext-ur-receipt.json",
+        "sha256": "95babf009da0b9bc76934b548f25fa8ab51d4c93bc61237042cfeae26a5c5ff2"
+      },
+      "record": {
+        "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-20261114-rnext-ur-record.json",
+        "sha256": "f44c26e7f70f6ddb4571a7ab0f71f88059d9edb95c9ab312f0c49b6f4649bb4c"
+      },
+      "companions": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-20261114-rnext-seam-companion.json",
+          "sha256": "7eef43f3e0e16450f0250af9200647f677a634a6be5bcb95246ab838f8de610b"
+        }
+      ],
+      "current_bindings": {
+        "tree": "5df62a4bd832b1c29f90f85dbb95b2c0f5eab6f4",
+        "HEAD": "d582c3d8a1537078bd13681dfbfe5ad31cc55f61",
+        "MERGE_HEAD": "e2d980d217ec4c72e409ef8a21a8aed9602b57a2",
+        "raw_index_sha256": "b6ef50943c49fc1f252bbdf8d477688a0f96bb2f0d0b040aab59b3a40a89d505",
+        "source": {
+          "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+          "sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae"
+        },
+        "target": {
+          "path": "src/i18n/catalogues/ur/ui.chat.canonical.json",
+          "sha256": "f312b2ef48de99ca833e89b0d6f81c4044311cb07ac49ee5785c35f815fe93a9"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+          "sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7"
+        }
+      },
+      "seam_verdict": "PASS — exact disjoint raw-literal union of 471 main keys +23 PR keys",
+      "new_semantic_keys": 0,
+      "static_keys_verified": 494,
+      "canonical_retention": {
+        "record": "i18n/audits/evidence/ur/ui.chat.canonical/0e471bff3c0f-20261114-rnext-ur/record.json",
+        "necessary_companions": "Retain exact seam companion plus mapped parent/own-prior receipt and accepted readback evidence hashes; tracked artifact mapping, do not mutate existing records.",
+        "receipt": "i18n/receipts/0e471bff3c0f-20261114-rnext-ur.json"
+      },
+      "lawful_bounded_consumability": {
+        "lawful_for_bounded_scope": true,
+        "why": "Fresh independent seam verification of exact selected audited-parent literals, full current hash bindings, actual parent receipt identities/counts and preserved scoped lineage; caller must retain scope and companion evidence. Passing is not broad semantic/render/native approval.",
+        "frozen_contract_refs": [
+          {
+            "path": "scripts/i18n/ledger-assemble.mjs",
+            "sha256": "63651def0c5be756f61e71e5905bcf090a1c709464292864f1a6429d06e676a5",
+            "index_equals_frozen_and_disk": true
+          },
+          {
+            "path": "scripts/i18n/ledger-rules.mjs",
+            "sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6",
+            "index_equals_frozen_and_disk": true
+          }
+        ],
+        "assembler_or_ledger_checker_invoked": false
+      },
+      "unresolved_debts": [
+        {
+          "id": "CV2-UR-1",
+          "parent_ids": [
+            "I-UR-1",
+            "UR-1"
+          ],
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+          "disposition": "retained parent non-gating follow-up; not fixed by convergence"
+        },
+        {
+          "id": "CV2-UR-2",
+          "parent_ids": [
+            "NIT-1"
+          ],
+          "severity": "NIT",
+          "key": "ui.chat.canonical.sound.cost.estimated_zero",
+          "disposition": "retained rendered-fit follow-up, no catalogue change proposed; do not reorder $0 or insert manual bidi controls"
+        },
+        {
+          "id": "D11",
+          "parent_ids": [],
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full",
+          "disposition": "User-authorized deferred design-thread MINOR (D11), non-gating for this bounded convergence; NOT a new minor fix round."
+        }
+      ],
+      "limitations": [
+        "Zero new semantic keys; no fresh494-key idiom/style/meaning audit. Incoming471 and prior23 semantics remain parent-authority scoped.",
+        "No new capture/browser/native/runtime/build/install/test execution. Prior22-visible+nav-AX and synthetic pseudo images remain prior bounded evidence only.",
+        "Current styles/index.css differs from prior captured bytes; no current global fit/native/RTL/pseudo or font-fallback approval is inferred. Production pager/model/runtime i18n bytes that match are individually listed, not a blanket render refresh.",
+        "First/Last/Previous/Back/Retry completed outcomes and all rendered count variants remain UNPROVEN; prior formatter-only samples do not become interaction proof.",
+        "D11 Urdu code-body direction debt remains explicitly deferred; physical RTL range order alone is not a translation bug; unrelated sound.cost.estimated_zero NIT remains unresolved.",
+        "No retrospective flip, deletion or overwrite of old withholds/changes_requested/receipts/clarifications; deeper historical findings not silently closed."
+      ],
+      "pure_deriveReceiptAudit_readback": {
+        "agent": "translation-auditor",
+        "instance": "0e471bff3c0f-20261114-rnext-ur",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 2,
+          "nit": 1
+        },
+        "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+        "target_sha256": "f312b2ef48de99ca833e89b0d6f81c4044311cb07ac49ee5785c35f815fe93a9",
+        "receipt_sha256": "95babf009da0b9bc76934b548f25fa8ab51d4c93bc61237042cfeae26a5c5ff2"
+      }
+    },
+    {
+      "locale": "vi",
+      "namespace": "ui.chat.canonical",
+      "instance": "0e471bff3c0f-20261114-rnext-vi",
+      "session": "0e471bff3c0f",
+      "served_model": "openai/gpt-6.1-sol",
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 1
+      },
+      "receipt": {
+        "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-20261114-rnext-vi-receipt.json",
+        "sha256": "c22f51ad52537cac57a8b93d4b32d39e984dc752b2dc90e527e624411a4d2231"
+      },
+      "record": {
+        "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-20261114-rnext-vi-record.json",
+        "sha256": "1d47a857b1a47b942badbb466b2a49ee3b28d77bd5d439a8f607d5050c073eb2"
+      },
+      "companions": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-20261114-rnext-seam-companion.json",
+          "sha256": "7eef43f3e0e16450f0250af9200647f677a634a6be5bcb95246ab838f8de610b"
+        }
+      ],
+      "current_bindings": {
+        "tree": "5df62a4bd832b1c29f90f85dbb95b2c0f5eab6f4",
+        "HEAD": "d582c3d8a1537078bd13681dfbfe5ad31cc55f61",
+        "MERGE_HEAD": "e2d980d217ec4c72e409ef8a21a8aed9602b57a2",
+        "raw_index_sha256": "b6ef50943c49fc1f252bbdf8d477688a0f96bb2f0d0b040aab59b3a40a89d505",
+        "source": {
+          "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+          "sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae"
+        },
+        "target": {
+          "path": "src/i18n/catalogues/vi/ui.chat.canonical.json",
+          "sha256": "8eb5a837b784cfcfed19ba24e7e3dde219354cd3f39a35be36d26d049a0f7779"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+          "sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7"
+        }
+      },
+      "seam_verdict": "PASS — exact disjoint raw-literal union of 471 main keys +23 PR keys",
+      "new_semantic_keys": 0,
+      "static_keys_verified": 494,
+      "canonical_retention": {
+        "record": "i18n/audits/evidence/vi/ui.chat.canonical/0e471bff3c0f-20261114-rnext-vi/record.json",
+        "necessary_companions": "Retain exact seam companion plus mapped parent/own-prior receipt and accepted readback evidence hashes; tracked artifact mapping, do not mutate existing records.",
+        "receipt": "i18n/receipts/0e471bff3c0f-20261114-rnext-vi.json"
+      },
+      "lawful_bounded_consumability": {
+        "lawful_for_bounded_scope": true,
+        "why": "Fresh independent seam verification of exact selected audited-parent literals, full current hash bindings, actual parent receipt identities/counts and preserved scoped lineage; caller must retain scope and companion evidence. Passing is not broad semantic/render/native approval.",
+        "frozen_contract_refs": [
+          {
+            "path": "scripts/i18n/ledger-assemble.mjs",
+            "sha256": "63651def0c5be756f61e71e5905bcf090a1c709464292864f1a6429d06e676a5",
+            "index_equals_frozen_and_disk": true
+          },
+          {
+            "path": "scripts/i18n/ledger-rules.mjs",
+            "sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6",
+            "index_equals_frozen_and_disk": true
+          }
+        ],
+        "assembler_or_ledger_checker_invoked": false
+      },
+      "unresolved_debts": [
+        {
+          "id": "VI-C1",
+          "parent_ids": [],
+          "severity": "NIT",
+          "key": "ui.chat.canonical.temporary_deleted.detail",
+          "disposition": "carried from 94f6e325484c-canon2: bytes unchanged, still applies; deferred"
+        }
+      ],
+      "limitations": [
+        "Zero new semantic keys; no fresh494-key idiom/style/meaning audit. Incoming471 and prior23 semantics remain parent-authority scoped.",
+        "No new capture/browser/native/runtime/build/install/test execution. Prior22-visible+nav-AX and synthetic pseudo images remain prior bounded evidence only.",
+        "Current styles/index.css differs from prior captured bytes; no current global fit/native/RTL/pseudo or font-fallback approval is inferred. Production pager/model/runtime i18n bytes that match are individually listed, not a blanket render refresh.",
+        "First/Last/Previous/Back/Retry completed outcomes and all rendered count variants remain UNPROVEN; prior formatter-only samples do not become interaction proof.",
+        "D11 Urdu code-body direction debt remains explicitly deferred; physical RTL range order alone is not a translation bug; unrelated sound.cost.estimated_zero NIT remains unresolved.",
+        "No retrospective flip, deletion or overwrite of old withholds/changes_requested/receipts/clarifications; deeper historical findings not silently closed."
+      ],
+      "pure_deriveReceiptAudit_readback": {
+        "agent": "translation-auditor",
+        "instance": "0e471bff3c0f-20261114-rnext-vi",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0,
+          "nit": 1
+        },
+        "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+        "target_sha256": "8eb5a837b784cfcfed19ba24e7e3dde219354cd3f39a35be36d26d049a0f7779",
+        "receipt_sha256": "c22f51ad52537cac57a8b93d4b32d39e984dc752b2dc90e527e624411a4d2231"
+      }
+    },
+    {
+      "locale": "zh-CN",
+      "namespace": "ui.chat.canonical",
+      "instance": "0e471bff3c0f-20261114-rnext-zh-cn",
+      "session": "0e471bff3c0f",
+      "served_model": "openai/gpt-6.1-sol",
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 2
+      },
+      "receipt": {
+        "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-20261114-rnext-zh-cn-receipt.json",
+        "sha256": "c1a92634f78e15b8276d24934cd9cf05dfbba83230c88f84b935560abde61177"
+      },
+      "record": {
+        "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-20261114-rnext-zh-cn-record.json",
+        "sha256": "b529fd7f2eddb52b176d2938a9ceb67388b6fc6d82f8c686f2766e1e7d05ab5e"
+      },
+      "companions": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-20261114-rnext-seam-companion.json",
+          "sha256": "7eef43f3e0e16450f0250af9200647f677a634a6be5bcb95246ab838f8de610b"
+        }
+      ],
+      "current_bindings": {
+        "tree": "5df62a4bd832b1c29f90f85dbb95b2c0f5eab6f4",
+        "HEAD": "d582c3d8a1537078bd13681dfbfe5ad31cc55f61",
+        "MERGE_HEAD": "e2d980d217ec4c72e409ef8a21a8aed9602b57a2",
+        "raw_index_sha256": "b6ef50943c49fc1f252bbdf8d477688a0f96bb2f0d0b040aab59b3a40a89d505",
+        "source": {
+          "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+          "sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae"
+        },
+        "target": {
+          "path": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+          "sha256": "c69feefe7cbb568ed80f498cfb13dc8d15e1abf33ad0ea59908f6c5ce470d5cc"
+        },
+        "context": {
+          "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+          "sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7"
+        }
+      },
+      "seam_verdict": "PASS — exact disjoint raw-literal union of 471 main keys +23 PR keys",
+      "new_semantic_keys": 0,
+      "static_keys_verified": 494,
+      "canonical_retention": {
+        "record": "i18n/audits/evidence/zh-CN/ui.chat.canonical/0e471bff3c0f-20261114-rnext-zh-cn/record.json",
+        "necessary_companions": "Retain exact seam companion plus mapped parent/own-prior receipt and accepted readback evidence hashes; tracked artifact mapping, do not mutate existing records.",
+        "receipt": "i18n/receipts/0e471bff3c0f-20261114-rnext-zh-cn.json"
+      },
+      "lawful_bounded_consumability": {
+        "lawful_for_bounded_scope": true,
+        "why": "Fresh independent seam verification of exact selected audited-parent literals, full current hash bindings, actual parent receipt identities/counts and preserved scoped lineage; caller must retain scope and companion evidence. Passing is not broad semantic/render/native approval.",
+        "frozen_contract_refs": [
+          {
+            "path": "scripts/i18n/ledger-assemble.mjs",
+            "sha256": "63651def0c5be756f61e71e5905bcf090a1c709464292864f1a6429d06e676a5",
+            "index_equals_frozen_and_disk": true
+          },
+          {
+            "path": "scripts/i18n/ledger-rules.mjs",
+            "sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6",
+            "index_equals_frozen_and_disk": true
+          }
+        ],
+        "assembler_or_ledger_checker_invoked": false
+      },
+      "unresolved_debts": [
+        {
+          "id": "ZH-1",
+          "parent_ids": [],
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.loading",
+          "disposition": "deferred — non-gating minor, no remediation cycle; carried in this NEW record"
+        },
+        {
+          "id": "CV2-ZH-1",
+          "parent_ids": [
+            "N1"
+          ],
+          "severity": "NIT",
+          "key": "ui.chat.canonical.sound.batch.latest_update",
+          "disposition": "retained incoming-parent non-gating follow-up; not fixed by convergence"
+        },
+        {
+          "id": "CV2-ZH-2",
+          "parent_ids": [
+            "N2"
+          ],
+          "severity": "NIT",
+          "key": "ui.chat.canonical.sound.cost.estimated_zero",
+          "disposition": "retained incoming-parent non-gating follow-up; not fixed by convergence"
+        }
+      ],
+      "limitations": [
+        "Zero new semantic keys; no fresh494-key idiom/style/meaning audit. Incoming471 and prior23 semantics remain parent-authority scoped.",
+        "No new capture/browser/native/runtime/build/install/test execution. Prior22-visible+nav-AX and synthetic pseudo images remain prior bounded evidence only.",
+        "Current styles/index.css differs from prior captured bytes; no current global fit/native/RTL/pseudo or font-fallback approval is inferred. Production pager/model/runtime i18n bytes that match are individually listed, not a blanket render refresh.",
+        "First/Last/Previous/Back/Retry completed outcomes and all rendered count variants remain UNPROVEN; prior formatter-only samples do not become interaction proof.",
+        "D11 Urdu code-body direction debt remains explicitly deferred; physical RTL range order alone is not a translation bug; unrelated sound.cost.estimated_zero NIT remains unresolved.",
+        "No retrospective flip, deletion or overwrite of old withholds/changes_requested/receipts/clarifications; deeper historical findings not silently closed."
+      ],
+      "pure_deriveReceiptAudit_readback": {
+        "agent": "translation-auditor",
+        "instance": "0e471bff3c0f-20261114-rnext-zh-cn",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 2
+        },
+        "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+        "target_sha256": "c69feefe7cbb568ed80f498cfb13dc8d15e1abf33ad0ea59908f6c5ce470d5cc",
+        "receipt_sha256": "c1a92634f78e15b8276d24934cd9cf05dfbba83230c88f84b935560abde61177"
+      }
+    }
+  ],
+  "all_original_own_files_preserved": true,
+  "preserve_old_hash_check": [
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/check-convergence.py",
+      "sha256": "35dec628ac311e8333ed71f4da00f6fcf828b009d4e2ba40cb0b7b9b0e53b23a",
+      "unchanged": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/independent-provenance-check.json",
+      "sha256": "84cab412b8db995f790e32eafdf8999b7a76b1732950cc5060c4dfdfbbec59c4",
+      "unchanged": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/independent-parent-receipt-check.json",
+      "sha256": "b67232f263c1753d981da2dca6daddfb8a567fc863ecc1f7094e91762d8b752b",
+      "unchanged": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/icu-integrity.mjs",
+      "sha256": "6a5548cfd9dd7e89eae6c97a252bec3fcb5dbf59c6c5ec6da7a62967d9a852b6",
+      "unchanged": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/icu-integrity-results.json",
+      "sha256": "775b402dc8046054531d946bf4917dd9f89c1ef37f5f23c09e0131001272cb70",
+      "unchanged": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/incoming-parent-history-check.json",
+      "sha256": "41c44802688884c6565e313ce3926a4f5f96e96089eba702052da91e337dc863",
+      "unchanged": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/seam-keys-read.json",
+      "sha256": "7bc8ca954922723e27e5af5fe1a574db8a2b1a977ab17b2c4416fc5d3cb3a5c4",
+      "unchanged": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/validate-parent-receipts.mjs",
+      "sha256": "d7f56c6c652ca6a4e50e17dc1e9a3e8460359122977711574af59b30bf316d84",
+      "unchanged": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/parent-receipt-contract-results.json",
+      "sha256": "0d696bce78d21a5350e257df7c4e1fc5f3e9f4c2a09bfd086f28141669f340a3",
+      "unchanged": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/ledger-parent-retention-check.json",
+      "sha256": "e687eb947021779999cddd5acf369f4220140bd439133f0debb3323775453568",
+      "unchanged": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/linguistic-keys-read.json",
+      "sha256": "3fd85968222639ac51c8da9396726eb8dbac9090069a98f70078574ea91a90c9",
+      "unchanged": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/coder-map-cross-check.json",
+      "sha256": "e6de02a6a2ccbd173fd55dbe83741c867d73e44cd41703f147701d2dd7698110",
+      "unchanged": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/convergence-policy-decision.json",
+      "sha256": "3d696e8fc20eee616bcd423bc6c02725abc43fbb6234781de7ed17f65a01f116",
+      "unchanged": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/format-samples.mjs",
+      "sha256": "7d7bbd93c80d02f3f79a369e34aa7c131606d31c58c4978ae47687fa76b16007",
+      "unchanged": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/format-samples-results.json",
+      "sha256": "b7bbab14e8a921b04a681235077e64daa3bfbcdebfbd1945f8da2d75c42fe26d",
+      "unchanged": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/ru-preview-glossary-evidence.json",
+      "sha256": "27e74c61fbf64f8e4c6a05b73d48532d63c5b0efa24ba1c43f64e2742806af49",
+      "unchanged": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/scoped-findings.json",
+      "sha256": "e5226a26917e72dd664acf0525988ba3c795ef3784b690d046dd270c22c6f6c7",
+      "unchanged": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/icu-manual-adjudications.json",
+      "sha256": "36d171e79d70e12d1f59db6cddeb3880ecd370064820166ce2857f3d7ddf4f76",
+      "unchanged": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/overflow-screening.json",
+      "sha256": "6156747b719758139628409ac50da8e38faad42cf5562c9b23c51650c8ad1b52",
+      "unchanged": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/assigned-patch-boundary-check.json",
+      "sha256": "d16e0ec81765166f5a0dbd966c880060086255f71bb8469db1a62f3798f98e9b",
+      "unchanged": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/frozen-end-state.json",
+      "sha256": "23fb0cb2fbcacececb83c7f1f6e7b09c43c7f357fa95f43bc99bd8da0eb80859",
+      "unchanged": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-convergence2-ru.json",
+      "sha256": "db3943a7bce723e5990fb9179f57398881898bb0877e21d644de6220684f2798",
+      "unchanged": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-convergence2-ur.json",
+      "sha256": "f29efce614d4a5e6aa6e75f84e779abc71e358be6c60b85fb2ec1a821041e966",
+      "unchanged": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-convergence2-vi.json",
+      "sha256": "de2c0c43cb55329c546b125ccc83d496614ea333079ee27a39f5adba089024f1",
+      "unchanged": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-convergence2-zh-cn.json",
+      "sha256": "8ad7670a42af698bf6d8773099eb3bfb50bef0f0935f356ff282318b813c2368",
+      "unchanged": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/current-receipt-contract-results.json",
+      "sha256": "dff036c3b6e3256ef9c648e8bcea8f6f3dc166ca87380d86eb6b9e244a4fdd44",
+      "unchanged": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/independent-second-convergence-report.md",
+      "sha256": "c6066ead0b9c7c1db4ffdcc5b68238f3a5e8e24d74866de12298dd34e37e2cca",
+      "unchanged": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-1829-final-evidence-ru.json",
+      "sha256": "ab27262aab91ede71d9564ab1e2e7bfeac3394a01e3810f73abbbdfd0b3fce5f",
+      "unchanged": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-1829-final-evidence-ur.json",
+      "sha256": "b0d3da25151c5c82878072195d10cea1f83b6d883c4b73720e2fedde9c2e2a4d",
+      "unchanged": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-1829-final-evidence-vi.json",
+      "sha256": "0eaa29282ea974559c613226a7742b308dc69beafeeef98ff93c83df0e307bc1",
+      "unchanged": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-1829-final-evidence-zh-cn.json",
+      "sha256": "a101269b47ccfaf75ca9c0e70e90e7a4113b487758eaebbb11a0041796c6d3b9",
+      "unchanged": true
+    }
+  ],
+  "prior_records_or_withholds_rewritten": false,
+  "derivation": "Actual frozen ledger-rules pure deriveReceiptAudit applied to immutable candidate bytes in memory; assembler and ledger-check NOT invoked.",
+  "policy_verdict": "Four exact seams certified for this explicit bounded rebinding scope; no unresolved blocker/major in that scope. Genuine parent MINOR/NIT and deferred D11 debt retained. Machine-valid is not global release approval.",
+  "new_findings_explanation": "VI-C1 is an existing incoming-main NIT newly included by selected 471-key ancestry, not a fresh finding. Existing alias IDs are preserved/deduplicated.",
+  "no_new_rendering_claim": "Earlier accepted23 captured elements remain prior bounded proof only. Current styles/index.css differs from prior capture and is explicitly recorded; no new current/global/native fit approval is inferred.",
+  "total_findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 4,
+    "nit": 5
+  },
+  "no_repository_writes": true,
+  "no_new_semantic_capture_runtime_or_test_round": true
+}

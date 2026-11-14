@@ -105,7 +105,6 @@ import {
 	type NotificationsTarget,
 	type NotificationsVerb,
 	applyConfirmedWrite,
-	notificationKeys,
 	previewNotificationSelection,
 	readSessionDismissCounts,
 	tokensOf,
@@ -136,7 +135,13 @@ import {
 	scopeCountSignature,
 	sessionScopeCountsEnabled,
 } from "../notifications-model";
-import { NotificationDetail } from "./notification-detail";
+import {
+	NotificationDetail,
+	copyNotificationLink,
+	notificationPath,
+	refreshAfterAskSettled,
+	useOpenedDetailRead,
+} from "./notification-detail";
 import { NotificationRow } from "./notification-row";
 import { NotificationRowExit } from "./notification-row-exit";
 import { OperationProgressLine } from "./operation-progress-line";
@@ -671,25 +676,53 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 		: null;
 
 	/*
-	 * OPENING A DETAIL IS AN EXPLICIT READ (contract § 6.4, design § 17.3),
-	 * token-bound to the revision the detail rendered. Once per detail opening,
-	 * NOT per revision: a keyed update arriving while the pane is open is not
-	 * proof the new content was seen. It stays unread until a fresh explicit
-	 * action or an item-specific transcript receipt (presence refinement).
+	 * A DEEP-LINKED READ ITEM IS KEPT ON THE UNREAD FILTER (UX round 1, U3).
+	 * "Open in Notifications" from the conversation drawer lands here with an item
+	 * the drawer's own opening already marked read, and the page's default Unread
+	 * filter then listed no row for it: the detail showed, but nothing in the list
+	 * was selected - the operator asked for "that notification selected". The page
+	 * already has the rule for this (ROWS MARKED READ STAY ON THE UNREAD FILTER,
+	 * above), so the linked item simply enters `stickyRead` and leaves it the way
+	 * any kept read does: on a filter change or a refresh. Once per link: after
+	 * the person clears it, it is not put back. The row is then scrolled into view.
 	 */
-	const explicitRead = useRef<string | null>(null);
+	const keptLink = useRef<string | null>(null);
+	const scrollToLinked = useRef<string | null>(null);
 	useEffect(() => {
+		const item = detail.data?.item;
 		if (!notificationId) {
-			explicitRead.current = null;
+			keptLink.current = null;
 			return;
 		}
-		const item = detail.data?.item;
-		if (!item || item.id !== notificationId || explicitRead.current === item.id)
-			return;
-		explicitRead.current = item.id;
-		if (item.read || item.dismissed || writesPaused) return;
-		write.mutate({ verb: "read", target: { items: tokensOf([item]) } });
-	}, [notificationId, detail.data, write, writesPaused]);
+		if (item?.id !== notificationId || keptLink.current === item.id) return;
+		if (readState !== "unread" || !item.read || item.dismissed) return;
+		if (byId.has(item.id)) return;
+		keptLink.current = item.id;
+		scrollToLinked.current = item.id;
+		setStickyRead((current) => new Map(current).set(item.id, item));
+	}, [notificationId, detail.data, readState, byId]);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: order is the rendered rows' invalidation signal; the row is looked up in the DOM
+	useEffect(() => {
+		const id = scrollToLinked.current;
+		if (!id) return;
+		const node = listRef.current?.querySelector<HTMLElement>(
+			`[data-notification-row="${CSS.escape(id)}"]`,
+		);
+		if (!node) return;
+		scrollToLinked.current = null;
+		/* Optional call: jsdom (the unit tests' DOM) has no `scrollIntoView`. */
+		node.scrollIntoView?.({ block: "nearest" });
+	}, [order]);
+
+	/* Opening a detail is an explicit read; the rule (and why) lives with the
+	   pane so the conversation drawer's detail marks exactly as this page does. */
+	useOpenedDetailRead(
+		notificationId ?? null,
+		detail.data?.item,
+		writesPaused,
+		(item) =>
+			write.mutate({ verb: "read", target: { items: tokensOf([item]) } }),
+	);
 
 	const clearSelection = useCallback(() => {
 		previewGeneration.current += 1;
@@ -1132,7 +1165,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 	const openDetail = useCallback(
 		(item: DesktopNotificationItem) => {
 			setFocusId(item.id);
-			navigate(`/notifications/${encodeURIComponent(item.id)}`);
+			navigate(notificationPath(item.id));
 		},
 		[navigate],
 	);
@@ -2012,25 +2045,11 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 								onToggleRead={(item) => toggleRead([item])}
 								onDismiss={(item) => dismiss([item])}
 								onDismissSession={requestDismissSession}
-								onCopyLink={(item) => {
-									void navigator.clipboard
-										?.writeText(`/notifications/${item.id}`)
-										.then(() =>
-											showSuccessToast(t("ui.notifications.toast.copied")),
-										);
-								}}
+								onCopyLink={copyNotificationLink}
 								onOpenProject={(key) =>
 									navigate(`/projects/${encodeURIComponent(key)}`)
 								}
-								/*
-								 * AN ANSWERED ASK REFRESHES FACTS, NOT WINDOWS (code round 8, N1).
-								 * `notificationKeys.all` also reached the reel's and the drawer's
-								 * scroll windows, so answering from the detail re-walked every
-								 * loaded page. The ask's effects live in page one's facts (the
-								 * `waiting` group), each conversation's facts, the rail's count
-								 * (`waiting_count`), and this detail's own `asks` - the asks have
-								 * no query of their own here; the detail read carries them.
-								 */
+								/* Facts, not windows: see `refreshAfterAskSettled` (N1). */
 								onAsksSettled={(askId, status) => {
 									/* This detail intentionally shows conversation-wide asks. Bind the
 									 * accepted ask ID, not whichever Update happens to be selected. */
@@ -2049,18 +2068,7 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 											}),
 										);
 									}
-									void client.invalidateQueries({
-										queryKey: notificationKeys.factsRoot,
-									});
-									void client.invalidateQueries({
-										queryKey: notificationKeys.sessionFactsAll,
-									});
-									void client.invalidateQueries({
-										queryKey: notificationKeys.count,
-									});
-									void client.invalidateQueries({
-										queryKey: notificationKeys.detail(openItem.id),
-									});
+									refreshAfterAskSettled(client, openItem.id);
 								}}
 							/>
 						) : (

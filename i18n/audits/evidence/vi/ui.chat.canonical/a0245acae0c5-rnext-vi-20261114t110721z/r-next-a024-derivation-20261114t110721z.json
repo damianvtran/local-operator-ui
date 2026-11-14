@@ -1,0 +1,93 @@
+{
+  "kind": "pure in-memory deriveReceiptAudit verification only; no assembler/ledger-check invocation",
+  "results": [
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-ru-receipt-20261114t110721z.json",
+      "locale": "ru",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "a0245acae0c5-rnext-ru-20261114t110721z",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 1
+        },
+        "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+        "target_sha256": "6b82f62d6909a97c60e2c3de23503b68776c97f4b885da3badbe69eb78311a8b",
+        "receipt_sha256": "790ba4aa4bf40220e8ad85c70c84944625caf0881124cbdf6007cc16c67a809a"
+      },
+      "context_matches": true,
+      "counts_match": true,
+      "result_matches": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-ur-receipt-20261114t110721z.json",
+      "locale": "ur",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "a0245acae0c5-rnext-ur-20261114t110721z",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 2,
+          "nit": 1
+        },
+        "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+        "target_sha256": "f312b2ef48de99ca833e89b0d6f81c4044311cb07ac49ee5785c35f815fe93a9",
+        "receipt_sha256": "977fc11a078f2d98da31adc56b042c58ea69c7526e6fac1796a69fecbed7c0ea"
+      },
+      "context_matches": true,
+      "counts_match": true,
+      "result_matches": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-vi-receipt-20261114t110721z.json",
+      "locale": "vi",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "a0245acae0c5-rnext-vi-20261114t110721z",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0,
+          "nit": 1
+        },
+        "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+        "target_sha256": "8eb5a837b784cfcfed19ba24e7e3dde219354cd3f39a35be36d26d049a0f7779",
+        "receipt_sha256": "fbccc2a2a131adc454e30b91f1f32891959ce948136fbc71e7e0d681ad6b8f72"
+      },
+      "context_matches": true,
+      "counts_match": true,
+      "result_matches": true
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-zh-CN-receipt-20261114t110721z.json",
+      "locale": "zh-CN",
+      "derived": {
+        "agent": "translation-auditor",
+        "instance": "a0245acae0c5-rnext-zh-cn-20261114t110721z",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 2
+        },
+        "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+        "target_sha256": "c69feefe7cbb568ed80f498cfb13dc8d15e1abf33ad0ea59908f6c5ce470d5cc",
+        "receipt_sha256": "1f4b7454f09a6bf8b48f2a6b85d733a844da0234497c6e0a7dd96d358af722a0"
+      },
+      "context_matches": true,
+      "counts_match": true,
+      "result_matches": true
+    }
+  ]
+}

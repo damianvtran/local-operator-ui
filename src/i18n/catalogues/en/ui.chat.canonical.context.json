@@ -3258,6 +3258,26 @@
 		"length": "Short; shares one row with the tool name and truncates with an ellipsis when narrow.",
 		"note": "Sibling of never_sent_composed with nothing to measure: 'nothing composed' = the model had not written any of the request. Keep the two lines parallel in wording."
 	},
+	"ui.chat.canonical.temporary_deleted.title": {
+		"role": "pane notice for a deleted temporary chat",
+		"tone": "plain statement",
+		"note": "Shown when the conversation on screen was deleted as a temporary chat."
+	},
+	"ui.chat.canonical.temporary_deleted.detail": {
+		"role": "pane notice for a deleted temporary chat",
+		"tone": "plain statement",
+		"note": "Shown when the conversation on screen was deleted as a temporary chat."
+	},
+	"ui.chat.canonical.temporary_deleted.new": {
+		"role": "pane notice action button",
+		"tone": "imperative action phrase",
+		"note": "Shown when the conversation on screen was deleted as a temporary chat."
+	},
+	"ui.chat.canonical.temporary_deleted.back": {
+		"role": "pane notice action button",
+		"tone": "imperative action phrase",
+		"note": "Shown when the conversation on screen was deleted as a temporary chat."
+	},
 	"ui.chat.canonical.tool.composing_sized": {
 		"role": "one-line status of a tool call that is composing (the model is still writing the call's arguments), with how much of the request is written",
 		"tone": "terse lower-case status line, no trailing punctuation; the middle dot is a separator between status and detail",

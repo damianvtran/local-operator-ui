@@ -1,0 +1,220 @@
+{
+  "kind": "FINAL allowlisted independent seam-only rebinding receipt manifest",
+  "not_a_ledger_receipt": true,
+  "auditor": "translation-auditor",
+  "session": "5f8e54e78de8",
+  "actual_served_model": "openai/gpt-6.1-sol",
+  "model_selection": "parent; inherited,no override",
+  "fallback": null,
+  "profile_revision": "definition-revision:v1:977d12b70eb8adff7d8b9491e8e59b748a9fac283683abd963fdf586cb596f8a",
+  "scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+  "HEAD": "d582c3d8a1537078bd13681dfbfe5ad31cc55f61",
+  "MERGE_HEAD": "e2d980d217ec4c72e409ef8a21a8aed9602b57a2",
+  "frozen_tree": "5df62a4bd832b1c29f90f85dbb95b2c0f5eab6f4",
+  "raw_index_sha256": "b6ef50943c49fc1f252bbdf8d477688a0f96bb2f0d0b040aab59b3a40a89d505",
+  "per_namespace_verdicts": {
+    "es/ui.chat.canonical": {
+      "result": "clean-with-findings",
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 5,
+        "nit": 2
+      },
+      "seam_verdict": "Exact disjoint union; zero collisions, missing/extra/duplicate keys or raw-literal/placeholder/ICU changes versus selected audited parents. No new semantic defect discovered or inferred."
+    },
+    "fr/ui.chat.canonical": {
+      "result": "clean-with-findings",
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 4,
+        "nit": 3
+      },
+      "seam_verdict": "Exact disjoint union; zero collisions, missing/extra/duplicate keys or raw-literal/placeholder/ICU changes versus selected audited parents. No new semantic defect discovered or inferred."
+    },
+    "hi/ui.chat.canonical": {
+      "result": "clean-with-findings",
+      "counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 2,
+        "nit": 1
+      },
+      "seam_verdict": "Exact disjoint union; zero collisions, missing/extra/duplicate keys or raw-literal/placeholder/ICU changes versus selected audited parents. No new semantic defect discovered or inferred."
+    }
+  },
+  "overall_verdict": "terminal clean-with-findings for exact union seam-only rebinding; not a fresh494-key translation audit,render/native/activation/release approval",
+  "new_semantic_keys_read": 0,
+  "mechanical_target_key_literals_verified": 1482,
+  "old_preservation": {
+    "checked_files": 26,
+    "all_hashes_unchanged": true
+  },
+  "validation": {
+    "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/final-validation.json",
+    "sha256": "c0bbbc949803e5d8a95974a0bbf4ef94efca6dc6184f8f062e0c121836ddd4e3"
+  },
+  "receipts_records_companions": {
+    "es": {
+      "locale": "es",
+      "namespace": "ui.chat.canonical",
+      "result": "clean-with-findings",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 5,
+        "nit": 2
+      },
+      "instance": "5f8e54e78de8-es-rnext-rebind-20261114",
+      "session": "5f8e54e78de8",
+      "served_model": "openai/gpt-6.1-sol",
+      "record": {
+        "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/es/5f8e54e78de8-es-rnext-rebind-20261114/record.json",
+        "sha256": "996fb8d22f1e791ae334befbffcfb3417eb6bf405cd62b1c8c39ed69bdea52db"
+      },
+      "receipt": {
+        "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/es/5f8e54e78de8-es-rnext-rebind-20261114/receipt.json",
+        "sha256": "b054cc28eb36f3cfe4ef006270d40ad0df8f883c45966f5ba98a54332c4e773a"
+      },
+      "companions": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/es/5f8e54e78de8-es-rnext-rebind-20261114/parents-and-findings.json",
+          "sha256": "a8f191f27c8630186fe0cbfa2ed0f7b96435c1a8462eafd53e1f233cd5bd09a5"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/seam-proof.json",
+          "sha256": "fae241b93352f51b329b41ea9b496309bfaaac68db61bd292a1aeea9718a4283"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/parent-contract-validation.json",
+          "sha256": "7c4ae05726ecadafc58051f056722e34e99967ba44c0d0531ad6f0fe0e7210dd"
+        }
+      ],
+      "current_bindings": {
+        "en": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+        "es": "528df8fc526fee090ff593a5f1122cf5a832fb461e5a3c121f72040fe1278e1d",
+        "context": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7"
+      },
+      "seam_verdict": "Exact disjoint union; zero collisions, missing/extra/duplicate keys or raw-literal/placeholder/ICU changes versus selected audited parents. No new semantic defect discovered or inferred.",
+      "canonical_retention_root": "i18n/audits/evidence/es/ui.chat.canonical/5f8e54e78de8-es-rnext-rebind-20261114",
+      "new_semantic_keys_read": 0,
+      "lawful_bounded_consumability": true
+    },
+    "fr": {
+      "locale": "fr",
+      "namespace": "ui.chat.canonical",
+      "result": "clean-with-findings",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 4,
+        "nit": 3
+      },
+      "instance": "5f8e54e78de8-fr-rnext-rebind-20261114",
+      "session": "5f8e54e78de8",
+      "served_model": "openai/gpt-6.1-sol",
+      "record": {
+        "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/fr/5f8e54e78de8-fr-rnext-rebind-20261114/record.json",
+        "sha256": "f7b257c79b22c630d6e928ebc41c1f74821497efb34b3df77ec16084cc9d7939"
+      },
+      "receipt": {
+        "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/fr/5f8e54e78de8-fr-rnext-rebind-20261114/receipt.json",
+        "sha256": "16186f00614c8b35657b535a6059a8f97b5f2e08e8cec31d851fe6cd9a209f38"
+      },
+      "companions": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/fr/5f8e54e78de8-fr-rnext-rebind-20261114/parents-and-findings.json",
+          "sha256": "cf865f5f1800003f2c8f4536907db3f29bbe998c48a9e312737ae7d258fd2746"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/seam-proof.json",
+          "sha256": "fae241b93352f51b329b41ea9b496309bfaaac68db61bd292a1aeea9718a4283"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/parent-contract-validation.json",
+          "sha256": "7c4ae05726ecadafc58051f056722e34e99967ba44c0d0531ad6f0fe0e7210dd"
+        }
+      ],
+      "current_bindings": {
+        "en": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+        "fr": "060c7967167434f91d79d3c3093642690ed8c7d95b3f9b9a36be9b4d6b17099a",
+        "context": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7"
+      },
+      "seam_verdict": "Exact disjoint union; zero collisions, missing/extra/duplicate keys or raw-literal/placeholder/ICU changes versus selected audited parents. No new semantic defect discovered or inferred.",
+      "canonical_retention_root": "i18n/audits/evidence/fr/ui.chat.canonical/5f8e54e78de8-fr-rnext-rebind-20261114",
+      "new_semantic_keys_read": 0,
+      "lawful_bounded_consumability": true
+    },
+    "hi": {
+      "locale": "hi",
+      "namespace": "ui.chat.canonical",
+      "result": "clean-with-findings",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 2,
+        "nit": 1
+      },
+      "instance": "5f8e54e78de8-hi-rnext-rebind-20261114",
+      "session": "5f8e54e78de8",
+      "served_model": "openai/gpt-6.1-sol",
+      "record": {
+        "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/hi/5f8e54e78de8-hi-rnext-rebind-20261114/record.json",
+        "sha256": "06bb6abf7c450d4f277163f12a7b797031ccb05f0186a858a99bffd67e45e476"
+      },
+      "receipt": {
+        "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/hi/5f8e54e78de8-hi-rnext-rebind-20261114/receipt.json",
+        "sha256": "ad7a764b5f158ef639a65d9195fe305afc4c68be7816a4d1bf12001d730540be"
+      },
+      "companions": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/hi/5f8e54e78de8-hi-rnext-rebind-20261114/parents-and-findings.json",
+          "sha256": "36aed18269b6051713b29cc70a83bbcb69c5c5a41c8143896aecb0db05713046"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/seam-proof.json",
+          "sha256": "fae241b93352f51b329b41ea9b496309bfaaac68db61bd292a1aeea9718a4283"
+        },
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/parent-contract-validation.json",
+          "sha256": "7c4ae05726ecadafc58051f056722e34e99967ba44c0d0531ad6f0fe0e7210dd"
+        }
+      ],
+      "current_bindings": {
+        "en": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+        "hi": "44d13aafbd5dc8e369a9b35a169f06e7c24b732e54fab574fe19feab98f62706",
+        "context": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7"
+      },
+      "seam_verdict": "Exact disjoint union; zero collisions, missing/extra/duplicate keys or raw-literal/placeholder/ICU changes versus selected audited parents. No new semantic defect discovered or inferred.",
+      "canonical_retention_root": "i18n/audits/evidence/hi/ui.chat.canonical/5f8e54e78de8-hi-rnext-rebind-20261114",
+      "new_semantic_keys_read": 0,
+      "lawful_bounded_consumability": true
+    }
+  },
+  "only_final_allowlisted_receipts": [
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/es/5f8e54e78de8-es-rnext-rebind-20261114/receipt.json",
+      "sha256": "b054cc28eb36f3cfe4ef006270d40ad0df8f883c45966f5ba98a54332c4e773a"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/fr/5f8e54e78de8-fr-rnext-rebind-20261114/receipt.json",
+      "sha256": "16186f00614c8b35657b535a6059a8f97b5f2e08e8cec31d851fe6cd9a209f38"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/rnext-rebind-20261114/hi/5f8e54e78de8-hi-rnext-rebind-20261114/receipt.json",
+      "sha256": "ad7a764b5f158ef639a65d9195fe305afc4c68be7816a4d1bf12001d730540be"
+    }
+  ],
+  "lawful_bounded_consumability": {
+    "permitted": true,
+    "scope_must_remain_explicit": true,
+    "actual_frozen_contract_pure_derivation_passed": true,
+    "assembler_invoked": false,
+    "ledger_check_invoked": false,
+    "index_or_catalogue_writes": false,
+    "single_auditor_lineage": true,
+    "canonical_record_and_companion_retention_required": true
+  },
+  "unresolved_debts": "All recorded genuine MINOR/NIT findings remain; main HI-C1 NIT newly inherited,not newly discovered. Prior policy-only English-selector holds remain historically preserved/inapplicable under final user disposition. Prior captured rendering is historical bounded evidence; current CSS differs by exact incoming-main bytes,so no current fit recertification. Native/globalRTL,geometry,font fallback,all interaction/count variants remain unproven."
+}

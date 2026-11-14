@@ -83,6 +83,7 @@ import {
 	receiveJournalOrder,
 	rememberJournalCalls,
 } from "./journal-order";
+import { type MusicReceipt, musicReceiptOf } from "./music-receipt-model";
 import { type NoticeCopy, noticeCopyText } from "./notice-copy";
 import {
 	type PendingProfileHistoryReplacement,
@@ -676,6 +677,13 @@ type TranscriptPayloadRecord =
 			receipt?: HubReceipt;
 			/** Display-only Bridge facts; never a model-context admission grant. */
 			bridgeReceipt?: BridgeReceipt;
+			music?: MusicReceipt;
+			/**
+			 * The detached job a `job_result` row settles (`details.job_id`), so an
+			 * in-chat music generating card can find its own settlement by identity
+			 * rather than by order (`music-generating-model.ts`).
+			 */
+			jobId?: string;
 			images?: TranscriptImage[];
 			/** The row's rendered body, as persisted. */
 			text: string;
@@ -2214,6 +2222,7 @@ function supersedesRekey(
 /** Custom transcript rows that are bookkeeping, never conversation. */
 const SILENT_CUSTOM_TYPES = new Set([
 	"frontend_state_checkpoint_v1",
+	"music_job_v1",
 	"session_state",
 	"hub_communication",
 	"wake_schedule",
@@ -3322,9 +3331,9 @@ function entryCallKey(entry: DesktopHistoryPage["entries"][number]): string {
 		payload?.custom_type === DIFF_BINDING_CUSTOM_TYPE
 	) {
 		const details = payload.details as Record<string, unknown> | undefined;
-		return `tool:${typeof details?.call_id === "string" ? details.call_id : ""}`;
+		return `tool:${typeof details?.call_id === "string" ? details.call_id : ""}`; // i18n: ignore internal record-index key; never rendered
 	}
-	return `tool:${String(payload?.tool_call_id ?? "")}`;
+	return `tool:${String(payload?.tool_call_id ?? "")}`; // i18n: ignore internal record-index key; never rendered
 }
 
 function durableRecord(
@@ -3632,12 +3641,22 @@ function durableRecord(
 		// (a row that states nothing but its type name). No producer emits one
 		// today; the gate is here so none can.
 		if (!text.trim()) return null;
+		const music =
+			customType === "job_result" ? musicReceiptOf(details) : undefined;
 		return {
 			kind: "custom",
 			id: entry.id,
 			ts,
 			customType,
 			text,
+			...(music
+				? { music, images: music.tracks.flatMap((track) => track.images) }
+				: {}),
+			...(customType === "job_result" &&
+			typeof details.job_id === "string" &&
+			details.job_id.length > 0
+				? { jobId: details.job_id }
+				: {}),
 			...(customType === "team_bridge_message"
 				? {
 						bridgeReceipt: bridgeReceiptOf(details),

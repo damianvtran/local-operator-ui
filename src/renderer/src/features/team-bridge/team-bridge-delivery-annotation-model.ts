@@ -19,6 +19,15 @@ import type {
  * - an unknown `refusal_class` drops the parenthetical (the generic refusal);
  * - an unknown `hold_class` drops the reason (the generic hold).
  *
+ * `not_delivered` IS A REFUSAL WITHOUT A CLASS. Since agent-server #377 the hub
+ * serves a SENDER a recipient's moderation refusal as `state:"not_delivered"`
+ * with no `refusal_class` (a neutral sender-side view); only the recipient
+ * endpoint's owner still gets `refused` plus the class. Reading it as an unknown
+ * state would drop the one line telling the sender WHICH recipient did not get
+ * the message, so it renders and counts exactly like a classless `refused`.
+ * Any class on it is ignored, never shown: the hub's contract is that the
+ * sender gets none. An older hub never sends it, so nothing changes there.
+ *
  * SECURITY SHAPE. The line names the recipient agent, its owner and, at most,
  * ONE coarse class from a closed list. It never reads anything else off the
  * entry: the hub sends no score, reason or body, and a passthrough field a
@@ -87,6 +96,10 @@ const isHoldClass = (value: unknown): value is TeamBridgeHoldClass =>
 	(TEAM_BRIDGE_HOLD_CLASSES as readonly unknown[]).includes(value);
 const isHoldPhase = (value: unknown): value is TeamBridgeHoldPhase =>
 	(TEAM_BRIDGE_HOLD_PHASES as readonly unknown[]).includes(value);
+// The owner's classed `refused` and the sender's neutral `not_delivered`
+// (agent-server #377) are one terminal outcome for the line and the count.
+const isNotDelivered = (state: string): boolean =>
+	state === "refused" || state === "not_delivered";
 
 /**
  * One line per non-delivered recipient, in the hub's order.
@@ -137,7 +150,7 @@ export function teamBridgeDeliveryLines(
 		const agent = entry.recipient_label.trim();
 		const owner = entry.recipient_owner_label.trim();
 		const key = `${entry.state}:${entry.endpoint_id}`;
-		if (entry.state === "refused") {
+		if (isNotDelivered(entry.state)) {
 			seen.add(entry.endpoint_id);
 			lines.push({
 				kind: "refused",
@@ -145,7 +158,9 @@ export function teamBridgeDeliveryLines(
 				agent,
 				owner,
 				refusalClass:
-					knownHuman && isRefusalClass(entry.refusal_class)
+					entry.state === "refused" &&
+					knownHuman &&
+					isRefusalClass(entry.refusal_class)
 						? entry.refusal_class
 						: null,
 			});
@@ -268,6 +283,8 @@ export function teamBridgeDeliverySummary(message: {
 }): {
 	counts: TeamBridgeDeliveryCounts;
 	lines: TeamBridgeDeliveryLine[];
+	/* The message has exactly one recipient agent: the line drops its count. */
+	single: boolean;
 } | null {
 	const lines = teamBridgeDeliveryLines(message.delivery_states, message);
 	const fromHub = countsFromSummary(message.delivery_summary);
@@ -277,7 +294,44 @@ export function teamBridgeDeliverySummary(message: {
 	// Silence means complete (see WHEN IT IS SILENT): `countsFromSummary` has
 	// already folded any `total` shortfall into `screening`.
 	if (outstanding === 0) return null;
-	return { counts, lines };
+	return {
+		counts,
+		lines,
+		single: isSingleRecipient(message.delivery_summary, fromHub),
+	};
+}
+
+/*
+ * WHY (operator request 2026-11-10): in a 1:1 conversation "1 being screened" /
+ * "1 held for review" carries a "1" that says nothing, so a message with ONE
+ * recipient agent reads "Being screened" / "Held for review" instead.
+ *
+ * There is no uncounted "Delivered": since #1858 a fully delivered message
+ * renders no line at all (WHEN IT IS SILENT above), and with one recipient
+ * "delivered" and "outstanding" are mutually exclusive, so a single-recipient
+ * line is always exactly one outstanding state.
+ *
+ * CONSTRAINTS, each a way the uncounted form would misstate the message:
+ * - The trigger is the message's TOTAL recipients, never one bucket at 1:
+ *   "Delivered · 1 being screened" would hide how many of several received it.
+ * - Only the hub summary knows that total. Derived counts (an older hub with no
+ *   `delivery_summary`) cover only the viewer's own `delivery_states`, which can
+ *   be one agent of several, so they always keep their count (review F1).
+ * - The hub's `total` must say 1 as well as the buckets: each bucket is parsed
+ *   with `.catch(undefined)`, so a malformed bucket drops out and the rest could
+ *   sum to 1 for a larger message (review F2). An absent `total` (also dropped
+ *   when malformed) proves nothing, so it keeps the count too.
+ */
+function isSingleRecipient(
+	summary: TeamBridgeDeliverySummary | undefined,
+	fromHub: TeamBridgeDeliveryCounts | null,
+): boolean {
+	if (!summary || !fromHub || summary.total !== 1) return false;
+	const sum = TEAM_BRIDGE_DELIVERY_SEGMENTS.reduce(
+		(acc, segment) => acc + fromHub[segment],
+		0,
+	);
+	return sum === 1;
 }
 
 const zeroCounts = (): TeamBridgeDeliveryCounts => ({
@@ -322,7 +376,7 @@ function countsFromStates(
 		// Same first-entry-wins dedup as the lines, so the count matches them.
 		if (seen.has(entry.endpoint_id)) continue;
 		if (entry.state === "delivered") counts.delivered += 1;
-		else if (entry.state === "refused") counts.notDelivered += 1;
+		else if (isNotDelivered(entry.state)) counts.notDelivered += 1;
 		else if (entry.state === "held") {
 			const phase = isHoldPhase(entry.phase) ? entry.phase : null;
 			if (phase === "not_reviewed") counts.notReviewed += 1;

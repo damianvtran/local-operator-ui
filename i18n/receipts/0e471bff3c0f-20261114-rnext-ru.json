@@ -1,0 +1,251 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "0e471bff3c0f-20261114-rnext-ru",
+  "session": "0e471bff3c0f",
+  "identity": {
+    "agent": "translation-auditor",
+    "session": "0e471bff3c0f",
+    "model": "openai/gpt-6.1-sol",
+    "selection": "parent inherited served model; no override",
+    "fallback": null,
+    "profile_revision": "definition-revision:v1:977d12b70eb8adff7d8b9491e8e59b748a9fac283683abd963fdf586cb596f8a",
+    "lineage": "Same original second independent audit lineage; this is a rebinding round, NOT an additional independent auditor."
+  },
+  "date": "2026-11-14",
+  "issued_at": "2026-11-14T11:05:46.727740+00:00",
+  "locale": "ru",
+  "namespace": "ui.chat.canonical",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "sha256": {
+    "en": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+    "ru": "6b82f62d6909a97c60e2c3de23503b68776c97f4b885da3badbe69eb78311a8b"
+  },
+  "context_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7",
+  "source_path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+  "target_path": "src/i18n/catalogues/ru/ui.chat.canonical.json",
+  "context_path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+  "current_tree": "5df62a4bd832b1c29f90f85dbb95b2c0f5eab6f4",
+  "scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+  "keys_read": 0,
+  "keys_read_definition": "Zero new semantic keys; raw-literal seam verified on all494, retaining23-PR and471-main audited parent scope. Not a new494 semantic audit.",
+  "raw_keys_verified": 494,
+  "selected_key_counts": {
+    "main": 471,
+    "PR": 23
+  },
+  "findings": [
+    {
+      "id": "CV2-RU-1",
+      "parent_ids": [
+        "I-RU-1",
+        "RU-1"
+      ],
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.diff.full.back",
+      "current": "Назад к превью",
+      "proposed": "Назад к предпросмотру",
+      "reason": "The short preview is called предпросмотр elsewhere in ru catalogues, whereas this retained label uses превью for the same UI role.",
+      "disposition": "retained parent non-gating follow-up; not fixed by convergence",
+      "origin": "PR-parent current receipts 567a24a88e45-chat-canonical-ru-r2 and c7b72ef216da-ru-chat-canonical-r2",
+      "catalogue_path": "src/i18n/catalogues/ru/ui.chat.canonical.json",
+      "line": 247,
+      "author_choice_this_round": "Carry unchanged as genuine non-gating inherited finding; exact parent-byte applicability checked, not a fresh semantic judgement."
+    },
+    {
+      "id": "CV2-RU-2",
+      "parent_ids": [
+        "I-RU-2"
+      ],
+      "severity": "NIT",
+      "key": "ui.chat.canonical.tool_row.diff.full.prev",
+      "current": "Назад",
+      "proposed": "Предыдущая",
+      "reason": "The pager shows Назад beside Назад к превью, so a page-specific label distinguishes previous-page navigation from returning to the preview.",
+      "disposition": "retained parent non-gating follow-up; parent also suggests Следующая for next if adopting page adjectives",
+      "origin": "PR-parent current receipt 567a24a88e45-chat-canonical-ru-r2",
+      "catalogue_path": "src/i18n/catalogues/ru/ui.chat.canonical.json",
+      "line": 264,
+      "author_choice_this_round": "Carry unchanged as genuine non-gating inherited finding; exact parent-byte applicability checked, not a fresh semantic judgement."
+    }
+  ],
+  "findings_count": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 1
+  },
+  "parent_receipts": [
+    {
+      "locale": "ru",
+      "parent": "d582c3d8a1537078bd13681dfbfe5ad31cc55f61",
+      "role": "pr-selected23",
+      "receipt": "i18n/receipts/a0245acae0c5-1829-final-ru-20261112t234806z-issued.json",
+      "sha256": "ffe4cdaada97aa732cac6a16168b7bc9cc2cba480efe1f4532bba5c1734939b9",
+      "parent_source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+      "parent_target_sha256": "325fe1a5b211db3408ee9786a1a7e6ab724d79315176019b6b55291b0e8ab71e",
+      "ledger_auditor": {
+        "agent": "translation-auditor",
+        "model": "openai/gpt-6.1-sol",
+        "date": "2026-11-13",
+        "result": "clean-with-findings",
+        "instance": "a0245acae0c5-1829-final-ru-20261112t234806z-issued",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 1
+        },
+        "receipt": "i18n/receipts/a0245acae0c5-1829-final-ru-20261112t234806z-issued.json",
+        "receipt_sha256": "ffe4cdaada97aa732cac6a16168b7bc9cc2cba480efe1f4532bba5c1734939b9",
+        "scope": "PR1829 accepted scoped convergence: retained23 full-diff source/target/context keys and captured22-visible+nav-AX evidence; exact467 incoming-main members inherited by raw-byte ancestry; retained parent findings. No fresh490 semantic, native/full-app, all-actions or global RTL certification.",
+        "note": "PR1829 scoped supplement; record: i18n/audits/evidence/ru/ui.chat.canonical/a0245acae0c5-1829-final-ru-20261112t234806z-issued/record.json; retained MINOR/NIT dispositions. No fresh490-key, native or all-actions claim."
+      },
+      "identity_as_recorded": {
+        "auditor": "translation-auditor",
+        "agent": "translation-auditor",
+        "instance": "a0245acae0c5-1829-final-ru-20261112t234806z-issued",
+        "model": "openai/gpt-6.1-sol",
+        "session": "a0245acae0c5",
+        "independence": "Separate auditor instance from translator/coder. No current mirror auditor output read. Same session lineage as original a024 review and bounded readback."
+      },
+      "index_retains_exact_bytes": true,
+      "applicability": "Exact selected source/target/context raw members, not whole-current-file hash equality."
+    },
+    {
+      "locale": "ru",
+      "parent": "d582c3d8a1537078bd13681dfbfe5ad31cc55f61",
+      "role": "pr-selected23",
+      "receipt": "i18n/receipts/0e471bff3c0f-1829-final-evidence-ru.json",
+      "sha256": "ab27262aab91ede71d9564ab1e2e7bfeac3394a01e3810f73abbbdfd0b3fce5f",
+      "parent_source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+      "parent_target_sha256": "325fe1a5b211db3408ee9786a1a7e6ab724d79315176019b6b55291b0e8ab71e",
+      "ledger_auditor": {
+        "agent": "translation-auditor",
+        "model": "openai/gpt-6.1-sol",
+        "date": "2026-11-13",
+        "result": "clean-with-findings",
+        "instance": "0e471bff3c0f-1829-final-evidence-ru",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 1
+        },
+        "receipt": "i18n/receipts/0e471bff3c0f-1829-final-evidence-ru.json",
+        "receipt_sha256": "ab27262aab91ede71d9564ab1e2e7bfeac3394a01e3810f73abbbdfd0b3fce5f",
+        "scope": "NEW evidence-disposition delta only: retained 23 PR keys plus captured-element review; exact 467 incoming-main ancestry is retained from my earlier independent byte proof and mapped parent audits. No new 490-key semantics audit. 22 visible elements + nav AX per assigned locale; accepted captured/synthetic pseudo scope only, not all functional variants/native/global release.",
+        "note": "PR1829 scoped supplement; record: i18n/audits/evidence/ru/ui.chat.canonical/0e471bff3c0f-1829-final-evidence-ru/record.json; retained MINOR/NIT dispositions. No fresh490-key, native or all-actions claim."
+      },
+      "identity_as_recorded": {
+        "auditor": "translation-auditor",
+        "instance": "0e471bff3c0f-1829-final-evidence-ru",
+        "model": "openai/gpt-6.1-sol",
+        "session": "0e471bff3c0f"
+      },
+      "index_retains_exact_bytes": true,
+      "applicability": "Exact selected source/target/context raw members, not whole-current-file hash equality."
+    },
+    {
+      "locale": "ru",
+      "parent": "e2d980d217ec4c72e409ef8a21a8aed9602b57a2",
+      "role": "main-selected471",
+      "receipt": "i18n/receipts/94f6e325484c-canon3-ru.json",
+      "sha256": "fbefaf0396d96634c6272fa93d0f4b0272a4b7e0fb9db985670cb2f2edf0c53a",
+      "parent_source_sha256": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731",
+      "parent_target_sha256": "595666fd8f34ab80ccfc4e51d6ed0dbdca606760fb50fe21c11473eedc4a1737",
+      "ledger_auditor": {
+        "agent": "reviewer",
+        "model": "anthropic/claude-opus-5-5",
+        "date": "2026-11-12",
+        "result": "clean",
+        "instance": "94f6e325484c-canon3-ru",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0,
+          "nit": 0
+        },
+        "receipt": "i18n/receipts/94f6e325484c-canon3-ru.json",
+        "receipt_sha256": "fbefaf0396d96634c6272fa93d0f4b0272a4b7e0fb9db985670cb2f2edf0c53a",
+        "scope": "merged ui.chat.canonical, UI #1874 @ fa3c17b63: #1876 media/sound keys + 4 temporary_deleted.* keys"
+      },
+      "identity_as_recorded": {
+        "auditor": "reviewer",
+        "instance": "94f6e325484c-canon3-ru",
+        "model": "anthropic/claude-opus-5-5",
+        "independence": "Independent i18n auditor (lopdev reviewer, session 94f6e325484c). Not the translator of any key in this file; did not read or copy any other session's scratchpad. Same model as this PR's translator (lopdev coder, anthropic/claude-opus-5-5): disclosed."
+      },
+      "index_retains_exact_bytes": true,
+      "applicability": "Exact selected source/target/context raw members, not whole-current-file hash equality."
+    }
+  ],
+  "own_prior_receipt": {
+    "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-1829-final-evidence-ru.json",
+    "sha256": "ab27262aab91ede71d9564ab1e2e7bfeac3394a01e3810f73abbbdfd0b3fce5f",
+    "tracked_receipt": "i18n/receipts/0e471bff3c0f-1829-final-evidence-ru.json",
+    "actual_identity_matches": true,
+    "not_an_additional_independent_lineage": true
+  },
+  "record": {
+    "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-20261114-rnext-ru-record.json",
+    "sha256": "b5552f7144e0fd639e925f409f63cdb13cb47305adca291dd5facb3e254ba23b"
+  },
+  "companions": [
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-20261114-rnext-seam-companion.json",
+      "sha256": "7eef43f3e0e16450f0250af9200647f677a634a6be5bcb95246ab838f8de610b"
+    }
+  ],
+  "glossary_style_bindings": [
+    {
+      "path": "/home/ec2-user/local-operator/i18n/glossary.md",
+      "prior_read_binding": {
+        "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+        "revision": "ad910f5daea0bb40cf95170a5eeed496f4aebd69",
+        "read": "whole current file; diff against parent audit reference b42471d3935cb7e95d64428af27c32626665f4c0 independently read"
+      },
+      "current_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+      "current_equals_prior_binding": true
+    },
+    {
+      "path": "/home/ec2-user/local-operator/i18n/style-guides/ru.md",
+      "prior_read_binding": {
+        "sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465",
+        "revision": "ad910f5daea0bb40cf95170a5eeed496f4aebd69",
+        "read": "whole current file; diff against parent audit reference b42471d3935cb7e95d64428af27c32626665f4c0 independently read"
+      },
+      "current_sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465",
+      "current_equals_prior_binding": true
+    }
+  ],
+  "prior_rendering": "Prior bounded evidence only; no new/current/global fit/native/capture claim. Full limitations and source-byte changes in record.",
+  "limitations": [
+    "Zero new semantic keys; no fresh494-key idiom/style/meaning audit. Incoming471 and prior23 semantics remain parent-authority scoped.",
+    "No new capture/browser/native/runtime/build/install/test execution. Prior22-visible+nav-AX and synthetic pseudo images remain prior bounded evidence only.",
+    "Current styles/index.css differs from prior captured bytes; no current global fit/native/RTL/pseudo or font-fallback approval is inferred. Production pager/model/runtime i18n bytes that match are individually listed, not a blanket render refresh.",
+    "First/Last/Previous/Back/Retry completed outcomes and all rendered count variants remain UNPROVEN; prior formatter-only samples do not become interaction proof.",
+    "D11 Urdu code-body direction debt remains explicitly deferred; physical RTL range order alone is not a translation bug; unrelated sound.cost.estimated_zero NIT remains unresolved.",
+    "No retrospective flip, deletion or overwrite of old withholds/changes_requested/receipts/clarifications; deeper historical findings not silently closed."
+  ],
+  "lawful_consumability": {
+    "lawful_for_bounded_scope": true,
+    "why": "Fresh independent seam verification of exact selected audited-parent literals, full current hash bindings, actual parent receipt identities/counts and preserved scoped lineage; caller must retain scope and companion evidence. Passing is not broad semantic/render/native approval.",
+    "frozen_contract_refs": [
+      {
+        "path": "scripts/i18n/ledger-assemble.mjs",
+        "sha256": "63651def0c5be756f61e71e5905bcf090a1c709464292864f1a6429d06e676a5",
+        "index_equals_frozen_and_disk": true
+      },
+      {
+        "path": "scripts/i18n/ledger-rules.mjs",
+        "sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6",
+        "index_equals_frozen_and_disk": true
+      }
+    ],
+    "assembler_or_ledger_checker_invoked": false
+  },
+  "not_another_independent_lineage": true
+}

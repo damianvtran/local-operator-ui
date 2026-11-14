@@ -284,12 +284,61 @@ export function segmentText(
 	}
 }
 
-/** "Delivered to 3 · 2 being screened · 2 not delivered", zero segments omitted. */
+/*
+ * The uncounted standalone form of a segment, for a message with exactly one
+ * recipient agent in total (see `isSingleRecipient`). Separate keys rather than
+ * a `=1` arm in the counted plurals: the counted keys must keep saying
+ * "1 being screened" when that one sits beside other segments, and only the
+ * caller knows whether the line has one recipient or one-in-a-bucket.
+ *
+ * Outstanding segments only: there is no uncounted "Delivered" because since
+ * #1858 a fully delivered message renders no line, and a single recipient is
+ * either delivered or outstanding, never both.
+ */
+function singleSegmentText(
+	segment: Exclude<(typeof TEAM_BRIDGE_DELIVERY_SEGMENTS)[number], "delivered">,
+): string {
+	switch (segment) {
+		case "screening":
+			return t("ui.teamBridge.delivery.summary.single.screening");
+		case "held":
+			return t("ui.teamBridge.delivery.summary.single.held");
+		case "notReviewed":
+			return t("ui.teamBridge.delivery.summary.single.not_reviewed");
+		case "notDelivered":
+			return t("ui.teamBridge.delivery.summary.single.not_delivered");
+	}
+}
+
+/*
+ * The text of one present segment: uncounted when `single`, which only
+ * `teamBridgeDeliverySummary` decides (it alone knows whether the counts are the
+ * hub's whole-message total or one viewer's partial view; see its
+ * `isSingleRecipient`). The counts here cannot tell those apart.
+ */
+function summarySegmentText(
+	segment: (typeof TEAM_BRIDGE_DELIVERY_SEGMENTS)[number],
+	counts: TeamBridgeDeliveryCounts,
+	single: boolean,
+): string {
+	// `delivered` keeps its counted form even when `single`: the summary model
+	// never yields that pair (complete is silent, #1858), so this is only a
+	// defensive path for direct callers of the exported text helpers.
+	return single && segment !== "delivered"
+		? singleSegmentText(segment)
+		: segmentText(segment, counts[segment]);
+}
+
+/**
+ * "Delivered to 3 · 2 being screened · 2 not delivered", zero segments omitted;
+ * just "Being screened" (or "Held for review", ...) for a single recipient.
+ */
 export function teamBridgeDeliverySummaryText(
 	counts: TeamBridgeDeliveryCounts,
+	single = false,
 ): string {
 	return TEAM_BRIDGE_DELIVERY_SEGMENTS.filter((segment) => counts[segment] > 0)
-		.map((segment) => segmentText(segment, counts[segment]))
+		.map((segment) => summarySegmentText(segment, counts, single))
 		.join(t("ui.teamBridge.delivery.summary.separator"));
 }
 
@@ -308,14 +357,15 @@ export function teamBridgeDeliverySummaryText(
  */
 export function teamBridgeDeliverySummaryRuns(
 	counts: TeamBridgeDeliveryCounts,
+	single = false,
 ): { delivered: string; rest: string } {
 	const separator = t("ui.teamBridge.delivery.summary.separator");
 	const delivered =
-		counts.delivered > 0 ? segmentText("delivered", counts.delivered) : "";
+		counts.delivered > 0 ? summarySegmentText("delivered", counts, single) : "";
 	const outstanding = TEAM_BRIDGE_DELIVERY_SEGMENTS.filter(
 		(segment) => segment !== "delivered" && counts[segment] > 0,
 	)
-		.map((segment) => segmentText(segment, counts[segment]))
+		.map((segment) => summarySegmentText(segment, counts, single))
 		.join(separator);
 	return {
 		delivered,
@@ -326,8 +376,11 @@ export function teamBridgeDeliverySummaryRuns(
 /* The two runs in a flex row. `shrink-[999]` makes the delivered run absorb
  * nearly all the shrinkage (flex-shrink weights by basis), so it truncates
  * first; the outstanding run truncates only once the delivered run is gone. */
-const SummaryRuns: FC<{ counts: TeamBridgeDeliveryCounts }> = ({ counts }) => {
-	const { delivered, rest } = teamBridgeDeliverySummaryRuns(counts);
+const SummaryRuns: FC<{
+	counts: TeamBridgeDeliveryCounts;
+	single: boolean;
+}> = ({ counts, single }) => {
+	const { delivered, rest } = teamBridgeDeliverySummaryRuns(counts, single);
 	return (
 		// `whitespace-pre`, not `truncate`'s `nowrap`: each run is its own flex
 		// item, and `nowrap` would strip the separator's leading space.
@@ -383,18 +436,24 @@ export const TeamBridgeDeliveryAnnotation: FC<{
 }> = ({ message }) => {
 	const summary = teamBridgeDeliverySummary(message);
 	if (!summary) return null;
-	const text = teamBridgeDeliverySummaryText(summary.counts);
+	const text = teamBridgeDeliverySummaryText(summary.counts, summary.single);
 	if (summary.lines.length === 0) {
 		return (
 			<p
 				className="m-0 mt-0.5 flex min-w-0 text-[12px] text-ink-muted"
 				title={text}
 			>
-				<SummaryRuns counts={summary.counts} />
+				<SummaryRuns counts={summary.counts} single={summary.single} />
 			</p>
 		);
 	}
-	return <DeliveryDetails counts={summary.counts} lines={summary.lines} />;
+	return (
+		<DeliveryDetails
+			counts={summary.counts}
+			lines={summary.lines}
+			single={summary.single}
+		/>
+	);
 };
 
 /*
@@ -416,7 +475,8 @@ function unmatchedNotReviewed(
 const DeliveryDetails: FC<{
 	counts: TeamBridgeDeliveryCounts;
 	lines: readonly TeamBridgeDeliveryLine[];
-}> = ({ counts, lines }) => {
+	single: boolean;
+}> = ({ counts, lines, single }) => {
 	const [open, setOpen] = useState(false);
 	// True while the panel is open only because the pointer is over it: such a
 	// panel must not steal focus, and leaving closes it. A click clears it.
@@ -489,7 +549,7 @@ const DeliveryDetails: FC<{
 						// `min-h-6`: a 24 px tap target around 12 px text (UX U5).
 						className="inline-flex min-h-6 min-w-0 max-w-full items-center gap-1 rounded-sm text-left text-[12px] text-ink-muted hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus"
 					>
-						<SummaryRuns counts={counts} />
+						<SummaryRuns counts={counts} single={single} />
 						<ChevronDown
 							size={12}
 							aria-hidden="true"

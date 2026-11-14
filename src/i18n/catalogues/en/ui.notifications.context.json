@@ -881,5 +881,29 @@
 		"tone": "Plain, calm product voice; sentence case; no emoji.",
 		"note": "English source: Nothing flagged in this conversation.",
 		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.drawer.view_details": {
+		"role": "Tooltip on an Updates row in the conversation drawer: pressing the row opens that update's full details inside the drawer",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: View details",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.drawer.view_details_for": {
+		"role": "Screen-reader name of an Updates row in the conversation drawer; {title} is the update's title. Pressing it opens the full details inside the drawer",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: View details: {title}",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.drawer.back": {
+		"role": "Back link at the top of an update's details in the conversation drawer; returns to that conversation's Updates list",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Back to updates",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
+	},
+	"ui.notifications.drawer.open_in_notifications": {
+		"role": "Link at the top of an update's details in the conversation drawer; opens the Notifications page with this update selected. 'Notifications' is the page's name",
+		"tone": "Plain, calm product voice; sentence case; no emoji.",
+		"note": "English source: Open in Notifications",
+		"length": "Short UI string; keep within roughly the English length where it sits in a button, chip or row."
 	}
 }

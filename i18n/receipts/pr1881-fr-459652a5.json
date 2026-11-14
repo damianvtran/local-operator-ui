@@ -1,0 +1,37 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "date": "2026-11-12",
+ "locale": "fr",
+ "instance": "pr1881-fr-459652a5",
+ "session": "ac1d33b102dd",
+ "auditor": {
+  "agent": "reviewer",
+  "session": "ac1d33b102dd",
+  "instance": "pr1881-fr-459652a5",
+  "model": "anthropic/claude-sonnet-5-5",
+  "fallback": "none (the session header model was served; no provider fallback occurred)",
+  "independent_from_translator_session": true
+ },
+ "model": "anthropic/claude-sonnet-5-5",
+ "independence": "Fresh auditor session (reviewer role, audit-fr task). Did not write the fr files and had not audited this locale or this key before. Read from the worktree at 8efa3b0ff5bb6aec505c559b9e3518d75a6a240b: src/i18n/catalogues/en/ui.chat.approval.json, fr/ui.chat.approval.json, en/ui.chat.approval.context.json, and git diff 5033f64235..8efa3b0ff5 for the fr file; from local-operator origin/main (330e43b93f): i18n/glossary.md, i18n/style-guides/fr.md, and local_operator/i18n/catalogues/fr/wire.bridge_taint.json (read via git show to verify the byte-identical-to-core claim; the core file's own audit was not part of this receipt). Placeholders, key sets and bytes were verified by parsing, not by trusting the translator's summary.",
+ "branch": "approval-card-latched",
+ "head": "8efa3b0ff5bb6aec505c559b9e3518d75a6a240b",
+ "pr": "damianvtran/local-operator-ui#1881",
+ "scope": "fr only, ui.chat.approval at pinned head 8efa3b0ff5: the new key ui.chat.approval.escape.bridge_latched audited in full (meaning, idiom, glossary/style guide, verbatim commands, placeholders, byte-identity with core wire.bridge_taint.card_options_off); the other 17 keys confirmed by parsing (key set equals en, ICU placeholders identical per key, bytes identical to base 5033f64235) and CARRIED from the previous fr audit (ledger auditor instance 564797e3-s3c-fr, clean-with-findings; not re-judged here).",
+ "status": "passed",
+ "result": "clean",
+ "namespaces": {
+  "ui.chat.approval": {
+   "status": "passed",
+   "keys_audited": 18,
+   "sha256": {
+    "en": "815a4ff369d33bc106b35aa74589f4f000811d24aa24519094c4373283d7ec8f",
+    "fr": "ef0e242dca891b7739fd81a46d6fce5c5791aec3508e5dfa954564281fa55ca2",
+    "context": "9ee5d1341420c59b38f1d451848f2da76bc9397c5d7811196356fbd98968bb2f"
+   },
+   "findings": []
+  }
+ },
+ "findings": []
+}

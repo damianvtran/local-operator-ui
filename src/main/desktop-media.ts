@@ -198,6 +198,16 @@ const mediaRequestSchema = z.discriminatedUnion("op", [
 			digest: z.string().regex(/^[a-f0-9]{32}$/),
 		})
 		.strict(),
+	// A peer-held Files row's bytes (`features.remote_files`), by the owner's
+	// row id: the 16-hex id the files index mints, never a path. The backend
+	// re-asks the owner for the row, so the id selects; it does not authorise.
+	z
+		.object({
+			op: z.literal("sessions.files.content"),
+			sessionId: z.string().regex(/^[a-f0-9]{12}$/),
+			fileId: z.string().regex(/^[a-f0-9]{16}$/),
+		})
+		.strict(),
 	// The child-scoped twin of the op above, for the run panel's reader: a
 	// child's durable rows reference attachments in the same content-addressed
 	// store, and the parent's route takes the session whose transcript holds the
@@ -477,8 +487,8 @@ export type DesktopMediaResponse =
 			code?: DesktopRefusalCode | "renderer_busy";
 			/**
 			 * The daemon's own refusal code and params, forwarded ONLY for
-			 * `notification_sounds.upload`, whose row copy switches on them (see
-			 * the relay's error branch).
+			 * `notification_sounds.upload` and `sessions.files.content`, whose copy
+			 * switches on them (see the relay's error branch).
 			 */
 			refusal?: { code: string; params?: Record<string, unknown> };
 	  };
@@ -533,6 +543,11 @@ function endpoint(request: DesktopMediaRequest): {
 		case "sessions.attachment":
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/attachments/${request.digest}`,
+				method: "GET",
+			};
+		case "sessions.files.content":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/files/${request.fileId}/content`,
 				method: "GET",
 			};
 		case "subagents.attachment":
@@ -862,6 +877,7 @@ export async function requestDesktopMediaOutcome(
 		request.op === "agent.avatar" ||
 		request.op === "agent.avatar.delete" ||
 		request.op === "sessions.attachment" ||
+		request.op === "sessions.files.content" ||
 		request.op === "subagents.attachment" ||
 		request.op === "sessions.attachment.waveform" ||
 		request.op === "sessions.supplementDocument" ||
@@ -1201,9 +1217,14 @@ export async function requestDesktopMediaOutcome(
 					 * `unsupported_format` with `params.format`, ...), and the settings
 					 * row's copy and remedy switch on that code, never on `detail`. The
 					 * pairing `code` above cannot carry it (that table is closed), so
-					 * this op alone forwards the daemon's own code and params.
+					 * only the ops whose copy switches on it forward the daemon's own
+					 * code and params. A peer file's content read is the other: its 504
+					 * is either the owner offline or its transfer still running
+					 * (`attachment_fetch_pending`), and only the first may be told
+					 * "offline" (remote files parity, UX round 2, U2-1).
 					 */
-					...(request.op === "notification_sounds.upload" &&
+					...((request.op === "notification_sounds.upload" ||
+						request.op === "sessions.files.content") &&
 					declaredCode !== undefined
 						? {
 								refusal: {

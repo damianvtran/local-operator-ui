@@ -1,0 +1,245 @@
+{
+  "namespace": "ui.chat.canonical",
+  "locale": "hi",
+  "selected_parents": [
+    {
+      "locale": "hi",
+      "ref": "d582c3d8a1537078bd13681dfbfe5ad31cc55f61",
+      "path": "i18n/receipts/5f8e54e78de8-hi-final-evidence-20261112.json",
+      "sha256": "9a5a40a864e6f1d70bfb76fbe2b2de3c9e3e313b49ccf0c22c5ba9e63f31c2a4",
+      "agent": "translation-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "instance": "5f8e54e78de8-hi-final-evidence-20261112",
+      "result": "clean-with-findings",
+      "findings_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 2,
+        "nit": 0
+      },
+      "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+      "target_sha256": "8792c9a8f9df03f7c586d45e3f3b6f89b25ec6097a9aab1e310bb4e210677393",
+      "context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae"
+    },
+    {
+      "locale": "hi",
+      "ref": "d582c3d8a1537078bd13681dfbfe5ad31cc55f61",
+      "path": "i18n/receipts/6dfaec49abf0-hi-final-policy-evidence-20261112.json",
+      "sha256": "5e305a30e908346adc22a8e7e3bbf398ffdcee305774e6e0e13e71d70d44618f",
+      "agent": "translation-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "instance": "6dfaec49abf0-hi-final-policy-evidence-20261112",
+      "result": "clean-with-findings",
+      "findings_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      },
+      "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+      "target_sha256": "8792c9a8f9df03f7c586d45e3f3b6f89b25ec6097a9aab1e310bb4e210677393",
+      "context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae"
+    },
+    {
+      "locale": "hi",
+      "ref": "e2d980d217ec4c72e409ef8a21a8aed9602b57a2",
+      "path": "i18n/receipts/94f6e325484c-canon3-hi.json",
+      "sha256": "df022fd5442ca19b1f583fa12761a1c32448eeb999019430f538c80e25c46f46",
+      "agent": "reviewer",
+      "model": "anthropic/claude-opus-5-5",
+      "instance": "94f6e325484c-canon3-hi",
+      "result": "clean-with-findings",
+      "findings_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 1
+      },
+      "source_sha256": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731",
+      "target_sha256": "060d7a7ce641bdcb01e5b33a0d967af53d11b06d2e97499ae684cc74bbf4dd34",
+      "context_sha256": "51f705da9160454ef4f72c5f9c14004a3f31b2bccc46dac6c208a36d18cb53bf"
+    }
+  ],
+  "own_prior_lineage": {
+    "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-receipt-hi-5f8e54e78de8.json",
+    "sha256": "9a5a40a864e6f1d70bfb76fbe2b2de3c9e3e313b49ccf0c22c5ba9e63f31c2a4",
+    "git_path": "i18n/receipts/5f8e54e78de8-hi-final-evidence-20261112.json",
+    "instance": "5f8e54e78de8-hi-final-evidence-20261112"
+  },
+  "findings_carry_forward_choices": [
+    {
+      "id": "HI-C1",
+      "decision": "Inherited genuine main-parent finding retained and counted; not new semantic work."
+    }
+  ],
+  "policy_hold_dispositions_retained": [],
+  "prior_semantic_and_bounded_render_lineage": {
+    "scope": {
+      "namespace": "ui.chat.canonical",
+      "locale": "hi",
+      "terminal_scope": "Retained23-key PR semantic proof + French2-key delta where applicable + exact467-main ancestry + accepted bounded23-key captured evidence on current source/target/context hashes; no fresh490-key audit.",
+      "render_delta_keys": 23,
+      "visible_elements": 22,
+      "nonvisual_nav_keys": 1,
+      "original_semantic_keys_read": 49,
+      "new_semantic_keys_read": 0,
+      "retained_mechanical_keys": 490,
+      "main_parent_keys_retained": 467,
+      "main_changes_retained": 214,
+      "removed_obsolete_keys": [
+        "ui.chat.canonical.older_history.loading",
+        "ui.chat.canonical.placeholder.loading",
+        "ui.chat.canonical.placeholder.region_label",
+        "ui.chat.canonical.transcript.stale_caption"
+      ],
+      "hindi_incoming_sound_player_failed_retained": true,
+      "fresh_full_namespace_semantic_audit": false,
+      "all23_interactions_pass": false
+    },
+    "parent_source_records": [
+      {
+        "git_ref": "1bfbe9b42df53a231311ab1731501af2de640810",
+        "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/issuing-manifest.json",
+        "sha256": "99677f4652b99bdf457743214606e1dfc705119ee8c8aa267e4f264c6c92d2d4",
+        "index_equals_parent": true
+      },
+      {
+        "git_ref": "1bfbe9b42df53a231311ab1731501af2de640810",
+        "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/source-records/fr2.json",
+        "sha256": "b837e9feb21dda08fcda7df990e40931ca8f444ec9076c1b7566b524fff2cada",
+        "index_equals_parent": true
+      },
+      {
+        "git_ref": "1bfbe9b42df53a231311ab1731501af2de640810",
+        "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/source-records/r2.json",
+        "sha256": "43c365ffb262cf4d1f486ac9a764b2a09664c9b4395589e2b092a02c4e581f30",
+        "index_equals_parent": true
+      },
+      {
+        "git_ref": "1bfbe9b42df53a231311ab1731501af2de640810",
+        "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/issuing-manifest.json",
+        "sha256": "045b2526257ed2a9d1525a868035748fe8920e1c44450ceab869c34e898538be",
+        "index_equals_parent": true
+      },
+      {
+        "git_ref": "1bfbe9b42df53a231311ab1731501af2de640810",
+        "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/source-records/fr_delta.json",
+        "sha256": "6a8ee6855512e1bf519aafacc80ebc824cfb1758346b73aeb8bc55d6b9a3f763",
+        "index_equals_parent": true
+      },
+      {
+        "git_ref": "1bfbe9b42df53a231311ab1731501af2de640810",
+        "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/source-records/second_audit.json",
+        "sha256": "08cd91c44e04b55d9222c83f56a77600c294cb39fe33c7a8edd32751b70e58cf",
+        "index_equals_parent": true
+      }
+    ],
+    "policy_authority": {
+      "source": "Direct USER FINAL POLICY DISPOSITION in this resumed session; not inference from an unread remote comment",
+      "policy_owner_as_named_by_user": "3ef6295a5545",
+      "interpretation": "Actual-locale CLDR is valid under docs/I18N.md104-106/206-208/218-224; literal English-selector hold is inapplicable, unchanged4keys outside23. No translation/category edits required. Scoped captured23-key evidence accepted, not blanket release approval.",
+      "accepted_readback_json": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json",
+      "accepted_readback_sha256": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30",
+      "final_manifest_sha256": "12babe07d87bb5d193d3fd909919e1645706e06984129055d4547ded21321db5",
+      "unread_remote_design_citations": [
+        "https://github.com/damianvtran/local-operator-ui/pull/1829#issuecomment-6839007319",
+        "https://github.com/damianvtran/local-operator-ui/pull/1829#issuecomment-6839204455",
+        "https://github.com/damianvtran/local-operator-ui/pull/1829#issuecomment-6836069213"
+      ],
+      "remote_comment_bodies_read": false
+    },
+    "prior_supplement": {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/1829-final-supplement-hi-5f8e54e78de8.json",
+      "sha256": "ec880ca7ee16954d4d57f773052273eafccae40594d3ab31e6e66faa5500d706"
+    },
+    "evidence_references": [
+      {
+        "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json",
+        "sha256": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30"
+      },
+      {
+        "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.md",
+        "sha256": "a8cbf67eef4052484b4bbc1937a7a6b4b1d3328a71cb813bc3a8f0119cc275ac"
+      },
+      {
+        "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/frames-manifest.json",
+        "sha256": "12babe07d87bb5d193d3fd909919e1645706e06984129055d4547ded21321db5"
+      },
+      {
+        "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-source.json",
+        "sha256": "011d373b047026492d9ca73f7ec6747df1a90daeb7cb2c805aa9b4dade46ca34"
+      },
+      {
+        "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-coverage.json",
+        "sha256": "8e754d0655e7a0bc3494473e1dec22adbe67ab715e39ab56632db5ad79b73a1c"
+      },
+      {
+        "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/captures.jsonl",
+        "sha256": "e9412edfebff603aa0a4b5f758b91b7175c3abc2001f6a41786b34ec28e1846d"
+      },
+      {
+        "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/independent-provenance-checks.json",
+        "sha256": "61bf9f66de23132275cc92c88ddcd652acecb270d95f750a68edb403f46b8b74"
+      },
+      {
+        "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/parent-receipt-validation.json",
+        "sha256": "b8c7b3a686ee3f172977f10f120ffb110d837cd7dc6229ca5188729ae5670822"
+      }
+    ]
+  },
+  "style_glossary_bindings": [
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "ad910f5daea0bb40cf95170a5eeed496f4aebd69",
+      "path": "i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "ad910f5daea0bb40cf95170a5eeed496f4aebd69",
+      "path": "i18n/style-guides/es.md",
+      "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "ad910f5daea0bb40cf95170a5eeed496f4aebd69",
+      "path": "i18n/style-guides/fr.md",
+      "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "ad910f5daea0bb40cf95170a5eeed496f4aebd69",
+      "path": "i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "2ba8127d9",
+      "path": "i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "parent_main_reference": "damianvtran/local-operator@2ba8127d9 i18n/glossary.md sha256:0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "2ba8127d9",
+      "path": "i18n/style-guides/es.md",
+      "sha256": "4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6",
+      "parent_main_reference": "damianvtran/local-operator@2ba8127d9 i18n/style-guides/es.md sha256:4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "2ba8127d9",
+      "path": "i18n/style-guides/fr.md",
+      "sha256": "5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7",
+      "parent_main_reference": "damianvtran/local-operator@2ba8127d9 i18n/style-guides/fr.md sha256:5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7"
+    },
+    {
+      "repo": "/home/ec2-user/local-operator",
+      "ref": "2ba8127d9",
+      "path": "i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+      "parent_main_reference": "damianvtran/local-operator@2ba8127d9 i18n/style-guides/hi.md sha256:82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    }
+  ],
+  "new_semantic_keys": 0
+}

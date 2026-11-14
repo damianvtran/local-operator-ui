@@ -80,6 +80,13 @@
 		"note": "The composer's placeholder for this state. Shown only while the box is empty; sentence case unless the copy names a keyboard key. maxCells is an advisory translation target, not measured fit.",
 		"placeholders": {}
 	},
+	"ui.chat.composer.placeholder.temporary": {
+		"role": "composer placeholder while a new chat will be created as a temporary chat",
+		"tone": "short state sentence, sentence case",
+		"length": "",
+		"note": "Replaces the idle invitation on a new chat whose temporary switch is on, before the first message. Says the chat is not kept in the chat list, then invites typing, like the idle line. Use the glossary term for 'temporary chat'. Shown only while the box is empty.",
+		"placeholders": {}
+	},
 	"ui.chat.composer.placeholder.unavailable": {
 		"role": "composer placeholder for one input state",
 		"tone": "short state sentence, sentence case",

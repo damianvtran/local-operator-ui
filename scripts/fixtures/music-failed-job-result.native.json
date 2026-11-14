@@ -1,0 +1,453 @@
+{
+	"source": "native run 42894406065, serving-core session-history.json body.result.entries[82..97] (the failed-music turn), verbatim except frontend_state_checkpoint_v1 rows (41 KB UI-state snapshots the reducer ignores) omitted",
+	"entries": [
+		{
+			"id": "37389b31-898b-46c6-8ed6-1b71bed54176",
+			"ts": 1794346641.271484,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "user",
+				"content": [
+					{
+						"text": "MUSIC_QA_TOOL music-qa-f1b653f87cc5434299fef5d967df8643"
+					}
+				],
+				"producer_command_id": "37389b31-898b-46c6-8ed6-1b71bed54176"
+			},
+			"ts_source": "entry"
+		},
+		{
+			"id": "acb75a3ac2dc444f993261930728c8d0",
+			"ts": 1794346641.507412,
+			"type": "custom",
+			"payload": {
+				"custom_type": "music_job_v1",
+				"details": {
+					"state": "registered",
+					"params": {
+						"operation": "compose",
+						"format": "mp3",
+						"prompt": "Owned native outcome",
+						"duration_ms": 3000,
+						"variations": 1,
+						"model": "radient/music"
+					},
+					"key": "music:01306444deac:music-qa-f1b653f87cc5434299fef5d967df8643",
+					"artifacts": [],
+					"job": "c68d27aefb58",
+					"v": 1,
+					"at": "2026-11-10T21:37:21.507360+00:00"
+				}
+			},
+			"ts_source": "entry"
+		},
+		{
+			"id": "83022ee666c34b9aaee65822ec700b8e",
+			"ts": 1794346641.5134,
+			"type": "custom",
+			"payload": {
+				"custom_type": "music_job_v1",
+				"details": {
+					"state": "registered",
+					"params": {
+						"operation": "compose",
+						"format": "mp3",
+						"prompt": "Owned native outcome",
+						"duration_ms": 3000,
+						"variations": 1,
+						"model": "radient/music"
+					},
+					"key": "music:01306444deac:music-qa-f1b653f87cc5434299fef5d967df8643",
+					"artifacts": [],
+					"job": "c68d27aefb58",
+					"v": 1,
+					"at": "2026-11-10T21:37:21.513295+00:00",
+					"watcher": "c68d27aefb58"
+				}
+			},
+			"ts_source": "entry"
+		},
+		{
+			"id": "e24baec82b534ec8ae1d3301698a4683",
+			"ts": 1794346641.577564,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"tool_calls": [
+					{
+						"id": "music-qa-f1b653f87cc5434299fef5d967df8643",
+						"name": "generate_music",
+						"arguments": {
+							"prompt": "Owned native outcome",
+							"duration_ms": 3000,
+							"variations": 1
+						}
+					}
+				],
+				"stop_reason": "toolUse"
+			},
+			"ts_source": "entry"
+		},
+		{
+			"id": "e53205fbbcb544419b3c3e6adee50eb8",
+			"ts": 1794346641.577593,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "tool",
+				"content": [
+					{
+						"text": "Music generation started \u2014 job c68d27aefb58."
+					}
+				],
+				"tool_call_id": "music-qa-f1b653f87cc5434299fef5d967df8643",
+				"tool_name": "generate_music",
+				"provider_payload": {
+					"details": {
+						"job_id": "c68d27aefb58",
+						"stage": "queued",
+						"material": "music",
+						"model": "radient/music",
+						"tracks": [],
+						"cancel_support": "queued_only"
+					},
+					"useless": false,
+					"duration_s": 0.25376158400001714
+				}
+			},
+			"ts_source": "entry"
+		},
+		{
+			"id": "6a40ce973ca24085a430f10538a4da85",
+			"ts": 1794346641.589665,
+			"type": "custom",
+			"payload": {
+				"custom_type": "music_job_v1",
+				"details": {
+					"state": "running",
+					"params": {
+						"operation": "compose",
+						"format": "mp3",
+						"prompt": "Owned native outcome",
+						"duration_ms": 3000,
+						"variations": 1,
+						"model": "radient/music"
+					},
+					"key": "music:01306444deac:music-qa-f1b653f87cc5434299fef5d967df8643",
+					"artifacts": [],
+					"job": "c68d27aefb58",
+					"v": 1,
+					"at": "2026-11-10T21:37:21.589634+00:00",
+					"watcher": "c68d27aefb58",
+					"tracks": [
+						{
+							"id": "aud_serving_11",
+							"title": "Owned silent music fixture",
+							"variant_index": 0,
+							"status": "IN_PROGRESS",
+							"settled": false,
+							"cost": {
+								"v": 1,
+								"amount_usd": 0.007500000000000001,
+								"basis": "quote",
+								"units": 3000,
+								"unit": "millisecond",
+								"provider": "radient",
+								"model": "radient/music",
+								"tool_type": "music_generation",
+								"usage_record_id": "synthetic_usage_aud_serving_11",
+								"price_version": "music-fixed-requested-ms@2026-11-08"
+							},
+							"error_type": null
+						}
+					],
+					"attribution": "Synthetic QA upstream; no resale authorization"
+				}
+			},
+			"ts_source": "entry"
+		},
+		{
+			"id": "90e0a5981e1f41eb99b9d26506fd4d4d",
+			"ts": 1794346641.606039,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"text": "Owned synthetic music QA turn complete."
+					}
+				],
+				"stop_reason": "stop"
+			},
+			"ts_source": "entry"
+		},
+		{
+			"id": "d07337527f2e433e9642b372daf3860a",
+			"ts": 1794346641.610037,
+			"type": "custom",
+			"payload": {
+				"custom_type": "music_job_v1",
+				"details": {
+					"state": "running",
+					"params": {
+						"operation": "compose",
+						"format": "mp3",
+						"prompt": "Owned native outcome",
+						"duration_ms": 3000,
+						"variations": 1,
+						"model": "radient/music"
+					},
+					"key": "music:01306444deac:music-qa-f1b653f87cc5434299fef5d967df8643",
+					"artifacts": [],
+					"job": "c68d27aefb58",
+					"v": 1,
+					"at": "2026-11-10T21:37:21.610013+00:00",
+					"watcher": "c68d27aefb58",
+					"tracks": [
+						{
+							"id": "aud_serving_11",
+							"title": "Owned silent music fixture",
+							"variant_index": 0,
+							"status": "COMPLETED",
+							"settled": true,
+							"cost": {
+								"v": 1,
+								"amount_usd": 0,
+								"basis": "billed",
+								"units": 0,
+								"unit": "millisecond",
+								"provider": "radient",
+								"model": "radient/music",
+								"tool_type": "music_generation",
+								"usage_record_id": "synthetic_usage_aud_serving_11",
+								"price_version": "music-fixed-requested-ms@2026-11-08"
+							},
+							"error_type": "audio_failed"
+						}
+					],
+					"attribution": "Synthetic QA upstream; no resale authorization"
+				}
+			},
+			"ts_source": "entry"
+		},
+		{
+			"id": "e57da0d065dc4c9a8ffb79fc87ba373e",
+			"ts": 1794346641.6132789,
+			"type": "custom",
+			"payload": {
+				"custom_type": "session_channel_spend.v1",
+				"details": {
+					"version": 1,
+					"record_id": "audio:aud_serving_11",
+					"rev": 2,
+					"ts_ms": 1794346641609,
+					"session_id": "01306444deac",
+					"channel": "audio",
+					"provider": "radient",
+					"model": "radient/music",
+					"units": 0.0,
+					"unit": "milliseconds",
+					"amount_micro": 0,
+					"billing_basis": "billed",
+					"cost_source": "server_reported",
+					"price_version": "music-fixed-requested-ms@2026-11-08",
+					"status": "ok",
+					"request_id": "synthetic_usage_aud_serving_11"
+				}
+			},
+			"ts_source": "entry"
+		},
+		{
+			"id": "49156c0446a24e2aaecb0c9b5fd112c4",
+			"ts": 1794346641.63829,
+			"type": "custom",
+			"payload": {
+				"custom_type": "music_job_v1",
+				"details": {
+					"state": "failed",
+					"params": {
+						"operation": "compose",
+						"format": "mp3",
+						"prompt": "Owned native outcome",
+						"duration_ms": 3000,
+						"variations": 1,
+						"model": "radient/music"
+					},
+					"key": "music:01306444deac:music-qa-f1b653f87cc5434299fef5d967df8643",
+					"artifacts": [],
+					"job": "c68d27aefb58",
+					"v": 1,
+					"at": "2026-11-10T21:37:21.638222+00:00",
+					"watcher": "c68d27aefb58",
+					"tracks": [
+						{
+							"id": "aud_serving_11",
+							"title": "Owned silent music fixture",
+							"variant_index": 0,
+							"status": "COMPLETED",
+							"settled": true,
+							"cost": {
+								"v": 1,
+								"amount_usd": 0,
+								"basis": "billed",
+								"units": 0,
+								"unit": "millisecond",
+								"provider": "radient",
+								"model": "radient/music",
+								"tool_type": "music_generation",
+								"usage_record_id": "synthetic_usage_aud_serving_11",
+								"price_version": "music-fixed-requested-ms@2026-11-08"
+							},
+							"error_type": "audio_failed"
+						}
+					],
+					"attribution": "Synthetic QA upstream; no resale authorization"
+				}
+			},
+			"ts_source": "entry"
+		},
+		{
+			"id": "19f8a21c5f6945278f64de543806753e",
+			"ts": 1794346641.659774,
+			"type": "custom",
+			"payload": {
+				"custom_type": "completion_attention",
+				"details": {
+					"conversation_id": "session/01306444deac",
+					"token": "b6500978-c7a1-4ad8-a7fe-fba2c0d368c7",
+					"anchor": "90e0a5981e1f41eb99b9d26506fd4d4d",
+					"kind": "complete",
+					"cause": "",
+					"reason": "",
+					"notify": true
+				}
+			},
+			"ts_source": "entry"
+		},
+		{
+			"id": "5aa5759e4e844ffe9b7db6d71fd44b08",
+			"ts": 1794346641.669452,
+			"type": "custom",
+			"payload": {
+				"custom_type": "music_job_v1",
+				"details": {
+					"state": "failed",
+					"params": {
+						"operation": "compose",
+						"format": "mp3",
+						"prompt": "Owned native outcome",
+						"duration_ms": 3000,
+						"variations": 1,
+						"model": "radient/music"
+					},
+					"key": "music:01306444deac:music-qa-f1b653f87cc5434299fef5d967df8643",
+					"artifacts": [],
+					"job": "c68d27aefb58",
+					"v": 1,
+					"at": "2026-11-10T21:37:21.669422+00:00",
+					"watcher": "c68d27aefb58",
+					"tracks": [
+						{
+							"id": "aud_serving_11",
+							"title": "Owned silent music fixture",
+							"variant_index": 0,
+							"status": "COMPLETED",
+							"settled": true,
+							"cost": {
+								"v": 1,
+								"amount_usd": 0,
+								"basis": "billed",
+								"units": 0,
+								"unit": "millisecond",
+								"provider": "radient",
+								"model": "radient/music",
+								"tool_type": "music_generation",
+								"usage_record_id": "synthetic_usage_aud_serving_11",
+								"price_version": "music-fixed-requested-ms@2026-11-08"
+							},
+							"error_type": "audio_failed"
+						}
+					],
+					"attribution": "Synthetic QA upstream; no resale authorization",
+					"error": "RuntimeError"
+				}
+			},
+			"ts_source": "entry"
+		},
+		{
+			"id": "ba1fc98086544e8282901998e082b2a6",
+			"ts": 1794346641.6936908,
+			"type": "custom",
+			"payload": {
+				"custom_type": "attention_started",
+				"details": {
+					"conversation_id": "session/01306444deac",
+					"token": "8c13a856-66ec-48fa-8ae7-4741dd9298e4"
+				}
+			},
+			"ts_source": "entry"
+		},
+		{
+			"id": "28ee649b73854457a3a82148556a7e90",
+			"ts": 1794346641.697417,
+			"type": "message",
+			"payload": {
+				"kind": "custom",
+				"custom_type": "job_result",
+				"attribution": "user",
+				"details": {
+					"job_id": "c68d27aefb58",
+					"text": "background job 'Music' failed:\nmusic_no_playable_results",
+					"job": "c68d27aefb58",
+					"material": "music",
+					"model": "radient/music",
+					"provider": "radient",
+					"tracks": [
+						{
+							"id": "aud_serving_11",
+							"title": "Owned silent music fixture",
+							"variant_index": 0,
+							"status": "COMPLETED",
+							"settled": true,
+							"cost": {
+								"v": 1,
+								"amount_usd": 0,
+								"basis": "billed",
+								"units": 0,
+								"unit": "millisecond",
+								"provider": "radient",
+								"model": "radient/music",
+								"tool_type": "music_generation",
+								"usage_record_id": "synthetic_usage_aud_serving_11",
+								"price_version": "music-fixed-requested-ms@2026-11-08"
+							},
+							"error_type": "audio_failed"
+						}
+					],
+					"artifacts": [],
+					"attribution": "Synthetic QA upstream; no resale authorization"
+				}
+			},
+			"ts_source": "entry"
+		},
+		{
+			"id": "c79bdff8dfce425a9888e39bf1a55c44",
+			"ts": 1794346641.7210681,
+			"type": "message",
+			"payload": {
+				"kind": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"text": "Owned synthetic music QA turn complete."
+					}
+				],
+				"stop_reason": "stop"
+			},
+			"ts_source": "entry"
+		}
+	]
+}

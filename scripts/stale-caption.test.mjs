@@ -154,6 +154,13 @@ function renderPane({
 	records = RECORDS,
 	awaitingHydration = false,
 	hydrationProven = true,
+	/**
+	 * The indicator's hold. `0` renders the post-threshold state in a server
+	 * render, which is the only way a markup test can reach it without a clock;
+	 * the shipped hold is exercised in `stale-indicator-hold.test.mjs`, and the
+	 * first-frame case below renders with it.
+	 */
+	delayMs = 0,
 }) {
 	return renderToStaticMarkup(
 		createElement(
@@ -174,6 +181,7 @@ function renderPane({
 				remote,
 				awaitingHydration,
 				hydrationProven,
+				staleIndicatorDelayMs: delayMs,
 				error: null,
 				onAnswer: () => {},
 			}),
@@ -189,6 +197,23 @@ test("a cached paint states the caption exactly once", () => {
 		count(markup),
 		1,
 		"the caption is rendered twice: the hoisted copy and the legacy in-scroll one (design round 2, D10)",
+	);
+});
+
+test("a cached paint's FIRST frame states no caption", () => {
+	// The hold's own case (operator report, 2026-11-12): the rows are already
+	// readable, and a server render here is that first frame - the effect that
+	// would raise the flag has not run, so nothing is drawn. The reserved foot
+	// slot is still there, which is what keeps the silence free of layout.
+	const markup = renderPane({ stale: true, delayMs: 500 });
+	assert.ok(
+		markup.includes('data-lo-transcript-foot="true"'),
+		"the slot is reserved from the first frame",
+	);
+	assert.equal(
+		markup.includes("data-lo-stale-caption"),
+		false,
+		"and it is empty until the hold elapses",
 	);
 });
 

@@ -74,9 +74,9 @@ test("the canvas fit floor stays independent of the sidebar preference", () => {
 	);
 });
 
-test("the resize range is the one the message list already occupied", () => {
+test("the resize range runs 220-560 so users can widen the sidebar", () => {
 	assert.equal(SIDEBAR_MIN_WIDTH, 220);
-	assert.equal(SIDEBAR_MAX_WIDTH, 320);
+	assert.equal(SIDEBAR_MAX_WIDTH, 560);
 	assert.equal(SIDEBAR_DEFAULT_WIDTH, 260);
 	assert.equal(SIDEBAR_COLLAPSED_WIDTH, 56);
 });
@@ -84,10 +84,13 @@ test("the resize range is the one the message list already occupied", () => {
 test("a stored width is clamped at the render boundary, not refused", () => {
 	assert.equal(clampSidebarWidth(260), 260);
 	assert.equal(clampSidebarWidth(120), 220);
-	assert.equal(clampSidebarWidth(9_000), 320);
+	assert.equal(clampSidebarWidth(9_000), 560);
+	/* A width the old 320 ceiling refused now survives a reload whole. */
+	assert.equal(clampSidebarWidth(480), 480);
+	assert.equal(clampSidebarWidth(560), 560);
 	/* `localStorage` can hand back anything at all, including these. */
 	assert.equal(clampSidebarWidth(Number.NaN), SIDEBAR_DEFAULT_WIDTH);
-	assert.equal(clampSidebarWidth(Number.POSITIVE_INFINITY), 320);
+	assert.equal(clampSidebarWidth(Number.POSITIVE_INFINITY), 560);
 });
 
 test("docked: the dock owns the width and offers the divider", () => {
@@ -144,8 +147,31 @@ test("the collapsed preference stays a strip at every window width", () => {
 test("the render-only capacity cap preserves the chat floor and rail", () => {
 	assert.equal(sidebarDockCapacity(800), 276);
 	assert.equal(sidebarDockCapacity(800, 0), 320);
-	assert.equal(sidebarDockCapacity(1023), SIDEBAR_MAX_WIDTH);
+	assert.equal(sidebarDockCapacity(1023), 499);
 	assert.equal(sidebarDockCapacity(1380), SIDEBAR_MAX_WIDTH);
+});
+
+test("a wide window offers the full 560px drag; a mid window stops at capacity", () => {
+	/*
+	 * Regression for the widened ceiling: the divider's `maxWidth` is
+	 * `sidebarDockCapacity`, so this is the drag's actual stop. 1440 reaches the
+	 * new 560; 1084 (560 + 480 + 44) is the narrowest window that does; below it
+	 * the stop is the chat's 480 floor plus the 44px rail, never the old 320.
+	 */
+	assert.equal(sidebarDockCapacity(1440), 560);
+	assert.equal(sidebarDockCapacity(1100), 560);
+	assert.equal(sidebarDockCapacity(1084), 560);
+	assert.equal(sidebarDockCapacity(1083), 559);
+	assert.equal(
+		sidebarDockCapacity(1000),
+		1000 - CHAT_PANE_MIN_PX - PANEL_RAIL_WIDTH_PX,
+	);
+	assert.equal(sidebarDockCapacity(1000), 476);
+	assert.equal(resolveSidebarLayout(1440, false, 560).width, 560);
+	/* A stored 560 on a narrower window draws at capacity, keeping the chat floor. */
+	const mid = resolveSidebarLayout(1000, false, 560);
+	assert.equal(mid.width, 476);
+	assert.equal(mid.width + CHAT_PANE_MIN_PX + PANEL_RAIL_WIDTH_PX, 1000);
 });
 
 test("a stored 320px width fits an 800px chat window without being rewritten", () => {

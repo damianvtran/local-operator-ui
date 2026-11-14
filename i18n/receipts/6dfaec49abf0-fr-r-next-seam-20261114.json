@@ -1,0 +1,449 @@
+{
+  "auditor": "translation-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "6dfaec49abf0-fr-r-next-seam-20261114",
+  "auditor_session": "6dfaec49abf0",
+  "model_selection": "parent",
+  "fallback": null,
+  "profile_revision": "definition-revision:v1:977d12b70eb8adff7d8b9491e8e59b748a9fac283683abd963fdf586cb596f8a",
+  "date": "2026-11-14T11:06:07.667642+00:00",
+  "locale": "fr",
+  "namespace": "ui.chat.canonical",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "sha256": {
+    "en": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+    "fr": "060c7967167434f91d79d3c3093642690ed8c7d95b3f9b9a36be9b4d6b17099a",
+    "context": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7"
+  },
+  "context_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7",
+  "source_path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+  "target_path": "src/i18n/catalogues/fr/ui.chat.canonical.json",
+  "context_path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+  "scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+  "new_semantic_keys": 0,
+  "main_keys_retained": 471,
+  "pr_keys_retained": 23,
+  "current_keys": 494,
+  "same_original_lineage_not_new_independent_audit": true,
+  "findings": [
+    {
+      "id": "I-FR-2",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.tool_row.diff.full.evicted",
+      "current": "Diff complet plus conservé — les anciens diffs sont supprimés pour libérer de l’espace",
+      "proposed": "Le diff complet n’est plus conservé — les anciens diffs sont supprimés pour libérer de l’espace",
+      "reason": "\"Diff complet plus conservé\" drops \"n’est\" and reads telegraphic or ambiguous.",
+      "disposition": "deferred — retained; value byte-unchanged since 21bb",
+      "origin_receipt": "i18n/receipts/567a24a88e45-chat-canonical-fr-r2.json",
+      "origin_receipt_sha256": "dd65b57c3bf1ac4a5190900a561aa5a3dac554ce5d6fc7b884b3f1914110f1dc",
+      "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+      "inherited": true,
+      "rebinding_disposition": {
+        "choice": "Retain same finding/severity and original disposition",
+        "basis": "Current literal equals prior PR literal; no new semantic adjudication",
+        "prior_instance": "6dfaec49abf0-fr-final-policy-evidence-20261112"
+      }
+    },
+    {
+      "id": "I-FR-3",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.tool_row.diff.full.not_recorded",
+      "current": "Diff complet absent — modification antérieure à l’enregistrement des diffs",
+      "proposed": "Diff complet absent — modification antérieure à l’archivage des diffs",
+      "reason": "About 75 chars (en 41), beyond the fr style guide length note (15-25% longer, fr.md:67). It is a dim wrapping status, so fit is not proven or claimed.",
+      "disposition": "deferred — non-gating nit",
+      "origin_receipt": "i18n/receipts/567a24a88e45-chat-canonical-fr-r2.json",
+      "origin_receipt_sha256": "dd65b57c3bf1ac4a5190900a561aa5a3dac554ce5d6fc7b884b3f1914110f1dc",
+      "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+      "inherited": true,
+      "rebinding_disposition": {
+        "choice": "Retain same finding/severity and original disposition",
+        "basis": "Current literal equals prior PR literal; no new semantic adjudication",
+        "prior_instance": "6dfaec49abf0-fr-final-policy-evidence-20261112"
+      }
+    },
+    {
+      "id": "M1",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.sound.cost.estimated_zero",
+      "current": "Coût estimé à 0 $ ; frais finaux non confirmés.",
+      "proposed": "Coût estimé à 0 $US ; frais finaux non confirmés.",
+      "reason": "Bare `$` is the only MONEY rendering in the shipped fr corpus (the three other fr values that contain a `$` are JavaScript template/code tokens — `${name}`, `$'{'NAME'}'` — not amounts; counted in audit.log). The corpus writes the currency as the ISO code after the amount (`ui.common.account.low_credits_dialog.detail` « {detail} USD », `ui.providers.phone.action.activate` « Activer pour {amount} USD par mois », `ui.providers.phone.consent` « … à {amount} USD par mois … »), and the runtime's own fr money formatter renders USD as `0,00 $US` (Intl.NumberFormat('fr', {style:'currency', currency:'USD'}).format(0) = \"0,00\\u00a0$US\"). An unqualified `$` is read as CAD in a Canadian reading, while this is a USD billing sentence. Not MAJOR: the amount is zero, so no charge can be misread, and the sentence's real claim (estimate, not a confirmed bill) survives.",
+      "disposition": "retained, non-gating; no change made",
+      "origin_receipt": "i18n/receipts/3316c580ef05.json",
+      "origin_receipt_sha256": "2e4ac73047242230a20ff56a4982652c7d56e4d1f6677d4c083bb7f1a82e8d32",
+      "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+      "inherited": true,
+      "rebinding_disposition": {
+        "choice": "Retain same finding/severity and original disposition",
+        "basis": "Current literal equals prior PR literal; no new semantic adjudication",
+        "prior_instance": "6dfaec49abf0-fr-final-policy-evidence-20261112"
+      }
+    },
+    {
+      "id": "N1",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.media.sound_label",
+      "current": "{count, plural, =1 {Son} other {Son {position, number, ::group-off}}}",
+      "proposed": "{count, plural, =1 {Audio} other {Audio {position, number, ::group-off}}}",
+      "reason": "`Son` is correct French and matches the namespace's prose (« Impossible de lire ce son », « Son généré »), but as a standalone label it is homographic with the possessive determiner `son`, and it is always read after a verb: `ui.chat.audio.play_label` is « Lire {label} », so the accessible names become « Lire Son » / « Lire Son 2 ». The namespace's own noun for the media type in a name position is `audio` (« Pièce jointe audio indisponible », « … sera facturée si elle produit un audio »). « Audio » is unambiguous there and costs no width (5 characters, shorter than English's « Sound »).",
+      "disposition": "retained, non-gating; no change made",
+      "origin_receipt": "i18n/receipts/3316c580ef05.json",
+      "origin_receipt_sha256": "2e4ac73047242230a20ff56a4982652c7d56e4d1f6677d4c083bb7f1a82e8d32",
+      "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+      "inherited": true,
+      "rebinding_disposition": {
+        "choice": "Retain same finding/severity and original disposition",
+        "basis": "Current literal equals prior PR literal; no new semantic adjudication",
+        "prior_instance": "6dfaec49abf0-fr-final-policy-evidence-20261112"
+      }
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 3
+  },
+  "finding_alias_dispositions": [
+    {
+      "parent_id": "3316c580ef05/M1",
+      "counted_as": "M1",
+      "disposition": "carried from the superseded #1876 audit: bytes unchanged at fa3c17b63, still applies, severity concurred; deferred",
+      "choice": "Same underlying finding, count once; preserve full parent ID as alias"
+    },
+    {
+      "parent_id": "3316c580ef05/N1",
+      "counted_as": "N1",
+      "disposition": "carried from the superseded #1876 audit: bytes unchanged at fa3c17b63, still applies, severity concurred; deferred",
+      "choice": "Same underlying finding, count once; preserve full parent ID as alias"
+    }
+  ],
+  "parent_receipts": [
+    {
+      "locale": "fr",
+      "parent": "d582c3d8a1537078bd13681dfbfe5ad31cc55f61",
+      "path": "i18n/receipts/5f8e54e78de8-fr-final-evidence-20261112.json",
+      "sha256": "9a08f3af4a3c96ed4a6c2e81ef305401a03a7b8a1a009f948df89d0cecb69799",
+      "agent": "translation-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "instance": "5f8e54e78de8-fr-final-evidence-20261112",
+      "result": "clean-with-findings",
+      "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+      "target_sha256": "e7d21936f30d7bcb95a86c08c6774c0572d13bd32e7220ab9e36c02327c31fbd",
+      "context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+      "identity_hashes_counts_verified_by_actual_frozen_pure_contract": true,
+      "unchanged_in_index": true,
+      "findings": [
+        {
+          "id": "I-FR-2",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.tool_row.diff.full.evicted",
+          "current": "Diff complet plus conservé — les anciens diffs sont supprimés pour libérer de l’espace",
+          "proposed": "Le diff complet n’est plus conservé — les anciens diffs sont supprimés pour libérer de l’espace",
+          "reason": "The telegraphic plus conservé drops n’est and can briefly read ambiguously; the parent deferred wording nit still applies.",
+          "disposition": "deferred — retained; non-gating",
+          "retained_original_disposition": "deferred — retained; non-gating",
+          "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment."
+        },
+        {
+          "id": "I-FR-3",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.tool_row.diff.full.not_recorded",
+          "current": "Diff complet absent — modification antérieure à l’enregistrement des diffs",
+          "proposed": "Diff complet absent — modification antérieure à l’archivage des diffs",
+          "reason": "The current 74-code-point wrapping status is materially longer than English’s 41; preserve the parent fit follow-up and require a rendered check.",
+          "disposition": "deferred — non-gating; no rendered fit proven",
+          "retained_original_disposition": "deferred — non-gating; no rendered fit proven",
+          "supplemental_evidence_disposition": "Bounded captured fit evidence now available; no obvious cutoff in viewed assigned-locale sample. Historical MINOR/NIT ID/severity retained; no new remediation cycle; no universal width/geometry claim."
+        },
+        {
+          "id": "M1",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.sound.cost.estimated_zero",
+          "current": "Coût estimé à 0 $ ; frais finaux non confirmés.",
+          "proposed": "Coût estimé à 0 $US ; frais finaux non confirmés.",
+          "reason": "Bare `$` is the only MONEY rendering in the shipped fr corpus (the three other fr values that contain a `$` are JavaScript template/code tokens — `${name}`, `$'{'NAME'}'` — not amounts; counted in audit.log). The corpus writes the currency as the ISO code after the amount (`ui.common.account.low_credits_dialog.detail` « {detail} USD », `ui.providers.phone.action.activate` « Activer pour {amount} USD par mois », `ui.providers.phone.consent` « … à {amount} USD par mois … »), and the runtime's own fr money formatter renders USD as `0,00 $US` (Intl.NumberFormat('fr', {style:'currency', currency:'USD'}).format(0) = \"0,00\\u00a0$US\"). An unqualified `$` is read as CAD in a Canadian reading, while this is a USD billing sentence. Not MAJOR: the amount is zero, so no charge can be misread, and the sentence's real claim (estimate, not a confirmed bill) survives.",
+          "disposition": "retained, non-gating; no new remediation authorization",
+          "historical_reason_verbatim": true,
+          "retained_original_disposition": "retained, non-gating; no new remediation authorization",
+          "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment."
+        },
+        {
+          "id": "N1",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.media.sound_label",
+          "current": "{count, plural, =1 {Son} other {Son {position, number, ::group-off}}}",
+          "proposed": "{count, plural, =1 {Audio} other {Audio {position, number, ::group-off}}}",
+          "reason": "`Son` is correct French and matches the namespace's prose (« Impossible de lire ce son », « Son généré »), but as a standalone label it is homographic with the possessive determiner `son`, and it is always read after a verb: `ui.chat.audio.play_label` is « Lire {label} », so the accessible names become « Lire Son » / « Lire Son 2 ». The namespace's own noun for the media type in a name position is `audio` (« Pièce jointe audio indisponible », « … sera facturée si elle produit un audio »). « Audio » is unambiguous there and costs no width (5 characters, shorter than English's « Sound »).",
+          "disposition": "retained, non-gating; no new remediation authorization",
+          "historical_reason_verbatim": true,
+          "retained_original_disposition": "retained, non-gating; no new remediation authorization",
+          "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment."
+        },
+        {
+          "id": "CONV-FR-MANY-VIEW",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.view",
+          "current": "{count, plural, one {Voir le diff complet · # ligne} other {Voir le diff complet · # lignes}}",
+          "proposed": "{count, plural, one {Voir le diff complet · # ligne} many {Voir le diff complet · # de lignes} other {Voir le diff complet · # lignes}}",
+          "reason": "The es/fr guide requires a many category for exact millions, but this message only has one/other and formats a million without the required de/d’; the clipped case is only a categorical-completeness follow-up because a page is bounded.",
+          "origin": "retained PR-parent wording; extremely large-count follow-up, not merge regression",
+          "disposition": "Non-gating language/CLDR follow-up; actual formatter output retained in ICU evidence.",
+          "retained_original_disposition": "Non-gating language/CLDR follow-up; actual formatter output retained in ICU evidence.",
+          "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment."
+        },
+        {
+          "id": "CONV-FR-MANY-CLIPPED",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.clipped",
+          "current": "{count, plural, one {# ligne longue de cette page est raccourcie} other {# lignes longues de cette page sont raccourcies}}",
+          "proposed": "{count, plural, one {# ligne longue de cette page est raccourcie} many {# de lignes longues de cette page sont raccourcies} other {# lignes longues de cette page sont raccourcies}}",
+          "reason": "The es/fr guide requires a many category for exact millions, but this message only has one/other and formats a million without the required de/d’; the clipped case is only a categorical-completeness follow-up because a page is bounded.",
+          "origin": "retained PR-parent wording; extremely large-count follow-up, not merge regression",
+          "disposition": "Non-gating language/CLDR follow-up; actual formatter output retained in ICU evidence.",
+          "retained_original_disposition": "Non-gating language/CLDR follow-up; actual formatter output retained in ICU evidence.",
+          "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment."
+        },
+        {
+          "id": "CONV-FR-FIT-1",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.unavailable",
+          "current": "Le diff complet n’a pas pu être enregistré pour cette modification",
+          "proposed": "Diff complet non enregistré pour cette modification",
+          "reason": "At 66 code points versus English’s 38, this status materially expands; check wrapping with the new pager before claiming fit.",
+          "disposition": "Rendered check required; source risk, not observed clipping",
+          "related_risk": {
+            "key": "ui.chat.canonical.tool_row.diff.full.empty",
+            "current": "Cette modification ne contient aucune ligne de diff",
+            "proposed": "Ce changement n’a aucune ligne de diff",
+            "source_code_points": 29,
+            "target_code_points": 51,
+            "reason": "Same wrapping-status fit check; keep ordinary context and no trailing stop."
+          },
+          "retained_original_disposition": "Rendered check required; source risk, not observed clipping",
+          "supplemental_evidence_disposition": "Bounded captured fit evidence now available; no obvious cutoff in viewed assigned-locale sample. Historical MINOR/NIT ID/severity retained; no new remediation cycle; no universal width/geometry claim."
+        }
+      ]
+    },
+    {
+      "locale": "fr",
+      "parent": "d582c3d8a1537078bd13681dfbfe5ad31cc55f61",
+      "path": "i18n/receipts/6dfaec49abf0-fr-final-policy-evidence-20261112.json",
+      "sha256": "e77f2830dce176484f88a2cce2fa43bd8d1ffc7aab3caaf4fadfd5c2488b6118",
+      "agent": "translation-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "instance": "6dfaec49abf0-fr-final-policy-evidence-20261112",
+      "result": "clean-with-findings",
+      "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+      "target_sha256": "e7d21936f30d7bcb95a86c08c6774c0572d13bd32e7220ab9e36c02327c31fbd",
+      "context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+      "identity_hashes_counts_verified_by_actual_frozen_pure_contract": true,
+      "unchanged_in_index": true,
+      "findings": [
+        {
+          "id": "I-FR-2",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.tool_row.diff.full.evicted",
+          "current": "Diff complet plus conservé — les anciens diffs sont supprimés pour libérer de l’espace",
+          "proposed": "Le diff complet n’est plus conservé — les anciens diffs sont supprimés pour libérer de l’espace",
+          "reason": "\"Diff complet plus conservé\" drops \"n’est\" and reads telegraphic or ambiguous.",
+          "disposition": "deferred — retained; value byte-unchanged since 21bb",
+          "origin_receipt": "i18n/receipts/567a24a88e45-chat-canonical-fr-r2.json",
+          "origin_receipt_sha256": "dd65b57c3bf1ac4a5190900a561aa5a3dac554ce5d6fc7b884b3f1914110f1dc",
+          "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+          "inherited": true
+        },
+        {
+          "id": "I-FR-3",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.tool_row.diff.full.not_recorded",
+          "current": "Diff complet absent — modification antérieure à l’enregistrement des diffs",
+          "proposed": "Diff complet absent — modification antérieure à l’archivage des diffs",
+          "reason": "About 75 chars (en 41), beyond the fr style guide length note (15-25% longer, fr.md:67). It is a dim wrapping status, so fit is not proven or claimed.",
+          "disposition": "deferred — non-gating nit",
+          "origin_receipt": "i18n/receipts/567a24a88e45-chat-canonical-fr-r2.json",
+          "origin_receipt_sha256": "dd65b57c3bf1ac4a5190900a561aa5a3dac554ce5d6fc7b884b3f1914110f1dc",
+          "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+          "inherited": true
+        },
+        {
+          "id": "M1",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.sound.cost.estimated_zero",
+          "current": "Coût estimé à 0 $ ; frais finaux non confirmés.",
+          "proposed": "Coût estimé à 0 $US ; frais finaux non confirmés.",
+          "reason": "Bare `$` is the only MONEY rendering in the shipped fr corpus (the three other fr values that contain a `$` are JavaScript template/code tokens — `${name}`, `$'{'NAME'}'` — not amounts; counted in audit.log). The corpus writes the currency as the ISO code after the amount (`ui.common.account.low_credits_dialog.detail` « {detail} USD », `ui.providers.phone.action.activate` « Activer pour {amount} USD par mois », `ui.providers.phone.consent` « … à {amount} USD par mois … »), and the runtime's own fr money formatter renders USD as `0,00 $US` (Intl.NumberFormat('fr', {style:'currency', currency:'USD'}).format(0) = \"0,00\\u00a0$US\"). An unqualified `$` is read as CAD in a Canadian reading, while this is a USD billing sentence. Not MAJOR: the amount is zero, so no charge can be misread, and the sentence's real claim (estimate, not a confirmed bill) survives.",
+          "disposition": "retained, non-gating; no change made",
+          "origin_receipt": "i18n/receipts/3316c580ef05.json",
+          "origin_receipt_sha256": "2e4ac73047242230a20ff56a4982652c7d56e4d1f6677d4c083bb7f1a82e8d32",
+          "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+          "inherited": true
+        },
+        {
+          "id": "N1",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.media.sound_label",
+          "current": "{count, plural, =1 {Son} other {Son {position, number, ::group-off}}}",
+          "proposed": "{count, plural, =1 {Audio} other {Audio {position, number, ::group-off}}}",
+          "reason": "`Son` is correct French and matches the namespace's prose (« Impossible de lire ce son », « Son généré »), but as a standalone label it is homographic with the possessive determiner `son`, and it is always read after a verb: `ui.chat.audio.play_label` is « Lire {label} », so the accessible names become « Lire Son » / « Lire Son 2 ». The namespace's own noun for the media type in a name position is `audio` (« Pièce jointe audio indisponible », « … sera facturée si elle produit un audio »). « Audio » is unambiguous there and costs no width (5 characters, shorter than English's « Sound »).",
+          "disposition": "retained, non-gating; no change made",
+          "origin_receipt": "i18n/receipts/3316c580ef05.json",
+          "origin_receipt_sha256": "2e4ac73047242230a20ff56a4982652c7d56e4d1f6677d4c083bb7f1a82e8d32",
+          "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+          "inherited": true
+        }
+      ]
+    },
+    {
+      "locale": "fr",
+      "parent": "e2d980d217ec4c72e409ef8a21a8aed9602b57a2",
+      "path": "i18n/receipts/94f6e325484c-canon3-fr.json",
+      "sha256": "9c4ebbbfb93d5dbccccbf7ea62049e8b2e1fe333007fec99873c9088de84c046",
+      "agent": "reviewer",
+      "model": "anthropic/claude-opus-5-5",
+      "instance": "94f6e325484c-canon3-fr",
+      "result": "clean-with-findings",
+      "source_sha256": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731",
+      "target_sha256": "e7e0a64cd4a279eb99b991eebc5e22b40d5902ff5df74e95cbeab438aea43645",
+      "context_sha256": "51f705da9160454ef4f72c5f9c14004a3f31b2bccc46dac6c208a36d18cb53bf",
+      "identity_hashes_counts_verified_by_actual_frozen_pure_contract": true,
+      "unchanged_in_index": true,
+      "findings": [
+        {
+          "id": "3316c580ef05/M1",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.sound.cost.estimated_zero",
+          "origin": "i18n/receipts/3316c580ef05.json",
+          "disposition": "carried from the superseded #1876 audit: bytes unchanged at fa3c17b63, still applies, severity concurred; deferred"
+        },
+        {
+          "id": "3316c580ef05/N1",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.media.sound_label",
+          "origin": "i18n/receipts/3316c580ef05.json",
+          "disposition": "carried from the superseded #1876 audit: bytes unchanged at fa3c17b63, still applies, severity concurred; deferred"
+        }
+      ]
+    }
+  ],
+  "record": {
+    "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-fr-r-next-seam-20261114-record.json",
+    "sha256": "3745013fd02f58d83c62e648c9c9d87902475f08257aafde5ec637fc2b81d307",
+    "canonical": "i18n/audits/evidence/fr/ui.chat.canonical/6dfaec49abf0-fr-r-next-seam-20261114/record.json"
+  },
+  "companion": {
+    "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-r-next-seam-20261114-proof.json",
+    "sha256": "ca484b5acf0b37a6c04068968e8910ad257daebcbd194f4dd352c6c959117164"
+  },
+  "glossary_style_bindings": {
+    "inherited": {
+      "i18n/glossary.md": {
+        "repository": "/home/ec2-user/local-operator",
+        "git_ref": "ea9f5b0e49758b9fc289bf0ee1a2d61ab0a2e694",
+        "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+        "read_method": "Local file read plus complete HEAD..origin/main amendments read for changed files; hi guide identical. No fetch; origin/main freshness relative to remote not asserted."
+      },
+      "i18n/style-guides/es.md": {
+        "repository": "/home/ec2-user/local-operator",
+        "git_ref": "ea9f5b0e49758b9fc289bf0ee1a2d61ab0a2e694",
+        "sha256": "4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6",
+        "read_method": "Local file read plus complete HEAD..origin/main amendments read for changed files; hi guide identical. No fetch; origin/main freshness relative to remote not asserted."
+      },
+      "i18n/style-guides/fr.md": {
+        "repository": "/home/ec2-user/local-operator",
+        "git_ref": "ea9f5b0e49758b9fc289bf0ee1a2d61ab0a2e694",
+        "sha256": "5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7",
+        "read_method": "Local file read plus complete HEAD..origin/main amendments read for changed files; hi guide identical. No fetch; origin/main freshness relative to remote not asserted."
+      },
+      "i18n/style-guides/hi.md": {
+        "repository": "/home/ec2-user/local-operator",
+        "git_ref": "ea9f5b0e49758b9fc289bf0ee1a2d61ab0a2e694",
+        "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+        "read_method": "Local file read plus complete HEAD..origin/main amendments read for changed files; hi guide identical. No fetch; origin/main freshness relative to remote not asserted."
+      }
+    },
+    "selected_main_reference": {
+      "glossary": "damianvtran/local-operator@2ba8127d9 i18n/glossary.md sha256:0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "style_guide": "damianvtran/local-operator@2ba8127d9 i18n/style-guides/fr.md sha256:5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7"
+    },
+    "checked_git_objects": {
+      "i18n/glossary.md": {
+        "git_ref": "2ba8127d9",
+        "available": true,
+        "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+        "recorded_reference_only_if_unavailable": false
+      },
+      "i18n/style-guides/es.md": {
+        "git_ref": "2ba8127d9",
+        "available": true,
+        "sha256": "4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6",
+        "recorded_reference_only_if_unavailable": false
+      },
+      "i18n/style-guides/fr.md": {
+        "git_ref": "2ba8127d9",
+        "available": true,
+        "sha256": "5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7",
+        "recorded_reference_only_if_unavailable": false
+      },
+      "i18n/style-guides/hi.md": {
+        "git_ref": "2ba8127d9",
+        "available": true,
+        "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+        "recorded_reference_only_if_unavailable": false
+      }
+    }
+  },
+  "accepted_prior_evidence": {
+    "accepted_readback_json": {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json",
+      "sha256": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30",
+      "role": "Historical accepted 23-key evidence only; not a current capture."
+    },
+    "accepted_readback_markdown": {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.md",
+      "sha256": "a8cbf67eef4052484b4bbc1937a7a6b4b1d3328a71cb813bc3a8f0119cc275ac",
+      "role": "Historical accepted 23-key evidence only; not a current capture."
+    },
+    "final_frame_manifest": {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/frames-manifest.json",
+      "sha256": "12babe07d87bb5d193d3fd909919e1645706e06984129055d4547ded21321db5",
+      "role": "Historical accepted 23-key evidence only; not a current capture."
+    },
+    "browser_source_identity": {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-source.json",
+      "sha256": "011d373b047026492d9ca73f7ec6747df1a90daeb7cb2c805aa9b4dade46ca34",
+      "role": "Historical accepted 23-key evidence only; not a current capture."
+    }
+  },
+  "limitations": {
+    "new_semantic_keys": 0,
+    "fresh_494_key_semantics": false,
+    "fresh_render_browser_native_build_install_test": false,
+    "prior_read_counts": {
+      "es": 31,
+      "fr": 31,
+      "hi": 32
+    },
+    "current_mechanical_only_keys": 494,
+    "functional_outcomes": "UNPROVEN beyond exact retained prior evidence; no new interactions/count variants executed or all-23-interactions PASS claimed",
+    "rendering": "Historical accepted bounded 23-key capture evidence retained as prior evidence only. Main CSS changed; no current rendered geometry/font fallback/fit/native/global RTL approval",
+    "pseudo": "Prior synthetic expanded-English fixtures registered as en; not production/RTL pseudo or current new captures",
+    "finding_debt": "Actual MINOR/NIT follow-ups remain deferred; no debt-remediation round or translation edits authorized",
+    "historical_policy_holds": "Old es/fr withholds/clarifications remain byte-for-byte intact. Authoritative actual-locale CLDR interpretation remains applicable; no literal-English-selector hold is recreated",
+    "release": "No release, merge, activation, all-key semantic or all-key pixel approval"
+  },
+  "retention": {
+    "record": "i18n/audits/evidence/fr/ui.chat.canonical/6dfaec49abf0-fr-r-next-seam-20261114/record.json",
+    "receipt": "i18n/receipts/6dfaec49abf0-fr-r-next-seam-20261114.json",
+    "companion": "i18n/audits/evidence/fr/ui.chat.canonical/6dfaec49abf0-fr-r-next-seam-20261114/seam-proof.json",
+    "retain_all_originals": true
+  },
+  "lawful_bounded_consumability": {
+    "yes": true,
+    "reason": "Direct user authorized exact seam rebinding; independent literal provenance and valid selected parent receipts establish retained audit applicability. Machine hash binding does not widen scope.",
+    "assembler_not_invoked": true,
+    "pure_contract_validation_required_before_issue": true
+  }
+}

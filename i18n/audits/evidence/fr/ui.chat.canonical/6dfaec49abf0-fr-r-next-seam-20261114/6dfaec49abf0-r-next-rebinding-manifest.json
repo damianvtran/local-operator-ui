@@ -1,0 +1,298 @@
+{
+  "document_type": "final-allowlist-manifest-scoped-rebinding",
+  "auditor": "translation-auditor",
+  "session": "6dfaec49abf0",
+  "served_model": "openai/gpt-6.1-sol",
+  "model_selection": "parent",
+  "model_override": false,
+  "fallback": null,
+  "profile_revision": "definition-revision:v1:977d12b70eb8adff7d8b9491e8e59b748a9fac283683abd963fdf586cb596f8a",
+  "started_at": "2026-11-14T11:02:01.069322+00:00",
+  "completed_at": "2026-11-14T11:09:03.451770+00:00",
+  "scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+  "overall_verdict": "clean-with-findings for exact-union rebinding only",
+  "same_original_second_audit_lineage": true,
+  "not_an_additional_independent_audit": true,
+  "current": {
+    "head": "d582c3d8a1537078bd13681dfbfe5ad31cc55f61",
+    "merge_head": "e2d980d217ec4c72e409ef8a21a8aed9602b57a2",
+    "tree": "5df62a4bd832b1c29f90f85dbb95b2c0f5eab6f4",
+    "raw_index_sha256": "b6ef50943c49fc1f252bbdf8d477688a0f96bb2f0d0b040aab59b3a40a89d505",
+    "index_paths": 13783,
+    "english_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+    "context_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7"
+  },
+  "entries": [
+    {
+      "locale": "es",
+      "namespace": "ui.chat.canonical",
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 2,
+        "nit": 2
+      },
+      "finding_ids": [
+        "I-ES-1",
+        "S16F-ES-A3-01",
+        "S16F-ES-A3-02",
+        "S16F-ES-A3-03"
+      ],
+      "session": "6dfaec49abf0",
+      "served_model": "openai/gpt-6.1-sol",
+      "instance": "6dfaec49abf0-es-r-next-seam-20261114",
+      "lineage": "Same original second independent audit author; rebinding only",
+      "current_bindings": {
+        "en": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+        "es": "528df8fc526fee090ff593a5f1122cf5a832fb461e5a3c121f72040fe1278e1d",
+        "context": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7"
+      },
+      "current_tree": "5df62a4bd832b1c29f90f85dbb95b2c0f5eab6f4",
+      "seam_verdict": "PASS: exact disjoint union, no collision/missing/duplicates or raw literal/token/ICU/placeholder change versus selected audited parents",
+      "record": {
+        "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-es-r-next-seam-20261114-record.json",
+        "sha256": "aeea91c47cf3f1629facf2790a77885b17ae3c9b311924227dd2d1dfe8f0eddf"
+      },
+      "receipt": {
+        "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-es-r-next-seam-20261114-receipt.json",
+        "sha256": "a79bd14cb4ffd32fc9348b1bc12be9ab64e84afddffe76b9533c0b26a85309ea"
+      },
+      "companions": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-r-next-seam-20261114-proof.json",
+          "sha256": "ca484b5acf0b37a6c04068968e8910ad257daebcbd194f4dd352c6c959117164"
+        }
+      ],
+      "lawful_bounded_consumability": true,
+      "canonical_record": "i18n/audits/evidence/es/ui.chat.canonical/6dfaec49abf0-es-r-next-seam-20261114/record.json",
+      "actual_frozen_pure_contract_derivation": {
+        "locale": "es",
+        "agent": "translation-auditor",
+        "instance": "6dfaec49abf0-es-r-next-seam-20261114",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 2,
+          "nit": 2
+        },
+        "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+        "target_sha256": "528df8fc526fee090ff593a5f1122cf5a832fb461e5a3c121f72040fe1278e1d",
+        "receipt_sha256": "a79bd14cb4ffd32fc9348b1bc12be9ab64e84afddffe76b9533c0b26a85309ea"
+      }
+    },
+    {
+      "locale": "fr",
+      "namespace": "ui.chat.canonical",
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 3
+      },
+      "finding_ids": [
+        "I-FR-2",
+        "I-FR-3",
+        "M1",
+        "N1"
+      ],
+      "session": "6dfaec49abf0",
+      "served_model": "openai/gpt-6.1-sol",
+      "instance": "6dfaec49abf0-fr-r-next-seam-20261114",
+      "lineage": "Same original second independent audit author; rebinding only",
+      "current_bindings": {
+        "en": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+        "fr": "060c7967167434f91d79d3c3093642690ed8c7d95b3f9b9a36be9b4d6b17099a",
+        "context": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7"
+      },
+      "current_tree": "5df62a4bd832b1c29f90f85dbb95b2c0f5eab6f4",
+      "seam_verdict": "PASS: exact disjoint union, no collision/missing/duplicates or raw literal/token/ICU/placeholder change versus selected audited parents",
+      "record": {
+        "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-fr-r-next-seam-20261114-record.json",
+        "sha256": "3745013fd02f58d83c62e648c9c9d87902475f08257aafde5ec637fc2b81d307"
+      },
+      "receipt": {
+        "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-fr-r-next-seam-20261114-receipt.json",
+        "sha256": "47214d7481b722b7cb24813ddfa7bf67f9379b602b55a47a77d8ac5931aae99f"
+      },
+      "companions": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-r-next-seam-20261114-proof.json",
+          "sha256": "ca484b5acf0b37a6c04068968e8910ad257daebcbd194f4dd352c6c959117164"
+        }
+      ],
+      "lawful_bounded_consumability": true,
+      "canonical_record": "i18n/audits/evidence/fr/ui.chat.canonical/6dfaec49abf0-fr-r-next-seam-20261114/record.json",
+      "actual_frozen_pure_contract_derivation": {
+        "locale": "fr",
+        "agent": "translation-auditor",
+        "instance": "6dfaec49abf0-fr-r-next-seam-20261114",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 3
+        },
+        "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+        "target_sha256": "060c7967167434f91d79d3c3093642690ed8c7d95b3f9b9a36be9b4d6b17099a",
+        "receipt_sha256": "47214d7481b722b7cb24813ddfa7bf67f9379b602b55a47a77d8ac5931aae99f"
+      }
+    },
+    {
+      "locale": "hi",
+      "namespace": "ui.chat.canonical",
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 1
+      },
+      "finding_ids": [
+        "I-HI-1",
+        "HI-C1"
+      ],
+      "session": "6dfaec49abf0",
+      "served_model": "openai/gpt-6.1-sol",
+      "instance": "6dfaec49abf0-hi-r-next-seam-20261114",
+      "lineage": "Same original second independent audit author; rebinding only",
+      "current_bindings": {
+        "en": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+        "hi": "44d13aafbd5dc8e369a9b35a169f06e7c24b732e54fab574fe19feab98f62706",
+        "context": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7"
+      },
+      "current_tree": "5df62a4bd832b1c29f90f85dbb95b2c0f5eab6f4",
+      "seam_verdict": "PASS: exact disjoint union, no collision/missing/duplicates or raw literal/token/ICU/placeholder change versus selected audited parents",
+      "record": {
+        "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-r-next-seam-20261114-record.json",
+        "sha256": "36fe1bc9e950c59d26e5a49df7ea9c8265553e680a463da954b17bbfd12a611d"
+      },
+      "receipt": {
+        "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-r-next-seam-20261114-receipt.json",
+        "sha256": "f6a7bfdda5c14ee4b84e55ac0ff091781eb57f37b581e5ccaa6e8be8120a6ab6"
+      },
+      "companions": [
+        {
+          "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-r-next-seam-20261114-proof.json",
+          "sha256": "ca484b5acf0b37a6c04068968e8910ad257daebcbd194f4dd352c6c959117164"
+        }
+      ],
+      "lawful_bounded_consumability": true,
+      "canonical_record": "i18n/audits/evidence/hi/ui.chat.canonical/6dfaec49abf0-hi-r-next-seam-20261114/record.json",
+      "actual_frozen_pure_contract_derivation": {
+        "locale": "hi",
+        "agent": "translation-auditor",
+        "instance": "6dfaec49abf0-hi-r-next-seam-20261114",
+        "model": "openai/gpt-6.1-sol",
+        "result": "clean-with-findings",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 1,
+          "nit": 1
+        },
+        "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+        "target_sha256": "44d13aafbd5dc8e369a9b35a169f06e7c24b732e54fab574fe19feab98f62706",
+        "receipt_sha256": "f6a7bfdda5c14ee4b84e55ac0ff091781eb57f37b581e5ccaa6e8be8120a6ab6"
+      }
+    }
+  ],
+  "only_final_allowlisted_receipts": [
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-es-r-next-seam-20261114-receipt.json",
+      "sha256": "a79bd14cb4ffd32fc9348b1bc12be9ab64e84afddffe76b9533c0b26a85309ea"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-fr-r-next-seam-20261114-receipt.json",
+      "sha256": "47214d7481b722b7cb24813ddfa7bf67f9379b602b55a47a77d8ac5931aae99f"
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-r-next-seam-20261114-receipt.json",
+      "sha256": "f6a7bfdda5c14ee4b84e55ac0ff091781eb57f37b581e5ccaa6e8be8120a6ab6"
+    }
+  ],
+  "shared_companion": {
+    "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-r-next-seam-20261114-proof.json",
+    "sha256": "ca484b5acf0b37a6c04068968e8910ad257daebcbd194f4dd352c6c959117164",
+    "size_bytes": 636691
+  },
+  "preserve_old_hash_check": {
+    "files": {
+      "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/audit-convergence.py": "20d04b9874654954a14a191524efde7ff054c22aa017e5572aa74fa258d50ad1",
+      "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/independent-convergence-byte-proof.json": "3282778315a287ea36d6deb3233c73c36dc79d7b687e0fcdee83f6f883da75ff",
+      "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/check-convergence.mjs": "9fae25cfab4605fc516c6c71a7de9d4f1e2d2c30ba482bb17cdae827e0ae6113",
+      "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/independent-convergence-icu-proof.json": "21d8718cc516fabfae07a9d13c001987dbec705a16e68456883865f59b3fdb4b",
+      "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/icu-check.log": "5078ccc96d8b2df97bb7b593d22e2fcea7af16a7e7c61c7bcf52176045da9ae0",
+      "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/issue-convergence-reports.py": "8348c8abf49fa91b1c37fbaeaed4f58df4873137b7655853dccb26ba3f0d7230",
+      "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/convergence-second-es-report.json": "b2e6edb53c39736e887a812ae4af71e918fde4c69aa768ed7ca0fcc0c717d28e",
+      "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/convergence-second-fr-report.json": "58d79d209926a2047cd94f04de77ffe42d320acef3dadce0eb946da94d72d280",
+      "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/convergence-second-hi-report.json": "65797fe4c4b4f98f71902d244f6f9533bdade5b93691e63795ce3fd95b6cef06",
+      "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-convergence-second.json": "ff9756c7f00fe7c3529e5a6501d6b30abd590929111a0beaf4e2e334f10d465f",
+      "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/convergence-second-es-fr-hi-summary.md": "9f33a464b216d684f7e7fccbc60533b23044d18a67b666520806779da34a168b",
+      "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/final-readback-verification.json": "ce8503f17ab93a1234bf249ce34ffab923f5b3a30750b33db6f14263e251b320",
+      "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/convergence-second-es-fr-hi-policy-clarification.md": "8f775f452788ce894c09d6a71f1f1b932534a5ec8ebf9adf3e4638794896a30a",
+      "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-es-final-policy-evidence-20261112-supplement.json": "62b4b8b5ecaf8cd08ddba818328e5983e8bb39b48890651836dd78648bb5d13e",
+      "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-es-final-policy-evidence-20261112-receipt.json": "9f41eff67d1c407e55c91becb96b7ce20baa2d66837b82c99c7d65d74fa5a2da",
+      "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-fr-final-policy-evidence-20261112-supplement.json": "03c37b8a7aecc78fb2dbff50326f04dd3633120c650c44dc168c531efe0651bc",
+      "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-fr-final-policy-evidence-20261112-receipt.json": "e77f2830dce176484f88a2cce2fa43bd8d1ffc7aab3caaf4fadfd5c2488b6118",
+      "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-final-policy-evidence-20261112-supplement.json": "fca07367eb4b13287e4a8db30a4bf7038681d5c96b91ec329ae071b2be955251",
+      "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-final-policy-evidence-20261112-receipt.json": "5e305a30e908346adc22a8e7e3bbf398ffdcee305774e6e0e13e71d70d44618f",
+      "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-es-final-policy-evidence-20261112-retention-companion.json": "dc88ad10a87fe627f7cbbc641aa1b409b3d4bb57146f219f06d719477174925a",
+      "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-fr-final-policy-evidence-20261112-retention-companion.json": "c686b2d996870e32d5f9e6568779b724d77ca28e041e9c611e23513067b216a8",
+      "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-final-policy-evidence-20261112-retention-companion.json": "ba520402bca53480146c1c0bf0cee565fb570f528978c7619656e270fbe834a4"
+    },
+    "count": 22,
+    "verified_before_and_after_issue": true,
+    "no_old_artifact_overwritten": true
+  },
+  "new_file_readback": {
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-r-next-seam-20261114-proof.json": "ca484b5acf0b37a6c04068968e8910ad257daebcbd194f4dd352c6c959117164",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-es-r-next-seam-20261114-record.json": "aeea91c47cf3f1629facf2790a77885b17ae3c9b311924227dd2d1dfe8f0eddf",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-es-r-next-seam-20261114-receipt.json": "a79bd14cb4ffd32fc9348b1bc12be9ab64e84afddffe76b9533c0b26a85309ea",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-fr-r-next-seam-20261114-record.json": "3745013fd02f58d83c62e648c9c9d87902475f08257aafde5ec637fc2b81d307",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-fr-r-next-seam-20261114-receipt.json": "47214d7481b722b7cb24813ddfa7bf67f9379b602b55a47a77d8ac5931aae99f",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-r-next-seam-20261114-record.json": "36fe1bc9e950c59d26e5a49df7ea9c8265553e680a463da954b17bbfd12a611d",
+    "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-r-next-seam-20261114-receipt.json": "f6a7bfdda5c14ee4b84e55ac0ff091781eb57f37b581e5ccaa6e8be8120a6ab6"
+  },
+  "lawful_bounded_consumability": {
+    "permitted": true,
+    "reason": "Same-author newly named receipts bind independently verified staged 471-main+23-PR exact raw-literal union, supported selected parent audits and preserved findings. Actual frozen pure deriveReceiptAudit succeeded. No new semantic/all-494/native/render claim or additional audit lineage.",
+    "assembler_and_ledger_check_invoked": false,
+    "application_by_exclusive_coder_only": true,
+    "additional_application_guards": "Writer must still verify immutable existing row evidence and use exact locale/file/instance/model/result/receipt/scope. Receipt namespace hash binding is not full current UI or release approval."
+  },
+  "explicit_unresolved_debts": {
+    "es": [
+      "I-ES-1",
+      "S16F-ES-A3-01",
+      "S16F-ES-A3-02",
+      "S16F-ES-A3-03"
+    ],
+    "fr": [
+      "I-FR-2",
+      "I-FR-3",
+      "M1",
+      "N1"
+    ],
+    "hi": [
+      "I-HI-1 (alias HI-1)",
+      "HI-C1: selected main inherited NIT, now carried in this lineage"
+    ],
+    "other_parent_lineage_risks": "Preserved in records under other_parent_lineage_findings_preserved; not silently resolved or represented as zero. This rebinding does not adopt the other independent lineage extra risk counts as fresh findings.",
+    "current_rendering": "Prior accepted bounded23 evidence remains prior. Main CSS changed; no new/current fit, geometry, font fallback, native/global RTL or whole-key pixel approval."
+  },
+  "semantic_keys_read_this_round": 0,
+  "mechanical_keys_verified_per_locale": 494,
+  "mechanical_locale_pairs_total": 1482,
+  "prior_side_by_side_read_counts": {
+    "es": 31,
+    "fr": 31,
+    "hi": 32
+  },
+  "retention": "Copy each exact record to its canonical i18n/audits/evidence/<locale>/ui.chat.canonical/<instance>/record.json and necessary companions; assembler copies exact receipt bytes. No such copy was performed by this auditor."
+}

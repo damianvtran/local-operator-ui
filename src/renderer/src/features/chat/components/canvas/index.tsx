@@ -987,7 +987,9 @@ const CanvasComponent: FC<CanvasProps> = ({
 							 * would answer "missing" and stamp "No longer on disk" on a picture
 							 * that is fine.
 							 */}
-							{!activeDocument.artifact && (
+							{/* Nor for a PEER's file: it has no file on THIS disk to stat, and
+							 * the probe stamped "No longer on disk" on it (QA Q1-3). */}
+							{!activeDocument.artifact && !activeDocument.remote && (
 								<DocumentFreshnessBar
 									document={activeDocument}
 									conversationId={conversationId}
