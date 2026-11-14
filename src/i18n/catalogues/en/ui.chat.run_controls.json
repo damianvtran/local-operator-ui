@@ -1,5 +1,7 @@
 {
 	"ui.chat.run_controls.job.no_conversation": "There is no conversation to cancel a job on.",
+	"ui.chat.run_controls.job.cancel_failed": "Could not cancel the job.",
+	"ui.chat.run_controls.job.not_found": "not cancelled — the provider no longer knows the job",
 	"ui.chat.run_controls.monitor.no_conversation": "There is no conversation to cancel a monitor on.",
 	"ui.chat.run_controls.monitor.cancel_failed": "Could not cancel the monitor.",
 	"ui.chat.run_controls.wake.no_conversation": "There is no conversation to cancel a wake on.",
