@@ -809,7 +809,17 @@ jobs:
   # 6s of install; the job ran 78s end to end. The 20-minute ceiling is a bound,
   # not an expectation.
   bytecode-build:
-    name: Bytecode Build Check
+    # The branch ruleset requires a check NAMED exactly `Bytecode Build Check`:
+    # required status checks are keyed by the job's rendered display name, not
+    # its id. A bare `name:` under a matrix makes GitHub append the matrix
+    # values (`Bytecode Build Check (ubuntu-latest)`), which left the required
+    # name unreported and blocked merge ("Required status check "Bytecode Build
+    # Check" is expected"). Once `name` itself uses a matrix expression GitHub
+    # appends nothing (see `NPX Sanity Check (${{ matrix.os }})` below, which
+    # renders `NPX Sanity Check (macos-latest)`), so the Linux leg keeps the
+    # unchanged required name and the Mac artifact leg is labelled apart.
+    # Retire this when the ruleset requires `CI Gate` instead (see ci-gate).
+    name: ${{ matrix.runner == 'macos-15' && 'Bytecode Build Check (macos-15)' || 'Bytecode Build Check' }}
     needs: [changes]
     if: >-
       !cancelled() &&

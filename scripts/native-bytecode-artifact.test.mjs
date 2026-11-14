@@ -104,7 +104,6 @@ test("Mac CI build gets bounded heap without changing Linux or Electron runtime 
 test("native artifact retains Linux gate, adds one Mac build and uploads only staged output", () => {
 	assert.deepEqual(job.strategy.matrix.runner, ["ubuntu-latest", "macos-15"]);
 	assert.equal(job.strategy["fail-fast"], false);
-	assert.equal(job.name, "Bytecode Build Check");
 	assert.equal(job.env.VITE_DISABLE_BACKEND_MANAGER, "true");
 	assert.equal(job.env.VITE_LOCAL_OPERATOR_API_URL, "http://127.0.0.1:9");
 	assert.equal(job.env.VITE_RADIENT_SERVER_BASE_URL, "http://127.0.0.1:9");
@@ -194,3 +193,24 @@ for (const [name, mutate, message] of [
 		assert.match(result.stderr, message);
 	});
 }
+
+// The branch ruleset requires a check named exactly `Bytecode Build Check`, and
+// required checks are keyed by rendered job display name. A bare `name:` under
+// the matrix renders `Bytecode Build Check (ubuntu-latest)` and the required
+// name never reports, which blocked merge of PR #1887. Render the name per leg
+// from the workflow's own expression instead of trusting the raw string.
+const JOB_NAME_EXPRESSION =
+	/^\$\{\{\s*matrix\.runner == '([^']+)' && '([^']+)' \|\| '([^']+)'\s*\}\}$/;
+function renderJobName(runner) {
+	const match = JOB_NAME_EXPRESSION.exec(job.name);
+	assert.ok(match, `unexpected bytecode-build name expression: ${job.name}`);
+	const [, when, then, otherwise] = match;
+	return runner === when ? then : otherwise;
+}
+
+test("Linux leg keeps the exact required check name; Mac leg is distinct", () => {
+	const names = job.strategy.matrix.runner.map(renderJobName);
+	assert.equal(renderJobName("ubuntu-latest"), "Bytecode Build Check");
+	assert.equal(names.filter((n) => n === "Bytecode Build Check").length, 1);
+	assert.equal(new Set(names).size, names.length);
+});

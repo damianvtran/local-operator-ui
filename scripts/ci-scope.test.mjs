@@ -3447,8 +3447,14 @@ test("A18: CI Gate needs every job and reds only on failure or cancellation", ()
 	);
 	assert.match(body, /v\.result !== 'success' && v\.result !== 'skipped'/);
 	assert.match(body, /process\.exit\(1\)/);
-	// The existing required check keeps its exact name.
-	assert.equal(jobs["bytecode-build"].name, "Bytecode Build Check");
+	// The existing required check keeps its exact name on the Linux leg. The job
+	// is a runner matrix, so its `name` is an expression that renders the bare
+	// required name for ubuntu-latest (native-bytecode-artifact.test.mjs renders
+	// every leg); a bare string would gain a matrix suffix and stop reporting.
+	assert.match(
+		jobs["bytecode-build"].name,
+		/\|\| 'Bytecode Build Check' \}\}$/,
+	);
 	// The QA bundle survived the shard's removal, under the artifact name QA reads.
 	const upload = jobs["qa-bundle"].steps.find((step) =>
 		step.uses?.startsWith("actions/upload-artifact@"),
