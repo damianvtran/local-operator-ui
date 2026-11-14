@@ -1866,6 +1866,10 @@ const IDENTICAL_OK = new Map([
 		"ur:ui.common.time.weekday_at",
 		"pure placeholder join of weekday and clock, same order as English; ICU supplies the Urdu weekday and Latin clock",
 	],
+	[
+		"es:ui.chat.trace.detail.error",
+		"Spanish: « Error » is the ordinary Spanish noun for the tool-result heading, spelled as in English; judged a correct cognate by the independent es ui.chat.trace audit (S17a, PR #1894, r1 row 19; r2 receipt 3ebdebbe0f90). Scoped to Spanish only.",
+	],
 	// Run panel MCP failure sentence (S17c, PR #1897): the lead/reason joiner.
 	[
 		"es:ui.chat.run_details.mcp_failure.with_reason",

@@ -1,0 +1,12 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "748d70d8c8ab",
+  "status": "passed",
+  "namespace": "ui.chat.trace",
+  "sha256": {
+    "zh-CN": "6f7e53c023bea63c24d5eccea89b2ddaeaef61581ee68039093778a9d959e178",
+    "en": "0576cbf1b116e36b236c4b210607bf8d2ed5b7e2442c739f5763ef28dd154b6a"
+  },
+  "findings": []
+}

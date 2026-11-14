@@ -103,6 +103,7 @@ import enUiChatTagGroups from "./catalogues/en/ui.chat.tag_groups.json";
 import enUiChatTagMode from "./catalogues/en/ui.chat.tag_mode.json";
 import enUiChatTags from "./catalogues/en/ui.chat.tags.json";
 import enUiChatThreadSearch from "./catalogues/en/ui.chat.thread_search.json";
+import enUiChatTrace from "./catalogues/en/ui.chat.trace.json";
 import enUiChatTranscriptCopy from "./catalogues/en/ui.chat.transcript_copy.json";
 import enUiChatUsageReset from "./catalogues/en/ui.chat.usage_reset.json";
 import enUiChatUserTurn from "./catalogues/en/ui.chat.user_turn.json";
@@ -268,6 +269,7 @@ import esUiChatTagGroups from "./catalogues/es/ui.chat.tag_groups.json";
 import esUiChatTagMode from "./catalogues/es/ui.chat.tag_mode.json";
 import esUiChatTags from "./catalogues/es/ui.chat.tags.json";
 import esUiChatThreadSearch from "./catalogues/es/ui.chat.thread_search.json";
+import esUiChatTrace from "./catalogues/es/ui.chat.trace.json";
 import esUiChatTranscriptCopy from "./catalogues/es/ui.chat.transcript_copy.json";
 import esUiChatUsageReset from "./catalogues/es/ui.chat.usage_reset.json";
 import esUiChatUserTurn from "./catalogues/es/ui.chat.user_turn.json";
@@ -433,6 +435,7 @@ import frUiChatTagGroups from "./catalogues/fr/ui.chat.tag_groups.json";
 import frUiChatTagMode from "./catalogues/fr/ui.chat.tag_mode.json";
 import frUiChatTags from "./catalogues/fr/ui.chat.tags.json";
 import frUiChatThreadSearch from "./catalogues/fr/ui.chat.thread_search.json";
+import frUiChatTrace from "./catalogues/fr/ui.chat.trace.json";
 import frUiChatTranscriptCopy from "./catalogues/fr/ui.chat.transcript_copy.json";
 import frUiChatUsageReset from "./catalogues/fr/ui.chat.usage_reset.json";
 import frUiChatUserTurn from "./catalogues/fr/ui.chat.user_turn.json";
@@ -598,6 +601,7 @@ import hiUiChatTagGroups from "./catalogues/hi/ui.chat.tag_groups.json";
 import hiUiChatTagMode from "./catalogues/hi/ui.chat.tag_mode.json";
 import hiUiChatTags from "./catalogues/hi/ui.chat.tags.json";
 import hiUiChatThreadSearch from "./catalogues/hi/ui.chat.thread_search.json";
+import hiUiChatTrace from "./catalogues/hi/ui.chat.trace.json";
 import hiUiChatTranscriptCopy from "./catalogues/hi/ui.chat.transcript_copy.json";
 import hiUiChatUsageReset from "./catalogues/hi/ui.chat.usage_reset.json";
 import hiUiChatUserTurn from "./catalogues/hi/ui.chat.user_turn.json";
@@ -763,6 +767,7 @@ import ruUiChatTagGroups from "./catalogues/ru/ui.chat.tag_groups.json";
 import ruUiChatTagMode from "./catalogues/ru/ui.chat.tag_mode.json";
 import ruUiChatTags from "./catalogues/ru/ui.chat.tags.json";
 import ruUiChatThreadSearch from "./catalogues/ru/ui.chat.thread_search.json";
+import ruUiChatTrace from "./catalogues/ru/ui.chat.trace.json";
 import ruUiChatTranscriptCopy from "./catalogues/ru/ui.chat.transcript_copy.json";
 import ruUiChatUsageReset from "./catalogues/ru/ui.chat.usage_reset.json";
 import ruUiChatUserTurn from "./catalogues/ru/ui.chat.user_turn.json";
@@ -928,6 +933,7 @@ import urUiChatTagGroups from "./catalogues/ur/ui.chat.tag_groups.json";
 import urUiChatTagMode from "./catalogues/ur/ui.chat.tag_mode.json";
 import urUiChatTags from "./catalogues/ur/ui.chat.tags.json";
 import urUiChatThreadSearch from "./catalogues/ur/ui.chat.thread_search.json";
+import urUiChatTrace from "./catalogues/ur/ui.chat.trace.json";
 import urUiChatTranscriptCopy from "./catalogues/ur/ui.chat.transcript_copy.json";
 import urUiChatUsageReset from "./catalogues/ur/ui.chat.usage_reset.json";
 import urUiChatUserTurn from "./catalogues/ur/ui.chat.user_turn.json";
@@ -1093,6 +1099,7 @@ import viUiChatTagGroups from "./catalogues/vi/ui.chat.tag_groups.json";
 import viUiChatTagMode from "./catalogues/vi/ui.chat.tag_mode.json";
 import viUiChatTags from "./catalogues/vi/ui.chat.tags.json";
 import viUiChatThreadSearch from "./catalogues/vi/ui.chat.thread_search.json";
+import viUiChatTrace from "./catalogues/vi/ui.chat.trace.json";
 import viUiChatTranscriptCopy from "./catalogues/vi/ui.chat.transcript_copy.json";
 import viUiChatUsageReset from "./catalogues/vi/ui.chat.usage_reset.json";
 import viUiChatUserTurn from "./catalogues/vi/ui.chat.user_turn.json";
@@ -1258,6 +1265,7 @@ import zhCNUiChatTagGroups from "./catalogues/zh-CN/ui.chat.tag_groups.json";
 import zhCNUiChatTagMode from "./catalogues/zh-CN/ui.chat.tag_mode.json";
 import zhCNUiChatTags from "./catalogues/zh-CN/ui.chat.tags.json";
 import zhCNUiChatThreadSearch from "./catalogues/zh-CN/ui.chat.thread_search.json";
+import zhCNUiChatTrace from "./catalogues/zh-CN/ui.chat.trace.json";
 import zhCNUiChatTranscriptCopy from "./catalogues/zh-CN/ui.chat.transcript_copy.json";
 import zhCNUiChatUsageReset from "./catalogues/zh-CN/ui.chat.usage_reset.json";
 import zhCNUiChatUserTurn from "./catalogues/zh-CN/ui.chat.user_turn.json";
@@ -1426,6 +1434,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChatTagMode,
 	...enUiChatTags,
 	...enUiChatThreadSearch,
+	...enUiChatTrace,
 	...enUiChatTranscriptCopy,
 	...enUiChatUsageReset,
 	...enUiChatUserTurn,
@@ -1599,6 +1608,7 @@ export const bundledCatalogues: Readonly<
 		...esUiChatTagMode,
 		...esUiChatTags,
 		...esUiChatThreadSearch,
+		...esUiChatTrace,
 		...esUiChatTranscriptCopy,
 		...esUiChatUsageReset,
 		...esUiChatUserTurn,
@@ -1766,6 +1776,7 @@ export const bundledCatalogues: Readonly<
 		...frUiChatTagMode,
 		...frUiChatTags,
 		...frUiChatThreadSearch,
+		...frUiChatTrace,
 		...frUiChatTranscriptCopy,
 		...frUiChatUsageReset,
 		...frUiChatUserTurn,
@@ -1933,6 +1944,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiChatTagMode,
 		...hiUiChatTags,
 		...hiUiChatThreadSearch,
+		...hiUiChatTrace,
 		...hiUiChatTranscriptCopy,
 		...hiUiChatUsageReset,
 		...hiUiChatUserTurn,
@@ -2100,6 +2112,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiChatTagMode,
 		...ruUiChatTags,
 		...ruUiChatThreadSearch,
+		...ruUiChatTrace,
 		...ruUiChatTranscriptCopy,
 		...ruUiChatUsageReset,
 		...ruUiChatUserTurn,
@@ -2267,6 +2280,7 @@ export const bundledCatalogues: Readonly<
 		...urUiChatTagMode,
 		...urUiChatTags,
 		...urUiChatThreadSearch,
+		...urUiChatTrace,
 		...urUiChatTranscriptCopy,
 		...urUiChatUsageReset,
 		...urUiChatUserTurn,
@@ -2434,6 +2448,7 @@ export const bundledCatalogues: Readonly<
 		...viUiChatTagMode,
 		...viUiChatTags,
 		...viUiChatThreadSearch,
+		...viUiChatTrace,
 		...viUiChatTranscriptCopy,
 		...viUiChatUsageReset,
 		...viUiChatUserTurn,
@@ -2601,6 +2616,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiChatTagMode,
 		...zhCNUiChatTags,
 		...zhCNUiChatThreadSearch,
+		...zhCNUiChatTrace,
 		...zhCNUiChatTranscriptCopy,
 		...zhCNUiChatUsageReset,
 		...zhCNUiChatUserTurn,
@@ -7594,6 +7610,39 @@ export type MessageParams = {
 	"ui.chat.thread_search.stale": undefined;
 	"ui.chat.thread_search.tier.related": undefined;
 	"ui.chat.thread_search.unsupported": undefined;
+	"ui.chat.trace.action.ask.running": undefined;
+	"ui.chat.trace.action.ask.settled": undefined;
+	"ui.chat.trace.action.bye.running": undefined;
+	"ui.chat.trace.action.bye.settled": undefined;
+	"ui.chat.trace.action.code.running": undefined;
+	"ui.chat.trace.action.code.settled": undefined;
+	"ui.chat.trace.action.delegate.running": undefined;
+	"ui.chat.trace.action.delegate.settled": undefined;
+	"ui.chat.trace.action.done.running": undefined;
+	"ui.chat.trace.action.done.settled": undefined;
+	"ui.chat.trace.action.edit.running": undefined;
+	"ui.chat.trace.action.edit.settled": undefined;
+	"ui.chat.trace.action.fallback.running": undefined;
+	"ui.chat.trace.action.fallback.settled": undefined;
+	"ui.chat.trace.action.read.running": undefined;
+	"ui.chat.trace.action.read.settled": undefined;
+	"ui.chat.trace.action.write.running": undefined;
+	"ui.chat.trace.action.write.settled": undefined;
+	"ui.chat.trace.detail.error": undefined;
+	"ui.chat.trace.detail.interrupted": undefined;
+	"ui.chat.trace.detail.output": undefined;
+	"ui.chat.trace.object.file_count": { count: number };
+	"ui.chat.trace.send.delivery.failed.note": undefined;
+	"ui.chat.trace.send.delivery.failed.verb": undefined;
+	"ui.chat.trace.send.delivery.failed.word": undefined;
+	"ui.chat.trace.send.delivery.mailbox.label": undefined;
+	"ui.chat.trace.send.delivery.mailbox.note": undefined;
+	"ui.chat.trace.send.delivery.mailbox.title": undefined;
+	"ui.chat.trace.send.delivery.mailbox.word": undefined;
+	"ui.chat.trace.send.delivery.unconfirmed.label": undefined;
+	"ui.chat.trace.send.delivery.unconfirmed.note": undefined;
+	"ui.chat.trace.send.delivery.unconfirmed.title": undefined;
+	"ui.chat.trace.send.delivery.unconfirmed.word": undefined;
 	"ui.chat.transcript_copy.block.logs": undefined;
 	"ui.chat.transcript_copy.block.output": undefined;
 	"ui.chat.transcript_copy.menu.copy_markdown": undefined;

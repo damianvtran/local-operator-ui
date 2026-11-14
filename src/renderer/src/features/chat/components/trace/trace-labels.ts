@@ -17,6 +17,7 @@
  */
 
 import type { ActionType } from "@shared/api/local-operator/types";
+import { type WithoutParams, t } from "@shared/i18n";
 import {
 	Book,
 	CircleCheck,
@@ -66,31 +67,69 @@ const shortenNarration = (text: string, max = 72): string => {
 const displayPath = (path: string): string =>
 	path.startsWith("file://") ? path.slice(7) : path;
 
-const ACTION_META: Record<
-	ActionType,
-	{ verb: string; runningVerb: string; icon: LucideIcon }
-> = {
-	READ: { verb: "Read", runningVerb: "Reading", icon: Book },
-	WRITE: { verb: "Wrote", runningVerb: "Writing", icon: Pencil },
-	EDIT: { verb: "Edited", runningVerb: "Editing", icon: PencilLine },
-	CODE: { verb: "Ran code", runningVerb: "Running code", icon: CodeXml },
+/**
+ * The verb table, stored as catalogue KEYS rather than English words.
+ *
+ * This is a module-level constant, and a `t()` evaluated here would run once at
+ * import and freeze the locale in force at load: a live language switch would
+ * then repaint every other word on the row but leave the verb English. So the
+ * table holds keys and `getTraceLabel` - which `TraceLine` calls on every
+ * render - resolves them, the same pattern `tool-row-model.ts` uses for its
+ * `VerbKeys`. `WithoutParams` makes a misspelt or deleted key a `tsc` error
+ * instead of a raw id on screen.
+ */
+type ActionMeta = {
+	verb: WithoutParams;
+	runningVerb: WithoutParams;
+	icon: LucideIcon;
+};
+
+const ACTION_META: Record<ActionType, ActionMeta> = {
+	READ: {
+		verb: "ui.chat.trace.action.read.settled",
+		runningVerb: "ui.chat.trace.action.read.running",
+		icon: Book,
+	},
+	WRITE: {
+		verb: "ui.chat.trace.action.write.settled",
+		runningVerb: "ui.chat.trace.action.write.running",
+		icon: Pencil,
+	},
+	EDIT: {
+		verb: "ui.chat.trace.action.edit.settled",
+		runningVerb: "ui.chat.trace.action.edit.running",
+		icon: PencilLine,
+	},
+	CODE: {
+		verb: "ui.chat.trace.action.code.settled",
+		runningVerb: "ui.chat.trace.action.code.running",
+		icon: CodeXml,
+	},
 	DELEGATE: {
-		verb: "Delegated work",
-		runningVerb: "Delegating work",
+		verb: "ui.chat.trace.action.delegate.settled",
+		runningVerb: "ui.chat.trace.action.delegate.running",
 		icon: Share2,
 	},
-	DONE: { verb: "Finished", runningVerb: "Finishing", icon: CircleCheck },
-	ASK: { verb: "Asked", runningVerb: "Asking", icon: CircleHelp },
+	DONE: {
+		verb: "ui.chat.trace.action.done.settled",
+		runningVerb: "ui.chat.trace.action.done.running",
+		icon: CircleCheck,
+	},
+	ASK: {
+		verb: "ui.chat.trace.action.ask.settled",
+		runningVerb: "ui.chat.trace.action.ask.running",
+		icon: CircleHelp,
+	},
 	BYE: {
-		verb: "Ended the conversation",
-		runningVerb: "Ending",
+		verb: "ui.chat.trace.action.bye.settled",
+		runningVerb: "ui.chat.trace.action.bye.running",
 		icon: DoorOpen,
 	},
 };
 
-const FALLBACK = {
-	verb: "Worked on the request",
-	runningVerb: "Working on the request",
+const FALLBACK: ActionMeta = {
+	verb: "ui.chat.trace.action.fallback.settled",
+	runningVerb: "ui.chat.trace.action.fallback.running",
 	icon: CodeXml,
 };
 
@@ -118,7 +157,12 @@ export const getTraceLabel = (
 		if (concrete.length === 1) {
 			object = displayPath(concrete[0]);
 		} else if (concrete.length > 1) {
-			object = `${concrete.length} files`;
+			// One ICU plural with the number inside it, not a template literal of
+			// count plus English noun: that fixed English word order and English
+			// plural rules for every language. `::group-off` keeps English byte-identical (`1234 files`).
+			object = t("ui.chat.trace.object.file_count", {
+				count: concrete.length,
+			});
 		}
 	}
 	// Prose, so it lands in its own slot rather than the monospace one, and
@@ -127,8 +171,9 @@ export const getTraceLabel = (
 		!object && narration ? shortenNarration(narration) : "";
 
 	return {
-		verb: meta.verb,
-		runningVerb: meta.runningVerb,
+		// Resolved here, at call time, so a locale switch repaints the verb.
+		verb: t(meta.verb),
+		runningVerb: t(meta.runningVerb),
 		object,
 		narration: shortNarration || undefined,
 		icon: meta.icon,

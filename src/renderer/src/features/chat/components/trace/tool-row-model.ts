@@ -525,11 +525,11 @@ export function preferProgressDetails(
  * or it carries its own (`delivery unconfirmed`).
  */
 export const SEND_DELIVERY_WORD: Readonly<
-	Partial<Record<SendDeliveryState, string>>
+	Partial<Record<SendDeliveryState, WithoutParams>>
 > = {
-	mailbox: "wake unconfirmed",
-	unconfirmed: "delivery unconfirmed",
-	failed: "not delivered",
+	mailbox: "ui.chat.trace.send.delivery.mailbox.word",
+	unconfirmed: "ui.chat.trace.send.delivery.unconfirmed.word",
+	failed: "ui.chat.trace.send.delivery.failed.word",
 };
 
 /**
@@ -545,12 +545,10 @@ export const SEND_DELIVERY_WORD: Readonly<
  * is the whole statement, and a hover would only repeat it.
  */
 export const SEND_DELIVERY_TITLE: Readonly<
-	Partial<Record<SendDeliveryState, string>>
+	Partial<Record<SendDeliveryState, WithoutParams>>
 > = {
-	mailbox:
-		"In their mailbox. The wake got no answer, so they will read it on their next turn.",
-	unconfirmed:
-		"No wake answer and not yet in their transcript — it may still arrive. Check before resending.",
+	mailbox: "ui.chat.trace.send.delivery.mailbox.title",
+	unconfirmed: "ui.chat.trace.send.delivery.unconfirmed.title",
 };
 
 /**
@@ -575,14 +573,11 @@ export const SEND_DELIVERY_TITLE: Readonly<
  * of a delivered send is the row it always was.
  */
 export const SEND_DELIVERY_NOTE: Readonly<
-	Partial<Record<SendDeliveryState, string>>
+	Partial<Record<SendDeliveryState, WithoutParams>>
 > = {
-	mailbox:
-		"Delivered to their mailbox. The wake got no answer, so they will read the message on their next turn. Do not send it again.",
-	unconfirmed:
-		"Not confirmed: there was no answer and the message is not in their transcript. It may still arrive, so check before resending.",
-	failed:
-		"Nothing was delivered. Fix the cause named below, or retry the send.",
+	mailbox: "ui.chat.trace.send.delivery.mailbox.note",
+	unconfirmed: "ui.chat.trace.send.delivery.unconfirmed.note",
+	failed: "ui.chat.trace.send.delivery.failed.note",
 };
 
 /**
@@ -598,11 +593,10 @@ export const SEND_DELIVERY_NOTE: Readonly<
  * would be a string nothing renders (agent review round 1, residue).
  */
 export const SEND_DELIVERY_LABEL: Readonly<
-	Partial<Record<SendDeliveryState, string>>
+	Partial<Record<SendDeliveryState, WithoutParams>>
 > = {
-	mailbox: "delivered, wake unconfirmed",
-	unconfirmed:
-		"delivery unconfirmed — it may still arrive, so check before resending",
+	mailbox: "ui.chat.trace.send.delivery.mailbox.label",
+	unconfirmed: "ui.chat.trace.send.delivery.unconfirmed.label",
 };
 
 /**
@@ -623,10 +617,11 @@ export function isPartialDelivery(
 /*
  * THE KEYED DELIVERY COPY, per surface (word / hover / spoken / expansion note).
  *
- * The four `SEND_DELIVERY_*` maps above are `send`'s frozen copy and stay as
- * they are (their suites pin them). Team Bridge's states are new copy, so they
- * go through `t()` - and through a FUNCTION, resolved at render, because a
- * module-load constant would freeze the language the module first loaded in.
+ * The four `SEND_DELIVERY_*` maps above are `send`'s frozen copy, held as
+ * catalogue KEYS (`ui.chat.trace.send.delivery.*`) whose English is the frozen
+ * wording byte for byte (their suites pin it through these accessors). Every
+ * state goes through `t()` - and through a FUNCTION, resolved at render, because
+ * a module-load constant would freeze the language the module first loaded in.
  * `bridge` also rewords `unconfirmed`: its hedge is about a conversation post
  * whose confirmation was lost, not about a peer's wake or transcript, so
  * `send`'s sentences would tell the reader to check the wrong thing.
@@ -634,6 +629,13 @@ export function isPartialDelivery(
  * Each function falls back to the `send` map for every other state, so the
  * render sites read ONE accessor per surface.
  */
+/**
+ * Resolve one `SEND_DELIVERY_*` entry through the catalogue at call time, or
+ * `null` for a state the map has no entry for (a delivered send says nothing).
+ */
+const resolveSendCopy = (key: WithoutParams | undefined): string | null =>
+	key ? t(key) : null;
+
 const isBridge = (toolName: string) =>
 	toolName.trim().toLowerCase() === "bridge";
 
@@ -651,7 +653,7 @@ export function deliveryWord(
 		);
 	if (state === "unconfirmed" && isBridge(toolName))
 		return t("ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.word");
-	return SEND_DELIVERY_WORD[state] ?? null;
+	return resolveSendCopy(SEND_DELIVERY_WORD[state]);
 }
 
 /**
@@ -695,7 +697,7 @@ export function deliveryTitle(
 		);
 	if (state === "unconfirmed" && isBridge(toolName))
 		return t("ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.title");
-	return SEND_DELIVERY_TITLE[state];
+	return resolveSendCopy(SEND_DELIVERY_TITLE[state]) ?? undefined;
 }
 
 /** What assistive tech hears in place of the (then `aria-hidden`) word. */
@@ -712,7 +714,7 @@ export function deliveryLabel(
 		);
 	if (state === "unconfirmed" && isBridge(toolName))
 		return t("ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.label");
-	return SEND_DELIVERY_LABEL[state] ?? null;
+	return resolveSendCopy(SEND_DELIVERY_LABEL[state]);
 }
 
 /** The wrapping sentence the expansion prints for a state. */
@@ -729,7 +731,7 @@ export function deliveryNote(
 		);
 	if (state === "unconfirmed" && isBridge(toolName))
 		return t("ui.chat.canonical.tool_row.bridge.delivery.unconfirmed.note");
-	return SEND_DELIVERY_NOTE[state] ?? null;
+	return resolveSendCopy(SEND_DELIVERY_NOTE[state]);
 }
 
 /**
@@ -771,7 +773,9 @@ export function deliveryRowOutcome(
 export function deliverySettledVerb(
 	state: SendDeliveryState | null | undefined,
 ): string | null {
-	return state === "failed" ? "Attempted" : null;
+	return state === "failed"
+		? t("ui.chat.trace.send.delivery.failed.verb")
+		: null;
 }
 
 /**

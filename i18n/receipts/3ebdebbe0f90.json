@@ -1,0 +1,18 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "deepseek/deepseek-flash",
+	"instance": "3ebdebbe0f90",
+	"status": "passed",
+	"namespace": "ui.chat.trace",
+	"sha256": {
+		"es": "8493ba7c08dbab512425333ae597ab940acdc1d0e7e23d9dd4df9ce0789deb59",
+		"en": "0576cbf1b116e36b236c4b210607bf8d2ed5b7e2442c739f5763ef28dd154b6a"
+	},
+	"findings": [
+		{
+			"severity": "NIT",
+			"key": "ui.chat.trace.action.bye.running",
+			"note": "Ending->Finalizando now shares the es word the shipped catalogue uses for Finishing (ui.settings.notifications.custom.finishing = Finalizando...); harmless, record ending->Finalizando in the es glossary so a later wave does not harmonise it back to Terminando and collide with done.running"
+		}
+	]
+}

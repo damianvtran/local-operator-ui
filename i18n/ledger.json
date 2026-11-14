@@ -106966,6 +106966,223 @@
 			"status": "audited"
 		},
 		{
+			"locale": "fr",
+			"namespace": "ui.chat.trace",
+			"source_sha256": "0576cbf1b116e36b236c4b210607bf8d2ed5b7e2442c739f5763ef28dd154b6a",
+			"target_sha256": "d36e8d5b43ab8641a89f5a7c6aadc20ecf2e94f1d7c5f91c5fd21443f3d0278f",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-13"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-13",
+					"result": "clean-with-findings",
+					"instance": "09e5fa683e3d",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/09e5fa683e3d.json",
+					"receipt_sha256": "c98790d3e68b701fd64c0da613f0a14e39b154764838fded7bd4110baa01bb9c",
+					"scope": "ui.chat.trace 33 keys: translation v2 after independent r1 audit + translator remediation + r2 delta audit",
+					"note": "S17a, UI #1894. r1 auditor deepseek/deepseek-flash ec9a77287341: 1 major (indent) + 2 minor + 1 nit, remediated. r2 retained nits: N1 failed.verb, F4 noun-first settled forms accepted."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.chat.trace",
+			"source_sha256": "0576cbf1b116e36b236c4b210607bf8d2ed5b7e2442c739f5763ef28dd154b6a",
+			"target_sha256": "6f7e53c023bea63c24d5eccea89b2ddaeaef61581ee68039093778a9d959e178",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-13"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "748d70d8c8ab",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/748d70d8c8ab.json",
+					"receipt_sha256": "c81c6476bedf4065ca12d23a2d6ea6aa9bcc2fd60d32929fdfe1a7fb3d2f33fa",
+					"scope": "ui.chat.trace 33 keys: translation v2 after independent r1 audit + translator remediation + r2 delta audit",
+					"note": "S17a, UI #1894. r1 auditor deepseek/deepseek-flash 1d92c46dedc0: 1 minor (failed.note) fixed, 3 nits accepted unchanged (bye.running, done.running, failed.verb). r2: 0 findings."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.chat.trace",
+			"source_sha256": "0576cbf1b116e36b236c4b210607bf8d2ed5b7e2442c739f5763ef28dd154b6a",
+			"target_sha256": "8493ba7c08dbab512425333ae597ab940acdc1d0e7e23d9dd4df9ce0789deb59",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-13"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-13",
+					"result": "clean-with-findings",
+					"instance": "3ebdebbe0f90",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/3ebdebbe0f90.json",
+					"receipt_sha256": "cef97a9d0a78c534f954c2d1c3ed9e62c024e127f29cdeda0512600090d867a0",
+					"scope": "ui.chat.trace 33 keys: translation v2 after independent r1 audit + translator remediation + r2 delta audit",
+					"note": "S17a, UI #1894. r1 auditor deepseek/deepseek-flash 2ad9b49bcb25: 3 minor + 3 nit. r2 retained: F2 mailbox.word length, F3 buzon glossary (doc-owned), F4-F6 nits, N1 Finalizando for Ending."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.chat.trace",
+			"source_sha256": "0576cbf1b116e36b236c4b210607bf8d2ed5b7e2442c739f5763ef28dd154b6a",
+			"target_sha256": "8814bddc99b29682dbf944388424ed4f1be528e97dc2ed19e4d5b5c657749aca",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-13"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-13",
+					"result": "clean-with-findings",
+					"instance": "b4fa5b114e25",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/b4fa5b114e25.json",
+					"receipt_sha256": "7a7be4d46dc248fae1d3ca22d568038e6b906b631c0f95548fe497aebe1189f4",
+					"scope": "ui.chat.trace 33 keys: translation v2 after independent r1 audit + translator remediation + r2 delta audit",
+					"note": "S17a, UI #1894. r1 auditor deepseek/deepseek-flash 0bf3601656b1: 1 major (khodu->khode) + 2 minor + 2 nit, remediated. r2: 1 minor + 1 nit in delta; RU-4/RU-5 nits retained."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat.trace",
+			"source_sha256": "0576cbf1b116e36b236c4b210607bf8d2ed5b7e2442c739f5763ef28dd154b6a",
+			"target_sha256": "43df8aae8d5e947578121c8dd32ba352f01ecb71b60b5281d28501deca2cec7d",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-13"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-13",
+					"result": "clean-with-findings",
+					"instance": "36089f5406a5",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/36089f5406a5.json",
+					"receipt_sha256": "dc00460bb50f11699b8d925f5c79cb53e9c09d34ed826eb9d1812331ce71154f",
+					"scope": "ui.chat.trace 33 keys: translation v2 after independent r1 audit + translator remediation + r2 delta audit",
+					"note": "S17a, UI #1894. r1 auditor deepseek/deepseek-flash a28370eec844: 1 minor (bye.running) + 2 nit; F1/F2 fixed. r2 retained nit F3: mailbox term not yet in hi style guide."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.chat.trace",
+			"source_sha256": "0576cbf1b116e36b236c4b210607bf8d2ed5b7e2442c739f5763ef28dd154b6a",
+			"target_sha256": "b644d628ac1c8c043cb96dff9b1bf7cf0647546f62186cfafbafa3924966c6a4",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-13"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-13",
+					"result": "clean-with-findings",
+					"instance": "ee8949613229",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 3
+					},
+					"receipt": "i18n/receipts/ee8949613229.json",
+					"receipt_sha256": "72934f9237cd10ee83f01e93bbc8e498149825af1641104b16c28b01a568ccee",
+					"scope": "ui.chat.trace 33 keys: translation v2 after independent r1 audit + translator remediation + r2 delta audit",
+					"note": "S17a, UI #1894. r1 auditor deepseek/deepseek-flash 7c73a118b3e9: 1 major (bye verb) + 2 minor + 2 nit, remediated. r2 nits: V2-1 mailbox.label length, A4/A5 mailbox.word order/width."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.chat.trace",
+			"source_sha256": "0576cbf1b116e36b236c4b210607bf8d2ed5b7e2442c739f5763ef28dd154b6a",
+			"target_sha256": "4a75ee7341309cc8e457fcd1ba529b4ba7589634886739726d2c2da2b6ffb5de",
+			"translator": {
+				"agent": "translator",
+				"model": "anthropic/claude-sonnet-5-5",
+				"date": "2026-11-13"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-11-13",
+					"result": "clean",
+					"instance": "b0c53d318505",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/b0c53d318505.json",
+					"receipt_sha256": "13bcf57cb027c8699a30de24b3235ada22bc25a4d296996cc89955acf34de947",
+					"scope": "ui.chat.trace 33 keys: translation v2 after independent r1 audit + translator remediation + r2 delta audit",
+					"note": "S17a, UI #1894. r1 auditor deepseek/deepseek-flash 286632430d1a: 3 minor + 2 nit, remediated. r2: 0 findings; N2 (inbox/mailbox in ur style guide) left doc-owned."
+				}
+			],
+			"status": "audited"
+		},
+		{
 			"locale": "es",
 			"namespace": "ui.chat.ask_command",
 			"source_sha256": "540ad96467f8cb9c33dac91006e2973344f9a14051597f359671c7ed31f2aa01",
