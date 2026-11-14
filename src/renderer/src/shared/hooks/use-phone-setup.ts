@@ -244,6 +244,11 @@ export function usePhoneSetup(): UsePhoneSetup {
 	// until the person asks again.
 	const [ownResultShown, setOwnResultShown] = useState(false);
 	const [failure, setFailure] = useState<PhoneSetupFailure | null>(null);
+	// Whether the failure on screen came from a READ (the local read or the
+	// plan), as opposed to a run. Only a read's failure is superseded by a later
+	// successful plan; a run's failure is about a write that a fresh plan does not
+	// undo, and stays until the person checks again or presses again.
+	const failureFromCheck = useRef(false);
 	// A run whose answer never arrived (see the header). `since` is when we learned
 	// that, so only a local read taken AFTER it can say the run has ended.
 	const [unconfirmed, setUnconfirmed] = useState(false);
@@ -288,6 +293,7 @@ export function usePhoneSetup(): UsePhoneSetup {
 				unconfirmedSince.current = Date.now();
 				setUnconfirmed(true);
 			} else if (classified !== "in-progress") {
+				failureFromCheck.current = false;
 				setFailure(classified);
 			}
 		},
@@ -420,12 +426,28 @@ export function usePhoneSetup(): UsePhoneSetup {
 		}
 	}, [unconfirmed, localData, local.dataUpdatedAt, queryClient, selectedId]);
 
+	// A fresh answer supersedes a failed READ (review F1). The focus refetch and
+	// the `reconnecting` poll ask on their own, so one failed background read
+	// (a 500 right after the post-sign-in reconnect is the plausible case) used
+	// to pin "could not be checked" over a tunnel that came up a poll later:
+	// `derivePhoneSetupView` ranks `failure` above `fresh`, and nothing but a
+	// press cleared it. `dataUpdatedAt` advances only on a SUCCESSFUL plan (or our
+	// own run's answer, which clears the failure itself), so this never hides an
+	// error that is still current. Declared BEFORE the effect below so that, were
+	// both to fire in one commit, the newer error wins.
+	useEffect(() => {
+		if (fresh.dataUpdatedAt === 0 || !failureFromCheck.current) return;
+		failureFromCheck.current = false;
+		setFailure(null);
+	}, [fresh.dataUpdatedAt]);
+
 	// Surface check failures (the local read's and the plan's) through one place.
 	useEffect(() => {
 		const error = local.error ?? fresh.error;
 		if (!error) return;
 		const classified = classifyPhoneSetupError(error, "check");
 		if (classified !== "in-progress" && classified !== "unconfirmed") {
+			failureFromCheck.current = true;
 			setFailure(classified);
 		}
 	}, [local.error, fresh.error]);
@@ -441,6 +463,10 @@ export function usePhoneSetup(): UsePhoneSetup {
 
 	const choose = useCallback((credentialId: number) => {
 		setFailure(null);
+		// The run result that paused focus refetches belongs to the PREVIOUS
+		// account's key; the account chosen now has no own result on screen, so
+		// coming back to the window must re-ask about it (review F2).
+		setOwnResultShown(false);
 		setSelectedId(credentialId);
 	}, []);
 

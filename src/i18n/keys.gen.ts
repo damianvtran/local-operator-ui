@@ -10666,6 +10666,7 @@ export type MessageParams = {
 	"ui.providers.phone.action.choose_unlabeled": { id: string };
 	"ui.providers.phone.action.copy_address": undefined;
 	"ui.providers.phone.action.copy_diagnostics": undefined;
+	"ui.providers.phone.action.copying_diagnostics": undefined;
 	"ui.providers.phone.action.open_console": undefined;
 	"ui.providers.phone.action.reconnect": undefined;
 	"ui.providers.phone.action.set_up": undefined;
@@ -10673,10 +10674,13 @@ export type MessageParams = {
 	"ui.providers.phone.action.turn_on": undefined;
 	"ui.providers.phone.address_alternative": undefined;
 	"ui.providers.phone.address_label": undefined;
+	"ui.providers.phone.announce.connected": undefined;
+	"ui.providers.phone.announce.reconnecting": undefined;
 	"ui.providers.phone.choose_heading": undefined;
 	"ui.providers.phone.connector_not_needed": undefined;
 	"ui.providers.phone.consent": { amount: string };
 	"ui.providers.phone.diagnostics_failed": undefined;
+	"ui.providers.phone.diagnostics_help": undefined;
 	"ui.providers.phone.failure.check": undefined;
 	"ui.providers.phone.failure.run": undefined;
 	"ui.providers.phone.heading": undefined;
@@ -10702,6 +10706,7 @@ export type MessageParams = {
 	"ui.providers.phone.outcome.stage_verification": undefined;
 	"ui.providers.phone.progress_heading": undefined;
 	"ui.providers.phone.receipts_heading": undefined;
+	"ui.providers.phone.search_terms": undefined;
 	"ui.providers.phone.signing_in": undefined;
 	"ui.providers.phone.status.applying": undefined;
 	"ui.providers.phone.status.checking": undefined;

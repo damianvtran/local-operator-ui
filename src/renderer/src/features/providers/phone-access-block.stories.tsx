@@ -75,6 +75,7 @@ type Scenario =
 	| "r-stopped"
 	| "r-stopped-ready"
 	| "r-restore_owner"
+	| "r-restore_owner-plain"
 	| "r-sign_in"
 	| "r-run"
 	| "r-reconnect"
@@ -380,12 +381,27 @@ const plans = (
 				),
 				afterRun: VERIFIED,
 			};
+		// Design review D1: the fixture carries the sentence core ACTUALLY sends,
+		// so the frame shows what ships rather than a solved state. #3945
+		// (`37403785`) answers with `mobile.setup.owner_missing`, which still
+		// names a terminal command; #3958 (`fix/tunnel-remedy-no-commands`,
+		// unmerged) sends `owner_missing_plain` instead. Neither bumps a
+		// capability, so the renderer cannot tell them apart: both stories
+		// advertise the same features and differ only in the backend's text.
 		case "r-restore_owner":
 			return {
 				plan: blocked(
 					"owner_missing",
 					"restore_owner",
-					"The account that set this up is no longer signed in on this computer. Sign in to that original account; setup never switches to another one.",
+					"Run lop login-status; restore the owning login. Setup will not repoint an existing tunnel or pending request.",
+				),
+			};
+		case "r-restore_owner-plain":
+			return {
+				plan: blocked(
+					"owner_missing",
+					"restore_owner",
+					"The Radient account that set up phone access is no longer signed in on this computer. Sign in with that account to bring phone access back.",
 				),
 			};
 		case "r-sign_in":
@@ -706,8 +722,17 @@ export const RemedyReconnecting: Story = story("r-reconnecting", "account");
 export const RemedyStopped: Story = story("r-stopped", "account");
 /** Stopped, with a backend that can resume it: Turn on. */
 export const RemedyStoppedTurnOn: Story = story("r-stopped-ready", "account");
-/** The owning login is gone: the existing browser sign-in is the fix. */
+/**
+ * The owning login is gone: the existing browser sign-in is the fix. The
+ * sentence is #3945's real `owner_missing`, command included - what ships
+ * until the core follow-up lands.
+ */
 export const RemedyRestoreOwner: Story = story("r-restore_owner", "account");
+/** The same state with #3958's plain `owner_missing_plain` sentence. */
+export const RemedyRestoreOwnerPlain: Story = story(
+	"r-restore_owner-plain",
+	"account",
+);
 /** Not signed in: Continue in browser (Settings mount). */
 export const RemedySignIn: Story = story("r-sign_in", "account");
 /** No tunnel yet: Set up phone access. */

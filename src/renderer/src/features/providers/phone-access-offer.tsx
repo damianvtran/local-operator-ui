@@ -37,15 +37,22 @@ import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
-import { Button } from "@shared/components/ui";
+import {
+	Button,
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@shared/components/ui";
+import { requestPhoneAccessFocus } from "@shared/hooks/phone-access-navigation";
 import { phoneSetupKeys } from "@shared/hooks/use-phone-setup";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useCurrentView } from "@shared/hooks/use-route-params";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
-import { RADIENT_ACCOUNT_SETTINGS_ROUTE } from "@shared/utils/radient-account-copy";
+import { cn } from "@shared/lib/utils";
 import { useQuery } from "@tanstack/react-query";
-import { type FC, useCallback, useState } from "react";
+import { Smartphone } from "lucide-react";
+import { type FC, useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { phoneSetupResultSchema } from "../../../../shared/desktop-contract";
 
@@ -142,36 +149,163 @@ export function usePhoneAccessOffer(): {
 	return { show, dismiss };
 }
 
-/** The card. Renders nothing unless `usePhoneAccessOffer` says so. */
-export const PhoneAccessOffer: FC = () => {
-	useI18nLocale();
+/**
+ * Where focus goes when the offer leaves under the person's own press (UX
+ * review U3a): the next control after `anchor` in document order - the account
+ * row under the card, or the gear under the collapsed strip's icon. Without
+ * this, "Not now" unmounted the focused button and a keyboard user landed on
+ * <body>, back at the top of the window.
+ */
+const FOCUSABLE =
+	'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const focusAfter = (anchor: Element | null): void => {
+	if (!anchor) return;
+	const next = Array.from(
+		document.querySelectorAll<HTMLElement>(FOCUSABLE),
+	).find(
+		(element) =>
+			!anchor.contains(element) &&
+			(anchor.compareDocumentPosition(element) &
+				Node.DOCUMENT_POSITION_FOLLOWING) !==
+				0,
+	);
+	next?.focus();
+};
+
+/**
+ * [Set up phone access]: navigate, and ask the Phone access block to take
+ * focus when it mounts there (UX review U3c). Plain `/settings`, not the
+ * `?section=radient` deep link: that link re-scrolls to the top of the Radient
+ * section once the page settles, which would undo the block's own landing a
+ * second later (see `PhoneAccessBody`).
+ */
+const useSetUp = (): (() => void) => {
 	const navigate = useNavigate();
-	const { show, dismiss } = usePhoneAccessOffer();
-	if (!show) return null;
+	return useCallback(() => {
+		requestPhoneAccessFocus();
+		navigate("/settings");
+	}, [navigate]);
+};
+
+/** The card's content, shared by the docked foot and the collapsed strip. */
+const OfferCard: FC<{
+	onSetUp: () => void;
+	onNotNow: (card: HTMLElement | null) => void;
+	className?: string;
+}> = ({ onSetUp, onNotNow, className }) => {
+	const card = useRef<HTMLElement>(null);
 	return (
 		<section
-			className="mx-2 mb-2 flex flex-col gap-2 rounded-md border border-hairline bg-surface p-3"
+			ref={card}
+			className={cn("flex flex-col gap-2", className)}
 			aria-label={t("ui.providers.phone.offer.title")}
 			data-phone-offer=""
 		>
-			<p className="text-body-sm text-ink">
+			{/*
+			 * Medium weight (design review D2): at 13px/400 over a 12px body the
+			 * question read as the first sentence of the paragraph. It wraps freely
+			 * - the sidebar is ~243px and the longest locale title runs to two
+			 * lines - so nothing is truncated.
+			 */}
+			<p className="break-words font-medium text-body-sm text-ink">
 				{t("ui.providers.phone.offer.title")}
 			</p>
 			<p className="break-words text-meta text-ink-muted">
 				{t("ui.providers.phone.offer.body")}
 			</p>
 			<div className="flex flex-wrap items-center gap-2">
-				<Button
-					variant="primary"
-					size="sm"
-					onClick={() => navigate(RADIENT_ACCOUNT_SETTINGS_ROUTE)}
-				>
+				<Button variant="primary" size="sm" onClick={onSetUp}>
 					{t("ui.providers.phone.action.set_up")}
 				</Button>
-				<Button variant="ghost" size="sm" onClick={dismiss}>
+				<Button
+					variant="ghost"
+					size="sm"
+					onClick={() => onNotNow(card.current)}
+				>
 					{t("ui.providers.phone.offer.not_now")}
 				</Button>
 			</div>
 		</section>
+	);
+};
+
+/**
+ * The card in the docked sidebar's foot. Renders nothing unless
+ * `usePhoneAccessOffer` says so. `shrink-0` (review N2): the foot is a flex
+ * column under a scrolling list, and without it a short window squeezed the
+ * card instead of the list.
+ */
+export const PhoneAccessOffer: FC = () => {
+	useI18nLocale();
+	const setUp = useSetUp();
+	const { show, dismiss } = usePhoneAccessOffer();
+	if (!show) return null;
+	return (
+		<OfferCard
+			className="mx-2 mb-2 shrink-0 rounded-md border border-hairline bg-surface p-3"
+			onSetUp={setUp}
+			onNotNow={(card) => {
+				focusAfter(card);
+				dismiss();
+			}}
+		/>
+	);
+};
+
+/**
+ * The same offer when the sidebar is COLLAPSED (UX review U1). The strip draws
+ * no foot, and windows narrower than 1024px start collapsed, so the card alone
+ * never reached a small laptop window - and it is this PR's only discovery
+ * path for a fresh sign-in. A phone icon with an accent dot sits in the strip's
+ * foot column beside the update icon and opens the SAME card in a non-modal
+ * popover. Both read the same per-account dismissal, so Not now in either is
+ * remembered for the other.
+ */
+export const PhoneAccessOfferIcon: FC = () => {
+	useI18nLocale();
+	const setUp = useSetUp();
+	const { show, dismiss } = usePhoneAccessOffer();
+	const trigger = useRef<HTMLButtonElement>(null);
+	if (!show) return null;
+	const title = t("ui.providers.phone.offer.title");
+	return (
+		<Popover>
+			<PopoverTrigger asChild>
+				<button
+					ref={trigger}
+					type="button"
+					aria-label={title}
+					title={title}
+					data-phone-offer-icon=""
+					className={cn(
+						"relative flex size-8 shrink-0 items-center justify-center rounded-sm text-ink-muted",
+						"transition-colors duration-fast ease-out-quart",
+						"hover:bg-row-hover hover:text-ink",
+					)}
+				>
+					<Smartphone className="size-4 shrink-0" aria-hidden="true" />
+					<span
+						aria-hidden="true"
+						className="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-accent"
+					/>
+				</button>
+			</PopoverTrigger>
+			<PopoverContent
+				side="right"
+				align="end"
+				// The trigger is gone once the card is dismissed or followed, so
+				// Radix's own return-focus-to-trigger would land on nothing; the
+				// handlers below place focus themselves.
+				onCloseAutoFocus={(event) => event.preventDefault()}
+			>
+				<OfferCard
+					onSetUp={setUp}
+					onNotNow={() => {
+						focusAfter(trigger.current);
+						dismiss();
+					}}
+				/>
+			</PopoverContent>
+		</Popover>
 	);
 };

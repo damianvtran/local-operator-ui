@@ -68,7 +68,9 @@ import {
 import { CopyButton } from "@shared/components/common/copy-button";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui";
+import { consumePhoneAccessFocus } from "@shared/hooks/phone-access-navigation";
 import {
+	type PhoneSetupView,
 	type UsePhoneSetup,
 	usePhoneSetup,
 } from "@shared/hooks/use-phone-setup";
@@ -77,7 +79,15 @@ import { useRadientSessionIssue } from "@shared/hooks/use-radient-session-issue"
 import { formatRelativeTime, t } from "@shared/i18n";
 import { openConsolePage } from "@shared/utils/radient-account-copy";
 import { Check, CircleCheck, Copy, ExternalLink } from "lucide-react";
-import { type FC, useEffect, useRef, useState } from "react";
+import {
+	type FC,
+	useCallback,
+	useEffect,
+	useId,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 import {
 	type PhoneSetupResult,
 	phoneSetupSkipsCloudflared,
@@ -102,6 +112,13 @@ type PhoneAccessBlockProps = {
 	 * `features.mobile_doctor`.
 	 */
 	diagnostics?: boolean;
+	/**
+	 * The settings-search row id, on the Settings mount only (UX review U2). A
+	 * person who pressed "Not now" on the sidebar offer has no other way back to
+	 * setup short of knowing where it lives; the search index reads rendered
+	 * `[data-search-row]` elements only, so without this "phone" found nothing.
+	 */
+	searchRow?: string;
 };
 
 /**
@@ -164,7 +181,20 @@ const Heading: FC<{ status?: Status }> = ({ status }) => (
 				aria-hidden="true"
 			/>
 		) : null}
-		<h4 className="text-heading text-ink">{t("ui.providers.phone.heading")}</h4>
+		{/*
+		 * Focusable by script only (`tabIndex={-1}`): the block's one stable
+		 * landing point when a state change removes the button that had focus,
+		 * when the sidebar offer navigates here, and when settings search jumps to
+		 * this row (UX review U3). Never in the Tab order.
+		 */}
+		<h4
+			tabIndex={-1}
+			data-phone-heading=""
+			data-search-control=""
+			className="rounded-sm text-heading text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+		>
+			{t("ui.providers.phone.heading")}
+		</h4>
 		{status === "checking" ? (
 			<span className="flex items-center gap-2 text-body-sm text-ink-muted">
 				<Spinner size="sm" />
@@ -612,6 +642,15 @@ const Blocked: FC<{
  * and nobody asked yet). "Copied" resets after 2 s like `CopyButton`; a failure
  * (the read or the clipboard) says so in place and stays until the next press,
  * because a vanishing error is one a person can miss.
+ *
+ * While the read runs (the backend's doctor probes the tunnel, the health route
+ * and Radient, bounded at up to ~10 s on a slow network) the button says
+ * "Copying…" with a spinner and is `aria-disabled` (UX review U5): a silent
+ * button looked dead in exactly the case someone wants diagnostics. NOT the
+ * `disabled` attribute, which would drop keyboard focus to <body> the moment
+ * the press lands; the busy guard below already ignores repeat presses. The
+ * helper line under it says what the text is for and that it is redacted, so a
+ * person knows it is safe to paste to whoever is helping.
  */
 const CopyDiagnostics: FC = () => {
 	const [state, setState] = useState<"idle" | "busy" | "copied" | "failed">(
@@ -633,6 +672,8 @@ const CopyDiagnostics: FC = () => {
 			setState("failed");
 		}
 	};
+	const busy = state === "busy";
+	const helpId = useId();
 	return (
 		<div
 			className="flex flex-wrap items-center gap-2"
@@ -642,17 +683,27 @@ const CopyDiagnostics: FC = () => {
 				variant="ghost"
 				size="sm"
 				onClick={() => void copy()}
-				aria-busy={state === "busy" ? true : undefined}
+				aria-busy={busy ? true : undefined}
+				aria-disabled={busy ? true : undefined}
+				aria-describedby={helpId}
+				className={busy ? "cursor-wait text-ink-disabled" : undefined}
 			>
-				{state === "copied" ? (
+				{busy ? (
+					<Spinner size="xs" />
+				) : state === "copied" ? (
 					<Check aria-hidden="true" />
 				) : (
 					<Copy aria-hidden="true" />
 				)}
-				{state === "copied"
-					? t("ui.common.actions.copied")
-					: t("ui.providers.phone.action.copy_diagnostics")}
+				{busy
+					? t("ui.providers.phone.action.copying_diagnostics")
+					: state === "copied"
+						? t("ui.common.actions.copied")
+						: t("ui.providers.phone.action.copy_diagnostics")}
 			</Button>
+			<p id={helpId} className="w-full break-words text-meta text-ink-dim">
+				{t("ui.providers.phone.diagnostics_help")}
+			</p>
 			{state === "failed" ? (
 				<p role="alert" className="break-words text-body-sm text-ink">
 					{t("ui.providers.phone.diagnostics_failed")}
@@ -683,23 +734,169 @@ const RefetchOnSignIn: FC<{ onChange: () => void }> = ({ onChange }) => {
 	return null;
 };
 
-const PhoneAccessBody: FC<{ offerSignIn: boolean; diagnostics: boolean }> = ({
-	offerSignIn,
-	diagnostics,
-}) => {
+/**
+ * What the live region compares between renders: a settled state, or null
+ * while nothing is settled (checking, applying) so a re-check's in-between
+ * never counts as a change. Only `connected` and `reconnecting` are announced
+ * (the transitions nobody pressed for); a failure carries its own
+ * `role="alert"`, and every other state is reached by a press whose result the
+ * person is already looking at.
+ */
+const announcedStatus = (
+	view: PhoneSetupView,
+	remedies: boolean,
+): string | null => {
+	if (view.kind === "failure") return "failure";
+	if (view.kind !== "result") return null;
+	if (view.result.verified) return "connected";
+	if (remedies && view.result.blocked_on === "reconnecting") {
+		return "reconnecting";
+	}
+	// i18n: ignore comparison key, never rendered or announced
+	return `blocked:${view.result.blocked_on}:${view.result.remedy?.kind ?? ""}`;
+};
+
+/**
+ * The block's polite live region (UX review U4). Kept mounted for the block's
+ * whole life: a region inserted together with its text is not announced by
+ * many screen-reader/browser pairs, which is why the reconnecting -> Connected
+ * swap (a whole new subtree) said nothing. Announces (a) the two transitions
+ * that happen without a press, and (b) after a Check again whose answer did not
+ * change the state, "Last checked ..." - otherwise a press in a waiting state
+ * changed only a plain <p> and a screen-reader user could not tell it ran.
+ */
+const useAnnouncement = (
+	view: PhoneSetupView,
+	remedies: boolean,
+	checkedAt: number,
+): { message: string; pressed: () => void } => {
+	const [message, setMessage] = useState("");
+	const previous = useRef<string | null>(null);
+	// When Check again was pressed (ms epoch), or 0 when no press is waiting for
+	// its answer. An answer counts only if it was observed after the press.
+	const pressedAt = useRef(0);
+	const status = announcedStatus(view, remedies);
+	useEffect(() => {
+		if (status === null) return;
+		const before = previous.current;
+		previous.current = status;
+		let next: string | null = null;
+		if (before !== null && before !== status) {
+			if (status === "connected") {
+				next = t("ui.providers.phone.announce.connected");
+			} else if (status === "reconnecting") {
+				next = t("ui.providers.phone.announce.reconnecting");
+			}
+		}
+		const answered = pressedAt.current > 0 && checkedAt >= pressedAt.current;
+		if (status === "failure" || answered) pressedAt.current = 0;
+		if (next === null && answered && status !== "failure") {
+			next = t("ui.providers.phone.last_checked", {
+				when: phoneCheckedAgo(checkedAt, Date.now()),
+			});
+		}
+		if (next === null) return;
+		const said = next;
+		// The same words twice in a row are not re-announced by a live region, so a
+		// second identical message differs by one invisible no-break space.
+		setMessage((current) => (current === said ? `${said}\u00a0` : said));
+	}, [status, checkedAt]);
+	const pressed = useCallback(() => {
+		pressedAt.current = Date.now();
+	}, []);
+	return { message, pressed };
+};
+
+const headingIn = (section: HTMLElement | null): HTMLElement | null =>
+	section?.querySelector<HTMLElement>("[data-phone-heading]") ?? null;
+
+const PhoneAccessBody: FC<{
+	offerSignIn: boolean;
+	diagnostics: boolean;
+	searchRow?: string;
+}> = ({ offerSignIn, diagnostics, searchRow }) => {
 	const setup = usePhoneSetup();
 	const capabilities = useDesktopCapabilities();
 	const { view } = setup;
+	const sectionRef = useRef<HTMLElement>(null);
+	const announcement = useAnnouncement(view, setup.remedies, setup.checkedAt);
+	const { pressed } = announcement;
+	const rawCheck = setup.check;
+	const check = useCallback(() => {
+		pressed();
+		rawCheck();
+	}, [pressed, rawCheck]);
+
+	// Focus that a state change would otherwise drop (UX review U3b). A poll,
+	// a focus refetch or a finished run replaces the subtree, and with it the
+	// button that had focus (Check again, Add credit), which sends a keyboard
+	// user back to the top of the document. The last control focused in here is
+	// remembered; after a commit that disconnected it while focus fell to
+	// <body>, focus moves to this block's heading. Focus that LEFT the block for
+	// another control is forgotten, and a window that merely lost focus keeps
+	// its element connected, so neither is ever pulled back.
+	const lastFocused = useRef<HTMLElement | null>(null);
+	useLayoutEffect(() => {
+		const element = lastFocused.current;
+		if (!element || element.isConnected) return;
+		lastFocused.current = null;
+		const active = document.activeElement;
+		if (active !== null && active !== document.body) return;
+		headingIn(sectionRef.current)?.focus({ preventScroll: true });
+	});
+
+	// The sidebar offer's [Set up phone access] lands here, not at the top of the
+	// Radient section (UX review U3c). The offer navigates to plain `/settings`
+	// rather than `?section=radient`: that deep link re-scrolls to the SECTION's
+	// top once the page settles (up to 2 s later) and would undo this landing.
+	const visible = view.kind !== "hidden";
+	useEffect(() => {
+		if (!visible || !sectionRef.current) return;
+		if (!consumePhoneAccessFocus()) return;
+		// Optional call: jsdom (the test rig) has no scrollIntoView.
+		sectionRef.current.scrollIntoView?.({ block: "center" });
+		headingIn(sectionRef.current)?.focus({ preventScroll: true });
+	}, [visible]);
+
 	if (view.kind === "hidden") return null;
 	const showDiagnostics =
 		diagnostics && desktopFeatureEnabled(capabilities.data, "mobile_doctor");
+	// Children press Check again through this, so the live region knows a press
+	// is waiting for its answer. The sign-in re-plan below keeps the raw check:
+	// nobody pressed anything there.
+	const pressable: UsePhoneSetup = { ...setup, check };
 
 	return (
 		<section
+			ref={sectionRef}
 			className="flex flex-col gap-3 border-hairline border-t pt-4"
 			aria-label={t("ui.providers.phone.heading")}
 			data-phone-block={view.kind}
+			data-search-row={searchRow}
+			data-search-label={
+				searchRow ? t("ui.providers.phone.heading") : undefined
+			}
+			data-search-terms={
+				searchRow ? t("ui.providers.phone.search_terms") : undefined
+			}
+			onFocus={(event) => {
+				lastFocused.current = event.target;
+			}}
+			onBlur={(event) => {
+				const to = event.relatedTarget;
+				if (to instanceof Node && !event.currentTarget.contains(to)) {
+					lastFocused.current = null;
+				}
+			}}
 		>
+			<p
+				aria-live="polite"
+				aria-atomic="true"
+				className="sr-only"
+				data-phone-announcement=""
+			>
+				{announcement.message}
+			</p>
 			{view.kind === "checking" ? (
 				<div className="flex flex-col gap-3" data-phone-state="checking">
 					<Heading status="checking" />
@@ -718,14 +915,18 @@ const PhoneAccessBody: FC<{ offerSignIn: boolean; diagnostics: boolean }> = ({
 			{view.kind === "failure" ? (
 				<div className="flex flex-col gap-3" data-phone-state="failure">
 					<Heading />
-					<Failure failure={view.failure} onCheck={setup.check} />
+					<Failure failure={view.failure} onCheck={check} />
 				</div>
 			) : null}
 			{view.kind === "result" && view.result.verified ? (
 				<Verified result={view.result} remedies={setup.remedies} />
 			) : null}
 			{view.kind === "result" && !view.result.verified ? (
-				<Blocked result={view.result} setup={setup} offerSignIn={offerSignIn} />
+				<Blocked
+					result={view.result}
+					setup={pressable}
+					offerSignIn={offerSignIn}
+				/>
 			) : null}
 			{showDiagnostics ? <CopyDiagnostics /> : null}
 			{setup.remedies ? <RefetchOnSignIn onChange={setup.check} /> : null}
@@ -741,10 +942,15 @@ const PhoneAccessBody: FC<{ offerSignIn: boolean; diagnostics: boolean }> = ({
 export const PhoneAccessBlock: FC<PhoneAccessBlockProps> = ({
 	offerSignIn = false,
 	diagnostics = false,
+	searchRow,
 }) => {
 	const capabilities = useDesktopCapabilities();
 	if (!desktopFeatureEnabled(capabilities.data, "tunnel_setup")) return null;
 	return (
-		<PhoneAccessBody offerSignIn={offerSignIn} diagnostics={diagnostics} />
+		<PhoneAccessBody
+			offerSignIn={offerSignIn}
+			diagnostics={diagnostics}
+			searchRow={searchRow}
+		/>
 	);
 };

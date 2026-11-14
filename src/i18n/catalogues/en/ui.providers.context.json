@@ -1033,5 +1033,31 @@
 		"tone": "neutral",
 		"length_hint": "One or two words",
 		"note": "Dismisses the offer card; remembered for this account on this computer."
+	},
+	"ui.providers.phone.announce.connected": {
+		"role": "screen-reader announcement",
+		"tone": "plain, calm",
+		"note": "Spoken by screen readers only (a polite live region, never shown) when phone access becomes connected without the person pressing anything, e.g. after a background reconnect. A full sentence; 'phone access' is the feature's name as in the block heading."
+	},
+	"ui.providers.phone.announce.reconnecting": {
+		"role": "screen-reader announcement",
+		"tone": "plain, calm",
+		"note": "Spoken by screen readers only (never shown) when phone access starts reconnecting in the background after a Radient sign-in. Nothing for the person to do; not an error."
+	},
+	"ui.providers.phone.action.copying_diagnostics": {
+		"role": "quiet button, in-progress label",
+		"tone": "neutral",
+		"length_hint": "About as long as 'Copy diagnostics'",
+		"note": "Replaces 'Copy diagnostics' on the same button while the report is being read and copied (can take several seconds on a slow network). Ends with an ellipsis character to say work is under way."
+	},
+	"ui.providers.phone.diagnostics_help": {
+		"role": "helper text under a button",
+		"tone": "plain, reassuring",
+		"note": "One or two short sentences under 'Copy diagnostics'. Says the copied report is about phone access on this computer, that private details (passwords, keys) are removed from it, and that it is safe to paste to support or a person or agent helping them. Avoid technical words like 'JSON' or 'redacted' if the locale has a plainer phrase."
+	},
+	"ui.providers.phone.search_terms": {
+		"role": "settings search keywords (not displayed)",
+		"tone": "keywords",
+		"note": "Space-separated words that make Settings search find the Phone access block. Never shown on screen. Give the words a person in this locale would type when looking for using the app from their phone: phone, mobile, remote access, app, etc. No punctuation needed; several synonyms are welcome."
 	}
 }

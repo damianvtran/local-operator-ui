@@ -14,6 +14,7 @@ import type { FC } from "react";
 import {
 	PHONE_OFFER_DISMISSED_KEY,
 	PhoneAccessOffer,
+	PhoneAccessOfferIcon,
 } from "./phone-access-offer";
 import "../../styles/index.css";
 
@@ -127,3 +128,47 @@ export default meta;
 
 /** Signed in, no phone access on this machine: the card, above the account row. */
 export const FirstSignIn: StoryObj = { render: () => <Frame /> };
+
+/**
+ * A short window (review N2 / design D2): the card is `shrink-0`, so a 360px
+ * column squeezes the scrolling list above it, never the card, and the
+ * medium-weight title wraps rather than truncating.
+ */
+const ShortFrame: FC = () => {
+	window.localStorage.removeItem(PHONE_OFFER_DISMISSED_KEY);
+	return (
+		<div className="flex h-[360px] bg-surface">
+			<div className="flex h-full w-[260px] flex-col border-hairline border-r bg-canvas pt-8">
+				<ul className="min-h-0 flex-1 overflow-y-auto px-4">
+					{Array.from({ length: 30 }, (_, index) => (
+						// biome-ignore lint/suspicious/noArrayIndexKey: static filler rows
+						<li key={index} className="py-1 text-body-sm text-ink-muted">
+							{`Chat ${index + 1}`}
+						</li>
+					))}
+				</ul>
+				<PhoneAccessOffer />
+				<div className="flex min-h-10 shrink-0 items-center px-4 pb-2 text-body-sm text-ink-muted">
+					Fixture Owner
+				</div>
+			</div>
+		</div>
+	);
+};
+export const ShortWindow: StoryObj = { render: () => <ShortFrame /> };
+
+/**
+ * The COLLAPSED sidebar (UX review U1): the strip has no foot for the card, so
+ * an icon with an accent dot opens the same card in a popover. Press it.
+ */
+const CollapsedFrame: FC = () => {
+	window.localStorage.removeItem(PHONE_OFFER_DISMISSED_KEY);
+	return (
+		<div className="flex min-h-screen bg-surface">
+			<div className="flex w-12 flex-col items-center justify-end gap-1 border-hairline border-r bg-canvas pb-2">
+				<PhoneAccessOfferIcon />
+			</div>
+		</div>
+	);
+};
+export const CollapsedSidebar: StoryObj = { render: () => <CollapsedFrame /> };
