@@ -129,8 +129,8 @@ const bundle = await build({
 		contents: `
 			import { createElement } from "react";
 			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-			export { NotificationsSection } from "./src/renderer/src/features/settings/components/notifications-section";
-			export { BackendSettingsSection } from "./src/renderer/src/features/settings/components/backend-settings-section";
+			export { NotificationsSection, notificationSoundKeys } from "./src/renderer/src/features/settings/components/notifications-section";
+			export { BackendSettingsSection, backendSettingsKeys } from "./src/renderer/src/features/settings/components/backend-settings-section";
 			export { sectionForSettingKey } from "./src/renderer/src/features/settings/promoted-setting-sections";
 			export { useAudioEngineStore } from "./src/renderer/src/shared/store/audio-engine-store";
 			export { createElement };
@@ -170,6 +170,8 @@ const {
 	QueryClientProvider,
 	NotificationsSection,
 	BackendSettingsSection,
+	backendSettingsKeys,
+	notificationSoundKeys,
 	sectionForSettingKey,
 	useAudioEngineStore,
 	createElement,
@@ -478,16 +480,73 @@ const describePredicate = (predicate) =>
  * miss was runner starvation - ~50x the same work - not a logic race). Two
  * sightings of one message three lines from the cause is what this fixes.
  *
- * NOTHING DEPENDED ON THE `false`: all 28 call sites are bare `await waitFor`
- * (29 before this change - Q8's is now `drainReads`), none reads the result
- * (audited when this changed). A site that wants "this never happens" must
- * assert absence of its own accord, not wait for it.
+ * NOTHING DEPENDED ON THE `false`: no call site reads the result (audited when
+ * this changed, and Q8's wait is `drainReads` now). A site that wants "this
+ * never happens" must assert absence of its own accord, not wait for it.
+ * Counts are deliberately absent here - they go stale as waits are added; what
+ * must stay true is that `waitFor`'s return value is never consumed, which the
+ * loud throw above is what enforces.
  *
  * THE BOUND IS A HANG GUARD, NOT A PERFORMANCE ASSERTION. Prefer a condition
  * that settles on its own (`drainReads` below) where one exists; a bound is for
- * the case where nothing will ever change.
+ * the case where nothing will ever change. Because that is its only job, one
+ * generous figure serves every wait in the file: `LIVENESS_MS` below. A tight
+ * figure measures the HOST, not the product, and this file's waits were tight
+ * enough that a loaded runner reddened gates on Q8 alone (runs 43558399663,
+ * 43572651663, 43585550825) with no relevant diff - see the constant's note for
+ * the measurement that sized it.
  */
-const waitFor = async (predicate, timeout = 2000) => {
+
+/*
+ * ONE LIVENESS BOUND, SIZED TO A LOADED HOST.
+ *
+ * Every `waitFor` in this file asserts an EVENTUAL state - a read that fails and
+ * says so, a write that lands, a render that catches up after its cache drained
+ * - never a latency budget. Nothing here is a performance assertion: the one
+ * place this file measures speed (the sound write's 400 ms debounce) asserts on
+ * `daemon.edits` directly, not through a deadline. So a deadline's only job is
+ * to fail loudly when nothing will ever change, and a hang guard should sit well
+ * above the slowest HEALTHY run rather than at it.
+ *
+ * MEASURED, NOT GUESSED (2026-11-14). `waitFor` instrumented to record its own
+ * elapsed time, on a 14-core host under deliberate CPU load (spinning hogs, with
+ * the host's ambient load average sitting at 44-116 across the windows - this
+ * box also carries ~25 concurrent sessions and 13.8 GB of its 15.4 GB of swap
+ * in use, so the "idle" column is the only quiet reading in the set):
+ *
+ *   8 runs x 12 hogs    472 waits   p50 100 ms   p95  827 ms   max 3213 ms
+ *     mount's wait      248 waits   p50 290 ms   p95 1369 ms   max 3213 ms
+ *     everything else   224 waits   p50   1 ms   p95  390 ms   max  775 ms
+ *   2 runs x 26 hogs     59 waits/run   p50 92 | 183 ms   max 3239 | 4213 ms
+ *     mount's wait       31 waits/run   p50 528 | 630 ms  max 3239 | 4213 ms
+ *     everything else    28 waits/run   p50   1 ms        max 623 | 726 ms
+ *   1 run  x 56 hogs     mount's wait max 6742 ms
+ *   1 idle control       mount's wait max 241 ms; nothing else above 75 ms
+ *
+ * THE OLD BOUNDS SAT UNDER THAT DISTRIBUTION. At 12 hogs a single wait took
+ * 3213 ms against the 3000 ms that 21 of these sites named, and the mount wait -
+ * the default, taken by 31 of this file's 33 tests - reached 3239 and 4213 ms
+ * against its 2000 ms default at 26 hogs. A bound inside the spread of a busy
+ * host is how a starved shard fails a healthy fixture, and it matches CI's own
+ * record for this file: ~50x the idle host (61 ms healthy against >3 s on shard
+ * 0/4 of run 42543029193), with three gates reddened on Q8 and no relevant diff
+ * on 2026-11-14 (runs 43558399663, 43572651663, 43585550825).
+ *
+ * ONE INSTANCE OVERRAN 15 s, which is why the bound is not 15 s. In a
+ * swap-thrash window on this host (load average 116, ~100 MB of free pages) a
+ * single Q8 run failed at a 15000 ms bound after 15570 ms; every other run in
+ * the campaign settled inside the figures above. How long that one would have
+ * taken is unmeasured, so the bound is sized ABOVE it rather than at it - a
+ * figure already seen to miss is not a fix for a flake.
+ *
+ * 30000 ms is 9x the slowest wait measured under deliberate load, 4.4x the worst
+ * at 56x oversubscription and 2x the one instance that overran: a healthy-but-
+ * starved fixture reports its real verdict, and a genuine hang still fails
+ * loudly, naming its predicate, in half a minute rather than never.
+ */
+const LIVENESS_MS = 30_000;
+
+const waitFor = async (predicate, timeout = LIVENESS_MS) => {
 	const deadline = Date.now() + timeout;
 	while (Date.now() < deadline) {
 		if (predicate()) return true;
@@ -858,7 +917,7 @@ test("an over-length clip is refused with its own sentence, never trimmed (C10)"
 	]);
 	await waitFor(
 		() => container.querySelector('[data-pending-phase="error"]') !== null,
-		3000,
+		LIVENESS_MS,
 	);
 	const text = container.textContent;
 	assert.match(
@@ -879,7 +938,10 @@ test("one accepted file is added, selected and played once (§5.1)", async (t) =
 			type: "audio/wav",
 		}),
 	]);
-	await waitFor(() => container.textContent.includes("door-knock"), 3000);
+	await waitFor(
+		() => container.textContent.includes("door-knock"),
+		LIVENESS_MS,
+	);
 	await settle(4);
 	const upload = daemon.media.find(
 		(m) => m.request.op === "notification_sounds.upload",
@@ -1018,7 +1080,7 @@ test("A: keyboard volume keeps focus across three steps, each written in order (
 		assert.equal(document.activeElement, range, `focus kept after ${next}`);
 		assert.equal(range.disabled, false, "the range is never disabled mid-save");
 	}
-	await waitFor(() => daemon.state.volume === 55, 3000);
+	await waitFor(() => daemon.state.volume === 55, LIVENESS_MS);
 	assert.deepEqual(
 		daemon.edits
 			.filter((e) => e.key === "notifications.sound.volume")
@@ -1045,7 +1107,7 @@ test("A: Space twice on Play a sound keeps focus and lands both writes (QA Q1 / 
 		() =>
 			daemon.edits.filter((e) => e.key === "notifications.sound.enabled")
 				.length === 2,
-		3000,
+		LIVENESS_MS,
 	);
 	await settle(4);
 	assert.equal(
@@ -1072,7 +1134,7 @@ test("B: Turn on notifications flips the promoted switch above it (QA Q2 / UX U3
 		(b) => b.textContent === "Turn on notifications",
 	);
 	await click(turnOn);
-	await waitFor(() => daemon.state.notificationsOn === true, 3000);
+	await waitFor(() => daemon.state.notificationsOn === true, LIVENESS_MS);
 	await settle(6);
 	assert.equal(
 		master().getAttribute("aria-checked"),
@@ -1095,7 +1157,7 @@ test("C: a config frame from elsewhere moves the radio and adds the row, silentl
 		() =>
 			radio(container, "custom-made-by-aida-1")?.getAttribute("data-state") ===
 			"checked",
-		3000,
+		LIVENESS_MS,
 	);
 	assert.equal(
 		radio(container, "custom-made-by-aida-1").getAttribute("data-state"),
@@ -1165,7 +1227,7 @@ test("E: once sent, the upload row offers no Cancel and says Finishing… (revie
 	]);
 	await waitFor(
 		() => container.querySelector('[data-pending-phase="processing"]') !== null,
-		3000,
+		LIVENESS_MS,
 	);
 	const row = container.querySelector('[data-pending-phase="processing"]');
 	assert.match(row.textContent, /Finishing…/);
@@ -1175,7 +1237,10 @@ test("E: once sent, the upload row offers no Cancel and says Finishing… (revie
 		"no Cancel once the bytes are sent",
 	);
 	release();
-	await waitFor(() => radio(container, "custom-knock-000001") !== null, 3000);
+	await waitFor(
+		() => radio(container, "custom-knock-000001") !== null,
+		LIVENESS_MS,
+	);
 	assert.ok(
 		radio(container, "custom-knock-000001"),
 		"the sound the daemon stored is shown",
@@ -1250,7 +1315,10 @@ test("U7: clicking away from a valid rename saves it", async (t) => {
 		field.dispatchEvent(new window.FocusEvent("focusout", { bubbles: true }));
 		field.dispatchEvent(new window.FocusEvent("blur"));
 	});
-	await waitFor(() => daemon.state.custom[0].label === "Brass ping 2", 3000);
+	await waitFor(
+		() => daemon.state.custom[0].label === "Brass ping 2",
+		LIVENESS_MS,
+	);
 	assert.equal(daemon.state.custom[0].label, "Brass ping 2");
 });
 
@@ -1311,7 +1379,7 @@ test("M3: 70 -> 65 -> 70 with the first save held open writes both, thumb ends a
 		() =>
 			daemon.edits.filter((e) => e.key === "notifications.sound.volume")
 				.length === 2,
-		3000,
+		LIVENESS_MS,
 	);
 	await settle(8, 20);
 	assert.deepEqual(
@@ -1348,10 +1416,10 @@ test("m1 (r2): on -> off -> on with the first save held never flips the switch b
 	release();
 	// The first write lands and its refetch reports `false`, with the second
 	// write still in flight.
-	await waitFor(() => daemon.state.soundOn === false, 3000);
+	await waitFor(() => daemon.state.soundOn === false, LIVENESS_MS);
 	await settle(8, 20);
 	releaseSecond();
-	await waitFor(() => daemon.state.soundOn === true, 3000);
+	await waitFor(() => daemon.state.soundOn === true, LIVENESS_MS);
 	await settle(8, 20);
 	observer.disconnect();
 	assert.ok(
@@ -1371,7 +1439,7 @@ test("U13: Turn on notifications moves focus to the switch it turned on", async 
 	assert.ok(button, "the gated callout offers the action");
 	button.focus();
 	await click(button);
-	await waitFor(() => daemon.state.notificationsOn === true, 3000);
+	await waitFor(() => daemon.state.notificationsOn === true, LIVENESS_MS);
 	await settle(4, 40);
 	const active = document.activeElement;
 	assert.equal(active?.getAttribute("role"), "switch");
@@ -1394,7 +1462,7 @@ test("U13: a successful volume Reset moves focus to the slider", async (t) => {
 	assert.ok(reset, "Reset shows away from the default");
 	reset.focus();
 	await click(reset);
-	await waitFor(() => daemon.state.volume === 70, 3000);
+	await waitFor(() => daemon.state.volume === 70, LIVENESS_MS);
 	await settle(4, 40);
 	assert.equal(document.activeElement, slider(container));
 });
@@ -1411,12 +1479,47 @@ test("Q8: the section-level Retry also reloads the sound list", async (t) => {
 		window.dispatchEvent(new window.Event("focus"));
 	});
 	await emitFrame(["notifications"]);
-	await waitFor(() => container.textContent.includes("Couldn't load"), 3000);
+	/*
+	 * CLICK THE SECTION-LEVEL RETRY, NOT WHICHEVER RETRY PAINTS FIRST.
+	 *
+	 * A failed listing and a failed settings read each offer their own "Retry":
+	 * the settings one replaces the whole section (the early return at
+	 * `if (settingsQuery.error)`), the listing one sits inside the sound group.
+	 * Waiting only for the string "Couldn't load" was satisfied by the LISTING
+	 * alert - it paints first, because its query is invalidated on focus while
+	 * the settings error is still in flight - and picking the first Retry then
+	 * clicked that inner one, which reloads only the listing. The settings read
+	 * stayed in error, the section-level callout stayed on screen, and the
+	 * end-state wait below could never be satisfied: measured 2 of 20 loaded
+	 * runs and 1 of 12 in an earlier set, each failing after 30 s with exactly
+	 * the message a starved host gives. Not a product defect and not
+	 * starvation - a test choosing a button by document order.
+	 *
+	 * So wait for the state this test means: the settings read ITSELF in error,
+	 * with its callout painted. The assertion below then pins the consequence -
+	 * the callout is the only Retry on screen - instead of leaving the choice to
+	 * order.
+	 */
+	await waitFor(
+		() =>
+			client
+				.getQueryCache()
+				.find({ queryKey: backendSettingsKeys.all, exact: true })?.state
+				.status === "error" && container.textContent.includes("Couldn't load"),
+		LIVENESS_MS,
+	);
+	await settle(2);
 	daemon.options.settingsFail = false;
 	daemon.options.listingFails = false;
-	const retry = [...container.querySelectorAll("button")].find(
+	const retries = [...container.querySelectorAll("button")].filter(
 		(b) => b.textContent.trim() === "Retry",
 	);
+	assert.equal(
+		retries.length,
+		1,
+		"the failed settings read leaves one Retry: the section callout's",
+	);
+	const retry = retries[0];
 	await click(retry);
 	/*
 	 * ASSERT THE CONDITION, NOT THE CLOCK. One Retry kicks two refetches this
@@ -1444,7 +1547,7 @@ test("Q8: the section-level Retry also reloads the sound list", async (t) => {
 		() =>
 			radio(container, "soft-pulse") !== null &&
 			!container.textContent.includes("Couldn't load"),
-		3000,
+		LIVENESS_MS,
 	);
 	assert.ok(
 		daemon.asked.filter((op) => op === "notification_sounds.list").length >
@@ -1460,6 +1563,71 @@ test("Q8: the section-level Retry also reloads the sound list", async (t) => {
 		radio(container, "soft-pulse") !== null,
 		"the sound list is back after one Retry",
 	);
+});
+
+/*
+ * Q8's regression, in the ordering that wedged it.
+ *
+ * Q8 itself now waits for the settings read before it clicks, which is the
+ * contract this test pins: even when the LISTING alert is already on screen
+ * with its own Retry - the order that made a by-document-order pick reload the
+ * wrong read (2 of 20 loaded runs, each hanging 30 s) - the section-level Retry
+ * is the one that answers, and one press recovers both reads.
+ */
+test("Q8b: a listing alert on screen first never steals the section Retry", async (t) => {
+	const daemon = makeDaemon();
+	const { container, client } = await mount(t, daemon);
+	const statusOf = (key) =>
+		client.getQueryCache().find({ queryKey: key, exact: true })?.state.status;
+
+	// The listing fails alone, so its alert - with its own Retry - paints first.
+	daemon.options.listingFails = true;
+	await act(async () => {
+		window.dispatchEvent(new window.Event("focus"));
+	});
+	await waitFor(
+		() => statusOf(notificationSoundKeys.list) === "error",
+		LIVENESS_MS,
+	);
+	await settle(2);
+	assert.equal(
+		[...container.querySelectorAll("button")].filter(
+			(b) => b.textContent.trim() === "Retry",
+		).length,
+		1,
+		"the listing alert offers the only Retry at this point",
+	);
+
+	// Now the settings read fails too; its callout replaces the whole section.
+	daemon.options.settingsFail = true;
+	await emitFrame(["notifications"]);
+	await waitFor(
+		() =>
+			statusOf(backendSettingsKeys.all) === "error" &&
+			container.textContent.includes("Couldn't load"),
+		LIVENESS_MS,
+	);
+	await settle(2);
+	const retries = [...container.querySelectorAll("button")].filter(
+		(b) => b.textContent.trim() === "Retry",
+	);
+	assert.equal(
+		retries.length,
+		1,
+		"the section callout is the only Retry once the settings read fails",
+	);
+
+	daemon.options.settingsFail = false;
+	daemon.options.listingFails = false;
+	await click(retries[0]);
+	await drainReads(client);
+	await waitFor(
+		() =>
+			radio(container, "soft-pulse") !== null &&
+			!container.textContent.includes("Couldn't load"),
+		LIVENESS_MS,
+	);
+	assert.ok(radio(container, "soft-pulse"), "the sound list is back");
 });
 
 /* ------------------------------------------------- round 3 remediation */
@@ -1484,7 +1652,7 @@ test("M4: a step still held when the first save settles is kept and written (70 
 	});
 	// The first save settles while → is still down; its refetch reports 65.
 	release();
-	await waitFor(() => daemon.state.volume === 65, 3000);
+	await waitFor(() => daemon.state.volume === 65, LIVENESS_MS);
 	await settle(8, 20);
 	assert.equal(
 		slider(container).value,
@@ -1493,7 +1661,7 @@ test("M4: a step still held when the first save settles is kept and written (70 
 	);
 	// → released: 70 is written.
 	await keyUpOn(range, "ArrowRight");
-	await waitFor(() => daemon.state.volume === 70, 3000);
+	await waitFor(() => daemon.state.volume === 70, LIVENESS_MS);
 	await settle(8, 20);
 	assert.deepEqual(
 		daemon.edits
@@ -1511,18 +1679,21 @@ test("m2 (r3): a section Retry that recovers clears stale row write errors", asy
 	await click(soundSwitch(container));
 	await waitFor(
 		() => container.querySelector("output.text-danger") !== null,
-		3000,
+		LIVENESS_MS,
 	);
 	daemon.options.failEdits = false;
 	daemon.options.settingsFail = true;
 	await emitFrame(["notifications"]);
-	await waitFor(() => container.textContent.includes("Couldn't load"), 3000);
+	await waitFor(
+		() => container.textContent.includes("Couldn't load"),
+		LIVENESS_MS,
+	);
 	daemon.options.settingsFail = false;
 	const retry = [...container.querySelectorAll("button")].find(
 		(b) => b.textContent.trim() === "Retry",
 	);
 	await click(retry);
-	await waitFor(() => radio(container, "soft-pulse") !== null, 3000);
+	await waitFor(() => radio(container, "soft-pulse") !== null, LIVENESS_MS);
 	await settle(6, 20);
 	assert.equal(
 		container.querySelectorAll("output.text-danger").length,
