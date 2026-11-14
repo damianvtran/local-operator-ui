@@ -151,6 +151,7 @@ import enUiNotificationsOperation from "./catalogues/en/ui.notifications.operati
 import enUiOnboarding from "./catalogues/en/ui.onboarding.json";
 import enUiOnboardingTour from "./catalogues/en/ui.onboarding.tour.json";
 import enUiOwnerAudit from "./catalogues/en/ui.ownerAudit.json";
+import enUiPhonePairing from "./catalogues/en/ui.phone_pairing.json";
 import enUiPresence from "./catalogues/en/ui.presence.json";
 import enUiProjects from "./catalogues/en/ui.projects.json";
 import enUiProviders from "./catalogues/en/ui.providers.json";
@@ -315,6 +316,7 @@ import esUiNotificationsOperation from "./catalogues/es/ui.notifications.operati
 import esUiOnboarding from "./catalogues/es/ui.onboarding.json";
 import esUiOnboardingTour from "./catalogues/es/ui.onboarding.tour.json";
 import esUiOwnerAudit from "./catalogues/es/ui.ownerAudit.json";
+import esUiPhonePairing from "./catalogues/es/ui.phone_pairing.json";
 import esUiPresence from "./catalogues/es/ui.presence.json";
 import esUiProjects from "./catalogues/es/ui.projects.json";
 import esUiProviders from "./catalogues/es/ui.providers.json";
@@ -479,6 +481,7 @@ import frUiNotificationsOperation from "./catalogues/fr/ui.notifications.operati
 import frUiOnboarding from "./catalogues/fr/ui.onboarding.json";
 import frUiOnboardingTour from "./catalogues/fr/ui.onboarding.tour.json";
 import frUiOwnerAudit from "./catalogues/fr/ui.ownerAudit.json";
+import frUiPhonePairing from "./catalogues/fr/ui.phone_pairing.json";
 import frUiPresence from "./catalogues/fr/ui.presence.json";
 import frUiProjects from "./catalogues/fr/ui.projects.json";
 import frUiProviders from "./catalogues/fr/ui.providers.json";
@@ -643,6 +646,7 @@ import hiUiNotificationsOperation from "./catalogues/hi/ui.notifications.operati
 import hiUiOnboarding from "./catalogues/hi/ui.onboarding.json";
 import hiUiOnboardingTour from "./catalogues/hi/ui.onboarding.tour.json";
 import hiUiOwnerAudit from "./catalogues/hi/ui.ownerAudit.json";
+import hiUiPhonePairing from "./catalogues/hi/ui.phone_pairing.json";
 import hiUiPresence from "./catalogues/hi/ui.presence.json";
 import hiUiProjects from "./catalogues/hi/ui.projects.json";
 import hiUiProviders from "./catalogues/hi/ui.providers.json";
@@ -807,6 +811,7 @@ import ruUiNotificationsOperation from "./catalogues/ru/ui.notifications.operati
 import ruUiOnboarding from "./catalogues/ru/ui.onboarding.json";
 import ruUiOnboardingTour from "./catalogues/ru/ui.onboarding.tour.json";
 import ruUiOwnerAudit from "./catalogues/ru/ui.ownerAudit.json";
+import ruUiPhonePairing from "./catalogues/ru/ui.phone_pairing.json";
 import ruUiPresence from "./catalogues/ru/ui.presence.json";
 import ruUiProjects from "./catalogues/ru/ui.projects.json";
 import ruUiProviders from "./catalogues/ru/ui.providers.json";
@@ -971,6 +976,7 @@ import urUiNotificationsOperation from "./catalogues/ur/ui.notifications.operati
 import urUiOnboarding from "./catalogues/ur/ui.onboarding.json";
 import urUiOnboardingTour from "./catalogues/ur/ui.onboarding.tour.json";
 import urUiOwnerAudit from "./catalogues/ur/ui.ownerAudit.json";
+import urUiPhonePairing from "./catalogues/ur/ui.phone_pairing.json";
 import urUiPresence from "./catalogues/ur/ui.presence.json";
 import urUiProjects from "./catalogues/ur/ui.projects.json";
 import urUiProviders from "./catalogues/ur/ui.providers.json";
@@ -1135,6 +1141,7 @@ import viUiNotificationsOperation from "./catalogues/vi/ui.notifications.operati
 import viUiOnboarding from "./catalogues/vi/ui.onboarding.json";
 import viUiOnboardingTour from "./catalogues/vi/ui.onboarding.tour.json";
 import viUiOwnerAudit from "./catalogues/vi/ui.ownerAudit.json";
+import viUiPhonePairing from "./catalogues/vi/ui.phone_pairing.json";
 import viUiPresence from "./catalogues/vi/ui.presence.json";
 import viUiProjects from "./catalogues/vi/ui.projects.json";
 import viUiProviders from "./catalogues/vi/ui.providers.json";
@@ -1299,6 +1306,7 @@ import zhCNUiNotificationsOperation from "./catalogues/zh-CN/ui.notifications.op
 import zhCNUiOnboarding from "./catalogues/zh-CN/ui.onboarding.json";
 import zhCNUiOnboardingTour from "./catalogues/zh-CN/ui.onboarding.tour.json";
 import zhCNUiOwnerAudit from "./catalogues/zh-CN/ui.ownerAudit.json";
+import zhCNUiPhonePairing from "./catalogues/zh-CN/ui.phone_pairing.json";
 import zhCNUiPresence from "./catalogues/zh-CN/ui.presence.json";
 import zhCNUiProjects from "./catalogues/zh-CN/ui.projects.json";
 import zhCNUiProviders from "./catalogues/zh-CN/ui.providers.json";
@@ -1466,6 +1474,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiOnboarding,
 	...enUiOnboardingTour,
 	...enUiOwnerAudit,
+	...enUiPhonePairing,
 	...enUiPresence,
 	...enUiProjects,
 	...enUiProviders,
@@ -1638,6 +1647,7 @@ export const bundledCatalogues: Readonly<
 		...esUiOnboarding,
 		...esUiOnboardingTour,
 		...esUiOwnerAudit,
+		...esUiPhonePairing,
 		...esUiPresence,
 		...esUiProjects,
 		...esUiProviders,
@@ -1804,6 +1814,7 @@ export const bundledCatalogues: Readonly<
 		...frUiOnboarding,
 		...frUiOnboardingTour,
 		...frUiOwnerAudit,
+		...frUiPhonePairing,
 		...frUiPresence,
 		...frUiProjects,
 		...frUiProviders,
@@ -1970,6 +1981,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiOnboarding,
 		...hiUiOnboardingTour,
 		...hiUiOwnerAudit,
+		...hiUiPhonePairing,
 		...hiUiPresence,
 		...hiUiProjects,
 		...hiUiProviders,
@@ -2136,6 +2148,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiOnboarding,
 		...ruUiOnboardingTour,
 		...ruUiOwnerAudit,
+		...ruUiPhonePairing,
 		...ruUiPresence,
 		...ruUiProjects,
 		...ruUiProviders,
@@ -2302,6 +2315,7 @@ export const bundledCatalogues: Readonly<
 		...urUiOnboarding,
 		...urUiOnboardingTour,
 		...urUiOwnerAudit,
+		...urUiPhonePairing,
 		...urUiPresence,
 		...urUiProjects,
 		...urUiProviders,
@@ -2468,6 +2482,7 @@ export const bundledCatalogues: Readonly<
 		...viUiOnboarding,
 		...viUiOnboardingTour,
 		...viUiOwnerAudit,
+		...viUiPhonePairing,
 		...viUiPresence,
 		...viUiProjects,
 		...viUiProviders,
@@ -2634,6 +2649,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiOnboarding,
 		...zhCNUiOnboardingTour,
 		...zhCNUiOwnerAudit,
+		...zhCNUiPhonePairing,
 		...zhCNUiPresence,
 		...zhCNUiProjects,
 		...zhCNUiProviders,
@@ -10091,6 +10107,70 @@ export type MessageParams = {
 	"ui.ownerAudit.unnamed": undefined;
 	"ui.ownerAudit.viewers_label": undefined;
 	"ui.ownerAudit.window_unconfirmed": undefined;
+	"ui.phone_pairing.phones.cancel": undefined;
+	"ui.phone_pairing.phones.dialog_again": undefined;
+	"ui.phone_pairing.phones.dialog_body": undefined;
+	"ui.phone_pairing.phones.dialog_gesture": undefined;
+	"ui.phone_pairing.phones.dialog_title": undefined;
+	"ui.phone_pairing.phones.empty": undefined;
+	"ui.phone_pairing.phones.error": undefined;
+	"ui.phone_pairing.phones.finish_removing": undefined;
+	"ui.phone_pairing.phones.last_seen": { date: string };
+	"ui.phone_pairing.phones.load_error": undefined;
+	"ui.phone_pairing.phones.not_found": undefined;
+	"ui.phone_pairing.phones.paired_at": { date: string };
+	"ui.phone_pairing.phones.remove": undefined;
+	"ui.phone_pairing.phones.remove_aria": { name: string };
+	"ui.phone_pairing.phones.removing": undefined;
+	"ui.phone_pairing.phones.retry": undefined;
+	"ui.phone_pairing.phones.still_removing": undefined;
+	"ui.phone_pairing.phones.subtitle": undefined;
+	"ui.phone_pairing.phones.title": undefined;
+	"ui.phone_pairing.phones.unconfirmed": undefined;
+	"ui.phone_pairing.platform.android": undefined;
+	"ui.phone_pairing.platform.ios": undefined;
+	"ui.phone_pairing.platform.unknown": undefined;
+	"ui.phone_pairing.platform.web": undefined;
+	"ui.phone_pairing.popup.admin_prompt": undefined;
+	"ui.phone_pairing.popup.anti_phishing": undefined;
+	"ui.phone_pairing.popup.approve": undefined;
+	"ui.phone_pairing.popup.approve_confirm": undefined;
+	"ui.phone_pairing.popup.attested": undefined;
+	"ui.phone_pairing.popup.changed": undefined;
+	"ui.phone_pairing.popup.close": undefined;
+	"ui.phone_pairing.popup.code_aria": { digits: string };
+	"ui.phone_pairing.popup.code_label": undefined;
+	"ui.phone_pairing.popup.compare": undefined;
+	"ui.phone_pairing.popup.denied": undefined;
+	"ui.phone_pairing.popup.deny": undefined;
+	"ui.phone_pairing.popup.done": undefined;
+	"ui.phone_pairing.popup.error": undefined;
+	"ui.phone_pairing.popup.expired": undefined;
+	"ui.phone_pairing.popup.expires_in": { time: string };
+	"ui.phone_pairing.popup.failed": undefined;
+	"ui.phone_pairing.popup.grant": undefined;
+	"ui.phone_pairing.popup.hide_full_name": undefined;
+	"ui.phone_pairing.popup.invalid_code": undefined;
+	"ui.phone_pairing.popup.name_label": undefined;
+	"ui.phone_pairing.popup.paired": undefined;
+	"ui.phone_pairing.popup.platform_label": undefined;
+	"ui.phone_pairing.popup.show_full_name": undefined;
+	"ui.phone_pairing.popup.signing": undefined;
+	"ui.phone_pairing.popup.strikes": undefined;
+	"ui.phone_pairing.popup.title": undefined;
+	"ui.phone_pairing.popup.try_again": undefined;
+	"ui.phone_pairing.popup.type_code_hint": undefined;
+	"ui.phone_pairing.popup.type_code_label": undefined;
+	"ui.phone_pairing.popup.unavailable": undefined;
+	"ui.phone_pairing.popup.unavailable_where": undefined;
+	"ui.phone_pairing.popup.wrong_code": { count: number };
+	"ui.phone_pairing.setup.body": undefined;
+	"ui.phone_pairing.setup.error": undefined;
+	"ui.phone_pairing.setup.finish": undefined;
+	"ui.phone_pairing.setup.on": undefined;
+	"ui.phone_pairing.setup.title": undefined;
+	"ui.phone_pairing.setup.turn_on": undefined;
+	"ui.phone_pairing.setup.working": undefined;
 	"ui.presence.days_ago": { count: number };
 	"ui.presence.device_link_down": { reason: string; age: string };
 	"ui.presence.device_unreachable": undefined;

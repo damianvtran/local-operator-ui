@@ -1054,6 +1054,26 @@ export type DesktopFeature =
 	 */
 	| "profile_approvals"
 	/**
+	 * PHONE PAIRING BY APPROVAL (`features.phone_pairing`, core pairing design v2
+	 * §1-§2): the `pairing` block on a `pair_phone` approvals row,
+	 * `POST /v1/desktop/approvals/{id}/pair-ack`, `approve-operation` with
+	 * `operation: "pair_phone"`, `GET`/`DELETE /v1/desktop/devices`, and the feed's
+	 * `approvals.pair_request` / `open.approvals_pair_request`.
+	 *
+	 * ITS OWN KEY, as the backend reasons: a renderer that posted a pair-ack body
+	 * to a backend without the route would get a 404, and a Paired-phones list on
+	 * such a backend would read a route that does not exist. Absent ⇒ no pairing
+	 * popup is mounted and Settings → Phone access renders exactly as before.
+	 */
+	| "phone_pairing"
+	/**
+	 * TURN ON PHONE APPROVALS (`features.operator_setup`, core design v2 §6):
+	 * `GET`/`POST /v1/desktop/operator/setup`. Absent ⇒ no setup row in Settings
+	 * → Phone access; the pairing popup still renders, it just cannot offer the
+	 * one-click setup when the computer is not ready to admit a phone.
+	 */
+	| "operator_setup"
+	/**
 	 * PROFILE PROPOSALS (`features.profile_proposals`): the Agents-side review of
 	 * a change an agent proposed to an account agent or team -
 	 * `GET/POST /v1/desktop/profile-proposals[...]`. ITS OWN KEY because a backend
