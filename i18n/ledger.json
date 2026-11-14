@@ -98142,12 +98142,12 @@
 			"locale": "es",
 			"namespace": "ui.chat.credential_notice",
 			"source_sha256": "4cd9c6d35b79ef0b07b4774c03990ab7eabcba1b2fe20d555c8d48887a11fa37",
-			"target_sha256": "f1c4dc6d695e8d93d998075b5867db436a68e0f5664b7ee48399cbcaad4eb55b",
+			"target_sha256": "2567f2d4d5fda436fd932ef2c1a6c6fcd0884e5adbfeb727045688ff297a0e22",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-14",
-				"note": "S18b translation lane: i18n-translator / anthropic/claude-sonnet-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5"
+				"note": "fr/es/ru chip_chars abbreviated (car., симв.) so the translated chip fits the English marker box; closes design round 2 D5. Delta re-audit, clean."
 			},
 			"auditors": [
 				{
@@ -98155,17 +98155,17 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-14",
 					"result": "clean",
-					"instance": "s18b-es-credential-notice-3bcec210",
+					"instance": "s18b-es-credential-notice-r4-302e8e22",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/s18b-es-credential-notice-3bcec210.json",
-					"receipt_sha256": "1e9e84dd69bfac596216faa89bb863123068aaa34fc49552d64f7652590c5328",
-					"scope": "S18b approval/tool-detail paydown (9 keys)",
-					"note": "S18b translation lane: i18n-translator / anthropic/claude-sonnet-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5"
+					"receipt": "i18n/receipts/s18b-es-credential-notice-r4-302e8e22.json",
+					"receipt_sha256": "e189f612cf90ccfbcef37ed4b76cd05512698251e39ef8ddcfc41e043c14342b",
+					"scope": "S18b D5 abbreviated chip count",
+					"note": "fr/es/ru chip_chars abbreviated (car., симв.) so the translated chip fits the English marker box; closes design round 2 D5. Delta re-audit, clean."
 				}
 			],
 			"status": "audited",
@@ -98190,6 +98190,30 @@
 							"receipt_sha256": "10a413967921582735cb1f00876306ae00d61ef758ac097d96ced3ff50c30701",
 							"scope": "ui.chat.credential_notice: 15 keys read against English before release (wave s3d, receipt f212882f-s3d-es).",
 							"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4cd9c6d35b79ef0b07b4774c03990ab7eabcba1b2fe20d555c8d48887a11fa37",
+					"target_sha256": "f1c4dc6d695e8d93d998075b5867db436a68e0f5664b7ee48399cbcaad4eb55b",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean",
+							"instance": "s18b-es-credential-notice-3bcec210",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/s18b-es-credential-notice-3bcec210.json",
+							"receipt_sha256": "1e9e84dd69bfac596216faa89bb863123068aaa34fc49552d64f7652590c5328",
+							"scope": "S18b approval/tool-detail paydown (9 keys)",
+							"note": "S18b translation lane: i18n-translator / anthropic/claude-sonnet-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5"
 						}
 					],
 					"status": "audited"
@@ -98871,12 +98895,12 @@
 			"locale": "fr",
 			"namespace": "ui.chat.credential_notice",
 			"source_sha256": "4cd9c6d35b79ef0b07b4774c03990ab7eabcba1b2fe20d555c8d48887a11fa37",
-			"target_sha256": "7ca7f8c6b066694d7edc3e0de2188e695ad10bf08f11ddec1bd3009f00411dfe",
+			"target_sha256": "b9bffc4cdc81c19a218485be133288906038d6f58c2c5f0bc5dcad0b819007a4",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-14",
-				"note": "S18b translation lane: i18n-translator / anthropic/claude-sonnet-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5"
+				"note": "fr/es/ru chip_chars abbreviated (car., симв.) so the translated chip fits the English marker box; closes design round 2 D5. Delta re-audit, clean."
 			},
 			"auditors": [
 				{
@@ -98884,17 +98908,17 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-14",
 					"result": "clean",
-					"instance": "s18b-fr-credential-notice-2245c969",
+					"instance": "s18b-fr-credential-notice-r3-095f2828",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/s18b-fr-credential-notice-2245c969.json",
-					"receipt_sha256": "bc880e454eef4a5e6e98ab108c3b3dbd891360453f844000a4f99b13df2d9b4b",
-					"scope": "S18b approval/tool-detail paydown (9 keys)",
-					"note": "S18b translation lane: i18n-translator / anthropic/claude-sonnet-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5"
+					"receipt": "i18n/receipts/s18b-fr-credential-notice-r3-095f2828.json",
+					"receipt_sha256": "4f604e009e3ace6489b1d1fd8de06f93ffd545a6068241d1412c42b04943333a",
+					"scope": "S18b D5 abbreviated chip count",
+					"note": "fr/es/ru chip_chars abbreviated (car., симв.) so the translated chip fits the English marker box; closes design round 2 D5. Delta re-audit, clean."
 				}
 			],
 			"status": "audited",
@@ -98919,6 +98943,30 @@
 							"receipt_sha256": "ee4d0127880c89ce6c1b71c76510344a1a114f2428573b15a6356da852bcd1ac",
 							"scope": "ui.chat.credential_notice: 15 keys read against English before release (wave s3c, receipt 564797e3-s3c-fr).",
 							"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4cd9c6d35b79ef0b07b4774c03990ab7eabcba1b2fe20d555c8d48887a11fa37",
+					"target_sha256": "7ca7f8c6b066694d7edc3e0de2188e695ad10bf08f11ddec1bd3009f00411dfe",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean",
+							"instance": "s18b-fr-credential-notice-2245c969",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/s18b-fr-credential-notice-2245c969.json",
+							"receipt_sha256": "bc880e454eef4a5e6e98ab108c3b3dbd891360453f844000a4f99b13df2d9b4b",
+							"scope": "S18b approval/tool-detail paydown (9 keys)",
+							"note": "S18b translation lane: i18n-translator / anthropic/claude-sonnet-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5"
 						}
 					],
 					"status": "audited"
@@ -100329,12 +100377,12 @@
 			"locale": "ru",
 			"namespace": "ui.chat.credential_notice",
 			"source_sha256": "4cd9c6d35b79ef0b07b4774c03990ab7eabcba1b2fe20d555c8d48887a11fa37",
-			"target_sha256": "0c918b06c14b0cbdcf8be5fda3398bc7b9cc9fac92c46e7073716b7fa73e2db3",
+			"target_sha256": "4974cd9373f89378edbe31f3ab02beefa23a9402f13ccdf993e19847102f8f9c",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
 				"date": "2026-11-14",
-				"note": "S18b translation lane: i18n-translator / anthropic/claude-sonnet-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5"
+				"note": "fr/es/ru chip_chars abbreviated (car., симв.) so the translated chip fits the English marker box; closes design round 2 D5. Delta re-audit, clean."
 			},
 			"auditors": [
 				{
@@ -100342,17 +100390,17 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-14",
 					"result": "clean",
-					"instance": "s18b-ru-credential-notice-baa427fe",
+					"instance": "s18b-ru-credential-notice-r3-35daa479",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/s18b-ru-credential-notice-baa427fe.json",
-					"receipt_sha256": "9a1935ae57d05a123d88072425465ee7701a5709e236841c50d06868512929b6",
-					"scope": "S18b approval/tool-detail paydown (9 keys)",
-					"note": "S18b translation lane: i18n-translator / anthropic/claude-sonnet-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5"
+					"receipt": "i18n/receipts/s18b-ru-credential-notice-r3-35daa479.json",
+					"receipt_sha256": "6688505b81ea6cf8dba81145bebdae297c09c5ef3f5b7e0ef834350023447ee9",
+					"scope": "S18b D5 abbreviated chip count",
+					"note": "fr/es/ru chip_chars abbreviated (car., симв.) so the translated chip fits the English marker box; closes design round 2 D5. Delta re-audit, clean."
 				}
 			],
 			"status": "audited",
@@ -100377,6 +100425,30 @@
 							"receipt_sha256": "f2cc27434eb891202a4f920573461f57e628067cca728da88e84f0f30ddceda3",
 							"scope": "ui.chat.credential_notice: 15 keys read against English before release (wave s3d, receipt e6498c6d-s3d-ru).",
 							"note": "Translated in waves A/B1/B2 by translator subagents; wave-A/B1/B2 and remediation rounds applied all findings. Provider-quota fallbacks: some turns ran as anthropic/claude-opus-5-5, openai/gpt-6.1-sol or deepseek/deepseek-flash; see each receipt."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "4cd9c6d35b79ef0b07b4774c03990ab7eabcba1b2fe20d555c8d48887a11fa37",
+					"target_sha256": "0c918b06c14b0cbdcf8be5fda3398bc7b9cc9fac92c46e7073716b7fa73e2db3",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean",
+							"instance": "s18b-ru-credential-notice-baa427fe",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/s18b-ru-credential-notice-baa427fe.json",
+							"receipt_sha256": "9a1935ae57d05a123d88072425465ee7701a5709e236841c50d06868512929b6",
+							"scope": "S18b approval/tool-detail paydown (9 keys)",
+							"note": "S18b translation lane: i18n-translator / anthropic/claude-sonnet-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5"
 						}
 					],
 					"status": "audited"
