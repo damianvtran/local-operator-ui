@@ -32,6 +32,7 @@ const MODES = [
 	"claimless",
 	"slow",
 	"unsupported",
+	"long",
 ];
 const CLAIMLESS_MODES = new Set(["claimless", "slow", "unsupported"]);
 export function askFixture(now = Date.now()) {
@@ -56,6 +57,59 @@ export function askFixture(now = Date.now()) {
 				],
 			},
 		],
+	};
+}
+/*
+ * A LONG, FOUR-DECISION ASK (`long`): the fixture the drawer's scroll case measures.
+ *
+ * EVERY SCROLLER IN THE CARD IS REAL HERE. Each question body runs past the ask
+ * body's own cap (`ASK_BODY_CAP`, 40vh) and each option list past its cap
+ * (`ASK_OPTIONS_MAX_H`, 30vh) at all three window sizes the case drives (440x700,
+ * 440x1024, 440x1400), so a wheel, a page key or a Tab has to cross a boundary that
+ * the pre-fix containment swallowed - rather than a card whose parts already fit and
+ * would pass for the wrong reason. The text is sample content: no account, host,
+ * person or product name appears in it.
+ */
+export function longAskFixture(now = Date.now()) {
+	const paragraph =
+		"The sample project is the app's own demo fixture: a small to-do list with three screens, a settings sheet and an empty state. " +
+		"Nothing here names a real deployment, account or host - the runs this question describes happen on this machine, against fixture data, and finish in a few seconds. " +
+		"Answer with one of the labelled options, or type your own if none of them fit; the choice only ever reaches the fixture backend.";
+	const body = (decision) =>
+		`Decision ${decision} of four. ${[paragraph, paragraph, paragraph, paragraph, paragraph].join(" ")}`;
+	const options = (decision) =>
+		Array.from({ length: 12 }, (_, index) => ({
+			label: `Decision ${decision}, option ${index + 1}`,
+			description:
+				index % 3 === 0
+					? "Keeps the demo readable on a projector and in a screenshot."
+					: index % 3 === 1
+						? "Changes nothing outside the sample project's own fixtures."
+						: "The sample run records which one you picked, and why not the others.",
+		}));
+	const questions = [
+		"which colour scheme should the sample app use",
+		"which sample project should the demo open first",
+		"how should the sample app handle an offline start",
+		"which sample dataset should the demo load",
+	].map((subject, index) => ({
+		id: `decision-${index + 1}`,
+		question: `Decision ${index + 1}: ${subject}? ${body(index + 1)}`,
+		multi_select: false,
+		allow_other: true,
+		recommended: 0,
+		options: options(index + 1),
+	}));
+	return {
+		ask_id: "ci-ask-long",
+		session_id: ASK_SESSION_IDS[0],
+		status: "open",
+		created_at: now,
+		expires_at: now + 3600000,
+		timeout_s: 3600,
+		delivered: false,
+		urgent: false,
+		questions,
 	};
 }
 export function sessionSnapshot(id, ask, sequence = 1, claimless = false) {
@@ -146,6 +200,7 @@ export async function startAsksAppFixture({ root, port = 8080, token }) {
 	const instance = randomUUID();
 	const now = Date.now();
 	const ask = askFixture(now);
+	const longAsk = longAskFixture(now);
 	let mode = "populated";
 	let sequence = 1;
 	const identity = {
@@ -201,8 +256,13 @@ export async function startAsksAppFixture({ root, port = 8080, token }) {
 	});
 	function sendSnapshot(res, id) {
 		const claimless = CLAIMLESS_MODES.has(mode);
+		/*
+		 * `long` serves the four-decision ask the scroll case measures; every other mode
+		 * keeps the single-question fixture it has always served.
+		 */
+		const served = mode === "long" ? longAsk : ask;
 		res.write(
-			`data: ${JSON.stringify(sessionSnapshot(id, mode === "empty" ? null : ask, sequence, claimless))}\n\n`,
+			`data: ${JSON.stringify(sessionSnapshot(id, mode === "empty" ? null : served, sequence, claimless))}\n\n`,
 		);
 	}
 	const server = createServer(async (req, res) => {

@@ -4,6 +4,8 @@ import { FileDiff } from "lucide-react";
 import {
 	type CSSProperties,
 	type ReactNode,
+	type RefObject,
+	useEffect,
 	useLayoutEffect,
 	useRef,
 	useState,
@@ -47,7 +49,13 @@ import {
  *   rather than pushing Approve/Deny out of the card (`ASK_BODY_FLOOR`);
  * - rows that are not the answer (the dock's approval-policy links and its key
  *   hint) sit in a SECONDARY region that gives way before the body does
- *   (`AskSecondary`), so they can never be what pushes the options out.
+ *   (`AskSecondary`), so they can never be what pushes the options out;
+ * - THE BODY DOES NOT HOLD THE WHEEL WHEN THE CARD IS INSIDE A SCROLLER. The dock's
+ *   card floats over the transcript, so its body contains the gesture
+ *   (`containOverscroll`). Inside the asks drawer and the notifications pane the
+ *   card is a CHILD of the scroller, which owns the scroll - there `contain`
+ *   swallows a wheel over a body that has nothing to scroll (Chromium 156), so
+ *   those hosts pass `containOverscroll={false}` and the gesture chains up.
  *
  * WHY `vh` AND NOT A CONTAINER UNIT for the caps. A container-relative cap would need
  * `container-type: size` on the chat column, the drawer and the notifications
@@ -102,6 +110,92 @@ export const ASK_CARD_MAX_H = "max-h-[min(70vh,48rem)]";
  * inside it" is asserted against these markers, not against class strings.
  */
 export const ASK_SCROLL_ATTR = "data-lo-ask-scroll";
+/**
+ * A SCROLLER THAT HOSTS ASK CARDS (the asks drawer's list, the notifications
+ * detail pane).
+ *
+ * The card is a CHILD of this element, and three behaviours belong to that
+ * relationship rather than to the card: the body and option list must not
+ * `overscroll-contain` the gesture away from it (`containOverscroll`); the card's
+ * pinned action row publishes its height here so the host can keep Tab focus clear
+ * of it (`--lo-ask-actions-h`, read by `scroll-padding-bottom`); and the host
+ * carries NO BOTTOM PADDING, because a scroller clips at its padding box and
+ * `sticky bottom-0` stops there - any bottom padding is a strip the pinned band
+ * cannot paint, with content scrolling visibly under the bar.
+ * Written on the element that owns the scroll and read by `ask-panel.tsx`, so a
+ * second host cannot half-adopt the contract.
+ */
+export const ASK_LIST_ATTR = "data-lo-ask-list";
+/**
+ * THE PINNED ACTION ROW a card draws at the bottom of its own box
+ * (`Send answer` / `Decline`), and the ONE number the host's
+ * `scroll-padding-bottom` needs from it.
+ *
+ * THE HOST OWNS THE HEIGHT, NOT THE CARD (agent review round 1, m1). The row
+ * used to write `--lo-ask-actions-h` on the host itself and delete the property
+ * on unmount, so with two cards on screen a card whose row went away (it
+ * settled, or its dismiss chooser opened) removed the value while another
+ * card's row was still pinned - and the padding that keeps Tab focus clear of a
+ * band vanished with a bar still drawn over the list. What the host needs is the
+ * TALLEST row currently in it: the deepest band any visible card can paint over
+ * a focused control.
+ */
+export const ASK_ACTIONS_ATTR = "data-lo-ask-actions";
+export const ASK_ACTIONS_SELECTOR = `[${ASK_ACTIONS_ATTR}]`;
+
+/** Publish the tallest pinned row's height to `list`; no row left removes the value. */
+export function publishAskActionsHeight(list: HTMLElement): void {
+	let tallest = 0;
+	for (const row of list.querySelectorAll<HTMLElement>(ASK_ACTIONS_SELECTOR))
+		tallest = Math.max(tallest, row.getBoundingClientRect().height);
+	if (tallest > 0) list.style.setProperty("--lo-ask-actions-h", `${tallest}px`);
+	else list.style.removeProperty("--lo-ask-actions-h");
+}
+
+/**
+ * Keep `--lo-ask-actions-h` current on a host declared by `ASK_LIST_ATTR`.
+ *
+ * Rows mount and unmount WITH THEIR CARDS, so the observed set is rebuilt on a
+ * `childList` mutation; a height change inside one mounted row (a translation
+ * wraps it, the column narrows) is the `ResizeObserver`'s business. jsdom has no
+ * layout and no `ResizeObserver`: the mount-time publish runs and the rest is
+ * skipped, which is what an unlaid box has.
+ */
+export function useAskActionsHeight(ref: RefObject<HTMLElement | null>): void {
+	useEffect(() => {
+		const list = ref.current;
+		if (!list) return;
+		publishAskActionsHeight(list);
+		if (typeof ResizeObserver === "undefined") return;
+		const observer = new ResizeObserver(() => publishAskActionsHeight(list));
+		/*
+		 * Each row is observed ONCE (`observed`), so a mutation elsewhere in the list - a
+		 * streamed card re-rendering - costs a querySelectorAll and no re-subscription.
+		 * A row that unmounts stays in the set until this host does; it no longer
+		 * resizes, and the set is bounded by the rows this drawer has ever drawn.
+		 */
+		const observed = new Set<Element>();
+		const watch = () => {
+			for (const row of list.querySelectorAll(ASK_ACTIONS_SELECTOR)) {
+				if (observed.has(row)) continue;
+				observed.add(row);
+				observer.observe(row);
+			}
+			publishAskActionsHeight(list);
+		};
+		watch();
+		const mutations =
+			typeof MutationObserver === "undefined"
+				? null
+				: new MutationObserver(watch);
+		mutations?.observe(list, { childList: true, subtree: true });
+		return () => {
+			mutations?.disconnect();
+			observer.disconnect();
+			list.style.removeProperty("--lo-ask-actions-h");
+		};
+	}, [ref]);
+}
 /** Present while the bottom fade is drawn (overflowing, not scrolled to the end). */
 export const ASK_FADE_ATTR = "data-lo-ask-fade";
 
@@ -174,6 +268,7 @@ export const AskScrollBody = ({
 	children,
 	className,
 	shrinkable = false,
+	containOverscroll = true,
 }: {
 	children: ReactNode;
 	className?: string;
@@ -183,6 +278,22 @@ export const AskScrollBody = ({
 	 * `ASK_BODY_FLOOR`.
 	 */
 	shrinkable?: boolean;
+	/**
+	 * Stop a wheel/trackpad gesture at this body's own end (`overscroll-contain`).
+	 *
+	 * TRUE ON THE DOCK, and it is the dock's rule: its card floats OVER the
+	 * transcript, so a reader who reaches the end of a question must not start
+	 * scrolling the conversation behind a card the transcript does not own.
+	 *
+	 * FALSE WHERE THE CARD IS INSIDE A SCROLLER (`AskPanel` in the asks drawer and
+	 * in the notifications detail pane). There the LIST is the surface that owns
+	 * the scroll, and containment took the gesture away from it: Chromium 156
+	 * stops the chain at a `contain` scroll container even when that container has
+	 * no scrollable overflow at all, so a two-line question in the drawer swallowed
+	 * a wheel (measured: the list moved 0 px; the same probe with `auto` in place
+	 * of `contain` moved it to its maximum).
+	 */
+	containOverscroll?: boolean;
 }) => {
 	const ref = useRef<HTMLDivElement>(null);
 	const [overflows, setOverflows] = useState(false);
@@ -287,11 +398,13 @@ export const AskScrollBody = ({
 				 * shrink the body (the dock's card cap), but never to nothing (code
 				 * review R1, design D1: at 1024x600 the body had collapsed to 18 px
 				 * while the options stayed) - one line is the least it keeps (two
-				 * on the dock, see `ASK_BODY_FLOOR`). `overscroll-contain` so reaching the end does not start
-				 * scrolling the transcript behind the card, and `overflow-wrap:anywhere`
-				 * because the payload that caused this was paths and ids with no spaces.
+				 * on the dock, see `ASK_BODY_FLOOR`). The containment is the CALLER's
+				 * (`containOverscroll`: on for the dock, off inside a scroller), and
+				 * `overflow-wrap:anywhere` because the payload that caused this was paths
+				 * and ids with no spaces.
 				 */
-				"overflow-y-auto overscroll-contain [overflow-wrap:anywhere]",
+				"overflow-y-auto [overflow-wrap:anywhere]",
+				containOverscroll && "overscroll-contain",
 				/*
 				 * THE "THERE IS MORE" CUE (design D5): while the body overflows and the
 				 * reader has not reached its end, the last 12 px fade out (D7) - the same mask
