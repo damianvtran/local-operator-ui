@@ -1,5 +1,7 @@
 {
 	"ui.chat.run_controls.job.no_conversation": "Нет разговора, в котором можно отменить задание.",
+	"ui.chat.run_controls.job.cancel_failed": "Не удалось отменить задание.",
+	"ui.chat.run_controls.job.not_found": "не отменено — провайдер больше не знает об этом задании",
 	"ui.chat.run_controls.monitor.no_conversation": "Нет разговора, в котором можно отменить мониторинг.",
 	"ui.chat.run_controls.monitor.cancel_failed": "Не удалось отменить мониторинг.",
 	"ui.chat.run_controls.wake.no_conversation": "Нет разговора, в котором можно отменить пробуждение.",

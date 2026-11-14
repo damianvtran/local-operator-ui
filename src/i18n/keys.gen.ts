@@ -6917,7 +6917,9 @@ export type MessageParams = {
 	"ui.chat.response_actions.copy": undefined;
 	"ui.chat.response_actions.label": undefined;
 	"ui.chat.response_actions.yours_label": undefined;
+	"ui.chat.run_controls.job.cancel_failed": undefined;
 	"ui.chat.run_controls.job.no_conversation": undefined;
+	"ui.chat.run_controls.job.not_found": undefined;
 	"ui.chat.run_controls.monitor.cancel_failed": undefined;
 	"ui.chat.run_controls.monitor.no_conversation": undefined;
 	"ui.chat.run_controls.wake.already_gone": undefined;

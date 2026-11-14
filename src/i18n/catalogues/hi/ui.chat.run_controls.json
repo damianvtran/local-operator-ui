@@ -1,5 +1,7 @@
 {
 	"ui.chat.run_controls.job.no_conversation": "जॉब रद्द करने के लिए कोई बातचीत नहीं है।",
+	"ui.chat.run_controls.job.cancel_failed": "जॉब रद्द नहीं किया जा सका।",
+	"ui.chat.run_controls.job.not_found": "रद्द नहीं हुआ — प्रोवाइडर अब इस जॉब को नहीं जानता",
 	"ui.chat.run_controls.monitor.no_conversation": "मॉनिटर रद्द करने के लिए कोई बातचीत नहीं है।",
 	"ui.chat.run_controls.monitor.cancel_failed": "मॉनिटर रद्द नहीं किया जा सका।",
 	"ui.chat.run_controls.wake.no_conversation": "जागृति रद्द करने के लिए कोई बातचीत नहीं है।",

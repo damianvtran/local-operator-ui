@@ -50,7 +50,7 @@ async function importBundle(result, label) {
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/main/desktop-transport"; export * from "./src/main/desktop-ipc"; export * from "./src/main/viewer-record"; export * from "./src/main/picker-directory"; export * from "./src/main/supplement-mounts"; export * from "./src/shared/supplement-frame-url"; export {desktopRequestByteBudget, desktopRequestDeadlineMs, desktopRequestDeadlineDetail, DESKTOP_DEADLINE_EXCEEDED_CODE, MAX_DESKTOP_REQUEST_BYTES, MAX_DESKTOP_ENVELOPE_BYTES, MAX_DESKTOP_ENVELOPE_OVERHEAD_BYTES, DESKTOP_REQUEST_TOO_LARGE_DETAIL, desktopEndpoint, desktopRequestSchema} from "./src/shared/desktop-contract"; export { desktopResult } from "./src/renderer/src/shared/api/local-operator/desktop-api"; export { refusalDetail, JOB_CANCEL_NOT_FOUND_COPY } from "./src/renderer/src/features/chat/components/run-details/job-controls-model"; export { requestDesktopMediaOutcome } from "./src/main/desktop-media"; export { DESKTOP_REFUSAL_CODE } from "./src/shared/desktop-contract";',
+			'export * from "./src/main/desktop-transport"; export * from "./src/main/desktop-ipc"; export * from "./src/main/viewer-record"; export * from "./src/main/picker-directory"; export * from "./src/main/supplement-mounts"; export * from "./src/shared/supplement-frame-url"; export {desktopRequestByteBudget, desktopRequestDeadlineMs, desktopRequestDeadlineDetail, DESKTOP_DEADLINE_EXCEEDED_CODE, MAX_DESKTOP_REQUEST_BYTES, MAX_DESKTOP_ENVELOPE_BYTES, MAX_DESKTOP_ENVELOPE_OVERHEAD_BYTES, DESKTOP_REQUEST_TOO_LARGE_DETAIL, desktopEndpoint, desktopRequestSchema} from "./src/shared/desktop-contract"; export { desktopResult } from "./src/renderer/src/shared/api/local-operator/desktop-api"; export { refusalDetail, jobCancelNotFoundCopy } from "./src/renderer/src/features/chat/components/run-details/job-controls-model"; export { requestDesktopMediaOutcome } from "./src/main/desktop-media"; export { DESKTOP_REFUSAL_CODE } from "./src/shared/desktop-contract";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -106,7 +106,7 @@ const {
 	DESKTOP_REQUEST_TOO_LARGE_DETAIL,
 	desktopResult,
 	refusalDetail,
-	JOB_CANCEL_NOT_FOUND_COPY,
+	jobCancelNotFoundCopy,
 	// Aliased: the session-variables bundle binds the plain names too. Both
 	// bundles now resolve before the first registration, so this alias keeps two
 	// namespaces from colliding rather than dodging a TDZ window.
@@ -452,7 +452,7 @@ test("the jobs cancel op pins its route, and its refusals land on the frozen sen
 		 */
 		const unknown = await rejection("aaaaaaaaaaaa");
 		assert.equal(unknown.code, "jobs_not_found", "the machine code survives");
-		assert.equal(refusalDetail(unknown), JOB_CANCEL_NOT_FOUND_COPY);
+		assert.equal(refusalDetail(unknown), jobCancelNotFoundCopy());
 
 		const settled = await rejection("job-settled");
 		assert.equal(
@@ -461,7 +461,7 @@ test("the jobs cancel op pins its route, and its refusals land on the frozen sen
 		);
 
 		const bare = await rejection("job-bare");
-		assert.equal(refusalDetail(bare), JOB_CANCEL_NOT_FOUND_COPY);
+		assert.equal(refusalDetail(bare), jobCancelNotFoundCopy());
 	} finally {
 		globalThis.window = priorWindow;
 	}

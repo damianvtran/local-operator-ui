@@ -1,5 +1,7 @@
 {
 	"ui.chat.run_controls.job.no_conversation": "Không có cuộc trò chuyện nào để hủy tác vụ trong đó.",
+	"ui.chat.run_controls.job.cancel_failed": "Không thể hủy tác vụ.",
+	"ui.chat.run_controls.job.not_found": "không hủy được — nhà cung cấp không còn biết đến tác vụ này",
 	"ui.chat.run_controls.monitor.no_conversation": "Không có cuộc trò chuyện nào để hủy mục giám sát trong đó.",
 	"ui.chat.run_controls.monitor.cancel_failed": "Không thể hủy mục giám sát.",
 	"ui.chat.run_controls.wake.no_conversation": "Không có cuộc trò chuyện nào để hủy lịch đánh thức trong đó.",
