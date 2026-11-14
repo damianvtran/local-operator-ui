@@ -117,13 +117,53 @@ export const RemoveUnfinished: Story = {
 	),
 };
 
+/*
+ * D8: core answers 404 only for a phone it no longer lists, so the refetch has
+ * already dropped the row; the notice is said at list level, over the rows left.
+ */
 export const RemoveNotFound: Story = {
 	render: () => (
 		<Panel>
 			<PairedPhonesView
-				phones={phones}
+				phones={phones.filter((phone) => phone.deviceId !== "a1b2c3")}
 				onRemove={noop}
 				notices={{ a1b2c3: "not_found" }}
+			/>
+		</Panel>
+	),
+};
+
+/** D7: a name at core's 64-code-point cap, quoted and truncated in its row. */
+export const LongNameAtCap: Story = {
+	render: () => (
+		<Panel>
+			<PairedPhonesView
+				phones={[
+					{
+						...phones[0],
+						name: "Ana's iPhone (work) — finance team rota, desk 4, building B, nor",
+					},
+				]}
+				onRemove={noop}
+				initialConfirm={null}
+			/>
+		</Panel>
+	),
+};
+
+/** The remove dialog for that same name: quoted, wrapped, never markup. */
+export const RemoveDialogLongName: Story = {
+	render: () => (
+		<Panel>
+			<PairedPhonesView
+				phones={[
+					{
+						...phones[0],
+						name: "Ana's iPhone (work) — finance team rota, desk 4, building B, nor",
+					},
+				]}
+				onRemove={noop}
+				initialConfirm={phones[0].deviceId}
 			/>
 		</Panel>
 	),

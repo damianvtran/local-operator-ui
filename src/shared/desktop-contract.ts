@@ -4719,6 +4719,22 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.object({ op: z.literal("operator.setup.read") })
 		.strict(),
 	z.object({ op: z.literal("operator.setup.run") }).strict(),
+	/*
+	 * SHOW PHONE PASSWORD (`features.mobile_password_read`, local-operator #3963,
+	 * `routes/desktop_mobile_password.py`): the phone portal password a person who
+	 * runs their own tunnel signs the phone in with - the value `lop mobile
+	 * password` prints - for Settings → Phone access → "Using your own tunnel?".
+	 * No arguments. The renderer sends it ONLY on the person's explicit click
+	 * (never prefetched, never polled, never cached in a query), and neither main
+	 * nor the renderer logs the reply: the transport writes nothing about bodies
+	 * (`desktop-transport.ts`), and `scripts/phone-pairing.test.mjs` pins that
+	 * with a console capture across a 200 read. Core answers 404
+	 * `{detail: {code: "mobile_password_unset"}}` when none is set, with
+	 * `Cache-Control: no-store`.
+	 */
+	z
+		.object({ op: z.literal("mobile.password") })
+		.strict(),
 	z
 		.object({
 			op: z.literal("approvals.approveCredential"),
@@ -7629,6 +7645,8 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"tunnel.setup.read",
 	"devices.list",
 	"operator.setup.read",
+	// Reads the phone password and changes nothing; a timeout gets the read sentence.
+	"mobile.password",
 	"usage.get",
 ]);
 
@@ -9056,6 +9074,8 @@ export function desktopEndpoint(request: DesktopRequest): {
 				path: `/v1/desktop/devices/${encodeURIComponent(request.deviceId)}`,
 				method: "DELETE",
 			};
+		case "mobile.password":
+			return { path: "/v1/desktop/mobile/password", method: "GET" };
 		case "operator.setup.read":
 			return { path: "/v1/desktop/operator/setup", method: "GET" };
 		case "operator.setup.run":

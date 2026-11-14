@@ -44,6 +44,17 @@ globalThis.document = bootstrapDOM.window.document;
 globalThis.localStorage = bootstrapDOM.window.localStorage;
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 globalThis.CustomEvent = bootstrapDOM.window.CustomEvent;
+/*
+ * The machine word in the copy follows `navigator.platform` (design round 1, D4:
+ * "your Mac" / "your PC" / "your computer"). Node's own `navigator` reports the
+ * host OS, so pin it: the same assertions must hold on a Mac and on CI.
+ */
+const setPlatform = (value) =>
+	Object.defineProperty(globalThis.navigator, "platform", {
+		value,
+		configurable: true,
+	});
+setPlatform("Linux x86_64");
 globalThis.ResizeObserver ??= class {
 	observe() {}
 	unobserve() {}
@@ -99,6 +110,8 @@ const bundle = await build({
 			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 			export { PhonePairingHost, PairingPopupView } from "./src/renderer/src/features/phone-pairing/pairing-popup";
 			export { PhonePairingSettings } from "./src/renderer/src/features/phone-pairing/paired-phones-section";
+			export { PhonePasswordDisclosure } from "./src/renderer/src/features/phone-pairing/phone-password";
+			export { requestDesktop } from "./src/main/desktop-transport";
 			export * as model from "./src/renderer/src/features/phone-pairing/pairing-model";
 			export { desktopEndpoint, desktopRequestSchema, desktopRequestDeadlineMs } from "./src/shared/desktop-contract";
 			export { createElement };
@@ -143,6 +156,8 @@ const {
 	QueryClientProvider,
 	PhonePairingHost,
 	PhonePairingSettings,
+	PhonePasswordDisclosure,
+	requestDesktop,
 	model,
 	desktopEndpoint,
 	desktopRequestSchema,
@@ -911,18 +926,31 @@ test("Paired phones: Remove asks first, then DELETEs; a cancelled prompt says re
 		sent.find((request) => request.op === "devices.remove"),
 		{ op: "devices.remove", deviceId: "abc123" },
 	);
-	await until(() => $("paired-phone-notice"), "the removing notice");
-	assert.match($("paired-phone-notice").textContent, /didn't finish/);
+	// D6: a cancelled prompt is ONE warning sentence with Finish removing - not
+	// the row's removing line plus the same fact again in danger red.
+	await until(() => $("paired-phone-unfinished"), "the unfinished line");
+	assert.match($("paired-phone-unfinished").textContent, /didn't finish/);
+	assert.ok($("paired-phone-unfinished").classList.contains("text-warning"));
+	assert.equal(
+		$("paired-phones").querySelectorAll(".text-danger").length,
+		0,
+		"nothing in danger red",
+	);
+	assert.ok(
+		!/Can't approve anymore/.test($("paired-phones").textContent),
+		"the fact is said once",
+	);
+	assert.ok($("paired-phone-finish"), "Finish removing is offered");
+	// D8 / code N2: the 404 notice is said at LIST level, so it outlives the row
+	// the settle refetch drops.
 	script["devices.remove"] = refuse(404, "unknown_device");
-	await click($("paired-phone-remove"));
-	await until(() => $("paired-phone-confirm-remove"), "the dialog again");
-	await click($("paired-phone-confirm-remove"));
-	await until(
-		() =>
-			/no longer on this computer's list/.test(
-				$("paired-phone-notice")?.textContent ?? "",
-			),
-		"the 404 notice",
+	script["devices.list"] = ok({ devices: [] });
+	await click($("paired-phone-finish"));
+	await until(() => $("paired-phones-list-notice"), "the 404 notice");
+	await until(() => $("paired-phones-empty"), "the row gone");
+	assert.match(
+		$("paired-phones-list-notice").textContent,
+		/no longer on this computer's list/,
 	);
 });
 
@@ -945,5 +973,591 @@ test("Settings: the setup row offers Turn on, or Finish setup after a cancelled 
 		$("paired-phones"),
 		null,
 		"no Paired phones without phone_pairing",
+	);
+});
+
+/* ------------------------------------------------- round-1 remediation */
+
+const ID_B = "ap_0123456789abcdeg";
+
+/** Type one character at the field's CURRENT caret, as a browser would. */
+async function typeAtCaret(input, character) {
+	const at = input.selectionStart ?? input.value.length;
+	const end = input.selectionEnd ?? at;
+	const next = input.value.slice(0, at) + character + input.value.slice(end);
+	await setValue(input, next, at + character.length);
+}
+
+/** What a browser's own Backspace does when nothing intercepts it. */
+async function nativeBackspace(input) {
+	const at = input.selectionStart ?? 0;
+	if (at === 0) return;
+	await setValue(
+		input,
+		input.value.slice(0, at - 1) + input.value.slice(at),
+		at - 1,
+	);
+}
+
+async function setValue(input, value, caret) {
+	const setter = Object.getOwnPropertyDescriptor(
+		window.HTMLInputElement.prototype,
+		"value",
+	).set;
+	await act(async () => {
+		setter.call(input, value);
+		input.setSelectionRange(caret, caret);
+		input.dispatchEvent(new window.Event("input", { bubbles: true }));
+	});
+	await settle(2);
+}
+
+/** A Backspace/Delete keydown; runs the browser's own edit only if not prevented. */
+async function pressDelete(input, key) {
+	let prevented = false;
+	await act(async () => {
+		const event = new window.KeyboardEvent("keydown", {
+			key,
+			bubbles: true,
+			cancelable: true,
+		});
+		input.dispatchEvent(event);
+		prevented = event.defaultPrevented;
+	});
+	await settle(2);
+	if (!prevented && key === "Backspace") await nativeBackspace(input);
+}
+
+test("D1: the code reads left to right in every language - hero and typed field pinned LTR and isolated", async () => {
+	script = { capabilities: caps(PAIRING), "approvals.list": list(pairRow()) };
+	await render(createElement(PhonePairingHost));
+	await until(() => $("pairing-sas"), "the code");
+	assert.equal($("pairing-sas").getAttribute("dir"), "ltr");
+	assert.equal($("pairing-sas").style.unicodeBidi, "isolate");
+	// The accessible name still reads the digits in order.
+	assert.equal(
+		$("pairing-sas").getAttribute("aria-label"),
+		"Code: 4 8 2 9 1 3",
+	);
+	await act(async () => root.unmount());
+	root = undefined;
+	script["approvals.list"] = list(typedRow());
+	await render(createElement(PhonePairingHost));
+	await until(() => $("pairing-code-input"), "the field");
+	assert.equal($("pairing-code-input").getAttribute("dir"), "ltr");
+	assert.equal($("pairing-code-input").style.unicodeBidi, "isolate");
+});
+
+test("U2: a mid-field correction changes only that digit, keeps the caret, and Backspace over the space deletes a digit", async () => {
+	script = { capabilities: caps(PAIRING), "approvals.list": list(typedRow()) };
+	await render(createElement(PhonePairingHost));
+	await until(() => $("pairing-code-input"), "the field");
+	const input = $("pairing-code-input");
+	input.focus();
+	await setValue(input, "482913", 6);
+	assert.equal(input.value, "482 913");
+	// The UX round's repro: caret after the 8, Backspace, then 7.
+	await act(async () => input.setSelectionRange(2, 2));
+	await pressDelete(input, "Backspace");
+	assert.equal(input.value, "429 13");
+	assert.equal(input.selectionStart, 1, "the caret stays where the edit was");
+	await typeAtCaret(input, "7");
+	assert.equal(input.value, "472 913", "only the corrected digit changed");
+	assert.equal(input.selectionStart, 2);
+	// Backspace just after the group space removes the digit before it.
+	await act(async () => input.setSelectionRange(4, 4));
+	await pressDelete(input, "Backspace");
+	assert.equal(input.value, "479 13");
+	assert.equal(input.selectionStart, 2);
+	// Delete just before the space removes the digit after it.
+	await setValue(input, "472 913", 7);
+	await act(async () => input.setSelectionRange(3, 3));
+	await pressDelete(input, "Delete");
+	assert.equal(input.value, "472 13");
+	assert.equal(input.selectionStart, 3);
+});
+
+test("U2: a paste that would make more than six digits is refused whole, never clipped into a submittable code", async () => {
+	script = { capabilities: caps(PAIRING), "approvals.list": list(typedRow()) };
+	await render(createElement(PhonePairingHost));
+	await until(() => $("pairing-code-input"), "the field");
+	const input = $("pairing-code-input");
+	input.focus();
+	await setValue(input, "1", 1);
+	await typeAtCaret(input, "482 913");
+	assert.equal(input.value, "1", "the field keeps what it had");
+	assert.equal($("pairing-approve").disabled, true, "nothing to submit");
+	assert.equal(input.getAttribute("maxlength"), null);
+});
+
+test("M1: a new request replacing the shown one starts with an empty field", async () => {
+	let rows = [typedRow()];
+	script = {
+		capabilities: caps(PAIRING),
+		"approvals.list": () => list(...rows),
+	};
+	await render(createElement(PhonePairingHost));
+	await until(() => $("pairing-code-input"), "the field");
+	await type($("pairing-code-input"), "123");
+	assert.equal($("pairing-code-input").value, "123");
+	rows = [
+		typedRow({ reason: "withdrawn", progress: null }, { state: "withdrawn" }),
+		typedRow({}, { approval_id: ID_B }),
+	];
+	await publish({
+		epoch: "e",
+		seq: 3,
+		type: "approvals",
+		payload: { pending: true, pair_request: ID_B },
+	});
+	await until(
+		() => $("pairing-code-input")?.value === "",
+		"the field cleared for the new request",
+	);
+});
+
+test("M3: a null in the open frame does not hide a live request the list still shows", async () => {
+	script = { capabilities: caps(PAIRING), "approvals.list": list(pairRow()) };
+	await render(createElement(PhonePairingHost));
+	await publish({
+		epoch: "e",
+		seq: 1,
+		type: "open",
+		payload: { approvals_pending: true, approvals_pair_request: null },
+	});
+	await until(() => popup(), "the card from the list");
+	// A null after the feed NAMED it still hides that id at once.
+	await publish({
+		epoch: "e",
+		seq: 2,
+		type: "approvals",
+		payload: { pending: true, pair_request: ID },
+	});
+	await publish({
+		epoch: "e",
+		seq: 3,
+		type: "approvals",
+		payload: { pending: false, pair_request: null },
+	});
+	assert.ok(popup() === null);
+});
+
+test("M2/U4/D2: turning on from the popup says where the prompt is, and a failure is the keyed alert, never a raw message", async () => {
+	let release;
+	script = {
+		capabilities: caps({ ...PAIRING, operator_setup: 1 }),
+		"approvals.list": list(pairRow({ assurance: null })),
+		"operator.setup.run": () =>
+			new Promise((resolve) => {
+				release = resolve;
+			}),
+	};
+	await render(createElement(PhonePairingHost));
+	await until(() => $("pairing-setup"), "Turn on");
+	await click($("pairing-setup"));
+	await until(() => $("pairing-setup-working"), "the waiting line");
+	assert.match(
+		$("pairing-setup-working").textContent,
+		/password prompt\. It may be behind this window/,
+	);
+	assert.ok(
+		document.activeElement === $("pairing-setup-working"),
+		"focus is on $('pairing-setup-working')",
+	);
+	await act(async () =>
+		release({
+			status: 500,
+			body: { detail: { code: "internal", text: "Traceback: KeyError 'x'" } },
+		}),
+	);
+	await until(() => $("pairing-setup-error"), "the failure");
+	assert.equal($("pairing-setup-error").getAttribute("role"), "alert");
+	assert.match($("pairing-setup-error").textContent, /couldn't be turned on/);
+	assert.ok(!popup().textContent.includes("Traceback"));
+});
+
+test("U1/U3/D3: focus follows the person's press, a polite region announces each step, and the settled card names the phone", async () => {
+	let finish;
+	let rows = [pairRow()];
+	script = {
+		capabilities: caps(PAIRING),
+		"approvals.list": () => list(...rows),
+		"approvals.pairAck": ok({ approval_id: ID, acked: true }),
+		"approvals.approveOperation": () =>
+			new Promise((resolve) => {
+				finish = resolve;
+			}),
+	};
+	script["approvals.list"] = () => list();
+	await render(createElement(PhonePairingHost));
+	// Mounted EMPTY before any card, so its first change is announced.
+	assert.ok($("pairing-live"), "the live region exists before a card");
+	assert.equal($("pairing-live").getAttribute("aria-live"), "polite");
+	assert.equal($("pairing-live").textContent, "");
+	script["approvals.list"] = () => list(...rows);
+	await publish({
+		epoch: "e",
+		seq: 1,
+		type: "approvals",
+		payload: { pending: true, pair_request: ID },
+	});
+	await until(() => popup(), "the popup");
+	assert.equal(
+		$("pairing-live").textContent,
+		"A phone wants to pair with this computer",
+	);
+	assert.ok(document.activeElement === document.body, "no focus on arrival");
+	$("pairing-approve").focus();
+	await click($("pairing-approve"));
+	await until(() => $("pairing-progress"), "the signing line");
+	assert.ok(
+		document.activeElement === $("pairing-progress"),
+		"focus is on $('pairing-progress')",
+	);
+	assert.match($("pairing-live").textContent, /^Confirm on your computer/);
+	rows = [
+		pairRow({ reason: "paired", progress: null }, { state: "connected" }),
+	];
+	await act(async () =>
+		finish(ok({ signed: { ok: true }, applied: { ok: true } })),
+	);
+	await until(() => $("pairing-outcome"), "the outcome");
+	assert.ok(
+		document.activeElement === $("pairing-close"),
+		"focus is on $('pairing-close')",
+	);
+	assert.match($("pairing-live").textContent, /^Paired\./);
+	assert.equal(
+		popup().querySelector("h2").textContent,
+		"Phone pairing request",
+		"the settled title no longer says 'wants to pair'",
+	);
+	assert.equal($("pairing-phone-name").textContent, "Ana's iPhone");
+	assert.match(
+		$("pairing-manage-where").textContent,
+		/Settings → Phone access → Paired phones/,
+	);
+	// N4: Escape closes a settled card.
+	await keyDown($("pairing-close"), "Escape");
+	await settle();
+	assert.ok(popup() === null);
+});
+
+test("U1/N2: a wrong code returns focus to the field, which names the error", async () => {
+	let rows = [typedRow()];
+	script = {
+		capabilities: caps(PAIRING),
+		"approvals.list": () => list(...rows),
+		"approvals.pairAck": () => {
+			rows = [typedRow({ tries_left: 2 })];
+			return refuse(409, "pair_code_mismatch");
+		},
+	};
+	await render(createElement(PhonePairingHost));
+	await until(() => $("pairing-code-input"), "the field");
+	await type($("pairing-code-input"), "111111");
+	$("pairing-approve").focus();
+	await click($("pairing-approve"));
+	await until(() => $("pairing-error"), "the error");
+	assert.ok(
+		document.activeElement === $("pairing-code-input"),
+		"focus is on $('pairing-code-input')",
+	);
+	assert.equal($("pairing-code-input").getAttribute("aria-invalid"), "true");
+	const describedBy = $("pairing-code-input")
+		.getAttribute("aria-describedby")
+		.split(" ");
+	assert.ok(describedBy.includes($("pairing-error").id));
+});
+
+test("D2: Deny says Denying… while its post is in flight", async () => {
+	let release;
+	script = {
+		capabilities: caps(PAIRING),
+		"approvals.list": list(pairRow()),
+		"approvals.deny": () =>
+			new Promise((resolve) => {
+				release = resolve;
+			}),
+	};
+	await render(createElement(PhonePairingHost));
+	await until(() => $("pairing-deny"), "Deny");
+	await click($("pairing-deny"));
+	await until(() => $("pairing-deny")?.disabled, "busy");
+	assert.equal($("pairing-deny").textContent, "Denying…");
+	await act(async () => release(ok({ approval_id: ID, state: "denied" })));
+});
+
+test("D5: the card is bounded by the window; only its middle scrolls", async () => {
+	script = { capabilities: caps(PAIRING), "approvals.list": list(pairRow()) };
+	await render(createElement(PhonePairingHost));
+	await until(() => popup(), "the popup");
+	assert.ok(popup().className.includes("max-h-[calc(100vh-2rem)]"));
+	assert.ok($("pairing-body").className.includes("overflow-y-auto"));
+	assert.ok(!$("pairing-body").contains(popup().querySelector("h2")));
+	assert.ok(!$("pairing-body").contains($("pairing-approve")));
+	assert.ok($("pairing-actions").contains($("pairing-approve")));
+});
+
+test("D4: the machine is 'your Mac' on macOS and 'your PC' on Windows", async () => {
+	try {
+		setPlatform("MacIntel");
+		assert.equal(model.hostOs(), "mac");
+		let rows = [pairRow({ reason: "signing", progress: "signing" })];
+		script = {
+			capabilities: caps(PAIRING),
+			"approvals.list": () => list(...rows),
+		};
+		await render(createElement(PhonePairingHost));
+		await until(() => $("pairing-progress"), "the signing line");
+		assert.match($("pairing-progress").textContent, /^Confirm on your Mac\./);
+		await act(async () => root.unmount());
+		root = undefined;
+		setPlatform("Win32");
+		rows = [
+			pairRow({ reason: "admin_prompt_open", progress: "admin_prompt_open" }),
+		];
+		await render(createElement(PhonePairingHost));
+		await until(() => $("pairing-progress"), "the admin line");
+		assert.match($("pairing-progress").textContent, /^Your PC is asking/);
+		assert.match(popup().textContent, /Your PC/);
+	} finally {
+		setPlatform("Linux x86_64");
+	}
+});
+
+test("N1: a name core clipped shows an ellipsis beside Show full name", async () => {
+	const full = "A".repeat(50);
+	script = {
+		capabilities: caps(PAIRING),
+		"approvals.list": list(
+			pairRow({ phone_name: "A".repeat(40), phone_name_full: full }),
+		),
+	};
+	await render(createElement(PhonePairingHost));
+	await until(() => $("pairing-name-toggle"), "the toggle");
+	assert.equal($("pairing-phone-name").textContent, `${"A".repeat(40)}…`);
+});
+
+test("U1/U4/D7: Settings quotes names, says where the removal prompt is, and Cancel returns focus to the row", async () => {
+	let release;
+	script = {
+		capabilities: caps(PAIRING),
+		"devices.list": ok({ devices: [phone()] }),
+		"devices.remove": () =>
+			new Promise((resolve) => {
+				release = resolve;
+			}),
+	};
+	await render(createElement(PhonePairingSettings));
+	await until(() => $("paired-phone-remove"), "Remove");
+	assert.equal($("paired-phone-name").parentElement.tagName, "Q");
+	$("paired-phone-remove").focus();
+	await click($("paired-phone-remove"));
+	await until(() => $("paired-phone-dialog"), "the dialog");
+	assert.equal($("paired-phone-dialog-name").parentElement.tagName, "Q");
+	const cancel = Array.from(
+		$("paired-phone-dialog").querySelectorAll("button"),
+	).find((button) => button.textContent === "Cancel");
+	await click(cancel);
+	await until(() => !$("paired-phone-dialog"), "the dialog closed");
+	await settle();
+	assert.ok(
+		document.activeElement === $("paired-phone-remove"),
+		"focus is on $('paired-phone-remove')",
+	);
+	await click($("paired-phone-remove"));
+	await until(() => $("paired-phone-confirm-remove"), "the dialog again");
+	await click($("paired-phone-confirm-remove"));
+	await until(() => $("paired-phone-working"), "the waiting line");
+	assert.match(
+		$("paired-phone-working").textContent,
+		/password prompt\. It may be behind this window/,
+	);
+	// Its button is disabled while the removal runs, so focus goes to the heading.
+	await settle();
+	assert.ok(
+		document.activeElement === $("paired-phones-heading"),
+		"focus is on $('paired-phones-heading')",
+	);
+	await act(async () =>
+		release(ok({ device_id: "abc123", state: "revoked", anchor: "ok" })),
+	);
+});
+
+test("N3: Finish setup says why the first attempt did not finish", async () => {
+	script = {
+		capabilities: caps({ operator_setup: 1 }),
+		"operator.setup.read": ok({
+			state: "finish_setup",
+			can_prompt: true,
+			in_progress: false,
+			blocked: null,
+			message: null,
+			file_only_notice: null,
+		}),
+	};
+	await render(createElement(PhonePairingSettings));
+	await until(() => $("phone-approvals-finish-reason"), "the reason line");
+	assert.match(
+		$("phone-approvals-finish-reason").textContent,
+		/prompt was cancelled/,
+	);
+});
+
+/* ------------------------------------------- D10: Show phone password */
+
+const SECRET = "hunter2-Correct-Horse-7Q";
+
+/** Every console call made while `work` runs, as strings. */
+async function consoleDuring(work) {
+	const lines = [];
+	const methods = ["log", "info", "warn", "error", "debug", "trace"];
+	const saved = methods.map((name) => console[name]);
+	for (const name of methods)
+		console[name] = (...args) =>
+			lines.push(
+				args
+					.map((arg) =>
+						typeof arg === "string"
+							? arg
+							: (JSON.stringify(arg) ?? String(arg)),
+					)
+					.join(" "),
+			);
+	try {
+		await work();
+	} finally {
+		methods.forEach((name, index) => {
+			console[name] = saved[index];
+		});
+	}
+	return lines;
+}
+
+test("D10: without mobile_password_read there is no disclosure and nothing is read", async () => {
+	script = { capabilities: caps(PAIRING), "devices.list": ok({ devices: [] }) };
+	await render(createElement(PhonePairingSettings));
+	await until(() => $("paired-phones-empty"), "the list");
+	assert.ok($("phone-password-disclosure") === null);
+	assert.ok(!ops().includes("mobile.password"));
+});
+
+test("D10: the password is read on click only, masked by default, copyable, cleared on collapse, and never logged by main or the renderer", async () => {
+	const { createServer } = await import("node:http");
+	let hits = 0;
+	const server = createServer((request, response) => {
+		if (request.url === "/v1/desktop/mobile/password") hits++;
+		response.writeHead(200, {
+			"content-type": "application/json",
+			"cache-control": "no-store",
+		});
+		response.end(
+			JSON.stringify({
+				status: 200,
+				message: "Mobile password.",
+				result: { password: SECRET },
+			}),
+		);
+	});
+	await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+	const url = `http://127.0.0.1:${server.address().port}`;
+	const copied = [];
+	const savedClipboard = Object.getOwnPropertyDescriptor(
+		globalThis.navigator,
+		"clipboard",
+	);
+	Object.defineProperty(globalThis.navigator, "clipboard", {
+		value: { writeText: async (text) => copied.push(text) },
+		configurable: true,
+	});
+	try {
+		const lines = await consoleDuring(async () => {
+			script = {
+				capabilities: caps({ mobile_password_read: 1 }),
+				// The renderer's request goes through MAIN's real transport to HTTP.
+				"mobile.password": (request) =>
+					requestDesktop(request, url, "desktop-token"),
+			};
+			await render(createElement(PhonePairingSettings));
+			await until(() => $("phone-password-disclosure"), "the disclosure");
+			assert.ok($("phone-password-panel") === null, "collapsed by default");
+			await click(
+				$("phone-password-disclosure").querySelector("button[aria-expanded]"),
+			);
+			await until(() => $("phone-password-read"), "the read button");
+			assert.equal(hits, 0, "opening the disclosure reads nothing");
+			assert.ok(!ops().includes("mobile.password"));
+			await click($("phone-password-read"));
+			await until(() => $("phone-password-masked"), "the masked value");
+			assert.equal(hits, 1);
+			assert.deepEqual(
+				sent.filter((request) => request.op === "mobile.password"),
+				[{ op: "mobile.password" }],
+			);
+			assert.ok(
+				!document.body.textContent.includes(SECRET),
+				"masked by default",
+			);
+			await click($("phone-password-copy"));
+			await until(() => copied.length === 1, "the copy");
+			assert.equal(copied[0], SECRET);
+			assert.equal($("phone-password-copy").textContent, "Copied");
+			await click($("phone-password-toggle"));
+			assert.equal($("phone-password-value").textContent, SECRET);
+			assert.equal($("phone-password-value").getAttribute("dir"), "ltr");
+			// Collapse: the panel, and the value with it, leave the tree.
+			await click(
+				$("phone-password-disclosure").querySelector("button[aria-expanded]"),
+			);
+			assert.ok($("phone-password-panel") === null);
+			assert.ok(!document.body.textContent.includes(SECRET));
+			// Reopening starts over: nothing shown, nothing read until clicked.
+			await click(
+				$("phone-password-disclosure").querySelector("button[aria-expanded]"),
+			);
+			await until(() => $("phone-password-read"), "the read button again");
+			assert.equal(hits, 1);
+		});
+		assert.ok(
+			lines.every((line) => !line.includes(SECRET)),
+			`no console line carries the password (${lines.length} lines seen)`,
+		);
+	} finally {
+		if (savedClipboard)
+			Object.defineProperty(globalThis.navigator, "clipboard", savedClipboard);
+		else Reflect.deleteProperty(globalThis.navigator, "clipboard");
+		await new Promise((resolve) => server.close(resolve));
+	}
+});
+
+test("D10: 404 mobile_password_unset says no password is set; other failures are a keyed retry line", async () => {
+	script = {
+		capabilities: caps({ mobile_password_read: 1 }),
+		"mobile.password": refuse(404, "mobile_password_unset"),
+	};
+	await render(createElement(PhonePasswordDisclosure, { defaultOpen: true }));
+	await until(() => $("phone-password-read"), "the read button");
+	await click($("phone-password-read"));
+	await until(() => $("phone-password-unset"), "the unset line");
+	assert.equal(
+		$("phone-password-unset").textContent,
+		"No phone password is set.",
+	);
+	script["mobile.password"] = refuse(500, "internal", "secret-ish trace");
+	await click($("phone-password-read"));
+	await until(() => $("phone-password-error"), "the error line");
+	assert.match($("phone-password-error").textContent, /couldn't be read/);
+	assert.ok(!document.body.textContent.includes("trace"));
+});
+
+test("contract: mobile.password is a bodiless GET of core's route", () => {
+	assert.deepEqual(desktopEndpoint({ op: "mobile.password" }), {
+		path: "/v1/desktop/mobile/password",
+		method: "GET",
+	});
+	assert.equal(
+		desktopRequestSchema.safeParse({ op: "mobile.password", extra: 1 }).success,
+		false,
 	);
 });

@@ -130,7 +130,7 @@ export const ExpiredWhileDeciding: Story = {
 	args: { card: { ...typedCard, reason: "expired" }, outcome: "expired" },
 };
 
-/** Deny pressed, its answer not back yet: both buttons hold still. */
+/** Deny pressed, its answer not back yet: both buttons hold still, Deny says "Denying…". */
 export const BusyDenying: Story = {
 	args: { card: confirmCard, busy: "deny" },
 };
@@ -139,14 +139,51 @@ export const ChangedSinceShown: Story = {
 	args: { card: confirmCard, error: { kind: "changed" } },
 };
 
+/*
+ * D7: the longest name a user can actually see. Core caps what a phone may send
+ * at 64 code points and clips the short form to 40 with no ellipsis (the popup
+ * adds one); this fixture is exactly that, not a longer pre-clamped string.
+ */
+const LONG_NAME_FULL =
+	"Ana's iPhone (work) — finance team rota, desk 4, building B, nor";
+const LONG_NAME_SHORT = Array.from(LONG_NAME_FULL).slice(0, 40).join("");
+
 /** The name is what the phone sent: clamped, bidi-stripped, full form on demand. */
 export const LongName: Story = {
 	args: {
 		card: {
 			...confirmCard,
-			phoneName: "Ana's iPhone (work) — personal device for the finance te…",
-			phoneNameFull:
-				"Ana's iPhone (work) — personal device for the finance team rota",
+			phoneName: LONG_NAME_SHORT,
+			phoneNameFull: LONG_NAME_FULL,
+		},
+	},
+};
+
+/*
+ * D1: in a right-to-left language the code still reads `482 913`, in the order
+ * the phone shows it - on the hero and in the typed field alike.
+ */
+export const AttestedConfirmUrdu: Story = {
+	args: { card: confirmCard, locale: "ur" } as Story["args"],
+};
+
+export const TypedEntryUrdu: Story = {
+	args: {
+		card: typedCard,
+		initialCode: "482913",
+		locale: "ur",
+	} as Story["args"],
+};
+
+/** U4/M2: turning on failed - the keyed alert, never a raw error message. */
+export const NotSetUpTurnOnFailed: Story = {
+	args: {
+		card: { ...confirmCard, assurance: null, sas: null },
+		setup: {
+			running: false,
+			failure:
+				"Phone approvals couldn't be turned on. Nothing changed; try again.",
+			onTurnOn: noop,
 		},
 	},
 };

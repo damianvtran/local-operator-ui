@@ -1074,6 +1074,13 @@ export type DesktopFeature =
 	 */
 	| "operator_setup"
 	/**
+	 * SHOW PHONE PASSWORD (`features.mobile_password_read`, local-operator #3963):
+	 * `GET /v1/desktop/mobile/password`, desktop-only. Absent ⇒ Settings → Phone
+	 * access renders no "Using your own tunnel?" disclosure and the op is never
+	 * sent (an older backend has no such route).
+	 */
+	| "mobile_password_read"
+	/**
 	 * PROFILE PROPOSALS (`features.profile_proposals`): the Agents-side review of
 	 * a change an agent proposed to an account agent or team -
 	 * `GET/POST /v1/desktop/profile-proposals[...]`. ITS OWN KEY because a backend

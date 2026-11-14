@@ -4,10 +4,15 @@
 		"tone": "plain, factual",
 		"note": "Appears on any screen when a phone asks to be paired with this computer. Fixed wording: do not name the phone here (the name is chosen by whoever asked)."
 	},
+	"ui.phone_pairing.popup.title_settled": {
+		"role": "non-modal card title",
+		"tone": "plain, neutral",
+		"note": "Replaces the 'wants to pair' title once the request is settled (paired, denied, closed after three wrong codes, or expired), so the title does not contradict the outcome below it. Do not name the phone."
+	},
 	"ui.phone_pairing.popup.grant": {
 		"role": "consent sentence",
 		"tone": "plain, exact",
-		"note": "States what approving grants: the phone can approve requests on this computer and receive its notifications, and computers that join this computer's network later will trust the phone too."
+		"note": "States what approving grants, in the spec's words: the phone can approve anything the user's agents ask permission for on this computer (the same as clicking Approve on this screen) and receive this computer's notifications; computers that join this computer's network later will trust the phone too."
 	},
 	"ui.phone_pairing.popup.name_label": {
 		"role": "definition label",
@@ -69,6 +74,11 @@
 		"tone": "imperative",
 		"note": "Refuses the pairing request."
 	},
+	"ui.phone_pairing.popup.denying": {
+		"role": "button label while busy",
+		"tone": "short, in progress",
+		"note": "Replaces 'Deny' on the button while the denial is being recorded. Keep it one or two words with the ellipsis."
+	},
 	"ui.phone_pairing.popup.type_code_label": {
 		"role": "input label",
 		"tone": "plain",
@@ -92,12 +102,12 @@
 	"ui.phone_pairing.popup.signing": {
 		"role": "status",
 		"tone": "plain",
-		"note": "The operating system is showing a confirmation prompt (Touch ID or password); it may be hidden behind the app window."
+		"note": "The operating system is showing a confirmation prompt (Touch ID or password); it may be hidden behind the app window. ICU select on `os`: `mac` names the machine \"your Mac\", `windows` \"your PC\", `other` \"your computer\" — matching core's own gesture line on the same card, which already says \"Your Mac will ask for Touch ID…\" on macOS. Translate each arm as a whole sentence; keep the arm keys."
 	},
 	"ui.phone_pairing.popup.admin_prompt": {
 		"role": "status",
 		"tone": "plain",
-		"note": "The operating system is asking for the computer's login password to add the phone; the prompt may be hidden behind the app window."
+		"note": "The operating system is asking for the computer's login password to add the phone; the prompt may be hidden behind the app window. ICU select on `os`: `mac` names the machine \"your Mac\", `windows` \"your PC\", `other` \"your computer\" — matching core's own gesture line on the same card, which already says \"Your Mac will ask for Touch ID…\" on macOS. Translate each arm as a whole sentence; keep the arm keys."
 	},
 	"ui.phone_pairing.popup.failed": {
 		"role": "status",
@@ -113,6 +123,11 @@
 		"role": "success message",
 		"tone": "plain, warm",
 		"note": "The phone is now paired."
+	},
+	"ui.phone_pairing.popup.manage_where": {
+		"role": "pointer under the success line",
+		"tone": "reassuring, plain",
+		"note": "After a phone is paired: where to undo it. 'Settings → Phone access → Paired phones' is the navigation path (Settings page, its 'Phone access' heading, the 'Paired phones' list); use the same names those screens use in this language and keep the arrows."
 	},
 	"ui.phone_pairing.popup.denied": {
 		"role": "result message",
@@ -167,7 +182,7 @@
 	"ui.phone_pairing.setup.body": {
 		"role": "help text",
 		"tone": "plain",
-		"note": "The operating system asks for the computer's password one time."
+		"note": "The operating system asks for the computer's password one time. ICU select on `os`: `mac` names the machine \"your Mac\", `windows` \"your PC\", `other` \"your computer\" — matching core's own gesture line on the same card, which already says \"Your Mac will ask for Touch ID…\" on macOS. Translate each arm as a whole sentence; keep the arm keys."
 	},
 	"ui.phone_pairing.setup.turn_on": {
 		"role": "button",
@@ -179,15 +194,20 @@
 		"tone": "imperative",
 		"note": "Shown when an earlier attempt did not finish (for example the prompt was cancelled)."
 	},
+	"ui.phone_pairing.setup.finish_reason": {
+		"role": "explanatory line above a button",
+		"tone": "plain, non-blaming",
+		"note": "Shown with the 'Finish setup' button when the person cancelled the computer's password prompt during setup, so setup is only partly done."
+	},
 	"ui.phone_pairing.setup.working": {
 		"role": "status",
 		"tone": "plain",
-		"note": "Waiting for the user to answer the operating-system password prompt."
+		"note": "Waiting for the user to answer the operating-system password prompt. ICU select on `os`: `mac` names the machine \"your Mac\", `windows` \"your PC\", `other` \"your computer\" — matching core's own gesture line on the same card, which already says \"Your Mac will ask for Touch ID…\" on macOS. Translate each arm as a whole sentence; keep the arm keys."
 	},
 	"ui.phone_pairing.setup.on": {
 		"role": "success message",
 		"tone": "plain",
-		"note": "Phone approvals are on; each newly paired phone still triggers one password prompt."
+		"note": "Phone approvals are on; each newly paired phone still triggers one password prompt. ICU select on `os`: `mac` names the machine \"your Mac\", `windows` \"your PC\", `other` \"your computer\" — matching core's own gesture line on the same card, which already says \"Your Mac will ask for Touch ID…\" on macOS. Translate each arm as a whole sentence; keep the arm keys."
 	},
 	"ui.phone_pairing.setup.error": {
 		"role": "error",
@@ -227,7 +247,7 @@
 	"ui.phone_pairing.phones.removing": {
 		"role": "row status",
 		"tone": "plain",
-		"note": "Removal is half done: the phone can no longer approve, and one step still needs the computer's password."
+		"note": "Removal is half done: the phone can no longer approve, and one step still needs the computer's password. ICU select on `os`: `mac` names the machine \"your Mac\", `windows` \"your PC\", `other` \"your computer\" — matching core's own gesture line on the same card, which already says \"Your Mac will ask for Touch ID…\" on macOS. Translate each arm as a whole sentence; keep the arm keys."
 	},
 	"ui.phone_pairing.phones.finish_removing": {
 		"role": "button",
@@ -262,7 +282,7 @@
 	"ui.phone_pairing.phones.dialog_gesture": {
 		"role": "dialog body",
 		"tone": "plain",
-		"note": "An operating-system password prompt follows."
+		"note": "An operating-system password prompt follows. ICU select on `os`: `mac` names the machine \"your Mac\", `windows` \"your PC\", `other` \"your computer\" — matching core's own gesture line on the same card, which already says \"Your Mac will ask for Touch ID…\" on macOS. Translate each arm as a whole sentence; keep the arm keys."
 	},
 	"ui.phone_pairing.phones.cancel": {
 		"role": "button",
@@ -318,5 +338,65 @@
 		"role": "definition label",
 		"tone": "short",
 		"note": "Label before the phone's platform (iPhone, Android, web browser), as the phone reported it."
+	},
+	"ui.phone_pairing.password.disclosure": {
+		"role": "collapsed disclosure label",
+		"tone": "short question",
+		"note": "Settings → Phone access. Opens the section for people who reach this computer from their phone through a tunnel they run themselves, not through their Radient account. Most people never open it."
+	},
+	"ui.phone_pairing.password.body": {
+		"role": "explanation inside the disclosure",
+		"tone": "plain",
+		"note": "Why the phone password exists: with a self-run tunnel the phone signs in with this computer's phone password, not the Radient account."
+	},
+	"ui.phone_pairing.password.read": {
+		"role": "button",
+		"tone": "short, imperative",
+		"note": "Reads this computer's phone password only when pressed. 'Phone password' is the password the phone types to sign in to this computer; keep the same term as the other password keys."
+	},
+	"ui.phone_pairing.password.label": {
+		"role": "field label",
+		"tone": "short",
+		"note": "Label above the phone password once it has been read."
+	},
+	"ui.phone_pairing.password.masked_aria": {
+		"role": "screen-reader label",
+		"tone": "short",
+		"note": "Accessible name of the masked password (shown as dots) before the person presses Show."
+	},
+	"ui.phone_pairing.password.show": {
+		"role": "button",
+		"tone": "one word",
+		"note": "Unmasks the phone password on screen."
+	},
+	"ui.phone_pairing.password.hide": {
+		"role": "button",
+		"tone": "one word",
+		"note": "Masks the phone password again."
+	},
+	"ui.phone_pairing.password.copy": {
+		"role": "button",
+		"tone": "one word",
+		"note": "Copies the phone password to the clipboard."
+	},
+	"ui.phone_pairing.password.copied": {
+		"role": "button label after success",
+		"tone": "one word",
+		"note": "Briefly replaces 'Copy' after the password was copied."
+	},
+	"ui.phone_pairing.password.copy_failed": {
+		"role": "inline error",
+		"tone": "plain",
+		"note": "The clipboard refused the copy; the person can still reveal the password and copy it by hand."
+	},
+	"ui.phone_pairing.password.unset": {
+		"role": "status line",
+		"tone": "plain, factual",
+		"note": "This computer has no phone password, so there is nothing to show."
+	},
+	"ui.phone_pairing.password.error": {
+		"role": "inline error",
+		"tone": "plain",
+		"note": "Reading the phone password failed for another reason; nothing changed and the person can try again."
 	}
 }

@@ -41,17 +41,24 @@ import {
 	type FC,
 	type KeyboardEvent,
 	type MouseEvent,
+	forwardRef,
 	useEffect,
 	useId,
+	useLayoutEffect,
 	useRef,
 	useState,
 } from "react";
 import {
+	type HostOs,
 	type PairingCard,
+	applyCodeEdit,
+	caretForDigitIndex,
+	deleteAcrossGroupSpace,
 	formatCountdown,
+	formatTypedCode,
 	groupPairingCode,
+	hostOs,
 	livePairingCard,
-	normalizeTypedCode,
 	sasAriaDigits,
 } from "./pairing-model";
 import {
@@ -74,8 +81,14 @@ export type PairingError =
 
 export type PairingSetupOffer = {
 	running: boolean;
-	/** Core's own sentence for the last attempt's outcome, when it gave one. */
+	/** Core's own sentence for the last successful attempt, when it gave one. */
 	message?: string | null;
+	/**
+	 * Why the last attempt failed, already in words (`role="alert"`): core's own
+	 * sentence for a 409 host refusal, else the keyed generic line - never a raw
+	 * transport or runtime `Error.message` (code review round 1, M2).
+	 */
+	failure?: string | null;
 	onTurnOn: () => void;
 };
 
@@ -93,6 +106,8 @@ export type PairingPopupViewProps = {
 	onDeny: () => void;
 	onRetry: () => void;
 	onClose: () => void;
+	/** The typed field's starting digits (stories only: the RTL frame needs a code in it). */
+	initialCode?: string;
 };
 
 const PLATFORM_KEYS = {
@@ -151,6 +166,13 @@ const DeliberateApprove: FC<{
 const PhoneName: FC<{ card: PairingCard }> = ({ card }) => {
 	const [expanded, setExpanded] = useState(false);
 	const truncated = card.phoneNameFull !== card.phoneName;
+	// Core clips the short form to 40 code points WITHOUT an ellipsis (code
+	// review round 1, N1), so a 41-64 character name would look whole while a
+	// "Show full name" toggle sat beside it. Mark the cut where core did not.
+	const short =
+		truncated && !card.phoneName.endsWith("…")
+			? `${card.phoneName}…`
+			: card.phoneName;
 	return (
 		<span className="min-w-0 break-words">
 			{/*
@@ -164,7 +186,7 @@ const PhoneName: FC<{ card: PairingCard }> = ({ card }) => {
 					data-testid="pairing-phone-name"
 					className="font-medium text-ink"
 				>
-					{expanded ? card.phoneNameFull : card.phoneName}
+					{expanded ? card.phoneNameFull : short}
 				</bdi>
 			</q>
 			{truncated ? (
@@ -189,6 +211,18 @@ const PhoneName: FC<{ card: PairingCard }> = ({ card }) => {
 	);
 };
 
+/** "Name it sent: “…” · Phone type: iPhone" - the definitions every live and settled card shows. */
+const PhoneDefinitions: FC<{ card: PairingCard }> = ({ card }) => (
+	<dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-meta text-ink-muted">
+		<dt>{t("ui.phone_pairing.popup.name_label")}</dt>
+		<dd className="min-w-0">
+			<PhoneName card={card} />
+		</dd>
+		<dt>{t("ui.phone_pairing.popup.platform_label")}</dt>
+		<dd data-testid="pairing-platform">{platformLabel(card.platform)}</dd>
+	</dl>
+);
+
 function errorText(error: PairingError): string {
 	switch (error.kind) {
 		case "wrong_code":
@@ -209,6 +243,61 @@ const OUTCOME_KEYS = {
 	expired: "ui.phone_pairing.popup.expired",
 } as const;
 
+/** What the card is showing: an outcome, an in-flight step, or the decision. */
+function pairingProgress(
+	card: PairingCard,
+	busy: PairingPopupViewProps["busy"],
+): "admin_prompt" | "signing" | "failed" | null {
+	if (card.reason === "admin_prompt_open") return "admin_prompt";
+	if (card.reason === "signing" || busy === "approve") return "signing";
+	if (card.reason === "failed_retryable") return "failed";
+	return null;
+}
+
+/**
+ * The sentence the host's polite live region holds for this state (UX round 1,
+ * U3). The card is non-modal and takes no focus when it appears - the composer
+ * keeps its caret (spec §4.2) - so a screen-reader user typing elsewhere would
+ * otherwise never learn a phone is asking until the request expired. The region
+ * is mounted EMPTY before any card exists (a live region has to be in the tree
+ * before its content changes, or assistive tech may not announce it), and its
+ * text changes once per state: the title when a request arrives, then each
+ * progress step and the outcome. Inline refusals are not repeated here: they
+ * are `role="alert"` already, and saying them twice is noise.
+ */
+export function pairingAnnouncement(
+	card: PairingCard | null,
+	busy: PairingPopupViewProps["busy"],
+	outcome: PairingOutcome | null,
+	os: HostOs = hostOs(),
+): string {
+	if (!card) return "";
+	if (outcome) return t(OUTCOME_KEYS[outcome]);
+	switch (pairingProgress(card, busy)) {
+		case "admin_prompt":
+			return t("ui.phone_pairing.popup.admin_prompt", { os });
+		case "signing":
+			return t("ui.phone_pairing.popup.signing", { os });
+		case "failed":
+			return t("ui.phone_pairing.popup.failed");
+		default:
+			return t("ui.phone_pairing.popup.title");
+	}
+}
+
+/*
+ * D1 (design round 1, MAJOR). The code is two European-number runs around a
+ * neutral space; in a right-to-left paragraph (Urdu) the bidi algorithm lays the
+ * runs right to left and paints `913 482` while the phone shows `482 913` - and
+ * comparing the two IS the security check. Both the hero and the typed field are
+ * pinned left-to-right and isolated from the sentence around them, whatever the
+ * interface language. Done in markup, never with bidi controls in a catalogue.
+ */
+const CODE_LTR = {
+	dir: "ltr" as const,
+	style: { unicodeBidi: "isolate" as const },
+};
+
 export const PairingPopupView: FC<PairingPopupViewProps> = ({
 	card,
 	now,
@@ -220,32 +309,89 @@ export const PairingPopupView: FC<PairingPopupViewProps> = ({
 	onDeny,
 	onRetry,
 	onClose,
+	initialCode = "",
 }) => {
 	const titleId = useId();
 	const codeId = useId();
-	const [typed, setTyped] = useState("");
-	const digits = normalizeTypedCode(typed);
+	const hintId = useId();
+	const errorId = useId();
+	const os = hostOs();
+	/** The typed code's DIGITS; `482 913` is only how they are drawn (U2). */
+	const [digits, setDigits] = useState(() =>
+		initialCode.replace(/\D/g, "").slice(0, 6),
+	);
+	const inputRef = useRef<HTMLInputElement>(null);
+	/** Where the caret belongs after the next render, as a digit index. */
+	const pendingCaret = useRef<number | null>(null);
 	const deciding = busy !== null;
+
+	const setCode = (next: { digits: string; caretDigit: number }) => {
+		pendingCaret.current = next.caretDigit;
+		setDigits(next.digits);
+	};
+	// The controlled re-render rewrites the value and the browser drops the caret
+	// at the end; put it back where the edit happened, before paint.
+	useLayoutEffect(() => {
+		const input = inputRef.current;
+		const caret = pendingCaret.current;
+		pendingCaret.current = null;
+		if (caret === null || !input || document.activeElement !== input) return;
+		const offset = caretForDigitIndex(caret);
+		input.setSelectionRange(offset, offset);
+	});
+
 	// A wrong code clears the field so the next attempt starts clean.
 	const wrongTries = error?.kind === "wrong_code" ? error.triesLeft : null;
 	useEffect(() => {
-		if (wrongTries !== null) setTyped("");
+		if (wrongTries !== null) setDigits("");
 	}, [wrongTries]);
 
-	const progress =
-		card.reason === "admin_prompt_open"
-			? "admin_prompt"
-			: card.reason === "signing" || busy === "approve"
-				? "signing"
-				: card.reason === "failed_retryable"
-					? "failed"
-					: null;
+	const progress = pairingProgress(card, busy);
+	const unavailable = card.assurance === null;
+	const typedRoute = !(card.mode === "confirm" && card.sas);
 
-	let body: JSX.Element;
+	/*
+	 * FOCUS AFTER THE PERSON'S OWN PRESS (UX round 1, U1). The press unmounts the
+	 * button it landed on (the body swaps to "Confirm on…", an outcome, or a
+	 * cleared field), which drops a keyboard user on <body>. So once the person
+	 * has acted INSIDE this card, each new stage takes focus at its one sensible
+	 * place. Never before they act: appearing must stay focus-neutral (spec §4.2),
+	 * which is why `acted` gates every move and the first render moves nothing.
+	 */
+	const acted = useRef(false);
+	const stageRef = useRef<HTMLElement | null>(null);
+	const closeRef = useRef<HTMLButtonElement>(null);
+	const denyRef = useRef<HTMLButtonElement>(null);
+	const stage = outcome
+		? `outcome:${outcome}`
+		: progress
+			? `progress:${progress}`
+			: setup?.running
+				? "setup:running"
+				: error
+					? `error:${error.kind}:${wrongTries ?? ""}`
+					: "decide";
+	useEffect(() => {
+		if (!acted.current) return;
+		if (stage.startsWith("outcome:")) closeRef.current?.focus();
+		else if (stage.startsWith("progress:") || stage === "setup:running")
+			stageRef.current?.focus();
+		else if (stage.startsWith("error:"))
+			(typedRoute ? inputRef.current : denyRef.current)?.focus();
+	}, [stage, typedRoute]);
+	const act =
+		<A extends unknown[]>(handler: (...args: A) => void) =>
+		(...args: A) => {
+			acted.current = true;
+			handler(...args);
+		};
+
+	let content: JSX.Element;
+	let actions: JSX.Element | null = null;
 	if (outcome) {
-		body = (
+		content = (
 			<>
-				<output
+				<p
 					className={cn(
 						"text-body-sm",
 						outcome === "paired" ? "text-ink" : "text-ink-muted",
@@ -253,33 +399,51 @@ export const PairingPopupView: FC<PairingPopupViewProps> = ({
 					data-testid="pairing-outcome"
 				>
 					{t(OUTCOME_KEYS[outcome])}
-				</output>
-				<div className="flex justify-end">
-					<Button
-						type="button"
-						variant="secondary"
-						size="md"
-						onClick={onClose}
-						data-testid="pairing-close"
+				</p>
+				{/*
+				 * D3: a settled card names the phone it settled, and success says where
+				 * it can be undone - revocability is half of the operator's request.
+				 */}
+				<PhoneDefinitions card={card} />
+				{outcome === "paired" ? (
+					<p
+						className="text-meta text-ink-muted"
+						data-testid="pairing-manage-where"
 					>
-						{outcome === "paired"
-							? t("ui.phone_pairing.popup.done")
-							: t("ui.phone_pairing.popup.close")}
-					</Button>
-				</div>
+						{t("ui.phone_pairing.popup.manage_where")}
+					</p>
+				) : null}
 			</>
 		);
+		actions = (
+			<Button
+				ref={closeRef}
+				type="button"
+				variant="secondary"
+				size="md"
+				onClick={onClose}
+				data-testid="pairing-close"
+			>
+				{outcome === "paired"
+					? t("ui.phone_pairing.popup.done")
+					: t("ui.phone_pairing.popup.close")}
+			</Button>
+		);
 	} else if (progress === "signing" || progress === "admin_prompt") {
-		body = (
+		content = (
 			<>
-				<output
-					className="block text-body-sm text-ink"
+				<p
+					ref={(node) => {
+						stageRef.current = node;
+					}}
+					tabIndex={-1}
+					className="text-body-sm text-ink outline-none"
 					data-testid="pairing-progress"
 				>
 					{progress === "admin_prompt"
-						? t("ui.phone_pairing.popup.admin_prompt")
-						: t("ui.phone_pairing.popup.signing")}
-				</output>
+						? t("ui.phone_pairing.popup.admin_prompt", { os })
+						: t("ui.phone_pairing.popup.signing", { os })}
+				</p>
 				{card.gesture ? (
 					<p className="text-meta text-ink-muted" data-testid="pairing-gesture">
 						{card.gesture}
@@ -288,47 +452,38 @@ export const PairingPopupView: FC<PairingPopupViewProps> = ({
 			</>
 		);
 	} else if (progress === "failed") {
-		body = (
+		content = (
+			<p
+				ref={(node) => {
+					stageRef.current = node;
+				}}
+				tabIndex={-1}
+				className="text-body-sm text-ink outline-none"
+				data-testid="pairing-failed"
+			>
+				{t("ui.phone_pairing.popup.failed")}
+			</p>
+		);
+		actions = (
 			<>
-				<p className="text-body-sm text-ink" data-testid="pairing-failed">
-					{t("ui.phone_pairing.popup.failed")}
-				</p>
-				<div className="flex justify-end gap-2">
-					<Button
-						type="button"
-						variant="secondary"
-						size="md"
-						onClick={onDeny}
-						disabled={deciding}
-						data-testid="pairing-deny"
-					>
-						{t("ui.phone_pairing.popup.deny")}
-					</Button>
-					<DeliberateApprove
-						label={t("ui.phone_pairing.popup.try_again")}
-						disabled={deciding}
-						onApprove={onRetry}
-						testId="pairing-retry"
-					/>
-				</div>
+				<DenyButton ref={denyRef} busy={busy} onDeny={act(onDeny)} />
+				<DeliberateApprove
+					label={t("ui.phone_pairing.popup.try_again")}
+					disabled={deciding}
+					onApprove={act(onRetry)}
+					testId="pairing-retry"
+				/>
 			</>
 		);
 	} else {
-		const unavailable = card.assurance === null;
 		const remaining = card.expiresAt === null ? null : card.expiresAt - now;
-		body = (
+		const describedBy = error ? `${hintId} ${errorId}` : hintId;
+		content = (
 			<>
 				<p className="text-body-sm text-ink">
 					{t("ui.phone_pairing.popup.grant")}
 				</p>
-				<dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-meta text-ink-muted">
-					<dt>{t("ui.phone_pairing.popup.name_label")}</dt>
-					<dd className="min-w-0">
-						<PhoneName card={card} />
-					</dd>
-					<dt>{t("ui.phone_pairing.popup.platform_label")}</dt>
-					<dd data-testid="pairing-platform">{platformLabel(card.platform)}</dd>
-				</dl>
+				<PhoneDefinitions card={card} />
 				{card.mode === "confirm" && card.account ? (
 					<p
 						className="text-meta text-ink-muted"
@@ -352,44 +507,44 @@ export const PairingPopupView: FC<PairingPopupViewProps> = ({
 						>
 							{t("ui.phone_pairing.popup.unavailable")}
 						</p>
+						{setup?.running ? (
+							// D2/U4: the OS prompt this press opens may sit behind the app
+							// window; say so, as Settings' own turn-on row does.
+							<p
+								ref={(node) => {
+									stageRef.current = node;
+								}}
+								tabIndex={-1}
+								className="text-meta text-ink outline-none"
+								data-testid="pairing-setup-working"
+							>
+								{t("ui.phone_pairing.setup.working", { os })}
+							</p>
+						) : null}
 						{setup?.message ? (
 							<p className="text-meta text-ink-muted">{setup.message}</p>
+						) : null}
+						{setup?.failure ? (
+							<p
+								className="text-meta text-danger"
+								role="alert"
+								data-testid="pairing-setup-error"
+							>
+								{setup.failure}
+							</p>
 						) : null}
 						<p className="text-meta text-ink-muted">
 							{t("ui.phone_pairing.popup.unavailable_where")}
 						</p>
-						<div className="flex flex-wrap justify-end gap-2">
-							<Button
-								type="button"
-								variant="secondary"
-								size="md"
-								onClick={onDeny}
-								disabled={deciding}
-								data-testid="pairing-deny"
-							>
-								{t("ui.phone_pairing.popup.deny")}
-							</Button>
-							{setup ? (
-								<Button
-									type="button"
-									variant="primary"
-									size="md"
-									onClick={setup.onTurnOn}
-									disabled={setup.running}
-									data-testid="pairing-setup"
-								>
-									{t("ui.phone_pairing.setup.turn_on")}
-								</Button>
-							) : null}
-						</div>
 					</>
-				) : card.mode === "confirm" && card.sas ? (
+				) : !typedRoute && card.sas ? (
 					<>
 						<div className="flex flex-col items-center gap-1 rounded-md bg-sunken px-3 py-3">
 							<span className="text-meta text-ink-muted">
 								{t("ui.phone_pairing.popup.code_label")}
 							</span>
 							<span
+								{...CODE_LTR}
 								className="font-mono text-ink tracking-widest [font-size:1.75rem] leading-none"
 								aria-label={t("ui.phone_pairing.popup.code_aria", {
 									digits: sasAriaDigits(card.sas),
@@ -410,33 +565,55 @@ export const PairingPopupView: FC<PairingPopupViewProps> = ({
 							{t("ui.phone_pairing.popup.type_code_label")}
 						</label>
 						<input
+							ref={inputRef}
 							id={codeId}
+							{...CODE_LTR}
 							inputMode="numeric"
 							autoComplete="one-time-code"
 							spellCheck={false}
-							maxLength={7}
-							value={
-								digits.length > 3
-									? `${digits.slice(0, 3)} ${digits.slice(3)}`
-									: digits
-							}
-							onChange={(event) => setTyped(event.target.value)}
+							value={formatTypedCode(digits)}
+							aria-describedby={describedBy}
+							aria-invalid={error ? true : undefined}
+							onChange={(event) => {
+								const edit = applyCodeEdit(
+									event.target.value,
+									event.target.selectionStart,
+								);
+								// More than six digits is refused whole, never clipped:
+								// the field keeps the code it had (see `applyCodeEdit`).
+								if (edit) setCode(edit);
+							}}
 							onKeyDown={(event) => {
 								// Enter in the field never approves: there is no form, and
 								// this stops any ancestor from treating it as a submit.
-								if (event.key === "Enter") event.preventDefault();
+								if (event.key === "Enter") {
+									event.preventDefault();
+									return;
+								}
+								if (event.key !== "Backspace" && event.key !== "Delete") return;
+								const input = event.currentTarget;
+								const edit = deleteAcrossGroupSpace(
+									digits,
+									event.key,
+									input.selectionStart ?? 0,
+									input.selectionEnd ?? 0,
+								);
+								if (!edit) return;
+								event.preventDefault();
+								setCode(edit);
 							}}
 							disabled={deciding}
 							className="h-10 rounded-sm border border-control bg-surface px-3 text-center font-mono text-ink tracking-widest [font-size:1.25rem]"
 							data-testid="pairing-code-input"
 						/>
-						<p className="text-meta text-ink-muted">
+						<p id={hintId} className="text-meta text-ink-muted">
 							{t("ui.phone_pairing.popup.type_code_hint")}
 						</p>
 					</div>
 				)}
 				{error ? (
 					<p
+						id={errorId}
 						className="text-body-sm text-danger"
 						role="alert"
 						data-testid="pairing-error"
@@ -457,34 +634,43 @@ export const PairingPopupView: FC<PairingPopupViewProps> = ({
 								{card.gesture}
 							</p>
 						) : null}
-						<div className="flex justify-end gap-2">
-							<Button
-								type="button"
-								variant="secondary"
-								size="md"
-								onClick={onDeny}
-								disabled={deciding}
-								data-testid="pairing-deny"
-							>
-								{t("ui.phone_pairing.popup.deny")}
-							</Button>
-							{card.mode === "confirm" && card.sas ? (
-								<DeliberateApprove
-									label={t("ui.phone_pairing.popup.approve_confirm")}
-									disabled={deciding}
-									onApprove={() => onApprove()}
-									testId="pairing-approve"
-								/>
-							) : (
-								<DeliberateApprove
-									label={t("ui.phone_pairing.popup.approve")}
-									disabled={deciding || digits.length !== 6}
-									onApprove={() => onApprove(digits)}
-									testId="pairing-approve"
-								/>
-							)}
-						</div>
 					</>
+				)}
+			</>
+		);
+		actions = unavailable ? (
+			<>
+				<DenyButton ref={denyRef} busy={busy} onDeny={act(onDeny)} />
+				{setup ? (
+					<Button
+						type="button"
+						variant="primary"
+						size="md"
+						onClick={act(setup.onTurnOn)}
+						disabled={setup.running}
+						data-testid="pairing-setup"
+					>
+						{t("ui.phone_pairing.setup.turn_on")}
+					</Button>
+				) : null}
+			</>
+		) : (
+			<>
+				<DenyButton ref={denyRef} busy={busy} onDeny={act(onDeny)} />
+				{typedRoute ? (
+					<DeliberateApprove
+						label={t("ui.phone_pairing.popup.approve")}
+						disabled={deciding || digits.length !== 6}
+						onApprove={act(() => onApprove(digits))}
+						testId="pairing-approve"
+					/>
+				) : (
+					<DeliberateApprove
+						label={t("ui.phone_pairing.popup.approve_confirm")}
+						disabled={deciding}
+						onApprove={act(() => onApprove())}
+						testId="pairing-approve"
+					/>
 				)}
 			</>
 		);
@@ -498,21 +684,72 @@ export const PairingPopupView: FC<PairingPopupViewProps> = ({
 			aria-labelledby={titleId}
 			data-testid="phone-pairing-popup"
 			data-pairing-mode={card.mode}
-			className="fixed right-4 bottom-4 z-50 flex w-[min(380px,calc(100vw-2rem))] flex-col gap-3 rounded-lg border border-hairline bg-surface p-4 shadow-overlay"
+			onKeyDown={(event) => {
+				// UX round 1, N4: once settled nothing is at stake, so Escape closes
+				// like the app's other transient cards. Never while deciding.
+				if (outcome && event.key === "Escape") {
+					event.stopPropagation();
+					onClose();
+				}
+			}}
+			/*
+			 * D5/U5: bounded by the window. At the 800x600 minimum (a ~572 px
+			 * viewport) a Russian "changed" card measured 598 px with nothing
+			 * scrolling, so the title and grant sentence sat above the screen. The
+			 * header and the buttons stay pinned; only the middle scrolls, so the
+			 * name and the grant are always reachable before Approve.
+			 */
+			className="fixed right-4 bottom-4 z-50 flex max-h-[calc(100vh-2rem)] w-[min(380px,calc(100vw-2rem))] flex-col gap-3 rounded-lg border border-hairline bg-surface p-4 shadow-overlay"
 		>
-			<header className="flex items-start gap-2">
+			<header className="flex shrink-0 items-start gap-2">
 				<Smartphone
 					className="mt-0.5 size-4 shrink-0 text-ink-muted"
 					aria-hidden="true"
 				/>
 				<h2 id={titleId} className="font-medium text-body text-ink">
-					{t("ui.phone_pairing.popup.title")}
+					{outcome
+						? t("ui.phone_pairing.popup.title_settled")
+						: t("ui.phone_pairing.popup.title")}
 				</h2>
 			</header>
-			{body}
+			<div
+				className="flex min-h-0 flex-col gap-3 overflow-y-auto"
+				data-testid="pairing-body"
+			>
+				{content}
+			</div>
+			{actions ? (
+				<div
+					className="flex shrink-0 flex-wrap justify-end gap-2"
+					data-testid="pairing-actions"
+				>
+					{actions}
+				</div>
+			) : null}
 		</section>
 	);
 };
+
+/** Deny, which says "Denying…" while its own post is in flight (D2). */
+const DenyButton = forwardRef<
+	HTMLButtonElement,
+	{ busy: PairingPopupViewProps["busy"]; onDeny: () => void }
+>(({ busy, onDeny }, ref) => (
+	<Button
+		ref={ref}
+		type="button"
+		variant="secondary"
+		size="md"
+		onClick={onDeny}
+		disabled={busy !== null}
+		data-testid="pairing-deny"
+	>
+		{busy === "deny"
+			? t("ui.phone_pairing.popup.denying")
+			: t("ui.phone_pairing.popup.deny")}
+	</Button>
+));
+DenyButton.displayName = "DenyButton";
 
 /** The refusal codes core's pairing routes answer with (`pair_op`). */
 function refusalCode(error: unknown): string | undefined {
@@ -563,6 +800,19 @@ export const PhonePairingHost: FC = () => {
 	const [outcome, setOutcome] = useState<PairingOutcome | null>(null);
 	const [error, setError] = useState<PairingError | null>(null);
 	const [setupMessage, setSetupMessage] = useState<string | null>(null);
+	const [setupFailure, setSetupFailure] = useState<string | null>(null);
+	/*
+	 * The id the feed last NAMED (code review round 1, M3). A frame's `null`
+	 * means "the request you were told about is over", and it hides THAT id at
+	 * once, before the list refetch lands. It is not a verdict on the list: the
+	 * session contract also sends `open.approvals_pair_request: null` when the
+	 * daemon's own read failed, and the ticker only publishes on a level change,
+	 * so treating null as "show nothing" left a live request blank for its whole
+	 * window even after a successful focus refetch. With no id ever named, the
+	 * list decides, exactly as before any frame arrives.
+	 */
+	const lastNamed = useRef<string | null>(null);
+	if (feedPairRequest) lastNamed.current = feedPairRequest;
 
 	const rows = cards.data ?? [];
 	const pressed = actedOn
@@ -571,7 +821,12 @@ export const PhonePairingHost: FC = () => {
 	// The feed saying "none" is authoritative for an untouched card: it vanishes on
 	// the frame, before the list refetch lands.
 	const live =
-		feedPairRequest === null ? null : livePairingCard(rows, feedPairRequest);
+		feedPairRequest === null
+			? livePairingCard(
+					rows.filter((row) => row.approvalId !== lastNamed.current),
+					undefined,
+				)
+			: livePairingCard(rows, feedPairRequest);
 	const card = actedOn ? pressed : live;
 	const now = useSecondsClock(Boolean(card));
 
@@ -583,15 +838,35 @@ export const PhonePairingHost: FC = () => {
 		}
 	}, [actedOn, pressed, outcome, decision.isPending]);
 
-	if (!enabled || !card) return null;
+	if (!enabled) return null;
 	// Untouched and past its window: gone (the row folds to `expired` on refetch).
-	if (
-		!actedOn &&
-		card.reason === "waiting" &&
-		card.expiresAt !== null &&
-		card.expiresAt <= now
-	)
-		return null;
+	const shown =
+		card &&
+		!(
+			!actedOn &&
+			card.reason === "waiting" &&
+			card.expiresAt !== null &&
+			card.expiresAt <= now
+		)
+			? card
+			: null;
+	const busy = decision.isPending
+		? ("approve" as const)
+		: deny.isPending
+			? ("deny" as const)
+			: null;
+	// U3: mounted with the host, empty, BEFORE any card - see `pairingAnnouncement`.
+	const announcer = (
+		<output
+			className="sr-only"
+			aria-live="polite"
+			aria-atomic="true"
+			data-testid="pairing-live"
+		>
+			{pairingAnnouncement(shown, busy, outcome)}
+		</output>
+	);
+	if (!shown) return announcer;
 
 	const settle = (approvalId: string, fallback: PairingOutcome | null) =>
 		cards.refetch().then((next) => {
@@ -605,7 +880,7 @@ export const PhonePairingHost: FC = () => {
 		});
 
 	const approve = (code?: string, retryApply = false) => {
-		const target = card;
+		const target = shown;
 		setActedOn(target.approvalId);
 		setError(null);
 		decision.mutate(
@@ -638,7 +913,7 @@ export const PhonePairingHost: FC = () => {
 	};
 
 	const onDeny = () => {
-		const target = card;
+		const target = shown;
 		setActedOn(target.approvalId);
 		setError(null);
 		deny.mutate(target.approvalId, {
@@ -654,33 +929,54 @@ export const PhonePairingHost: FC = () => {
 	};
 
 	return (
-		<PairingPopupView
-			card={card}
-			now={now}
-			busy={decision.isPending ? "approve" : deny.isPending ? "deny" : null}
-			error={error}
-			outcome={outcome}
-			setup={
-				setupEnabled
-					? {
-							running: setupRun.isPending,
-							message: setupMessage,
-							onTurnOn: () =>
-								setupRun.mutate(undefined, {
-									onSuccess: (message) => setSetupMessage(message),
-									onError: (failure) =>
-										setSetupMessage(
-											failure instanceof Error ? failure.message : null,
-										),
-								}),
-						}
-					: null
-			}
-			onApprove={(code) => approve(code)}
-			onDeny={onDeny}
-			onRetry={() => approve(undefined, true)}
-			onClose={onClose}
-		/>
+		<>
+			{announcer}
+			<PairingPopupView
+				/*
+				 * Keyed by request (code review round 1, M1): core lets a `failed`
+				 * request coexist with a new one, and a phone that withdraws and
+				 * re-files within one tick switches the card without unmounting it.
+				 * Unkeyed, digits typed for the first request stayed in the field and
+				 * were sent with the second one's digests - a guaranteed strike - and
+				 * the name expansion carried over. A new id is a new card.
+				 */
+				key={shown.approvalId}
+				card={shown}
+				now={now}
+				busy={busy}
+				error={error}
+				outcome={outcome}
+				setup={
+					setupEnabled
+						? {
+								running: setupRun.isPending,
+								message: setupMessage,
+								failure: setupFailure,
+								onTurnOn: () => {
+									setSetupFailure(null);
+									setupRun.mutate(undefined, {
+										onSuccess: (message) => setSetupMessage(message),
+										// The Settings row's rule (M2): core's sentence only for a
+										// 409 host refusal, which core keys server-side; anything
+										// else - transport, runtime - is the generic keyed line.
+										onError: (failure) =>
+											setSetupFailure(
+												failure instanceof DesktopControlError &&
+													failure.status === 409
+													? failure.message
+													: t("ui.phone_pairing.setup.error"),
+											),
+									});
+								},
+							}
+						: null
+				}
+				onApprove={(code) => approve(code)}
+				onDeny={onDeny}
+				onRetry={() => approve(undefined, true)}
+				onClose={onClose}
+			/>
+		</>
 	);
 };
 

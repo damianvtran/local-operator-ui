@@ -157,6 +157,107 @@ export function normalizeTypedCode(input: string): string {
 	return input.replace(/\D/g, "").slice(0, 6);
 }
 
+/*
+ * THE TYPED CODE FIELD'S EDIT MODEL (UX round 1, U2).
+ *
+ * The person copies six digits off the phone, and a wrong code costs one of
+ * three strikes, so an edit must change exactly the digit the person touched.
+ * The first version re-formatted the whole value on every keystroke and let the
+ * browser put the caret at the end: Backspace just after the group space only
+ * deleted the space (re-added at once), and fixing the second digit of
+ * `482 913` produced `429 137`. The rules below make the DIGITS the state and
+ * the `482 913` grouping a pure rendering of them, with the caret carried as a
+ * digit index across the re-format:
+ *
+ * - {@link applyCodeEdit} reads what the browser produced (any characters,
+ *   any caret), keeps the digits, and says where the caret belongs AS A DIGIT
+ *   INDEX - the count of digits before it - so re-grouping cannot move it.
+ * - An edit that would leave MORE than six digits is refused whole (null), never
+ *   clipped: clipping a paste of `482 913` into a field that already held `1`
+ *   would submit `148291`, a code the phone never showed. The field keeps its
+ *   previous value instead.
+ * - {@link deleteAcrossGroupSpace} gives Backspace just after the space (and
+ *   Delete just before it) the digit on the far side, which is what the person
+ *   meant; the space itself is not theirs to delete.
+ */
+
+/** Digits → the displayed value: `482913` → `482 913`, partials ungrouped up to 3. */
+export function formatTypedCode(digits: string): string {
+	return digits.length > 3
+		? `${digits.slice(0, 3)} ${digits.slice(3)}`
+		: digits;
+}
+
+/** A digit index (0-6) → the caret offset in {@link formatTypedCode}'s output. */
+export function caretForDigitIndex(index: number): number {
+	return index > 3 ? index + 1 : index;
+}
+
+/** How many digits sit before `caret` in `value`. */
+export function digitIndexAt(value: string, caret: number): number {
+	return value.slice(0, Math.max(0, caret)).replace(/\D/g, "").length;
+}
+
+/**
+ * The field's raw value and caret after the browser applied an edit → the new
+ * digits and the caret as a digit index, or null when the edit would leave more
+ * than six digits (refused whole, never clipped).
+ */
+export function applyCodeEdit(
+	value: string,
+	caret: number | null,
+): { digits: string; caretDigit: number } | null {
+	const digits = value.replace(/\D/g, "");
+	if (digits.length > 6) return null;
+	return {
+		digits,
+		caretDigit:
+			caret === null ? digits.length : Math.min(digitIndexAt(value, caret), 6),
+	};
+}
+
+/**
+ * Backspace with the caret right after the group space, or Delete right before
+ * it, with nothing selected: remove the digit across the space. Null when the
+ * key is not over the space (the browser's own edit is already right).
+ */
+export function deleteAcrossGroupSpace(
+	digits: string,
+	key: "Backspace" | "Delete",
+	selectionStart: number,
+	selectionEnd: number,
+): { digits: string; caretDigit: number } | null {
+	if (selectionStart !== selectionEnd || digits.length <= 3) return null;
+	// In `482 913` the space is offset 3: Backspace at 4 or Delete at 3 touch it.
+	if (key === "Backspace" && selectionStart === 4)
+		return { digits: digits.slice(0, 2) + digits.slice(3), caretDigit: 2 };
+	if (key === "Delete" && selectionStart === 3)
+		return { digits: digits.slice(0, 3) + digits.slice(4), caretDigit: 3 };
+	return null;
+}
+
+/**
+ * Which word the copy uses for this machine (design round 1, D4): "your Mac" on
+ * macOS and "your PC" on Windows, because core's gesture line on the same card
+ * (D13) already says "Your Mac will ask for Touch ID…", and two names for one
+ * machine a few pixels apart read as two machines. Anything else keeps "your
+ * computer". Passed as the `os` select argument of every sentence that names
+ * the machine as the thing asking for a password; `navigator.platform` is the
+ * same source the app's other platform-specific copy reads.
+ */
+export type HostOs = "mac" | "windows" | "other";
+
+const MAC_PLATFORM = /Mac/i;
+const WINDOWS_PLATFORM = /Win/i;
+
+export function hostOs(): HostOs {
+	const platform =
+		typeof navigator === "undefined" ? "" : (navigator.platform ?? "");
+	if (MAC_PLATFORM.test(platform)) return "mac";
+	if (WINDOWS_PLATFORM.test(platform)) return "windows";
+	return "other";
+}
+
 /** "Expires in m:ss" for a positive remainder; `0:00` once it has passed. */
 export function formatCountdown(seconds: number): string {
 	const whole = Math.max(0, Math.floor(seconds));
