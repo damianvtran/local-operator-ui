@@ -1166,6 +1166,117 @@ test("M3: a null in the open frame does not hide a live request the list still s
 	assert.ok(popup() === null);
 });
 
+/*
+ * QA round 3: a press that FAILED leaves no outcome, so the held card has to be
+ * released by the same signals that remove an untouched one - otherwise the
+ * dead request kept its Deny on screen and the next request never showed.
+ */
+const benRow = (pairing = {}) =>
+	pairRow(
+		{ phone_name: "Ben's Pixel", phone_name_full: "Ben's Pixel", ...pairing },
+		{ approval_id: ID_B },
+	);
+const shownName = () => $("pairing-phone-name")?.textContent ?? "";
+
+/** Raise A, press Approve, and let core answer 500: the error stays on A. */
+async function failedApprove(rows, onAck = () => {}, { named = true } = {}) {
+	script = {
+		capabilities: caps(PAIRING),
+		"approvals.list": () => list(...rows()),
+		"approvals.pairAck": () => {
+			onAck();
+			return refuse(500, "internal_error");
+		},
+	};
+	await render(createElement(PhonePairingHost));
+	if (named) {
+		await publish({
+			epoch: "e",
+			seq: 1,
+			type: "approvals",
+			payload: { pending: true, pair_request: ID },
+		});
+	}
+	await until(() => $("pairing-approve"), "Approve on A");
+	await click($("pairing-approve"));
+	await until(() => $("pairing-error"), "the failed approve's error");
+	assert.match(shownName(), /Ana/);
+}
+
+test("QA r3: a failed approve, then the phone withdraws: A's card goes and B's is shown", async () => {
+	let rows = [pairRow()];
+	await failedApprove(() => rows);
+	rows = [
+		pairRow({ reason: "withdrawn", progress: null }, { state: "withdrawn" }),
+	];
+	await publish({
+		epoch: "e",
+		seq: 2,
+		type: "approvals",
+		payload: { pending: false, pair_request: null },
+	});
+	// `ok`, not `equal`: a failing `equal` inspects the jsdom node (gigabytes).
+	assert.ok(popup() === null, "the withdrawn card is gone");
+	rows = [...rows, benRow()];
+	await publish({
+		epoch: "e",
+		seq: 3,
+		type: "approvals",
+		payload: { pending: true, pair_request: ID_B },
+	});
+	await until(() => /Ben/.test(shownName()), "B's card");
+	assert.doesNotMatch(popup().textContent, /Ana/);
+	assert.ok($("pairing-error") === null, "A's error does not carry over");
+});
+
+test("QA r3: a failed approve, then A decided elsewhere: B's card is shown", async () => {
+	let rows = [pairRow()];
+	await failedApprove(() => rows);
+	rows = [
+		pairRow({ reason: "denied_by_user", progress: null }, { state: "denied" }),
+		benRow(),
+	];
+	await publish({
+		epoch: "e",
+		seq: 2,
+		type: "approvals",
+		payload: { pending: true, pair_request: ID_B },
+	});
+	await until(() => /Ben/.test(shownName()), "B's card");
+	assert.doesNotMatch(popup().textContent, /Ana/);
+});
+
+test("QA r3: a failed approve, then A's window runs out: B's card is shown", async () => {
+	// A's row still reads `waiting` (core has not folded it yet) and no frame
+	// has spoken, so only A's own clock can release it.
+	const soon = Date.now() / 1000 + 2;
+	let rows = [pairRow({ expires_at: soon })];
+	await failedApprove(
+		() => rows,
+		() => {
+			rows = [pairRow({ expires_at: soon }), benRow()];
+		},
+		{ named: false },
+	);
+	assert.match(shownName(), /Ana/, "held while A's window is open");
+	await untilWall(() => /Ben/.test(shownName()), "B's card after A expired");
+	assert.doesNotMatch(popup().textContent, /Ana/);
+});
+
+test("QA r3 guard: a failed approve whose request is still pending keeps A held", async () => {
+	let rows = [pairRow()];
+	await failedApprove(
+		() => rows,
+		() => {
+			rows = [pairRow(), benRow()];
+		},
+	);
+	await settle();
+	assert.match(shownName(), /Ana/, "A is still held");
+	assert.ok($("pairing-error"), "with its error");
+	assert.ok($("pairing-deny"));
+});
+
 test("M2/U4/D2: turning on from the popup says where the prompt is, and a failure is the keyed alert, never a raw message", async () => {
 	let release;
 	script = {

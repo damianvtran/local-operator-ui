@@ -837,6 +837,14 @@ export const PhonePairingHost: FC = () => {
 	const [setupMessage, setSetupMessage] = useState<string | null>(null);
 	const [setupFailure, setSetupFailure] = useState<string | null>(null);
 	/*
+	 * True from a press until its post-decision list re-read has landed. Between
+	 * the mutation settling and that re-read, the row can already read `paired`,
+	 * `expired` or `denied_by_user` (and the feed can already say null) while the
+	 * outcome is not yet set; without this, the release below would take that
+	 * row for "ended elsewhere" and drop the person's own outcome.
+	 */
+	const [settling, setSettling] = useState(false);
+	/*
 	 * The id the feed last NAMED (code review round 1, M3). A frame's `null`
 	 * means "the request you were told about is over", and it hides THAT id at
 	 * once, before the list refetch lands. It is not a verdict on the list: the
@@ -864,14 +872,47 @@ export const PhonePairingHost: FC = () => {
 			: livePairingCard(rows, feedPairRequest);
 	const card = actedOn ? pressed : live;
 	const now = useSecondsClock(Boolean(card));
+	/*
+	 * The held card's request is over, though its row is still in the list (QA
+	 * round 3). A press keeps its card up through its own outcome, but a press
+	 * that FAILED leaves no outcome, so a phone that then withdrew - or a request
+	 * decided elsewhere, or one that ran out its window - kept the dead card with
+	 * a live Deny on screen, and a new request never showed. These are the same
+	 * signals that make an untouched card vanish: the row's terminal reason, its
+	 * expiry, the feed's null for the id it named (M3: only that id), or the feed
+	 * naming a different request (core files at most one live pairing). A held
+	 * card whose request is still live - e.g. failed and retryable - stays held.
+	 */
+	const pressedEnded =
+		pressed !== null &&
+		(!LIVE_OR_RETRYABLE.has(pressed.reason) ||
+			(pressed.expiresAt !== null && pressed.expiresAt <= now) ||
+			(feedPairRequest === null && lastNamed.current === pressed.approvalId) ||
+			(typeof feedPairRequest === "string" &&
+				feedPairRequest !== pressed.approvalId));
 
-	// A different request replaced the one the person acted on: start clean.
+	// A different request replaced the one the person acted on, or the one they
+	// acted on ended without an outcome of their own: start clean. Never while
+	// their own decision is in flight or being read back.
 	useEffect(() => {
-		if (actedOn && !pressed && !outcome && !decision.isPending) {
+		if (
+			actedOn &&
+			!outcome &&
+			!decision.isPending &&
+			(!pressed || (pressedEnded && !deny.isPending && !settling))
+		) {
 			setActedOn(null);
 			setError(null);
 		}
-	}, [actedOn, pressed, outcome, decision.isPending]);
+	}, [
+		actedOn,
+		pressed,
+		pressedEnded,
+		outcome,
+		decision.isPending,
+		deny.isPending,
+		settling,
+	]);
 
 	if (!enabled) return null;
 	// Untouched and past its window: gone (the row folds to `expired` on refetch).
@@ -904,20 +945,24 @@ export const PhonePairingHost: FC = () => {
 	if (!shown) return announcer;
 
 	const settle = (approvalId: string, fallback: PairingOutcome | null) =>
-		cards.refetch().then((next) => {
-			const row = next.data?.find((item) => item.approvalId === approvalId);
-			if (row?.reason === "paired") setOutcome("paired");
-			else if (row?.reason === "strikes_exhausted") setOutcome("strikes");
-			else if (row?.reason === "denied_by_user") setOutcome("denied");
-			else if (row?.reason === "expired") setOutcome("expired");
-			else if (fallback) setOutcome(fallback);
-			return row;
-		});
+		cards
+			.refetch()
+			.then((next) => {
+				const row = next.data?.find((item) => item.approvalId === approvalId);
+				if (row?.reason === "paired") setOutcome("paired");
+				else if (row?.reason === "strikes_exhausted") setOutcome("strikes");
+				else if (row?.reason === "denied_by_user") setOutcome("denied");
+				else if (row?.reason === "expired") setOutcome("expired");
+				else if (fallback) setOutcome(fallback);
+				return row;
+			})
+			.finally(() => setSettling(false));
 
 	const approve = (code?: string, retryApply = false) => {
 		const target = shown;
 		setActedOn(target.approvalId);
 		setError(null);
+		setSettling(true);
 		decision.mutate(
 			{ card: target, code, retryApply },
 			{
@@ -951,9 +996,13 @@ export const PhonePairingHost: FC = () => {
 		const target = shown;
 		setActedOn(target.approvalId);
 		setError(null);
+		setSettling(true);
 		deny.mutate(target.approvalId, {
 			onSuccess: () => void settle(target.approvalId, "denied"),
-			onError: () => setError({ kind: "generic" }),
+			onError: () => {
+				setSettling(false);
+				setError({ kind: "generic" });
+			},
 		});
 	};
 
