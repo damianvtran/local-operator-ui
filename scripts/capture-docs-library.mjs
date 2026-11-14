@@ -1,20 +1,28 @@
 #!/usr/bin/env node
 /**
- * Captures the docs-library screenshot set from Storybook, one 2560x1800 png
- * per scene per theme.
+ * Captures the docs-library screenshot set from Storybook, one png per scene
+ * per theme: 2560x1440 by default (the marketing set, a 1280x720 viewport at
+ * 2x), or 2560x1800 with `--viewport=1280x900` (the README set, below).
  *
  *     node scripts/capture-docs-library.mjs [origin] \
- *         [--only=hero,teams] [--themes=light,dark] [--out=<dir>]
+ *         [--only=hero,teams] [--themes=light,dark] [--out=<dir>] \
+ *         [--viewport=1280x720]
  *
- * Default origin is http://localhost:6129 (the capture checkout's own
- * Storybook). The default output directory is `docs-library-captures/` beside
+ * THE DEFAULT VIEWPORT IS THE MARKETING SET'S, 1280x720. The Team Bridge
+ * stories are composed for it (80% zoom, a 1600x900 layout) and
+ * `derive-marketing-webp.mjs` refuses a Bridge master that is not 16:9, because
+ * its crops are calibrated to that aspect. Only the README refresh below needs
+ * `--viewport=1280x900`.
+ *
+ * Default origin is http://localhost:6006 (`pnpm storybook`'s port). The default output directory is `docs-library-captures/` beside
  * the repository root.
  *
  * WHY THIS EXISTS, RATHER THAN REUSING `capture-evidence.mjs`. That tool
  * captures at `deviceScaleFactor: 1` with a per-story size table, because its
  * frames are review evidence at 1x. This set targets the marketing site and
- * both READMEs, which want the hero's own format - a 1280x900 viewport at
- * `deviceScaleFactor: 2`, i.e. a 2560x1800 png - for every scene. The
+ * both READMEs, which want one format for every scene at
+ * `deviceScaleFactor: 2` - a 1280x720 viewport (2560x1440 png) for the sites,
+ * a 1280x900 viewport (2560x1800 png) for the READMEs. The
  * mechanics are the same ones that tool proved: a PRIVATE headless Chrome
  * (fresh `--user-data-dir`, the mock-keychain switch applied by the shared
  * `withMockKeychain` helper, a port Chrome picks), raw CDP over Node's
@@ -23,8 +31,8 @@
  * `animation: none` freeze before the shot so a frame is a function of its
  * story rather than of the instant it was taken.
  *
- * THE README WEBPS. The committed `resources/readme/*.webp` pairs are these
- * pngs converted with `cwebp -q 88 -m 6 -resize 1280 900 <scene>-<theme>.png
+ * THE README WEBPS. The committed `resources/readme/*.webp` pairs are the
+ * `--viewport=1280x900` pngs converted with `cwebp -q 88 -m 6 -resize 1280 900 <scene>-<theme>.png
  * -o <scene>-<theme>.webp` (cwebp writes nothing without a destination) - a
  * spelling verified to reproduce every committed byte; refresh the webps with
  * that command rather than re-shooting frames that did not change.
@@ -44,6 +52,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { withMockKeychain } from "./chrome-keychain.mjs";
+import { EVIDENCE_TZ, pinnedEvidenceEnv } from "./evidence-tz.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
@@ -51,9 +60,6 @@ const DEBUG_PORT_LINE = /DevTools listening on (ws:\/\/[^\s]+)/;
 
 /** Scene name (used in file names) -> story id. */
 const SCENES = [
-	/* `hero` resolves into the sibling `docs-hero` story, which this repo does
-	   not carry: a default run reports its two frames as failed and exits 1, so
-	   scope an ordinary run with `--only=...` until that story lands beside it. */
 	["hero", "docs-app-hero--scene"],
 	["conversation-tools", "docs-library--conversation-tools"],
 	["subagents", "docs-library--subagents"],
@@ -66,7 +72,36 @@ const SCENES = [
 	["media-in-conversation", "docs-library--media-in-conversation"],
 	["appearance", "docs-library--appearance"],
 	["chat-trace", "docs-library--chat-trace"],
+	["notifications", "docs-library--notifications"],
+	["asks", "docs-library--asks"],
+	["review-pane", "docs-library--review-pane"],
+	["bridge-channel", "docs-team-bridge--channel"],
+	["bridge-thread", "docs-team-bridge--thread"],
+	["bridge-approval", "docs-team-bridge--approval"],
+	["bridge-mention", "docs-team-bridge--mention"],
+	["bridge-launch", "docs-team-bridge--launch"],
 ];
+
+/**
+ * The marketing scenes photographed under the SHIPPED window glass (on, 80,
+ * full) over the stand-in desktop of `docs-glass-backdrop.tsx` (design round 4
+ * D8). The stories default that on themselves, so the URL below stays
+ * `theme:`-only; this set is the rig's check that they still do - a scene that
+ * silently lost its opt-in would otherwise export a flat, opaque frame.
+ */
+const GLASS_SCENES = new Set([
+	"docs-app-hero--scene",
+	"docs-library--teams",
+	"docs-library--mesh",
+	"docs-library--notifications",
+	"docs-library--asks",
+	"docs-library--review-pane",
+	"docs-team-bridge--channel",
+	"docs-team-bridge--thread",
+	"docs-team-bridge--approval",
+	"docs-team-bridge--mention",
+	"docs-team-bridge--launch",
+]);
 
 /** CLI alias -> the registry's palette id. */
 const THEMES = { light: "localOperatorLight", dark: "localOperatorDark" };
@@ -76,15 +111,21 @@ const flag = (name) => {
 	const hit = ARGS.find((a) => a.startsWith(`--${name}=`));
 	return hit ? hit.slice(name.length + 3) : null;
 };
-const ORIGIN = ARGS.find((a) => !a.startsWith("--")) ?? "http://localhost:6129";
+const ORIGIN = ARGS.find((a) => !a.startsWith("--")) ?? "http://localhost:6006";
 const ONLY = flag("only")?.split(",").filter(Boolean) ?? null;
 const THEME_FILTER = flag("themes")?.split(",").filter(Boolean) ?? [
 	"light",
 	"dark",
 ];
 const OUT = flag("out") ?? join(ROOT, "docs-library-captures");
-const WIDTH = Number(flag("width") ?? 1280);
-const HEIGHT = Number(flag("height") ?? 900);
+// 1280x720 is the marketing set's viewport (see the header): Team Bridge crops
+// are calibrated to 16:9, so a 16:10 default silently mis-cropped them. The
+// README set passes --viewport=1280x900 explicitly.
+const VIEWPORT = flag("viewport")?.match(/^(\d+)x(\d+)$/);
+if (flag("viewport") && !VIEWPORT)
+	throw new Error("--viewport must be WIDTHxHEIGHT, e.g. 1280x720");
+const WIDTH = Number(flag("width") ?? VIEWPORT?.[1] ?? 1280);
+const HEIGHT = Number(flag("height") ?? VIEWPORT?.[2] ?? 720);
 const SCALE = Number(flag("scale") ?? 2);
 /*
  * How long a story may take to become ready. The first load of each story
@@ -130,6 +171,7 @@ const evaluate = async (cdp, expression) => {
 };
 
 const main = async () => {
+	process.env.TZ = EVIDENCE_TZ;
 	const scenes = SCENES.filter(([name]) => !ONLY || ONLY.includes(name));
 	const themes = THEME_FILTER.map((alias) => {
 		const id = THEMES[alias];
@@ -155,7 +197,16 @@ const main = async () => {
 			"--no-default-browser-check",
 			"about:blank",
 		]),
-		{ detached: true, stdio: ["ignore", "ignore", "pipe"] },
+		{
+			detached: true,
+			stdio: ["ignore", "ignore", "pipe"],
+			// No live terminal identity belongs in a synthetic capture child.
+			env: Object.fromEntries(
+				Object.entries(pinnedEvidenceEnv()).filter(
+					([key]) => !key.startsWith("CMUX_"),
+				),
+			),
+		},
 	);
 
 	/* Chrome prints the DevTools websocket on stderr; reading it there avoids
@@ -190,6 +241,7 @@ const main = async () => {
 	const cdp = new Cdp(ws);
 	await cdp.send("Page.enable");
 	await cdp.send("Runtime.enable");
+	await cdp.send("Emulation.setTimezoneOverride", { timezoneId: EVIDENCE_TZ });
 
 	let seedScript = null;
 	let prefsKey = null;
@@ -247,7 +299,7 @@ const main = async () => {
 				   furniture, and any `data-capture-pending` hold is released.
 				   Polled, never slept-for, because a heavy page varies by
 				   seconds and a fixed sleep long enough for the slowest scene
-				   would be paid by all 24 frames. */
+				   would be paid by every frame. */
 					let probe = null;
 					let ready = false;
 					let waited = 0;
@@ -320,6 +372,7 @@ const main = async () => {
 						`(() => {
 						const failed = document.documentElement.dataset.captureFailed || "";
 						if (failed) return "failed: " + failed;
+						if (${GLASS_SCENES.has(story)} && !(document.documentElement.dataset.glass && document.querySelector('[data-story-glass-backdrop="marketing-wallpaper"]'))) return "failed: glass scene rendered without glass";
 						return !Boolean(document.documentElement.dataset.capturePending) && document.fonts.status === "loaded" ? "ok" : "held";
 					})()`,
 					);
