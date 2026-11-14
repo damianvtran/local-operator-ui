@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent binding audit of the landed namespace (first binding; no re-bind)",
+  "locale": "fr",
+  "namespace": "ui.chat.run_controls",
+  "pr": 1911,
+  "date": "2026-11-14",
+  "head": "90f0f49beae27ad35c1b05492ee150cd31e3a8c1",
+  "instance": "s17d2-fr-rebind-28ba35ca",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); not the translator, not the draft auditor, not the integrator",
+    "model": "deepseek/deepseek-flash",
+    "independence": "I first read this namespace at the landed head, translated none of it, and audited neither the S17d-2 draft nor its integration; I re-derived every claim from the bytes rather than accepting the earlier records.",
+    "instance": "s17d2-fr-rebind-28ba35ca"
+  },
+  "model": "deepseek/deepseek-flash",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.run_controls.wake_confirm.action_named",
+      "note": "“Annuler le point de suivi” is 25 characters against EN “Cancel check-in” at 15 (+67%), the largest ratio in the namespace, and it sits in the tightest surface: the confirm card is CARD_WIDTH = 288 with p-4 (256 px of content), the footer is flex justify-end gap-2, and Button is shrink-0 + whitespace-nowrap, so an overrun clips rather than wraps. Measured here with CoreText at the app's real type size (text-meta = 0.75rem = 12 px, font-medium 500): danger label 139.0 px + px-2 + 1 px border = 157.0, plus tonal “Conserver” 75.7 and the 8 px gap = 240.7 px of 256 px, about 15 px (5.9%) headroom. It fits on that measurement, which is why this is MINOR and not MAJOR, but the margin is thin and no rendered frame was captured (this binding audit runs no build), so close it with one rendered capture of the named arm; fall back to “Annuler le suivi” (16 chars) only if it clips."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.run_controls.wake_confirm.title_named",
+      "note": "“{name} : annuler ce point de suivi ?” fronts {name} as a colon topic where EN uses a possessive (“Cancel {name}'s check-in?”). No change proposed: French would want “le point de suivi de {name}”, but “de” must elide before a vowel-initial name (“d'Atlas”) and an ICU argument cannot carry the elided form, so the possessive is wrong for some operator names; the corpus uses the same dodge (“Annuler le réveil : {head}”). Recorded only so a later position-sensitive probe does not mistake the fronted argument for a renamed placeholder — the argument is byte-identical and correctly named."
+    }
+  ],
+  "binding": "Verified before reading anything: all four pinned sha256 values matched exactly, and the file on disk is the committed blob at the PR head (git show HEAD:src/i18n/catalogues/fr/ui.chat.run_controls.json hashes to 28ba35ca…, git status clean). cmp against the audited draft fr.v2.json is byte-identical and the parsed dicts are equal in values and key order, so the landed bytes are the bytes the draft audit passed. Structure: 12 of 12 keys, identical set and order to English (set difference empty both ways), TAB indent, exactly one trailing newline, no BOM, no CRLF, NFC, no unicode escape sequences. ICU: parsed every value with the repo's own @formatjs/icu-messageformat-parser from node_modules, and argument names and select arms are identical per key (subject=head | subject=other on both message keys; {head} and {name} present exactly where English has them); rendered all four combinations at subject=head and subject=other with Atlas, Research agent and quoted heads, and both arms resolve. No plural arms are used anywhere in the namespace (English has none either), so no locale plural categories are engaged. I read all 12 French values against English and the sidecar myself and judged accuracy, idiom, register, glossary and overflow independently. Glossary checked against the shipped fr corpus, not against a claim: job→tâche, monitor→surveillance, wake→réveil, check-in→point de suivi, conversation→conversation, and “{name}'s own cadence”→“la planification propre à {name}”, which matches ui.chat.run_details.wake.managed_note almost verbatim; “Impossible d'…” is the corpus's standing rendering of “Could not …”; the buttons use the corpus infinitive style beside the corpus's “Conserver”. Typography is correct modern French: U+202F narrow no-break space before “?” and inside guillemets, U+2019 apostrophes throughout, zero bidi or zero-width control characters. Register: no second-person address occurs in these 12 strings, so there is no T/V exposure to mismatch against the corpus's vouvoiement. English sweep: no English prose remains; the only identical-looking tokens are “conversation” and “surveillance”, which are genuine French nouns rather than untranslated English, plus the ICU keyword “other” inside select syntax. Not the translator, not the draft auditor, not the integrator; I edited no catalogue, ledger, test or code file, and wrote only this receipt.",
+  "scope": "ui.chat.run_controls for fr: 12 keys at PR head 90f0f49beae2, all read against English and the sidecar",
+  "revisions": {
+    "head": "90f0f49beae27ad35c1b05492ee150cd31e3a8c1"
+  },
+  "en_sha256": "c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa",
+  "context_sha256": "fe162255233a62a41add06ce77e0aff3a533c003e3fb9e504031b91aa83073de",
+  "target_sha256": "28ba35cac7e257e6603842699be2f668ebf5960a18676d8c223352e00ae3516f",
+  "sha256": {
+    "fr": "28ba35cac7e257e6603842699be2f668ebf5960a18676d8c223352e00ae3516f",
+    "en": "c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa"
+  },
+  "draft_sha256": "28ba35cac7e257e6603842699be2f668ebf5960a18676d8c223352e00ae3516f"
+}

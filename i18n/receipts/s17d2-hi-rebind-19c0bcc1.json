@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent binding audit of the landed namespace (first binding; no re-bind)",
+  "locale": "hi",
+  "namespace": "ui.chat.run_controls",
+  "pr": 1911,
+  "date": "2026-11-14",
+  "head": "90f0f49beae27ad35c1b05492ee150cd31e3a8c1",
+  "instance": "s17d2-hi-rebind-19c0bcc1",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); not the translator, not the draft auditor, not the integrator",
+    "model": "deepseek/deepseek-flash",
+    "independence": "I neither translated this namespace, audited it as a draft, nor integrated it: my only writes were this receipt and throwaway probe scripts in my own scratchpad, and I read the landed file only after it was pushed at 90f0f49.",
+    "instance": "s17d2-hi-rebind-19c0bcc1"
+  },
+  "model": "deepseek/deepseek-flash",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.run_controls.wake_confirm.title_named",
+      "note": "Glossary drift: 'check-in' is now spelled चेक-इन here and in action_named, while the shipped corpus spells the same English concept with the verb हालचाल (ui.notices.aida.paused_receipt, ui.notices.aida.resumed_receipt) and elides it entirely in ui.chat.run_details.wake.managed_note. Both spellings named: चेक-इन (noun, this file, 2 occurrences corpus-wide, both in this namespace) vs हालचाल (verb, 2 occurrences, ui.notices.aida.* only). The loan is defensible — the corpus carries the same X-इन pattern (साइन-इन, 47 occurrences across 16 files) and हालचाल पूछना cannot become a cancellable noun — so nothing is wrong on screen; the cost is one concept in two words across the product. Remedy belongs to the two ui.notices.aida.* keys when next touched, not to this file."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.run_controls.wake_confirm.message",
+      "note": "'… इसे दोबारा नहीं बनाया जाएगा' renders 'nothing re-creates it' as an agentless passive, so the reassurance reads 'it will not be created again' and drops the explicit nobody-re-arms-it. The reader-facing fact survives and the passive keeps the card short; the literal alternative would be '… और इसे दोबारा कोई नहीं बनाएगा।'. Recorded, no action required."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.run_controls.wake_confirm.message_named",
+      "note": "English distinguishes 'cadence' from 'schedule'; hi uses शेड्यूल for both ('{name} का अपना शेड्यूल प्रभावित नहीं होगा।' for 'cadence'). I judge this the correct merge, not a defect: the shipped sibling ui.chat.run_details.wake.managed_note already says '{name} का अपना शेड्यूल', so the two sentences agree, and कैडेंस exists nowhere in the corpus. Recorded so a future glossary pass can state that hi merges cadence into शेड्यूल."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.run_controls.wake_confirm.action",
+      "note": "Width: 'जागृति रद्द करें' is 16 chars against 'Cancel wake' 11 (1.45x; the only string above 1.30x in the namespace). It shares a justify-end row with Keep (रहने दें) in a 288px card with p-4 padding, leaving ~256px of content box; by char estimate the pair needs ~220-235px, so it should fit but with thin headroom and no wrap guard. Recommend one rendered check of the button row at hi rather than an assertion of overflow — I did not render it."
+    }
+  ],
+  "binding": "Verified before writing, not assumed: all five declared sha256 read FIRST and all matched (landed hi, en source, en sidecar, audited draft); the landed file is byte-identical to the audited draft (cmp, plus each hashes to 19c0bcc1) and is the tracked blob at 90f0f49 (git cat-file HEAD:... re-hashes to 19c0bcc1). 12 keys in both locales, set-difference empty both ways, order equal to English, sidecar keys == English keys, 12 distinct hi values, none byte-identical to English. Parsed both sides with the repo's own @formatjs/icu-messageformat-parser: argument names and select arms identical per key (5 simple placeholders per side, select(subject) arms head/other on both message keys, no plural/date/number skeleton anywhere in the namespace, so no locale plural-category question arises). Rendered both message keys with IntlMessageFormat from the repo's node_modules at subject=head and subject=other with Atlas, Research agent and a quoted head: both arms select correctly and agree in gender (नहीं जगेगी with जागृति, {name} का with the possessed masculine चेक-इन/शेड्यूल, so a feminine assistant name is safe). Format: TAB indent (12 tab lines, 0 space lines), exactly one trailing newline, no BOM, no CR, no \\u escapes, NFC clean, no bidi/format characters (hi is LTR; the ur RTL clause does not apply here). English sweep: zero Latin runs in any value outside ICU syntax; the only Latin is the structural words subject/select/head/other/name inside the ICU braces plus the {name}/{head} tokens — no English fragment ships. Loader wiring: hiUiChatRunControls is imported at src/i18n/keys.gen.ts:585 and spread into the hi map at :1920, so the namespace resolves from this file with no English fallback. Judged all 12 values myself against English and the sidecar; carried the earlier MINOR and two NITs only where I independently agree they stand, and added one new NIT (button width).",
+  "scope": "ui.chat.run_controls for hi: 12 keys at PR head 90f0f49beae2, all read against English and the sidecar",
+  "revisions": {
+    "head": "90f0f49beae27ad35c1b05492ee150cd31e3a8c1"
+  },
+  "en_sha256": "c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa",
+  "context_sha256": "fe162255233a62a41add06ce77e0aff3a533c003e3fb9e504031b91aa83073de",
+  "target_sha256": "19c0bcc144cea71b7be5c17932fdd32837c730d4ac4112359908a6e626685cda",
+  "sha256": {
+    "hi": "19c0bcc144cea71b7be5c17932fdd32837c730d4ac4112359908a6e626685cda",
+    "en": "c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa"
+  },
+  "draft_sha256": "19c0bcc144cea71b7be5c17932fdd32837c730d4ac4112359908a6e626685cda"
+}
