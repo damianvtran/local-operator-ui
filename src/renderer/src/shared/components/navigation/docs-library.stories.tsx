@@ -1434,6 +1434,8 @@ const ExpandReceipt = ({ marker }: { marker: string }) => {
 const HubHold = () => {
 	useEffect(() => {
 		document.documentElement.dataset.capturePending = "1";
+		// A refusal from an earlier story in the same page must not fail this one.
+		delete document.documentElement.dataset.captureFailed;
 		const started = Date.now();
 		const timer = window.setInterval(() => {
 			if (document.querySelector('[data-testid="agent-org-badge"]')) {
@@ -1449,6 +1451,8 @@ const HubHold = () => {
 		return () => {
 			window.clearInterval(timer);
 			document.documentElement.removeAttribute("data-capture-pending");
+			// ...nor outlive this story into the next one.
+			delete document.documentElement.dataset.captureFailed;
 		};
 	}, []);
 	return null;

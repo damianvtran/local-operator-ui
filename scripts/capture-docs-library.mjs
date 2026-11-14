@@ -80,6 +80,8 @@ const SCENES = [
 	["bridge-approval", "docs-team-bridge--approval"],
 	["bridge-mention", "docs-team-bridge--mention"],
 	["bridge-launch", "docs-team-bridge--launch"],
+	["memory-taught", "docs-memory--taught"],
+	["memory-recalled", "docs-memory--recalled"],
 ];
 
 /**
@@ -101,6 +103,8 @@ const GLASS_SCENES = new Set([
 	"docs-team-bridge--approval",
 	"docs-team-bridge--mention",
 	"docs-team-bridge--launch",
+	"docs-memory--taught",
+	"docs-memory--recalled",
 ]);
 
 /** CLI alias -> the registry's palette id. */
