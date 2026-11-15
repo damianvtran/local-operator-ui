@@ -142,6 +142,11 @@ test("renderer IPC decoding: closed op set, exact fields, id regex", () => {
 		{ op: "revoke-native-host", id: ID, host: "a..b" },
 		{ op: "revoke-native-host", id: "..", host: "com.ok.host" },
 		{ op: "revoke-native-host", id: ID, host: "com.ok.host", extra: 1 },
+		// "Ask again" (clear a session refusal) carries the same rule.
+		{ op: "clear-native-refusal", id: ID },
+		{ op: "clear-native-refusal", id: ID, host: "../../x" },
+		{ op: "clear-native-refusal", id: "..", host: "com.ok.host" },
+		{ op: "clear-native-refusal", id: ID, host: "com.ok.host", allow: true },
 	])
 		assert.equal(decodeExtensionsRequest(raw), null, JSON.stringify(raw));
 	assert.deepEqual(
@@ -151,6 +156,14 @@ test("renderer IPC decoding: closed op set, exact fields, id regex", () => {
 			host: "com.1password.1password",
 		}),
 		{ op: "revoke-native-host", id: ID, host: "com.1password.1password" },
+	);
+	assert.deepEqual(
+		decodeExtensionsRequest({
+			op: "clear-native-refusal",
+			id: ID,
+			host: "com.1password.1password",
+		}),
+		{ op: "clear-native-refusal", id: ID, host: "com.1password.1password" },
 	);
 	for (const op of ["retry", "open-listing", "open-homepage"])
 		assert.deepEqual(decodeExtensionsRequest({ op, id: ID }), { op, id: ID });

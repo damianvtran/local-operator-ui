@@ -1505,6 +1505,9 @@ async function initializeBrowserHost(
 				case "revoke-native-host":
 					ok = extensions.revokeNativeHost(request.id, request.host);
 					break;
+				case "clear-native-refusal":
+					ok = extensions.clearNativeRefusal(request.id, request.host);
+					break;
 				case "open-store": {
 					// A USER tab, activated: this is the desktop menu press.
 					const record = registry.create({ owner: "user", activate: true });

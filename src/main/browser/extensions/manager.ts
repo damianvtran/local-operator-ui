@@ -76,6 +76,7 @@ import {
 import {
 	type ExtensionsState,
 	type InstalledExtension,
+	type NativeHostGrant,
 	readExtensionsState,
 	writeExtensionsState,
 } from "./state";
@@ -274,10 +275,14 @@ export class ExtensionManager {
 	 * selected tab hours later, so the arm lapses FOREGROUND_ARM_MS after the
 	 * act settles and is dropped on unload. */
 	private foregroundArmed = new Map<string, number>();
-	/** Native-host refusals, `${id}\n${host}`: for this session only, so a
-	 * mis-click is undone by a restart and a refused host does not re-prompt
-	 * on every reconnect attempt (1Password retries on a timer). */
-	private nativeDenied = new Set<string>();
+	/** Native-host refusals, `${id}\n${host}` -> the host as the dialog showed
+	 * it. Session-only, so a refused host does not re-prompt on every
+	 * reconnect attempt (1Password retries on a timer). A "Don't allow" and a
+	 * Revoke both land here; the details page lists them as "Not allowed"
+	 * with "Ask again", which only deletes the entry: the next connection
+	 * attempt still has to pass the native consent sheet, so no page, agent
+	 * or renderer can grant through it. */
+	private nativeDenied = new Map<string, NativeHostGrant>();
 	/** One open consent question per (extension, host): concurrent connects
 	 * (worker + popup, or a retry loop) share it instead of stacking dialogs. */
 	private nativeAsking = new Map<string, Promise<boolean>>();
@@ -466,6 +471,7 @@ export class ExtensionManager {
 			hasHomepage: !!entry.homepage,
 			waitingPages: runtime?.deferred.length ?? 0,
 			nativeHosts: (entry.nativeHosts ?? []).map((grant) => ({ ...grant })),
+			refusedHosts: this.refusedHosts(id),
 		};
 	}
 
@@ -883,7 +889,11 @@ export class ExtensionManager {
 			} satisfies NativeHostPrompt);
 			if (answer === "unavailable") return false;
 			if (answer === "deny") {
-				this.nativeDenied.add(key);
+				this.nativeDenied.set(key, {
+					name: host,
+					description: request.host.description.slice(0, 200),
+				});
+				if (!this.disposed) this.hooks.changed();
 				return false;
 			}
 			// Re-read: the extension may have been removed or disabled while
@@ -912,7 +922,13 @@ export class ExtensionManager {
 	revokeNativeHost(id: string, host: string): boolean {
 		const entry = this.state.extensions[id];
 		if (!entry?.nativeHosts?.some((grant) => grant.name === host)) return false;
+		const revoked = entry.nativeHosts.find((grant) => grant.name === host);
 		const remaining = entry.nativeHosts.filter((grant) => grant.name !== host);
+		// Revoke is a refusal too (design D3): 1Password reconnects on a timer
+		// and the window is focused right after the click, so without this the
+		// consent sheet would come straight back and Revoke would look broken.
+		// The row becomes "Not allowed · Ask again".
+		if (revoked) this.nativeDenied.set(`${id}\n${host}`, { ...revoked });
 		// An empty list is dropped (undefined), so state.json carries no key.
 		entry.nativeHosts = remaining.length ? remaining : undefined;
 		this.save();
@@ -921,8 +937,24 @@ export class ExtensionManager {
 		return true;
 	}
 
+	/** "Ask again" on the details page: forget this session's refusal only.
+	 * Grants nothing — the extension's next attempt asks through the native
+	 * consent sheet as if it were the first. */
+	clearNativeRefusal(id: string, host: string): boolean {
+		if (!this.nativeDenied.delete(`${id}\n${host}`)) return false;
+		if (!this.disposed) this.hooks.changed();
+		return true;
+	}
+
+	private refusedHosts(id: string): NativeHostGrant[] {
+		const refused: NativeHostGrant[] = [];
+		for (const [key, grant] of this.nativeDenied)
+			if (key.startsWith(`${id}\n`)) refused.push({ ...grant });
+		return refused;
+	}
+
 	private forgetNativeDenials(id: string): void {
-		for (const key of this.nativeDenied)
+		for (const key of this.nativeDenied.keys())
 			if (key.startsWith(`${id}\n`)) this.nativeDenied.delete(key);
 	}
 

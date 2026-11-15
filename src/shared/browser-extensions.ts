@@ -67,6 +67,10 @@ export interface ExtensionSummary {
 	/** Desktop apps (native messaging hosts) the user allowed this extension to
 	 * talk to; each can be revoked from the details page. */
 	nativeHosts: { name: string; description: string }[];
+	/** Desktop apps refused this session ("Don't allow" or Revoke). Shown as
+	 * "Not allowed" with "Ask again", which only clears the refusal: the next
+	 * attempt still goes through the native consent sheet. */
+	refusedHosts: { name: string; description: string }[];
 }
 
 /** An install in progress, before the consent dialog (review U5). No name yet:
@@ -103,7 +107,10 @@ export type ExtensionsRequest =
 	| { op: "cancel"; id: string }
 	/** Withdraw the extension's consent for one desktop app; main also closes
 	 * any live connection to it. */
-	| { op: "revoke-native-host"; id: string; host: string };
+	| { op: "revoke-native-host"; id: string; host: string }
+	/** Forget this session's refusal of one desktop app. Grants nothing: the
+	 * extension's next attempt asks through the native consent sheet. */
+	| { op: "clear-native-refusal"; id: string; host: string };
 
 export interface ExtensionsResponse {
 	extensions: ExtensionSummary[];
@@ -150,12 +157,13 @@ export function decodeExtensionsRequest(
 				? { op: "set-enabled", id: value.id, enabled: value.enabled }
 				: null;
 		case "revoke-native-host":
+		case "clear-native-refusal":
 			return keys === "host,id,op" &&
 				isExtensionId(value.id) &&
 				typeof value.host === "string" &&
 				value.host.length <= 255 &&
 				NATIVE_HOST_NAME.test(value.host)
-				? { op: "revoke-native-host", id: value.id, host: value.host }
+				? { op: value.op, id: value.id, host: value.host }
 				: null;
 		default:
 			return null;
@@ -293,6 +301,16 @@ const PASSWORD_MANAGER_IDS: ReadonlySet<string> = new Set([
 	"nngceckbapebfimnlniiiahkandclblb", // Bitwarden
 	"hdokiejnpimakedhajhdlcegeplioahd", // LastPass
 	"fdjamakpfbbddfjaooikfcpapjohcfmg", // Dashlane
+]);
+
+/**
+ * Chrome Web Store ids of the official 1Password extension. Its desktop app
+ * (1Password-BrowserSupport) only answers browsers the user added in
+ * 1Password → Settings → Browser, so the details page shows that step under
+ * the desktop-app list (design D4). Wording only; never an access decision.
+ */
+export const ONEPASSWORD_EXTENSION_IDS: ReadonlySet<string> = new Set([
+	"aeblfdkhhhdcdjpifhhbdiojplfjncoa", // 1Password (Chrome Web Store)
 ]);
 
 /** The first installed, turned-on extension that can hold passkeys, if any. */

@@ -52,6 +52,7 @@ const base: ExtensionSummary = {
 	hasHomepage: true,
 	waitingPages: 0,
 	nativeHosts: [],
+	refusedHosts: [],
 };
 const other: ExtensionSummary = {
 	...base,
@@ -90,6 +91,7 @@ const callbacks = {
 	onOpenLink: noop,
 	onRetry: noop,
 	onRevokeNativeHost: noop,
+	onClearNativeRefusal: noop,
 	onCancelInstall: noop,
 	onOpenStore: noop,
 	onCheckUpdates: noop,
@@ -194,6 +196,26 @@ export const DetailsDesktopAppAllowed: Story = {
 			{
 				...base,
 				nativeHosts: [
+					{
+						name: "com.1password.1password",
+						description: "1Password BrowserSupport",
+					},
+				],
+			},
+			other,
+			third,
+		],
+	},
+};
+/** After "Don't allow" (or Revoke) this session: the refused app stays
+ * visible as "Not allowed" with "Ask again", which only clears the refusal. */
+export const DetailsDesktopAppRefused: Story = {
+	args: {
+		page: { page: "extensions", id: base.id },
+		extensions: [
+			{
+				...base,
+				refusedHosts: [
 					{
 						name: "com.1password.1password",
 						description: "1Password BrowserSupport",

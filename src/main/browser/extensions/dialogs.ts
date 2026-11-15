@@ -152,6 +152,7 @@ export function installExtensionDialogs(
 				detail: [
 					t("ui.browser.extensions.native_confirm_body", {
 						name: prompt.extensionName,
+						app,
 					}),
 					"",
 					t("ui.browser.extensions.native_confirm_host", { host: prompt.host }),

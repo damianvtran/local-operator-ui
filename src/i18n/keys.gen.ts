@@ -3664,7 +3664,11 @@ export type MessageParams = {
 	"ui.browser.extensions.action_retry": undefined;
 	"ui.browser.extensions.action_review_update": undefined;
 	"ui.browser.extensions.action_view_in_store": undefined;
+	"ui.browser.extensions.desktop_apps_ask_again": undefined;
+	"ui.browser.extensions.desktop_apps_ask_again_label": { app: string };
 	"ui.browser.extensions.desktop_apps_none": undefined;
+	"ui.browser.extensions.desktop_apps_onepassword_hint": undefined;
+	"ui.browser.extensions.desktop_apps_refused": undefined;
 	"ui.browser.extensions.desktop_apps_revoke": undefined;
 	"ui.browser.extensions.desktop_apps_revoke_label": { app: string };
 	"ui.browser.extensions.details_description": undefined;
@@ -3710,7 +3714,7 @@ export type MessageParams = {
 	"ui.browser.extensions.menu_none": undefined;
 	"ui.browser.extensions.menu_store": undefined;
 	"ui.browser.extensions.native_confirm_allow": undefined;
-	"ui.browser.extensions.native_confirm_body": { name: string };
+	"ui.browser.extensions.native_confirm_body": { name: string; app: string };
 	"ui.browser.extensions.native_confirm_deny": undefined;
 	"ui.browser.extensions.native_confirm_host": { host: string };
 	"ui.browser.extensions.native_confirm_note": undefined;

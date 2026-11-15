@@ -1119,7 +1119,7 @@ test(
 );
 
 test(
-	"native host: concurrent requests share ONE dialog; Don't Allow lasts the session; an unavailable dialog is not a refusal",
+	"native host: concurrent requests share ONE dialog; Don't allow lasts the session and is listed with Ask again; an unavailable dialog is not a refusal",
 	real,
 	async (t) => {
 		const rig = await installedRig(t, "success");
@@ -1146,6 +1146,29 @@ test(
 		// Remembered for the session: no prompt storm from a retry loop.
 		assert.equal(await authorize(nativeRequest()), false);
 		assert.equal(rig.state.nativePrompts.length, 1);
+		// D2 (#1923 round 1): the refusal is visible on the details page.
+		assert.deepEqual(rig.manager.list()[0].refusedHosts, [
+			{ name: NATIVE_HOST, description: "1Password BrowserSupport" },
+		]);
+		// "Ask again" grants nothing: it only lets the next attempt reach the
+		// native dialog again, whose answer still decides.
+		const before = rig.state.changed;
+		assert.equal(rig.manager.clearNativeRefusal(id, NATIVE_HOST), true);
+		assert.ok(rig.state.changed > before);
+		assert.deepEqual(rig.manager.list()[0].refusedHosts, []);
+		assert.deepEqual(rig.manager.list()[0].nativeHosts, []);
+		assert.equal(
+			rig.manager.clearNativeRefusal(id, NATIVE_HOST),
+			false,
+			"nothing left to clear",
+		);
+		rig.state.nativeAnswer = "deny";
+		assert.equal(await authorize(nativeRequest()), false);
+		assert.equal(
+			rig.state.nativePrompts.length,
+			2,
+			"asked again, refused again",
+		);
 		assert.equal(
 			(await stateFile(rig.root)).extensions[id].nativeHosts,
 			undefined,
@@ -1155,9 +1178,14 @@ test(
 		rig.state.nativeAnswer = "unavailable";
 		const other = nativeRequest({ application: "com.example.other_host" });
 		assert.equal(await authorize(other), false);
+		assert.deepEqual(
+			rig.manager.list()[0].refusedHosts.map((host) => host.name),
+			[NATIVE_HOST],
+			"an unavailable dialog is not listed as a refusal",
+		);
 		rig.state.nativeAnswer = "allow";
 		assert.equal(await authorize(other), true);
-		assert.equal(rig.state.nativePrompts.length, 3);
+		assert.equal(rig.state.nativePrompts.length, 4);
 	},
 );
 
@@ -1183,8 +1211,18 @@ test(
 			false,
 			"nothing left to revoke",
 		);
+		// D3 (#1923 round 1): Revoke is a session refusal too, so the
+		// extension's reconnect timer does not bring the dialog straight back;
+		// the row reads "Not allowed" with "Ask again".
+		assert.equal(await authorize(nativeRequest()), false);
+		assert.equal(rig.state.nativePrompts.length, 1, "revoked: not re-asked");
+		assert.deepEqual(rig.manager.list()[0].refusedHosts, [
+			{ name: NATIVE_HOST, description: "1Password BrowserSupport" },
+		]);
+		assert.equal(rig.manager.clearNativeRefusal(id, NATIVE_HOST), true);
 		assert.equal(await authorize(nativeRequest()), true);
-		assert.equal(rig.state.nativePrompts.length, 2, "revoked: asked again");
+		assert.equal(rig.state.nativePrompts.length, 2, "Ask again: asked again");
+		assert.deepEqual(rig.manager.list()[0].refusedHosts, []);
 
 		// Removal: the grant goes with the entry, and so does a session refusal.
 		rig.state.nativeAnswer = "deny";

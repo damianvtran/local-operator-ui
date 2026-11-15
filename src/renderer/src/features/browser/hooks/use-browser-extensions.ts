@@ -182,6 +182,17 @@ export function useBrowserExtensions(
 		},
 		[run],
 	);
+	const clearNativeRefusal = useCallback(
+		async (extension: ExtensionSummary, host: string) => {
+			const response = await run(
+				{ op: "clear-native-refusal", id: extension.id, host },
+				extension.id,
+			);
+			if (response && !response.ok)
+				showErrorToast(t("ui.browser.extensions.error_generic"));
+		},
+		[run],
+	);
 	const retry = useCallback(
 		(extension: ExtensionSummary) => {
 			// U12: the badge says "Starting…" the moment the user asks, not ~2 s
@@ -234,6 +245,7 @@ export function useBrowserExtensions(
 		open,
 		openLink,
 		revokeNativeHost,
+		clearNativeRefusal,
 		retry,
 		cancelInstall,
 		openStore,

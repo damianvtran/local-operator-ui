@@ -5,14 +5,20 @@ machine on 2026-11-14 (Electron 45.1.0, Chromium 156.0.8078.49).
 
 ## Details page (Storybook, `Browser/Extensions page`)
 
-- `details-desktop-app-allowed.png` — story `DetailsDesktopAppAllowed`: the new
-  **Desktop app connections** row with one granted host and its **Revoke** button;
-  the permission list now carries Chrome's "Communicate with cooperating desktop
-  apps" and "Display notifications" rows (previously a "Blocked in this browser"
-  section).
+- `details-desktop-app-allowed.png` — story `DetailsDesktopAppAllowed`: the
+  **Allowed desktop apps** section with one granted host and its **Revoke** button,
+  plus the 1Password-only help line (Settings → Browser → Add Browser); the
+  permission list carries Chrome's "Communicate with cooperating desktop apps" and
+  "Display notifications" rows (previously a "Blocked in this browser" section).
+- `details-desktop-app-refused.png` — story `DetailsDesktopAppRefused`: after
+  "Don't allow" or Revoke this session, the host stays listed as **Not allowed**
+  with **Ask again** (accessible name "Ask again before 1Password BrowserSupport
+  can connect"), which only clears the refusal.
 - `details-desktop-app-none.png` — story `Details`: an extension that declares
-  `nativeMessaging` with nothing allowed yet.
+  `nativeMessaging` with nothing allowed or refused yet.
 
+Frames regenerated for round-1 remediation (design D2/D4/D6) at 2560×1440, dark
+theme, focus on "Back to extensions".
 Captured from `storybook dev` in the harness browser tab (background tab, no
 window raised). The native consent dialog is an OS message box shown as a sheet on
 the focused app window; it is not captured here — capturing it needs a visible,
@@ -51,3 +57,29 @@ PROBE 4-notifications-permission-level "granted"
 ```
 
 `pgrep -f probe/echo-host.js` after the run: no processes.
+
+## R1-1 regression probe: worker idle stop (round-1 remediation)
+
+Same rig rules (hidden window, dock hidden, `env -i` scratch `HOME`,
+`--use-mock-keychain`, absolute app path, exact process-group reap). A synthetic
+MV3 worker holds a `connectNative` Port open; the page is navigated away so only
+the worker's Port remains; Electron stops the idle worker; the page then wakes it
+and it reconnects. `old` = the round-1 head's patch (negative control), `head` =
+this branch.
+
+```
+== head
+PROBE connect-1 {"t":1,"pid":64098}
+PROBE sw-status {"t":31,"versionId":0,"runningStatus":"stopped"}
+PROBE after-stop {"t":33,"stopped":true,"p1Alive":false}
+PROBE connect-2 {"t":33,"pid":65519}
+PROBE pids-alive {"t":33,"p1":false,"p2":true}
+== old
+PROBE connect-1 {"t":1,"pid":64099}
+PROBE sw-status {"t":31,"versionId":0,"runningStatus":"stopped"}
+PROBE after-stop {"t":33,"stopped":true,"p1Alive":true}
+PROBE connect-2 {"t":33,"pid":65520}
+PROBE pids-alive {"t":33,"p1":true,"p2":true}
+```
+
+Both process groups reaped; `pgrep -fl idle-probe/echo-host.js` afterwards: none.

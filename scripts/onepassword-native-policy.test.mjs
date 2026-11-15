@@ -670,6 +670,143 @@ for (const format of ["cjs", "esm"]) {
 		assert.equal(rig.sender.ipc.listenerCount("crx-native-msg-port-6"), 1);
 	});
 
+	// R1-1 (#1923 round 1, reproduced in real Electron): Electron stops an idle
+	// extension worker even while its native Port is open. The host must die
+	// with the worker, and a wake that reconnects must not pile up processes.
+	test(`${format}: a stopped worker's host is killed and a wake does not accumulate hosts`, async (t) => {
+		const rig = await hostRig(t, format, () => true);
+		const sent = [];
+		const worker = {
+			session: rig.ses,
+			scope: `chrome-extension://${extensionId}/`,
+			versionId: 7,
+			ipc: ipc(),
+			send: (channel, ...args) => sent.push([channel, ...args]),
+			isDestroyed: () => false,
+		};
+		rig.ses.serviceWorkers.getWorkerFromVersionID = () => worker;
+		rig.ses.serviceWorkers.emit("running-status-changed", {
+			runningStatus: "starting",
+			versionId: 7,
+		});
+		const route = worker.ipc.handlers.get("crx-msg");
+		assert.ok(route, "the router listens on the worker's ipc");
+		const workerCall = (operation, ...args) =>
+			route(
+				{ type: "service-worker", session: rig.ses, serviceWorker: worker },
+				extensionId,
+				operation,
+				...args,
+			);
+		const pidOf = async (all, connectionId) => {
+			worker.ipc.emit(`crx-native-msg-${connectionId}`, {}, { n: 1 });
+			await until(
+				() =>
+					all.some(([channel]) => channel === `crx-native-msg-${connectionId}`),
+				`${connectionId} reply`,
+			);
+			return all.find(
+				([channel]) => channel === `crx-native-msg-${connectionId}`,
+			)[1].pid;
+		};
+		assert.equal(
+			await workerCall("runtime.connectNative", "w-1", HOST),
+			undefined,
+		);
+		const first = await pidOf(sent, "w-1");
+		// Negative control: a page's port is not the worker's and must survive.
+		await rig.call("runtime.connectNative", "page-1", HOST);
+		rig.sender.ipc.emit("crx-native-msg-page-1", {}, { n: 1 });
+		await until(
+			() => rig.sent.some(([channel]) => channel === "crx-native-msg-page-1"),
+			"page-1 reply",
+		);
+		const page = rig.sent.find(
+			([channel]) => channel === "crx-native-msg-page-1",
+		)[1].pid;
+		// "stopping" alone is not the end: the worker may still be draining.
+		rig.ses.serviceWorkers.emit("running-status-changed", {
+			runningStatus: "stopping",
+			versionId: 7,
+		});
+		await new Promise((resolve) => setTimeout(resolve, 50));
+		assert.ok(alive(first));
+		rig.ses.serviceWorkers.emit("running-status-changed", {
+			runningStatus: "stopped",
+			versionId: 7,
+		});
+		await until(() => !alive(first), "the stopped worker's host to exit");
+		assert.ok(alive(page), "the page's host is untouched");
+		// Wake: the worker reconnects (1Password does at startup).
+		rig.ses.serviceWorkers.emit("running-status-changed", {
+			runningStatus: "running",
+			versionId: 7,
+		});
+		assert.equal(
+			await workerCall("runtime.connectNative", "w-2", HOST),
+			undefined,
+		);
+		const second = await pidOf(sent, "w-2");
+		assert.notEqual(second, first);
+		// Exactly the page's host and the woken worker's host remain.
+		assert.equal(rig.instance.disconnectNativeHosts(extensionId), 2);
+		await until(() => !alive(second) && !alive(page), "teardown");
+	});
+
+	// R1-2: a renderer-chosen connection id that is already in use must not
+	// orphan the live host (revoke/unload find hosts through that map).
+	test(`${format}: a reused live connection id is refused and the first host stays reachable`, async (t) => {
+		const rig = await hostRig(t, format, () => true);
+		assert.equal(
+			await rig.call("runtime.connectNative", "dup", HOST),
+			undefined,
+		);
+		assert.deepEqual(
+			{ ...(await rig.call("runtime.connectNative", "dup", HOST)) },
+			{
+				nativeMessagingError:
+					"Error when communicating with the native messaging host.",
+			},
+		);
+		rig.sender.ipc.emit("crx-native-msg-dup", {}, { n: 1 });
+		await until(
+			() => rig.sent.some(([channel]) => channel === "crx-native-msg-dup"),
+			"dup reply",
+		);
+		const replies = rig.sent.filter(
+			([channel]) => channel === "crx-native-msg-dup",
+		);
+		assert.equal(replies.length, 1, "one host answered");
+		const pid = replies[0][1].pid;
+		assert.equal(rig.instance.disconnectNativeHosts(extensionId, HOST), 1);
+		await until(() => !alive(pid), "the only host to exit on revoke");
+	});
+
+	// R1-4: the own-page check sees the CALLING frame, not the tab's top URL.
+	test(`${format}: the predicate is given the calling frame's URL`, async (t) => {
+		const rig = await hostRig(t, format, () => false);
+		const subframe =
+			"chrome-extension://bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/frame.html";
+		await rig.handlers.handlers.get("crx-msg")(
+			{ type: "frame", sender: rig.sender, senderFrame: { url: subframe } },
+			extensionId,
+			"runtime.connectNative",
+			"frame-1",
+			HOST,
+		);
+		await rig.handlers.handlers.get("crx-msg")(
+			{ type: "frame", sender: rig.sender, senderFrame: null },
+			extensionId,
+			"runtime.connectNative",
+			"frame-2",
+			HOST,
+		);
+		assert.deepEqual(
+			rig.asked.map((details) => details.senderUrl),
+			[subframe, ""],
+		);
+	});
+
 	test(`${format}: a port closed while consent is pending never spawns its host`, async (t) => {
 		let answer;
 		const rig = await hostRig(

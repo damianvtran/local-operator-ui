@@ -186,7 +186,7 @@ index 67d3be4b5026069ec4ae73c1fc6e661f8a19098e..538c9cfa834d2b735fea2932e47ff0f3
        console.error(`injectExtensionAPIs error (${location.href})`);
        console.error(error);
 diff --git a/dist/cjs/index.js b/dist/cjs/index.js
-index a91ca8fd07194abb081e9bb35fad0060fefddf91..792cf13580c0841912e682f8231c6b07c500c564 100644
+index a91ca8fd07194abb081e9bb35fad0060fefddf91..4777f76c8c5c77a7dfbe7ccc5082f53bd5aeb4cf 100644
 --- a/dist/cjs/index.js
 +++ b/dist/cjs/index.js
 @@ -448,7 +448,7 @@ var BrowserActionAPI = class {
@@ -378,14 +378,14 @@ index a91ca8fd07194abb081e9bb35fad0060fefddf91..792cf13580c0841912e682f8231c6b07
 +      if (this.sender && !this.sender.isDestroyed?.()) this.sender.send(channel, ...args);
 +    } catch {
 +    }
-+  }
+   }
+-  destroy() {
 +  settle(outcome) {
 +    if (!this.outcome) this.outcome = outcome;
 +    const resolve = this.resolveResponse;
 +    this.resolveResponse = void 0;
 +    resolve?.(this.outcome);
-   }
--  destroy() {
++  }
 +  /** `reason`: the lastError the port's onDisconnect sees; none when the
 +   * extension itself disconnected. */
 +  destroy(reason) {
@@ -458,15 +458,15 @@ index a91ca8fd07194abb081e9bb35fad0060fefddf91..792cf13580c0841912e682f8231c6b07
 -    d7("launch: spawning %s for %s", config.path, extensionId);
 -    this.process = (0, import_node_child_process.spawn)(config.path, [extensionUrl], {
 -      shell: false
+-    });
+-    this.process.stdout.on("data", this.receive);
+-    this.process.stderr.on("data", (data) => {
+-      d7("stderr: %s", data.toString());
 +    this.process = child;
 +    child.stdout.on("data", this.receive);
 +    // Drained, never logged: hosts print account diagnostics on stderr.
 +    child.stderr.on("data", () => {
      });
--    this.process.stdout.on("data", this.receive);
--    this.process.stderr.on("data", (data) => {
--      d7("stderr: %s", data.toString());
--    });
 -    this.process.on("error", (err) => {
 -      d7("error: %s", err);
 -      this.destroy();
@@ -531,7 +531,7 @@ index a91ca8fd07194abb081e9bb35fad0060fefddf91..792cf13580c0841912e682f8231c6b07
      return new Promise((resolve) => {
        this.resolveResponse = resolve;
      });
-@@ -1950,34 +2060,109 @@ var NativeMessagingHost = class {
+@@ -1950,34 +2060,140 @@ var NativeMessagingHost = class {
  
  // src/browser/api/runtime.ts
  var RuntimeAPI = class extends import_node_events3.EventEmitter {
@@ -549,9 +549,28 @@ index a91ca8fd07194abb081e9bb35fad0060fefddf91..792cf13580c0841912e682f8231c6b07
      this.hostMap = {};
 +    this.connecting = /* @__PURE__ */ new Set();
 +    this.cancelled = /* @__PURE__ */ new Set();
++    // Hosts opened by a background service worker, by the worker's
++    // versionId. Electron stops an idle extension worker (~30 s) even while a
++    // native Port is open: Chrome counts that Port as a keepalive, Electron
++    // does not. The worker's Ports die with it, so its hosts must too;
++    // otherwise every idle/wake cycle (1Password reconnects at startup)
++    // leaves one more live host process whose replies reach nobody.
++    this.workerHosts = /* @__PURE__ */ new Map();
++    ctx.session.serviceWorkers?.on?.("running-status-changed", ({ versionId, runningStatus }) => {
++      if (runningStatus !== "stopped") return;
++      const hosts = this.workerHosts.get(versionId);
++      if (!hosts) return;
++      this.workerHosts.delete(versionId);
++      for (const host of hosts) host.destroy();
++    });
++    // The CALLING frame's URL, not its WebContents' top-level URL: a
++    // subframe must not pass as the page that embeds it. A frame event
++    // without a live frame (navigated away, destroyed) has no URL and is
++    // refused by the embedder's own-page check.
 +    const senderUrl = (event) => {
 +      try {
-+        return (event.type === "frame" ? event.sender?.getURL?.() : event.sender?.scope) || "";
++        if (event.type === "frame") return ("senderFrame" in event ? event.senderFrame?.url : event.sender?.getURL?.()) || "";
++        return event.sender?.scope || "";
 +      } catch {
 +        return "";
 +      }
@@ -587,13 +606,21 @@ index a91ca8fd07194abb081e9bb35fad0060fefddf91..792cf13580c0841912e682f8231c6b07
 +      // A frame that goes away takes its ports with it, as in Chrome; its host
 +      // must not outlive it.
 +      const gone = () => host.destroy();
++      const versionId = event.type === "frame" ? void 0 : sender?.versionId;
 +      const host = new NativeMessagingHost(event.extension.id, sender, connectionId, config, keepAlive, (done) => {
 +        if (this.hostMap[key] === done) delete this.hostMap[key];
 +        if (event.type === "frame") sender?.removeListener?.("destroyed", gone);
++        const owned = this.workerHosts.get(versionId);
++        if (owned?.delete(done) && owned.size === 0) this.workerHosts.delete(versionId);
 +      });
 +      if (!host.destroyed) {
 +        this.hostMap[key] = host;
 +        if (event.type === "frame") sender?.once?.("destroyed", gone);
++        else if (typeof versionId === "number") {
++          const owned = this.workerHosts.get(versionId) ?? /* @__PURE__ */ new Set();
++          owned.add(host);
++          this.workerHosts.set(versionId, owned);
++        }
 +      }
 +      return host;
 +    };
@@ -607,6 +634,10 @@ index a91ca8fd07194abb081e9bb35fad0060fefddf91..792cf13580c0841912e682f8231c6b07
 -      this.hostMap[connectionId] = host;
 +      if (typeof connectionId !== "string") return { nativeMessagingError: NATIVE_HOST_ERROR };
 +      const key = keyOf(event.extension.id, connectionId);
++      // Connection ids come from the renderer. Reusing a live (or still
++      // connecting) one would overwrite its hostMap entry and orphan that
++      // process where revoke/unload can no longer reach it: refuse it.
++      if (this.hostMap[key] || this.connecting.has(key)) return { nativeMessagingError: NATIVE_HOST_ERROR };
 +      this.connecting.add(key);
 +      // Extensions post on the Port right after connectNative (1Password
 +      // does), while this call is still resolving the host or waiting for
@@ -661,7 +692,7 @@ index a91ca8fd07194abb081e9bb35fad0060fefddf91..792cf13580c0841912e682f8231c6b07
      };
      this.openOptionsPage = async ({ extension }) => {
        const manifest = getExtensionManifest(extension);
-@@ -1994,6 +2179,23 @@ var RuntimeAPI = class extends import_node_events3.EventEmitter {
+@@ -1994,6 +2210,23 @@ var RuntimeAPI = class extends import_node_events3.EventEmitter {
      handle("runtime.disconnectNative", this.disconnectNative, { permission: "nativeMessaging" });
      handle("runtime.openOptionsPage", this.openOptionsPage);
      handle("runtime.sendNativeMessage", this.sendNativeMessage, { permission: "nativeMessaging" });
@@ -685,7 +716,7 @@ index a91ca8fd07194abb081e9bb35fad0060fefddf91..792cf13580c0841912e682f8231c6b07
    }
  };
  
-@@ -2183,11 +2385,13 @@ var NotificationsAPI = class {
+@@ -2183,11 +2416,13 @@ var NotificationsAPI = class {
        if (opts.silent) notification.silent = opts.silent;
      };
      const handle = this.ctx.router.apiHandler();
@@ -704,7 +735,7 @@ index a91ca8fd07194abb081e9bb35fad0060fefddf91..792cf13580c0841912e682f8231c6b07
      const sessionExtensions = ctx.session.extensions || ctx.session;
      sessionExtensions.on("extension-unloaded", (event, extension) => {
        for (const [key, notification] of this.registry) {
-@@ -2271,12 +2475,12 @@ var RoutingDelegate = class _RoutingDelegate {
+@@ -2271,12 +2506,12 @@ var RoutingDelegate = class _RoutingDelegate {
      this.sessionMap = /* @__PURE__ */ new WeakMap();
      this.workers = /* @__PURE__ */ new WeakSet();
      this.onRouterMessage = async (event, extensionId, handlerName, ...args) => {
@@ -719,7 +750,7 @@ index a91ca8fd07194abb081e9bb35fad0060fefddf91..792cf13580c0841912e682f8231c6b07
        const ses = sessionPartition === DEFAULT_SESSION ? getSessionFromEvent(event) : resolvePartition(sessionPartition);
        const observer = this.sessionMap.get(ses);
        return observer?.onExtensionMessage(event, void 0, handlerName, ...args);
-@@ -2324,7 +2528,7 @@ var RoutingDelegate = class _RoutingDelegate {
+@@ -2324,7 +2559,7 @@ var RoutingDelegate = class _RoutingDelegate {
          versionId
        );
        if (serviceWorker?.scope?.startsWith("chrome-extension://") && !this.workers.has(serviceWorker)) {
@@ -728,7 +759,7 @@ index a91ca8fd07194abb081e9bb35fad0060fefddf91..792cf13580c0841912e682f8231c6b07
          this.workers.add(serviceWorker);
          serviceWorker.ipc.handle("crx-msg", this.onRouterMessage);
          serviceWorker.ipc.handle("crx-msg-remote", this.onRemoteMessage);
-@@ -2368,7 +2572,7 @@ var ExtensionRouter = class {
+@@ -2368,7 +2603,7 @@ var ExtensionRouter = class {
      });
      import_electron9.app.on("web-contents-created", (event, webContents2) => {
        if (webContents2.session === this.session && webContents2.getType() === "backgroundPage") {
@@ -737,7 +768,7 @@ index a91ca8fd07194abb081e9bb35fad0060fefddf91..792cf13580c0841912e682f8231c6b07
          this.extensionHosts.add(webContents2);
        }
      });
-@@ -2383,7 +2587,7 @@ var ExtensionRouter = class {
+@@ -2383,7 +2618,7 @@ var ExtensionRouter = class {
          if (this.extensionHosts.has(serviceWorker)) {
            d8("%s running status changed to %s", scope, runningStatus);
          } else {
@@ -746,7 +777,7 @@ index a91ca8fd07194abb081e9bb35fad0060fefddf91..792cf13580c0841912e682f8231c6b07
            this.extensionWorkers.add(serviceWorker);
          }
        }
-@@ -2405,7 +2609,7 @@ var ExtensionRouter = class {
+@@ -2405,7 +2640,7 @@ var ExtensionRouter = class {
    }
    observeListenerHost(host) {
      const hostId = getHostId(host);
@@ -755,16 +786,19 @@ index a91ca8fd07194abb081e9bb35fad0060fefddf91..792cf13580c0841912e682f8231c6b07
      host.once("destroyed", () => {
        d8(`extension host destroyed [id:${hostId}]`);
        this.filterListeners((listener) => listener.type !== "frame" || listener.host !== host);
-@@ -2478,7 +2682,7 @@ var ExtensionRouter = class {
+@@ -2476,9 +2711,9 @@ var ExtensionRouter = class {
+         );
+       }
      }
-     const extEvent = event.type === "frame" ? { type: event.type, sender: event.sender, extension } : { type: event.type, sender: event.serviceWorker, extension };
+-    const extEvent = event.type === "frame" ? { type: event.type, sender: event.sender, extension } : { type: event.type, sender: event.serviceWorker, extension };
++    const extEvent = event.type === "frame" ? { type: event.type, sender: event.sender, senderFrame: event.senderFrame, extension } : { type: event.type, sender: event.serviceWorker, extension };
      const result = await handler.callback(extEvent, ...args);
 -    d8(`${handlerName} result: %r`, result);
 +    d8(`${handlerName} completed`);
      return result;
    }
    handle(name, callback, opts) {
-@@ -2696,7 +2900,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends import_no
+@@ -2696,7 +2931,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends import_no
    }
    constructor(opts) {
      super();
@@ -773,7 +807,7 @@ index a91ca8fd07194abb081e9bb35fad0060fefddf91..792cf13580c0841912e682f8231c6b07
      checkVersion();
      if (sessionMap.has(session2)) {
        throw new Error(`Extensions instance already exists for the given session`);
-@@ -2706,6 +2910,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends import_no
+@@ -2706,6 +2941,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends import_no
      const store = new ExtensionStore(impl);
      this.ctx = {
        emit: this.emit.bind(this),
@@ -781,7 +815,7 @@ index a91ca8fd07194abb081e9bb35fad0060fefddf91..792cf13580c0841912e682f8231c6b07
        router,
        session: session2,
        store
-@@ -2717,7 +2922,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends import_no
+@@ -2717,7 +2953,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends import_no
        cookies: new CookiesAPI(this.ctx),
        notifications: new NotificationsAPI(this.ctx),
        permissions: new PermissionsAPI(this.ctx),
@@ -790,7 +824,7 @@ index a91ca8fd07194abb081e9bb35fad0060fefddf91..792cf13580c0841912e682f8231c6b07
        tabs: new TabsAPI(this.ctx),
        webNavigation: new WebNavigationAPI(this.ctx),
        windows: new WindowsAPI(this.ctx)
-@@ -2774,6 +2979,11 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends import_no
+@@ -2774,6 +3010,11 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends import_no
      this.ctx.store.removeTab(tab);
    }
    /** Notify extension system that the active tab has changed. */
@@ -803,7 +837,7 @@ index a91ca8fd07194abb081e9bb35fad0060fefddf91..792cf13580c0841912e682f8231c6b07
      this.checkWebContentsArgument(tab);
      if (this.ctx.store.tabs.has(tab)) {
 diff --git a/dist/esm/index.mjs b/dist/esm/index.mjs
-index 43929222572e4d6875cc192aca0750da79d8ff14..0a787cb3d98b6b5df534a0ede511fb79e2e24955 100644
+index 43929222572e4d6875cc192aca0750da79d8ff14..db4a1563406872c6737cb2869a32d0e4c60c21c0 100644
 --- a/dist/esm/index.mjs
 +++ b/dist/esm/index.mjs
 @@ -411,7 +411,7 @@ var BrowserActionAPI = class {
@@ -995,14 +1029,14 @@ index 43929222572e4d6875cc192aca0750da79d8ff14..0a787cb3d98b6b5df534a0ede511fb79
 +      if (this.sender && !this.sender.isDestroyed?.()) this.sender.send(channel, ...args);
 +    } catch {
 +    }
-+  }
+   }
+-  destroy() {
 +  settle(outcome) {
 +    if (!this.outcome) this.outcome = outcome;
 +    const resolve = this.resolveResponse;
 +    this.resolveResponse = void 0;
 +    resolve?.(this.outcome);
-   }
--  destroy() {
++  }
 +  /** `reason`: the lastError the port's onDisconnect sees; none when the
 +   * extension itself disconnected. */
 +  destroy(reason) {
@@ -1075,15 +1109,15 @@ index 43929222572e4d6875cc192aca0750da79d8ff14..0a787cb3d98b6b5df534a0ede511fb79
 -    d7("launch: spawning %s for %s", config.path, extensionId);
 -    this.process = spawn2(config.path, [extensionUrl], {
 -      shell: false
+-    });
+-    this.process.stdout.on("data", this.receive);
+-    this.process.stderr.on("data", (data) => {
+-      d7("stderr: %s", data.toString());
 +    this.process = child;
 +    child.stdout.on("data", this.receive);
 +    // Drained, never logged: hosts print account diagnostics on stderr.
 +    child.stderr.on("data", () => {
      });
--    this.process.stdout.on("data", this.receive);
--    this.process.stderr.on("data", (data) => {
--      d7("stderr: %s", data.toString());
--    });
 -    this.process.on("error", (err) => {
 -      d7("error: %s", err);
 -      this.destroy();
@@ -1148,7 +1182,7 @@ index 43929222572e4d6875cc192aca0750da79d8ff14..0a787cb3d98b6b5df534a0ede511fb79
      return new Promise((resolve) => {
        this.resolveResponse = resolve;
      });
-@@ -1913,34 +2023,109 @@ var NativeMessagingHost = class {
+@@ -1913,34 +2023,140 @@ var NativeMessagingHost = class {
  
  // src/browser/api/runtime.ts
  var RuntimeAPI = class extends EventEmitter3 {
@@ -1166,9 +1200,28 @@ index 43929222572e4d6875cc192aca0750da79d8ff14..0a787cb3d98b6b5df534a0ede511fb79
      this.hostMap = {};
 +    this.connecting = /* @__PURE__ */ new Set();
 +    this.cancelled = /* @__PURE__ */ new Set();
++    // Hosts opened by a background service worker, by the worker's
++    // versionId. Electron stops an idle extension worker (~30 s) even while a
++    // native Port is open: Chrome counts that Port as a keepalive, Electron
++    // does not. The worker's Ports die with it, so its hosts must too;
++    // otherwise every idle/wake cycle (1Password reconnects at startup)
++    // leaves one more live host process whose replies reach nobody.
++    this.workerHosts = /* @__PURE__ */ new Map();
++    ctx.session.serviceWorkers?.on?.("running-status-changed", ({ versionId, runningStatus }) => {
++      if (runningStatus !== "stopped") return;
++      const hosts = this.workerHosts.get(versionId);
++      if (!hosts) return;
++      this.workerHosts.delete(versionId);
++      for (const host of hosts) host.destroy();
++    });
++    // The CALLING frame's URL, not its WebContents' top-level URL: a
++    // subframe must not pass as the page that embeds it. A frame event
++    // without a live frame (navigated away, destroyed) has no URL and is
++    // refused by the embedder's own-page check.
 +    const senderUrl = (event) => {
 +      try {
-+        return (event.type === "frame" ? event.sender?.getURL?.() : event.sender?.scope) || "";
++        if (event.type === "frame") return ("senderFrame" in event ? event.senderFrame?.url : event.sender?.getURL?.()) || "";
++        return event.sender?.scope || "";
 +      } catch {
 +        return "";
 +      }
@@ -1204,13 +1257,21 @@ index 43929222572e4d6875cc192aca0750da79d8ff14..0a787cb3d98b6b5df534a0ede511fb79
 +      // A frame that goes away takes its ports with it, as in Chrome; its host
 +      // must not outlive it.
 +      const gone = () => host.destroy();
++      const versionId = event.type === "frame" ? void 0 : sender?.versionId;
 +      const host = new NativeMessagingHost(event.extension.id, sender, connectionId, config, keepAlive, (done) => {
 +        if (this.hostMap[key] === done) delete this.hostMap[key];
 +        if (event.type === "frame") sender?.removeListener?.("destroyed", gone);
++        const owned = this.workerHosts.get(versionId);
++        if (owned?.delete(done) && owned.size === 0) this.workerHosts.delete(versionId);
 +      });
 +      if (!host.destroyed) {
 +        this.hostMap[key] = host;
 +        if (event.type === "frame") sender?.once?.("destroyed", gone);
++        else if (typeof versionId === "number") {
++          const owned = this.workerHosts.get(versionId) ?? /* @__PURE__ */ new Set();
++          owned.add(host);
++          this.workerHosts.set(versionId, owned);
++        }
 +      }
 +      return host;
 +    };
@@ -1224,6 +1285,10 @@ index 43929222572e4d6875cc192aca0750da79d8ff14..0a787cb3d98b6b5df534a0ede511fb79
 -      this.hostMap[connectionId] = host;
 +      if (typeof connectionId !== "string") return { nativeMessagingError: NATIVE_HOST_ERROR };
 +      const key = keyOf(event.extension.id, connectionId);
++      // Connection ids come from the renderer. Reusing a live (or still
++      // connecting) one would overwrite its hostMap entry and orphan that
++      // process where revoke/unload can no longer reach it: refuse it.
++      if (this.hostMap[key] || this.connecting.has(key)) return { nativeMessagingError: NATIVE_HOST_ERROR };
 +      this.connecting.add(key);
 +      // Extensions post on the Port right after connectNative (1Password
 +      // does), while this call is still resolving the host or waiting for
@@ -1278,7 +1343,7 @@ index 43929222572e4d6875cc192aca0750da79d8ff14..0a787cb3d98b6b5df534a0ede511fb79
      };
      this.openOptionsPage = async ({ extension }) => {
        const manifest = getExtensionManifest(extension);
-@@ -1957,6 +2142,23 @@ var RuntimeAPI = class extends EventEmitter3 {
+@@ -1957,6 +2173,23 @@ var RuntimeAPI = class extends EventEmitter3 {
      handle("runtime.disconnectNative", this.disconnectNative, { permission: "nativeMessaging" });
      handle("runtime.openOptionsPage", this.openOptionsPage);
      handle("runtime.sendNativeMessage", this.sendNativeMessage, { permission: "nativeMessaging" });
@@ -1302,7 +1367,7 @@ index 43929222572e4d6875cc192aca0750da79d8ff14..0a787cb3d98b6b5df534a0ede511fb79
    }
  };
  
-@@ -2146,11 +2348,13 @@ var NotificationsAPI = class {
+@@ -2146,11 +2379,13 @@ var NotificationsAPI = class {
        if (opts.silent) notification.silent = opts.silent;
      };
      const handle = this.ctx.router.apiHandler();
@@ -1321,7 +1386,7 @@ index 43929222572e4d6875cc192aca0750da79d8ff14..0a787cb3d98b6b5df534a0ede511fb79
      const sessionExtensions = ctx.session.extensions || ctx.session;
      sessionExtensions.on("extension-unloaded", (event, extension) => {
        for (const [key, notification] of this.registry) {
-@@ -2234,12 +2438,12 @@ var RoutingDelegate = class _RoutingDelegate {
+@@ -2234,12 +2469,12 @@ var RoutingDelegate = class _RoutingDelegate {
      this.sessionMap = /* @__PURE__ */ new WeakMap();
      this.workers = /* @__PURE__ */ new WeakSet();
      this.onRouterMessage = async (event, extensionId, handlerName, ...args) => {
@@ -1336,7 +1401,7 @@ index 43929222572e4d6875cc192aca0750da79d8ff14..0a787cb3d98b6b5df534a0ede511fb79
        const ses = sessionPartition === DEFAULT_SESSION ? getSessionFromEvent(event) : resolvePartition(sessionPartition);
        const observer = this.sessionMap.get(ses);
        return observer?.onExtensionMessage(event, void 0, handlerName, ...args);
-@@ -2287,7 +2491,7 @@ var RoutingDelegate = class _RoutingDelegate {
+@@ -2287,7 +2522,7 @@ var RoutingDelegate = class _RoutingDelegate {
          versionId
        );
        if (serviceWorker?.scope?.startsWith("chrome-extension://") && !this.workers.has(serviceWorker)) {
@@ -1345,7 +1410,7 @@ index 43929222572e4d6875cc192aca0750da79d8ff14..0a787cb3d98b6b5df534a0ede511fb79
          this.workers.add(serviceWorker);
          serviceWorker.ipc.handle("crx-msg", this.onRouterMessage);
          serviceWorker.ipc.handle("crx-msg-remote", this.onRemoteMessage);
-@@ -2331,7 +2535,7 @@ var ExtensionRouter = class {
+@@ -2331,7 +2566,7 @@ var ExtensionRouter = class {
      });
      app4.on("web-contents-created", (event, webContents2) => {
        if (webContents2.session === this.session && webContents2.getType() === "backgroundPage") {
@@ -1354,7 +1419,7 @@ index 43929222572e4d6875cc192aca0750da79d8ff14..0a787cb3d98b6b5df534a0ede511fb79
          this.extensionHosts.add(webContents2);
        }
      });
-@@ -2346,7 +2550,7 @@ var ExtensionRouter = class {
+@@ -2346,7 +2581,7 @@ var ExtensionRouter = class {
          if (this.extensionHosts.has(serviceWorker)) {
            d8("%s running status changed to %s", scope, runningStatus);
          } else {
@@ -1363,7 +1428,7 @@ index 43929222572e4d6875cc192aca0750da79d8ff14..0a787cb3d98b6b5df534a0ede511fb79
            this.extensionWorkers.add(serviceWorker);
          }
        }
-@@ -2368,7 +2572,7 @@ var ExtensionRouter = class {
+@@ -2368,7 +2603,7 @@ var ExtensionRouter = class {
    }
    observeListenerHost(host) {
      const hostId = getHostId(host);
@@ -1372,16 +1437,19 @@ index 43929222572e4d6875cc192aca0750da79d8ff14..0a787cb3d98b6b5df534a0ede511fb79
      host.once("destroyed", () => {
        d8(`extension host destroyed [id:${hostId}]`);
        this.filterListeners((listener) => listener.type !== "frame" || listener.host !== host);
-@@ -2441,7 +2645,7 @@ var ExtensionRouter = class {
+@@ -2439,9 +2674,9 @@ var ExtensionRouter = class {
+         );
+       }
      }
-     const extEvent = event.type === "frame" ? { type: event.type, sender: event.sender, extension } : { type: event.type, sender: event.serviceWorker, extension };
+-    const extEvent = event.type === "frame" ? { type: event.type, sender: event.sender, extension } : { type: event.type, sender: event.serviceWorker, extension };
++    const extEvent = event.type === "frame" ? { type: event.type, sender: event.sender, senderFrame: event.senderFrame, extension } : { type: event.type, sender: event.serviceWorker, extension };
      const result = await handler.callback(extEvent, ...args);
 -    d8(`${handlerName} result: %r`, result);
 +    d8(`${handlerName} completed`);
      return result;
    }
    handle(name, callback, opts) {
-@@ -2659,7 +2863,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends EventEmit
+@@ -2659,7 +2894,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends EventEmit
    }
    constructor(opts) {
      super();
@@ -1390,7 +1458,7 @@ index 43929222572e4d6875cc192aca0750da79d8ff14..0a787cb3d98b6b5df534a0ede511fb79
      checkVersion();
      if (sessionMap.has(session2)) {
        throw new Error(`Extensions instance already exists for the given session`);
-@@ -2669,6 +2873,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends EventEmit
+@@ -2669,6 +2904,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends EventEmit
      const store = new ExtensionStore(impl);
      this.ctx = {
        emit: this.emit.bind(this),
@@ -1398,7 +1466,7 @@ index 43929222572e4d6875cc192aca0750da79d8ff14..0a787cb3d98b6b5df534a0ede511fb79
        router,
        session: session2,
        store
-@@ -2680,7 +2885,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends EventEmit
+@@ -2680,7 +2916,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends EventEmit
        cookies: new CookiesAPI(this.ctx),
        notifications: new NotificationsAPI(this.ctx),
        permissions: new PermissionsAPI(this.ctx),
@@ -1407,7 +1475,7 @@ index 43929222572e4d6875cc192aca0750da79d8ff14..0a787cb3d98b6b5df534a0ede511fb79
        tabs: new TabsAPI(this.ctx),
        webNavigation: new WebNavigationAPI(this.ctx),
        windows: new WindowsAPI(this.ctx)
-@@ -2737,6 +2942,11 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends EventEmit
+@@ -2737,6 +2973,11 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends EventEmit
      this.ctx.store.removeTab(tab);
    }
    /** Notify extension system that the active tab has changed. */
