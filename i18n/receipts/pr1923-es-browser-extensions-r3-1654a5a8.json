@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 3, of the one PR #1923 key changed in 6b7fb74bff (eb5ef00832..6b7fb74bff) in this namespace (scope: ui.browser.extensions.native_confirm_host); the other keys audited in rounds 1-2 retained, out of scope",
+  "locale": "es",
+  "namespace": "ui.browser.extensions",
+  "pr": 1923,
+  "date": "2026-11-15",
+  "head": "6b7fb74bff60d5a0a8368dd2c7543f183b8d2d4b",
+  "instance": "pr1923-es-browser-extensions-r3-1654a5a8",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "role": "independent translation auditor (team lopdev, task role); not the translator (coder subagent cfa15e1487df on anthropic/claude-opus-5-5)",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session a136361a1e71: a different session and agent from the round-3 translator (coder cfa15e1487df) and from the round-1/round-2 auditors; same served model family anthropic/claude-opus-5-5 as stated by this session's harness system prompt, no fallback. No MT used.",
+    "instance": "pr1923-es-browser-extensions-r3-1654a5a8"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "binding": "Verified at 6b7fb74bff60: target src/i18n/catalogues/es/ui.browser.extensions.json (sha256 477d894610f2ef8b7f2fb3f600415a00862dedc5b46983d007677f0ddf6e1821); English src/i18n/catalogues/en/ui.browser.extensions.json (sha256 a44227481ff49391518de21a6596d0474697cd7245e9d6cac947d6e130edc58d); context sidecar sha256 7ae7fff463c0091b607fe47e728b1d60268843c40d40f7779e36d2bafd3f8df5. Diff eb5ef00832..6b7fb74bff touches only this key. Checks (python): es key set equals English; ICU argument names identical ({host}); value NFC, no Cf characters. Value: native_confirm_host = 'Identificador del host: {host}' (30/12 chars, 2.50x). Rationale: context names {host} a technical native messaging host id (e.g. com.1password.1password), so 'Identificador' is accurate; 'host' kept as the technical term, masculine, as in es ui.code_review ('este host'); 'del' contraction correct; Label: value form with ASCII colon as sibling 'Programa: {path}'. Rendered in the detail text of a native macOS message box (src/main/browser/extensions/dialogs.ts), which wraps, so the 2.5x growth has no fit risk. Replaces the English-identical 'Host: {host}' rejected by CI locale-parity.",
+  "scope": "ui.browser.extensions for es: 1 PR #1923 round-3 key at branch head 6b7fb74bff60",
+  "revisions": {
+    "head": "6b7fb74bff60d5a0a8368dd2c7543f183b8d2d4b"
+  },
+  "en_sha256": "a44227481ff49391518de21a6596d0474697cd7245e9d6cac947d6e130edc58d",
+  "context_sha256": "7ae7fff463c0091b607fe47e728b1d60268843c40d40f7779e36d2bafd3f8df5",
+  "target_sha256": "477d894610f2ef8b7f2fb3f600415a00862dedc5b46983d007677f0ddf6e1821",
+  "sha256": {
+    "es": "477d894610f2ef8b7f2fb3f600415a00862dedc5b46983d007677f0ddf6e1821",
+    "en": "a44227481ff49391518de21a6596d0474697cd7245e9d6cac947d6e130edc58d"
+  }
+}
