@@ -25,7 +25,11 @@ import { askQueueView, askRevisionEvidence } from "@features/chat/ask-queue";
  * read answers `dismissed`, the content stays on screen with a notice and the
  * actions disabled, rather than the pane closing under the reader.
  */
-import { ASK_BOUND_ATTR } from "@features/chat/components/asks/ask-bounds";
+import {
+	ASK_BOUND_ATTR,
+	ASK_LIST_ATTR,
+	useAskActionsHeight,
+} from "@features/chat/components/asks/ask-bounds";
 import { AskPanel } from "@features/chat/components/asks/ask-panel";
 import { FLEET_ASKS_QUERY_KEY, useFleetAsks } from "@features/chat/fleet-asks";
 import { useAskOutcomes } from "@features/chat/use-ask-outcomes";
@@ -169,9 +173,18 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 	const shownHistory = showAllHistory ? history : history.slice(0, 5);
 	const projects = detail?.projects ?? item.projects ?? [];
 	const body = detail?.item.body_md ?? "";
+	/*
+	 * THE PANE'S OWN SCROLL IS THE ASK LIST when a waiting section is drawn under
+	 * it, so the pinned row's height is published HERE (`useAskActionsHeight`) and
+	 * the scroller keeps NO BOTTOM PADDING - a scroller clips at its padding box and
+	 * `sticky bottom-0` stops there, which is a strip the band cannot paint.
+	 */
+	const paneRef = useRef<HTMLElement | null>(null);
+	useAskActionsHeight(paneRef);
 
 	return (
 		<section
+			ref={paneRef}
 			aria-label={t("ui.notifications.detail.label")}
 			data-notification-detail={item.id}
 			/*
@@ -180,14 +193,14 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 			 * The column is bounded by its parent's `min-w-0` now, and long unbroken text
 			 * wraps (`[overflow-wrap:anywhere]` below), so there is nothing to hide.
 			 */
-			className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto px-6 py-4 [overflow-wrap:anywhere] [scrollbar-gutter:stable]"
+			className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto px-6 pt-4 [overflow-wrap:anywhere] [scrollbar-gutter:stable] [scroll-padding-bottom:calc(var(--lo-ask-actions-h,0px)+4px)]"
 			/*
 			 * The pane bounds the ask card it embeds (design D3): its first ask body
 			 * sizes itself to what is left of THIS pane's height under the header,
 			 * title and actions, so options, Other and Send answer are in view
 			 * without scrolling. See `ASK_BOUND_ATTR` in `ask-bounds.tsx`.
 			 */
-			{...{ [ASK_BOUND_ATTR]: "" }}
+			{...{ [ASK_BOUND_ATTR]: "", [ASK_LIST_ATTR]: "" }}
 		>
 			{/* Wraps rather than squeezes: at the drawer's 320 px a long translation of
 			    the back link and "Open in Notifications" cannot share one line. */}
@@ -622,6 +635,24 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 					)}
 				</DetailSection>
 			)}
+			{/*
+			 * THE PANE'S BOTTOM BREATHING ROOM (agent review round 1, M1). The scroller
+			 * carries NO bottom padding (see `paneRef` above), so before this the last thing
+			 * on screen sat flush against the window edge at maximum scroll - the `pt-4`
+			 * rename had taken `py-4`'s bottom half with it, for every markdown body, every
+			 * excerpt and every `DetailSections` pane, not only the ask ones.
+			 *
+			 * AN IN-FLOW BLOCK, NOT `pb-4`, because padding at the bottom of this scroller
+			 * is a strip the pinned ask band cannot paint. It never becomes one: the ask
+			 * card is not the last block in this pane (the `From` card always follows it),
+			 * and this sits below everything, so the band still reaches the port's bottom
+			 * edge while its card is the one crossing the fold.
+			 */}
+			<div
+				aria-hidden="true"
+				className="h-4 shrink-0"
+				data-notification-detail-tail=""
+			/>
 		</section>
 	);
 };

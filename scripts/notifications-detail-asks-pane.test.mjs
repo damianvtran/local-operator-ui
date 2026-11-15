@@ -1979,3 +1979,53 @@ for (const surface of ["pane", "fleet"]) {
 		},
 	);
 }
+
+/*
+ * THE PANE'S BOTTOM EDGE (agent review round 1, M1). Taking the bottom padding off
+ * the scroller was right for the pinned ask band - a scroller clips at its padding
+ * box, so `sticky bottom-0` stops short of it and leaves a strip of question text
+ * under the bar - but it also took the bottom breathing room off EVERY other
+ * notification type, which is what `py-4` was for. The remedy is an in-flow 16 px
+ * tail block after the last section: it is never a strip under a band, because the
+ * ask card is never this pane's last block (the `From` card always follows it).
+ *
+ * jsdom does no layout, so the numbers are the classes: 16 px tall, unshrinkable,
+ * last child, decorative - plus the one rule this fix must not regress, that the
+ * scroller itself carries no bottom padding.
+ */
+test("the detail pane ends in a 16 px tail, and the scroller keeps no bottom padding", async () => {
+	const view = await mount({ openId: NOTE.id, notes: [NOTE] });
+	try {
+		const present = await view.settle(
+			() =>
+				view.pane()?.querySelector("[data-notification-detail-tail]") != null,
+		);
+		assert(present, "the detail pane must render its tail block");
+		const pane = view.pane();
+		const tail = pane.querySelector("[data-notification-detail-tail]");
+		assert.equal(
+			pane.lastElementChild,
+			tail,
+			"the tail is the pane's LAST child",
+		);
+		assert.match(tail.className, /(^|\s)h-4(\s|$)/, "16 px of breathing room");
+		assert.match(
+			tail.className,
+			/(^|\s)shrink-0(\s|$)/,
+			"a flex column must not squeeze it away",
+		);
+		assert.equal(
+			tail.getAttribute("aria-hidden"),
+			"true",
+			"decoration, not content",
+		);
+		assert.doesNotMatch(
+			pane.className,
+			/(^|\s)pb-[0-9]/,
+			"bottom padding on the scroller is the strip the pinned band cannot paint",
+		);
+		assert.match(pane.className, /(^|\s)pt-4(\s|$)/, "the top padding stays");
+	} finally {
+		await view.unmount();
+	}
+});
