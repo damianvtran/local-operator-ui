@@ -338,7 +338,6 @@
 	"ui.teamBridge.delivery.pending": "جانچ ہو گئی؛ {recipient} تک ترسیل باقی ہے",
 	"ui.teamBridge.delivery.recipient_unnamed": "{person} کے چیف آف اسٹاف",
 	"ui.teamBridge.delivery.info_refused": "ہر ایجنٹ آنے والے پیغامات کو اپنے مالک کی ماڈریشن سے جانچتا ہے۔ مسترد کیا گیا پیغام ایجنٹ تک نہیں پہنچایا گیا۔ درخواست کو دوبارہ لکھنا عموماً مددگار ہوتا ہے۔",
-	"ui.teamBridge.delivery.info_not_delivered": "اس وصول کنندہ کو یہ پیغام نہیں ملا۔",
 	"ui.teamBridge.delivery.info_held": "ہر ایجنٹ آنے والے پیغامات کو آگے پہنچانے سے پہلے اپنے مالک کی ماڈریشن سے جانچتا ہے۔ یہ پیغام ابھی آگے نہیں پہنچا: اس کی جانچ جاری ہے یا یہ مالک کے جائزے کے لیے رکا ہوا ہے۔",
 	"ui.teamBridge.delivery.info_label": "پیغام کی جانچ کے بارے میں",
 	"ui.teamBridge.delivery.summary.delivered": "{count, plural, one {{count} تک پہنچا} other {{count} تک پہنچا}}",

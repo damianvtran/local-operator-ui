@@ -120,6 +120,15 @@ export const agentMessagesStatusSchema = z
 		update_required: z.boolean(),
 		local: z.object({
 			enabled: z.boolean(),
+			/*
+			 * Whether THIS machine holds the committed owner for the endpoint
+			 * (runtime status contract, D1): false with an active hub endpoint is
+			 * "on elsewhere, not on this device". The Screening model row is gated
+			 * on it (#1928 round 1, S-2): the preference only steers this
+			 * machine's screening. Optional and lenient so an older runtime that
+			 * omits it still parses; absent reads as "not proven enrolled".
+			 */
+			enrolled: z.boolean().optional().catch(undefined),
 			onboarding: z.string(),
 			session: z.string(),
 		}),
@@ -204,15 +213,6 @@ export type AgentMessagesSettingsPut = {
 	consent_version?: string;
 	consented_via?: AgentMessagesRequestConsentVia;
 	label?: string;
-	/*
-	 * The Screening model PREFERENCE (local-operator #3632): one
-	 * `screening.models[].value`, or "" to clear back to Automatic. Absent
-	 * leaves the stored choice alone. It rides a state write because that is
-	 * the runtime's only reviewed contract for it (a state-less body is the
-	 * share_typing-only write and refuses it); the runtime applies it locally
-	 * and never forwards it to the hub.
-	 */
-	screening_model?: string;
 };
 
 /**

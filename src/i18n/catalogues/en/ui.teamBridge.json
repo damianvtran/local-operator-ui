@@ -338,7 +338,6 @@
 	"ui.teamBridge.delivery.pending": "Screened; delivery to {recipient} is pending",
 	"ui.teamBridge.delivery.recipient_unnamed": "{person}’s chief of staff",
 	"ui.teamBridge.delivery.info_refused": "Each agent screens incoming messages with its owner's moderation. A refused message wasn't passed to the agent. Rephrasing the request usually helps.",
-	"ui.teamBridge.delivery.info_not_delivered": "This recipient didn't receive the message.",
 	"ui.teamBridge.delivery.info_held": "Each agent screens incoming messages with its owner's moderation before passing them on. This one hasn't been passed on yet: it is still being screened or is held for the owner's review.",
 	"ui.teamBridge.delivery.info_label": "About message screening",
 	"ui.teamBridge.delivery.summary.delivered": "{count, plural, one {Delivered to {count}} other {Delivered to {count}}}",

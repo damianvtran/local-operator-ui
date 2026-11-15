@@ -330,14 +330,31 @@ const SCREENING_MODELS = [
 function screeningSettings(
 	preferred: string | null,
 	models = SCREENING_MODELS,
+	state: "active" | "paused" = "active",
 ): AgentMessagesSettingsResult {
-	return { ...activeSettings, screening: { preferred, models } };
+	return { ...settingsWith(state), screening: { preferred, models } };
 }
 
+/* `local.enrolled: true`: this machine holds the endpoint, the only case the
+   row is offered in (#1928 round 1, S-2). */
 const screeningStatus = statusWith({
 	surface_state: "C",
-	local: { enabled: true, session: "aaaaaaaaaaaa" },
+	local: { enabled: true, enrolled: true, session: "aaaaaaaaaaaa" },
 });
+
+/* The state-less local write (runtime #4066), echoing the stored block the
+   way the runtime answers, so a story save reads back like the real one. */
+function screeningApi(
+	settings: AgentMessagesSettingsResult,
+): AgentMessagesSettingsApi {
+	return {
+		...fakeApi(settings),
+		setScreeningModel: async (_account, value) => ({
+			preferred: value === "" ? null : value,
+			models: settings.screening?.models ?? [],
+		}),
+	};
+}
 
 const findScreeningRow = (canvasElement: HTMLElement) =>
 	waitFor(() => {
@@ -350,7 +367,7 @@ const findScreeningRow = (canvasElement: HTMLElement) =>
 
 /** The default: Automatic, naming the first vetted model. */
 export const ScreeningModelAutomatic: Story = {
-	args: { status: screeningStatus, api: fakeApi(screeningSettings(null)) },
+	args: { status: screeningStatus, api: screeningApi(screeningSettings(null)) },
 	play: async ({ canvasElement }) => {
 		const row = await findScreeningRow(canvasElement);
 		expect(within(row).getByRole("combobox")).toHaveTextContent(
@@ -361,7 +378,7 @@ export const ScreeningModelAutomatic: Story = {
 
 /** The list open: Automatic first, then the vetted models only. */
 export const ScreeningModelOpen: Story = {
-	args: { status: screeningStatus, api: fakeApi(screeningSettings(null)) },
+	args: { status: screeningStatus, api: screeningApi(screeningSettings(null)) },
 	play: async ({ canvasElement }) => {
 		const row = await findScreeningRow(canvasElement);
 		await userEvent.click(within(row).getByRole("combobox"));
@@ -373,7 +390,7 @@ export const ScreeningModelOpen: Story = {
 export const ScreeningModelChosen: Story = {
 	args: {
 		status: screeningStatus,
-		api: fakeApi(screeningSettings("anthropic/claude-opus-5-5")),
+		api: screeningApi(screeningSettings("anthropic/claude-opus-5-5")),
 	},
 	play: async ({ canvasElement }) => {
 		const row = await findScreeningRow(canvasElement);
@@ -385,20 +402,24 @@ export const ScreeningModelChosen: Story = {
 
 /** The runtime lists no models: a notice that screening still runs. */
 export const ScreeningModelUnavailable: Story = {
-	args: { status: screeningStatus, api: fakeApi(screeningSettings(null, [])) },
+	args: {
+		status: screeningStatus,
+		api: screeningApi(screeningSettings(null, [])),
+	},
 	play: async ({ canvasElement }) => {
 		const row = await findScreeningRow(canvasElement);
 		expect(within(row).queryByRole("combobox")).toBeNull();
 	},
 };
 
-/** A refused save: the section's shared refusal line, choice unchanged. */
+/** A refused save: the section's shared refusal line, and the row re-reads
+ * settings so it shows the stored value (#1928 round 1, R2/S-4). */
 export const ScreeningModelSaveFailed: Story = {
 	args: {
 		status: screeningStatus,
 		api: {
-			...fakeApi(screeningSettings(null)),
-			updateSettings: async () => {
+			...screeningApi(screeningSettings(null)),
+			setScreeningModel: async () => {
 				throw new DesktopControlError(
 					429,
 					"Too many requests",
@@ -418,5 +439,44 @@ export const ScreeningModelSaveFailed: Story = {
 		await waitFor(() =>
 			expect(within(row).getByRole("combobox")).not.toBeDisabled(),
 		);
+	},
+};
+
+/** A PAUSED endpoint this machine holds: the row is offered, and a save
+ * cannot resume it because the write carries no state (#1928 round 1, D4). */
+export const ScreeningModelPaused: Story = {
+	args: {
+		status: statusWith({
+			surface_state: "D",
+			local: { enabled: true, enrolled: true, session: "aaaaaaaaaaaa" },
+		}),
+		api: screeningApi(screeningSettings(null, SCREENING_MODELS, "paused")),
+	},
+	play: async ({ canvasElement }) => {
+		const row = await findScreeningRow(canvasElement);
+		expect(within(row).getByRole("combobox")).toBeEnabled();
+	},
+};
+
+/** The hub endpoint is active but THIS machine is not enrolled ("on
+ * elsewhere"): no Screening model row (#1928 round 1, S-2). */
+export const ScreeningModelNotEnrolledHere: Story = {
+	args: {
+		status: statusWith({
+			surface_state: "C",
+			local: { enabled: false, enrolled: false, session: "" },
+		}),
+		api: screeningApi(screeningSettings(null)),
+	},
+	play: async ({ canvasElement }) => {
+		await waitFor(() =>
+			expect(
+				// The reach editor renders once the settings read is ready.
+				canvasElement.querySelector("[data-agent-messages-allowlist]"),
+			).not.toBeNull(),
+		);
+		expect(
+			canvasElement.querySelector("[data-agent-messages-screening-model]"),
+		).toBeNull();
 	},
 };

@@ -13,6 +13,56 @@ import type { AgentMessagesScreening } from "../../../../shared/agent-messages-c
 /** Radix refuses an empty item value; the wire's "" (clear) maps to this. */
 const AUTOMATIC = "__automatic__";
 
+/*
+ * A private-use character the catalogue can never contain, used to cut the
+ * translated "Automatic, starting with {model}" around its placeholder so the
+ * model id renders in mono like every other id in this control (#1928 design
+ * N1) while the sentence stays one translatable message in any word order.
+ */
+const MODEL_SLOT = "\uE000";
+
+/*
+ * Brand names for the provider half of the route line (#1928 design D5). Not
+ * copy: a brand is never translated. An unknown id is shown as sent, which is
+ * still the route the runtime will use.
+ */
+const PROVIDER_BRANDS: Record<string, string> = {
+	anthropic: "Anthropic", // i18n: ignore
+	openai: "OpenAI", // i18n: ignore
+	google: "Google", // i18n: ignore
+	openrouter: "OpenRouter", // i18n: ignore
+};
+
+/*
+ * WHICH ACCOUNT PAYS (#1928 design D5). The vetted list carries the same model
+ * twice, once on the user's own provider account and once through Radient, and
+ * the ids alone read as duplicates. The route is what the user is choosing
+ * between (no Anthropic account means only the Radient route can work), so
+ * each option says it. No `provider` (an older runtime) shows no route line.
+ */
+function routeText(provider: string | undefined): string | null {
+	if (!provider) return null;
+	if (provider === "radient")
+		return t("ui.agentMessages.settings.screening.route_radient");
+	return t("ui.agentMessages.settings.screening.route_provider", {
+		provider: PROVIDER_BRANDS[provider] ?? provider,
+	});
+}
+
+const AutomaticLabel: FC<{ model: string }> = ({ model }) => {
+	const [before, after = ""] = t(
+		"ui.agentMessages.settings.screening.automatic",
+		{ model: MODEL_SLOT },
+	).split(MODEL_SLOT);
+	return (
+		<>
+			{before}
+			<span className="font-mono">{model}</span>
+			{after}
+		</>
+	);
+};
+
 /**
  * Settings -> Agent messages -> Screening model (local-operator #3632).
  *
@@ -36,8 +86,8 @@ const AUTOMATIC = "__automatic__";
  * visible without being stored. Storing `models[0]` explicitly would freeze a
  * choice the user never made and stop following the table when it changes.
  *
- * The write itself (state re-assertion, no consent fields) lives in the
- * section; this component only renders and reports the chosen value.
+ * The write itself (a state-less local preference write, runtime #4066) lives
+ * in the section; this component only renders and reports the chosen value.
  */
 export const ScreeningModelSelect: FC<{
 	screening: AgentMessagesScreening;
@@ -103,17 +153,19 @@ export const ScreeningModelSelect: FC<{
 					</SelectTrigger>
 					<SelectContent>
 						<SelectItem value={AUTOMATIC}>
-							{t("ui.agentMessages.settings.screening.automatic", {
-								model: first,
-							})}
+							<AutomaticLabel model={first} />
 						</SelectItem>
-						{models.map((model) => (
-							<SelectItem key={model.value} value={model.value}>
-								{/* A model id is machine voice (branding: monospace is for
-								    machine identifiers only). */}
-								<span className="font-mono">{model.value}</span>
-							</SelectItem>
-						))}
+						{models.map((model) => {
+							const route = routeText(model.provider);
+							return (
+								<SelectItem key={model.value} value={model.value}>
+									{/* A model id is machine voice (branding: monospace is for
+									    machine identifiers only); the route is prose. */}
+									<span className="font-mono">{model.value}</span>
+									{route && <span className="ml-2 text-ink-dim">{route}</span>}
+								</SelectItem>
+							);
+						})}
 					</SelectContent>
 				</Select>
 			)}

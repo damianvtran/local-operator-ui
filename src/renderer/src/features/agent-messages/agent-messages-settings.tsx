@@ -25,6 +25,7 @@ import type { FC } from "react";
 import {
 	type AgentMessagesAllowlistResult,
 	type AgentMessagesRefusal,
+	type AgentMessagesScreening,
 	type AgentMessagesSettingsResult,
 	type AgentMessagesStatus,
 	agentMessagesDefaultOnBannerConsentText,
@@ -70,9 +71,11 @@ export type AgentMessagesSettingsApi = Pick<
 	| "localSetting"
 	| "dismissOnboarding"
 > &
-	/* Optional so a story's fake api need not grow it: without it the typing
-	   switch is simply not offered. */
-	Partial<Pick<typeof agentMessagesApi, "setShareTyping">>;
+	/* Optional so a story's fake api need not grow them: without one, its
+	   control (the typing switch, the Screening model row) is not offered. */
+	Partial<
+		Pick<typeof agentMessagesApi, "setShareTyping" | "setScreeningModel">
+	>;
 
 type Load =
 	| { kind: "loading" }
@@ -519,68 +522,69 @@ export function AgentMessagesSettings({
 							/>
 						)}
 
-					{/* Screening model (local-operator #3632). Offered only while an
-					    endpoint is active or paused: the runtime takes the choice
-					    only on a state write, and in B/E/F a state write would
-					    enroll, re-enable or be refused. Older runtimes send no
-					    block and the row is not rendered. */}
+					{/* Screening model (local-operator #3632). A MACHINE-LOCAL
+					    preference written state-less, like share_typing (runtime
+					    #4066), so a save never touches the endpoint's state, the
+					    hub, or any consent record. Offered only when THIS machine
+					    holds the endpoint (`local.enrolled`, #1928 round 1 S-2):
+					    the choice steers only this machine's screening, so on a
+					    device that is not enrolled it would be a control that does
+					    nothing visible. Active or paused only: elsewhere there is no
+					    bridge to screen for. Older runtimes send no block and the
+					    row is not rendered. */}
 					{load.settings.screening &&
+						api.setScreeningModel &&
+						status?.local.enrolled === true &&
 						load.settings.endpoint &&
 						(load.settings.endpoint.state === "active" ||
 							load.settings.endpoint.state === "paused") &&
-						status?.surface_state !== "F" && (
+						status.surface_state !== "F" && (
 							<ScreeningModelSelect
 								screening={load.settings.screening}
 								pending={pending === "screening_model"}
 								disabled={pending !== null || !accountMatches}
 								onSave={async (next) => {
 									const owner = loadAccount ?? accountId;
-									const endpoint = load.settings.endpoint;
-									if (!owner || !accountMatches || !endpoint) return;
-									if (
-										endpoint.state !== "active" &&
-										endpoint.state !== "paused"
-									)
-										return;
+									const write = api.setScreeningModel;
+									if (!owner || !accountMatches || !write) return;
 									setPending("screening_model");
 									setActionRefusal(null);
+									let echoed: AgentMessagesScreening | null = null;
 									try {
-										/*
-										 * The body RE-ASSERTS the endpoint's current state and
-										 * carries NO consent fields. A preference edit is not a
-										 * consent action: echoing `consent_version` here would
-										 * re-commit the native consent receipt and could move the
-										 * recorded `consented_via` off its real surface, so the
-										 * consent on record (v3 under default-on) stays exactly as
-										 * it was. Sending the current state keeps a paused
-										 * endpoint paused; an active one stays active.
-										 */
-										const result = await api.updateSettings({
-											expected_account_id: owner,
-											tenant_id: load.settings.settings.tenant_id,
-											state: endpoint.state,
-											screening_model: next,
-										});
+										// `{expected_account_id, screening_model}` and nothing
+										// else: no `state`, no `tenant_id`, no consent fields.
+										echoed = await write(owner, next);
+									} catch (error) {
+										setActionRefusal(agentMessagesRefusal(error));
+									}
+									/*
+									 * Show what is STORED, never what was sent. A refused save
+									 * may still have been applied (or partly applied) by the
+									 * runtime (#1928 round 1, R2/S-4), and an answer without a
+									 * readable block proves nothing, so either case re-reads
+									 * settings. A failed re-read keeps the last block.
+									 */
+									let stored = echoed;
+									if (!stored) {
+										try {
+											stored =
+												(await api.settings(tenantId))?.screening ?? null;
+										} catch {
+											stored = null;
+										}
+									}
+									if (stored) {
+										const block = stored;
 										setLoad((current) =>
 											current.kind === "ready"
 												? {
 														...current,
-														settings: {
-															...result,
-															// The answer echoes the value actually in force;
-															// keep the last block if a runtime omits it so the
-															// row does not vanish after a save.
-															screening:
-																result.screening ?? current.settings.screening,
-														},
+														settings: { ...current.settings, screening: block },
 													}
 												: current,
 										);
-									} catch (error) {
-										setActionRefusal(agentMessagesRefusal(error));
-									} finally {
-										setPending(null);
 									}
+									setPending(null);
 								}}
 							/>
 						)}

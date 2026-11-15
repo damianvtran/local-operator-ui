@@ -170,7 +170,17 @@ function splitLastGrapheme(text: string): [string, string] {
  */
 const DeliveryLine: FC<{ line: TeamBridgeDeliveryLine }> = ({ line }) => {
 	const text = deliveryLineText(line);
-	if (line.kind === "pending") return <>{text}</>;
+	/*
+	 * No info glyph on `pending` (nothing to explain) or on the sender's
+	 * `not_delivered` (#1928 round 1, S-1/D1/C1/R3, D2/C2). The sender line is
+	 * complete as it stands: any tip could only repeat it, and the shared
+	 * glyph's accessible name ("About message screening") told a screen-reader
+	 * sender the cause the hub deliberately withholds. With no button there is
+	 * no attribute left to leak one; a test walks every attribute of the
+	 * sender's rendered subtree to keep it that way.
+	 */
+	if (line.kind === "pending" || line.kind === "not_delivered")
+		return <>{text}</>;
 	const [head, last] = splitLastGrapheme(text);
 	/* The separator is a character of its own, so a CJK sentence can end flush
 	 * against the glyph without losing the space every other script needs. */
@@ -187,22 +197,12 @@ const DeliveryLine: FC<{ line: TeamBridgeDeliveryLine }> = ({ line }) => {
 	);
 };
 
-/*
- * The sender's `not_delivered` tip is neutral on purpose (design D1 on #1882):
- * the owner's refused tip names moderation and coaches a rephrase, which hands
- * a sender the cause and a retry strategy the hub deliberately withholds.
- */
 function deliveryInfoText(
-	kind: Exclude<TeamBridgeDeliveryLine["kind"], "pending">,
+	kind: Exclude<TeamBridgeDeliveryLine["kind"], "pending" | "not_delivered">,
 ): string {
-	switch (kind) {
-		case "not_delivered":
-			return t("ui.teamBridge.delivery.info_not_delivered");
-		case "refused":
-			return t("ui.teamBridge.delivery.info_refused");
-		default:
-			return t("ui.teamBridge.delivery.info_held");
-	}
+	return kind === "refused"
+		? t("ui.teamBridge.delivery.info_refused")
+		: t("ui.teamBridge.delivery.info_held");
 }
 
 function deliveryLineText(line: TeamBridgeDeliveryLine): string {

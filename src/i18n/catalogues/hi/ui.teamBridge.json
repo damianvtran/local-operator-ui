@@ -338,7 +338,6 @@
 	"ui.teamBridge.delivery.pending": "जाँच हो गई; {recipient} तक डिलीवरी बाकी है",
 	"ui.teamBridge.delivery.recipient_unnamed": "{person} के चीफ़ ऑफ़ स्टाफ़",
 	"ui.teamBridge.delivery.info_refused": "हर एजेंट आने वाले संदेशों को अपने मालिक के मॉडरेशन से जाँचता है। अस्वीकार किया गया संदेश एजेंट तक नहीं पहुँचाया गया। अनुरोध को दोबारा लिखना आमतौर पर मदद करता है।",
-	"ui.teamBridge.delivery.info_not_delivered": "इस प्राप्तकर्ता को संदेश नहीं मिला।",
 	"ui.teamBridge.delivery.info_held": "हर एजेंट आने वाले संदेशों को आगे पहुँचाने से पहले अपने मालिक के मॉडरेशन से जाँचता है। यह संदेश अभी आगे नहीं पहुँचा है: इसकी जाँच चल रही है या यह मालिक की समीक्षा के लिए रुका है।",
 	"ui.teamBridge.delivery.info_label": "संदेश जाँच के बारे में",
 	"ui.teamBridge.delivery.summary.delivered": "{count, plural, one {{count} तक पहुँचा} other {{count} तक पहुँचा}}",

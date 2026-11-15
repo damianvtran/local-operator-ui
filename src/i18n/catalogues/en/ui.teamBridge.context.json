@@ -2528,13 +2528,6 @@
 		"placeholders": {},
 		"note": "Identical for every refusal class. Explains moderation and that rephrasing usually helps. Must not hint at how screening decides or blame the sender."
 	},
-	"ui.teamBridge.delivery.info_not_delivered": {
-		"role": "tooltip",
-		"tone": "neutral, factual",
-		"length": "One short sentence",
-		"placeholders": {},
-		"note": "Explains the sender's \"not delivered\" line. States only that this recipient did not receive the message. Must not name a cause (moderation, screening, refusal) or suggest rephrasing or retrying."
-	},
 	"ui.teamBridge.delivery.info_held": {
 		"role": "tooltip",
 		"tone": "explanatory, reassuring",

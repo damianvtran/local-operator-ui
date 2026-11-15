@@ -84,6 +84,20 @@ export const RefusedWithoutClass: Story = {
 	args: { states: [state({})] },
 };
 
+/* The owner's classed and classless lines with the details OPEN (#1928 design
+ * round 1, D4): the closed frames show only the summary, so these are the ones
+ * that prove the owner view is unchanged beside the sender's neutral line.
+ * `openDetails` is a later `const`, so it is read at play time, not here. */
+export const RefusedWithClassOpen: Story = {
+	args: RefusedWithClass.args,
+	play: (context) => openDetails(context),
+};
+
+export const RefusedWithoutClassOpen: Story = {
+	args: RefusedWithoutClass.args,
+	play: (context) => openDetails(context),
+};
+
 export const HeldSenderView: Story = {
 	args: { states: [state({ state: "held" })] },
 };
@@ -408,17 +422,6 @@ export const NotDeliveredSenderSingleOpen: Story = {
 		summary: { total: 1, not_delivered: 1 },
 	},
 	play: openDetails,
-};
-
-/* The sender's tip for that line (design D1 on #1882): it says only that the
- * recipient did not receive the message, with no moderation explanation and no
- * rephrase coaching. Compare RefusedTooltipOpen, the owner's view. */
-export const NotDeliveredSenderTooltipOpen: Story = {
-	args: {
-		states: [state({ state: "not_delivered" })],
-		summary: { total: 1, not_delivered: 1 },
-	},
-	play: openInfo(() => t("ui.teamBridge.delivery.info_not_delivered")),
 };
 
 export const NotDeliveredSenderGroupOpen: Story = {

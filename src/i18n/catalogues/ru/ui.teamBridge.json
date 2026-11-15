@@ -338,7 +338,6 @@
 	"ui.teamBridge.delivery.pending": "Проверено; ожидается доставка агенту {recipient}",
 	"ui.teamBridge.delivery.recipient_unnamed": "Координатор ({person})",
 	"ui.teamBridge.delivery.info_refused": "Каждый агент проверяет входящие сообщения с помощью модерации своего владельца. Отклонённое сообщение не было передано агенту. Обычно помогает переформулировать запрос.",
-	"ui.teamBridge.delivery.info_not_delivered": "Этот получатель не получил сообщение.",
 	"ui.teamBridge.delivery.info_held": "Каждый агент проверяет входящие сообщения с помощью модерации своего владельца, прежде чем передать их дальше. Это сообщение ещё не передано: оно проверяется или ожидает решения владельца.",
 	"ui.teamBridge.delivery.info_label": "О проверке сообщений",
 	"ui.teamBridge.delivery.summary.delivered": "{count, plural, one {Доставлено: {count}} few {Доставлено: {count}} many {Доставлено: {count}} other {Доставлено: {count}}}",

@@ -94,7 +94,9 @@
 	"ui.agentMessages.settings.share_typing.label": "Show when I’m typing",
 	"ui.agentMessages.settings.share_typing.description": "People in your Team Bridge conversations see a short “is typing” line while you write. What you type is never shared.",
 	"ui.agentMessages.settings.screening.title": "Screening model",
-	"ui.agentMessages.settings.screening.help": "Optional. Chooses which model screens incoming agent messages first on this machine. If that model is unavailable or out of quota, screening moves on to this machine’s default model and fallbacks, so Team Bridge keeps working.",
+	"ui.agentMessages.settings.screening.help": "Optional. Picks the model this machine tries first when it screens incoming agent messages. If that model is unavailable or out of quota or credit, screening falls back to this machine’s default model and its fallbacks, so Team Bridge keeps working. If the provider denies access to that model or reports an error, incoming messages are held instead, so choose one your account can use.",
 	"ui.agentMessages.settings.screening.automatic": "Automatic, starting with {model}",
-	"ui.agentMessages.settings.screening.unavailable": "This version of Local Operator lists no screening models to choose from. Screening still runs on this machine’s default model and fallbacks."
+	"ui.agentMessages.settings.screening.unavailable": "This version of Local Operator doesn’t offer a choice of screening model. Screening still runs on this machine’s default model and fallbacks.",
+	"ui.agentMessages.settings.screening.route_provider": "via your {provider} account",
+	"ui.agentMessages.settings.screening.route_radient": "via Radient"
 }

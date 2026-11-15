@@ -2829,6 +2829,8 @@ export type MessageParams = {
 	"ui.agentMessages.settings.saving": undefined;
 	"ui.agentMessages.settings.screening.automatic": { model: string };
 	"ui.agentMessages.settings.screening.help": undefined;
+	"ui.agentMessages.settings.screening.route_provider": { provider: string };
+	"ui.agentMessages.settings.screening.route_radient": undefined;
 	"ui.agentMessages.settings.screening.title": undefined;
 	"ui.agentMessages.settings.screening.unavailable": undefined;
 	"ui.agentMessages.settings.section": undefined;
@@ -12992,7 +12994,6 @@ export type MessageParams = {
 	"ui.teamBridge.delivery.held_screening_unavailable": { recipient: string };
 	"ui.teamBridge.delivery.info_held": undefined;
 	"ui.teamBridge.delivery.info_label": undefined;
-	"ui.teamBridge.delivery.info_not_delivered": undefined;
 	"ui.teamBridge.delivery.info_refused": undefined;
 	"ui.teamBridge.delivery.not_delivered": { recipient: string };
 	"ui.teamBridge.delivery.pending": { recipient: string };

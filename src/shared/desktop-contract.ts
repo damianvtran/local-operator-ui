@@ -3905,9 +3905,6 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			// runtime answers a client that tries with a 422 (runtime #2790).
 			consented_via: z.enum(["dialog", "settings"]).optional(),
 			label: z.string().min(1).max(128).optional(),
-			// The Screening model preference (local-operator #3632). "" clears it
-			// back to Automatic, so no min length; 192 is the runtime's own cap.
-			screening_model: z.string().max(192).optional(),
 			state: z.enum(["active", "paused", "disabled"]),
 		})
 		.strict(),
@@ -4246,6 +4243,23 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			op: z.literal("agent_messages.settings.share_typing"),
 			expected_account_id: id,
 			share_typing: z.boolean(),
+		})
+		.strict(),
+	/*
+	 * The Screening model preference (local-operator #3632, state-less write
+	 * from local-operator #4066). Sent WITHOUT `state`, exactly like
+	 * share_typing: the runtime writes it as a machine-local preference with no
+	 * hub call. Carrying it on a `state` write instead ran the explicit-enable
+	 * commit hook, which could enroll a non-owner machine or resume an endpoint
+	 * paused elsewhere (#1928 round 1, R1/S-2/S-3), so it is its own op and the
+	 * settings put no longer accepts the field at all. "" clears it back to
+	 * Automatic, so no min length; 192 is the runtime's own cap.
+	 */
+	z
+		.object({
+			op: z.literal("agent_messages.settings.screening_model"),
+			expected_account_id: id,
+			screening_model: z.string().max(192),
 		})
 		.strict(),
 	/* Reactions have no receipt-less legacy caller: the captured account and
@@ -10754,9 +10768,6 @@ export function desktopEndpoint(request: DesktopRequest): {
 						? {}
 						: { consented_via: request.consented_via }),
 					...(request.label === undefined ? {} : { label: request.label }),
-					...(request.screening_model === undefined
-						? {}
-						: { screening_model: request.screening_model }),
 					state: request.state,
 				},
 			};
@@ -11006,6 +11017,15 @@ export function desktopEndpoint(request: DesktopRequest): {
 				body: {
 					expected_account_id: request.expected_account_id,
 					share_typing: request.share_typing,
+				},
+			};
+		case "agent_messages.settings.screening_model":
+			return {
+				path: "/v1/desktop/team-bridge/settings",
+				method: "PUT",
+				body: {
+					expected_account_id: request.expected_account_id,
+					screening_model: request.screening_model,
 				},
 			};
 		case "team_bridge.reactions.toggle": {
