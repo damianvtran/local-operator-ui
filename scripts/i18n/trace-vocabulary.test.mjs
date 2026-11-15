@@ -248,6 +248,9 @@ test("every ui.chat.trace key is used by source and described for translators", 
 		"src/renderer/src/features/chat/components/trace/trace-labels.ts",
 		"src/renderer/src/features/chat/components/trace/tool-row-model.ts",
 		"src/renderer/src/features/chat/components/trace/tool-detail.tsx",
+		// The reasoning row is the only other consumer of this namespace: S18d
+		// keyed its label and duration suffix here, so the guard must scan it too.
+		"src/renderer/src/features/chat/components/trace/agent-reasoning.tsx",
 	]
 		.map(read)
 		.join("\n");
