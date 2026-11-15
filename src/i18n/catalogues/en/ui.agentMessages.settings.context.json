@@ -673,7 +673,7 @@
 		"tone": "plain, honest, second person",
 		"length": "Four short sentences",
 		"placeholders": {},
-		"note": "Must make clear the choice is optional and only sets which model this machine tries first. Two outcomes, both stated plainly: an unavailable, out-of-quota or out-of-credit model falls back to the machine's default model and fallbacks so Team Bridge keeps working; but if the provider denies access to the chosen model or reports an error, incoming messages are held, so the user should pick a model their account can use. Do not promise that a pick can never hold a message, do not name HTTP codes or internals, and do not imply the user must pick a model. 'Held' is the same word the Team Bridge delivery lines use for a held message."
+		"note": "Must make clear the choice is optional and only sets which model this machine tries first. Two outcomes, both stated plainly and matching the runtime exactly: a model that can't be reached, isn't offered on the user's account, or is out of quota or credit falls back to the machine's default model and fallbacks so Team Bridge keeps working; but if the provider blocks the request or fails with an internal error, incoming messages are held, so the user should pick a model their account is allowed to use. Keep 'blocks the request' distinct from an outage or a timeout: those fall back, they do not hold. Do not promise that a pick can never hold a message, do not name HTTP codes or internals, and do not imply the user must pick a model. 'Held' is the same word the Team Bridge delivery lines use for a held message."
 	},
 	"ui.agentMessages.settings.screening.automatic": {
 		"role": "dropdown option label (the default)",
@@ -703,8 +703,8 @@
 	"ui.agentMessages.settings.screening.route_radient": {
 		"role": "muted suffix after a model id in a dropdown option",
 		"tone": "plain, lowercase start",
-		"length": "2 words",
+		"length": "3-4 words",
 		"placeholders": {},
-		"note": "Says the model runs through Radient (the user's Radient balance), as opposed to the user's own provider account. 'Radient' is a brand name; never translate it. Starts lowercase because it follows the id on the same line."
+		"note": "Says the model runs through the user's Radient account (their Radient balance), as opposed to their own provider account; worded in parallel with the provider route so the two lines read as a choice of account. 'Radient' is a brand name; never translate it. Starts lowercase because it follows the id on the same line."
 	}
 }

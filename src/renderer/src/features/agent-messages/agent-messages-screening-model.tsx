@@ -23,8 +23,10 @@ const MODEL_SLOT = "\uE000";
 
 /*
  * Brand names for the provider half of the route line (#1928 design D5). Not
- * copy: a brand is never translated. An unknown id is shown as sent, which is
- * still the route the runtime will use.
+ * copy: a brand is never translated. A provider outside this list gets NO
+ * route line (#1928 copy C8): the template sets a brand inside a sentence, and
+ * a raw lowercase id there ("via your mistral account") reads as a typo. The
+ * mono model id still identifies the option.
  */
 const PROVIDER_BRANDS: Record<string, string> = {
 	anthropic: "Anthropic", // i18n: ignore
@@ -38,14 +40,20 @@ const PROVIDER_BRANDS: Record<string, string> = {
  * twice, once on the user's own provider account and once through Radient, and
  * the ids alone read as duplicates. The route is what the user is choosing
  * between (no Anthropic account means only the Radient route can work), so
- * each option says it. No `provider` (an older runtime) shows no route line.
+ * each option says it. No `provider` (an older runtime) or an unbranded one
+ * shows no route line.
  */
 function routeText(provider: string | undefined): string | null {
 	if (!provider) return null;
 	if (provider === "radient")
 		return t("ui.agentMessages.settings.screening.route_radient");
+	// Own keys only: an id like "constructor" must not resolve off the prototype.
+	const brand = Object.prototype.hasOwnProperty.call(PROVIDER_BRANDS, provider)
+		? PROVIDER_BRANDS[provider]
+		: undefined;
+	if (!brand) return null;
 	return t("ui.agentMessages.settings.screening.route_provider", {
-		provider: PROVIDER_BRANDS[provider] ?? provider,
+		provider: brand,
 	});
 }
 
@@ -149,7 +157,22 @@ export const ScreeningModelSelect: FC<{
 						aria-describedby={helpId}
 						aria-busy={pending || undefined}
 					>
-						<SelectValue />
+						{/*
+						 * ROUTE IN THE OPEN LIST ONLY (#1928 design round 2). Left to
+						 * itself Radix copies the chosen item's ItemText, route and all,
+						 * into this 448px trigger. Measured in Storybook (ScreeningModelChosen,
+						 * ru): the mono id plus "через вашу учётную запись Anthropic" ends at
+						 * x 454px against a text box ending at 411px, so it clipped. Explicit
+						 * children render just the label instead; the route stays visible
+						 * in every open option, where the user makes the choice.
+						 */}
+						<SelectValue>
+							{selected === AUTOMATIC ? (
+								<AutomaticLabel model={first} />
+							) : (
+								<span className="font-mono">{selected}</span>
+							)}
+						</SelectValue>
 					</SelectTrigger>
 					<SelectContent>
 						<SelectItem value={AUTOMATIC}>

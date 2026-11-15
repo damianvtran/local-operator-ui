@@ -1297,11 +1297,15 @@ const SCREENING_MODELS = [
 	},
 ];
 const SCREENING_HELP =
-	/Optional\. Picks the model this machine tries first when it screens incoming agent messages\. If that model is unavailable or out of quota or credit, screening falls back to this machine’s default model and its fallbacks, so Team Bridge keeps working\. If the provider denies access to that model or reports an error, incoming messages are held instead, so choose one your account can use\./;
+	/Optional\. Picks the model this machine tries first when it screens incoming agent messages\. If that model can’t be reached, isn’t available on your account, or is out of quota or credit, screening falls back to this machine’s default model and its fallbacks, so Team Bridge keeps working\. If the provider blocks the request or fails with an internal error, incoming messages are held instead, so choose a model your account is allowed to use\./;
 const SCREENING_UNAVAILABLE =
 	/This version of Local Operator doesn’t offer a choice of screening model\./;
 const AUTOMATIC_LABEL = "Automatic, starting with anthropic/claude-sonnet-5-5";
 const OPUS_LABEL = "anthropic/claude-opus-5-5via your Anthropic account";
+/* The closed trigger shows the id alone: the route lives in the open list only
+   (#1928 design round 2, measured clipping in ru at the 448px trigger). */
+const OPUS_ID = "anthropic/claude-opus-5-5";
+const UNBRANDED_ROUTE = /via your (mistral|constructor)/;
 
 function settingsWithScreening(state, screening) {
 	return { ...settingsWith(state), screening };
@@ -1387,10 +1391,50 @@ test("each option names its route: the user's own provider account or Radient", 
 		[
 			AUTOMATIC_LABEL,
 			"anthropic/claude-sonnet-5-5via your Anthropic account",
-			"radient/anthropic/claude-sonnet-5.5via Radient",
+			"radient/anthropic/claude-sonnet-5.5via your Radient account",
 			OPUS_LABEL,
 		],
 	);
+	await press(combo, "keydown", { key: "Escape" });
+	await flush();
+});
+
+test("an unbranded provider gets no route line, and the closed trigger never carries the route", async (t) => {
+	await mount(t, {
+		status: enrolledStatus(),
+		settings: settingsWithScreening("active", {
+			preferred: "mistral/mistral-large",
+			models: [
+				...SCREENING_MODELS,
+				{
+					value: "mistral/mistral-large",
+					provider: "mistral",
+					model_id: "mistral-large",
+				},
+				// A prototype key must not resolve to a brand either.
+				{
+					value: "constructor/x",
+					provider: "constructor",
+					model_id: "x",
+				},
+			],
+		}),
+		overrides: { setScreeningModel: screeningWriter([]) },
+	});
+	// C8: no raw id in prose; the trigger shows the chosen id alone.
+	assert.equal(screeningCombo()?.textContent.trim(), "mistral/mistral-large");
+	const combo = screeningCombo();
+	combo.focus();
+	await press(combo, "keydown", { key: "ArrowDown" });
+	await flush();
+	const labels = [...document.querySelectorAll('[role="option"]')].map(
+		(entry) => entry.textContent.trim(),
+	);
+	assert.ok(labels.includes("mistral/mistral-large"));
+	assert.ok(labels.includes("constructor/x"));
+	assert.doesNotMatch(labels.join("\n"), UNBRANDED_ROUTE);
+	// A branded option still names its route in the open list.
+	assert.ok(labels.includes(OPUS_LABEL));
 	await press(combo, "keydown", { key: "Escape" });
 	await flush();
 });
@@ -1412,7 +1456,7 @@ test("choosing a model writes {expected_account_id, screening_model} state-less;
 	]);
 	// No state write rode along: the settings put was never called.
 	assert.deepEqual(sectionWrites.settings, []);
-	assert.equal(screeningCombo()?.textContent.trim(), OPUS_LABEL);
+	assert.equal(screeningCombo()?.textContent.trim(), OPUS_ID);
 	await chooseScreening(AUTOMATIC_LABEL);
 	assert.deepEqual(writes[1], { accountId: "account-a", value: "" });
 	assert.equal(screeningCombo()?.textContent.trim(), AUTOMATIC_LABEL);
@@ -1541,7 +1585,7 @@ test("a refused screening write surfaces the refusal and re-reads settings to sh
 	// The section's shared refusal sentence, never the raw exception.
 	assert.match(document.body.textContent, /Too many requests/);
 	assert.doesNotMatch(document.body.textContent, /raw upstream detail/);
-	assert.equal(screeningCombo()?.textContent.trim(), OPUS_LABEL);
+	assert.equal(screeningCombo()?.textContent.trim(), OPUS_ID);
 });
 
 test("a save whose answer carries no readable block re-reads settings instead of trusting the sent value", async (t) => {
