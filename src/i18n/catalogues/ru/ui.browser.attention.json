@@ -1,0 +1,10 @@
+{
+	"ui.browser.attention.heading": "Ждёт вашего действия",
+	"ui.browser.attention.passkey": "Менеджер паролей ждёт вас",
+	"ui.browser.attention.popup": "Окно входа ожидает",
+	"ui.browser.attention.site_access": "Запрос доступа к сайту",
+	"ui.browser.attention.no_site": "Страница",
+	"ui.browser.attention.detail": "{site} · {session}",
+	"ui.browser.attention.open_label": "{need}: {site}, {session}. Открыть.",
+	"ui.browser.attention.more": "{count, plural, one {Ещё {countText} в браузере} few {Ещё {countText} в браузере} many {Ещё {countText} в браузере} other {Ещё {countText} в браузере}}"
+}

@@ -44,6 +44,7 @@ import enUiAgentsSkills from "./catalogues/en/ui.agents.skills.json";
 import enUiAgentsStarters from "./catalogues/en/ui.agents.starters.json";
 import enUiAgentsTeams from "./catalogues/en/ui.agents.teams.json";
 import enUiAgentsUpload from "./catalogues/en/ui.agents.upload.json";
+import enUiBrowserAttention from "./catalogues/en/ui.browser.attention.json";
 import enUiBrowserChrome from "./catalogues/en/ui.browser.chrome.json";
 import enUiBrowserErrors from "./catalogues/en/ui.browser.errors.json";
 import enUiBrowserExtensions from "./catalogues/en/ui.browser.extensions.json";
@@ -212,6 +213,7 @@ import esUiAgentsSkills from "./catalogues/es/ui.agents.skills.json";
 import esUiAgentsStarters from "./catalogues/es/ui.agents.starters.json";
 import esUiAgentsTeams from "./catalogues/es/ui.agents.teams.json";
 import esUiAgentsUpload from "./catalogues/es/ui.agents.upload.json";
+import esUiBrowserAttention from "./catalogues/es/ui.browser.attention.json";
 import esUiBrowserChrome from "./catalogues/es/ui.browser.chrome.json";
 import esUiBrowserErrors from "./catalogues/es/ui.browser.errors.json";
 import esUiBrowserExtensions from "./catalogues/es/ui.browser.extensions.json";
@@ -380,6 +382,7 @@ import frUiAgentsSkills from "./catalogues/fr/ui.agents.skills.json";
 import frUiAgentsStarters from "./catalogues/fr/ui.agents.starters.json";
 import frUiAgentsTeams from "./catalogues/fr/ui.agents.teams.json";
 import frUiAgentsUpload from "./catalogues/fr/ui.agents.upload.json";
+import frUiBrowserAttention from "./catalogues/fr/ui.browser.attention.json";
 import frUiBrowserChrome from "./catalogues/fr/ui.browser.chrome.json";
 import frUiBrowserErrors from "./catalogues/fr/ui.browser.errors.json";
 import frUiBrowserExtensions from "./catalogues/fr/ui.browser.extensions.json";
@@ -548,6 +551,7 @@ import hiUiAgentsSkills from "./catalogues/hi/ui.agents.skills.json";
 import hiUiAgentsStarters from "./catalogues/hi/ui.agents.starters.json";
 import hiUiAgentsTeams from "./catalogues/hi/ui.agents.teams.json";
 import hiUiAgentsUpload from "./catalogues/hi/ui.agents.upload.json";
+import hiUiBrowserAttention from "./catalogues/hi/ui.browser.attention.json";
 import hiUiBrowserChrome from "./catalogues/hi/ui.browser.chrome.json";
 import hiUiBrowserErrors from "./catalogues/hi/ui.browser.errors.json";
 import hiUiBrowserExtensions from "./catalogues/hi/ui.browser.extensions.json";
@@ -716,6 +720,7 @@ import ruUiAgentsSkills from "./catalogues/ru/ui.agents.skills.json";
 import ruUiAgentsStarters from "./catalogues/ru/ui.agents.starters.json";
 import ruUiAgentsTeams from "./catalogues/ru/ui.agents.teams.json";
 import ruUiAgentsUpload from "./catalogues/ru/ui.agents.upload.json";
+import ruUiBrowserAttention from "./catalogues/ru/ui.browser.attention.json";
 import ruUiBrowserChrome from "./catalogues/ru/ui.browser.chrome.json";
 import ruUiBrowserErrors from "./catalogues/ru/ui.browser.errors.json";
 import ruUiBrowserExtensions from "./catalogues/ru/ui.browser.extensions.json";
@@ -884,6 +889,7 @@ import urUiAgentsSkills from "./catalogues/ur/ui.agents.skills.json";
 import urUiAgentsStarters from "./catalogues/ur/ui.agents.starters.json";
 import urUiAgentsTeams from "./catalogues/ur/ui.agents.teams.json";
 import urUiAgentsUpload from "./catalogues/ur/ui.agents.upload.json";
+import urUiBrowserAttention from "./catalogues/ur/ui.browser.attention.json";
 import urUiBrowserChrome from "./catalogues/ur/ui.browser.chrome.json";
 import urUiBrowserErrors from "./catalogues/ur/ui.browser.errors.json";
 import urUiBrowserExtensions from "./catalogues/ur/ui.browser.extensions.json";
@@ -1052,6 +1058,7 @@ import viUiAgentsSkills from "./catalogues/vi/ui.agents.skills.json";
 import viUiAgentsStarters from "./catalogues/vi/ui.agents.starters.json";
 import viUiAgentsTeams from "./catalogues/vi/ui.agents.teams.json";
 import viUiAgentsUpload from "./catalogues/vi/ui.agents.upload.json";
+import viUiBrowserAttention from "./catalogues/vi/ui.browser.attention.json";
 import viUiBrowserChrome from "./catalogues/vi/ui.browser.chrome.json";
 import viUiBrowserErrors from "./catalogues/vi/ui.browser.errors.json";
 import viUiBrowserExtensions from "./catalogues/vi/ui.browser.extensions.json";
@@ -1220,6 +1227,7 @@ import zhCNUiAgentsSkills from "./catalogues/zh-CN/ui.agents.skills.json";
 import zhCNUiAgentsStarters from "./catalogues/zh-CN/ui.agents.starters.json";
 import zhCNUiAgentsTeams from "./catalogues/zh-CN/ui.agents.teams.json";
 import zhCNUiAgentsUpload from "./catalogues/zh-CN/ui.agents.upload.json";
+import zhCNUiBrowserAttention from "./catalogues/zh-CN/ui.browser.attention.json";
 import zhCNUiBrowserChrome from "./catalogues/zh-CN/ui.browser.chrome.json";
 import zhCNUiBrowserErrors from "./catalogues/zh-CN/ui.browser.errors.json";
 import zhCNUiBrowserExtensions from "./catalogues/zh-CN/ui.browser.extensions.json";
@@ -1391,6 +1399,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentsStarters,
 	...enUiAgentsTeams,
 	...enUiAgentsUpload,
+	...enUiBrowserAttention,
 	...enUiBrowserChrome,
 	...enUiBrowserErrors,
 	...enUiBrowserExtensions,
@@ -1567,6 +1576,7 @@ export const bundledCatalogues: Readonly<
 		...esUiAgentsStarters,
 		...esUiAgentsTeams,
 		...esUiAgentsUpload,
+		...esUiBrowserAttention,
 		...esUiBrowserChrome,
 		...esUiBrowserErrors,
 		...esUiBrowserExtensions,
@@ -1737,6 +1747,7 @@ export const bundledCatalogues: Readonly<
 		...frUiAgentsStarters,
 		...frUiAgentsTeams,
 		...frUiAgentsUpload,
+		...frUiBrowserAttention,
 		...frUiBrowserChrome,
 		...frUiBrowserErrors,
 		...frUiBrowserExtensions,
@@ -1907,6 +1918,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiAgentsStarters,
 		...hiUiAgentsTeams,
 		...hiUiAgentsUpload,
+		...hiUiBrowserAttention,
 		...hiUiBrowserChrome,
 		...hiUiBrowserErrors,
 		...hiUiBrowserExtensions,
@@ -2077,6 +2089,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiAgentsStarters,
 		...ruUiAgentsTeams,
 		...ruUiAgentsUpload,
+		...ruUiBrowserAttention,
 		...ruUiBrowserChrome,
 		...ruUiBrowserErrors,
 		...ruUiBrowserExtensions,
@@ -2247,6 +2260,7 @@ export const bundledCatalogues: Readonly<
 		...urUiAgentsStarters,
 		...urUiAgentsTeams,
 		...urUiAgentsUpload,
+		...urUiBrowserAttention,
 		...urUiBrowserChrome,
 		...urUiBrowserErrors,
 		...urUiBrowserExtensions,
@@ -2417,6 +2431,7 @@ export const bundledCatalogues: Readonly<
 		...viUiAgentsStarters,
 		...viUiAgentsTeams,
 		...viUiAgentsUpload,
+		...viUiBrowserAttention,
 		...viUiBrowserChrome,
 		...viUiBrowserErrors,
 		...viUiBrowserExtensions,
@@ -2587,6 +2602,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiAgentsStarters,
 		...zhCNUiAgentsTeams,
 		...zhCNUiAgentsUpload,
+		...zhCNUiBrowserAttention,
 		...zhCNUiBrowserChrome,
 		...zhCNUiBrowserErrors,
 		...zhCNUiBrowserExtensions,
@@ -3647,6 +3663,18 @@ export type MessageParams = {
 	"ui.agents.upload.title.published_public": { name: string };
 	"ui.agents.upload.title.republished": { name: string };
 	"ui.agents.upload.title.update_listing": { name: string };
+	"ui.browser.attention.detail": { site: string; session: string };
+	"ui.browser.attention.heading": undefined;
+	"ui.browser.attention.more": { count: number; countText: string };
+	"ui.browser.attention.no_site": undefined;
+	"ui.browser.attention.open_label": {
+		need: string;
+		site: string;
+		session: string;
+	};
+	"ui.browser.attention.passkey": undefined;
+	"ui.browser.attention.popup": undefined;
+	"ui.browser.attention.site_access": undefined;
 	"ui.browser.chrome.accessible_tab": {
 		title: string;
 		loading: string;

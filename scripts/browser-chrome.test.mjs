@@ -3626,6 +3626,81 @@ test("the rail's Browser item draws that count, with the number in its accessibl
 	}
 });
 
+test("the browser's waits are sidebar notification rows and badge counts, not a view switch (operator report 2026-11-15)", async () => {
+	// "the browser is stealing the view": a passkey hold and an agent's popup used to
+	// pull the operator into the Browser. They are now rows under the destinations,
+	// naming what is needed, the site and the conversation, and the Browser badge
+	// counts them with the approvals. Rendering moves nothing: the route stub below is
+	// /chat, and the markup is the rail on that route.
+	const previousWindow = globalThis.window;
+	globalThis.window = {
+		location: { hash: "#/chat", pathname: "/chat" },
+		innerWidth: 1380,
+		api: {
+			browser: {
+				state: async () => ({
+					tabs: [
+						{
+							tabId: 1,
+							url: "https://login.microsoft.com/fido",
+							sessionId: null,
+							owner: "agent",
+							title: "",
+						},
+						{
+							tabId: 3,
+							url: "https://idp.example/authorize",
+							sessionId: null,
+							owner: "agent",
+							title: "",
+						},
+					],
+					pendingConsent: [
+						{ ...PENDING, entryId: "one", requesterSessionId: null },
+					],
+					waitingOnUser: [
+						{ kind: "passkey", tabId: 1, at: 10 },
+						{ kind: "popup", tabId: 3, at: 20 },
+					],
+					approvedGrants: [],
+				}),
+			},
+		},
+	};
+	try {
+		await refreshBrowserProjection();
+		const markup = render(
+			el(
+				QueryClientProvider,
+				{ client: new QueryClient() },
+				el(
+					MemoryRouter,
+					null,
+					el(ChatLayout, { sidebar: el(SidebarNavigation), content: null }),
+				),
+			),
+		);
+		assert.ok(
+			markup.includes('aria-label="Browser, 3 waiting"'),
+			"the badge counts the hold and the held popup with the approval",
+		);
+		for (const kind of ["passkey", "popup", "site-access"])
+			assert.ok(
+				markup.includes(`data-browser-attention-row="${kind}"`),
+				`a ${kind} row is drawn`,
+			);
+		assert.ok(markup.includes("Password manager needs you"));
+		assert.ok(markup.includes("Sign-in window waiting"));
+		assert.ok(markup.includes("Site access request"));
+		assert.ok(
+			markup.includes("login.microsoft.com"),
+			"the row names the site as a host",
+		);
+	} finally {
+		globalThis.window = previousWindow;
+	}
+});
+
 test("a banner click lands on the asking conversation, or on the browser route", () => {
 	// R3'S LANDING RULE (operator ask, 2026-09-23). The conversation is preferred
 	// because the pane's tray is the surface that shows the named request beside the

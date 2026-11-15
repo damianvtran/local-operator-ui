@@ -1,0 +1,10 @@
+{
+	"ui.browser.attention.heading": "آپ کا انتظار ہے",
+	"ui.browser.attention.passkey": "پاس ورڈ مینیجر کو آپ کی ضرورت ہے",
+	"ui.browser.attention.popup": "سائن اِن ونڈو منتظر ہے",
+	"ui.browser.attention.site_access": "سائٹ تک رسائی کی درخواست",
+	"ui.browser.attention.no_site": "ایک صفحہ",
+	"ui.browser.attention.detail": "{site} · {session}",
+	"ui.browser.attention.open_label": "{need}: {site}، {session}۔ کھولیں۔",
+	"ui.browser.attention.more": "{count, plural, one {براؤزر میں {countText} مزید} other {براؤزر میں {countText} مزید}}"
+}

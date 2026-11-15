@@ -1,0 +1,10 @@
+{
+	"ui.browser.attention.heading": "Đang chờ bạn",
+	"ui.browser.attention.passkey": "Trình quản lý mật khẩu cần bạn",
+	"ui.browser.attention.popup": "Cửa sổ đăng nhập đang chờ",
+	"ui.browser.attention.site_access": "Yêu cầu truy cập trang",
+	"ui.browser.attention.no_site": "Một trang",
+	"ui.browser.attention.detail": "{site} · {session}",
+	"ui.browser.attention.open_label": "{need}: {site}, {session}. Mở.",
+	"ui.browser.attention.more": "{count, plural, other {Thêm {countText} mục trong Trình duyệt}}"
+}

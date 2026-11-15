@@ -48,6 +48,8 @@ type Counts = {
 	browser: number;
 	mesh: number;
 	teamBridge: number;
+	/** Draw a passkey hold and a held popup beside the approvals. */
+	waits?: boolean;
 };
 
 const ok = (result: unknown): DesktopResponse => ({
@@ -181,8 +183,36 @@ const aidaRows = (count: number) =>
 			]
 		: [];
 
-const browserState = (count: number) => ({
-	tabs: [],
+/**
+ * Agent tabs waiting on the user (operator report 2026-11-15, "the browser is
+ * stealing the view"): a passkey custody hold and a held sign-in popup, drawn as
+ * sidebar notification rows beside the approvals instead of switching views.
+ */
+const WAITING_TABS = [
+	{
+		tabId: 101,
+		url: "https://login.microsoft.com/consumers/fido/get",
+		title: "Sign in",
+		owner: "agent" as const,
+		sessionId: AIDA_ID,
+	},
+	{
+		tabId: 102,
+		url: "https://accounts.example.com/authorize",
+		title: "Sign in",
+		owner: "agent" as const,
+		sessionId: null,
+	},
+];
+
+const browserState = (count: number, waits = false) => ({
+	tabs: waits ? WAITING_TABS : [],
+	waitingOnUser: waits
+		? [
+				{ kind: "passkey" as const, tabId: 101, at: 1 },
+				{ kind: "popup" as const, tabId: 102, at: 2 },
+			]
+		: [],
 	activeTabId: null,
 	url: "",
 	title: "",
@@ -213,7 +243,7 @@ const Scene: FC<{
 		/* Installed before the rail mounts, so its first reads find the bridge;
 		   SPREAD over the preview's mock so later stories keep their api. */
 		const host = window as unknown as { api: Record<string, unknown> };
-		const state = browserState(counts.browser);
+		const state = browserState(counts.browser, counts.waits);
 		host.api = {
 			...host.api,
 			desktop: { request: route(counts) },
@@ -273,6 +303,30 @@ const SMALL: Counts = {
 /** Every attention row at once; Mesh and Team Bridge folded into More (sum 4). */
 export const Counts: Story = {
 	render: () => <Scene counts={SMALL} collapsed={false} moreOpen={false} />,
+};
+
+/** The browser's waits as sidebar notification rows: a password manager hold
+    in Aida's conversation, a held sign-in popup on an unowned tab and one
+    approval — listed, never switched to. The badge counts all three. */
+export const BrowserWaits: Story = {
+	render: () => (
+		<Scene
+			counts={{ ...SMALL, browser: 1, waits: true }}
+			collapsed={false}
+			moreOpen={false}
+		/>
+	),
+};
+
+/** Past three waits the rest fold into one "more in Browser" row. */
+export const BrowserWaitsFolded: Story = {
+	render: () => (
+		<Scene
+			counts={{ ...SMALL, browser: 4, waits: true }}
+			collapsed={false}
+			moreOpen={false}
+		/>
+	),
 };
 
 /** More opened: the hidden rows draw their own counts beneath it, and More

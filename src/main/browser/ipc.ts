@@ -122,6 +122,14 @@ export interface RegisterBrowserIpcOptions {
 		) => { ok: true; reloaded?: boolean } | { ok: false; reason: string };
 	};
 	/**
+	 * The sidebar notification row's click (`user-attention.ts`): the ONLY way
+	 * a wait an agent tab has on the user — a passkey custody hold, a held popup
+	 * — comes forward. Sender-checked like every channel here, so neither an
+	 * agent (no RPC method reaches it) nor a page can bring a tab to the front.
+	 * `false`: the tab is gone.
+	 */
+	userAttention?: { open: (tabId: number) => boolean };
+	/**
 	 * The camera/microphone prompt's one action (`media-permissions.ts`). This
 	 * channel is the ONLY route to a media grant, and `authorize()` admits only
 	 * the app window's own top frame: a driven page or the agent cannot reach it.
@@ -249,6 +257,7 @@ export const BROWSER_IPC_CHANNELS = [
 	"browser-passkey-notice-open",
 	"browser-passkey-notice-continue",
 	"browser-passkey-custody-release",
+	"browser-open-user-attention",
 	"browser-media-permission-decide",
 	"browser-media-permission-open-settings",
 	"browser-extensions",
@@ -730,6 +739,12 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 			);
 		},
 	);
+
+	// A sidebar notification row's click: see `userAttention` above.
+	ipcMain.handle("browser-open-user-attention", (event, tabId: unknown) => {
+		authorize(event);
+		return options.userAttention?.open(numberOrThrow(tabId, "tabId")) ?? false;
+	});
 
 	/*
 	 * The camera/microphone prompt's answer. Sender-checked like every channel

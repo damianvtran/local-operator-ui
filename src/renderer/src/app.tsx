@@ -57,8 +57,8 @@ import {
 	noteConsentAttention,
 } from "@shared/browser-consent-attention";
 import {
-	CustodyHandoffs,
 	type CustodyViewSnapshot,
+	shellCustodyHandoffs,
 } from "@shared/browser-passkey-custody-handoff";
 import { useSuppressBrowserView } from "@shared/browser-view-policy";
 import { useSettingsIntentsSync } from "@shared/hooks/use-settings-intents";
@@ -707,20 +707,23 @@ const App: FC = () => {
 	/*
 	 * A password manager's prompt came up in an agent-driven tab and the agent is
 	 * paused there until the user answers it and returns the tab
-	 * (`main/browser/extensions/passkey-custody.ts`). Main has already made that
-	 * tab the browser's active one and asked `window-raise.ts` for the window;
-	 * this half lands the user where the prompt is — the agent's conversation
-	 * with its browser pane open, or the browser route for a tab no conversation
-	 * owns — and, when the hold ends, gives them back the view they were in IF
-	 * they are still where the handoff put them (review U1/D3). The rule and its
-	 * tests live in `browser-passkey-custody-handoff.ts`.
+	 * (`main/browser/extensions/passkey-custody.ts`).
 	 *
-	 * The route is read through a ref so the listeners are not re-registered on
+	 * NOTHING HERE MOVES THE VIEW WHEN A HOLD BEGINS (operator report 2026-11-15,
+	 * "the browser is stealing the view"). This effect used to navigate to the
+	 * hold's conversation or the browser route the moment main pushed an attention
+	 * event; the hold is now a sidebar notification row (`browser-user-attention.ts`)
+	 * and the user goes over when they choose. Only the GIVE-BACK lives here: when
+	 * a hold the user opened FROM ITS ROW ends, their previous view comes back if
+	 * they are still where that click put them (review U1/D3). The row's click is
+	 * what records the handoff in `shellCustodyHandoffs`, so a hold nobody opened
+	 * has nothing to give back.
+	 *
+	 * The route is read through a ref so the listener is not re-registered on
 	 * every navigation (the store reads use `getState()` for the same reason).
 	 */
 	const pathnameRef = useRef(pathname);
 	pathnameRef.current = pathname;
-	const custodyHandoffs = useRef(new CustodyHandoffs()).current;
 	useEffect(() => {
 		const currentView = (): CustodyViewSnapshot => {
 			const sessions = useCanonicalSessionsStore.getState();
@@ -731,24 +734,7 @@ const App: FC = () => {
 				browserPaneOpen: useUiPreferencesStore.getState().isBrowserPaneOpen,
 			};
 		};
-		const offAttention = window.api?.browser?.onPasskeyCustodyAttention?.(
-			(payload) => {
-				const target = consentClickTarget(
-					payload.requesterSessionId,
-					useCanonicalSessionsStore.getState().sessions,
-				);
-				const handoff = custodyHandoffs.begin(payload, target, currentView());
-				// The same hold again: the user was already brought to it once.
-				if (!handoff) return;
-				if (target.kind === "browser") {
-					navigate("/browser");
-					return;
-				}
-				setActiveSession(target.sessionId);
-				setBrowserPaneOpen(true);
-				navigate("/chat");
-			},
-		);
+		const custodyHandoffs = shellCustodyHandoffs;
 		const offEnded = window.api?.browser?.onPasskeyCustodyEnded?.((payload) => {
 			const plan = custodyHandoffs.end(payload, currentView());
 			if (!plan) return;
@@ -763,10 +749,9 @@ const App: FC = () => {
 			if (plan.navigate) navigate(plan.navigate);
 		});
 		return () => {
-			offAttention?.();
 			offEnded?.();
 		};
-	}, [custodyHandoffs, navigate, setActiveSession, setBrowserPaneOpen]);
+	}, [navigate, setActiveSession, setBrowserPaneOpen]);
 
 	/*
 	 * `⌘N` / `Ctrl+N` starts a new chat, from wherever the user is — the other

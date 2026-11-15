@@ -1,0 +1,10 @@
+{
+	"ui.browser.attention.heading": "等待你处理",
+	"ui.browser.attention.passkey": "密码管理器需要你操作",
+	"ui.browser.attention.popup": "登录窗口正在等待",
+	"ui.browser.attention.site_access": "网站访问请求",
+	"ui.browser.attention.no_site": "某个页面",
+	"ui.browser.attention.detail": "{site} · {session}",
+	"ui.browser.attention.open_label": "{need}：{site}，{session}。打开。",
+	"ui.browser.attention.more": "{count, plural, other {浏览器中还有 {countText} 项}}"
+}
