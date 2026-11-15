@@ -68,7 +68,13 @@ export const MonitorConversationRow: FC<MonitorConversationRowProps> = ({
 					    one column under their conversation names. */}
 					<ul className={cn("flex flex-col gap-1 pl-4")}>
 						{row.monitors.map((monitor) => (
-							<MonitorRowView key={monitor.id} row={monitor} cancel={cancel} />
+							<MonitorRowView
+								key={monitor.id}
+								row={monitor}
+								cancel={cancel}
+								/* U3: the reason wraps here; the page has the width the pane lacks. */
+								wrapHealth={true}
+							/>
 						))}
 					</ul>
 				</div>

@@ -6724,17 +6724,6 @@ export type DesktopWakeCreateResponse = {
 };
 
 /**
- * The outcome of cancelling (or arming) one monitor, as the route's
- * `MonitorWriteReceipt` sends it (`routes/desktop_monitors.py::_receipt`).
- *
- * Shared by both writes on the wire; this client only sends the cancel today,
- * so the fields a cancel answers are the load-bearing ones - `monitor_id` names
- * the row that changed, `remaining` is what the conversation holds after it
- * (0 removes the index entry, which is also what releases the cleanup reap
- * guard), and `next_due_at` is always null after a cancel. A refusal is not a
- * value here: it travels as the error's `detail.message`.
- */
-/**
  * One standing watch, as `monitors.list` sends it
  * (`server/models/desktop_monitors.py::MonitorRow`).
  *
@@ -6800,6 +6789,17 @@ export type DesktopMonitorsListResponse = {
 	read_error: boolean;
 };
 
+/**
+ * The outcome of cancelling (or arming) one monitor, as the route's
+ * `MonitorWriteReceipt` sends it (`routes/desktop_monitors.py::_receipt`).
+ *
+ * Shared by both writes on the wire; this client only sends the cancel today,
+ * so the fields a cancel answers are the load-bearing ones - `monitor_id` names
+ * the row that changed, `remaining` is what the conversation holds after it
+ * (0 removes the index entry, which is also what releases the cleanup reap
+ * guard), and `next_due_at` is always null after a cancel. A refusal is not a
+ * value here: it travels as the error's `detail.message`.
+ */
 export type DesktopMonitorWriteReceipt = {
 	session_id: string;
 	monitor_id: string;

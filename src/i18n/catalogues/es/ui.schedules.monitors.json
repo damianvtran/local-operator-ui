@@ -1,4 +1,9 @@
 {
+	"ui.schedules.monitors.blind_health": "no puede comparar sus resultados, así que no se informa de los cambios",
+	"ui.schedules.monitors.could_not_load_monitors": "No se pudieron cargar los monitores.",
+	"ui.schedules.monitors.could_not_read_monitors": "No se pudieron leer los monitores de esta máquina, así que esta lista puede estar incompleta.",
+	"ui.schedules.monitors.count_needs_attention": "{total, plural, one {{total_display} monitor} many {{total_display} de monitores} other {{total_display} monitores}} · {attention, plural, one {{attention_display} requiere atención} many {{attention_display} requieren atención} other {{attention_display} requieren atención}}",
+	"ui.schedules.monitors.expired_state": "expirado",
 	"ui.schedules.monitors.list_truncated": "Mostrando {shown, number, ::group-off} de {total, plural, one {{total, number, ::group-off} conversación con monitores} many {{total, number, ::group-off} de conversaciones con monitores} other {{total, number, ::group-off} conversaciones con monitores}}.",
 	"ui.schedules.monitors.parked_clause": "En pausa — sus monitores no realizan comprobaciones",
 	"ui.schedules.monitors.parked_state": "en pausa"

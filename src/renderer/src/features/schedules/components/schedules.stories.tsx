@@ -417,6 +417,41 @@ const MONITORS: DesktopMonitorEntry[] = [
 	),
 ];
 
+/**
+ * The states only the LISTING knows (agent review round 1, R1-1; design D1):
+ * a blind watch with the backend's health sentence, a never-checked watch in a
+ * session nobody has open (the sentence is the only signal), and an expired
+ * watch, which must drop its next-check time for the `expired` word. The
+ * conversation's head counts the blind and expired watches as needing
+ * attention rather than calling them `armed`.
+ */
+const UNHEALTHY_MONITORS: DesktopMonitorEntry[] = [
+	watching("c0ffee000004", "Downloads tidy-up", "~/workspace", [
+		monitor("m1", "inbox-watcher", {
+			every_ms: HOUR_MS,
+			next_due_at: at(9),
+			state: "blind",
+			blind: true,
+			health:
+				"BLIND: cannot compare its result \u2014 the command could not read ~/Downloads (permission denied); changes are not being reported",
+		}),
+		monitor("m2", "feed-watch", {
+			every_ms: 30 * MINUTE_MS,
+			next_due_at: at(12),
+			state: "expired",
+		}),
+	]),
+	watching("c0ffee000005", "Disk space", "~/tools", [
+		monitor("m1", "disk-space-watch", {
+			every_ms: 10 * MINUTE_MS,
+			next_due_at: at(4),
+			last_check_at: 0,
+			checks: 0,
+			health: "never checked \u2014 its session was not open since arming",
+		}),
+	]),
+];
+
 const AGENTS = [
 	{ id: "3f21c0aa-1d55-4a8b-9a1e-27a4f0d9b111", name: "Inbox triage" },
 	{ id: "8c04b7e2-93f1-4c0d-8d2a-11f4e6c7a222", name: "Weekly finance digest" },
@@ -1226,6 +1261,28 @@ export const WakesAndMonitorsNarrow: Story = {
 	render: () => (
 		<div className="w-[640px]">
 			{page({ entries: ONE_WAKE, monitors: MONITORS })}
+		</div>
+	),
+};
+
+/**
+ * Watches the listing marks unhealthy - blind, never checked, expired - beside
+ * the ordinary mixed set: the warning tail, the `expired` word with no time,
+ * and heads that say `need attention` instead of `armed` (R1-1, D1).
+ */
+export const MonitorsUnhealthy: Story = {
+	render: () =>
+		page({ entries: ONE_WAKE, monitors: [...UNHEALTHY_MONITORS, ...MONITORS] }),
+};
+
+/** The unhealthy set at the app's minimum width: the reasons wrap (U3). */
+export const MonitorsUnhealthyNarrow: Story = {
+	render: () => (
+		<div className="w-[640px]">
+			{page({
+				entries: ONE_WAKE,
+				monitors: [...UNHEALTHY_MONITORS, ...MONITORS],
+			})}
 		</div>
 	),
 };

@@ -112,6 +112,14 @@ import {
 } from "./scheduled-task-dialog";
 import { WakeConversationRow } from "./wake-conversation-row";
 
+/**
+ * The page's section heading register: the legacy group's `h2`
+ * (`text-heading text-ink`, 16px semibold), reused for the Wakes and Monitors
+ * labels (design D2) so a group heading reads above the 13px row names it
+ * heads rather than as one more row. No new token.
+ */
+const SECTION_HEADING_CLASS = "px-4 pt-3 pb-1 text-heading text-ink";
+
 /** The one-row confirm for cancelling an armed wake. */
 type PendingCancel = { row: ScheduledTaskRow; wake: WakeLine };
 
@@ -372,6 +380,11 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 	});
 	const monitorsReadError =
 		!monitorsListing.isLoading && monitorsListing.data?.read_error === true;
+	/* Something to say about monitors: rows, a failed read, or an unreadable index. */
+	const hasMonitorSection =
+		monitorRows.length > 0 ||
+		monitorsListing.error !== null ||
+		monitorsReadError;
 
 	return (
 		/* `gap-8`: `PageHeader` no longer ships its own bottom margin. */
@@ -543,6 +556,20 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 					</div>
 				)}
 
+				{/*
+				 * `Wakes` is labelled only when the Monitors section is also on the
+				 * page (UX U5, design D2). With one family the page title already
+				 * names the list and a lone heading adds a line of chrome above every
+				 * row - and keeps the wakes-only page byte-identical to what it was
+				 * before monitors joined it; with two, labelling only one made the
+				 * other read as unlabelled leftovers. Same component and class as the
+				 * Monitors heading, so the two families match.
+				 */}
+				{rows.length > 0 && hasMonitorSection && (
+					<h2 className={SECTION_HEADING_CLASS}>
+						{t("ui.chat.run_details.wakes.title")}
+					</h2>
+				)}
 				{rows.length > 0 && (
 					<ul className="flex flex-col">
 						{rows.map((row) => (
@@ -572,6 +599,43 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 					</ul>
 				)}
 
+				{/* The wake footnotes sit directly under the wake list, ABOVE the
+				    Monitors section (agent review round 1, R1-2 / QA Q-1): below it,
+				    "Showing N of M conversations with wakes" and the park sentence read
+				    as if they described the monitor rows. */}
+				{/* The listing is capped (the backend's own default), and past the cap
+				    the page would otherwise under-report silently - `truncated` exists
+				    so a client can say "showing N of M" (the reviewer's R7). */}
+				{!listing.isLoading && listing.data?.truncated && (
+					<p className="border-hairline border-t px-4 py-3 text-body-sm text-ink-dim">
+						{t("ui.schedules.count.list_truncated", {
+							shown: listing.data.entries.length,
+							total: listing.data.total,
+						})}
+					</p>
+				)}
+
+				{/* The one sentence this page owes the reader, and the question the
+				    whole feature raises: what happens when nobody is looking.
+				    The FIRE half is gated on the supervisor, because when nothing can
+				    fire that sentence is false on this screen - the strip below the
+				    header carries that truth instead (the designer's D2). The PARK
+				    half names the stop that parks and the stop that does not, because
+				    the app's own `POST /v1/desktop/stop` writes no durable marker, and
+				    says a TURN resumes them rather than the act of opening (round-2
+				    U9; the two measurements are in `PARK_FOOTER_CLAUSE`'s own note). */}
+				{(rows.length > 0 || legacyRows.length > 0) && (
+					<p className="border-hairline border-t px-4 py-3 text-body-sm text-ink-dim">
+						{canFire
+							? t(
+									"ui.schedules.schedules_page.wakes_fire_whether_or_not_this_window_is_open",
+								)
+							: ""}
+						{t(
+							"ui.schedules.scheduled_task_model.a_terminal_stop_parks_a_conversation_s_wakes_until_its_next_turn",
+						)}
+					</p>
+				)}
 				{/*
 				 * The Monitors section (#1898): after the wakes, labelled, one row per
 				 * conversation. Present whenever there is something to say about
@@ -579,17 +643,27 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 				 * and absent otherwise, the pane's "absence is not a state" rule: a
 				 * machine with no watches shows no empty heading.
 				 */}
-				{(monitorRows.length > 0 ||
-					monitorsListing.error ||
-					monitorsReadError) && (
+				{hasMonitorSection && (
+					/*
+					 * `first:border-t-0` (design D3): the hairline separates this section
+					 * from the wakes above it; on a monitors-only page nothing precedes it
+					 * and the border drew a stray line on the panel's top edge. Every
+					 * block above renders conditionally, so "first child" is exactly
+					 * "nothing above".
+					 */
 					<section
 						data-schedules-monitors-section
 						aria-labelledby="schedules-monitors-heading"
-						className="border-hairline border-t"
+						className="border-hairline border-t first:border-t-0"
 					>
+						{/* `tabIndex={-1}` + `data-monitor-focus-fallback`: the cancel
+						    interaction's last focus target once no Cancel follows the one
+						    that was pressed (UX U1, `use-monitor-cancel.ts`). */}
 						<h2
 							id="schedules-monitors-heading"
-							className="px-4 pt-3 pb-1 text-body-sm text-ink-muted"
+							tabIndex={-1}
+							data-monitor-focus-fallback
+							className={`${SECTION_HEADING_CLASS} outline-none`}
 						>
 							{t("ui.chat.run_details.monitors.title")}
 						</h2>
@@ -599,9 +673,7 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 						{monitorsListing.error && (
 							<div className="flex flex-col items-start gap-2 border-hairline border-b px-4 pb-3">
 								<p className="text-body text-ink">
-									{t(
-										"ui.schedules.schedules_page.could_not_load_scheduled_tasks",
-									)}
+									{t("ui.schedules.monitors.could_not_load_monitors")}
 								</p>
 								<p className="text-body-sm text-ink-muted">
 									{monitorsListing.error.message}
@@ -614,9 +686,7 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 						{monitorsReadError && (
 							<div className="flex flex-col items-start gap-2 border-hairline border-b px-4 pb-3">
 								<Alert variant="warning">
-									{t(
-										"ui.schedules.schedules_page.could_not_read_this_machine_s_scheduled_tasks_so_the_list_below_m",
-									)}
+									{t("ui.schedules.monitors.could_not_read_monitors")}
 								</Alert>
 								<Button variant="secondary" size="sm" onClick={refreshAll}>
 									{t("ui.schedules.schedules_page.try_again")}
@@ -694,40 +764,6 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 							/>
 						))}
 					</section>
-				)}
-
-				{/* The listing is capped (the backend's own default), and past the cap
-				    the page would otherwise under-report silently - `truncated` exists
-				    so a client can say "showing N of M" (the reviewer's R7). */}
-				{!listing.isLoading && listing.data?.truncated && (
-					<p className="border-hairline border-t px-4 py-3 text-body-sm text-ink-dim">
-						{t("ui.schedules.count.list_truncated", {
-							shown: listing.data.entries.length,
-							total: listing.data.total,
-						})}
-					</p>
-				)}
-
-				{/* The one sentence this page owes the reader, and the question the
-				    whole feature raises: what happens when nobody is looking.
-				    The FIRE half is gated on the supervisor, because when nothing can
-				    fire that sentence is false on this screen - the strip below the
-				    header carries that truth instead (the designer's D2). The PARK
-				    half names the stop that parks and the stop that does not, because
-				    the app's own `POST /v1/desktop/stop` writes no durable marker, and
-				    says a TURN resumes them rather than the act of opening (round-2
-				    U9; the two measurements are in `PARK_FOOTER_CLAUSE`'s own note). */}
-				{(rows.length > 0 || legacyRows.length > 0) && (
-					<p className="border-hairline border-t px-4 py-3 text-body-sm text-ink-dim">
-						{canFire
-							? t(
-									"ui.schedules.schedules_page.wakes_fire_whether_or_not_this_window_is_open",
-								)
-							: ""}
-						{t(
-							"ui.schedules.scheduled_task_model.a_terminal_stop_parks_a_conversation_s_wakes_until_its_next_turn",
-						)}
-					</p>
 				)}
 			</div>
 

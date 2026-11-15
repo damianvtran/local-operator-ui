@@ -11399,6 +11399,16 @@ export type MessageParams = {
 	"ui.schedules.wake_conversation_row.edit_wake": undefined;
 	"ui.schedules.wake_conversation_row.open_conversation": undefined;
 	"ui.schedules.wake_conversation_row.show_fewer": undefined;
+	"ui.schedules.monitors.blind_health": undefined;
+	"ui.schedules.monitors.could_not_load_monitors": undefined;
+	"ui.schedules.monitors.could_not_read_monitors": undefined;
+	"ui.schedules.monitors.count_needs_attention": {
+		total: number;
+		total_display: string;
+		attention: number;
+		attention_display: string;
+	};
+	"ui.schedules.monitors.expired_state": undefined;
 	"ui.schedules.monitors.list_truncated": { shown: number; total: number };
 	"ui.schedules.monitors.parked_clause": undefined;
 	"ui.schedules.monitors.parked_state": undefined;

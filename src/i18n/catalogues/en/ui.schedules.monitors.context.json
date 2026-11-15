@@ -1,4 +1,41 @@
 {
+	"ui.schedules.monitors.blind_health": {
+		"role": "Health tail of a Schedules page monitor row whose watch is blind and the backend sent no health sentence",
+		"tone": "Factual, lowercase start, no terminal period",
+		"length": "One short clause; it shares a line with the cadence and last-check clauses",
+		"note": "A blind monitor still runs its check but cannot compare one result with the last, so it silently reports nothing. Rendered in warning ink after a middle dot. Normally the backend's own English health sentence fills this slot; this is the fallback."
+	},
+	"ui.schedules.monitors.could_not_load_monitors": {
+		"role": "Failure strip under the Schedules page Monitors heading when the monitor listing request failed",
+		"tone": "Plain statement of what failed, full sentence with period",
+		"length": "One short sentence",
+		"note": "Monitor twin of ui.schedules.schedules_page.could_not_load_scheduled_tasks; it must name monitors because the wakes above it may have loaded fine."
+	},
+	"ui.schedules.monitors.could_not_read_monitors": {
+		"role": "Warning under the Schedules page Monitors heading when the machine's monitor index could not be read",
+		"tone": "Plain, cautionary, full sentence with period",
+		"length": "One sentence",
+		"note": "Monitor twin of ui.schedules.schedules_page.could_not_read_this_machine_s_scheduled_tasks_so_the_list_below_m. Says this list (the monitors shown under the warning), not the list below, may be incomplete."
+	},
+	"ui.schedules.monitors.count_needs_attention": {
+		"role": "Trailing clause on a conversation row in the Schedules page Monitors section when some of its monitors are disabled, blind or expired",
+		"tone": "Factual tally, sentence fragment, no terminal period",
+		"length": "Short; English example is 2 monitors · 1 needs attention",
+		"note": "Replaces ui.chat.run_details.monitor.armed_count when not every monitor is working, so the row never calls a disabled monitor armed. Keep the middle dot separator. Two independent counts, each with its own plural.",
+		"placeholders": {
+			"total": "Number of monitors on the conversation, selects the first plural.",
+			"total_display": "total as display text.",
+			"attention": "Number of those monitors that are disabled, blind or expired, selects the second plural.",
+			"attention_display": "attention as display text."
+		},
+		"plural": "Each count needs its own locale plural arms (ru: one/few/many/other; es/fr: one/many/other)."
+	},
+	"ui.schedules.monitors.expired_state": {
+		"role": "when-label of a monitor row whose until time has passed",
+		"tone": "single lowercase status word",
+		"length": "One word",
+		"note": "Sits in the same slot and register as ui.schedules.monitors.parked_state and ui.chat.run_details.monitor.disabled; agree with the noun monitor in this locale. Replaces the next-check time, because an expired monitor will not check again."
+	},
 	"ui.schedules.monitors.list_truncated": {
 		"role": "Schedules page Monitors section truncated-list footnote: visible versus total monitor-carrying conversations",
 		"tone": "Factual count, not a complete-list claim.",

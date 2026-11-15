@@ -1,8 +1,3 @@
-import {
-	type MonitorCancelOutcome,
-	type MonitorControls,
-	retryMonitorWrite,
-} from "@features/chat/components/run-details/monitor-controls-model";
 /**
  * The Schedules page's monitor read and its one write (#1898).
  *
@@ -23,6 +18,11 @@ import {
  * consumes - which is what lets the page reuse that interaction, its dialog and
  * its row records unchanged.
  */
+import {
+	type MonitorCancelOutcome,
+	type MonitorControls,
+	retryMonitorWrite,
+} from "@features/chat/components/run-details/monitor-controls-model";
 import { userFacingMessage } from "@shared/api/local-operator/desktop-api";
 import {
 	type DesktopMonitorWriteReceipt,

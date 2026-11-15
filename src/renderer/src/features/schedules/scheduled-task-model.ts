@@ -6,6 +6,7 @@ import {
 	formatWakeCadence,
 	formatWakeDue,
 	monitorClause,
+	oneLine,
 } from "@features/chat/components/run-details/run-detail-model";
 import type { ScheduleResponse } from "@shared/api/local-operator";
 import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
@@ -41,6 +42,7 @@ import {
  */
 import type {
 	DesktopMonitorEntry,
+	DesktopMonitorListingRow,
 	DesktopWakeEntry,
 	DesktopWakeScheduleRow,
 } from "../../../../shared/desktop-contract";
@@ -964,6 +966,87 @@ export type MonitorConversationRow = {
 };
 
 /**
+ * The listing's own records by the id `deriveMonitors` gives each row, so the
+ * page can read back the fields the pane's deriver drops. The fallback id
+ * mirrors `deriveMonitor`'s (`monitor-<index>`), so even an id-less record
+ * pairs with its row.
+ */
+const listingRecordsById = (
+	records: DesktopMonitorListingRow[],
+): Map<string, DesktopMonitorListingRow> =>
+	new Map(
+		records.map((record, index) => [
+			(typeof record.id === "string" ? record.id.trim() : "") ||
+				`monitor-${index}`,
+			record,
+		]),
+	);
+
+/**
+ * A watch that is set up but not reporting: disabled by the failure ladder,
+ * blind (its check runs but cannot be compared), or past its `until`. These are
+ * what the head must not call `armed` (design round 1, D1).
+ */
+const needsAttention = (
+	row: MonitorRow,
+	record: DesktopMonitorListingRow | undefined,
+): boolean =>
+	row.disabled ||
+	record?.state === "blind" ||
+	record?.blind === true ||
+	record?.state === "expired";
+
+/**
+ * The pane's row, with what only the listing knows layered on (R1-1).
+ *
+ * - `expired`: the `until` passed, so there is no next check. The due slot
+ *   takes the state word and `nextDueAt` is cleared - the parked rule: an
+ *   instant the watch will not keep is not printed. Warning ink, because a
+ *   watch that silently stopped is the case a reader is scanning for.
+ * - The health sentence (`store.health_hint`) fills the tail ONLY when the
+ *   pane's deriver said nothing: a disabled reason or failure count is the more
+ *   specific remedy and already takes the warning ink. Server-authored English
+ *   rendered verbatim has precedent here: `disabled_reason` is.
+ * - `blind` with no sentence still gets one, so the state is never silent.
+ */
+const withListingHealth = (
+	row: MonitorRow,
+	record: DesktopMonitorListingRow | undefined,
+): MonitorRow => {
+	if (!record) return row;
+	const expired = record.state === "expired";
+	const blind = record.state === "blind" || record.blind === true;
+	const health =
+		typeof record.health === "string" ? oneLine(record.health) : "";
+	const healthLabel =
+		row.healthLabel ||
+		health ||
+		(blind ? t("ui.schedules.monitors.blind_health") : "");
+	return {
+		...row,
+		...(expired && !row.disabled
+			? { whenLabel: t("ui.schedules.monitors.expired_state"), nextDueAt: null }
+			: {}),
+		healthLabel,
+		alerting: row.alerting || expired || blind || healthLabel !== "",
+	};
+};
+
+/**
+ * The head's tally. Only reporting watches are `armed` (D1); when any watch
+ * needs attention the clause names both counts instead of over-claiming.
+ */
+const monitorTally = (total: number, attention: number): string =>
+	attention === 0
+		? monitorClause(total)
+		: t("ui.schedules.monitors.count_needs_attention", {
+				total,
+				total_display: String(total),
+				attention,
+				attention_display: String(attention),
+			});
+
+/**
  * Every monitor-carrying conversation the section draws, soonest check first.
  *
  * The rows are the PANE'S: each entry's watches go through `deriveMonitors`
@@ -983,6 +1066,20 @@ export type MonitorConversationRow = {
  * while the health tail (failure count or disabled reason) stays, since it is
  * still true.
  *
+ * The LISTING knows more than the pane's deriver reads, and the page owes it
+ * (agent review round 1, R1-1): `deriveMonitor` builds its health tail only
+ * from `disabled` and `consecutive_failures`, but the route also sends the
+ * shared health sentence (`store.health_hint`: blind, never checked, tool
+ * unavailable) and the CLI's `state` word. This page is the one surface that
+ * shows watches in sessions nobody has open - exactly where "never checked"
+ * happens - so `withListingHealth` layers those two fields over the pane's row
+ * rather than teaching the pane's deriver a field its own feed does not carry.
+ *
+ * The head's tally counts only watches that are actually reporting (D1): a
+ * disabled, blind or expired watch is set up but not doing its job, and
+ * `N monitors armed` over a row that says `disabled` was a contradiction on one
+ * screen. Such a conversation reads `N monitors · M need attention` instead.
+ *
  * An entry whose watches all derive to nothing is not a row: the pane's
  * "absence is not a state" rule, and the index's last-watch-retired race.
  */
@@ -993,18 +1090,21 @@ export const monitorConversationRows = (
 	(entries ?? [])
 		.map((entry): MonitorConversationRow => {
 			const parked = entry.dormant === true || entry.ghost === true;
-			const monitors = deriveMonitors(entry.monitors ?? [], nowMs).map(
-				(row) => ({
-					...row,
-					id: monitorRowKey(entry.session_id, row.id),
-					...(parked
-						? {
-								whenLabel: t("ui.schedules.monitors.parked_state"),
-								nextDueAt: null,
-							}
-						: {}),
-				}),
-			);
+			const records = listingRecordsById(entry.monitors ?? []);
+			const derived = deriveMonitors(entry.monitors ?? [], nowMs);
+			const attention = derived.filter((row) =>
+				needsAttention(row, records.get(row.id)),
+			).length;
+			const monitors = derived.map((row) => ({
+				...withListingHealth(row, records.get(row.id)),
+				id: monitorRowKey(entry.session_id, row.id),
+				...(parked
+					? {
+							whenLabel: t("ui.schedules.monitors.parked_state"),
+							nextDueAt: null,
+						}
+					: {}),
+			}));
 			return {
 				sessionId: entry.session_id,
 				name: wakeRowName(entry.name ?? "", entry.session_id, entry.cwd ?? ""),
@@ -1018,7 +1118,7 @@ export const monitorConversationRows = (
 				monitors,
 				meta: parked
 					? t("ui.schedules.monitors.parked_clause")
-					: monitorClause(monitors.length),
+					: monitorTally(monitors.length, attention),
 			};
 		})
 		.filter((row) => row.monitors.length > 0)

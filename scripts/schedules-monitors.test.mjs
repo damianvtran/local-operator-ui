@@ -25,8 +25,12 @@ import { build } from "esbuild";
 
 const pageBundle = await build({
 	stdin: {
-		contents:
+		contents: [
 			'export { SchedulesPage } from "./src/renderer/src/features/schedules/components/schedules-page";',
+			/* The run pane's cancel controls, for the shared-key invalidation (R1-3). */
+			'export { useMonitorControls } from "./src/renderer/src/features/chat/components/run-details/use-monitor-controls";',
+			'export { MONITORS_LIST_KEY } from "./src/renderer/src/shared/api/local-operator/monitors-api";',
+		].join("\n"),
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -202,7 +206,12 @@ const ok = (result) => ({
 });
 
 /** Mount the shipped page over one bridge state; every request is recorded. */
-async function mount({ monitors = [], wakes = [], cancel = () => ok({}) }) {
+async function mount({
+	monitors = [],
+	wakes = [],
+	cancel = () => ok({}),
+	monitorsReadError = false,
+}) {
 	const requests = [];
 	window.api = {
 		desktop: {
@@ -224,7 +233,7 @@ async function mount({ monitors = [], wakes = [], cancel = () => ok({}) }) {
 							generated_at: NOW,
 							total: monitors.length,
 							truncated: false,
-							read_error: false,
+							read_error: monitorsReadError,
 						});
 					case "monitors.cancel":
 						return cancel(request);
@@ -300,7 +309,7 @@ async function mount({ monitors = [], wakes = [], cancel = () => ok({}) }) {
 		client.clear();
 		container.remove();
 	};
-	return { container, requests, settle, press, dialog, unmount };
+	return { container, requests, settle, press, dialog, unmount, client };
 }
 
 const listReads = (requests) =>
@@ -442,5 +451,227 @@ test("a refused cancel keeps the dialog open with the backend's sentence", async
 		);
 	} finally {
 		await page.unmount();
+	}
+});
+
+/** A receipt for whichever watch the request names. */
+const cancelled = (request) =>
+	ok({
+		session_id: request.sessionId,
+		monitor_id: request.monitorId,
+		name: "x",
+		next_due_at: null,
+		remaining: 0,
+		already_armed: false,
+		reactivated: false,
+		receipt: "cancelled",
+		index_written: true,
+	});
+
+/** One armed wake, in `wakes.list`'s shape. */
+const wakeEntry = (sessionId, name) => ({
+	session_id: sessionId,
+	name,
+	cwd: "~/work",
+	origin: "",
+	updated_at: NOW,
+	dormant: false,
+	ghost: false,
+	next_due_at: NOW + 600_000,
+	schedules: [
+		{
+			id: "w1",
+			message: "check the inbox",
+			next_due_at: NOW + 600_000,
+			every_ms: null,
+			until_at: null,
+			limit: null,
+			fired_count: 0,
+			overdue_s: 0,
+			stale: false,
+			last_fired_at: null,
+			last_attempt_at: null,
+		},
+	],
+});
+
+const PARK_FOOTNOTE = "A terminal stop parks";
+
+test("mixed page: both families are headed, and the wake footnote sits above Monitors (R1-2, Q-1, U5, D2)", async () => {
+	const page = await mount({
+		monitors: TWO_M1,
+		wakes: [wakeEntry("cccccccccccc", "Inbox")],
+	});
+	try {
+		const section = "[data-schedules-monitors-section]";
+		assert.ok(
+			await page.settle(
+				() =>
+					page.container.querySelector(section) &&
+					page.container.textContent.includes(PARK_FOOTNOTE),
+			),
+		);
+		const headings = [...page.container.querySelectorAll("h2")];
+		const wakes = headings.find((h2) => h2.textContent === "Wakes");
+		const monitors = headings.find((h2) => h2.textContent === "Monitors");
+		assert.ok(wakes, "a Wakes heading when both families show");
+		assert.ok(monitors);
+		/* One register for both, the legacy group's heading (D2). */
+		assert.equal(
+			wakes.className,
+			monitors.className.replace(" outline-none", ""),
+		);
+		assert.ok(monitors.className.includes("text-heading"));
+		const footnote = [...page.container.querySelectorAll("p")].find((p) =>
+			p.textContent.includes(PARK_FOOTNOTE),
+		);
+		const sectionNode = page.container.querySelector(section);
+		assert.ok(
+			footnote.compareDocumentPosition(sectionNode) &
+				window.Node.DOCUMENT_POSITION_FOLLOWING,
+			"the wake footnote precedes the Monitors section",
+		);
+		assert.equal(sectionNode.contains(footnote), false);
+		/* Something precedes the section, so its hairline stays. */
+		assert.notEqual(sectionNode.parentElement.firstElementChild, sectionNode);
+	} finally {
+		await page.unmount();
+	}
+});
+
+test("monitors-only page: no Wakes heading, and the section opens the panel with no top hairline (D3)", async () => {
+	const page = await mount({ monitors: TWO_M1 });
+	try {
+		const section = "[data-schedules-monitors-section]";
+		assert.ok(await page.settle(() => page.container.querySelector(section)));
+		const sectionNode = page.container.querySelector(section);
+		assert.equal(
+			[...page.container.querySelectorAll("h2")].some(
+				(h2) => h2.textContent === "Wakes",
+			),
+			false,
+		);
+		/* `first:border-t-0` only bites when the section IS the first child. */
+		assert.equal(sectionNode.parentElement.firstElementChild, sectionNode);
+		assert.ok(sectionNode.className.split(" ").includes("first:border-t-0"));
+	} finally {
+		await page.unmount();
+	}
+});
+
+test("an unreadable monitor index says monitors, not scheduled tasks (R1-5, U2)", async () => {
+	const page = await mount({
+		monitors: [],
+		wakes: [wakeEntry("cccccccccccc", "Inbox")],
+		monitorsReadError: true,
+	});
+	try {
+		const section = "[data-schedules-monitors-section]";
+		assert.ok(await page.settle(() => page.container.querySelector(section)));
+		const text = page.container.querySelector(section).textContent;
+		assert.ok(
+			text.includes(
+				"Could not read this machine's monitors, so this list may be incomplete.",
+			),
+			text,
+		);
+		assert.equal(text.includes("scheduled tasks"), false);
+	} finally {
+		await page.unmount();
+	}
+});
+
+test("after a successful cancel, focus moves to the next Cancel, then the heading - never <body> (U1)", async () => {
+	const page = await mount({ monitors: TWO_M1, cancel: cancelled });
+	try {
+		const first = '[data-monitor-cancel="aaaaaaaaaaaa/m1"]';
+		const second = '[data-monitor-cancel="bbbbbbbbbbbb/m1"]';
+		assert.ok(await page.settle(() => page.container.querySelector(first)));
+		/* The first watch: the next line's Cancel (here, the next row's) takes focus. */
+		await page.press(page.container.querySelector(first));
+		assert.ok(await page.settle(() => page.dialog()));
+		await page.press(page.dialog().querySelector("[data-confirm-action]"));
+		assert.ok(
+			await page.settle(
+				() =>
+					window.document.activeElement ===
+					page.container.querySelector(second),
+			),
+			`focus is on the next Cancel, not ${window.document.activeElement?.tagName}`,
+		);
+		/* The last watch: no Cancel follows, so the section heading takes it. */
+		await page.press(page.container.querySelector(second));
+		assert.ok(await page.settle(() => page.dialog()));
+		await page.press(page.dialog().querySelector("[data-confirm-action]"));
+		assert.ok(
+			await page.settle(
+				() =>
+					window.document.activeElement?.id === "schedules-monitors-heading",
+			),
+			`focus is on the Monitors heading, not ${window.document.activeElement?.tagName}`,
+		);
+	} finally {
+		await page.unmount();
+	}
+});
+
+test("a run-pane cancel invalidates the page's monitor listing, on success and on refusal (R1-3)", async () => {
+	for (const answer of [
+		cancelled,
+		() => ({
+			status: 503,
+			body: {
+				detail: { code: "monitor_owner_present", message: OWNER_REFUSAL },
+			},
+		}),
+	]) {
+		window.api = {
+			desktop: {
+				request: async (request) =>
+					request.op === "monitors.cancel"
+						? answer(request)
+						: { status: 404, body: { detail: `test bridge: ${request.op}` } },
+			},
+		};
+		const client = new QueryClient({
+			defaultOptions: { mutations: { retry: false } },
+		});
+		/* The page's listing, as an open Schedules page would hold it. */
+		client.setQueryData(PAGE.MONITORS_LIST_KEY, { entries: [] });
+		const invalidated = [];
+		const original = client.invalidateQueries.bind(client);
+		client.invalidateQueries = (filters, options) => {
+			invalidated.push(filters?.queryKey);
+			return original(filters, options);
+		};
+		let controls = null;
+		const Probe = () => {
+			controls = PAGE.useMonitorControls({ sessionId: "aaaaaaaaaaaa" });
+			return null;
+		};
+		const container = window.document.createElement("div");
+		window.document.body.append(container);
+		const root = createRoot(container);
+		await act(async () => {
+			root.render(h(QueryClientProvider, { client }, h(Probe)));
+		});
+		let outcome;
+		await act(async () => {
+			outcome = await controls.cancel("m1");
+		});
+		assert.equal(outcome.ok, answer === cancelled);
+		assert.ok(
+			invalidated.some(
+				(key) => JSON.stringify(key) === JSON.stringify(PAGE.MONITORS_LIST_KEY),
+			),
+			`the shared listing key was invalidated (ok=${outcome.ok})`,
+		);
+		assert.equal(
+			client.getQueryState(PAGE.MONITORS_LIST_KEY).isInvalidated,
+			true,
+		);
+		await act(async () => root.unmount());
+		client.clear();
+		container.remove();
 	}
 });

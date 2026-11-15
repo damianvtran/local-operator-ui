@@ -1,4 +1,9 @@
 {
+	"ui.schedules.monitors.blind_health": "cannot compare its results, so changes are not being reported",
+	"ui.schedules.monitors.could_not_load_monitors": "Could not load monitors.",
+	"ui.schedules.monitors.could_not_read_monitors": "Could not read this machine's monitors, so this list may be incomplete.",
+	"ui.schedules.monitors.count_needs_attention": "{total, plural, one {{total_display} monitor} other {{total_display} monitors}} · {attention, plural, one {{attention_display} needs attention} other {{attention_display} need attention}}",
+	"ui.schedules.monitors.expired_state": "expired",
 	"ui.schedules.monitors.list_truncated": "Showing {shown, number, ::group-off} of {total, plural, one {{total, number, ::group-off} conversation} other {{total, number, ::group-off} conversations}} with monitors.",
 	"ui.schedules.monitors.parked_clause": "Parked — its monitors are not checking",
 	"ui.schedules.monitors.parked_state": "parked"

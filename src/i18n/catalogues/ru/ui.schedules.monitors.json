@@ -1,4 +1,9 @@
 {
+	"ui.schedules.monitors.blind_health": "не удаётся сравнить результаты, поэтому об изменениях не сообщается",
+	"ui.schedules.monitors.could_not_load_monitors": "Не удалось загрузить мониторинги.",
+	"ui.schedules.monitors.could_not_read_monitors": "Не удалось прочитать мониторинги на этом компьютере, поэтому этот список может быть неполным.",
+	"ui.schedules.monitors.count_needs_attention": "{total, plural, one {{total_display} мониторинг} few {{total_display} мониторинга} many {{total_display} мониторингов} other {{total_display} мониторинга}} · {attention, plural, one {{attention_display} требует внимания} few {{attention_display} требуют внимания} many {{attention_display} требуют внимания} other {{attention_display} требуют внимания}}",
+	"ui.schedules.monitors.expired_state": "истёк",
 	"ui.schedules.monitors.list_truncated": "Показано {shown, number, ::group-off} из {total, plural, one {{total, number, ::group-off} разговора} few {{total, number, ::group-off} разговоров} many {{total, number, ::group-off} разговоров} other {{total, number, ::group-off} разговора}} с мониторингом.",
 	"ui.schedules.monitors.parked_clause": "Приостановлено — мониторинг не выполняет проверки",
 	"ui.schedules.monitors.parked_state": "приостановлен"

@@ -116,10 +116,21 @@ import type { MonitorCancelSection } from "./use-monitor-cancel";
 export const MonitorRowView = ({
 	row,
 	cancel,
+	wrapHealth = false,
 }: {
 	row: MonitorRow;
 	/** The pane body's cancel interaction: the ask, and this row's own state. */
 	cancel: MonitorCancelSection;
+	/**
+	 * Give the health tail its own wrapping line instead of a truncated clause
+	 * on the facts line (UX round 1, U3, PR #1930). On the Schedules page the
+	 * tail - a disabled reason, a blind or never-checked sentence - IS the answer
+	 * to "why is my watch not running", and at 640px a `title`-only remainder
+	 * left keyboard and touch readers with `5 checks in a row fai…`. Off by
+	 * default: the pane's dense one-line rhythm and its measured yield order
+	 * (design round 1, D1) stay exactly as they were.
+	 */
+	wrapHealth?: boolean;
 }) => {
 	/* The row's current cancel state, or undefined for the plain control. */
 	const cancelState = cancel.stateFor(row);
@@ -204,7 +215,7 @@ export const MonitorRowView = ({
 							{`· ${row.lastCheckLabel}`}
 						</span>
 					)}
-					{row.healthLabel && (
+					{row.healthLabel && !wrapHealth && (
 						<span
 							className={cn(
 								"min-w-0 shrink-[30] truncate text-meta",
@@ -216,6 +227,17 @@ export const MonitorRowView = ({
 						</span>
 					)}
 				</div>
+				{row.healthLabel && wrapHealth && (
+					<span
+						data-monitor-health
+						className={cn(
+							"whitespace-normal break-words text-meta",
+							row.alerting ? "text-warning" : "text-ink-dim",
+						)}
+					>
+						{row.healthLabel}
+					</span>
+				)}
 				{identity && (
 					<>
 						<span
