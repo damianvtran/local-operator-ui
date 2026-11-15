@@ -1,0 +1,19 @@
+{
+	"ui.canvas.projects.segment": "项目",
+	"ui.canvas.projects.heading": "关联项目",
+	"ui.canvas.projects.back": "关联项目",
+	"ui.canvas.projects.rail_tooltip": "{state, select, open {关闭关联项目} other {打开关联项目}}",
+	"ui.canvas.projects.rail_tooltip_count": "{state, select, open {关闭关联项目} other {打开关联项目}} — {count, plural, other {{count, number, ::group-off}个项目}}",
+	"ui.canvas.projects.rail_aria": "关联项目",
+	"ui.canvas.projects.rail_aria_count": "关联项目，{count, plural, other {{count, number, ::group-off}个项目}}",
+	"ui.canvas.projects.loading": "正在加载关联项目",
+	"ui.canvas.projects.empty_title": "暂无关联项目",
+	"ui.canvas.projects.empty_description": "此对话关联的项目会显示在这里。可在项目的“关联会话”部分关联此对话，或让智能体来关联。",
+	"ui.canvas.projects.draft_title": "尚无对话",
+	"ui.canvas.projects.draft_description": "先发送第一条消息，再将此对话关联到项目，即可在这里看到它。",
+	"ui.canvas.projects.unavailable_title": "无法使用关联项目",
+	"ui.canvas.projects.unavailable_description": "此运行时无法列出对话的项目。请更新 Local Operator 以在这里查看。",
+	"ui.canvas.projects.error_title": "无法加载关联项目",
+	"ui.canvas.projects.try_again": "重试",
+	"ui.canvas.projects.open_project": "打开{name}"
+}

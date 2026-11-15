@@ -58,7 +58,8 @@ const bundle = await build({
 			export { BrowserSafeTooltip } from "./src/renderer/src/shared/components/ui/browser-safe-tooltip";
 			export { ChatLayout } from "./src/renderer/src/shared/components/common/chat-layout";
 			export { InPanelRailHost, PanelRailHostContext } from "./${NAV}/panel-rail-host";
-			export { askRailLabels, browserRailLabels, canvasRailLabels, codeRailLabels, consoleRailLabels, PANEL_RAIL_ORDER } from "./${NAV}/panel-rail-model";
+			export { askRailLabels, browserRailLabels, canvasRailLabels, codeRailLabels, consoleRailLabels, projectsRailLabels, PANEL_RAIL_ORDER } from "./${NAV}/panel-rail-model";
+			export { useCanvasStore } from "./src/renderer/src/shared/store/canvas-store";
 			export { askRailToggleLabel, askScopeSubject, ASK_RAIL_ITEM_SELECTOR } from "./src/renderer/src/features/chat/ask-queue";
 			export { captureRefusal } from "./src/renderer/src/shared/keymap/keymap-chord";
 			export { useUiPreferencesStore, resolveDrawnRightSlotPane } from "./src/renderer/src/shared/store/ui-preferences-store";
@@ -149,6 +150,8 @@ const {
 	SLOT_NOTICE_PROGRESS_DELAY_MS,
 	DesktopControlError,
 	BACKEND_PAIRING_SENTENCE,
+	projectsRailLabels,
+	useCanvasStore,
 } = await import(pathToFileURL(bundlePath).href);
 
 const read = (path) => readFileSync(join(ROOT, path), "utf8");
@@ -396,6 +399,8 @@ test("the rail is ONE vertical toolbar with a name, in the fixed order", async (
 			"console",
 			"canvas",
 			"code",
+			/* Appended after code (operator, 2026-11-15): it moves nothing above it. */
+			"projects",
 		]);
 
 		assert.deepEqual(api.ids(), [...PANEL_RAIL_ORDER]);
@@ -420,7 +425,7 @@ test("one tab stop: exactly one item is tabbable, and it follows focus", async (
 		assert.equal(
 			api.items().filter((item) => item.getAttribute("tabindex") === "-1")
 				.length,
-			5,
+			6,
 		);
 		/* Focus entering on another item (a click, a pointer) moves the stop with it. */
 		act(() => api.item("console").focus());
@@ -445,10 +450,13 @@ test("ArrowUp/ArrowDown walk the items, Home/End take the ends, and the walk is 
 		await api.key(api.item("console"), "ArrowUp");
 		assert.equal(active(), "browser");
 		await api.key(api.item("browser"), "End");
-		assert.equal(active(), "code", "the sixth item is the last");
+		assert.equal(active(), "projects", "the seventh item is the last");
+		await api.key(api.item("projects"), "ArrowUp");
+		assert.equal(active(), "code", "code sits directly above projects");
 		await api.key(api.item("code"), "ArrowDown");
-		assert.equal(active(), "code", "bounded at the end, not wrapping");
-		await api.key(api.item("code"), "Home");
+		await api.key(api.item("projects"), "ArrowDown");
+		assert.equal(active(), "projects", "bounded at the end, not wrapping");
+		await api.key(api.item("projects"), "Home");
 		assert.equal(active(), "run");
 		await api.key(api.item("run"), "ArrowUp");
 		assert.equal(active(), "run", "bounded at the start, not wrapping");
@@ -465,6 +473,115 @@ test("ArrowUp/ArrowDown walk the items, Home/End take the ends, and the walk is 
 			);
 		});
 		assert.equal(active(), "run", "a modified arrow moves nothing");
+	});
+});
+
+/*
+ * THE LINKED-PROJECTS DOOR (operator, 2026-11-15): a seventh item that opens the
+ * CANVAS on its Projects view rather than a pane of its own. The canvas slot
+ * therefore has two doors, and these cases pin the contract between them:
+ * exactly one is lit for any canvas view, each press does what its label says,
+ * and the projects door never strands the canvas door in a state it cannot
+ * explain.
+ */
+const CANVAS_KEY = "agent-1";
+const canvasView = () =>
+	useCanvasStore.getState().conversations[CANVAS_KEY]?.viewMode;
+
+test("projects door: opens the canvas on Projects, lights alone, and closes it", async () => {
+	await mount(async (api) => {
+		reset(api);
+		useCanvasStore.getState().setViewMode(CANVAS_KEY, "documents");
+		await api.render(
+			rail({ canvasConversationId: CANVAS_KEY, linkedProjectCount: 2 }),
+		);
+		assert.deepEqual(api.pressed(), []);
+		await api.click(api.item("projects"));
+		assert.equal(useUiPreferencesStore.getState().isCanvasOpen, true);
+		assert.equal(canvasView(), "projects", "the press picks the view first");
+		assert.deepEqual(
+			api.pressed(),
+			["projects"],
+			"the canvas slot lights ONE door: projects, not canvas",
+		);
+		await api.click(api.item("projects"));
+		assert.equal(
+			useUiPreferencesStore.getState().isCanvasOpen,
+			false,
+			"a press on the lit door closes the pane it opened",
+		);
+	});
+});
+
+test("projects door: canvas on another view lights canvas; the projects press switches the view and keeps the pane", async () => {
+	await mount(async (api) => {
+		reset(api);
+		useCanvasStore.getState().setViewMode(CANVAS_KEY, "files");
+		api.store({ isCanvasOpen: true });
+		await api.render(rail({ canvasConversationId: CANVAS_KEY }));
+		assert.deepEqual(api.pressed(), ["canvas"]);
+		await api.click(api.item("projects"));
+		assert.equal(useUiPreferencesStore.getState().isCanvasOpen, true);
+		assert.equal(canvasView(), "projects");
+		assert.deepEqual(api.pressed(), ["projects"]);
+		/* The canvas door is unlit and reads "Open canvas": its press opens the
+		   canvas's own views rather than closing a pane it did not open. */
+		await api.click(api.item("canvas"));
+		assert.equal(useUiPreferencesStore.getState().isCanvasOpen, true);
+		assert.equal(canvasView(), "documents");
+		assert.deepEqual(api.pressed(), ["canvas"]);
+	});
+});
+
+test("projects door: swaps another pane out of the slot", async () => {
+	await mount(async (api) => {
+		reset(api);
+		useCanvasStore.getState().setViewMode(CANVAS_KEY, "documents");
+		api.store({ isBrowserPaneOpen: true });
+		await api.render(rail({ canvasConversationId: CANVAS_KEY }));
+		assert.deepEqual(api.pressed(), ["browser"]);
+		await api.click(api.item("projects"));
+		const state = useUiPreferencesStore.getState();
+		assert.equal(state.isBrowserPaneOpen, false);
+		assert.equal(resolveDrawnRightSlotPane(state), "canvas");
+		assert.deepEqual(api.pressed(), ["projects"]);
+	});
+});
+
+test("projects door: names carry the linked total; the quiet mark shows only for a non-zero total", async () => {
+	await mount(async (api) => {
+		reset(api);
+		await api.render(
+			rail({ canvasConversationId: CANVAS_KEY, linkedProjectCount: 0 }),
+		);
+		const item = () => api.item("projects");
+		assert.equal(item().getAttribute("aria-label"), "Linked projects");
+		assert.equal(item().querySelector("[data-linked-projects-mark]"), null);
+		await api.render(
+			rail({ canvasConversationId: CANVAS_KEY, linkedProjectCount: 3 }),
+		);
+		assert.equal(
+			item().getAttribute("aria-label"),
+			"Linked projects, 3 projects",
+		);
+		assert.ok(item().querySelector("[data-linked-projects-mark]"));
+	});
+	assert.deepEqual(projectsRailLabels(false, 1), {
+		tooltip: "Open linked projects — 1 project",
+		aria: "Linked projects, 1 project",
+	});
+	assert.deepEqual(projectsRailLabels(true, 0), {
+		tooltip: "Close linked projects",
+		aria: "Linked projects",
+	});
+});
+
+test("projects door: with no canvas key the press does nothing rather than open a blank view", async () => {
+	await mount(async (api) => {
+		reset(api);
+		await api.render(rail());
+		await api.click(api.item("projects"));
+		assert.equal(useUiPreferencesStore.getState().isCanvasOpen, false);
 	});
 });
 

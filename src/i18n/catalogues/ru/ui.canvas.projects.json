@@ -1,0 +1,19 @@
+{
+	"ui.canvas.projects.segment": "Проекты",
+	"ui.canvas.projects.heading": "Связанные проекты",
+	"ui.canvas.projects.back": "Связанные проекты",
+	"ui.canvas.projects.rail_tooltip": "{state, select, open {Закрыть связанные проекты} other {Открыть связанные проекты}}",
+	"ui.canvas.projects.rail_tooltip_count": "{state, select, open {Закрыть связанные проекты} other {Открыть связанные проекты}} — {count, plural, one {{count, number, ::group-off} проект} few {{count, number, ::group-off} проекта} many {{count, number, ::group-off} проектов} other {{count, number, ::group-off} проекта}}",
+	"ui.canvas.projects.rail_aria": "Связанные проекты",
+	"ui.canvas.projects.rail_aria_count": "Связанные проекты, {count, plural, one {{count, number, ::group-off} проект} few {{count, number, ::group-off} проекта} many {{count, number, ::group-off} проектов} other {{count, number, ::group-off} проекта}}",
+	"ui.canvas.projects.loading": "Загрузка связанных проектов",
+	"ui.canvas.projects.empty_title": "Нет связанных проектов",
+	"ui.canvas.projects.empty_description": "Здесь появляются проекты, с которыми связан этот разговор. Свяжите его в разделе «Связанные сессии» проекта или попросите агента сделать это.",
+	"ui.canvas.projects.draft_title": "Разговора пока нет",
+	"ui.canvas.projects.draft_description": "Отправьте первое сообщение, затем свяжите этот разговор с проектом, чтобы увидеть его здесь.",
+	"ui.canvas.projects.unavailable_title": "Связанные проекты недоступны",
+	"ui.canvas.projects.unavailable_description": "Эта среда выполнения не умеет показывать проекты разговора. Обновите Local Operator, чтобы видеть их здесь.",
+	"ui.canvas.projects.error_title": "Не удалось загрузить связанные проекты",
+	"ui.canvas.projects.try_again": "Повторить",
+	"ui.canvas.projects.open_project": "Открыть {name}"
+}

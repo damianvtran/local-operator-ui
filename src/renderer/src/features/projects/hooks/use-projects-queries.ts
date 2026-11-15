@@ -53,6 +53,16 @@ import type {
 export const projectKeys = {
 	list: ["desktop", "projects"] as const,
 	detail: (key: string) => ["desktop", "projects", key] as const,
+	/*
+	 * The chat canvas's linked-projects read. NESTED UNDER `list` on purpose
+	 * (the search index's `["desktop", "projects", "search", q]` precedent):
+	 * every project write already invalidates the `list` prefix, so a link,
+	 * unlink, milestone toggle or field save anywhere in the app refreshes the
+	 * canvas's list too, with no second invalidation for a writer to forget.
+	 * Four elements, so it can never equal a three-element detail key.
+	 */
+	forSession: (sessionId: string) =>
+		["desktop", "projects", "session", sessionId] as const,
 };
 
 /** The listing, as the page's gate hands it `enabled`. */
@@ -86,6 +96,47 @@ export function useProjectsList(enabled: boolean) {
  * never pays for the reads (the operator's own "do not fork the data" — this
  * composes the existing op rather than adding a route).
  */
+/**
+ * The projects ONE conversation is linked to, in the listing's order and row
+ * shape (`GET /v1/desktop/sessions/{id}/projects`).
+ *
+ * `enabled` is the caller's gate, as everywhere in this module: the canvas
+ * passes `projects_by_session` AND a real session id, because a draft has no
+ * id to ask about and an older daemon 404s the route. Same `staleTime` as the
+ * listing so a canvas opened right after the Projects tab reuses its freshness
+ * window rather than reading twice.
+ */
+export function useSessionProjects(
+	sessionId: string | undefined,
+	enabled: boolean,
+) {
+	return useQuery({
+		queryKey: projectKeys.forSession(sessionId ?? ""),
+		enabled: enabled && Boolean(sessionId),
+		queryFn: () =>
+			desktopResult<{ session_id: string; projects: DesktopProject[] }>({
+				op: "projects.for_session",
+				sessionId: sessionId ?? "",
+			}).then((result) => result.projects),
+		retry: retryDesktopQuery,
+		staleTime: 10_000,
+	});
+}
+
+/**
+ * Drops every cached project read (the listing, each detail and every
+ * per-session list) — the same prefix invalidation each write does — for a
+ * caller that learns of a change from somewhere other than its own mutation.
+ * The chat canvas calls it when a turn ends, because the agent that just ran
+ * is the most likely author of a project update the operator is looking at.
+ */
+export function useInvalidateProjectReads() {
+	const queryClient = useQueryClient();
+	return () => {
+		void queryClient.invalidateQueries({ queryKey: projectKeys.list });
+	};
+}
+
 export function useProjectMilestones(ids: string[], enabled: boolean) {
 	return useQueries({
 		queries: ids.map((id) => ({

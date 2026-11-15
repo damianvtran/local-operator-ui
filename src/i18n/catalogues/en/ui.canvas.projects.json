@@ -1,0 +1,19 @@
+{
+	"ui.canvas.projects.segment": "Projects",
+	"ui.canvas.projects.heading": "Linked projects",
+	"ui.canvas.projects.back": "Linked projects",
+	"ui.canvas.projects.rail_tooltip": "{state, select, open {Close linked projects} other {Open linked projects}}",
+	"ui.canvas.projects.rail_tooltip_count": "{state, select, open {Close linked projects} other {Open linked projects}} — {count, plural, one {{count, number, ::group-off} project} other {{count, number, ::group-off} projects}}",
+	"ui.canvas.projects.rail_aria": "Linked projects",
+	"ui.canvas.projects.rail_aria_count": "Linked projects, {count, plural, one {{count, number, ::group-off} project} other {{count, number, ::group-off} projects}}",
+	"ui.canvas.projects.loading": "Loading linked projects",
+	"ui.canvas.projects.empty_title": "No linked projects",
+	"ui.canvas.projects.empty_description": "Projects this conversation is linked to appear here. Link it from a project's Linked sessions section, or ask the agent to link it.",
+	"ui.canvas.projects.draft_title": "No conversation yet",
+	"ui.canvas.projects.draft_description": "Send a first message, then link this conversation to a project to see it here.",
+	"ui.canvas.projects.unavailable_title": "Linked projects aren't available",
+	"ui.canvas.projects.unavailable_description": "This runtime can't list a conversation's projects. Update Local Operator to see them here.",
+	"ui.canvas.projects.error_title": "Linked projects could not be loaded",
+	"ui.canvas.projects.try_again": "Try again",
+	"ui.canvas.projects.open_project": "Open {name}"
+}

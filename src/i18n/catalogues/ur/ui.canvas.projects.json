@@ -1,0 +1,19 @@
+{
+	"ui.canvas.projects.segment": "پروجیکٹس",
+	"ui.canvas.projects.heading": "منسلک پروجیکٹس",
+	"ui.canvas.projects.back": "منسلک پروجیکٹس",
+	"ui.canvas.projects.rail_tooltip": "{state, select, open {منسلک پروجیکٹس بند کریں} other {منسلک پروجیکٹس کھولیں}}",
+	"ui.canvas.projects.rail_tooltip_count": "{state, select, open {منسلک پروجیکٹس بند کریں} other {منسلک پروجیکٹس کھولیں}} — {count, plural, one {{count, number, ::group-off} پروجیکٹ} other {{count, number, ::group-off} پروجیکٹس}}",
+	"ui.canvas.projects.rail_aria": "منسلک پروجیکٹس",
+	"ui.canvas.projects.rail_aria_count": "منسلک پروجیکٹس، {count, plural, one {{count, number, ::group-off} پروجیکٹ} other {{count, number, ::group-off} پروجیکٹس}}",
+	"ui.canvas.projects.loading": "منسلک پروجیکٹس لوڈ ہو رہے ہیں",
+	"ui.canvas.projects.empty_title": "کوئی منسلک پروجیکٹ نہیں",
+	"ui.canvas.projects.empty_description": "جن پروجیکٹس سے یہ گفتگو منسلک ہے وہ یہاں دکھائی دیتے ہیں۔ کسی پروجیکٹ کے منسلک سیشن والے حصے سے اسے منسلک کریں، یا ایجنٹ سے کہیں کہ منسلک کر دے۔",
+	"ui.canvas.projects.draft_title": "ابھی کوئی گفتگو نہیں",
+	"ui.canvas.projects.draft_description": "پہلا پیغام بھیجیں، پھر اس گفتگو کو کسی پروجیکٹ سے منسلک کریں تاکہ وہ یہاں نظر آئے۔",
+	"ui.canvas.projects.unavailable_title": "منسلک پروجیکٹس دستیاب نہیں",
+	"ui.canvas.projects.unavailable_description": "یہ رن ٹائم کسی گفتگو کے پروجیکٹس کی فہرست نہیں دکھا سکتا۔ انہیں یہاں دیکھنے کے لیے Local Operator اپ ڈیٹ کریں۔",
+	"ui.canvas.projects.error_title": "منسلک پروجیکٹس لوڈ نہیں ہو سکے",
+	"ui.canvas.projects.try_again": "دوبارہ کوشش کریں",
+	"ui.canvas.projects.open_project": "{name} کھولیں"
+}

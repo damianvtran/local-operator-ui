@@ -120,17 +120,53 @@ import { ProjectUpdates } from "./project-updates";
  */
 const PROJECT_NOT_FOUND_CODE = "project_not_found";
 
+/**
+ * The detail screen hosted OUTSIDE the Projects route — today the chat
+ * canvas's Projects view (operator, 2026-11-15: "essentially the same project
+ * details view component ... with the difference being that we don't need the
+ * component that sends a message to the agent since we're already viewing the
+ * chat").
+ *
+ * WHY A PROP AND NOT A COPY: the canvas must show the identical record —
+ * fields, milestones, update history, attachments and their lightbox — and a
+ * second composition of these blocks is exactly the drift the operator's
+ * "the same component" rules out. So the host changes only what assumes the
+ * `/projects` route:
+ *  - `onBack` replaces the `All projects` navigation (the header link, the
+ *    error state's escape, and the landing after a delete), because leaving
+ *    the chat for the Projects tab is not what "back" means inside the canvas;
+ *  - the quick-send family (`ProjectQuickSend` and each linked row's message
+ *    button) is omitted, because the conversation's own composer is on screen.
+ * Every other block renders through the same code path as the route.
+ */
+export type ProjectDetailEmbedding = {
+	/** Returns to the host's list (the canvas's linked projects). */
+	onBack: () => void;
+	/** The back link's label, already localized by the host. */
+	backLabel: string;
+};
+
 type ProjectDetailScreenProps = {
 	projectKey: string;
 	nowMs: number;
+	/** Set when hosted outside the Projects route; see {@link ProjectDetailEmbedding}. */
+	embedded?: ProjectDetailEmbedding;
 };
 
 export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 	projectKey,
 	nowMs,
+	embedded,
 }) => {
 	useI18nLocale();
 	const navigate = useNavigate();
+	/* The one "leave this record" door: the route's list, or the host's. */
+	const goBack = () => {
+		if (embedded) embedded.onBack();
+		else void navigate("/projects");
+	};
+	const backLabel =
+		embedded?.backLabel ?? t("ui.projects.project_detail.all_projects");
 	const capabilities = useDesktopCapabilities();
 	/*
 	 * The team the `Managed by` line names, read the way every other human-read
@@ -206,12 +242,9 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 					<Button variant="secondary" onClick={() => void detail.refetch()}>
 						{t("ui.projects.project_detail.try_again")}
 					</Button>
-					<Button
-						variant="secondary"
-						onClick={() => void navigate("/projects")}
-					>
+					<Button variant="secondary" onClick={goBack}>
 						<ArrowLeft className="rtl:-scale-x-100" />
-						{t("ui.projects.project_detail.all_projects")}
+						{backLabel}
 					</Button>
 				</div>
 			</div>
@@ -416,11 +449,11 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 				<header className="flex flex-col gap-4">
 					<button
 						type="button"
-						onClick={() => void navigate("/projects")}
+						onClick={goBack}
 						className="flex w-fit items-center gap-1.5 text-body-sm text-ink-muted hover:text-ink"
 					>
 						<ArrowLeft className="size-4 rtl:-scale-x-100" />
-						{t("ui.projects.project_detail.all_projects")}
+						{backLabel}
 					</button>
 
 					<div className="flex flex-wrap items-start justify-between gap-4">
@@ -547,7 +580,8 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 					links={links}
 					busy={busy}
 					onStartSession={() => setStarting(true)}
-					onQuickSend={quickSend}
+					/* Omitted in the chat canvas: its own composer is the door. */
+					onQuickSend={embedded ? undefined : quickSend}
 					onLink={(sessionId) => {
 						void link
 							.mutateAsync({ key: project.id, sessionId })
@@ -621,7 +655,7 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 							confirmedName: typedName,
 						});
 						showSuccessToast(t("ui.projects.project_detail.project_deleted"));
-						void navigate("/projects");
+						goBack();
 					}}
 				/>
 

@@ -13,8 +13,10 @@
  */
 
 import type { AskScope } from "@features/chat/ask-queue";
+import { useCanvasStore } from "@shared/store/canvas-store";
 import {
 	type RightSlotRouteFacts,
+	resolveDrawnRightSlotPane,
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
 import type { PanelRailItemId } from "./panel-rail-model";
@@ -52,6 +54,13 @@ export type PanelRailActionContext = {
 	/** Which queue the ask door opens (the scope the route's own door passes). */
 	askScope?: AskScope;
 	/**
+	 * The canvas store's key for this conversation (the chat's `agentId`, NOT
+	 * the session id — `canvas-store.ts` keys per conversation). The projects
+	 * door needs it to pick the canvas's view; the canvas door reads it to step
+	 * off that view. Absent (the chord path) leaves both arms as they shipped.
+	 */
+	canvasConversationId?: string | null;
+	/**
 	 * The press came from a keyboard chord, not from the item under the pointer
 	 * or the keyboard's focus. Only the ask arm reads it: a chord leaves no door
 	 * focused, so its open has to say it was the user's (`requestAskOpen`).
@@ -77,9 +86,49 @@ export function togglePanelRailItem(
 		case "browser":
 			state.setBrowserPaneOpen(!state.isBrowserPaneOpen);
 			return true;
-		case "canvas":
+		case "canvas": {
+			/*
+			 * WHILE THE PROJECTS DOOR IS THE LIT ONE, the canvas door is unlit and
+			 * says "Open canvas", so its press must open the canvas's own views
+			 * rather than close the pane the user did not open through it. Only
+			 * when the caller names the conversation (the rail); the chord keeps
+			 * its plain toggle.
+			 */
+			const id = context.canvasConversationId;
+			if (
+				id &&
+				resolveDrawnRightSlotPane(state) === "canvas" &&
+				useCanvasStore.getState().conversations[id]?.viewMode === "projects"
+			) {
+				useCanvasStore.getState().setViewMode(id, "documents");
+				return true;
+			}
 			state.setCanvasOpen(!state.isCanvasOpen);
 			return true;
+		}
+		case "projects": {
+			/*
+			 * A DOOR INTO THE CANVAS, not a pane: lit means "the canvas is drawn on
+			 * its Projects view", so the press closes exactly that, and otherwise
+			 * points the canvas at Projects and claims the slot (which also swaps
+			 * out any other pane or the Asks drawer, `claimRightSlot`). The view is
+			 * written BEFORE the claim so the pane's first frame is the list, never
+			 * a flash of the documents view.
+			 */
+			const id = context.canvasConversationId;
+			if (!id) return false;
+			const canvas = useCanvasStore.getState();
+			if (
+				resolveDrawnRightSlotPane(state) === "canvas" &&
+				canvas.conversations[id]?.viewMode === "projects"
+			) {
+				state.setCanvasOpen(false);
+				return true;
+			}
+			canvas.setViewMode(id, "projects");
+			state.setCanvasOpen(true);
+			return true;
+		}
 		case "code":
 			state.setCodeReviewPaneOpen(!state.isCodeReviewPaneOpen);
 			return true;

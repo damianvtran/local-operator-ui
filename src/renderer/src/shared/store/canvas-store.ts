@@ -20,8 +20,18 @@ import type { CanvasDocument } from "@features/chat/types/canvas";
  * extracted during the session, not a file — so the union extends without changing
  * what the switcher means. A conversation persisted at `variables` or `documents`
  * keeps its stored value: nothing here renumbers, so no migration is owed.
+ *
+ * `projects` is appended after `goals` on the same terms: the projects this
+ * conversation is linked to, a record ABOUT the session held by the project
+ * registry. The pane resolves a stored value against the views it offers, so a
+ * build that drops a mode falls back to `documents` rather than drawing nothing.
  */
-export type CanvasViewMode = "documents" | "files" | "variables" | "goals";
+export type CanvasViewMode =
+	| "documents"
+	| "files"
+	| "variables"
+	| "goals"
+	| "projects";
 
 /**
  * State for a single conversation's canvas
