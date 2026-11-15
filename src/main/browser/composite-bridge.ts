@@ -34,7 +34,16 @@
  *   closed, tab switched, rect moved, navigation, crash, close, consumer reset,
  *   host stop) ends the generation and sends a CLEAR, so a stale frame can never
  *   be shown as live. ACKs for any frame other than the one in flight in the
- *   current generation are refused (stale, duplicate or forged).
+ *   current generation are refused (stale, duplicate or forged). The CLEAR's
+ *   `reason` lets the renderer pick what the gap looks like: "resized" (same
+ *   tab and document, only the rect moved) may keep the last picture; every
+ *   other reason must drop it.
+ * - THE SUBSCRIPTION DOES NOT WAIT FOR A CONSUMER. Skipping it until the canvas
+ *   registers was considered (review F1) and rejected: the consumer's IPC can
+ *   land after the layout pass that detaches the view, which would break
+ *   SUBSCRIBE BEFORE DETACH. Frames that arrive with no consumer only replace
+ *   `latest` (a reference, no pixel copy), so waiting would save nothing on
+ *   main's thread.
  * - HEADLESS COMPOSITES NOTHING: a never-shown window is never composited
  *   (`address-overlay.ts`), so a headless launch receives zero frames and the
  *   renderer keeps its honest paused note. That is expected, not a bug.
@@ -127,8 +136,15 @@ interface Stream {
 	nextSeq: number;
 	/** The frame sent and not yet ACKed. */
 	inFlight: number | null;
-	/** The newest full frame received; replaced, never queued. */
-	latest: CompositeFrame | null;
+	/**
+	 * The newest full frame received, still as the compositor's image; replaced,
+	 * never queued. Kept UNCONVERTED on purpose (review F1): `toBitmap()` is a
+	 * full-size BGRA copy on main's thread (2240x1588x4 = 14,228,480 bytes for
+	 * QA's 1120x794 CSS content rect at DPR 2), and most frames are replaced
+	 * before they are sent because one is already in flight. Only the frame
+	 * `pump()` actually sends is ever copied.
+	 */
+	latest: { frameSeq: number; image: CompositeImage } | null;
 	/** `latest.frameSeq` the renderer has already been sent. */
 	sentSeq: number;
 	detach: () => void;
@@ -171,7 +187,19 @@ export class CompositeBridge {
 			current.rectKey === rectKeyOf(want.rect)
 		)
 			return;
-		if (current) this.stop("changed");
+		// A rect-only change (window resize, a dock opening) on the same tab and
+		// document is still the same page: "resized" lets the renderer keep the
+		// last picture stretched until the next one arrives (UX U2) instead of
+		// wiping to the paused note mid-drag. Anything else is a different page or
+		// document and must not be preceded by the old pixels.
+		if (current) {
+			const resizedOnly =
+				current.tabId === want.tabId &&
+				current.source === want.source &&
+				current.webContentsId === want.source.id &&
+				current.documentEpoch === want.documentEpoch;
+			this.stop(resizedOnly ? "resized" : "changed");
+		}
 		this.start(want);
 	}
 
@@ -231,9 +259,12 @@ export class CompositeBridge {
 		if (source.isDestroyed()) return;
 		this.generation += 1;
 		const generation = this.generation;
-		// Cross-document navigation, a crash and the page's own destruction end
-		// the picture immediately: the next document must not be preceded by the
-		// previous one's last frame, and a dead renderer produces no more.
+		// A cross-document navigation START ends the generation and restarts it at
+		// once (`invalidate` → `sync`), so the renderer wipes the outgoing page's
+		// picture; frames of the outgoing document can still stream until the
+		// commit bumps the document epoch (another restart), which is honest
+		// because that is still the live page (review F4). A crash and the page's
+		// own destruction end the picture: a dead renderer produces no more.
 		const onNavigation = (details: {
 			isMainFrame?: boolean;
 			isSameDocument?: boolean;
@@ -283,32 +314,38 @@ export class CompositeBridge {
 		const stream = this.stream;
 		if (!stream || stream.generation !== generation) return;
 		if (image.isEmpty()) return;
-		const { width, height } = image.getSize();
-		const pixels = image.toBitmap();
-		if (width <= 0 || height <= 0 || pixels.byteLength !== width * height * 4)
-			return;
-		stream.latest = {
-			generation,
-			tabId: stream.tabId,
-			webContentsId: stream.webContentsId,
-			documentEpoch: stream.documentEpoch,
-			frameSeq: stream.nextSeq++,
-			width,
-			height,
-			pixels,
-		};
+		stream.latest = { frameSeq: stream.nextSeq++, image };
 		this.pump(stream);
 	}
 
 	/** Send the latest frame if the renderer is ready and nothing is in flight. */
 	private pump(stream: Stream): void {
 		if (!this.consumerReady || stream.inFlight !== null) return;
-		const frame = stream.latest;
-		if (!frame || frame.frameSeq <= stream.sentSeq) return;
+		const latest = stream.latest;
+		if (!latest || latest.frameSeq <= stream.sentSeq) return;
 		const target = this.options.target();
 		if (!target || target.isDestroyed()) return;
+		// The one copy per SENT frame (see `Stream.latest`). No resize: the frame is
+		// already the content rect's CSS size x the owner's DPR (QA A1: 2240x1588
+		// for 1120x794 at DPR 2), so `NativeImage.resize` to that size would be a
+		// second full copy that changes nothing.
+		const { width, height } = latest.image.getSize();
+		const pixels = latest.image.toBitmap();
+		// Consumed either way, so a malformed image is not re-read on every pump.
+		stream.sentSeq = latest.frameSeq;
+		if (width <= 0 || height <= 0 || pixels.byteLength !== width * height * 4)
+			return;
+		const frame: CompositeFrame = {
+			generation: stream.generation,
+			tabId: stream.tabId,
+			webContentsId: stream.webContentsId,
+			documentEpoch: stream.documentEpoch,
+			frameSeq: latest.frameSeq,
+			width,
+			height,
+			pixels,
+		};
 		stream.inFlight = frame.frameSeq;
-		stream.sentSeq = frame.frameSeq;
 		target.send(BROWSER_COMPOSITE_FRAME, frame);
 	}
 

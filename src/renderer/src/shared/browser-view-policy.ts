@@ -152,6 +152,36 @@ export function isPausingOverlayId(id: string): boolean {
 	);
 }
 
+/**
+ * Kinds that pause the page with NO scrim and that do NOT close on an outside
+ * click. The update notice ("Update ready to install", `update-notification.tsx`)
+ * is the case: a `pause-measured` card whose only exits are its own buttons, so
+ * it can stay up indefinitely. Menus, popovers, selects and context menus are
+ * `pause-measured` too, but a click outside dismisses them (like native menus),
+ * so the page under them needs no explanation; modal kinds bring a scrim that
+ * already reads as "behind a dialog".
+ */
+export const PERSISTENT_SCRIMLESS_KINDS: ReadonlySet<OverlayKind> = new Set([
+	"notice-card",
+]);
+
+/**
+ * Whether a live picture of the page under `snapshot`'s overlays would look
+ * interactive while ignoring input, with nothing on screen saying why (UX U1):
+ * some suppressor is a persistent scrimless kind, and no modal is open whose
+ * scrim already dims the picture.
+ */
+export function suppressionNeedsInertCue(snapshot: string): boolean {
+	if (!snapshot) return false;
+	let persistentScrimless = false;
+	for (const id of snapshot.split(",")) {
+		if (overlayClassOfId(id) === "pause-modal") return false;
+		const kind = id.slice(0, id.indexOf(":")) as OverlayKind;
+		if (PERSISTENT_SCRIMLESS_KINDS.has(kind)) persistentScrimless = true;
+	}
+	return persistentScrimless;
+}
+
 /** The ids currently suppressing the view. */
 const active = new Map<string, number>();
 const listeners = new Set<() => void>();

@@ -8,6 +8,7 @@
  * (a never-shown window composites nothing), which is native QA's lane.
  */
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { build } from "esbuild";
@@ -20,6 +21,7 @@ const bundle = await build({
 			'export * from "./src/main/browser/ipc";',
 			'export { ipcMain } from "electron";',
 			'export * from "./src/renderer/src/features/browser/model/composite-sink";',
+			'export { suppressionNeedsInertCue, OVERLAY_KIND_CLASS } from "./src/renderer/src/shared/browser-view-policy";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -42,6 +44,12 @@ const {
 	ipcMain,
 	CompositeSink,
 	bgraToRgba,
+	clearDisposition,
+	COMPOSITE_GAP_NOTE_DELAY_MS,
+	LIVE_COMPOSITE_ROOT_ATTRIBUTE,
+	holdLiveCompositeRoot,
+	suppressionNeedsInertCue,
+	OVERLAY_KIND_CLASS,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -57,6 +65,8 @@ function fakeSource(id = 7) {
 		begins: 0,
 		ends: 0,
 		invalidations: 0,
+		/** `toBitmap()` calls: the full-size pixel copies main pays for. */
+		copies: 0,
 		isDestroyed: () => source.destroyed,
 		beginFrameSubscription(onlyDirty, callback) {
 			source.begins += 1;
@@ -87,7 +97,10 @@ function fakeSource(id = 7) {
 			source.subscribed?.({
 				isEmpty: () => false,
 				getSize: () => ({ width, height }),
-				toBitmap: () => new Uint8Array(width * height * 4).fill(fill),
+				toBitmap: () => {
+					source.copies += 1;
+					return new Uint8Array(width * height * 4).fill(fill);
+				},
 			});
 		},
 	};
@@ -114,6 +127,8 @@ function fakeTarget() {
 
 const CANNOT_USE = /cannot use/;
 const MUST_BE_BOOLEAN = /boolean/;
+
+const OPAQUE_OVERLAY_ALPHA = /--lo-glass-a-overlay:\s*1\s*!important\s*;/;
 
 const RECT = { x: 0, y: 40, width: 800, height: 450 };
 
@@ -213,10 +228,11 @@ test("eligibility loss, tab/rect/epoch change each end the generation with a CLE
 	source.paint();
 	world.eligible = { ...world.eligible, rect: { ...RECT, width: 700 } };
 	bridge.sync();
-	assert.deepEqual(target.clears().at(-1), {
-		generation: 1,
-		reason: "changed",
-	});
+	assert.deepEqual(
+		target.clears().at(-1),
+		{ generation: 1, reason: "resized" },
+		"a rect-only change on the same tab and document is a resize (U2)",
+	);
 	assert.equal(source.ends, 1);
 	assert.equal(bridge.activeGeneration, 2);
 	assert.equal(
@@ -227,11 +243,21 @@ test("eligibility loss, tab/rect/epoch change each end the generation with a CLE
 	world.eligible = { ...world.eligible, documentEpoch: 1 };
 	bridge.sync();
 	assert.equal(bridge.activeGeneration, 3);
+	assert.deepEqual(
+		target.clears().at(-1),
+		{ generation: 2, reason: "changed" },
+		"a new document is a different page, never a resize",
+	);
 	const other = fakeSource(8);
 	world.eligible = { ...world.eligible, tabId: 4, source: other };
 	bridge.sync();
 	assert.equal(bridge.activeGeneration, 4);
 	assert.equal(other.begins, 1);
+	assert.equal(
+		target.clears().at(-1).reason,
+		"changed",
+		"a tab switch is a different page",
+	);
 	world.eligible = null; // overlay closed
 	bridge.sync();
 	assert.equal(bridge.activeGeneration, null);
@@ -467,4 +493,173 @@ test("renderer sink: BGRA bytes become RGBA", () => {
 	const out2 = new Uint8ClampedArray(8);
 	bgraToRgba(unaligned, out2);
 	assert.deepEqual([...out2], [30, 20, 10, 255, 3, 2, 1, 4]);
+});
+
+test("F1: only SENT frames are copied to a bitmap; replaced and consumer-less frames are not", () => {
+	const { source, target, bridge } = rig();
+	bridge.sync();
+	source.paint(1);
+	source.paint(2);
+	assert.equal(source.copies, 0, "no consumer: frames only replace `latest`");
+	bridge.setConsumer(true);
+	assert.equal(source.copies, 1, "the latest frame is copied when it is sent");
+	assert.equal(target.frames().at(-1).pixels[0], 2, "and it is the newest");
+	source.paint(3);
+	source.paint(4);
+	source.paint(5);
+	assert.equal(
+		source.copies,
+		1,
+		"frames replaced while one is in flight cost nothing",
+	);
+	assert.equal(bridge.ack({ generation: 1, frameSeq: 2 }), true);
+	assert.equal(source.copies, 2);
+	assert.equal(target.frames().at(-1).pixels[0], 5);
+	assert.equal(target.frames().at(-1).frameSeq, 5);
+});
+
+test("F1: a malformed image is read once, never sent, and does not stall the stream", () => {
+	const { source, target, bridge } = rig();
+	bridge.setConsumer(true);
+	bridge.sync();
+	let reads = 0;
+	source.subscribed({
+		isEmpty: () => false,
+		getSize: () => ({ width: 4, height: 2 }),
+		toBitmap: () => {
+			reads += 1;
+			return new Uint8Array(3);
+		},
+	});
+	assert.equal(target.frames().length, 0, "a short bitmap is never sent");
+	assert.equal(reads, 1);
+	assert.equal(
+		bridge.ack({ generation: 1, frameSeq: 1 }),
+		false,
+		"nothing went in flight, so nothing can be ACKed",
+	);
+	source.paint(9);
+	assert.equal(target.frames().length, 1, "the next good frame still flows");
+});
+
+test("renderer sink: clear reasons pick hold / gap / paused (U2, D3)", () => {
+	assert.equal(clearDisposition("resized"), "hold");
+	assert.equal(clearDisposition("changed"), "gap");
+	assert.equal(clearDisposition("navigation"), "gap");
+	for (const reason of [
+		"ineligible",
+		"page-gone",
+		"page-destroyed",
+		"disposed",
+		"subscribe-failed",
+		undefined,
+		"made-up",
+	])
+		assert.equal(clearDisposition(reason), "paused", String(reason));
+	// The note may only appear after the measured worst gap (248 ms, round 1).
+	assert.ok(COMPOSITE_GAP_NOTE_DELAY_MS > 248);
+
+	const sink = new CompositeSink();
+	const first = frameOf(1, 1);
+	sink.markDrawn(first);
+	assert.equal(sink.clear(1, "resized"), false, "a resize keeps the picture");
+	assert.equal(sink.hasFrame, false, "the old generation is not live");
+	assert.equal(sink.hasPicture, true, "but its last frame stays drawn");
+	assert.equal(
+		sink.accept(frameOf(1, 2)),
+		false,
+		"the ended generation stays dead",
+	);
+	assert.equal(sink.accept(frameOf(2, 1)), true, "the new one draws over it");
+	assert.equal(
+		sink.clear(2, "resized"),
+		false,
+		"repeated resizes keep holding",
+	);
+	assert.equal(sink.hasPicture, true);
+	assert.equal(
+		sink.clear(3, "changed"),
+		true,
+		"a tab switch wipes a held frame",
+	);
+	assert.equal(sink.hasPicture, false);
+
+	sink.markDrawn(frameOf(4, 1));
+	assert.equal(
+		sink.clear(4, "navigation"),
+		true,
+		"navigation never keeps old pixels",
+	);
+	assert.equal(
+		sink.clear(5, "resized"),
+		false,
+		"nothing drawn: nothing to hold",
+	);
+	assert.equal(sink.hasPicture, false);
+	sink.markDrawn(frameOf(6, 1));
+	assert.equal(sink.clear(6, "resized"), false);
+	assert.equal(
+		sink.clear(7, "ineligible"),
+		true,
+		"overlay closed: the held frame goes",
+	);
+	assert.equal(sink.hasPicture, false);
+});
+
+test("D1: the root flag follows the picture, ref-counted, and the CSS makes panels opaque under it", () => {
+	const attrs = new Map();
+	const root = {
+		setAttribute: (name, value) => attrs.set(name, value),
+		removeAttribute: (name) => attrs.delete(name),
+	};
+	const releaseA = holdLiveCompositeRoot(root);
+	assert.equal(attrs.has(LIVE_COMPOSITE_ROOT_ATTRIBUTE), true);
+	const releaseB = holdLiveCompositeRoot(root);
+	releaseA();
+	releaseA();
+	assert.equal(
+		attrs.has(LIVE_COMPOSITE_ROOT_ATTRIBUTE),
+		true,
+		"one holder's (repeated) release cannot clear another's flag",
+	);
+	releaseB();
+	assert.equal(attrs.has(LIVE_COMPOSITE_ROOT_ATTRIBUTE), false);
+
+	const css = readFileSync(
+		join(process.cwd(), "src/renderer/src/styles/index.css"),
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\//g, "");
+	const rule = css.match(
+		new RegExp(
+			`html\\[data-glass\\]\\[${LIVE_COMPOSITE_ROOT_ATTRIBUTE}\\]\\s*\\{([^}]*)\\}`,
+		),
+	);
+	assert.ok(rule, "the opaque-panel rule exists, keyed on the root flag");
+	// `!important` because `use-window-glass.ts` writes the alpha inline on <html>.
+	assert.match(rule[1], OPAQUE_OVERLAY_ALPHA);
+});
+
+test("U1: only a persistent scrimless suppressor with no modal asks for the inert cue", () => {
+	assert.equal(OVERLAY_KIND_CLASS["notice-card"], "pause-measured");
+	assert.equal(suppressionNeedsInertCue(""), false);
+	assert.equal(suppressionNeedsInertCue("notice-card:update:r1"), true);
+	for (const id of [
+		"menu:page:r2",
+		"popover:x:r3",
+		"select:x:r4",
+		"context-menu:x:r5",
+		"dialog:x:r6",
+		"command-palette:x:r7",
+	])
+		assert.equal(suppressionNeedsInertCue(id), false, id);
+	assert.equal(
+		suppressionNeedsInertCue("menu:page:r2,notice-card:update:r1"),
+		true,
+		"a menu over the card does not explain the card",
+	);
+	assert.equal(
+		suppressionNeedsInertCue("dialog:x:r6,notice-card:update:r1"),
+		false,
+		"a modal's scrim already dims the picture",
+	);
 });
