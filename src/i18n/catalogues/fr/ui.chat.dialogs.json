@@ -1,5 +1,8 @@
 {
 	"ui.chat.dialogs.archive_action": "Archiver",
+	"ui.chat.dialogs.archive_title_named": "Archiver « {title} » ?",
+	"ui.chat.dialogs.archive_title_unnamed": "Archiver cette conversation ?",
+	"ui.chat.dialogs.archive_message": "Elle disparaît de vos listes. Vous pouvez annuler pendant {seconds, plural, one {# seconde} many {# de secondes} other {# secondes}} ; ensuite, lancez une recherche au-dessus de vos conversations, activez « {include_archived} », puis cliquez sur Désarchiver.",
 	"ui.chat.dialogs.cancel": "Annuler",
 	"ui.chat.dialogs.delete_action": "Supprimer",
 	"ui.chat.dialogs.delete_title": "Supprimer cette conversation ?",
