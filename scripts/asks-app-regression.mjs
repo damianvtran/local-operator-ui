@@ -358,17 +358,43 @@ export const ASKS_CONTROL = resolveAsksControl();
  * Exit 1 from `git grep` means "no match"; anything else (unknown rev) throws
  * rather than silently skipping the assertion.
  */
-export function controlPredatesAskScrollFix(rev = ASKS_CONTROL) {
-	try {
-		execFileSync("git", ["grep", "-q", "data-lo-ask-list", rev, "--", "src"], {
-			encoding: "utf8",
-			stdio: "ignore",
-		});
-		return false;
-	} catch (error) {
-		if (error?.status === 1) return true;
-		throw error;
-	}
+export function controlPredatesAskScrollFix(
+	rev = ASKS_CONTROL,
+	cwd = undefined,
+) {
+	const result = spawnSync(
+		"git",
+		["grep", "-q", "data-lo-ask-list", rev, "--", "src"],
+		{ encoding: "utf8", cwd },
+	);
+	if (result.status === 0) return false;
+	if (result.status === 1) return true;
+	// execFileSync's own message dropped git's exit status and stderr, which is what
+	// made the first CI failure unreadable (run 43673011929); name both.
+	throw new Error(
+		`controlPredatesAskScrollFix: git grep on ${rev} failed (exit ${result.status}, signal ${result.signal}): ${String(result.stderr).trim() || result.error?.message || "no stderr"}`,
+	);
+}
+
+/**
+ * The leg-side reading of the parent's verdict.
+ *
+ * WHY AN ENV VAR AND NOT `git grep` IN THE LEG. Each leg is a child process whose cwd
+ * is the control's EXTRACTED tree (`git archive | tar -x`, no `.git`), so a `git grep`
+ * there exits 128 "not a git repository" - measured: that is the CI failure of run
+ * 43673011929 / job 132700258286 (the clone shape itself is fine: a depth-1 merge
+ * plus a depth-2 fetch holds the parent's tree and blobs, exit 1 on a pre-fix tree).
+ * Only the parent has the repository, so it decides once and hands the answer down;
+ * a missing value throws instead of defaulting, so the negative assertion is never
+ * silently skipped or silently run against the wrong control.
+ */
+export function controlPredatesFixFromEnv(env = process.env) {
+	const value = env.ASKS_CONTROL_PREDATES_FIX;
+	if (value === "1") return true;
+	if (value === "0") return false;
+	throw new Error(
+		`ASKS_CONTROL_PREDATES_FIX must be "1" or "0" (set by the parent run), got ${JSON.stringify(value)}`,
+	);
 }
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -1717,7 +1743,7 @@ export const CASES = {
 			 * recorded in the summary; the candidate assertions are never relaxed.
 			 */
 			const controlIsPreFix =
-				kind === "candidate" || controlPredatesAskScrollFix(ASKS_CONTROL);
+				kind === "candidate" || controlPredatesFixFromEnv();
 			if (!controlIsPreFix)
 				console.warn(
 					`asks-scroll/control: SKIPPING the pre-fix negative wheel assertion - control ${ASKS_CONTROL} already carries #1901 (data-lo-ask-list); candidate assertions still run`,
@@ -2535,6 +2561,7 @@ async function main() {
 			join(scratch, "control-app"),
 			output,
 		);
+		const controlPredates = controlPredatesAskScrollFix(ASKS_CONTROL);
 		manifest.controlIdentity = controlIdentity;
 		const controlArchive = join(output, "control-source.tar");
 		manifest.controlSourceArchive = {
@@ -2575,6 +2602,8 @@ async function main() {
 							LOCAL_OPERATOR_NO_NOTIFICATIONS: "1",
 							LOCAL_OPERATOR_UI_TELEMETRY: "off",
 							ASKS_APP_ROOT: root,
+							// Decided here, where the repository is; see controlPredatesFixFromEnv.
+							ASKS_CONTROL_PREDATES_FIX: controlPredates ? "1" : "0",
 							ASKS_OUTPUT: dir,
 							ASKS_RECORDS: fixture.records,
 							// Only the control leg gets its Electron runtime override.

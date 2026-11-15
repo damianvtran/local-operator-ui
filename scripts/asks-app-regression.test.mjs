@@ -36,6 +36,7 @@ import {
 	assertControlPresent,
 	controlElectronPlan,
 	controlPredatesAskScrollFix,
+	controlPredatesFixFromEnv,
 	controlReusePlan,
 	describeMainPreloadReuse,
 	describePressRead,
@@ -1549,4 +1550,67 @@ test("the asks-scroll control's negative wheel reading is gated on a pre-#1901 c
 			controlPredatesAskScrollFix("0000000000000000000000000000000000000000"),
 		"an unknown revision must fail, not silently skip the assertion",
 	);
+});
+
+test("the pre-#1901 verdict survives a leg with no repository (CI failure of run 43673011929)", () => {
+	/*
+	 * The legs run in the control's extracted tree, which has no .git: asking git
+	 * there exits 128. RED shape = the old in-leg `git grep`; GREEN = parent decides,
+	 * leg reads env. The repo is built here in CI's clone shape (depth-1 fetch of a
+	 * merge commit, then depth-2 fetch) so the parent-side predicate is exercised too.
+	 */
+	const root = mkdtempSync(join(tmpdir(), "asks-clone-shape-"));
+	const run = (cwd, ...args) =>
+		execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
+	try {
+		const up = join(root, "up");
+		mkdirSync(join(up, "src"), { recursive: true });
+		run(up, "init", "-q");
+		run(up, "config", "user.email", "a@b");
+		run(up, "config", "user.name", "a");
+		run(up, "config", "uploadpack.allowAnySHA1InWant", "true");
+		writeFileSync(join(up, "src/a"), "plain");
+		run(up, "add", ".");
+		run(up, "commit", "-qm", "base");
+		run(up, "checkout", "-qb", "pr");
+		writeFileSync(join(up, "src/b"), "data-lo-ask-list");
+		run(up, "add", ".");
+		run(up, "commit", "-qm", "pr");
+		run(up, "checkout", "-q", "-");
+		writeFileSync(join(up, "src/c"), "main moves");
+		run(up, "add", ".");
+		run(up, "commit", "-qm", "main2");
+		run(up, "merge", "-q", "--no-ff", "pr", "-m", "merge");
+		const merge = run(up, "rev-parse", "HEAD");
+		const clone = join(root, "clone");
+		mkdirSync(clone);
+		run(clone, "init", "-q");
+		run(clone, "remote", "add", "origin", `file://${up}`);
+		run(clone, "fetch", "-q", "--no-tags", "--depth=1", "origin", merge);
+		run(clone, "checkout", "-q", "FETCH_HEAD");
+		run(clone, "fetch", "-q", "--no-tags", "--depth=2", "origin", merge);
+		const control = run(clone, "rev-parse", "HEAD^1");
+		// Parent side: works in the CI clone shape (main2 has no marker = pre-fix).
+		assert.equal(controlPredatesAskScrollFix(control, clone), true);
+		assert.equal(controlPredatesAskScrollFix(merge, clone), false);
+		// A leg's cwd has no repository: the old in-leg predicate must name git's failure...
+		const bare = join(root, "extracted");
+		mkdirSync(bare);
+		assert.throws(
+			() => controlPredatesAskScrollFix(control, bare),
+			/exit 128.*not a git repository/s,
+		);
+		// ...and the leg reads the parent's verdict instead.
+		assert.equal(
+			controlPredatesFixFromEnv({ ASKS_CONTROL_PREDATES_FIX: "1" }),
+			true,
+		);
+		assert.equal(
+			controlPredatesFixFromEnv({ ASKS_CONTROL_PREDATES_FIX: "0" }),
+			false,
+		);
+		assert.throws(() => controlPredatesFixFromEnv({}), /must be "1" or "0"/);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
 });
