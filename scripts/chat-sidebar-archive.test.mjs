@@ -912,10 +912,29 @@ test("the confirmation asks the reversible question, and the copy is written in 
 	 * `Include archived` control - so a copy edit that quietly dropped one of the three ways
 	 * back would be a claim quietly lost rather than a string quietly changed.
 	 */
+	/*
+	 * THE WORDS ARE CATALOGUE COPY NOW; the facts are asserted at both ends. The English
+	 * source still says every one of the three ways back, and the function still
+	 * INTERPOLATES the timer, so the copy cannot drift from it. (Per-locale behaviour is
+	 * `scripts/archive-confirm-i18n.test.mjs`'s.)
+	 */
+	const bodyMessage = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.dialogs.json", "utf8"),
+	)["ui.chat.dialogs.archive_message"];
+	assert.equal(
+		bodyMessage,
+		"It leaves your lists. You can undo for {seconds, plural, one {# second} other {# seconds}}; after that, search above your chats, turn on “{include_archived}”, then Unarchive it.",
+		"the body leads with the consequence and names both ways back",
+	);
 	assert.match(
 		copy,
-		/export const ARCHIVE_CONFIRM_MESSAGE = `It leaves your lists\. You can undo for \$\{ARCHIVE_UNDO_TOAST_MS \/ 1000\} seconds; after that, search above your chats, turn on \\u201cInclude archived\\u201d, then Unarchive it\.`;/,
-		"the body leads with the consequence and INTERPOLATES the timer, so the copy cannot drift from it",
+		/seconds: ARCHIVE_UNDO_TOAST_MS \/ 1000,/,
+		"the timer is interpolated, so the copy cannot drift from it",
+	);
+	assert.match(
+		copy,
+		/include_archived: t\("ui\.chat\.sidebar\.search\.include_archived"\)/,
+		"the control the sentence names is the search block's own catalogue string",
 	);
 	assert.match(
 		copy,
@@ -926,10 +945,22 @@ test("the confirmation asks the reversible question, and the copy is written in 
 		false,
 		"a vague 'few seconds' came back where the build can say the number",
 	);
-	assert.match(copy, /export const ARCHIVE_CONFIRM_VERB = "Archive";/);
+	// The verb and the unnamed phrase are catalogue sentences, not constants joined here.
+	assert.doesNotMatch(copy, /ARCHIVE_CONFIRM_VERB|ARCHIVE_CONFIRM_UNNAMED/);
+	const dialogMessages = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.dialogs.json", "utf8"),
+	);
+	assert.equal(
+		dialogMessages["ui.chat.dialogs.archive_title_named"],
+		"Archive “{title}”?",
+	);
+	assert.equal(
+		dialogMessages["ui.chat.dialogs.archive_title_unnamed"],
+		"Archive this conversation?",
+	);
 	// And the dialog RENDERS it rather than restating it: two copies of the sentence would be
 	// two places to keep in step with the three facts it promises.
-	assert.match(dialog, /message=\{<p>\{ARCHIVE_CONFIRM_MESSAGE\}<\/p>\}/);
+	assert.match(dialog, /message=\{<p>\{archiveConfirmMessage\(\)\}<\/p>\}/);
 	/*
 	 * THE TITLE NAMES THE CONVERSATION AND ONLY THE NAME GIVES: the name sits in its own
 	 * `min-w-0 truncate` box between two `shrink-0` halves, so a long name ellipsises while
@@ -938,19 +969,25 @@ test("the confirmation asks the reversible question, and the copy is written in 
 	 * carries for the row's own control label (agent review round 2, R2-3), applied to the
 	 * modal.
 	 */
-	assert.match(dialog, /className="shrink-0">\s*\{`\$\{ARCHIVE_CONFIRM_VERB\}/);
 	assert.match(
 		dialog,
-		/candidateTitle === null \? ARCHIVE_CONFIRM_UNNAMED : candidateTitle/,
+		/const titleParts = archiveConfirmTitleParts\(candidateTitle\);/,
 	);
+	assert.match(dialog, /className="shrink-0 whitespace-pre"/);
 	/*
 	 * THE QUOTES ARE OUTSIDE THE CUT (design round 1, D2, read off the long-name frame): quoted
 	 * inside the truncating box the closing quote was cut with the name. The opening one rides
 	 * the verb and the closing one rides the question mark, both `shrink-0`.
 	 */
-	assert.match(dialog, /\$\{candidateTitle === null \? "" : "\\u201c"\}/);
-	assert.match(dialog, /candidateTitle === null \? "\?" : "\\u201d\?"/);
-	assert.match(dialog, /className="min-w-0 truncate"/);
+	assert.doesNotMatch(
+		dialog,
+		/\\u201[cd]/,
+		"the quotes are catalogue copy, not literals in the dialog",
+	);
+	assert.match(
+		dialog,
+		/<span className="min-w-0 truncate">\{titleParts\.name\}<\/span>/,
+	);
 	/*
 	 * The operator explicitly wants the archive confirmation's danger treatment,
 	 * superseding the earlier reversible/non-danger rationale. Pin the call-site

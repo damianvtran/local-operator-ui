@@ -5530,6 +5530,12 @@ export type MessageParams = {
 	"ui.chat.device_move.result.moved.verb": { name: string };
 	"ui.chat.device_move.result.source_retired": undefined;
 	"ui.chat.dialogs.archive_action": undefined;
+	"ui.chat.dialogs.archive_message": {
+		seconds: number;
+		include_archived: string;
+	};
+	"ui.chat.dialogs.archive_title_named": { title: string };
+	"ui.chat.dialogs.archive_title_unnamed": undefined;
 	"ui.chat.dialogs.cancel": undefined;
 	"ui.chat.dialogs.delete_action": undefined;
 	"ui.chat.dialogs.delete_title": undefined;
@@ -5736,6 +5742,10 @@ export type MessageParams = {
 	"ui.chat.header_identity.aria_team_switch": { label: string };
 	"ui.chat.header_identity.assign_agent": undefined;
 	"ui.chat.header_identity.assign_team": undefined;
+	"ui.chat.header_identity.band_all_agents": undefined;
+	"ui.chat.header_identity.band_all_teams": undefined;
+	"ui.chat.header_identity.band_recent_agents": undefined;
+	"ui.chat.header_identity.band_recent_teams": undefined;
 	"ui.chat.header_identity.loading": { kind: string };
 	"ui.chat.header_identity.no_agent": undefined;
 	"ui.chat.header_identity.no_matches": { query: string };
@@ -7439,6 +7449,7 @@ export type MessageParams = {
 	"ui.chat.sidebar.pins.failure": { action: string; title: string };
 	"ui.chat.sidebar.pins.pin_label": { title: string };
 	"ui.chat.sidebar.pins.unpin_label": { title: string };
+	"ui.chat.sidebar.row.archive_label": { title: string };
 	"ui.chat.sidebar.row.archived_suffix": undefined;
 	"ui.chat.sidebar.row.in_conversation": undefined;
 	"ui.chat.sidebar.row.matched_in_conversation": undefined;
@@ -7448,6 +7459,7 @@ export type MessageParams = {
 	"ui.chat.sidebar.row.recent": undefined;
 	"ui.chat.sidebar.row.search_beyond": undefined;
 	"ui.chat.sidebar.row.silent_remedy": undefined;
+	"ui.chat.sidebar.row.unarchive_label": { title: string };
 	"ui.chat.sidebar.row.unread_suffix": undefined;
 	"ui.chat.sidebar.row_menu.archive": undefined;
 	"ui.chat.sidebar.row_menu.copy_id": undefined;

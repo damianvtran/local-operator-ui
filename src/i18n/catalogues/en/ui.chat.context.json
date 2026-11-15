@@ -558,6 +558,34 @@
 		"note": "Tooltip only: the same act is spelled inside the chip's accessible name (ui.chat.header_identity.aria_team_assign), so keep the verb consistent between the two.",
 		"placeholders": {}
 	},
+	"ui.chat.header_identity.band_all_agents": {
+		"role": "heading above the full list of agents in the header agent menu",
+		"tone": "noun phrase, plural, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Heading of the band that lists every agent the catalogue returned, shown below the recents band when the search box is empty. The twin of ui.chat.header_identity.band_recent_agents; keep the two parallel. The team menu uses its own pair.",
+		"placeholders": {}
+	},
+	"ui.chat.header_identity.band_all_teams": {
+		"role": "heading above the full list of teams in the header team menu",
+		"tone": "noun phrase, plural, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Heading of the band that lists every team the catalogue returned, shown below the recents band when the search box is empty. The twin of ui.chat.header_identity.band_recent_teams; keep the two parallel. The agent menu uses its own pair.",
+		"placeholders": {}
+	},
+	"ui.chat.header_identity.band_recent_agents": {
+		"role": "heading above the recently used agents in the header agent menu",
+		"tone": "noun phrase, plural, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Heading of the first band in the header agent menu: the agents the reader has most recently switched to, shown above the full list when the search box is empty. It is a repeat of rows the full list also holds, a shortcut and not a filter. The twin of ui.chat.header_identity.band_all_agents, which heads the whole roster; keep the two parallel. The team menu uses its own pair.",
+		"placeholders": {}
+	},
+	"ui.chat.header_identity.band_recent_teams": {
+		"role": "heading above the recently used teams in the header team menu",
+		"tone": "noun phrase, plural, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Heading of the first band in the header team menu: the teams the reader has most recently switched to, shown above the full list when the search box is empty. It is a repeat of rows the full list also holds, a shortcut and not a filter. The twin of ui.chat.header_identity.band_all_teams, which heads the whole roster; keep the two parallel. The agent menu uses its own pair.",
+		"placeholders": {}
+	},
 	"ui.chat.header_identity.aria_agent_assign": {
 		"role": "accessible name of the header agent chip while no agent is attached",
 		"tone": "role and state, then the action, separated by periods",

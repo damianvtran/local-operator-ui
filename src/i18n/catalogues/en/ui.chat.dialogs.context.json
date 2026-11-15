@@ -5,6 +5,31 @@
 		"maxCells": 16,
 		"note": "Confirms hiding the conversation from lists; Undo is available afterwards. maxCells is an advisory translator target, not measured fit."
 	},
+	"ui.chat.dialogs.archive_title_named": {
+		"role": "heading of the archive confirmation dialog when the conversation has a name",
+		"tone": "direct confirmation question, sentence case, ends with a question mark",
+		"maxCells": 48,
+		"note": "The title is cut out of the translated sentence at the {title} placeholder: the text before it and after it stays fixed on screen and only the title is shortened with an ellipsis when it does not fit. So write ONE sentence containing {title} exactly once, with the quotes of the language outside it as part of the sentence, and keep it short. Text may sit before or after the placeholder in whatever order the language needs. A space at the edge of either side is kept. maxCells is an advisory translator target, not measured fit.",
+		"placeholders": {
+			"title": "the conversation's own title; user data, inserted verbatim, never translate it"
+		}
+	},
+	"ui.chat.dialogs.archive_title_unnamed": {
+		"role": "heading of the archive confirmation dialog when nothing can say which conversation it is (no stored row and no title was supplied)",
+		"tone": "direct confirmation question, sentence case, ends with a question mark",
+		"maxCells": 40,
+		"note": "The no-name face of ui.chat.dialogs.archive_title_named. Do not add quotation marks or an empty placeholder: it names the conversation generically. maxCells is an advisory translator target, not measured fit.",
+		"placeholders": {}
+	},
+	"ui.chat.dialogs.archive_message": {
+		"role": "body of the archive confirmation dialog, under the heading",
+		"tone": "plain, factual, sentence case; two short sentences",
+		"note": "States the consequence first (the conversation leaves the lists) and then both ways back. Every clause is a fact about the app: Undo (the toast) lasts the stated number of seconds; after that, the reader uses the search field above the chat list, turns on the checkbox named in {include_archived}, then presses the restore control (the row control labelled 'Unarchive', see ui.chat.sidebar.row.unarchive_label), so keep the verb Unarchive identical to it. Keep both ways back and the order. The typographic quotes around {include_archived} are the sentence's; use the locale's own quotation marks.",
+		"placeholders": {
+			"seconds": "whole number of seconds the Undo toast stays up (8 today); plural arms follow the locale's CLDR categories, # is the number",
+			"include_archived": "the label of the search checkbox, resolved from ui.chat.sidebar.search.include_archived in the active language; insert verbatim"
+		}
+	},
 	"ui.chat.dialogs.cancel": {
 		"role": "safe dismissal button in archive/delete confirmations",
 		"tone": "single imperative verb, sentence case",

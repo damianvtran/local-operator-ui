@@ -28,6 +28,15 @@
  *   checks around the call.
  */
 
+/*
+ * Relative, like `archive-undo.ts`: this module is bundled TRANSITIVELY by many
+ * `node:test` harnesses (slash dispatch, the palette's recents, the session
+ * store), most of which carry no `@shared` alias, and a relative path resolves
+ * in all of them. It is the same module `@shared/i18n` re-exports, so the locale
+ * state is shared.
+ */
+import { t } from "../../../../i18n";
+
 /**
  * The rows the at-rest lists may draw.
  *
@@ -119,7 +128,18 @@ export function archivedRows<T extends { archived?: boolean }>(
  * press would act on rather than only what it would do.
  */
 export function archiveControlLabel(label: string, archived: boolean): string {
-	return `${archived ? "Unarchive" : "Archive"} “${label}”`;
+	// ONE WHOLE SENTENCE PER STATE, never a verb joined to a quoted name: a
+	// concatenation fixes the word order and the quote marks to English, so a
+	// translator could not move the title, change the quotes or inflect the verb
+	// for the name (`ui.chat.sidebar.pins.pin_label` is the same convention).
+	// RESOLVED PER CALL, not captured in a constant: a module-level string would
+	// keep the language the bundle loaded in after the backend `language` setting
+	// changed. The callers (`ChatSidebar`, `ChatHeader`) subscribe to the locale
+	// with `useI18nLocale()` and call this during render, so a language change
+	// re-renders them and re-asks.
+	return archived
+		? t("ui.chat.sidebar.row.unarchive_label", { title: label })
+		: t("ui.chat.sidebar.row.archive_label", { title: label });
 }
 
 /**

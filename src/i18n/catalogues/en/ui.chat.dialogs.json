@@ -1,5 +1,8 @@
 {
 	"ui.chat.dialogs.archive_action": "Archive",
+	"ui.chat.dialogs.archive_title_named": "Archive “{title}”?",
+	"ui.chat.dialogs.archive_title_unnamed": "Archive this conversation?",
+	"ui.chat.dialogs.archive_message": "It leaves your lists. You can undo for {seconds, plural, one {# second} other {# seconds}}; after that, search above your chats, turn on “{include_archived}”, then Unarchive it.",
 	"ui.chat.dialogs.cancel": "Cancel",
 	"ui.chat.dialogs.delete_action": "Delete",
 	"ui.chat.dialogs.delete_title": "Delete this conversation?",
