@@ -400,10 +400,10 @@ export const ScreeningModelSaveFailed: Story = {
 			...fakeApi(screeningSettings(null)),
 			updateSettings: async () => {
 				throw new DesktopControlError(
-					503,
-					"upstream detail",
+					429,
+					"Too many requests",
 					undefined,
-					"bridge_unavailable",
+					"rate_limited",
 				);
 			},
 		},
