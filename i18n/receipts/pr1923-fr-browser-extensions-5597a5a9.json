@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, of the 13 PR #1923 native-messaging keys in this namespace (scope: ui.browser.extensions.details_desktop_apps, ui.browser.extensions.desktop_apps_none, ui.browser.extensions.desktop_apps_revoke, ui.browser.extensions.desktop_apps_revoke_label, ui.browser.extensions.native_confirm_title, ui.browser.extensions.native_confirm_body, ui.browser.extensions.native_confirm_host, ui.browser.extensions.native_confirm_program, ui.browser.extensions.native_confirm_note, ui.browser.extensions.native_confirm_deny, ui.browser.extensions.native_confirm_allow, ui.browser.extensions.permission_desktop_apps, ui.browser.extensions.permission_notifications; 3 removed keys blocked_heading/blocked_desktop_apps/blocked_notifications checked absent; pre-existing keys out of scope)",
+  "locale": "fr",
+  "namespace": "ui.browser.extensions",
+  "pr": 1923,
+  "date": "2026-11-14",
+  "head": "011a83e5d4151a02f45afe76e200d58b4e4ee491",
+  "instance": "pr1923-fr-browser-extensions-5597a5a9",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "role": "independent translation auditor (team lopdev, task role); not the translator (coder subagent b588da57086a on anthropic/claude-opus-5-5)",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session a2938f50b716: a different session and agent from the translator (coder b588da57086a); same served model family anthropic/claude-opus-5-5 as stated by this session's harness system prompt, no fallback. Judgement derived from English, the context sidecar, the core glossary/style guides and the shipped corpus; no MT or translation service used. Disclosure: the remediation lines of fixed findings (commit 011a83e5d4) were written by this auditor, so those lines are auditor-authored and are re-bound here, not independently re-reviewed.",
+    "instance": "pr1923-fr-browser-extensions-5597a5a9"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "id": "I1",
+      "severity": "MINOR",
+      "key": "ui.browser.extensions.native_confirm_title",
+      "issue": "Plain U+0020 inside « » and before ? (also native_confirm_body guillemets, native_confirm_host/program before ':'); fr style guide requires U+202F, and this file's install/remove titles already use it.",
+      "disposition": "fixed in 011a83e5d4 (U+202F inserted in title, body, host, program)"
+    }
+  ],
+  "binding": "Verified at 011a83e5d415: target is the committed blob src/i18n/catalogues/fr/ui.browser.extensions.json (sha256 dc9d1790da29a856f2e19eb551658123ab057b130a584c54ebab1831a72591fd); English src/i18n/catalogues/en/ui.browser.extensions.json (sha256 7b454b104d77106b1b2a2ae7d4fff3be4b3330f40c84303856009d72c2102564). Key set equals English; removed keys absent. Checks (python): JSON valid, ICU argument names identical to English for every audited key, values NFC, no Cf characters. Terminology checked against shipped neighbours: Revoke = ui.browser.browser_approvals_dock.revoke; passkey term = permission_passkeys/passkey_recovery in this file; quoting/punctuation = install_confirm_title siblings. Glossary: ~/local-operator i18n/glossary.md sha256 0eb34437a8c3 (no entries for these terms) and i18n/style-guides/fr.md. details_desktop_apps = 'Connexions aux applications de bureau' (37/23 chars, 1.61x) | desktop_apps_none = 'Aucune pour l’instant. L’extension vous demandera l’autorisation la première fois qu’elle aura besoin d’une application de bureau.' (130/67 chars, 1.94x) | desktop_apps_revoke = 'Révoquer' (8/6 chars, 1.33x) | desktop_apps_revoke_label = 'Révoquer l’accès à {app}' (24/22 chars, 1.09x) | native_confirm_title = 'Autoriser « {name} » à se connecter à {app} ?' (45/35 chars, 1.29x) | native_confirm_body = '« {name} » souhaite échanger des messages avec une application installée sur cet ordinateur, par exemple pour se déverrouiller avec un gestionnaire de mots de passe de bureau et remplir les mots de passe et clés d’accès qu’il contient.' (235/172 chars, 1.37x) | native_confirm_host = 'Connexion : {host}' (18/18 chars, 1.00x) | native_confirm_program = 'Programme : {path}' (18/15 chars, 1.20x) | native_confirm_note = 'N’autorisez que les applications de confiance. Vous pourrez révoquer cette autorisation sur la page de détails de l’extension.' (126/85 chars, 1.48x) | native_confirm_deny = 'Ne pas autoriser' (16/11 chars, 1.45x) | native_confirm_allow = 'Autoriser' (9/5 chars, 1.80x) | permission_desktop_apps = 'Communiquer avec les applications de bureau partenaires' (55/41 chars, 1.34x) | permission_notifications = 'Afficher des notifications' (26/21 chars, 1.24x)",
+  "scope": "ui.browser.extensions for fr: 13 PR #1923 keys at branch head 011a83e5d415",
+  "revisions": {
+    "head": "011a83e5d4151a02f45afe76e200d58b4e4ee491"
+  },
+  "en_sha256": "7b454b104d77106b1b2a2ae7d4fff3be4b3330f40c84303856009d72c2102564",
+  "context_sha256": "95c322a4f06c2346b302235b9a6b9f5904abbf62cd7c7baa4ec7759f69bc244c",
+  "target_sha256": "dc9d1790da29a856f2e19eb551658123ab057b130a584c54ebab1831a72591fd",
+  "sha256": {
+    "fr": "dc9d1790da29a856f2e19eb551658123ab057b130a584c54ebab1831a72591fd",
+    "en": "7b454b104d77106b1b2a2ae7d4fff3be4b3330f40c84303856009d72c2102564"
+  }
+}

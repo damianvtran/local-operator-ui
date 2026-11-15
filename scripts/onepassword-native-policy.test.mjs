@@ -1,7 +1,16 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import { readFileSync } from "node:fs";
+import {
+	chmod,
+	mkdir,
+	mkdtemp,
+	realpath,
+	rm,
+	writeFile,
+} from "node:fs/promises";
 import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
 import vm from "node:vm";
@@ -15,6 +24,11 @@ const root = dirname(
 	dirname(dirname(require.resolve("electron-chrome-extensions"))),
 );
 const extensionId = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+// Chrome's runtime.lastError strings, verbatim.
+const INVALID_NAME = "Invalid native messaging host name specified.";
+const NOT_FOUND = "Specified native messaging host not found.";
+const FORBIDDEN = "Access to the specified native messaging host is forbidden.";
+const EXITED = "Native host has exited.";
 const sentinel = "SYNTHETIC-SECRET-DO-NOT-LOG";
 function ipc() {
 	const emitter = new EventEmitter();
@@ -22,11 +36,18 @@ function ipc() {
 	emitter.handle = (name, fn) => emitter.handlers.set(name, fn);
 	return emitter;
 }
+/**
+ * `authorize`: the embedder's authorizeNativeMessaging predicate (undefined =
+ * none bound). `real`: {home, userData} run the REAL fs/spawn against a
+ * scratch home, so a synthetic stdio host can be launched end to end;
+ * without it, host lookup and spawn are counting fakes.
+ */
 async function adapter(
 	format,
-	allowed,
+	authorize,
 	permissions = ["nativeMessaging"],
 	extra = {},
+	real = null,
 ) {
 	const handlers = ipc();
 	const logs = [];
@@ -55,7 +76,7 @@ async function adapter(
 	});
 	const electron = {
 		app: Object.assign(new EventEmitter(), {
-			getPath: () => "/synthetic",
+			getPath: () => real?.userData ?? "/synthetic",
 			isReady: () => true,
 		}),
 		ipcMain: handlers,
@@ -100,6 +121,17 @@ async function adapter(
 							logs.push(args),
 					{ formatters: {} },
 				);
+			if (real && id === "node:os")
+				return { ...require(id), homedir: () => real.home };
+			if (real && id === "node:child_process")
+				return {
+					...require(id),
+					spawn(...args) {
+						hostAccess++;
+						return require(id).spawn(...args);
+					},
+				};
+			if (real && id === "node:fs") return require(id);
 			if (id === "node:child_process")
 				return {
 					spawn() {
@@ -124,7 +156,7 @@ async function adapter(
 		},
 	});
 	const options = { session: ses, modulePath: root, ...extra };
-	if (allowed !== undefined) options.allowNativeMessaging = allowed;
+	if (authorize !== undefined) options.authorizeNativeMessaging = authorize;
 	const instance = new module.exports.ElectronChromeExtensions(options);
 	return {
 		ses,
@@ -137,14 +169,9 @@ async function adapter(
 	};
 }
 for (const format of ["cjs", "esm"]) {
-	test(`${format}: native notifications default deny before construction with explicit true synthetic control`, async () => {
-		for (const allowed of [undefined, false, true]) {
-			const rig = await adapter(
-				format,
-				false,
-				["notifications"],
-				allowed === undefined ? {} : { allowNotifications: allowed },
-			);
+	test(`${format}: notifications follow the manifest permission, with no global deny`, async () => {
+		for (const permissions of [["notifications"], []]) {
+			const rig = await adapter(format, undefined, permissions);
 			let constructed = 0;
 			let shown = 0;
 			rig.electron.Notification = class extends EventEmitter {
@@ -160,7 +187,7 @@ for (const format of ["cjs", "esm"]) {
 				session: rig.ses,
 				getURL: () => `${rig.extension.url}popup/index.html`,
 			};
-			const result = await rig.handlers.handlers.get("crx-msg")(
+			const call = rig.handlers.handlers.get("crx-msg")(
 				{ type: "frame", sender, senderFrame: { url: sender.getURL() } },
 				extensionId,
 				"notifications.create",
@@ -171,9 +198,11 @@ for (const format of ["cjs", "esm"]) {
 					message: "SYNTHETIC-NOTIFICATION-BODY",
 				},
 			);
-			assert.equal(constructed, allowed === true ? 1 : 0);
-			assert.equal(shown, allowed === true ? 1 : 0);
-			if (allowed !== true) assert.equal(result.notificationDenied, true);
+			if (permissions.length) assert.equal(await call, "guid");
+			else
+				await assert.rejects(call, /requires an extension with notifications/);
+			assert.equal(constructed, permissions.length ? 1 : 0);
+			assert.equal(shown, permissions.length ? 1 : 0);
 			assert.equal(
 				JSON.stringify(rig.logs).includes("SYNTHETIC-NOTIFICATION-BODY"),
 				false,
@@ -182,7 +211,7 @@ for (const format of ["cjs", "esm"]) {
 	});
 	test(`${format}: public action popup override prevents dependency owned window creation`, async () => {
 		const requests = [];
-		const rig = await adapter(format, false, ["nativeMessaging"], {
+		const rig = await adapter(format, undefined, ["nativeMessaging"], {
 			openActionPopup: (details) => requests.push(details),
 		});
 		let nativeWindows = 0;
@@ -265,9 +294,17 @@ for (const format of ["cjs", "esm"]) {
 			false,
 		);
 	});
-	for (const allowed of [undefined, false]) {
-		test(`${format}: native host access denied by default and explicit false`, async () => {
-			const rig = await adapter(format, allowed);
+	for (const authorize of [undefined, () => false, () => true]) {
+		test(`${format}: an invalid host name never reaches lookup, spawn or the predicate (${typeof authorize})`, async () => {
+			let asked = 0;
+			const rig = await adapter(
+				format,
+				authorize &&
+					((details) => {
+						asked++;
+						return authorize(details);
+					}),
+			);
 			for (const type of ["frame", "service-worker"]) {
 				const sender = {
 					session: rig.ses,
@@ -307,34 +344,40 @@ for (const format of ["cjs", "esm"]) {
 							operation,
 							...args,
 						);
-						assert.equal(result.nativeMessagingDenied, true);
+						assert.equal(result.nativeMessagingError, INVALID_NAME);
 					}
 				}
 			}
 			assert.equal(rig.hostAccess(), 0);
+			assert.equal(asked, 0);
 			assert.equal(JSON.stringify(rig.logs).includes(sentinel), false);
 		});
 	}
-	test(`${format}: explicit true reaches synthetic native lookup negative control`, async () => {
-		const rig = await adapter(format, true);
+	test(`${format}: an unresolvable host is "not found" before the predicate is asked`, async () => {
+		let asked = 0;
+		const rig = await adapter(format, () => {
+			asked++;
+			return true;
+		});
 		const sender = {
 			session: rig.ses,
 			getURL: () => `chrome-extension://${extensionId}/popup.html`,
 			ipc: ipc(),
 			send() {},
 		};
-		await rig.handlers.handlers.get("crx-msg")(
+		const result = await rig.handlers.handlers.get("crx-msg")(
 			{ type: "frame", sender, senderFrame: { url: sender.getURL() } },
 			extensionId,
 			"runtime.connectNative",
 			"synthetic-connection",
-			"synthetic-app",
+			"synthetic_app",
 		);
-		await new Promise((resolve) => setImmediate(resolve));
-		assert.ok(rig.hostAccess() > 0);
+		assert.ok(rig.hostAccess() > 0, "the lookup ran");
+		assert.equal(result.nativeMessagingError, NOT_FOUND);
+		assert.equal(asked, 0, "no consent question for a host that is not there");
 	});
 	test(`${format}: missing nativeMessaging permission still rejected`, async () => {
-		const rig = await adapter(format, false, []);
+		const rig = await adapter(format, () => true, []);
 		const sender = {
 			session: rig.ses,
 			getURL: () => `chrome-extension://${extensionId}/popup.html`,
@@ -348,6 +391,437 @@ for (const format of ["cjs", "esm"]) {
 				{},
 			),
 		);
+		assert.equal(rig.hostAccess(), 0);
+	});
+}
+
+/**
+ * End-to-end through the REAL patched library: a synthetic stdio host (a
+ * tiny Node echo program) is installed into a scratch userData's
+ * NativeMessagingHosts directory and launched by the library's own spawn.
+ * Nothing touches the operator's real Chrome host directory: `os.homedir()`
+ * is the scratch home for the library under test.
+ */
+async function hostRig(t, format, authorize, origins) {
+	const base = await mkdtemp(
+		join(process.env.LOCAL_OPERATOR_SCRATCHPAD ?? tmpdir(), "native-host-"),
+	);
+	t.after(() => rm(base, { recursive: true, force: true }));
+	const home = join(base, "home");
+	const userData = join(base, "userData");
+	const dir = join(userData, "NativeMessagingHosts");
+	await mkdir(dir, { recursive: true });
+	await mkdir(home, { recursive: true });
+	const program = join(base, "bin", "echo-host.js");
+	await mkdir(dirname(program), { recursive: true });
+	await writeFile(
+		program,
+		`#!${process.execPath}
+let buffer = Buffer.alloc(0);
+const frame = (value) => {
+	const body = Buffer.from(JSON.stringify(value));
+	const head = Buffer.alloc(4);
+	head.writeUInt32LE(body.length);
+	return Buffer.concat([head, body]);
+};
+process.stdin.on("data", (chunk) => {
+	buffer = Buffer.concat([buffer, chunk]);
+	while (buffer.length >= 4) {
+		const length = buffer.readUInt32LE(0);
+		if (buffer.length < 4 + length) return;
+		const message = JSON.parse(buffer.subarray(4, 4 + length).toString());
+		buffer = buffer.subarray(4 + length);
+		if (message.exit) process.exit(0);
+		const reply = { echo: message, origin: process.argv[2], cwd: process.cwd(), pid: process.pid, big: "€".repeat(message.big ?? 0) };
+		// "twice": two frames in ONE write, the case upstream dropped.
+		process.stdout.write(message.twice ? Buffer.concat([frame(reply), frame({ second: true })]) : frame(reply));
+	}
+});
+`,
+	);
+	await chmod(program, 0o755);
+	await writeFile(
+		join(dir, `${HOST}.json`),
+		JSON.stringify({
+			name: HOST,
+			description: "Synthetic Echo Host",
+			path: program,
+			type: "stdio",
+			allowed_origins: origins ?? [`chrome-extension://${extensionId}/`],
+		}),
+	);
+	const asked = [];
+	const rig = await adapter(
+		format,
+		authorize &&
+			((details) => {
+				asked.push(details);
+				return authorize(details);
+			}),
+		["nativeMessaging"],
+		{},
+		{ home, userData },
+	);
+	// A failed assertion must not leave a synthetic host (or this test file)
+	// running: close whatever the library still holds.
+	t.after(() => rig.instance.disconnectNativeHosts(extensionId));
+	const sent = [];
+	const sender = Object.assign(new EventEmitter(), {
+		session: rig.ses,
+		getURL: () => `chrome-extension://${extensionId}/background.html`,
+		ipc: ipc(),
+		send: (channel, ...args) => sent.push([channel, ...args]),
+		isDestroyed: () => false,
+	});
+	const call = (operation, ...args) =>
+		rig.handlers.handlers.get("crx-msg")(
+			{ type: "frame", sender, senderFrame: { url: sender.getURL() } },
+			extensionId,
+			operation,
+			...args,
+		);
+	return { ...rig, asked, sent, sender, call, program };
+}
+const HOST = "com.local_operator.test_echo";
+// The library runs in a vm realm: compare its objects structurally.
+const plain = (value) => JSON.parse(JSON.stringify(value));
+async function until(predicate, what) {
+	const deadline = Date.now() + 10_000;
+	while (!predicate()) {
+		if (Date.now() > deadline) throw new Error(`timed out waiting for ${what}`);
+		await new Promise((resolve) => setTimeout(resolve, 10));
+	}
+}
+const alive = (pid) => {
+	try {
+		process.kill(pid, 0);
+		return true;
+	} catch {
+		return false;
+	}
+};
+
+for (const format of ["cjs", "esm"]) {
+	test(`${format}: allowed host round-trips over a Port (framing, UTF-8, cwd, origin) and revoke kills it`, async (t) => {
+		const rig = await hostRig(t, format, () => true);
+		assert.equal(
+			await rig.call("runtime.connectNative", "port-1", HOST),
+			undefined,
+		);
+		assert.equal(rig.asked.length, 1);
+		assert.deepEqual(
+			{ ...rig.asked[0], host: { ...rig.asked[0].host } },
+			{
+				extensionId,
+				application: HOST,
+				senderUrl: `chrome-extension://${extensionId}/background.html`,
+				host: {
+					name: HOST,
+					description: "Synthetic Echo Host",
+					path: rig.program,
+				},
+			},
+		);
+		const replies = () =>
+			rig.sent.filter(([channel]) => channel === "crx-native-msg-port-1");
+		// 300k three-byte characters: a ~900 KB reply spans many pipe reads.
+		rig.sender.ipc.emit(
+			"crx-native-msg-port-1",
+			{},
+			{ hello: "wörld ✓", big: 300_000 },
+		);
+		await until(() => replies().length === 1, "the large reply");
+		const [, reply] = replies()[0];
+		assert.deepEqual(plain(reply.echo), { hello: "wörld ✓", big: 300_000 });
+		assert.equal(reply.big.length, 300_000);
+		assert.equal(reply.origin, `chrome-extension://${extensionId}/`);
+		assert.equal(reply.cwd, await realpath(dirname(rig.program)));
+		rig.sender.ipc.emit("crx-native-msg-port-1", {}, { twice: true });
+		await until(() => replies().length === 3, "both frames of one write");
+		assert.deepEqual(plain(replies()[2][1]), { second: true });
+		assert.ok(alive(reply.pid));
+		assert.equal(rig.instance.disconnectNativeHosts(extensionId, HOST), 1);
+		await until(() => !alive(reply.pid), "the revoked host to exit");
+		assert.deepEqual(
+			rig.sent.find(
+				([channel]) => channel === "crx-native-msg-port-1-disconnect",
+			),
+			["crx-native-msg-port-1-disconnect", FORBIDDEN],
+		);
+		assert.equal(rig.instance.disconnectNativeHosts(extensionId, HOST), 0);
+	});
+
+	test(`${format}: a refused or foreign host never spawns; host exit disconnects with Chrome's lastError`, async (t) => {
+		const refused = await hostRig(t, format, () => false);
+		assert.deepEqual(
+			{ ...(await refused.call("runtime.connectNative", "port-1", HOST)) },
+			{ nativeMessagingError: FORBIDDEN },
+		);
+		assert.deepEqual(
+			{ ...(await refused.call("runtime.sendNativeMessage", HOST, { a: 1 })) },
+			{ nativeMessagingError: FORBIDDEN },
+		);
+		assert.equal(refused.hostAccess(), 0, "no spawn without consent");
+		// A predicate that throws is a refusal, not a crash.
+		const throwing = await hostRig(t, format, () => {
+			throw new Error("synthetic");
+		});
+		assert.equal(
+			(await throwing.call("runtime.connectNative", "port-1", HOST))
+				.nativeMessagingError,
+			FORBIDDEN,
+		);
+		// allowed_origins without this extension: forbidden BEFORE consent.
+		const foreign = await hostRig(t, format, () => true, [
+			`chrome-extension://${"b".repeat(32)}/`,
+		]);
+		assert.equal(
+			(await foreign.call("runtime.connectNative", "port-1", HOST))
+				.nativeMessagingError,
+			FORBIDDEN,
+		);
+		assert.equal(foreign.asked.length, 0);
+		assert.equal(foreign.hostAccess(), 0);
+		// The host itself exits: the port hears "Native host has exited.".
+		const rig = await hostRig(t, format, () => true);
+		await rig.call("runtime.connectNative", "port-2", HOST);
+		rig.sender.ipc.emit("crx-native-msg-port-2", {}, { exit: true });
+		await until(
+			() =>
+				rig.sent.some(
+					([channel]) => channel === "crx-native-msg-port-2-disconnect",
+				),
+			"the exit disconnect",
+		);
+		assert.deepEqual(
+			rig.sent.find(
+				([channel]) => channel === "crx-native-msg-port-2-disconnect",
+			),
+			["crx-native-msg-port-2-disconnect", EXITED],
+		);
+	});
+
+	test(`${format}: sendNativeMessage answers once and closes the host; unload and frame teardown close ports`, async (t) => {
+		const rig = await hostRig(t, format, () => true);
+		const reply = await rig.call("runtime.sendNativeMessage", HOST, {
+			ping: "π",
+		});
+		assert.deepEqual(plain(reply.echo), { ping: "π" });
+		await until(() => !alive(reply.pid), "the one-shot host to exit");
+		// A host that exits without answering resolves with lastError, never hangs.
+		assert.deepEqual(
+			{
+				...(await rig.call("runtime.sendNativeMessage", HOST, { exit: true })),
+			},
+			{ nativeMessagingError: EXITED },
+		);
+		// Disable/remove (extension-unloaded) ends the extension's hosts.
+		await rig.call("runtime.connectNative", "port-3", HOST);
+		rig.sender.ipc.emit("crx-native-msg-port-3", {}, { n: 1 });
+		await until(
+			() => rig.sent.some(([channel]) => channel === "crx-native-msg-port-3"),
+			"port-3 reply",
+		);
+		const pid3 = rig.sent.find(
+			([channel]) => channel === "crx-native-msg-port-3",
+		)[1].pid;
+		rig.ses.extensions.emit("extension-unloaded", {}, rig.extension);
+		await until(() => !alive(pid3), "unload to end the host");
+		// The calling page going away ends its port's host, as in Chrome.
+		await rig.call("runtime.connectNative", "port-4", HOST);
+		rig.sender.ipc.emit("crx-native-msg-port-4", {}, { n: 2 });
+		await until(
+			() => rig.sent.some(([channel]) => channel === "crx-native-msg-port-4"),
+			"port-4 reply",
+		);
+		const pid4 = rig.sent.find(
+			([channel]) => channel === "crx-native-msg-port-4",
+		)[1].pid;
+		rig.sender.emit("destroyed");
+		await until(() => !alive(pid4), "frame teardown to end the host");
+	});
+
+	test(`${format}: messages posted while consent is pending reach the host in order`, async (t) => {
+		// Regression (found by the real Electron probe): 1Password posts on the
+		// Port immediately after connectNative; those messages arrive while the
+		// host is still being resolved/consented and were dropped.
+		let answer;
+		const rig = await hostRig(
+			t,
+			format,
+			() =>
+				new Promise((resolve) => {
+					answer = resolve;
+				}),
+		);
+		const connecting = rig.call("runtime.connectNative", "port-6", HOST);
+		rig.sender.ipc.emit("crx-native-msg-port-6", {}, { n: 1 });
+		rig.sender.ipc.emit("crx-native-msg-port-6", {}, { n: 2 });
+		await until(() => answer, "the consent question");
+		answer(true);
+		assert.equal(await connecting, undefined);
+		const replies = () =>
+			rig.sent.filter(([channel]) => channel === "crx-native-msg-port-6");
+		await until(() => replies().length === 2, "both early messages answered");
+		assert.deepEqual(
+			replies().map(([, reply]) => plain(reply.echo)),
+			[{ n: 1 }, { n: 2 }],
+		);
+		assert.equal(rig.sender.ipc.listenerCount("crx-native-msg-port-6"), 1);
+	});
+
+	// R1-1 (#1923 round 1, reproduced in real Electron): Electron stops an idle
+	// extension worker even while its native Port is open. The host must die
+	// with the worker, and a wake that reconnects must not pile up processes.
+	test(`${format}: a stopped worker's host is killed and a wake does not accumulate hosts`, async (t) => {
+		const rig = await hostRig(t, format, () => true);
+		const sent = [];
+		const worker = {
+			session: rig.ses,
+			scope: `chrome-extension://${extensionId}/`,
+			versionId: 7,
+			ipc: ipc(),
+			send: (channel, ...args) => sent.push([channel, ...args]),
+			isDestroyed: () => false,
+		};
+		rig.ses.serviceWorkers.getWorkerFromVersionID = () => worker;
+		rig.ses.serviceWorkers.emit("running-status-changed", {
+			runningStatus: "starting",
+			versionId: 7,
+		});
+		const route = worker.ipc.handlers.get("crx-msg");
+		assert.ok(route, "the router listens on the worker's ipc");
+		const workerCall = (operation, ...args) =>
+			route(
+				{ type: "service-worker", session: rig.ses, serviceWorker: worker },
+				extensionId,
+				operation,
+				...args,
+			);
+		const pidOf = async (all, connectionId) => {
+			worker.ipc.emit(`crx-native-msg-${connectionId}`, {}, { n: 1 });
+			await until(
+				() =>
+					all.some(([channel]) => channel === `crx-native-msg-${connectionId}`),
+				`${connectionId} reply`,
+			);
+			return all.find(
+				([channel]) => channel === `crx-native-msg-${connectionId}`,
+			)[1].pid;
+		};
+		assert.equal(
+			await workerCall("runtime.connectNative", "w-1", HOST),
+			undefined,
+		);
+		const first = await pidOf(sent, "w-1");
+		// Negative control: a page's port is not the worker's and must survive.
+		await rig.call("runtime.connectNative", "page-1", HOST);
+		rig.sender.ipc.emit("crx-native-msg-page-1", {}, { n: 1 });
+		await until(
+			() => rig.sent.some(([channel]) => channel === "crx-native-msg-page-1"),
+			"page-1 reply",
+		);
+		const page = rig.sent.find(
+			([channel]) => channel === "crx-native-msg-page-1",
+		)[1].pid;
+		// "stopping" alone is not the end: the worker may still be draining.
+		rig.ses.serviceWorkers.emit("running-status-changed", {
+			runningStatus: "stopping",
+			versionId: 7,
+		});
+		await new Promise((resolve) => setTimeout(resolve, 50));
+		assert.ok(alive(first));
+		rig.ses.serviceWorkers.emit("running-status-changed", {
+			runningStatus: "stopped",
+			versionId: 7,
+		});
+		await until(() => !alive(first), "the stopped worker's host to exit");
+		assert.ok(alive(page), "the page's host is untouched");
+		// Wake: the worker reconnects (1Password does at startup).
+		rig.ses.serviceWorkers.emit("running-status-changed", {
+			runningStatus: "running",
+			versionId: 7,
+		});
+		assert.equal(
+			await workerCall("runtime.connectNative", "w-2", HOST),
+			undefined,
+		);
+		const second = await pidOf(sent, "w-2");
+		assert.notEqual(second, first);
+		// Exactly the page's host and the woken worker's host remain.
+		assert.equal(rig.instance.disconnectNativeHosts(extensionId), 2);
+		await until(() => !alive(second) && !alive(page), "teardown");
+	});
+
+	// R1-2: a renderer-chosen connection id that is already in use must not
+	// orphan the live host (revoke/unload find hosts through that map).
+	test(`${format}: a reused live connection id is refused and the first host stays reachable`, async (t) => {
+		const rig = await hostRig(t, format, () => true);
+		assert.equal(
+			await rig.call("runtime.connectNative", "dup", HOST),
+			undefined,
+		);
+		assert.deepEqual(
+			{ ...(await rig.call("runtime.connectNative", "dup", HOST)) },
+			{
+				nativeMessagingError:
+					"Error when communicating with the native messaging host.",
+			},
+		);
+		rig.sender.ipc.emit("crx-native-msg-dup", {}, { n: 1 });
+		await until(
+			() => rig.sent.some(([channel]) => channel === "crx-native-msg-dup"),
+			"dup reply",
+		);
+		const replies = rig.sent.filter(
+			([channel]) => channel === "crx-native-msg-dup",
+		);
+		assert.equal(replies.length, 1, "one host answered");
+		const pid = replies[0][1].pid;
+		assert.equal(rig.instance.disconnectNativeHosts(extensionId, HOST), 1);
+		await until(() => !alive(pid), "the only host to exit on revoke");
+	});
+
+	// R1-4: the own-page check sees the CALLING frame, not the tab's top URL.
+	test(`${format}: the predicate is given the calling frame's URL`, async (t) => {
+		const rig = await hostRig(t, format, () => false);
+		const subframe =
+			"chrome-extension://bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/frame.html";
+		await rig.handlers.handlers.get("crx-msg")(
+			{ type: "frame", sender: rig.sender, senderFrame: { url: subframe } },
+			extensionId,
+			"runtime.connectNative",
+			"frame-1",
+			HOST,
+		);
+		await rig.handlers.handlers.get("crx-msg")(
+			{ type: "frame", sender: rig.sender, senderFrame: null },
+			extensionId,
+			"runtime.connectNative",
+			"frame-2",
+			HOST,
+		);
+		assert.deepEqual(
+			rig.asked.map((details) => details.senderUrl),
+			[subframe, ""],
+		);
+	});
+
+	test(`${format}: a port closed while consent is pending never spawns its host`, async (t) => {
+		let answer;
+		const rig = await hostRig(
+			t,
+			format,
+			() =>
+				new Promise((resolve) => {
+					answer = resolve;
+				}),
+		);
+		const connecting = rig.call("runtime.connectNative", "port-5", HOST);
+		await until(() => answer, "the consent question");
+		await rig.call("runtime.disconnectNative", "port-5");
+		answer(true);
+		assert.equal(await connecting, undefined);
 		assert.equal(rig.hostAccess(), 0);
 	});
 }

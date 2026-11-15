@@ -170,7 +170,7 @@ test("R1-4: agent tabs refuse extension subframes; user tabs keep them; hand-ove
 	assert.equal(mustReloadOnOwnerChange("user", [ext]), false);
 });
 
-test("D3: Chrome's warning wording, silent permissions omitted, denied capabilities listed as blocked", () => {
+test("D3: Chrome's warning wording, silent permissions omitted, desktop apps and notifications get Chrome's rows", () => {
 	const summary = pages.describePermissions([
 		"tabs",
 		"history",
@@ -185,11 +185,14 @@ test("D3: Chrome's warning wording, silent permissions omitted, denied capabilit
 		[...summary.labels],
 		[
 			"ui.browser.extensions.permission_history",
+			"ui.browser.extensions.permission_desktop_apps",
+			"ui.browser.extensions.permission_notifications",
 			"ui.browser.extensions.permission_privacy",
 			"ui.browser.extensions.permission_block_content",
 		],
 	);
-	assert.deepEqual([...summary.blocked], ["desktop_apps", "notifications"]);
+	// Nothing is reported as "blocked in this browser" any more.
+	assert.equal(summary.blocked, undefined);
 	assert.deepEqual([...summary.other], ["someNewApi"]);
 	// Every label key exists in the English catalogue.
 	const en = require(

@@ -51,6 +51,8 @@ const base: ExtensionSummary = {
 		"The best way to experience 1Password in your browser. Easily sign in to sites, generate passwords, and store secure information.",
 	hasHomepage: true,
 	waitingPages: 0,
+	nativeHosts: [],
+	refusedHosts: [],
 };
 const other: ExtensionSummary = {
 	...base,
@@ -88,6 +90,8 @@ const callbacks = {
 	onOpen: noop,
 	onOpenLink: noop,
 	onRetry: noop,
+	onRevokeNativeHost: noop,
+	onClearNativeRefusal: noop,
 	onCancelInstall: noop,
 	onOpenStore: noop,
 	onCheckUpdates: noop,
@@ -181,6 +185,45 @@ export const DetailsWithOptions: Story = {
 		extensions: [
 			base,
 			{ ...other, status: "needs-reconsent", pendingVersion: "1.63.0" },
+		],
+	},
+};
+/** The desktop-app row after the user allowed the 1Password app. */
+export const DetailsDesktopAppAllowed: Story = {
+	args: {
+		page: { page: "extensions", id: base.id },
+		extensions: [
+			{
+				...base,
+				nativeHosts: [
+					{
+						name: "com.1password.1password",
+						description: "1Password BrowserSupport",
+					},
+				],
+			},
+			other,
+			third,
+		],
+	},
+};
+/** After "Don't allow" (or Revoke) this session: the refused app stays
+ * visible as "Not allowed" with "Ask again", which only clears the refusal. */
+export const DetailsDesktopAppRefused: Story = {
+	args: {
+		page: { page: "extensions", id: base.id },
+		extensions: [
+			{
+				...base,
+				refusedHosts: [
+					{
+						name: "com.1password.1password",
+						description: "1Password BrowserSupport",
+					},
+				],
+			},
+			other,
+			third,
 		],
 	},
 };

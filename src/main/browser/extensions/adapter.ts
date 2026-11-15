@@ -3,9 +3,17 @@
  * "adapter.ts"), generalized from the earlier 1Password-only binding.
  *
  * Constraints carried over unchanged:
- * - Native messaging and notifications stay denied GLOBALLY (constructor flags
- *   backed by patches/electron-chrome-extensions@4.10.0.patch). There is no
- *   per-extension toggle: the patch is constructor-global and nothing needs one.
+ * - Native messaging (an extension talking to a desktop app, e.g. 1Password's
+ *   extension unlocking through the 1Password app) is decided PER CALL by
+ *   `authorizeNativeMessaging` (patches/electron-chrome-extensions@4.10.0.patch).
+ *   The patched library first runs Chrome's own host checks — valid name,
+ *   host manifest found, allowed_origins naming this extension, binary
+ *   present — so an unresolvable host never reaches the predicate; the
+ *   predicate then asks the manager (installed+enabled, manifest declares
+ *   `nativeMessaging`, sender is the extension's own page/worker, and the
+ *   user's per-host consent). No predicate bound = forbidden.
+ * - Notifications follow Chrome: available to extensions whose manifest
+ *   declares `notifications` (the patch enforces the permission per call).
  * - `chrome.permissions.request` always answers false: optional permissions
  *   would grow access past what the native install dialog showed.
  * - An extension-requested tab is never activated (an extension's
@@ -40,7 +48,23 @@ export interface AdapterBinding {
 	openExtensionTab: ((url: string) => Promise<WebContents>) | null;
 	/** Whether `id` is installed AND enabled in the manager right now. */
 	isActiveExtension: ((id: string) => boolean) | null;
+	/** The manager's native-messaging decision (consent included); null while
+	 * no manager is bound, which answers forbidden. */
+	authorizeNativeHost:
+		| ((request: NativeHostRequest) => Promise<boolean>)
+		| null;
 	mayActivateTab: (() => boolean) | null;
+}
+
+/** One resolved native-messaging request, as the patched library reports it. */
+export interface NativeHostRequest {
+	extensionId: string;
+	/** The host name the extension asked for, e.g. `com.1password.1password`. */
+	application: string;
+	/** URL of the calling extension page, or the worker's scope. */
+	senderUrl: string;
+	/** From the host's own manifest (third-party text: shown, never trusted). */
+	host: { name: string; description: string; path: string };
 }
 
 const adapters = new WeakMap<Session, AdapterBinding>();
@@ -227,14 +251,15 @@ export function extensionsAdapter(session: Session): AdapterBinding {
 	binding.openExtension = null;
 	binding.openExtensionTab = null;
 	binding.isActiveExtension = null;
+	binding.authorizeNativeHost = null;
 	binding.mayActivateTab = null;
 	binding.adapter = new ElectronChromeExtensions({
 		session,
-		// Not a preference. Neither alias/frame/worker may discover or launch a
-		// local native host (see the patch); vendor sign-in inside the extension
-		// is the supported route.
-		allowNativeMessaging: false,
-		allowNotifications: false,
+		// Frame and worker callers alike reach this for connectNative and
+		// sendNativeMessage. A thrown predicate is treated as a refusal by the
+		// patch; a detached manager answers false here.
+		authorizeNativeMessaging: (details) =>
+			binding.authorizeNativeHost?.(details) ?? false,
 		openActionPopup: ({ extensionId, url }) => {
 			if (
 				!binding.isActiveExtension?.(extensionId) ||
