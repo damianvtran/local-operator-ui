@@ -111661,12 +111661,13 @@
 		{
 			"locale": "es",
 			"namespace": "ui.schedules.monitors",
-			"source_sha256": "1623689e77f93183bd09ec0287d25c4fd9fd6bdae487c3d10eddad40e22081a1",
-			"target_sha256": "ef4df48f79f96be8880c89943481758e3f4fd02a6822ecd9608acb410dcbe787",
+			"source_sha256": "08165699dc4799b1415db21f73d5ffea1297ccb972242554b35f2cf15d296b9b",
+			"target_sha256": "13ce066e659f65715c960c352995b54403747ab804bfe776c3e207fcdefdf06b",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-15"
+				"date": "2026-11-15",
+				"note": "PR #1930 r2 translation lane: coder a3d04e809f61 / anthropic/claude-opus-5-5; independent audit by i18n-auditor 1cdd281dcb89 / anthropic/claude-opus-5-5 (5 keys, 71cc555d84)"
 			},
 			"auditors": [
 				{
@@ -111674,30 +111675,57 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-15",
 					"result": "clean",
-					"instance": "pr1930-es-schedules-monitors-r1-2bdf7618",
+					"instance": "pr1930-es-schedules-monitors-r2-c31409fd",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1930-es-schedules-monitors-r1-2bdf7618.json",
-					"receipt_sha256": "e7e0bd544ba14168d6383c7a04df6f47e8abc3175a01b59b490d8ff1735de1d8",
-					"scope": "PR #1930 Schedules Monitors section copy (3 keys)",
-					"note": "PR #1930 r1 translation lane: coder 360204865c92 / anthropic/claude-opus-5-5; independent audit by i18n-auditor c744486e376c / anthropic/claude-opus-5-5"
+					"receipt": "i18n/receipts/pr1930-es-schedules-monitors-r2-c31409fd.json",
+					"receipt_sha256": "632d5bde5f16b2505b95ca75a8a99777fdd6e65b5215b6474e9c28f351858af3",
+					"scope": "PR #1930 round-2 Schedules Monitors health/error copy (5 keys)",
+					"note": "PR #1930 r2 translation lane: coder a3d04e809f61 / anthropic/claude-opus-5-5; independent audit by i18n-auditor 1cdd281dcb89 / anthropic/claude-opus-5-5 (5 keys, 71cc555d84)"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "1623689e77f93183bd09ec0287d25c4fd9fd6bdae487c3d10eddad40e22081a1",
+					"target_sha256": "ef4df48f79f96be8880c89943481758e3f4fd02a6822ecd9608acb410dcbe787",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-15",
+							"result": "clean",
+							"instance": "pr1930-es-schedules-monitors-r1-2bdf7618",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1930-es-schedules-monitors-r1-2bdf7618.json",
+							"receipt_sha256": "e7e0bd544ba14168d6383c7a04df6f47e8abc3175a01b59b490d8ff1735de1d8",
+							"scope": "PR #1930 Schedules Monitors section copy (3 keys)",
+							"note": "PR #1930 r1 translation lane: coder 360204865c92 / anthropic/claude-opus-5-5; independent audit by i18n-auditor c744486e376c / anthropic/claude-opus-5-5"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "fr",
 			"namespace": "ui.schedules.monitors",
-			"source_sha256": "1623689e77f93183bd09ec0287d25c4fd9fd6bdae487c3d10eddad40e22081a1",
-			"target_sha256": "cf9b22cd48f5f2bfa633b1c0171743a95303ce10b0321b54b054f07de18fa9df",
+			"source_sha256": "08165699dc4799b1415db21f73d5ffea1297ccb972242554b35f2cf15d296b9b",
+			"target_sha256": "15cd72d63da57826291b8f95f7e29b5277dab20ba644c724cb394b03023c4bc8",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-15"
+				"date": "2026-11-15",
+				"note": "PR #1930 r2 translation lane: coder a3d04e809f61 / anthropic/claude-opus-5-5; independent audit by i18n-auditor 1cdd281dcb89 / anthropic/claude-opus-5-5 (5 keys, 71cc555d84)"
 			},
 			"auditors": [
 				{
@@ -111705,30 +111733,57 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-15",
 					"result": "clean",
-					"instance": "pr1930-fr-schedules-monitors-r1-690b39ea",
+					"instance": "pr1930-fr-schedules-monitors-r2-57ba8fd5",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1930-fr-schedules-monitors-r1-690b39ea.json",
-					"receipt_sha256": "84d1f0b66264d664b21e56ad88eba7990337e46e582bb6e78f9db5847166e279",
-					"scope": "PR #1930 Schedules Monitors section copy (3 keys)",
-					"note": "PR #1930 r1 translation lane: coder 360204865c92 / anthropic/claude-opus-5-5; independent audit by i18n-auditor c744486e376c / anthropic/claude-opus-5-5"
+					"receipt": "i18n/receipts/pr1930-fr-schedules-monitors-r2-57ba8fd5.json",
+					"receipt_sha256": "5d3fd1eaa8501d40e4168cf4472649be298e90e1764ecc67f37f2a7814a9c833",
+					"scope": "PR #1930 round-2 Schedules Monitors health/error copy (5 keys)",
+					"note": "PR #1930 r2 translation lane: coder a3d04e809f61 / anthropic/claude-opus-5-5; independent audit by i18n-auditor 1cdd281dcb89 / anthropic/claude-opus-5-5 (5 keys, 71cc555d84)"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "1623689e77f93183bd09ec0287d25c4fd9fd6bdae487c3d10eddad40e22081a1",
+					"target_sha256": "cf9b22cd48f5f2bfa633b1c0171743a95303ce10b0321b54b054f07de18fa9df",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-15",
+							"result": "clean",
+							"instance": "pr1930-fr-schedules-monitors-r1-690b39ea",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1930-fr-schedules-monitors-r1-690b39ea.json",
+							"receipt_sha256": "84d1f0b66264d664b21e56ad88eba7990337e46e582bb6e78f9db5847166e279",
+							"scope": "PR #1930 Schedules Monitors section copy (3 keys)",
+							"note": "PR #1930 r1 translation lane: coder 360204865c92 / anthropic/claude-opus-5-5; independent audit by i18n-auditor c744486e376c / anthropic/claude-opus-5-5"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.schedules.monitors",
-			"source_sha256": "1623689e77f93183bd09ec0287d25c4fd9fd6bdae487c3d10eddad40e22081a1",
-			"target_sha256": "727140decea9cc26e795440b8e7fb192a03de80736809ca5a6becf8d7c9454cd",
+			"source_sha256": "08165699dc4799b1415db21f73d5ffea1297ccb972242554b35f2cf15d296b9b",
+			"target_sha256": "abbd76750275f6f5d4d626680d59ed88520cb627a59d075c840f9ba3bdf6fa8b",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-15"
+				"date": "2026-11-15",
+				"note": "PR #1930 r2 translation lane: coder a3d04e809f61 / anthropic/claude-opus-5-5; independent audit by i18n-auditor 1cdd281dcb89 / anthropic/claude-opus-5-5 (5 keys, 71cc555d84)"
 			},
 			"auditors": [
 				{
@@ -111736,30 +111791,57 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-15",
 					"result": "clean",
-					"instance": "pr1930-hi-schedules-monitors-r1-125fde03",
+					"instance": "pr1930-hi-schedules-monitors-r2-182e82c4",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1930-hi-schedules-monitors-r1-125fde03.json",
-					"receipt_sha256": "e81d7e5a8aac53cbefd7bb3efdbd560b044450588c86e6cc0956806f7836ab9e",
-					"scope": "PR #1930 Schedules Monitors section copy (3 keys)",
-					"note": "PR #1930 r1 translation lane: coder 360204865c92 / anthropic/claude-opus-5-5; independent audit by i18n-auditor c744486e376c / anthropic/claude-opus-5-5"
+					"receipt": "i18n/receipts/pr1930-hi-schedules-monitors-r2-182e82c4.json",
+					"receipt_sha256": "bbc66b03e81a0310d56db967f62cfc94dbb5a0fc6cd777bee5311e794dcd62d0",
+					"scope": "PR #1930 round-2 Schedules Monitors health/error copy (5 keys)",
+					"note": "PR #1930 r2 translation lane: coder a3d04e809f61 / anthropic/claude-opus-5-5; independent audit by i18n-auditor 1cdd281dcb89 / anthropic/claude-opus-5-5 (5 keys, 71cc555d84)"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "1623689e77f93183bd09ec0287d25c4fd9fd6bdae487c3d10eddad40e22081a1",
+					"target_sha256": "727140decea9cc26e795440b8e7fb192a03de80736809ca5a6becf8d7c9454cd",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-15",
+							"result": "clean",
+							"instance": "pr1930-hi-schedules-monitors-r1-125fde03",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1930-hi-schedules-monitors-r1-125fde03.json",
+							"receipt_sha256": "e81d7e5a8aac53cbefd7bb3efdbd560b044450588c86e6cc0956806f7836ab9e",
+							"scope": "PR #1930 Schedules Monitors section copy (3 keys)",
+							"note": "PR #1930 r1 translation lane: coder 360204865c92 / anthropic/claude-opus-5-5; independent audit by i18n-auditor c744486e376c / anthropic/claude-opus-5-5"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ru",
 			"namespace": "ui.schedules.monitors",
-			"source_sha256": "1623689e77f93183bd09ec0287d25c4fd9fd6bdae487c3d10eddad40e22081a1",
-			"target_sha256": "c6e77cd7a8da05ada4b32de96072521ecb48ba5331b83bf8d6698aff74cad1cb",
+			"source_sha256": "08165699dc4799b1415db21f73d5ffea1297ccb972242554b35f2cf15d296b9b",
+			"target_sha256": "3504033dc75a32f520646894b77ac05596facb61a520983e10a100ab185c82b5",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-15"
+				"date": "2026-11-15",
+				"note": "PR #1930 r2 translation lane: coder a3d04e809f61 / anthropic/claude-opus-5-5; independent audit by i18n-auditor 1cdd281dcb89 / anthropic/claude-opus-5-5 (5 keys, 71cc555d84)"
 			},
 			"auditors": [
 				{
@@ -111767,30 +111849,57 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-15",
 					"result": "clean",
-					"instance": "pr1930-ru-schedules-monitors-r1-672a4bc9",
+					"instance": "pr1930-ru-schedules-monitors-r2-426284fd",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1930-ru-schedules-monitors-r1-672a4bc9.json",
-					"receipt_sha256": "c7eb5b89e209b1687cf5c8d669eb52a4385b4cb0d50a6d455453ebb31765373c",
-					"scope": "PR #1930 Schedules Monitors section copy (3 keys)",
-					"note": "PR #1930 r1 translation lane: coder 360204865c92 / anthropic/claude-opus-5-5; independent audit by i18n-auditor c744486e376c / anthropic/claude-opus-5-5"
+					"receipt": "i18n/receipts/pr1930-ru-schedules-monitors-r2-426284fd.json",
+					"receipt_sha256": "b0c13327fc4bf0e1c66c12b4f6eb4d6aebb91ba90e1e8cc85c579c2fbf12f30e",
+					"scope": "PR #1930 round-2 Schedules Monitors health/error copy (5 keys)",
+					"note": "PR #1930 r2 translation lane: coder a3d04e809f61 / anthropic/claude-opus-5-5; independent audit by i18n-auditor 1cdd281dcb89 / anthropic/claude-opus-5-5 (5 keys, 71cc555d84)"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "1623689e77f93183bd09ec0287d25c4fd9fd6bdae487c3d10eddad40e22081a1",
+					"target_sha256": "c6e77cd7a8da05ada4b32de96072521ecb48ba5331b83bf8d6698aff74cad1cb",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-15",
+							"result": "clean",
+							"instance": "pr1930-ru-schedules-monitors-r1-672a4bc9",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1930-ru-schedules-monitors-r1-672a4bc9.json",
+							"receipt_sha256": "c7eb5b89e209b1687cf5c8d669eb52a4385b4cb0d50a6d455453ebb31765373c",
+							"scope": "PR #1930 Schedules Monitors section copy (3 keys)",
+							"note": "PR #1930 r1 translation lane: coder 360204865c92 / anthropic/claude-opus-5-5; independent audit by i18n-auditor c744486e376c / anthropic/claude-opus-5-5"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.schedules.monitors",
-			"source_sha256": "1623689e77f93183bd09ec0287d25c4fd9fd6bdae487c3d10eddad40e22081a1",
-			"target_sha256": "a96cdd0f6f1df797baca85ad328b79a9356bbc20e05c98ab92892084163adc9a",
+			"source_sha256": "08165699dc4799b1415db21f73d5ffea1297ccb972242554b35f2cf15d296b9b",
+			"target_sha256": "d31ddb73ecafae7a1c69a90c04301cbc9fe5a1f36c6e4190906a363c9845c132",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-15"
+				"date": "2026-11-15",
+				"note": "PR #1930 r2 translation lane: coder a3d04e809f61 / anthropic/claude-opus-5-5; independent audit by i18n-auditor 1cdd281dcb89 / anthropic/claude-opus-5-5 (5 keys, 71cc555d84)"
 			},
 			"auditors": [
 				{
@@ -111798,30 +111907,57 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-15",
 					"result": "clean",
-					"instance": "pr1930-ur-schedules-monitors-r1-d3cbc713",
+					"instance": "pr1930-ur-schedules-monitors-r2-dcc4d794",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1930-ur-schedules-monitors-r1-d3cbc713.json",
-					"receipt_sha256": "7fd805042f17f127527dd948e7fb82315a2cd4104fccbbf687b712d8dc1392f5",
-					"scope": "PR #1930 Schedules Monitors section copy (3 keys)",
-					"note": "PR #1930 r1 translation lane: coder 360204865c92 / anthropic/claude-opus-5-5; independent audit by i18n-auditor c744486e376c / anthropic/claude-opus-5-5"
+					"receipt": "i18n/receipts/pr1930-ur-schedules-monitors-r2-dcc4d794.json",
+					"receipt_sha256": "2f932cc3045607467e4803b6e247adbcf30d1b99d312c99a35428ae2d6438255",
+					"scope": "PR #1930 round-2 Schedules Monitors health/error copy (5 keys)",
+					"note": "PR #1930 r2 translation lane: coder a3d04e809f61 / anthropic/claude-opus-5-5; independent audit by i18n-auditor 1cdd281dcb89 / anthropic/claude-opus-5-5 (5 keys, 71cc555d84)"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "1623689e77f93183bd09ec0287d25c4fd9fd6bdae487c3d10eddad40e22081a1",
+					"target_sha256": "a96cdd0f6f1df797baca85ad328b79a9356bbc20e05c98ab92892084163adc9a",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-15",
+							"result": "clean",
+							"instance": "pr1930-ur-schedules-monitors-r1-d3cbc713",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1930-ur-schedules-monitors-r1-d3cbc713.json",
+							"receipt_sha256": "7fd805042f17f127527dd948e7fb82315a2cd4104fccbbf687b712d8dc1392f5",
+							"scope": "PR #1930 Schedules Monitors section copy (3 keys)",
+							"note": "PR #1930 r1 translation lane: coder 360204865c92 / anthropic/claude-opus-5-5; independent audit by i18n-auditor c744486e376c / anthropic/claude-opus-5-5"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.schedules.monitors",
-			"source_sha256": "1623689e77f93183bd09ec0287d25c4fd9fd6bdae487c3d10eddad40e22081a1",
-			"target_sha256": "68fc318208dd54adac2614b5f2f7e2acedcc4cb8f01d52535ded1cda372ae8a7",
+			"source_sha256": "08165699dc4799b1415db21f73d5ffea1297ccb972242554b35f2cf15d296b9b",
+			"target_sha256": "db95548bc7b3f5e49ae711088c7eeb1b6db42854de644fef88f01e9a761c58d8",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-15"
+				"date": "2026-11-15",
+				"note": "PR #1930 r2 translation lane: coder a3d04e809f61 / anthropic/claude-opus-5-5; independent audit by i18n-auditor 1cdd281dcb89 / anthropic/claude-opus-5-5 (5 keys, 71cc555d84)"
 			},
 			"auditors": [
 				{
@@ -111829,30 +111965,57 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-15",
 					"result": "clean",
-					"instance": "pr1930-vi-schedules-monitors-r1-fce9c59f",
+					"instance": "pr1930-vi-schedules-monitors-r2-83fb4ff8",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1930-vi-schedules-monitors-r1-fce9c59f.json",
-					"receipt_sha256": "9aaadc48de9af01715529af04c6ff6017ae12512a5ca608c79fb156831a32f99",
-					"scope": "PR #1930 Schedules Monitors section copy (3 keys)",
-					"note": "PR #1930 r1 translation lane: coder 360204865c92 / anthropic/claude-opus-5-5; independent audit by i18n-auditor c744486e376c / anthropic/claude-opus-5-5"
+					"receipt": "i18n/receipts/pr1930-vi-schedules-monitors-r2-83fb4ff8.json",
+					"receipt_sha256": "e5bfa232cb66f17055b33ed4c1ce623da4e987f589e6e2f0005bb1b9b1d2f122",
+					"scope": "PR #1930 round-2 Schedules Monitors health/error copy (5 keys)",
+					"note": "PR #1930 r2 translation lane: coder a3d04e809f61 / anthropic/claude-opus-5-5; independent audit by i18n-auditor 1cdd281dcb89 / anthropic/claude-opus-5-5 (5 keys, 71cc555d84)"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "1623689e77f93183bd09ec0287d25c4fd9fd6bdae487c3d10eddad40e22081a1",
+					"target_sha256": "68fc318208dd54adac2614b5f2f7e2acedcc4cb8f01d52535ded1cda372ae8a7",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-15",
+							"result": "clean",
+							"instance": "pr1930-vi-schedules-monitors-r1-fce9c59f",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1930-vi-schedules-monitors-r1-fce9c59f.json",
+							"receipt_sha256": "9aaadc48de9af01715529af04c6ff6017ae12512a5ca608c79fb156831a32f99",
+							"scope": "PR #1930 Schedules Monitors section copy (3 keys)",
+							"note": "PR #1930 r1 translation lane: coder 360204865c92 / anthropic/claude-opus-5-5; independent audit by i18n-auditor c744486e376c / anthropic/claude-opus-5-5"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.schedules.monitors",
-			"source_sha256": "1623689e77f93183bd09ec0287d25c4fd9fd6bdae487c3d10eddad40e22081a1",
-			"target_sha256": "2e9fe094894b4b2a2c7e7d62a2801a005d69baad37c729159c2b21f59573c565",
+			"source_sha256": "08165699dc4799b1415db21f73d5ffea1297ccb972242554b35f2cf15d296b9b",
+			"target_sha256": "1cadae6791c23a9f2c640ecb59f024f729203b1cf0bfd838e806e56ec2a32209",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-15"
+				"date": "2026-11-15",
+				"note": "PR #1930 r2 translation lane: coder a3d04e809f61 / anthropic/claude-opus-5-5; independent audit by i18n-auditor 1cdd281dcb89 / anthropic/claude-opus-5-5 (5 keys, 71cc555d84)"
 			},
 			"auditors": [
 				{
@@ -111860,20 +112023,46 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-15",
 					"result": "clean",
-					"instance": "pr1930-zh-cn-schedules-monitors-r1-9160abd8",
+					"instance": "pr1930-zh-cn-schedules-monitors-r2-7c571650",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1930-zh-cn-schedules-monitors-r1-9160abd8.json",
-					"receipt_sha256": "52f0dd1e1dab4455fcd7a4a810cd692b372efde291671be390928efc94786fc6",
-					"scope": "PR #1930 Schedules Monitors section copy (3 keys)",
-					"note": "PR #1930 r1 translation lane: coder 360204865c92 / anthropic/claude-opus-5-5; independent audit by i18n-auditor c744486e376c / anthropic/claude-opus-5-5"
+					"receipt": "i18n/receipts/pr1930-zh-cn-schedules-monitors-r2-7c571650.json",
+					"receipt_sha256": "7f4e8b12cceecd3aaaef22476f32460b5e834070a420c9704ae30d3b571d6f1a",
+					"scope": "PR #1930 round-2 Schedules Monitors health/error copy (5 keys)",
+					"note": "PR #1930 r2 translation lane: coder a3d04e809f61 / anthropic/claude-opus-5-5; independent audit by i18n-auditor 1cdd281dcb89 / anthropic/claude-opus-5-5 (5 keys, 71cc555d84)"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "1623689e77f93183bd09ec0287d25c4fd9fd6bdae487c3d10eddad40e22081a1",
+					"target_sha256": "2e9fe094894b4b2a2c7e7d62a2801a005d69baad37c729159c2b21f59573c565",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-15",
+							"result": "clean",
+							"instance": "pr1930-zh-cn-schedules-monitors-r1-9160abd8",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1930-zh-cn-schedules-monitors-r1-9160abd8.json",
+							"receipt_sha256": "52f0dd1e1dab4455fcd7a4a810cd692b372efde291671be390928efc94786fc6",
+							"scope": "PR #1930 Schedules Monitors section copy (3 keys)",
+							"note": "PR #1930 r1 translation lane: coder 360204865c92 / anthropic/claude-opus-5-5; independent audit by i18n-auditor c744486e376c / anthropic/claude-opus-5-5"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		}
 	]
 }
