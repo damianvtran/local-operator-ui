@@ -1,0 +1,5 @@
+{
+	"ui.schedules.monitors.list_truncated": "Showing {shown, number, ::group-off} of {total, plural, one {{total, number, ::group-off} conversation} other {{total, number, ::group-off} conversations}} with monitors.",
+	"ui.schedules.monitors.parked_clause": "Parked — its monitors are not checking",
+	"ui.schedules.monitors.parked_state": "parked"
+}

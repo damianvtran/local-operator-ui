@@ -2,6 +2,8 @@ import {
 	useAidaDisplayName,
 	useAidaTarget,
 } from "@features/aida/use-aida-target";
+import { MonitorCancelDialog } from "@features/chat/components/run-details/monitor-cancel-dialog";
+import { useMonitorCancel } from "@features/chat/components/run-details/use-monitor-cancel";
 import {
 	type AidaWakeIdentity,
 	sessionIsChiefOfStaff,
@@ -11,8 +13,23 @@ import {
 } from "@features/chat/components/run-details/wake-controls-model";
 /**
  * The Schedules page: every conversation on this machine that has wakes, with
- * its wakes beneath it, plus the fenced group of rows still on the older
- * agent-schedule engine.
+ * its wakes beneath it; then a labelled Monitors section with every standing
+ * watch on this machine, grouped by conversation; plus the fenced group of rows
+ * still on the older agent-schedule engine.
+ *
+ * ## Wakes and monitors, one page
+ *
+ * A conversation can be SCHEDULED to fire (a wake) and WATCHING something (a
+ * monitor); every other surface that draws one draws both - the TUI's band
+ * (wakes, then a monitors section), the phone's Schedules view, the run pane's
+ * two sections - and this page used to list wakes only (#1898). The monitors
+ * are a second labelled section after the wakes rather than lines merged into
+ * the wake rows: both listings are per session, so a merge would reconcile two
+ * indexes, and a monitors-only conversation would have no wake row to sit
+ * under. The section is read-and-cancel only - arming stays the agent's
+ * `monitor` tool - and its rows and cancel are the run pane's own
+ * (`MonitorRowView`, `useMonitorCancel`, `MonitorCancelDialog`), so a watch
+ * reads and stops the same here as in its conversation.
  *
  * ## Two engines, one page, and why both are here
  *
@@ -67,6 +84,10 @@ import type { FC } from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+	useMonitorListingControls,
+	useMonitorsListing,
+} from "../hooks/use-monitors-queries";
+import {
 	invalidateLegacySchedules,
 	useEditSchedule,
 	useListAllSchedules,
@@ -77,10 +98,12 @@ import {
 	type ScheduledTaskRow,
 	type WakeLine,
 	isEmptyListing,
+	monitorConversationRows,
 	scheduledTaskRows,
 	supervisorLead,
 	wakePromptHead,
 } from "../scheduled-task-model";
+import { MonitorConversationRow } from "./monitor-conversation-row";
 import { ScheduleFormDialog } from "./schedule-form-dialog";
 import { ScheduleListItem } from "./schedule-list-item";
 import {
@@ -121,6 +144,20 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 	);
 
 	const listing = useWakesListing();
+	const monitorsListing = useMonitorsListing();
+	/*
+	 * The pane's cancel interaction, driven by the page's key-splitting controls.
+	 * `sessionId: null` because the hook's only use of it is a reset when the
+	 * pane switches conversation, and this page never switches: its row keys are
+	 * machine-unique (`monitorRowKey`), so no record can be read against the
+	 * wrong session. Owned HERE, above the section, so the confirmation survives
+	 * the re-read that drops a conversation's last watch.
+	 */
+	const monitorControls = useMonitorListingControls();
+	const monitorCancel = useMonitorCancel({
+		sessionId: null,
+		controls: monitorControls,
+	});
 	const queryClient = useQueryClient();
 	/*
 	 * What this page knows about the chief of staff, read from the same shared
@@ -150,6 +187,7 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 	 */
 	const refreshAll = () => {
 		void listing.refetch();
+		void monitorsListing.refetch();
 		void invalidateLegacySchedules(queryClient);
 	};
 	const legacy = useListAllSchedules();
@@ -181,6 +219,12 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 	const rows = scheduledTaskRows(listing.data?.entries, nowMs, {
 		dueInstants: canFire,
 	});
+
+	/* Same instant, same pass: both sections' labels are true of one moment. */
+	const monitorRows = monitorConversationRows(
+		monitorsListing.data?.entries,
+		nowMs,
+	);
 
 	const openConversation = (sessionId: string) => {
 		void useCanonicalSessionsStore
@@ -321,7 +365,13 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 		wakeRows: rows.length,
 		legacyLoading: legacy.isLoading,
 		legacyRows: legacyRows.length,
+		monitorsLoading: monitorsListing.isLoading,
+		monitorsError: monitorsListing.error !== null,
+		monitorsReadError: monitorsListing.data?.read_error === true,
+		monitorRows: monitorRows.length,
 	});
+	const monitorsReadError =
+		!monitorsListing.isLoading && monitorsListing.data?.read_error === true;
 
 	return (
 		/* `gap-8`: `PageHeader` no longer ships its own bottom margin. */
@@ -359,7 +409,7 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 							"ui.schedules.schedules_page.refresh_scheduled_tasks",
 						)}
 						title={t("ui.schedules.schedules_page.refresh_scheduled_tasks")}
-						disabled={listing.isFetching}
+						disabled={listing.isFetching || monitorsListing.isFetching}
 						onClick={refreshAll}
 						data-tour-tag="refresh-schedules-button"
 					>
@@ -523,6 +573,82 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 				)}
 
 				{/*
+				 * The Monitors section (#1898): after the wakes, labelled, one row per
+				 * conversation. Present whenever there is something to say about
+				 * monitors - rows, a failed read, or an index that could not be read -
+				 * and absent otherwise, the pane's "absence is not a state" rule: a
+				 * machine with no watches shows no empty heading.
+				 */}
+				{(monitorRows.length > 0 ||
+					monitorsListing.error ||
+					monitorsReadError) && (
+					<section
+						data-schedules-monitors-section
+						aria-labelledby="schedules-monitors-heading"
+						className="border-hairline border-t"
+					>
+						<h2
+							id="schedules-monitors-heading"
+							className="px-4 pt-3 pb-1 text-body-sm text-ink-muted"
+						>
+							{t("ui.chat.run_details.monitors.title")}
+						</h2>
+						{/* The wake listing's failure strip, scoped to this section: the
+						    two reads fail independently, so one failing must not blank or
+						    discredit the other's rows. */}
+						{monitorsListing.error && (
+							<div className="flex flex-col items-start gap-2 border-hairline border-b px-4 pb-3">
+								<p className="text-body text-ink">
+									{t(
+										"ui.schedules.schedules_page.could_not_load_scheduled_tasks",
+									)}
+								</p>
+								<p className="text-body-sm text-ink-muted">
+									{monitorsListing.error.message}
+								</p>
+								<Button variant="secondary" size="sm" onClick={refreshAll}>
+									{t("ui.schedules.schedules_page.try_again")}
+								</Button>
+							</div>
+						)}
+						{monitorsReadError && (
+							<div className="flex flex-col items-start gap-2 border-hairline border-b px-4 pb-3">
+								<Alert variant="warning">
+									{t(
+										"ui.schedules.schedules_page.could_not_read_this_machine_s_scheduled_tasks_so_the_list_below_m",
+									)}
+								</Alert>
+								<Button variant="secondary" size="sm" onClick={refreshAll}>
+									{t("ui.schedules.schedules_page.try_again")}
+								</Button>
+							</div>
+						)}
+						{monitorRows.length > 0 && (
+							<ul className="flex flex-col">
+								{monitorRows.map((row) => (
+									<MonitorConversationRow
+										key={row.sessionId}
+										row={row}
+										onOpen={openConversation}
+										cancel={monitorCancel.section}
+									/>
+								))}
+							</ul>
+						)}
+						{/* The route caps the listing (200 by default) and says so through
+						    `truncated`; past it the section would under-report silently. */}
+						{monitorsListing.data?.truncated && (
+							<p className="border-hairline border-t px-4 py-3 text-body-sm text-ink-dim">
+								{t("ui.schedules.monitors.list_truncated", {
+									shown: monitorsListing.data.entries.length,
+									total: monitorsListing.data.total,
+								})}
+							</p>
+						)}
+					</section>
+				)}
+
+				{/*
 				 * The fenced legacy group. It appears only when a legacy row exists,
 				 * and it says what it is: the rows here run on the older engine, each
 				 * run starting a fresh agent with approvals granted automatically -
@@ -632,6 +758,11 @@ export const SchedulesPage: FC<SchedulesPageProps> = ({
 			 * conversation KNOWN to be the chief of staff's puts her name on the
 			 * question and on the button; every other row keeps the neutral wording.
 			 */}
+			{/* The monitor cancel's confirmation: the run pane's own dialog, so the
+			    question, its `Keep` default and an in-dialog refusal read the same
+			    on both surfaces. */}
+			<MonitorCancelDialog {...monitorCancel.dialog} />
+
 			<ConfirmationModal
 				open={pendingCancel !== null}
 				title={wakeConfirmTitle(namedCancel, wakeAida.name)}

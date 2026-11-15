@@ -1,0 +1,5 @@
+{
+	"ui.schedules.monitors.list_truncated": "共有{total, plural, other {{total, number, ::group-off}个包含监控的对话}}，当前显示{shown, number, ::group-off}个。",
+	"ui.schedules.monitors.parked_clause": "已挂起，监控暂不检查",
+	"ui.schedules.monitors.parked_state": "已挂起"
+}

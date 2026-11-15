@@ -1,0 +1,5 @@
+{
+	"ui.schedules.monitors.list_truncated": "Đang hiển thị {shown, number, ::group-off} trên {total, plural, other {{total, number, ::group-off} cuộc trò chuyện}} có mục giám sát.",
+	"ui.schedules.monitors.parked_clause": "Tạm ngưng — các mục giám sát không kiểm tra",
+	"ui.schedules.monitors.parked_state": "tạm ngưng"
+}

@@ -1,0 +1,5 @@
+{
+	"ui.schedules.monitors.list_truncated": "मॉनिटर वाली {shown, number, ::group-off} दिखाई गईं, कुल {total, plural, one {{total, number, ::group-off} बातचीत} other {{total, number, ::group-off} बातचीतें}}।",
+	"ui.schedules.monitors.parked_clause": "रुकी हुई — इसके मॉनिटर जाँच नहीं कर रहे",
+	"ui.schedules.monitors.parked_state": "रुका हुआ"
+}

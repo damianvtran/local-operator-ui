@@ -1,0 +1,5 @@
+{
+	"ui.schedules.monitors.list_truncated": "Mostrando {shown, number, ::group-off} de {total, plural, one {{total, number, ::group-off} conversación con monitores} many {{total, number, ::group-off} de conversaciones con monitores} other {{total, number, ::group-off} conversaciones con monitores}}.",
+	"ui.schedules.monitors.parked_clause": "En pausa — sus monitores no realizan comprobaciones",
+	"ui.schedules.monitors.parked_state": "en pausa"
+}

@@ -1,0 +1,5 @@
+{
+	"ui.schedules.monitors.list_truncated": "Показано {shown, number, ::group-off} из {total, plural, one {{total, number, ::group-off} разговора} few {{total, number, ::group-off} разговоров} many {{total, number, ::group-off} разговоров} other {{total, number, ::group-off} разговора}} с мониторингом.",
+	"ui.schedules.monitors.parked_clause": "Приостановлено — мониторинг не выполняет проверки",
+	"ui.schedules.monitors.parked_state": "приостановлен"
+}

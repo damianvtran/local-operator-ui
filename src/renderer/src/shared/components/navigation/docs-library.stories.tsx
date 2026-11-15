@@ -813,6 +813,17 @@ const installWorldBridge = () => {
 					supervisor: SUPERVISOR,
 					read_error: false,
 				});
+			/* The Schedules page's Monitors section reads this beside the wakes
+			   (#1898); this world has no standing watches, so the section is
+			   absent rather than a refused-op error strip. */
+			case "monitors.list":
+				return ok({
+					entries: [],
+					generated_at: SCHEDULES_NOW_MS,
+					total: 0,
+					truncated: false,
+					read_error: false,
+				});
 			case "notifications.list":
 			case "notifications.count":
 			case "notifications.get":

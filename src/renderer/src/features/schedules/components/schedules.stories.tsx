@@ -1,5 +1,9 @@
 import type { ScheduleResponse } from "@shared/api/local-operator";
 import type {
+	DesktopMonitorEntry,
+	DesktopMonitorListingRow,
+} from "@shared/api/local-operator/monitors-api";
+import type {
 	DesktopWakeEntry,
 	DesktopWakeSupervisor,
 } from "@shared/api/local-operator/wakes-api";
@@ -7,9 +11,10 @@ import type {
  * The schedules surface: the page's rows, its states, and the create dialog.
  *
  * `window.fetch` is stubbed at the boundary for every operation this page
- * issues - the wake listing, the legacy schedule list and the agent lookup the
- * legacy rows do for their owner name - so the real page, the real query layer,
- * the real row components and the real dialog all run.
+ * issues - the wake listing, the monitor listing and its cancel, the legacy
+ * schedule list and the agent lookup the legacy rows do for their owner name -
+ * so the real page, the real query layer, the real row components and the real
+ * dialogs all run.
  *
  * ## Every instant here is PINNED, and that is the point
  *
@@ -314,6 +319,104 @@ const SPENT: DesktopWakeEntry[] = [
 	]),
 ];
 
+/**
+ * One standing watch in `monitors.list`'s row shape (`MonitorRow` in the core's
+ * `server/models/desktop_monitors.py`), with the defaults a frame does not care
+ * about. Instants are pinned offsets from `FIXTURE_NOW_MS`, like the wakes'.
+ */
+const monitor = (
+	id: string,
+	name: string,
+	extra: Partial<DesktopMonitorListingRow> = {},
+): DesktopMonitorListingRow => ({
+	id,
+	name,
+	description: "",
+	tool: "bash",
+	every_ms: 5 * MINUTE_MS,
+	next_due_at: at(3),
+	last_check_at: at(-2),
+	checks: 12,
+	consecutive_failures: 0,
+	disabled: false,
+	disabled_reason: "",
+	state: "armed",
+	health: null,
+	...extra,
+});
+
+/** One conversation with monitors, the wake `conversation()` helper's twin. */
+const watching = (
+	sessionId: string,
+	name: string,
+	cwd: string,
+	monitors: DesktopMonitorListingRow[],
+	extra: Partial<DesktopMonitorEntry> = {},
+): DesktopMonitorEntry => {
+	const due = monitors
+		.map((row) => row.next_due_at)
+		.filter((value): value is number => typeof value === "number");
+	return {
+		session_id: sessionId,
+		name,
+		cwd,
+		origin: "",
+		updated_at: at(-10),
+		dormant: false,
+		ghost: false,
+		next_due_at: due.length > 0 ? Math.min(...due) : null,
+		monitors,
+		...extra,
+	};
+};
+
+/**
+ * The Monitors section's states in one list (#1898): an ordinary armed watch
+ * with a description, a watch mid-way down the failure ladder, a watch the
+ * ladder DISABLED (its reason in the warning ink), and a parked conversation
+ * whose watch drops its instant for the `parked` word. Two conversations both
+ * hold an `m1` on purpose - monitor handles are per session - so a capture or a
+ * QA pass can confirm a cancel lands on the row that was pressed.
+ */
+const MONITORS: DesktopMonitorEntry[] = [
+	watching("c0ffee000001", "Release watch", "~/local-operator", [
+		monitor("m1", "pr-1898-checks", {
+			description: "Tell me when CI on the Schedules PR goes green or red.",
+			every_ms: MINUTE_MS,
+			next_due_at: at(1),
+			last_check_at: at(0),
+		}),
+		monitor("m2", "inbox-replies", {
+			every_ms: 10 * MINUTE_MS,
+			next_due_at: at(6),
+			consecutive_failures: 2,
+		}),
+	]),
+	watching("c0ffee000002", "Deploy dashboard", "~/minervaai", [
+		monitor("m1", "prod-health", {
+			every_ms: 15 * MINUTE_MS,
+			next_due_at: null,
+			consecutive_failures: 5,
+			disabled: true,
+			disabled_reason:
+				"5 checks in a row failed: MCP server grafana is not connected",
+			state: "disabled",
+		}),
+	]),
+	watching(
+		"c0ffee000003",
+		"Weekend reading list",
+		"~/workspace",
+		[
+			monitor("m1", "hn-front-page", {
+				every_ms: HOUR_MS,
+				next_due_at: at(40),
+			}),
+		],
+		{ dormant: true },
+	),
+];
+
 const AGENTS = [
 	{ id: "3f21c0aa-1d55-4a8b-9a1e-27a4f0d9b111", name: "Inbox triage" },
 	{ id: "8c04b7e2-93f1-4c0d-8d2a-11f4e6c7a222", name: "Weekly finance digest" },
@@ -366,6 +469,17 @@ const REFUSAL_AFTER_LOAD =
 /** What the stubbed desktop bridge answers, per story. */
 type StubState = {
 	entries: DesktopWakeEntry[];
+	/*
+	 * The monitor half (#1898). Optional - absent reads as a machine with no
+	 * watches - so the dialog stories that assign `stub` whole keep compiling
+	 * and keep photographing the state they were written for.
+	 */
+	/** The monitor listing's conversations; empty on a wakes-only machine. */
+	monitors?: DesktopMonitorEntry[];
+	/** The monitor listing answered but could not read its index. */
+	monitorsReadError?: boolean;
+	/** The monitor cancel refuses with this sentence instead of succeeding. */
+	monitorCancelRefusal?: string | null;
 	legacy: ScheduleResponse[];
 	supervisor: DesktopWakeSupervisor;
 	readError: boolean;
@@ -387,6 +501,9 @@ type StubState = {
 
 let stub: StubState = {
 	entries: [],
+	monitors: [],
+	monitorsReadError: false,
+	monitorCancelRefusal: null,
 	legacy: [],
 	supervisor: SUPERVISOR,
 	readError: false,
@@ -554,6 +671,56 @@ const answer = async (request: { op: string; [key: string]: unknown }) => {
 				status: 200,
 				body: { status: 200, message: "ok", result: null },
 			};
+		/*
+		 * The monitor listing and its cancel (#1898). The listing follows the wake
+		 * listing's `hang`/`fail` so the page-wide loading and error frames stay
+		 * one state rather than two half-states side by side.
+		 */
+		case "monitors.list":
+			if (stub.hang) return new Promise<never>(() => {});
+			if (stub.fail) return { status: 503, body: { detail: stub.fail } };
+			return {
+				status: 200,
+				body: {
+					status: 200,
+					message: "ok",
+					result: {
+						entries: stub.monitors ?? [],
+						generated_at: FIXTURE_NOW_MS,
+						total: stub.monitors?.length ?? 0,
+						truncated: false,
+						read_error: stub.monitorsReadError === true,
+					},
+				},
+			};
+		case "monitors.cancel": {
+			if (stub.monitorCancelRefusal)
+				return {
+					status: 409,
+					body: { detail: { message: stub.monitorCancelRefusal } },
+				};
+			const entry = stub.monitors?.find(
+				(candidate) => candidate.session_id === request.sessionId,
+			);
+			return {
+				status: 200,
+				body: {
+					status: 200,
+					message: "ok",
+					result: {
+						session_id: request.sessionId,
+						monitor_id: request.monitorId,
+						name: "",
+						next_due_at: null,
+						remaining: Math.max(0, (entry?.monitors.length ?? 1) - 1),
+						already_armed: false,
+						reactivated: false,
+						receipt: "cancelled",
+						index_written: true,
+					},
+				},
+			};
+		}
 		default:
 			throw new TypeError(`unexpected desktop op in this story: ${request.op}`);
 	}
@@ -649,6 +816,9 @@ const FreshReadCount = () => {
 const page = (state: Partial<StubState>) => {
 	stub = {
 		entries: [],
+		monitors: [],
+		monitorsReadError: false,
+		monitorCancelRefusal: null,
 		legacy: [],
 		supervisor: SUPERVISOR,
 		readError: false,
@@ -1021,6 +1191,82 @@ export const CancelConfirm: Story = {
 				{page({ entries: ONE_WAKE })}
 			</div>
 			<Drive steps={[{ selector: 'button[aria-label="Cancel wake"]' }]} />
+		</>
+	),
+};
+
+/*
+ * ---------------------------------------------------------------------------
+ * The Monitors section (#1898)
+ * ---------------------------------------------------------------------------
+ */
+
+/** Wakes only: the page as it was before the section, which must not move. */
+export const WakesOnly: Story = { render: () => page({ entries: MANY }) };
+
+/**
+ * Monitors only: a machine with standing watches and no wakes. Must NOT read
+ * "No scheduled tasks yet" - the empty state counts monitors now.
+ */
+export const MonitorsOnly: Story = {
+	render: () => page({ monitors: MONITORS }),
+};
+
+/**
+ * Wakes and monitors together: wakes first, then the labelled section - the
+ * TUI band's order. Carries the armed, failing, disabled-with-reason and parked
+ * watch states.
+ */
+export const WakesAndMonitors: Story = {
+	render: () => page({ entries: ONE_WAKE, monitors: MONITORS }),
+};
+
+/** The same, at the app's minimum width, where the row clauses must yield. */
+export const WakesAndMonitorsNarrow: Story = {
+	render: () => (
+		<div className="w-[640px]">
+			{page({ entries: ONE_WAKE, monitors: MONITORS })}
+		</div>
+	),
+};
+
+/** The monitor index could not be read: the section says so, wakes stand. */
+export const MonitorsReadError: Story = {
+	render: () =>
+		page({ entries: ONE_WAKE, monitors: [], monitorsReadError: true }),
+};
+
+/** The first watch's `Cancel monitor` pressed: the run pane's own dialog. */
+export const MonitorCancelConfirm: Story = {
+	render: () => (
+		<>
+			{page({ monitors: MONITORS })}
+			<Drive
+				steps={[{ selector: '[data-monitor-cancel="c0ffee000001/m1"]' }]}
+			/>
+		</>
+	),
+};
+
+/**
+ * A refused cancel: the backend's own sentence inside the dialog that asked,
+ * focus handed back to `Keep` - the pane's U2/U5 behaviour, now on this page.
+ */
+export const MonitorCancelRefused: Story = {
+	render: () => (
+		<>
+			{page({
+				monitors: MONITORS,
+				monitorCancelRefusal:
+					"This conversation is open in a running session, which owns its monitors. Nothing was written. Retry in a moment, or change them from that session.",
+			})}
+			<Drive
+				steps={[
+					{ selector: '[data-monitor-cancel="c0ffee000002/m1"]' },
+					{ selector: '[role="dialog"] [data-confirm-action]' },
+					{ until: "Nothing was written." },
+				]}
+			/>
 		</>
 	),
 };

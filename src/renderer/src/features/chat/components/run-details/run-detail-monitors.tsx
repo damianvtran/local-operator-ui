@@ -107,8 +107,13 @@ import type { MonitorCancelSection } from "./use-monitor-cancel";
  * `data-run-panel-row` is the roster's and the wake row's own hook, on purpose:
  * all of the pane's row lists carry it, so a capture rig or a QA pass that can
  * address a child's row can address a watch's.
+ *
+ * Exported because the Schedules page's Monitors section draws the SAME row
+ * (#1898), with the same cancel interaction, so a watch reads and cancels
+ * identically in the pane and on the page; a second row component there would
+ * be two spellings of one object on surfaces that can be seen together.
  */
-const MonitorRowView = ({
+export const MonitorRowView = ({
 	row,
 	cancel,
 }: {

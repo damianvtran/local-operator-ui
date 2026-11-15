@@ -59,6 +59,9 @@ const {
 	PARKED_CLAUSE,
 	STALE_ROWS_CLAUSE,
 	isEmptyListing,
+	monitorConversationRows,
+	monitorRowKey,
+	splitMonitorRowKey,
 	workspaceName,
 	WAKE_LINE_CAP,
 	hiddenWakesLabel,
@@ -424,6 +427,10 @@ test("a listing that could not be READ is never the empty state", () => {
 		wakeRows: 0,
 		legacyLoading: false,
 		legacyRows: 0,
+		monitorsLoading: false,
+		monitorsError: false,
+		monitorsReadError: false,
+		monitorRows: 0,
 	};
 	assert.equal(isEmptyListing(settled), true);
 	assert.equal(isEmptyListing({ ...settled, readError: true }), false);
@@ -433,6 +440,164 @@ test("a listing that could not be READ is never the empty state", () => {
 	assert.equal(isEmptyListing({ ...settled, wakeRows: 1 }), false);
 	assert.equal(isEmptyListing({ ...settled, legacyLoading: true }), false);
 	assert.equal(isEmptyListing({ ...settled, legacyRows: 1 }), false);
+});
+
+test("a machine with monitors and no wakes is never the empty state (#1898)", () => {
+	/* The monitor half carries the wake half's three terms: settled, readable,
+	   and genuinely empty. A monitors-only machine read "No scheduled tasks yet"
+	   over the watches it holds before the section counted them. */
+	const settled = {
+		loading: false,
+		error: false,
+		readError: false,
+		wakeRows: 0,
+		legacyLoading: false,
+		legacyRows: 0,
+		monitorsLoading: false,
+		monitorsError: false,
+		monitorsReadError: false,
+		monitorRows: 0,
+	};
+	assert.equal(isEmptyListing({ ...settled, monitorRows: 1 }), false);
+	assert.equal(isEmptyListing({ ...settled, monitorsLoading: true }), false);
+	assert.equal(isEmptyListing({ ...settled, monitorsError: true }), false);
+	assert.equal(isEmptyListing({ ...settled, monitorsReadError: true }), false);
+});
+
+/** One `monitors.list` row, with the defaults a case does not care about. */
+const listedMonitor = (id, name, extra = {}) => ({
+	id,
+	name,
+	description: "",
+	tool: "bash",
+	every_ms: 60_000,
+	next_due_at: NOW + 30_000,
+	last_check_at: NOW - 30_000,
+	checks: 3,
+	consecutive_failures: 0,
+	disabled: false,
+	disabled_reason: "",
+	state: "armed",
+	health: null,
+	...extra,
+});
+const monitorEntry = (sessionId, name, monitors, extra = {}) => ({
+	session_id: sessionId,
+	name,
+	cwd: "~/work",
+	origin: "",
+	updated_at: NOW,
+	dormant: false,
+	ghost: false,
+	next_due_at: null,
+	monitors,
+	...extra,
+});
+
+test("monitor rows are the run pane's rows, keyed page-wide by session", () => {
+	const rows = monitorConversationRows(
+		[
+			monitorEntry("bbbbbbbbbbbb", "Second", [
+				listedMonitor("m1", "later", { next_due_at: NOW + 600_000 }),
+			]),
+			monitorEntry("aaaaaaaaaaaa", "First", [
+				listedMonitor("m1", "sooner", {
+					description: "watch CI",
+					consecutive_failures: 2,
+				}),
+				listedMonitor("m2", "parked-by-ladder", {
+					next_due_at: null,
+					disabled: true,
+					disabled_reason: "5 checks   in a row\nfailed",
+					state: "disabled",
+				}),
+			]),
+		],
+		NOW,
+	);
+	/* Soonest conversation first; the two `m1`s no longer collide. */
+	assert.deepEqual(
+		rows.map((row) => row.sessionId),
+		["aaaaaaaaaaaa", "bbbbbbbbbbbb"],
+	);
+	assert.deepEqual(
+		rows[0].monitors.map((row) => row.id),
+		["aaaaaaaaaaaa/m1", "aaaaaaaaaaaa/m2"],
+	);
+	assert.equal(rows[1].monitors[0].id, "bbbbbbbbbbbb/m1");
+	/* The pane's vocabulary, verbatim: cadence, last check, failure tail,
+	   disabled word and its one-line reason in the warning ink. */
+	const [failing, disabled] = rows[0].monitors;
+	assert.equal(failing.interval, "every 1m");
+	assert.ok(failing.lastCheckLabel.startsWith("last check "));
+	assert.equal(failing.healthLabel, "2 failed");
+	assert.equal(failing.alerting, true);
+	assert.equal(failing.description, "watch CI");
+	assert.equal(disabled.whenLabel, "disabled");
+	assert.equal(disabled.healthLabel, "5 checks in a row failed");
+	assert.equal(disabled.alerting, true);
+	/* The head is the pane's own tally string. */
+	assert.equal(rows[0].meta, "2 monitors armed");
+	assert.equal(rows[1].meta, "1 monitor armed");
+});
+
+test("a parked conversation's watches drop their instant for `parked`", () => {
+	const [row] = monitorConversationRows(
+		[
+			monitorEntry(
+				"cccccccccccc",
+				"Stopped",
+				[listedMonitor("m1", "hn", { consecutive_failures: 1 })],
+				{ dormant: true, next_due_at: NOW + 30_000 },
+			),
+		],
+		NOW,
+	);
+	assert.equal(row.parked, true);
+	assert.equal(row.nextDueAt, null);
+	assert.equal(row.meta, "Parked — its monitors are not checking");
+	assert.equal(row.monitors[0].whenLabel, "parked");
+	assert.equal(row.monitors[0].nextDueAt, null);
+	/* The health tail is still true of the watch, so it stays. */
+	assert.equal(row.monitors[0].healthLabel, "1 failed");
+	/* A ghost (transcript gone) parks the same way. */
+	const [ghost] = monitorConversationRows(
+		[
+			monitorEntry("dddddddddddd", "", [listedMonitor("m1", "x")], {
+				ghost: true,
+			}),
+		],
+		NOW,
+	);
+	assert.equal(ghost.parked, true);
+	/* And a nameless session floors like a wake row does. */
+	assert.equal(ghost.name, "dddddddd · work");
+});
+
+test("an entry with nothing derivable is not a row; a missing list is no rows", () => {
+	assert.deepEqual(monitorConversationRows(undefined, NOW), []);
+	assert.deepEqual(
+		monitorConversationRows(
+			[
+				monitorEntry("eeeeeeeeeeee", "Empty", [
+					listedMonitor("m1", "", { next_due_at: null }),
+				]),
+			],
+			NOW,
+		),
+		[],
+	);
+});
+
+test("the page-wide monitor key round-trips, and refuses what it did not mint", () => {
+	assert.equal(monitorRowKey("a1b2c3d4e5f6", "m3"), "a1b2c3d4e5f6/m3");
+	assert.deepEqual(splitMonitorRowKey("a1b2c3d4e5f6/m3"), {
+		sessionId: "a1b2c3d4e5f6",
+		monitorId: "m3",
+	});
+	assert.equal(splitMonitorRowKey("m3"), null);
+	assert.equal(splitMonitorRowKey("/m3"), null);
+	assert.equal(splitMonitorRowKey("a1b2c3d4e5f6/"), null);
 });
 
 test("the workspace clause names a directory, never a shell token", () => {

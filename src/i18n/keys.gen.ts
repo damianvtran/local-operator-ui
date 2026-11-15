@@ -159,6 +159,7 @@ import enUiProjects from "./catalogues/en/ui.projects.json";
 import enUiProviders from "./catalogues/en/ui.providers.json";
 import enUiSchedulesErrors from "./catalogues/en/ui.schedules.errors.json";
 import enUiSchedules from "./catalogues/en/ui.schedules.json";
+import enUiSchedulesMonitors from "./catalogues/en/ui.schedules.monitors.json";
 import enUiSettingsAccount from "./catalogues/en/ui.settings.account.json";
 import enUiSettingsAppearanceEditor from "./catalogues/en/ui.settings.appearance.editor.json";
 import enUiSettingsAppearance from "./catalogues/en/ui.settings.appearance.json";
@@ -326,6 +327,7 @@ import esUiProjects from "./catalogues/es/ui.projects.json";
 import esUiProviders from "./catalogues/es/ui.providers.json";
 import esUiSchedulesErrors from "./catalogues/es/ui.schedules.errors.json";
 import esUiSchedules from "./catalogues/es/ui.schedules.json";
+import esUiSchedulesMonitors from "./catalogues/es/ui.schedules.monitors.json";
 import esUiSettingsAccount from "./catalogues/es/ui.settings.account.json";
 import esUiSettingsAppearanceEditor from "./catalogues/es/ui.settings.appearance.editor.json";
 import esUiSettingsAppearance from "./catalogues/es/ui.settings.appearance.json";
@@ -493,6 +495,7 @@ import frUiProjects from "./catalogues/fr/ui.projects.json";
 import frUiProviders from "./catalogues/fr/ui.providers.json";
 import frUiSchedulesErrors from "./catalogues/fr/ui.schedules.errors.json";
 import frUiSchedules from "./catalogues/fr/ui.schedules.json";
+import frUiSchedulesMonitors from "./catalogues/fr/ui.schedules.monitors.json";
 import frUiSettingsAccount from "./catalogues/fr/ui.settings.account.json";
 import frUiSettingsAppearanceEditor from "./catalogues/fr/ui.settings.appearance.editor.json";
 import frUiSettingsAppearance from "./catalogues/fr/ui.settings.appearance.json";
@@ -660,6 +663,7 @@ import hiUiProjects from "./catalogues/hi/ui.projects.json";
 import hiUiProviders from "./catalogues/hi/ui.providers.json";
 import hiUiSchedulesErrors from "./catalogues/hi/ui.schedules.errors.json";
 import hiUiSchedules from "./catalogues/hi/ui.schedules.json";
+import hiUiSchedulesMonitors from "./catalogues/hi/ui.schedules.monitors.json";
 import hiUiSettingsAccount from "./catalogues/hi/ui.settings.account.json";
 import hiUiSettingsAppearanceEditor from "./catalogues/hi/ui.settings.appearance.editor.json";
 import hiUiSettingsAppearance from "./catalogues/hi/ui.settings.appearance.json";
@@ -827,6 +831,7 @@ import ruUiProjects from "./catalogues/ru/ui.projects.json";
 import ruUiProviders from "./catalogues/ru/ui.providers.json";
 import ruUiSchedulesErrors from "./catalogues/ru/ui.schedules.errors.json";
 import ruUiSchedules from "./catalogues/ru/ui.schedules.json";
+import ruUiSchedulesMonitors from "./catalogues/ru/ui.schedules.monitors.json";
 import ruUiSettingsAccount from "./catalogues/ru/ui.settings.account.json";
 import ruUiSettingsAppearanceEditor from "./catalogues/ru/ui.settings.appearance.editor.json";
 import ruUiSettingsAppearance from "./catalogues/ru/ui.settings.appearance.json";
@@ -994,6 +999,7 @@ import urUiProjects from "./catalogues/ur/ui.projects.json";
 import urUiProviders from "./catalogues/ur/ui.providers.json";
 import urUiSchedulesErrors from "./catalogues/ur/ui.schedules.errors.json";
 import urUiSchedules from "./catalogues/ur/ui.schedules.json";
+import urUiSchedulesMonitors from "./catalogues/ur/ui.schedules.monitors.json";
 import urUiSettingsAccount from "./catalogues/ur/ui.settings.account.json";
 import urUiSettingsAppearanceEditor from "./catalogues/ur/ui.settings.appearance.editor.json";
 import urUiSettingsAppearance from "./catalogues/ur/ui.settings.appearance.json";
@@ -1161,6 +1167,7 @@ import viUiProjects from "./catalogues/vi/ui.projects.json";
 import viUiProviders from "./catalogues/vi/ui.providers.json";
 import viUiSchedulesErrors from "./catalogues/vi/ui.schedules.errors.json";
 import viUiSchedules from "./catalogues/vi/ui.schedules.json";
+import viUiSchedulesMonitors from "./catalogues/vi/ui.schedules.monitors.json";
 import viUiSettingsAccount from "./catalogues/vi/ui.settings.account.json";
 import viUiSettingsAppearanceEditor from "./catalogues/vi/ui.settings.appearance.editor.json";
 import viUiSettingsAppearance from "./catalogues/vi/ui.settings.appearance.json";
@@ -1328,6 +1335,7 @@ import zhCNUiProjects from "./catalogues/zh-CN/ui.projects.json";
 import zhCNUiProviders from "./catalogues/zh-CN/ui.providers.json";
 import zhCNUiSchedulesErrors from "./catalogues/zh-CN/ui.schedules.errors.json";
 import zhCNUiSchedules from "./catalogues/zh-CN/ui.schedules.json";
+import zhCNUiSchedulesMonitors from "./catalogues/zh-CN/ui.schedules.monitors.json";
 import zhCNUiSettingsAccount from "./catalogues/zh-CN/ui.settings.account.json";
 import zhCNUiSettingsAppearanceEditor from "./catalogues/zh-CN/ui.settings.appearance.editor.json";
 import zhCNUiSettingsAppearance from "./catalogues/zh-CN/ui.settings.appearance.json";
@@ -1498,6 +1506,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiProviders,
 	...enUiSchedulesErrors,
 	...enUiSchedules,
+	...enUiSchedulesMonitors,
 	...enUiSettingsAccount,
 	...enUiSettingsAppearanceEditor,
 	...enUiSettingsAppearance,
@@ -1673,6 +1682,7 @@ export const bundledCatalogues: Readonly<
 		...esUiProviders,
 		...esUiSchedulesErrors,
 		...esUiSchedules,
+		...esUiSchedulesMonitors,
 		...esUiSettingsAccount,
 		...esUiSettingsAppearanceEditor,
 		...esUiSettingsAppearance,
@@ -1842,6 +1852,7 @@ export const bundledCatalogues: Readonly<
 		...frUiProviders,
 		...frUiSchedulesErrors,
 		...frUiSchedules,
+		...frUiSchedulesMonitors,
 		...frUiSettingsAccount,
 		...frUiSettingsAppearanceEditor,
 		...frUiSettingsAppearance,
@@ -2011,6 +2022,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiProviders,
 		...hiUiSchedulesErrors,
 		...hiUiSchedules,
+		...hiUiSchedulesMonitors,
 		...hiUiSettingsAccount,
 		...hiUiSettingsAppearanceEditor,
 		...hiUiSettingsAppearance,
@@ -2180,6 +2192,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiProviders,
 		...ruUiSchedulesErrors,
 		...ruUiSchedules,
+		...ruUiSchedulesMonitors,
 		...ruUiSettingsAccount,
 		...ruUiSettingsAppearanceEditor,
 		...ruUiSettingsAppearance,
@@ -2349,6 +2362,7 @@ export const bundledCatalogues: Readonly<
 		...urUiProviders,
 		...urUiSchedulesErrors,
 		...urUiSchedules,
+		...urUiSchedulesMonitors,
 		...urUiSettingsAccount,
 		...urUiSettingsAppearanceEditor,
 		...urUiSettingsAppearance,
@@ -2518,6 +2532,7 @@ export const bundledCatalogues: Readonly<
 		...viUiProviders,
 		...viUiSchedulesErrors,
 		...viUiSchedules,
+		...viUiSchedulesMonitors,
 		...viUiSettingsAccount,
 		...viUiSettingsAppearanceEditor,
 		...viUiSettingsAppearance,
@@ -2687,6 +2702,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiProviders,
 		...zhCNUiSchedulesErrors,
 		...zhCNUiSchedules,
+		...zhCNUiSchedulesMonitors,
 		...zhCNUiSettingsAccount,
 		...zhCNUiSettingsAppearanceEditor,
 		...zhCNUiSettingsAppearance,
@@ -11383,6 +11399,9 @@ export type MessageParams = {
 	"ui.schedules.wake_conversation_row.edit_wake": undefined;
 	"ui.schedules.wake_conversation_row.open_conversation": undefined;
 	"ui.schedules.wake_conversation_row.show_fewer": undefined;
+	"ui.schedules.monitors.list_truncated": { shown: number; total: number };
+	"ui.schedules.monitors.parked_clause": undefined;
+	"ui.schedules.monitors.parked_state": undefined;
 	"ui.settings.account.radient_account_section.account_id": undefined;
 	"ui.settings.account.radient_account_section.connected": undefined;
 	"ui.settings.account.radient_account_section.created": undefined;

@@ -1,8 +1,11 @@
 import {
+	type MonitorRow,
 	type WakeRow,
+	deriveMonitors,
 	deriveWakes,
 	formatWakeCadence,
 	formatWakeDue,
+	monitorClause,
 } from "@features/chat/components/run-details/run-detail-model";
 import type { ScheduleResponse } from "@shared/api/local-operator";
 import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
@@ -37,6 +40,7 @@ import {
  * field names and renders its answer.
  */
 import type {
+	DesktopMonitorEntry,
 	DesktopWakeEntry,
 	DesktopWakeScheduleRow,
 } from "../../../../shared/desktop-contract";
@@ -305,11 +309,16 @@ export const workspaceName = (cwd: string): string => {
  * Whether the page may say "nothing is scheduled here".
  *
  * The one predicate behind the empty state, and the reason it is a function
- * rather than five terms inline: `read_error` is a 200, so a listing that could
- * not READ the store satisfied `!error` and the page told a user with thirty
+ * rather than inline terms: `read_error` is a 200, so a listing that could not
+ * READ the store satisfied `!error` and the page told a user with thirty
  * schedules that they had none and invited them to make one (round-2 D13/U8).
- * Both lists must have settled, both must be genuinely empty, and the wake
- * listing must have been readable.
+ * Every list must have settled, every list must be genuinely empty, and each
+ * index must have been readable.
+ *
+ * The monitor half (#1898) is held to the same three terms as the wake half: a
+ * machine with standing watches and no wakes must not read "No scheduled tasks
+ * yet" over a section that lists them, and a monitor listing that failed or
+ * could not read its index has not earned the claim that nothing is watched.
  */
 export const isEmptyListing = (input: {
 	loading: boolean;
@@ -318,13 +327,21 @@ export const isEmptyListing = (input: {
 	wakeRows: number;
 	legacyLoading: boolean;
 	legacyRows: number;
+	monitorsLoading: boolean;
+	monitorsError: boolean;
+	monitorsReadError: boolean;
+	monitorRows: number;
 }): boolean =>
 	!input.loading &&
 	!input.error &&
 	!input.readError &&
 	!input.legacyLoading &&
+	!input.monitorsLoading &&
+	!input.monitorsError &&
+	!input.monitorsReadError &&
 	input.wakeRows === 0 &&
-	input.legacyRows === 0;
+	input.legacyRows === 0 &&
+	input.monitorRows === 0;
 
 /**
  * The dialog's inline refusals, derived rather than scattered through the JSX.
@@ -888,3 +905,126 @@ export const SCHEDULES_CONVERSATION_READ = {
 	staleTime: 0,
 	refetchOnWindowFocus: true,
 } as const;
+
+/*
+ * ---------------------------------------------------------------------------
+ * The monitor section (#1898)
+ * ---------------------------------------------------------------------------
+ */
+
+/**
+ * A watch's page-wide identity: `<session_id>/<monitor_id>`.
+ *
+ * Monitor handles are minted PER SESSION (`m1`, `m2`, ...), so two conversations
+ * on this page routinely both hold an `m1`. The run pane never meets that - it
+ * shows one session - and its cancel interaction (`use-monitor-cancel.ts`) keys
+ * its per-row records and its focus fallback (`[data-monitor-cancel=<id>]`) by
+ * the row id alone. Re-keying the rows here, rather than forking that hook,
+ * lets the page reuse the pane's interaction unchanged: the `Cancelled` mark,
+ * the refusal record and the focus return then land on the right row.
+ *
+ * `/` is safe as the seam because neither half can contain it: both handles
+ * are path segments the contract refuses separators in (`monitors.cancel`), so
+ * the FIRST `/` is always the boundary.
+ */
+export const monitorRowKey = (sessionId: string, monitorId: string): string =>
+	`${sessionId}/${monitorId}`;
+
+/** The inverse of `monitorRowKey`, or `null` for a key that is not one. */
+export const splitMonitorRowKey = (
+	key: string,
+): { sessionId: string; monitorId: string } | null => {
+	const seam = key.indexOf("/");
+	if (seam <= 0 || seam === key.length - 1) return null;
+	return { sessionId: key.slice(0, seam), monitorId: key.slice(seam + 1) };
+};
+
+/**
+ * One conversation with monitors, as the page's Monitors section renders it -
+ * the wake row's twin (`ScheduledTaskRow`), one per session for the same
+ * reason: the session is what the row opens and what a cancel targets.
+ */
+export type MonitorConversationRow = {
+	sessionId: string;
+	/** Never empty: `wakeRowName`'s fallback, so both sections floor alike. */
+	name: string;
+	cwd: string;
+	/** Stopped (`dormant`) or transcript gone (`ghost`): nothing here ticks. */
+	parked: boolean;
+	/** The soonest check across the watches, for the section's order. */
+	nextDueAt: number | null;
+	/**
+	 * The run pane's own rows (`deriveMonitors`), re-keyed by `monitorRowKey`.
+	 * Not capped: unlike wakes, a session holds a small bounded number of
+	 * watches (`values.monitor.maxMonitors`), and the page scrolls.
+	 */
+	monitors: MonitorRow[];
+	/** The head's trailing clause: the tally, or the parked sentence. */
+	meta: string;
+};
+
+/**
+ * Every monitor-carrying conversation the section draws, soonest check first.
+ *
+ * The rows are the PANE'S: each entry's watches go through `deriveMonitors`
+ * exactly as `frontend.monitors` does, so the cadence, `last check`, the state
+ * word, the failure count and the disabled reason read identically on both
+ * surfaces (the page and the pane can be on screen together). What the page
+ * adds is only what the pane cannot know - which session a watch belongs to, and
+ * whether that session is parked.
+ *
+ * A PARKED conversation's watches drop their next-check instant for the wake
+ * rows' reason (`toScheduledTaskRow`): a stopped session does not tick, so the
+ * stored instant is not one it will keep, and printing it would be wrong in the
+ * one state where the reader is deciding whether the watch is still real. The
+ * slot takes the state word `parked` instead - the backend's own precedence
+ * (`state: "dormant"` wins over `disabled`, `cli._monitor_state_word`), so a
+ * disabled watch in a stopped session leads with why it is not running now -
+ * while the health tail (failure count or disabled reason) stays, since it is
+ * still true.
+ *
+ * An entry whose watches all derive to nothing is not a row: the pane's
+ * "absence is not a state" rule, and the index's last-watch-retired race.
+ */
+export const monitorConversationRows = (
+	entries: DesktopMonitorEntry[] | undefined,
+	nowMs: number,
+): MonitorConversationRow[] =>
+	(entries ?? [])
+		.map((entry): MonitorConversationRow => {
+			const parked = entry.dormant === true || entry.ghost === true;
+			const monitors = deriveMonitors(entry.monitors ?? [], nowMs).map(
+				(row) => ({
+					...row,
+					id: monitorRowKey(entry.session_id, row.id),
+					...(parked
+						? {
+								whenLabel: t("ui.schedules.monitors.parked_state"),
+								nextDueAt: null,
+							}
+						: {}),
+				}),
+			);
+			return {
+				sessionId: entry.session_id,
+				name: wakeRowName(entry.name ?? "", entry.session_id, entry.cwd ?? ""),
+				cwd: entry.cwd ?? "",
+				parked,
+				nextDueAt: parked
+					? null
+					: (entry.next_due_at ??
+						monitors.find((row) => row.nextDueAt !== null)?.nextDueAt ??
+						null),
+				monitors,
+				meta: parked
+					? t("ui.schedules.monitors.parked_clause")
+					: monitorClause(monitors.length),
+			};
+		})
+		.filter((row) => row.monitors.length > 0)
+		.sort(
+			(a, b) =>
+				(a.nextDueAt ?? Number.POSITIVE_INFINITY) -
+					(b.nextDueAt ?? Number.POSITIVE_INFINITY) ||
+				a.name.localeCompare(b.name),
+		);

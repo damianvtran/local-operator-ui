@@ -1,0 +1,5 @@
+{
+	"ui.schedules.monitors.list_truncated": "نگرانی والی {total, plural, one {{total, number, ::group-off} گفتگو} other {{total, number, ::group-off} گفتگوؤں}} میں سے دکھائی گئی تعداد: {shown, number, ::group-off}۔",
+	"ui.schedules.monitors.parked_clause": "موقوف — اس کی نگرانیاں جانچ نہیں کر رہیں",
+	"ui.schedules.monitors.parked_state": "موقوف"
+}

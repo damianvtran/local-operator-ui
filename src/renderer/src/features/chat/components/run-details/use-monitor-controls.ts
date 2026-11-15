@@ -21,11 +21,12 @@
 import { userFacingMessage } from "@shared/api/local-operator/desktop-api";
 import {
 	type DesktopMonitorWriteReceipt,
+	MONITORS_LIST_KEY,
 	MonitorsApi,
 } from "@shared/api/local-operator/monitors-api";
 import { resyncCanonicalSession } from "@shared/hooks/use-canonical-session";
 import { t } from "@shared/i18n";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import {
 	type MonitorCancelOutcome,
@@ -49,6 +50,7 @@ export const useMonitorControls = ({
 }: {
 	sessionId?: string | null;
 }): MonitorControls => {
+	const queryClient = useQueryClient();
 	const cancel = useMutation<DesktopMonitorWriteReceipt, Error, string>({
 		mutationFn: (monitorId) => {
 			/*
@@ -94,9 +96,16 @@ export const useMonitorControls = ({
 					 * canonical push happened to arrive.
 					 */
 					if (sessionId) resyncCanonicalSession(sessionId);
+					/*
+					 * The Schedules page's machine-wide listing holds the same watch
+					 * (#1898), and nothing pushes the monitor index: without this a
+					 * watch cancelled here would sit on that page until its poll.
+					 * Invalidating a key nobody has mounted is a no-op.
+					 */
+					void queryClient.invalidateQueries({ queryKey: MONITORS_LIST_KEY });
 				}
 			},
-			[mutateAsync, sessionId],
+			[mutateAsync, sessionId, queryClient],
 		),
 	};
 };
