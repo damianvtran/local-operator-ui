@@ -107580,219 +107580,600 @@
 		{
 			"locale": "es",
 			"namespace": "ui.browser.extensions",
-			"source_sha256": "88d47ae68fd0a0b6d8737c6efe3def4167ddf041ea02d6a07b6afdced91d4d6b",
-			"target_sha256": "48e9d02d6b46c8b9fa0465adf062948192725570c9e00964b673db0022f93a16",
+			"source_sha256": "a44227481ff49391518de21a6596d0474697cd7245e9d6cac947d6e130edc58d",
+			"target_sha256": "477d894610f2ef8b7f2fb3f600415a00862dedc5b46983d007677f0ddf6e1821",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-09"
+				"date": "2026-11-15",
+				"note": "PR #1923 r3 translation lane: coder cfa15e1487df / anthropic/claude-opus-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5 (es host label 6b7fb74bff)"
 			},
 			"auditors": [
 				{
-					"agent": "designer",
+					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-09",
-					"result": "clean-with-findings",
-					"instance": "78bf270248b6-r3",
+					"date": "2026-11-15",
+					"result": "clean",
+					"instance": "pr1923-es-browser-extensions-r3-1654a5a8",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 4
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/78bf270248b6-r3.json",
-					"receipt_sha256": "66ceb172b043320a696930ad17493d73b38826b99bc646d6ab3f5ce2ffb79979",
-					"scope": "ui.browser.extensions round-3 independent copy audit",
-					"note": "Round-3 receipt; independent designer audit, product copy unchanged"
+					"receipt": "i18n/receipts/pr1923-es-browser-extensions-r3-1654a5a8.json",
+					"receipt_sha256": "037f401fc241cd6515942bf583df27ccceceec28064988ed6e4f473c66d931fc",
+					"scope": "PR #1923 round-3 es native host label (1 key)",
+					"note": "PR #1923 r3 translation lane: coder cfa15e1487df / anthropic/claude-opus-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5 (es host label 6b7fb74bff)"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "88d47ae68fd0a0b6d8737c6efe3def4167ddf041ea02d6a07b6afdced91d4d6b",
+					"target_sha256": "48e9d02d6b46c8b9fa0465adf062948192725570c9e00964b673db0022f93a16",
+					"auditors": [
+						{
+							"agent": "designer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-09",
+							"result": "clean-with-findings",
+							"instance": "78bf270248b6-r3",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 4
+							},
+							"receipt": "i18n/receipts/78bf270248b6-r3.json",
+							"receipt_sha256": "66ceb172b043320a696930ad17493d73b38826b99bc646d6ab3f5ce2ffb79979",
+							"scope": "ui.browser.extensions round-3 independent copy audit",
+							"note": "Round-3 receipt; independent designer audit, product copy unchanged"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "7b454b104d77106b1b2a2ae7d4fff3be4b3330f40c84303856009d72c2102564",
+					"target_sha256": "191679e29b103e3b485353b97ecea804ab21978321e4fe244aee869000a99c37",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "pr1923-es-browser-extensions-0d475161",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/pr1923-es-browser-extensions-0d475161.json",
+							"receipt_sha256": "9f99b56449b555d8180601f3671344329ac24159cec1bc538ead45ff04d7d308",
+							"scope": "PR #1923 native-messaging copy (13 keys)",
+							"note": "PR #1923 translation lane: coder / anthropic/claude-opus-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5 (fixes 011a83e5d4)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a44227481ff49391518de21a6596d0474697cd7245e9d6cac947d6e130edc58d",
+					"target_sha256": "3705082193de98073369d74473b3b9beac5b4017234583db7e2459ae1fdf98fb",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean",
+							"instance": "pr1923-es-browser-extensions-r2-38f85bd3",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1923-es-browser-extensions-r2-38f85bd3.json",
+							"receipt_sha256": "018b5c9c25a1165c35d9b2f287fba8eff5c6da390843a9ce65008df986d8fb48",
+							"scope": "PR #1923 round-2 native-messaging copy (11 keys)",
+							"note": "PR #1923 r2 translation lane: coder 4da329ae5783 / anthropic/claude-opus-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5 (fix f59e7ef914)"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "fr",
 			"namespace": "ui.browser.extensions",
-			"source_sha256": "88d47ae68fd0a0b6d8737c6efe3def4167ddf041ea02d6a07b6afdced91d4d6b",
-			"target_sha256": "e2788eba32114e68a8b0ff3eff25f864068b880abeb549b321a29c7c10146254",
+			"source_sha256": "a44227481ff49391518de21a6596d0474697cd7245e9d6cac947d6e130edc58d",
+			"target_sha256": "7d6baa7734306b128697bd67614e70da7c98e086f623ad90eff18e6f312c41f1",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-09"
+				"date": "2026-11-14",
+				"note": "PR #1923 r2 translation lane: coder 4da329ae5783 / anthropic/claude-opus-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5 (fix f59e7ef914)"
 			},
 			"auditors": [
 				{
-					"agent": "designer",
+					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-09",
+					"date": "2026-11-14",
 					"result": "clean-with-findings",
-					"instance": "78bf270248b6-r3",
+					"instance": "pr1923-fr-browser-extensions-r2-41957f95",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 4
+						"minor": 1,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/78bf270248b6-r3.json",
-					"receipt_sha256": "66ceb172b043320a696930ad17493d73b38826b99bc646d6ab3f5ce2ffb79979",
-					"scope": "ui.browser.extensions round-3 independent copy audit",
-					"note": "Round-3 receipt; independent designer audit, product copy unchanged"
+					"receipt": "i18n/receipts/pr1923-fr-browser-extensions-r2-41957f95.json",
+					"receipt_sha256": "cd32bb4692f8d6ba5e58ce4a2278613e336ca04ad425ff692b13cf1c9fba4462",
+					"scope": "PR #1923 round-2 native-messaging copy (11 keys)",
+					"note": "PR #1923 r2 translation lane: coder 4da329ae5783 / anthropic/claude-opus-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5 (fix f59e7ef914)"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "88d47ae68fd0a0b6d8737c6efe3def4167ddf041ea02d6a07b6afdced91d4d6b",
+					"target_sha256": "e2788eba32114e68a8b0ff3eff25f864068b880abeb549b321a29c7c10146254",
+					"auditors": [
+						{
+							"agent": "designer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-09",
+							"result": "clean-with-findings",
+							"instance": "78bf270248b6-r3",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 4
+							},
+							"receipt": "i18n/receipts/78bf270248b6-r3.json",
+							"receipt_sha256": "66ceb172b043320a696930ad17493d73b38826b99bc646d6ab3f5ce2ffb79979",
+							"scope": "ui.browser.extensions round-3 independent copy audit",
+							"note": "Round-3 receipt; independent designer audit, product copy unchanged"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "7b454b104d77106b1b2a2ae7d4fff3be4b3330f40c84303856009d72c2102564",
+					"target_sha256": "dc9d1790da29a856f2e19eb551658123ab057b130a584c54ebab1831a72591fd",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "pr1923-fr-browser-extensions-5597a5a9",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1923-fr-browser-extensions-5597a5a9.json",
+							"receipt_sha256": "39d8d010690615db306bd333d7383b71e309fd9cb7409fe3afbee9436a075d43",
+							"scope": "PR #1923 native-messaging copy (13 keys)",
+							"note": "PR #1923 translation lane: coder / anthropic/claude-opus-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5 (fixes 011a83e5d4)"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.browser.extensions",
-			"source_sha256": "88d47ae68fd0a0b6d8737c6efe3def4167ddf041ea02d6a07b6afdced91d4d6b",
-			"target_sha256": "7d8479f7a433bdc3fe89905a6924b500f68b64d925113bdd079b55202eacb509",
+			"source_sha256": "a44227481ff49391518de21a6596d0474697cd7245e9d6cac947d6e130edc58d",
+			"target_sha256": "9517f75fbe0e2717b87601f1ea0fdced59db45d3ec4ce671818f888ab4b8b9a7",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-09"
+				"date": "2026-11-14",
+				"note": "PR #1923 r2 translation lane: coder 4da329ae5783 / anthropic/claude-opus-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5 (fix f59e7ef914)"
 			},
 			"auditors": [
 				{
-					"agent": "designer",
+					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-09",
-					"result": "clean-with-findings",
-					"instance": "78bf270248b6-r3",
+					"date": "2026-11-14",
+					"result": "clean",
+					"instance": "pr1923-hi-browser-extensions-r2-c1855e8b",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 4
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/78bf270248b6-r3.json",
-					"receipt_sha256": "66ceb172b043320a696930ad17493d73b38826b99bc646d6ab3f5ce2ffb79979",
-					"scope": "ui.browser.extensions round-3 independent copy audit",
-					"note": "Round-3 receipt; independent designer audit, product copy unchanged"
+					"receipt": "i18n/receipts/pr1923-hi-browser-extensions-r2-c1855e8b.json",
+					"receipt_sha256": "016ab2aedb612d5e799c17aeb134af98b3666e70dcb456cbf2f4d283ce91cf1b",
+					"scope": "PR #1923 round-2 native-messaging copy (11 keys)",
+					"note": "PR #1923 r2 translation lane: coder 4da329ae5783 / anthropic/claude-opus-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5 (fix f59e7ef914)"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "88d47ae68fd0a0b6d8737c6efe3def4167ddf041ea02d6a07b6afdced91d4d6b",
+					"target_sha256": "7d8479f7a433bdc3fe89905a6924b500f68b64d925113bdd079b55202eacb509",
+					"auditors": [
+						{
+							"agent": "designer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-09",
+							"result": "clean-with-findings",
+							"instance": "78bf270248b6-r3",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 4
+							},
+							"receipt": "i18n/receipts/78bf270248b6-r3.json",
+							"receipt_sha256": "66ceb172b043320a696930ad17493d73b38826b99bc646d6ab3f5ce2ffb79979",
+							"scope": "ui.browser.extensions round-3 independent copy audit",
+							"note": "Round-3 receipt; independent designer audit, product copy unchanged"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "7b454b104d77106b1b2a2ae7d4fff3be4b3330f40c84303856009d72c2102564",
+					"target_sha256": "8289eb9954fe63a99d44a200d9a10fa34d66b33107ba233bb0a5c03bbab70078",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean",
+							"instance": "pr1923-hi-browser-extensions-d6844234",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1923-hi-browser-extensions-d6844234.json",
+							"receipt_sha256": "37bc96dc1455957fc0c941a07a40d76578e4a2e94431677d7348262d5a6eeadc",
+							"scope": "PR #1923 native-messaging copy (13 keys)",
+							"note": "PR #1923 translation lane: coder / anthropic/claude-opus-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5 (fixes 011a83e5d4)"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ru",
 			"namespace": "ui.browser.extensions",
-			"source_sha256": "88d47ae68fd0a0b6d8737c6efe3def4167ddf041ea02d6a07b6afdced91d4d6b",
-			"target_sha256": "eb1d241bd11e4f3b042ad3b7a71c8720537df3ef922d68bc978cb0b2985f6c45",
+			"source_sha256": "a44227481ff49391518de21a6596d0474697cd7245e9d6cac947d6e130edc58d",
+			"target_sha256": "cfa2da646d5f67a24c5b9f70726cc0c7a6aa6d1143c1f1080b1b25b46d0a8ce2",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-09"
+				"date": "2026-11-14",
+				"note": "PR #1923 r2 translation lane: coder 4da329ae5783 / anthropic/claude-opus-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5 (fix f59e7ef914)"
 			},
 			"auditors": [
 				{
-					"agent": "designer",
+					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-09",
-					"result": "clean-with-findings",
-					"instance": "78bf270248b6-r3",
+					"date": "2026-11-14",
+					"result": "clean",
+					"instance": "pr1923-ru-browser-extensions-r2-7eabf9fa",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 4
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/78bf270248b6-r3.json",
-					"receipt_sha256": "66ceb172b043320a696930ad17493d73b38826b99bc646d6ab3f5ce2ffb79979",
-					"scope": "ui.browser.extensions round-3 independent copy audit",
-					"note": "Round-3 receipt; independent designer audit, product copy unchanged"
+					"receipt": "i18n/receipts/pr1923-ru-browser-extensions-r2-7eabf9fa.json",
+					"receipt_sha256": "e61c36b87d0a421afbea1313cac5b068577ae96fbc857648239e91d181fba0e0",
+					"scope": "PR #1923 round-2 native-messaging copy (11 keys)",
+					"note": "PR #1923 r2 translation lane: coder 4da329ae5783 / anthropic/claude-opus-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5 (fix f59e7ef914)"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "88d47ae68fd0a0b6d8737c6efe3def4167ddf041ea02d6a07b6afdced91d4d6b",
+					"target_sha256": "eb1d241bd11e4f3b042ad3b7a71c8720537df3ef922d68bc978cb0b2985f6c45",
+					"auditors": [
+						{
+							"agent": "designer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-09",
+							"result": "clean-with-findings",
+							"instance": "78bf270248b6-r3",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 4
+							},
+							"receipt": "i18n/receipts/78bf270248b6-r3.json",
+							"receipt_sha256": "66ceb172b043320a696930ad17493d73b38826b99bc646d6ab3f5ce2ffb79979",
+							"scope": "ui.browser.extensions round-3 independent copy audit",
+							"note": "Round-3 receipt; independent designer audit, product copy unchanged"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "7b454b104d77106b1b2a2ae7d4fff3be4b3330f40c84303856009d72c2102564",
+					"target_sha256": "f403a7ca2b2ef157c3b433763bca316cc9b8b3bb2cf9e02004f5f71a93304cb3",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "pr1923-ru-browser-extensions-03ade852",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1923-ru-browser-extensions-03ade852.json",
+							"receipt_sha256": "a0437bce57058d9752eb279b0397704f6b7125e749a6fe8d22d5998f7417111c",
+							"scope": "PR #1923 native-messaging copy (13 keys)",
+							"note": "PR #1923 translation lane: coder / anthropic/claude-opus-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5 (fixes 011a83e5d4)"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.browser.extensions",
-			"source_sha256": "88d47ae68fd0a0b6d8737c6efe3def4167ddf041ea02d6a07b6afdced91d4d6b",
-			"target_sha256": "e1e03672356bd5d1d8386ea24874c49c23fd44d46be9138c797d33a1e092088a",
+			"source_sha256": "a44227481ff49391518de21a6596d0474697cd7245e9d6cac947d6e130edc58d",
+			"target_sha256": "57779951facbae3237da478c27990f95a33e8203f77eb40244d8efda08963564",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-09"
+				"date": "2026-11-14",
+				"note": "PR #1923 r2 translation lane: coder 4da329ae5783 / anthropic/claude-opus-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5 (fix f59e7ef914)"
 			},
 			"auditors": [
 				{
-					"agent": "designer",
+					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-09",
-					"result": "clean-with-findings",
-					"instance": "78bf270248b6-r3",
+					"date": "2026-11-14",
+					"result": "clean",
+					"instance": "pr1923-ur-browser-extensions-r2-df7dd8d4",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 4
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/78bf270248b6-r3.json",
-					"receipt_sha256": "66ceb172b043320a696930ad17493d73b38826b99bc646d6ab3f5ce2ffb79979",
-					"scope": "ui.browser.extensions round-3 independent copy audit",
-					"note": "Round-3 receipt; independent designer audit, product copy unchanged"
+					"receipt": "i18n/receipts/pr1923-ur-browser-extensions-r2-df7dd8d4.json",
+					"receipt_sha256": "579cd5c720d08805eb7b7fdce3c5bd9a25fe7d6f70a19153b630fd48313d8075",
+					"scope": "PR #1923 round-2 native-messaging copy (11 keys)",
+					"note": "PR #1923 r2 translation lane: coder 4da329ae5783 / anthropic/claude-opus-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5 (fix f59e7ef914)"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "88d47ae68fd0a0b6d8737c6efe3def4167ddf041ea02d6a07b6afdced91d4d6b",
+					"target_sha256": "e1e03672356bd5d1d8386ea24874c49c23fd44d46be9138c797d33a1e092088a",
+					"auditors": [
+						{
+							"agent": "designer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-09",
+							"result": "clean-with-findings",
+							"instance": "78bf270248b6-r3",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 4
+							},
+							"receipt": "i18n/receipts/78bf270248b6-r3.json",
+							"receipt_sha256": "66ceb172b043320a696930ad17493d73b38826b99bc646d6ab3f5ce2ffb79979",
+							"scope": "ui.browser.extensions round-3 independent copy audit",
+							"note": "Round-3 receipt; independent designer audit, product copy unchanged"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "7b454b104d77106b1b2a2ae7d4fff3be4b3330f40c84303856009d72c2102564",
+					"target_sha256": "8b31ab20302cf571a5dbf20051c6214c1b3507b68a893e16a960fcc1f6ab3f6c",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean",
+							"instance": "pr1923-ur-browser-extensions-ded44817",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1923-ur-browser-extensions-ded44817.json",
+							"receipt_sha256": "e3b340c6d6dc27afb90de792559d9f176d4f0f97f6d96c182fad5fc39934f74f",
+							"scope": "PR #1923 native-messaging copy (13 keys)",
+							"note": "PR #1923 translation lane: coder / anthropic/claude-opus-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5 (fixes 011a83e5d4)"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.browser.extensions",
-			"source_sha256": "88d47ae68fd0a0b6d8737c6efe3def4167ddf041ea02d6a07b6afdced91d4d6b",
-			"target_sha256": "49d4db25bc9eda413ca4fb1caafed4095e874e5c94d09ed2065816ecd67a9210",
+			"source_sha256": "a44227481ff49391518de21a6596d0474697cd7245e9d6cac947d6e130edc58d",
+			"target_sha256": "d8ee86fbf8d36d6fff0e237ebdd8c6603b72e3bb27c601b39b5b17e0c5190a9f",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-09"
+				"date": "2026-11-14",
+				"note": "PR #1923 r2 translation lane: coder 4da329ae5783 / anthropic/claude-opus-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5 (fix f59e7ef914)"
 			},
 			"auditors": [
 				{
-					"agent": "designer",
+					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-09",
-					"result": "clean-with-findings",
-					"instance": "78bf270248b6-r3",
+					"date": "2026-11-14",
+					"result": "clean",
+					"instance": "pr1923-vi-browser-extensions-r2-68d88a19",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 4
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/78bf270248b6-r3.json",
-					"receipt_sha256": "66ceb172b043320a696930ad17493d73b38826b99bc646d6ab3f5ce2ffb79979",
-					"scope": "ui.browser.extensions round-3 independent copy audit",
-					"note": "Round-3 receipt; independent designer audit, product copy unchanged"
+					"receipt": "i18n/receipts/pr1923-vi-browser-extensions-r2-68d88a19.json",
+					"receipt_sha256": "23f17ab0459b84e3d2366ba60f0ce018a6c4e38fe4925eaa9847043505211cf9",
+					"scope": "PR #1923 round-2 native-messaging copy (11 keys)",
+					"note": "PR #1923 r2 translation lane: coder 4da329ae5783 / anthropic/claude-opus-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5 (fix f59e7ef914)"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "88d47ae68fd0a0b6d8737c6efe3def4167ddf041ea02d6a07b6afdced91d4d6b",
+					"target_sha256": "49d4db25bc9eda413ca4fb1caafed4095e874e5c94d09ed2065816ecd67a9210",
+					"auditors": [
+						{
+							"agent": "designer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-09",
+							"result": "clean-with-findings",
+							"instance": "78bf270248b6-r3",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 4
+							},
+							"receipt": "i18n/receipts/78bf270248b6-r3.json",
+							"receipt_sha256": "66ceb172b043320a696930ad17493d73b38826b99bc646d6ab3f5ce2ffb79979",
+							"scope": "ui.browser.extensions round-3 independent copy audit",
+							"note": "Round-3 receipt; independent designer audit, product copy unchanged"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "7b454b104d77106b1b2a2ae7d4fff3be4b3330f40c84303856009d72c2102564",
+					"target_sha256": "60d1f42b708c08a97c08ec3cc9413528276b07569b73e0586043de7134d08114",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean",
+							"instance": "pr1923-vi-browser-extensions-40d9e890",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1923-vi-browser-extensions-40d9e890.json",
+							"receipt_sha256": "06c8d5654b72fc5fe66ec69d6140b4522cd103ce5fbd9846dff869188a929764",
+							"scope": "PR #1923 native-messaging copy (13 keys)",
+							"note": "PR #1923 translation lane: coder / anthropic/claude-opus-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5 (fixes 011a83e5d4)"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.browser.extensions",
-			"source_sha256": "88d47ae68fd0a0b6d8737c6efe3def4167ddf041ea02d6a07b6afdced91d4d6b",
-			"target_sha256": "7dfb43fdb18dd6308a1757d0440864d28f64384cd110c1e4cd97ce9fab3e2f7a",
+			"source_sha256": "a44227481ff49391518de21a6596d0474697cd7245e9d6cac947d6e130edc58d",
+			"target_sha256": "56bdeca58310e7a4659ad1de23e7674d916fe9f409a8f88887312c09c21482b3",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
-				"date": "2026-11-09"
+				"date": "2026-11-14",
+				"note": "PR #1923 r2 translation lane: coder 4da329ae5783 / anthropic/claude-opus-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5 (fix f59e7ef914)"
 			},
 			"auditors": [
 				{
-					"agent": "designer",
+					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-09",
-					"result": "clean-with-findings",
-					"instance": "78bf270248b6-r3",
+					"date": "2026-11-14",
+					"result": "clean",
+					"instance": "pr1923-zh-cn-browser-extensions-r2-b45a0780",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 4
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/78bf270248b6-r3.json",
-					"receipt_sha256": "66ceb172b043320a696930ad17493d73b38826b99bc646d6ab3f5ce2ffb79979",
-					"scope": "ui.browser.extensions round-3 independent copy audit",
-					"note": "Round-3 receipt; independent designer audit, product copy unchanged"
+					"receipt": "i18n/receipts/pr1923-zh-cn-browser-extensions-r2-b45a0780.json",
+					"receipt_sha256": "1798b279d5baf1c1b6e12afbc905122c18f576ed6563ebbd39faea74d1c29882",
+					"scope": "PR #1923 round-2 native-messaging copy (11 keys)",
+					"note": "PR #1923 r2 translation lane: coder 4da329ae5783 / anthropic/claude-opus-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5 (fix f59e7ef914)"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "88d47ae68fd0a0b6d8737c6efe3def4167ddf041ea02d6a07b6afdced91d4d6b",
+					"target_sha256": "7dfb43fdb18dd6308a1757d0440864d28f64384cd110c1e4cd97ce9fab3e2f7a",
+					"auditors": [
+						{
+							"agent": "designer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-09",
+							"result": "clean-with-findings",
+							"instance": "78bf270248b6-r3",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 4
+							},
+							"receipt": "i18n/receipts/78bf270248b6-r3.json",
+							"receipt_sha256": "66ceb172b043320a696930ad17493d73b38826b99bc646d6ab3f5ce2ffb79979",
+							"scope": "ui.browser.extensions round-3 independent copy audit",
+							"note": "Round-3 receipt; independent designer audit, product copy unchanged"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "7b454b104d77106b1b2a2ae7d4fff3be4b3330f40c84303856009d72c2102564",
+					"target_sha256": "66a919fc0db5906e0c707f137c90a8edb35d2a751a0ab5a87b38dc007403021e",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean",
+							"instance": "pr1923-zh-cn-browser-extensions-38bf7ab7",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1923-zh-cn-browser-extensions-38bf7ab7.json",
+							"receipt_sha256": "12467c51a82b46339eff1a4195369fae85bcaf0f6a4091922c924bc6ed71da5e",
+							"scope": "PR #1923 native-messaging copy (13 keys)",
+							"note": "PR #1923 translation lane: coder / anthropic/claude-opus-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5 (fixes 011a83e5d4)"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "es",

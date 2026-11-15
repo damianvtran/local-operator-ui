@@ -11,7 +11,10 @@
  * native install/enable dialog writes an entry with `enabled: true`.
  */
 import { join } from "node:path";
-import { isExtensionId } from "../../../shared/browser-extensions";
+import {
+	NATIVE_HOST_NAME,
+	isExtensionId,
+} from "../../../shared/browser-extensions";
 import { readJson, writeJsonAtomic } from "../atomic-json";
 import type { ExtensionAccess } from "./policy";
 
@@ -39,6 +42,40 @@ export interface InstalledExtension {
 	 * dispatched, so a crash in between re-delivers it on the next load and a
 	 * plain restart never re-fires it. */
 	installEvent?: InstallEvent;
+	/** Desktop apps (native messaging hosts) the user allowed this extension
+	 * to talk to, one entry per host name, written only by the native consent
+	 * dialog. Lives in the entry so removing the extension drops it. A denial
+	 * is never stored here: it lasts for the session only (manager.ts). */
+	nativeHosts?: NativeHostGrant[];
+}
+
+export interface NativeHostGrant {
+	/** Host name, Chrome's grammar (`com.1password.1password`). */
+	name: string;
+	/** The host manifest's description at grant time, for the details page. */
+	description: string;
+}
+
+function nativeHostsOf(raw: unknown): NativeHostGrant[] {
+	if (!Array.isArray(raw)) return [];
+	const grants: NativeHostGrant[] = [];
+	for (const item of raw) {
+		if (!item || typeof item !== "object") continue;
+		const { name, description } = item as Record<string, unknown>;
+		if (
+			typeof name !== "string" ||
+			name.length > 255 ||
+			!NATIVE_HOST_NAME.test(name) ||
+			grants.some((grant) => grant.name === name)
+		)
+			continue;
+		grants.push({
+			name,
+			description:
+				typeof description === "string" ? description.slice(0, 200) : "",
+		});
+	}
+	return grants;
 }
 
 export type InstallEvent =
@@ -119,6 +156,9 @@ export function readExtensionsState(root: string): ExtensionsState {
 				: {}),
 			...(typeof entry.description === "string"
 				? { description: entry.description.slice(0, 400) }
+				: {}),
+			...(nativeHostsOf(entry.nativeHosts).length
+				? { nativeHosts: nativeHostsOf(entry.nativeHosts) }
 				: {}),
 			// Re-checked on read: only an http(s) URL is ever opened from here.
 			...(typeof entry.homepage === "string" &&

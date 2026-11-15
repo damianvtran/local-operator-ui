@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, of the 13 PR #1923 native-messaging keys in this namespace (scope: ui.browser.extensions.details_desktop_apps, ui.browser.extensions.desktop_apps_none, ui.browser.extensions.desktop_apps_revoke, ui.browser.extensions.desktop_apps_revoke_label, ui.browser.extensions.native_confirm_title, ui.browser.extensions.native_confirm_body, ui.browser.extensions.native_confirm_host, ui.browser.extensions.native_confirm_program, ui.browser.extensions.native_confirm_note, ui.browser.extensions.native_confirm_deny, ui.browser.extensions.native_confirm_allow, ui.browser.extensions.permission_desktop_apps, ui.browser.extensions.permission_notifications; 3 removed keys blocked_heading/blocked_desktop_apps/blocked_notifications checked absent; pre-existing keys out of scope)",
+  "locale": "es",
+  "namespace": "ui.browser.extensions",
+  "pr": 1923,
+  "date": "2026-11-14",
+  "head": "011a83e5d4151a02f45afe76e200d58b4e4ee491",
+  "instance": "pr1923-es-browser-extensions-0d475161",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "role": "independent translation auditor (team lopdev, task role); not the translator (coder subagent b588da57086a on anthropic/claude-opus-5-5)",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session a2938f50b716: a different session and agent from the translator (coder b588da57086a); same served model family anthropic/claude-opus-5-5 as stated by this session's harness system prompt, no fallback. Judgement derived from English, the context sidecar, the core glossary/style guides and the shipped corpus; no MT or translation service used. Disclosure: the remediation lines of fixed findings (commit 011a83e5d4) were written by this auditor, so those lines are auditor-authored and are re-bound here, not independently re-reviewed.",
+    "instance": "pr1923-es-browser-extensions-0d475161"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "id": "I2",
+      "severity": "MINOR",
+      "key": "ui.browser.extensions.native_confirm_title",
+      "issue": "«{name}» quotes in title and body; es style guide and the sibling install/enable/update/remove titles use “ ”.",
+      "disposition": "fixed in 011a83e5d4"
+    },
+    {
+      "id": "I3",
+      "severity": "MINOR",
+      "key": "ui.browser.extensions.native_confirm_body",
+      "issue": "passkeys rendered 'llaves de acceso'; es corpus term is 'clave(s) de acceso' (37 uses incl. permission_passkeys in this file).",
+      "disposition": "fixed in 011a83e5d4"
+    },
+    {
+      "id": "I4",
+      "severity": "NIT",
+      "key": "ui.browser.extensions.native_confirm_note",
+      "issue": "'Permítelo solo con aplicaciones de confianza' reads awkwardly; 'Permite solo aplicaciones de confianza' is the idiomatic rendering of 'Only allow apps you trust'.",
+      "disposition": "fixed in 011a83e5d4"
+    }
+  ],
+  "binding": "Verified at 011a83e5d415: target is the committed blob src/i18n/catalogues/es/ui.browser.extensions.json (sha256 191679e29b103e3b485353b97ecea804ab21978321e4fe244aee869000a99c37); English src/i18n/catalogues/en/ui.browser.extensions.json (sha256 7b454b104d77106b1b2a2ae7d4fff3be4b3330f40c84303856009d72c2102564). Key set equals English; removed keys absent. Checks (python): JSON valid, ICU argument names identical to English for every audited key, values NFC, no Cf characters. Terminology checked against shipped neighbours: Revoke = ui.browser.browser_approvals_dock.revoke; passkey term = permission_passkeys/passkey_recovery in this file; quoting/punctuation = install_confirm_title siblings. Glossary: ~/local-operator i18n/glossary.md sha256 0eb34437a8c3 (no entries for these terms) and i18n/style-guides/es.md. details_desktop_apps = 'Conexiones con aplicaciones de escritorio' (41/23 chars, 1.78x) | desktop_apps_none = 'Ninguna por ahora. La extensión te lo preguntará la primera vez que necesite una aplicación de escritorio.' (106/67 chars, 1.58x) | desktop_apps_revoke = 'Revocar' (7/6 chars, 1.17x) | desktop_apps_revoke_label = 'Revocar el acceso a {app}' (25/22 chars, 1.14x) | native_confirm_title = '¿Permitir que “{name}” se conecte a {app}?' (42/35 chars, 1.20x) | native_confirm_body = '“{name}” quiere intercambiar mensajes con una aplicación instalada en este equipo; por ejemplo, para desbloquearse con un gestor de contraseñas de escritorio y rellenar contraseñas y claves de acceso desde él.' (209/172 chars, 1.22x) | native_confirm_host = 'Conexión: {host}' (16/18 chars, 0.89x) | native_confirm_program = 'Programa: {path}' (16/15 chars, 1.07x) | native_confirm_note = 'Permite solo aplicaciones de confianza. Puedes revocarlo más adelante en la página de detalles de la extensión.' (111/85 chars, 1.31x) | native_confirm_deny = 'No permitir' (11/11 chars, 1.00x) | native_confirm_allow = 'Permitir' (8/5 chars, 1.60x) | permission_desktop_apps = 'Comunicarse con aplicaciones de escritorio compatibles' (54/41 chars, 1.32x) | permission_notifications = 'Mostrar notificaciones' (22/21 chars, 1.05x)",
+  "scope": "ui.browser.extensions for es: 13 PR #1923 keys at branch head 011a83e5d415",
+  "revisions": {
+    "head": "011a83e5d4151a02f45afe76e200d58b4e4ee491"
+  },
+  "en_sha256": "7b454b104d77106b1b2a2ae7d4fff3be4b3330f40c84303856009d72c2102564",
+  "context_sha256": "95c322a4f06c2346b302235b9a6b9f5904abbf62cd7c7baa4ec7759f69bc244c",
+  "target_sha256": "191679e29b103e3b485353b97ecea804ab21978321e4fe244aee869000a99c37",
+  "sha256": {
+    "es": "191679e29b103e3b485353b97ecea804ab21978321e4fe244aee869000a99c37",
+    "en": "7b454b104d77106b1b2a2ae7d4fff3be4b3330f40c84303856009d72c2102564"
+  }
+}

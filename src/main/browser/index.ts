@@ -1431,6 +1431,7 @@ async function initializeBrowserHost(
 				changed: notifyChanged,
 				confirmInstall: extensionDialogs.confirmInstall,
 				confirmRemove: extensionDialogs.confirmRemove,
+				confirmNativeHost: extensionDialogs.confirmNativeHost,
 				createTab: async (rawUrl, activate) => {
 					const url = new URL(rawUrl);
 					// A page of an ACTIVE extension may open as a user tab (review
@@ -1500,6 +1501,12 @@ async function initializeBrowserHost(
 					break;
 				case "open-homepage":
 					ok = await extensions.openHomepage(request.id);
+					break;
+				case "revoke-native-host":
+					ok = extensions.revokeNativeHost(request.id, request.host);
+					break;
+				case "clear-native-refusal":
+					ok = extensions.clearNativeRefusal(request.id, request.host);
 					break;
 				case "open-store": {
 					// A USER tab, activated: this is the desktop menu press.

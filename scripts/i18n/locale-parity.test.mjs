@@ -140,10 +140,6 @@ const IDENTICAL_OK = new Map([
 		"French cognate « Version » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
 	],
 	[
-		"fr:ui.browser.extensions.blocked_notifications",
-		"French cognate « Notifications » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
-	],
-	[
 		"fr:ui.browser.extensions.details_source",
 		"French cognate « Source » (Chrome's own French label); audited in the ui.browser.extensions copy audit (receipt 78bf270248b6, r3 at 1312d42a790). Scoped to French only.",
 	],

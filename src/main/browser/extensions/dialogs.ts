@@ -3,7 +3,8 @@
  *
  * WHY native dialogs, not renderer UI: a native message box cannot be clicked
  * by CDP, `sendInputEvent` or a page, so an agent driving a tab can never
- * consent to an install, an access increase or a removal. They are also
+ * consent to an install, an access increase, a removal or an extension's
+ * first connection to a desktop app. They are also
  * refused (answer: false) unless the app window is focused in a launch mode
  * that may show UI, so a headless probe cannot summon one.
  *
@@ -32,9 +33,10 @@ export function accessLines(access: ExtensionAccess): string[] {
 			}),
 		);
 	}
-	// Design D3: plain-language rows from Chrome's warning set; capabilities
-	// this browser denies (desktop-app connections, notifications) are NOT
-	// listed as granted — blockedLines() states them separately.
+	// Design D3: plain-language rows from Chrome's warning set, including
+	// Chrome's "Communicate with cooperating desktop apps" for nativeMessaging:
+	// installing grants the capability, and each desktop app is then asked
+	// for separately on first use (confirmNativeHost below).
 	const permissions = describePermissions(access.permissions);
 	for (const key of permissions.labels) lines.push(t(key));
 	if (permissions.other.length)
@@ -47,14 +49,21 @@ export function accessLines(access: ExtensionAccess): string[] {
 	return lines;
 }
 
-/** What the extension asks for that this browser turns off. */
-export function blockedLines(access: ExtensionAccess): string[] {
-	return describePermissions(access.permissions).blocked.map((capability) =>
-		capability === "desktop_apps"
-			? t("ui.browser.extensions.blocked_desktop_apps")
-			: t("ui.browser.extensions.blocked_notifications"),
-	);
+/** The first connection of an extension to one desktop app (native
+ * messaging host). Everything but `extensionName` comes from the host's own
+ * manifest, already resolved by the patched library (it exists, names this
+ * extension in allowed_origins, and its program is a file). */
+export interface NativeHostPrompt {
+	extensionName: string;
+	host: string;
+	description: string;
+	path: string;
 }
+
+/** "unavailable": the app could not ask (not focused, or a launch mode that
+ * shows no UI). The manager does NOT remember that as a refusal, so the next
+ * attempt while the user is present asks. */
+export type NativeHostAnswer = "allow" | "deny" | "unavailable";
 
 export function installExtensionDialogs(
 	window: BrowserWindow,
@@ -62,6 +71,7 @@ export function installExtensionDialogs(
 ): {
 	confirmInstall: (prompt: InstallPrompt) => Promise<boolean>;
 	confirmRemove: (name: string) => Promise<boolean>;
+	confirmNativeHost: (prompt: NativeHostPrompt) => Promise<NativeHostAnswer>;
 } {
 	return {
 		confirmInstall: async (prompt) => {
@@ -89,13 +99,6 @@ export function installExtensionDialogs(
 					version: prompt.version,
 				}),
 				...accessLines(prompt.access).map((line) => `• ${line}`),
-				...(blockedLines(prompt.access).length
-					? [
-							"",
-							t("ui.browser.extensions.blocked_heading"),
-							...blockedLines(prompt.access).map((line) => `• ${line}`),
-						]
-					: []),
 				"",
 				t("ui.browser.extensions.install_compat_note"),
 			].join("\n");
@@ -129,6 +132,46 @@ export function installExtensionDialogs(
 				noLink: true,
 			});
 			return answer.response === 1;
+		},
+		// Same presentation rule as install/remove: a sheet on the focused app
+		// window, never raised over another app, never answerable by CDP or a
+		// page. The extension's background worker usually asks at startup with
+		// no user gesture; when the window is not focused we do not ask at all
+		// ("unavailable") rather than pull focus, and the next attempt asks.
+		confirmNativeHost: async (prompt) => {
+			if (!mayAsk()) return "unavailable";
+			const app = prompt.description.trim() || prompt.host;
+			const title = t("ui.browser.extensions.native_confirm_title", {
+				name: prompt.extensionName,
+				app,
+			});
+			const answer = await dialog.showMessageBox(window, {
+				type: "question",
+				title,
+				message: title,
+				detail: [
+					t("ui.browser.extensions.native_confirm_body", {
+						name: prompt.extensionName,
+						app,
+					}),
+					"",
+					t("ui.browser.extensions.native_confirm_host", { host: prompt.host }),
+					t("ui.browser.extensions.native_confirm_program", {
+						path: prompt.path,
+					}),
+					"",
+					t("ui.browser.extensions.native_confirm_note"),
+				].join("\n"),
+				buttons: [
+					t("ui.browser.extensions.native_confirm_deny"),
+					t("ui.browser.extensions.native_confirm_allow"),
+				],
+				// Don't allow is the default and the Escape answer.
+				defaultId: 0,
+				cancelId: 0,
+				noLink: true,
+			});
+			return answer.response === 1 ? "allow" : "deny";
 		},
 	};
 }

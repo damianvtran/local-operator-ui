@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 2, of the 11 PR #1923 keys changed or added in a13d83ce2d in this namespace (scope: ui.browser.extensions.install_compat_note, ui.browser.extensions.details_desktop_apps, ui.browser.extensions.desktop_apps_none, ui.browser.extensions.native_confirm_body, ui.browser.extensions.native_confirm_host, ui.browser.extensions.native_confirm_note, ui.browser.extensions.native_confirm_deny, ui.browser.extensions.desktop_apps_refused, ui.browser.extensions.desktop_apps_ask_again, ui.browser.extensions.desktop_apps_ask_again_label, ui.browser.extensions.desktop_apps_onepassword_hint); unchanged keys audited in round 1 retained, out of scope",
+  "locale": "vi",
+  "namespace": "ui.browser.extensions",
+  "pr": 1923,
+  "date": "2026-11-14",
+  "head": "f59e7ef91429cc852d37c5baf29cbd8ad3bc251e",
+  "instance": "pr1923-vi-browser-extensions-r2-68d88a19",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "role": "independent translation auditor (team lopdev, task role); not the translator (coder subagent 4da329ae5783 on anthropic/claude-opus-5-5)",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session b991792b78a2: a different session and agent from the round-2 translator (coder 4da329ae5783) and from the round-1 auditor; same served model family anthropic/claude-opus-5-5 as stated by this session's harness system prompt, no fallback. No MT used.",
+    "instance": "pr1923-vi-browser-extensions-r2-68d88a19"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "binding": "Verified at f59e7ef91429: target src/i18n/catalogues/vi/ui.browser.extensions.json (sha256 d8ee86fbf8d36d6fff0e237ebdd8c6603b72e3bb27c601b39b5b17e0c5190a9f); English src/i18n/catalogues/en/ui.browser.extensions.json (sha256 a44227481ff49391518de21a6596d0474697cd7245e9d6cac947d6e130edc58d); context sidecar sha256 7ae7fff463c0091b607fe47e728b1d60268843c40d40f7779e36d2bafd3f8df5. Checks (python): key set equals English, ICU argument names identical to English for all 11 keys (incl. new {app} in native_confirm_body and desktop_apps_ask_again_label), values NFC, no Cf characters. 1Password menu labels checked against 1Password's own UI strings read from the installed app (/Applications/1Password.app/Contents/Frameworks/index.node; 1Password ships fr, es, ru, zh-CN but not vi, hi, ur per its App Store language list). 1Password has no vi UI, so English menu labels kept per context note; 'Máy chủ' matches Chrome vi for native messaging host; 'tiện ích' term consistent with siblings. Values: install_compat_note = 'Một số tính năng của tiện ích Chrome có thể không hoạt động trong trình duyệt này.' (82/60 chars, 1.37x) | details_desktop_apps = 'Ứng dụng máy tính được cho phép' (31/20 chars, 1.55x) | desktop_apps_none = 'Chưa có. Bạn sẽ được hỏi vào lần đầu tiện ích cần dùng một ứng dụng máy tính.' (77/75 chars, 1.03x) | native_confirm_body = '“{name}” muốn trao đổi tin nhắn với {app}, một chương trình được cài trên máy tính này.' (87/85 chars, 1.02x) | native_confirm_host = 'Máy chủ: {host}' (15/12 chars, 1.25x) | native_confirm_note = 'Chỉ cho phép những ứng dụng bạn tin tưởng. Bạn có thể thay đổi câu trả lời sau trên trang chi tiết của tiện ích.' (112/92 chars, 1.22x) | native_confirm_deny = 'Không cho phép' (14/11 chars, 1.27x) | desktop_apps_refused = 'Không được cho phép' (19/11 chars, 1.73x) | desktop_apps_ask_again = 'Hỏi lại' (7/9 chars, 0.78x) | desktop_apps_ask_again_label = 'Hỏi lại trước khi {app} có thể kết nối' (38/34 chars, 1.12x) | desktop_apps_onepassword_hint = 'Nếu 1Password vẫn không kết nối được với ứng dụng máy tính, hãy mở 1Password, vào Settings → Browser → Add Browser, rồi chọn Local Operator.' (140/134 chars, 1.04x)",
+  "scope": "ui.browser.extensions for vi: 11 PR #1923 round-2 keys at branch head f59e7ef91429",
+  "revisions": {
+    "head": "f59e7ef91429cc852d37c5baf29cbd8ad3bc251e"
+  },
+  "en_sha256": "a44227481ff49391518de21a6596d0474697cd7245e9d6cac947d6e130edc58d",
+  "context_sha256": "7ae7fff463c0091b607fe47e728b1d60268843c40d40f7779e36d2bafd3f8df5",
+  "target_sha256": "d8ee86fbf8d36d6fff0e237ebdd8c6603b72e3bb27c601b39b5b17e0c5190a9f",
+  "sha256": {
+    "vi": "d8ee86fbf8d36d6fff0e237ebdd8c6603b72e3bb27c601b39b5b17e0c5190a9f",
+    "en": "a44227481ff49391518de21a6596d0474697cd7245e9d6cac947d6e130edc58d"
+  }
+}
