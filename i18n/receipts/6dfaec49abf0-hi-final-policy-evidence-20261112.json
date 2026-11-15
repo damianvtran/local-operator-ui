@@ -1,0 +1,430 @@
+{
+  "auditor": "translation-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "6dfaec49abf0-hi-final-policy-evidence-20261112",
+  "auditor_session": "6dfaec49abf0",
+  "profile_revision": "definition-revision:v1:977d12b70eb8adff7d8b9491e8e59b748a9fac283683abd963fdf586cb596f8a",
+  "model_selection": "parent",
+  "model_override": false,
+  "fallback": null,
+  "date": "2026-11-12T23:47:02.469451+00:00",
+  "locale": "hi",
+  "namespace": "ui.chat.canonical",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "sha256": {
+    "en": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+    "hi": "8792c9a8f9df03f7c586d45e3f3b6f89b25ec6097a9aab1e310bb4e210677393",
+    "context": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae"
+  },
+  "source_path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+  "target_path": "src/i18n/catalogues/hi/ui.chat.canonical.json",
+  "context_path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+  "context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+  "scope_kind": "bounded-retained-source-convergence-and-captured-evidence-disposition",
+  "scope": {
+    "pr_keys": [
+      "ui.chat.canonical.tool_row.diff.full.back",
+      "ui.chat.canonical.tool_row.diff.full.clipped",
+      "ui.chat.canonical.tool_row.diff.full.clipped_row",
+      "ui.chat.canonical.tool_row.diff.full.continued",
+      "ui.chat.canonical.tool_row.diff.full.continues",
+      "ui.chat.canonical.tool_row.diff.full.empty",
+      "ui.chat.canonical.tool_row.diff.full.error",
+      "ui.chat.canonical.tool_row.diff.full.evicted",
+      "ui.chat.canonical.tool_row.diff.full.first",
+      "ui.chat.canonical.tool_row.diff.full.inline",
+      "ui.chat.canonical.tool_row.diff.full.last",
+      "ui.chat.canonical.tool_row.diff.full.loading",
+      "ui.chat.canonical.tool_row.diff.full.nav",
+      "ui.chat.canonical.tool_row.diff.full.next",
+      "ui.chat.canonical.tool_row.diff.full.not_found",
+      "ui.chat.canonical.tool_row.diff.full.not_recorded",
+      "ui.chat.canonical.tool_row.diff.full.oversized",
+      "ui.chat.canonical.tool_row.diff.full.prev",
+      "ui.chat.canonical.tool_row.diff.full.range",
+      "ui.chat.canonical.tool_row.diff.full.retry",
+      "ui.chat.canonical.tool_row.diff.full.unavailable",
+      "ui.chat.canonical.tool_row.diff.full.view",
+      "ui.chat.canonical.tool_row.diff.full.withheld"
+    ],
+    "key_count": 23,
+    "fr_two_key_delta": null,
+    "previous_semantic_read_count": 32,
+    "new_semantic_read_count": 0,
+    "current_namespace_key_count": 490,
+    "previous_mechanical_key_count": 490
+  },
+  "scope_statement": "Retained 23-key PR semantic audit, French 2-key approved delta as applicable, exact 467-key incoming-main ancestry and accepted captured visual/AX evidence; no fresh 490-key semantics or global release approval.",
+  "findings": [
+    {
+      "id": "I-HI-1",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+      "current": "पूरा diff रोका गया — इसे सुरक्षित रूप से छिपाया नहीं जा सका",
+      "proposed": "पूरा diff रोका गया — इसकी संवेदनशील जानकारी सुरक्षित रूप से हटाई नहीं जा सकी",
+      "reason": "\"इसे सुरक्षित रूप से छिपाया नहीं जा सका\" says the diff itself could not be hidden, which contradicts \"withheld\" and drops the secrets meaning (context note: redaction = removing secrets).",
+      "disposition": "deferred — non-gating; I-HI-1 and HI-1 are two parent IDs for the same unchanged defect, counted once",
+      "origin_receipt": "i18n/receipts/567a24a88e45-chat-canonical-hi-r2.json",
+      "origin_receipt_sha256": "0d68dfc22cedd9e91fc0175b27f292ce96cde76372d479ae43391598d5afd74b",
+      "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+      "inherited": true,
+      "also_recorded_as": [
+        "HI-1"
+      ]
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+  },
+  "authority": {
+    "source": "Direct USER FINAL POLICY DISPOSITION in this session; not inferred from another auditor verdict or unread web comments.",
+    "policy_owner_named_by_user": "3ef6295a5545",
+    "decision": "Actual-locale CLDR adaptation is valid. The es/fr literal-English-selector hold is inapplicable; the four keys are unchanged incoming-main entries outside the 23-key PR group. No catalogue edits or many-arm removal required.",
+    "citations": [
+      "docs/I18N.md:104-106",
+      "docs/I18N.md:206-208",
+      "docs/I18N.md:218-224"
+    ],
+    "accepted_scope": "Retained 23 PR keys including French two-key approved delta, exact 467 main ancestry, accepted captured 22 visible elements + navigation accessible-name evidence, stated limitations.",
+    "remote_comments_not_read": [
+      {
+        "url": "https://github.com/damianvtran/local-operator-ui/pull/1829#issuecomment-6839007319",
+        "read": false,
+        "attribution": "User-supplied citation only; not asserted as independently inspected authority text."
+      },
+      {
+        "url": "https://github.com/damianvtran/local-operator-ui/pull/1829#issuecomment-6839204455",
+        "read": false,
+        "attribution": "User-supplied citation only; not asserted as independently inspected authority text."
+      },
+      {
+        "url": "https://github.com/damianvtran/local-operator-ui/pull/1829#issuecomment-6836069213",
+        "read": false,
+        "attribution": "User-supplied citation only; not asserted as independently inspected authority text."
+      }
+    ]
+  },
+  "historical_policy_hold_dispositions": [],
+  "supplement": {
+    "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-final-policy-evidence-20261112-supplement.json",
+    "sha256": "fca07367eb4b13287e4a8db30a4bf7038681d5c96b91ec329ae071b2be955251"
+  },
+  "parent_receipts": [
+    {
+      "locale": "hi",
+      "ref": "1bfbe9b42df53a231311ab1731501af2de640810",
+      "path": "i18n/receipts/567a24a88e45-chat-canonical-hi-r2.json",
+      "sha256": "0d68dfc22cedd9e91fc0175b27f292ce96cde76372d479ae43391598d5afd74b",
+      "hash_matches_row": true,
+      "index_exact_parent": true,
+      "source_hash_matches_parent": true,
+      "target_hash_matches_parent": true,
+      "findings": [
+        {
+          "id": "I-HI-1",
+          "severity": "minor",
+          "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+          "codepath": "diff-history-model.ts:473",
+          "message": "\"इसे सुरक्षित रूप से छिपाया नहीं जा सका\" says the diff itself could not be hidden, which contradicts \"withheld\" and drops the secrets meaning (context note: redaction = removing secrets).",
+          "fix": "पूरा diff रोका गया — इसकी संवेदनशील जानकारी सुरक्षित रूप से हटाई नहीं जा सकी",
+          "disposition": "deferred — non-gating",
+          "origin": "r2"
+        }
+      ],
+      "scope": null,
+      "source_path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+      "target_path": "src/i18n/catalogues/hi/ui.chat.canonical.json",
+      "parent_context_sha256": "04bfe86405155bf8437c4f867eea4dc9bfd4c277d2ae6b0aa7d6a1bf20390087",
+      "receipt_context_sha256": "04bfe86405155bf8437c4f867eea4dc9bfd4c277d2ae6b0aa7d6a1bf20390087",
+      "applies_to_current_selected_keys": 23,
+      "whole_file_current_hash_binding": false,
+      "applicability_note": "Historical audit of parent bytes, not itself a fresh current-hash approval. Retained only for exact selected key/source/context blocks; all original parent finding IDs/dispositions retained below."
+    },
+    {
+      "locale": "hi",
+      "ref": "1bfbe9b42df53a231311ab1731501af2de640810",
+      "path": "i18n/receipts/c7b72ef216da-hi-chat-canonical-r2.json",
+      "sha256": "637da859de3160a4e6207e3d906cf786762d4266486d5a4356a9918a96256e08",
+      "hash_matches_row": true,
+      "index_exact_parent": true,
+      "source_hash_matches_parent": true,
+      "target_hash_matches_parent": true,
+      "findings": [
+        {
+          "id": "HI-1",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+          "disposition": "deferred — non-gating minor, no remediation cycle",
+          "evidence": "'इसे सुरक्षित रूप से छिपाया नहीं जा सका' makes the diff itself ('इसे') the thing that could not be hidden, which reads as a possible leak; context says redaction = removing secrets, tone reassuring",
+          "proposed": {
+            "ui.chat.canonical.tool_row.diff.full.withheld": "पूरा diff रोका गया — इसकी संवेदनशील जानकारी सुरक्षित रूप से हटाई नहीं जा सकी"
+          }
+        }
+      ],
+      "scope": null,
+      "source_path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+      "target_path": "src/i18n/catalogues/hi/ui.chat.canonical.json",
+      "parent_context_sha256": "04bfe86405155bf8437c4f867eea4dc9bfd4c277d2ae6b0aa7d6a1bf20390087",
+      "receipt_context_sha256": null,
+      "applies_to_current_selected_keys": 23,
+      "whole_file_current_hash_binding": false,
+      "applicability_note": "Historical audit of parent bytes, not itself a fresh current-hash approval. Retained only for exact selected key/source/context blocks; all original parent finding IDs/dispositions retained below."
+    },
+    {
+      "locale": "hi",
+      "ref": "b0edf02e5d37db5c5527cf66465131a4019fed10",
+      "path": "i18n/receipts/b04b0982d048-hi-s16f-au4.json",
+      "sha256": "e786162df109f8f74890076ed8e8d39af873bf7f473376216e730d554e68d9ee",
+      "hash_matches_row": true,
+      "index_exact_parent": true,
+      "source_hash_matches_parent": true,
+      "target_hash_matches_parent": true,
+      "findings": [],
+      "scope": "Round-4 delta audit at cbb8782a: the 3 values this commit changed (media.sound_label, sound.player_failed, supplement.sound_fallback_label) plus all 6 image_gen state keys that carry the sibling compound साउंड इफ़ेक्ट, read in full to judge that the noun is now consistent. The other 464 values are byte-identical to 8180eff1 (verified: 464/467 identical, 3 differing, 3 differing raw lines, key order unchanged) and are retained on that proof, not re-read. Key sets equal English (467/467).",
+      "source_path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+      "target_path": "src/i18n/catalogues/hi/ui.chat.canonical.json",
+      "parent_context_sha256": "8f56e0d2b384c6b41add57a64e6c863e565cb61d5a7c0de482d42f380be3acfe",
+      "receipt_context_sha256": "8f56e0d2b384c6b41add57a64e6c863e565cb61d5a7c0de482d42f380be3acfe",
+      "applies_to_current_selected_keys": 467,
+      "whole_file_current_hash_binding": false,
+      "applicability_note": "Historical audit of parent bytes, not itself a fresh current-hash approval. Retained only for exact selected key/source/context blocks; all original parent finding IDs/dispositions retained below."
+    }
+  ],
+  "accepted_evidence": {
+    "accepted_readback_json": {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json",
+      "sha256": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30",
+      "read": true
+    },
+    "accepted_readback_markdown": {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.md",
+      "sha256": "a8cbf67eef4052484b4bbc1937a7a6b4b1d3328a71cb813bc3a8f0119cc275ac",
+      "read": true
+    },
+    "final_frame_manifest": {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/frames-manifest.json",
+      "sha256": "12babe07d87bb5d193d3fd909919e1645706e06984129055d4547ded21321db5",
+      "entries": 150,
+      "assigned_locale_png_hashes_independently_verified": 57
+    },
+    "browser_source_identity": {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-source.json",
+      "sha256": "011d373b047026492d9ca73f7ec6747df1a90daeb7cb2c805aa9b4dade46ca34",
+      "all_19_source_files_match_current_index": true
+    },
+    "captures": {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/captures.jsonl",
+      "sha256": "e9412edfebff603aa0a4b5f758b91b7175c3abc2001f6a41786b34ec28e1846d",
+      "rows": 92,
+      "error_rows": 14,
+      "successful_rows": 78,
+      "summary": {
+        "es": {
+          "rows": 2,
+          "successful": 2,
+          "successful_states": [
+            "oversized",
+            "split-next"
+          ]
+        },
+        "fr": {
+          "rows": 2,
+          "successful": 2,
+          "successful_states": [
+            "split",
+            "split-next"
+          ]
+        },
+        "hi": {
+          "rows": 12,
+          "successful": 7,
+          "successful_states": [
+            "unavailable",
+            "oversized",
+            "evicted",
+            "clipped",
+            "split",
+            "not_found",
+            "split-next"
+          ]
+        },
+        "ru": {
+          "rows": 17,
+          "successful": 8,
+          "successful_states": [
+            "loading",
+            "oversized",
+            "evicted",
+            "not_recorded",
+            "inline",
+            "split",
+            "unavailable",
+            "split-next"
+          ]
+        },
+        "ur": {
+          "rows": 15,
+          "successful": 15,
+          "successful_states": [
+            "offer",
+            "loading",
+            "error",
+            "empty",
+            "unavailable",
+            "withheld",
+            "oversized",
+            "evicted",
+            "not_recorded",
+            "not_found",
+            "inline",
+            "clipped",
+            "split",
+            "page",
+            "split-next"
+          ]
+        },
+        "vi": {
+          "rows": 15,
+          "successful": 15,
+          "successful_states": [
+            "offer",
+            "loading",
+            "error",
+            "empty",
+            "unavailable",
+            "withheld",
+            "oversized",
+            "evicted",
+            "not_recorded",
+            "not_found",
+            "inline",
+            "clipped",
+            "split",
+            "page",
+            "split-next"
+          ]
+        },
+        "zh-CN": {
+          "rows": 15,
+          "successful": 15,
+          "successful_states": [
+            "offer",
+            "loading",
+            "error",
+            "empty",
+            "unavailable",
+            "withheld",
+            "oversized",
+            "evicted",
+            "not_recorded",
+            "not_found",
+            "inline",
+            "clipped",
+            "split",
+            "page",
+            "split-next"
+          ]
+        },
+        "synthetic-pseudo": {
+          "rows": 14,
+          "successful": 14,
+          "successful_states": [
+            "offer",
+            "page",
+            "split",
+            "clipped",
+            "loading",
+            "error",
+            "empty",
+            "unavailable",
+            "withheld",
+            "oversized",
+            "evicted",
+            "not_recorded",
+            "not_found",
+            "inline"
+          ]
+        }
+      },
+      "interpretation": "AX snapshots, many truncated to 24/30 lines, not DOM geometry. Historical element-not-found rows cannot invalidate replacement final nonblank PNGs; successful snapshots do not prove footer content beyond their returned lines."
+    },
+    "retained_source_records": [
+      {
+        "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/source-records/fr2.json",
+        "git_ref": "index",
+        "sha256": "b837e9feb21dda08fcda7df990e40931ca8f444ec9076c1b7566b524fff2cada",
+        "read_scope": "Selected source-audit identity, byte-proof, scope and French delta dispositions; no new whole-catalogue semantic audit."
+      },
+      {
+        "path": "i18n/audits/evidence/en/ui.chat.canonical/567a24a88e45-1829-sources/source-records/r2.json",
+        "git_ref": "index",
+        "sha256": "43c365ffb262cf4d1f486ac9a764b2a09664c9b4395589e2b092a02c4e581f30",
+        "read_scope": "Selected source-audit identity, byte-proof, scope and French delta dispositions; no new whole-catalogue semantic audit."
+      },
+      {
+        "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/source-records/fr_delta.json",
+        "git_ref": "index",
+        "sha256": "6a8ee6855512e1bf519aafacc80ebc824cfb1758346b73aeb8bc55d6b9a3f763",
+        "read_scope": "Selected source-audit identity, byte-proof, scope and French delta dispositions; no new whole-catalogue semantic audit."
+      },
+      {
+        "path": "i18n/audits/evidence/en/ui.chat.canonical/c7b72ef216da-1829-sources/source-records/second_audit.json",
+        "git_ref": "index",
+        "sha256": "08cd91c44e04b55d9222c83f56a77600c294cb39fe33c7a8edd32751b70e58cf",
+        "read_scope": "Selected source-audit identity, byte-proof, scope and French delta dispositions; no new whole-catalogue semantic audit."
+      }
+    ],
+    "primary_clarification": {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/convergence-primary-es-fr-hi-policy-clarification.md",
+      "sha256": "34ff12fdeac39fa25f1eabcd34fb0b461c74d4dd8ebf20a3a65448eb37c47a1b",
+      "use": "Read for evidence/policy delta, not adopted as this auditor verdict."
+    },
+    "primary_reviewed_scope": {
+      "path": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/reviewed-key-scope.json",
+      "sha256": "e99e0d24c6b1833470fb73676bb689532f641fc0d130cc78e3faf68bc330eb7d",
+      "use": "Historical scope evidence only; its 49-key count is not mine."
+    }
+  },
+  "personally_viewed_images": [
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-contact.jpg",
+      "sha256": "4d0595a8cff6be38d462ad67cce49c4ce1a06edcf1d29d2c738ddd180b02444e",
+      "observation": "Contact sheet personally opened: overview of retained visible notice/navigation states; downsampled, not measured geometry."
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-offer-focused-360.png",
+      "sha256": "9808a9e81288a65b8a47ada2e029144142d762588ce2214b9d2903c020ce35b2",
+      "observation": "Focused offer personally opened: localized full-diff button and 598 line count visible; no activation outcome certified."
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-clipped-focused-360.png",
+      "sha256": "1642a433bffc7c3b6e254774fe5cfc30268af967adc2f0a20fcfa7b05ec58f28",
+      "observation": "Focused clipped frame personally opened: aggregate notice count 1 and bottom range visible; wrapping not obvious cutoff in this shown region; no geometry measurement."
+    }
+  ],
+  "limitations": {
+    "fresh_catalogue_key_readings": 0,
+    "fresh_490_key_audit": false,
+    "original_side_by_side_key_readings": "es 31; fr 31; hi 32. Supplemental work reads evidence and verifies retained 23-key value identities; it does not add fresh semantic key readings.",
+    "visible_evidence": "22 visible elements plus .nav accessible-name evidence for 23 keys per assigned actual locale. Full mapping is accepted evidence readback plus own contact-sheet and six focused-frame observations.",
+    "native": "UNPROVEN: no native/full-app integrated execution or screen-reader speech observed by this auditor.",
+    "geometry": "UNPROVEN: no measured DOM geometry, scrollWidth/clientWidth, pixel-coordinate overflow measurement, font-fallback proof, other-theme/width matrix. 360px is a declared fixture setting, not my measured box.",
+    "functional_outcomes": "UNPROVEN in this disposition: no all-23-interactions pass; First/Last/Previous/Back/Retry/offer activation outcomes are not certified. Accepted split-next record shows a next-state/body/focus change only, not a complete functional suite. No exact historical interaction proof plus render-path compatibility is being claimed.",
+    "count_variants": "Only captured offer count 598 and clipped aggregate count 1 personally observed; no all-count/plural-variant runtime pass claimed. Prior structural ICU checks remain structural evidence only.",
+    "pseudo": "Relied on accepted readback for 15 original plus 2 focused synthetic expanded-English frames registered as en; not personally viewed in this supplement, not production pseudo, RTL pseudo, activation, or a whole-namespace pixel review.",
+    "rtl": "Assigned es/fr/hi are LTR. No global RTL approval. User-disposition Urdu code-bidi MINOR is outside these locale receipts and remains deferred in the design thread; no fix round implied.",
+    "release": "No global/native/release/merge/activation approval; only bounded source-convergence and captured-evidence disposition."
+  },
+  "independence": "Same original independent auditor instance/session; no translation work, coordinator-authored verdict or verdict copying. Primary evidence was read only as expressly authorized for this evidence disposition; independent decision retained.",
+  "assembly_disposition": {
+    "new_receipt": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-final-policy-evidence-20261112-receipt.json",
+    "assembler_may_consume_for_scope": true,
+    "why": "Fresh independently authored current-source/current-target receipt, explicitly scoped to retained substantive convergence plus accepted evidence, with preserved findings and resolved inapplicable policy hold. The namespace hash binding represents the retained 467-key audit ancestry and 23-key reviewed overlay; it is not a fresh 490-key audit.",
+    "not_global_approval": true,
+    "assembler_not_invoked": true
+  }
+}

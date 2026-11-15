@@ -2851,8 +2851,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "cbbb90eadffcc9a6ff2d7ca70794b4d39fb33e4476f610ece0a06701c1d97e4b",
-			"target_sha256": "59adc6ae654af21ffcab0662d2ff88ac27eb90100f1b2571d8aeba48ff5a9bde",
+			"source_sha256": "2db00914699ea873b03ce4b061cf41c1bb18a5dc57ed264b6fd1bd20f6a169e6",
+			"target_sha256": "6da85f1e33e98cef4c9da20e3296461db204e3242f78920ac9a55ea2cdb04db3",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
@@ -2861,21 +2861,38 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-14",
-					"result": "clean",
-					"instance": "s18b-es-canonical-8769431b",
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-15",
+					"result": "clean-with-findings",
+					"instance": "5f8e54e78de8-es-finalgate20261115-debt",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 6,
+						"nit": 8
 					},
-					"receipt": "i18n/receipts/s18b-es-canonical-8769431b.json",
-					"receipt_sha256": "12b3973838298d61523cc7b416e5602f21d2038daf92223c266e3b8706edec5a",
-					"scope": "S18b approval/tool-detail paydown (9 keys)",
-					"note": "S18b translation lane: i18n-translator / anthropic/claude-sonnet-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5"
+					"receipt": "i18n/receipts/5f8e54e78de8-es-finalgate20261115-debt.json",
+					"receipt_sha256": "6dd07989c34facc1ace7f817ccade297167f96da06b680d5121e15662c2a22e2",
+					"scope": "{\"kind\":\"receipt rebinding/exact486-main+23-PR union seam only\",\"new_semantic_keys_read\":0,\"namespace_keys_mechanically_checked\":509,\"selected_main_keys\":486,\"selected_PR_keys\":23,\"source_and_context_mechanically_checked\":true,\"selection\":\"PR contributes ONLY tool_row.diff.full.*23; other486 exclusively exact incoming main, not other471PR values.\",\"old_findings_carry_forward\":\"Explicit author choice retains genuine MINOR/NIT including HI-C1/aliases. No new linguistic defect or new finding count invented.\"}",
+					"note": "PR1829 exact 486-main + 23-PR union seam/hash rebinding only. See canonical record/companions; zero new semantic keys, no new rendered/native evidence or global approval."
+				},
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-15",
+					"result": "clean-with-findings",
+					"instance": "6dfaec49abf0-es-finalgate20261115-debt",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 3,
+						"nit": 8
+					},
+					"receipt": "i18n/receipts/6dfaec49abf0-es-finalgate20261115-debt.json",
+					"receipt_sha256": "eab5cd4aca785ddfe71cb356a94e45c93c059ceb00e317a3a7f8955c5c2e4923",
+					"scope": "receipt rebinding/exact486-main+23-PR union seam only;509 mechanically checked;0 new semantic keys",
+					"note": "PR1829 exact 486-main + 23-PR union seam/hash rebinding only. See canonical record/companions; zero new semantic keys, no new rendered/native evidence or global approval."
 				}
 			],
 			"status": "audited",
@@ -3497,6 +3514,210 @@
 							"receipt_sha256": "c0bf71d4c3416eb77aaf1539e5a1eaa91929a03c7388d671bfed485639f1658d",
 							"scope": "landed merge of UI #1874 + #1884 canonical keys (16 new keys), union proven byte-identical",
 							"note": "Independent i18n-auditor audit of the landed ui.chat.canonical bytes after merging main 0de7a69e2 (#1874 temporary_deleted.* + #1884 S16e keys) into PR #1884; prior audits described pre-merge bytes."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "12ec2698434dcb39497e288af62d11d70f0fd71d494a9becf3fd611d6568bbdd",
+					"target_sha256": "1098c579c75debf77b9339dbaf87232d51850a592499c4481275e922a09196bb",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-11",
+							"result": "clean-with-findings",
+							"instance": "756ed6175781",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/756ed6175781.json",
+							"receipt_sha256": "e63c5a2b0b1a5ef7f56f7f2b455b06597c94b51cb1cd3cfb2ec225dc2134bdb7",
+							"scope": "Round-2 independent audit of the 10 S16f generation-card keys on the landed bytes at 9931d62addf8 (sound.batch.*, sound.cost.*, media.*_label, supplement.sound_fallback_label); other 456 keys untouched, read only as precedent",
+							"note": "S16f, PR #1876. Round-2 independent re-read of all 10 landed es values (mechanics, idiom, precedent, width, RTL n/a). Detail: i18n/audits/evidence/es/ui.chat.canonical/au2-s16f-es-756ed6175781/report.md"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+					"target_sha256": "db9923d6038ef32906ab0bcfeff99d358d01ec610d50256749f31b360962b22a",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-11",
+							"result": "clean-with-findings",
+							"instance": "567a24a88e45-chat-canonical-es-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/567a24a88e45-chat-canonical-es-r2.json",
+							"receipt_sha256": "b48040f237a0a2da586d9df6068cfd428b54e85cb05bb6321757ebc3e92ad168",
+							"scope": "ui.chat.canonical; source-only retained whole-byte-compatible namespace plus independently rechecked French notices; rendered/RTL fit unproven"
+						},
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-11",
+							"result": "clean",
+							"instance": "c7b72ef216da-es-chat-canonical-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c7b72ef216da-es-chat-canonical-r2.json",
+							"receipt_sha256": "61f0538e84f988e65260b2e3999b0f94edd3852a27df0f328f717a843c35a587",
+							"scope": "ui.chat.canonical; source-only retained whole-byte-compatible namespace plus independently rechecked French notices; rendered/RTL fit unproven"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+					"target_sha256": "547b85e9670eec79f82211f50325092bf75c13eda4504995cce1a1d5ab25e272",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "4d7a5444aa0b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/4d7a5444aa0b.json",
+							"receipt_sha256": "0d53576dd82e8db22742ddcaa18810c5e786cf93d88d15f0d6181de37adfc7c3",
+							"note": "S16f delta audit of the 15 keys on the merged bytes; audit record: i18n/audits/evidence/es/ui.chat.canonical/s16f-4d7a5444aa0b-r4/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+					"target_sha256": "4074681ab095ccfb3917e0f1e8f31e2d2c92c1c47742153db82dda80502c1e51",
+					"translator": {
+						"agent": "i18n-translator",
+						"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
+						"date": "2026-11-11",
+						"note": "es S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/es/ui.chat.canonical/s16a-3311618b2a8b"
+					},
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-13",
+							"result": "clean-with-findings",
+							"instance": "5f8e54e78de8-es-final-evidence-20261112",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 5,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/5f8e54e78de8-es-final-evidence-20261112.json",
+							"receipt_sha256": "af42e387835676d187cf0b8345a4f7174c9b0c04e010132d78db3de265959df6",
+							"scope": "Retained23-key PR semantic proof + French2-key delta where applicable + exact467-main ancestry + accepted bounded23-key captured evidence on current source/target/context hashes; no fresh490-key audit.",
+							"note": "PR1829 scoped supplement; record: i18n/audits/evidence/es/ui.chat.canonical/5f8e54e78de8-es-final-evidence-20261112/record.json; retained MINOR/NIT dispositions. No fresh490-key, native or all-actions claim."
+						},
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-13",
+							"result": "clean-with-findings",
+							"instance": "6dfaec49abf0-es-final-policy-evidence-20261112",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/6dfaec49abf0-es-final-policy-evidence-20261112.json",
+							"receipt_sha256": "9f41eff67d1c407e55c91becb96b7ce20baa2d66837b82c99c7d65d74fa5a2da",
+							"scope": "Retained 23-key PR semantic audit, French 2-key approved delta as applicable, exact 467-key incoming-main ancestry and accepted captured visual/AX evidence; no fresh 490-key semantics or global release approval.",
+							"note": "PR1829 scoped supplement; record: i18n/audits/evidence/es/ui.chat.canonical/6dfaec49abf0-es-final-policy-evidence-20261112/record.json; retained MINOR/NIT dispositions. No fresh490-key, native or all-actions claim."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+					"target_sha256": "528df8fc526fee090ff593a5f1122cf5a832fb461e5a3c121f72040fe1278e1d",
+					"translator": {
+						"agent": "lopdev coder",
+						"model": "anthropic/claude-opus-5-5",
+						"date": "2026-11-12",
+						"note": "Mixed provenance (one translator field per row): 4 temporary_deleted.* keys by lopdev coder (UI #1874); #1870 keys by i18n-translator claude-sonnet-5-5; #1875 loading.* and #1876 media/sound keys per superseded upstream rows. Auditor = coder model: disclosed."
+					},
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "5f8e54e78de8-es-rnext-rebind-20261114",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 5,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/5f8e54e78de8-es-rnext-rebind-20261114.json",
+							"receipt_sha256": "b054cc28eb36f3cfe4ef006270d40ad0df8f883c45966f5ba98a54332c4e773a",
+							"scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+							"note": "PR1829 exact 471-main + 23-PR union seam/hash rebinding only. See canonical record/companions; zero new semantic keys, no new rendered/native evidence or global approval."
+						},
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "6dfaec49abf0-es-r-next-seam-20261114",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/6dfaec49abf0-es-r-next-seam-20261114.json",
+							"receipt_sha256": "a79bd14cb4ffd32fc9348b1bc12be9ab64e84afddffe76b9533c0b26a85309ea",
+							"scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+							"note": "PR1829 exact 471-main + 23-PR union seam/hash rebinding only. See canonical record/companions; zero new semantic keys, no new rendered/native evidence or global approval."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cbbb90eadffcc9a6ff2d7ca70794b4d39fb33e4476f610ece0a06701c1d97e4b",
+					"target_sha256": "59adc6ae654af21ffcab0662d2ff88ac27eb90100f1b2571d8aeba48ff5a9bde",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean",
+							"instance": "s18b-es-canonical-8769431b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/s18b-es-canonical-8769431b.json",
+							"receipt_sha256": "12b3973838298d61523cc7b416e5602f21d2038daf92223c266e3b8706edec5a",
+							"scope": "S18b approval/tool-detail paydown (9 keys)",
+							"note": "S18b translation lane: i18n-translator / anthropic/claude-sonnet-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5"
 						}
 					],
 					"status": "audited"
@@ -15312,8 +15533,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "cbbb90eadffcc9a6ff2d7ca70794b4d39fb33e4476f610ece0a06701c1d97e4b",
-			"target_sha256": "dde9d059a389565f7a92aab1c5c548f95744cd394fe6f292bce1103918e9cde0",
+			"source_sha256": "2db00914699ea873b03ce4b061cf41c1bb18a5dc57ed264b6fd1bd20f6a169e6",
+			"target_sha256": "282351444e6470f58b94e00b4dc69c1e2dadf3d543c48b250365855e512cb830",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
@@ -15322,21 +15543,38 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-14",
-					"result": "clean",
-					"instance": "s18b-fr-canonical-da7ee1dc",
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-15",
+					"result": "clean-with-findings",
+					"instance": "5f8e54e78de8-fr-finalgate20261115-debt",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 4,
+						"nit": 3
 					},
-					"receipt": "i18n/receipts/s18b-fr-canonical-da7ee1dc.json",
-					"receipt_sha256": "11e74e23e48ca90328acfb2baa3d235cac275aac31e38a8871818ae5b51d7bd6",
-					"scope": "S18b approval/tool-detail paydown (9 keys)",
-					"note": "S18b translation lane: i18n-translator / anthropic/claude-sonnet-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5"
+					"receipt": "i18n/receipts/5f8e54e78de8-fr-finalgate20261115-debt.json",
+					"receipt_sha256": "8bcf23472ecd1b806346848b9022a727bebb3e81a2a4055e68c8231914241edd",
+					"scope": "{\"kind\":\"receipt rebinding/exact486-main+23-PR union seam only\",\"new_semantic_keys_read\":0,\"namespace_keys_mechanically_checked\":509,\"selected_main_keys\":486,\"selected_PR_keys\":23,\"source_and_context_mechanically_checked\":true,\"selection\":\"PR contributes ONLY tool_row.diff.full.*23; other486 exclusively exact incoming main, not other471PR values.\",\"old_findings_carry_forward\":\"Explicit author choice retains genuine MINOR/NIT including HI-C1/aliases. No new linguistic defect or new finding count invented.\"}",
+					"note": "PR1829 exact 486-main + 23-PR union seam/hash rebinding only. See canonical record/companions; zero new semantic keys, no new rendered/native evidence or global approval."
+				},
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-15",
+					"result": "clean-with-findings",
+					"instance": "6dfaec49abf0-fr-finalgate20261115-debt",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 3
+					},
+					"receipt": "i18n/receipts/6dfaec49abf0-fr-finalgate20261115-debt.json",
+					"receipt_sha256": "9ec10c75c61cad1bd231aa94997741491d4ffd83458c232e86c2b97a8ebe57f4",
+					"scope": "receipt rebinding/exact486-main+23-PR union seam only;509 mechanically checked;0 new semantic keys",
+					"note": "PR1829 exact 486-main + 23-PR union seam/hash rebinding only. See canonical record/companions; zero new semantic keys, no new rendered/native evidence or global approval."
 				}
 			],
 			"status": "audited",
@@ -15973,6 +16211,210 @@
 							"receipt_sha256": "907d4a5d79c709133e93c155edc20caa9aeb1d0f81b6094426de4accb390ddc8",
 							"scope": "landed merge of UI #1874 + #1884 canonical keys (16 new keys), union proven byte-identical",
 							"note": "Independent i18n-auditor audit of the landed ui.chat.canonical bytes after merging main 0de7a69e2 (#1874 temporary_deleted.* + #1884 S16e keys) into PR #1884; prior audits described pre-merge bytes."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "12ec2698434dcb39497e288af62d11d70f0fd71d494a9becf3fd611d6568bbdd",
+					"target_sha256": "34a0fdbf1ef412e9e16e3c9da7558e4c1f23ba52ef0cb7638ecd545d49404202",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-11",
+							"result": "clean-with-findings",
+							"instance": "5f26f5727a24",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/5f26f5727a24.json",
+							"receipt_sha256": "3fc403f2b469e3b10eb349fe41454f1f5e1b036acb7c40a0d7266c1380148d78",
+							"scope": "the 10 new S16f generation-card keys (fr) at the landed af876eb bytes, round 3 after the round-2 corrections; other 456 keys unchanged",
+							"note": "S16f r3 fr: 10 generation-card keys at landed af876eb; 1 MINOR (0 $ -> 0 $US, currency under-specified for fr), 1 NIT. Validators + 1452-render ICU grid green. Evidence: i18n/audits/evidence/fr/ui.chat.canonical/s16f-r3-5f26f5727a24"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+					"target_sha256": "620d4ab2d3db4a9c16b64c62fdd44c4e44ff55fe65b1b7f06e835db435319877",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-11",
+							"result": "clean-with-findings",
+							"instance": "567a24a88e45-chat-canonical-fr-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/567a24a88e45-chat-canonical-fr-r2.json",
+							"receipt_sha256": "dd65b57c3bf1ac4a5190900a561aa5a3dac554ce5d6fc7b884b3f1914110f1dc",
+							"scope": "ui.chat.canonical; source-only retained whole-byte-compatible namespace plus independently rechecked French notices; rendered/RTL fit unproven"
+						},
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-11",
+							"result": "clean",
+							"instance": "c7b72ef216da-fr-chat-canonical-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c7b72ef216da-fr-chat-canonical-r2.json",
+							"receipt_sha256": "fd908f5c08759f5fe7041bc5518f6b5618fe49beffda5c1f4bd73ffff9290302",
+							"scope": "ui.chat.canonical; source-only retained whole-byte-compatible namespace plus independently rechecked French notices; rendered/RTL fit unproven"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+					"target_sha256": "99f7c0b27d6c75b16935cc58874477cab24da430284576defaacf19e209c88f6",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "3316c580ef05",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/3316c580ef05.json",
+							"receipt_sha256": "2e4ac73047242230a20ff56a4982652c7d56e4d1f6677d4c083bb7f1a82e8d32",
+							"note": "S16f delta audit of the 15 keys on the merged bytes; audit record: i18n/audits/evidence/fr/ui.chat.canonical/s16f-3316c580ef05-r4/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+					"target_sha256": "e7d21936f30d7bcb95a86c08c6774c0572d13bd32e7220ab9e36c02327c31fbd",
+					"translator": {
+						"agent": "i18n-translator",
+						"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
+						"date": "2026-11-11",
+						"note": "fr S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/fr/ui.chat.canonical/s16a-2105ebeeb3e9"
+					},
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-13",
+							"result": "clean-with-findings",
+							"instance": "5f8e54e78de8-fr-final-evidence-20261112",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 4,
+								"nit": 3
+							},
+							"receipt": "i18n/receipts/5f8e54e78de8-fr-final-evidence-20261112.json",
+							"receipt_sha256": "9a08f3af4a3c96ed4a6c2e81ef305401a03a7b8a1a009f948df89d0cecb69799",
+							"scope": "Retained23-key PR semantic proof + French2-key delta where applicable + exact467-main ancestry + accepted bounded23-key captured evidence on current source/target/context hashes; no fresh490-key audit.",
+							"note": "PR1829 scoped supplement; record: i18n/audits/evidence/fr/ui.chat.canonical/5f8e54e78de8-fr-final-evidence-20261112/record.json; retained MINOR/NIT dispositions. No fresh490-key, native or all-actions claim."
+						},
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-13",
+							"result": "clean-with-findings",
+							"instance": "6dfaec49abf0-fr-final-policy-evidence-20261112",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 3
+							},
+							"receipt": "i18n/receipts/6dfaec49abf0-fr-final-policy-evidence-20261112.json",
+							"receipt_sha256": "e77f2830dce176484f88a2cce2fa43bd8d1ffc7aab3caaf4fadfd5c2488b6118",
+							"scope": "Retained 23-key PR semantic audit, French 2-key approved delta as applicable, exact 467-key incoming-main ancestry and accepted captured visual/AX evidence; no fresh 490-key semantics or global release approval.",
+							"note": "PR1829 scoped supplement; record: i18n/audits/evidence/fr/ui.chat.canonical/6dfaec49abf0-fr-final-policy-evidence-20261112/record.json; retained MINOR/NIT dispositions. No fresh490-key, native or all-actions claim."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+					"target_sha256": "060c7967167434f91d79d3c3093642690ed8c7d95b3f9b9a36be9b4d6b17099a",
+					"translator": {
+						"agent": "lopdev coder",
+						"model": "anthropic/claude-opus-5-5",
+						"date": "2026-11-12",
+						"note": "Mixed provenance (one translator field per row): 4 temporary_deleted.* keys by lopdev coder (UI #1874); #1870 keys by i18n-translator claude-sonnet-5-5; #1875 loading.* and #1876 media/sound keys per superseded upstream rows. Auditor = coder model: disclosed."
+					},
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "5f8e54e78de8-fr-rnext-rebind-20261114",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 4,
+								"nit": 3
+							},
+							"receipt": "i18n/receipts/5f8e54e78de8-fr-rnext-rebind-20261114.json",
+							"receipt_sha256": "16186f00614c8b35657b535a6059a8f97b5f2e08e8cec31d851fe6cd9a209f38",
+							"scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+							"note": "PR1829 exact 471-main + 23-PR union seam/hash rebinding only. See canonical record/companions; zero new semantic keys, no new rendered/native evidence or global approval."
+						},
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "6dfaec49abf0-fr-r-next-seam-20261114",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 3
+							},
+							"receipt": "i18n/receipts/6dfaec49abf0-fr-r-next-seam-20261114.json",
+							"receipt_sha256": "47214d7481b722b7cb24813ddfa7bf67f9379b602b55a47a77d8ac5931aae99f",
+							"scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+							"note": "PR1829 exact 471-main + 23-PR union seam/hash rebinding only. See canonical record/companions; zero new semantic keys, no new rendered/native evidence or global approval."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cbbb90eadffcc9a6ff2d7ca70794b4d39fb33e4476f610ece0a06701c1d97e4b",
+					"target_sha256": "dde9d059a389565f7a92aab1c5c548f95744cd394fe6f292bce1103918e9cde0",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean",
+							"instance": "s18b-fr-canonical-da7ee1dc",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/s18b-fr-canonical-da7ee1dc.json",
+							"receipt_sha256": "11e74e23e48ca90328acfb2baa3d235cac275aac31e38a8871818ae5b51d7bd6",
+							"scope": "S18b approval/tool-detail paydown (9 keys)",
+							"note": "S18b translation lane: i18n-translator / anthropic/claude-sonnet-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5"
 						}
 					],
 					"status": "audited"
@@ -28269,8 +28711,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "cbbb90eadffcc9a6ff2d7ca70794b4d39fb33e4476f610ece0a06701c1d97e4b",
-			"target_sha256": "f5edc06e73c1f5facbdc4b004e52b1420a87df77cb1affa3bd029c7944e8cebf",
+			"source_sha256": "2db00914699ea873b03ce4b061cf41c1bb18a5dc57ed264b6fd1bd20f6a169e6",
+			"target_sha256": "3cfbea811e2a3911d31f4c50903a4e32da7929abbf8f45084b9ec92fa04e04c6",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
@@ -28279,21 +28721,38 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-14",
-					"result": "clean",
-					"instance": "s18b-hi-canonical-5e4b1db4",
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-15",
+					"result": "clean-with-findings",
+					"instance": "5f8e54e78de8-hi-finalgate20261115-debt",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 3,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/s18b-hi-canonical-5e4b1db4.json",
-					"receipt_sha256": "a7270a0d893fe742c13a88b18c1a3e4cecb978fb8e05c4a62f5fcfe2541a3e00",
-					"scope": "S18b approval/tool-detail paydown (9 keys)",
-					"note": "S18b translation lane: i18n-translator / anthropic/claude-sonnet-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5"
+					"receipt": "i18n/receipts/5f8e54e78de8-hi-finalgate20261115-debt.json",
+					"receipt_sha256": "6c60f198fb11a685e2f1c2c195ab0e4401e8f8d408337d4ed07c433557707317",
+					"scope": "{\"kind\":\"receipt rebinding/exact486-main+23-PR union seam only\",\"new_semantic_keys_read\":0,\"namespace_keys_mechanically_checked\":509,\"selected_main_keys\":486,\"selected_PR_keys\":23,\"source_and_context_mechanically_checked\":true,\"selection\":\"PR contributes ONLY tool_row.diff.full.*23; other486 exclusively exact incoming main, not other471PR values.\",\"old_findings_carry_forward\":\"Explicit author choice retains genuine MINOR/NIT including HI-C1/aliases. No new linguistic defect or new finding count invented.\"}",
+					"note": "PR1829 exact 486-main + 23-PR union seam/hash rebinding only. See canonical record/companions; zero new semantic keys, no new rendered/native evidence or global approval."
+				},
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-15",
+					"result": "clean-with-findings",
+					"instance": "6dfaec49abf0-hi-finalgate20261115-debt",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 2,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/6dfaec49abf0-hi-finalgate20261115-debt.json",
+					"receipt_sha256": "58cd327e22a51354b28f0311c92c43b2d1a2f45afbf231cb26edf74d536d9359",
+					"scope": "receipt rebinding/exact486-main+23-PR union seam only;509 mechanically checked;0 new semantic keys",
+					"note": "PR1829 exact 486-main + 23-PR union seam/hash rebinding only. See canonical record/companions; zero new semantic keys, no new rendered/native evidence or global approval."
 				}
 			],
 			"status": "audited",
@@ -28913,6 +29372,215 @@
 							"receipt_sha256": "a97247db95c065e502d788dad7abb7f1dbea84b19bdfb55fe80d68b805cd2efe",
 							"scope": "landed merge of UI #1874 + #1884 canonical keys (16 new keys), union proven byte-identical",
 							"note": "Independent i18n-auditor audit of the landed ui.chat.canonical bytes after merging main 0de7a69e2 (#1874 temporary_deleted.* + #1884 S16e keys) into PR #1884; prior audits described pre-merge bytes."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "12ec2698434dcb39497e288af62d11d70f0fd71d494a9becf3fd611d6568bbdd",
+					"target_sha256": "37bca60d5a5ee2d1f19bbaed857e5294ecdb125f56dfd11170723341c4459063",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-11",
+							"result": "clean-with-findings",
+							"instance": "765ad2515acf-hi-s16f-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/765ad2515acf-hi-s16f-r2.json",
+							"receipt_sha256": "5a80997f2d34cb3242942a34e2ede3aaf81385aac109c61d3c73ef3d5144c891",
+							"scope": "Round 2 independent re-audit of the 10 S16f generation-card keys on the landed bytes at 9931d62 (sound.batch.*, sound.cost.*, media.image_label, media.sound_label, supplement.sound_fallback_label); the other 456 values are unchanged and out of scope.",
+							"note": "R2 on landed bytes; record i18n/audits/evidence/hi/ui.chat.canonical/s16f-r2-765ad2515acf/. 10 S16f keys re-judged; nothing left English; 0 blocker/major, 2 nit accepted as-is (word budgets)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+					"target_sha256": "18ee2d0ae6a06f8000f0d74818637e131fa903781abcec47ad1fe49d2c07c6a4",
+					"auditors": [],
+					"status": "pending"
+				},
+				{
+					"source_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+					"target_sha256": "3bf3915206f534281383edacf7524d11641b7400dbfea3837be8f8ac1a8fb851",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-11",
+							"result": "clean-with-findings",
+							"instance": "567a24a88e45-chat-canonical-hi-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/567a24a88e45-chat-canonical-hi-r2.json",
+							"receipt_sha256": "0d68dfc22cedd9e91fc0175b27f292ce96cde76372d479ae43391598d5afd74b",
+							"scope": "ui.chat.canonical; source-only retained whole-byte-compatible namespace plus independently rechecked French notices; rendered/RTL fit unproven"
+						},
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-11",
+							"result": "clean-with-findings",
+							"instance": "c7b72ef216da-hi-chat-canonical-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c7b72ef216da-hi-chat-canonical-r2.json",
+							"receipt_sha256": "637da859de3160a4e6207e3d906cf786762d4266486d5a4356a9918a96256e08",
+							"scope": "ui.chat.canonical; source-only retained whole-byte-compatible namespace plus independently rechecked French notices; rendered/RTL fit unproven"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+					"target_sha256": "5bad55ca446e6e2e0bc853d503d94280f444cd009402431c65e8ce997528689b",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-12",
+							"result": "clean",
+							"instance": "b04b0982d048-hi-s16f-au4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b04b0982d048-hi-s16f-au4.json",
+							"receipt_sha256": "e786162df109f8f74890076ed8e8d39af873bf7f473376216e730d554e68d9ee",
+							"note": "S16f round-4 re-audit of the hi remediation (sound/ध्वनि consistency); audit record: i18n/audits/evidence/hi/ui.chat.canonical/s16f-au4-b04b0982/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+					"target_sha256": "8792c9a8f9df03f7c586d45e3f3b6f89b25ec6097a9aab1e310bb4e210677393",
+					"translator": {
+						"agent": "i18n-translator",
+						"model": "deepseek/deepseek-flash",
+						"date": "2026-11-12"
+					},
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-13",
+							"result": "clean-with-findings",
+							"instance": "5f8e54e78de8-hi-final-evidence-20261112",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/5f8e54e78de8-hi-final-evidence-20261112.json",
+							"receipt_sha256": "9a5a40a864e6f1d70bfb76fbe2b2de3c9e3e313b49ccf0c22c5ba9e63f31c2a4",
+							"scope": "Retained23-key PR semantic proof + French2-key delta where applicable + exact467-main ancestry + accepted bounded23-key captured evidence on current source/target/context hashes; no fresh490-key audit.",
+							"note": "PR1829 scoped supplement; record: i18n/audits/evidence/hi/ui.chat.canonical/5f8e54e78de8-hi-final-evidence-20261112/record.json; retained MINOR/NIT dispositions. No fresh490-key, native or all-actions claim."
+						},
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-13",
+							"result": "clean-with-findings",
+							"instance": "6dfaec49abf0-hi-final-policy-evidence-20261112",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6dfaec49abf0-hi-final-policy-evidence-20261112.json",
+							"receipt_sha256": "5e305a30e908346adc22a8e7e3bbf398ffdcee305774e6e0e13e71d70d44618f",
+							"scope": "Retained 23-key PR semantic audit, French 2-key approved delta as applicable, exact 467-key incoming-main ancestry and accepted captured visual/AX evidence; no fresh 490-key semantics or global release approval.",
+							"note": "PR1829 scoped supplement; record: i18n/audits/evidence/hi/ui.chat.canonical/6dfaec49abf0-hi-final-policy-evidence-20261112/record.json; retained MINOR/NIT dispositions. No fresh490-key, native or all-actions claim."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+					"target_sha256": "44d13aafbd5dc8e369a9b35a169f06e7c24b732e54fab574fe19feab98f62706",
+					"translator": {
+						"agent": "lopdev coder",
+						"model": "anthropic/claude-opus-5-5",
+						"date": "2026-11-12",
+						"note": "Mixed provenance (one translator field per row): 4 temporary_deleted.* keys by lopdev coder (UI #1874); #1870 keys by i18n-translator claude-sonnet-5-5; #1875 loading.* and #1876 media/sound keys per superseded upstream rows. Auditor = coder model: disclosed."
+					},
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "5f8e54e78de8-hi-rnext-rebind-20261114",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/5f8e54e78de8-hi-rnext-rebind-20261114.json",
+							"receipt_sha256": "ad7a764b5f158ef639a65d9195fe305afc4c68be7816a4d1bf12001d730540be",
+							"scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+							"note": "PR1829 exact 471-main + 23-PR union seam/hash rebinding only. See canonical record/companions; zero new semantic keys, no new rendered/native evidence or global approval."
+						},
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "6dfaec49abf0-hi-r-next-seam-20261114",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/6dfaec49abf0-hi-r-next-seam-20261114.json",
+							"receipt_sha256": "f6a7bfdda5c14ee4b84e55ac0ff091781eb57f37b581e5ccaa6e8be8120a6ab6",
+							"scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+							"note": "PR1829 exact 471-main + 23-PR union seam/hash rebinding only. See canonical record/companions; zero new semantic keys, no new rendered/native evidence or global approval."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cbbb90eadffcc9a6ff2d7ca70794b4d39fb33e4476f610ece0a06701c1d97e4b",
+					"target_sha256": "f5edc06e73c1f5facbdc4b004e52b1420a87df77cb1affa3bd029c7944e8cebf",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean",
+							"instance": "s18b-hi-canonical-5e4b1db4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/s18b-hi-canonical-5e4b1db4.json",
+							"receipt_sha256": "a7270a0d893fe742c13a88b18c1a3e4cecb978fb8e05c4a62f5fcfe2541a3e00",
+							"scope": "S18b approval/tool-detail paydown (9 keys)",
+							"note": "S18b translation lane: i18n-translator / anthropic/claude-sonnet-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5"
 						}
 					],
 					"status": "audited"
@@ -40809,8 +41477,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "cbbb90eadffcc9a6ff2d7ca70794b4d39fb33e4476f610ece0a06701c1d97e4b",
-			"target_sha256": "6c0c3104c54f26640b743dad2b5e616cfa959d269b83e3fcc0e18501be7bdc14",
+			"source_sha256": "2db00914699ea873b03ce4b061cf41c1bb18a5dc57ed264b6fd1bd20f6a169e6",
+			"target_sha256": "b5ef4ec3ad119e95fbd8ca236dcbd606af540d3ac3eec2269512abefea7bbe1f",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
@@ -40819,21 +41487,38 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-14",
-					"result": "clean",
-					"instance": "s18b-ru-canonical-7dad04b5",
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-15",
+					"result": "clean-with-findings",
+					"instance": "a0245acae0c5-finalgate20261115-debt-013810-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 1,
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/s18b-ru-canonical-7dad04b5.json",
-					"receipt_sha256": "afa010c0dd6aaaa99c4966688992455e9f8eda9564d23e529c240c1cab85ed4f",
-					"scope": "S18b approval/tool-detail paydown (9 keys)",
-					"note": "S18b translation lane: i18n-translator / anthropic/claude-sonnet-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5"
+					"receipt": "i18n/receipts/a0245acae0c5-finalgate20261115-debt-013810-ru.json",
+					"receipt_sha256": "044611ccad271eb035916af1c78fa333052a5aa1b6817b29caeea2650eb83a51",
+					"scope": "receipt rebinding/exact486-main+23-PR union seam only;509mechanically checked;0new semantic keys",
+					"note": "PR1829 exact 486-main + 23-PR union seam/hash rebinding only. See canonical record/companions; zero new semantic keys, no new rendered/native evidence or global approval."
+				},
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-15",
+					"result": "clean-with-findings",
+					"instance": "0e471bff3c0f-finalgate20261115-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 4
+					},
+					"receipt": "i18n/receipts/0e471bff3c0f-finalgate20261115-ru.json",
+					"receipt_sha256": "b6963a9fba5965c68204d3b1c52316efb179233a33c5883dc818801d2490b02f",
+					"scope": "receipt rebinding/exact486-main+23-PR union seam only;509 mechanically checked,0 new semantic keys",
+					"note": "PR1829 exact 486-main + 23-PR union seam/hash rebinding only. See canonical record/companions; zero new semantic keys, no new rendered/native evidence or global approval."
 				}
 			],
 			"status": "audited",
@@ -41453,6 +42138,215 @@
 							"receipt_sha256": "9e2a7ebd68ca0bcfb88bc992484227b562ff1a2b908d1ed965838b0ce6893838",
 							"scope": "landed merge of UI #1874 + #1884 canonical keys (16 new keys), union proven byte-identical",
 							"note": "Independent i18n-auditor audit of the landed ui.chat.canonical bytes after merging main 0de7a69e2 (#1874 temporary_deleted.* + #1884 S16e keys) into PR #1884; prior audits described pre-merge bytes."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "12ec2698434dcb39497e288af62d11d70f0fd71d494a9becf3fd611d6568bbdd",
+					"target_sha256": "be3f1256ee3930a40f102c6ed4ce9db4aa93191f9f1f6bb5d09d031ea1608e2f",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-11",
+							"result": "clean-with-findings",
+							"instance": "9f927eaac669-s16f-r3-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/9f927eaac669-s16f-r3-ru.json",
+							"receipt_sha256": "3d28f9cb02155fd090eecae2291759b7bcef865450e72e631d1bfaa9429b00ac",
+							"scope": "the 10 S16f generation-card label keys of ru/ui.chat.canonical (sound.batch.*, sound.cost.*, media.*_label, supplement.sound_fallback_label) incl. the round-3 summary unknown-clause change; the other 456 keys read only as precedent and carried on prior audits",
+							"note": "S16f r3 ru: 10 keys, 0 blocker/major/minor, 2 nits (sound_label case trade-off; summary clause). Record: i18n/audits/evidence/ru/ui.chat.canonical/s16f-9f927eaac669-r3/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+					"target_sha256": "af745c025f29e1dc76c7b6bb60305186db8157c91d4a304b293d7d7e33547b47",
+					"auditors": [],
+					"status": "pending"
+				},
+				{
+					"source_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+					"target_sha256": "ad6c5d631d59a8e73189ddb24943c19871b510d6e7928f3286c35de5057feb97",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-11",
+							"result": "clean-with-findings",
+							"instance": "567a24a88e45-chat-canonical-ru-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/567a24a88e45-chat-canonical-ru-r2.json",
+							"receipt_sha256": "e27c5b959f365dbe17b83951b1796f34dea84fff9f13db05f98d50f97539c63e",
+							"scope": "ui.chat.canonical; source-only retained whole-byte-compatible namespace plus independently rechecked French notices; rendered/RTL fit unproven"
+						},
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-11",
+							"result": "clean-with-findings",
+							"instance": "c7b72ef216da-ru-chat-canonical-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c7b72ef216da-ru-chat-canonical-r2.json",
+							"receipt_sha256": "aba2071cd968d577d97bb45a72c1c28fcefc2a5a94f861c24363bb13faaed383",
+							"scope": "ui.chat.canonical; source-only retained whole-byte-compatible namespace plus independently rechecked French notices; rendered/RTL fit unproven"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+					"target_sha256": "fddef0897968450fb0157457dda37f7472fa467b4df1aea68af16bbe260f10f1",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-12",
+							"result": "clean",
+							"instance": "6e7c2663da44-s16f-au4-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6e7c2663da44-s16f-au4-ru.json",
+							"receipt_sha256": "679693ab40c06fa90f1bbd809663007e5759e830b7770860a091b5f82e23f006",
+							"note": "S16f round-4 re-audit of the ru remediation (media.sound_label); audit record: i18n/audits/evidence/ru/ui.chat.canonical/s16f-6e7c2663da44-r4/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+					"target_sha256": "325fe1a5b211db3408ee9786a1a7e6ab724d79315176019b6b55291b0e8ab71e",
+					"translator": {
+						"agent": "i18n-translator",
+						"model": "deepseek/deepseek-flash",
+						"date": "2026-11-12"
+					},
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-13",
+							"result": "clean-with-findings",
+							"instance": "a0245acae0c5-1829-final-ru-20261112t234806z-issued",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/a0245acae0c5-1829-final-ru-20261112t234806z-issued.json",
+							"receipt_sha256": "ffe4cdaada97aa732cac6a16168b7bc9cc2cba480efe1f4532bba5c1734939b9",
+							"scope": "PR1829 accepted scoped convergence: retained23 full-diff source/target/context keys and captured22-visible+nav-AX evidence; exact467 incoming-main members inherited by raw-byte ancestry; retained parent findings. No fresh490 semantic, native/full-app, all-actions or global RTL certification.",
+							"note": "PR1829 scoped supplement; record: i18n/audits/evidence/ru/ui.chat.canonical/a0245acae0c5-1829-final-ru-20261112t234806z-issued/record.json; retained MINOR/NIT dispositions. No fresh490-key, native or all-actions claim."
+						},
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-13",
+							"result": "clean-with-findings",
+							"instance": "0e471bff3c0f-1829-final-evidence-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/0e471bff3c0f-1829-final-evidence-ru.json",
+							"receipt_sha256": "ab27262aab91ede71d9564ab1e2e7bfeac3394a01e3810f73abbbdfd0b3fce5f",
+							"scope": "NEW evidence-disposition delta only: retained 23 PR keys plus captured-element review; exact 467 incoming-main ancestry is retained from my earlier independent byte proof and mapped parent audits. No new 490-key semantics audit. 22 visible elements + nav AX per assigned locale; accepted captured/synthetic pseudo scope only, not all functional variants/native/global release.",
+							"note": "PR1829 scoped supplement; record: i18n/audits/evidence/ru/ui.chat.canonical/0e471bff3c0f-1829-final-evidence-ru/record.json; retained MINOR/NIT dispositions. No fresh490-key, native or all-actions claim."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+					"target_sha256": "6b82f62d6909a97c60e2c3de23503b68776c97f4b885da3badbe69eb78311a8b",
+					"translator": {
+						"agent": "lopdev coder",
+						"model": "anthropic/claude-opus-5-5",
+						"date": "2026-11-12",
+						"note": "Mixed provenance (one translator field per row): 4 temporary_deleted.* keys by lopdev coder (UI #1874); #1870 keys by i18n-translator claude-sonnet-5-5; #1875 loading.* and #1876 media/sound keys per superseded upstream rows. Auditor = coder model: disclosed."
+					},
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "a0245acae0c5-rnext-ru-20261114t110721z",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/a0245acae0c5-rnext-ru-20261114t110721z.json",
+							"receipt_sha256": "790ba4aa4bf40220e8ad85c70c84944625caf0881124cbdf6007cc16c67a809a",
+							"scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+							"note": "PR1829 exact 471-main + 23-PR union seam/hash rebinding only. See canonical record/companions; zero new semantic keys, no new rendered/native evidence or global approval."
+						},
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "0e471bff3c0f-20261114-rnext-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/0e471bff3c0f-20261114-rnext-ru.json",
+							"receipt_sha256": "8af0d7827c8d5b893ef55fcd900c78829115176b005d39c99e89a7c4ac9ceae0",
+							"scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+							"note": "PR1829 exact 471-main + 23-PR union seam/hash rebinding only. See canonical record/companions; zero new semantic keys, no new rendered/native evidence or global approval."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cbbb90eadffcc9a6ff2d7ca70794b4d39fb33e4476f610ece0a06701c1d97e4b",
+					"target_sha256": "6c0c3104c54f26640b743dad2b5e616cfa959d269b83e3fcc0e18501be7bdc14",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean",
+							"instance": "s18b-ru-canonical-7dad04b5",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/s18b-ru-canonical-7dad04b5.json",
+							"receipt_sha256": "afa010c0dd6aaaa99c4966688992455e9f8eda9564d23e529c240c1cab85ed4f",
+							"scope": "S18b approval/tool-detail paydown (9 keys)",
+							"note": "S18b translation lane: i18n-translator / anthropic/claude-sonnet-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5"
 						}
 					],
 					"status": "audited"
@@ -53366,8 +54260,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "cbbb90eadffcc9a6ff2d7ca70794b4d39fb33e4476f610ece0a06701c1d97e4b",
-			"target_sha256": "dd3d9e49daaa8bd557e34f4dbee102c75ea281887bb2831e0fe269bafa3a9bf8",
+			"source_sha256": "2db00914699ea873b03ce4b061cf41c1bb18a5dc57ed264b6fd1bd20f6a169e6",
+			"target_sha256": "896a86c7db417e881756f2437b8f0f159b52405dbe2563feab456fae036bf903",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
@@ -53376,21 +54270,38 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-14",
-					"result": "clean",
-					"instance": "s18b-ur-canonical-afeed93d",
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-15",
+					"result": "clean-with-findings",
+					"instance": "a0245acae0c5-finalgate20261115-debt-013810-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 3,
+						"nit": 4
 					},
-					"receipt": "i18n/receipts/s18b-ur-canonical-afeed93d.json",
-					"receipt_sha256": "d8f8faae4f2060936a04476973220b1eb0a31657a8d31adb3d8e86f863aea82a",
-					"scope": "S18b approval/tool-detail paydown (9 keys)",
-					"note": "S18b translation lane: i18n-translator / anthropic/claude-sonnet-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5"
+					"receipt": "i18n/receipts/a0245acae0c5-finalgate20261115-debt-013810-ur.json",
+					"receipt_sha256": "0bda54cc2e2cd078037afb985df2ec2c080d459fcd03c6e9eeb7bb9e7b7887f8",
+					"scope": "receipt rebinding/exact486-main+23-PR union seam only;509mechanically checked;0new semantic keys",
+					"note": "PR1829 exact 486-main + 23-PR union seam/hash rebinding only. See canonical record/companions; zero new semantic keys, no new rendered/native evidence or global approval."
+				},
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-15",
+					"result": "clean-with-findings",
+					"instance": "0e471bff3c0f-finalgate20261115-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 3,
+						"nit": 4
+					},
+					"receipt": "i18n/receipts/0e471bff3c0f-finalgate20261115-ur.json",
+					"receipt_sha256": "ccdd470acd7a10ea27d603b209547664abc1d1fa0b61c4d2dc54cc09c48358d1",
+					"scope": "receipt rebinding/exact486-main+23-PR union seam only;509 mechanically checked,0 new semantic keys",
+					"note": "PR1829 exact 486-main + 23-PR union seam/hash rebinding only. See canonical record/companions; zero new semantic keys, no new rendered/native evidence or global approval."
 				}
 			],
 			"status": "audited",
@@ -54059,6 +54970,210 @@
 							"receipt_sha256": "a7ba9d9e9db2db25e382ecb83718a1cff65fef108dad9a6b3630d6a2ccbdaff6",
 							"scope": "landed merge of UI #1874 + #1884 canonical keys (16 new keys), union proven byte-identical",
 							"note": "Independent i18n-auditor audit of the landed ui.chat.canonical bytes after merging main 0de7a69e2 (#1874 temporary_deleted.* + #1884 S16e keys) into PR #1884; prior audits described pre-merge bytes."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "12ec2698434dcb39497e288af62d11d70f0fd71d494a9becf3fd611d6568bbdd",
+					"target_sha256": "ff384788791f2bfbde96860706123a80a98c85f20008465d4abdaa165da49f01",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-11",
+							"result": "clean",
+							"instance": "33f0800c30f3-s16f-r2-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/33f0800c30f3-s16f-r2-ur.json",
+							"receipt_sha256": "de6e0891a9eeb107aed9602ba65f58ac65ceb358d11d7cf9daeb6d2aa1b3990d",
+							"scope": "S16f round 2, 10 landed generation-card label keys (sound.batch.item_status/summary/latest_update, sound.cost.unknown/no_charge/estimated_zero/batch_unknown, media.image_label/sound_label, supplement.sound_fallback_label); other 456 keys carried",
+							"note": "ur S16f r2: 10 landed keys clean; round-1 fixes re-derived, not echoed; hashes+grid in evidence s16f-au2-ur"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+					"target_sha256": "447dbfa53dd70eb8148495b2badc03e12ee3fcef935fd98280cd3665f31e655e",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-11",
+							"result": "clean-with-findings",
+							"instance": "567a24a88e45-chat-canonical-ur-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/567a24a88e45-chat-canonical-ur-r2.json",
+							"receipt_sha256": "c4dcdb3d25588590dbb377ec31069b3d59538f48f76ecedbe179c40ed747ee3e",
+							"scope": "ui.chat.canonical; source-only retained whole-byte-compatible namespace plus independently rechecked French notices; rendered/RTL fit unproven"
+						},
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-11",
+							"result": "clean-with-findings",
+							"instance": "c7b72ef216da-ur-chat-canonical-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c7b72ef216da-ur-chat-canonical-r2.json",
+							"receipt_sha256": "d9b8f3039ebd222389635620350ea4d17ea28c1cac9f5a3c68cb1d6f7a616dc3",
+							"scope": "ui.chat.canonical; source-only retained whole-byte-compatible namespace plus independently rechecked French notices; rendered/RTL fit unproven"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+					"target_sha256": "fd1116ccb5e847eb7f28c4cf5d1084efad95edf52d638d1a6144e065ce7d98a7",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "1d764576d0aa-s16f-au3-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/1d764576d0aa-s16f-au3-ur.json",
+							"receipt_sha256": "e8fd11469cda736764fc3c5c2506f9e1251869bebdeee7e5e9399a76ee3850a2",
+							"note": "S16f delta audit of the 15 keys on the merged bytes; audit record: i18n/audits/evidence/ur/ui.chat.canonical/s16f-au3-ur/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+					"target_sha256": "06d76892a9c2a92cc5e2574a4ad71879d1c9a1a761e6dce5f9f75572abfc18b2",
+					"translator": {
+						"agent": "i18n-translator",
+						"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
+						"date": "2026-11-11",
+						"note": "ur S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/ur/ui.chat.canonical/s16a-b97613446a7a"
+					},
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-13",
+							"result": "clean-with-findings",
+							"instance": "a0245acae0c5-1829-final-ur-20261112t234806z-issued",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/a0245acae0c5-1829-final-ur-20261112t234806z-issued.json",
+							"receipt_sha256": "90dc7d28af80385f6e6b7ebf05c6c4fbefb49fe126683d36fe6104a1379cc33e",
+							"scope": "PR1829 accepted scoped convergence: retained23 full-diff source/target/context keys and captured22-visible+nav-AX evidence; exact467 incoming-main members inherited by raw-byte ancestry; retained parent findings. No fresh490 semantic, native/full-app, all-actions or global RTL certification.",
+							"note": "PR1829 scoped supplement; record: i18n/audits/evidence/ur/ui.chat.canonical/a0245acae0c5-1829-final-ur-20261112t234806z-issued/record.json; retained MINOR/NIT dispositions. No fresh490-key, native or all-actions claim."
+						},
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-13",
+							"result": "clean-with-findings",
+							"instance": "0e471bff3c0f-1829-final-evidence-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/0e471bff3c0f-1829-final-evidence-ur.json",
+							"receipt_sha256": "b0d3da25151c5c82878072195d10cea1f83b6d883c4b73720e2fedde9c2e2a4d",
+							"scope": "NEW evidence-disposition delta only: retained 23 PR keys plus captured-element review; exact 467 incoming-main ancestry is retained from my earlier independent byte proof and mapped parent audits. No new 490-key semantics audit. 22 visible elements + nav AX per assigned locale; accepted captured/synthetic pseudo scope only, not all functional variants/native/global release.",
+							"note": "PR1829 scoped supplement; record: i18n/audits/evidence/ur/ui.chat.canonical/0e471bff3c0f-1829-final-evidence-ur/record.json; retained MINOR/NIT dispositions. No fresh490-key, native or all-actions claim."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+					"target_sha256": "f312b2ef48de99ca833e89b0d6f81c4044311cb07ac49ee5785c35f815fe93a9",
+					"translator": {
+						"agent": "lopdev coder",
+						"model": "anthropic/claude-opus-5-5",
+						"date": "2026-11-12",
+						"note": "Mixed provenance (one translator field per row): 4 temporary_deleted.* keys by lopdev coder (UI #1874); #1870 keys by i18n-translator claude-sonnet-5-5; #1875 loading.* and #1876 media/sound keys per superseded upstream rows. Auditor = coder model: disclosed."
+					},
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "a0245acae0c5-rnext-ur-20261114t110721z",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/a0245acae0c5-rnext-ur-20261114t110721z.json",
+							"receipt_sha256": "977fc11a078f2d98da31adc56b042c58ea69c7526e6fac1796a69fecbed7c0ea",
+							"scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+							"note": "PR1829 exact 471-main + 23-PR union seam/hash rebinding only. See canonical record/companions; zero new semantic keys, no new rendered/native evidence or global approval."
+						},
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "0e471bff3c0f-20261114-rnext-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/0e471bff3c0f-20261114-rnext-ur.json",
+							"receipt_sha256": "95babf009da0b9bc76934b548f25fa8ab51d4c93bc61237042cfeae26a5c5ff2",
+							"scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+							"note": "PR1829 exact 471-main + 23-PR union seam/hash rebinding only. See canonical record/companions; zero new semantic keys, no new rendered/native evidence or global approval."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cbbb90eadffcc9a6ff2d7ca70794b4d39fb33e4476f610ece0a06701c1d97e4b",
+					"target_sha256": "dd3d9e49daaa8bd557e34f4dbee102c75ea281887bb2831e0fe269bafa3a9bf8",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean",
+							"instance": "s18b-ur-canonical-afeed93d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/s18b-ur-canonical-afeed93d.json",
+							"receipt_sha256": "d8f8faae4f2060936a04476973220b1eb0a31657a8d31adb3d8e86f863aea82a",
+							"scope": "S18b approval/tool-detail paydown (9 keys)",
+							"note": "S18b translation lane: i18n-translator / anthropic/claude-sonnet-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5"
 						}
 					],
 					"status": "audited"
@@ -65840,8 +66955,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "cbbb90eadffcc9a6ff2d7ca70794b4d39fb33e4476f610ece0a06701c1d97e4b",
-			"target_sha256": "94123b3dc4a22d7d2e13d69ade48b90ff304a8f4ea91bcfe504f51056b0bf308",
+			"source_sha256": "2db00914699ea873b03ce4b061cf41c1bb18a5dc57ed264b6fd1bd20f6a169e6",
+			"target_sha256": "17192d9d959ed5fc5d9f6216b860c68441d21298bc909aff442956d54ec7e503",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
@@ -65850,21 +66965,38 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-14",
-					"result": "clean",
-					"instance": "s18b-vi-canonical-6ddc56af",
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-15",
+					"result": "clean-with-findings",
+					"instance": "a0245acae0c5-finalgate20261115-debt-013810-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 1,
+						"nit": 3
 					},
-					"receipt": "i18n/receipts/s18b-vi-canonical-6ddc56af.json",
-					"receipt_sha256": "cd5029c84e48d82244f90cd86e8babb01faa884c63f2a546718eba4460573c57",
-					"scope": "S18b approval/tool-detail paydown (9 keys)",
-					"note": "S18b translation lane: i18n-translator / anthropic/claude-sonnet-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5"
+					"receipt": "i18n/receipts/a0245acae0c5-finalgate20261115-debt-013810-vi.json",
+					"receipt_sha256": "1f62e4c70ef1f54a7a1e1fa4165c905d8e1e5ebb5f7d76e720d7c76eb969acea",
+					"scope": "receipt rebinding/exact486-main+23-PR union seam only;509mechanically checked;0new semantic keys",
+					"note": "PR1829 exact 486-main + 23-PR union seam/hash rebinding only. See canonical record/companions; zero new semantic keys, no new rendered/native evidence or global approval."
+				},
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-15",
+					"result": "clean-with-findings",
+					"instance": "0e471bff3c0f-finalgate20261115-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 4
+					},
+					"receipt": "i18n/receipts/0e471bff3c0f-finalgate20261115-vi.json",
+					"receipt_sha256": "8c20c422b9c54f904e6d151430f499607c30f87a1cda73659dcedf31c82d9056",
+					"scope": "receipt rebinding/exact486-main+23-PR union seam only;509 mechanically checked,0 new semantic keys",
+					"note": "PR1829 exact 486-main + 23-PR union seam/hash rebinding only. See canonical record/companions; zero new semantic keys, no new rendered/native evidence or global approval."
 				}
 			],
 			"status": "audited",
@@ -66525,6 +67657,210 @@
 							"receipt_sha256": "0704f083e82d9c810df6a31d6f93790fdd8bc8fab4f7ba89faa7c0d40e3b57cc",
 							"scope": "landed merge of UI #1874 + #1884 canonical keys (16 new keys), union proven byte-identical",
 							"note": "Independent i18n-auditor audit of the landed ui.chat.canonical bytes after merging main 0de7a69e2 (#1874 temporary_deleted.* + #1884 S16e keys) into PR #1884; prior audits described pre-merge bytes."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "12ec2698434dcb39497e288af62d11d70f0fd71d494a9becf3fd611d6568bbdd",
+					"target_sha256": "65beedffec6a88924e977f5aadafbf52ed4cfb508d46975481273c7103e12900",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-11",
+							"result": "clean",
+							"instance": "d29293b521fd",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d29293b521fd.json",
+							"receipt_sha256": "445c6bb7d6cf81a868de174e3a8b0118bd123d986be20096964587deceb3dcf5",
+							"scope": "S16f generation-card labels: the 10 keys added in 8b43dac1d5 at head af876eb0 (last 10 values of ui.chat.canonical); other 456 keys byte-identical and covered by the superseded row",
+							"note": "vi S16f r3: 10 gen-card keys clean (0 blocker/major/minor/nit); envelope-delta re-read after the sound_fallback_label fix. Record: i18n/audits/evidence/vi/ui.chat.canonical/s16f-r3-d29293b5/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+					"target_sha256": "c23bbd6bbaa34f4ae660d502f7c5503d565711d9e6fa4faebe506882296c222b",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-11",
+							"result": "clean",
+							"instance": "567a24a88e45-chat-canonical-vi-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/567a24a88e45-chat-canonical-vi-r2.json",
+							"receipt_sha256": "6fde1388ccca128f6a909ce0588f4c3dd71b8925326c6cbd7eca3a875ef9642f",
+							"scope": "ui.chat.canonical; source-only retained whole-byte-compatible namespace plus independently rechecked French notices; rendered/RTL fit unproven"
+						},
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-11",
+							"result": "clean",
+							"instance": "c7b72ef216da-vi-chat-canonical-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c7b72ef216da-vi-chat-canonical-r2.json",
+							"receipt_sha256": "694bf1359f228ec3bad9dad1622f0d20cd3f5729b94ee5926e86300118141577",
+							"scope": "ui.chat.canonical; source-only retained whole-byte-compatible namespace plus independently rechecked French notices; rendered/RTL fit unproven"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+					"target_sha256": "a37a5690412c841379ea44d6d63f4a5314579f4a157ff3c7f67be2ee872fe750",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-12",
+							"result": "clean",
+							"instance": "49c5a10a37b4",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/49c5a10a37b4.json",
+							"receipt_sha256": "90d86780df545711ad161761edc08a74afb896fbea091dbdbd6663b63869d086",
+							"note": "S16f delta audit of the 15 keys on the merged bytes; audit record: i18n/audits/evidence/vi/ui.chat.canonical/s16f-49c5a10a37b4-r4/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+					"target_sha256": "e5c472aaa257bc7acded037a73c470ed79a1e3cc8dc162d854052b3aa89746fb",
+					"translator": {
+						"agent": "i18n-translator",
+						"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
+						"date": "2026-11-11",
+						"note": "vi S16a words (14 keys): draft v3 = translator v1 with 4 values changed by the manager on an auditor's findings; v1/v2 audits superseded. 442 earlier keys retained. Evidence: i18n/audits/evidence/vi/ui.chat.canonical/s16a-64a0e2d3b795"
+					},
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-13",
+							"result": "clean",
+							"instance": "a0245acae0c5-1829-final-vi-20261112t234806z-issued",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/a0245acae0c5-1829-final-vi-20261112t234806z-issued.json",
+							"receipt_sha256": "bffc8b06c8c5b7b1eb5c26a4b31e97071b7c574deab6d6368c4c69853bd6e5a1",
+							"scope": "PR1829 accepted scoped convergence: retained23 full-diff source/target/context keys and captured22-visible+nav-AX evidence; exact467 incoming-main members inherited by raw-byte ancestry; retained parent findings. No fresh490 semantic, native/full-app, all-actions or global RTL certification.",
+							"note": "PR1829 scoped supplement; record: i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-1829-final-vi-20261112t234806z-issued/record.json; retained MINOR/NIT dispositions. No fresh490-key, native or all-actions claim."
+						},
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-13",
+							"result": "clean",
+							"instance": "0e471bff3c0f-1829-final-evidence-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/0e471bff3c0f-1829-final-evidence-vi.json",
+							"receipt_sha256": "0eaa29282ea974559c613226a7742b308dc69beafeeef98ff93c83df0e307bc1",
+							"scope": "NEW evidence-disposition delta only: retained 23 PR keys plus captured-element review; exact 467 incoming-main ancestry is retained from my earlier independent byte proof and mapped parent audits. No new 490-key semantics audit. 22 visible elements + nav AX per assigned locale; accepted captured/synthetic pseudo scope only, not all functional variants/native/global release.",
+							"note": "PR1829 scoped supplement; record: i18n/audits/evidence/vi/ui.chat.canonical/0e471bff3c0f-1829-final-evidence-vi/record.json; retained MINOR/NIT dispositions. No fresh490-key, native or all-actions claim."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+					"target_sha256": "8eb5a837b784cfcfed19ba24e7e3dde219354cd3f39a35be36d26d049a0f7779",
+					"translator": {
+						"agent": "lopdev coder",
+						"model": "anthropic/claude-opus-5-5",
+						"date": "2026-11-12",
+						"note": "Mixed provenance (one translator field per row): 4 temporary_deleted.* keys by lopdev coder (UI #1874); #1870 keys by i18n-translator claude-sonnet-5-5; #1875 loading.* and #1876 media/sound keys per superseded upstream rows. Auditor = coder model: disclosed."
+					},
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "a0245acae0c5-rnext-vi-20261114t110721z",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/a0245acae0c5-rnext-vi-20261114t110721z.json",
+							"receipt_sha256": "fbccc2a2a131adc454e30b91f1f32891959ce948136fbc71e7e0d681ad6b8f72",
+							"scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+							"note": "PR1829 exact 471-main + 23-PR union seam/hash rebinding only. See canonical record/companions; zero new semantic keys, no new rendered/native evidence or global approval."
+						},
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "0e471bff3c0f-20261114-rnext-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/0e471bff3c0f-20261114-rnext-vi.json",
+							"receipt_sha256": "c22f51ad52537cac57a8b93d4b32d39e984dc752b2dc90e527e624411a4d2231",
+							"scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+							"note": "PR1829 exact 471-main + 23-PR union seam/hash rebinding only. See canonical record/companions; zero new semantic keys, no new rendered/native evidence or global approval."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cbbb90eadffcc9a6ff2d7ca70794b4d39fb33e4476f610ece0a06701c1d97e4b",
+					"target_sha256": "94123b3dc4a22d7d2e13d69ade48b90ff304a8f4ea91bcfe504f51056b0bf308",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean",
+							"instance": "s18b-vi-canonical-6ddc56af",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/s18b-vi-canonical-6ddc56af.json",
+							"receipt_sha256": "cd5029c84e48d82244f90cd86e8babb01faa884c63f2a546718eba4460573c57",
+							"scope": "S18b approval/tool-detail paydown (9 keys)",
+							"note": "S18b translation lane: i18n-translator / anthropic/claude-sonnet-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5"
 						}
 					],
 					"status": "audited"
@@ -79122,8 +80458,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "cbbb90eadffcc9a6ff2d7ca70794b4d39fb33e4476f610ece0a06701c1d97e4b",
-			"target_sha256": "4253318bc4aaebad728fedeb155c2e079c4774c814fc55ade9a9be87f74378d4",
+			"source_sha256": "2db00914699ea873b03ce4b061cf41c1bb18a5dc57ed264b6fd1bd20f6a169e6",
+			"target_sha256": "ed4ba8b8a1e0b800ca7c6a856b96f582c684e52a33019e2b26aa4011d44756b8",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "anthropic/claude-sonnet-5-5",
@@ -79132,21 +80468,38 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-14",
-					"result": "clean",
-					"instance": "s18b-zh-cn-canonical-c8bf55df",
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-15",
+					"result": "clean-with-findings",
+					"instance": "a0245acae0c5-finalgate20261115-debt-013810-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 3,
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/s18b-zh-cn-canonical-c8bf55df.json",
-					"receipt_sha256": "6e0e65c294b8aba0b09b4f76004eb069c9f95ac40c0f69473d1deada0fcf3dc2",
-					"scope": "S18b approval/tool-detail paydown (9 keys)",
-					"note": "S18b translation lane: i18n-translator / anthropic/claude-sonnet-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5"
+					"receipt": "i18n/receipts/a0245acae0c5-finalgate20261115-debt-013810-zh-cn.json",
+					"receipt_sha256": "bf6b74f06e1375e1d70ab50dcaed8b3a7371d825f19e711823d3de348d542314",
+					"scope": "receipt rebinding/exact486-main+23-PR union seam only;509mechanically checked;0new semantic keys",
+					"note": "PR1829 exact 486-main + 23-PR union seam/hash rebinding only. See canonical record/companions; zero new semantic keys, no new rendered/native evidence or global approval."
+				},
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-11-15",
+					"result": "clean-with-findings",
+					"instance": "0e471bff3c0f-finalgate20261115-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 3,
+						"nit": 2
+					},
+					"receipt": "i18n/receipts/0e471bff3c0f-finalgate20261115-zh-cn.json",
+					"receipt_sha256": "9265dbf68781328fee00822e19bb0b41b7a9a5c7a4ae215f99d288c15f2d763d",
+					"scope": "receipt rebinding/exact486-main+23-PR union seam only;509 mechanically checked,0 new semantic keys",
+					"note": "PR1829 exact 486-main + 23-PR union seam/hash rebinding only. See canonical record/companions; zero new semantic keys, no new rendered/native evidence or global approval."
 				}
 			],
 			"status": "audited",
@@ -79783,6 +81136,210 @@
 							"receipt_sha256": "784d6fd6cb98e1564f9192713546216c308a8db388eb8b8bddea32f26186cfa9",
 							"scope": "landed merge of UI #1874 + #1884 canonical keys (16 new keys), union proven byte-identical",
 							"note": "Independent i18n-auditor audit of the landed ui.chat.canonical bytes after merging main 0de7a69e2 (#1874 temporary_deleted.* + #1884 S16e keys) into PR #1884; prior audits described pre-merge bytes."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "12ec2698434dcb39497e288af62d11d70f0fd71d494a9becf3fd611d6568bbdd",
+					"target_sha256": "13bbc7ac23ef6f38a92adb0b27c1e2b5fc9593784a1bb0ab1c1a4029cdd4b708",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-11",
+							"result": "clean",
+							"instance": "zh-cn-s16f-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/zh-cn-s16f-r2.json",
+							"receipt_sha256": "d056f738f10785f941b1e7e39f0b687a8ad2a808598ef9c5637b03931981caf2",
+							"scope": "the 10 new S16f generation-card label keys (PR #1876 @ 9931d62a)",
+							"note": "S16f generation-card labels, PR #1876 @ 9931d62a, round-2 re-audit of landed bytes; detail: audit-s16f-r2-zh-CN.md"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+					"target_sha256": "8db6da0aab5182efae83c3287758ba820dbdea60458d9c34dc384698d912d67b",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-11",
+							"result": "clean",
+							"instance": "567a24a88e45-chat-canonical-zh-cn-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/567a24a88e45-chat-canonical-zh-cn-r2.json",
+							"receipt_sha256": "9af4b89197158320c540f84524760c8d2853cc4306dc11259ab6f6b8013ea5d7",
+							"scope": "ui.chat.canonical; source-only retained whole-byte-compatible namespace plus independently rechecked French notices; rendered/RTL fit unproven"
+						},
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-11",
+							"result": "clean-with-findings",
+							"instance": "c7b72ef216da-zh-cn-chat-canonical-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c7b72ef216da-zh-cn-chat-canonical-r2.json",
+							"receipt_sha256": "08fc27c49450b779c82e83bc912c7bdb9360cec5b3bb6efd2ca8949eab9df23d",
+							"scope": "ui.chat.canonical; source-only retained whole-byte-compatible namespace plus independently rechecked French notices; rendered/RTL fit unproven"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "905fb4d86bab02148e90dea09a1e7d74c628fcdeb3f40f49126b21f491a8d28e",
+					"target_sha256": "35f8058839549d4a8be28792c279784c75a624b9c076fc98d359bae1fe1db12c",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-11-12",
+							"result": "clean-with-findings",
+							"instance": "2a10c1127838-zhcn-s16f-au3",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/2a10c1127838-zhcn-s16f-au3.json",
+							"receipt_sha256": "d945a58c75c7825349f3ab87581b332b9fe08bb3fe5eccf5ff6bbfc270d2c9b7",
+							"note": "S16f delta audit of the 15 keys on the merged bytes; audit record: i18n/audits/evidence/zh-CN/ui.chat.canonical/s16f-2a10c1127838-r4/record.json"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+					"target_sha256": "e6b3846b553cde65b671cec6b9b34a869bd3cffc3f42b9fec981a710501e5e81",
+					"translator": {
+						"agent": "i18n-translator",
+						"model": "anthropic/claude-sonnet-5-5 (PR #1870 S16a status words, 14 keys; earlier keys per superseded rows)",
+						"date": "2026-11-11",
+						"note": "zh-CN S16a tool-state/image-gen status words (14 keys) translated by i18n-translator; 442 earlier keys retained (tool_row.verb.* by openai/gpt-6.1-sol; see superseded). Evidence: i18n/audits/evidence/zh-CN/ui.chat.canonical/s16a-07b0fc8f8d80"
+					},
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-13",
+							"result": "clean-with-findings",
+							"instance": "a0245acae0c5-1829-final-zh-cn-20261112t234806z-issued",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/a0245acae0c5-1829-final-zh-cn-20261112t234806z-issued.json",
+							"receipt_sha256": "b0fea61e9063e03486d2a8f2babf1379c5819f0e2d8a845194be6b8ccf3a2230",
+							"scope": "PR1829 accepted scoped convergence: retained23 full-diff source/target/context keys and captured22-visible+nav-AX evidence; exact467 incoming-main members inherited by raw-byte ancestry; retained parent findings. No fresh490 semantic, native/full-app, all-actions or global RTL certification.",
+							"note": "PR1829 scoped supplement; record: i18n/audits/evidence/zh-CN/ui.chat.canonical/a0245acae0c5-1829-final-zh-cn-20261112t234806z-issued/record.json; retained MINOR/NIT dispositions. No fresh490-key, native or all-actions claim."
+						},
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-13",
+							"result": "clean-with-findings",
+							"instance": "0e471bff3c0f-1829-final-evidence-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/0e471bff3c0f-1829-final-evidence-zh-cn.json",
+							"receipt_sha256": "a101269b47ccfaf75ca9c0e70e90e7a4113b487758eaebbb11a0041796c6d3b9",
+							"scope": "NEW evidence-disposition delta only: retained 23 PR keys plus captured-element review; exact 467 incoming-main ancestry is retained from my earlier independent byte proof and mapped parent audits. No new 490-key semantics audit. 22 visible elements + nav AX per assigned locale; accepted captured/synthetic pseudo scope only, not all functional variants/native/global release.",
+							"note": "PR1829 scoped supplement; record: i18n/audits/evidence/zh-CN/ui.chat.canonical/0e471bff3c0f-1829-final-evidence-zh-cn/record.json; retained MINOR/NIT dispositions. No fresh490-key, native or all-actions claim."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+					"target_sha256": "c69feefe7cbb568ed80f498cfb13dc8d15e1abf33ad0ea59908f6c5ce470d5cc",
+					"translator": {
+						"agent": "lopdev coder",
+						"model": "anthropic/claude-opus-5-5",
+						"date": "2026-11-12",
+						"note": "Mixed provenance (one translator field per row): 4 temporary_deleted.* keys by lopdev coder (UI #1874); #1870 keys by i18n-translator claude-sonnet-5-5; #1875 loading.* and #1876 media/sound keys per superseded upstream rows. Auditor = coder model: disclosed."
+					},
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "a0245acae0c5-rnext-zh-cn-20261114t110721z",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/a0245acae0c5-rnext-zh-cn-20261114t110721z.json",
+							"receipt_sha256": "1f4b7454f09a6bf8b48f2a6b85d733a844da0234497c6e0a7dd96d358af722a0",
+							"scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+							"note": "PR1829 exact 471-main + 23-PR union seam/hash rebinding only. See canonical record/companions; zero new semantic keys, no new rendered/native evidence or global approval."
+						},
+						{
+							"agent": "translation-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-11-14",
+							"result": "clean-with-findings",
+							"instance": "0e471bff3c0f-20261114-rnext-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 2
+							},
+							"receipt": "i18n/receipts/0e471bff3c0f-20261114-rnext-zh-cn.json",
+							"receipt_sha256": "c1a92634f78e15b8276d24934cd9cf05dfbba83230c88f84b935560abde61177",
+							"scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+							"note": "PR1829 exact 471-main + 23-PR union seam/hash rebinding only. See canonical record/companions; zero new semantic keys, no new rendered/native evidence or global approval."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "cbbb90eadffcc9a6ff2d7ca70794b4d39fb33e4476f610ece0a06701c1d97e4b",
+					"target_sha256": "4253318bc4aaebad728fedeb155c2e079c4774c814fc55ade9a9be87f74378d4",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-14",
+							"result": "clean",
+							"instance": "s18b-zh-cn-canonical-c8bf55df",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/s18b-zh-cn-canonical-c8bf55df.json",
+							"receipt_sha256": "6e0e65c294b8aba0b09b4f76004eb069c9f95ac40c0f69473d1deada0fcf3dc2",
+							"scope": "S18b approval/tool-detail paydown (9 keys)",
+							"note": "S18b translation lane: i18n-translator / anthropic/claude-sonnet-5-5; independent audit by i18n-auditor / anthropic/claude-opus-5-5"
 						}
 					],
 					"status": "audited"

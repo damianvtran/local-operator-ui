@@ -61,10 +61,18 @@
 
 import { cn } from "@shared/lib/utils";
 import { type FC, useId, useLayoutEffect, useRef, useState } from "react";
+import { DiffHistoryPager, type DiffHistoryScope } from "./diff-history";
+import {
+	type DiffFullDescriptor,
+	type DiffFullNotice,
+	diffFullNoticeLabel,
+	diffFullViewLabel,
+	namelessHeaderRows,
+} from "./diff-history-model";
+import { KIND_INK } from "./diff-ink";
 import {
 	DIFF_EXPAND_MAX_LINES,
 	type DiffBodyLine,
-	type DiffLineKind,
 	diffBody,
 	diffOverflowLabel,
 	diffShowLessLabel,
@@ -80,6 +88,18 @@ export type DiffBlockProps = {
 	 * (`details.diff_truncated_rows`); 0 or absent when it dropped none.
 	 */
 	truncatedRows?: number;
+	/**
+	 * Where this call's FULL archived diff can be paged from, when the core
+	 * archived one (`details.diff_full`). Only meaningful with
+	 * `truncatedRows > 0`: the preview already holds every row otherwise.
+	 * `scope` is the conversation the row was read through (parent or child),
+	 * `callId` the tool call — the route resolves the artifact from both.
+	 */
+	history?: {
+		scope: DiffHistoryScope | null;
+		callId: string;
+		descriptor: DiffFullDescriptor | null;
+	};
 	className?: string;
 };
 
@@ -91,25 +111,6 @@ export type DiffBlockProps = {
  */
 const TOGGLE =
 	"group/diff-toggle block w-full cursor-pointer bg-sunken text-start text-ink-dim underline underline-offset-2 transition-colors duration-fast ease-out-quart hover:text-ink focus-visible:outline-none";
-
-/**
- * The line's ink, by the line's kind.
- *
- * Roles only, per `docs/branding.md` § 1: `success`/`danger` are the same two
- * roles the row's counters use, `ink-muted` is the TUI's `tool.diff.hunk` and
- * `ink-dim` its `tool.diff.context`. `success` and `danger` as text on a
- * `sunken` ground are asserted on every theme by
- * `scripts/contrast-contract.mjs` (`AS_TEXT` against `canvas`/`surface`/
- * `sunken`), so the pairs this block introduces — coloured text in a sunken
- * well — are measured pairs rather than a new token. The two tightest are
- * 4.58 and 4.73 on sage; see the file header for the full reading.
- */
-const KIND_INK: Record<DiffLineKind, string> = {
-	hunk: "text-ink-muted",
-	added: "text-success",
-	removed: "text-danger",
-	context: "text-ink-dim",
-};
 
 /**
  * One line, painted whole in its kind's ink.
@@ -132,14 +133,61 @@ const Line: FC<{ line: DiffBodyLine; index: number }> = ({ line, index }) => (
 export const DiffBlock: FC<DiffBlockProps> = ({
 	diff,
 	truncatedRows = 0,
+	history,
 	className,
 }) => {
 	const [expanded, setExpanded] = useState(false);
+	// Full mode REPLACES the preview inside this same well with one bounded page
+	// of the archive; Back returns to the preview exactly as it was left.
+	const [full, setFull] = useState(false);
+	/*
+	 * Rows exist that the preview does not show: the producer said so
+	 * (`truncatedRows`), or the preview is EMPTY while the core archived the
+	 * diff — the first/only row was too long for the inline budget, so no row
+	 * could be kept inline (`isArchiveOnlyDiffRow`). Either way the descriptor
+	 * decides what the footer offers; with no descriptor an empty preview stays
+	 * the old honest nothing.
+	 */
+	const archiveOnly = diff.length === 0 && Boolean(history?.descriptor);
+	const omitted = truncatedRows > 0 || archiveOnly;
+	const descriptor = omitted ? (history?.descriptor ?? null) : null;
+	const pageable =
+		descriptor?.state === "archived" && history?.scope ? history : null;
+	/*
+	 * What the pager ANSWERED for this row, once it has. The descriptor is the
+	 * record's claim; whether the archive still exists is only known when it is
+	 * read (a shared LRU evicts older sessions' archives). After a notice the
+	 * offer is withdrawn and the inline record is the way on again: its
+	 * expander comes back and the footer states the notice instead of a
+	 * "View full diff" that leads to the same dead end (agent review round
+	 * 10 / design round 4, U7).
+	 */
+	const [noticed, setNoticed] = useState<DiffFullNotice | null>(null);
+	const offer = pageable && !noticed ? pageable : null;
+	const notice: DiffFullNotice | null =
+		noticed ??
+		(descriptor && descriptor.state !== "archived" ? descriptor.state : null);
 	const wellId = useId();
 	const wellRef = useRef<HTMLDivElement>(null);
 	const toggleRef = useRef<HTMLButtonElement>(null);
 	const anchorRef = useRef<{ scroller: HTMLElement; top: number } | null>(null);
+	const viewFullRef = useRef<HTMLButtonElement>(null);
 	const body = diffBody(diff, { expanded });
+	/*
+	 * The preview is the first rows of the same redacted diff the archive
+	 * holds, so its nameless `---`/`+++` pair tells us the archive's too. Both
+	 * the "View full diff · N lines" count and the pager's range subtract it:
+	 * the reader never sees those rows (review round 1, R3/U4/Q3).
+	 */
+	const headerRows = namelessHeaderRows(diff);
+	/*
+	 * An archive-only row has no preview to read the pair from. Its offer
+	 * assumes the producer's shape (`_diff_details` runs `difflib.unified_diff`
+	 * without file names, so every non-empty diff opens with the nameless pair);
+	 * the pager does NOT assume — it reads the pair off the archive's own first
+	 * page (`headerRows` undefined), so the range it shows is measured.
+	 */
+	const offerHeaderRows = archiveOnly ? 2 : headerRows;
 
 	useLayoutEffect(() => {
 		const anchor = anchorRef.current;
@@ -206,8 +254,8 @@ export const DiffBlock: FC<DiffBlockProps> = ({
 				// §E5: one treatment for detail, code and diffs - `sunken`, radius
 				// 10, no border (design round 1, D9).
 				"rounded-md bg-sunken p-3 font-mono text-ink text-mono-sm whitespace-pre-wrap break-words",
-				expanded
-					? // EXPANDED: no ceiling and no scroll region of its own. The
+				expanded || full
+					? // EXPANDED (or paging the full diff): no ceiling and no scroll region of its own. The
 						// reader asked for the whole diff, and a 200-line body in a
 						// 740px inner scroller is a scroll-inside-a-scroll they have to
 						// wheel through twice. The well grows and the transcript
@@ -236,37 +284,114 @@ export const DiffBlock: FC<DiffBlockProps> = ({
 							"overflow-y-auto overflow-x-hidden",
 							// One extra 17.4px row when producer truncation is stated:
 							// the footer and toggle must both fit without an inner scroll.
-							truncatedRows > 0 ? "max-h-[758px]" : "max-h-[740px]",
+							// A non-archived descriptor states WHY in one more row.
+							omitted
+								? notice && !noticed
+									? "max-h-[776px]"
+									: "max-h-[758px]"
+								: "max-h-[740px]",
 						),
 				className,
 			)}
 		>
-			{body.withheld ? (
-				// One notice instead of the old core's stand-in plus a column of
-				// blank rows: the diff it stood for was never stored, so there is
-				// nothing to expand and no count worth stating.
-				<span className="block text-ink-dim">{diffWithheldLabel()}</span>
-			) : (
-				body.lines.map((line, index) => (
-					// Position is the key because a diff is an ordered record with no
-					// identity of its own: the same line text legitimately appears
-					// twice (a repeated `+` line), and the list never reorders in
-					// place.
-					// biome-ignore lint/suspicious/noArrayIndexKey: an immutable ordered record
-					<Line key={index} line={line} index={index} />
-				))
+			{full && pageable?.scope && (
+				<DiffHistoryPager
+					scope={pageable.scope}
+					callId={pageable.callId}
+					headerRows={archiveOnly ? undefined : headerRows}
+					onNotice={setNoticed}
+					onBack={() => {
+						setFull(false);
+						// Back lands on the preview's own top, not wherever the
+						// (possibly taller) page left the transcript, and focus
+						// returns to the control that opened full mode (U1): the
+						// pressed Back button no longer exists.
+						requestAnimationFrame(() => {
+							wellRef.current?.scrollIntoView({ block: "nearest" });
+							// After a notice the offer is gone; the expander is the way on.
+							(viewFullRef.current ?? toggleRef.current)?.focus({
+								preventScroll: true,
+							});
+						});
+					}}
+				/>
 			)}
+			{
+				// In the pager's notice state the inline record follows the notice,
+				// as the oversized case already reads: the reader is never left
+				// with a notice and nothing under it.
+				(!full || noticed) &&
+					(body.withheld ? (
+						// One notice instead of the old core's stand-in plus a column of
+						// blank rows: the diff it stood for was never stored, so there is
+						// nothing to expand and no count worth stating.
+						<span className="block text-ink-dim">{diffWithheldLabel()}</span>
+					) : (
+						body.lines.map((line, index) => (
+							// Position is the key because a diff is an ordered record with no
+							// identity of its own: the same line text legitimately appears
+							// twice (a repeated `+` line), and the list never reorders in
+							// place.
+							// biome-ignore lint/suspicious/noArrayIndexKey: an immutable ordered record
+							<Line key={index} line={line} index={index} />
+						))
+					))
+			}
 			{
 				// Producer truncation is independent of display collapse: disclose
 				// the missing record even before the reader reveals its stored tail.
-				!body.withheld && truncatedRows > 0 && (
-					<span className="block text-ink-dim">
-						{diffTruncatedLabel(truncatedRows)}
-					</span>
-				)
+				!full &&
+					!body.withheld &&
+					omitted &&
+					(offer ? (
+						/*
+						 * The omitted rows WERE archived, so "not recorded" would be
+						 * false: the footer becomes the way to them. Same row, same
+						 * ceiling as the truncation notice it replaces.
+						 */
+						<button
+							type="button"
+							ref={viewFullRef}
+							data-diff-view-full=""
+							onClick={() => setFull(true)}
+							className={TOGGLE}
+						>
+							<span className="block group-focus-visible/diff-toggle:outline group-focus-visible/diff-toggle:outline-2 group-focus-visible/diff-toggle:outline-accent group-focus-visible/diff-toggle:outline-offset-[-2px]">
+								{diffFullViewLabel(
+									descriptor?.state === "archived"
+										? Math.max(0, descriptor.rows - offerHeaderRows)
+										: 0,
+								)}
+							</span>
+						</button>
+					) : (
+						<>
+							{truncatedRows > 0 && !noticed && (
+								// Never "0 more lines": an archive-only row states only
+								// its descriptor's reason below.
+								<span className="block text-ink-dim">
+									{diffTruncatedLabel(truncatedRows)}
+								</span>
+							)}
+							{notice && (
+								<span
+									data-diff-full-notice={notice}
+									className="block text-ink-dim"
+								>
+									{diffFullNoticeLabel(notice)}
+								</span>
+							)}
+						</>
+					))
 			}
-			{body.expandable && (
+			{(!full || noticed) && body.expandable && !offer && (
 				/*
+				 * NOT WHEN THE ARCHIVE IS OFFERED (design round 3, U7): "View full
+				 * diff · 505 lines" sat directly above "… 158 more diff lines", two
+				 * "more" controls whose counts disagree (41 + 158 ≠ 505) because the
+				 * expander only counts the inline preview's own rows. The archive
+				 * offer reaches every row, so it is the one way on.
+				 *
 				 * STICKY, and this is the one thing in the well that must not be
 				 * allowed to scroll away. The ceiling above is derived for UNWRAPPED
 				 * rows, where the toggle sits inside it by construction; a wrapped

@@ -1,0 +1,35 @@
+{
+  "auditor": "reviewer",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "c7b72ef216da-hi-chat-canonical-r2",
+  "auditor_session": "c7b72ef216da",
+  "status": "passed",
+  "namespace": "ui.chat.canonical",
+  "locale": "hi",
+  "sha256": {
+    "en": "87a4bd7950c223362c1a5b1c095181d53ea8a328e36b1a9cf4ea1ad6a230221e",
+    "hi": "3bf3915206f534281383edacf7524d11641b7400dbfea3837be8f8ac1a8fb851"
+  },
+  "findings": [
+    {
+      "id": "HI-1",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+      "disposition": "deferred — non-gating minor, no remediation cycle",
+      "evidence": "'इसे सुरक्षित रूप से छिपाया नहीं जा सका' makes the diff itself ('इसे') the thing that could not be hidden, which reads as a possible leak; context says redaction = removing secrets, tone reassuring",
+      "proposed": {
+        "ui.chat.canonical.tool_row.diff.full.withheld": "पूरा diff रोका गया — इसकी संवेदनशील जानकारी सुरक्षित रूप से हटाई नहीं जा सकी"
+      }
+    }
+  ],
+  "audit_date": "2026-11-10",
+  "serialized_at": "2026-11-11T04:31:56Z",
+  "serialization": "portable copy of the actual audit findings; not a new review, not backdated",
+  "independence": "not translator sessions f1932d263d6c, ebb1d6beb853, f940 (translation lane); did not read first auditor 567a24a88e45",
+  "source_audit": {
+    "record": "/Users/damian/.local-operator/sessions/c7b72ef216da/scratchpad/i18n-audit2/receipt-hi.json",
+    "record_sha256": "c793aa853f16936a1b735d546ead0b432ed29e601c7b9b1649b2566d51f576de",
+    "history": "semantic verdict retained by whole-file byte identity with audited bytes"
+  },
+  "method": "source-only; rendering/RTL/fit not proven"
+}

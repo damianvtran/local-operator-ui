@@ -1,0 +1,3859 @@
+{
+  "kind": "terminal-bounded-i18n-evidence-readback",
+  "not_a_ledger_receipt": true,
+  "receipt_issued": false,
+  "original_verdicts_changed": false,
+  "identity": {
+    "agent": "translation-auditor",
+    "session": "a0245acae0c5",
+    "instance": "a0245acae0c5-evidence-readback-20261112",
+    "model": "openai/gpt-6.1-sol",
+    "selection": "parent; inherited, no override",
+    "fallback": "No in-session fallback observed; no coordinator-only fallback authorization claimed",
+    "profile_revision": "definition-revision:v1:977d12b70eb8adff7d8b9491e8e59b748a9fac283683abd963fdf586cb596f8a"
+  },
+  "started_at": "2026-11-12T23:29:12.913749+00:00",
+  "completed_at": "2026-11-12T23:38:32.320114+00:00",
+  "elapsed_seconds": 559.406377,
+  "scope": {
+    "namespace": "ui.chat.canonical",
+    "keys": [
+      "ui.chat.canonical.tool_row.diff.full.back",
+      "ui.chat.canonical.tool_row.diff.full.clipped",
+      "ui.chat.canonical.tool_row.diff.full.clipped_row",
+      "ui.chat.canonical.tool_row.diff.full.continued",
+      "ui.chat.canonical.tool_row.diff.full.continues",
+      "ui.chat.canonical.tool_row.diff.full.empty",
+      "ui.chat.canonical.tool_row.diff.full.error",
+      "ui.chat.canonical.tool_row.diff.full.evicted",
+      "ui.chat.canonical.tool_row.diff.full.first",
+      "ui.chat.canonical.tool_row.diff.full.inline",
+      "ui.chat.canonical.tool_row.diff.full.last",
+      "ui.chat.canonical.tool_row.diff.full.loading",
+      "ui.chat.canonical.tool_row.diff.full.nav",
+      "ui.chat.canonical.tool_row.diff.full.next",
+      "ui.chat.canonical.tool_row.diff.full.not_found",
+      "ui.chat.canonical.tool_row.diff.full.not_recorded",
+      "ui.chat.canonical.tool_row.diff.full.oversized",
+      "ui.chat.canonical.tool_row.diff.full.prev",
+      "ui.chat.canonical.tool_row.diff.full.range",
+      "ui.chat.canonical.tool_row.diff.full.retry",
+      "ui.chat.canonical.tool_row.diff.full.unavailable",
+      "ui.chat.canonical.tool_row.diff.full.view",
+      "ui.chat.canonical.tool_row.diff.full.withheld"
+    ],
+    "key_count": 23,
+    "actual_locales": [
+      "es",
+      "fr",
+      "hi",
+      "ru",
+      "ur",
+      "vi",
+      "zh-CN"
+    ],
+    "source_locale": "en",
+    "actual_locale_key_instances": 161,
+    "new_catalogue_audit": false,
+    "full_490_key_audit": false,
+    "new_design_review": false,
+    "boundary": "Evidence readback only. No new receipt, catalogue/ledger/index edit, verdict rewrite, render, native/browser/app/build/install/test or worktree operation. Existing source-only withholds remain unchanged."
+  },
+  "artifacts": {
+    "root": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale",
+    "initial_manifest": {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/frames-manifest.json",
+      "entries_when_first_read": 120,
+      "sha256_when_first_read": "3298ebe16b86c12cfbca1075327589a3944ef36d39dc8d44c789c70138f089aa",
+      "all_initial_120_hashes_verified": true
+    },
+    "late_manifest": {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/frames-manifest.json",
+      "entries": 134,
+      "sha256": "2ff02dcbdbaa40ae230c378e1377e762e670ec0e12ba71dcd41e65fd6930aff4",
+      "all_134_hashes_verified": true,
+      "added_frames": [
+        {
+          "file": "es-clipped-footer-360.png",
+          "sha256": "3ebd540c90e66692e12a70ddd57e7cba3722939b6d558df7a812b4880ee60ea9",
+          "valid": true,
+          "same_as_original": true
+        },
+        {
+          "file": "es-offer-footer-360.png",
+          "sha256": "f3152103e761fad3dd7ff78bf4205380685acbbf749c7ae6966ba5dc12cef5bb",
+          "valid": true,
+          "same_as_original": true
+        },
+        {
+          "file": "fr-clipped-footer-360.png",
+          "sha256": "773e94fb7ed6a3c27bb1b398bd3fdfda36693bd34a0be78e1e07a102acf8e465",
+          "valid": true,
+          "same_as_original": true
+        },
+        {
+          "file": "fr-offer-footer-360.png",
+          "sha256": "edd4ce321bea5b67108cc9a8e68844ed20304e4e80ca5ac8bb705e6e0d00ff78",
+          "valid": true,
+          "same_as_original": true
+        },
+        {
+          "file": "hi-clipped-footer-360.png",
+          "sha256": "ac3147bb76ed8efa689e32637e175afb43922f0275c6493560c09b074ecb8449",
+          "valid": true,
+          "same_as_original": true
+        },
+        {
+          "file": "hi-offer-footer-360.png",
+          "sha256": "4f798589256cdab44094e0f6ec77849c67b1a584d7f1cc3880f3cbca38de3a1b",
+          "valid": true,
+          "same_as_original": true
+        },
+        {
+          "file": "ru-clipped-footer-360.png",
+          "sha256": "a8d6a4aa6ecacb368a0b930c48e54a8b859a6ace3820a45be68a49f3e0ed8f3b",
+          "valid": true,
+          "same_as_original": false
+        },
+        {
+          "file": "ru-offer-footer-360.png",
+          "sha256": "d8620a161963d6912041af88b801f1beb83a8dc065a3a7b7111adbb54fa35532",
+          "valid": true,
+          "same_as_original": true
+        },
+        {
+          "file": "ur-clipped-footer-360.png",
+          "sha256": "475233395df0f7de1746be54f087b9f1624a5db4c922d66f723ac5ceb0ea84fa",
+          "valid": true,
+          "same_as_original": true
+        },
+        {
+          "file": "ur-offer-footer-360.png",
+          "sha256": "d4c6dd9bdd71872976ae7a83984e0672472c3097064d00ac8593ddc6f92af9e2",
+          "valid": true,
+          "same_as_original": true
+        },
+        {
+          "file": "vi-clipped-footer-360.png",
+          "sha256": "d7159649abd0e9c4647f1a9f078cee78d5d6fae51ec5be13f3c371f545f1472d",
+          "valid": true,
+          "same_as_original": true
+        },
+        {
+          "file": "vi-offer-footer-360.png",
+          "sha256": "ef66aa72ab0c510a3fde7b376836a4ad94f0b05cbca0edbcd5bd953b9c3f0540",
+          "valid": true,
+          "same_as_original": true
+        },
+        {
+          "file": "zh-CN-clipped-footer-360.png",
+          "sha256": "a01ef166bd0776188717e479b78b942ad19b484cfb1769ec536d8245b9f6a629",
+          "valid": true,
+          "same_as_original": true
+        },
+        {
+          "file": "zh-CN-offer-footer-360.png",
+          "sha256": "9d837035f230a498579d75bfed0806b6b5217ded870e677442e44b234d1ea505",
+          "valid": true,
+          "same_as_original": true
+        }
+      ],
+      "interpretation": "13/14 footer-named images are byte-identical to earlier top-of-diff images. The unique ru-clipped-footer image was directly read and also shows the top of the diff, not the aggregate. No footer gap closed by filename."
+    },
+    "source": {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-source.json",
+      "sha256": "011d373b047026492d9ca73f7ec6747df1a90daeb7cb2c805aa9b4dade46ca34"
+    },
+    "coverage_plan": {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-coverage.json",
+      "sha256": "8e754d0655e7a0bc3494473e1dec22adbe67ab715e39ab56632db5ad79b73a1c",
+      "not_execution_evidence": true
+    },
+    "captures": {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/captures.jsonl",
+      "sha256": "e9412edfebff603aa0a4b5f758b91b7175c3abc2001f6a41786b34ec28e1846d",
+      "rows": 92,
+      "error_rows": 14,
+      "successful_rows": 78,
+      "summary": {
+        "es": {
+          "rows": 2,
+          "successful": 2,
+          "successful_states": [
+            "oversized",
+            "split-next"
+          ]
+        },
+        "fr": {
+          "rows": 2,
+          "successful": 2,
+          "successful_states": [
+            "split",
+            "split-next"
+          ]
+        },
+        "hi": {
+          "rows": 12,
+          "successful": 7,
+          "successful_states": [
+            "unavailable",
+            "oversized",
+            "evicted",
+            "clipped",
+            "split",
+            "not_found",
+            "split-next"
+          ]
+        },
+        "ru": {
+          "rows": 17,
+          "successful": 8,
+          "successful_states": [
+            "loading",
+            "oversized",
+            "evicted",
+            "not_recorded",
+            "inline",
+            "split",
+            "unavailable",
+            "split-next"
+          ]
+        },
+        "ur": {
+          "rows": 15,
+          "successful": 15,
+          "successful_states": [
+            "offer",
+            "loading",
+            "error",
+            "empty",
+            "unavailable",
+            "withheld",
+            "oversized",
+            "evicted",
+            "not_recorded",
+            "not_found",
+            "inline",
+            "clipped",
+            "split",
+            "page",
+            "split-next"
+          ]
+        },
+        "vi": {
+          "rows": 15,
+          "successful": 15,
+          "successful_states": [
+            "offer",
+            "loading",
+            "error",
+            "empty",
+            "unavailable",
+            "withheld",
+            "oversized",
+            "evicted",
+            "not_recorded",
+            "not_found",
+            "inline",
+            "clipped",
+            "split",
+            "page",
+            "split-next"
+          ]
+        },
+        "zh-CN": {
+          "rows": 15,
+          "successful": 15,
+          "successful_states": [
+            "offer",
+            "loading",
+            "error",
+            "empty",
+            "unavailable",
+            "withheld",
+            "oversized",
+            "evicted",
+            "not_recorded",
+            "not_found",
+            "inline",
+            "clipped",
+            "split",
+            "page",
+            "split-next"
+          ]
+        },
+        "synthetic-pseudo": {
+          "rows": 14,
+          "successful": 14,
+          "successful_states": [
+            "offer",
+            "page",
+            "split",
+            "clipped",
+            "loading",
+            "error",
+            "empty",
+            "unavailable",
+            "withheld",
+            "oversized",
+            "evicted",
+            "not_recorded",
+            "not_found",
+            "inline"
+          ]
+        }
+      },
+      "interpretation": "AX snapshots, many truncated to 24/30 lines, not DOM geometry. Historical element-not-found rows cannot invalidate replacement final nonblank PNGs; successful snapshots do not prove footer content beyond their returned lines."
+    },
+    "contacts_actually_viewed": {
+      "zh-CN-contact.jpg": "84d3f4b54036aacac89249baefa7e6caa56e83d9a0d6e64150f62987f6420ef5",
+      "hi-contact.jpg": "4d0595a8cff6be38d462ad67cce49c4ce1a06edcf1d29d2c738ddd180b02444e",
+      "vi-contact.jpg": "2f2db68945b9c0c2c505ba50b971f28c883fa1165f6dfba74a919e2de961c42e",
+      "fr-contact.jpg": "4859cfbcb3238a83b5b7c193f1d044d0a6784d36bf56aa1687e96dff9db8952a",
+      "es-contact.jpg": "7de7959cf3994bc634c7f4d70a532164823ce7b1eeacd91583f5a72bec61481f",
+      "pseudo-contact.jpg": "4e9d098114699d52f6ff98034d9fb5a94a9591ee03605a2d16029c62d4106256",
+      "ur-contact.jpg": "35b8878afb98b4f653f452cf966dc7b1ecb299acaab18511343e458ce45e26c2",
+      "ru-contact.jpg": "44f08de3b9cfa8f6053984fd205121067ac86874bce2d2b09896a19baf0e581c",
+      "footer-contact.jpg": "3325de7798ef7200ac60f66f0108c5ff65474d0fedff983decd60e0f98d768f5"
+    },
+    "individual_frames_actually_viewed": [
+      "ur-page-360.png",
+      "ur-split-360.png",
+      "ur-split-next-360.png",
+      "ur-error-360.png",
+      "ru-clipped-footer-360.png",
+      "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-clipped-focused-360.png",
+      "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-offer-focused-360.png",
+      "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-clipped-focused-360.png",
+      "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-offer-focused-360.png",
+      "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-clipped-focused-360.png",
+      "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-offer-focused-360.png",
+      "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/pseudo-clipped-focused-360.png",
+      "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/pseudo-offer-focused-360.png",
+      "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-clipped-focused-360.png",
+      "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-offer-focused-360.png",
+      "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-clipped-focused-360.png",
+      "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-offer-focused-360.png",
+      "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-clipped-focused-360.png",
+      "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-offer-focused-360.png",
+      "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-clipped-focused-360.png",
+      "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-offer-focused-360.png"
+    ],
+    "crop_readback_aids": [
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/readback-crop-ur-page-360.png",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/readback-crop-ur-split-360.png",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/readback-crop-ur-split-next-360.png",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/readback-crop-ur-error-360.png",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/readback-crop-zh-CN-clipped-360.png",
+      "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/readback-crop-pseudo-split-next-360.png"
+    ],
+    "frame_hash_checks": [
+      {
+        "file": "es-clipped-360.png",
+        "sha256": "3ebd540c90e66692e12a70ddd57e7cba3722939b6d558df7a812b4880ee60ea9",
+        "ok": true
+      },
+      {
+        "file": "es-clipped-footer-360.png",
+        "sha256": "3ebd540c90e66692e12a70ddd57e7cba3722939b6d558df7a812b4880ee60ea9",
+        "ok": true
+      },
+      {
+        "file": "es-empty-360.png",
+        "sha256": "e9d6938aa2b05460d2221d55c1975205faedd3c18324d5556d16d635ba7ab0f8",
+        "ok": true
+      },
+      {
+        "file": "es-error-360.png",
+        "sha256": "fc14ef9fbd2bbe0d910f5c862ba89c5bedd1d85b74e72f83ed15f2fd7515f423",
+        "ok": true
+      },
+      {
+        "file": "es-evicted-360.png",
+        "sha256": "5ff18b15c585375aa65fc94f5f570fbe236f35ffea5304ef3483b10adc206c8f",
+        "ok": true
+      },
+      {
+        "file": "es-inline-360.png",
+        "sha256": "5307d4c0bdd0a3dc66f5bd7ce1b450c04038d53756ad6654b6c539179d1704fe",
+        "ok": true
+      },
+      {
+        "file": "es-loading-360.png",
+        "sha256": "0b1d7b4cfa537d96503937bcce574975b355acb63e34e2d6c4fd6a59b41d5017",
+        "ok": true
+      },
+      {
+        "file": "es-not_found-360.png",
+        "sha256": "93d51ef871b96bea0a4b67c51a98a20fd81b4519362591bf8290f223936d7729",
+        "ok": true
+      },
+      {
+        "file": "es-not_recorded-360.png",
+        "sha256": "166a2ad57a5261e9bce63fab4b856775065ba88331e3594c49f2bffd064f485e",
+        "ok": true
+      },
+      {
+        "file": "es-offer-360.png",
+        "sha256": "f3152103e761fad3dd7ff78bf4205380685acbbf749c7ae6966ba5dc12cef5bb",
+        "ok": true
+      },
+      {
+        "file": "es-offer-footer-360.png",
+        "sha256": "f3152103e761fad3dd7ff78bf4205380685acbbf749c7ae6966ba5dc12cef5bb",
+        "ok": true
+      },
+      {
+        "file": "es-oversized-360.png",
+        "sha256": "17354af4a0c4e115007f71841871b427a84cc2cdee1c2cd3b41f85a1c71dd9ee",
+        "ok": true
+      },
+      {
+        "file": "es-page-360.png",
+        "sha256": "ca5ac0c23530c499030478cc9a2cf068d951dc70f1ab401f93770397c22e995c",
+        "ok": true
+      },
+      {
+        "file": "es-split-360.png",
+        "sha256": "8d75f84b2ece5c20a2f781a4d93232f42ac8c85a302eeafa094da1f6cebac8a8",
+        "ok": true
+      },
+      {
+        "file": "es-split-next-360.png",
+        "sha256": "8698573490b7ae8fdde66c49fab5436e8f2c2af0576358538342730aedcbb42b",
+        "ok": true
+      },
+      {
+        "file": "es-unavailable-360.png",
+        "sha256": "80dabd88b682186450cf1631d3ae0d06e3c2e1d69369c7bb5815f573521a4a80",
+        "ok": true
+      },
+      {
+        "file": "es-withheld-360.png",
+        "sha256": "18f96f229aa89c4dc55d1ac8f59a6ee9a60310fd162945ef42206fa224c406d7",
+        "ok": true
+      },
+      {
+        "file": "fr-clipped-360.png",
+        "sha256": "773e94fb7ed6a3c27bb1b398bd3fdfda36693bd34a0be78e1e07a102acf8e465",
+        "ok": true
+      },
+      {
+        "file": "fr-clipped-footer-360.png",
+        "sha256": "773e94fb7ed6a3c27bb1b398bd3fdfda36693bd34a0be78e1e07a102acf8e465",
+        "ok": true
+      },
+      {
+        "file": "fr-empty-360.png",
+        "sha256": "939114b0a7e6887ca76580e46e67124907374e76b193b322e5f86a7df58e0659",
+        "ok": true
+      },
+      {
+        "file": "fr-error-360.png",
+        "sha256": "92032a05151e31b8e143c32049e6cd3907503caa6be43aa3a7f903c10067c7b3",
+        "ok": true
+      },
+      {
+        "file": "fr-evicted-360.png",
+        "sha256": "5ac2ed0027bc5da9b98caae44fef2a37da96ca45f3ce988d2c56b91b32749f47",
+        "ok": true
+      },
+      {
+        "file": "fr-inline-360.png",
+        "sha256": "b42fdf5718ffc401ef1a410a8aecde1a09146a90eaa65c09c36fdc7683632446",
+        "ok": true
+      },
+      {
+        "file": "fr-loading-360.png",
+        "sha256": "0e464f9a542deaed43ea416f049688927b366dc773517537c8871984eb7b9f6f",
+        "ok": true
+      },
+      {
+        "file": "fr-not_found-360.png",
+        "sha256": "a4278dc5efb89568610ede89c0e5519d1eff551b1276fb8460c1d4ac0ff01891",
+        "ok": true
+      },
+      {
+        "file": "fr-not_recorded-360.png",
+        "sha256": "362e737908b91d2f0c086d9e13a652ea18bbe93937bb01f90c10b457325cc220",
+        "ok": true
+      },
+      {
+        "file": "fr-offer-360.png",
+        "sha256": "edd4ce321bea5b67108cc9a8e68844ed20304e4e80ca5ac8bb705e6e0d00ff78",
+        "ok": true
+      },
+      {
+        "file": "fr-offer-footer-360.png",
+        "sha256": "edd4ce321bea5b67108cc9a8e68844ed20304e4e80ca5ac8bb705e6e0d00ff78",
+        "ok": true
+      },
+      {
+        "file": "fr-oversized-360.png",
+        "sha256": "8ba845abbb69c14e8b5d085234590c17ed7e0026db2d6dc4b0f5ee2231676c42",
+        "ok": true
+      },
+      {
+        "file": "fr-page-360.png",
+        "sha256": "866e08ee5dc6d451da6cb80c574b6619b77a9e5e30851af70fc1d17c040df58f",
+        "ok": true
+      },
+      {
+        "file": "fr-split-360.png",
+        "sha256": "0823792924e1bba9300dc0a3dd91ac0dfd0c1f5abd2c9b9fec13a8659a71a6b1",
+        "ok": true
+      },
+      {
+        "file": "fr-split-next-360.png",
+        "sha256": "1c3d7fcdd1d10064bed5870b6db238f6aa234e6a9cf8c3766c6ce317d34ed31f",
+        "ok": true
+      },
+      {
+        "file": "fr-unavailable-360.png",
+        "sha256": "4d2659418092b079b761c553e8fb52f8b42511ffe2075d551f8736f154ffaa22",
+        "ok": true
+      },
+      {
+        "file": "fr-withheld-360.png",
+        "sha256": "b337672861d3a5abb51c6352bff9de903153443ea0fce96f6d5939a81d3b91f6",
+        "ok": true
+      },
+      {
+        "file": "hi-clipped-360.png",
+        "sha256": "ac3147bb76ed8efa689e32637e175afb43922f0275c6493560c09b074ecb8449",
+        "ok": true
+      },
+      {
+        "file": "hi-clipped-footer-360.png",
+        "sha256": "ac3147bb76ed8efa689e32637e175afb43922f0275c6493560c09b074ecb8449",
+        "ok": true
+      },
+      {
+        "file": "hi-empty-360.png",
+        "sha256": "3b16f956024eb065504638fdb84afd2653e59d1a8a223fe3947905c64d33fbe8",
+        "ok": true
+      },
+      {
+        "file": "hi-error-360.png",
+        "sha256": "ecaafc3b5b289f88ee3d6df4e57a4643379daf7c55ab8fe74ebec22f910317d9",
+        "ok": true
+      },
+      {
+        "file": "hi-evicted-360.png",
+        "sha256": "43f74e1732f022214914c2184618d0478882614d72212df2a5595a546f86c9a7",
+        "ok": true
+      },
+      {
+        "file": "hi-inline-360.png",
+        "sha256": "8087783e71bd5e19b81c24ac4a4e90264327ea0d80bdabb52f6f66dd84895c6a",
+        "ok": true
+      },
+      {
+        "file": "hi-loading-360.png",
+        "sha256": "ed06efd6a4aced1874faa1232721b07782315581914c9d0a6a9d977b7ef780c2",
+        "ok": true
+      },
+      {
+        "file": "hi-not_found-360.png",
+        "sha256": "fefbaa4dee10a8e14fbcdc576bf4f30d26f1e8004c88a560ad83fc287639c915",
+        "ok": true
+      },
+      {
+        "file": "hi-not_recorded-360.png",
+        "sha256": "8c47317a8fa90b45fca77cba09c728885e98224105c60b86091a6bd8d5adb1ce",
+        "ok": true
+      },
+      {
+        "file": "hi-offer-360.png",
+        "sha256": "4f798589256cdab44094e0f6ec77849c67b1a584d7f1cc3880f3cbca38de3a1b",
+        "ok": true
+      },
+      {
+        "file": "hi-offer-footer-360.png",
+        "sha256": "4f798589256cdab44094e0f6ec77849c67b1a584d7f1cc3880f3cbca38de3a1b",
+        "ok": true
+      },
+      {
+        "file": "hi-oversized-360.png",
+        "sha256": "58e6beb164275d56ffd551a4737d54d91ed88e198b80dff1e67668e4b4e75211",
+        "ok": true
+      },
+      {
+        "file": "hi-page-360.png",
+        "sha256": "2578843e24ebeb3367b9f2fa8386fd49ddc07079971d92daaafdc5d077eae28e",
+        "ok": true
+      },
+      {
+        "file": "hi-split-360.png",
+        "sha256": "06455ad354ad5cfa0892a0e08eb34d0732b5b7f1f0b051ec6a288fd5e92bfb1e",
+        "ok": true
+      },
+      {
+        "file": "hi-split-next-360.png",
+        "sha256": "185e0a4f9008562ef3f9d1d2e84ddeaf45fe104d99373c0be2fb310502a6ba54",
+        "ok": true
+      },
+      {
+        "file": "hi-unavailable-360.png",
+        "sha256": "55fcf16e184b46b3b8a8e6808a4116d3b80bb0797b7bb180293b627e6a9a629f",
+        "ok": true
+      },
+      {
+        "file": "hi-withheld-360.png",
+        "sha256": "c059ef389028624975356305b8a5baf3f4f55986ef0e9fa649577c115221b666",
+        "ok": true
+      },
+      {
+        "file": "pseudo-clipped-360.png",
+        "sha256": "ff5fcf803b2bc0d04ed34f2db74808e35f8f1e212326c45856ecf25136c77592",
+        "ok": true
+      },
+      {
+        "file": "pseudo-empty-360.png",
+        "sha256": "e6bad680b6eb798eb8f8302de35bb57bf1823330267fb4e6efe611a37d608b49",
+        "ok": true
+      },
+      {
+        "file": "pseudo-error-360.png",
+        "sha256": "b482a86301fc0f55512a4ebdca4eeeda802ec1baac8df2fa789ebe6c0e2b7887",
+        "ok": true
+      },
+      {
+        "file": "pseudo-evicted-360.png",
+        "sha256": "1a04482cd9b4b56031e651002a5e7336a1cb0db3c20647ff1e462fe7e079deb6",
+        "ok": true
+      },
+      {
+        "file": "pseudo-inline-360.png",
+        "sha256": "7dc1db708bc9e88c2fde08fc8b3b346191c2a526b8c7556e45638c45fbf98a80",
+        "ok": true
+      },
+      {
+        "file": "pseudo-loading-360.png",
+        "sha256": "a73dcb086b3f263b30b9d05ccb408028d4ce29353bc0e66ab67158a3e8106ace",
+        "ok": true
+      },
+      {
+        "file": "pseudo-not_found-360.png",
+        "sha256": "41c3b77eb544bf8bb9f89effd65473d216fb08e1165bacb2fe3204c1c56d00e2",
+        "ok": true
+      },
+      {
+        "file": "pseudo-not_recorded-360.png",
+        "sha256": "c55b842aa46a91597cf15ab295a53a55274aa4b899126341fc0fbe50461d6f24",
+        "ok": true
+      },
+      {
+        "file": "pseudo-offer-360.png",
+        "sha256": "e5fc7619cc8a6c144c55dff3a7d2550f64d48c469151a8902daad60c28e3f895",
+        "ok": true
+      },
+      {
+        "file": "pseudo-oversized-360.png",
+        "sha256": "511aa0489a1145df34b3f9d285ce14009ef1331d27f05808c804615c7284a8fb",
+        "ok": true
+      },
+      {
+        "file": "pseudo-page-360.png",
+        "sha256": "502c24519a6e14f545d57a2268ec5cfd41d345e8603cb7ec3deadc5d227af5de",
+        "ok": true
+      },
+      {
+        "file": "pseudo-split-360.png",
+        "sha256": "37bfda381ba95724d4ded53a7172bef43063a17e9093d5fb02695849a0dddf14",
+        "ok": true
+      },
+      {
+        "file": "pseudo-split-next-360.png",
+        "sha256": "2fdf7ac85244825639d01ff4648eedb67cecec7856252f2d6ffe289f7775fbbb",
+        "ok": true
+      },
+      {
+        "file": "pseudo-unavailable-360.png",
+        "sha256": "e68dbc5bb71386de15698edda13044fc3759e4991c34a9e7a0cb02dbc0e6d123",
+        "ok": true
+      },
+      {
+        "file": "pseudo-withheld-360.png",
+        "sha256": "77c58a0abfe8c29b36f11724ed0aa7c9f60192c9bfc6e8adc0591f4666625248",
+        "ok": true
+      },
+      {
+        "file": "ru-clipped-360.png",
+        "sha256": "5abb3a1f28e4495e00a853c23439c9f6cabd40b88dd9e63d970ce108cf99e23f",
+        "ok": true
+      },
+      {
+        "file": "ru-clipped-footer-360.png",
+        "sha256": "a8d6a4aa6ecacb368a0b930c48e54a8b859a6ace3820a45be68a49f3e0ed8f3b",
+        "ok": true
+      },
+      {
+        "file": "ru-empty-360.png",
+        "sha256": "4d0be4d51f4feeca9b42e2489481609b0290949a4f36c4706e81012b04c3274b",
+        "ok": true
+      },
+      {
+        "file": "ru-error-360.png",
+        "sha256": "db16fa5f68272c7b3c59b0cec5f1e4d6bfed4d841783c17464c5bba129c96cd5",
+        "ok": true
+      },
+      {
+        "file": "ru-evicted-360.png",
+        "sha256": "ad76ffe9a1b7517a98fe37363e3ba11848b54faacbb53e5bb342200e50379bd3",
+        "ok": true
+      },
+      {
+        "file": "ru-inline-360.png",
+        "sha256": "13b12438b69865ed4d6b0b096338974febff3c649acd1a9c991aa5428798c5a8",
+        "ok": true
+      },
+      {
+        "file": "ru-loading-360.png",
+        "sha256": "d6ab673637219b24b299d1a4743d096d1fab4af4f7acb5a05bb0fb7fa20dad2b",
+        "ok": true
+      },
+      {
+        "file": "ru-not_found-360.png",
+        "sha256": "6a4b8980749ef2ab70a97240964b9145edce8243d3295a1f945d43cc7bf5bff3",
+        "ok": true
+      },
+      {
+        "file": "ru-not_recorded-360.png",
+        "sha256": "ae707e2fde909b21909cd5dfacb75fbee5bbfaa93cdaf2833a2ec07b59f7e69e",
+        "ok": true
+      },
+      {
+        "file": "ru-offer-360.png",
+        "sha256": "d8620a161963d6912041af88b801f1beb83a8dc065a3a7b7111adbb54fa35532",
+        "ok": true
+      },
+      {
+        "file": "ru-offer-footer-360.png",
+        "sha256": "d8620a161963d6912041af88b801f1beb83a8dc065a3a7b7111adbb54fa35532",
+        "ok": true
+      },
+      {
+        "file": "ru-oversized-360.png",
+        "sha256": "fd0c5f58a41a9c0548864f326c0e4b1af6fd08a0abccfe0a9cf9f4b931e482d7",
+        "ok": true
+      },
+      {
+        "file": "ru-page-360.png",
+        "sha256": "8191b2805f5bc813bbba25b350cef8ae0cc30f1a92b112d23f5adab7522e1465",
+        "ok": true
+      },
+      {
+        "file": "ru-split-360.png",
+        "sha256": "082d1880bd8c654b208287b3d8460fbb8c0af730f0cb3f435e434bdeecebfef7",
+        "ok": true
+      },
+      {
+        "file": "ru-split-next-360.png",
+        "sha256": "9eff5c4eb818d26187428f83a0b9ff481c8dd56c7c5d52e531751dfeeb23e55e",
+        "ok": true
+      },
+      {
+        "file": "ru-unavailable-360.png",
+        "sha256": "66c880035d5097d7c90be64d34722e00fa24fe1e00e176a5c42228f9ba112db5",
+        "ok": true
+      },
+      {
+        "file": "ru-withheld-360.png",
+        "sha256": "47e79fae9b68a21c8298d1764c6bedc5b77c6e23f07861f42289c9b9a862daf9",
+        "ok": true
+      },
+      {
+        "file": "ur-clipped-360.png",
+        "sha256": "475233395df0f7de1746be54f087b9f1624a5db4c922d66f723ac5ceb0ea84fa",
+        "ok": true
+      },
+      {
+        "file": "ur-clipped-footer-360.png",
+        "sha256": "475233395df0f7de1746be54f087b9f1624a5db4c922d66f723ac5ceb0ea84fa",
+        "ok": true
+      },
+      {
+        "file": "ur-empty-360.png",
+        "sha256": "51e2da33125b9379e2c07391618802c1839b1e7f2f5db8ba812a6eb6de0202d0",
+        "ok": true
+      },
+      {
+        "file": "ur-error-360.png",
+        "sha256": "3359535cc73c129e2b903f055205144da4b1b26ba54a25629e6b186c95bc09ac",
+        "ok": true
+      },
+      {
+        "file": "ur-evicted-360.png",
+        "sha256": "ae23c43857590e501be7edc862065e4495f0ca0f5d06f666c15632bd5748a843",
+        "ok": true
+      },
+      {
+        "file": "ur-inline-360.png",
+        "sha256": "9d382cda9652cdd7a405038251e6a903e830b0589981812263e72cf9a720b83a",
+        "ok": true
+      },
+      {
+        "file": "ur-loading-360.png",
+        "sha256": "bc91f429a0c47a55979eddc893c48f3a0c1b8a88f325a47ece1742790f368cc1",
+        "ok": true
+      },
+      {
+        "file": "ur-not_found-360.png",
+        "sha256": "f8d2a1d46e67ea5114f372f5d8fada30c7cb422c4832b28940c65842d849c917",
+        "ok": true
+      },
+      {
+        "file": "ur-not_recorded-360.png",
+        "sha256": "3be4dd6f48733d8a45a8a80dd3a6aa88907aeed57e4a4491d5f5d59f8906b53f",
+        "ok": true
+      },
+      {
+        "file": "ur-offer-360.png",
+        "sha256": "d4c6dd9bdd71872976ae7a83984e0672472c3097064d00ac8593ddc6f92af9e2",
+        "ok": true
+      },
+      {
+        "file": "ur-offer-footer-360.png",
+        "sha256": "d4c6dd9bdd71872976ae7a83984e0672472c3097064d00ac8593ddc6f92af9e2",
+        "ok": true
+      },
+      {
+        "file": "ur-oversized-360.png",
+        "sha256": "b8a042e694f0ae88bcef4dbc2dc3dc69837cace7b03fe477ae09cc6836f8f2f5",
+        "ok": true
+      },
+      {
+        "file": "ur-page-360.png",
+        "sha256": "4348c6cd1cf2175c4103a326b6e3607609ca86899da35dd92b3a9d43efd30ece",
+        "ok": true
+      },
+      {
+        "file": "ur-split-360.png",
+        "sha256": "72d18de360e0eb22e7663ed33883ad62c218ca84ca375b3f031224da1e9bef79",
+        "ok": true
+      },
+      {
+        "file": "ur-split-next-360.png",
+        "sha256": "879181543e45653256d653a91d060b1c4938d3f675cf57d97874868f3f0d32a2",
+        "ok": true
+      },
+      {
+        "file": "ur-unavailable-360.png",
+        "sha256": "e8ab0e20a0ae614b34496b6664f747a54613f44662d610b11b41e55035da563f",
+        "ok": true
+      },
+      {
+        "file": "ur-withheld-360.png",
+        "sha256": "bfd05ee3c9b42231743ff22bbdffc70ab67694dbce68af9d47b67d997dc4aa4a",
+        "ok": true
+      },
+      {
+        "file": "vi-clipped-360.png",
+        "sha256": "d7159649abd0e9c4647f1a9f078cee78d5d6fae51ec5be13f3c371f545f1472d",
+        "ok": true
+      },
+      {
+        "file": "vi-clipped-footer-360.png",
+        "sha256": "d7159649abd0e9c4647f1a9f078cee78d5d6fae51ec5be13f3c371f545f1472d",
+        "ok": true
+      },
+      {
+        "file": "vi-empty-360.png",
+        "sha256": "22279e539da4a006bd8958911d5ecff0e5097d0305b5591be5daa6a7ae8f9a4e",
+        "ok": true
+      },
+      {
+        "file": "vi-error-360.png",
+        "sha256": "5c10a927dab7881b92be01d4f5ccf67a06569718bdc6d2c56067a4b581ed3219",
+        "ok": true
+      },
+      {
+        "file": "vi-evicted-360.png",
+        "sha256": "a8fa4ec68bd22ef0d6c3e78cde59cd093164edfea7096f1e335fbb30a2bd24a3",
+        "ok": true
+      },
+      {
+        "file": "vi-inline-360.png",
+        "sha256": "ef4467c3bbfe60e7ae6a3718c8ccd63868761650c61228d0ff8560b90a3949b0",
+        "ok": true
+      },
+      {
+        "file": "vi-loading-360.png",
+        "sha256": "00eb53ec771e635c047972ac812beb3545fd3db7d112b4433e1e4dbadda2d2ae",
+        "ok": true
+      },
+      {
+        "file": "vi-not_found-360.png",
+        "sha256": "90f3d0cabcb84285fef7c80f14d4c8fbe87317eb72c763c779be42359d0bf0e1",
+        "ok": true
+      },
+      {
+        "file": "vi-not_recorded-360.png",
+        "sha256": "1040a3eee07f457e6a69e86c5772a966b9d0e9f674a3c1699c69236b20c392e5",
+        "ok": true
+      },
+      {
+        "file": "vi-offer-360.png",
+        "sha256": "ef66aa72ab0c510a3fde7b376836a4ad94f0b05cbca0edbcd5bd953b9c3f0540",
+        "ok": true
+      },
+      {
+        "file": "vi-offer-footer-360.png",
+        "sha256": "ef66aa72ab0c510a3fde7b376836a4ad94f0b05cbca0edbcd5bd953b9c3f0540",
+        "ok": true
+      },
+      {
+        "file": "vi-oversized-360.png",
+        "sha256": "5258a87dc160a7bc55adfb755ca26b7cc022c8f78179fb0a6502369a0c88783b",
+        "ok": true
+      },
+      {
+        "file": "vi-page-360.png",
+        "sha256": "24922bd011e80b544859b6f6bb4dda6b97627b6eb30c07f7d27ad10752b2c911",
+        "ok": true
+      },
+      {
+        "file": "vi-split-360.png",
+        "sha256": "35e582b507d7ef465a145aecabd57453cc9fcf37b99cb657f934c54d78400764",
+        "ok": true
+      },
+      {
+        "file": "vi-split-next-360.png",
+        "sha256": "17752f506890f700167d1ff69249724c441a16f76a9d1714ad65df972ca6b22a",
+        "ok": true
+      },
+      {
+        "file": "vi-unavailable-360.png",
+        "sha256": "01ebd463a0d00a4ab787b76d86b80b3fadbe21213f6c5591ef585e35ca8b776f",
+        "ok": true
+      },
+      {
+        "file": "vi-withheld-360.png",
+        "sha256": "4faf91ef346b56a3e059324a8a2762894afbfbc5425610e5ba4ead8b204ee619",
+        "ok": true
+      },
+      {
+        "file": "zh-CN-clipped-360.png",
+        "sha256": "a01ef166bd0776188717e479b78b942ad19b484cfb1769ec536d8245b9f6a629",
+        "ok": true
+      },
+      {
+        "file": "zh-CN-clipped-footer-360.png",
+        "sha256": "a01ef166bd0776188717e479b78b942ad19b484cfb1769ec536d8245b9f6a629",
+        "ok": true
+      },
+      {
+        "file": "zh-CN-empty-360.png",
+        "sha256": "d9079020f3b5ac8d7a5a63cc57a40c44eb8b7ba2a1886d6ba369d273e10c9135",
+        "ok": true
+      },
+      {
+        "file": "zh-CN-error-360.png",
+        "sha256": "4a4205aa1cea89b0f303033f42b19ef5a5a3f66d41c99c0ad2203eee1c6cae9f",
+        "ok": true
+      },
+      {
+        "file": "zh-CN-evicted-360.png",
+        "sha256": "cff9145fa694ac07c4c579633e4eea8fe5892d523e577461114790f4cec0e6b5",
+        "ok": true
+      },
+      {
+        "file": "zh-CN-inline-360.png",
+        "sha256": "7b217da54bc6cdab3e1b77601ec2359b8fd772a0a0855b0e356accfc932e9013",
+        "ok": true
+      },
+      {
+        "file": "zh-CN-loading-360.png",
+        "sha256": "f2742e099c64368ba131257c84ddab755d0314c7fef1f8009580bb9d48ebfdb6",
+        "ok": true
+      },
+      {
+        "file": "zh-CN-not_found-360.png",
+        "sha256": "83e140e4010b0985a8f0b4a33cc40f67cc521e7729d63882cf6ececf1fcc2ca9",
+        "ok": true
+      },
+      {
+        "file": "zh-CN-not_recorded-360.png",
+        "sha256": "c36667d90775bbe311b859d79fd21a9e86845bca3194a96c969b17c4c7137327",
+        "ok": true
+      },
+      {
+        "file": "zh-CN-offer-360.png",
+        "sha256": "9d837035f230a498579d75bfed0806b6b5217ded870e677442e44b234d1ea505",
+        "ok": true
+      },
+      {
+        "file": "zh-CN-offer-footer-360.png",
+        "sha256": "9d837035f230a498579d75bfed0806b6b5217ded870e677442e44b234d1ea505",
+        "ok": true
+      },
+      {
+        "file": "zh-CN-oversized-360.png",
+        "sha256": "b11679310dcdc9e2957b16f70c9a9c0d90cc992c60b523d8510f3553eb595f6a",
+        "ok": true
+      },
+      {
+        "file": "zh-CN-page-360.png",
+        "sha256": "54bfd8e9cceded0693d57fa3a07b161c96c46c882a0dd5cefd314a9915e8350b",
+        "ok": true
+      },
+      {
+        "file": "zh-CN-split-360.png",
+        "sha256": "b6d3773efa971f16fe4fb32fac460a8f0917c312394ca879fd33193f7002252c",
+        "ok": true
+      },
+      {
+        "file": "zh-CN-split-next-360.png",
+        "sha256": "a4b9f1c3a3ec349af00ed2682373fb52066c060ad52ac2c275170e03b9e2fee7",
+        "ok": true
+      },
+      {
+        "file": "zh-CN-unavailable-360.png",
+        "sha256": "919f7be3bec41ae9a5b991a172e7e1f214f350aa9f5e55371f0a0a6b2fcfe641",
+        "ok": true
+      },
+      {
+        "file": "zh-CN-withheld-360.png",
+        "sha256": "d88bf93e470f36455a3f9f2dc22772775fa7add69e741ae8fe62883d0314d8ad",
+        "ok": true
+      },
+      {
+        "file": "es-clipped-focused-360.png",
+        "sha256": "926ff12f4c45fb671b9be2519b88843b506fdaa4c17a8e2433dc015260b0cb51",
+        "ok": true
+      },
+      {
+        "file": "es-offer-focused-360.png",
+        "sha256": "007de621f9fbb07c54f03420533ee5ccdebeeee80670cebdc8591620b77f56fb",
+        "ok": true
+      },
+      {
+        "file": "fr-clipped-focused-360.png",
+        "sha256": "6b540c84efcc73276fb374406aca24e4640be1e8d17d01a0396be06c7bbd1e41",
+        "ok": true
+      },
+      {
+        "file": "fr-offer-focused-360.png",
+        "sha256": "eaa2c0623e93558533b262bd78031617172f2460272eac83c177615169d09a35",
+        "ok": true
+      },
+      {
+        "file": "hi-clipped-focused-360.png",
+        "sha256": "1642a433bffc7c3b6e254774fe5cfc30268af967adc2f0a20fcfa7b05ec58f28",
+        "ok": true
+      },
+      {
+        "file": "hi-offer-focused-360.png",
+        "sha256": "9808a9e81288a65b8a47ada2e029144142d762588ce2214b9d2903c020ce35b2",
+        "ok": true
+      },
+      {
+        "file": "pseudo-clipped-focused-360.png",
+        "sha256": "e6bccc473da2dfbbab77986f167400d26dcb38b1856c05cb973c34d8e5da919e",
+        "ok": true
+      },
+      {
+        "file": "pseudo-offer-focused-360.png",
+        "sha256": "0a2200198e171b4614d307cee4ad50d8e0c596cdeddf122e62841fca2fa8cd01",
+        "ok": true
+      },
+      {
+        "file": "ru-clipped-focused-360.png",
+        "sha256": "6b25e585551ad2ce8e13a8c43b30a3da0f3b8b3a64474004357f362afadf1b7f",
+        "ok": true
+      },
+      {
+        "file": "ru-offer-focused-360.png",
+        "sha256": "bc65660ea072f40387e2a5e73893087fc34e811da436a96a1242c885bbccd647",
+        "ok": true
+      },
+      {
+        "file": "ur-clipped-focused-360.png",
+        "sha256": "d32b16ba411cdede9b75bfe56ecde817581324974a7bc8b24d6119eec9ac989f",
+        "ok": true
+      },
+      {
+        "file": "ur-offer-focused-360.png",
+        "sha256": "50d71d8f02d2b1bf80967952b8f8f165bc088506fddd66c174542eb6a40611ff",
+        "ok": true
+      },
+      {
+        "file": "vi-clipped-focused-360.png",
+        "sha256": "f3fc873ee82fb01b8964fa5540d7446684f59b6b72e1289b66501c056e4dbb02",
+        "ok": true
+      },
+      {
+        "file": "vi-offer-focused-360.png",
+        "sha256": "37ec797afe639504f077ad2599700fe1f1dbd8ec2b982fe84eb6934992086f91",
+        "ok": true
+      },
+      {
+        "file": "zh-CN-clipped-focused-360.png",
+        "sha256": "f84f5d3bc0325850895cc138de8a2dd1cd0136fc3441be7227179c56b76c952e",
+        "ok": true
+      },
+      {
+        "file": "zh-CN-offer-focused-360.png",
+        "sha256": "afedb010b7e15205205ed733e62ff0bee03dc350542df710212781afcd9e0046",
+        "ok": true
+      }
+    ],
+    "focused_final_manifest": {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/frames-manifest.json",
+      "sha256": "12babe07d87bb5d193d3fd909919e1645706e06984129055d4547ded21321db5",
+      "entries": 150,
+      "added_entries": [
+        {
+          "file": "es-clipped-focused-360.png",
+          "sha256": "926ff12f4c45fb671b9be2519b88843b506fdaa4c17a8e2433dc015260b0cb51",
+          "size": 203103
+        },
+        {
+          "file": "es-offer-focused-360.png",
+          "sha256": "007de621f9fbb07c54f03420533ee5ccdebeeee80670cebdc8591620b77f56fb",
+          "size": 175734
+        },
+        {
+          "file": "fr-clipped-focused-360.png",
+          "sha256": "6b540c84efcc73276fb374406aca24e4640be1e8d17d01a0396be06c7bbd1e41",
+          "size": 200723
+        },
+        {
+          "file": "fr-offer-focused-360.png",
+          "sha256": "eaa2c0623e93558533b262bd78031617172f2460272eac83c177615169d09a35",
+          "size": 175765
+        },
+        {
+          "file": "hi-clipped-focused-360.png",
+          "sha256": "1642a433bffc7c3b6e254774fe5cfc30268af967adc2f0a20fcfa7b05ec58f28",
+          "size": 200881
+        },
+        {
+          "file": "hi-offer-focused-360.png",
+          "sha256": "9808a9e81288a65b8a47ada2e029144142d762588ce2214b9d2903c020ce35b2",
+          "size": 174878
+        },
+        {
+          "file": "pseudo-clipped-focused-360.png",
+          "sha256": "e6bccc473da2dfbbab77986f167400d26dcb38b1856c05cb973c34d8e5da919e",
+          "size": 198700
+        },
+        {
+          "file": "pseudo-offer-focused-360.png",
+          "sha256": "0a2200198e171b4614d307cee4ad50d8e0c596cdeddf122e62841fca2fa8cd01",
+          "size": 175353
+        },
+        {
+          "file": "ru-clipped-focused-360.png",
+          "sha256": "6b25e585551ad2ce8e13a8c43b30a3da0f3b8b3a64474004357f362afadf1b7f",
+          "size": 199863
+        },
+        {
+          "file": "ru-offer-focused-360.png",
+          "sha256": "bc65660ea072f40387e2a5e73893087fc34e811da436a96a1242c885bbccd647",
+          "size": 174974
+        },
+        {
+          "file": "ur-clipped-focused-360.png",
+          "sha256": "d32b16ba411cdede9b75bfe56ecde817581324974a7bc8b24d6119eec9ac989f",
+          "size": 198326
+        },
+        {
+          "file": "ur-offer-focused-360.png",
+          "sha256": "50d71d8f02d2b1bf80967952b8f8f165bc088506fddd66c174542eb6a40611ff",
+          "size": 176539
+        },
+        {
+          "file": "vi-clipped-focused-360.png",
+          "sha256": "f3fc873ee82fb01b8964fa5540d7446684f59b6b72e1289b66501c056e4dbb02",
+          "size": 203678
+        },
+        {
+          "file": "vi-offer-focused-360.png",
+          "sha256": "37ec797afe639504f077ad2599700fe1f1dbd8ec2b982fe84eb6934992086f91",
+          "size": 175728
+        },
+        {
+          "file": "zh-CN-clipped-focused-360.png",
+          "sha256": "f84f5d3bc0325850895cc138de8a2dd1cd0136fc3441be7227179c56b76c952e",
+          "size": 197741
+        },
+        {
+          "file": "zh-CN-offer-focused-360.png",
+          "sha256": "afedb010b7e15205205ed733e62ff0bee03dc350542df710212781afcd9e0046",
+          "size": 175021
+        }
+      ],
+      "hash_checks": [
+        {
+          "file": "es-clipped-focused-360.png",
+          "sha256": "926ff12f4c45fb671b9be2519b88843b506fdaa4c17a8e2433dc015260b0cb51",
+          "ok": true
+        },
+        {
+          "file": "es-offer-focused-360.png",
+          "sha256": "007de621f9fbb07c54f03420533ee5ccdebeeee80670cebdc8591620b77f56fb",
+          "ok": true
+        },
+        {
+          "file": "fr-clipped-focused-360.png",
+          "sha256": "6b540c84efcc73276fb374406aca24e4640be1e8d17d01a0396be06c7bbd1e41",
+          "ok": true
+        },
+        {
+          "file": "fr-offer-focused-360.png",
+          "sha256": "eaa2c0623e93558533b262bd78031617172f2460272eac83c177615169d09a35",
+          "ok": true
+        },
+        {
+          "file": "hi-clipped-focused-360.png",
+          "sha256": "1642a433bffc7c3b6e254774fe5cfc30268af967adc2f0a20fcfa7b05ec58f28",
+          "ok": true
+        },
+        {
+          "file": "hi-offer-focused-360.png",
+          "sha256": "9808a9e81288a65b8a47ada2e029144142d762588ce2214b9d2903c020ce35b2",
+          "ok": true
+        },
+        {
+          "file": "pseudo-clipped-focused-360.png",
+          "sha256": "e6bccc473da2dfbbab77986f167400d26dcb38b1856c05cb973c34d8e5da919e",
+          "ok": true
+        },
+        {
+          "file": "pseudo-offer-focused-360.png",
+          "sha256": "0a2200198e171b4614d307cee4ad50d8e0c596cdeddf122e62841fca2fa8cd01",
+          "ok": true
+        },
+        {
+          "file": "ru-clipped-focused-360.png",
+          "sha256": "6b25e585551ad2ce8e13a8c43b30a3da0f3b8b3a64474004357f362afadf1b7f",
+          "ok": true
+        },
+        {
+          "file": "ru-offer-focused-360.png",
+          "sha256": "bc65660ea072f40387e2a5e73893087fc34e811da436a96a1242c885bbccd647",
+          "ok": true
+        },
+        {
+          "file": "ur-clipped-focused-360.png",
+          "sha256": "d32b16ba411cdede9b75bfe56ecde817581324974a7bc8b24d6119eec9ac989f",
+          "ok": true
+        },
+        {
+          "file": "ur-offer-focused-360.png",
+          "sha256": "50d71d8f02d2b1bf80967952b8f8f165bc088506fddd66c174542eb6a40611ff",
+          "ok": true
+        },
+        {
+          "file": "vi-clipped-focused-360.png",
+          "sha256": "f3fc873ee82fb01b8964fa5540d7446684f59b6b72e1289b66501c056e4dbb02",
+          "ok": true
+        },
+        {
+          "file": "vi-offer-focused-360.png",
+          "sha256": "37ec797afe639504f077ad2599700fe1f1dbd8ec2b982fe84eb6934992086f91",
+          "ok": true
+        },
+        {
+          "file": "zh-CN-clipped-focused-360.png",
+          "sha256": "f84f5d3bc0325850895cc138de8a2dd1cd0136fc3441be7227179c56b76c952e",
+          "ok": true
+        },
+        {
+          "file": "zh-CN-offer-focused-360.png",
+          "sha256": "afedb010b7e15205205ed733e62ff0bee03dc350542df710212781afcd9e0046",
+          "ok": true
+        }
+      ],
+      "all_valid": true,
+      "interpretation": "16 new focused images, independently viewed, finally expose the offer control and aggregate clipped notice in all seven actual locales plus synthetic pseudo. This is a within-bound evidence addition, not a new catalogue audit or verdict change."
+    }
+  },
+  "source_provenance": {
+    "frozen_tree": "2d89bff82f58b84744ddc469e3532377df26d278",
+    "HEAD": "1bfbe9b42df53a231311ab1731501af2de640810",
+    "MERGE_HEAD": "b0edf02e5d37db5c5527cf66465131a4019fed10",
+    "index_path_count": 13433,
+    "index_matches_all_frozen_tree_entries": true,
+    "raw_index_sha256": "f51e7673dab7b96a8376cc2393a7505773827724fa9bbcf31bc2b5d37724020d",
+    "raw_index_matches_capture": true,
+    "renderer_tree": "7eb33bb8797f50e96c66e086ed2e255f5e8bdcfb",
+    "i18n_tree": "e8feb903b83f67c469133c8cfe43ad7d7137d828",
+    "source_file_checks": {
+      "src/renderer/src/features/chat/components/trace/diff-block.tsx": {
+        "index_sha256": "b3a5d13c5d03616d5ab7998f54d632dbdf17562b845da673ab3ae7f1b88d0778",
+        "expected": "b3a5d13c5d03616d5ab7998f54d632dbdf17562b845da673ab3ae7f1b88d0778",
+        "ok": true
+      },
+      "src/renderer/src/features/chat/components/trace/diff-history.tsx": {
+        "index_sha256": "b98ac57c4d9e885cef348c364616520d378477da955b34b9b049cd589ec128b4",
+        "expected": "b98ac57c4d9e885cef348c364616520d378477da955b34b9b049cd589ec128b4",
+        "ok": true
+      },
+      "src/renderer/src/features/chat/components/trace/diff-history-model.ts": {
+        "index_sha256": "ec465aca66be699316444ffdae3327c56234b768027da7f98a220cdcd96113f6",
+        "expected": "ec465aca66be699316444ffdae3327c56234b768027da7f98a220cdcd96113f6",
+        "ok": true
+      },
+      "src/renderer/src/features/chat/components/trace/diff-ink.ts": {
+        "index_sha256": "43870fcc6856000e7591d99118d9b8ece84ae1e3a4bb80b60404b4923efe9abe",
+        "expected": "43870fcc6856000e7591d99118d9b8ece84ae1e3a4bb80b60404b4923efe9abe",
+        "ok": true
+      },
+      "src/renderer/src/features/chat/components/trace/tool-row-model.ts": {
+        "index_sha256": "b04a055a642aabb3383128c2c68e561745e97f4df72f7826e29774432002fcdf",
+        "expected": "b04a055a642aabb3383128c2c68e561745e97f4df72f7826e29774432002fcdf",
+        "ok": true
+      },
+      "src/renderer/src/styles/index.css": {
+        "index_sha256": "5c2e28c7db3ef61df57521d9c8aa8c4e0ef104cdc4d0533db6b2501754285c5e",
+        "expected": "5c2e28c7db3ef61df57521d9c8aa8c4e0ef104cdc4d0533db6b2501754285c5e",
+        "ok": true
+      },
+      "src/renderer/src/styles/themes.generated.css": {
+        "index_sha256": "7ccdbe4dfecb37038d11b658e8e799bb7b3724c44fc152e84dc8d206d3e9498c",
+        "expected": "7ccdbe4dfecb37038d11b658e8e799bb7b3724c44fc152e84dc8d206d3e9498c",
+        "ok": true
+      },
+      "src/i18n/keys.gen.ts": {
+        "index_sha256": "005cf91a2a3fa8db065c0d459ca21d62cb355d567c6b7a34cd593255e769341d",
+        "expected": "005cf91a2a3fa8db065c0d459ca21d62cb355d567c6b7a34cd593255e769341d",
+        "ok": true
+      },
+      "src/i18n/messages.ts": {
+        "index_sha256": "79706f4e568a6194b71aa3664cf11aa8cdc5dfb760805f9d9589f631407df7f2",
+        "expected": "79706f4e568a6194b71aa3664cf11aa8cdc5dfb760805f9d9589f631407df7f2",
+        "ok": true
+      },
+      "src/i18n/locale.ts": {
+        "index_sha256": "9148b99bb98005b400076b91c03fd6baffd5ac9d8be290322c5a08083d194299",
+        "expected": "9148b99bb98005b400076b91c03fd6baffd5ac9d8be290322c5a08083d194299",
+        "ok": true
+      },
+      "src/i18n/catalogues/en/ui.chat.canonical.json": {
+        "index_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "expected": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+        "ok": true
+      },
+      "src/i18n/catalogues/es/ui.chat.canonical.json": {
+        "index_sha256": "4074681ab095ccfb3917e0f1e8f31e2d2c92c1c47742153db82dda80502c1e51",
+        "expected": "4074681ab095ccfb3917e0f1e8f31e2d2c92c1c47742153db82dda80502c1e51",
+        "ok": true
+      },
+      "src/i18n/catalogues/fr/ui.chat.canonical.json": {
+        "index_sha256": "e7d21936f30d7bcb95a86c08c6774c0572d13bd32e7220ab9e36c02327c31fbd",
+        "expected": "e7d21936f30d7bcb95a86c08c6774c0572d13bd32e7220ab9e36c02327c31fbd",
+        "ok": true
+      },
+      "src/i18n/catalogues/hi/ui.chat.canonical.json": {
+        "index_sha256": "8792c9a8f9df03f7c586d45e3f3b6f89b25ec6097a9aab1e310bb4e210677393",
+        "expected": "8792c9a8f9df03f7c586d45e3f3b6f89b25ec6097a9aab1e310bb4e210677393",
+        "ok": true
+      },
+      "src/i18n/catalogues/ru/ui.chat.canonical.json": {
+        "index_sha256": "325fe1a5b211db3408ee9786a1a7e6ab724d79315176019b6b55291b0e8ab71e",
+        "expected": "325fe1a5b211db3408ee9786a1a7e6ab724d79315176019b6b55291b0e8ab71e",
+        "ok": true
+      },
+      "src/i18n/catalogues/ur/ui.chat.canonical.json": {
+        "index_sha256": "06d76892a9c2a92cc5e2574a4ad71879d1c9a1a761e6dce5f9f75572abfc18b2",
+        "expected": "06d76892a9c2a92cc5e2574a4ad71879d1c9a1a761e6dce5f9f75572abfc18b2",
+        "ok": true
+      },
+      "src/i18n/catalogues/vi/ui.chat.canonical.json": {
+        "index_sha256": "e5c472aaa257bc7acded037a73c470ed79a1e3cc8dc162d854052b3aa89746fb",
+        "expected": "e5c472aaa257bc7acded037a73c470ed79a1e3cc8dc162d854052b3aa89746fb",
+        "ok": true
+      },
+      "src/i18n/catalogues/zh-CN/ui.chat.canonical.json": {
+        "index_sha256": "e6b3846b553cde65b671cec6b9b34a869bd3cffc3f42b9fec981a710501e5e81",
+        "expected": "e6b3846b553cde65b671cec6b9b34a869bd3cffc3f42b9fec981a710501e5e81",
+        "ok": true
+      },
+      "src/i18n/catalogues/en/ui.chat.canonical.context.json": {
+        "index_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+        "expected": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+        "ok": true
+      }
+    },
+    "harness_checks": {
+      "mainSha256": {
+        "sha256": "3cde4745f17459fadda7bb1ec575c9f198346be912717bfe5419949feeb6fc4f",
+        "matches_declared": true
+      },
+      "serverSha256": {
+        "sha256": "f2750cab0f888ff77cb17f87e16f8eef0de3623d5c71865e18f224504c537640",
+        "matches_declared": true
+      },
+      "cssSha256": {
+        "sha256": "5eb4777d66b5942bc5551c442c8943d266abaabb3a942d32d144909dfb533b82",
+        "matches_declared": true
+      }
+    },
+    "extra_ancestry_checks": {
+      "src/renderer/src/features/chat/canonical/canonical-transcript.tsx": {
+        "sha256": "6757e84423e02f543b742db901a9ca177a4c8787f6797832a9757f772c3cfe2b",
+        "disk_equal_index": true
+      },
+      "src/renderer/src/features/chat/components/trace/tool-row.tsx": {
+        "sha256": "128c5919d673ba972604836f5d328c7cacfc1d0d685662124275deab1d516bc1",
+        "disk_equal_index": true
+      },
+      "src/renderer/src/shared/components/ui/disclosure.tsx": {
+        "sha256": "32c1f039e77e1ebb3c1e62bd3af520c68cb96456934ad06fc5906bbae977c97d",
+        "disk_equal_index": true
+      },
+      "src/renderer/src/features/chat/components/message-item/message-container.tsx": {
+        "sha256": "8683ff91f8b54fa80f1f53d8e50d7effc7774ce5199635c70c87005c8cb9116a",
+        "disk_equal_index": true
+      },
+      "src/renderer/src/shared/i18n/use-document-direction.ts": {
+        "sha256": "25cc9a17dad1b735dfd5bf6419bf6269590e4cf70e7c2f8e2c1bfd624cdbe112",
+        "disk_equal_index": true
+      },
+      "src/renderer/src/shared/i18n/locale-direction.tsx": {
+        "sha256": "629d9f8864bfab6ce70bca203a7e922fb14339a1c60c0ae14512235b4ceb14c2",
+        "disk_equal_index": true
+      }
+    },
+    "no_git_write_tree": true
+  },
+  "coverage_by_key": [
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.back",
+      "evidence_class": "visible",
+      "frames": {
+        "es": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-page-360.png",
+            "sha256": "ca5ac0c23530c499030478cc9a2cf068d951dc70f1ab401f93770397c22e995c"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-error-360.png",
+            "sha256": "fc14ef9fbd2bbe0d910f5c862ba89c5bedd1d85b74e72f83ed15f2fd7515f423"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-empty-360.png",
+            "sha256": "e9d6938aa2b05460d2221d55c1975205faedd3c18324d5556d16d635ba7ab0f8"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-loading-360.png",
+            "sha256": "0b1d7b4cfa537d96503937bcce574975b355acb63e34e2d6c4fd6a59b41d5017"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-unavailable-360.png",
+            "sha256": "80dabd88b682186450cf1631d3ae0d06e3c2e1d69369c7bb5815f573521a4a80"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-withheld-360.png",
+            "sha256": "18f96f229aa89c4dc55d1ac8f59a6ee9a60310fd162945ef42206fa224c406d7"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-oversized-360.png",
+            "sha256": "17354af4a0c4e115007f71841871b427a84cc2cdee1c2cd3b41f85a1c71dd9ee"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-evicted-360.png",
+            "sha256": "5ff18b15c585375aa65fc94f5f570fbe236f35ffea5304ef3483b10adc206c8f"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-not_recorded-360.png",
+            "sha256": "166a2ad57a5261e9bce63fab4b856775065ba88331e3594c49f2bffd064f485e"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-not_found-360.png",
+            "sha256": "93d51ef871b96bea0a4b67c51a98a20fd81b4519362591bf8290f223936d7729"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-inline-360.png",
+            "sha256": "5307d4c0bdd0a3dc66f5bd7ce1b450c04038d53756ad6654b6c539179d1704fe"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-360.png",
+            "sha256": "8d75f84b2ece5c20a2f781a4d93232f42ac8c85a302eeafa094da1f6cebac8a8"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-next-360.png",
+            "sha256": "8698573490b7ae8fdde66c49fab5436e8f2c2af0576358538342730aedcbb42b"
+          }
+        ],
+        "fr": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-page-360.png",
+            "sha256": "866e08ee5dc6d451da6cb80c574b6619b77a9e5e30851af70fc1d17c040df58f"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-error-360.png",
+            "sha256": "92032a05151e31b8e143c32049e6cd3907503caa6be43aa3a7f903c10067c7b3"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-empty-360.png",
+            "sha256": "939114b0a7e6887ca76580e46e67124907374e76b193b322e5f86a7df58e0659"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-loading-360.png",
+            "sha256": "0e464f9a542deaed43ea416f049688927b366dc773517537c8871984eb7b9f6f"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-unavailable-360.png",
+            "sha256": "4d2659418092b079b761c553e8fb52f8b42511ffe2075d551f8736f154ffaa22"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-withheld-360.png",
+            "sha256": "b337672861d3a5abb51c6352bff9de903153443ea0fce96f6d5939a81d3b91f6"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-oversized-360.png",
+            "sha256": "8ba845abbb69c14e8b5d085234590c17ed7e0026db2d6dc4b0f5ee2231676c42"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-evicted-360.png",
+            "sha256": "5ac2ed0027bc5da9b98caae44fef2a37da96ca45f3ce988d2c56b91b32749f47"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-not_recorded-360.png",
+            "sha256": "362e737908b91d2f0c086d9e13a652ea18bbe93937bb01f90c10b457325cc220"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-not_found-360.png",
+            "sha256": "a4278dc5efb89568610ede89c0e5519d1eff551b1276fb8460c1d4ac0ff01891"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-inline-360.png",
+            "sha256": "b42fdf5718ffc401ef1a410a8aecde1a09146a90eaa65c09c36fdc7683632446"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-split-360.png",
+            "sha256": "0823792924e1bba9300dc0a3dd91ac0dfd0c1f5abd2c9b9fec13a8659a71a6b1"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-split-next-360.png",
+            "sha256": "1c3d7fcdd1d10064bed5870b6db238f6aa234e6a9cf8c3766c6ce317d34ed31f"
+          }
+        ],
+        "hi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-page-360.png",
+            "sha256": "2578843e24ebeb3367b9f2fa8386fd49ddc07079971d92daaafdc5d077eae28e"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-error-360.png",
+            "sha256": "ecaafc3b5b289f88ee3d6df4e57a4643379daf7c55ab8fe74ebec22f910317d9"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-empty-360.png",
+            "sha256": "3b16f956024eb065504638fdb84afd2653e59d1a8a223fe3947905c64d33fbe8"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-loading-360.png",
+            "sha256": "ed06efd6a4aced1874faa1232721b07782315581914c9d0a6a9d977b7ef780c2"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-unavailable-360.png",
+            "sha256": "55fcf16e184b46b3b8a8e6808a4116d3b80bb0797b7bb180293b627e6a9a629f"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-withheld-360.png",
+            "sha256": "c059ef389028624975356305b8a5baf3f4f55986ef0e9fa649577c115221b666"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-oversized-360.png",
+            "sha256": "58e6beb164275d56ffd551a4737d54d91ed88e198b80dff1e67668e4b4e75211"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-evicted-360.png",
+            "sha256": "43f74e1732f022214914c2184618d0478882614d72212df2a5595a546f86c9a7"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-not_recorded-360.png",
+            "sha256": "8c47317a8fa90b45fca77cba09c728885e98224105c60b86091a6bd8d5adb1ce"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-not_found-360.png",
+            "sha256": "fefbaa4dee10a8e14fbcdc576bf4f30d26f1e8004c88a560ad83fc287639c915"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-inline-360.png",
+            "sha256": "8087783e71bd5e19b81c24ac4a4e90264327ea0d80bdabb52f6f66dd84895c6a"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-split-360.png",
+            "sha256": "06455ad354ad5cfa0892a0e08eb34d0732b5b7f1f0b051ec6a288fd5e92bfb1e"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-split-next-360.png",
+            "sha256": "185e0a4f9008562ef3f9d1d2e84ddeaf45fe104d99373c0be2fb310502a6ba54"
+          }
+        ],
+        "ru": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-page-360.png",
+            "sha256": "8191b2805f5bc813bbba25b350cef8ae0cc30f1a92b112d23f5adab7522e1465"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-error-360.png",
+            "sha256": "db16fa5f68272c7b3c59b0cec5f1e4d6bfed4d841783c17464c5bba129c96cd5"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-empty-360.png",
+            "sha256": "4d0be4d51f4feeca9b42e2489481609b0290949a4f36c4706e81012b04c3274b"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-loading-360.png",
+            "sha256": "d6ab673637219b24b299d1a4743d096d1fab4af4f7acb5a05bb0fb7fa20dad2b"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-unavailable-360.png",
+            "sha256": "66c880035d5097d7c90be64d34722e00fa24fe1e00e176a5c42228f9ba112db5"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-withheld-360.png",
+            "sha256": "47e79fae9b68a21c8298d1764c6bedc5b77c6e23f07861f42289c9b9a862daf9"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-oversized-360.png",
+            "sha256": "fd0c5f58a41a9c0548864f326c0e4b1af6fd08a0abccfe0a9cf9f4b931e482d7"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-evicted-360.png",
+            "sha256": "ad76ffe9a1b7517a98fe37363e3ba11848b54faacbb53e5bb342200e50379bd3"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-not_recorded-360.png",
+            "sha256": "ae707e2fde909b21909cd5dfacb75fbee5bbfaa93cdaf2833a2ec07b59f7e69e"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-not_found-360.png",
+            "sha256": "6a4b8980749ef2ab70a97240964b9145edce8243d3295a1f945d43cc7bf5bff3"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-inline-360.png",
+            "sha256": "13b12438b69865ed4d6b0b096338974febff3c649acd1a9c991aa5428798c5a8"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-360.png",
+            "sha256": "082d1880bd8c654b208287b3d8460fbb8c0af730f0cb3f435e434bdeecebfef7"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-next-360.png",
+            "sha256": "9eff5c4eb818d26187428f83a0b9ff481c8dd56c7c5d52e531751dfeeb23e55e"
+          }
+        ],
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-page-360.png",
+            "sha256": "4348c6cd1cf2175c4103a326b6e3607609ca86899da35dd92b3a9d43efd30ece"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-error-360.png",
+            "sha256": "3359535cc73c129e2b903f055205144da4b1b26ba54a25629e6b186c95bc09ac"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-empty-360.png",
+            "sha256": "51e2da33125b9379e2c07391618802c1839b1e7f2f5db8ba812a6eb6de0202d0"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-loading-360.png",
+            "sha256": "bc91f429a0c47a55979eddc893c48f3a0c1b8a88f325a47ece1742790f368cc1"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-unavailable-360.png",
+            "sha256": "e8ab0e20a0ae614b34496b6664f747a54613f44662d610b11b41e55035da563f"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-withheld-360.png",
+            "sha256": "bfd05ee3c9b42231743ff22bbdffc70ab67694dbce68af9d47b67d997dc4aa4a"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-oversized-360.png",
+            "sha256": "b8a042e694f0ae88bcef4dbc2dc3dc69837cace7b03fe477ae09cc6836f8f2f5"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-evicted-360.png",
+            "sha256": "ae23c43857590e501be7edc862065e4495f0ca0f5d06f666c15632bd5748a843"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-not_recorded-360.png",
+            "sha256": "3be4dd6f48733d8a45a8a80dd3a6aa88907aeed57e4a4491d5f5d59f8906b53f"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-not_found-360.png",
+            "sha256": "f8d2a1d46e67ea5114f372f5d8fada30c7cb422c4832b28940c65842d849c917"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-inline-360.png",
+            "sha256": "9d382cda9652cdd7a405038251e6a903e830b0589981812263e72cf9a720b83a"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-360.png",
+            "sha256": "72d18de360e0eb22e7663ed33883ad62c218ca84ca375b3f031224da1e9bef79"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-next-360.png",
+            "sha256": "879181543e45653256d653a91d060b1c4938d3f675cf57d97874868f3f0d32a2"
+          }
+        ],
+        "vi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-page-360.png",
+            "sha256": "24922bd011e80b544859b6f6bb4dda6b97627b6eb30c07f7d27ad10752b2c911"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-error-360.png",
+            "sha256": "5c10a927dab7881b92be01d4f5ccf67a06569718bdc6d2c56067a4b581ed3219"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-empty-360.png",
+            "sha256": "22279e539da4a006bd8958911d5ecff0e5097d0305b5591be5daa6a7ae8f9a4e"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-loading-360.png",
+            "sha256": "00eb53ec771e635c047972ac812beb3545fd3db7d112b4433e1e4dbadda2d2ae"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-unavailable-360.png",
+            "sha256": "01ebd463a0d00a4ab787b76d86b80b3fadbe21213f6c5591ef585e35ca8b776f"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-withheld-360.png",
+            "sha256": "4faf91ef346b56a3e059324a8a2762894afbfbc5425610e5ba4ead8b204ee619"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-oversized-360.png",
+            "sha256": "5258a87dc160a7bc55adfb755ca26b7cc022c8f78179fb0a6502369a0c88783b"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-evicted-360.png",
+            "sha256": "a8fa4ec68bd22ef0d6c3e78cde59cd093164edfea7096f1e335fbb30a2bd24a3"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-not_recorded-360.png",
+            "sha256": "1040a3eee07f457e6a69e86c5772a966b9d0e9f674a3c1699c69236b20c392e5"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-not_found-360.png",
+            "sha256": "90f3d0cabcb84285fef7c80f14d4c8fbe87317eb72c763c779be42359d0bf0e1"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-inline-360.png",
+            "sha256": "ef4467c3bbfe60e7ae6a3718c8ccd63868761650c61228d0ff8560b90a3949b0"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-split-360.png",
+            "sha256": "35e582b507d7ef465a145aecabd57453cc9fcf37b99cb657f934c54d78400764"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-split-next-360.png",
+            "sha256": "17752f506890f700167d1ff69249724c441a16f76a9d1714ad65df972ca6b22a"
+          }
+        ],
+        "zh-CN": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-page-360.png",
+            "sha256": "54bfd8e9cceded0693d57fa3a07b161c96c46c882a0dd5cefd314a9915e8350b"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-error-360.png",
+            "sha256": "4a4205aa1cea89b0f303033f42b19ef5a5a3f66d41c99c0ad2203eee1c6cae9f"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-empty-360.png",
+            "sha256": "d9079020f3b5ac8d7a5a63cc57a40c44eb8b7ba2a1886d6ba369d273e10c9135"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-loading-360.png",
+            "sha256": "f2742e099c64368ba131257c84ddab755d0314c7fef1f8009580bb9d48ebfdb6"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-unavailable-360.png",
+            "sha256": "919f7be3bec41ae9a5b991a172e7e1f214f350aa9f5e55371f0a0a6b2fcfe641"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-withheld-360.png",
+            "sha256": "d88bf93e470f36455a3f9f2dc22772775fa7add69e741ae8fe62883d0314d8ad"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-oversized-360.png",
+            "sha256": "b11679310dcdc9e2957b16f70c9a9c0d90cc992c60b523d8510f3553eb595f6a"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-evicted-360.png",
+            "sha256": "cff9145fa694ac07c4c579633e4eea8fe5892d523e577461114790f4cec0e6b5"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-not_recorded-360.png",
+            "sha256": "c36667d90775bbe311b859d79fd21a9e86845bca3194a96c969b17c4c7137327"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-not_found-360.png",
+            "sha256": "83e140e4010b0985a8f0b4a33cc40f67cc521e7729d63882cf6ececf1fcc2ca9"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-inline-360.png",
+            "sha256": "7b217da54bc6cdab3e1b77601ec2359b8fd772a0a0855b0e356accfc932e9013"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-split-360.png",
+            "sha256": "b6d3773efa971f16fe4fb32fac460a8f0917c312394ca879fd33193f7002252c"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-split-next-360.png",
+            "sha256": "a4b9f1c3a3ec349af00ed2682373fb52066c060ad52ac2c275170e03b9e2fee7"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "es": [
+          "oversized",
+          "split-next"
+        ],
+        "fr": [
+          "split",
+          "split-next"
+        ],
+        "hi": [
+          "unavailable",
+          "oversized",
+          "evicted",
+          "split",
+          "not_found",
+          "split-next"
+        ],
+        "ru": [
+          "loading",
+          "oversized",
+          "evicted",
+          "not_recorded",
+          "inline",
+          "split",
+          "unavailable",
+          "split-next"
+        ],
+        "ur": [
+          "loading",
+          "error",
+          "empty",
+          "unavailable",
+          "withheld",
+          "oversized",
+          "evicted",
+          "not_recorded",
+          "not_found",
+          "inline",
+          "split",
+          "page",
+          "split-next"
+        ],
+        "vi": [
+          "loading",
+          "error",
+          "empty",
+          "unavailable",
+          "withheld",
+          "oversized",
+          "evicted",
+          "not_recorded",
+          "not_found",
+          "inline",
+          "split",
+          "page",
+          "split-next"
+        ],
+        "zh-CN": [
+          "loading",
+          "error",
+          "empty",
+          "unavailable",
+          "withheld",
+          "oversized",
+          "evicted",
+          "not_recorded",
+          "not_found",
+          "inline",
+          "split",
+          "page",
+          "split-next"
+        ]
+      },
+      "interpretation": "Button label visible; click-to-preview outcome NOT recorded"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.clipped",
+      "evidence_class": "visible_legacy_fixture_focused_final",
+      "frames": {
+        "es": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-clipped-focused-360.png",
+            "sha256": "926ff12f4c45fb671b9be2519b88843b506fdaa4c17a8e2433dc015260b0cb51"
+          }
+        ],
+        "fr": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-clipped-focused-360.png",
+            "sha256": "6b540c84efcc73276fb374406aca24e4640be1e8d17d01a0396be06c7bbd1e41"
+          }
+        ],
+        "hi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-clipped-focused-360.png",
+            "sha256": "1642a433bffc7c3b6e254774fe5cfc30268af967adc2f0a20fcfa7b05ec58f28"
+          }
+        ],
+        "ru": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-clipped-focused-360.png",
+            "sha256": "6b25e585551ad2ce8e13a8c43b30a3da0f3b8b3a64474004357f362afadf1b7f"
+          }
+        ],
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-clipped-focused-360.png",
+            "sha256": "d32b16ba411cdede9b75bfe56ecde817581324974a7bc8b24d6119eec9ac989f"
+          }
+        ],
+        "vi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-clipped-focused-360.png",
+            "sha256": "f3fc873ee82fb01b8964fa5540d7446684f59b6b72e1289b66501c056e4dbb02"
+          }
+        ],
+        "zh-CN": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-clipped-focused-360.png",
+            "sha256": "f84f5d3bc0325850895cc138de8a2dd1cd0136fc3441be7227179c56b76c952e"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "es": [],
+        "fr": [],
+        "hi": [
+          "clipped"
+        ],
+        "ru": [],
+        "ur": [
+          "clipped"
+        ],
+        "vi": [
+          "clipped"
+        ],
+        "zh-CN": [
+          "clipped"
+        ]
+      },
+      "interpretation": "Late focused image actually exposes the aggregate clipped notice with count 1 and bottom range; legacy synthetic clipped_rows fixture, not current-backend truncation proof."
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.clipped_row",
+      "evidence_class": "visible_legacy_fixture",
+      "frames": {
+        "es": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-clipped-360.png",
+            "sha256": "3ebd540c90e66692e12a70ddd57e7cba3722939b6d558df7a812b4880ee60ea9"
+          }
+        ],
+        "fr": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-clipped-360.png",
+            "sha256": "773e94fb7ed6a3c27bb1b398bd3fdfda36693bd34a0be78e1e07a102acf8e465"
+          }
+        ],
+        "hi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-clipped-360.png",
+            "sha256": "ac3147bb76ed8efa689e32637e175afb43922f0275c6493560c09b074ecb8449"
+          }
+        ],
+        "ru": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-clipped-360.png",
+            "sha256": "5abb3a1f28e4495e00a853c23439c9f6cabd40b88dd9e63d970ce108cf99e23f"
+          }
+        ],
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-clipped-360.png",
+            "sha256": "475233395df0f7de1746be54f087b9f1624a5db4c922d66f723ac5ceb0ea84fa"
+          }
+        ],
+        "vi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-clipped-360.png",
+            "sha256": "d7159649abd0e9c4647f1a9f078cee78d5d6fae51ec5be13f3c371f545f1472d"
+          }
+        ],
+        "zh-CN": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-clipped-360.png",
+            "sha256": "a01ef166bd0776188717e479b78b942ad19b484cfb1769ec536d8245b9f6a629"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "es": [],
+        "fr": [],
+        "hi": [
+          "clipped"
+        ],
+        "ru": [],
+        "ur": [
+          "clipped"
+        ],
+        "vi": [
+          "clipped"
+        ],
+        "zh-CN": [
+          "clipped"
+        ]
+      },
+      "interpretation": "Annotation visible on the first mixed-code row; synthetic clipped_rows=[3], not evidence current backend truncates"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.continued",
+      "evidence_class": "visible",
+      "frames": {
+        "es": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-next-360.png",
+            "sha256": "8698573490b7ae8fdde66c49fab5436e8f2c2af0576358538342730aedcbb42b"
+          }
+        ],
+        "fr": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-split-next-360.png",
+            "sha256": "1c3d7fcdd1d10064bed5870b6db238f6aa234e6a9cf8c3766c6ce317d34ed31f"
+          }
+        ],
+        "hi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-split-next-360.png",
+            "sha256": "185e0a4f9008562ef3f9d1d2e84ddeaf45fe104d99373c0be2fb310502a6ba54"
+          }
+        ],
+        "ru": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-next-360.png",
+            "sha256": "9eff5c4eb818d26187428f83a0b9ff481c8dd56c7c5d52e531751dfeeb23e55e"
+          }
+        ],
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-next-360.png",
+            "sha256": "879181543e45653256d653a91d060b1c4938d3f675cf57d97874868f3f0d32a2"
+          }
+        ],
+        "vi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-split-next-360.png",
+            "sha256": "17752f506890f700167d1ff69249724c441a16f76a9d1714ad65df972ca6b22a"
+          }
+        ],
+        "zh-CN": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-split-next-360.png",
+            "sha256": "a4b9f1c3a3ec349af00ed2682373fb52066c060ad52ac2c275170e03b9e2fee7"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "es": [
+          "split-next"
+        ],
+        "fr": [
+          "split-next"
+        ],
+        "hi": [
+          "split-next"
+        ],
+        "ru": [
+          "split-next"
+        ],
+        "ur": [
+          "split-next"
+        ],
+        "vi": [
+          "split-next"
+        ],
+        "zh-CN": [
+          "split-next"
+        ]
+      },
+      "interpretation": "Continuation annotation near end of split-next body; not a new row"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.continues",
+      "evidence_class": "visible",
+      "frames": {
+        "es": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-360.png",
+            "sha256": "8d75f84b2ece5c20a2f781a4d93232f42ac8c85a302eeafa094da1f6cebac8a8"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-next-360.png",
+            "sha256": "8698573490b7ae8fdde66c49fab5436e8f2c2af0576358538342730aedcbb42b"
+          }
+        ],
+        "fr": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-split-360.png",
+            "sha256": "0823792924e1bba9300dc0a3dd91ac0dfd0c1f5abd2c9b9fec13a8659a71a6b1"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-split-next-360.png",
+            "sha256": "1c3d7fcdd1d10064bed5870b6db238f6aa234e6a9cf8c3766c6ce317d34ed31f"
+          }
+        ],
+        "hi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-split-360.png",
+            "sha256": "06455ad354ad5cfa0892a0e08eb34d0732b5b7f1f0b051ec6a288fd5e92bfb1e"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-split-next-360.png",
+            "sha256": "185e0a4f9008562ef3f9d1d2e84ddeaf45fe104d99373c0be2fb310502a6ba54"
+          }
+        ],
+        "ru": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-360.png",
+            "sha256": "082d1880bd8c654b208287b3d8460fbb8c0af730f0cb3f435e434bdeecebfef7"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-next-360.png",
+            "sha256": "9eff5c4eb818d26187428f83a0b9ff481c8dd56c7c5d52e531751dfeeb23e55e"
+          }
+        ],
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-360.png",
+            "sha256": "72d18de360e0eb22e7663ed33883ad62c218ca84ca375b3f031224da1e9bef79"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-next-360.png",
+            "sha256": "879181543e45653256d653a91d060b1c4938d3f675cf57d97874868f3f0d32a2"
+          }
+        ],
+        "vi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-split-360.png",
+            "sha256": "35e582b507d7ef465a145aecabd57453cc9fcf37b99cb657f934c54d78400764"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-split-next-360.png",
+            "sha256": "17752f506890f700167d1ff69249724c441a16f76a9d1714ad65df972ca6b22a"
+          }
+        ],
+        "zh-CN": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-split-360.png",
+            "sha256": "b6d3773efa971f16fe4fb32fac460a8f0917c312394ca879fd33193f7002252c"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-split-next-360.png",
+            "sha256": "a4b9f1c3a3ec349af00ed2682373fb52066c060ad52ac2c275170e03b9e2fee7"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "es": [
+          "split-next"
+        ],
+        "fr": [
+          "split",
+          "split-next"
+        ],
+        "hi": [
+          "split",
+          "split-next"
+        ],
+        "ru": [
+          "split",
+          "split-next"
+        ],
+        "ur": [
+          "split",
+          "split-next"
+        ],
+        "vi": [
+          "split",
+          "split-next"
+        ],
+        "zh-CN": [
+          "split",
+          "split-next"
+        ]
+      },
+      "interpretation": "Continues annotation at split page end (also subsequent continuation page)"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.empty",
+      "evidence_class": "visible",
+      "frames": {
+        "es": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-empty-360.png",
+            "sha256": "e9d6938aa2b05460d2221d55c1975205faedd3c18324d5556d16d635ba7ab0f8"
+          }
+        ],
+        "fr": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-empty-360.png",
+            "sha256": "939114b0a7e6887ca76580e46e67124907374e76b193b322e5f86a7df58e0659"
+          }
+        ],
+        "hi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-empty-360.png",
+            "sha256": "3b16f956024eb065504638fdb84afd2653e59d1a8a223fe3947905c64d33fbe8"
+          }
+        ],
+        "ru": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-empty-360.png",
+            "sha256": "4d0be4d51f4feeca9b42e2489481609b0290949a4f36c4706e81012b04c3274b"
+          }
+        ],
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-empty-360.png",
+            "sha256": "51e2da33125b9379e2c07391618802c1839b1e7f2f5db8ba812a6eb6de0202d0"
+          }
+        ],
+        "vi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-empty-360.png",
+            "sha256": "22279e539da4a006bd8958911d5ecff0e5097d0305b5591be5daa6a7ae8f9a4e"
+          }
+        ],
+        "zh-CN": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-empty-360.png",
+            "sha256": "d9079020f3b5ac8d7a5a63cc57a40c44eb8b7ba2a1886d6ba369d273e10c9135"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "es": [],
+        "fr": [],
+        "hi": [],
+        "ru": [],
+        "ur": [
+          "empty"
+        ],
+        "vi": [
+          "empty"
+        ],
+        "zh-CN": [
+          "empty"
+        ]
+      },
+      "interpretation": "Empty notice and Back label fit the captured box"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.error",
+      "evidence_class": "visible",
+      "frames": {
+        "es": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-error-360.png",
+            "sha256": "fc14ef9fbd2bbe0d910f5c862ba89c5bedd1d85b74e72f83ed15f2fd7515f423"
+          }
+        ],
+        "fr": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-error-360.png",
+            "sha256": "92032a05151e31b8e143c32049e6cd3907503caa6be43aa3a7f903c10067c7b3"
+          }
+        ],
+        "hi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-error-360.png",
+            "sha256": "ecaafc3b5b289f88ee3d6df4e57a4643379daf7c55ab8fe74ebec22f910317d9"
+          }
+        ],
+        "ru": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-error-360.png",
+            "sha256": "db16fa5f68272c7b3c59b0cec5f1e4d6bfed4d841783c17464c5bba129c96cd5"
+          }
+        ],
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-error-360.png",
+            "sha256": "3359535cc73c129e2b903f055205144da4b1b26ba54a25629e6b186c95bc09ac"
+          }
+        ],
+        "vi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-error-360.png",
+            "sha256": "5c10a927dab7881b92be01d4f5ccf67a06569718bdc6d2c56067a4b581ed3219"
+          }
+        ],
+        "zh-CN": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-error-360.png",
+            "sha256": "4a4205aa1cea89b0f303033f42b19ef5a5a3f66d41c99c0ad2203eee1c6cae9f"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "es": [],
+        "fr": [],
+        "hi": [],
+        "ru": [],
+        "ur": [
+          "error"
+        ],
+        "vi": [
+          "error"
+        ],
+        "zh-CN": [
+          "error"
+        ]
+      },
+      "interpretation": "Error status visible; Retry label visible"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.evicted",
+      "evidence_class": "visible",
+      "frames": {
+        "es": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-evicted-360.png",
+            "sha256": "5ff18b15c585375aa65fc94f5f570fbe236f35ffea5304ef3483b10adc206c8f"
+          }
+        ],
+        "fr": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-evicted-360.png",
+            "sha256": "5ac2ed0027bc5da9b98caae44fef2a37da96ca45f3ce988d2c56b91b32749f47"
+          }
+        ],
+        "hi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-evicted-360.png",
+            "sha256": "43f74e1732f022214914c2184618d0478882614d72212df2a5595a546f86c9a7"
+          }
+        ],
+        "ru": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-evicted-360.png",
+            "sha256": "ad76ffe9a1b7517a98fe37363e3ba11848b54faacbb53e5bb342200e50379bd3"
+          }
+        ],
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-evicted-360.png",
+            "sha256": "ae23c43857590e501be7edc862065e4495f0ca0f5d06f666c15632bd5748a843"
+          }
+        ],
+        "vi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-evicted-360.png",
+            "sha256": "a8fa4ec68bd22ef0d6c3e78cde59cd093164edfea7096f1e335fbb30a2bd24a3"
+          }
+        ],
+        "zh-CN": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-evicted-360.png",
+            "sha256": "cff9145fa694ac07c4c579633e4eea8fe5892d523e577461114790f4cec0e6b5"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "es": [],
+        "fr": [],
+        "hi": [
+          "evicted"
+        ],
+        "ru": [
+          "evicted"
+        ],
+        "ur": [
+          "evicted"
+        ],
+        "vi": [
+          "evicted"
+        ],
+        "zh-CN": [
+          "evicted"
+        ]
+      },
+      "interpretation": "Notice wraps inside box; no observed clipping"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.first",
+      "evidence_class": "visible",
+      "frames": {
+        "es": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-page-360.png",
+            "sha256": "ca5ac0c23530c499030478cc9a2cf068d951dc70f1ab401f93770397c22e995c"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-360.png",
+            "sha256": "8d75f84b2ece5c20a2f781a4d93232f42ac8c85a302eeafa094da1f6cebac8a8"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-next-360.png",
+            "sha256": "8698573490b7ae8fdde66c49fab5436e8f2c2af0576358538342730aedcbb42b"
+          }
+        ],
+        "fr": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-page-360.png",
+            "sha256": "866e08ee5dc6d451da6cb80c574b6619b77a9e5e30851af70fc1d17c040df58f"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-split-360.png",
+            "sha256": "0823792924e1bba9300dc0a3dd91ac0dfd0c1f5abd2c9b9fec13a8659a71a6b1"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-split-next-360.png",
+            "sha256": "1c3d7fcdd1d10064bed5870b6db238f6aa234e6a9cf8c3766c6ce317d34ed31f"
+          }
+        ],
+        "hi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-page-360.png",
+            "sha256": "2578843e24ebeb3367b9f2fa8386fd49ddc07079971d92daaafdc5d077eae28e"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-split-360.png",
+            "sha256": "06455ad354ad5cfa0892a0e08eb34d0732b5b7f1f0b051ec6a288fd5e92bfb1e"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-split-next-360.png",
+            "sha256": "185e0a4f9008562ef3f9d1d2e84ddeaf45fe104d99373c0be2fb310502a6ba54"
+          }
+        ],
+        "ru": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-page-360.png",
+            "sha256": "8191b2805f5bc813bbba25b350cef8ae0cc30f1a92b112d23f5adab7522e1465"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-360.png",
+            "sha256": "082d1880bd8c654b208287b3d8460fbb8c0af730f0cb3f435e434bdeecebfef7"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-next-360.png",
+            "sha256": "9eff5c4eb818d26187428f83a0b9ff481c8dd56c7c5d52e531751dfeeb23e55e"
+          }
+        ],
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-page-360.png",
+            "sha256": "4348c6cd1cf2175c4103a326b6e3607609ca86899da35dd92b3a9d43efd30ece"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-360.png",
+            "sha256": "72d18de360e0eb22e7663ed33883ad62c218ca84ca375b3f031224da1e9bef79"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-next-360.png",
+            "sha256": "879181543e45653256d653a91d060b1c4938d3f675cf57d97874868f3f0d32a2"
+          }
+        ],
+        "vi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-page-360.png",
+            "sha256": "24922bd011e80b544859b6f6bb4dda6b97627b6eb30c07f7d27ad10752b2c911"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-split-360.png",
+            "sha256": "35e582b507d7ef465a145aecabd57453cc9fcf37b99cb657f934c54d78400764"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-split-next-360.png",
+            "sha256": "17752f506890f700167d1ff69249724c441a16f76a9d1714ad65df972ca6b22a"
+          }
+        ],
+        "zh-CN": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-page-360.png",
+            "sha256": "54bfd8e9cceded0693d57fa3a07b161c96c46c882a0dd5cefd314a9915e8350b"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-split-360.png",
+            "sha256": "b6d3773efa971f16fe4fb32fac460a8f0917c312394ca879fd33193f7002252c"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-split-next-360.png",
+            "sha256": "a4b9f1c3a3ec349af00ed2682373fb52066c060ad52ac2c275170e03b9e2fee7"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "es": [
+          "split-next"
+        ],
+        "fr": [
+          "split",
+          "split-next"
+        ],
+        "hi": [
+          "split",
+          "split-next"
+        ],
+        "ru": [
+          "split",
+          "split-next"
+        ],
+        "ur": [
+          "split",
+          "page",
+          "split-next"
+        ],
+        "vi": [
+          "split",
+          "page",
+          "split-next"
+        ],
+        "zh-CN": [
+          "split",
+          "page",
+          "split-next"
+        ]
+      },
+      "interpretation": "First disabled on initial page, enabled on split-next where visible; First click result NOT recorded"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.inline",
+      "evidence_class": "visible",
+      "frames": {
+        "es": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-inline-360.png",
+            "sha256": "5307d4c0bdd0a3dc66f5bd7ce1b450c04038d53756ad6654b6c539179d1704fe"
+          }
+        ],
+        "fr": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-inline-360.png",
+            "sha256": "b42fdf5718ffc401ef1a410a8aecde1a09146a90eaa65c09c36fdc7683632446"
+          }
+        ],
+        "hi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-inline-360.png",
+            "sha256": "8087783e71bd5e19b81c24ac4a4e90264327ea0d80bdabb52f6f66dd84895c6a"
+          }
+        ],
+        "ru": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-inline-360.png",
+            "sha256": "13b12438b69865ed4d6b0b096338974febff3c649acd1a9c991aa5428798c5a8"
+          }
+        ],
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-inline-360.png",
+            "sha256": "9d382cda9652cdd7a405038251e6a903e830b0589981812263e72cf9a720b83a"
+          }
+        ],
+        "vi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-inline-360.png",
+            "sha256": "ef4467c3bbfe60e7ae6a3718c8ccd63868761650c61228d0ff8560b90a3949b0"
+          }
+        ],
+        "zh-CN": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-inline-360.png",
+            "sha256": "7b217da54bc6cdab3e1b77601ec2359b8fd772a0a0855b0e356accfc932e9013"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "es": [],
+        "fr": [],
+        "hi": [],
+        "ru": [
+          "inline"
+        ],
+        "ur": [
+          "inline"
+        ],
+        "vi": [
+          "inline"
+        ],
+        "zh-CN": [
+          "inline"
+        ]
+      },
+      "interpretation": "Notice visible"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.last",
+      "evidence_class": "visible",
+      "frames": {
+        "es": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-page-360.png",
+            "sha256": "ca5ac0c23530c499030478cc9a2cf068d951dc70f1ab401f93770397c22e995c"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-360.png",
+            "sha256": "8d75f84b2ece5c20a2f781a4d93232f42ac8c85a302eeafa094da1f6cebac8a8"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-next-360.png",
+            "sha256": "8698573490b7ae8fdde66c49fab5436e8f2c2af0576358538342730aedcbb42b"
+          }
+        ],
+        "fr": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-page-360.png",
+            "sha256": "866e08ee5dc6d451da6cb80c574b6619b77a9e5e30851af70fc1d17c040df58f"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-split-360.png",
+            "sha256": "0823792924e1bba9300dc0a3dd91ac0dfd0c1f5abd2c9b9fec13a8659a71a6b1"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-split-next-360.png",
+            "sha256": "1c3d7fcdd1d10064bed5870b6db238f6aa234e6a9cf8c3766c6ce317d34ed31f"
+          }
+        ],
+        "hi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-page-360.png",
+            "sha256": "2578843e24ebeb3367b9f2fa8386fd49ddc07079971d92daaafdc5d077eae28e"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-split-360.png",
+            "sha256": "06455ad354ad5cfa0892a0e08eb34d0732b5b7f1f0b051ec6a288fd5e92bfb1e"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-split-next-360.png",
+            "sha256": "185e0a4f9008562ef3f9d1d2e84ddeaf45fe104d99373c0be2fb310502a6ba54"
+          }
+        ],
+        "ru": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-page-360.png",
+            "sha256": "8191b2805f5bc813bbba25b350cef8ae0cc30f1a92b112d23f5adab7522e1465"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-360.png",
+            "sha256": "082d1880bd8c654b208287b3d8460fbb8c0af730f0cb3f435e434bdeecebfef7"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-next-360.png",
+            "sha256": "9eff5c4eb818d26187428f83a0b9ff481c8dd56c7c5d52e531751dfeeb23e55e"
+          }
+        ],
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-page-360.png",
+            "sha256": "4348c6cd1cf2175c4103a326b6e3607609ca86899da35dd92b3a9d43efd30ece"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-360.png",
+            "sha256": "72d18de360e0eb22e7663ed33883ad62c218ca84ca375b3f031224da1e9bef79"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-next-360.png",
+            "sha256": "879181543e45653256d653a91d060b1c4938d3f675cf57d97874868f3f0d32a2"
+          }
+        ],
+        "vi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-page-360.png",
+            "sha256": "24922bd011e80b544859b6f6bb4dda6b97627b6eb30c07f7d27ad10752b2c911"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-split-360.png",
+            "sha256": "35e582b507d7ef465a145aecabd57453cc9fcf37b99cb657f934c54d78400764"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-split-next-360.png",
+            "sha256": "17752f506890f700167d1ff69249724c441a16f76a9d1714ad65df972ca6b22a"
+          }
+        ],
+        "zh-CN": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-page-360.png",
+            "sha256": "54bfd8e9cceded0693d57fa3a07b161c96c46c882a0dd5cefd314a9915e8350b"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-split-360.png",
+            "sha256": "b6d3773efa971f16fe4fb32fac460a8f0917c312394ca879fd33193f7002252c"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-split-next-360.png",
+            "sha256": "a4b9f1c3a3ec349af00ed2682373fb52066c060ad52ac2c275170e03b9e2fee7"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "es": [
+          "split-next"
+        ],
+        "fr": [
+          "split",
+          "split-next"
+        ],
+        "hi": [
+          "split",
+          "split-next"
+        ],
+        "ru": [
+          "split",
+          "split-next"
+        ],
+        "ur": [
+          "split",
+          "page",
+          "split-next"
+        ],
+        "vi": [
+          "split",
+          "page",
+          "split-next"
+        ],
+        "zh-CN": [
+          "split",
+          "page",
+          "split-next"
+        ]
+      },
+      "interpretation": "Last label visible; Last click/result NOT recorded"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.loading",
+      "evidence_class": "visible",
+      "frames": {
+        "es": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-loading-360.png",
+            "sha256": "0b1d7b4cfa537d96503937bcce574975b355acb63e34e2d6c4fd6a59b41d5017"
+          }
+        ],
+        "fr": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-loading-360.png",
+            "sha256": "0e464f9a542deaed43ea416f049688927b366dc773517537c8871984eb7b9f6f"
+          }
+        ],
+        "hi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-loading-360.png",
+            "sha256": "ed06efd6a4aced1874faa1232721b07782315581914c9d0a6a9d977b7ef780c2"
+          }
+        ],
+        "ru": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-loading-360.png",
+            "sha256": "d6ab673637219b24b299d1a4743d096d1fab4af4f7acb5a05bb0fb7fa20dad2b"
+          }
+        ],
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-loading-360.png",
+            "sha256": "bc91f429a0c47a55979eddc893c48f3a0c1b8a88f325a47ece1742790f368cc1"
+          }
+        ],
+        "vi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-loading-360.png",
+            "sha256": "00eb53ec771e635c047972ac812beb3545fd3db7d112b4433e1e4dbadda2d2ae"
+          }
+        ],
+        "zh-CN": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-loading-360.png",
+            "sha256": "f2742e099c64368ba131257c84ddab755d0314c7fef1f8009580bb9d48ebfdb6"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "es": [],
+        "fr": [],
+        "hi": [],
+        "ru": [
+          "loading"
+        ],
+        "ur": [
+          "loading"
+        ],
+        "vi": [
+          "loading"
+        ],
+        "zh-CN": [
+          "loading"
+        ]
+      },
+      "interpretation": "Loading status visible"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.nav",
+      "evidence_class": "accessible_name_only",
+      "frames": {
+        "es": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-page-360.png",
+            "sha256": "ca5ac0c23530c499030478cc9a2cf068d951dc70f1ab401f93770397c22e995c"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-360.png",
+            "sha256": "8d75f84b2ece5c20a2f781a4d93232f42ac8c85a302eeafa094da1f6cebac8a8"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-next-360.png",
+            "sha256": "8698573490b7ae8fdde66c49fab5436e8f2c2af0576358538342730aedcbb42b"
+          }
+        ],
+        "fr": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-page-360.png",
+            "sha256": "866e08ee5dc6d451da6cb80c574b6619b77a9e5e30851af70fc1d17c040df58f"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-split-360.png",
+            "sha256": "0823792924e1bba9300dc0a3dd91ac0dfd0c1f5abd2c9b9fec13a8659a71a6b1"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-split-next-360.png",
+            "sha256": "1c3d7fcdd1d10064bed5870b6db238f6aa234e6a9cf8c3766c6ce317d34ed31f"
+          }
+        ],
+        "hi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-page-360.png",
+            "sha256": "2578843e24ebeb3367b9f2fa8386fd49ddc07079971d92daaafdc5d077eae28e"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-split-360.png",
+            "sha256": "06455ad354ad5cfa0892a0e08eb34d0732b5b7f1f0b051ec6a288fd5e92bfb1e"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-split-next-360.png",
+            "sha256": "185e0a4f9008562ef3f9d1d2e84ddeaf45fe104d99373c0be2fb310502a6ba54"
+          }
+        ],
+        "ru": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-page-360.png",
+            "sha256": "8191b2805f5bc813bbba25b350cef8ae0cc30f1a92b112d23f5adab7522e1465"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-360.png",
+            "sha256": "082d1880bd8c654b208287b3d8460fbb8c0af730f0cb3f435e434bdeecebfef7"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-next-360.png",
+            "sha256": "9eff5c4eb818d26187428f83a0b9ff481c8dd56c7c5d52e531751dfeeb23e55e"
+          }
+        ],
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-page-360.png",
+            "sha256": "4348c6cd1cf2175c4103a326b6e3607609ca86899da35dd92b3a9d43efd30ece"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-360.png",
+            "sha256": "72d18de360e0eb22e7663ed33883ad62c218ca84ca375b3f031224da1e9bef79"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-next-360.png",
+            "sha256": "879181543e45653256d653a91d060b1c4938d3f675cf57d97874868f3f0d32a2"
+          }
+        ],
+        "vi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-page-360.png",
+            "sha256": "24922bd011e80b544859b6f6bb4dda6b97627b6eb30c07f7d27ad10752b2c911"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-split-360.png",
+            "sha256": "35e582b507d7ef465a145aecabd57453cc9fcf37b99cb657f934c54d78400764"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-split-next-360.png",
+            "sha256": "17752f506890f700167d1ff69249724c441a16f76a9d1714ad65df972ca6b22a"
+          }
+        ],
+        "zh-CN": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-page-360.png",
+            "sha256": "54bfd8e9cceded0693d57fa3a07b161c96c46c882a0dd5cefd314a9915e8350b"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-split-360.png",
+            "sha256": "b6d3773efa971f16fe4fb32fac460a8f0917c312394ca879fd33193f7002252c"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-split-next-360.png",
+            "sha256": "a4b9f1c3a3ec349af00ed2682373fb52066c060ad52ac2c275170e03b9e2fee7"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "es": [
+          "split-next"
+        ],
+        "fr": [
+          "split",
+          "split-next"
+        ],
+        "hi": [
+          "split",
+          "split-next"
+        ],
+        "ru": [
+          "split",
+          "split-next"
+        ],
+        "ur": [
+          "split",
+          "page",
+          "split-next"
+        ],
+        "vi": [
+          "split",
+          "page",
+          "split-next"
+        ],
+        "zh-CN": [
+          "split",
+          "page",
+          "split-next"
+        ]
+      },
+      "interpretation": "Not a visible label; successful AX snapshots name navigation in all seven actual locales; no screen-reader speech claimed"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.next",
+      "evidence_class": "visible",
+      "frames": {
+        "es": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-page-360.png",
+            "sha256": "ca5ac0c23530c499030478cc9a2cf068d951dc70f1ab401f93770397c22e995c"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-360.png",
+            "sha256": "8d75f84b2ece5c20a2f781a4d93232f42ac8c85a302eeafa094da1f6cebac8a8"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-next-360.png",
+            "sha256": "8698573490b7ae8fdde66c49fab5436e8f2c2af0576358538342730aedcbb42b"
+          }
+        ],
+        "fr": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-page-360.png",
+            "sha256": "866e08ee5dc6d451da6cb80c574b6619b77a9e5e30851af70fc1d17c040df58f"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-split-360.png",
+            "sha256": "0823792924e1bba9300dc0a3dd91ac0dfd0c1f5abd2c9b9fec13a8659a71a6b1"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-split-next-360.png",
+            "sha256": "1c3d7fcdd1d10064bed5870b6db238f6aa234e6a9cf8c3766c6ce317d34ed31f"
+          }
+        ],
+        "hi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-page-360.png",
+            "sha256": "2578843e24ebeb3367b9f2fa8386fd49ddc07079971d92daaafdc5d077eae28e"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-split-360.png",
+            "sha256": "06455ad354ad5cfa0892a0e08eb34d0732b5b7f1f0b051ec6a288fd5e92bfb1e"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-split-next-360.png",
+            "sha256": "185e0a4f9008562ef3f9d1d2e84ddeaf45fe104d99373c0be2fb310502a6ba54"
+          }
+        ],
+        "ru": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-page-360.png",
+            "sha256": "8191b2805f5bc813bbba25b350cef8ae0cc30f1a92b112d23f5adab7522e1465"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-360.png",
+            "sha256": "082d1880bd8c654b208287b3d8460fbb8c0af730f0cb3f435e434bdeecebfef7"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-next-360.png",
+            "sha256": "9eff5c4eb818d26187428f83a0b9ff481c8dd56c7c5d52e531751dfeeb23e55e"
+          }
+        ],
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-page-360.png",
+            "sha256": "4348c6cd1cf2175c4103a326b6e3607609ca86899da35dd92b3a9d43efd30ece"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-360.png",
+            "sha256": "72d18de360e0eb22e7663ed33883ad62c218ca84ca375b3f031224da1e9bef79"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-next-360.png",
+            "sha256": "879181543e45653256d653a91d060b1c4938d3f675cf57d97874868f3f0d32a2"
+          }
+        ],
+        "vi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-page-360.png",
+            "sha256": "24922bd011e80b544859b6f6bb4dda6b97627b6eb30c07f7d27ad10752b2c911"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-split-360.png",
+            "sha256": "35e582b507d7ef465a145aecabd57453cc9fcf37b99cb657f934c54d78400764"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-split-next-360.png",
+            "sha256": "17752f506890f700167d1ff69249724c441a16f76a9d1714ad65df972ca6b22a"
+          }
+        ],
+        "zh-CN": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-page-360.png",
+            "sha256": "54bfd8e9cceded0693d57fa3a07b161c96c46c882a0dd5cefd314a9915e8350b"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-split-360.png",
+            "sha256": "b6d3773efa971f16fe4fb32fac460a8f0917c312394ca879fd33193f7002252c"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-split-next-360.png",
+            "sha256": "a4b9f1c3a3ec349af00ed2682373fb52066c060ad52ac2c275170e03b9e2fee7"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "es": [
+          "split-next"
+        ],
+        "fr": [
+          "split",
+          "split-next"
+        ],
+        "hi": [
+          "split",
+          "split-next"
+        ],
+        "ru": [
+          "split",
+          "split-next"
+        ],
+        "ur": [
+          "split",
+          "page",
+          "split-next"
+        ],
+        "vi": [
+          "split",
+          "page",
+          "split-next"
+        ],
+        "zh-CN": [
+          "split",
+          "page",
+          "split-next"
+        ]
+      },
+      "interpretation": "Next label visible, split-next changed cursor body/focus is evidence of next-state only; no full navigation suite"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.not_found",
+      "evidence_class": "visible",
+      "frames": {
+        "es": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-not_found-360.png",
+            "sha256": "93d51ef871b96bea0a4b67c51a98a20fd81b4519362591bf8290f223936d7729"
+          }
+        ],
+        "fr": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-not_found-360.png",
+            "sha256": "a4278dc5efb89568610ede89c0e5519d1eff551b1276fb8460c1d4ac0ff01891"
+          }
+        ],
+        "hi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-not_found-360.png",
+            "sha256": "fefbaa4dee10a8e14fbcdc576bf4f30d26f1e8004c88a560ad83fc287639c915"
+          }
+        ],
+        "ru": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-not_found-360.png",
+            "sha256": "6a4b8980749ef2ab70a97240964b9145edce8243d3295a1f945d43cc7bf5bff3"
+          }
+        ],
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-not_found-360.png",
+            "sha256": "f8d2a1d46e67ea5114f372f5d8fada30c7cb422c4832b28940c65842d849c917"
+          }
+        ],
+        "vi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-not_found-360.png",
+            "sha256": "90f3d0cabcb84285fef7c80f14d4c8fbe87317eb72c763c779be42359d0bf0e1"
+          }
+        ],
+        "zh-CN": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-not_found-360.png",
+            "sha256": "83e140e4010b0985a8f0b4a33cc40f67cc521e7729d63882cf6ececf1fcc2ca9"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "es": [],
+        "fr": [],
+        "hi": [
+          "not_found"
+        ],
+        "ru": [],
+        "ur": [
+          "not_found"
+        ],
+        "vi": [
+          "not_found"
+        ],
+        "zh-CN": [
+          "not_found"
+        ]
+      },
+      "interpretation": "404 notice text visible"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.not_recorded",
+      "evidence_class": "visible",
+      "frames": {
+        "es": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-not_recorded-360.png",
+            "sha256": "166a2ad57a5261e9bce63fab4b856775065ba88331e3594c49f2bffd064f485e"
+          }
+        ],
+        "fr": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-not_recorded-360.png",
+            "sha256": "362e737908b91d2f0c086d9e13a652ea18bbe93937bb01f90c10b457325cc220"
+          }
+        ],
+        "hi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-not_recorded-360.png",
+            "sha256": "8c47317a8fa90b45fca77cba09c728885e98224105c60b86091a6bd8d5adb1ce"
+          }
+        ],
+        "ru": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-not_recorded-360.png",
+            "sha256": "ae707e2fde909b21909cd5dfacb75fbee5bbfaa93cdaf2833a2ec07b59f7e69e"
+          }
+        ],
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-not_recorded-360.png",
+            "sha256": "3be4dd6f48733d8a45a8a80dd3a6aa88907aeed57e4a4491d5f5d59f8906b53f"
+          }
+        ],
+        "vi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-not_recorded-360.png",
+            "sha256": "1040a3eee07f457e6a69e86c5772a966b9d0e9f674a3c1699c69236b20c392e5"
+          }
+        ],
+        "zh-CN": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-not_recorded-360.png",
+            "sha256": "c36667d90775bbe311b859d79fd21a9e86845bca3194a96c969b17c4c7137327"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "es": [],
+        "fr": [],
+        "hi": [],
+        "ru": [
+          "not_recorded"
+        ],
+        "ur": [
+          "not_recorded"
+        ],
+        "vi": [
+          "not_recorded"
+        ],
+        "zh-CN": [
+          "not_recorded"
+        ]
+      },
+      "interpretation": "Notice text visible"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.oversized",
+      "evidence_class": "visible",
+      "frames": {
+        "es": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-oversized-360.png",
+            "sha256": "17354af4a0c4e115007f71841871b427a84cc2cdee1c2cd3b41f85a1c71dd9ee"
+          }
+        ],
+        "fr": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-oversized-360.png",
+            "sha256": "8ba845abbb69c14e8b5d085234590c17ed7e0026db2d6dc4b0f5ee2231676c42"
+          }
+        ],
+        "hi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-oversized-360.png",
+            "sha256": "58e6beb164275d56ffd551a4737d54d91ed88e198b80dff1e67668e4b4e75211"
+          }
+        ],
+        "ru": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-oversized-360.png",
+            "sha256": "fd0c5f58a41a9c0548864f326c0e4b1af6fd08a0abccfe0a9cf9f4b931e482d7"
+          }
+        ],
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-oversized-360.png",
+            "sha256": "b8a042e694f0ae88bcef4dbc2dc3dc69837cace7b03fe477ae09cc6836f8f2f5"
+          }
+        ],
+        "vi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-oversized-360.png",
+            "sha256": "5258a87dc160a7bc55adfb755ca26b7cc022c8f78179fb0a6502369a0c88783b"
+          }
+        ],
+        "zh-CN": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-oversized-360.png",
+            "sha256": "b11679310dcdc9e2957b16f70c9a9c0d90cc992c60b523d8510f3553eb595f6a"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "es": [
+          "oversized"
+        ],
+        "fr": [],
+        "hi": [
+          "oversized"
+        ],
+        "ru": [
+          "oversized"
+        ],
+        "ur": [
+          "oversized"
+        ],
+        "vi": [
+          "oversized"
+        ],
+        "zh-CN": [
+          "oversized"
+        ]
+      },
+      "interpretation": "Notice text wraps inside box"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.prev",
+      "evidence_class": "visible",
+      "frames": {
+        "es": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-page-360.png",
+            "sha256": "ca5ac0c23530c499030478cc9a2cf068d951dc70f1ab401f93770397c22e995c"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-360.png",
+            "sha256": "8d75f84b2ece5c20a2f781a4d93232f42ac8c85a302eeafa094da1f6cebac8a8"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-next-360.png",
+            "sha256": "8698573490b7ae8fdde66c49fab5436e8f2c2af0576358538342730aedcbb42b"
+          }
+        ],
+        "fr": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-page-360.png",
+            "sha256": "866e08ee5dc6d451da6cb80c574b6619b77a9e5e30851af70fc1d17c040df58f"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-split-360.png",
+            "sha256": "0823792924e1bba9300dc0a3dd91ac0dfd0c1f5abd2c9b9fec13a8659a71a6b1"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-split-next-360.png",
+            "sha256": "1c3d7fcdd1d10064bed5870b6db238f6aa234e6a9cf8c3766c6ce317d34ed31f"
+          }
+        ],
+        "hi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-page-360.png",
+            "sha256": "2578843e24ebeb3367b9f2fa8386fd49ddc07079971d92daaafdc5d077eae28e"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-split-360.png",
+            "sha256": "06455ad354ad5cfa0892a0e08eb34d0732b5b7f1f0b051ec6a288fd5e92bfb1e"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-split-next-360.png",
+            "sha256": "185e0a4f9008562ef3f9d1d2e84ddeaf45fe104d99373c0be2fb310502a6ba54"
+          }
+        ],
+        "ru": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-page-360.png",
+            "sha256": "8191b2805f5bc813bbba25b350cef8ae0cc30f1a92b112d23f5adab7522e1465"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-360.png",
+            "sha256": "082d1880bd8c654b208287b3d8460fbb8c0af730f0cb3f435e434bdeecebfef7"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-next-360.png",
+            "sha256": "9eff5c4eb818d26187428f83a0b9ff481c8dd56c7c5d52e531751dfeeb23e55e"
+          }
+        ],
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-page-360.png",
+            "sha256": "4348c6cd1cf2175c4103a326b6e3607609ca86899da35dd92b3a9d43efd30ece"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-360.png",
+            "sha256": "72d18de360e0eb22e7663ed33883ad62c218ca84ca375b3f031224da1e9bef79"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-next-360.png",
+            "sha256": "879181543e45653256d653a91d060b1c4938d3f675cf57d97874868f3f0d32a2"
+          }
+        ],
+        "vi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-page-360.png",
+            "sha256": "24922bd011e80b544859b6f6bb4dda6b97627b6eb30c07f7d27ad10752b2c911"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-split-360.png",
+            "sha256": "35e582b507d7ef465a145aecabd57453cc9fcf37b99cb657f934c54d78400764"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-split-next-360.png",
+            "sha256": "17752f506890f700167d1ff69249724c441a16f76a9d1714ad65df972ca6b22a"
+          }
+        ],
+        "zh-CN": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-page-360.png",
+            "sha256": "54bfd8e9cceded0693d57fa3a07b161c96c46c882a0dd5cefd314a9915e8350b"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-split-360.png",
+            "sha256": "b6d3773efa971f16fe4fb32fac460a8f0917c312394ca879fd33193f7002252c"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-split-next-360.png",
+            "sha256": "a4b9f1c3a3ec349af00ed2682373fb52066c060ad52ac2c275170e03b9e2fee7"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "es": [
+          "split-next"
+        ],
+        "fr": [
+          "split",
+          "split-next"
+        ],
+        "hi": [
+          "split",
+          "split-next"
+        ],
+        "ru": [
+          "split",
+          "split-next"
+        ],
+        "ur": [
+          "split",
+          "page",
+          "split-next"
+        ],
+        "vi": [
+          "split",
+          "page",
+          "split-next"
+        ],
+        "zh-CN": [
+          "split",
+          "page",
+          "split-next"
+        ]
+      },
+      "interpretation": "Previous disabled at beginning and enabled on split-next; Previous action/result NOT recorded"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.range",
+      "evidence_class": "visible_with_urdu_order_anomaly",
+      "frames": {
+        "es": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-page-360.png",
+            "sha256": "ca5ac0c23530c499030478cc9a2cf068d951dc70f1ab401f93770397c22e995c"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-360.png",
+            "sha256": "8d75f84b2ece5c20a2f781a4d93232f42ac8c85a302eeafa094da1f6cebac8a8"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-split-next-360.png",
+            "sha256": "8698573490b7ae8fdde66c49fab5436e8f2c2af0576358538342730aedcbb42b"
+          }
+        ],
+        "fr": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-page-360.png",
+            "sha256": "866e08ee5dc6d451da6cb80c574b6619b77a9e5e30851af70fc1d17c040df58f"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-split-360.png",
+            "sha256": "0823792924e1bba9300dc0a3dd91ac0dfd0c1f5abd2c9b9fec13a8659a71a6b1"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-split-next-360.png",
+            "sha256": "1c3d7fcdd1d10064bed5870b6db238f6aa234e6a9cf8c3766c6ce317d34ed31f"
+          }
+        ],
+        "hi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-page-360.png",
+            "sha256": "2578843e24ebeb3367b9f2fa8386fd49ddc07079971d92daaafdc5d077eae28e"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-split-360.png",
+            "sha256": "06455ad354ad5cfa0892a0e08eb34d0732b5b7f1f0b051ec6a288fd5e92bfb1e"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-split-next-360.png",
+            "sha256": "185e0a4f9008562ef3f9d1d2e84ddeaf45fe104d99373c0be2fb310502a6ba54"
+          }
+        ],
+        "ru": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-page-360.png",
+            "sha256": "8191b2805f5bc813bbba25b350cef8ae0cc30f1a92b112d23f5adab7522e1465"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-360.png",
+            "sha256": "082d1880bd8c654b208287b3d8460fbb8c0af730f0cb3f435e434bdeecebfef7"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-split-next-360.png",
+            "sha256": "9eff5c4eb818d26187428f83a0b9ff481c8dd56c7c5d52e531751dfeeb23e55e"
+          }
+        ],
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-page-360.png",
+            "sha256": "4348c6cd1cf2175c4103a326b6e3607609ca86899da35dd92b3a9d43efd30ece"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-360.png",
+            "sha256": "72d18de360e0eb22e7663ed33883ad62c218ca84ca375b3f031224da1e9bef79"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-split-next-360.png",
+            "sha256": "879181543e45653256d653a91d060b1c4938d3f675cf57d97874868f3f0d32a2"
+          }
+        ],
+        "vi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-page-360.png",
+            "sha256": "24922bd011e80b544859b6f6bb4dda6b97627b6eb30c07f7d27ad10752b2c911"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-split-360.png",
+            "sha256": "35e582b507d7ef465a145aecabd57453cc9fcf37b99cb657f934c54d78400764"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-split-next-360.png",
+            "sha256": "17752f506890f700167d1ff69249724c441a16f76a9d1714ad65df972ca6b22a"
+          }
+        ],
+        "zh-CN": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-page-360.png",
+            "sha256": "54bfd8e9cceded0693d57fa3a07b161c96c46c882a0dd5cefd314a9915e8350b"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-split-360.png",
+            "sha256": "b6d3773efa971f16fe4fb32fac460a8f0917c312394ca879fd33193f7002252c"
+          },
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-split-next-360.png",
+            "sha256": "a4b9f1c3a3ec349af00ed2682373fb52066c060ad52ac2c275170e03b9e2fee7"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "es": [
+          "split-next"
+        ],
+        "fr": [
+          "split",
+          "split-next"
+        ],
+        "hi": [
+          "split",
+          "split-next"
+        ],
+        "ru": [
+          "split",
+          "split-next"
+        ],
+        "ur": [
+          "split",
+          "page",
+          "split-next"
+        ],
+        "vi": [
+          "split",
+          "page",
+          "split-next"
+        ],
+        "zh-CN": [
+          "split",
+          "page",
+          "split-next"
+        ]
+      },
+      "interpretation": "Initial logical arguments first=1 last=198 total=598; Urdu pixels show the 198–1 run, not a missing number; split pages show 1–1 of 2"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.retry",
+      "evidence_class": "visible",
+      "frames": {
+        "es": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-error-360.png",
+            "sha256": "fc14ef9fbd2bbe0d910f5c862ba89c5bedd1d85b74e72f83ed15f2fd7515f423"
+          }
+        ],
+        "fr": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-error-360.png",
+            "sha256": "92032a05151e31b8e143c32049e6cd3907503caa6be43aa3a7f903c10067c7b3"
+          }
+        ],
+        "hi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-error-360.png",
+            "sha256": "ecaafc3b5b289f88ee3d6df4e57a4643379daf7c55ab8fe74ebec22f910317d9"
+          }
+        ],
+        "ru": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-error-360.png",
+            "sha256": "db16fa5f68272c7b3c59b0cec5f1e4d6bfed4d841783c17464c5bba129c96cd5"
+          }
+        ],
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-error-360.png",
+            "sha256": "3359535cc73c129e2b903f055205144da4b1b26ba54a25629e6b186c95bc09ac"
+          }
+        ],
+        "vi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-error-360.png",
+            "sha256": "5c10a927dab7881b92be01d4f5ccf67a06569718bdc6d2c56067a4b581ed3219"
+          }
+        ],
+        "zh-CN": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-error-360.png",
+            "sha256": "4a4205aa1cea89b0f303033f42b19ef5a5a3f66d41c99c0ad2203eee1c6cae9f"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "es": [],
+        "fr": [],
+        "hi": [],
+        "ru": [],
+        "ur": [
+          "error"
+        ],
+        "vi": [
+          "error"
+        ],
+        "zh-CN": [
+          "error"
+        ]
+      },
+      "interpretation": "Retry label visible without observed cutoff; retry action/result NOT recorded"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.unavailable",
+      "evidence_class": "visible",
+      "frames": {
+        "es": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-unavailable-360.png",
+            "sha256": "80dabd88b682186450cf1631d3ae0d06e3c2e1d69369c7bb5815f573521a4a80"
+          }
+        ],
+        "fr": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-unavailable-360.png",
+            "sha256": "4d2659418092b079b761c553e8fb52f8b42511ffe2075d551f8736f154ffaa22"
+          }
+        ],
+        "hi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-unavailable-360.png",
+            "sha256": "55fcf16e184b46b3b8a8e6808a4116d3b80bb0797b7bb180293b627e6a9a629f"
+          }
+        ],
+        "ru": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-unavailable-360.png",
+            "sha256": "66c880035d5097d7c90be64d34722e00fa24fe1e00e176a5c42228f9ba112db5"
+          }
+        ],
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-unavailable-360.png",
+            "sha256": "e8ab0e20a0ae614b34496b6664f747a54613f44662d610b11b41e55035da563f"
+          }
+        ],
+        "vi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-unavailable-360.png",
+            "sha256": "01ebd463a0d00a4ab787b76d86b80b3fadbe21213f6c5591ef585e35ca8b776f"
+          }
+        ],
+        "zh-CN": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-unavailable-360.png",
+            "sha256": "919f7be3bec41ae9a5b991a172e7e1f214f350aa9f5e55371f0a0a6b2fcfe641"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "es": [],
+        "fr": [],
+        "hi": [
+          "unavailable"
+        ],
+        "ru": [
+          "unavailable"
+        ],
+        "ur": [
+          "unavailable"
+        ],
+        "vi": [
+          "unavailable"
+        ],
+        "zh-CN": [
+          "unavailable"
+        ]
+      },
+      "interpretation": "Notice text visible"
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.view",
+      "evidence_class": "visible_focused_final",
+      "frames": {
+        "es": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-offer-focused-360.png",
+            "sha256": "007de621f9fbb07c54f03420533ee5ccdebeeee80670cebdc8591620b77f56fb"
+          }
+        ],
+        "fr": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-offer-focused-360.png",
+            "sha256": "eaa2c0623e93558533b262bd78031617172f2460272eac83c177615169d09a35"
+          }
+        ],
+        "hi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-offer-focused-360.png",
+            "sha256": "9808a9e81288a65b8a47ada2e029144142d762588ce2214b9d2903c020ce35b2"
+          }
+        ],
+        "ru": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-offer-focused-360.png",
+            "sha256": "bc65660ea072f40387e2a5e73893087fc34e811da436a96a1242c885bbccd647"
+          }
+        ],
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-offer-focused-360.png",
+            "sha256": "50d71d8f02d2b1bf80967952b8f8f165bc088506fddd66c174542eb6a40611ff"
+          }
+        ],
+        "vi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-offer-focused-360.png",
+            "sha256": "37ec797afe639504f077ad2599700fe1f1dbd8ec2b982fe84eb6934992086f91"
+          }
+        ],
+        "zh-CN": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-offer-focused-360.png",
+            "sha256": "afedb010b7e15205205ed733e62ff0bee03dc350542df710212781afcd9e0046"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "es": [],
+        "fr": [],
+        "hi": [],
+        "ru": [],
+        "ur": [
+          "offer"
+        ],
+        "vi": [
+          "offer"
+        ],
+        "zh-CN": [
+          "offer"
+        ]
+      },
+      "interpretation": "Late focused image actually exposes View full diff control and count 598, within visible box; activation/click-result NOT recorded."
+    },
+    {
+      "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+      "evidence_class": "visible",
+      "frames": {
+        "es": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/es-withheld-360.png",
+            "sha256": "18f96f229aa89c4dc55d1ac8f59a6ee9a60310fd162945ef42206fa224c406d7"
+          }
+        ],
+        "fr": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/fr-withheld-360.png",
+            "sha256": "b337672861d3a5abb51c6352bff9de903153443ea0fce96f6d5939a81d3b91f6"
+          }
+        ],
+        "hi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/hi-withheld-360.png",
+            "sha256": "c059ef389028624975356305b8a5baf3f4f55986ef0e9fa649577c115221b666"
+          }
+        ],
+        "ru": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ru-withheld-360.png",
+            "sha256": "47e79fae9b68a21c8298d1764c6bedc5b77c6e23f07861f42289c9b9a862daf9"
+          }
+        ],
+        "ur": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/ur-withheld-360.png",
+            "sha256": "bfd05ee3c9b42231743ff22bbdffc70ab67694dbce68af9d47b67d997dc4aa4a"
+          }
+        ],
+        "vi": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/vi-withheld-360.png",
+            "sha256": "4faf91ef346b56a3e059324a8a2762894afbfbc5425610e5ba4ead8b204ee619"
+          }
+        ],
+        "zh-CN": [
+          {
+            "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/zh-CN-withheld-360.png",
+            "sha256": "d88bf93e470f36455a3f9f2dc22772775fa7add69e741ae8fe62883d0314d8ad"
+          }
+        ]
+      },
+      "successful_snapshot_states": {
+        "es": [],
+        "fr": [],
+        "hi": [],
+        "ru": [],
+        "ur": [
+          "withheld"
+        ],
+        "vi": [
+          "withheld"
+        ],
+        "zh-CN": [
+          "withheld"
+        ]
+      },
+      "interpretation": "Notice visible; no wording re-audit or disposition change"
+    }
+  ],
+  "geometry_and_pixels": {
+    "observed": "Seven actual-locale contact sheets show 15 nonblank states per locale (105 original actual-locale PNGs). Controls wrap onto additional nav rows and notices/continuations wrap rather than visibly cutting off in the shown region. Longer ru continuation and vi Back/withheld wording and Urdu Retry have bounded visible fit evidence at this fixture setting. No new linguistic judgement is inferred for es/fr/hi. Later 150-entry focused evidence exposes .view and aggregate .clipped text for every actual locale, with no obvious cutoff in the shown control/notice; original top-only frames did not expose them.",
+    "width": "360px is the selected and CSS-declared fixture content width (main.tsx 65,74), not a separately measured bounding box. PNG source is 2560x1440; read image preview is downsampled. No geometry JSON, getBoundingClientRect data, scrollWidth/clientWidth or pixel-coordinate overflow measurement was supplied.",
+    "css_vs_dom": "flex flex-wrap in the actual pager is a source fact; browser snapshots supply accessible names/InlineTextBoxes and some disabled/focus state, not measured layout. Observed pixel wrapping is distinct evidence from both.",
+    "observed_key_elements_per_actual_locale": 22,
+    "accessible_name_keys_per_actual_locale": 1,
+    "unobserved_key_elements_per_actual_locale": 0,
+    "unobserved_keys": [],
+    "action_outcomes": "split-next visibly differs and has a focused Next control / enabled First and Prev. No completed First/Last/Previous/Back/Retry outcome sequence was supplied; nav labels do not establish those outcomes. Focused offer/clipped frames establish visibility only, not offer activation or Back action completion.",
+    "limits": "One selected dark theme and 360px fixture setting; no 320px, full-app/native, other-theme matrix or release/activation result."
+  },
+  "urdu_direction": {
+    "observed": "Actual ur-page pixels/crop show the physical left-to-right numeric run 198–1 while all numbers 1,198,598 remain present; split/split-next show 1–1 of 2. This physical-order observation alone is not a finding that natural RTL range reading is wrong. Source .range keeps first,last,total placeholders. ASCII 12345.67 and $0 are visible in code; no observed 0$ corruption in this code-string seat. The mixed Urdu filename/LTR code punctuation and hunk signs reorder and leading + / - can appear at the physical right. Urdu parenthetical continued/continues annotations are visible and wrap.",
+    "not_observed": "No proof that catalogue bytes or logical placeholder values changed; no proof the separately reported sound.cost.estimated_zero UI sentence renders the same way as a code string. That key is outside these 23. No full-app runtime reproduction or severity upgrade.",
+    "fixture_cause": "main.tsx 49,53 selects ur and calls the real applyDocumentDirection on <html>; 76 mounts DiffHistoryPager directly in a whitespace-pre-wrap div without an LTR/bidi-isolated body boundary. Thus RTL paragraph direction reaches plain spans at diff-history.tsx 662-700. CSS preview file adds no compensating code-direction rule. This concretely explains trailing neutral code markers in this fixture, not a translation-byte error.",
+    "production_trace": "DiffBlock root 231-256 has the same font-mono/pre-wrap div without dir; its full branch mounts pager at 297-303. Immediate integrated chain independently read: canonical-transcript.tsx 2850 DiffBlock -> details fragment 2913 -> ToolLedgerRow details=3030 inside MessageContainer 2965; tool-row.tsx 1192-1207 Disclosure children; disclosure.tsx 624-633 body div; message-container.tsx 64-66 body div. None supplies an LTR body boundary. tool-row.tsx 1146 bdi isolates only the summary, not these details. Production shared/i18n/use-document-direction.ts 33-49 sets document direction via the same helper. Targeted CSS direction/Unicode-bidi search found no diff-specific override.",
+    "attribution_limit": "This supports a component-level inherited-direction weakness and a concrete integration risk, not a reproduced full-app regression; farther app ancestry/computed styles were not observed. Do not change Urdu translations, reorder numbers or add manual bidi controls to conceal it. If pursued, verify actual integrated code-body direction separately and isolate code/range at the rendering seam as appropriate."
+  },
+  "pseudo": {
+    "frames": 17,
+    "synthetic": true,
+    "source_manifest": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/pseudo-manifest.json",
+    "source_manifest_sha256": "ebdfdac06fbea1f9a0956ea6a4a9d52ce9860eb7ca23e95fdab6c14f492efca3",
+    "observed": "Pseudo contact and targeted split-next crop show expanded accented labels wrapping across nav/body lines without obvious cutoff in captured regions.",
+    "mechanism": "server.mjs 25-33 derives 23 English-only ICU AST messages, expands literal nodes by ~35% and accents vowels; validates AST shape. main.tsx 48-49 registerCatalogue(en,pseudo.messages) and setLocale(en); no real locale strings are modified.",
+    "not_claimed": "Not shipped pseudo-locale support, not an actual RTL pseudo run, not an activated production pseudo setting, not full-app coverage; focused supplemental pixels expose those keys but do not prove all plural branches or action outcomes. No pseudo/qps/en-XA production support was found in targeted src/i18n search. Existing production registration seam is used by the synthetic harness only.",
+    "original_frames": 15,
+    "focused_additional_frames": 2
+  },
+  "new_translation_findings": [],
+  "prior_findings_and_withholds": "Unchanged, not reopened or waived. CLDR policy-owner decision respected; no many-branch deletion proposed.",
+  "old_reports_hash_readback": {
+    "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/convergence-ru-blocked-report.json": true,
+    "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/convergence-ur-blocked-report.json": true,
+    "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/convergence-vi-blocked-report.json": true,
+    "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/convergence-zh-CN-blocked-report.json": true
+  },
+  "coverage_gaps": [
+    "First/Last/Previous/Back/Retry completed action outcomes absent",
+    "No DOM geometry or measured overflow; only CSS-declared width plus observed pixels",
+    "Actual full-app/native RTL reproduction not performed; code-string dollar result does not cover other UI sentence",
+    "Synthetic pseudo only; no real production pseudo mode exercised",
+    "The focused aggregate uses count=1 and offer count=598 only; not all plural branches/counts or extreme widths exercised"
+  ],
+  "per_locale_terminal_evidence_verdict": {
+    "es": "All 23 keys have bounded evidence: 22 visible elements plus nav AX; no complete action/geometry/full-app sign-off",
+    "fr": "All 23 keys have bounded evidence: 22 visible elements plus nav AX; no complete action/geometry/full-app sign-off",
+    "hi": "All 23 keys have bounded evidence: 22 visible elements plus nav AX; no complete action/geometry/full-app sign-off",
+    "ru": "All 23 keys have bounded evidence: 22 visible elements plus nav AX; no complete action/geometry/full-app sign-off",
+    "ur": "All 23 keys have bounded evidence: 22 visible elements plus nav AX; no complete action/geometry/full-app sign-off; Urdu physical numeric/code run reordering observed in fixture; product-runtime defect not established",
+    "vi": "All 23 keys have bounded evidence: 22 visible elements plus nav AX; no complete action/geometry/full-app sign-off",
+    "zh-CN": "All 23 keys have bounded evidence: 22 visible elements plus nav AX; no complete action/geometry/full-app sign-off"
+  },
+  "overall_terminal_evidence_verdict": "Readback complete. Initial120 and footer134 versions left view/aggregate clipped offscreen; the independently hash-checked and viewed focused150 version now supplies those pixels. All 23 keys have bounded evidence in each actual locale: 22 visible elements and nav accessible-name evidence. No DOM geometry/action matrix, native/full-app or shipped pseudo-mode certification. No receipt issued and all original verdicts/findings/withholds remain unchanged."
+}

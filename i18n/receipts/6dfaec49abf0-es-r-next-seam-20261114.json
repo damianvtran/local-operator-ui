@@ -1,0 +1,455 @@
+{
+  "auditor": "translation-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "6dfaec49abf0-es-r-next-seam-20261114",
+  "auditor_session": "6dfaec49abf0",
+  "model_selection": "parent",
+  "fallback": null,
+  "profile_revision": "definition-revision:v1:977d12b70eb8adff7d8b9491e8e59b748a9fac283683abd963fdf586cb596f8a",
+  "date": "2026-11-14T11:06:07.667642+00:00",
+  "locale": "es",
+  "namespace": "ui.chat.canonical",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "sha256": {
+    "en": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+    "es": "528df8fc526fee090ff593a5f1122cf5a832fb461e5a3c121f72040fe1278e1d",
+    "context": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7"
+  },
+  "context_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7",
+  "source_path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+  "target_path": "src/i18n/catalogues/es/ui.chat.canonical.json",
+  "context_path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+  "scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+  "new_semantic_keys": 0,
+  "main_keys_retained": 471,
+  "pr_keys_retained": 23,
+  "current_keys": 494,
+  "same_original_lineage_not_new_independent_audit": true,
+  "findings": [
+    {
+      "id": "I-ES-1",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+      "current": "Diff completo retenido: no se pudo censurar de forma segura",
+      "proposed": "Diff completo retenido: no se pudieron ocultar los datos sensibles de forma segura",
+      "reason": "\"censurar\" (censor) for credential redaction is off-register; es catalogues use \"ocultar\" (20 hits) and \"censur\" appears only here.",
+      "disposition": "deferred — non-gating",
+      "origin_receipt": "i18n/receipts/567a24a88e45-chat-canonical-es-r2.json",
+      "origin_receipt_sha256": "b48040f237a0a2da586d9df6068cfd428b54e85cb05bb6321757ebc3e92ad168",
+      "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+      "inherited": true,
+      "rebinding_disposition": {
+        "choice": "Retain same finding/severity and original disposition",
+        "basis": "Current literal equals prior PR literal; no new semantic adjudication",
+        "prior_instance": "6dfaec49abf0-es-final-policy-evidence-20261112"
+      }
+    },
+    {
+      "id": "S16F-ES-A3-01",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.sound.batch.summary",
+      "current": "{completed, plural, one {{completed, number, ::group-off} completada} many {{completed, number, ::group-off} de completadas} other {{completed, number, ::group-off} completadas}} · {failed, plural, one {{failed, number, ::group-off} fallida} many {{failed, number, ::group-off} de fallidas} other {{failed, number, ::group-off} fallidas}}{cancelled, plural, =0 {} one { · {cancelled, number, ::group-off} detenida} many { · {cancelled, number, ::group-off} de detenidas} other { · {cancelled, number, ::group-off} detenidas}}{unknown, plural, =0 {} one { · {unknown, number, ::group-off} con estado desconocido} many { · {unknown, number, ::group-off} con estado desconocido} other { · {unknown, number, ::group-off} con estado desconocido}}{has_attention, select, yes {. Atención: {labels}} other {}}",
+      "proposed": "{completed, plural, one {{completed, number, ::group-off} completada} many {# de completadas} other {{completed, number, ::group-off} completadas}} · {failed, plural, one {{failed, number, ::group-off} fallida} many {# de fallidas} other {{failed, number, ::group-off} fallidas}}{cancelled, plural, =0 {} one { · {cancelled, number, ::group-off} detenida} many { · # de detenidas} other { · {cancelled, number, ::group-off} detenidas}}{unknown, plural, =0 {} one { · {unknown, number, ::group-off} con estado desconocido} many { · # con estado desconocido} other { · {unknown, number, ::group-off} con estado desconocido}}{has_attention, select, yes {. Atención: {labels}} other {}}",
+      "reason": "The 'many' arms are es-authored (English has no category arms here) and exist because es CLDR puts exact millions in 'many' ('un millón de completadas'). Each one reuses the sibling arms' '::group-off' skeleton, so the only number that can reach it prints ungrouped: rendering completed=1000000 gives \"1000000 de completadas\". Spanish always groups, and the es style guide's own exemplar for this category is many {# de sesiones}, illustrated as \"1.000.000 de sesiones\". Verified: many {# de completadas} renders \"1.000.000 de completadas\". Real but unreachable in practice (>=1,000,000 requests in one sound batch), and a one-commit fix, hence MINOR rather than MAJOR.",
+      "disposition": "reported; does not gate (no BLOCKER/MAJOR)",
+      "origin_receipt": "i18n/receipts/4d7a5444aa0b.json",
+      "origin_receipt_sha256": "0d53576dd82e8db22742ddcaa18810c5e786cf93d88d15f0d6181de37adfc7c3",
+      "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+      "inherited": true,
+      "rebinding_disposition": {
+        "choice": "Retain same finding/severity and original disposition",
+        "basis": "Current literal equals prior PR literal; no new semantic adjudication",
+        "prior_instance": "6dfaec49abf0-es-final-policy-evidence-20261112"
+      }
+    },
+    {
+      "id": "S16F-ES-A3-02",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.media.sound_label",
+      "current": "{count, plural, =1 {Sonido} other {Sonido {position, number, ::group-off}}}",
+      "proposed": "{count, plural, =1 {Sonido} other {Sonido {position, number, ::group-off}}}",
+      "reason": "This value is also the audio player's accessible name: media-label.ts documents it, and sound-player.tsx composes it into ui.chat.audio.play_label / pause_label / position_label, producing \"Reproducir Sonido 2\" — a capitalised common noun mid-sentence, an orthography error in Spanish. The visible tile/alt-text surface wants the capital ('Imagen' keeps it for the same reason); the composed accessible name wants lower case. Same trade-off the ru round-3 audit recorded as S16F-RU-R3-01.",
+      "disposition": "accepted, no change requested",
+      "origin_receipt": "i18n/receipts/4d7a5444aa0b.json",
+      "origin_receipt_sha256": "0d53576dd82e8db22742ddcaa18810c5e786cf93d88d15f0d6181de37adfc7c3",
+      "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+      "inherited": true,
+      "rebinding_disposition": {
+        "choice": "Retain same finding/severity and original disposition",
+        "basis": "Current literal equals prior PR literal; no new semantic adjudication",
+        "prior_instance": "6dfaec49abf0-es-final-policy-evidence-20261112"
+      }
+    },
+    {
+      "id": "S16F-ES-A3-03",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.sound.cost.no_charge",
+      "current": "Sin cargo.",
+      "proposed": "Sin cargo.",
+      "reason": "'Charge' has two renderings inside one card: 'cobro' in sound.cost.estimated_zero ('cobro final sin confirmar') and sound.stop.warning ('se cobrará … el cobro'), and 'cargo' here. Reviewed and downgraded from MINOR: the shipped es catalogue already names an unbilled amount 'sin cargo' (ui.chat.session_spend.plan_clause: '…equivalente a API, sin cargo'), so this follows product precedent rather than inventing a term. 'Sin coste.' would be the alternative if card-internal uniformity is ever wanted.",
+      "disposition": "accepted, no change requested",
+      "origin_receipt": "i18n/receipts/4d7a5444aa0b.json",
+      "origin_receipt_sha256": "0d53576dd82e8db22742ddcaa18810c5e786cf93d88d15f0d6181de37adfc7c3",
+      "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+      "inherited": true,
+      "rebinding_disposition": {
+        "choice": "Retain same finding/severity and original disposition",
+        "basis": "Current literal equals prior PR literal; no new semantic adjudication",
+        "prior_instance": "6dfaec49abf0-es-final-policy-evidence-20261112"
+      }
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 2,
+    "nit": 2
+  },
+  "finding_alias_dispositions": [
+    {
+      "parent_id": "4d7a5444aa0b/S16F-ES-A3-01",
+      "counted_as": "S16F-ES-A3-01",
+      "disposition": "carried from the superseded #1876 audit: bytes unchanged at fa3c17b63, still applies, severity concurred; deferred",
+      "choice": "Same underlying finding, count once; preserve full parent ID as alias"
+    },
+    {
+      "parent_id": "4d7a5444aa0b/S16F-ES-A3-02",
+      "counted_as": "S16F-ES-A3-02",
+      "disposition": "carried from the superseded #1876 audit: bytes unchanged at fa3c17b63, still applies, severity concurred; deferred",
+      "choice": "Same underlying finding, count once; preserve full parent ID as alias"
+    },
+    {
+      "parent_id": "4d7a5444aa0b/S16F-ES-A3-03",
+      "counted_as": "S16F-ES-A3-03",
+      "disposition": "carried from the superseded #1876 audit: bytes unchanged at fa3c17b63, still applies, severity concurred; deferred",
+      "choice": "Same underlying finding, count once; preserve full parent ID as alias"
+    }
+  ],
+  "parent_receipts": [
+    {
+      "locale": "es",
+      "parent": "d582c3d8a1537078bd13681dfbfe5ad31cc55f61",
+      "path": "i18n/receipts/5f8e54e78de8-es-final-evidence-20261112.json",
+      "sha256": "af42e387835676d187cf0b8345a4f7174c9b0c04e010132d78db3de265959df6",
+      "agent": "translation-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "instance": "5f8e54e78de8-es-final-evidence-20261112",
+      "result": "clean-with-findings",
+      "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+      "target_sha256": "4074681ab095ccfb3917e0f1e8f31e2d2c92c1c47742153db82dda80502c1e51",
+      "context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+      "identity_hashes_counts_verified_by_actual_frozen_pure_contract": true,
+      "unchanged_in_index": true,
+      "findings": [
+        {
+          "id": "I-ES-1",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+          "current": "Diff completo retenido: no se pudo censurar de forma segura",
+          "proposed": "Diff completo retenido: no se pudieron ocultar los datos sensibles de forma segura",
+          "reason": "Credential redaction is rendered as censurar (censor), rather than ocultar datos sensibles; retain the parent terminology follow-up. ",
+          "disposition": "deferred — non-gating; retained from PR parent",
+          "retained_original_disposition": "deferred — non-gating; retained from PR parent",
+          "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment."
+        },
+        {
+          "id": "S16F-ES-A3-01",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.sound.batch.summary",
+          "current": "{completed, plural, one {{completed, number, ::group-off} completada} many {{completed, number, ::group-off} de completadas} other {{completed, number, ::group-off} completadas}} · {failed, plural, one {{failed, number, ::group-off} fallida} many {{failed, number, ::group-off} de fallidas} other {{failed, number, ::group-off} fallidas}}{cancelled, plural, =0 {} one { · {cancelled, number, ::group-off} detenida} many { · {cancelled, number, ::group-off} de detenidas} other { · {cancelled, number, ::group-off} detenidas}}{unknown, plural, =0 {} one { · {unknown, number, ::group-off} con estado desconocido} many { · {unknown, number, ::group-off} con estado desconocido} other { · {unknown, number, ::group-off} con estado desconocido}}{has_attention, select, yes {. Atención: {labels}} other {}}",
+          "proposed": "Use '#' in the four many arms: many {# de completadas}, many {# de fallidas}, many {# de detenidas}, many {# con estado desconocido}. Every other arm keeps the '::group-off' skeleton exactly as English.",
+          "reason": "The 'many' arms are es-authored (English has no category arms here) and exist because es CLDR puts exact millions in 'many' ('un millón de completadas'). Each one reuses the sibling arms' '::group-off' skeleton, so the only number that can reach it prints ungrouped: rendering completed=1000000 gives \"1000000 de completadas\". Spanish always groups, and the es style guide's own exemplar for this category is many {# de sesiones}, illustrated as \"1.000.000 de sesiones\". Verified: many {# de completadas} renders \"1.000.000 de completadas\". Real but unreachable in practice (>=1,000,000 requests in one sound batch), and a one-commit fix, hence MINOR rather than MAJOR.",
+          "disposition": "reported; does not gate (no BLOCKER/MAJOR)",
+          "historical_reason_verbatim": true,
+          "retained_original_disposition": "reported; does not gate (no BLOCKER/MAJOR)",
+          "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment."
+        },
+        {
+          "id": "S16F-ES-A3-02",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.media.sound_label",
+          "current": "{count, plural, =1 {Sonido} other {Sonido {position, number, ::group-off}}}",
+          "proposed": "No change requested now (screen-reader-only, invisible, and the sidecar's tone field asks for a capitalised bare noun). If a later wave decides, change 'Sonido'/'Imagen' together with the audio play/pause/position templates in one commit; never flip this key alone.",
+          "reason": "This value is also the audio player's accessible name: media-label.ts documents it, and sound-player.tsx composes it into ui.chat.audio.play_label / pause_label / position_label, producing \"Reproducir Sonido 2\" — a capitalised common noun mid-sentence, an orthography error in Spanish. The visible tile/alt-text surface wants the capital ('Imagen' keeps it for the same reason); the composed accessible name wants lower case. Same trade-off the ru round-3 audit recorded as S16F-RU-R3-01.",
+          "disposition": "accepted, no change requested",
+          "historical_reason_verbatim": true,
+          "retained_original_disposition": "accepted, no change requested",
+          "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment."
+        },
+        {
+          "id": "S16F-ES-A3-03",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.sound.cost.no_charge",
+          "current": "Sin cargo.",
+          "proposed": "No change recommended. Recorded so a later wave does not silently reverse a precedent-backed call, and so my own reversal (MINOR -> NIT on finding the plan_clause precedent) is visible rather than dropped.",
+          "reason": "'Charge' has two renderings inside one card: 'cobro' in sound.cost.estimated_zero ('cobro final sin confirmar') and sound.stop.warning ('se cobrará … el cobro'), and 'cargo' here. Reviewed and downgraded from MINOR: the shipped es catalogue already names an unbilled amount 'sin cargo' (ui.chat.session_spend.plan_clause: '…equivalente a API, sin cargo'), so this follows product precedent rather than inventing a term. 'Sin coste.' would be the alternative if card-internal uniformity is ever wanted.",
+          "disposition": "accepted, no change requested",
+          "historical_reason_verbatim": true,
+          "retained_original_disposition": "accepted, no change requested",
+          "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment."
+        },
+        {
+          "id": "CONV-ES-MANY-VIEW",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.view",
+          "current": "{count, plural, one {Ver diff completo · # línea} other {Ver diff completo · # líneas}}",
+          "proposed": "{count, plural, one {Ver diff completo · # línea} many {Ver diff completo · # de líneas} other {Ver diff completo · # líneas}}",
+          "reason": "The es/fr guide requires a many category for exact millions, but this message only has one/other and formats a million without the required de/d’; the clipped case is only a categorical-completeness follow-up because a page is bounded.",
+          "origin": "retained PR-parent wording; extremely large-count follow-up, not merge regression",
+          "disposition": "Non-gating language/CLDR follow-up; actual formatter output retained in ICU evidence.",
+          "retained_original_disposition": "Non-gating language/CLDR follow-up; actual formatter output retained in ICU evidence.",
+          "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment."
+        },
+        {
+          "id": "CONV-ES-MANY-CLIPPED",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.clipped",
+          "current": "{count, plural, one {# línea larga de esta página está acortada} other {# líneas largas de esta página están acortadas}}",
+          "proposed": "{count, plural, one {# línea larga de esta página está acortada} many {# de líneas largas de esta página están acortadas} other {# líneas largas de esta página están acortadas}}",
+          "reason": "The es/fr guide requires a many category for exact millions, but this message only has one/other and formats a million without the required de/d’; the clipped case is only a categorical-completeness follow-up because a page is bounded.",
+          "origin": "retained PR-parent wording; extremely large-count follow-up, not merge regression",
+          "disposition": "Non-gating language/CLDR follow-up; actual formatter output retained in ICU evidence.",
+          "retained_original_disposition": "Non-gating language/CLDR follow-up; actual formatter output retained in ICU evidence.",
+          "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment."
+        },
+        {
+          "id": "CONV-ES-FIT-1",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.back",
+          "current": "Volver a la vista previa",
+          "proposed": "Vista previa",
+          "reason": "At 24 code points versus English’s 15, this short button is 60% longer; keep the natural wording unless a rendered pager check requires the shorter context-dependent label.",
+          "disposition": "Rendered check required; source risk, not observed clipping",
+          "retained_original_disposition": "Rendered check required; source risk, not observed clipping",
+          "supplemental_evidence_disposition": "Bounded captured fit evidence now available; no obvious cutoff in viewed assigned-locale sample. Historical MINOR/NIT ID/severity retained; no new remediation cycle; no universal width/geometry claim."
+        }
+      ]
+    },
+    {
+      "locale": "es",
+      "parent": "d582c3d8a1537078bd13681dfbfe5ad31cc55f61",
+      "path": "i18n/receipts/6dfaec49abf0-es-final-policy-evidence-20261112.json",
+      "sha256": "9f41eff67d1c407e55c91becb96b7ce20baa2d66837b82c99c7d65d74fa5a2da",
+      "agent": "translation-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "instance": "6dfaec49abf0-es-final-policy-evidence-20261112",
+      "result": "clean-with-findings",
+      "source_sha256": "1b6812f914010b5fd9b7e03912552389c00ec16c18bb63d9aec84b1c6f84e39a",
+      "target_sha256": "4074681ab095ccfb3917e0f1e8f31e2d2c92c1c47742153db82dda80502c1e51",
+      "context_sha256": "847ab67e7d20ea6c5fbd97d9d8225ea3df96a780bb9f1071a1d01f44bffa97ae",
+      "identity_hashes_counts_verified_by_actual_frozen_pure_contract": true,
+      "unchanged_in_index": true,
+      "findings": [
+        {
+          "id": "I-ES-1",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+          "current": "Diff completo retenido: no se pudo censurar de forma segura",
+          "proposed": "Diff completo retenido: no se pudieron ocultar los datos sensibles de forma segura",
+          "reason": "\"censurar\" (censor) for credential redaction is off-register; es catalogues use \"ocultar\" (20 hits) and \"censur\" appears only here.",
+          "disposition": "deferred — non-gating",
+          "origin_receipt": "i18n/receipts/567a24a88e45-chat-canonical-es-r2.json",
+          "origin_receipt_sha256": "b48040f237a0a2da586d9df6068cfd428b54e85cb05bb6321757ebc3e92ad168",
+          "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+          "inherited": true
+        },
+        {
+          "id": "S16F-ES-A3-01",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.sound.batch.summary",
+          "current": "{completed, plural, one {{completed, number, ::group-off} completada} many {{completed, number, ::group-off} de completadas} other {{completed, number, ::group-off} completadas}} · {failed, plural, one {{failed, number, ::group-off} fallida} many {{failed, number, ::group-off} de fallidas} other {{failed, number, ::group-off} fallidas}}{cancelled, plural, =0 {} one { · {cancelled, number, ::group-off} detenida} many { · {cancelled, number, ::group-off} de detenidas} other { · {cancelled, number, ::group-off} detenidas}}{unknown, plural, =0 {} one { · {unknown, number, ::group-off} con estado desconocido} many { · {unknown, number, ::group-off} con estado desconocido} other { · {unknown, number, ::group-off} con estado desconocido}}{has_attention, select, yes {. Atención: {labels}} other {}}",
+          "proposed": "{completed, plural, one {{completed, number, ::group-off} completada} many {# de completadas} other {{completed, number, ::group-off} completadas}} · {failed, plural, one {{failed, number, ::group-off} fallida} many {# de fallidas} other {{failed, number, ::group-off} fallidas}}{cancelled, plural, =0 {} one { · {cancelled, number, ::group-off} detenida} many { · # de detenidas} other { · {cancelled, number, ::group-off} detenidas}}{unknown, plural, =0 {} one { · {unknown, number, ::group-off} con estado desconocido} many { · # con estado desconocido} other { · {unknown, number, ::group-off} con estado desconocido}}{has_attention, select, yes {. Atención: {labels}} other {}}",
+          "reason": "The 'many' arms are es-authored (English has no category arms here) and exist because es CLDR puts exact millions in 'many' ('un millón de completadas'). Each one reuses the sibling arms' '::group-off' skeleton, so the only number that can reach it prints ungrouped: rendering completed=1000000 gives \"1000000 de completadas\". Spanish always groups, and the es style guide's own exemplar for this category is many {# de sesiones}, illustrated as \"1.000.000 de sesiones\". Verified: many {# de completadas} renders \"1.000.000 de completadas\". Real but unreachable in practice (>=1,000,000 requests in one sound batch), and a one-commit fix, hence MINOR rather than MAJOR.",
+          "disposition": "reported; does not gate (no BLOCKER/MAJOR)",
+          "origin_receipt": "i18n/receipts/4d7a5444aa0b.json",
+          "origin_receipt_sha256": "0d53576dd82e8db22742ddcaa18810c5e786cf93d88d15f0d6181de37adfc7c3",
+          "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+          "inherited": true
+        },
+        {
+          "id": "S16F-ES-A3-02",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.media.sound_label",
+          "current": "{count, plural, =1 {Sonido} other {Sonido {position, number, ::group-off}}}",
+          "proposed": "{count, plural, =1 {Sonido} other {Sonido {position, number, ::group-off}}}",
+          "reason": "This value is also the audio player's accessible name: media-label.ts documents it, and sound-player.tsx composes it into ui.chat.audio.play_label / pause_label / position_label, producing \"Reproducir Sonido 2\" — a capitalised common noun mid-sentence, an orthography error in Spanish. The visible tile/alt-text surface wants the capital ('Imagen' keeps it for the same reason); the composed accessible name wants lower case. Same trade-off the ru round-3 audit recorded as S16F-RU-R3-01.",
+          "disposition": "accepted, no change requested",
+          "origin_receipt": "i18n/receipts/4d7a5444aa0b.json",
+          "origin_receipt_sha256": "0d53576dd82e8db22742ddcaa18810c5e786cf93d88d15f0d6181de37adfc7c3",
+          "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+          "inherited": true
+        },
+        {
+          "id": "S16F-ES-A3-03",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.sound.cost.no_charge",
+          "current": "Sin cargo.",
+          "proposed": "Sin cargo.",
+          "reason": "'Charge' has two renderings inside one card: 'cobro' in sound.cost.estimated_zero ('cobro final sin confirmar') and sound.stop.warning ('se cobrará … el cobro'), and 'cargo' here. Reviewed and downgraded from MINOR: the shipped es catalogue already names an unbilled amount 'sin cargo' (ui.chat.session_spend.plan_clause: '…equivalente a API, sin cargo'), so this follows product precedent rather than inventing a term. 'Sin coste.' would be the alternative if card-internal uniformity is ever wanted.",
+          "disposition": "accepted, no change requested",
+          "origin_receipt": "i18n/receipts/4d7a5444aa0b.json",
+          "origin_receipt_sha256": "0d53576dd82e8db22742ddcaa18810c5e786cf93d88d15f0d6181de37adfc7c3",
+          "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+          "inherited": true
+        }
+      ]
+    },
+    {
+      "locale": "es",
+      "parent": "e2d980d217ec4c72e409ef8a21a8aed9602b57a2",
+      "path": "i18n/receipts/94f6e325484c-canon3-es.json",
+      "sha256": "37f1ae99bbe237203d3617645c6623fbb83c6b4f03bd774ee3afeeffcfe33910",
+      "agent": "reviewer",
+      "model": "anthropic/claude-opus-5-5",
+      "instance": "94f6e325484c-canon3-es",
+      "result": "clean-with-findings",
+      "source_sha256": "ff5c51320c726be67dcee1c6036bdb141fad2231cf717e6856d385602f6b5731",
+      "target_sha256": "ff55a933e7bdff8f171a11f678ccd16b12367afca3b26e1b9262c92cddad006f",
+      "context_sha256": "51f705da9160454ef4f72c5f9c14004a3f31b2bccc46dac6c208a36d18cb53bf",
+      "identity_hashes_counts_verified_by_actual_frozen_pure_contract": true,
+      "unchanged_in_index": true,
+      "findings": [
+        {
+          "id": "4d7a5444aa0b/S16F-ES-A3-01",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.sound.batch.summary",
+          "origin": "i18n/receipts/4d7a5444aa0b.json",
+          "disposition": "carried from the superseded #1876 audit: bytes unchanged at fa3c17b63, still applies, severity concurred; deferred"
+        },
+        {
+          "id": "4d7a5444aa0b/S16F-ES-A3-02",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.media.sound_label",
+          "origin": "i18n/receipts/4d7a5444aa0b.json",
+          "disposition": "carried from the superseded #1876 audit: bytes unchanged at fa3c17b63, still applies, severity concurred; deferred"
+        },
+        {
+          "id": "4d7a5444aa0b/S16F-ES-A3-03",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.sound.cost.no_charge",
+          "origin": "i18n/receipts/4d7a5444aa0b.json",
+          "disposition": "carried from the superseded #1876 audit: bytes unchanged at fa3c17b63, still applies, severity concurred; deferred"
+        }
+      ]
+    }
+  ],
+  "record": {
+    "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-es-r-next-seam-20261114-record.json",
+    "sha256": "aeea91c47cf3f1629facf2790a77885b17ae3c9b311924227dd2d1dfe8f0eddf",
+    "canonical": "i18n/audits/evidence/es/ui.chat.canonical/6dfaec49abf0-es-r-next-seam-20261114/record.json"
+  },
+  "companion": {
+    "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-r-next-seam-20261114-proof.json",
+    "sha256": "ca484b5acf0b37a6c04068968e8910ad257daebcbd194f4dd352c6c959117164"
+  },
+  "glossary_style_bindings": {
+    "inherited": {
+      "i18n/glossary.md": {
+        "repository": "/home/ec2-user/local-operator",
+        "git_ref": "ea9f5b0e49758b9fc289bf0ee1a2d61ab0a2e694",
+        "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+        "read_method": "Local file read plus complete HEAD..origin/main amendments read for changed files; hi guide identical. No fetch; origin/main freshness relative to remote not asserted."
+      },
+      "i18n/style-guides/es.md": {
+        "repository": "/home/ec2-user/local-operator",
+        "git_ref": "ea9f5b0e49758b9fc289bf0ee1a2d61ab0a2e694",
+        "sha256": "4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6",
+        "read_method": "Local file read plus complete HEAD..origin/main amendments read for changed files; hi guide identical. No fetch; origin/main freshness relative to remote not asserted."
+      },
+      "i18n/style-guides/fr.md": {
+        "repository": "/home/ec2-user/local-operator",
+        "git_ref": "ea9f5b0e49758b9fc289bf0ee1a2d61ab0a2e694",
+        "sha256": "5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7",
+        "read_method": "Local file read plus complete HEAD..origin/main amendments read for changed files; hi guide identical. No fetch; origin/main freshness relative to remote not asserted."
+      },
+      "i18n/style-guides/hi.md": {
+        "repository": "/home/ec2-user/local-operator",
+        "git_ref": "ea9f5b0e49758b9fc289bf0ee1a2d61ab0a2e694",
+        "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+        "read_method": "Local file read plus complete HEAD..origin/main amendments read for changed files; hi guide identical. No fetch; origin/main freshness relative to remote not asserted."
+      }
+    },
+    "selected_main_reference": {
+      "glossary": "damianvtran/local-operator@2ba8127d9 i18n/glossary.md sha256:0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+      "style_guide": "damianvtran/local-operator@2ba8127d9 i18n/style-guides/es.md sha256:4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6"
+    },
+    "checked_git_objects": {
+      "i18n/glossary.md": {
+        "git_ref": "2ba8127d9",
+        "available": true,
+        "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+        "recorded_reference_only_if_unavailable": false
+      },
+      "i18n/style-guides/es.md": {
+        "git_ref": "2ba8127d9",
+        "available": true,
+        "sha256": "4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6",
+        "recorded_reference_only_if_unavailable": false
+      },
+      "i18n/style-guides/fr.md": {
+        "git_ref": "2ba8127d9",
+        "available": true,
+        "sha256": "5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7",
+        "recorded_reference_only_if_unavailable": false
+      },
+      "i18n/style-guides/hi.md": {
+        "git_ref": "2ba8127d9",
+        "available": true,
+        "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+        "recorded_reference_only_if_unavailable": false
+      }
+    }
+  },
+  "accepted_prior_evidence": {
+    "accepted_readback_json": {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json",
+      "sha256": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30",
+      "role": "Historical accepted 23-key evidence only; not a current capture."
+    },
+    "accepted_readback_markdown": {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.md",
+      "sha256": "a8cbf67eef4052484b4bbc1937a7a6b4b1d3328a71cb813bc3a8f0119cc275ac",
+      "role": "Historical accepted 23-key evidence only; not a current capture."
+    },
+    "final_frame_manifest": {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/frames-manifest.json",
+      "sha256": "12babe07d87bb5d193d3fd909919e1645706e06984129055d4547ded21321db5",
+      "role": "Historical accepted 23-key evidence only; not a current capture."
+    },
+    "browser_source_identity": {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-source.json",
+      "sha256": "011d373b047026492d9ca73f7ec6747df1a90daeb7cb2c805aa9b4dade46ca34",
+      "role": "Historical accepted 23-key evidence only; not a current capture."
+    }
+  },
+  "limitations": {
+    "new_semantic_keys": 0,
+    "fresh_494_key_semantics": false,
+    "fresh_render_browser_native_build_install_test": false,
+    "prior_read_counts": {
+      "es": 31,
+      "fr": 31,
+      "hi": 32
+    },
+    "current_mechanical_only_keys": 494,
+    "functional_outcomes": "UNPROVEN beyond exact retained prior evidence; no new interactions/count variants executed or all-23-interactions PASS claimed",
+    "rendering": "Historical accepted bounded 23-key capture evidence retained as prior evidence only. Main CSS changed; no current rendered geometry/font fallback/fit/native/global RTL approval",
+    "pseudo": "Prior synthetic expanded-English fixtures registered as en; not production/RTL pseudo or current new captures",
+    "finding_debt": "Actual MINOR/NIT follow-ups remain deferred; no debt-remediation round or translation edits authorized",
+    "historical_policy_holds": "Old es/fr withholds/clarifications remain byte-for-byte intact. Authoritative actual-locale CLDR interpretation remains applicable; no literal-English-selector hold is recreated",
+    "release": "No release, merge, activation, all-key semantic or all-key pixel approval"
+  },
+  "retention": {
+    "record": "i18n/audits/evidence/es/ui.chat.canonical/6dfaec49abf0-es-r-next-seam-20261114/record.json",
+    "receipt": "i18n/receipts/6dfaec49abf0-es-r-next-seam-20261114.json",
+    "companion": "i18n/audits/evidence/es/ui.chat.canonical/6dfaec49abf0-es-r-next-seam-20261114/seam-proof.json",
+    "retain_all_originals": true
+  },
+  "lawful_bounded_consumability": {
+    "yes": true,
+    "reason": "Direct user authorized exact seam rebinding; independent literal provenance and valid selected parent receipts establish retained audit applicability. Machine hash binding does not widen scope.",
+    "assembler_not_invoked": true,
+    "pure_contract_validation_required_before_issue": true
+  }
+}
