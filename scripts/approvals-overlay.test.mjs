@@ -18,6 +18,10 @@ import { build } from "esbuild";
 
 const ROOT = process.cwd();
 const STUB = `
+export const app = { on() {}, getPath() { return "/tmp"; }, isReady() { return true; } };
+export class BrowserWindow { static getAllWindows() { return []; } }
+export const screen = {};
+export const shell = {};
 const state = { views: [], sessions: [], focus: 9 };
 export const ipcListeners = new Map();
 export const ipcMain = {
@@ -147,6 +151,8 @@ const bundle = await build({
 	stdin: {
 		contents: `
       export * from "./src/main/browser/approvals-overlay";
+      export { TabRegistry } from "./src/main/browser/registry";
+      export { focusBrowserChordTarget } from "./src/main/window-raise";
       export * from "./src/main/browser/approvals-overlay-bounds";
       export * from "./src/main/browser/approvals-overlay-model";
       export * from "./src/shared/browser-approvals-overlay";
@@ -1207,6 +1213,132 @@ test("controller: explicit open focuses the card through the gated helper; close
 	);
 	assert.equal(controller.facts().visible, false);
 });
+
+// Use the real registry and host focus gate: an active start tab still owns a
+// WebContents, but it is hidden behind the renderer canvas and must not receive
+// the keyboard when the newly reachable no-page card closes.
+for (const action of ["close", "escape", "decision"]) {
+	for (const [show, focused] of [
+		["focus", true],
+		["focus", false],
+		["inactive", true],
+		["headless", true],
+	]) {
+		for (const surface of ["empty", "start", "page"]) {
+			test(`controller: ${action} returns focus on ${surface}, show=${show}, focused=${focused}`, async () => {
+				const targets = [];
+				const children = [];
+				const host = {
+					isDestroyed: () => false,
+					focus: () => targets.push("host"),
+				};
+				const page = {
+					isDestroyed: () => false,
+					focus: () => targets.push("page"),
+					on() {},
+					once() {},
+					removeListener() {},
+					getURL: () => "about:blank",
+					setWindowOpenHandler() {},
+					session: {},
+					mainFrame: { url: "about:blank" },
+					navigationHistory: {},
+					debugger: {},
+				};
+				const window = {
+					isDestroyed: () => false,
+					isFocused: () => focused,
+					webContents: host,
+					focus() {
+						assert.fail("must not activate the window");
+					},
+					contentView: {
+						get children() {
+							return children;
+						},
+						addChildView(view) {
+							const i = children.indexOf(view);
+							if (i >= 0) children.splice(i, 1);
+							children.push(view);
+						},
+						removeChildView(view) {
+							const i = children.indexOf(view);
+							if (i >= 0) children.splice(i, 1);
+						},
+					},
+				};
+				let controller;
+				const registry = new mod.TabRegistry(
+					() => ({ webContents: page, setBounds() {}, setVisible() {} }),
+					() => {},
+					() => {},
+					(snapshot) => controller?.onLayout(snapshot),
+				);
+				controller = new mod.ApprovalsOverlayController({
+					window,
+					documentUrl: "file:///tmp/browser-approvals-overlay.html",
+					pageWebContents: () => registry.activeTab?.view.webContents ?? null,
+					focusTarget: (target) =>
+						mod.focusBrowserChordTarget(window, target, show),
+					respond: () => true,
+				});
+				try {
+					if (surface !== "empty")
+						registry.create({ owner: "user", url: "about:blank" });
+					registry.setContentRect(rect(0, 80, 1000, 700));
+					registry.setViewVisible(surface === "page", true);
+					controller.setModel({ entries: entries(1) });
+					await waitFor(
+						() => controller.facts().ready && controller.facts().visible,
+						"no-page card",
+					);
+					assert.equal(controller.facts().presented, surface === "page");
+					assert.deepEqual(targets, [], "auto-present must not return focus");
+					children.at(-1).webContents.focus = () => targets.push("card");
+					controller.open({ focus: true });
+					assert.deepEqual(
+						targets,
+						show === "focus" && focused ? ["card"] : [],
+						"explicit open uses the same no-activation gate",
+					);
+					targets.length = 0;
+					if (action === "decision") {
+						const facts = controller.facts();
+						mod.emitIpc(
+							mod.APPROVALS_CARD_DECIDE_CHANNEL,
+							{
+								sender: children.at(-1).webContents,
+								senderFrame: children.at(-1).mainFrame,
+							},
+							{ seq: facts.seq, entryId: "entry-0", decision: "deny" },
+						);
+						await waitFor(
+							() => controller.facts().actions.decided === 1,
+							"decision accepted",
+						);
+					} else if (action === "escape") {
+						mod.emitIpc(
+							mod.APPROVALS_CARD_DISMISS_CHANNEL,
+							{
+								sender: children.at(-1).webContents,
+								senderFrame: children.at(-1).mainFrame,
+							},
+							{ seq: controller.facts().seq, entryId: "entry-0" },
+						);
+					} else controller.close("test");
+					assert.deepEqual(
+						targets,
+						show === "focus" && focused
+							? [surface === "page" ? "page" : "host"]
+							: [],
+					);
+				} finally {
+					controller.dispose();
+				}
+			});
+		}
+	}
+}
 
 test("controller: the two card channels are sender-pinned, seq-checked and route decisions once", async () => {
 	const children = [];

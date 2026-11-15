@@ -948,12 +948,18 @@ export class ApprovalsOverlayController {
 		this.pushModel(true);
 	}
 
-	/** Return the keyboard to the page (close/dismiss/decision). */
+	/** Return the keyboard to the visible browser surface (close/dismiss/decision). */
 	private returnFocus(): void {
 		this.pendingFocus = false;
-		const page = this.pageWebContents?.();
-		if (!page || page.isDestroyed()) return;
-		this.focusTarget?.(page);
+		// Consent is also reachable on the empty/start canvas. An active start
+		// tab can still own a hidden page, so only a presented page may receive
+		// focus; otherwise restore the host renderer that paints the canvas.
+		// Keep the host's existing focused-window/show-policy gate in both cases.
+		const target = this.layout.presented
+			? this.pageWebContents?.()
+			: this.window.webContents;
+		if (!target || target.isDestroyed()) return;
+		this.focusTarget?.(target);
 	}
 
 	private ensureChild(): void {
