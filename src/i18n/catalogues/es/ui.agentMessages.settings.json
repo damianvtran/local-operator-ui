@@ -93,8 +93,8 @@
 	"ui.agentMessages.settings.consent.via_default_on": "Activado de forma predeterminada",
 	"ui.agentMessages.settings.share_typing.label": "Mostrar cuando estoy escribiendo",
 	"ui.agentMessages.settings.share_typing.description": "Los participantes de tus conversaciones de Team Bridge ven una breve línea “está escribiendo” mientras redactas. Lo que escribes nunca se comparte.",
-	"ui.agentMessages.settings.screening.title": "Modelo de filtrado",
-	"ui.agentMessages.settings.screening.help": "Opcional. Elige qué modelo filtra primero los mensajes de agente entrantes en esta máquina. Si ese modelo no está disponible o se queda sin cuota, el filtrado pasa al modelo predeterminado de esta máquina y a sus alternativas, así que Team Bridge sigue funcionando.",
+	"ui.agentMessages.settings.screening.title": "Modelo de análisis",
+	"ui.agentMessages.settings.screening.help": "Opcional. Elige qué modelo analiza primero los mensajes de agente entrantes en esta máquina. Si ese modelo no está disponible o se queda sin cuota, el análisis pasa al modelo predeterminado de esta máquina y a sus alternativas, así que Team Bridge sigue funcionando.",
 	"ui.agentMessages.settings.screening.automatic": "Automático, empezando por {model}",
-	"ui.agentMessages.settings.screening.unavailable": "Esta versión de Local Operator no ofrece modelos de filtrado para elegir. El filtrado sigue usando el modelo predeterminado de esta máquina y sus alternativas."
+	"ui.agentMessages.settings.screening.unavailable": "Esta versión de Local Operator no ofrece modelos de análisis para elegir. El análisis sigue usando el modelo predeterminado de esta máquina y sus alternativas."
 }

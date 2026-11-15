@@ -93,8 +93,8 @@
 	"ui.agentMessages.settings.consent.via_default_on": "Включено по умолчанию",
 	"ui.agentMessages.settings.share_typing.label": "Показывать, когда я печатаю",
 	"ui.agentMessages.settings.share_typing.description": "Участники ваших разговоров в Team Bridge видят короткую строку «печатает», пока вы пишете. Набранный текст никогда не передаётся.",
-	"ui.agentMessages.settings.screening.title": "Модель фильтрации",
-	"ui.agentMessages.settings.screening.help": "Необязательно. Выбирает, какая модель первой проверяет входящие сообщения агентов на этой машине. Если эта модель недоступна или исчерпала квоту, фильтрация переходит к модели этой машины по умолчанию и её резервным вариантам, поэтому Team Bridge продолжает работать.",
+	"ui.agentMessages.settings.screening.title": "Модель проверки",
+	"ui.agentMessages.settings.screening.help": "Необязательно. Выбирает, какая модель первой проверяет входящие сообщения агентов на этой машине. Если эта модель недоступна или исчерпала квоту, проверка переходит к модели этой машины по умолчанию и её резервным вариантам, поэтому Team Bridge продолжает работать.",
 	"ui.agentMessages.settings.screening.automatic": "Автоматически, начиная с {model}",
-	"ui.agentMessages.settings.screening.unavailable": "Эта версия Local Operator не предлагает моделей фильтрации на выбор. Фильтрация по-прежнему выполняется моделью этой машины по умолчанию и её резервными вариантами."
+	"ui.agentMessages.settings.screening.unavailable": "Эта версия Local Operator не предлагает моделей проверки на выбор. Проверка по-прежнему выполняется моделью этой машины по умолчанию и её резервными вариантами."
 }

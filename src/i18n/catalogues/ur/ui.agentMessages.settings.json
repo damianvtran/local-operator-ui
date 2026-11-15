@@ -93,8 +93,8 @@
 	"ui.agentMessages.settings.consent.via_default_on": "ڈیفالٹ طور پر فعال",
 	"ui.agentMessages.settings.share_typing.label": "میرے ٹائپ کرنے کی اطلاع دکھائیں",
 	"ui.agentMessages.settings.share_typing.description": "آپ کی Team Bridge گفتگو میں شامل لوگ آپ کے لکھتے وقت ایک مختصر “ٹائپ کر رہے ہیں” لائن دیکھتے ہیں۔ آپ جو لکھتے ہیں وہ کبھی شیئر نہیں ہوتا۔",
-	"ui.agentMessages.settings.screening.title": "اسکریننگ ماڈل",
-	"ui.agentMessages.settings.screening.help": "اختیاری۔ اس مشین پر آنے والے ایجنٹ پیغامات کی اسکریننگ سب سے پہلے کون سا ماڈل کرے، یہ چنتا ہے۔ اگر وہ ماڈل دستیاب نہ ہو یا اس کا کوٹہ ختم ہو جائے تو اسکریننگ اس مشین کے ڈیفالٹ ماڈل اور اس کے فال بیکس پر چلی جاتی ہے، اس لیے Team Bridge کام کرتا رہتا ہے۔",
+	"ui.agentMessages.settings.screening.title": "جانچ ماڈل",
+	"ui.agentMessages.settings.screening.help": "اختیاری۔ اس مشین پر آنے والے ایجنٹ پیغامات کو سب سے پہلے کون سا ماڈل جانچے، یہ چنتا ہے۔ اگر وہ ماڈل دستیاب نہ ہو یا اس کا کوٹہ ختم ہو جائے تو جانچ اس مشین کے ڈیفالٹ ماڈل اور اس کے فال بیکس پر چلی جاتی ہے، اس لیے Team Bridge کام کرتا رہتا ہے۔",
 	"ui.agentMessages.settings.screening.automatic": "خودکار، {model} سے شروع",
-	"ui.agentMessages.settings.screening.unavailable": "Local Operator کے اس ورژن میں چننے کے لیے کوئی اسکریننگ ماڈل نہیں ہے۔ اسکریننگ اب بھی اس مشین کے ڈیفالٹ ماڈل اور اس کے فال بیکس پر چلتی ہے۔"
+	"ui.agentMessages.settings.screening.unavailable": "Local Operator کے اس ورژن میں چننے کے لیے کوئی جانچ ماڈل نہیں ہے۔ جانچ اب بھی اس مشین کے ڈیفالٹ ماڈل اور اس کے فال بیکس پر چلتی ہے۔"
 }

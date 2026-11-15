@@ -93,8 +93,8 @@
 	"ui.agentMessages.settings.consent.via_default_on": "默认开启",
 	"ui.agentMessages.settings.share_typing.label": "显示我正在输入",
 	"ui.agentMessages.settings.share_typing.description": "你输入时，Team Bridge对话中的其他成员会看到一行简短的“正在输入”提示。输入的内容绝不会被分享。",
-	"ui.agentMessages.settings.screening.title": "筛查模型",
-	"ui.agentMessages.settings.screening.help": "可选。选择在这台机器上首先筛查收到的智能体消息的模型。如果该模型不可用或配额不足，筛查会改用这台机器的默认模型和回退模型，因此 Team Bridge 会继续工作。",
+	"ui.agentMessages.settings.screening.title": "检查模型",
+	"ui.agentMessages.settings.screening.help": "可选。选择在这台机器上首先检查收到的智能体消息的模型。如果该模型不可用或配额不足，检查会改用这台机器的默认模型和回退模型，因此 Team Bridge 会继续工作。",
 	"ui.agentMessages.settings.screening.automatic": "自动，首先使用 {model}",
-	"ui.agentMessages.settings.screening.unavailable": "此版本的 Local Operator 没有可供选择的筛查模型。筛查仍会使用这台机器的默认模型和回退模型。"
+	"ui.agentMessages.settings.screening.unavailable": "此版本的 Local Operator 没有可供选择的检查模型。检查仍会使用这台机器的默认模型和回退模型。"
 }
