@@ -35,6 +35,7 @@ import {
 	CONTROL_REUSE_PARTS,
 	assertControlPresent,
 	controlElectronPlan,
+	controlPredatesAskScrollFix,
 	controlReusePlan,
 	describeMainPreloadReuse,
 	describePressRead,
@@ -1520,5 +1521,32 @@ test("controlElectronPlan: a lockfile-differing control reuses the same-version 
 	assert.ok(
 		differ.describe.includes("44.3.0") && differ.describe.includes("45.1.0"),
 		differ.describe,
+	);
+});
+
+test("the asks-scroll control's negative wheel reading is gated on a pre-#1901 control", () => {
+	/*
+	 * #1901 (merge e6122214, first parent 789b013d) put the fix on main, so the
+	 * merge-base control of any later PR is post-fix and cannot show the defect.
+	 * Driven against real git history: the last pre-fix main is pre-fix, the merge is not.
+	 */
+	const has = (rev) =>
+		spawnSync("git", ["cat-file", "-e", `${rev}^{commit}`]).status === 0;
+	if (!has("e6122214503b9fc52841e119c060eabb7650391b")) return; // shallow clone
+	assert.equal(
+		controlPredatesAskScrollFix("e6122214503b9fc52841e119c060eabb7650391b"),
+		false,
+		"the #1901 merge carries the fix",
+	);
+	if (has("789b013d6220cdd65b1f9cb86c9e3a70eeb524a4"))
+		assert.equal(
+			controlPredatesAskScrollFix("789b013d6220cdd65b1f9cb86c9e3a70eeb524a4"),
+			true,
+			"main before #1901 is the defect the control must show",
+		);
+	assert.throws(
+		() =>
+			controlPredatesAskScrollFix("0000000000000000000000000000000000000000"),
+		"an unknown revision must fail, not silently skip the assertion",
 	);
 });

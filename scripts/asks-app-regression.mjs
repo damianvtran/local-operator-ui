@@ -335,6 +335,41 @@ export function assertControlPresent(control) {
 const sha = (value) => createHash("sha256").update(value).digest("hex");
 const git = (...args) => execFileSync("git", args, { encoding: "utf8" }).trim();
 export const ASKS_CONTROL = resolveAsksControl();
+
+/**
+ * Whether the control's renderer already carries #1901's long-ask-scroll fix
+ * (`fix(asks): let a long ask scroll and keep its actions reachable`, merge
+ * e6122214, first parent 789b013d = the last pre-fix main).
+ *
+ * WHY THIS EXISTS. The `asks-scroll` control leg asserts the DEFECT: a wheel over
+ * the question text must NOT move the drawer's list. That reading is only true of a
+ * build from before #1901. The control is the merge base with main, so once #1901
+ * landed every PR based on main >= e6122214 got a post-fix control and the negative
+ * assertion could never hold (run 43664741238 / job 132678106327, `asks-scroll`,
+ * "the pre-fix build's list must NOT move from a wheel over the question text").
+ * The marker is the `data-lo-ask-list` attribute (`ASK_LIST_ATTR` in
+ * ask-bounds.tsx), which exists only with the fix. Detected from the control's own
+ * tree, not by comparing SHAs, so it holds for any control (override, merge base,
+ * fetched main, pin) without a list of commits to maintain.
+ *
+ * Reproduce: `git grep -c data-lo-ask-list <rev> -- src` (exit 1 = pre-fix).
+ *
+ * Returns true when the control is PRE-fix and the negative assertion is valid.
+ * Exit 1 from `git grep` means "no match"; anything else (unknown rev) throws
+ * rather than silently skipping the assertion.
+ */
+export function controlPredatesAskScrollFix(rev = ASKS_CONTROL) {
+	try {
+		execFileSync("git", ["grep", "-q", "data-lo-ask-list", rev, "--", "src"], {
+			encoding: "utf8",
+			stdio: "ignore",
+		});
+		return false;
+	} catch (error) {
+		if (error?.status === 1) return true;
+		throw error;
+	}
+}
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /*
@@ -1676,9 +1711,21 @@ export const CASES = {
 			 * THE ASSERTIONS, per leg. The candidate has to show the remedy on every door; the
 			 * control has to show the defect, or the pair has stopped proving anything.
 			 */
+			/*
+			 * The control's negative wheel reading is valid only for a PRE-#1901 control
+			 * (`controlPredatesAskScrollFix`). A post-fix control is skipped LOUDLY and
+			 * recorded in the summary; the candidate assertions are never relaxed.
+			 */
+			const controlIsPreFix =
+				kind === "candidate" || controlPredatesAskScrollFix(ASKS_CONTROL);
+			if (!controlIsPreFix)
+				console.warn(
+					`asks-scroll/control: SKIPPING the pre-fix negative wheel assertion - control ${ASKS_CONTROL} already carries #1901 (data-lo-ask-list); candidate assertions still run`,
+				);
 			for (const [size, entry] of Object.entries(summary)) {
 				for (const wheel of entry.wheels) {
 					const [before, after] = wheel.list;
+					if (kind === "control" && !controlIsPreFix) continue;
 					if (kind === "candidate")
 						assert(
 							after > before,
