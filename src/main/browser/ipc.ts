@@ -192,6 +192,16 @@ export interface RegisterBrowserIpcOptions {
 	 * Optional because only a launch mode that may focus a window supplies it; the
 	 * helper behind it refuses an unfocused or hidden window and never raises one. */
 	focusPage?: () => void;
+	/**
+	 * The live composite of an overlay-suppressed page (`composite-bridge.ts`).
+	 * `ack` releases the next frame after the shell drew one (false = stale,
+	 * duplicate or forged); `consumer` is the shell's canvas mounting/unmounting.
+	 * Pixels travel main -> owner shell only; these are the renderer's replies.
+	 */
+	composite?: {
+		ack: (payload: unknown) => boolean;
+		consumer: (ready: boolean) => void;
+	};
 	/** The extension manager (extensions/manager.ts). Desktop renderer only;
 	 * there is deliberately no agent RPC op for any of it (design §4.4). */
 	extensions?: (request: ExtensionsRequest) => Promise<ExtensionsResponse>;
@@ -255,6 +265,9 @@ export const BROWSER_IPC_CHANNELS = [
 	/** The user's own recovery click on the `unavailable` state (round 1, D1a).
 	 * Named here so the namespace stays the one place that lists its channels. */
 	"browser-retry",
+	/** The live composite's renderer replies (`composite-bridge.ts`). */
+	"browser-composite-ack",
+	"browser-composite-consumer",
 	/**
 	 * S1's probe-only channel. Listed here for unregistration only: the handler
 	 * below is registered only when the launch gate passed, and this entry makes
@@ -530,6 +543,18 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 	ipcMain.handle("browser-focus-page", (event) => {
 		authorize(event);
 		options.focusPage?.();
+	});
+	// Owner-gated like every browser channel: only the trusted shell that the
+	// frames were sent to may pace or (de)register the stream.
+	ipcMain.handle("browser-composite-ack", (event, payload: unknown) => {
+		authorize(event);
+		return options.composite?.ack(payload) ?? false;
+	});
+	ipcMain.handle("browser-composite-consumer", (event, ready: unknown) => {
+		authorize(event);
+		if (typeof ready !== "boolean")
+			throw new Error("Composite consumer state must be a boolean.");
+		options.composite?.consumer(ready);
 	});
 	// Home (LOH-13): the user's own press, no argument — main decides the
 	// start state, so a renderer cannot aim this channel at an origin.

@@ -386,6 +386,28 @@ declare global {
 				onPasskeyCustodyEnded: (
 					callback: (payload: { tabId: number; at: number }) => void,
 				) => () => void;
+				/** Live composite of an overlay-suppressed page (main's
+				 * `composite-bridge.ts`). Full BGRA frames; display-only. */
+				onCompositeFrame: (
+					callback: (frame: {
+						generation: number;
+						tabId: number;
+						webContentsId: number;
+						documentEpoch: number;
+						frameSeq: number;
+						width: number;
+						height: number;
+						pixels: Uint8Array;
+					}) => void,
+				) => () => void;
+				onCompositeClear: (
+					callback: (clear: { generation: number; reason: string }) => void,
+				) => () => void;
+				ackCompositeFrame: (ack: {
+					generation: number;
+					frameSeq: number;
+				}) => Promise<boolean>;
+				setCompositeConsumer: (ready: boolean) => Promise<void>;
 				onStateChanged: (callback: () => void) => () => void;
 				onConsentChanged: (callback: () => void) => () => void;
 				onConsentAttention: (

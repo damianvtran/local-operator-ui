@@ -66,6 +66,7 @@ import {
 import { BrowserFileTransferRow } from "./browser-file-transfer-row";
 import { BrowserFindRow } from "./browser-find-row";
 import { BrowserHandOverDialog } from "./browser-hand-over-dialog";
+import { BrowserLiveComposite } from "./browser-live-composite";
 import { BrowserLoadFailure } from "./browser-load-failure";
 import { BrowserMediaPermissionPrompt } from "./browser-media-permission-prompt";
 import { BrowserNewTab } from "./browser-new-tab";
@@ -341,6 +342,10 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	 * snapshot.
 	 */
 	const overlaySuppressing = browserOverlaySuppressing(suppressedBy);
+	// A live frame of the suppressed page is on the composite canvas. Drives
+	// only whether the paused note is VISIBLE: with no live picture (headless,
+	// first frame pending, stream cleared) the note stays the honest state.
+	const [liveComposite, setLiveComposite] = useState(false);
 	const contentRef = useRef<HTMLDivElement | null>(null);
 	/**
 	 * The row the page and the dock share. Its width decides whether the side
@@ -1645,22 +1650,33 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 						!internalPage &&
 						state &&
 						tabs.length > 0 && (
-							<output
-								className="flex h-full flex-col items-center justify-center gap-1 px-6 text-center"
-								data-tour-tag="browser-paused"
-								data-suppressed-by={suppressedBy}
-							>
-								<p className="max-w-lg truncate text-title text-ink">
-									{state.title ||
-										activeTab?.title ||
-										t("ui.browser.browser_surface.this_page")}
-								</p>
-								<p className="text-body-sm text-ink-muted">
-									{t(
-										"ui.browser.browser_surface.paused_while_a_dialog_menu_or_panel",
+							<>
+								{/* The page keeps rendering under the overlay (operator request):
+								    main streams the detached view's frames into this canvas. */}
+								<BrowserLiveComposite onLiveChange={setLiveComposite} />
+								<output
+									className={cn(
+										"flex h-full flex-col items-center justify-center gap-1 px-6 text-center",
+										// Still announced (the page is not interactive), but not painted
+										// over a live picture of it.
+										liveComposite && "sr-only",
 									)}
-								</p>
-							</output>
+									data-tour-tag="browser-paused"
+									data-live-composite={liveComposite ? "true" : undefined}
+									data-suppressed-by={suppressedBy}
+								>
+									<p className="max-w-lg truncate text-title text-ink">
+										{state.title ||
+											activeTab?.title ||
+											t("ui.browser.browser_surface.this_page")}
+									</p>
+									<p className="text-body-sm text-ink-muted">
+										{t(
+											"ui.browser.browser_surface.paused_while_a_dialog_menu_or_panel",
+										)}
+									</p>
+								</output>
+							</>
 						)}
 					{showingNewTab && (
 						/*
