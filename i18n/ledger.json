@@ -111657,6 +111657,223 @@
 					"status": "audited"
 				}
 			]
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.canvas.projects",
+			"source_sha256": "542a9cb926396ffde3704dc4fb2ac4f2bc17db5fd2101a3edf5af53e48cbf00b",
+			"target_sha256": "c5c14b140a7984d1557912b15ec67d3856eb291e78ae754f4d50ba7bb8ef4623",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-15"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-15",
+					"result": "clean",
+					"instance": "pr1927-fr-canvas-projects-5a4e3992",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1927-fr-canvas-projects-5a4e3992.json",
+					"receipt_sha256": "3c29f09c298e0ce39f4f7cb4b00a11867bae6f9d82c15e9eb2285c039329b894",
+					"scope": "PR #1927 linked-projects canvas copy (17 keys)",
+					"note": "PR #1927 translation lane: coder / anthropic/claude-opus-5-5; independent audit by reviewer 3f535aabaa26 / anthropic/claude-opus-5-5"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.canvas.projects",
+			"source_sha256": "542a9cb926396ffde3704dc4fb2ac4f2bc17db5fd2101a3edf5af53e48cbf00b",
+			"target_sha256": "6190563060bd5e0c10e7e05099470bf0c49b61c54b1f3234b9e64f0b6fbfa0bb",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-15"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-15",
+					"result": "clean",
+					"instance": "pr1927-es-canvas-projects-55c83fb6",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1927-es-canvas-projects-55c83fb6.json",
+					"receipt_sha256": "14a57e9109426b0f3f29e12ae58af7f272c008f0724b04a968a3b43621f277de",
+					"scope": "PR #1927 linked-projects canvas copy (17 keys)",
+					"note": "PR #1927 translation lane: coder / anthropic/claude-opus-5-5; independent audit by reviewer 3f535aabaa26 / anthropic/claude-opus-5-5"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.canvas.projects",
+			"source_sha256": "542a9cb926396ffde3704dc4fb2ac4f2bc17db5fd2101a3edf5af53e48cbf00b",
+			"target_sha256": "6376d876171d4b2de4d40534108d176ee7ce74b02edd448cc42e97ffa69ae543",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-15"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-15",
+					"result": "clean",
+					"instance": "pr1927-zh-cn-canvas-projects-40149c0a",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1927-zh-cn-canvas-projects-40149c0a.json",
+					"receipt_sha256": "5cb63494d84cec93a9515998b5ca37b6c873bdc2047c8bda93df962142930ead",
+					"scope": "PR #1927 linked-projects canvas copy (17 keys)",
+					"note": "PR #1927 translation lane: coder / anthropic/claude-opus-5-5; independent audit by reviewer 3f535aabaa26 / anthropic/claude-opus-5-5"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.canvas.projects",
+			"source_sha256": "542a9cb926396ffde3704dc4fb2ac4f2bc17db5fd2101a3edf5af53e48cbf00b",
+			"target_sha256": "6623301168e7b6ae1f53b2b62f55d656517880e2ab634cb8bba1b6eee25c2252",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-15"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-15",
+					"result": "clean-with-findings",
+					"instance": "pr1927-ru-canvas-projects-c8a702c3",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1927-ru-canvas-projects-c8a702c3.json",
+					"receipt_sha256": "f8d891d02dcb824ea0e10a34cc94b2ca5d0abb52588dfba4b7d6270413008529",
+					"scope": "PR #1927 linked-projects canvas copy (17 keys)",
+					"note": "PR #1927 translation lane: coder / anthropic/claude-opus-5-5; independent audit by reviewer 3f535aabaa26 / anthropic/claude-opus-5-5 (fix b23ea041b8)"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.canvas.projects",
+			"source_sha256": "542a9cb926396ffde3704dc4fb2ac4f2bc17db5fd2101a3edf5af53e48cbf00b",
+			"target_sha256": "4358ad6161291900d0515d3a1c6cb0c629c86f011a609ec9e1942e2bd89910cb",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-15"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-15",
+					"result": "clean-with-findings",
+					"instance": "pr1927-vi-canvas-projects-4b26f339",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1927-vi-canvas-projects-4b26f339.json",
+					"receipt_sha256": "66c511e92960200c06848b49a226eec2af38969ada63e4b0ef64987dd3b7802e",
+					"scope": "PR #1927 linked-projects canvas copy (17 keys)",
+					"note": "PR #1927 translation lane: coder / anthropic/claude-opus-5-5; independent audit by reviewer 3f535aabaa26 / anthropic/claude-opus-5-5 (fix b23ea041b8)"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.canvas.projects",
+			"source_sha256": "542a9cb926396ffde3704dc4fb2ac4f2bc17db5fd2101a3edf5af53e48cbf00b",
+			"target_sha256": "188b229d6c490f0e8c889588adf3c14a38ae78febc275595e21c6fdc8072eb3e",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-15"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-15",
+					"result": "clean",
+					"instance": "pr1927-ur-canvas-projects-6b55eb05",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1927-ur-canvas-projects-6b55eb05.json",
+					"receipt_sha256": "b63db0faa1695dbc59ce3931f8ac2fb19c76ce24292a99988924aaa47a4d617c",
+					"scope": "PR #1927 linked-projects canvas copy (17 keys)",
+					"note": "PR #1927 translation lane: coder / anthropic/claude-opus-5-5; independent audit by reviewer 3f535aabaa26 / anthropic/claude-opus-5-5"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.canvas.projects",
+			"source_sha256": "542a9cb926396ffde3704dc4fb2ac4f2bc17db5fd2101a3edf5af53e48cbf00b",
+			"target_sha256": "92a83754ae56ac57315e6b0444f858921553d44bdd645fe69176c414606f2e29",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-15"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-15",
+					"result": "clean",
+					"instance": "pr1927-hi-canvas-projects-1d4625a1",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1927-hi-canvas-projects-1d4625a1.json",
+					"receipt_sha256": "5a566adfdd761485cdad618bfd1e5dccba0e9c723f68ed47a185e8eee62843c7",
+					"scope": "PR #1927 linked-projects canvas copy (17 keys)",
+					"note": "PR #1927 translation lane: coder / anthropic/claude-opus-5-5; independent audit by reviewer 3f535aabaa26 / anthropic/claude-opus-5-5"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }

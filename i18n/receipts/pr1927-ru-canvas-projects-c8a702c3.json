@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, of all 17 keys of the new PR #1927 namespace ui.canvas.projects (chat canvas linked-projects view)",
+  "locale": "ru",
+  "namespace": "ui.canvas.projects",
+  "pr": 1927,
+  "date": "2026-11-15",
+  "head": "b23ea041b84e1fe947f35ae994432f37ed9c7179",
+  "instance": "pr1927-ru-canvas-projects-c8a702c3",
+  "auditor": {
+    "agent": "reviewer",
+    "role": "independent i18n auditor (team lopdev, reviewer role, UI i18n audit r1); not the translator (coder, anthropic/claude-opus-5-5, per the PR #1927 body)",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session 3f535aabaa26: a different session and agent from the translator (coder lane that authored 0c1eb01b89); same served model family anthropic/claude-opus-5-5 as stated by this session's harness system prompt, no fallback. No MT used. Disclosure: the fix line in b23ea041b8 was written by this auditor and is bound here, not independently re-reviewed.",
+    "instance": "pr1927-ru-canvas-projects-c8a702c3"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "id": "I2",
+      "severity": "MINOR",
+      "key": "ui.canvas.projects.unavailable_description",
+      "issue": "runtime rendered 'среда выполнения' and 'не умеет показывать' (colloquial 'doesn't know how'); the ru style guide's wave-2 recorded call is «рантайм» (13 uses in the ru catalogues).",
+      "disposition": "fixed in b23ea041b8 ('Эта среда выполнения не умеет показывать' -> 'Этот рантайм не может показать')"
+    }
+  ],
+  "binding": "Verified at b23ea041b84e: target src/i18n/catalogues/ru/ui.canvas.projects.json (sha256 6623301168e7b6ae1f53b2b62f55d656517880e2ab634cb8bba1b6eee25c2252); English src/i18n/catalogues/en/ui.canvas.projects.json (sha256 542a9cb926396ffde3704dc4fb2ac4f2bc17db5fd2101a3edf5af53e48cbf00b); context sidecar sha256 b079d6897d45edb1175703d866f2be0073943f8dcc34f5896bfa216f57fec2d0. Reference: core glossary ~/local-operator i18n/glossary.md @ origin/main cb85fcb962 (sha256 5de3929198c3…); style guide i18n/style-guides/ru.md (sha256 f20e1cafaf70). Checks (python): key set equals English; ICU argument names (state, count, name) and select arms (open/other) preserved; plural arms = one/few/many/other per glossary §3; ::group-off number skeleton kept; values NFC; no Cf characters. Glossary проект/сессия/агент; «Связанные сессии» matches linked_sessions; разговор matches the catalogue's conversation term; one/few/many/other arms present. Not done: rendered fit/pseudo-localization frames (no browser tool in this lane; PR evidence frames are English). Values: segment = \"Проекты\" (7/8 chars) | heading = \"Связанные проекты\" (17/15 chars) | back = \"Связанные проекты\" (17/15 chars) | rail_tooltip = \"{state, select, open {Закрыть связанные проекты} other {Открыть связанные проекты}}\" (83/74 chars) | rail_tooltip_count = \"{state, select, open {Закрыть связанные проекты} other {Открыть связанные проекты}} — {count, plural, one {{count, number, ::group-off} проект} few {{count, number, ::group-off} проекта} many {{count, number, ::group-off} проектов} other {{count, number, ::group-off} проекта}}\" (277/182 chars) | rail_aria = \"Связанные проекты\" (17/15 chars) | rail_aria_count = \"Связанные проекты, {count, plural, one {{count, number, ::group-off} проект} few {{count, number, ::group-off} проекта} many {{count, number, ::group-off} проектов} other {{count, number, ::group-off} проекта}}\" (210/122 chars) | loading = \"Загрузка связанных проектов\" (27/23 chars) | empty_title = \"Нет связанных проектов\" (22/18 chars) | empty_description = \"Здесь появляются проекты, с которыми связан этот разговор. Свяжите его в разделе «Связанные сессии» проекта или попросите агента сделать это.\" (141/131 chars) | draft_title = \"Разговора пока нет\" (18/19 chars) | draft_description = \"Отправьте первое сообщение, затем свяжите этот разговор с проектом, чтобы увидеть его здесь.\" (92/78 chars) | unavailable_title = \"Связанные проекты недоступны\" (28/32 chars) | unavailable_description = \"Этот рантайм не может показать проекты разговора. Обновите Local Operator, чтобы видеть их здесь.\" (97/90 chars) | error_title = \"Не удалось загрузить связанные проекты\" (38/35 chars) | try_again = \"Повторить\" (9/9 chars) | open_project = \"Открыть {name}\" (14/11 chars)",
+  "scope": "ui.canvas.projects for ru: 17 PR #1927 keys at branch head b23ea041b84e",
+  "revisions": {
+    "head": "b23ea041b84e1fe947f35ae994432f37ed9c7179"
+  },
+  "en_sha256": "542a9cb926396ffde3704dc4fb2ac4f2bc17db5fd2101a3edf5af53e48cbf00b",
+  "context_sha256": "b079d6897d45edb1175703d866f2be0073943f8dcc34f5896bfa216f57fec2d0",
+  "target_sha256": "6623301168e7b6ae1f53b2b62f55d656517880e2ab634cb8bba1b6eee25c2252",
+  "sha256": {
+    "ru": "6623301168e7b6ae1f53b2b62f55d656517880e2ab634cb8bba1b6eee25c2252",
+    "en": "542a9cb926396ffde3704dc4fb2ac4f2bc17db5fd2101a3edf5af53e48cbf00b"
+  }
+}
