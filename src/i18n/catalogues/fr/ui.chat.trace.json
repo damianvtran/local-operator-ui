@@ -18,6 +18,8 @@
 	"ui.chat.trace.action.write.running": "Écriture de",
 	"ui.chat.trace.action.write.settled": "Écrit",
 	"ui.chat.trace.object.file_count": "{count, plural, one {{count, number, ::group-off} fichier} many {{count, number, ::group-off} de fichiers} other {{count, number, ::group-off} fichiers}}",
+	"ui.chat.trace.reasoning.label": "Raisonnement",
+	"ui.chat.trace.reasoning.with_duration": "{label} pendant {duration}",
 	"ui.chat.trace.send.delivery.failed.note": "Rien n’a été remis. Corrigez la cause indiquée ci-dessous, ou réessayez l’envoi.",
 	"ui.chat.trace.send.delivery.failed.verb": "Tenté",
 	"ui.chat.trace.send.delivery.failed.word": "non remis",

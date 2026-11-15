@@ -67,5 +67,12 @@
 	"ui.agents.detail.action.creating": "بنایا جا رہا ہے…",
 	"ui.agents.detail.action.discard_new_agent": "یہ نیا ایجنٹ رد کریں؟",
 	"ui.agents.detail.create.description_duplicate": "یہ {name} کی نقل ہے۔ یہ ایک الگ ایجنٹ ہے: اسے بدلنے سے اصل ایجنٹ نہیں بدلتا۔",
-	"ui.agents.detail.create.description_new": "دوبارہ استعمال کے قابل ہدایات جو ایجنٹ کمانڈز، ذیلی ایجنٹس اور ٹیمیں مشترکہ طور پر استعمال کرتی ہیں۔ چیٹس الگ رہتی ہیں۔"
+	"ui.agents.detail.create.description_new": "دوبارہ استعمال کے قابل ہدایات جو ایجنٹ کمانڈز، ذیلی ایجنٹس اور ٹیمیں مشترکہ طور پر استعمال کرتی ہیں۔ چیٹس الگ رہتی ہیں۔",
+	"ui.agents.detail.create.error_generic": "ایجنٹ نہیں بنایا جا سکا۔",
+	"ui.agents.detail.create.error_instructions_required": "ایجنٹ کی ہدایات درج کریں۔",
+	"ui.agents.detail.create.error_name_grammar": "نام میں اسپیس یا سلیش نہیں ہو سکتے۔",
+	"ui.agents.detail.create.error_name_required": "ایجنٹ کا نام درج کریں۔",
+	"ui.agents.detail.create.error_name_taken": "“{name}” نام کا ایجنٹ پہلے سے موجود ہے۔ کوئی اور نام چنیں، یا موجودہ ایجنٹ کھول کر اس کا نام بدل دیں۔",
+	"ui.agents.detail.create.title_duplicate": "نئے ایجنٹ کے طور پر نقل بنائیں",
+	"ui.agents.detail.create.title_new": "نیا ایجنٹ"
 }
