@@ -51,6 +51,7 @@ import enUiBrowser from "./catalogues/en/ui.browser.json";
 import enUiBrowserMediaAccess from "./catalogues/en/ui.browser.media_access.json";
 import enUiBrowserMediaPermission from "./catalogues/en/ui.browser.media_permission.json";
 import enUiCanvas from "./catalogues/en/ui.canvas.json";
+import enUiCanvasProjects from "./catalogues/en/ui.canvas.projects.json";
 import enUiChatAnalytics from "./catalogues/en/ui.chat.analytics.json";
 import enUiChatApproval from "./catalogues/en/ui.chat.approval.json";
 import enUiChatAside from "./catalogues/en/ui.chat.aside.json";
@@ -218,6 +219,7 @@ import esUiBrowser from "./catalogues/es/ui.browser.json";
 import esUiBrowserMediaAccess from "./catalogues/es/ui.browser.media_access.json";
 import esUiBrowserMediaPermission from "./catalogues/es/ui.browser.media_permission.json";
 import esUiCanvas from "./catalogues/es/ui.canvas.json";
+import esUiCanvasProjects from "./catalogues/es/ui.canvas.projects.json";
 import esUiChatAnalytics from "./catalogues/es/ui.chat.analytics.json";
 import esUiChatApproval from "./catalogues/es/ui.chat.approval.json";
 import esUiChatAside from "./catalogues/es/ui.chat.aside.json";
@@ -385,6 +387,7 @@ import frUiBrowser from "./catalogues/fr/ui.browser.json";
 import frUiBrowserMediaAccess from "./catalogues/fr/ui.browser.media_access.json";
 import frUiBrowserMediaPermission from "./catalogues/fr/ui.browser.media_permission.json";
 import frUiCanvas from "./catalogues/fr/ui.canvas.json";
+import frUiCanvasProjects from "./catalogues/fr/ui.canvas.projects.json";
 import frUiChatAnalytics from "./catalogues/fr/ui.chat.analytics.json";
 import frUiChatApproval from "./catalogues/fr/ui.chat.approval.json";
 import frUiChatAside from "./catalogues/fr/ui.chat.aside.json";
@@ -552,6 +555,7 @@ import hiUiBrowser from "./catalogues/hi/ui.browser.json";
 import hiUiBrowserMediaAccess from "./catalogues/hi/ui.browser.media_access.json";
 import hiUiBrowserMediaPermission from "./catalogues/hi/ui.browser.media_permission.json";
 import hiUiCanvas from "./catalogues/hi/ui.canvas.json";
+import hiUiCanvasProjects from "./catalogues/hi/ui.canvas.projects.json";
 import hiUiChatAnalytics from "./catalogues/hi/ui.chat.analytics.json";
 import hiUiChatApproval from "./catalogues/hi/ui.chat.approval.json";
 import hiUiChatAside from "./catalogues/hi/ui.chat.aside.json";
@@ -719,6 +723,7 @@ import ruUiBrowser from "./catalogues/ru/ui.browser.json";
 import ruUiBrowserMediaAccess from "./catalogues/ru/ui.browser.media_access.json";
 import ruUiBrowserMediaPermission from "./catalogues/ru/ui.browser.media_permission.json";
 import ruUiCanvas from "./catalogues/ru/ui.canvas.json";
+import ruUiCanvasProjects from "./catalogues/ru/ui.canvas.projects.json";
 import ruUiChatAnalytics from "./catalogues/ru/ui.chat.analytics.json";
 import ruUiChatApproval from "./catalogues/ru/ui.chat.approval.json";
 import ruUiChatAside from "./catalogues/ru/ui.chat.aside.json";
@@ -886,6 +891,7 @@ import urUiBrowser from "./catalogues/ur/ui.browser.json";
 import urUiBrowserMediaAccess from "./catalogues/ur/ui.browser.media_access.json";
 import urUiBrowserMediaPermission from "./catalogues/ur/ui.browser.media_permission.json";
 import urUiCanvas from "./catalogues/ur/ui.canvas.json";
+import urUiCanvasProjects from "./catalogues/ur/ui.canvas.projects.json";
 import urUiChatAnalytics from "./catalogues/ur/ui.chat.analytics.json";
 import urUiChatApproval from "./catalogues/ur/ui.chat.approval.json";
 import urUiChatAside from "./catalogues/ur/ui.chat.aside.json";
@@ -1053,6 +1059,7 @@ import viUiBrowser from "./catalogues/vi/ui.browser.json";
 import viUiBrowserMediaAccess from "./catalogues/vi/ui.browser.media_access.json";
 import viUiBrowserMediaPermission from "./catalogues/vi/ui.browser.media_permission.json";
 import viUiCanvas from "./catalogues/vi/ui.canvas.json";
+import viUiCanvasProjects from "./catalogues/vi/ui.canvas.projects.json";
 import viUiChatAnalytics from "./catalogues/vi/ui.chat.analytics.json";
 import viUiChatApproval from "./catalogues/vi/ui.chat.approval.json";
 import viUiChatAside from "./catalogues/vi/ui.chat.aside.json";
@@ -1220,6 +1227,7 @@ import zhCNUiBrowser from "./catalogues/zh-CN/ui.browser.json";
 import zhCNUiBrowserMediaAccess from "./catalogues/zh-CN/ui.browser.media_access.json";
 import zhCNUiBrowserMediaPermission from "./catalogues/zh-CN/ui.browser.media_permission.json";
 import zhCNUiCanvas from "./catalogues/zh-CN/ui.canvas.json";
+import zhCNUiCanvasProjects from "./catalogues/zh-CN/ui.canvas.projects.json";
 import zhCNUiChatAnalytics from "./catalogues/zh-CN/ui.chat.analytics.json";
 import zhCNUiChatApproval from "./catalogues/zh-CN/ui.chat.approval.json";
 import zhCNUiChatAside from "./catalogues/zh-CN/ui.chat.aside.json";
@@ -1390,6 +1398,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiBrowserMediaAccess,
 	...enUiBrowserMediaPermission,
 	...enUiCanvas,
+	...enUiCanvasProjects,
 	...enUiChatAnalytics,
 	...enUiChatApproval,
 	...enUiChatAside,
@@ -1565,6 +1574,7 @@ export const bundledCatalogues: Readonly<
 		...esUiBrowserMediaAccess,
 		...esUiBrowserMediaPermission,
 		...esUiCanvas,
+		...esUiCanvasProjects,
 		...esUiChatAnalytics,
 		...esUiChatApproval,
 		...esUiChatAside,
@@ -1734,6 +1744,7 @@ export const bundledCatalogues: Readonly<
 		...frUiBrowserMediaAccess,
 		...frUiBrowserMediaPermission,
 		...frUiCanvas,
+		...frUiCanvasProjects,
 		...frUiChatAnalytics,
 		...frUiChatApproval,
 		...frUiChatAside,
@@ -1903,6 +1914,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiBrowserMediaAccess,
 		...hiUiBrowserMediaPermission,
 		...hiUiCanvas,
+		...hiUiCanvasProjects,
 		...hiUiChatAnalytics,
 		...hiUiChatApproval,
 		...hiUiChatAside,
@@ -2072,6 +2084,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiBrowserMediaAccess,
 		...ruUiBrowserMediaPermission,
 		...ruUiCanvas,
+		...ruUiCanvasProjects,
 		...ruUiChatAnalytics,
 		...ruUiChatApproval,
 		...ruUiChatAside,
@@ -2241,6 +2254,7 @@ export const bundledCatalogues: Readonly<
 		...urUiBrowserMediaAccess,
 		...urUiBrowserMediaPermission,
 		...urUiCanvas,
+		...urUiCanvasProjects,
 		...urUiChatAnalytics,
 		...urUiChatApproval,
 		...urUiChatAside,
@@ -2410,6 +2424,7 @@ export const bundledCatalogues: Readonly<
 		...viUiBrowserMediaAccess,
 		...viUiBrowserMediaPermission,
 		...viUiCanvas,
+		...viUiCanvasProjects,
 		...viUiChatAnalytics,
 		...viUiChatApproval,
 		...viUiChatAside,
@@ -2579,6 +2594,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiBrowserMediaAccess,
 		...zhCNUiBrowserMediaPermission,
 		...zhCNUiCanvas,
+		...zhCNUiCanvasProjects,
 		...zhCNUiChatAnalytics,
 		...zhCNUiChatApproval,
 		...zhCNUiChatAside,
@@ -4474,6 +4490,26 @@ export type MessageParams = {
 	"ui.canvas.wysiwyg_markdown_editor.strikethrough": undefined;
 	"ui.canvas.wysiwyg_markdown_editor.undo": undefined;
 	"ui.canvas.wysiwyg_markdown_editor.undo_ctrl_z": undefined;
+	"ui.canvas.projects.back": undefined;
+	"ui.canvas.projects.draft_description": undefined;
+	"ui.canvas.projects.draft_title": undefined;
+	"ui.canvas.projects.empty_description": undefined;
+	"ui.canvas.projects.empty_title": undefined;
+	"ui.canvas.projects.error_title": undefined;
+	"ui.canvas.projects.heading": undefined;
+	"ui.canvas.projects.loading": undefined;
+	"ui.canvas.projects.open_project": { name: string };
+	"ui.canvas.projects.rail_aria": undefined;
+	"ui.canvas.projects.rail_aria_count": { count: number };
+	"ui.canvas.projects.rail_tooltip": { state: string };
+	"ui.canvas.projects.rail_tooltip_count": { state: string; count: number };
+	"ui.canvas.projects.segment": undefined;
+	"ui.canvas.projects.try_again": undefined;
+	"ui.canvas.projects.unavailable_description": undefined;
+	"ui.canvas.projects.unavailable_title": undefined;
+	"ui.canvas.projects.unpaired_description": undefined;
+	"ui.canvas.projects.unreachable_description": undefined;
+	"ui.canvas.projects.unreachable_title": undefined;
 	"ui.chat.analytics.filters.top_level_only": undefined;
 	"ui.chat.analytics.search.clear": undefined;
 	"ui.chat.analytics.search.sessions": undefined;
@@ -5581,6 +5617,7 @@ export type MessageParams = {
 	"ui.chat.header_menu.close_canvas": undefined;
 	"ui.chat.header_menu.close_code_review": undefined;
 	"ui.chat.header_menu.close_console": undefined;
+	"ui.chat.header_menu.close_linked_projects": undefined;
 	"ui.chat.header_menu.default_description": undefined;
 	"ui.chat.header_menu.keep_chat": undefined;
 	"ui.chat.header_menu.make_temporary": undefined;
@@ -5589,6 +5626,7 @@ export type MessageParams = {
 	"ui.chat.header_menu.open_canvas": undefined;
 	"ui.chat.header_menu.open_code_review": undefined;
 	"ui.chat.header_menu.open_console": undefined;
+	"ui.chat.header_menu.open_linked_projects": undefined;
 	"ui.chat.header_menu.rename_failed": undefined;
 	"ui.chat.interrupt.idle": undefined;
 	"ui.chat.interrupt.idle_disputed": undefined;
@@ -12579,6 +12617,7 @@ export type MessageParams = {
 	"ui.settings.shortcuts.action.open_canvas": undefined;
 	"ui.settings.shortcuts.action.open_code_review": undefined;
 	"ui.settings.shortcuts.action.open_console": undefined;
+	"ui.settings.shortcuts.action.open_linked_projects": undefined;
 	"ui.settings.shortcuts.action.open_run_details": undefined;
 	"ui.settings.shortcuts.capture.already_assigned": { label: string };
 	"ui.settings.shortcuts.capture.needs_modifier": undefined;
@@ -12649,6 +12688,7 @@ export type MessageParams = {
 	"ui.settings.shortcuts.row.code_review": undefined;
 	"ui.settings.shortcuts.row.console": undefined;
 	"ui.settings.shortcuts.row.execution": undefined;
+	"ui.settings.shortcuts.row.linked_projects": undefined;
 	"ui.settings.shortcuts.speech.primary": undefined;
 	"ui.settings.shortcuts.speech.push_to_talk_hint": undefined;
 	"ui.settings.shortcuts.speech.push_to_talk_hold": undefined;

@@ -9,6 +9,7 @@ import {
 	FilePlus,
 	FileText,
 	FileUp,
+	FolderKanban,
 	FolderOpen,
 	ListTree,
 	PanelRightClose,
@@ -36,6 +37,7 @@ import { CanvasContent } from "./canvas-content";
 import { EmptyState } from "./canvas-empty-state";
 import { CanvasFileViewer } from "./canvas-file-viewer";
 import { CanvasGoalsViewer } from "./canvas-goals-viewer";
+import { CanvasProjectsViewer } from "./canvas-projects-viewer";
 import {
 	CANVAS_DOCUMENT_PANEL_ID,
 	CANVAS_SELECTED_TAB_ID,
@@ -284,6 +286,25 @@ const VIEWS: {
 		},
 		tourTag: "canvas-goals-view-button",
 		Icon: Target,
+	},
+	/*
+	 * AFTER goals: "what you intended" widens to "the workstreams this chat is
+	 * part of" — the projects the conversation is linked to (operator,
+	 * 2026-11-15). `FolderKanban` is the Projects destination's own glyph in the
+	 * sidebar, so the segment and the place it mirrors read as one thing.
+	 *
+	 * NOT FILTERED BY CAPABILITY, unlike goals: the panel rail carries a door
+	 * straight to this view and the rail never changes shape (`panel-rail.tsx`,
+	 * D1), so a door must never lead to a view the switcher refuses. On an older
+	 * runtime the view itself says why it is empty.
+	 */
+	{
+		value: "projects",
+		get label() {
+			return t("ui.canvas.projects.segment");
+		},
+		tourTag: "canvas-projects-view-button",
+		Icon: FolderKanban,
 	},
 ];
 
@@ -1143,6 +1164,19 @@ const CanvasComponent: FC<CanvasProps> = ({
 					entries={goalHistory}
 					truncated={goalHistoryTruncated}
 					goalPresent={goalPresent}
+				/>
+			)}
+			{currentView === "projects" && (
+				/*
+				 * Keyed by session so a conversation switch remounts on THAT
+				 * conversation's own state; the open project lives in the canvas store
+				 * per conversation (round-1 U4), and the turn-end refresh is
+				 * `ChatContent`'s, so it runs with this view closed too (R1-3).
+				 */
+				<CanvasProjectsViewer
+					key={sessionId ?? "draft"}
+					sessionId={sessionId}
+					conversationId={conversationId}
 				/>
 			)}
 			{/* Placeholder if no conversation context for files or variables view */}

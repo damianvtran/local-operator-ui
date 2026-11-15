@@ -1,0 +1,22 @@
+{
+	"ui.canvas.projects.segment": "Proyectos",
+	"ui.canvas.projects.heading": "Proyectos vinculados",
+	"ui.canvas.projects.back": "Proyectos vinculados",
+	"ui.canvas.projects.rail_tooltip": "{state, select, open {Cerrar proyectos vinculados} other {Abrir proyectos vinculados}}",
+	"ui.canvas.projects.rail_tooltip_count": "{state, select, open {Cerrar proyectos vinculados} other {Abrir proyectos vinculados}} — {count, plural, one {{count, number, ::group-off} proyecto} many {{count, number, ::group-off} de proyectos} other {{count, number, ::group-off} proyectos}}",
+	"ui.canvas.projects.rail_aria": "Proyectos vinculados",
+	"ui.canvas.projects.rail_aria_count": "Proyectos vinculados, {count, plural, one {{count, number, ::group-off} proyecto} many {{count, number, ::group-off} de proyectos} other {{count, number, ::group-off} proyectos}}",
+	"ui.canvas.projects.loading": "Cargando proyectos vinculados",
+	"ui.canvas.projects.empty_title": "No hay proyectos vinculados",
+	"ui.canvas.projects.empty_description": "Aquí aparecen los proyectos a los que está vinculada esta conversación. Vincúlala desde la sección Sesiones vinculadas de un proyecto o pídele al agente que lo haga.",
+	"ui.canvas.projects.draft_title": "Aún no hay conversación",
+	"ui.canvas.projects.draft_description": "Envía un primer mensaje y vincula esta conversación a un proyecto para verlo aquí.",
+	"ui.canvas.projects.unavailable_title": "Los proyectos vinculados no están disponibles",
+	"ui.canvas.projects.unavailable_description": "Este runtime no puede listar los proyectos de una conversación. Actualiza Local Operator para verlos aquí.",
+	"ui.canvas.projects.unreachable_title": "No se puede conectar con el runtime",
+	"ui.canvas.projects.unreachable_description": "El runtime no respondió, así que no se pudieron leer los proyectos vinculados de esta conversación.",
+	"ui.canvas.projects.unpaired_description": "Esta app no está emparejada con el runtime, así que no puede leer los proyectos vinculados de esta conversación.",
+	"ui.canvas.projects.error_title": "No se pudieron cargar los proyectos vinculados",
+	"ui.canvas.projects.try_again": "Reintentar",
+	"ui.canvas.projects.open_project": "Abrir {name}"
+}

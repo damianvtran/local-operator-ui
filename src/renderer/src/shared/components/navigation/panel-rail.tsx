@@ -10,11 +10,18 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { displayChord } from "@shared/keymap/keymap-chord";
 import type { ActionId } from "@shared/keymap/keymap-registry";
 import { cn } from "@shared/lib/utils";
+import { useCanvasStore } from "@shared/store/canvas-store";
 import {
 	resolveDrawnRightSlotPane,
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
-import { FileText, GitPullRequest, Globe, SquareTerminal } from "lucide-react";
+import {
+	FileText,
+	FolderKanban,
+	GitPullRequest,
+	Globe,
+	SquareTerminal,
+} from "lucide-react";
 import {
 	type FC,
 	type KeyboardEvent as ReactKeyboardEvent,
@@ -38,6 +45,7 @@ import {
 	canvasRailLabels,
 	codeRailLabels,
 	consoleRailLabels,
+	projectsRailLabels,
 } from "./panel-rail-model";
 
 export type PanelRailProps = {
@@ -103,12 +111,25 @@ export type PanelRailProps = {
 	 * (design round 1, D5 / UX round 1, U6). Null when nothing needs attention.
 	 */
 	codeAttention: string | null;
+	/**
+	 * The canvas store's key for this conversation (the chat's `agentId`), or
+	 * null where there is no canvas (a story without one). The projects door
+	 * reads the canvas's view through it; see `PanelRailActionContext`.
+	 */
+	canvasConversationId?: string | null;
+	/**
+	 * How many projects this conversation is linked to (0 on a draft, before
+	 * the read, or on a backend without `projects_by_session`). A TOTAL, so it
+	 * rides the names and a quiet dot, never the accent count badge
+	 * (AGENTS.md: attention counts use the badge, totals use the subtle mark).
+	 */
+	linkedProjectCount?: number;
 };
 
 const ROW_KEYS = new Set(["ArrowUp", "ArrowDown", "Home", "End"]);
 
 /**
- * THE PANEL RAIL (#872, #896, #927): the six doors to the window's right slot, as one
+ * THE PANEL RAIL (#872, #896, #927): the seven doors to the window's right slot, as one
  * vertical column at the window's trailing edge.
  *
  * WHAT IT REPLACES. The Run details, Browser, Console and Canvas triggers lived in
@@ -135,7 +156,7 @@ const ROW_KEYS = new Set(["ArrowUp", "ArrowDown", "Home", "End"]);
  * borrowed pane back (#1079, the one sibling item that used to swap instead of
  * close).
  *
- * ALL SIX DOORS ARE ALWAYS PRESENT, AND A PANE THAT CANNOT ACT SAYS WHY (the
+ * ALL SEVEN DOORS ARE ALWAYS PRESENT, AND A PANE THAT CANNOT ACT SAYS WHY (the
  * always-visible rail, D1; it retires #872/#896/#927's "absent, not disabled"). A
  * door that came and went with the conversation's state flickered on every
  * conversation switch and every reconnect gap, and a user could not learn where
@@ -178,9 +199,22 @@ export const PanelRail: FC<PanelRailProps> = ({
 	codeOpened,
 	codeMentioned,
 	codeAttention,
+	canvasConversationId = null,
+	linkedProjectCount = 0,
 }) => {
 	useI18nLocale();
 	const drawn = useUiPreferencesStore(resolveDrawnRightSlotPane);
+	/*
+	 * THE CANVAS SLOT HAS TWO DOORS since the projects item (operator,
+	 * 2026-11-15), and exactly one is lit: Projects while the canvas is drawn on
+	 * its Projects view, Canvas for every other view. Read here because "which
+	 * view" is the canvas store's fact, not the slot's.
+	 */
+	const canvasOnProjects = useCanvasStore((state) =>
+		canvasConversationId
+			? state.conversations[canvasConversationId]?.viewMode === "projects"
+			: false,
+	);
 	/*
 	 * THE ASKS FLAGS ARE READ HERE because the item's lit state and tooltip verb
 	 * are the two readings of them (`askRailLabels` below); the other five items
@@ -202,7 +236,11 @@ export const PanelRail: FC<PanelRailProps> = ({
 		displayChord(actionId, bindings, platform);
 	/* The context the shared toggles read: the conversation the console opens in,
 	   and the queue this route's ask door opens. */
-	const actionContext: PanelRailActionContext = { sessionId, askScope };
+	const actionContext: PanelRailActionContext = {
+		sessionId,
+		askScope,
+		canvasConversationId,
+	};
 
 	const rootRef = useRef<HTMLDivElement | null>(null);
 	const [present, setPresent] = useState<ReadonlySet<string>>(
@@ -337,11 +375,10 @@ export const PanelRail: FC<PanelRailProps> = ({
 		consoleUnseenCount,
 		capFor("panel.console"),
 	);
-	const canvas = canvasRailLabels(
-		drawn === "canvas",
-		fileCount,
-		capFor("panel.canvas"),
-	);
+	const canvasLit = drawn === "canvas" && !canvasOnProjects;
+	const projectsLit = drawn === "canvas" && canvasOnProjects;
+	const canvas = canvasRailLabels(canvasLit, fileCount, capFor("panel.canvas"));
+	const projects = projectsRailLabels(projectsLit, linkedProjectCount);
 	const code = codeRailLabels(
 		drawn === "code",
 		codeOpened,
@@ -554,7 +591,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 					id="canvas"
 					label={canvas.tooltip}
 					ariaLabel={canvas.aria}
-					pressed={drawn === "canvas"}
+					pressed={canvasLit}
 					onClick={() => togglePanelRailItem("canvas", actionContext)}
 					data-tour-tag="open-canvas-button"
 				>
@@ -594,6 +631,30 @@ export const PanelRail: FC<PanelRailProps> = ({
 						<span
 							aria-hidden="true"
 							data-code-review-attention=""
+							className="absolute top-1 end-1 size-1.5 rounded-full bg-ink-muted"
+						/>
+					)}
+				</PanelRailItem>
+				<PanelRailItem
+					id="projects"
+					label={projects.tooltip}
+					ariaLabel={projects.aria}
+					/*
+					 * LIT ONLY ON THE PROJECTS VIEW (see `canvasOnProjects`): the canvas
+					 * item above is lit for every other view, so one slot never lights two
+					 * doors. ALWAYS PRESENT, like every door (D1): on a draft or an older
+					 * runtime the view it opens says why it is empty.
+					 */
+					pressed={projectsLit}
+					onClick={() => togglePanelRailItem("projects", actionContext)}
+					data-tour-tag="canvas-projects-trigger"
+				>
+					<FolderKanban aria-hidden={true} />
+					{linkedProjectCount > 0 && (
+						/* The canvas item's quiet total mark, for the same kind of fact. */
+						<span
+							aria-hidden="true"
+							data-linked-projects-mark=""
 							className="absolute top-1 end-1 size-1.5 rounded-full bg-ink-muted"
 						/>
 					)}

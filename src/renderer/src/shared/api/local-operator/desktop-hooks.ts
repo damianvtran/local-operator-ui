@@ -995,6 +995,16 @@ export type DesktopFeature =
 	 */
 	| "projects_force_done"
 	/**
+	 * `projects.for_session`: the projects one conversation is linked to
+	 * (`GET /v1/desktop/sessions/{id}/projects`), read by the chat canvas's
+	 * Projects view. ITS OWN KEY for the `projects_force_done` reason: the
+	 * Projects tab is complete without it. Absent means the canvas view (and
+	 * its rail door) stay present but SAY the runtime cannot list a
+	 * conversation's projects, and no request is sent - an older daemon 404s
+	 * the route.
+	 */
+	| "projects_by_session"
+	/**
 	 * Temporary chats: a conversation the core deletes after its idle window
 	 * (`temporary` on the row, `include_temporary` on the list, `temporary` on
 	 * create, `POST /v1/desktop/sessions/{id}/temporary`). Absent means no toggle,

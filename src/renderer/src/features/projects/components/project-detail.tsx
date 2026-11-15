@@ -66,7 +66,7 @@ import { useConversationInputStore } from "@shared/store/conversation-input-stor
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import type { FC } from "react";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { openConversation } from "../../chat/open-conversation";
 import { encodeAttachments } from "../../chat/utils/attachment-encode";
@@ -120,17 +120,70 @@ import { ProjectUpdates } from "./project-updates";
  */
 const PROJECT_NOT_FOUND_CODE = "project_not_found";
 
+/**
+ * The detail screen hosted OUTSIDE the Projects route — today the chat
+ * canvas's Projects view (operator, 2026-11-15: "essentially the same project
+ * details view component ... with the difference being that we don't need the
+ * component that sends a message to the agent since we're already viewing the
+ * chat").
+ *
+ * WHY A PROP AND NOT A COPY: the canvas must show the identical record —
+ * fields, milestones, update history, attachments and their lightbox — and a
+ * second composition of these blocks is exactly the drift the operator's
+ * "the same component" rules out. So the host changes only what assumes the
+ * `/projects` route:
+ *  - `onBack` replaces the `All projects` navigation (the header link, the
+ *    error state's escape, and the landing after a delete), because leaving
+ *    the chat for the Projects tab is not what "back" means inside the canvas;
+ *  - the quick-send family (`ProjectQuickSend` and each linked row's message
+ *    button) is omitted, because the conversation's own composer is on screen.
+ * Every other block renders through the same code path as the route.
+ */
+export type ProjectDetailEmbedding = {
+	/** Returns to the host's list (the canvas's linked projects). */
+	onBack: () => void;
+	/** The back link's label, already localized by the host. */
+	backLabel: string;
+	/**
+	 * Move keyboard focus to the back link once the record renders (canvas
+	 * round-1 U3): the host swaps its list for this screen, so the row that had
+	 * focus unmounts and focus would otherwise fall to <body>. Once per mount,
+	 * so a refetch or an inline save never yanks focus back to the top.
+	 */
+	focusOnMount?: boolean;
+};
+
 type ProjectDetailScreenProps = {
 	projectKey: string;
 	nowMs: number;
+	/** Set when hosted outside the Projects route; see {@link ProjectDetailEmbedding}. */
+	embedded?: ProjectDetailEmbedding;
 };
 
 export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 	projectKey,
 	nowMs,
+	embedded,
 }) => {
 	useI18nLocale();
 	const navigate = useNavigate();
+	/* The one "leave this record" door: the route's list, or the host's. */
+	const goBack = () => {
+		if (embedded) embedded.onBack();
+		else void navigate("/projects");
+	};
+	const backLabel =
+		embedded?.backLabel ?? t("ui.projects.project_detail.all_projects");
+	const focusedOnMount = useRef(false);
+	const wantsFocus = embedded?.focusOnMount === true;
+	const backLinkRef = useCallback(
+		(node: HTMLButtonElement | null) => {
+			if (!node || !wantsFocus || focusedOnMount.current) return;
+			focusedOnMount.current = true;
+			node.focus();
+		},
+		[wantsFocus],
+	);
 	const capabilities = useDesktopCapabilities();
 	/*
 	 * The team the `Managed by` line names, read the way every other human-read
@@ -206,12 +259,9 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 					<Button variant="secondary" onClick={() => void detail.refetch()}>
 						{t("ui.projects.project_detail.try_again")}
 					</Button>
-					<Button
-						variant="secondary"
-						onClick={() => void navigate("/projects")}
-					>
+					<Button variant="secondary" onClick={goBack}>
 						<ArrowLeft className="rtl:-scale-x-100" />
-						{t("ui.projects.project_detail.all_projects")}
+						{backLabel}
 					</Button>
 				</div>
 			</div>
@@ -415,16 +465,36 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 			<div className="mx-auto flex w-full max-w-200 flex-col gap-8">
 				<header className="flex flex-col gap-4">
 					<button
+						ref={backLinkRef}
 						type="button"
-						onClick={() => void navigate("/projects")}
+						onClick={goBack}
 						className="flex w-fit items-center gap-1.5 text-body-sm text-ink-muted hover:text-ink"
 					>
 						<ArrowLeft className="size-4 rtl:-scale-x-100" />
-						{t("ui.projects.project_detail.all_projects")}
+						{backLabel}
 					</button>
 
-					<div className="flex flex-wrap items-start justify-between gap-4">
-						<div className="flex min-w-0 flex-1 flex-wrap items-start gap-x-3 gap-y-2">
+					{/*
+					 * EMBEDDED, THE ACTIONS SIT UNDER THE TITLE (canvas round-1 D2). In the
+					 * chat canvas the content box is ~448px, and the non-wrapping actions
+					 * cluster (Request update + Delete, ~244px) left the title ~188px, so a
+					 * two-word name broke beside the buttons. Stacking gives the title the
+					 * full measure; the route keeps its side-by-side row unchanged.
+					 */}
+					<div
+						className={
+							embedded
+								? "flex flex-col items-start gap-3"
+								: "flex flex-wrap items-start justify-between gap-4"
+						}
+					>
+						<div
+							className={
+								embedded
+									? "flex w-full min-w-0 flex-wrap items-start gap-x-3 gap-y-2"
+									: "flex min-w-0 flex-1 flex-wrap items-start gap-x-3 gap-y-2"
+							}
+						>
 							{/*
 							 * THE IDENTITY BLOCK: the h1 and, under it, whichever of the
 							 * title/key pair is not the heading (`project-editors.tsx` owns
@@ -547,7 +617,8 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 					links={links}
 					busy={busy}
 					onStartSession={() => setStarting(true)}
-					onQuickSend={quickSend}
+					/* Omitted in the chat canvas: its own composer is the door. */
+					onQuickSend={embedded ? undefined : quickSend}
 					onLink={(sessionId) => {
 						void link
 							.mutateAsync({ key: project.id, sessionId })
@@ -621,7 +692,7 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 							confirmedName: typedName,
 						});
 						showSuccessToast(t("ui.projects.project_detail.project_deleted"));
-						void navigate("/projects");
+						goBack();
 					}}
 				/>
 

@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, of all 17 keys of the new PR #1927 namespace ui.canvas.projects (chat canvas linked-projects view)",
+  "locale": "vi",
+  "namespace": "ui.canvas.projects",
+  "pr": 1927,
+  "date": "2026-11-15",
+  "head": "b23ea041b84e1fe947f35ae994432f37ed9c7179",
+  "instance": "pr1927-vi-canvas-projects-4b26f339",
+  "auditor": {
+    "agent": "reviewer",
+    "role": "independent i18n auditor (team lopdev, reviewer role, UI i18n audit r1); not the translator (coder, anthropic/claude-opus-5-5, per the PR #1927 body)",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session 3f535aabaa26: a different session and agent from the translator (coder lane that authored 0c1eb01b89); same served model family anthropic/claude-opus-5-5 as stated by this session's harness system prompt, no fallback. No MT used. Disclosure: the fix line in b23ea041b8 was written by this auditor and is bound here, not independently re-reviewed.",
+    "instance": "pr1927-vi-canvas-projects-4b26f339"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "id": "I1",
+      "severity": "MINOR",
+      "key": "ui.canvas.projects.empty_description",
+      "issue": "agent rendered 'tác tử'; the core glossary row 'agent' fixes vi 'tác nhân' and the vi catalogues use it 619 times vs this single 'tác tử'.",
+      "disposition": "fixed in b23ea041b8 ('nhờ tác tử liên kết' -> 'nhờ tác nhân liên kết')"
+    }
+  ],
+  "binding": "Verified at b23ea041b84e: target src/i18n/catalogues/vi/ui.canvas.projects.json (sha256 4358ad6161291900d0515d3a1c6cb0c629c86f011a609ec9e1942e2bd89910cb); English src/i18n/catalogues/en/ui.canvas.projects.json (sha256 542a9cb926396ffde3704dc4fb2ac4f2bc17db5fd2101a3edf5af53e48cbf00b); context sidecar sha256 b079d6897d45edb1175703d866f2be0073943f8dcc34f5896bfa216f57fec2d0. Reference: core glossary ~/local-operator i18n/glossary.md @ origin/main cb85fcb962 (sha256 5de3929198c3…); style guide i18n/style-guides/vi.md (sha256 99eed3b6f9b6). Checks (python): key set equals English; ICU argument names (state, count, name) and select arms (open/other) preserved; plural arms = other per glossary §3; ::group-off number skeleton kept; values NFC; no Cf characters. dự án, phiên (Phiên liên kết matches linked_sessions), cuộc trò chuyện, runtime kept English per vi guide, other-only plural. Not done: rendered fit/pseudo-localization frames (no browser tool in this lane; PR evidence frames are English). Values: segment = \"Dự án\" (5/8 chars) | heading = \"Dự án liên kết\" (14/15 chars) | back = \"Dự án liên kết\" (14/15 chars) | rail_tooltip = \"{state, select, open {Đóng dự án liên kết} other {Mở dự án liên kết}}\" (69/74 chars) | rail_tooltip_count = \"{state, select, open {Đóng dự án liên kết} other {Mở dự án liên kết}} — {count, plural, other {{count, number, ::group-off} dự án}}\" (131/182 chars) | rail_aria = \"Dự án liên kết\" (14/15 chars) | rail_aria_count = \"Dự án liên kết, {count, plural, other {{count, number, ::group-off} dự án}}\" (75/122 chars) | loading = \"Đang tải dự án liên kết\" (23/23 chars) | empty_title = \"Chưa có dự án liên kết\" (22/18 chars) | empty_description = \"Các dự án mà cuộc trò chuyện này được liên kết sẽ hiển thị ở đây. Hãy liên kết từ mục Phiên liên kết của một dự án, hoặc nhờ tác nhân liên kết.\" (143/131 chars) | draft_title = \"Chưa có cuộc trò chuyện\" (23/19 chars) | draft_description = \"Gửi tin nhắn đầu tiên, rồi liên kết cuộc trò chuyện này với một dự án để xem nó ở đây.\" (86/78 chars) | unavailable_title = \"Không dùng được dự án liên kết\" (30/32 chars) | unavailable_description = \"Runtime này không thể liệt kê dự án của một cuộc trò chuyện. Hãy cập nhật Local Operator để xem chúng ở đây.\" (108/90 chars) | error_title = \"Không thể tải dự án liên kết\" (28/35 chars) | try_again = \"Thử lại\" (7/9 chars) | open_project = \"Mở {name}\" (9/11 chars)",
+  "scope": "ui.canvas.projects for vi: 17 PR #1927 keys at branch head b23ea041b84e",
+  "revisions": {
+    "head": "b23ea041b84e1fe947f35ae994432f37ed9c7179"
+  },
+  "en_sha256": "542a9cb926396ffde3704dc4fb2ac4f2bc17db5fd2101a3edf5af53e48cbf00b",
+  "context_sha256": "b079d6897d45edb1175703d866f2be0073943f8dcc34f5896bfa216f57fec2d0",
+  "target_sha256": "4358ad6161291900d0515d3a1c6cb0c629c86f011a609ec9e1942e2bd89910cb",
+  "sha256": {
+    "vi": "4358ad6161291900d0515d3a1c6cb0c629c86f011a609ec9e1942e2bd89910cb",
+    "en": "542a9cb926396ffde3704dc4fb2ac4f2bc17db5fd2101a3edf5af53e48cbf00b"
+  }
+}

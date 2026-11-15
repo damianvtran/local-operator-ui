@@ -2,6 +2,7 @@ import "../../../styles/index.css";
 
 import { deriveRunDetails } from "@features/chat/components/run-details/run-detail-model";
 import * as fixtures from "@features/chat/components/run-details/run-details.fixtures";
+import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import { type FC, useEffect, useLayoutEffect } from "react";
@@ -36,6 +37,9 @@ export default meta;
 
 type Story = StoryObj;
 
+/** The canvas-store key the rail frames read the canvas's view under. */
+const RAIL_STORY_CANVAS_KEY = "rail-story-conversation";
+
 type OpenFlag =
 	| "isRunPanelOpen"
 	| "isBrowserPaneOpen"
@@ -61,10 +65,15 @@ const Rail: FC<{
 	codeOpened?: number;
 	codeMentioned?: number;
 	codeAttention?: string | null;
+	/** Linked projects for the conversation (the projects door's quiet mark). */
+	linkedProjectCount?: number;
+	/** Draw the canvas on its Projects view, so the projects door is the lit one. */
+	canvasOnProjects?: boolean;
 	/*
-	 * The frame's height, defaulting to 220: the six-door rail is 6 x 32px items +
-	 * 5 x 4px gaps + the container's 4px top padding (216), and a clipped sixth item
-	 * would be a frame of a layout the app does not have.
+	 * The frame's height, defaulting to 256: the seven-door rail (linked projects
+	 * appended, 2026-11-15) is 7 x 32px items + 6 x 4px gaps + the container's 4px
+	 * top padding (252), and a clipped seventh item would be a frame of a layout
+	 * the app does not have.
 	 */
 	height?: number;
 	/*
@@ -88,7 +97,9 @@ const Rail: FC<{
 	codeOpened = 0,
 	codeMentioned = 0,
 	codeAttention = null,
-	height = 220,
+	linkedProjectCount = 0,
+	canvasOnProjects = false,
+	height = 256,
 	frameWidth = 132,
 }) => {
 	useLayoutEffect(() => {
@@ -114,6 +125,14 @@ const Rail: FC<{
 				isAskDrawerOpen: false,
 			});
 	}, [open, askScope]);
+	useLayoutEffect(() => {
+		useCanvasStore
+			.getState()
+			.setViewMode(
+				RAIL_STORY_CANVAS_KEY,
+				canvasOnProjects ? "projects" : "documents",
+			);
+	}, [canvasOnProjects]);
 	/*
 	 * `focusVisible: true` is what makes `:focus-visible` match for a script-focused
 	 * control (Chromium's heuristic treats an unprompted `.focus()` as pointer
@@ -145,6 +164,8 @@ const Rail: FC<{
 				codeOpened={codeOpened}
 				codeMentioned={codeMentioned}
 				codeAttention={codeAttention}
+				canvasConversationId={RAIL_STORY_CANVAS_KEY}
+				linkedProjectCount={linkedProjectCount}
 			/>
 		</div>
 	);
@@ -202,6 +223,21 @@ export const ConsoleOpen: Story = {
 };
 export const CanvasOpen: Story = {
 	render: () => <Rail open="isCanvasOpen" fileCount={3} />,
+};
+/** The conversation is linked to two projects: the projects door's quiet total mark. */
+export const ProjectsLinked: Story = {
+	render: () => <Rail linkedProjectCount={2} />,
+};
+/** The canvas drawn on its Projects view: the projects door is lit, canvas is not. */
+export const ProjectsOpen: Story = {
+	render: () => (
+		<Rail
+			open="isCanvasOpen"
+			fileCount={3}
+			linkedProjectCount={2}
+			canvasOnProjects
+		/>
+	),
 };
 
 /**
