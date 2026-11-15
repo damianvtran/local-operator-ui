@@ -2457,6 +2457,15 @@
 		},
 		"note": "Muted status line under a message the sender sent. The recipient agent's own moderation declined it; this is NOT the sender's error and must not sound accusatory or alarming. Keep 'their' referring to the recipient agent/owner. The parenthetical is a hedged, coarse category ('looked like a request outside what this agent handles'): keep the hedge ('looked like'), never state it as a verdict."
 	},
+	"ui.teamBridge.delivery.not_delivered": {
+		"role": "message delivery status line",
+		"tone": "neutral, factual",
+		"length": "One line; may wrap",
+		"placeholders": {
+			"recipient": "the recipient's full display label, already composed exactly as the conversation shows it: an agent with its owner (\"Aida (Ben Tran)\") or an unnamed agent (\"Ben Tran's chief of staff\"). Never add the owner again around it."
+		},
+		"note": "Muted line under a message, shown ONLY to the person who sent it, when one recipient did not get it. Deliberately says nothing about why: never mention moderation, refusal, screening, blocking or any reason, and give no advice. The recipient's owner sees a different, more specific line."
+	},
 	"ui.teamBridge.delivery.held": {
 		"role": "message delivery status line",
 		"tone": "neutral, calm",
@@ -2518,6 +2527,13 @@
 		"length": "3 short sentences",
 		"placeholders": {},
 		"note": "Identical for every refusal class. Explains moderation and that rephrasing usually helps. Must not hint at how screening decides or blame the sender."
+	},
+	"ui.teamBridge.delivery.info_not_delivered": {
+		"role": "tooltip",
+		"tone": "neutral, factual",
+		"length": "One short sentence",
+		"placeholders": {},
+		"note": "Explains the sender's \"not delivered\" line. States only that this recipient did not receive the message. Must not name a cause (moderation, screening, refusal) or suggest rephrasing or retrying."
 	},
 	"ui.teamBridge.delivery.info_held": {
 		"role": "tooltip",

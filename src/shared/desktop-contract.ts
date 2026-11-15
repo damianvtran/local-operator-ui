@@ -3905,6 +3905,9 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			// runtime answers a client that tries with a 422 (runtime #2790).
 			consented_via: z.enum(["dialog", "settings"]).optional(),
 			label: z.string().min(1).max(128).optional(),
+			// The Screening model preference (local-operator #3632). "" clears it
+			// back to Automatic, so no min length; 192 is the runtime's own cap.
+			screening_model: z.string().max(192).optional(),
 			state: z.enum(["active", "paused", "disabled"]),
 		})
 		.strict(),
@@ -10751,6 +10754,9 @@ export function desktopEndpoint(request: DesktopRequest): {
 						? {}
 						: { consented_via: request.consented_via }),
 					...(request.label === undefined ? {} : { label: request.label }),
+					...(request.screening_model === undefined
+						? {}
+						: { screening_model: request.screening_model }),
 					state: request.state,
 				},
 			};

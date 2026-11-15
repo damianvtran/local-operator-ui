@@ -660,5 +660,35 @@
 		"length": "Two short sentences",
 		"placeholders": {},
 		"note": "Explains what the switch shares (only the fact that you are typing) and states that the draft text is never shared. Quote the indicator wording with the locale's usual quotation marks."
+	},
+	"ui.agentMessages.settings.screening.title": {
+		"role": "settings row heading",
+		"tone": "sentence case, plain",
+		"length": "2-3 words",
+		"placeholders": {},
+		"note": "Names the optional preference for which AI model screens incoming Team Bridge agent messages first on this machine. Use the same term the CLI settings row uses for 'Screening model'."
+	},
+	"ui.agentMessages.settings.screening.help": {
+		"role": "helper text under a settings dropdown",
+		"tone": "plain, reassuring, second person",
+		"length": "Three short sentences",
+		"placeholders": {},
+		"note": "Must make clear the choice is optional, that it only sets which model goes first, and that an unavailable or out-of-quota model never stops Team Bridge: screening moves on to the machine's default model and fallbacks. Do not imply the user must pick a model."
+	},
+	"ui.agentMessages.settings.screening.automatic": {
+		"role": "dropdown option label (the default)",
+		"tone": "plain",
+		"length": "A few words plus the model id",
+		"placeholders": {
+			"model": "a machine model identifier such as anthropic/claude-sonnet-5-5; shown verbatim, never translated"
+		},
+		"note": "The default choice: the tested order, which starts with the named model. Keep it short; it is the trigger text when selected."
+	},
+	"ui.agentMessages.settings.screening.unavailable": {
+		"role": "inline notice in place of the dropdown",
+		"tone": "plain, reassuring",
+		"length": "Two short sentences",
+		"placeholders": {},
+		"note": "Shown when the local runtime offers no screening models to choose from. Must say screening still works on the machine's default model and fallbacks; nothing is broken."
 	}
 }

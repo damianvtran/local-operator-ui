@@ -1,6 +1,7 @@
 import { SettingsSection } from "@features/settings/components/settings-section";
+import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, waitFor } from "@storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "@storybook/test";
 import { MessageSquare } from "lucide-react";
 import allowlistFixture from "../../../../../scripts/fixtures/agent-messages-allowlist.json";
 import settingsFixture from "../../../../../scripts/fixtures/agent-messages-settings.json";
@@ -307,5 +308,115 @@ export const ShareTypingSwitch: Story = {
 			"agent-messages.share-typing",
 			"agent-messages.session",
 		]);
+	},
+};
+
+/*
+ * Screening model (local-operator #3632). The vetted list is the runtime's,
+ * served on the settings read; these stories use the four pairs it ships.
+ * Automatic (`preferred: null`) is the default and names the first model.
+ */
+const SCREENING_MODELS = [
+	["anthropic", "claude-sonnet-5-5"],
+	["radient", "anthropic/claude-sonnet-5.5"],
+	["anthropic", "claude-opus-5-5"],
+	["radient", "anthropic/claude-opus-5.5"],
+].map(([provider, model_id]) => ({
+	value: `${provider}/${model_id}`,
+	provider,
+	model_id,
+}));
+
+function screeningSettings(
+	preferred: string | null,
+	models = SCREENING_MODELS,
+): AgentMessagesSettingsResult {
+	return { ...activeSettings, screening: { preferred, models } };
+}
+
+const screeningStatus = statusWith({
+	surface_state: "C",
+	local: { enabled: true, session: "aaaaaaaaaaaa" },
+});
+
+const findScreeningRow = (canvasElement: HTMLElement) =>
+	waitFor(() => {
+		const row = canvasElement.querySelector<HTMLElement>(
+			"[data-agent-messages-screening-model]",
+		);
+		expect(row).not.toBeNull();
+		return row as HTMLElement;
+	});
+
+/** The default: Automatic, naming the first vetted model. */
+export const ScreeningModelAutomatic: Story = {
+	args: { status: screeningStatus, api: fakeApi(screeningSettings(null)) },
+	play: async ({ canvasElement }) => {
+		const row = await findScreeningRow(canvasElement);
+		expect(within(row).getByRole("combobox")).toHaveTextContent(
+			"anthropic/claude-sonnet-5-5",
+		);
+	},
+};
+
+/** The list open: Automatic first, then the vetted models only. */
+export const ScreeningModelOpen: Story = {
+	args: { status: screeningStatus, api: fakeApi(screeningSettings(null)) },
+	play: async ({ canvasElement }) => {
+		const row = await findScreeningRow(canvasElement);
+		await userEvent.click(within(row).getByRole("combobox"));
+		await waitFor(() => expect(screen.getAllByRole("option")).toHaveLength(5));
+	},
+};
+
+/** A chosen preference, read back from the runtime's answer. */
+export const ScreeningModelChosen: Story = {
+	args: {
+		status: screeningStatus,
+		api: fakeApi(screeningSettings("anthropic/claude-opus-5-5")),
+	},
+	play: async ({ canvasElement }) => {
+		const row = await findScreeningRow(canvasElement);
+		expect(within(row).getByRole("combobox")).toHaveTextContent(
+			"anthropic/claude-opus-5-5",
+		);
+	},
+};
+
+/** The runtime lists no models: a notice that screening still runs. */
+export const ScreeningModelUnavailable: Story = {
+	args: { status: screeningStatus, api: fakeApi(screeningSettings(null, [])) },
+	play: async ({ canvasElement }) => {
+		const row = await findScreeningRow(canvasElement);
+		expect(within(row).queryByRole("combobox")).toBeNull();
+	},
+};
+
+/** A refused save: the section's shared refusal line, choice unchanged. */
+export const ScreeningModelSaveFailed: Story = {
+	args: {
+		status: screeningStatus,
+		api: {
+			...fakeApi(screeningSettings(null)),
+			updateSettings: async () => {
+				throw new DesktopControlError(
+					503,
+					"upstream detail",
+					undefined,
+					"bridge_unavailable",
+				);
+			},
+		},
+	},
+	play: async ({ canvasElement }) => {
+		const row = await findScreeningRow(canvasElement);
+		await userEvent.click(within(row).getByRole("combobox"));
+		const option = await screen.findByRole("option", {
+			name: "anthropic/claude-opus-5-5",
+		});
+		await userEvent.click(option);
+		await waitFor(() =>
+			expect(within(row).getByRole("combobox")).not.toBeDisabled(),
+		);
 	},
 };

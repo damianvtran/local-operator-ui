@@ -33,6 +33,7 @@ import {
 import { InfoGrid, InfoItem } from "../settings/components/settings-section";
 import { useTeamBridgeShareTypingStore } from "../team-bridge/team-bridge-typing-model";
 import { agentMessagesRefusal } from "./agent-messages-refusal";
+import { ScreeningModelSelect } from "./agent-messages-screening-model";
 import {
 	type AgentMessagesSettingsAvailability,
 	type AllowlistDirection,
@@ -509,6 +510,72 @@ export function AgentMessagesSettings({
 										useTeamBridgeShareTypingStore
 											.getState()
 											.setShareTyping(saved);
+									} catch (error) {
+										setActionRefusal(agentMessagesRefusal(error));
+									} finally {
+										setPending(null);
+									}
+								}}
+							/>
+						)}
+
+					{/* Screening model (local-operator #3632). Offered only while an
+					    endpoint is active or paused: the runtime takes the choice
+					    only on a state write, and in B/E/F a state write would
+					    enroll, re-enable or be refused. Older runtimes send no
+					    block and the row is not rendered. */}
+					{load.settings.screening &&
+						load.settings.endpoint &&
+						(load.settings.endpoint.state === "active" ||
+							load.settings.endpoint.state === "paused") &&
+						status?.surface_state !== "F" && (
+							<ScreeningModelSelect
+								screening={load.settings.screening}
+								pending={pending === "screening_model"}
+								disabled={pending !== null || !accountMatches}
+								onSave={async (next) => {
+									const owner = loadAccount ?? accountId;
+									const endpoint = load.settings.endpoint;
+									if (!owner || !accountMatches || !endpoint) return;
+									if (
+										endpoint.state !== "active" &&
+										endpoint.state !== "paused"
+									)
+										return;
+									setPending("screening_model");
+									setActionRefusal(null);
+									try {
+										/*
+										 * The body RE-ASSERTS the endpoint's current state and
+										 * carries NO consent fields. A preference edit is not a
+										 * consent action: echoing `consent_version` here would
+										 * re-commit the native consent receipt and could move the
+										 * recorded `consented_via` off its real surface, so the
+										 * consent on record (v3 under default-on) stays exactly as
+										 * it was. Sending the current state keeps a paused
+										 * endpoint paused; an active one stays active.
+										 */
+										const result = await api.updateSettings({
+											expected_account_id: owner,
+											tenant_id: load.settings.settings.tenant_id,
+											state: endpoint.state,
+											screening_model: next,
+										});
+										setLoad((current) =>
+											current.kind === "ready"
+												? {
+														...current,
+														settings: {
+															...result,
+															// The answer echoes the value actually in force;
+															// keep the last block if a runtime omits it so the
+															// row does not vanish after a save.
+															screening:
+																result.screening ?? current.settings.screening,
+														},
+													}
+												: current,
+										);
 									} catch (error) {
 										setActionRefusal(agentMessagesRefusal(error));
 									} finally {

@@ -2827,6 +2827,10 @@ export type MessageParams = {
 	"ui.agentMessages.settings.refusal.rate_limited": undefined;
 	"ui.agentMessages.settings.refusal.sign_in": undefined;
 	"ui.agentMessages.settings.saving": undefined;
+	"ui.agentMessages.settings.screening.automatic": { model: string };
+	"ui.agentMessages.settings.screening.help": undefined;
+	"ui.agentMessages.settings.screening.title": undefined;
+	"ui.agentMessages.settings.screening.unavailable": undefined;
 	"ui.agentMessages.settings.section": undefined;
 	"ui.agentMessages.settings.session.help": undefined;
 	"ui.agentMessages.settings.session.none": undefined;
@@ -12988,7 +12992,9 @@ export type MessageParams = {
 	"ui.teamBridge.delivery.held_screening_unavailable": { recipient: string };
 	"ui.teamBridge.delivery.info_held": undefined;
 	"ui.teamBridge.delivery.info_label": undefined;
+	"ui.teamBridge.delivery.info_not_delivered": undefined;
 	"ui.teamBridge.delivery.info_refused": undefined;
+	"ui.teamBridge.delivery.not_delivered": { recipient: string };
 	"ui.teamBridge.delivery.pending": { recipient: string };
 	"ui.teamBridge.delivery.recipient_unnamed": { person: string };
 	"ui.teamBridge.delivery.refused": { recipient: string };

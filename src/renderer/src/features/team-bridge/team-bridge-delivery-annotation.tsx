@@ -181,17 +181,29 @@ const DeliveryLine: FC<{ line: TeamBridgeDeliveryLine }> = ({ line }) => {
 			<span className="whitespace-nowrap">
 				{last}
 				{join}
-				<DeliveryInfo
-					text={
-						line.kind === "refused"
-							? t("ui.teamBridge.delivery.info_refused")
-							: t("ui.teamBridge.delivery.info_held")
-					}
-				/>
+				<DeliveryInfo text={deliveryInfoText(line.kind)} />
 			</span>
 		</>
 	);
 };
+
+/*
+ * The sender's `not_delivered` tip is neutral on purpose (design D1 on #1882):
+ * the owner's refused tip names moderation and coaches a rephrase, which hands
+ * a sender the cause and a retry strategy the hub deliberately withholds.
+ */
+function deliveryInfoText(
+	kind: Exclude<TeamBridgeDeliveryLine["kind"], "pending">,
+): string {
+	switch (kind) {
+		case "not_delivered":
+			return t("ui.teamBridge.delivery.info_not_delivered");
+		case "refused":
+			return t("ui.teamBridge.delivery.info_refused");
+		default:
+			return t("ui.teamBridge.delivery.info_held");
+	}
+}
 
 function deliveryLineText(line: TeamBridgeDeliveryLine): string {
 	/*
@@ -211,6 +223,10 @@ function deliveryLineText(line: TeamBridgeDeliveryLine): string {
 	};
 	if (line.kind === "pending") {
 		return t("ui.teamBridge.delivery.pending", params);
+	}
+	if (line.kind === "not_delivered") {
+		// THAT it was not delivered, never why: see the model's header.
+		return t("ui.teamBridge.delivery.not_delivered", params);
 	}
 	if (line.kind === "held") {
 		/* The coarse phase (cross-PR contract 2026-11-09) is the same bucket the

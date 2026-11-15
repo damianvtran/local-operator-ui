@@ -92,5 +92,9 @@
 	"ui.agentMessages.settings.action.turn_on_again": "Activer à nouveau",
 	"ui.agentMessages.settings.consent.via_default_on": "Activé par défaut",
 	"ui.agentMessages.settings.share_typing.label": "Indiquer quand j’écris",
-	"ui.agentMessages.settings.share_typing.description": "Les membres de vos conversations Team Bridge voient une courte mention « en train d’écrire » pendant que vous rédigez. Le texte que vous saisissez n’est jamais partagé."
+	"ui.agentMessages.settings.share_typing.description": "Les membres de vos conversations Team Bridge voient une courte mention « en train d’écrire » pendant que vous rédigez. Le texte que vous saisissez n’est jamais partagé.",
+	"ui.agentMessages.settings.screening.title": "Modèle de filtrage",
+	"ui.agentMessages.settings.screening.help": "Facultatif. Choisit le modèle qui filtre en premier les messages d’agent entrants sur cette machine. Si ce modèle est indisponible ou à court de quota, le filtrage passe au modèle par défaut de cette machine et à ses replis, donc Team Bridge continue de fonctionner.",
+	"ui.agentMessages.settings.screening.automatic": "Automatique, en commençant par {model}",
+	"ui.agentMessages.settings.screening.unavailable": "Cette version de Local Operator ne propose aucun modèle de filtrage à choisir. Le filtrage utilise toujours le modèle par défaut de cette machine et ses replis."
 }

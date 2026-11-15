@@ -92,5 +92,9 @@
 	"ui.agentMessages.settings.action.turn_on_again": "फिर चालू करें",
 	"ui.agentMessages.settings.consent.via_default_on": "डिफ़ॉल्ट रूप से चालू",
 	"ui.agentMessages.settings.share_typing.label": "जब मैं टाइप करूँ तो दिखाएँ",
-	"ui.agentMessages.settings.share_typing.description": "आपकी Team Bridge बातचीत के लोग आपके लिखते समय एक छोटी “टाइप कर रहे हैं” पंक्ति देखते हैं। आप जो टाइप करते हैं, वह कभी साझा नहीं होता।"
+	"ui.agentMessages.settings.share_typing.description": "आपकी Team Bridge बातचीत के लोग आपके लिखते समय एक छोटी “टाइप कर रहे हैं” पंक्ति देखते हैं। आप जो टाइप करते हैं, वह कभी साझा नहीं होता।",
+	"ui.agentMessages.settings.screening.title": "स्क्रीनिंग मॉडल",
+	"ui.agentMessages.settings.screening.help": "वैकल्पिक। इस मशीन पर आने वाले एजेंट संदेशों को सबसे पहले कौन सा मॉडल स्क्रीन करे, यह चुनता है। यदि वह मॉडल उपलब्ध न हो या उसका कोटा ख़त्म हो, तो स्क्रीनिंग इस मशीन के डिफ़ॉल्ट मॉडल और उसके फ़ॉलबैक पर चली जाती है, इसलिए Team Bridge काम करता रहता है।",
+	"ui.agentMessages.settings.screening.automatic": "स्वचालित, {model} से शुरू",
+	"ui.agentMessages.settings.screening.unavailable": "Local Operator के इस संस्करण में चुनने के लिए कोई स्क्रीनिंग मॉडल नहीं है। स्क्रीनिंग अब भी इस मशीन के डिफ़ॉल्ट मॉडल और उसके फ़ॉलबैक पर चलती है।"
 }

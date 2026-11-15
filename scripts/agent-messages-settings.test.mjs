@@ -1274,3 +1274,270 @@ test("settings-page wires onOpenSession to openConversation after dropping the s
 	assert.ok(open > invalidate, "then the shared switch rule opens the session");
 	assert.doesNotMatch(body, /\/chat\//, "no hand-built chat URL");
 });
+
+// ---------------------------------------------------------------------------
+// Screening model (local-operator #3632): a preference, never a gate
+// ---------------------------------------------------------------------------
+
+const SCREENING_MODELS = [
+	{
+		value: "anthropic/claude-sonnet-5-5",
+		provider: "anthropic",
+		model_id: "claude-sonnet-5-5",
+	},
+	{
+		value: "radient/anthropic/claude-sonnet-5.5",
+		provider: "radient",
+		model_id: "anthropic/claude-sonnet-5.5",
+	},
+	{
+		value: "anthropic/claude-opus-5-5",
+		provider: "anthropic",
+		model_id: "claude-opus-5-5",
+	},
+];
+const SCREENING_HELP =
+	/Optional\. Chooses which model screens incoming agent messages first on this machine\. If that model is unavailable or out of quota, screening moves on to this machine’s default model and fallbacks, so Team Bridge keeps working\./;
+const SCREENING_UNAVAILABLE =
+	/This version of Local Operator lists no screening models to choose from\./;
+
+function settingsWithScreening(state, screening) {
+	return { ...settingsWith(state), screening };
+}
+
+/* The runtime echoes the value actually in force; the fake does the same so
+   the selected option is read back from the answer, not from local state. */
+function echoingScreeningApi(settings) {
+	return {
+		updateSettings: async (body) => ({
+			...structuredClone(settings),
+			endpoint: { ...settings.endpoint, state: body.state },
+			screening: {
+				preferred: body.screening_model === "" ? null : body.screening_model,
+				models: SCREENING_MODELS,
+			},
+		}),
+	};
+}
+
+const screeningCombo = () =>
+	document.querySelector(
+		'button[role="combobox"][aria-label="Screening model"]',
+	);
+
+async function chooseScreening(label) {
+	const combo = screeningCombo();
+	assert.ok(combo, "expected the screening model select");
+	combo.focus();
+	await press(combo, "keydown", { key: "ArrowDown" });
+	await flush();
+	const option = [...document.querySelectorAll('[role="option"]')].find(
+		(entry) => entry.textContent.trim() === label,
+	);
+	assert.ok(option, `expected the option ${label}`);
+	await act(async () => option.click());
+	await flush();
+}
+
+test("screening defaults to Automatic, names the first vetted model, and says a pin never blocks", async (t) => {
+	await mount(t, {
+		settings: settingsWithScreening("active", {
+			preferred: null,
+			models: SCREENING_MODELS,
+		}),
+	});
+	assert.equal(
+		screeningCombo()?.textContent.trim(),
+		"Automatic, starting with anthropic/claude-sonnet-5-5",
+	);
+	assert.match(document.body.textContent, SCREENING_HELP);
+});
+
+test("choosing a model re-asserts the endpoint's state with no consent fields; Automatic clears it", async (t) => {
+	const settings = settingsWithScreening("active", {
+		preferred: null,
+		models: SCREENING_MODELS,
+	});
+	const writes = [];
+	const echo = echoingScreeningApi(settings);
+	await mount(t, {
+		settings,
+		overrides: {
+			updateSettings: async (body) => {
+				writes.push(body);
+				return echo.updateSettings(body);
+			},
+		},
+	});
+	await chooseScreening("anthropic/claude-opus-5-5");
+	// The consent on record is untouched: a preference edit is not consent.
+	assert.deepEqual(writes, [
+		{
+			expected_account_id: "account-a",
+			tenant_id: "tnt_bridge_e2e",
+			state: "active",
+			screening_model: "anthropic/claude-opus-5-5",
+		},
+	]);
+	assert.equal(
+		screeningCombo()?.textContent.trim(),
+		"anthropic/claude-opus-5-5",
+	);
+	await chooseScreening("Automatic, starting with anthropic/claude-sonnet-5-5");
+	assert.deepEqual(writes[1], {
+		expected_account_id: "account-a",
+		tenant_id: "tnt_bridge_e2e",
+		state: "active",
+		screening_model: "",
+	});
+	assert.equal(
+		screeningCombo()?.textContent.trim(),
+		"Automatic, starting with anthropic/claude-sonnet-5-5",
+	);
+});
+
+test("a paused endpoint stays paused when the screening model changes", async (t) => {
+	const settings = settingsWithScreening("paused", {
+		preferred: null,
+		models: SCREENING_MODELS,
+	});
+	const writes = [];
+	const echo = echoingScreeningApi(settings);
+	await mount(t, {
+		status: statusWith({ surface_state: "D", local: { enabled: true } }),
+		settings,
+		overrides: {
+			updateSettings: async (body) => {
+				writes.push(body);
+				return echo.updateSettings(body);
+			},
+		},
+	});
+	await chooseScreening("radient/anthropic/claude-sonnet-5.5");
+	assert.equal(writes.length, 1);
+	assert.equal(writes[0].state, "paused");
+	assert.equal(writes[0].consent_version, undefined);
+	assert.equal(writes[0].consented_via, undefined);
+});
+
+test("an off-list preferred value shows Automatic, never a phantom selection", async (t) => {
+	await mount(t, {
+		settings: settingsWithScreening("active", {
+			preferred: "openai/gpt-6.1",
+			models: SCREENING_MODELS,
+		}),
+	});
+	assert.equal(
+		screeningCombo()?.textContent.trim(),
+		"Automatic, starting with anthropic/claude-sonnet-5-5",
+	);
+});
+
+test("an empty vetted list shows the still-screening notice instead of a picker", async (t) => {
+	await mount(t, {
+		settings: settingsWithScreening("active", { preferred: null, models: [] }),
+	});
+	assert.equal(screeningCombo(), null);
+	assert.match(document.body.textContent, SCREENING_UNAVAILABLE);
+	assert.ok(
+		document.querySelector("[data-agent-messages-screening-unavailable]"),
+	);
+});
+
+test("no screening row on an older runtime, before enrolment, or after opting out", async (t) => {
+	await t.test("older runtime", async (tt) => {
+		await mount(tt);
+		assert.equal(
+			document.querySelector("[data-agent-messages-screening-model]"),
+			null,
+		);
+	});
+	for (const state of [null, "disabled"]) {
+		await t.test(`endpoint ${state}`, async (tt) => {
+			await mount(tt, {
+				status: statusWith({ surface_state: state === null ? "B" : "E" }),
+				settings: settingsWithScreening(state, {
+					preferred: null,
+					models: SCREENING_MODELS,
+				}),
+			});
+			assert.equal(
+				document.querySelector("[data-agent-messages-screening-model]"),
+				null,
+			);
+		});
+	}
+});
+
+test("a refused screening write surfaces the refusal and keeps the previous choice", async (t) => {
+	await mount(t, {
+		settings: settingsWithScreening("active", {
+			preferred: null,
+			models: SCREENING_MODELS,
+		}),
+		overrides: {
+			updateSettings: async () => {
+				throw new mod.DesktopControlError(
+					403,
+					"raw upstream detail",
+					undefined,
+					"bridge_disabled",
+				);
+			},
+		},
+	});
+	await chooseScreening("anthropic/claude-opus-5-5");
+	// The section's shared refusal sentence, never the raw exception.
+	assert.match(
+		document.body.textContent,
+		/Your organization has turned off agent messages\./,
+	);
+	assert.doesNotMatch(document.body.textContent, /raw upstream detail/);
+	assert.equal(
+		screeningCombo()?.textContent.trim(),
+		"Automatic, starting with anthropic/claude-sonnet-5-5",
+	);
+});
+
+test("the settings write carries screening_model, including the clearing empty string", () => {
+	for (const value of ["anthropic/claude-opus-5-5", ""]) {
+		assert.deepEqual(
+			mod.desktopEndpoint({
+				op: "agent_messages.settings.put",
+				expected_account_id: "account-a",
+				tenant_id: "tnt_bridge_e2e",
+				state: "active",
+				screening_model: value,
+			}),
+			{
+				path: "/v1/desktop/team-bridge/settings",
+				method: "PUT",
+				body: {
+					expected_account_id: "account-a",
+					tenant_id: "tnt_bridge_e2e",
+					screening_model: value,
+					state: "active",
+				},
+			},
+		);
+	}
+});
+
+test("the screening block reads leniently: bad rows drop, a bad block reads as absent", () => {
+	const parsed = mod.agentMessagesSettingsResultSchema.parse({
+		...settingsWith("active"),
+		screening: {
+			preferred: 42,
+			models: [SCREENING_MODELS[0], { value: "" }, "junk", SCREENING_MODELS[2]],
+		},
+	});
+	assert.deepEqual(parsed.screening, {
+		preferred: null,
+		models: [SCREENING_MODELS[0], SCREENING_MODELS[2]],
+	});
+	const broken = mod.agentMessagesSettingsResultSchema.parse({
+		...settingsWith("active"),
+		screening: "nope",
+	});
+	assert.equal(broken.screening, undefined);
+});

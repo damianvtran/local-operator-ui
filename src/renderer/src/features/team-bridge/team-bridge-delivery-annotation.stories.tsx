@@ -399,14 +399,26 @@ export const SummaryDerivedWithoutHubSummary: Story = {
 };
 
 /* The sender's neutral view since agent-server #377: a refusal arrives as
- * `not_delivered` with no class, and the details still name the recipient
- * (the classless refusal line). Single recipient, then one of a group. */
+ * `not_delivered` with no class, and the details name the recipient and say
+ * only that it was not delivered, never why (design D1 on #1882). Single
+ * recipient, then one of a group. */
 export const NotDeliveredSenderSingleOpen: Story = {
 	args: {
 		states: [state({ state: "not_delivered" })],
 		summary: { total: 1, not_delivered: 1 },
 	},
 	play: openDetails,
+};
+
+/* The sender's tip for that line (design D1 on #1882): it says only that the
+ * recipient did not receive the message, with no moderation explanation and no
+ * rephrase coaching. Compare RefusedTooltipOpen, the owner's view. */
+export const NotDeliveredSenderTooltipOpen: Story = {
+	args: {
+		states: [state({ state: "not_delivered" })],
+		summary: { total: 1, not_delivered: 1 },
+	},
+	play: openInfo(() => t("ui.teamBridge.delivery.info_not_delivered")),
 };
 
 export const NotDeliveredSenderGroupOpen: Story = {
