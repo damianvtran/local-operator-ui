@@ -121,11 +121,22 @@ const built = await build({
 	define: { "import.meta.env": "{}" },
 	format: "esm",
 	platform: "browser",
-	loader: { ".css": "empty" },
+	// The canvas tree reaches ProjectDetailScreen (canvas Projects view), whose
+	// shared BrandMark imports a PNG through `@assets`; mirror the alias and
+	// image loaders the other renderer-bundling tests use (e.g.
+	// scripts/older-history-slot.test.mjs) so esbuild resolves the real assets
+	// instead of the test stubbing product code out.
+	loader: {
+		".css": "empty",
+		".svg": "text",
+		".png": "dataurl",
+		".webp": "dataurl",
+	},
 	jsx: "automatic",
 	alias: {
 		"@shared": "./src/renderer/src/shared",
 		"@features": "./src/renderer/src/features",
+		"@assets": "./src/renderer/src/assets",
 	},
 	write: false,
 });
