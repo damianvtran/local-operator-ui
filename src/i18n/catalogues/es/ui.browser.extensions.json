@@ -76,7 +76,7 @@
 	"ui.browser.extensions.desktop_apps_onepassword_hint": "Si 1Password sigue sin poder conectarse con la aplicación de escritorio, abre 1Password, ve a Ajustes → Navegador → Añadir navegador y elige Local Operator.",
 	"ui.browser.extensions.native_confirm_title": "¿Permitir que “{name}” se conecte a {app}?",
 	"ui.browser.extensions.native_confirm_body": "“{name}” quiere intercambiar mensajes con {app}, un programa instalado en este equipo.",
-	"ui.browser.extensions.native_confirm_host": "Host: {host}",
+	"ui.browser.extensions.native_confirm_host": "Identificador del host: {host}",
 	"ui.browser.extensions.native_confirm_program": "Programa: {path}",
 	"ui.browser.extensions.native_confirm_note": "Permite solo aplicaciones de confianza. Puedes cambiar tu respuesta más adelante en la página de detalles de la extensión.",
 	"ui.browser.extensions.native_confirm_deny": "No permitir",
