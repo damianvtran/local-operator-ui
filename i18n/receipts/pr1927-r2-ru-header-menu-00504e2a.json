@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 2, of the 2 ui.chat.header_menu key(s) PR #1927's round-1 remediation (800efc93a0) added",
+  "locale": "ru",
+  "namespace": "ui.chat.header_menu",
+  "pr": 1927,
+  "date": "2026-11-15",
+  "head": "800efc93a0437b6e90c270bf893dccd484c13ee3",
+  "instance": "pr1927-r2-ru-header-menu-00504e2a",
+  "auditor": {
+    "agent": "reviewer",
+    "role": "independent i18n auditor (team lopdev, reviewer role, UI i18n audit r2); not the translator (coder lane that authored 800efc93a0)",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session eceb68d92561: a different session and agent from the translator (coder lane, remediation commit 800efc93a0); same served model family anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. No MT used.",
+    "instance": "pr1927-r2-ru-header-menu-00504e2a"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "binding": "Verified on the branch at 800efc93a043 plus this commit's catalogue fixes: target src/i18n/catalogues/ru/ui.chat.header_menu.json (sha256 8be2a48b5ff80a2625deb4e36be35de3c90a2b8d1b6862f1db4e70a730104231); English src/i18n/catalogues/en/ui.chat.header_menu.json (sha256 f70a89b9bd7003123e815cc1961115f3068f5f3c30724f796df0374bdd8b8891); context sidecar sha256 7791e7b5900fe459069158c9f1a838d795605567aac74b292ac9348672f18a28. Reference: core glossary ~/local-operator i18n/glossary.md @ origin/main cb85fcb962 (sha256 5de3929198c3…); style guide i18n/style-guides/ru.md (sha256 f20e1cafaf70). Audited keys: ui.chat.header_menu.open_linked_projects, ui.chat.header_menu.close_linked_projects (other keys in the file unchanged since their earlier audits). Checks (python): key set equals English; no ICU arguments in source or target; values NFC; no Cf characters. Consistency: runtime term matches the locale's ui.canvas.projects round-1 strings and style guide; pairing verb matches the locale's existing *_unpaired strings; header-menu/shortcut rows match sibling open_/close_/row. phrasing and the locale's 'linked projects' heading. Not done: rendered fit frames (no browser tool in this lane). Values: open_linked_projects = \"Открыть связанные проекты\" (25/20 chars) | close_linked_projects = \"Закрыть связанные проекты\" (25/21 chars)",
+  "scope": "ui.chat.header_menu for ru: 2 PR #1927 round-2 keys",
+  "revisions": {
+    "head": "800efc93a0437b6e90c270bf893dccd484c13ee3"
+  },
+  "en_sha256": "f70a89b9bd7003123e815cc1961115f3068f5f3c30724f796df0374bdd8b8891",
+  "context_sha256": "7791e7b5900fe459069158c9f1a838d795605567aac74b292ac9348672f18a28",
+  "target_sha256": "8be2a48b5ff80a2625deb4e36be35de3c90a2b8d1b6862f1db4e70a730104231",
+  "sha256": {
+    "ru": "8be2a48b5ff80a2625deb4e36be35de3c90a2b8d1b6862f1db4e70a730104231",
+    "en": "f70a89b9bd7003123e815cc1961115f3068f5f3c30724f796df0374bdd8b8891"
+  }
+}
