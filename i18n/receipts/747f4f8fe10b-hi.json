@@ -1,0 +1,138 @@
+{
+  "schema": 1,
+  "agent": "i18n-auditor",
+  "session": "4d1b2dd49206",
+  "instance": "747f4f8fe10b-hi",
+  "model": "anthropic/claude-opus-5-5",
+  "requested_model": "anthropic/claude-opus-5-5",
+  "fallback": false,
+  "independence": "Independent auditor; did not author or modify any translations.",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "4d1b2dd49206",
+    "instance": "747f4f8fe10b-hi",
+    "model": "anthropic/claude-opus-5-5",
+    "requested_model": "anthropic/claude-opus-5-5",
+    "fallback": false,
+    "independence": "Independent auditor; did not author or modify any translations.",
+    "model_source": "Session system prompt (Model: anthropic/claude-opus-5-5); no model-switch notice during the audit.",
+    "independent_from_translator_session": true
+  },
+  "locale": "hi",
+  "date": "2026-11-15",
+  "head": "76a8ed3406 + uncommitted hi catalogue edits",
+  "branch": "feat/i18n-s18d-english-source",
+  "scope": "Independent audit of exactly the 10 new hi keys of S18d (PR local-operator-ui #1922): ui.chat.trace.reasoning.{label,with_duration}; ui.chat.attachments.not_viewable_too_large; ui.agents.detail.create.{title_new,title_duplicate,error_*}. Existing values are terminology context only.",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [
+      {
+        "severity": "minor",
+        "key": "ui.chat.trace.reasoning.with_duration",
+        "message": "'{label}, {duration} तक' renders 'तर्क, 12s तक': meaning is right (duration+तक = 'for 12s') but the comma-detached adverbial reads like a calque of the English join. Suggest '{duration} तक {label}' ('12s तक तर्क'), or keep label-first as '{label} ({duration})' if the row must start with the label for truncation. Non-gating."
+      },
+      {
+        "severity": "minor",
+        "key": "ui.agents.detail.create.title_duplicate",
+        "message": "'नए एजेंट के रूप में कॉपी करें' is an imperative (reads as a button) where the sidecar asks for a short noun-phrase heading, and it diverges from the existing button ui.agents.detail.action.duplicate 'नए एजेंट के रूप में कॉपी बनाएँ' for nearly the same English. Suggest 'नए एजेंट के रूप में कॉपी' (heading) or align verb with the button ('…कॉपी बनाएँ')."
+      }
+    ],
+    "nit": [
+      {
+        "severity": "nit",
+        "key": "ui.chat.attachments.not_viewable_too_large",
+        "message": "'पूर्वावलोकन' matches ui.chat.canonical.supplement.withheld.reason_too_large ('पूर्वावलोकन के लिए बहुत बड़ी') but not the near-identical ui.canvas.files.tooLarge / ui.canvas.image_preview.too_large_to_preview ('प्रीव्यू के लिए बहुत बड़ी है'). Pre-existing split in hi (प्रीव्यू 37 vs पूर्वावलोकन 31 occurrences); no change required for this key."
+      }
+    ]
+  },
+  "namespaces": {
+    "ui.chat.trace": {
+      "namespace": "ui.chat.trace",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "sha256": {
+        "en": "147a8c429074d2edb65d6c2ce7818688e6035bc6fa3072d343111b8f615ace45",
+        "hi": "9f9e33318ff39036459b479eec816942f951cfd916d2bfda36f0ea71b4b04c7a"
+      },
+      "context_sha256": "473323333f9e25e6ee1edf599089ae36eaed04b4f5e1c6503de29bfb85818c4a",
+      "keys_read": 2,
+      "reviewed_keys": [
+        "ui.chat.trace.reasoning.label",
+        "ui.chat.trace.reasoning.with_duration"
+      ],
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [
+          {
+            "severity": "minor",
+            "key": "ui.chat.trace.reasoning.with_duration",
+            "message": "'{label}, {duration} तक' renders 'तर्क, 12s तक': meaning is right (duration+तक = 'for 12s') but the comma-detached adverbial reads like a calque of the English join. Suggest '{duration} तक {label}' ('12s तक तर्क'), or keep label-first as '{label} ({duration})' if the row must start with the label for truncation. Non-gating."
+          }
+        ],
+        "nit": []
+      }
+    },
+    "ui.chat.attachments": {
+      "namespace": "ui.chat.attachments",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "sha256": {
+        "en": "6a631b5377f126f0ac98019b3bba075f3b1dfb4d1f544c74fb3a6e0fa10a32f8",
+        "hi": "ab14acd6397b487bfe9cf4db946a8f492f898d8be3f7d5129daca76539363b59"
+      },
+      "context_sha256": "96d2dcbb08fdae8fa6ad4071afa0dd495154d772a5bdc154ac174ad627b1a1ff",
+      "keys_read": 1,
+      "reviewed_keys": [
+        "ui.chat.attachments.not_viewable_too_large"
+      ],
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": [
+          {
+            "severity": "nit",
+            "key": "ui.chat.attachments.not_viewable_too_large",
+            "message": "'पूर्वावलोकन' matches ui.chat.canonical.supplement.withheld.reason_too_large ('पूर्वावलोकन के लिए बहुत बड़ी') but not the near-identical ui.canvas.files.tooLarge / ui.canvas.image_preview.too_large_to_preview ('प्रीव्यू के लिए बहुत बड़ी है'). Pre-existing split in hi (प्रीव्यू 37 vs पूर्वावलोकन 31 occurrences); no change required for this key."
+          }
+        ]
+      }
+    },
+    "ui.agents.detail": {
+      "namespace": "ui.agents.detail",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "sha256": {
+        "en": "54d5d16e2bce91a8e6884e1e7e230884f2571927540c9badb8ae2fd58966625e",
+        "hi": "ea082de10ebd2bf1087c1ff456243be9f5b5665b2ed4f41f66f07a75b1886379"
+      },
+      "context_sha256": "60714c4d363a2eb3c0e818e42eaea94770f78a0d815c385ba1f54ab81f325db7",
+      "keys_read": 7,
+      "reviewed_keys": [
+        "ui.agents.detail.create.title_new",
+        "ui.agents.detail.create.title_duplicate",
+        "ui.agents.detail.create.error_name_required",
+        "ui.agents.detail.create.error_name_grammar",
+        "ui.agents.detail.create.error_name_taken",
+        "ui.agents.detail.create.error_instructions_required",
+        "ui.agents.detail.create.error_generic"
+      ],
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [
+          {
+            "severity": "minor",
+            "key": "ui.agents.detail.create.title_duplicate",
+            "message": "'नए एजेंट के रूप में कॉपी करें' is an imperative (reads as a button) where the sidecar asks for a short noun-phrase heading, and it diverges from the existing button ui.agents.detail.action.duplicate 'नए एजेंट के रूप में कॉपी बनाएँ' for nearly the same English. Suggest 'नए एजेंट के रूप में कॉपी' (heading) or align verb with the button ('…कॉपी बनाएँ')."
+          }
+        ],
+        "nit": []
+      }
+    }
+  }
+}

@@ -1,0 +1,158 @@
+{
+  "schema": 1,
+  "agent": "i18n-auditor",
+  "session": "b2b4a47b05d5",
+  "instance": "3c4d941eb220-ru",
+  "model": "anthropic/claude-opus-5-5",
+  "requested_model": "anthropic/claude-opus-5-5",
+  "fallback": false,
+  "independence": "Independent auditor; did not author or modify any translations.",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "b2b4a47b05d5",
+    "instance": "3c4d941eb220-ru",
+    "model": "anthropic/claude-opus-5-5",
+    "requested_model": "anthropic/claude-opus-5-5",
+    "fallback": false,
+    "independence": "Independent auditor; did not author or modify any translations.",
+    "model_source": "Session system prompt: 'Model: anthropic/claude-opus-5-5'; no model-switch or fallback notice in this session.",
+    "independent_from_translator_session": true
+  },
+  "locale": "ru",
+  "date": "2026-11-15",
+  "head": "76a8ed3406 + uncommitted ru catalogue edits",
+  "branch": "feat/i18n-s18d-english-source",
+  "pr": "damianvtran/local-operator-ui#1922",
+  "scope": "Independent audit of exactly 10 new ru keys (ui.chat.trace.reasoning.{label,with_duration}; ui.chat.attachments.not_viewable_too_large; ui.agents.detail.create.{title_new,title_duplicate,error_name_required,error_name_grammar,error_name_taken,error_instructions_required,error_generic}); existing values are terminology context, not re-audited.",
+  "style_guide": {
+    "path": "~/local-operator/i18n/style-guides/ru.md",
+    "sha256": "f20e1cafaf70578c17ce072c71725628808d228e4be5604329f8da30386f1fb5"
+  },
+  "glossary": {
+    "path": "~/local-operator/i18n/glossary.md",
+    "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+  },
+  "mechanical": "Keysets en==ru in all 3 files; only the 10 keys added, no existing ru value changed vs origin/main; placeholders {label},{duration},{name} byte-exact, each once; no ICU plural/select in scope (none expected); no Latin words left; quotes U+00AB/U+00BB per style guide; dash U+2014 with spaces; check-duplicates ok; context-parity ok; ledger-check stale rows for these 3 ru files pending this audit.",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": {
+    "blocker": [],
+    "major": [],
+    "minor": [
+      {
+        "severity": "minor",
+        "key": "ui.chat.attachments.not_viewable_too_large",
+        "message": "Current «Файл {name} слишком большой для предпросмотра» (45 chars + name vs en 30). Accurate and idiomatic, but the sidecar says the line truncates with an ellipsis on a narrow card: with a long file name the reason is cut and only «Файл <name>…» shows. The sidecar permits reordering; suggest «Слишком большой для предпросмотра: {name}», matching ru ui.chat.attachments.not_viewable «Файл нельзя просмотреть: {name}» and ru ui.canvas.files.tooLarge «Слишком большой для предпросмотра». Same truncation risk exists in en, so not gating."
+      },
+      {
+        "severity": "minor",
+        "key": "ui.agents.detail.create.title_duplicate",
+        "message": "Current «Дублирование агента» (process noun) drops the source's 'as a new agent', which the sidecar stresses (a create that starts filled in, not an editor mode); the action that opens it, ui.agents.detail.action.duplicate, says «Дублировать как нового агента». Meaning is restored by description_duplicate («Копия агента {name}. Это отдельный агент…») directly below, so not gating. Suggest «Новый агент из копии» (noun phrase, parallels title_new «Новый агент»)."
+      },
+      {
+        "severity": "minor",
+        "key": "ui.agents.detail.create.error_name_taken",
+        "message": "Uses «название» (also error_name_required, error_name_grammar), matching this form's field label ui.agents.detail.field.name «Название» — correct choice for client validation. But the backend refusal for the same conditions, with byte-identical English, reads «имя»: ui.agents.refusals.name_taken «Агент с именем «{name}» … Выберите другое имя …», ui.agents.refusals.name_grammar «В именах не должно быть…»; dialogs/settings also say «Имя агента». The same form can thus show both words. Pre-existing split; keep these, align refusals or the field label in a follow-up."
+      }
+    ],
+    "nit": [
+      {
+        "severity": "nit",
+        "key": "ui.agents.detail.create.error_instructions_required",
+        "message": "«Добавьте инструкции агента.» is correct; «инструкции агента» parses as genitive ('the agent's instructions'). «Добавьте инструкции для агента.» is a touch closer to 'Give the agent instructions'. Taste only."
+      }
+    ]
+  },
+  "namespaces": {
+    "ui.chat.trace": {
+      "namespace": "ui.chat.trace",
+      "status": "passed",
+      "result": "clean",
+      "sha256": {
+        "en": "147a8c429074d2edb65d6c2ce7818688e6035bc6fa3072d343111b8f615ace45",
+        "ru": "187c65ef40fe9dd685c6f0c0507e4a01000e14ced49a3cbf827196e867190a5c"
+      },
+      "context_sha256": "473323333f9e25e6ee1edf599089ae36eaed04b4f5e1c6503de29bfb85818c4a",
+      "keys_read": 2,
+      "reviewed_keys": [
+        "ui.chat.trace.reasoning.label",
+        "ui.chat.trace.reasoning.with_duration"
+      ],
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [],
+        "nit": []
+      }
+    },
+    "ui.chat.attachments": {
+      "namespace": "ui.chat.attachments",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "sha256": {
+        "en": "6a631b5377f126f0ac98019b3bba075f3b1dfb4d1f544c74fb3a6e0fa10a32f8",
+        "ru": "cfaa0b66007522acbb413183243ce675983bfb2c354186aec910862a56e1ff76"
+      },
+      "context_sha256": "96d2dcbb08fdae8fa6ad4071afa0dd495154d772a5bdc154ac174ad627b1a1ff",
+      "keys_read": 1,
+      "reviewed_keys": [
+        "ui.chat.attachments.not_viewable_too_large"
+      ],
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [
+          {
+            "severity": "minor",
+            "key": "ui.chat.attachments.not_viewable_too_large",
+            "message": "Current «Файл {name} слишком большой для предпросмотра» (45 chars + name vs en 30). Accurate and idiomatic, but the sidecar says the line truncates with an ellipsis on a narrow card: with a long file name the reason is cut and only «Файл <name>…» shows. The sidecar permits reordering; suggest «Слишком большой для предпросмотра: {name}», matching ru ui.chat.attachments.not_viewable «Файл нельзя просмотреть: {name}» and ru ui.canvas.files.tooLarge «Слишком большой для предпросмотра». Same truncation risk exists in en, so not gating."
+          }
+        ],
+        "nit": []
+      }
+    },
+    "ui.agents.detail": {
+      "namespace": "ui.agents.detail",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "sha256": {
+        "en": "54d5d16e2bce91a8e6884e1e7e230884f2571927540c9badb8ae2fd58966625e",
+        "ru": "9b4cc580717fd171593ba64d33e960bef4500d7d0ea78de52bad27c22ec20ff3"
+      },
+      "context_sha256": "60714c4d363a2eb3c0e818e42eaea94770f78a0d815c385ba1f54ab81f325db7",
+      "keys_read": 7,
+      "reviewed_keys": [
+        "ui.agents.detail.create.title_new",
+        "ui.agents.detail.create.title_duplicate",
+        "ui.agents.detail.create.error_name_required",
+        "ui.agents.detail.create.error_name_grammar",
+        "ui.agents.detail.create.error_name_taken",
+        "ui.agents.detail.create.error_instructions_required",
+        "ui.agents.detail.create.error_generic"
+      ],
+      "findings": {
+        "blocker": [],
+        "major": [],
+        "minor": [
+          {
+            "severity": "minor",
+            "key": "ui.agents.detail.create.title_duplicate",
+            "message": "Current «Дублирование агента» (process noun) drops the source's 'as a new agent', which the sidecar stresses (a create that starts filled in, not an editor mode); the action that opens it, ui.agents.detail.action.duplicate, says «Дублировать как нового агента». Meaning is restored by description_duplicate («Копия агента {name}. Это отдельный агент…») directly below, so not gating. Suggest «Новый агент из копии» (noun phrase, parallels title_new «Новый агент»)."
+          },
+          {
+            "severity": "minor",
+            "key": "ui.agents.detail.create.error_name_taken",
+            "message": "Uses «название» (also error_name_required, error_name_grammar), matching this form's field label ui.agents.detail.field.name «Название» — correct choice for client validation. But the backend refusal for the same conditions, with byte-identical English, reads «имя»: ui.agents.refusals.name_taken «Агент с именем «{name}» … Выберите другое имя …», ui.agents.refusals.name_grammar «В именах не должно быть…»; dialogs/settings also say «Имя агента». The same form can thus show both words. Pre-existing split; keep these, align refusals or the field label in a follow-up."
+          }
+        ],
+        "nit": [
+          {
+            "severity": "nit",
+            "key": "ui.agents.detail.create.error_instructions_required",
+            "message": "«Добавьте инструкции агента.» is correct; «инструкции агента» parses as genitive ('the agent's instructions'). «Добавьте инструкции для агента.» is a touch closer to 'Give the agent instructions'. Taste only."
+          }
+        ]
+      }
+    }
+  }
+}
