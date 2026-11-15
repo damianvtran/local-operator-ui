@@ -637,6 +637,50 @@ async function provisionControlElectron(root) {
 	}
 	return plan;
 }
+/** Tree paths every control revision carries; `git archive` fails on a missing one. */
+const CONTROL_ARCHIVE_PATHS = [
+	"src",
+	"scripts",
+	"resources",
+	"build",
+	"i18n",
+	"package.json",
+	"pnpm-lock.yaml",
+	"pnpm-workspace.yaml",
+	"electron.vite.config.js",
+	"tsconfig.node.json",
+	"tsconfig.app.json",
+	"tsconfig.web.json",
+	"tsconfig.json",
+];
+/*
+ * Paths shipped only when the control revision has them. `patches/` holds the
+ * files pnpm's `patchedDependencies` points at: when the lockfile differs the
+ * control runs its own `pnpm install --frozen-lockfile`, and pnpm aborts with
+ * ENOENT on a declared patch file that is not in the tree (seen on the first
+ * lock-changing PR after `electron-chrome-extensions` was patched). It is
+ * optional, not unconditional, because an older control revision predating
+ * `patches/` would otherwise make `git archive` fail on the missing pathspec.
+ */
+const CONTROL_ARCHIVE_OPTIONAL_PATHS = ["patches"];
+/**
+ * The pathspec list `git archive` receives for the control source tree.
+ * `hasPath(path)` reports whether the control revision contains `path`; it is
+ * injected so the selection is testable without a repository.
+ */
+export function controlArchivePaths(hasPath) {
+	return [
+		...CONTROL_ARCHIVE_PATHS,
+		...CONTROL_ARCHIVE_OPTIONAL_PATHS.filter((path) => hasPath(path)),
+	];
+}
+/** Whether `rev` has a tree entry at `path` (`git cat-file -e rev:path`). */
+function revisionHasPath(rev, path) {
+	return (
+		spawnSync("git", ["cat-file", "-e", `${rev}:${path}`], { stdio: "ignore" })
+			.status === 0
+	);
+}
 async function prepareControl(root, output) {
 	// The control's source is read from its own revision; ask for it up front so a
 	// clone that does not hold it fails with the reason instead of a bare
@@ -656,19 +700,7 @@ async function prepareControl(root, output) {
 		"--format=tar",
 		`--output=${tar}`,
 		ASKS_CONTROL,
-		"src",
-		"scripts",
-		"resources",
-		"build",
-		"i18n",
-		"package.json",
-		"pnpm-lock.yaml",
-		"pnpm-workspace.yaml",
-		"electron.vite.config.js",
-		"tsconfig.node.json",
-		"tsconfig.app.json",
-		"tsconfig.web.json",
-		"tsconfig.json",
+		...controlArchivePaths((path) => revisionHasPath(ASKS_CONTROL, path)),
 	]);
 	mkdirSync(root);
 	execFileSync("tar", ["-xf", tar, "-C", root]);
