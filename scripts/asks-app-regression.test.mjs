@@ -33,9 +33,12 @@ import {
 	CASES,
 	CONTROL_BUILD_NODE_ARGS,
 	CONTROL_REUSE_PARTS,
+	askScrollControlClaims,
 	assertControlPresent,
 	controlArchivePaths,
 	controlElectronPlan,
+	controlPredatesAskScrollFix,
+	controlPredatesFixFromEnv,
 	controlReusePlan,
 	describeMainPreloadReuse,
 	describePressRead,
@@ -1537,4 +1540,122 @@ test("control archive ships patches/ only when the control revision has it", () 
 		withPatches.filter((path) => path !== "patches"),
 		without,
 	);
+});
+
+test("the asks-scroll control's negative wheel reading is gated on a pre-#1901 control", () => {
+	/*
+	 * #1901 (merge e6122214, first parent 789b013d) put the fix on main, so the
+	 * merge-base control of any later PR is post-fix and cannot show the defect.
+	 * Driven against real git history: the last pre-fix main is pre-fix, the merge is not.
+	 */
+	const has = (rev) =>
+		spawnSync("git", ["cat-file", "-e", `${rev}^{commit}`]).status === 0;
+	if (!has("e6122214503b9fc52841e119c060eabb7650391b")) return; // shallow clone
+	assert.equal(
+		controlPredatesAskScrollFix("e6122214503b9fc52841e119c060eabb7650391b"),
+		false,
+		"the #1901 merge carries the fix",
+	);
+	if (has("789b013d6220cdd65b1f9cb86c9e3a70eeb524a4"))
+		assert.equal(
+			controlPredatesAskScrollFix("789b013d6220cdd65b1f9cb86c9e3a70eeb524a4"),
+			true,
+			"main before #1901 is the defect the control must show",
+		);
+	assert.throws(
+		() =>
+			controlPredatesAskScrollFix("0000000000000000000000000000000000000000"),
+		"an unknown revision must fail, not silently skip the assertion",
+	);
+});
+
+test("the pre-#1901 verdict survives a leg with no repository (CI failure of run 43673011929)", () => {
+	/*
+	 * The legs run in the control's extracted tree, which has no .git: asking git
+	 * there exits 128. RED shape = the old in-leg `git grep`; GREEN = parent decides,
+	 * leg reads env. The repo is built here in CI's clone shape (depth-1 fetch of a
+	 * merge commit, then depth-2 fetch) so the parent-side predicate is exercised too.
+	 */
+	const root = mkdtempSync(join(tmpdir(), "asks-clone-shape-"));
+	const run = (cwd, ...args) =>
+		execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
+	try {
+		const up = join(root, "up");
+		mkdirSync(join(up, "src"), { recursive: true });
+		run(up, "init", "-q");
+		run(up, "config", "user.email", "a@b");
+		run(up, "config", "user.name", "a");
+		run(up, "config", "uploadpack.allowAnySHA1InWant", "true");
+		writeFileSync(join(up, "src/a"), "plain");
+		run(up, "add", ".");
+		run(up, "commit", "-qm", "base");
+		run(up, "checkout", "-qb", "pr");
+		writeFileSync(join(up, "src/b"), "data-lo-ask-list");
+		run(up, "add", ".");
+		run(up, "commit", "-qm", "pr");
+		run(up, "checkout", "-q", "-");
+		writeFileSync(join(up, "src/c"), "main moves");
+		run(up, "add", ".");
+		run(up, "commit", "-qm", "main2");
+		run(up, "merge", "-q", "--no-ff", "pr", "-m", "merge");
+		const merge = run(up, "rev-parse", "HEAD");
+		const clone = join(root, "clone");
+		mkdirSync(clone);
+		run(clone, "init", "-q");
+		run(clone, "remote", "add", "origin", `file://${up}`);
+		run(clone, "fetch", "-q", "--no-tags", "--depth=1", "origin", merge);
+		run(clone, "checkout", "-q", "FETCH_HEAD");
+		run(clone, "fetch", "-q", "--no-tags", "--depth=2", "origin", merge);
+		const control = run(clone, "rev-parse", "HEAD^1");
+		// Parent side: works in the CI clone shape (main2 has no marker = pre-fix).
+		assert.equal(controlPredatesAskScrollFix(control, clone), true);
+		assert.equal(controlPredatesAskScrollFix(merge, clone), false);
+		// A leg's cwd has no repository: the old in-leg predicate must name git's failure...
+		const bare = join(root, "extracted");
+		mkdirSync(bare);
+		assert.throws(
+			() => controlPredatesAskScrollFix(control, bare),
+			/exit 128.*not a git repository/s,
+		);
+		// ...and the leg reads the parent's verdict instead.
+		assert.equal(
+			controlPredatesFixFromEnv({ ASKS_CONTROL_PREDATES_FIX: "1" }),
+			true,
+		);
+		assert.equal(
+			controlPredatesFixFromEnv({ ASKS_CONTROL_PREDATES_FIX: "0" }),
+			false,
+		);
+		assert.throws(() => controlPredatesFixFromEnv({}), /must be "1" or "0"/);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+});
+
+test("asks-scroll control claims: a pre-fix control keeps every defect claim, a post-fix control none (CI attempt 2, run 43679800429)", () => {
+	/* RED shape = gating only the wheel claim: body/stickyTop/chromeTab still ran post-fix. */
+	assert.deepEqual(askScrollControlClaims(true), {
+		wheel: true,
+		body: true,
+		stickyTop: true,
+		chromeTab: true,
+	});
+	assert.deepEqual(askScrollControlClaims(false), {
+		wheel: false,
+		body: false,
+		stickyTop: false,
+		chromeTab: false,
+	});
+	assert.throws(() => askScrollControlClaims(undefined));
+	/* The verdict block must route every control assertion through the table. */
+	const src = readFileSync(
+		new URL("./asks-app-regression.mjs", import.meta.url),
+		"utf8",
+	);
+	const block = src.slice(src.indexOf('} else if (kind === "control")'));
+	for (const claim of ["body", "stickyTop", "chromeTab"])
+		assert(
+			block.includes(`if (controlClaims.${claim})`),
+			`control claim ${claim} is not gated`,
+		);
 });
