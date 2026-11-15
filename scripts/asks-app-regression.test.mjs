@@ -33,6 +33,7 @@ import {
 	CASES,
 	CONTROL_BUILD_NODE_ARGS,
 	CONTROL_REUSE_PARTS,
+	askScrollControlClaims,
 	assertControlPresent,
 	controlElectronPlan,
 	controlPredatesAskScrollFix,
@@ -1613,4 +1614,32 @@ test("the pre-#1901 verdict survives a leg with no repository (CI failure of run
 	} finally {
 		rmSync(root, { recursive: true, force: true });
 	}
+});
+
+test("asks-scroll control claims: a pre-fix control keeps every defect claim, a post-fix control none (CI attempt 2, run 43679800429)", () => {
+	/* RED shape = gating only the wheel claim: body/stickyTop/chromeTab still ran post-fix. */
+	assert.deepEqual(askScrollControlClaims(true), {
+		wheel: true,
+		body: true,
+		stickyTop: true,
+		chromeTab: true,
+	});
+	assert.deepEqual(askScrollControlClaims(false), {
+		wheel: false,
+		body: false,
+		stickyTop: false,
+		chromeTab: false,
+	});
+	assert.throws(() => askScrollControlClaims(undefined));
+	/* The verdict block must route every control assertion through the table. */
+	const src = readFileSync(
+		new URL("./asks-app-regression.mjs", import.meta.url),
+		"utf8",
+	);
+	const block = src.slice(src.indexOf('} else if (kind === "control")'));
+	for (const claim of ["body", "stickyTop", "chromeTab"])
+		assert(
+			block.includes(`if (controlClaims.${claim})`),
+			`control claim ${claim} is not gated`,
+		);
 });

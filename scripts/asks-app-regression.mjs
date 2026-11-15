@@ -396,6 +396,33 @@ export function controlPredatesFixFromEnv(env = process.env) {
 		`ASKS_CONTROL_PREDATES_FIX must be "1" or "0" (set by the parent run), got ${JSON.stringify(value)}`,
 	);
 }
+
+/**
+ * Which pre-fix-only claims the asks-scroll CONTROL leg may assert.
+ *
+ * WHY A TABLE. The control leg asserts the DEFECT, and every such claim is false
+ * by construction on a control that already carries #1901 (the merge base of any
+ * PR cut after e6122214). CI attempt 1 failed on the wheel claim, attempt 2 on the
+ * next one (`containment.body === "contain"`), because the claims were gated one at
+ * a time. They are listed here together so one verdict decides all of them:
+ *   wheel      - a wheel over the question text/option/list must NOT move the list
+ *   body       - the question body computes overscroll-behavior-y `contain`
+ *   stickyTop  - `Send answer` is OUTSIDE the port at the top of the scroll
+ *   chromeTab  - Tab from the drawer's chrome does NOT land on the list
+ * A pre-fix control (pinned/override) keeps every claim; a post-fix control keeps
+ * none (nothing pre-fix-specific is true of it) and the run logs the skip loudly.
+ * The candidate's own assertions are a separate branch and never read this table.
+ */
+export function askScrollControlClaims(controlIsPreFix) {
+	assert.equal(typeof controlIsPreFix, "boolean");
+	return {
+		wheel: controlIsPreFix,
+		body: controlIsPreFix,
+		stickyTop: controlIsPreFix,
+		chromeTab: controlIsPreFix,
+	};
+}
+
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /*
@@ -1744,14 +1771,15 @@ export const CASES = {
 			 */
 			const controlIsPreFix =
 				kind === "candidate" || controlPredatesFixFromEnv();
+			const controlClaims = askScrollControlClaims(controlIsPreFix);
 			if (!controlIsPreFix)
 				console.warn(
-					`asks-scroll/control: SKIPPING the pre-fix negative wheel assertion - control ${ASKS_CONTROL} already carries #1901 (data-lo-ask-list); candidate assertions still run`,
+					`asks-scroll/control: SKIPPING ALL pre-fix negative assertions (wheel, body containment, Send-answer clipping, chrome Tab) - control ${ASKS_CONTROL} already carries #1901 (data-lo-ask-list); candidate assertions still run`,
 				);
 			for (const [size, entry] of Object.entries(summary)) {
 				for (const wheel of entry.wheels) {
 					const [before, after] = wheel.list;
-					if (kind === "control" && !controlIsPreFix) continue;
+					if (kind === "control" && !controlClaims.wheel) continue;
 					if (kind === "candidate")
 						assert(
 							after > before,
@@ -1871,22 +1899,26 @@ export const CASES = {
 						0,
 						`${size}: ${entry.tabWalk.outsidePort} focused control(s) were not scrolled wholly into the port`,
 					);
-				} else {
-					assert.equal(
-						entry.containment.body,
-						"contain",
-						`${size}: the pre-fix build's question body must still contain the gesture`,
-					);
-					assert.equal(
-						entry.sticky.top?.inPort,
-						false,
-						`${size}: the pre-fix build cannot have Send answer inside the port at the top - that is the clipping this case exists for`,
-					);
-					assert.equal(
-						entry.chromeTab.landedOnList,
-						false,
-						`${size}: the pre-fix list is not a Tab stop`,
-					);
+				} else if (kind === "control") {
+					/* Pre-fix claims only (see askScrollControlClaims); none hold post-fix. */
+					if (controlClaims.body)
+						assert.equal(
+							entry.containment.body,
+							"contain",
+							`${size}: the pre-fix build's question body must still contain the gesture`,
+						);
+					if (controlClaims.stickyTop)
+						assert.equal(
+							entry.sticky.top?.inPort,
+							false,
+							`${size}: the pre-fix build cannot have Send answer inside the port at the top - that is the clipping this case exists for`,
+						);
+					if (controlClaims.chromeTab)
+						assert.equal(
+							entry.chromeTab.landedOnList,
+							false,
+							`${size}: the pre-fix list is not a Tab stop`,
+						);
 				}
 			}
 		},
