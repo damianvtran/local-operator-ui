@@ -38,6 +38,7 @@ import {
 	type ExtensionStatus,
 	type ExtensionSummary,
 	type ExtensionUpdateReport,
+	NATIVE_HOST_NAME,
 	isExtensionId,
 	storeListingUrl,
 } from "../../../shared/browser-extensions";
@@ -45,6 +46,7 @@ import type { WindowShow } from "../../window-mode";
 import { presentPopupWindow } from "../../window-raise";
 import {
 	type AdapterBinding,
+	type NativeHostRequest,
 	dispatchActionClick,
 	dispatchInstalled,
 	extensionIdOfUrl,
@@ -53,6 +55,7 @@ import {
 	runtimePopupUrl,
 } from "./adapter";
 import { ONEPASSWORD_EXTENSION_ID } from "./crx";
+import type { NativeHostAnswer, NativeHostPrompt } from "./dialogs";
 import {
 	type ExtensionManifest,
 	type PreparedExtension,
@@ -105,6 +108,9 @@ export interface ExtensionHooks {
 	 * focused, so a probe/agent cannot summon or satisfy them. */
 	confirmInstall: (prompt: InstallPrompt) => Promise<boolean>;
 	confirmRemove: (name: string) => Promise<boolean>;
+	/** First use of a desktop app (native messaging host) by an extension.
+	 * "unavailable" when the app may not show UI right now. */
+	confirmNativeHost: (prompt: NativeHostPrompt) => Promise<NativeHostAnswer>;
 	/** Optional internal measurement: durations/categories only. */
 	workerStartupMeasured?: (result: {
 		elapsedMs: number;
@@ -268,6 +274,13 @@ export class ExtensionManager {
 	 * selected tab hours later, so the arm lapses FOREGROUND_ARM_MS after the
 	 * act settles and is dropped on unload. */
 	private foregroundArmed = new Map<string, number>();
+	/** Native-host refusals, `${id}\n${host}`: for this session only, so a
+	 * mis-click is undone by a restart and a refused host does not re-prompt
+	 * on every reconnect attempt (1Password retries on a timer). */
+	private nativeDenied = new Set<string>();
+	/** One open consent question per (extension, host): concurrent connects
+	 * (worker + popup, or a retry loop) share it instead of stacking dialogs. */
+	private nativeAsking = new Map<string, Promise<boolean>>();
 	private readonly binding: AdapterBinding;
 	constructor(
 		private session: Session,
@@ -280,6 +293,8 @@ export class ExtensionManager {
 			this.openPage(url, false, large);
 		this.binding.openExtensionTab = (url) => this.openExtensionTab(url);
 		this.binding.isActiveExtension = (id) => this.isActive(id);
+		this.binding.authorizeNativeHost = (request) =>
+			this.authorizeNativeHost(request);
 		this.binding.mayActivateTab = () =>
 			[...this.windows.values()].some(
 				(window) => !window.isDestroyed() && window.isFocused(),
@@ -450,6 +465,7 @@ export class ExtensionManager {
 			description: entry.description ?? "",
 			hasHomepage: !!entry.homepage,
 			waitingPages: runtime?.deferred.length ?? 0,
+			nativeHosts: (entry.nativeHosts ?? []).map((grant) => ({ ...grant })),
 		};
 	}
 
@@ -806,7 +822,10 @@ export class ExtensionManager {
 		await this.runtimes.get(id)?.pending?.catch(() => {});
 		const done = await this.exclusive(id, async () => {
 			await this.unload(id);
+			// The state entry carries the desktop-app grants, so deleting it
+			// drops them; the session refusals go too, so a reinstall asks fresh.
 			delete this.state.extensions[id];
+			this.forgetNativeDenials(id);
 			this.save();
 			await rm(join(this.hooks.root, id), { recursive: true, force: true });
 			await this.session
@@ -820,6 +839,91 @@ export class ExtensionManager {
 		if (done) this.runtimes.delete(id);
 		if (!this.disposed) this.hooks.changed();
 		return done ?? false;
+	}
+
+	// ---- desktop apps (native messaging) ------------------------------------
+
+	/**
+	 * The per-call decision behind `chrome.runtime.connectNative` /
+	 * `sendNativeMessage` (adapter.ts). The patched library has already run
+	 * Chrome's host checks (manifest found, allowed_origins names this
+	 * extension, program present), so a prompt is only ever about a host that
+	 * genuinely offers itself to this extension. Allowed only when ALL hold:
+	 * - the extension is installed AND enabled here, and the caller is its
+	 *   own page or worker (not another extension borrowing its id);
+	 * - the permission set the user approved at install includes
+	 *   `nativeMessaging` (the library re-checks the loaded manifest);
+	 * - the user allowed this exact host for this extension — persisted in
+	 *   the state entry — or allows it now in the native dialog.
+	 * Refusals last for the session; an unavailable dialog (window not
+	 * focused) refuses this call only, so the next attempt can ask.
+	 */
+	async authorizeNativeHost(request: NativeHostRequest): Promise<boolean> {
+		const { extensionId: id, application: host } = request;
+		const entry = this.state.extensions[id];
+		if (
+			!entry ||
+			!this.isActive(id) ||
+			extensionIdOfUrl(request.senderUrl) !== id ||
+			!entry.consented?.permissions.includes("nativeMessaging") ||
+			!NATIVE_HOST_NAME.test(host)
+		)
+			return false;
+		if (entry.nativeHosts?.some((grant) => grant.name === host)) return true;
+		const key = `${id}\n${host}`;
+		if (this.nativeDenied.has(key)) return false;
+		const asking = this.nativeAsking.get(key);
+		if (asking) return asking;
+		const question = (async () => {
+			const answer = await this.hooks.confirmNativeHost({
+				extensionName: entry.name,
+				host,
+				description: request.host.description.slice(0, 200),
+				path: request.host.path,
+			} satisfies NativeHostPrompt);
+			if (answer === "unavailable") return false;
+			if (answer === "deny") {
+				this.nativeDenied.add(key);
+				return false;
+			}
+			// Re-read: the extension may have been removed or disabled while
+			// the dialog was open; a grant must not outlive its entry.
+			const current = this.state.extensions[id];
+			if (current !== entry || !this.isActive(id)) return false;
+			if (!current.nativeHosts?.some((grant) => grant.name === host)) {
+				current.nativeHosts = [
+					...(current.nativeHosts ?? []),
+					{ name: host, description: request.host.description.slice(0, 200) },
+				];
+				this.save();
+				if (!this.disposed) this.hooks.changed();
+			}
+			return true;
+		})()
+			.catch(() => false)
+			.finally(() => this.nativeAsking.delete(key));
+		this.nativeAsking.set(key, question);
+		return question;
+	}
+
+	/** Withdraw consent for one desktop app and close its live connections
+	 * (the extension's port sees Chrome's "forbidden" lastError). The next
+	 * connection attempt asks again. */
+	revokeNativeHost(id: string, host: string): boolean {
+		const entry = this.state.extensions[id];
+		if (!entry?.nativeHosts?.some((grant) => grant.name === host)) return false;
+		const remaining = entry.nativeHosts.filter((grant) => grant.name !== host);
+		// An empty list is dropped (undefined), so state.json carries no key.
+		entry.nativeHosts = remaining.length ? remaining : undefined;
+		this.save();
+		this.binding.adapter.disconnectNativeHosts(id, host);
+		if (!this.disposed) this.hooks.changed();
+		return true;
+	}
+
+	private forgetNativeDenials(id: string): void {
+		for (const key of this.nativeDenied)
+			if (key.startsWith(`${id}\n`)) this.nativeDenied.delete(key);
 	}
 
 	private async unload(id: string): Promise<void> {
@@ -1281,6 +1385,7 @@ export class ExtensionManager {
 			this.workerRunning,
 		);
 		this.binding.isActiveExtension = null;
+		this.binding.authorizeNativeHost = null;
 		this.binding.mayActivateTab = null;
 		for (const [id, runtime] of this.runtimes) {
 			this.session.extensions.removeExtension(id);

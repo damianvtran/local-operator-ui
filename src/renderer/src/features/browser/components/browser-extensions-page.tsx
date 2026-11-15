@@ -64,6 +64,8 @@ export interface ExtensionsPageViewProps {
 		link: "listing" | "homepage",
 	) => void;
 	onRetry: (extension: ExtensionSummary) => void;
+	/** Withdraw the extension's consent for one desktop app. */
+	onRevokeNativeHost: (extension: ExtensionSummary, host: string) => void;
 	onCancelInstall: (id: string) => void;
 	onOpenStore: () => void;
 	onCheckUpdates: () => void;
@@ -588,6 +590,7 @@ const DetailsView: FC<
 	onOpen,
 	onOpenLink,
 	onRetry,
+	onRevokeNativeHost,
 	scrolled,
 }) => {
 	const back = useRef<HTMLButtonElement | null>(null);
@@ -735,17 +738,48 @@ const DetailsView: FC<
 						</p>
 					)}
 				</Section>
-				{permissions.blocked.length > 0 && (
-					<Section title={t("ui.browser.extensions.blocked_heading")}>
-						<ul className="list-disc ps-5 text-body text-ink-muted">
-							{permissions.blocked.map((capability) => (
-								<li key={capability}>
-									{capability === "desktop_apps"
-										? t("ui.browser.extensions.blocked_desktop_apps")
-										: t("ui.browser.extensions.blocked_notifications")}
-								</li>
-							))}
-						</ul>
+				{/* Shown when the manifest can use desktop apps (nativeMessaging) or
+				    when grants exist, so a revoke stays reachable even if an
+				    update dropped the permission. Each app is allowed in a native
+				    dialog on first use (manager.ts authorizeNativeHost). */}
+				{(extension.permissions.includes("nativeMessaging") ||
+					extension.nativeHosts.length > 0) && (
+					<Section title={t("ui.browser.extensions.details_desktop_apps")}>
+						{extension.nativeHosts.length ? (
+							<ul className="flex flex-col gap-2">
+								{extension.nativeHosts.map((host) => (
+									<li
+										key={host.name}
+										className="flex items-center justify-between gap-3"
+									>
+										<div className="min-w-0">
+											<p className="truncate text-body text-ink">
+												{host.description || host.name}
+											</p>
+											<p className="break-all text-mono-sm text-ink-muted select-text">
+												{host.name}
+											</p>
+										</div>
+										<Button
+											variant="outline"
+											size="sm"
+											{...holdBusy(working, "shrink-0")}
+											aria-label={t(
+												"ui.browser.extensions.desktop_apps_revoke_label",
+												{ app: host.description || host.name },
+											)}
+											onClick={() => onRevokeNativeHost(extension, host.name)}
+										>
+											{t("ui.browser.extensions.desktop_apps_revoke")}
+										</Button>
+									</li>
+								))}
+							</ul>
+						) : (
+							<p className="text-body text-ink-muted">
+								{t("ui.browser.extensions.desktop_apps_none")}
+							</p>
+						)}
 					</Section>
 				)}
 				<Section title={t("ui.browser.extensions.details_options")}>
@@ -872,6 +906,9 @@ export const BrowserExtensionsPage: FC<{
 			onOpen={(extension, kind) => void state.open(extension, kind)}
 			onOpenLink={(extension, link) => void state.openLink(extension, link)}
 			onRetry={state.retry}
+			onRevokeNativeHost={(extension, host) =>
+				void state.revokeNativeHost(extension, host)
+			}
 			onCancelInstall={state.cancelInstall}
 			onOpenStore={state.openStore}
 			onCheckUpdates={() => void state.checkUpdates()}

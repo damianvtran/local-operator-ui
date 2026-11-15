@@ -1,5 +1,5 @@
 diff --git a/dist/chrome-extension-api.preload.js b/dist/chrome-extension-api.preload.js
-index 67d3be4..121dd5e 100644
+index 67d3be4b5026069ec4ae73c1fc6e661f8a19098e..538c9cfa834d2b735fea2932e47ff0f3fa14c3c8 100644
 --- a/dist/chrome-extension-api.preload.js
 +++ b/dist/chrome-extension-api.preload.js
 @@ -21,9 +21,6 @@
@@ -44,7 +44,7 @@ index 67d3be4..121dd5e 100644
        if (callback) {
          callback(result);
        } else {
-@@ -75,7 +74,7 @@
+@@ -75,19 +74,31 @@
        const connectionId = import_electron2.contextBridge.executeInMainWorld({
          func: () => crypto.randomUUID()
        });
@@ -53,22 +53,33 @@ index 67d3be4..121dd5e 100644
        const onMessage = (_event, message) => {
          receive(message);
        };
-@@ -88,6 +87,14 @@
+       import_electron2.ipcRenderer.on(`crx-native-msg-${connectionId}`, onMessage);
+-      import_electron2.ipcRenderer.once(`crx-native-msg-${connectionId}-disconnect`, () => {
++      // Main sends Chrome's lastError text when the host exits or access is
++      // revoked; nothing when the extension closed the port itself.
++      import_electron2.ipcRenderer.once(`crx-native-msg-${connectionId}-disconnect`, (_event, reason) => {
+         import_electron2.ipcRenderer.off(`crx-native-msg-${connectionId}`, onMessage);
+-        disconnect();
++        disconnect(typeof reason === "string" ? reason : void 0);
+       });
+       const send = (message) => {
          import_electron2.ipcRenderer.send(`crx-native-msg-${connectionId}`, message);
        };
        callback(connectionId, send);
-+      // Install listeners and initialize the Port before a denial can disconnect it.
++      // Install listeners and initialize the Port before a refusal can
++      // disconnect it. Main answers {nativeMessagingError} with Chrome's own
++      // lastError text (host not found, forbidden, no consent).
 +      invokeExtension(extensionId, "runtime.connectNative", {}, connectionId, application).then((result) => {
-+        if (result?.nativeMessagingDenied) {
++        if (typeof result?.nativeMessagingError === "string") {
 +          import_electron2.ipcRenderer.off(`crx-native-msg-${connectionId}`, onMessage);
 +          import_electron2.ipcRenderer.removeAllListeners(`crx-native-msg-${connectionId}-disconnect`);
-+          disconnect("Native messaging is disabled by browser policy");
++          disconnect(result.nativeMessagingError);
 +        }
 +      });
      };
      const disconnectNative = (extensionId, connectionId) => {
        invokeExtension(extensionId, "runtime.disconnectNative", {}, connectionId);
-@@ -104,6 +111,12 @@
+@@ -104,6 +115,12 @@
        const chrome = globalThis.chrome || {};
        const extensionId = chrome.runtime?.id;
        const manifest = extensionId && chrome.runtime.getManifest?.() || {};
@@ -81,7 +92,7 @@ index 67d3be4..121dd5e 100644
        const invokeExtension2 = (fnName, opts = {}) => (...args) => electron.invokeExtension(extensionId, fnName, opts, ...args);
        function imageData2base64(imageData) {
          const canvas = document.createElement("canvas");
-@@ -197,8 +210,9 @@
+@@ -197,8 +214,9 @@
            ;
            this.onMessage._emit(message);
          }
@@ -93,24 +104,7 @@ index 67d3be4..121dd5e 100644
          }
          postMessage(message) {
            this._send(message);
-@@ -386,7 +400,15 @@
-             return {
-               ...base,
-               clear: invokeExtension2("notifications.clear"),
--              create: invokeExtension2("notifications.create"),
-+              create: (...args) => {
-+                const callback = typeof args[args.length - 1] === "function" ? args.pop() : undefined;
-+                const result = electron.invokeExtension(extensionId, "notifications.create", {}, ...args).then((value) => {
-+                  if (value?.notificationDenied) throw new Error("Notifications are disabled by browser policy");
-+                  return value;
-+                });
-+                if (!callback) return result;
-+                result.then(callback, () => withPolicyLastError(callback, "Notifications are disabled by browser policy"));
-+              },
-               getAll: invokeExtension2("notifications.getAll"),
-               getPermissionLevel: invokeExtension2("notifications.getPermissionLevel"),
-               update: invokeExtension2("notifications.update"),
-@@ -443,7 +465,21 @@
+@@ -443,7 +461,21 @@
                  return port;
                },
                openOptionsPage: invokeExtension2("runtime.openOptionsPage"),
@@ -121,19 +115,19 @@ index 67d3be4..121dd5e 100644
 +              onInstalled: new ExtensionEvent("runtime.onInstalled"),
 +              sendNativeMessage: (application, message, callback) => {
 +                const result = electron.invokeExtension(extensionId, "runtime.sendNativeMessage", {}, application, message).then((value) => {
-+                  if (value?.nativeMessagingDenied) throw new Error("Native messaging is disabled by browser policy");
++                  if (typeof value?.nativeMessagingError === "string") throw new Error(value.nativeMessagingError);
 +                  return value;
 +                });
 +                if (typeof callback !== "function") return result;
-+                result.then(callback, () => {
++                result.then(callback, (error) => {
 +                  // Chrome exposes lastError only for the synchronous callback scope.
-+                  withPolicyLastError(callback, "Native messaging is disabled by browser policy");
++                  withPolicyLastError(callback, error.message);
 +                });
 +              }
              };
            }
          },
-@@ -560,14 +596,29 @@
+@@ -560,14 +592,29 @@
          const baseApi = chrome[apiName];
          const api = apiDefinitions[apiName];
          if (api.shouldInject && !api.shouldInject()) return;
@@ -164,7 +158,7 @@ index 67d3be4..121dd5e 100644
      }
      if (!process.contextIsolated) {
        console.warn(`injectExtensionAPIs: context isolation disabled in ${location.href}`);
-@@ -584,6 +635,26 @@
+@@ -584,6 +631,26 @@
        } else {
          import_electron2.webFrame.executeJavaScript(`(${mainWorldScript}());`);
        }
@@ -192,7 +186,7 @@ index 67d3be4..121dd5e 100644
        console.error(`injectExtensionAPIs error (${location.href})`);
        console.error(error);
 diff --git a/dist/cjs/index.js b/dist/cjs/index.js
-index a91ca8f..dc92ce4 100644
+index a91ca8fd07194abb081e9bb35fad0060fefddf91..5bf84841a2c3a40fc253d91f8b9878f149f146cf 100644
 --- a/dist/cjs/index.js
 +++ b/dist/cjs/index.js
 @@ -448,7 +448,7 @@ var BrowserActionAPI = class {
@@ -271,48 +265,434 @@ index a91ca8f..dc92ce4 100644
        this.ctx.router.broadcastEvent(`webNavigation.${eventName}`, details);
      };
      this.onCreatedNavigationTarget = (tab, { url, frame }) => {
-@@ -1950,11 +1965,13 @@ var NativeMessagingHost = class {
+@@ -1843,105 +1858,200 @@ async function readNativeMessagingHostConfig(application) {
+     }
+   }
+ }
++// Chrome's own runtime.lastError strings (extensions/browser/api/messaging),
++// verbatim: extensions branch on them, e.g. to show "install the desktop app".
++var NATIVE_HOST_INVALID_NAME = "Invalid native messaging host name specified.";
++var NATIVE_HOST_NOT_FOUND = "Specified native messaging host not found.";
++var NATIVE_HOST_FORBIDDEN = "Access to the specified native messaging host is forbidden.";
++var NATIVE_HOST_START_FAILED = "Failed to start native messaging host.";
++var NATIVE_HOST_EXITED = "Native host has exited.";
++var NATIVE_HOST_ERROR = "Error when communicating with the native messaging host.";
++// Chrome's host-name grammar. It is also what keeps a caller-supplied name
++// from walking out of the NativeMessagingHosts directories when it is joined
++// into a manifest path (`../../x` would otherwise read any JSON file).
++var NATIVE_HOST_NAME = /^[a-z0-9_]+(\.[a-z0-9_]+)*$/;
++// Chrome's cap on one host -> extension message.
++var NATIVE_HOST_MAX_MESSAGE = 1024 * 1024;
++/**
++ * Chrome's launch checks, run BEFORE anything is spawned and before the
++ * embedder is asked for consent: a valid name, a manifest that names itself,
++ * an allowed_origins entry for this exact extension, and an absolute path to
++ * an existing file (Chrome requires absolute on macOS/Linux). An unresolvable
++ * host can therefore never summon a consent prompt.
++ */
++async function resolveNativeMessagingHost(application, extensionId) {
++  if (typeof application !== "string" || !NATIVE_HOST_NAME.test(application)) {
++    return { error: NATIVE_HOST_INVALID_NAME };
++  }
++  const config = await readNativeMessagingHostConfig(application);
++  if (!config || config.name !== application) return { error: NATIVE_HOST_NOT_FOUND };
++  if (!config.allowed_origins.includes(`chrome-extension://${extensionId}/`)) {
++    return { error: NATIVE_HOST_FORBIDDEN };
++  }
++  if (process.platform !== "win32" && !path2.isAbsolute(config.path)) {
++    return { error: NATIVE_HOST_NOT_FOUND };
++  }
++  try {
++    if (!(await import_node_fs2.promises.stat(config.path)).isFile()) return { error: NATIVE_HOST_NOT_FOUND };
++  } catch {
++    return { error: NATIVE_HOST_NOT_FOUND };
++  }
++  return { config };
++}
+ var NativeMessagingHost = class {
+-  constructor(extensionId, sender, connectionId, application, keepAlive = true) {
++  /**
++   * One spawned host process for one port (keepAlive) or one
++   * sendNativeMessage call. `config` is already resolved and authorized.
++   * Message bodies are never logged: they carry vault data.
++   */
++  constructor(extensionId, sender, connectionId, config, keepAlive = true, onDestroyed) {
+     this.connected = false;
++    this.destroyed = false;
++    this.pending = [];
++    this.inbound = Buffer.alloc(0);
++    this.extensionId = extensionId;
++    this.application = config.name;
++    this.onDestroyed = onDestroyed;
+     this.receiveExtensionMessage = (_event, message) => {
+       this.send(message);
+     };
+     this.receive = (data) => {
+-      const length = data.readUInt32LE(0);
+-      const message = JSON.parse(data.subarray(4, 4 + length).toString());
+-      d7("receive: %s", message);
+-      if (this.keepAlive && this.sender) {
+-        this.sender.send(`crx-native-msg-${this.connectionId}`, message);
+-      } else {
+-        this.resolveResponse?.(message);
++      // stdout is a byte stream: one chunk can hold part of a frame or several
++      // frames. Upstream parsed exactly one frame per chunk, which truncates
++      // any reply larger than a pipe read (vault item lists) and drops the
++      // second of two quick replies. Reassemble like Chrome does.
++      this.inbound = this.inbound.length ? Buffer.concat([this.inbound, data]) : data;
++      while (!this.destroyed && this.inbound.length >= 4) {
++        const length = this.inbound.readUInt32LE(0);
++        if (length > NATIVE_HOST_MAX_MESSAGE) {
++          this.destroy(NATIVE_HOST_ERROR);
++          return;
++        }
++        if (this.inbound.length < 4 + length) return;
++        const body = this.inbound.subarray(4, 4 + length);
++        this.inbound = this.inbound.subarray(4 + length);
++        let message;
++        try {
++          message = JSON.parse(body.toString("utf8"));
++        } catch {
++          this.destroy(NATIVE_HOST_ERROR);
++          return;
++        }
++        if (this.keepAlive) {
++          this.post(`crx-native-msg-${this.connectionId}`, message);
++        } else {
++          this.settle({ message });
++        }
+       }
+     };
+     this.keepAlive = keepAlive;
+     this.sender = sender;
++    this.connectionId = connectionId;
+     if (keepAlive) {
+       this.sender.ipc.on(`crx-native-msg-${connectionId}`, this.receiveExtensionMessage);
+     }
+-    this.connectionId = connectionId;
+-    this.ready = this.launch(application, extensionId);
++    this.launch(config);
++  }
++  post(channel, ...args) {
++    try {
++      if (this.sender && !this.sender.isDestroyed?.()) this.sender.send(channel, ...args);
++    } catch {
++    }
++  }
++  settle(outcome) {
++    if (!this.outcome) this.outcome = outcome;
++    const resolve = this.resolveResponse;
++    this.resolveResponse = void 0;
++    resolve?.(this.outcome);
+   }
+-  destroy() {
++  /** `reason`: the lastError the port's onDisconnect sees; none when the
++   * extension itself disconnected. */
++  destroy(reason) {
++    if (this.destroyed) return;
++    this.destroyed = true;
+     this.connected = false;
+-    if (this.process) {
+-      this.process.kill();
+-      this.process = void 0;
++    const child = this.process;
++    this.process = void 0;
++    if (child) {
++      child.stdout?.off("data", this.receive);
++      try {
++        child.kill();
++      } catch {
++      }
+     }
+     if (this.keepAlive && this.sender) {
+-      this.sender.ipc.off(`crx-native-msg-${this.connectionId}`, this.receiveExtensionMessage);
+-      this.sender.send(`crx-native-msg-${this.connectionId}-disconnect`);
++      try {
++        this.sender.ipc.off(`crx-native-msg-${this.connectionId}`, this.receiveExtensionMessage);
++      } catch {
++      }
++      this.post(`crx-native-msg-${this.connectionId}-disconnect`, reason);
+     }
+     this.sender = void 0;
++    this.pending = [];
++    this.settle({ error: reason || NATIVE_HOST_EXITED });
++    this.onDestroyed?.(this);
+   }
+-  async launch(application, extensionId) {
+-    const config = await readNativeMessagingHostConfig(application);
+-    if (!config) {
+-      d7("launch: unable to find %s for %s", application, extensionId);
+-      this.destroy();
+-      return;
+-    }
+-    const extensionUrl = `chrome-extension://${extensionId}/`;
+-    if (!config.allowed_origins?.includes(extensionUrl)) {
+-      d7("launch: %s not in allowed origins", extensionId);
+-      this.destroy();
+-      return;
+-    }
+-    let isFile = false;
++  launch(config) {
++    const extensionUrl = `chrome-extension://${this.extensionId}/`;
++    let child;
+     try {
+-      const stat = await import_node_fs2.promises.stat(config.path);
+-      isFile = stat.isFile();
+-    } catch (error) {
+-      d7("launch: unable to find %s", config.path, error);
+-    }
+-    if (!isFile) {
+-      this.destroy();
++      d7("launch: spawning %s for %s", config.path, this.extensionId);
++      // Chrome starts the host in its own directory; hosts that load siblings
++      // by relative path depend on it.
++      child = (0, import_node_child_process.spawn)(config.path, [extensionUrl], {
++        shell: false,
++        cwd: path2.dirname(config.path),
++        stdio: ["pipe", "pipe", "pipe"]
++      });
++    } catch {
++      this.destroy(NATIVE_HOST_START_FAILED);
+       return;
+     }
+-    d7("launch: spawning %s for %s", config.path, extensionId);
+-    this.process = (0, import_node_child_process.spawn)(config.path, [extensionUrl], {
+-      shell: false
++    this.process = child;
++    child.stdout.on("data", this.receive);
++    // Drained, never logged: hosts print account diagnostics on stderr.
++    child.stderr.on("data", () => {
+     });
+-    this.process.stdout.on("data", this.receive);
+-    this.process.stderr.on("data", (data) => {
+-      d7("stderr: %s", data.toString());
+-    });
+-    this.process.on("error", (err) => {
+-      d7("error: %s", err);
+-      this.destroy();
+-    });
+-    this.process.on("exit", (code) => {
+-      d7("exited %d", code);
+-      this.destroy();
++    // A write after the host exits raises EPIPE on stdin; unhandled, that is
++    // an uncaught error in the main process.
++    child.stdin.on("error", () => this.destroy(NATIVE_HOST_EXITED));
++    child.stdout.on("error", () => this.destroy(NATIVE_HOST_ERROR));
++    child.stderr.on("error", () => {
+     });
++    child.on("error", () => this.destroy(NATIVE_HOST_START_FAILED));
++    // "close", not "exit": a one-shot host answers and exits at once, and its
++    // reply is still in the stdout pipe when "exit" fires.
++    child.on("close", () => this.destroy(NATIVE_HOST_EXITED));
+     this.connected = true;
+-    if (this.pending && this.pending.length > 0) {
+-      d7("sending %d pending messages", this.pending.length);
+-      this.pending.forEach((msg) => this.send(msg));
+-      this.pending = [];
+-    }
++    const queued = this.pending;
++    this.pending = [];
++    queued.forEach((message) => this.send(message));
+   }
+   send(json) {
+-    d7("send", json);
++    if (this.destroyed) return;
+     if (!this.connected) {
+-      const pending = this.pending || (this.pending = []);
+-      pending.push(json);
+-      d7("send: pending");
++      this.pending.push(json);
+       return;
+     }
+-    const message = JSON.stringify(json);
+-    const buffer = Buffer.alloc(4 + message.length);
+-    buffer.writeUInt32LE(message.length, 0);
+-    buffer.write(message, 4);
+-    this.process.stdin.write(buffer);
++    const text = JSON.stringify(json);
++    if (typeof text !== "string") return;
++    // Byte length, not string length: upstream sized the frame by UTF-16 code
++    // units, so any non-ASCII character (a name, a locale string) corrupted it.
++    const body = Buffer.from(text, "utf8");
++    const frame = Buffer.alloc(4 + body.length);
++    frame.writeUInt32LE(body.length, 0);
++    body.copy(frame, 4);
++    try {
++      this.process.stdin.write(frame);
++    } catch {
++      this.destroy(NATIVE_HOST_EXITED);
++    }
+   }
++  /** One-shot: resolves {message} or {error}; never hangs on a host that
++   * failed to start or exited without answering. */
+   sendAndReceive(message) {
+     this.send(message);
++    if (this.outcome) return Promise.resolve(this.outcome);
+     return new Promise((resolve) => {
+       this.resolveResponse = resolve;
+     });
+@@ -1950,34 +2060,97 @@ var NativeMessagingHost = class {
  
  // src/browser/api/runtime.ts
  var RuntimeAPI = class extends import_node_events3.EventEmitter {
 -  constructor(ctx) {
-+  constructor(ctx, allowNativeMessaging = false) {
++  /**
++   * `authorizeNativeMessaging(details)` is the embedder's per-call decision
++   * (consent). It replaces the constructor-global allow/deny boolean: native
++   * messaging is now decided per (extension, host) on every connectNative and
++   * sendNativeMessage, frame and worker callers alike. Absent or throwing =
++   * forbidden.
++   */
++  constructor(ctx, authorizeNativeMessaging) {
      super();
      this.ctx = ctx;
      this.hostMap = {};
++    this.connecting = /* @__PURE__ */ new Set();
++    this.cancelled = /* @__PURE__ */ new Set();
++    const senderUrl = (event) => {
++      try {
++        return (event.type === "frame" ? event.sender?.getURL?.() : event.sender?.scope) || "";
++      } catch {
++        return "";
++      }
++    };
++    const authorize = async (event, application) => {
++      const resolved = await resolveNativeMessagingHost(application, event.extension.id);
++      if (resolved.error) return resolved;
++      let allowed = false;
++      if (typeof authorizeNativeMessaging === "function") {
++        try {
++          allowed = await authorizeNativeMessaging({
++            extensionId: event.extension.id,
++            application,
++            senderUrl: senderUrl(event),
++            host: {
++              name: resolved.config.name,
++              description: resolved.config.description,
++              path: resolved.config.path
++            }
++          }) === true;
++        } catch {
++          allowed = false;
++        }
++      }
++      return allowed ? resolved : { error: NATIVE_HOST_FORBIDDEN };
++    };
++    // Scoped by extension: connection ids come from the renderer, so one
++    // extension must not be able to address (or overwrite) another's port.
++    const keyOf = (extensionId, connectionId) => `${extensionId}\n${connectionId}`;
++    const spawnHost = (event, connectionId, config, keepAlive) => {
++      const key = keyOf(event.extension.id, connectionId);
++      const sender = event.sender;
++      // A frame that goes away takes its ports with it, as in Chrome; its host
++      // must not outlive it.
++      const gone = () => host.destroy();
++      const host = new NativeMessagingHost(event.extension.id, sender, connectionId, config, keepAlive, (done) => {
++        if (this.hostMap[key] === done) delete this.hostMap[key];
++        if (event.type === "frame") sender?.removeListener?.("destroyed", gone);
++      });
++      if (!host.destroyed) {
++        this.hostMap[key] = host;
++        if (event.type === "frame") sender?.once?.("destroyed", gone);
++      }
++      return host;
++    };
      this.connectNative = async (event, connectionId, application) => {
-+      // Standalone extensions must not discover or launch local native hosts.
-+      if (allowNativeMessaging !== true) return { nativeMessagingDenied: true };
-       const host = new NativeMessagingHost(
-         event.extension.id,
-         event.sender,
-@@ -1968,6 +1985,7 @@ var RuntimeAPI = class extends import_node_events3.EventEmitter {
-       this.hostMap[connectionId] = void 0;
+-      const host = new NativeMessagingHost(
+-        event.extension.id,
+-        event.sender,
+-        connectionId,
+-        application
+-      );
+-      this.hostMap[connectionId] = host;
++      if (typeof connectionId !== "string") return { nativeMessagingError: NATIVE_HOST_ERROR };
++      const key = keyOf(event.extension.id, connectionId);
++      this.connecting.add(key);
++      let resolved;
++      try {
++        resolved = await authorize(event, application);
++      } finally {
++        this.connecting.delete(key);
++      }
++      // The port was closed while the host was resolved or consent was open.
++      if (this.cancelled.delete(key)) return;
++      if (resolved.error) return { nativeMessagingError: resolved.error };
++      if (event.sender?.isDestroyed?.()) return;
++      spawnHost(event, connectionId, resolved.config, true);
+     };
+     this.disconnectNative = (event, connectionId) => {
+-      this.hostMap[connectionId]?.destroy();
+-      this.hostMap[connectionId] = void 0;
++      const key = keyOf(event.extension.id, connectionId);
++      const host = this.hostMap[key];
++      if (host) host.destroy();
++      else if (this.connecting.has(key)) this.cancelled.add(key);
      };
      this.sendNativeMessage = async (event, application, message) => {
-+      if (allowNativeMessaging !== true) return { nativeMessagingDenied: true };
-       const connectionId = (0, import_node_crypto.randomUUID)();
-       const host = new NativeMessagingHost(
-         event.extension.id,
-@@ -2102,7 +2120,7 @@ var stripScopeFromIdentifier = (id) => {
-   return id.substr(index + 1);
- };
- var NotificationsAPI = class {
--  constructor(ctx) {
-+  constructor(ctx, allowNotifications = false) {
-     this.ctx = ctx;
-     this.registry = /* @__PURE__ */ new Map();
-     this.clear = ({ extension }, id) => {
-@@ -2112,6 +2130,8 @@ var NotificationsAPI = class {
-       }
+-      const connectionId = (0, import_node_crypto.randomUUID)();
+-      const host = new NativeMessagingHost(
+-        event.extension.id,
+-        event.sender,
+-        connectionId,
+-        application,
+-        false
+-      );
+-      await host.ready;
+-      return await host.sendAndReceive(message);
++      const resolved = await authorize(event, application);
++      if (resolved.error) return { nativeMessagingError: resolved.error };
++      const host = spawnHost(event, (0, import_node_crypto.randomUUID)(), resolved.config, false);
++      const outcome = await host.sendAndReceive(message);
++      // Chrome closes a one-shot host once it has answered.
++      host.destroy();
++      return "message" in outcome ? outcome.message : { nativeMessagingError: outcome.error };
      };
-     this.create = async ({ extension }, arg1, arg2) => {
-+      // Declared manifest permission is not a grant to show native OS banners.
-+      if (allowNotifications !== true) return { notificationDenied: true };
-       let id;
-       let opts;
-       if (typeof arg1 === "object") {
-@@ -2271,12 +2291,12 @@ var RoutingDelegate = class _RoutingDelegate {
+     this.openOptionsPage = async ({ extension }) => {
+       const manifest = getExtensionManifest(extension);
+@@ -1994,6 +2167,23 @@ var RuntimeAPI = class extends import_node_events3.EventEmitter {
+     handle("runtime.disconnectNative", this.disconnectNative, { permission: "nativeMessaging" });
+     handle("runtime.openOptionsPage", this.openOptionsPage);
+     handle("runtime.sendNativeMessage", this.sendNativeMessage, { permission: "nativeMessaging" });
++    // Disable/remove unloads the extension; its hosts end with it.
++    const sessionExtensions = ctx.session.extensions || ctx.session;
++    sessionExtensions.on?.("extension-unloaded", (_event, extension) => {
++      if (extension?.id) this.disconnectNativeHosts(extension.id);
++    });
++  }
++  /** Close live hosts of `extensionId` (all, or only `application`). Their
++   * ports see "Access to the specified native messaging host is forbidden.". */
++  disconnectNativeHosts(extensionId, application) {
++    let closed = 0;
++    for (const host of Object.values(this.hostMap)) {
++      if (host && host.extensionId === extensionId && (application === void 0 || host.application === application)) {
++        host.destroy(NATIVE_HOST_FORBIDDEN);
++        closed++;
++      }
++    }
++    return closed;
+   }
+ };
+ 
+@@ -2183,11 +2373,13 @@ var NotificationsAPI = class {
+       if (opts.silent) notification.silent = opts.silent;
+     };
+     const handle = this.ctx.router.apiHandler();
+-    handle("notifications.clear", this.clear);
+-    handle("notifications.create", this.create);
+-    handle("notifications.getAll", this.getAll);
+-    handle("notifications.getPermissionLevel", this.getPermissionLevel);
+-    handle("notifications.update", this.update);
++    // Chrome grants notifications with the manifest permission at install;
++    // without it the API is absent, so every call requires it here.
++    handle("notifications.clear", this.clear, { permission: "notifications" });
++    handle("notifications.create", this.create, { permission: "notifications" });
++    handle("notifications.getAll", this.getAll, { permission: "notifications" });
++    handle("notifications.getPermissionLevel", this.getPermissionLevel, { permission: "notifications" });
++    handle("notifications.update", this.update, { permission: "notifications" });
+     const sessionExtensions = ctx.session.extensions || ctx.session;
+     sessionExtensions.on("extension-unloaded", (event, extension) => {
+       for (const [key, notification] of this.registry) {
+@@ -2271,12 +2463,12 @@ var RoutingDelegate = class _RoutingDelegate {
      this.sessionMap = /* @__PURE__ */ new WeakMap();
      this.workers = /* @__PURE__ */ new WeakSet();
      this.onRouterMessage = async (event, extensionId, handlerName, ...args) => {
@@ -327,7 +707,7 @@ index a91ca8f..dc92ce4 100644
        const ses = sessionPartition === DEFAULT_SESSION ? getSessionFromEvent(event) : resolvePartition(sessionPartition);
        const observer = this.sessionMap.get(ses);
        return observer?.onExtensionMessage(event, void 0, handlerName, ...args);
-@@ -2324,7 +2344,7 @@ var RoutingDelegate = class _RoutingDelegate {
+@@ -2324,7 +2516,7 @@ var RoutingDelegate = class _RoutingDelegate {
          versionId
        );
        if (serviceWorker?.scope?.startsWith("chrome-extension://") && !this.workers.has(serviceWorker)) {
@@ -336,7 +716,7 @@ index a91ca8f..dc92ce4 100644
          this.workers.add(serviceWorker);
          serviceWorker.ipc.handle("crx-msg", this.onRouterMessage);
          serviceWorker.ipc.handle("crx-msg-remote", this.onRemoteMessage);
-@@ -2368,7 +2388,7 @@ var ExtensionRouter = class {
+@@ -2368,7 +2560,7 @@ var ExtensionRouter = class {
      });
      import_electron9.app.on("web-contents-created", (event, webContents2) => {
        if (webContents2.session === this.session && webContents2.getType() === "backgroundPage") {
@@ -345,7 +725,7 @@ index a91ca8f..dc92ce4 100644
          this.extensionHosts.add(webContents2);
        }
      });
-@@ -2383,7 +2403,7 @@ var ExtensionRouter = class {
+@@ -2383,7 +2575,7 @@ var ExtensionRouter = class {
          if (this.extensionHosts.has(serviceWorker)) {
            d8("%s running status changed to %s", scope, runningStatus);
          } else {
@@ -354,7 +734,7 @@ index a91ca8f..dc92ce4 100644
            this.extensionWorkers.add(serviceWorker);
          }
        }
-@@ -2405,7 +2425,7 @@ var ExtensionRouter = class {
+@@ -2405,7 +2597,7 @@ var ExtensionRouter = class {
    }
    observeListenerHost(host) {
      const hostId = getHostId(host);
@@ -363,7 +743,7 @@ index a91ca8f..dc92ce4 100644
      host.once("destroyed", () => {
        d8(`extension host destroyed [id:${hostId}]`);
        this.filterListeners((listener) => listener.type !== "frame" || listener.host !== host);
-@@ -2478,7 +2498,7 @@ var ExtensionRouter = class {
+@@ -2478,7 +2670,7 @@ var ExtensionRouter = class {
      }
      const extEvent = event.type === "frame" ? { type: event.type, sender: event.sender, extension } : { type: event.type, sender: event.serviceWorker, extension };
      const result = await handler.callback(extEvent, ...args);
@@ -372,16 +752,16 @@ index a91ca8f..dc92ce4 100644
      return result;
    }
    handle(name, callback, opts) {
-@@ -2696,7 +2716,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends import_no
+@@ -2696,7 +2888,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends import_no
    }
    constructor(opts) {
      super();
 -    const { session: session2 = import_electron10.session.defaultSession, ...impl } = opts || {};
-+    const { session: session2 = import_electron10.session.defaultSession, allowNativeMessaging = false, allowNotifications = false, openActionPopup, ...impl } = opts || {};
++    const { session: session2 = import_electron10.session.defaultSession, authorizeNativeMessaging, openActionPopup, ...impl } = opts || {};
      checkVersion();
      if (sessionMap.has(session2)) {
        throw new Error(`Extensions instance already exists for the given session`);
-@@ -2706,6 +2726,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends import_no
+@@ -2706,6 +2898,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends import_no
      const store = new ExtensionStore(impl);
      this.ctx = {
        emit: this.emit.bind(this),
@@ -389,20 +769,29 @@ index a91ca8f..dc92ce4 100644
        router,
        session: session2,
        store
-@@ -2715,9 +2736,9 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends import_no
-       contextMenus: new ContextMenusAPI(this.ctx),
-       commands: new CommandsAPI(this.ctx),
+@@ -2717,7 +2910,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends import_no
        cookies: new CookiesAPI(this.ctx),
--      notifications: new NotificationsAPI(this.ctx),
-+      notifications: new NotificationsAPI(this.ctx, allowNotifications === true),
+       notifications: new NotificationsAPI(this.ctx),
        permissions: new PermissionsAPI(this.ctx),
 -      runtime: new RuntimeAPI(this.ctx),
-+      runtime: new RuntimeAPI(this.ctx, allowNativeMessaging === true),
++      runtime: new RuntimeAPI(this.ctx, authorizeNativeMessaging),
        tabs: new TabsAPI(this.ctx),
        webNavigation: new WebNavigationAPI(this.ctx),
        windows: new WindowsAPI(this.ctx)
+@@ -2774,6 +2967,11 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends import_no
+     this.ctx.store.removeTab(tab);
+   }
+   /** Notify extension system that the active tab has changed. */
++  /** Close the live native hosts of `extensionId` (all, or one host name);
++   * the embedder calls it when consent is revoked. Returns how many closed. */
++  disconnectNativeHosts(extensionId, application) {
++    return this.api.runtime.disconnectNativeHosts(extensionId, application);
++  }
+   selectTab(tab) {
+     this.checkWebContentsArgument(tab);
+     if (this.ctx.store.tabs.has(tab)) {
 diff --git a/dist/esm/index.mjs b/dist/esm/index.mjs
-index 4392922..69713ae 100644
+index 43929222572e4d6875cc192aca0750da79d8ff14..9377b4a24e974656ce02b3f51674d93ba48a2652 100644
 --- a/dist/esm/index.mjs
 +++ b/dist/esm/index.mjs
 @@ -411,7 +411,7 @@ var BrowserActionAPI = class {
@@ -481,48 +870,434 @@ index 4392922..69713ae 100644
        this.ctx.router.broadcastEvent(`webNavigation.${eventName}`, details);
      };
      this.onCreatedNavigationTarget = (tab, { url, frame }) => {
-@@ -1913,11 +1928,13 @@ var NativeMessagingHost = class {
+@@ -1806,105 +1821,200 @@ async function readNativeMessagingHostConfig(application) {
+     }
+   }
+ }
++// Chrome's own runtime.lastError strings (extensions/browser/api/messaging),
++// verbatim: extensions branch on them, e.g. to show "install the desktop app".
++var NATIVE_HOST_INVALID_NAME = "Invalid native messaging host name specified.";
++var NATIVE_HOST_NOT_FOUND = "Specified native messaging host not found.";
++var NATIVE_HOST_FORBIDDEN = "Access to the specified native messaging host is forbidden.";
++var NATIVE_HOST_START_FAILED = "Failed to start native messaging host.";
++var NATIVE_HOST_EXITED = "Native host has exited.";
++var NATIVE_HOST_ERROR = "Error when communicating with the native messaging host.";
++// Chrome's host-name grammar. It is also what keeps a caller-supplied name
++// from walking out of the NativeMessagingHosts directories when it is joined
++// into a manifest path (`../../x` would otherwise read any JSON file).
++var NATIVE_HOST_NAME = /^[a-z0-9_]+(\.[a-z0-9_]+)*$/;
++// Chrome's cap on one host -> extension message.
++var NATIVE_HOST_MAX_MESSAGE = 1024 * 1024;
++/**
++ * Chrome's launch checks, run BEFORE anything is spawned and before the
++ * embedder is asked for consent: a valid name, a manifest that names itself,
++ * an allowed_origins entry for this exact extension, and an absolute path to
++ * an existing file (Chrome requires absolute on macOS/Linux). An unresolvable
++ * host can therefore never summon a consent prompt.
++ */
++async function resolveNativeMessagingHost(application, extensionId) {
++  if (typeof application !== "string" || !NATIVE_HOST_NAME.test(application)) {
++    return { error: NATIVE_HOST_INVALID_NAME };
++  }
++  const config = await readNativeMessagingHostConfig(application);
++  if (!config || config.name !== application) return { error: NATIVE_HOST_NOT_FOUND };
++  if (!config.allowed_origins.includes(`chrome-extension://${extensionId}/`)) {
++    return { error: NATIVE_HOST_FORBIDDEN };
++  }
++  if (process.platform !== "win32" && !path2.isAbsolute(config.path)) {
++    return { error: NATIVE_HOST_NOT_FOUND };
++  }
++  try {
++    if (!(await fs2.stat(config.path)).isFile()) return { error: NATIVE_HOST_NOT_FOUND };
++  } catch {
++    return { error: NATIVE_HOST_NOT_FOUND };
++  }
++  return { config };
++}
+ var NativeMessagingHost = class {
+-  constructor(extensionId, sender, connectionId, application, keepAlive = true) {
++  /**
++   * One spawned host process for one port (keepAlive) or one
++   * sendNativeMessage call. `config` is already resolved and authorized.
++   * Message bodies are never logged: they carry vault data.
++   */
++  constructor(extensionId, sender, connectionId, config, keepAlive = true, onDestroyed) {
+     this.connected = false;
++    this.destroyed = false;
++    this.pending = [];
++    this.inbound = Buffer.alloc(0);
++    this.extensionId = extensionId;
++    this.application = config.name;
++    this.onDestroyed = onDestroyed;
+     this.receiveExtensionMessage = (_event, message) => {
+       this.send(message);
+     };
+     this.receive = (data) => {
+-      const length = data.readUInt32LE(0);
+-      const message = JSON.parse(data.subarray(4, 4 + length).toString());
+-      d7("receive: %s", message);
+-      if (this.keepAlive && this.sender) {
+-        this.sender.send(`crx-native-msg-${this.connectionId}`, message);
+-      } else {
+-        this.resolveResponse?.(message);
++      // stdout is a byte stream: one chunk can hold part of a frame or several
++      // frames. Upstream parsed exactly one frame per chunk, which truncates
++      // any reply larger than a pipe read (vault item lists) and drops the
++      // second of two quick replies. Reassemble like Chrome does.
++      this.inbound = this.inbound.length ? Buffer.concat([this.inbound, data]) : data;
++      while (!this.destroyed && this.inbound.length >= 4) {
++        const length = this.inbound.readUInt32LE(0);
++        if (length > NATIVE_HOST_MAX_MESSAGE) {
++          this.destroy(NATIVE_HOST_ERROR);
++          return;
++        }
++        if (this.inbound.length < 4 + length) return;
++        const body = this.inbound.subarray(4, 4 + length);
++        this.inbound = this.inbound.subarray(4 + length);
++        let message;
++        try {
++          message = JSON.parse(body.toString("utf8"));
++        } catch {
++          this.destroy(NATIVE_HOST_ERROR);
++          return;
++        }
++        if (this.keepAlive) {
++          this.post(`crx-native-msg-${this.connectionId}`, message);
++        } else {
++          this.settle({ message });
++        }
+       }
+     };
+     this.keepAlive = keepAlive;
+     this.sender = sender;
++    this.connectionId = connectionId;
+     if (keepAlive) {
+       this.sender.ipc.on(`crx-native-msg-${connectionId}`, this.receiveExtensionMessage);
+     }
+-    this.connectionId = connectionId;
+-    this.ready = this.launch(application, extensionId);
++    this.launch(config);
++  }
++  post(channel, ...args) {
++    try {
++      if (this.sender && !this.sender.isDestroyed?.()) this.sender.send(channel, ...args);
++    } catch {
++    }
++  }
++  settle(outcome) {
++    if (!this.outcome) this.outcome = outcome;
++    const resolve = this.resolveResponse;
++    this.resolveResponse = void 0;
++    resolve?.(this.outcome);
+   }
+-  destroy() {
++  /** `reason`: the lastError the port's onDisconnect sees; none when the
++   * extension itself disconnected. */
++  destroy(reason) {
++    if (this.destroyed) return;
++    this.destroyed = true;
+     this.connected = false;
+-    if (this.process) {
+-      this.process.kill();
+-      this.process = void 0;
++    const child = this.process;
++    this.process = void 0;
++    if (child) {
++      child.stdout?.off("data", this.receive);
++      try {
++        child.kill();
++      } catch {
++      }
+     }
+     if (this.keepAlive && this.sender) {
+-      this.sender.ipc.off(`crx-native-msg-${this.connectionId}`, this.receiveExtensionMessage);
+-      this.sender.send(`crx-native-msg-${this.connectionId}-disconnect`);
++      try {
++        this.sender.ipc.off(`crx-native-msg-${this.connectionId}`, this.receiveExtensionMessage);
++      } catch {
++      }
++      this.post(`crx-native-msg-${this.connectionId}-disconnect`, reason);
+     }
+     this.sender = void 0;
++    this.pending = [];
++    this.settle({ error: reason || NATIVE_HOST_EXITED });
++    this.onDestroyed?.(this);
+   }
+-  async launch(application, extensionId) {
+-    const config = await readNativeMessagingHostConfig(application);
+-    if (!config) {
+-      d7("launch: unable to find %s for %s", application, extensionId);
+-      this.destroy();
+-      return;
+-    }
+-    const extensionUrl = `chrome-extension://${extensionId}/`;
+-    if (!config.allowed_origins?.includes(extensionUrl)) {
+-      d7("launch: %s not in allowed origins", extensionId);
+-      this.destroy();
+-      return;
+-    }
+-    let isFile = false;
++  launch(config) {
++    const extensionUrl = `chrome-extension://${this.extensionId}/`;
++    let child;
+     try {
+-      const stat = await fs2.stat(config.path);
+-      isFile = stat.isFile();
+-    } catch (error) {
+-      d7("launch: unable to find %s", config.path, error);
+-    }
+-    if (!isFile) {
+-      this.destroy();
++      d7("launch: spawning %s for %s", config.path, this.extensionId);
++      // Chrome starts the host in its own directory; hosts that load siblings
++      // by relative path depend on it.
++      child = spawn2(config.path, [extensionUrl], {
++        shell: false,
++        cwd: path2.dirname(config.path),
++        stdio: ["pipe", "pipe", "pipe"]
++      });
++    } catch {
++      this.destroy(NATIVE_HOST_START_FAILED);
+       return;
+     }
+-    d7("launch: spawning %s for %s", config.path, extensionId);
+-    this.process = spawn2(config.path, [extensionUrl], {
+-      shell: false
++    this.process = child;
++    child.stdout.on("data", this.receive);
++    // Drained, never logged: hosts print account diagnostics on stderr.
++    child.stderr.on("data", () => {
+     });
+-    this.process.stdout.on("data", this.receive);
+-    this.process.stderr.on("data", (data) => {
+-      d7("stderr: %s", data.toString());
+-    });
+-    this.process.on("error", (err) => {
+-      d7("error: %s", err);
+-      this.destroy();
+-    });
+-    this.process.on("exit", (code) => {
+-      d7("exited %d", code);
+-      this.destroy();
++    // A write after the host exits raises EPIPE on stdin; unhandled, that is
++    // an uncaught error in the main process.
++    child.stdin.on("error", () => this.destroy(NATIVE_HOST_EXITED));
++    child.stdout.on("error", () => this.destroy(NATIVE_HOST_ERROR));
++    child.stderr.on("error", () => {
+     });
++    child.on("error", () => this.destroy(NATIVE_HOST_START_FAILED));
++    // "close", not "exit": a one-shot host answers and exits at once, and its
++    // reply is still in the stdout pipe when "exit" fires.
++    child.on("close", () => this.destroy(NATIVE_HOST_EXITED));
+     this.connected = true;
+-    if (this.pending && this.pending.length > 0) {
+-      d7("sending %d pending messages", this.pending.length);
+-      this.pending.forEach((msg) => this.send(msg));
+-      this.pending = [];
+-    }
++    const queued = this.pending;
++    this.pending = [];
++    queued.forEach((message) => this.send(message));
+   }
+   send(json) {
+-    d7("send", json);
++    if (this.destroyed) return;
+     if (!this.connected) {
+-      const pending = this.pending || (this.pending = []);
+-      pending.push(json);
+-      d7("send: pending");
++      this.pending.push(json);
+       return;
+     }
+-    const message = JSON.stringify(json);
+-    const buffer = Buffer.alloc(4 + message.length);
+-    buffer.writeUInt32LE(message.length, 0);
+-    buffer.write(message, 4);
+-    this.process.stdin.write(buffer);
++    const text = JSON.stringify(json);
++    if (typeof text !== "string") return;
++    // Byte length, not string length: upstream sized the frame by UTF-16 code
++    // units, so any non-ASCII character (a name, a locale string) corrupted it.
++    const body = Buffer.from(text, "utf8");
++    const frame = Buffer.alloc(4 + body.length);
++    frame.writeUInt32LE(body.length, 0);
++    body.copy(frame, 4);
++    try {
++      this.process.stdin.write(frame);
++    } catch {
++      this.destroy(NATIVE_HOST_EXITED);
++    }
+   }
++  /** One-shot: resolves {message} or {error}; never hangs on a host that
++   * failed to start or exited without answering. */
+   sendAndReceive(message) {
+     this.send(message);
++    if (this.outcome) return Promise.resolve(this.outcome);
+     return new Promise((resolve) => {
+       this.resolveResponse = resolve;
+     });
+@@ -1913,34 +2023,97 @@ var NativeMessagingHost = class {
  
  // src/browser/api/runtime.ts
  var RuntimeAPI = class extends EventEmitter3 {
 -  constructor(ctx) {
-+  constructor(ctx, allowNativeMessaging = false) {
++  /**
++   * `authorizeNativeMessaging(details)` is the embedder's per-call decision
++   * (consent). It replaces the constructor-global allow/deny boolean: native
++   * messaging is now decided per (extension, host) on every connectNative and
++   * sendNativeMessage, frame and worker callers alike. Absent or throwing =
++   * forbidden.
++   */
++  constructor(ctx, authorizeNativeMessaging) {
      super();
      this.ctx = ctx;
      this.hostMap = {};
++    this.connecting = /* @__PURE__ */ new Set();
++    this.cancelled = /* @__PURE__ */ new Set();
++    const senderUrl = (event) => {
++      try {
++        return (event.type === "frame" ? event.sender?.getURL?.() : event.sender?.scope) || "";
++      } catch {
++        return "";
++      }
++    };
++    const authorize = async (event, application) => {
++      const resolved = await resolveNativeMessagingHost(application, event.extension.id);
++      if (resolved.error) return resolved;
++      let allowed = false;
++      if (typeof authorizeNativeMessaging === "function") {
++        try {
++          allowed = await authorizeNativeMessaging({
++            extensionId: event.extension.id,
++            application,
++            senderUrl: senderUrl(event),
++            host: {
++              name: resolved.config.name,
++              description: resolved.config.description,
++              path: resolved.config.path
++            }
++          }) === true;
++        } catch {
++          allowed = false;
++        }
++      }
++      return allowed ? resolved : { error: NATIVE_HOST_FORBIDDEN };
++    };
++    // Scoped by extension: connection ids come from the renderer, so one
++    // extension must not be able to address (or overwrite) another's port.
++    const keyOf = (extensionId, connectionId) => `${extensionId}\n${connectionId}`;
++    const spawnHost = (event, connectionId, config, keepAlive) => {
++      const key = keyOf(event.extension.id, connectionId);
++      const sender = event.sender;
++      // A frame that goes away takes its ports with it, as in Chrome; its host
++      // must not outlive it.
++      const gone = () => host.destroy();
++      const host = new NativeMessagingHost(event.extension.id, sender, connectionId, config, keepAlive, (done) => {
++        if (this.hostMap[key] === done) delete this.hostMap[key];
++        if (event.type === "frame") sender?.removeListener?.("destroyed", gone);
++      });
++      if (!host.destroyed) {
++        this.hostMap[key] = host;
++        if (event.type === "frame") sender?.once?.("destroyed", gone);
++      }
++      return host;
++    };
      this.connectNative = async (event, connectionId, application) => {
-+      // Standalone extensions must not discover or launch local native hosts.
-+      if (allowNativeMessaging !== true) return { nativeMessagingDenied: true };
-       const host = new NativeMessagingHost(
-         event.extension.id,
-         event.sender,
-@@ -1931,6 +1948,7 @@ var RuntimeAPI = class extends EventEmitter3 {
-       this.hostMap[connectionId] = void 0;
+-      const host = new NativeMessagingHost(
+-        event.extension.id,
+-        event.sender,
+-        connectionId,
+-        application
+-      );
+-      this.hostMap[connectionId] = host;
++      if (typeof connectionId !== "string") return { nativeMessagingError: NATIVE_HOST_ERROR };
++      const key = keyOf(event.extension.id, connectionId);
++      this.connecting.add(key);
++      let resolved;
++      try {
++        resolved = await authorize(event, application);
++      } finally {
++        this.connecting.delete(key);
++      }
++      // The port was closed while the host was resolved or consent was open.
++      if (this.cancelled.delete(key)) return;
++      if (resolved.error) return { nativeMessagingError: resolved.error };
++      if (event.sender?.isDestroyed?.()) return;
++      spawnHost(event, connectionId, resolved.config, true);
+     };
+     this.disconnectNative = (event, connectionId) => {
+-      this.hostMap[connectionId]?.destroy();
+-      this.hostMap[connectionId] = void 0;
++      const key = keyOf(event.extension.id, connectionId);
++      const host = this.hostMap[key];
++      if (host) host.destroy();
++      else if (this.connecting.has(key)) this.cancelled.add(key);
      };
      this.sendNativeMessage = async (event, application, message) => {
-+      if (allowNativeMessaging !== true) return { nativeMessagingDenied: true };
-       const connectionId = randomUUID();
-       const host = new NativeMessagingHost(
-         event.extension.id,
-@@ -2065,7 +2083,7 @@ var stripScopeFromIdentifier = (id) => {
-   return id.substr(index + 1);
- };
- var NotificationsAPI = class {
--  constructor(ctx) {
-+  constructor(ctx, allowNotifications = false) {
-     this.ctx = ctx;
-     this.registry = /* @__PURE__ */ new Map();
-     this.clear = ({ extension }, id) => {
-@@ -2075,6 +2093,8 @@ var NotificationsAPI = class {
-       }
+-      const connectionId = randomUUID();
+-      const host = new NativeMessagingHost(
+-        event.extension.id,
+-        event.sender,
+-        connectionId,
+-        application,
+-        false
+-      );
+-      await host.ready;
+-      return await host.sendAndReceive(message);
++      const resolved = await authorize(event, application);
++      if (resolved.error) return { nativeMessagingError: resolved.error };
++      const host = spawnHost(event, randomUUID(), resolved.config, false);
++      const outcome = await host.sendAndReceive(message);
++      // Chrome closes a one-shot host once it has answered.
++      host.destroy();
++      return "message" in outcome ? outcome.message : { nativeMessagingError: outcome.error };
      };
-     this.create = async ({ extension }, arg1, arg2) => {
-+      // Declared manifest permission is not a grant to show native OS banners.
-+      if (allowNotifications !== true) return { notificationDenied: true };
-       let id;
-       let opts;
-       if (typeof arg1 === "object") {
-@@ -2234,12 +2254,12 @@ var RoutingDelegate = class _RoutingDelegate {
+     this.openOptionsPage = async ({ extension }) => {
+       const manifest = getExtensionManifest(extension);
+@@ -1957,6 +2130,23 @@ var RuntimeAPI = class extends EventEmitter3 {
+     handle("runtime.disconnectNative", this.disconnectNative, { permission: "nativeMessaging" });
+     handle("runtime.openOptionsPage", this.openOptionsPage);
+     handle("runtime.sendNativeMessage", this.sendNativeMessage, { permission: "nativeMessaging" });
++    // Disable/remove unloads the extension; its hosts end with it.
++    const sessionExtensions = ctx.session.extensions || ctx.session;
++    sessionExtensions.on?.("extension-unloaded", (_event, extension) => {
++      if (extension?.id) this.disconnectNativeHosts(extension.id);
++    });
++  }
++  /** Close live hosts of `extensionId` (all, or only `application`). Their
++   * ports see "Access to the specified native messaging host is forbidden.". */
++  disconnectNativeHosts(extensionId, application) {
++    let closed = 0;
++    for (const host of Object.values(this.hostMap)) {
++      if (host && host.extensionId === extensionId && (application === void 0 || host.application === application)) {
++        host.destroy(NATIVE_HOST_FORBIDDEN);
++        closed++;
++      }
++    }
++    return closed;
+   }
+ };
+ 
+@@ -2146,11 +2336,13 @@ var NotificationsAPI = class {
+       if (opts.silent) notification.silent = opts.silent;
+     };
+     const handle = this.ctx.router.apiHandler();
+-    handle("notifications.clear", this.clear);
+-    handle("notifications.create", this.create);
+-    handle("notifications.getAll", this.getAll);
+-    handle("notifications.getPermissionLevel", this.getPermissionLevel);
+-    handle("notifications.update", this.update);
++    // Chrome grants notifications with the manifest permission at install;
++    // without it the API is absent, so every call requires it here.
++    handle("notifications.clear", this.clear, { permission: "notifications" });
++    handle("notifications.create", this.create, { permission: "notifications" });
++    handle("notifications.getAll", this.getAll, { permission: "notifications" });
++    handle("notifications.getPermissionLevel", this.getPermissionLevel, { permission: "notifications" });
++    handle("notifications.update", this.update, { permission: "notifications" });
+     const sessionExtensions = ctx.session.extensions || ctx.session;
+     sessionExtensions.on("extension-unloaded", (event, extension) => {
+       for (const [key, notification] of this.registry) {
+@@ -2234,12 +2426,12 @@ var RoutingDelegate = class _RoutingDelegate {
      this.sessionMap = /* @__PURE__ */ new WeakMap();
      this.workers = /* @__PURE__ */ new WeakSet();
      this.onRouterMessage = async (event, extensionId, handlerName, ...args) => {
@@ -537,7 +1312,7 @@ index 4392922..69713ae 100644
        const ses = sessionPartition === DEFAULT_SESSION ? getSessionFromEvent(event) : resolvePartition(sessionPartition);
        const observer = this.sessionMap.get(ses);
        return observer?.onExtensionMessage(event, void 0, handlerName, ...args);
-@@ -2287,7 +2307,7 @@ var RoutingDelegate = class _RoutingDelegate {
+@@ -2287,7 +2479,7 @@ var RoutingDelegate = class _RoutingDelegate {
          versionId
        );
        if (serviceWorker?.scope?.startsWith("chrome-extension://") && !this.workers.has(serviceWorker)) {
@@ -546,7 +1321,7 @@ index 4392922..69713ae 100644
          this.workers.add(serviceWorker);
          serviceWorker.ipc.handle("crx-msg", this.onRouterMessage);
          serviceWorker.ipc.handle("crx-msg-remote", this.onRemoteMessage);
-@@ -2331,7 +2351,7 @@ var ExtensionRouter = class {
+@@ -2331,7 +2523,7 @@ var ExtensionRouter = class {
      });
      app4.on("web-contents-created", (event, webContents2) => {
        if (webContents2.session === this.session && webContents2.getType() === "backgroundPage") {
@@ -555,7 +1330,7 @@ index 4392922..69713ae 100644
          this.extensionHosts.add(webContents2);
        }
      });
-@@ -2346,7 +2366,7 @@ var ExtensionRouter = class {
+@@ -2346,7 +2538,7 @@ var ExtensionRouter = class {
          if (this.extensionHosts.has(serviceWorker)) {
            d8("%s running status changed to %s", scope, runningStatus);
          } else {
@@ -564,7 +1339,7 @@ index 4392922..69713ae 100644
            this.extensionWorkers.add(serviceWorker);
          }
        }
-@@ -2368,7 +2388,7 @@ var ExtensionRouter = class {
+@@ -2368,7 +2560,7 @@ var ExtensionRouter = class {
    }
    observeListenerHost(host) {
      const hostId = getHostId(host);
@@ -573,7 +1348,7 @@ index 4392922..69713ae 100644
      host.once("destroyed", () => {
        d8(`extension host destroyed [id:${hostId}]`);
        this.filterListeners((listener) => listener.type !== "frame" || listener.host !== host);
-@@ -2441,7 +2461,7 @@ var ExtensionRouter = class {
+@@ -2441,7 +2633,7 @@ var ExtensionRouter = class {
      }
      const extEvent = event.type === "frame" ? { type: event.type, sender: event.sender, extension } : { type: event.type, sender: event.serviceWorker, extension };
      const result = await handler.callback(extEvent, ...args);
@@ -582,16 +1357,16 @@ index 4392922..69713ae 100644
      return result;
    }
    handle(name, callback, opts) {
-@@ -2659,7 +2679,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends EventEmit
+@@ -2659,7 +2851,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends EventEmit
    }
    constructor(opts) {
      super();
 -    const { session: session2 = electronSession.defaultSession, ...impl } = opts || {};
-+    const { session: session2 = electronSession.defaultSession, allowNativeMessaging = false, allowNotifications = false, openActionPopup, ...impl } = opts || {};
++    const { session: session2 = electronSession.defaultSession, authorizeNativeMessaging, openActionPopup, ...impl } = opts || {};
      checkVersion();
      if (sessionMap.has(session2)) {
        throw new Error(`Extensions instance already exists for the given session`);
-@@ -2669,6 +2689,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends EventEmit
+@@ -2669,6 +2861,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends EventEmit
      const store = new ExtensionStore(impl);
      this.ctx = {
        emit: this.emit.bind(this),
@@ -599,23 +1374,32 @@ index 4392922..69713ae 100644
        router,
        session: session2,
        store
-@@ -2678,9 +2699,9 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends EventEmit
-       contextMenus: new ContextMenusAPI(this.ctx),
-       commands: new CommandsAPI(this.ctx),
+@@ -2680,7 +2873,7 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends EventEmit
        cookies: new CookiesAPI(this.ctx),
--      notifications: new NotificationsAPI(this.ctx),
-+      notifications: new NotificationsAPI(this.ctx, allowNotifications === true),
+       notifications: new NotificationsAPI(this.ctx),
        permissions: new PermissionsAPI(this.ctx),
 -      runtime: new RuntimeAPI(this.ctx),
-+      runtime: new RuntimeAPI(this.ctx, allowNativeMessaging === true),
++      runtime: new RuntimeAPI(this.ctx, authorizeNativeMessaging),
        tabs: new TabsAPI(this.ctx),
        webNavigation: new WebNavigationAPI(this.ctx),
        windows: new WindowsAPI(this.ctx)
+@@ -2737,6 +2930,11 @@ var ElectronChromeExtensions = class _ElectronChromeExtensions extends EventEmit
+     this.ctx.store.removeTab(tab);
+   }
+   /** Notify extension system that the active tab has changed. */
++  /** Close the live native hosts of `extensionId` (all, or one host name);
++   * the embedder calls it when consent is revoked. Returns how many closed. */
++  disconnectNativeHosts(extensionId, application) {
++    return this.api.runtime.disconnectNativeHosts(extensionId, application);
++  }
+   selectTab(tab) {
+     this.checkWebContentsArgument(tab);
+     if (this.ctx.store.tabs.has(tab)) {
 diff --git a/dist/types/browser/index.d.ts b/dist/types/browser/index.d.ts
-index b5295a5..3fe6b77 100644
+index b5295a5e9f69736026f89d621cd70ca0329b9e4a..c6758f9be5516601f2f172e8cca91fcd0172550a 100644
 --- a/dist/types/browser/index.d.ts
 +++ b/dist/types/browser/index.d.ts
-@@ -2,11 +2,17 @@
+@@ -2,11 +2,26 @@
  import { EventEmitter } from 'node:events';
  import { ChromeExtensionImpl } from './impl';
  export interface ChromeExtensionOptions extends ChromeExtensionImpl {
@@ -626,10 +1410,28 @@ index b5295a5..3fe6b77 100644
       * Defaults to `session.defaultSession`.
       */
      session?: Electron.Session;
-+    /** Default false: native hosts are never discovered or launched unless explicitly enabled. */
-+    allowNativeMessaging?: boolean;
-+    /** Default false: manifest permission alone cannot authorize native OS banners. */
-+    allowNotifications?: boolean;
++    /**
++     * Decides each runtime.connectNative / runtime.sendNativeMessage call
++     * after the host resolved (valid name, manifest found, origin allowed,
++     * binary present). Absent, or anything but `true`: the call fails with
++     * "Access to the specified native messaging host is forbidden.".
++     */
++    authorizeNativeMessaging?: (details: {
++        extensionId: string;
++        application: string;
++        /** URL of the calling frame, or the worker's scope. */
++        senderUrl: string;
++        host: { name: string; description: string; path: string };
++    }) => boolean | Promise<boolean>;
      /**
       * Path to electron-chrome-extensions module files. Might be needed if
       * JavaScript bundlers like Webpack are used in your build process.
+@@ -38,6 +53,8 @@ export declare class ElectronChromeExtensions extends EventEmitter {
+     /** Remove webContents from being tracked as a tab. */
+     removeTab(tab: Electron.WebContents): void;
+     /** Notify extension system that the active tab has changed. */
++    /** Close live native hosts of `extensionId` (all, or one host name). */
++    disconnectNativeHosts(extensionId: string, application?: string): number;
+     selectTab(tab: Electron.WebContents): void;
+     /**
+      * Add webContents to be tracked as an extension host which will receive

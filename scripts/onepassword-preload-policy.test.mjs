@@ -15,8 +15,9 @@ const preload = readFileSync(
 	"utf8",
 );
 const sentinel = "SYNTHETIC-SECRET-NEVER-LOG";
+const FORBIDDEN = "Access to the specified native messaging host is forbidden.";
 for (const type of ["renderer", "service-worker"]) {
-	test(`${type}: denied native Port disconnects once and send rejects without payload logs`, async () => {
+	test(`${type}: refused native Port disconnects once with Chrome's lastError and send rejects without payload logs`, async () => {
 		const calls = [];
 		const logs = [];
 		const ipcRenderer = new EventEmitter();
@@ -25,13 +26,13 @@ for (const type of ["renderer", "service-worker"]) {
 			calls.push([operation]);
 			if (operation === "tabs.get")
 				throw new Error("Unable to find tab SYNTHETIC-ERROR-PAYLOAD");
-			if (operation === "notifications.create")
-				return { notificationDenied: true };
+			if (operation === "notifications.create") return "synthetic-notice";
 			if (
 				operation.startsWith("runtime.") &&
 				operation !== "runtime.disconnectNative"
 			)
-				return { nativeMessagingDenied: true };
+				// Main's per-call refusal (no consent / origin not allowed).
+				return { nativeMessagingError: FORBIDDEN };
 			return sentinel;
 		};
 
@@ -81,7 +82,12 @@ for (const type of ["renderer", "service-worker"]) {
 					onMessage: nativeEvent,
 				},
 			},
-			crypto: { randomUUID: () => "synthetic-port" },
+			crypto: {
+				randomUUID: (() => {
+					let n = 0;
+					return () => (n++ ? `synthetic-port-${n}` : "synthetic-port");
+				})(),
+			},
 			console: Object.fromEntries(
 				["log", "debug", "warn", "error"].map((name) => [
 					name,
@@ -113,7 +119,7 @@ for (const type of ["renderer", "service-worker"]) {
 		assert.equal(context.browser.windows.WINDOW_ID_NONE, -1);
 		await assert.rejects(
 			context.browser.runtime.sendNativeMessage("synthetic-native-app", {}),
-			{ message: "Native messaging is disabled by browser policy" },
+			{ message: FORBIDDEN },
 		);
 		const runtime = context.chrome.runtime;
 		let disconnects = 0;
@@ -125,16 +131,10 @@ for (const type of ["renderer", "service-worker"]) {
 		});
 		await new Promise((resolve) => setImmediate(resolve));
 		assert.equal(disconnects, 1);
-		assert.equal(
-			disconnectError,
-			"Native messaging is disabled by browser policy",
-		);
+		assert.equal(disconnectError, FORBIDDEN);
 		port.disconnect();
 		assert.equal(disconnects, 1);
-		assert.equal(
-			disconnectError,
-			"Native messaging is disabled by browser policy",
-		);
+		assert.equal(disconnectError, FORBIDDEN);
 		assert.equal(ipcRenderer.listenerCount("crx-native-msg-synthetic-port"), 0);
 		assert.equal(
 			ipcRenderer.listenerCount("crx-native-msg-synthetic-port-disconnect"),
@@ -142,7 +142,7 @@ for (const type of ["renderer", "service-worker"]) {
 		);
 		await assert.rejects(
 			runtime.sendNativeMessage(sentinel, { secret: sentinel }),
-			{ message: "Native messaging is disabled by browser policy" },
+			{ message: FORBIDDEN },
 		);
 		let lastError;
 		await new Promise((resolve) =>
@@ -151,23 +151,40 @@ for (const type of ["renderer", "service-worker"]) {
 				resolve();
 			}),
 		);
-		assert.equal(lastError, "Native messaging is disabled by browser policy");
+		assert.equal(lastError, FORBIDDEN);
 		assert.equal(runtime.lastError, undefined);
-		await assert.rejects(
-			context.chrome.notifications.create({ message: "SYNTHETIC-NOTICE" }),
-			{ message: "Notifications are disabled by browser policy" },
-		);
-		let notificationError;
-		await new Promise((resolve) =>
-			context.chrome.notifications.create({}, () => {
-				notificationError = runtime.lastError?.message;
-				resolve();
-			}),
-		);
+		// Notifications are no longer denied globally: the call reaches main,
+		// which enforces the manifest permission (patched router).
 		assert.equal(
-			notificationError,
-			"Notifications are disabled by browser policy",
+			await context.chrome.notifications.create({
+				message: "SYNTHETIC-NOTICE",
+			}),
+			"synthetic-notice",
 		);
+		// A host that exits (or a revoke) disconnects a LIVE port with the
+		// lastError main sends; the extension's own disconnect carries none.
+		const refusing = ipcRenderer.invoke;
+		ipcRenderer.invoke = async (channel, extensionId, operation, ...rest) => {
+			if (operation !== "runtime.connectNative")
+				return refusing(channel, extensionId, operation, ...rest);
+			calls.push([operation]);
+			return undefined;
+		};
+		const live = runtime.connectNative("synthetic.host");
+		let liveError = "unset";
+		live.onDisconnect.addListener(() => {
+			liveError = runtime.lastError?.message;
+		});
+		await new Promise((resolve) => setImmediate(resolve));
+		assert.equal(liveError, "unset", "an accepted connect stays open");
+		ipcRenderer.emit(
+			"crx-native-msg-synthetic-port-2-disconnect",
+			{},
+			"Native host has exited.",
+		);
+		assert.equal(liveError, "Native host has exited.");
+		assert.equal(runtime.lastError, undefined);
+		ipcRenderer.invoke = refusing;
 		genuineLastError = { message: "Synthetic real native callback failure" };
 		assert.equal(runtime.lastError, genuineLastError);
 		genuineLastError = undefined;

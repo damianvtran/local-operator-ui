@@ -51,6 +51,7 @@ const base: ExtensionSummary = {
 		"The best way to experience 1Password in your browser. Easily sign in to sites, generate passwords, and store secure information.",
 	hasHomepage: true,
 	waitingPages: 0,
+	nativeHosts: [],
 };
 const other: ExtensionSummary = {
 	...base,
@@ -88,6 +89,7 @@ const callbacks = {
 	onOpen: noop,
 	onOpenLink: noop,
 	onRetry: noop,
+	onRevokeNativeHost: noop,
 	onCancelInstall: noop,
 	onOpenStore: noop,
 	onCheckUpdates: noop,
@@ -181,6 +183,25 @@ export const DetailsWithOptions: Story = {
 		extensions: [
 			base,
 			{ ...other, status: "needs-reconsent", pendingVersion: "1.63.0" },
+		],
+	},
+};
+/** The desktop-app row after the user allowed the 1Password app. */
+export const DetailsDesktopAppAllowed: Story = {
+	args: {
+		page: { page: "extensions", id: base.id },
+		extensions: [
+			{
+				...base,
+				nativeHosts: [
+					{
+						name: "com.1password.1password",
+						description: "1Password BrowserSupport",
+					},
+				],
+			},
+			other,
+			third,
 		],
 	},
 };

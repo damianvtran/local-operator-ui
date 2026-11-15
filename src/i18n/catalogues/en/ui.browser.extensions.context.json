@@ -337,19 +337,59 @@
 		"tone": "Plain, calm",
 		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
 	},
-	"ui.browser.extensions.blocked_heading": {
-		"role": "Extension details/consent: capability this browser turns off for every extension",
-		"tone": "Factual noun phrase",
+	"ui.browser.extensions.details_desktop_apps": {
+		"role": "Section heading on the lop://extensions details view: desktop apps this extension may talk to",
+		"tone": "Concise noun phrase",
 		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
 	},
-	"ui.browser.extensions.blocked_desktop_apps": {
-		"role": "Extension details/consent: capability this browser turns off for every extension",
-		"tone": "Factual noun phrase",
+	"ui.browser.extensions.desktop_apps_none": {
+		"role": "Body text under the desktop app connections heading when nothing is allowed yet",
+		"tone": "Plain, calm",
 		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
 	},
-	"ui.browser.extensions.blocked_notifications": {
-		"role": "Extension details/consent: capability this browser turns off for every extension",
-		"tone": "Factual noun phrase",
+	"ui.browser.extensions.desktop_apps_revoke": {
+		"role": "Button: withdraw an extension's permission to talk to one desktop app",
+		"tone": "Short verb",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.desktop_apps_revoke_label": {
+		"role": "Accessible label of the revoke button; {app} is the desktop app's name from its own manifest",
+		"tone": "Plain",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.native_confirm_title": {
+		"role": "Native consent dialog title; {name} is the extension name, {app} the desktop app's description from its manifest",
+		"tone": "Direct question",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.native_confirm_body": {
+		"role": "Native consent dialog body explaining the request; {name} is the extension name",
+		"tone": "Plain, calm, no alarm",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.native_confirm_host": {
+		"role": "Native consent dialog detail line; {host} is a technical host id like com.1password.1password (do not translate it)",
+		"tone": "Label: value",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.native_confirm_program": {
+		"role": "Native consent dialog detail line; {path} is a file path (do not translate it)",
+		"tone": "Label: value",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.native_confirm_note": {
+		"role": "Native consent dialog footnote",
+		"tone": "Plain, reassuring",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.native_confirm_deny": {
+		"role": "Native consent dialog button (default, Escape)",
+		"tone": "macOS-style button label",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.native_confirm_allow": {
+		"role": "Native consent dialog button",
+		"tone": "macOS-style button label",
 		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
 	},
 	"ui.browser.extensions.details_options": {
@@ -505,6 +545,16 @@
 	"ui.browser.extensions.permission_email": {
 		"role": "Plain-language permission row on the extension details page and in the native install consent dialog (Chrome's own warning wording)",
 		"tone": "Factual, starts with a verb, no trailing period",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.permission_desktop_apps": {
+		"role": "Extension consent/details: permission row (Chrome's own warning for nativeMessaging)",
+		"tone": "Factual verb phrase, Chrome's wording",
+		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
+	},
+	"ui.browser.extensions.permission_notifications": {
+		"role": "Extension consent/details: permission row (Chrome's own warning for notifications)",
+		"tone": "Factual verb phrase, Chrome's wording",
 		"note": "Embedded browser extension manager (Chrome Web Store extensions). Keep 'Chrome Web Store' and 'Chrome' as product names. Never promise full Chrome compatibility."
 	}
 }

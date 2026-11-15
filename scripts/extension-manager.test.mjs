@@ -51,6 +51,9 @@ async function fixture(t) {
 		removeConsent: true,
 		prompts: [],
 		removals: [],
+		nativePrompts: [],
+		nativeAnswer: "allow",
+		nativeDisconnects: [],
 		mode: "success",
 		focused: true,
 		visible: true,
@@ -153,6 +156,10 @@ async function fixture(t) {
 		selectTab(contents) {
 			state.mirrorSelections = state.mirrorSelections ?? [];
 			state.mirrorSelections.push(contents.id);
+		}
+		disconnectNativeHosts(extensionId, application) {
+			state.nativeDisconnects.push([extensionId, application]);
+			return 1;
 		}
 	}
 	const workers = Object.assign(new EventEmitter(), {
@@ -257,6 +264,12 @@ async function fixture(t) {
 			state.removals.push(name);
 			return state.removeConsent;
 		},
+		confirmNativeHost: async (prompt) => {
+			state.nativePrompts.push({ ...prompt });
+			return typeof state.nativeAnswer === "function"
+				? state.nativeAnswer(prompt)
+				: state.nativeAnswer;
+		},
 		changed: () => state.changed++,
 		createTab: async (url, active) => {
 			if (!state.allowTabs) throw new Error("No test navigation");
@@ -340,8 +353,11 @@ test("worker active:true and selectTab cannot replace the user's selected tab", 
 			url: `${scope}popup.html`,
 		}),
 	);
-	assert.equal(state.options.allowNativeMessaging, false);
-	assert.equal(state.options.allowNotifications, false);
+	// No global switches any more: native messaging is a per-call predicate
+	// (consent below), and notifications follow the manifest permission.
+	assert.equal(state.options.allowNativeMessaging, undefined);
+	assert.equal(state.options.allowNotifications, undefined);
+	assert.equal(typeof state.options.authorizeNativeMessaging, "function");
 	assert.equal(await state.options.requestPermissions(), false);
 });
 
@@ -1006,3 +1022,210 @@ test(
 		assert.equal(manager.foregroundArmed.has(id), false);
 	},
 );
+
+// ---- desktop apps (native messaging consent) --------------------------------
+
+const NATIVE_HOST = "com.1password.1password";
+const nativeRequest = (overrides = {}) => ({
+	extensionId: id,
+	application: NATIVE_HOST,
+	senderUrl: `${scope}background.js`,
+	host: {
+		name: NATIVE_HOST,
+		description: "1Password BrowserSupport",
+		path: "/Applications/1Password.app/Contents/Library/LoginItems/1Password Browser Helper.app/Contents/MacOS/1Password-BrowserSupport",
+	},
+	...overrides,
+});
+
+test(
+	"native host: Allow persists in state.json, survives a restart, and lists on the details page",
+	real,
+	async (t) => {
+		const rig = await installedRig(t, "success");
+		await rig.manager.restore();
+		const authorize = rig.state.options.authorizeNativeMessaging;
+		assert.equal(await authorize(nativeRequest()), true);
+		assert.equal(rig.state.nativePrompts.length, 1);
+		assert.deepEqual(rig.state.nativePrompts[0], {
+			extensionName: "1Password",
+			host: NATIVE_HOST,
+			description: "1Password BrowserSupport",
+			path: nativeRequest().host.path,
+		});
+		// Granted: no second question.
+		assert.equal(await authorize(nativeRequest()), true);
+		assert.equal(rig.state.nativePrompts.length, 1);
+		assert.deepEqual((await stateFile(rig.root)).extensions[id].nativeHosts, [
+			{ name: NATIVE_HOST, description: "1Password BrowserSupport" },
+		]);
+		assert.deepEqual(rig.manager.list()[0].nativeHosts, [
+			{ name: NATIVE_HOST, description: "1Password BrowserSupport" },
+		]);
+		// Restart: a new manager over the same root and session.
+		await rig.manager.dispose();
+		assert.equal(
+			await authorize(nativeRequest()),
+			false,
+			"a detached manager answers forbidden",
+		);
+		const again = new rig.exports.ExtensionManager(rig.ses, rig.hooks);
+		t.after(() => again.dispose());
+		await again.restore();
+		assert.equal(await authorize(nativeRequest()), true);
+		assert.equal(rig.state.nativePrompts.length, 1, "no prompt after restart");
+	},
+);
+
+test(
+	"native host: refused without enablement, the manifest permission, or the extension's own sender — and never asked",
+	real,
+	async (t) => {
+		const rig = await installedRig(t, "success");
+		await rig.manager.restore();
+		const authorize = rig.state.options.authorizeNativeMessaging;
+		// Another extension's page borrowing this id.
+		assert.equal(
+			await authorize(
+				nativeRequest({
+					senderUrl: `chrome-extension://${"b".repeat(32)}/x.html`,
+				}),
+			),
+			false,
+		);
+		// An unknown extension.
+		assert.equal(
+			await authorize(nativeRequest({ extensionId: "b".repeat(32) })),
+			false,
+		);
+		assert.equal(rig.state.nativePrompts.length, 0);
+		// Disabled: refused even with a stored grant.
+		assert.equal(await authorize(nativeRequest()), true);
+		assert.equal(await rig.manager.setEnabled(id, false), true);
+		assert.equal(await authorize(nativeRequest()), false);
+		assert.equal(rig.state.nativePrompts.length, 1);
+
+		// Consent recorded at install without nativeMessaging: refused, unasked.
+		const narrow = await installedRig(t, "success", {
+			consented: { allSites: true, hosts: [], permissions: ["storage"] },
+		});
+		await narrow.manager.restore();
+		assert.equal(
+			await narrow.state.options.authorizeNativeMessaging(nativeRequest()),
+			false,
+		);
+		assert.equal(narrow.state.nativePrompts.length, 0);
+	},
+);
+
+test(
+	"native host: concurrent requests share ONE dialog; Don't Allow lasts the session; an unavailable dialog is not a refusal",
+	real,
+	async (t) => {
+		const rig = await installedRig(t, "success");
+		await rig.manager.restore();
+		const authorize = rig.state.options.authorizeNativeMessaging;
+		let answer;
+		rig.state.nativeAnswer = () =>
+			new Promise((resolve) => {
+				answer = resolve;
+			});
+		const pending = [
+			authorize(nativeRequest()),
+			authorize(nativeRequest()),
+			authorize(nativeRequest()),
+		];
+		while (!answer) await new Promise((resolve) => setImmediate(resolve));
+		answer("deny");
+		assert.deepEqual(await Promise.all(pending), [false, false, false]);
+		assert.equal(
+			rig.state.nativePrompts.length,
+			1,
+			"one dialog for three requests",
+		);
+		// Remembered for the session: no prompt storm from a retry loop.
+		assert.equal(await authorize(nativeRequest()), false);
+		assert.equal(rig.state.nativePrompts.length, 1);
+		assert.equal(
+			(await stateFile(rig.root)).extensions[id].nativeHosts,
+			undefined,
+		);
+		// A different host is its own question; "unavailable" (window not
+		// focused) refuses this call only.
+		rig.state.nativeAnswer = "unavailable";
+		const other = nativeRequest({ application: "com.example.other_host" });
+		assert.equal(await authorize(other), false);
+		rig.state.nativeAnswer = "allow";
+		assert.equal(await authorize(other), true);
+		assert.equal(rig.state.nativePrompts.length, 3);
+	},
+);
+
+test(
+	"native host: revoke drops the grant, closes live hosts and asks again; removal drops grants and refusals",
+	real,
+	async (t) => {
+		const rig = await installedRig(t, "success");
+		await rig.manager.restore();
+		const authorize = rig.state.options.authorizeNativeMessaging;
+		assert.equal(await authorize(nativeRequest()), true);
+		const changed = rig.state.changed;
+		assert.equal(rig.manager.revokeNativeHost(id, NATIVE_HOST), true);
+		assert.ok(rig.state.changed > changed);
+		assert.deepEqual(rig.state.nativeDisconnects, [[id, NATIVE_HOST]]);
+		assert.equal(
+			(await stateFile(rig.root)).extensions[id].nativeHosts,
+			undefined,
+		);
+		assert.deepEqual(rig.manager.list()[0].nativeHosts, []);
+		assert.equal(
+			rig.manager.revokeNativeHost(id, NATIVE_HOST),
+			false,
+			"nothing left to revoke",
+		);
+		assert.equal(await authorize(nativeRequest()), true);
+		assert.equal(rig.state.nativePrompts.length, 2, "revoked: asked again");
+
+		// Removal: the grant goes with the entry, and so does a session refusal.
+		rig.state.nativeAnswer = "deny";
+		const other = nativeRequest({ application: "com.example.other_host" });
+		assert.equal(await authorize(other), false);
+		assert.equal(await rig.manager.uninstall(id), true);
+		assert.equal((await stateFile(rig.root)).extensions[id], undefined);
+		assert.equal(rig.manager.nativeDenied.size, 0);
+		assert.equal(await authorize(nativeRequest()), false, "not installed");
+	},
+);
+
+test("native host grants: malformed or hostile entries are dropped on read", async (t) => {
+	const { root, manager } = await fixture(t);
+	await writeFile(
+		join(root, "state.json"),
+		JSON.stringify({
+			version: 1,
+			extensions: {
+				[id]: {
+					enabled: false,
+					installedAt: 1,
+					version: "1.0",
+					name: "x",
+					icon: null,
+					consented: null,
+					nativeHosts: [
+						{ name: "com.ok.host", description: "OK" },
+						{ name: "com.ok.host", description: "duplicate" },
+						{ name: "../../evil", description: "traversal" },
+						{ name: "Upper.Case", description: "not Chrome's grammar" },
+						"com.bare.string",
+						{ name: "com.no.description" },
+					],
+				},
+			},
+		}),
+	);
+	await manager.restore();
+	assert.deepEqual(manager.list()[0].nativeHosts, [
+		{ name: "com.ok.host", description: "OK" },
+		{ name: "com.no.description", description: "" },
+	]);
+});
