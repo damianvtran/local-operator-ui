@@ -39,3 +39,23 @@ for the operator): ScreeningModelPaused light, ScreeningModelNotEnrolledHere
 (row hidden), ScreeningModelOpen (route labels, D5), ScreeningModelAutomatic and
 ScreeningModelUnavailable (C4), light and dark. The hidden-row and route-label
 states are pinned by `scripts/agent-messages-settings.test.mjs`.
+
+## Round 2 remediation (`r2-*`)
+
+- `r2-before-chosen-ru-clipped-light`: ScreeningModelChosen in ru, captured
+  before the trigger fix in 6c67bc2025 (the catalogues were already
+  re-drafted). The closed 448px trigger cuts the route ("через вашу учётную
+  запись …"). The browser tool's `styles` read gives the same numbers: the route
+  span ends at x 454.4 against a text box ending at x 411. After 6c67bc2025, the
+  same story's trigger text box measures 195px wide and holds only the mono id,
+  so nothing clips. Theme verified by pixel: all four corners read
+  rgb(241,237,228).
+
+Not captured, D6 still open: every other frame in the round-2 set
+(NotEnrolledHere, Open en/ru, Chosen en/ru, Automatic, Unavailable, Paused, in
+light and dark). Host results, one attempt each: `extension` said the paired
+extension was unreachable, and `cmux` said its socket refused the connection.
+The default desktop host opened the tab and allowed one capture plus geometry
+reads. It then answered `owner_refused`, because a password-manager prompt was
+waiting for the operator, on all 32 remaining goto/screenshot calls. Capture
+stopped there, and nothing was retried in a loop.
