@@ -108,6 +108,6 @@
 	"ui.browser.extensions.permission_proxy": "Просматривать и изменять настройки прокси",
 	"ui.browser.extensions.permission_passkeys": "Обрабатывать запросы сайтов на ключи доступа и ключи безопасности",
 	"ui.browser.extensions.permission_email": "Знать ваш адрес электронной почты",
-	"ui.browser.extensions.permission_desktop_apps": "Обмен данными с совместимыми приложениями для компьютера",
-	"ui.browser.extensions.permission_notifications": "Показ уведомлений"
+	"ui.browser.extensions.permission_desktop_apps": "Обмениваться данными с совместимыми приложениями для компьютера",
+	"ui.browser.extensions.permission_notifications": "Показывать уведомления"
 }
