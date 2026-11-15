@@ -1,0 +1,55 @@
+{
+ "schema": 1,
+ "instance": "s16e-au-fr-2",
+ "locale": "fr",
+ "namespace": "ui.chat.canonical",
+ "audit_date": "2026-11-12",
+ "pass": 1,
+ "auditor": {
+  "agent": "i18n-auditor",
+  "instance": "s16e-au-fr-2",
+  "session": "c25b8a640092",
+  "model": "deepseek/deepseek-flash",
+  "independent_from_translator_session": true,
+  "actual_model_source": "auditor's own record (no fallback declared)"
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "scope": "the 12 NEW S16e image-generation card stop/settlement/error keys of ui.chat.canonical (fr), audited as the translator's 12-key draft (sha256 a46fdb56c6007dd225382a8f94f4972d7a4dfc6aaaab790dca2d7cdf27b4da62); the 467 pre-existing keys of the namespace were not re-reviewed and are proven byte-identical to the previously audited bytes by the retained-key digest in verify.log",
+ "sha256": {
+  "fr": "67372a8280150ac24402a427aff3c71fe07aa00841c41c57513a470b6abbc7ac",
+  "en": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17",
+  "context": "ec598772089552ace910c857a38b364bdfa83a32c76c62b752b761527531e7b7"
+ },
+ "findings": [
+  {
+   "id": "F1",
+   "severity": "NIT",
+   "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+   "current": "Débit audio limité",
+   "problem": "In an audio card 'débit audio' is the settled fr phrase for audio bitrate, so the compound reads first as 'audio bitrate limited'; the corpus spells the rate-limit concept 'limite de débit' (ui.chat.error_block.rate_limit.before) and 'limité en débit' (ui.code_review.host.cooling). Wording ambiguity only — the error sentence under the label disambiguates, and the class stays distinct from the other five.",
+   "suggested": "Limite de débit audio (23 cells, still a short label) — or keep as is, given the corpus's own 'débit' term."
+  },
+  {
+   "id": "F2",
+   "severity": "NIT",
+   "key": "ui.chat.canonical.image_gen.settlement.pending + ui.chat.canonical.image_gen.cancel.checking",
+   "current": "Règlement en attente — les frais finaux apparaîtront dès que le fournisseur les aura communiqués. / Vérification du règlement.",
+   "problem": "'règlement' is new to the shipped fr corpus (0 of 467 keys) and has no glossary row; the corpus states the same pending-charge fact as 'frais finaux non confirmés' (sound.cost.estimated_zero). The two keys use it consistently, so nothing collides — this is a term decision for the programme, and both keys must move together if it changes.",
+   "suggested": "Keep 'règlement' (correct fr billing for settlement) and add a glossary row; otherwise align with the corpus: 'Frais finaux en attente — …' / 'Vérification des frais.'"
+  }
+ ],
+ "provenance": {
+  "kind": "BINDING RECEIPT: verdict, severity counts, findings, session and model are transcribed from this auditor's own record (audits/fr/receipt.json); this file was written by the integrating coder session (agent coder), NOT by the auditor. The auditor reviewed the 12-key draft fragment, so no auditor-authored file can name the integrated catalogue hash; this receipt names it, and verify.log proves every landed value equals the audited draft value.",
+  "authored_by": "integrating coder session 95bd4b294de3 (agent coder)",
+  "transcribed_from": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e/audits/fr/receipt.json",
+  "transcribed_from_sha256": "f4b9b6b8b1dcf8027716964cbf799afb3ee07347db1e16ea92f065adb9578b81",
+  "instance_origin": "the auditor's own `instance`",
+  "integrated_target_sha256": "67372a8280150ac24402a427aff3c71fe07aa00841c41c57513a470b6abbc7ac",
+  "not_claimed": [
+   "a full-file re-audit by this auditor: only the 12 new keys were reviewed",
+   "individual review of the retained 467 keys (they ride the previously audited bytes)",
+   "rendered/browser/pseudo-localization frames"
+  ]
+ }
+}

@@ -1,0 +1,800 @@
+{
+  "kind": "pr1829-final-gate-original-auditor-canonical-retention",
+  "allowlist_sha256": "86ea3772999952effa8edc6cd7ee11f4a7e87ce85c9a54f7003271b7e1ea317c",
+  "source_coordinator_session": "74bc9d540e75",
+  "frozen_source_tree": "e822d6068f049dfb8fad4ba41e9f8ca22409fc6a",
+  "scope": "Receipt rebinding/exact 486-main + 23-PR selected-parent union seam only; 509 raw literals verified, zero new semantic keys; no new rendering/native/global approval",
+  "entries": [
+    {
+      "locale": "es",
+      "auditor_session": "5f8e54e78de8",
+      "auditor_model": "openai/gpt-6.1-sol",
+      "instance": "5f8e54e78de8-es-finalgate20261115-debt",
+      "scope": {
+        "kind": "receipt rebinding/exact486-main+23-PR union seam only",
+        "new_semantic_keys_read": 0,
+        "namespace_keys_mechanically_checked": 509,
+        "selected_main_keys": 486,
+        "selected_PR_keys": 23,
+        "source_and_context_mechanically_checked": true,
+        "selection": "PR contributes ONLY tool_row.diff.full.*23; other486 exclusively exact incoming main, not other471PR values.",
+        "old_findings_carry_forward": "Explicit author choice retains genuine MINOR/NIT including HI-C1/aliases. No new linguistic defect or new finding count invented."
+      },
+      "receipt": {
+        "path": "i18n/receipts/5f8e54e78de8-es-finalgate20261115-debt.json",
+        "sha256": "6dd07989c34facc1ace7f817ccade297167f96da06b680d5121e15662c2a22e2"
+      },
+      "record": {
+        "path": "i18n/audits/evidence/es/ui.chat.canonical/5f8e54e78de8-es-finalgate20261115-debt/record.json",
+        "sha256": "505aba028534d61ecac5b82916a7c71bece839131b25f4884e0f3251385d7e0f"
+      },
+      "companions": [
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115-debt/es/5f8e54e78de8-es-finalgate20261115-debt/record.json",
+          "path": "i18n/audits/evidence/es/ui.chat.canonical/5f8e54e78de8-es-finalgate20261115-debt/record.json",
+          "sha256": "505aba028534d61ecac5b82916a7c71bece839131b25f4884e0f3251385d7e0f"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115-debt/FINAL-MANIFEST-5f8e54e78de8-finalgate20261115-debt.json",
+          "path": "i18n/audits/evidence/es/ui.chat.canonical/5f8e54e78de8-es-finalgate20261115-debt/FINAL-MANIFEST-5f8e54e78de8-finalgate20261115-debt.json",
+          "sha256": "f0ed3c70e000a533da8e64388a95e561d1f4a37f819c17f7193eeefdb296a0a5"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115-debt/es/5f8e54e78de8-es-finalgate20261115-debt/S18a-debt-reconciliation.json",
+          "path": "i18n/audits/evidence/es/ui.chat.canonical/5f8e54e78de8-es-finalgate20261115-debt/S18a-debt-reconciliation.json",
+          "sha256": "2d79dc0b4bb13d7d1252569f601a11b217e1def1219829029c2839e75662618d"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115/es/5f8e54e78de8-es-finalgate20261115/parents-and-dispositions.json",
+          "path": "i18n/audits/evidence/es/ui.chat.canonical/5f8e54e78de8-es-finalgate20261115-debt/parents-and-dispositions.json",
+          "sha256": "a65e5521c35b1bb2d42622adb610073f46e8e69212604299a0a3854b7cbd72fd"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115/seam-proof.json",
+          "path": "i18n/audits/evidence/es/ui.chat.canonical/5f8e54e78de8-es-finalgate20261115-debt/seam-proof.json",
+          "sha256": "0e9240672de408d82a8343e157dedd415428031a431f52092fcbf95fe09046d4"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115/parent-contract-validation.json",
+          "path": "i18n/audits/evidence/es/ui.chat.canonical/5f8e54e78de8-es-finalgate20261115-debt/parent-contract-validation.json",
+          "sha256": "b1327352d94ef73d984d7918aaaf2d57fb004d63780ff8bd8368371dec6eea6b"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115-debt/final-validation.json",
+          "path": "i18n/audits/evidence/es/ui.chat.canonical/5f8e54e78de8-es-finalgate20261115-debt/final-validation.json",
+          "sha256": "4313e019067ad112e1a1c68715d8b0787c9f818d7b8acc7f9b718f5d3c5dfbc5"
+        }
+      ],
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 6,
+        "nit": 8
+      }
+    },
+    {
+      "locale": "fr",
+      "auditor_session": "5f8e54e78de8",
+      "auditor_model": "openai/gpt-6.1-sol",
+      "instance": "5f8e54e78de8-fr-finalgate20261115-debt",
+      "scope": {
+        "kind": "receipt rebinding/exact486-main+23-PR union seam only",
+        "new_semantic_keys_read": 0,
+        "namespace_keys_mechanically_checked": 509,
+        "selected_main_keys": 486,
+        "selected_PR_keys": 23,
+        "source_and_context_mechanically_checked": true,
+        "selection": "PR contributes ONLY tool_row.diff.full.*23; other486 exclusively exact incoming main, not other471PR values.",
+        "old_findings_carry_forward": "Explicit author choice retains genuine MINOR/NIT including HI-C1/aliases. No new linguistic defect or new finding count invented."
+      },
+      "receipt": {
+        "path": "i18n/receipts/5f8e54e78de8-fr-finalgate20261115-debt.json",
+        "sha256": "8bcf23472ecd1b806346848b9022a727bebb3e81a2a4055e68c8231914241edd"
+      },
+      "record": {
+        "path": "i18n/audits/evidence/fr/ui.chat.canonical/5f8e54e78de8-fr-finalgate20261115-debt/record.json",
+        "sha256": "f9175df94f0de1990bd3067c3627525731cf794de746012096d9058f40908e20"
+      },
+      "companions": [
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115-debt/fr/5f8e54e78de8-fr-finalgate20261115-debt/record.json",
+          "path": "i18n/audits/evidence/fr/ui.chat.canonical/5f8e54e78de8-fr-finalgate20261115-debt/record.json",
+          "sha256": "f9175df94f0de1990bd3067c3627525731cf794de746012096d9058f40908e20"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115-debt/FINAL-MANIFEST-5f8e54e78de8-finalgate20261115-debt.json",
+          "path": "i18n/audits/evidence/fr/ui.chat.canonical/5f8e54e78de8-fr-finalgate20261115-debt/FINAL-MANIFEST-5f8e54e78de8-finalgate20261115-debt.json",
+          "sha256": "f0ed3c70e000a533da8e64388a95e561d1f4a37f819c17f7193eeefdb296a0a5"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115-debt/fr/5f8e54e78de8-fr-finalgate20261115-debt/S18a-debt-reconciliation.json",
+          "path": "i18n/audits/evidence/fr/ui.chat.canonical/5f8e54e78de8-fr-finalgate20261115-debt/S18a-debt-reconciliation.json",
+          "sha256": "a4e13c5ec2e3e7a5345dd37f3300f59ca10f2e30950639258e0266c935f11d98"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115/fr/5f8e54e78de8-fr-finalgate20261115/parents-and-dispositions.json",
+          "path": "i18n/audits/evidence/fr/ui.chat.canonical/5f8e54e78de8-fr-finalgate20261115-debt/parents-and-dispositions.json",
+          "sha256": "b0c3c76a17553cb578d2aa8c9ccb1c5b8076229b4b4d4b0dfd5b9e1a550e8212"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115/seam-proof.json",
+          "path": "i18n/audits/evidence/fr/ui.chat.canonical/5f8e54e78de8-fr-finalgate20261115-debt/seam-proof.json",
+          "sha256": "0e9240672de408d82a8343e157dedd415428031a431f52092fcbf95fe09046d4"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115/parent-contract-validation.json",
+          "path": "i18n/audits/evidence/fr/ui.chat.canonical/5f8e54e78de8-fr-finalgate20261115-debt/parent-contract-validation.json",
+          "sha256": "b1327352d94ef73d984d7918aaaf2d57fb004d63780ff8bd8368371dec6eea6b"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115-debt/final-validation.json",
+          "path": "i18n/audits/evidence/fr/ui.chat.canonical/5f8e54e78de8-fr-finalgate20261115-debt/final-validation.json",
+          "sha256": "4313e019067ad112e1a1c68715d8b0787c9f818d7b8acc7f9b718f5d3c5dfbc5"
+        }
+      ],
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 4,
+        "nit": 3
+      }
+    },
+    {
+      "locale": "hi",
+      "auditor_session": "5f8e54e78de8",
+      "auditor_model": "openai/gpt-6.1-sol",
+      "instance": "5f8e54e78de8-hi-finalgate20261115-debt",
+      "scope": {
+        "kind": "receipt rebinding/exact486-main+23-PR union seam only",
+        "new_semantic_keys_read": 0,
+        "namespace_keys_mechanically_checked": 509,
+        "selected_main_keys": 486,
+        "selected_PR_keys": 23,
+        "source_and_context_mechanically_checked": true,
+        "selection": "PR contributes ONLY tool_row.diff.full.*23; other486 exclusively exact incoming main, not other471PR values.",
+        "old_findings_carry_forward": "Explicit author choice retains genuine MINOR/NIT including HI-C1/aliases. No new linguistic defect or new finding count invented."
+      },
+      "receipt": {
+        "path": "i18n/receipts/5f8e54e78de8-hi-finalgate20261115-debt.json",
+        "sha256": "6c60f198fb11a685e2f1c2c195ab0e4401e8f8d408337d4ed07c433557707317"
+      },
+      "record": {
+        "path": "i18n/audits/evidence/hi/ui.chat.canonical/5f8e54e78de8-hi-finalgate20261115-debt/record.json",
+        "sha256": "280da04b85302ef5f4836781780c4560bf505564d03181cb0c299a489ca5b471"
+      },
+      "companions": [
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115-debt/hi/5f8e54e78de8-hi-finalgate20261115-debt/record.json",
+          "path": "i18n/audits/evidence/hi/ui.chat.canonical/5f8e54e78de8-hi-finalgate20261115-debt/record.json",
+          "sha256": "280da04b85302ef5f4836781780c4560bf505564d03181cb0c299a489ca5b471"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115-debt/FINAL-MANIFEST-5f8e54e78de8-finalgate20261115-debt.json",
+          "path": "i18n/audits/evidence/hi/ui.chat.canonical/5f8e54e78de8-hi-finalgate20261115-debt/FINAL-MANIFEST-5f8e54e78de8-finalgate20261115-debt.json",
+          "sha256": "f0ed3c70e000a533da8e64388a95e561d1f4a37f819c17f7193eeefdb296a0a5"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115-debt/hi/5f8e54e78de8-hi-finalgate20261115-debt/S18a-debt-reconciliation.json",
+          "path": "i18n/audits/evidence/hi/ui.chat.canonical/5f8e54e78de8-hi-finalgate20261115-debt/S18a-debt-reconciliation.json",
+          "sha256": "8c06f9c9127a2ccb742b4440e0f89995f6d2b7238753f88fa72c5b05ae398baf"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115/hi/5f8e54e78de8-hi-finalgate20261115/parents-and-dispositions.json",
+          "path": "i18n/audits/evidence/hi/ui.chat.canonical/5f8e54e78de8-hi-finalgate20261115-debt/parents-and-dispositions.json",
+          "sha256": "3b7a8155b47346ac293c2a328f3f4669bbd7f174d90c50a59dfc065b8d45002b"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115/seam-proof.json",
+          "path": "i18n/audits/evidence/hi/ui.chat.canonical/5f8e54e78de8-hi-finalgate20261115-debt/seam-proof.json",
+          "sha256": "0e9240672de408d82a8343e157dedd415428031a431f52092fcbf95fe09046d4"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115/parent-contract-validation.json",
+          "path": "i18n/audits/evidence/hi/ui.chat.canonical/5f8e54e78de8-hi-finalgate20261115-debt/parent-contract-validation.json",
+          "sha256": "b1327352d94ef73d984d7918aaaf2d57fb004d63780ff8bd8368371dec6eea6b"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/5f8e54e78de8/scratchpad/finalgate20261115-debt/final-validation.json",
+          "path": "i18n/audits/evidence/hi/ui.chat.canonical/5f8e54e78de8-hi-finalgate20261115-debt/final-validation.json",
+          "sha256": "4313e019067ad112e1a1c68715d8b0787c9f818d7b8acc7f9b718f5d3c5dfbc5"
+        }
+      ],
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 3,
+        "nit": 1
+      }
+    },
+    {
+      "locale": "es",
+      "auditor_session": "6dfaec49abf0",
+      "auditor_model": "openai/gpt-6.1-sol",
+      "instance": "6dfaec49abf0-es-finalgate20261115-debt",
+      "scope": "receipt rebinding/exact486-main+23-PR union seam only;509 mechanically checked;0 new semantic keys",
+      "receipt": {
+        "path": "i18n/receipts/6dfaec49abf0-es-finalgate20261115-debt.json",
+        "sha256": "eab5cd4aca785ddfe71cb356a94e45c93c059ceb00e317a3a7f8955c5c2e4923"
+      },
+      "record": {
+        "path": "i18n/audits/evidence/es/ui.chat.canonical/6dfaec49abf0-es-finalgate20261115-debt/record.json",
+        "sha256": "8b2bb86ae252123c09f4a35e6f0e8b7d04b679885bd619f9fd87f780ee71510c"
+      },
+      "companions": [
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-es-finalgate20261115-debt-record.json",
+          "path": "i18n/audits/evidence/es/ui.chat.canonical/6dfaec49abf0-es-finalgate20261115-debt/record.json",
+          "sha256": "8b2bb86ae252123c09f4a35e6f0e8b7d04b679885bd619f9fd87f780ee71510c"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-finalgate20261115-debt-FINAL-MANIFEST.json",
+          "path": "i18n/audits/evidence/es/ui.chat.canonical/6dfaec49abf0-es-finalgate20261115-debt/6dfaec49abf0-finalgate20261115-debt-FINAL-MANIFEST.json",
+          "sha256": "c93ef0771757eb61b57bf95165740ee1b71e3ed6dac61d3d12a48bf1eb93c211"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-finalgate20261115-proof.json",
+          "path": "i18n/audits/evidence/es/ui.chat.canonical/6dfaec49abf0-es-finalgate20261115-debt/union-seam-proof.json",
+          "sha256": "c34f8b9abec5442486d26ab1a5359f71251ca73aaed06df99f850fcbb31c014b"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-finalgate20261115-debt-proof.json",
+          "path": "i18n/audits/evidence/es/ui.chat.canonical/6dfaec49abf0-es-finalgate20261115-debt/inherited-debt-proof.json",
+          "sha256": "b10f6015b152fae70bc72c9a544fdd59a74de8c272dcacb48eeeae689d91b4c6"
+        }
+      ],
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 3,
+        "nit": 8
+      }
+    },
+    {
+      "locale": "fr",
+      "auditor_session": "6dfaec49abf0",
+      "auditor_model": "openai/gpt-6.1-sol",
+      "instance": "6dfaec49abf0-fr-finalgate20261115-debt",
+      "scope": "receipt rebinding/exact486-main+23-PR union seam only;509 mechanically checked;0 new semantic keys",
+      "receipt": {
+        "path": "i18n/receipts/6dfaec49abf0-fr-finalgate20261115-debt.json",
+        "sha256": "9ec10c75c61cad1bd231aa94997741491d4ffd83458c232e86c2b97a8ebe57f4"
+      },
+      "record": {
+        "path": "i18n/audits/evidence/fr/ui.chat.canonical/6dfaec49abf0-fr-finalgate20261115-debt/record.json",
+        "sha256": "af252aef960b0f8c8280ba6dcb8e474307bf7d9720495d938e5f861bb8c2f997"
+      },
+      "companions": [
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-fr-finalgate20261115-debt-record.json",
+          "path": "i18n/audits/evidence/fr/ui.chat.canonical/6dfaec49abf0-fr-finalgate20261115-debt/record.json",
+          "sha256": "af252aef960b0f8c8280ba6dcb8e474307bf7d9720495d938e5f861bb8c2f997"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-finalgate20261115-debt-FINAL-MANIFEST.json",
+          "path": "i18n/audits/evidence/fr/ui.chat.canonical/6dfaec49abf0-fr-finalgate20261115-debt/6dfaec49abf0-finalgate20261115-debt-FINAL-MANIFEST.json",
+          "sha256": "c93ef0771757eb61b57bf95165740ee1b71e3ed6dac61d3d12a48bf1eb93c211"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-finalgate20261115-proof.json",
+          "path": "i18n/audits/evidence/fr/ui.chat.canonical/6dfaec49abf0-fr-finalgate20261115-debt/union-seam-proof.json",
+          "sha256": "c34f8b9abec5442486d26ab1a5359f71251ca73aaed06df99f850fcbb31c014b"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-finalgate20261115-debt-proof.json",
+          "path": "i18n/audits/evidence/fr/ui.chat.canonical/6dfaec49abf0-fr-finalgate20261115-debt/inherited-debt-proof.json",
+          "sha256": "b10f6015b152fae70bc72c9a544fdd59a74de8c272dcacb48eeeae689d91b4c6"
+        }
+      ],
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 3
+      }
+    },
+    {
+      "locale": "hi",
+      "auditor_session": "6dfaec49abf0",
+      "auditor_model": "openai/gpt-6.1-sol",
+      "instance": "6dfaec49abf0-hi-finalgate20261115-debt",
+      "scope": "receipt rebinding/exact486-main+23-PR union seam only;509 mechanically checked;0 new semantic keys",
+      "receipt": {
+        "path": "i18n/receipts/6dfaec49abf0-hi-finalgate20261115-debt.json",
+        "sha256": "58cd327e22a51354b28f0311c92c43b2d1a2f45afbf231cb26edf74d536d9359"
+      },
+      "record": {
+        "path": "i18n/audits/evidence/hi/ui.chat.canonical/6dfaec49abf0-hi-finalgate20261115-debt/record.json",
+        "sha256": "a3b63fc16e7907e0698677f979a7da30da6f790b062c376d372342446cdb9c32"
+      },
+      "companions": [
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-finalgate20261115-debt-record.json",
+          "path": "i18n/audits/evidence/hi/ui.chat.canonical/6dfaec49abf0-hi-finalgate20261115-debt/record.json",
+          "sha256": "a3b63fc16e7907e0698677f979a7da30da6f790b062c376d372342446cdb9c32"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-finalgate20261115-debt-FINAL-MANIFEST.json",
+          "path": "i18n/audits/evidence/hi/ui.chat.canonical/6dfaec49abf0-hi-finalgate20261115-debt/6dfaec49abf0-finalgate20261115-debt-FINAL-MANIFEST.json",
+          "sha256": "c93ef0771757eb61b57bf95165740ee1b71e3ed6dac61d3d12a48bf1eb93c211"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-finalgate20261115-proof.json",
+          "path": "i18n/audits/evidence/hi/ui.chat.canonical/6dfaec49abf0-hi-finalgate20261115-debt/union-seam-proof.json",
+          "sha256": "c34f8b9abec5442486d26ab1a5359f71251ca73aaed06df99f850fcbb31c014b"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-finalgate20261115-debt-proof.json",
+          "path": "i18n/audits/evidence/hi/ui.chat.canonical/6dfaec49abf0-hi-finalgate20261115-debt/inherited-debt-proof.json",
+          "sha256": "b10f6015b152fae70bc72c9a544fdd59a74de8c272dcacb48eeeae689d91b4c6"
+        }
+      ],
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 2,
+        "nit": 1
+      }
+    },
+    {
+      "locale": "ru",
+      "auditor_session": "a0245acae0c5",
+      "auditor_model": "openai/gpt-6.1-sol",
+      "instance": "a0245acae0c5-finalgate20261115-debt-013810-ru",
+      "scope": "receipt rebinding/exact486-main+23-PR union seam only;509mechanically checked;0new semantic keys",
+      "receipt": {
+        "path": "i18n/receipts/a0245acae0c5-finalgate20261115-debt-013810-ru.json",
+        "sha256": "044611ccad271eb035916af1c78fa333052a5aa1b6817b29caeea2650eb83a51"
+      },
+      "record": {
+        "path": "i18n/audits/evidence/ru/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-ru/record.json",
+        "sha256": "247abcd8d31dabedd1adba864c5fdf403e08ac562d31a540542ca31c286a5989"
+      },
+      "companions": [
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-debt-013810-ru-record.json",
+          "path": "i18n/audits/evidence/ru/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-ru/record.json",
+          "sha256": "247abcd8d31dabedd1adba864c5fdf403e08ac562d31a540542ca31c286a5989"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-debt-013810-AMENDED-FINAL-MANIFEST.json",
+          "path": "i18n/audits/evidence/ru/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-ru/a024-finalgate20261115-debt-013810-AMENDED-FINAL-MANIFEST.json",
+          "sha256": "0c22afb84c3d1b0c7494adaf039df5ae6491acf5f19f27ae0643449e9e0c3f2f"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-012841-seam-proof.json",
+          "path": "i18n/audits/evidence/ru/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-ru/a024-finalgate20261115-012841-seam-proof.json",
+          "sha256": "4e6d4e5e2239f8f0142f4961569f7cfe2863b95a61feeb3f3455600eb397679f"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-012841-derivation.json",
+          "path": "i18n/audits/evidence/ru/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-ru/a024-finalgate20261115-012841-derivation.json",
+          "sha256": "e61c2f3188c91fcf622af9b0a90576bc4cd00259a37e107230e826307dd92c03"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-final-manifest-20261114t110721z.json",
+          "path": "i18n/audits/evidence/ru/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-ru/r-next-a024-final-manifest-20261114t110721z.json",
+          "sha256": "e80984cc8d8695eed2fda8c69a93e607b1cfbdbe9ccee2769532b8862c8768d2"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json",
+          "path": "i18n/audits/evidence/ru/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-ru/1829-bounded-evidence-readback.json",
+          "sha256": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.md",
+          "path": "i18n/audits/evidence/ru/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-ru/1829-bounded-evidence-readback.md",
+          "sha256": "a8cbf67eef4052484b4bbc1937a7a6b4b1d3328a71cb813bc3a8f0119cc275ac"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-debt-013810-accounting.json",
+          "path": "i18n/audits/evidence/ru/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-ru/a024-finalgate20261115-debt-013810-accounting.json",
+          "sha256": "16a72359338c7c414395ec125dc70dc2d77e846fb6f917d5089f2615252b01dd"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-debt-013810-derivation.json",
+          "path": "i18n/audits/evidence/ru/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-ru/a024-finalgate20261115-debt-013810-derivation.json",
+          "sha256": "3b5f7f7bd274b5fd857df6358225571af7a6fa022f27feb6b7d61ed653bb94c4"
+        }
+      ],
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 2
+      }
+    },
+    {
+      "locale": "ur",
+      "auditor_session": "a0245acae0c5",
+      "auditor_model": "openai/gpt-6.1-sol",
+      "instance": "a0245acae0c5-finalgate20261115-debt-013810-ur",
+      "scope": "receipt rebinding/exact486-main+23-PR union seam only;509mechanically checked;0new semantic keys",
+      "receipt": {
+        "path": "i18n/receipts/a0245acae0c5-finalgate20261115-debt-013810-ur.json",
+        "sha256": "0bda54cc2e2cd078037afb985df2ec2c080d459fcd03c6e9eeb7bb9e7b7887f8"
+      },
+      "record": {
+        "path": "i18n/audits/evidence/ur/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-ur/record.json",
+        "sha256": "4ac465b730eb993cb234aea38a8f269e844d34895a46e4050dd0a938917382c8"
+      },
+      "companions": [
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-debt-013810-ur-record.json",
+          "path": "i18n/audits/evidence/ur/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-ur/record.json",
+          "sha256": "4ac465b730eb993cb234aea38a8f269e844d34895a46e4050dd0a938917382c8"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-debt-013810-AMENDED-FINAL-MANIFEST.json",
+          "path": "i18n/audits/evidence/ur/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-ur/a024-finalgate20261115-debt-013810-AMENDED-FINAL-MANIFEST.json",
+          "sha256": "0c22afb84c3d1b0c7494adaf039df5ae6491acf5f19f27ae0643449e9e0c3f2f"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-012841-seam-proof.json",
+          "path": "i18n/audits/evidence/ur/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-ur/a024-finalgate20261115-012841-seam-proof.json",
+          "sha256": "4e6d4e5e2239f8f0142f4961569f7cfe2863b95a61feeb3f3455600eb397679f"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-012841-derivation.json",
+          "path": "i18n/audits/evidence/ur/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-ur/a024-finalgate20261115-012841-derivation.json",
+          "sha256": "e61c2f3188c91fcf622af9b0a90576bc4cd00259a37e107230e826307dd92c03"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-final-manifest-20261114t110721z.json",
+          "path": "i18n/audits/evidence/ur/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-ur/r-next-a024-final-manifest-20261114t110721z.json",
+          "sha256": "e80984cc8d8695eed2fda8c69a93e607b1cfbdbe9ccee2769532b8862c8768d2"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json",
+          "path": "i18n/audits/evidence/ur/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-ur/1829-bounded-evidence-readback.json",
+          "sha256": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.md",
+          "path": "i18n/audits/evidence/ur/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-ur/1829-bounded-evidence-readback.md",
+          "sha256": "a8cbf67eef4052484b4bbc1937a7a6b4b1d3328a71cb813bc3a8f0119cc275ac"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-debt-013810-accounting.json",
+          "path": "i18n/audits/evidence/ur/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-ur/a024-finalgate20261115-debt-013810-accounting.json",
+          "sha256": "16a72359338c7c414395ec125dc70dc2d77e846fb6f917d5089f2615252b01dd"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-debt-013810-derivation.json",
+          "path": "i18n/audits/evidence/ur/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-ur/a024-finalgate20261115-debt-013810-derivation.json",
+          "sha256": "3b5f7f7bd274b5fd857df6358225571af7a6fa022f27feb6b7d61ed653bb94c4"
+        }
+      ],
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 3,
+        "nit": 4
+      }
+    },
+    {
+      "locale": "vi",
+      "auditor_session": "a0245acae0c5",
+      "auditor_model": "openai/gpt-6.1-sol",
+      "instance": "a0245acae0c5-finalgate20261115-debt-013810-vi",
+      "scope": "receipt rebinding/exact486-main+23-PR union seam only;509mechanically checked;0new semantic keys",
+      "receipt": {
+        "path": "i18n/receipts/a0245acae0c5-finalgate20261115-debt-013810-vi.json",
+        "sha256": "1f62e4c70ef1f54a7a1e1fa4165c905d8e1e5ebb5f7d76e720d7c76eb969acea"
+      },
+      "record": {
+        "path": "i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-vi/record.json",
+        "sha256": "bf2a7ee351d8ed10646a1fafd96b364a66d32326619a95cb90510845e92fe552"
+      },
+      "companions": [
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-debt-013810-vi-record.json",
+          "path": "i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-vi/record.json",
+          "sha256": "bf2a7ee351d8ed10646a1fafd96b364a66d32326619a95cb90510845e92fe552"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-debt-013810-AMENDED-FINAL-MANIFEST.json",
+          "path": "i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-vi/a024-finalgate20261115-debt-013810-AMENDED-FINAL-MANIFEST.json",
+          "sha256": "0c22afb84c3d1b0c7494adaf039df5ae6491acf5f19f27ae0643449e9e0c3f2f"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-012841-seam-proof.json",
+          "path": "i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-vi/a024-finalgate20261115-012841-seam-proof.json",
+          "sha256": "4e6d4e5e2239f8f0142f4961569f7cfe2863b95a61feeb3f3455600eb397679f"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-012841-derivation.json",
+          "path": "i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-vi/a024-finalgate20261115-012841-derivation.json",
+          "sha256": "e61c2f3188c91fcf622af9b0a90576bc4cd00259a37e107230e826307dd92c03"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-final-manifest-20261114t110721z.json",
+          "path": "i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-vi/r-next-a024-final-manifest-20261114t110721z.json",
+          "sha256": "e80984cc8d8695eed2fda8c69a93e607b1cfbdbe9ccee2769532b8862c8768d2"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json",
+          "path": "i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-vi/1829-bounded-evidence-readback.json",
+          "sha256": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.md",
+          "path": "i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-vi/1829-bounded-evidence-readback.md",
+          "sha256": "a8cbf67eef4052484b4bbc1937a7a6b4b1d3328a71cb813bc3a8f0119cc275ac"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-debt-013810-accounting.json",
+          "path": "i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-vi/a024-finalgate20261115-debt-013810-accounting.json",
+          "sha256": "16a72359338c7c414395ec125dc70dc2d77e846fb6f917d5089f2615252b01dd"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-debt-013810-derivation.json",
+          "path": "i18n/audits/evidence/vi/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-vi/a024-finalgate20261115-debt-013810-derivation.json",
+          "sha256": "3b5f7f7bd274b5fd857df6358225571af7a6fa022f27feb6b7d61ed653bb94c4"
+        }
+      ],
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 3
+      }
+    },
+    {
+      "locale": "zh-CN",
+      "auditor_session": "a0245acae0c5",
+      "auditor_model": "openai/gpt-6.1-sol",
+      "instance": "a0245acae0c5-finalgate20261115-debt-013810-zh-cn",
+      "scope": "receipt rebinding/exact486-main+23-PR union seam only;509mechanically checked;0new semantic keys",
+      "receipt": {
+        "path": "i18n/receipts/a0245acae0c5-finalgate20261115-debt-013810-zh-cn.json",
+        "sha256": "bf6b74f06e1375e1d70ab50dcaed8b3a7371d825f19e711823d3de348d542314"
+      },
+      "record": {
+        "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-zh-cn/record.json",
+        "sha256": "d3d82d115f9bbf390b48aea3ed8b285b9608d1082d81167b8905babe6521d070"
+      },
+      "companions": [
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-debt-013810-zh-CN-record.json",
+          "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-zh-cn/record.json",
+          "sha256": "d3d82d115f9bbf390b48aea3ed8b285b9608d1082d81167b8905babe6521d070"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-debt-013810-AMENDED-FINAL-MANIFEST.json",
+          "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-zh-cn/a024-finalgate20261115-debt-013810-AMENDED-FINAL-MANIFEST.json",
+          "sha256": "0c22afb84c3d1b0c7494adaf039df5ae6491acf5f19f27ae0643449e9e0c3f2f"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-012841-seam-proof.json",
+          "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-zh-cn/a024-finalgate20261115-012841-seam-proof.json",
+          "sha256": "4e6d4e5e2239f8f0142f4961569f7cfe2863b95a61feeb3f3455600eb397679f"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-012841-derivation.json",
+          "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-zh-cn/a024-finalgate20261115-012841-derivation.json",
+          "sha256": "e61c2f3188c91fcf622af9b0a90576bc4cd00259a37e107230e826307dd92c03"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/r-next-a024-final-manifest-20261114t110721z.json",
+          "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-zh-cn/r-next-a024-final-manifest-20261114t110721z.json",
+          "sha256": "e80984cc8d8695eed2fda8c69a93e607b1cfbdbe9ccee2769532b8862c8768d2"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json",
+          "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-zh-cn/1829-bounded-evidence-readback.json",
+          "sha256": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.md",
+          "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-zh-cn/1829-bounded-evidence-readback.md",
+          "sha256": "a8cbf67eef4052484b4bbc1937a7a6b4b1d3328a71cb813bc3a8f0119cc275ac"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-debt-013810-accounting.json",
+          "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-zh-cn/a024-finalgate20261115-debt-013810-accounting.json",
+          "sha256": "16a72359338c7c414395ec125dc70dc2d77e846fb6f917d5089f2615252b01dd"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/a024-finalgate20261115-debt-013810-derivation.json",
+          "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/a0245acae0c5-finalgate20261115-debt-013810-zh-cn/a024-finalgate20261115-debt-013810-derivation.json",
+          "sha256": "3b5f7f7bd274b5fd857df6358225571af7a6fa022f27feb6b7d61ed653bb94c4"
+        }
+      ],
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 3,
+        "nit": 2
+      }
+    },
+    {
+      "locale": "ru",
+      "auditor_session": "0e471bff3c0f",
+      "auditor_model": "openai/gpt-6.1-sol",
+      "instance": "0e471bff3c0f-finalgate20261115-ru",
+      "scope": "receipt rebinding/exact486-main+23-PR union seam only;509 mechanically checked,0 new semantic keys",
+      "receipt": {
+        "path": "i18n/receipts/0e471bff3c0f-finalgate20261115-ru.json",
+        "sha256": "b6963a9fba5965c68204d3b1c52316efb179233a33c5883dc818801d2490b02f"
+      },
+      "record": {
+        "path": "i18n/audits/evidence/ru/ui.chat.canonical/0e471bff3c0f-finalgate20261115-ru/record.json",
+        "sha256": "324cf890968ef6cae6a40c2a911f9222869ca787eb64bd595d1cc72f264c05da"
+      },
+      "companions": [
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-finalgate20261115-ru/record.json",
+          "path": "i18n/audits/evidence/ru/ui.chat.canonical/0e471bff3c0f-finalgate20261115-ru/record.json",
+          "sha256": "324cf890968ef6cae6a40c2a911f9222869ca787eb64bd595d1cc72f264c05da"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-finalgate20261115-FINAL-MANIFEST.json",
+          "path": "i18n/audits/evidence/ru/ui.chat.canonical/0e471bff3c0f-finalgate20261115-ru/0e471bff3c0f-finalgate20261115-FINAL-MANIFEST.json",
+          "sha256": "b4606d083ea1951a5ccdb08f1037c8aa0028ede021f723d0731716063ed18594"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-finalgate20261115-seam-companion.json",
+          "path": "i18n/audits/evidence/ru/ui.chat.canonical/0e471bff3c0f-finalgate20261115-ru/0e471bff3c0f-finalgate20261115-seam-companion.json",
+          "sha256": "fad4554811cfc0308389db9aa19a167058f28684f3835f24523cfdff759a6e15"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-finalgate20261115-inherited-debts-companion.json",
+          "path": "i18n/audits/evidence/ru/ui.chat.canonical/0e471bff3c0f-finalgate20261115-ru/0e471bff3c0f-finalgate20261115-inherited-debts-companion.json",
+          "sha256": "f16a3f3c7797d0712746fdc477a4d3750e0f5ca49f0b6f83703bdb98ec2911f3"
+        }
+      ],
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 4
+      }
+    },
+    {
+      "locale": "ur",
+      "auditor_session": "0e471bff3c0f",
+      "auditor_model": "openai/gpt-6.1-sol",
+      "instance": "0e471bff3c0f-finalgate20261115-ur",
+      "scope": "receipt rebinding/exact486-main+23-PR union seam only;509 mechanically checked,0 new semantic keys",
+      "receipt": {
+        "path": "i18n/receipts/0e471bff3c0f-finalgate20261115-ur.json",
+        "sha256": "ccdd470acd7a10ea27d603b209547664abc1d1fa0b61c4d2dc54cc09c48358d1"
+      },
+      "record": {
+        "path": "i18n/audits/evidence/ur/ui.chat.canonical/0e471bff3c0f-finalgate20261115-ur/record.json",
+        "sha256": "76e566bc793644be4dd33713265b5c678a7add69e5f40487f991453ffa639681"
+      },
+      "companions": [
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-finalgate20261115-ur/record.json",
+          "path": "i18n/audits/evidence/ur/ui.chat.canonical/0e471bff3c0f-finalgate20261115-ur/record.json",
+          "sha256": "76e566bc793644be4dd33713265b5c678a7add69e5f40487f991453ffa639681"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-finalgate20261115-FINAL-MANIFEST.json",
+          "path": "i18n/audits/evidence/ur/ui.chat.canonical/0e471bff3c0f-finalgate20261115-ur/0e471bff3c0f-finalgate20261115-FINAL-MANIFEST.json",
+          "sha256": "b4606d083ea1951a5ccdb08f1037c8aa0028ede021f723d0731716063ed18594"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-finalgate20261115-seam-companion.json",
+          "path": "i18n/audits/evidence/ur/ui.chat.canonical/0e471bff3c0f-finalgate20261115-ur/0e471bff3c0f-finalgate20261115-seam-companion.json",
+          "sha256": "fad4554811cfc0308389db9aa19a167058f28684f3835f24523cfdff759a6e15"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-finalgate20261115-inherited-debts-companion.json",
+          "path": "i18n/audits/evidence/ur/ui.chat.canonical/0e471bff3c0f-finalgate20261115-ur/0e471bff3c0f-finalgate20261115-inherited-debts-companion.json",
+          "sha256": "f16a3f3c7797d0712746fdc477a4d3750e0f5ca49f0b6f83703bdb98ec2911f3"
+        }
+      ],
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 3,
+        "nit": 4
+      }
+    },
+    {
+      "locale": "vi",
+      "auditor_session": "0e471bff3c0f",
+      "auditor_model": "openai/gpt-6.1-sol",
+      "instance": "0e471bff3c0f-finalgate20261115-vi",
+      "scope": "receipt rebinding/exact486-main+23-PR union seam only;509 mechanically checked,0 new semantic keys",
+      "receipt": {
+        "path": "i18n/receipts/0e471bff3c0f-finalgate20261115-vi.json",
+        "sha256": "8c20c422b9c54f904e6d151430f499607c30f87a1cda73659dcedf31c82d9056"
+      },
+      "record": {
+        "path": "i18n/audits/evidence/vi/ui.chat.canonical/0e471bff3c0f-finalgate20261115-vi/record.json",
+        "sha256": "4437f6560d7284f660408ea5e4b6792e7cce9d04a51afb84e176df4ba0160be5"
+      },
+      "companions": [
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-finalgate20261115-vi/record.json",
+          "path": "i18n/audits/evidence/vi/ui.chat.canonical/0e471bff3c0f-finalgate20261115-vi/record.json",
+          "sha256": "4437f6560d7284f660408ea5e4b6792e7cce9d04a51afb84e176df4ba0160be5"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-finalgate20261115-FINAL-MANIFEST.json",
+          "path": "i18n/audits/evidence/vi/ui.chat.canonical/0e471bff3c0f-finalgate20261115-vi/0e471bff3c0f-finalgate20261115-FINAL-MANIFEST.json",
+          "sha256": "b4606d083ea1951a5ccdb08f1037c8aa0028ede021f723d0731716063ed18594"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-finalgate20261115-seam-companion.json",
+          "path": "i18n/audits/evidence/vi/ui.chat.canonical/0e471bff3c0f-finalgate20261115-vi/0e471bff3c0f-finalgate20261115-seam-companion.json",
+          "sha256": "fad4554811cfc0308389db9aa19a167058f28684f3835f24523cfdff759a6e15"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-finalgate20261115-inherited-debts-companion.json",
+          "path": "i18n/audits/evidence/vi/ui.chat.canonical/0e471bff3c0f-finalgate20261115-vi/0e471bff3c0f-finalgate20261115-inherited-debts-companion.json",
+          "sha256": "f16a3f3c7797d0712746fdc477a4d3750e0f5ca49f0b6f83703bdb98ec2911f3"
+        }
+      ],
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 4
+      }
+    },
+    {
+      "locale": "zh-CN",
+      "auditor_session": "0e471bff3c0f",
+      "auditor_model": "openai/gpt-6.1-sol",
+      "instance": "0e471bff3c0f-finalgate20261115-zh-cn",
+      "scope": "receipt rebinding/exact486-main+23-PR union seam only;509 mechanically checked,0 new semantic keys",
+      "receipt": {
+        "path": "i18n/receipts/0e471bff3c0f-finalgate20261115-zh-cn.json",
+        "sha256": "9265dbf68781328fee00822e19bb0b41b7a9a5c7a4ae215f99d288c15f2d763d"
+      },
+      "record": {
+        "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/0e471bff3c0f-finalgate20261115-zh-cn/record.json",
+        "sha256": "67a55ef80e10b3fe3063225f81702f04f7f65c39efe057f67b2f90e301c9adb2"
+      },
+      "companions": [
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-finalgate20261115-zh-cn/record.json",
+          "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/0e471bff3c0f-finalgate20261115-zh-cn/record.json",
+          "sha256": "67a55ef80e10b3fe3063225f81702f04f7f65c39efe057f67b2f90e301c9adb2"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-finalgate20261115-FINAL-MANIFEST.json",
+          "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/0e471bff3c0f-finalgate20261115-zh-cn/0e471bff3c0f-finalgate20261115-FINAL-MANIFEST.json",
+          "sha256": "b4606d083ea1951a5ccdb08f1037c8aa0028ede021f723d0731716063ed18594"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-finalgate20261115-seam-companion.json",
+          "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/0e471bff3c0f-finalgate20261115-zh-cn/0e471bff3c0f-finalgate20261115-seam-companion.json",
+          "sha256": "fad4554811cfc0308389db9aa19a167058f28684f3835f24523cfdff759a6e15"
+        },
+        {
+          "source": "/home/ec2-user/.local-operator/sessions/0e471bff3c0f/scratchpad/0e471bff3c0f-finalgate20261115-inherited-debts-companion.json",
+          "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/0e471bff3c0f-finalgate20261115-zh-cn/0e471bff3c0f-finalgate20261115-inherited-debts-companion.json",
+          "sha256": "f16a3f3c7797d0712746fdc477a4d3750e0f5ca49f0b6f83703bdb98ec2911f3"
+        }
+      ],
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 3,
+        "nit": 2
+      }
+    }
+  ],
+  "all_existing_records_immutable": true,
+  "new_rendered_or_native_evidence": false,
+  "translator_metadata_updated": false
+}

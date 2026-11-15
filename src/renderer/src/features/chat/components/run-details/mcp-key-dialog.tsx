@@ -17,7 +17,7 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
-import { MCP_SETTINGS_ACTION_LABEL, type McpFailure } from "./mcp-failure";
+import { type McpFailure, mcpSettingsActionLabel } from "./mcp-failure";
 
 /** The server this dialog is for, and the field names its config declares. */
 export type McpKeyTarget = {
@@ -193,7 +193,7 @@ export const McpKeyDialog: FC<McpKeyDialogProps> = ({
 								data-mcp-failure-action="settings"
 								onClick={onOpenSettings}
 							>
-								{MCP_SETTINGS_ACTION_LABEL}
+								{mcpSettingsActionLabel()}
 							</Button>
 						</>
 					) : null}

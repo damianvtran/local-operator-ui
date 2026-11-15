@@ -97,6 +97,31 @@ const secret = z.string().min(1).max(32768);
 export const sessionIdPattern = /^[a-f0-9]{12}$/;
 const sessionId = z.string().regex(sessionIdPattern);
 /*
+ * THE SESSION IDS THE NOTIFICATIONS INBOX FILES ROWS UNDER.
+ *
+ * Not every inbox row belongs to a conversation: core files mesh credential
+ * repair items under the owner-scoped pseudo-session `network-credentials`
+ * (core `network/credentials/repair_inbox.py` `SESSION_ID`; no session
+ * directory exists, the reel shows `/network` as its title). Validating the
+ * notifications ops with the canonical 12-hex `sessionId` made the transport
+ * refuse any request that NAMED such a row - the toolbar's Dismiss all, Select
+ * all, opening that row's detail and its per-conversation dismiss all surfaced
+ * as the 422 toast "Invalid desktop operation." before reaching core.
+ *
+ * The list is closed, not a looser regex, because `sessionId` also scopes a
+ * PATCH: an arbitrary string here would let a typo dismiss nothing silently or
+ * a hostile renderer probe core's store keys. Keep it identical to core's
+ * route-side constant (core PR #3921); a new
+ * pseudo-session is added in both places at once.
+ */
+export const NOTIFICATION_PSEUDO_SESSION_IDS = ["network-credentials"] as const;
+export const isNotificationSessionId = (value: string): boolean =>
+	sessionIdPattern.test(value) ||
+	(NOTIFICATION_PSEUDO_SESSION_IDS as readonly string[]).includes(value);
+const notificationSessionId = z
+	.string()
+	.refine(isNotificationSessionId, "not a notifications session id");
+/*
  * A supplement JOB id (`supplements.persistence.new_job_id` mints 12 lowercase
  * hex) and the answer ANCHOR it attaches to (a final assistant message id).
  * Shapes are the contract's (`supplement-model.ts` states them for the
@@ -1398,7 +1423,7 @@ const notificationsTarget = z.union([
 		.strict(),
 	z
 		.object({
-			sessionId,
+			sessionId: notificationSessionId,
 			throughSeq: z.number().int().min(0),
 			observed: z
 				.array(
@@ -3887,6 +3912,18 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			acceptMonthlyPrice: z.string().min(1).max(64).optional(),
 		})
 		.strict(),
+	/*
+	 * PHONE ACCESS DIAGNOSIS (`features.mobile_doctor`, local-operator
+	 * `routes/desktop_mobile_doctor.py`): the same read-only, already-redacted
+	 * JSON `lop mobile doctor --json` prints, for the Phone access block's "Copy
+	 * diagnostics" button. A person without a terminal can paste it to support or
+	 * to an agent instead of being asked to run shell diagnostics. No arguments:
+	 * the report is about this machine, and an older backend 404s the route, so
+	 * the renderer asks the capability first and sends nothing without it.
+	 */
+	z
+		.object({ op: z.literal("mobile.doctor") })
+		.strict(),
 	z.object({ op: z.literal("auth.start"), provider: id }).strict(),
 	z.object({ op: z.literal("auth.status"), id }).strict(),
 	z
@@ -4713,13 +4750,16 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z.object({ op: z.literal("approvals.approve"), approvalId }).strict(),
 	z.object({ op: z.literal("approvals.deny"), approvalId }).strict(),
 	// Profile writes echo the reviewed commitments, never a model-authored command.
+	// `pair_phone` (`features.phone_pairing`) signs a phone pairing the person has
+	// already acknowledged through `approvals.pairAck` below; the server refuses an
+	// un-acked pairing before its signer runs (`pair_op.require_acked`).
 	...(["approvals.approveOperation", "approvals.applyOperation"] as const).map(
 		(op) =>
 			z
 				.object({
 					op: z.literal(op),
 					approvalId,
-					operation: z.literal("profile_save"),
+					operation: z.enum(["profile_save", "pair_phone"]),
 					requestDigest: z.string().regex(CREDENTIAL_APPROVAL_DIGEST),
 					disclosureDigest: z.string().regex(CREDENTIAL_APPROVAL_DIGEST),
 				})
@@ -4744,6 +4784,66 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	 * `approveCredential` is review -> sign -> apply in one call;
 	 * `applyCredential` is the retry of a signed card whose apply did not finish.
 	 */
+	/*
+	 * PHONE PAIRING (`features.phone_pairing`, core pairing design v2 §2). The
+	 * person's decision on the pairing card BEFORE any signer: both digests the card
+	 * was drawn from, echoed verbatim, plus the typed `code` in code mode. Omitting
+	 * `code` is the confirm-mode "Codes match" press, which core accepts only on an
+	 * edge-attested request (else 409 `pair_code_required`). Splitting the decision
+	 * from the signature is core's: a wrong code burns a strike, never a Touch ID
+	 * gesture. `code` is bounded like the core model (`max_length=32`); core
+	 * normalises spacing and refuses non-digits without a strike.
+	 */
+	z
+		.object({
+			op: z.literal("approvals.pairAck"),
+			approvalId,
+			requestDigest: z.string().regex(CREDENTIAL_APPROVAL_DIGEST),
+			disclosureDigest: z.string().regex(CREDENTIAL_APPROVAL_DIGEST),
+			code: z.string().min(1).max(32).optional(),
+		})
+		.strict(),
+	/*
+	 * Settings → Phone access → Paired phones. A device id is what core derives
+	 * (lowercase hex) and accepts (`[A-Za-z0-9]{1,64}`, else 422 `bad_device_id`);
+	 * the pattern here is this client's own check before the id becomes a path
+	 * segment. `remove` is idempotent on core's side: a second call on a
+	 * `removing` row finishes it.
+	 */
+	z
+		.object({ op: z.literal("devices.list") })
+		.strict(),
+	z
+		.object({
+			op: z.literal("devices.remove"),
+			deviceId: z.string().regex(/^[A-Za-z0-9]{1,64}$/),
+		})
+		.strict(),
+	/*
+	 * Turn on phone approvals (`features.operator_setup`, core design v2 §6). The
+	 * POST body is closed and empty on core's side: the click is the whole request,
+	 * and the OS admin prompt is the proof, so nothing here can carry a password.
+	 */
+	z
+		.object({ op: z.literal("operator.setup.read") })
+		.strict(),
+	z.object({ op: z.literal("operator.setup.run") }).strict(),
+	/*
+	 * SHOW PHONE PASSWORD (`features.mobile_password_read`, local-operator #3963,
+	 * `routes/desktop_mobile_password.py`): the phone portal password a person who
+	 * runs their own tunnel signs the phone in with - the value `lop mobile
+	 * password` prints - for Settings → Phone access → "Using your own tunnel?".
+	 * No arguments. The renderer sends it ONLY on the person's explicit click
+	 * (never prefetched, never polled, never cached in a query), and neither main
+	 * nor the renderer logs the reply: the transport writes nothing about bodies
+	 * (`desktop-transport.ts`), and `scripts/phone-pairing.test.mjs` pins that
+	 * with a console capture across a 200 read. Core answers 404
+	 * `{detail: {code: "mobile_password_unset"}}` when none is set, with
+	 * `Cache-Control: no-store`.
+	 */
+	z
+		.object({ op: z.literal("mobile.password") })
+		.strict(),
 	z
 		.object({
 			op: z.literal("approvals.approveCredential"),
@@ -5178,13 +5278,26 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			// No selection_token/excluded_ids here: core's recount WITH exclusions
 			// is the PATCH body form ({op:"preview"}); 500 IDs in a GET URL exceed
 			// h11's request-line limit. The page recounts exclusions locally.
+			/*
+			 * Canonical ids only: the renderer filters its hints through
+			 * `notificationCountHints` (pseudo-sessions are not counted - an older
+			 * core would 422 on them, and a hint must never break the write it
+			 * accompanies).
+			 */
 			countSessionIds: z.array(sessionId).max(50).optional(),
+			/*
+			 * Ask core for every conversation's undismissed/unread counts in the
+			 * same answer (`session_counts`), replacing the renderer's whole-inbox
+			 * page walk. Additive: an older core ignores an unknown query param
+			 * and answers without the field, which is the renderer's fallback cue.
+			 */
+			includeSessionCounts: z.literal(true).optional(),
 			kind: z.enum(["all", "asks", "updates"]).optional(),
 			bulkPriority: z.enum(["any", "high", "normal_up"]).optional(),
 			state: z.enum(["unread", "all", "dismissed"]).optional(),
 			source: z.enum(["notify", "ask"]).optional(),
 			priority: z.enum(["high", "normal", "low"]).optional(),
-			sessionId: sessionId.optional(),
+			sessionId: notificationSessionId.optional(),
 			throughSeq: z.number().int().min(0).optional(),
 			cursor: z.string().min(1).max(64).optional(),
 			limit: z.number().int().min(1).max(100).optional(),
@@ -5257,7 +5370,8 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 				.max(50),
 			evidence: z
 				.object({
-					sessionId,
+					/* Same grammar core's `seen` evidence admits (core PR #3921). */
+					sessionId: notificationSessionId,
 					inputKind: z.enum(["pointer", "key", "wheel"]),
 					inputAtMs: z.number().int().min(0),
 					visibleSinceMs: z.number().int().min(0),
@@ -7454,6 +7568,21 @@ export function desktopRequestDeadlineMs(
 	// applies, so it waits on the same human gesture. Its retry never signs.
 	if (op === "approvals.approve" || op === "approvals.approveCredential")
 		return APPROVAL_APPROVE_DEADLINE_MS;
+	/*
+	 * A PHONE PAIRING'S SIGNATURE, a phone's removal and turning approvals on all
+	 * wait on a person at an OS prompt (Touch ID, then the admin prompt that admits
+	 * or revokes the phone), so they get the gesture budget, not the control one.
+	 * Request-keyed for the pairing: `approveOperation` for `profile_save` keeps the
+	 * budget it always had.
+	 */
+	if (
+		typeof request !== "string" &&
+		request.op === "approvals.approveOperation" &&
+		request.operation === "pair_phone"
+	)
+		return APPROVAL_APPROVE_DEADLINE_MS;
+	if (op === "devices.remove" || op === "operator.setup.run")
+		return APPROVAL_APPROVE_DEADLINE_MS;
 	if (op === "tunnel.setup.run") return PHONE_SETUP_RUN_DEADLINE_MS;
 	if (op === "tunnel.setup.plan") return PHONE_SETUP_PLAN_DEADLINE_MS;
 	const hub = hubWriteDeadlineMs(op);
@@ -7599,6 +7728,8 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"legacy.schedules.list",
 	"mcp.catalog",
 	"mcp.list",
+	// The phone-access diagnosis reads and redacts; it changes nothing.
+	"mobile.doctor",
 	"models.catalogue",
 	"networks.list",
 	"peers.list",
@@ -7640,6 +7771,10 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	// is deliberately absent so a run that ran out of time gets the cautious sentence.
 	"tunnel.setup.plan",
 	"tunnel.setup.read",
+	"devices.list",
+	"operator.setup.read",
+	// Reads the phone password and changes nothing; a timeout gets the read sentence.
+	"mobile.password",
 	"usage.get",
 ]);
 
@@ -9048,6 +9183,34 @@ export function desktopEndpoint(request: DesktopRequest): {
 					request_digest: request.requestDigest,
 					disclosure_digest: request.disclosureDigest,
 				},
+			};
+		case "approvals.pairAck":
+			return {
+				path: `/v1/desktop/approvals/${encodeURIComponent(request.approvalId)}/pair-ack`,
+				method: "POST",
+				body: {
+					request_digest: request.requestDigest,
+					disclosure_digest: request.disclosureDigest,
+					// Omitted, never null: the confirm-mode press is the ABSENCE of a code.
+					...(request.code !== undefined ? { code: request.code } : {}),
+				},
+			};
+		case "devices.list":
+			return { path: "/v1/desktop/devices", method: "GET" };
+		case "devices.remove":
+			return {
+				path: `/v1/desktop/devices/${encodeURIComponent(request.deviceId)}`,
+				method: "DELETE",
+			};
+		case "mobile.password":
+			return { path: "/v1/desktop/mobile/password", method: "GET" };
+		case "operator.setup.read":
+			return { path: "/v1/desktop/operator/setup", method: "GET" };
+		case "operator.setup.run":
+			return {
+				path: "/v1/desktop/operator/setup",
+				method: "POST",
+				body: {},
 			};
 		case "approvals.approveCredential":
 		case "approvals.applyCredential":
@@ -10626,6 +10789,8 @@ export function desktopEndpoint(request: DesktopRequest): {
 						: {}),
 				},
 			};
+		case "mobile.doctor":
+			return { path: "/v1/desktop/mobile/doctor", method: "GET" };
 		case "auth.start":
 			return {
 				path: "/v1/auth/login",
@@ -11488,6 +11653,8 @@ export function desktopEndpoint(request: DesktopRequest): {
 			const query = new URLSearchParams();
 			if (request.preview) query.set("preview", "true");
 			if (request.includeAskReads) query.set("include_ask_reads", "true");
+			if (request.includeSessionCounts)
+				query.set("include_session_counts", "true");
 			for (const id of request.countSessionIds ?? [])
 				query.append("count_session_ids", id);
 			if (request.kind) query.set("kind", request.kind);

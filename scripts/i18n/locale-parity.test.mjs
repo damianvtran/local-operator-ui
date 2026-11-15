@@ -42,6 +42,18 @@ const SOURCE_LOCALE = "en";
  */
 const IDENTICAL_OK = new Map([
 	[
+		"ui.phone_pairing.platform.ios",
+		"Product name (Apple's iPhone), kept as the brand in every locale; the phone-pairing card labels the phone type with it (local-operator-ui #1912).",
+	],
+	[
+		"fr:ui.phone_pairing.popup.code_label",
+		"French cognate « Code », the label above the pairing card's six digits; the French word, not an English fallback (local-operator-ui #1912, for the i18n auditor's confirmation).",
+	],
+	[
+		"ui.phone_pairing.platform.android",
+		"Product name (Google's Android), kept as the brand in every locale; the phone-pairing card labels the phone type with it (local-operator-ui #1912).",
+	],
+	[
 		"fr:ui.settings.notifications.section.title",
 		"French cognate « Notifications »; independently audited in D2 r2 (b5bf3a7c1761). This exact French heading is not an English fallback.",
 	],
@@ -1865,6 +1877,31 @@ const IDENTICAL_OK = new Map([
 	[
 		"ur:ui.common.time.weekday_at",
 		"pure placeholder join of weekday and clock, same order as English; ICU supplies the Urdu weekday and Latin clock",
+	],
+	// Run panel MCP failure sentence (S17c, PR #1897): the lead/reason joiner.
+	[
+		"es:ui.chat.run_details.mcp_failure.with_reason",
+		"Pure joiner `{lead}. {reason}`: the MCP failure lead and the server's reason are both full, capitalised sentences, so this locale closes the lead with the same full stop and space as English; no lexical English (zh-CN, hi and ur differ because they use their own sentence terminators). Independently audited with the S17c drafts (PR #1897). Scoped to this locale/key only.",
+	],
+	[
+		"fr:ui.chat.run_details.mcp_failure.with_reason",
+		"Pure joiner `{lead}. {reason}`: the MCP failure lead and the server's reason are both full, capitalised sentences, so this locale closes the lead with the same full stop and space as English; no lexical English (zh-CN, hi and ur differ because they use their own sentence terminators). Independently audited with the S17c drafts (PR #1897). Scoped to this locale/key only.",
+	],
+	[
+		"ru:ui.chat.run_details.mcp_failure.with_reason",
+		"Pure joiner `{lead}. {reason}`: the MCP failure lead and the server's reason are both full, capitalised sentences, so this locale closes the lead with the same full stop and space as English; no lexical English (zh-CN, hi and ur differ because they use their own sentence terminators). Independently audited with the S17c drafts (PR #1897). Scoped to this locale/key only.",
+	],
+	[
+		"vi:ui.chat.run_details.mcp_failure.with_reason",
+		"Pure joiner `{lead}. {reason}`: the MCP failure lead and the server's reason are both full, capitalised sentences, so this locale closes the lead with the same full stop and space as English; no lexical English (zh-CN, hi and ur differ because they use their own sentence terminators). Independently audited with the S17c drafts (PR #1897). Scoped to this locale/key only.",
+	],
+	[
+		"es:ui.chat.canonical.tool_row.detail_section.error",
+		"Spanish 'Error' is the same word as English; the S18b audit (s18b-es-canonical-8769431b) checked it against shipped neighbours (ui.chat.error_block.heading 'Detalle del error'). Scoped to Spanish only.",
+	],
+	[
+		"fr:ui.chat.code_block.default_header",
+		"French 'Code' is the same word as English; the S18b audit (s18b-fr-chat-6fdeef7b) checked it against shipped neighbours (ui.code_review.code_review_model.code and ui.library.kind.code are both 'Code'). Scoped to French only.",
 	],
 ]);
 

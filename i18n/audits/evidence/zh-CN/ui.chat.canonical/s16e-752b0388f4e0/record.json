@@ -1,0 +1,125 @@
+{
+ "schema": 1,
+ "slice": "S16e-renderer",
+ "pr": "damianvtran/local-operator-ui#1884",
+ "locale": "zh-CN",
+ "namespace": "ui.chat.canonical",
+ "audit_date": "2026-11-12",
+ "kind": "INTEGRATION RECORD + BINDING RECEIPTS (integrator-authored)",
+ "authored_by": "integrating coder session 95bd4b294de3 (agent coder); this is NOT an auditor record",
+ "audited_head": "bd8e90542506e8bec4a98862b868095409b28329",
+ "translated_keys": 12,
+ "key_count_after": 479,
+ "translator": {
+  "agent": "i18n-translator",
+  "model": "deepseek/deepseek-flash",
+  "session": "d6f7ff126b01",
+  "draft_sha256": "121951c9665e715dcec2b993d85cb3d77d51c00651da275a573aa75ae6bb5688"
+ },
+ "sha256": {
+  "english": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17",
+  "english_context": "ec598772089552ace910c857a38b364bdfa83a32c76c62b752b761527531e7b7",
+  "target_before": "35f8058839549d4a8be28792c279784c75a624b9c076fc98d359bae1fe1db12c",
+  "target_after": "752b0388f4e0a677fe614bfe8c5dcb5ed29d79a77ef7e6476a80afc3b93888b4"
+ },
+ "retention": {
+  "retained_keys": 467,
+  "digest_before": "1e202b34d5e7b9cc253c51e7271e7ec2309dfd74dd6532afb3062ea1137090b8",
+  "digest_after": "1e202b34d5e7b9cc253c51e7271e7ec2309dfd74dd6532afb3062ea1137090b8",
+  "claim": "every pre-existing key of this catalogue is byte-identical after the slice; the equal digests in verify.log prove it"
+ },
+ "audits": {
+  "first pass": {
+   "instance": "s16e-zhcn-a1",
+   "session": "f9df9ab87b40",
+   "result": "clean-with-findings",
+   "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 1
+   }
+  },
+  "second independent pass": {
+   "instance": "s16e-au2-zh-cn",
+   "session": "cc045047b39e",
+   "result": "clean-with-findings",
+   "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+   }
+  }
+ },
+ "ledger": {
+  "row_status": "audited",
+  "auditor_instances": [
+   "s16e-zhcn-a1",
+   "s16e-au2-zh-cn"
+  ],
+  "receipts": [
+   "i18n/receipts/s16e-zhcn-a1.json",
+   "i18n/receipts/s16e-au2-zh-cn.json"
+  ],
+  "superseded_audit_sets": 22,
+  "note": "the first write moved the previously audited bytes' auditor sets to `superseded`; both new passes bind the integrated hashes above"
+ },
+ "files": {
+  "report-first-pass.md": {
+   "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/s16e-752b0388f4e0/report-first-pass.md",
+   "sha256": "ba3e3cbb8c8191ae229639642d4adbe1783e26ef891496ab2df61014f7375bf2",
+   "origin": "auditor-authored (first pass), copied byte-for-byte"
+  },
+  "audit-first-pass.log": {
+   "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/s16e-752b0388f4e0/audit-first-pass.log",
+   "sha256": "2070104165cfb416a1bdf70925aa5a3a67291f127494293ecb3cbf820276b241",
+   "origin": "auditor-authored (first pass), copied byte-for-byte"
+  },
+  "receipt-first-pass-original.json": {
+   "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/s16e-752b0388f4e0/receipt-first-pass-original.json",
+   "sha256": "797e14fb8e468bfbc3be59eb298dc651cb5eac7d5d09f33b98e2113f6b165d9b",
+   "origin": "auditor-authored receipt, copied byte-for-byte"
+  },
+  "report-second-pass.md": {
+   "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/s16e-752b0388f4e0/report-second-pass.md",
+   "sha256": "d110c483aaf968882119e3701186abfb7c8227a9faf18a298a119153fe15a452",
+   "origin": "auditor-authored (second independent pass), copied byte-for-byte"
+  },
+  "receipt-second-pass-original.json": {
+   "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/s16e-752b0388f4e0/receipt-second-pass-original.json",
+   "sha256": "8490a57fdd8a1b7dbd1d927a7a80e0dcf5aa129015682b5172ca88301da0f1cf",
+   "origin": "auditor-authored (second independent pass), copied byte-for-byte"
+  },
+  "translator-notes.md": {
+   "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/s16e-752b0388f4e0/translator-notes.md",
+   "sha256": "b931b0bf231e57fa7fb97c6744e246b99797fe32b1e66d846c9032d1d7110a50",
+   "origin": "translator-authored choices, copied byte-for-byte"
+  },
+  "binding-receipt-first-pass.json": {
+   "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/s16e-752b0388f4e0/binding-receipt-first-pass.json",
+   "sha256": "b56df72e049cbc8254a870b67a0c3a692b423e7986e2dee6b2a8919ba8eb29e7",
+   "origin": "INTEGRATOR-transcribed binding receipt (agent coder, NOT the auditor); bytes identical to the ledger's i18n/receipts copy"
+  },
+  "binding-receipt-second-pass.json": {
+   "path": "i18n/audits/evidence/zh-CN/ui.chat.canonical/s16e-752b0388f4e0/binding-receipt-second-pass.json",
+   "sha256": "2b6507260b6948722fcc1985146bb9705014a75302baa009d31221aad900924c",
+   "origin": "INTEGRATOR-transcribed binding receipt (agent coder, NOT the auditor); bytes identical to the ledger's i18n/receipts copy"
+  }
+ },
+ "shared_slice_evidence": {
+  "dir": "i18n/audits/evidence/s16e-renderer-slice",
+  "manifest": "i18n/audits/evidence/s16e-renderer-slice/slice-record.json"
+ },
+ "not_claimed": [
+  "a full-file audit by either auditor: both reviewed the 12-key draft, so the binding receipts name the integrated bytes and verify.log proves value equality instead",
+  "rendered/browser/Storybook/pseudo-localization frames (independent QA/design owns those)",
+  "native-speaker review",
+  "any ledger row for other namespaces"
+ ],
+ "notes": [
+  "The binding receipts are the mechanism ledger-check.mjs can consume: it requires a receipt naming the on-disk catalogue hashes, which no draft-scoped auditor file can do. Provenance in each receipt names the transcribing session and the auditor record it came from.",
+  "zh-CN's auditor labels carry an uppercase locale tag; ledger-rules.mjs accepts only [a-z0-9_-] instances, so those two ids are lower-cased with the origin disclosed inside the receipt.",
+  "ru's first pass recorded counts {0,0,0,2} with no `findings` array; its two NITs are transcribed from its own report.md disposition table, marked `transcribed_from`."
+ ]
+}

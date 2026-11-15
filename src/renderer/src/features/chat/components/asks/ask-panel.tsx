@@ -110,6 +110,7 @@ import { parseProfileProposalCard } from "../../profile-proposal-ask";
 import { AskRecommendedBadge, recommendedIndexes } from "../ask-recommended";
 import { AskAnswerField, commitOnEnter } from "./ask-answer-field";
 import {
+	ASK_ACTIONS_ATTR,
 	ASK_OPTIONS_MAX_H,
 	AskScrollBody,
 	ProposalReviewNotice,
@@ -583,7 +584,7 @@ const AskQuestionField = ({
 			 * 2, Q1): only the question and its summary give way, so in the bounded
 			 * notifications pane the fit is taken from them and never from the options.
 			 */}
-			<AskScrollBody>
+			<AskScrollBody containOverscroll={false}>
 				<p className="whitespace-pre-wrap text-ink text-sm">
 					{isolateValue(proposal ? proposal.body : question.question, dir)}
 				</p>
@@ -649,7 +650,17 @@ const AskQuestionField = ({
 					<div
 						data-lo-ask-options-scroll=""
 						className={cn(
-							"flex min-h-0 flex-col overflow-y-auto overscroll-contain",
+							/*
+							 * NO `overscroll-contain` HERE (the long-ask scroll fix). This list is inside
+							 * a card, which is inside the host's scroller - the drawer's list or the
+							 * notifications pane - and that scroller is what a wheel or a page key has to
+							 * reach once this list stops moving. Chromium 156 honours `contain` even when
+							 * the box has no scrollable overflow, so containing here made an option list
+							 * shorter than its cap eat the gesture: measured in the drawer, a wheel over
+							 * the rows moved the list 0 px. The dock's own option band (`AskOptions`)
+							 * never carried containment either, for the same reason.
+							 */
+							"flex min-h-0 flex-col overflow-y-auto",
 							ASK_OPTIONS_MAX_H,
 						)}
 					>
@@ -1102,6 +1113,16 @@ const AskRow = ({
 	);
 	const dismissTrigger = useRef<HTMLButtonElement | null>(null);
 	const dismissFirstReason = useRef<HTMLButtonElement | null>(null);
+	/*
+	 * THE PINNED ACTION ROW (`Send answer` / `Decline`) sticks to the bottom of the
+	 * host's scroller while this card is the one crossing it (see the row's own
+	 * note). Its HEIGHT is the host's to measure, not this card's: it is published
+	 * to the list by `useAskActionsHeight` (`ask-bounds.tsx`), which takes the
+	 * tallest row in the scroller - with two cards on screen, a card whose row
+	 * unmounts must not take the number another pinned row is still using with it
+	 * (agent review round 1, m1).
+	 */
+	const actionsRef = useRef<HTMLDivElement | null>(null);
 	const armTriggerFocus = useRef(false);
 	const dismissSending = outcome?.sending === true;
 	/*
@@ -1509,9 +1530,11 @@ const AskRow = ({
 								{echoedByTrigger ? null : (
 									/*
 									 * The answer frame prints the question too, so a settled
-									 * long question takes the same bound as an open one.
+									 * long question takes the same bound as an open one - and
+									 * the same chaining (`containOverscroll`): this body sits
+									 * inside the host's scroller, which owns the scroll.
 									 */
-									<AskScrollBody>
+									<AskScrollBody containOverscroll={false}>
 										<span className="whitespace-pre-wrap text-ink-muted text-xs">
 											{isolateValue(entry.question, dir)}
 										</span>
@@ -1750,7 +1773,44 @@ const AskRow = ({
 				</p>
 			) : null}
 			{(canAnswer || canDecline) && !dismissOpen ? (
-				<div className="flex items-center gap-2">
+				/*
+				 * THE ACTION ROW PINS (the long-ask scroll fix). The card can be taller than the
+				 * drawer's scrollport - the ask body is capped at 40vh, the option list at 30vh,
+				 * and the rows below them add up - so `Send answer` and `Decline` used to sit
+				 * 430-470 px below the fold at 440x1024 with nothing in the drawer pinned to
+				 * reach them from.
+				 *
+				 * STICKY INSIDE THE CARD, NOT A DRAWER FOOTER. `bottom-0` holds the row at the
+				 * bottom of the nearest scrollport - the host's list - while this card is the one
+				 * crossing that edge, and its own containing block bounds it: past this card's
+				 * bottom the row stops, so each card's actions are pinned only over its own
+				 * question. A drawer-level footer would have to know which card is on screen and
+				 * would answer the wrong question for every other one.
+				 *
+				 * ITS GROUND IS A BAND, NOT A BORDER (branding §[grounds], and `docs/branding.md`'s
+				 * band table): the fill is what separates the row from the question text passing
+				 * under it. On glass that is `band-backdrop` - the isolating band the notifications
+				 * list's sticky headers use - because a 5% wash hides nothing from content that
+				 * MOVES under it; off glass the same element carries the flat `elevated` step. It
+				 * BLEEDS TO THE CARD'S EDGES (`-mx-3 px-3`) so no scrolled glyph shows in the
+				 * card's own 12 px padding beside the bar, and it bleeds to the card's
+				 * BOTTOM with the top half of that trick (`-mt-2 pt-2`, which gives the band
+				 * its air without changing the row's 34 px layout footprint - flex `gap`
+				 * measures margin boxes - so the card at rest is the height it was).
+				 *
+				 * THE BOTTOM BLEEDS THE WHOLE PADDING (`-mb-3 pb-3`), not the 8 px the top
+				 * uses: `-my-2 py-2` left the band 4 px short of the card's own bottom edge,
+				 * and that gap is what a reader saw at maximum scroll as a strip of the
+				 * question text under the bar (design round 1, D3).
+				 *
+				 * NO BORDER: a plate's own step is the edge the contract asks for here.
+				 */
+				<div
+					ref={actionsRef}
+					{...{ [ASK_ACTIONS_ATTR]: "" }}
+					data-glass-plane="band-backdrop"
+					className="sticky bottom-0 z-[1] -mx-3 -mt-2 -mb-3 flex items-center gap-2 bg-elevated px-3 pt-2 pb-3"
+				>
 					{/*
 					 * ONE NEXT ACTION AFTER A TRANSPORT FAILURE (design round 1, D2). While
 					 * a retryable failure stands, Retry beside the sentence sends exactly

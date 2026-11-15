@@ -65,5 +65,7 @@
 	"ui.agents.detail.empty.instructions": "ابھی کوئی ہدایات نہیں۔",
 	"ui.agents.detail.action.create_copy": "نقل بنائیں",
 	"ui.agents.detail.action.creating": "بنایا جا رہا ہے…",
-	"ui.agents.detail.action.discard_new_agent": "یہ نیا ایجنٹ رد کریں؟"
+	"ui.agents.detail.action.discard_new_agent": "یہ نیا ایجنٹ رد کریں؟",
+	"ui.agents.detail.create.description_duplicate": "یہ {name} کی نقل ہے۔ یہ ایک الگ ایجنٹ ہے: اسے بدلنے سے اصل ایجنٹ نہیں بدلتا۔",
+	"ui.agents.detail.create.description_new": "دوبارہ استعمال کے قابل ہدایات جو ایجنٹ کمانڈز، ذیلی ایجنٹس اور ٹیمیں مشترکہ طور پر استعمال کرتی ہیں۔ چیٹس الگ رہتی ہیں۔"
 }

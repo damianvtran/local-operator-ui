@@ -145,5 +145,14 @@
 		"role": "button",
 		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
 		"note": "Retries fetching an image, video or sound from the device that holds it."
+	},
+	"ui.chat.attachments.not_viewable_detail": {
+		"role": "warning line on an attachment card for a media file (audio or video) that could not be shown",
+		"tone": "plain statement, lowercase parenthetical, no trailing punctuation",
+		"length": "One sentence with a short parenthetical; truncates with an ellipsis on a narrow card.",
+		"note": "The file name opens the sentence, so a language that cannot start with a name may reorder it. The parenthetical lists the three likely causes: the file was not fully written, was deleted, or was moved.",
+		"placeholders": {
+			"name": "the attachment's file name (last path segment), never translated"
+		}
 	}
 }

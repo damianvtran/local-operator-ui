@@ -23,5 +23,6 @@
 	"ui.chat.attachments.open_title": "Nhấp để mở {name}",
 	"ui.chat.attachments.not_viewable": "Không xem được tệp: {name}",
 	"ui.chat.attachments.owner_unreachable": "không lấy được từ thiết bị đang giữ nó.",
-	"ui.chat.attachments.retry_fetch": "Thử lại"
+	"ui.chat.attachments.retry_fetch": "Thử lại",
+	"ui.chat.attachments.not_viewable_detail": "Không xem được {name} (tệp có thể chưa đầy đủ, đã bị xóa hoặc di chuyển)"
 }

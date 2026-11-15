@@ -1,0 +1,131 @@
+{
+  "audit_id": "s16e-au2-ur",
+  "pass": "second-independent",
+  "slice": "S16e-renderer",
+  "pr": "damianvtran/local-operator-ui#1884",
+  "locale": "ur",
+  "namespace": "ui.chat.canonical",
+  "audit_date": "2026-11-12",
+  "status": "passed",
+  "verdict": "passed",
+  "result_supported": "clean-with-findings",
+  "unresolved_blocker_major_count": 0,
+  "severity_counts": {
+    "blockers": 0,
+    "majors": 0,
+    "minors": 0,
+    "nits": 3
+  },
+  "finding_ids": [
+    "UR-2-01",
+    "UR-2-02",
+    "UR-2-03"
+  ],
+  "findings": [
+    {
+      "id": "UR-2-01",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.error_class.duplicate_id",
+      "current": "مکرر id",
+      "evidence": "The only lowercase Latin id in ur prose in this slice. Shipped ur writes the token as ID in prose (25 values: «ایجنٹ ID», «سیشن ID»); every lowercase id in the shipped catalogue is an ICU {id} placeholder, i.e. machine syntax. English is lowercase «Duplicate id», so mirroring it is defensible, but it introduces a second token form in a locale that has one.",
+      "suggested": "«مکرر ID» — keeps the English word order and adopts the locale's prose token form.",
+      "gating": false
+    },
+    {
+      "id": "UR-2-02",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+      "current": "آڈیو کی شرح محدود",
+      "evidence": "A second construction on the product's rate-limit concept: the settled noun is «شرح کی حد» (11 shipped values across error_block.rate_limit.*, code_review.host.cooling, usage_reset.chip_label), while this label uses the adjective form «شرح محدود» («audio's rate [is] limited»). Meaning is intact and the class is distinct, so this is a consistency call, not an error.",
+      "suggested": "«آڈیو پر شرح کی حد» (keeps the shipped noun, avoids the double possessive the translator rejected); «آڈیو کی شرح محدود» is acceptable if the wave prefers the state form and records it.",
+      "gating": false
+    },
+    {
+      "id": "UR-2-03",
+      "severity": "NIT",
+      "key": "ui.chat.canonical.image_gen.cancel.running",
+      "current": "… آڈیو بننے پر چارج لگے گا۔",
+      "evidence": "One surface family, two nouns for the charged amount: the shipped ui.chat.canonical.sound.stop.warning renders this identical English clause with «لاگت لگے گی», while this draft uses «چارج». The draft is the better word (it matches shipped «کوئی چارج نہیں» and «حتمی چارج»), so no change is owed to the draft — the drift is on the shipped side.",
+      "suggested": "No change to this draft. Harmonise the shipped sound.stop.warning (لاگت → چارج) in a later wave and record charge vs cost as a glossary pair so the next wave cannot re-litigate it.",
+      "gating": false
+    }
+  ],
+  "key_count": 12,
+  "value_count": 84,
+  "auditor": "i18n-auditor",
+  "session": "cc045047b39e",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "harness session header for session cc045047b39e reports deepseek/deepseek-flash; no fallback model was used for this audit",
+  "fallback_used": false,
+  "independent_from_translator_session": true,
+  "independent_from_first_pass": true,
+  "first_pass_consulted_after_own_findings": true,
+  "input_hashes": {
+    "en": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/i18n-s16e/src/i18n/catalogues/en/ui.chat.canonical.json",
+      "sha256": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17"
+    },
+    "context_brief": {
+      "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e-brief.json",
+      "sha256": "a0326137bff43ed38fc4a1c63d4a26e1887cfd56d4826df0e615df28055bef0c"
+    },
+    "context_repo_sidecar": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/i18n-s16e/src/i18n/catalogues/en/ui.chat.canonical.context.json",
+      "sha256": "ec598772089552ace910c857a38b364bdfa83a32c76c62b752b761527531e7b7"
+    },
+    "manifest": {
+      "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e/manifest.json",
+      "sha256": "8896921994fbd8c5f1c75983df805c9e09a1c4dabcdfcbc0a4c9c2f900733392"
+    },
+    "draft": {
+      "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e/ur/draft-ur-s16e.json",
+      "sha256": "e9666a75e6d318448b530290d99ab3c88b8a29901e3fa8beeb5c3411f7fa4051"
+    },
+    "shipped_catalogue": {
+      "path": "/Users/damian/local-operator-ui/.worktrees/i18n-s16e/src/i18n/catalogues/ur/ui.chat.canonical.json",
+      "sha256": "fd1116ccb5e847eb7f28c4cf5d1084efad95edf52d638d1a6144e065ce7d98a7"
+    },
+    "glossary": {
+      "path": "/Users/damian/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "/Users/damian/local-operator/i18n/style-guides/ur.md",
+      "sha256": "c0eecf7f7b5e89956b7de9ab7a9eb647ff1a7ef701ccf2a7f0264d5eea15ca60"
+    },
+    "worktree_head": "bd8e90542506e8bec4a98862b868095409b28329"
+  },
+  "axes": {
+    "mechanical": "pass",
+    "accuracy_promises": "pass",
+    "idiom_register_typography": "pass-with-notes",
+    "terminology": "pass-with-notes",
+    "fit": "pass",
+    "rtl": "pass",
+    "cldr_plural_categories": "n/a - no plural/selectordinal argument in this 12-key slice"
+  },
+  "executed": {
+    "icu_parser": "@formatjs/icu-messageformat-parser 3.5.21, repo dependency, read-only",
+    "negative_controls_passed": 5,
+    "values_parsed": 84,
+    "codepoint_typography_scan": true,
+    "shipped_catalogue_term_lookup": true
+  },
+  "not_claimed": [
+    "rendered/browser/Storybook/Electron/pseudo-localization evidence",
+    "native-speaker review (explicitly not a gate)",
+    "full-file audit hashes - this is a draft slice",
+    "the 467 pre-existing keys of ui.chat.canonical",
+    "any ledger append performed by this audit"
+  ],
+  "artifacts": {
+    "report": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/report-ur-s16e.md",
+    "mechanical_log": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/mech.log",
+    "typography_log": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/typo.log",
+    "evidence_log": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/evidence.log",
+    "widths_log": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/widths.log",
+    "audit_log": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/audit.log",
+    "findings_ledger": "/Users/damian/.local-operator/sessions/cc045047b39e/scratchpad/s16e-audit2/findings.json"
+  },
+  "note": "Draft-slice receipt, second independent pass. 3 finding(s), 0 blocker / 0 major. Full provenance and evidence paths in this record."
+}

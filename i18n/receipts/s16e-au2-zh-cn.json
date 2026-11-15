@@ -1,0 +1,48 @@
+{
+ "schema": 1,
+ "instance": "s16e-au2-zh-cn",
+ "locale": "zh-CN",
+ "namespace": "ui.chat.canonical",
+ "audit_date": "2026-11-12",
+ "pass": 2,
+ "auditor": {
+  "agent": "i18n-auditor",
+  "instance": "s16e-au2-zh-cn",
+  "session": "cc045047b39e",
+  "model": "deepseek/deepseek-flash",
+  "independent_from_translator_session": true,
+  "actual_model_source": "auditor's own record (no fallback declared)"
+ },
+ "status": "passed",
+ "result": "clean-with-findings",
+ "scope": "the 12 NEW S16e image-generation card stop/settlement/error keys of ui.chat.canonical (zh-CN), audited as the translator's 12-key draft (sha256 121951c9665e715dcec2b993d85cb3d77d51c00651da275a573aa75ae6bb5688); the 467 pre-existing keys of the namespace were not re-reviewed and are proven byte-identical to the previously audited bytes by the retained-key digest in verify.log",
+ "sha256": {
+  "zh-CN": "752b0388f4e0a677fe614bfe8c5dcb5ed29d79a77ef7e6476a80afc3b93888b4",
+  "en": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17",
+  "context": "ec598772089552ace910c857a38b364bdfa83a32c76c62b752b761527531e7b7"
+ },
+ "findings": [
+  {
+   "id": "ZH-2-01",
+   "severity": "MINOR",
+   "key": "composition of ui.chat.canonical.image_gen.cancel.running + …cancel.checking (callsite, not a draft value)",
+   "current": "… 若产出音频则会计费。 正在确认结算。  (the two values joined by one ASCII space)",
+   "evidence": "Independently verified at src/renderer/src/features/chat/canonical/image-gen-card.tsx:341, where runningStopSentence composes `${running} ${t(...cancel.checking)}` with a hard-coded ASCII space. In zh-CN both values end in the full-width 。 so the joined line carries a half-width space between two Chinese sentences, which is visibly off in Chinese typography and repeats in every stop-with-settlement state. The two VALUES themselves are correct; nothing in the zh-CN draft needs rewording. The programme already solved this shape once: ui.chat.sidebar.mark_all_read.scope_joined is \"{chats} {tokenless}\" in en and \"{chats}{tokenless}\" in zh-CN.",
+   "suggested": "Key the joiner rather than hard-coding a space (en \" \", zh-CN \"\"), mirroring scope_joined, and pass it through the same t() binding so a language switch repaints it. Not a draft change and not in this audit's edit scope; recorded because it is user-visible.",
+   "gating": false
+  }
+ ],
+ "provenance": {
+  "kind": "BINDING RECEIPT: verdict, severity counts, findings, session and model are transcribed from this auditor's own record (audit2/receipt-zh-CN-s16e.json); this file was written by the integrating coder session (agent coder), NOT by the auditor. The auditor reviewed the 12-key draft fragment, so no auditor-authored file can name the integrated catalogue hash; this receipt names it, and verify.log proves every landed value equals the audited draft value.",
+  "authored_by": "integrating coder session 95bd4b294de3 (agent coder)",
+  "transcribed_from": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e/audit2/receipt-zh-CN-s16e.json",
+  "transcribed_from_sha256": "8490a57fdd8a1b7dbd1d927a7a80e0dcf5aa129015682b5172ca88301da0f1cf",
+  "instance_origin": "integrator-normalised from the auditor's own run label 's16e-au2-zh-CN': ledger-rules.mjs isPlaceholderInstance requires [a-z0-9_-], which the label's uppercase locale tag violates",
+  "integrated_target_sha256": "752b0388f4e0a677fe614bfe8c5dcb5ed29d79a77ef7e6476a80afc3b93888b4",
+  "not_claimed": [
+   "a full-file re-audit by this auditor: only the 12 new keys were reviewed",
+   "individual review of the retained 467 keys (they ride the previously audited bytes)",
+   "rendered/browser/pseudo-localization frames"
+  ]
+ }
+}

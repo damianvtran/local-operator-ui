@@ -207,5 +207,6 @@
 	"ui.chat.session_status.effort_level.high": "High",
 	"ui.chat.image_actions.actions": "Image actions",
 	"ui.chat.audio.position_label": "{label} position",
-	"ui.chat.audio.position_value": "{current} of {total}"
+	"ui.chat.audio.position_value": "{current} of {total}",
+	"ui.chat.code_block.default_header": "Code"
 }

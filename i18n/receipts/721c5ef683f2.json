@@ -1,0 +1,23 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "721c5ef683f2",
+  "status": "passed",
+  "namespace": "ui.chat.canonical",
+  "sha256": {
+    "zh-CN": "1cf6b5a8113cd587754c4cec8a90a8aad95d9f0b95d189d02c509db76a158f49",
+    "en": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45"
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+      "note": "EN 'Audio rate limited' is a state; zh-CN '音频速率限制' is the noun for the limit itself, so this one class label names a mechanism where its five siblings (参数无效, 已拒绝, 未知工具, 重复ID, 策略拦截) name an outcome. Proposed: 音频限流 — the locale's established state form (ui.code_review.host.cooling: '{host}已触发限流，将持续到{time}。'). Non-gating: meaning is recoverable, no user is misled."
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.image_gen.cancel.checking",
+      "note": "Value is correct in isolation; the defect is its composition with cancel.running. The callsite (image-gen-card.tsx:339-341) joins with a hard ASCII space, painting '…若产出音频则会计费。 正在确认结算。' — a space between two full-width sentences, which is not Chinese typography. Proposed: no catalogue change; make the join locale-aware (no separator when the following value starts full-width/CJK). zh-CN is the only CJK locale in this set."
+    }
+  ]
+}

@@ -1,0 +1,562 @@
+{
+  "document_type": "same-original-author-final-gate-rebinding-record",
+  "not_a_ledger_receipt": true,
+  "date": "2026-11-15T01:37:08.323270+00:00",
+  "locale": "hi",
+  "namespace": "ui.chat.canonical",
+  "instance": "6dfaec49abf0-hi-finalgate20261115-debt",
+  "identity": {
+    "agent": "translation-auditor",
+    "session": "6dfaec49abf0",
+    "served_model": "openai/gpt-6.1-sol",
+    "model_selection": "parent",
+    "model_override": false,
+    "fallback": null,
+    "profile_revision": "definition-revision:v1:977d12b70eb8adff7d8b9491e8e59b748a9fac283683abd963fdf586cb596f8a",
+    "lineage": "Same original second independent audit author/session; final-gate rebinding is not another independent author or audit lineage",
+    "independence": "Not translator/coder; no repository edits or borrowed identity; selected parent receipts examined as explicitly authorized evidence."
+  },
+  "scope": "receipt rebinding/exact486-main+23-PR union seam only;509 mechanically checked;0 new semantic keys",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "terminal_scope_verdict": "clean-with-findings; exact union seam and complete explicitly reconciled inherited S18a debt; zero new semantic keys",
+  "current": {
+    "tree": "e822d6068f049dfb8fad4ba41e9f8ca22409fc6a",
+    "head": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+    "merge_head": "e6122214503b9fc52841e119c060eabb7650391b",
+    "raw_index_sha256": "b12fb56d069dc27ea1b9d547aa5b71768f04148d3b043828cbd24d341dec93a9",
+    "sha256": {
+      "en": "2db00914699ea873b03ce4b061cf41c1bb18a5dc57ed264b6fd1bd20f6a169e6",
+      "hi": "3cfbea811e2a3911d31f4c50903a4e32da7929abbf8f45084b9ec92fa04e04c6",
+      "context": "d4e186611426232b8972f8f1d597c69269715e38503e1390068a6cd0d9e8e643"
+    }
+  },
+  "paths": {
+    "source": "src/i18n/catalogues/en/ui.chat.canonical.json",
+    "target": "src/i18n/catalogues/hi/ui.chat.canonical.json",
+    "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+  },
+  "current_keys": 509,
+  "selected_main_keys": 486,
+  "selected_pr_keys": 23,
+  "semantic_keys_read_this_round": 0,
+  "prior_side_by_side_read_counts": {
+    "es": 31,
+    "fr": 31,
+    "hi": 32
+  },
+  "same_original_lineage": true,
+  "findings": [
+    {
+      "id": "I-HI-1",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+      "current": "पूरा diff रोका गया — इसे सुरक्षित रूप से छिपाया नहीं जा सका",
+      "proposed": "पूरा diff रोका गया — इसकी संवेदनशील जानकारी सुरक्षित रूप से हटाई नहीं जा सकी",
+      "reason": "\"इसे सुरक्षित रूप से छिपाया नहीं जा सका\" says the diff itself could not be hidden, which contradicts \"withheld\" and drops the secrets meaning (context note: redaction = removing secrets).",
+      "disposition": "deferred — non-gating; I-HI-1 and HI-1 are two parent IDs for the same unchanged defect, counted once",
+      "origin_receipt": "i18n/receipts/567a24a88e45-chat-canonical-hi-r2.json",
+      "origin_receipt_sha256": "0d68dfc22cedd9e91fc0175b27f292ce96cde76372d479ae43391598d5afd74b",
+      "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+      "inherited": true,
+      "also_recorded_as": [
+        "HI-1"
+      ],
+      "rebinding_disposition": {
+        "choice": "Retain same finding/severity and original disposition",
+        "basis": "Current literal equals prior PR literal; no new semantic adjudication",
+        "prior_instance": "6dfaec49abf0-hi-final-policy-evidence-20261112"
+      },
+      "final_gate_disposition": {
+        "author_choice": "Carry unchanged actual finding, severity, aliases and deferred/accepted disposition",
+        "basis": "Current selected literal equals previous receipt literal; no new semantic judgement",
+        "previous_own_instance": "6dfaec49abf0-hi-r-next-seam-20261114"
+      }
+    },
+    {
+      "severity": "NIT",
+      "id": "HI-C1",
+      "key": "ui.chat.canonical.temporary_deleted.back",
+      "detail": "'चैट पर वापस जाएँ' can read as singular 'back to the chat'; the English means the chat list. Optional: 'चैट सूची पर वापस जाएँ'. Not a meaning error: the invariant plural matches sibling 'आपकी चैट में' (ui.chat.composer.placeholder.temporary).",
+      "disposition": "carried from 94f6e325484c-canon2: bytes unchanged, still applies; deferred",
+      "current": "चैट पर वापस जाएँ",
+      "proposed": "चैट सूची पर वापस जाएँ",
+      "reason": "'चैट पर वापस जाएँ' can read as singular 'back to the chat'; the English means the chat list. Optional: 'चैट सूची पर वापस जाएँ'. Not a meaning error: the invariant plural matches sibling 'आपकी चैट में' (ui.chat.composer.placeholder.temporary).",
+      "rebinding_disposition": {
+        "choice": "Carry selected main parent NIT unchanged and deferred",
+        "basis": "Exact unchanged main literal; newly inherited to this lineage, not a newly discovered or re-audited defect",
+        "parent_instance": "94f6e325484c-canon3-hi"
+      },
+      "final_gate_disposition": {
+        "author_choice": "Carry unchanged actual finding, severity, aliases and deferred/accepted disposition",
+        "basis": "Current selected literal equals previous receipt literal; no new semantic judgement",
+        "previous_own_instance": "6dfaec49abf0-hi-r-next-seam-20261114"
+      },
+      "inherited_aliases": [
+        {
+          "stable_locator": "2d5628992cf1-finding-2",
+          "original_has_id": false,
+          "receipt": "i18n/receipts/2d5628992cf1.json",
+          "note": "EN plural 'chats' rendered as unmarked singular चैट and destination takes पर; optional: चैट सूची में वापस जाएँ.",
+          "disposition": "Same singular/chat-list destination ambiguity already counted as HI-C1; optional wording alternatives differ, not a second defect."
+        }
+      ]
+    },
+    {
+      "id": "2d5628992cf1-finding-1",
+      "stable_locator_not_original_id": true,
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+      "current": "ऑडियो दर सीमा",
+      "proposed": "ऑडियो दर सीमा",
+      "reason": "Term drift on 'rate limit': this key uses दर सीमा (as does ui.code_review) while ui.chat.json uses रेट सीमा and ui.chat.usage_reset.json uses दर-सीमा. No change to these bytes; align the other namespaces.",
+      "origin_receipt": "i18n/receipts/2d5628992cf1.json",
+      "origin_receipt_sha256": "a97247db95c065e502d788dad7abb7f1dbea84b19bdfb55fe80d68b805cd2efe",
+      "original_parent_finding": {
+        "severity": "MINOR",
+        "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+        "note": "Term drift on 'rate limit': this key uses दर सीमा (as does ui.code_review) while ui.chat.json uses रेट सीमा and ui.chat.usage_reset.json uses दर-सीमा. No change to these bytes; align the other namespaces."
+      },
+      "disposition": "Retained inherited non-gating debt; no remediation or translation edit authorized in this seam-only round.",
+      "proposed_equals_current": true,
+      "author_choice": "Preserve parent severity and no-change/accepted-exception status; not INFO reclassification, not a fresh semantic finding."
+    }
+  ],
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 2,
+    "nit": 1
+  },
+  "finding_alias_dispositions": [],
+  "other_parent_lineage_findings_preserved": [],
+  "selected_main_findings_disposition": {
+    "receipt": "i18n/receipts/s18b-hi-canonical-5e4b1db4.json",
+    "sha256": "a7270a0d893fe742c13a88b18c1a3e4cecb978fb8e05c4a62f5fcfe2541a3e00",
+    "findings": [],
+    "author_choice": "Selected main scope reports [] for three S18b keys. Preserve own pre-existing genuine findings; do not turn a scoped clean delta into zero namespace findings."
+  },
+  "parent_receipts": [
+    {
+      "locale": "hi",
+      "parent": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+      "path": "i18n/receipts/5f8e54e78de8-hi-rnext-rebind-20261114.json",
+      "sha256": "ad7a764b5f158ef639a65d9195fe305afc4c68be7816a4d1bf12001d730540be",
+      "instance": "5f8e54e78de8-hi-rnext-rebind-20261114",
+      "agent": "translation-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "result": "clean-with-findings",
+      "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+      "target_sha256": "44d13aafbd5dc8e369a9b35a169f06e7c24b732e54fab574fe19feab98f62706",
+      "context_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7",
+      "receipt_declared_scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+      "row_scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+      "declared_identity": "translation-auditor",
+      "findings": [
+        {
+          "id": "I-HI-1",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+          "current": "पूरा diff रोका गया — इसे सुरक्षित रूप से छिपाया नहीं जा सका",
+          "proposed": "पूरा diff रोका गया — इसकी संवेदनशील जानकारी सुरक्षित रूप से हटाई नहीं जा सकी",
+          "reason": "इसे ... छिपाया refers to hiding the diff itself rather than safely removing secrets; retain the parent semantic-clarity follow-up.",
+          "aliases": [
+            "HI-1"
+          ],
+          "disposition": "Both parent IDs describe one defect; both original deferred dispositions retained, counted once in this fresh receipt.",
+          "retained_original_disposition": "Both parent IDs describe one defect; both original deferred dispositions retained, counted once in this fresh receipt.",
+          "supplemental_evidence_disposition": "Retained non-gating finding and original disposition unchanged. No new wording/semantics audit or edit; images do not adjudicate this language judgment.",
+          "rebinding_disposition": "Retained unchanged wording and existing non-gating disposition; no fresh semantic adjudication. Author chooses to retain this genuine debt/risk, not erase it on receipt rebinding."
+        },
+        {
+          "id": "CONV-HI-FIT-1",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.retry",
+          "current": "फिर से कोशिश करें",
+          "proposed": "फिर कोशिश करें",
+          "reason": "The short retry control expands from 5 English code points to 17 Devanagari code points; this is a fit risk requiring real font/layout measurement, not proof of overflow.",
+          "disposition": "Rendered check required; code points are not Devanagari cell/pixel widths",
+          "retained_original_disposition": "Rendered check required; code points are not Devanagari cell/pixel widths",
+          "supplemental_evidence_disposition": "Bounded captured fit evidence now available; no obvious cutoff in viewed assigned-locale sample. Historical MINOR/NIT ID/severity retained; no new remediation cycle; no universal width/geometry claim.",
+          "rebinding_disposition": "Retained unchanged wording and existing non-gating disposition; no fresh semantic adjudication. Author chooses to retain this genuine debt/risk, not erase it on receipt rebinding."
+        },
+        {
+          "severity": "NIT",
+          "id": "HI-C1",
+          "key": "ui.chat.canonical.temporary_deleted.back",
+          "detail": "'चैट पर वापस जाएँ' can read as singular 'back to the chat'; the English means the chat list. Optional: 'चैट सूची पर वापस जाएँ'. Not a meaning error: the invariant plural matches sibling 'आपकी चैट में' (ui.chat.composer.placeholder.temporary).",
+          "disposition": "carried from 94f6e325484c-canon2: bytes unchanged, still applies; deferred",
+          "current": "चैट पर वापस जाएँ",
+          "proposed": "चैट सूची पर वापस जाएँ",
+          "reason": "'चैट पर वापस जाएँ' can read as singular 'back to the chat'; the English means the chat list. Optional: 'चैट सूची पर वापस जाएँ'. Not a meaning error: the invariant plural matches sibling 'आपकी चैट में' (ui.chat.composer.placeholder.temporary).",
+          "rebinding_disposition": "Genuine main-parent NIT retained/deferred by this author, on exact selected-main bytes; not a newly discovered translation defect."
+        }
+      ],
+      "unchanged_in_index": true,
+      "frozen_pure_contract_verified": true
+    },
+    {
+      "locale": "hi",
+      "parent": "7ee980af5532ce5c01da75d19f8a1e2d2c052a6f",
+      "path": "i18n/receipts/6dfaec49abf0-hi-r-next-seam-20261114.json",
+      "sha256": "f6a7bfdda5c14ee4b84e55ac0ff091781eb57f37b581e5ccaa6e8be8120a6ab6",
+      "instance": "6dfaec49abf0-hi-r-next-seam-20261114",
+      "agent": "translation-auditor",
+      "model": "openai/gpt-6.1-sol",
+      "result": "clean-with-findings",
+      "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+      "target_sha256": "44d13aafbd5dc8e369a9b35a169f06e7c24b732e54fab574fe19feab98f62706",
+      "context_sha256": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7",
+      "receipt_declared_scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+      "row_scope": "receipt rebinding/exact 471-main+23-PR union seam only; zero new semantic keys",
+      "declared_identity": "translation-auditor",
+      "findings": [
+        {
+          "id": "I-HI-1",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.tool_row.diff.full.withheld",
+          "current": "पूरा diff रोका गया — इसे सुरक्षित रूप से छिपाया नहीं जा सका",
+          "proposed": "पूरा diff रोका गया — इसकी संवेदनशील जानकारी सुरक्षित रूप से हटाई नहीं जा सकी",
+          "reason": "\"इसे सुरक्षित रूप से छिपाया नहीं जा सका\" says the diff itself could not be hidden, which contradicts \"withheld\" and drops the secrets meaning (context note: redaction = removing secrets).",
+          "disposition": "deferred — non-gating; I-HI-1 and HI-1 are two parent IDs for the same unchanged defect, counted once",
+          "origin_receipt": "i18n/receipts/567a24a88e45-chat-canonical-hi-r2.json",
+          "origin_receipt_sha256": "0d68dfc22cedd9e91fc0175b27f292ce96cde76372d479ae43391598d5afd74b",
+          "current_applicability": "Source, target and context key blocks are unchanged from the selected parent; finding remains applicable.",
+          "inherited": true,
+          "also_recorded_as": [
+            "HI-1"
+          ],
+          "rebinding_disposition": {
+            "choice": "Retain same finding/severity and original disposition",
+            "basis": "Current literal equals prior PR literal; no new semantic adjudication",
+            "prior_instance": "6dfaec49abf0-hi-final-policy-evidence-20261112"
+          }
+        },
+        {
+          "severity": "NIT",
+          "id": "HI-C1",
+          "key": "ui.chat.canonical.temporary_deleted.back",
+          "detail": "'चैट पर वापस जाएँ' can read as singular 'back to the chat'; the English means the chat list. Optional: 'चैट सूची पर वापस जाएँ'. Not a meaning error: the invariant plural matches sibling 'आपकी चैट में' (ui.chat.composer.placeholder.temporary).",
+          "disposition": "carried from 94f6e325484c-canon2: bytes unchanged, still applies; deferred",
+          "current": "चैट पर वापस जाएँ",
+          "proposed": "चैट सूची पर वापस जाएँ",
+          "reason": "'चैट पर वापस जाएँ' can read as singular 'back to the chat'; the English means the chat list. Optional: 'चैट सूची पर वापस जाएँ'. Not a meaning error: the invariant plural matches sibling 'आपकी चैट में' (ui.chat.composer.placeholder.temporary).",
+          "rebinding_disposition": {
+            "choice": "Carry selected main parent NIT unchanged and deferred",
+            "basis": "Exact unchanged main literal; newly inherited to this lineage, not a newly discovered or re-audited defect",
+            "parent_instance": "94f6e325484c-canon3-hi"
+          }
+        }
+      ],
+      "unchanged_in_index": true,
+      "frozen_pure_contract_verified": true
+    },
+    {
+      "locale": "hi",
+      "parent": "e6122214503b9fc52841e119c060eabb7650391b",
+      "path": "i18n/receipts/s18b-hi-canonical-5e4b1db4.json",
+      "sha256": "a7270a0d893fe742c13a88b18c1a3e4cecb978fb8e05c4a62f5fcfe2541a3e00",
+      "instance": "s18b-hi-canonical-5e4b1db4",
+      "agent": "i18n-auditor",
+      "model": "anthropic/claude-opus-5-5",
+      "result": "clean",
+      "source_sha256": "cbbb90eadffcc9a6ff2d7ca70794b4d39fb33e4476f610ece0a06701c1d97e4b",
+      "target_sha256": "f5edc06e73c1f5facbdc4b004e52b1420a87df77cb1affa3bd029c7944e8cebf",
+      "context_sha256": "f589e147b11533c0587d412415eed1dcc6b360b9658484fde624116f020fdbff",
+      "receipt_declared_scope": "ui.chat.canonical for hi: 3 S18b key(s) (ui.chat.canonical.tool_row.detail_section.error, ui.chat.canonical.tool_row.detail_section.interrupted, ui.chat.canonical.tool_row.detail_section.output) at branch head 3837df2f6cfe, read against English (source commit 6210ce4d17) and the sidecar",
+      "row_scope": "S18b approval/tool-detail paydown (9 keys)",
+      "declared_identity": {
+        "agent": "i18n-auditor",
+        "role": "independent translation auditor (team lopdev); not the translator (i18n-translator on anthropic/claude-sonnet-5-5), not the integrator",
+        "model": "anthropic/claude-opus-5-5",
+        "independence": "Session 097e801c9a50: a different session, agent and model from the translator. Served model anthropic/claude-opus-5-5, as stated by this session's harness system prompt; no fallback. Read-only in the worktree (git show/diff and python3 hashing/unicode/ICU scans only). My only repo writes are these untracked receipts in i18n/receipts/. Judgement derived here from English, the sidecar and the shipped corpus; no MT or translation service used.",
+        "instance": "s18b-hi-canonical-5e4b1db4"
+      },
+      "findings": [],
+      "unchanged_in_index": true,
+      "frozen_pure_contract_verified": true
+    },
+    {
+      "locale": "hi",
+      "parent": "e6122214503b9fc52841e119c060eabb7650391b",
+      "source_snapshot": "759530dba089052f53c4c28da12c9c351cf6c1b4",
+      "path": "i18n/receipts/2d5628992cf1.json",
+      "sha256": "a97247db95c065e502d788dad7abb7f1dbea84b19bdfb55fe80d68b805cd2efe",
+      "instance": "2d5628992cf1",
+      "agent": "i18n-auditor",
+      "model": "deepseek/deepseek-flash",
+      "result": "clean-with-findings",
+      "source_sha256": "0eb58c851335bcb90a14631b24b0ba330b5d0c80af80e9aa82a0970155dc7d45",
+      "target_sha256": "f403a8b1941e366197ddb17393e068847d47ba5ef42f670eb3c6bf26f704943c",
+      "role": "Applicable superseded S18a audit, not resolved by latest S18b three-key clean delta",
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+          "note": "Term drift on 'rate limit': this key uses दर सीमा (as does ui.code_review) while ui.chat.json uses रेट सीमा and ui.chat.usage_reset.json uses दर-सीमा. No change to these bytes; align the other namespaces."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.chat.canonical.temporary_deleted.back",
+          "note": "EN plural 'chats' rendered as unmarked singular चैट and destination takes पर; optional: चैट सूची में वापस जाएँ."
+        }
+      ],
+      "unchanged_in_index": true,
+      "frozen_pure_contract_verified": true
+    }
+  ],
+  "previous_own_lineage": {
+    "locale": "hi",
+    "namespace": "ui.chat.canonical",
+    "result": "clean-with-findings",
+    "findings": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 1,
+      "nit": 1
+    },
+    "finding_ids": [
+      "I-HI-1",
+      "HI-C1"
+    ],
+    "session": "6dfaec49abf0",
+    "served_model": "openai/gpt-6.1-sol",
+    "instance": "6dfaec49abf0-hi-r-next-seam-20261114",
+    "lineage": "Same original second independent audit author; rebinding only",
+    "current_bindings": {
+      "en": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+      "hi": "44d13aafbd5dc8e369a9b35a169f06e7c24b732e54fab574fe19feab98f62706",
+      "context": "147f01cb5d974610508e3dcff5356f1c517979eec9c0655dd272ffbe318906b7"
+    },
+    "current_tree": "5df62a4bd832b1c29f90f85dbb95b2c0f5eab6f4",
+    "seam_verdict": "PASS: exact disjoint union, no collision/missing/duplicates or raw literal/token/ICU/placeholder change versus selected audited parents",
+    "record": {
+      "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-r-next-seam-20261114-record.json",
+      "sha256": "36fe1bc9e950c59d26e5a49df7ea9c8265553e680a463da954b17bbfd12a611d"
+    },
+    "receipt": {
+      "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-r-next-seam-20261114-receipt.json",
+      "sha256": "f6a7bfdda5c14ee4b84e55ac0ff091781eb57f37b581e5ccaa6e8be8120a6ab6"
+    },
+    "companions": [
+      {
+        "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-r-next-seam-20261114-proof.json",
+        "sha256": "ca484b5acf0b37a6c04068968e8910ad257daebcbd194f4dd352c6c959117164"
+      }
+    ],
+    "lawful_bounded_consumability": true,
+    "canonical_record": "i18n/audits/evidence/hi/ui.chat.canonical/6dfaec49abf0-hi-r-next-seam-20261114/record.json",
+    "actual_frozen_pure_contract_derivation": {
+      "locale": "hi",
+      "agent": "translation-auditor",
+      "instance": "6dfaec49abf0-hi-r-next-seam-20261114",
+      "model": "openai/gpt-6.1-sol",
+      "result": "clean-with-findings",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 1
+      },
+      "source_sha256": "ca2066dd4a1402779831f48a9136a22f114bf9d7a1af4e91174284c6135bcdae",
+      "target_sha256": "44d13aafbd5dc8e369a9b35a169f06e7c24b732e54fab574fe19feab98f62706",
+      "receipt_sha256": "f6a7bfdda5c14ee4b84e55ac0ff091781eb57f37b581e5ccaa6e8be8120a6ab6"
+    }
+  },
+  "applicable_glossary_style": {
+    "inherited": {
+      "inherited": {
+        "i18n/glossary.md": {
+          "repository": "/home/ec2-user/local-operator",
+          "git_ref": "ea9f5b0e49758b9fc289bf0ee1a2d61ab0a2e694",
+          "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+          "read_method": "Local file read plus complete HEAD..origin/main amendments read for changed files; hi guide identical. No fetch; origin/main freshness relative to remote not asserted."
+        },
+        "i18n/style-guides/es.md": {
+          "repository": "/home/ec2-user/local-operator",
+          "git_ref": "ea9f5b0e49758b9fc289bf0ee1a2d61ab0a2e694",
+          "sha256": "4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6",
+          "read_method": "Local file read plus complete HEAD..origin/main amendments read for changed files; hi guide identical. No fetch; origin/main freshness relative to remote not asserted."
+        },
+        "i18n/style-guides/fr.md": {
+          "repository": "/home/ec2-user/local-operator",
+          "git_ref": "ea9f5b0e49758b9fc289bf0ee1a2d61ab0a2e694",
+          "sha256": "5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7",
+          "read_method": "Local file read plus complete HEAD..origin/main amendments read for changed files; hi guide identical. No fetch; origin/main freshness relative to remote not asserted."
+        },
+        "i18n/style-guides/hi.md": {
+          "repository": "/home/ec2-user/local-operator",
+          "git_ref": "ea9f5b0e49758b9fc289bf0ee1a2d61ab0a2e694",
+          "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+          "read_method": "Local file read plus complete HEAD..origin/main amendments read for changed files; hi guide identical. No fetch; origin/main freshness relative to remote not asserted."
+        }
+      },
+      "selected_main_reference": {
+        "glossary": "damianvtran/local-operator@2ba8127d9 i18n/glossary.md sha256:0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+        "style_guide": "damianvtran/local-operator@2ba8127d9 i18n/style-guides/hi.md sha256:82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+      },
+      "checked_git_objects": {
+        "i18n/glossary.md": {
+          "git_ref": "2ba8127d9",
+          "available": true,
+          "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+          "recorded_reference_only_if_unavailable": false
+        },
+        "i18n/style-guides/es.md": {
+          "git_ref": "2ba8127d9",
+          "available": true,
+          "sha256": "4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6",
+          "recorded_reference_only_if_unavailable": false
+        },
+        "i18n/style-guides/fr.md": {
+          "git_ref": "2ba8127d9",
+          "available": true,
+          "sha256": "5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7",
+          "recorded_reference_only_if_unavailable": false
+        },
+        "i18n/style-guides/hi.md": {
+          "git_ref": "2ba8127d9",
+          "available": true,
+          "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+          "recorded_reference_only_if_unavailable": false
+        }
+      }
+    },
+    "checked_existing_git_objects": {
+      "i18n/glossary.md": {
+        "git_ref": "2ba8127d9",
+        "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+        "basis": "Existing immutable binding object hash checked; no new semantic guide audit."
+      },
+      "i18n/style-guides/es.md": {
+        "git_ref": "2ba8127d9",
+        "sha256": "4a6f6270f028e5f5fbca7156a8f5099077f92585db94c14653482e9b188248a6",
+        "basis": "Existing immutable binding object hash checked; no new semantic guide audit."
+      },
+      "i18n/style-guides/fr.md": {
+        "git_ref": "2ba8127d9",
+        "sha256": "5315e1ac10c2ce57aac631ba653d08de680ee70c9a022ed3a8345ce2f9902ee7",
+        "basis": "Existing immutable binding object hash checked; no new semantic guide audit."
+      },
+      "i18n/style-guides/hi.md": {
+        "git_ref": "2ba8127d9",
+        "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+        "basis": "Existing immutable binding object hash checked; no new semantic guide audit."
+      }
+    }
+  },
+  "proof_companion": {
+    "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-finalgate20261115-debt-proof.json",
+    "sha256": "b10f6015b152fae70bc72c9a544fdd59a74de8c272dcacb48eeeae689d91b4c6"
+  },
+  "accepted_prior_evidence": {
+    "accepted_readback_json": {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.json",
+      "sha256": "b9d1b7bfe421c64818856ba500e671fcf51051133314f3c9471c9c43acf27f30",
+      "role": "Historical accepted 23-key evidence only; not a current capture."
+    },
+    "accepted_readback_markdown": {
+      "path": "/home/ec2-user/.local-operator/sessions/a0245acae0c5/scratchpad/1829-bounded-evidence-readback.md",
+      "sha256": "a8cbf67eef4052484b4bbc1937a7a6b4b1d3328a71cb813bc3a8f0119cc275ac",
+      "role": "Historical accepted 23-key evidence only; not a current capture."
+    },
+    "final_frame_manifest": {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-locale/frames-manifest.json",
+      "sha256": "12babe07d87bb5d193d3fd909919e1645706e06984129055d4547ded21321db5",
+      "role": "Historical accepted 23-key evidence only; not a current capture."
+    },
+    "browser_source_identity": {
+      "path": "/home/ec2-user/.local-operator/sessions/331ecd98c7fb/scratchpad/browser-preview/captured-from-manager/1829-browser-source.json",
+      "sha256": "011d373b047026492d9ca73f7ec6747df1a90daeb7cb2c805aa9b4dade46ca34",
+      "role": "Historical accepted 23-key evidence only; not a current capture."
+    }
+  },
+  "limitations": {
+    "semantic_keys_read_this_round": 0,
+    "mechanical_keys_verified": 509,
+    "fresh_509_semantic_audit": false,
+    "fresh_images_or_current_fit": false,
+    "native_geometry_font_fallback_global_rtl": "UNPROVEN; no new observation or approval",
+    "functional_interactions_counts": "No new runtime; interactions, count variants and all23-interactions PASS are not claimed. Prior exact evidence remains only in historical records.",
+    "pseudo": "Historical synthetic expanded English registered as en; not production pseudo or RTL pseudo",
+    "rendering": "Historical bounded23 capture proof retained; not a current capture, fullapp/native/global fit approval. Main stylesheet changed.",
+    "parent_scope": "S18b clean/[] is scoped to its three namespace keys; it does not erase pre-existing deferred findings.",
+    "parent_guide_metadata": "Selected S18b receipt lacks explicit glossary/style revision hash fields; applicable own existing pins verified, no new conformity or retrospective guide-version attestation.",
+    "history": "All old withholds, receipts, clarifications and candidates remain immutable. Actual-locale CLDR interpretation already authorized remains applicable; no literal English-selector hold reinstated.",
+    "release": "No merge/release/activation approval"
+  },
+  "retention": {
+    "canonical_record": "i18n/audits/evidence/hi/ui.chat.canonical/6dfaec49abf0-hi-finalgate20261115-debt/record.json",
+    "canonical_companions": [
+      "i18n/audits/evidence/hi/ui.chat.canonical/6dfaec49abf0-hi-finalgate20261115-debt/union-seam-proof.json",
+      "i18n/audits/evidence/hi/ui.chat.canonical/6dfaec49abf0-hi-finalgate20261115-debt/inherited-debt-proof.json"
+    ],
+    "mandatory_receipt": "i18n/receipts/6dfaec49abf0-hi-finalgate20261115-debt.json",
+    "copy_by_writer_later_only": true
+  },
+  "lawful_bounded_consumability": {
+    "permitted": true,
+    "why": "New same-author scope-specific binding to independently verified selected parent union, supported actual parent receipts and preserved inherited findings; actual frozen pure derivation required. No extra independent lineage/global approval.",
+    "frozen_assembler_sha256": "63651def0c5be756f61e71e5905bcf090a1c709464292864f1a6429d06e676a5",
+    "frozen_rules_sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6",
+    "assembler_invoked": false,
+    "ledger_checker_invoked": false,
+    "suggested_note": "Exact486+23 seam only;0 new semantic keys; no new pixels/native. Record: i18n/audits/evidence/hi/ui.chat.canonical/6dfaec49abf0-hi-finalgate20261115/record.json",
+    "suggested_note_characters": 160
+  },
+  "old_artifacts_remain_historical_not_rewritten": true,
+  "s18a_explicit_dispositions": [
+    {
+      "stable_locator": "2d5628992cf1-finding-1",
+      "choice": "retain",
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+      "proposed_equals_current": true,
+      "original": {
+        "severity": "MINOR",
+        "key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+        "note": "Term drift on 'rate limit': this key uses दर सीमा (as does ui.code_review) while ui.chat.json uses रेट सीमा and ui.chat.usage_reset.json uses दर-सीमा. No change to these bytes; align the other namespaces."
+      },
+      "unchanged_snapshot": true
+    },
+    {
+      "stable_locator": "2d5628992cf1-finding-2",
+      "choice": "deduplicated",
+      "counted_as": "HI-C1",
+      "original": {
+        "severity": "NIT",
+        "key": "ui.chat.canonical.temporary_deleted.back",
+        "note": "EN plural 'chats' rendered as unmarked singular चैट and destination takes पर; optional: चैट सूची में वापस जाएँ."
+      },
+      "current": "चैट पर वापस जाएँ",
+      "unchanged_snapshot": true
+    }
+  ],
+  "same_round_historical_candidate": {
+    "record": {
+      "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-finalgate20261115-record.json",
+      "sha256": "62be85515d06ef92c468433c6aedc3ae88d3c85dbd095ea53308fccc24919ff0"
+    },
+    "receipt": {
+      "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-hi-finalgate20261115-receipt.json",
+      "sha256": "73fa1ad5dd36f265f8dd729ada50b401a0f51c1e288736781bedb85015435616"
+    },
+    "manifest": {
+      "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-finalgate20261115-rebinding-manifest.json",
+      "sha256": "e00798326c7bb8b951ed62b033765cd5f3ba25b30324f799627e654732933166"
+    },
+    "unchanged": true,
+    "application_disposition": "Do not apply earlier sealed candidate; use new FINAL manifest only"
+  },
+  "necessary_companions": [
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-finalgate20261115-proof.json",
+      "sha256": "c34f8b9abec5442486d26ab1a5359f71251ca73aaed06df99f850fcbb31c014b",
+      "size_bytes": 669523
+    },
+    {
+      "path": "/home/ec2-user/.local-operator/sessions/6dfaec49abf0/scratchpad/6dfaec49abf0-finalgate20261115-debt-proof.json",
+      "sha256": "b10f6015b152fae70bc72c9a544fdd59a74de8c272dcacb48eeeae689d91b4c6"
+    }
+  ]
+}

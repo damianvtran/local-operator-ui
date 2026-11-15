@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, of the 2 S17d-3 job-cancel keys (scope: ui.chat.run_controls.job.cancel_failed, ui.chat.run_controls.job.not_found; pre-existing keys out of scope)",
+  "locale": "zh-CN",
+  "namespace": "ui.chat.run_controls",
+  "pr": 0,
+  "pr_note": "PR not yet opened (branch feat/i18n-s17d3-job-cancel)",
+  "date": "2026-11-14",
+  "head": "1e3b4a920165c787f2532d14735d9f4e81d8625e",
+  "instance": "s17d3-zh-cn-2f95290f",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "role": "independent translation auditor (team lopdev); not the translator (i18n-translator on anthropic/claude-sonnet-5-5), not the integrator",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session d35a086d2ac3, a different session, agent and model from the translator. Read-only in the worktree (git show / git diff / git grep / python3 hashing only); my only writes are these receipts in my own scratchpad. Judgement derived here from the English source, the sidecar and the shipped zh-CN corpus; no MT or translation service used.",
+    "instance": "s17d3-zh-cn-2f95290f"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "binding": "Verified here at 1e3b4a920165: the target file is the committed blob (git show 1e3b4a920165c787f2532d14735d9f4e81d8625e:<path>, sha256 480e347568bb5411bdab3e48a89b12ab8fb22009595c65ca7df806c81b4fd068); vs the merged base a114b6d102 the file gains exactly 2 lines (+2/-0) and they are the two in-scope keys, so no pre-existing key changed. 14 keys, same order as English, no duplicates (object_pairs scan), TAB indent, one trailing newline, no BOM/CR/\\u escapes, both values NFC, no Cf (format/bidi) code points, no ICU braces (English has no placeholders; none introduced), neither value byte-identical to English. Rendering path read: job-controls-model.ts:80 jobCancelNotFoundCopy() = t(not_found) as the whole refusal sentence; :151 cancel_failed as userFacingMessage fallback. cancel_failed '无法取消后台任务。' uses the panel's own term 后台任务 (run_details.jobs '后台任务', run_details.job_cancel.title '取消此后台任务？', run_controls.job.no_conversation) and the 无法取消… pattern of run_controls.monitor.cancel_failed '无法取消监控。'; ends with 。. not_found '未取消——提供商已找不到该后台任务': 未取消 = not cancelled; 提供商 = provider as in run_details.job_cancel.body ('请求提供商停止'); 已找不到 ('can no longer find') faithfully conveys 'no longer has/knows' the job. Full-width —— without spaces per CJK convention (same as interrupt.stopped_jobs), no final 。 per sidecar, zero Latin. Length 0.36x / 0.33x of English in chars (wide glyphs ~0.7x cells).",
+  "scope": "ui.chat.run_controls for zh-CN: the 2 S17d-3 keys (job.cancel_failed, job.not_found) at branch head 1e3b4a920165, read against English and the sidecar",
+  "revisions": {
+    "head": "1e3b4a920165c787f2532d14735d9f4e81d8625e"
+  },
+  "en_sha256": "7cf8524faf5ed9de2e191211f757c3b3e5af0c88e4d5b1fd27bc642decc50421",
+  "context_sha256": "3ad6c356fe463c1462a446f7a6d7ac0b1d7a61169b69f2354d8cf6ea12865a9e",
+  "target_sha256": "480e347568bb5411bdab3e48a89b12ab8fb22009595c65ca7df806c81b4fd068",
+  "sha256": {
+    "zh-CN": "480e347568bb5411bdab3e48a89b12ab8fb22009595c65ca7df806c81b4fd068",
+    "en": "7cf8524faf5ed9de2e191211f757c3b3e5af0c88e4d5b1fd27bc642decc50421"
+  }
+}

@@ -68,6 +68,7 @@ import { useKeymapShortcuts } from "@shared/keymap/use-keymap-shortcuts";
 import { t } from "../../i18n/messages";
 import { useOwnerAuditStartupScene } from "./dev-driver/owner-audit-startup";
 
+import { PhonePairingHost } from "@features/phone-pairing/pairing-popup";
 import { useAgentAvatarLayer } from "@shared/agent-avatar/agent-avatar";
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
@@ -1022,6 +1023,14 @@ const App: FC = () => {
 					{archiveEnabled && <ArchiveConversationDialog />}
 
 					<UpdateNotification />
+
+					{/*
+					 * A phone asking to pair must be answerable from ANY route (pairing
+					 * design v2 §4.2, decision 5): mounted here, above the router outlet,
+					 * not inside the Mesh tray. Non-modal and focus-neutral; renders
+					 * nothing, and reads nothing, without `features.phone_pairing`.
+					 */}
+					<PhonePairingHost />
 
 					{/*
 					 * A `navigator.credentials.get()` matching several passkeys has to be

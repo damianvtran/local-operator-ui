@@ -1,0 +1,18 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "36089f5406a5",
+  "status": "passed",
+  "namespace": "ui.chat.trace",
+  "sha256": {
+    "hi": "43df8aae8d5e947578121c8dd32ba352f01ecb71b60b5281d28501deca2cec7d",
+    "en": "0576cbf1b116e36b236c4b210607bf8d2ed5b7e2442c739f5763ef28dd154b6a"
+  },
+  "findings": [
+    {
+      "severity": "NIT",
+      "key": "i18n/style-guides/hi.md",
+      "note": "Retained round-1 F3 (not a catalogue defect; no ui.chat.trace key carries an issue): record the locale call mailbox -> मेलबॉक्स (send delivery store) as distinct from इनबॉक्स (bridge inbox) in the hi style guide. Verified still absent this round; मेलबॉक्स has 0 hits in the 162-file hi catalogue while इनबॉक्स has 7. Documentation-only; does not gate."
+    }
+  ]
+}

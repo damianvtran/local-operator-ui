@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent binding audit of the landed namespace (first binding; no re-bind)",
+  "locale": "zh-CN",
+  "namespace": "ui.chat.run_controls",
+  "pr": 1911,
+  "date": "2026-11-14",
+  "head": "90f0f49beae27ad35c1b05492ee150cd31e3a8c1",
+  "instance": "s17d2-zh-cn-rebind-3010fc82",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); not the translator, not the draft auditor, not the integrator",
+    "model": "deepseek/deepseek-flash",
+    "independence": "I neither translated, draft-audited nor integrated this namespace; every check above was re-derived from the bytes at head, and the only prior artifacts I opened were read-only (the round-1 record and the audited draft, for comparison), whose claims I verified against the corpus and discarded where they did not hold.",
+    "instance": "s17d2-zh-cn-rebind-3010fc82"
+  },
+  "model": "deepseek/deepseek-flash",
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "binding": "Verified by execution at head 90f0f49beae2 on 2026-11-14. (1) HASHES: sha256 of the landed zh-CN file (3010fc82...8812), the en source (c5c484fb...12fa), the en context sidecar (fe162255...3de) and the audited draft (3010fc82...8812) all match the values the brief supplied, and cmp confirms the landed file is byte-identical to the audited draft; the draft was not re-implemented, re-keyed or reformatted on landing. (2) FORMAT: 12 keys; key set and key order identical to en in both directions (0 only-in-en, 0 only-in-zh); tab indent on all 12 entries and space indent on none; exactly one trailing newline; no BOM; no CRLF; NFC; no \\u escape sequences; no bidi control characters (a zh-CN file, so no RTL placement question arises: U+200E/200F/202A-202E/2066-2069/061C all absent). (3) ICU: both sides parsed with the repo's own @formatjs/icu-messageformat-parser from this worktree's node_modules. Argument-name sets, select selector names, arm names, arm order and per-arm argument sets are identical to English for all 12 keys (12/12 PASS, 0 problems); the only node types present in either file are literal, argument and select, so NO plural or selectordinal exists and no locale plural category is exercised by this namespace. (4) RENDER: every select-bearing key formatted with intl-messageformat at subject=head and subject=other using name=Atlas, head='Research agent 检查进度' and an ASCII head 'Check the deploy'. All renders succeeded with no throw, no unresolved brace, no 'undefined' and no NaN; the other arm renders identically whether or not a head is supplied, and {head} is correctly dropped there. (5) ENGLISH SWEEP: over literal text only (ICU argument names and arm keys excluded as non-rendered syntax - they never reach the DOM), zero Latin-letter runs and zero ASCII digits; punctuation is fullwidth ，。？ only with balanced “ ” pairs in both message keys; no second-person pronoun occurs, so no T/V mismatch is possible in these strings. (6) GLOSSARY, checked against the shipped zh-CN corpus rather than from memory: job=后台任务 (ui.chat.run_details.jobs), monitor=监控 (run_details.monitors.title), wake=唤醒 (run_details.wakes.title), conversation=对话, check-in=定期检查 (run_details.wake.managed_note), fire=触发 (ui.schedules). 取消唤醒 is byte-identical to shipped run_details.wake.cancel_wake and schedules.wake_conversation_row.cancel_wake; 无法取消唤醒。 is byte-identical to shipped schedules.schedules_page.could_not_cancel_the_wake; 对话仍会保留。 is the shipped second sentence of run_details.monitor_cancel.message; 此唤醒已不存在。 follows the shipped 此对话已不存在 frame; 取消此唤醒？ mirrors the shipped 取消此监控？. No drift in either direction. (7) WIDTH: every value is narrower than its English source even counting CJK glyphs at 2 em/ASCII at 1 em (worst 0.88, wake_confirm.title_named), so no overflow candidate exists and no rendered width check is needed. NO FINDINGS HELD. Round-1 NITs re-judged independently rather than inherited: NIT-1 (检查周期 as a coinage for 'cadence') is transparent, is composed of the locale's own 定期检查 plus 周期 (cf. ui.onboarding.tour.create_schedule.title 设置周期任务) and has no competing gloss, so I do not hold it; NIT-2 (自身 vs 自己) does NOT stand on the bytes - 自身 carries the same possessive-'own' construction in 12 other shipped zh-CN keys (e.g. 此模型...始终使用自身默认值, 安装程序自身的输出) while 自己 also occurs (e.g. {name}自己的定时任务), so both are in-locale register and this is a stylistic variant, not glossary drift; NIT-3 is bookkeeping about style guides, lies outside this file's bytes, and its cited style-guides/ path does not exist at this head. NOT DONE: no committed render screenshot pair (arithmetic width only - justified because no string exceeds its English budget); no whole-suite run (CI owns it, per the quality-gate lease).",
+  "scope": "ui.chat.run_controls for zh-CN: 12 keys at PR head 90f0f49beae2, all read against English and the sidecar",
+  "revisions": {
+    "head": "90f0f49beae27ad35c1b05492ee150cd31e3a8c1"
+  },
+  "en_sha256": "c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa",
+  "context_sha256": "fe162255233a62a41add06ce77e0aff3a533c003e3fb9e504031b91aa83073de",
+  "target_sha256": "3010fc82f5a52df7e94d5bba58929848561c28ca20fc49c77ff00a0160528812",
+  "sha256": {
+    "zh-CN": "3010fc82f5a52df7e94d5bba58929848561c28ca20fc49c77ff00a0160528812",
+    "en": "c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa"
+  },
+  "draft_sha256": "3010fc82f5a52df7e94d5bba58929848561c28ca20fc49c77ff00a0160528812"
+}

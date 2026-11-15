@@ -267,7 +267,16 @@ export const FileActionsMenu = memo(function FileActionsMenu({
 					}}
 				>
 					<ClipboardCopy aria-hidden="true" />
-					<span>{copied ? "Copied" : "Copy file path"}</span>
+					{/* Reuses the audited shared keys (same labels as remote-files.ts and
+					    link-toolkit.tsx) so all seven locales are already translated.
+					    `t` resolves at render and this component subscribes through
+					    useI18nLocale() above, so a live locale switch relabels the item
+					    even while it is showing the copied state. */}
+					<span>
+						{copied
+							? t("ui.common.actions.copied")
+							: t("ui.common.file_actions.copy_file_path")}
+					</span>
 				</DropdownMenuItem>
 			</DropdownMenuContent>
 		</DropdownMenu>

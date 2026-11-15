@@ -207,5 +207,6 @@
 	"ui.chat.session_status.effort_level.high": "Высокий",
 	"ui.chat.image_actions.actions": "Действия с изображением",
 	"ui.chat.audio.position_label": "Позиция воспроизведения: {label}",
-	"ui.chat.audio.position_value": "{current} из {total}"
+	"ui.chat.audio.position_value": "{current} из {total}",
+	"ui.chat.code_block.default_header": "Код"
 }

@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "convergence-rebind",
+  "locale": "es",
+  "namespace": "ui.chat.run_details",
+  "pr": 1897,
+  "date": "2026-11-14",
+  "head": "dcfbcdbd0567f72233f5fb19c87b207ab7067aed",
+  "instance": "s17c-es-rebind-8d1972d6",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); not the translator, not the draft auditor, not the integrator",
+    "model": "deepseek/deepseek-flash",
+    "independence": "I translated, draft-audited and integrated none of this PR's S17c work; I verified the merged bytes, the parent prefix, the draft equality and the 36 values against English and the sidecar myself, forming my own reading of all 36 before opening the original auditor's record, and carrying only the findings I independently hold.",
+    "instance": "s17c-es-rebind-8d1972d6"
+  },
+  "model": "deepseek/deepseek-flash",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "severity": "NIT",
+      "key": "ui.chat.run_details.mcp.control.grant",
+      "note": "English is 'Grant account access'; 'Autorizar acceso' drops *cuenta*, so the control names the access without its object. The width objection does not hold: this is the run panel's remedy Button (variant=\"link\", size=\"sm\") with no truncate class (run-detail-mcp.tsx, remedy branch), so extra words cost a wrap, not a clip — 'Autorizar acceso a la cuenta' fits. NIT rather than MINOR because the OAuth sign-in context makes the object inferable; reject with the width reason if the dialog footer is tighter than the row."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.run_details.mcp_failure.lead.grant",
+      "note": "'No se pudo comenzar el inicio de sesión' states the start twice (comenzar + inicio). 'No se pudo lanzar el inicio de sesión' keeps the corpus noun 'inicio de sesión' (mcp_auth.*) with no repetition and composes identically before ': ', ' porque ' and '. '; 'lanzar' is already the corpus verb for starting something (ui.common.updates.update_notification.the_update_can_t_be_launched = 'No se puede lanzar la actualización'). Grammatical as it stands, so this is polish."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.run_details.monitor.last_check",
+      "note": "'última comprobación {when}' is 21 characters against English's 12 in the monitor row's min-w-0 shrink-[3] truncate span, which carries title={row.lastCheckLabel} (run-detail-monitors.tsx) — it yields third in that row's feed order, so a narrow pane clips the instant, not the row. Keep the wording (the term is corpus-canonical: session_readout.access.history.last_checked = 'Última comprobación: {time}.'), but flag it for a rendered check at the 320px pane floor; 'últ. comprobación {when}' (17) is the shorter form if the frame clips."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.run_details.mcp_key.not_saved",
+      "note": "Glossary drift on one English fragment across surfaces, not within this namespace: 'Not saved:' is 'No guardadas:' here (and in mcp_key.not_saved_saved) but 'No se guardaron:' in the pre-existing ui.settings.integrations.use_integrations.keys_not_saved, which can surface for the same MCP key save from Settings > Integrations. Both are correct Spanish and the three mcp_key keys are consistent with each other; the older string is outside this PR, so aligning them is the owner's call and a rejection with that reason is fine."
+    }
+  ],
+  "binding": "Verified on the bytes at head dcfbcdbd0567: (1) the merged file's first 109 key/value pairs equal parent ec00119944d's pairs value-by-value and in the same order, and the merged text shares a 10,078-character common prefix with the parent body, diverging exactly at the parent's '\\n}' where the merged file has ',\\n\\t\"ui.chat.run_details…' — the comma the new pair requires; (2) the 36 new pairs equal the audited draft es.v1.json's 36 pairs value-by-value and in the same order, and no parent key reappears among them; (3) the merged key set equals English's 145 both ways (set difference empty both directions) and equals the sidecar's key set; (4) all 145 keys parse with the repo's @formatjs/icu-messageformat-parser 3.5.21, ICU argument-name sets are identical per key (zero diffs), and every Spanish plural arm used (=1/one/many/other) is a live CLDR es category — Intl.PluralRules('es') resolves one,many,other, and 1,000,000/2,000,000 select many; no few arm anywhere; (5) format: TAB indent on every line, one trailing newline, no BOM, no CR, NFC, no literal backslash-u escapes; curly quotes, single-glyph ellipsis, ' · ' and ¿…? preserved byte-exactly against English. Not verified: a rendered frame at the 320px floor (the last_check width note is a flag, not a measurement), runtime rendering through the app's es bundle, and I did not re-run locale-parity.test.mjs per the brief.",
+  "scope": "ui.chat.run_details for es: 145 keys at PR head dcfbcdbd0567; 109 byte-identical to parent ec00119944d, 36 new read against English and the sidecar",
+  "revisions": {
+    "parent": "ec00119944dabb6a44ed8130f8864280401b1714",
+    "head": "dcfbcdbd0567f72233f5fb19c87b207ab7067aed"
+  },
+  "en_sha256": "1f1bf1d066875db81d4b5728e6a3f88c47a432d75aa8e75b92cdbefc42f2eb66",
+  "context_sha256": "8a329d4c5c6122e35986b8de3d04b6f25dfb3979349cd1675fed1b4cbc2497a6",
+  "target_sha256": "8d1972d6d6b39f2f8e174ef2149ae4b65aace1b16c95b5ca8b02e6081cb8742b",
+  "sha256": {
+    "es": "8d1972d6d6b39f2f8e174ef2149ae4b65aace1b16c95b5ca8b02e6081cb8742b",
+    "en": "1f1bf1d066875db81d4b5728e6a3f88c47a432d75aa8e75b92cdbefc42f2eb66"
+  },
+  "draft_sha256": "3fb9053b78a60528134de1e6d164303c4331e5418a4aed4f6b46bc9570672408"
+}

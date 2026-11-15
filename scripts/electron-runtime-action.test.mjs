@@ -51,14 +51,14 @@ function watchdog() {
 	return { child, timers, errors, kills, exits, process };
 }
 
-test("all three consumers restore before install and assert before building", () => {
-	let consumers = 0;
+test("every pinned consumer job restores before install and asserts before building", () => {
+	const consumers = [];
 	for (const path of [
 		".github/workflows/ci.yml",
 		".github/workflows/full-suite.yml",
 	]) {
 		const workflow = parse(read(path));
-		for (const job of Object.values(workflow.jobs)) {
+		for (const [id, job] of Object.entries(workflow.jobs)) {
 			const steps = job.steps ?? [];
 			const prepare = steps.findIndex(
 				(step) =>
@@ -66,16 +66,28 @@ test("all three consumers restore before install and assert before building", ()
 					step.with.phase === "prepare",
 			);
 			if (prepare < 0) continue;
-			consumers++;
 			assert.equal(steps[prepare + 1].run, "pnpm install --frozen-lockfile");
 			assert.equal(
 				steps[prepare + 2].uses,
 				"./.github/actions/electron-runtime",
 			);
 			assert.equal(steps[prepare + 2].with.phase, "assert");
+			consumers.push(`${path.split("/").pop()}:${id}`);
 		}
 	}
-	assert.equal(consumers, 3);
+	// Each consumer must restore the cached Electron download archive before
+	// `pnpm install` and run the bounded, fail-closed runtime assertion before
+	// building. Pinning the jobs by name, not
+	// by count, makes a new consumer or a lost one fail here naming the job:
+	// a consumer that drops the prepare step disappears from this list, and
+	// one that gains it without the prepare -> install -> assert order fails
+	// the per-job assertions above. Update this list deliberately.
+	assert.deepEqual(consumers, [
+		"ci.yml:bytecode-build",
+		"ci.yml:bytecode-build-macos",
+		"ci.yml:npx-sanity-check",
+		"full-suite.yml:test",
+	]);
 });
 
 test("cache identity is exact and the resolver reads the actual lockfile", () => {

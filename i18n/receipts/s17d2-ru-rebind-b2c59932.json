@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent binding audit of the landed namespace (first binding; no re-bind)",
+  "locale": "ru",
+  "namespace": "ui.chat.run_controls",
+  "pr": 1911,
+  "date": "2026-11-14",
+  "head": "90f0f49beae27ad35c1b05492ee150cd31e3a8c1",
+  "instance": "s17d2-ru-rebind-b2c59932",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); not the translator, not the draft auditor, not the integrator",
+    "model": "deepseek/deepseek-flash",
+    "independence": "I translated, audited and integrated none of this programme's ru work: I read the English, the sidecar and the landed bytes myself and re-derived every structural claim here rather than adopting the earlier records, which I only used to decide which two NITs to re-test.",
+    "instance": "s17d2-ru-rebind-b2c59932"
+  },
+  "model": "deepseek/deepseek-flash",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "severity": "NIT",
+      "key": "ui.chat.run_controls.wake_confirm.action_named",
+      "note": "«Отменить проверку» is the first time «проверка» becomes a control label. In the shipped ru corpus the word carries the check/verification/checking sense ~75 times across ~30 files («Проверка обновлений», «Ожидает проверки», «На проверке»), while 'check-in' has exactly one prose precedent: ui.chat.run_details.wake.managed_note «Чтобы остановить эти проверки…». No text change: the paired title «Отменить проверку ассистента {name}?» disambiguates it, the destructive/Keep pair makes the act unambiguous, and English itself spends two words on one object ('check-in' in title+button, 'wake' in the body). Action: record check-in → проверка in the ru term ledger so the next translator does not re-decide it, and so a future button outside this dialog does not silently reuse «проверка» for the other sense."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.run_controls.wake_confirm.action",
+      "note": "Width: «Отменить пробуждение» is 20 chars against English 'Cancel wake' at 11 (1.82x, where the ru style guide plans for +20-30%); the sibling «Отменить проверку» is 17 against 'Cancel check-in' at 15 (1.13x, fine). No text change recommended: it is byte-identical to the two shipped corpus strings for the same English (ui.chat.run_details.wake.cancel_wake, ui.schedules.wake_conversation_row.cancel_wake), and the confirm row (wake-cancel-popover.tsx) is a flex row of intrinsically sized size=\"sm\" buttons with no truncation class, so nothing clips — the card only grows. Flagged for a rendered check of the popover and the Schedules confirm dialog at their minimum width: I did not render pixels, so the growth is reasoned from the markup, not observed."
+    }
+  ],
+  "binding": "Hashes verified FIRST, all matching the brief: HEAD 90f0f49beae27ad35c1b05492ee150cd31e3a8c1; ru file b2c5993276ae0776469d547b476579dd98238b7035836cf05cdea11bd6e7e900; en c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa; context fe162255233a62a41add06ce77e0aff3a533c003e3fb9e504031b91aa83073de; audited draft ru.v2.json b2c5993276ae0776469d547b476579dd98238b7035836cf05cdea11bd6e7e900. The landed file is byte-identical to that draft (cmp exit 0). Key budget: 12 keys, identical key set and identical order to English (set difference empty both ways). Format: TAB indent on every value line, no double indent, no trailing whitespace, exactly one trailing newline, no BOM, no CRLF or lone CR, NFC-normalised, no \\u escapes. ICU: parsed every value with the repo's own @formatjs/icu-messageformat-parser 3.5.21 (the module scripts/i18n/locale-parity.test.mjs uses); argument names and select arms are identical to English for all 12 keys — {name} on title_named; {subject}+{head} with subject arms head/other on message; {subject}+{head}+{name} with subject arms head/other on message_named; no arguments elsewhere. No plural or selectordinal exists in English or ru, so no extra ru categories (one/few/many/other) are required by this namespace. Rendered with intl-messageformat 12.1.3 at locale ru for every arm and both name shapes (Atlas, Research agent), and both arms produce complete, well-formed sentences. English sweep: literal-node extraction proves zero Latin letters and zero digits in visible text — the only Latin in the file is ICU syntax (subject/select/head/other/name), which never renders. Bidi: no bidi control characters and no zero-width/BOM/NBSP characters in any value; ru is 'ltr' per i18n/languages.json, so RTL placement does not apply and the embedded Latin tokens are ICU names only. Every value read and judged against English and the sidecar; both NITs above are ones I independently re-confirmed against the corpus. I did not render UI pixels, ran no tsc/build/test suite, and edited nothing.",
+  "scope": "ui.chat.run_controls for ru: 12 keys at PR head 90f0f49beae2, all read against English and the sidecar",
+  "revisions": {
+    "head": "90f0f49beae27ad35c1b05492ee150cd31e3a8c1"
+  },
+  "en_sha256": "c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa",
+  "context_sha256": "fe162255233a62a41add06ce77e0aff3a533c003e3fb9e504031b91aa83073de",
+  "target_sha256": "b2c5993276ae0776469d547b476579dd98238b7035836cf05cdea11bd6e7e900",
+  "sha256": {
+    "ru": "b2c5993276ae0776469d547b476579dd98238b7035836cf05cdea11bd6e7e900",
+    "en": "c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa"
+  },
+  "draft_sha256": "b2c5993276ae0776469d547b476579dd98238b7035836cf05cdea11bd6e7e900"
+}
