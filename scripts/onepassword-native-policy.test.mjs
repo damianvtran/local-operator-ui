@@ -641,6 +641,35 @@ for (const format of ["cjs", "esm"]) {
 		await until(() => !alive(pid4), "frame teardown to end the host");
 	});
 
+	test(`${format}: messages posted while consent is pending reach the host in order`, async (t) => {
+		// Regression (found by the real Electron probe): 1Password posts on the
+		// Port immediately after connectNative; those messages arrive while the
+		// host is still being resolved/consented and were dropped.
+		let answer;
+		const rig = await hostRig(
+			t,
+			format,
+			() =>
+				new Promise((resolve) => {
+					answer = resolve;
+				}),
+		);
+		const connecting = rig.call("runtime.connectNative", "port-6", HOST);
+		rig.sender.ipc.emit("crx-native-msg-port-6", {}, { n: 1 });
+		rig.sender.ipc.emit("crx-native-msg-port-6", {}, { n: 2 });
+		await until(() => answer, "the consent question");
+		answer(true);
+		assert.equal(await connecting, undefined);
+		const replies = () =>
+			rig.sent.filter(([channel]) => channel === "crx-native-msg-port-6");
+		await until(() => replies().length === 2, "both early messages answered");
+		assert.deepEqual(
+			replies().map(([, reply]) => plain(reply.echo)),
+			[{ n: 1 }, { n: 2 }],
+		);
+		assert.equal(rig.sender.ipc.listenerCount("crx-native-msg-port-6"), 1);
+	});
+
 	test(`${format}: a port closed while consent is pending never spawns its host`, async (t) => {
 		let answer;
 		const rig = await hostRig(
