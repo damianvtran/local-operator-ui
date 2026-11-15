@@ -89,6 +89,15 @@ type ConfirmationModalProps = {
 	 */
 	busyText?: string;
 	/**
+	 * Withhold ONLY the confirm, leaving Cancel, Escape and the corner X live.
+	 *
+	 * Not `busy`, which refuses every close because a write is in flight: this is
+	 * for a confirm whose premise lapsed while the dialog was up (the ask card's
+	 * Run… after the ask closed), where the user must still be able to leave.
+	 * The caller states why beside it. Undefined for every other caller.
+	 */
+	confirmDisabled?: boolean;
+	/**
 	 * Extra classes for the dialog PANEL, merged last so a caller can PIN the
 	 * width.
 	 *
@@ -118,6 +127,7 @@ export const ConfirmationModal: FC<ConfirmationModalProps> = ({
 	focusCancelSignal,
 	busy = false,
 	busyText,
+	confirmDisabled = false,
 	panelClassName,
 }) => {
 	/*
@@ -216,7 +226,7 @@ export const ConfirmationModal: FC<ConfirmationModalProps> = ({
 				<DangerButton
 					data-confirm-action
 					onClick={onConfirm}
-					disabled={busy}
+					disabled={busy || confirmDisabled}
 					aria-busy={busy}
 					startIcon={busy ? <Spinner size="xs" /> : undefined}
 				>
@@ -226,7 +236,7 @@ export const ConfirmationModal: FC<ConfirmationModalProps> = ({
 				<PrimaryButton
 					data-confirm-action
 					onClick={onConfirm}
-					disabled={busy}
+					disabled={busy || confirmDisabled}
 					aria-busy={busy}
 					startIcon={busy ? <Spinner size="xs" /> : undefined}
 				>

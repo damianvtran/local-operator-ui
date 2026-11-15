@@ -10,5 +10,7 @@
 	"ui.chat.header_menu.open_canvas": "打开画布",
 	"ui.chat.header_menu.open_code_review": "打开代码审查",
 	"ui.chat.header_menu.open_console": "打开控制台",
-	"ui.chat.header_menu.rename_failed": "无法重命名对话"
+	"ui.chat.header_menu.rename_failed": "无法重命名对话",
+	"ui.chat.header_menu.keep_chat": "保留对话",
+	"ui.chat.header_menu.make_temporary": "设为临时……"
 }

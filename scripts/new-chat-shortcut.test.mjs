@@ -44,6 +44,7 @@ const bundle = await build({
 			export {
 				newChatShortcutCap,
 				shouldStartNewChat,
+				shouldStartTemporaryChat,
 			} from "./src/renderer/src/features/chat/new-chat-shortcut";
 			export {
 				CANVAS_SHORTCUT_SCOPE_ATTR,
@@ -82,6 +83,7 @@ const {
 	newChatShortcutCap,
 	pressBelongsToCanvas,
 	shouldStartNewChat,
+	shouldStartTemporaryChat,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 
@@ -296,6 +298,74 @@ const CANVAS_STARTS_FILE = /action === "new-file"/;
  */
 const CANVAS_ASKS_FOR_A_ROLE_LIST =
 	/\.(?:closest|querySelector)\(\s*([`'"])(?:(?!\1)[\s\S])*?\[role=[\s\S]*?\1/;
+
+/*
+ * ⌘⇧N / Ctrl+Shift+N: the TEMPORARY chat chord (`features.temporary_chats`).
+ * It takes every bail the plain chord takes, and the two never both fire on one
+ * press - a shifted press is not a plain New chat, and a plain one is not a
+ * temporary chat.
+ */
+const TEMPORARY_FIRES = [
+	['⌘⇧N on macOS, which arrives as "N"', press({ shiftKey: true, key: "N" })],
+	[
+		"Ctrl+Shift+N on Windows and Linux",
+		press({ shiftKey: true, key: "N", metaKey: false, ctrlKey: true }),
+	],
+];
+for (const [name, event] of TEMPORARY_FIRES)
+	test(`${name} starts a temporary chat, and not a plain one`, () => {
+		assert.equal(shouldStartTemporaryChat(event), true);
+		assert.equal(shouldStartNewChat(event), false);
+	});
+
+const TEMPORARY_REFUSED = [
+	["⌘N without Shift", press()],
+	["⌥⌘⇧N", press({ shiftKey: true, altKey: true })],
+	["a HELD ⌘⇧N", press({ shiftKey: true, repeat: true })],
+	["⌘⇧N mid-IME-composition", press({ shiftKey: true, isComposing: true })],
+	[
+		"⌘⇧N an inner layer already claimed",
+		press({ shiftKey: true, defaultPrevented: true }),
+	],
+	[
+		"⌘⇧N inside an open dialog",
+		press({ shiftKey: true, target: targetInside('[role="dialog"]') }),
+	],
+	[
+		"⌘⇧N inside the canvas pane",
+		press({
+			shiftKey: true,
+			target: targetInside(CANVAS_SHORTCUT_SCOPE_ATTR),
+		}),
+	],
+	["a bare Shift+N", press({ shiftKey: true, metaKey: false })],
+];
+for (const [name, event] of TEMPORARY_REFUSED)
+	test(`${name} does not start a temporary chat`, () => {
+		assert.equal(shouldStartTemporaryChat(event), false);
+	});
+
+test("the shell claims ⌘⇧N only under the temporary-chats capability", () => {
+	const listener = app.slice(
+		app.indexOf("const onKeyDown = (event: KeyboardEvent)"),
+		app.indexOf('document.addEventListener("keydown", onKeyDown)'),
+	);
+	assert.ok(
+		listener.includes("temporaryChats && shouldStartTemporaryChat(event)"),
+		`the temporary chord must be gated on the capability:\n${listener}`,
+	);
+	assert.ok(
+		listener.includes(
+			"setDraftTemporary(store.stageDraft(undefined, true), true)",
+		),
+		"the temporary chord stages the same fresh draft as New chat, switched on",
+	);
+	assert.ok(
+		listener.indexOf("shouldStartTemporaryChat") <
+			listener.indexOf("shouldStartNewChat"),
+		"the temporary chord is asked first, so the plain rule never sees a press it already answered",
+	);
+});
 
 test("the shell binds the chord on the document and asks the rule", () => {
 	assert.ok(

@@ -46,6 +46,7 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
  * the prompt is deliberately NOT auto-sent.
  */
 
+import { refusalRemedy } from "@features/chat/chat-temporary";
 import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
@@ -551,12 +552,43 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 						void link
 							.mutateAsync({ key: project.id, sessionId })
 							.catch((error: unknown) => {
+								/*
+								 * THE KEEP-AND-LINK REMEDY LIVES ON THE PICKER'S LINK (review
+								 * R1-1): the picker offers no temporary chat, but one marked on
+								 * another surface after the list read still answers 409
+								 * `session_temporary`, and the toast then offers the press that
+								 * can succeed. A start-session link never needs it: that
+								 * session is created here, and never temporary.
+								 */
+								const remedy = refusalRemedy(
+									error instanceof DesktopControlError ? error.code : undefined,
+									"link",
+								);
 								showErrorToast(
 									error instanceof Error && error.message
 										? error.message
 										: t(
 												"ui.projects.project_detail.the_session_was_not_linked",
 											),
+									remedy === "keep_and_link"
+										? {
+												action: {
+													label: t("ui.chat.dialogs.keep_and_link"),
+													onClick: () => {
+														void useCanonicalSessionsStore
+															.getState()
+															.setSessionTemporary(sessionId, false)
+															.then((kept) => {
+																if (kept.ok)
+																	void link.mutateAsync({
+																		key: project.id,
+																		sessionId,
+																	});
+															});
+													},
+												},
+											}
+										: undefined,
 								);
 							});
 					}}

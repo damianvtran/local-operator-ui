@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "convergence-rebind",
+  "locale": "ru",
+  "namespace": "ui.chat.run_details",
+  "pr": 1897,
+  "date": "2026-11-14",
+  "head": "dcfbcdbd0567f72233f5fb19c87b207ab7067aed",
+  "instance": "s17c-ru-rebind-9e1fdb8a",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); not the translator, not the draft auditor, not the integrator",
+    "model": "deepseek/deepseek-flash",
+    "independence": "I translated none of these keys, ran no part of the S17c draft audit and integrated nothing; in this session I re-verified the merged bytes, the parent prefix, the 36 values against English and the sidecar, the plural arms and the render sites myself, from scratch, reading the prior audit records only after forming my own judgment.",
+    "instance": "s17c-ru-rebind-9e1fdb8a"
+  },
+  "model": "deepseek/deepseek-flash",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.run_details.monitor.last_check",
+      "note": "19 -> 27 chars (\"последняя проверка 9:25 AM\") on the monitor row's `min-w-0 shrink-[3] truncate` span, third in the row's recorded yield order (health tail, then last check, then due), so at the pane's 320px floor the instant clips before it would in English; it keeps the whole text in `title`, so the cost is a truncated secondary label, not lost state. 'проверено {when}' (12 chars + the instant) is the fallback if the frame clips; no byte change required otherwise."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.run_details.mcp.control.grant",
+      "note": "The sidecar budgets this as 'Three words; compact button' and the ru label is five words, 20 -> 28 chars (\"Дать доступ к учётной записи\"); it meets the meaning exactly and the remedies row is `flex flex-wrap` inside a `maxWidth=\"sm\"` dialog, so it wraps rather than clips, and the shorter candidates ('Доступ к учётной записи', 'Разрешить доступ') each drop either the verb or the account; no change needed unless a rendered frame shows a bad wrap."
+    }
+  ],
+  "binding": "Verified on the bytes at head dcfbcdbd0567, every digest re-hashed first and matching the expected values (ru 9e1fdb8a…, en 1f1bf1d0…, sidecar 8a329d4c…, draft 1a319597…): (1) PARENT — all 109 parent pairs (git show ec00119944d:…) are present in the merged file, value-for-value equal and in the same order, and the byte check is exact rather than approximate: the merged file's first 10005 bytes are byte-identical to the parent's, the divergence point being the parent's closing '\"' of its last value, after which the parent's '\n}\n' becomes ',\n\t\"ui.chat.run_details.mcp_failure.lead.probe\": …' — i.e. the only change to the old text is the comma JSON requires plus the appended pairs. (2) DRAFT — the 36 new pairs equal /Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s17c/ru.v2.json's 36 pairs value-for-value and in the same order, and they sit at the tail of the merged file in that order. (3) KEY SET — the merged key set equals the English 145-key set both ways (no missing, no extra) and in the same order, and equals the sidecar's key set. All 145 ru and 145 en values parse with the repo's own @formatjs/icu-messageformat-parser (resolved read-only from /Users/damian/local-operator-ui/node_modules): argument-name sets are identical per key for all 145 (0 mismatches), tag sets identical, plural variable names identical, no literal '#' used on either side, and the exact '=1' arms appear in exactly the same five keys on both sides — monitors.more, wake.more, wake.armed_count, mcp.tool_count, monitor.armed_count — with no '=1' arm invented and none dropped. Every ru plural carries one/few/many/other — the four CLDR categories ru requires — and every category is a legal CLDR category (zero/one/two/few/many/other); the count is printed in each plural sentence (count_display/total_display/remaining_display/connected_display or the '#' form in the pre-existing keys) exactly where English prints it. (4) FORMAT — TAB indent throughout, one trailing newline, no BOM, no CRLF, no literal backslash-u escapes, all keys and values NFC, and json.dumps(ensure_ascii=False, indent='\\t') + '\\n' reproduces the merged file byte-for-byte, which also proves there are no duplicate keys. (5) CONTENT — I read all 36 new values myself against English and the sidecar and agree they are accurate, idiomatic and in the corpus's register; glossary holds one rendering per term, checked in the 9 252-string ru corpus: turn→Ход (ui.chat.checkpoint.turn = 'Ход {turn, number} из {total, number}', the exact noun the sidecar asks for), monitor→мониторинг, wake→пробуждение, job→задание, runtime→рантайм, account→учётная запись, API key→ключ API, credentials→учётные данные, encrypted store→зашифрованное хранилище, shared keys→общие ключи (same namespace: mcp_key.replace), cancelled status word→Отменено (run_details' own monitors.cancelled and wake.cancelled, the word job_cancel.body quotes), Cancel/Cancelling→Отменить/Отменяется, failed→сбой, and no competing cadence phrasing for 'every' (раз в {duration} is the only one in the corpus). The monitor.armed_count wording ('активен/активны/активно') is grammatically correct in all four arms and parallel to the pre-existing wake.armed_count, and it matches the locale's existing armed_monitor/armed_wake renderings rather than drifting from them. (6) WIDTH — measured every new string against its English source; the plural keys' apparent raw growth is the extra arms, and rendered width is level (e.g. connected_tally 32 -> 33, tool_count 16 -> 23, armed_count 25 -> 31); monitor.armed_count's longest arm (22 chars) is SHORTER than its pre-existing sibling wake.armed_count (28 chars) in the same composer chip row, so that chip already carries a longer ru string — I record no finding there, contrary to the draft audit's F5 flag, because the evidence is the ru sibling, not the English; wake.every is +2 chars ('раз в {duration}' vs 'every {duration}') and cadence_finished +2, below any threshold. (7) The draft audit's one MAJOR (F1: mcp_failure.with_reason is identical to English, so the '[ru] is not an English stub' guard needs an exemption row) is RESOLVED at head, not carried: 'ru:ui.chat.run_details.mcp_failure.with_reason' is present in IDENTICAL_OK (locale-parity.test.mjs:1879) and I verified the outcome by execution, not by reading — node --test scripts/i18n/locale-parity.test.mjs passes 44/44, 0 failures. with_reason is the ONLY value identical to English in this file. NOT VERIFIED: a rendered frame (the two width findings are measurements against source plus a read of the render sites, not pixels), and I ran no TUI/Electron surface. ru is LTR, so no RTL check applies.",
+  "scope": "ui.chat.run_details for ru: 145 keys at PR head dcfbcdbd0567; 109 byte-identical to parent ec00119944d, 36 new read against English and the sidecar",
+  "revisions": {
+    "parent": "ec00119944dabb6a44ed8130f8864280401b1714",
+    "head": "dcfbcdbd0567f72233f5fb19c87b207ab7067aed"
+  },
+  "en_sha256": "1f1bf1d066875db81d4b5728e6a3f88c47a432d75aa8e75b92cdbefc42f2eb66",
+  "context_sha256": "8a329d4c5c6122e35986b8de3d04b6f25dfb3979349cd1675fed1b4cbc2497a6",
+  "target_sha256": "9e1fdb8a504fe831f7cc0572d99de63e5781958f4d16ab3309f9399cc1082569",
+  "sha256": {
+    "ru": "9e1fdb8a504fe831f7cc0572d99de63e5781958f4d16ab3309f9399cc1082569",
+    "en": "1f1bf1d066875db81d4b5728e6a3f88c47a432d75aa8e75b92cdbefc42f2eb66"
+  },
+  "draft_sha256": "1a31959709285086931a6f1b2309e49233dc7532fee33217cd1ac16ea8af4c0a"
+}

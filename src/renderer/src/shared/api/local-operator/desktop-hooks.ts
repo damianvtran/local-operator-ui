@@ -276,6 +276,13 @@ export type DesktopFeature =
 	| "ask_dismiss"
 	| "session_files"
 	/**
+	 * Peer-held sessions' files on this device (core design
+	 * remote-files-parity §6): fetch-on-miss for transcript bytes, the peer
+	 * Files and user-attachments listings, and the per-row content/download
+	 * routes. Absent, a remote session's Files view keeps today's sentence.
+	 */
+	| "remote_files"
+	/**
 	 * The user-attachment inventory (`GET .../user-attachments` and its
 	 * materialise child). Its own key because `session_files` describes the
 	 * agent's OUTPUT and promises nothing about inputs. Absent, the canvas lists
@@ -988,6 +995,15 @@ export type DesktopFeature =
 	 */
 	| "projects_force_done"
 	/**
+	 * Temporary chats: a conversation the core deletes after its idle window
+	 * (`temporary` on the row, `include_temporary` on the list, `temporary` on
+	 * create, `POST /v1/desktop/sessions/{id}/temporary`). Absent means no toggle,
+	 * no pill, no `Temporary` group, no Ctrl+Shift+N and no palette entry, and this
+	 * client never sends either field: the core's input models are closed, so an
+	 * ungated send would be a 422 (the `projects_force_done` precedent above).
+	 */
+	| "temporary_chats"
+	/**
 	 * Moving a conversation between devices: `POST /v1/desktop/sessions/{id}/transfer`.
 	 *
 	 * ITS OWN KEY rather than a version of `peers`, and the split is the backend's
@@ -1037,6 +1053,43 @@ export type DesktopFeature =
 	 * filed - and offers no signature.
 	 */
 	| "profile_approvals"
+	/**
+	 * PHONE PAIRING BY APPROVAL (`features.phone_pairing`, core pairing design v2
+	 * §1-§2): the `pairing` block on a `pair_phone` approvals row,
+	 * `POST /v1/desktop/approvals/{id}/pair-ack`, `approve-operation` with
+	 * `operation: "pair_phone"`, `GET`/`DELETE /v1/desktop/devices`, and the feed's
+	 * `approvals.pair_request` / `open.approvals_pair_request`.
+	 *
+	 * ITS OWN KEY, as the backend reasons: a renderer that posted a pair-ack body
+	 * to a backend without the route would get a 404, and a Paired-phones list on
+	 * such a backend would read a route that does not exist. Absent ⇒ no pairing
+	 * popup is mounted and Settings → Phone access renders exactly as before.
+	 */
+	| "phone_pairing"
+	/**
+	 * TURN ON PHONE APPROVALS (`features.operator_setup`, core design v2 §6):
+	 * `GET`/`POST /v1/desktop/operator/setup`. Absent ⇒ no setup row in Settings
+	 * → Phone access; the pairing popup still renders, it just cannot offer the
+	 * one-click setup when the computer is not ready to admit a phone.
+	 */
+	| "operator_setup"
+	/**
+	 * SHOW PHONE PASSWORD (`features.mobile_password_read`, local-operator #3963):
+	 * `GET /v1/desktop/mobile/password`, desktop-only. Absent ⇒ Settings → Phone
+	 * access renders no "Using your own tunnel?" disclosure and the op is never
+	 * sent (an older backend has no such route).
+	 */
+	| "mobile_password_read"
+	/**
+	 * PROFILE PROPOSALS (`features.profile_proposals`): the Agents-side review of
+	 * a change an agent proposed to an account agent or team -
+	 * `GET/POST /v1/desktop/profile-proposals[...]`. ITS OWN KEY because a backend
+	 * without it has no such routes, and because it is also the signal that core
+	 * stopped filing these as mesh approvals: with it present the Mesh tray drops
+	 * any profile row it still sees (`mesh-approvals.ts`). Absent ⇒ no Agents badge,
+	 * no proposal panel, no "Review in Agents" link - today's UI unchanged.
+	 */
+	| "profile_proposals"
 	/*
 	 * AIDA'S CONTROL PLANE (`features.aida`): the read and the control op the
 	 * sidebar's row and the composer's `/aida` share. ITS OWN KEY rather than a
@@ -1115,7 +1168,24 @@ export type DesktopFeature =
 	 * route, so the block must be able to ask for this one alone. Absent means the
 	 * Phone access block is not rendered and no setup op is sent.
 	 */
-	| "tunnel_setup";
+	| "tunnel_setup"
+	/**
+	 * The WIDER phone-setup remedy vocabulary (`tunnel_remedy_kinds`, local-operator
+	 * #3945): `add_credit`/`open_console` carry `remedy.url`, the `wait_*` kinds
+	 * and the `reconnecting` plan exist, and the backend reconnects on its own
+	 * after a sign-in. Its own key because everything it unlocks is presentation
+	 * on top of `tunnel_setup`: without it the block renders exactly the pre-#3945
+	 * controls, never refetches on focus and never shows the first-sign-in offer
+	 * (an older backend has no `reconnecting` state, so a focus refetch there is a
+	 * fresh upstream quote read nobody asked for).
+	 */
+	| "tunnel_remedy_kinds"
+	/**
+	 * The phone-access diagnosis (`mobile_doctor`, local-operator #3953): the
+	 * `mobile.doctor` read behind "Copy diagnostics". Absent ⇒ the button is not
+	 * rendered and the route (404 on an older backend) is never called.
+	 */
+	| "mobile_doctor";
 
 /**
  * WHY a negotiated feature surface may not be offered.

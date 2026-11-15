@@ -1,0 +1,30 @@
+{
+  "locale": "fr",
+  "namespace": "ui.music",
+  "source_sha256": "3bb58635be3fd3b69d25fba7a87eba51add3c5042c89d887c8d1aa9d0c9cbc19",
+  "target_sha256": "a9922a77729e4fbe69d1a6a98cb1816f738b1189c70bbd71472c09989e0f5913",
+  "context_sha256": "9c8ac243da9ea8f8566455f4ec16d5c870970dcc3de4035c84506342f3b69d77",
+  "auditor": {
+    "agent": "reviewer",
+    "instance": "c6abfadb3c9f",
+    "model": "openai/gpt-6.1-sol",
+    "date": "2026-11-09",
+    "timestamp_utc": "2026-11-09T09:05:14.213550+00:00"
+  },
+  "status": "passed",
+  "findings": [],
+  "scope": "Mechanical retention of my prior full six-key linguistic audit: identical decoded strings/placeholders/context; formatting-only raw SHA reissue, not a new translation/native/flow audit",
+  "source_report": "i18n/receipts/music-copy-audit-primary.json",
+  "secondary_warning_only": "i18n/receipts/music-financial-warning-secondary-audit.json",
+  "mechanical_retention": {
+    "attestation": "i18n/receipts/music-copy-mechanical-retention-c6abfadb3c9f-20261109T090514Z.json",
+    "attestation_sha256": "80d2d93e048f3fa04773c841eb5548caeb04be16fd3c9fedc63b1b6ec7854e1e",
+    "original_receipt": "i18n/receipts/music-c6abfadb3c9f-fr.json",
+    "original_receipt_sha256": "847e9b84144cde5cd0c55e8f2d38a4fe59c38930e6ac80fb43a20b426872e56d",
+    "old_source_sha256": "e4bfc1ac870036a1efd34cbd0b79e9c23cf92f360eb6325fdaa8451a1c25f1af",
+    "old_target_sha256": "8b33521b964c26260e52bf793bc9c86ac9710001797864110f935a20033d16bf",
+    "old_context_sha256": "6bd4f8752a91f6df0bdbcdaf01bb0b83035f580852a6cc55e4a4a53f811f9a0e",
+    "exact_json_value_equality": true
+  },
+  "secondary_warning_retention": "Original warning-only secondary audit retained by exact JSON-value equality; no second new audit is claimed"
+}

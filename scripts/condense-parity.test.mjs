@@ -41,10 +41,14 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import {
 	SHAPES_BY_SOURCE,
+	bundleForTest,
 	bundledSources,
 	generate,
 	harvestShapes,
+	hashSourceList,
 	modelSourceHash,
+	readButNotPinned,
+	resolveMergeGuard,
 } from "./generate-condense-parity.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -495,4 +499,109 @@ test("the pin and the emitted bytes are identical from any working directory", (
 		/Users\/|\/home\/|\.\.\//,
 		"the emitted fixture carries an absolute or relative-up path",
 	);
+});
+
+/*
+ * THE NARROWED PIN'S INVARIANT (2026-11-13): "a source edit that can change the
+ * generated bundle moves `sourceHash`". The pin lists only inputs that put code in
+ * the bundle (esbuild `bytesInOutput > 0`); files merely read are excluded so
+ * their unrelated churn stops conflicting the generated fixtures on every merge.
+ * Strictness rests on the tests below - do not delete one to quiet a merge.
+ */
+const CONTRIBUTING_EDIT = (text) =>
+	`${text}\n/* perturbed */ export const __perturbed = 1;\n`;
+const diskReader = (overrides) => (file) =>
+	file in overrides
+		? Buffer.from(overrides[file])
+		: readFileSync(join(HERE, "..", file));
+
+test("pin invariant (a): a byte change in a contributing file moves sourceHash", async () => {
+	const pinned = await bundledSources();
+	const target = "src/renderer/src/features/chat/canonical/turn-segments.ts";
+	assert.ok(pinned.includes(target));
+	const base = hashSourceList(pinned, diskReader({}));
+	const edited = hashSourceList(
+		pinned,
+		diskReader({
+			[target]: CONTRIBUTING_EDIT(
+				readFileSync(join(HERE, "..", target), "utf8"),
+			),
+		}),
+	);
+	assert.notEqual(base, edited);
+	assert.equal(base, FIXTURE.desktop.sourceHash);
+});
+
+test("pin invariant (b): an excluded zero-byte input cannot move sourceHash or the bundle", async () => {
+	const pinned = await bundledSources();
+	const excluded = await readButNotPinned();
+	assert.ok(excluded.length > 0, "the bundle reads files that emit no code");
+	const base = await bundleForTest({});
+	const baseHash = hashSourceList(pinned, diskReader({}));
+	for (const file of excluded) {
+		const text = readFileSync(join(HERE, "..", file), "utf8");
+		/*
+		 * TypeScript `enum` / `const enum` is the one construct whose members esbuild
+		 * inlines into importers, so a file could change the bundle while emitting
+		 * zero bytes itself. None may sit in the excluded set; if one appears, the
+		 * pin must cover it (extend the generator, do not weaken this test).
+		 */
+		assert.ok(
+			!/^\s*(export\s+)?(declare\s+)?(const\s+)?enum\s/m.test(text),
+			`${file} declares an enum, so its zero-byte status cannot prove it inert`,
+		);
+		/* An inert edit changes neither the pin (it is not listed) nor the bundle. */
+		const perturbed = { [file]: CONTRIBUTING_EDIT(text) };
+		assert.equal(hashSourceList(pinned, diskReader(perturbed)), baseHash, file);
+		const rebuilt = await bundleForTest({ overrides: perturbed });
+		assert.equal(rebuilt.code, base.code, `${file} changed the bundle`);
+		assert.deepEqual(rebuilt.inputs, pinned, file);
+	}
+});
+
+test("pin invariant (c): the list is the metafile's contributing inputs", async () => {
+	const { inputs, read } = await bundleForTest({});
+	assert.deepEqual(FIXTURE.desktop.modelSources, inputs);
+	assert.ok(inputs.every((file) => read.includes(file)));
+	assert.equal(read.length - inputs.length, (await readButNotPinned()).length);
+});
+
+test("pin invariant (d): a file that starts contributing enters the list", async () => {
+	const excluded = await readButNotPinned();
+	const promoted = [];
+	for (const file of excluded) {
+		const out = await bundleForTest({
+			extraEntry: `import * as ns from "./${file}"; export const __ns = ns;`,
+		});
+		if (out.inputs.includes(file)) promoted.push(file);
+	}
+	assert.ok(
+		promoted.length > 0,
+		"at least one excluded file with runtime exports must enter the list when used",
+	);
+});
+
+test("--resolve-merge guard accepts only the two fixture files", () => {
+	const a = "scripts/fixtures/condense.parity.json";
+	const b = "scripts/fixtures/condense.parity.manifest.json";
+	assert.equal(resolveMergeGuard([a, b]).ok, true);
+	assert.equal(resolveMergeGuard([`${a}\n`]).ok, true);
+	const none = resolveMergeGuard([]);
+	assert.equal(none.ok, false);
+	const mixed = resolveMergeGuard([a, "src/x.ts"]);
+	assert.equal(mixed.ok, false);
+	assert.match(mixed.message, /src\/x\.ts/);
+	assert.doesNotMatch(mixed.message, /parity\.json/);
+});
+
+test("--resolve-merge refuses outside a conflicted merge and touches nothing", () => {
+	const before = readFileSync(FIXTURE_PATH, "utf8");
+	const run = spawnSync(
+		process.execPath,
+		[join(HERE, "generate-condense-parity.mjs"), "--resolve-merge"],
+		{ encoding: "utf8" },
+	);
+	assert.notEqual(run.status, 0);
+	assert.match(run.stderr, /resolve-merge/);
+	assert.equal(readFileSync(FIXTURE_PATH, "utf8"), before);
 });

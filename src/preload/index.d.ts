@@ -426,7 +426,11 @@ declare global {
 				openPane: (surface: string) => Promise<unknown>;
 				closePane: () => Promise<unknown>;
 				selectSurface: (surface: string) => Promise<unknown>;
-				input: (surface: string, text: string) => Promise<unknown>;
+				input: (
+					surface: string,
+					text: string,
+					options?: { paste?: boolean },
+				) => Promise<unknown>;
 				keys: (surface: string, keys: string[]) => Promise<unknown>;
 				setContentRect: (
 					surface: string,

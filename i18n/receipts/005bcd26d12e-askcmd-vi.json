@@ -1,0 +1,26 @@
+{
+	"auditor": "reviewer",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "005bcd26d12e-askcmd-vi",
+	"date": "2026-11-13",
+	"locale": "vi",
+	"independence": "Independent i18n auditor (lopdev reviewer session 005bcd26d12e); not the translator (lopdev coder, anthropic/claude-opus-5-5 per PR #1902 body). Same model family as the translator: disclosed. Read only the PR's committed bytes, never the coder's scratch. Replacements in `resolved` were authored by this auditor (brief: produce corrected translations as a patch).",
+	"references": {
+		"glossary": "damianvtran/local-operator@39b692a4bb7e i18n/glossary.md",
+		"style_guide": "damianvtran/local-operator@39b692a4bb7e i18n/style-guides/vi.md",
+		"shipped_terms": "src/i18n/catalogues/{en,vi}/*.json at 610d5c97f (Copy/Insert/Run/Cancel labels, 'your home folder', 'this computer', 'this conversation', device, terminal/console)"
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"pr": 1902,
+	"head": "610d5c97f",
+	"scope": "All 17 keys of the new namespace ui.chat.ask_command read in full against the en value and en .context.json, glossary and locale style guide; mechanically checked key parity with en, ICU placeholders ({device} byte-identical), NFC, no Cc/Cf (bidi/control) characters, no ASCII '...', button labels (copy/insert/run/dialog_confirm) against shipped labels. Audited bytes = 610d5c97f plus this audit's patch.",
+	"namespace": "ui.chat.ask_command",
+	"status": "passed",
+	"sha256": {
+		"en": "8b097a9351a416ecf11110a63106e45cc8eed507f1d1b2886363251852b93b95",
+		"vi": "31c3cd495e664d1f8c5ad4d57efe0a573ffdfe3e3f4cfdcea8d209c89b80599e"
+	},
+	"context_sha256": "c243f7e75d5ae204f2be763475bdaf29c6646397f7007e271103997258ff47b5",
+	"findings": [],
+	"resolved": []
+}

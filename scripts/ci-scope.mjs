@@ -343,7 +343,8 @@ const I18N_PREFIXES = ["src/i18n/", "i18n/", "scripts/i18n/"];
 
 /**
  * Every repository file the condense parity pin covers, copied from its own
- * `desktop.modelSources`.
+ * `desktop.modelSources` (2026-11-13: only inputs that emit code into the bundle,
+ * so a file the build merely reads no longer selects the job).
  *
  * THE LIST IS THE FIXTURE'S CLAIM, NOT A SECOND OPINION ABOUT IT. A regenerated
  * pin that names a file this set does not is a FAILING TEST (`ci-scope.test.mjs`
@@ -362,37 +363,26 @@ export const PARITY_MODEL_SOURCES = new Set([
 	"src/i18n/bidi.ts",
 	"src/i18n/catalogue-locale.ts",
 	"src/i18n/direction.ts",
-	"src/i18n/format.ts",
-	"src/i18n/index.ts",
 	"src/i18n/locale.ts",
 	"src/i18n/messages.ts",
 	"src/renderer/src/features/chat/canonical/harness-chrome.ts",
 	"src/renderer/src/features/chat/canonical/image-gen-card-model.ts",
 	"src/renderer/src/features/chat/canonical/journal-order.ts",
-	"src/renderer/src/features/chat/canonical/notice-copy.ts",
+	// The fold model's music-job predicates; dependency-free by design (R16-1).
+	"src/renderer/src/features/chat/canonical/music-gen-tool.ts",
 	"src/renderer/src/features/chat/canonical/profile-history-replacement.ts",
 	"src/renderer/src/features/chat/canonical/record-immutability.ts",
-	"src/renderer/src/features/chat/canonical/skill-row.ts",
-	"src/renderer/src/features/chat/canonical/sound-batch-model.ts",
-	"src/renderer/src/features/chat/canonical/sound-cost-caption.ts",
-	"src/renderer/src/features/chat/canonical/supplement-model.ts",
 	"src/renderer/src/features/chat/canonical/trace-fold-model.ts",
 	"src/renderer/src/features/chat/canonical/transcript-reducer.ts",
 	"src/renderer/src/features/chat/canonical/transcript-rows.ts",
 	"src/renderer/src/features/chat/canonical/turn-collapse-model.ts",
 	"src/renderer/src/features/chat/canonical/turn-segments.ts",
 	"src/renderer/src/features/chat/components/skill-invocation.ts",
-	"src/renderer/src/features/chat/components/skill-rank.ts",
-	"src/renderer/src/features/chat/components/slash-rank.ts",
 	"src/renderer/src/features/chat/components/slash-token.ts",
-	"src/renderer/src/features/chat/components/trace/bridge-receipt-model.ts",
 	"src/renderer/src/features/chat/components/trace/bridge-row-model.ts",
 	"src/renderer/src/features/chat/components/trace/receipt-row-model.ts",
-	"src/renderer/src/features/chat/components/trace/tool-result-details.ts",
 	"src/renderer/src/features/chat/components/trace/tool-row-model.ts",
 	"src/renderer/src/features/chat/transcript-display-mode.ts",
-	"src/renderer/src/features/chat/utils/reply-utils.ts",
-	"src/shared/desktop-session-contract.ts",
 	"src/shared/profile-consent.ts",
 ]);
 
@@ -537,6 +527,10 @@ export const JOB_FLAGS = {
 	guards: ["unit"],
 	"qa-bundle": ["unit"],
 	"bytecode-build": ["bytecode"],
+	// The Mac arm64 native-bytecode artifact leg, split from `bytecode-build`
+	// so the required `Bytecode Build Check` keeps a literal name (ci.yml); it
+	// runs on exactly the same flag.
+	"bytecode-build-macos": ["bytecode"],
 	evidence: ["evidence"],
 	audit: ["audit"],
 	"npx-sanity-check": ["pack"],
@@ -668,6 +662,11 @@ export const JOB_COMMANDS = {
  * quietly narrower than it looks.
  */
 export const LOCAL_EXCLUSIONS = {
+	"bytecode-build-macos":
+		"its local spelling is `bytecode-build`'s `pnpm build`, which already runs; " +
+		"what this job adds is an artifact for another machine - built on a macOS " +
+		"arm64 runner, hash-manifested and uploaded for native QA - not a check a " +
+		"developer's second `pnpm build` would tell them anything new about.",
 	"qa-bundle":
 		"it builds and uploads the plain-JS bundle isolated native QA downloads from " +
 		"the run. That is an artifact for another machine, not a check: a local " +

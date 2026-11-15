@@ -1,0 +1,252 @@
+{
+	"audit_id": "pr1880-r1-zh-cn",
+	"mode": "round-1 independent audit of the 18 keys PR #1880 adds (16 ui.canvas.files.remote*, 2 ui.chat.attachments)",
+	"locale": "zh-CN",
+	"pr": 1880,
+	"repo": "damianvtran/local-operator-ui",
+	"head_sha": "a4462e72159d8fa9a45931c36b380221880ffb30",
+	"scope": "83a18c632..a4462e721",
+	"audit_date": "2026-11-12",
+	"translator": {
+		"agent": "coder",
+		"note": "PR #1880 coder translated the new keys (per manager brief ce618964c88e); its served model is not recorded here"
+	},
+	"auditor": {
+		"agent": "reviewer",
+		"session": "1c4ab04dbe3e",
+		"instance": "1c4ab04dbe3e-1880r1-zh-cn",
+		"model": "anthropic/claude-opus-5-5",
+		"actual_model_source": "session runtime header names 'Model: anthropic/claude-opus-5-5'; no fallback observed",
+		"independent_from_translator": true
+	},
+	"method": "Static reading of en value + en .context.json note per key, target value, call sites (remote-files.ts, remote-file-mark.tsx, finder-files-view.tsx, audio-document-player.tsx, attachment-frame.tsx, remote-file-transfer.tsx); term frequency against the existing locale catalogue; every value parsed and rendered with intl-messageformat (device='MacBook-Pro', remotePeerUpdate with the locale fallback; owner_unreachable prefixed with 'chart.png'): 0 parse errors, placeholders preserved byte-exactly, no bidi control characters in ur. No MT/translation service used.",
+	"references": {
+		"core_repo_rev": "ad910f5daea0bb40cf95170a5eeed496f4aebd69",
+		"glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+		"style_guide": {
+			"path": "i18n/style-guides/zh-CN.md",
+			"sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+		},
+		"ui_doc": "docs/I18N.md"
+	},
+	"rtl": "n/a (LTR)",
+	"namespaces": {
+		"ui.canvas": {
+			"status": "passed",
+			"en_sha256": "5ee4ef4891c4888131172fb02ed6d6c3ee9e54eb09fca52c5e91d693dd62d6c1",
+			"zh-CN_sha256": "630218a02c232d1c760303091fe94667d425f9b2b40c2f3c0f190e6d5cad236b",
+			"context_sha256": "e194326406b33442660eb0cbbebd70b4c7040b5773c5938a56b8aa84d35a05a3",
+			"keys_audited": [
+				{
+					"key": "ui.canvas.files.remoteUnreachable",
+					"en": "Couldn't reach the device that holds this file. Try again in a moment.",
+					"target": "无法连接到存有此文件的设备。请稍后重试。"
+				},
+				{
+					"key": "ui.canvas.files.remoteUnreachableRetry",
+					"en": "Couldn't reach the device that holds this sound. Click to retry.",
+					"target": "无法连接到存有此音频的设备。点击重试。"
+				},
+				{
+					"key": "ui.canvas.files.remoteOn",
+					"en": "On {device}",
+					"target": "位于 {device}"
+				},
+				{
+					"key": "ui.canvas.files.remoteReason.missing",
+					"en": "No longer on {device}",
+					"target": "{device} 上已没有此文件"
+				},
+				{
+					"key": "ui.canvas.files.remoteReason.tooLarge",
+					"en": "Too large to fetch from {device}",
+					"target": "文件过大，无法从 {device} 获取"
+				},
+				{
+					"key": "ui.canvas.files.remoteReason.sensitive",
+					"en": "{device} keeps this file private",
+					"target": "{device} 将此文件设为私密"
+				},
+				{
+					"key": "ui.canvas.files.remoteReason.notReferenced",
+					"en": "{device} no longer shares this file",
+					"target": "{device} 已不再共享此文件"
+				},
+				{
+					"key": "ui.canvas.files.remoteReason.workspace",
+					"en": "Lives in {device}'s workspace. Ask the session to copy it to its scratchpad.",
+					"target": "位于 {device} 的工作区中。请让会话将其复制到自己的草稿区。"
+				},
+				{
+					"key": "ui.canvas.files.remoteCopyOwnerPath",
+					"en": "Copy path on {device}",
+					"target": "复制在 {device} 上的路径"
+				},
+				{
+					"key": "ui.canvas.files.remoteDownload",
+					"en": "Download to this device",
+					"target": "下载到此设备"
+				},
+				{
+					"key": "ui.canvas.files.remoteDownloaded",
+					"en": "Downloaded {name}",
+					"target": "已下载 {name}"
+				},
+				{
+					"key": "ui.canvas.files.remoteDownloadPending",
+					"en": "Still fetching from {device}. Try again in a moment.",
+					"target": "仍在从 {device} 获取。请稍后重试。"
+				},
+				{
+					"key": "ui.canvas.files.remoteDownloadFailed",
+					"en": "Couldn't download from {device}.",
+					"target": "无法从 {device} 下载。"
+				},
+				{
+					"key": "ui.canvas.files.remoteReadFailed",
+					"en": "This file couldn't be read from the device that holds it.",
+					"target": "无法从存有此文件的设备读取它。"
+				},
+				{
+					"key": "ui.canvas.files.remotePeerUpdate",
+					"en": "Update {device} to see its files here.",
+					"target": "请更新 {device}，以便在此查看其文件。"
+				},
+				{
+					"key": "ui.canvas.files.remoteDeviceFallback",
+					"en": "the other device",
+					"target": "另一台设备"
+				}
+			],
+			"key_completeness": {
+				"en_keys": 376,
+				"target_keys": 376,
+				"missing": [],
+				"extra": []
+			},
+			"findings": [
+				{
+					"id": "I1-4",
+					"severity": "MINOR",
+					"key": "ui.canvas.files.remoteReason.workspace",
+					"current": "位于 {device} 的工作区中。请让会话将其复制到自己的草稿区。",
+					"corrected": "位于{device}的工作区中。请让会话将其复制到自己的暂存区。",
+					"problem": "Scratchpad term differs from the same namespace's ui.canvas.files.pathCopyNote ('暂存区'); also I1-6 spacing."
+				},
+				{
+					"id": "I1-6",
+					"severity": "MINOR",
+					"key": "ui.canvas.files.remoteOn",
+					"current": "位于 {device}",
+					"corrected": "位于{device}",
+					"problem": "zh-CN guide line 67: no space between Chinese text and Latin runs; with the Chinese fallback remotePeerUpdate renders '请更新 另一台设备，…' (stray space, reproduced via IntlMessageFormat)."
+				},
+				{
+					"id": "I1-6",
+					"severity": "MINOR",
+					"key": "ui.canvas.files.remoteReason.missing",
+					"current": "{device} 上已没有此文件",
+					"corrected": "{device}上已没有此文件",
+					"problem": "zh-CN guide line 67: no space between Chinese text and Latin runs; with the Chinese fallback remotePeerUpdate renders '请更新 另一台设备，…' (stray space, reproduced via IntlMessageFormat)."
+				},
+				{
+					"id": "I1-6",
+					"severity": "MINOR",
+					"key": "ui.canvas.files.remoteReason.tooLarge",
+					"current": "文件过大，无法从 {device} 获取",
+					"corrected": "文件过大，无法从{device}获取",
+					"problem": "zh-CN guide line 67: no space between Chinese text and Latin runs; with the Chinese fallback remotePeerUpdate renders '请更新 另一台设备，…' (stray space, reproduced via IntlMessageFormat)."
+				},
+				{
+					"id": "I1-6",
+					"severity": "MINOR",
+					"key": "ui.canvas.files.remoteReason.sensitive",
+					"current": "{device} 将此文件设为私密",
+					"corrected": "{device}将此文件设为私密",
+					"problem": "zh-CN guide line 67: no space between Chinese text and Latin runs; with the Chinese fallback remotePeerUpdate renders '请更新 另一台设备，…' (stray space, reproduced via IntlMessageFormat)."
+				},
+				{
+					"id": "I1-6",
+					"severity": "MINOR",
+					"key": "ui.canvas.files.remoteReason.notReferenced",
+					"current": "{device} 已不再共享此文件",
+					"corrected": "{device}已不再共享此文件",
+					"problem": "zh-CN guide line 67: no space between Chinese text and Latin runs; with the Chinese fallback remotePeerUpdate renders '请更新 另一台设备，…' (stray space, reproduced via IntlMessageFormat)."
+				},
+				{
+					"id": "I1-6",
+					"severity": "MINOR",
+					"key": "ui.canvas.files.remoteCopyOwnerPath",
+					"current": "复制在 {device} 上的路径",
+					"corrected": "复制{device}上的路径",
+					"problem": "zh-CN guide line 67: no space between Chinese text and Latin runs; with the Chinese fallback remotePeerUpdate renders '请更新 另一台设备，…' (stray space, reproduced via IntlMessageFormat)."
+				},
+				{
+					"id": "I1-6",
+					"severity": "MINOR",
+					"key": "ui.canvas.files.remoteDownloaded",
+					"current": "已下载 {name}",
+					"corrected": "已下载{name}",
+					"problem": "zh-CN guide line 67: no space between Chinese text and Latin runs; with the Chinese fallback remotePeerUpdate renders '请更新 另一台设备，…' (stray space, reproduced via IntlMessageFormat)."
+				},
+				{
+					"id": "I1-6",
+					"severity": "MINOR",
+					"key": "ui.canvas.files.remoteDownloadPending",
+					"current": "仍在从 {device} 获取。请稍后重试。",
+					"corrected": "仍在从{device}获取。请稍后重试。",
+					"problem": "zh-CN guide line 67: no space between Chinese text and Latin runs; with the Chinese fallback remotePeerUpdate renders '请更新 另一台设备，…' (stray space, reproduced via IntlMessageFormat)."
+				},
+				{
+					"id": "I1-6",
+					"severity": "MINOR",
+					"key": "ui.canvas.files.remoteDownloadFailed",
+					"current": "无法从 {device} 下载。",
+					"corrected": "无法从{device}下载。",
+					"problem": "zh-CN guide line 67: no space between Chinese text and Latin runs; with the Chinese fallback remotePeerUpdate renders '请更新 另一台设备，…' (stray space, reproduced via IntlMessageFormat)."
+				},
+				{
+					"id": "I1-6",
+					"severity": "MINOR",
+					"key": "ui.canvas.files.remotePeerUpdate",
+					"current": "请更新 {device}，以便在此查看其文件。",
+					"corrected": "请更新{device}，以便在此查看其文件。",
+					"problem": "zh-CN guide line 67: no space between Chinese text and Latin runs; with the Chinese fallback remotePeerUpdate renders '请更新 另一台设备，…' (stray space, reproduced via IntlMessageFormat)."
+				},
+				{
+					"id": "I1-10",
+					"severity": "NIT",
+					"key": "ui.canvas.files.remoteReason.sensitive",
+					"current": "{device} 将此文件设为私密",
+					"corrected": "{device}不公开此文件",
+					"problem": "'设为私密' implies someone set a privacy flag; the source means the device withholds secret-looking files (context note). Supersedes the I1-6 spacing-only fix for this key if taken."
+				}
+			]
+		},
+		"ui.chat.attachments": {
+			"status": "passed",
+			"en_sha256": "0e6e4457711073f2b604e9b5374b91a2ed782064a00e486f3fb446ea3f2284be",
+			"zh-CN_sha256": "56fbe6922b33a5f601ca1c65243e4376e171f330f579209c4a2b5622421c6b15",
+			"context_sha256": "9a10aa5f9bf67285e574b4e0b28b472b48fefff951d9d3b1b84e5a9889e4f2e6",
+			"keys_audited": [
+				{
+					"key": "ui.chat.attachments.owner_unreachable",
+					"en": "couldn't be fetched from the device that holds it.",
+					"target": "无法从存有它的设备获取。"
+				},
+				{
+					"key": "ui.chat.attachments.retry_fetch",
+					"en": "Retry",
+					"target": "重试"
+				}
+			],
+			"key_completeness": {
+				"en_keys": 25,
+				"target_keys": 25,
+				"missing": [],
+				"extra": []
+			},
+			"findings": []
+		}
+	}
+}

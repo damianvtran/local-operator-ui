@@ -49,6 +49,7 @@ import type { JobCancelPopoverProps } from "./use-job-cancel";
 export const JobCancelPopover = ({
 	open,
 	label,
+	jobType,
 	anchor,
 	refusal,
 	refusalSeq,
@@ -129,7 +130,7 @@ export const JobCancelPopover = ({
 		width: window.innerWidth,
 		height: window.innerHeight,
 	});
-	const title = "Cancel this job?";
+	const title = t("ui.chat.run_details.job_cancel.title");
 	return createPortal(
 		/*
 		 * A native `<dialog>` with `open` set: it carries the role the card
@@ -157,7 +158,11 @@ export const JobCancelPopover = ({
 		>
 			<p className={cn("text-ink")}>{title}</p>
 			<p className={cn("pt-1.5 text-ink-muted")}>
-				{`The runtime asks the provider to stop “${label}”. The row says “Cancelled” only when the job settles.`}
+				{jobType === "music"
+					? t("ui.music.cancel_warning", {
+							label: label ?? t("ui.music.label"),
+						})
+					: t("ui.chat.run_details.job_cancel.body", { label })}
 			</p>
 			{refusal !== null && (
 				/*
@@ -199,7 +204,9 @@ export const JobCancelPopover = ({
 					disabled={busy}
 					onClick={onConfirm}
 				>
-					{busy ? "Cancelling…" : "Cancel"}
+					{busy
+						? t("ui.chat.run_details.job_cancel.cancelling")
+						: t("ui.chat.run_details.job_cancel.confirm")}
 				</Button>
 			</div>
 		</dialog>,

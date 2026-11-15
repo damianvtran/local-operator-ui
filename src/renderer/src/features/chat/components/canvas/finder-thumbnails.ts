@@ -1,6 +1,7 @@
 import { t } from "@shared/i18n";
 import { createBlobUrl, revokeBlobUrl } from "@shared/lib/blob-url-cache";
 import { useEffect, useState } from "react";
+import { fetchRemoteFileBlob } from "../../canonical/remote-file-transfer";
 import { fetchAttachmentBlob } from "../../canonical/use-attachment-url";
 import type { CanvasDocument } from "../../types/canvas";
 import { mimeTypeForPath } from "../../utils/file-kind";
@@ -15,7 +16,9 @@ import { blobFromDataUrl } from "../../utils/image-actions";
  * warm across virtualization unmounts, evict only unobserved entries. Original
  * bytes are never retained here; a lightbox/action resolves them on demand.
  * Files enter only from the authoritative local index or the old-backend fallback.
- * A remote unsupported index never produces rows, so it cannot call readFileBytes.
+ * A PEER-held row never reaches readFileBytes: `finderOriginal` sends it to the
+ * content route (or its digest) before any path read, and an unreadable one is
+ * never asked for at all (`FinderEntry`'s thumbnail gate).
  */
 const LIMIT = 150;
 const READ_CAP = 16 * 1024 * 1024;
@@ -51,6 +54,9 @@ const keyOf = (document: CanvasDocument) =>
 		: `finder:${document.path}:${document.lastAgentModified ?? 0}:${document.sizeBytes ?? 0}`;
 
 export async function finderOriginal(document: CanvasDocument): Promise<Blob> {
+	// A PEER-held row's `path` is the owner's display path: never read it from
+	// this disk (I3-1). Its bytes come over the content route or its digest.
+	if (document.remote) return fetchRemoteFileBlob(document);
 	if (document.artifact)
 		return fetchAttachmentBlob(
 			{

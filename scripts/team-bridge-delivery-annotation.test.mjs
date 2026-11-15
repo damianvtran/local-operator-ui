@@ -993,6 +993,82 @@ test("mixed partial delivery names only each affected recipient", () => {
 	);
 });
 
+// agent-server #377: a sender is served a recipient's refusal as the neutral
+// `not_delivered`, with no class. It must still name WHICH recipient missed the
+// message (review R1-1 on #377), exactly like a classless `refused`.
+const NOT_DELIVERED_COUNTS = {
+	delivered: 0,
+	screening: 0,
+	held: 0,
+	notReviewed: 0,
+	notDelivered: 1,
+};
+test("a single not_delivered entry names its recipient like a classless refusal", () => {
+	const states = [entry({ state: "not_delivered" })];
+	assert.deepEqual(lineTexts(render(states)), [
+		"Not delivered to Aida (Sam). Refused by moderation.",
+	]);
+	// Even a class a future or faulty hub attaches stays unread: the sender's
+	// contract carries none.
+	assert.deepEqual(
+		lineTexts(
+			render([entry({ state: "not_delivered", refusal_class: "abusive" })]),
+		),
+		["Not delivered to Aida (Sam). Refused by moderation."],
+	);
+	const summary = teamBridgeDeliverySummary({
+		...HUMAN_SOURCE,
+		delivery_states: states,
+	});
+	assert.deepEqual(summary.counts, NOT_DELIVERED_COUNTS);
+	assert.equal(summary.lines.length, 1);
+});
+
+test("a group with one not_delivered names only that recipient and counts it", () => {
+	const states = [
+		entry({ endpoint_id: "a", state: "delivered" }),
+		entry({ endpoint_id: "b", recipient_label: "Bo", state: "not_delivered" }),
+		entry({ endpoint_id: "c", recipient_label: "Cy", state: "delivered" }),
+	];
+	assert.deepEqual(lineTexts(render(states)), [
+		"Not delivered to Bo (Sam). Refused by moderation.",
+	]);
+	const summary = teamBridgeDeliverySummary({
+		...HUMAN_SOURCE,
+		delivery_states: states,
+		delivery_summary: { total: 3, delivered: 2, not_delivered: 1 },
+	});
+	assert.deepEqual(summary.counts, { ...NOT_DELIVERED_COUNTS, delivered: 2 });
+	assert.deepEqual(
+		summary.lines.map((line) => [line.kind, line.agent, line.refusalClass]),
+		[["refused", "Bo", null]],
+	);
+	// Without the hub's summary the derived count agrees.
+	assert.deepEqual(
+		teamBridgeDeliverySummary({ ...HUMAN_SOURCE, delivery_states: states })
+			.counts,
+		{ ...NOT_DELIVERED_COUNTS, delivered: 2 },
+	);
+});
+
+test("an owner's classed refusal and a hold render unchanged beside not_delivered", () => {
+	const states = [
+		entry({ endpoint_id: "a", refusal_class: "personal_info" }),
+		entry({ endpoint_id: "b", recipient_label: "Bo", state: "held" }),
+		entry({ endpoint_id: "c", recipient_label: "Cy", state: "not_delivered" }),
+	];
+	assert.deepEqual(lineTexts(render(states)), [
+		"Not delivered to Aida (Sam): refused by their moderation (looked like a request for personal information)",
+		"Not delivered to Bo (Sam) yet…",
+		"Not delivered to Cy (Sam). Refused by moderation.",
+	]);
+	assert.deepEqual(
+		teamBridgeDeliverySummary({ ...HUMAN_SOURCE, delivery_states: states })
+			.counts,
+		{ ...NOT_DELIVERED_COUNTS, screening: 1, notDelivered: 2 },
+	);
+});
+
 test("all moderation copy in every shipped locale has no em dash", () => {
 	for (const locale of MODERATION_LOCALES) {
 		const catalogue = JSON.parse(
@@ -1410,9 +1486,13 @@ test("the sender's line opens its details on a press, pins, and closes on Escape
 		assert.equal(button.getAttribute("aria-expanded"), "true");
 		const panel = document.querySelector('[aria-label="Delivery details"]');
 		assert.ok(panel, "the panel carries its accessible name");
+		// Identity as a VALUE, never node-against-node: a failed node-vs-node
+		// assert formats both jsdom elements with util.inspect and myers-diffs
+		// the two strings, which measured 3.3-4.5 GB and got the runner killed
+		// instead of producing a failure.
 		assert.equal(
-			document.activeElement,
-			panel,
+			document.activeElement === panel,
+			true,
 			"a press focuses the panel, not a glyph",
 		);
 		await act(async () => {
@@ -1424,9 +1504,23 @@ test("the sender's line opens its details on a press, pins, and closes on Escape
 			);
 		});
 		assert.doesNotMatch(document.body.textContent, DETAIL_TEXT);
+		// Radix restores focus from a `setTimeout(…, 0)` queued when its FocusScope
+		// unmounts (@radix-ui/react-focus-scope's AUTOFOCUS_ON_UNMOUNT), so the
+		// restore is a MACROTASK later than this Escape dispatch. Asserting
+		// straight after `act` raced it — focus was still `body` in roughly half of
+		// the measured runs. Let that macrotask run inside `act`, bounded, rather
+		// than sleeping for luck: a restore that never comes still fails here.
+		await act(async () => {
+			for (
+				let flush = 0;
+				flush < 3 && document.activeElement !== button;
+				flush += 1
+			)
+				await new Promise((resolve) => setTimeout(resolve, 0));
+		});
 		assert.equal(
-			document.activeElement,
-			button,
+			document.activeElement === button,
+			true,
 			"the panel took focus, so closing returns it to the trigger (U1 keeps this)",
 		);
 	} finally {

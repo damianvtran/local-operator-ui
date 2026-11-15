@@ -99,6 +99,7 @@ export type PaletteIconName =
 	| "updates"
 	| "plus"
 	| "new-chat"
+	| "new-temporary-chat"
 	| "trash"
 	| "canvas-open"
 	| "canvas-close"
@@ -148,6 +149,7 @@ export type PaletteTarget =
 				| "create-agent"
 				| "connect-provider"
 				| "new-chat"
+				| "new-temporary-chat"
 				| "clear-conversation"
 				| "change-interface-language"
 				| "toggle-canvas";

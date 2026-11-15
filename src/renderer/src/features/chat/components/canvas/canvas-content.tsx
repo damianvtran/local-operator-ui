@@ -66,6 +66,21 @@ const CanvasContentComponent: FC<CanvasContentProps> = ({
 		kind !== "pdf"
 	)
 		return <ArtifactTextPreview document={document} />;
+	/*
+	 * A PEER-held text file (UX round 1, U1-3) has no file here to edit either:
+	 * the editors would take keystrokes no save can deliver to its owner. It is
+	 * shown read-only, fetched over the content route. A CSV is text too; a
+	 * workbook keeps the spreadsheet viewer, whose save refuses the identifier.
+	 */
+	if (
+		document.remote &&
+		!document.artifact &&
+		(kind === "markdown" ||
+			kind === "html" ||
+			kind === "code" ||
+			document.path.toLowerCase().endsWith(".csv"))
+	)
+		return <ArtifactTextPreview document={document} />;
 	switch (kind) {
 		case "markdown":
 			return (

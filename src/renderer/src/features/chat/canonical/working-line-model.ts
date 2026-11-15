@@ -481,6 +481,19 @@ export type WorkingLineInput = {
 	 * that predates this field derives exactly what it derived before.
 	 */
 	idleDisputed?: boolean;
+	/**
+	 * A live claim whose START this pane cannot vouch for.
+	 *
+	 * The cached paint's `busy` bit says a turn was running when the reader left;
+	 * it cannot say WHEN that turn began. A clock counted from this mount is
+	 * therefore an invented age - measured as `thinking 0s` ticking up, then
+	 * jumping to `1h4m` when the snapshot landed (design round 1, D1). Only the
+	 * number is withheld and the label stands, reusing the disputed idle's
+	 * clock-withhold shape: a working line without a number is honest, a wrong
+	 * number is not. Absent means false, so every caller that predates this field
+	 * derives exactly what it derived before.
+	 */
+	clockWithheld?: boolean;
 	/** A question is pending; it outranks every working state (branding § 7). */
 	gate: boolean;
 	/**
@@ -528,6 +541,35 @@ export function deriveWorkingLine(
 ): WorkingLineState | null {
 	const live = deriveLiveWorkingLine(input);
 	if (live === null) return live;
+	/*
+	 * THE PHASE MISMATCH ON THE LIVE PATH (agent review round 2, U10).
+	 *
+	 * `foldedSeed` above refuses the producer's instant when the fold names a
+	 * different phase, and this row's fallback is its MOUNT age - so the number
+	 * that appears counts from the VIEWER'S ARRIVAL while naming a phase that
+	 * began earlier. The TUI withholds the number for exactly that shape (its
+	 * running arm returns `clock=False` when the cards were adopted mid-execution,
+	 * because "the number would count from the switch while naming a tool that may
+	 * be half an hour old"); its mismatch fallback can stay clock-on only because
+	 * there the fallback zero IS the widget's own phase zero, which this row does
+	 * not have. Measured on the return this PR is about: a cached return whose
+	 * frontend landed before its running tool rows read `thinking 0s` at 126 ms
+	 * for a turn 2.1 s old, then jumped to the batch's true age when the row
+	 * arrived - a zero under the reader, then a discontinuity, for one wait.
+	 *
+	 * ONLY WHERE THE RUNG HAS NO ANCHOR OF ITS OWN. A rung dated by its own cards
+	 * (`running`) or by the press (`startingSince`) keeps its number whatever the
+	 * fold says, because that instant is not the fold's to give; and an ABSENT or
+	 * EMPTY fold is a producer between turns, not a disagreement - it is the case
+	 * every reduced facade in tests is in.
+	 */
+	if (
+		live.startedAt === undefined &&
+		typeof input.foldedPhase === "string" &&
+		input.foldedPhase !== "" &&
+		input.foldedPhase !== live.phase
+	)
+		return { ...live, clock: false };
 	if (input.stopping === true)
 		return { ...live, activity: STOPPING_ACTIVITY, clock: false };
 	/*
@@ -539,6 +581,13 @@ export function deriveWorkingLine(
 	 * that RESOLVES the press window.
 	 */
 	if (input.idleDisputed === true) return { ...live, clock: false };
+	/*
+	 * The paint's half (D1): the same clock-only overlay, for a claim that is true
+	 * but whose start this pane cannot date. `stopping` and `idleDisputed` above
+	 * are facts about the reader's press and the runtime's receipt; this is a fact
+	 * about the PANE - it is showing a cached claim, not the turn's own state.
+	 */
+	if (input.clockWithheld === true) return { ...live, clock: false };
 	return live;
 }
 
@@ -831,6 +880,8 @@ export function workingLineInputFor(pane: {
 	stopping?: boolean;
 	/** See `WorkingLineInput.idleDisputed`: the disputed idle's clock-withhold. */
 	idleDisputed?: boolean;
+	/** See `WorkingLineInput.clockWithheld`: the cached paint's clock-withhold. */
+	clockWithheld?: boolean;
 	gate?: unknown;
 	unavailable: boolean;
 	records: TranscriptRecord[];
@@ -877,6 +928,8 @@ export function workingLineInputFor(pane: {
 		...(pane.stopping === true ? { stopping: true } : {}),
 		// Spread, for the same shape reason as `folded` above.
 		...(pane.idleDisputed === true ? { idleDisputed: true } : {}),
+		// Spread, for the same shape reason as `folded` above.
+		...(pane.clockWithheld === true ? { clockWithheld: true } : {}),
 		gate: Boolean(pane.gate),
 		unavailable: pane.unavailable,
 		...folded,

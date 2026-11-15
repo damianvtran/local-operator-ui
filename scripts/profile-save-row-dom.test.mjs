@@ -103,357 +103,93 @@ new Function("require", "module", "exports", bundled.outputFiles[0].text)(
 );
 const api = module.exports;
 
-test("mounted canonical row shows completed revert without offering another write (Q9-A)", async () => {
-	api.profileRevertStatusCache.clear();
-	const saved = api.GOLDEN_SAVED_AGENT_TOOL_RESULT;
-	let state = "available";
-	const calls = [];
-	window.api = {
-		desktop: {
-			request: async (request) => {
-				calls.push(request);
-				if (request.op === "sessions.answer") state = "succeeded";
-				return {
-					status: 200,
-					body: {
-						result: {
-							op: "ack",
-							req: 1,
-							detail: {
-								action_id: saved.details.profile_action.action_id,
-								state,
-							},
-						},
+/*
+ * Operator 2026-11-09: agent/team/skill creation must use the ordinary tool
+ * trace, not an inline profile consent card. The legacy Mesh card's pure
+ * authority tests remain in profile-save-consent.test.mjs; these mounted rows
+ * now guard the actual transcript path, including a proposed receipt.
+ */
+for (const toolName of ["agent", "team", "skill"]) {
+	for (const status of ["applied", "proposed"]) {
+		test(`${toolName} ${status} renders as an ordinary expandable trace, never a consent card`, async () => {
+			const calls = [];
+			window.api = {
+				desktop: {
+					request: async (request) => {
+						calls.push(request);
+						return { status: 200, body: { result: {} } };
 					},
-				};
-			},
-		},
-	};
-	const transcript = api.applyEvent(api.EMPTY_TRANSCRIPT, {
-		type: "tool_execution_end",
-		tool_name: saved.tool_name,
-		tool_call_id: saved.tool_call_id,
-		result: saved,
-	});
-	const record = transcript.records.find((row) => row.kind === "tool");
-	const host = document.createElement("div");
-	document.body.appendChild(host);
-	const root = createRoot(host);
-	try {
-		await act(async () => {
-			root.render(
-				h(api.ProfileToolRowUnderTest, {
-					record,
-					isSmallView: false,
-					scope: { sessionId: "test-session", childId: null },
-					approvalEpoch: "test-epoch",
-				}),
-			);
-		});
-		const button = host.querySelector(
-			'[data-tour-tag="profile-consent-revert"]',
-		);
-		assert.ok(button);
-		assert.equal(button.disabled, false);
-		await act(async () => {
-			button.click();
-			button.click();
-		});
-		assert.equal(calls.filter((r) => r.op === "sessions.answer").length, 1);
-		assert.equal(
-			host.querySelector("[data-profile-revert]")?.dataset.profileRevert,
-			"saved",
-		);
-		assert.equal(
-			host.querySelector('[data-tour-tag="profile-consent-revert"]').disabled,
-			true,
-		);
-		assert.match(host.textContent, /Reverted/);
-	} finally {
-		await act(async () => root.unmount());
-		host.remove();
-	}
-});
-
-for (const [liveState, renderedState] of [
-	["succeeded", "saved"],
-	["stale", "stale"],
-	["failed", "failed"],
-	["pending", "pending"],
-	["unavailable", "unavailable"],
-]) {
-	test(`mounted canonical row displays fresh bound ${liveState} without write permission`, async () => {
-		api.profileRevertStatusCache.clear();
-		const saved = api.GOLDEN_SAVED_AGENT_TOOL_RESULT;
-		let reads = 0;
-		window.api = {
-			desktop: {
-				request: async (request) => {
-					assert.equal(request.op, "sessions.profileActionStatus");
-					reads += 1;
-					return {
-						status: 200,
-						body: {
-							result: {
-								op: "ack",
-								req: 1,
-								detail: {
-									action_id: saved.details.profile_action.action_id,
-									state: liveState,
-								},
-							},
-						},
-					};
 				},
-			},
-		};
-		const record = api
-			.applyEvent(api.EMPTY_TRANSCRIPT, {
-				type: "tool_execution_end",
-				tool_name: saved.tool_name,
-				tool_call_id: saved.tool_call_id,
-				result: saved,
-			})
-			.records.find((row) => row.kind === "tool");
-		const host = document.createElement("div");
-		document.body.appendChild(host);
-		const root = createRoot(host);
-		try {
-			await act(async () => {
-				root.render(
-					h(api.ProfileToolRowUnderTest, {
-						record,
-						isSmallView: false,
-						scope: { sessionId: "test-session", childId: null },
-						approvalEpoch: "test-epoch",
-					}),
+			};
+			const record = api
+				.applyEvent(api.EMPTY_TRANSCRIPT, {
+					type: "tool_execution_end",
+					tool_name: toolName,
+					tool_call_id: `synthetic-${toolName}`,
+					result: {
+						content: [
+							{
+								type: "text",
+								text:
+									status === "applied"
+										? "Created marketing."
+										: "Proposed marketing; review in Agents.",
+							},
+						],
+						details: {
+							status,
+							profile_kind: toolName === "team" ? "team" : "agent",
+							profile_name: "marketing",
+							scope: "global",
+							proposal_id: "pp_0123456789abcdef",
+							fields: ["instructions"],
+							diff: ["+Plan campaigns."],
+						},
+						is_error: false,
+					},
+				})
+				.records.find((row) => row.kind === "tool");
+			const host = document.createElement("div");
+			document.body.appendChild(host);
+			const root = createRoot(host);
+			try {
+				await act(async () =>
+					root.render(
+						h(api.ProfileToolRowUnderTest, {
+							record,
+							isSmallView: false,
+							scope: { sessionId: "synthetic", childId: null },
+						}),
+					),
 				);
-			});
-			assert.equal(reads, 1, "one stable read, no object-identity render loop");
-			assert.equal(
-				host.querySelector("[data-profile-revert]")?.dataset.profileRevert,
-				renderedState,
-			);
-			assert.equal(
-				host.querySelector('[data-tour-tag="profile-consent-revert"]')
-					?.disabled,
-				true,
-			);
-		} finally {
-			await act(async () => root.unmount());
-			host.remove();
-		}
-	});
-}
-
-test("mounted unknown activation stays unconfirmed, disabled, and does not retry", async () => {
-	api.profileRevertStatusCache.clear();
-	const saved = api.GOLDEN_SAVED_TEAM_TOOL_RESULT;
-	let writes = 0;
-	window.api = {
-		desktop: {
-			request: async (request) => {
-				if (request.op === "sessions.answer") {
-					writes += 1;
-					throw new Error("dropped activation");
-				}
-				return {
-					status: 200,
-					body: {
-						result: {
-							op: "ack",
-							req: 1,
-							detail: {
-								action_id: saved.details.profile_action.action_id,
-								state: writes ? "unavailable" : "available",
-							},
-						},
-					},
-				};
-			},
-		},
-	};
-	const record = api
-		.applyEvent(api.EMPTY_TRANSCRIPT, {
-			type: "tool_execution_end",
-			tool_name: saved.tool_name,
-			tool_call_id: saved.tool_call_id,
-			result: saved,
-		})
-		.records.find((r) => r.kind === "tool");
-	const host = document.createElement("div");
-	document.body.appendChild(host);
-	const root = createRoot(host);
-	try {
-		await act(async () => {
-			root.render(
-				h(api.ProfileToolRowUnderTest, {
-					record,
-					isSmallView: false,
-					scope: { sessionId: "test-session", childId: null },
-					approvalEpoch: "test-epoch",
-				}),
-			);
+				assert.equal(
+					host.querySelector('[data-tour-tag="profile-consent-revert"]'),
+					null,
+				);
+				assert.equal(
+					host.querySelector('[data-tour-tag="profile-consent-card"]'),
+					null,
+				);
+				assert.doesNotMatch(
+					host.textContent,
+					/Team profile|Agent profile|Proposal — not saved yet/,
+				);
+				assert.ok(
+					host.querySelector("button"),
+					"ordinary trace has its expandable control",
+				);
+				assert.equal(
+					calls.filter(
+						(r) =>
+							r.op === "sessions.profileActionStatus" ||
+							r.op === "sessions.answer",
+					).length,
+					0,
+				);
+			} finally {
+				await act(async () => root.unmount());
+				host.remove();
+			}
 		});
-		await act(async () =>
-			host.querySelector('[data-tour-tag="profile-consent-revert"]').click(),
-		);
-		assert.equal(
-			host.querySelector("[data-profile-revert]")?.dataset.profileRevert,
-			"unconfirmed",
-		);
-		assert.equal(
-			host.querySelector('[data-tour-tag="profile-consent-revert"]').disabled,
-			true,
-		);
-		assert.match(host.textContent, /may not have gone through/);
-		assert.equal(writes, 1);
-	} finally {
-		await act(async () => root.unmount());
-		host.remove();
 	}
-});
-
-for (const invalid of ["foreign-action", "missing-epoch"]) {
-	test(`mounted ${invalid} cannot borrow an available status`, async () => {
-		api.profileRevertStatusCache.clear();
-		const saved = api.GOLDEN_SAVED_AGENT_TOOL_RESULT;
-		let writes = 0;
-		window.api = {
-			desktop: {
-				request: async (request) => {
-					if (request.op === "sessions.answer") writes += 1;
-					return {
-						status: 200,
-						body: {
-							result: {
-								op: "ack",
-								req: 1,
-								detail: {
-									action_id:
-										invalid === "foreign-action"
-											? `prv_${"a".repeat(32)}`
-											: saved.details.profile_action.action_id,
-									state: "available",
-								},
-							},
-						},
-					};
-				},
-			},
-		};
-		const record = api
-			.applyEvent(api.EMPTY_TRANSCRIPT, {
-				type: "tool_execution_end",
-				tool_name: saved.tool_name,
-				tool_call_id: saved.tool_call_id,
-				result: saved,
-			})
-			.records.find((r) => r.kind === "tool");
-		const host = document.createElement("div");
-		document.body.appendChild(host);
-		const root = createRoot(host);
-		try {
-			await act(async () =>
-				root.render(
-					h(api.ProfileToolRowUnderTest, {
-						record,
-						isSmallView: false,
-						scope: { sessionId: "test-session", childId: null },
-						approvalEpoch: invalid === "missing-epoch" ? null : "test-epoch",
-					}),
-				),
-			);
-			assert.equal(
-				host.querySelector("[data-profile-revert]")?.dataset.profileRevert,
-				"unavailable",
-			);
-			assert.equal(
-				host.querySelector('[data-tour-tag="profile-consent-revert"]').disabled,
-				true,
-			);
-			assert.equal(writes, 0);
-		} finally {
-			await act(async () => root.unmount());
-			host.remove();
-		}
-	});
 }
-
-test("mounted identity switch with an unresolved read cannot retain the prior permission", async () => {
-	api.profileRevertStatusCache.clear();
-	const saved = api.GOLDEN_SAVED_AGENT_TOOL_RESULT;
-	let resolveNext;
-	let reads = 0;
-	const ack = {
-		status: 200,
-		body: {
-			result: {
-				op: "ack",
-				req: 1,
-				detail: {
-					action_id: saved.details.profile_action.action_id,
-					state: "available",
-				},
-			},
-		},
-	};
-	window.api = {
-		desktop: {
-			request: async (request) => {
-				assert.equal(request.op, "sessions.profileActionStatus");
-				reads += 1;
-				if (request.sessionId === "session-b")
-					return new Promise((resolve) => {
-						resolveNext = resolve;
-					});
-				return ack;
-			},
-		},
-	};
-	const record = api
-		.applyEvent(api.EMPTY_TRANSCRIPT, {
-			type: "tool_execution_end",
-			tool_name: saved.tool_name,
-			tool_call_id: saved.tool_call_id,
-			result: saved,
-		})
-		.records.find((r) => r.kind === "tool");
-	const host = document.createElement("div");
-	document.body.appendChild(host);
-	const root = createRoot(host);
-	const render = (sessionId) =>
-		root.render(
-			h(api.ProfileToolRowUnderTest, {
-				record,
-				isSmallView: false,
-				scope: { sessionId, childId: null },
-				approvalEpoch: "test-epoch",
-			}),
-		);
-	try {
-		await act(async () => render("session-a"));
-		assert.equal(
-			host.querySelector('[data-tour-tag="profile-consent-revert"]').disabled,
-			false,
-		);
-		await act(async () => render("session-b"));
-		assert.equal(reads, 2);
-		assert.equal(
-			host.querySelector('[data-tour-tag="profile-consent-revert"]').disabled,
-			true,
-		);
-		assert.equal(
-			host.querySelector("[data-profile-revert]").dataset.profileRevert,
-			"unavailable",
-		);
-		await act(async () => resolveNext(ack));
-		assert.equal(
-			host.querySelector('[data-tour-tag="profile-consent-revert"]').disabled,
-			false,
-		);
-	} finally {
-		await act(async () => root.unmount());
-		host.remove();
-	}
-});

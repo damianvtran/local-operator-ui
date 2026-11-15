@@ -31,6 +31,7 @@ import { retryWakeWrite } from "@features/schedules/scheduled-task-model";
 import { userFacingMessage } from "@shared/api/local-operator/desktop-api";
 import { WakesApi } from "@shared/api/local-operator/wakes-api";
 import { resyncCanonicalSession } from "@shared/hooks/use-canonical-session";
+import { t } from "@shared/i18n";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import type { WakeCancelOutcome, WakeControls } from "./wake-controls-model";
@@ -60,7 +61,7 @@ export const useWakeControls = ({
 			 */
 			if (!sessionId)
 				return Promise.reject(
-					new Error("There is no conversation to cancel a wake on."),
+					new Error(t("ui.chat.run_controls.wake.no_conversation")),
 				);
 			return WakesApi.remove(sessionId, wakeId);
 		},
@@ -78,7 +79,10 @@ export const useWakeControls = ({
 					 */
 					describe: (error) =>
 						wakeRefusalSentence(error) ??
-						userFacingMessage(error, "Could not cancel the wake."),
+						userFacingMessage(
+							error,
+							t("ui.chat.run_controls.wake.cancel_failed"),
+						),
 					resync: () => {
 						/*
 						 * The page's listing is invalidated as its own hook would

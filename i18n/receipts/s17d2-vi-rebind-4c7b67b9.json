@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent binding audit of the landed namespace (first binding; no re-bind)",
+  "locale": "vi",
+  "namespace": "ui.chat.run_controls",
+  "pr": 1911,
+  "date": "2026-11-14",
+  "head": "90f0f49beae27ad35c1b05492ee150cd31e3a8c1",
+  "instance": "s17d2-vi-rebind-4c7b67b9",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); not the translator, not the draft auditor, not the integrator",
+    "model": "deepseek/deepseek-flash",
+    "independence": "I first read this file in this session; I translated nothing here, and the earlier draft audit in this programme was produced in another session by another instance, so no step of S17d-2 for vi is mine.",
+    "instance": "s17d2-vi-rebind-4c7b67b9"
+  },
+  "model": "deepseek/deepseek-flash",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.run_controls.wake.no_conversation / wake.cancel_failed / wake.already_gone / wake_confirm.title / wake_confirm.message(other) / wake_confirm.message_named(other) / wake_confirm.action",
+      "note": "No string change. i18n/glossary.md line 45 binds wake -> 'thức dậy' for vi, while the landed values use the noun compound 'lịch đánh thức'; I measured 27 raw occurrences of 'lịch đánh thức' and 0 of 'lịch thức dậy' across src/i18n/catalogues/vi. The style guide's own parenthetical (vi.md 'Locale calls') scopes 'đánh thức' to waking someone else, and a wake schedule is causative, so the compound is right and the panel heading 'Lịch đánh thức' plus button 'Hủy lịch đánh thức' already ship it. Amend the glossary record rather than these values; leaving the glossary silent will reproduce this conflict in later waves."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.run_controls.job.no_conversation / monitor.no_conversation / wake.no_conversation",
+      "note": "Trailing 'trong đó' renders English 'on' literally; 'Không có cuộc trò chuyện nào để hủy tác vụ' already carries the locus and reads more idiomatically. Grammatical and unambiguous as landed, so optional."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.run_controls.wake_confirm.title_named / message_named / action_named",
+      "note": "The named dialog names one object with two nouns ('lần kiểm tra' in title and action, 'Lịch đánh thức này' in both body arms). The mix is inherited from English, which does exactly the same, so this is fidelity rather than a translator defect; 'Lần kiểm tra này' in the two body arms would unify the card if ever revisited."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.chat.run_controls.wake_confirm.message_named",
+      "note": "'Lịch riêng của {name}' for 'own cadence' is accurate and 'không bị ảnh hưởng' is corpus-attested 5x, but the corpus form for a schedule of one's own is 'lịch chạy riêng' (ui.agents.refusals.class.meaning.reactive) and bare 'Lịch' alone can read as calendar; 'Lịch chạy riêng của {name} không bị ảnh hưởng.' would disambiguate. I record this as my own finding: the earlier record justified the current wording as reusing ui.chat.run_details.wake.managed_note, and that justification does not reproduce, since 'lịch riêng' occurs in 0 corpus values."
+    }
+  ],
+  "binding": "Bound to bytes I read at the PR head, not to a claim. sha256 of the landed target, the English source, the sidecar and the audited draft all matched the brief before I read anything, and the landed file is byte-identical to the draft (cmp equal, 1687 bytes each, differing from English's 1323). Key parity is exact: 12 keys each way, set difference empty in both directions, same order as English. Encoding: TAB indent throughout, exactly one trailing newline, no BOM, no CRLF, NFC-normalised Vietnamese, no \\u escapes, and zero bidi/format control characters (vi is LTR, so RTL checks are not applicable). ICU: parsed both catalogues with the repo's own @formatjs/icu-messageformat-parser 3.5.21 from node_modules (requiresOtherClause: true) and compared argument sets, select arms and full non-literal node sequences per key - 0 argument/select/skeleton mismatches and 0 token-sequence differences across all 12; the two select keys carry exactly the arms head and other, and the only arguments are subject, head and name. Rendering at subject=head and subject=other with Atlas, Research agent and a quoted head ('it's 5pm - stand up') produced no throw on any of 12 keys and rendered {head} and {name} exactly once each. No plural nodes exist in this namespace, so no plural-category question arises (vi takes other only anyway). English sweep: after substituting the ICU values, the 14 rendered arms reduce to 46 distinct tokens, every one Vietnamese or the substituted value - 0 English fragments; allowed technical token: none needed, as even the user-supplied {name}/{head} are substituted values rather than English copy. Typography: 2 opening and 2 closing typographic quotes, 0 ASCII quotes, no '...', no double spaces, no space before punctuation. Widths: vi longest 247 chars vs en 220 on wake_confirm.message_named (+12%); the largest single growth is the button wake_confirm.action at 18 vs 11 chars (+64%), but that value is byte-identical to the already-shipped ui.chat.run_details.wake.cancel_wake, so it is proven at the panel's width and needs no rendered check. I did not re-translate, edited no catalogue, ledger, test or code file, and committed and pushed nothing. Two evidence corrections to the earlier records, neither changing the verdict: the record's 'lịch thức dậy 5 times' does not reproduce (0 occurrences; the 5 is 'thức dậy'), and its managed_note reuse claim for 'lịch riêng' does not reproduce (0 values).",
+  "scope": "ui.chat.run_controls for vi: 12 keys at PR head 90f0f49beae2, all read against English and the sidecar",
+  "revisions": {
+    "head": "90f0f49beae27ad35c1b05492ee150cd31e3a8c1"
+  },
+  "en_sha256": "c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa",
+  "context_sha256": "fe162255233a62a41add06ce77e0aff3a533c003e3fb9e504031b91aa83073de",
+  "target_sha256": "4c7b67b96dd976f84e4d7d3f8431af8c9d70326d38ea379496840e5a4d6f332e",
+  "sha256": {
+    "vi": "4c7b67b96dd976f84e4d7d3f8431af8c9d70326d38ea379496840e5a4d6f332e",
+    "en": "c5c484fbc04cc433dce666123e233ae83ac5d03d8e9274a7945b83ec419612fa"
+  },
+  "draft_sha256": "4c7b67b96dd976f84e4d7d3f8431af8c9d70326d38ea379496840e5a4d6f332e"
+}

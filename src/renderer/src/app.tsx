@@ -19,7 +19,10 @@ import { ArchiveConversationDialog } from "@features/chat/components/archive-con
 import { ChatPage } from "@features/chat/components/chat-page";
 import { consoleRevealMayNavigate } from "@features/chat/composer-field";
 import { useHeldDraftResolution } from "@features/chat/hooks/use-held-draft-resolution";
-import { shouldStartNewChat } from "@features/chat/new-chat-shortcut";
+import {
+	shouldStartNewChat,
+	shouldStartTemporaryChat,
+} from "@features/chat/new-chat-shortcut";
 import { beginOpenTrace } from "@features/chat/open-conversation";
 import { PanelOutlet } from "@features/chat/pickers/panel-outlet";
 import { CommandPalette } from "@features/command-palette/components/command-palette";
@@ -65,6 +68,7 @@ import { useKeymapShortcuts } from "@shared/keymap/use-keymap-shortcuts";
 import { t } from "../../i18n/messages";
 import { useOwnerAuditStartupScene } from "./dev-driver/owner-audit-startup";
 
+import { PhonePairingHost } from "@features/phone-pairing/pairing-popup";
 import { useAgentAvatarLayer } from "@shared/agent-avatar/agent-avatar";
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
@@ -295,6 +299,19 @@ const App: FC = () => {
 		capabilities.data,
 		"session_archive",
 	);
+	/*
+	 * The temporary-chats capability, published into the sessions store from the
+	 * shell because the store builds the requests it gates (`include_temporary` on
+	 * the list, `temporary` on create) and the shell is mounted on every route.
+	 * Unanswered reads as off, so nothing new is ever sent to an older core.
+	 */
+	const temporaryChats = desktopFeatureEnabled(
+		capabilities.data,
+		"temporary_chats",
+	);
+	useEffect(() => {
+		useCanonicalSessionsStore.getState().setTemporaryChats(temporaryChats);
+	}, [temporaryChats]);
 	/*
 	 * A STAGED ARCHIVE QUESTION NEVER OUTLIVES ITS ROUTE (UX round 1, U1). The dialog
 	 * is modal, so a navigation while it is open is rare - a chord the modal does not
@@ -788,6 +805,15 @@ const App: FC = () => {
 			 */
 			if (isOnboardingActive) return;
 			if (!catalogueReady) return;
+			// The temporary chord only where the core can create one: without the
+			// capability the press is left unclaimed, as it was before.
+			if (temporaryChats && shouldStartTemporaryChat(event)) {
+				event.preventDefault();
+				const store = useCanonicalSessionsStore.getState();
+				store.setDraftTemporary(store.stageDraft(undefined, true), true);
+				navigate("/chat");
+				return;
+			}
 			if (!shouldStartNewChat(event)) return;
 			event.preventDefault();
 			useCanonicalSessionsStore.getState().stageDraft(undefined, true);
@@ -795,7 +821,7 @@ const App: FC = () => {
 		};
 		document.addEventListener("keydown", onKeyDown);
 		return () => document.removeEventListener("keydown", onKeyDown);
-	}, [catalogueReady, isOnboardingActive, navigate]);
+	}, [catalogueReady, isOnboardingActive, navigate, temporaryChats]);
 
 	return (
 		<OnboardingProvider>
@@ -997,6 +1023,14 @@ const App: FC = () => {
 					{archiveEnabled && <ArchiveConversationDialog />}
 
 					<UpdateNotification />
+
+					{/*
+					 * A phone asking to pair must be answerable from ANY route (pairing
+					 * design v2 §4.2, decision 5): mounted here, above the router outlet,
+					 * not inside the Mesh tray. Non-modal and focus-neutral; renders
+					 * nothing, and reads nothing, without `features.phone_pairing`.
+					 */}
+					<PhonePairingHost />
 
 					{/*
 					 * A `navigator.credentials.get()` matching several passkeys has to be

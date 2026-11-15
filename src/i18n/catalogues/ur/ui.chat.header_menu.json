@@ -10,5 +10,7 @@
 	"ui.chat.header_menu.open_canvas": "Canvas کھولیں",
 	"ui.chat.header_menu.open_code_review": "کوڈ کا جائزہ کھولیں",
 	"ui.chat.header_menu.open_console": "کنسول کھولیں",
-	"ui.chat.header_menu.rename_failed": "گفتگو کا نام نہیں بدلا جا سکا"
+	"ui.chat.header_menu.rename_failed": "گفتگو کا نام نہیں بدلا جا سکا",
+	"ui.chat.header_menu.keep_chat": "چیٹ رکھیں",
+	"ui.chat.header_menu.make_temporary": "عارضی بنائیں…"
 }

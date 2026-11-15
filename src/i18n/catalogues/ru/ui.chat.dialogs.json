@@ -8,5 +8,11 @@
 	"ui.chat.dialogs.options.clear_message": "Все сообщения в нём удаляются с этого компьютера без возможности отмены. Сам агент не затрагивается.",
 	"ui.chat.dialogs.options.clear_title": "Очистить этот разговор?",
 	"ui.chat.dialogs.options.description": "Настройте параметры этого агента",
-	"ui.chat.dialogs.options.title": "Параметры чата"
+	"ui.chat.dialogs.options.title": "Параметры чата",
+	"ui.chat.dialogs.make_temporary_title": "Сделать этот чат временным?",
+	"ui.chat.dialogs.make_temporary_deleted": "Он сразу исчезнет из ваших чатов. После заданного времени бездействия (по умолчанию 30 мин) этот чат, его сообщения и вложения будут удалены.",
+	"ui.chat.dialogs.make_temporary_kept": "Сохранятся: файлы, которые он изменил на вашем компьютере.",
+	"ui.chat.dialogs.make_temporary_confirm": "Сделать временным",
+	"ui.chat.dialogs.keep_and_link": "Сохранить и связать",
+	"ui.chat.dialogs.keep_and_pin": "Сохранить и закрепить"
 }

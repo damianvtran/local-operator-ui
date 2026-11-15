@@ -45,6 +45,7 @@ import type { FC } from "react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { DesktopLinkedSession } from "../../../../../shared/desktop-control-contract";
+import { attachableSessions } from "../../chat/chat-temporary";
 import {
 	defaultSendTarget,
 	linkStateMeta,
@@ -87,6 +88,9 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 	useI18nLocale();
 	const navigate = useNavigate();
 	const sessions = useCanonicalSessionsStore((state) => state.sessions);
+	const temporaryChats = useCanonicalSessionsStore(
+		(state) => state.temporaryChats,
+	);
 	const [pickerOpen, setPickerOpen] = useState(false);
 	/*
 	 * The quick-send target and the focus tick live HERE because two controls
@@ -110,14 +114,16 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 
 	const options = useMemo(() => {
 		const linked = new Set(links.map((link) => link.session_id));
-		return sessions
+		// A temporary chat cannot be linked until it is kept (409
+		// `session_temporary`), so the picker never offers one (review R1-1).
+		return attachableSessions(sessions, temporaryChats)
 			.filter((row) => !linked.has(row.session_id))
 			.map((row) => ({
 				id: row.session_id,
 				name: row.title || row.session_id,
 				description: row.cwd ?? undefined,
 			}));
-	}, [sessions, links]);
+	}, [sessions, temporaryChats, links]);
 
 	const openConversation = (sessionId: string) => {
 		void useCanonicalSessionsStore

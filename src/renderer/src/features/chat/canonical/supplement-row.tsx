@@ -75,6 +75,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	AUDIO_UNAVAILABLE_COPY,
 	BrokenAttachment,
+	RetryableAttachment,
 } from "../components/message-item/attachment-frame";
 import type { CanvasPane } from "../utils/canvas-pane";
 import { useCanvasPane } from "../utils/canvas-pane";
@@ -330,6 +331,8 @@ const SupplementSoundLine = memo(function SupplementSoundLine({
 				))}
 			{source.state === "missing" ? (
 				<BrokenAttachment name={label} detail={AUDIO_UNAVAILABLE_COPY} />
+			) : source.state === "retryable" ? (
+				<RetryableAttachment name={label} onRetry={source.retry} />
 			) : source.state === "resolving" ? (
 				// A reserved line at the player's height (the same reason the two
 				// media components reserve): the block must not jump when the bytes

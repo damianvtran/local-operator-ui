@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "convergence-rebind",
+  "locale": "hi",
+  "namespace": "ui.chat.run_details",
+  "pr": 1897,
+  "date": "2026-11-14",
+  "head": "dcfbcdbd0567f72233f5fb19c87b207ab7067aed",
+  "instance": "s17c-hi-rebind-c797c3e9",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); not the translator, not the draft auditor, not the integrator",
+    "model": "deepseek/deepseek-flash",
+    "independence": "I translated none of these keys, took no part in the S17c draft audit and integrated nothing; here I re-derived the parent prefix, the 36 values against English and the sidecar, the ICU and plural legality, the format bytes and the render-site widths from the bytes and the source.",
+    "instance": "s17c-hi-rebind-c797c3e9"
+  },
+  "model": "deepseek/deepseek-flash",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "severity": "NIT",
+      "key": "ui.chat.run_details.mcp.control.grant",
+      "note": "One English term, two spellings across the corpus: 'access' is एक्सेस (ए U+090F) in 21 pre-existing keys but ऐक्सेस (ऐ U+0910) here and in 2 pre-existing browser media-permission strings (ui.browser.media_access.system_blocked_hint, ui.browser.media_permission.system_blocked); the word is otherwise identical and neither the repo glossary nor the hi style guide binds the vowel, so this is a uniformity call and not a correction — 'खाते का एक्सेस दें' if the 21-key majority spelling is preferred. Non-gating: no same-screen mismatch, because the MCP sign-in dialog's own access wording is अनुमति (mcp_auth.grant_body), and both forms read as the same loanword."
+    }
+  ],
+  "binding": "Verified on the bytes at head dcfbcdbd0567 in the worktree /Users/damian/local-operator-ui/.worktrees/i18n-s17c, after re-deriving every input's sha256 (hi c797c3e9, en 1f1bf1d0, context 8a329d4c, draft 872275ce — all four matched the brief, so I did not stop): (1) PARENT PREFIX — the merged file's first 14603 bytes equal the parent ec00119944d's bytes with its trailing \\n}\\n removed plus a single comma, i.e. the old text is an exact byte prefix apart from the closing-brace/comma line; parsed, the merged file's first 109 key/value pairs are identical to the parent's in value AND order, and no parent key is dropped. The only change to existing text is the comma JSON needs. (2) THE 36 NEW PAIRS equal the audited draft hi.v2.json's 36 pairs value-by-value in the same order, 0 mismatches. (3) KEY SET — merged 145 keys == English 145 both ways (0 in either difference) and in the same order; all 145 keys are present in the English sidecar. (4) ICU — all 145 keys parsed with the repo's own @formatjs/icu-messageformat-parser 3.5.21 from /Users/damian/local-operator-ui/node_modules: 0 parse errors; per key the ICU argument-name set, number/date/select skeleton and tag set are identical to English; 14 keys carry plurals, the 4 keys carrying English's exact =1 arm keep it, and every arm name is legal — hi's CLDR cardinal categories are exactly one/other (Intl.PluralRules('hi') selects one for 0 and 1, other for 2 and 11), so the added one arms are the locale's own category, not extra arms, and no few/many/two is missing. Every plural key rendered at 0/1/2/11/1000000 through intl-messageformat with no empty arm and no error; {turn, number, ::group-off} renders ungrouped (टर्न 1000000). (5) FORMAT — TAB indentation on all 145 key lines, exactly one trailing newline, no BOM, no CRLF, NFC throughout, no literal backslash-u escapes, valid UTF-8, 0 untrimmed values, danda full stops / ? as-is / “ ” quotes / … ellipsis matching the hi style guide and the parent. (6) MY OWN READ of all 36 new values against English and the sidecar: accuracy holds (each lead clause says what could not happen, carries no terminal punctuation so the {lead}: and {lead} क्योंकि shapes still compose, and रद्द किया गया is the corpus's cancelled-job word — same string as the pre-existing monitors.cancelled and wake.cancelled); register is uniformly आप-form polite imperative with no कृपया, no exclamation and no तुम/तू; glossary matches the corpus and the guide's locale calls (जॉब, मॉनिटर, टूल, टर्न, कुंजी/API कुंजी, साइन-इन तरीका verbatim from mcp_auth.checking, फिर कनेक्ट, फिर लोड, डिस्कनेक्ट, इंतज़ार में, विफल, सेटिंग्स); one/other arms with identical text for a consonant-final loanword are the corpus convention (ui.teamBridge.attachmentCard.list, {count} सदस्य, {count} बाइट), so the invariant टूल and मॉनिटर arms are not a defect; disabled -> बंद is the corpus's mapping for Off and matches the sidecar ('switched off'). (7) WIDTH — hi is narrower than English in cells for 30 of 36 keys; the largest growth is +33% (mcp.connected_tally 39->52 cells, mcp.control.reload 6->8) and both are safe at their render sites: the tally is budgeted and sheds its attention clause in the warm header (mcpTally/tallyBudget, run-detail-mcp.tsx:676-724, 37-char budget at the 320px floor) and wraps in the cold header, and the MCP controls are self-start link buttons on a flex-wrap line with no truncate (run-detail-mcp.tsx:200-320). No overflow finding. NOT verified: a rendered frame, and the copy through the app's own locale bundle (the catalogue was rendered standalone through intl-messageformat, not through the shipped hi activation path). I edited no catalogue, ledger, test or code file; the draft auditor's findings were re-derived rather than carried, and the single NIT below is my own.",
+  "scope": "ui.chat.run_details for hi: 145 keys at PR head dcfbcdbd0567; 109 byte-identical to parent ec00119944d, 36 new read against English and the sidecar",
+  "revisions": {
+    "parent": "ec00119944dabb6a44ed8130f8864280401b1714",
+    "head": "dcfbcdbd0567f72233f5fb19c87b207ab7067aed"
+  },
+  "en_sha256": "1f1bf1d066875db81d4b5728e6a3f88c47a432d75aa8e75b92cdbefc42f2eb66",
+  "context_sha256": "8a329d4c5c6122e35986b8de3d04b6f25dfb3979349cd1675fed1b4cbc2497a6",
+  "target_sha256": "c797c3e9cc1fba36ac27195c7d50ed1ac36fa50efdd5145a00501df4f3a452d0",
+  "sha256": {
+    "hi": "c797c3e9cc1fba36ac27195c7d50ed1ac36fa50efdd5145a00501df4f3a452d0",
+    "en": "1f1bf1d066875db81d4b5728e6a3f88c47a432d75aa8e75b92cdbefc42f2eb66"
+  },
+  "draft_sha256": "872275ce46f11b02e40ca1fc84de0ce4fbef92a2c33ee8ac8662649f735195cf"
+}

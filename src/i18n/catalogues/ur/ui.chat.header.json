@@ -19,5 +19,11 @@
 	"ui.chat.header.session_model_switch": "ماڈل بدلیں",
 	"ui.chat.header.transcript_display": "ٹرانسکرپٹ کی نمائش",
 	"ui.chat.header.starting_session": "سیشن شروع ہو رہا ہے",
-	"ui.chat.header.canonical_chat": "مستند چیٹ"
+	"ui.chat.header.canonical_chat": "مستند چیٹ",
+	"ui.chat.header.temporary": "عارضی",
+	"ui.chat.header.temporary_hint": "آپ کی چیٹس میں محفوظ نہیں ہوتی، اور کچھ دیر غیر فعال رہنے کے بعد حذف ہو جاتی ہے (پہلے سے طے شدہ 30 منٹ)۔",
+	"ui.chat.header.temporary_toggle_on": "اس نئی چیٹ کو عارضی بنائیں",
+	"ui.chat.header.temporary_toggle_off": "عارضی چیٹ بند کریں",
+	"ui.chat.header.temporary_peer_unavailable": "عارضی چیٹ ابھی کسی دوسری ڈیوائس پر شروع نہیں ہو سکتی",
+	"ui.chat.header.temporary_ends_in": "{minutes, plural, one {# منٹ} other {# منٹ}} میں حذف ہو گی"
 }

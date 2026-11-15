@@ -8,5 +8,11 @@
 	"ui.chat.dialogs.options.clear_message": "اس کا ہر پیغام اس کمپیوٹر سے حذف ہو جاتا ہے اور اسے واپس نہیں لایا جا سکتا۔ خود ایجنٹ پر کوئی اثر نہیں پڑتا۔",
 	"ui.chat.dialogs.options.clear_title": "یہ گفتگو صاف کریں؟",
 	"ui.chat.dialogs.options.description": "اس ایجنٹ کی ترتیبات حسب ضرورت بنائیں",
-	"ui.chat.dialogs.options.title": "چیٹ کے اختیارات"
+	"ui.chat.dialogs.options.title": "چیٹ کے اختیارات",
+	"ui.chat.dialogs.make_temporary_title": "اس چیٹ کو عارضی بنائیں؟",
+	"ui.chat.dialogs.make_temporary_deleted": "یہ ابھی آپ کی چیٹس سے ہٹ جائے گی۔ مقررہ وقت تک غیر فعال رہنے پر (پہلے سے طے شدہ 30 منٹ) یہ چیٹ، اس کے پیغامات اور منسلکات حذف ہو جائیں گے۔",
+	"ui.chat.dialogs.make_temporary_kept": "محفوظ رہیں گی: وہ فائلیں جو اس نے آپ کے کمپیوٹر پر بدلیں۔",
+	"ui.chat.dialogs.make_temporary_confirm": "عارضی بنائیں",
+	"ui.chat.dialogs.keep_and_link": "رکھیں اور منسلک کریں",
+	"ui.chat.dialogs.keep_and_pin": "رکھیں اور پن کریں"
 }

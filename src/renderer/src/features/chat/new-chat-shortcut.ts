@@ -33,8 +33,8 @@ import { pressBelongsToCanvas, pressLandsOnOverlay } from "./keyboard-scopes";
  * The key the chord is built on.
  *
  * Compared lowercased, because `event.key` is the character the layout produced
- * rather than the physical key: `Shift+N` arrives as `"N"` and is refused
- * separately below, and a press carrying `⌘` arrives as `"n"` on every layout
+ * rather than the physical key: `Shift+N` arrives as `"N"` and is read as the
+ * temporary-chat chord below, and a press carrying `⌘` arrives as `"n"` on every layout
  * this app ships for.
  */
 const NEW_CHAT_KEY = "n";
@@ -75,9 +75,11 @@ export type NewChatShortcutEvent = Pick<
  *     `stageDraft`, so the store and its persisted `drafts` row accumulate a
  *     draft per repeat until the key is released. The row's own click cannot do
  *     that, so the shortcut must not either.
- *   - `shiftKey`/`altKey` — `⌘⇧N` and `⌥⌘N` are other apps' chords (a new
- *     window, a new folder) and are not claimed here; a chord this app does not
- *     implement stays available rather than firing the neighbouring one.
+ *   - `shiftKey`/`altKey` — `⌥⌘N` is other apps' chord (a new folder) and is
+ *     not claimed; `⌘⇧N` is claimed ONLY as the temporary-chat chord (the
+ *     private-window chord, `shouldStartTemporaryChat` below) and only where the
+ *     core advertises `temporary_chats` - the caller's gate - so it never fires
+ *     the plain New chat beside it.
  *   - `isComposing` — the press is part of an IME composition in the composer
  *     (a Japanese, Chinese or Korean candidate window is up). The chord is
  *     unambiguous there, but its EFFECT is not: staging a draft navigates and
@@ -86,22 +88,38 @@ export type NewChatShortcutEvent = Pick<
  *     tree that answers a chord from a live text field makes the same bail.
  *   - the canvas scope and the overlay roles, both from `keyboard-scopes.ts`.
  */
-export const shouldStartNewChat = (event: NewChatShortcutEvent): boolean => {
-	if (event.defaultPrevented) return false;
-	if (event.repeat) return false;
-	if (event.isComposing) return false;
-	if (event.shiftKey || event.altKey) return false;
-	if (event.key.toLowerCase() !== NEW_CHAT_KEY) return false;
+export const shouldStartNewChat = (event: NewChatShortcutEvent): boolean =>
+	newChatChord(event) === "new";
+
+/**
+ * Whether this press starts a TEMPORARY chat: `⌘⇧N` / `Ctrl+Shift+N`, under the
+ * same bails as the plain chord (a held key, an IME composition, an inner layer,
+ * the canvas and the overlays). The capability gate is the caller's, the rule
+ * `catalogueReady` already follows for the plain chord.
+ */
+export const shouldStartTemporaryChat = (
+	event: NewChatShortcutEvent,
+): boolean => newChatChord(event) === "temporary";
+
+function newChatChord(event: NewChatShortcutEvent): "new" | "temporary" | null {
+	if (event.defaultPrevented) return null;
+	if (event.repeat) return null;
+	if (event.isComposing) return null;
+	// `Shift+N` arrives as `"N"`, which the lower-casing below accepts on purpose
+	// now that the shifted chord has a meaning of its own.
+	if (event.altKey) return null;
+	if (event.key.toLowerCase() !== NEW_CHAT_KEY) return null;
 	/*
 	 * `⌘` on macOS and `Ctrl` on Windows/Linux, both accepted on both: this is
 	 * the app's own spelling of a modifier chord everywhere else it binds one
 	 * (`canvas/index.tsx`, `spreadsheet-preview.tsx`, the undo manager), and a
 	 * `Ctrl+N` on macOS costs nothing — the platform has no meaning for it here.
 	 */
-	if (!(event.metaKey || event.ctrlKey)) return false;
-	if (pressBelongsToCanvas(event.target)) return false;
-	return !pressLandsOnOverlay(event.target);
-};
+	if (!(event.metaKey || event.ctrlKey)) return null;
+	if (pressBelongsToCanvas(event.target)) return null;
+	if (pressLandsOnOverlay(event.target)) return null;
+	return event.shiftKey ? "temporary" : "new";
+}
 
 /**
  * The cap the sidebar prints, in the platform's own spelling.

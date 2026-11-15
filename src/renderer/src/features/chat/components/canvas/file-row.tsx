@@ -294,6 +294,8 @@ const RowThumbnailReader: FC<{ row: FileRow; className: string }> = ({
 }) => {
 	if (row.artifact)
 		return <ArtifactThumbnail row={row} className={className} />;
+	// A peer-held path names the OWNER's disk, never this one (I3-1).
+	if (row.document.remote) return <TypeGlyph row={row} />;
 	return <PathThumbnailReader row={row} className={className} />;
 };
 
@@ -369,6 +371,9 @@ const FileRowItemComponent = ({
 			: document.path;
 	const isLocalFile =
 		!artifact &&
+		// A peer-held row's path is the owner's display path (I3-1): its actions
+		// live in `RemoteFileActionsMenu` on the Files surface, never here.
+		!document.remote &&
 		!document.path.startsWith("data:") &&
 		!document.path.startsWith("http");
 

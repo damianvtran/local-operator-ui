@@ -1831,8 +1831,9 @@ element in place — no `key`, no remount — so the spinner's rotation does not
 own memory while the snapshot is still in flight — stays at full `ink`. No
 dimming, no scrim, and **no opacity**, which is banned as a state signal here
 for the reason § 6 gives: it is unreadable on some grounds and invisible on
-others. The indicator is present from the first painted frame and removed in
-the same commit as the reconciled rows, so the two never disagree.
+others. The indicator is removed in the same commit as the reconciled rows, so
+the two never disagree — and on a cached return it is held back for its first
+half-second (below), and never painted at all when the snapshot lands first.
 
 The revalidate indicator lives in the transcript's FOOT slot, the row reserved
 at the newest edge of the scroller. Not at the oldest edge: inside a
@@ -1848,6 +1849,82 @@ removal move nothing. The trade: a reader who scrolls up through the cached
 rows during the snapshot wait (median 0.96 s) scrolls it off screen. The
 older-history slot is reserved empty while the paint is cached for the same
 reason (`OlderHistorySlotReserve`).
+
+**A cached return is quiet for its first half-second.** The revalidate label is
+held back `STALE_INDICATOR_DELAY_MS = 500`
+(`features/chat/canonical/use-stale-indicator-hold.ts`) once rows are already
+painted, so a return whose snapshot lands first never shows it at all. The
+operator reported the opposite behaviour (2026-11-12: "when i switch between
+team bridge and session, it has some sort of loading mechanism to load
+conversation? looks like it always does this"): the rows were readable in the
+switch's first frame and the indicator still flashed on all 60 measured returns.
+The constant is the bound between two measured waits. On the mock daemon the
+authoritative snapshot landed a median of 165 ms after the paint (p90 300 ms,
+max 434 ms, n=60), inside the hold's 500 ms, so quick returns there paint no
+loader at all. Real use is slower: this app's own snapshot wait is a median of
+0.96 s (p90 1.9 s, 283 settled opens, `transcript-pane.ts`'s retired-hold note),
+and one machine's open-trace log of 294 settled opens puts the same wait at a
+median of about 1.3 s (p90 3.2 s, max 13 s) — a different trace of the same
+wait, not the same sample. On waits like those the hold hides nothing: the
+label appears about 500 ms after the click and stays until the snapshot lands.
+So the constant sits above the mock's whole distribution and below both real
+medians — no loader on a quick return, and on a real page a label that still
+says the view is a cache rather than looking settled when it is not. The slot
+is reserved either way (`min-h-[1lh]`), so the label's arrival and its removal
+move nothing. The cold and remote variants are never held: a cold open has no
+rows to be quiet about, and a peer's unproven history is not readable yet, so
+that wait IS the sync.
+
+The hold's limit is stated rather than implied. A snapshot that lands 500-650 ms
+after the click blinks the label rather than hiding it: the design sweep measured
+38 ms visible at a 500 ms landing, 69–132 ms at 540 ms, ~190 ms at 650 ms and
+~340 ms at 800 ms. Holding is the minority case on a real machine: both real
+medians above sit past the constant, so the trade it makes is the measured one
+— no flash on the quick returns on the mock daemon, and, on the slow ones, a
+caption that stays for as long as the wait lasts.
+
+**A cached paint carries one liveness bit.** When a turn was running at unmount,
+the paint records that fact beside the rows — the flag only: the in-flight rows
+are still dropped on write, because a cached streaming row can never advance. A
+return to that conversation therefore paints the working line from its first
+frame instead of idle chrome for the length of the revalidate, and the snapshot
+— the only authority — keeps or withdraws the claim in the commit that replaces
+the rows. The carried claim reads `thinking` with its number withheld (a number
+counted from the viewer's arrival would name a phase that began earlier) until
+the snapshot dates it, and a reader who leaves again before the snapshot lands
+carries the claim forward. Where both claims are true the working line wins the
+foot slot over the revalidating label ("the agent is working" outranks "this
+view is being checked"), and the slot is the same box either way, so the order
+costs no layout. While a running turn revalidates, the pane therefore shows the
+working line and no caption at all: the working line holds the foot slot, so
+the label has nowhere to be. On an idle revalidate the label takes that same
+slot, and a scrolled-up idle return leaves it at the newest edge, off screen by
+design rather than lost. A scrolled-up running return is the other way round:
+the working line holds the slot, so it is the working line that sits at the
+newest edge, off screen. The flag is presentation only, and the composer is
+where its account stops: in a return's first frames the idle placeholder and
+the stop affordance still read the live turn (`chat-page.tsx`'s `turnAlive`)
+until the snapshot lands. That is a disclosed gap, because seeding those would
+change send mode and the interrupt path from a cached claim; a prompt sent
+before the snapshot lands is sent as a new turn rather than as a steer. That
+gap is pre-existing and is not widened here.
+
+**A scrolled-up return lands where it left.** The paint carries the reader's
+place in the same entry as the rows: pinned, or the id of the row they were
+looking at plus its offset from the scrollport's top — never a `scrollTop`,
+which is a position in a content length the reconcile changes. The transcript
+records it in a layout cleanup, the last moment the scroller is still
+measurable, and `writePaint` carries the value forward because its own write
+runs in the passive cleanup that follows; the seeded mount restores it in its
+layout phase, so the first painted frame of the return is already the reader's
+place. A row the transcript no longer holds is a missing anchor, and the tail is
+the honest fallback rather than a guess at the nearest neighbour. A reader who
+left at the tail is already home, so the return stays pinned and nothing moves.
+The geometry claim this paragraph rests on — painted rows move 1 px or less on a
+return — holds at widths of ~1380 px and up. At the 800 px minimum width the
+first paint reflows before the reader can act on it: rows move up to 96 px at
+roughly 25 ms and 4 px at the snapshot. That reflow is pre-existing and
+identical on the base commit, and this change does not address it.
 
 **A loading state is not an empty state.** "There are no messages" is a claim
 about the conversation, and making it before the transcript resolves is how the

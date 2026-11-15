@@ -40,7 +40,7 @@ const bundlePath = new URL("._job-controls.bundle.mjs", import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 after(() => unlink(bundlePath).catch(() => undefined));
 const {
-	JOB_CANCEL_NOT_FOUND_COPY,
+	jobCancelNotFoundCopy,
 	VIDEO_JOB_TYPE,
 	jobRowCanCancel,
 	retryJobWrite,
@@ -76,6 +76,17 @@ const row = (over = {}) => ({
 test("the control rides the video row family only, and only while the row is open", () => {
 	assert.equal(VIDEO_JOB_TYPE, "video");
 	assert.equal(jobRowCanCancel(row()), true);
+	assert.equal(jobRowCanCancel(row({ jobType: "music" })), true);
+	assert.equal(
+		jobRowCanCancel(
+			row({ jobType: "music", music: { stage: "cancel_requested" } }),
+		),
+		false,
+	);
+	assert.equal(
+		jobRowCanCancel(row({ jobType: "music", status: "done" })),
+		false,
+	);
 	// Every other family and every absent word: the control is withheld rather
 	// than guessed onto a row the design did not attach it to.
 	assert.equal(jobRowCanCancel(row({ jobType: "bash" })), false);
@@ -94,7 +105,7 @@ test("the refusal fallback is the frozen not_found phrase, em dash and all", () 
 	// `_CANCEL_PHRASES`); a surface may quote it, never paraphrase it. This
 	// pins the quote character-for-character.
 	assert.equal(
-		JOB_CANCEL_NOT_FOUND_COPY,
+		jobCancelNotFoundCopy(),
 		"not cancelled — the provider no longer knows the job",
 	);
 });

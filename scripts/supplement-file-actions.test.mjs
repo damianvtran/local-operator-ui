@@ -19,6 +19,28 @@ import { createRoot } from "react-dom/client";
 // is replaced. No Finder, default app, Electron window or live config is touched.
 const CHROME_MENU_MODULE = /supplement-file-actions\.tsx$/;
 const root = process.cwd();
+// The negative controls hold the changed module at the commit the PR branched
+// from, never at a moving `origin/main`: reading `origin/main` would let the
+// next fetch silently re-point the control at newer code, so "this test is RED
+// on the base" would stop being true without anything failing. This is PR
+// #1890's base (damianvtran/local-operator-ui, branch fix/i18n-copy-path-actions).
+const CONTROL_BASE = "ba0a14e2ca716d0c3fff04378535eb943b7ca741";
+// Read one file exactly as it stood at CONTROL_BASE. A missing git object or a
+// blank read would make the control vacuously pass against the wrong source, so
+// both fail loudly here rather than greening the baseline check.
+const baseFileContents = (path) => {
+	execFileSync("git", ["cat-file", "-e", `${CONTROL_BASE}^{commit}`], {
+		cwd: root,
+		stdio: "ignore",
+	});
+	const contents = execFileSync("git", ["show", `${CONTROL_BASE}:${path}`], {
+		cwd: root,
+		encoding: "utf8",
+	});
+	assert.equal(typeof contents, "string", `base file exists as text: ${path}`);
+	assert.ok(contents.length > 0, `base file is not empty: ${path}`);
+	return contents;
+};
 // Local agent runs supply their session scratchpad; CI has no agent session.
 const scratch = process.env.LOCAL_OPERATOR_SCRATCHPAD ?? tmpdir();
 const home = mkdtempSync(join(scratch, "supplement-action-"));
@@ -80,7 +102,7 @@ const bundle = await build({
 	conditions: ["import"],
 	stdin: {
 		contents:
-			'export { SupplementRow } from "./src/renderer/src/features/chat/canonical/supplement-row"; export { CanvasPaneProvider } from "./src/renderer/src/features/chat/utils/canvas-pane"; export { useCanvasStore } from "./src/renderer/src/shared/store/canvas-store"; export { toast } from "sonner";',
+			'export { SupplementRow } from "./src/renderer/src/features/chat/canonical/supplement-row"; export { CanvasPaneProvider } from "./src/renderer/src/features/chat/utils/canvas-pane"; export { useCanvasStore } from "./src/renderer/src/shared/store/canvas-store"; export { toast } from "sonner"; export { setLocale } from "./src/renderer/src/shared/i18n";',
 		resolveDir: root,
 	},
 	bundle: true,
@@ -115,13 +137,8 @@ const bundle = await build({
 					setup(build) {
 						// Same DOM harness with only the changed menu held at the base.
 						build.onLoad({ filter: CHROME_MENU_MODULE }, () => ({
-							contents: execFileSync(
-								"git",
-								[
-									"show",
-									"origin/main:src/renderer/src/features/chat/canonical/supplement-file-actions.tsx",
-								],
-								{ cwd: root, encoding: "utf8" },
+							contents: baseFileContents(
+								"src/renderer/src/features/chat/canonical/supplement-file-actions.tsx",
 							),
 							loader: "tsx",
 						}));
@@ -134,13 +151,8 @@ const bundle = await build({
 						name: "before-control",
 						setup(build) {
 							build.onLoad({ filter: ROW_MODULE }, () => ({
-								contents: execFileSync(
-									"git",
-									[
-										"show",
-										"origin/main:src/renderer/src/features/chat/canonical/supplement-row.tsx",
-									],
-									{ cwd: root, encoding: "utf8" },
+								contents: baseFileContents(
+									"src/renderer/src/features/chat/canonical/supplement-row.tsx",
 								),
 								loader: "tsx",
 							}));
@@ -162,7 +174,7 @@ after(() => {
 	rmSync(bundlePath);
 	rmSync(home, { recursive: true });
 });
-const { SupplementRow, CanvasPaneProvider, useCanvasStore, toast } =
+const { SupplementRow, CanvasPaneProvider, useCanvasStore, toast, setLocale } =
 	await import(bundlePath);
 const record = {
 	kind: "supplement",
@@ -409,3 +421,149 @@ test("all three file actions resolve once against session cwd, never process cwd
 		process.chdir(previous);
 	}
 });
+
+// The "Copy file path" menu item and its "Copied" confirmation reuse the
+// audited shared keys. Expected strings come straight from the shipped
+// catalogue files (never authored here), so a self-translated or hardcoded
+// label cannot pass; the control run (SUPPLEMENT_CHROME_CONTROL=1) bundles the
+// base component and must fail this test on its English literals.
+const catalogueValue = (locale, file, key) =>
+	JSON.parse(
+		readFileSync(
+			join(root, "src/i18n/catalogues", locale, `${file}.json`),
+			"utf8",
+		),
+	)[key];
+
+// Coverage comes from the shipped manifest rather than a hand-kept list, so a
+// newly supported locale joins this matrix automatically and a dropped one
+// leaves it; the per-locale test names stay `(<code>)` so
+// `--test-name-pattern` still selects a single locale.
+const supportedLocales = JSON.parse(
+	readFileSync(join(root, "i18n/languages.json"), "utf8"),
+)
+	.languages.filter((language) => language.status === "supported")
+	.map((language) => language.code);
+
+for (const locale of supportedLocales) {
+	test(`copy-file-path item and copied state follow the live locale (${locale})`, async () => {
+		const label = catalogueValue(
+			locale,
+			"ui.common.file_actions",
+			"ui.common.file_actions.copy_file_path",
+		);
+		const copiedLabel = catalogueValue(
+			locale,
+			"ui.common.actions",
+			"ui.common.actions.copied",
+		);
+		const failure = catalogueValue(
+			locale,
+			"ui.notices",
+			"ui.notices.files.copy_path_failed",
+		);
+		assert.ok(label && copiedLabel && failure, `${locale}: shipped keys exist`);
+		assert.notEqual(label, "Copy file path");
+		assert.notEqual(copiedLabel, "Copied");
+
+		const written = [];
+		let failWrites = false;
+		window.api = {
+			probeFiles: (paths, base) => probeFiles(paths, base, home),
+		};
+		Object.defineProperty(navigator, "clipboard", {
+			configurable: true,
+			value: {
+				writeText: async (text) => {
+					if (failWrites) throw new Error("synthetic clipboard refusal");
+					written.push(text);
+				},
+			},
+		});
+		const host = document.createElement("div");
+		document.body.append(host);
+		const mounted = createRoot(host);
+		// The copy item is the menu's last entry in every locale, so locate it
+		// positionally rather than by an (English) label.
+		// The trigger's aria-label is itself localized, so find it by role, not text.
+		const openCopyItem = async () => {
+			await click(
+				document.querySelector('[aria-haspopup="menu"]'),
+				"pointerdown",
+			);
+			const items = [...document.querySelectorAll('[role="menuitem"]')];
+			return items[items.length - 1];
+		};
+		const closeMenu = async () => {
+			await act(async () => {
+				document.dispatchEvent(
+					new dom.window.KeyboardEvent("keydown", {
+						key: "Escape",
+						bubbles: true,
+					}),
+				);
+				await new Promise((resolve) => setTimeout(resolve, 15));
+			});
+		};
+		try {
+			await act(async () => setLocale("en"));
+			await act(async () =>
+				mounted.render(
+					h(
+						CanvasPaneProvider,
+						{ conversationId: `synthetic-copy-path-${locale}` },
+						h(SupplementRow, { record, sessionId: "5ea1face0001", cwd }),
+					),
+				),
+			);
+			let item = await openCopyItem();
+			assert.equal(item.textContent, "Copy file path", "en baseline");
+
+			// Live switch with the menu open: the item's rendered text follows the
+			// new locale. This is a text-equality assertion only — it does not prove
+			// the row avoided remounting, so it makes no claim about one.
+			await act(async () => setLocale(locale));
+			item = [...document.querySelectorAll('[role="menuitem"]')].at(-1);
+			assert.equal(item.textContent, label);
+			assert.ok(!item.textContent.includes("Copy file path"));
+
+			await click(item);
+			await waitFor(() => written.length === 1);
+			// SupplementRow hands the menu its action path unresolved, so the clipboard
+			// receives that spelling byte for byte (behaviour this change preserves).
+			assert.deepEqual(written, [relative], "clipboard gets the action path");
+			item = await openCopyItem();
+			assert.equal(item.textContent, copiedLabel, "copied state localized");
+			assert.ok(!item.textContent.includes("Copied"));
+
+			// Locale changes while the copied state is showing relabel it too.
+			await act(async () => setLocale("en"));
+			assert.equal(
+				[...document.querySelectorAll('[role="menuitem"]')].at(-1).textContent,
+				"Copied",
+			);
+			await act(async () => setLocale(locale));
+			assert.equal(
+				[...document.querySelectorAll('[role="menuitem"]')].at(-1).textContent,
+				copiedLabel,
+			);
+
+			// A refused clipboard write still raises the already-keyed toast.
+			await closeMenu();
+			failWrites = true;
+			toast.dismiss();
+			const failureItem = await openCopyItem();
+			await click(failureItem);
+			await waitFor(() =>
+				toast.getHistory().some((entry) => entry.title === failure),
+			);
+			console.log(
+				`${locale}: label=${label} copied=${copiedLabel} write=${written[0]} failure=${failure}`,
+			);
+		} finally {
+			await act(async () => setLocale("en"));
+			await act(async () => mounted.unmount());
+			host.remove();
+		}
+	});
+}

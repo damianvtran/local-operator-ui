@@ -1,4 +1,5 @@
 {
+	"ui.chat.approval.escape.bridge_latched": "« Allow all » et le mode auto sont désactivés dans cette conversation. Pour activer le mode auto, tapez /approvals auto dans le terminal, ou utilisez /new pour démarrer une nouvelle conversation.",
 	"ui.chat.approval.escape.default_saved": "Auto activé pour cette conversation et enregistré comme valeur par défaut des sessions qui suivent ce réglage. Les conversations qui ont leur propre choix le conservent. Cette demande attend toujours une réponse.",
 	"ui.chat.approval.escape.default_saved_session_failed": "Auto enregistré comme valeur par défaut des sessions qui suivent ce réglage. La partie propre à la session n’a pas été appliquée : {detail}. Cette demande attend toujours une réponse.",
 	"ui.chat.approval.escape.global_default": "Approbations : {mode} — valeur par défaut globale.",

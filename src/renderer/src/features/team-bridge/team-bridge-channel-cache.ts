@@ -207,6 +207,19 @@ export const TEAM_BRIDGE_RATE_LIMIT_MAX_RETRIES = 30;
  * R1: 31 reads/min with zero observers before this check). A definite refusal
  * (`definite`, e.g. `not_a_member`) is never retried; any other failure keeps
  * the shipped three-retry bound.
+ *
+ * An OWNER-FENCE refusal (`isBridgeReadFenceError`) is retried only while
+ * somebody is reading, for the same reason (ui#1895 QA Q1). The fence throws
+ * when the account or its bridge authority changed under the read; with no
+ * reader there is nothing to recover for, and the retry chain is harmful: the
+ * query stays `fetching` through the 1/2/4 s backoff, so an A→B→A return
+ * JOINS that chain and waits for its next attempt instead of reading now
+ * (measured: landing rendered 1433.9 ms vs 788.4 ms without the chain). Not
+ * retried, the read settles as an error; an unadopted landing read is then
+ * removed (`prefetchTeamBridgeLanding`) and a timeline that mounts later
+ * refetches an errored entry on mount (React Query `retryOnMount`). A WATCHED
+ * read keeps its retries: a same-account authority change (a status refetch
+ * that flips a fence field) can succeed on the next attempt.
  */
 export function historyReadShouldRetry(
 	failureCount: number,
@@ -215,9 +228,33 @@ export function historyReadShouldRetry(
 	observed = true,
 ): boolean {
 	if (definite) return false;
+	if (isBridgeReadFenceError(error))
+		return observed && failureCount < TEAM_BRIDGE_HISTORY_FAILURE_RETRIES;
 	if (historyRateLimitWaitMs(error, failureCount) !== null)
 		return observed && failureCount < TEAM_BRIDGE_RATE_LIMIT_MAX_RETRIES;
 	return failureCount < TEAM_BRIDGE_HISTORY_FAILURE_RETRIES;
+}
+
+/**
+ * The owner-fence refusals a Team Bridge read can throw: `assertBridgeReadOwner`
+ * and `readForBridgeOwner` (team-bridge-owner.ts), and the credential epoch
+ * check under them, `readForRadientAccount` (radient-account-authority.ts).
+ * Matched by message, the same way the owner audit classifies them
+ * (`auditFailureMetadata`), so this module stays free of the hook imports
+ * those files carry (it is bundled on its own by the channel-history suite).
+ * None of these is a hub answer: each is the client discarding a read whose
+ * owner changed, so no request is lost by not repeating it unobserved.
+ */
+const BRIDGE_READ_FENCE_MESSAGES = new Set([
+	"Team Bridge read owner changed",
+	"Team Bridge read authority changed",
+	"Account authority changed",
+	"Account authority unresolved",
+]);
+export function isBridgeReadFenceError(error: unknown): boolean {
+	return (
+		error instanceof Error && BRIDGE_READ_FENCE_MESSAGES.has(error.message)
+	);
 }
 
 /**

@@ -74,6 +74,31 @@ const secret = z.string().min(1).max(32768);
 export const sessionIdPattern = /^[a-f0-9]{12}$/;
 const sessionId = z.string().regex(sessionIdPattern);
 /*
+ * THE SESSION IDS THE NOTIFICATIONS INBOX FILES ROWS UNDER.
+ *
+ * Not every inbox row belongs to a conversation: core files mesh credential
+ * repair items under the owner-scoped pseudo-session `network-credentials`
+ * (core `network/credentials/repair_inbox.py` `SESSION_ID`; no session
+ * directory exists, the reel shows `/network` as its title). Validating the
+ * notifications ops with the canonical 12-hex `sessionId` made the transport
+ * refuse any request that NAMED such a row - the toolbar's Dismiss all, Select
+ * all, opening that row's detail and its per-conversation dismiss all surfaced
+ * as the 422 toast "Invalid desktop operation." before reaching core.
+ *
+ * The list is closed, not a looser regex, because `sessionId` also scopes a
+ * PATCH: an arbitrary string here would let a typo dismiss nothing silently or
+ * a hostile renderer probe core's store keys. Keep it identical to core's
+ * route-side constant (core PR #3921); a new
+ * pseudo-session is added in both places at once.
+ */
+export const NOTIFICATION_PSEUDO_SESSION_IDS = ["network-credentials"] as const;
+export const isNotificationSessionId = (value: string): boolean =>
+	sessionIdPattern.test(value) ||
+	(NOTIFICATION_PSEUDO_SESSION_IDS as readonly string[]).includes(value);
+const notificationSessionId = z
+	.string()
+	.refine(isNotificationSessionId, "not a notifications session id");
+/*
  * A supplement JOB id (`supplements.persistence.new_job_id` mints 12 lowercase
  * hex) and the answer ANCHOR it attaches to (a final assistant message id).
  * Shapes are the contract's (`supplement-model.ts` states them for the
@@ -179,6 +204,13 @@ const meshId = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/);
  * is refused HERE, by name, rather than by the daemon's generic 422.
  */
 const approvalId = z.string().regex(/^ap_[0-9a-hjkmnp-tv-z]{1,64}$/);
+/**
+ * A profile proposal's id: `pp_` + 16 hex, derived by core from the proposal's
+ * content (`local_operator/profile_proposals.py`), so filing is idempotent. The
+ * pattern is this client's own check before the id reaches a path segment.
+ */
+export const PROFILE_PROPOSAL_ID_PATTERN = /^pp_[0-9a-f]{16}$/;
+const proposalId = z.string().regex(PROFILE_PROPOSAL_ID_PATTERN);
 /**
  * What a typed credential decision echoes back: the backend's
  * `CredentialApprovalAcknowledgment`, field for field. The two credential
@@ -1368,7 +1400,7 @@ const notificationsTarget = z.union([
 		.strict(),
 	z
 		.object({
-			sessionId,
+			sessionId: notificationSessionId,
 			throughSeq: z.number().int().min(0),
 			observed: z
 				.array(
@@ -1738,6 +1770,17 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			 */
 			include_archived: z.boolean().optional(),
 			/*
+			 * Whether TEMPORARY chats (`features.temporary_chats`) belong in the answer.
+			 *
+			 * ABSENT MEANS `false`, `include_archived`'s compatibility promise: the core's
+			 * query model is closed, so the flag is sent only when the capability is
+			 * advertised, and a client that never sends it never sees a temporary chat.
+			 * This app asks for them and partitions them into the sidebar's own
+			 * `Temporary` group (`features/chat/chat-temporary.ts`), which is what lets
+			 * the open temporary chat know its own countdown from the same fetch.
+			 */
+			include_temporary: z.boolean().optional(),
+			/*
 			 * Whether conversations OTHER devices hold belong in the answer.
 			 *
 			 * ABSENT MEANS `false`, the same compatibility promise `include_archived`
@@ -1860,6 +1903,24 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	/*
+	 * Mark or keep ONE conversation as a temporary chat:
+	 * `POST /v1/desktop/sessions/{id}/temporary` (`features.temporary_chats`).
+	 *
+	 * `sessions.archive`'s twin and for its reason: DESIRED STATE on the wire, so a
+	 * retried request cannot flip the chat back - which here would mean a "Keep"
+	 * replayed into a mark, and a kept chat deleted after its idle window. The
+	 * server does not confirm; "Make temporary…" asks in the UI first. Refusals
+	 * (409 `session_pinned`, `session_in_project`, `session_not_user`; 404
+	 * `session_temporary_deleted`) arrive as the error's `code`.
+	 */
+	z
+		.object({
+			op: z.literal("sessions.temporary"),
+			sessionId,
+			temporary: z.boolean(),
+		})
+		.strict(),
+	/*
 	 * Delete ONE conversation PERMANENTLY: `DELETE /v1/desktop/sessions/{id}`.
 	 *
 	 * `confirmed: true` is required and is not a receipt: it is the wire's own echo
@@ -1951,6 +2012,14 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			 * thing the route declines to express.
 			 */
 			peer: meshId.optional(),
+			/*
+			 * Create the conversation as a TEMPORARY chat (`features.temporary_chats`):
+			 * the core writes the mark before the create answers and refuses the create
+			 * if it cannot. Sent only when true and only under the capability, so an
+			 * ordinary create stays byte-identical (the closed model would 422 an
+			 * unknown key on an older core).
+			 */
+			temporary: z.boolean().optional(),
 		})
 		.strict(),
 	/*
@@ -2075,6 +2144,16 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("sessions.files.materialise"),
+			sessionId,
+			fileId: z.string().regex(/^[a-f0-9]{16}$/),
+		})
+		.strict(),
+	// A PEER-held row copied onto THIS device (`features.remote_files`). The
+	// backend picks the folder and the name and answers a receipt; the renderer
+	// never names a destination, so a download cannot become a write anywhere.
+	z
+		.object({
+			op: z.literal("sessions.files.download"),
 			sessionId,
 			fileId: z.string().regex(/^[a-f0-9]{16}$/),
 		})
@@ -3761,6 +3840,18 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			acceptMonthlyPrice: z.string().min(1).max(64).optional(),
 		})
 		.strict(),
+	/*
+	 * PHONE ACCESS DIAGNOSIS (`features.mobile_doctor`, local-operator
+	 * `routes/desktop_mobile_doctor.py`): the same read-only, already-redacted
+	 * JSON `lop mobile doctor --json` prints, for the Phone access block's "Copy
+	 * diagnostics" button. A person without a terminal can paste it to support or
+	 * to an agent instead of being asked to run shell diagnostics. No arguments:
+	 * the report is about this machine, and an older backend 404s the route, so
+	 * the renderer asks the capability first and sends nothing without it.
+	 */
+	z
+		.object({ op: z.literal("mobile.doctor") })
+		.strict(),
 	z.object({ op: z.literal("auth.start"), provider: id }).strict(),
 	z.object({ op: z.literal("auth.status"), id }).strict(),
 	z
@@ -4541,19 +4632,62 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	 * budget. `deny` never signs: it is write-once and settles in the safe
 	 * direction.
 	 */
+	/*
+	 * PROFILE PROPOSALS (`features.profile_proposals`, core
+	 * `server/routes/desktop_profile_proposals.py`). A change an agent proposed to
+	 * an account agent or team profile, reviewed in Agents → <name>. These used
+	 * to be filed as signed MESH approvals, which drew them in the Mesh tray and
+	 * needed a presence-backed signature this machine may not have, so they could
+	 * not be accepted from the UI at all (operator, 2026-11-09). The desktop
+	 * bearer is the human surface here, exactly as on `profiles.update`: Accept
+	 * applies through the same route-level authority the profile editor has.
+	 *
+	 * `list` is a STORE READ (one directory of small files), which is what makes
+	 * it safe for the Agents badge to poll. `accept` carries `after` only for
+	 * Edit-then-accept, restricted to the proposal's own changed fields (core
+	 * refuses any other key), and stale proposals are refused rather than rebased.
+	 * Both writes carry a `requestId` so a lost
+	 * answer is replayed by the server's receipts rather than applied twice.
+	 */
 	z
-		.object({ op: z.literal("approvals.list") })
+		.object({
+			op: z.literal("profileProposals.list"),
+			state: z.enum(["pending", "all"]).optional(),
+		})
 		.strict(),
+	z.object({ op: z.literal("profileProposals.get"), proposalId }).strict(),
+	z
+		.object({
+			op: z.literal("profileProposals.accept"),
+			proposalId,
+			requestId,
+			after: z
+				.record(z.string().regex(/^[a-z][a-z0-9_]{0,63}$/), z.unknown())
+				.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("profileProposals.reject"),
+			proposalId,
+			requestId,
+			note: z.string().max(2000).optional(),
+		})
+		.strict(),
+	z.object({ op: z.literal("approvals.list") }).strict(),
 	z.object({ op: z.literal("approvals.approve"), approvalId }).strict(),
 	z.object({ op: z.literal("approvals.deny"), approvalId }).strict(),
 	// Profile writes echo the reviewed commitments, never a model-authored command.
+	// `pair_phone` (`features.phone_pairing`) signs a phone pairing the person has
+	// already acknowledged through `approvals.pairAck` below; the server refuses an
+	// un-acked pairing before its signer runs (`pair_op.require_acked`).
 	...(["approvals.approveOperation", "approvals.applyOperation"] as const).map(
 		(op) =>
 			z
 				.object({
 					op: z.literal(op),
 					approvalId,
-					operation: z.literal("profile_save"),
+					operation: z.enum(["profile_save", "pair_phone"]),
 					requestDigest: z.string().regex(CREDENTIAL_APPROVAL_DIGEST),
 					disclosureDigest: z.string().regex(CREDENTIAL_APPROVAL_DIGEST),
 				})
@@ -4578,6 +4712,66 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	 * `approveCredential` is review -> sign -> apply in one call;
 	 * `applyCredential` is the retry of a signed card whose apply did not finish.
 	 */
+	/*
+	 * PHONE PAIRING (`features.phone_pairing`, core pairing design v2 §2). The
+	 * person's decision on the pairing card BEFORE any signer: both digests the card
+	 * was drawn from, echoed verbatim, plus the typed `code` in code mode. Omitting
+	 * `code` is the confirm-mode "Codes match" press, which core accepts only on an
+	 * edge-attested request (else 409 `pair_code_required`). Splitting the decision
+	 * from the signature is core's: a wrong code burns a strike, never a Touch ID
+	 * gesture. `code` is bounded like the core model (`max_length=32`); core
+	 * normalises spacing and refuses non-digits without a strike.
+	 */
+	z
+		.object({
+			op: z.literal("approvals.pairAck"),
+			approvalId,
+			requestDigest: z.string().regex(CREDENTIAL_APPROVAL_DIGEST),
+			disclosureDigest: z.string().regex(CREDENTIAL_APPROVAL_DIGEST),
+			code: z.string().min(1).max(32).optional(),
+		})
+		.strict(),
+	/*
+	 * Settings → Phone access → Paired phones. A device id is what core derives
+	 * (lowercase hex) and accepts (`[A-Za-z0-9]{1,64}`, else 422 `bad_device_id`);
+	 * the pattern here is this client's own check before the id becomes a path
+	 * segment. `remove` is idempotent on core's side: a second call on a
+	 * `removing` row finishes it.
+	 */
+	z
+		.object({ op: z.literal("devices.list") })
+		.strict(),
+	z
+		.object({
+			op: z.literal("devices.remove"),
+			deviceId: z.string().regex(/^[A-Za-z0-9]{1,64}$/),
+		})
+		.strict(),
+	/*
+	 * Turn on phone approvals (`features.operator_setup`, core design v2 §6). The
+	 * POST body is closed and empty on core's side: the click is the whole request,
+	 * and the OS admin prompt is the proof, so nothing here can carry a password.
+	 */
+	z
+		.object({ op: z.literal("operator.setup.read") })
+		.strict(),
+	z.object({ op: z.literal("operator.setup.run") }).strict(),
+	/*
+	 * SHOW PHONE PASSWORD (`features.mobile_password_read`, local-operator #3963,
+	 * `routes/desktop_mobile_password.py`): the phone portal password a person who
+	 * runs their own tunnel signs the phone in with - the value `lop mobile
+	 * password` prints - for Settings → Phone access → "Using your own tunnel?".
+	 * No arguments. The renderer sends it ONLY on the person's explicit click
+	 * (never prefetched, never polled, never cached in a query), and neither main
+	 * nor the renderer logs the reply: the transport writes nothing about bodies
+	 * (`desktop-transport.ts`), and `scripts/phone-pairing.test.mjs` pins that
+	 * with a console capture across a 200 read. Core answers 404
+	 * `{detail: {code: "mobile_password_unset"}}` when none is set, with
+	 * `Cache-Control: no-store`.
+	 */
+	z
+		.object({ op: z.literal("mobile.password") })
+		.strict(),
 	z
 		.object({
 			op: z.literal("approvals.approveCredential"),
@@ -5012,13 +5206,26 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			// No selection_token/excluded_ids here: core's recount WITH exclusions
 			// is the PATCH body form ({op:"preview"}); 500 IDs in a GET URL exceed
 			// h11's request-line limit. The page recounts exclusions locally.
+			/*
+			 * Canonical ids only: the renderer filters its hints through
+			 * `notificationCountHints` (pseudo-sessions are not counted - an older
+			 * core would 422 on them, and a hint must never break the write it
+			 * accompanies).
+			 */
 			countSessionIds: z.array(sessionId).max(50).optional(),
+			/*
+			 * Ask core for every conversation's undismissed/unread counts in the
+			 * same answer (`session_counts`), replacing the renderer's whole-inbox
+			 * page walk. Additive: an older core ignores an unknown query param
+			 * and answers without the field, which is the renderer's fallback cue.
+			 */
+			includeSessionCounts: z.literal(true).optional(),
 			kind: z.enum(["all", "asks", "updates"]).optional(),
 			bulkPriority: z.enum(["any", "high", "normal_up"]).optional(),
 			state: z.enum(["unread", "all", "dismissed"]).optional(),
 			source: z.enum(["notify", "ask"]).optional(),
 			priority: z.enum(["high", "normal", "low"]).optional(),
-			sessionId: sessionId.optional(),
+			sessionId: notificationSessionId.optional(),
 			throughSeq: z.number().int().min(0).optional(),
 			cursor: z.string().min(1).max(64).optional(),
 			limit: z.number().int().min(1).max(100).optional(),
@@ -5091,7 +5298,8 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 				.max(50),
 			evidence: z
 				.object({
-					sessionId,
+					/* Same grammar core's `seen` evidence admits (core PR #3921). */
+					sessionId: notificationSessionId,
 					inputKind: z.enum(["pointer", "key", "wheel"]),
 					inputAtMs: z.number().int().min(0),
 					visibleSinceMs: z.number().int().min(0),
@@ -7072,6 +7280,21 @@ const MESH_READ_OPS: ReadonlySet<string> = new Set([
 const PROVIDER_WRITE_OPS: ReadonlySet<string> = new Set(["usage.reset"]);
 
 /**
+ * A peer-held file landed on THIS device (`features.remote_files`).
+ *
+ * A WRITE on the long budget, for the mesh-listing reason above: the backend
+ * waits up to `REMOTE_FETCH_WAIT_S = 20.0` for the owner's transfer before it
+ * answers 504 `attachment_fetch_pending` (docs/design/remote-files-parity.md
+ * §1), then hashes and links the landed copy. On the 20 s control budget this
+ * layer would give up first and call a download that was still landing a
+ * failure. Not in `READ_ONLY_OPS`: a timeout must keep the write sentence,
+ * because a file may already be in Downloads.
+ */
+const MESH_WRITE_OPS: ReadonlySet<string> = new Set([
+	"sessions.files.download",
+]);
+
+/**
  * Every op on the long budget, whichever shape put it there.
  *
  * Named for the BUDGET rather than for a read direction: one member is a write
@@ -7083,6 +7306,7 @@ const LONG_CONTROL_OPS: ReadonlySet<string> = new Set([
 	...PROVIDER_READ_OPS,
 	...MESH_READ_OPS,
 	...PROVIDER_WRITE_OPS,
+	...MESH_WRITE_OPS,
 ]);
 
 /*
@@ -7272,6 +7496,21 @@ export function desktopRequestDeadlineMs(
 	// applies, so it waits on the same human gesture. Its retry never signs.
 	if (op === "approvals.approve" || op === "approvals.approveCredential")
 		return APPROVAL_APPROVE_DEADLINE_MS;
+	/*
+	 * A PHONE PAIRING'S SIGNATURE, a phone's removal and turning approvals on all
+	 * wait on a person at an OS prompt (Touch ID, then the admin prompt that admits
+	 * or revokes the phone), so they get the gesture budget, not the control one.
+	 * Request-keyed for the pairing: `approveOperation` for `profile_save` keeps the
+	 * budget it always had.
+	 */
+	if (
+		typeof request !== "string" &&
+		request.op === "approvals.approveOperation" &&
+		request.operation === "pair_phone"
+	)
+		return APPROVAL_APPROVE_DEADLINE_MS;
+	if (op === "devices.remove" || op === "operator.setup.run")
+		return APPROVAL_APPROVE_DEADLINE_MS;
 	if (op === "tunnel.setup.run") return PHONE_SETUP_RUN_DEADLINE_MS;
 	if (op === "tunnel.setup.plan") return PHONE_SETUP_PLAN_DEADLINE_MS;
 	const hub = hubWriteDeadlineMs(op);
@@ -7395,6 +7634,8 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"analytics.get",
 	"analytics.models",
 	"approvals.list",
+	"profileProposals.list",
+	"profileProposals.get",
 	"commands.entities",
 	"commands.list",
 	"config.get",
@@ -7415,6 +7656,8 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"legacy.schedules.list",
 	"mcp.catalog",
 	"mcp.list",
+	// The phone-access diagnosis reads and redacts; it changes nothing.
+	"mobile.doctor",
 	"models.catalogue",
 	"networks.list",
 	"peers.list",
@@ -7453,6 +7696,10 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	// is deliberately absent so a run that ran out of time gets the cautious sentence.
 	"tunnel.setup.plan",
 	"tunnel.setup.read",
+	"devices.list",
+	"operator.setup.read",
+	// Reads the phone password and changes nothing; a timeout gets the read sentence.
+	"mobile.password",
 	"usage.get",
 ]);
 
@@ -7825,6 +8072,13 @@ export type DesktopMediaRequest =
 	// beside the other session operations.
 	| { op: "sessions.attachment"; sessionId: string; digest: string }
 	/*
+	 * A PEER-held Files row's bytes, addressed by the owner's row id rather than
+	 * by any path (`features.remote_files`): the row's `ref.path` is the owner's
+	 * display path and names nothing on this disk, so the viewer route asks the
+	 * owner for the row and streams what S1 confinement lets it serve.
+	 */
+	| { op: "sessions.files.content"; sessionId: string; fileId: string }
+	/*
 	 * The same fetch, scoped to a CHILD of the named session.
 	 *
 	 * The parent's op above cannot serve a child's rows: its route resolves the
@@ -7994,9 +8248,10 @@ export type DesktopMediaResponse =
 			code?: DesktopRefusalCode;
 			/**
 			 * The daemon's own refusal code and params, forwarded only for
-			 * `notification_sounds.upload` (main `desktop-media.ts`): that row's copy
-			 * and remedy switch on the code (`too_long`, `unsupported_format` ...),
-			 * which the closed pairing table above cannot carry.
+			 * `notification_sounds.upload` and `sessions.files.content` (main
+			 * `desktop-media.ts`): their copy switches on the code (`too_long`,
+			 * `unsupported_format`, `attachment_fetch_pending` ...), which the closed
+			 * pairing table above cannot carry.
 			 */
 			refusal?: { code: string; params?: Record<string, unknown> };
 	  };
@@ -8787,6 +9042,39 @@ export function desktopEndpoint(request: DesktopRequest): {
 					...(request.requestId ? { request_id: request.requestId } : {}),
 				},
 			};
+		/*
+		 * Profile proposals: the record's own id, `encodeURIComponent`ed for the
+		 * same reason the approval ids are. The bodies are the core route models'
+		 * snake_case fields and nothing else.
+		 */
+		case "profileProposals.list":
+			return {
+				path: `/v1/desktop/profile-proposals?state=${request.state ?? "pending"}`,
+				method: "GET",
+			};
+		case "profileProposals.get":
+			return {
+				path: `/v1/desktop/profile-proposals/${encodeURIComponent(request.proposalId)}`,
+				method: "GET",
+			};
+		case "profileProposals.accept":
+			return {
+				path: `/v1/desktop/profile-proposals/${encodeURIComponent(request.proposalId)}/accept`,
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					...(request.after ? { after: request.after } : {}),
+				},
+			};
+		case "profileProposals.reject":
+			return {
+				path: `/v1/desktop/profile-proposals/${encodeURIComponent(request.proposalId)}/reject`,
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					...(request.note ? { note: request.note } : {}),
+				},
+			};
 		case "approvals.list":
 			return { path: "/v1/desktop/approvals", method: "GET" };
 		/*
@@ -8820,6 +9108,34 @@ export function desktopEndpoint(request: DesktopRequest): {
 					request_digest: request.requestDigest,
 					disclosure_digest: request.disclosureDigest,
 				},
+			};
+		case "approvals.pairAck":
+			return {
+				path: `/v1/desktop/approvals/${encodeURIComponent(request.approvalId)}/pair-ack`,
+				method: "POST",
+				body: {
+					request_digest: request.requestDigest,
+					disclosure_digest: request.disclosureDigest,
+					// Omitted, never null: the confirm-mode press is the ABSENCE of a code.
+					...(request.code !== undefined ? { code: request.code } : {}),
+				},
+			};
+		case "devices.list":
+			return { path: "/v1/desktop/devices", method: "GET" };
+		case "devices.remove":
+			return {
+				path: `/v1/desktop/devices/${encodeURIComponent(request.deviceId)}`,
+				method: "DELETE",
+			};
+		case "mobile.password":
+			return { path: "/v1/desktop/mobile/password", method: "GET" };
+		case "operator.setup.read":
+			return { path: "/v1/desktop/operator/setup", method: "GET" };
+		case "operator.setup.run":
+			return {
+				path: "/v1/desktop/operator/setup",
+				method: "POST",
+				body: {},
 			};
 		case "approvals.approveCredential":
 		case "approvals.applyCredential":
@@ -9175,6 +9491,10 @@ export function desktopEndpoint(request: DesktopRequest): {
 			// newest member of the query string, and nothing that never asks for it
 			// may move.
 			if (request.sort) params.set("sort", request.sort);
+			// LAST, and omitted when false, for the same byte-order promise: it is the
+			// newest parameter, and an older core's closed query model must never see
+			// it (the caller sends it only under `features.temporary_chats`).
+			if (request.include_temporary) params.set("include_temporary", "true");
 			return {
 				path: `/v1/desktop/sessions?${params}`,
 				method: "GET",
@@ -9217,6 +9537,13 @@ export function desktopEndpoint(request: DesktopRequest): {
 				// The desired state, never a toggle: see the op's own comment for why a
 				// retried toggle is the bug this shape exists to make impossible.
 				body: { archived: request.archived },
+			};
+		case "sessions.temporary":
+			return {
+				path: `/v1/desktop/sessions/${request.sessionId}/temporary`,
+				method: "POST",
+				// The desired state, never a toggle: see the op's own comment.
+				body: { temporary: request.temporary },
 			};
 		case "sessions.delete":
 			return {
@@ -9261,6 +9588,8 @@ export function desktopEndpoint(request: DesktopRequest): {
 					// own note for the byte-identity promise this keeps.
 					...(request.draftId ? { draft_id: request.draftId } : {}),
 					...(request.purpose ? { purpose: request.purpose } : {}),
+					// Omitted unless asked for: see the field's own note.
+					...(request.temporary ? { temporary: true } : {}),
 				},
 			};
 		case "sessions.preview":
@@ -9333,6 +9662,11 @@ export function desktopEndpoint(request: DesktopRequest): {
 		case "sessions.files.materialise":
 			return {
 				path: `/v1/desktop/sessions/${encodeURIComponent(request.sessionId)}/files/${encodeURIComponent(request.fileId)}/materialise`,
+				method: "POST",
+			};
+		case "sessions.files.download":
+			return {
+				path: `/v1/desktop/sessions/${encodeURIComponent(request.sessionId)}/files/${encodeURIComponent(request.fileId)}/download`,
 				method: "POST",
 			};
 		case "sessions.userAttachments":
@@ -10350,6 +10684,8 @@ export function desktopEndpoint(request: DesktopRequest): {
 						: {}),
 				},
 			};
+		case "mobile.doctor":
+			return { path: "/v1/desktop/mobile/doctor", method: "GET" };
 		case "auth.start":
 			return {
 				path: "/v1/auth/login",
@@ -11212,6 +11548,8 @@ export function desktopEndpoint(request: DesktopRequest): {
 			const query = new URLSearchParams();
 			if (request.preview) query.set("preview", "true");
 			if (request.includeAskReads) query.set("include_ask_reads", "true");
+			if (request.includeSessionCounts)
+				query.set("include_session_counts", "true");
 			for (const id of request.countSessionIds ?? [])
 				query.append("count_session_ids", id);
 			if (request.kind) query.set("kind", request.kind);

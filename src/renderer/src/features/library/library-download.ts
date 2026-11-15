@@ -14,9 +14,30 @@ import { t } from "@shared/i18n";
  * revoking in the same tick can cancel the transfer in Chromium.
  */
 
+import { remoteUnreachableText } from "@features/chat/canonical/remote-files";
 import { desktopMedia } from "@shared/api/local-operator/desktop-api";
+import { dismissToast, showLoadingToast } from "@shared/utils/toast-manager";
 import type { DesktopLibraryAsset } from "../../../../shared/desktop-control-contract";
-import { assetDisplayName } from "./library-model";
+import { assetDisplayName, remoteDevice } from "./library-model";
+
+/**
+ * The owner of a PEER's asset did not answer (the relay's 504). Its message is
+ * the offline sentence every remote surface shares (UX round 1, U1-6/U1-8), so
+ * a caller shows it instead of the generic "could not be saved".
+ */
+export class RemoteAssetUnreachableError extends Error {
+	constructor(device: string) {
+		super(remoteUnreachableText(device));
+		this.name = "RemoteAssetUnreachableError";
+	}
+}
+
+/** The sentence a failed save shows: the offline one for a peer, else `fallback`. */
+export function assetCopyFailure(error: unknown, fallback: string): string {
+	return error instanceof RemoteAssetUnreachableError
+		? error.message
+		: fallback;
+}
 
 /** A path separator, hoisted so the split does not build a regex per download. */
 const PATH_SEPARATOR = /[\\/]/;
@@ -32,11 +53,32 @@ function downloadName(asset: DesktopLibraryAsset): string {
 }
 
 export async function saveAssetCopy(asset: DesktopLibraryAsset): Promise<void> {
-	const response = await desktopMedia(
-		{ op: "library.content", assetId: asset.id, download: true },
-		null,
-	);
+	/*
+	 * A PEER's bytes cross the mesh, which can take seconds: the press shows a
+	 * loading toast the outcome replaces (UX round 1, U1-8), the same pattern as
+	 * the Files panel's Download to this device.
+	 */
+	const progress = asset.remote
+		? showLoadingToast(
+				t("ui.canvas.files.remoteDownloading", {
+					name: assetDisplayName(asset),
+					device: remoteDevice(asset),
+				}),
+				{ id: `library-remote-save:${asset.id}` },
+			)
+		: null;
+	let response: Awaited<ReturnType<typeof desktopMedia>>;
+	try {
+		response = await desktopMedia(
+			{ op: "library.content", assetId: asset.id, download: true },
+			null,
+		);
+	} finally {
+		if (progress !== null) dismissToast(progress);
+	}
 	if (response.kind !== "bytes") {
+		if (asset.remote && response.kind === "error" && response.status === 504)
+			throw new RemoteAssetUnreachableError(remoteDevice(asset));
 		throw new Error(
 			response.kind === "error"
 				? response.detail

@@ -486,8 +486,8 @@ test("the sidebar's render cap preserves the chat floor at the app minimum", () 
 	const capacity = sidebarDockCapacity(800);
 	assert.equal(capacity, 276);
 	assert.equal(capacity + CHAT_PANE_MIN_PX + PANEL_RAIL_WIDTH_PX, 800);
-	/* A wide window does not cap the user's 220-320px drag range further. */
-	assert.equal(sidebarDockCapacity(1380), 320);
+	/* A wide window does not cap the user's 220-560px drag range further. */
+	assert.equal(sidebarDockCapacity(1380), 560);
 });
 
 test("the layout module owns the bands the shell reads", () => {

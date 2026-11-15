@@ -1,0 +1,17 @@
+{
+	"ui.music.label": "Música",
+	"ui.music.progress": "{completed}/{total} pistas finalizadas",
+	"ui.music.cancel_warning": "El trabajo ya iniciado en «{label}» aún puede completarse y cobrarse. Los resultados seguirán disponibles.",
+	"ui.music.track": "Pista {index}",
+	"ui.music.failed": "No se pudo generar esta pista.",
+	"ui.music.empty": "No se devolvió ninguna pista.",
+	"ui.music.queued": "Música en cola",
+	"ui.music.generating": "Generando música…",
+	"ui.music.generating_tracks": "{count, plural, one {Generando # pista…} many {Generando # de pistas…} other {Generando # pistas…}}",
+	"ui.music.modifying": "Modificando música…",
+	"ui.music.cancel_requested": "Cancelación solicitada",
+	"ui.music.ready": "Música lista",
+	"ui.music.job_failed": "No se pudo generar la música.",
+	"ui.music.job_cancelled": "Generación de música cancelada.",
+	"ui.music.finished_after_cancel": "La música terminó antes de que se pudiera cancelar."
+}

@@ -1,0 +1,18 @@
+{
+	"locale": "ru",
+	"namespace": "ui.music.job_status",
+	"source_sha256": "b71126a2206711a86590573565bd5ec6e0177055db2ce9bf5a23895133653141",
+	"target_sha256": "4a540394f14ccc015673adc48b3a0efec9c36ea949e732b82e9757733f6fc270",
+	"context_sha256": "2d44b76709103eebc32af69bfdd27db63a4d892e3f59dca02a0464bfe61177d0",
+	"auditor": {
+		"agent": "reviewer",
+		"instance": "fbc3c870c82c",
+		"model": "anthropic/claude-opus-5-5",
+		"date": "2026-11-09"
+	},
+	"status": "passed",
+	"findings": [],
+	"scope": "1 key ui.music.job_status.unavailable; full namespace",
+	"source_report": "https://github.com/damianvtran/local-operator-ui/pull/1800#issuecomment-6755084176",
+	"recorded_by": "coder 5c52fa64cbee (transcribed from the auditor's comment; not an audit)"
+}

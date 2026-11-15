@@ -335,6 +335,94 @@ export function assertControlPresent(control) {
 const sha = (value) => createHash("sha256").update(value).digest("hex");
 const git = (...args) => execFileSync("git", args, { encoding: "utf8" }).trim();
 export const ASKS_CONTROL = resolveAsksControl();
+
+/**
+ * Whether the control's renderer already carries #1901's long-ask-scroll fix
+ * (`fix(asks): let a long ask scroll and keep its actions reachable`, merge
+ * e6122214, first parent 789b013d = the last pre-fix main).
+ *
+ * WHY THIS EXISTS. The `asks-scroll` control leg asserts the DEFECT: a wheel over
+ * the question text must NOT move the drawer's list. That reading is only true of a
+ * build from before #1901. The control is the merge base with main, so once #1901
+ * landed every PR based on main >= e6122214 got a post-fix control and the negative
+ * assertion could never hold (run 43664741238 / job 132678106327, `asks-scroll`,
+ * "the pre-fix build's list must NOT move from a wheel over the question text").
+ * The marker is the `data-lo-ask-list` attribute (`ASK_LIST_ATTR` in
+ * ask-bounds.tsx), which exists only with the fix. Detected from the control's own
+ * tree, not by comparing SHAs, so it holds for any control (override, merge base,
+ * fetched main, pin) without a list of commits to maintain.
+ *
+ * Reproduce: `git grep -c data-lo-ask-list <rev> -- src` (exit 1 = pre-fix).
+ *
+ * Returns true when the control is PRE-fix and the negative assertion is valid.
+ * Exit 1 from `git grep` means "no match"; anything else (unknown rev) throws
+ * rather than silently skipping the assertion.
+ */
+export function controlPredatesAskScrollFix(
+	rev = ASKS_CONTROL,
+	cwd = undefined,
+) {
+	const result = spawnSync(
+		"git",
+		["grep", "-q", "data-lo-ask-list", rev, "--", "src"],
+		{ encoding: "utf8", cwd },
+	);
+	if (result.status === 0) return false;
+	if (result.status === 1) return true;
+	// execFileSync's own message dropped git's exit status and stderr, which is what
+	// made the first CI failure unreadable (run 43673011929); name both.
+	throw new Error(
+		`controlPredatesAskScrollFix: git grep on ${rev} failed (exit ${result.status}, signal ${result.signal}): ${String(result.stderr).trim() || result.error?.message || "no stderr"}`,
+	);
+}
+
+/**
+ * The leg-side reading of the parent's verdict.
+ *
+ * WHY AN ENV VAR AND NOT `git grep` IN THE LEG. Each leg is a child process whose cwd
+ * is the control's EXTRACTED tree (`git archive | tar -x`, no `.git`), so a `git grep`
+ * there exits 128 "not a git repository" - measured: that is the CI failure of run
+ * 43673011929 / job 132700258286 (the clone shape itself is fine: a depth-1 merge
+ * plus a depth-2 fetch holds the parent's tree and blobs, exit 1 on a pre-fix tree).
+ * Only the parent has the repository, so it decides once and hands the answer down;
+ * a missing value throws instead of defaulting, so the negative assertion is never
+ * silently skipped or silently run against the wrong control.
+ */
+export function controlPredatesFixFromEnv(env = process.env) {
+	const value = env.ASKS_CONTROL_PREDATES_FIX;
+	if (value === "1") return true;
+	if (value === "0") return false;
+	throw new Error(
+		`ASKS_CONTROL_PREDATES_FIX must be "1" or "0" (set by the parent run), got ${JSON.stringify(value)}`,
+	);
+}
+
+/**
+ * Which pre-fix-only claims the asks-scroll CONTROL leg may assert.
+ *
+ * WHY A TABLE. The control leg asserts the DEFECT, and every such claim is false
+ * by construction on a control that already carries #1901 (the merge base of any
+ * PR cut after e6122214). CI attempt 1 failed on the wheel claim, attempt 2 on the
+ * next one (`containment.body === "contain"`), because the claims were gated one at
+ * a time. They are listed here together so one verdict decides all of them:
+ *   wheel      - a wheel over the question text/option/list must NOT move the list
+ *   body       - the question body computes overscroll-behavior-y `contain`
+ *   stickyTop  - `Send answer` is OUTSIDE the port at the top of the scroll
+ *   chromeTab  - Tab from the drawer's chrome does NOT land on the list
+ * A pre-fix control (pinned/override) keeps every claim; a post-fix control keeps
+ * none (nothing pre-fix-specific is true of it) and the run logs the skip loudly.
+ * The candidate's own assertions are a separate branch and never read this table.
+ */
+export function askScrollControlClaims(controlIsPreFix) {
+	assert.equal(typeof controlIsPreFix, "boolean");
+	return {
+		wheel: controlIsPreFix,
+		body: controlIsPreFix,
+		stickyTop: controlIsPreFix,
+		chromeTab: controlIsPreFix,
+	};
+}
+
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /*
@@ -507,6 +595,25 @@ export const CONTROL_REUSE_PARTS = [
 	"electron.vite.config.js",
 	"pnpm-lock.yaml",
 ];
+/**
+ * THE END CLAIM, IN ONE PLACE (agent review round 3, m2 + m3): "End reached the
+ * maximum" only means something on a list that has somewhere to go, and a failure
+ * has to show both readings - the one the retry replaced and the one it settled on -
+ * or a key dropped twice is indistinguishable from one short scroll. Exported so the
+ * failure shape can be driven without an assembled app; `entry` is one size's
+ * summary record, so the caller passes exactly what the run measured.
+ */
+export function assertEndReached(size, entry) {
+	const { keys } = entry;
+	assert(
+		keys.endMax > 0,
+		`${size}: the End check needs a list with somewhere to scroll (its own read: max ${keys.endMax}, client ${keys.endClient}); on a collapsed list "End reached the maximum" is true with no scroll at all`,
+	);
+	assert(
+		Math.abs(keys.end - keys.endMax) <= 1,
+		`${size}: End on the list must reach its maximum (end read scrollTop ${keys.end} of max ${keys.endMax} at client ${keys.endClient}, settled ${keys.endSettled}, quiet ${keys.endQuiet}, retry used ${keys.endRetried}; the first read was scrollTop ${keys.endFirst.scrollTop} of max ${keys.endFirst.max}; the open read was scrollTop ${entry.list.scrollTop} of max ${entry.list.max}; the 1 px slack is sub-pixel layout, not a short scroll)`,
+	);
+}
 export function controlReusePlan(revParse, control, head) {
 	const differing = CONTROL_REUSE_PARTS.filter(
 		(part) => revParse(`${control}:${part}`) !== revParse(`${head}:${part}`),
@@ -618,6 +725,50 @@ async function provisionControlElectron(root) {
 	}
 	return plan;
 }
+/** Tree paths every control revision carries; `git archive` fails on a missing one. */
+const CONTROL_ARCHIVE_PATHS = [
+	"src",
+	"scripts",
+	"resources",
+	"build",
+	"i18n",
+	"package.json",
+	"pnpm-lock.yaml",
+	"pnpm-workspace.yaml",
+	"electron.vite.config.js",
+	"tsconfig.node.json",
+	"tsconfig.app.json",
+	"tsconfig.web.json",
+	"tsconfig.json",
+];
+/*
+ * Paths shipped only when the control revision has them. `patches/` holds the
+ * files pnpm's `patchedDependencies` points at: when the lockfile differs the
+ * control runs its own `pnpm install --frozen-lockfile`, and pnpm aborts with
+ * ENOENT on a declared patch file that is not in the tree (seen on the first
+ * lock-changing PR after `electron-chrome-extensions` was patched). It is
+ * optional, not unconditional, because an older control revision predating
+ * `patches/` would otherwise make `git archive` fail on the missing pathspec.
+ */
+const CONTROL_ARCHIVE_OPTIONAL_PATHS = ["patches"];
+/**
+ * The pathspec list `git archive` receives for the control source tree.
+ * `hasPath(path)` reports whether the control revision contains `path`; it is
+ * injected so the selection is testable without a repository.
+ */
+export function controlArchivePaths(hasPath) {
+	return [
+		...CONTROL_ARCHIVE_PATHS,
+		...CONTROL_ARCHIVE_OPTIONAL_PATHS.filter((path) => hasPath(path)),
+	];
+}
+/** Whether `rev` has a tree entry at `path` (`git cat-file -e rev:path`). */
+function revisionHasPath(rev, path) {
+	return (
+		spawnSync("git", ["cat-file", "-e", `${rev}:${path}`], { stdio: "ignore" })
+			.status === 0
+	);
+}
 async function prepareControl(root, output) {
 	// The control's source is read from its own revision; ask for it up front so a
 	// clone that does not hold it fails with the reason instead of a bare
@@ -637,19 +788,7 @@ async function prepareControl(root, output) {
 		"--format=tar",
 		`--output=${tar}`,
 		ASKS_CONTROL,
-		"src",
-		"scripts",
-		"resources",
-		"build",
-		"i18n",
-		"package.json",
-		"pnpm-lock.yaml",
-		"pnpm-workspace.yaml",
-		"electron.vite.config.js",
-		"tsconfig.node.json",
-		"tsconfig.app.json",
-		"tsconfig.web.json",
-		"tsconfig.json",
+		...controlArchivePaths((path) => revisionHasPath(ASKS_CONTROL, path)),
 	]);
 	mkdirSync(root);
 	execFileSync("tar", ["-xf", tar, "-C", root]);
@@ -1022,6 +1161,797 @@ export const CASES = {
 					"/reconnect|connection|retry|unavailable|could not/i.test(document.body.innerText)",
 				);
 				await frame("connection-error");
+			}
+		},
+	},
+	/*
+	 * THE LONG-ASK SCROLL CASE: the wheel, the page keys and Tab, on a four-decision
+	 * ask whose every scroller overflows.
+	 *
+	 * WHAT IT IS FOR. A card taller than the drawer's scrollport did not scroll from a
+	 * wheel over its own text: the question body and the option list carried
+	 * `overscroll-behavior: contain`, and Chromium 156 stops the chain at such a box
+	 * even when it has nothing left to scroll - so the drawer's LIST, the only thing
+	 * that owns the scroll, never moved, and `Send answer` sat below the fold with
+	 * nothing pinned to reach it from.
+	 *
+	 * THE LEGS ARE THE EVIDENCE PAIR, which is why the assertions are per-leg: the
+	 * control leg IS this repository's derived pre-fix build, so asserting THERE that
+	 * the list does not move and that `Send answer` is outside the port is the negative
+	 * control running in CI forever; the candidate leg asserts the remedy. One fixture,
+	 * one case, two revisions - no hand-run comparison that can go stale.
+	 */
+	"asks-scroll": {
+		purpose:
+			"A four-decision ask whose bodies and option lists all overflow: a wheel over the question text, an option row and the option list, and PageDown/Home/End/Space, have to move the drawer's LIST; each card's action row has to stay inside that list's port at the top of the scroll and at its maximum; and a Tab walk through the card must never leave a focused control covered by that pinned row. Wheel and key events go through Chromium's own input pipeline (CDP), never scrollIntoView.",
+		route: "/chat",
+		frames: {
+			control: [
+				"long-ask-440x1024",
+				"long-ask-440x700",
+				"long-ask-440x1400",
+				"long-ask-440x600",
+			],
+			candidate: [
+				"long-ask-440x1024",
+				"long-ask-440x700",
+				"long-ask-440x1400",
+				"long-ask-440x600",
+				/* The D4 frame: at the maximum, where the band's bottom edge is readable. */
+				"long-ask-max-scroll-440x1024",
+				/* The m3 frame: the region's ring, focused by the keyboard, inside its port. */
+				"long-ask-focused-440x1024",
+			],
+		},
+		coverage:
+			"real assembled app renderer/handlers/store; wheel and key events through Chromium's input pipeline, not scrollIntoView",
+		drive: async (ctx) => {
+			const {
+				kind,
+				cdp,
+				wait,
+				press,
+				pressEscape,
+				facts,
+				frame,
+				fixtureMode,
+				session,
+				stamp,
+			} = ctx;
+			/*
+			 * THE LIST, FOUND THE SAME WAY ON BOTH LEGS. The candidate marks the drawer's
+			 * scroller (`data-lo-ask-list`, the contract the pinned row publishes its height
+			 * to), and the control build predates the mark - so the control leg reads the same
+			 * element by what it IS: inside the drawer, the first `overflow-y: auto` box whose
+			 * content actually overflows. That is the list and not a card's body, because the
+			 * list precedes every card in DOM order.
+			 */
+			const LIST = `(document.querySelector("[data-lo-ask-list]") ?? [...document.querySelectorAll("[data-ask-drawer] div")].find((el) => /^(auto|scroll)$/.test(getComputedStyle(el).overflowY) && el.scrollHeight > el.clientHeight))`;
+			const READ = `(() => {
+				const list = ${LIST};
+				if (!list) return { present: false };
+				const box = (el) => { const r = el.getBoundingClientRect(); return { top: Math.round(r.top), bottom: Math.round(r.bottom), left: Math.round(r.left), right: Math.round(r.right), height: Math.round(r.height) }; };
+				const listBox = box(list);
+				const body = document.querySelector("[data-lo-ask-scroll]");
+				const opts = document.querySelector("[data-lo-ask-options-scroll]");
+				const send = [...document.querySelectorAll("[data-lo-ask-row] button")].find((b) => /^(Send answer|Update answer)$/.test((b.textContent ?? "").trim())) ?? null;
+				const active = document.activeElement;
+				const labelled = list.getAttribute("aria-labelledby");
+				return {
+					present: true,
+					list: {
+						scrollTop: Math.round(list.scrollTop),
+						max: list.scrollHeight - list.clientHeight,
+						client: list.clientHeight,
+						box: listBox,
+						tabIndex: list.getAttribute("tabindex"),
+						role: list.getAttribute("role"),
+						ariaLabel: list.getAttribute("aria-label"),
+						/* The EFFECTIVE name: aria-label on the candidate, aria-labelledby before it. */
+						name:
+							list.getAttribute("aria-label") ??
+							(labelled
+								? (document.getElementById(labelled)?.textContent ?? "").trim()
+								: null),
+						scope:
+							(document.querySelector("[data-ask-scope]")?.textContent ?? "").trim() ||
+							null,
+						padding: getComputedStyle(list).scrollPaddingBottom,
+						actionsVar: list.style.getPropertyValue("--lo-ask-actions-h"),
+					},
+					body: body ? { scrollTop: Math.round(body.scrollTop), max: body.scrollHeight - body.clientHeight, contain: getComputedStyle(body).overscrollBehaviorY } : null,
+					options: opts ? { scrollTop: Math.round(opts.scrollTop), max: opts.scrollHeight - opts.clientHeight, contain: getComputedStyle(opts).overscrollBehaviorY } : null,
+					pinned: document.querySelector("[data-lo-ask-actions]") ? box(document.querySelector("[data-lo-ask-actions]")) : null,
+					send: send ? (() => { const b = box(send); return { box: b, disabled: send.disabled, inPort: b.top >= listBox.top - 1 && b.bottom <= listBox.bottom + 1 }; })() : null,
+					active: active === null ? null : {
+						isList: active === list,
+						isBody: active === body,
+						inDrawer: !!active.closest("[data-lo-ask-surfaces]"),
+						what: active.tagName.toLowerCase() + "|" + (active.textContent ?? "").trim().slice(0, 24),
+						box: active.getBoundingClientRect ? box(active) : null,
+					},
+				};
+			})()`;
+			const read = () => cdp.evaluate(READ);
+			const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+			const resetScroll = () =>
+				cdp.evaluate(
+					`(() => { const l = ${LIST}; if (l) l.scrollTop = 0; const b = document.querySelector("[data-lo-ask-scroll]"); if (b) b.scrollTop = 0; const o = document.querySelector("[data-lo-ask-options-scroll]"); if (o) o.scrollTop = 0; })()`,
+				);
+			const focusOn = (selector) =>
+				cdp.evaluate(
+					`(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return false; el.focus(); return document.activeElement === el; })()`,
+				);
+			/* The list is an EXPRESSION, not a selector (see `LIST`), so it focuses itself. */
+			const focusList = () =>
+				cdp.evaluate(
+					`(() => { const el = ${LIST}; if (!el) return false; el.focus(); return document.activeElement === el; })()`,
+				);
+			/*
+			 * A POINT INSIDE THE TARGET'S VISIBLE PART OF THE PORT. `getBoundingClientRect`
+			 * of a target that runs past the port is clipped to the port, so the wheel lands
+			 * on a part of the target a reader can actually see - and the hit test is
+			 * recorded, because a wheel aimed at "the question text" that really landed on
+			 * the pinned bar would be measuring the wrong door.
+			 */
+			const pointOn = (selector) =>
+				cdp.evaluate(`(() => {
+					const el = document.querySelector(${JSON.stringify(selector)});
+					const list = ${LIST};
+					if (!el || !list) return null;
+					const r = el.getBoundingClientRect();
+					const l = list.getBoundingClientRect();
+					const top = Math.max(r.top, l.top + 10);
+					const bottom = Math.min(r.bottom, l.bottom - 10);
+					if (bottom - top < 8) return null;
+					const x = Math.round(Math.max(r.left, l.left) + Math.min(r.width, l.width) / 2);
+					const y = Math.round((top + bottom) / 2);
+					const hit = document.elementFromPoint(x, y);
+					return { x, y, hit: hit ? hit.tagName.toLowerCase() + (hit.closest("[data-ask-option]") ? "[option-row]" : "") + (hit.closest("[data-lo-ask-actions]") ? "[pinned]" : "") : "nothing" };
+				})()`);
+			const WHEEL_DELTA = 240;
+			const WHEEL_NOTCHES = 12;
+			const wheelOver = async (target, selector) => {
+				await resetScroll();
+				await pause(150);
+				const before = await read();
+				const point = await pointOn(selector);
+				if (point === null)
+					throw Error(
+						`${target}: ${selector} is not visible inside the drawer's port`,
+					);
+				for (let i = 0; i < WHEEL_NOTCHES; i += 1)
+					await cdp.send("Input.dispatchMouseEvent", {
+						type: "mouseWheel",
+						x: point.x,
+						y: point.y,
+						deltaX: 0,
+						deltaY: WHEEL_DELTA,
+					});
+				await pause(250);
+				return { target, point, before, after: await read() };
+			};
+			const KEYS = {
+				PageDown: {
+					key: "PageDown",
+					code: "PageDown",
+					windowsVirtualKeyCode: 34,
+				},
+				End: { key: "End", code: "End", windowsVirtualKeyCode: 35 },
+				Home: { key: "Home", code: "Home", windowsVirtualKeyCode: 36 },
+				Tab: { key: "Tab", code: "Tab", windowsVirtualKeyCode: 9 },
+				Space: { key: " ", code: "Space", windowsVirtualKeyCode: 32 },
+				/*
+				 * SHIFT+SPACE IS THE UPSIDE-DOWN SPACE (agent review round 1, m2). `modifiers: 8`
+				 * is Shift in the DevTools protocol's bitmask, so the key arrives with
+				 * `shiftKey` true and the region has to page BACK rather than forward.
+				 */
+				ShiftSpace: {
+					key: " ",
+					code: "Space",
+					windowsVirtualKeyCode: 32,
+					modifiers: 8,
+				},
+			};
+			/*
+			 * A KEY'S READING, POLLED UNTIL IT SETTLES. Chromium animates keyboard scrolling
+			 * on macOS even without `scroll-behavior: smooth` in the CSS, so a reading taken
+			 * 180 ms after `Home` caught the tail of a 2220 px jump at 6 px (measured). The
+			 * assertions are about where the key lands, not how fast the animation is, so
+			 * each one polls its own destination and reports the settled numbers.
+			 */
+			const settle = async (predicate, timeoutMs = 2500) => {
+				const deadline = Date.now() + timeoutMs;
+				let state = await read();
+				while (!predicate(state)) {
+					/*
+					 * THE BOUND IS REPORTED, NOT HIDDEN (review round 2, finding 3): returning the
+					 * last reading silently made a key that never arrived indistinguishable from
+					 * one that settled, so the failing assertion blamed the product without saying
+					 * the measurement itself had given up.
+					 */
+					if (Date.now() > deadline) return { ...state, settled: false };
+					await pause(120);
+					state = await read();
+				}
+				return { ...state, settled: true };
+			};
+			/*
+			 * THE NEXT KEY IS PRESSED ON A STILL SCROLLER. Chromium animates keyboard scrolling
+			 * (measured), and a key delivered while that animation is in flight is DROPPED rather
+			 * than queued: `End` after a PageDown landed short of the maximum on 1 of 24 measured
+			 * runs at 440x700, on the base build too, and re-pressing on a still scroller landed it
+			 * every time. Waiting for the list's reading (and the card's own scrollers') to hold
+			 * still across two polls bounds that race; it cannot mask a real shortfall, because a
+			 * key that lands short once everything is still fails exactly as before.
+			 */
+			const QUIET_POLLS = 2;
+			const QUIET_WINDOW_MS = 700;
+			const awaitQuiet = async (timeoutMs = QUIET_WINDOW_MS) => {
+				const deadline = Date.now() + timeoutMs;
+				let last = await read();
+				let steady = 0;
+				while (Date.now() < deadline) {
+					await pause(120);
+					const next = await read();
+					if (!next.list) return { ...next, quiet: false };
+					/*
+					 * A PREVIOUS READ WITH NO LIST CANNOT PROVE STILLNESS (agent review round 3, m5):
+					 * the first read can land before the card's own scroller mounts, and indexing
+					 * `last.list` there threw a TypeError out of a wait that exists to measure
+					 * stillness. An absent baseline counts as movement, so the next pair is what
+					 * gets to hold still.
+					 */
+					const moved =
+						!last.list ||
+						next.list.scrollTop !== last.list.scrollTop ||
+						(next.body?.scrollTop ?? 0) !== (last.body?.scrollTop ?? 0) ||
+						(next.options?.scrollTop ?? 0) !== (last.options?.scrollTop ?? 0);
+					last = next;
+					steady = moved ? 0 : steady + 1;
+					if (steady >= QUIET_POLLS) return { ...last, quiet: true };
+				}
+				return { ...last, quiet: false };
+			};
+			const pressAndSettle = async (names, predicate) => {
+				await keyPress(names);
+				/*
+				 * THE STILLNESS IS CARRIED OUT OF `awaitQuiet` (agent review round 3, m4): it was
+				 * awaited for its side effect only, so a scroller that never went still before the
+				 * key was pressed reported a plain "not settled" and hid the fact that the
+				 * measurement itself was still moving.
+				 */
+				const still = await awaitQuiet();
+				const state = await settle(predicate);
+				return { ...state, quiet: still.quiet === true };
+			};
+			const keyPress = async (names) => {
+				for (const [index, name] of names.entries()) {
+					await cdp.send("Input.dispatchKeyEvent", {
+						type: "rawKeyDown",
+						...KEYS[name],
+					});
+					await cdp.send("Input.dispatchKeyEvent", {
+						type: "keyUp",
+						...KEYS[name],
+					});
+					await pause(180);
+					/* BETWEEN SEVERAL PRESSES OF ONE GESTURE, EACH ONE HAS TO LAND. */
+					if (index < names.length - 1) await awaitQuiet();
+				}
+			};
+			/*
+			 * THE WALK'S OWN READING: what the browser scrolled to (the focus scroll
+			 * honours `scroll-padding-bottom`), whether the focused control is still covered by
+			 * the pinned row (a hit test at its centre - the claim, not the geometry that
+			 * could agree with a covered control), and whether it ended up wholly inside the
+			 * port.
+			 */
+			const tabWalk = async (limit) => {
+				const path = [];
+				let left = null;
+				for (let i = 0; i < limit; i += 1) {
+					await keyPress(["Tab"]);
+					const step = await cdp.evaluate(`(() => {
+						const el = document.activeElement;
+						const list = ${LIST};
+						if (!el || el === document.body || !list) return null;
+						if (!el.closest("[data-lo-ask-surfaces]"))
+							return {
+								left: true,
+								what:
+									el.tagName.toLowerCase() +
+									"|" +
+									(el.textContent ?? "").trim().slice(0, 40),
+							};
+						const r = el.getBoundingClientRect();
+						const l = list.getBoundingClientRect();
+						const x = Math.round(r.left + Math.min(r.width / 2, 16));
+						const y = Math.round(r.top + r.height / 2);
+						const at = document.elementFromPoint(x, y);
+						return {
+							what: el.tagName.toLowerCase() + "|" + (el.textContent ?? "").trim().slice(0, 24),
+							covered: !(at === el || el.contains(at)),
+							under: at ? at.tagName.toLowerCase() + (at.closest("[data-lo-ask-actions]") ? "[pinned]" : "") : "nothing",
+							inside: r.top >= l.top - 1 && r.bottom <= l.bottom + 1,
+							top: Math.round(r.top),
+							bottom: Math.round(r.bottom),
+							portTop: Math.round(l.top),
+							portBottom: Math.round(l.bottom),
+							scrollTop: Math.round(list.scrollTop),
+						};
+					})()`);
+					if (step === null) break;
+					if (step.left) {
+						left = step;
+						break;
+					}
+					path.push(step);
+				}
+				return { path, left };
+			};
+			const readings = {};
+			await fixtureMode("long");
+			await session(0);
+			await wait(
+				'Boolean(document.querySelector("[data-panel-rail-item=ask]"))',
+			);
+			if ((await facts()).dom.ask) {
+				await pressEscape();
+				await wait('!document.querySelector("[data-ask-drawer]")');
+			}
+			const dpr = await cdp.evaluate("window.devicePixelRatio");
+			/*
+			 * FOUR VIEWPORTS. 440 is the width the operator's own report came from - below the
+			 * family's dock breakpoint the drawer is a right-anchored sheet - and 600 is the
+			 * app's WINDOW FLOOR, the shortest a sheet can ever be. 700/1024/1400 are the
+			 * short, laptop and tall ends the same question has to work at. The device scale
+			 * factor is the window's own, so a frame's pixels and its `viewport` reading
+			 * agree.
+			 */
+			for (const [width, height] of [
+				[440, 1024],
+				[440, 700],
+				[440, 1400],
+				/* THE APP'S WINDOW FLOOR (800x600): a sheet can never be shorter than this. */
+				[440, 600],
+			]) {
+				const size = `${width}x${height}`;
+				await cdp
+					.send("Emulation.setDeviceMetricsOverride", {
+						width,
+						height,
+						deviceScaleFactor: dpr,
+						mobile: false,
+					})
+					.catch(() => null);
+				await pause(400);
+				if (!(await facts()).dom.ask)
+					await press('[data-panel-rail-item="ask"]');
+				await wait('Boolean(document.querySelector("[data-lo-ask-row]"))');
+				/*
+				 * THE FRAME IS OF THE UNTOUCHED SCROLL POSITION: the previous size's Tab walk
+				 * leaves the keyboard (and the browser's focus scroll) deep inside the card, and
+				 * a frame taken there shows the middle of a question rather than the state the
+				 * pair is about - the top of the list, where the actions are out of the port on
+				 * one revision and pinned inside it on the other.
+				 */
+				await cdp.evaluate(
+					"(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); })()",
+				);
+				await resetScroll();
+				await pause(250);
+				await frame(`long-ask-${size}`);
+				const open = await read();
+				if (!open.present) throw Error(`${size}: the drawer's list is absent`);
+				if (!(open.list.max > 0))
+					throw Error(
+						`${size}: the drawer's list does not overflow (scrollHeight ${open.list.client} vs client ${open.list.client}), so this case would prove nothing`,
+					);
+				const wheels = [
+					await wheelOver("question text", "[data-lo-ask-scroll]"),
+					await wheelOver("option row", "[data-ask-option]"),
+					await wheelOver("option list", "[data-lo-ask-options-scroll]"),
+				];
+				/* The action row, at both ends of the scroll. */
+				await resetScroll();
+				await pause(200);
+				const stickyTop = await read();
+				await cdp.evaluate(
+					`(() => { const l = ${LIST}; l.scrollTop = l.scrollHeight - l.clientHeight; })()`,
+				);
+				await pause(250);
+				const stickyMax = await read();
+				/*
+				 * THE MAX-SCROLL FRAME (design round 1, D4), captured at the one scroll
+				 * position the D3 reading is about: the card's own bottom is the port's, so a
+				 * band that bleeds to the card's edge is flush with the port and one that does
+				 * not leaves a strip. CANDIDATE ONLY - the control draws no pinned row at all
+				 * (its `Send answer` sits ~2200 px down the card), so a "before" frame here
+				 * would photograph an absence.
+				 */
+				if (kind === "candidate" && size === "440x1024")
+					await frame("long-ask-max-scroll-440x1024");
+				/*
+				 * THE PAGE KEYS, from the LIST first - the stop the keyboard lands on - and then
+				 * from the QUESTION BODY, which is where a reader who tabbed into the card
+				 * actually is.
+				 */
+				await resetScroll();
+				await pause(150);
+				const listFocus = await focusList();
+				const beforeKeys = await read();
+				const afterPageDown = await pressAndSettle(
+					["PageDown", "PageDown"],
+					(state) => state.list.scrollTop > 0,
+				);
+				/*
+				 * END IS READ AGAINST THE MAXIMUM FROM ITS OWN READING, and on the candidate leg a
+				 * short landing gets ONE re-press that is recorded in the summary
+				 * (`keys.endRetried`), never hidden. Both exist because the assertion used to compare
+				 * this reading with the maximum taken before any key was pressed: the list's
+				 * scrollable height is not constant across a run (a reflow changes it), so that pair
+				 * could disagree even when End had reached the maximum of its own reading - and a key
+				 * pressed while the previous scroll was still animating could be dropped. A retry
+				 * that still falls short fails the assertion below, and the control leg has no End
+				 * claim to retry for: its list is not a keyboard stop at all.
+				 */
+				const atListEnd = (state) =>
+					Math.abs(state.list.scrollTop - state.list.max) <= 1;
+				const afterEndFirst = await pressAndSettle(["End"], atListEnd);
+				const afterEndRetry =
+					kind === "candidate" && afterEndFirst.settled === false
+						? { ...(await pressAndSettle(["End"], atListEnd)), retried: true }
+						: { ...afterEndFirst, retried: false };
+				/*
+				 * THE RETRY KEEPS THE READING IT REPLACED (agent review round 3, m2): it used to
+				 * overwrite the short first read, so a failure showed only the second landing and
+				 * could not say whether End was dropped once or twice. `first` is always recorded,
+				 * so a non-retried run reads as first == final rather than as a missing field.
+				 */
+				const afterEnd = {
+					...afterEndRetry,
+					first: {
+						scrollTop: afterEndFirst.list.scrollTop,
+						max: afterEndFirst.list.max,
+						settled: afterEndFirst.settled === true,
+						quiet: afterEndFirst.quiet === true,
+					},
+				};
+				const afterHome = await pressAndSettle(
+					["Home"],
+					(state) => state.list.scrollTop === 0,
+				);
+				const afterSpace = await pressAndSettle(
+					["Space"],
+					(state) => state.list.scrollTop > 0,
+				);
+				/*
+				 * AND BACK UP WITH SHIFT (agent review round 1, m2): the region answered Space
+				 * with a forward page whatever the modifiers were, so the platform's
+				 * page-up gesture did nothing here. The reading is taken from where Space
+				 * settled, not from the top, so it cannot pass on a no-op.
+				 */
+				const afterShiftSpace = await pressAndSettle(
+					["ShiftSpace"],
+					(state) => state.list.scrollTop < afterSpace.list.scrollTop,
+				);
+				const bodyFocus = await focusOn("[data-lo-ask-scroll]");
+				await resetScroll();
+				await pause(150);
+				/*
+				 * SIX PRESSES, not three: a page key chains to the list only once the body is
+				 * ALREADY at its end when the key is pressed, so the count has to cover the
+				 * body's own pages (measured: three reached its end at 440x700 and chained
+				 * nothing, 878 px at 440x1024 where the body is shorter than their reach).
+				 */
+				const afterBodyPageDown = await pressAndSettle(
+					[
+						"PageDown",
+						"PageDown",
+						"PageDown",
+						"PageDown",
+						"PageDown",
+						"PageDown",
+					],
+					(state) => state.list.scrollTop > 0,
+				);
+				const afterBodyEnd = await pressAndSettle(
+					["End"],
+					(state) =>
+						Math.abs(state.list.scrollTop - state.list.max) <= 1 ||
+						(state.active?.isBody === false && state.list.scrollTop > 0),
+				);
+				/* And the walk: Tab from the drawer's own chrome, then through the card. */
+				await resetScroll();
+				await pause(150);
+				const chromeFocus = await focusOn(
+					'[data-tour-tag="close-asks-button"]',
+				);
+				await keyPress(["Tab"]);
+				const afterChromeTab = await read();
+				/*
+				 * THE FOCUSED FRAME (m3 = UX's U2), taken on the keyboard path: Tab from the
+				 * drawer's chrome lands on the list, so `:focus-visible` is what put the ring
+				 * on it (a programmatic `focus()` after a wheel does not always match). The
+				 * ring is drawn INSET by its own width and offset now, and the claim the frame
+				 * is here to make is geometric: all four of its edges paint inside the
+				 * scrollport, where the outset ring lost two pixels a side to the clip.
+				 * CANDIDATE ONLY: the control leg's ring IS the outset one, so its clipped
+				 * corners are the defect rather than evidence of the fix.
+				 */
+				if (kind === "candidate" && size === "440x1024")
+					await frame("long-ask-focused-440x1024");
+				const tab = await tabWalk(40);
+				readings[size] = {
+					open,
+					wheels,
+					stickyTop,
+					stickyMax,
+					keys: {
+						listFocus,
+						bodyFocus,
+						chromeFocus,
+						beforeKeys,
+						afterPageDown,
+						afterEnd,
+						afterHome,
+						afterSpace,
+						afterShiftSpace,
+						afterBodyPageDown,
+						afterBodyEnd,
+					},
+					afterChromeTab,
+					tab,
+				};
+			}
+			await cdp.send("Emulation.clearDeviceMetricsOverride").catch(() => null);
+			const summary = Object.fromEntries(
+				Object.entries(readings).map(([size, entry]) => [
+					size,
+					{
+						list: {
+							client: entry.open.list.client,
+							max: entry.open.list.max,
+							scrollTop: entry.open.list.scrollTop,
+							tabIndex: entry.open.list.tabIndex,
+							role: entry.open.list.role,
+							name: entry.open.list.name,
+							ariaLabel: entry.open.list.ariaLabel,
+							scope: entry.open.list.scope,
+							padding: entry.open.list.padding,
+							actionsVar: entry.open.list.actionsVar,
+						},
+						containment: {
+							body: entry.open.body?.contain,
+							options: entry.open.options?.contain,
+						},
+						wheels: entry.wheels.map((wheel) => ({
+							target: wheel.target,
+							hit: wheel.point.hit,
+							list: [wheel.before.list.scrollTop, wheel.after.list.scrollTop],
+							body: [
+								wheel.before.body?.scrollTop ?? null,
+								wheel.after.body?.scrollTop ?? null,
+							],
+							options: [
+								wheel.before.options?.scrollTop ?? null,
+								wheel.after.options?.scrollTop ?? null,
+							],
+						})),
+						sticky: {
+							top: entry.stickyTop.send,
+							max: entry.stickyMax.send,
+							pinnedTop: entry.stickyTop.pinned,
+							pinnedMax: entry.stickyMax.pinned,
+							port: entry.stickyTop.list.box,
+							portMax: entry.stickyMax.list.box,
+						},
+						keys: {
+							listFocus: entry.keys.listFocus,
+							bodyFocus: entry.keys.bodyFocus,
+							pageDown: entry.keys.afterPageDown.list.scrollTop,
+							end: entry.keys.afterEnd.list.scrollTop,
+							/* THE SAME READ AS `end`, so the pair cannot disagree about the height. */
+							endMax: entry.keys.afterEnd.list.max,
+							endClient: entry.keys.afterEnd.list.client,
+							endSettled: entry.keys.afterEnd.settled === true,
+							/* BESIDE `settled`: a key pressed on a still-moving scroller is a dropped key. */
+							endQuiet: entry.keys.afterEnd.quiet === true,
+							endRetried: entry.keys.afterEnd.retried === true,
+							endFirst: entry.keys.afterEnd.first,
+							home: entry.keys.afterHome.list.scrollTop,
+							space: entry.keys.afterSpace.list.scrollTop,
+							shiftSpace: entry.keys.afterShiftSpace.list.scrollTop,
+							bodyPageDown: entry.keys.afterBodyPageDown.list.scrollTop,
+							bodyEnd: entry.keys.afterBodyEnd.list.scrollTop,
+						},
+						chromeTab: {
+							focus: entry.keys.chromeFocus,
+							landedOnList: entry.afterChromeTab.active?.isList === true,
+							landedOn: entry.afterChromeTab.active?.what ?? null,
+						},
+						tabWalk: {
+							steps: entry.tab.path.length,
+							covered: entry.tab.path.filter((step) => step.covered).length,
+							outsidePort: entry.tab.path.filter((step) => !step.inside).length,
+							sample: entry.tab.path.slice(0, 4),
+							tail: entry.tab.path.slice(-4),
+							/*
+							 * THE FOCUS SCROLL ITSELF: the deepest scrollTop the walk reached, which
+							 * is the list moving to bring a focused control into view (a walk that
+							 * never moved it proves only that the card happened to fit).
+							 */
+							maxScroll: entry.tab.path.reduce(
+								(max, step) => Math.max(max, step.scrollTop ?? 0),
+								0,
+							),
+							leftAfter: entry.tab.left,
+						},
+					},
+				]),
+			);
+			stamp("longAskScroll", summary);
+			/*
+			 * THE ASSERTIONS, per leg. The candidate has to show the remedy on every door; the
+			 * control has to show the defect, or the pair has stopped proving anything.
+			 */
+			/*
+			 * The control's negative wheel reading is valid only for a PRE-#1901 control
+			 * (`controlPredatesAskScrollFix`). A post-fix control is skipped LOUDLY and
+			 * recorded in the summary; the candidate assertions are never relaxed.
+			 */
+			const controlIsPreFix =
+				kind === "candidate" || controlPredatesFixFromEnv();
+			const controlClaims = askScrollControlClaims(controlIsPreFix);
+			if (!controlIsPreFix)
+				console.warn(
+					`asks-scroll/control: SKIPPING ALL pre-fix negative assertions (wheel, body containment, Send-answer clipping, chrome Tab) - control ${ASKS_CONTROL} already carries #1901 (data-lo-ask-list); candidate assertions still run`,
+				);
+			for (const [size, entry] of Object.entries(summary)) {
+				for (const wheel of entry.wheels) {
+					const [before, after] = wheel.list;
+					if (kind === "control" && !controlClaims.wheel) continue;
+					if (kind === "candidate")
+						assert(
+							after > before,
+							`${size}: a wheel over the ${wheel.target} must move the drawer's list (was ${before}, now ${after}; the nearest box is ${wheel.hit})`,
+						);
+					else
+						assert.equal(
+							after,
+							before,
+							`${size}: the pre-fix build's list must NOT move from a wheel over the ${wheel.target} - this reading is the defect the case exists for`,
+						);
+				}
+				if (kind === "candidate") {
+					assert.equal(
+						entry.containment.body,
+						"auto",
+						`${size}: the question body must hand the gesture up (computed overscroll-behavior-y auto)`,
+					);
+					assert.equal(
+						entry.containment.options,
+						"auto",
+						`${size}: the option list must hand the gesture up`,
+					);
+					assert.equal(
+						entry.list.tabIndex,
+						"0",
+						`${size}: the drawer's list must be in the Tab walk while it overflows`,
+					);
+					assert.equal(
+						entry.list.role,
+						"region",
+						`${size}: the stop must be a region`,
+					);
+					assert(
+						entry.list.name !== null && entry.list.name.length > 0,
+						`${size}: the stop must carry an accessible name`,
+					);
+					/*
+					 * THE NAME IS THE CONTENT'S, NOT THE STATUS LINE (agent review round 1, U3):
+					 * naming the region from the bar made it announce "1 question waiting" as if
+					 * that were the box. It now reads the rail door's register, so it differs
+					 * from the bar's own line above it and agrees with the control that opened
+					 * the pane.
+					 */
+					assert.notEqual(
+						entry.list.name,
+						entry.list.scope,
+						`${size}: the region's name must not be the status line (both read ${JSON.stringify(entry.list.name)})`,
+					);
+					assert(
+						Number.parseFloat(entry.list.padding) > 0,
+						`${size}: the list needs a scroll-padding-bottom that clears the pinned row (got ${entry.list.padding})`,
+					);
+					assert.equal(
+						entry.sticky.top?.inPort,
+						true,
+						`${size}: Send answer must be inside the port at the top of the scroll`,
+					);
+					assert.equal(
+						entry.sticky.max?.inPort,
+						true,
+						`${size}: Send answer must be inside the port at the maximum`,
+					);
+					/*
+					 * FLUSH AT THE MAXIMUM (design round 1, D3): the card's own bottom IS the
+					 * port's at that scroll position, so the band must reach it. `-my-2 py-2`
+					 * stopped 4 px short and left a strip of question text under the bar; the
+					 * 1 px slack is sub-pixel rounding, not the defect.
+					 */
+					assert(
+						Math.abs(
+							entry.sticky.pinnedMax.bottom - entry.sticky.portMax.bottom,
+						) <= 1,
+						`${size}: the pinned row must be flush with the port's bottom at the maximum (row bottom ${entry.sticky.pinnedMax.bottom}, port bottom ${entry.sticky.portMax.bottom})`,
+					);
+					assert(
+						entry.keys.pageDown > 0,
+						`${size}: PageDown on the list must scroll it (got ${entry.keys.pageDown})`,
+					);
+					assertEndReached(size, entry);
+					assert.equal(
+						entry.keys.home,
+						0,
+						`${size}: Home on the list must return to its top`,
+					);
+					assert(
+						entry.keys.space > entry.keys.home,
+						`${size}: Space on the list must page it down`,
+					);
+					assert(
+						entry.keys.shiftSpace < entry.keys.space,
+						`${size}: Shift+Space on the list must page it back up (Space settled at ${entry.keys.space}, Shift+Space at ${entry.keys.shiftSpace})`,
+					);
+					assert(
+						entry.keys.bodyPageDown > 0,
+						`${size}: PageDown from the question body must reach the drawer's list (got ${entry.keys.bodyPageDown})`,
+					);
+					assert(
+						entry.chromeTab.landedOnList,
+						`${size}: Tab from the drawer's chrome must land on the list region (landed on ${entry.chromeTab.landedOn})`,
+					);
+					assert(
+						entry.tabWalk.steps > 8,
+						`${size}: the Tab walk left the card after ${entry.tabWalk.steps} stops, so it proved nothing`,
+					);
+					assert(
+						entry.tabWalk.maxScroll > 0,
+						`${size}: the Tab walk never scrolled the list, so it never carried focus past the fold`,
+					);
+					assert.equal(
+						entry.tabWalk.covered,
+						0,
+						`${size}: ${entry.tabWalk.covered} focused control(s) ended up under the pinned row`,
+					);
+					assert.equal(
+						entry.tabWalk.outsidePort,
+						0,
+						`${size}: ${entry.tabWalk.outsidePort} focused control(s) were not scrolled wholly into the port`,
+					);
+				} else if (kind === "control") {
+					/* Pre-fix claims only (see askScrollControlClaims); none hold post-fix. */
+					if (controlClaims.body)
+						assert.equal(
+							entry.containment.body,
+							"contain",
+							`${size}: the pre-fix build's question body must still contain the gesture`,
+						);
+					if (controlClaims.stickyTop)
+						assert.equal(
+							entry.sticky.top?.inPort,
+							false,
+							`${size}: the pre-fix build cannot have Send answer inside the port at the top - that is the clipping this case exists for`,
+						);
+					if (controlClaims.chromeTab)
+						assert.equal(
+							entry.chromeTab.landedOnList,
+							false,
+							`${size}: the pre-fix list is not a Tab stop`,
+						);
+				}
 			}
 		},
 	},
@@ -1695,6 +2625,7 @@ async function main() {
 			join(scratch, "control-app"),
 			output,
 		);
+		const controlPredates = controlPredatesAskScrollFix(ASKS_CONTROL);
 		manifest.controlIdentity = controlIdentity;
 		const controlArchive = join(output, "control-source.tar");
 		manifest.controlSourceArchive = {
@@ -1735,12 +2666,26 @@ async function main() {
 							LOCAL_OPERATOR_NO_NOTIFICATIONS: "1",
 							LOCAL_OPERATOR_UI_TELEMETRY: "off",
 							ASKS_APP_ROOT: root,
+							// Decided here, where the repository is; see controlPredatesFixFromEnv.
+							ASKS_CONTROL_PREDATES_FIX: controlPredates ? "1" : "0",
 							ASKS_OUTPUT: dir,
 							ASKS_RECORDS: fixture.records,
 							// Only the control leg gets its Electron runtime override.
 							...(kind === "control" ? controlLegEnv : {}),
 						},
-						timeout: 150000,
+						/*
+						 * 210 s PER LEG, up from 150 s (agent review round 3, m1): the long-ask
+						 * control leg measures ~120 s (115, 120 and 122 s on three runs) and round 3's
+						 * awaitQuiet waits add ~16 s of polling, so 150 s left about 9% margin and a
+						 * slow runner would have failed on the ceiling rather than on the product.
+						 * The step runs four cases x two legs, so 8 x 210 s = 1680 s is MORE than its
+						 * own timeout-minutes: 15 (900 s in ci.yml, "Exercise assembled asks and
+						 * capture regression frames"). That is deliberate: the per-leg ceiling makes a
+						 * hung leg fail under its own name instead of the step being killed opaquely,
+						 * and the step bound stays the outer stop. It is a ceiling, not a wait - the
+						 * three measured runs took 271-294 s for all eight legs.
+						 */
+						timeout: 210000,
 						maxBuffer: 4 * 1024 * 1024,
 					},
 				);

@@ -135,7 +135,8 @@ for (const file of ["dist/cjs/index.js", "dist/esm/index.mjs"])
 
 test("the pnpm patch ships policy-option declarations, not only locally edited installed types", () => {
 	// A local .d.ts edit made the main typecheck pass while clean CI failed
-	// TS2353 on allowNativeMessaging. The declarations must travel WITH the
+	// TS2353 on allowNativeMessaging (since replaced by the per-call
+	// authorizeNativeMessaging predicate). The declarations must travel WITH the
 	// runtime patch. Negative control: omitting the declaration diff fails even
 	// when this developer's installed .d.ts already contains the fields.
 	const patch = readFileSync(
@@ -146,10 +147,14 @@ test("the pnpm patch ships policy-option declarations, not only locally edited i
 		"diff --git a/dist/types/browser/index.d.ts b/dist/types/browser/index.d.ts",
 	)[1];
 	assert.ok(declaration, "clean-install declaration delta is present");
-	for (const option of [
-		"allowNativeMessaging",
-		"allowNotifications",
-		"openActionPopup",
-	])
+	for (const option of ["authorizeNativeMessaging", "openActionPopup"])
 		assert.ok(declaration.includes(`+    ${option}?:`), option);
+	// The revoke entry point main calls (manager.ts revokeNativeHost).
+	assert.ok(
+		declaration.includes("+    disconnectNativeHosts(extensionId: string"),
+		"disconnectNativeHosts",
+	);
+	// The removed global switches must not linger as dead options.
+	for (const removed of ["allowNativeMessaging", "allowNotifications"])
+		assert.ok(!declaration.includes(`+    ${removed}?:`), removed);
 });

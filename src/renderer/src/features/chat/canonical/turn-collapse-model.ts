@@ -56,6 +56,7 @@ import type { HubReceipt } from "../components/trace/receipt-row-model";
 import { isPartialDelivery, toolOp } from "../components/trace/tool-row-model";
 import type { TranscriptDisplayMode } from "../transcript-display-mode";
 import { isImageGenTool } from "./image-gen-card-model";
+import { isMusicGenTool, musicJobIdOf } from "./music-gen-tool";
 import { freezeRecordDeep } from "./record-immutability";
 import {
 	type FoldCountSegment,
@@ -348,6 +349,9 @@ function quietFamilyOf(trigger: TriggerKind): QuietGroupFamily | null {
 function groupSplitterOf(record: TranscriptRecord): boolean {
 	if (record.kind === "user") return true;
 	if (staysVisibleWhileCollapsed(record)) return true;
+	// Kept in step with `collapsePlan`'s `pinned` seam: a row the plan never
+	// hides must not sit inside a quiet group either.
+	if (ownsDetachedMusicJob(record)) return true;
 	return record.kind === "assistant" && paintsSomething(record);
 }
 
@@ -399,9 +403,92 @@ export function ownsMaterialArtifact(record: TranscriptRecord): boolean {
 		record.images?.length
 	)
 		return true;
+	/*
+	 * A MUSIC SETTLEMENT IS MATERIAL EVEN WITH NO BYTES. A wholly failed music
+	 * job's `job_result` carries its receipt - every track marked failed, each
+	 * with its billed cost (often "$0 (billed)") - but zero artifacts, so the
+	 * `images` test above misses it. Native run 42894406065 (session-history
+	 * entry 96, job c68d27aefb58): that row arrives after the turn's answer,
+	 * opens an internal receipt episode, and without this pin folded behind a
+	 * bare "Job result" bar - track aud_serving_11 never painted, while a failed
+	 * track inside a partially successful job (whose row has audio) did. The
+	 * receipt is the outcome and the bill; it stays inline like the audio does.
+	 */
+	if (record.kind === "custom" && record.music !== undefined) return true;
 	// Before output bytes exist, the generating card already owns loading/error
 	// and cancellation UI; keep ALL phases, not only successful picture rows.
-	return record.kind === "tool" && isImageGenTool(record.toolName);
+	if (record.kind !== "tool") return false;
+	if (isImageGenTool(record.toolName)) return true;
+	return ownsDetachedMusicJob(record);
+}
+
+/**
+ * A music call that registered a detached job: it owns the in-chat generating
+ * card (`data-music-generating=<job>`, and its Cancel) for minutes after the
+ * call itself settled.
+ *
+ * WHY IT IS PINNED IN EVERY RUN, NOT ONLY INSIDE A RECEIPT EPISODE (desktop-app
+ * run 42747060041, macOS step 16). `ownsMaterialArtifact` alone reaches the
+ * plan only through `internalEpisodePins`, so in an ORDINARY human turn -
+ * user prompt -> generate_music -> answer, the shape every real request has -
+ * the call folded under "1 action" with "1 job running" and the card never
+ * mounted, although the record carried Core's `job_id`/`material` intact.
+ * Pictures can fold there because the bar's strip substitutes a thumbnail;
+ * a pending job has no strip, so a fold is the only place it could be lost.
+ *
+ * CONSTRAINT: record facts only. The plan must stay a pure function of the
+ * rows (the settle latch exists because live-state inputs made folds flip), so
+ * this does not consult the Jobs panel: a settled job keeps its row inline and
+ * the card states the outcome there.
+ */
+export function ownsDetachedMusicJob(record: TranscriptRecord): boolean {
+	return (
+		record.kind === "tool" &&
+		isMusicGenTool(record.toolName) &&
+		musicJobIdOf(record.details) !== null
+	);
+}
+
+/**
+ * May this row join an ACTION FOLD (`foldRuns`' `isFoldable`, §E2's "3 files ·
+ * 2 shell" groups)? Every non-quiet tool call - except a detached music job.
+ *
+ * WHY THE MUSIC JOB IS EXCLUDED (post-release QA on v0.55.0, Q-1 on
+ * local-operator-ui#1800). The pin above (`collapsePlan`'s `pinned`, the
+ * quiet-group splitter) keeps the call out of a collapsed TURN bar, but the
+ * action fold is a second, inner tier that knows nothing of it: in the normal
+ * shape - the agent reads guide://music-generation and a skill or two before
+ * calling `generate_music` - the call was the fourth action of a same-turn run,
+ * the run cleared `FOLD_MIN_ACTIONS`, and the card sat inside a closed
+ * "3 files · 1 generate_music" fold, live and after reload, until the reader
+ * expanded it. A lone music call never reached the threshold, which is why the
+ * single-call fix (230bede) looked complete.
+ *
+ * Excluding it here makes the row a run BREAKER (`foldRuns` flushes on a
+ * non-foldable row), so the neighbouring calls still fold on their own counts
+ * and the card paints as its own row between them. Pictures stay foldable: the
+ * fold's media strip substitutes for their rows, a pending job has no strip.
+ *
+ * AN UNFINISHED MUSIC CALL IS EXCLUDED TOO (agent review round 1, R1 on #1893).
+ * While `generate_music` executes, `details` carries no `job_id` yet, so
+ * `ownsDetachedMusicJob` is false: the live fold formed as
+ * "3 files · 1 generate_music" and then SHRANK when the result landed and the
+ * row left the run - the motion the live latch exists to prevent. Breaking the
+ * run from the call's first frame keeps the fold's membership stable. A call
+ * that finishes WITHOUT a job (a refusal, a capability probe) has no card to
+ * protect and rejoins the fold once `phase` is `done`; that change is the row's
+ * own settlement, not a liveness sample.
+ *
+ * ONE predicate because the wiring is shared: the transcript, the condense
+ * parity generator and the slot tests must hand `foldRuns` the same rule, or the
+ * fixture pins a model nobody ships.
+ */
+export function isTraceFoldable(record: TranscriptRecord): boolean {
+	if (record.kind !== "tool") return false;
+	// Checked before `isQuietTurnCall`, whose negated type guard narrows the
+	// record to `never` for the compiler.
+	if (isMusicGenTool(record.toolName) && record.phase !== "done") return false;
+	return !isQuietTurnCall(record) && !ownsDetachedMusicJob(record);
 }
 
 function internalEpisodeBoundary(record: TranscriptRecord): boolean {
@@ -2969,10 +3056,13 @@ function planRun(
 		 * (`internalEpisodeBoundary`), never for every run: an ordinary human turn
 		 * still folds its pictures under its own bar with the strip, which is the
 		 * base behaviour six ruled design/UX tests pin. Pinning them globally
-		 * stopped those runs collapsing at all.
+		 * stopped those runs collapsing at all. The one exception is a detached
+		 * music job (`ownsDetachedMusicJob`): it has no strip to fall back on.
 		 */
 		pinned: (record) =>
-			staysVisibleWhileCollapsed(record) || internalContext.pins.has(record),
+			staysVisibleWhileCollapsed(record) ||
+			internalContext.pins.has(record) ||
+			ownsDetachedMusicJob(record),
 		mode,
 	});
 	// Reuse authoritative RESPONSE closes for old-core rows without a V4 stop

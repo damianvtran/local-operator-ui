@@ -1,0 +1,8 @@
+{
+	"ui.music.job_status.unavailable": {
+		"role": "status",
+		"tone": "neutral",
+		"note": "In-chat state line above the music generating motif for one detached music job. Shown when nothing current states the job's status: the app's job list no longer has the job (for example after the app or its runtime restarted) and no final result was recorded, or the recorded result's status could not be read. It does not say the job failed or was charged. Short status, no period.",
+		"length": "Short status; no explanatory sentence."
+	}
+}

@@ -1613,5 +1613,180 @@
 		"tone": "Plain, quiet product language; a statement of fact, not a warning.",
 		"note": "One muted line above the text of an attached file opened in the canvas from the app's saved copy (the bytes the person sent, kept in this session). The view cannot be edited, and without this line typing into it looked broken. 'Read-only' = the person can read and select but not change it; 'saved copy' = the same term as the 'Saved copy' label on attachment cards; 'attachment' = a file the person attached to a message. Keep the read-only part first: it is what explains the ignored typing. No trailing full stop: it is a caption, not a sentence.",
 		"length": "One line in a 400 px canvas pane at 12 px: about 50 characters."
+	},
+	"ui.canvas.files.remoteUnreachable": {
+		"role": "status",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown when the other device that holds a file does not answer (it may be asleep or offline). Used on picture tiles, file viewers, sound rows and download toasts; the user can retry once it is online.",
+		"placeholders": {
+			"device": "Name of the device that holds the file (a user-chosen device name such as a laptop name); retain verbatim."
+		}
+	},
+	"ui.canvas.files.remoteOn": {
+		"role": "tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Tooltip and accessible name of the small mark beside a file that lives on another of the user's devices.",
+		"placeholders": {
+			"device": "Name of the device that holds the file (a user-chosen device name such as a laptop name); retain verbatim."
+		}
+	},
+	"ui.canvas.files.remoteReason.missing": {
+		"role": "menu sublabel",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Why actions are disabled for a file on another device: the file was deleted or moved there.",
+		"placeholders": {
+			"device": "Name of the device that holds the file (a user-chosen device name such as a laptop name); retain verbatim."
+		}
+	},
+	"ui.canvas.files.remoteReason.tooLarge": {
+		"role": "menu sublabel",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Why actions are disabled: the file on the other device exceeds the transfer size limit.",
+		"placeholders": {
+			"device": "Name of the device that holds the file (a user-chosen device name such as a laptop name); retain verbatim."
+		}
+	},
+	"ui.canvas.files.remoteReason.sensitive": {
+		"role": "menu sublabel",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Why actions are disabled: the other device withholds files that look like secrets.",
+		"placeholders": {
+			"device": "Name of the device that holds the file (a user-chosen device name such as a laptop name); retain verbatim."
+		}
+	},
+	"ui.canvas.files.remoteReason.notReferenced": {
+		"role": "menu sublabel",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Why actions are disabled: the conversation on the other device no longer references this file.",
+		"placeholders": {
+			"device": "Name of the device that holds the file (a user-chosen device name such as a laptop name); retain verbatim."
+		}
+	},
+	"ui.canvas.files.remoteReason.workspace": {
+		"role": "menu sublabel",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Why actions are disabled: only files in the session's own scratchpad can be read from another device; tells the user what to ask the agent.",
+		"placeholders": {
+			"device": "Name of the device that holds the file (a user-chosen device name such as a laptop name); retain verbatim."
+		}
+	},
+	"ui.canvas.files.remoteCopyOwnerPath": {
+		"role": "menu item",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Menu item that copies the file's path as it is on the other device (text only; it is not a path on this computer).",
+		"placeholders": {
+			"device": "Name of the device that holds the file (a user-chosen device name such as a laptop name); retain verbatim."
+		}
+	},
+	"ui.canvas.files.remoteDownload": {
+		"role": "menu item",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Menu item that copies a file from another of the user's devices onto this computer."
+	},
+	"ui.canvas.files.remoteDownloaded": {
+		"role": "toast",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Success toast after a file from another device was saved on this computer; buttons below it open the file or its folder.",
+		"placeholders": {
+			"name": "The file name; retain verbatim.",
+			"folder": "Name of the folder on this computer the file landed in, e.g. 'Downloads'; retain verbatim."
+		}
+	},
+	"ui.canvas.files.remoteDownloadPending": {
+		"role": "toast",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "The transfer from the other device is still running.",
+		"placeholders": {
+			"device": "Name of the device that holds the file (a user-chosen device name such as a laptop name); retain verbatim."
+		}
+	},
+	"ui.canvas.files.remoteDownloadFailed": {
+		"role": "toast",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Error toast when downloading a file from another device failed.",
+		"placeholders": {
+			"device": "Name of the device that holds the file (a user-chosen device name such as a laptop name); retain verbatim."
+		}
+	},
+	"ui.canvas.files.remoteReadFailed": {
+		"role": "toast",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Error when opening a file stored on another device failed for a reason other than the device being unreachable."
+	},
+	"ui.canvas.files.remotePeerUpdate": {
+		"role": "status",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Files panel message when the other device runs an older version that cannot list its files to this one.",
+		"placeholders": {
+			"device": "Name of the device that holds the file (a user-chosen device name such as a laptop name); retain verbatim."
+		}
+	},
+	"ui.canvas.files.remoteDeviceFallback": {
+		"role": "fragment",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Used as {device} in 'Update {device} to see its files here.' when the device has no name."
+	},
+	"ui.canvas.files.remoteUnreachableUnnamed": {
+		"role": "status",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown when the other device that holds a file does not answer and its name is unknown. The user can retry later; 'online' means the device is switched on and connected."
+	},
+	"ui.canvas.files.remoteFetching": {
+		"role": "status",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Waiting state while a file, picture or sound is fetched from another of the user's devices that is answering slowly; shown beside a spinner.",
+		"placeholders": {
+			"device": "Name of the device that holds the file (a user-chosen device name such as a laptop name); retain verbatim."
+		}
+	},
+	"ui.canvas.files.remoteDownloading": {
+		"role": "toast",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Loading toast while a file from another device is downloaded to this computer; replaced by the outcome.",
+		"placeholders": {
+			"name": "The file name; retain verbatim.",
+			"device": "Name of the device that holds the file (a user-chosen device name such as a laptop name); retain verbatim."
+		}
+	},
+	"ui.canvas.files.remoteAlreadyDownloaded": {
+		"role": "toast",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Success toast when the identical file was already downloaded to this computer, so nothing new was written; buttons below it open the file or its folder.",
+		"placeholders": {
+			"name": "The file name; retain verbatim.",
+			"folder": "Name of the folder on this computer the file is in, e.g. 'Downloads'; retain verbatim."
+		}
+	},
+	"ui.canvas.files.remoteReadOnly": {
+		"role": "label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Caption above a text file shown from another device: it cannot be edited here. Matches the existing read-only caption for attachments.",
+		"placeholders": {
+			"device": "Name of the device that holds the file (a user-chosen device name such as a laptop name); retain verbatim."
+		}
+	},
+	"ui.canvas.files.remoteTooLargeToOpen": {
+		"role": "message",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown when a file on another device is too large to open inside the app; downloading it to this computer still works.",
+		"placeholders": {
+			"device": "Name of the device that holds the file (a user-chosen device name such as a laptop name); retain verbatim."
+		}
+	},
+	"ui.canvas.files.remotePeerUpdateHow": {
+		"role": "message",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Second line under 'Update {device} to see its files here.' It tells the user how: run a command on this computer or update the app on the other device, then press Retry. 'lop network update' is a command; keep it verbatim and untranslated.",
+		"placeholders": {
+			"device": "Name of the other device that needs updating; retain verbatim."
+		}
+	},
+	"ui.canvas.files.remotePlay": {
+		"role": "button",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Control on a sound that lives on another device; pressing it fetches the sound so it can be played.",
+		"placeholders": {
+			"device": "Name of the device that holds the file (a user-chosen device name such as a laptop name); retain verbatim."
+		}
 	}
 }

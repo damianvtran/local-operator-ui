@@ -55,6 +55,7 @@ const ANY_MODULE = /.*/;
 const bundle = await build({
 	stdin: {
 		contents: [
+			'export { switcherSessions } from "./src/renderer/src/features/chat/chat-temporary";',
 			'export { buildSwitcherRows, stepSwitcherCursor, initialSwitcherCursor, commitSessionId, switcherPress, SESSION_SWITCHER_ROW_CAP, SESSION_SWITCHER_REVEAL_MS } from "./src/renderer/src/features/session-switcher/session-switcher-model";',
 			'export { browserOwnsTabChord, registerBrowserChordRoot } from "./src/renderer/src/features/browser/hooks/use-browser-chords";',
 			'export { interruptEscapeApplies } from "./src/renderer/src/features/chat/hooks/use-interrupt-on-escape";',
@@ -122,6 +123,7 @@ new Function("require", "module", "exports", bundle.outputFiles[0].text)(
 );
 
 const {
+	switcherSessions,
 	buildSwitcherRows,
 	stepSwitcherCursor,
 	initialSwitcherCursor,
@@ -170,6 +172,36 @@ test("the current conversation is row 0 and the ring fills the rest, in visit or
 		"current first, then the ring without a duplicate of it, capped at five",
 	);
 	assert.equal(SESSION_SWITCHER_ROW_CAP, 5);
+});
+
+// Temporary chats QA round 1, Q-2: the run skips temporary chats, but the one on
+// screen is row 0 and must carry its own title, not "Untitled chat".
+test("a temporary chat on screen is row 0 with its title; the other temporary chats stay out", () => {
+	const temporary = {
+		marked_at: 1_800_000_000,
+		idle_minutes: 30,
+		deletes_at: 1_800_001_800,
+		hold: null,
+	};
+	const rows = [
+		{ session_id: "n1", title: "Normal", temporary: null },
+		{ session_id: "t1", title: "Scratch regex", temporary },
+		{ session_id: "t2", title: "Other scratch", temporary },
+	];
+	const built = buildSwitcherRows({
+		sessions: switcherSessions(rows, true, "t1"),
+		recents: ["t1", "t2", "n1"],
+		displayedSessionId: "t1",
+		archiveEnabled: false,
+		archiveFacts: {},
+	});
+	assert.deepEqual(
+		built.map((row) => [row.sessionId, row.title]),
+		[
+			["t1", "Scratch regex"],
+			["n1", "Normal"],
+		],
+	);
 });
 
 test("with nothing displayed the ring's five most recent are the whole list", () => {

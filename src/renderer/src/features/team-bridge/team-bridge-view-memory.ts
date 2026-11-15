@@ -66,6 +66,17 @@ export type TeamBridgeScrollAnchor = { messageId: string; offset: number };
 
 export type TeamBridgeViewMemory = {
 	target: TeamBridgeTarget;
+	/**
+	 * The organization of a CONVERSATION target, recorded so a cold open can start
+	 * that conversation's first history page alongside the list read instead of
+	 * after it (`prefetchTeamBridgeLanding`): the history read is tenant-scoped,
+	 * and before the list answers nothing else names the tenant. Optional and
+	 * re-validated like every field here: a record written before it existed
+	 * simply opens the way it always did (list first, then history). It is a
+	 * hint for a read, never for display - the page still shows the conversation
+	 * only once the list confirms it.
+	 */
+	tenantId?: string | null;
 	thread?: ThreadTarget | null;
 	quickView?: TeamBridgeQuickView | null;
 	/** Keyed by the target it was measured in, so it is never applied elsewhere. */
@@ -140,6 +151,8 @@ function parseView(value: unknown): TeamBridgeViewMemory | null {
 	const target = parseTarget(value.target);
 	if (!target) return null;
 	const view: TeamBridgeViewMemory = { target };
+	if (target.type === "conversation" && isId(value.tenantId))
+		view.tenantId = value.tenantId;
 	const thread = value.thread;
 	if (
 		isRecord(thread) &&

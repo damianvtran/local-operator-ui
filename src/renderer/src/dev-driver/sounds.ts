@@ -133,9 +133,34 @@ export const soundDriverVerbs = {
 					slider.setPointerCapture = capture;
 					slider.releasePointerCapture = release;
 				};
+				/*
+				 * REPORT THE SCRUB POSITION THE USER SEES, NOT THE MOVING PLAYHEAD.
+				 * A drag over a playing track only `fastSeek`s; the element keeps
+				 * playing by design (sound-player.tsx header: the visual playhead
+				 * follows the pointer), so `currentTime` drifts by however many
+				 * frames the status commit took - native run 42923977889 read
+				 * 2.049982 s (68%) on a 3 s track where two runs on the same bytes
+				 * read 1.949999. The painted `--sound-progress` on the slider's box
+				 * is the pointer-driven position. It is already written here: the
+				 * player's seek rAF was registered during the pointermove, before
+				 * this sampler's first rAF, so it runs earlier in the same frame.
+				 * `playhead` stays in the result as evidence of the drift.
+				 */
+				const element = useAudioEngineStore.getState().element;
+				const painted = Number.parseFloat(
+					slider
+						.querySelector<HTMLElement>(":scope > div")
+						?.style.getPropertyValue("--sound-progress") ?? "",
+				);
+				const duration = element?.duration;
 				resolve({
 					during,
-					seconds: useAudioEngineStore.getState().element?.currentTime,
+					seconds:
+						Number.isFinite(painted) && duration && Number.isFinite(duration)
+							? (painted / 100) * duration
+							: null,
+					progressPercent: Number.isFinite(painted) ? painted : null,
+					playhead: element?.currentTime ?? null,
 				});
 			};
 			requestAnimationFrame(sample);

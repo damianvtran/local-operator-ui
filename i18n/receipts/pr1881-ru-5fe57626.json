@@ -1,0 +1,72 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "date": "2026-11-12",
+ "locale": "ru",
+ "instance": "pr1881-ru-5fe57626",
+ "session": "dd688a5a4b25",
+ "auditor": {
+  "agent": "reviewer",
+  "session": "dd688a5a4b25",
+  "instance": "pr1881-ru-5fe57626",
+  "model": "anthropic/claude-sonnet-5-5",
+  "fallback": "none (the session header model was served; no provider fallback occurred)",
+  "independent_from_translator_session": true
+ },
+ "model": "anthropic/claude-sonnet-5-5",
+ "independence": "Independent auditor session (reviewer role). Did not write the ru files and had not audited this locale or key before. Read: src/i18n/catalogues/{en,ru}/ui.chat.approval.json and en/ui.chat.approval.context.json at worktree head 8efa3b0ff5bb6aec505c559b9e3518d75a6a240b; the core origin/main files local_operator/i18n/catalogues/{en,ru}/wire.bridge_taint.json (via git show), i18n/style-guides/ru.md and i18n/glossary.md from core origin/main (git show). Byte-identity, key set, placeholders and control characters were verified by parsing the bytes, not taken from the translator's claim.",
+ "branch": "approval-card-latched",
+ "head": "8efa3b0ff5bb6aec505c559b9e3518d75a6a240b",
+ "pr": "damianvtran/local-operator-ui#1881",
+ "scope": "ru only, namespace ui.chat.approval at pinned head 8efa3b0ff5: the one new key ui.chat.approval.escape.bridge_latched audited in full; the other 17 keys carry their previous audit (git diff 5033f64235..8efa3b0ff5 on the ru file is exactly one added line, 1 insertion 0 deletions) and were only checked for key set and placeholder equality with English.",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "namespaces": {
+  "ui.chat.approval": {
+   "status": "passed",
+   "keys_audited": 18,
+   "sha256": {
+    "en": "815a4ff369d33bc106b35aa74589f4f000811d24aa24519094c4373283d7ec8f",
+    "ru": "c81bc2f348323e0b6e69ae72ea417596a48c764e3fd5127e20ae1e49eac60145",
+    "context": "9ee5d1341420c59b38f1d451848f2da76bc9397c5d7811196356fbd98968bb2f"
+   },
+   "findings": [
+    {
+     "severity": "MINOR",
+     "key": "ui.chat.approval.escape.bridge_latched",
+     "namespace": "ui.chat.approval",
+     "id": "RU-1",
+     "note": "Term drift inside the namespace: the new key says «беседе/беседу» for 'conversation' while sibling keys default_saved says «для этого разговора» / «разговоров». Core (relay.chrome, wire.bridge_taint) uses «беседа», the desktop UI catalogue uses «разговор». Not wrong Russian, and changing it would break the byte-identity with core wire.bridge_taint.card_options_off; recorded, not blocking. Remedy if wanted: change core and UI together to one term."
+    },
+    {
+     "severity": "MINOR",
+     "key": "ui.chat.approval.escape.bridge_latched",
+     "namespace": "ui.chat.approval",
+     "id": "RU-2",
+     "note": "Mode name 'auto' (first occurrence, «Allow all» и auto отключены) stays lowercase Latin while the same card's siblings render the mode as «Авто» (mode.auto, set_session, set_all, default_saved). The second 'auto' is the argument of the typed command /approvals auto and must stay Latin, which is correct. 'Allow all' is a TUI card label and is kept Latin in «ёлочки» per core; defensible. Recorded, not blocking."
+    }
+   ]
+  }
+ },
+ "sha256": {
+  "en": "815a4ff369d33bc106b35aa74589f4f000811d24aa24519094c4373283d7ec8f",
+  "ru": "c81bc2f348323e0b6e69ae72ea417596a48c764e3fd5127e20ae1e49eac60145",
+  "context": "9ee5d1341420c59b38f1d451848f2da76bc9397c5d7811196356fbd98968bb2f"
+ },
+ "findings": [
+  {
+   "severity": "MINOR",
+   "key": "ui.chat.approval.escape.bridge_latched",
+   "namespace": "ui.chat.approval",
+   "id": "RU-1",
+   "note": "Term drift inside the namespace: the new key says «беседе/беседу» for 'conversation' while sibling keys default_saved says «для этого разговора» / «разговоров». Core (relay.chrome, wire.bridge_taint) uses «беседа», the desktop UI catalogue uses «разговор». Not wrong Russian, and changing it would break the byte-identity with core wire.bridge_taint.card_options_off; recorded, not blocking. Remedy if wanted: change core and UI together to one term."
+  },
+  {
+   "severity": "MINOR",
+   "key": "ui.chat.approval.escape.bridge_latched",
+   "namespace": "ui.chat.approval",
+   "id": "RU-2",
+   "note": "Mode name 'auto' (first occurrence, «Allow all» и auto отключены) stays lowercase Latin while the same card's siblings render the mode as «Авто» (mode.auto, set_session, set_all, default_saved). The second 'auto' is the argument of the typed command /approvals auto and must stay Latin, which is correct. 'Allow all' is a TUI card label and is kept Latin in «ёлочки» per core; defensible. Recorded, not blocking."
+  }
+ ]
+}

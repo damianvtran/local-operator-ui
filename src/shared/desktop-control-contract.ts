@@ -855,6 +855,13 @@ export type DesktopLibraryAsset = {
 	locked: boolean;
 	favorite: boolean;
 	archived: boolean;
+	/**
+	 * The device that holds this asset when it is indexed from a PEER's session
+	 * (core remote-files-parity §5; additive, absent on older daemons). A remote
+	 * asset has no `ref.path` by construction; its bytes come only from
+	 * `library.content`.
+	 */
+	remote?: { device_id: string; device_name: string | null } | null;
 };
 
 /** The `library.list` answer. */
@@ -1058,6 +1065,14 @@ export type DesktopNotificationsList = {
 	waiting_unread_count: number;
 	/** Max `seq` this answer saw: the `throughSeq` of a mark-all / by-session write. */
 	high_water: number;
+	/**
+	 * Per-conversation totals over the WHOLE inbox at `high_water`, present only
+	 * when the request asked `include_session_counts=true` AND core supports it
+	 * (absent on older cores: the renderer then falls back to its page walk).
+	 * `undismissed` is notify rows not dismissed - the "Dismiss all from this
+	 * conversation" scope; `unread` is notify rows unread and not dismissed.
+	 */
+	session_counts?: Record<string, { undismissed: number; unread: number }>;
 };
 
 /** `GET /v1/desktop/notifications/count`, and the feed frame's payload. */

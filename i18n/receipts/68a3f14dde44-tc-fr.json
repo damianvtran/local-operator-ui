@@ -1,0 +1,99 @@
+{
+  "auditor": "reviewer",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "68a3f14dde44-tc-fr",
+  "date": "2026-11-12",
+  "locale": "fr",
+  "independence": "Independent of the translators (coder sessions); did not read or run anything from sessions 2d1500d56d0e or 506f24a144fa or any other session scratchpad. Audit from this session's own reading.",
+  "references": {
+    "glossary": "damianvtran/local-operator@5d3db79f6e17 i18n/glossary.md",
+    "style_guide": "damianvtran/local-operator@5d3db79f6e17 i18n/style-guides/fr.md",
+    "cross_surface": "core tui.app.temporary_hold_* at the same core sha"
+  },
+  "repo": "damianvtran/local-operator-ui",
+  "pr": 1874,
+  "head": "8b2de66ae",
+  "scope": "All 34 keys this PR adds per namespace read in full against en value + en .context.json, glossary and locale style guide; whole files mechanically checked (key parity, ICU argument names, plural categories, typography, NFC/bidi, maxCells on rendered text).",
+  "namespaces": {
+    "ui.chat.canonical": {
+      "status": "passed",
+      "sha256": {
+        "en": "8ff690628996934a90145dbd99d99e977376215a98eaa5419cafbb30670bffce",
+        "fr": "5668c3bdb3729cd1572877fa176cfc17e529d93e79360fcb6e8ddd58490a9b4d"
+      },
+      "findings": []
+    },
+    "ui.chat.composer": {
+      "status": "passed",
+      "sha256": {
+        "en": "a90cc99706b0a4c0958323aa0d152490e1e0518b7c4f8953ade5e6785b5fe8fd",
+        "fr": "ca88c086ca4723f79ef3f95c0dd8577bdeb8673cef2f5be9776415e99cbaf846"
+      },
+      "findings": []
+    },
+    "ui.chat.dialogs": {
+      "status": "passed",
+      "sha256": {
+        "en": "fb527224aa77c898c3a154b05e8265f3db5c81d1789ec9b12f4cdec72f668f25",
+        "fr": "ffc695a506415ae2746e7ad889e6e9091839edb60e6fee793f0071b354c47a4b"
+      },
+      "findings": []
+    },
+    "ui.chat.header": {
+      "status": "passed",
+      "sha256": {
+        "en": "52920afe9253986f97977259ef09c46db652279ee5b383381401ac28d70055bd",
+        "fr": "f847e3c24312d92854a3177cc4e3e043799de702c67f079b89c601a98f44f61b"
+      },
+      "findings": [
+        {
+          "id": "m1",
+          "severity": "MINOR",
+          "key": "ui.chat.header.temporary_ends_in",
+          "note": "'Supprimée dans 30 min' 1 cell over the context maxCells 20 at the default 30 min (21/20, U+202F/space counted as 1). Not gating: the hold.* lines painted in the same sidebar slot carry no budget and run longer; no shorter correct synonym kept the verb.",
+          "disposition": "accepted, deferred"
+        }
+      ]
+    },
+    "ui.chat.header_menu": {
+      "status": "passed",
+      "sha256": {
+        "en": "ff39f4ea0aa359910328c05023ea21e39caf2e2995bfec2e6f2e24317a26ac68",
+        "fr": "4f3e8936b7b86f046cb2b281250992f0f0cb7317a8ec8a67aa0044e5d10eef17"
+      },
+      "findings": []
+    },
+    "ui.chat.sidebar_view": {
+      "status": "passed",
+      "sha256": {
+        "en": "82bad181593074ff90e65c720e30e13a02b8ca4bf6fc0eec32dc06392c1371a6",
+        "fr": "dd1e6a4a642e8e0d25158b1079b4e8bb5375dc892db4bb5cb757813244805bdf"
+      },
+      "findings": [
+        {
+          "id": "m1",
+          "severity": "MINOR",
+          "key": "ui.chat.sidebar_view.temporary.deletes_in",
+          "note": "'Supprimée dans 30 min' 1 cell over the context maxCells 20 at the default 30 min (21/20, U+202F/space counted as 1). Not gating: the hold.* lines painted in the same sidebar slot carry no budget and run longer; no shorter correct synonym kept the verb.",
+          "disposition": "accepted, deferred"
+        }
+      ]
+    },
+    "ui.command_palette": {
+      "status": "passed",
+      "sha256": {
+        "en": "41a633c3a7006733c63e0beb15b1f0f4a867f329a2bf90bd3f6851ed225c1afb",
+        "fr": "0785372e7bdff2c650c9328d978e10a177e3ba136a505b77957136508fe52da6"
+      },
+      "findings": []
+    },
+    "ui.settings.shortcuts": {
+      "status": "passed",
+      "sha256": {
+        "en": "1dd7c82fb3ccd6d9d4ae7984b1b7570ca3dbff9d1343c981b0dfa2411443d0b1",
+        "fr": "f51892700727f33053809527341c44fd20e0ba554fbb8182ab0346df667113d3"
+      },
+      "findings": []
+    }
+  }
+}

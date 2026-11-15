@@ -30,13 +30,23 @@
 export const SIDEBAR_DEFAULT_WIDTH = 260;
 
 /**
- * The resize range, and it is the range the message list pane already occupied
- * (240-360 before this change): 220 is three 30px rows plus their gutters, and
- * 320 is where a row's title, its relative time and its hover controls still
- * fit without the title ellipsising to nothing.
+ * The resize range. 220 is three 30px rows plus their gutters: the narrowest
+ * the column can be and still read as a list.
+ *
+ * WHY 560 AS THE CEILING. It was 320 - where a row's title, its relative time
+ * and its hover controls first fit without the title ellipsising to nothing -
+ * but that is the narrowest COMFORTABLE width, not the widest useful one, and
+ * users asked to drag the sidebar much wider so long session titles and team
+ * names read in full. 560 is the canvas dock's historic ceiling (see
+ * `RIGHT_SLOT_MAX_PX`): wide enough that a typical title never truncates, still
+ * a sidebar rather than a second content column. The ceiling is only a promise
+ * on a window that can afford it: `sidebarDockCapacity` clamps the drawn and
+ * draggable width to what leaves the chat its `CHAT_PANE_MIN_PX` floor and the
+ * rail its 44px: a 1440px window offers the full 560, a 1000px window only
+ * `1000 - 480 - 44 = 476` (see that function's arithmetic).
  */
 export const SIDEBAR_MIN_WIDTH = 220;
-export const SIDEBAR_MAX_WIDTH = 320;
+export const SIDEBAR_MAX_WIDTH = 560;
 
 /** The icon strip's width. */
 export const SIDEBAR_COLLAPSED_WIDTH = 56;
@@ -447,8 +457,11 @@ export function clampSidebarWidth(width: number): number {
  * the right-edge rail beyond the viewport.
  *
  * This is a RENDER-ONLY cap, not a preference write. The app's 800px minimum
- * window with the 44px chat rail leaves 276px, inside the sidebar's 220-320px
- * drag range, so even a stored 320px dock fits without horizontal overflow.
+ * window with the 44px chat rail leaves 276px, inside the sidebar's 220-560px
+ * drag range, so even a stored 560px dock fits without horizontal overflow -
+ * it draws at 276. The full 560 needs a window of at least
+ * `560 + 480 + 44 = 1084`px; below that the divider's `maxWidth` (this value,
+ * in `chat-layout.tsx`) stops the drag at capacity so the chat keeps its floor.
  * Widening the window restores the stored width; narrowing it never rewrites
  * that stored choice (#1077).
  */

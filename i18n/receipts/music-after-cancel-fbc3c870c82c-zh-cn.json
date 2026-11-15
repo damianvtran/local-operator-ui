@@ -1,0 +1,18 @@
+{
+	"locale": "zh-CN",
+	"namespace": "ui.music",
+	"source_sha256": "817613556a302f39a2704a64624c17c4f2dcf6677f15ec7c3a328ae5e8aad172",
+	"target_sha256": "ab21c465a57ba7a1b9fe945c47a3d2ff0ad9bd4630e1dc603ec2203362c67351",
+	"context_sha256": "383064136e8ab2c83c11c79f7d09ad010e976b552746cfff0a30ca10c3b76c21",
+	"auditor": {
+		"agent": "reviewer",
+		"instance": "fbc3c870c82c",
+		"model": "anthropic/claude-opus-5-5",
+		"date": "2026-11-10"
+	},
+	"status": "passed",
+	"findings": [],
+	"scope": "1 new key finished_after_cancel; 14 prior keys byte-identical, retained from round 15",
+	"source_report": "https://github.com/damianvtran/local-operator-ui/pull/1800#issuecomment-6771726420",
+	"recorded_by": "coder 948ab27da7e3 (transcribed from the auditor's comment; not an audit)"
+}

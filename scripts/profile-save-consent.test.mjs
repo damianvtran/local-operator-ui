@@ -626,7 +626,11 @@ test("a persisted revert_verified flag is evidence, never the authority to press
 	const transcript = source(
 		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
 	);
-	assert.match(transcript, SEAM_READ, "the live status seam is read");
+	assert.doesNotMatch(
+		transcript,
+		SEAM_READ,
+		"ordinary tool traces do not fetch profile approval authority",
+	);
 	assert.doesNotMatch(transcript, NO_SECOND_AUTHORITY);
 	assert.match(
 		source(
@@ -1588,11 +1592,11 @@ test("a status answer read for one record never enables another", async () => {
 	const transcript = source(
 		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
 	);
-	assert.match(
+	assert.doesNotMatch(transcript, /<ProfileConsentCard/);
+	assert.doesNotMatch(
 		transcript,
-		/statusAnswerIsBound\(revertStatus, revertIdentity\)/,
+		/const revertStatus = useProfileRevertStatus/,
 	);
-	assert.match(transcript, /revertStatus\?\.state === "available"/);
 	// The hook returns an answer only for the identity that produced it.
 	const hook = source(
 		"src/renderer/src/features/chat/canonical/use-profile-revert.ts",

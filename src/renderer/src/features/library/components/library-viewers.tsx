@@ -42,7 +42,11 @@ import {
 } from "../hooks/use-library-queries";
 import { saveAssetCopy } from "../library-download";
 import { libraryMarkdownDocument } from "../library-markdown";
-import { assetDisplayName, libraryKindLabel } from "../library-model";
+import {
+	assetDisplayName,
+	libraryKindLabel,
+	localPathOf,
+} from "../library-model";
 import { KindGlyph } from "./library-glyph";
 import { LibraryMediaLightbox } from "./library-media-lightbox";
 import { PptxViewer } from "./pptx-viewer";
@@ -111,12 +115,13 @@ const Unsupported: FC<{ asset: DesktopLibraryAsset }> = ({ asset }) => {
 						})}
 			</p>
 			<div className="flex items-center gap-2">
-				{asset.ref.type === "path" && asset.ref.path ? (
+				{localPathOf(asset) ? (
 					<Button
 						variant="secondary"
 						size="sm"
 						onClick={() => {
-							if (asset.ref.path) window.api.openFile(asset.ref.path);
+							const local = localPathOf(asset);
+							if (local) window.api.openFile(local);
 						}}
 					>
 						{t("ui.library.preview.open_externally")}
@@ -589,9 +594,8 @@ const MarkdownAssetView: FC<{
 	/** The watch's mtime, once it has answered. */
 	mtimeMs: number | null;
 }> = ({ asset, text, expanded, revision, mtimeMs }) => {
-	const local =
-		asset.ref.type === "path" && Boolean(asset.ref.path) && asset.exists;
-	const path = asset.ref.path;
+	const path = localPathOf(asset);
+	const local = path !== null && asset.exists;
 	const [probe, setProbe] = useState<
 		{ state: "pending" } | { state: "done"; mtimeMs: number | null }
 	>({ state: "pending" });

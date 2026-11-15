@@ -54,6 +54,7 @@ import {
 	hubMarkDetail,
 	hubMarkFor,
 } from "@shared/api/local-operator/hub-updates";
+import { UnifiedDiff } from "@shared/components/common/unified-diff";
 import { Button } from "@shared/components/ui/button";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
@@ -122,26 +123,15 @@ function Preview({
 					<p className="font-medium text-ink">
 						{region.heading || region.name || field}
 					</p>
-					<div className="grid gap-2 sm:grid-cols-2">
-						<div>
-							<p className="text-ink-muted">
-								{t("ui.agents.navigation.updates.preview.local")}
-							</p>
-							<pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded-sm border border-hairline p-2 text-ink">
-								{asText(region.local) ||
-									t("ui.agents.navigation.updates.preview.nothing")}
-							</pre>
-						</div>
-						<div>
-							<p className="text-ink-muted">
-								{t("ui.agents.navigation.updates.preview.remote")}
-							</p>
-							<pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded-sm border border-hairline p-2 text-ink">
-								{asText(region.remote) ||
-									t("ui.agents.navigation.updates.preview.nothing")}
-							</pre>
-						</div>
-					</div>
+					<UnifiedDiff
+						before={asText(region.local)}
+						after={asText(region.remote)}
+						labels={{
+							before: t("ui.agents.navigation.updates.preview.local"),
+							after: t("ui.agents.navigation.updates.preview.remote"),
+						}}
+						maxHeight={360}
+					/>
 				</li>
 			))}
 		</ul>

@@ -1,0 +1,35 @@
+{
+	"locale": "es",
+	"namespace": "ui.music",
+	"source_sha256": "bd05c0f816b8421ce42aeac422b168ee94f98fe1e7200ea8d3d82982cc0b61c3",
+	"target_sha256": "8e1d9f98cbbea51b1618d3a3bf31f8178403a5235fbd05564b2e4c59be875636",
+	"context_sha256": "b3686240640f01f5fafd3d14fdf1ac0e15ab6f3a45e267c21d8ea76fca7938b8",
+	"auditor": {
+		"agent": "reviewer",
+		"instance": "fbc3c870c82c",
+		"model": "anthropic/claude-opus-5-5",
+		"date": "2026-11-09"
+	},
+	"status": "passed",
+	"findings": [
+		{
+			"id": "I-1",
+			"severity": "minor",
+			"key": "ui.music.generating_tracks",
+			"summary": "fr/es generating_tracks lacked the CLDR `many` arm; auditor replacement applied verbatim",
+			"disposition": "fixed — applied verbatim in the round-15 remediation commit; the committed bytes are target_sha256"
+		}
+	],
+	"not_locale_scoped": [
+		{
+			"id": "I-3",
+			"severity": "nit",
+			"summary": "English context note was copy-pasted across the 8 inline keys; each key now has its own note (en/ui.music.context.json). English context only, not a finding against this locale's bytes.",
+			"disposition": "fixed in the round-15 remediation commit",
+			"context_sha256_after": "b76951ccdf085b8eeb80046b2352b442387f8bddeb7f0ec587ab788cc61a528d"
+		}
+	],
+	"scope": "8 inline-generating keys (queued, generating, generating_tracks, modifying, cancel_requested, ready, job_failed, job_cancelled); 6 prior keys unchanged, retained",
+	"source_report": "https://github.com/damianvtran/local-operator-ui/pull/1800#issuecomment-6754738988",
+	"recorded_by": "coder 7ca90b654475 (transcribed from the auditor's comment; not an audit)"
+}

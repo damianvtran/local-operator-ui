@@ -1,0 +1,83 @@
+{
+  "auditor": "reviewer",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "68a3f14dde44-tc-es",
+  "date": "2026-11-12",
+  "locale": "es",
+  "independence": "Independent of the translators (coder sessions); did not read or run anything from sessions 2d1500d56d0e or 506f24a144fa or any other session scratchpad. Audit from this session's own reading.",
+  "references": {
+    "glossary": "damianvtran/local-operator@5d3db79f6e17 i18n/glossary.md",
+    "style_guide": "damianvtran/local-operator@5d3db79f6e17 i18n/style-guides/es.md",
+    "cross_surface": "core tui.app.temporary_hold_* at the same core sha"
+  },
+  "repo": "damianvtran/local-operator-ui",
+  "pr": 1874,
+  "head": "8b2de66ae",
+  "scope": "All 34 keys this PR adds per namespace read in full against en value + en .context.json, glossary and locale style guide; whole files mechanically checked (key parity, ICU argument names, plural categories, typography, NFC/bidi, maxCells on rendered text).",
+  "namespaces": {
+    "ui.chat.canonical": {
+      "status": "passed",
+      "sha256": {
+        "en": "8ff690628996934a90145dbd99d99e977376215a98eaa5419cafbb30670bffce",
+        "es": "bf44dbfeaf33a47cc79a1c3e2527b56a213b3096b8938cad7e9b77841a049d81"
+      },
+      "findings": []
+    },
+    "ui.chat.composer": {
+      "status": "passed",
+      "sha256": {
+        "en": "a90cc99706b0a4c0958323aa0d152490e1e0518b7c4f8953ade5e6785b5fe8fd",
+        "es": "d98d0dbfa387072da3520add4d43d755380d31e1346ff6aa33babe7e1a5bc4b4"
+      },
+      "findings": []
+    },
+    "ui.chat.dialogs": {
+      "status": "passed",
+      "sha256": {
+        "en": "fb527224aa77c898c3a154b05e8265f3db5c81d1789ec9b12f4cdec72f668f25",
+        "es": "e9a554507921ad64a787e834456b45222c0c9ecdc61ca595a92646c7bee2dac1"
+      },
+      "findings": []
+    },
+    "ui.chat.header": {
+      "status": "passed",
+      "sha256": {
+        "en": "52920afe9253986f97977259ef09c46db652279ee5b383381401ac28d70055bd",
+        "es": "9ae489743e7f5b9ef8d36ce67c6a18da6ddcd5e0bc50727dc981871874b3b2ae"
+      },
+      "findings": []
+    },
+    "ui.chat.header_menu": {
+      "status": "passed",
+      "sha256": {
+        "en": "ff39f4ea0aa359910328c05023ea21e39caf2e2995bfec2e6f2e24317a26ac68",
+        "es": "2c89c72c346789f1cd31c10b4c89453c5a0d1f132c3585b74ab005aefb640dc2"
+      },
+      "findings": []
+    },
+    "ui.chat.sidebar_view": {
+      "status": "passed",
+      "sha256": {
+        "en": "82bad181593074ff90e65c720e30e13a02b8ca4bf6fc0eec32dc06392c1371a6",
+        "es": "95292da14bfc71517cb99a4165a77cfca6eac83c47c03ce86475091d590ebdb8"
+      },
+      "findings": []
+    },
+    "ui.command_palette": {
+      "status": "passed",
+      "sha256": {
+        "en": "41a633c3a7006733c63e0beb15b1f0f4a867f329a2bf90bd3f6851ed225c1afb",
+        "es": "22495c0ea446e6051e304151ec650b2079fe5fe6d1d1471d85fe907fc292d99b"
+      },
+      "findings": []
+    },
+    "ui.settings.shortcuts": {
+      "status": "passed",
+      "sha256": {
+        "en": "1dd7c82fb3ccd6d9d4ae7984b1b7570ca3dbff9d1343c981b0dfa2411443d0b1",
+        "es": "b1c9b3acf733d0fd98472ff19082f436b96e435e08ac52171a291773c66e2e9b"
+      },
+      "findings": []
+    }
+  }
+}

@@ -8,5 +8,11 @@
 	"ui.chat.dialogs.options.clear_message": "Mọi tin nhắn trong đó sẽ bị xóa khỏi máy này và không thể hoàn tác. Bản thân tác nhân không bị ảnh hưởng.",
 	"ui.chat.dialogs.options.clear_title": "Xóa cuộc trò chuyện này?",
 	"ui.chat.dialogs.options.description": "Tùy chỉnh cài đặt cho tác nhân này",
-	"ui.chat.dialogs.options.title": "Tùy chọn trò chuyện"
+	"ui.chat.dialogs.options.title": "Tùy chọn trò chuyện",
+	"ui.chat.dialogs.make_temporary_title": "Đặt cuộc trò chuyện này là tạm thời?",
+	"ui.chat.dialogs.make_temporary_deleted": "Cuộc trò chuyện sẽ rời khỏi danh sách ngay bây giờ. Khi không hoạt động đủ thời gian đã đặt (mặc định 30 phút), cuộc trò chuyện này cùng tin nhắn và tệp đính kèm sẽ bị xóa.",
+	"ui.chat.dialogs.make_temporary_kept": "Được giữ lại: các tệp mà nó đã thay đổi trên máy tính của bạn.",
+	"ui.chat.dialogs.make_temporary_confirm": "Đặt là tạm thời",
+	"ui.chat.dialogs.keep_and_link": "Giữ và liên kết",
+	"ui.chat.dialogs.keep_and_pin": "Giữ và ghim"
 }

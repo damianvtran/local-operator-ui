@@ -1,0 +1,80 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "date": "2026-11-12",
+ "locale": "ur",
+ "instance": "pr1881-ur-bbac41af",
+ "session": "7612fe555964",
+ "auditor": {
+  "agent": "reviewer (audit-ur, lopdev team)",
+  "session": "7612fe555964",
+  "instance": "pr1881-ur-bbac41af",
+  "model": "anthropic/claude-sonnet-5-5",
+  "fallback": "none (the model named in the session header served every call; no provider fallback occurred)",
+  "independent_from_translator_session": true
+ },
+ "model": "anthropic/claude-sonnet-5-5",
+ "independence": "Fresh reviewer session 7612fe555964. Did not write the ur files, did not produce the copy from core, and had not audited this locale or this namespace before. Read: src/i18n/catalogues/{en,ur}/ui.chat.approval.json and en/ui.chat.approval.context.json at the pinned head 8efa3b0ff5bb; the git diff 5033f64235..8efa3b0ff5 of the ur and en files; core origin/main (330e43b93fd6) local_operator/i18n/catalogues/{ur,en}/wire.bridge_taint.json, i18n/glossary.md, i18n/style-guides/ur.md and i18n/audit-history/ur/wire.bridge_taint.json; src/i18n/bidi.ts, approval-escape.tsx and question-dock.tsx (diff). Verified by parsing bytes, @formatjs/icu-messageformat-parser, GNU FriBidi 1.0.16 and node --test scripts/i18n/ur-activation.test.mjs, not from the translator's summary. The prior audit of the core file was not relied on.",
+ "branch": "approval-card-latched",
+ "head": "8efa3b0ff5bb6aec505c559b9e3518d75a6a240b",
+ "pr": "damianvtran/local-operator-ui#1881",
+ "scope": "ur only, ui.chat.approval at head 8efa3b0ff5bb: the NEW key ui.chat.approval.escape.bridge_latched audited in full (meaning vs English, idiom, glossary/style guide, ICU, RTL/bidi by byte parse and FriBidi); the other 17 keys confirmed byte-unchanged (git diff 5033f64235..8efa3b0ff5 on the ur file is +1/-0, one added line) and CARRY their previous audit; key set equals English (18/18, same order); per-key placeholder/ICU argument sets identical to English (0 mismatches); byte-identity of the new value to core wire.bridge_taint.card_options_off verified (English source also equal to core en).",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "namespaces": {
+  "ui.chat.approval": {
+   "status": "passed",
+   "keys_audited": 18,
+   "sha256": {
+    "en": "815a4ff369d33bc106b35aa74589f4f000811d24aa24519094c4373283d7ec8f",
+    "ur": "ca83c72097bb0d0b3bbd2d2a2c71fb2fc13909a1edd4456ddceb5a9259914306",
+    "context": "9ee5d1341420c59b38f1d451848f2da76bc9397c5d7811196356fbd98968bb2f"
+   },
+   "findings": [
+    {
+     "severity": "MINOR",
+     "key": "ui.chat.approval.escape.bridge_latched",
+     "kind": "render",
+     "problem": "Measured with GNU FriBidi 1.0.16 (--rtl) on the exact ur bytes: bare, the two commands paint 'approvals auto/' and 'new/' (the sigil lands on the RTL side, rule N2). src/i18n/bidi.ts isolateSigils (called by translate() for an RTL-answered message; the card renders through t() in approval-escape.tsx) fixes '/new' but wraps only '/approvals' (LATIN_WORD stops at the space), so '/approvals auto' paints as two LTR chunks in RTL order: 'auto /approvals' left-to-right (read right-to-left it is the correct order). Same behaviour as the shipped ur key ui.chat.pickers.mcp_command...'/mcp reauth'.",
+     "fix": "No wording change: the style guide forbids manual bidi controls and the string is byte-identical to core. If a one-chunk command is wanted, extend isolateSigils to take a following lowercase argument word (or isolate a multi-word command run) in src/i18n/bidi.ts; otherwise accept as the known seam limitation.",
+     "disposition": "not blocking; render seam, pre-existing, outside this PR's diff"
+    },
+    {
+     "severity": "MINOR",
+     "key": "ui.chat.approval.escape.bridge_latched",
+     "kind": "terminology",
+     "problem": "The note writes the mode name as Latin 'auto' three times, while the sibling keys of the same namespace and card name the same mode in Urdu: mode.auto 'خودکار', set_session/set_all 'خودکار مقرر کریں', default_saved 'خودکار'. A reader who has just seen 'خودکار' on the same card sees 'auto' in the note that replaces those two links. Latin is defensible for the argument of the typed command '/approvals auto' and it matches core wire.bridge_taint.* (kept so for byte-identity), but the two prose uses 'auto بند ہیں' and 'auto آن کرنے' could read 'خودکار'.",
+     "fix": "Optional: in prose use 'خودکار' and keep Latin 'auto' only inside the command; that breaks byte-identity with core, so it would need the core file changed in step. Recorded, not required.",
+     "disposition": "not blocking; inherited from core text"
+    }
+   ]
+  }
+ },
+ "findings": [
+  {
+   "severity": "MINOR",
+   "key": "ui.chat.approval.escape.bridge_latched",
+   "kind": "render",
+   "problem": "Measured with GNU FriBidi 1.0.16 (--rtl) on the exact ur bytes: bare, the two commands paint 'approvals auto/' and 'new/' (the sigil lands on the RTL side, rule N2). src/i18n/bidi.ts isolateSigils (called by translate() for an RTL-answered message; the card renders through t() in approval-escape.tsx) fixes '/new' but wraps only '/approvals' (LATIN_WORD stops at the space), so '/approvals auto' paints as two LTR chunks in RTL order: 'auto /approvals' left-to-right (read right-to-left it is the correct order). Same behaviour as the shipped ur key ui.chat.pickers.mcp_command...'/mcp reauth'.",
+   "fix": "No wording change: the style guide forbids manual bidi controls and the string is byte-identical to core. If a one-chunk command is wanted, extend isolateSigils to take a following lowercase argument word (or isolate a multi-word command run) in src/i18n/bidi.ts; otherwise accept as the known seam limitation.",
+   "disposition": "not blocking; render seam, pre-existing, outside this PR's diff"
+  },
+  {
+   "severity": "MINOR",
+   "key": "ui.chat.approval.escape.bridge_latched",
+   "kind": "terminology",
+   "problem": "The note writes the mode name as Latin 'auto' three times, while the sibling keys of the same namespace and card name the same mode in Urdu: mode.auto 'خودکار', set_session/set_all 'خودکار مقرر کریں', default_saved 'خودکار'. A reader who has just seen 'خودکار' on the same card sees 'auto' in the note that replaces those two links. Latin is defensible for the argument of the typed command '/approvals auto' and it matches core wire.bridge_taint.* (kept so for byte-identity), but the two prose uses 'auto بند ہیں' and 'auto آن کرنے' could read 'خودکار'.",
+   "fix": "Optional: in prose use 'خودکار' and keep Latin 'auto' only inside the command; that breaks byte-identity with core, so it would need the core file changed in step. Recorded, not required.",
+   "disposition": "not blocking; inherited from core text"
+  }
+ ],
+ "checks": [
+  "Key set: en 18, ur 18, context sidecar 18; identical key sets and order; 18 key lines, 18 unique (no duplicate keys).",
+  "ICU: all 18 values parsed with @formatjs/icu-messageformat-parser; per-key argument sets (type:name) of ur equal en; 0 mismatches; the new key has no placeholders.",
+  "Diff: git diff 5033f64235..8efa3b0ff5 -- ur/ui.chat.approval.json = 1 insertion, 0 deletions; the added line is the new key only.",
+  "Core: the ur value equals core local_operator/i18n/catalogues/ur/wire.bridge_taint.json 'wire.bridge_taint.card_options_off' byte-for-byte (Buffer.equals true, origin/main 330e43b93fd6); en value equals core en.",
+  "Bidi bytes: the new ur value contains 0 characters among U+200E/200F/202A-202E/2066-2069/061C/FEFF; scripts Arabic and Latin only; ends with U+06D4 '۔'; 0 ASCII full stops; no double spaces; curly quotes U+201C/U+201D (style guide quotes).",
+  "FriBidi 1.0.16 --rtl on the bare value: '/approvals auto' paints 'approvals auto/', '/new' paints 'new/'; after src/i18n/bidi.ts isolateSigils (run for real under node): '/new' correct, '/approvals' isolated, 'auto' outside the isolate (finding 1). Quotes around Allow all pair correctly.",
+  "node --test scripts/i18n/ur-activation.test.mjs: tests 3, pass 3, fail 0 (9126 ur values scanned, no manual bidi controls)."
+ ]
+}

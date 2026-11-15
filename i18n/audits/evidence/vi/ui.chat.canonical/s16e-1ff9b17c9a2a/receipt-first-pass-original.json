@@ -1,0 +1,204 @@
+{
+  "audit_id": "s16e-vi-au",
+  "slice": "S16e-renderer",
+  "pr": 1884,
+  "pr_repo": "damianvtran/local-operator-ui",
+  "locale": "vi",
+  "namespace": "ui.chat.canonical",
+  "file_group": "ui.chat.canonical.image_gen stop / settlement / failure-class copy (12 keys)",
+  "audit_date": "2026-11-12",
+  "key_count": 12,
+  "worktree": "/Users/damian/local-operator-ui/.worktrees/i18n-s16e @ bd8e90542506e8bec4a98862b868095409b28329",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "session": "462e1eb39290",
+    "instance": "462e1eb39290",
+    "model": "deepseek/deepseek-flash",
+    "actual_model_source": "session runtime header names 'Model: deepseek/deepseek-flash'; no fallback observed and none declared in this run",
+    "independent_from_translator_session": true,
+    "translator_identity": "per the slice notes: agent i18n-translator, a fresh instance; the notes record no translator session id, so independence rests on separate dispatch and on this auditor forming its view of all 12 keys before reading the notes",
+    "review_model_differs_from_translator": "not established: the notes do not name the translator's model"
+  },
+  "status": "passed",
+  "ledger_status_expected": "clean-with-findings",
+  "verdict_note": "no BLOCKER and no MAJOR; 2 MINOR and 1 NIT recorded below and non-gating",
+  "audited_bytes": {
+    "draft": {
+      "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e/vi/draft-vi-s16e.json",
+      "sha256": "c0e8df525f0324921dd849634e1a83d6e9d4de53db0e1f38d68c3a2b217f10a9"
+    },
+    "draft_working_copy_audited": {
+      "path": "/Users/damian/.local-operator/sessions/462e1eb39290/scratchpad/s16e-au-vi/draft-vi-s16e.json",
+      "sha256": "c0e8df525f0324921dd849634e1a83d6e9d4de53db0e1f38d68c3a2b217f10a9",
+      "note": "byte-identical copy of the named draft; all node/python runs in audit.log read this copy"
+    },
+    "values_hash": "3bf4596f5a2c5b135d35323835c2e0151c8edaaf19b31e9562eaeb18a398ff93",
+    "values_hash_recipe": "sha256 of '\\n'.join(f'{key}\\t{value}' for sorted items) + trailing newline, UTF-8; use it to prove the applied catalogue carries these 12 values byte-for-byte"
+  },
+  "input_hashes": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+      "sha256": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+      "sha256": "ec598772089552ace910c857a38b364bdfa83a32c76c62b752b761527531e7b7"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/vi/ui.chat.canonical.json",
+      "sha256": "a37a5690412c841379ea44d6d63f4a5314579f4a157ff3c7f67be2ee872fe750",
+      "note": "shipped catalogue BEFORE the 12 keys land: 467 keys vs 479 English; used as the terminology authority for this surface, not as the audited target bytes"
+    },
+    "brief": {
+      "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e-brief.json",
+      "sha256": "a0326137bff43ed38fc4a1c63d4a26e1887cfd56d4826df0e615df28055bef0c"
+    },
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/vi.md",
+      "sha256": "e4901497ed553e2b2ae4a2660bf776adb787b89e11d7eb0f8d08f3da4b227888"
+    },
+    "call_sites_read": [
+      {
+        "path": "src/renderer/src/features/chat/canonical/image-gen-card.tsx",
+        "sha256": "f5ffc1daf9bb33eda6c5922124fe38bac3e343e4ea4754950588d92cab870ae7"
+      },
+      {
+        "path": "src/renderer/src/features/chat/canonical/image-gen-card-model.ts",
+        "sha256_read": "read for the settlement / cancel-fact notes; not re-hashed after the first read"
+      }
+    ]
+  },
+  "artifacts": {
+    "receipt": {
+      "path": "/Users/damian/.local-operator/sessions/462e1eb39290/scratchpad/s16e-au-vi/receipt.json",
+      "sha256": "self: see report.md; the receipt cannot carry its own hash"
+    },
+    "report": {
+      "path": "/Users/damian/.local-operator/sessions/462e1eb39290/scratchpad/s16e-au-vi/report.md"
+    },
+    "execution_log": {
+      "path": "/Users/damian/.local-operator/sessions/462e1eb39290/scratchpad/s16e-au-vi/audit.log",
+      "sha256": "c0c6a5d2c4095cfb6303bfb923dad820e16dabb928e6603aa2f1c3d23faa73b5",
+      "is_actual_execution_log": true
+    },
+    "checker": {
+      "path": "/Users/damian/.local-operator/sessions/462e1eb39290/scratchpad/s16e-au-vi/check.mjs",
+      "sha256": "f02b92a6e29ae2b07fa7ceb97bc59cdd391e29b301fb5dd2d062b10599738bf0"
+    },
+    "renderer": {
+      "path": "/Users/damian/.local-operator/sessions/462e1eb39290/scratchpad/s16e-au-vi/render.mjs",
+      "sha256": "f61a0228130bdbc5f0638a35b4e59f2bb8004601a0c717bbce994b63a13b37ab"
+    },
+    "transcript_runner": {
+      "path": "/Users/damian/.local-operator/sessions/462e1eb39290/scratchpad/s16e-au-vi/run-audit.sh",
+      "sha256": "53382b6bb5623a21c7b5027f48eb65f40a52e6de1be5dc72220a33495f4731a1"
+    },
+    "negative_controls": [
+      "/Users/damian/.local-operator/sessions/462e1eb39290/scratchpad/s16e-au-vi/ctrl-drop-branch.json",
+      "/Users/damian/.local-operator/sessions/462e1eb39290/scratchpad/s16e-au-vi/ctrl-rename-arg.json",
+      "/Users/damian/.local-operator/sessions/462e1eb39290/scratchpad/s16e-au-vi/ctrl-brace-leak.json",
+      "/Users/damian/.local-operator/sessions/462e1eb39290/scratchpad/s16e-au-vi/ctrl-drop-key.json"
+    ],
+    "hash_manifest": {
+      "path": "/Users/damian/.local-operator/sessions/462e1eb39290/scratchpad/s16e-au-vi/artifacts.sha256",
+      "note": "sha256 of this receipt and of report.md are recorded there, computed after both files were final"
+    }
+  },
+  "mechanical": {
+    "validator_run": "NOT run: the repo validator is `pnpm check-i18n` (needs installed deps, a generated keys.gen.ts and the catalogues on disk); this audit is read-only with no install/build, and the draft is not yet in the catalogue. Mechanical checking used the same parser/formatter the runtime wraps: @formatjs/icu-messageformat-parser and intl-messageformat 12.1.3 from ~/local-operator-ui/node_modules.",
+    "json": "valid, no BOM",
+    "key_set": "12/12 expected keys, none missing, none extra, none already shipped",
+    "placeholders": "material select argument name identical to English; every other key parameterless exactly as English",
+    "select_keywords": "video | voiceover | sound_effect | other intact, each a complete Vietnamese sentence with its full stop; no plural branches added (vi is other-only, none of the 12 is plural)",
+    "brace_leaks": "none; every value parses",
+    "nfc": "all 12 values NFC precomposed",
+    "negative_controls": "4/4 caught: dropped select branch -> BLOCKER; renamed {material} -> BLOCKER; unterminated brace -> BLOCKER icu-parse; dropped key -> KEY-SET fatal exit 2. A pass here is not vacuous.",
+    "runtime_path_evidence": "src/i18n/messages.ts:148-152 constructs `new IntlMessageFormat(message, locale)` from intl-messageformat@12.1.3; render.mjs made that same call with locale 'vi' for every value and every material branch, so the mechanical/render result is the runtime's own parser path, not a lookalike"
+  },
+  "axes": {
+    "1_mechanical": "pass",
+    "2_accuracy": "pass with F1 (MINOR, coherence of the cancel pair)",
+    "3_idiom_register": "pass with F2 (MINOR, bare verb-phrase subject)",
+    "4_terminology": "pass with F1 consistency note; every term matches the shipped vi catalogue and the glossary kept-English set",
+    "5_fit": "pass: no maxCells/maxChars exists for these keys in the English context sidecar (word-count hints only); the class label renders in its own full-width wrapping <p>, the state line in a wrapping flex <p>, so 8-26 cells do not clip. Answers the translator's open question: 26 cells for error_class.audio_rate_limited is acceptable here, no recorded fallback needed.",
+    "6_rtl": "not applicable to vi",
+    "no_english_left": "pass: only kept tokens remain (endpoint, id, video), each with shipped precedent or glossary cover"
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "MINOR",
+      "keys": [
+        "ui.chat.canonical.image_gen.cancel.checking",
+        "ui.chat.canonical.image_gen.settlement.pending"
+      ],
+      "current": "Đang xác nhận khoản phí. / Đang chờ quyết toán — khoản phí cuối cùng sẽ xuất hiện khi nhà cung cấp báo cáo.",
+      "problem": "One English concept (settlement) is rendered with two words inside one slice: 'xác nhận khoản phí' in the checking clause, 'quyết toán' in the pending note. The checking clause also follows 'sẽ bị tính phí nếu tạo ra âm thanh' and presupposes a charge exists, where 'Checking for settlement' stays neutral about whether one results.",
+      "suggested": "Use one word family. Preferred: cancel.checking -> 'Đang chờ quyết toán.' (same term as settlement.pending, no presupposition, 20 cells). Alternative: keep 'xác nhận' in both and lead settlement.pending with 'Đang chờ xác nhận khoản phí — khoản phí cuối cùng sẽ xuất hiện khi nhà cung cấp báo cáo.'",
+      "gating": false
+    },
+    {
+      "id": "F2",
+      "severity": "MINOR",
+      "keys": [
+        "ui.chat.canonical.image_gen.error.audio_rate_limited"
+      ],
+      "current": "Tạo âm thanh đang bận. Hãy thử lại sau giây lát.",
+      "problem": "A bare verb phrase is the subject of 'đang bận', so the first two words can be read as an imperative ('generate audio'), and the shipped catalogue always puts a noun there: 'Tác nhân đang bận', 'Trung tâm đang bận'.",
+      "suggested": "Dịch vụ tạo âm thanh đang bận. Hãy thử lại sau giây lát. (or 'Trình tạo âm thanh đang bận.') - keeps two sentences, no promised wait time, no promised success.",
+      "gating": false
+    },
+    {
+      "id": "F3",
+      "severity": "NIT",
+      "keys": [
+        "ui.chat.canonical.image_gen.error_class.duplicate_id"
+      ],
+      "current": "Trùng id",
+      "problem": "Label-position labels in the shipped catalogue capitalise the token ('ID tác nhân', 'ID người dùng'); lowercase 'id' is that catalogue's prose form. English itself is lowercase 'id', so the current form is defensible.",
+      "suggested": "Trùng ID",
+      "gating": false
+    }
+  ],
+  "findings_count": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 2,
+    "nit": 1
+  },
+  "current_report_verdict": {
+    "status": "passed",
+    "unresolved_blocker_major_count": 0,
+    "finding_ids": [
+      "F1",
+      "F2",
+      "F3"
+    ]
+  },
+  "positives_verified": [
+    "promise fidelity: cancel.queued alone claims no charge ('sẽ không bị tính phí'); cancel.running claims nothing and keeps both the 'continues' and the conditional charge, near-identical to the shipped sound.stop.warning including 'endpoint hủy'; settlement.pending states no amount and never a zero",
+    "failure-class distinguishability: denied 'Bị từ chối' vs gate_failed 'Bị cổng chặn'; unknown_tool 'Công cụ không xác định' vs invalid_arguments 'Đối số không hợp lệ'; audio_rate_limited 'Giới hạn tần suất âm thanh' - all six distinct, none colliding",
+    "terminology: loạt (batch) reuses done_batch/failed_batch; nhà cung cấp (provider) reuses stop_hint_queued/stop_hint_running and sound.stop.warning; đã dừng (stopped, not đã hủy) reuses sound.batch.item_status's cancelled branch; khoản phí / bị tính phí (charge) reuses sound.cost.estimated_zero and sound.stop.warning; giới hạn tần suất reuses ui.chat.error_block.rate_limit.*; cổng (gate) reuses 'Các cổng phê duyệt'; không xác định and đối số both have shipped precedent",
+    "register: zero 'bạn', no 'Vui lòng' anywhere ('Hãy' is the guide's direct form), no '!', sentence case, labels carry no full stop and every sentence that stops in English stops here",
+    "typography: ';' kept where English has it, spaced em dash in settlement.pending per the vi guide, no space before punctuation, no ASCII '...', all values NFC"
+  ],
+  "limits_disclosed": [
+    "no translation/MT service used, no back-translation",
+    "pnpm check-i18n / check-strings / ledger-check not run (read-only audit, no install or build in this worktree)",
+    "no rendered-frame or runtime locale-switch check: this locale's draft is not applied to the catalogue, so nothing can be rendered; render evidence belongs to the application step",
+    "the second independent pass required for high-visibility groups was done here as a separate full re-read of all 12 keys (errors are in this group), by the same auditor instance: it is a second pass, not a second auditor"
+  ],
+  "post_application_handoff": {
+    "ledger_command": "node scripts/i18n/ledger-assemble.mjs --locale vi (see docs/I18N.md, 'Retain checkable audit records'; i18n/ledger.json then flips to clean-with-findings)",
+    "why_not_run_now": "ledger-assemble binds the target sha256 of the catalogue ON DISK; the vi catalogue does not yet carry these 12 keys, so assembling now would record a hash that the application step immediately supersedes",
+    "precondition": "after the coder applies the draft, re-hash the catalogue and confirm the 12 values reproduce values_hash 3bf4596f5a2c5b135d35323835c2e0151c8edaaf19b31e9562eaeb18a398ff93 before running ledger-assemble, so this receipt describes the bytes that ship",
+    "receipt_copy": "this receipt.json is ledger-assemble's contract shape (auditor, model, instance, status, namespace, sha256 {vi,en}, findings) once target sha256 is replaced with the applied catalogue's hash",
+    "canonical_evidence_target": "i18n/audits/evidence/vi/ui.chat.canonical/s16e-vi-au/ (record.json + audit.log + report.md companions)"
+  },
+  "audit_notes_not_execution_log": "audit.log is a real `set -x` transcript of the commands this audit ran, re-executed into the log after one path typo was corrected; the values in this receipt were cross-checked against that log. No command output here is reconstructed.",
+  "original_lost_evidence": null
+}

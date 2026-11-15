@@ -1,0 +1,58 @@
+{
+	"auditor": "reviewer",
+	"model": "anthropic/claude-opus-5-5",
+	"instance": "005bcd26d12e-askcmd-zh-cn",
+	"date": "2026-11-13",
+	"locale": "zh-CN",
+	"independence": "Independent i18n auditor (lopdev reviewer session 005bcd26d12e); not the translator (lopdev coder, anthropic/claude-opus-5-5 per PR #1902 body). Same model family as the translator: disclosed. Read only the PR's committed bytes, never the coder's scratch. Replacements in `resolved` were authored by this auditor (brief: produce corrected translations as a patch).",
+	"references": {
+		"glossary": "damianvtran/local-operator@39b692a4bb7e i18n/glossary.md",
+		"style_guide": "damianvtran/local-operator@39b692a4bb7e i18n/style-guides/zh-CN.md",
+		"shipped_terms": "src/i18n/catalogues/{en,zh-CN}/*.json at 610d5c97f (Copy/Insert/Run/Cancel labels, 'your home folder', 'this computer', 'this conversation', device, terminal/console)"
+	},
+	"repo": "damianvtran/local-operator-ui",
+	"pr": 1902,
+	"head": "610d5c97f",
+	"scope": "All 17 keys of the new namespace ui.chat.ask_command read in full against the en value and en .context.json, glossary and locale style guide; mechanically checked key parity with en, ICU placeholders ({device} byte-identical), NFC, no Cc/Cf (bidi/control) characters, no ASCII '...', button labels (copy/insert/run/dialog_confirm) against shipped labels. Audited bytes = 610d5c97f plus this audit's patch.",
+	"namespace": "ui.chat.ask_command",
+	"status": "passed",
+	"sha256": {
+		"en": "8b097a9351a416ecf11110a63106e45cc8eed507f1d1b2886363251852b93b95",
+		"zh-CN": "6303d4c541679c03dd45366b8322f6101b43163b05a49bd2a5893a86e8d8a82a"
+	},
+	"context_sha256": "c243f7e75d5ae204f2be763475bdaf29c6646397f7007e271103997258ff47b5",
+	"findings": [],
+	"resolved": [
+		{
+			"id": "Z1",
+			"severity": "MINOR",
+			"key": "ui.chat.ask_command.run",
+			"note": "Single '…'; the zh-CN style guide sets the ellipsis to '……' (161 of 178 shipped short ellipsis labels use it).",
+			"replacement": "运行……",
+			"disposition": "replacement authored by this auditor and applied in the round-1 i18n patch on top of 610d5c97f; the audited bytes are those patched bytes"
+		},
+		{
+			"id": "Z2",
+			"severity": "MINOR",
+			"keys": [
+				"ui.chat.ask_command.notice_elsewhere",
+				"ui.chat.ask_command.dialog_device_remote"
+			],
+			"note": "Spaces around {device}; the zh-CN style guide inserts no space between Chinese text and Latin runs (shipped device strings: '位于{device}', '从{device}获取').",
+			"replacement": "在{device}上 / 工作的{device}上",
+			"disposition": "replacement authored by this auditor and applied in the round-1 i18n patch on top of 610d5c97f; the audited bytes are those patched bytes"
+		},
+		{
+			"id": "Z3",
+			"severity": "MINOR",
+			"keys": [
+				"ui.chat.ask_command.dialog_device_local",
+				"ui.chat.ask_command.dialog_device_remote",
+				"ui.chat.ask_command.dialog_device_remote_unnamed"
+			],
+			"note": "'主文件夹' for 'your home folder'; every shipped zh-CN string for the same phrase says '主目录' (4 occurrences, 0 of 主文件夹).",
+			"replacement": "主目录",
+			"disposition": "replacement authored by this auditor and applied in the round-1 i18n patch on top of 610d5c97f; the audited bytes are those patched bytes"
+		}
+	]
+}

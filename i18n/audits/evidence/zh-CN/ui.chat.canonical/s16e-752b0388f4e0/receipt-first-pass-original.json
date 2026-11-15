@@ -1,0 +1,127 @@
+{
+ "audit_id": "s16e-zhCN-a1",
+ "slice": "S16e-renderer (ui.chat.canonical, 12 keys)",
+ "locale": "zh-CN",
+ "namespace": "ui.chat.canonical",
+ "audit_date": "2026-11-12",
+ "key_count": 12,
+ "verdict": "passed",
+ "status": "passed",
+ "ledger_result": "clean-with-findings",
+ "findings_summary": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 1,
+  "nit": 1
+ },
+ "auditor": {
+  "agent": "i18n-auditor",
+  "session": "f9df9ab87b40",
+  "model": "deepseek/deepseek-flash",
+  "actual_model_source": "session model as reported by the harness for this run; no fallback, no role or model pin applied",
+  "independent_from_translator_session": true,
+  "independence_statement": "Fresh auditor session: I did not translate or edit these values, judged every key from the English source before reading the translator's notes, made no repo or draft edits, and used no translation/MT service to compare or back-translate."
+ },
+ "input_hashes": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+   "sha256": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17",
+   "note": "verified identical to the English source hash named in the task; equals sha256 of the worktree file at bd8e9054"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+   "sha256": "ec598772089552ace910c857a38b364bdfa83a32c76c62b752b761527531e7b7"
+  },
+  "brief": {
+   "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e-brief.json",
+   "sha256": "a0326137bff43ed38fc4a1c63d4a26e1887cfd56d4826df0e615df28055bef0c",
+   "note": "12/12 en values byte-equal to the catalogue above; all 12 keys present in the context sidecar"
+  },
+  "target": {
+   "path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e/zh-CN/draft-zh-CN-s16e.json",
+   "sha256": "121951c9665e715dcec2b993d85cb3d77d51c00651da275a573aa75ae6bb5688",
+   "note": "draft hash verified before reading; matches the hash in the audit task"
+  },
+  "shipped_locale_catalogue": {
+   "path": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+   "sha256": "35f8058839549d4a8be28792c279784c75a624b9c076fc98d359bae1fe1db12c"
+  },
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+   "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+  }
+ },
+ "worktree": {
+  "path": "~/local-operator-ui/.worktrees/i18n-s16e",
+  "head": "bd8e90542506e8bec4a98862b868095409b28329",
+  "mode": "read-only: no edits, commits, installs or builds"
+ },
+ "per_axis": {
+  "mechanical": "pass — 12/12 keys; ICUs parse with the repo's own @formatjs/icu-messageformat-parser; argument material and options video/voiceover/sound_effect/other identical to source; no plural added; four complete branches ending 。; no brace leak; no markup; valid JSON; 7/7 negative controls failed the checker (non-vacuous)",
+  "accuracy": "pass — cancel.queued keeps the no-charge promise; cancel.running keeps request-not-cancellation and the charge condition and promises nothing; settlement.pending states no amount; six labels remain distinguishable (denied vs gate_failed, unknown_tool vs invalid_arguments)",
+  "idiom_register": "pass — no pronouns needed, no 请 (English says please nowhere), no ！/particles, 。 on prose and none on labels, 你-register not violated",
+  "terminology": "pass — 提供商/计费/最终计费/停止 vs 取消接口/批次/视频/旁白/音效/图像/速率限制/已拒绝 all match the shipped zh-CN catalogue; Latin ID uppercase and unspaced",
+  "fit": "pass — labels 6-12 cells, all narrower than English; longest prose 66 cells vs 118 in English; no overflow or wide-glyph hazard",
+  "rtl": "n/a for zh-CN"
+ },
+ "findings": [
+  {
+   "id": "S16e-zhCN-01",
+   "severity": "MINOR",
+   "axis": "fit/punctuation at the composition boundary",
+   "key": "ui.chat.canonical.image_gen.cancel.checking (composed after ui.chat.canonical.image_gen.cancel.running)",
+   "current": "rendered as: 已请求停止。提供商没有取消接口；生成仍会继续，若产出音频则会计费。<U+0020>正在确认结算。",
+   "problem": "image-gen-card.tsx:341 (runningStopSentence) joins the two keys with a hard-coded ' ', which puts a half-width space between a 。 and the next Chinese sentence. The values themselves are correct; the defect is in the callsite. Shipped precedent decided this the other way: ui.chat.sidebar.mark_all_read.scope_joined is '{chats} {tokenless}' in en and '{chats}{tokenless}' in zh-CN.",
+   "suggested": "Key the joiner like scope_joined (en ' ', zh-CN '') or join without a space after a full-width terminator. No change to the zh-CN wording requested.",
+   "owner": "implementer (callsite), not the translator"
+  },
+  {
+   "id": "S16e-zhCN-02",
+   "severity": "NIT",
+   "axis": "idiom",
+   "key": "ui.chat.canonical.image_gen.error.audio_rate_limited",
+   "current": "音频生成当前繁忙。稍后重试。",
+   "problem": "The thing that is busy is a service; the shipped phrasing carries that head noun (中心繁忙，…). Understandable as written, and 稍后重试 matches shipped house style.",
+   "suggested": "音频生成服务当前繁忙。稍后重试。 (optional; the current value is not wrong)",
+   "owner": "translator, optional"
+  }
+ ],
+ "considered_and_accepted": [
+  "gate_failed → 策略拦截: failure verb replaced by the shipped 拦截 vocabulary for policy/safety blocking; distinguishable from 已拒绝. Alternative if ever wanted: 策略校验失败.",
+  "audio_rate_limited label → 音频速率限制: noun phrase over participle, but 速率限制 is the shipped term (你已达到AI提供商的速率限制).",
+  "cancel.running uses ；where shipped sound.stop.warning uses 。: mirrors the English semicolon; both correct.",
+  "settlement → 结算 introduced for two keys, correctly separated from 费用 (cost) and 计费 (charge); glossary row proposed by the translator and endorsed by this audit, as is the 策略拦截 gate row (glossary §4: the wave that first needs a term records it)."
+ ],
+ "artifacts": {
+  "report.md": "ba3e3cbb8c8191ae229639642d4adbe1783e26ef891496ab2df61014f7375bf2",
+  "audit.log": "2070104165cfb416a1bdf70925aa5a3a67291f127494293ecb3cbf820276b241",
+  "verify.mjs": "275a2be889bf89b0b862e393f162d932246cdb258cdfd90d39a5d12667ee488b",
+  "check2.mjs": "b992e81d540039ad87aa15c3b44b78b589708824b29bdd90f7ba33243c55de1c",
+  "compose-check.mjs": "a32db186ec331e770d9ec99c7f8a8fc908baed9993c53ef2061cc9560e695dfb",
+  "verification.out": "5cb2f00f3bea7719ad5f8eb1d62f409a81b7496f5e6fee386f58498002cf2250",
+  "compose.out": "c24317d2a7b00bb81ea14059a98081144c517394452b65cb86ddd0885ddc3980",
+  "negatives.out": "c323cea29bf96abe537d88b4bef94ec8c7eba36258f848d14086a5eba96567e4",
+  "directory": "/Users/damian/.local-operator/sessions/f9df9ab87b40/scratchpad/s16e-audit-zhCN",
+  "note": "session scratch until the manager bundles them into i18n/audits/evidence/zh-CN/ui.chat.canonical/<audit-id>/ on the PR branch; no repo file was written by this audit"
+ },
+ "current_report_verdict": {
+  "status": "passed",
+  "unresolved_blocker_major_count": 0,
+  "finding_ids": [
+   "S16e-zhCN-01",
+   "S16e-zhCN-02"
+  ]
+ },
+ "execution_log": "audit.log — real transcript of the commands this session ran; verify.mjs/check2.mjs/compose-check.mjs are the scripts it ran; no CLI/validator output is claimed that was not produced",
+ "ledger_note": "scripts/i18n/ledger-assemble.mjs requires the receipt to name the committed target bytes; this receipt names the DRAFT sha256 (121951c9…). Re-issue or extend with the committed catalogue's sha256 before recording the row.",
+ "repo_gates_not_run": "pnpm check-i18n / ledger-check were NOT run: the draft is not in the repo and the worktree is read-only to this audit with no node_modules; nothing is claimed from them.",
+ "original_lost_evidence": {
+  "status": "none — this is an original audit, not a recreation",
+  "backdated": false,
+  "new_report_is_original": true
+ }
+}

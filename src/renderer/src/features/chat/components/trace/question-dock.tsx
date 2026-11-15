@@ -84,7 +84,11 @@ import {
 	ProposalReviewNotice,
 } from "../asks/ask-bounds";
 import { MarkdownRenderer } from "../markdown-renderer";
-import { ApprovalEscape } from "./approval-escape";
+import {
+	ApprovalEscape,
+	ApprovalLatchedNote,
+	approvalGateIsBridgeLatched,
+} from "./approval-escape";
 import { AskOptions } from "./ask-options";
 
 export type QuestionDockProps = {
@@ -773,15 +777,26 @@ export const QuestionDock = ({
 					 * They are absent where there is no session to address.
 					 */}
 					{gate.kind === "approval" && sessionId ? (
-						<ApprovalEscape
-							// The idle status slot's 2lh reserve was blank card height
-							// the bounded dock could not spare (design D1(c)).
-							compactIdle={true}
-							sessionId={sessionId}
-							approvalMode={gate.approval_mode}
-							approvalProvenance={gate.approval_provenance}
-							approvalGlobalMode={gate.approval_global_mode}
-						/>
+						approvalGateIsBridgeLatched(gate) ? (
+							/*
+							 * A conversation holding a teammate agent's message cannot be
+							 * set to auto from here: the backend refuses it, and the "all
+							 * sessions" press would still have written the machine default
+							 * before the session half failed. So neither handle is mounted
+							 * and one line says why. Approve and Deny above are unchanged.
+							 */
+							<ApprovalLatchedNote />
+						) : (
+							<ApprovalEscape
+								// The idle status slot's 2lh reserve was blank card height
+								// the bounded dock could not spare (design D1(c)).
+								compactIdle={true}
+								sessionId={sessionId}
+								approvalMode={gate.approval_mode}
+								approvalProvenance={gate.approval_provenance}
+								approvalGlobalMode={gate.approval_global_mode}
+							/>
+						)
 					) : null}
 					<p className="text-ink-dim text-meta">
 						{questionDockHint(gate, held)}

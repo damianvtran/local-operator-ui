@@ -75,5 +75,6 @@
 	"ui.settings.shortcuts.speech.push_to_talk_refused": "{platform, select, darwin {केवल बाईं या दाईं Control, Option या Command कुंजी को दबाए रखा जा सकता है।} win32 {केवल बाईं या दाईं Control या Windows कुंजी को दबाए रखा जा सकता है।} other {केवल बाईं या दाईं Control या Super कुंजी को दबाए रखा जा सकता है।}}",
 	"ui.settings.shortcuts.speech.push_to_talk_overlap": "{modifier} का उपयोग करने वाला हर शॉर्टकट, जैसे {example}, कुछ क्षण के लिए रिकॉर्डिंग शुरू कर देगा।{alternative, select, none {} other { इससे बचने के लिए {alternative} चुनें।}}",
 	"ui.settings.shortcuts.speech.push_to_talk_letter_pointer": "अक्षर वाले शॉर्टकट के लिए ऊपर “रिकॉर्डिंग शुरू करें” का उपयोग करें।",
-	"ui.settings.shortcuts.speech.start_recording_needs_key": "शॉर्टकट के लिए मॉडिफ़ायर कुंजी के साथ एक अक्षर या अंक भी चाहिए।"
+	"ui.settings.shortcuts.speech.start_recording_needs_key": "शॉर्टकट के लिए मॉडिफ़ायर कुंजी के साथ एक अक्षर या अंक भी चाहिए।",
+	"ui.settings.shortcuts.new_temporary_chat": "आरक्षित: नई अस्थायी चैट शुरू करता है।"
 }

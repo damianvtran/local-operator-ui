@@ -97,20 +97,45 @@ export type McpFailurePhase =
  * session's owner, which no surface of this app shows.
  */
 export const MCP_FAILURE_LEAD: Record<McpFailurePhase, string> = {
-	probe: "This server's sign-in method could not be checked",
-	grant: "The sign-in could not be started",
-	reconnect: "The server could not be reconnected",
-	reload: "This server's configuration could not be re-read",
-	add: "The server could not be added",
-	key: "The keys were not saved",
-	// Resolve at access time: this exported table is also read by Settings.
+	/*
+	 * Every lead is a getter so it resolves through `t()` when it is READ, not
+	 * when this module loads: Settings > Integrations reads this exported table
+	 * too, and a value captured at import time would stay in the language the app
+	 * started in after a live locale switch.
+	 */
+	get probe() {
+		return t("ui.chat.run_details.mcp_failure.lead.probe");
+	},
+	get grant() {
+		return t("ui.chat.run_details.mcp_failure.lead.grant");
+	},
+	get reconnect() {
+		return t("ui.chat.run_details.mcp_failure.lead.reconnect");
+	},
+	get reload() {
+		return t("ui.chat.run_details.mcp_failure.lead.reload");
+	},
+	get add() {
+		return t("ui.chat.run_details.mcp_failure.lead.add");
+	},
+	get key() {
+		return t("ui.chat.run_details.mcp_failure.lead.key");
+	},
 	get cancel() {
 		return t("ui.chat.run_details.mcp_failure.cancel_lead");
 	},
-	status: "The sign-in status could not be refreshed",
-	disconnect: "The server could not be disconnected",
-	remove: "The server could not be removed",
-	test: "The connection test could not be started",
+	get status() {
+		return t("ui.chat.run_details.mcp_failure.lead.status");
+	},
+	get disconnect() {
+		return t("ui.chat.run_details.mcp_failure.lead.disconnect");
+	},
+	get remove() {
+		return t("ui.chat.run_details.mcp_failure.lead.remove");
+	},
+	get test() {
+		return t("ui.chat.run_details.mcp_failure.lead.test");
+	},
 };
 
 /**
@@ -223,7 +248,12 @@ export function mcpFailure(
 	 */
 	if (isDesktopRefusalCode(error.code))
 		return {
-			message: `${lead}. ${desktopRefusalSentence(error.code)}`,
+			// One message rather than `${lead}. ${reason}`: the sentence separator
+			// is the locale's (no space after the full stop in zh-CN, for one).
+			message: t("ui.chat.run_details.mcp_failure.with_reason", {
+				lead,
+				reason: desktopRefusalSentence(error.code),
+			}),
 			detail: null,
 			cause: "server",
 			phase,
@@ -298,8 +328,14 @@ export type McpFailureAction = {
 export const mcpServerSettingsRoute = (name: string): string =>
 	`/settings?section=integrations&mcp=${encodeURIComponent(name)}`;
 
-/** The one label for the route to the row, so two surfaces cannot spell it twice. */
-export const MCP_SETTINGS_ACTION_LABEL = "Open this server in Settings";
+/**
+ * The one label for the route to the row, so two surfaces cannot spell it twice.
+ *
+ * A function rather than a constant so every caller resolves it at render (or at
+ * the moment a failure is recorded), in the locale that is active then.
+ */
+export const mcpSettingsActionLabel = (): string =>
+	t("ui.chat.run_details.mcp_failure.settings_action");
 
 /**
  * The remedies for a state whose fix is the server's own configuration.
@@ -313,7 +349,7 @@ export const MCP_SETTINGS_ACTION_LABEL = "Open this server in Settings";
  */
 export const mcpConfigActions = (): McpFailureAction[] => [
 	{ kind: "reload", label: MCP_CONTROL_WORD.reload },
-	{ kind: "settings", label: MCP_SETTINGS_ACTION_LABEL },
+	{ kind: "settings", label: mcpSettingsActionLabel() },
 ];
 
 /**
@@ -387,6 +423,6 @@ export function mcpFailureActions(input: {
 	// instead of a second press of the identical request.
 	if (input.phase !== "reload")
 		actions.push({ kind: "reload", label: MCP_CONTROL_WORD.reload });
-	actions.push({ kind: "settings", label: MCP_SETTINGS_ACTION_LABEL });
+	actions.push({ kind: "settings", label: mcpSettingsActionLabel() });
 	return actions;
 }

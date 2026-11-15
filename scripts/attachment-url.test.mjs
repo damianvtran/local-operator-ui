@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { resolve } from "node:path";
-import { test } from "node:test";
+import { mock, test } from "node:test";
 import { build } from "esbuild";
 
 /*
@@ -174,8 +174,10 @@ function mount(hook, props, { strict = false } = {}) {
 
 const bundle = await build({
 	stdin: {
-		contents:
-			'export { useAttachmentUrl, fetchAttachmentBlob, AttachmentGoneError } from "./src/renderer/src/features/chat/canonical/use-attachment-url";',
+		contents: [
+			'export { useAttachmentUrl, fetchAttachmentBlob, AttachmentGoneError, AttachmentOwnerUnreachableError, ATTACHMENT_RETRY_DELAYS_MS } from "./src/renderer/src/features/chat/canonical/use-attachment-url";',
+			'export { useWaveform } from "./src/renderer/src/features/chat/canonical/use-waveform";',
+		].join("\n"),
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -223,10 +225,16 @@ const bundle = await build({
 });
 globalThis.__useState = useState;
 globalThis.__useEffect = useEffect;
-const { useAttachmentUrl, fetchAttachmentBlob, AttachmentGoneError } =
-	await import(
-		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-	);
+const {
+	useAttachmentUrl,
+	fetchAttachmentBlob,
+	AttachmentGoneError,
+	AttachmentOwnerUnreachableError,
+	ATTACHMENT_RETRY_DELAYS_MS,
+	useWaveform,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+);
 
 /*
  * Every assertion below reads the BLOB LEDGER rather than the module's private
@@ -663,4 +671,221 @@ test("fetchAttachmentBlob uses the child-scoped op when a child id is given", as
 	});
 	settleLast();
 	await pending;
+});
+
+// ------------------------------------------------- peer-held digests (504)
+/*
+ * docs/design/remote-files-parity.md §1 (core) and its UI acceptance: a
+ * peer-held digest whose owner is unreachable or still transferring answers
+ * 504, which is RETRYABLE (2, 4, 8, 16 s; five attempts) and then a
+ * click-to-retry state; 404/409 stay `missing`; and no failure is ever cached,
+ * so the next mount asks again. Timers are node's mock clock: the backoff is
+ * real `setTimeout` in the hook, advanced here by exact milliseconds.
+ */
+const flush = () => new Promise((resolve) => setImmediate(resolve));
+const refuse = (status) =>
+	requests.pop().resolve({ kind: "error", status, detail: "refused" });
+
+test("a 504 is retried on 2/4/8/16 s for five attempts, then `retryable`", async (t) => {
+	reset();
+	mock.timers.enable({ apis: ["setTimeout"] });
+	t.after(() => mock.timers.reset());
+	assert.deepEqual([...ATTACHMENT_RETRY_DELAYS_MS], [2000, 4000, 8000, 16000]);
+	const row = mountImage(durable(digestFor(40)));
+	let attempts = 0;
+	for (const delay of [...ATTACHMENT_RETRY_DELAYS_MS, null]) {
+		assert.equal(requests.length, 1, `attempt ${attempts + 1} is on the wire`);
+		attempts += 1;
+		refuse(504);
+		await flush();
+		if (delay === null) break;
+		assert.equal(
+			row.value.state,
+			"resolving",
+			"between attempts the box stays reserved",
+		);
+		mock.timers.tick(delay - 1);
+		await flush();
+		assert.equal(requests.length, 0, `no attempt before ${delay} ms`);
+		mock.timers.tick(1);
+		await flush();
+	}
+	assert.equal(attempts, 5, "five attempts in all");
+	assert.equal(row.value.state, "retryable", "then the click-to-retry state");
+	mock.timers.tick(60_000);
+	await flush();
+	assert.equal(requests.length, 0, "and nothing polls after the last attempt");
+	assert.equal(blobs.created, 0, "no failure creates (or caches) a blob");
+	// The click starts a fresh cycle.
+	row.value.retry();
+	await flush();
+	assert.equal(requests.length, 1, "retry() asks the relay again at once");
+	assert.equal(row.value.state, "resolving");
+	settleLast();
+	await flush();
+	assert.equal(row.value.state, "ready", "and a later answer paints");
+	row.unmount();
+});
+
+/*
+ * UX round 1, U1-1: the 30 s backoff painted a bare, unlabelled box, and a
+ * Retry click turned back into that box. `pending` is the caller's cue to
+ * paint "Fetching from <device>…" instead: false on a cold first attempt
+ * (a frame, not seconds), true from the first 504, and true from the first
+ * frame of a Retry cycle.
+ */
+test("a slow owner is `pending` from the first 504, and a Retry starts pending (U1-1)", async (t) => {
+	reset();
+	mock.timers.enable({ apis: ["setTimeout"] });
+	t.after(() => mock.timers.reset());
+	const row = mountImage(durable(digestFor(45)));
+	assert.equal(row.value.state, "resolving");
+	assert.ok(!row.value.pending, "a cold first attempt is the plain reserve");
+	refuse(504);
+	await flush();
+	assert.equal(row.value.state, "resolving");
+	assert.equal(row.value.pending, true, "after a 504 the wait is labelled");
+	for (const delay of ATTACHMENT_RETRY_DELAYS_MS) {
+		mock.timers.tick(delay);
+		await flush();
+		refuse(504);
+		await flush();
+	}
+	assert.equal(row.value.state, "retryable");
+	row.value.retry();
+	await flush();
+	assert.equal(row.value.state, "resolving");
+	assert.equal(
+		row.value.pending,
+		true,
+		"the Retry click never shows an empty box",
+	);
+	settleLast();
+	await flush();
+	assert.equal(row.value.state, "ready");
+	row.unmount();
+});
+
+test("a 409 (the owner refused) is `missing` at once and never retried", async (t) => {
+	reset();
+	mock.timers.enable({ apis: ["setTimeout"] });
+	t.after(() => mock.timers.reset());
+	const row = mountImage(durable(digestFor(41)));
+	refuse(409);
+	await flush();
+	assert.equal(row.value.state, "missing");
+	mock.timers.tick(60_000);
+	await flush();
+	assert.equal(
+		requests.length,
+		0,
+		"no retry is scheduled for a permanent answer",
+	);
+	row.unmount();
+	// Nothing was cached: the next mount of the same digest asks again.
+	const again = mountImage(durable(digestFor(41)));
+	assert.equal(requests.length, 1, "a failure is never cached module-wide");
+	again.unmount();
+});
+
+test("a 404 stays `missing` too", async () => {
+	reset();
+	const row = mountImage(durable(digestFor(42)));
+	refuse(404);
+	await flush();
+	assert.equal(row.value.state, "missing");
+	row.unmount();
+});
+
+test("success after one 504 paints the picture", async (t) => {
+	reset();
+	mock.timers.enable({ apis: ["setTimeout"] });
+	t.after(() => mock.timers.reset());
+	const row = mountImage(durable(digestFor(43)));
+	refuse(504);
+	await flush();
+	assert.equal(row.value.state, "resolving");
+	mock.timers.tick(2000);
+	await flush();
+	assert.equal(requests.length, 1, "the second attempt went out after 2 s");
+	settleLast();
+	await flush();
+	assert.equal(row.value.state, "ready");
+	assert.equal(blobs.created, 1);
+	row.unmount();
+});
+
+test("unmounting mid-backoff cancels the pending attempt", async (t) => {
+	reset();
+	mock.timers.enable({ apis: ["setTimeout"] });
+	t.after(() => mock.timers.reset());
+	const row = mountImage(durable(digestFor(44)));
+	refuse(504);
+	await flush();
+	row.unmount();
+	mock.timers.tick(60_000);
+	await flush();
+	assert.equal(requests.length, 0, "a gone row makes no further request");
+});
+
+test("fetchAttachmentBlob: a 504 is AttachmentOwnerUnreachableError", async () => {
+	reset();
+	const pending = fetchAttachmentBlob(
+		{ sessionId: "s", childId: null },
+		digestFor(45),
+	);
+	refuse(504);
+	await assert.rejects(
+		pending,
+		(error) => error instanceof AttachmentOwnerUnreachableError,
+	);
+});
+
+// ------------------------------------------------------ waveform (Q1-4)
+/*
+ * QA round 1, Q1-4: a 409 on a peer-held sound's waveform was kept for the
+ * app's lifetime, so once the owner served it again the bytes came back on
+ * remount but the scrubber stayed flat. A 409 is painted flat and NOT kept; a
+ * 404 (no sidecar exists) is still kept, so a local sound is never re-asked.
+ */
+const mountWave = (digest) =>
+	mount(
+		({ d }) => useWaveform(d, { sessionId: "8ca681d7aa73", childId: null }),
+		{
+			d: digest,
+		},
+	);
+const answerWave = (status) =>
+	requests.pop().resolve({ kind: "error", status, detail: "refused" });
+
+test("a 409 waveform is flat but not kept: a remount asks again (Q1-4)", async () => {
+	reset();
+	const digest = digestFor(60);
+	const first = mountWave(digest);
+	assert.equal(requests.length, 1);
+	assert.equal(requests[0].request.op, "sessions.attachment.waveform");
+	answerWave(409);
+	await flush();
+	assert.equal(first.value, null, "painted flat");
+	first.unmount();
+	const again = mountWave(digest);
+	assert.equal(requests.length, 1, "the remount reaches the relay again");
+	requests
+		.pop()
+		.resolve({ kind: "json", status: 200, body: { peaks: [0.5, 1] } });
+	await flush();
+	assert.deepEqual(again.value, [0.5, 1], "and paints the owner's peaks");
+	again.unmount();
+});
+
+test("a 404 waveform (no sidecar) is still kept: a remount asks nothing", async () => {
+	reset();
+	const digest = digestFor(61);
+	const first = mountWave(digest);
+	answerWave(404);
+	await flush();
+	first.unmount();
+	const again = mountWave(digest);
+	assert.equal(requests.length, 0, "a settled miss is not re-asked");
+	again.unmount();
 });

@@ -74,6 +74,11 @@ import type {
 	PendingAsk,
 	PendingAskQuestion,
 } from "../../../../../../shared/desktop-session-contract";
+import {
+	type AskAgentPlacement,
+	type AskCommandHint,
+	askCommandOf,
+} from "../../ask-command";
 import type {
 	AskDismissReason,
 	AskDraft,
@@ -105,10 +110,12 @@ import { parseProfileProposalCard } from "../../profile-proposal-ask";
 import { AskRecommendedBadge, recommendedIndexes } from "../ask-recommended";
 import { AskAnswerField, commitOnEnter } from "./ask-answer-field";
 import {
+	ASK_ACTIONS_ATTR,
 	ASK_OPTIONS_MAX_H,
 	AskScrollBody,
 	ProposalReviewNotice,
 } from "./ask-bounds";
+import { AskCommandRow, AskCommandRunDialog } from "./ask-command";
 
 /**
  * WHICH HALF OF THE LIST THE READER IS LOOKING AT (operator ask, 2026-10-05).
@@ -241,8 +248,42 @@ export type AskPanelProps = {
 	 * this prop's presence.
 	 */
 	conversationOf?: (row: AskPresentation) => string | null;
+	/**
+	 * THE SUGGESTED-COMMAND DOORS (`PendingAskQuestion.command`): type the command
+	 * into a new terminal of the ask's conversation (`submit: false`, the card's
+	 * Insert) or type it and press Enter (`submit: true`, only after the card's
+	 * own confirmation dialog). The CALLER owns where that terminal is — the
+	 * session drawer files the console intent for its conversation, the fleet
+	 * drawer navigates to the ask's conversation first — so this panel stays
+	 * scope-agnostic, as it does for answers. Absent where the surface cannot
+	 * open a terminal (notifications detail, a story): the card then shows the
+	 * command and Copy only.
+	 *
+	 * The question id travels with the command so the caller matches the
+	 * question, not the text (agent review round 1, n2). Answers whether the
+	 * command was filed: a refused Run keeps its dialog open and says so (m3).
+	 */
+	onCommand?: (request: AskCommandRequest) => boolean;
+	/**
+	 * Where the agent of an ask's conversation works, relative to this computer
+	 * (`askAgentPlacement`). Decides whether Run… is offered at all
+	 * (`askCommandRunnable`). Absent reads as `unknown`, which fails closed:
+	 * Insert only.
+	 */
+	commandPlacementOf?: (ask: PendingAsk) => AskAgentPlacement;
 	className?: string;
 };
+
+/** One press of a suggested command's Insert or confirmed Run. */
+export type AskCommandRequest = {
+	ask: PendingAsk;
+	questionId: string;
+	command: string;
+	submit: boolean;
+};
+
+/** The placement a mount that supplies none gets: not provably here. */
+const UNKNOWN_PLACEMENT: AskAgentPlacement = { kind: "unknown" };
 
 /** Status glyph and ink, in one place so every row reads the same way. */
 const askStatusMark = (
@@ -402,6 +443,7 @@ const AskQuestionField = ({
 	onSecret,
 	onAdvance,
 	focusOtherRef,
+	command,
 }: {
 	question: PendingAskQuestion;
 	/** This question's draft cell: the ticked labels and, last, the `Other` text. */
@@ -430,6 +472,17 @@ const AskQuestionField = ({
 	 * mount, not on the drawer opening over a restored draft, not on a re-render.
 	 */
 	focusOtherRef: React.MutableRefObject<string | null>;
+	/**
+	 * The suggested-command row's inputs, present only while the ask is
+	 * answerable (the row's own rule: a settled or delivered ask is no longer a
+	 * request the agent is waiting on). The hint is already validated.
+	 */
+	command?: {
+		hint: AskCommandHint;
+		placement: AskAgentPlacement;
+		onInsert?: () => void;
+		onRun?: () => void;
+	};
 }) => {
 	const options = question.options ?? [];
 	const multi = question.multi === true;
@@ -531,7 +584,7 @@ const AskQuestionField = ({
 			 * 2, Q1): only the question and its summary give way, so in the bounded
 			 * notifications pane the fit is taken from them and never from the options.
 			 */}
-			<AskScrollBody>
+			<AskScrollBody containOverscroll={false}>
 				<p className="whitespace-pre-wrap text-ink text-sm">
 					{isolateValue(proposal ? proposal.body : question.question, dir)}
 				</p>
@@ -539,6 +592,20 @@ const AskQuestionField = ({
 					<ProposalReviewNotice proposal={proposal} className="mt-1.5" />
 				) : null}
 			</AskScrollBody>
+			{/*
+			 * THE SUGGESTED COMMAND sits directly under the prose it belongs to and
+			 * OUTSIDE the bounded body, so a long question never scrolls the actions
+			 * out of reach; it is a sibling of the options, like them never clipped.
+			 */}
+			{command ? (
+				<AskCommandRow
+					hint={command.hint}
+					placement={command.placement}
+					onInsert={command.onInsert}
+					onRun={command.onRun}
+					enabled={!disabled}
+				/>
+			) : null}
 			{question.secret ? (
 				<input
 					data-ask-secret={question.id}
@@ -583,7 +650,17 @@ const AskQuestionField = ({
 					<div
 						data-lo-ask-options-scroll=""
 						className={cn(
-							"flex min-h-0 flex-col overflow-y-auto overscroll-contain",
+							/*
+							 * NO `overscroll-contain` HERE (the long-ask scroll fix). This list is inside
+							 * a card, which is inside the host's scroller - the drawer's list or the
+							 * notifications pane - and that scroller is what a wheel or a page key has to
+							 * reach once this list stops moving. Chromium 156 honours `contain` even when
+							 * the box has no scrollable overflow, so containing here made an option list
+							 * shorter than its cap eat the gesture: measured in the drawer, a wheel over
+							 * the rows moved the list 0 px. The dock's own option band (`AskOptions`)
+							 * never carried containment either, for the same reason.
+							 */
+							"flex min-h-0 flex-col overflow-y-auto",
 							ASK_OPTIONS_MAX_H,
 						)}
 					>
@@ -851,6 +928,9 @@ const AskRow = ({
 	onRevise,
 	onDismiss,
 	conversationOf,
+	onCommand,
+	placement,
+	onRunRequest,
 }: {
 	presentation: AskPresentation;
 	nowMs: number;
@@ -863,6 +943,10 @@ const AskRow = ({
 	onRevise?: AskPanelProps["onRevise"];
 	onDismiss?: AskPanelProps["onDismiss"];
 	conversationOf?: AskPanelProps["conversationOf"];
+	onCommand?: AskPanelProps["onCommand"];
+	placement: AskAgentPlacement;
+	/** Open the panel's Run confirmation for this ask's command. */
+	onRunRequest?: (ask: PendingAsk, questionId: string, command: string) => void;
 }) => {
 	const { ask, status, waiting, canAnswer, canDecline, delivering } =
 		presentation;
@@ -1029,6 +1113,16 @@ const AskRow = ({
 	);
 	const dismissTrigger = useRef<HTMLButtonElement | null>(null);
 	const dismissFirstReason = useRef<HTMLButtonElement | null>(null);
+	/*
+	 * THE PINNED ACTION ROW (`Send answer` / `Decline`) sticks to the bottom of the
+	 * host's scroller while this card is the one crossing it (see the row's own
+	 * note). Its HEIGHT is the host's to measure, not this card's: it is published
+	 * to the list by `useAskActionsHeight` (`ask-bounds.tsx`), which takes the
+	 * tallest row in the scroller - with two cards on screen, a card whose row
+	 * unmounts must not take the number another pinned row is still using with it
+	 * (agent review round 1, m1).
+	 */
+	const actionsRef = useRef<HTMLDivElement | null>(null);
 	const armTriggerFocus = useRef(false);
 	const dismissSending = outcome?.sending === true;
 	/*
@@ -1436,9 +1530,11 @@ const AskRow = ({
 								{echoedByTrigger ? null : (
 									/*
 									 * The answer frame prints the question too, so a settled
-									 * long question takes the same bound as an open one.
+									 * long question takes the same bound as an open one - and
+									 * the same chaining (`containOverscroll`): this body sits
+									 * inside the host's scroller, which owns the scroll.
 									 */
-									<AskScrollBody>
+									<AskScrollBody containOverscroll={false}>
 										<span className="whitespace-pre-wrap text-ink-muted text-xs">
 											{isolateValue(entry.question, dir)}
 										</span>
@@ -1501,6 +1597,37 @@ const AskRow = ({
 							}}
 							onAdvance={advanceFrom}
 							focusOtherRef={focusOtherRef}
+							command={(() => {
+								/*
+								 * ONLY WHILE ANSWERABLE, and only for a command that passes
+								 * the core's rule again here (`askCommandOf`): the change
+								 * form over a recorded answer is not a request the agent is
+								 * still waiting on, and a forged or malformed value draws
+								 * nothing at all.
+								 */
+								if (!canAnswer) return undefined;
+								const hint = askCommandOf(question);
+								if (hint === null) return undefined;
+								return {
+									hint,
+									placement,
+									onInsert:
+										onCommand === undefined
+											? undefined
+											: () => {
+													onCommand({
+														ask,
+														questionId: question.id,
+														command: hint.command,
+														submit: false,
+													});
+												},
+									onRun:
+										onCommand === undefined || onRunRequest === undefined
+											? undefined
+											: () => onRunRequest(ask, question.id, hint.command),
+								};
+							})()}
 						/>
 					))
 				: null}
@@ -1646,7 +1773,44 @@ const AskRow = ({
 				</p>
 			) : null}
 			{(canAnswer || canDecline) && !dismissOpen ? (
-				<div className="flex items-center gap-2">
+				/*
+				 * THE ACTION ROW PINS (the long-ask scroll fix). The card can be taller than the
+				 * drawer's scrollport - the ask body is capped at 40vh, the option list at 30vh,
+				 * and the rows below them add up - so `Send answer` and `Decline` used to sit
+				 * 430-470 px below the fold at 440x1024 with nothing in the drawer pinned to
+				 * reach them from.
+				 *
+				 * STICKY INSIDE THE CARD, NOT A DRAWER FOOTER. `bottom-0` holds the row at the
+				 * bottom of the nearest scrollport - the host's list - while this card is the one
+				 * crossing that edge, and its own containing block bounds it: past this card's
+				 * bottom the row stops, so each card's actions are pinned only over its own
+				 * question. A drawer-level footer would have to know which card is on screen and
+				 * would answer the wrong question for every other one.
+				 *
+				 * ITS GROUND IS A BAND, NOT A BORDER (branding §[grounds], and `docs/branding.md`'s
+				 * band table): the fill is what separates the row from the question text passing
+				 * under it. On glass that is `band-backdrop` - the isolating band the notifications
+				 * list's sticky headers use - because a 5% wash hides nothing from content that
+				 * MOVES under it; off glass the same element carries the flat `elevated` step. It
+				 * BLEEDS TO THE CARD'S EDGES (`-mx-3 px-3`) so no scrolled glyph shows in the
+				 * card's own 12 px padding beside the bar, and it bleeds to the card's
+				 * BOTTOM with the top half of that trick (`-mt-2 pt-2`, which gives the band
+				 * its air without changing the row's 34 px layout footprint - flex `gap`
+				 * measures margin boxes - so the card at rest is the height it was).
+				 *
+				 * THE BOTTOM BLEEDS THE WHOLE PADDING (`-mb-3 pb-3`), not the 8 px the top
+				 * uses: `-my-2 py-2` left the band 4 px short of the card's own bottom edge,
+				 * and that gap is what a reader saw at maximum scroll as a strip of the
+				 * question text under the bar (design round 1, D3).
+				 *
+				 * NO BORDER: a plate's own step is the edge the contract asks for here.
+				 */
+				<div
+					ref={actionsRef}
+					{...{ [ASK_ACTIONS_ATTR]: "" }}
+					data-glass-plane="band-backdrop"
+					className="sticky bottom-0 z-[1] -mx-3 -mt-2 -mb-3 flex items-center gap-2 bg-elevated px-3 pt-2 pb-3"
+				>
 					{/*
 					 * ONE NEXT ACTION AFTER A TRANSPORT FAILURE (design round 1, D2). While
 					 * a retryable failure stands, Retry beside the sentence sends exactly
@@ -1922,6 +2086,8 @@ export const AskPanel = ({
 	drafts,
 	onDraftChange,
 	conversationOf,
+	onCommand,
+	commandPlacementOf,
 	className,
 }: AskPanelProps) => {
 	/*
@@ -2358,6 +2524,52 @@ export const AskPanel = ({
 	});
 
 	/*
+	 * THE RUN CONFIRMATION, held by the PANEL rather than by the card.
+	 *
+	 * The card draws its command row only while the ask is answerable, and it
+	 * collapses or moves when the ask settles. A dialog owned by the card would
+	 * vanish under the reader the moment the ask closed; held here it stays up,
+	 * and `askOpen` — re-read from THIS render's rows — withholds the confirm
+	 * with a note instead. The ask, the command and the placement are captured
+	 * at the press, so the dialog shows exactly what the press was about even if
+	 * the row changes beneath it.
+	 */
+	const [runConfirm, setRunConfirm] = useState<{
+		ask: PendingAsk;
+		questionId: string;
+		command: string;
+		placement: AskAgentPlacement;
+		/** The press-time re-check refused the last confirm (m3). */
+		refused: boolean;
+	} | null>(null);
+	/*
+	 * THE DIALOG STAYS MOUNTED ACROSS ITS CLOSE (UX round 1, U1). `BaseDialog`
+	 * returns focus to its opener — the Run… button — only when `open` goes from
+	 * true to false while it is still mounted; unmounting it on close left focus
+	 * on `<body>`, so a keyboard user who backed out lost their place in an ask
+	 * they still had to answer. The last request is held here so the closing
+	 * render still has a command to draw while the panel animates out.
+	 */
+	const lastRunConfirm = useRef(runConfirm);
+	if (runConfirm !== null) lastRunConfirm.current = runConfirm;
+	const requestRun = useCallback(
+		(ask: PendingAsk, questionId: string, command: string) =>
+			setRunConfirm({
+				ask,
+				questionId,
+				command,
+				placement: commandPlacementOf?.(ask) ?? UNKNOWN_PLACEMENT,
+				refused: false,
+			}),
+		[commandPlacementOf],
+	);
+	const runAskOpen =
+		runConfirm !== null &&
+		view.rows.some(
+			(row) => row.ask.ask_id === runConfirm.ask.ask_id && row.canAnswer,
+		);
+
+	/*
 	 * ONE ROW, ONE CONSTRUCTION, used by both halves of the list: a settled ask's
 	 * expanded body is THE SAME CARD a pending ask wears, so the two cannot drift
 	 * into two ways of showing one ask. The key rides on the row because every caller
@@ -2377,6 +2589,9 @@ export const AskPanel = ({
 			onRevise={onRevise}
 			onDismiss={onDismiss === undefined ? undefined : dismissAsk}
 			conversationOf={conversationOf}
+			onCommand={onCommand}
+			placement={commandPlacementOf?.(presentation.ask) ?? UNKNOWN_PLACEMENT}
+			onRunRequest={onCommand === undefined ? undefined : requestRun}
 		/>
 	);
 
@@ -2634,6 +2849,36 @@ export const AskPanel = ({
 					? t("ui.chat.ask_panel.empty.none_settled")
 					: null;
 
+	const shownRun = runConfirm ?? lastRunConfirm.current;
+	const runDialog =
+		onCommand !== undefined && shownRun !== null ? (
+			<AskCommandRunDialog
+				open={runConfirm !== null}
+				command={shownRun.command}
+				placement={shownRun.placement}
+				askOpen={runConfirm === null ? true : runAskOpen}
+				refused={shownRun.refused}
+				onCancel={() => setRunConfirm(null)}
+				onConfirm={() => {
+					const pending = runConfirm;
+					if (pending === null || !runAskOpen) return;
+					const filed = onCommand({
+						ask: pending.ask,
+						questionId: pending.questionId,
+						command: pending.command,
+						submit: true,
+					});
+					/*
+					 * A REFUSED CONFIRM IS SAID, NOT SWALLOWED (agent review round 1,
+					 * m3): the press-time re-check (placement moved to a peer, the
+					 * command no longer the question's) used to close the dialog with
+					 * nothing happening. It stays up, the confirm withheld, with a reason.
+					 */
+					setRunConfirm(filed ? null : { ...pending, refused: true });
+				}}
+			/>
+		) : null;
+
 	return (
 		<div
 			ref={panelRef}
@@ -2757,6 +3002,7 @@ export const AskPanel = ({
 					)}
 				</div>
 			) : null}
+			{runDialog}
 		</div>
 	);
 };

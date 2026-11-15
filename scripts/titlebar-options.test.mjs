@@ -397,8 +397,8 @@ test("U-9 a CSS comment is prose, and the rules that act on the chrome are decla
 	);
 	assert.match(
 		css,
-		/\[data-chrome-mode="integrated"\]\[data-chrome-fullscreen="true"\]\s*\{[\s\S]*?--chrome-strip-h:\s*0px;/,
-		"full screen collapses the lane and every inset, which is what the state push is for",
+		/\[data-chrome-mode\]\[data-chrome-fullscreen="true"\]\s*\{[\s\S]*?--chrome-strip-h:\s*var\(--chrome-fullscreen-top\);/,
+		"full screen drops every inset and keeps only the named full-screen top inset, in every chrome mode (chrome-fullscreen-inset.test.mjs resolves the cascade)",
 	);
 	assert.match(
 		css,

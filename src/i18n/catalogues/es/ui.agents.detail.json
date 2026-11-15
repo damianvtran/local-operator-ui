@@ -65,5 +65,7 @@
 	"ui.agents.detail.empty.instructions": "Aún no hay instrucciones.",
 	"ui.agents.detail.action.create_copy": "Crear la copia",
 	"ui.agents.detail.action.creating": "Creando…",
-	"ui.agents.detail.action.discard_new_agent": "¿Descartar este agente nuevo?"
+	"ui.agents.detail.action.discard_new_agent": "¿Descartar este agente nuevo?",
+	"ui.agents.detail.create.description_duplicate": "Una copia de {name}. Es un agente aparte: modificarlo no afecta al original.",
+	"ui.agents.detail.create.description_new": "Instrucciones reutilizables que comparten los comandos de agente, los subagentes y los equipos. Los chats siguen siendo independientes."
 }

@@ -1,11 +1,14 @@
+import { remoteUnreachableText } from "@features/chat/canonical/remote-files";
 import {
 	type LocalOperatorClient,
 	createLocalOperatorClient,
 } from "@shared/api/local-operator";
+import { Button } from "@shared/components/ui";
 import { apiConfig } from "@shared/config";
 import { useFileBlobUrl } from "@shared/hooks/use-file-blob-url";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import { isRemoteFilePath } from "@shared/lib/remote-file-path";
 import { cn } from "@shared/lib/utils";
 import { type FC, memo, useMemo, useState } from "react";
 import {
@@ -123,7 +126,26 @@ const ArtifactVideoPreview: FC<{ document: CanvasDocument }> = ({
 				) : null}
 			</ViewerChrome>
 			{source.state === "resolving" ? (
-				<FileViewerState quiet title={t("ui.common.viewer.opening")} />
+				<FileViewerState
+					quiet
+					title={
+						/* A slow owner is named, not "Opening…" (design D1-3). */
+						source.pending && document.remote
+							? t("ui.canvas.files.remoteFetching", {
+									device: document.remote.deviceName,
+								})
+							: t("ui.common.viewer.opening")
+					}
+				/>
+			) : source.state === "retryable" ? (
+				<FileViewerState
+					title={remoteUnreachableText(document.remote?.deviceName ?? "")}
+					detail={document.title}
+				>
+					<Button variant="secondary" size="sm" onClick={source.retry}>
+						{t("ui.canvas.files.retry")}
+					</Button>
+				</FileViewerState>
 			) : source.state === "missing" || playbackFailed ? (
 				<FileViewerState
 					title={
@@ -161,7 +183,11 @@ const PathVideoPreview: FC<{ document: CanvasDocument }> = ({ document }) => {
 	 * re-read that moves the mtime re-keys the element (and, for bytes, the
 	 * cache) rather than re-trying the route.
 	 */
-	const [source, setSource] = useState<"route" | "bytes">("route");
+	// A peer's file (`remote-file:`) has no path for the backend's media route
+	// to stream; its bytes come over the content route from the start (I3-1).
+	const [source, setSource] = useState<"route" | "bytes">(() =>
+		isRemoteFilePath(document.path) ? "bytes" : "route",
+	);
 	/*
 	 * Read once, used for the route's token, the bytes component's key and the
 	 * request's cache key: two spellings of "which version is this" would be a
@@ -311,6 +337,7 @@ const RouteVideo: FC<{
 const BytesVideo: FC<{ document: CanvasDocument }> = ({ document }) => {
 	useI18nLocale();
 	const state = useFileBlobUrl(document.path, {
+		remoteDevice: document.remote?.deviceName,
 		mtimeMs: document.lastAgentModified,
 		mimeType: mimeTypeForPath(document.path),
 		sizeBytes: document.sizeBytes,

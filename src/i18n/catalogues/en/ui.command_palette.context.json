@@ -464,5 +464,11 @@
 		"tone": "Sentence-case destination noun or action phrase.",
 		"note": "Palette destination usage over time: displayed name only; route IDs, search aliases, keyboard chords and user-supplied names stay untouched.",
 		"length": "One row; avoid adding an explanatory sentence."
+	},
+	"ui.command_palette.new_temporary_chat": {
+		"role": "command/page label",
+		"tone": "Sentence-case action phrase.",
+		"note": "Palette action that starts a new temporary chat.",
+		"length": "One row; avoid adding an explanatory sentence."
 	}
 }

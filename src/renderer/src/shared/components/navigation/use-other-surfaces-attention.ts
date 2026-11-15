@@ -13,6 +13,8 @@ import {
 	desktopFeatureState,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
+import { useProfileProposals } from "@shared/api/local-operator/profile-proposal-hooks";
+import { totalPendingProposals } from "@shared/api/local-operator/profile-proposals";
 import { t } from "@shared/i18n";
 
 /**
@@ -63,6 +65,14 @@ export function useOtherSurfacesAttention(): OtherSurfacesAttention {
 	const notificationsCount = useNotificationsCount(notificationsEnabled);
 
 	const browserApprovals = useAppWideApprovals();
+	const proposalsEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"profile_proposals",
+	);
+	const proposals = useProfileProposals(proposalsEnabled);
+	const proposalCount = proposalsEnabled
+		? totalPendingProposals(proposals.data)
+		: 0;
 
 	const meshMembership = useMeshMembership(
 		desktopFeatureState(capabilities.data, "peers") === "enabled",
@@ -82,6 +92,8 @@ export function useOtherSurfacesAttention(): OtherSurfacesAttention {
 			? waitingApprovalCount(meshApprovals.data ?? [])
 			: 0;
 	const lines: string[] = [];
+	if (proposalCount)
+		lines.push(t("ui.agents.proposals.waiting", { count: proposalCount }));
 	if (aidaCount > 0)
 		lines.push(
 			t("ui.shell.sidebar_navigation.aida_missed", {
@@ -112,7 +124,7 @@ export function useOtherSurfacesAttention(): OtherSurfacesAttention {
 			}),
 		);
 	return {
-		total: aidaCount + notifications + browserApprovals + mesh,
+		total: aidaCount + notifications + browserApprovals + mesh + proposalCount,
 		lines,
 	};
 }

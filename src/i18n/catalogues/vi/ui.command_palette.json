@@ -73,5 +73,6 @@
 	"ui.command_palette.use_palette_sources.settings": "Cài đặt",
 	"ui.command_palette.use_palette_sources.start": "Bắt đầu",
 	"ui.command_palette.use_palette_sources.team_chat": "Trò chuyện với nhóm",
-	"ui.command_palette.use_palette_sources.usage_over_time": "Mức sử dụng theo thời gian"
+	"ui.command_palette.use_palette_sources.usage_over_time": "Mức sử dụng theo thời gian",
+	"ui.command_palette.new_temporary_chat": "Cuộc trò chuyện tạm thời mới"
 }

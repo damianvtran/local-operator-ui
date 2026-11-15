@@ -39,6 +39,7 @@ import {
 import { useMeshMembership } from "@features/mesh/mesh-store";
 import { useNotificationsCount } from "@features/notifications/notifications-api";
 import { badgeCountOf } from "@features/notifications/notifications-model";
+import { PhoneAccessOfferIcon } from "@features/providers/phone-access-offer";
 import { useTeamBridgeNavItem } from "@features/team-bridge/team-bridge-nav";
 import {
 	desktopFeatureEnabled,
@@ -46,6 +47,8 @@ import {
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
+import { useProfileProposals } from "@shared/api/local-operator/profile-proposal-hooks";
+import { totalPendingProposals } from "@shared/api/local-operator/profile-proposals";
 import { useSidebarLayout } from "@shared/api/local-operator/sidebar-layout";
 import { useSidebarFrame } from "@shared/components/common/chat-layout";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
@@ -454,6 +457,14 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		{ poll: true },
 	);
 	const meshWaiting = waitingApprovalCount(meshApprovals.data ?? []);
+	const proposalsEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"profile_proposals",
+	);
+	const proposals = useProfileProposals(proposalsEnabled);
+	const proposalCount = proposalsEnabled
+		? totalPendingProposals(proposals.data)
+		: 0;
 	/*
 	 * Whether this backend serves the Projects surface at all.
 	 *
@@ -681,6 +692,9 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		path: "/agents",
 		isActive: currentView === "agents",
 		tourTag: "nav-item-agents",
+		attention: proposalCount,
+		attentionTag: "nav-agents-badge",
+		attentionName: (count) => t("ui.agents.proposals.waiting", { count }),
 	});
 	destinationItems.set("schedules", {
 		icon: CalendarDays,
@@ -2395,6 +2409,12 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 				</div>
 				{announcementRegion}
 				<div className="mt-auto flex flex-col items-center gap-1 pb-2">
+					{/*
+					 * The phone access offer's collapsed form (UX review U1): the docked
+					 * foot's card has no room here, so an icon opens the same card in a
+					 * popover. Draws nothing unless the offer would show in the foot.
+					 */}
+					<PhoneAccessOfferIcon />
 					{/*
 					 * THE STANDING UPDATE NOTICE SITS IN THIS COLUMN ABOVE THE GEAR
 					 * (design consult §3.1): the icon, the gear, the avatar - the strip's

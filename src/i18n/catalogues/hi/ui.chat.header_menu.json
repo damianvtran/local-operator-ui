@@ -10,5 +10,7 @@
 	"ui.chat.header_menu.open_canvas": "कैनवस खोलें",
 	"ui.chat.header_menu.open_code_review": "कोड समीक्षा खोलें",
 	"ui.chat.header_menu.open_console": "कंसोल खोलें",
-	"ui.chat.header_menu.rename_failed": "बातचीत का नाम नहीं बदला जा सका"
+	"ui.chat.header_menu.rename_failed": "बातचीत का नाम नहीं बदला जा सका",
+	"ui.chat.header_menu.keep_chat": "चैट रखें",
+	"ui.chat.header_menu.make_temporary": "अस्थायी बनाएँ…"
 }

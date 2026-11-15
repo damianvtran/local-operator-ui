@@ -1,0 +1,157 @@
+{
+	"ui.agents.proposals.accessible": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.agents.proposals.loading": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.agents.proposals.load_error": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.agents.proposals.retry": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.agents.proposals.action_error": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.agents.proposals.not_applied": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.agents.proposals.invalid_json": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.agents.proposals.title": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.agents.proposals.title_create": {
+		"role": "Heading of a proposal that would create a profile that does not exist yet",
+		"tone": "Plain, factual",
+		"note": "{name} is the proposed agent or team name, an identifier, never translated. Distinct from 'title' (a change to an existing profile): nothing exists until Accept succeeds."
+	},
+	"ui.agents.proposals.fields": {
+		"role": "Line under a proposal title listing what it changes",
+		"tone": "Plain, factual",
+		"note": "{fields} is a comma-separated list of field names supplied by the app (for example 'Instructions, Tools'); keep it as one argument and do not translate or reorder its contents. Example: 'Changes: Instructions, Tools'."
+	},
+	"ui.agents.proposals.origin": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.agents.proposals.untrusted": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.agents.proposals.open_conversation": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.agents.proposals.stale": {
+		"role": "Warning on a proposal whose profile changed after it was proposed",
+		"tone": "Plain, factual; not an error tone",
+		"note": "{name} is an identifier. This is a refusal, not success: Accept is disabled and nothing was applied; the person should ask the originating conversation for a fresh proposal. Do not suggest the proposal will be updated automatically."
+	},
+	"ui.agents.proposals.unavailable": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.agents.proposals.current": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.agents.proposals.proposed": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.agents.proposals.applying": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.agents.proposals.accept_edits": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.agents.proposals.accept": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.agents.proposals.cancel_edit": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.agents.proposals.edit": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.agents.proposals.rejecting": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.agents.proposals.reject": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.agents.proposals.refresh": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.agents.proposals.accepted": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.agents.proposals.rejected": {
+		"role": "Review control, status or accessible label",
+		"tone": "Plain, factual; imperative for controls",
+		"note": "Agents proposal review or git-style diff. Preserve ICU arguments exactly. Profile name and origin trigger are identifiers, not translatable. No changes are applied until Accept succeeds; stale is a refusal, not success."
+	},
+	"ui.agents.proposals.waiting": {
+		"role": "Tooltip/accessible count of pending proposals for the Agents navigation item or a roster row",
+		"tone": "Plain, factual",
+		"note": "ICU plural on {count} (1 or more). Give every CLDR plural category the language needs, including 'one' with singular agreement. 'Agents' is the navigation section: use the exact term of ui.shell.sidebar_navigation.agents in your language."
+	},
+	"ui.agents.proposals.review": {
+		"role": "Link from a conversation tool row to the proposal in Agents",
+		"tone": "Imperative, short",
+		"note": "'Agents' is the navigation section: use the exact term of ui.shell.sidebar_navigation.agents in your language."
+	},
+	"ui.agents.proposals.new_group": {
+		"role": "Heading of the Agents list group holding proposed profiles that do not exist yet",
+		"tone": "Short label, a few words",
+		"note": "Groups proposals to create a NEW agent or team, shown under the existing roster so a pending creation can be opened and reviewed. Use the same 'Agents' vocabulary as the navigation if a section name appears."
+	},
+	"ui.agents.proposals.new_row": {
+		"role": "Secondary line on a proposed-new row in the Agents list",
+		"tone": "Short status",
+		"note": "Status of a proposed profile awaiting the operator's Accept or Reject; nothing has been created yet."
+	}
+}

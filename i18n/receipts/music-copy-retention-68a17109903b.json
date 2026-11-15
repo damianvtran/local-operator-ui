@@ -1,0 +1,77 @@
+{
+  "schema": 1,
+  "namespace": "ui.music",
+  "auditor": {
+    "agent": "reviewer",
+    "instance": "68a17109903b",
+    "model": "openai/gpt-6.1-sol",
+    "fallback": "none"
+  },
+  "date_utc": "2026-11-09T09:28:18.326077+00:00",
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "hashes": {
+    "en": "3bb58635be3fd3b69d25fba7a87eba51add3c5042c89d887c8d1aa9d0c9cbc19",
+    "fr": "a9922a77729e4fbe69d1a6a98cb1816f738b1189c70bbd71472c09989e0f5913",
+    "es": "704f98572dcfa93b9efa7566df3ba124f1e3c9c8c99b3343d3baeca6f6eced0d",
+    "zh-CN": "93b8b71789d4953407815bdb11f7e2632e01422505fb81437be5e28550c5d9bc",
+    "ru": "999793f8d1b8b4dfcc126bccefa158c3466737e54dbe297603e87e066c2493c9",
+    "vi": "57a280f70c700ca6eb8a592d9b91ae530bfcf8f13c8078915bf823e6d1c8748c",
+    "ur": "5242a42f207c9a85d0843d0b8b3cbb07e3c302701a5fa054b441cd0f9a39887c",
+    "hi": "26ec304c0d2c25dd1402a83d4ee3e9826056b50650c3afa1197b7c9a9ef8c0b9"
+  },
+  "source_sha256": "3bb58635be3fd3b69d25fba7a87eba51add3c5042c89d887c8d1aa9d0c9cbc19",
+  "context_sha256": "9c8ac243da9ea8f8566455f4ec16d5c870970dcc3de4035c84506342f3b69d77",
+  "audit_kind": "mechanical_json_value_retention",
+  "method": "Independent complete parsed JSON value equality, duplicate-member rejection, raw digest recomputation and original receipt binding checks. Retention of prior independent linguistic audits; not a new linguistic audit.",
+  "old_audited_ref": "e424b07dfe79e7f90c6efb66add751167eecb87f",
+  "old_context_sha256": "6bd4f8752a91f6df0bdbcdaf01bb0b83035f580852a6cc55e4a4a53f811f9a0e",
+  "original_receipts": [
+    {
+      "locale": "en",
+      "path": "i18n/receipts/music-c6abfadb3c9f-en.json",
+      "receipt_sha256": "64a5f5185b3238287f3af431281cc8620f1eb96e1822b5149ba32cb56388f03c"
+    },
+    {
+      "locale": "fr",
+      "path": "i18n/receipts/music-c6abfadb3c9f-fr.json",
+      "receipt_sha256": "847e9b84144cde5cd0c55e8f2d38a4fe59c38930e6ac80fb43a20b426872e56d"
+    },
+    {
+      "locale": "es",
+      "path": "i18n/receipts/music-c6abfadb3c9f-es.json",
+      "receipt_sha256": "b3eac0eeb76c0ee573fb2d6e82e0b46eb26eba34e954cdc5cf42f56f4f78d093"
+    },
+    {
+      "locale": "zh-CN",
+      "path": "i18n/receipts/music-c6abfadb3c9f-zh-cn.json",
+      "receipt_sha256": "9b67cbdc5a2445ca1fe50bdd6138c354cbe2921f6ce439bc46e96463aa0e7d6d"
+    },
+    {
+      "locale": "ru",
+      "path": "i18n/receipts/music-c6abfadb3c9f-ru.json",
+      "receipt_sha256": "d341986f858f81e23ba356666c7f8f2e65ba1926399bc0a5a7e0cc377aaa2466"
+    },
+    {
+      "locale": "vi",
+      "path": "i18n/receipts/music-c6abfadb3c9f-vi.json",
+      "receipt_sha256": "bc5771330d975efc72ea09238e2e4d5edd602d3b73dc0d0317304cbc2ff8aee3"
+    },
+    {
+      "locale": "ur",
+      "path": "i18n/receipts/music-c6abfadb3c9f-ur.json",
+      "receipt_sha256": "b4b5d3fad65a852968d7beb89011adfab5a894e6379920c79cb8ef228e880bf0"
+    },
+    {
+      "locale": "hi",
+      "path": "i18n/receipts/music-c6abfadb3c9f-hi.json",
+      "receipt_sha256": "b819da02a05475ee1ac1a5b5cd44b7800302cfa4f90c3e433a28e01cb55ebb6f"
+    }
+  ],
+  "limitations": [
+    "English is evidence-only; apply this one immutable receipt to exactly seven target locale rows.",
+    "Not pushed-head code-review approval, rendered/native RTL or end-to-end flow approval.",
+    "Original c6 receipts and secondary warning audit remain immutable historical provenance, not re-signed."
+  ]
+}

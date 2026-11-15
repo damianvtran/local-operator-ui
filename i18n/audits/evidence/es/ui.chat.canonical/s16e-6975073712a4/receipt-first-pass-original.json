@@ -1,0 +1,217 @@
+{
+	"audit_id": "s16e-15b65aa91541-r1-es",
+	"mode": "independent translation audit of a 12-key draft delta (file group: error/stop/settlement copy — high-visibility, second pass performed by me as the single auditor)",
+	"locale": "es",
+	"namespace": "ui.chat.canonical",
+	"repo": "damianvtran/local-operator-ui",
+	"pr": 1884,
+	"slice": "S16e-renderer",
+	"head_sha": "bd8e90542506e8bec4a98862b868095409b28329",
+	"audit_date": "2026-11-12",
+	"key_count": 12,
+	"translator": {
+		"agent": "i18n-translator",
+		"session": "separate translator session (notes: s16e/es/notes-es-s16e.md)",
+		"note": "Draft written by a separate session; I did not write or edit any of these strings."
+	},
+	"auditor": {
+		"agent": "i18n-auditor",
+		"session": "15b65aa91541",
+		"instance": "15b65aa91541-es",
+		"model": "deepseek/deepseek-flash",
+		"actual_model_source": "session runtime header names 'Model: deepseek/deepseek-flash'; no fallback observed or declared in this run",
+		"independent_from_translator_session": true
+	},
+	"draft": {
+		"path": "/Users/damian/.local-operator/sessions/3ef6295a5545/scratchpad/s16e/es/draft-es-s16e.json",
+		"sha256": "b9290ae76d05774eeca47b3bea438ac6df0be03c7907efaa3cb93a5d6082a50c",
+		"sha256_matches_manager_manifest": true,
+		"note": "Bytes proven identical to the manager's manifest value; audited from a byte-identical local copy because a scripted bash read of the sibling scratchpad was refused by the dangerous-delete guardrail (no deletion involved)."
+	},
+	"input_hashes": {
+		"en": {
+			"path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+			"sha256": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17"
+		},
+		"context": {
+			"path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+			"sha256": "ec598772089552ace910c857a38b364bdfa83a32c76c62b752b761527531e7b7"
+		},
+		"brief": {
+			"path": "s16e-brief.json",
+			"sha256": "a0326137bff43ed38fc4a1c63d4a26e1887cfd56d4826df0e615df28055bef0c"
+		},
+		"target_locale_shipped": {
+			"path": "src/i18n/catalogues/es/ui.chat.canonical.json",
+			"sha256": "547b85e9670eec79f82211f50325092bf75c13eda4504995cce1a1d5ab25e272"
+		},
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/es.md",
+			"sha256": "77b9227213802d14c74d4298d6b346ad842bbf2a5ca3b9d46fc6144430d26c3e"
+		}
+	},
+	"method": "Static native-speaker reading of all 12 keys against the English value + sidecar context for each key, the es style guide, the core glossary and the shipped es catalogue for this namespace; call sites read to see how each value renders (image-gen-card.tsx, image-gen-card-model.ts) and with which arguments. Mechanical verification executed with the app's own libraries (@formatjs/icu-messageformat-parser 3.5.21 and intl-messageformat 12.1.3, loaded read-only from the primary checkout): structural skeleton comparison per key, render of every value under es for all four materials plus an unknown material, es typography assertions, and 11 negative controls. No translation/MT service was used and no back-translation was performed. The translator's notes were read only after forming my own view of every key.",
+	"mechanical": {
+		"parser": "@formatjs/icu-messageformat-parser 3.5.21",
+		"formatter": "intl-messageformat 12.1.3",
+		"keys_parsed": 12,
+		"keys_expected": 12,
+		"structure_identical_to_en": true,
+		"material_select_branches": [
+			"video",
+			"voiceover",
+			"sound_effect",
+			"other"
+		],
+		"plural_categories_required_for_es": "none of the 12 pluralises; no 'few' introduced",
+		"negative_controls_run": 11,
+		"negative_controls_caught": 11,
+		"controls": [
+			"C1 dropped sound_effect branch",
+			"C2 placeholder {material} renamed to {media}",
+			"C3 broken ICU brace",
+			"C4 sentence full stop removed",
+			"C5 label given a full stop",
+			"C6 English value left in place",
+			"C7 space inserted before ';'",
+			"C8 plural given a 'few' category / missing 'many'",
+			"C9 key dropped",
+			"C10 branch demoted to a non-sentence",
+			"C11 invalid JSON"
+		]
+	},
+	"checks_performed": [
+		"JSON.parse of the draft: valid; 12/12 keys, exact key set (none added, dropped or renamed)",
+		"key-set equality with the English catalogue's S16e delta, confirmed against git diff HEAD~1 HEAD -- src/i18n/catalogues/en/ui.chat.canonical.json (exactly these 12 keys are new)",
+		"ICU structural skeleton per key vs English: argument NAMES and KINDS, select/plural branch names, #, tags — identical for 12/12",
+		"material select completeness: video/voiceover/sound_effect/other present; every branch a complete sentence ending in its own full stop; unknown material degrades to the image wording",
+		"es CLDR categories: no plural in this group, so no category requirement arises; no 'few' anywhere",
+		"typography: no space before ; : ? !, no '!' anywhere, spaced em dash (U+2014 with spaces), no double spaces, no leading/trailing whitespace, no bidi/invisible controls, no U+00A0; sentence-class values end with '.', label-class values do not; every sentence starts with a capital",
+		"no English left in the prose (literals only, so ICU branch keywords and the {material} placeholder do not count); the only Latin token in prose is 'endpoint', kept English explicitly by the es style guide; 'Id' is the sentence-case form of the catalogue's own machine token id",
+		"no value byte-identical to its English source",
+		"rendered output of all 12 values under es via intl-messageformat, including all four material branches (no placeholder leaks)",
+		"promise/polarity re-read of every key with the English sidecar's explicit constraints (cancel.queued = the only no-charge promise; cancel.running refuses to promise anything; settlement.pending states no amount; failure classes distinguishable)",
+		"terminology cross-check against the shipped es catalogue: proveedor (4 keys), cobro final (sound.cost.estimated_zero), detener/detención (7 keys), lote / locución / efecto de sonido / vídeo reused verbatim from done_batch & failed_batch; 'Denegado' ships in 3 values in ui.mesh/ui.browser; 'no válido' in 7 values vs 'inválido' in 1; 'política' in 9 values; zero occurrences of puerta/compuerta, and core relay.asks.gate.* renders the gate concept as Aprobaciones / modo de aprobación",
+		"register/formality: tú throughout ('se te cobrará', 'Espera', 'vuelve a intentarlo'); no usted, no vosotros, no Title Case, no exclamation",
+		"fit: rendered character widths measured en vs es for all 12 (widest es label 23 vs 12 en; widest es branch 39 vs 27 en); no maxCells/maxChars exists in the sidecar for these keys"
+	],
+	"checks_not_performed": [
+		"no repo write of any kind: no catalogue, ledger, receipt or evidence file committed; the PR worktree was left clean (git status --porcelain empty)",
+		"no pnpm check-i18n / generate.mjs / check-strings.mjs / ledger-check.mjs (the slice forbids builds, installs and test suites this run; node_modules is absent from the worktree)",
+		"no rendered-frame, browser or TUI capture — catalogue copy only; the card's visual states are the design/QA lanes' evidence",
+		"no second independent auditor: my own second pass covered the high-visibility error copy, which is the same auditor, not a second one",
+		"no pseudo-localisation run",
+		"no translation API/SDK/MT service and no back-translation"
+	],
+	"namespaces": {
+		"ui.chat.canonical": {
+			"status": "passed",
+			"en_sha256": "b967adc33296c5ef0264a8a3ffd698fdfc5a50e4a3ebc8de99114a599b837e17",
+			"audited_target_is": "the 12-key draft; the ledger row must hash the merged es catalogue, and if any of these 12 values changes while applying them, this verdict no longer covers that row",
+			"key_count": 12,
+			"findings": [
+				{
+					"id": "esO1",
+					"severity": "INFO",
+					"key": "ui.chat.canonical.image_gen.error_class.gate_failed",
+					"current": "Bloqueo por política",
+					"note": "Names the reason where English names the mechanism ('Gate failed'). Accepted: no es catalogue renders 'gate' as a noun (core relay.asks.gate.* uses Aprobaciones / modo de aprobación; zero puerta/compuerta anywhere), and the label stays distinct from 'Denegado'."
+				},
+				{
+					"id": "esO2",
+					"severity": "INFO",
+					"key": "ui.chat.canonical.image_gen.error_class.audio_rate_limited",
+					"current": "Audio saturado",
+					"note": "Names the condition where English names the class. Accepted: it agrees with the sentence below it ('está saturada ahora mismo'), and no other class label shares the word."
+				},
+				{
+					"id": "esO3",
+					"severity": "INFO",
+					"key": "fit",
+					"current": "widest label 23 chars es vs 12 en; widest material branch 39 vs 27",
+					"note": "Rendered widths, measured with the real formatter. No maxCells/maxChars in the sidecar for these keys, so no budget is violated; flagged for design only if wrapping is ever reported."
+				}
+			],
+			"target_sha256": "b9290ae76d05774eeca47b3bea438ac6df0be03c7907efaa3cb93a5d6082a50c"
+		}
+	},
+	"per_key_verdicts": {
+		"ui.chat.canonical.image_gen.state.cancelled_batch": "accept",
+		"ui.chat.canonical.image_gen.cancel.queued": "accept",
+		"ui.chat.canonical.image_gen.cancel.running": "accept",
+		"ui.chat.canonical.image_gen.cancel.checking": "accept",
+		"ui.chat.canonical.image_gen.settlement.pending": "accept",
+		"ui.chat.canonical.image_gen.error.audio_rate_limited": "accept",
+		"ui.chat.canonical.image_gen.error_class.audio_rate_limited": "accept",
+		"ui.chat.canonical.image_gen.error_class.unknown_tool": "accept",
+		"ui.chat.canonical.image_gen.error_class.invalid_arguments": "accept",
+		"ui.chat.canonical.image_gen.error_class.duplicate_id": "accept",
+		"ui.chat.canonical.image_gen.error_class.denied": "accept",
+		"ui.chat.canonical.image_gen.error_class.gate_failed": "accept"
+	},
+	"open_questions_answered": {
+		"gate_failed": "accept 'Bloqueo por política' (esO1); the alternative mechanism-named label is longer and stilted",
+		"audio_rate_limited_label": "keep 'Audio saturado' (esO2); label/sentence agreement outranks matching English's register split",
+		"cancel_queued_person": "keep 'no se te cobrará'; the tú promise is correct per the es guide and categorical, and the shipped impersonal 'se cobrará' belongs to a warning about being charged, the opposite speech act"
+	},
+	"severity_counts": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"result": "clean",
+	"verdict": "clean",
+	"ledger": {
+		"status": "passed",
+		"note": "s16e es ui.chat.canonical: 12 keys, 0 blocker/major/minor/nit; record i18n/audits/evidence/es/ui.chat.canonical/s16e-15b65aa91541-r1/record.json"
+	},
+	"current_report_verdict": {
+		"status": "passed",
+		"unresolved_blocker_major_count": 0,
+		"finding_ids": []
+	},
+	"artifacts": [
+		{
+			"path": "/Users/damian/.local-operator/sessions/15b65aa91541/scratchpad/es-audit/receipt.json",
+			"role": "candidate receipt (repo copy for ledger assembly: i18n/receipts/15b65aa91541-es.json)"
+		},
+		{
+			"path": "/Users/damian/.local-operator/sessions/15b65aa91541/scratchpad/es-audit/report.md",
+			"role": "audit report (findings, promise ledger, per-axis reasoning)"
+		},
+		{
+			"path": "/Users/damian/.local-operator/sessions/15b65aa91541/scratchpad/es-audit/audit.log",
+			"role": "actual command transcript (execution log, not notes)"
+		},
+		{
+			"path": "/Users/damian/.local-operator/sessions/15b65aa91541/scratchpad/es-audit/check.mjs",
+			"role": "mechanical checker actually used"
+		},
+		{
+			"path": "/Users/damian/.local-operator/sessions/15b65aa91541/scratchpad/es-audit/controls.mjs",
+			"role": "negative-control runner (11 mutations, all caught)"
+		},
+		{
+			"path": "/Users/damian/.local-operator/sessions/15b65aa91541/scratchpad/es-audit/render-check.mjs",
+			"role": "renders every value under es with intl-messageformat"
+		},
+		{
+			"path": "/Users/damian/.local-operator/sessions/15b65aa91541/scratchpad/es-audit/ledger-row.json",
+			"role": "the ledger row this audit backs, ready for the implementer to record"
+		},
+		{
+			"path": "/Users/damian/.local-operator/sessions/15b65aa91541/scratchpad/es-audit/record.json",
+			"role": "evidence-bundle record for the tracked audit root"
+		}
+	],
+	"unresolved_doubts": [
+		"The ledger row's target_sha256 must be the MERGED es catalogue hash, which does not exist yet; I did not compute or guess it.",
+		"Fit is measured in rendered characters, not in a rendered frame; if design reports wrapping on 'Herramienta desconocida' (23 chars) the recorded tightening option is the shorter 'Bloqueo'-style truncation only where the class stays distinct, which for this label means no change is available — it is the shortest honest rendering.",
+		"My second pass on the error copy was my own, not a second independent auditor; if the programme requires two independent auditors for high-visibility groups, that is still outstanding."
+	]
+}

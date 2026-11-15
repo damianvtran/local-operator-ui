@@ -1,0 +1,40 @@
+{
+  "auditor": "reviewer",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "94f6e325484c-canon2-hi",
+  "date": "2026-11-12",
+  "locale": "hi",
+  "namespace": "ui.chat.canonical",
+  "status": "passed",
+  "sha256": {
+    "hi": "799a864cd75bc0153a7f1768ec57125033bddf92bbbfdc0cf1a43a43752d91d8",
+    "en": "6ad5fa8c4d8924cacc11df6b336e14684d86eb010b669863dcf058de7aca77dd"
+  },
+  "context_sha256": {
+    "en": "126830cc22cef26482ce78f0bdcbb9653042aa64cbcf91c46ef7208b1e25192d"
+  },
+  "repo": "damianvtran/local-operator-ui",
+  "pr": 1874,
+  "head": "7177d51df",
+  "independence": "Independent i18n auditor (lopdev reviewer, session 94f6e325484c). Not the translator of any key in this file; did not read or copy any other session's scratchpad. Same model as this PR's translator (lopdev coder, anthropic/claude-opus-5-5): disclosed.",
+  "references": {
+    "glossary": "damianvtran/local-operator@8459804f5 i18n/glossary.md sha256:0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8",
+    "style_guide": "damianvtran/local-operator@8459804f5 i18n/style-guides/hi.md sha256:82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+  },
+  "scope": "Merged bytes at 7177d51df (merge of origin/main 9ef579fe1, #1875). Read in full against en value, en .context.json, glossary and style guide: upstream #1875's 5 added loading.* keys and this PR's 4 temporary_deleted.* keys. Upstream #1875 also removed 4 keys (older_history.loading, placeholder.loading, placeholder.region_label, transcript.stale_caption); the merge drops them and no src/ reference remains. The other 452 keys equal either upstream's audited file (row 15686088b7ce, hashes verified at 9ef579fe1) or this PR's audited file (94f6e325484c-canon, bc3716c06; unchanged to 4f27dd4fc).",
+  "mechanical": {
+    "threeway": "per-key three-way check base 7c2b6af66 / PR 4f27dd4fc / upstream 9ef579fe1 / merged 7177d51df over en, 7 locales and en context: 0 conflicts, 0 dropped, 0 resurrected, 0 value mismatches (461 keys).",
+    "union_parity_tool": "catalogue-union-parity.mjs reports the 4 upstream-removed keys as 'missing from PR' (it is a two-way union check against main's tip); expected, not a loss.",
+    "checks": "9 keys: ICU parse, args vs en, plural/select arms, every branch formatted, no bidi controls, NFC, U+2026 kept. 0 issues; negative control caught 14."
+  },
+  "reading": "loading.*: बातचीत for conversation matches the shipped majority (351 of 366 'conversation' keys); feminine agreement 'लोड हो रही है', plural 'संदेश … रहे हैं'; डिवाइस per glossary; आप register.",
+  "findings": [
+    {
+      "severity": "NIT",
+      "id": "HI-C1",
+      "key": "ui.chat.canonical.temporary_deleted.back",
+      "detail": "'चैट पर वापस जाएँ' can read as singular 'back to the chat'; the English means the chat list. Optional: 'चैट सूची पर वापस जाएँ'. Not a meaning error: the invariant plural matches sibling 'आपकी चैट में' (ui.chat.composer.placeholder.temporary).",
+      "disposition": "carried from 94f6e325484c-canon-hi: bytes unchanged, still applies; deferred"
+    }
+  ]
+}

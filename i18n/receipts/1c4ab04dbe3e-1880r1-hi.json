@@ -1,0 +1,180 @@
+{
+	"audit_id": "pr1880-r1-hi",
+	"mode": "round-1 independent audit of the 18 keys PR #1880 adds (16 ui.canvas.files.remote*, 2 ui.chat.attachments)",
+	"locale": "hi",
+	"pr": 1880,
+	"repo": "damianvtran/local-operator-ui",
+	"head_sha": "a4462e72159d8fa9a45931c36b380221880ffb30",
+	"scope": "83a18c632..a4462e721",
+	"audit_date": "2026-11-12",
+	"translator": {
+		"agent": "coder",
+		"note": "PR #1880 coder translated the new keys (per manager brief ce618964c88e); its served model is not recorded here"
+	},
+	"auditor": {
+		"agent": "reviewer",
+		"session": "1c4ab04dbe3e",
+		"instance": "1c4ab04dbe3e-1880r1-hi",
+		"model": "anthropic/claude-opus-5-5",
+		"actual_model_source": "session runtime header names 'Model: anthropic/claude-opus-5-5'; no fallback observed",
+		"independent_from_translator": true
+	},
+	"method": "Static reading of en value + en .context.json note per key, target value, call sites (remote-files.ts, remote-file-mark.tsx, finder-files-view.tsx, audio-document-player.tsx, attachment-frame.tsx, remote-file-transfer.tsx); term frequency against the existing locale catalogue; every value parsed and rendered with intl-messageformat (device='MacBook-Pro', remotePeerUpdate with the locale fallback; owner_unreachable prefixed with 'chart.png'): 0 parse errors, placeholders preserved byte-exactly, no bidi control characters in ur. No MT/translation service used.",
+	"references": {
+		"core_repo_rev": "ad910f5daea0bb40cf95170a5eeed496f4aebd69",
+		"glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+		"style_guide": {
+			"path": "i18n/style-guides/hi.md",
+			"sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+		},
+		"ui_doc": "docs/I18N.md"
+	},
+	"rtl": "n/a (LTR)",
+	"namespaces": {
+		"ui.canvas": {
+			"status": "changes_requested",
+			"en_sha256": "5ee4ef4891c4888131172fb02ed6d6c3ee9e54eb09fca52c5e91d693dd62d6c1",
+			"hi_sha256": "b79ee67f183e5b9183dc6c2ba95581b65f2b9162da4d7b3aeb89ce50fce7c4f7",
+			"context_sha256": "e194326406b33442660eb0cbbebd70b4c7040b5773c5938a56b8aa84d35a05a3",
+			"keys_audited": [
+				{
+					"key": "ui.canvas.files.remoteUnreachable",
+					"en": "Couldn't reach the device that holds this file. Try again in a moment.",
+					"target": "इस फ़ाइल वाले डिवाइस से संपर्क नहीं हो सका। थोड़ी देर में फिर से कोशिश करें।"
+				},
+				{
+					"key": "ui.canvas.files.remoteUnreachableRetry",
+					"en": "Couldn't reach the device that holds this sound. Click to retry.",
+					"target": "इस ध्वनि वाले डिवाइस से संपर्क नहीं हो सका। फिर से कोशिश करने के लिए क्लिक करें।"
+				},
+				{
+					"key": "ui.canvas.files.remoteOn",
+					"en": "On {device}",
+					"target": "{device} पर"
+				},
+				{
+					"key": "ui.canvas.files.remoteReason.missing",
+					"en": "No longer on {device}",
+					"target": "अब {device} पर नहीं है"
+				},
+				{
+					"key": "ui.canvas.files.remoteReason.tooLarge",
+					"en": "Too large to fetch from {device}",
+					"target": "{device} से लाने के लिए बहुत बड़ी है"
+				},
+				{
+					"key": "ui.canvas.files.remoteReason.sensitive",
+					"en": "{device} keeps this file private",
+					"target": "{device} इस फ़ाइल को निजी रखता है"
+				},
+				{
+					"key": "ui.canvas.files.remoteReason.notReferenced",
+					"en": "{device} no longer shares this file",
+					"target": "{device} अब यह फ़ाइल साझा नहीं करता"
+				},
+				{
+					"key": "ui.canvas.files.remoteReason.workspace",
+					"en": "Lives in {device}'s workspace. Ask the session to copy it to its scratchpad.",
+					"target": "यह {device} के वर्कस्पेस में है। सत्र से इसे अपने स्क्रैचपैड में कॉपी करने को कहें।"
+				},
+				{
+					"key": "ui.canvas.files.remoteCopyOwnerPath",
+					"en": "Copy path on {device}",
+					"target": "{device} पर पथ कॉपी करें"
+				},
+				{
+					"key": "ui.canvas.files.remoteDownload",
+					"en": "Download to this device",
+					"target": "इस डिवाइस पर डाउनलोड करें"
+				},
+				{
+					"key": "ui.canvas.files.remoteDownloaded",
+					"en": "Downloaded {name}",
+					"target": "{name} डाउनलोड हो गई"
+				},
+				{
+					"key": "ui.canvas.files.remoteDownloadPending",
+					"en": "Still fetching from {device}. Try again in a moment.",
+					"target": "अभी भी {device} से लाई जा रही है। थोड़ी देर में फिर से कोशिश करें।"
+				},
+				{
+					"key": "ui.canvas.files.remoteDownloadFailed",
+					"en": "Couldn't download from {device}.",
+					"target": "{device} से डाउनलोड नहीं हो सका।"
+				},
+				{
+					"key": "ui.canvas.files.remoteReadFailed",
+					"en": "This file couldn't be read from the device that holds it.",
+					"target": "यह फ़ाइल उसे रखने वाले डिवाइस से पढ़ी नहीं जा सकी।"
+				},
+				{
+					"key": "ui.canvas.files.remotePeerUpdate",
+					"en": "Update {device} to see its files here.",
+					"target": "इसकी फ़ाइलें यहाँ देखने के लिए {device} को अपडेट करें।"
+				},
+				{
+					"key": "ui.canvas.files.remoteDeviceFallback",
+					"en": "the other device",
+					"target": "दूसरा डिवाइस"
+				}
+			],
+			"key_completeness": {
+				"en_keys": 376,
+				"target_keys": 376,
+				"missing": [],
+				"extra": []
+			},
+			"findings": [
+				{
+					"id": "I1-3",
+					"severity": "MAJOR",
+					"key": "ui.canvas.files.remoteReason.workspace",
+					"current": "यह {device} के वर्कस्पेस में है। सत्र से इसे अपने स्क्रैचपैड में कॉपी करने को कहें।",
+					"corrected": "यह {device} के कार्यक्षेत्र में है। सत्र से इसे अपने स्क्रैचपैड में कॉपी करने को कहें।",
+					"problem": "Glossary §2 + hi guide line 28: workspace → कार्यक्षेत्र (hi catalogue: कार्यक्षेत्र 7 values, वर्कस्पेस only this one)."
+				},
+				{
+					"id": "I1-7",
+					"severity": "MINOR",
+					"key": "ui.canvas.files.remoteDeviceFallback",
+					"current": "दूसरा डिवाइस",
+					"corrected": "दूसरे डिवाइस",
+					"problem": "Its only use (context note; remote-files.ts:253) is {device} in remotePeerUpdate before the postposition को, so it renders 'दूसरा डिवाइस को अपडेट करें' — needs the oblique 'दूसरे डिवाइस को' (catalogue precedent: 'किसी दूसरे डिवाइस की')."
+				},
+				{
+					"id": "I1-8",
+					"severity": "NIT",
+					"key": "ui.canvas.files.remoteCopyOwnerPath",
+					"current": "{device} पर पथ कॉपी करें",
+					"corrected": "{device} पर पाथ कॉपी करें",
+					"problem": "Sibling ui.chat.attachments.copy_path is 'पाथ कॉपी करें'; hi catalogue uses पाथ 27x vs पथ 5x."
+				}
+			]
+		},
+		"ui.chat.attachments": {
+			"status": "passed",
+			"en_sha256": "0e6e4457711073f2b604e9b5374b91a2ed782064a00e486f3fb446ea3f2284be",
+			"hi_sha256": "8cda49df1622d3e6b9c6f3f9d53ad793d5f02486ab2268bc74197394e8c654b4",
+			"context_sha256": "9a10aa5f9bf67285e574b4e0b28b472b48fefff951d9d3b1b84e5a9889e4f2e6",
+			"keys_audited": [
+				{
+					"key": "ui.chat.attachments.owner_unreachable",
+					"en": "couldn't be fetched from the device that holds it.",
+					"target": "इसे रखने वाले डिवाइस से प्राप्त नहीं की जा सकी।"
+				},
+				{
+					"key": "ui.chat.attachments.retry_fetch",
+					"en": "Retry",
+					"target": "फिर से कोशिश करें"
+				}
+			],
+			"key_completeness": {
+				"en_keys": 25,
+				"target_keys": 25,
+				"missing": [],
+				"extra": []
+			},
+			"findings": []
+		}
+	}
+}

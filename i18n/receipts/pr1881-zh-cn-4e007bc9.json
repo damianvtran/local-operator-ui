@@ -1,0 +1,51 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "date": "2026-11-12",
+ "locale": "zh-CN",
+ "instance": "pr1881-zh-cn-4e007bc9",
+ "session": "1b02bddb11bc",
+ "auditor": {
+  "agent": "reviewer (i18n audit, zh-CN)",
+  "session": "1b02bddb11bc",
+  "instance": "pr1881-zh-cn-4e007bc9",
+  "model": "anthropic/claude-sonnet-5-5",
+  "fallback": "none (the session header model was served; no provider fallback occurred)",
+  "independent_from_translator_session": true
+ },
+ "model": "anthropic/claude-sonnet-5-5",
+ "independence": "Fresh reviewer session. Did not write the zh-CN files and had not audited this locale or namespace before. Read from the worktree at 8efa3b0ff5bb6aec505c559b9e3518d75a6a240b: src/i18n/catalogues/en/ui.chat.approval.json, zh-CN/ui.chat.approval.json, en/ui.chat.approval.context.json, i18n/languages.json (zh-CN, dir ltr); from local-operator origin/main 330e43b93fd6: i18n/style-guides/zh-CN.md, i18n/glossary.md, local_operator/i18n/catalogues/{en,zh-CN}/wire.bridge_taint.json. Byte-identity to core, key set, placeholders and the per-key diff against 5033f64235 were verified by parsing, not taken from the PR description.",
+ "branch": "approval-card-latched",
+ "head": "8efa3b0ff5bb6aec505c559b9e3518d75a6a240b",
+ "pr": "damianvtran/local-operator-ui#1881",
+ "scope": "zh-CN only, namespace ui.chat.approval at head 8efa3b0ff5: the one new key ui.chat.approval.escape.bridge_latched audited in full; the other 17 keys confirmed byte-unchanged versus 5033f64235 (git diff shows only the one added line) and carry their previous audit",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "namespaces": {
+  "ui.chat.approval": {
+   "status": "passed",
+   "keys_audited": 18,
+   "sha256": {
+    "en": "815a4ff369d33bc106b35aa74589f4f000811d24aa24519094c4373283d7ec8f",
+    "zh-CN": "07b2d6891d821dd6164b9f45aa39ebf67de0519e63cf7c3dc63b38b053f8c9ca",
+    "context": "9ee5d1341420c59b38f1d451848f2da76bc9397c5d7811196356fbd98968bb2f"
+   },
+   "findings": [
+    {
+     "key": "ui.chat.approval.escape.bridge_latched",
+     "severity": "minor",
+     "current": "此对话中已关闭“Allow all”和auto。要开启auto，请在终端中输入/approvals auto，或使用/new开始新对话。",
+     "proposed": "none required; if the wording is ever revisited, name the mode the way the card does: \"…和自动模式\" with the literal `/approvals auto` kept for the command",
+     "reason": "The same card shows the mode as 自动 (ui.chat.approval.mode.auto) and links \"将此会话设为自动\", while this sentence says Latin \"auto\" for the mode. The English is consistent (Auto/auto). Not a defect: `/approvals auto` is a literal argument and the text is byte-identical to the core wire.bridge_taint.card_options_off, so changing only the UI copy would diverge the two surfaces. Recorded, no change requested."
+    }
+   ]
+  }
+ },
+ "findings": [
+  {
+   "key": "ui.chat.approval.escape.bridge_latched",
+   "severity": "minor",
+   "summary": "mode named \"auto\" (Latin) here but 自动 elsewhere on the same card; non-blocking, matches core byte-for-byte"
+  }
+ ]
+}

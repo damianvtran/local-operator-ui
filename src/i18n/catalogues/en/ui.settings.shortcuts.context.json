@@ -486,5 +486,11 @@
 		"tone": "Plain, short.",
 		"length": "One short sentence.",
 		"note": "Shown when the user pressed only a modifier key (Command, Control, Option, Shift) in the field that records a shortcut."
+	},
+	"ui.settings.shortcuts.new_temporary_chat": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: starts a new temporary chat (Ctrl+Shift+N, or Command+Shift+N on macOS)."
 	}
 }

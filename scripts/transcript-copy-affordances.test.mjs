@@ -171,6 +171,7 @@ const bundle = await build({
 						contents: `
 							export const showErrorToast = () => "toast";
 							export const showInfoToast = () => "toast";
+							export const showLoadingToast = () => "toast";
 							export const showSuccessToast = () => "toast";
 							export const showWarningToast = () => "toast";
 							export const dismissToast = () => {};

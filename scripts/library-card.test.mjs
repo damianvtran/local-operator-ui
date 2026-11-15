@@ -571,3 +571,37 @@ test("switching the drawer's asset clears the previous waveform before the answe
 		container.remove();
 	}
 });
+
+/*
+ * QA round 1, Q1-2: a PEER's sound card pulled the whole file over the mesh
+ * just by being scrolled into view (core §5 "no per-view mesh fetch"). Its
+ * well now reads nothing on view and arms the read on an explicit press.
+ */
+test("a remote audio card reads no bytes on view, only on the play press", async () => {
+	MEDIA.length = 0;
+	const REMOTE_AUDIO = asset("la_00000000000000a7", {
+		remote: { device_id: "dev2", device_name: "lop-remote-node-2" },
+	});
+	const card = await mount(REMOTE_AUDIO);
+	await intersect((node) => node.hasAttribute("data-library-audio-well"));
+	await settle();
+	const reads = () =>
+		MEDIA.filter(
+			(op) =>
+				(op.op === "library.content" || op.op === "library.waveform") &&
+				op.assetId === REMOTE_AUDIO.id,
+		);
+	assert.equal(reads().length, 0, "scrolled into view: no mesh read");
+	assert.equal(card.container.querySelector("[data-sound-player]"), null);
+	const play = card.container.querySelector("[data-library-remote-play]");
+	assert.ok(play, "the glyph is a Play control");
+	assert.ok(play.getAttribute("aria-label").includes("lop-remote-node-2"));
+	await click(play);
+	assert.deepEqual(
+		reads()
+			.map((op) => op.op)
+			.sort(),
+		["library.content", "library.waveform"],
+	);
+	assert.ok(card.container.querySelector("[data-sound-player]"));
+});

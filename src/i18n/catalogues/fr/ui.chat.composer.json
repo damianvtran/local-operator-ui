@@ -11,6 +11,7 @@
 	"ui.chat.composer.placeholder.secret_answer": "Répondez à la demande de secret dans le panneau des demandes",
 	"ui.chat.composer.placeholder.sending": "Envoi de votre message",
 	"ui.chat.composer.placeholder.stopping": "Arrêt du tour",
+	"ui.chat.composer.placeholder.temporary": "Conversation temporaire — non enregistrée dans vos conversations. Posez votre question",
 	"ui.chat.composer.placeholder.unavailable": "Cette conversation n’existe plus",
 	"ui.chat.composer.placeholder.waiting": "Orientez l’agent. Entrée envoie maintenant · Échap arrête",
 	"ui.chat.composer.start_recording": "Démarrer l’enregistrement",

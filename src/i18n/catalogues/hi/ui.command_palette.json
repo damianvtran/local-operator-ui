@@ -73,5 +73,6 @@
 	"ui.command_palette.use_palette_sources.settings": "सेटिंग्स",
 	"ui.command_palette.use_palette_sources.start": "शुरू करें",
 	"ui.command_palette.use_palette_sources.team_chat": "टीम चैट",
-	"ui.command_palette.use_palette_sources.usage_over_time": "समय के साथ उपयोग"
+	"ui.command_palette.use_palette_sources.usage_over_time": "समय के साथ उपयोग",
+	"ui.command_palette.new_temporary_chat": "नई अस्थायी चैट"
 }

@@ -27,6 +27,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DesktopLibraryAsset } from "../../../../../shared/desktop-control-contract";
+import { localPathOf } from "../library-model";
 
 /** The visible-window poll interval; the canvas's own cadence. */
 const VISIBLE_POLL_MS = 2000;
@@ -47,11 +48,7 @@ export type LibraryFileState = {
 
 /** Whether this asset is read from a live path at all. */
 export function isPathBacked(asset: DesktopLibraryAsset): boolean {
-	return (
-		asset.ref.type === "path" &&
-		Boolean(asset.ref.path) &&
-		asset.exists === true
-	);
+	return localPathOf(asset) !== null && asset.exists === true;
 }
 
 export function useLibraryFileWatch(

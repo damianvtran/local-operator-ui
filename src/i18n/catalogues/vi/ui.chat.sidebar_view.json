@@ -25,5 +25,18 @@
 	"ui.chat.sidebar_view.relative_short": "{unit, select, now {vừa xong} minute {{count, number, ::group-off} phút} hour {{count, number, ::group-off} giờ} day {{count, number, ::group-off} ngày} week {{count, number, ::group-off} tuần} year {{count, number, ::group-off} năm} other {vừa xong}}",
 	"ui.chat.sidebar_view.relative_created": "{unit, select, now {vừa tạo xong} minute {{count, plural, other {tạo # phút trước}}} hour {{count, plural, other {tạo # giờ trước}}} day {{count, plural, other {tạo # ngày trước}}} week {{count, plural, other {tạo # tuần trước}}} year {{count, plural, other {tạo # năm trước}}} other {vừa tạo xong}}",
 	"ui.chat.sidebar_view.relative_active": "{unit, select, now {vừa hoạt động} minute {{count, plural, other {hoạt động gần nhất # phút trước}}} hour {{count, plural, other {hoạt động gần nhất # giờ trước}}} day {{count, plural, other {hoạt động gần nhất # ngày trước}}} week {{count, plural, other {hoạt động gần nhất # tuần trước}}} year {{count, plural, other {hoạt động gần nhất # năm trước}}} other {vừa hoạt động}}",
-	"ui.chat.sidebar_view.ungrouped": "Chưa phân nhóm"
+	"ui.chat.sidebar_view.ungrouped": "Chưa phân nhóm",
+	"ui.chat.sidebar_view.section.temporary": "Tạm thời · {count, number, ::group-off}",
+	"ui.chat.sidebar_view.temporary.deletes_in": "Xóa sau {minutes, plural, other {# phút}}",
+	"ui.chat.sidebar_view.temporary.hold.running": "Giữ lại khi đang chạy",
+	"ui.chat.sidebar_view.temporary.hold.on_screen": "Giữ lại khi đang hiển thị",
+	"ui.chat.sidebar_view.temporary.hold.open_ask": "Giữ lại khi còn câu hỏi đang mở",
+	"ui.chat.sidebar_view.temporary.hold.armed_wake": "Giữ lại khi đã đặt thức dậy",
+	"ui.chat.sidebar_view.temporary.hold.armed_monitor": "Giữ lại khi có giám sát đang bật",
+	"ui.chat.sidebar_view.temporary.hold.unread_mail": "Giữ lại: có tin nhắn chưa đọc",
+	"ui.chat.sidebar_view.temporary.hold.operator_hold": "Được giữ lại do lệnh giữ",
+	"ui.chat.sidebar_view.temporary.hold.unseen_result": "Giữ lại đến khi bạn xem kết quả",
+	"ui.chat.sidebar_view.temporary.hold.unsaved_files": "Giữ lại khi còn tệp chưa lưu",
+	"ui.chat.sidebar_view.temporary.hold.linked": "Giữ lại khi đang ghim/liên kết",
+	"ui.chat.sidebar_view.temporary.hold.cannot_verify": "Được giữ lại: không thể kiểm tra"
 }

@@ -95,15 +95,13 @@ import { CanonicalAudio } from "./canonical-audio";
 import { CanonicalImage } from "./canonical-image";
 import { CanonicalVideo } from "./canonical-video";
 import {
-	CANCEL_QUEUED_COPY,
-	CANCEL_RUNNING_COPY,
 	type ImageGenActionKind,
+	type ImageGenCancelFact,
 	type ImageGenCardActions,
 	type ImageGenCardState,
 	type ImageGenCardView,
 	type ImageGenMaterial,
 	imageGenCardControls,
-	imageGenMaterialNoun,
 	withoutSettlementClause,
 } from "./image-gen-card-model";
 import { SoundBatch } from "./sound-batch";
@@ -315,10 +313,83 @@ function SoundGeneratingTile({
  * `sound-effect`, but a select branch name cannot carry a hyphen. Every state
  * message supplies `video`, `voiceover` and `sound_effect` branches and puts
  * the image wording under `other`, so a material this build does not know yet
- * degrades to the image sentence exactly like `imageGenMaterialNoun` does.
+ * degrades to the image sentence exactly like the card's material tokens do.
  */
 function materialToken(material: ImageGenMaterial): string {
 	return material === "sound-effect" ? "sound_effect" : material;
+}
+
+/**
+ * THE KEYED STOP SENTENCES (S16e, 2026-11-12): STOP IS A REQUEST, GUARANTEED
+ * ONLY WHILE QUEUED.
+ *
+ * The security round's split (2026-10-17) is unchanged in English, byte for
+ * byte; only WHERE the words live moved. They are three catalogue keys —
+ * `cancel.queued`, `cancel.running` (the sentence without the settlement
+ * clause) and `cancel.checking` (the clause as its own sentence) — composed
+ * here AT RENDER TIME, which is what lets a language switch repaint them and
+ * what a module-scope `t()` would have frozen to the boot locale.
+ *
+ * An in-flight stop states the REQUEST and its billing consequence; a stop
+ * pressed before the provider was called is the one case that may claim no
+ * charge. Never the no-charge sentence for an in-flight cancel: that reads as a
+ * promise the frozen contract explicitly does not make.
+ */
+function runningStopSentence(withChecking: boolean): string {
+	const running = t("ui.chat.canonical.image_gen.cancel.running");
+	return withChecking
+		? `${running} ${t("ui.chat.canonical.image_gen.cancel.checking")}`
+		: running;
+}
+
+/**
+ * The keyed stop sentence a record's STRUCTURED cancel fact supports, or null
+ * when it states no such fact.
+ *
+ * `vendorStopped: false` is the in-flight stop and `true` the queued one;
+ * `null` is the server declining to say, which stays on the wire's own sentence
+ * because the same null also covers a stop that was never applied (see the
+ * model's note on `ImageGenCancelFact`) — keying it here would state a fact the
+ * payload does not carry.
+ */
+function keyedStopSentence(
+	cancel: ImageGenCancelFact | undefined,
+	withChecking: boolean,
+): string | null {
+	if (!cancel || cancel.vendorStopped === null) return null;
+	return cancel.vendorStopped
+		? t("ui.chat.canonical.image_gen.cancel.queued")
+		: runningStopSentence(withChecking && cancel.settling);
+}
+
+/**
+ * The failure class label for a wire `error_type` code.
+ *
+ * The code is a SERVER discriminator and an open set, so the catalogue carries
+ * the six the platform names today and an unknown code is humanised (`denied`
+ * -> `Denied`) as it was before: a technical token, not app copy, and never the
+ * raw identifier with its underscores. Keying means a language can translate
+ * the class instead of reading English words built out of a code.
+ */
+function errorClassLabel(code: string): string {
+	switch (code) {
+		case "audio_rate_limited":
+			return t("ui.chat.canonical.image_gen.error_class.audio_rate_limited");
+		case "unknown_tool":
+			return t("ui.chat.canonical.image_gen.error_class.unknown_tool");
+		case "invalid_arguments":
+			return t("ui.chat.canonical.image_gen.error_class.invalid_arguments");
+		case "duplicate_id":
+			return t("ui.chat.canonical.image_gen.error_class.duplicate_id");
+		case "denied":
+			return t("ui.chat.canonical.image_gen.error_class.denied");
+		case "gate_failed":
+			return t("ui.chat.canonical.image_gen.error_class.gate_failed");
+		default: {
+			const words = code.replace(/_/g, " ");
+			return words.charAt(0).toUpperCase() + words.slice(1);
+		}
+	}
 }
 
 /** One state line: the words at body ink, the datum at meta ink beside them. */
@@ -370,9 +441,10 @@ function StateLine({
 			 * THE NOUN IS THE MATERIAL FACT (design spec §4, V2; extended by the
 			 * sound phase): a video call's line says `Generating video…`, a voiceover
 			 * `Generating voiceover…`, a sound effect `Generating sound effect…`, and
-			 * nothing else about the line moves. The noun comes off
-			 * `imageGenMaterialNoun` so the state line, the done receipt and the
-			 * failure fallback cannot spell one material three ways.
+			 * nothing else about the line moves. The noun lives INSIDE each catalogue
+			 * message (one branch per material), so the state line, the done receipt
+			 * and the failure fallback cannot spell one material three ways and every
+			 * language inflects the noun itself.
 			 */
 			text = view.batchProgress
 				? t("ui.chat.canonical.image_gen.state.running_batch", {
@@ -386,13 +458,15 @@ function StateLine({
 			break;
 		case "cancelling":
 			/*
-			 * THE SECURITY ROUND'S SPLIT (2026-10-17): a stop pressed before the
-			 * provider was called is the one case that may claim no charge; an
-			 * in-flight stop is a REQUEST — there is no vendor cancel endpoint —
-			 * and its line says so, including the settlement check that follows.
-			 * Never the no-charge sentence for an in-flight cancel.
+			 * THE SECURITY ROUND'S SPLIT (2026-10-17), now keyed: a stop pressed
+			 * before the provider was called is the one case that may claim no
+			 * charge; an in-flight stop is a REQUEST — there is no vendor cancel
+			 * endpoint — and its line says so, including the settlement check that
+			 * follows. Never the no-charge sentence for an in-flight cancel.
 			 */
-			text = view.generating ? CANCEL_RUNNING_COPY : CANCEL_QUEUED_COPY;
+			text = view.generating
+				? runningStopSentence(true)
+				: t("ui.chat.canonical.image_gen.cancel.queued");
 			break;
 		case "done":
 			/*
@@ -432,31 +506,47 @@ function StateLine({
 						material: materialToken(view.material),
 					})
 				: (view.message ??
-					t("ui.chat.canonical.image_gen.state.failed", {
-						material: materialToken(view.material),
-					}));
+					(view.errorCode === "audio_rate_limited"
+						? t("ui.chat.canonical.image_gen.error.audio_rate_limited")
+						: t("ui.chat.canonical.image_gen.state.failed", {
+								material: materialToken(view.material),
+							})));
 			emphasis = true;
 			break;
 		case "cancelled": {
 			/*
-			 * The settled receipt prefers the TOOL/SERVER detail (`message`); the
-			 * canned sentence is only the fallback, and it follows the same
-			 * queued/running split the live line does — a settled in-flight stop
-			 * must still not read as a no-charge cancellation.
+			 * THE STRUCTURED FACT OUTRANKS THE WIRE'S SENTENCE (S16e policy ruling):
+			 * when the payload carries `stage: "cancelled"` with `settling` and a
+			 * boolean `vendor_stopped`, those fields state the stop's cost
+			 * consequence exactly, where the sentence beside them is one fixed
+			 * English string — so the card renders KEYED copy chosen from them.
+			 * A record with no such fact (an older durable row, another producer,
+			 * a null `vendor_stopped`) renders the TOOL/SERVER detail (`message`)
+			 * verbatim as before, and the keyed queued/generating sentence is only
+			 * the absence's fallback.
 			 *
 			 * THE PENDING CLAUSE IS RETIRED BY ITS OWN ANSWER: the settlement row
 			 * rendered under this line states the pending fact or the final charge,
-			 * so the sentence that asks "Checking for settlement" would either
-			 * repeat it or contradict it (design D7, UX U8/U9).
+			 * so the clause that asks "Checking for settlement" would either repeat
+			 * it or contradict it (design D7, UX U8/U9). On the keyed path that is
+			 * `settling` minus the answer; on the wire path it is still the trailing
+			 * English clause the server appends, which `withoutSettlementClause`
+			 * strips — server prose is not this app's copy to key.
 			 */
-			const line =
-				view.message ??
-				(view.generating ? CANCEL_RUNNING_COPY : CANCEL_QUEUED_COPY);
+			const answered = Boolean(view.settlementCaption || view.settled);
+			const keyed = keyedStopSentence(view.cancel, !answered);
+			const wire = view.message
+				? answered
+					? withoutSettlementClause(view.message)
+					: view.message
+				: view.generating
+					? runningStopSentence(!answered)
+					: t("ui.chat.canonical.image_gen.cancel.queued");
 			text = view.batch
-				? `${batchMaterialTitle(view.material ?? "sound-effect")} batch stopped.`
-				: view.settlementCaption || view.settled
-					? withoutSettlementClause(line)
-					: line;
+				? t("ui.chat.canonical.image_gen.state.cancelled_batch", {
+						material: materialToken(view.material ?? "sound-effect"),
+					})
+				: (keyed ?? wire);
 			break;
 		}
 	}
@@ -499,13 +589,6 @@ function LogTail({ line }: { line: string }) {
  * live state takes. It wraps rather than truncating, like the failed arm's
  * own sentence: the text is authored to be read whole.
  */
-function batchMaterialTitle(
-	material: Parameters<typeof imageGenMaterialNoun>[0],
-): string {
-	const noun = imageGenMaterialNoun(material);
-	return noun.charAt(0).toUpperCase() + noun.slice(1);
-}
-
 function NoteLine({
 	line,
 	prominent = false,
@@ -645,16 +728,26 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 	 * cancellation endpoint - and may still bill for audio it produces - must not
 	 * disappear behind those words, so it is rendered as its own note exactly
 	 * when the line does not already state it.
+	 *
+	 * A KEYED CANCELLED LINE DOES STATE IT (S16e): the structured cancel fact's
+	 * sentence already carries the request and its cost consequence, so the note
+	 * would only repeat it - which is why that one path is excluded rather than
+	 * being the fourth way to say the same thing twice.
 	 */
+	const keyedCancelLine =
+		view.state === "cancelled" &&
+		!view.batch &&
+		Boolean(keyedStopSentence(view.cancel, true));
 	const soundStopReceipt =
 		soundMaterial &&
+		!keyedCancelLine &&
 		(view.state === "failed"
 			? Boolean(view.batch?.some((item) => item.status === "cancelled"))
 			: view.state === "cancelled"
 				? Boolean(view.batch?.some((item) => item.status === "cancelled")) ||
 					Boolean(view.message)
 				: false)
-			? CANCEL_RUNNING_COPY
+			? runningStopSentence(true)
 			: null;
 	const logTail =
 		unsettled && view.progress.logs.length > 0
@@ -674,8 +767,10 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 			) : null}
 			{view.state === "failed" &&
 			(view.material === "voiceover" || view.material === "sound-effect") &&
-			view.errorType ? (
-				<p className={cn("text-meta text-ink-dim")}>{view.errorType}</p>
+			view.errorCode ? (
+				<p className={cn("text-meta text-ink-dim")}>
+					{errorClassLabel(view.errorCode)}
+				</p>
 			) : null}
 			<StateLine view={view} elapsed={elapsed} />
 			{(view.state === "done" ||
@@ -695,6 +790,11 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 			) : null}
 			{view.state === "cancelled" && view.settlementCaption ? (
 				<NoteLine line={view.settlementCaption} />
+			) : null}
+			{/* A quote with nothing settled yet (S16e E4): keyed copy, not the
+			    English sentence the view model used to bake into the record. */}
+			{view.state === "cancelled" && view.settlementPending ? (
+				<NoteLine line={t("ui.chat.canonical.image_gen.settlement.pending")} />
 			) : null}
 			{soundStopReceipt ? <NoteLine line={soundStopReceipt} /> : null}
 			{soundRunning && confirmStop ? (

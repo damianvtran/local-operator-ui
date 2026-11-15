@@ -123,8 +123,11 @@ const bundle = await build({
  export function AuthPrincipal(){const auth=useRadientUserQuery();const nav=useTeamBridgeNavItem(true);return React.createElement(React.Fragment,null,React.createElement('output',{'data-auth-principal':auth.user?.account?.id??'unresolved'},auth.user?.account?.id??'unresolved'),React.createElement('output',{'data-nav-attention':true},String(nav?.attention??0)));}
  export {recorded as toasts} from 'sonner';
  export {TeamBridgePage} from './src/renderer/src/features/team-bridge/team-bridge-page';
+ import {useTeamBridgeNotifications} from './src/renderer/src/features/team-bridge/use-team-bridge-notifications';
+ export function ShellWatcher(){useTeamBridgeNotifications(true);return null;}
  export {teamBridgeKeys} from './src/renderer/src/features/team-bridge/use-team-bridge';
  export {teamBridgeViewingConversation} from './src/renderer/src/features/team-bridge/team-bridge-viewing';
+ export {resetTeamBridgePrefetch} from './src/renderer/src/features/team-bridge/team-bridge-prefetch';
  export {QueryClient,QueryClientProvider} from '@tanstack/react-query';
  export {MemoryRouter} from 'react-router-dom';
  export {usePendingSends, resetPendingSendsForTest} from './src/renderer/src/features/team-bridge/team-bridge-pending-sends';
@@ -395,6 +398,12 @@ function deferred() {
  *                 request shapes predate it. `fixture.mediaGate` holds the
  *                 upload open; `fixture.uploadStarts` counts
  *                 uploads begun and `fixture.uploads` each one answered.
+ *   watcher     - also mounts the shell's notification watcher
+ *                 (`useTeamBridgeNotifications`) beside the route, with the
+ *                 preload `teamBridge` bridge the shell has (banners land in
+ *                 `fixture.banners`). It owns the background warm of the
+ *                 landing conversation. Off by default: no other suite expects
+ *                 the watcher's reads.
  * The remaining holds are installed on the returned fixture by the scenario that
  * needs them: `fixture.listGate` (the conversation list) and `fixture.unreadGate`
  * (the account unread aggregate).
@@ -411,6 +420,7 @@ async function mount({
 	sendMentions = false,
 	attachments = false,
 	hostedRail = false,
+	watcher = false,
 } = {}) {
 	// A revoked attempt can outlive its cleared lane and store entry. A later
 	// fixture must not reset shared state while that earlier job can still run.
@@ -446,6 +456,8 @@ async function mount({
 		historyGate: null,
 		// Holds the account unread read so a test can observe the refreshing state.
 		unreadGate: null,
+		// `(request, owner) => answer` for `team_bridge.unread`, or null.
+		unreadFor: null,
 		refuseHistory: new Set(),
 		/* ARCHIVE SCENARIO (review round 1, U1). `lifecycle` rows, when set, REPLACE the
 		   single group the other suites use: the live list answers the open ones and
@@ -456,6 +468,8 @@ async function mount({
 		lifecycle,
 		historyByConversation: new Map(),
 		notAMember: new Set(),
+		// Conversation ids whose history the hub rate-limits (429 `rate_limited`).
+		rateLimited: new Set(),
 		lifecycleCalls: [],
 		deleteFailure: null,
 		lifecycleFailure: null,
@@ -474,6 +488,7 @@ async function mount({
 		createReceipts: [],
 		away: false,
 		listFor: null,
+		banners: [],
 	};
 	window.api = {
 		...(attachments
@@ -483,6 +498,19 @@ async function mount({
 				}
 			: {}),
 		desktop: {
+			...(watcher
+				? {
+						teamBridge: {
+							setAuthority: async () => undefined,
+							notify: async (request) => {
+								fixture.banners.push(request);
+								return { shown: true };
+							},
+							onOpen: () => () => undefined,
+							pendingOpen: async () => null,
+						},
+					}
+				: {}),
 			...(attachments
 				? {
 						media: async (request) => {
@@ -665,6 +693,11 @@ async function mount({
 						});
 					case "team_bridge.unread":
 						if (fixture.unreadGate) await fixture.unreadGate.promise;
+						/* Per-test unread (account aggregate and per-tenant rows), so the
+						   watcher's `latest_seq` refresh can be driven; absent, the
+						   org-less default below. */
+						if (fixture.unreadFor)
+							return reply(fixture.unreadFor(request, owner));
 						return reply({
 							total: owner === "acct_a" ? 7 : 2,
 							organizations: [],
@@ -698,6 +731,13 @@ async function mount({
 							before_seq: request.before_seq ?? null,
 							limit,
 						});
+						if (fixture.rateLimited.has(request.conversation_id))
+							return {
+								status: 429,
+								body: {
+									detail: { code: "rate_limited", retry_after_seconds: 5 },
+								},
+							};
 						if (fixture.notAMember.has(request.conversation_id))
 							return {
 								status: 403,
@@ -865,6 +905,7 @@ async function mount({
 							React.Fragment,
 							null,
 							React.createElement(ui.AuthPrincipal),
+							watcher ? React.createElement(ui.ShellWatcher) : null,
 							fixture.away
 								? null
 								: hostedRail
