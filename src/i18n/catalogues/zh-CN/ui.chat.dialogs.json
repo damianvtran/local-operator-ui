@@ -4,7 +4,7 @@
 	"ui.chat.dialogs.archive_action": "归档",
 	"ui.chat.dialogs.archive_title_named": "归档“{title}”？",
 	"ui.chat.dialogs.archive_title_unnamed": "归档此对话？",
-	"ui.chat.dialogs.archive_message": "它会从你的列表中移除。可在{seconds, plural, other {#秒}}内撤销；之后请在对话列表上方搜索，勾选“{include_archived}”，再取消归档。",
+	"ui.chat.dialogs.archive_message": "它将不再显示在你的列表中。可在{seconds, plural, other {#秒}}内撤销；之后请使用对话列表上方的搜索框，勾选“{include_archived}”，再点击“取消归档”。",
 	"ui.chat.dialogs.cancel": "取消",
 	"ui.chat.dialogs.options.clear_confirm": "清空",
 	"ui.chat.dialogs.options.clear_conversation": "清空对话",

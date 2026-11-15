@@ -4,7 +4,7 @@
 	"ui.chat.dialogs.archive_action": "Archivar",
 	"ui.chat.dialogs.archive_title_named": "¿Archivar “{title}”?",
 	"ui.chat.dialogs.archive_title_unnamed": "¿Archivar esta conversación?",
-	"ui.chat.dialogs.archive_message": "Sale de tus listas. Puedes deshacerlo durante {seconds, plural, one {# segundo} many {# de segundos} other {# segundos}}; después, busca sobre tus conversaciones, activa “{include_archived}” y pulsa Desarchivar.",
+	"ui.chat.dialogs.archive_message": "Desaparece de tus listas. Puedes deshacerlo durante {seconds, plural, one {# segundo} many {# de segundos} other {# segundos}}; después, usa la búsqueda que hay encima de tus conversaciones, activa “{include_archived}” y pulsa Desarchivar.",
 	"ui.chat.dialogs.cancel": "Cancelar",
 	"ui.chat.dialogs.options.clear_confirm": "Borrar",
 	"ui.chat.dialogs.options.clear_conversation": "Borrar conversación",
