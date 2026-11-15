@@ -73,7 +73,7 @@
 	"ui.browser.extensions.desktop_apps_refused": "Non autorisée",
 	"ui.browser.extensions.desktop_apps_ask_again": "Redemander",
 	"ui.browser.extensions.desktop_apps_ask_again_label": "Redemander avant que {app} puisse se connecter",
-	"ui.browser.extensions.desktop_apps_onepassword_hint": "Si 1Password ne parvient toujours pas à joindre l’application de bureau, ouvrez 1Password, allez dans Paramètres → Navigateur → Ajouter un navigateur, puis choisissez Local Operator.",
+	"ui.browser.extensions.desktop_apps_onepassword_hint": "Si 1Password ne parvient toujours pas à joindre l’application de bureau, ouvrez 1Password, allez dans Réglages → Navigateur → Ajouter un navigateur, puis choisissez Local Operator.",
 	"ui.browser.extensions.native_confirm_title": "Autoriser « {name} » à se connecter à {app} ?",
 	"ui.browser.extensions.native_confirm_body": "« {name} » souhaite échanger des messages avec {app}, un programme installé sur cet ordinateur.",
 	"ui.browser.extensions.native_confirm_host": "Hôte : {host}",
