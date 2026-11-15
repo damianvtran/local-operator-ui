@@ -13,6 +13,9 @@
 	"ui.canvas.projects.draft_description": "Envía un primer mensaje y vincula esta conversación a un proyecto para verlo aquí.",
 	"ui.canvas.projects.unavailable_title": "Los proyectos vinculados no están disponibles",
 	"ui.canvas.projects.unavailable_description": "Este runtime no puede listar los proyectos de una conversación. Actualiza Local Operator para verlos aquí.",
+	"ui.canvas.projects.unreachable_title": "No se puede conectar con el runtime",
+	"ui.canvas.projects.unreachable_description": "El runtime no respondió, así que no se pudieron leer los proyectos vinculados de esta conversación.",
+	"ui.canvas.projects.unpaired_description": "Esta app no está vinculada con el runtime, así que no puede leer los proyectos vinculados de esta conversación.",
 	"ui.canvas.projects.error_title": "No se pudieron cargar los proyectos vinculados",
 	"ui.canvas.projects.try_again": "Reintentar",
 	"ui.canvas.projects.open_project": "Abrir {name}"

@@ -13,6 +13,9 @@
 	"ui.canvas.projects.draft_description": "Отправьте первое сообщение, затем свяжите этот разговор с проектом, чтобы увидеть его здесь.",
 	"ui.canvas.projects.unavailable_title": "Связанные проекты недоступны",
 	"ui.canvas.projects.unavailable_description": "Этот рантайм не может показать проекты разговора. Обновите Local Operator, чтобы видеть их здесь.",
+	"ui.canvas.projects.unreachable_title": "Не удаётся связаться с рантаймом",
+	"ui.canvas.projects.unreachable_description": "Рантайм не ответил, поэтому не удалось прочитать связанные проекты этого разговора.",
+	"ui.canvas.projects.unpaired_description": "Это приложение не сопряжено с рантаймом, поэтому не может прочитать связанные проекты этого разговора.",
 	"ui.canvas.projects.error_title": "Не удалось загрузить связанные проекты",
 	"ui.canvas.projects.try_again": "Повторить",
 	"ui.canvas.projects.open_project": "Открыть {name}"

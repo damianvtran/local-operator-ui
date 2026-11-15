@@ -13,6 +13,9 @@
 	"ui.canvas.projects.draft_description": "پہلا پیغام بھیجیں، پھر اس گفتگو کو کسی پروجیکٹ سے منسلک کریں تاکہ وہ یہاں نظر آئے۔",
 	"ui.canvas.projects.unavailable_title": "منسلک پروجیکٹس دستیاب نہیں",
 	"ui.canvas.projects.unavailable_description": "یہ رن ٹائم کسی گفتگو کے پروجیکٹس کی فہرست نہیں دکھا سکتا۔ انہیں یہاں دیکھنے کے لیے Local Operator اپ ڈیٹ کریں۔",
+	"ui.canvas.projects.unreachable_title": "رن ٹائم تک رسائی نہیں ہو رہی",
+	"ui.canvas.projects.unreachable_description": "رن ٹائم نے جواب نہیں دیا، اس لیے اس گفتگو کے منسلک پروجیکٹس نہیں پڑھے جا سکے۔",
+	"ui.canvas.projects.unpaired_description": "یہ ایپ رن ٹائم کے ساتھ جوڑی نہیں گئی، اس لیے اس گفتگو کے منسلک پروجیکٹس نہیں پڑھ سکتی۔",
 	"ui.canvas.projects.error_title": "منسلک پروجیکٹس لوڈ نہیں ہو سکے",
 	"ui.canvas.projects.try_again": "دوبارہ کوشش کریں",
 	"ui.canvas.projects.open_project": "{name} کھولیں"

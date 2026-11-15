@@ -528,6 +528,77 @@ test("projects door: canvas on another view lights canvas; the projects press sw
 		   canvas's own views rather than closing a pane it did not open. */
 		await api.click(api.item("canvas"));
 		assert.equal(useUiPreferencesStore.getState().isCanvasOpen, true);
+		assert.equal(
+			canvasView(),
+			"files",
+			"back to the view the user came from (round-1 U6), not a fixed documents",
+		);
+		assert.deepEqual(api.pressed(), ["canvas"]);
+	});
+});
+
+/*
+ * ROUND-1 R1-1 / U1 / Q-1: the Projects door's close leaves the stored view at
+ * `projects`, and the Canvas door used to plain-toggle the pane back open onto
+ * it - unlit, two presses from the files the user wanted. The canvas door opens
+ * the LAST non-projects view whether the pane is drawn or closed (U6: not a
+ * fixed `documents`), and the pane's own close (a bare `setCanvasOpen(false)`,
+ * the header X) leaves the same state behind, so it is pinned too.
+ */
+test("canvas door after the projects door closed the pane: opens lit, on the last canvas view", async () => {
+	await mount(async (api) => {
+		reset(api);
+		useCanvasStore.getState().setViewMode(CANVAS_KEY, "files");
+		await api.render(rail({ canvasConversationId: CANVAS_KEY }));
+		await api.click(api.item("projects"));
+		assert.deepEqual(api.pressed(), ["projects"]);
+		await api.click(api.item("projects"));
+		assert.equal(useUiPreferencesStore.getState().isCanvasOpen, false);
+		assert.deepEqual(api.pressed(), []);
+		await api.click(api.item("canvas"));
+		assert.equal(useUiPreferencesStore.getState().isCanvasOpen, true);
+		assert.equal(canvasView(), "files", "the view the user left, not Projects");
+		assert.deepEqual(api.pressed(), ["canvas"], "ONE press lights canvas");
+		await api.click(api.item("canvas"));
+		assert.equal(
+			useUiPreferencesStore.getState().isCanvasOpen,
+			false,
+			"and the lit canvas door is a plain toggle again",
+		);
+	});
+});
+
+test("canvas door after the pane's own close on Projects: still opens the canvas's view", async () => {
+	await mount(async (api) => {
+		reset(api);
+		useCanvasStore.getState().setViewMode(CANVAS_KEY, "goals");
+		useCanvasStore.getState().setViewMode(CANVAS_KEY, "projects");
+		api.store({ isCanvasOpen: true });
+		await api.render(rail({ canvasConversationId: CANVAS_KEY }));
+		assert.deepEqual(api.pressed(), ["projects"]);
+		act(() => useUiPreferencesStore.getState().setCanvasOpen(false));
+		await api.click(api.item("canvas"));
+		assert.equal(canvasView(), "goals");
+		assert.deepEqual(api.pressed(), ["canvas"]);
+	});
+});
+
+test("canvas door with no remembered canvas view defaults to documents", async () => {
+	await mount(async (api) => {
+		reset(api);
+		/* A persisted state from before `lastCanvasView` existed. */
+		useCanvasStore.setState((state) => ({
+			conversations: {
+				...state.conversations,
+				[CANVAS_KEY]: {
+					...state.conversations[CANVAS_KEY],
+					viewMode: "projects",
+					lastCanvasView: undefined,
+				},
+			},
+		}));
+		await api.render(rail({ canvasConversationId: CANVAS_KEY }));
+		await api.click(api.item("canvas"));
 		assert.equal(canvasView(), "documents");
 		assert.deepEqual(api.pressed(), ["canvas"]);
 	});

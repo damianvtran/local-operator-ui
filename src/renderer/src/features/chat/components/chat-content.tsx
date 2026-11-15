@@ -89,7 +89,11 @@ import {
 	goalCapability,
 	goalPresent,
 } from "../../../../../shared/desktop-session-contract";
-import { useSessionProjects } from "../../projects/hooks/use-projects-queries";
+import {
+	linkedProjectTotal,
+	useProjectReadsTurnRefresh,
+	useSessionProjects,
+} from "../../projects/hooks/use-projects-queries";
 import { DelegatedCleanupNoticeBand } from "../../settings/components/delegated-cleanup-notice";
 import { settleQueuedAdoption } from "../aside";
 import { gateIsSecret } from "../ask-answer";
@@ -1097,9 +1101,19 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * and react-query serves both from one request. Gated like the view:
 		 * an older backend, or a draft, is 0 and sends nothing.
 		 */
-		const linkedProjects = useSessionProjects(
-			sessionId,
-			desktopFeatureEnabled(capabilities.data, "projects_by_session"),
+		const projectsBySession = desktopFeatureEnabled(
+			capabilities.data,
+			"projects_by_session",
+		);
+		const linkedProjects = useSessionProjects(sessionId, projectsBySession);
+		const linkedProjectCount = linkedProjectTotal(
+			projectsBySession,
+			linkedProjects.data,
+		);
+		/* The turn-end refresh lives beside the read it keeps current (R1-3). */
+		useProjectReadsTurnRefresh(
+			turnTerminal,
+			projectsBySession && Boolean(sessionId),
 		);
 		/*
 		 * WHETHER THE OWNER QUEUES AN ADOPT PRESSED MID-TURN (`aside_adopt_queue`,
@@ -2744,6 +2758,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						 * restore.
 						 */}
 						<ChatHeader
+							canvasConversationId={conversationId}
 							agentName={agentName}
 							agentAvatar={
 								avatarAgentId
@@ -4230,7 +4245,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						codeMentioned={codeGroups.mentioned.length}
 						codeAttention={codeAttentionCause}
 						canvasConversationId={conversationId}
-						linkedProjectCount={linkedProjects.data?.length ?? 0}
+						linkedProjectCount={linkedProjectCount}
 					/>
 				</InPanelRailHost>
 			</div>

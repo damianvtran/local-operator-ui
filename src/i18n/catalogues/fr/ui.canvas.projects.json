@@ -13,6 +13,9 @@
 	"ui.canvas.projects.draft_description": "Envoyez un premier message, puis liez cette conversation à un projet pour le voir ici.",
 	"ui.canvas.projects.unavailable_title": "Projets liés indisponibles",
 	"ui.canvas.projects.unavailable_description": "Ce runtime ne peut pas lister les projets d’une conversation. Mettez à jour Local Operator pour les voir ici.",
+	"ui.canvas.projects.unreachable_title": "Impossible de joindre le runtime",
+	"ui.canvas.projects.unreachable_description": "Le runtime n’a pas répondu, les projets liés de cette conversation n’ont donc pas pu être lus.",
+	"ui.canvas.projects.unpaired_description": "Cette app n’est pas appairée au runtime, elle ne peut donc pas lire les projets liés de cette conversation.",
 	"ui.canvas.projects.error_title": "Impossible de charger les projets liés",
 	"ui.canvas.projects.try_again": "Réessayer",
 	"ui.canvas.projects.open_project": "Ouvrir {name}"

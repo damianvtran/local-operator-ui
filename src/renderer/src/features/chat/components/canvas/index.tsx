@@ -1168,14 +1168,15 @@ const CanvasComponent: FC<CanvasProps> = ({
 			)}
 			{currentView === "projects" && (
 				/*
-				 * Keyed by session so a conversation switch drops the open project:
-				 * the next conversation lands on ITS list, never on a record it may not
-				 * be linked to.
+				 * Keyed by session so a conversation switch remounts on THAT
+				 * conversation's own state; the open project lives in the canvas store
+				 * per conversation (round-1 U4), and the turn-end refresh is
+				 * `ChatContent`'s, so it runs with this view closed too (R1-3).
 				 */
 				<CanvasProjectsViewer
 					key={sessionId ?? "draft"}
 					sessionId={sessionId}
-					turnTerminal={turnTerminal}
+					conversationId={conversationId}
 				/>
 			)}
 			{/* Placeholder if no conversation context for files or variables view */}

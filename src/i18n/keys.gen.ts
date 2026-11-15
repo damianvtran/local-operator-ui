@@ -4507,6 +4507,9 @@ export type MessageParams = {
 	"ui.canvas.projects.try_again": undefined;
 	"ui.canvas.projects.unavailable_description": undefined;
 	"ui.canvas.projects.unavailable_title": undefined;
+	"ui.canvas.projects.unpaired_description": undefined;
+	"ui.canvas.projects.unreachable_description": undefined;
+	"ui.canvas.projects.unreachable_title": undefined;
 	"ui.chat.analytics.filters.top_level_only": undefined;
 	"ui.chat.analytics.search.clear": undefined;
 	"ui.chat.analytics.search.sessions": undefined;
@@ -5614,6 +5617,7 @@ export type MessageParams = {
 	"ui.chat.header_menu.close_canvas": undefined;
 	"ui.chat.header_menu.close_code_review": undefined;
 	"ui.chat.header_menu.close_console": undefined;
+	"ui.chat.header_menu.close_linked_projects": undefined;
 	"ui.chat.header_menu.default_description": undefined;
 	"ui.chat.header_menu.keep_chat": undefined;
 	"ui.chat.header_menu.make_temporary": undefined;
@@ -5622,6 +5626,7 @@ export type MessageParams = {
 	"ui.chat.header_menu.open_canvas": undefined;
 	"ui.chat.header_menu.open_code_review": undefined;
 	"ui.chat.header_menu.open_console": undefined;
+	"ui.chat.header_menu.open_linked_projects": undefined;
 	"ui.chat.header_menu.rename_failed": undefined;
 	"ui.chat.interrupt.idle": undefined;
 	"ui.chat.interrupt.idle_disputed": undefined;
@@ -12612,6 +12617,7 @@ export type MessageParams = {
 	"ui.settings.shortcuts.action.open_canvas": undefined;
 	"ui.settings.shortcuts.action.open_code_review": undefined;
 	"ui.settings.shortcuts.action.open_console": undefined;
+	"ui.settings.shortcuts.action.open_linked_projects": undefined;
 	"ui.settings.shortcuts.action.open_run_details": undefined;
 	"ui.settings.shortcuts.capture.already_assigned": { label: string };
 	"ui.settings.shortcuts.capture.needs_modifier": undefined;
@@ -12682,6 +12688,7 @@ export type MessageParams = {
 	"ui.settings.shortcuts.row.code_review": undefined;
 	"ui.settings.shortcuts.row.console": undefined;
 	"ui.settings.shortcuts.row.execution": undefined;
+	"ui.settings.shortcuts.row.linked_projects": undefined;
 	"ui.settings.shortcuts.speech.primary": undefined;
 	"ui.settings.shortcuts.speech.push_to_talk_hint": undefined;
 	"ui.settings.shortcuts.speech.push_to_talk_hold": undefined;

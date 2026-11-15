@@ -24,7 +24,12 @@ import { act } from "react";
  *     returns to the list; the quick-send family (strip + per-row message
  *     buttons) is ABSENT, while the route-hosted screen still renders it —
  *     the contrast is what proves the omission is the prop, not a fixture.
- *  5. FRESHNESS: a turn ending re-reads the list.
+ *  5. FRESHNESS: a turn ending re-reads the list - from the CHAT's hook, so it
+ *     runs with the view closed (round-1 R1-3/U5).
+ *  6. ROUND-1 REMEDIATION: unreachable vs older-runtime wording (R1-2/D1), a
+ *     non-empty error sentence (R1-4), the rail total with the capability gone
+ *     (Q-2), focus across the list/detail swap (U3), and the open project
+ *     surviving a remount but not an unlink (U4).
  */
 
 /* ----------------------------------------------------------------- env -- */
@@ -143,16 +148,22 @@ let requests = [];
 let features = { projects: 2, projects_by_session: 1 };
 let sessionRows = () => [row("canvas-alpha", { title: "Canvas alpha" })];
 let failSessionRead = false;
+/* Round-1 gate variants: a capabilities read that fails, an unpaired app,
+   and a read failure that carries no sentence of its own. */
+let failCapabilities = false;
+let desktopAvailable = true;
+let silentSessionFailure = false;
 
 const answer = (request) => {
 	requests.push(request);
 	if (request.op === "capabilities") {
+		if (failCapabilities) return { status: 500, body: {} };
 		return {
 			status: 200,
 			body: {
 				result: {
 					desktop_contract: 1,
-					desktop_available: true,
+					desktop_available: desktopAvailable,
 					desktop_auth: "bearer",
 					features,
 				},
@@ -161,7 +172,10 @@ const answer = (request) => {
 	}
 	if (request.op === "projects.for_session") {
 		if (failSessionRead)
-			return { status: 500, body: { detail: "registry unreadable" } };
+			return {
+				status: 500,
+				body: silentSessionFailure ? {} : { detail: "registry unreadable" },
+			};
 		return {
 			status: 200,
 			body: {
@@ -205,7 +219,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { CanvasProjectsViewer } from "./src/renderer/src/features/chat/components/canvas/canvas-projects-viewer";
 import { ProjectDetailScreen } from "./src/renderer/src/features/projects/components/project-detail";
-export { projectKeys } from "./src/renderer/src/features/projects/hooks/use-projects-queries";
+import { useProjectReadsTurnRefresh, useSessionProjects } from "./src/renderer/src/features/projects/hooks/use-projects-queries";
+export { projectKeys, linkedProjectTotal } from "./src/renderer/src/features/projects/hooks/use-projects-queries";
+export { useCanvasStore } from "./src/renderer/src/shared/store/canvas-store";
 export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";
 
 const wrap = (client, child) =>
@@ -219,6 +235,25 @@ export function mount(container, props) {
 	const root = createRoot(container);
 	const render = (next) =>
 		root.render(wrap(client, createElement(CanvasProjectsViewer, next)));
+	render(props);
+	return { root, client, render };
+}
+
+/* ChatContent's two project hooks, without ChatContent: the rail's read and
+   the turn-end refresh beside it (R1-3). Renders the read's length. */
+function ChatRailProbe({ sessionId, turnTerminal }) {
+	const read = useSessionProjects(sessionId, true);
+	useProjectReadsTurnRefresh(turnTerminal, Boolean(sessionId));
+	return createElement("output", { "data-rail-total": "" }, String(read.data?.length ?? "-"));
+}
+
+export function mountRailProbe(container, props) {
+	const client = new QueryClient({
+		defaultOptions: { queries: { retry: false, gcTime: 0 } },
+	});
+	const root = createRoot(container);
+	const render = (next) =>
+		root.render(wrap(client, createElement(ChatRailProbe, next)));
 	render(props);
 	return { root, client, render };
 }
@@ -285,8 +320,11 @@ const bundlePath = new URL(
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
 	mount,
+	mountRailProbe,
 	mountRouteDetail,
 	projectKeys,
+	linkedProjectTotal,
+	useCanvasStore,
 	desktopRequestSchema,
 	desktopEndpoint,
 } = await import(bundlePath.href).finally(() => unlink(bundlePath));
@@ -340,7 +378,14 @@ const reset = () => {
 	features = { projects: 2, projects_by_session: 1 };
 	sessionRows = () => [row("canvas-alpha", { title: "Canvas alpha" })];
 	failSessionRead = false;
+	failCapabilities = false;
+	desktopAvailable = true;
+	silentSessionFailure = false;
+	/* The open project is persisted per conversation (U4); no case inherits
+	   another's selection. */
+	useCanvasStore.setState({ conversations: {} });
 };
+const CONVERSATION = "agent-1";
 
 /* -------------------------------------------------------------- the wire -- */
 
@@ -508,22 +553,183 @@ test("contrast: the route-hosted screen still renders quick-send for the same re
 
 /* ------------------------------------------------------------ freshness -- */
 
-test("a turn ending re-reads the linked projects", async () => {
+test("a turn ending re-reads the linked projects from the CHAT, with the view closed (R1-3/U5)", async () => {
 	reset();
+	/* Only the rail's read is mounted - no CanvasProjectsViewer - which is the
+	   closed-canvas case the rail's dot and count went stale in. */
 	const { handle } = await fresh((container) =>
-		mount(container, { sessionId: SESSION, nowMs: NOW_MS, turnTerminal: 1 }),
+		mountRailProbe(container, { sessionId: SESSION, turnTerminal: 1 }),
 	);
-	await waitFor(() => text().includes("Canvas alpha"), "rows");
+	const total = () =>
+		current.container.querySelector("[data-rail-total]")?.textContent;
+	await waitFor(() => total() === "1", "rail total");
 	const before = ops("projects.for_session").length;
 	sessionRows = () => [
 		row("canvas-alpha", { title: "Canvas alpha" }),
 		row("gamma", { title: "Gamma" }),
 	];
-	await act(async () =>
-		handle.render({ sessionId: SESSION, nowMs: NOW_MS, turnTerminal: 2 }),
-	);
-	await waitFor(() => text().includes("Gamma"), "re-read after the turn");
+	/* The first observed count is a baseline, never a refresh. */
+	await act(async () => handle.render({ sessionId: SESSION, turnTerminal: 1 }));
+	await tick();
+	assert.equal(ops("projects.for_session").length, before);
+	await act(async () => handle.render({ sessionId: SESSION, turnTerminal: 2 }));
+	await waitFor(() => total() === "2", "re-read after the turn");
 	assert.ok(ops("projects.for_session").length > before);
+});
+
+test("the rail total is 0 when the capability is absent, whatever is cached (Q-2)", () => {
+	const cached = [row("a"), row("b"), row("c")];
+	assert.equal(linkedProjectTotal(true, cached), 3);
+	assert.equal(
+		linkedProjectTotal(false, cached),
+		0,
+		"a disabled query keeps its data; the total does not",
+	);
+	assert.equal(linkedProjectTotal(true, undefined), 0);
+});
+
+/* ------------------------------------------------- round-1 remediation -- */
+
+test("a failed capabilities read says the runtime can't be reached, not 'update' (R1-2/D1)", async () => {
+	reset();
+	failCapabilities = true;
+	await fresh((container) =>
+		mount(container, { sessionId: SESSION, nowMs: NOW_MS }),
+	);
+	await waitFor(
+		() => text().includes("Can't reach the runtime"),
+		"unreachable state",
+	);
+	assert.ok(!text().includes("Update Local Operator"));
+	assert.equal(ops("projects.for_session").length, 0);
+	/* Try again re-asks the capabilities, and a now-answering runtime lists. */
+	failCapabilities = false;
+	await click(buttonByText("Try again"));
+	await waitFor(() => text().includes("Canvas alpha"), "rows after retry");
+});
+
+test("an unpaired app says so, not 'update' (R1-2/D1)", async () => {
+	reset();
+	desktopAvailable = false;
+	await fresh((container) =>
+		mount(container, { sessionId: SESSION, nowMs: NOW_MS }),
+	);
+	await waitFor(
+		() => text().includes("Can't reach the runtime"),
+		"unreachable state",
+	);
+	assert.ok(text().includes("isn't paired with the runtime"));
+	assert.ok(!text().includes("Update Local Operator"));
+	assert.equal(ops("projects.for_session").length, 0);
+});
+
+test("a read failure with no sentence of its own still says something (R1-4)", async () => {
+	reset();
+	failSessionRead = true;
+	silentSessionFailure = true;
+	await fresh((container) =>
+		mount(container, { sessionId: SESSION, nowMs: NOW_MS }),
+	);
+	await waitFor(
+		() => text().includes("Linked projects could not be loaded"),
+		"error",
+	);
+	const paragraphs = [...current.container.querySelectorAll("p")].map((node) =>
+		node.textContent.trim(),
+	);
+	assert.ok(
+		paragraphs.every((line) => line.length > 0),
+		`no empty description paragraph: ${JSON.stringify(paragraphs)}`,
+	);
+});
+
+test("focus follows the swap: open lands on the back link, back returns to the opened row (U3)", async () => {
+	reset();
+	sessionRows = () => [
+		row("canvas-alpha", { title: "Canvas alpha" }),
+		row("beta-key", { title: "Beta" }),
+	];
+	await fresh((container) =>
+		mount(container, {
+			sessionId: SESSION,
+			conversationId: CONVERSATION,
+			nowMs: NOW_MS,
+		}),
+	);
+	await waitFor(() => text().includes("Beta"), "rows");
+	const second = current.container.querySelector(
+		'[data-canvas-project-row="beta-key"]',
+	);
+	second.focus();
+	await click(second);
+	await waitFor(() => text().includes("Canvas list renders"), "detail");
+	assert.equal(
+		document.activeElement,
+		buttonByText("Linked projects"),
+		"focus is on the detail's back link, not <body>",
+	);
+	await click(buttonByText("Linked projects"));
+	await waitFor(
+		() => current.container.querySelector("[data-canvas-projects-list]"),
+		"list again",
+	);
+	assert.equal(
+		document.activeElement?.getAttribute("data-canvas-project-row"),
+		"beta-key",
+		"focus returns to the row that was opened, not the first row",
+	);
+});
+
+test("the open project survives a remount (view switch / close-reopen) per conversation (U4)", async () => {
+	reset();
+	const props = {
+		sessionId: SESSION,
+		conversationId: CONVERSATION,
+		nowMs: NOW_MS,
+	};
+	await fresh((container) => mount(container, props));
+	await waitFor(() => text().includes("Canvas alpha"), "rows");
+	await click(current.container.querySelector("[data-canvas-project-row]"));
+	await waitFor(() => text().includes("Canvas list renders"), "detail");
+	assert.equal(
+		useCanvasStore.getState().conversations[CONVERSATION]?.selectedProjectId,
+		"canvas-alpha",
+	);
+	/* Unmount + mount is what a view switch or close/reopen does to the viewer. */
+	await fresh((container) => mount(container, props));
+	await waitFor(
+		() => text().includes("Canvas list renders"),
+		"the same project, not the list",
+	);
+	/* Another conversation does not inherit it. */
+	await fresh((container) =>
+		mount(container, { ...props, conversationId: "agent-2" }),
+	);
+	await waitFor(
+		() => current.container.querySelector("[data-canvas-projects-list]"),
+		"agent-2's list",
+	);
+});
+
+test("a remembered project no longer linked here falls back to the list (U4)", async () => {
+	reset();
+	useCanvasStore.getState().setSelectedProject(CONVERSATION, "gone-project");
+	await fresh((container) =>
+		mount(container, {
+			sessionId: SESSION,
+			conversationId: CONVERSATION,
+			nowMs: NOW_MS,
+		}),
+	);
+	await waitFor(
+		() => current.container.querySelector("[data-canvas-projects-list]"),
+		"the list",
+	);
+	assert.equal(ops("projects.get").length, 0, "the stale record is never read");
+	assert.equal(
+		useCanvasStore.getState().conversations[CONVERSATION]?.selectedProjectId,
+		null,
+	);
 });
 
 test.after(async () => {

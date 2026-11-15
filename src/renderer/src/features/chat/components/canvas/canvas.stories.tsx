@@ -2915,10 +2915,16 @@ const PROJECT_DETAIL = {
 		},
 	],
 };
+/*
+ * `projects_request_update` is what the shipping backend advertises
+ * (`features.py`), so the detail frames show the header a real user sees -
+ * Request update beside Delete - not a Delete-only header (design round 1, D2).
+ */
 const PROJECTS_FEATURES = {
 	session_variables: 1,
 	projects: 2,
 	projects_by_session: 1,
+	projects_request_update: 1,
 };
 /*
  * THE PREVIEW'S BRIDGE IS `window.api.desktop`, and it REFUSES by default
@@ -2928,7 +2934,10 @@ const PROJECTS_FEATURES = {
  * from the same `desktopAnswers` the fetch stub reads — one source of truth for
  * what the story's backend says, two transports.
  */
-const installProjectsBridge = (answers: DesktopAnswers) => {
+const installProjectsBridge = (
+	answers: DesktopAnswers,
+	desktopAvailable = true,
+) => {
 	const page = window as unknown as {
 		api?: { desktop?: { request: (request: unknown) => Promise<unknown> } };
 	};
@@ -2936,11 +2945,15 @@ const installProjectsBridge = (answers: DesktopAnswers) => {
 	page.api.desktop = {
 		request: async (raw: unknown) => {
 			const request = raw as { op?: string; key?: unknown };
+			/* The capabilities read failing outright (round-1 R1-2/D1). */
+			if (request.op === "capabilities" && answers.featuresError) {
+				throw new TypeError("Failed to fetch");
+			}
 			const answer: DesktopAnswer | "hang" =
 				request.op === "capabilities"
 					? ok({
 							desktop_contract: 1,
-							desktop_available: true,
+							desktop_available: desktopAvailable,
 							desktop_auth: "bearer",
 							features: answers.features ?? {},
 						})
@@ -2958,14 +2971,20 @@ const installProjectsBridge = (answers: DesktopAnswers) => {
 
 const projectsFrame = (
 	projects: DesktopAnswers["projects"],
-	over: { features?: Record<string, number>; sessionId?: string | null } = {},
+	over: {
+		features?: Record<string, number>;
+		sessionId?: string | null;
+		featuresError?: boolean;
+		desktopAvailable?: boolean;
+	} = {},
 ) => {
 	const answers: DesktopAnswers = {
 		features: over.features ?? PROJECTS_FEATURES,
 		list: () => observed(VARIABLES),
 		projects,
+		featuresError: over.featuresError,
 	};
-	installProjectsBridge(answers);
+	installProjectsBridge(answers, over.desktopAvailable ?? true);
 	return (
 		<CanvasFrame
 			view="projects"
@@ -3092,6 +3111,19 @@ export const ProjectsUnavailable: Story = {
 			},
 			{ features: { session_variables: 1, projects: 2 } },
 		),
+};
+
+/**
+ * The capabilities read failed: "can't reach the runtime" with the transport's
+ * sentence and a retry - never update advice (round-1 R1-2/D1).
+ */
+export const ProjectsUnreachable: Story = {
+	render: () => projectsFrame(undefined, { featuresError: true }),
+};
+
+/** This app holds no pairing for the runtime: the same title, the pairing fact. */
+export const ProjectsUnpaired: Story = {
+	render: () => projectsFrame(undefined, { desktopAvailable: false }),
 };
 
 /** A draft: no conversation to have projects yet. */

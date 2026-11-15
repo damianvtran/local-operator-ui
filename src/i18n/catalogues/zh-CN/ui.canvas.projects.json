@@ -13,6 +13,9 @@
 	"ui.canvas.projects.draft_description": "先发送第一条消息，再将此对话关联到项目，即可在这里看到它。",
 	"ui.canvas.projects.unavailable_title": "无法使用关联项目",
 	"ui.canvas.projects.unavailable_description": "此运行时无法列出对话的项目。请更新 Local Operator 以在这里查看。",
+	"ui.canvas.projects.unreachable_title": "无法连接运行时",
+	"ui.canvas.projects.unreachable_description": "运行时没有响应，因此无法读取此对话的关联项目。",
+	"ui.canvas.projects.unpaired_description": "此应用尚未与运行时配对，因此无法读取此对话的关联项目。",
 	"ui.canvas.projects.error_title": "无法加载关联项目",
 	"ui.canvas.projects.try_again": "重试",
 	"ui.canvas.projects.open_project": "打开{name}"

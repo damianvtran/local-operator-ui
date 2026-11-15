@@ -34,6 +34,14 @@ export type CanvasViewMode =
 	| "projects";
 
 /**
+ * The canvas's OWN views: every mode but `projects`, which the rail reaches
+ * through a door of its own (the linked-projects item). The canvas door, its
+ * chord and the header's canvas row open one of these, never Projects — see
+ * `lastCanvasView` and `canvasDoorView` for why that has to be remembered.
+ */
+export type CanvasOwnViewMode = Exclude<CanvasViewMode, "projects">;
+
+/**
  * State for a single conversation's canvas
  */
 export type ConversationCanvasState = {
@@ -43,8 +51,44 @@ export type ConversationCanvasState = {
 	files: CanvasDocument[];
 	mentionedFiles: CanvasDocument[];
 	viewMode: CanvasViewMode;
+	/**
+	 * The last NON-projects view this conversation's canvas showed (round-1 R1-1 /
+	 * U1 / Q-1 of the projects view). The rail has two doors into one pane, and
+	 * `viewMode` persists across a close, so after the Projects door closed the
+	 * pane the Canvas door used to reopen it on Projects — unlit, and two presses
+	 * from the files the user wanted. The canvas doors open THIS view whenever the
+	 * stored one is `projects` (`canvasDoorView`), so the user lands back where
+	 * they were (Files, Goals…), not on a fixed default. Optional: a persisted
+	 * state from before this field reads as "never left documents".
+	 */
+	lastCanvasView?: CanvasOwnViewMode;
+	/**
+	 * The project open in the Projects view's detail, or null for the list
+	 * (round-1 U4). Held here rather than in the viewer because the viewer
+	 * unmounts on every view switch and close: a user reading an update who
+	 * glances at Files, or closes and reopens the pane, returns to the record
+	 * they were reading. Per conversation, so another chat never inherits it;
+	 * the viewer drops it when the project is no longer linked here.
+	 */
+	selectedProjectId?: string | null;
 	spreadsheetData: Record<string, Record<string, Record<string, unknown>[]>>;
 };
+
+/**
+ * The view a canvas door (rail item, chord, header row) opens for a
+ * conversation: its stored view, unless that is `projects` — then the last of
+ * the canvas's own views, defaulting to `documents`. Pure, so the rail's
+ * toggle and the tests read one rule.
+ */
+export function canvasDoorView(
+	conversation:
+		| Pick<ConversationCanvasState, "viewMode" | "lastCanvasView">
+		| undefined,
+): CanvasOwnViewMode {
+	if (!conversation) return "documents";
+	if (conversation.viewMode !== "projects") return conversation.viewMode;
+	return conversation.lastCanvasView ?? "documents";
+}
 
 /**
  * State for the entire canvas store, keyed by conversation ID
@@ -98,6 +142,13 @@ export type CanvasStoreState = {
 	 * Set the view mode for a conversation's canvas
 	 */
 	setViewMode: (conversationId: string, viewMode: CanvasViewMode) => void;
+	/**
+	 * Set (or clear, with null) the project open in the Projects view's detail.
+	 */
+	setSelectedProject: (
+		conversationId: string,
+		projectId: string | null,
+	) => void;
 	/**
 	 * Reset the canvas state for a conversation
 	 */
@@ -297,6 +348,20 @@ export const useCanvasStore = create<CanvasStoreState>()(
 						[conversationId]: {
 							...getConversationState(state.conversations, conversationId),
 							viewMode,
+							/* Every own-view write is remembered, whoever made it (switcher,
+							   door, file open), so `canvasDoorView` has it to return to. */
+							...(viewMode === "projects" ? {} : { lastCanvasView: viewMode }),
+						},
+					},
+				}));
+			},
+			setSelectedProject: (conversationId, projectId) => {
+				set((state) => ({
+					conversations: {
+						...state.conversations,
+						[conversationId]: {
+							...getConversationState(state.conversations, conversationId),
+							selectedProjectId: projectId,
 						},
 					},
 				}));
@@ -329,6 +394,7 @@ export const useCanvasStore = create<CanvasStoreState>()(
 								openTabs: updatedTabs,
 								selectedTabId: file.id,
 								viewMode: "documents",
+								lastCanvasView: "documents",
 							},
 						},
 					};

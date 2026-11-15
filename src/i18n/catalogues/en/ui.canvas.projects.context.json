@@ -82,6 +82,21 @@
 		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
 		"note": "Tells the user to update. 'Local Operator' is the product name; keep it untranslated."
 	},
+	"ui.canvas.projects.unreachable_title": {
+		"role": "empty-state title",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Title shown in the chat canvas's linked-projects view when the app cannot reach the Local Operator runtime (no answer, failed capabilities read, or not paired). 'Runtime' is the local Local Operator service, same term as the other ui.canvas.projects strings. Distinct from unavailable_title, which means the runtime answered but is too old."
+	},
+	"ui.canvas.projects.unreachable_description": {
+		"role": "empty-state description",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Fallback sentence under unreachable_title (and under error_title) when the transport gave no message of its own: the runtime did not answer, so the projects linked to this conversation could not be read. Must not advise updating; a Try again button follows."
+	},
+	"ui.canvas.projects.unpaired_description": {
+		"role": "empty-state description",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Sentence under unreachable_title when this desktop app holds no pairing (credential) for the runtime, so it cannot read the conversation's linked projects. State the fact only; do not tell the user to update. A Try again button follows."
+	},
 	"ui.canvas.projects.error_title": {
 		"role": "error heading",
 		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",

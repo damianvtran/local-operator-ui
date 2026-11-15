@@ -6519,7 +6519,7 @@ export const STORIES = [
 	[
 		"navigation-panel-rail--console-chord-tooltip",
 		360,
-		220,
+		256,
 		{
 			hover: '[data-panel-rail-item="console"]',
 			hoverSettleMs: 500,
@@ -6542,7 +6542,7 @@ export const STORIES = [
 	[
 		"navigation-panel-rail--browser-no-chord",
 		360,
-		220,
+		256,
 		{
 			hover: '[data-panel-rail-item="browser"]',
 			hoverSettleMs: 500,

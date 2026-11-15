@@ -13,7 +13,7 @@
  */
 
 import type { AskScope } from "@features/chat/ask-queue";
-import { useCanvasStore } from "@shared/store/canvas-store";
+import { canvasDoorView, useCanvasStore } from "@shared/store/canvas-store";
 import {
 	type RightSlotRouteFacts,
 	resolveDrawnRightSlotPane,
@@ -57,7 +57,10 @@ export type PanelRailActionContext = {
 	 * The canvas store's key for this conversation (the chat's `agentId`, NOT
 	 * the session id — `canvas-store.ts` keys per conversation). The projects
 	 * door needs it to pick the canvas's view; the canvas door reads it to step
-	 * off that view. Absent (the chord path) leaves both arms as they shipped.
+	 * off that view. Every canvas door passes it — the rail, the header row and
+	 * the chord (`runKeymapAction` derives it from the active conversation) —
+	 * because a door without it would reopen on a stored Projects view (R1-1).
+	 * Absent leaves the canvas arm a plain toggle and the projects arm inert.
 	 */
 	canvasConversationId?: string | null;
 	/**
@@ -88,19 +91,25 @@ export function togglePanelRailItem(
 			return true;
 		case "canvas": {
 			/*
-			 * WHILE THE PROJECTS DOOR IS THE LIT ONE, the canvas door is unlit and
-			 * says "Open canvas", so its press must open the canvas's own views
-			 * rather than close the pane the user did not open through it. Only
-			 * when the caller names the conversation (the rail); the chord keeps
-			 * its plain toggle.
+			 * WHENEVER THE STORED VIEW IS PROJECTS, the canvas door is unlit and says
+			 * "Open canvas", so its press OPENS the canvas's own views — whether the
+			 * pane is drawn on Projects (switch the view, keep the pane) or closed
+			 * (switch, then open). The closed case is round-1 R1-1/U1/Q-1: the
+			 * Projects door's close (and the pane's own ✕) leave `viewMode` at
+			 * `projects`, so a plain toggle reopened the pane on Projects with this
+			 * door still unlit, and the chord alternated open-on-Projects/close and
+			 * never reached files. The view is the last one the user had
+			 * (`canvasDoorView`), written BEFORE the open so the first frame is it.
 			 */
 			const id = context.canvasConversationId;
-			if (
-				id &&
-				resolveDrawnRightSlotPane(state) === "canvas" &&
-				useCanvasStore.getState().conversations[id]?.viewMode === "projects"
-			) {
-				useCanvasStore.getState().setViewMode(id, "documents");
+			const conversation = id
+				? useCanvasStore.getState().conversations[id]
+				: undefined;
+			if (id && conversation?.viewMode === "projects") {
+				useCanvasStore.getState().setViewMode(id, canvasDoorView(conversation));
+				if (resolveDrawnRightSlotPane(state) !== "canvas") {
+					state.setCanvasOpen(true);
+				}
 				return true;
 			}
 			state.setCanvasOpen(!state.isCanvasOpen);

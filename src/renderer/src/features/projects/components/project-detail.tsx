@@ -66,7 +66,7 @@ import { useConversationInputStore } from "@shared/store/conversation-input-stor
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import type { FC } from "react";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { openConversation } from "../../chat/open-conversation";
 import { encodeAttachments } from "../../chat/utils/attachment-encode";
@@ -144,6 +144,13 @@ export type ProjectDetailEmbedding = {
 	onBack: () => void;
 	/** The back link's label, already localized by the host. */
 	backLabel: string;
+	/**
+	 * Move keyboard focus to the back link once the record renders (canvas
+	 * round-1 U3): the host swaps its list for this screen, so the row that had
+	 * focus unmounts and focus would otherwise fall to <body>. Once per mount,
+	 * so a refetch or an inline save never yanks focus back to the top.
+	 */
+	focusOnMount?: boolean;
 };
 
 type ProjectDetailScreenProps = {
@@ -167,6 +174,16 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 	};
 	const backLabel =
 		embedded?.backLabel ?? t("ui.projects.project_detail.all_projects");
+	const focusedOnMount = useRef(false);
+	const wantsFocus = embedded?.focusOnMount === true;
+	const backLinkRef = useCallback(
+		(node: HTMLButtonElement | null) => {
+			if (!node || !wantsFocus || focusedOnMount.current) return;
+			focusedOnMount.current = true;
+			node.focus();
+		},
+		[wantsFocus],
+	);
 	const capabilities = useDesktopCapabilities();
 	/*
 	 * The team the `Managed by` line names, read the way every other human-read
@@ -448,6 +465,7 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 			<div className="mx-auto flex w-full max-w-200 flex-col gap-8">
 				<header className="flex flex-col gap-4">
 					<button
+						ref={backLinkRef}
 						type="button"
 						onClick={goBack}
 						className="flex w-fit items-center gap-1.5 text-body-sm text-ink-muted hover:text-ink"
@@ -456,8 +474,27 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 						{backLabel}
 					</button>
 
-					<div className="flex flex-wrap items-start justify-between gap-4">
-						<div className="flex min-w-0 flex-1 flex-wrap items-start gap-x-3 gap-y-2">
+					{/*
+					 * EMBEDDED, THE ACTIONS SIT UNDER THE TITLE (canvas round-1 D2). In the
+					 * chat canvas the content box is ~448px, and the non-wrapping actions
+					 * cluster (Request update + Delete, ~244px) left the title ~188px, so a
+					 * two-word name broke beside the buttons. Stacking gives the title the
+					 * full measure; the route keeps its side-by-side row unchanged.
+					 */}
+					<div
+						className={
+							embedded
+								? "flex flex-col items-start gap-3"
+								: "flex flex-wrap items-start justify-between gap-4"
+						}
+					>
+						<div
+							className={
+								embedded
+									? "flex w-full min-w-0 flex-wrap items-start gap-x-3 gap-y-2"
+									: "flex min-w-0 flex-1 flex-wrap items-start gap-x-3 gap-y-2"
+							}
+						>
 							{/*
 							 * THE IDENTITY BLOCK: the h1 and, under it, whichever of the
 							 * title/key pair is not the heading (`project-editors.tsx` owns

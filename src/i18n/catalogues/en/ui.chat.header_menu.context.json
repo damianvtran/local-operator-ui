@@ -27,6 +27,13 @@
 		"role": "header overflow-menu item that closes the code-review pane",
 		"tone": "imperative verb phrase"
 	},
+	"ui.chat.header_menu.close_linked_projects": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "header overflow-menu item that closes the chat canvas's Linked projects view",
+		"tone": "imperative verb phrase"
+	},
 	"ui.chat.header_menu.close_console": {
 		"length": "",
 		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
@@ -67,6 +74,13 @@
 		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
 		"placeholders": {},
 		"role": "header overflow-menu item that opens the code-review pane",
+		"tone": "imperative verb phrase"
+	},
+	"ui.chat.header_menu.open_linked_projects": {
+		"length": "",
+		"note": "Keep the meaning and register of the English; technical tokens in the sentence stay as written.",
+		"placeholders": {},
+		"role": "header overflow-menu item that opens the chat canvas on its Linked projects view (the projects this conversation is linked to)",
 		"tone": "imperative verb phrase"
 	},
 	"ui.chat.header_menu.open_console": {

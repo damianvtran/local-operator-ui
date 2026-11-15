@@ -13,6 +13,9 @@
 	"ui.canvas.projects.draft_description": "पहला संदेश भेजें, फिर इस बातचीत को किसी प्रोजेक्ट से जोड़ें ताकि वह यहाँ दिखे।",
 	"ui.canvas.projects.unavailable_title": "जुड़े प्रोजेक्ट उपलब्ध नहीं हैं",
 	"ui.canvas.projects.unavailable_description": "यह रनटाइम किसी बातचीत के प्रोजेक्ट की सूची नहीं दिखा सकता। उन्हें यहाँ देखने के लिए Local Operator अपडेट करें।",
+	"ui.canvas.projects.unreachable_title": "रनटाइम तक नहीं पहुँच पा रहे",
+	"ui.canvas.projects.unreachable_description": "रनटाइम ने जवाब नहीं दिया, इसलिए इस बातचीत के जुड़े प्रोजेक्ट पढ़े नहीं जा सके।",
+	"ui.canvas.projects.unpaired_description": "यह ऐप रनटाइम के साथ पेयर नहीं है, इसलिए इस बातचीत के जुड़े प्रोजेक्ट नहीं पढ़ सकता।",
 	"ui.canvas.projects.error_title": "जुड़े प्रोजेक्ट लोड नहीं हो सके",
 	"ui.canvas.projects.try_again": "फिर कोशिश करें",
 	"ui.canvas.projects.open_project": "{name} खोलें"

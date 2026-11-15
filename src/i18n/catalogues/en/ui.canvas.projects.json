@@ -13,6 +13,9 @@
 	"ui.canvas.projects.draft_description": "Send a first message, then link this conversation to a project to see it here.",
 	"ui.canvas.projects.unavailable_title": "Linked projects aren't available",
 	"ui.canvas.projects.unavailable_description": "This runtime can't list a conversation's projects. Update Local Operator to see them here.",
+	"ui.canvas.projects.unreachable_title": "Can't reach the runtime",
+	"ui.canvas.projects.unreachable_description": "The runtime didn't answer, so this conversation's linked projects couldn't be read.",
+	"ui.canvas.projects.unpaired_description": "This app isn't paired with the runtime, so it can't read this conversation's linked projects.",
 	"ui.canvas.projects.error_title": "Linked projects could not be loaded",
 	"ui.canvas.projects.try_again": "Try again",
 	"ui.canvas.projects.open_project": "Open {name}"

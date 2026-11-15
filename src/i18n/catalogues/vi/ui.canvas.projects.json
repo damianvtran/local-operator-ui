@@ -13,6 +13,9 @@
 	"ui.canvas.projects.draft_description": "Gửi tin nhắn đầu tiên, rồi liên kết cuộc trò chuyện này với một dự án để xem nó ở đây.",
 	"ui.canvas.projects.unavailable_title": "Không dùng được dự án liên kết",
 	"ui.canvas.projects.unavailable_description": "Runtime này không thể liệt kê dự án của một cuộc trò chuyện. Hãy cập nhật Local Operator để xem chúng ở đây.",
+	"ui.canvas.projects.unreachable_title": "Không kết nối được runtime",
+	"ui.canvas.projects.unreachable_description": "Runtime không phản hồi nên không đọc được dự án liên kết của cuộc trò chuyện này.",
+	"ui.canvas.projects.unpaired_description": "Ứng dụng này chưa ghép nối với runtime nên không đọc được dự án liên kết của cuộc trò chuyện này.",
 	"ui.canvas.projects.error_title": "Không thể tải dự án liên kết",
 	"ui.canvas.projects.try_again": "Thử lại",
 	"ui.canvas.projects.open_project": "Mở {name}"

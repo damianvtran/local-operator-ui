@@ -39,6 +39,7 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
+import { useCallback, useEffect, useRef } from "react";
 import type {
 	DesktopProject,
 	DesktopProjectDetail,
@@ -80,23 +81,6 @@ export function useProjectsList(enabled: boolean) {
 }
 
 /**
- * The milestones of MANY projects, for the Timeline view.
- *
- * THE LISTING DOES NOT CARRY THEM: `projects.list` answers counts
- * (`milestones_completed`/`milestones_total`) and the milestone RECORDS — with
- * the `target_date` the axis places and the server-derived status the mark
- * wears — arrive only from `projects.get`. So the timeline fans out one detail
- * read per project, under THE SAME detail key the page's own detail screen
- * uses: a popover or a route that reads one of these projects then finds the
- * document already warm, and every write that invalidates `["desktop",
- * "projects"]` invalidates these too (the key hierarchy's whole point).
- *
- * `ids` is empty unless the Timeline view is the one on screen: the fan-out is
- * fired by a VIEW, not by the page, so a user who never opens the timeline
- * never pays for the reads (the operator's own "do not fork the data" — this
- * composes the existing op rather than adding a route).
- */
-/**
  * The projects ONE conversation is linked to, in the listing's order and row
  * shape (`GET /v1/desktop/sessions/{id}/projects`).
  *
@@ -124,6 +108,20 @@ export function useSessionProjects(
 }
 
 /**
+ * The rail's linked-projects total for one conversation: the read's length,
+ * but 0 WHENEVER the capability is absent (canvas round-1 Q-2). A disabled
+ * query keeps its last data, so a runtime that stopped serving the route
+ * mid-session left the door saying "3 projects" over a pane that says linked
+ * projects aren't available.
+ */
+export function linkedProjectTotal(
+	enabled: boolean,
+	rows: readonly unknown[] | undefined,
+): number {
+	return enabled ? (rows?.length ?? 0) : 0;
+}
+
+/**
  * Drops every cached project read (the listing, each detail and every
  * per-session list) — the same prefix invalidation each write does — for a
  * caller that learns of a change from somewhere other than its own mutation.
@@ -132,11 +130,59 @@ export function useSessionProjects(
  */
 export function useInvalidateProjectReads() {
 	const queryClient = useQueryClient();
-	return () => {
+	return useCallback(() => {
 		void queryClient.invalidateQueries({ queryKey: projectKeys.list });
-	};
+	}, [queryClient]);
 }
 
+/**
+ * Re-read every project read when a turn of THIS conversation ends.
+ *
+ * WHY AT THE CHAT, NOT THE VIEW (canvas round-1 R1-3/U5): the rail's
+ * linked-projects count and dot read `useSessionProjects` in `ChatContent`,
+ * mounted with or without the canvas, while this refresh used to live in the
+ * canvas's Projects view and so only ran while that view was open. An agent
+ * linking the chat mid-turn left the rail's total stale until some unrelated
+ * refetch. The invalidation is a prefix one, so it refetches only ACTIVE
+ * queries: the rail's total always, the list and an open detail when drawn.
+ *
+ * `turnTerminal` is the chat's count of observed turn completions; only a RISE
+ * acts (the first observed value is the baseline, never a refresh), and
+ * `enabled` is the caller's `projects_by_session` + real-session gate.
+ */
+export function useProjectReadsTurnRefresh(
+	turnTerminal: number | undefined,
+	enabled: boolean,
+) {
+	const invalidateProjects = useInvalidateProjectReads();
+	const turnsSeen = useRef(turnTerminal);
+	useEffect(() => {
+		const previous = turnsSeen.current;
+		turnsSeen.current = turnTerminal;
+		if (previous === undefined || turnTerminal === undefined) return;
+		if (turnTerminal <= previous) return;
+		if (!enabled) return;
+		invalidateProjects();
+	}, [turnTerminal, enabled, invalidateProjects]);
+}
+
+/**
+ * The milestones of MANY projects, for the Timeline view.
+ *
+ * THE LISTING DOES NOT CARRY THEM: `projects.list` answers counts
+ * (`milestones_completed`/`milestones_total`) and the milestone RECORDS — with
+ * the `target_date` the axis places and the server-derived status the mark
+ * wears — arrive only from `projects.get`. So the timeline fans out one detail
+ * read per project, under THE SAME detail key the page's own detail screen
+ * uses: a popover or a route that reads one of these projects then finds the
+ * document already warm, and every write that invalidates `["desktop",
+ * "projects"]` invalidates these too (the key hierarchy's whole point).
+ *
+ * `ids` is empty unless the Timeline view is the one on screen: the fan-out is
+ * fired by a VIEW, not by the page, so a user who never opens the timeline
+ * never pays for the reads (the operator's own "do not fork the data" — this
+ * composes the existing op rather than adding a route).
+ */
 export function useProjectMilestones(ids: string[], enabled: boolean) {
 	return useQueries({
 		queries: ids.map((id) => ({
