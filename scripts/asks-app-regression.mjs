@@ -335,6 +335,94 @@ export function assertControlPresent(control) {
 const sha = (value) => createHash("sha256").update(value).digest("hex");
 const git = (...args) => execFileSync("git", args, { encoding: "utf8" }).trim();
 export const ASKS_CONTROL = resolveAsksControl();
+
+/**
+ * Whether the control's renderer already carries #1901's long-ask-scroll fix
+ * (`fix(asks): let a long ask scroll and keep its actions reachable`, merge
+ * e6122214, first parent 789b013d = the last pre-fix main).
+ *
+ * WHY THIS EXISTS. The `asks-scroll` control leg asserts the DEFECT: a wheel over
+ * the question text must NOT move the drawer's list. That reading is only true of a
+ * build from before #1901. The control is the merge base with main, so once #1901
+ * landed every PR based on main >= e6122214 got a post-fix control and the negative
+ * assertion could never hold (run 43664741238 / job 132678106327, `asks-scroll`,
+ * "the pre-fix build's list must NOT move from a wheel over the question text").
+ * The marker is the `data-lo-ask-list` attribute (`ASK_LIST_ATTR` in
+ * ask-bounds.tsx), which exists only with the fix. Detected from the control's own
+ * tree, not by comparing SHAs, so it holds for any control (override, merge base,
+ * fetched main, pin) without a list of commits to maintain.
+ *
+ * Reproduce: `git grep -c data-lo-ask-list <rev> -- src` (exit 1 = pre-fix).
+ *
+ * Returns true when the control is PRE-fix and the negative assertion is valid.
+ * Exit 1 from `git grep` means "no match"; anything else (unknown rev) throws
+ * rather than silently skipping the assertion.
+ */
+export function controlPredatesAskScrollFix(
+	rev = ASKS_CONTROL,
+	cwd = undefined,
+) {
+	const result = spawnSync(
+		"git",
+		["grep", "-q", "data-lo-ask-list", rev, "--", "src"],
+		{ encoding: "utf8", cwd },
+	);
+	if (result.status === 0) return false;
+	if (result.status === 1) return true;
+	// execFileSync's own message dropped git's exit status and stderr, which is what
+	// made the first CI failure unreadable (run 43673011929); name both.
+	throw new Error(
+		`controlPredatesAskScrollFix: git grep on ${rev} failed (exit ${result.status}, signal ${result.signal}): ${String(result.stderr).trim() || result.error?.message || "no stderr"}`,
+	);
+}
+
+/**
+ * The leg-side reading of the parent's verdict.
+ *
+ * WHY AN ENV VAR AND NOT `git grep` IN THE LEG. Each leg is a child process whose cwd
+ * is the control's EXTRACTED tree (`git archive | tar -x`, no `.git`), so a `git grep`
+ * there exits 128 "not a git repository" - measured: that is the CI failure of run
+ * 43673011929 / job 132700258286 (the clone shape itself is fine: a depth-1 merge
+ * plus a depth-2 fetch holds the parent's tree and blobs, exit 1 on a pre-fix tree).
+ * Only the parent has the repository, so it decides once and hands the answer down;
+ * a missing value throws instead of defaulting, so the negative assertion is never
+ * silently skipped or silently run against the wrong control.
+ */
+export function controlPredatesFixFromEnv(env = process.env) {
+	const value = env.ASKS_CONTROL_PREDATES_FIX;
+	if (value === "1") return true;
+	if (value === "0") return false;
+	throw new Error(
+		`ASKS_CONTROL_PREDATES_FIX must be "1" or "0" (set by the parent run), got ${JSON.stringify(value)}`,
+	);
+}
+
+/**
+ * Which pre-fix-only claims the asks-scroll CONTROL leg may assert.
+ *
+ * WHY A TABLE. The control leg asserts the DEFECT, and every such claim is false
+ * by construction on a control that already carries #1901 (the merge base of any
+ * PR cut after e6122214). CI attempt 1 failed on the wheel claim, attempt 2 on the
+ * next one (`containment.body === "contain"`), because the claims were gated one at
+ * a time. They are listed here together so one verdict decides all of them:
+ *   wheel      - a wheel over the question text/option/list must NOT move the list
+ *   body       - the question body computes overscroll-behavior-y `contain`
+ *   stickyTop  - `Send answer` is OUTSIDE the port at the top of the scroll
+ *   chromeTab  - Tab from the drawer's chrome does NOT land on the list
+ * A pre-fix control (pinned/override) keeps every claim; a post-fix control keeps
+ * none (nothing pre-fix-specific is true of it) and the run logs the skip loudly.
+ * The candidate's own assertions are a separate branch and never read this table.
+ */
+export function askScrollControlClaims(controlIsPreFix) {
+	assert.equal(typeof controlIsPreFix, "boolean");
+	return {
+		wheel: controlIsPreFix,
+		body: controlIsPreFix,
+		stickyTop: controlIsPreFix,
+		chromeTab: controlIsPreFix,
+	};
+}
+
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /*
@@ -1676,9 +1764,22 @@ export const CASES = {
 			 * THE ASSERTIONS, per leg. The candidate has to show the remedy on every door; the
 			 * control has to show the defect, or the pair has stopped proving anything.
 			 */
+			/*
+			 * The control's negative wheel reading is valid only for a PRE-#1901 control
+			 * (`controlPredatesAskScrollFix`). A post-fix control is skipped LOUDLY and
+			 * recorded in the summary; the candidate assertions are never relaxed.
+			 */
+			const controlIsPreFix =
+				kind === "candidate" || controlPredatesFixFromEnv();
+			const controlClaims = askScrollControlClaims(controlIsPreFix);
+			if (!controlIsPreFix)
+				console.warn(
+					`asks-scroll/control: SKIPPING ALL pre-fix negative assertions (wheel, body containment, Send-answer clipping, chrome Tab) - control ${ASKS_CONTROL} already carries #1901 (data-lo-ask-list); candidate assertions still run`,
+				);
 			for (const [size, entry] of Object.entries(summary)) {
 				for (const wheel of entry.wheels) {
 					const [before, after] = wheel.list;
+					if (kind === "control" && !controlClaims.wheel) continue;
 					if (kind === "candidate")
 						assert(
 							after > before,
@@ -1798,22 +1899,26 @@ export const CASES = {
 						0,
 						`${size}: ${entry.tabWalk.outsidePort} focused control(s) were not scrolled wholly into the port`,
 					);
-				} else {
-					assert.equal(
-						entry.containment.body,
-						"contain",
-						`${size}: the pre-fix build's question body must still contain the gesture`,
-					);
-					assert.equal(
-						entry.sticky.top?.inPort,
-						false,
-						`${size}: the pre-fix build cannot have Send answer inside the port at the top - that is the clipping this case exists for`,
-					);
-					assert.equal(
-						entry.chromeTab.landedOnList,
-						false,
-						`${size}: the pre-fix list is not a Tab stop`,
-					);
+				} else if (kind === "control") {
+					/* Pre-fix claims only (see askScrollControlClaims); none hold post-fix. */
+					if (controlClaims.body)
+						assert.equal(
+							entry.containment.body,
+							"contain",
+							`${size}: the pre-fix build's question body must still contain the gesture`,
+						);
+					if (controlClaims.stickyTop)
+						assert.equal(
+							entry.sticky.top?.inPort,
+							false,
+							`${size}: the pre-fix build cannot have Send answer inside the port at the top - that is the clipping this case exists for`,
+						);
+					if (controlClaims.chromeTab)
+						assert.equal(
+							entry.chromeTab.landedOnList,
+							false,
+							`${size}: the pre-fix list is not a Tab stop`,
+						);
 				}
 			}
 		},
@@ -2488,6 +2593,7 @@ async function main() {
 			join(scratch, "control-app"),
 			output,
 		);
+		const controlPredates = controlPredatesAskScrollFix(ASKS_CONTROL);
 		manifest.controlIdentity = controlIdentity;
 		const controlArchive = join(output, "control-source.tar");
 		manifest.controlSourceArchive = {
@@ -2528,6 +2634,8 @@ async function main() {
 							LOCAL_OPERATOR_NO_NOTIFICATIONS: "1",
 							LOCAL_OPERATOR_UI_TELEMETRY: "off",
 							ASKS_APP_ROOT: root,
+							// Decided here, where the repository is; see controlPredatesFixFromEnv.
+							ASKS_CONTROL_PREDATES_FIX: controlPredates ? "1" : "0",
 							ASKS_OUTPUT: dir,
 							ASKS_RECORDS: fixture.records,
 							// Only the control leg gets its Electron runtime override.
