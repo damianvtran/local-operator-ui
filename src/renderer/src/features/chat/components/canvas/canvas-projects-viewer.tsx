@@ -323,10 +323,16 @@ const LinkedProjectRow: FC<{
 					{meta.length > 0 && (
 						<span className={cn("flex flex-wrap gap-1.5")}>
 							{meta.map((entry) => (
+								/* The chip keeps its own 1px control edge: it sits inside the
+								   row's `hover:bg-row-hover` state, and on some palettes the
+								   `sunken` fill lands on the hover rung (ΔE00 ~0), so without
+								   an edge the chip would vanish into the hovered row. The row-
+								   state guard in scripts/chat-sidebar-selection.test.mjs
+								   (PLATES_INSIDE_ROW_STATES) pins this. */
 								<span
 									key={entry.key}
 									className={cn(
-										"rounded-sm bg-sunken px-1.5 py-0.5 text-meta text-ink-muted",
+										"rounded-sm border border-control bg-sunken px-1.5 py-0.5 text-meta text-ink-muted",
 									)}
 								>
 									{entry.text}
