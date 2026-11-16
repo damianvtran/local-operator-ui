@@ -1,10 +1,12 @@
 {
 	"ui.browser.attention.heading": "Esperando tu respuesta",
 	"ui.browser.attention.passkey": "Tu gestor de contraseñas te necesita",
-	"ui.browser.attention.popup": "Ventana de inicio de sesión en espera",
+	"ui.browser.attention.popup": "Una página abrió una ventana",
 	"ui.browser.attention.site_access": "Solicitud de acceso al sitio",
 	"ui.browser.attention.no_site": "Una página",
-	"ui.browser.attention.detail": "{site} · {session}",
 	"ui.browser.attention.open_label": "{need}: {site}, {session}. Abrir.",
-	"ui.browser.attention.more": "{count, plural, one {{countText} más en Navegador} other {{countText} más en Navegador}}"
+	"ui.browser.attention.open_label_paused": "{need} en {site}. {session} está en pausa hasta que respondas. Abrir.",
+	"ui.browser.attention.more": "{count, plural, one {{countText} más en Navegador} many {{countText} más en Navegador} other {{countText} más en Navegador}}",
+	"ui.browser.attention.announce": "{session} espera tu respuesta: {need}, {site}",
+	"ui.browser.attention.announce_paused": "{session} está en pausa y espera tu respuesta: {need}, {site}"
 }

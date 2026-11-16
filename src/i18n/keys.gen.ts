@@ -3663,11 +3663,25 @@ export type MessageParams = {
 	"ui.agents.upload.title.published_public": { name: string };
 	"ui.agents.upload.title.republished": { name: string };
 	"ui.agents.upload.title.update_listing": { name: string };
-	"ui.browser.attention.detail": { site: string; session: string };
+	"ui.browser.attention.announce": {
+		session: string;
+		need: string;
+		site: string;
+	};
+	"ui.browser.attention.announce_paused": {
+		session: string;
+		need: string;
+		site: string;
+	};
 	"ui.browser.attention.heading": undefined;
 	"ui.browser.attention.more": { count: number; countText: string };
 	"ui.browser.attention.no_site": undefined;
 	"ui.browser.attention.open_label": {
+		need: string;
+		site: string;
+		session: string;
+	};
+	"ui.browser.attention.open_label_paused": {
 		need: string;
 		site: string;
 		session: string;

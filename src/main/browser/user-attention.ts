@@ -73,8 +73,8 @@ export interface CustodyAttentionDeps {
  * The custody hold's begin/end, without the view steal.
  *
  * `onBegin` used to activate the held tab, remember the tab it displaced and
- * raise the window. Now it only re-publishes: the hold is listed in the
- * projection and the user decides. The "give back the tab you were on" memory
+ * raise the window. Now it only re-publishes (and clears a stale notice band):
+ * the hold is listed in the projection and the user decides. The "give back the tab you were on" memory
  * is taken at `userOpened` instead — the moment the user actually moves — so it
  * is only ever undoing a move the user made from the notification, never one
  * nobody asked for.
@@ -86,7 +86,12 @@ export function createCustodyAttention(deps: CustodyAttentionDeps): {
 } {
 	const returnTab = new Map<number, number | null>();
 	return {
-		onBegin: () => {
+		onBegin: (view) => {
+			// A "request still pending / did not complete" band left from before the
+			// hold would contradict the custody band if the user reaches the held tab
+			// their own way (the tab strip, not the row). Clearing it moves no view
+			// (PR #1933 round 1, R1).
+			deps.clearNotice(view.tabId);
 			deps.notifyChanged();
 		},
 		onEnd: (view) => {

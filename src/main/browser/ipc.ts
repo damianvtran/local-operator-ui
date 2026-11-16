@@ -743,7 +743,7 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 	// A sidebar notification row's click: see `userAttention` above.
 	ipcMain.handle("browser-open-user-attention", (event, tabId: unknown) => {
 		authorize(event);
-		return options.userAttention?.open(numberOrThrow(tabId, "tabId")) ?? false;
+		return options.userAttention?.open(tabIdOrThrow(tabId, "tabId")) ?? false;
 	});
 
 	/*

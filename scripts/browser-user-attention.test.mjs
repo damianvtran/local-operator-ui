@@ -44,6 +44,7 @@ const bundle = await build({
 	},
 });
 const {
+	attentionArrivals,
 	CustodyHandoffs,
 	HeldPopups,
 	PasskeyCustody,
@@ -105,7 +106,11 @@ test("passkey hold arrival: the tab is NOT activated and nothing is raised; the 
 		true,
 		"the agent is still locked out and the prompt admitted",
 	);
-	assert.deepEqual(calls, [["changed"]], "only a projection refresh");
+	assert.deepEqual(
+		calls,
+		[["clearNotice", 1], ["changed"]],
+		"a stale notice band is cleared (R1) and the projection refreshed — nothing else",
+	);
 	assert.equal(state.active, 7, "the user's browser tab did not move");
 	assert.deepEqual(
 		custody.views(),
@@ -120,7 +125,7 @@ test("passkey hold: the row's click activates the tab; Return to agent gives the
 	attention.onBegin({ tabId: 1, at: 5 });
 	attention.userOpened(1);
 	assert.equal(state.active, 1, "the held tab is now the one in front");
-	assert.deepEqual(calls.slice(1), [
+	assert.deepEqual(calls.slice(2), [
 		["clearNotice", 1],
 		["activate", 1],
 	]);
@@ -139,6 +144,7 @@ test("passkey hold ended without the user ever opening it: nothing is activated,
 	attention.onEnd({ tabId: 1, at: 5 });
 	assert.equal(state.active, 7);
 	assert.deepEqual(calls, [
+		["clearNotice", 1],
 		["changed"],
 		["clearNotice", 1],
 		["changed"],
@@ -340,6 +346,7 @@ test("every trigger becomes a notification row naming the session and the site; 
 /** A shell that records every view change a click makes. */
 function shell(
 	sessions = [{ session_id: "session:a" }, { session_id: "session:b" }],
+	{ opened = true } = {},
 ) {
 	const calls = [];
 	const handoffs = new CustodyHandoffs();
@@ -356,7 +363,10 @@ function shell(
 			calls.push(["handoff", hold.tabId, hold.at]);
 			handoffs.begin(hold, target, current);
 		},
-		openTab: (tabId) => calls.push(["openTab", tabId]),
+		openTab: async (tabId) => {
+			calls.push(["openTab", tabId]);
+			return opened;
+		},
 		noteConsent: (entryId) => calls.push(["noteConsent", entryId]),
 		setActiveSession: (id) => calls.push(["session", id]),
 		setBrowserPaneOpen: (open) => calls.push(["pane", open]),
@@ -365,13 +375,13 @@ function shell(
 	return { calls, deps, handoffs, view };
 }
 
-test("click: a passkey row lands on its conversation's browser pane with the held tab in front", () => {
+test("click: a passkey row lands on its conversation's browser pane with the held tab in front", async () => {
 	const [passkey] = browserAttentionRows(state, 1_000);
 	const { calls, deps, handoffs, view } = shell();
-	openBrowserAttention(passkey, deps);
+	await openBrowserAttention(passkey, deps);
 	assert.deepEqual(calls, [
-		["handoff", 1, 10],
 		["openTab", 1],
+		["handoff", 1, 10],
 		["session", "session:a"],
 		["pane", true],
 		["navigate", "/chat"],
@@ -390,26 +400,66 @@ test("click: a passkey row lands on its conversation's browser pane with the hel
 	});
 });
 
-test("click: a popup row on a tab no conversation owns lands on the browser route and presents the popup", () => {
+test("click: a popup row on a tab no conversation owns lands on the browser route and presents the popup", async () => {
 	const [, popup] = browserAttentionRows(state, 1_000);
 	const { calls, deps } = shell();
-	openBrowserAttention(popup, deps);
+	await openBrowserAttention(popup, deps);
 	assert.deepEqual(calls, [
 		["openTab", 3],
 		["navigate", "/browser"],
 	]);
 });
 
-test("click: a site-access row names the request for the approvals card, and opens no tab", () => {
+test("click: a site-access row names the request for the approvals card, and opens no tab", async () => {
 	const [, , access] = browserAttentionRows(state, 1_000);
 	const { calls, deps } = shell();
-	openBrowserAttention(access, deps);
+	await openBrowserAttention(access, deps);
 	assert.deepEqual(calls, [
 		["noteConsent", "e1"],
 		["session", "session:b"],
 		["pane", true],
 		["navigate", "/chat"],
 	]);
+});
+
+test("click on a hold that ended meanwhile: main answers false, so nothing is recorded and the view stays (R2)", async () => {
+	const [passkey, popup] = browserAttentionRows(state, 1_000);
+	for (const row of [passkey, popup]) {
+		const { calls, deps, handoffs } = shell(undefined, { opened: false });
+		await openBrowserAttention(row, deps);
+		assert.deepEqual(calls, [["openTab", row.tabId]], `${row.kind}: no move`);
+		assert.equal(
+			handoffs.end(
+				{ tabId: row.tabId, at: row.at },
+				{
+					pathname: "/settings",
+					activeSessionId: "session:b",
+					activeDraftKey: null,
+					browserPaneOpen: false,
+				},
+			),
+			null,
+			"no handoff entry was left behind",
+		);
+	}
+});
+
+test("live region: the first look announces nothing; later arrivals are announced, a returning wait again (U4)", () => {
+	const rows = browserAttentionRows(state, 1_000);
+	const first = attentionArrivals(null, rows.slice(0, 1));
+	assert.deepEqual(first.arrivals, [], "standing waits are not news");
+	const second = attentionArrivals(first.seen, rows);
+	assert.deepEqual(
+		second.arrivals.map((row) => row.key),
+		rows.slice(1).map((row) => row.key),
+	);
+	const gone = attentionArrivals(second.seen, rows.slice(1));
+	assert.deepEqual(gone.arrivals, [], "a row leaving is not an arrival");
+	assert.deepEqual(
+		attentionArrivals(gone.seen, rows).arrivals.map((row) => row.key),
+		[rows[0].key],
+		"the same wait coming back is announced again",
+	);
 });
 
 test("a hold nobody opened gives nothing back when it ends", () => {

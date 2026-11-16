@@ -1,10 +1,12 @@
 {
 	"ui.browser.attention.heading": "आपका इंतज़ार है",
 	"ui.browser.attention.passkey": "पासवर्ड मैनेजर को आपकी ज़रूरत है",
-	"ui.browser.attention.popup": "साइन-इन विंडो इंतज़ार कर रही है",
+	"ui.browser.attention.popup": "एक पेज ने विंडो खोली है",
 	"ui.browser.attention.site_access": "साइट एक्सेस का अनुरोध",
 	"ui.browser.attention.no_site": "एक पेज",
-	"ui.browser.attention.detail": "{site} · {session}",
 	"ui.browser.attention.open_label": "{need}: {site}, {session}। खोलें।",
-	"ui.browser.attention.more": "{count, plural, one {ब्राउज़र में {countText} और} other {ब्राउज़र में {countText} और}}"
+	"ui.browser.attention.open_label_paused": "{site} पर {need}। {session} आपके जवाब तक रुका हुआ है। खोलें।",
+	"ui.browser.attention.more": "{count, plural, one {ब्राउज़र में {countText} और} other {ब्राउज़र में {countText} और}}",
+	"ui.browser.attention.announce": "{session} आपका इंतज़ार कर रहा है: {need}, {site}",
+	"ui.browser.attention.announce_paused": "{session} रुका हुआ है और आपका इंतज़ार कर रहा है: {need}, {site}"
 }

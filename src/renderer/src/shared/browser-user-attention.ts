@@ -152,8 +152,9 @@ export interface OpenBrowserAttentionDeps {
 		current: AttentionViewSnapshot,
 	) => void;
 	/** `window.api.browser.openUserAttention`: main activates the tab and
-	 * presents its held popups. */
-	openTab: (tabId: number) => void;
+	 * presents its held popups. Resolves `false` when main no longer has the tab
+	 * (the hold ended between the projection and the click). */
+	openTab: (tabId: number) => Promise<boolean>;
 	/** `noteConsentAttention`: the approvals card selects the named request. */
 	noteConsent: (entryId: string) => void;
 	setActiveSession: (sessionId: string) => void;
@@ -166,22 +167,31 @@ export interface OpenBrowserAttentionDeps {
  * where a consent banner's click lands, with the wait visible — the custody band
  * on the activated tab, the held popup presented, the approvals card on the
  * named request.
+ *
+ * The tab is opened FIRST and its answer awaited (PR #1933 round 1, R2): a hold
+ * can end between the projection and the click, and main then answers `false`.
+ * Recording a custody handoff for that hold would leave an entry no `ended`
+ * event ever closes, and navigating would land the user on a pane with nothing
+ * waiting — so a `false` moves nothing and records nothing. The view to give
+ * back is still snapshotted before the await: it must be the view the user
+ * clicked from, not one a concurrent update produced.
  */
-export function openBrowserAttention(
+export async function openBrowserAttention(
 	row: BrowserAttentionRow,
 	deps: OpenBrowserAttentionDeps,
-): void {
+): Promise<void> {
 	const target = deps.target(row.sessionId);
 	if (row.kind === "site-access") {
 		if (row.entryId) deps.noteConsent(row.entryId);
 	} else if (row.tabId !== null) {
+		const current = deps.currentView();
+		if (!(await deps.openTab(row.tabId))) return;
 		if (row.kind === "passkey")
 			deps.beginCustodyHandoff(
 				{ tabId: row.tabId, at: row.at },
 				target,
-				deps.currentView(),
+				current,
 			);
-		deps.openTab(row.tabId);
 	}
 	if (target.kind === "browser") {
 		deps.navigate("/browser");
@@ -190,4 +200,24 @@ export function openBrowserAttention(
 	deps.setActiveSession(target.sessionId);
 	deps.setBrowserPaneOpen(true);
 	deps.navigate("/chat");
+}
+
+/**
+ * Which rows ARRIVED since the last look, for the sidebar's polite live region
+ * (PR #1933 round 1, U4: a row appearing was silent to assistive tech, and a
+ * wait the user cannot see is a wait nobody answers).
+ *
+ * `seen === null` is the first look: everything already listed is the state the
+ * user came to, not news, so it seeds the set and announces nothing — otherwise
+ * collapsing and re-expanding the sidebar (which remounts the announcer) would
+ * read every standing wait aloud again. A row that left and came back under the
+ * same key is announced again, because it is a new wait.
+ */
+export function attentionArrivals(
+	seen: ReadonlySet<string> | null,
+	rows: readonly BrowserAttentionRow[],
+): { arrivals: BrowserAttentionRow[]; seen: Set<string> } {
+	const next = new Set(rows.map((row) => row.key));
+	if (seen === null) return { arrivals: [], seen: next };
+	return { arrivals: rows.filter((row) => !seen.has(row.key)), seen: next };
 }

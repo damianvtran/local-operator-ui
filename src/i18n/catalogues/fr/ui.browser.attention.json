@@ -1,10 +1,12 @@
 {
-	"ui.browser.attention.heading": "En attente de vous",
+	"ui.browser.attention.heading": "En attente de votre action",
 	"ui.browser.attention.passkey": "Votre gestionnaire de mots de passe a besoin de vous",
-	"ui.browser.attention.popup": "Fenêtre de connexion en attente",
+	"ui.browser.attention.popup": "Une page a ouvert une fenêtre",
 	"ui.browser.attention.site_access": "Demande d’accès au site",
 	"ui.browser.attention.no_site": "Une page",
-	"ui.browser.attention.detail": "{site} · {session}",
-	"ui.browser.attention.open_label": "{need} : {site}, {session}. Ouvrir.",
-	"ui.browser.attention.more": "{count, plural, one {{countText} de plus dans Navigateur} other {{countText} de plus dans Navigateur}}"
+	"ui.browser.attention.open_label": "{need} : {site}, {session}. Ouvrir.",
+	"ui.browser.attention.open_label_paused": "{need} sur {site}. {session} est en pause jusqu’à votre réponse. Ouvrir.",
+	"ui.browser.attention.more": "{count, plural, one {{countText} de plus dans Navigateur} many {{countText} de plus dans Navigateur} other {{countText} de plus dans Navigateur}}",
+	"ui.browser.attention.announce": "{session} attend votre action : {need}, {site}",
+	"ui.browser.attention.announce_paused": "{session} est en pause et attend votre action : {need}, {site}"
 }

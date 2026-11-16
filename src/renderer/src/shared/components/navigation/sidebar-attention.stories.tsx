@@ -185,7 +185,7 @@ const aidaRows = (count: number) =>
 
 /**
  * Agent tabs waiting on the user (operator report 2026-11-15, "the browser is
- * stealing the view"): a passkey custody hold and a held sign-in popup, drawn as
+ * stealing the view"): a passkey custody hold and a held popup, drawn as
  * sidebar notification rows beside the approvals instead of switching views.
  */
 const WAITING_TABS = [
@@ -306,8 +306,9 @@ export const Counts: Story = {
 };
 
 /** The browser's waits as sidebar notification rows: a password manager hold
-    in Aida's conversation, a held sign-in popup on an unowned tab and one
-    approval — listed, never switched to. The badge counts all three. */
+    in Aida's conversation and a held popup on an unowned tab, each one 32px
+    line; the one approval is the third wait, so it folds into "1 more in
+    Browser" (two rows at most, design review D1). The badge counts all three. */
 export const BrowserWaits: Story = {
 	render: () => (
 		<Scene
@@ -318,7 +319,7 @@ export const BrowserWaits: Story = {
 	),
 };
 
-/** Past three waits the rest fold into one "more in Browser" row. */
+/** Past two waits the rest fold into one "more in Browser" row (here 4). */
 export const BrowserWaitsFolded: Story = {
 	render: () => (
 		<Scene

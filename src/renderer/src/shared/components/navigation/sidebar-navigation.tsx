@@ -2,7 +2,10 @@ import { aidaControlFailureCopy } from "@features/aida/aida-control";
 import { useAidaMissedMessages } from "@features/aida/use-aida-missed-messages";
 import { useAidaOpener, useAidaTarget } from "@features/aida/use-aida-target";
 import { useAidaWorking } from "@features/aida/use-aida-working";
-import { BrowserAttentionRows } from "@features/browser/components/browser-attention-rows";
+import {
+	BrowserAttentionAnnouncer,
+	BrowserAttentionRows,
+} from "@features/browser/components/browser-attention-rows";
 import { useBrowserAttention } from "@features/browser/hooks/use-browser-attention";
 /*
  * THE MIDPOINT RULE IS IMPORTED, not re-derived (design § 5): the pinned chat
@@ -2412,6 +2415,8 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					{dropBand}
 				</div>
 				{announcementRegion}
+				{/* A browser wait arriving is read out in either form (U4). */}
+				<BrowserAttentionAnnouncer />
 				<div className="mt-auto flex flex-col items-center gap-1 pb-2">
 					{/*
 					 * The phone access offer's collapsed form (UX review U1): the docked
@@ -2515,6 +2520,8 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					{dropBand}
 				</div>
 				{announcementRegion}
+				{/* A browser wait arriving is read out in either form (U4). */}
+				<BrowserAttentionAnnouncer />
 			</div>
 
 			{/*

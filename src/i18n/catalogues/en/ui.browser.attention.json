@@ -1,10 +1,12 @@
 {
 	"ui.browser.attention.heading": "Waiting on you",
 	"ui.browser.attention.passkey": "Password manager needs you",
-	"ui.browser.attention.popup": "Sign-in window waiting",
+	"ui.browser.attention.popup": "A page opened a window",
 	"ui.browser.attention.site_access": "Site access request",
 	"ui.browser.attention.no_site": "A page",
-	"ui.browser.attention.detail": "{site} · {session}",
 	"ui.browser.attention.open_label": "{need}: {site}, {session}. Open it.",
-	"ui.browser.attention.more": "{count, plural, one {{countText} more in Browser} other {{countText} more in Browser}}"
+	"ui.browser.attention.open_label_paused": "{need} on {site}. {session} is paused until you respond. Open it.",
+	"ui.browser.attention.more": "{count, plural, one {{countText} more in Browser} other {{countText} more in Browser}}",
+	"ui.browser.attention.announce": "{session} is waiting on you: {need}, {site}",
+	"ui.browser.attention.announce_paused": "{session} is paused and waiting on you: {need}, {site}"
 }
