@@ -49,7 +49,7 @@ const require = createRequire(import.meta.url);
 const bundled = await build({
 	stdin: {
 		contents:
-			'export {AgentMessagesSettings} from "./src/renderer/src/features/agent-messages/agent-messages-settings"; export {desktopEndpoint} from "./src/shared/desktop-contract"; export {agentMessagesSettingsAvailability,agentMessagesSettingsState,agentMessagesSectionMounted,allowlistReplaceSet,allowlistSaveGate,allowlistDraft,allowlistIdentifierError,settingsRefusalSentence,agentMessagesChiefOfStaffHold} from "./src/renderer/src/features/agent-messages/agent-messages-settings-model"; export {agentMessagesSettingsResultSchema,agentMessagesAllowlistResultSchema,agentMessagesStatusSchema} from "./src/shared/agent-messages-contract"; export {DesktopControlError} from "./src/renderer/src/shared/api/local-operator/desktop-api"; export {agentMessagesRefusal} from "./src/renderer/src/features/agent-messages/agent-messages-refusal";',
+			'export {AgentMessagesSettings} from "./src/renderer/src/features/agent-messages/agent-messages-settings"; export {desktopEndpoint,desktopRequestSchema} from "./src/shared/desktop-contract"; export {agentMessagesSettingsAvailability,agentMessagesSettingsState,agentMessagesSectionMounted,allowlistReplaceSet,allowlistSaveGate,allowlistDraft,allowlistIdentifierError,settingsRefusalSentence,agentMessagesChiefOfStaffHold} from "./src/renderer/src/features/agent-messages/agent-messages-settings-model"; export {agentMessagesSettingsResultSchema,agentMessagesAllowlistResultSchema,agentMessagesStatusSchema} from "./src/shared/agent-messages-contract"; export {DesktopControlError} from "./src/renderer/src/shared/api/local-operator/desktop-api"; export {agentMessagesRefusal} from "./src/renderer/src/features/agent-messages/agent-messages-refusal";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -1273,4 +1273,392 @@ test("settings-page wires onOpenSession to openConversation after dropping the s
 	assert.ok(invalidate >= 0, "the status cache is dropped");
 	assert.ok(open > invalidate, "then the shared switch rule opens the session");
 	assert.doesNotMatch(body, /\/chat\//, "no hand-built chat URL");
+});
+
+// ---------------------------------------------------------------------------
+// Screening model (local-operator #3632): a preference, never a gate
+// ---------------------------------------------------------------------------
+
+const SCREENING_MODELS = [
+	{
+		value: "anthropic/claude-sonnet-5-5",
+		provider: "anthropic",
+		model_id: "claude-sonnet-5-5",
+	},
+	{
+		value: "radient/anthropic/claude-sonnet-5.5",
+		provider: "radient",
+		model_id: "anthropic/claude-sonnet-5.5",
+	},
+	{
+		value: "anthropic/claude-opus-5-5",
+		provider: "anthropic",
+		model_id: "claude-opus-5-5",
+	},
+];
+const SCREENING_HELP =
+	/Optional\. Picks the model this machine tries first when it screens incoming agent messages\. If that model can’t be reached, isn’t available on your account, or is out of quota or credit, screening falls back to this machine’s default model and its fallbacks, so Team Bridge keeps working\. If the provider blocks the request or fails with an internal error, incoming messages are held instead, so choose a model your account is allowed to use\./;
+const SCREENING_UNAVAILABLE =
+	/This version of Local Operator doesn’t offer a choice of screening model\./;
+const AUTOMATIC_LABEL = "Automatic, starting with anthropic/claude-sonnet-5-5";
+const OPUS_LABEL = "anthropic/claude-opus-5-5via your Anthropic account";
+/* The closed trigger shows the id alone: the route lives in the open list only
+   (#1928 design round 2, measured clipping in ru at the 448px trigger). */
+const OPUS_ID = "anthropic/claude-opus-5-5";
+const UNBRANDED_ROUTE = /via your (mistral|constructor)/;
+
+function settingsWithScreening(state, screening) {
+	return { ...settingsWith(state), screening };
+}
+
+/* THIS machine holds the endpoint (`local.enrolled`), the only case the row
+   is offered in (#1928 round 1, S-2). */
+const enrolledStatus = (surface_state = "C") =>
+	statusWith({ surface_state, local: { enabled: true, enrolled: true } });
+
+/*
+ * The state-less local write (runtime #4066). The fake records every call and
+ * answers with the stored block, the way the runtime echoes it, so the
+ * selected option is read back from the answer, not from local state.
+ */
+function screeningWriter(writes, { answer = "echo" } = {}) {
+	return async (accountId, value) => {
+		writes.push({ accountId, value });
+		if (answer === "none") return null;
+		return {
+			preferred: value === "" ? null : value,
+			models: SCREENING_MODELS,
+		};
+	};
+}
+
+const screeningCombo = () =>
+	document.querySelector(
+		'button[role="combobox"][aria-label="Screening model"]',
+	);
+
+async function chooseScreening(label) {
+	const combo = screeningCombo();
+	assert.ok(combo, "expected the screening model select");
+	combo.focus();
+	await press(combo, "keydown", { key: "ArrowDown" });
+	await flush();
+	// An option is its id plus a route suffix, so match on the leading text.
+	const option = [...document.querySelectorAll('[role="option"]')].find(
+		(entry) => entry.textContent.trim().startsWith(label),
+	);
+	assert.ok(option, `expected the option ${label}`);
+	await act(async () => option.click());
+	await flush();
+	await flush();
+}
+
+test("screening defaults to Automatic, names the first vetted model, and is honest about holds", async (t) => {
+	await mount(t, {
+		status: enrolledStatus(),
+		settings: settingsWithScreening("active", {
+			preferred: null,
+			models: SCREENING_MODELS,
+		}),
+		overrides: { setScreeningModel: screeningWriter([]) },
+	});
+	assert.equal(screeningCombo()?.textContent.trim(), AUTOMATIC_LABEL);
+	// N1: the model id inside Automatic is mono, like every other id here.
+	assert.equal(
+		screeningCombo()?.querySelector(".font-mono")?.textContent,
+		"anthropic/claude-sonnet-5-5",
+	);
+	assert.match(document.body.textContent, SCREENING_HELP);
+});
+
+test("each option names its route: the user's own provider account or Radient", async (t) => {
+	await mount(t, {
+		status: enrolledStatus(),
+		settings: settingsWithScreening("active", {
+			preferred: null,
+			models: SCREENING_MODELS,
+		}),
+		overrides: { setScreeningModel: screeningWriter([]) },
+	});
+	const combo = screeningCombo();
+	combo.focus();
+	await press(combo, "keydown", { key: "ArrowDown" });
+	await flush();
+	assert.deepEqual(
+		[...document.querySelectorAll('[role="option"]')].map((entry) =>
+			entry.textContent.trim(),
+		),
+		[
+			AUTOMATIC_LABEL,
+			"anthropic/claude-sonnet-5-5via your Anthropic account",
+			"radient/anthropic/claude-sonnet-5.5via your Radient account",
+			OPUS_LABEL,
+		],
+	);
+	await press(combo, "keydown", { key: "Escape" });
+	await flush();
+});
+
+test("an unbranded provider gets no route line, and the closed trigger never carries the route", async (t) => {
+	await mount(t, {
+		status: enrolledStatus(),
+		settings: settingsWithScreening("active", {
+			preferred: "mistral/mistral-large",
+			models: [
+				...SCREENING_MODELS,
+				{
+					value: "mistral/mistral-large",
+					provider: "mistral",
+					model_id: "mistral-large",
+				},
+				// A prototype key must not resolve to a brand either.
+				{
+					value: "constructor/x",
+					provider: "constructor",
+					model_id: "x",
+				},
+			],
+		}),
+		overrides: { setScreeningModel: screeningWriter([]) },
+	});
+	// C8: no raw id in prose; the trigger shows the chosen id alone.
+	assert.equal(screeningCombo()?.textContent.trim(), "mistral/mistral-large");
+	const combo = screeningCombo();
+	combo.focus();
+	await press(combo, "keydown", { key: "ArrowDown" });
+	await flush();
+	const labels = [...document.querySelectorAll('[role="option"]')].map(
+		(entry) => entry.textContent.trim(),
+	);
+	assert.ok(labels.includes("mistral/mistral-large"));
+	assert.ok(labels.includes("constructor/x"));
+	assert.doesNotMatch(labels.join("\n"), UNBRANDED_ROUTE);
+	// A branded option still names its route in the open list.
+	assert.ok(labels.includes(OPUS_LABEL));
+	await press(combo, "keydown", { key: "Escape" });
+	await flush();
+});
+
+test("choosing a model writes {expected_account_id, screening_model} state-less; Automatic clears it", async (t) => {
+	const settings = settingsWithScreening("active", {
+		preferred: null,
+		models: SCREENING_MODELS,
+	});
+	const writes = [];
+	const { writes: sectionWrites } = await mount(t, {
+		status: enrolledStatus(),
+		settings,
+		overrides: { setScreeningModel: screeningWriter(writes) },
+	});
+	await chooseScreening("anthropic/claude-opus-5-5");
+	assert.deepEqual(writes, [
+		{ accountId: "account-a", value: "anthropic/claude-opus-5-5" },
+	]);
+	// No state write rode along: the settings put was never called.
+	assert.deepEqual(sectionWrites.settings, []);
+	assert.equal(screeningCombo()?.textContent.trim(), OPUS_ID);
+	await chooseScreening(AUTOMATIC_LABEL);
+	assert.deepEqual(writes[1], { accountId: "account-a", value: "" });
+	assert.equal(screeningCombo()?.textContent.trim(), AUTOMATIC_LABEL);
+	assert.deepEqual(sectionWrites.settings, []);
+});
+
+test("a paused endpoint offers the row and a save sends no state, so it cannot resume", async (t) => {
+	const writes = [];
+	const { writes: sectionWrites } = await mount(t, {
+		status: enrolledStatus("D"),
+		settings: settingsWithScreening("paused", {
+			preferred: null,
+			models: SCREENING_MODELS,
+		}),
+		overrides: { setScreeningModel: screeningWriter(writes) },
+	});
+	await chooseScreening("radient/anthropic/claude-sonnet-5.5");
+	assert.deepEqual(writes, [
+		{ accountId: "account-a", value: "radient/anthropic/claude-sonnet-5.5" },
+	]);
+	assert.deepEqual(sectionWrites.settings, []);
+});
+
+test("an off-list preferred value shows Automatic, never a phantom selection", async (t) => {
+	await mount(t, {
+		status: enrolledStatus(),
+		settings: settingsWithScreening("active", {
+			preferred: "openai/gpt-6.1",
+			models: SCREENING_MODELS,
+		}),
+		overrides: { setScreeningModel: screeningWriter([]) },
+	});
+	assert.equal(screeningCombo()?.textContent.trim(), AUTOMATIC_LABEL);
+});
+
+test("an empty vetted list shows the still-screening notice instead of a picker", async (t) => {
+	await mount(t, {
+		status: enrolledStatus(),
+		settings: settingsWithScreening("active", { preferred: null, models: [] }),
+		overrides: { setScreeningModel: screeningWriter([]) },
+	});
+	assert.equal(screeningCombo(), null);
+	assert.match(document.body.textContent, SCREENING_UNAVAILABLE);
+	assert.ok(
+		document.querySelector("[data-agent-messages-screening-unavailable]"),
+	);
+});
+
+test("no screening row unless THIS machine is enrolled, nor on an older runtime, before enrolment, or after opting out", async (t) => {
+	const row = () =>
+		document.querySelector("[data-agent-messages-screening-model]");
+	const screening = { preferred: null, models: SCREENING_MODELS };
+	await t.test("older runtime", async (tt) => {
+		await mount(tt, {
+			status: enrolledStatus(),
+			overrides: { setScreeningModel: screeningWriter([]) },
+		});
+		assert.equal(row(), null);
+	});
+	// S-2: the hub endpoint is active but the owner is another machine (or the
+	// runtime predates the field): the preference would steer nothing here.
+	for (const enrolled of [false, undefined]) {
+		await t.test(`local.enrolled ${enrolled}`, async (tt) => {
+			await mount(tt, {
+				status: statusWith({
+					surface_state: "C",
+					local: { enabled: true, enrolled },
+				}),
+				settings: settingsWithScreening("active", screening),
+				overrides: { setScreeningModel: screeningWriter([]) },
+			});
+			assert.equal(row(), null);
+		});
+	}
+	for (const state of [null, "disabled"]) {
+		await t.test(`endpoint ${state}`, async (tt) => {
+			await mount(tt, {
+				status: statusWith({
+					surface_state: state === null ? "B" : "E",
+					local: { enabled: false, enrolled: true },
+				}),
+				settings: settingsWithScreening(state, screening),
+				overrides: { setScreeningModel: screeningWriter([]) },
+			});
+			assert.equal(row(), null);
+		});
+	}
+});
+
+test("a refused screening write surfaces the refusal and re-reads settings to show what is stored", async (t) => {
+	// The runtime applied the choice before refusing (R2/S-4): the re-read
+	// returns it, and the row must show it rather than the previous value.
+	const stored = settingsWithScreening("active", {
+		preferred: "anthropic/claude-opus-5-5",
+		models: SCREENING_MODELS,
+	});
+	let reads = 0;
+	await mount(t, {
+		status: enrolledStatus(),
+		settings: settingsWithScreening("active", {
+			preferred: null,
+			models: SCREENING_MODELS,
+		}),
+		overrides: {
+			settings: async () => {
+				reads += 1;
+				return reads === 1
+					? settingsWithScreening("active", {
+							preferred: null,
+							models: SCREENING_MODELS,
+						})
+					: structuredClone(stored);
+			},
+			setScreeningModel: async () => {
+				throw new mod.DesktopControlError(
+					429,
+					"raw upstream detail",
+					undefined,
+					"rate_limited",
+				);
+			},
+		},
+	});
+	await chooseScreening("anthropic/claude-opus-5-5");
+	assert.equal(reads, 2, "one load, then one re-read after the refusal");
+	// The section's shared refusal sentence, never the raw exception.
+	assert.match(document.body.textContent, /Too many requests/);
+	assert.doesNotMatch(document.body.textContent, /raw upstream detail/);
+	assert.equal(screeningCombo()?.textContent.trim(), OPUS_ID);
+});
+
+test("a save whose answer carries no readable block re-reads settings instead of trusting the sent value", async (t) => {
+	let reads = 0;
+	const base = { preferred: null, models: SCREENING_MODELS };
+	await mount(t, {
+		status: enrolledStatus(),
+		settings: settingsWithScreening("active", base),
+		overrides: {
+			settings: async () => {
+				reads += 1;
+				// The runtime stored Automatic (say, it folded the value away).
+				return settingsWithScreening("active", base);
+			},
+			setScreeningModel: screeningWriter([], { answer: "none" }),
+		},
+	});
+	await chooseScreening("anthropic/claude-opus-5-5");
+	assert.equal(reads, 2);
+	assert.equal(screeningCombo()?.textContent.trim(), AUTOMATIC_LABEL);
+});
+
+test("the screening write is its own state-less op: no `state`, no tenant, no consent", () => {
+	for (const value of ["anthropic/claude-opus-5-5", ""]) {
+		const endpoint = mod.desktopEndpoint({
+			op: "agent_messages.settings.screening_model",
+			expected_account_id: "account-a",
+			screening_model: value,
+		});
+		assert.deepEqual(endpoint, {
+			path: "/v1/desktop/team-bridge/settings",
+			method: "PUT",
+			body: { expected_account_id: "account-a", screening_model: value },
+		});
+		assert.equal("state" in endpoint.body, false);
+	}
+	// The settings put no longer accepts the field, so it can never ride a
+	// state write again (R1/S-2/S-3).
+	const parsed = mod.desktopRequestSchema.safeParse({
+		op: "agent_messages.settings.put",
+		expected_account_id: "account-a",
+		tenant_id: "tnt_bridge_e2e",
+		state: "active",
+		screening_model: "anthropic/claude-opus-5-5",
+	});
+	assert.equal(parsed.success, false);
+	// And the state-less op refuses a smuggled `state`.
+	assert.equal(
+		mod.desktopRequestSchema.safeParse({
+			op: "agent_messages.settings.screening_model",
+			expected_account_id: "account-a",
+			screening_model: "",
+			state: "active",
+		}).success,
+		false,
+	);
+});
+
+test("the screening block reads leniently: bad rows drop, a bad block reads as absent", () => {
+	const parsed = mod.agentMessagesSettingsResultSchema.parse({
+		...settingsWith("active"),
+		screening: {
+			preferred: 42,
+			models: [SCREENING_MODELS[0], { value: "" }, "junk", SCREENING_MODELS[2]],
+		},
+	});
+	assert.deepEqual(parsed.screening, {
+		preferred: null,
+		models: [SCREENING_MODELS[0], SCREENING_MODELS[2]],
+	});
+	const broken = mod.agentMessagesSettingsResultSchema.parse({
+		...settingsWith("active"),
+		screening: "nope",
+	});
+	assert.equal(broken.screening, undefined);
 });

@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 2, PR #1928 (fresh auditor)",
+  "locale": "vi",
+  "namespace": "ui.teamBridge",
+  "pr": 1928,
+  "date": "2026-11-15",
+  "head": "5e278359128c56de4faf43398a8b2b2055eb446d",
+  "instance": "pr1928-r2-vi-teambridge-5bf8486c",
+  "auditor": {
+    "agent": "task",
+    "role": "independent i18n auditor (team radientdev, task role); not the translators (coder jobs 610e98de331a and 4611f0d5274e (manager session 2c6111e02b16) re-drafted the changed/new keys; coder job abe41ec364b7 drafted the unchanged keys; all anthropic/claude-opus-5-5)",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session 619fdcf93ce8, a fresh task-agent instance: not the round-1 auditor (job c5c73f8c6c4b, session 5bbe5f24d420) and not any translator (coder jobs abe41ec364b7, 610e98de331a, 4611f0d5274e). Same served model family anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Judgement from English, the context sidecar and the shipped ui.teamBridge.delivery.* corpus; no MT used. This audit reviews the round-1 auditor's own fix lines (b083a717ea: vi not_delivered; screening term in es/fr/ru/hi/ur/zh-CN) as the separation step. Disclosure: this auditor's own fix lines (5e27835912, screening.help) are auditor-authored and still need a separate review by a different auditor.",
+    "instance": "pr1928-r2-vi-teambridge-5bf8486c"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "findings": [
+    {
+      "severity": "INFO",
+      "key": "ui.teamBridge.delivery.not_delivered",
+      "note": "Neutrality verified: one sentence, the first sentence of this locale's shipped delivery.refused minus its cause; no word for refused, blocked, moderated or screened; no retry or rephrase hint."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.teamBridge.delivery.info_not_delivered",
+      "note": "Removed: absent from this catalogue and from English (key set equals English)."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.teamBridge.delivery.not_delivered",
+      "note": "Reviewed the round-1 auditor's fix (b083a717ea) 'Không chuyển được tới {recipient}.': postverbal được = 'could not', no prohibition reading; neutral. Accepted."
+    }
+  ],
+  "audited_values": {
+    "ui.teamBridge.delivery.not_delivered": "Không chuyển được tới {recipient}."
+  },
+  "binding": "Verified at 5e278359128c: target src/i18n/catalogues/vi/ui.teamBridge.json sha256 7620aa006f7354fa1b13ef1e69187a4ff3b4925059e42130444d91a41765eda3; English src/i18n/catalogues/en/ui.teamBridge.json sha256 ae1f3edce97dd9acfbd6cf16350be37e2d69239abe246046d50ba5051066f365; context sha256 2391b893f42d45d9a087305f12db0b784172f50a48d6b0deb39511b944e0984b. Key set equals English; ICU placeholders identical to English.",
+  "scope": "PR #1928 round 2: ui.teamBridge.delivery.not_delivered (incl. round-1 auditor fix lines) and removal of info_not_delivered",
+  "en_sha256": "ae1f3edce97dd9acfbd6cf16350be37e2d69239abe246046d50ba5051066f365",
+  "context_sha256": "2391b893f42d45d9a087305f12db0b784172f50a48d6b0deb39511b944e0984b",
+  "target_sha256": "7620aa006f7354fa1b13ef1e69187a4ff3b4925059e42130444d91a41765eda3",
+  "sha256": {
+    "vi": "7620aa006f7354fa1b13ef1e69187a4ff3b4925059e42130444d91a41765eda3",
+    "en": "ae1f3edce97dd9acfbd6cf16350be37e2d69239abe246046d50ba5051066f365"
+  }
+}

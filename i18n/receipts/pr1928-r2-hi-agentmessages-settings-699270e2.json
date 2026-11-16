@@ -1,0 +1,68 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 2, PR #1928 (fresh auditor)",
+  "locale": "hi",
+  "namespace": "ui.agentMessages.settings",
+  "pr": 1928,
+  "date": "2026-11-15",
+  "head": "5e278359128c56de4faf43398a8b2b2055eb446d",
+  "instance": "pr1928-r2-hi-agentmessages-settings-699270e2",
+  "auditor": {
+    "agent": "task",
+    "role": "independent i18n auditor (team radientdev, task role); not the translators (coder jobs 610e98de331a and 4611f0d5274e (manager session 2c6111e02b16) re-drafted the changed/new keys; coder job abe41ec364b7 drafted the unchanged keys; all anthropic/claude-opus-5-5)",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session 619fdcf93ce8, a fresh task-agent instance: not the round-1 auditor (job c5c73f8c6c4b, session 5bbe5f24d420) and not any translator (coder jobs abe41ec364b7, 610e98de331a, 4611f0d5274e). Same served model family anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Judgement from English, the context sidecar and the shipped ui.teamBridge.delivery.* corpus; no MT used. This audit reviews the round-1 auditor's own fix lines (b083a717ea: vi not_delivered; screening term in es/fr/ru/hi/ur/zh-CN) as the separation step. Disclosure: this auditor's own fix lines (5e27835912, screening.help) are auditor-authored and still need a separate review by a different auditor.",
+    "instance": "pr1928-r2-hi-agentmessages-settings-699270e2"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "severity": "MINOR",
+      "id": "I4",
+      "key": "ui.agentMessages.settings.screening.help",
+      "issue": "English says incoming messages are 'held instead' - the contrast that marks the block/internal-error case as NOT falling back. The translation dropped 'instead'.",
+      "fix": "… तो इसके बजाय आने वाले संदेश रोककर रखे जाते हैं, …",
+      "fixed_in": "5e27835912",
+      "authored_by": "this auditor (needs separation review)"
+    },
+    {
+      "severity": "MINOR",
+      "id": "I5",
+      "key": "ui.agentMessages.settings.screening.help",
+      "issue": "'blocks' was 'रोक देता है' and 'held' was 'रोक दिए जाते हैं' - one verb for the provider's block and the message hold, so the hold read as messages being stopped/blocked.",
+      "fix": "'blocks' -> 'ब्लॉक कर देता है'; 'held' -> 'रोककर रखे जाते हैं' (keeps the corpus root of held_awaiting_review 'रोका गया है', now explicitly 'held back').",
+      "fixed_in": "5e27835912",
+      "authored_by": "this auditor (needs separation review)"
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.agentMessages.settings.screening.title",
+      "note": "Screening term 'जाँच' matches shipped held_screening/pending/info_held; title/help/unavailable consistent (round-1 auditor fix b083a717ea reviewed and accepted)."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.agentMessages.settings.screening.route_provider",
+      "note": "route_provider/route_radient parallel, {provider} intact, Radient untranslated; automatic keeps {model} as one unit; register matches the corpus."
+    }
+  ],
+  "audited_values": {
+    "ui.agentMessages.settings.screening.title": "जाँच मॉडल",
+    "ui.agentMessages.settings.screening.help": "वैकल्पिक। आने वाले एजेंट संदेशों की जाँच करते समय यह मशीन सबसे पहले कौन सा मॉडल आज़माए, यह चुनता है। यदि उस मॉडल तक पहुँचा न जा सके, वह आपके खाते पर उपलब्ध न हो, या उसका कोटा या क्रेडिट ख़त्म हो, तो जाँच इस मशीन के डिफ़ॉल्ट मॉडल और उसके फ़ॉलबैक पर चली जाती है, इसलिए Team Bridge काम करता रहता है। यदि प्रदाता अनुरोध को ब्लॉक कर देता है या किसी आंतरिक त्रुटि से विफल हो जाता है, तो इसके बजाय आने वाले संदेश रोककर रखे जाते हैं, इसलिए ऐसा मॉडल चुनें जिसे इस्तेमाल करने की आपके खाते को अनुमति हो।",
+    "ui.agentMessages.settings.screening.unavailable": "Local Operator के इस संस्करण में जाँच मॉडल चुनने का विकल्प नहीं है। जाँच अब भी इस मशीन के डिफ़ॉल्ट मॉडल और उसके फ़ॉलबैक पर चलती है।",
+    "ui.agentMessages.settings.screening.automatic": "स्वचालित, {model} से शुरू",
+    "ui.agentMessages.settings.screening.route_provider": "आपके {provider} खाते से",
+    "ui.agentMessages.settings.screening.route_radient": "आपके Radient खाते से"
+  },
+  "binding": "Verified at 5e278359128c: target src/i18n/catalogues/hi/ui.agentMessages.settings.json sha256 03f1b6c286170a65db4f88658a17f4aceadefcaad875fdb320b41232dd89c25e; English src/i18n/catalogues/en/ui.agentMessages.settings.json sha256 3a69f5d8d73732cf7f0fb7fb09cc9cb28aca83b25499561590336ab5d4b651bf; context sha256 709ec9074196216a43f355474c8f2bf65fe7727a41fbfdc7ea567898d79cd569. Key set equals English; ICU placeholders identical to English.",
+  "scope": "PR #1928 round 2: ui.agentMessages.settings.screening.{title,help,unavailable,automatic,route_provider,route_radient}",
+  "en_sha256": "3a69f5d8d73732cf7f0fb7fb09cc9cb28aca83b25499561590336ab5d4b651bf",
+  "context_sha256": "709ec9074196216a43f355474c8f2bf65fe7727a41fbfdc7ea567898d79cd569",
+  "target_sha256": "03f1b6c286170a65db4f88658a17f4aceadefcaad875fdb320b41232dd89c25e",
+  "sha256": {
+    "hi": "03f1b6c286170a65db4f88658a17f4aceadefcaad875fdb320b41232dd89c25e",
+    "en": "3a69f5d8d73732cf7f0fb7fb09cc9cb28aca83b25499561590336ab5d4b651bf"
+  }
+}

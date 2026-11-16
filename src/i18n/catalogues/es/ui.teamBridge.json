@@ -328,6 +328,7 @@
 	"ui.teamBridge.delivery.refused_abusive": "Mensaje para {recipient} no entregado: rechazado por su moderación (parecía contenido abusivo)",
 	"ui.teamBridge.delivery.refused_unsafe_content": "Mensaje para {recipient} no entregado: rechazado por su moderación (parecía contenido o enlaces no seguros)",
 	"ui.teamBridge.delivery.refused_out_of_scope": "Mensaje para {recipient} no entregado: rechazado por su moderación (parecía una solicitud fuera de lo que gestiona este agente)",
+	"ui.teamBridge.delivery.not_delivered": "Mensaje para {recipient} no entregado.",
 	"ui.teamBridge.delivery.held": "Mensaje para {recipient} aún no entregado…",
 	"ui.teamBridge.delivery.held_screening": "Mensaje para {recipient} aún no entregado. Se está analizando.",
 	"ui.teamBridge.delivery.held_screening_unavailable": "Mensaje para {recipient} aún no entregado. No se pudo analizar; se reintentará automáticamente.",
