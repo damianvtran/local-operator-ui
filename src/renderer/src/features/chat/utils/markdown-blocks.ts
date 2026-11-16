@@ -222,6 +222,13 @@ export const scanMarkdownBlocks = (
 			scanner.blankRunStart = -1;
 		} else if (scanner.kind === "none") {
 			scanner.kind = classify(line);
+		} else if (scanner.kind === "other" && HTML_TABLE_START.test(line)) {
+			// CommonMark tables can interrupt prose/headings without a blank line.
+			// Keep the prefix in this parse, but let the table own later blank runs
+			// so its rows do not become independent escaped Markdown fragments.
+			// Fences already bypass this path; code/list kinds and prefixed quote
+			// or list lines must keep their existing container ownership.
+			scanner.kind = "html-table";
 		}
 
 		// A fence marker inside an indented code block is literal text, not a

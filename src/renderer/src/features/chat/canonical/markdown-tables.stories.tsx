@@ -404,6 +404,34 @@ export const HtmlBlankSeparatedSettled: Story = {
 	),
 };
 
+/** R2/Q2: no blank separator before the table, in the real transcript path. */
+export const HtmlInterruptingStreaming: Story = {
+	render: () => (
+		<Frame
+			records={["Intro", "# Heading"].map((prefix, index) => ({
+				...answer(
+					`html-interrupting-${index}`,
+					`${prefix}\n${BLANK_SEPARATED_HTML}`,
+				),
+				streaming: true,
+				complete: false,
+			}))}
+		/>
+	),
+};
+export const HtmlInterruptingSettled: Story = {
+	render: () => (
+		<Frame
+			records={["Intro", "# Heading"].map((prefix, index) =>
+				answer(
+					`html-interrupting-${index}`,
+					`${prefix}\n${BLANK_SEPARATED_HTML}`,
+				),
+			)}
+		/>
+	),
+};
+
 /** Review R3: mdast owns container prefixes, not the reconstructed HTML. */
 export const HtmlContainerTables: Story = {
 	render: () => (

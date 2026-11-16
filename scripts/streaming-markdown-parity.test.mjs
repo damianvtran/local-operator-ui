@@ -745,6 +745,80 @@ test("blank-separated HTML tables stay coherent through streaming prefixes and s
 	}
 });
 
+test("table-start ownership respects fence, code, list and quote boundaries", () => {
+	for (const [source, kind] of [
+		["Intro\n<table>\n", "html-table"],
+		["# Heading\n<table>\n", "html-table"],
+		["Intro\n\n<table>\n", "html-table"],
+		["```html\n<table>\n", "other"],
+		["    literal\n    <table>\n", "indented-code"],
+		["- item\n  <table>\n", "list"],
+		["> quote\n> <table>\n", "other"],
+		["Intro\n    <table>\n", "other"],
+		["Intro\n<tabletop>\n", "other"],
+	]) {
+		const scanner = createBlockScanner();
+		for (const prefix of prefixes(source, 1))
+			scanMarkdownBlocks(scanner, prefix);
+		assert.equal(scanner.kind, kind, source);
+	}
+});
+
+test("HTML tables interrupting prose and headings retain streaming ownership", async () => {
+	const dom = mountDom();
+	const container = dom.window.document.getElementById("root");
+	const root = createRoot(container);
+	const table =
+		"<table>\n\n<tr><td>one</td></tr>\n\n<tr><td>two</td></tr>\n\n</table>";
+	try {
+		for (const before of ["Intro", "# Heading"]) {
+			const content = `${before}\n${table}\n\nAfter the table.\n`;
+			const incremental = createBlockScanner();
+			for (const prefix of prefixes(content, 1)) {
+				scanMarkdownBlocks(incremental, prefix);
+				const whole = createBlockScanner();
+				scanMarkdownBlocks(whole, prefix);
+				assert.deepEqual(incremental.blocks, whole.blocks);
+				assert.equal(incremental.blockStart, whole.blockStart);
+				await act(async () =>
+					root.render(createElement(StreamingMarkdown, { content: prefix })),
+				);
+				const completedCells = [...prefix.matchAll(/<td>(.*?)<\/td>/g)].map(
+					(match) => match[1],
+				);
+				if (prefix.endsWith("</tr>") || prefix === content)
+					assert.deepEqual(
+						[...container.querySelectorAll("td")].map(
+							(cell) => cell.textContent,
+						),
+						completedCells,
+						`${before} @${prefix.length}`,
+					);
+			}
+			for (const component of [StreamingMarkdown, MarkdownRenderer]) {
+				await act(async () =>
+					root.render(createElement(component, { content })),
+				);
+				assert.deepEqual(
+					[...container.querySelectorAll("td")].map((cell) => cell.textContent),
+					["one", "two"],
+				);
+				assert.ok(
+					container.textContent.includes(
+						before.startsWith("# ") ? before.slice(2) : before,
+					),
+				);
+				assert.ok(container.textContent.includes("After the table."));
+				if (before.startsWith("#"))
+					assert.equal(container.querySelector("h1")?.textContent, "Heading");
+			}
+		}
+	} finally {
+		await act(async () => root.unmount());
+		dom.restore();
+	}
+});
+
 test("project and Team Bridge tables share the safe markup transform", async () => {
 	const dom = mountDom();
 	const container = dom.window.document.getElementById("root");
