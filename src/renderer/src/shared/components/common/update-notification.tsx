@@ -20,6 +20,7 @@ import {
 	serverUpdateFailureReason,
 	updateMessageFate,
 	updateMessageOf,
+	updaterFailureCauseLine,
 } from "@shared/utils/update-error-copy";
 import {
 	installPhaseCopy,
@@ -3989,6 +3990,22 @@ export const UpdateNotification = ({
 			const stepLabel = failureStepLabel(structured.step);
 			const canRestart = failureCanRestartServer(structured);
 			const refused = structured.kind === "refused";
+
+			/*
+			 * THE CAUSE AN UNCLASSIFIED FAILURE CAN STILL NAME.
+			 *
+			 * `unknown` means this build maps no kind for the block - NOT that the updater
+			 * said nothing. The contract refuses a block whose `error` is empty, so a
+			 * sentence always exists here; the panel used to discard it and print only the
+			 * remedy, whose first clause is "The updater did not name a cause.", putting a
+			 * false statement where the one useful fact belonged. The helper bounds the
+			 * sentence and masks the credential shapes an install emits, so this line is
+			 * safe to screenshot; its own note says what it does not cover.
+			 */
+			const unknownCause =
+				structured.kind === "unknown"
+					? updaterFailureCauseLine(structured.error)
+					: null;
 			return withErrorToast(
 				<UpdateContainer tone="failed">
 					<UpdateHeading tone="failed">
@@ -4001,13 +4018,17 @@ export const UpdateNotification = ({
 					{stepLabel && <p className="text-meta text-ink-dim">{stepLabel}</p>}
 					{structured.kind === "unknown" ? (
 						/*
-						 * ONE PARAGRAPH FOR THE UNCLASSIFIED ARM (review U3): its remedy
-						 * sentence already begins by saying the updater named no cause, so
-						 * rendering a cause line above it repeated the same clause twice.
-						 * The fallback is read once, as the primary line.
+						 * ONE PARAGRAPH, AND IT IS THE TRUE ONE. The earlier reading (review U3)
+						 * dropped the cause line because the remedy already opened "The updater
+						 * did not name a cause." - true only while the block carries no sentence,
+						 * which the contract makes impossible for this kind. With a cause, the
+						 * REMEDY is the line that would lie, so the cause takes the paragraph and
+						 * the false clause is not printed; the next steps are the actions below
+						 * and the machine record in the disclosure. With no cause the remedy is
+						 * the honest fallback, exactly as it was.
 						 */
 						<p className="mt-1 text-body text-ink">
-							{failureRemedyLine(structured)}
+							{unknownCause ?? failureRemedyLine(structured)}
 						</p>
 					) : (
 						<>

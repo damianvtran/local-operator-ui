@@ -456,13 +456,14 @@ const mockUpdaterApi = () => {
 						logPath:
 							"/Users/operator/Library/Application Support/Local Operator/logs/update-service.log",
 						failure: {
-							step: "install",
+							step: "environment",
 							kind: "unknown",
 							exitCode: 1,
-							error: "unexpected state while installing 0.89.0",
-							target: "0.89.0",
-							installVersion: "0.88.4",
-							runningVersion: "0.88.4",
+							error:
+								"could not persist update recovery: update recovery records are at capacity; inspect pending operations",
+							target: "0.106.1",
+							installVersion: "0.106.0",
+							runningVersion: "0.106.0",
 							restartable: false,
 							appOwnedEnvironment: false,
 							command: null,

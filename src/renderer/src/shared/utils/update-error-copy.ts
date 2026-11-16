@@ -584,3 +584,85 @@ export function updateMessageFate(message: string): UpdateMessageFate {
 	if (RELEASE_ARTIFACT_ERROR_REGEX.test(message)) return "muted";
 	return "show";
 }
+
+/** Longest updater sentence the panel prints as a cause - well under the 400-character dump bound. */
+const UPDATER_CAUSE_MAX_LENGTH = 240;
+
+/**
+ * Credential shapes a failing install actually emits.
+ *
+ * NOT A GENERAL REDACTOR, and this table is not a claim that it is one: it covers the
+ * shapes seen in updater output - userinfo in a URL, an Authorization header, a
+ * `key=value` pair in any of the spellings (`access_token`, quoted JSON keys, spaces
+ * around the separator) and bare provider token prefixes. A cause line is screenshot
+ * material, so the useful head stays and the credential goes.
+ *
+ * COVERAGE IS LIMITED, AND UNRECOGNISED MATERIAL IS SHOWN. A credential in a shape this
+ * table does not match is printed as the updater wrote it - the bound shortens it, it
+ * does not remove it - so this is defence in depth for the shapes an install actually
+ * emits, not a guarantee about arbitrary input. Do not call it redaction in the general
+ * sense, and do not let a passing test here read as proof that no secret can reach the
+ * panel.
+ *
+ * THE HEADER ARM IS DELIBERATELY LENGTH-AGNOSTIC. `Basic dTpw` is base64 for "u:p" -
+ * four characters, and a real credential. A minimum length would miss exactly the
+ * shortest secret, so the arm masks any 4+ character run after the scheme and accepts
+ * that prose beginning "Basic <word>" is masked too.
+ *
+ * ORDER IS PART OF THE CONTRACT: these run BEFORE the bound, because truncating first
+ * can cut a token in half and still emit a usable prefix.
+ */
+const UPDATER_CAUSE_MASKS: ReadonlyArray<readonly [RegExp, string]> = [
+	// scheme://user:password@host -> scheme://...@host
+	[/(\b[A-Za-z][A-Za-z0-9+.-]*:\/\/)[^\s/@:]+:[^\s/@]+@/g, "$1\u2026@"],
+	// Authorization: Bearer/Basic <credential>, quotes and separators optional
+	[/\b(Bearer|Basic)("?\s*[:=]?\s*"?)[A-Za-z0-9._~+/=-]{4,}/gi, "$1$2\u2026"],
+	// key[=:]value secrets: _-joined and camel spellings, quoted JSON keys, spaces round the sign
+	[
+		/([A-Za-z0-9_-]*(?:token|secret|password|passwd|api[_-]?key|access[_-]?key|auth))("?\s*[=:]\s*"?)[^\s,;"'}\]]+/gi,
+		"$1$2\u2026",
+	],
+	// provider token prefixes with no key in front (GitHub, Slack, OpenAI, AWS)
+	[
+		/\b(ghp_|gho_|ghu_|ghs_|ghr_|github_pat_|xox[abpr]-|sk-|AKIA)[A-Za-z0-9._-]{8,}/g,
+		"$1\u2026",
+	],
+];
+
+/**
+ * The updater's own cause sentence, made safe to print on the panel.
+ *
+ * WHY THIS EXISTS. `update.report.v1` carries `error` - one sentence in the updater's
+ * words - and the contract refuses a block whose `error` is empty, so an `unknown` KIND
+ * still arrives with a real cause. Rendering it is the difference between "the update
+ * failed" and "the update failed because the recovery records are full"; printing it
+ * naively is the difference between a useful sentence and a screenshot with a token in
+ * it.
+ *
+ * Three rules, each for a reason:
+ * - FIRST LINE ONLY. The producer sends the failing branch's first line followed by a
+ *   dump; the dump belongs in the collapsed record, which the panel already shows.
+ * - MASK, THEN BOUND. See the table's note; the order is what stops a half-token.
+ * - BOUND. `AUTHORED_SENTENCE_MAX_LENGTH` is where this file already decides a string
+ *   is a machine dump; a cause line stays under it so the panel never grows a paragraph
+ *   it cannot wrap.
+ *
+ * Null means there is nothing to say, and the caller falls back to the nameless remedy
+ * rather than printing an empty line.
+ */
+export function updaterFailureCauseLine(error: string): string | null {
+	const firstLine = error
+		.split(/\r?\n/)
+		.map((line) => line.trim())
+		.find((line) => line !== "");
+	if (!firstLine) return null;
+	let masked = firstLine;
+	for (const [pattern, replacement] of UPDATER_CAUSE_MASKS) {
+		masked = masked.replace(pattern, replacement);
+	}
+	const oneLine = masked.replace(/\s+/g, " ").trim();
+	if (oneLine === "") return null;
+	return oneLine.length > UPDATER_CAUSE_MAX_LENGTH
+		? `${oneLine.slice(0, UPDATER_CAUSE_MAX_LENGTH - 1).trimEnd()}\u2026`
+		: oneLine;
+}
