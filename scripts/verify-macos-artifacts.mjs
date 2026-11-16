@@ -41,6 +41,7 @@ import {
 	UV_VERSION,
 	seedResourceDir,
 } from "./bundled-runtime-layout.mjs";
+import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import {
 	ATTESTATION_EPOCH_KEY,
 	ATTESTATION_EPOCH_VALUE,
@@ -593,10 +594,13 @@ export function artifactChecks({
 			 * the bound and on a person's Mac raises a window and asks the keychain.
 			 * Hence a flag the app itself answers (`src/main/launch-probe.ts`), before
 			 * its single-instance lock, any window, `whenReady` or the backend. With
-			 * the asar-integrity fuse on, a tampered `app.asar` also dies here, before
-			 * any JS runs.
+			 * the asar-integrity fuse on, a mismatched `app.asar` header, or tampering
+			 * in any file read before the probe (`out/main/index.jsc`), also dies here
+			 * before the marker. Other files are checked against their block hashes
+			 * only when first read, so a flipped byte in a renderer asset passes this
+			 * row and fails later: a tamper test must hit the header or a start-up file.
 			 *
-			 * The scratch `--user-data-dir` and `--use-mock-keychain` are belt and
+			 * The scratch `--user-data-dir` and `MOCK_KEYCHAIN_SWITCH` are belt and
 			 * braces for Chromium's own early start-up (the app reaches nothing of
 			 * the profile before it exits), and `--window-mode=headless` keeps a
 			 * bundle that predates the flag from showing a window while it runs into
@@ -630,7 +634,7 @@ export function artifactChecks({
 					args: [
 						LAUNCH_PROBE_FLAG,
 						`--user-data-dir=${profileDir}`,
-						"--use-mock-keychain",
+						MOCK_KEYCHAIN_SWITCH,
 						"--window-mode=headless",
 					],
 					env: {

@@ -1709,8 +1709,10 @@ answers from the app as the operator's. For a rig that means:
   (`src/main/dev-renderer-url.ts`), which ignores it when packaged; a rig that
   wants a dev renderer runs the unpackaged app.
 - **Do not edit a built bundle's `app.asar` and expect it to run.** The integrity
-  fuse checks it against the hash in `Info.plist`, and Electron aborts at launch
-  on a mismatch (that is the point).
+  fuse checks the archive header against the hash in `Info.plist` at launch, and
+  each file against its block hashes when that file is first read; a mismatch
+  aborts (that is the point). A tamper test must change the header or a file
+  read at start-up (`out/main/index.jsc`): a renderer asset only fails later.
 
 ### What already opens no window, so a rebase does not re-introduce one
 

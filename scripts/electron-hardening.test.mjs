@@ -106,6 +106,10 @@ test("package.json asks electron-builder for exactly the fuses the gate requires
 	// The deliberate exception, recorded so a later flip is a decision: turning
 	// it off blanks the file:// renderer until an app:// protocol exists.
 	assert.equal(config.grantFileProtocolExtraPrivileges, true);
+	// Without it an UNSIGNED local arm64 package will not launch: the flip
+	// breaks Electron Framework's ad-hoc linker signature, and electron-builder
+	// only re-signs when it has an identity (round-1 review, MINOR-1).
+	assert.equal(config.resetAdHocDarwinSignature, true);
 });
 
 test("package.json signs main and helpers with different plists and writes the epoch", () => {

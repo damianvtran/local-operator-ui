@@ -16,7 +16,9 @@
  * WHAT A PASS PROVES, which is more than both old checks together:
  * - the OS let the real launcher exec (the 0.29.6 class, decided by amfid);
  * - Electron accepted `app.asar` under the integrity and only-from-asar fuses
- *   (a tampered archive dies before any JS runs);
+ *   (a mismatched archive header, or tampering in any file read before this
+ *   probe, aborts before the marker; Electron checks other files' block
+ *   hashes only when they are first read, so they fail later, not here);
  * - the shipped `out/main/index.jsc` loaded under the bundle's OWN V8 (the
  *   0.30.10 x64 class: foreign bytecode throws `cachedDataRejected` before this
  *   module's caller is ever reached), because this runs from that bytecode.

@@ -10,7 +10,12 @@
  * - RunAsNode: `ELECTRON_RUN_AS_NODE=1 <exe> -e <js>` ran arbitrary JS in the
  *   genuine signed process and passed the app's designated requirement (F2
  *   spike, measured on 0.57.8).
- * - EnableNodeOptionsEnvironmentVariable: `NODE_OPTIONS=--require x.js`, same.
+ * - EnableNodeOptionsEnvironmentVariable: defence in depth. A packaged app's
+ *   browser process already refuses most `NODE_OPTIONS` (measured on an
+ *   unfused packaged Electron 44.3.0: `--require x.js` printed "Most
+ *   NODE_OPTIONs are not supported in packaged apps" and never ran), so this
+ *   closes what that runtime filter still lets through rather than an
+ *   observed `--require` injection.
  * - EnableNodeCliInspectArguments: `--inspect` hands a debugger to any caller.
  * - EnableEmbeddedAsarIntegrityValidation + OnlyLoadAppFromAsar: without both,
  *   the JS the signed binary runs is not the JS that was signed (a swapped
@@ -27,7 +32,14 @@
  * and WasmTrapHandlers are defaults unrelated to it.
  *
  * WHO FLIPS THEM: electron-builder, from `build.electronFuses` in package.json,
- * immediately before signing. This module is what the release gate
+ * immediately before signing. `resetAdHocDarwinSignature: true` sits beside
+ * them because flipping rewrites bytes inside `Electron Framework`, whose
+ * npm-dist signature is only ad-hoc linker-signed: an UNSIGNED local arm64
+ * package (`CSC_IDENTITY_AUTO_DISCOVERY=false … --dir --arm64`, the AGENTS.md
+ * recipe) would otherwise refuse to launch with a code-signature error
+ * (`@electron/fuses` README, "Apple Silicon"). It re-signs ad hoc only; on the
+ * release path electron-builder re-signs every Mach-O with the Developer ID
+ * right after, so it changes nothing there. This module is what the release gate
  * (`scripts/verify-macos-artifacts.mjs`, `app-electron-fuses`) reads the result
  * back with - the config says what was asked for, the wire says what shipped -
  * and the unit test holds the two to one table so they cannot drift.

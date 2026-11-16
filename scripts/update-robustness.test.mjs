@@ -30,6 +30,7 @@ import {
 } from "node:path";
 import { after, afterEach, before, test } from "node:test";
 import { build } from "esbuild";
+import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 
 /**
  * Contract checks for the update path.
@@ -4787,7 +4788,7 @@ test("the launch probe asks the bundle itself, never in node mode, and refuses '
 	// V8 can say whether it loads its own bytecode.
 	assert.equal(check.command, launcher);
 	assert.equal(check.args[0], LAUNCH_PROBE_FLAG);
-	assert.ok(check.args.includes("--use-mock-keychain"));
+	assert.ok(check.args.includes(MOCK_KEYCHAIN_SWITCH));
 	assert.ok(check.args.includes("--window-mode=headless"));
 	const profileArg = check.args.find((arg) =>
 		arg.startsWith("--user-data-dir="),

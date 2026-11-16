@@ -305,7 +305,8 @@
       "onlyLoadAppFromAsar": true,
       "enableCookieEncryption": true,
       "loadBrowserProcessSpecificV8Snapshot": false,
-      "grantFileProtocolExtraPrivileges": true
+      "grantFileProtocolExtraPrivileges": true,
+      "resetAdHocDarwinSignature": true
     },
     "mac": {
       "icon": "build/icon.icns",
