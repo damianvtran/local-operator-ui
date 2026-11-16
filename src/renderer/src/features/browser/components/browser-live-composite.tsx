@@ -91,7 +91,28 @@ export function BrowserLiveComposite({
 	// passive effect would paint one frame of the paused note on every open.
 	useLayoutEffect(() => {
 		const bridge = browserBridge();
-		if (!bridge?.onCompositeFrame) return;
+		// Tolerate a bridge that implements the composite API only in part: an
+		// older preload lacks these members, and test fakes (a catch-all Proxy
+		// answering every member with `async () => undefined`) hand back a
+		// promise where an unsubscriber is expected. Neither may throw from this
+		// effect's cleanup, which would abort React's commit for the whole tree.
+		if (
+			typeof bridge?.onCompositeFrame !== "function" ||
+			typeof bridge.onCompositeClear !== "function"
+		)
+			return;
+		/**
+		 * Fire-and-forget a bridge call that must never throw. The call still runs
+		 * synchronously (same IPC ordering as before on the real bridge); only a
+		 * synchronous throw or a non-promise result is absorbed.
+		 */
+		const quietly = (call: () => unknown) => {
+			try {
+				void Promise.resolve(call()).catch(() => {});
+			} catch {
+				// A fake or older bridge without this member: nothing to tell main.
+			}
+		};
 		const sink = new CompositeSink();
 		let pending: CompositeFrame | null = null;
 		let raf: number | null = null;
@@ -165,12 +186,12 @@ export function BrowserLiveComposite({
 			sink.markDrawn(frame);
 			setView("picture");
 			// The ACK is what releases main's next frame (one in flight).
-			void bridge
-				.ackCompositeFrame({
+			quietly(() =>
+				bridge.ackCompositeFrame({
 					generation: frame.generation,
 					frameSeq: frame.frameSeq,
-				})
-				.catch(() => {});
+				}),
+			);
 		};
 		const offFrame = bridge.onCompositeFrame((frame) => {
 			if (!sink.accept(frame)) return;
@@ -198,16 +219,16 @@ export function BrowserLiveComposite({
 		};
 		// A fresh open: a frame normally follows; show the ground, not the note.
 		enterGap();
-		void bridge.setCompositeConsumer(true).catch(() => {});
+		quietly(() => bridge.setCompositeConsumer(true));
 		return () => {
-			offFrame();
-			offClear();
+			if (typeof offFrame === "function") offFrame();
+			if (typeof offClear === "function") offClear();
 			if (raf !== null) cancelAnimationFrame(raf);
 			pending = null;
 			dropRef.current = null;
 			wipe();
 			setView("none");
-			void bridge.setCompositeConsumer(false).catch(() => {});
+			quietly(() => bridge.setCompositeConsumer(false));
 		};
 	}, []);
 
