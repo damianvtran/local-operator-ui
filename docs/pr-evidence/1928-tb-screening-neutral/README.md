@@ -59,3 +59,27 @@ The default desktop host opened the tab and allowed one capture plus geometry
 reads. It then answered `owner_refused`, because a password-manager prompt was
 waiting for the operator, on all 32 remaining goto/screenshot calls. Capture
 stopped there, and nothing was retried in a loop.
+
+## Round 3 design capture (`r3-*`, closes D6)
+
+Captured by the designer on b0e5ecbd57 from one Storybook (`storybook dev -p
+6071`, reaped by process group afterwards) with the harness browser tool's
+default desktop host, 2560x1440, theme and locale driven by
+`?args=theme:<id>;locale:ru`. Theme verified by pixel on all four corners of
+every file: each `-dark` frame's top corners read rgb(29,27,23), each `-light`
+frame's rgb(241,237,228) (the bottom corners fall inside the Reach fieldset:
+rgb(58,54,41) dark, rgb(217,213,204) light).
+
+- `r3-screening-not-enrolled-here-{light,dark}`: the Screening row is absent
+  between "Enabled on this machine" and "Session for new messages".
+- `r3-screening-open-{light,dark}`, `r3-screening-open-ru-{light,dark}`: the
+  open list with route labels ("via your Anthropic account" / "via your
+  Radient account"; ru "через вашу учётную запись …").
+- `r3-screening-chosen-{light,dark}`, `r3-screening-chosen-ru-{light,dark}`:
+  the closed box holds only the mono id. Browser `styles` read: trigger 448x32,
+  value span 195x20 (`text-overflow: ellipsis`) in both en and ru, so nothing
+  clips.
+- `r3-screening-automatic-{light,dark}`, `r3-screening-unavailable-{light,dark}`,
+  `r3-screening-paused-{light,dark}`: Automatic default, the unavailable
+  notice, and the paused endpoint (light was the round-1 gap; dark re-taken for
+  the C6 help copy).
