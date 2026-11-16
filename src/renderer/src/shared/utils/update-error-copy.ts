@@ -587,6 +587,9 @@ export function updateMessageFate(message: string): UpdateMessageFate {
 
 /** Longest updater sentence the panel prints as a cause - well under the 400-character dump bound. */
 const UPDATER_CAUSE_MAX_LENGTH = 240;
+const UPDATER_NAMED_VALUE_PATTERN =
+	/(?<![A-Za-z0-9_-])([A-Za-z0-9_-]*(?:token|secret|password|passwd|api[_-]?key|access[_-]?key|auth))(["']?\s*[=:]\s*)/gi;
+const UPDATER_VALUE_BOUNDARY = /[\s,;"'}\]]/;
 
 /**
  * Credential shapes a failing install actually emits.
@@ -609,17 +612,23 @@ const UPDATER_CAUSE_MAX_LENGTH = 240;
  * shortest secret, so the arm masks any 4+ character run after the scheme and accepts
  * that prose beginning "Basic <word>" is masked too.
  *
+ * RESTARTS ARE BOUNDED. Scheme/key matches start only outside their entire name
+ * alphabet, not at every word boundary (a hyphen is a word boundary inside a scheme).
+ * A failed candidate therefore scans its name a bounded number of times, not every suffix.
+ * Header whitespace likewise has one owner on either side of a required separator.
+ *
  * ORDER IS PART OF THE CONTRACT: these run BEFORE the bound, because truncating first
  * can cut a token in half and still emit a usable prefix.
  */
 const UPDATER_CAUSE_MASKS: ReadonlyArray<readonly [RegExp, string]> = [
 	// scheme://user:password@host -> scheme://...@host
-	[/(\b[A-Za-z][A-Za-z0-9+.-]*:\/\/)[^\s/@:]+:[^\s/@]+@/g, "$1\u2026@"],
-	// Authorization: Bearer/Basic <credential>, quotes and separators optional
-	[/\b(Bearer|Basic)("?\s*[:=]?\s*"?)[A-Za-z0-9._~+/=-]{4,}/gi, "$1$2\u2026"],
-	// key[=:]value secrets: _-joined and camel spellings, quoted JSON keys, spaces round the sign
 	[
-		/([A-Za-z0-9_-]*(?:token|secret|password|passwd|api[_-]?key|access[_-]?key|auth))("?\s*[=:]\s*"?)[^\s,;"'}\]]+/gi,
+		/((?<![A-Za-z0-9+.-])[A-Za-z][A-Za-z0-9+.-]*:\/\/)[^\s/@:]+:[^\s/@]+@/g,
+		"$1\u2026@",
+	],
+	// Authorization: Bearer/Basic <credential>, quotes and separators optional
+	[
+		/\b(Bearer|Basic)("?(?:\s*[:=]\s*|\s+)?"?)[A-Za-z0-9._~+/=-]{4,}/gi,
 		"$1$2\u2026",
 	],
 	// provider token prefixes with no key in front (GitHub, Slack, OpenAI, AWS)
@@ -628,6 +637,52 @@ const UPDATER_CAUSE_MASKS: ReadonlyArray<readonly [RegExp, string]> = [
 		"$1\u2026",
 	],
 ];
+
+/**
+ * Named values may contain spaces, punctuation or escaped quotes. Scan a quoted
+ * value to its closing unescaped quote (or the line end when incomplete), rather
+ * than treating the first space as the end of a credential. The key expression
+ * cannot restart inside the same name, and lastIndex skips every consumed value:
+ * even an unterminated quote or a long non-matching name takes only linear work.
+ */
+function maskUpdaterNamedValues(line: string): string {
+	// Each cause owns a fresh cursor; global lastIndex must not leak across renders.
+	const names = new RegExp(
+		UPDATER_NAMED_VALUE_PATTERN.source,
+		UPDATER_NAMED_VALUE_PATTERN.flags,
+	);
+	const parts: string[] = [];
+	let copied = 0;
+	for (let match = names.exec(line); match; match = names.exec(line)) {
+		const start = names.lastIndex;
+		const quote = line[start];
+		const opening = quote === '"' || quote === "'" ? quote : "";
+		let closing = "";
+		let end = start;
+		if (opening) {
+			end++;
+			while (end < line.length) {
+				if (line[end] === "\\") {
+					// An escaped quote belongs to the value, not the delimiter.
+					end = Math.min(end + 2, line.length);
+				} else if (line[end++] === quote) {
+					closing = quote;
+					break;
+				}
+			}
+		} else {
+			while (end < line.length && !UPDATER_VALUE_BOUNDARY.test(line[end]))
+				end++;
+		}
+		if (end === start) continue;
+		// Keep the name and delimiters, never any part of the consumed value.
+		parts.push(line.slice(copied, start), `${opening}\u2026${closing}`);
+		copied = end;
+		names.lastIndex = end;
+	}
+	parts.push(line.slice(copied));
+	return parts.join("");
+}
 
 /**
  * The updater's own cause sentence, made safe to print on the panel.
@@ -660,7 +715,7 @@ export function updaterFailureCauseLine(error: string): string | null {
 	for (const [pattern, replacement] of UPDATER_CAUSE_MASKS) {
 		masked = masked.replace(pattern, replacement);
 	}
-	const oneLine = masked.replace(/\s+/g, " ").trim();
+	const oneLine = maskUpdaterNamedValues(masked).replace(/\s+/g, " ").trim();
 	if (oneLine === "") return null;
 	return oneLine.length > UPDATER_CAUSE_MAX_LENGTH
 		? `${oneLine.slice(0, UPDATER_CAUSE_MAX_LENGTH - 1).trimEnd()}\u2026`

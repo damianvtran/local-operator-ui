@@ -3,6 +3,9 @@ import { unlink, writeFile } from "node:fs/promises";
 import { test } from "node:test";
 import { build } from "esbuild";
 
+const PRIMARY_CAUSE_CLASS_SEPARATOR = /\s+/;
+const LONG_CAUSE_PREFIX = /^could not persist update recovery:/;
+
 /**
  * Contract checks for the lifetime of the update affirmation (QA round 1, Q1).
  *
@@ -1075,6 +1078,27 @@ function failurePanelReason(handle) {
 	const paragraph = walk(failed.props.children).find(
 		(node) => node.type === "p" && textOf(node.props?.children) !== "",
 	);
+	return paragraph ? textOf(paragraph.props.children) : null;
+}
+
+/**
+ * Step metadata precedes the cause. Read the failed panel's direct text-body
+ * paragraph, not its first paragraph or text inside the record disclosure.
+ */
+function primaryFailureCause(handle) {
+	const failed = walk(handle.tree).find(
+		(node) => node.type === UpdateContainer && node.props?.tone === "failed",
+	);
+	if (!failed) return null;
+	const paragraph = [failed.props.children]
+		.flat(Number.POSITIVE_INFINITY)
+		.find(
+			(node) =>
+				node?.type === "p" &&
+				(node.props?.className ?? "")
+					.split(PRIMARY_CAUSE_CLASS_SEPARATOR)
+					.includes("text-body"),
+		);
 	return paragraph ? textOf(paragraph.props.children) : null;
 }
 
@@ -3681,11 +3705,11 @@ test("an unclassified failure shows the cause the updater named", () => {
 	assert.equal(successToasts(handle).length, 0);
 });
 
-test("a 1.3 kB cause is bounded onto the panel, one line, nothing beyond the bound", () => {
+test("a long first-line cause is bounded at 240 characters in its primary paragraph", () => {
 	const handle = mountNotification();
 	startServerUpdate(handle);
 	const marker = "SECRET-MARKER-9f3a";
-	const long = `could not persist update recovery: ${"y".repeat(1200)}\n${marker} token=abc123`;
+	const long = `could not persist update recovery: ${"y".repeat(1200)} ${marker} token=abc123\nSECOND-LINE-MARKER`;
 
 	updater.emit("backend-update-error", {
 		message: legacySentence(),
@@ -3695,8 +3719,20 @@ test("a 1.3 kB cause is bounded onto the panel, one line, nothing beyond the bou
 	});
 	handle.render();
 
+	const primary = primaryFailureCause(handle);
+	assert.equal(
+		primary,
+		`${long.slice(0, 239)}\u2026`,
+		"the primary paragraph itself is bounded, not merely the dump's second line",
+	);
+	assert.equal(primary.length, 240);
+	assert.ok(primary.endsWith("\u2026"));
 	const text = allText(handle);
 	assert.match(text, /could not persist update recovery/);
+	assert.ok(
+		!text.includes("SECOND-LINE-MARKER"),
+		"dump lines still stay out of the cause paragraph",
+	);
 	assert.ok(
 		!text.includes(marker),
 		"a cause bound must stop before the tail of a 1.3 kB sentence",
@@ -3814,6 +3850,105 @@ test("a first-line credential is masked on every shape an install emits, head ke
 	assert.match(text, /access_token=/);
 	assert.match(text, /refresh_token/);
 });
+
+for (const [label, value, expected] of [
+	["JSON whitespace", '{"password":"s first second"}', '{"password":"\u2026"}'],
+	[
+		"quoted punctuation",
+		"password=\"first; second, 'third'\"",
+		'password="\u2026"',
+	],
+	[
+		"escaped double quote",
+		'{"password":"first \\"second\\" third"}',
+		'{"password":"\u2026"}',
+	],
+	[
+		"escaped single quote",
+		"password='first \\'second\\' third'",
+		"password='\u2026'",
+	],
+	[
+		"escaped backslash",
+		'{"password":' + '"alpha\\\\beta"}',
+		'{"password":"\u2026"}',
+	],
+	["single-quoted key", "{'api_key':'first second'}", "{'api_key':'\u2026'}"],
+	[
+		"adjacent named values",
+		'{"password":"alpha bravo","client_secret":"charlie delta"}; retry later',
+		'{"password":"\u2026","client_secret":"\u2026"}; retry later',
+	],
+	["unterminated value", 'password="first second', 'password="\u2026'],
+	["trailing escape", 'password="first second\\', 'password="\u2026'],
+]) {
+	test(`a named credential masks its complete ${label} value`, () => {
+		const handle = mountNotification();
+		startServerUpdate(handle);
+		const error = `credential refused: ${value}`;
+		assert.ok(
+			error.length < 240,
+			"masking, not the display bound, must hide this value",
+		);
+		updater.emit("backend-update-error", {
+			message: legacySentence(),
+			phase: "update",
+			installerOutput: null,
+			failure: { ...UNKNOWN_CAPACITY_FAILURE, error },
+		});
+		handle.render();
+		assert.equal(
+			primaryFailureCause(handle),
+			`credential refused: ${expected}`,
+		);
+		control(handle, "Try again");
+		assert.equal(successToasts(handle).length, 0);
+	});
+}
+
+test("a named value crossing the display bound is masked before shortening", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+	const head = `credential refused: ${"x".repeat(190)} `;
+	const error = `${head}password="${"p".repeat(400)}"`;
+	assert.ok(head.length + 'password="'.length < 239);
+	updater.emit("backend-update-error", {
+		message: legacySentence(),
+		phase: "update",
+		installerOutput: null,
+		failure: { ...UNKNOWN_CAPACITY_FAILURE, error },
+	});
+	handle.render();
+	assert.equal(primaryFailureCause(handle), `${head}password="\u2026"`);
+});
+
+// No machine-speed SLA: these adversarial shapes exercise candidate boundaries.
+// The carrier's bounded worker probe records durations separately. The previous
+// suffix-restarting expressions exceeded its 1500 ms ceiling at 64/256 KiB.
+for (const [label, tail] of [
+	["unbroken non-key", "x".repeat(256 * 1024)],
+	["hyphenated non-scheme", "a-".repeat(128 * 1024)],
+	["scheme without userinfo", `${"a-".repeat(128 * 1024)}://host/update`],
+	["header without value", `Basic${" ".repeat(256 * 1024)}`],
+]) {
+	test(`a long ${label} still preserves the useful cause and controls`, () => {
+		const handle = mountNotification();
+		startServerUpdate(handle);
+		const error = `could not persist update recovery: ${tail}; inspect pending operations`;
+		updater.emit("backend-update-error", {
+			message: legacySentence(),
+			phase: "update",
+			installerOutput: null,
+			failure: { ...UNKNOWN_CAPACITY_FAILURE, error },
+		});
+		handle.render();
+		const primary = primaryFailureCause(handle);
+		assert.match(primary, LONG_CAUSE_PREFIX);
+		assert.ok(primary.length <= 240);
+		control(handle, "Try again");
+		assert.equal(successToasts(handle).length, 0);
+	});
+}
 
 test("a malformed machine block invents no cause and prints no placeholder", () => {
 	const handle = mountNotification();

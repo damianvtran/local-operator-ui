@@ -460,6 +460,7 @@ const mockUpdaterApi = () => {
 							kind: "unknown",
 							exitCode: 1,
 							error:
+								window.backendUpdateUnknownError ??
 								"could not persist update recovery: update recovery records are at capacity; inspect pending operations",
 							target: "0.106.1",
 							installVersion: "0.106.0",
@@ -1278,6 +1279,8 @@ declare global {
 		triggerBackendUpdateErrorServe?: boolean;
 		/** The unclassified failure: a structured block with no mapped kind. */
 		triggerBackendUpdateErrorUnknown?: boolean;
+		/** Story-only cause override; absent preserves the incident fixture. */
+		backendUpdateUnknownError?: string;
 		triggerBackendUpdateInFlight?: boolean;
 		/**
 		 * The phase the main process announces while the update runs, for the two
@@ -2198,7 +2201,10 @@ const PressUpdateServer = ({
 	outcome,
 	phase = null,
 	variant = "default",
+	unknownError,
 }: {
+	/** Exercise cause edge cases through the same offer/press/mock report path. */
+	unknownError?: string;
 	outcome: "inflight" | "failed" | "refused";
 	/**
 	 * WHICH OFFER the press is made on. `default` is the release-install payload (the entry-point
@@ -2228,6 +2234,7 @@ const PressUpdateServer = ({
 }) => {
 	const [ready, setReady] = useState(false);
 	useLayoutEffect(() => {
+		window.backendUpdateUnknownError = unknownError;
 		if (variant === "source-build") {
 			/*
 			 * THE OFFER IS RAISED FOR BOTH OUTCOMES. The press this fixture makes is only possible
@@ -2293,7 +2300,10 @@ const PressUpdateServer = ({
 		 */
 		useUpdateNoticeStore.getState().openDetail(UpdateType.BACKEND);
 		setReady(true);
-	}, [outcome, phase, variant]);
+		return () => {
+			window.backendUpdateUnknownError = undefined;
+		};
+	}, [outcome, phase, variant, unknownError]);
 	useEffect(() => {
 		if (!ready) return;
 		document.documentElement.dataset.capturePending = "1";
@@ -2486,6 +2496,32 @@ export const BackendUpdateFailedServe: Story = {
 export const BackendUpdateFailedUnknown: Story = {
 	args: { autoCheck: false },
 	render: () => <PressUpdateServer outcome="failed" variant="unknown" />,
+};
+
+/** A maximum-length unbroken cause exposes wrapping and control reachability. */
+export const BackendUpdateFailedUnknownLongToken: Story = {
+	args: { autoCheck: false },
+	render: () => (
+		<PressUpdateServer
+			outcome="failed"
+			variant="unknown"
+			unknownError={"W".repeat(240)}
+		/>
+	),
+};
+
+/** Synthetic quoted credentials must be fully masked without losing the cause. */
+export const BackendUpdateFailedUnknownQuotedPassword: Story = {
+	args: { autoCheck: false },
+	render: () => (
+		<PressUpdateServer
+			outcome="failed"
+			variant="unknown"
+			unknownError={
+				'credential refused: {"password":"alpha \\"bravo\\" charlie"}'
+			}
+		/>
+	),
 };
 
 /**
