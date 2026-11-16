@@ -111,15 +111,26 @@ import {
 } from "./desktop-ipc";
 import { DesktopNotifier } from "./desktop-notifier";
 import {
+	DEV_DRIVER_SCRIPT_RESULT,
+	DEV_DRIVER_SCRIPT_STEP,
 	describeDevDriverArming,
+	describeDevDriverScript,
 	devDriverArgument,
+	devDriverQuietUpdatesReason,
 	devDriverSceneArgument,
+	devDriverScriptArgument,
 	headlessExerciserAllowed,
 	resolveDevDriverArming,
+	resolveDevDriverScript,
 	resolveDevDriverStartupScene,
 } from "./dev-driver";
 import { readAttachArguments } from "./dev-driver-attach";
 import { registerDevDriverIPC } from "./dev-driver-ipc";
+import {
+	DEV_DRIVER_SCRIPT_CAP_MS,
+	parseDevDriverScript,
+	runDevDriverScript,
+} from "./dev-driver-script";
 import { shouldToggleDevTools } from "./dev-shortcuts";
 import {
 	listDirectory,
@@ -1589,6 +1600,151 @@ const devDriverLine = describeDevDriverArming(devDriverArming);
 if (devDriverLine) console.log(devDriverLine);
 
 /*
+ * S1: the dev-driver STEP RUNNER's gate (`scripts/mac-proof-capture.mjs`), a
+ * fact about the LAUNCH like the arming above and read from `launchEnv` for the
+ * same reason (a checkout's `.env` cannot supply the script). Silent unless the
+ * opt-in was given. The default-profile candidates are every name this app's
+ * userData has been derived from: the running name, the product name the
+ * packaged app uses, and the two unpackaged names (package `name`, Electron's
+ * own default). A profile equal to, inside, or containing any of them refuses -
+ * a script never runs against a profile the operator could be using.
+ */
+const devDriverScript = (() => {
+	const realpathOrSelf = (path: string): string => {
+		try {
+			return realpathSync(path);
+		} catch {
+			return path;
+		}
+	};
+	try {
+		const appData = app.getPath("appData");
+		return resolveDevDriverScript({
+			env: launchEnv,
+			armed: devDriverArming.armed,
+			windowMode: windowLaunch.mode,
+			userData: app.getPath("userData"),
+			defaultUserData: [
+				...new Set([
+					app.getName(),
+					"Local Operator",
+					"local-operator-ui",
+					"Electron",
+				]),
+			].map((name) => join(appData, name)),
+			realpath: realpathOrSelf,
+			// APFS is case-insensitive by default: compare folded there (R1-3).
+			caseInsensitive: process.platform === "darwin",
+		});
+	} catch (error) {
+		// A path Electron cannot answer is not a profile this gate can vouch for.
+		return {
+			honoured: false,
+			scriptPath: null,
+			refusal: launchEnv.LOCAL_OPERATOR_UI_DEV_DRIVER_SCRIPT
+				? `the profile paths could not be read (${error instanceof Error ? error.message : String(error)})`
+				: null,
+		};
+	}
+})();
+const devDriverScriptLine = describeDevDriverScript(devDriverScript);
+if (devDriverScriptLine) console.log(devDriverScriptLine);
+
+/** Whether the runner has started, so a recreated window never re-runs a script. */
+let devDriverScriptStarted = false;
+
+/**
+ * S1: start the step runner on the FIRST main window, once its page loaded.
+ *
+ * Inert unless the gate passed: the early return is the whole function in every
+ * ordinary launch, and the IPC listener is registered only past it, so a normal
+ * run has no `dev-driver-script-*` channel (pinned by
+ * `scripts/dev-driver-script-gate.test.mjs`). Results are accepted only from
+ * this window's own main frame. A script that fails to parse, or a run that
+ * ends (DONE or FAILED), quits through `endHeadlessRun` - the same bounded
+ * terminal every other non-product run takes - so the harness never has to
+ * kill a healthy app to finish.
+ */
+function startDevDriverScriptOnce(window: BrowserWindow): void {
+	if (
+		!devDriverScript.honoured ||
+		!devDriverScript.scriptPath ||
+		!devDriverArming.outDir ||
+		devDriverScriptStarted
+	)
+		return;
+	devDriverScriptStarted = true;
+	const outDir = devDriverArming.outDir;
+	let script: ReturnType<typeof parseDevDriverScript>;
+	try {
+		script = parseDevDriverScript(
+			readFileSync(devDriverScript.scriptPath, "utf8"),
+		);
+	} catch (error) {
+		console.log(
+			`[dev-driver-script] refused: ${error instanceof Error ? error.message : String(error)}`,
+		);
+		endHeadlessRun("the dev-driver script was refused");
+		return;
+	}
+	let nextId = 1;
+	const pending = new Map<
+		number,
+		{ resolve: (value: unknown) => void; reject: (error: Error) => void }
+	>();
+	ipcMain.on(DEV_DRIVER_SCRIPT_RESULT, (event, message) => {
+		if (
+			window.isDestroyed() ||
+			event.sender !== window.webContents ||
+			event.senderFrame !== window.webContents.mainFrame
+		)
+			return;
+		const id = (message as { id?: unknown })?.id;
+		const waiter = typeof id === "number" ? pending.get(id) : undefined;
+		if (!waiter) return;
+		pending.delete(id as number);
+		const result = message as { ok: boolean; value?: unknown; error?: string };
+		if (result.ok) waiter.resolve(result.value);
+		else waiter.reject(new Error(result.error ?? "the verb failed"));
+	});
+	const send = (verb: string, payload?: unknown): Promise<unknown> =>
+		new Promise((resolve, reject) => {
+			if (window.isDestroyed()) {
+				reject(new Error("the window is gone"));
+				return;
+			}
+			const id = nextId++;
+			pending.set(id, { resolve, reject });
+			window.webContents.send(DEV_DRIVER_SCRIPT_STEP, { id, verb, payload });
+		});
+	window.webContents.once("did-finish-load", () => {
+		void runDevDriverScript(script, {
+			verbs: async () => (await send("__verbs")) as string[],
+			call: (verb, payload) => send(verb, payload),
+			capture: async (label) =>
+				(await send("__capture", { label })) as {
+					path: string;
+					pixels: { width: number; height: number };
+				},
+			mediaSourceId: () => window.getMediaSourceId(),
+			windowFacts: () => ({
+				visible: !window.isDestroyed() && window.isVisible(),
+				focused: !window.isDestroyed() && window.isFocused(),
+			}),
+			outDir,
+			ackExists: (path) => existsSync(path),
+			sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms).unref()),
+			now: () => Date.now(),
+			log: (line) => console.log(line),
+		}).then(({ ok }) =>
+			endHeadlessRun(
+				ok ? "the dev-driver script finished" : "the dev-driver script failed",
+			),
+		);
+	});
+}
+
+/*
  * THE PAPERCLIP'S PICKER, REPLACED ONLY FOR AN ARMED DRIVER RUN. The queue is
  * emptied by the first `show-open-dialog` it answers, so one press stages the
  * paths this launch was told about and a second press opens the real dialog
@@ -1664,7 +1820,14 @@ if (addressOverlayGate.asked) {
  */
 const devDriverWebPreferences =
 	devDriverArming.armed && devDriverArming.outDir
-		? { additionalArguments: [devDriverArgument(devDriverArming.outDir)] }
+		? {
+				additionalArguments: [
+					devDriverArgument(devDriverArming.outDir),
+					// S1: the preload installs its step listener only when this is
+					// present, i.e. only when the script gate above passed.
+					...(devDriverScript.honoured ? [devDriverScriptArgument()] : []),
+				],
+			}
 		: {};
 
 /*
@@ -2568,7 +2731,10 @@ app
 			env: launchEnv,
 			// S3 only: the one visible run nobody is watching still must not
 			// outlive its launcher. False for every product launch.
-			boundedVisibleProbe: addressOverlayGate.visible,
+			// The S1 step runner too: an `inactive` scripted run is a visible
+			// window nobody is at, so it is launcher-bound and capped (below).
+			boundedVisibleProbe:
+				addressOverlayGate.visible || devDriverScript.honoured,
 		});
 		logger.info(`[window-mode] ${launcher.reason}`, LogFileType.BACKEND);
 		if (windowLaunch.mode !== "normal") {
@@ -2604,7 +2770,24 @@ app
 				`[address-overlay] visible probe cap: ${ADDRESS_OVERLAY_VISIBLE_MAX_MS / 1000} s from launch`,
 			);
 		}
-		if (windowLaunch.mode === "headless" || addressOverlayGate.visible) {
+		/*
+		 * S1's hard cap, the scripted run's twin of the probe cap above: the
+		 * launcher watch covers a harness that died, this covers one that hung.
+		 * Same bounded terminal, same `unref()`.
+		 */
+		if (devDriverScript.honoured) {
+			const scriptCap = setTimeout(() => {
+				endHeadlessRun(
+					`the dev-driver script reached its ${DEV_DRIVER_SCRIPT_CAP_MS / 1000} s cap`,
+				);
+			}, DEV_DRIVER_SCRIPT_CAP_MS);
+			scriptCap.unref();
+		}
+		if (
+			windowLaunch.mode === "headless" ||
+			addressOverlayGate.visible ||
+			devDriverScript.honoured
+		) {
 			/*
 			 * A signal is the case the graceful path does NOT reach on its own.
 			 * Chromium's SIGTERM shutdown closes the window and then leaves the
@@ -2619,7 +2802,11 @@ app
 				process.on(signal, () => endHeadlessRun(`received ${signal}`));
 			}
 		}
-		if (windowLaunch.mode !== "headless" && !addressOverlayGate.visible) {
+		if (
+			windowLaunch.mode !== "headless" &&
+			!addressOverlayGate.visible &&
+			!devDriverScript.honoured
+		) {
 			/*
 			 * SIGTERM DURING A QUIT IS A CONTRACT, NOT A SURPRISE (2026-10-11).
 			 *
@@ -2949,7 +3136,9 @@ app
 		const desktopNotifier = new DesktopNotifier(
 			() => mainWindow,
 			sendDesktop,
-			windowLaunch.show,
+			// S1: a scripted run banners nothing, `inactive` included - its banners
+			// would duplicate the operator's own app and could enter a frame.
+			devDriverScript.honoured ? "never" : windowLaunch.show,
 			{
 				/*
 				 * Whether a window we have a heartbeat from is still there.
@@ -4683,6 +4872,7 @@ app
 			// The `webContents` id this window's watch state is keyed on, captured
 			// here because `mainWindow` is null by the time `closed` runs.
 			const windowId = mainWindow.webContents.id;
+			startDevDriverScriptOnce(mainWindow);
 
 			/*
 			 * EVERY remaining parked conversation goes to this window, in arrival order.
@@ -4761,7 +4951,11 @@ app
 			}
 
 			// Initialize the update service with a reference to the backend service
-			updateService = new UpdateService(mainWindow, backendService);
+			updateService = new UpdateService(mainWindow, backendService, {
+				// S3: an armed (rig) boot of the shipped bundle neither repairs that
+				// bundle's seal nor checks for updates. Null for every product launch.
+				quietReason: devDriverQuietUpdatesReason(devDriverArming),
+			});
 			activeUpdateService = updateService;
 
 			// Clean up update service and mainWindow reference when the window is closed

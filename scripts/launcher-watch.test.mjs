@@ -304,10 +304,12 @@ test("every way a headless run can end is bounded by the same deadline", () => {
 	// bare handler outside it is asserted absent below. S3's visible probe takes
 	// the SAME lifetime contract (it is a visible run nobody is watching, capped
 	// at 120 s), so that gate names `addressOverlayGate.visible` too — the pin
-	// follows the condition rather than being loosened to "some if".
+	// follows the condition rather than being loosened to "some if". The S1
+	// dev-driver step runner (mac proof capture) is the same kind of run - a
+	// visible `inactive` window nobody is at, capped at 300 s - and joins it.
 	const loopAt = index.indexOf("for (const signal of");
 	const gateAt = index.indexOf(
-		'if (windowLaunch.mode === "headless" || addressOverlayGate.visible) {',
+		'if ( windowLaunch.mode === "headless" || addressOverlayGate.visible || devDriverScript.honoured ) {',
 	);
 	assert.ok(
 		gateAt !== -1 && loopAt > gateAt,
@@ -332,7 +334,7 @@ test("every way a headless run can end is bounded by the same deadline", () => {
 	// `index.ts` and no unit can boot a visible window to observe it.
 	wired(
 		"the visible launcher watch",
-		/boundedVisibleProbe: addressOverlayGate\.visible,/,
+		/boundedVisibleProbe: addressOverlayGate\.visible \|\| devDriverScript\.honoured,/,
 	);
 	wired(
 		"the visible cap",
@@ -369,10 +371,12 @@ test("SIGTERM during a quit is a logged exit, and only during a quit", () => {
 	const index = codeText(join(process.cwd(), "src", "main", "index.ts"));
 	// A non-headless gate, not a bare registration — and S3's visible probe is
 	// excluded as well: it already registers the direct handlers above, so this
-	// one would re-raise TERM into the handler that just took it.
+	// one would re-raise TERM into the handler that just took it. The S1 step
+	// runner (mac proof capture) takes the same lifetime contract, so it is
+	// excluded for the same reason.
 	assert.match(
 		index,
-		/if \(windowLaunch\.mode !== "headless" && !addressOverlayGate\.visible\) \{/,
+		/if \( windowLaunch\.mode !== "headless" && !addressOverlayGate\.visible && !devDriverScript\.honoured \) \{/,
 		"the quit-gated TERM handler must sit behind the non-headless, non-visible gate",
 	);
 	// ...whose handler is the quit-state shape, not a second headless exit:
