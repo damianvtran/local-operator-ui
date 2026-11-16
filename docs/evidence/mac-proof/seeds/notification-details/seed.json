@@ -1,0 +1,91 @@
+{
+	"scenario": "notification-details",
+	"proves": "#1907 notification details UI: a long multi-paragraph item with links and earlier revisions, beside short unread items and one read item",
+	"session": {
+		"id": "fa1907000001",
+		"title": "Mac proof: nightly data checks",
+		"cwd": "/tmp",
+		"createdMinutesAgo": 240
+	},
+	"transcript": [
+		{
+			"role": "user",
+			"text": "Watch the nightly data checks and flag anything that needs me."
+		},
+		{
+			"role": "assistant",
+			"text": "Watching. I will raise an update when a check fails or a number moves enough to matter."
+		}
+	],
+	"detailId": "n_macproofdetailaa",
+	"notifications": [
+		{
+			"id": "n_macproofdetailaa",
+			"priority": "high",
+			"title": "Nightly import: 3 sources failed, 2 recovered on retry",
+			"body": [
+				"The nightly import finished at 04:12 with **3 failed sources** out of 41. Two of them recovered on the automatic retry; one is still failing and needs a decision from you.",
+				"**Still failing:** the registry export returned HTTP 503 on all three attempts. The last good copy is from yesterday, so today's screening runs on data that is one day old.",
+				"**Recovered:** the sanctions list and the court records feed both timed out on the first attempt and loaded cleanly on the second. Row counts match the previous run within 0.4%.",
+				"Nothing was deleted. If the registry is still down at the next run, I will keep yesterday's copy and raise this again instead of importing an empty file.",
+				"- Failed: 1\n- Recovered: 2\n- Clean: 38"
+			],
+			"links": [
+				{
+					"label": "Import run log",
+					"url": "https://example.com/mac-proof/import-run"
+				},
+				{
+					"label": "Registry status page",
+					"url": "https://example.com/mac-proof/registry-status"
+				}
+			],
+			"key": "mac-proof-nightly-import",
+			"revision": 3,
+			"minutesAgo": 4,
+			"history": [
+				{
+					"revision": 1,
+					"minutesAgo": 50,
+					"title": "Nightly import: 3 sources failed",
+					"body": "The nightly import finished with 3 failed sources out of 41. Retrying the failed ones."
+				},
+				{
+					"revision": 2,
+					"minutesAgo": 20,
+					"title": "Nightly import: 3 sources failed, 1 recovered on retry",
+					"body": "One source recovered on retry. Two are still failing; retrying once more."
+				}
+			]
+		},
+		{
+			"id": "n_macprooffillaaaa",
+			"priority": "normal",
+			"title": "Row counts within tolerance for 38 sources",
+			"body": "Every clean source moved less than 1% since yesterday.",
+			"minutesAgo": 12
+		},
+		{
+			"id": "n_macprooffillbbbb",
+			"priority": "low",
+			"title": "Disk usage on the import volume is at 61%",
+			"body": "Up 2 points this week; no action needed yet.",
+			"minutesAgo": 35
+		},
+		{
+			"id": "n_macprooffillcccc",
+			"priority": "normal",
+			"title": "Schema check passed for all 41 sources",
+			"body": "No new or missing columns.",
+			"minutesAgo": 70
+		},
+		{
+			"id": "n_macproofreadaaaa",
+			"priority": "normal",
+			"title": "Yesterday's import finished cleanly",
+			"body": "41 of 41 sources loaded.",
+			"minutesAgo": 1440,
+			"read": true
+		}
+	]
+}

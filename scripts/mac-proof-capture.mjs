@@ -81,6 +81,14 @@ import {
 } from "./app-tree-teardown.mjs";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
+import {
+	NOTIFICATION_ID,
+	SEED_SCENARIOS,
+	generateSeed,
+	loadSeedSpec,
+	seedExpectations,
+	seedRowsProblem,
+} from "./mac-proof-seed.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -125,6 +133,10 @@ export const SCENES = Object.freeze([
 	"canvas",
 	"library",
 	"notifications",
+	// #1902: the asks drawer of --session, opened on its suggested-command ask.
+	"asks",
+	// #1907: one notification's details page (/notifications/<--notification-id>).
+	"notification-detail",
 ]);
 export const THEMES = Object.freeze({
 	dark: "localOperatorDark",
@@ -434,22 +446,37 @@ export function extractAppZip(
 }
 
 /**
+ * The informational codesign's own bound (review r3 R3-2). It hashes ~407 MB
+ * (`--deep`) on a Mac measured at load ~120, and used to get the WHOLE remaining
+ * --timeout, so a check that gates nothing could end the capture. NO MAC TIMING
+ * EXISTS YET: 60 s is the reviewer's figure, not a measured bound. It is safe
+ * to be wrong in one direction only, which is why it is acceptable unmeasured:
+ * a timeout records `timedOut: true` and costs only that information, never a
+ * frame or a verdict. `durationMs` is recorded on every run so the first Mac
+ * receipts give the distribution to set it from.
+ */
+export const CODESIGN_CAP_MS = 60_000;
+
+/**
  * `codesign --verify --deep --strict`, recorded for the reviewer and never
  * gating: verify reads the bundle and its embedded signature only (no keychain,
  * so no prompt), and an unsigned or ad-hoc PR artifact is still a frame of that
- * artifact. Not run off darwin.
+ * artifact. Not run off darwin. Bounded by the smaller of what is left of
+ * --timeout and `CODESIGN_CAP_MS`.
  */
 export function codesignVerdict(
 	appPath,
-	{ platform = process.platform, timeoutMs },
+	{ platform = process.platform, timeoutMs, capMs = CODESIGN_CAP_MS },
 ) {
 	if (platform !== "darwin") return { ran: false, reason: "not darwin" };
+	const bound = Math.max(1000, Math.min(timeoutMs, capMs));
+	const started = Date.now();
 	const result = spawnSync(
 		"/usr/bin/codesign",
 		["--verify", "--deep", "--strict", appPath],
 		{
 			encoding: "utf8",
-			timeout: Math.max(1000, timeoutMs),
+			timeout: bound,
 			stdio: ["ignore", "pipe", "pipe"],
 		},
 	);
@@ -457,29 +484,124 @@ export function codesignVerdict(
 		ran: true,
 		valid: result.status === 0,
 		status: result.status,
+		durationMs: Date.now() - started,
+		boundMs: bound,
+		timedOut: result.error?.code === "ETIMEDOUT",
 		detail: (result.error?.message ?? result.stderr ?? "").trim().slice(0, 600),
 	};
 }
 
 /**
+ * Every path the launch reads must resolve INSIDE the extracted bundle (review
+ * r3 R3-1, QA r3 Q3-1). Only the top-level `.app` was lstat-checked, so a zip
+ * whose `X.app/Contents` was a symlink to another bundle ran THAT bundle's
+ * binary under `kind: "release-zip"` and a rig path in the receipt. Not a
+ * privilege boundary (launching any zip runs its code); a labelling one: the
+ * receipt must name the bytes that ran, so such a zip is refused.
+ */
+export function extractedContainmentProblem(app, dest) {
+	const inside = (child, parent) =>
+		child === parent || child.startsWith(`${parent}${sep}`);
+	let root;
+	let bundle;
+	try {
+		root = realpathSync(dest);
+		bundle = realpathSync(app.realpath);
+	} catch (error) {
+		return `the extracted bundle does not resolve (${error.message})`;
+	}
+	if (!inside(bundle, root))
+		return `--app-zip's bundle resolves outside ${root} (${bundle}); refused`;
+	for (const [what, path] of [
+		["Info.plist", join(app.realpath, "Contents", "Info.plist")],
+		["executable", app.executable],
+	]) {
+		let real;
+		try {
+			real = realpathSync(path);
+		} catch (error) {
+			return `--app-zip's ${what} ${path} does not resolve (${error.message})`;
+		}
+		if (!inside(real, bundle))
+			return `--app-zip's ${what} resolves outside the extracted bundle (${path} -> ${real}); refused: the receipt would name a binary that did not run`;
+	}
+	return null;
+}
+
+/** `com.apple.quarantine` on `path`: `{value}` (null = absent) or `{unreadable}`. */
+export function readQuarantine(path) {
+	const result = spawnSync(
+		"/usr/bin/xattr",
+		["-p", "com.apple.quarantine", path],
+		{ encoding: "utf8", timeout: 10_000, stdio: ["ignore", "pipe", "pipe"] },
+	);
+	if (result.error || result.status === null)
+		return { unreadable: result.error?.message ?? "timed out" };
+	return { value: result.status === 0 ? result.stdout.trim() || "set" : null };
+}
+
+/**
+ * Refuse a quarantined zip or bundle (review r3 R3-3). `ditto -x -k` carries
+ * `com.apple.quarantine` from a BROWSER-downloaded zip onto every extracted
+ * file, and launching that puts Gatekeeper's first-open dialog on the
+ * operator's screen: a window and a human step, the two things this harness
+ * exists to avoid. `gh release download` and curl do not set it. Refused, not
+ * cleared: stripping the attribute is the operator's call about that file.
+ * Unreadable refuses too (unknown is not clean). darwin only.
+ */
+export function quarantineProblem(
+	path,
+	{ platform = process.platform, read = readQuarantine } = {},
+) {
+	if (platform !== "darwin") return null;
+	const found = read(path);
+	if (found.unreadable)
+		return `could not read com.apple.quarantine on ${path} (${found.unreadable}); refused rather than risk Gatekeeper's first-open dialog`;
+	if (found.value)
+		return `${path} carries com.apple.quarantine (${found.value}), as a browser download does; launching it would show Gatekeeper's first-open dialog. Download it with \`gh release download\` or curl (docs/mac-proof-capture.md), or clear it yourself: xattr -d com.apple.quarantine <zip>`;
+	return null;
+}
+
+/**
  * Extract `--app-zip` into `<rig>/app` and resolve the bundle through the same
- * guards as `--app`, plus the operator-root check on the extracted path.
+ * guards as `--app`, plus the operator-root check on the extracted path, the
+ * containment and quarantine checks, and a hash of the bytes as extracted.
  */
 export function releaseZipApp(
 	zipInfo,
 	rig,
-	{ roots, timeoutMs, platform = process.platform },
+	{
+		roots,
+		timeoutMs,
+		platform = process.platform,
+		quarantine = readQuarantine,
+	},
 ) {
 	const dest = join(rig, "app");
+	// Hashed HERE, right before extraction (review r3 R3-5): preflight's hash is
+	// of a file that could be replaced before `ditto` reads it, and the receipt
+	// must name the zip that ran. A change in between is refused, not relabelled.
+	const sha256 = fileSha256(zipInfo.path);
+	if (zipInfo.sha256 && sha256 !== zipInfo.sha256)
+		throw new Refusal(
+			`--app-zip changed between preflight and extraction (sha256 ${zipInfo.sha256} -> ${sha256}); refused`,
+		);
 	extractAppZip(zipInfo.path, dest, { platform, timeoutMs });
 	const bundle = bundleInExtracted(dest);
 	const problem = operatorPathProblem("--app-zip bundle", bundle, roots);
 	if (problem) throw new Refusal(problem);
 	const app = resolveAppBundle(bundle);
+	const escaped = extractedContainmentProblem(app, dest);
+	if (escaped) throw new Refusal(escaped);
+	const quarantined = quarantineProblem(app.realpath, {
+		platform,
+		read: quarantine,
+	});
+	if (quarantined) throw new Refusal(quarantined);
 	return {
 		...app,
 		kind: "release-zip",
-		zip: zipInfo,
+		zip: { ...zipInfo, sha256, hashedAt: "extraction" },
 		codesign: codesignVerdict(app.realpath, { platform, timeoutMs }),
 	};
 }
@@ -697,6 +819,12 @@ Backend (the app only ever ATTACHES; it never spawns, installs or claims):
     --lop <abs path>           the lop executable (default: \`lop\` on PATH, made absolute)
     --seed-config <abs dir>    copy a SYNTHETIC config-root template in first (refused if it
                                carries credential material)
+    --seed <scenario>          instead of --seed-config: generate one of ${SEED_SCENARIOS.join(", ")}
+                               (scripts/mac-proof-seed.mjs) into the rig just before serve
+                               starts, copy it in the same way, and BLOCK (exit 3) unless the
+                               daemon reads the seeded rows back. Defaults --session (and
+                               --notification-id) to the seed's own ids
+  --notification-id <n_...>    the item the notification-detail scene opens
   --backend-config-root <dir>  as isolated, but serve runs on this durable config root the
                                operator prepared (e.g. a rig device joined to the mesh).
                                Refused if it is ~/.local-operator or inside it, if another
@@ -743,6 +871,8 @@ export function parseArgs(argv) {
 		peerWaitS: 120,
 		lop: null,
 		seedConfig: null,
+		seed: null,
+		notificationId: null,
 		serveRecordDir: null,
 		tokenFromOperatorProfile: false,
 		dryRun: false,
@@ -828,6 +958,12 @@ export function parseArgs(argv) {
 			case "--seed-config":
 				opts.seedConfig = take();
 				break;
+			case "--seed":
+				opts.seed = take();
+				break;
+			case "--notification-id":
+				opts.notificationId = take();
+				break;
 			case "--serve-record-dir":
 				opts.serveRecordDir = take();
 				break;
@@ -852,7 +988,22 @@ export function parseArgs(argv) {
 	if (opts.backendConfigRoot && opts.backend === "isolated")
 		opts.backend = "config-root";
 	opts.windowMode ??= opts.capture === "capturepage" ? "headless" : "inactive";
+	applySeedDefaults(opts);
 	return opts;
+}
+
+/**
+ * A --seed names the conversation and item it staged, so the scenes that need
+ * them default to the seed's own ids: a mistyped --session would otherwise open
+ * a conversation that does not exist and photograph its empty state. An explicit
+ * flag still wins (and the post-start check reads the SEED's rows either way).
+ * An unknown scenario is left for `validateOptions` to refuse.
+ */
+function applySeedDefaults(opts) {
+	if (opts.seed === null || !SEED_SCENARIOS.includes(opts.seed)) return;
+	const spec = loadSeedSpec(opts.seed);
+	opts.session ??= spec.session.id;
+	if (spec.detailId) opts.notificationId ??= spec.detailId;
 }
 
 /** Every refusal that needs no filesystem state beyond the flags themselves. */
@@ -886,10 +1037,36 @@ export function validateOptions(opts) {
 		);
 	if (
 		opts.session === null &&
-		opts.scenes.some((s) => s === "files" || s === "canvas")
+		opts.scenes.some((s) => s === "files" || s === "canvas" || s === "asks")
 	)
 		throw new Refusal(
-			"the files and canvas scenes need --session (the canvas belongs to a conversation)",
+			"the files, canvas and asks scenes need --session (the canvas and the asks belong to a conversation)",
+		);
+	if (opts.seed !== null && !SEED_SCENARIOS.includes(opts.seed))
+		throw new Refusal(
+			`unknown --seed ${opts.seed} (have: ${SEED_SCENARIOS.join(", ")})`,
+		);
+	if (opts.seed !== null && opts.seedConfig !== null)
+		throw new Refusal(
+			"--seed and --seed-config are alternatives (one generates the template, the other copies yours)",
+		);
+	if (opts.seed !== null && opts.backend !== "isolated")
+		throw new Refusal(
+			"--seed applies only to the isolated backend (it writes the rig's own scratch config root)",
+		);
+	if (
+		opts.notificationId !== null &&
+		!NOTIFICATION_ID.test(opts.notificationId)
+	)
+		throw new Refusal(
+			`--notification-id must be n_ + 16 of [a-z2-7] (core desktop_notifications.py:69; got ${opts.notificationId})`,
+		);
+	if (
+		opts.notificationId === null &&
+		opts.scenes.includes("notification-detail")
+	)
+		throw new Refusal(
+			"the notification-detail scene needs --notification-id (or --seed notification-details)",
 		);
 	const mode = windowModeProblem(opts.windowMode);
 	if (mode) throw new Refusal(mode);
@@ -977,7 +1154,13 @@ export function validateOptions(opts) {
  * way, readiness, then per theme every scene with one shutter each. Frames are
  * labelled `<scene>-<theme>` (also the PNG name).
  */
-export function buildSteps({ scenes, themes, session, capture }) {
+export function buildSteps({
+	scenes,
+	themes,
+	session,
+	capture,
+	notificationId = null,
+}) {
 	const shutter = (label) => ({
 		verb: "shutter",
 		payload: {
@@ -1021,6 +1204,25 @@ export function buildSteps({ scenes, themes, session, capture }) {
 					verb: "waitFor",
 					payload: { selector: '[data-chat-region="header"]' },
 				});
+			} else if (scene === "asks") {
+				steps.push(...asksSceneSteps());
+			} else if (scene === "notification-detail") {
+				const selector = `[data-notification-detail="${notificationId}"]`;
+				steps.push({
+					verb: "navigate",
+					payload: `/notifications/${notificationId}`,
+				});
+				// The detail pane, keyed by THIS id (notification-detail.tsx), so a
+				// list or an "item not found" state can never take the frame.
+				steps.push({
+					verb: "waitFor",
+					payload: { selector, timeoutMs: 20000 },
+					timeoutMs: 25000,
+				});
+				steps.push({
+					verb: "waitFor",
+					payload: { selector: `${selector} [data-notification-detail-title]` },
+				});
 			} else {
 				steps.push({ verb: "navigate", payload: `/${scene}` });
 			}
@@ -1028,6 +1230,57 @@ export function buildSteps({ scenes, themes, session, capture }) {
 		}
 	}
 	return { steps };
+}
+
+/**
+ * The asks scene (#1902), from the shipped S2 verbs only - no new renderer verb.
+ *
+ * WHY NOT ONE PRESS. The composer chip `[data-status-asks]` TOGGLES the drawer
+ * (composer-status-row.tsx `onClick={() => setAskExpanded(!askExpanded)}`), and
+ * the open policy (ask-open-policy.ts rule 2) may already have opened it on its
+ * own when the conversation with a pending ask was opened. A blind press would
+ * then CLOSE it. So: wait for the chip (the ask reached the renderer), give the
+ * auto-open a moment (optional), press the chip only while it still reads
+ * `data-lo-ask-item="minimized"` (optional: no match = already open), then
+ * REQUIRE the drawer (`data-lo-ask-surfaces`, the drawer's marker and never the
+ * chip's - UX round 1 U3 in that file) and the suggested-command block
+ * (`data-ask-command`, ask-command.tsx). The two required waits are what make an
+ * empty or closed drawer fail the run instead of taking the frame.
+ */
+export function asksSceneSteps() {
+	return [
+		{ verb: "navigate", payload: "/chat" },
+		{ verb: "openCanvas", payload: { open: false } },
+		{
+			verb: "waitFor",
+			payload: { selector: "[data-status-asks]", timeoutMs: 20000 },
+			timeoutMs: 25000,
+		},
+		{
+			verb: "waitFor",
+			payload: { selector: "[data-lo-ask-surfaces]", timeoutMs: 3000 },
+			optional: true,
+		},
+		{
+			verb: "press",
+			payload: {
+				selector: '[data-status-asks][data-lo-ask-item="minimized"]',
+				timeoutMs: 1500,
+			},
+			optional: true,
+		},
+		{
+			verb: "waitFor",
+			payload: { selector: "[data-lo-ask-surfaces]", timeoutMs: 10000 },
+		},
+		{
+			verb: "waitFor",
+			payload: {
+				selector: "[data-lo-ask-surfaces] [data-ask-command]",
+				timeoutMs: 10000,
+			},
+		},
+	];
 }
 
 /**
@@ -1174,7 +1427,35 @@ export const DAEMON_ROUTES = Object.freeze([
 		path: "/v1/desktop/sessions",
 		query: Object.freeze(["include_peers", "limit"]),
 	}),
+	/*
+	 * The --seed read-backs (scripts/mac-proof-seed.mjs `seedRowsProblem`). Both
+	 * are pure reads in core: the asks aggregate reads only the derived index and
+	 * "starts no runtime" (server/routes/desktop_sessions.py:5213-5239), and the
+	 * detail route is a store read (desktop_notifications.py:320-337). `{id}` is
+	 * ONE path segment that must match `segment`, never a free suffix.
+	 */
+	Object.freeze({
+		method: "GET",
+		path: "/v1/desktop/asks",
+		query: Object.freeze([]),
+	}),
+	Object.freeze({
+		method: "GET",
+		path: "/v1/desktop/notifications/{id}",
+		segment: NOTIFICATION_ID,
+		query: Object.freeze([]),
+	}),
 ]);
+
+/** Whether `pathname` is `route.path`, with a `{id}` tail standing for one `segment` match. */
+function routeMatches(route, pathname) {
+	if (!route.path.endsWith("/{id}")) return route.path === pathname;
+	const prefix = route.path.slice(0, -"{id}".length);
+	return (
+		pathname.startsWith(prefix) &&
+		route.segment.test(pathname.slice(prefix.length))
+	);
+}
 
 /**
  * Paths that would act on a session rather than read the list. Checked BEFORE
@@ -1192,6 +1473,13 @@ export function daemonRequestProblem(method, pathWithQuery) {
 	// another origin (review r1 R1-9, QA r1 Q5-1).
 	if (typeof pathWithQuery !== "string" || !/^\/(?![/\\])/.test(pathWithQuery))
 		return `refused daemon call ${method} ${pathWithQuery}: only a path on the configured loopback backend (one leading /, no scheme or host)`;
+	// WHATWG strips tab/CR/LF before parsing, so `/\t/host/health` passed the
+	// leading-slash rule above and parsed as `//host/health` - a host. The
+	// client's origin pin still refused it (QA r2 Q2-1, 0 connections), but
+	// this predicate must be enough on its own: no control character, ever.
+	// biome-ignore lint/suspicious/noControlCharactersInRegex: the control range IS the rule.
+	if (/[\u0000-\u001f\u007f]/.test(pathWithQuery))
+		return `refused daemon call ${method} ${JSON.stringify(pathWithQuery)}: a control character in the path`;
 	let url;
 	try {
 		url = new URL(pathWithQuery, "http://127.0.0.1");
@@ -1201,7 +1489,7 @@ export function daemonRequestProblem(method, pathWithQuery) {
 	if (FORBIDDEN_DAEMON_PATH.test(url.pathname))
 		return `refused daemon call ${method} ${url.pathname}: the harness never prompts, sends, engages or resumes`;
 	const route = DAEMON_ROUTES.find(
-		(r) => r.method === method && r.path === url.pathname,
+		(r) => r.method === method && routeMatches(r, url.pathname),
 	);
 	if (!route)
 		return `refused daemon call ${method} ${url.pathname}: not on the harness's read allowlist`;
@@ -1647,6 +1935,37 @@ export async function waitForRemoteSession(
 	}
 }
 
+/**
+ * Read the --seed's rows back from the real daemon through the allowlisted
+ * client, retrying briefly (the first read can race the daemon's own startup
+ * work), and BLOCK the run when they never come back. BLOCKED (exit 3), not
+ * FAILED: nothing about the app is known yet - the rig cannot show the state the
+ * frame would be named for, so no frame is taken at all.
+ */
+export async function verifySeedRows(
+	base,
+	token,
+	expect,
+	{ deadline = Date.now() + 10_000, pollMs = 250 } = {},
+) {
+	let reads = 0;
+	for (;;) {
+		reads++;
+		const body = await daemonRequest(base, "GET", expect.path, {
+			token,
+			timeoutMs: 5000,
+		});
+		const problem = seedRowsProblem(expect, body);
+		if (problem === null) return { path: expect.path, reads, ok: true };
+		if (Date.now() >= deadline)
+			throw new Refusal(
+				`BLOCKED: the rig daemon did not read the --seed ${expect.scenario} rows back after ${reads} read(s): ${problem}; a frame now would show an empty state, not the seed`,
+				EXIT.BLOCKED,
+			);
+		await sleep(pollMs);
+	}
+}
+
 /** Whether something accepts TCP on 127.0.0.1:port. */
 function portListening(port) {
 	return new Promise((done) => {
@@ -1707,6 +2026,11 @@ export function portListenerOwned(port, pids) {
 		}
 		return [...listening].every((inode) => held.has(inode));
 	}
+	// WHAT THIS CANNOT SEE (review r2 R2-4): non-root `lsof` lists only the
+	// invoking user's sockets, so "every listener is ours" is blind to a root- or
+	// other-user listener that binds between the preflight probe and our relay.
+	// The preflight CONNECT probe (`portListening` in `main`) is what covers
+	// those - it is not redundant with this check, and must not be dropped.
 	const lsof = spawnSync(
 		"lsof",
 		["-n", "-P", `-iTCP:${port}`, "-sTCP:LISTEN", "-F", "p"],
@@ -1775,7 +2099,12 @@ export function processesWithConfigRoot(configRoot) {
  * (never a pattern), each re-checked as this run's at kill time, and a group
  * only when its leader is one of ours (`killRigMatched`).
  */
-async function reapConfigRootProcesses(configRoot, recorded, rig) {
+async function reapConfigRootProcesses(
+	configRoot,
+	recorded,
+	rig,
+	identities = new Map(),
+) {
 	const pids = new Set(recorded);
 	for (const pid of processesWithConfigRoot(configRoot) ?? []) pids.add(pid);
 	const left = await killRigMatched(
@@ -1783,6 +2112,7 @@ async function reapConfigRootProcesses(configRoot, recorded, rig) {
 		rigMatcher({ rig, configRoot }),
 		{
 			settleMs: 500,
+			identities,
 		},
 	);
 	const after = processesWithConfigRoot(configRoot);
@@ -1862,49 +2192,127 @@ export function processesWithCwdUnder(rig) {
 }
 
 /**
- * What the backstop needs to know about one live pid, read from the kernel at
- * kill time: working directory, process group, and argv+env as text. Linux
- * reads /proc; macOS asks `ps` (`-E` appends the environment, same user only)
- * and `lsof -d cwd`. Null when the pid is gone or unreadable.
+ * What the backstop needs to know about live pids, read from the kernel at kill
+ * time: working directory, process group, START TIME and argv+env as text.
+ * Linux reads /proc. macOS asks `ps` (`-E` appends the environment, same user
+ * only) and `lsof -d cwd` - ONE call each for every pid, under ONE deadline
+ * (review r2 R2-2: one `ps` + one 10 s `lsof` PER candidate, twice per target,
+ * could carry a slow `lsof` past the documented caller timeout). A pid absent
+ * from the answer is gone or unreadable; `cwd: null` means unreadable (deadline
+ * hit or `lsof` refused), which the matcher then simply does not use.
+ *
+ * `start` is the identity half of (pid, start time) (review r2 R2-1): Linux
+ * `/proc/<pid>/stat` field 22 (clock ticks since boot), macOS `ps -o lstart`
+ * (second resolution). A recycled pid has a different start; the same process
+ * always has the same one.
  */
-export function processFacts(pid) {
+export function processFactsMany(
+	pids,
+	{ deadline = Date.now() + 15_000, cwd: wantCwd = true } = {},
+) {
+	const facts = new Map();
+	const wanted = [...new Set(pids)].filter(
+		(pid) => Number.isInteger(pid) && pid > 0,
+	);
+	if (wanted.length === 0) return facts;
 	if (process.platform === "linux") {
-		try {
-			const stat = readFileSync(`/proc/${pid}/stat`, "utf8");
-			// Field 5 (pgrp), counted after the parenthesised comm, which may hold spaces.
-			const pgid = Number(stat.slice(stat.lastIndexOf(")") + 2).split(" ")[2]);
-			let cwd = null;
+		for (const pid of wanted) {
 			try {
-				cwd = readlinkSync(`/proc/${pid}/cwd`);
+				const stat = readFileSync(`/proc/${pid}/stat`, "utf8");
+				// Counted after the parenthesised comm, which may hold spaces: the
+				// first field there is field 3 (state), so field N is index N-3.
+				const fields = stat.slice(stat.lastIndexOf(")") + 2).split(" ");
+				let cwd = null;
+				if (wantCwd)
+					try {
+						cwd = readlinkSync(`/proc/${pid}/cwd`);
+					} catch {}
+				let text = "";
+				for (const file of ["cmdline", "environ"])
+					try {
+						text += `\0${readFileSync(`/proc/${pid}/${file}`, "utf8")}`;
+					} catch {}
+				facts.set(pid, {
+					pid,
+					pgid: Number(fields[2]),
+					start: fields[19] ?? null,
+					cwd,
+					text,
+				});
 			} catch {}
-			let text = "";
-			for (const file of ["cmdline", "environ"])
-				try {
-					text += `\0${readFileSync(`/proc/${pid}/${file}`, "utf8")}`;
-				} catch {}
-			return { pid, pgid, cwd, text };
-		} catch {
-			return null;
 		}
+		return facts;
 	}
+	const remaining = () => Math.max(1000, deadline - Date.now());
+	const list = wanted.join(",");
+	// Not `status === 0`: ps exits 1 when ANY listed pid is gone, and still
+	// prints the live ones. Only a spawn error or a timeout is unreadable.
 	const ps = spawnSync(
 		"ps",
-		["-E", "-ww", "-o", "pgid=,command=", "-p", String(pid)],
-		{ encoding: "utf8" },
+		["-E", "-ww", "-o", "pid=,pgid=,lstart=,command=", "-p", list],
+		{ encoding: "utf8", timeout: remaining() },
 	);
-	const m = (ps.stdout ?? "").trim().match(/^(\d+)\s+([\s\S]*)$/);
-	if (ps.status !== 0 || !m) return null;
+	if (ps.error || ps.status === null) return facts;
+	for (const line of (ps.stdout ?? "").split("\n")) {
+		const m = line.match(
+			/^\s*(\d+)\s+(\d+)\s+(\w{3}\s+\w{3}\s+\d+\s+\d\d:\d\d:\d\d\s+\d{4})\s+([\s\S]*)$/,
+		);
+		if (m)
+			facts.set(Number(m[1]), {
+				pid: Number(m[1]),
+				pgid: Number(m[2]),
+				start: m[3].replace(/\s+/g, " "),
+				cwd: null,
+				text: m[4],
+			});
+	}
+	if (!wantCwd || facts.size === 0 || Date.now() >= deadline) return facts;
 	const lsof = spawnSync(
 		"lsof",
-		["-n", "-P", "-a", "-p", String(pid), "-d", "cwd", "-F", "n"],
-		{ encoding: "utf8", timeout: 10000 },
+		[
+			"-b",
+			"-w",
+			"-n",
+			"-P",
+			"-a",
+			"-p",
+			[...facts.keys()].join(","),
+			"-d",
+			"cwd",
+			"-F",
+			"pn",
+		],
+		{ encoding: "utf8", timeout: remaining() },
 	);
-	const cwd =
-		(lsof.stdout ?? "")
-			.split("\n")
-			.find((line) => line.startsWith("n"))
-			?.slice(1) ?? null;
-	return { pid, pgid: Number(m[1]), cwd, text: m[2] };
+	if (lsof.error || lsof.status === null) return facts;
+	let current = null;
+	for (const line of (lsof.stdout ?? "").split("\n")) {
+		if (line.startsWith("p"))
+			current = facts.get(Number(line.slice(1))) ?? null;
+		else if (line.startsWith("n") && current) current.cwd = line.slice(1);
+	}
+	return facts;
+}
+
+/** One pid's facts (`processFactsMany` for a single pid); null when gone or unreadable. */
+export function processFacts(pid) {
+	return processFactsMany([pid]).get(pid) ?? null;
+}
+
+/**
+ * Record (pid, start time) for pids this run started or saw descend from what
+ * it started, the first time each is seen. Only the start is read (no cwd), in
+ * one batch. A pid whose start cannot be read is simply not recorded, so the
+ * content matcher still decides for it.
+ */
+export function rememberIdentities(identities, pids) {
+	const fresh = [...new Set(pids)].filter(
+		(pid) => Number.isInteger(pid) && pid > 1 && !identities.has(pid),
+	);
+	if (fresh.length === 0) return identities;
+	for (const [pid, facts] of processFactsMany(fresh, { cwd: false }))
+		if (facts.start) identities.set(pid, facts.start);
+	return identities;
 }
 
 /**
@@ -1933,24 +2341,53 @@ export function rigMatcher({ rig, configRoot = null }) {
 }
 
 /**
- * The stray-pid backstop. SIGKILL each pid ONLY if it is still this run's
- * (`matches`, re-read now: a recorded pid can have been recycled), and its
- * whole group ONLY when that pid leads the group itself. The earlier version
- * signalled `-pid` for every swept pid, which widened one stray rig process
- * (a shell someone `cd`'d into the rig, a recycled pid) into its whole group,
- * strangers included (review r1 R1-10). This process and its ancestors are
- * never targets. Answers the matched pids still alive afterwards; a pid that
- * is alive but no longer matches is skipped, not counted as a leak.
+ * The stray-pid backstop. Which pids are ours is decided two ways:
+ *
+ *   - a pid in `identities` (recorded by this run with its start time) is ours
+ *     exactly while its start time still matches - whatever it looks like now.
+ *     A recorded child that scrubbed its env and `chdir`ed out of the rig used to
+ *     be skipped by the content matcher and left out of the count, so it
+ *     survived under a clean receipt (review r2 R2-1). A recycled pid has a new
+ *     start and is never touched.
+ *   - any other pid (found only by a sweep) is ours when `matches` its facts.
+ *
+ * The GROUP is signalled only for a recorded pid that leads its own group: a
+ * sweep-only pid gets a plain pid signal, so a stray shell someone `cd`ed into
+ * the rig under `setsid` no longer takes its non-rig children with it (review r2
+ * R2-3; r1 R1-10 had already stopped the group signal for non-leaders). This
+ * process and its ancestors are never targets. Facts are read in one batch
+ * under `deadlineMs` (R2-2).
+ *
+ * Answers the pids still ours and alive afterwards, plus any RECORDED pid that
+ * is alive but could not be read at all (unknown is not clean).
  */
-export async function killRigMatched(pids, matches, { settleMs = 300 } = {}) {
+export async function killRigMatched(
+	pids,
+	matches,
+	{ settleMs = 300, identities = new Map(), deadlineMs = 20_000 } = {},
+) {
 	const mine = new Set(ancestorsOfSelf());
+	const candidates = [...new Set(pids)].filter(
+		(pid) => Number.isInteger(pid) && pid > 1 && !mine.has(pid),
+	);
+	const deadline = Date.now() + deadlineMs;
+	const recordedAs = (pid, facts) =>
+		identities.has(pid) && facts?.start === identities.get(pid);
+	const ours = (pid, facts) => {
+		if (!facts) return false;
+		if (identities.has(pid)) return recordedAs(pid, facts);
+		return matches(facts);
+	};
+	const before = processFactsMany(candidates, { deadline });
+	const unreadable = candidates.filter(
+		(pid) => identities.has(pid) && !before.has(pid) && pidAlive(pid),
+	);
 	const targets = [];
-	for (const pid of new Set(pids)) {
-		if (!Number.isInteger(pid) || pid <= 1 || mine.has(pid)) continue;
-		const facts = processFacts(pid);
-		if (!matches(facts)) continue;
+	for (const pid of candidates) {
+		const facts = before.get(pid);
+		if (!ours(pid, facts)) continue;
 		targets.push(pid);
-		if (facts.pgid === pid)
+		if (recordedAs(pid, facts) && facts.pgid === pid)
 			try {
 				process.kill(-pid, "SIGKILL");
 			} catch {}
@@ -1959,7 +2396,14 @@ export async function killRigMatched(pids, matches, { settleMs = 300 } = {}) {
 		} catch {}
 	}
 	if (targets.length > 0) await sleep(settleMs);
-	return targets.filter((pid) => pidAlive(pid) && matches(processFacts(pid)));
+	const after = processFactsMany(
+		targets.filter((pid) => pidAlive(pid)),
+		{ deadline: Math.max(deadline, Date.now() + 5000) },
+	);
+	const left = targets.filter(
+		(pid) => pidAlive(pid) && (!after.has(pid) || ours(pid, after.get(pid))),
+	);
+	return [...left, ...unreadable.filter((pid) => !left.includes(pid))];
 }
 
 /** Every descendant pid of `roots`, from one `ps` snapshot. */
@@ -2276,6 +2720,42 @@ export function negativeControlCases() {
 			() => daemonRequestProblem("GET", "//10.255.255.1/health"),
 		],
 		[
+			"daemon call whose path hides a tab before //host (QA r2 Q2-1)",
+			() => daemonRequestProblem("GET", "/\t/10.255.255.1/health"),
+		],
+		[
+			"daemon call past a notification id (one segment only)",
+			() =>
+				daemonRequestProblem(
+					"GET",
+					"/v1/desktop/notifications/n_macproofdetailaa/read",
+				),
+		],
+		[
+			"a quarantined (browser-downloaded) --app-zip on darwin",
+			() =>
+				quarantineProblem(join(tree, "dl.zip"), {
+					platform: "darwin",
+					read: () => ({ value: "0083;65f0;Safari;" }),
+				}),
+		],
+		[
+			"--seed together with --seed-config",
+			() =>
+				validateOptions(
+					parseArgs([
+						"--app",
+						"/x.app",
+						"--out",
+						"/tmp/o",
+						"--seed",
+						"ask-command",
+						"--seed-config",
+						"/tmp/s",
+					]),
+				),
+		],
+		[
 			"rig root is a dangling symlink to a not-yet-created operator profile",
 			() => {
 				const dangling = join(tree, "link-to-missing-profile");
@@ -2378,6 +2858,10 @@ export function preflight(opts, { roots = operatorRoots() } = {}) {
 	if (opts.appZip !== null) {
 		const zipProblem = appZipProblem(opts.appZip);
 		if (zipProblem) throw new Refusal(zipProblem);
+		// Before the rig exists: a browser-downloaded zip is refused up front
+		// (review r3 R3-3); the extracted bundle is checked again after ditto.
+		const quarantined = quarantineProblem(opts.appZip);
+		if (quarantined) throw new Refusal(quarantined);
 		app = {
 			kind: "release-zip",
 			zip: {
@@ -2636,6 +3120,15 @@ export async function main(argv = process.argv.slice(2)) {
 			frames: steps.steps
 				.filter((s) => s.verb === "shutter")
 				.map((s) => `${s.payload.label}.png`),
+			...(opts.seed !== null
+				? {
+						seed: {
+							scenario: opts.seed,
+							generatedInto: join(rigPlaceholder, "seed"),
+							check: seedExpectations(loadSeedSpec(opts.seed)),
+						},
+					}
+				: {}),
 			steps,
 		};
 		console.log(JSON.stringify(report, null, 2));
@@ -2694,6 +3187,8 @@ export async function main(argv = process.argv.slice(2)) {
 		console.error(`[mac-proof] refused: ${profileProblem}`);
 		return EXIT.REFUSED;
 	}
+	/** What the post-start check must read back when --seed generated the config root. */
+	let seedExpect = null;
 	const receipt = {
 		app: plan.app,
 		rig: {
@@ -2762,12 +3257,19 @@ export async function main(argv = process.argv.slice(2)) {
 	 * process carrying this run's config root in its env/argv.
 	 */
 	const lopRun = { configRoot: null, spawned: [], recorded: new Set() };
+	/*
+	 * (pid, start time) of every pid recorded below, read when first seen, so the
+	 * reap kills a recorded pid by identity rather than by what it looks like at
+	 * the end (review r2 R2-1; `killRigMatched`).
+	 */
+	const identities = new Map();
 	const recordDescendants = () => {
 		const live = lopRun.spawned
 			.map((c) => c.pid)
 			.filter((pid) => pid !== undefined);
 		for (const pid of [...live, ...descendantsOf(live)])
 			lopRun.recorded.add(pid);
+		rememberIdentities(identities, lopRun.recorded);
 	};
 	const spawnLop = (argv, env, name) => {
 		const problem = lopArgvProblem(argv);
@@ -2800,6 +3302,7 @@ export async function main(argv = process.argv.slice(2)) {
 		// No pid means the spawn itself failed ('error' above); nothing to reap.
 		if (child.pid !== undefined) {
 			lopRun.recorded.add(child.pid);
+			rememberIdentities(identities, [child.pid]);
 			reapOnExit({ pid: child.pid, userData: null, groupOutlivesLeader: true });
 		}
 		return child;
@@ -2844,6 +3347,7 @@ export async function main(argv = process.argv.slice(2)) {
 				lopRun.configRoot,
 				lopRun.recorded,
 				rig,
+				identities,
 			);
 		}
 		// Recorded app descendants, then anything still running in the rig.
@@ -2851,9 +3355,11 @@ export async function main(argv = process.argv.slice(2)) {
 		const recordedLeft = await killRigMatched(
 			[...appRecorded].filter((pid) => pidAlive(pid)),
 			ours,
+			{ identities },
 		);
 		const inRig = processesWithCwdUnder(rig);
-		const rigLeft = inRig === null ? null : await killRigMatched(inRig, ours);
+		const rigLeft =
+			inRig === null ? null : await killRigMatched(inRig, ours, { identities });
 		const after = processesWithCwdUnder(rig);
 		receipt.reap.rig = {
 			recorded: appRecorded.size,
@@ -2903,8 +3409,18 @@ export async function main(argv = process.argv.slice(2)) {
 						reason: "a process survived the reap",
 					};
 				else {
-					rmSync(extracted, { recursive: true, force: true });
-					receipt.app.extracted = { removed: extracted };
+					// Never lose the receipt to a cleanup failure (review r3 R3-4): an
+					// EACCES/EBUSY here used to reject `finalize` before receipt.json
+					// and the closing line were written.
+					try {
+						rmSync(extracted, { recursive: true, force: true });
+						receipt.app.extracted = { removed: extracted };
+					} catch (error) {
+						receipt.app.extracted = {
+							kept: extracted,
+							reason: `removal failed: ${error.message}`,
+						};
+					}
 				}
 			}
 			writeFileSync(
@@ -2979,6 +3495,32 @@ export async function main(argv = process.argv.slice(2)) {
 			lopRun.configRoot = configRoot;
 			if (opts.seedConfig)
 				cpSync(opts.seedConfig, configRoot, { recursive: true });
+			if (opts.seed !== null) {
+				// Generated HERE, not in preflight: an ask is open only until its
+				// expires_at, so the template is stamped as close to serve start as
+				// possible, then vetted and copied exactly like a --seed-config one.
+				let generated;
+				try {
+					generated = await generateSeed({
+						scenario: opts.seed,
+						out: join(rig, "seed"),
+					});
+				} catch (error) {
+					throw new Refusal(`--seed ${opts.seed}: ${error.message}`);
+				}
+				const found = credentialMaterial(generated.out);
+				if (found.length > 0)
+					throw new Refusal(
+						`--seed ${opts.seed} generated credential-shaped names, refused: ${found.join(", ")}`,
+					);
+				seedExpect = generated.expect;
+				receipt.seed = {
+					scenario: opts.seed,
+					generatedAt: generated.now,
+					files: generated.files,
+				};
+				cpSync(generated.out, configRoot, { recursive: true });
+			}
 			// --backend-config-root: the rig device's OWN mesh relay first, in the
 			// foreground and on the port its config names (preflight refused an
 			// unset port or 4097), so peers dial this relay and never the
@@ -3053,11 +3595,23 @@ export async function main(argv = process.argv.slice(2)) {
 				url: backendUrl,
 				configRoot,
 				home: lopHome,
-				seeded: Boolean(opts.seedConfig),
+				seeded: Boolean(opts.seedConfig || opts.seed),
 				serve: { command: plan.lop, pid: serve.pid },
 				health: { pid: health.pid ?? null, version: health.version ?? null },
 				tokenSource: "minted by the harness (env only)",
 			};
+			// The seed must be READ BACK by the real daemon before the app opens:
+			// a schema drift, a stale expires_at or a mis-copied file would
+			// otherwise give a frame of an empty drawer under the seed's name.
+			if (seedExpect !== null) {
+				checkpoint("reading the seeded rows back");
+				receipt.seed.check = await verifySeedRows(
+					backendUrl,
+					token,
+					seedExpect,
+					{ deadline: Math.min(runDeadline, Date.now() + 10_000) },
+				);
+			}
 			// The remote session must be LISTED before the app opens it: the first
 			// reads on node2 were empty until the peer row cache refreshed, and a
 			// frame of an empty list under the session's name would be a fake.
@@ -3207,6 +3761,7 @@ export async function main(argv = process.argv.slice(2)) {
 			// so a helper that later leaves the group is still reaped by pid.
 			if (tick++ % 20 === 0) {
 				for (const pid of descendantsOf([app.pid])) appRecorded.add(pid);
+				rememberIdentities(identities, appRecorded);
 				recordDescendants();
 			}
 			// Surface capture failures as an abort rather than an unhandled rejection.
