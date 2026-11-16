@@ -1554,11 +1554,23 @@ an unattended launch can never answer.
 
 ### Capturing the frame
 
-Capture from inside the app — `webContents.capturePage()` or CDP — never with
-macOS `screencapture`, which works only on the frontmost window and so requires
-exactly the focus theft this section exists to remove. Storybook evidence is
-unaffected: `node scripts/capture-evidence.mjs <storybook-origin>` already drives a
-private `--headless=new` Chrome.
+Capture from inside the app — `webContents.capturePage()` or CDP — and never
+with an interactive or full-screen macOS `screencapture`, which photographs
+whatever is in front and so invites exactly the focus theft this section exists
+to remove. Storybook evidence is unaffected: `node scripts/capture-evidence.mjs
+<storybook-origin>` already drives a private `--headless=new` Chrome.
+
+**The one sanctioned window-server capture is the vibrancy path.** An in-app
+capture cannot see macOS vibrancy (the window server composites the blurred
+desktop; the page never paints it), so a frame that must show it is taken by
+`scripts/mac-proof-capture.mjs` ([`docs/mac-proof-capture.md`](docs/mac-proof-capture.md)):
+a window-only `screencapture -x -o -l <windowid>` of an `inactive` window that
+harness launched itself, in one self-contained command that launches, captures
+and reaps. `-l` names one window by its CGWindowID, so nothing is activated,
+raised or focused, and the harness refuses a run whose app reports `normal` or
+`focused=true`. **Claim pending Mac measurement**: that `-l` of a non-front
+`inactive` window carries real vibrancy with no activation or focus change has
+not yet been measured on a Mac; until it has, frames from this path say so.
 
 **Driving the renderer is a supported path now, not a rig per agent.**
 `scripts/renderer-driver.mjs` boots the built app headless in an isolated

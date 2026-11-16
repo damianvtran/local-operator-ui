@@ -36,6 +36,8 @@ import {
 	DEV_DRIVER_ADDRESS_OVERLAY_PROJECT,
 	DEV_DRIVER_CAPTURE,
 	DEV_DRIVER_FACTS,
+	DEV_DRIVER_SCRIPT_RESULT,
+	DEV_DRIVER_SCRIPT_STEP,
 	DEV_DRIVER_WORLD_KEY,
 	type OWNER_AUDIT_STARTUP_SCENE,
 	readDevDriverArgument,
@@ -147,5 +149,53 @@ export function installDevDriverBridge(): boolean {
 	};
 
 	contextBridge.exposeInMainWorld(DEV_DRIVER_WORLD_KEY, bridge);
+	if (armed.script) installScriptListener(bridge);
 	return true;
+}
+
+/**
+ * S1's preload half: answer main's step runner (`src/main/dev-driver-script.ts`).
+ *
+ * Installed only when main's script gate passed, which main says by adding
+ * `DEV_DRIVER_SCRIPT_ARG` to this renderer's argv - so an armed launch without a
+ * script, and every normal launch, has no listener at all. Each step is answered
+ * through the SAME bridge a CDP driver reaches (`call`, `verbs`, `capture`), so
+ * the runner adds an invoker and no new way to drive the UI. Two reserved names
+ * are not verbs: `__verbs` (readiness) and `__capture` (the existing
+ * `dev-driver-capture` channel, for the no-vibrancy-claim capture mode).
+ *
+ * Results are JSON round-tripped before they cross IPC: a verb answers with
+ * whatever the renderer built, and a value structured clone rejects would
+ * otherwise surface as an unprinted failure instead of a step result.
+ */
+function installScriptListener(bridge: DevDriverBridge): void {
+	ipcRenderer.on(
+		DEV_DRIVER_SCRIPT_STEP,
+		async (
+			_event: unknown,
+			message: { id: number; verb: string; payload?: unknown },
+		) => {
+			const id = message?.id;
+			try {
+				let value: unknown;
+				if (message.verb === "__verbs") value = bridge.verbs();
+				else if (message.verb === "__capture")
+					value = await bridge.capture(
+						String((message.payload as { label?: unknown })?.label ?? ""),
+					);
+				else value = await bridge.call(message.verb, message.payload);
+				ipcRenderer.send(DEV_DRIVER_SCRIPT_RESULT, {
+					id,
+					ok: true,
+					value: value === undefined ? null : JSON.parse(JSON.stringify(value)),
+				});
+			} catch (error) {
+				ipcRenderer.send(DEV_DRIVER_SCRIPT_RESULT, {
+					id,
+					ok: false,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		},
+	);
 }
