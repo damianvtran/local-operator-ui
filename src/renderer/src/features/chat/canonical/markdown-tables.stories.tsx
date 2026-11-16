@@ -77,7 +77,10 @@ import type { TranscriptRecord, TranscriptState } from "./transcript-reducer";
 const TS = 1_760_000_000_000;
 
 /** A settled, complete agent answer with no stop reason - the ordinary case. */
-const answer = (id: string, text: string): TranscriptRecord => ({
+const answer = (
+	id: string,
+	text: string,
+): Extract<TranscriptRecord, { kind: "assistant" }> => ({
 	kind: "assistant",
 	id,
 	ts: TS + 1_000,
@@ -355,6 +358,7 @@ export const HtmlStreaming: Story = {
 						`${HTML_BREAKS}\n| Streaming | first<br/>second <strong>open`,
 					),
 					streaming: true,
+					complete: false,
 				},
 			]}
 		/>

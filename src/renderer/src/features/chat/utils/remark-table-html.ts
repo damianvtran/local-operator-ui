@@ -92,7 +92,7 @@ export const remarkTableHtml =
 				// Unknown elements are discarded WITH their contents, not unwrapped:
 				// script/style/iframe/svg text must not become visible answer content.
 				if (
-					!Object.hasOwn(INLINE, tag) &&
+					!Object.prototype.hasOwnProperty.call(INLINE, tag) &&
 					!PASSIVE.has(tag) &&
 					!PRESENTATION.has(tag) &&
 					tag !== "br" &&
@@ -103,7 +103,7 @@ export const remarkTableHtml =
 					return [];
 				const children = convert(node.children ?? [], placeholder, structural);
 				if (tag === "br") return [{ type: "break" }];
-				if (Object.hasOwn(INLINE, tag))
+				if (Object.prototype.hasOwnProperty.call(INLINE, tag))
 					return [{ type: INLINE[tag], children }];
 				if (tag === "code") {
 					const text = (items: Node[]): string =>
