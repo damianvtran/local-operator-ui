@@ -238,6 +238,8 @@ const {
 	discoverDmg,
 	discoverArtifacts,
 	hostTranslatesExecutable,
+	LAUNCH_PROBE_FLAG,
+	LAUNCH_PROBE_MARKER,
 	mainExecutablePath,
 	profileAuthorizationCheck,
 	profileAuthorizes,
@@ -245,9 +247,12 @@ const {
 	seedVersionCheck,
 	SPAWN_PROBE_TIMEOUT_MS,
 	SPAWN_PROBE_TRANSLATED_TIMEOUT_MS,
+	spawnRunner,
 	summarize,
 	verifyArtifacts,
 } = await import("./verify-macos-artifacts.mjs");
+/** What a healthy packaged bundle prints for `--lo-launch-probe`. */
+const HEALTHY_LAUNCH_PROBE = `${LAUNCH_PROBE_MARKER} {"ok":true,"electron":"45.1.0","node":"24","v8":"14","arch":"arm64","packaged":true}\n`;
 // The Mach-O cpu types the gate's translation rule compares against, imported
 // rather than spelled out here so the fixture and the rule cannot drift apart.
 const { MACH_O_CPUTYPE } = await import("./prune-python-seed.mjs");
@@ -4700,16 +4705,13 @@ test("the artifact assertions are the ones a user's Gatekeeper runs", () => {
 			// bricked 0.29.6: will macOS actually spawn what we are about to ship?
 			// Honoured only by executing the binary — amfid's refusal is invisible to
 			// codesign, spctl and stapler alike (both measured on the real bundle).
+			//
+			// Since F2 it also answers the 0.30.10 x64 question (the OS execs the
+			// launcher and the app cannot LOAD its bytecode): the row is now the
+			// app's own `--lo-launch-probe`, whose line is printed from the shipped
+			// `index.jsc`, so the separate node-mode `app-bytecode-loadable` row is
+			// gone with the RunAsNode fuse that made it possible.
 			"app-spawn",
-			// The question `app-spawn` does NOT ask, and the one that bricked the
-			// 0.30.10 x64 DMG: the OS execs the launcher, and then the app cannot
-			// LOAD. `ELECTRON_RUN_AS_NODE=1 <exe> -p 'process.exit(0)'` evaluates the
-			// string it is given and never requires `app.asar`, so arm64 bytecode in
-			// an x64 bundle passed every check above it (measured on the shipped
-			// artifact: codesign, spctl, stapler and the spawn probe all green on a
-			// bundle that threw cachedDataRejected at every launch). This row loads
-			// the payload the others skip, under the bundle's own Electron.
-			"app-bytecode-loadable",
 			// The cause behind it — a restricted entitlement with no profile to
 			// authorize it — is NOT in this list: it is `profileAuthorizationCheck`,
 			// which walks every executable in the bundle rather than reading the
@@ -4764,65 +4766,119 @@ test("the artifact assertions are the ones a user's Gatekeeper runs", () => {
 	);
 });
 
-test("the bytecode gate asks the bundle's own Electron and refuses 'could not tell'", () => {
-	const app = gateFixtureBundle("lo-gate-bytecode-");
+test("the launch probe asks the bundle itself, never in node mode, and refuses 'could not tell'", () => {
+	const app = gateFixtureBundle("lo-gate-launch-probe-");
 	const launcher = join(app, "Contents", "MacOS", "Local Operator");
-	const check = artifactChecks({ appPath: app, dmgPath: null }).find(
-		(row) => row.id === "app-bytecode-loadable",
-	);
+	const checks = artifactChecks({ appPath: app, dmgPath: null });
+	const check = checks.find((row) => row.id === "app-spawn");
 
-	// THE PROBE MUST RUN UNDER THE ARTIFACT, NOT UNDER THE RUNNER'S NODE. That is
-	// the entire mechanism: V8 accepts cached data only from its own
-	// architecture, so only the x64 bundle's own Electron can answer for the x64
-	// bundle while an arm64 runner holds the file. A probe spawned with
-	// `process.execPath` would answer for the RUNNER and pass the broken artifact.
-	assert.equal(check.command, launcher);
-	assert.deepEqual(check.env, { ELECTRON_RUN_AS_NODE: "1" });
-	assert.equal(check.args.length, 2);
-	assert.match(check.args[0], /scripts\/bytecode-accepts-probe\.cjs$/);
-	// Absolute, so the gate is invocable from any cwd (CI runs it through
-	// require-report.sh from the repo root; a human runs it from anywhere).
-	assert.ok(isAbsolute(check.args[0]));
-	assert.ok(existsSync(check.args[0]));
+	// The node-mode checks are GONE (F2). With the RunAsNode fuse off,
+	// `ELECTRON_RUN_AS_NODE=1 <exe> …` boots the full app instead of a Node
+	// one-liner, so no check may ask for it any more - not this one, and not a
+	// separate bytecode probe.
 	assert.equal(
-		check.args[1],
-		join(app, "Contents/Resources/app.asar/out/main/index.jsc"),
+		checks.some((row) => row.id === "app-bytecode-loadable"),
+		false,
 	);
+	for (const row of checks)
+		assert.notEqual(row.env?.ELECTRON_RUN_AS_NODE, "1", row.id);
 
-	// A translated child gets the longer bound here for the same reason
-	// `app-spawn` does: on an arm64 runner the x64 probe pays Rosetta's one-time
-	// cost, and `timedOut` must not report the translator as a broken bundle.
+	// THE PROBE RUNS THE ARTIFACT, NOT THE RUNNER'S NODE: only the bundle's own
+	// V8 can say whether it loads its own bytecode.
+	assert.equal(check.command, launcher);
+	assert.equal(check.args[0], LAUNCH_PROBE_FLAG);
+	assert.ok(check.args.includes("--use-mock-keychain"));
+	assert.ok(check.args.includes("--window-mode=headless"));
+	const profileArg = check.args.find((arg) =>
+		arg.startsWith("--user-data-dir="),
+	);
+	assert.ok(profileArg, "the probe runs without a scratch profile");
+	assert.ok(isAbsolute(profileArg.slice("--user-data-dir=".length)));
+	// An inherited node-mode switch is REMOVED, not merely not added.
+	assert.deepEqual(check.env, {
+		ELECTRON_RUN_AS_NODE: null,
+		NODE_OPTIONS: null,
+		LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
+	});
+
+	// A translated child gets the longer bound (Rosetta's one-time cost).
 	writeThinMachO(launcher, MACH_O_CPUTYPE.X86_64);
 	const translated = artifactChecks({
 		appPath: app,
 		dmgPath: null,
 		hostArch: "arm64",
-	}).find((row) => row.id === "app-bytecode-loadable");
+	}).find((row) => row.id === "app-spawn");
 	assert.equal(translated.timeoutMs, SPAWN_PROBE_TRANSLATED_TIMEOUT_MS);
 
-	// ACCEPTED is the only pass. The three refusal shapes are each red, and the
-	// third one is the point: exit 2 is the probe saying it COULD NOT TELL
-	// (unreadable .jsc, unparseable header), which must never ship as a pass.
+	const line = (report) =>
+		`${LAUNCH_PROBE_MARKER} ${JSON.stringify({ ok: true, electron: "45.1.0", arch: "arm64", ...report })}\n`;
+	const ok = { status: 0, signal: null, timedOut: false };
+	// The ONLY pass: exit 0 AND the probe's line, from a packaged app.
+	assert.equal(check.expect({ ...ok, stdout: line({ packaged: true }) }), true);
+	// Exit 0 with no line is red: the shape of the OLD node-mode command on a
+	// fused build, where the app boots instead (here its smoke path's marker)
+	// and quits for a reason that is not the probe.
 	assert.equal(
-		check.expect({ status: 0, signal: null, timedOut: false }),
-		true,
+		check.expect({
+			...ok,
+			stdout: "LOCAL_OPERATOR_UI_READY electron=45.1.0\n",
+		}),
+		false,
 	);
+	assert.equal(check.expect({ ...ok, stdout: "" }), false);
+	// An unpackaged tree answering the flag is not the artifact.
 	assert.equal(
-		check.expect({ status: 1, signal: null, timedOut: false }),
+		check.expect({ ...ok, stdout: line({ packaged: false }) }),
+		false,
+	);
+	// A marker whose JSON does not parse could not tell: red.
+	assert.equal(
+		check.expect({ ...ok, stdout: `${LAUNCH_PROBE_MARKER} {not json\n` }),
+		false,
+	);
+	// A tampered `app.asar` under the integrity fuse: Electron aborts before
+	// any JS runs (a fatal signal, no line).
+	assert.equal(
+		check.expect({ status: null, signal: "SIGTRAP", timedOut: false }),
+		false,
+	);
+	// foreign bytecode throws cachedDataRejected: non-zero, no line.
+	assert.equal(
+		check.expect({ status: 1, signal: null, timedOut: false, stdout: "" }),
 		false,
 	);
 	assert.equal(
-		check.expect({ status: 2, signal: null, timedOut: false }),
+		check.expect({
+			status: 0,
+			signal: null,
+			timedOut: true,
+			stdout: line({ packaged: true }),
+		}),
 		false,
 	);
-	assert.equal(
-		check.expect({ status: null, signal: "SIGKILL", timedOut: false }),
-		false,
+});
+
+test("the launch probe's scratch profile is removed whether the child passed or the runner threw", () => {
+	const app = gateFixtureBundle("lo-gate-launch-cleanup-");
+	const seen = [];
+	const run = (command, args) => {
+		if (args[0] === LAUNCH_PROBE_FLAG) {
+			const dir = args
+				.find((arg) => arg.startsWith("--user-data-dir="))
+				.slice("--user-data-dir=".length);
+			// What Chromium's early start-up may leave behind.
+			mkdirSync(join(dir, "Default"), { recursive: true });
+			seen.push(dir);
+			throw new Error("runner died");
+		}
+		return { status: 0, signal: null, timedOut: false, stdout: "", stderr: "" };
+	};
+	assert.throws(
+		() => runChecks({ appPath: app, dmgPath: null, run, env: {} }),
+		/runner died/,
 	);
-	assert.equal(
-		check.expect({ status: 0, signal: null, timedOut: true }),
-		false,
-	);
+	assert.equal(seen.length, 1);
+	assert.equal(existsSync(seen[0]), false);
 });
 
 test("an unsigned or unnotarized disk image fails the release assertions", () => {
@@ -4830,25 +4886,15 @@ test("an unsigned or unnotarized disk image fails the release assertions", () =>
 	// notarized and stapled, and the image itself is none of those.
 	const shippedV0170 = (command, args) => {
 		const joined = args.join(" ");
-		// The spawn probe executes the bundle's own main executable; a stub has to
-		// answer for it like any other command this file runs.
-		if (joined === "-p process.exit(0)") {
+		// The launch probe executes the bundle's own main executable; a stub has
+		// to answer for it like any other command this file runs. This release's
+		// fault is its disk image, so the bundle launches and loads its bytecode.
+		if (args[0] === LAUNCH_PROBE_FLAG) {
 			return {
 				status: 0,
 				signal: null,
 				timedOut: false,
-				stdout: "",
-				stderr: "",
-			};
-		}
-		// So does the bytecode probe, which runs under that same executable. This
-		// release's fault is its disk image, so the bundle loads its own bytecode.
-		if (joined.includes("bytecode-accepts-probe.cjs")) {
-			return {
-				status: 0,
-				signal: null,
-				timedOut: false,
-				stdout: "ACCEPTED",
+				stdout: HEALTHY_LAUNCH_PROBE,
 				stderr: "",
 			};
 		}
@@ -4905,12 +4951,12 @@ test("an unsigned or unnotarized disk image fails the release assertions", () =>
 	// profile exists, and what a user can actually launch.
 	const fixed = (command, args) => {
 		const joined = args.join(" ");
-		if (joined === "-p process.exit(0)") {
+		if (args[0] === LAUNCH_PROBE_FLAG) {
 			return {
 				status: 0,
 				signal: null,
 				timedOut: false,
-				stdout: "",
+				stdout: HEALTHY_LAUNCH_PROBE,
 				stderr: "",
 			};
 		}
@@ -5052,7 +5098,11 @@ function gateRunner({ entitlements, profileDump = null, spawnFails = false }) {
 		typeof entitlements === "function" ? entitlements(path) : entitlements;
 	return (command, args) => {
 		const joined = args.join(" ");
-		if (joined === "-p process.exit(0)") {
+		// The launch probe. These fixtures model ENTITLEMENT and spawn faults,
+		// where the bundle's bytecode matches its own runtime, so a launch the OS
+		// allows prints the probe line — keeping each test's failure set the one
+		// thing it is about.
+		if (args[0] === LAUNCH_PROBE_FLAG) {
 			return spawnFails
 				? {
 						status: null,
@@ -5061,20 +5111,13 @@ function gateRunner({ entitlements, profileDump = null, spawnFails = false }) {
 						stdout: "",
 						stderr: "",
 					}
-				: { status: 0, signal: null, timedOut: false, stdout: "", stderr: "" };
-		}
-		// The bytecode probe runs under the same executable as the spawn probe.
-		// These fixtures model ENTITLEMENT and spawn faults, where the bundle's
-		// bytecode matches its own runtime, so it answers ACCEPTED — keeping each
-		// test's failure set the one thing it is about.
-		if (joined.includes("bytecode-accepts-probe.cjs")) {
-			return {
-				status: 0,
-				signal: null,
-				timedOut: false,
-				stdout: "ACCEPTED",
-				stderr: "",
-			};
+				: {
+						status: 0,
+						signal: null,
+						timedOut: false,
+						stdout: HEALTHY_LAUNCH_PROBE,
+						stderr: "",
+					};
 		}
 		if (command.endsWith("/security")) {
 			return {
@@ -5276,47 +5319,92 @@ test("every executable's claim is judged, not only the launcher's", () => {
 	assert.match(unwalkableRead.output, /could not be walked for executables/);
 });
 
-test("the spawn probe owns its env, whatever signature the runner has", () => {
+test("the launch probe owns its env, whatever signature the runner has", () => {
 	/*
 	 * Why this is asserted here rather than left to the runner: `env` is a parameter
-	 * the runner has to forward, and a runner that does not forward it drops
-	 * `ELECTRON_RUN_AS_NODE` SILENTLY — which turns the probe into a real app launch.
-	 * QA round 2 measured that from a scratch harness: five stray executions of the
-	 * app binary, every one of them raising and FOCUSING the operator's window (the
-	 * app's own `[window-raise]` line for each). The check applies its own
-	 * environment, so a runner of any signature — including one that ignores the
-	 * parameters it is handed and inherits the process environment, which is what
-	 * `spawnSync` does by default — sees the switch the probe depends on.
+	 * the runner has to forward, and a runner that does not forward it drops the
+	 * check's switches SILENTLY. QA round 2 measured the old shape of that from a
+	 * scratch harness (the node-mode switch dropped: five stray launches of the app
+	 * binary, each raising and FOCUSING the operator's window). Since F2 the probe
+	 * carries the reverse obligation as well: an inherited `ELECTRON_RUN_AS_NODE`
+	 * or `NODE_OPTIONS` must be REMOVED for the child, and the headless window mode
+	 * applied, even through a runner that ignores the parameter and inherits the
+	 * process environment (what `spawnSync` does by default).
 	 */
 	const app = gateFixtureBundle("lo-gate-env-");
 	const probeSaw = [];
-	// A runner that takes the first three arguments and nothing else: the shape that
-	// dropped the switch. It reads the process environment, which is what a
-	// `spawnSync`-based runner does by default.
-	const threeArgumentRunner = (command, args, input) => {
-		void command;
-		void input;
-		if (args.join(" ").includes("process.exit(0)"))
-			probeSaw.push(process.env.ELECTRON_RUN_AS_NODE ?? null);
-		return { status: 0, signal: null, timedOut: false, stdout: "", stderr: "" };
+	const saved = {
+		run: process.env.ELECTRON_RUN_AS_NODE,
+		opts: process.env.NODE_OPTIONS,
+		mode: process.env.LOCAL_OPERATOR_UI_WINDOW_MODE,
 	};
-	const rows = runChecks({
-		appPath: app,
-		dmgPath: null,
-		run: threeArgumentRunner,
-		// Explicit, so the probe's run cannot depend on the shell's CI variables.
-		env: {},
-	});
-	assert.ok(rows.length > 0, "the checks did not run at all");
-	// Exactly once, and with the switch: the probe is the only check that carries it,
-	// so a null here is the switch being dropped on the way to the child.
-	assert.deepEqual(
-		probeSaw,
-		["1"],
-		"ELECTRON_RUN_AS_NODE did not reach the runner: a drop-in runner would launch the real app",
-	);
-	// And it is restored afterwards, so no later check inherits node mode.
-	assert.equal(process.env.ELECTRON_RUN_AS_NODE, undefined);
+	// A runner shell that had node mode armed.
+	process.env.ELECTRON_RUN_AS_NODE = "1";
+	process.env.NODE_OPTIONS = "--require /tmp/x.js";
+	Reflect.deleteProperty(process.env, "LOCAL_OPERATOR_UI_WINDOW_MODE");
+	try {
+		const threeArgumentRunner = (command, args, input) => {
+			void command;
+			void input;
+			if (args[0] === LAUNCH_PROBE_FLAG)
+				probeSaw.push([
+					process.env.ELECTRON_RUN_AS_NODE ?? null,
+					process.env.NODE_OPTIONS ?? null,
+					process.env.LOCAL_OPERATOR_UI_WINDOW_MODE ?? null,
+				]);
+			return {
+				status: 0,
+				signal: null,
+				timedOut: false,
+				stdout: "",
+				stderr: "",
+			};
+		};
+		const rows = runChecks({
+			appPath: app,
+			dmgPath: null,
+			run: threeArgumentRunner,
+			// Explicit, so the probe's run cannot depend on the shell's CI variables.
+			env: {},
+		});
+		assert.ok(rows.length > 0, "the checks did not run at all");
+		assert.deepEqual(
+			probeSaw,
+			[[null, null, "headless"]],
+			"the launch probe inherited a node-mode switch or lost its window mode",
+		);
+		// And restored afterwards, both ways.
+		assert.equal(process.env.ELECTRON_RUN_AS_NODE, "1");
+		assert.equal(process.env.NODE_OPTIONS, "--require /tmp/x.js");
+		assert.equal(process.env.LOCAL_OPERATOR_UI_WINDOW_MODE, undefined);
+	} finally {
+		for (const [key, value] of [
+			["ELECTRON_RUN_AS_NODE", saved.run],
+			["NODE_OPTIONS", saved.opts],
+			["LOCAL_OPERATOR_UI_WINDOW_MODE", saved.mode],
+		]) {
+			if (value === undefined) Reflect.deleteProperty(process.env, key);
+			else process.env[key] = value;
+		}
+	}
+});
+
+test("spawnRunner drops a null-valued variable from the child's environment", () => {
+	const saved = process.env.LO_GATE_NULL_PROBE;
+	process.env.LO_GATE_NULL_PROBE = "inherited";
+	try {
+		const result = spawnRunner(
+			process.execPath,
+			["-p", "process.env.LO_GATE_NULL_PROBE ?? 'absent'"],
+			undefined,
+			{ LO_GATE_NULL_PROBE: null },
+		);
+		assert.equal(result.stdout.trim(), "absent");
+	} finally {
+		if (saved === undefined)
+			Reflect.deleteProperty(process.env, "LO_GATE_NULL_PROBE");
+		else process.env.LO_GATE_NULL_PROBE = saved;
+	}
 });
 
 test("the spawn bound covers a translation, and only where there IS one", () => {
@@ -5381,12 +5469,12 @@ test("the artifact gate hands a translated launcher the longer bound", () => {
 	assert.equal(row("arm64").timeoutMs, SPAWN_PROBE_TRANSLATED_TIMEOUT_MS);
 	assert.equal(row("x64").timeoutMs, SPAWN_PROBE_TIMEOUT_MS);
 
-	// And the row is otherwise the probe it was: same id, same command, same one
-	// switch that keeps it out of a real launch, same predicate.
+	// And the row is otherwise the probe it was: same id, same command, the
+	// launch probe's flag, same predicate.
 	assert.equal(row("arm64").command, launcher);
 	assert.equal(row("arm64").target, launcher);
-	assert.deepEqual(row("arm64").args, ["-p", "process.exit(0)"]);
-	assert.deepEqual(row("arm64").env, { ELECTRON_RUN_AS_NODE: "1" });
+	assert.equal(row("arm64").args[0], LAUNCH_PROBE_FLAG);
+	assert.equal(row("arm64").env.ELECTRON_RUN_AS_NODE, null);
 	assert.equal(
 		row("arm64").expect({ status: null, signal: "SIGKILL", timedOut: false }),
 		false,
@@ -5396,7 +5484,12 @@ test("the artifact gate hands a translated launcher the longer bound", () => {
 		false,
 	);
 	assert.equal(
-		row("arm64").expect({ status: 0, signal: null, timedOut: false }),
+		row("arm64").expect({
+			status: 0,
+			signal: null,
+			timedOut: false,
+			stdout: HEALTHY_LAUNCH_PROBE,
+		}),
 		true,
 	);
 });

@@ -1682,6 +1682,36 @@ The rule for the class is therefore about the sweep as much as the launch:
   because the interruption is the measurement's side effect rather than its
   subject. If the question genuinely needs focus, measure it once.
 
+### A packaged bundle is never run in node mode (F2 fuses)
+
+Packaged builds flip Electron's fuses (`build.electronFuses` in `package.json`;
+the table and its reasons are in `scripts/electron-fuse-policy.mjs`): RunAsNode,
+`NODE_OPTIONS` and `--inspect` are OFF, asar integrity, only-load-from-asar and
+cookie encryption are ON. They exist so a same-uid process cannot run its own
+code inside the genuine signed app, which the runtime relies on to treat card
+answers from the app as the operator's. For a rig that means:
+
+- **`ELECTRON_RUN_AS_NODE=1 <packaged exe> …` now BOOTS THE WHOLE APP** — a
+  window, the backend, the keychain — instead of running a Node one-liner. Never
+  use node mode against a `dist/` or installed bundle. To ask a packaged bundle
+  "do you start and load your own `app.asar`/bytecode?", run it with
+  `--lo-launch-probe --user-data-dir=<scratch> --use-mock-keychain
+  --window-mode=headless`: it prints one `LOCAL_OPERATOR_LAUNCH_PROBE {...}` line
+  before its lock, window or backend and exits 0 (`src/main/launch-probe.ts`,
+  the release gate's `app-spawn`). The npm `electron` binary is unfused, so dev
+  and CI uses of node mode with `node_modules/.bin/electron` are unaffected.
+- **Pass `--use-mock-keychain` on every packaged launch under a scratch `HOME`.**
+  With cookie encryption on, Chromium encrypts its cookie store with a keychain
+  key, so a scratch `HOME` with no login keychain raises the "Keychain Not Found"
+  prompt class described above.
+- **`NODE_OPTIONS`, `--inspect*` and `ELECTRON_RENDERER_URL` do nothing to a
+  packaged app.** The last is now read only through `devRendererUrl`
+  (`src/main/dev-renderer-url.ts`), which ignores it when packaged; a rig that
+  wants a dev renderer runs the unpackaged app.
+- **Do not edit a built bundle's `app.asar` and expect it to run.** The integrity
+  fuse checks it against the hash in `Info.plist`, and Electron aborts at launch
+  on a mismatch (that is the point).
+
 ### What already opens no window, so a rebase does not re-introduce one
 
 `pnpm test:desktop` bundles modules in process; the CI npx smoke test prints its

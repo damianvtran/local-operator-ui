@@ -68,6 +68,7 @@ import {
 	requestDesktopOutcome,
 	serverUpdateStalledBody,
 } from "../desktop-transport";
+import { devRendererUrl } from "../dev-renderer-url";
 import { withPythonBytecodeCache } from "../python-bytecode-cache";
 import { type UserShellPath, withUserShellPath } from "../shell-path";
 import type { TeamBridgeImageCache } from "../team-bridge-image-cache";
@@ -3022,7 +3023,9 @@ export class BackendServiceManager {
 	 * declaring it is what admits that origin once the claim tightens the plane.
 	 */
 	private rendererOrigins(): string[] {
-		const url = process.env.ELECTRON_RENDERER_URL;
+		// Never in a packaged app: see `devRendererUrl` for why the variable
+		// must not widen a packaged build's CORS allowlist.
+		const url = devRendererUrl(app.isPackaged);
 		if (!url) return [];
 		const origin = normaliseAddress(url);
 		return origin ? [origin] : [];

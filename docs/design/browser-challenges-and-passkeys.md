@@ -551,15 +551,49 @@ either pass, both passes carry `provisioningProfile` and the rendered
 overrides `entitlementsInherit`, and the committed plist carries no
 `keychain-access-groups` at all.
 
+**Main and nested code are signed with different plists (F2).** Since the F2
+hardening, `mac.entitlements` (`build/entitlements.mac.plist`, rendered with the
+group in CI) is the MAIN executable's alone, and `mac.entitlementsInherit` is a
+separate `build/entitlements.mac.inherit.plist` for every nested Mach-O (Electron
+helpers, the python seed, uv, node-pty's `spawn-helper`). Neither carries
+`com.apple.security.cs.allow-dyld-environment-variables` any more, and main no
+longer carries `disable-library-validation`: with them, any same-uid process
+could `DYLD_INSERT_LIBRARIES` into the genuine signed app and still satisfy its
+designated requirement (measured in the F2 spike on 0.57.8), which would make
+the runtime's app-signature attestation of card answers meaningless and also
+exposed this keychain group to injected code. The inherit plist keeps
+`disable-library-validation` for one reason, the python seed: the managed
+runtime is a copy of those signed bytes and loads third-party wheels' extension
+modules that our team did not sign. electron-builder applies one inherit plist to
+every nested binary, so the helpers carry it too; that is the recorded residual.
+The release gate enforces the split (`app-hardening-entitlements`, below), and
+the group stays on main only, so nothing about passkeys changes.
+
 **The gate asserts two things about a built artifact, and one of them is a spawn.**
-`app-spawn` executes the bundle's own `Contents/MacOS/<CFBundleExecutable>` in
-Electron's node mode (`ELECTRON_RUN_AS_NODE=1 <exe> -p 'process.exit(0)'`, so no
-window, no display, no user-data directory) and fails on a non-zero status, a
-terminating signal, or a child that never exits within the bound. That is the
-question the pipeline could not ask and the one the OS actually answers: measured
-against the real 0.29.6 bundle it exits 137 (SIGKILL, no output), against the same
-bundle re-signed without the group it exits 0, and against the 0.29.5 install on
-this machine it exits 0. **The bound is one per kind of child, because the runner
+`app-spawn` executes the bundle's own `Contents/MacOS/<CFBundleExecutable>` with
+`--lo-launch-probe` (plus a scratch `--user-data-dir`, `--use-mock-keychain` and
+`--window-mode=headless`). The app answers that flag first thing in its main
+module, before its single-instance lock, any window, `whenReady` or the backend:
+it prints one `LOCAL_OPERATOR_LAUNCH_PROBE {...}` line and exits 0
+(`src/main/launch-probe.ts`). The check fails on a non-zero status, a terminating
+signal, a child that never exits within the bound, or an exit without that line.
+That is the question the pipeline could not ask and the one the OS actually
+answers: measured against the real 0.29.6 bundle (then in node mode) it exits 137
+(SIGKILL, no output), against the same bundle re-signed without the group it
+exits 0. Because the line is printed from the shipped `out/main/index.jsc`, the
+same launch also proves the bundle's own V8 accepts its own bytecode (the 0.30.10
+x64 class), so the separate `app-bytecode-loadable` probe is gone.
+
+*Why not node mode any more (F2).* Until F2 this check ran
+`ELECTRON_RUN_AS_NODE=1 <exe> -p 'process.exit(0)'`. The RunAsNode fuse is now
+off (node mode ran arbitrary JS inside the genuine signed process), and on a
+fused build that command does not run Node: it boots the full app, which on a
+runner hangs to the bound and on a Mac raises a window and asks the keychain. The
+gate also reads the fuse wire itself (`app-electron-fuses`, policy in
+`scripts/electron-fuse-policy.mjs`), requires `LOAttestationEpoch = "1"` in
+`Info.plist` (`app-attestation-epoch`, the runtime's downgrade lock), and walks
+every executable's entitlements for the keys above (`app-hardening-entitlements`).
+**The bound is one per kind of child, because the runner
 checks both architectures.** A launcher this host has to translate answers in a
 translation's time rather than in its own: on the arm64 runner, the x64 bundles'
 probe crossed the 60 s bound twice in one release (v0.30.9, run `35701146672`,

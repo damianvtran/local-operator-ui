@@ -50,8 +50,10 @@ import {
 } from "./python-artifact-layout.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
 import {
+	attestationEpochCheck,
 	bundledBytecodeCheck,
 	bundledPythonCheck,
+	electronFusesCheck,
 	profileAuthorizationCheck,
 	readEmbeddedProfileEntitlements,
 	runChecks,
@@ -415,6 +417,12 @@ try {
 					// executable in the bundle rather than its launcher alone — the
 					// artifact this harness exists to vet carried the group on eight.
 					...profileAuthorizationCheck(app, { run: spawnRunner, profile }),
+					// F2: the candidate must carry the hardened fuse wire and the
+					// attestation epoch, or the update path would ship an app whose
+					// card answers can never be verified (or, worse, one that can be
+					// driven in node mode). Both are the candidate's own failures.
+					electronFusesCheck(app),
+					attestationEpochCheck(app),
 					bundledPythonCheck(app, { expectArch: arch }),
 					bundledBytecodeCheck(app),
 					privatePythonSeedCheck(app, { expectArch: arch }),

@@ -2,13 +2,32 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
   <dict>
+  <!--
+    MAIN EXECUTABLE ONLY (package.json build.mac.entitlements). Every other
+    Mach-O in the bundle - the Electron helpers, the python seed, uv, node-pty's
+    spawn-helper - is signed with build/entitlements.mac.inherit.plist instead.
+
+    Two keys are deliberately ABSENT here, and the release gate
+    (scripts/verify-macos-artifacts.mjs, app-hardening-entitlements, policy in
+    src/shared/macos-entitlement-policy.json) refuses a bundle that carries them:
+
+    - com.apple.security.cs.allow-dyld-environment-variables: with it, any
+      same-uid process could DYLD_INSERT_LIBRARIES into the genuine signed app
+      and run code that still satisfies the app's designated requirement
+      (measured in the F2 spike: a dylib constructor ran in the signed process
+      with cs_flags unchanged). The runtime's app-signature attestation means
+      nothing while that holds.
+    - com.apple.security.cs.disable-library-validation: main loads only code
+      signed by our team (Electron Framework, node-pty's pty.node, all re-signed
+      at package time), so library validation passes without it, and keeping it
+      would let a planted dylib load into the signed process.
+
+    allow-jit and allow-unsigned-executable-memory stay: V8 needs them.
+    Design: F2 "card answers verified by the app's code signature".
+  -->
     <key>com.apple.security.cs.allow-jit</key>
     <true/>
     <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
-    <true/>
-    <key>com.apple.security.cs.allow-dyld-environment-variables</key>
-    <true/>
-    <key>com.apple.security.cs.disable-library-validation</key>
     <true/>
     <key>com.apple.security.network.client</key>
     <true/>

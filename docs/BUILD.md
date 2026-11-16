@@ -228,7 +228,8 @@ includes a component that will not open in macOS 28", logged by `ecosystemd` as
 `[NOTIFICATION_SENT] decision=launch … bundle=com.local-operator`) did not come
 from the shipped app: a local QA rig ran `pnpm verify-macos-artifacts` against
 the x64 artifact on an arm64 Mac, and its exec checks (`app-spawn`,
-`app-bytecode-loadable`, `app-seed-python-version`) launched the x86_64 launcher
+`app-bytecode-loadable` - since F2 folded into `app-spawn`'s launch probe -
+and `app-seed-python-version`) launched the x86_64 launcher
 under Rosetta, which macOS attributes to the bundle and warns about (at most once
 per 86400 s, re-armed by every such launch). So `refusesLocalRosettaExec` now
 withholds any exec this host would translate (a launcher or interpreter with no
