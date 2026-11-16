@@ -144,6 +144,9 @@ const {
 } = await import(bundlePath.href);
 
 after(async () => {
+	// Drain BEFORE the globals go back: see `settleRadixTimers` for why a
+	// pending Radix timer must never outlive the jsdom globals it reads.
+	await settleRadixTimers();
 	await unlink(bundlePath).catch(() => {});
 	for (const [key, descriptor] of originals) {
 		if (descriptor) Object.defineProperty(globalThis, key, descriptor);
@@ -153,6 +156,28 @@ after(async () => {
 });
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+/*
+ * WHY UNMOUNT HAS TO SETTLE (UI main run 43953731000, job 133602937461: all
+ * four tests passed, the FILE failed). Radix FocusScope's unmount cleanup does
+ * not dispatch synchronously: it calls
+ * `setTimeout(() => container.dispatchEvent(new CustomEvent(AUTOFOCUS_ON_UNMOUNT)), 0)`
+ * with the BARE global `CustomEvent`. If that timer runs after `after()` has
+ * put Node's own `CustomEvent` back, the event is not a jsdom Event and jsdom
+ * throws "Failed to execute 'dispatchEvent' on 'EventTarget': parameter 1 is
+ * not of type 'Event'" as an uncaughtException attributed to the last test.
+ * Whether the timer beats the restore depended on the event loop's phase when
+ * the hook ran, i.e. on runner load - hence a flake rather than a failure.
+ *
+ * One zero-delay tick is enough and is not a wall-clock wait: Node runs
+ * equal-delay timers in insertion order, so a 0 ms timer scheduled after the
+ * unmount fires only after every 0 ms timer the unmount scheduled. Measured on
+ * this file: each unmount schedules exactly two such timers (parent and sub
+ * panel FocusScope) and none of them schedules another, so there is no second
+ * generation to wait for. If a Radix upgrade adds a chained timer, the CI
+ * symptom above returns and this is the place to extend.
+ */
+const settleRadixTimers = () => tick();
 
 async function mountPageMenu(calls) {
 	const host = document.createElement("div");
@@ -198,6 +223,9 @@ async function withPageMenu(run) {
 	} finally {
 		await act(async () => root.unmount());
 		host.remove();
+		// The unmount's FocusScope timers belong to THIS test; let them run while
+		// the jsdom globals are still installed (see `settleRadixTimers`).
+		await settleRadixTimers();
 	}
 }
 
