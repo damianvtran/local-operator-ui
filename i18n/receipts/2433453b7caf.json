@@ -1,0 +1,46 @@
+{
+ "auditor": "i18n-auditor",
+ "model": "anthropic/claude-sonnet-5-5",
+ "instance": "2433453b7caf",
+ "locale": "vi",
+ "status": "passed",
+ "audit_date": "2026-11-15",
+ "commit": "7cdf6c27b4c41bbcf08f6f3eb7966bdf3b9fbd69",
+ "namespaces": {
+  "ui.chat": {
+   "status": "passed",
+   "sha256": {
+    "vi": "dad5b576af86b1105afc2ca07a2ced3dde7f72f98a22c0d878d8eaf6c5d5aadc",
+    "en": "22a6b7e59c047a453e38571fffd3f0b11d9ac929d8c377f2a38f0a90a6f641db"
+   },
+   "findings": []
+  },
+  "ui.chat.dialogs": {
+   "status": "passed",
+   "sha256": {
+    "vi": "931dc12d0b1a8c56d8d6fea276c71e52c0cc31ea54333abf516013791396abaf",
+    "en": "17a1d110fa72efd3a1853e81ff5ed7baad3cfcc796a0b2f92729b6acb7312221"
+   },
+   "findings": [
+    {
+     "severity": "MINOR",
+     "key": "ui.chat.dialogs.archive_message",
+     "note": "'Khôi phục' (Unarchive) shares its root with toast.undone 'Đã khôi phục' (undone); unambiguous only because Undo is 'Hoàn tác'. Consistent with shipped keys; kept."
+    },
+    {
+     "severity": "NIT",
+     "key": "ui.chat.dialogs.archive_message",
+     "note": "'trong 8 giây' reads slightly more natural as 'trong vòng 8 giây'; 'danh sách' singular vs en 'your lists'. Optional."
+    }
+   ]
+  },
+  "ui.chat.sidebar": {
+   "status": "passed",
+   "sha256": {
+    "vi": "4a89a57713dfa0bfeea56e0756abf84af2fff8b043205bdce533a89d997cfc31",
+    "en": "b8c1dc4d3d1b2c567f13f383ad7ed5d0cf3e25ef2d8bb6ae0c5e7f69da5a6ee9"
+   },
+   "findings": []
+  }
+ }
+}

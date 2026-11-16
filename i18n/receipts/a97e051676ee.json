@@ -1,0 +1,53 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-sonnet-5-5",
+  "instance": "a97e051676ee",
+  "status": "passed",
+  "locale": "ru",
+  "audit_date": "2026-11-15",
+  "commit": "7cdf6c27b4",
+  "scope": "a31ce7e9ea..7cdf6c27b4, 9 added ru keys",
+  "independent_from_translator_session": true,
+  "actual_model_source": "session runtime header 'Model: anthropic/claude-sonnet-5-5'; no fallback observed",
+  "method": "static reading: docs/I18N.md, ru style guide + glossary (local-operator@56662d28), en values + sidecars, shipped neighbouring ru keys; python mechanical checks; no MT service",
+  "namespaces": {
+    "ui.chat": {
+      "status": "passed",
+      "key_count": 4,
+      "sha256": {
+        "ru": "f2aa79a8eca0f7211bfcd4656f70dff826301380429f3901531092ead60d2c48",
+        "en": "22a6b7e59c047a453e38571fffd3f0b11d9ac929d8c377f2a38f0a90a6f641db"
+      },
+      "findings": []
+    },
+    "ui.chat.dialogs": {
+      "status": "passed",
+      "key_count": 3,
+      "sha256": {
+        "ru": "0f4a46337a018ce46d6016acf9153927cc85083f8fe3f8c8905443f53b850a5e",
+        "en": "17a1d110fa72efd3a1853e81ff5ed7baad3cfcc796a0b2f92729b6acb7312221"
+      },
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.chat.dialogs.archive_message",
+          "note": "«включите «Включая архивные»» stutters (verb+gerund-label, capitalised label inside quotes). Suggest «включите параметр «{include_archived}»», as shipped ui.chat.sidebar.groups.withheld does."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.chat.dialogs.archive_message",
+          "note": "«позже» (later) is vaguer than English 'after that'; suggest «после этого». Full: Разговор исчезнет из списков. Отменить можно в течение {seconds, plural, one {# секунды} few {# секунд} many {# секунд} other {# секунды}}; после этого найдите его через поиск над списком чатов, включите параметр «{include_archived}» и нажмите «Восстановить»."
+        }
+      ]
+    },
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "key_count": 2,
+      "sha256": {
+        "ru": "b51f7e23c610ad02924739c87837ebf23d696a0ba2fc05bec0a0537abca4cb14",
+        "en": "b8c1dc4d3d1b2c567f13f383ad7ed5d0cf3e25ef2d8bb6ae0c5e7f69da5a6ee9"
+      },
+      "findings": []
+    }
+  }
+}
