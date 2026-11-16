@@ -41,7 +41,6 @@ import {
 	type RaiseReport,
 	focusBrowserChordTarget,
 	presentPopupWindow,
-	raiseWindow,
 } from "../window-raise";
 import { discardRecordingForCustody } from "./actions/recording";
 import {
@@ -79,7 +78,6 @@ import webStorePreload from "./extensions/chrome-web-store/chrome-web-store.prel
 import { installExtensionDialogs } from "./extensions/dialogs";
 import { ExtensionManager } from "./extensions/manager";
 import {
-	PASSKEY_CUSTODY_ATTENTION_CHANNEL,
 	PASSKEY_CUSTODY_ENDED_CHANNEL,
 	PasskeyCustody,
 	passkeyPromptProvider,
@@ -178,6 +176,12 @@ import {
 	mintSessionKey,
 	stateFilePath,
 } from "./state-file";
+import {
+	HeldPopups,
+	type UserAttentionEntry,
+	createCustodyAttention,
+	holdsPopup,
+} from "./user-attention";
 import {
 	configurePslRules,
 	domainScopeAvailable,
@@ -571,6 +575,9 @@ export function startBrowserHost(
 					ok: false,
 					reason: "not_held",
 				},
+		},
+		userAttention: {
+			open: (tabId) => bindings.userAttention?.open(tabId) ?? false,
 		},
 		mediaPermission: {
 			decide: async (tabId, id, decision, trusted) =>
@@ -1062,68 +1069,32 @@ async function initializeBrowserHost(
 		/**
 		 * Passkey custody (`extensions/passkey-custody.ts`): a password manager's
 		 * passkey prompt in an AGENT tab is admitted only with the agent locked out
-		 * of that tab, and the tab is brought to the user to answer it.
+		 * of that tab, and the agent waits there until a person answers it.
 		 *
-		 * BRINGING IT TO THE USER is the one place the browser host asks for the
-		 * window on its own, and it goes through `raiseWindow` so the launch plan
-		 * still decides (`inactive` never takes focus, `never` raises nothing). The
-		 * tab the user was looking at is remembered and given back on release ONLY
-		 * if they are still on the custody tab — a tab they chose meanwhile is
-		 * theirs. Focus is never handed back to another app: Electron has no honest
-		 * way to do that, and taking it away again would be a second interruption.
+		 * NOTHING IS BROUGHT TO THE USER (operator report 2026-11-15, "the browser is
+		 * stealing the view"). This used to activate the held tab, raise the window
+		 * (`raiseWindow`, trigger `passkey-custody`) and push an attention event the
+		 * shell answered with a navigation — from wherever the operator was. The hold
+		 * is now only PROJECTED (`waitingOnUser`), drawn as the Browser row's badge
+		 * and a sidebar notification row, and the tab comes forward only when the user
+		 * clicks that row (`userAttention.open` below). The hold has no timer, so the
+		 * agent simply keeps waiting. `user-attention.ts` owns the rule and its test.
 		 *
-		 * `registry` is declared further down; both callbacks run only once a tab
+		 * `registry` is declared further down; every callback runs only once a tab
 		 * exists, so the forward reference is safe (the `passkeyNotices` pattern).
 		 */
-		const custodyReturnTab = new Map<number, number | null>();
-		const passkeyCustody = new PasskeyCustody({
-			log,
-			// A recording would keep encoding the prompt underneath the hold and hand
-			// it to the agent at `record_stop`: discard it the moment the hold begins
-			// (review R1/R2; `discardRecordingForCustody` has the why).
-			onHold: (webContentsId) => discardRecordingForCustody(webContentsId),
-			onBegin: (view) => {
-				const record = registry.get(view.tabId);
-				if (!record) return;
-				// The band beside a prompt the user can now see would contradict it.
-				passkeyNotices.clearNotice(view.tabId);
-				const previous = registry.activeTab?.tabId ?? null;
-				custodyReturnTab.set(
-					view.tabId,
-					previous === view.tabId ? null : previous,
-				);
-				registry.activate(view.tabId);
-				if (options.window.isDestroyed()) return;
-				// `at` is the hold's identity: the renderer snapshots the user's view
-				// once per hold and gives it back on the matching ended event.
-				options.window.webContents.send(PASSKEY_CUSTODY_ATTENTION_CHANNEL, {
-					tabId: view.tabId,
-					at: view.at,
-					requesterSessionId: record.sessionId ?? null,
-				});
-				raiseWindow(options.window, options.windowShow, {
-					trigger: "passkey-custody",
-					report: log,
-				});
+		const custodyAttention = createCustodyAttention({
+			registry: {
+				exists: (tabId) => registry.get(tabId) !== undefined,
+				activeTabId: () => registry.activeTab?.tabId ?? null,
+				activate: (tabId) => registry.activate(tabId),
 			},
-			onEnd: (view) => {
-				// Whatever the page's request reported while the user had it (their own
-				// cancel in the provider's window is a NotAllowed too) is not a failure
-				// to explain afterwards.
-				passkeyNotices.clearNotice(view.tabId);
-				const previous = custodyReturnTab.get(view.tabId);
-				custodyReturnTab.delete(view.tabId);
-				if (
-					previous !== undefined &&
-					previous !== null &&
-					registry.activeTab?.tabId === view.tabId &&
-					registry.get(previous)
-				)
-					registry.activate(previous);
-				else notifyChanged();
-				// The renderer half of the give-back: route, conversation and pane
-				// return only if the user is still where the handoff put them
-				// (`passkey-custody-handoff.ts`).
+			clearNotice: (tabId) => passkeyNotices.clearNotice(tabId),
+			notifyChanged: () => notifyChanged(),
+			// The renderer half of the give-back: route, conversation and pane return
+			// only if the user opened the hold from its notification and is still
+			// where that click put them (`passkey-custody-handoff.ts`).
+			sendEnded: (view) => {
 				if (!options.window.isDestroyed())
 					options.window.webContents.send(PASSKEY_CUSTODY_ENDED_CHANNEL, {
 						tabId: view.tabId,
@@ -1131,6 +1102,23 @@ async function initializeBrowserHost(
 					});
 			},
 		});
+		const passkeyCustody = new PasskeyCustody({
+			log,
+			// A recording would keep encoding the prompt underneath the hold and hand
+			// it to the agent at `record_stop`: discard it the moment the hold begins
+			// (review R1/R2; `discardRecordingForCustody` has the why).
+			onHold: (webContentsId) => discardRecordingForCustody(webContentsId),
+			onBegin: (view) => {
+				if (!registry.get(view.tabId)) return;
+				custodyAttention.onBegin(view);
+			},
+			onEnd: (view) => custodyAttention.onEnd(view),
+		});
+		/**
+		 * Popup windows an agent's page opened, held hidden until the user clicks
+		 * their notification row (`user-attention.ts`'s `HeldPopups` has the why).
+		 */
+		const heldPopups = new HeldPopups<BrowserWindow>();
 		cdp.setCustodyGate(passkeyCustody);
 		/** Child views by tab id, so close and quit can release each one, and a
 		 * webContents that dies on its own can be matched back to its tab. */
@@ -1822,6 +1810,17 @@ async function initializeBrowserHost(
 						},
 			passkeyNotice: (tabId) => passkeyNotices.viewFor(tabId),
 			passkeyCustody: (tabId) => passkeyCustody.viewForTab(tabId),
+			// Every wait an agent tab has on a PERSON, for the sidebar's rows and the
+			// Browser badge (`user-attention.ts`). All tabs, not only the active one:
+			// the whole point is a wait the user is not looking at.
+			waitingOnUser: (): UserAttentionEntry[] => [
+				...passkeyCustody.views().map((view) => ({
+					kind: "passkey" as const,
+					tabId: view.tabId,
+					at: view.at,
+				})),
+				...heldPopups.entries(),
+			],
 			mediaPermission: (tabId) => mediaPermissions.viewFor(tabId),
 			approvalsCard: approvalsOverlay
 				? {
@@ -2240,6 +2239,29 @@ async function initializeBrowserHost(
 					return outcome.ok
 						? { ok: true, reloaded: outcome.reloaded }
 						: { ok: false, reason: outcome.reason };
+				},
+			},
+			/*
+			 * The user clicked a sidebar notification row for this tab: the ONE moment
+			 * a held wait comes forward (`user-attention.ts`). The tab becomes the
+			 * active one (remembering, for a custody hold, the tab it displaced so
+			 * "Return to agent" can give it back) and every popup held for it is
+			 * presented under the launch plan — a person's click inside the app is
+			 * what `popup-attention-open` names, so `window-raise.ts` still decides.
+			 */
+			userAttention: {
+				open: (tabId) => {
+					if (!registry.get(tabId)) return false;
+					if (passkeyCustody.viewForTab(tabId))
+						custodyAttention.userOpened(tabId);
+					else registry.activate(tabId);
+					for (const popup of heldPopups.take(tabId))
+						presentPopupWindow(popup, options.windowShow, {
+							trigger: "popup-attention-open",
+							report: options.reportRaise,
+						});
+					notifyChanged();
+					return true;
 				},
 			},
 			clearData: async (what: ClearWhat) => {
@@ -3069,6 +3091,25 @@ async function initializeBrowserHost(
 			// the documented way to say so after creation).
 			if (!options.backgroundThrottling) {
 				childContents.setBackgroundThrottling(false);
+			}
+			/*
+			 * AN AGENT'S POPUP IS HELD, NOT SHOWN (operator report 2026-11-15, "the
+			 * browser is stealing the view"). `inactive` kept the focus but still put a
+			 * window in front of whatever the operator was doing; now the window exists
+			 * and runs hidden, the sidebar lists it, and it is presented only when the
+			 * user clicks that row (`userAttention.open`). Ownership is read NOW, not
+			 * from the open handler's decision, so a tab handed over in between is
+			 * judged by who drives it at creation. A user's own popup — the one they
+			 * just clicked for — keeps its presentation.
+			 */
+			if (holdsPopup(registry.get(tabId)?.owner ?? null, presentation)) {
+				heldPopups.hold(tabId, child);
+				child.on("closed", () => {
+					if (heldPopups.release(child)) notifyChanged();
+				});
+				log(`[browser] tab ${tabId} popup held until the user opens it`);
+				notifyChanged();
+				return;
 			}
 			presentPopupWindow(child, presentation, {
 				trigger: "popup-open",

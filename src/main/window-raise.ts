@@ -119,13 +119,15 @@ export type RaiseTrigger =
 	 */
 	| "popup-open"
 	/*
-	 * A password manager's passkey prompt came up in an agent-driven tab and only
-	 * a person can answer it (`browser/extensions/passkey-custody.ts`). The ONE
-	 * raise the browser host may ask for on its own, and only through
-	 * `raiseWindow`, so the launch plan still decides: `inactive` shows without
-	 * focus and `never` (a headless run) raises nothing.
+	 * A popup an agent's page opened was HELD hidden (`browser/user-attention.ts`)
+	 * and the user has just clicked its sidebar notification row. The browser host
+	 * asks for no window on its own any more — the `passkey-custody` raise that
+	 * used to bring a held tab forward was removed (operator report 2026-11-15,
+	 * "the browser is stealing the view") — so this name only ever follows a
+	 * person's click inside the app, and still goes through `presentPopupWindow`
+	 * so the launch plan decides.
 	 */
-	| "passkey-custody";
+	| "popup-attention-open";
 
 /**
  * Who asked for the window, when the caller can say.
@@ -376,9 +378,9 @@ const REFUSABLE_DELIVERY: Record<
 	// may appear at all is `presentPopupWindow`'s own gate, and this table's
 	// question never arises. Declared for the same totality rule as `viewer-focus`.
 	"popup-open": "never",
-	// Raises only and delivers no conversation, like `viewer-focus`; declared for
-	// the totality rule.
-	"passkey-custody": "never",
+	// A held popup the user's own click presents: delivers nothing and can
+	// replace nothing, like `popup-open`; declared for the totality rule.
+	"popup-attention-open": "never",
 };
 
 /**

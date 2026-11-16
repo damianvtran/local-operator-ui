@@ -113477,6 +113477,223 @@
 					"status": "audited"
 				}
 			]
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.browser.attention",
+			"source_sha256": "49875279c77da8c632c2c2aaf660dc894fa8b7f5cb49cbdb4410d2160fb81f99",
+			"target_sha256": "0e26c21cc41e4120f51fdd315bcb613980f2910c2203c9ac6a031219586d23e9",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-15"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-15",
+					"result": "clean",
+					"instance": "pr1933-r2-es-browser-attention-3e4d3caf",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1933-r2-es-browser-attention-3e4d3caf.json",
+					"receipt_sha256": "5c3f893d850bb212741855cd2f2dc5051c476a774692d15b82dcbe95d7788b74",
+					"scope": "PR #1933 ui.browser.attention namespace (10 keys), round 2",
+					"note": "PR #1933 translation lane: coder (jobs 0744bdcac78c, 83ea91eb4d07) / anthropic/claude-opus-5-5; independent r2 audit by reviewer 3e4d3cafb75d / anthropic/claude-opus-5-5; r1 I1-I8 verified fixed"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.browser.attention",
+			"source_sha256": "49875279c77da8c632c2c2aaf660dc894fa8b7f5cb49cbdb4410d2160fb81f99",
+			"target_sha256": "1507222feb3799eb11ffa10dbc28188662164998ceae4a2d4b1080e2fed8cf58",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-15"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-15",
+					"result": "clean",
+					"instance": "pr1933-r2-fr-browser-attention-3e4d3caf",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1933-r2-fr-browser-attention-3e4d3caf.json",
+					"receipt_sha256": "1066c90c571b131bcf8fd5e67b6e3447895adf1bfe37726173b47a56b3027044",
+					"scope": "PR #1933 ui.browser.attention namespace (10 keys), round 2",
+					"note": "PR #1933 translation lane: coder (jobs 0744bdcac78c, 83ea91eb4d07) / anthropic/claude-opus-5-5; independent r2 audit by reviewer 3e4d3cafb75d / anthropic/claude-opus-5-5; r1 I1-I8 verified fixed"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.browser.attention",
+			"source_sha256": "49875279c77da8c632c2c2aaf660dc894fa8b7f5cb49cbdb4410d2160fb81f99",
+			"target_sha256": "9fa90e333b11f5ecefda4892b40ae46b2da7f1c7c3cd45da4f3ad05b476e9525",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-15"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-15",
+					"result": "clean",
+					"instance": "pr1933-r2-hi-browser-attention-3e4d3caf",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1933-r2-hi-browser-attention-3e4d3caf.json",
+					"receipt_sha256": "4a6678effd3ac6cfc264e9db68782678debe41afc218ffd226213ba29c26910e",
+					"scope": "PR #1933 ui.browser.attention namespace (10 keys), round 2",
+					"note": "PR #1933 translation lane: coder (jobs 0744bdcac78c, 83ea91eb4d07) / anthropic/claude-opus-5-5; independent r2 audit by reviewer 3e4d3cafb75d / anthropic/claude-opus-5-5; r1 I1-I8 verified fixed"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.browser.attention",
+			"source_sha256": "49875279c77da8c632c2c2aaf660dc894fa8b7f5cb49cbdb4410d2160fb81f99",
+			"target_sha256": "ae74121832f924e2ac4d33ea850f4933c6b81818d286f01796beb82e3d2a0691",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-15"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-15",
+					"result": "clean",
+					"instance": "pr1933-r2-ru-browser-attention-3e4d3caf",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1933-r2-ru-browser-attention-3e4d3caf.json",
+					"receipt_sha256": "88d80b4e98ffa5ebbddadaf4e83824af4194219de181116d9d042a3071865a82",
+					"scope": "PR #1933 ui.browser.attention namespace (10 keys), round 2",
+					"note": "PR #1933 translation lane: coder (jobs 0744bdcac78c, 83ea91eb4d07) / anthropic/claude-opus-5-5; independent r2 audit by reviewer 3e4d3cafb75d / anthropic/claude-opus-5-5; r1 I1-I8 verified fixed"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.browser.attention",
+			"source_sha256": "49875279c77da8c632c2c2aaf660dc894fa8b7f5cb49cbdb4410d2160fb81f99",
+			"target_sha256": "ebba36c72b92cdc2ac971f8e85f60a110fe112039f9029d69f7bf20edd0dd3c0",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-15"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-15",
+					"result": "clean",
+					"instance": "pr1933-r2-ur-browser-attention-3e4d3caf",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1933-r2-ur-browser-attention-3e4d3caf.json",
+					"receipt_sha256": "55dea73c745d93fb175c2fb516e463fe3c2debf40d6524cb77b8e6ef216419e6",
+					"scope": "PR #1933 ui.browser.attention namespace (10 keys), round 2",
+					"note": "PR #1933 translation lane: coder (jobs 0744bdcac78c, 83ea91eb4d07) / anthropic/claude-opus-5-5; independent r2 audit by reviewer 3e4d3cafb75d / anthropic/claude-opus-5-5; r1 I1-I8 verified fixed"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.browser.attention",
+			"source_sha256": "49875279c77da8c632c2c2aaf660dc894fa8b7f5cb49cbdb4410d2160fb81f99",
+			"target_sha256": "5149f0be1c76d667a3289b6ce32d2e648fcfc3bd9ac4adf560f13f1ad1103782",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-15"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-15",
+					"result": "clean",
+					"instance": "pr1933-r2-vi-browser-attention-3e4d3caf",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1933-r2-vi-browser-attention-3e4d3caf.json",
+					"receipt_sha256": "e05208ab8ff932be7c2fe4299e84668d8a6bbc3edae7502602b8d70b479d6d5e",
+					"scope": "PR #1933 ui.browser.attention namespace (10 keys), round 2",
+					"note": "PR #1933 translation lane: coder (jobs 0744bdcac78c, 83ea91eb4d07) / anthropic/claude-opus-5-5; independent r2 audit by reviewer 3e4d3cafb75d / anthropic/claude-opus-5-5; r1 I1-I8 verified fixed"
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.browser.attention",
+			"source_sha256": "49875279c77da8c632c2c2aaf660dc894fa8b7f5cb49cbdb4410d2160fb81f99",
+			"target_sha256": "780ed803c62d1c25cedf1cecfa86156a3aee21ef327cef8d5eb331aa49036cf4",
+			"translator": {
+				"agent": "coder",
+				"model": "anthropic/claude-opus-5-5",
+				"date": "2026-11-15"
+			},
+			"auditors": [
+				{
+					"agent": "reviewer",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-11-15",
+					"result": "clean",
+					"instance": "pr1933-r2-zh-cn-browser-attention-3e4d3caf",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr1933-r2-zh-cn-browser-attention-3e4d3caf.json",
+					"receipt_sha256": "3a96f6b08fcb9993c8f86550920a1e865e108f7aeb7ea5015e565c76fc8169f1",
+					"scope": "PR #1933 ui.browser.attention namespace (10 keys), round 2",
+					"note": "PR #1933 translation lane: coder (jobs 0744bdcac78c, 83ea91eb4d07) / anthropic/claude-opus-5-5; independent r2 audit by reviewer 3e4d3cafb75d / anthropic/claude-opus-5-5; r1 I1-I8 verified fixed"
+				}
+			],
+			"status": "audited"
 		}
 	]
 }

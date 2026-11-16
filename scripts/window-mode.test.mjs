@@ -1353,6 +1353,10 @@ const RAISE_TRIGGERS = [
 	// `presentPopupWindow` reports under, so the popup cannot be added to the
 	// union without the line-format test below covering it.
 	"popup-open",
+	// A held agent popup the user presented by clicking its sidebar row
+	// (`browser/user-attention.ts`): the only browser-host presentation left that
+	// is not a driven page's own popup, and it follows a person's click.
+	"popup-attention-open",
 ];
 
 /** A window that records what a raise did to it. */
