@@ -691,8 +691,9 @@ export type ThemePalette = {
 	 * second category was painted the colour that everywhere else means "here is a
 	 * fact" (`mermaid-diagram.tsx` says so in its own comment). This is the hue
 	 * that was missing. It is spent at exactly two sites — the picker's miniature
-	 * and mermaid's categorical fills — and the may-not list below is what keeps
-	 * it from growing into a second control accent.
+	 * and the diagram renderers' categorical fills (mermaid's wash cycle, and
+	 * Pele's solid `--pele-series-2`, see `pele-theme.ts`) — and the may-not list
+	 * below is what keeps it from growing into a second control accent.
 	 *
 	 * ## Where the value comes from: the token the port dropped
 	 *
@@ -798,7 +799,8 @@ export type ThemePalette = {
 	 *
 	 * MAY: the theme picker's miniature (`theme-selector.tsx`'s `ThemeSwatch`, a
 	 * `bg-accent-alt` bar beside the `bg-accent` one), mermaid's categorical fills
-	 * (`accentAltWash` at index 1 of the wash cycle), and the settled trace row's
+	 * (`accentAltWash` at index 1 of the wash cycle), Pele's categorical series
+	 * (`accentAlt` at `--pele-series-2` and `--pele-series-8`), and the settled trace row's
 	 * IDENTITY ink — `tool-row.tsx`'s `CATEGORY_INK.meta`, the name and glyph of a
 	 * `task`/`agent`/`hub`/`todo`/`send`/`ask`/`wake` row in the shared name column.
 	 * The sibling legibility spec's identity sites — an agent/entity glyph, a
