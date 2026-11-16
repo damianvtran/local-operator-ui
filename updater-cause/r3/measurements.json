@@ -1,0 +1,17 @@
+{
+  "head": "9f4bb6c099c11e071d9e576e8ad2f751a22225c0",
+  "phase": "Aida GO: one <=10 min re-capture; 18:03:12Z-18:05:07Z (hard 18:13:12Z). First launch line failed before start (macOS has no setsid; nothing ran); relaunched once with the proven form. Preview reaped by exact pgid 18:05:07Z.",
+  "viewport_css": "1280x720 (800 CSS px not selectable without expanding the rig; not measured)",
+  "paragraph": {
+    "class": "mt-1 text-body text-ink [overflow-wrap:anywhere]",
+    "rect": "368x195.26 CSS px, line-height 21.7 => 9 lines",
+    "text": "240 W present: 8 lines x 27 + 1 line x 24; no ellipsis",
+    "overflow": "paragraph width 368 = content box; card 400 px, scroller overflow-x auto with no horizontal scrollbar visible; no glyph crosses the card edge in either frame"
+  },
+  "controls": "Try again topmost at (1212,412) rect 1178.91,400.25 69x28; Update later visible; card height 428.25 within 720 viewport, no overlap with consequence/disclosure/log",
+  "limits": "scrollWidth not exposed by the browser tool; corroborated by rect/frames only",
+  "files": {
+    "r3-long-token-light.png": "9105e7ecc8a2f89662e8aaea852406592464b7fd6d7a672558f62c0dd040b2dd",
+    "r3-long-token-dark.png": "4163ca7f37e20ee4ea073cf7031c28bf88a25efe987e4f18250c7a7b63ab0031"
+  }
+}
