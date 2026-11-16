@@ -1085,20 +1085,26 @@ function failurePanelReason(handle) {
  * Step metadata precedes the cause. Read the failed panel's direct text-body
  * paragraph, not its first paragraph or text inside the record disclosure.
  */
-function primaryFailureCause(handle) {
+function primaryFailureCauseNode(handle) {
 	const failed = walk(handle.tree).find(
 		(node) => node.type === UpdateContainer && node.props?.tone === "failed",
 	);
 	if (!failed) return null;
-	const paragraph = [failed.props.children]
-		.flat(Number.POSITIVE_INFINITY)
-		.find(
-			(node) =>
-				node?.type === "p" &&
-				(node.props?.className ?? "")
-					.split(PRIMARY_CAUSE_CLASS_SEPARATOR)
-					.includes("text-body"),
-		);
+	return (
+		[failed.props.children]
+			.flat(Number.POSITIVE_INFINITY)
+			.find(
+				(node) =>
+					node?.type === "p" &&
+					(node.props?.className ?? "")
+						.split(PRIMARY_CAUSE_CLASS_SEPARATOR)
+						.includes("text-body"),
+			) ?? null
+	);
+}
+
+function primaryFailureCause(handle) {
+	const paragraph = primaryFailureCauseNode(handle);
 	return paragraph ? textOf(paragraph.props.children) : null;
 }
 
@@ -3905,6 +3911,32 @@ for (const [label, value, expected] of [
 		assert.equal(successToasts(handle).length, 0);
 	});
 }
+
+/*
+ * D3/Q3: a 240-character unbroken cause rendered on one line and was clipped at the
+ * card edge. Pixels are the visual round's evidence; this pins the class that lets
+ * the cause paragraph itself break inside a token.
+ */
+test("an unbroken cause paragraph may wrap inside the token", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+	updater.emit("backend-update-error", {
+		message: legacySentence(),
+		phase: "update",
+		installerOutput: null,
+		failure: { ...UNKNOWN_CAPACITY_FAILURE, error: "z".repeat(1200) },
+	});
+	handle.render();
+	const paragraph = primaryFailureCauseNode(handle);
+	assert.ok(paragraph, "the unknown arm renders its cause paragraph");
+	assert.equal(textOf(paragraph.props.children).length, 240);
+	assert.ok(
+		paragraph.props.className
+			.split(PRIMARY_CAUSE_CLASS_SEPARATOR)
+			.includes("[overflow-wrap:anywhere]"),
+		"an unbroken cause must be allowed to break inside the token",
+	);
+});
 
 test("a named value crossing the display bound is masked before shortening", () => {
 	const handle = mountNotification();

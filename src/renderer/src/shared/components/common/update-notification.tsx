@@ -4026,8 +4026,18 @@ export const UpdateNotification = ({
 						 * the false clause is not printed; the next steps are the actions below
 						 * and the machine record in the disclosure. With no cause the remedy is
 						 * the honest fallback, exactly as it was.
+						 *
+						 * WRAP INSIDE A TOKEN (design D3 / QA Q3). The cause is the updater's raw
+						 * sentence, so it can be one unbroken run up to the helper's 240-character
+						 * bound (a path, a hash, a URL); with default wrapping that run sat on one
+						 * line and was clipped at the card edge. `overflow-wrap: anywhere`, not
+						 * `break-words` (= break-word): only `anywhere` counts its break points in
+						 * the min-content size, so it also holds when an ancestor sizes this
+						 * paragraph from its content (flex/grid). The arbitrary property is the
+						 * spelling this repo already uses for the same fix. Known kinds render
+						 * translated copy with ordinary spaces and keep default wrapping.
 						 */
-						<p className="mt-1 text-body text-ink">
+						<p className="mt-1 text-body text-ink [overflow-wrap:anywhere]">
 							{unknownCause ?? failureRemedyLine(structured)}
 						</p>
 					) : (
