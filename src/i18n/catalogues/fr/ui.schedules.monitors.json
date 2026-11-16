@@ -1,0 +1,10 @@
+{
+	"ui.schedules.monitors.blind_health": "impossible de comparer ses résultats ; les changements ne sont pas signalés",
+	"ui.schedules.monitors.could_not_load_monitors": "Impossible de charger les surveillances.",
+	"ui.schedules.monitors.could_not_read_monitors": "Impossible de lire les surveillances de cet ordinateur ; cette liste peut donc être incomplète.",
+	"ui.schedules.monitors.count_needs_attention": "{total, plural, one {{total_display} surveillance} many {{total_display} de surveillances} other {{total_display} surveillances}} · {attention, plural, one {{attention_display} à vérifier} many {{attention_display} à vérifier} other {{attention_display} à vérifier}}",
+	"ui.schedules.monitors.expired_state": "expirée",
+	"ui.schedules.monitors.list_truncated": "Affichage de {shown, number, ::group-off} sur {total, plural, one {{total, number, ::group-off} conversation} many {{total, number, ::group-off} de conversations} other {{total, number, ::group-off} conversations}} avec surveillance.",
+	"ui.schedules.monitors.parked_clause": "En pause — la surveillance est suspendue",
+	"ui.schedules.monitors.parked_state": "en pause"
+}

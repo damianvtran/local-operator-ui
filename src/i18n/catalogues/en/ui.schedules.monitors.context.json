@@ -1,0 +1,62 @@
+{
+	"ui.schedules.monitors.blind_health": {
+		"role": "Health tail of a Schedules page monitor row whose watch is blind and the backend sent no health sentence",
+		"tone": "Factual, lowercase start, no terminal period",
+		"length": "One short clause; it shares a line with the cadence and last-check clauses",
+		"note": "A blind monitor still runs its check but cannot compare one result with the last, so it silently reports nothing. Rendered in warning ink after a middle dot. Normally the backend's own English health sentence fills this slot; this is the fallback."
+	},
+	"ui.schedules.monitors.could_not_load_monitors": {
+		"role": "Failure strip under the Schedules page Monitors heading when the monitor listing request failed",
+		"tone": "Plain statement of what failed, full sentence with period",
+		"length": "One short sentence",
+		"note": "Monitor twin of ui.schedules.schedules_page.could_not_load_scheduled_tasks; it must name monitors because the wakes above it may have loaded fine."
+	},
+	"ui.schedules.monitors.could_not_read_monitors": {
+		"role": "Warning under the Schedules page Monitors heading when the machine's monitor index could not be read",
+		"tone": "Plain, cautionary, full sentence with period",
+		"length": "One sentence",
+		"note": "Monitor twin of ui.schedules.schedules_page.could_not_read_this_machine_s_scheduled_tasks_so_the_list_below_m. Says this list (the monitors shown under the warning), not the list below, may be incomplete."
+	},
+	"ui.schedules.monitors.count_needs_attention": {
+		"role": "Trailing clause on a conversation row in the Schedules page Monitors section when some of its monitors are disabled, blind or expired",
+		"tone": "Factual tally, sentence fragment, no terminal period",
+		"length": "Short; English example is 2 monitors · 1 needs attention",
+		"note": "Replaces ui.chat.run_details.monitor.armed_count when not every monitor is working, so the row never calls a disabled monitor armed. Keep the middle dot separator. Two independent counts, each with its own plural.",
+		"placeholders": {
+			"total": "Number of monitors on the conversation, selects the first plural.",
+			"total_display": "total as display text.",
+			"attention": "Number of those monitors that are disabled, blind or expired, selects the second plural.",
+			"attention_display": "attention as display text."
+		},
+		"plural": "Each count needs its own locale plural arms (ru: one/few/many/other; es/fr: one/many/other)."
+	},
+	"ui.schedules.monitors.expired_state": {
+		"role": "when-label of a monitor row whose until time has passed",
+		"tone": "single lowercase status word",
+		"length": "One word",
+		"note": "Sits in the same slot and register as ui.schedules.monitors.parked_state and ui.chat.run_details.monitor.disabled; agree with the noun monitor in this locale. Replaces the next-check time, because an expired monitor will not check again."
+	},
+	"ui.schedules.monitors.list_truncated": {
+		"role": "Schedules page Monitors section truncated-list footnote: visible versus total monitor-carrying conversations",
+		"tone": "Factual count, not a complete-list claim.",
+		"length": "One brief footnote sentence; English example is Showing 1 of 2 conversations with monitors.",
+		"note": "Twin of ui.schedules.count.list_truncated for the Monitors section; keep the two parallel in each locale, with the counted noun naming conversations that have monitors. A monitor is a read-only watch an agent re-runs on an interval. Real ICU one/other arms select the counted noun. Russian translators need few/many arms; Arabic translators need zero/two and locale-appropriate few/many. English 0/1/2 selects other/one/other.",
+		"placeholders": {
+			"shown": "monitorsListing.data.entries.length, raw visible count, ICU number ::group-off.",
+			"total": "monitorsListing.data.total, raw backend count selecting ICU plural."
+		},
+		"plural": "ru: add few/many; ar: add zero/two; preserve the count parameter and its existing ICU numeric style."
+	},
+	"ui.schedules.monitors.parked_clause": {
+		"role": "Trailing clause on a conversation row in the Schedules page Monitors section when the conversation is stopped or gone",
+		"tone": "Factual state, sentence case, no terminal period",
+		"length": "Short clause; parallels ui.schedules.scheduled_task_model.parked_wakes_resume_after_its_next_turn",
+		"note": "Replaces the monitor count on a parked conversation. Its monitors stay armed but do not check while it is parked; do not promise when they resume. Keep the same leading parked word the wake clause uses in this locale."
+	},
+	"ui.schedules.monitors.parked_state": {
+		"role": "when-label of a monitor row whose conversation is parked",
+		"tone": "single lowercase status word",
+		"length": "One word",
+		"note": "Sits in the same slot and register as ui.chat.run_details.monitor.disabled and ui.chat.run_details.monitor.waiting; agree with the noun monitor in this locale."
+	}
+}

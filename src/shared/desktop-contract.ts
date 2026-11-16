@@ -3588,14 +3588,34 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.strict(),
 	z.object({ op: z.literal("wakes.remove"), sessionId, wakeId }).strict(),
 	/*
-	 * The monitor surface's one write that has a UI: cancelling a standing watch
-	 * (`DELETE /v1/desktop/monitors/{session_id}/{monitor_id}`). The sibling
-	 * routes - the machine-wide listing and the arm - are deliberately not
-	 * mirrored yet: the pane and the composer's chip read the SESSION's own
-	 * `frontend.monitors` field (the design's §12 row states the desktop contract
-	 * as "the `monitors` field + command routes"), so a listing op would have no
-	 * reader, and the arm op waits for the form that will use it.
+	 * The monitor surface: the Schedules page's machine-wide read, and the cancel
+	 * both that page and the run pane draw.
+	 *
+	 * `monitors.list` (`GET /v1/desktop/monitors`) is the listing the TUI's wake
+	 * band and the phone's Schedules view already read; it was left unmirrored
+	 * while its only would-be reader was the run pane, which reads the SESSION's
+	 * own `frontend.monitors` field instead. The Schedules page is the reader that
+	 * premise lacked (local-operator-ui #1898): "every standing watch on this
+	 * machine" cannot be answered per session, for `wakes.list`'s reason - the
+	 * session list is paginated by recency, while the monitor index is one small
+	 * file per monitor-carrying session and complete at any store size.
+	 *
+	 * The bounds are the route's own (`MONITOR_LIST_LIMIT_MAX = 500`,
+	 * `include_dormant` defaulting true in `routes/desktop_monitors.py`), so a
+	 * value this schema admits is one the backend accepts rather than a 422. The
+	 * arm op stays unmirrored: it waits for the form that will use it, and this
+	 * surface is read-and-cancel only.
 	 */
+	z
+		.object({
+			op: z.literal("monitors.list"),
+			limit: z.number().int().min(1).max(500).optional(),
+			/* Dormant rows are a STOPPED session's watches: still armed, not
+			   ticking. Shown rather than hidden, the wake listing's rule - a page
+			   that dropped them would report a parked watch as gone. */
+			includeDormant: z.boolean().optional(),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("monitors.cancel"),
@@ -6718,6 +6738,72 @@ export type DesktopWakeCreateResponse = {
 	 */
 	receipt: unknown;
 	index_written: boolean;
+};
+
+/**
+ * One standing watch, as `monitors.list` sends it
+ * (`server/models/desktop_monitors.py::MonitorRow`).
+ *
+ * Only the fields a reader here draws or a test pins are typed; the model is
+ * `extra="allow"` and carries more (`arguments`, `ignore`, `suppressed`, ...),
+ * which is why the row is ALSO a `Record<string, unknown>`: the Schedules page
+ * hands it to the run pane's `deriveMonitors` unchanged, the same deriver the
+ * pane feeds `frontend.monitors`, so the two surfaces cannot spell one watch two
+ * ways. Instants are epoch MILLISECONDS, like the wake listing's.
+ */
+export type DesktopMonitorListingRow = Record<string, unknown> & {
+	id: string;
+	name: string;
+	description?: string;
+	tool?: string;
+	every_ms: number | null;
+	next_due_at: number | null;
+	/** `0` before the first check: the route's "absent", not a 1970 stamp. */
+	last_check_at: number;
+	checks: number;
+	consecutive_failures: number;
+	disabled: boolean;
+	disabled_reason: string;
+	/** `armed | dormant | disabled | expired | blind`, the CLI's precedence. */
+	state: string;
+	/** The shared §D6 health sentence, or `null` when there is nothing to say. */
+	health?: string | null;
+};
+
+/**
+ * One monitor-carrying conversation, with its watches beneath it - the wake
+ * entry's twin (`DesktopWakeEntry`), one per SESSION because the session is
+ * what a user opens and what a cancel targets.
+ */
+export type DesktopMonitorEntry = {
+	session_id: string;
+	/** Never empty: the route floors a nameless session to its id and cwd. */
+	name: string;
+	cwd: string;
+	origin: string;
+	updated_at: number;
+	/** The session was STOPPED: its watches stay armed but do not tick. */
+	dormant: boolean;
+	/** The index has an entry and the transcript is gone: nothing can tick. */
+	ghost: boolean;
+	next_due_at: number | null;
+	monitors: DesktopMonitorListingRow[];
+};
+
+/**
+ * `monitors.list`'s answer: every monitor-carrying session on this machine.
+ *
+ * No `supervisor` field, unlike the wake listing: a monitor ticks inside its
+ * own session, not under the wake supervisor, so there is no separate process
+ * whose health decides whether it runs. `read_error` is carried for the wake
+ * listing's reason - "the index could not be read" is not "nothing is watched".
+ */
+export type DesktopMonitorsListResponse = {
+	entries: DesktopMonitorEntry[];
+	generated_at: number;
+	total: number;
+	truncated: boolean;
+	read_error: boolean;
 };
 
 /**
@@ -10390,6 +10476,23 @@ export function desktopEndpoint(request: DesktopRequest): {
 		 * hand-built request must not be able to turn a handle into a path
 		 * fragment (the mesh writes' own rule).
 		 */
+		case "monitors.list": {
+			/* `wakes.list`'s mapping, one family over: snake_case on the wire,
+			   and an absent bound is an absent parameter (the route's default)
+			   rather than a guessed one. */
+			const query = new URLSearchParams();
+			if (request.limit !== undefined)
+				query.set("limit", String(request.limit));
+			if (request.includeDormant !== undefined)
+				query.set("include_dormant", String(request.includeDormant));
+			return {
+				path:
+					query.size > 0
+						? `/v1/desktop/monitors?${query}`
+						: "/v1/desktop/monitors",
+				method: "GET",
+			};
+		}
 		case "monitors.cancel":
 			return {
 				path: `/v1/desktop/monitors/${encodeURIComponent(request.sessionId)}/${encodeURIComponent(request.monitorId)}`,
