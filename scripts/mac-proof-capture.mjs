@@ -50,6 +50,7 @@ import {
 	mkdtempSync,
 	readFileSync,
 	readdirSync,
+	readlinkSync,
 	realpathSync,
 	statSync,
 	writeFileSync,
@@ -1412,6 +1413,69 @@ function ancestorsOfSelf() {
 	return out;
 }
 
+/**
+ * Every process whose working directory is the rig or inside it - the last
+ * backstop of the reap. The app and every lop process are spawned with
+ * `cwd=<rig>`, and children inherit it, so a helper that escaped both its
+ * process group and the profile/config-root scans (re-parented, own group,
+ * different argv) is still found by WHERE it runs. The rig is a fresh mkdtemp
+ * path, so nothing else can be there. Linux reads /proc/<pid>/cwd; macOS asks
+ * `lsof -d cwd`. This process and its ancestors are never targets. Returns null
+ * when nothing could be read (treated as not clean).
+ */
+export function processesWithCwdUnder(rig) {
+	const mine = new Set(ancestorsOfSelf());
+	const inRig = (path) => path === rig || path.startsWith(`${rig}${sep}`);
+	const found = [];
+	if (process.platform === "linux") {
+		let entries;
+		try {
+			entries = readdirSync("/proc").filter((e) => /^\d+$/.test(e));
+		} catch {
+			return null;
+		}
+		for (const entry of entries) {
+			const pid = Number(entry);
+			if (mine.has(pid)) continue;
+			try {
+				if (inRig(readlinkSync(`/proc/${entry}/cwd`))) found.push(pid);
+			} catch {}
+		}
+		return found;
+	}
+	const lsof = spawnSync("lsof", ["-n", "-P", "-d", "cwd", "-F", "pn"], {
+		encoding: "utf8",
+		timeout: 30000,
+	});
+	if (lsof.error || lsof.status === null) return null;
+	let pid = null;
+	for (const line of (lsof.stdout ?? "").split("\n")) {
+		if (line.startsWith("p")) pid = Number(line.slice(1));
+		else if (
+			line.startsWith("n") &&
+			pid &&
+			!mine.has(pid) &&
+			inRig(line.slice(1))
+		)
+			found.push(pid);
+	}
+	return found;
+}
+
+/** SIGKILL exact pids (and the groups they lead), then report who is left. */
+async function killExact(pids) {
+	for (const pid of pids) {
+		try {
+			process.kill(-pid, "SIGKILL");
+		} catch {}
+		try {
+			process.kill(pid, "SIGKILL");
+		} catch {}
+	}
+	if (pids.length > 0) await sleep(300);
+	return pids.filter((pid) => pidAlive(pid));
+}
+
 /** Every descendant pid of `roots`, from one `ps` snapshot. */
 export function descendantsOf(roots) {
 	const ps = spawnSync("ps", ["-A", "-o", "pid=,ppid="], { encoding: "utf8" });
@@ -2049,7 +2113,19 @@ export async function main(argv = process.argv.slice(2)) {
 		return child;
 	};
 
-	const teardown = async () => {
+	/*
+	 * ONE teardown, however many paths ask for it: a SIGTERM that lands while
+	 * the `finally` is already reaping must wait for that reap, not start a
+	 * second one that races it (and must not let `process.exit` cut it short).
+	 */
+	let tearing = null;
+	const teardown = () => {
+		tearing ??= reapEverything();
+		return tearing;
+	};
+	/** App descendants seen while it ran, killed by exact pid if they outlive the group. */
+	const appRecorded = new Set();
+	const reapEverything = async () => {
 		if (children.app && !receipt.reap.app) {
 			const result = await stopAppTree({
 				pid: children.app.pid,
@@ -2076,6 +2152,22 @@ export async function main(argv = process.argv.slice(2)) {
 				lopRun.recorded,
 			);
 		}
+		// Recorded app descendants, then anything still running in the rig.
+		const recordedLeft = await killExact(
+			[...appRecorded].filter((pid) => pidAlive(pid)),
+		);
+		const inRig = processesWithCwdUnder(rig);
+		const rigLeft = inRig === null ? null : await killExact(inRig);
+		const after = processesWithCwdUnder(rig);
+		receipt.reap.rig = {
+			recorded: appRecorded.size,
+			swept: inRig === null ? "unreadable" : inRig.length,
+			clean:
+				recordedLeft.length === 0 &&
+				rigLeft !== null &&
+				after !== null &&
+				after.length === 0,
+		};
 	};
 	onInterrupted(async () => {
 		await teardown();
@@ -2293,10 +2385,17 @@ export async function main(argv = process.argv.slice(2)) {
 
 		const started = Date.now();
 		const deadline = started + opts.timeoutS * 1000;
+		let tick = 0;
 		while (!abort && !finished && !appExited && Date.now() < deadline) {
 			if (!supervisor.state.windowModeLine && Date.now() - started > 20_000)
 				abort = "the app printed no [window-mode] line within 20 s";
 			await sleep(100);
+			// Every ~2 s: record the app's descendants (and the lop processes'),
+			// so a helper that later leaves the group is still reaped by pid.
+			if (tick++ % 20 === 0) {
+				for (const pid of descendantsOf([app.pid])) appRecorded.add(pid);
+				recordDescendants();
+			}
 			// Surface capture failures as an abort rather than an unhandled rejection.
 			for (const job of work.splice(0)) {
 				try {

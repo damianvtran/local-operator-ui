@@ -84,7 +84,12 @@ access decision only the operator can make).
    (`scripts/app-tree-teardown.mjs`); every lop process by its group, then every
    process carrying the run's config root in its environment plus every
    descendant recorded while they ran (standby runtimes run in their own process
-   groups). A survivor fails the run.
+   groups); then the app's recorded descendants by exact pid, and, last, any
+   process whose working directory is still the rig (everything was spawned with
+   `cwd=<rig>`, a fresh mkdtemp path, so nothing else can be there). The same
+   single teardown runs on success, on failure, on `--timeout` and on
+   SIGTERM/SIGINT; a signal that lands mid-reap waits for that reap. A survivor
+   fails the run.
 
 The app side has its own containment: a scripted run is launcher-bound (it quits
 when the harness dies) and capped at 300 s; it banners nothing; and an armed boot

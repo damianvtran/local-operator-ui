@@ -82,6 +82,24 @@ after(() => {
 	rmSync(TREE, { recursive: true, force: true });
 });
 
+/**
+ * Every fixture process bounds its own life, because `after` (and the harness's
+ * reap) run only while the test runner is alive. Measured on node2: an
+ * OOM-killed runner left a fake `lop serve` and the re-parented helper running
+ * with nothing left to reap them. So:
+ *   - `FIXTURE_CAP_MS`: a hard lifetime cap on EVERY fixture (each case's
+ *     fixtures live a few seconds; the slowest whole case measured 20.8 s);
+ *   - `PARENT_WATCH`: processes whose parent is the harness or the runner exit
+ *     as soon as that parent is gone (re-parented). The two processes that are
+ *     MEANT to outlive their parent - the fake app's re-parented helper and the
+ *     daemon's standby runtime, which exist to prove the harness's profile and
+ *     config-root sweeps - carry only the cap, so those assertions stay
+ *     discriminating (a self-exit would make "it was reaped" vacuous).
+ */
+const FIXTURE_CAP_MS = 60_000;
+const CAP_ONLY = `setTimeout(()=>process.exit(0),${FIXTURE_CAP_MS});setInterval(()=>{},1000)`;
+const PARENT_WATCH = `{ const first = process.ppid; setInterval(() => { if (process.ppid !== first) process.exit(0); }, 500); setTimeout(() => process.exit(0), ${FIXTURE_CAP_MS}); }`;
+
 /** A 1x1 PNG, the frame the fake app "captures". */
 const PNG_1X1 = Buffer.from(
 	"89504e470d0a1a0a0000000d4948445200000001000000010806000000" +
@@ -111,6 +129,7 @@ function fakeApp(name, behaviour = {}) {
 	writeFileSync(
 		exe,
 		`#!${process.execPath}
+${PARENT_WATCH}
 const fs = require("node:fs");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
@@ -136,12 +155,15 @@ log("[window-mode] window mode " + mode + ": 1380x900, never shown, page throttl
 log("[dev-driver] ARMED; frames are written to " + out);
 log("[dev-driver-script] ARMED; steps from " + process.env.LOCAL_OPERATOR_UI_DEV_DRIVER_SCRIPT);
 // The re-parented helper: its own group, carrying the profile, outliving us.
-const child = spawn(process.execPath, ["-e", "setInterval(()=>{},1000)", "--", "--user-data-dir=" + profile], { detached: true, stdio: "ignore" });
+const child = spawn(process.execPath, ["-e", ${JSON.stringify(CAP_ONLY)}, "--", "--user-data-dir=" + profile], { detached: true, stdio: "ignore" });
 child.unref();
 fs.writeFileSync(path.join(rig, "fake-child.pid"), String(child.pid));
 fs.writeFileSync(path.join(rig, "fake-app.pid"), String(process.pid));
 setTimeout(() => {
   log("[window-mode] state: visible=" + (mode === "inactive") + " focused=" + Boolean(behaviour.focused) + " focusable=false size=1380x900 content=1380x872");
+  // A wedged renderer: armed, shown, and then nothing - the shape the
+  // harness's --timeout and SIGTERM paths have to clean up after.
+  if (behaviour.hang) return;
   const steps = JSON.parse(fs.readFileSync(process.env.LOCAL_OPERATOR_UI_DEV_DRIVER_SCRIPT, "utf8")).steps;
   log("[dev-driver-script] ready verbs=8");
   steps.forEach((step, i) => {
@@ -181,6 +203,7 @@ function fakeLop() {
 	writeFileSync(
 		lop,
 		`#!${process.execPath}
+${PARENT_WATCH}
 const http = require("node:http");
 const net = require("node:net");
 const fs = require("node:fs");
@@ -206,7 +229,7 @@ fs.writeFileSync(path.join(config, "fake-serve-seen.json"), JSON.stringify({
   pid: process.pid,
 }));
 // The standby runtime: detached = its own process group, outside serve's.
-const standby = spawn(process.execPath, ["-e", "setInterval(()=>{},1000)"], { detached: true, stdio: "ignore", env: process.env });
+const standby = spawn(process.execPath, ["-e", ${JSON.stringify(CAP_ONLY)}], { detached: true, stdio: "ignore", env: process.env });
 standby.unref();
 fs.writeFileSync(path.join(config, "fake-standby.pid"), String(standby.pid));
 let reads = 0;
@@ -232,23 +255,42 @@ http.createServer((req, res) => {
 	return lop;
 }
 
+function harnessEnv(env = {}) {
+	return {
+		PATH: process.env.PATH,
+		HOME: process.env.HOME,
+		// Present on purpose: the harness must not forward any of these.
+		CMUX_SURFACE_ID: "leak-me",
+		LOP_SESSION: "leak-me",
+		NODE_OPTIONS: "--max-old-space-size=64",
+		ELECTRON_RUN_AS_NODE: "1",
+		LOCAL_OPERATOR_FAKE_LEAK: "leak-me",
+		...env,
+	};
+}
+
 function runHarness(args, env = {}) {
 	const run = spawnSync(process.execPath, [HARNESS, ...args], {
 		encoding: "utf8",
 		timeout: 120_000,
-		env: {
-			PATH: process.env.PATH,
-			HOME: process.env.HOME,
-			// Present on purpose: the harness must not forward any of these.
-			CMUX_SURFACE_ID: "leak-me",
-			LOP_SESSION: "leak-me",
-			NODE_OPTIONS: "--max-old-space-size=64",
-			ELECTRON_RUN_AS_NODE: "1",
-			LOCAL_OPERATOR_FAKE_LEAK: "leak-me",
-			...env,
-		},
+		env: harnessEnv(env),
 	});
 	return { ...run, all: `${run.stdout}\n${run.stderr}` };
+}
+
+/** Every fixture pid a run left a record of: app, re-parented helper, daemon, standby. */
+function fixturePids(rig, configRoot = join(rig, "config")) {
+	const pids = {};
+	for (const [name, file] of [
+		["app", join(rig, "fake-app.pid")],
+		["reparented", join(rig, "fake-child.pid")],
+		["standby", join(configRoot, "fake-standby.pid")],
+	])
+		if (existsSync(file)) pids[name] = Number(readFileSync(file, "utf8"));
+	const served = join(configRoot, "fake-serve-seen.json");
+	if (existsSync(served))
+		pids.serve = JSON.parse(readFileSync(served, "utf8")).pid;
+	return pids;
 }
 
 const alive = (pid) => {
@@ -1422,7 +1464,7 @@ test("config-root refusals happen before ANY lop process: port unset, 4097, real
 	}
 	// A root another process already runs on is refused, so the sweep can never kill it.
 	const busy = rigDevice("cr-busy", "network:\n  port: 4556\n");
-	const squatter = spawn(process.execPath, ["-e", "setInterval(()=>{},1000)"], {
+	const squatter = spawn(process.execPath, ["-e", CAP_ONLY], {
 		env: { PATH: process.env.PATH, LOCAL_OPERATOR_CONFIG_DIR: busy.config },
 		stdio: "ignore",
 	});
@@ -1451,4 +1493,97 @@ test("config-root refusals happen before ANY lop process: port unset, 4097, real
 	} finally {
 		squatter.kill("SIGKILL");
 	}
+});
+
+/* ------------------------------------------- interruption: SIGTERM and --timeout */
+
+test("--timeout and SIGTERM mid-run both reap the app, its re-parented helper, the daemon and its standby", async () => {
+	const lop = fakeLop();
+	const app = fakeApp("Hang", { hang: true });
+	const common = ["--app", app, "--capture", "capturepage", "--lop", lop];
+
+	// 1. The timeout path: a wedged app, --timeout 3.
+	const timeoutRoot = join(TREE, "hang-timeout-rig");
+	const timedOut = runHarness([
+		...common,
+		"--out",
+		join(TREE, "hang-timeout-out"),
+		"--rig-root",
+		timeoutRoot,
+		"--timeout",
+		"3",
+	]);
+	const timeoutRig = rigOf(timeoutRoot);
+	trackPids(timeoutRig);
+	assert.equal(timedOut.status, 1, timedOut.all);
+	assert.match(timedOut.all, /exceeded --timeout 3 s/);
+	const timeoutPids = fixturePids(timeoutRig);
+	assert.deepEqual(
+		Object.keys(timeoutPids).sort(),
+		["app", "reparented", "serve", "standby"],
+		"every fixture started",
+	);
+	for (const [name, pid] of Object.entries(timeoutPids))
+		assert.equal(alive(pid), false, `timeout: ${name} (pid ${pid}) survived`);
+
+	// 2. The SIGTERM path: kill the harness once everything is up.
+	const termRoot = join(TREE, "hang-term-rig");
+	mkdirSync(termRoot, { recursive: true });
+	const harness = spawn(
+		process.execPath,
+		[
+			HARNESS,
+			...common,
+			"--out",
+			join(TREE, "hang-term-out"),
+			"--rig-root",
+			termRoot,
+			"--timeout",
+			"60",
+		],
+		{
+			env: harnessEnv(),
+			stdio: ["ignore", "pipe", "pipe"],
+		},
+	);
+	leftovers.push(harness.pid);
+	let output = "";
+	harness.stdout.on("data", (c) => {
+		output += c;
+	});
+	harness.stderr.on("data", (c) => {
+		output += c;
+	});
+	const exited = new Promise((done) =>
+		harness.on("exit", (code, signal) => done({ code, signal })),
+	);
+	let pids = {};
+	for (let i = 0; i < 200; i++) {
+		const rigs = readdirSync(termRoot).filter((n) =>
+			n.startsWith("mac-proof-"),
+		);
+		if (rigs.length === 1) {
+			pids = fixturePids(join(termRoot, rigs[0]));
+			if (Object.keys(pids).length === 4) break;
+		}
+		await new Promise((r) => setTimeout(r, 100));
+	}
+	trackPids(rigOf(termRoot));
+	assert.deepEqual(
+		Object.keys(pids).sort(),
+		["app", "reparented", "serve", "standby"],
+		output,
+	);
+	for (const [name, pid] of Object.entries(pids))
+		assert.equal(alive(pid), true, `${name} is up before the signal`);
+	harness.kill("SIGTERM");
+	const { code, signal } = await exited;
+	// Exit status 1 (not death by signal) proves the harness's own interruption
+	// path ran the teardown rather than dying with the tree still up.
+	assert.equal(signal, null, output);
+	assert.equal(code, 1, output);
+	// The re-parented helper and the standby carry only the fixture cap (no
+	// parent watch), so for those two this is the harness's reap or nothing.
+	for (const [name, pid] of Object.entries(pids))
+		assert.equal(alive(pid), false, `SIGTERM: ${name} (pid ${pid}) survived`);
 });
