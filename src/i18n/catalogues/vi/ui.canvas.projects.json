@@ -1,0 +1,22 @@
+{
+	"ui.canvas.projects.segment": "Dự án",
+	"ui.canvas.projects.heading": "Dự án liên kết",
+	"ui.canvas.projects.back": "Dự án liên kết",
+	"ui.canvas.projects.rail_tooltip": "{state, select, open {Đóng dự án liên kết} other {Mở dự án liên kết}}",
+	"ui.canvas.projects.rail_tooltip_count": "{state, select, open {Đóng dự án liên kết} other {Mở dự án liên kết}} — {count, plural, other {{count, number, ::group-off} dự án}}",
+	"ui.canvas.projects.rail_aria": "Dự án liên kết",
+	"ui.canvas.projects.rail_aria_count": "Dự án liên kết, {count, plural, other {{count, number, ::group-off} dự án}}",
+	"ui.canvas.projects.loading": "Đang tải dự án liên kết",
+	"ui.canvas.projects.empty_title": "Chưa có dự án liên kết",
+	"ui.canvas.projects.empty_description": "Các dự án mà cuộc trò chuyện này được liên kết sẽ hiển thị ở đây. Hãy liên kết từ mục Phiên liên kết của một dự án, hoặc nhờ tác nhân liên kết.",
+	"ui.canvas.projects.draft_title": "Chưa có cuộc trò chuyện",
+	"ui.canvas.projects.draft_description": "Gửi tin nhắn đầu tiên, rồi liên kết cuộc trò chuyện này với một dự án để xem nó ở đây.",
+	"ui.canvas.projects.unavailable_title": "Không dùng được dự án liên kết",
+	"ui.canvas.projects.unavailable_description": "Runtime này không thể liệt kê dự án của một cuộc trò chuyện. Hãy cập nhật Local Operator để xem chúng ở đây.",
+	"ui.canvas.projects.unreachable_title": "Không kết nối được runtime",
+	"ui.canvas.projects.unreachable_description": "Runtime không phản hồi nên không đọc được dự án liên kết của cuộc trò chuyện này.",
+	"ui.canvas.projects.unpaired_description": "Ứng dụng này chưa ghép nối với runtime nên không đọc được dự án liên kết của cuộc trò chuyện này.",
+	"ui.canvas.projects.error_title": "Không thể tải dự án liên kết",
+	"ui.canvas.projects.try_again": "Thử lại",
+	"ui.canvas.projects.open_project": "Mở {name}"
+}

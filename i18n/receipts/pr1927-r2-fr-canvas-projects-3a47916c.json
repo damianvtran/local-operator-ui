@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 2, of the 3 ui.canvas.projects key(s) PR #1927's round-1 remediation (800efc93a0) added",
+  "locale": "fr",
+  "namespace": "ui.canvas.projects",
+  "pr": 1927,
+  "date": "2026-11-15",
+  "head": "800efc93a0437b6e90c270bf893dccd484c13ee3",
+  "instance": "pr1927-r2-fr-canvas-projects-3a47916c",
+  "auditor": {
+    "agent": "reviewer",
+    "role": "independent i18n auditor (team lopdev, reviewer role, UI i18n audit r2); not the translator (coder lane that authored 800efc93a0)",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session eceb68d92561: a different session and agent from the translator (coder lane, remediation commit 800efc93a0); same served model family anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. No MT used. Disclosure: the fix line in this commit was written by this auditor and is bound here, not independently re-reviewed.",
+    "instance": "pr1927-r2-fr-canvas-projects-3a47916c"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "findings": [
+    {
+      "id": "I2",
+      "severity": "NIT",
+      "key": "ui.canvas.projects.unpaired_description",
+      "issue": "'Cette app' is the only use in the fr catalogues; every fr pairing sentence (10) says 'Cette application ... appairée'.",
+      "disposition": "fixed in this round-2 audit commit ('Cette app' -> 'Cette application')"
+    }
+  ],
+  "binding": "Verified on the branch at 800efc93a043 plus this commit's catalogue fixes: target src/i18n/catalogues/fr/ui.canvas.projects.json (sha256 009459f73bbcd9a315e42cb845da07ae514692c91ab41bbd1e4f1e7bae1c154e); English src/i18n/catalogues/en/ui.canvas.projects.json (sha256 be84c53464592aa88118210dce06c38f290d2079e84a2dea2197f153e37f7c84); context sidecar sha256 9993d2bb54cdffc179351a964df661c6cd1926165177450713a805908c050793. Reference: core glossary ~/local-operator i18n/glossary.md @ origin/main cb85fcb962 (sha256 5de3929198c3…); style guide i18n/style-guides/fr.md (sha256 5315e1ac10c2). Audited keys: ui.canvas.projects.unreachable_title, ui.canvas.projects.unreachable_description, ui.canvas.projects.unpaired_description (other keys in the file unchanged since their earlier audits). Checks (python): key set equals English; no ICU arguments in source or target; values NFC; no Cf characters. Consistency: runtime term matches the locale's ui.canvas.projects round-1 strings and style guide; pairing verb matches the locale's existing *_unpaired strings; header-menu/shortcut rows match sibling open_/close_/row. phrasing and the locale's 'linked projects' heading. Not done: rendered fit frames (no browser tool in this lane). Values: unreachable_title = \"Impossible de joindre le runtime\" (32/23 chars) | unreachable_description = \"Le runtime n’a pas répondu, les projets liés de cette conversation n’ont donc pas pu être lus.\" (94/83 chars) | unpaired_description = \"Cette application n’est pas appairée au runtime, elle ne peut donc pas lire les projets liés de cette conversation.\" (115/93 chars)",
+  "scope": "ui.canvas.projects for fr: 3 PR #1927 round-2 keys",
+  "revisions": {
+    "head": "800efc93a0437b6e90c270bf893dccd484c13ee3"
+  },
+  "en_sha256": "be84c53464592aa88118210dce06c38f290d2079e84a2dea2197f153e37f7c84",
+  "context_sha256": "9993d2bb54cdffc179351a964df661c6cd1926165177450713a805908c050793",
+  "target_sha256": "009459f73bbcd9a315e42cb845da07ae514692c91ab41bbd1e4f1e7bae1c154e",
+  "sha256": {
+    "fr": "009459f73bbcd9a315e42cb845da07ae514692c91ab41bbd1e4f1e7bae1c154e",
+    "en": "be84c53464592aa88118210dce06c38f290d2079e84a2dea2197f153e37f7c84"
+  }
+}

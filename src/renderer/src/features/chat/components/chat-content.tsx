@@ -89,6 +89,11 @@ import {
 	goalCapability,
 	goalPresent,
 } from "../../../../../shared/desktop-session-contract";
+import {
+	linkedProjectTotal,
+	useProjectReadsTurnRefresh,
+	useSessionProjects,
+} from "../../projects/hooks/use-projects-queries";
 import { DelegatedCleanupNoticeBand } from "../../settings/components/delegated-cleanup-notice";
 import { settleQueuedAdoption } from "../aside";
 import { gateIsSecret } from "../ask-answer";
@@ -1089,6 +1094,26 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const temporaryEnabled = desktopFeatureEnabled(
 			capabilities.data,
 			"temporary_chats",
+		);
+		/*
+		 * THE RAIL'S LINKED-PROJECTS TOTAL: the same query (same key) the canvas's
+		 * Projects view reads, so the door's number and the list cannot disagree
+		 * and react-query serves both from one request. Gated like the view:
+		 * an older backend, or a draft, is 0 and sends nothing.
+		 */
+		const projectsBySession = desktopFeatureEnabled(
+			capabilities.data,
+			"projects_by_session",
+		);
+		const linkedProjects = useSessionProjects(sessionId, projectsBySession);
+		const linkedProjectCount = linkedProjectTotal(
+			projectsBySession,
+			linkedProjects.data,
+		);
+		/* The turn-end refresh lives beside the read it keeps current (R1-3). */
+		useProjectReadsTurnRefresh(
+			turnTerminal,
+			projectsBySession && Boolean(sessionId),
 		);
 		/*
 		 * WHETHER THE OWNER QUEUES AN ADOPT PRESSED MID-TURN (`aside_adopt_queue`,
@@ -2733,6 +2758,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						 * restore.
 						 */}
 						<ChatHeader
+							canvasConversationId={conversationId}
 							agentName={agentName}
 							agentAvatar={
 								avatarAgentId
@@ -4218,6 +4244,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						codeOpened={codeGroups.opened.length}
 						codeMentioned={codeGroups.mentioned.length}
 						codeAttention={codeAttentionCause}
+						canvasConversationId={conversationId}
+						linkedProjectCount={linkedProjectCount}
 					/>
 				</InPanelRailHost>
 			</div>

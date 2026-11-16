@@ -1,0 +1,118 @@
+{
+	"ui.canvas.projects.segment": {
+		"role": "segmented-control label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Tooltip/accessible label of the chat canvas view switcher segment that shows the projects this conversation is linked to. A 'project' is a tracked workstream in the app's Projects tab; use the same term as the Projects tab.",
+		"length": "One or two words; it is a tooltip on a 24px icon segment."
+	},
+	"ui.canvas.projects.heading": {
+		"role": "section heading",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Small heading above the list of projects linked to the current chat conversation, in the canvas side pane."
+	},
+	"ui.canvas.projects.back": {
+		"role": "back link",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Back link at the top of a project's detail view when it is opened inside the chat canvas; pressing it returns to the list of linked projects. Rendered after a back arrow, so do not add 'Back to' unless the language needs a verb."
+	},
+	"ui.canvas.projects.rail_tooltip": {
+		"role": "button tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Tooltip of the chat window's right-rail button that opens the canvas on the conversation's linked projects.",
+		"placeholders": {
+			"state": "Stable action state: open means pressing closes; closed (other) means pressing opens. Keep the select arms and keywords verbatim."
+		}
+	},
+	"ui.canvas.projects.rail_tooltip_count": {
+		"role": "button tooltip",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Same tooltip as rail_tooltip, followed by how many projects this conversation is linked to.",
+		"placeholders": {
+			"state": "Stable action state: open means pressing closes; closed (other) means pressing opens. Keep the select arms and keywords verbatim.",
+			"count": "Number of linked projects (ICU plural, printed with {count, number, ::group-off} as the app's other project counts do)."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Use the target locale's native CLDR plural categories (e.g. Russian one/few/many/other)."
+	},
+	"ui.canvas.projects.rail_aria": {
+		"role": "button accessible name",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Accessible name of the right-rail linked-projects button; aria-pressed already states open/closed, so no action verb."
+	},
+	"ui.canvas.projects.rail_aria_count": {
+		"role": "button accessible name",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Accessible name of the right-rail linked-projects button with the number of linked projects.",
+		"placeholders": {
+			"count": "Number of linked projects (ICU plural, printed with {count, number, ::group-off} as the app's other project counts do)."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Use the target locale's native CLDR plural categories (e.g. Russian one/few/many/other)."
+	},
+	"ui.canvas.projects.loading": {
+		"role": "spinner label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Spinner label while the list of projects linked to this conversation is being read."
+	},
+	"ui.canvas.projects.empty_title": {
+		"role": "empty state heading",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Canvas pane empty state: this conversation is not linked to any project."
+	},
+	"ui.canvas.projects.empty_description": {
+		"role": "empty state body",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Explains where linked projects come from. 'Linked sessions' is the name of a section on a project's page in the Projects tab; translate it the same way that section heading is translated."
+	},
+	"ui.canvas.projects.draft_title": {
+		"role": "empty state heading",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Canvas pane state for a new chat that has not been sent yet, so it has no conversation to link."
+	},
+	"ui.canvas.projects.draft_description": {
+		"role": "empty state body",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Body for the draft state: once the first message is sent and the conversation is linked to a project, the project shows here."
+	},
+	"ui.canvas.projects.unavailable_title": {
+		"role": "empty state heading",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown when the connected Local Operator runtime is too old to list a conversation's projects."
+	},
+	"ui.canvas.projects.unavailable_description": {
+		"role": "empty state body",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Tells the user to update. 'Local Operator' is the product name; keep it untranslated."
+	},
+	"ui.canvas.projects.unreachable_title": {
+		"role": "empty-state title",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Title shown in the chat canvas's linked-projects view when the app cannot reach the Local Operator runtime (no answer, failed capabilities read, or not paired). 'Runtime' is the local Local Operator service, same term as the other ui.canvas.projects strings. Distinct from unavailable_title, which means the runtime answered but is too old."
+	},
+	"ui.canvas.projects.unreachable_description": {
+		"role": "empty-state description",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Fallback sentence under unreachable_title (and under error_title) when the transport gave no message of its own: the runtime did not answer, so the projects linked to this conversation could not be read. Must not advise updating; a Try again button follows."
+	},
+	"ui.canvas.projects.unpaired_description": {
+		"role": "empty-state description",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Sentence under unreachable_title when this desktop app holds no pairing (credential) for the runtime, so it cannot read the conversation's linked projects. State the fact only; do not tell the user to update. A Try again button follows."
+	},
+	"ui.canvas.projects.error_title": {
+		"role": "error heading",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "The request for this conversation's linked projects failed; the transport's own message is shown beneath."
+	},
+	"ui.canvas.projects.try_again": {
+		"role": "button label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Retries reading the linked projects after an error."
+	},
+	"ui.canvas.projects.open_project": {
+		"role": "button accessible name",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Accessible name of one linked-project row; pressing it opens that project's details in the canvas.",
+		"placeholders": {
+			"name": "The project's display name, verbatim user text."
+		}
+	}
+}

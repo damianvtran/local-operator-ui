@@ -607,6 +607,15 @@ type DesktopAnswers = {
 	list: () => DesktopAnswer;
 	features?: Record<string, number>;
 	/**
+	 * The Projects view's two reads: the conversation's linked rows
+	 * (`projects.for_session`; `"hang"` holds the loading state on screen) and one
+	 * project's detail (`projects.get`, by key). Absent answers an empty list.
+	 */
+	projects?: {
+		list: () => DesktopAnswer | "hang";
+		detail?: (key: string) => DesktopAnswer;
+	};
+	/**
 	 * Answer the capabilities query with a transport failure instead of a map.
 	 *
 	 * A rejection and not a shape: this is the panel's FIRST question failing, so
@@ -655,6 +664,17 @@ const installFetchStub = () => {
 						features: desktopAnswers.features ?? {},
 					}),
 				);
+			}
+			if (request.op === "projects.for_session") {
+				const answer = desktopAnswers.projects?.list() ?? ok({ projects: [] });
+				if (answer === "hang") return new Promise<Response>(() => {});
+				return respond(answer);
+			}
+			if (request.op === "projects.get") {
+				const key = String((request as { key?: unknown }).key ?? "");
+				const detail = desktopAnswers.projects?.detail?.(key);
+				if (detail) return respond(detail);
+				return respond(refused(404, "project_not_found", "no such project"));
 			}
 			if (request.op === "sessions.variables.list") {
 				return respond(desktopAnswers.list());
@@ -839,7 +859,7 @@ const CanvasFrame = ({
 	 */
 	goalPresent = true,
 }: {
-	view: "documents" | "files" | "variables" | "goals";
+	view: "documents" | "files" | "variables" | "goals" | "projects";
 	/**
 	 * The document the panel has open, or `null` for the documents view with
 	 * nothing open - which is the state the empty canvas is.
@@ -2757,4 +2777,356 @@ export const CanvasWithoutTheGoalLifecycle: Story = {
 			/>
 		</div>
 	),
+};
+
+/* ------------------------------------------------- the Projects view (2026-11-15) */
+
+/*
+ * THE CANVAS'S PROJECTS VIEW: the projects this conversation is linked to, and
+ * one project's full detail inside the pane (operator, 2026-11-15). Every frame
+ * runs the REAL `Canvas` → `CanvasProjectsViewer` → `ProjectDetailScreen`
+ * against the `/__desktop` stub above, at the dock's 480px width so the detail's
+ * narrow layout is what gets photographed. The fixture clock is the real one:
+ * `progress_updated_at` is set relative to now, so "reported 2h ago" holds.
+ */
+const PROJECTS_NOW_S = Math.floor(Date.now() / 1000);
+const PROJECT_ROW = (
+	id: string,
+	extra: Record<string, unknown> = {},
+): Record<string, unknown> => ({
+	id,
+	name: id,
+	title: null,
+	description: "",
+	owner: null,
+	team: null,
+	status: "active",
+	tags: [],
+	start_date: null,
+	target_date: null,
+	completed_at: null,
+	estimate: null,
+	estimate_unit: "points",
+	milestones_completed: 0,
+	milestones_total: 0,
+	sessions: 1,
+	live_sessions: 1,
+	progress_stale: false,
+	progress_updated_at: PROJECTS_NOW_S - 2 * 3600,
+	updated_at: PROJECTS_NOW_S - 2 * 3600,
+	...extra,
+});
+const LINKED_PROJECTS = [
+	PROJECT_ROW("payments-migration", {
+		title: "Payments migration",
+		milestones_completed: 2,
+		milestones_total: 4,
+		target_date: "2026-12-01",
+		estimate: 13,
+	}),
+	PROJECT_ROW("invoice-ocr", {
+		title: "Invoice OCR accuracy",
+		status: "planning",
+		progress_updated_at: PROJECTS_NOW_S - 3 * 86_400,
+		progress_stale: true,
+	}),
+	PROJECT_ROW("q4-close", { status: "paused", progress_updated_at: null }),
+];
+const PROJECT_DETAIL = {
+	project: {
+		...LINKED_PROJECTS[0],
+		owner: "dana",
+		team: "platform",
+		description:
+			"Cut the payments API over to the new service.\n\n**Scope**\n\n- the read path (staging first)\n- the dashboard",
+		progress: "Dashboard cutover is done; API parity holds on staging.",
+		progress_reported_by: STORY_SESSION_ID,
+		created_at: PROJECTS_NOW_S - 30 * 86_400,
+		milestones: [
+			{
+				name: "Staging parity",
+				target_date: "2026-11-01",
+				completed_at: "2026-10-30",
+				status: "done",
+			},
+			{
+				name: "Dashboard cutover",
+				target_date: "2026-11-10",
+				completed_at: "2026-11-12",
+				status: "done",
+			},
+			{
+				name: "Read path flip",
+				target_date: "2026-11-20",
+				completed_at: null,
+				status: "upcoming",
+			},
+			{
+				name: "Retire old API",
+				target_date: "2026-12-01",
+				completed_at: null,
+				status: "upcoming",
+			},
+		],
+		updates: [
+			{
+				at: new Date((PROJECTS_NOW_S - 26 * 3600) * 1000).toISOString(),
+				text: "Staging parity verified: `412 passed / 0 failed`.",
+				by: "operator",
+				attachments: [],
+			},
+			{
+				at: new Date((PROJECTS_NOW_S - 2 * 3600) * 1000).toISOString(),
+				text: "Dashboard cutover is done; API parity holds on staging. Next: flip the read path.",
+				by: STORY_SESSION_ID,
+				attachments: [
+					{
+						name: "dashboard-cutover.png",
+						kind: "image",
+						path: "/Users/dana/work/projects/payments/dashboard-cutover.png",
+						bytes: 182_400,
+						added_at: new Date(
+							(PROJECTS_NOW_S - 2 * 3600) * 1000,
+						).toISOString(),
+					},
+					{
+						name: "parity.png",
+						kind: "image",
+						path: "/Users/dana/work/projects/payments/parity.png",
+						bytes: 182_400,
+						added_at: new Date(
+							(PROJECTS_NOW_S - 2 * 3600) * 1000,
+						).toISOString(),
+					},
+				],
+			},
+		],
+	},
+	links: [
+		{
+			session_id: STORY_SESSION_ID,
+			exists: true,
+			title: "Invoice assistant",
+			created_at: PROJECTS_NOW_S - 3 * 86_400,
+			archived: false,
+			runtime: { state: "running", busy: false, heartbeat_age_s: 2, pid: 4242 },
+			subagents: null,
+			todos: { open: 2, total: 5 },
+		},
+	],
+};
+/*
+ * `projects_request_update` is what the shipping backend advertises
+ * (`features.py`), so the detail frames show the header a real user sees -
+ * Request update beside Delete - not a Delete-only header (design round 1, D2).
+ */
+const PROJECTS_FEATURES = {
+	session_variables: 1,
+	projects: 2,
+	projects_by_session: 1,
+	projects_request_update: 1,
+};
+/*
+ * THE PREVIEW'S BRIDGE IS `window.api.desktop`, and it REFUSES by default
+ * (`.storybook/preview.tsx`: an unconfigured story must never reach a live
+ * daemon). `desktop-api.ts` prefers that bridge over the `/__desktop` fetch the
+ * stub above answers, so these frames install the bridge themselves, answering
+ * from the same `desktopAnswers` the fetch stub reads — one source of truth for
+ * what the story's backend says, two transports.
+ */
+const installProjectsBridge = (
+	answers: DesktopAnswers,
+	desktopAvailable = true,
+) => {
+	const page = window as unknown as {
+		api?: { desktop?: { request: (request: unknown) => Promise<unknown> } };
+	};
+	if (!page.api) return;
+	page.api.desktop = {
+		request: async (raw: unknown) => {
+			const request = raw as { op?: string; key?: unknown };
+			/* The capabilities read failing outright (round-1 R1-2/D1). */
+			if (request.op === "capabilities" && answers.featuresError) {
+				throw new TypeError("Failed to fetch");
+			}
+			const answer: DesktopAnswer | "hang" =
+				request.op === "capabilities"
+					? ok({
+							desktop_contract: 1,
+							desktop_available: desktopAvailable,
+							desktop_auth: "bearer",
+							features: answers.features ?? {},
+						})
+					: request.op === "projects.for_session"
+						? (answers.projects?.list() ?? ok({ projects: [] }))
+						: request.op === "projects.get"
+							? (answers.projects?.detail?.(String(request.key ?? "")) ??
+								refused(404, "project_not_found", "no such project"))
+							: ok({});
+			if (answer === "hang") return new Promise(() => {});
+			return { status: answer.status, body: answer.body };
+		},
+	};
+};
+
+const projectsFrame = (
+	projects: DesktopAnswers["projects"],
+	over: {
+		features?: Record<string, number>;
+		sessionId?: string | null;
+		featuresError?: boolean;
+		desktopAvailable?: boolean;
+	} = {},
+) => {
+	const answers: DesktopAnswers = {
+		features: over.features ?? PROJECTS_FEATURES,
+		list: () => observed(VARIABLES),
+		projects,
+		featuresError: over.featuresError,
+	};
+	installProjectsBridge(answers, over.desktopAvailable ?? true);
+	return (
+		<CanvasFrame
+			view="projects"
+			activeId={null}
+			width={480}
+			sessionId={
+				over.sessionId === undefined ? STORY_SESSION_ID : over.sessionId
+			}
+			variables={answers}
+		/>
+	);
+};
+
+/** The read in flight: the pane's spinner and sentence, not a blank. */
+export const ProjectsLoading: Story = {
+	render: () => projectsFrame({ list: () => "hang" }),
+};
+
+/** A conversation linked to no project. */
+export const ProjectsEmpty: Story = {
+	render: () =>
+		projectsFrame({
+			list: () => ok({ session_id: STORY_SESSION_ID, projects: [] }),
+		}),
+};
+
+/** The read failed: the route's sentence and a retry. */
+export const ProjectsError: Story = {
+	render: () =>
+		projectsFrame({
+			list: () =>
+				refused(
+					500,
+					"project_registry_unreadable",
+					"The project registry could not be read.",
+				),
+		}),
+};
+
+/** Three linked projects: title, status, milestones, due date, recency, stale mark. */
+export const ProjectsPopulated: Story = {
+	render: () =>
+		projectsFrame({
+			list: () =>
+				ok({ session_id: STORY_SESSION_ID, projects: LINKED_PROJECTS }),
+			detail: () => ok(PROJECT_DETAIL),
+		}),
+};
+
+/**
+ * A row pressed: the Projects route's own detail screen inside the pane, with the
+ * back link to the list and NO quick-send composer (the chat's composer is beside
+ * it). Milestones, the update history and its image attachments are the route's.
+ */
+const openLinkedProject =
+	(scrollTo?: string) =>
+	async ({ canvasElement }: { canvasElement: HTMLElement }) => {
+		const row = await waitFor(
+			() => {
+				const found = canvasElement.querySelector<HTMLElement>(
+					'[data-canvas-project-row="payments-migration"]',
+				);
+				if (!found) throw new Error("row not yet rendered");
+				return found;
+			},
+			{ timeout: 10_000 },
+		);
+		await userEvent.click(row);
+		await waitFor(
+			() => {
+				if (!canvasElement.querySelector("[data-canvas-project-detail] h1"))
+					throw new Error("detail not yet rendered");
+			},
+			{ timeout: 10_000 },
+		);
+		if (!scrollTo) return;
+		/* Scroll the PANE (the detail's own scroller) to a section by its heading,
+		   the reader's own view of it, then let images decode. */
+		await waitFor(
+			() => {
+				const heading = [
+					...canvasElement.querySelectorAll("[data-canvas-project-detail] h2"),
+				].find((node) => node.textContent === scrollTo);
+				if (!heading) throw new Error(`no ${scrollTo} heading yet`);
+				heading.scrollIntoView({ block: "start" });
+			},
+			{ timeout: 10_000 },
+		);
+		await new Promise((resolve) => setTimeout(resolve, 600));
+	};
+
+const detailFrame = () => {
+	installViewerBytes();
+	return projectsFrame({
+		list: () => ok({ session_id: STORY_SESSION_ID, projects: LINKED_PROJECTS }),
+		detail: () => ok(PROJECT_DETAIL),
+	});
+};
+
+export const ProjectsDetailOpen: Story = {
+	render: detailFrame,
+	play: openLinkedProject(),
+};
+
+/** The same detail scrolled to its milestones and linked sessions (no quick-send). */
+export const ProjectsDetailMilestones: Story = {
+	render: detailFrame,
+	play: openLinkedProject("Milestones"),
+};
+
+/** The same detail scrolled to its update history with image attachments. */
+export const ProjectsDetailUpdates: Story = {
+	render: detailFrame,
+	play: openLinkedProject("Updates"),
+};
+
+/** An older runtime (no `projects_by_session`): the view says why; no request. */
+export const ProjectsUnavailable: Story = {
+	render: () =>
+		projectsFrame(
+			{
+				list: () =>
+					ok({ session_id: STORY_SESSION_ID, projects: LINKED_PROJECTS }),
+			},
+			{ features: { session_variables: 1, projects: 2 } },
+		),
+};
+
+/**
+ * The capabilities read failed: "can't reach the runtime" with the transport's
+ * sentence and a retry - never update advice (round-1 R1-2/D1).
+ */
+export const ProjectsUnreachable: Story = {
+	render: () => projectsFrame(undefined, { featuresError: true }),
+};
+
+/** This app holds no pairing for the runtime: the same title, the pairing fact. */
+export const ProjectsUnpaired: Story = {
+	render: () => projectsFrame(undefined, { desktopAvailable: false }),
+};
+
+/** A draft: no conversation to have projects yet. */
+export const ProjectsDraft: Story = {
+	render: () => projectsFrame(undefined, { sessionId: null }),
 };

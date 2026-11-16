@@ -1422,6 +1422,8 @@ const HUB_LINK_MARK =
 	"src/renderer/src/features/chat/components/hub-link-sidebar-mark.tsx";
 const PROJECT_TIMELINE =
 	"src/renderer/src/features/projects/components/project-timeline.tsx";
+const CANVAS_PROJECTS_VIEWER =
+	"src/renderer/src/features/chat/components/canvas/canvas-projects-viewer.tsx";
 
 /*
  * The regex metacharacters an anchor may carry, and the literal spaces that stand
@@ -2692,6 +2694,17 @@ const PLATES_INSIDE_ROW_STATES = [
 		ground: "bg-surface",
 		edge: false,
 		fact: "border-ink-muted",
+	},
+	{
+		/* The canvas Projects tab's linked-project row meta chips (target or
+		   completed date, estimate, milestones) are `sunken` plates inside the
+		   row's `hover:bg-row-hover` state, so they wear the control edge rather
+		   than relying on a fill that can match the hover rung. */
+		what: "the canvas projects list row's meta chip",
+		file: CANVAS_PROJECTS_VIEWER,
+		element: "span",
+		ground: "bg-sunken",
+		edge: true,
 	},
 ];
 

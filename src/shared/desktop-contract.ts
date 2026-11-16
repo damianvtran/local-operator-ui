@@ -5026,6 +5026,23 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	/*
+	 * THE PROJECTS ONE CONVERSATION IS LINKED TO
+	 * (`GET /v1/desktop/sessions/{session_id}/projects`), the chat canvas's
+	 * Projects view. APPENDED like its siblings and gated by its OWN capability
+	 * key (`features.projects_by_session`), not a `projects` version bump: the
+	 * Projects tab works on a daemon that predates this route, and a bump would
+	 * hide that working surface behind an update it does not need. The rows are
+	 * the listing's own shape (`DesktopProject`), so the canvas reuses every
+	 * formatter the board uses. An unknown or unlinked session is a 200 with an
+	 * empty list - "this conversation has no projects" is an answer, not a fault.
+	 */
+	z
+		.object({
+			op: z.literal("projects.for_session"),
+			sessionId,
+		})
+		.strict(),
+	/*
 	 * THE DERIVED SEARCH INDEX (`GET /v1/desktop/projects/search`). APPENDED like
 	 * its siblings, and gated by a `projects` VERSION BUMP (1 -> 2) rather than a
 	 * key of its own: the route ranks over the same store the listing reads and is
@@ -11660,6 +11677,11 @@ export function desktopEndpoint(request: DesktopRequest): {
 			return {
 				path: `/v1/desktop/projects/${encodeURIComponent(request.key)}/request-update`,
 				method: "POST",
+			};
+		case "projects.for_session":
+			return {
+				path: `/v1/desktop/sessions/${encodeURIComponent(request.sessionId)}/projects`,
+				method: "GET",
 			};
 		case "projects.search": {
 			/*

@@ -51,6 +51,8 @@ export interface LayoutSnapshot {
 	activeTabId: number | null;
 	/** The active tab's own presentation bit after this pass. */
 	presented: boolean;
+	/** Browser chrome may be visible over an empty/start canvas without a page. */
+	chromeVisible: boolean;
 	contentRect: ContentRect | null;
 	/** Monotone per registry, so a consumer can tell "another pass" from "a pass
 	 * with the same values" without diffing objects. */
@@ -879,6 +881,7 @@ export class TabRegistry {
 			this.onLayout({
 				activeTabId: this.activeTabId,
 				presented: active?.presented === true,
+				chromeVisible: this.chromeVisible,
 				contentRect: rect
 					? {
 							x: rect.x,
