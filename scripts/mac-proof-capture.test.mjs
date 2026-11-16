@@ -12,6 +12,7 @@ import {
 	symlinkSync,
 	writeFileSync,
 } from "node:fs";
+import { createServer } from "node:net";
 import os from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
@@ -21,26 +22,35 @@ import {
 	DAEMON_ROUTES,
 	FORBIDDEN_DAEMON_PATH,
 	Refusal,
+	SCREENCAPTURE_METHOD,
 	appNames,
 	backendUrlProblem,
 	buildAppArgv,
 	buildAppEnv,
 	buildSteps,
 	captureModeProblem,
+	comparablePath,
 	createSupervisor,
 	credentialMaterial,
 	daemonRequest,
 	daemonRequestProblem,
 	envGovernedBlockedMessage,
+	frameMatchesWindow,
+	killRigMatched,
 	lopArgvProblem,
 	operatorPathProblem,
 	operatorRoots,
 	parseArgs,
+	physical,
 	pngSize,
+	portListenerOwned,
+	processFacts,
 	redactEnv,
 	relayPortFromConfig,
 	relayPortProblem,
 	resolveAppBundle,
+	rigMatcher,
+	screenRecordingVerdict,
 	selectServeRecord,
 	validateOptions,
 	windowModeProblem,
@@ -390,6 +400,113 @@ test("operator paths refuse when equal, symlinked, nested or containing - and on
 	assert.equal(operatorPathProblem("p", join(TREE, "clear"), roots), null);
 });
 
+test("operator paths: a dangling symlink is followed to its target (QA r1 Q1-1)", () => {
+	const home = join(TREE, "dangle-home");
+	mkdirSync(home, { recursive: true });
+	const roots = operatorRoots({ homes: [home], xdgConfigHome: undefined });
+	const missing = join(home, ".config", "Local Operator");
+	const link = join(TREE, "dangle-link");
+	symlinkSync(missing, link);
+	assert.equal(existsSync(missing), false, "the target does not exist yet");
+	assert.equal(physical(link), physical(missing));
+	assert.equal(
+		physical(join(link, "mac-proof-x")),
+		join(physical(missing), "mac-proof-x"),
+	);
+	assert.match(
+		operatorPathProblem("rig root", link, roots),
+		/is the operator's/,
+	);
+	// A relative dangling link resolves against its own directory.
+	const rel = join(TREE, "dangle-rel");
+	symlinkSync(join("dangle-home", ".local-operator"), rel);
+	assert.match(
+		operatorPathProblem("rig root", rel, roots),
+		/is the operator's/,
+	);
+	// A cycle terminates (and is clear of the operator's roots).
+	symlinkSync(join(TREE, "cycle-b"), join(TREE, "cycle-a"));
+	symlinkSync(join(TREE, "cycle-a"), join(TREE, "cycle-b"));
+	assert.equal(
+		operatorPathProblem("rig root", join(TREE, "cycle-a"), roots),
+		null,
+	);
+});
+
+test("operator paths: case variants refuse under the darwin rule, and only there (review r1 R1-3)", () => {
+	const home = join(TREE, "case-home");
+	const profile = join(
+		home,
+		"Library",
+		"Application Support",
+		"Local Operator",
+	);
+	mkdirSync(profile, { recursive: true });
+	const roots = operatorRoots({ homes: [home], xdgConfigHome: undefined });
+	const variant = join(
+		home,
+		"Library",
+		"Application Support",
+		"local operator",
+	);
+	assert.match(
+		operatorPathProblem("rig root", variant, roots, { platform: "darwin" }),
+		/is the operator's/,
+	);
+	assert.match(
+		operatorPathProblem("cfg", join(home, ".Local-Operator", "x"), roots, {
+			platform: "darwin",
+		}),
+		/inside it/,
+	);
+	// Linux filesystems are case-sensitive: a different spelling is a different dir.
+	assert.equal(
+		operatorPathProblem("rig root", variant, roots, { platform: "linux" }),
+		null,
+	);
+	assert.equal(comparablePath("/A/\u0065\u0301", "darwin"), "/a/\u00e9");
+	assert.equal(comparablePath("/A/B", "linux"), "/A/B");
+});
+
+test("operator paths: Linux userData under $XDG_CONFIG_HOME is an operator root (QA r1 Q1-2)", () => {
+	const home = join(TREE, "xdg-home");
+	const xdg = join(TREE, "xdg-config");
+	const roots = operatorRoots({ homes: [home], xdgConfigHome: xdg });
+	assert.ok(roots.includes(join(xdg, "Local Operator")));
+	assert.ok(
+		roots.includes(join(home, ".config", "Local Operator")),
+		"~/.config stays",
+	);
+	assert.match(
+		operatorPathProblem("rig root", join(xdg, "Local Operator", "r"), roots),
+		/inside it/,
+	);
+	assert.ok(
+		!operatorRoots({ homes: [home], xdgConfigHome: "relative/x" }).some((r) =>
+			r.startsWith("relative"),
+		),
+	);
+	// And the real entry point reads the variable: a dry run into it refuses.
+	const run = runHarness(
+		[
+			"--app",
+			fakeApp("XdgDry"),
+			"--out",
+			join(TREE, "xdg-out"),
+			"--rig-root",
+			join(xdg, "Local Operator"),
+			"--capture",
+			"capturepage",
+			"--lop",
+			fakeLop(),
+			"--dry-run",
+		],
+		{ XDG_CONFIG_HOME: xdg },
+	);
+	assert.equal(run.status, 2, run.all);
+	assert.match(run.all, /operator's/);
+});
+
 test("only inactive and headless are run, and screencapture needs inactive on darwin", () => {
 	for (const ok of ["inactive", "headless"])
 		assert.equal(windowModeProblem(ok), null);
@@ -659,6 +776,8 @@ test("the supervisor aborts on normal, focus, early shutters and the wrong conve
 			windowMode: "inactive",
 			session,
 			capture: "screencapture",
+			framesDir: "/o",
+			labels: ["a-dark", "b-dark"],
 		});
 	assert.match(
 		sup().feed("[window-mode] window mode normal: 1380x900, shown").abort,
@@ -718,12 +837,142 @@ test("the supervisor aborts on normal, focus, early shutters and the wrong conve
 			shutter: { label: "a-dark", windowId: 7, ack: "/o/a.ack" },
 		},
 	);
+	// Each frame at most once.
+	assert.match(
+		ok.feed(
+			"[dev-driver-script] SHUTTER label=a-dark media=window:7:0 visible=true focused=false ack=/o/a-dark.ack",
+		).abort,
+		/second SHUTTER/,
+	);
+	// Only frames this run asked for: a label outside the set never names a file.
+	assert.match(
+		ok.feed(
+			"[dev-driver-script] SHUTTER label=zz-dark media=window:7:0 visible=true focused=false ack=/o/zz-dark.ack",
+		).abort,
+		/did not ask for/,
+	);
 	assert.match(
 		ok.feed("[dev-driver-script] step=9 verb=press error: nope").abort,
 		/failed/,
 	);
 	assert.deepEqual(ok.feed("[dev-driver-script] DONE steps=9"), { done: true });
 	assert.deepEqual(pngSize(PNG_1X1), { width: 1, height: 1 });
+});
+
+test("SHUTTER paths are derived by the harness, so a rig root with a space cannot redirect the ack", () => {
+	// Review r1 R1-2: the ack path used to be the `ack=` field split on spaces;
+	// under `~/Desktop/proof runs` it came back as `~/Desktop/proof` and the
+	// harness wrote there. The harness now builds <framesDir>/<label>.ack itself.
+	const framesDir = "/Users/x/Desktop/proof runs/mac-proof-abc123/frames";
+	const ready = (capture) => {
+		const s = createSupervisor({
+			windowMode: capture === "screencapture" ? "inactive" : "headless",
+			session: null,
+			capture,
+			framesDir,
+			labels: ["library-dark"],
+		});
+		for (const line of [
+			`[window-mode] window mode ${capture === "screencapture" ? "inactive" : "headless"}: 1380x900`,
+			"[dev-driver] ARMED; frames",
+			"[dev-driver-script] ARMED; steps",
+		])
+			assert.equal(s.feed(line), null);
+		return s;
+	};
+	assert.deepEqual(
+		ready("screencapture").feed(
+			`[dev-driver-script] SHUTTER label=library-dark media=window:42:0 visible=true focused=false ack=${framesDir}/library-dark.ack`,
+		),
+		{
+			shutter: {
+				label: "library-dark",
+				windowId: 42,
+				ack: `${framesDir}/library-dark.ack`,
+			},
+		},
+	);
+	// Even a printed ack naming somewhere else is never the one written.
+	assert.equal(
+		ready("screencapture").feed(
+			"[dev-driver-script] SHUTTER label=library-dark media=window:42:0 visible=true focused=false ack=/Users/x/Desktop/proof",
+		).shutter.ack,
+		`${framesDir}/library-dark.ack`,
+	);
+	// capturepage: the facts after a spaced path still parse, the path is derived.
+	assert.deepEqual(
+		ready("capturepage").feed(
+			`[dev-driver-script] SHUTTER label=library-dark capture=capturepage path=${framesDir}/library-dark.png width=2760 height=1800 visible=false focused=false`,
+		),
+		{
+			shutter: {
+				label: "library-dark",
+				path: `${framesDir}/library-dark.png`,
+				width: 2760,
+				height: 1800,
+			},
+		},
+	);
+	assert.match(
+		ready("capturepage").feed(
+			`[dev-driver-script] SHUTTER label=library-dark capture=capturepage path=${framesDir}/library-dark.png width=2760 height=1800 visible=false focused=true`,
+		).abort,
+		/focused/,
+	);
+	assert.throws(
+		() =>
+			createSupervisor({
+				windowMode: "inactive",
+				session: null,
+				capture: "screencapture",
+			}),
+		/framesDir/,
+	);
+});
+
+test("Screen Recording: only an explicit boolean from the preflight is an answer", () => {
+	// Review r1 R1-1: an unavailable CGPreflightScreenCaptureAccess is BLOCKED,
+	// never inferred from window names (system UI has names without permission).
+	assert.equal(screenRecordingVerdict('{"granted":true}'), "granted");
+	assert.equal(screenRecordingVerdict('{"granted":false}'), "denied");
+	assert.equal(screenRecordingVerdict('{"granted":null}'), "unknown");
+	assert.equal(screenRecordingVerdict("{}"), "unknown");
+	assert.equal(screenRecordingVerdict('{"granted":"yes"}'), "unknown");
+	assert.equal(screenRecordingVerdict("not json"), "unknown");
+	const source = readFileSync(HARNESS, "utf8");
+	const probe = source.slice(
+		source.indexOf("export function screenRecordingGranted"),
+		source.indexOf("export function screenRecordingVerdict"),
+	);
+	assert.doesNotMatch(probe, /kCGWindowName|CGWindowListCopyWindowInfo/);
+	assert.doesNotMatch(probe, /CGRequestScreenCaptureAccess\(/);
+	assert.match(
+		source,
+		/verdict === "unknown"[\s\S]{0,800}return EXIT\.BLOCKED/,
+	);
+});
+
+test("a screencapture frame must measure the window's bounds at one backing scale", () => {
+	const bounds = { X: 10, Y: 20, Width: 1380, Height: 900 };
+	assert.equal(frameMatchesWindow({ width: 1380, height: 900 }, bounds), 1);
+	assert.equal(frameMatchesWindow({ width: 2760, height: 1800 }, bounds), 2);
+	assert.equal(frameMatchesWindow({ width: 2761, height: 1799 }, bounds), 2);
+	// Mixed scales, the whole display, a shadowed or truncated frame: refused.
+	assert.equal(frameMatchesWindow({ width: 2760, height: 900 }, bounds), null);
+	assert.equal(frameMatchesWindow({ width: 3024, height: 1964 }, bounds), null);
+	assert.equal(frameMatchesWindow({ width: 2900, height: 1940 }, bounds), null);
+	assert.equal(frameMatchesWindow({ width: 1, height: 1 }, bounds), null);
+	assert.equal(frameMatchesWindow({ width: 1380, height: 900 }, null), null);
+	assert.equal(
+		frameMatchesWindow({ width: 1380, height: 900 }, { Width: 0, Height: 0 }),
+		null,
+	);
+	assert.equal(
+		SCREENCAPTURE_METHOD,
+		"screencapture -l (real vibrancy, pending Mac measurement)",
+	);
+	const source = readFileSync(HARNESS, "utf8");
+	assert.doesNotMatch(source, /"screencapture -x -o -l[^"]*: real vibrancy"/);
 });
 
 /* ---------------------------------------------------------------- CLI */
@@ -1049,6 +1298,10 @@ test("attach: an env-governed daemon is BLOCKED (exit 3) and no app is launched;
 			blocked.all.includes(envGovernedBlockedMessage(port)),
 			blocked.all,
 		);
+		// Raised after the rig exists, yet still reads as BLOCKED, not a run
+		// failure (QA r1 nit).
+		assert.doesNotMatch(blocked.all, /FAILED:|\bfailed:/);
+		assert.match(blocked.all, /\[mac-proof\] blocked/);
 		assert.ok(
 			!existsSync(join(rigOf(blockedRig), "fake-app-seen.json")),
 			"no app was launched",
@@ -1241,6 +1494,294 @@ test("the daemon client: its allowlist holds no prompt/send/engage path, and it 
 		trackPids(join(TREE, "none"), cfg);
 		daemon.kill("SIGKILL");
 	}
+});
+
+test("validateOptions: themes are an own-property allowlist, repeats refused; config-root needs its root", () => {
+	const base = [
+		"--app",
+		"/x.app",
+		"--out",
+		"/tmp/o",
+		"--capture",
+		"capturepage",
+	];
+	for (const theme of [
+		"constructor",
+		"toString",
+		"__proto__",
+		"hasOwnProperty",
+	])
+		assert.throws(
+			() => validateOptions(parseArgs([...base, "--theme", theme])),
+			(e) => e instanceof Refusal && /unknown --theme/.test(e.message),
+			theme,
+		);
+	assert.throws(
+		() => validateOptions(parseArgs([...base, "--theme", "dark,dark"])),
+		(e) => e instanceof Refusal && /--theme is repeated/.test(e.message),
+	);
+	assert.doesNotThrow(() =>
+		validateOptions(parseArgs([...base, "--theme", "light,dark"])),
+	);
+	// Review r1 R1-8: a Refusal naming the flag, not a TypeError from join(null).
+	assert.throws(
+		() => validateOptions(parseArgs([...base, "--backend", "config-root"])),
+		(e) =>
+			e instanceof Refusal && /needs --backend-config-root/.test(e.message),
+	);
+	const run = runHarness([
+		"--app",
+		fakeApp("CrNoRoot"),
+		"--out",
+		join(TREE, "cr-noroot-out"),
+		"--capture",
+		"capturepage",
+		"--backend",
+		"config-root",
+	]);
+	assert.equal(run.status, 2, run.all);
+	assert.match(run.all, /needs --backend-config-root/);
+	assert.doesNotMatch(run.all, /must be of type string/);
+});
+
+test("the daemon client never leaves the configured backend's origin", async () => {
+	// Review r1 R1-9 / QA r1 Q5-1: an absolute URL, `//host` or `/\\host` used to
+	// pass the pathname allowlist and go to that host with the bearer token.
+	for (const p of [
+		"http://10.255.255.1:9/health",
+		"https://example.com/health",
+		"//10.255.255.1/health",
+		"/\\10.255.255.1/health",
+		"health",
+		"",
+	])
+		assert.match(
+			daemonRequestProblem("GET", p),
+			/only a path on the configured loopback backend/,
+			JSON.stringify(p),
+		);
+	assert.equal(daemonRequestProblem("GET", "/health"), null);
+	// The client throws before any connection is attempted (a counting server
+	// on the "other" origin would see nothing; here no socket is opened at all).
+	const listener = createServer((socket) => socket.destroy());
+	let hits = 0;
+	listener.on("connection", () => hits++);
+	await new Promise((r) => listener.listen(0, "127.0.0.1", r));
+	const other = `http://127.0.0.1:${listener.address().port}`;
+	try {
+		await assert.rejects(
+			daemonRequest("http://127.0.0.1:9", "GET", `${other}/health`),
+			Refusal,
+		);
+		await assert.rejects(
+			daemonRequest(
+				"http://127.0.0.1:9",
+				"GET",
+				`//127.0.0.1:${listener.address().port}/health`,
+			),
+			Refusal,
+		);
+		assert.equal(hits, 0);
+	} finally {
+		listener.close();
+	}
+});
+
+test("the stray-pid backstop kills only rig-matched pids, and a group only when its leader is one", async () => {
+	// Review r1 R1-10: every swept or recorded pid also got `kill(-pid)`, widening
+	// one stray into its whole group. Here a NON-rig leader L owns a group with a
+	// non-rig member M and a rig member R (cwd inside the rig). Passing [L, R]
+	// must kill R alone; L (not rig-matched) and M (shares the pgid) survive.
+	const rig = join(TREE, "backstop-rig", "mac-proof-zzzzzz");
+	const elsewhere = join(TREE, "backstop-elsewhere");
+	mkdirSync(rig, { recursive: true });
+	mkdirSync(elsewhere, { recursive: true });
+	const pidsFile = join(elsewhere, "pids.json");
+	const keep = `setTimeout(()=>process.exit(0),${FIXTURE_CAP_MS});setInterval(()=>{},1000)`;
+	const leaderSrc = `
+const { spawn } = require("node:child_process");
+const fs = require("node:fs");
+const keep = ${JSON.stringify(keep)};
+const m = spawn(process.execPath, ["-e", keep], { cwd: ${JSON.stringify(elsewhere)}, stdio: "ignore" });
+const r = spawn(process.execPath, ["-e", keep], { cwd: ${JSON.stringify(rig)}, stdio: "ignore" });
+fs.writeFileSync(${JSON.stringify(pidsFile)}, JSON.stringify({ m: m.pid, r: r.pid }));
+${PARENT_WATCH}`;
+	const leader = spawn(process.execPath, ["-e", leaderSrc], {
+		cwd: elsewhere,
+		detached: true,
+		stdio: "ignore",
+	});
+	leftovers.push(leader.pid);
+	let pids = null;
+	for (let i = 0; i < 100 && !pids; i++) {
+		if (existsSync(pidsFile)) pids = JSON.parse(readFileSync(pidsFile, "utf8"));
+		else await new Promise((r) => setTimeout(r, 50));
+	}
+	assert.ok(pids, "fixture started");
+	leftovers.push(pids.m, pids.r);
+	try {
+		const matches = rigMatcher({ rig });
+		assert.equal(processFacts(pids.r).pgid, leader.pid, "R shares L's group");
+		assert.equal(processFacts(pids.m).pgid, leader.pid, "M shares L's group");
+		assert.equal(matches(processFacts(pids.r)), true);
+		assert.equal(matches(processFacts(leader.pid)), false);
+		const left = await killRigMatched([leader.pid, pids.r], matches);
+		assert.deepEqual(left, []);
+		assert.equal(alive(pids.r), false, "the rig process is killed");
+		assert.equal(alive(leader.pid), true, "a non-rig leader is not killed");
+		assert.equal(
+			alive(pids.m),
+			true,
+			"a non-rig process sharing the group survives",
+		);
+		// The env and argv rules: HOME inside the rig, or the run's config root.
+		assert.equal(
+			matches({ cwd: "/", text: `\0node\0HOME=${rig}/home\0` }),
+			true,
+		);
+		assert.equal(
+			matches({ cwd: "/", text: `\0node\0HOME=${rig}-other/home\0` }),
+			false,
+			"a sibling path that merely starts with the rig's name is not the rig",
+		);
+		assert.equal(
+			rigMatcher({ rig, configRoot: "/d/cfg" })({
+				cwd: "/",
+				text: "\0LOCAL_OPERATOR_CONFIG_DIR=/d/cfg\0",
+			}),
+			true,
+		);
+		assert.equal(matches(null), false);
+	} finally {
+		for (const pid of [pids?.m, pids?.r, leader.pid])
+			try {
+				process.kill(pid, "SIGKILL");
+			} catch {}
+	}
+});
+
+test("relay ownership: every listener on the port must be one of the given pids", async () => {
+	const server = createServer();
+	await new Promise((r) => server.listen(0, "127.0.0.1", r));
+	const { port } = server.address();
+	try {
+		assert.equal(portListenerOwned(port, [process.pid]), true);
+		assert.equal(portListenerOwned(port, [process.ppid]), false);
+	} finally {
+		await new Promise((r) => server.close(r));
+	}
+	assert.equal(
+		portListenerOwned(port, [process.pid]),
+		false,
+		"nothing listens now",
+	);
+});
+
+test("config-root: a port someone else already listens on is refused before the rig exists", async () => {
+	// Review r1 R1-5: a foreign listener on network.port made the loop think the
+	// relay was up while ours died with EADDRINUSE.
+	const squatter = createServer();
+	await new Promise((r) => squatter.listen(0, "127.0.0.1", r));
+	const { port } = squatter.address();
+	const device = rigDevice("cr-busyport", `network:\n  port: ${port}\n`);
+	const rigRoot = join(TREE, "cr-busyport-rig");
+	try {
+		const run = spawnSync(
+			process.execPath,
+			[
+				HARNESS,
+				"--app",
+				fakeApp("CrBusyPort"),
+				"--out",
+				join(TREE, "cr-busyport-out"),
+				"--rig-root",
+				rigRoot,
+				"--capture",
+				"capturepage",
+				"--lop",
+				fakeLop(),
+				"--backend-config-root",
+				device.config,
+				"--session",
+				"ce618964c88e",
+			],
+			{ encoding: "utf8", timeout: 60_000, env: harnessEnv() },
+		);
+		const all = `${run.stdout}\n${run.stderr}`;
+		assert.equal(run.status, 2, all);
+		assert.match(all, new RegExp(`already listens on 127\\.0\\.0\\.1:${port}`));
+		assert.ok(
+			!existsSync(rigRoot) || readdirSync(rigRoot).length === 0,
+			"no rig was made",
+		);
+		assert.ok(
+			!existsSync(join(device.config, "fake-relay-seen.json")),
+			"no relay spawned",
+		);
+	} finally {
+		squatter.close();
+	}
+});
+
+test("a rig root that is a dangling symlink into an operator root refuses with exit 2 (QA r1 Q1-1)", () => {
+	const home = join(TREE, "dangle-cli-home");
+	mkdirSync(home, { recursive: true });
+	const target = join(home, ".config", "Local Operator");
+	const link = join(TREE, "dangle-cli-link");
+	symlinkSync(target, link);
+	for (const extra of [[], ["--dry-run"]]) {
+		const run = runHarness(
+			[
+				"--app",
+				fakeApp("DangleCli"),
+				"--out",
+				join(TREE, "dangle-cli-out"),
+				"--rig-root",
+				link,
+				"--capture",
+				"capturepage",
+				"--lop",
+				fakeLop(),
+				...extra,
+			],
+			{ HOME: home },
+		);
+		assert.equal(run.status, 2, run.all);
+		assert.match(run.all, /refused: .*operator's/);
+		assert.doesNotMatch(run.all, /ENOENT|\n\s+at /);
+	}
+	assert.equal(existsSync(target), false, "the operator dir was not created");
+});
+
+test("a rig root and --out containing spaces capture normally (review r1 R1-2)", () => {
+	const rigRoot = join(TREE, "proof runs", "rig root");
+	const out = join(TREE, "proof runs", "out dir");
+	const run = runHarness([
+		"--app",
+		fakeApp("Spaced"),
+		"--out",
+		out,
+		"--rig-root",
+		rigRoot,
+		"--capture",
+		"capturepage",
+		"--lop",
+		fakeLop(),
+		"--scene",
+		"library",
+	]);
+	const rig = rigOf(rigRoot);
+	trackPids(rig);
+	assert.equal(run.status, 0, run.all);
+	for (const theme of ["dark", "light"])
+		assert.deepEqual(pngSize(readFileSync(join(out, `library-${theme}.png`))), {
+			width: 1,
+			height: 1,
+		});
+	// Nothing was written beside the spaced directory (the old truncation target).
+	assert.equal(existsSync(join(TREE, "proof")), false);
+	for (const [name, pid] of Object.entries(fixturePids(rig)))
+		assert.equal(alive(pid), false, `${name} (pid ${pid}) survived`);
 });
 
 test("lop is only ever run as `serve` or `network serve`", () => {
@@ -1502,7 +2043,7 @@ test("--timeout and SIGTERM mid-run both reap the app, its re-parented helper, t
 	const app = fakeApp("Hang", { hang: true });
 	const common = ["--app", app, "--capture", "capturepage", "--lop", lop];
 
-	// 1. The timeout path: a wedged app, --timeout 3.
+	// 1. The timeout path: a wedged app, --timeout 6 (whole-run: it includes the daemon start, so the app is up well before it).
 	const timeoutRoot = join(TREE, "hang-timeout-rig");
 	const timedOut = runHarness([
 		...common,
@@ -1511,12 +2052,12 @@ test("--timeout and SIGTERM mid-run both reap the app, its re-parented helper, t
 		"--rig-root",
 		timeoutRoot,
 		"--timeout",
-		"3",
+		"6",
 	]);
 	const timeoutRig = rigOf(timeoutRoot);
 	trackPids(timeoutRig);
 	assert.equal(timedOut.status, 1, timedOut.all);
-	assert.match(timedOut.all, /exceeded --timeout 3 s/);
+	assert.match(timedOut.all, /exceeded --timeout 6 s/);
 	const timeoutPids = fixturePids(timeoutRig);
 	assert.deepEqual(
 		Object.keys(timeoutPids).sort(),
@@ -1526,64 +2067,167 @@ test("--timeout and SIGTERM mid-run both reap the app, its re-parented helper, t
 	for (const [name, pid] of Object.entries(timeoutPids))
 		assert.equal(alive(pid), false, `timeout: ${name} (pid ${pid}) survived`);
 
-	// 2. The SIGTERM path: kill the harness once everything is up.
-	const termRoot = join(TREE, "hang-term-rig");
-	mkdirSync(termRoot, { recursive: true });
-	const harness = spawn(
-		process.execPath,
-		[
-			HARNESS,
-			...common,
-			"--out",
-			join(TREE, "hang-term-out"),
-			"--rig-root",
-			termRoot,
-			"--timeout",
-			"60",
-		],
-		{
-			env: harnessEnv(),
-			stdio: ["ignore", "pipe", "pipe"],
-		},
+	// The receipt names the cause, not the knock-on "app exited" (QA r1 Q4-2).
+	const timeoutReceipt = JSON.parse(
+		readFileSync(join(TREE, "hang-timeout-out", "receipt.json"), "utf8"),
 	);
-	leftovers.push(harness.pid);
-	let output = "";
-	harness.stdout.on("data", (c) => {
-		output += c;
-	});
-	harness.stderr.on("data", (c) => {
-		output += c;
-	});
-	const exited = new Promise((done) =>
-		harness.on("exit", (code, signal) => done({ code, signal })),
-	);
-	let pids = {};
-	for (let i = 0; i < 200; i++) {
-		const rigs = readdirSync(termRoot).filter((n) =>
-			n.startsWith("mac-proof-"),
+	assert.match(timeoutReceipt.error, /exceeded --timeout 6 s/);
+	assert.deepEqual(timeoutReceipt.endedBy, { timeoutS: 6 });
+
+	// 2. The signal paths: SIGTERM, and SIGHUP (a closed terminal or dropped
+	// ssh), which used to kill the harness with no teardown and leak the daemon
+	// and its standby (QA r1 Q4-1, review r1 R1-4).
+	for (const sig of ["SIGTERM", "SIGHUP"]) {
+		const tag = sig.toLowerCase();
+		const termRoot = join(TREE, `hang-${tag}-rig`);
+		const termOut = join(TREE, `hang-${tag}-out`);
+		mkdirSync(termRoot, { recursive: true });
+		const harness = spawn(
+			process.execPath,
+			[
+				HARNESS,
+				...common,
+				"--out",
+				termOut,
+				"--rig-root",
+				termRoot,
+				"--timeout",
+				"60",
+			],
+			{
+				env: harnessEnv(),
+				stdio: ["ignore", "pipe", "pipe"],
+			},
 		);
-		if (rigs.length === 1) {
-			pids = fixturePids(join(termRoot, rigs[0]));
-			if (Object.keys(pids).length === 4) break;
+		leftovers.push(harness.pid);
+		let output = "";
+		harness.stdout.on("data", (c) => {
+			output += c;
+		});
+		harness.stderr.on("data", (c) => {
+			output += c;
+		});
+		const exited = new Promise((done) =>
+			harness.on("exit", (code, signal) => done({ code, signal })),
+		);
+		let pids = {};
+		for (let i = 0; i < 200; i++) {
+			const rigs = readdirSync(termRoot).filter((n) =>
+				n.startsWith("mac-proof-"),
+			);
+			if (rigs.length === 1) {
+				pids = fixturePids(join(termRoot, rigs[0]));
+				if (Object.keys(pids).length === 4) break;
+			}
+			await new Promise((r) => setTimeout(r, 100));
 		}
-		await new Promise((r) => setTimeout(r, 100));
+		trackPids(rigOf(termRoot));
+		assert.deepEqual(
+			Object.keys(pids).sort(),
+			["app", "reparented", "serve", "standby"],
+			output,
+		);
+		for (const [name, pid] of Object.entries(pids))
+			assert.equal(alive(pid), true, `${name} is up before ${sig}`);
+		harness.kill(sig);
+		const { code, signal } = await exited;
+		// Exit status 1 (not death by signal) proves the harness's own interruption
+		// path ran the teardown rather than dying with the tree still up.
+		assert.equal(signal, null, output);
+		assert.equal(code, 1, output);
+		assert.match(output, new RegExp(`interrupted by ${sig}`));
+		// The re-parented helper and the standby carry only the fixture cap (no
+		// parent watch), so for those two this is the harness's reap or nothing.
+		for (const [name, pid] of Object.entries(pids))
+			assert.equal(alive(pid), false, `${sig}: ${name} (pid ${pid}) survived`);
+		const receipt = JSON.parse(
+			readFileSync(join(termOut, "receipt.json"), "utf8"),
+		);
+		assert.equal(receipt.error, `interrupted by ${sig}`);
+		assert.deepEqual(receipt.endedBy, { signal: sig });
+		assert.equal(receipt.verdict, "failed");
+		assert.ok(
+			receipt.reap.serve && receipt.reap.lop,
+			JSON.stringify(receipt.reap),
+		);
 	}
-	trackPids(rigOf(termRoot));
-	assert.deepEqual(
-		Object.keys(pids).sort(),
-		["app", "reparented", "serve", "standby"],
-		output,
-	);
-	for (const [name, pid] of Object.entries(pids))
-		assert.equal(alive(pid), true, `${name} is up before the signal`);
-	harness.kill("SIGTERM");
-	const { code, signal } = await exited;
-	// Exit status 1 (not death by signal) proves the harness's own interruption
-	// path ran the teardown rather than dying with the tree still up.
-	assert.equal(signal, null, output);
-	assert.equal(code, 1, output);
-	// The re-parented helper and the standby carry only the fixture cap (no
-	// parent watch), so for those two this is the harness's reap or nothing.
-	for (const [name, pid] of Object.entries(pids))
-		assert.equal(alive(pid), false, `SIGTERM: ${name} (pid ${pid}) survived`);
+});
+
+test("--timeout bounds the WHOLE run from harness start, not just the app phase", () => {
+	// A config-root run whose remote row never appears: --peer-wait 30 would
+	// wait 30 s, but the whole-run --timeout 3 stops it first, before any app
+	// launch (review r1 R1-6, QA r1 Q4-3; before, `--timeout 5` measured 16 s).
+	const relayPort = 20000 + Math.floor(Math.random() * 20000);
+	const device = rigDevice("cr-wholerun", `network:\n  port: ${relayPort}\n`);
+	const rigRoot = join(TREE, "cr-wholerun-rig");
+	const out = join(TREE, "cr-wholerun-out");
+	const began = Date.now();
+	const run = runHarness([
+		"--app",
+		fakeApp("WholeRun"),
+		"--out",
+		out,
+		"--rig-root",
+		rigRoot,
+		"--capture",
+		"capturepage",
+		"--lop",
+		fakeLop(),
+		"--backend-config-root",
+		device.config,
+		"--session",
+		"ce618964c88e",
+		"--scene",
+		"conversation",
+		"--theme",
+		"dark",
+		"--peer-wait",
+		"30",
+		"--timeout",
+		"3",
+	]);
+	const elapsed = Date.now() - began;
+	const rig = rigOf(rigRoot);
+	trackPids(rig, device.config);
+	assert.equal(run.status, 1, run.all);
+	// Whichever pre-app phase it was in when the bound hit (on node2: the
+	// remote-session wait); never the app phase.
+	assert.match(run.all, /exceeded --timeout 3 s \((waiting|starting) /);
+	assert.ok(!existsSync(join(rig, "fake-app.pid")), "no app was launched");
+	// 3 s of work plus the reap (two 5 s group deadlines at most); far under 30.
+	assert.ok(elapsed < 20_000, `took ${elapsed} ms`);
+	const receipt = JSON.parse(readFileSync(join(out, "receipt.json"), "utf8"));
+	assert.deepEqual(receipt.endedBy, { timeoutS: 3 });
+	for (const [name, pid] of Object.entries(fixturePids(rig, device.config)))
+		assert.equal(alive(pid), false, `${name} (pid ${pid}) survived`);
+});
+
+test("a child that cannot be spawned ends the run through the full teardown, not a crash", () => {
+	// A non-executable --lop: spawn emits 'error' (EACCES). With no listener
+	// that was an uncaught exception, so no receipt and none of the async reaps
+	// (review r1 R1-4). Now it is a clean FAILED with a receipt naming it.
+	const lop = join(TREE, "lop-not-executable");
+	writeFileSync(lop, "#!/bin/sh\nexit 0\n");
+	chmodSync(lop, 0o644);
+	const out = join(TREE, "spawn-error-out");
+	const run = runHarness([
+		"--app",
+		fakeApp("SpawnError"),
+		"--out",
+		out,
+		"--rig-root",
+		join(TREE, "spawn-error-rig"),
+		"--capture",
+		"capturepage",
+		"--lop",
+		lop,
+		"--timeout",
+		"20",
+	]);
+	assert.equal(run.status, 1, run.all);
+	assert.doesNotMatch(run.all, /Uncaught|node:internal|\n\s+at /);
+	assert.match(run.all, /FAILED: lop serve could not run: .*EACCES/);
+	const receipt = JSON.parse(readFileSync(join(out, "receipt.json"), "utf8"));
+	assert.match(receipt.error, /lop serve could not run: .*EACCES/);
+	assert.equal(receipt.verdict, "failed");
 });

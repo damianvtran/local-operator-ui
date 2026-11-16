@@ -1633,6 +1633,8 @@ const devDriverScript = (() => {
 				]),
 			].map((name) => join(appData, name)),
 			realpath: realpathOrSelf,
+			// APFS is case-insensitive by default: compare folded there (R1-3).
+			caseInsensitive: process.platform === "darwin",
 		});
 	} catch (error) {
 		// A path Electron cannot answer is not a profile this gate can vouch for.

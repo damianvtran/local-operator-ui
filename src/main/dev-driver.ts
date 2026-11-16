@@ -442,6 +442,13 @@ function within(child: string, parent: string): boolean {
  * `realpath` is injected so a test can model symlinks; the shipped caller passes
  * `fs.realpathSync` wrapped to fall back to the input for a missing path (a
  * missing default root cannot be the profile in use).
+ *
+ * `caseInsensitive` (main passes `process.platform === "darwin"`): macOS's
+ * default APFS volume folds case and `fs.realpathSync` keeps the caller's
+ * spelling, so `--user-data-dir=~/Library/Application Support/local operator`
+ * IS the default profile there although the strings differ. The comparison then
+ * folds case and Unicode normalisation; Linux stays exact, its filesystems
+ * being case-sensitive (review r1 R1-3 on PR #1936).
  */
 export function resolveDevDriverScript(input: {
 	env: Record<string, string | undefined>;
@@ -450,6 +457,7 @@ export function resolveDevDriverScript(input: {
 	userData: string;
 	defaultUserData: readonly string[];
 	realpath: (path: string) => string;
+	caseInsensitive?: boolean;
 }): DevDriverScriptGate {
 	const raw = input.env[DEV_DRIVER_SCRIPT_ENV]?.trim() ?? "";
 	if (raw === "") return { honoured: false, scriptPath: null, refusal: null };
@@ -470,10 +478,12 @@ export function resolveDevDriverScript(input: {
 		return refuse(`${DEV_DRIVER_SCRIPT_ENV} must be an absolute path`);
 	if (!input.userData.startsWith("/"))
 		return refuse("the profile path is not absolute");
-	const profile = input.realpath(input.userData);
+	const fold = (path: string): string =>
+		input.caseInsensitive ? path.normalize("NFC").toLowerCase() : path;
+	const profile = fold(input.realpath(input.userData));
 	for (const candidate of input.defaultUserData) {
 		if (!candidate.startsWith("/")) continue;
-		const root = input.realpath(candidate);
+		const root = fold(input.realpath(candidate));
 		if (within(profile, root) || within(root, profile))
 			return refuse(
 				"the profile is the app's default user data (or inside/containing it); a script runs only in a scratch --user-data-dir",

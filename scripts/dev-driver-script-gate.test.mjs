@@ -183,6 +183,44 @@ test("S1: an armed inactive or headless launch on a scratch profile is honoured"
 	);
 });
 
+test("S1: on a case-insensitive volume a case variant of the default profile refuses (review r1 R1-3)", () => {
+	// macOS APFS folds case and fs.realpathSync keeps the caller's spelling, so
+	// `local operator` IS the default profile there. main passes
+	// caseInsensitive = (platform === "darwin").
+	for (const userData of [
+		"/Users/op/Library/Application Support/local operator",
+		"/Users/op/library/application support/LOCAL OPERATOR/Default",
+		"/users/op/library",
+	]) {
+		const gate = resolveDevDriverScript(
+			armedGate({ userData, caseInsensitive: true }),
+		);
+		assert.equal(gate.honoured, false, userData);
+		assert.match(gate.refusal, /default user data/, userData);
+		// Case-sensitive (Linux): a different spelling is a different directory.
+		assert.equal(
+			resolveDevDriverScript(armedGate({ userData })).honoured,
+			true,
+			userData,
+		);
+	}
+	// NFD vs NFC spellings of the same name fold together too.
+	assert.equal(
+		resolveDevDriverScript(
+			armedGate({
+				userData: "/Users/op/Library/Application Support/Caf\u0065\u0301",
+				defaultUserData: ["/Users/op/Library/Application Support/caf\u00e9"],
+				caseInsensitive: true,
+			}),
+		).honoured,
+		false,
+	);
+	assert.match(
+		read("src/main/index.ts"),
+		/realpath: realpathOrSelf,\s*\/\/[^\n]*\n\s*caseInsensitive: process\.platform === "darwin",/,
+	);
+});
+
 test("S1: the preload's script argument is exact, and never confused with the frames argument", () => {
 	assert.equal(devDriverScriptArgument(), DEV_DRIVER_SCRIPT_ARG);
 	assert.equal(

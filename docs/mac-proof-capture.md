@@ -37,8 +37,21 @@ against the real guard code and prints PASS/FAIL per case; it exits 0 only when
 every case refused. `--help` lists every flag.
 
 Exit codes: `0` every frame captured; `1` the run failed (a step, a capture, a
-leak); `2` refused before anything was spawned; `3` BLOCKED (a permission or an
-access decision only the operator can make).
+leak, a signal, the `--timeout`); `2` refused before anything was spawned; `3`
+BLOCKED (a permission or an access decision only the operator can make). Both the
+closing line and `receipt.json` name what ended a run early (`interrupted by
+SIGHUP`, `the run exceeded --timeout 180 s`, `the app could not run: …`).
+
+**Run it so the harness can always reap.** `--timeout` (default 180, max 290)
+bounds the whole run from the moment the harness starts: relay, `/health`,
+`--peer-wait` and the app all stop at it. The reap runs after it, typically a few
+seconds; its escalation deadlines (app tree, then 5.5 s per lop group, then the
+exact-pid sweeps) put the worst case near 20 s, so allow 60 s. SIGINT, SIGTERM and SIGHUP
+all run that reap; **SIGKILL cannot be caught**, and a SIGKILLed harness leaves
+the rig's `lop serve` (own process groups) running. An agent therefore runs the
+command as a background job (lop `bash` with `background: true`), or gives its
+tool call a timeout of at least `--timeout` + 60 s. lop's `bash` default of 120 s
+is below the default `--timeout` and will SIGKILL the harness.
 
 ## What happens, and why it is safe on the operator's own desktop
 
@@ -46,15 +59,21 @@ access decision only the operator can make).
    `.app` bundle with a `Contents/Info.plist` naming an existing executable.
    `--out`, the rig and the profile must not be, sit inside, or contain any of
    the operator's roots (`~/Library/Application Support/{Local Operator,
-   local-operator-ui,Electron}`, the Linux `~/.config/` equivalents, and
-   `~/.local-operator`), compared by realpath so a symlink cannot smuggle one in.
+   local-operator-ui,Electron}`, the Linux `~/.config/` and `$XDG_CONFIG_HOME`
+   equivalents, and `~/.local-operator`), compared by realpath so a symlink
+   cannot smuggle one in. A dangling symlink is followed to its target, and on
+   macOS the comparison folds case (APFS is case-insensitive).
    Agent scratchpads (`~/.local-operator/sessions/<id>/scratchpad`) are the one
    carve-out for the rig and `--out`. Only `--window-mode inactive` (window-server
    capture) or `headless` (in-app capture) run; `normal` never does.
 2. **Screen Recording is checked without a prompt.** `CGPreflightScreenCaptureAccess`
    through JXA (it never prompts; `CGRequestScreenCaptureAccess`, which would, is
    never called). If it is not granted to the host process (the terminal or agent
-   app), the run is BLOCKED with that sentence.
+   app), the run is BLOCKED with that sentence. If JXA cannot call the preflight
+   at all, the run is also BLOCKED: there is no guessing fallback, because every
+   other signal (window names) answers yes for system UI without the permission.
+   Each captured PNG must also measure the window's `CGWindowList` bounds times
+   one backing scale, or the frame is refused.
 3. **A backend the app only ever attaches to** (see *Backend modes*).
 4. **The app is exec'd directly**, never through `open` (which drops the
    environment and hands the request to the operator's running instance):
@@ -87,9 +106,11 @@ access decision only the operator can make).
    groups); then the app's recorded descendants by exact pid, and, last, any
    process whose working directory is still the rig (everything was spawned with
    `cwd=<rig>`, a fresh mkdtemp path, so nothing else can be there). The same
-   single teardown runs on success, on failure, on `--timeout` and on
-   SIGTERM/SIGINT; a signal that lands mid-reap waits for that reap. A survivor
-   fails the run.
+   single teardown runs on success, on failure, on `--timeout`, on a spawn
+   error of any child, and on SIGTERM/SIGINT/SIGHUP; a signal that lands
+   mid-reap waits for that reap. The stray-pid backstop kills a pid only when it
+   is still this run's at kill time (cwd, argv or env names the rig or its config
+   root), and its group only when that pid leads it. A survivor fails the run.
 
 The app side has its own containment: a scripted run is launcher-bound (it quits
 when the harness dies) and capped at 300 s; it banners nothing; and an armed boot
@@ -130,8 +151,10 @@ the harness writes.
     measured on node2 as writes to the real audit log;
   - runs the lop processes with `HOME=--backend-home` (default
     `<dirname(root)>/home`; the operator's real home is refused);
-  - starts the rig's relay first, in the foreground: `lop network serve --port
-    <network.port>`, waits for it to listen, then starts `lop serve`;
+  - refuses if anything already listens on `network.port`; starts the rig's
+    relay first, in the foreground: `lop network serve --port <network.port>`,
+    waits for it to listen, confirms every listener on that port is the relay
+    it spawned (or its children), then starts `lop serve`;
   - before launching the app, polls `GET /v1/desktop/sessions?include_peers=true`
     until `--session` is listed with `locality: "remote"` (bounded by
     `--peer-wait`, default 120 s - the first reads on node2 were empty until
@@ -198,7 +221,9 @@ installed app.
 
 ## What a frame may claim
 
-- `screencapture` frames (the darwin default) are labelled **real vibrancy**.
+- `screencapture` frames (the darwin default) are labelled **`screencapture -l
+  (real vibrancy, pending Mac measurement)`** until the measurement in AGENTS.md
+  "Capturing the frame" lands.
   The backdrop blurred into them is whatever sat behind the inactive window on
   the operator's screen during the run; the receipt says so, and reviewers judge
   what is visible in it.
@@ -219,7 +244,8 @@ supervisor, the env/argv builder, the daemon-client and lop allowlists, the thre
 backend modes end to end, token confinement and the reap.
 
 Mac-only, **pending measurement** on a real Mac:
-- the Screen Recording preflight result (and its JXA fallback);
+- the Screen Recording preflight result (BLOCKED when JXA cannot call it), and
+  the PNG-size-equals-bounds check at the Mac's backing scale;
 - `getMediaSourceId()` agreeing with the JXA `CGWindowList` entry;
 - `screencapture -x -o -l` of a non-front `inactive` window carrying real
   vibrancy, with no activation or focus change (sample the frontmost app by pid);

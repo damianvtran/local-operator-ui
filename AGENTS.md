@@ -1570,7 +1570,10 @@ and reaps. `-l` names one window by its CGWindowID, so nothing is activated,
 raised or focused, and the harness refuses a run whose app reports `normal` or
 `focused=true`. **Claim pending Mac measurement**: that `-l` of a non-front
 `inactive` window carries real vibrancy with no activation or focus change has
-not yet been measured on a Mac; until it has, frames from this path say so.
+not yet been measured on a Mac; until it has, frames from this path say so
+(receipt method `screencapture -l (real vibrancy, pending Mac measurement)`).
+Run it as a background job or with a caller timeout of at least `--timeout` +
+60 s: a SIGKILLed harness cannot reap the rig's `lop serve`.
 
 **Driving the renderer is a supported path now, not a rig per agent.**
 `scripts/renderer-driver.mjs` boots the built app headless in an isolated

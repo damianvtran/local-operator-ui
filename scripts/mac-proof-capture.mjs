@@ -52,7 +52,9 @@ import {
 	readdirSync,
 	readlinkSync,
 	realpathSync,
+	rmSync,
 	statSync,
+	symlinkSync,
 	writeFileSync,
 } from "node:fs";
 import { connect, createServer } from "node:net";
@@ -103,6 +105,16 @@ export function appNames(packageJsonPath = join(HERE, "..", "package.json")) {
 /** The port the operator's own daemon listens on. Never an isolated backend's. */
 export const OPERATOR_PORT = 1111;
 
+/*
+ * What a window-server frame may claim, until the Mac measurement in AGENTS.md
+ * ("Capturing the frame") lands: the method is the one that CAN carry real
+ * vibrancy, not yet shown to on this rig. Every place a frame is labelled
+ * (receipt, frame entry, dry-run plan) uses this one string so it cannot drift
+ * from the doc (review r1 R1-6, QA r1 Q4-3).
+ */
+export const SCREENCAPTURE_METHOD =
+	"screencapture -l (real vibrancy, pending Mac measurement)";
+
 export const SCENES = Object.freeze([
 	"conversation",
 	"files",
@@ -130,10 +142,15 @@ const SESSION_ID = /^[a-f0-9]{12}$/;
  * still recognise the real roots. Both platforms' userData layouts are listed on
  * every platform: a guard that branched on the OS would be untested on the Mac
  * where it matters.
+ *
+ * Linux userData follows `$XDG_CONFIG_HOME` when it is set (Electron's
+ * `appData`), the same rule `operatorDesktopTokenPath` uses, so that location is
+ * an operator root too (QA r1 Q1-2); `~/.config` stays listed regardless.
  */
 export function operatorRoots({
 	homes = [os.userInfo().homedir, process.env.HOME],
 	names = appNames(),
+	xdgConfigHome = process.env.XDG_CONFIG_HOME,
 } = {}) {
 	const appDirs = [...new Set([names.productName, names.name, "Electron"])];
 	const roots = [];
@@ -144,27 +161,58 @@ export function operatorRoots({
 		}
 		roots.push(join(home, ".local-operator"));
 	}
-	return roots;
+	if (xdgConfigHome && isAbsolute(xdgConfigHome))
+		for (const dir of appDirs) roots.push(join(xdgConfigHome, dir));
+	return [...new Set(roots)];
 }
 
 /**
  * realpath that also works for a path that does not exist yet: resolve the
  * nearest existing ancestor and append the rest. Comparing realpaths (never
  * strings) is what defeats a symlink whose target lands in an operator root.
+ *
+ * A DANGLING symlink (its target does not exist yet) makes realpath fail on the
+ * link itself, and walking up past it would compare the link's own location
+ * instead of where a later `mkdir` would land (QA r1 Q1-1: a link into a
+ * not-yet-created `~/.config/Local Operator` passed). So a component that
+ * `lstat`s as a symlink is followed with `readlink` and the target resolved in
+ * its place; `depth` bounds a link cycle (ELOOP), the kernel's own limit.
  */
-export function physical(path) {
+export function physical(path, depth = 0) {
 	let head = resolve(path);
 	const tail = [];
 	for (;;) {
 		try {
-			return join(realpathSync(head), ...tail.reverse());
-		} catch {
-			const parent = dirname(head);
-			if (parent === head) return resolve(path);
-			tail.push(basename(head));
-			head = parent;
-		}
+			return join(realpathSync(head), ...[...tail].reverse());
+		} catch {}
+		let target = null;
+		try {
+			if (lstatSync(head).isSymbolicLink()) target = readlinkSync(head);
+		} catch {}
+		if (target !== null && depth < 40)
+			return physical(
+				join(resolve(dirname(head), target), ...[...tail].reverse()),
+				depth + 1,
+			);
+		const parent = dirname(head);
+		if (parent === head) return resolve(path);
+		tail.push(basename(head));
+		head = parent;
 	}
+}
+
+/**
+ * The form two physical paths are COMPARED in. macOS's default APFS volume is
+ * case-insensitive and Node's JS `realpathSync` keeps the caller's spelling, so
+ * `…/application support/local operator` is the operator's profile there even
+ * though the strings differ (review r1 R1-3). On darwin the comparison folds
+ * case and Unicode normalisation (HFS+/APFS hand back NFD names); elsewhere it
+ * is exact, because Linux filesystems are case-sensitive and folding there
+ * would refuse paths that are genuinely different. `platform` is injectable so
+ * the Linux test suite exercises the darwin rule.
+ */
+export function comparablePath(path, platform = process.platform) {
+	return platform === "darwin" ? path.normalize("NFC").toLowerCase() : path;
 }
 
 function within(child, parent) {
@@ -192,18 +240,20 @@ export function operatorPathProblem(
 	label,
 	path,
 	roots,
-	{ allowScratchpad = true } = {},
+	{ allowScratchpad = true, platform = process.platform } = {},
 ) {
 	if (!isAbsolute(path))
 		return `${label} must be an absolute path (got ${path})`;
 	const real = physical(path);
+	const realKey = comparablePath(real, platform);
 	for (const root of roots) {
 		const realRoot = physical(root);
-		if (within(real, realRoot)) {
-			if (allowScratchpad && insideScratchpad(real, realRoot)) continue;
+		const rootKey = comparablePath(realRoot, platform);
+		if (within(realKey, rootKey)) {
+			if (allowScratchpad && insideScratchpad(realKey, rootKey)) continue;
 			return `${label} ${path} resolves to ${real}, which is the operator's ${realRoot} or inside it`;
 		}
-		if (within(realRoot, real))
+		if (within(rootKey, realKey))
 			return `${label} ${path} resolves to ${real}, which contains the operator's ${realRoot}`;
 	}
 	return null;
@@ -453,11 +503,13 @@ Captures every --scene x --theme of the real app in ONE inactive launch.
   --session <12 hex>           conversation to open (--open-session); needed by files/canvas
   --scene <name>               repeatable: ${SCENES.join(", ")} (default: conversation)
   --theme dark,light           themes to capture, comma separated (default: dark,light)
-  --capture <mode>             screencapture (darwin default, "real vibrancy") |
+  --capture <mode>             screencapture (darwin default, "real vibrancy, pending Mac measurement") |
                                capturepage (elsewhere, "no vibrancy claim")
   --window-mode <mode>         inactive (default for screencapture) | headless (capturepage only)
   --size WxH                   window size (default 1380x900)
-  --timeout <s>                whole-run bound (default 180)
+  --timeout <s>                whole-run bound from harness start (default 180, max 290);
+                               the reap runs after it. SIGKILL cannot be caught: run this
+                               as a background job or with a caller timeout >= --timeout + 60
   --rig-root <abs dir>         where the scratch rig is made (default $LOCAL_OPERATOR_SCRATCHPAD or tmp)
 
 Backend (the app only ever ATTACHES; it never spawns, installs or claims):
@@ -632,9 +684,14 @@ export function validateOptions(opts) {
 	if (new Set(opts.scenes).size !== opts.scenes.length)
 		throw new Refusal("a --scene is repeated");
 	if (opts.themes.length === 0) throw new Refusal("--theme names no theme");
+	// Own properties only: `theme in THEMES` accepted `constructor` and other
+	// prototype keys (review r1 R1-7). A repeat is refused here, before launch,
+	// rather than by the app's duplicate-label check after a window is up.
 	for (const theme of opts.themes)
-		if (!(theme in THEMES))
+		if (!Object.hasOwn(THEMES, theme))
 			throw new Refusal(`unknown --theme ${theme} (have: dark, light)`);
+	if (new Set(opts.themes).size !== opts.themes.length)
+		throw new Refusal("a --theme is repeated");
 	if (opts.session !== null && !SESSION_ID.test(opts.session))
 		throw new Refusal(
 			`--session must be 12 lowercase hex characters (got ${opts.session})`,
@@ -661,7 +718,13 @@ export function validateOptions(opts) {
 		throw new Refusal("--timeout must be between 1 and 290 seconds");
 	if (!["isolated", "attach", "config-root"].includes(opts.backend))
 		throw new Refusal(
-			`--backend must be isolated or attach (got ${opts.backend})`,
+			`--backend must be isolated, attach or config-root (got ${opts.backend})`,
+		);
+	// Without this, `join(null, "config.yml")` surfaced later as a TypeError
+	// worded like a refusal (review r1 R1-8).
+	if (opts.backend === "config-root" && !opts.backendConfigRoot)
+		throw new Refusal(
+			"--backend config-root needs --backend-config-root <abs dir> (the durable root the operator prepared)",
 		);
 	if (opts.backend === "attach") {
 		if (!opts.backendUrl)
@@ -933,6 +996,13 @@ export const FORBIDDEN_DAEMON_PATH =
 
 /** Null when `method path?query` is an allowed read; otherwise the refusal. */
 export function daemonRequestProblem(method, pathWithQuery) {
+	// A PATH, never a URL: `new URL("http://other/health", base)` and
+	// `new URL("//other/health", base)` both ignore `base`, and WHATWG treats a
+	// backslash like a slash for http, so `/\other` is a host too. Any of them
+	// would pass the pathname allowlist below and carry the bearer token to
+	// another origin (review r1 R1-9, QA r1 Q5-1).
+	if (typeof pathWithQuery !== "string" || !/^\/(?![/\\])/.test(pathWithQuery))
+		return `refused daemon call ${method} ${pathWithQuery}: only a path on the configured loopback backend (one leading /, no scheme or host)`;
 	let url;
 	try {
 		url = new URL(pathWithQuery, "http://127.0.0.1");
@@ -965,10 +1035,16 @@ export async function daemonRequest(
 ) {
 	const problem = daemonRequestProblem(method, pathWithQuery);
 	if (problem) throw new Refusal(problem);
+	// Belt to the path rule: the request goes to `base`'s origin or nowhere.
+	const target = new URL(pathWithQuery, base);
+	if (target.origin !== new URL(base).origin)
+		throw new Refusal(
+			`refused daemon call ${method} ${pathWithQuery}: it resolves to ${target.origin}, not the configured backend ${new URL(base).origin}`,
+		);
 	const controller = new AbortController();
 	const timer = setTimeout(() => controller.abort(), timeoutMs);
 	try {
-		const response = await fetch(new URL(pathWithQuery, base), {
+		const response = await fetch(target, {
 			method,
 			signal: controller.signal,
 			headers: token ? { authorization: `Bearer ${token}` } : {},
@@ -1049,7 +1125,35 @@ export function redactEnv(env) {
  * Feed it one line; it answers with what to do. Abort reasons end the run with
  * a reap. Pure, so a test walks the protocol line by line without an app.
  */
-export function createSupervisor({ windowMode, session, capture }) {
+/** The app's own frame-label rule (`FRAME_LABEL`, src/main/dev-driver-script.ts). */
+const FRAME_LABEL = /^[a-z0-9][a-z0-9_-]{0,63}$/;
+
+/*
+ * The SHUTTER line's two shapes (src/main/dev-driver-script.ts). Only the label
+ * and the space-free facts are READ from it: the ack and frame paths are
+ * DERIVED here as `<framesDir>/<label>.ack|.png`, the same rule the app uses,
+ * because a rig root containing a space split `ack=` at the space and the
+ * harness then wrote to a sibling path (review r1 R1-2). The path-bearing field
+ * is matched as "the rest of the line" so a space in it cannot shift a fact.
+ */
+const SHUTTER_EXTERNAL =
+	/^SHUTTER label=(\S+) media=(\S+) visible=(true|false) focused=(true|false) ack=.+$/;
+const SHUTTER_CAPTUREPAGE =
+	/^SHUTTER label=(\S+) capture=capturepage path=.+ width=(\d+) height=(\d+) visible=(true|false) focused=(true|false)$/;
+
+export function createSupervisor({
+	windowMode,
+	session,
+	capture,
+	framesDir,
+	labels = null,
+}) {
+	if (typeof framesDir !== "string" || !isAbsolute(framesDir))
+		throw new TypeError(
+			"createSupervisor needs the absolute framesDir it derives frame paths from",
+		);
+	const expected = labels === null ? null : new Set(labels);
+	const shot = new Set();
 	const state = {
 		windowModeLine: null,
 		windowStateLine: null,
@@ -1118,15 +1222,6 @@ export function createSupervisor({ windowMode, session, capture }) {
 			return null;
 		}
 		if (body.startsWith("SHUTTER ")) {
-			const fields = Object.fromEntries(
-				body
-					.slice("SHUTTER ".length)
-					.split(" ")
-					.map((kv) => {
-						const at = kv.indexOf("=");
-						return [kv.slice(0, at), kv.slice(at + 1)];
-					}),
-			);
 			if (!state.armed || !state.scriptArmed || !state.windowModeLine)
 				return {
 					abort:
@@ -1136,34 +1231,48 @@ export function createSupervisor({ windowMode, session, capture }) {
 				return {
 					abort: "a SHUTTER arrived before the conversation was verified",
 				};
-			if (fields.focused !== "false")
+			const external = capture === "screencapture";
+			const m = body.match(external ? SHUTTER_EXTERNAL : SHUTTER_CAPTUREPAGE);
+			if (!m)
+				return {
+					abort: `expected a ${external ? "window-server (media=, ack=)" : "capturepage"} SHUTTER (${body})`,
+				};
+			const label = m[1];
+			// The label names files the harness writes: the app's own rule, one of
+			// the frames this run asked for, and each at most once.
+			if (!FRAME_LABEL.test(label) || (expected && !expected.has(label)))
+				return {
+					abort: `the SHUTTER names a frame this run did not ask for (${body})`,
+				};
+			if (shot.has(label))
+				return { abort: `a second SHUTTER for ${label} (${body})` };
+			const [visible, focused] = external ? [m[3], m[4]] : [m[4], m[5]];
+			if (focused !== "false")
 				return { abort: `the window is focused at the shutter (${body})` };
-			if (capture === "screencapture") {
-				if (fields.visible !== "true")
+			if (external) {
+				if (visible !== "true")
 					return {
 						abort: `the window is not visible at the shutter (${body})`,
 					};
-				const id = fields.media?.match(/^window:(\d+):/)?.[1];
+				const id = m[2].match(/^window:(\d+):/)?.[1];
 				if (!id)
 					return { abort: `the SHUTTER line carries no window id (${body})` };
-				if (!fields.ack)
-					return { abort: `the SHUTTER line names no ack path (${body})` };
+				shot.add(label);
 				return {
 					shutter: {
-						label: fields.label,
+						label,
 						windowId: Number(id),
-						ack: fields.ack,
+						ack: join(framesDir, `${label}.ack`),
 					},
 				};
 			}
-			if (fields.capture !== "capturepage" || !fields.path)
-				return { abort: `expected a capturepage SHUTTER (${body})` };
+			shot.add(label);
 			return {
 				shutter: {
-					label: fields.label,
-					path: fields.path,
-					width: Number(fields.width),
-					height: Number(fields.height),
+					label,
+					path: join(framesDir, `${label}.png`),
+					width: Number(m[2]),
+					height: Number(m[3]),
 				},
 			};
 		}
@@ -1196,24 +1305,62 @@ function jxa(source) {
 }
 
 /**
- * Screen Recording, asked WITHOUT a prompt. `CGPreflightScreenCaptureAccess`
+ * Screen Recording, asked WITHOUT a prompt: `CGPreflightScreenCaptureAccess`
  * never prompts (its sibling `CGRequestScreenCaptureAccess` would put a dialog on
- * the operator's screen and is never called). If the bridge cannot call it, the
- * fallback signal is also prompt-free: since macOS 10.15 `kCGWindowName` of
- * another process's window is present only when Screen Recording is granted.
+ * the operator's screen and is never called).
+ *
+ * Answers "granted", "denied" or "unknown". UNKNOWN - the JXA bridge could not
+ * call the preflight - is BLOCKED by the caller, never guessed. An earlier
+ * fallback read "another process's window has a kCGWindowName" as granted, but
+ * system UI (Menubar, Dock, Window Server) reports names without the
+ * permission, so it could answer yes while ungranted; `screencapture -l` would
+ * then raise the TCC prompt on the operator's screen and photograph an empty
+ * window (review r1 R1-1). Not being able to ask safely is a stop.
  */
 export function screenRecordingGranted() {
-	const out = jxa(`
+	return screenRecordingVerdict(
+		jxa(`
 ObjC.import('CoreGraphics');
 var granted = null;
 try { if (typeof $.CGPreflightScreenCaptureAccess === 'function') granted = !!$.CGPreflightScreenCaptureAccess(); } catch (e) {}
-if (granted === null) {
-  var me = $.NSProcessInfo.processInfo.processIdentifier;
-  var list = ObjC.deepUnwrap(ObjC.castRefToObject($.CGWindowListCopyWindowInfo(1, 0))) || [];
-  granted = list.some(function (w) { return w.kCGWindowOwnerPID !== me && typeof w.kCGWindowName === 'string' && w.kCGWindowName.length > 0; });
+JSON.stringify({granted: granted});`),
+	);
 }
-JSON.stringify({granted: granted});`);
-	return JSON.parse(out).granted === true;
+
+/** The JXA preflight's output, read strictly: only a boolean is an answer. */
+export function screenRecordingVerdict(jxaOutput) {
+	let granted;
+	try {
+		granted = JSON.parse(jxaOutput)?.granted;
+	} catch {
+		return "unknown";
+	}
+	if (granted === true) return "granted";
+	if (granted === false) return "denied";
+	return "unknown";
+}
+
+/**
+ * Whether a `screencapture -o -l` PNG is the window CGWindowList described:
+ * pixel size = `kCGWindowBounds` (points) x one backing scale for both axes.
+ * A frame of some other size (a different window, the desktop, a truncated
+ * write) is refused rather than labelled real vibrancy (review r1 R1-1 belt).
+ * Scales: 1 and 2 are the Mac's backing factors; 3 is allowed defensively. The
+ * 2 px slack is rounding of fractional point bounds; `-o` drops the shadow, so
+ * no shadow margin is allowed.
+ */
+export function frameMatchesWindow(pixels, bounds) {
+	if (!pixels || !bounds) return null;
+	const w = Number(bounds.Width);
+	const h = Number(bounds.Height);
+	if (!(w > 0 && h > 0)) return null;
+	for (const scale of [1, 2, 3])
+		if (
+			Math.abs(pixels.width - w * scale) <= 2 &&
+			Math.abs(pixels.height - h * scale) <= 2
+		)
+			return scale;
+	return null;
 }
 
 /** Owner pid, layer and bounds of one on-screen window. Needs no Screen Recording. */
@@ -1281,12 +1428,17 @@ export async function waitForRemoteSession(
 	base,
 	token,
 	session,
-	{ timeoutMs = 120_000, pollMs = 1000 } = {},
+	{ timeoutMs = 120_000, pollMs = 1000, shouldStop = () => null } = {},
 ) {
 	const deadline = Date.now() + timeoutMs;
 	let reads = 0;
 	let last = null;
 	for (;;) {
+		// The run's own end (signal, child failure, whole-run --timeout) wins
+		// over this wait's bound.
+		const stop = shouldStop();
+		if (stop)
+			throw new Error(`${stop} (waiting for remote session ${session})`);
 		reads++;
 		const body = await daemonRequest(
 			base,
@@ -1316,6 +1468,68 @@ function portListening(port) {
 		});
 		socket.once("error", () => done(false));
 	});
+}
+
+/**
+ * Whether EVERY TCP listener on 127.0.0.1-reachable `port` belongs to one of
+ * `pids` (the relay this run spawned and its descendants). True / false, or
+ * null when the sockets could not be read (callers fail closed). Linux maps
+ * the LISTEN rows of /proc/net/tcp{,6} to socket inodes and checks those are
+ * held by `pids`' own fds - it reads only our processes, never a stranger's;
+ * macOS asks `lsof` which pids listen on the port.
+ */
+export function portListenerOwned(port, pids) {
+	const ours = new Set(pids.filter((p) => Number.isInteger(p) && p > 0));
+	if (process.platform === "linux") {
+		const listening = new Set();
+		let readAny = false;
+		for (const table of ["/proc/net/tcp", "/proc/net/tcp6"]) {
+			let text;
+			try {
+				text = readFileSync(table, "utf8");
+				readAny = true;
+			} catch {
+				continue;
+			}
+			for (const line of text.split("\n").slice(1)) {
+				const f = line.trim().split(/\s+/);
+				if (f.length < 10 || f[3] !== "0A") continue;
+				if (Number.parseInt(f[1].split(":").pop(), 16) === port)
+					listening.add(f[9]);
+			}
+		}
+		if (!readAny) return null;
+		if (listening.size === 0) return false;
+		const held = new Set();
+		for (const pid of ours) {
+			let fds = [];
+			try {
+				fds = readdirSync(`/proc/${pid}/fd`);
+			} catch {
+				continue;
+			}
+			for (const fd of fds)
+				try {
+					const m = readlinkSync(`/proc/${pid}/fd/${fd}`).match(
+						/^socket:\[(\d+)\]$/,
+					);
+					if (m) held.add(m[1]);
+				} catch {}
+		}
+		return [...listening].every((inode) => held.has(inode));
+	}
+	const lsof = spawnSync(
+		"lsof",
+		["-n", "-P", `-iTCP:${port}`, "-sTCP:LISTEN", "-F", "p"],
+		{ encoding: "utf8", timeout: 10000 },
+	);
+	if (lsof.error || lsof.status === null) return null;
+	const owners = (lsof.stdout ?? "")
+		.split("\n")
+		.filter((line) => line.startsWith("p"))
+		.map((line) => Number(line.slice(1)));
+	if (owners.length === 0) return false;
+	return owners.every((pid) => ours.has(pid));
 }
 
 /**
@@ -1369,30 +1583,26 @@ export function processesWithConfigRoot(configRoot) {
 /**
  * Reap every process this run's lop processes left behind: the config-root
  * sweep above plus the descendants recorded while they ran. Exact pids only
- * (never a pattern), and a recorded group only when its leader is one of ours.
+ * (never a pattern), each re-checked as this run's at kill time, and a group
+ * only when its leader is one of ours (`killRigMatched`).
  */
-async function reapConfigRootProcesses(configRoot, recorded) {
+async function reapConfigRootProcesses(configRoot, recorded, rig) {
 	const pids = new Set(recorded);
 	for (const pid of processesWithConfigRoot(configRoot) ?? []) pids.add(pid);
-	for (const pid of pids) {
-		try {
-			process.kill(-pid, "SIGKILL");
-		} catch {}
-		try {
-			process.kill(pid, "SIGKILL");
-		} catch {}
-	}
-	await sleep(500);
+	const left = await killRigMatched(
+		[...pids],
+		rigMatcher({ rig, configRoot }),
+		{
+			settleMs: 500,
+		},
+	);
 	const after = processesWithConfigRoot(configRoot);
 	const survivors =
 		after === null ? null : after.filter((pid) => pidAlive(pid));
 	return {
 		swept: pids.size,
 		survivors: survivors === null ? "unreadable" : survivors.length,
-		clean:
-			survivors !== null &&
-			survivors.length === 0 &&
-			[...recorded].every((pid) => !pidAlive(pid)),
+		clean: survivors !== null && survivors.length === 0 && left.length === 0,
 	};
 }
 
@@ -1462,18 +1672,105 @@ export function processesWithCwdUnder(rig) {
 	return found;
 }
 
-/** SIGKILL exact pids (and the groups they lead), then report who is left. */
-async function killExact(pids) {
-	for (const pid of pids) {
+/**
+ * What the backstop needs to know about one live pid, read from the kernel at
+ * kill time: working directory, process group, and argv+env as text. Linux
+ * reads /proc; macOS asks `ps` (`-E` appends the environment, same user only)
+ * and `lsof -d cwd`. Null when the pid is gone or unreadable.
+ */
+export function processFacts(pid) {
+	if (process.platform === "linux") {
 		try {
-			process.kill(-pid, "SIGKILL");
-		} catch {}
+			const stat = readFileSync(`/proc/${pid}/stat`, "utf8");
+			// Field 5 (pgrp), counted after the parenthesised comm, which may hold spaces.
+			const pgid = Number(stat.slice(stat.lastIndexOf(")") + 2).split(" ")[2]);
+			let cwd = null;
+			try {
+				cwd = readlinkSync(`/proc/${pid}/cwd`);
+			} catch {}
+			let text = "";
+			for (const file of ["cmdline", "environ"])
+				try {
+					text += `\0${readFileSync(`/proc/${pid}/${file}`, "utf8")}`;
+				} catch {}
+			return { pid, pgid, cwd, text };
+		} catch {
+			return null;
+		}
+	}
+	const ps = spawnSync(
+		"ps",
+		["-E", "-ww", "-o", "pgid=,command=", "-p", String(pid)],
+		{ encoding: "utf8" },
+	);
+	const m = (ps.stdout ?? "").trim().match(/^(\d+)\s+([\s\S]*)$/);
+	if (ps.status !== 0 || !m) return null;
+	const lsof = spawnSync(
+		"lsof",
+		["-n", "-P", "-a", "-p", String(pid), "-d", "cwd", "-F", "n"],
+		{ encoding: "utf8", timeout: 10000 },
+	);
+	const cwd =
+		(lsof.stdout ?? "")
+			.split("\n")
+			.find((line) => line.startsWith("n"))
+			?.slice(1) ?? null;
+	return { pid, pgid: Number(m[1]), cwd, text: m[2] };
+}
+
+/**
+ * Does this process belong to THIS run? True when its cwd is the rig or inside
+ * it, when its argv/env names a path in the rig (`--user-data-dir=<rig>/profile`,
+ * `HOME=<rig>/home`, the frames dir), or when its env carries this run's
+ * `LOCAL_OPERATOR_CONFIG_DIR` (a durable `--backend-config-root` sits outside
+ * the rig). The rig is a fresh mkdtemp name, so a match is never a stranger's.
+ */
+export function rigMatcher({ rig, configRoot = null }) {
+	const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+	const inRig = new RegExp(`${esc(rig)}(?=$|[\\s\\0${esc(sep)}])`);
+	const config =
+		configRoot === null
+			? null
+			: new RegExp(
+					`(?:^|[\\s\\0])LOCAL_OPERATOR_CONFIG_DIR=${esc(configRoot)}(?=$|[\\s\\0])`,
+				);
+	return (facts) => {
+		if (!facts) return false;
+		const cwd = facts.cwd ?? "";
+		if (cwd === rig || cwd.startsWith(`${rig}${sep}`)) return true;
+		if (inRig.test(facts.text)) return true;
+		return config?.test(facts.text) === true;
+	};
+}
+
+/**
+ * The stray-pid backstop. SIGKILL each pid ONLY if it is still this run's
+ * (`matches`, re-read now: a recorded pid can have been recycled), and its
+ * whole group ONLY when that pid leads the group itself. The earlier version
+ * signalled `-pid` for every swept pid, which widened one stray rig process
+ * (a shell someone `cd`'d into the rig, a recycled pid) into its whole group,
+ * strangers included (review r1 R1-10). This process and its ancestors are
+ * never targets. Answers the matched pids still alive afterwards; a pid that
+ * is alive but no longer matches is skipped, not counted as a leak.
+ */
+export async function killRigMatched(pids, matches, { settleMs = 300 } = {}) {
+	const mine = new Set(ancestorsOfSelf());
+	const targets = [];
+	for (const pid of new Set(pids)) {
+		if (!Number.isInteger(pid) || pid <= 1 || mine.has(pid)) continue;
+		const facts = processFacts(pid);
+		if (!matches(facts)) continue;
+		targets.push(pid);
+		if (facts.pgid === pid)
+			try {
+				process.kill(-pid, "SIGKILL");
+			} catch {}
 		try {
 			process.kill(pid, "SIGKILL");
 		} catch {}
 	}
-	if (pids.length > 0) await sleep(300);
-	return pids.filter((pid) => pidAlive(pid));
+	if (targets.length > 0) await sleep(settleMs);
+	return targets.filter((pid) => pidAlive(pid) && matches(processFacts(pid)));
 }
 
 /** Every descendant pid of `roots`, from one `ps` snapshot. */
@@ -1546,7 +1843,9 @@ export function negativeControlCases() {
 	mkdirSync(profileRoot, { recursive: true });
 	mkdirSync(join(home, ".local-operator", "run", "serve"), { recursive: true });
 	const link = join(tree, "link-to-profile");
-	spawnSync("ln", ["-s", profileRoot, link]);
+	// fs APIs, not a PATH-resolved `ln`/`rm` (QA r1 nit): the self test must not
+	// depend on what PATH happens to hold.
+	symlinkSync(profileRoot, link);
 	const roots = operatorRoots({ homes: [home], names });
 	const fakeApp = join(tree, "Fake.app");
 	const refuses = (fn) => {
@@ -1564,6 +1863,7 @@ export function negativeControlCases() {
 			windowMode: "inactive",
 			session: null,
 			capture: "screencapture",
+			framesDir: join(tree, "frames"),
 			...opts,
 		});
 		return lines.some((line) => sup.feed(line)?.abort);
@@ -1722,9 +2022,73 @@ export function negativeControlCases() {
 			() => daemonRequestProblem("GET", "/v1/desktop/config"),
 		],
 		["lop network start", () => lopArgvProblem(["network", "start"])],
+		[
+			"daemon call to an absolute URL on another host",
+			() => daemonRequestProblem("GET", "http://10.255.255.1:9/health"),
+		],
+		[
+			"daemon call to a //host path",
+			() => daemonRequestProblem("GET", "//10.255.255.1/health"),
+		],
+		[
+			"rig root is a dangling symlink to a not-yet-created operator profile",
+			() => {
+				const dangling = join(tree, "link-to-missing-profile");
+				symlinkSync(join(home, ".config", names.productName), dangling);
+				return operatorPathProblem("rig root", dangling, roots);
+			},
+		],
+		[
+			"rig root is a case variant of the operator's profile (darwin rule)",
+			() =>
+				operatorPathProblem("rig root", profileRoot.toLowerCase(), roots, {
+					platform: "darwin",
+				}),
+		],
+		[
+			"rig root is the operator's profile under $XDG_CONFIG_HOME",
+			() =>
+				operatorPathProblem(
+					"rig root",
+					join(tree, "xdg", names.productName),
+					operatorRoots({
+						homes: [home],
+						names,
+						xdgConfigHome: join(tree, "xdg"),
+					}),
+				),
+		],
+		[
+			"--theme naming a prototype key",
+			() =>
+				validateOptions(
+					parseArgs([
+						"--app",
+						"/x.app",
+						"--out",
+						"/tmp/o",
+						"--theme",
+						"constructor",
+					]),
+				),
+		],
+		[
+			"--backend config-root without --backend-config-root",
+			() =>
+				validateOptions(
+					parseArgs([
+						"--app",
+						"/x.app",
+						"--out",
+						"/tmp/o",
+						"--backend",
+						"config-root",
+					]),
+				),
+		],
 	];
 	const results = cases.map(([name, fn]) => ({ name, refused: refuses(fn) }));
-	spawnSync("rm", ["-rf", tree]);
+	rmSync(tree, { recursive: true, force: true });
 	return results;
 }
 
@@ -1740,8 +2104,12 @@ function sha256(buffer) {
 
 /** Make the rig: a fresh tagged directory, never reused, with its sub-roots. */
 function makeRig(rigRoot) {
-	mkdirSync(rigRoot, { recursive: true });
-	const rig = mkdtempSync(join(physical(rigRoot), "mac-proof-"));
+	// The PHYSICAL root preflight vetted: `mkdirSync` on a dangling symlink
+	// throws (QA r1 Q1-1 saw an uncaught ENOENT), and the target is what was
+	// checked, so that is what gets created.
+	const root = physical(rigRoot);
+	mkdirSync(root, { recursive: true });
+	const rig = mkdtempSync(join(root, "mac-proof-"));
 	for (const dir of [
 		"home",
 		"config",
@@ -1821,8 +2189,8 @@ export function preflight(opts, { roots = operatorRoots() } = {}) {
 			join(dirname(resolve(opts.backendConfigRoot)), "home");
 		const realHomes = [os.userInfo().homedir, process.env.HOME]
 			.filter(Boolean)
-			.map(physical);
-		if (realHomes.includes(physical(backendHome)))
+			.map((h) => comparablePath(physical(h)));
+		if (realHomes.includes(comparablePath(physical(backendHome))))
 			throw new Refusal(
 				`--backend-home ${backendHome} is the operator's real home; a rig device needs its own`,
 			);
@@ -1890,6 +2258,13 @@ function attachToken(opts) {
 }
 
 export async function main(argv = process.argv.slice(2)) {
+	// --timeout is a WHOLE-RUN bound from here (review r1 R1-6, QA r1 Q4-3): it
+	// used to start at app spawn, after up to 60 s of relay wait, 90 s of
+	// /health and --peer-wait, so `--timeout 5` measured 16 s. Every wait below
+	// stops at this instant; only the reap runs past it (bounded by its own
+	// per-step escalation), which is why the docs ask for a caller timeout above
+	// --timeout - SIGKILL of the harness itself cannot be caught.
+	const harnessStarted = Date.now();
 	let opts;
 	try {
 		opts = parseArgs(argv);
@@ -1912,6 +2287,7 @@ export async function main(argv = process.argv.slice(2)) {
 		return failed === 0 ? EXIT.OK : EXIT.FAILED;
 	}
 
+	const runDeadline = harnessStarted + opts.timeoutS * 1000;
 	let plan;
 	try {
 		plan = preflight(opts);
@@ -1977,7 +2353,7 @@ export async function main(argv = process.argv.slice(2)) {
 			},
 			capture:
 				opts.capture === "screencapture"
-					? "screencapture -x -o -l <id>: real vibrancy"
+					? SCREENCAPTURE_METHOD
 					: "capturePage: no vibrancy claim",
 			command: plan.app.executable,
 			argv: buildAppArgv({
@@ -2003,17 +2379,35 @@ export async function main(argv = process.argv.slice(2)) {
 		return EXIT.OK;
 	}
 
+	// The rig relay must be the ONLY listener on network.port. Something already
+	// there (another rig, an operator-run relay) would make our relay die with
+	// EADDRINUSE while `lop serve` advertised the foreign one - the trap the
+	// 4097 rule exists for (review r1 R1-5). Refused before the rig is made.
+	if (plan.relayPort !== null && (await portListening(plan.relayPort))) {
+		console.error(
+			`[mac-proof] refused: something already listens on 127.0.0.1:${plan.relayPort} (network.port in ${join(opts.backendConfigRoot, "config.yml")}); stop it first - the harness starts the rig's own relay there and never shares one`,
+		);
+		return EXIT.REFUSED;
+	}
+
 	if (opts.capture === "screencapture") {
-		let granted = false;
+		let verdict;
 		try {
-			granted = screenRecordingGranted();
+			verdict = screenRecordingGranted();
 		} catch (error) {
 			console.error(
 				`[mac-proof] BLOCKED: could not read Screen Recording permission without a prompt (${error.message})`,
 			);
 			return EXIT.BLOCKED;
 		}
-		if (!granted) {
+		if (verdict === "unknown") {
+			console.error(
+				"[mac-proof] BLOCKED: CGPreflightScreenCaptureAccess is not callable from JXA here, so Screen Recording cannot be read without risking a prompt. " +
+					"Use --capture capturepage (no vibrancy claim), or report this macOS version so the harness can learn another prompt-free probe.",
+			);
+			return EXIT.BLOCKED;
+		}
+		if (verdict !== "granted") {
 			console.error(
 				"[mac-proof] BLOCKED: Screen Recording is not granted to this process's host (the terminal or agent app). " +
 					"Grant it in System Settings > Privacy & Security > Screen Recording; this harness never requests it (that would prompt).",
@@ -2052,7 +2446,7 @@ export async function main(argv = process.argv.slice(2)) {
 		windowMode: opts.windowMode,
 		capture:
 			opts.capture === "screencapture"
-				? "screencapture -x -o -l: real vibrancy"
+				? SCREENCAPTURE_METHOD
 				: "capturePage: no vibrancy claim",
 		backend: { mode: opts.backend },
 		frames: [],
@@ -2072,6 +2466,32 @@ export async function main(argv = process.argv.slice(2)) {
 	const children = { app: null };
 	let appExited = false;
 	/*
+	 * Why the run ENDED early, when it did. `interrupted` is the signal name
+	 * (SIGINT/SIGTERM/SIGHUP), `childFailure` the first spawn 'error' (EACCES,
+	 * ENOENT) of the app, `lop serve` or the relay. Every wait below polls
+	 * `endedBy()`, so each of these - and the whole-run deadline - leaves
+	 * through the same throw -> `finally` -> full teardown -> receipt path, and
+	 * the receipt names the cause (QA r1 Q4-2) instead of the knock-on symptom
+	 * ("the app exited before the step runner finished").
+	 */
+	let interrupted = null;
+	let childFailure = null;
+	const endedBy = () => {
+		if (interrupted) return `interrupted by ${interrupted}`;
+		if (childFailure) return childFailure;
+		if (Date.now() >= runDeadline)
+			return `the run exceeded --timeout ${opts.timeoutS} s`;
+		return null;
+	};
+	const checkpoint = (phase) => {
+		const why = endedBy();
+		if (why) throw new Error(`${why} (${phase})`);
+	};
+	/** A spawn 'error' would otherwise be an uncaught exception that skips the teardown. */
+	const onChildError = (name) => (error) => {
+		childFailure ??= `${name} could not run: ${error.message}`;
+	};
+	/*
 	 * Every lop process this run started (daemon, relay), plus every descendant
 	 * seen while they ran. Standby runtimes run in their OWN process groups
 	 * (measured on node2: 4 extra pgids per serve), so the daemon's group signal
@@ -2080,7 +2500,9 @@ export async function main(argv = process.argv.slice(2)) {
 	 */
 	const lopRun = { configRoot: null, spawned: [], recorded: new Set() };
 	const recordDescendants = () => {
-		const live = lopRun.spawned.map((c) => c.pid);
+		const live = lopRun.spawned
+			.map((c) => c.pid)
+			.filter((pid) => pid !== undefined);
 		for (const pid of [...live, ...descendantsOf(live)])
 			lopRun.recorded.add(pid);
 	};
@@ -2093,6 +2515,10 @@ export async function main(argv = process.argv.slice(2)) {
 			detached: true,
 			stdio: ["ignore", "pipe", "pipe"],
 		});
+		child.on(
+			"error",
+			onChildError(`lop ${argv[0] === "network" ? "network serve" : "serve"}`),
+		);
 		const log = [];
 		const keep = (chunk) => log.push(chunk.toString());
 		child.stdout.on("data", keep);
@@ -2108,8 +2534,11 @@ export async function main(argv = process.argv.slice(2)) {
 		});
 		child.name = name;
 		lopRun.spawned.push(child);
-		lopRun.recorded.add(child.pid);
-		reapOnExit({ pid: child.pid, userData: null, groupOutlivesLeader: true });
+		// No pid means the spawn itself failed ('error' above); nothing to reap.
+		if (child.pid !== undefined) {
+			lopRun.recorded.add(child.pid);
+			reapOnExit({ pid: child.pid, userData: null, groupOutlivesLeader: true });
+		}
 		return child;
 	};
 
@@ -2126,7 +2555,7 @@ export async function main(argv = process.argv.slice(2)) {
 	/** App descendants seen while it ran, killed by exact pid if they outlive the group. */
 	const appRecorded = new Set();
 	const reapEverything = async () => {
-		if (children.app && !receipt.reap.app) {
+		if (children.app && children.app.pid !== undefined && !receipt.reap.app) {
 			const result = await stopAppTree({
 				pid: children.app.pid,
 				userData: profile,
@@ -2143,21 +2572,25 @@ export async function main(argv = process.argv.slice(2)) {
 			recordDescendants();
 			// The daemon before the relay: it is the relay's client.
 			for (const child of [...lopRun.spawned].reverse())
-				receipt.reap[child.name] = await stopGroup(
-					child.pid,
-					() => child.exitCode !== null || child.signalCode !== null,
-				);
+				if (child.pid !== undefined)
+					receipt.reap[child.name] = await stopGroup(
+						child.pid,
+						() => child.exitCode !== null || child.signalCode !== null,
+					);
 			receipt.reap.lop = await reapConfigRootProcesses(
 				lopRun.configRoot,
 				lopRun.recorded,
+				rig,
 			);
 		}
 		// Recorded app descendants, then anything still running in the rig.
-		const recordedLeft = await killExact(
+		const ours = rigMatcher({ rig, configRoot: lopRun.configRoot });
+		const recordedLeft = await killRigMatched(
 			[...appRecorded].filter((pid) => pidAlive(pid)),
+			ours,
 		);
 		const inRig = processesWithCwdUnder(rig);
-		const rigLeft = inRig === null ? null : await killExact(inRig);
+		const rigLeft = inRig === null ? null : await killRigMatched(inRig, ours);
 		const after = processesWithCwdUnder(rig);
 		receipt.reap.rig = {
 			recorded: appRecorded.size,
@@ -2169,10 +2602,66 @@ export async function main(argv = process.argv.slice(2)) {
 				after.length === 0,
 		};
 	};
-	onInterrupted(async () => {
-		await teardown();
-		return EXIT.FAILED;
-	});
+	/*
+	 * The receipt and the closing line, written ONCE by whichever path ends the
+	 * run: the main `finally`, or the signal handler (which then calls
+	 * `process.exit`, so it must not rely on the `finally` getting there first).
+	 */
+	let finishing = null;
+	const finalize = () => {
+		finishing ??= (async () => {
+			await teardown();
+			if (interrupted) {
+				receipt.verdict = "failed";
+				receipt.error = `interrupted by ${interrupted}`;
+				receipt.endedBy = { signal: interrupted };
+				receipt.exit = EXIT.FAILED;
+			}
+			const leaked = Object.values(receipt.reap).some(
+				(r) => r && r.clean === false,
+			);
+			if (leaked) {
+				receipt.verdict = "failed";
+				receipt.error = `${receipt.error ? `${receipt.error}; ` : ""}a process this run started survived the reap`;
+				receipt.exit = EXIT.FAILED;
+			}
+			try {
+				cpSync(join(rig, "logs"), join(opts.out, "logs"), { recursive: true });
+			} catch {}
+			writeFileSync(
+				join(opts.out, "receipt.json"),
+				`${JSON.stringify(receipt, null, 2)}\n`,
+			);
+			const code =
+				receipt.verdict === "captured"
+					? EXIT.OK
+					: (receipt.exit ?? EXIT.FAILED);
+			const word =
+				code === EXIT.OK
+					? "captured"
+					: code === EXIT.REFUSED
+						? "refused"
+						: code === EXIT.BLOCKED
+							? "blocked"
+							: "failed";
+			console.log(
+				`[mac-proof] ${word}${receipt.error && code !== EXIT.OK ? ` (${receipt.error})` : ""}: ${receipt.frames.length} frame(s); receipt ${join(opts.out, "receipt.json")}`,
+			);
+			return code;
+		})();
+		return finishing;
+	};
+	// SIGHUP too: a closed terminal or dropped ssh would otherwise kill the
+	// harness with no teardown, leaving the rig's `lop serve` and its standby
+	// runtimes (own process groups) running (QA r1 Q4-1, review r1 R1-4).
+	onInterrupted(
+		async (signal) => {
+			interrupted ??= signal;
+			await finalize();
+			return EXIT.FAILED;
+		},
+		["SIGINT", "SIGTERM", "SIGHUP"],
+	);
 
 	try {
 		// ---- backend --------------------------------------------------------
@@ -2213,12 +2702,30 @@ export async function main(argv = process.argv.slice(2)) {
 				);
 				const relayBy = Date.now() + 60_000;
 				while (!(await portListening(plan.relayPort))) {
+					checkpoint("waiting for the rig relay");
 					if (relay.exitCode !== null || Date.now() >= relayBy)
 						throw new Error(
 							`the rig relay did not listen on :${plan.relayPort}${relay.exitCode !== null ? " (it exited)" : ""}`,
 						);
 					await sleep(250);
 				}
+				// "Something answers" is not "OUR relay answers" (review r1 R1-5):
+				// the relay must still be running and every listener on the port
+				// must be its own process tree.
+				if (relay.exitCode !== null || relay.signalCode !== null)
+					throw new Error(
+						`the rig relay exited although :${plan.relayPort} answers; another process holds that port`,
+					);
+				const owned = portListenerOwned(plan.relayPort, [
+					relay.pid,
+					...descendantsOf([relay.pid]),
+				]);
+				if (owned !== true)
+					throw new Error(
+						owned === null
+							? `could not confirm that the listener on :${plan.relayPort} is the relay this run started (pid ${relay.pid}); not advertising it`
+							: `the listener on :${plan.relayPort} is not the relay this run started (pid ${relay.pid}); not advertising someone else's relay`,
+					);
 				receipt.backend.relay = {
 					command: plan.lop,
 					port: plan.relayPort,
@@ -2239,10 +2746,14 @@ export async function main(argv = process.argv.slice(2)) {
 			const deadline = Date.now() + 90_000;
 			let health = null;
 			while (!health && Date.now() < deadline && serve.exitCode === null) {
+				checkpoint("waiting for the rig daemon's /health");
 				health = await getHealth(backendUrl, 1000);
 				if (!health) await sleep(250);
 			}
 			recordDescendants();
+			// A failed spawn sets exitCode (negative errno) and emits 'error' in the
+			// same tick, so name that cause before the generic "did not answer".
+			if (!health) checkpoint("starting the rig daemon");
 			if (!health)
 				throw new Error(
 					`the rig daemon did not answer /health at ${backendUrl}${serve.exitCode !== null ? " (it exited)" : ""}`,
@@ -2266,7 +2777,10 @@ export async function main(argv = process.argv.slice(2)) {
 					backendUrl,
 					token,
 					opts.session,
-					{ timeoutMs: opts.peerWaitS * 1000 },
+					{
+						timeoutMs: opts.peerWaitS * 1000,
+						shouldStop: () => endedBy(),
+					},
 				);
 				recordDescendants();
 			}
@@ -2291,7 +2805,8 @@ export async function main(argv = process.argv.slice(2)) {
 			stdio: ["ignore", "pipe", "pipe"],
 		});
 		children.app = app;
-		reapOnExit({ pid: app.pid, userData: profile });
+		app.on("error", onChildError("the app"));
+		if (app.pid !== undefined) reapOnExit({ pid: app.pid, userData: profile });
 		app.on("exit", () => {
 			appExited = true;
 		});
@@ -2299,6 +2814,10 @@ export async function main(argv = process.argv.slice(2)) {
 			windowMode: opts.windowMode,
 			session: opts.session,
 			capture: opts.capture,
+			framesDir: join(rig, "frames"),
+			labels: steps.steps
+				.filter((s) => s.verb === "shutter")
+				.map((s) => s.payload.label),
 		});
 		const appLog = [];
 		let abort = null;
@@ -2340,6 +2859,11 @@ export async function main(argv = process.argv.slice(2)) {
 					throw new Error(
 						`screencapture wrote no usable PNG for ${shot.label}`,
 					);
+				const scale = frameMatchesWindow(size, info.bounds);
+				if (scale === null)
+					throw new Error(
+						`screencapture of ${shot.label} is ${size.width}x${size.height} px, which is not window ${shot.windowId}'s ${JSON.stringify(info.bounds)} at any backing scale; refusing the frame`,
+					);
 				receipt.frames.push({
 					label: shot.label,
 					theme,
@@ -2347,11 +2871,13 @@ export async function main(argv = process.argv.slice(2)) {
 					windowId: shot.windowId,
 					ownerPid: info.pid,
 					bounds: info.bounds,
-					method: "screencapture -x -o -l: real vibrancy",
+					backingScale: scale,
+					method: SCREENCAPTURE_METHOD,
 					sha256: sha256(bytes),
 					pixels: size,
 					at: new Date().toISOString(),
 				});
+				// `shot.ack` is derived (<rig>/frames/<label>.ack), never read off the line.
 				writeFileSync(shot.ack, "ok");
 			} else {
 				const bytes = readFileSync(shot.path);
@@ -2384,9 +2910,8 @@ export async function main(argv = process.argv.slice(2)) {
 		app.stderr.on("data", split);
 
 		const started = Date.now();
-		const deadline = started + opts.timeoutS * 1000;
 		let tick = 0;
-		while (!abort && !finished && !appExited && Date.now() < deadline) {
+		while (!abort && !finished && !appExited && !endedBy()) {
 			if (!supervisor.state.windowModeLine && Date.now() - started > 20_000)
 				abort = "the app printed no [window-mode] line within 20 s";
 			await sleep(100);
@@ -2413,9 +2938,11 @@ export async function main(argv = process.argv.slice(2)) {
 			}
 		}
 		if (!abort && !finished)
-			abort = appExited
-				? "the app exited before the step runner finished"
-				: `the run exceeded --timeout ${opts.timeoutS} s`;
+			abort =
+				endedBy() ??
+				(appExited
+					? "the app exited before the step runner finished"
+					: "the run ended before the step runner finished");
 		receipt.steps = supervisor.state.steps;
 		receipt.windowModeLine = supervisor.state.windowModeLine;
 		receipt.windowStateLine = supervisor.state.windowStateLine;
@@ -2431,35 +2958,27 @@ export async function main(argv = process.argv.slice(2)) {
 		if (abort) throw new Error(abort);
 		receipt.verdict = "captured";
 	} catch (error) {
-		receipt.error = error.message;
-		console.error(
-			`[mac-proof] ${error instanceof Refusal && error.code === EXIT.BLOCKED ? "" : "FAILED: "}${error.message}`,
-		);
+		// A signal that landed mid-run is THE cause; what the main path saw next
+		// (the reaped app exiting) is only its symptom.
+		receipt.error = interrupted
+			? `interrupted by ${interrupted}`
+			: error.message;
 		receipt.exit = error instanceof Refusal ? error.code : EXIT.FAILED;
-	} finally {
-		await teardown();
-		const leaked = Object.values(receipt.reap).some(
-			(r) => r && r.clean === false,
-		);
-		if (leaked) {
-			receipt.verdict = "failed";
-			receipt.error = `${receipt.error ? `${receipt.error}; ` : ""}a process this run started survived the reap`;
-			receipt.exit = EXIT.FAILED;
-		}
-		try {
-			cpSync(join(rig, "logs"), join(opts.out, "logs"), { recursive: true });
-		} catch {}
-		writeFileSync(
-			join(opts.out, "receipt.json"),
-			`${JSON.stringify(receipt, null, 2)}\n`,
-		);
+		if (!interrupted && /exceeded --timeout/.test(receipt.error))
+			receipt.endedBy = { timeoutS: opts.timeoutS };
+		// Refusals and BLOCKED raised after the rig exists (attach mode) say so,
+		// rather than reading as a run failure (QA r1 nit).
+		const prefix =
+			receipt.exit === EXIT.REFUSED
+				? "REFUSED: "
+				: receipt.exit === EXIT.BLOCKED
+					? receipt.error.startsWith("BLOCKED")
+						? ""
+						: "BLOCKED: "
+					: "FAILED: ";
+		console.error(`[mac-proof] ${prefix}${receipt.error}`);
 	}
-	console.log(
-		`[mac-proof] ${receipt.verdict}: ${receipt.frames.length} frame(s); receipt ${join(opts.out, "receipt.json")}`,
-	);
-	return receipt.verdict === "captured"
-		? EXIT.OK
-		: (receipt.exit ?? EXIT.FAILED);
+	return finalize();
 }
 
 if (isEntryPoint(import.meta.url)) {
