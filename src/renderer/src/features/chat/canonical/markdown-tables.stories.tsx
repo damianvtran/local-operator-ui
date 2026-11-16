@@ -311,6 +311,80 @@ export default meta;
 
 type Story = StoryObj;
 
+/** Model output fixtures: the exact payload can also be checked at the base ref.
+ * Code-literal control is deliberately adjacent to parsed HTML in one cell.
+ */
+const HTML_BREAKS = [
+	"| Item | Notes |",
+	"| --- | --- |",
+	"| Break variants | • first<br>• second<br/>• third<BR />• fourth |",
+	"| Inline markup | <strong>bold</strong> <em>italic</em> <del>old</del> <code>token</code> &amp; &nbsp; |",
+	"| Literal control | `<br/>` and &lt;strong&gt; stay literal |",
+	'| Link actions | <a href="https://example.com/docs">docs</a><br/>[report](file:///tmp/table-html.pdf) |',
+].join("\n");
+
+export const HtmlBreaks: Story = {
+	render: () => <Frame records={[answer("html-breaks", HTML_BREAKS)]} />,
+};
+export const HtmlBreaksNarrow: Story = {
+	render: () => (
+		<div style={{ width: 320 }}>
+			<Frame records={[answer("html-narrow", HTML_BREAKS)]} />
+		</div>
+	),
+};
+export const StructuralHtml: Story = {
+	render: () => (
+		<Frame
+			records={[
+				answer(
+					"html-table",
+					'<table><caption>Model table</caption><colgroup span="2"></colgroup><thead><tr><th scope="col">Item</th><th scope="col">Notes</th></tr></thead><tbody><tr><td rowspan="2">First</td><td>one<br/>two <strong>bold</strong></td></tr><tr><td><p>separate paragraph</p><ul><li>one</li><li>two</li></ul></td></tr><tr><td colspan="2">spanning both columns</td></tr></tbody></table>',
+				),
+			]}
+		/>
+	),
+};
+export const HtmlStreaming: Story = {
+	render: () => (
+		<Frame
+			records={[
+				{
+					...answer(
+						"html-streaming",
+						`${HTML_BREAKS}\n| Streaming | first<br/>second <strong>open`,
+					),
+					streaming: true,
+				},
+			]}
+		/>
+	),
+};
+export const HtmlEmptyAndMalformed: Story = {
+	render: () => (
+		<Frame
+			records={[
+				answer(
+					"html-empty",
+					"| Empty | Partial |\n| --- | --- |\n| | first<br/>second <strong>open |\n| | unfinished<br |",
+				),
+			]}
+		/>
+	),
+};
+export const HtmlSecurity: Story = {
+	render: () => (
+		<Frame
+			records={[
+				answer(
+					"html-security",
+					'| Input | Result |\n| --- | --- |\n| Safe formatting | <strong onclick="alert(1)">safe</strong><br/>second |\n| Active elements | <script>alert(2)</script><img src=x onerror="alert(3)"><svg onload="alert(4)"></svg> |\n| Unsafe link | <a href="javascript:alert(5)">inert</a> |\n| Code control | `<img src=x onerror=alert(6)>` |',
+				),
+			]}
+		/>
+	),
+};
+
 /** The reported shape: two short columns beside one long prose column. */
 export const OperatorShape: Story = {
 	render: () => <Frame records={[answer("a1", OPERATOR_SHAPE)]} />,

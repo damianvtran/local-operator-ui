@@ -4,6 +4,7 @@ import { memo, useMemo } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { MarkdownTable } from "../chat/components/markdown-table";
+import { remarkTableHtml } from "../chat/utils/remark-table-html";
 import "../chat/components/markdown.css";
 import type { MessageMentionRun } from "./mentions/message-mentions";
 import { remarkTeamBridgeMentions } from "./mentions/remark-mentions";
@@ -24,8 +25,9 @@ import { EXTERNAL_HREF } from "./team-bridge-external-href";
  * So the element map is ProjectMarkdown's (external links open in the
  * browser; anything else stays text; tables scroll in their own box) plus ONE
  * difference: an image renders as its alt text (or its URL as text when it has
- * none), never as an element that fetches. Raw HTML is already inert:
- * react-markdown does not render it without `rehype-raw`, which is not used.
+ * none), never as an element that fetches. Arbitrary raw HTML remains inert:
+ * the shared table transform projects only allowlisted presentation nodes and
+ * drops images, active elements and attributes; `rehype-raw` is not enabled.
  * Attachments, when Team Bridge has them, will be a separate, explicit surface.
  */
 const COMPONENTS: Components = {
@@ -64,8 +66,8 @@ export const TeamBridgeMarkdown: FC<{
 	const plugins = useMemo(
 		() =>
 			mentions?.length
-				? [remarkGfm, remarkTeamBridgeMentions(mentions)]
-				: [remarkGfm],
+				? [remarkGfm, remarkTableHtml, remarkTeamBridgeMentions(mentions)]
+				: [remarkGfm, remarkTableHtml],
 		[mentions],
 	);
 	return (

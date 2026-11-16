@@ -81,6 +81,8 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export { MarkdownRenderer, StreamingMarkdown } from "./src/renderer/src/features/chat/components/markdown-renderer";
+			export { ProjectMarkdown } from "./src/renderer/src/features/projects/project-markdown";
+			export { TeamBridgeMarkdown } from "./src/renderer/src/features/team-bridge/team-bridge-markdown";
 			export { createBlockScanner, scanMarkdownBlocks, trimmedEndLength } from "./src/renderer/src/features/chat/utils/markdown-blocks";
 			export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";
 			export { applyEvent, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
@@ -121,6 +123,8 @@ writeFileSync(bundlePath, bundle.outputFiles[0].text);
 const {
 	MarkdownRenderer,
 	StreamingMarkdown,
+	ProjectMarkdown,
+	TeamBridgeMarkdown,
 	createBlockScanner,
 	scanMarkdownBlocks,
 	trimmedEndLength,
@@ -608,6 +612,116 @@ test("the settled paint is byte-identical to a fresh whole-message render", asyn
 		await act(async () => root.unmount());
 		await act(async () => refRoot.unmount());
 	} finally {
+		dom.restore();
+	}
+});
+
+/* Table HTML passes through BOTH production renderers, including every prefix.
+ * Code and math remain opaque to the HTML parser; active markup never mounts.
+ */
+test("safe table HTML renders through streaming and settled production pipelines", async () => {
+	const dom = mountDom();
+	const root = createRoot(dom.window.document.getElementById("root"));
+	const container = dom.window.document.getElementById("root");
+	try {
+		const sources = [
+			"| Notes |\n| --- |\n| first<br/>second <strong>bold</strong> `<br>` [docs](https://example.com) |",
+			"<table><tr><th>Notes</th></tr><tr><td>first<br/>second <strong>bold</strong></td></tr></table>",
+		];
+		for (const content of sources) {
+			for (const prefix of prefixes(content, 3)) {
+				await act(async () =>
+					root.render(createElement(StreamingMarkdown, { content: prefix })),
+				);
+				assert.equal(
+					container.querySelectorAll("script,img,iframe,svg").length,
+					0,
+				);
+			}
+			for (const component of [StreamingMarkdown, MarkdownRenderer]) {
+				await act(async () =>
+					root.render(createElement(component, { content })),
+				);
+				assert.equal(container.querySelectorAll("table").length, 1);
+				assert.equal(container.querySelectorAll("td br").length, 1);
+				assert.equal(container.querySelector("td strong").textContent, "bold");
+				assert.equal(
+					container.querySelectorAll(".lo-md-table-scroll").length,
+					1,
+				);
+			}
+		}
+		// All eight hoisted plugin combinations carry the same transform.
+		for (const math of [false, true]) {
+			for (const linkify of [false, true]) {
+				for (const credentialCitations of [false, true]) {
+					const content = `| Notes |\n| --- |\n| first<br/>second ${math ? "$x^2$" : "plain"} \`<br>\` <a href="file:///tmp/table-html.pdf">report</a> |`;
+					await act(async () =>
+						root.render(
+							createElement(MarkdownRenderer, {
+								content,
+								linkify,
+								credentialCitations,
+							}),
+						),
+					);
+					assert.equal(container.querySelectorAll("td br").length, 1);
+					assert.equal(container.querySelector("td code").textContent, "<br>");
+					assert.equal(
+						container.querySelector("td a").getAttribute("data-lo-target"),
+						"/tmp/table-html.pdf",
+					);
+					assert.equal(
+						container.querySelectorAll(".katex").length,
+						math ? 1 : 0,
+					);
+				}
+			}
+		}
+		const malicious =
+			'| Notes |\n| --- |\n| <img src=x onerror="alert(1)"><script>alert(2)</script><strong onclick="alert(3)">safe</strong> |';
+		for (const component of [StreamingMarkdown, MarkdownRenderer]) {
+			await act(async () =>
+				root.render(createElement(component, { content: malicious })),
+			);
+			assert.equal(
+				container.querySelectorAll("script,img,[onclick],[onerror]").length,
+				0,
+			);
+			assert.equal(container.querySelector("strong").textContent, "safe");
+		}
+	} finally {
+		await act(async () => root.unmount());
+		dom.restore();
+	}
+});
+
+test("project and Team Bridge tables share the safe markup transform", async () => {
+	const dom = mountDom();
+	const container = dom.window.document.getElementById("root");
+	const root = createRoot(container);
+	try {
+		for (const component of [ProjectMarkdown, TeamBridgeMarkdown]) {
+			await act(async () =>
+				root.render(
+					createElement(
+						component,
+						null,
+						'| Notes |\n| --- |\n| first<br>second <strong>bold</strong><img src=x onerror="alert(1)"><a href="javascript:alert(2)">inert</a> |',
+					),
+				),
+			);
+			assert.equal(container.querySelectorAll("td br").length, 1);
+			assert.equal(container.querySelector("td strong").textContent, "bold");
+			assert.equal(
+				container.querySelectorAll(
+					'img,script,[onerror],a[href^="javascript:"]',
+				).length,
+				0,
+			);
+		}
+	} finally {
+		await act(async () => root.unmount());
 		dom.restore();
 	}
 });
