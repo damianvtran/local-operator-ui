@@ -217,13 +217,16 @@ dom.window.electron = {
 const ENTRY = `
 import { createElement } from "react";
 import { createRoot } from "react-dom/client";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, onlineManager } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { CanvasProjectsViewer } from "./src/renderer/src/features/chat/components/canvas/canvas-projects-viewer";
 import { ProjectDetailScreen } from "./src/renderer/src/features/projects/components/project-detail";
 import { useProjectReadsTurnRefresh, useSessionProjects } from "./src/renderer/src/features/projects/hooks/use-projects-queries";
 import { projectKeys } from "./src/renderer/src/features/projects/hooks/use-projects-queries";
 export { projectKeys };
+// The SAME bundled instance the viewer's queries consult, so going offline
+// here pauses the viewer's refetch (a separate package copy would not).
+export { onlineManager };
 export { linkedProjectTotal } from "./src/renderer/src/features/projects/hooks/use-projects-queries";
 export { useCanvasStore } from "./src/renderer/src/shared/store/canvas-store";
 export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";
@@ -328,6 +331,7 @@ const {
 	mountRailProbe,
 	mountRouteDetail,
 	projectKeys,
+	onlineManager,
 	linkedProjectTotal,
 	useCanvasStore,
 	desktopRequestSchema,
@@ -930,6 +934,55 @@ test("singleton: pending and failed revalidation cannot expose stale selected de
 	failSessionRead = false;
 	await click(buttonByText("Try again"));
 	await waitFor(() => detailPane(), "confirmed selection restored");
+});
+
+test("singleton: paused offline revalidation never authorizes the stale cached one (R1)", async () => {
+	reset();
+	await fresh((container) => mount(container, props));
+	await waitFor(() => detailPane(), "initial singleton");
+	const key = projectKeys.forSession(SESSION);
+	const reads = () => ops("projects.for_session").length;
+	try {
+		/* Offline + invalidate: TanStack parks the refetch as fetchStatus
+		   "paused" with isSuccess true and isFetching false on the cached
+		   singleton, the exact shape `!isFetching` mistook for settled. */
+		sessionRows = () => [row("canvas-alpha"), row("beta")];
+		const before = reads();
+		await act(async () => onlineManager.setOnline(false));
+		await refreshLinks();
+		const paused = current.handle.client.getQueryState(key);
+		assert.equal(paused.status, "success");
+		assert.equal(paused.fetchStatus, "paused");
+		assert.equal(reads(), before, "no confirming read ran while offline");
+		assert.equal(Boolean(detailPane()), false, "paused: stale detail hidden");
+		assert.equal(Boolean(listPane()), false, "paused: no stale chooser");
+
+		/* Resume: the parked read runs (pending/fetching keeps detail hidden)
+		   and only its settled idle singleton answer opens detail again. */
+		const finish = deferredLinks();
+		await act(async () => onlineManager.setOnline(true));
+		await waitFor(() => reads() > before, "resumed read started");
+		assert.equal(
+			current.handle.client.getQueryState(key).fetchStatus,
+			"fetching",
+		);
+		assert.equal(Boolean(detailPane()), false, "resumed but pending: hidden");
+		await finish([row("canvas-alpha")]);
+		await waitFor(() => detailPane(), "settled idle singleton opens detail");
+		assert.equal(current.handle.client.getQueryState(key).fetchStatus, "idle");
+
+		/* A failed read over the cached singleton is not authorization either. */
+		failSessionRead = true;
+		await refreshLinks();
+		await waitFor(
+			() => text().includes("Linked projects could not be loaded"),
+			"failed revalidation",
+		);
+		assert.equal(Boolean(detailPane()), false, "failed: stale detail hidden");
+	} finally {
+		failSessionRead = false;
+		onlineManager.setOnline(true);
+	}
 });
 
 test("singleton: same conversation key with a new backend session never inherits explicit choice or Back escape", async () => {

@@ -113,8 +113,14 @@ export const CanvasProjectsViewer: FC<{
 	const rows = projects.data;
 	/* A cached singleton is not permission to navigate while its authoritative
 	   revalidation is pending (or failed). Derive the automatic destination in
-	   render: no chooser flash, no effect that can reopen a closed canvas. */
-	const authoritative = projects.isSuccess && !projects.isFetching;
+	   render: no chooser flash, no effect that can reopen a closed canvas.
+	   INVARIANT: authoritative = the last read succeeded AND no read is in
+	   flight or queued. `!isFetching` is not that: TanStack reports a refetch
+	   held back while offline as fetchStatus "paused" with isFetching false and
+	   isSuccess still true on the cached rows, so the stale count would have
+	   authorized (or kept) detail with no confirming read (round-1 R1). Only
+	   fetchStatus "idle" means nothing is pending. */
+	const authoritative = projects.isSuccess && projects.fetchStatus === "idle";
 	const links = JSON.stringify(
 		(rows ?? []).map((project) => project.id).sort(),
 	);
