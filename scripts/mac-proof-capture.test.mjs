@@ -834,7 +834,8 @@ test("the supervisor aborts on normal, focus, early shutters and the wrong conve
 			"[dev-driver-script] SHUTTER label=a-dark media=window:7:0 visible=true focused=false ack=/o/a.ack",
 		),
 		{
-			shutter: { label: "a-dark", windowId: 7, ack: "/o/a.ack" },
+			// Derived as <framesDir>/<label>.ack, never the printed `/o/a.ack`.
+			shutter: { label: "a-dark", windowId: 7, ack: "/o/a-dark.ack" },
 		},
 	);
 	// Each frame at most once.
