@@ -65,6 +65,7 @@ import {
 } from "./browser-chord";
 import { observeBrowserLocale } from "./browser-locale";
 import { CdpPool } from "./cdp";
+import { CompositeBridge, type CompositeSource } from "./composite-bridge";
 import {
 	type ConsentAttentionPayload,
 	consentClickHandler,
@@ -582,6 +583,11 @@ export function startBrowserHost(
 			openSystemSettings: async (tabId, id) =>
 				(await bindings.mediaPermission?.openSystemSettings(tabId, id)) ??
 				false,
+		},
+		// Per call through `bindings`, so a retried start's bridge answers.
+		composite: {
+			ack: (payload) => bindings.composite?.ack(payload) ?? false,
+			consumer: (ready) => bindings.composite?.consumer(ready),
 		},
 		focusPage: () => {
 			const record = bindings.host?.()?.registry.activeTab;
@@ -1323,6 +1329,9 @@ async function initializeBrowserHost(
 			captureSession();
 		};
 		notifyAddressOverlayHealth = notifyChanged;
+		// Assigned right after the registry exists; the registry calls back into it
+		// only from layout passes, none of which run during construction.
+		let compositeBridge: CompositeBridge | null = null;
 		const registry = new TabRegistry(
 			(_createOptions, tabId) => {
 				const view = buildView(options.window);
@@ -1396,7 +1405,71 @@ async function initializeBrowserHost(
 					presented,
 				);
 			},
+			// Before the views are hidden/detached: the composite must subscribe to a
+			// still-attached page (composite-bridge.ts, "SUBSCRIBE BEFORE DETACH").
+			() => compositeBridge?.sync(),
 		);
+		/*
+		 * The live picture of an overlay-suppressed page (composite-bridge.ts). Only
+		 * the ACTIVE tab, only while an APP OVERLAY is the reason it is hidden —
+		 * never the browser's own start/failure page, a route teardown (null rect)
+		 * or a background agent tab — and pixels go only to this window's shell.
+		 */
+		compositeBridge = new CompositeBridge({
+			eligible: () => {
+				if (options.window.isDestroyed()) return null;
+				const record = registry.activeTab;
+				if (!record || !registry.hiddenByOverlay(record.tabId)) return null;
+				const rect = registry.presentationContentRect;
+				if (!rect || rect.width <= 0 || rect.height <= 0) return null;
+				const source = record.view.webContents as unknown as CompositeSource;
+				if (source.isDestroyed()) return null;
+				return {
+					tabId: record.tabId,
+					source,
+					documentEpoch: record.documentEpoch,
+					rect,
+				};
+			},
+			target: () =>
+				options.window.isDestroyed() || options.window.webContents.isDestroyed()
+					? null
+					: options.window.webContents,
+			log,
+		});
+		const liveComposite = compositeBridge;
+		// A committed document (epoch bump) is a different page: restart the picture.
+		registry.onEpoch(() => liveComposite.sync());
+		// The shell reloading or crashing loses its canvas without an unmount, so
+		// its consumer registration is void until the new document re-registers.
+		const resetCompositeConsumer = (details?: {
+			isMainFrame?: boolean;
+			isSameDocument?: boolean;
+		}): void => {
+			if (details && "isMainFrame" in details) {
+				if (!details.isMainFrame || details.isSameDocument) return;
+			}
+			liveComposite.setConsumer(false);
+		};
+		const onShellGone = (): void => liveComposite.setConsumer(false);
+		options.window.webContents.on(
+			"did-start-navigation",
+			resetCompositeConsumer,
+		);
+		options.window.webContents.on("render-process-gone", onShellGone);
+		const disposeComposite = (): void => {
+			liveComposite.dispose();
+			if (options.window.isDestroyed()) return;
+			options.window.webContents.removeListener(
+				"did-start-navigation",
+				resetCompositeConsumer,
+			);
+			options.window.webContents.removeListener(
+				"render-process-gone",
+				onShellGone,
+			);
+		};
+		rollback.add(disposeComposite);
 		registryForDownloads = registry;
 		registry.setCustodyGate(passkeyCustody);
 		const userTabFocused = (contents?: Electron.WebContents) => {
@@ -2091,6 +2164,10 @@ async function initializeBrowserHost(
 			expectedUrl: options.expectedUrl,
 			host: () => host,
 			webauthn: () => webauthn,
+			composite: {
+				ack: (payload) => liveComposite.ack(payload),
+				consumer: (ready) => liveComposite.setConsumer(ready),
+			},
 			passkeyNotice: {
 				dismiss: (tabId, at) => {
 					const dismissed = passkeyNotices.dismiss(tabId, at);
@@ -2281,6 +2358,9 @@ async function initializeBrowserHost(
 				// reaches the same dispose through `cdp.close()`, and this is the one that
 				// does not depend on a tab still being attached (D21).
 				disposeAllRecordingEncoders();
+				// Before the views: ends the frame subscription, drops every buffered
+				// frame and tells the shell to clear its canvas.
+				disposeComposite();
 				registry.destroyAll();
 				await Promise.allSettled([...releases]);
 				await cdp.close();

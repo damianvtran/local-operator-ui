@@ -1334,6 +1334,45 @@ const api = {
 		 * No argument: the host restarts the same window's browser, so there is
 		 * nothing for a caller to retarget. */
 		retry: (): Promise<unknown> => ipcRenderer.invoke("browser-retry"),
+		/** Live composite of an overlay-suppressed page (main's
+		 * `composite-bridge.ts`): a full BGRA frame, drawn then ACKed so main sends
+		 * the next. Display-only; never persisted or forwarded. */
+		onCompositeFrame: (
+			callback: (frame: {
+				generation: number;
+				tabId: number;
+				webContentsId: number;
+				documentEpoch: number;
+				frameSeq: number;
+				width: number;
+				height: number;
+				pixels: Uint8Array;
+			}) => void,
+		): (() => void) => {
+			const handler = (_event: unknown, frame: unknown) =>
+				callback(frame as Parameters<typeof callback>[0]);
+			ipcRenderer.on("browser-composite-frame", handler);
+			return () => {
+				ipcRenderer.removeListener("browser-composite-frame", handler);
+			};
+		},
+		/** The composite's generation ended: drop what is drawn. */
+		onCompositeClear: (
+			callback: (clear: { generation: number; reason: string }) => void,
+		): (() => void) => {
+			const handler = (_event: unknown, clear: unknown) =>
+				callback(clear as Parameters<typeof callback>[0]);
+			ipcRenderer.on("browser-composite-clear", handler);
+			return () => {
+				ipcRenderer.removeListener("browser-composite-clear", handler);
+			};
+		},
+		ackCompositeFrame: (ack: {
+			generation: number;
+			frameSeq: number;
+		}): Promise<boolean> => ipcRenderer.invoke("browser-composite-ack", ack),
+		setCompositeConsumer: (ready: boolean): Promise<void> =>
+			ipcRenderer.invoke("browser-composite-consumer", ready),
 		onStateChanged: (callback: () => void): (() => void) => {
 			const handler = () => callback();
 			ipcRenderer.on("browser-state-changed", handler);
