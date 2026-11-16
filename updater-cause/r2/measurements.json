@@ -1,0 +1,39 @@
+{
+  "head": "3e06431f6912132a3d60c215181113d623bfcaca",
+  "phase": "Aida-authorised single <=15 min post-remediation phase, 17:55:23Z-18:10:23Z; captures 17:56-17:57Z; preview reaped by exact pgid 17:57Z",
+  "config_sha256": {
+    "main": "ea5a3546\u2026",
+    "preview": "0fdf2a53\u2026"
+  },
+  "long_token": {
+    "paragraph": "p.mt-1.text-body.text-ink 368x21.7 CSS px (single line)",
+    "overflow-wrap": "normal",
+    "word-break": "normal",
+    "white-space": "normal",
+    "result": "240-char unbroken token does NOT wrap; clipped at card edge (scroller overflow-y-auto, card 400px)",
+    "controls": "Try again topmost at (1212,240), Update later visible; reachable"
+  },
+  "quoted_password": {
+    "rendered": "credential refused: {\"password\":\"\u2026\"}",
+    "synthetic_input": "credential refused: {\"password\":\"alpha \\\"bravo\\\" charlie\"}",
+    "no_fragment_visible": true
+  },
+  "files": {
+    "long-token-light.png": {
+      "sha256": "a5542747cc99b55453ad735d9c0a6342a71504b49cceebe477eee86d22aaade7",
+      "bytes": 61137
+    },
+    "long-token-dark.png": {
+      "sha256": "756733b6f5533ef348b24884554d75ec5c6cbf58649cce826f043f892094db3e",
+      "bytes": 57450
+    },
+    "quoted-password-light.png": {
+      "sha256": "89b2493cb337541de6561906e1c36884f9f10aed04ec0ce4365ba91d01037ac7",
+      "bytes": 65339
+    },
+    "quoted-password-dark.png": {
+      "sha256": "d516a993799bce7e4c5db7b6d27cf9f5ffc4848be0bb4c17d4c3922388ea8101",
+      "bytes": 61836
+    }
+  }
+}
