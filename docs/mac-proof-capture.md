@@ -27,7 +27,11 @@ Each `--scene` x `--theme` becomes one frame, `<scene>-<theme>.png`, plus a
 `receipt.json` and the run's scratch logs in `--out/logs`. The five scenes are
 presets: `conversation` (the `--session` view), `files` (the canvas's Files
 view), `canvas` (the canvas's Documents view), `library` (the Library route) and
-`notifications` (the notifications route). `files` and `canvas` need `--session`.
+`notifications` (the notifications route), plus two that need a staged state:
+`asks` (the `--session` conversation with its asks drawer open on a
+suggested-command ask) and `notification-detail` (`/notifications/<id>`, the
+details page of `--notification-id`). `files`, `canvas` and `asks` need
+`--session`; see "Seeded scenes" for staging the state they photograph.
 Before it spawns anything, the run prints how many frames it will take and says
 it is opening **one** `inactive` window (one Dock tile) for the whole run.
 
@@ -180,6 +184,54 @@ the harness writes.
   never printed, written or logged. A token in a child environment is visible to
   same-user `ps eww`, the same principal that can already read the file.
 
+## Seeded scenes (#1902 asks command, #1907 notification details)
+
+An isolated backend starts on an EMPTY config root, so the asks drawer and a
+notification's details page would photograph empty states. `--seed <scenario>`
+stages the state instead, with no operator involvement and no write through the
+daemon:
+
+```sh
+# #1902: the asks drawer, one command for the agent and one for the user
+node scripts/mac-proof-capture.mjs --app-zip "$ZIP" --out "$LOCAL_OPERATOR_SCRATCHPAD/proof-1902" \
+  --seed ask-command --scene asks --theme dark,light
+
+# #1907: a long multi-paragraph notification with links and earlier revisions
+node scripts/mac-proof-capture.mjs --app-zip "$ZIP" --out "$LOCAL_OPERATOR_SCRATCHPAD/proof-1907" \
+  --seed notification-details --scene notification-detail --scene notifications --theme dark,light
+```
+
+- **What is written.** `scripts/mac-proof-seed.mjs` generates a synthetic config
+  root from the committed spec `docs/evidence/mac-proof/seeds/<scenario>/seed.json`
+  into `<rig>/seed`, just before `lop serve` starts (an ask is open only until its
+  `expires_at`, now + 24 h, so nothing with a timestamp is committed). It is then
+  vetted and copied exactly like a `--seed-config` template. Every file is in the
+  shape core writes, each constant citing its core file:line: the session
+  directory, `asks.jsonl` plus the derived `asks/<sid>.json` index (serve never
+  rebuilds the index, and `GET /v1/desktop/asks` reads only it), and
+  `notifications.db` built from core's `_SCHEMA` verbatim (`user_version` 3,
+  journal mode DELETE, closed, no sidecars). `notification-details` needs
+  `node:sqlite` (Node >= 22.13, as `.nvmrc` pins) and says so when it is missing.
+- **Defaults.** `--session` defaults to the seed's conversation (`fa1902000001`,
+  `fa1907000001`) and `--notification-id` to `n_macproofdetailaa`.
+- **BLOCKED unless read back.** After `/health`, the harness reads the seeded rows
+  from the real daemon (`GET /v1/desktop/asks` must list the open ask with both
+  `command`/`command_target` pairs; `GET /v1/desktop/notifications/<id>` must return
+  the item and its revision history). If they do not come back within 10 s the run
+  is BLOCKED (exit 3) before the app launches, so a frame of an empty state can
+  never pass as proof. The receipt records `seed.files` and `seed.check`.
+- **The scenes' own waits.** `asks` requires the drawer (`[data-lo-ask-surfaces]`)
+  and the command block inside it (`[data-ask-command]`); it presses the composer
+  chip only while it still reads minimized, because the open policy may already
+  have opened the drawer and the chip toggles. `notification-detail` requires
+  `[data-notification-detail="<id>"]` and its title.
+- **Generate a template by hand** (to inspect it, or for `--seed-config`):
+  `node scripts/mac-proof-seed.mjs --scenario ask-command --out <abs empty dir>`.
+  `--out` is refused when it is, sits inside, or contains your own config root
+  (`~/.local-operator`, the app's userData dirs, and `$LOCAL_OPERATOR_CONFIG_DIR`
+  when set), compared by realpath; an agent scratchpad under
+  `~/.local-operator/sessions/<id>/scratchpad` is the one carve-out.
+
 ## The harness reads; it never acts
 
 A read-role rig device can still **start a runtime on the session's owner**: on
@@ -188,8 +240,11 @@ capability (`:725`), the same one a read member holds. So the harness never
 prompts, sends, engages or resumes anything, and that is enforced in code:
 
 - every daemon HTTP call goes through one client (`daemonRequest`) whose
-  allowlist is `GET /health` and `GET /v1/desktop/sessions` (query keys
-  `include_peers`, `limit`); anything else - and any path naming prompt, send,
+  allowlist is `GET /health`, `GET /v1/desktop/sessions` (query keys
+  `include_peers`, `limit`), and the two `--seed` read-backs `GET
+  /v1/desktop/asks` and `GET /v1/desktop/notifications/<n_ + 16 of a-z2-7>`
+  (one path segment, no query); a path holding a control character is refused
+  outright; anything else - and any path naming prompt, send,
   engage, message(s), runs, resume, steer, wake, slash, stop, claim, turn, exec,
   history or stream - is refused before a byte is sent;
 - every lop invocation is checked (`lopArgvProblem`): only `serve --host
@@ -238,8 +293,24 @@ node scripts/mac-proof-capture.mjs --app-zip "$OUT/dl/local-operator-ui-<ver>-ar
   is removed once the reap is clean (`--keep-rig` keeps it; a run whose reap
   left a survivor keeps it too, and says so).
 - The receipt labels it `kind: "release-zip"` with the zip's basename and
-  sha256, the bundle version from its `Info.plist`, and on darwin the result of
-  `codesign --verify --deep --strict` (recorded, never gating, never prompting).
+  sha256 (hashed again right before extraction; a zip that changed since
+  preflight is refused), the bundle version from its `Info.plist`, and on darwin
+  the result of `codesign --verify --deep --strict` (recorded, never gating,
+  never prompting; bounded at 60 s, with `durationMs` and `timedOut` recorded).
+- The bundle's `Info.plist` and executable must resolve inside the extracted
+  `.app`: a zip whose `Contents` symlinks elsewhere is refused, so the receipt
+  always names the binary that ran. So is any symlink anywhere in the extracted
+  tree that resolves outside it, or does not resolve (`app.asar` and
+  `Frameworks/*` are loaded too); the real release's 20 relative framework and
+  python-runtime links all stay inside.
+- The zip is LISTED before anything is extracted: an entry with an absolute
+  path or a `..` segment refuses it (`ditto` and `unzip` do not treat those
+  alike), and so does a listed unpacked total over 2 GiB (v0.57.3 arm64 unpacks
+  to 427,528,786 B).
+- **Download with `gh` or curl, never a browser.** A browser download carries
+  `com.apple.quarantine`, `ditto` copies it onto the bundle, and launching it
+  would show Gatekeeper's first-open dialog. A quarantined zip or bundle is
+  refused (exit 2) with the `xattr -d` command to clear it yourself.
 - Give the tool call a timeout of at least `--timeout` + 60 s (here 300 s), or
   run it as a background job (see *The command*).
 
@@ -252,6 +323,9 @@ primary checkout's dependencies; link them only if nothing is there, and only
 while the lockfiles match:
 
 ```sh
+# One subshell, so `exit 8` / `exit 9` end the recipe, never the shell it was
+# pasted into (review r3 R3-6, QA r3 Q3-4).
+(
 cd ~/local-operator-ui
 git fetch origin <branch>
 git worktree add .worktrees/<name> origin/<branch>
@@ -263,6 +337,7 @@ pnpm run pack          # electron-vite build + electron-builder --dir ("pnpm pac
 APP="$PWD/dist/mac-arm64/Local Operator.app"                  # dist/mac/ on an Intel Mac
 node scripts/mac-proof-capture.mjs --app "$APP" --out "$LOCAL_OPERATOR_SCRATCHPAD/proof-frames" \
   --session <id> --scene conversation --theme dark,light
+)
 ```
 
 A fresh `git worktree add` has no `node_modules`, so the link is all it needs;
