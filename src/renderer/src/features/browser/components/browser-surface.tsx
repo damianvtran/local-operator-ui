@@ -1,6 +1,7 @@
 import { useConsentAttention } from "@shared/browser-consent-attention";
 import {
 	registerBrowserViewRect,
+	suppressionNeedsInertCue,
 	useBrowserViewSuppressed,
 	useSuppressBrowserView,
 	useSuppressedOverlayIds,
@@ -66,6 +67,10 @@ import {
 import { BrowserFileTransferRow } from "./browser-file-transfer-row";
 import { BrowserFindRow } from "./browser-find-row";
 import { BrowserHandOverDialog } from "./browser-hand-over-dialog";
+import {
+	BrowserLiveComposite,
+	type LiveCompositeView,
+} from "./browser-live-composite";
 import { BrowserLoadFailure } from "./browser-load-failure";
 import { BrowserMediaPermissionPrompt } from "./browser-media-permission-prompt";
 import { BrowserNewTab } from "./browser-new-tab";
@@ -341,6 +346,18 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	 * snapshot.
 	 */
 	const overlaySuppressing = browserOverlaySuppressing(suppressedBy);
+	// What the composite canvas shows: a picture of the page, a short gap
+	// between two pictures, or nothing (`browser-live-composite.tsx`). Drives
+	// whether the paused note is VISIBLE: with no picture and no frame coming
+	// (headless, stream cleared for good) the note stays the honest state.
+	const [compositeView, setCompositeView] = useState<LiveCompositeView>("none");
+	const livePicture = compositeView === "picture";
+	// UX U1: under a scrimless card that stays up (the update notice) a live
+	// picture looks interactive while ignoring input, so it is lightly dimmed
+	// and the paused line stays visible as a caption over it.
+	const inertCue =
+		livePicture && overlaySuppressing && suppressionNeedsInertCue(suppressedBy);
+	const showPausedNote = suppressed && overlaySuppressing;
 	const contentRef = useRef<HTMLDivElement | null>(null);
 	/**
 	 * The row the page and the dock share. Its width decides whether the side
@@ -1640,27 +1657,73 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 							</Button>
 						</div>
 					)}
-					{suppressed &&
-						overlaySuppressing &&
+					{(showPausedNote || livePicture) &&
 						!internalPage &&
 						state &&
 						tabs.length > 0 && (
-							<output
-								className="flex h-full flex-col items-center justify-center gap-1 px-6 text-center"
-								data-tour-tag="browser-paused"
-								data-suppressed-by={suppressedBy}
-							>
-								<p className="max-w-lg truncate text-title text-ink">
-									{state.title ||
-										activeTab?.title ||
-										t("ui.browser.browser_surface.this_page")}
-								</p>
-								<p className="text-body-sm text-ink-muted">
-									{t(
-										"ui.browser.browser_surface.paused_while_a_dialog_menu_or_panel",
-									)}
-								</p>
-							</output>
+							<>
+								{/* The page keeps rendering under the overlay (operator request):
+								    main streams the detached view's frames into this canvas.
+								    It STAYS mounted after the overlay closes while a picture is
+								    drawn, until main's CLEAR (sent from the same layout pass that
+								    re-presents the view) wipes it, so the hand-off is picture →
+								    native page with no bare frame between (UX U3: the canvas used
+								    to go at +217 ms, the page come back at +289 ms). */}
+								<BrowserLiveComposite
+									suppressing={showPausedNote}
+									onViewChange={setCompositeView}
+								/>
+								{inertCue && (
+									<div
+										aria-hidden
+										className="pointer-events-none absolute inset-0 bg-scrim opacity-50"
+										data-tour-tag="browser-live-composite-dim"
+									/>
+								)}
+								{showPausedNote && (
+									<output
+										className={cn(
+											"flex flex-col items-center gap-1 px-6 text-center",
+											inertCue
+												? // Under a persistent scrimless card (U1) the paused line
+													// is the only thing saying why the page ignores input: a
+													// caption over the dimmed picture, on the opaque elevated
+													// plate so it reads over any page.
+													"pointer-events-none absolute inset-x-0 bottom-4"
+												: "h-full justify-center",
+											// Otherwise still announced (the page is not interactive),
+											// but not painted over a live picture or into the short gap
+											// between two pictures.
+											compositeView !== "none" && !inertCue && "sr-only",
+										)}
+										data-tour-tag="browser-paused"
+										data-live-composite={livePicture ? "true" : undefined}
+										data-inert-cue={inertCue ? "true" : undefined}
+										data-suppressed-by={suppressedBy}
+									>
+										<p
+											className={cn(
+												"max-w-lg truncate text-title text-ink",
+												inertCue && "sr-only",
+											)}
+										>
+											{state.title ||
+												activeTab?.title ||
+												t("ui.browser.browser_surface.this_page")}
+										</p>
+										<p
+											className={cn(
+												"text-body-sm text-ink-muted",
+												inertCue && "rounded-md bg-elevated px-3 py-1.5",
+											)}
+										>
+											{t(
+												"ui.browser.browser_surface.paused_while_a_dialog_menu_or_panel",
+											)}
+										</p>
+									</output>
+								)}
+							</>
 						)}
 					{showingNewTab && (
 						/*

@@ -1,0 +1,10 @@
+{
+	"ui.schedules.monitors.blind_health": "không thể so sánh kết quả nên các thay đổi không được báo",
+	"ui.schedules.monitors.could_not_load_monitors": "Không thể tải các mục giám sát.",
+	"ui.schedules.monitors.could_not_read_monitors": "Không thể đọc các mục giám sát trên máy này nên danh sách này có thể chưa đầy đủ.",
+	"ui.schedules.monitors.count_needs_attention": "{total, plural, other {{total_display} mục giám sát}} · {attention, plural, other {{attention_display} cần chú ý}}",
+	"ui.schedules.monitors.expired_state": "đã hết hạn",
+	"ui.schedules.monitors.list_truncated": "Đang hiển thị {shown, number, ::group-off} trên {total, plural, other {{total, number, ::group-off} cuộc trò chuyện}} có mục giám sát.",
+	"ui.schedules.monitors.parked_clause": "Tạm ngưng — các mục giám sát không kiểm tra",
+	"ui.schedules.monitors.parked_state": "tạm ngưng"
+}

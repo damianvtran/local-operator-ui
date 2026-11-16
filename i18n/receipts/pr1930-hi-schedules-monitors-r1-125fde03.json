@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, of the new PR #1930 namespace ui.schedules.monitors (3 keys) added in 48d97331cc (b29f6087e8..48d97331cc)",
+  "locale": "hi",
+  "namespace": "ui.schedules.monitors",
+  "pr": 1930,
+  "date": "2026-11-15",
+  "head": "48d97331cce0ae07e6aad85aa22b50f3940270a0",
+  "instance": "pr1930-hi-schedules-monitors-r1-125fde03",
+  "auditor": {
+    "agent": "i18n-auditor",
+    "role": "independent translation auditor (team lopdev, task role ui1898-i18n-auditor); not the translator (coder subagent 360204865c92 on anthropic/claude-opus-5-5)",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session c744486e376c: a different session and agent from the translator (coder 360204865c92); same served model family anthropic/claude-opus-5-5 as stated by this session's harness system prompt, no fallback. No MT used.",
+    "instance": "pr1930-hi-schedules-monitors-r1-125fde03"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "findings": [],
+  "binding": "Verified at 48d97331cc: target src/i18n/catalogues/hi/ui.schedules.monitors.json (sha256 727140decea9cc26e795440b8e7fb192a03de80736809ca5a6becf8d7c9454cd); English src/i18n/catalogues/en/ui.schedules.monitors.json (sha256 1623689e77f93183bd09ec0287d25c4fd9fd6bdae487c3d10eddad40e22081a1); context sidecar sha256 4a707c1701fe946f1a6c1eb7a2c5720ae7170d1c11917b7df52f15fb03ceae23; core glossary ~/local-operator/i18n/glossary.md sha256 0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8 and style-guides/hi.md sha256 82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5 (local-operator e21f92fa4ee1). Checks (node, @formatjs/icu-messageformat-parser + intl-messageformat): key set equals English; ICU argument names/types identical (shown, total; number ::group-off kept); plural arms equal Intl.PluralRules categories; values NFC, no Cf characters, none English-identical; list_truncated rendered at (1,2),(3,1001),(20,21),(50,25). Values: {\"ui.schedules.monitors.list_truncated\": \"मॉनिटर वाली {shown, number, ::group-off} दिखाई गईं, कुल {total, plural, one {{total, number, ::group-off} बातचीत} other {{total, number, ::group-off} बातचीतें}}।\", \"ui.schedules.monitors.parked_clause\": \"रुकी हुई — इसके मॉनिटर जाँच नहीं कर रहे\", \"ui.schedules.monitors.parked_state\": \"रुका हुआ\"}. Rationale: list_truncated mirrors the hi twin structure ('मॉनिटर वाली' for 'जागृति वाली'), one/other; मॉनिटर is glossary note 7's stored-object form and the established run_details term. parked_clause leads with 'रुकी हुई' as the wake clause (feminine for बातचीत), 'इसके मॉनिटर जाँच नहीं कर रहे' no resume promise; parked_state 'रुका हुआ' masculine agreeing with मॉनिटर.",
+  "scope": "ui.schedules.monitors for hi: 3 new PR #1930 keys at branch head 48d97331cc",
+  "revisions": {
+    "head": "48d97331cce0ae07e6aad85aa22b50f3940270a0"
+  },
+  "en_sha256": "1623689e77f93183bd09ec0287d25c4fd9fd6bdae487c3d10eddad40e22081a1",
+  "context_sha256": "4a707c1701fe946f1a6c1eb7a2c5720ae7170d1c11917b7df52f15fb03ceae23",
+  "target_sha256": "727140decea9cc26e795440b8e7fb192a03de80736809ca5a6becf8d7c9454cd",
+  "sha256": {
+    "hi": "727140decea9cc26e795440b8e7fb192a03de80736809ca5a6becf8d7c9454cd",
+    "en": "1623689e77f93183bd09ec0287d25c4fd9fd6bdae487c3d10eddad40e22081a1"
+  }
+}

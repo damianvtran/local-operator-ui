@@ -117,7 +117,21 @@ import { createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserSurface } from "./src/renderer/src/features/browser/components/browser-surface";
 import { browserOwnStateFor } from "./src/renderer/src/features/browser/model/start-page";
+import { BrowserLiveComposite } from "./src/renderer/src/features/browser/components/browser-live-composite";
 export { browserOwnStateFor };
+
+/** Mount the live composite alone over a given (possibly partial) bridge. */
+export function mountComposite(container, bridge) {
+	window.api = { browser: bridge };
+	const root = createRoot(container);
+	root.render(
+		createElement(BrowserLiveComposite, {
+			suppressing: true,
+			onViewChange: () => {},
+		}),
+	);
+	return { unmount: () => root.unmount() };
+}
 
 /**
  * Mount the surface over a fake bridge.
@@ -325,11 +339,11 @@ const bundlePath = new URL(`./_start-page-${process.pid}.mjs`, import.meta.url);
 let mount;
 let suppressBrowserView;
 let browserOwnStateFor;
+let mountComposite;
 try {
 	await writeFile(bundlePath, bundle.outputFiles[0].text);
-	({ mount, suppressBrowserView, browserOwnStateFor } = await import(
-		bundlePath.href
-	));
+	({ mount, suppressBrowserView, browserOwnStateFor, mountComposite } =
+		await import(bundlePath.href));
 } finally {
 	await unlink(bundlePath).catch(() => {});
 }
@@ -698,4 +712,50 @@ test("own-state treats an empty start projection as a page to refuse until a sub
 		false,
 		"a loaded page is never own-state",
 	);
+});
+
+/*
+ * A PARTIAL COMPOSITE BRIDGE MUST NOT BREAK THE TREE (merge gate, run
+ * 43791014552). An older preload, or a test fake whose catch-all Proxy answers
+ * every member with `async () => undefined`, hands the live composite a promise
+ * where an unsubscriber is expected. Calling it in the layout effect's cleanup
+ * threw "offFrame is not a function" and aborted React's commit. Each bridge
+ * below is a shape that once threw; mount and unmount must both be quiet.
+ */
+test("the live composite mounts and unmounts over a partial composite bridge", async () => {
+	const asyncAnything = new Proxy(
+		{},
+		{ get: () => () => Promise.resolve(undefined) },
+	);
+	const shapes = {
+		"catch-all async Proxy": asyncAnything,
+		"frame subscription only": { onCompositeFrame: () => () => {} },
+		"subscriptions without consumer calls": {
+			onCompositeFrame: () => () => {},
+			onCompositeClear: () => () => {},
+		},
+		"consumer call answers a non-promise": {
+			onCompositeFrame: () => undefined,
+			onCompositeClear: () => undefined,
+			setCompositeConsumer: () => undefined,
+		},
+		"consumer call throws": {
+			onCompositeFrame: () => () => {},
+			onCompositeClear: () => () => {},
+			setCompositeConsumer: () => {
+				throw new Error("no such IPC channel");
+			},
+		},
+	};
+	for (const [name, bridge] of Object.entries(shapes)) {
+		const container = freshContainer();
+		let handle;
+		await act(async () => {
+			handle = mountComposite(container, bridge);
+		});
+		await act(async () => {
+			assert.doesNotThrow(() => handle.unmount(), name);
+		});
+		await flush();
+	}
 });

@@ -3526,6 +3526,32 @@ html[data-glass] [data-glass-overlay] {
 }
 
 /*
+ * OVER A LIVE PAGE PICTURE THE FLOATING LAYER IS OPAQUE (PR #1929, design D1).
+ *
+ * The overlay alpha above is derived against the app's own translucent column
+ * underneath. While an overlay is open over the browser, the surface now draws a
+ * live picture of the page (`browser-live-composite.tsx`) - an arbitrary OPAQUE
+ * ground with no column between it and the panel. Over a white page the dark
+ * palette's 0.75 panel composes to (98,95,88) and the muted ink on it measures
+ * 3.36:1, under the 4.5:1 text floor (design round 1, from the measured alpha and
+ * inks). Pages are on branding.md's "stays solid" list ("the page paints
+ * itself"), so the panels over one take the opaque plate: the surface sets
+ * `data-browser-live-composite` on the root exactly while a picture is drawn
+ * (`holdLiveCompositeRoot`) and this pins the overlay alpha to 1 on the root.
+ *
+ * WHY ON THE ROOT, AND WHY `!important`. The floating layer keeps exactly ONE
+ * `[data-glass-overlay]` rule (`scripts/glass-overlay.test.mjs` O-3: a second
+ * selector is a second opinion about the same ground), so the change is made to
+ * the alpha that rule reads rather than in a second panel rule.
+ * `use-window-glass.ts` writes `--lo-glass-a-overlay` as an INLINE style on
+ * `<html>`, and only an important stylesheet declaration outranks a normal
+ * inline one. Nothing else reads this property.
+ */
+html[data-glass][data-browser-live-composite] {
+	--lo-glass-a-overlay: 1 !important;
+}
+
+/*
  * ENDED CONSOLE HISTORY: NO CARET, BUT A FOCUS RING (D1, D2).
  *
  * The cursor cell is made transparent and its ink inherited from the row, so the
