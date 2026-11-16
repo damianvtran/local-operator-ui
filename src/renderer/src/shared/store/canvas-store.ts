@@ -71,6 +71,10 @@ export type ConversationCanvasState = {
 	 * the viewer drops it when the project is no longer linked here.
 	 */
 	selectedProjectId?: string | null;
+	/** Backend identity guards draft promotion/rebinding under the same chat key. */
+	selectedProjectSessionId?: string;
+	/** Explicit Back suppresses singleton forwarding until the linked ID set changes. */
+	projectListEscape?: string;
 	spreadsheetData: Record<string, Record<string, Record<string, unknown>[]>>;
 };
 
@@ -148,6 +152,8 @@ export type CanvasStoreState = {
 	setSelectedProject: (
 		conversationId: string,
 		projectId: string | null,
+		sessionId?: string,
+		backFromLinks?: string,
 	) => void;
 	/**
 	 * Reset the canvas state for a conversation
@@ -355,13 +361,20 @@ export const useCanvasStore = create<CanvasStoreState>()(
 					},
 				}));
 			},
-			setSelectedProject: (conversationId, projectId) => {
+			setSelectedProject: (
+				conversationId,
+				projectId,
+				sessionId,
+				backFromLinks,
+			) => {
 				set((state) => ({
 					conversations: {
 						...state.conversations,
 						[conversationId]: {
 							...getConversationState(state.conversations, conversationId),
 							selectedProjectId: projectId,
+							selectedProjectSessionId: sessionId,
+							projectListEscape: backFromLinks,
 						},
 					},
 				}));

@@ -3024,6 +3024,21 @@ export const ProjectsError: Story = {
 		}),
 };
 
+/** A single confirmed link goes straight to the shared detail, without a row click. */
+export const ProjectsSingleton: Story = {
+	render: () => {
+		installViewerBytes();
+		return projectsFrame({
+			list: () =>
+				ok({
+					session_id: STORY_SESSION_ID,
+					projects: LINKED_PROJECTS.slice(0, 1),
+				}),
+			detail: () => ok(PROJECT_DETAIL),
+		});
+	},
+};
+
 /** Three linked projects: title, status, milestones, due date, recency, stale mark. */
 export const ProjectsPopulated: Story = {
 	render: () =>

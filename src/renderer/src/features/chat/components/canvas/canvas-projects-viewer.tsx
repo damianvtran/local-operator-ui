@@ -56,7 +56,14 @@ const BACKEND_SILENT = () => t("ui.canvas.projects.unreachable_description");
  * beside the rail's count, so the rail's dot stays current with this view
  * closed too (round-1 R1-3/U5).
  *
- * THE SELECTION lives in the canvas store, per conversation (round-1 U4):
+ * EXPLICIT SELECTION lives in the canvas store, scoped to conversation AND
+ * backend session. Automatic singleton selection is derived only after a
+ * settled successful linked read. It is not saved as an explicit row choice:
+ * 1→many returns the chooser; a still-linked explicit choice stays in detail.
+ * Back suppresses singleton navigation for the current linked ID set, across
+ * close/reopen as well, until that set or backend identity changes.
+ *
+ * The store survives view switches (round-1 U4):
  * this component unmounts on every view switch and close, and a reader who
  * glances at Files returns to the project they were reading. It is shown only
  * while that project is still linked here; once the list says otherwise
@@ -80,14 +87,16 @@ export const CanvasProjectsViewer: FC<{
 	const supported = gate === "enabled";
 	const projects = useSessionProjects(sessionId, supported);
 	const storeKey = conversationId ?? sessionId ?? "draft";
-	const selected = useCanvasStore(
-		(state) => state.conversations[storeKey]?.selectedProjectId ?? null,
-	);
+	const navigation = useCanvasStore((state) => state.conversations[storeKey]);
+	const remembered =
+		navigation?.selectedProjectSessionId === sessionId
+			? (navigation?.selectedProjectId ?? null)
+			: null;
 	const setSelectedProject = useCanvasStore(
 		(state) => state.setSelectedProject,
 	);
-	const setSelected = (projectId: string | null) =>
-		setSelectedProject(storeKey, projectId);
+	const setSelected = (projectId: string | null, backFromLinks?: string) =>
+		setSelectedProject(storeKey, projectId, sessionId, backFromLinks);
 	const now = nowMs ?? Date.now();
 
 	/*
@@ -102,18 +111,55 @@ export const CanvasProjectsViewer: FC<{
 	const listRef = useRef<HTMLElement | null>(null);
 
 	const rows = projects.data;
+	/* A cached singleton is not permission to navigate while its authoritative
+	   revalidation is pending (or failed). Derive the automatic destination in
+	   render: no chooser flash, no effect that can reopen a closed canvas. */
+	const authoritative = projects.isSuccess && !projects.isFetching;
+	const links = JSON.stringify(
+		(rows ?? []).map((project) => project.id).sort(),
+	);
+	const escaped =
+		navigation?.selectedProjectSessionId === sessionId &&
+		navigation?.projectListEscape === links;
 	const linked =
-		selected !== null && rows !== undefined
-			? rows.some((project) => project.id === selected)
-			: false;
-	/* A remembered project this chat is no longer linked to: back to the list. */
+		remembered !== null && rows?.some((project) => project.id === remembered);
+	const selected = authoritative
+		? linked
+			? remembered
+			: !escaped && rows?.length === 1
+				? rows[0].id
+				: null
+		: null;
+	/* Only explicit row opens persist across 1→many. Automatic singleton entry
+	   becomes the chooser on 1→many; many→1 forwards unless Back escaped this
+	   exact set. Clear invalid selections/escapes only after an authoritative read. */
 	useEffect(() => {
-		if (selected !== null && rows !== undefined && !linked) {
-			setSelectedProject(storeKey, null);
+		if (!authoritative) return;
+		if (
+			navigation?.selectedProjectSessionId !== sessionId ||
+			(remembered !== null && !linked) ||
+			(navigation?.projectListEscape !== undefined && !escaped)
+		) {
+			setSelectedProject(storeKey, null, sessionId);
 		}
-	}, [selected, rows, linked, storeKey, setSelectedProject]);
-
-	const showingList = !(selected !== null && linked);
+	}, [
+		authoritative,
+		navigation?.selectedProjectSessionId,
+		navigation?.projectListEscape,
+		sessionId,
+		remembered,
+		linked,
+		escaped,
+		storeKey,
+		setSelectedProject,
+	]);
+	const deliberateOpen = useRef<string | null>(null);
+	/* Focus belongs only to the click's mount, never a later revalidation or
+	   restoration of the same detail while the operator types in chat. */
+	useEffect(() => {
+		deliberateOpen.current = null;
+	});
+	const showingList = selected === null;
 	useEffect(() => {
 		if (!showingList) return;
 		const id = returnFocusTo.current;
@@ -181,7 +227,7 @@ export const CanvasProjectsViewer: FC<{
 			/>
 		);
 	}
-	if (selected !== null && linked) {
+	if (selected !== null) {
 		const opened = selected;
 		return (
 			/*
@@ -207,18 +253,19 @@ export const CanvasProjectsViewer: FC<{
 					embedded={{
 						onBack: () => {
 							returnFocusTo.current = opened;
-							setSelected(null);
+							deliberateOpen.current = null;
+							setSelected(null, links);
 						},
 						backLabel: t("ui.canvas.projects.back"),
-						focusOnMount: true,
+						focusOnMount: deliberateOpen.current === `${sessionId}:${opened}`,
 					}}
 				/>
 			</div>
 		);
 	}
-	/* A remembered selection waits here for the list that confirms it is
-	   still linked (the detail branch above needs `linked`). */
-	if (projects.isLoading) {
+	/* Loading and failed revalidation never authorize cached detail, even if
+	   the last successful response still contains a remembered/single project. */
+	if (projects.isLoading || (!projects.isError && !authoritative)) {
 		return <LoadingState />;
 	}
 	if (projects.isError) {
@@ -262,7 +309,10 @@ export const CanvasProjectsViewer: FC<{
 						key={project.id}
 						project={project}
 						nowMs={now}
-						onOpen={() => setSelected(project.id)}
+						onOpen={() => {
+							deliberateOpen.current = `${sessionId}:${project.id}`;
+							setSelected(project.id);
+						}}
 					/>
 				))}
 			</ul>
