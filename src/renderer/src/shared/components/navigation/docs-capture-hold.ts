@@ -75,11 +75,22 @@ export function blurProgrammaticFocus(doc: Document): () => void {
 	};
 	/* Deferred: blurring inside `focusin` races the focusing code's own
 	   follow-up (selection, scroll-into-view); one task later it has finished. */
-	const onFocusIn = () => setTimeout(blur, 0);
+	const pending = new Set<ReturnType<typeof setTimeout>>();
+	const onFocusIn = () => {
+		const timer = setTimeout(() => {
+			pending.delete(timer);
+			blur();
+		}, 0);
+		pending.add(timer);
+	};
 	const onUserInput = (event: Event) => {
 		if (event.isTrusted) stop();
 	};
 	const stop = () => {
+		// Removing listeners alone leaves queued work able to steal a person's
+		// focus after trusted input, or blur another scene after unmount.
+		for (const timer of pending) clearTimeout(timer);
+		pending.clear();
 		doc.removeEventListener("focusin", onFocusIn, true);
 		doc.removeEventListener("pointerdown", onUserInput, true);
 		doc.removeEventListener("keydown", onUserInput, true);
