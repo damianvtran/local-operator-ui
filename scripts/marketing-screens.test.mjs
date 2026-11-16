@@ -359,6 +359,89 @@ test("the Mention scene drives the composer by its real role and holds the shutt
 	assert.ok(picker > 0 && release > picker, "released only after the picker");
 });
 
+test("Team Bridge clears only its QA draft before children initialize", () => {
+	// Run the actual shell's pre-JSX mount code with hooks deferred as React's
+	// layout effects are. Merely finding a reset in an effect misses Q11: a
+	// child can already have snapshotted the stale draft before that effect.
+	const start = bridge.indexOf("function MarketingShell(");
+	const render = bridge.indexOf("\n\treturn (\n\t\t<div", start);
+	assert.ok(start > 0 && render > start);
+	const createShell = new Function(
+		"useState",
+		"useLayoutEffect",
+		"useConversationInputStore",
+		"teamBridgeComposerKey",
+		"draftTargetKey",
+		"SELF",
+		"TENANT",
+		"QA",
+		`${stripTypeScriptTypes(`${bridge.slice(start, render)}\nreturn children;\n}`)}\nreturn MarketingShell;`,
+	);
+	let ready = false;
+	const effects = [];
+	let mounting = true;
+	const drafts = new Map([
+		["self/tenant/qa", "@"],
+		["self/tenant/other", "keep"],
+	]);
+	const shell = createShell(
+		(initial) => {
+			assert.equal(initial, false, "first render must withhold children");
+			return [
+				ready,
+				(value) => {
+					ready = value;
+				},
+			];
+		},
+		(effect, deps) => {
+			assert.deepEqual(
+				deps,
+				[],
+				"reset is once per shell mount, not every render",
+			);
+			if (mounting) effects.push(effect);
+		},
+		{
+			getState: () => ({
+				setComposerText: (key, value) => drafts.set(key, value),
+			}),
+		},
+		(account, tenant, target) => `${account}/${tenant}/${target}`,
+		(target) => {
+			assert.equal(target.type, "conversation");
+			return target.id;
+		},
+		"self",
+		"tenant",
+		{ id: "qa" },
+	);
+	const child = {};
+	assert.equal(
+		shell({ children: child }),
+		null,
+		"no child initializes before effects",
+	);
+	effects[0]();
+	assert.equal(drafts.get("self/tenant/qa"), "");
+	assert.equal(
+		drafts.get("self/tenant/other"),
+		"keep",
+		"other conversations untouched",
+	);
+	assert.equal(ready, true, "release follows the scoped reset");
+	mounting = false;
+	assert.equal(
+		shell({ children: child }),
+		child,
+		"children may now initialize cleanly",
+	);
+	// Mention play runs after mount. A later shell render must not erase it.
+	drafts.set("self/tenant/qa", "@");
+	assert.equal(shell({ children: child }), child);
+	assert.equal(drafts.get("self/tenant/qa"), "@");
+});
+
 test("the Asks scene mounts the fleet ask drawer once, through ChatLayout", () => {
 	// ChatLayout owns the drawer behind the store flag the shell sets; a
 	// second mount in the story painted two drawers (10 "Send answer" for 5 asks).
