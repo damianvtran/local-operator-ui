@@ -23,11 +23,14 @@ import {
 	FORBIDDEN_DAEMON_PATH,
 	Refusal,
 	SCREENCAPTURE_METHOD,
+	STARTUP_WINDOW_MS,
 	appNames,
+	appZipProblem,
 	backendUrlProblem,
 	buildAppArgv,
 	buildAppEnv,
 	buildSteps,
+	bundleInExtracted,
 	captureModeProblem,
 	comparablePath,
 	createSupervisor,
@@ -52,6 +55,7 @@ import {
 	rigMatcher,
 	screenRecordingVerdict,
 	selectServeRecord,
+	startupProblem,
 	validateOptions,
 	windowModeProblem,
 } from "./mac-proof-capture.mjs";
@@ -163,7 +167,8 @@ process.on("SIGTERM", () => {}); // a wedged app: the harness must escalate
 const log = (line) => process.stdout.write(line + "\\n");
 log("[window-mode] window mode " + mode + ": 1380x900, never shown, page throttling off");
 log("[dev-driver] ARMED; frames are written to " + out);
-log("[dev-driver-script] ARMED; steps from " + process.env.LOCAL_OPERATOR_UI_DEV_DRIVER_SCRIPT);
+// noScript: a release that predates the S1 step runner never prints this.
+if (!behaviour.noScript) log("[dev-driver-script] ARMED; steps from " + process.env.LOCAL_OPERATOR_UI_DEV_DRIVER_SCRIPT);
 // The re-parented helper: its own group, carrying the profile, outliving us.
 const child = spawn(process.execPath, ["-e", ${JSON.stringify(CAP_ONLY)}, "--", "--user-data-dir=" + profile], { detached: true, stdio: "ignore" });
 child.unref();
@@ -174,6 +179,8 @@ setTimeout(() => {
   // A wedged renderer: armed, shown, and then nothing - the shape the
   // harness's --timeout and SIGTERM paths have to clean up after.
   if (behaviour.hang) return;
+  // A pre-S1 build has no step runner at all: it boots and idles.
+  if (behaviour.noScript) return;
   const steps = JSON.parse(fs.readFileSync(process.env.LOCAL_OPERATOR_UI_DEV_DRIVER_SCRIPT, "utf8")).steps;
   log("[dev-driver-script] ready verbs=8");
   steps.forEach((step, i) => {
@@ -991,6 +998,14 @@ test("--negative-control runs every refusal against the real guards and exits 0"
 		"focused=true",
 		"port 1111",
 		"relative app path",
+		"--app together with --app-zip",
+		"relative --app-zip",
+		"--app-zip that is not a .zip",
+		"--app-zip that does not exist",
+		"--app-zip that is a directory",
+		"an extracted zip with no .app",
+		"an extracted zip with two .app bundles",
+		"predates S1",
 	])
 		assert.match(
 			run.stdout,
@@ -2231,4 +2246,257 @@ test("a child that cannot be spawned ends the run through the full teardown, not
 	const receipt = JSON.parse(readFileSync(join(out, "receipt.json"), "utf8"));
 	assert.match(receipt.error, /lop serve could not run: .*EACCES/);
 	assert.equal(receipt.verdict, "failed");
+});
+
+/*
+ * --app-zip: the Mac leg downloads a release zip instead of building. On Linux
+ * the harness extracts with `unzip` (darwin: /usr/bin/ditto); the test zips a
+ * fake `.app` with `zip -qry` (symlinks kept, like electron-builder's
+ * `ditto -c -k`), so both tools must be on PATH or the end-to-end cases skip.
+ */
+const HAVE_ZIP_TOOLS =
+	spawnSync("zip", ["-v"], { stdio: "ignore" }).status === 0 &&
+	spawnSync("unzip", ["-v"], { stdio: "ignore" }).status === 0;
+
+/** Zip `entries` (names relative to `from`) into `zipPath`, keeping modes and symlinks. */
+function zipTree(from, entries, zipPath) {
+	const run = spawnSync("zip", ["-qry", zipPath, ...entries], {
+		cwd: from,
+		encoding: "utf8",
+	});
+	assert.equal(run.status, 0, run.stderr);
+	return zipPath;
+}
+
+test("--app-zip: path refusals, one top-level .app, and exclusive with --app", () => {
+	assert.match(appZipProblem("dl/x.zip"), /absolute/);
+	assert.match(appZipProblem(join(TREE, "x.tar.gz")), /\.zip/);
+	assert.match(appZipProblem(join(TREE, "missing.zip")), /does not exist/);
+	mkdirSync(join(TREE, "a-dir.zip"), { recursive: true });
+	assert.match(appZipProblem(join(TREE, "a-dir.zip")), /regular file/);
+	writeFileSync(join(TREE, "real.zip"), "PK");
+	assert.equal(appZipProblem(join(TREE, "real.zip")), null);
+
+	const none = join(TREE, "extract-none");
+	mkdirSync(join(none, "__MACOSX"), { recursive: true });
+	writeFileSync(join(none, "README.app"), "a FILE named .app is not a bundle");
+	assert.throws(() => bundleInExtracted(none), /exactly one \.app.*found 0/);
+	const two = join(TREE, "extract-two");
+	mkdirSync(join(two, "A.app"), { recursive: true });
+	mkdirSync(join(two, "B.app"), { recursive: true });
+	assert.throws(() => bundleInExtracted(two), /found 2: A\.app, B\.app/);
+	const one = join(TREE, "extract-one");
+	mkdirSync(join(one, "Local Operator.app"), { recursive: true });
+	assert.equal(bundleInExtracted(one), join(one, "Local Operator.app"));
+
+	const both = parseArgs([
+		"--app",
+		"/x.app",
+		"--app-zip",
+		"/x.zip",
+		"--out",
+		"/tmp/o",
+	]);
+	assert.throws(() => validateOptions(both), /mutually exclusive/);
+	assert.throws(
+		() => validateOptions(parseArgs(["--app-zip", "x.zip", "--out", "/tmp/o"])),
+		/--app-zip must be an absolute path/,
+	);
+	assert.equal(parseArgs(["--keep-rig"]).keepRig, true);
+	assert.equal(parseArgs([]).keepRig, false);
+	// Refused at exit 2 by the real CLI, before any rig or spawn.
+	const rigRoot = join(TREE, "zip-refuse-rig");
+	const run = runHarness([
+		"--app-zip",
+		join(TREE, "x.tar.gz"),
+		"--out",
+		join(TREE, "zip-refuse-out"),
+		"--rig-root",
+		rigRoot,
+		"--capture",
+		"capturepage",
+	]);
+	assert.equal(run.status, 2, run.all);
+	assert.match(run.all, /refused: --app-zip must name a \.zip/);
+	assert.equal(existsSync(rigRoot), false, "no rig for a refused zip");
+});
+
+test("startup window: a build with no [dev-driver-script] ARMED is named as predating S1", () => {
+	const armed = {
+		windowModeLine: "[window-mode] window mode inactive",
+		scriptArmed: true,
+	};
+	assert.equal(startupProblem(armed, STARTUP_WINDOW_MS + 1), null);
+	assert.equal(
+		startupProblem({ ...armed, scriptArmed: false }, STARTUP_WINDOW_MS),
+		null,
+		"nothing is judged inside the window",
+	);
+	assert.match(
+		startupProblem({ ...armed, scriptArmed: false }, STARTUP_WINDOW_MS + 1),
+		/predates the step runner \(S1\).*first release after PR #1936/,
+	);
+	assert.match(
+		startupProblem(
+			{ windowModeLine: null, scriptArmed: false },
+			STARTUP_WINDOW_MS + 1,
+		),
+		/no \[window-mode\] line within 20 s/,
+	);
+});
+
+test(
+	"--app-zip end to end: extracted into the rig, receipt names the zip, removed after a clean reap",
+	{
+		skip: HAVE_ZIP_TOOLS ? false : "zip/unzip not on PATH",
+	},
+	() => {
+		const app = fakeApp("Zipped");
+		const zip = zipTree(
+			TREE,
+			["Zipped.app"],
+			join(TREE, "local-operator-ui-0.0.0-fake-arm64.zip"),
+		);
+		const zipSha = createHash("sha256").update(readFileSync(zip)).digest("hex");
+		const rigRoot = join(TREE, "zip-rig");
+		const out = join(TREE, "zip-out");
+		const run = runHarness([
+			"--app-zip",
+			zip,
+			"--out",
+			out,
+			"--rig-root",
+			rigRoot,
+			"--capture",
+			"capturepage",
+			"--lop",
+			fakeLop(),
+			"--scene",
+			"library",
+			"--theme",
+			"dark",
+		]);
+		const rig = rigOf(rigRoot);
+		trackPids(rig);
+		assert.equal(run.status, 0, run.all);
+		assert.match(
+			run.all,
+			/launching ONE headless window \(release-zip 0\.0\.0-fake\)/,
+		);
+		const receipt = JSON.parse(readFileSync(join(out, "receipt.json"), "utf8"));
+		assert.equal(receipt.verdict, "captured");
+		assert.equal(receipt.app.kind, "release-zip");
+		assert.equal(receipt.app.version, "0.0.0-fake");
+		assert.equal(
+			receipt.app.zip.basename,
+			"local-operator-ui-0.0.0-fake-arm64.zip",
+		);
+		assert.equal(receipt.app.zip.sha256, zipSha);
+		assert.deepEqual(receipt.app.codesign, {
+			ran: false,
+			reason: "not darwin",
+		});
+		// The app that ran is the EXTRACTED copy inside the rig, not the source tree.
+		assert.equal(receipt.app.realpath, join(rig, "app", "Zipped.app"));
+		assert.notEqual(receipt.app.realpath, app);
+		assert.deepEqual(receipt.app.extracted, { removed: join(rig, "app") });
+		assert.equal(existsSync(join(rig, "app")), false);
+		assert.equal(receipt.frames.length, 1);
+		assert.equal(receipt.reap.app.clean, true, JSON.stringify(receipt.reap));
+		for (const pid of Object.values(fixturePids(rig)))
+			assert.equal(alive(pid), false, `pid ${pid} survived`);
+
+		// --keep-rig keeps the extracted bundle; a zip of TWO bundles is refused
+		// (exit 2) after extraction and before any app is launched.
+		const keptRoot = join(TREE, "zip-keep-rig");
+		const kept = runHarness([
+			"--app-zip",
+			zip,
+			"--keep-rig",
+			"--out",
+			join(TREE, "zip-keep-out"),
+			"--rig-root",
+			keptRoot,
+			"--capture",
+			"capturepage",
+			"--lop",
+			fakeLop(),
+			"--scene",
+			"library",
+			"--theme",
+			"dark",
+		]);
+		const keptRig = rigOf(keptRoot);
+		trackPids(keptRig);
+		assert.equal(kept.status, 0, kept.all);
+		assert.ok(
+			existsSync(join(keptRig, "app", "Zipped.app", "Contents", "Info.plist")),
+		);
+
+		fakeApp("Second");
+		const twoZip = zipTree(
+			TREE,
+			["Zipped.app", "Second.app"],
+			join(TREE, "two-apps.zip"),
+		);
+		const twoRoot = join(TREE, "zip-two-rig");
+		const two = runHarness([
+			"--app-zip",
+			twoZip,
+			"--out",
+			join(TREE, "zip-two-out"),
+			"--rig-root",
+			twoRoot,
+			"--capture",
+			"capturepage",
+			"--lop",
+			fakeLop(),
+		]);
+		const twoRig = rigOf(twoRoot);
+		trackPids(twoRig);
+		assert.equal(two.status, 2, two.all);
+		assert.match(
+			two.all,
+			/REFUSED: --app-zip must hold exactly one \.app.*found 2/,
+		);
+		assert.equal(
+			existsSync(join(twoRig, "fake-app.pid")),
+			false,
+			"no app was launched",
+		);
+		assert.equal(existsSync(join(TREE, "zip-two-out", "receipt.json")), true);
+	},
+);
+
+test("a build that never arms the step runner fails inside the startup window, named as predating S1", () => {
+	const app = fakeApp("PreS1", { noScript: true });
+	const rigRoot = join(TREE, "pre-s1-rig");
+	const started = Date.now();
+	const run = runHarness([
+		"--app",
+		app,
+		"--out",
+		join(TREE, "pre-s1-out"),
+		"--rig-root",
+		rigRoot,
+		"--capture",
+		"capturepage",
+		"--lop",
+		fakeLop(),
+		"--timeout",
+		"120",
+	]);
+	const rig = rigOf(rigRoot);
+	trackPids(rig);
+	assert.equal(run.status, 1, run.all);
+	assert.match(
+		run.all,
+		/FAILED: no \[dev-driver-script\] ARMED line within 20 s: this build predates the step runner/,
+	);
+	// The startup window, not --timeout (120 s), ended it.
+	assert.ok(Date.now() - started < 60_000, `took ${Date.now() - started} ms`);
+	assert.equal(
+		alive(Number(readFileSync(join(rig, "fake-app.pid"), "utf8"))),
+		false,
+	);
 });

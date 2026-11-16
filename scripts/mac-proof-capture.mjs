@@ -31,8 +31,9 @@
  * flag; `--negative-control` runs the refusal cases against these same guards.
  *
  * CONSTRAINTS that shape the code below:
- *   - Node built-ins only. The Mac runs it from a checkout (or a PR worktree whose
- *     node_modules is a symlink), and nothing here may need an install.
+ *   - Node built-ins only. The Mac runs it from any checkout, with no
+ *     node_modules and no build (`--app-zip` photographs a downloaded release),
+ *     and nothing here may need an install.
  *   - The desktop token is a credential. It travels ONLY in a child's environment:
  *     never argv, never stdout, never the receipt, never a file this script writes.
  *   - Refuse, don't fake (AGENTS.md "What a capture may claim"): every guard
@@ -43,12 +44,15 @@
 import { spawn, spawnSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import {
+	closeSync,
 	cpSync,
 	existsSync,
 	lstatSync,
 	mkdirSync,
 	mkdtempSync,
+	openSync,
 	readFileSync,
+	readSync,
 	readdirSync,
 	readlinkSync,
 	realpathSync,
@@ -297,7 +301,9 @@ export function readPlistString(xml, key) {
  */
 export function resolveAppBundle(appPath) {
 	if (!appPath)
-		throw new Refusal("--app is required (an absolute path to a .app bundle)");
+		throw new Refusal(
+			"--app or --app-zip is required (an absolute path to a .app bundle, or to a release .zip)",
+		);
 	if (!isAbsolute(appPath))
 		throw new Refusal(`--app must be an absolute path (got ${appPath})`);
 	let real;
@@ -327,6 +333,173 @@ export function resolveAppBundle(appPath) {
 		// `electron-builder --dir` bundle of a PR branch) is a build of this tree.
 		kind: real.startsWith("/Applications/") ? "installed" : "built",
 	};
+}
+
+/*
+ * ---------------------------------------------------------------------------
+ * --app-zip: a RELEASE build, downloaded, extracted into the rig.
+ *
+ * WHY. The Mac leg must not build: a local `pnpm run pack` on a loaded Mac
+ * (load ~120 measured on the requesting run) is the wrong shape, and a fresh
+ * worktree has no node_modules to build with. Releases already ship the signed
+ * `local-operator-ui-<ver>-<arch>.zip` electron-builder makes (a top-level
+ * `.app`), so the Mac only downloads one and this extracts it into
+ * `<rig>/app/`: never `/Applications`, never the operator's copy, removed after
+ * a clean reap unless `--keep-rig`. Every `--app` guard then runs on the
+ * extracted bundle, which is just another `.app` path.
+ *
+ * Extraction is `/usr/bin/ditto -x -k` on darwin (what electron-builder's own
+ * `ditto -c -k` zips are made for: it restores the framework symlinks and
+ * modes a code signature covers). Elsewhere - the Linux fake-tree tests only -
+ * it is `unzip` from PATH, refused when absent; no hand-rolled zip reader, so
+ * there is no second extraction semantics to keep in step.
+ * ---------------------------------------------------------------------------
+ */
+
+/** The zip path itself: absolute, `.zip`, an existing regular file. */
+export function appZipProblem(zipPath) {
+	if (!isAbsolute(zipPath))
+		return `--app-zip must be an absolute path (got ${zipPath})`;
+	if (!zipPath.endsWith(".zip"))
+		return `--app-zip must name a .zip file (got ${zipPath})`;
+	let stat;
+	try {
+		stat = statSync(zipPath);
+	} catch {
+		return `--app-zip ${zipPath} does not exist`;
+	}
+	if (!stat.isFile())
+		return `--app-zip must be a regular file (got ${zipPath})`;
+	return null;
+}
+
+/** sha256 of a file in 1 MiB chunks: a release zip is ~180 MB (v0.57.3 arm64: 179,290,789 B), never one buffer. */
+export function fileSha256(path) {
+	const hash = createHash("sha256");
+	const fd = openSync(path, "r");
+	try {
+		const chunk = Buffer.alloc(1 << 20);
+		for (;;) {
+			const n = readSync(fd, chunk, 0, chunk.length, null);
+			if (n === 0) break;
+			hash.update(chunk.subarray(0, n));
+		}
+	} finally {
+		closeSync(fd);
+	}
+	return hash.digest("hex");
+}
+
+/** The ONE top-level `.app` directory of an extracted zip; 0 or >1 is refused. */
+export function bundleInExtracted(dir) {
+	const apps = readdirSync(dir).filter(
+		(name) => name.endsWith(".app") && lstatSync(join(dir, name)).isDirectory(),
+	);
+	if (apps.length !== 1)
+		throw new Refusal(
+			`--app-zip must hold exactly one .app at its top level (found ${apps.length}${apps.length ? `: ${apps.join(", ")}` : ""})`,
+		);
+	return join(dir, apps[0]);
+}
+
+/** Extract with the platform's tool; `timeoutMs` is what is left of --timeout. */
+export function extractAppZip(
+	zip,
+	dest,
+	{ platform = process.platform, timeoutMs },
+) {
+	let command;
+	let argv;
+	if (platform === "darwin") {
+		command = "/usr/bin/ditto";
+		argv = ["-x", "-k", zip, dest];
+	} else {
+		command = resolveOnPath("unzip");
+		if (!command)
+			throw new Refusal(
+				"--app-zip needs `unzip` on PATH on this platform (darwin uses /usr/bin/ditto)",
+			);
+		argv = ["-q", zip, "-d", dest];
+	}
+	mkdirSync(dest, { recursive: true });
+	const result = spawnSync(command, argv, {
+		encoding: "utf8",
+		timeout: Math.max(1000, timeoutMs),
+		stdio: ["ignore", "pipe", "pipe"],
+	});
+	if (result.status !== 0)
+		throw new Refusal(
+			`could not extract --app-zip with ${command}: ${(result.error?.message ?? result.stderr ?? "").trim().slice(0, 400) || `exit ${result.status ?? result.signal}`}`,
+		);
+}
+
+/**
+ * `codesign --verify --deep --strict`, recorded for the reviewer and never
+ * gating: verify reads the bundle and its embedded signature only (no keychain,
+ * so no prompt), and an unsigned or ad-hoc PR artifact is still a frame of that
+ * artifact. Not run off darwin.
+ */
+export function codesignVerdict(
+	appPath,
+	{ platform = process.platform, timeoutMs },
+) {
+	if (platform !== "darwin") return { ran: false, reason: "not darwin" };
+	const result = spawnSync(
+		"/usr/bin/codesign",
+		["--verify", "--deep", "--strict", appPath],
+		{
+			encoding: "utf8",
+			timeout: Math.max(1000, timeoutMs),
+			stdio: ["ignore", "pipe", "pipe"],
+		},
+	);
+	return {
+		ran: true,
+		valid: result.status === 0,
+		status: result.status,
+		detail: (result.error?.message ?? result.stderr ?? "").trim().slice(0, 600),
+	};
+}
+
+/**
+ * Extract `--app-zip` into `<rig>/app` and resolve the bundle through the same
+ * guards as `--app`, plus the operator-root check on the extracted path.
+ */
+export function releaseZipApp(
+	zipInfo,
+	rig,
+	{ roots, timeoutMs, platform = process.platform },
+) {
+	const dest = join(rig, "app");
+	extractAppZip(zipInfo.path, dest, { platform, timeoutMs });
+	const bundle = bundleInExtracted(dest);
+	const problem = operatorPathProblem("--app-zip bundle", bundle, roots);
+	if (problem) throw new Refusal(problem);
+	const app = resolveAppBundle(bundle);
+	return {
+		...app,
+		kind: "release-zip",
+		zip: zipInfo,
+		codesign: codesignVerdict(app.realpath, { platform, timeoutMs }),
+	};
+}
+
+/**
+ * A build without the S1 step runner (any release before it shipped) prints
+ * `[window-mode]` and maybe `[dev-driver] ARMED`, then sits idle until
+ * --timeout. Detect it inside the SAME startup window the `[window-mode]`
+ * check already uses: a build WITH S1 prints `[dev-driver-script] ARMED` from
+ * main-module load (`src/main/index.ts`, top level), before `app.whenReady`
+ * prints `[window-mode]`, so it always lands inside that window.
+ */
+export const STARTUP_WINDOW_MS = 20_000;
+export function startupProblem(state, elapsedMs) {
+	if (elapsedMs <= STARTUP_WINDOW_MS) return null;
+	if (!state.windowModeLine)
+		return `the app printed no [window-mode] line within ${STARTUP_WINDOW_MS / 1000} s`;
+	if (!state.scriptArmed)
+		return `no [dev-driver-script] ARMED line within ${STARTUP_WINDOW_MS / 1000} s: this build predates the step runner (S1). An --app-zip must come from a release that contains S1-S3 (the first release after PR #1936 merged); an --app build must be of a branch that contains them`;
+	return null;
 }
 
 /** `http:` loopback origin only; isolated backends never use the operator's port. */
@@ -494,11 +667,16 @@ export function operatorDesktopTokenPath({
  * ---------------------------------------------------------------------------
  */
 
-export const USAGE = `node scripts/mac-proof-capture.mjs --app <abs .app> --out <abs dir> [options]
+export const USAGE = `node scripts/mac-proof-capture.mjs (--app <abs .app> | --app-zip <abs .zip>) --out <abs dir> [options]
 
 Captures every --scene x --theme of the real app in ONE inactive launch.
 
   --app <abs path>             the .app bundle (installed or electron-builder --dir build)
+  --app-zip <abs path>         instead of --app: a release local-operator-ui-<ver>-<arch>.zip,
+                               extracted into <rig>/app (ditto on darwin, unzip elsewhere);
+                               needs a release that contains the step runner (S1-S3)
+  --keep-rig                   keep the extracted --app-zip bundle after the run (default:
+                               removed once the reap is clean)
   --out <abs dir>              where frames + receipt.json go (outside any operator root)
   --session <12 hex>           conversation to open (--open-session); needed by files/canvas
   --scene <name>               repeatable: ${SCENES.join(", ")} (default: conversation)
@@ -547,6 +725,8 @@ Backend (the app only ever ATTACHES; it never spawns, installs or claims):
 export function parseArgs(argv) {
 	const opts = {
 		app: null,
+		appZip: null,
+		keepRig: false,
 		out: null,
 		session: null,
 		scenes: [],
@@ -589,6 +769,12 @@ export function parseArgs(argv) {
 		switch (flag) {
 			case "--app":
 				opts.app = take();
+				break;
+			case "--app-zip":
+				opts.appZip = take();
+				break;
+			case "--keep-rig":
+				opts.keepRig = true;
 				break;
 			case "--out":
 				opts.out = take();
@@ -683,6 +869,8 @@ export function validateOptions(opts) {
 			);
 	if (new Set(opts.scenes).size !== opts.scenes.length)
 		throw new Refusal("a --scene is repeated");
+	if (opts.app !== null && opts.appZip !== null)
+		throw new Refusal("--app and --app-zip are mutually exclusive");
 	if (opts.themes.length === 0) throw new Refusal("--theme names no theme");
 	// Own properties only: `theme in THEMES` accepted `constructor` and other
 	// prototype keys (review r1 R1-7). A repeat is refused here, before launch,
@@ -763,6 +951,7 @@ export function validateOptions(opts) {
 			"--seed-config cannot be combined with --backend-config-root (that root is durable and the operator's to prepare)",
 		);
 	for (const [flag, path] of [
+		["--app-zip", opts.appZip],
 		["--out", opts.out],
 		["--rig-root", opts.rigRoot],
 		["--lop", opts.lop],
@@ -1947,6 +2136,62 @@ export function negativeControlCases() {
 		],
 		["relative app path", () => resolveAppBundle("Local Operator.app")],
 		[
+			"--app together with --app-zip",
+			() =>
+				validateOptions(
+					parseArgs([
+						"--app",
+						"/x.app",
+						"--app-zip",
+						"/x.zip",
+						"--out",
+						"/tmp/o",
+					]),
+				),
+		],
+		["relative --app-zip", () => appZipProblem("dl/local-operator-ui.zip")],
+		[
+			"--app-zip that is not a .zip",
+			() => appZipProblem(join(tree, "home", "release.tar.gz")),
+		],
+		[
+			"--app-zip that does not exist",
+			() => appZipProblem(join(tree, "gone.zip")),
+		],
+		[
+			"--app-zip that is a directory",
+			() => {
+				mkdirSync(join(tree, "dir.zip"), { recursive: true });
+				return appZipProblem(join(tree, "dir.zip"));
+			},
+		],
+		[
+			"an extracted zip with no .app",
+			() => {
+				mkdirSync(join(tree, "x0", "Not An App"), { recursive: true });
+				return bundleInExtracted(join(tree, "x0"));
+			},
+		],
+		[
+			"an extracted zip with two .app bundles",
+			() => {
+				mkdirSync(join(tree, "x2", "A.app"), { recursive: true });
+				mkdirSync(join(tree, "x2", "B.app"), { recursive: true });
+				return bundleInExtracted(join(tree, "x2"));
+			},
+		],
+		[
+			"a build that never arms the step runner (predates S1)",
+			() =>
+				startupProblem(
+					{
+						windowModeLine: "[window-mode] window mode inactive",
+						scriptArmed: false,
+					},
+					STARTUP_WINDOW_MS + 1,
+				),
+		],
+		[
 			"app path that is a bare binary",
 			() => resolveAppBundle(join(tree, "home")),
 		],
@@ -2126,7 +2371,25 @@ function makeRig(rigRoot) {
 /** Everything resolvable before a spawn. Throws `Refusal` (exit 2) or BLOCKED (exit 3). */
 export function preflight(opts, { roots = operatorRoots() } = {}) {
 	validateOptions(opts);
-	const app = resolveAppBundle(opts.app);
+	// A zip is only CHECKED here (path, hash): extracting needs the rig, which
+	// exists only past preflight, so `main` resolves the bundle right after it
+	// makes the rig and before anything else is spawned.
+	let app;
+	if (opts.appZip !== null) {
+		const zipProblem = appZipProblem(opts.appZip);
+		if (zipProblem) throw new Refusal(zipProblem);
+		app = {
+			kind: "release-zip",
+			zip: {
+				path: opts.appZip,
+				basename: basename(opts.appZip),
+				sha256: fileSha256(opts.appZip),
+			},
+			version: null,
+			executable:
+				"<rig>/app/<the zip's one .app>/Contents/MacOS/<CFBundleExecutable> (extracted at run)",
+		};
+	} else app = resolveAppBundle(opts.app);
 	const outProblem = operatorPathProblem("--out", opts.out, roots);
 	if (outProblem) throw new Refusal(outProblem);
 	const rigRoot =
@@ -2628,6 +2891,22 @@ export async function main(argv = process.argv.slice(2)) {
 			try {
 				cpSync(join(rig, "logs"), join(opts.out, "logs"), { recursive: true });
 			} catch {}
+			// The extracted release (a ~180 MB zip, more unpacked) goes once nothing of it can still be
+			// running: after a CLEAN reap only. A survivor keeps its tree, both for
+			// diagnosis and so no process is left executing from a deleted bundle.
+			if (opts.appZip !== null && receipt.app.kind === "release-zip") {
+				const extracted = join(rig, "app");
+				if (opts.keepRig) receipt.app.extracted = { kept: extracted };
+				else if (leaked)
+					receipt.app.extracted = {
+						kept: extracted,
+						reason: "a process survived the reap",
+					};
+				else {
+					rmSync(extracted, { recursive: true, force: true });
+					receipt.app.extracted = { removed: extracted };
+				}
+			}
 			writeFileSync(
 				join(opts.out, "receipt.json"),
 				`${JSON.stringify(receipt, null, 2)}\n`,
@@ -2664,6 +2943,16 @@ export async function main(argv = process.argv.slice(2)) {
 	);
 
 	try {
+		// ---- --app-zip: extract into the rig, then the --app guards -----------
+		if (opts.appZip !== null) {
+			plan.app = releaseZipApp(plan.app.zip, rig, {
+				roots: operatorRoots(),
+				timeoutMs: runDeadline - Date.now(),
+			});
+			receipt.app = plan.app;
+			checkpoint("extracting --app-zip");
+		}
+
 		// ---- backend --------------------------------------------------------
 		let backendUrl;
 		let token;
@@ -2912,8 +3201,7 @@ export async function main(argv = process.argv.slice(2)) {
 		const started = Date.now();
 		let tick = 0;
 		while (!abort && !finished && !appExited && !endedBy()) {
-			if (!supervisor.state.windowModeLine && Date.now() - started > 20_000)
-				abort = "the app printed no [window-mode] line within 20 s";
+			abort ??= startupProblem(supervisor.state, Date.now() - started);
 			await sleep(100);
 			// Every ~2 s: record the app's descendants (and the lop processes'),
 			// so a helper that later leaves the group is still reaped by pid.

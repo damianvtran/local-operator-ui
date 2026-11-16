@@ -1,8 +1,8 @@
 # Mac proof capture: one command, real vibrancy, no human step
 
 `scripts/mac-proof-capture.mjs` photographs the **real** app (the installed
-`/Applications/Local Operator.app`, or an `electron-builder --dir` build of a PR
-branch) on a Mac, in light and dark, with the window server's own capture. That
+`/Applications/Local Operator.app`, a downloaded release zip (`--app-zip`), or
+an `electron-builder --dir` build of a PR branch) on a Mac, in light and dark, with the window server's own capture. That
 capture is the only one that carries macOS vibrancy: `capturePage()` and CDP
 photograph the page, and the blurred desktop behind a glass window is not in the
 page. It needs no click, no focus and no sign-in from the operator, which is what
@@ -56,7 +56,9 @@ is below the default `--timeout` and will SIGKILL the harness.
 ## What happens, and why it is safe on the operator's own desktop
 
 1. **Preflight refuses before anything is spawned.** `--app` must be an absolute
-   `.app` bundle with a `Contents/Info.plist` naming an existing executable.
+   `.app` bundle with a `Contents/Info.plist` naming an existing executable
+   (`--app-zip`: an absolute `.zip` file, its one bundle checked the same way
+   once extracted into the rig, before the backend or the app starts).
    `--out`, the rig and the profile must not be, sit inside, or contain any of
    the operator's roots (`~/Library/Application Support/{Local Operator,
    local-operator-ui,Electron}`, the Linux `~/.config/` and `$XDG_CONFIG_HOME`
@@ -199,25 +201,74 @@ receipt discloses those side effects (the opened conversation's seen marks, a
 
 ## A PR branch, before it is released
 
-Seams S1-S3 reach `/Applications` only after a release that contains them is
-installed. Until then build the PR branch as an unpacked bundle on the Mac, in a
-worktree that shares the primary checkout's dependencies:
+Seams S1-S3 (the step runner and its gates) exist only in builds that contain
+them. Photograph a **release build you download**; do not build on the Mac.
+
+### Primary: download a release zip, capture it (no build, no install)
+
+Every release ships electron-builder's signed
+`local-operator-ui-<ver>-arm64.zip` and `-x64.zip` (`gh release view v<ver>
+-R damianvtran/local-operator-ui` lists them). `--app-zip` extracts one into the
+rig and runs it there:
+
+```sh
+OUT="$LOCAL_OPERATOR_SCRATCHPAD/proof-<ver>"
+gh release download v<ver> -R damianvtran/local-operator-ui \
+  --pattern 'local-operator-ui-<ver>-arm64.zip' -D "$OUT/dl"      # -x64.zip on an Intel Mac
+# without gh (the repository is public):
+#   mkdir -p "$OUT/dl" && curl -fL -o "$OUT/dl/local-operator-ui-<ver>-arm64.zip" \
+#     https://github.com/damianvtran/local-operator-ui/releases/download/v<ver>/local-operator-ui-<ver>-arm64.zip
+node scripts/mac-proof-capture.mjs --app-zip "$OUT/dl/local-operator-ui-<ver>-arm64.zip" \
+  --out "$OUT" --scene library --scene notifications --theme dark,light --timeout 240
+```
+
+- Run it from **any** checkout of this repository at or after the commit that
+  added `--app-zip`. The script is stdlib Node: no `node_modules`, no build, no
+  `pnpm install`.
+- The zip must come from a release that **contains S1-S3**: the first release
+  after this harness's pull request (#1936) merged, or later. An older zip boots,
+  prints `[window-mode]`, and never prints `[dev-driver-script] ARMED`; the
+  harness fails it inside its 20 s startup window with `this build predates the
+  step runner (S1)` instead of idling to `--timeout`.
+- `--app-zip` must be an absolute path to an existing regular `.zip` file, and is
+  refused together with `--app` (exit 2). It is extracted into `<rig>/app/` with
+  `/usr/bin/ditto -x -k` (`unzip` off darwin, which only the Linux fake-tree
+  tests use), the zip must hold exactly one top-level `.app`, and every `--app`
+  guard then runs on that extracted bundle. It is never in `/Applications` and
+  is removed once the reap is clean (`--keep-rig` keeps it; a run whose reap
+  left a survivor keeps it too, and says so).
+- The receipt labels it `kind: "release-zip"` with the zip's basename and
+  sha256, the bundle version from its `Info.plist`, and on darwin the result of
+  `codesign --verify --deep --strict` (recorded, never gating, never prompting).
+- Give the tool call a timeout of at least `--timeout` + 60 s (here 300 s), or
+  run it as a background job (see *The command*).
+
+### Fallback: build the branch on a lightly loaded Mac
+
+Only when no release carries the change yet **and** the Mac has headroom: a
+`pnpm run pack` competes with everything else on the machine (the run that
+motivated `--app-zip` saw load ~120). Build in a worktree that shares the
+primary checkout's dependencies; link them only if nothing is there, and only
+while the lockfiles match:
 
 ```sh
 cd ~/local-operator-ui
 git fetch origin <branch>
 git worktree add .worktrees/<name> origin/<branch>
 cd .worktrees/<name>
-rm -rf node_modules && ln -s ../../node_modules node_modules   # share, never reinstall
+cmp pnpm-lock.yaml ../../pnpm-lock.yaml || { echo "lockfile differs: install in this worktree instead"; exit 8; }
+if [ -e node_modules ] || [ -L node_modules ]; then echo "node_modules exists: refusing"; exit 9; fi
+ln -s ../../node_modules node_modules                          # share, never reinstall
 pnpm run pack          # electron-vite build + electron-builder --dir ("pnpm pack" is pnpm's own tarball command)
 APP="$PWD/dist/mac-arm64/Local Operator.app"                  # dist/mac/ on an Intel Mac
 node scripts/mac-proof-capture.mjs --app "$APP" --out "$LOCAL_OPERATOR_SCRATCHPAD/proof-frames" \
   --session <id> --scene conversation --theme dark,light
 ```
 
-The receipt labels such a bundle `kind: "built"` (anything outside
-`/Applications` is), and the frames are evidence of that build, not of the
-installed app.
+A fresh `git worktree add` has no `node_modules`, so the link is all it needs;
+an existing path is refused rather than deleted. The receipt labels such a
+bundle `kind: "built"` (anything outside `/Applications` is), and the frames are
+evidence of that build, not of the installed app or a release.
 
 ## What a frame may claim
 
