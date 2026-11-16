@@ -198,7 +198,7 @@ const DiagramBoundaryFallback: FC<{ error?: Error }> = ({ error }) => {
 /**
  * Error boundary to catch any rendering errors that escape the component's error handling
  */
-class DiagramErrorBoundary extends Component<
+export class DiagramErrorBoundary extends Component<
 	ErrorBoundaryProps,
 	ErrorBoundaryState
 > {
@@ -231,7 +231,7 @@ class DiagramErrorBoundary extends Component<
 /**
  * Diagram viewer shared by the Mermaid and Pele renderers: zoom, pan, save SVG, reset, fullscreen and copy controls around an SVG that a renderer supplies
  */
-const DiagramViewerCore: FC<DiagramViewerProps> = memo(
+export const DiagramViewer: FC<DiagramViewerProps> = memo(
 	({
 		chart,
 		id,
@@ -668,14 +668,3 @@ const DiagramViewerCore: FC<DiagramViewerProps> = memo(
 		);
 	},
 );
-
-/**
- * Diagram viewer wrapped with error boundary for maximum error containment
- */
-export const DiagramViewer: FC<DiagramViewerProps> = memo((props) => {
-	return (
-		<DiagramErrorBoundary>
-			<DiagramViewerCore {...props} />
-		</DiagramErrorBoundary>
-	);
-});

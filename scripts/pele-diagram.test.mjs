@@ -152,6 +152,7 @@ test("both engines share one viewer and the transcript consumes the selector", (
 	for (const file of ["mermaid-diagram.tsx", "pele-diagram.tsx"]) {
 		const source = read(file);
 		assert.ok(source.includes("<DiagramViewer"), file);
+		assert.ok(source.includes("<DiagramErrorBoundary>"), file);
 		assert.ok(source.includes("exportName="), file);
 	}
 	const markdown = read("markdown-renderer.tsx");

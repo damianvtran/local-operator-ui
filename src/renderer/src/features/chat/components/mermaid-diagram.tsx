@@ -2,7 +2,7 @@ import { useResolvedAppearance } from "@shared/themes/use-resolved-appearance";
 import type { Mermaid } from "mermaid";
 import type { FC } from "react";
 import { memo, useCallback } from "react";
-import { DiagramViewer } from "./diagram-viewer";
+import { DiagramErrorBoundary, DiagramViewer } from "./diagram-viewer";
 
 /*
  * The mermaid theme, expressed in role variables.
@@ -361,7 +361,7 @@ export const renderMermaidSvg = async (
 /**
  * Mermaid diagram component with zoom, pan, save SVG, reset, fullscreen, and copy controls
  */
-export const MermaidDiagram: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
+const MermaidDiagramCore: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 	/* The seeded half of the mermaid palette is baked into the SVG at render
 		   time, so a theme switch has to reach mermaid rather than just the
 		   stylesheet. ThemeProvider publishes `data-theme` in a layout effect,
@@ -387,3 +387,9 @@ export const MermaidDiagram: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 		/>
 	);
 });
+
+export const MermaidDiagram: FC<MermaidDiagramProps> = memo((props) => (
+	<DiagramErrorBoundary>
+		<MermaidDiagramCore {...props} />
+	</DiagramErrorBoundary>
+));

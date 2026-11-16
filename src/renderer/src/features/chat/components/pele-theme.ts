@@ -49,7 +49,7 @@ export function peleExportVariables(resolve: RoleResolver): string {
 	return declarations.join(";");
 }
 
-const ROOT_STYLE = /^(<svg\b[^>]*?\sstyle=")/;
+const ROOT_STYLE = /^(<svg\b[^>]*? style=")/;
 
 export function inlinePeleTheme(svg: string, resolve: RoleResolver): string {
 	const variables = peleExportVariables(resolve);

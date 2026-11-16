@@ -1,6 +1,6 @@
 import type { FC } from "react";
 import { memo, useCallback } from "react";
-import { DiagramViewer } from "./diagram-viewer";
+import { DiagramErrorBoundary, DiagramViewer } from "./diagram-viewer";
 import {
 	PELE_FONT_SIZE,
 	PELE_THEME_STYLE,
@@ -54,7 +54,7 @@ type PeleDiagramProps = {
 	id?: string;
 };
 
-export const PeleDiagram: FC<PeleDiagramProps> = memo(({ chart, id }) => {
+const PeleDiagramCore: FC<PeleDiagramProps> = memo(({ chart, id }) => {
 	const renderSvg = useCallback(
 		(source: string, diagramId?: string) => renderPeleSvg(source, diagramId),
 		[],
@@ -72,3 +72,9 @@ export const PeleDiagram: FC<PeleDiagramProps> = memo(({ chart, id }) => {
 		/>
 	);
 });
+
+export const PeleDiagram: FC<PeleDiagramProps> = memo((props) => (
+	<DiagramErrorBoundary>
+		<PeleDiagramCore {...props} />
+	</DiagramErrorBoundary>
+));
