@@ -7,6 +7,7 @@ import {
 	readFileSync,
 	readdirSync,
 	rmSync,
+	symlinkSync,
 	writeFileSync,
 } from "node:fs";
 import os from "node:os";
@@ -14,6 +15,7 @@ import { join } from "node:path";
 import { after, test } from "node:test";
 import {
 	ASK_COMMAND_MAX_CHARS,
+	MIN_TIMEOUT_S,
 	NOTIFICATIONS_SCHEMA,
 	SCHEMA_VERSION,
 	SEED_SCENARIOS,
@@ -26,8 +28,10 @@ import {
 	loadSeedSpec,
 	main,
 	pendingRow,
+	seedOutProblem,
 	seedRowsProblem,
 	specProblem,
+	withoutSqliteExperimentalWarning,
 } from "./mac-proof-seed.mjs";
 
 /**
@@ -516,6 +520,34 @@ function pythonSchemaStatements(source) {
 	return out;
 }
 
+/**
+ * The string keys of the first `{...}` literal opened by `opener` inside the
+ * Python function `def` (top-level `"key":` lines only; nested literals and
+ * comments skipped by tracking brace depth). Enough for core's flat row dicts.
+ */
+function pythonDictKeys(source, def, opener) {
+	const fn = source.indexOf(`\n${def}`);
+	assert.ok(fn >= 0, `core still declares ${def}`);
+	const start = source.indexOf(opener, fn);
+	assert.ok(start >= 0, `${def} still opens ${opener}`);
+	const keys = [];
+	let depth = 0;
+	for (const line of source.slice(start + opener.length).split("\n")) {
+		const code = line.replace(/#.*$/, "");
+		if (depth === 0) {
+			const m = code.match(/^\s*"(\w+)":/);
+			if (m) keys.push(m[1]);
+			if (/^\s*\}/.test(code)) break;
+		}
+		for (const ch of code) {
+			if (ch === "{" || ch === "[" || ch === "(") depth++;
+			else if (ch === "}" || ch === "]" || ch === ")") depth--;
+		}
+		if (depth < 0) break;
+	}
+	return keys;
+}
+
 test(
 	"core drift: the DDL is core's _SCHEMA verbatim, and the shared constants match",
 	{ skip: coreSkip },
@@ -558,6 +590,33 @@ test(
 			);
 			const policy = coreShow(ref, "local_operator/asks/policy.py");
 			assert.match(policy, /^MAX_TIMEOUT_S = 86400$/m, ref);
+			assert.match(
+				policy,
+				new RegExp(`^MIN_TIMEOUT_S = ${MIN_TIMEOUT_S}$`, "m"),
+				ref,
+			);
+			// Review r1 R1-5: the row SHAPES, not just the constants. A key core
+			// adds to every question or every index row would otherwise pass the
+			// run-time BLOCK gate (it checks status/command/command_target only).
+			const queue = coreShow(ref, "local_operator/asks/queue.py");
+			const record = askRecord(loadSeedSpec("ask-command").ask, NOW);
+			assert.deepEqual(
+				pythonDictKeys(queue, "def _question_shape(", "shape = {"),
+				Object.keys(record.questions[0]).filter(
+					// Added by core only when the question carries a command.
+					(k) => k !== "command" && k !== "command_target",
+				),
+				`_question_shape keys at ${ref}`,
+			);
+			assert.deepEqual(
+				pythonDictKeys(
+					coreShow(ref, "local_operator/asks/store.py"),
+					"def pending_row(",
+					"row: dict[str, Any] = {",
+				),
+				Object.keys(pendingRow(record)),
+				`pending_row base keys at ${ref}`,
+			);
 			assert.match(policy, /^URGENT_MAX_S = 900$/m, ref);
 			const asks = coreShow(ref, "local_operator/asks/store.py");
 			assert.match(asks, /^INDEX_SCHEMA = 1$/m, ref);
@@ -565,5 +624,135 @@ test(
 			compared++;
 		}
 		if (compared === 0) t.skip("no core ref readable");
+	},
+);
+
+test("R1-4: the standalone --out refuses the operator's config root, anything inside it, and LOCAL_OPERATOR_CONFIG_DIR", async () => {
+	const home = os.userInfo().homedir;
+	// Pure checks (nothing is written): the real root and a dir inside it.
+	assert.match(
+		(await seedOutProblem(join(home, ".local-operator"))) ?? "",
+		/is the operator's .*\.local-operator or inside it/,
+	);
+	assert.match(
+		(await seedOutProblem(join(home, ".local-operator", "seed-here"))) ?? "",
+		/or inside it/,
+	);
+	// A dir that CONTAINS the root is refused too.
+	assert.match((await seedOutProblem(home)) ?? "", /contains the operator's/);
+	// LOCAL_OPERATOR_CONFIG_DIR as this process's env names it, by realpath.
+	const cfg = join(TREE, "r14-config-root");
+	mkdirSync(cfg, { recursive: true });
+	const env = { LOCAL_OPERATOR_CONFIG_DIR: cfg };
+	assert.match((await seedOutProblem(cfg, env)) ?? "", /or inside it/);
+	assert.match(
+		(await seedOutProblem(join(cfg, "x"), env)) ?? "",
+		/or inside it/,
+	);
+	const link = join(TREE, "r14-link");
+	symlinkSync(cfg, link);
+	assert.match(
+		(await seedOutProblem(join(link, "x"), env)) ?? "",
+		/resolves to .*r14-config-root/,
+	);
+	assert.equal(await seedOutProblem(join(TREE, "r14-clear"), env), null);
+	// The CLI end to end, under a synthetic LOCAL_OPERATOR_CONFIG_DIR: exit 2,
+	// nothing written. And the existing non-empty refusal still holds.
+	const run = spawnSync(
+		process.execPath,
+		[
+			new URL("./mac-proof-seed.mjs", import.meta.url).pathname,
+			"--scenario",
+			"ask-command",
+			"--out",
+			join(cfg, "seed"),
+		],
+		{
+			encoding: "utf8",
+			env: { ...process.env, LOCAL_OPERATOR_CONFIG_DIR: cfg },
+		},
+	);
+	assert.equal(run.status, 2, run.stderr);
+	assert.match(run.stderr, /refused: --out .* or inside it/);
+	assert.equal(existsSync(join(cfg, "seed")), false, "nothing was written");
+	const full = join(TREE, "r14-full");
+	mkdirSync(full, { recursive: true });
+	writeFileSync(join(full, "keep"), "");
+	assert.equal(await seedOutProblem(full, {}), null);
+	assert.equal(await main(["--scenario", "ask-command", "--out", full]), 2);
+	assert.deepEqual(readdirSync(full), ["keep"]);
+});
+
+test("Q1-2: only the SQLite ExperimentalWarning is dropped; every other warning still reaches emitWarning", async () => {
+	const original = process.emitWarning;
+	const seen = [];
+	const listener = (w) => seen.push(`${w.name}: ${w.message}`);
+	process.on("warning", listener);
+	try {
+		await withoutSqliteExperimentalWarning(async () => {
+			process.emitWarning(
+				"SQLite is an experimental feature and might change at any time [q12]",
+				"ExperimentalWarning",
+			);
+			process.emitWarning(
+				"Fetch is an experimental feature [q12]",
+				"ExperimentalWarning",
+			);
+			process.emitWarning(
+				"SQLite is an experimental feature (as a plain Warning) [q12]",
+			);
+			process.emitWarning("something else [q12]", {
+				type: "DeprecationWarning",
+				code: "DEP0",
+			});
+		});
+		assert.equal(process.emitWarning, original, "restored when fn settles");
+		process.emitWarning(
+			"SQLite is an experimental feature, after [q12]",
+			"ExperimentalWarning",
+		);
+		await new Promise((r) => setImmediate(r));
+		// Only this test's own probes (tagged): the file's top-level
+		// `import("node:sqlite")` warning can land on the listener too.
+		assert.deepEqual(
+			seen.filter((w) => w.endsWith(" [q12]")),
+			[
+				"ExperimentalWarning: Fetch is an experimental feature [q12]",
+				"Warning: SQLite is an experimental feature (as a plain Warning) [q12]",
+				"DeprecationWarning: something else [q12]",
+				"ExperimentalWarning: SQLite is an experimental feature, after [q12]",
+			],
+		);
+	} finally {
+		process.off("warning", listener);
+	}
+});
+
+test(
+	"Q1-2: the notification-details CLI prints no SQLite ExperimentalWarning on stderr",
+	{ skip: !HAVE_SQLITE && "node:sqlite unavailable" },
+	() => {
+		const out = join(TREE, "q12-out");
+		const run = spawnSync(
+			process.execPath,
+			[
+				new URL("./mac-proof-seed.mjs", import.meta.url).pathname,
+				"--scenario",
+				"notification-details",
+				"--out",
+				out,
+				"--now",
+				String(NOW),
+			],
+			{ encoding: "utf8" },
+		);
+		assert.equal(run.status, 0, run.stderr);
+		assert.doesNotMatch(
+			run.stderr,
+			/ExperimentalWarning|SQLite is an experimental/,
+		);
+		assert.ok(
+			existsSync(join(out, "notifications.db")) || readdirSync(out).length > 0,
+		);
 	},
 );

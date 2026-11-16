@@ -19,6 +19,7 @@ import { join } from "node:path";
 import { after, test } from "node:test";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import {
+	APP_ZIP_UNPACKED_CAP_BYTES,
 	CODESIGN_CAP_MS,
 	CREDENTIAL_SEGMENTS,
 	DAEMON_ROUTES,
@@ -26,7 +27,9 @@ import {
 	Refusal,
 	SCREENCAPTURE_METHOD,
 	STARTUP_WINDOW_MS,
+	UNKNOWN_START,
 	appNames,
+	appZipListingProblem,
 	appZipProblem,
 	asksSceneSteps,
 	backendUrlProblem,
@@ -34,6 +37,7 @@ import {
 	buildAppEnv,
 	buildSteps,
 	bundleInExtracted,
+	cLocaleEnv,
 	captureModeProblem,
 	codesignVerdict,
 	comparablePath,
@@ -43,12 +47,14 @@ import {
 	daemonRequestProblem,
 	envGovernedBlockedMessage,
 	extractedContainmentProblem,
+	extractedSymlinkProblem,
 	frameMatchesWindow,
 	killRigMatched,
 	lopArgvProblem,
 	operatorPathProblem,
 	operatorRoots,
 	parseArgs,
+	parsePsFactsLine,
 	physical,
 	pngSize,
 	portListenerOwned,
@@ -2632,6 +2638,12 @@ test("--seed refusals: unknown scenario, with --seed-config, off the isolated ba
 			argv.join(" "),
 		);
 	refuses(["--seed", "nope"], /unknown --seed nope/);
+	// QA r1 Q1-1: the scenario is named before the scene prerequisites it would
+	// have satisfied (a valid --seed supplies --session).
+	refuses(
+		["--seed", "bogus-scenario", "--scene", "asks"],
+		/unknown --seed bogus-scenario/,
+	);
 	refuses(["--seed", "ask-command", "--seed-config", "/s"], /alternatives/);
 	refuses(
 		[
@@ -2889,6 +2901,9 @@ test("--seed whose rows the daemon does not read back is BLOCKED (exit 3) before
 	);
 	const receipt = JSON.parse(readFileSync(join(out, "receipt.json"), "utf8"));
 	assert.equal(receipt.exit, 3);
+	// The receipt's word is the closing line's ("blocked (...)"), not "failed".
+	assert.equal(receipt.verdict, "blocked");
+	assert.match(run.all, /\[mac-proof\] blocked \(/);
 	assert.equal(receipt.frames.length, 0);
 	assert.equal(receipt.reap.serve.clean, true, JSON.stringify(receipt.reap));
 	for (const pid of Object.values(fixturePids(rig)))
@@ -3314,3 +3329,343 @@ test("R3-6/Q3-4: the fallback recipe that can `exit 8`/`exit 9` runs in one subs
 	assert.equal(lines[1], "(", "opens a subshell before any command");
 	assert.equal(lines.at(-1), ")", "closes it after the last command");
 });
+
+/* ------------------------------------------------- #1938 review/QA round 1 */
+
+test("R1-1: every parsed ps/lsof runs under LC_ALL=C and LANG=C, and C lstart parses", () => {
+	const env = cLocaleEnv({
+		PATH: "/bin",
+		LANG: "en_GB.UTF-8",
+		LC_ALL: "de_DE.UTF-8",
+		LC_TIME: "fr_FR.UTF-8",
+	});
+	assert.equal(env.LC_ALL, "C");
+	assert.equal(env.LANG, "C");
+	assert.equal(env.PATH, "/bin", "the rest of the env is kept");
+	// Source pin: no `ps`/`lsof` spawn in the harness without the C env. A new
+	// one that forgets it fails here, not on a day-first Mac.
+	const src = readFileSync(
+		new URL("./mac-proof-capture.mjs", import.meta.url),
+		"utf8",
+	);
+	const spawns = [...src.matchAll(/spawnSync\(\s*"(ps|lsof)"[\s\S]*?\);/g)];
+	assert.ok(spawns.length >= 7, `found ${spawns.length} ps/lsof spawns`);
+	for (const [call] of spawns) assert.match(call, /env: cLocaleEnv\(\)/, call);
+	// The real `ps` under the C env, with the operator's locale set to a
+	// day-first one: the start comes out in the order the parser reads.
+	const ps = spawnSync(
+		"ps",
+		["-o", "pid=,pgid=,lstart=,command=", "-p", String(process.pid)],
+		{
+			encoding: "utf8",
+			env: cLocaleEnv({
+				...process.env,
+				LANG: "en_GB.UTF-8",
+				LC_ALL: "en_GB.UTF-8",
+				LC_TIME: "de_DE.UTF-8",
+			}),
+		},
+	);
+	assert.equal(ps.status, 0, ps.stderr);
+	const parsed = parsePsFactsLine(ps.stdout.split("\n")[0]);
+	assert.equal(parsed.pid, process.pid);
+	assert.match(
+		parsed.start,
+		/^[A-Z][a-z]{2} [A-Z][a-z]{2} +\d+ \d\d:\d\d:\d\d \d{4}$/,
+	);
+	assert.equal(parsed.startUnparsed, undefined);
+});
+
+test("R1-1: a day-first lstart line keeps its pid with identity UNKNOWN, never dropped", () => {
+	const c = parsePsFactsLine(
+		"  4242  4242 Mon Nov 16 10:00:00 2026 /usr/bin/x --flag",
+	);
+	assert.deepEqual(c, {
+		pid: 4242,
+		pgid: 4242,
+		start: "Mon Nov 16 10:00:00 2026",
+		cwd: null,
+		text: "/usr/bin/x --flag",
+	});
+	for (const line of [
+		"  4242  4240 Mon 16 Nov 10:00:00 2026 /usr/bin/x HOME=/r", // en_GB
+		"  4242  4240 Mo 16 Nov 10:00:00 2026 /usr/bin/x HOME=/r", // de_DE
+		"  4242  4240 lun. 16 nov. 10:00:00 2026 /usr/bin/x HOME=/r", // fr_FR
+	]) {
+		const f = parsePsFactsLine(line);
+		assert.equal(f.pid, 4242, line);
+		assert.equal(f.pgid, 4240);
+		assert.equal(f.start, null);
+		assert.equal(f.startUnparsed, true);
+		assert.match(
+			f.text,
+			/\/usr\/bin\/x HOME=\/r$/,
+			"the matcher still sees the command and env",
+		);
+	}
+	assert.equal(parsePsFactsLine(""), null);
+	assert.equal(parsePsFactsLine("   "), null);
+});
+
+test("R1-1: a RECORDED pid with an UNKNOWN identity is still reaped (by pid) and noted, never skipped", async () => {
+	const elsewhere = join(TREE, "unknown-elsewhere");
+	mkdirSync(elsewhere, { recursive: true });
+	const [scrubbed, stranger] = idleFixtures(2, {
+		cwd: elsewhere,
+		env: { PATH: process.env.PATH },
+	});
+	try {
+		const matches = rigMatcher({
+			rig: join(TREE, "unknown-rig", "mac-proof-uuuuuu"),
+		});
+		assert.equal(
+			matches(processFacts(scrubbed.pid)),
+			false,
+			"content alone would skip it",
+		);
+		// What rememberIdentities records when the start did not parse.
+		const identities = new Map([[scrubbed.pid, UNKNOWN_START]]);
+		const unknownStart = new Set();
+		const left = await killRigMatched([scrubbed.pid, stranger.pid], matches, {
+			identities,
+			unknownStart,
+		});
+		assert.deepEqual(left, []);
+		assert.equal(
+			alive(scrubbed.pid),
+			false,
+			"the unknown-identity recorded pid is reaped",
+		);
+		assert.equal(
+			alive(stranger.pid),
+			true,
+			"an unrecorded non-matching pid is untouched",
+		);
+		assert.deepEqual(
+			[...unknownStart],
+			[scrubbed.pid],
+			"the receipt gets the pid",
+		);
+	} finally {
+		for (const k of [scrubbed, stranger]) k.kill("SIGKILL");
+	}
+});
+
+/** A tree shaped like the real release: its 20 symlinks, verbatim (v0.57.3 arm64 central directory). */
+function releaseShapedTree(dest) {
+	const app = join(dest, "Local Operator.app", "Contents");
+	const file = (p) => {
+		mkdirSync(join(p, ".."), { recursive: true });
+		writeFileSync(p, "");
+	};
+	const link = (target, path) => {
+		mkdirSync(join(path, ".."), { recursive: true });
+		symlinkSync(target, path);
+	};
+	file(join(app, "Info.plist"));
+	writeFileSync(
+		join(app, "Info.plist"),
+		"<plist><dict><key>CFBundleExecutable</key><string>Local Operator</string></dict></plist>",
+	);
+	file(join(app, "MacOS", "Local Operator"));
+	const frameworks = {
+		"Electron Framework": [
+			"Electron Framework",
+			"Helpers",
+			"Libraries",
+			"Resources",
+		],
+		Mantle: ["Mantle", "Resources"],
+		ReactiveObjC: ["ReactiveObjC", "Resources"],
+		Squirrel: ["Resources", "Squirrel"],
+	};
+	let links = 0;
+	for (const [name, tops] of Object.entries(frameworks)) {
+		const fw = join(app, "Frameworks", `${name}.framework`);
+		for (const top of tops) {
+			if (top === name) file(join(fw, "Versions", "A", top));
+			else mkdirSync(join(fw, "Versions", "A", top), { recursive: true });
+			link(`Versions/Current/${top}`, join(fw, top));
+			links++;
+		}
+		link("A", join(fw, "Versions", "Current"));
+		links++;
+	}
+	const py = join(app, "Resources", "python-runtime-seed", "arm64");
+	for (const [dir, name, target] of [
+		["bin", "python", "python3.14"],
+		["bin", "python3", "python3.14"],
+		["bin", "python3-config", "python3.14-config"],
+		["lib/pkgconfig", "python3-embed.pc", "python-3.14-embed.pc"],
+		["lib/pkgconfig", "python3.pc", "python-3.14.pc"],
+		["share/man/man1", "python3.1", "python3.14.1"],
+	]) {
+		file(join(py, dir, target));
+		link(target, join(py, dir, name));
+		links++;
+	}
+	return links;
+}
+
+test("R1-3: every symlink in the extracted tree must resolve inside it; the real release's 20 pass", () => {
+	const dest = join(TREE, "symlink-real");
+	assert.equal(releaseShapedTree(dest), 20);
+	assert.equal(extractedSymlinkProblem(dest), null);
+	// app.asar pointed at another installed app: refused.
+	const outside = join(
+		TREE,
+		"symlink-outside",
+		"Other.app",
+		"Contents",
+		"Resources",
+	);
+	mkdirSync(outside, { recursive: true });
+	writeFileSync(join(outside, "app.asar"), "");
+	const escaped = join(TREE, "symlink-escaped");
+	releaseShapedTree(escaped);
+	symlinkSync(
+		join(outside, "app.asar"),
+		join(escaped, "Local Operator.app", "Contents", "Resources", "app.asar"),
+	);
+	assert.match(
+		extractedSymlinkProblem(escaped) ?? "",
+		/app\.asar resolves outside the extracted tree/,
+	);
+	// A relative link that climbs out, and a dangling one, are refused too.
+	const climbs = join(TREE, "symlink-climbs");
+	releaseShapedTree(climbs);
+	symlinkSync(
+		"../../../../symlink-outside",
+		join(climbs, "Local Operator.app", "Contents", "Frameworks", "x"),
+	);
+	assert.match(extractedSymlinkProblem(climbs) ?? "", /resolves outside/);
+	const dangling = join(TREE, "symlink-dangling");
+	releaseShapedTree(dangling);
+	symlinkSync(
+		"nowhere",
+		join(dangling, "Local Operator.app", "Contents", "Frameworks", "gone"),
+	);
+	assert.match(extractedSymlinkProblem(dangling) ?? "", /does not resolve/);
+});
+
+test(
+	"R1-3: releaseZipApp refuses (exit 2) a zip whose app.asar links outside; the release-shaped zip passes",
+	{ skip: !HAVE_ZIP_TOOLS && "zip/unzip not on PATH" },
+	() => {
+		const src = join(TREE, "r13-src");
+		releaseShapedTree(src);
+		const good = zipTree(
+			src,
+			["Local Operator.app"],
+			join(TREE, "r13-good.zip"),
+		);
+		const roots = [join(TREE, "r13-not-a-root")];
+		const ok = releaseZipApp({ path: good }, join(TREE, "r13-rig-ok"), {
+			roots,
+			timeoutMs: 60_000,
+		});
+		assert.equal(ok.kind, "release-zip");
+		const outside = join(TREE, "r13-outside.asar");
+		writeFileSync(outside, "");
+		symlinkSync(
+			outside,
+			join(src, "Local Operator.app", "Contents", "Resources", "app.asar"),
+		);
+		const bad = zipTree(src, ["Local Operator.app"], join(TREE, "r13-bad.zip"));
+		assert.throws(
+			() =>
+				releaseZipApp({ path: bad }, join(TREE, "r13-rig-bad"), {
+					roots,
+					timeoutMs: 60_000,
+				}),
+			(error) =>
+				error instanceof Refusal &&
+				error.code === 2 &&
+				/app\.asar resolves outside/.test(error.message),
+		);
+	},
+);
+
+test(
+	"R1-2 (#1936 Q3-2/Q3-3): .. or absolute entries, and an unpacked total over the cap, refuse before extraction",
+	{ skip: !HAVE_ZIP_TOOLS && "zip/unzip not on PATH" },
+	() => {
+		assert.equal(APP_ZIP_UNPACKED_CAP_BYTES, 2 * 1024 ** 3);
+		assert.ok(
+			APP_ZIP_UNPACKED_CAP_BYTES > 427_528_786 * 5,
+			"5x the measured v0.57.3 arm64 unpacked total",
+		);
+		const src = join(TREE, "q32-src");
+		mkdirSync(join(src, "X.app", "Contents"), { recursive: true });
+		writeFileSync(join(src, "X.app", "Contents", "Info.plist"), "<plist/>");
+		writeFileSync(join(src, "evil"), "x");
+		const clean = zipTree(src, ["X.app"], join(TREE, "q32-clean.zip"));
+		assert.equal(appZipListingProblem(clean, { timeoutMs: 30_000 }), null);
+		// `zip` stores `../evil` verbatim when given that path from a subdir.
+		const dotdot = join(TREE, "q32-dotdot.zip");
+		const z = spawnSync("zip", ["-q", dotdot, "Info.plist", "../../evil"], {
+			cwd: join(src, "X.app", "Contents"),
+			encoding: "utf8",
+		});
+		assert.equal(z.status, 0, z.stderr);
+		assert.match(
+			spawnSync("unzip", ["-Z1", dotdot], { encoding: "utf8" }).stdout,
+			/^\.\.\/\.\.\/evil$/m,
+		);
+		assert.match(
+			appZipListingProblem(dotdot, { timeoutMs: 30_000 }) ?? "",
+			/absolute path or a \.\. segment \("\.\.\/\.\.\/evil"\)/,
+		);
+		const dest = join(TREE, "q32-dest");
+		assert.throws(
+			() =>
+				releaseZipApp({ path: dotdot }, join(TREE, "q32-rig"), {
+					roots: [],
+					timeoutMs: 30_000,
+				}),
+			(error) =>
+				error instanceof Refusal &&
+				/refused before extraction/.test(error.message),
+		);
+		assert.equal(
+			existsSync(join(TREE, "q32-rig", "app")),
+			false,
+			"nothing was extracted",
+		);
+		assert.equal(existsSync(dest), false);
+		// Absolute: `zip` strips a leading slash, so craft one - rename a stored
+		// entry `Xabs/evil` to `/abs/evil` in both headers (same length; the CRC
+		// covers the data, not the name).
+		mkdirSync(join(src, "Xabs"), { recursive: true });
+		writeFileSync(join(src, "Xabs", "evil"), "x");
+		const absZip = zipTree(
+			src,
+			["X.app", "Xabs/evil"],
+			join(TREE, "q32-abs.zip"),
+		);
+		const bytes = readFileSync(absZip);
+		const from = Buffer.from("Xabs/evil");
+		let at = bytes.indexOf(from);
+		let renamed = 0;
+		while (at >= 0) {
+			bytes[at] = "/".charCodeAt(0);
+			renamed++;
+			at = bytes.indexOf(from, at + 1);
+		}
+		assert.equal(renamed, 2, "local header + central directory");
+		writeFileSync(absZip, bytes);
+		assert.match(
+			spawnSync("unzip", ["-Z1", absZip], { encoding: "utf8" }).stdout,
+			/^\/abs\/evil$/m,
+		);
+		assert.match(
+			appZipListingProblem(absZip, { timeoutMs: 30_000 }) ?? "",
+			/absolute path or a \.\. segment \("\/abs\/evil"\)/,
+		);
+		// The cap reads the listing's unpacked total.
+		assert.match(
+			appZipListingProblem(clean, { timeoutMs: 30_000, capBytes: 1 }) ?? "",
+			/over the 1 B cap/,
+		);
+	},
+);

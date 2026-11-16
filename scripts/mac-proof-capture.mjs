@@ -414,6 +414,72 @@ export function bundleInExtracted(dir) {
 	return join(dir, apps[0]);
 }
 
+/**
+ * Unpacked-size ceiling for `--app-zip` (#1936 QA r3 Q3-3). MEASURED: the
+ * v0.57.3 arm64 release zip's central directory (read by HTTP range, 2026-11-16)
+ * lists 2,356 entries totalling 427,528,786 B unpacked (the "~407 MB" codesign
+ * hashes, in MiB) from a 179,290,789 B zip. 2 GiB is ~5x that: room for a few
+ * releases of growth, while a zip bomb or a wrong file still stops before it
+ * fills the disk the rig shares with everything else.
+ */
+export const APP_ZIP_UNPACKED_CAP_BYTES = 2 * 1024 ** 3;
+
+/** An entry name a zip extractor could write outside its destination with. */
+const UNSAFE_ZIP_NAME = /^(?:[\\/]|[A-Za-z]:)|(?:^|[\\/])\.\.(?:[\\/]|$)/;
+/** zipinfo `-Zt`'s summary: `2356 files, 427528786 bytes uncompressed, ...`. */
+const ZIPINFO_TOTALS = /(\d+) files?, (\d+) bytes uncompressed/;
+
+/**
+ * Read the zip's listing BEFORE anything is extracted (#1936 QA r3 Q3-2/Q3-3):
+ * `ditto` and `unzip` differ in how they treat a `..` or absolute entry name
+ * (unzip strips with a warning, ditto's handling is undocumented), so neither
+ * extractor's semantics is relied on - any such entry refuses the zip, and so
+ * does a listed unpacked total over the cap. Info-ZIP's `unzip -Z` (zipinfo) is
+ * on every Mac at /usr/bin/unzip. A name holding a newline splits into two
+ * listed lines, which can only ADD a refused segment, never hide one. The
+ * listed sizes are the central directory's claim; a zip that lies about them
+ * fails the extractor's own size/CRC checks.
+ */
+export function appZipListingProblem(
+	zip,
+	{
+		platform = process.platform,
+		timeoutMs,
+		capBytes = APP_ZIP_UNPACKED_CAP_BYTES,
+	},
+) {
+	const unzip =
+		platform === "darwin" ? "/usr/bin/unzip" : resolveOnPath("unzip");
+	if (!unzip)
+		return "--app-zip needs `unzip` on PATH to list the zip before extracting it";
+	const run = (args) =>
+		spawnSync(unzip, args, {
+			encoding: "utf8",
+			timeout: Math.max(1000, timeoutMs),
+			stdio: ["ignore", "pipe", "pipe"],
+			env: cLocaleEnv(),
+			maxBuffer: 64 * 1024 * 1024,
+		});
+	const names = run(["-Z1", zip]);
+	if (names.status !== 0)
+		return `could not list --app-zip: ${(names.error?.message ?? names.stderr ?? "").trim().slice(0, 400) || `exit ${names.status ?? names.signal}`}`;
+	const unsafe = names.stdout
+		.split("\n")
+		.filter((name) => UNSAFE_ZIP_NAME.test(name));
+	if (unsafe.length > 0)
+		return `--app-zip holds ${unsafe.length} entr${unsafe.length === 1 ? "y" : "ies"} with an absolute path or a .. segment (${unsafe
+			.slice(0, 3)
+			.map((n) => JSON.stringify(n))
+			.join(", ")}); refused before extraction`;
+	const totals = run(["-Zt", zip]);
+	const m = (totals.stdout ?? "").match(ZIPINFO_TOTALS);
+	if (totals.status !== 0 || !m)
+		return `could not read --app-zip's unpacked size: ${(totals.stderr ?? totals.stdout ?? "").trim().slice(0, 400)}`;
+	if (Number(m[2]) > capBytes)
+		return `--app-zip unpacks to ${m[2]} B, over the ${capBytes} B cap (a real release is ~428 MB); refused before extraction`;
+	return null;
+}
+
 /** Extract with the platform's tool; `timeoutMs` is what is left of --timeout. */
 export function extractAppZip(
 	zip,
@@ -433,6 +499,8 @@ export function extractAppZip(
 			);
 		argv = ["-q", zip, "-d", dest];
 	}
+	const listed = appZipListingProblem(zip, { platform, timeoutMs });
+	if (listed) throw new Refusal(listed);
 	mkdirSync(dest, { recursive: true });
 	const result = spawnSync(command, argv, {
 		encoding: "utf8",
@@ -528,6 +596,46 @@ export function extractedContainmentProblem(app, dest) {
 	return null;
 }
 
+/**
+ * Every symlink in the extracted tree must resolve inside it (review r1 R1-3).
+ * `extractedContainmentProblem` checks the two paths the launch names; Electron
+ * also loads `Contents/Resources/app.asar` and `Contents/Frameworks/*`, and a
+ * link from either into another installed app would run THAT code under
+ * `kind: "release-zip"`. One walk, never following a link (lstat), resolving
+ * each with realpath. A dangling link is refused too: it cannot be shown to
+ * stay inside. The real release passes: its 20 links (4 framework
+ * `Versions/Current -> A`, 10 framework top-level `-> Versions/Current/...`,
+ * 6 python-runtime-seed `python3 -> python3.14`-style) are all relative and
+ * all inside the bundle (v0.57.3 arm64 central directory, read 2026-11-16).
+ */
+export function extractedSymlinkProblem(dest) {
+	let root;
+	try {
+		root = realpathSync(dest);
+	} catch (error) {
+		return `the extracted tree does not resolve (${error.message})`;
+	}
+	const inside = (child) => child === root || child.startsWith(`${root}${sep}`);
+	const stack = [root];
+	while (stack.length > 0) {
+		const dir = stack.pop();
+		for (const entry of readdirSync(dir, { withFileTypes: true })) {
+			const path = join(dir, entry.name);
+			if (entry.isSymbolicLink()) {
+				let real;
+				try {
+					real = realpathSync(path);
+				} catch (error) {
+					return `--app-zip's symlink ${path} does not resolve (${error.code ?? error.message}); refused: it cannot be shown to stay inside the extracted tree`;
+				}
+				if (!inside(real))
+					return `--app-zip's symlink ${path} resolves outside the extracted tree (-> ${real}); refused: the receipt would name code that did not run`;
+			} else if (entry.isDirectory()) stack.push(path);
+		}
+	}
+	return null;
+}
+
 /** `com.apple.quarantine` on `path`: `{value}` (null = absent) or `{unreadable}`. */
 export function readQuarantine(path) {
 	const result = spawnSync(
@@ -591,7 +699,8 @@ export function releaseZipApp(
 	const problem = operatorPathProblem("--app-zip bundle", bundle, roots);
 	if (problem) throw new Refusal(problem);
 	const app = resolveAppBundle(bundle);
-	const escaped = extractedContainmentProblem(app, dest);
+	const escaped =
+		extractedContainmentProblem(app, dest) ?? extractedSymlinkProblem(dest);
 	if (escaped) throw new Refusal(escaped);
 	const quarantined = quarantineProblem(app.realpath, {
 		platform,
@@ -1013,6 +1122,13 @@ function argvHasPeerWait(opts) {
 }
 
 export function validateOptions(opts) {
+	// First (QA r1 Q1-1): a valid --seed supplies --session, so with an unknown
+	// one the scene prerequisites below would name the knock-on ("needs
+	// --session") instead of the cause.
+	if (opts.seed !== null && !SEED_SCENARIOS.includes(opts.seed))
+		throw new Refusal(
+			`unknown --seed ${opts.seed} (have: ${SEED_SCENARIOS.join(", ")})`,
+		);
 	for (const scene of opts.scenes)
 		if (!SCENES.includes(scene))
 			throw new Refusal(
@@ -1041,10 +1157,6 @@ export function validateOptions(opts) {
 	)
 		throw new Refusal(
 			"the files, canvas and asks scenes need --session (the canvas and the asks belong to a conversation)",
-		);
-	if (opts.seed !== null && !SEED_SCENARIOS.includes(opts.seed))
-		throw new Refusal(
-			`unknown --seed ${opts.seed} (have: ${SEED_SCENARIOS.join(", ")})`,
 		);
 	if (opts.seed !== null && opts.seedConfig !== null)
 		throw new Refusal(
@@ -2034,7 +2146,7 @@ export function portListenerOwned(port, pids) {
 	const lsof = spawnSync(
 		"lsof",
 		["-n", "-P", `-iTCP:${port}`, "-sTCP:LISTEN", "-F", "p"],
-		{ encoding: "utf8", timeout: 10000 },
+		{ encoding: "utf8", timeout: 10000, env: cLocaleEnv() },
 	);
 	if (lsof.error || lsof.status === null) return null;
 	const owners = (lsof.stdout ?? "")
@@ -2084,6 +2196,7 @@ export function processesWithConfigRoot(configRoot) {
 	}
 	const ps = spawnSync("ps", ["-A", "-E", "-ww", "-o", "pid=,command="], {
 		encoding: "utf8",
+		env: cLocaleEnv(),
 	});
 	if (ps.error || ps.status !== 0) return null;
 	for (const line of ps.stdout.split("\n")) {
@@ -2104,6 +2217,7 @@ async function reapConfigRootProcesses(
 	recorded,
 	rig,
 	identities = new Map(),
+	unknownStart = new Set(),
 ) {
 	const pids = new Set(recorded);
 	for (const pid of processesWithConfigRoot(configRoot) ?? []) pids.add(pid);
@@ -2113,6 +2227,7 @@ async function reapConfigRootProcesses(
 		{
 			settleMs: 500,
 			identities,
+			unknownStart,
 		},
 	);
 	const after = processesWithConfigRoot(configRoot);
@@ -2127,7 +2242,10 @@ async function reapConfigRootProcesses(
 
 /** This process and every ancestor up to init: never a sweep target. */
 function ancestorsOfSelf() {
-	const ps = spawnSync("ps", ["-A", "-o", "pid=,ppid="], { encoding: "utf8" });
+	const ps = spawnSync("ps", ["-A", "-o", "pid=,ppid="], {
+		encoding: "utf8",
+		env: cLocaleEnv(),
+	});
 	const parent = new Map();
 	for (const line of (ps.stdout ?? "").split("\n")) {
 		const m = line.trim().match(/^(\d+)\s+(\d+)$/);
@@ -2175,6 +2293,7 @@ export function processesWithCwdUnder(rig) {
 	const lsof = spawnSync("lsof", ["-n", "-P", "-d", "cwd", "-F", "pn"], {
 		encoding: "utf8",
 		timeout: 30000,
+		env: cLocaleEnv(),
 	});
 	if (lsof.error || lsof.status === null) return null;
 	let pid = null;
@@ -2205,6 +2324,12 @@ export function processesWithCwdUnder(rig) {
  * `/proc/<pid>/stat` field 22 (clock ticks since boot), macOS `ps -o lstart`
  * (second resolution). A recycled pid has a different start; the same process
  * always has the same one.
+ *
+ * A line whose start does not parse is NOT dropped (review r1 R1-1): it keeps
+ * its pid, pgid and text with `start: null`, so the identity is UNKNOWN rather
+ * than the pid vanishing from the reap set. `ps` runs under the C locale, so
+ * that should never happen; if it does, the reap says so instead of reading
+ * clean.
  */
 export function processFactsMany(
 	pids,
@@ -2250,21 +2375,12 @@ export function processFactsMany(
 	const ps = spawnSync(
 		"ps",
 		["-E", "-ww", "-o", "pid=,pgid=,lstart=,command=", "-p", list],
-		{ encoding: "utf8", timeout: remaining() },
+		{ encoding: "utf8", timeout: remaining(), env: cLocaleEnv() },
 	);
 	if (ps.error || ps.status === null) return facts;
 	for (const line of (ps.stdout ?? "").split("\n")) {
-		const m = line.match(
-			/^\s*(\d+)\s+(\d+)\s+(\w{3}\s+\w{3}\s+\d+\s+\d\d:\d\d:\d\d\s+\d{4})\s+([\s\S]*)$/,
-		);
-		if (m)
-			facts.set(Number(m[1]), {
-				pid: Number(m[1]),
-				pgid: Number(m[2]),
-				start: m[3].replace(/\s+/g, " "),
-				cwd: null,
-				text: m[4],
-			});
+		const parsed = parsePsFactsLine(line);
+		if (parsed) facts.set(parsed.pid, parsed);
 	}
 	if (!wantCwd || facts.size === 0 || Date.now() >= deadline) return facts;
 	const lsof = spawnSync(
@@ -2282,7 +2398,7 @@ export function processFactsMany(
 			"-F",
 			"pn",
 		],
-		{ encoding: "utf8", timeout: remaining() },
+		{ encoding: "utf8", timeout: remaining(), env: cLocaleEnv() },
 	);
 	if (lsof.error || lsof.status === null) return facts;
 	let current = null;
@@ -2293,6 +2409,60 @@ export function processFactsMany(
 	}
 	return facts;
 }
+
+/**
+ * The environment every `ps`/`lsof` whose output is PARSED runs under (review
+ * r1 R1-1). macOS `ps` prints `lstart` with strftime("%c") after
+ * setlocale(LC_ALL, "") (adv_cmds ps/print.c `lstarted`, ps/ps.c), so an en_GB
+ * Mac answers `Mon 16 Nov 10:00:00 2026` and a de_DE one `Mo 16 Nov ...`, and
+ * the inherited LANG/LC_ALL decide it. LC_ALL overrides every LC_* category;
+ * LANG is pinned too so nothing falls back to the operator's locale.
+ */
+export function cLocaleEnv(env = process.env) {
+	return { ...env, LC_ALL: "C", LANG: "C" };
+}
+
+/** The C-locale `lstart` (`Mon Nov 16 10:00:00 2026`) between pgid and command. */
+const PS_FACTS_LINE =
+	/^\s*(\d+)\s+(\d+)\s+(\w{3}\s+\w{3}\s+\d+\s+\d\d:\d\d:\d\d\s+\d{4})\s+([\s\S]*)$/;
+/** The same line with the start in any shape: identity unknown, pid still seen. */
+const PS_PID_PGID_LINE = /^\s*(\d+)\s+(\d+)\s+([\s\S]*)$/;
+
+/**
+ * One `ps -o pid=,pgid=,lstart=,command=` line. A line with a pid and pgid but
+ * a start in any other shape yields `start: null` and `startUnparsed: true`
+ * (identity unknown, never "no such pid"); its text is everything after the
+ * pgid, so the content matcher still sees the command and environment. A line
+ * with no leading pid/pgid (blank) is null.
+ */
+export function parsePsFactsLine(line) {
+	const m = line.match(PS_FACTS_LINE);
+	if (m)
+		return {
+			pid: Number(m[1]),
+			pgid: Number(m[2]),
+			start: m[3].replace(/\s+/g, " "),
+			cwd: null,
+			text: m[4],
+		};
+	const loose = line.match(PS_PID_PGID_LINE);
+	if (!loose) return null;
+	return {
+		pid: Number(loose[1]),
+		pgid: Number(loose[2]),
+		start: null,
+		startUnparsed: true,
+		cwd: null,
+		text: loose[3],
+	};
+}
+
+/**
+ * What `identities` holds for a pid this run recorded but whose start time could
+ * not be read into a comparable form. Never equal to a real start (Linux: clock
+ * ticks; macOS: a C-locale date), so it can never "match" a recycled pid.
+ */
+export const UNKNOWN_START = "unknown";
 
 /** One pid's facts (`processFactsMany` for a single pid); null when gone or unreadable. */
 export function processFacts(pid) {
@@ -2310,8 +2480,11 @@ export function rememberIdentities(identities, pids) {
 		(pid) => Number.isInteger(pid) && pid > 1 && !identities.has(pid),
 	);
 	if (fresh.length === 0) return identities;
+	// A read pid whose start did not parse is recorded as UNKNOWN (review r1
+	// R1-1): dropping it used to make `killRigMatched` skip it as a stranger and
+	// report the reap clean.
 	for (const [pid, facts] of processFactsMany(fresh, { cwd: false }))
-		if (facts.start) identities.set(pid, facts.start);
+		identities.set(pid, facts.start ?? UNKNOWN_START);
 	return identities;
 }
 
@@ -2358,13 +2531,24 @@ export function rigMatcher({ rig, configRoot = null }) {
  * process and its ancestors are never targets. Facts are read in one batch
  * under `deadlineMs` (R2-2).
  *
+ * A recorded pid whose identity is UNKNOWN (its start did not parse, now or
+ * when recorded; review r1 R1-1) stays a target: it is signalled by pid (never
+ * its group, which needs a verified identity) and added to `unknownStart` for
+ * the receipt. A sweep-only pid whose start did not parse is still decided by
+ * `matches` and noted the same way. An unparsed line never shrinks the set.
+ *
  * Answers the pids still ours and alive afterwards, plus any RECORDED pid that
  * is alive but could not be read at all (unknown is not clean).
  */
 export async function killRigMatched(
 	pids,
 	matches,
-	{ settleMs = 300, identities = new Map(), deadlineMs = 20_000 } = {},
+	{
+		settleMs = 300,
+		identities = new Map(),
+		deadlineMs = 20_000,
+		unknownStart = new Set(),
+	} = {},
 ) {
 	const mine = new Set(ancestorsOfSelf());
 	const candidates = [...new Set(pids)].filter(
@@ -2375,7 +2559,15 @@ export async function killRigMatched(
 		identities.has(pid) && facts?.start === identities.get(pid);
 	const ours = (pid, facts) => {
 		if (!facts) return false;
-		if (identities.has(pid)) return recordedAs(pid, facts);
+		const unknown = !facts.start;
+		if (identities.has(pid)) {
+			if (unknown || identities.get(pid) === UNKNOWN_START) {
+				unknownStart.add(pid);
+				return true;
+			}
+			return recordedAs(pid, facts);
+		}
+		if (unknown) unknownStart.add(pid);
 		return matches(facts);
 	};
 	const before = processFactsMany(candidates, { deadline });
@@ -2408,7 +2600,10 @@ export async function killRigMatched(
 
 /** Every descendant pid of `roots`, from one `ps` snapshot. */
 export function descendantsOf(roots) {
-	const ps = spawnSync("ps", ["-A", "-o", "pid=,ppid="], { encoding: "utf8" });
+	const ps = spawnSync("ps", ["-A", "-o", "pid=,ppid="], {
+		encoding: "utf8",
+		env: cLocaleEnv(),
+	});
 	if (ps.error || ps.status !== 0) return [];
 	const children = new Map();
 	for (const line of ps.stdout.split("\n")) {
@@ -3320,6 +3515,8 @@ export async function main(argv = process.argv.slice(2)) {
 	};
 	/** App descendants seen while it ran, killed by exact pid if they outlive the group. */
 	const appRecorded = new Set();
+	/** Pids reaped with an UNKNOWN identity (start did not parse; review r1 R1-1), for the receipt. */
+	const unknownStart = new Set();
 	const reapEverything = async () => {
 		if (children.app && children.app.pid !== undefined && !receipt.reap.app) {
 			const result = await stopAppTree({
@@ -3348,6 +3545,7 @@ export async function main(argv = process.argv.slice(2)) {
 				lopRun.recorded,
 				rig,
 				identities,
+				unknownStart,
 			);
 		}
 		// Recorded app descendants, then anything still running in the rig.
@@ -3355,11 +3553,13 @@ export async function main(argv = process.argv.slice(2)) {
 		const recordedLeft = await killRigMatched(
 			[...appRecorded].filter((pid) => pidAlive(pid)),
 			ours,
-			{ identities },
+			{ identities, unknownStart },
 		);
 		const inRig = processesWithCwdUnder(rig);
 		const rigLeft =
-			inRig === null ? null : await killRigMatched(inRig, ours, { identities });
+			inRig === null
+				? null
+				: await killRigMatched(inRig, ours, { identities, unknownStart });
 		const after = processesWithCwdUnder(rig);
 		receipt.reap.rig = {
 			recorded: appRecorded.size,
@@ -3369,6 +3569,14 @@ export async function main(argv = process.argv.slice(2)) {
 				rigLeft !== null &&
 				after !== null &&
 				after.length === 0,
+			...(unknownStart.size > 0
+				? {
+						identityUnknown: {
+							pids: [...unknownStart].sort((a, b) => a - b),
+							note: "ps lstart did not parse for these pids: kept as reap candidates and signalled by pid (no group signal); their identity was not verified",
+						},
+					}
+				: {}),
 		};
 	};
 	/*
@@ -3394,6 +3602,10 @@ export async function main(argv = process.argv.slice(2)) {
 				receipt.error = `${receipt.error ? `${receipt.error}; ` : ""}a process this run started survived the reap`;
 				receipt.exit = EXIT.FAILED;
 			}
+			// The receipt's word matches the closing line's: an exit-3 run said
+			// "blocked (...)" on stdout but `"verdict": "failed"` in receipt.json.
+			if (receipt.verdict !== "captured" && receipt.exit === EXIT.BLOCKED)
+				receipt.verdict = "blocked";
 			try {
 				cpSync(join(rig, "logs"), join(opts.out, "logs"), { recursive: true });
 			} catch {}

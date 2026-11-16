@@ -227,6 +227,10 @@ node scripts/mac-proof-capture.mjs --app-zip "$ZIP" --out "$LOCAL_OPERATOR_SCRAT
   `[data-notification-detail="<id>"]` and its title.
 - **Generate a template by hand** (to inspect it, or for `--seed-config`):
   `node scripts/mac-proof-seed.mjs --scenario ask-command --out <abs empty dir>`.
+  `--out` is refused when it is, sits inside, or contains your own config root
+  (`~/.local-operator`, the app's userData dirs, and `$LOCAL_OPERATOR_CONFIG_DIR`
+  when set), compared by realpath; an agent scratchpad under
+  `~/.local-operator/sessions/<id>/scratchpad` is the one carve-out.
 
 ## The harness reads; it never acts
 
@@ -295,7 +299,14 @@ node scripts/mac-proof-capture.mjs --app-zip "$OUT/dl/local-operator-ui-<ver>-ar
   never prompting; bounded at 60 s, with `durationMs` and `timedOut` recorded).
 - The bundle's `Info.plist` and executable must resolve inside the extracted
   `.app`: a zip whose `Contents` symlinks elsewhere is refused, so the receipt
-  always names the binary that ran.
+  always names the binary that ran. So is any symlink anywhere in the extracted
+  tree that resolves outside it, or does not resolve (`app.asar` and
+  `Frameworks/*` are loaded too); the real release's 20 relative framework and
+  python-runtime links all stay inside.
+- The zip is LISTED before anything is extracted: an entry with an absolute
+  path or a `..` segment refuses it (`ditto` and `unzip` do not treat those
+  alike), and so does a listed unpacked total over 2 GiB (v0.57.3 arm64 unpacks
+  to 427,528,786 B).
 - **Download with `gh` or curl, never a browser.** A browser download carries
   `com.apple.quarantine`, `ditto` copies it onto the bundle, and launching it
   would show Gatekeeper's first-open dialog. A quarantined zip or bundle is

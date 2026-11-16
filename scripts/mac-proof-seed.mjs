@@ -90,7 +90,7 @@ const EVENT_SCHEMA = 1;
 const EVENT_QUEUED = "queued";
 const STATUS_OPEN = "open";
 /** core asks/policy.py:143 MIN_TIMEOUT_S, :146 MAX_TIMEOUT_S, :153 URGENT_MAX_S (is_urgent :251-253). */
-const MIN_TIMEOUT_S = 120;
+export const MIN_TIMEOUT_S = 120;
 const MAX_TIMEOUT_S = 86400;
 const URGENT_MAX_S = 900;
 /** core asks/store.py:240-253 new_ask_id: `a-` + 4 hex. */
@@ -676,10 +676,38 @@ function writeAsk(out, spec, sessionDir, now) {
 	return { record, entry };
 }
 
+/** The message Node's `emitExperimentalWarning("SQLite")` starts with. */
+const SQLITE_EXPERIMENTAL = /^SQLite is an experimental feature/;
+
+/**
+ * Run `fn` with Node's ONE "SQLite is an experimental feature" warning dropped
+ * (QA r1 Q1-2). Node 22 emits it through `process.emitWarning(msg,
+ * "ExperimentalWarning")` the first time `node:sqlite` loads, and it landed on
+ * the harness's stderr as noise. Only that warning: any other warning, and any
+ * other ExperimentalWarning, still reaches `process.emitWarning` unchanged, and
+ * the original is restored when `fn` settles. Never `--no-warnings`.
+ */
+export async function withoutSqliteExperimentalWarning(fn) {
+	const original = process.emitWarning;
+	process.emitWarning = function emitWarning(warning, ...rest) {
+		const type =
+			typeof rest[0] === "string" ? rest[0] : (rest[0]?.type ?? warning?.name);
+		const text = typeof warning === "string" ? warning : warning?.message;
+		if (type === "ExperimentalWarning" && SQLITE_EXPERIMENTAL.test(text ?? ""))
+			return;
+		return original.call(process, warning, ...rest);
+	};
+	try {
+		return await fn();
+	} finally {
+		process.emitWarning = original;
+	}
+}
+
 /** `node:sqlite`, or a SeedError naming the Node it needs. */
 export async function loadSqlite() {
 	try {
-		return await import("node:sqlite");
+		return await withoutSqliteExperimentalWarning(() => import("node:sqlite"));
 	} catch (error) {
 		throw new SeedError(
 			`the notification-details seed needs node:sqlite (Node >= 22.13, as .nvmrc pins); this is Node ${process.versions.node} (${error.code ?? error.message})`,
@@ -819,6 +847,39 @@ function listFiles(root, rel = "") {
 	return out.sort();
 }
 
+/**
+ * The standalone CLI's `--out` must never be the operator's own config root
+ * (review r1 R1-4): `generateSeed` refuses only a relative or non-empty dir, so
+ * `--out ~/.local-operator` on a machine where it is absent or empty would
+ * write a synthetic session and ask index into the real daemon's root. The
+ * harness path never hits this (it writes `<rig>/seed`, already checked).
+ *
+ * Roots: the harness's own `operatorRoots()` (`~/.local-operator` and the
+ * app's userData dirs, for both the account home and $HOME) plus this
+ * process's `LOCAL_OPERATOR_CONFIG_DIR` when set - the root a `lop` started
+ * from this shell would use. Compared as realpaths by `operatorPathProblem`, so
+ * a symlink into a root is refused too, as is a dir that CONTAINS a root.
+ * Its one carve-out is kept: an agent scratchpad under
+ * `~/.local-operator/sessions/<id>/scratchpad` (where the repo's scratch rule
+ * puts rigs and seeds), which the daemon never reads as a session.
+ *
+ * Imported lazily: mac-proof-capture.mjs imports this module, and a static
+ * import back would make the two a load-order cycle.
+ */
+export async function seedOutProblem(out, env = process.env) {
+	if (!out || !isAbsolute(out)) return null; // generateSeed names this one
+	const { operatorRoots, operatorPathProblem } = await import(
+		"./mac-proof-capture.mjs"
+	);
+	const roots = operatorRoots();
+	if (
+		env.LOCAL_OPERATOR_CONFIG_DIR &&
+		isAbsolute(env.LOCAL_OPERATOR_CONFIG_DIR)
+	)
+		roots.push(env.LOCAL_OPERATOR_CONFIG_DIR);
+	return operatorPathProblem("--out", out, roots);
+}
+
 export const SEED_USAGE = `node scripts/mac-proof-seed.mjs --scenario <${SEED_SCENARIOS.join("|")}> --out <abs empty dir> [--now <epoch ms>]`;
 
 export async function main(argv = process.argv.slice(2)) {
@@ -847,6 +908,8 @@ export async function main(argv = process.argv.slice(2)) {
 		}
 	}
 	try {
+		const problem = await seedOutProblem(opts.out);
+		if (problem) throw new SeedError(problem);
 		const result = await generateSeed(opts);
 		console.log(JSON.stringify(result, null, 2));
 		return 0;
