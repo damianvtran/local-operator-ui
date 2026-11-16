@@ -348,6 +348,80 @@ export const StructuralHtml: Story = {
 		/>
 	),
 };
+/** Review R1: the second table shares the node containing the first close. */
+export const HtmlJoinedTables: Story = {
+	render: () => (
+		<Frame
+			records={[
+				answer(
+					"html-joined-tables",
+					"<table>\n\n<tr><td>one</td></tr>\n</table>\n<table><tr><td>TWO</td></tr></table>",
+				),
+			]}
+		/>
+	),
+};
+
+const BLANK_SEPARATED_HTML =
+	"<table>\n\n<tr><td>one</td></tr>\n\n<tr><td>two</td></tr>\n\n</table>";
+
+/** Review R2: real transcript streaming rows at reproducible arrival boundaries. */
+export const HtmlBlankSeparatedStreaming: Story = {
+	render: () => (
+		<Frame
+			records={[
+				{
+					...answer(
+						"html-first-row",
+						"<table>\n\n<tr><td>one</td></tr>\n\n<tr",
+					),
+					streaming: true,
+					complete: false,
+				},
+				{
+					...answer(
+						"html-open-table",
+						BLANK_SEPARATED_HTML.slice(
+							0,
+							BLANK_SEPARATED_HTML.indexOf("</table>"),
+						),
+					),
+					streaming: true,
+					complete: false,
+				},
+				{
+					...answer("html-closed-table", BLANK_SEPARATED_HTML),
+					streaming: true,
+					complete: false,
+				},
+			]}
+		/>
+	),
+};
+export const HtmlBlankSeparatedSettled: Story = {
+	render: () => (
+		<Frame records={[answer("html-blank-separated", BLANK_SEPARATED_HTML)]} />
+	),
+};
+
+/** Review R3: mdast owns container prefixes, not the reconstructed HTML. */
+export const HtmlContainerTables: Story = {
+	render: () => (
+		<Frame
+			records={[
+				answer(
+					"html-quoted-table",
+					"> <table>\n>\n> <tr><td>one</td></tr>\n>\n> <tr><td>two</td></tr>\n>\n> </table>\n>\n> AFTER",
+				),
+				answer(
+					"html-list-table",
+					"- <table>\n\n  <tr><td>one</td></tr>\n\n  <tr><td>two</td></tr>\n\n  </table>\n\n  AFTER",
+				),
+			]}
+		/>
+	),
+};
+
 export const HtmlStreaming: Story = {
 	render: () => (
 		<Frame

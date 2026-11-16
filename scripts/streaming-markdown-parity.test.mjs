@@ -327,6 +327,11 @@ const CORPUS = [
 		].join("\n"),
 	},
 	{
+		name: "blank-separated-html-table",
+		payload: ["one", "two", "After the table"],
+		text: "<table>\n\n<tr><td>one</td></tr>\n\n<tr><td>two</td></tr>\n\n</table>\n\nAfter the table.\n",
+	},
+	{
 		name: "open-tail",
 		payload: ["trails off", "still being written"],
 		text: [
@@ -627,6 +632,8 @@ test("safe table HTML renders through streaming and settled production pipelines
 		const sources = [
 			"| Notes |\n| --- |\n| first<br/>second <strong>bold</strong> `<br>` [docs](https://example.com) |",
 			"<table><tr><th>Notes</th></tr><tr><td>first<br/>second <strong>bold</strong></td></tr></table>",
+			"> <table>\n>\n> <tr><td>first<br/>second <strong>bold</strong></td></tr>\n>\n> </table>",
+			"- <table>\n\n  <tr><td>first<br/>second <strong>bold</strong></td></tr>\n\n  </table>",
 		];
 		for (const content of sources) {
 			for (const prefix of prefixes(content, 3)) {
@@ -689,6 +696,48 @@ test("safe table HTML renders through streaming and settled production pipelines
 				0,
 			);
 			assert.equal(container.querySelector("strong").textContent, "safe");
+		}
+	} finally {
+		await act(async () => root.unmount());
+		dom.restore();
+	}
+});
+
+test("blank-separated HTML tables stay coherent through streaming prefixes and safe boundaries", async () => {
+	const dom = mountDom();
+	const container = dom.window.document.getElementById("root");
+	const root = createRoot(container);
+	const content =
+		"<table>\n\n<tr><td>one</td></tr>\n\n<tr><td>two</td></tr>\n\n</table>";
+	try {
+		for (const prefix of prefixes(content, 3)) {
+			await act(async () =>
+				root.render(createElement(StreamingMarkdown, { content: prefix })),
+			);
+			if (prefix.includes("</td>"))
+				assert.equal(container.querySelector("td")?.textContent, "one");
+		}
+		for (const source of [
+			content,
+			`${content}\n\nAfter the table.\n`,
+			`${content}\n\n\`\`\`html\n<table><td>literal</td></table>\n\`\`\`\n`,
+		]) {
+			for (const component of [StreamingMarkdown, MarkdownRenderer]) {
+				await act(async () =>
+					root.render(createElement(component, { content: source })),
+				);
+				assert.deepEqual(
+					[...container.querySelectorAll("td")].map((cell) => cell.textContent),
+					["one", "two"],
+				);
+				if (source.includes("After"))
+					assert.ok(container.textContent.includes("After the table."));
+				if (source.includes("literal"))
+					assert.equal(
+						container.querySelector("pre code").textContent.trim(),
+						"<table><td>literal</td></table>",
+					);
+			}
 		}
 	} finally {
 		await act(async () => root.unmount());

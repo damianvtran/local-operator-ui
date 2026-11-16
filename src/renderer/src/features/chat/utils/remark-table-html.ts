@@ -73,7 +73,7 @@ const STRUCTURE = new Set([
  */
 export const remarkTableHtml =
 	() =>
-	(tree: Node, file: { value?: unknown }): void => {
+	(tree: Node): void => {
 		const convert = (
 			nodes: Node[],
 			placeholder?: { name: string; originals: Node[] },
@@ -186,14 +186,15 @@ export const remarkTableHtml =
 					.map((child) => {
 						if (child.type === "html") return child.value ?? "";
 						const index = originals.push(child) - 1;
-						return `<${name} data-index="${index}"></${name}>`;
+						return `<${name} data-index="${index}"></${name}>`; // i18n: ignore opaque parser placeholder, never user-facing copy
 					})
 					.join("");
 				node.children = convert(parse(html), { name, originals });
 			} else {
 				const next: Node[] = [];
-				for (let index = 0; index < node.children.length; index += 1) {
-					const child = node.children[index];
+				const children = [...node.children];
+				for (let index = 0; index < children.length; index += 1) {
+					const child = children[index];
 					if (child.type !== "html" || !TABLE_START.test(child.value ?? "")) {
 						next.push(child);
 						continue;
@@ -202,40 +203,48 @@ export const remarkTableHtml =
 					// CommonMark ends an HTML block at a blank line, even inside a
 					// table. Use the HTML5 parser's source boundary to reunite that
 					// table, not a regex searching for a possibly quoted closing tag.
-					const sentinel = "<lo-table-end></lo-table-end>";
+					// A valid row extends an open table's source range even after
+					// </thead> or </tbody>. A custom element would be foster-parented
+					// outside it, falsely making that section look like a table close.
+					const sentinel = "<tr><td></td></tr>";
 					const openTable = parse(html + sentinel).find(
 						(item) => item.tagName === "table",
 					);
-					const start = child.position?.start.offset;
-					if (
-						typeof file.value === "string" &&
-						start !== undefined &&
-						(openTable?.position?.end.offset ?? 0) > html.length
-					) {
-						// Only adjacent HTML blocks participate: a Markdown paragraph,
-						// list or code fence is an opaque boundary, not more raw HTML.
-						const barrier = node.children
-							.slice(index + 1)
-							.find((item) => item.type !== "html");
-						const last =
-							barrier?.position?.start.offset ??
-							node.children.at(-1)?.position?.end.offset;
-						const suffix = file.value.slice(start, last);
-						const table = parse(suffix + sentinel).find(
-							(item) => item.tagName === "table",
-						);
-						const end = table?.position?.end.offset;
-						// An unfinished table must not swallow later Markdown blocks,
-						// especially fenced examples of the markup itself.
-						if (end !== undefined && end <= suffix.length) {
-							html = suffix.slice(0, end);
-							while (
-								index + 1 < node.children.length &&
-								(node.children[index + 1].position?.start.offset ??
-									Number.POSITIVE_INFINITY) <
-									start + end
-							)
-								index += 1;
+					if ((openTable?.position?.end.offset ?? 0) > html.length) {
+						// mdast HTML values already have container prefixes removed.
+						// Slicing the original file would leak blockquote/list markers
+						// into the HTML5 parser. Reunite only adjacent normalized HTML;
+						// Markdown paragraphs, lists and fences remain opaque barriers.
+						let candidate = html;
+						for (
+							let endIndex = index + 1;
+							endIndex < children.length;
+							endIndex += 1
+						) {
+							const following = children[endIndex];
+							if (following.type !== "html") break;
+							candidate += `\n\n${following.value ?? ""}`;
+							const table = parse(candidate + sentinel).find(
+								(item) => item.tagName === "table",
+							);
+							const end = table?.position?.end.offset;
+							if (end === undefined || end > candidate.length) {
+								// An open stream still owns its adjacent HTML rows, but
+								// never a later Markdown boundary.
+								html = candidate;
+								index = endIndex;
+								continue;
+							}
+							html = candidate.slice(0, end);
+							// The closing HTML node may also own another table (or
+							// unrelated HTML). Reprocess that suffix through the ordinary
+							// table-start check, never discard it or widen its allowlist.
+							const remainder = candidate.slice(end);
+							if (remainder.trim()) {
+								children[endIndex] = { ...following, value: remainder };
+								index = endIndex - 1;
+							} else index = endIndex;
+							break;
 						}
 					}
 					next.push(...convert(parse(html), undefined, true));

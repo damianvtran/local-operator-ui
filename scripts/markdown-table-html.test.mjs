@@ -156,6 +156,47 @@ test("unfinished HTML tables cannot consume later Markdown fences or prose", () 
 	}
 });
 
+test("blank-line reconstruction retains a second table in the consumed HTML node", () => {
+	const dom = new JSDOM(
+		render(
+			"<table>\n\n<tr><td>one</td></tr>\n</table>\n<table><tr><td>TWO</td></tr></table>",
+		),
+	);
+	try {
+		assert.deepEqual(
+			[...dom.window.document.querySelectorAll("td")].map(
+				(cell) => cell.textContent,
+			),
+			["one", "TWO"],
+		);
+	} finally {
+		dom.window.close();
+	}
+});
+
+test("container-normalized tables do not expose quote or list prefixes", () => {
+	for (const source of [
+		"> <table>\n>\n> <tr><td>one</td></tr>\n>\n> <tr><td>two</td></tr>\n>\n> </table>\n>\n> AFTER",
+		"- <table>\n\n  <tr><td>one</td></tr>\n\n  <tr><td>two</td></tr>\n\n  </table>\n\n  AFTER",
+	]) {
+		const dom = new JSDOM(render(source));
+		try {
+			assert.deepEqual(
+				[...dom.window.document.querySelectorAll("td")].map(
+					(cell) => cell.textContent,
+				),
+				["one", "two"],
+			);
+			assert.equal(
+				dom.window.document.body.textContent.replace(/\s/g, ""),
+				"onetwoAFTER",
+			);
+		} finally {
+			dom.window.close();
+		}
+	}
+});
+
 test("unknown and prototype-named elements cannot escape the allowlist", () => {
 	for (const tag of [
 		"constructor",
