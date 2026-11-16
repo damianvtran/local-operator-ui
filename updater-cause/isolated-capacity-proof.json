@@ -1,0 +1,20 @@
+{
+  "installed_module": "~/.local/share/lop/generations/20261116T054532Z-0.106.0/tools/local-operator/lib/python3.14/site-packages/local_operator/install_transaction.py",
+  "module_sha256": "8354a92f9130db08fec3760232d6df091d11f0ec65f9eb697ce59332f379c30b",
+  "empty_root_target_0_106_1_registered": true,
+  "full_root_results": [
+    {
+      "target": "0.106.1",
+      "error": "update recovery records are at capacity; inspect pending operations",
+      "records_after": 256
+    },
+    {
+      "target": "0.106.2",
+      "error": "update recovery records are at capacity; inspect pending operations",
+      "records_after": 256
+    }
+  ],
+  "live_record_count_unchanged": 256,
+  "live_pointer_unchanged": "~/.local/share/lop/generations/20261116T054532Z-0.106.0",
+  "scope": "registration only in freshly created synthetic roots; NO installer, network, service or actual live-record mutation"
+}

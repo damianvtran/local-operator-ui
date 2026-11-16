@@ -1,0 +1,81 @@
+{
+  "visual_window_accept": "2026-11-16T15:12:44.435421+00:00",
+  "hard_deadline": "2026-11-16T15:27:44.435421+00:00",
+  "scope": "HYBRID remote-authored UI; Mac browser-tool captures of actual component and stylesheet with stub updater. No native app, actual updater or remote-device enrollment.",
+  "valid_frames": [
+    {
+      "file": "updater-user-before.png",
+      "path": "updater-user-before.png",
+      "bytes": 167199,
+      "sha256": "1a1c8559c34f64b6b4a4067643975f5fa566835ff7c53c4d9854d9647c36ed96",
+      "png_pixels": [
+        870,
+        636
+      ],
+      "mtime_utc": "2026-11-16T15:38:37.159643+00:00",
+      "provenance": "user-provided original (copied later; not capture time)"
+    },
+    {
+      "file": "updater-cause-after-light.png",
+      "path": "updater-cause-after-light.png",
+      "bytes": 80512,
+      "sha256": "6016de389285888f596dbe3376742cf4e59a9c2e259c0048df6effac7db80909",
+      "png_pixels": [
+        2560,
+        1440
+      ],
+      "mtime_utc": "2026-11-16T15:24:16.618617+00:00",
+      "provenance": "actual browser-tool Storybook capture, opened and visually inspected"
+    },
+    {
+      "file": "updater-cause-after-dark.png",
+      "path": "updater-cause-after-dark.png",
+      "bytes": 76703,
+      "sha256": "178a033d6b7e308193341a30d033f57e8403af0d46df08a54b7792739de4d26a",
+      "png_pixels": [
+        2560,
+        1440
+      ],
+      "mtime_utc": "2026-11-16T15:25:34.341769+00:00",
+      "provenance": "actual browser-tool Storybook capture, opened and visually inspected"
+    }
+  ],
+  "invalid_frame_excluded": "updater-cause-before-light.png (unstyled attempt2, retained; NOT before proof)",
+  "setup_history": [
+    "attempt1 gallery killed at2GiB",
+    "attempt2 dist config scoped root produced missing utilities; unstyled frame rejected",
+    "attempt3 source comment syntax error before launch",
+    "explicit new fourth window: both configs syntax parsed; installed builder root and actual stylesheet/single story asserted before start; unrelated cache-root false-positive diagnostic resolved without dispatch"
+  ],
+  "geometry": {
+    "styled_w150_width_css_px": 600,
+    "styled_p5_padding_css_px": 20,
+    "cause_box_css_px": [
+      368,
+      43.39
+    ],
+    "cause_overflow_wrap": "normal",
+    "cause_word_break": "normal"
+  },
+  "teardown": "Final server job1e89d2780be3 mechanically time-limited to317.188997s, killed before hard deadline; browser.close acknowledged. No fifth attempt.",
+  "unit_result": "66 tests /66pass/0fail, actual exit0; updater-ui-final-targeted.log",
+  "residuals": [
+    "No native glass proof",
+    "Before screenshot has different original viewport; NOT same-viewport reproduction",
+    "Oversized cause content was unit/tree tested, NOT rendered; ordinary wrapping has no explicit long-token protection\u2014independent QA must check potential overflow"
+  ],
+  "source_head": "67b04b674adf16b249848c8aa9c0895992b4bcb9",
+  "format_compatibility": {
+    "claim": "Formatting changed no normalized emitted runtime bytes in any changed file",
+    "normalization": "esbuild transform loader js/ts/tsx; esm; minifyWhitespace=true; legalComments=none; charset=utf8",
+    "files": {
+      "scripts/update-affirmation.test.mjs": "c1203b7fe83aba615b9e2338178bd6d2c13bc9f25a50937672eac16d1df769b1",
+      "src/renderer/src/shared/components/common/update-notification.stories.tsx": "a9e3ad686419b101d781c79687ee4bd1e8605a8a9d5c493927077cc6c3081474",
+      "src/renderer/src/shared/components/common/update-notification.tsx": "a42549b1fdb2faa9b394932efca65bd568ce7b982a46d735bac83b47e29a7568",
+      "src/renderer/src/shared/utils/update-error-copy.ts": "d297d32fafc803b6abdfbfe1ad738182c041f2bee8ef70bca6d1dd68bb3fdc9e"
+    },
+    "retained_unit_log": "updater-ui-final-targeted.log",
+    "retained_visual_manifest": "updater-ui-evidence.json",
+    "no_zero_warning_claim": "Biome error-level check passed; non-fatal regex-hoist warnings remain in normal lint output"
+  }
+}
