@@ -113,6 +113,63 @@ export function parseLaunchProbe(stdout) {
 	return null;
 }
 
+/**
+ * The verdict on a swapped candidate relaunched with `--lo-launch-probe`, for
+ * `verify-signed-update.mjs`.
+ *
+ * WHY THIS REPLACED `--inspect`. That script used to relaunch the candidate with
+ * `--inspect=127.0.0.1:<port>` and ask the inspector for `app.getVersion()`. F2
+ * turns `EnableNodeCliInspectArguments` off, so a fused candidate never opens
+ * the port: on a runner that has a GUI session the exercise could never pass,
+ * and it reported BLOCKED blaming the incumbent (native QA, PR #1948, Q1). The
+ * probe is the app's own answer from its shipped bytecode, and its line carries
+ * the version.
+ *
+ * Fail-closed, every refusal shape red: a non-zero status, a signal, a timeout,
+ * no marker, a marker without `ok`/`packaged`, a version that is not the
+ * candidate's, and a version equal to the incumbent's (the swap did not happen,
+ * whatever the metadata says).
+ *
+ * Returns `{ passed, detail }`; never throws.
+ */
+export function relaunchProbeVerdict(
+	result,
+	{ candidateVersion, incumbentVersion },
+) {
+	if (result.timedOut)
+		return {
+			passed: false,
+			detail: "launch probe did not exit within its bound",
+		};
+	if (result.signal)
+		return { passed: false, detail: `launch probe killed by ${result.signal}` };
+	if (result.status !== 0)
+		return {
+			passed: false,
+			detail: `launch probe exited ${result.status}: ${String(result.stderr ?? "").trim()}`,
+		};
+	const probe = parseLaunchProbe(result.stdout);
+	if (!probe || probe.ok !== true || probe.packaged !== true)
+		return {
+			passed: false,
+			detail: `no packaged ${LAUNCH_PROBE_MARKER} line on stdout`,
+		};
+	if (!candidateVersion || candidateVersion === incumbentVersion)
+		return {
+			passed: false,
+			detail: `candidate version ${JSON.stringify(candidateVersion)} must differ from incumbent ${JSON.stringify(incumbentVersion)}`,
+		};
+	if (probe.version !== candidateVersion)
+		return {
+			passed: false,
+			detail: `relaunched bundle reports version ${JSON.stringify(probe.version)}, expected candidate ${candidateVersion}`,
+		};
+	return {
+		passed: true,
+		detail: `launch probe: version=${probe.version} electron=${probe.electron} arch=${probe.arch}`,
+	};
+}
+
 let launchProbeProfiles = 0;
 
 /**
@@ -641,6 +698,12 @@ export function artifactChecks({
 						ELECTRON_RUN_AS_NODE: null,
 						NODE_OPTIONS: null,
 						LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
+						// A bundle built before the probe stopped writing log files
+						// (native QA, PR #1948, Q2) would otherwise append to the real
+						// `~/Library/Application Support/Local Operator/logs`, which a
+						// scratch HOME does not move. Inside the profile dir, so the
+						// row's own cleanup removes it.
+						LOCAL_OPERATOR_LOG_DIR: join(profileDir, "logs"),
 					},
 					// Two bounds, not one: a child this host must translate answers in a
 					// translation's time rather than in its own, and `timedOut` would

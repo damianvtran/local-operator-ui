@@ -52,6 +52,7 @@ import {
 	electronFusesCheck,
 	parseLaunchProbe,
 	profileAuthorizationCheck,
+	relaunchProbeVerdict,
 } from "./verify-macos-artifacts.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -409,7 +410,11 @@ test("the launch probe prints one parseable line and exits 0; otherwise it does 
 	);
 	const lines = [];
 	const exits = [];
-	const app = { isPackaged: true, exit: (code) => exits.push(code) };
+	const app = {
+		isPackaged: true,
+		exit: (code) => exits.push(code),
+		getVersion: () => "0.57.8",
+	};
 	assert.equal(
 		runLaunchProbeIfRequested(app, ["exe", "--lo-launch-probe"], (line) =>
 			lines.push(line),
@@ -422,6 +427,9 @@ test("the launch probe prints one parseable line and exits 0; otherwise it does 
 	assert.equal(report.ok, true);
 	assert.equal(report.packaged, true);
 	assert.equal(report.arch, process.arch);
+	// The bundle's own version rides the line: the signed-update relaunch reads
+	// it instead of a `--inspect` session the fused candidate no longer opens.
+	assert.equal(report.version, "0.57.8");
 	assert.equal(
 		runLaunchProbeIfRequested(app, ["exe"], (line) => lines.push(line)),
 		false,
@@ -481,4 +489,83 @@ test("no main-process read of ELECTRON_RENDERER_URL bypasses the packaged rule",
 		assert.equal(gated.length, guarded, file);
 	}
 	assert.ok(existsSync(join(ROOT, "src/main/dev-renderer-url.ts")));
+});
+
+/*
+ * The signed-update relaunch (native QA, PR #1948, Q1). F2 turns the
+ * `EnableNodeCliInspectArguments` fuse off, so `verify-signed-update.mjs` can no
+ * longer relaunch the swapped candidate with `--inspect` and wait on its
+ * inspector: on a runner with a GUI session that wait could only time out, and
+ * it reported BLOCKED blaming the incumbent. The candidate now answers through
+ * `--lo-launch-probe`, judged by `relaunchProbeVerdict`, fail-closed.
+ */
+test("the relaunch verdict passes only the packaged candidate version, and fails every other shape", () => {
+	const versions = { candidateVersion: "0.57.8", incumbentVersion: "0.57.7" };
+	const line = (report) =>
+		`${LAUNCH_PROBE_MARKER} ${JSON.stringify({ ok: true, packaged: true, electron: "45.1.0", arch: "arm64", version: "0.57.8", ...report })}\n`;
+	const ok = { status: 0, signal: null, timedOut: false, stderr: "" };
+	const pass = relaunchProbeVerdict({ ...ok, stdout: line({}) }, versions);
+	assert.equal(pass.passed, true, pass.detail);
+	assert.match(pass.detail, /version=0\.57\.8/);
+	const fails = {
+		"timed out": { ...ok, timedOut: true, stdout: line({}) },
+		signalled: { ...ok, status: null, signal: "SIGABRT", stdout: "" },
+		"non-zero": { ...ok, status: 1, stdout: line({}) },
+		"no marker": { ...ok, stdout: "booted\n" },
+		"broken marker": { ...ok, stdout: `${LAUNCH_PROBE_MARKER} {not json\n` },
+		"not ok": { ...ok, stdout: line({ ok: false }) },
+		unpackaged: { ...ok, stdout: line({ packaged: false }) },
+		"incumbent still installed": { ...ok, stdout: line({ version: "0.57.7" }) },
+		"version missing (a pre-F2 probe)": {
+			...ok,
+			stdout: line({ version: undefined }),
+		},
+	};
+	for (const [name, result] of Object.entries(fails))
+		assert.equal(relaunchProbeVerdict(result, versions).passed, false, name);
+	// The version-differ rule holds even when the bundle agrees with the feed.
+	assert.equal(
+		relaunchProbeVerdict(
+			{ ...ok, stdout: line({ version: "0.57.7" }) },
+			{ candidateVersion: "0.57.7", incumbentVersion: "0.57.7" },
+		).passed,
+		false,
+	);
+});
+
+test("verify-signed-update never inspects the candidate and reports the F2 rows before the GUI check", () => {
+	const source = readFileSync(
+		join(ROOT, "scripts", "verify-signed-update.mjs"),
+		"utf8",
+	);
+	// Exactly one `--inspect`, on the incumbent (unfused, pre-F2) launch.
+	const inspects = [...source.matchAll(/--inspect=/g)];
+	assert.equal(inspects.length, 1, "only the incumbent may be inspected");
+	const incumbent = source.indexOf('"incumbent",');
+	assert.ok(
+		inspects[0].index < incumbent && incumbent - inspects[0].index < 200,
+		"the one --inspect launch must be the incumbent's",
+	);
+	assert.match(source, /relaunchProbeVerdict\(/);
+	assert.match(source, /await launchAndCheck\("candidate"\);/);
+	assert.match(source, /await launchAndCheck\("second-launch"\);/);
+	// The version-differ rule survives.
+	assert.match(
+		source,
+		/assert\.notEqual\(candidateMetadata\.version, capability\.version\);/,
+	);
+	// The fuse and epoch rows are recorded, and before the GUI-session check that
+	// a hosted runner fails.
+	const gui = source.indexOf('"/bin/launchctl", ["print"');
+	const rows = source.indexOf("for (const id of F2_ROW_IDS)");
+	assert.ok(gui > 0 && rows > 0);
+	assert.ok(rows < gui, "the F2 rows must be reported before the GUI check");
+	assert.match(
+		source,
+		/const F2_ROW_IDS = \["app-electron-fuses", "app-attestation-epoch"\];/,
+	);
+	assert.ok(
+		source.indexOf("electronFusesCheck(app)") < gui &&
+			source.indexOf("attestationEpochCheck(app)") < gui,
+	);
 });

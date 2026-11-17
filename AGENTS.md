@@ -1695,8 +1695,8 @@ answers from the app as the operator's. For a rig that means:
   window, the backend, the keychain — instead of running a Node one-liner. Never
   use node mode against a `dist/` or installed bundle. To ask a packaged bundle
   "do you start and load your own `app.asar`/bytecode?", run it with
-  `--lo-launch-probe --user-data-dir=<scratch> --use-mock-keychain
-  --window-mode=headless`: it prints one `LOCAL_OPERATOR_LAUNCH_PROBE {...}` line
+  `LOCAL_OPERATOR_LOG_DIR=<scratch>/logs <exe> --lo-launch-probe
+  --user-data-dir=<scratch> --use-mock-keychain --window-mode=headless`: it prints one `LOCAL_OPERATOR_LAUNCH_PROBE {...}` line
   before its lock, window or backend and exits 0 (`src/main/launch-probe.ts`,
   the release gate's `app-spawn`). The npm `electron` binary is unfused, so dev
   and CI uses of node mode with `node_modules/.bin/electron` are unaffected.
@@ -1713,6 +1713,21 @@ answers from the app as the operator's. For a rig that means:
   each file against its block hashes when that file is first read; a mismatch
   aborts (that is the point). A tamper test must change the header or a file
   read at start-up (`out/main/index.jsc`): a renderer asset only fails later.
+- **The launch probe must not touch the operator's real logs.** The app's log
+  directory is `~/Library/Application Support/Local Operator/logs` under the OS
+  account's home, which neither a scratch `HOME` nor `--user-data-dir` moves. A
+  probe launch writes no log files (`logFilesEnabled` in
+  `src/main/backend/log-dir.ts`), and every rig and gate that launches the probe
+  also sets `LOCAL_OPERATOR_LOG_DIR=<scratch>` so an older bundle cannot write
+  there either (native QA on PR #1948 measured five lines landing in the
+  operator's files from one probe).
+- **Tamper rows use ad-hoc re-signed copies, never a launched Developer ID
+  copy.** Launching a tampered Developer ID–signed bundle makes Gatekeeper show
+  a code-evaluation prompt on the operator's screen, even for a non-quarantined
+  copy (the `com.apple.provenance` xattr is enough). Re-sign the copy ad hoc
+  (`codesign --force --deep --sign -`) before tampering and launching it, and
+  prove the Developer ID signature row statically with `codesign --verify
+  --deep --strict`, without launching that copy.
 
 ### What already opens no window, so a rebase does not re-introduce one
 

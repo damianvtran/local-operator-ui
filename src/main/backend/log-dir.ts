@@ -22,6 +22,8 @@
  * changes: this is an override, not a new setting.
  */
 
+import { launchProbeRequested } from "../launch-probe";
+
 export const LOG_DIR_ENV = "LOCAL_OPERATOR_LOG_DIR";
 
 /**
@@ -43,4 +45,22 @@ export function logDirOverride(value: string | undefined): string | null {
 		`[logger] ${LOG_DIR_ENV}=${requested} is not an absolute path; the default log directory is used instead`,
 	);
 	return null;
+}
+
+/**
+ * Whether this launch may write log FILES at all.
+ *
+ * False only for a `--lo-launch-probe` launch (`../launch-probe`). The probe is
+ * the release gate's and the QA rigs' "does the bundle start?" question, and it
+ * must leave nothing on the machine it runs on. The logger is built while
+ * `index.ts`'s imports evaluate, which is before the probe line runs, so the
+ * probe cannot simply be called earlier; native QA on PR #1948 (Q2) measured a
+ * probe appending five lines to the operator's real log files. Console output
+ * stays on, so a probe launch that does fail still says why on its own stdout.
+ *
+ * Read from `process.argv` by the caller: the same argv the probe itself tests,
+ * with the same exact-match and stop-at-`--` rule, so the two cannot disagree.
+ */
+export function logFilesEnabled(argv: readonly string[]): boolean {
+	return !launchProbeRequested(argv);
 }

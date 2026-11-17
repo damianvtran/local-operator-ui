@@ -31,6 +31,14 @@
  * early start-up has nowhere real to touch. It exits with `app.exit(0)`, which
  * Electron honours before `ready`.
  *
+ * LOG FILES. ES imports evaluate before this module's caller reaches the probe,
+ * and `backend/logger.ts` builds its singleton at import time, so moving the
+ * call earlier cannot keep the logger from starting. Instead the logger asks
+ * `logFilesEnabled` (`backend/log-dir.ts`) and writes no files on a probe
+ * launch: native QA on PR #1948 (Q2) measured one probe appending five lines to
+ * the operator's real `~/Library/Application Support/Local Operator/logs`,
+ * which neither a scratch `HOME` nor `--user-data-dir` redirects.
+ *
  * It grants nothing: the flag makes the process print three version strings and
  * leave. It is not a way to drive the app, and PR #3 of F2 treats any `--lo-*`
  * switch on a launch as ineligible to attest a card answer anyway.
@@ -55,6 +63,14 @@ export interface LaunchProbeReport {
 	v8: string;
 	arch: string;
 	packaged: boolean;
+	/*
+	 * The bundle's own `app.getVersion()`. `scripts/verify-signed-update.mjs`
+	 * relaunches the swapped candidate through this probe and needs to hear WHICH
+	 * app answered: it used to ask a `--inspect` session, and F2 turns the
+	 * `EnableNodeCliInspectArguments` fuse off, so a fused candidate can no longer
+	 * be asked that way (native QA, PR #1948, Q1).
+	 */
+	version: string;
 }
 
 /**
@@ -83,7 +99,11 @@ export function launchProbeLine(report: LaunchProbeReport): string {
  * the decision and the line can be tested without booting Electron.
  */
 export function runLaunchProbeIfRequested(
-	app: { isPackaged: boolean; exit: (code?: number) => void },
+	app: {
+		isPackaged: boolean;
+		exit: (code?: number) => void;
+		getVersion: () => string;
+	},
 	argv: readonly string[] = process.argv,
 	/*
 	 * `writeSync` on fd 1, not `process.stdout.write`: on macOS a pipe stdout is
@@ -103,6 +123,7 @@ export function runLaunchProbeIfRequested(
 			v8: process.versions.v8,
 			arch: process.arch,
 			packaged: app.isPackaged,
+			version: app.getVersion(),
 		}),
 	);
 	app.exit(0);

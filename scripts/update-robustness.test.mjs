@@ -4796,10 +4796,18 @@ test("the launch probe asks the bundle itself, never in node mode, and refuses '
 	assert.ok(profileArg, "the probe runs without a scratch profile");
 	assert.ok(isAbsolute(profileArg.slice("--user-data-dir=".length)));
 	// An inherited node-mode switch is REMOVED, not merely not added.
+	// The log directory is the scratch profile's, never the operator's real
+	// `~/Library/Application Support/Local Operator/logs` (native QA, PR #1948,
+	// Q2): a bundle that predates the probe's own log suppression still writes
+	// nothing there.
 	assert.deepEqual(check.env, {
 		ELECTRON_RUN_AS_NODE: null,
 		NODE_OPTIONS: null,
 		LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
+		LOCAL_OPERATOR_LOG_DIR: join(
+			profileArg.slice("--user-data-dir=".length),
+			"logs",
+		),
 	});
 
 	// A translated child gets the longer bound (Rosetta's one-time cost).
