@@ -1,23 +1,3 @@
-/** Canonical sessions are the only conversation identities. Profile names stage
- * drafts; the legacy agent mapping is retained only to resolve old deep links.
- *
- * SHARED CONVENTION, NAMED THE SAME WAY AT THE TUI'S ROW-NORMALISATION POINT
- * (`SessionSidebar._unpinned_rank`) AND IN ITS `docs/design/mesh-ui.md` §1.3.1,
- * AND BY THIS SIBLING CHANGE - the sentence kept verbatim across surfaces
- * (design review round 1, D4; agent review round 1, R1):
- *
- * > Remote rows are first-class: they file into the same bins as local rows under
- * > the same ordering rule, carry a per-row indicator, and their hover reads the
- * > owning device and its network; there is no separate remote section.
- *
- * This module is the UI's half of that sentence: `settlePeerCatalogue` merges a
- * peers-inclusive answer's remote rows into this catalogue, the sidebar renders
- * them through the one row component (the reserved locality cell and its mark in
- * `features/chat/components/chat-remote-mark.tsx`, the flyout's and the
- * accessible name's one fragment in `features/chat/chat-remote.ts`), and the
- * bins that sentence names are this list's own - Running, Today, This week,
- * Older, Pinned.
- */
 import {
 	DesktopControlError,
 	UserFacingError,
@@ -104,6 +84,27 @@ import { desktopRefusalSentence } from "../api/local-operator/desktop-refusal-co
 // `@shared` alias and resolve only the `@shared` paths they stub, so a new
 // `@shared/...` import is unresolvable there (merge-gate run 42679243544).
 import { isServerUpdatingError } from "../api/local-operator/server-updating-error";
+/** Canonical sessions are the only conversation identities. Profile names stage
+ * drafts; the legacy agent mapping is retained only to resolve old deep links.
+ *
+ * SHARED CONVENTION, NAMED THE SAME WAY AT THE TUI'S ROW-NORMALISATION POINT
+ * (`SessionSidebar._unpinned_rank`) AND IN ITS `docs/design/mesh-ui.md` §1.3.1,
+ * AND BY THIS SIBLING CHANGE - the sentence kept verbatim across surfaces
+ * (design review round 1, D4; agent review round 1, R1):
+ *
+ * > Remote rows are first-class: they file into the same bins as local rows under
+ * > the same ordering rule, carry a per-row indicator, and their hover reads the
+ * > owning device and its network; there is no separate remote section.
+ *
+ * This module is the UI's half of that sentence: `settlePeerCatalogue` merges a
+ * peers-inclusive answer's remote rows into this catalogue, the sidebar renders
+ * them through the one row component (the reserved locality cell and its mark in
+ * `features/chat/components/chat-remote-mark.tsx`, the flyout's and the
+ * accessible name's one fragment in `features/chat/chat-remote.ts`), and the
+ * bins that sentence names are this list's own - Running, Today, This week,
+ * Older, Pinned.
+ */
+import { quotaSafePersistStorage } from "./quota-safe-storage";
 import {
 	EMPTY_SETTINGS_INTENTS,
 	type SettingsIntentsMirror,
@@ -6002,6 +6003,34 @@ export function launchDraftSeed(
 }
 
 /**
+ * Step 3 of the quota fallback for this store (`quota-safe-storage.ts`), run
+ * only after a full write AND an image-free write were both refused.
+ *
+ * `forgotten` is the one map here that only grows - a fact per session the user
+ * removed, kept so the list does not resurrect it - so under quota pressure it
+ * keeps its NEWER half (records keep insertion order, which is the order facts
+ * were added). Halving rather than a fixed count, because no count has been
+ * measured; the oldest facts are the ones a session list is least likely to
+ * still be showing. Drafts and the active pointers are kept whole.
+ */
+export function shrinkPersistedSessions<
+	V extends { state: { forgotten?: Record<string, unknown> } },
+>(value: V): V {
+	const forgotten = value.state.forgotten;
+	if (!forgotten) return value;
+	const entries = Object.entries(forgotten);
+	return {
+		...value,
+		state: {
+			...value.state,
+			forgotten: Object.fromEntries(
+				entries.slice(Math.floor(entries.length / 2)),
+			),
+		},
+	};
+}
+
+/**
  * The launch argument OUTRANKS the persisted conversation.
  *
  * Main was asked for this conversation BY NAME, and the window exists to show
@@ -9383,6 +9412,17 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 		}),
 		{
 			name: "canonical-sessions-storage",
+			/*
+			 * Quota-safe (`quota-safe-storage.ts`): a full localStorage used to throw
+			 * out of zustand's persist as an uncaught `QuotaExceededError` (PostHog,
+			 * Windows). The last resort keeps the active pointers and drafts with
+			 * text, and trims `forgotten` to its newest entries - it only ever runs
+			 * once the platform has refused the full and the image-free copies.
+			 */
+			storage: quotaSafePersistStorage<Partial<CanonicalSessionsState>>({
+				storeName: "canonical-sessions-storage",
+				lastResort: shrinkPersistedSessions,
+			}),
 			merge: mergePersistedSession,
 			partialize: (state) => ({
 				activeSessionId: state.activeSessionId,
