@@ -14,9 +14,16 @@
  *   - every agent path is refused while held: `requireSurface`, every CDP command
  *     but the origin gate's `Fetch` answers, results already in flight, CDP events
  *     (screencast/console/network), isolated-world reads, frame walks;
- *   - only a release ends it (no timer); a release with the frame still present
- *     reloads first and lifts on the new document's commit; a stale `at` is
- *     refused; a tab close drops the hold.
+ *   - it ends on its own once the prompt is gone (no admitted frame alive AND
+ *     no provider frame in the committed tree), never by a timer and never with
+ *     a reload; a tab close drops it.
+ *
+ * 2026-11-17 (operator report: the passive 1Password autofill card paused agents
+ * and raised "Password manager needs you" rows on every login page):
+ *   - admission happens only in a tab a PERSON engaged (`tab-engagement.ts`);
+ *   - `notification.html` alone is a QUIET hold (lock, no notice, no WAITING
+ *     row); `universal-sign-on.html` or corroboration makes it a CEREMONY;
+ *   - dismissing a ceremony's notice hides it and releases/reloads nothing.
  */
 
 import assert from "node:assert/strict";
@@ -33,6 +40,7 @@ const bundle = await build({
 			'export { assertNotExtensionFrame, listFrames } from "./src/main/browser/actions/frames";',
 			'export { close as closeTab } from "./src/main/browser/actions/tabs";',
 			'export { CustodyHandoffs } from "./src/renderer/src/shared/browser-passkey-custody-handoff";',
+			'export { TabEngagement, admitIfEngaged } from "./src/main/browser/extensions/tab-engagement";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -51,6 +59,8 @@ const {
 	closeTab,
 	PASSKEY_PROMPT_DOCUMENTS,
 	PasskeyCustody,
+	TabEngagement,
+	admitIfEngaged,
 	TabRegistry,
 	assertNotExtensionFrame,
 	passkeyPromptProvider,
@@ -207,134 +217,276 @@ test("a hold that fails to bring the tab forward still holds", () => {
 	assert.equal(instance.isHeld(10), true);
 });
 
-test("only the user's release ends a hold; a stale or unknown one is refused", () => {
-	const { custody: instance, events } = custody();
+test("a hold ends on its own once the prompt frame is gone and none is committed, with no reload", () => {
+	let providerFrame = true;
+	const { custody: instance, events } = custody({
+		hasProviderFrame: () => providerFrame,
+	});
+	const frame = {
+		destroyed: false,
+		isDestroyed() {
+			return this.destroyed;
+		},
+	};
 	instance.admit({
 		webContentsId: 10,
 		tabId: 1,
 		url: PROMPT,
 		isInstalled: installed,
-		frame: GONE,
-	});
-	const { at } = instance.viewForTab(1);
-	const noFrame = {
-		hasProviderFrame: () => false,
-		reload: () => assert.fail("no reload"),
-	};
-	assert.deepEqual(instance.release({ tabId: 1, at: at - 1, ...noFrame }), {
-		ok: false,
-		reason: "stale",
-	});
-	assert.deepEqual(instance.release({ tabId: 2, at, ...noFrame }), {
-		ok: false,
-		reason: "not_held",
+		frame,
 	});
 	assert.equal(instance.isHeld(10), true);
-	// A main-frame commit (the sign-in's own redirect) does not end a hold the
-	// user has not returned.
-	instance.committed(10);
+	// The admitted frame is gone but the committed tree still shows one: held.
+	frame.destroyed = true;
+	assert.equal(instance.sweep(10), true);
 	assert.equal(instance.isHeld(10), true);
-	assert.deepEqual(instance.release({ tabId: 1, at, ...noFrame }), {
-		ok: true,
-		reloaded: false,
-	});
+	// Nothing left anywhere: the agent's next action finds the tab free.
+	providerFrame = false;
 	assert.equal(instance.isHeld(10), false);
 	assert.deepEqual(events, [
 		["begin", 1],
 		["end", 1],
 	]);
-});
-
-test("a release with the provider frame still present reloads first and lifts only on commit", () => {
-	const { custody: instance } = custody();
-	instance.admit({
-		webContentsId: 10,
-		tabId: 1,
-		url: PROMPT,
-		isInstalled: installed,
-		frame: GONE,
-	});
-	const { at } = instance.viewForTab(1);
-	const reloads = [];
-	assert.deepEqual(
-		instance.release({
-			tabId: 1,
-			at,
-			hasProviderFrame: () => true,
-			reload: (id) => reloads.push(id),
-		}),
-		{ ok: true, reloaded: true },
-	);
-	assert.deepEqual(reloads, [10]);
 	assert.equal(
-		instance.isHeld(10),
-		true,
-		"still held until the new document commits",
+		"release" in instance,
+		false,
+		"there is no release (and so no reload) path any more",
 	);
-	instance.committed(10);
-	assert.equal(instance.isHeld(10), false);
 });
 
-test("a frame check that throws reloads (fail closed); a reload that throws keeps the hold", () => {
-	const { custody: instance } = custody();
-	instance.admit({
-		webContentsId: 10,
-		tabId: 1,
-		url: PROMPT,
-		isInstalled: installed,
-		frame: GONE,
-	});
-	const { at } = instance.viewForTab(1);
-	assert.deepEqual(
-		instance.release({
-			tabId: 1,
-			at,
-			hasProviderFrame: () => {
-				throw new Error("frame gone");
+test("sweep fails closed: a live admitted frame, an unknown frame or an unreadable check keeps the hold", () => {
+	for (const [frame, hasProviderFrame] of [
+		[{ isDestroyed: () => false }, () => false],
+		[undefined, () => false],
+		[
+			{
+				isDestroyed: () => {
+					throw new Error("gone?");
+				},
 			},
-			reload: () => {
-				throw new Error("cannot reload");
+			() => false,
+		],
+		[
+			GONE,
+			() => {
+				throw new Error("tree unreadable");
 			},
-		}),
-		{ ok: false, reason: "reload_failed" },
-	);
-	assert.equal(instance.isHeld(10), true);
-	instance.committed(10);
-	assert.equal(
-		instance.isHeld(10),
-		true,
-		"a failed reload is not waiting for a commit",
-	);
-});
-
-test("a prompt that reappears while a release waits for its reload cancels the release", () => {
-	const { custody: instance } = custody();
-	instance.admit({
-		webContentsId: 10,
-		tabId: 1,
-		url: PROMPT,
-		isInstalled: installed,
-		frame: GONE,
-	});
-	const { at } = instance.viewForTab(1);
-	instance.release({
-		tabId: 1,
-		at,
-		hasProviderFrame: () => true,
-		reload: () => {},
-	});
-	assert.equal(
+		],
+	]) {
+		const { custody: instance } = custody({ hasProviderFrame });
 		instance.admit({
 			webContentsId: 10,
 			tabId: 1,
 			url: PROMPT,
 			isInstalled: installed,
-			frame: GONE,
-		}),
-		true,
-	);
+			frame,
+		});
+		instance.sweepAll();
+		assert.equal(instance.isHeld(10), true);
+	}
+});
+
+test("a main-frame commit drops an unknown frame's placeholder and lets the sweep end the hold", () => {
+	const { custody: instance } = custody({ hasProviderFrame: () => false });
+	instance.admit({
+		webContentsId: 10,
+		tabId: 1,
+		url: PROMPT,
+		isInstalled: installed,
+	});
+	assert.equal(instance.isHeld(10), true, "unknown frame: fail closed");
 	instance.committed(10);
+	assert.equal(instance.isHeld(10), false);
+});
+
+test("notification.html alone is a QUIET hold: locked, but nothing for the WAITING row", () => {
+	const { custody: instance } = custody();
+	instance.admit({
+		webContentsId: 10,
+		tabId: 1,
+		url: PROMPT,
+		isInstalled: installed,
+		frame: GONE,
+	});
+	assert.equal(
+		instance.isHeld(10),
+		true,
+		"the agent is still kept off the card",
+	);
+	assert.equal(instance.viewForTab(1).kind, "quiet");
+	assert.deepEqual(waitingRows(instance), []);
+});
+
+test("universal-sign-on, or a corroborated notification, is a CEREMONY: exactly one WAITING row", () => {
+	for (const request of [{ url: USO }, { url: PROMPT, corroborated: true }]) {
+		const { custody: instance, events } = custody();
+		for (let i = 0; i < 3; i++)
+			instance.admit({
+				webContentsId: 10,
+				tabId: 1,
+				isInstalled: installed,
+				frame: GONE,
+				...request,
+			});
+		assert.equal(instance.viewForTab(1).kind, "ceremony");
+		assert.equal(
+			waitingRows(instance).length,
+			1,
+			"repeated admission, one row",
+		);
+		assert.equal(events.filter(([kind]) => kind === "begin").length, 1);
+	}
+});
+
+test("a quiet hold is promoted by a later ceremony document or by promote(); same hold, one row", () => {
+	const changes = [];
+	const { custody: instance } = custody({
+		onChange: (view) => changes.push(view.kind),
+	});
+	instance.admit({
+		webContentsId: 10,
+		tabId: 1,
+		url: PROMPT,
+		isInstalled: installed,
+		frame: GONE,
+	});
+	const { at } = instance.viewForTab(1);
+	assert.equal(
+		instance.promote(2),
+		false,
+		"another tab's evidence promotes nothing",
+	);
+	assert.equal(instance.promote(1), true);
+	assert.equal(instance.promote(1), false, "already a ceremony");
+	assert.equal(instance.viewForTab(1).at, at, "the same hold");
+	assert.deepEqual(changes, ["ceremony"]);
+	const second = custody({
+		onChange: (view) => changes.push(view.kind),
+	}).custody;
+	second.admit({
+		webContentsId: 11,
+		tabId: 2,
+		url: PROMPT,
+		isInstalled: installed,
+		frame: GONE,
+	});
+	second.admit({
+		webContentsId: 11,
+		tabId: 2,
+		url: USO,
+		isInstalled: installed,
+		frame: GONE,
+	});
+	assert.equal(second.viewForTab(2).kind, "ceremony");
+	assert.equal(waitingRows(second).length, 1);
+});
+
+test("dismiss hides the notice and the row only: the hold stays, nothing reloads or releases", () => {
+	const ended = [];
+	const { custody: instance } = custody({
+		onEnd: (view) => ended.push(view.tabId),
+		hasProviderFrame: () => true,
+	});
+	instance.admit({
+		webContentsId: 10,
+		tabId: 1,
+		url: USO,
+		isInstalled: installed,
+		frame: { isDestroyed: () => false },
+	});
+	const { at } = instance.viewForTab(1);
+	assert.equal(
+		instance.dismiss(1, at - 1),
+		false,
+		"a stale notice dismisses nothing",
+	);
+	assert.equal(instance.dismiss(2, at), false);
+	assert.equal(waitingRows(instance).length, 1);
+	assert.equal(instance.dismiss(1, at), true);
+	assert.equal(instance.viewForTab(1).dismissed, true);
+	assert.deepEqual(waitingRows(instance), []);
+	assert.equal(instance.isHeld(10), true, "the prompt is still the person's");
+	assert.deepEqual(ended, [], "no release");
+});
+
+/** The host's WAITING projection (`index.ts` `waitingOnUser`). */
+function waitingRows(instance) {
+	return instance
+		.views()
+		.filter((view) => view.kind === "ceremony" && !view.dismissed);
+}
+
+test("not engaged: admit is never called, so no hold, no row and the frame stays refused", () => {
+	const { custody: instance, events } = custody();
+	const engagement = new TabEngagement();
+	let calls = 0;
+	const admit = () => {
+		calls += 1;
+		return instance.admit({
+			webContentsId: 10,
+			tabId: 1,
+			url: USO,
+			isInstalled: installed,
+			frame: GONE,
+		});
+	};
+	// An agent opened the tab and navigated to a login page: nobody focused it.
+	assert.equal(admitIfEngaged(engagement, 1, admit), false);
+	assert.equal(calls, 0);
+	assert.equal(instance.isHeld(10), false);
+	assert.deepEqual(events, []);
+	assert.deepEqual(waitingRows(instance), []);
+	// A person clicks into it: now the same frame is admitted under a hold.
+	engagement.focused(1, {
+		activeTabId: 1,
+		presented: true,
+		windowFocused: true,
+	});
+	assert.equal(admitIfEngaged(engagement, 1, admit), true);
+	assert.equal(calls, 1);
 	assert.equal(instance.isHeld(10), true);
+});
+
+test("engagement: only native focus on the active, presented tab in a focused window counts", () => {
+	const engagement = new TabEngagement();
+	const facts = { activeTabId: 1, presented: true, windowFocused: true };
+	assert.equal(
+		engagement.focused(1, { ...facts, windowFocused: false }),
+		false,
+	);
+	assert.equal(engagement.focused(1, { ...facts, presented: false }), false);
+	assert.equal(engagement.focused(1, { ...facts, activeTabId: 2 }), false);
+	assert.equal(
+		engagement.has(1),
+		false,
+		"an agent's tab it merely opened is not engaged",
+	);
+	assert.equal(engagement.focused(1, facts), true);
+	assert.equal(engagement.has(1), true);
+});
+
+test("engagement latch: cleared by activate/close/hand-over/chrome focus, never by blur or time", () => {
+	const facts = { activeTabId: 1, presented: true, windowFocused: true };
+	const engaged = () => {
+		const engagement = new TabEngagement();
+		engagement.focused(1, facts);
+		return engagement;
+	};
+	// Window/page blur has no method to call at all: the OS biometric sheet and
+	// the provider's own window take focus mid-ceremony. Re-laying out the same
+	// active tab (resize, the sheet returning) keeps it.
+	const kept = engaged();
+	kept.activated(1);
+	assert.equal(kept.has(1), true);
+	const activated = engaged();
+	activated.activated(2);
+	assert.equal(activated.has(1), false);
+	const closed = engaged();
+	closed.clear(1);
+	assert.equal(closed.has(1), false);
+	const chrome = engaged();
+	chrome.clearAll();
+	assert.equal(chrome.has(1), false);
 });
 
 test("closing the tab drops the hold", () => {
@@ -463,19 +615,14 @@ test("a screenshot already in flight when the hold begins is dropped, not delive
 		(error) => error.data?.reason === "passkey_custody",
 	);
 	// Released before it lands still counts: the epoch moved.
-	const { at } = instance.viewForTab(1);
 	contents.debugger.pending.clear();
 	const second = pool.send(contents, "Page.captureScreenshot", {});
 	await assert.rejects(
 		second,
 		(error) => error.data?.reason === "passkey_custody",
 	);
-	instance.release({
-		tabId: 1,
-		at,
-		hasProviderFrame: () => false,
-		reload: () => {},
-	});
+	// The prompt closed (the self-release's own end path).
+	instance.forget(10, "the prompt closed");
 	const third = pool.send(contents, "Page.captureScreenshot", {});
 	await new Promise((resolve) => setImmediate(resolve));
 	instance.admit({
@@ -485,13 +632,7 @@ test("a screenshot already in flight when the hold begins is dropped, not delive
 		isInstalled: installed,
 		frame: GONE,
 	});
-	const { at: at2 } = instance.viewForTab(1);
-	instance.release({
-		tabId: 1,
-		at: at2,
-		hasProviderFrame: () => false,
-		reload: () => {},
-	});
+	instance.forget(10, "the prompt closed");
 	contents.debugger.pending.get("Page.captureScreenshot")({ data: "raced" });
 	await assert.rejects(
 		third,
@@ -563,13 +704,7 @@ test("requireSurface refuses a held tab, and an isolated-world read that crossed
 			error.code === "owner_refused" &&
 			error.data?.reason === "passkey_custody",
 	);
-	const { at } = instance.viewForTab(agent.tabId);
-	instance.release({
-		tabId: agent.tabId,
-		at,
-		hasProviderFrame: () => false,
-		reload: () => {},
-	});
+	instance.forget(wc, "the prompt closed");
 	assert.equal(registry.requireSurface(token), agent);
 
 	let resolveRead;
@@ -642,8 +777,8 @@ test("the capture discard runs synchronously at hold begin, before onBegin, even
 	assert.equal(order.length, 2);
 });
 
-test("R3: Return while an admitted prompt frame has not committed yet reloads and keeps the hold", () => {
-	const { custody: instance } = custody();
+test("R3: the self-release never fires while a newly admitted frame is still committing", () => {
+	const { custody: instance } = custody({ hasProviderFrame: () => false });
 	const first = {
 		destroyed: false,
 		isDestroyed() {
@@ -657,12 +792,16 @@ test("R3: Return while an admitted prompt frame has not committed yet reloads an
 		isInstalled: installed,
 		frame: first,
 	});
-	const { at } = instance.viewForTab(1);
 	// The user answered; 1Password removed that frame...
 	first.destroyed = true;
 	// ...and is swapping in its completion frame, still navigating: the committed
 	// frame tree does not show it yet.
-	const pending = { isDestroyed: () => false };
+	const pending = {
+		destroyed: false,
+		isDestroyed() {
+			return this.destroyed;
+		},
+	};
 	instance.admit({
 		webContentsId: 10,
 		tabId: 1,
@@ -670,100 +809,13 @@ test("R3: Return while an admitted prompt frame has not committed yet reloads an
 		isInstalled: installed,
 		frame: pending,
 	});
-	const reloads = [];
-	assert.deepEqual(
-		instance.release({
-			tabId: 1,
-			at,
-			hasProviderFrame: () => false,
-			reload: (id) => reloads.push(id),
-		}),
-		{ ok: true, reloaded: true },
-	);
-	assert.deepEqual(reloads, [10]);
 	assert.equal(
 		instance.isHeld(10),
 		true,
 		"never unlocked before the pending frame is gone",
 	);
-	instance.committed(10);
+	pending.destroyed = true;
 	assert.equal(instance.isHeld(10), false);
-});
-
-test("R3: every admitted frame destroyed and none committed: Return hands back without a reload", () => {
-	const { custody: instance } = custody();
-	instance.admit({
-		webContentsId: 10,
-		tabId: 1,
-		url: PROMPT,
-		isInstalled: installed,
-		frame: { isDestroyed: () => true },
-	});
-	const { at } = instance.viewForTab(1);
-	assert.deepEqual(
-		instance.release({
-			tabId: 1,
-			at,
-			hasProviderFrame: () => false,
-			reload: () => assert.fail("no reload"),
-		}),
-		{ ok: true, reloaded: false },
-	);
-	assert.equal(instance.isHeld(10), false);
-});
-
-test("R3: an admission with no frame handle, or one whose liveness throws, fails closed to the reload", () => {
-	for (const frame of [
-		undefined,
-		{
-			isDestroyed: () => {
-				throw new Error("gone?");
-			},
-		},
-	]) {
-		const { custody: instance } = custody();
-		instance.admit({
-			webContentsId: 10,
-			tabId: 1,
-			url: PROMPT,
-			isInstalled: installed,
-			frame,
-		});
-		const { at } = instance.viewForTab(1);
-		const reloads = [];
-		assert.deepEqual(
-			instance.release({
-				tabId: 1,
-				at,
-				hasProviderFrame: () => false,
-				reload: (id) => reloads.push(id),
-			}),
-			{ ok: true, reloaded: true },
-		);
-		assert.deepEqual(reloads, [10]);
-	}
-});
-
-test("U2: a second Return while the reload is on its way does not reload again", () => {
-	const { custody: instance } = custody();
-	instance.admit({
-		webContentsId: 10,
-		tabId: 1,
-		url: PROMPT,
-		isInstalled: installed,
-	});
-	const { at } = instance.viewForTab(1);
-	const reloads = [];
-	const press = () =>
-		instance.release({
-			tabId: 1,
-			at,
-			hasProviderFrame: () => true,
-			reload: (id) => reloads.push(id),
-		});
-	assert.deepEqual(press(), { ok: true, reloaded: true });
-	assert.deepEqual(press(), { ok: true, reloaded: true });
-	assert.deepEqual(reloads, [10], "one reload");
 });
 
 test("R1/R2: under custody the pool lets capture TEARDOWN through and nothing that reads or captures", async () => {

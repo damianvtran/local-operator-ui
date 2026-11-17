@@ -3884,6 +3884,7 @@ export type MessageParams = {
 	"ui.browser.approval_queue_model.this_session_only": undefined;
 	"ui.browser.approval_queue_model.this_site": undefined;
 	"ui.browser.approval_queue_model.whole_domain": undefined;
+	"ui.browser.approvals_card.password_manager_notice": undefined;
 	"ui.browser.browser_approvals_dock.agents_can_drive_tabs_in_this_app": undefined;
 	"ui.browser.browser_approvals_dock.approvals": undefined;
 	"ui.browser.browser_approvals_dock.approvals_are_kept_per_origin_and_are": undefined;
@@ -4020,14 +4021,6 @@ export type MessageParams = {
 	"ui.browser.browser_pane.close_browser": undefined;
 	"ui.browser.browser_pane.this_conversation": undefined;
 	"ui.browser.browser_pane.which_tabs_to_show": undefined;
-	"ui.browser.browser_passkey_custody.explanation": undefined;
-	"ui.browser.browser_passkey_custody.label": undefined;
-	"ui.browser.browser_passkey_custody.message": undefined;
-	"ui.browser.browser_passkey_custody.return_failed": undefined;
-	"ui.browser.browser_passkey_custody.return_refused_not_held": undefined;
-	"ui.browser.browser_passkey_custody.return_refused_stale": undefined;
-	"ui.browser.browser_passkey_custody.return_to_agent": undefined;
-	"ui.browser.browser_passkey_custody.returning": undefined;
 	"ui.browser.browser_passkey_notice.agent_explanation": undefined;
 	"ui.browser.browser_passkey_notice.continue_in_own_tab": undefined;
 	"ui.browser.browser_passkey_notice.continue_refused_in_flight": undefined;

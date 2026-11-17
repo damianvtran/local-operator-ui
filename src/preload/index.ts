@@ -1248,14 +1248,6 @@ const api = {
 			at: number,
 		): Promise<unknown> =>
 			ipcRenderer.invoke("browser-passkey-notice-continue", tabId, at),
-		/** "Return to agent" on a passkey custody notice (see
-		 * `extensions/passkey-custody.ts`). Ids and the click's `isTrusted` only. */
-		releasePasskeyCustody: (
-			tabId: number,
-			at: number,
-			trusted: boolean,
-		): Promise<unknown> =>
-			ipcRenderer.invoke("browser-passkey-custody-release", tabId, at, trusted),
 		/** A sidebar notification row's click: bring the tab an agent is waiting
 		 * on the user in forward, with its held popups (`user-attention.ts`). The
 		 * ONLY path that does; `false` when the tab is gone. */

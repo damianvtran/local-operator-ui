@@ -1927,3 +1927,109 @@ test("controller: a palette change carries its vars and a built-in clears them",
 	);
 	controller.dispose("test");
 });
+
+/*
+ * THE PASSWORD-MANAGER NOTICE (operator report 2026-11-17): a non-deciding
+ * entry. It auto-presents the card unfocused with no request, its dismiss only
+ * reaches `onNoticeDismiss` (never `respond`), and it leaves with the hold.
+ */
+test("model: the notice is rebuilt from its allow-list, never forwarded", () => {
+	const base = { seq: 1, entries: [], locale: "en", dir: "ltr", theme: "dark" };
+	const ok = mod.approvalsCardModelFrom({
+		...base,
+		notice: {
+			entryId: "passkey-custody:7:1700000000000",
+			kind: "password_manager",
+			text: "<b>x</b>",
+		},
+	});
+	assert.deepEqual(ok.notice, {
+		entryId: "passkey-custody:7:1700000000000",
+		kind: "password_manager",
+	});
+	for (const notice of [
+		{ entryId: "passkey-custody:7:1", kind: "anything" },
+		{ entryId: "e1", kind: "password_manager" },
+		"passkey-custody:7:1",
+		null,
+	]) {
+		assert.equal(mod.approvalsCardModelFrom({ ...base, notice }).notice, null);
+	}
+	assert.equal(
+		mod.sanitizeApprovalsCardModel({
+			...ok,
+			notice: { entryId: "x", kind: "password_manager" },
+		}).notice,
+		null,
+	);
+});
+
+test("controller: the custody notice auto-presents unfocused, dismisses only through onNoticeDismiss, and clears", async () => {
+	const children = [];
+	const contentView = {
+		get children() {
+			return children;
+		},
+		addChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+			children.push(view);
+		},
+		removeChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+		},
+	};
+	const window = { contentView, isDestroyed: () => false };
+	const responded = [];
+	const noticeDismissed = [];
+	const focused = [];
+	const controller = new mod.ApprovalsOverlayController({
+		window,
+		documentUrl: "file:///tmp/browser-approvals-overlay.html",
+		respond: (entryId, decision) => responded.push([entryId, decision]),
+		onNoticeDismiss: (notice) => noticeDismissed.push(notice),
+		focusTarget: (target) => focused.push(target),
+	});
+	controller.onLayout({
+		presented: true,
+		chromeVisible: true,
+		contentRect: rect(0, 0, 600, 500),
+		revision: 1,
+	});
+	controller.setNotice({ tabId: 7, at: 1700000000000 });
+	await waitFor(
+		() => controller.facts().ready && controller.facts().visible,
+		"the notice-only card",
+	);
+	assert.equal(
+		controller.facts().explicitOpen,
+		false,
+		"auto-present, not an open",
+	);
+	assert.equal(focused.length, 0, "the notice takes no focus");
+	// Idempotent: the host calls this on every projection change.
+	const seq = controller.facts().seq;
+	controller.setNotice({ tabId: 7, at: 1700000000000 });
+	assert.equal(controller.facts().seq, seq);
+
+	const view = children.at(-1);
+	const event = { sender: view.webContents, senderFrame: view.mainFrame };
+	mod.emitIpc(mod.APPROVALS_CARD_DISMISS_CHANNEL, event, {
+		seq,
+		entryId: "passkey-custody:7:1700000000000",
+	});
+	assert.deepEqual(noticeDismissed, [{ tabId: 7, at: 1700000000000 }]);
+	assert.deepEqual(responded, [], "a notice dismissal decides nothing");
+	// A forged notice id is dropped like any unknown entry.
+	mod.emitIpc(mod.APPROVALS_CARD_DISMISS_CHANNEL, event, {
+		seq: controller.facts().seq,
+		entryId: "passkey-custody:8:1",
+	});
+	assert.equal(noticeDismissed.length, 1);
+	assert.equal(controller.facts().actions.dropped, 1);
+	// Main marks it dismissed and clears it: the card hides.
+	controller.setNotice(null);
+	assert.equal(controller.facts().visible, false);
+	controller.dispose("test");
+});

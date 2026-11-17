@@ -395,3 +395,67 @@ test("composed card palettes are independently validated inside the document", (
 		palette.accent,
 	);
 });
+
+/*
+ * THE PASSWORD-MANAGER NOTICE (2026-11-17). A real password-manager prompt in an
+ * agent tab is a small dismissible notice in this card, not a blocking banner.
+ * It decides nothing: Close, Escape and its own Dismiss all send the ONE
+ * `dismiss` verb with the notice's id, and nothing reaches `decide`.
+ */
+const NOTICE = {
+	entryId: "passkey-custody:7:1700000000000",
+	kind: "password_manager",
+};
+const visible = (dom, node) =>
+	!node.hidden && dom.window.getComputedStyle(node).display !== "none";
+
+test("notice only: the card is the sentence and its close; Close and Escape dismiss it without deciding", () => {
+	const { dom, doc, calls, push } = mount();
+	push(modelOf(1, [], { notice: NOTICE }));
+	assert.equal(visible(dom, doc.getElementById("approvals-notice")), true);
+	assert.match(
+		doc.getElementById("approvals-notice-text").textContent,
+		/prompt is open in this tab/,
+	);
+	assert.equal(
+		doc.getElementById("approvals-title").textContent,
+		"Password manager needs you",
+	);
+	assert.equal(visible(dom, doc.getElementById("approvals-request")), false);
+	assert.equal(visible(dom, doc.getElementById("approvals-list")), false);
+	assert.equal(visible(dom, doc.querySelector(".card-footer")), false);
+	// One close control in notice-only mode: the header's.
+	assert.equal(doc.getElementById("approvals-notice-dismiss").hidden, true);
+	click(dom, doc.getElementById("approvals-close"));
+	doc.dispatchEvent(
+		new dom.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+	);
+	assert.deepEqual(calls, [
+		["dismiss", { seq: 1, entryId: NOTICE.entryId }],
+		["dismiss", { seq: 1, entryId: NOTICE.entryId }],
+	]);
+});
+
+test("notice beside a request: the request keeps Close/Escape, the notice has its own Dismiss", () => {
+	const { dom, doc, calls, push } = mount();
+	push(modelOf(1, [req("a")], { notice: NOTICE }));
+	assert.equal(visible(dom, doc.getElementById("approvals-notice")), true);
+	assert.equal(visible(dom, doc.getElementById("approvals-request")), true);
+	assert.equal(doc.getElementById("approvals-title").textContent, "Approvals");
+	doc.dispatchEvent(
+		new dom.window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+	);
+	click(dom, doc.getElementById("approvals-notice-dismiss"));
+	assert.deepEqual(calls, [
+		["dismiss", { seq: 1, entryId: "a" }],
+		["dismiss", { seq: 1, entryId: NOTICE.entryId }],
+	]);
+});
+
+test("the notice leaves with the model: no notice, no section", () => {
+	const { dom, doc, push } = mount();
+	push(modelOf(1, [], { notice: NOTICE }));
+	push(modelOf(2, [req("a")], { notice: null }));
+	assert.equal(visible(dom, doc.getElementById("approvals-notice")), false);
+	assert.equal(visible(dom, doc.querySelector(".card-footer")), true);
+});

@@ -148,6 +148,12 @@ const backNode = document.getElementById(
 ) as HTMLButtonElement | null;
 const errorNode = document.getElementById("approvals-error");
 const cardBody = document.querySelector(".card-body");
+const noticeView = document.getElementById("approvals-notice");
+const noticeTextNode = document.getElementById("approvals-notice-text");
+const noticeDismissNode = document.getElementById(
+	"approvals-notice-dismiss",
+) as HTMLButtonElement | null;
+const footerNode = document.querySelector<HTMLElement>(".card-footer");
 
 let model: ApprovalsCardModel | null = null;
 let localView: "request" | "list" = "request";
@@ -354,8 +360,28 @@ function reserveGloss(): void {
 	glossNode.scrollTop = scrollTop;
 }
 
+/** Hide the password-manager notice. Decides and releases nothing: main only
+ * marks the notice dismissed (`PasskeyCustody.dismiss`). */
+function dismissNotice(): void {
+	if (!model?.notice) return;
+	window.approvalsCard?.dismiss({
+		seq: model.seq,
+		entryId: model.notice.entryId,
+	});
+}
+
+/** Whether the card shows only the notice (no request to answer). */
+function noticeOnly(): boolean {
+	return Boolean(model?.notice) && shownRequest() === null;
+}
+
 function dismiss(): void {
 	if (!model) return;
+	// Close/Escape with nothing to answer is the notice's own dismissal.
+	if (noticeOnly()) {
+		dismissNotice();
+		return;
+	}
 	const shown = shownRequest();
 	/*
 	 * A dismissal ends the local selection, and it must do so BEFORE the model
@@ -625,6 +651,7 @@ function render(): void {
 	}
 	renderRows(model.pending);
 	setView(localView);
+	renderNotice();
 	syncDecisionAvailability();
 	card?.setAttribute("aria-busy", model.busy ? "true" : "false");
 	if (errorNode) {
@@ -644,6 +671,40 @@ function render(): void {
 		syncScrim();
 		syncGlossAccess();
 	}, 0);
+}
+
+/**
+ * Paint the notice (when present) and, when it is the only thing on the card,
+ * hide the request/list views and the queue footer so the card is just the
+ * sentence and its dismiss. Runs after `setView`, which unhides the views.
+ */
+function renderNotice(): void {
+	const notice = model?.notice ?? null;
+	if (noticeView) noticeView.hidden = notice === null;
+	if (noticeTextNode) {
+		noticeTextNode.textContent = notice
+			? t("ui.browser.approvals_card.password_manager_notice")
+			: "";
+	}
+	if (noticeDismissNode) {
+		const label = t("ui.common.actions.dismiss");
+		noticeDismissNode.textContent = label;
+		noticeDismissNode.setAttribute("aria-label", label);
+		noticeDismissNode.onclick = dismissNotice;
+		// In notice-only mode the header's Close is the same action; one button.
+		noticeDismissNode.hidden = noticeOnly();
+	}
+	const only = noticeOnly();
+	if (only) {
+		if (requestView) requestView.hidden = true;
+		if (listView) listView.hidden = true;
+	}
+	if (footerNode) footerNode.hidden = only;
+	if (titleNode) {
+		titleNode.textContent = only
+			? t("ui.browser.attention.passkey")
+			: t("ui.browser.browser_approvals_dock.approvals");
+	}
 }
 
 window.__approvalsCard = {

@@ -20,6 +20,7 @@
 import {
 	APPROVALS_CARD_MODEL_LIMITS,
 	type ApprovalsCardModel,
+	type ApprovalsCardNotice,
 	type ApprovalsCardRequest,
 } from "../../shared/browser-approvals-overlay";
 import { sanitizePaletteVars } from "../../shared/theme-engine/roles.mjs";
@@ -50,6 +51,23 @@ function text(value: unknown, max: number): string {
 	}
 	cleaned = cleaned.trim();
 	return cleaned.length > max ? cleaned.slice(0, max) : cleaned;
+}
+
+/** The only notice id shape main mints (`ApprovalsOverlayController.setNotice`). */
+const NOTICE_ENTRY_ID = /^passkey-custody:\d{1,10}:\d{1,16}$/;
+
+/**
+ * The notice, rebuilt from its allow-list: a bounded id of the shape main mints
+ * (`passkey-custody:<tabId>:<at>`) and the one kind there is. Anything else is
+ * no notice at all.
+ */
+export function sanitizeCardNotice(value: unknown): ApprovalsCardNotice | null {
+	if (!value || typeof value !== "object") return null;
+	const raw = value as { entryId?: unknown; kind?: unknown };
+	if (raw.kind !== "password_manager") return null;
+	const entryId = text(raw.entryId, APPROVALS_CARD_MODEL_LIMITS.entryId);
+	if (!NOTICE_ENTRY_ID.test(entryId)) return null;
+	return { entryId, kind: "password_manager" };
 }
 
 function httpOrigin(value: unknown): string | null {
@@ -145,6 +163,8 @@ export interface ApprovalsCardModelInput {
 	palette?: unknown;
 	/** A composed palette's role values; see `ApprovalsCardModel.paletteVars`. */
 	paletteVars?: unknown;
+	/** The non-deciding notice, if any; see `ApprovalsCardModel.notice`. */
+	notice?: unknown;
 }
 
 function modelDirection(value: unknown): "ltr" | "rtl" {
@@ -181,6 +201,7 @@ export function approvalsCardModelFrom(
 		busy: input.busy === true,
 		request,
 		pending,
+		notice: sanitizeCardNotice(input.notice),
 		error:
 			input.error === "stale" || input.error === "unavailable"
 				? input.error
@@ -253,6 +274,7 @@ export function sanitizeApprovalsCardModel(
 		busy: input.busy === true,
 		request,
 		pending,
+		notice: sanitizeCardNotice(input.notice),
 		error:
 			input.error === "stale" || input.error === "unavailable"
 				? input.error

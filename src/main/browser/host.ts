@@ -1162,12 +1162,6 @@ export class BrowserHost implements BrowserActionContext {
 				active && !this.passkeyCustody?.(active.tabId)
 					? (this.passkeyNotice?.(active.tabId) ?? null)
 					: null,
-			// Active tab only, like the notice: a hold brings its tab to the front
-			// when it begins, and a tab the user switched away from shows it again
-			// when they come back.
-			passkeyCustody: active
-				? (this.passkeyCustody?.(active.tabId) ?? null)
-				: null,
 			// The ACTIVE tab's camera/microphone prompt only, scoped like the passkey
 			// notice: a background tab's request waits (its callback held) until the
 			// user switches to it, rather than asking about a page they cannot see.

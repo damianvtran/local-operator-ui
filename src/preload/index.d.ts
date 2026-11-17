@@ -363,15 +363,6 @@ declare global {
 					tabId: number,
 					at: number,
 				) => Promise<{ ok: true } | { ok: false; reason: string }>;
-				/** "Return to agent" on a passkey custody notice. `trusted` is the
-				 * click's `event.isTrusted`; main refuses a release without it. */
-				releasePasskeyCustody: (
-					tabId: number,
-					at: number,
-					trusted: boolean,
-				) => Promise<
-					{ ok: true; reloaded?: boolean } | { ok: false; reason: string }
-				>;
 				/** A sidebar notification row's click (`user-attention.ts`): the tab
 				 * becomes active and its held popups are presented. */
 				openUserAttention: (tabId: number) => Promise<unknown>;
