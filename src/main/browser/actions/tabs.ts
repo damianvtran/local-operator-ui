@@ -84,6 +84,15 @@ export async function open(
 	// Admission is decided ONCE, here, before the page is touched. A grant consumed
 	// at entry is spent; the gate below must not consult the grant map again or a
 	// TTL lapse mid-command could turn a granted navigation into a refusal.
+	//
+	// The approval pickup runs FIRST because it admits a different URL (the page
+	// the operator is on now, not the one requested): computing admission on the
+	// requested URL here and then again on the current one would spend a `once`
+	// grant twice, or spend it on the wrong document.
+	if (!handle && url) {
+		const adopted = await adoptApprovalPickup(ctx, params, requester, url);
+		if (adopted) return adopted;
+	}
 	const admission = url ? ctx.approvals.admit(url, requester) : null;
 	const approved =
 		admission?.approved ??
@@ -185,6 +194,78 @@ export async function open(
 		ctx.ownership.recordAllocation(params, "", "closed");
 		throw error;
 	}
+}
+
+/**
+ * The approval pickup: a no-`tab` `open url=` by the session whose request the
+ * operator just allowed takes over the USER tab the Allow opened
+ * (`BrowserHost.openApprovedRequest`), where it stands, instead of opening a
+ * second tab. This is the half of "approve, sign in, get back to the agent in one
+ * go" that lets the agent continue on the page the operator just signed in on.
+ *
+ * Rules, each a constraint rather than a preference:
+ * - Only the requester the marker names, and only for the approved origin.
+ * - Only while the tab's CURRENT document is on that origin. An operator still on
+ *   the identity provider, or who browsed away, keeps their tab; `open` then
+ *   behaves as it always has (a new agent tab, signed in through the shared
+ *   cookie jar). The agent never navigates the operator's tab away.
+ * - Admission runs on the CURRENT URL, so a `once` grant is spent exactly once,
+ *   here, and a durable grant is read as usual. No navigation follows: the
+ *   operator's page (a filled form, a post-login redirect) is what the agent gets.
+ * - The cap is checked before admission, so a full host does not spend a `once`
+ *   grant and then refuse.
+ * - The hand-over is the registry's ordinary one (`handOver`: owner -> agent, a
+ *   fresh nonce, `handedFrom: "user"`), so the tab carries the existing
+ *   hand-over chip and revoke control.
+ *
+ * Returns null when there is nothing to pick up, and the caller falls through.
+ */
+async function adoptApprovalPickup(
+	ctx: BrowserActionContext,
+	params: Record<string, unknown>,
+	requester: string,
+	url: URL,
+): Promise<Record<string, unknown> | null> {
+	const record = ctx.registry.approvalPickupTab(
+		requester,
+		url.origin,
+		Date.now(),
+	);
+	if (!record) return null;
+	let current: URL;
+	try {
+		current = safeHttpUrl(record.view.webContents.getURL());
+	} catch {
+		return null;
+	}
+	if (current.origin !== url.origin) return null;
+	ctx.registry.assertAgentCapacity();
+	const permission = ctx.approvals.admit(current, requester);
+	ctx.registry.handOver(record.tabId, requester);
+	// `handOver` clears the marker and the allocation; the allocation is set after
+	// it so the ownership journal's `owner_*` methods find this tab.
+	record.allocationId = stringParam(params, "allocation_id");
+	const token = surfaceToken(record) ?? "";
+	// Published before the first await, as the new-tab arm does, so a failure
+	// below leaves the journal naming the live tab rather than an empty reservation.
+	ctx.ownership.recordAllocation(params, token, "allocated");
+	await ctx.cdp.attach(record.view.webContents);
+	ctx.approvals.rememberDocument(
+		token,
+		current,
+		requester,
+		record.documentEpoch,
+		permission.approved,
+	);
+	ctx.registry.touch(record);
+	ctx.onChanged();
+	return openResult(record, {
+		...pageOf(record.view),
+		via: permission.viaOnceGrant ? "once_grant" : "stored_grant",
+		limit: MAX_AGENT_TABS,
+		adopted: "approval",
+		requested_url: url.href,
+	});
 }
 
 /**
