@@ -1,0 +1,30 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "1703be2b4196-r3",
+  "locale": "ur",
+  "status": "passed",
+  "round": 3,
+  "previous_receipt": {
+    "path": "audit-ur-r2-reissue.json",
+    "instance": "1703be2b4196-r2",
+    "sha256": "5d9df69845f9ac089c159966d5df59630b3a5581b75ed1e98465a5d4b71dd74f"
+  },
+  "independent_from_translator_session": "prB1-tr-ur (openai/gpt-6.1-sol)",
+  "native_speaker_review": false,
+  "scope": "Round 3, ui.chat.attachments only, final working-tree bytes over HEAD 6aebbce40c: 3 keys changed (broken_moved, broken_unavailable, broken_media_unavailable) to ko-passive; ui.chat.canonical unchanged (f568fbd1...) and stays bound to 1703be2b4196-r2",
+  "dispositions": {
+    "r2 attachments findings": "none open",
+    "gender-agreement defect (feminine verb with masculine {name})": "fixed: ko-marked passive takes default masculine singular regardless of {name} gender"
+  },
+  "namespaces": {
+    "ui.chat.attachments": {
+      "status": "passed",
+      "sha256": {
+        "ur": "bb1465745117516385a1b3ed5815395bf368a21178b633eb506ff3542b8a221a",
+        "en": "1a5709a63c44655e0d96ec39ef87ddfd4715a811b6de2f29e851080a10dd42e7"
+      },
+      "findings": []
+    }
+  }
+}
