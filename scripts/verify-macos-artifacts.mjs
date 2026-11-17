@@ -30,6 +30,7 @@ import {
 	rmSync,
 	statSync,
 } from "node:fs";
+import { tmpdir } from "node:os";
 import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -40,9 +41,19 @@ import {
 	UV_VERSION,
 	seedResourceDir,
 } from "./bundled-runtime-layout.mjs";
+import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
+import {
+	ATTESTATION_EPOCH_KEY,
+	ATTESTATION_EPOCH_VALUE,
+	ELECTRON_FRAMEWORK_BINARY,
+	attestationEpochFromInfoPlist,
+	describeFuseWires,
+	fuseViolations,
+} from "./electron-fuse-policy.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
 import {
 	EMBEDDED_PROVISIONING_PROFILE_PATH,
+	hardeningViolations,
 	plistStringValues,
 	profileAllowlistAuthorizes,
 	profileBackedEntitlementKeys,
@@ -73,23 +84,99 @@ const XCRUN = "/usr/bin/xcrun";
 const SECURITY = "/usr/bin/security";
 
 /**
- * The bytecode probe `app-bytecode-loadable` runs inside the bundle under test.
- *
- * Resolved from THIS module's own URL rather than from `process.cwd()`, because
- * the gate is invoked through `scripts/require-report.sh` from the repository
- * root on CI and by hand from anywhere else; a relative path would turn a probe
- * that cannot be found into a spawn failure that reads like a brick.
+ * The switch and stdout marker of the app's own launch probe
+ * (`src/main/launch-probe.ts`). Spelled here rather than imported: that module
+ * is TypeScript compiled into the bundle, and this gate runs under the runner's
+ * plain node. `scripts/verify-macos-artifacts.test.mjs` reads the TypeScript
+ * source and fails if the two spellings ever differ.
  */
-const BYTECODE_PROBE = join(
-	dirname(fileURLToPath(import.meta.url)),
-	"bytecode-accepts-probe.cjs",
-);
+export const LAUNCH_PROBE_FLAG = "--lo-launch-probe";
+export const LAUNCH_PROBE_MARKER = "LOCAL_OPERATOR_LAUNCH_PROBE";
+
+/**
+ * The probe's report line, parsed, or null when the output carries none.
+ *
+ * A line that names the marker but does not carry `ok: true` and
+ * `packaged: true` is not a pass: an unpackaged tree answering the flag (a dev
+ * build mistaken for the artifact) must not satisfy a release gate.
+ */
+export function parseLaunchProbe(stdout) {
+	for (const line of String(stdout ?? "").split("\n")) {
+		const at = line.indexOf(`${LAUNCH_PROBE_MARKER} `);
+		if (at === -1) continue;
+		try {
+			return JSON.parse(line.slice(at + LAUNCH_PROBE_MARKER.length + 1));
+		} catch {
+			return null;
+		}
+	}
+	return null;
+}
+
+/**
+ * The verdict on a swapped candidate relaunched with `--lo-launch-probe`, for
+ * `verify-signed-update.mjs`.
+ *
+ * WHY THIS REPLACED `--inspect`. That script used to relaunch the candidate with
+ * `--inspect=127.0.0.1:<port>` and ask the inspector for `app.getVersion()`. F2
+ * turns `EnableNodeCliInspectArguments` off, so a fused candidate never opens
+ * the port: on a runner that has a GUI session the exercise could never pass,
+ * and it reported BLOCKED blaming the incumbent (native QA, PR #1948, Q1). The
+ * probe is the app's own answer from its shipped bytecode, and its line carries
+ * the version.
+ *
+ * Fail-closed, every refusal shape red: a non-zero status, a signal, a timeout,
+ * no marker, a marker without `ok`/`packaged`, a version that is not the
+ * candidate's, and a version equal to the incumbent's (the swap did not happen,
+ * whatever the metadata says).
+ *
+ * Returns `{ passed, detail }`; never throws.
+ */
+export function relaunchProbeVerdict(
+	result,
+	{ candidateVersion, incumbentVersion },
+) {
+	if (result.timedOut)
+		return {
+			passed: false,
+			detail: "launch probe did not exit within its bound",
+		};
+	if (result.signal)
+		return { passed: false, detail: `launch probe killed by ${result.signal}` };
+	if (result.status !== 0)
+		return {
+			passed: false,
+			detail: `launch probe exited ${result.status}: ${String(result.stderr ?? "").trim()}`,
+		};
+	const probe = parseLaunchProbe(result.stdout);
+	if (!probe || probe.ok !== true || probe.packaged !== true)
+		return {
+			passed: false,
+			detail: `no packaged ${LAUNCH_PROBE_MARKER} line on stdout`,
+		};
+	if (!candidateVersion || candidateVersion === incumbentVersion)
+		return {
+			passed: false,
+			detail: `candidate version ${JSON.stringify(candidateVersion)} must differ from incumbent ${JSON.stringify(incumbentVersion)}`,
+		};
+	if (probe.version !== candidateVersion)
+		return {
+			passed: false,
+			detail: `relaunched bundle reports version ${JSON.stringify(probe.version)}, expected candidate ${candidateVersion}`,
+		};
+	return {
+		passed: true,
+		detail: `launch probe: version=${probe.version} electron=${probe.electron} arch=${probe.arch}`,
+	};
+}
+
+let launchProbeProfiles = 0;
 
 /**
  * How long the spawn probe is given before its child counts as never-exited.
  *
- * The probe runs the main executable in Electron's node mode, whose whole job
- * is `process.exit(0)`; on this machine that answers in well under a second.
+ * The probe launches the main executable with `--lo-launch-probe`, which prints
+ * one line and exits before the app sets anything up (`src/main/launch-probe.ts`).
  * The bound is generous because it is not a performance expectation but the
  * third refusal shape: a spawn the OS neither completes nor refuses. Anything
  * the bound catches is red, which is the direction a release gate must fail in.
@@ -555,7 +642,8 @@ export function artifactChecks({
 				expect: (result) => result.status === 0,
 			},
 			/*
-			 * THE PROBE THAT WOULD HAVE CAUGHT THE 0.29.6 BRICK.
+			 * THE LAUNCH PROBE: the checks that would have caught the 0.29.6 and
+			 * 0.30.10 x64 bricks, now one launch of the real app.
 			 *
 			 * Why executing the binary rather than verifying its signature: the
 			 * refusal that bricked 0.29.6 is decided by amfid AT EXEC, and it is
@@ -568,82 +656,98 @@ export function artifactChecks({
 			 * `RBSRequestErrorDomain Code=5` / `NSPOSIXErrorDomain Code=163
 			 * "Launchd job spawn failed"`). Only a spawn observes what the OS does.
 			 *
-			 * Why node mode: `ELECTRON_RUN_AS_NODE=1 <exe> -p 'process.exit(0)'`
-			 * reaches the same exec — and therefore the same AMFI decision — with
-			 * no window, no display, no user data directory and nothing left
-			 * running, which is what makes it usable as a release gate on a build
-			 * runner. Measured: the broken bundle's executable exits 137 (SIGKILL);
-			 * the same bundle re-signed without `keychain-access-groups` exits 0.
+			 * Why loading the payload too: v0.30.10's x64 DMG shipped the arm64
+			 * runner's V8 bytecode, every launch threw `cachedDataRejected` out of
+			 * `bytecode-loader.cjs`, and six green checks (a bare exec among them)
+			 * passed a bundle that could not start. The marker line below is printed
+			 * FROM the shipped `out/main/index.jsc`, so it exists only if the
+			 * bundle's own V8 accepted its own bytecode — a stronger question than
+			 * the V8 cache probe this replaced, which asked about the cache without
+			 * running anything.
 			 *
-			 * All three refusal shapes are red: a non-zero status, a terminating
-			 * signal, and a child that never exits within the bound (the third
-			 * arrives as `timedOut`, so a hung spawn is not mistaken for a pass).
+			 * WHY NOT NODE MODE ANY MORE (F2). This check and a bytecode probe used
+			 * to run the launcher as `ELECTRON_RUN_AS_NODE=1 <exe> …`. The RunAsNode
+			 * fuse is now OFF (`scripts/electron-fuse-policy.mjs`): node mode ran
+			 * arbitrary JS inside the genuine signed process, which defeats the
+			 * runtime's app-signature attestation. On a fused build that command does
+			 * not run Node at all — it BOOTS THE FULL APP, which on a runner hangs to
+			 * the bound and on a person's Mac raises a window and asks the keychain.
+			 * Hence a flag the app itself answers (`src/main/launch-probe.ts`), before
+			 * its single-instance lock, any window, `whenReady` or the backend. With
+			 * the asar-integrity fuse on, a mismatched `app.asar` header, or tampering
+			 * in any file read before the probe (`out/main/index.jsc`), also dies here
+			 * before the marker. Other files are checked against their block hashes
+			 * only when first read, so a flipped byte in a renderer asset passes this
+			 * row and fails later: a tamper test must hit the header or a start-up file.
+			 *
+			 * The scratch `--user-data-dir` and `MOCK_KEYCHAIN_SWITCH` are belt and
+			 * braces for Chromium's own early start-up (the app reaches nothing of
+			 * the profile before it exits), and `--window-mode=headless` keeps a
+			 * bundle that predates the flag from showing a window while it runs into
+			 * the bound. `ELECTRON_RUN_AS_NODE` and `NODE_OPTIONS` are REMOVED from
+			 * the child's environment: on an un-hardened bundle an inherited value
+			 * would turn the probe back into node mode and the marker would never
+			 * print, which is red anyway but would be red for the wrong reason.
+			 *
+			 * All refusal shapes are red: a non-zero status, a terminating signal
+			 * (an asar integrity failure is a fatal abort), a child that never exits
+			 * within the bound (`timedOut`), and an exit 0 without the marker line —
+			 * the shape of an app that booted and quit for some other reason.
+			 *
+			 * The id stays `app-spawn`: `verify-signed-update.mjs` classifies by id,
+			 * and this is still the candidate's own failure, never the host's.
 			 */
-			{
-				id: "app-spawn",
-				scope: "app",
-				target: executable,
-				refusal,
-				description:
-					"the app's main executable really spawns (run in Electron's node mode, which exits immediately unless the OS refuses the exec)",
-				command: executable,
-				args: ["-p", "process.exit(0)"],
-				env: { ELECTRON_RUN_AS_NODE: "1" },
-				// Two bounds, not one: a child this host must translate answers in a
-				// translation's time rather than in its own, and `timedOut` would
-				// otherwise report the translator as an OS refusal. See
-				// `SPAWN_PROBE_TRANSLATED_TIMEOUT_MS` for what was measured.
-				timeoutMs: execBound(executable, hostArch),
-				expect: (result) =>
-					result.status === 0 && !result.signal && !result.timedOut,
-			},
-			/*
-			 * THE PROBE THAT WOULD HAVE CAUGHT THE 0.30.10 x64 BRICK.
-			 *
-			 * `app-spawn` above proves the OS will EXEC the launcher. It does not
-			 * prove the app can LOAD, and those came apart in v0.30.10: the x64 DMG
-			 * shipped the arm64 runner's V8 bytecode (both DMGs carried a
-			 * byte-identical `out/main/index.jsc`, sha256 23a37ddc…) because
-			 * `pnpm dist:mac` compiled bytecode once and packaged it for both
-			 * architectures. Every launch threw `Invalid or incompatible cached data
-			 * (cachedDataRejected)` out of `bytecode-loader.cjs` — the user saw
-			 * Electron's "A JavaScript error occurred in the main process" dialog and
-			 * the app never opened.
-			 *
-			 * Measured on the real broken bundle on an M3: `codesign --verify --deep
-			 * --strict` exits 0, `spctl` answers "accepted / Notarized Developer ID",
-			 * `stapler validate` passes, and `app-spawn` exits 0 — because
-			 * `ELECTRON_RUN_AS_NODE=1 <exe> -p 'process.exit(0)'` evaluates the string
-			 * it is handed and never requires `app.asar`. Six green checks on a bundle
-			 * that cannot start. Nothing here loaded the payload, so this check does.
-			 *
-			 * The probe runs UNDER THE BUNDLE'S OWN ELECTRON, which is what makes the
-			 * verdict meaningful: the x64 bundle answers in x86_64 terms even though
-			 * an arm64 runner is holding the file. It asks V8 for the same
-			 * `cachedDataRejected` flag the loader throws on and never runs the
-			 * compiled wrapper, so it starts no app, writes nothing and leaves nothing
-			 * behind. See `scripts/bytecode-accepts-probe.cjs`.
-			 *
-			 * Exit 1 is REJECTED (the brick). Exit 2 is PROBE-ERROR — unreadable or
-			 * unparseable — and is red too: "could not tell" must never ship.
-			 */
-			{
-				id: "app-bytecode-loadable",
-				scope: "app",
-				target: executable,
-				refusal,
-				description:
-					"the app's own Electron accepts the V8 bytecode it ships (arm64 bytecode in an x64 bundle is refused at load, and every signature check passes on it)",
-				command: executable,
-				args: [
-					BYTECODE_PROBE,
-					join(appPath, "Contents/Resources/app.asar/out/main/index.jsc"),
-				],
-				env: { ELECTRON_RUN_AS_NODE: "1" },
-				timeoutMs: execBound(executable, hostArch),
-				expect: (result) =>
-					result.status === 0 && !result.signal && !result.timedOut,
-			},
+			(() => {
+				launchProbeProfiles += 1;
+				const profileDir = join(
+					tmpdir(),
+					`lo-launch-probe-${process.pid}-${launchProbeProfiles}`,
+				);
+				return {
+					id: "app-spawn",
+					scope: "app",
+					target: executable,
+					refusal,
+					description:
+						"the app's main executable really spawns and loads its own app.asar and bytecode (the --lo-launch-probe line is printed from the shipped index.jsc, before any window or profile lock)",
+					command: executable,
+					args: [
+						LAUNCH_PROBE_FLAG,
+						`--user-data-dir=${profileDir}`,
+						MOCK_KEYCHAIN_SWITCH,
+						"--window-mode=headless",
+					],
+					env: {
+						ELECTRON_RUN_AS_NODE: null,
+						NODE_OPTIONS: null,
+						LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
+						// A bundle built before the probe stopped writing log files
+						// (native QA, PR #1948, Q2) would otherwise append to the real
+						// `~/Library/Application Support/Local Operator/logs`, which a
+						// scratch HOME does not move. Inside the profile dir, so the
+						// row's own cleanup removes it.
+						LOCAL_OPERATOR_LOG_DIR: join(profileDir, "logs"),
+					},
+					// Two bounds, not one: a child this host must translate answers in a
+					// translation's time rather than in its own, and `timedOut` would
+					// otherwise report the translator as an OS refusal. See
+					// `SPAWN_PROBE_TRANSLATED_TIMEOUT_MS` for what was measured.
+					timeoutMs: execBound(executable, hostArch),
+					cleanup: () => rmSync(profileDir, { recursive: true, force: true }),
+					report: (result) => {
+						const probe = parseLaunchProbe(result.stdout);
+						return probe
+							? `launch probe: electron=${probe.electron} arch=${probe.arch} packaged=${probe.packaged}`
+							: null;
+					},
+					expect: (result) => {
+						if (result.status !== 0 || result.signal || result.timedOut)
+							return false;
+						const probe = parseLaunchProbe(result.stdout);
+						return probe?.ok === true && probe?.packaged === true;
+					},
+				};
+			})(),
 			/*
 			 * THE CAUSE, and it is a walk rather than a command.
 			 *
@@ -1537,6 +1641,7 @@ export function profileAuthorizationCheck(
 	};
 	const unauthorized = [];
 	const unreadable = [];
+	const unhardened = [];
 	for (const relative of executables) {
 		const result = run(CODESIGN, [
 			"-d",
@@ -1549,6 +1654,13 @@ export function profileAuthorizationCheck(
 			unreadable.push(relative);
 			continue;
 		}
+		// The F2 hardening question rides the SAME read: one codesign per
+		// executable answers both rows, so they cannot judge two different reads.
+		const forbidden = hardeningViolations(result.stdout, {
+			isMain: relative === mainRelative,
+		});
+		if (forbidden.length > 0)
+			unhardened.push(`${relative}: ${forbidden.join(", ")}`);
 		const keys = profileBackedEntitlementKeys(result.stdout);
 		if (keys.length === 0) continue;
 		/*
@@ -1630,7 +1742,89 @@ export function profileAuthorizationCheck(
 						? "no executable was found to read"
 						: `the entitlements of ${executables.length} executable(s) were read`,
 	};
-	return [authorization, readability];
+	/*
+	 * THE F2 HARDENING ROW. The runtime will count a card answer as the
+	 * operator's when the process attesting it is this signed app; that is
+	 * worthless if same-uid code can run inside it. With
+	 * `allow-dyld-environment-variables` it can (DYLD_INSERT_LIBRARIES, measured
+	 * in the F2 spike on 0.57.8, where main AND every helper carried it), with
+	 * `get-task-allow` a debugger can attach, and `disable-library-validation`
+	 * on main lets it load a planted dylib. Policy: `hardeningViolations` in
+	 * `macos-entitlement-policy.mjs`.
+	 *
+	 * The candidate's own failure (not in `SIGNATURE_CHECK_IDS`): a signing job
+	 * that signed these keys in produced a bundle that must not ship. An
+	 * executable whose signature could not be read is the readability row's to
+	 * report, as it is for the authorization row; an empty walk is red here too.
+	 */
+	const hardening = {
+		id: "app-hardening-entitlements",
+		scope: "app",
+		target: appPath,
+		description:
+			"no executable carries allow-dyld-environment-variables or get-task-allow, and the main executable does not carry disable-library-validation",
+		passed:
+			walkError == null && executables.length > 0 && unhardened.length === 0,
+		output:
+			walkError != null
+				? `the bundle could not be walked for executables: ${walkError}`
+				: executables.length === 0
+					? "no executable was found to judge"
+					: unhardened.length > 0
+						? `${unhardened.length} of ${executables.length} executable(s) carry a forbidden entitlement: ${unhardened.slice(0, 4).join("; ")}${unhardened.length > 4 ? ` (and ${unhardened.length - 4} more)` : ""}`
+						: `${executables.length - unreadable.length} executable(s) read, none carries a forbidden entitlement`,
+	};
+	return [authorization, readability, hardening];
+}
+
+/**
+ * The Electron fuse wire of the bundle's framework, held to
+ * `REQUIRED_FUSES` (`scripts/electron-fuse-policy.mjs`, which says why each).
+ *
+ * Read from the file rather than asked of a running app: the fuses are bytes
+ * electron-builder flipped before signing, and the signature seals them, so the
+ * bytes on disk are the bytes the OS will run. An unreadable framework is red.
+ */
+export function electronFusesCheck(appPath, { readFile = readFileSync } = {}) {
+	return appCheck(
+		"app-electron-fuses",
+		appPath,
+		"the Electron fuse wire has RunAsNode, NODE_OPTIONS and --inspect off, asar integrity and only-load-from-asar on, and cookie encryption on",
+		() => {
+			const binary = readFile(join(appPath, ELECTRON_FRAMEWORK_BINARY));
+			const problems = fuseViolations(binary);
+			if (problems.length > 0) throw new Error(problems.join(" | "));
+			return describeFuseWires(binary);
+		},
+	);
+}
+
+/**
+ * `LOAttestationEpoch` in the app's `Info.plist`: the key the runtime's code
+ * requirement pins so that only hardened builds can attest a card answer (the
+ * downgrade lock; see `ATTESTATION_EPOCH_KEY`). A hardened bundle without it
+ * would never be trusted, and silently so - the answer would just stay
+ * unverified - so its absence is a release failure, not a warning.
+ */
+export function attestationEpochCheck(
+	appPath,
+	{ readFile = readFileSync } = {},
+) {
+	return appCheck(
+		"app-attestation-epoch",
+		appPath,
+		`Info.plist declares ${ATTESTATION_EPOCH_KEY} = "${ATTESTATION_EPOCH_VALUE}"`,
+		() => {
+			const epoch = attestationEpochFromInfoPlist(
+				readFile(join(appPath, "Contents", "Info.plist"), "utf8"),
+			);
+			if (epoch !== ATTESTATION_EPOCH_VALUE)
+				throw new Error(
+					`${ATTESTATION_EPOCH_KEY} is ${epoch === null ? "absent" : `"${epoch}"`}, must be "${ATTESTATION_EPOCH_VALUE}"`,
+				);
+			return `${ATTESTATION_EPOCH_KEY}=${epoch}`;
+		},
+	);
 }
 
 /*
@@ -1649,25 +1843,29 @@ export function profileAuthorizationCheck(
  * Run one check with the check's own `env` applied to THIS process for the call.
  *
  * Why not only hand it to the runner: `env` is the runner's fourth parameter, and
- * a runner that does not forward it drops the switch SILENTLY — and for the spawn
- * probe that switch is `ELECTRON_RUN_AS_NODE=1`, the only thing that makes
- * `app-spawn` a probe instead of a real app launch. QA round 2 measured exactly
- * that from a four-parameter runner in a scratch harness: five stray launches of
- * the app binary, every one of them raising and focusing the operator's window.
+ * a runner that does not forward it drops the switch SILENTLY. When `app-spawn`
+ * still ran in node mode that switch was `ELECTRON_RUN_AS_NODE=1`, and QA round 2
+ * measured the cost from a four-parameter runner in a scratch harness: five stray
+ * launches of the app binary, every one of them raising and focusing the
+ * operator's window. The launch probe's headless window mode and its REMOVAL of
+ * `ELECTRON_RUN_AS_NODE`/`NODE_OPTIONS` (a `null` value) ride the same way.
  * The check owns its environment here, so any runner that inherits the process
  * environment — which is the default for `spawnSync`, and what `spawnRunner`
  * does — applies it whether it forwards the parameter or not.
  *
  * Scoped to the call and restored in a `finally`: these checks run one at a time,
  * so nothing else can observe the variable, and a check that threw cannot leave
- * `ELECTRON_RUN_AS_NODE` behind for the next one.
+ * a switch behind (or missing) for the next one.
  */
 function withCheckEnv(env, work) {
 	if (!env) return work();
 	const saved = new Map();
 	for (const [key, value] of Object.entries(env)) {
 		saved.set(key, process.env[key]);
-		process.env[key] = value;
+		// `null` REMOVES the variable for the call: the launch probe must not
+		// inherit a runner's `ELECTRON_RUN_AS_NODE`/`NODE_OPTIONS`.
+		if (value === null) delete process.env[key];
+		else process.env[key] = value;
 	}
 	try {
 		return work();
@@ -1717,9 +1915,16 @@ export function runChecks({
 				passed: false,
 				output: check.refusal,
 			};
-		const result = withCheckEnv(check.env, () =>
-			run(check.command, check.args, check.input, check.env, check.timeoutMs),
-		);
+		let result;
+		try {
+			result = withCheckEnv(check.env, () =>
+				run(check.command, check.args, check.input, check.env, check.timeoutMs),
+			);
+		} finally {
+			// A check that owns scratch state (the launch probe's profile directory)
+			// removes it whether the child passed, failed or the runner threw.
+			check.cleanup?.();
+		}
 		const passed = check.expect(result);
 		// A check that knows what its raw output must not leak says so through
 		// `report`; null falls back to the generic trim below (stderr included).
@@ -1852,9 +2057,16 @@ export function spawnRunner(
 		encoding: "utf8",
 		input,
 		// `env` is spread over the inherited environment rather than replacing it:
-		// a check adds one switch (the spawn probe's `ELECTRON_RUN_AS_NODE`), and a
+		// a check adds or removes a switch (the launch probe's window mode), and a
 		// bare `env: {...}` would take PATH away from every tool it spawns.
-		env: env ? { ...process.env, ...env } : process.env,
+		// A `null` value removes that variable from the child (see `withCheckEnv`).
+		env: env
+			? Object.fromEntries(
+					Object.entries({ ...process.env, ...env }).filter(
+						([, value]) => value !== null && value !== undefined,
+					),
+				)
+			: process.env,
 		timeout: timeoutMs,
 	});
 	const timedOut = result.error?.code === "ETIMEDOUT";
@@ -1924,6 +2136,8 @@ export function verifyArtifacts({
 		return [
 			...runChecks({ appPath: path, dmgPath: null, run, profile }),
 			...profileAuthorizationCheck(path, { run, profile }),
+			electronFusesCheck(path),
+			attestationEpochCheck(path),
 			bundledBytecodeCheck(path),
 			bundledPythonCheck(path, { run, expectArch: arch }),
 			privatePythonSeedCheck(path, { expectArch: arch }),
@@ -1957,6 +2171,8 @@ export function verifyArtifacts({
 		);
 		results.push(...runChecks({ appPath, dmgPath: null, run, profile }));
 		results.push(...profileAuthorizationCheck(appPath, { run, profile }));
+		results.push(electronFusesCheck(appPath));
+		results.push(attestationEpochCheck(appPath));
 		// Neither of the next nine is a `codesign` question: all are about what
 		// the build assembled, and they fail with the offending paths so the fix is
 		// obvious.

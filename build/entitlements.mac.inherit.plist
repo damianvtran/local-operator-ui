@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+  <!--
+    EVERY NESTED MACH-O (package.json build.mac.entitlementsInherit): the
+    Electron helpers, the python seed (copied out to become the managed
+    runtime), uv, and node-pty's spawn-helper. The main executable is signed
+    with build/entitlements.mac.plist instead.
+
+    - com.apple.security.cs.allow-dyld-environment-variables is ABSENT for the
+      same reason as in main: helpers inherit main's environment, so a DYLD_*
+      honoured here would still inject into renderers. The release gate refuses
+      it on every executable.
+    - com.apple.security.cs.disable-library-validation STAYS here, and only
+      here, because of the python seed: the managed runtime is a copy of these
+      signed bytes and imports third-party extension modules (pip wheels such as
+      pydantic_core) that are not signed by our team; under the hardened runtime,
+      library validation refuses to load them. electron-builder applies one
+      inherit plist to every nested binary, so the helpers carry it too. That
+      is the documented residual: no DYLD vector reaches them once the key above
+      is gone, and a tighter split (python separate from the helpers) needs a
+      custom mac.sign hook - deferred, see the F2 design note.
+  -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+    <key>com.apple.security.network.client</key>
+    <true/>
+    <key>com.apple.security.network.server</key>
+    <true/>
+    <key>com.apple.security.files.user-selected.read-write</key>
+    <true/>
+    <key>com.apple.security.files.bookmarks.app-scope</key>
+    <true/>
+    <key>com.apple.security.files.downloads.read-write</key>
+    <true/>
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
+    <key>com.apple.security.device.camera</key>
+    <true/>
+    <key>com.apple.security.device.microphone</key>
+    <true/>
+    <key>com.apple.security.device.screen-capture</key>
+    <true/>
+  </dict>
+</plist>

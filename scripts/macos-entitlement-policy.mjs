@@ -166,3 +166,36 @@ export function unauthorizedClaims(profileEntitlementsText, claims) {
 		)
 		.map(([key]) => key);
 }
+
+/**
+ * The entitlement keys one signed executable carries that the F2 hardening
+ * forbids, by role: every executable, plus the extra keys only the MAIN
+ * executable may not carry.
+ *
+ * WHY. The runtime decides whether a card answer came from the genuine app by
+ * checking the dialing process's code signature. That check is worth nothing if
+ * same-uid code can run inside the signed process, and two entitlements let it:
+ * `allow-dyld-environment-variables` (DYLD_INSERT_LIBRARIES into the signed
+ * process, measured in the F2 spike) and `get-task-allow` (a debugger can attach
+ * and write memory). `disable-library-validation` is forbidden on main only:
+ * main loads nothing a team signature does not cover, while the inherit plist
+ * keeps it for the python seed's third-party wheels (see
+ * `build/entitlements.mac.inherit.plist` for that residual).
+ *
+ * Keys only, never values, for the same reason as the rest of this module: the
+ * caller's message lands in a CI log. Policy lives in the shared JSON so the
+ * release gate and any future in-app check read one list.
+ */
+export function hardeningViolations(plistText, { isMain }) {
+	const forbidden = [
+		...POLICY.hardeningForbiddenOnEveryExecutable,
+		...(isMain ? POLICY.hardeningForbiddenOnMainExecutable : []),
+	];
+	const found = [];
+	for (const [, key] of String(plistText ?? "").matchAll(
+		/<key>([^<]+)<\/key>/g,
+	)) {
+		if (forbidden.includes(key) && !found.includes(key)) found.push(key);
+	}
+	return found;
+}

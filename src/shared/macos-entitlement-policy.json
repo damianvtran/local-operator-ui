@@ -16,5 +16,12 @@
 		"com.apple.security.personal-information.",
 		"com.apple.security.assets.",
 		"com.apple.security.automation."
+	],
+	"hardeningForbiddenOnEveryExecutable": [
+		"com.apple.security.cs.allow-dyld-environment-variables",
+		"com.apple.security.get-task-allow"
+	],
+	"hardeningForbiddenOnMainExecutable": [
+		"com.apple.security.cs.disable-library-validation"
 	]
 }
