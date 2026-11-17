@@ -3038,13 +3038,13 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "1d3046491723a0811769d09ef606a174f48018c555330c2eebf648209b0d5f49",
-			"target_sha256": "7a3c22c63bb295cb869bfb1062c94840094c2fe2bd91ac03588e25f3bdc0116a",
+			"source_sha256": "3d06764dc8c850a604f1a6c489931561f900c2bb6455b4514d1688a4f763c321",
+			"target_sha256": "d4806f279b50d5fbda542ffbf0fc88de6d8cfb47f06321237707ed8f7b49dbec",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-11-17",
-				"note": "18 keys across ui.chat, ui.chat.canonical, ui.chat.slash (identity-menu footer, seat wording, chip labels, took clause, role/specialist detail); English source fdf96a7e authored by a coder"
+				"note": "1 key (ui.chat.canonical.image_gen.result_label); English source c138a95c authored by a coder; noun-label replacement for the clause-as-label defect"
 			},
 			"auditors": [
 				{
@@ -3052,16 +3052,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-17",
 					"result": "clean-with-findings",
-					"instance": "570145c5ee24",
+					"instance": "4367cc1e2696",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 1,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/570145c5ee24.json",
-					"receipt_sha256": "6155347eab62dc223429ed7c27dde2551242850f25e79ef9dd242ba4df576b8c",
-					"scope": "ui.chat.canonical es: 1 identity-menu keys (18 across ui.chat, ui.chat.canonical, ui.chat.slash), independent audit at the committed bytes"
+					"receipt": "i18n/receipts/4367cc1e2696.json",
+					"receipt_sha256": "4ec76efe31b0db53e6ccbc3b5091f373680606cb9ebafd34002eccd77101a51c",
+					"scope": "ui.chat.canonical.image_gen.result_label only (1 key): independent audit at the committed bytes"
 				}
 			],
 			"status": "audited",
@@ -10894,8 +10894,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "ae1f3edce97dd9acfbd6cf16350be37e2d69239abe246046d50ba5051066f365",
-			"target_sha256": "0ba0760bb28b4a8cbe98f65a54d1be4c1b3dffa4522f5509b855734ab1ad5edd",
+			"source_sha256": "c343e25eacb60a2f1a053eb438f1e7f9910e0e975928b3190ed003118414603c",
+			"target_sha256": "17146dac41110ba1e354bdae58a1b044dcb0627b98690f2f2ba4895d7bebdb2b",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -10904,21 +10904,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "task",
+					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-15",
+					"date": "2026-11-17",
 					"result": "clean",
-					"instance": "pr1928-r2-es-teambridge-bb75f0ce",
+					"instance": "pr1958-r1-es-teambridge-09ff3ba6",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1928-r2-es-teambridge-bb75f0ce.json",
-					"receipt_sha256": "5cb40f435fceb3be11b91d5ec7c57d8967870a51748bf9cc84cc292a5f0ed527",
-					"scope": "PR #1928 round-2 Team Bridge neutral sender (1 key; info_not_delivered removed)",
-					"note": "PR #1928 r2: translator coder job abe41ec364b7 (not_delivered); info_not_delivered removed by coder jobs 610e98de331a/4611f0d5274e (mgr 2c6111e02b16); fresh audit task 619fdcf93ce8"
+					"receipt": "i18n/receipts/pr1958-r1-es-teambridge-09ff3ba6.json",
+					"receipt_sha256": "f695e77885aee3aeb5a0797c39c986e5f15543801cf3ef781cfa5d49ce185359",
+					"scope": "PR #1958 round 1: ui.teamBridge.rate_limited.title/.reason (rate-limited state copy)",
+					"note": "PR #1958 r1: reason strings drafted by copy-reviewer (copy round 1 C1), titles by coder; independent audit by a fresh reviewer task dispatched by the manager; fr/zh-CN re-audited after one-character fixes"
 				}
 			],
 			"status": "audited",
@@ -12882,6 +12882,30 @@
 							"receipt_sha256": "804c8477681d5cdf8997a9571f9107d79c58f89cd3b37976eb1c3ea190f8a8c4",
 							"scope": "PR #1928 round-1 Team Bridge neutral sender + screening copy (2 keys)",
 							"note": "PR #1928 r1 translation lane: translator: coder job abe41ec364b7 (manager session 2c6111e02b16) / anthropic/claude-opus-5-5; independent audit by i18n-auditor 5bbe5f24d420 (fix b083a717ea)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ae1f3edce97dd9acfbd6cf16350be37e2d69239abe246046d50ba5051066f365",
+					"target_sha256": "0ba0760bb28b4a8cbe98f65a54d1be4c1b3dffa4522f5509b855734ab1ad5edd",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-15",
+							"result": "clean",
+							"instance": "pr1928-r2-es-teambridge-bb75f0ce",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1928-r2-es-teambridge-bb75f0ce.json",
+							"receipt_sha256": "5cb40f435fceb3be11b91d5ec7c57d8967870a51748bf9cc84cc292a5f0ed527",
+							"scope": "PR #1928 round-2 Team Bridge neutral sender (1 key; info_not_delivered removed)",
+							"note": "PR #1928 r2: translator coder job abe41ec364b7 (not_delivered); info_not_delivered removed by coder jobs 610e98de331a/4611f0d5274e (mgr 2c6111e02b16); fresh audit task 619fdcf93ce8"
 						}
 					],
 					"status": "audited"
@@ -16110,13 +16134,13 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "1d3046491723a0811769d09ef606a174f48018c555330c2eebf648209b0d5f49",
-			"target_sha256": "3f119f8c5ff1462b98956ef1fb4859e9ef422a1d82f17469d40fbe35e73d75bb",
+			"source_sha256": "3d06764dc8c850a604f1a6c489931561f900c2bb6455b4514d1688a4f763c321",
+			"target_sha256": "96aa4f6eba3e8b4ff8be1160d9f1f299dd9610c793763db2c1d2fd3ac6b29ac1",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-11-17",
-				"note": "18 keys across ui.chat, ui.chat.canonical, ui.chat.slash (identity-menu footer, seat wording, chip labels, took clause, role/specialist detail); English source fdf96a7e authored by a coder"
+				"note": "1 key (ui.chat.canonical.image_gen.result_label); English source c138a95c authored by a coder; noun-label replacement for the clause-as-label defect"
 			},
 			"auditors": [
 				{
@@ -16124,16 +16148,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-17",
 					"result": "clean-with-findings",
-					"instance": "a6452613c515",
+					"instance": "47daad122982",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/a6452613c515.json",
-					"receipt_sha256": "382e6ad1f938ab5b19dac09f76960fbd0a5478bff6a6d59195641e8bb72417d2",
-					"scope": "ui.chat.canonical fr: 1 identity-menu keys (18 across ui.chat, ui.chat.canonical, ui.chat.slash), independent audit at the committed bytes"
+					"receipt": "i18n/receipts/47daad122982.json",
+					"receipt_sha256": "3173c57f566349e7007404546f3f86c8f0823effcc21081d4c3d183ad1790d4a",
+					"scope": "ui.chat.canonical.image_gen.result_label only (1 key): independent audit at the committed bytes"
 				}
 			],
 			"status": "audited",
@@ -24483,8 +24507,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "ae1f3edce97dd9acfbd6cf16350be37e2d69239abe246046d50ba5051066f365",
-			"target_sha256": "c22a05e0996a431c7c508adc6565352a3bd1addedfd5ffb0bac667035b4f9f32",
+			"source_sha256": "c343e25eacb60a2f1a053eb438f1e7f9910e0e975928b3190ed003118414603c",
+			"target_sha256": "caa358a3d8fd653c9b911c5e4726e47f2317d114aab404480d16d07a060d2e3b",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -24493,21 +24517,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "task",
+					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-15",
+					"date": "2026-11-17",
 					"result": "clean",
-					"instance": "pr1928-r2-fr-teambridge-6adc757a",
+					"instance": "pr1958-r1-fr-teambridge-9af56669",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1928-r2-fr-teambridge-6adc757a.json",
-					"receipt_sha256": "bfa0465d5fda2e6ce1d2673434fd2bf9e8c5756e9fc02fc667044c0cf88925c4",
-					"scope": "PR #1928 round-2 Team Bridge neutral sender (1 key; info_not_delivered removed)",
-					"note": "PR #1928 r2: translator coder job abe41ec364b7 (not_delivered); info_not_delivered removed by coder jobs 610e98de331a/4611f0d5274e (mgr 2c6111e02b16); fresh audit task 619fdcf93ce8"
+					"receipt": "i18n/receipts/pr1958-r1-fr-teambridge-9af56669.json",
+					"receipt_sha256": "03ae84da16b3a936aed6f5fd847453568ff97c2990b34900258c38b4030444ce",
+					"scope": "PR #1958 round 1: ui.teamBridge.rate_limited.title/.reason (rate-limited state copy)",
+					"note": "PR #1958 r1: reason strings drafted by copy-reviewer (copy round 1 C1), titles by coder; independent audit by a fresh reviewer task dispatched by the manager; fr/zh-CN re-audited after one-character fixes"
 				}
 			],
 			"status": "audited",
@@ -26495,6 +26519,30 @@
 							"receipt_sha256": "efac909c9b38b2b80fd85f784046b6a4abd748787ba4886db5622dbe7f63ac35",
 							"scope": "PR #1928 round-1 Team Bridge neutral sender + screening copy (2 keys)",
 							"note": "PR #1928 r1 translation lane: translator: coder job abe41ec364b7 (manager session 2c6111e02b16) / anthropic/claude-opus-5-5; independent audit by i18n-auditor 5bbe5f24d420 (fix b083a717ea)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ae1f3edce97dd9acfbd6cf16350be37e2d69239abe246046d50ba5051066f365",
+					"target_sha256": "c22a05e0996a431c7c508adc6565352a3bd1addedfd5ffb0bac667035b4f9f32",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-15",
+							"result": "clean",
+							"instance": "pr1928-r2-fr-teambridge-6adc757a",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1928-r2-fr-teambridge-6adc757a.json",
+							"receipt_sha256": "bfa0465d5fda2e6ce1d2673434fd2bf9e8c5756e9fc02fc667044c0cf88925c4",
+							"scope": "PR #1928 round-2 Team Bridge neutral sender (1 key; info_not_delivered removed)",
+							"note": "PR #1928 r2: translator coder job abe41ec364b7 (not_delivered); info_not_delivered removed by coder jobs 610e98de331a/4611f0d5274e (mgr 2c6111e02b16); fresh audit task 619fdcf93ce8"
 						}
 					],
 					"status": "audited"
@@ -29702,30 +29750,30 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "1d3046491723a0811769d09ef606a174f48018c555330c2eebf648209b0d5f49",
-			"target_sha256": "5b96f9cf9fcb7fcbf5e9a2fe1f7ed47d84a1e1dd78ad3ac839ffe33ef86b4160",
+			"source_sha256": "3d06764dc8c850a604f1a6c489931561f900c2bb6455b4514d1688a4f763c321",
+			"target_sha256": "108dfccc8b3c6077b7e0eba4ccc7d91d9f7c3bb618770b693d2a392d2464d1d8",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-11-17",
-				"note": "18 keys across ui.chat, ui.chat.canonical, ui.chat.slash (identity-menu footer, seat wording, chip labels, took clause, role/specialist detail); English source fdf96a7e authored by a coder"
+				"note": "1 key (ui.chat.canonical.image_gen.result_label); English source c138a95c authored by a coder; noun-label replacement for the clause-as-label defect"
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-17",
-					"result": "clean",
-					"instance": "f840fffbbc43",
+					"result": "clean-with-findings",
+					"instance": "e356214353f0",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 1,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/f840fffbbc43.json",
-					"receipt_sha256": "4361661403e0ab41c4fa48fe9a9c7b90404e0386550ef2bbd1fedecf26b80f0f",
-					"scope": "ui.chat.canonical hi: 1 identity-menu keys (18 across ui.chat, ui.chat.canonical, ui.chat.slash), independent audit at the committed bytes"
+					"receipt": "i18n/receipts/e356214353f0.json",
+					"receipt_sha256": "56fb99dbb61d32764f314f2117e29c15ca72fd1a2c0d7bcf7aa906a689cc5d32",
+					"scope": "ui.chat.canonical.image_gen.result_label only (1 key): independent audit at the committed bytes"
 				}
 			],
 			"status": "audited",
@@ -37848,8 +37896,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "ae1f3edce97dd9acfbd6cf16350be37e2d69239abe246046d50ba5051066f365",
-			"target_sha256": "ecd0e845d4714837ecefb043d0bf579154be8401bf8e82fb9acd9e602574b8a2",
+			"source_sha256": "c343e25eacb60a2f1a053eb438f1e7f9910e0e975928b3190ed003118414603c",
+			"target_sha256": "850f45eb32872e7f3a292a4a83cfe5e4469749f7cdd4c0568ccb9eb1dbc56b63",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -37858,21 +37906,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "task",
+					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-15",
+					"date": "2026-11-17",
 					"result": "clean",
-					"instance": "pr1928-r2-hi-teambridge-4e226e41",
+					"instance": "pr1958-r1-hi-teambridge-4916c77a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1928-r2-hi-teambridge-4e226e41.json",
-					"receipt_sha256": "6016cd4317d72f00e1b1c4cb08847499fda463a72c76aab98d86a3261154f90f",
-					"scope": "PR #1928 round-2 Team Bridge neutral sender (1 key; info_not_delivered removed)",
-					"note": "PR #1928 r2: translator coder job abe41ec364b7 (not_delivered); info_not_delivered removed by coder jobs 610e98de331a/4611f0d5274e (mgr 2c6111e02b16); fresh audit task 619fdcf93ce8"
+					"receipt": "i18n/receipts/pr1958-r1-hi-teambridge-4916c77a.json",
+					"receipt_sha256": "4159cefba29549ca553daff31db110688f8c87d6cb1080deb856b85febc25706",
+					"scope": "PR #1958 round 1: ui.teamBridge.rate_limited.title/.reason (rate-limited state copy)",
+					"note": "PR #1958 r1: reason strings drafted by copy-reviewer (copy round 1 C1), titles by coder; independent audit by a fresh reviewer task dispatched by the manager; fr/zh-CN re-audited after one-character fixes"
 				}
 			],
 			"status": "audited",
@@ -39742,6 +39790,30 @@
 							"receipt_sha256": "e5de946620f0fe6e7227122c1eac365a8c1cdeaa7f522f691466910ac7d9764a",
 							"scope": "PR #1928 round-1 Team Bridge neutral sender + screening copy (2 keys)",
 							"note": "PR #1928 r1 translation lane: translator: coder job abe41ec364b7 (manager session 2c6111e02b16) / anthropic/claude-opus-5-5; independent audit by i18n-auditor 5bbe5f24d420 (fix b083a717ea)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ae1f3edce97dd9acfbd6cf16350be37e2d69239abe246046d50ba5051066f365",
+					"target_sha256": "ecd0e845d4714837ecefb043d0bf579154be8401bf8e82fb9acd9e602574b8a2",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-15",
+							"result": "clean",
+							"instance": "pr1928-r2-hi-teambridge-4e226e41",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1928-r2-hi-teambridge-4e226e41.json",
+							"receipt_sha256": "6016cd4317d72f00e1b1c4cb08847499fda463a72c76aab98d86a3261154f90f",
+							"scope": "PR #1928 round-2 Team Bridge neutral sender (1 key; info_not_delivered removed)",
+							"note": "PR #1928 r2: translator coder job abe41ec364b7 (not_delivered); info_not_delivered removed by coder jobs 610e98de331a/4611f0d5274e (mgr 2c6111e02b16); fresh audit task 619fdcf93ce8"
 						}
 					],
 					"status": "audited"
@@ -42841,13 +42913,13 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "1d3046491723a0811769d09ef606a174f48018c555330c2eebf648209b0d5f49",
-			"target_sha256": "51812d8a3ab6bf052e1373f4fcd348dcabf48ac37838bcb2e59531b45a539b65",
+			"source_sha256": "3d06764dc8c850a604f1a6c489931561f900c2bb6455b4514d1688a4f763c321",
+			"target_sha256": "4e1c1326f13880e09344331974849ebc6c2ac4a1887163bea1a017da2b0a745f",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-11-17",
-				"note": "18 keys across ui.chat, ui.chat.canonical, ui.chat.slash (identity-menu footer, seat wording, chip labels, took clause, role/specialist detail); English source fdf96a7e authored by a coder"
+				"note": "1 key (ui.chat.canonical.image_gen.result_label); English source c138a95c authored by a coder; noun-label replacement for the clause-as-label defect"
 			},
 			"auditors": [
 				{
@@ -42855,16 +42927,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-17",
 					"result": "clean-with-findings",
-					"instance": "c0ef4a1ae341",
+					"instance": "d4a6e6933490",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 1
+						"minor": 1,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/c0ef4a1ae341.json",
-					"receipt_sha256": "13253c9c29c1f980bf84df0ee613c7e993d156f70a6fb35da7a2f25d5cb2138e",
-					"scope": "ui.chat.canonical ru: 1 identity-menu keys (18 across ui.chat, ui.chat.canonical, ui.chat.slash), independent audit at the committed bytes"
+					"receipt": "i18n/receipts/d4a6e6933490.json",
+					"receipt_sha256": "20cdfe958ff558fc6a1283546899a362fd382b0c739a5c03df77bd2797a4a878",
+					"scope": "ui.chat.canonical.image_gen.result_label only (1 key): independent audit at the committed bytes"
 				}
 			],
 			"status": "audited",
@@ -50822,8 +50894,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "ae1f3edce97dd9acfbd6cf16350be37e2d69239abe246046d50ba5051066f365",
-			"target_sha256": "77c1e075351ee3601b4b9e8f35f41925c838ae867690153d6e76577a34c005fd",
+			"source_sha256": "c343e25eacb60a2f1a053eb438f1e7f9910e0e975928b3190ed003118414603c",
+			"target_sha256": "affbae0b52d7f243b35c7d473433e8fe34aae11d11e9c92cfa693bd4896b7497",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -50832,21 +50904,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "task",
+					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-15",
-					"result": "clean",
-					"instance": "pr1928-r2-ru-teambridge-88fcf4ca",
+					"date": "2026-11-17",
+					"result": "clean-with-findings",
+					"instance": "pr1958-r1-ru-teambridge-39948294",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/pr1928-r2-ru-teambridge-88fcf4ca.json",
-					"receipt_sha256": "8e656d48a5b4a3db4895b3fefb301bae9ebff5fa50497aeaa249d117b253f034",
-					"scope": "PR #1928 round-2 Team Bridge neutral sender (1 key; info_not_delivered removed)",
-					"note": "PR #1928 r2: translator coder job abe41ec364b7 (not_delivered); info_not_delivered removed by coder jobs 610e98de331a/4611f0d5274e (mgr 2c6111e02b16); fresh audit task 619fdcf93ce8"
+					"receipt": "i18n/receipts/pr1958-r1-ru-teambridge-39948294.json",
+					"receipt_sha256": "69cfb179987b2fce5b33f05c9c3408f1c9ca73b041f21d0b46507352575616cd",
+					"scope": "PR #1958 round 1: ui.teamBridge.rate_limited.title/.reason (rate-limited state copy)",
+					"note": "PR #1958 r1: reason strings drafted by copy-reviewer (copy round 1 C1), titles by coder; independent audit by a fresh reviewer task dispatched by the manager; fr/zh-CN re-audited after one-character fixes"
 				}
 			],
 			"status": "audited",
@@ -52805,6 +52877,30 @@
 							"receipt_sha256": "7c02c7077744f7a04af19cd90fc2c0d884a45027a1c12087a10f87d7192e8079",
 							"scope": "PR #1928 round-1 Team Bridge neutral sender + screening copy (2 keys)",
 							"note": "PR #1928 r1 translation lane: translator: coder job abe41ec364b7 (manager session 2c6111e02b16) / anthropic/claude-opus-5-5; independent audit by i18n-auditor 5bbe5f24d420 (fix b083a717ea)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ae1f3edce97dd9acfbd6cf16350be37e2d69239abe246046d50ba5051066f365",
+					"target_sha256": "77c1e075351ee3601b4b9e8f35f41925c838ae867690153d6e76577a34c005fd",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-15",
+							"result": "clean",
+							"instance": "pr1928-r2-ru-teambridge-88fcf4ca",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1928-r2-ru-teambridge-88fcf4ca.json",
+							"receipt_sha256": "8e656d48a5b4a3db4895b3fefb301bae9ebff5fa50497aeaa249d117b253f034",
+							"scope": "PR #1928 round-2 Team Bridge neutral sender (1 key; info_not_delivered removed)",
+							"note": "PR #1928 r2: translator coder job abe41ec364b7 (not_delivered); info_not_delivered removed by coder jobs 610e98de331a/4611f0d5274e (mgr 2c6111e02b16); fresh audit task 619fdcf93ce8"
 						}
 					],
 					"status": "audited"
@@ -56021,30 +56117,30 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "1d3046491723a0811769d09ef606a174f48018c555330c2eebf648209b0d5f49",
-			"target_sha256": "b15195042f7ab25b7370c22c6935bb59366eac3aa5804da7ee76b5f47e755c54",
+			"source_sha256": "3d06764dc8c850a604f1a6c489931561f900c2bb6455b4514d1688a4f763c321",
+			"target_sha256": "7472fabf851ce6177064776af4ccc9c8f0fc78fdceb3e309513ab91b308152cb",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-11-17",
-				"note": "18 keys across ui.chat, ui.chat.canonical, ui.chat.slash (identity-menu footer, seat wording, chip labels, took clause, role/specialist detail); English source fdf96a7e authored by a coder; ur ui.chat re-authored in a second pass after the first audit"
+				"note": "1 key (ui.chat.canonical.image_gen.result_label); English source c138a95c authored by a coder; noun-label replacement for the clause-as-label defect"
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-17",
-					"result": "clean-with-findings",
-					"instance": "0d5b3cd0fa5f",
+					"result": "clean",
+					"instance": "4cd4d544ea5d",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/0d5b3cd0fa5f.json",
-					"receipt_sha256": "2321e83634cc7931e26f9ba046b35b2ea19ac4196a91c38284337bcc3bb02111",
-					"scope": "ui.chat.canonical ur: 1 identity-menu keys (18 across ui.chat, ui.chat.canonical, ui.chat.slash), independent audit at the committed bytes"
+					"receipt": "i18n/receipts/4cd4d544ea5d.json",
+					"receipt_sha256": "645c2c15189f3a6d3d501e9469526e4eda9225dcd95d4cf112ef2f778969500a",
+					"scope": "ui.chat.canonical.image_gen.result_label only (1 key): independent audit at the committed bytes"
 				}
 			],
 			"status": "audited",
@@ -64065,8 +64161,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "ae1f3edce97dd9acfbd6cf16350be37e2d69239abe246046d50ba5051066f365",
-			"target_sha256": "1fa3d5db93e5aaafb7979817b15b4d453c585865cf8efc2797b6e4c1d62f17ca",
+			"source_sha256": "c343e25eacb60a2f1a053eb438f1e7f9910e0e975928b3190ed003118414603c",
+			"target_sha256": "311888d55a43539c8a09f51aeaf08eea67edb89c971f0a94838bcc30a633fb43",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -64075,21 +64171,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "task",
+					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-15",
+					"date": "2026-11-17",
 					"result": "clean",
-					"instance": "pr1928-r2-ur-teambridge-2c6dec19",
+					"instance": "pr1958-r1-ur-teambridge-efbd0c09",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1928-r2-ur-teambridge-2c6dec19.json",
-					"receipt_sha256": "2c719fbdc89a92e509efe2c3f696974a5af9a4e7e0c92c041a839413d982b13e",
-					"scope": "PR #1928 round-2 Team Bridge neutral sender (1 key; info_not_delivered removed)",
-					"note": "PR #1928 r2: translator coder job abe41ec364b7 (not_delivered); info_not_delivered removed by coder jobs 610e98de331a/4611f0d5274e (mgr 2c6111e02b16); fresh audit task 619fdcf93ce8"
+					"receipt": "i18n/receipts/pr1958-r1-ur-teambridge-efbd0c09.json",
+					"receipt_sha256": "358bcbd4bdccb25a9e23523540442eb88682a1f2997b70c49cf953c537fe91ca",
+					"scope": "PR #1958 round 1: ui.teamBridge.rate_limited.title/.reason (rate-limited state copy)",
+					"note": "PR #1958 r1: reason strings drafted by copy-reviewer (copy round 1 C1), titles by coder; independent audit by a fresh reviewer task dispatched by the manager; fr/zh-CN re-audited after one-character fixes"
 				}
 			],
 			"status": "audited",
@@ -65959,6 +66055,30 @@
 							"receipt_sha256": "3c09b861847be3a4b3d458484760e0973ce3dc44215211147c3f37a0858dd4fe",
 							"scope": "PR #1928 round-1 Team Bridge neutral sender + screening copy (2 keys)",
 							"note": "PR #1928 r1 translation lane: translator: coder job abe41ec364b7 (manager session 2c6111e02b16) / anthropic/claude-opus-5-5; independent audit by i18n-auditor 5bbe5f24d420 (fix b083a717ea)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ae1f3edce97dd9acfbd6cf16350be37e2d69239abe246046d50ba5051066f365",
+					"target_sha256": "1fa3d5db93e5aaafb7979817b15b4d453c585865cf8efc2797b6e4c1d62f17ca",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-15",
+							"result": "clean",
+							"instance": "pr1928-r2-ur-teambridge-2c6dec19",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1928-r2-ur-teambridge-2c6dec19.json",
+							"receipt_sha256": "2c719fbdc89a92e509efe2c3f696974a5af9a4e7e0c92c041a839413d982b13e",
+							"scope": "PR #1928 round-2 Team Bridge neutral sender (1 key; info_not_delivered removed)",
+							"note": "PR #1928 r2: translator coder job abe41ec364b7 (not_delivered); info_not_delivered removed by coder jobs 610e98de331a/4611f0d5274e (mgr 2c6111e02b16); fresh audit task 619fdcf93ce8"
 						}
 					],
 					"status": "audited"
@@ -69089,30 +69209,30 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "1d3046491723a0811769d09ef606a174f48018c555330c2eebf648209b0d5f49",
-			"target_sha256": "3855f6b03ceacf7bf9b2c06c7a8545532f7fa49dd3ecdeef0b6ebdb57652215b",
+			"source_sha256": "3d06764dc8c850a604f1a6c489931561f900c2bb6455b4514d1688a4f763c321",
+			"target_sha256": "3fb9b283d973b6b094d14c43152276f0fd6eefb24601d3ed1377714e87b4b37d",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-11-17",
-				"note": "18 keys across ui.chat, ui.chat.canonical, ui.chat.slash (identity-menu footer, seat wording, chip labels, took clause, role/specialist detail); English source fdf96a7e authored by a coder"
+				"note": "1 key (ui.chat.canonical.image_gen.result_label); English source c138a95c authored by a coder; noun-label replacement for the clause-as-label defect"
 			},
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-17",
-					"result": "clean",
-					"instance": "18c945fec7c0",
+					"result": "clean-with-findings",
+					"instance": "a6e4a531bfcc",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 2,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/18c945fec7c0.json",
-					"receipt_sha256": "9f59f48c6f2912cecbf31c7392321aeff0fc2c3aea6a452b20154893777522b1",
-					"scope": "ui.chat.canonical vi: 1 identity-menu keys (18 across ui.chat, ui.chat.canonical, ui.chat.slash), independent audit at the committed bytes"
+					"receipt": "i18n/receipts/a6e4a531bfcc.json",
+					"receipt_sha256": "2d6895e9d32b54615abfcebe53bc1e23b420829406b20b9276421c01edf94d86",
+					"scope": "ui.chat.canonical.image_gen.result_label only (1 key): independent audit at the committed bytes"
 				}
 			],
 			"status": "audited",
@@ -77595,8 +77715,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "ae1f3edce97dd9acfbd6cf16350be37e2d69239abe246046d50ba5051066f365",
-			"target_sha256": "7620aa006f7354fa1b13ef1e69187a4ff3b4925059e42130444d91a41765eda3",
+			"source_sha256": "c343e25eacb60a2f1a053eb438f1e7f9910e0e975928b3190ed003118414603c",
+			"target_sha256": "4a3b0f306914980ca35b4b73c567e4be97ddc42b4876ee556e4e0e23685d0355",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -77605,21 +77725,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "task",
+					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-15",
+					"date": "2026-11-17",
 					"result": "clean",
-					"instance": "pr1928-r2-vi-teambridge-5bf8486c",
+					"instance": "pr1958-r1-vi-teambridge-89e136d6",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1928-r2-vi-teambridge-5bf8486c.json",
-					"receipt_sha256": "2030876e60e8bd28b1a81941115a4668264fb7269d0200209887b130e7b23c8f",
-					"scope": "PR #1928 round-2 Team Bridge neutral sender (1 key; info_not_delivered removed)",
-					"note": "PR #1928 r2: translator coder job abe41ec364b7 (not_delivered); info_not_delivered removed by coder jobs 610e98de331a/4611f0d5274e (mgr 2c6111e02b16); fresh audit task 619fdcf93ce8"
+					"receipt": "i18n/receipts/pr1958-r1-vi-teambridge-89e136d6.json",
+					"receipt_sha256": "6d09a3bb0e0922ccd662395825b7fb7e18ec77a13cb44de1e7284cb83a55330a",
+					"scope": "PR #1958 round 1: ui.teamBridge.rate_limited.title/.reason (rate-limited state copy)",
+					"note": "PR #1958 r1: reason strings drafted by copy-reviewer (copy round 1 C1), titles by coder; independent audit by a fresh reviewer task dispatched by the manager; fr/zh-CN re-audited after one-character fixes"
 				}
 			],
 			"status": "audited",
@@ -79592,6 +79712,30 @@
 							"receipt_sha256": "e3ff43564d6755a3e21ef381e1e8fccbbc0561cfa2c3fd078a983bd24b3198e9",
 							"scope": "PR #1928 round-1 Team Bridge neutral sender + screening copy (2 keys)",
 							"note": "PR #1928 r1 translation lane: translator: coder job abe41ec364b7 (manager session 2c6111e02b16) / anthropic/claude-opus-5-5; independent audit by i18n-auditor 5bbe5f24d420 (fix b083a717ea)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ae1f3edce97dd9acfbd6cf16350be37e2d69239abe246046d50ba5051066f365",
+					"target_sha256": "7620aa006f7354fa1b13ef1e69187a4ff3b4925059e42130444d91a41765eda3",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-15",
+							"result": "clean",
+							"instance": "pr1928-r2-vi-teambridge-5bf8486c",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1928-r2-vi-teambridge-5bf8486c.json",
+							"receipt_sha256": "2030876e60e8bd28b1a81941115a4668264fb7269d0200209887b130e7b23c8f",
+							"scope": "PR #1928 round-2 Team Bridge neutral sender (1 key; info_not_delivered removed)",
+							"note": "PR #1928 r2: translator coder job abe41ec364b7 (not_delivered); info_not_delivered removed by coder jobs 610e98de331a/4611f0d5274e (mgr 2c6111e02b16); fresh audit task 619fdcf93ce8"
 						}
 					],
 					"status": "audited"
@@ -82941,13 +83085,13 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "1d3046491723a0811769d09ef606a174f48018c555330c2eebf648209b0d5f49",
-			"target_sha256": "a03ab176aaa6cd54664b07af555d3292ee2de055f424faa17fb942344e1a52d0",
+			"source_sha256": "3d06764dc8c850a604f1a6c489931561f900c2bb6455b4514d1688a4f763c321",
+			"target_sha256": "fb68452e8c11f97911031ce72fa8e400946b9cced3d00ce5a400b14dc677e2ad",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
 				"date": "2026-11-17",
-				"note": "18 keys across ui.chat, ui.chat.canonical, ui.chat.slash (identity-menu footer, seat wording, chip labels, took clause, role/specialist detail); English source fdf96a7e authored by a coder"
+				"note": "1 key (ui.chat.canonical.image_gen.result_label); English source c138a95c authored by a coder; noun-label replacement for the clause-as-label defect"
 			},
 			"auditors": [
 				{
@@ -82955,16 +83099,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-11-17",
 					"result": "clean",
-					"instance": "6566c3e8688e",
+					"instance": "fb584695d015",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6566c3e8688e.json",
-					"receipt_sha256": "62ab6ad8e5281e015d149a598d051881fc61b767048efd4cc883d75a4ca81b2d",
-					"scope": "ui.chat.canonical zh-CN: 1 identity-menu keys (18 across ui.chat, ui.chat.canonical, ui.chat.slash), independent audit at the committed bytes"
+					"receipt": "i18n/receipts/fb584695d015.json",
+					"receipt_sha256": "f9529c50a8e389bba8b5e4785533e896c057cb434f0a9edca7a37a5a8d1bc1cb",
+					"scope": "ui.chat.canonical.image_gen.result_label only (1 key): independent audit at the committed bytes"
 				}
 			],
 			"status": "audited",
@@ -91757,8 +91901,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "ae1f3edce97dd9acfbd6cf16350be37e2d69239abe246046d50ba5051066f365",
-			"target_sha256": "1c2569ee5001a536a2281fca57865650ffd719ff36afc52c566b25183d55a80c",
+			"source_sha256": "c343e25eacb60a2f1a053eb438f1e7f9910e0e975928b3190ed003118414603c",
+			"target_sha256": "0d75cfc0d76e1e3bf383f04893cc6fb1f2239fc6ce284620825be443c619c8e1",
 			"translator": {
 				"agent": "coder",
 				"model": "anthropic/claude-opus-5-5",
@@ -91767,21 +91911,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "task",
+					"agent": "reviewer",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-11-15",
+					"date": "2026-11-17",
 					"result": "clean",
-					"instance": "pr1928-r2-zh-cn-teambridge-0149c0e2",
+					"instance": "pr1958-r1-zh-CN-teambridge-c1c61ce6",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr1928-r2-zh-cn-teambridge-0149c0e2.json",
-					"receipt_sha256": "dfc8c90a781ccdcb6f251f82f1a5ad8cf3c982c5c436b8aa8f92012ae777e879",
-					"scope": "PR #1928 round-2 Team Bridge neutral sender (1 key; info_not_delivered removed)",
-					"note": "PR #1928 r2: translator coder job abe41ec364b7 (not_delivered); info_not_delivered removed by coder jobs 610e98de331a/4611f0d5274e (mgr 2c6111e02b16); fresh audit task 619fdcf93ce8"
+					"receipt": "i18n/receipts/pr1958-r1-zh-CN-teambridge-c1c61ce6.json",
+					"receipt_sha256": "aafee02543f87903399c638bd43452c6a9b8204e933ffc898de06366db99013a",
+					"scope": "PR #1958 round 1: ui.teamBridge.rate_limited.title/.reason (rate-limited state copy)",
+					"note": "PR #1958 r1: reason strings drafted by copy-reviewer (copy round 1 C1), titles by coder; independent audit by a fresh reviewer task dispatched by the manager; fr/zh-CN re-audited after one-character fixes"
 				}
 			],
 			"status": "audited",
@@ -93728,6 +93872,30 @@
 							"receipt_sha256": "3180e0085015b377694765bfbcdf7182d0c65942400fa5aceb46519f9874f36d",
 							"scope": "PR #1928 round-1 Team Bridge neutral sender + screening copy (2 keys)",
 							"note": "PR #1928 r1 translation lane: translator: coder job abe41ec364b7 (manager session 2c6111e02b16) / anthropic/claude-opus-5-5; independent audit by i18n-auditor 5bbe5f24d420 (fix b083a717ea)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ae1f3edce97dd9acfbd6cf16350be37e2d69239abe246046d50ba5051066f365",
+					"target_sha256": "1c2569ee5001a536a2281fca57865650ffd719ff36afc52c566b25183d55a80c",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-11-15",
+							"result": "clean",
+							"instance": "pr1928-r2-zh-cn-teambridge-0149c0e2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr1928-r2-zh-cn-teambridge-0149c0e2.json",
+							"receipt_sha256": "dfc8c90a781ccdcb6f251f82f1a5ad8cf3c982c5c436b8aa8f92012ae777e879",
+							"scope": "PR #1928 round-2 Team Bridge neutral sender (1 key; info_not_delivered removed)",
+							"note": "PR #1928 r2: translator coder job abe41ec364b7 (not_delivered); info_not_delivered removed by coder jobs 610e98de331a/4611f0d5274e (mgr 2c6111e02b16); fresh audit task 619fdcf93ce8"
 						}
 					],
 					"status": "audited"

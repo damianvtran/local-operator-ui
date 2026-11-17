@@ -427,5 +427,7 @@
 	"ui.teamBridge.typing.one": "{first} ٹائپ کر رہے ہیں",
 	"ui.teamBridge.typing.two": "{first} اور {second} ٹائپ کر رہے ہیں",
 	"ui.teamBridge.typing.three": "{first}، {second} اور {third} ٹائپ کر رہے ہیں",
-	"ui.teamBridge.typing.several": "کئی لوگ ٹائپ کر رہے ہیں"
+	"ui.teamBridge.typing.several": "کئی لوگ ٹائپ کر رہے ہیں",
+	"ui.teamBridge.rate_limited.title": "درخواستوں کی رفتار کم کی جا رہی ہے",
+	"ui.teamBridge.rate_limited.reason": "ابھی بہت زیادہ درخواستیں ہیں، اس لیے Team Bridge دیر سے اپ ڈیٹ ہو سکتا ہے۔ خودکار طور پر دوبارہ کوشش کی جائے گی۔"
 }

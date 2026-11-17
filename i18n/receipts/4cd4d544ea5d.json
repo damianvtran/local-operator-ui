@@ -1,0 +1,1 @@
+{"auditor":"i18n-auditor","model":"anthropic/claude-opus-5-5","instance":"4cd4d544ea5d","status":"passed","namespace":"ui.chat.canonical","sha256":{"ur":"7472fabf851ce6177064776af4ccc9c8f0fc78fdceb3e309513ab91b308152cb","en":"3d06764dc8c850a604f1a6c489931561f900c2bb6455b4514d1688a4f763c321"},"findings":[]}

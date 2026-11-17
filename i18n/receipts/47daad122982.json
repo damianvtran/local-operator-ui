@@ -1,0 +1,18 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "47daad122982",
+  "status": "passed",
+  "namespace": "ui.chat.canonical",
+  "sha256": {
+    "fr": "96aa4f6eba3e8b4ff8be1160d9f1f299dd9610c793763db2c1d2fd3ac6b29ac1",
+    "en": "3d06764dc8c850a604f1a6c489931561f900c2bb6455b4514d1688a4f763c321"
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.chat.canonical.image_gen.result_label",
+      "note": "Spliced into fr broken_* frames the label is a determiner-less capitalised object ('Impossible de lire Vidéo générée.'); reads as a name label like filenames and media.image_label 'Image 2', so acceptable. A frame-level fix (« {name} ») belongs to ui.chat.attachments, not this key."
+    }
+  ]
+}

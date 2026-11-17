@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1 re-audit after translator fix, PR #1958",
+  "locale": "fr",
+  "namespace": "ui.teamBridge",
+  "pr": 1958,
+  "date": "2026-11-17",
+  "head": "a6eaf6c616 + uncommitted working tree (.worktrees/tb-429-state)",
+  "instance": "pr1958-r1-fr-teambridge-9af56669",
+  "auditor": {
+    "agent": "reviewer",
+    "role": "independent i18n auditor (team radientdev, reviewer role); did not translate or author these strings or the fix",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session 31eb227efab1, the reviewer instance that issued pr1958-r1-fr-teambridge-f288543f (changes_requested); not the translator, who applied the fix. Served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. No MT used.",
+    "instance": "pr1958-r1-fr-teambridge-9af56669"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "findings": [
+    {
+      "severity": "INFO",
+      "key": "ui.teamBridge.rate_limited.reason",
+      "note": "Prior MINOR from pr1958-r1-fr-teambridge-f288543f fixed: U+0020 before ':' replaced with U+202F (fr style guide line 83); now 'pour le moment : Team Bridge'. Verified the new value equals the previously audited value with only that one-character change; the title is unchanged; the only keys differing from base a6eaf6c6 are rate_limited.title and rate_limited.reason; key set unchanged; no bidi control characters. Previously audited target sha256 92682f37fc65f56d945a448d98efe75d33c6414222d48101b70cce89c8def87a."
+    },
+    {
+      "severity": "INFO",
+      "key": "ui.teamBridge.rate_limited.title, ui.teamBridge.rate_limited.reason",
+      "note": "Meaning, tone and context conformance carried from the prior receipt: requests named as what is slowed, may be slow to update, automatic retry, calm, no error/try-again wording, Team Bridge kept in Latin."
+    }
+  ],
+  "audited_values": {
+    "ui.teamBridge.rate_limited.title": "Réduction de la fréquence des requêtes",
+    "ui.teamBridge.rate_limited.reason": "Trop de requêtes pour le moment : Team Bridge peut tarder à se mettre à jour. Nouvelle tentative automatique."
+  },
+  "binding": "Verified on the uncommitted working tree over a6eaf6c616: target src/i18n/catalogues/fr/ui.teamBridge.json sha256 caa358a3d8fd653c9b911c5e4726e47f2317d114aab404480d16d07a060d2e3b; English sha256 c343e25eacb60a2f1a053eb438f1e7f9910e0e975928b3190ed003118414603c; context sha256 4242cece7dd96aa5ab7d13463b9e00e3f09b0bff399fe4a5ebf80cb6ac4aec0a. Hashes matched the delegator's brief before audit.",
+  "supersedes": "pr1958-r1-fr-teambridge-f288543f",
+  "scope": "PR #1958 round 1 re-audit: ui.teamBridge.rate_limited.reason fix (title and remainder confirmed unchanged)",
+  "en_sha256": "c343e25eacb60a2f1a053eb438f1e7f9910e0e975928b3190ed003118414603c",
+  "context_sha256": "4242cece7dd96aa5ab7d13463b9e00e3f09b0bff399fe4a5ebf80cb6ac4aec0a",
+  "target_sha256": "caa358a3d8fd653c9b911c5e4726e47f2317d114aab404480d16d07a060d2e3b",
+  "sha256": {
+    "fr": "caa358a3d8fd653c9b911c5e4726e47f2317d114aab404480d16d07a060d2e3b",
+    "en": "c343e25eacb60a2f1a053eb438f1e7f9910e0e975928b3190ed003118414603c"
+  }
+}

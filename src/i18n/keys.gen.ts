@@ -4963,6 +4963,11 @@ export type MessageParams = {
 	"ui.chat.canonical.image_gen.error_class.invalid_arguments": undefined;
 	"ui.chat.canonical.image_gen.error_class.unknown_tool": undefined;
 	"ui.chat.canonical.image_gen.progress": undefined;
+	"ui.chat.canonical.image_gen.result_label": {
+		material: string;
+		count: number;
+		position: number;
+	};
 	"ui.chat.canonical.image_gen.settlement.pending": undefined;
 	"ui.chat.canonical.image_gen.state.already_finished": undefined;
 	"ui.chat.canonical.image_gen.state.cancelled_batch": { material: string };
@@ -13552,6 +13557,8 @@ export type MessageParams = {
 	"ui.teamBridge.profile.message": undefined;
 	"ui.teamBridge.profile.open_profile": { name: string };
 	"ui.teamBridge.profile.owned_by": { name: string };
+	"ui.teamBridge.rate_limited.reason": undefined;
+	"ui.teamBridge.rate_limited.title": undefined;
 	"ui.teamBridge.reactions.add": undefined;
 	"ui.teamBridge.reactions.all": undefined;
 	"ui.teamBridge.reactions.categories": undefined;

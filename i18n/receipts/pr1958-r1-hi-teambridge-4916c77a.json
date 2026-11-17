@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "audit_kind": "independent translation audit, round 1, PR #1958",
+  "locale": "hi",
+  "namespace": "ui.teamBridge",
+  "pr": 1958,
+  "date": "2026-11-17",
+  "head": "a6eaf6c616bfbfcf6d2da21d42e27e99669064b3 + uncommitted working tree (.worktrees/tb-429-state)",
+  "instance": "pr1958-r1-hi-teambridge-4916c77a",
+  "auditor": {
+    "agent": "reviewer",
+    "role": "independent i18n auditor (team radientdev, reviewer role); did not translate or author these strings",
+    "model": "anthropic/claude-opus-5-5",
+    "independence": "Session 31eb227efab1, a fresh reviewer instance delegated by manager session 4acad6cf4e39; not the translator of these values. Served model anthropic/claude-opus-5-5 per this session's harness system prompt, no fallback. Judgement from English, the context sidecar, the locale style guide and the existing ui.teamBridge corpus; no MT used.",
+    "instance": "pr1958-r1-hi-teambridge-4916c77a"
+  },
+  "model": "anthropic/claude-opus-5-5",
+  "status": "passed",
+  "result": "clean",
+  "findings": [
+    {
+      "severity": "INFO",
+      "key": "ui.teamBridge.rate_limited.title, ui.teamBridge.rate_limited.reason",
+      "note": "Meaning verified against English and context: names requests as what is slowed (not 'Team Bridge is slow'); reason says Team Bridge may be slow to update, then states the automatic retry; calm, no error/unavailable wording, no try-again instruction, no internal infra terms (no 429/rate limit/Radient). Team Bridge kept in Latin per glossary §1. Key set equals English; no placeholders on either key; no bidi control characters."
+    }
+  ],
+  "audited_values": {
+    "ui.teamBridge.rate_limited.title": "अनुरोधों की गति धीमी की जा रही है",
+    "ui.teamBridge.rate_limited.reason": "अभी बहुत ज़्यादा अनुरोध हैं, इसलिए Team Bridge देर से अपडेट हो सकता है। अपने आप फिर से कोशिश की जाएगी।"
+  },
+  "binding": "Verified on the uncommitted working tree over a6eaf6c616: target src/i18n/catalogues/hi/ui.teamBridge.json sha256 850f45eb32872e7f3a292a4a83cfe5e4469749f7cdd4c0568ccb9eb1dbc56b63; English src/i18n/catalogues/en/ui.teamBridge.json sha256 c343e25eacb60a2f1a053eb438f1e7f9910e0e975928b3190ed003118414603c; context src/i18n/catalogues/en/ui.teamBridge.context.json sha256 4242cece7dd96aa5ab7d13463b9e00e3f09b0bff399fe4a5ebf80cb6ac4aec0a; style guide ~/local-operator/i18n/style-guides/hi.md sha256 82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5; glossary sha256 0eb34437a8c3d6f564f278ef957a603b1d9f51bb07d5ddae5ea8f37deba962f8. All hashes matched the delegator's brief before audit.",
+  "scope": "PR #1958 round 1: ui.teamBridge.rate_limited.title and ui.teamBridge.rate_limited.reason (also the in-page notice band) — the only ui.teamBridge.json keys differing from base a6eaf6c6",
+  "en_sha256": "c343e25eacb60a2f1a053eb438f1e7f9910e0e975928b3190ed003118414603c",
+  "context_sha256": "4242cece7dd96aa5ab7d13463b9e00e3f09b0bff399fe4a5ebf80cb6ac4aec0a",
+  "target_sha256": "850f45eb32872e7f3a292a4a83cfe5e4469749f7cdd4c0568ccb9eb1dbc56b63",
+  "sha256": {
+    "hi": "850f45eb32872e7f3a292a4a83cfe5e4469749f7cdd4c0568ccb9eb1dbc56b63",
+    "en": "c343e25eacb60a2f1a053eb438f1e7f9910e0e975928b3190ed003118414603c"
+  }
+}
