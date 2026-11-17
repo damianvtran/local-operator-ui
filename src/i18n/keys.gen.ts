@@ -4947,6 +4947,11 @@ export type MessageParams = {
 	"ui.chat.canonical.image_gen.error_class.invalid_arguments": undefined;
 	"ui.chat.canonical.image_gen.error_class.unknown_tool": undefined;
 	"ui.chat.canonical.image_gen.progress": undefined;
+	"ui.chat.canonical.image_gen.result_label": {
+		material: string;
+		count: number;
+		position: number;
+	};
 	"ui.chat.canonical.image_gen.settlement.pending": undefined;
 	"ui.chat.canonical.image_gen.state.already_finished": undefined;
 	"ui.chat.canonical.image_gen.state.cancelled_batch": { material: string };

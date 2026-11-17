@@ -55,7 +55,7 @@ const bundle = await build({
  export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
  export { ImageGenCard } from "./src/renderer/src/features/chat/canonical/image-gen-card";
  export { MemoryRouter } from "react-router-dom";
- export { setLocale, registerCatalogue, clearRegisteredCatalogues } from "./src/i18n";`,
+ export { setLocale, registerCatalogue, clearRegisteredCatalogues, t } from "./src/i18n";`,
 		resolveDir: ROOT,
 	},
 	bundle: true,
@@ -132,6 +132,15 @@ const STATE_KEYS = [
 	"failed",
 	"failed_batch",
 ].map((k) => `ui.chat.canonical.image_gen.state.${k}`);
+
+/**
+ * The per-item media label (accessible name, alt, broken-media subject). Its own
+ * key, NOT `state.done`: that is the card's STATUS line and is a clause in some
+ * languages, which is ungrammatical once spliced into `{name} could not be
+ * played`. Kept out of `STATE_KEYS` for the same reason as `S16E_KEYS` below:
+ * it does not render inside `StateLine`.
+ */
+const RESULT_LABEL_KEY = "ui.chat.canonical.image_gen.result_label";
 
 /*
  * S16e'S CARD COPY, TRANSLATED IN ALL SEVEN LOCALES.
@@ -595,6 +604,13 @@ function stubFor(loc) {
 		),
 		[k("done")]: selectOf("material", (m) => `${loc}:done:${m}`),
 		[k("done_batch")]: selectOf("material", (m) => `${loc}:donebatch:${m}`),
+		[RESULT_LABEL_KEY]: selectOf("material", (m) =>
+			pluralOf(
+				"count",
+				cats,
+				(c) => `${loc}:label:${m}:${c}:{position, number, ::group-off}`,
+			),
+		),
 		[k("already_finished")]: `${loc}:AF`,
 		[k("failed")]: selectOf("material", (m) => `${loc}:fail:${m}`),
 		[k("failed_batch")]: selectOf("material", (m) => `${loc}:failbatch:${m}`),
@@ -781,7 +797,7 @@ test("fr: result labels come from the catalogue", () => {
 				material: "image",
 				images: [IMAGE("a", "image"), IMAGE("b", "image")],
 			}),
-			["fr:done:other 1", "fr:done:other 2"],
+			["fr:label:other:other:1", "fr:label:other:other:2"],
 		);
 	});
 });
@@ -880,15 +896,140 @@ test("source guard: the card's state line holds none of the old copy", () => {
 	assert.ok(OLD_COPY.some((re) => re.test('? "Already finished."')));
 });
 
-test("source guard: the result players' label reuses the done message, no `Generated` template", () => {
+test("source guard: the result players' label is its own key, never the status line", () => {
 	assert.ok(
 		!/`Generated \$\{/.test(cardSource),
 		"no Generated template literal",
 	);
+	// The label block is the `view.images.map` that mounts the three players.
+	const from = cardSource.indexOf("{view.images.map((image, index) => {");
+	assert.ok(from >= 0, "the players' map is located");
+	const block = cardSource
+		.slice(from, cardSource.indexOf("</div>", from))
+		.replace(/\/\*[\s\S]*?\*\//g, "");
+	assert.ok(
+		block.includes(`t("${RESULT_LABEL_KEY}", {`),
+		"the label resolves through result_label",
+	);
+	assert.ok(
+		!block.includes("image_gen.state.done"),
+		"the label no longer reuses the finished-state status message",
+	);
+	assert.ok(
+		!/\$\{\w+\} \$\{/.test(block),
+		"no `${noun} ${n}` concatenation: the locale places the numeral",
+	);
+	assert.equal(
+		block.match(/label=\{label\}/g)?.length,
+		3,
+		"all three players take it",
+	);
+	// The STATUS line keeps `state.done` (it IS a status).
 	assert.ok(
 		cardSource.includes('t("ui.chat.canonical.image_gen.state.done", {'),
-		"the label resolves through the done message",
+		"the status line still resolves through state.done",
 	);
+});
+
+test("English: result_label is byte-identical to the old `state.done` + index expression for every material and position", () => {
+	mod.clearRegisteredCatalogues();
+	mod.setLocale("en");
+	const materials = [
+		"image",
+		"video",
+		"voiceover",
+		"sound_effect",
+		"future-kind",
+	];
+	let checked = 0;
+	for (const material of materials) {
+		// The token the card passes: `sound-effect` -> `sound_effect`, anything the
+		// message does not name falls to `other` (the image wording).
+		const token = tokenOf(material);
+		for (const [count, position] of [
+			[1, 1],
+			[3, 1],
+			[3, 2],
+			[3, 3],
+			[12, 10],
+		]) {
+			const noun = mod.t("ui.chat.canonical.image_gen.state.done", {
+				material: token,
+			});
+			const old = count === 1 ? noun : `${noun} ${position}`;
+			const next = mod.t(RESULT_LABEL_KEY, {
+				material: token,
+				position,
+				count,
+			});
+			assert.equal(next, old, `${material} ${position}/${count}`);
+			checked += 1;
+		}
+	}
+	assert.equal(checked, 25);
+	// Spot-check the literal English so a shared drift of both keys cannot pass.
+	assert.equal(
+		mod.t(RESULT_LABEL_KEY, { material: "video", position: 1, count: 1 }),
+		"Generated video",
+	);
+	assert.equal(
+		mod.t(RESULT_LABEL_KEY, {
+			material: "sound_effect",
+			position: 2,
+			count: 3,
+		}),
+		"Generated sound effect 2",
+	);
+	assert.equal(
+		mod.t(RESULT_LABEL_KEY, { material: "voiceover", position: 1, count: 2 }),
+		"Generated voiceover 1",
+	);
+	assert.equal(
+		mod.t(RESULT_LABEL_KEY, { material: "image", position: 2, count: 3 }),
+		"Generated image 2",
+	);
+});
+
+test("a locale whose finished-state message is a CLAUSE never leaks it into the item label", () => {
+	// Synthetic locale: `state.done` is a verb clause (as ru/vi/hi spell it);
+	// `result_label` is the bare noun phrase the context sidecar demands.
+	const CLAUSE = "CLAUSE-VERB-DONE";
+	mod.clearRegisteredCatalogues();
+	mod.registerCatalogue("fr", {
+		...stubFor("fr"),
+		"ui.chat.canonical.image_gen.state.done": selectOf(
+			"material",
+			(m) => `${CLAUSE}:${m}`,
+		),
+		[RESULT_LABEL_KEY]: selectOf("material", (m) =>
+			pluralOf(
+				"count",
+				CATEGORIES.fr,
+				(c) => `NOUN-${m}-${c}-{position, number, ::group-off}`,
+			),
+		),
+	});
+	mod.setLocale("fr");
+	try {
+		const base = { state: "done", durationS: null, receipt: "generated" };
+		const view = {
+			...base,
+			material: "image",
+			images: [IMAGE("a", "image"), IMAGE("b", "image")],
+		};
+		const labels = labelsOf(view);
+		assert.deepEqual(labels, ["NOUN-other-other-1", "NOUN-other-other-2"]);
+		for (const label of labels)
+			assert.ok(
+				!label.includes(CLAUSE),
+				`alt ${label} carries no status clause`,
+			);
+		// The status line is still the clause: both keys are live, only the label changed.
+		assert.ok(stateLineOf(view).text.includes(CLAUSE));
+	} finally {
+		mod.clearRegisteredCatalogues();
+		mod.setLocale("en");
+	}
 });
 
 test("source guard: no model-layer English constant survives on the card", () => {
